@@ -20,9 +20,9 @@ fn test_rust_demangle() {
 
 #[test]
 fn test_cpp_demangle() {
-    assert_mangle("__Z28JS_GetPropertyDescriptorByIdP9JSContextN2JS6HandleIP8JSObjectEENS2_I4jsidEENS1_13MutableHandleINS1_18PropertyDescriptorEEE",
+    assert_mangle("_Z28JS_GetPropertyDescriptorByIdP9JSContextN2JS6HandleIP8JSObjectEENS2_I4jsidEENS1_13MutableHandleINS1_18PropertyDescriptorEEE",
                   Some("JS_GetPropertyDescriptorById"), Default::default());
-    assert_mangle("__Z28JS_GetPropertyDescriptorByIdP9JSContextN2JS6HandleIP8JSObjectEENS2_I4jsidEENS1_13MutableHandleINS1_18PropertyDescriptorEEE",
+    assert_mangle("_Z28JS_GetPropertyDescriptorByIdP9JSContextN2JS6HandleIP8JSObjectEENS2_I4jsidEENS1_13MutableHandleINS1_18PropertyDescriptorEEE",
                   Some("JS_GetPropertyDescriptorById(JSContext*, JS::Handle<JSObject*>, JS::Handle<jsid>, JS::MutableHandle<JS::PropertyDescriptor>)"), DemangleOptions {
         format: DemangleFormat::Full,
         ..Default::default()
@@ -31,6 +31,7 @@ fn test_cpp_demangle() {
 
 #[test]
 fn test_no_match() {
+    assert_mangle("foo", None, Default::default());
     assert_mangle("_ZN3foo3barE", None, DemangleOptions {
         languages: vec![],
         ..Default::default()

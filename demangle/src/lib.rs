@@ -38,6 +38,9 @@ pub fn demangle(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
     for &lang in &opts.languages {
         match lang {
             Language::Cpp => {
+                if &ident[..2] != "_Z" {
+                    continue;
+                }
                 match cpp_demangle::Symbol::new(ident) {
                     Ok(sym) => {
                         return Ok(sym.demangle(&match opts.format {
