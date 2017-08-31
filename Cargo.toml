@@ -1,0 +1,12 @@
+[package]
+name = "symbolic"
+version = "0.1.0"
+authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
+
+[workspace]
+
+[dependencies]
+symbolic-common = { path = "common" }
+symbolic-demangle = { path = "demangle" }
+symbolic-proguard = { path = "proguard" }
+symbolic-sourcemap = { path = "sourcemap" }
