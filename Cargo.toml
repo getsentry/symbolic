@@ -8,5 +8,6 @@ authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 [dependencies]
 symbolic-common = { path = "common" }
 symbolic-demangle = { path = "demangle" }
+symbolic-minidump = { path = "minidump" }
 symbolic-proguard = { path = "proguard" }
 symbolic-sourcemap = { path = "sourcemap" }
