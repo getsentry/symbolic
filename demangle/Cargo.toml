@@ -3,5 +3,6 @@ name = "symbolic-demangle"
 version = "0.1.0"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
-[dependencies.symbolic-common]
-path = "../common"
+[dependencies]
+symbolic-common = { path = "../common" }
+rustc-demangle = "0.1"

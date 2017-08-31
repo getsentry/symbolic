@@ -1,36 +1,49 @@
 //! Provides demangling support.
 extern crate symbolic_common;
+extern crate rustc_demangle;
 
 use symbolic_common::Result;
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum Language {
     Cpp,
     Swift,
+    Rust,
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum DemangleFormat {
     Short,
     Full,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DemangleOptions {
-    format: DemangleFormat,
-    languages: Vec<Language>,
+    pub format: DemangleFormat,
+    pub languages: Vec<Language>,
 }
 
 impl Default for DemangleOptions {
     fn default() -> DemangleOptions {
         DemangleOptions {
             format: DemangleFormat::Short,
-            languages: vec![Language::Cpp, Language::Swift],
+            languages: vec![Language::Cpp, Language::Swift, Language::Rust],
         }
     }
 }
 
 /// Demangles an identifier.
-pub fn demangle(_ident: &str, _opts: DemangleOptions) -> Result<Option<String>> {
+pub fn demangle(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
+    for &lang in &opts.languages {
+        match lang {
+            Language::Cpp => {},
+            Language::Swift => {},
+            Language::Rust => {
+                if let Ok(dm) = rustc_demangle::try_demangle(ident) {
+                    return Ok(Some(format!("{:#}", dm)));
+                }
+            }
+        }
+    }
     Ok(None)
 }
