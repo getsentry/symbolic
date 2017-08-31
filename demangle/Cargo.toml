@@ -6,3 +6,4 @@ authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 [dependencies]
 symbolic-common = { path = "../common" }
 rustc-demangle = "0.1"
+cpp_demangle = "0.2"
