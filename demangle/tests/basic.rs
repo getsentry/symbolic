@@ -18,6 +18,11 @@ fn test_rust_demangle() {
 }
 
 #[test]
+fn test_swift_demangle() {
+    assert_mangle("_TTWVSC29UIApplicationLaunchOptionsKeys21_ObjectiveCBridgeable5UIKitZFS0_36_unconditionallyBridgeFromObjectiveCfGSqwx15_ObjectiveCType_x", Some("protocol witness for static _ObjectiveCBridgeable._unconditionallyBridgeFromObjectiveC(_:) in conformance UIApplicationLaunchOptionsKey"), Default::default());
+}
+
+#[test]
 fn test_cpp_demangle() {
     assert_mangle("_Z28JS_GetPropertyDescriptorByIdP9JSContextN2JS6HandleIP8JSObjectEENS2_I4jsidEENS1_13MutableHandleINS1_18PropertyDescriptorEEE",
                   Some("JS_GetPropertyDescriptorById"), Default::default());
