@@ -6,6 +6,10 @@ error_chain! {
             description("bad symbol")
             display("bad symbol: {}", &message)
         }
+        InternalError(message: &'static str) {
+            description("internal error")
+            display("internal error: {}", &message)
+        }
     }
 
     foreign_links {
