@@ -53,4 +53,8 @@ fn test_cpp_demangle() {
 #[test]
 fn test_no_match() {
     assert_mangle("foo", None, Default::default());
+
+    let sym = Symbol::new("bla_bla_bla");
+    assert_eq!(sym.language(), None);
+    assert_eq!(sym.to_string(), "bla_bla_bla");
 }
