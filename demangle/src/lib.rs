@@ -52,13 +52,13 @@ impl Default for DemangleOptions {
         DemangleOptions {
             format: DemangleFormat::Short,
             with_arguments: false,
-            languages: vec![Language::Cpp, Language::Rust],
+            languages: vec![Language::Cpp, Language::Rust, Language::Swift],
         }
     }
 }
 
 fn try_demangle_cpp(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
-    if &ident[..2] != "_Z" {
+    if ident.len() < 2 || &ident[..2] != "_Z" {
         return Ok(None);
     }
     match cpp_demangle::Symbol::new(ident) {
@@ -82,6 +82,10 @@ fn try_demangle_rust(ident: &str, _opts: &DemangleOptions) -> Result<Option<Stri
 }
 
 fn try_demangle_swift(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
+    if ident.len() < 2 || (&ident[..2] != "_T" && &ident[..2] != "_S") {
+        return Ok(None);
+    }
+
     let mut buf = vec![0i8; 4096];
     let sym = match CString::new(ident) {
         Ok(sym) => sym,
