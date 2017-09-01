@@ -9,12 +9,20 @@ extern crate rustc_demangle;
 extern crate cpp_demangle;
 
 use symbolic_common::{ErrorKind, Result};
+use std::ffi::{CStr, CString};
+use std::os::raw::{c_int, c_char};
+
+extern "C" {
+    fn symbolic_demangle_swift(sym: *const c_char, buf: *mut c_char,
+                               buf_len: usize, simplified: c_int) -> c_int;
+}
 
 /// Supported programming languages for demangling
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum Language {
     Cpp,
     Rust,
+    Swift,
 }
 
 /// Defines the output format of the demangler
@@ -73,6 +81,34 @@ fn try_demangle_rust(ident: &str, _opts: &DemangleOptions) -> Result<Option<Stri
     }
 }
 
+fn try_demangle_swift(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
+    let mut buf = vec![0i8; 4096];
+    let sym = match CString::new(ident) {
+        Ok(sym) => sym,
+        Err(_) => {
+            return Err(ErrorKind::InternalError("embedded null byte").into());
+        }
+    };
+
+    let simplified = match opts.format {
+        DemangleFormat::Short => 1,
+        DemangleFormat::Full => 0
+    };
+
+    unsafe {
+        let rv = symbolic_demangle_swift(sym.as_ptr(),
+                                         buf.as_mut_ptr(),
+                                         buf.len(),
+                                         simplified);
+        if rv == 0 {
+            return Ok(None);
+        }
+
+        let s = CStr::from_ptr(buf.as_ptr()).to_string_lossy();
+        return Ok(Some(s.to_string()));
+    }
+}
+
 /// Demangles an identifier.
 ///
 /// Example:
@@ -87,6 +123,7 @@ pub fn demangle(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
         if let Some(rv) = match lang {
             Language::Cpp => try_demangle_cpp(ident, opts)?,
             Language::Rust => try_demangle_rust(ident, opts)?,
+            Language::Swift => try_demangle_swift(ident, opts)?,
         } {
             return Ok(Some(rv));
         }
