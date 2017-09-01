@@ -19,7 +19,12 @@ fn test_rust_demangle() {
 
 #[test]
 fn test_swift_demangle() {
-    assert_mangle("_TTWVSC29UIApplicationLaunchOptionsKeys21_ObjectiveCBridgeable5UIKitZFS0_36_unconditionallyBridgeFromObjectiveCfGSqwx15_ObjectiveCType_x", Some("protocol witness for static _ObjectiveCBridgeable._unconditionallyBridgeFromObjectiveC(_:) in conformance UIApplicationLaunchOptionsKey"), Default::default());
+    assert_mangle("_TFC12Swift_Tester14ViewController11doSomethingfS0_FT_T_",
+                  Some("ViewController.doSomething(_:)"),
+                  Default::default());
+    assert_mangle("_TTWVSC29UIApplicationLaunchOptionsKeys21_ObjectiveCBridgeable5UIKitZFS0_36_unconditionallyBridgeFromObjectiveCfGSqwx15_ObjectiveCType_x",
+                  Some("protocol witness for static _ObjectiveCBridgeable._unconditionallyBridgeFromObjectiveC(_:) in conformance UIApplicationLaunchOptionsKey"),
+                  Default::default());
 }
 
 #[test]
