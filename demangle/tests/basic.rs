@@ -29,6 +29,10 @@ fn test_swift_demangle() {
     assert_mangle("_TTWVSC29UIApplicationLaunchOptionsKeys21_ObjectiveCBridgeable5UIKitZFS0_36_unconditionallyBridgeFromObjectiveCfGSqwx15_ObjectiveCType_x",
                   Some("protocol witness for static _ObjectiveCBridgeable._unconditionallyBridgeFromObjectiveC(_:) in conformance UIApplicationLaunchOptionsKey"),
                   Default::default());
+
+    let sym = Symbol::new("_TFC12Swift_Tester14ViewController11doSomethingfS0_FT_T_");
+    assert_eq!(sym.language(), Some(Language::Swift));
+    assert_eq!(sym.to_string(), "ViewController.doSomething(_:)");
 }
 
 #[test]
@@ -40,6 +44,10 @@ fn test_cpp_demangle() {
         with_arguments: true,
         ..Default::default()
     });
+
+    let sym = Symbol::new("_Z28JS_GetPropertyDescriptorByIdP9JSContextN2JS6HandleIP8JSObjectEENS2_I4jsidEENS1_13MutableHandleINS1_18PropertyDescriptorEEE");
+    assert_eq!(sym.language(), Some(Language::Cpp));
+    assert_eq!(sym.to_string(), "JS_GetPropertyDescriptorById");
 }
 
 #[test]
