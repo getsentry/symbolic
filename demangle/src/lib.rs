@@ -5,6 +5,11 @@
 //! * C++
 //! * Rust
 //! * Swift
+//!
+//! As the demangling schemes for different languages are different the
+//! feature set is also inconsistent.  In particular Rust for instance has
+//! no overloading so argument types are generally not expected to be
+//! encoded into the function name whereas they are in Swift and C++.
 extern crate symbolic_common;
 extern crate rustc_demangle;
 extern crate cpp_demangle;
@@ -40,7 +45,11 @@ pub enum DemangleFormat {
 pub struct DemangleOptions {
     /// format to use for the output
     pub format: DemangleFormat,
-    /// Should arguments be returned?
+    /// Should arguments be returned
+    ///
+    /// The default behavior is that arguments are not included in the
+    /// demangled output, however they are if you convert the symbol
+    /// into a string.
     pub with_arguments: bool,
 }
 
