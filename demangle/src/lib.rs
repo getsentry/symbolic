@@ -29,6 +29,8 @@ pub enum DemangleFormat {
 pub struct DemangleOptions {
     /// format to use for the output
     pub format: DemangleFormat,
+    /// Should arguments be returned?
+    pub with_arguments: bool,
     /// languages that should be attempted for demangling
     ///
     /// These languages are tried in the order defined.  This is releavant
@@ -41,6 +43,7 @@ impl Default for DemangleOptions {
     fn default() -> DemangleOptions {
         DemangleOptions {
             format: DemangleFormat::Short,
+            with_arguments: false,
             languages: vec![Language::Cpp, Language::Rust],
         }
     }
@@ -52,17 +55,8 @@ fn try_demangle_cpp(ident: &str, opts: &DemangleOptions) -> Result<Option<String
     }
     match cpp_demangle::Symbol::new(ident) {
         Ok(sym) => {
-            Ok(sym.demangle(&match opts.format {
-                DemangleFormat::Short => {
-                    cpp_demangle::DemangleOptions {
-                        no_params: true,
-                    }
-                },
-                DemangleFormat::Full => {
-                    cpp_demangle::DemangleOptions {
-                        no_params: false,
-                    }
-                }
+            Ok(sym.demangle(&cpp_demangle::DemangleOptions {
+                no_params: !opts.with_arguments
             }).ok())
         }
         Err(err) => {
@@ -71,7 +65,7 @@ fn try_demangle_cpp(ident: &str, opts: &DemangleOptions) -> Result<Option<String
     }
 }
 
-fn try_demangle_rust(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
+fn try_demangle_rust(ident: &str, _opts: &DemangleOptions) -> Result<Option<String>> {
     if let Ok(dm) = rustc_demangle::try_demangle(ident) {
         Ok(Some(format!("{:#}", dm)))
     } else {

@@ -4,7 +4,6 @@ use symbolic_demangle::{demangle, DemangleOptions, DemangleFormat};
 
 
 fn assert_mangle(input: &str, output: Option<&str>, opts: DemangleOptions) {
-    let rv = demangle(input, &opts);
     if let Some(rv) = demangle(input, &opts).unwrap() {
         assert_eq!(Some(rv.as_str()), output);
     } else {
@@ -24,7 +23,7 @@ fn test_cpp_demangle() {
                   Some("JS_GetPropertyDescriptorById"), Default::default());
     assert_mangle("_Z28JS_GetPropertyDescriptorByIdP9JSContextN2JS6HandleIP8JSObjectEENS2_I4jsidEENS1_13MutableHandleINS1_18PropertyDescriptorEEE",
                   Some("JS_GetPropertyDescriptorById(JSContext*, JS::Handle<JSObject*>, JS::Handle<jsid>, JS::MutableHandle<JS::PropertyDescriptor>)"), DemangleOptions {
-        format: DemangleFormat::Full,
+        with_arguments: true,
         ..Default::default()
     });
 }
