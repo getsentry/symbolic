@@ -1530,14 +1530,14 @@ NodePointer Demangler::demangleWitness() {
       return createWithChild(Node::Kind::ValueWitnessTable,
                              popNode(Node::Kind::Type));
     case 'v': {
-      unsigned Directness;
+      unsigned directness;
       switch (nextChar()) {
-        case 'd': Directness = unsigned(Directness::Direct); break;
-        case 'i': Directness = unsigned(Directness::Indirect); break;
+        case 'd': { directness = (unsigned)Directness::Direct; break; }
+        case 'i': { directness = (unsigned)Directness::Indirect; break; }
         default: return nullptr;
       }
       return createWithChildren(Node::Kind::FieldOffset,
-                        createNode(Node::Kind::Directness, Directness),
+                        createNode(Node::Kind::Directness, directness),
                         popNode(isEntity));
     }
     case 'P':
