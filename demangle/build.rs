@@ -5,8 +5,6 @@ fn main() {
         .cpp(true)
         .files(&[
             "src/swiftdemangle.cpp",
-            "vendor/swift/lib/SwiftDemangle/SwiftDemangle.cpp",
-            "vendor/swift/lib/SwiftDemangle/MangleHack.cpp",
             "vendor/swift/lib/Demangling/Context.cpp",
             "vendor/swift/lib/Demangling/ManglingUtils.cpp",
             "vendor/swift/lib/Demangling/NodePrinter.cpp",
