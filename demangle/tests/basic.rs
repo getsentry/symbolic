@@ -1,6 +1,6 @@
 extern crate symbolic_demangle;
 
-use symbolic_demangle::{demangle, DemangleOptions};
+use symbolic_demangle::{demangle, DemangleOptions, Symbol, Language};
 
 
 fn assert_mangle(input: &str, output: Option<&str>, opts: DemangleOptions) {
@@ -15,6 +15,10 @@ fn assert_mangle(input: &str, output: Option<&str>, opts: DemangleOptions) {
 #[test]
 fn test_rust_demangle() {
     assert_mangle("__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E", Some("std::io::Read::read_to_end"), Default::default());
+
+    let sym = Symbol::new("__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E");
+    assert_eq!(sym.language(), Some(Language::Rust));
+    assert_eq!(sym.to_string(), "std::io::Read::read_to_end");
 }
 
 #[test]

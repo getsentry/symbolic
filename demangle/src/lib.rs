@@ -102,23 +102,37 @@ fn try_demangle_swift(ident: &str, opts: &DemangleOptions) -> Result<Option<Stri
     }
 }
 
-struct Symbol<'a> {
+/// Represents a mangled symbol.
+///
+/// When created from a string this type wraps a potentially mangled
+/// symbol.  Non mangled symbols are largely ignored by this type and
+/// language checks will not return a language.
+///
+/// Upon formatting the symbol is automatically demangled with the
+/// default settings.
+pub struct Symbol<'a> {
     mangled: &'a str,
 }
 
 impl<'a> Symbol<'a> {
+    /// Constructs a new mangled symbol.
     pub fn new(mangled: &'a str) -> Symbol<'a> {
         Symbol {
             mangled: mangled,
         }
     }
 
-    /// The mangled symbol
-    pub fn mangled(&self) -> &str {
+    /// The raw string of the symbol.
+    ///
+    /// If the symbol was not mangled this will also return the input data.
+    pub fn raw(&self) -> &str {
         self.mangled
     }
 
     /// The language of the mangled symbol.
+    ///
+    /// In case the symbol is not mangled or not one of the supported languages
+    /// the return value will be `None`.
     pub fn language(&self) -> Option<Language> {
         // rust
         if (self.mangled.starts_with("_ZN") ||
@@ -159,7 +173,7 @@ impl<'a> fmt::Display for Symbol<'a> {
         if let Ok(Some(sym)) = self.demangle(&Default::default()) {
             write!(f, "{}", sym)
         } else {
-            write!(f, "{}", self.mangled())
+            write!(f, "{}", self.raw())
         }
     }
 }
