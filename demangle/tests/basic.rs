@@ -14,7 +14,7 @@ fn assert_mangle(input: &str, output: Option<&str>, opts: DemangleOptions) {
 
 #[test]
 fn test_rust_demangle() {
-    assert_mangle("_ZN3foo3barE", Some("foo::bar"), Default::default());
+    assert_mangle("__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E", Some("std::io::Read::read_to_end"), Default::default());
 }
 
 #[test]
@@ -41,8 +41,4 @@ fn test_cpp_demangle() {
 #[test]
 fn test_no_match() {
     assert_mangle("foo", None, Default::default());
-    assert_mangle("_ZN3foo3barE", None, DemangleOptions {
-        languages: vec![],
-        ..Default::default()
-    });
 }

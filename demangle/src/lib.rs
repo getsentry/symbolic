@@ -4,11 +4,13 @@
 //!
 //! * C++
 //! * Rust
+//! * Swift
 extern crate symbolic_common;
 extern crate rustc_demangle;
 extern crate cpp_demangle;
 
 use symbolic_common::{ErrorKind, Result};
+use std::fmt;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_int, c_char};
 
@@ -40,12 +42,6 @@ pub struct DemangleOptions {
     pub format: DemangleFormat,
     /// Should arguments be returned?
     pub with_arguments: bool,
-    /// languages that should be attempted for demangling
-    ///
-    /// These languages are tried in the order defined.  This is releavant
-    /// as some mangling schemes overlap for some trivial cases (for
-    /// instance rust and C++).
-    pub languages: Vec<Language>,
 }
 
 impl Default for DemangleOptions {
@@ -53,15 +49,11 @@ impl Default for DemangleOptions {
         DemangleOptions {
             format: DemangleFormat::Short,
             with_arguments: false,
-            languages: vec![Language::Cpp, Language::Rust, Language::Swift],
         }
     }
 }
 
 fn try_demangle_cpp(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
-    if ident.len() < 2 || &ident[..2] != "_Z" {
-        return Ok(None);
-    }
     match cpp_demangle::Symbol::new(ident) {
         Ok(sym) => {
             Ok(sym.demangle(&cpp_demangle::DemangleOptions {
@@ -78,7 +70,7 @@ fn try_demangle_rust(ident: &str, _opts: &DemangleOptions) -> Result<Option<Stri
     if let Ok(dm) = rustc_demangle::try_demangle(ident) {
         Ok(Some(format!("{:#}", dm)))
     } else {
-        Ok(None)
+        Err(ErrorKind::BadSymbol("Not a valid Rust symbol".into()).into())
     }
 }
 
@@ -90,12 +82,6 @@ fn try_demangle_swift(ident: &str, opts: &DemangleOptions) -> Result<Option<Stri
             return Err(ErrorKind::InternalError("embedded null byte").into());
         }
     };
-
-    unsafe {
-        if symbolic_demangle_is_swift_symbol(sym.as_ptr()) == 0 {
-            return Ok(None);
-        }
-    }
 
     let simplified = match opts.format {
         DemangleFormat::Short => 1,
@@ -116,6 +102,68 @@ fn try_demangle_swift(ident: &str, opts: &DemangleOptions) -> Result<Option<Stri
     }
 }
 
+struct Symbol<'a> {
+    mangled: &'a str,
+}
+
+impl<'a> Symbol<'a> {
+    pub fn new(mangled: &'a str) -> Symbol<'a> {
+        Symbol {
+            mangled: mangled,
+        }
+    }
+
+    /// The mangled symbol
+    pub fn mangled(&self) -> &str {
+        self.mangled
+    }
+
+    /// The language of the mangled symbol.
+    pub fn language(&self) -> Option<Language> {
+        // rust
+        if (self.mangled.starts_with("_ZN") ||
+            self.mangled.starts_with("__ZN")) && self.mangled.ends_with("E") {
+            return Some(Language::Rust);
+        }
+
+        // c++
+        if self.mangled.starts_with("_Z") || self.mangled.starts_with("__Z") {
+            return Some(Language::Cpp);
+        }
+
+        // swift?
+        if let Ok(sym) = CString::new(self.mangled) {
+            unsafe {
+                if symbolic_demangle_is_swift_symbol(sym.as_ptr()) != 0 {
+                    return Some(Language::Swift);
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Demangles a symbol with the given options.
+    pub fn demangle(&self, opts: &DemangleOptions) -> Result<Option<String>> {
+        match self.language() {
+            Some(Language::Rust) => try_demangle_rust(self.mangled, opts),
+            Some(Language::Cpp) => try_demangle_cpp(self.mangled, opts),
+            Some(Language::Swift) => try_demangle_swift(self.mangled, opts),
+            None => Ok(None),
+        }
+    }
+}
+
+impl<'a> fmt::Display for Symbol<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Ok(Some(sym)) = self.demangle(&Default::default()) {
+            write!(f, "{}", sym)
+        } else {
+            write!(f, "{}", self.mangled())
+        }
+    }
+}
+
 /// Demangles an identifier.
 ///
 /// Example:
@@ -126,14 +174,5 @@ fn try_demangle_swift(ident: &str, opts: &DemangleOptions) -> Result<Option<Stri
 /// assert_eq!(&rv.unwrap(), "foo::bar");
 /// ```
 pub fn demangle(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
-    for &lang in &opts.languages {
-        if let Some(rv) = match lang {
-            Language::Cpp => try_demangle_cpp(ident, opts)?,
-            Language::Rust => try_demangle_rust(ident, opts)?,
-            Language::Swift => try_demangle_swift(ident, opts)?,
-        } {
-            return Ok(Some(rv));
-        }
-    }
-    Ok(None)
+    Symbol::new(ident).demangle(opts)
 }
