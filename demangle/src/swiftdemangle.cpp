@@ -20,3 +20,10 @@ extern "C" int symbolic_demangle_swift(
     buffer[demangled.size()] = '\0';
     return true;
 }
+
+extern "C" int symbolic_demangle_is_swift_symbol(
+    const char *symbol)
+{
+    swift::Demangle::Context DCtx;
+    return DCtx.hasSwiftCallingConvention(llvm::StringRef(symbol));
+}

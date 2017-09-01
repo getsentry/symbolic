@@ -15,6 +15,7 @@ use std::os::raw::{c_int, c_char};
 extern "C" {
     fn symbolic_demangle_swift(sym: *const c_char, buf: *mut c_char,
                                buf_len: usize, simplified: c_int) -> c_int;
+    fn symbolic_demangle_is_swift_symbol(sym: *const c_char) -> c_int;
 }
 
 /// Supported programming languages for demangling
@@ -82,10 +83,6 @@ fn try_demangle_rust(ident: &str, _opts: &DemangleOptions) -> Result<Option<Stri
 }
 
 fn try_demangle_swift(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
-    if ident.len() < 2 || (&ident[..2] != "_T" && &ident[..2] != "_S") {
-        return Ok(None);
-    }
-
     let mut buf = vec![0i8; 4096];
     let sym = match CString::new(ident) {
         Ok(sym) => sym,
@@ -93,6 +90,12 @@ fn try_demangle_swift(ident: &str, opts: &DemangleOptions) -> Result<Option<Stri
             return Err(ErrorKind::InternalError("embedded null byte").into());
         }
     };
+
+    unsafe {
+        if symbolic_demangle_is_swift_symbol(sym.as_ptr()) == 0 {
+            return Ok(None);
+        }
+    }
 
     let simplified = match opts.format {
         DemangleFormat::Short => 1,
