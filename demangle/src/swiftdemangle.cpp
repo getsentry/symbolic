@@ -7,6 +7,9 @@ extern "C" int symbolic_demangle_swift(
     swift::Demangle::DemangleOptions opts;
     if (simplified) {
         opts = swift::Demangle::DemangleOptions::SimplifiedUIDemangleOptions();
+        if (simplified == 2) {
+            opts.ShowFunctionArguments = false;
+        }
     }
 
     std::string demangled = swift::Demangle::demangleSymbolAsString(

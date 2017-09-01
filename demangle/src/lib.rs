@@ -84,7 +84,13 @@ fn try_demangle_swift(ident: &str, opts: &DemangleOptions) -> Result<Option<Stri
     };
 
     let simplified = match opts.format {
-        DemangleFormat::Short => 1,
+        DemangleFormat::Short => {
+            if opts.with_arguments {
+                1
+            } else {
+                2
+            }
+        },
         DemangleFormat::Full => 0
     };
 
@@ -108,8 +114,8 @@ fn try_demangle_swift(ident: &str, opts: &DemangleOptions) -> Result<Option<Stri
 /// symbol.  Non mangled symbols are largely ignored by this type and
 /// language checks will not return a language.
 ///
-/// Upon formatting the symbol is automatically demangled with the
-/// default settings.
+/// Upon formatting the symbol is automatically demangled (without
+/// arguments).
 pub struct Symbol<'a> {
     mangled: &'a str,
 }
@@ -170,7 +176,10 @@ impl<'a> Symbol<'a> {
 
 impl<'a> fmt::Display for Symbol<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Ok(Some(sym)) = self.demangle(&Default::default()) {
+        if let Ok(Some(sym)) = self.demangle(&DemangleOptions {
+            with_arguments: false,
+            ..Default::default()
+        }) {
             write!(f, "{}", sym)
         } else {
             write!(f, "{}", self.raw())

@@ -527,6 +527,9 @@ private:
 
   void printFunctionType(NodePointer node) {
     assert(node->getNumChildren() == 2 || node->getNumChildren() == 3);
+    if (!Options.ShowFunctionArguments) {
+      return;
+    }
     unsigned startIndex = 0;
     bool throws = false;
     if (node->getNumChildren() == 3) {
