@@ -2,9 +2,10 @@
 //!
 //! Currently supported languages:
 //!
-//! * C++
+//! * C++ (without windows)
 //! * Rust
 //! * Swift
+//! * ObjC (only symbol detection)
 //!
 //! As the demangling schemes for different languages are different the
 //! feature set is also inconsistent.  In particular Rust for instance has
@@ -26,11 +27,12 @@ extern "C" {
 }
 
 /// Supported programming languages for demangling
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(Eq, PartialEq, Hash, Debug, Copy, Clone)]
 pub enum Language {
     Cpp,
     Rust,
     Swift,
+    ObjC,
 }
 
 /// Defines the output format of the demangler
@@ -149,6 +151,12 @@ impl<'a> Symbol<'a> {
     /// In case the symbol is not mangled or not one of the supported languages
     /// the return value will be `None`.
     pub fn language(&self) -> Option<Language> {
+        // objc?
+        if (self.mangled.starts_with("-[") ||
+            self.mangled.starts_with("+[")) && self.mangled.ends_with("]") {
+            return Some(Language::ObjC);
+        }
+
         // rust
         if (self.mangled.starts_with("_ZN") ||
             self.mangled.starts_with("__ZN")) && self.mangled.ends_with("E") {
@@ -175,6 +183,7 @@ impl<'a> Symbol<'a> {
     /// Demangles a symbol with the given options.
     pub fn demangle(&self, opts: &DemangleOptions) -> Result<Option<String>> {
         match self.language() {
+            Some(Language::ObjC) => Ok(Some(self.mangled.to_string())),
             Some(Language::Rust) => try_demangle_rust(self.mangled, opts),
             Some(Language::Cpp) => try_demangle_cpp(self.mangled, opts),
             Some(Language::Swift) => try_demangle_swift(self.mangled, opts),
