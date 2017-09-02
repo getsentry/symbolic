@@ -11,6 +11,15 @@
 //! feature set is also inconsistent.  In particular Rust for instance has
 //! no overloading so argument types are generally not expected to be
 //! encoded into the function name whereas they are in Swift and C++.
+//!
+//! ## Examples
+//!
+//! ```rust
+//! # use symbolic_demangle::{Symbol, Language};
+//! let sym = Symbol::new("__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E");
+//! assert_eq!(sym.language(), Some(Language::Rust));
+//! assert_eq!(sym.to_string(), "std::io::Read::read_to_end");
+//! ```
 extern crate symbolic_common;
 extern crate rustc_demangle;
 extern crate cpp_demangle;
@@ -207,7 +216,7 @@ impl<'a> fmt::Display for Symbol<'a> {
 
 /// Demangles an identifier.
 ///
-/// Example:
+/// This is a shortcut for using ``Symbol::demangle``.
 ///
 /// ```
 /// # use symbolic_demangle::*;
