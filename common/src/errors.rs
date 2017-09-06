@@ -1,4 +1,5 @@
 use std::io;
+use std::str;
 
 error_chain! {
     errors {
@@ -22,5 +23,6 @@ error_chain! {
 
     foreign_links {
         Io(io::Error);
+        Utf8Error(str::Utf8Error);
     }
 }

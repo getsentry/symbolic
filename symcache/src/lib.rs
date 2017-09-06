@@ -5,4 +5,7 @@ extern crate memmap;
 
 
 mod types;
+mod read;
+
 pub use types::*;
+pub use read::*;
