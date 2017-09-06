@@ -3,6 +3,7 @@ use std::str;
 use std::slice;
 use std::borrow::Cow;
 use std::path::Path;
+use std::ffi::CStr;
 
 use memmap::{Mmap, Protection};
 
@@ -36,6 +37,16 @@ impl<'a> Symbol<'a> {
     /// The address where the symbol was found.
     pub fn symbol_addr(&self) -> u64 {
         self.symbol_addr
+    }
+
+    /// The object that contains the symbol.
+    pub fn object_name(&self) -> &str {
+        self.cache.name().unwrap_or("?")
+    }
+
+    /// The name of the architecture.
+    pub fn arch(&self) -> &str {
+        self.cache.arch().unwrap_or("unknown")
     }
 }
 
@@ -134,6 +145,14 @@ impl<'a> SymCache<'a> {
     pub fn name(&self) -> Result<&str> {
         let header = self.backing.header()?;
         self.get_string(header.name_id)
+    }
+
+    /// The architecture of the cache file
+    pub fn arch(&self) -> Result<&str> {
+        let header = self.backing.header()?;
+        unsafe {
+            Ok(CStr::from_ptr(header.arch.as_ptr()).to_str()?)
+        }
     }
 
     fn index(&self) -> Result<&[IndexItem]> {

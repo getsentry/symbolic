@@ -1,5 +1,3 @@
-use symbolic_common::{Result, ErrorKind};
-
 use uuid::Uuid;
 
 #[repr(C, packed)]
@@ -7,7 +5,7 @@ use uuid::Uuid;
 pub struct CacheFileHeader {
     pub version: u32,
     pub uuid: Uuid,
-    pub arch: [u8; 16],
+    pub arch: [i8; 16],
     pub name_id: u32,
     pub index_start: u32,
     pub index_count: u32,
