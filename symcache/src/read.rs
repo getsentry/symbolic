@@ -23,6 +23,20 @@ pub struct SymCache<'a> {
 
 pub struct Symbol<'a> {
     cache: &'a SymCache<'a>,
+    instr_addr: u64,
+    symbol_addr: u64,
+}
+
+impl<'a> Symbol<'a> {
+    /// The instruction address.
+    pub fn instr_addr(&self) -> u64 {
+        self.instr_addr
+    }
+
+    /// The address where the symbol was found.
+    pub fn symbol_addr(&self) -> u64 {
+        self.symbol_addr
+    }
 }
 
 impl<'a> Backing<'a> {
@@ -131,6 +145,8 @@ impl<'a> SymCache<'a> {
     fn index_item_to_symbol(&'a self, addr: u64, item: &'a IndexItem) -> Result<Symbol<'a>> {
         Ok(Symbol {
             cache: self,
+            instr_addr: addr,
+            symbol_addr: item.addr(),
         })
     }
 
