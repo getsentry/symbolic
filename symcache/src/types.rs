@@ -28,3 +28,9 @@ pub struct IndexItem {
     filename_id: u16,
     symbol_id: u32,
 }
+
+impl IndexItem {
+    pub fn addr(&self) -> u64 {
+        ((self.addr_high as u64) << 32) | (self.addr_low as u64)
+    }
+}

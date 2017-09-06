@@ -9,6 +9,7 @@ use memmap::{Mmap, Protection};
 use symbolic_common::{Result, ErrorKind};
 
 use types::{CacheFileHeader, StoredSlice, IndexItem};
+use utils::binsearch_by_key;
 
 
 enum Backing<'a> {
@@ -121,7 +122,24 @@ impl<'a> SymCache<'a> {
         self.get_string(header.name_id)
     }
 
+    fn index(&self) -> Result<&[IndexItem]> {
+        let header = self.backing.header()?;
+        Ok(self.backing.get_slice(header.index_start as usize,
+                                  header.index_count as usize)?)
+    }
+
+    fn index_item_to_symbol(&'a self, addr: u64, item: &'a IndexItem) -> Result<Symbol<'a>> {
+        Ok(Symbol {
+            cache: self,
+        })
+    }
+
     pub fn lookup(&'a self, addr: u64) -> Result<Option<Symbol<'a>>> {
-        Ok(None)
+        let index = self.index()?;
+        if let Some(ref item) = binsearch_by_key(index, addr, |item| item.addr()) {
+            Ok(Some(self.index_item_to_symbol(addr, item)?))
+        } else {
+            Ok(None)
+        }
     }
 }
