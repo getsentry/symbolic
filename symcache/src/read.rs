@@ -19,7 +19,7 @@ enum Backing<'a> {
 }
 
 pub struct SymCache<'a> {
-    backing: Backing<'a>
+    backing: Backing<'a>,
 }
 
 pub struct Symbol<'a> {
