@@ -12,7 +12,7 @@ use symbolic_common::{Result, ErrorKind};
 use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, LineRecord};
 use utils::binsearch_by_key;
 
-struct Symbol<'a> {
+pub struct Symbol<'a> {
     cache: &'a SymCache<'a>,
     sym_addr: u64,
     instr_addr: u64,
@@ -28,6 +28,28 @@ enum Backing<'a> {
 
 pub struct SymCache<'a> {
     backing: Backing<'a>,
+}
+
+impl<'a> Symbol<'a> {
+    pub fn sym_addr(&self) -> u64 {
+        self.sym_addr
+    }
+
+    pub fn instr_addr(&self) -> u64 {
+        self.instr_addr
+    }
+
+    pub fn line(&self) -> u32 {
+        self.line
+    }
+
+    pub fn filename(&self) -> &str {
+        self.filename
+    }
+
+    pub fn comp_dir(&self) -> &str {
+        self.comp_dir
+    }
 }
 
 impl<'a> Backing<'a> {
@@ -180,7 +202,7 @@ impl<'a> SymCache<'a> {
         })
     }
 
-    fn lookup(&'a self, addr: u64) -> Result<Vec<Symbol<'a>>> {
+    pub fn lookup(&'a self, addr: u64) -> Result<Vec<Symbol<'a>>> {
         let funcs = self.functions()?;
         let mut fun = match binsearch_by_key(funcs, addr, |x| x.addr_start()) {
             Some(fun) => fun,
