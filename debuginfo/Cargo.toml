@@ -1,0 +1,9 @@
+[package]
+authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
+name = "symbolic-debuginfo"
+version = "0.1.0"
+
+[dependencies]
+gimli = "0.14.0"
+goblin = "0.0.11"
+symbolic-common = { path = "../common" }

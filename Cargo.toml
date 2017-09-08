@@ -12,3 +12,4 @@ symbolic-minidump = { path = "minidump" }
 symbolic-proguard = { path = "proguard" }
 symbolic-sourcemap = { path = "sourcemap" }
 symbolic-symcache = { path = "symcache" }
+symbolic-debuginfo = { path = "debuginfo" }
