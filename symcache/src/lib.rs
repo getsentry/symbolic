@@ -8,5 +8,4 @@ mod types;
 mod read;
 mod utils;
 
-pub use types::*;
-pub use read::*;
+pub use read::{Symbol, SymCache};

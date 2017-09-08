@@ -1,6 +1,5 @@
 use std::mem;
 use std::str;
-use std::slice;
 use std::borrow::Cow;
 use std::path::Path;
 use std::ffi::CStr;
@@ -17,6 +16,7 @@ pub struct Symbol<'a> {
     sym_addr: u64,
     instr_addr: u64,
     line: u32,
+    symbol: Option<&'a str>,
     filename: &'a str,
     comp_dir: &'a str,
 }
@@ -31,6 +31,10 @@ pub struct SymCache<'a> {
 }
 
 impl<'a> Symbol<'a> {
+    pub fn arch(&self) -> &str {
+        self.cache.arch().unwrap_or("unknown")
+    }
+
     pub fn sym_addr(&self) -> u64 {
         self.sym_addr
     }
@@ -41,6 +45,10 @@ impl<'a> Symbol<'a> {
 
     pub fn line(&self) -> u32 {
         self.line
+    }
+
+    pub fn symbol(&self) -> &str {
+        self.symbol.unwrap_or("?")
     }
 
     pub fn filename(&self) -> &str {
@@ -158,7 +166,6 @@ impl<'a> SymCache<'a> {
     }
 
     fn run_to_line(&'a self, fun: &'a FuncRecord, addr: u64) -> Result<(&FileRecord, u32)> {
-        let header = self.backing.header()?;
         let records_seg = match self.line_records()?.get(fun.line_record_id as usize) {
             Some(records) => records,
             None => { return Err(ErrorKind::InternalError("unknown line record").into()) }
@@ -197,6 +204,7 @@ impl<'a> SymCache<'a> {
             sym_addr: fun.addr_start(),
             instr_addr: addr,
             line: line,
+            symbol: self.get_symbol(fun.symbol_id)?,
             filename: self.backing.get_segment_as_string(&file_record.filename)?,
             comp_dir: self.backing.get_segment_as_string(&file_record.comp_dir)?,
         })

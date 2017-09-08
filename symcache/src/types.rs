@@ -1,4 +1,3 @@
-use std::mem;
 use std::marker::PhantomData;
 
 use uuid::Uuid;
