@@ -1,5 +1,6 @@
 use std::mem;
 use std::str;
+use std::fmt;
 use std::borrow::Cow;
 use std::path::Path;
 use std::ffi::CStr;
@@ -11,6 +12,7 @@ use symbolic_common::{Result, ErrorKind};
 use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, LineRecord};
 use utils::binsearch_by_key;
 
+/// A matched symbol
 pub struct Symbol<'a> {
     cache: &'a SymCache<'a>,
     sym_addr: u64,
@@ -26,37 +28,59 @@ enum Backing<'a> {
     Mmap(Mmap),
 }
 
+/// An abstraction around a symbol cache file.
 pub struct SymCache<'a> {
     backing: Backing<'a>,
 }
 
 impl<'a> Symbol<'a> {
+    /// The architecture of the matched symbol.
     pub fn arch(&self) -> &str {
         self.cache.arch().unwrap_or("unknown")
     }
 
+    /// The address where the symbol starts.
     pub fn sym_addr(&self) -> u64 {
         self.sym_addr
     }
 
+    /// The actual instruction address.
     pub fn instr_addr(&self) -> u64 {
         self.instr_addr
     }
 
+    /// The current line.
     pub fn line(&self) -> u32 {
         self.line
     }
 
+    /// The string value of the symbol (mangled).
     pub fn symbol(&self) -> &str {
         self.symbol.unwrap_or("?")
     }
 
+    /// The filename of the current line.
     pub fn filename(&self) -> &str {
         self.filename
     }
 
+    /// The compilation dir of the current line.
     pub fn comp_dir(&self) -> &str {
         self.comp_dir
+    }
+}
+
+impl<'a> fmt::Debug for Symbol<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Symbol")
+            .field("arch", &self.arch())
+            .field("sym_addr", &self.sym_addr())
+            .field("instr_addr", &self.instr_addr())
+            .field("line", &self.line())
+            .field("symbol", &self.symbol())
+            .field("filename", &self.filename())
+            .field("comp_dir", &self.comp_dir())
+            .finish()
     }
 }
 
@@ -210,6 +234,11 @@ impl<'a> SymCache<'a> {
         })
     }
 
+    /// Given an address this looks up the symbol at that point.
+    ///
+    /// Because of inling information this returns a vector of zero or
+    /// more symbols.  If nothing is found then the return value will be
+    /// an empty vector.
     pub fn lookup(&'a self, addr: u64) -> Result<Vec<Symbol<'a>>> {
         let funcs = self.functions()?;
         let mut fun = match binsearch_by_key(funcs, addr, |x| x.addr_start()) {
