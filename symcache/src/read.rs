@@ -1,13 +1,9 @@
 use std::mem;
 use std::str;
 use std::fmt;
-use std::borrow::Cow;
-use std::path::Path;
 use std::ffi::CStr;
 
-use memmap::{Mmap, Protection};
-
-use symbolic_common::{Result, ErrorKind};
+use symbolic_common::{Result, ErrorKind, ByteView};
 
 use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, LineRecord};
 use utils::binsearch_by_key;
@@ -23,14 +19,9 @@ pub struct Symbol<'a> {
     comp_dir: &'a str,
 }
 
-enum Backing<'a> {
-    Buf(Cow<'a, [u8]>),
-    Mmap(Mmap),
-}
-
 /// An abstraction around a symbol cache file.
 pub struct SymCache<'a> {
-    backing: Backing<'a>,
+    byteview: &'a ByteView<'a>,
 }
 
 impl<'a> Symbol<'a> {
@@ -84,23 +75,27 @@ impl<'a> fmt::Debug for Symbol<'a> {
     }
 }
 
-impl<'a> Backing<'a> {
+impl<'a> SymCache<'a> {
 
-    fn get_data(&self, start: usize, len: usize) -> Result<&[u8]> {
-        let buffer = self.buffer();
-        let end = start.wrapping_add(len);
-        if end < start || end > buffer.len() {
-            Err(ErrorKind::CorruptCacheFile.into())
-        } else {
-            Ok(&buffer[start..end])
+    pub fn new(byteview: &'a ByteView<'a>) -> Result<SymCache<'a>> {
+        let rv = SymCache {
+            byteview: byteview,
+        };
+        {
+            let header = rv.header()?;
+            if header.version != 2 {
+                return Err(ErrorKind::UnknownCacheFileVersion(
+                    header.version).into());
+            }
         }
+        Ok(rv)
     }
 
     fn get_segment<T>(&self, seg: &Seg<T>) -> Result<&[T]> {
         let offset = seg.offset as usize + mem::size_of::<CacheFileHeader>();
         let size = mem::size_of::<T>() * seg.len as usize;
         unsafe {
-            Ok(mem::transmute(self.get_data(offset, size)?))
+            Ok(mem::transmute(self.byteview.get_data(offset, size)?))
         }
     }
 
@@ -112,57 +107,14 @@ impl<'a> Backing<'a> {
     #[inline(always)]
     fn header(&self) -> Result<&CacheFileHeader> {
         unsafe {
-            Ok(mem::transmute(self.get_data(0, mem::size_of::<CacheFileHeader>())?.as_ptr()))
+            Ok(mem::transmute(self.byteview.get_data(
+                0, mem::size_of::<CacheFileHeader>())?.as_ptr()))
         }
-    }
-
-    #[inline(always)]
-    fn buffer(&self) -> &[u8] {
-        match *self {
-            Backing::Buf(ref buf) => buf,
-            Backing::Mmap(ref mmap) => unsafe { mmap.as_slice() }
-        }
-    }
-}
-
-fn load_cachefile<'a>(backing: Backing<'a>) -> Result<SymCache<'a>> {
-    {
-        let header = backing.header()?;
-        if header.version != 2 {
-            return Err(ErrorKind::UnknownCacheFileVersion(header.version).into());
-        }
-    }
-    Ok(SymCache {
-        backing: backing,
-    })
-}
-
-impl<'a> SymCache<'a> {
-
-    /// Constructs a memdb object from a byte slice cow.
-    pub fn from_cow(cow: Cow<'a, [u8]>) -> Result<SymCache<'a>> {
-        load_cachefile(Backing::Buf(cow))
-    }
-
-    /// Constructs a memdb object from a byte slice.
-    pub fn from_slice(buffer: &'a [u8]) -> Result<SymCache<'a>> {
-        SymCache::from_cow(Cow::Borrowed(buffer))
-    }
-
-    /// Constructs a memdb object from a byte vector.
-    pub fn from_vec(buffer: Vec<u8>) -> Result<SymCache<'a>> {
-        SymCache::from_cow(Cow::Owned(buffer))
-    }
-
-    /// Constructs a memdb object by mmapping a file from the filesystem in.
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<SymCache<'a>> {
-        let mmap = Mmap::open_path(path, Protection::Read)?;
-        load_cachefile(Backing::Mmap(mmap))
     }
 
     /// The architecture of the cache file
     pub fn arch(&self) -> Result<&str> {
-        let header = self.backing.header()?;
+        let header = self.header()?;
         unsafe {
             Ok(CStr::from_ptr(header.arch.as_ptr()).to_str()?)
         }
@@ -170,23 +122,23 @@ impl<'a> SymCache<'a> {
 
     /// Looks up a single symbol
     fn get_symbol(&self, idx: u32) -> Result<Option<&str>> {
-        let header = self.backing.header()?;
-        let syms = self.backing.get_segment(&header.symbols)?;
+        let header = self.header()?;
+        let syms = self.get_segment(&header.symbols)?;
         if let Some(ref seg) = syms.get(idx as usize) {
-            Ok(Some(self.backing.get_segment_as_string(seg)?))
+            Ok(Some(self.get_segment_as_string(seg)?))
         } else {
             Ok(None)
         }
     }
 
     fn functions(&'a self) -> Result<&'a [FuncRecord]> {
-        let header = self.backing.header()?;
-        self.backing.get_segment(&header.function_index)
+        let header = self.header()?;
+        self.get_segment(&header.function_index)
     }
 
     fn line_records(&'a self) -> Result<&'a [Seg<LineRecord>]> {
-        let header = self.backing.header()?;
-        self.backing.get_segment(&header.line_records)
+        let header = self.header()?;
+        self.get_segment(&header.line_records)
     }
 
     fn run_to_line(&'a self, fun: &'a FuncRecord, addr: u64) -> Result<(&FileRecord, u32)> {
@@ -194,7 +146,7 @@ impl<'a> SymCache<'a> {
             Some(records) => records,
             None => { return Err(ErrorKind::InternalError("unknown line record").into()) }
         };
-        let records = self.backing.get_segment(records_seg)?;
+        let records = self.get_segment(records_seg)?;
 
         let mut file_id = !0u16;
         let mut line = 0u32;
@@ -211,8 +163,8 @@ impl<'a> SymCache<'a> {
             file_id = rec.file_id;
         }
 
-        let header = self.backing.header()?;
-        let files = self.backing.get_segment(&header.files)?;
+        let header = self.header()?;
+        let files = self.get_segment(&header.files)?;
 
         if let Some(ref record) = files.get(file_id as usize) {
             Ok((record, line))
@@ -229,8 +181,8 @@ impl<'a> SymCache<'a> {
             instr_addr: addr,
             line: line,
             symbol: self.get_symbol(fun.symbol_id)?,
-            filename: self.backing.get_segment_as_string(&file_record.filename)?,
-            comp_dir: self.backing.get_segment_as_string(&file_record.comp_dir)?,
+            filename: self.get_segment_as_string(&file_record.filename)?,
+            comp_dir: self.get_segment_as_string(&file_record.comp_dir)?,
         })
     }
 

@@ -1,3 +1,4 @@
+use std::io;
 use std::path::Path;
 use std::borrow::Cow;
 use std::ops::Deref;
@@ -30,6 +31,17 @@ impl<'a> ByteView<'a> {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<ByteView<'static>> {
         let mmap = Mmap::open_path(path, Protection::Read)?;
         Ok(ByteView::Mmap(mmap))
+    }
+
+    /// A safe way to get a subslice from the byteview.
+    pub fn get_data(&self, start: usize, len: usize) -> Result<&[u8]> {
+        let buffer = self.buffer();
+        let end = start.wrapping_add(len);
+        if end < start || end > buffer.len() {
+            Err(io::Error::new(io::ErrorKind::UnexpectedEof, "out of range").into())
+        } else {
+            Ok(&buffer[start..end])
+        }
     }
 
     #[inline(always)]

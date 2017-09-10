@@ -26,9 +26,6 @@ error_chain! {
             description("malformed object file")
             display("malformed object file: {}", &msg)
         }
-        CorruptCacheFile {
-            description("corrupt cache file")
-        }
         UnknownCacheFileVersion(version: u32) {
             description("unknown cache file version")
             display("unknown cache file version '{}'", version)
@@ -58,13 +55,14 @@ impl From<scroll::Error> for Error {
         use scroll::Error::*;
         match err {
             TooBig { .. } => {
-                io::Error::new(io::ErrorKind::Other, "Tried to read type that was too large").into()
+                io::Error::new(io::ErrorKind::UnexpectedEof,
+                    "Tried to read type that was too large").into()
             },
             BadOffset(..) => {
-                io::Error::new(io::ErrorKind::Other, "Bad offset").into()
+                io::Error::new(io::ErrorKind::InvalidData, "Bad offset").into()
             },
             BadInput { .. } => {
-                io::Error::new(io::ErrorKind::Other, "Bad input").into()
+                io::Error::new(io::ErrorKind::InvalidData, "Bad input").into()
             }
             Custom(s) => {
                 io::Error::new(io::ErrorKind::Other, s).into()
