@@ -77,6 +77,7 @@ impl<'a> fmt::Debug for Symbol<'a> {
 
 impl<'a> SymCache<'a> {
 
+    /// Load a symcache from a byteview.
     pub fn new(byteview: &'a ByteView<'a>) -> Result<SymCache<'a>> {
         let rv = SymCache {
             byteview: byteview,

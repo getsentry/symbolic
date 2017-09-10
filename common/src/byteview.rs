@@ -7,12 +7,17 @@ use memmap::{Mmap, Protection};
 
 use errors::Result;
 
+/// Gives access to bytes loaded from somewhere.
+///
+/// This type can be used to uniformly access bytes that were created
+/// either from mmapping in a path, a vector or a borrowed slice.
 pub enum ByteView<'a> {
     Buf(Cow<'a, [u8]>),
     Mmap(Mmap),
 }
 
 impl<'a> ByteView<'a> {
+    /// Constructs a byte view from a Cow.
     pub fn from_cow(cow: Cow<'a, [u8]>) -> Result<ByteView<'a>> {
         Ok(ByteView::Buf(cow))
     }

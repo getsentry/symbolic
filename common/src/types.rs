@@ -2,6 +2,7 @@ use std::fmt;
 
 use errors::{ErrorKind, Result};
 
+/// An enum of supported architectures.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 pub enum Arch {
     X86,
