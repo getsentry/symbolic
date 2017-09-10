@@ -1,6 +1,8 @@
-//! Symbolic works with symbols.
+//! Symbolic works with symbols and debug info.
 //!
-//! Blah
+//! This library implements various utilities to help Sentry
+//! symbolicate stacktraces.  It is built to also be used independently
+//! of Sentry and in parts.
 
 #[doc(hidden)] pub extern crate symbolic_proguard;
 #[doc(hidden)] pub extern crate symbolic_sourcemap;
@@ -17,3 +19,5 @@ pub use symbolic_minidump as minidump;
 pub use symbolic_symcache as symcache;
 pub use symbolic_debuginfo as debuginfo;
 pub use symbolic_common as common;
+
+pub use common::{Error, Result, ErrorKind, ResultExt};
