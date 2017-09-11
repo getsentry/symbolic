@@ -2,10 +2,10 @@ use std::path::Path;
 use std::borrow::Cow;
 use std::io::Cursor;
 
+use uuid;
 use goblin;
 
-use symbolic_common::{ErrorKind, Result, ByteView};
-use symbolic_common::Arch;
+use symbolic_common::{ErrorKind, Result, ByteView, Arch};
 
 
 enum ObjectKind<'a> {
@@ -21,6 +21,20 @@ enum VariantTarget<'a> {
 pub struct Object<'a> {
     arch: Arch,
     target: VariantTarget<'a>,
+}
+
+impl<'a> Object<'a> {
+    pub fn uuid(&self) -> Option<&uuid::Uuid> {
+        None
+    }
+
+    pub fn arch(&self) -> Option<Arch> {
+        None
+    }
+
+    pub fn object_name(&self) -> Option<&str> {
+        None
+    }
 }
 
 /// Represents an object file.
@@ -40,6 +54,9 @@ impl<'a> FatObject<'a> {
                     ObjectKind::Elf(goblin::elf::Elf::parse(buf)?)
                 }
                 goblin::Hint::Mach(_) => {
+                    ObjectKind::MachO(goblin::mach::Mach::parse(buf)?)
+                }
+                goblin::Hint::MachFat(_) => {
                     ObjectKind::MachO(goblin::mach::Mach::parse(buf)?)
                 }
                 _ => {
