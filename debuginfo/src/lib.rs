@@ -8,5 +8,7 @@ extern crate scroll;
 extern crate symbolic_common;
 
 mod object;
+mod dwarf;
 
 pub use object::*;
+pub use dwarf::*;

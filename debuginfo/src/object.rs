@@ -5,6 +5,7 @@ use std::io::Cursor;
 use uuid;
 use goblin;
 
+use dwarf::{DwarfSection, DwarfSectionData};
 use symbolic_common::{Arch, ByteView, ErrorKind, Result};
 
 enum FatObjectKind<'a> {
@@ -14,8 +15,8 @@ enum FatObjectKind<'a> {
 
 enum ObjectTarget<'a> {
     Elf(&'a goblin::elf::Elf<'a>),
-    MachOBin(&'a goblin::mach::MachO<'a>),
-    MachOFat(goblin::mach::MachO<'a>),
+    MachOSingle(&'a goblin::mach::MachO<'a>),
+    MachOFat(goblin::mach::fat::FatArch, goblin::mach::MachO<'a>),
 }
 
 pub struct Object<'a> {
@@ -25,16 +26,41 @@ pub struct Object<'a> {
 }
 
 impl<'a> Object<'a> {
+    /// Returns the UUID of the object
     pub fn uuid(&self) -> Option<&uuid::Uuid> {
         None
     }
 
+    /// Returns the architecture of the object
     pub fn arch(&self) -> Arch {
         self.arch
     }
 
+    /// Returns the object name of the object
     pub fn object_name(&self) -> Option<&str> {
         None
+    }
+
+    /// Returns the content of the object as bytes
+    pub fn as_bytes(&self) -> &[u8] {
+        match self.target {
+            ObjectTarget::Elf(..) => self.fat_object.as_bytes(),
+            ObjectTarget::MachOSingle(macho) => self.fat_object.as_bytes(),
+            ObjectTarget::MachOFat(ref arch, ref macho) => {
+                let bytes = self.fat_object.as_bytes();
+                &bytes[arch.offset as usize..(arch.offset + arch.size) as usize]
+            }
+        }
+    }
+
+    /// Loads a specific dwarf section if its in the file.
+    pub fn get_dwarf_section(&self, sect: DwarfSection) -> Option<DwarfSectionData> {
+        match self.target {
+            // XXX: implement me
+            ObjectTarget::Elf(..) => None,
+            ObjectTarget::MachOSingle(..) => None,
+            ObjectTarget::MachOFat(..) => None,
+        }
     }
 }
 
@@ -65,6 +91,11 @@ impl<'a> FatObject<'a> {
         })
     }
 
+    /// Returns the contents as bytes.
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.byteview
+    }
+
     /// Returns a list of variants.
     pub fn objects(&'a self) -> Result<Vec<Object<'a>>> {
         let mut rv = vec![];
@@ -83,7 +114,7 @@ impl<'a> FatObject<'a> {
                         rv.push(Object {
                             fat_object: self,
                             arch: Arch::from_mach(arch.cputype as u32, arch.cpusubtype as u32)?,
-                            target: ObjectTarget::MachOFat(fat.get(idx)?),
+                            target: ObjectTarget::MachOFat(arch, fat.get(idx)?),
                         });
                     }
                 }
@@ -94,7 +125,7 @@ impl<'a> FatObject<'a> {
                             macho.header.cputype as u32,
                             macho.header.cpusubtype as u32,
                         )?,
-                        target: ObjectTarget::MachOBin(macho),
+                        target: ObjectTarget::MachOSingle(macho),
                     });
                 }
             },
