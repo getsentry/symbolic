@@ -103,7 +103,7 @@ impl<'a> FatObject<'a> {
             FatObjectKind::Elf(ref elf) => {
                 rv.push(Object {
                     fat_object: self,
-                    arch: Arch::X86_64, // TODO(ja): fix me
+                    arch: Arch::from_elf(elf.header.e_machine)?,
                     target: ObjectTarget::Elf(elf),
                 });
             }

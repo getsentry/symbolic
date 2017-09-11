@@ -40,6 +40,18 @@ impl Arch {
         }
     }
 
+    /// Constructs an architecture from ELF flags
+    pub fn from_elf(machine: u16) -> Result<Arch> {
+        use goblin::elf::header::*;
+        Ok(match machine {
+            EM_386 => Arch::X86,
+            EM_X86_64 => Arch::X86_64,
+            // FIXME: This is incorrect! ARM information is located in the .ARM.attributes section
+            EM_ARM => Arch::ArmV7,
+            _ => return Err(ErrorKind::ParseError("unknown architecture").into()),
+        })
+    }
+
     /// Parses an architecture from a string.
     pub fn parse(string: &str) -> Result<Arch> {
         use Arch::*;
@@ -66,8 +78,9 @@ impl Arch {
         use Arch::*;
         match *self {
             X86 | X86_64 => CpuFamily::Pentium,
-            Arm64 | ArmV5 | ArmV6 | ArmV7 | ArmV7f | ArmV7s |
-                ArmV7k | ArmV7m | ArmV7em => CpuFamily::Arm,
+            Arm64 | ArmV5 | ArmV6 | ArmV7 | ArmV7f | ArmV7s | ArmV7k | ArmV7m | ArmV7em => {
+                CpuFamily::Arm
+            }
         }
     }
 
@@ -76,8 +89,7 @@ impl Arch {
         use Arch::*;
         match *self {
             X86_64 | Arm64 => Some(8),
-            X86 | ArmV5 | ArmV6 | ArmV7 | ArmV7f | ArmV7s |
-                ArmV7k | ArmV7m | ArmV7em => Some(4),
+            X86 | ArmV5 | ArmV6 | ArmV7 | ArmV7f | ArmV7s | ArmV7k | ArmV7m | ArmV7em => Some(4),
         }
     }
 }
@@ -85,18 +97,22 @@ impl Arch {
 impl fmt::Display for Arch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Arch::*;
-        write!(f, "{}", match *self {
-            X86 => "x86",
-            X86_64 => "x86_64",
-            Arm64 => "arm64",
-            ArmV5 => "armv5",
-            ArmV6 => "armv6",
-            ArmV7 => "armv7",
-            ArmV7f => "armv7f",
-            ArmV7s => "armv7s",
-            ArmV7k => "armv7k",
-            ArmV7m => "armv7m",
-            ArmV7em => "armv7em",
-        })
+        write!(
+            f,
+            "{}",
+            match *self {
+                X86 => "x86",
+                X86_64 => "x86_64",
+                Arm64 => "arm64",
+                ArmV5 => "armv5",
+                ArmV6 => "armv6",
+                ArmV7 => "armv7",
+                ArmV7f => "armv7f",
+                ArmV7s => "armv7s",
+                ArmV7k => "armv7k",
+                ArmV7m => "armv7m",
+                ArmV7em => "armv7em",
+            }
+        )
     }
 }
