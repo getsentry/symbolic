@@ -1,3 +1,4 @@
+/// Represents the name of the section.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
 pub enum DwarfSection {
     EhFrame,
@@ -49,6 +50,7 @@ impl DwarfSection {
     }
 }
 
+/// Gives access to a section in a dwarf file.
 #[derive(Eq, PartialEq, Debug, Clone)]
 pub struct DwarfSectionData<'a> {
     section: DwarfSection,
@@ -70,5 +72,15 @@ impl<'a> DwarfSectionData<'a> {
     /// Return the section as bytes
     pub fn as_bytes(&self) -> &[u8] {
         self.data
+    }
+
+    /// Get the offset
+    pub fn offset(&self) -> u64 {
+        self.offset
+    }
+
+    /// Get the section
+    pub fn section(&self) -> DwarfSection {
+        self.section
     }
 }

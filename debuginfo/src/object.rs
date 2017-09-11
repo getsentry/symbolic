@@ -19,6 +19,7 @@ enum ObjectTarget<'a> {
     MachOFat(goblin::mach::fat::FatArch, goblin::mach::MachO<'a>),
 }
 
+/// Represents a single object in a fat object.
 pub struct Object<'a> {
     fat_object: &'a FatObject<'a>,
     arch: Arch,
@@ -97,7 +98,7 @@ fn read_macho_dwarf_section<'a>(macho: &goblin::mach::MachO<'a>, sect: DwarfSect
     None
 }
 
-/// Represents an object file.
+/// Represents a potentially fat object in a fat object.
 pub struct FatObject<'a> {
     byteview: &'a ByteView<'a>,
     kind: FatObjectKind<'a>,
