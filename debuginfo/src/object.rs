@@ -16,7 +16,7 @@ enum FatObjectKind<'a> {
 enum ObjectTarget<'a> {
     Elf(&'a goblin::elf::Elf<'a>),
     MachOBin(&'a goblin::mach::MachO<'a>),
-    MachOFat(goblin::mach::fat::FatArch, goblin::mach::Mach<'a>),
+    MachOFat(goblin::mach::MachO<'a>),
 }
 
 pub struct Object<'a> {
@@ -87,16 +87,13 @@ impl<'a> FatObject<'a> {
             FatObjectKind::MachO(ref mach) => {
                 match *mach {
                     goblin::mach::Mach::Fat(ref fat) => {
-                        for arch in fat.iter_arches() {
+                        for (idx, arch) in fat.iter_arches().enumerate() {
                             let arch = arch?;
-                            let data = &self.byteview[arch.offset as usize..
-                                                      (arch.offset + arch.size) as usize];
-                            let m = goblin::mach::Mach::parse(data)?;
                             rv.push(Object {
                                 fat_object: self,
                                 arch: Arch::from_mach(arch.cputype as u32,
                                                       arch.cpusubtype as u32)?,
-                                target: ObjectTarget::MachOFat(arch, m),
+                                target: ObjectTarget::MachOFat(fat.get(idx)?),
                             });
                         }
                     }
