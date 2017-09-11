@@ -1,0 +1,9 @@
+[package]
+name = "symbolic-symcache"
+version = "0.1.0"
+authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
+
+[dependencies]
+symbolic-common = { path = "../common" }
+memmap = "^0.5.0"
+uuid = { version = "^0.4", features = ["serde"] }
