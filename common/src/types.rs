@@ -12,7 +12,7 @@ pub enum CpuFamily {
 }
 
 /// An enum of supported architectures.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 #[allow(non_camel_case_types)]
 pub enum Arch {
     X86,
@@ -26,7 +26,6 @@ pub enum Arch {
     ArmV7k,
     ArmV7m,
     ArmV7em,
-    Other(String),
 }
 
 impl Arch {
@@ -57,12 +56,6 @@ impl Arch {
             "armv7m" => ArmV7m,
             "armv7em" => ArmV7em,
             _ => {
-                let mut tokens = string.split_whitespace();
-                if let Some(tok) = tokens.next() {
-                    if tokens.next().is_none() {
-                        return Ok(Other(tok.into()))
-                    }
-                }
                 return Err(ErrorKind::ParseError("unknown architecture").into());
             }
         })
@@ -75,7 +68,6 @@ impl Arch {
             X86 | X86_64 => CpuFamily::Pentium,
             Arm64 | ArmV5 | ArmV6 | ArmV7 | ArmV7f | ArmV7s |
                 ArmV7k | ArmV7m | ArmV7em => CpuFamily::Arm,
-            Other(..) => CpuFamily::Unknown,
         }
     }
 
@@ -86,7 +78,6 @@ impl Arch {
             X86_64 | Arm64 => Some(8),
             X86 | ArmV5 | ArmV6 | ArmV7 | ArmV7f | ArmV7s |
                 ArmV7k | ArmV7m | ArmV7em => Some(4),
-            Other(..) => None
         }
     }
 }
@@ -106,7 +97,6 @@ impl fmt::Display for Arch {
             ArmV7k => "armv7k",
             ArmV7m => "armv7m",
             ArmV7em => "armv7em",
-            Other(ref s) => s.as_str(),
         })
     }
 }
