@@ -57,11 +57,44 @@ impl<'a> Object<'a> {
     pub fn get_dwarf_section(&self, sect: DwarfSection) -> Option<DwarfSectionData> {
         match self.target {
             // XXX: implement me
-            ObjectTarget::Elf(..) => None,
-            ObjectTarget::MachOSingle(..) => None,
-            ObjectTarget::MachOFat(..) => None,
+            ObjectTarget::Elf(..) => { return None; },
+            ObjectTarget::MachOSingle(macho) => read_macho_dwarf_section(macho, sect),
+            ObjectTarget::MachOFat(_, ref macho) => read_macho_dwarf_section(macho, sect),
         }
     }
+}
+
+fn read_macho_dwarf_section<'a>(macho: &goblin::mach::MachO<'a>, sect: DwarfSection)
+    -> Option<DwarfSectionData<'a>>
+{
+    let dwarf_segment = if sect == DwarfSection::EhFrame {
+        "__TEXT"
+    } else {
+        "__DWARF"
+    };
+
+    let dwarf_section_name = sect.get_macho_section();
+    for segment in &macho.segments {
+        if_chain! {
+            if let Ok(seg) = segment.name();
+            if dwarf_segment == seg;
+            then {
+                for section in segment {
+                    if_chain! {
+                        if let Ok((section, data)) = section;
+                        if let Ok(name) = section.name();
+                        if name == dwarf_section_name;
+                        then {
+                            return Some(DwarfSectionData::new(
+                                sect, data, section.offset as u64));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }
 
 /// Represents an object file.
