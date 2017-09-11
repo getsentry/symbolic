@@ -57,14 +57,30 @@ impl<'a> Object<'a> {
     /// Loads a specific dwarf section if its in the file.
     pub fn get_dwarf_section(&self, sect: DwarfSection) -> Option<DwarfSectionData> {
         match self.target {
-            // XXX: implement me
-            ObjectTarget::Elf(..) => {
-                return None;
-            }
+            ObjectTarget::Elf(ref elf) => read_elf_dwarf_section(elf, self.as_bytes(), sect),
             ObjectTarget::MachOSingle(macho) => read_macho_dwarf_section(macho, sect),
             ObjectTarget::MachOFat(_, ref macho) => read_macho_dwarf_section(macho, sect),
         }
     }
+}
+
+fn read_elf_dwarf_section<'a>(
+    elf: &goblin::elf::Elf<'a>,
+    data: &'a [u8],
+    sect: DwarfSection,
+) -> Option<DwarfSectionData<'a>> {
+    let section_name = sect.get_elf_section();
+
+    for header in &elf.section_headers {
+        if let Some(Ok(name)) = elf.shdr_strtab.get(header.sh_name) {
+            if name == section_name {
+                let sec_data = &data[header.sh_offset as usize..][..header.sh_size as usize];
+                return Some(DwarfSectionData::new(sect, sec_data, header.sh_offset));
+            }
+        }
+    }
+
+    None
 }
 
 fn read_macho_dwarf_section<'a>(
