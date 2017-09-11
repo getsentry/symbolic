@@ -29,8 +29,8 @@ impl<'a> Object<'a> {
         None
     }
 
-    pub fn arch(&self) -> Option<Arch> {
-        None
+    pub fn arch(&self) -> Arch {
+        self.arch
     }
 
     pub fn object_name(&self) -> Option<&str> {
