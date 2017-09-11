@@ -59,9 +59,7 @@ pub struct DwarfSectionData<'a> {
 }
 
 impl<'a> DwarfSectionData<'a> {
-    pub fn new(section: DwarfSection, data: &'a [u8], offset: u64)
-        -> DwarfSectionData<'a>
-    {
+    pub fn new(section: DwarfSection, data: &'a [u8], offset: u64) -> DwarfSectionData<'a> {
         DwarfSectionData {
             section: section,
             data: data,

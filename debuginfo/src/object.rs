@@ -58,16 +58,19 @@ impl<'a> Object<'a> {
     pub fn get_dwarf_section(&self, sect: DwarfSection) -> Option<DwarfSectionData> {
         match self.target {
             // XXX: implement me
-            ObjectTarget::Elf(..) => { return None; },
+            ObjectTarget::Elf(..) => {
+                return None;
+            }
             ObjectTarget::MachOSingle(macho) => read_macho_dwarf_section(macho, sect),
             ObjectTarget::MachOFat(_, ref macho) => read_macho_dwarf_section(macho, sect),
         }
     }
 }
 
-fn read_macho_dwarf_section<'a>(macho: &goblin::mach::MachO<'a>, sect: DwarfSection)
-    -> Option<DwarfSectionData<'a>>
-{
+fn read_macho_dwarf_section<'a>(
+    macho: &goblin::mach::MachO<'a>,
+    sect: DwarfSection,
+) -> Option<DwarfSectionData<'a>> {
     let dwarf_segment = if sect == DwarfSection::EhFrame {
         "__TEXT"
     } else {

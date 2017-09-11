@@ -43,7 +43,9 @@ impl<'a> ByteView<'a> {
         let buffer = self.buffer();
         let end = start.wrapping_add(len);
         if end < start || end > buffer.len() {
-            Err(io::Error::new(io::ErrorKind::UnexpectedEof, "out of range").into())
+            Err(
+                io::Error::new(io::ErrorKind::UnexpectedEof, "out of range").into(),
+            )
         } else {
             Ok(&buffer[start..end])
         }
@@ -53,7 +55,7 @@ impl<'a> ByteView<'a> {
     fn buffer(&self) -> &[u8] {
         match *self {
             ByteView::Buf(ref buf) => buf,
-            ByteView::Mmap(ref mmap) => unsafe { mmap.as_slice() }
+            ByteView::Mmap(ref mmap) => unsafe { mmap.as_slice() },
         }
     }
 }

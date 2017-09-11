@@ -2,7 +2,8 @@
 //!
 //! In particular this defines common error types and similar things
 //! that all symbolic crates want to use.
-#[macro_use] extern crate error_chain;
+#[macro_use]
+extern crate error_chain;
 extern crate goblin;
 extern crate scroll;
 extern crate memmap;
