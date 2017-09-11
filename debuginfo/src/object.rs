@@ -18,20 +18,20 @@ enum VariantTarget<'a> {
     MachOFat(goblin::mach::fat::FatArch),
 }
 
-pub struct Variant<'a> {
+pub struct Object<'a> {
     arch: Arch,
     target: VariantTarget<'a>,
 }
 
 /// Represents an object file.
-pub struct ObjectFile<'a> {
+pub struct FatObject<'a> {
     byteview: &'a ByteView<'a>,
     kind: ObjectKind<'a>,
 }
 
-impl<'a> ObjectFile<'a> {
+impl<'a> FatObject<'a> {
     /// Provides a view to an object file from a byteview.
-    pub fn new(byteview: &'a ByteView<'a>) -> Result<ObjectFile<'a>> {
+    pub fn new(byteview: &'a ByteView<'a>) -> Result<FatObject<'a>> {
         let kind = {
             let buf = &byteview;
             let mut cur = Cursor::new(buf);
@@ -47,14 +47,14 @@ impl<'a> ObjectFile<'a> {
                 }
             }
         };
-        Ok(ObjectFile {
+        Ok(FatObject {
             byteview: byteview,
             kind: kind,
         })
     }
 
     /// Returns a list of variants.
-    pub fn variants(&'a self) -> Result<Vec<Variant<'a>>> {
+    pub fn variants(&'a self) -> Result<Vec<Object<'a>>> {
         let mut rv = vec![];
         match self.kind {
             ObjectKind::Elf(ref elf) => {
@@ -65,7 +65,7 @@ impl<'a> ObjectFile<'a> {
                     goblin::mach::Mach::Fat(ref fat) => {
                         for arch in fat.iter_arches() {
                             let arch = arch?;
-                            rv.push(Variant {
+                            rv.push(Object {
                                 arch: Arch::from_mach(arch.cputype as u32,
                                                       arch.cpusubtype as u32)?,
                                 target: VariantTarget::MachOFat(arch),
@@ -73,7 +73,7 @@ impl<'a> ObjectFile<'a> {
                         }
                     }
                     goblin::mach::Mach::Binary(ref macho) => {
-                        rv.push(Variant {
+                        rv.push(Object {
                             arch: Arch::from_mach(macho.header.cputype as u32,
                                                   macho.header.cpusubtype as u32)?,
                             target: VariantTarget::MachOBin(macho),
