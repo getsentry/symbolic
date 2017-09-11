@@ -14,6 +14,7 @@ enum FatObjectKind<'a> {
 }
 
 enum ObjectTarget<'a> {
+    Elf(&'a goblin::elf::Elf<'a>),
     MachOBin(&'a goblin::mach::MachO<'a>),
     MachOFat(goblin::mach::fat::FatArch, goblin::mach::Mach<'a>),
 }
@@ -76,7 +77,12 @@ impl<'a> FatObject<'a> {
         let mut rv = vec![];
         match self.kind {
             FatObjectKind::Elf(ref elf) => {
-                return Err(ErrorKind::UnsupportedObjectFile.into());
+                rv.push(Object {
+                    fat_object: self,
+                    // TODO: fix me
+                    arch: Arch::X86_64,
+                    target: ObjectTarget::Elf(elf),
+                });
             }
             FatObjectKind::MachO(ref mach) => {
                 match *mach {
