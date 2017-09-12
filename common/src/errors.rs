@@ -2,50 +2,59 @@ use std::io;
 use std::str;
 use std::mem;
 
-#[cfg(feature="with_dwarf")]
+#[cfg(feature = "with_dwarf")]
 use gimli;
-#[cfg(feature="with_objects")]
+#[cfg(feature = "with_objects")]
 use goblin;
-#[cfg(feature="with_objects")]
+#[cfg(feature = "with_objects")]
 use scroll;
 
 error_chain! {
     errors {
-        /// Returned on operations that work on symbols if the symbol
+        /// Raised on operations that work on symbols if the symbol
         /// data is bad.
         BadSymbol(message: String) {
             description("bad symbol")
             display("bad symbol: {}", &message)
         }
         /// Raised for internal errors in the libraries.  Should not happen.
-        InternalError(message: &'static str) {
+        Internal(message: &'static str) {
             description("internal error")
-            display("internal error: {}", &message)
+            display("internal error: {}", message)
         }
         /// Raised for bad input on parsing in symbolic.
-        ParseError(message: &'static str) {
+        Parse(message: &'static str) {
             description("parse error")
-            display("parse error: {}", &message)
+            display("parse error: {}", message)
+        }
+        /// Raised for bad input on parsing in symbolic.
+        Format(message: &'static str) {
+            description("format error")
+            display("format error: {}", message)
         }
 
-        /// Returned if unsupported object files are loaded.
+        /// Raised if unsupported object files are loaded.
         UnsupportedObjectFile {
             description("unsupported object file")
         }
-        /// Returned if object files are malformed.
-        MalformedObjectFile(msg: String) {
+        /// Raised if object files are malformed.
+        MalformedObjectFile(message: String) {
             description("malformed object file")
-            display("malformed object file: {}", &msg)
+            display("malformed object file: {}", &message)
         }
-        /// Returned for unknown cache file versions.
+        /// Raised for unknown cache file versions.
         UnknownCacheFileVersion(version: u32) {
             description("unknown cache file version")
             display("unknown cache file version '{}'", version)
         }
-        /// Returned for DWARF failures.
-        BadDwarfData(msg: &'static str) {
+        /// Raised for DWARF failures.
+        BadDwarfData(message: &'static str) {
             description("bad dwarf data")
-            display("bad dwarf data: {}", msg)
+            display("bad dwarf data: {}", message)
+        }
+        MissingDebugInfo(message: &'static str) {
+            description("missing debug info")
+            display("missing debug info: {}", message)
         }
     }
 
@@ -55,18 +64,16 @@ error_chain! {
     }
 }
 
-#[cfg(feature="with_dwarf")]
+#[cfg(feature = "with_dwarf")]
 impl From<gimli::Error> for Error {
     fn from(err: gimli::Error) -> Error {
         use std::error::Error;
         // this works because gimli error only returns static strings. UUUGLY
-        ErrorKind::BadDwarfData(unsafe {
-            mem::transmute(err.description())
-        }).into()
+        ErrorKind::BadDwarfData(unsafe { mem::transmute(err.description()) }).into()
     }
 }
 
-#[cfg(feature="with_objects")]
+#[cfg(feature = "with_objects")]
 impl From<goblin::error::Error> for Error {
     fn from(err: goblin::error::Error) -> Error {
         use goblin::error::Error::*;
@@ -79,7 +86,7 @@ impl From<goblin::error::Error> for Error {
     }
 }
 
-#[cfg(feature="with_objects")]
+#[cfg(feature = "with_objects")]
 impl From<scroll::Error> for Error {
     fn from(err: scroll::Error) -> Error {
         use scroll::Error::*;

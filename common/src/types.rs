@@ -1,8 +1,8 @@
 use std::fmt;
 
-#[cfg(feature="with_objects")]
+#[cfg(feature = "with_objects")]
 use mach_object;
-#[cfg(feature="with_dwarf")]
+#[cfg(feature = "with_dwarf")]
 use gimli;
 
 use errors::{ErrorKind, Result};
@@ -28,7 +28,7 @@ impl Default for Endianness {
     }
 }
 
-#[cfg(feature="with_dwarf")]
+#[cfg(feature = "with_dwarf")]
 impl gimli::Endianity for Endianness {
     #[inline]
     fn is_big_endian(self) -> bool {
@@ -39,8 +39,10 @@ impl gimli::Endianity for Endianness {
 /// Represents a family of CPUs
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum CpuFamily {
-    Pentium,
-    Arm,
+    Intel32,
+    Intel64,
+    Arm32,
+    Arm64,
     Unknown,
 }
 
@@ -62,7 +64,7 @@ pub enum Arch {
 }
 
 impl Arch {
-    #[cfg(feature="with_objects")]
+    #[cfg(feature = "with_objects")]
     /// Constructs an architecture from mach CPU types
     pub fn from_mach(cputype: u32, cpusubtype: u32) -> Result<Arch> {
         let ty = cputype as i32;
@@ -70,7 +72,7 @@ impl Arch {
         if let Some(arch) = mach_object::get_arch_name_from_types(ty, subty) {
             Arch::parse(arch)
         } else {
-            Err(ErrorKind::ParseError("unknown architecture").into())
+            Err(ErrorKind::Parse("unknown architecture").into())
         }
     }
 
@@ -82,7 +84,7 @@ impl Arch {
             EM_X86_64 => Arch::X86_64,
             // FIXME: This is incorrect! ARM information is located in the .ARM.attributes section
             EM_ARM => Arch::ArmV7,
-            _ => return Err(ErrorKind::ParseError("unknown architecture").into()),
+            _ => return Err(ErrorKind::Parse("unknown architecture").into()),
         })
     }
 
@@ -102,7 +104,7 @@ impl Arch {
             "armv7m" => ArmV7m,
             "armv7em" => ArmV7em,
             _ => {
-                return Err(ErrorKind::ParseError("unknown architecture").into());
+                return Err(ErrorKind::Parse("unknown architecture").into());
             }
         })
     }
@@ -111,10 +113,10 @@ impl Arch {
     pub fn cpu_family(&self) -> CpuFamily {
         use Arch::*;
         match *self {
-            X86 | X86_64 => CpuFamily::Pentium,
-            Arm64 | ArmV5 | ArmV6 | ArmV7 | ArmV7f | ArmV7s | ArmV7k | ArmV7m | ArmV7em => {
-                CpuFamily::Arm
-            }
+            X86 => CpuFamily::Intel32,
+            X86_64 => CpuFamily::Intel64,
+            Arm64 => CpuFamily::Arm64,
+            ArmV5 | ArmV6 | ArmV7 | ArmV7f | ArmV7s | ArmV7k | ArmV7m | ArmV7em => CpuFamily::Arm32,
         }
     }
 

@@ -3,9 +3,9 @@ use std::str;
 use std::fmt;
 use std::ffi::CStr;
 
-use symbolic_common::{Result, ErrorKind, ByteView};
+use symbolic_common::{ByteView, ErrorKind, Result};
 
-use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, LineRecord};
+use types::{CacheFileHeader, FileRecord, FuncRecord, LineRecord, Seg};
 use utils::binsearch_by_key;
 
 /// A matched symbol
@@ -76,17 +76,13 @@ impl<'a> fmt::Debug for Symbol<'a> {
 }
 
 impl<'a> SymCache<'a> {
-
     /// Load a symcache from a byteview.
     pub fn new(byteview: &'a ByteView<'a>) -> Result<SymCache<'a>> {
-        let rv = SymCache {
-            byteview: byteview,
-        };
+        let rv = SymCache { byteview: byteview };
         {
             let header = rv.header()?;
             if header.version != 2 {
-                return Err(ErrorKind::UnknownCacheFileVersion(
-                    header.version).into());
+                return Err(ErrorKind::UnknownCacheFileVersion(header.version).into());
             }
         }
         Ok(rv)
@@ -95,9 +91,7 @@ impl<'a> SymCache<'a> {
     fn get_segment<T>(&self, seg: &Seg<T>) -> Result<&[T]> {
         let offset = seg.offset as usize + mem::size_of::<CacheFileHeader>();
         let size = mem::size_of::<T>() * seg.len as usize;
-        unsafe {
-            Ok(mem::transmute(self.byteview.get_data(offset, size)?))
-        }
+        unsafe { Ok(mem::transmute(self.byteview.get_data(offset, size)?)) }
     }
 
     fn get_segment_as_string(&self, seg: &Seg<u8>) -> Result<&str> {
@@ -108,17 +102,18 @@ impl<'a> SymCache<'a> {
     #[inline(always)]
     fn header(&self) -> Result<&CacheFileHeader> {
         unsafe {
-            Ok(mem::transmute(self.byteview.get_data(
-                0, mem::size_of::<CacheFileHeader>())?.as_ptr()))
+            Ok(mem::transmute(
+                self.byteview
+                    .get_data(0, mem::size_of::<CacheFileHeader>())?
+                    .as_ptr(),
+            ))
         }
     }
 
     /// The architecture of the cache file
     pub fn arch(&self) -> Result<&str> {
         let header = self.header()?;
-        unsafe {
-            Ok(CStr::from_ptr(header.arch.as_ptr()).to_str()?)
-        }
+        unsafe { Ok(CStr::from_ptr(header.arch.as_ptr()).to_str()?) }
     }
 
     /// Looks up a single symbol
@@ -145,7 +140,7 @@ impl<'a> SymCache<'a> {
     fn run_to_line(&'a self, fun: &'a FuncRecord, addr: u64) -> Result<(&FileRecord, u32)> {
         let records_seg = match self.line_records()?.get(fun.line_record_id as usize) {
             Some(records) => records,
-            None => { return Err(ErrorKind::InternalError("unknown line record").into()) }
+            None => return Err(ErrorKind::Internal("unknown line record").into()),
         };
         let records = self.get_segment(records_seg)?;
 
@@ -170,7 +165,7 @@ impl<'a> SymCache<'a> {
         if let Some(ref record) = files.get(file_id as usize) {
             Ok((record, line))
         } else {
-            Err(ErrorKind::InternalError("unknown file id").into())
+            Err(ErrorKind::Internal("unknown file id").into())
         }
     }
 
@@ -196,7 +191,9 @@ impl<'a> SymCache<'a> {
         let funcs = self.functions()?;
         let mut fun = match binsearch_by_key(funcs, addr, |x| x.addr_start()) {
             Some(fun) => fun,
-            None => { return Ok(vec![]); }
+            None => {
+                return Ok(vec![]);
+            }
         };
 
         // the binsearch might mis the function

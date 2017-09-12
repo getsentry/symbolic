@@ -27,11 +27,15 @@ extern crate cpp_demangle;
 use symbolic_common::{ErrorKind, Result};
 use std::fmt;
 use std::ffi::{CStr, CString};
-use std::os::raw::{c_int, c_char};
+use std::os::raw::{c_char, c_int};
 
 extern "C" {
-    fn symbolic_demangle_swift(sym: *const c_char, buf: *mut c_char,
-                               buf_len: usize, simplified: c_int) -> c_int;
+    fn symbolic_demangle_swift(
+        sym: *const c_char,
+        buf: *mut c_char,
+        buf_len: usize,
+        simplified: c_int,
+    ) -> c_int;
     fn symbolic_demangle_is_swift_symbol(sym: *const c_char) -> c_int;
 }
 
@@ -75,14 +79,12 @@ impl Default for DemangleOptions {
 
 fn try_demangle_cpp(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
     match cpp_demangle::Symbol::new(ident) {
-        Ok(sym) => {
-            Ok(sym.demangle(&cpp_demangle::DemangleOptions {
-                no_params: !opts.with_arguments
-            }).ok())
-        }
-        Err(err) => {
-            Err(ErrorKind::BadSymbol(err.to_string()).into())
-        }
+        Ok(sym) => Ok(
+            sym.demangle(&cpp_demangle::DemangleOptions {
+                no_params: !opts.with_arguments,
+            }).ok(),
+        ),
+        Err(err) => Err(ErrorKind::BadSymbol(err.to_string()).into()),
     }
 }
 
@@ -90,7 +92,9 @@ fn try_demangle_rust(ident: &str, _opts: &DemangleOptions) -> Result<Option<Stri
     if let Ok(dm) = rustc_demangle::try_demangle(ident) {
         Ok(Some(format!("{:#}", dm)))
     } else {
-        Err(ErrorKind::BadSymbol("Not a valid Rust symbol".into()).into())
+        Err(
+            ErrorKind::BadSymbol("Not a valid Rust symbol".into()).into(),
+        )
     }
 }
 
@@ -99,26 +103,21 @@ fn try_demangle_swift(ident: &str, opts: &DemangleOptions) -> Result<Option<Stri
     let sym = match CString::new(ident) {
         Ok(sym) => sym,
         Err(_) => {
-            return Err(ErrorKind::InternalError("embedded null byte").into());
+            return Err(ErrorKind::Internal("embedded null byte").into());
         }
     };
 
     let simplified = match opts.format {
-        DemangleFormat::Short => {
-            if opts.with_arguments {
-                1
-            } else {
-                2
-            }
+        DemangleFormat::Short => if opts.with_arguments {
+            1
+        } else {
+            2
         },
-        DemangleFormat::Full => 0
+        DemangleFormat::Full => 0,
     };
 
     unsafe {
-        let rv = symbolic_demangle_swift(sym.as_ptr(),
-                                         buf.as_mut_ptr(),
-                                         buf.len(),
-                                         simplified);
+        let rv = symbolic_demangle_swift(sym.as_ptr(), buf.as_mut_ptr(), buf.len(), simplified);
         if rv == 0 {
             return Ok(None);
         }
@@ -143,9 +142,7 @@ pub struct Symbol<'a> {
 impl<'a> Symbol<'a> {
     /// Constructs a new mangled symbol.
     pub fn new(mangled: &'a str) -> Symbol<'a> {
-        Symbol {
-            mangled: mangled,
-        }
+        Symbol { mangled: mangled }
     }
 
     /// The raw string of the symbol.
@@ -161,14 +158,16 @@ impl<'a> Symbol<'a> {
     /// the return value will be `None`.
     pub fn language(&self) -> Option<Language> {
         // objc?
-        if (self.mangled.starts_with("-[") ||
-            self.mangled.starts_with("+[")) && self.mangled.ends_with("]") {
+        if (self.mangled.starts_with("-[") || self.mangled.starts_with("+[")) &&
+            self.mangled.ends_with("]")
+        {
             return Some(Language::ObjC);
         }
 
         // rust
-        if (self.mangled.starts_with("_ZN") ||
-            self.mangled.starts_with("__ZN")) && self.mangled.ends_with("E") {
+        if (self.mangled.starts_with("_ZN") || self.mangled.starts_with("__ZN")) &&
+            self.mangled.ends_with("E")
+        {
             return Some(Language::Rust);
         }
 
