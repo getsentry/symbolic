@@ -5,7 +5,7 @@ use goblin::{elf, mach, Hint};
 use uuid::Uuid;
 
 use dwarf::{DwarfSection, DwarfSectionData};
-use symbolic_common::{Arch, ByteView, ErrorKind, Result};
+use symbolic_common::{Arch, ByteView, ErrorKind, Result, Endianity};
 
 enum FatObjectKind<'a> {
     Elf(elf::Elf<'a>),
@@ -39,6 +39,20 @@ impl<'a> Object<'a> {
     /// Returns the object name of the object
     pub fn object_name(&self) -> Option<&str> {
         None
+    }
+
+    /// True if little endian, false if not.
+    pub fn endianity(&self) -> Endianity {
+        let little = match self.target {
+            ObjectTarget::Elf(ref elf) => elf.little_endian,
+            ObjectTarget::MachOSingle(macho) => macho.little_endian,
+            ObjectTarget::MachOFat(_, ref macho) => macho.little_endian,
+        };
+        if little {
+            Endianity::Little
+        } else {
+            Endianity::Big
+        }
     }
 
     /// Returns the content of the object as bytes
