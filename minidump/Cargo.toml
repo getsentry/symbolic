@@ -5,7 +5,7 @@ authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
 [dependencies]
 breakpad = "0.1"
-gimli = "0.14"
+gimli = { git = "https://github.com/gimli-rs/gimli.git" }
 goblin = "0.0"
 
 [dependencies.symbolic-common]

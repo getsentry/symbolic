@@ -4,7 +4,7 @@ name = "symbolic-debuginfo"
 version = "0.1.0"
 
 [dependencies]
-gimli = "0.14.0"
+gimli = { git = "https://github.com/gimli-rs/gimli.git" }
 goblin = "0.0.11"
 if_chain = "0.1.2"
 memmap = "^0.5.0"

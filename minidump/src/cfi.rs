@@ -79,7 +79,7 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
         // table that contains rules for retrieving registers at every instruction address. These
         // rules can directly be transcribed to breakpad STACK CFI records.
         let ctx = UninitializedUnwindContext::new();
-        let mut ctx = ctx.initialize(fde.cie())?;
+        let mut ctx = ctx.initialize(fde.cie()).map_err(|(e, _)| e)?;
         let mut table = UnwindTable::new(&mut ctx, &fde);
 
         // Collect all rows first, as we need to know the final end address in order to write the
