@@ -1,6 +1,7 @@
 use std::fmt;
 
 use mach_object;
+use gimli;
 
 use errors::{ErrorKind, Result};
 
@@ -8,6 +9,27 @@ use errors::{ErrorKind, Result};
 pub enum Endianity {
     Little,
     Big,
+}
+
+impl Default for Endianity {
+    #[cfg(target_endian = "little")]
+    #[inline]
+    fn default() -> Endianity {
+        Endianity::Little
+    }
+
+    #[cfg(target_endian = "big")]
+    #[inline]
+    fn default() -> Endianity {
+        Endianity::Big
+    }
+}
+
+impl gimli::Endianity for Endianity {
+    #[inline]
+    fn is_big_endian(self) -> bool {
+        self != Endianity::Little
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
