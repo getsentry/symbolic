@@ -2,8 +2,11 @@ use std::io;
 use std::str;
 use std::mem;
 
-use goblin;
+#[cfg(feature="with_dwarf")]
 use gimli;
+#[cfg(feature="with_objects")]
+use goblin;
+#[cfg(feature="with_objects")]
 use scroll;
 
 error_chain! {
@@ -52,6 +55,7 @@ error_chain! {
     }
 }
 
+#[cfg(feature="with_dwarf")]
 impl From<gimli::Error> for Error {
     fn from(err: gimli::Error) -> Error {
         use std::error::Error;
@@ -62,6 +66,7 @@ impl From<gimli::Error> for Error {
     }
 }
 
+#[cfg(feature="with_objects")]
 impl From<goblin::error::Error> for Error {
     fn from(err: goblin::error::Error) -> Error {
         use goblin::error::Error::*;
@@ -74,6 +79,7 @@ impl From<goblin::error::Error> for Error {
     }
 }
 
+#[cfg(feature="with_objects")]
 impl From<scroll::Error> for Error {
     fn from(err: scroll::Error) -> Error {
         use scroll::Error::*;

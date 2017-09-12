@@ -1,6 +1,8 @@
 use std::fmt;
 
+#[cfg(feature="with_objects")]
 use mach_object;
+#[cfg(feature="with_dwarf")]
 use gimli;
 
 use errors::{ErrorKind, Result};
@@ -26,6 +28,7 @@ impl Default for Endianness {
     }
 }
 
+#[cfg(feature="with_dwarf")]
 impl gimli::Endianity for Endianness {
     #[inline]
     fn is_big_endian(self) -> bool {
@@ -59,6 +62,7 @@ pub enum Arch {
 }
 
 impl Arch {
+    #[cfg(feature="with_objects")]
     /// Constructs an architecture from mach CPU types
     pub fn from_mach(cputype: u32, cpusubtype: u32) -> Result<Arch> {
         let ty = cputype as i32;
