@@ -41,13 +41,17 @@ impl<W: Write> SymCacheWriter<W> {
         let mut headers = debug_info.units();
         while let Some(header) = headers.next()
                 .chain_err(|| err("couldn't get DIE header"))? {
-            let unit = Unit::parse(
+            let unit_opt = Unit::try_parse(
                 &debug_abbrev,
                 &debug_ranges,
                 &debug_line,
                 &debug_str,
                 &header,
             ).chain_err(|| err("encountered invalid compilation unit"))?;
+            let unit = match unit_opt {
+                Some(unit) => unit,
+                None => { continue; }
+            };
         }
 
         Ok(())
@@ -64,7 +68,7 @@ struct Unit<'input> {
 }
 
 impl<'input> Unit<'input> {
-    fn parse(
+    fn try_parse(
         debug_abbrev: &gimli::DebugAbbrev<gimli::EndianBuf<Endianness>>,
         debug_ranges: &gimli::DebugRanges<gimli::EndianBuf<Endianness>>,
         debug_line: &gimli::DebugLine<gimli::EndianBuf<'input, Endianness>>,
@@ -308,20 +312,6 @@ impl<'input> Lines<'input> {
         self.sequences = sequences;
         self.read_sequences = true;
     }
-
-    fn locate(&self, address: u64) -> Option<&Row> {
-        debug_assert!(self.read_sequences);
-        let idx = self.sequences
-            .binary_search_by(|sequence| if address < sequence.low_address {
-                Ordering::Greater
-            } else if address < sequence.high_address {
-                Ordering::Equal
-            } else {
-                Ordering::Less
-            })
-            .ok();
-        idx.and_then(|idx| self.sequences[idx].locate(address))
-    }
 }
 
 #[derive(Debug)]
@@ -329,16 +319,6 @@ struct Sequence {
     low_address: u64,
     high_address: u64,
     rows: Vec<Row>,
-}
-
-impl Sequence {
-    fn locate(&self, address: u64) -> Option<&Row> {
-        match self.rows.binary_search_by(|row| row.address.cmp(&address)) {
-            Ok(idx) => self.rows.get(idx),
-            Err(0) => None,
-            Err(idx) => self.rows.get(idx - 1),
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
