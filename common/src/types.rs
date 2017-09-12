@@ -5,6 +5,12 @@ use mach_object;
 use errors::{ErrorKind, Result};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub enum Endianity {
+    Little,
+    Big,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum CpuFamily {
     Pentium,
     Arm,
