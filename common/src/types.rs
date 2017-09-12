@@ -6,29 +6,29 @@ use gimli;
 use errors::{ErrorKind, Result};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub enum Endianity {
+pub enum Endianness {
     Little,
     Big,
 }
 
-impl Default for Endianity {
+impl Default for Endianness {
     #[cfg(target_endian = "little")]
     #[inline]
-    fn default() -> Endianity {
-        Endianity::Little
+    fn default() -> Endianness {
+        Endianness::Little
     }
 
     #[cfg(target_endian = "big")]
     #[inline]
-    fn default() -> Endianity {
-        Endianity::Big
+    fn default() -> Endianness {
+        Endianness::Big
     }
 }
 
-impl gimli::Endianity for Endianity {
+impl gimli::Endianity for Endianness {
     #[inline]
     fn is_big_endian(self) -> bool {
-        self != Endianity::Little
+        self == Endianness::Big
     }
 }
 
