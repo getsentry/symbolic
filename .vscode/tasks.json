@@ -8,6 +8,12 @@
     {
       "taskName": "cargo build",
       "type": "shell",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared"
+      },
       "command": "cargo",
       "args": ["build"],
       "group": "build",
@@ -16,6 +22,12 @@
     {
       "taskName": "cargo run",
       "type": "shell",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
       "command": "cargo",
       "args": ["run"],
       "problemMatcher": "$rustc"
@@ -23,6 +35,12 @@
     {
       "taskName": "cargo test",
       "type": "shell",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
       "command": "cargo",
       "args": ["test"],
       "group": "test",
@@ -31,6 +49,12 @@
     {
       "taskName": "cargo clean",
       "type": "shell",
+      "presentation": {
+        "echo": true,
+        "reveal": "never",
+        "focus": false,
+        "panel": "shared"
+      },
       "command": "cargo",
       "args": ["clean"]
     }
