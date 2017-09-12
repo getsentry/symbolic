@@ -6,7 +6,6 @@
 extern crate error_chain;
 extern crate gimli;
 extern crate goblin;
-extern crate gimli;
 extern crate scroll;
 extern crate memmap;
 extern crate mach_object;
