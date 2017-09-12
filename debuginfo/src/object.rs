@@ -1,22 +1,21 @@
-use std::path::Path;
-use std::borrow::Cow;
 use std::io::Cursor;
 
-use uuid;
 use goblin;
+use goblin::{elf, mach, Hint};
+use uuid::Uuid;
 
 use dwarf::{DwarfSection, DwarfSectionData};
 use symbolic_common::{Arch, ByteView, ErrorKind, Result};
 
 enum FatObjectKind<'a> {
-    Elf(goblin::elf::Elf<'a>),
-    MachO(goblin::mach::Mach<'a>),
+    Elf(elf::Elf<'a>),
+    MachO(mach::Mach<'a>),
 }
 
 enum ObjectTarget<'a> {
-    Elf(&'a goblin::elf::Elf<'a>),
-    MachOSingle(&'a goblin::mach::MachO<'a>),
-    MachOFat(goblin::mach::fat::FatArch, goblin::mach::MachO<'a>),
+    Elf(&'a elf::Elf<'a>),
+    MachOSingle(&'a mach::MachO<'a>),
+    MachOFat(mach::fat::FatArch, mach::MachO<'a>),
 }
 
 /// Represents a single object in a fat object.
@@ -28,7 +27,7 @@ pub struct Object<'a> {
 
 impl<'a> Object<'a> {
     /// Returns the UUID of the object
-    pub fn uuid(&self) -> Option<&uuid::Uuid> {
+    pub fn uuid(&self) -> Option<&Uuid> {
         None
     }
 
@@ -46,8 +45,8 @@ impl<'a> Object<'a> {
     pub fn as_bytes(&self) -> &[u8] {
         match self.target {
             ObjectTarget::Elf(..) => self.fat_object.as_bytes(),
-            ObjectTarget::MachOSingle(macho) => self.fat_object.as_bytes(),
-            ObjectTarget::MachOFat(ref arch, ref macho) => {
+            ObjectTarget::MachOSingle(_) => self.fat_object.as_bytes(),
+            ObjectTarget::MachOFat(ref arch, _) => {
                 let bytes = self.fat_object.as_bytes();
                 &bytes[arch.offset as usize..(arch.offset + arch.size) as usize]
             }
@@ -65,7 +64,7 @@ impl<'a> Object<'a> {
 }
 
 fn read_elf_dwarf_section<'a>(
-    elf: &goblin::elf::Elf<'a>,
+    elf: &elf::Elf<'a>,
     data: &'a [u8],
     sect: DwarfSection,
 ) -> Option<DwarfSectionData<'a>> {
@@ -84,7 +83,7 @@ fn read_elf_dwarf_section<'a>(
 }
 
 fn read_macho_dwarf_section<'a>(
-    macho: &goblin::mach::MachO<'a>,
+    macho: &mach::MachO<'a>,
     sect: DwarfSection,
 ) -> Option<DwarfSectionData<'a>> {
     let dwarf_segment = if sect == DwarfSection::EhFrame {
@@ -130,9 +129,9 @@ impl<'a> FatObject<'a> {
             let buf = &byteview;
             let mut cur = Cursor::new(buf);
             match goblin::peek(&mut cur)? {
-                goblin::Hint::Elf(_) => FatObjectKind::Elf(goblin::elf::Elf::parse(buf)?),
-                goblin::Hint::Mach(_) => FatObjectKind::MachO(goblin::mach::Mach::parse(buf)?),
-                goblin::Hint::MachFat(_) => FatObjectKind::MachO(goblin::mach::Mach::parse(buf)?),
+                Hint::Elf(_) => FatObjectKind::Elf(elf::Elf::parse(buf)?),
+                Hint::Mach(_) => FatObjectKind::MachO(mach::Mach::parse(buf)?),
+                Hint::MachFat(_) => FatObjectKind::MachO(mach::Mach::parse(buf)?),
                 _ => {
                     return Err(ErrorKind::UnsupportedObjectFile.into());
                 }
@@ -161,17 +160,15 @@ impl<'a> FatObject<'a> {
                 });
             }
             FatObjectKind::MachO(ref mach) => match *mach {
-                goblin::mach::Mach::Fat(ref fat) => {
-                    for (idx, arch) in fat.iter_arches().enumerate() {
-                        let arch = arch?;
-                        rv.push(Object {
-                            fat_object: self,
-                            arch: Arch::from_mach(arch.cputype as u32, arch.cpusubtype as u32)?,
-                            target: ObjectTarget::MachOFat(arch, fat.get(idx)?),
-                        });
-                    }
-                }
-                goblin::mach::Mach::Binary(ref macho) => {
+                mach::Mach::Fat(ref fat) => for (idx, arch) in fat.iter_arches().enumerate() {
+                    let arch = arch?;
+                    rv.push(Object {
+                        fat_object: self,
+                        arch: Arch::from_mach(arch.cputype as u32, arch.cpusubtype as u32)?,
+                        target: ObjectTarget::MachOFat(arch, fat.get(idx)?),
+                    });
+                },
+                mach::Mach::Binary(ref macho) => {
                     rv.push(Object {
                         fat_object: self,
                         arch: Arch::from_mach(
