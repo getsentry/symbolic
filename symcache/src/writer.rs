@@ -59,6 +59,7 @@ impl<W: Write> SymCacheWriter<W> {
 }
 
 
+#[derive(Debug)]
 struct Unit<'input> {
     range: Option<gimli::Range>,
     lines: Lines,
@@ -202,6 +203,7 @@ impl<'input> Unit<'input> {
     }
 }
 
+#[derive(Debug)]
 struct Program<'input> {
     ranges: Vec<gimli::Range>,
     name: gimli::EndianBuf<'input, Endianness>,
@@ -216,6 +218,7 @@ impl<'input> Program<'input> {
     }
 }
 
+#[derive(Debug)]
 struct Lines {
     sequences: Vec<Sequence>,
 }
