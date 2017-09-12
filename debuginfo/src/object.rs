@@ -56,7 +56,7 @@ impl<'a> Object<'a> {
     }
 
     /// Returns the content of the object as bytes
-    pub fn as_bytes(&self) -> &[u8] {
+    pub fn as_bytes(&self) -> &'a [u8] {
         match self.target {
             ObjectTarget::Elf(..) => self.fat_object.as_bytes(),
             ObjectTarget::MachOSingle(_) => self.fat_object.as_bytes(),
@@ -68,7 +68,7 @@ impl<'a> Object<'a> {
     }
 
     /// Loads a specific dwarf section if its in the file.
-    pub fn get_dwarf_section(&self, sect: DwarfSection) -> Option<DwarfSectionData> {
+    pub fn get_dwarf_section(&self, sect: DwarfSection) -> Option<DwarfSectionData<'a>> {
         match self.target {
             ObjectTarget::Elf(ref elf) => read_elf_dwarf_section(elf, self.as_bytes(), sect),
             ObjectTarget::MachOSingle(macho) => read_macho_dwarf_section(macho, sect),
@@ -156,7 +156,7 @@ impl<'a> FatObject<'a> {
     }
 
     /// Returns the contents as bytes.
-    pub fn as_bytes(&self) -> &[u8] {
+    pub fn as_bytes(&self) -> &'a [u8] {
         &self.byteview
     }
 

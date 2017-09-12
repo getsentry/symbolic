@@ -27,7 +27,6 @@ error_chain! {
             description("parse error")
             display("parse error: {}", &message)
         }
-
         /// Returned if unsupported object files are loaded.
         UnsupportedObjectFile {
             description("unsupported object file")
@@ -41,6 +40,11 @@ error_chain! {
         UnknownCacheFileVersion(version: u32) {
             description("unknown cache file version")
             display("unknown cache file version '{}'", version)
+        }
+        /// Raised if a section is missing in an object file.
+        MissingSection(section: &'static str) {
+            description("missing object section")
+            display("missing object section '{}'", section)
         }
         /// Returned for DWARF failures.
         BadDwarfData(msg: &'static str) {
