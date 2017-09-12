@@ -3,5 +3,15 @@ name = "symbolic-minidump"
 version = "0.1.0"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
+[dependencies]
+gimli = "0.14"
+goblin = "0.0"
+
 [dependencies.symbolic-common]
 path = "../common"
+
+[dependencies.symbolic-debuginfo]
+path = "../debuginfo"
+
+[dependencies.breakpad]
+path = "../../breakpad"
