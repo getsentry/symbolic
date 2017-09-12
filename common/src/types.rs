@@ -1,15 +1,39 @@
 use std::fmt;
 
 use mach_object;
+use gimli;
 
 use errors::{ErrorKind, Result};
 
+/// Represents endianess.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub enum Endianity {
+pub enum Endianness {
     Little,
     Big,
 }
 
+impl Default for Endianness {
+    #[cfg(target_endian = "little")]
+    #[inline]
+    fn default() -> Endianness {
+        Endianness::Little
+    }
+
+    #[cfg(target_endian = "big")]
+    #[inline]
+    fn default() -> Endianness {
+        Endianness::Big
+    }
+}
+
+impl gimli::Endianity for Endianness {
+    #[inline]
+    fn is_big_endian(self) -> bool {
+        self == Endianness::Big
+    }
+}
+
+/// Represents a family of CPUs
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum CpuFamily {
     Pentium,
