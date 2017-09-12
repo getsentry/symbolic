@@ -5,6 +5,7 @@ use gimli;
 
 use errors::{ErrorKind, Result};
 
+/// Represents endianess.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum Endianness {
     Little,
@@ -32,6 +33,7 @@ impl gimli::Endianity for Endianness {
     }
 }
 
+/// Represents a family of CPUs
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum CpuFamily {
     Pentium,
