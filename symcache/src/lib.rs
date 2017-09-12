@@ -1,6 +1,7 @@
 //! Provides symcache support.
 extern crate symbolic_common;
 extern crate uuid;
+extern crate gimli;
 
 
 mod types;

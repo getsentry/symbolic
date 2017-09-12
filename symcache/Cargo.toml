@@ -6,3 +6,4 @@ authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 [dependencies]
 symbolic-common = { path = "../common", features = ["with_dwarf", "with_objects"] }
 uuid = { version = "^0.4", features = ["serde"] }
+gimli = "0.14.0"
