@@ -246,8 +246,8 @@ impl<'input> Lines<'input> {
         if self.read_sequences {
             return;
         }
-        let mut sequences = Vec::new();
-        let mut sequence_rows: Vec<Row> = Vec::new();
+        let mut sequences = vec![];
+        let mut sequence_rows: Vec<Row> = vec![];
         let mut prev_address = 0;
         while let Ok(Some((_, &program_row))) = self.program_rows.next_row() {
             let address = program_row.address();
@@ -259,7 +259,7 @@ impl<'input> Lines<'input> {
                     } else {
                         address
                     };
-                    let mut rows = Vec::new();
+                    let mut rows = vec![];
                     mem::swap(&mut rows, &mut sequence_rows);
                     sequences.push(Sequence {
                         low_address,
