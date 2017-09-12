@@ -5,7 +5,7 @@ use goblin::{elf, mach, Hint};
 use uuid::Uuid;
 
 use dwarf::{DwarfSection, DwarfSectionData};
-use symbolic_common::{Arch, ByteView, ErrorKind, Result, Endianity};
+use symbolic_common::{Arch, ByteView, Endianity, ErrorKind, Result};
 
 enum FatObjectKind<'a> {
     Elf(elf::Elf<'a>),
@@ -151,10 +151,8 @@ impl<'a> FatObject<'a> {
                 }
             }
         };
-        Ok(FatObject {
-            byteview: byteview,
-            kind: kind,
-        })
+
+        Ok(FatObject { byteview, kind })
     }
 
     /// Returns the contents as bytes.
