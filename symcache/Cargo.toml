@@ -7,4 +7,4 @@ authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 symbolic-common = { path = "../common", features = ["with_dwarf", "with_objects"] }
 symbolic-debuginfo = { path = "../debuginfo" }
 uuid = { version = "^0.4", features = ["serde"] }
-gimli = "0.14.0"
+gimli = { git = "https://github.com/gimli-rs/gimli.git" }

@@ -145,7 +145,7 @@ impl<'a> SymCache<'a> {
     fn run_to_line(&'a self, fun: &'a FuncRecord, addr: u64) -> Result<(&FileRecord, u32)> {
         let records_seg = match self.line_records()?.get(fun.line_record_id as usize) {
             Some(records) => records,
-            None => { return Err(ErrorKind::InternalError("unknown line record").into()) }
+            None => { return Err(ErrorKind::Internal("unknown line record").into()) }
         };
         let records = self.get_segment(records_seg)?;
 
@@ -170,7 +170,7 @@ impl<'a> SymCache<'a> {
         if let Some(ref record) = files.get(file_id as usize) {
             Ok((record, line))
         } else {
-            Err(ErrorKind::InternalError("unknown file id").into())
+            Err(ErrorKind::Internal("unknown file id").into())
         }
     }
 

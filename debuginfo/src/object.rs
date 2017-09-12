@@ -138,7 +138,7 @@ pub struct FatObject<'a> {
 
 impl<'a> FatObject<'a> {
     /// Provides a view to an object file from a byteview.
-    pub fn new(byteview: &'a ByteView<'a>) -> Result<FatObject<'a>> {
+    pub fn parse(byteview: &'a ByteView<'a>) -> Result<FatObject<'a>> {
         let kind = {
             let buf = &byteview;
             let mut cur = Cursor::new(buf);
