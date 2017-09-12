@@ -61,7 +61,7 @@ impl<W: Write> SymCacheWriter<W> {
 
 struct Unit<'input> {
     range: Option<gimli::Range>,
-    lines: Lines<'input>,
+    lines: Lines,
     comp_dir: Option<gimli::EndianBuf<'input, Endianness>>,
     programs: Vec<Program<'input>>,
     language: Option<gimli::DwLang>,
@@ -216,17 +216,12 @@ impl<'input> Program<'input> {
     }
 }
 
-struct Lines<'input> {
-    program_rows: gimli::StateMachine<
-        gimli::EndianBuf<'input, Endianness>,
-        gimli::IncompleteLineNumberProgram<gimli::EndianBuf<'input, Endianness>>,
-    >,
+struct Lines {
     sequences: Vec<Sequence>,
-    read_sequences: bool,
 }
 
-impl<'input> Lines<'input> {
-    fn new(
+impl Lines {
+    fn new<'input>(
         debug_line: &gimli::DebugLine<gimli::EndianBuf<'input, Endianness>>,
         line_offset: gimli::DebugLineOffset,
         address_size: u8,
@@ -235,21 +230,11 @@ impl<'input> Lines<'input> {
     ) -> Result<Self> {
         let program = debug_line
             .program(line_offset, address_size, comp_dir, comp_name)?;
-        Ok(Lines {
-            program_rows: program.rows(),
-            sequences: vec![],
-            read_sequences: false,
-        })
-    }
-
-    fn read_sequences(&mut self) {
-        if self.read_sequences {
-            return;
-        }
         let mut sequences = vec![];
         let mut sequence_rows: Vec<Row> = vec![];
         let mut prev_address = 0;
-        while let Ok(Some((_, &program_row))) = self.program_rows.next_row() {
+        let mut program_rows = program.rows();
+        while let Ok(Some((_, &program_row))) = program_rows.next_row() {
             let address = program_row.address();
             if program_row.end_sequence() {
                 if !sequence_rows.is_empty() {
@@ -309,8 +294,10 @@ impl<'input> Lines<'input> {
         }
         // Sort so we can binary search.
         sequences.sort_by(|a, b| a.low_address.cmp(&b.low_address));
-        self.sequences = sequences;
-        self.read_sequences = true;
+
+        Ok(Lines {
+            sequences: sequences,
+        })
     }
 }
 
