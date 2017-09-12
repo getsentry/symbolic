@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
 [dependencies]
+breakpad = "0.1"
 gimli = "0.14"
 goblin = "0.0"
 
@@ -12,6 +13,3 @@ path = "../common"
 
 [dependencies.symbolic-debuginfo]
 path = "../debuginfo"
-
-[dependencies.breakpad]
-path = "../../breakpad"
