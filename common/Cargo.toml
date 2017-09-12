@@ -4,8 +4,9 @@ version = "0.1.0"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
 [dependencies]
-error-chain = "0.10"
+error-chain = "0.11"
 memmap = "^0.5.0"
-goblin = "0.0.11"
+gimli = "0.14"
+goblin = "0.0"
 scroll = "0.7.0"
 mach_object = "0.1"

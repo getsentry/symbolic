@@ -4,6 +4,7 @@
 //! that all symbolic crates want to use.
 #[macro_use]
 extern crate error_chain;
+extern crate gimli;
 extern crate goblin;
 extern crate scroll;
 extern crate memmap;

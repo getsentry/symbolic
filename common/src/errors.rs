@@ -1,9 +1,3 @@
-use std::io;
-use std::str;
-
-use goblin;
-use scroll;
-
 error_chain! {
     errors {
         BadSymbol(message: String) {
@@ -33,35 +27,10 @@ error_chain! {
     }
 
     foreign_links {
-        Io(io::Error);
-        Utf8Error(str::Utf8Error);
-    }
-}
-
-impl From<goblin::error::Error> for Error {
-    fn from(err: goblin::error::Error) -> Error {
-        use goblin::error::Error::*;
-        match err {
-            Malformed(s) => ErrorKind::MalformedObjectFile(s).into(),
-            BadMagic(m) => ErrorKind::MalformedObjectFile(format!("bad magic: {}", m)).into(),
-            Scroll(err) => Error::from(err),
-            IO(err) => Error::from(err),
-        }
-    }
-}
-
-impl From<scroll::Error> for Error {
-    fn from(err: scroll::Error) -> Error {
-        use scroll::Error::*;
-        match err {
-            TooBig { .. } => io::Error::new(
-                io::ErrorKind::UnexpectedEof,
-                "Tried to read type that was too large",
-            ).into(),
-            BadOffset(..) => io::Error::new(io::ErrorKind::InvalidData, "Bad offset").into(),
-            BadInput { .. } => io::Error::new(io::ErrorKind::InvalidData, "Bad input").into(),
-            Custom(s) => io::Error::new(io::ErrorKind::Other, s).into(),
-            IO(err) => Error::from(err),
-        }
+        IoError(::std::io::Error);
+        Utf8Error(::std::str::Utf8Error);
+        GoblinError(::goblin::error::Error);
+        GimliError(::gimli::Error);
+        ScrollError(::scroll::Error);
     }
 }
