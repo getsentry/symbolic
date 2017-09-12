@@ -5,7 +5,7 @@ extern crate gimli;
 
 
 mod types;
-mod read;
+mod cache;
 mod utils;
 
-pub use read::{Symbol, SymCache};
+pub use cache::{Symbol, SymCache};
