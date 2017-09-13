@@ -39,6 +39,7 @@ impl<W: Write> SymCacheWriter<W> {
         let debug_str = section!(DebugStr);
 
         let mut headers = debug_info.units();
+
         while let Some(header) = headers.next()
                 .chain_err(|| err("couldn't get DIE header"))? {
             let unit_opt = Unit::try_parse(
@@ -52,6 +53,7 @@ impl<W: Write> SymCacheWriter<W> {
                 Some(unit) => unit,
                 None => { continue; }
             };
+            println!("{:?}", unit);
         }
 
         Ok(())
@@ -119,7 +121,9 @@ impl<'input> Unit<'input> {
                     return Err(Error::from(e))
                         .chain_err(|| "invalid compilation unit statement list");
                 }
-                _ => return Ok(None),
+                _ => {
+                    return Ok(None);
+                }
             };
             let comp_dir = entry
                 .attr(gimli::DW_AT_comp_dir)
@@ -156,7 +160,7 @@ impl<'input> Unit<'input> {
             }
         };        
 
-        Ok(None)
+        Ok(Some(unit))
     }
 
     fn parse_contiguous_range(
