@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::ops::Deref;
 
 use memmap::{Mmap, Protection};
+use owning_ref::OwningHandle;
 
 use errors::Result;
 
@@ -71,5 +72,30 @@ impl<'a> Deref for ByteView<'a> {
 impl<'a> AsRef<[u8]> for ByteView<'a> {
     fn as_ref(&self) -> &[u8] {
         self.buffer()
+    }
+}
+
+pub struct ByteViewBacking<'a, T> {
+    inner: OwningHandle<Box<ByteView<'a>>, Box<(&'a [u8], T)>>,
+}
+
+impl<'a, T> ByteViewBacking<'a, T> {
+    pub fn new<F: FnOnce(&'a [u8]) -> Result<T>>(
+        byteview: ByteView<'a>, f: F) -> Result<ByteViewBacking<'a, T>>
+    {
+        Ok(ByteViewBacking {
+            inner: OwningHandle::try_new(Box::new(byteview), |bv| -> Result<_> {
+                let bytes: &[u8] = unsafe { &*bv };
+                Ok(Box::new((bytes, f(bytes)?)))
+            })?
+        })
+    }
+
+    pub fn as_bytes(&self) -> &'a [u8] {
+        self.inner.0
+    }
+
+    pub fn get_value(&self) -> &T {
+        &self.inner.1
     }
 }

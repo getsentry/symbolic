@@ -53,7 +53,7 @@ impl<W: Write> SymCacheWriter<W> {
                 Some(unit) => unit,
                 None => { continue; }
             };
-            println!("{:?}", unit);
+            panic!("{:#?}", unit);
         }
 
         Ok(())

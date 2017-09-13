@@ -11,6 +11,7 @@ extern crate goblin;
 extern crate scroll;
 extern crate memmap;
 extern crate mach_object;
+extern crate owning_ref;
 
 mod errors;
 mod types;
