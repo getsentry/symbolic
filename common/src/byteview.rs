@@ -75,11 +75,17 @@ impl<'a> AsRef<[u8]> for ByteView<'a> {
     }
 }
 
+/// Like `ByteView` but owns an object based on it.
+///
+/// In some situations symbolic needs to deal with types that are
+/// based on potentially owned or borrowed bytes and wants to provide
+/// another view at them.
 pub struct ByteViewBacking<'a, T> {
     inner: OwningHandle<Box<ByteView<'a>>, Box<(&'a [u8], T)>>,
 }
 
 impl<'a, T> ByteViewBacking<'a, T> {
+    /// Creates a new byte view backing from a `ByteView`.
     pub fn new<F: FnOnce(&'a [u8]) -> Result<T>>(
         byteview: ByteView<'a>, f: F) -> Result<ByteViewBacking<'a, T>>
     {
@@ -91,11 +97,13 @@ impl<'a, T> ByteViewBacking<'a, T> {
         })
     }
 
-    pub fn as_bytes(&self) -> &'a [u8] {
+    /// Returns the underlying storage (byte slice).
+    pub fn storage(&self) -> &'a [u8] {
         self.inner.0
     }
 
-    pub fn get_value(&self) -> &T {
+    /// Returns a reference to the owned object.
+    pub fn object(&self) -> &T {
         &self.inner.1
     }
 }

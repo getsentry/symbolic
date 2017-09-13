@@ -132,13 +132,13 @@ fn read_macho_dwarf_section<'a>(
 
 /// Represents a potentially fat object in a fat object.
 pub struct FatObject<'a> {
-    inner: ByteViewBacking<'a, FatObjectKind<'a>>,
+    backing: ByteViewBacking<'a, FatObjectKind<'a>>,
 }
 
 impl<'a> FatObject<'a> {
     /// Provides a view to an object file from a byteview.
     pub fn parse(byteview: ByteView<'a>) -> Result<FatObject<'a>> {
-        Ok(FatObject { inner: ByteViewBacking::new(byteview, |bytes| -> Result<_> {
+        Ok(FatObject { backing: ByteViewBacking::new(byteview, |bytes| -> Result<_> {
             let mut cur = Cursor::new(bytes);
             Ok(match goblin::peek(&mut cur)? {
                 Hint::Elf(_) => FatObjectKind::Elf(elf::Elf::parse(bytes)?),
@@ -153,13 +153,13 @@ impl<'a> FatObject<'a> {
 
     /// Returns the contents as bytes.
     pub fn as_bytes(&self) -> &'a [u8] {
-        self.inner.as_bytes()
+        self.backing.storage()
     }
 
     /// Returns a list of variants.
     pub fn objects(&'a self) -> Result<Vec<Object<'a>>> {
         let mut rv = vec![];
-        match *self.inner.get_value() {
+        match *self.backing.object() {
             FatObjectKind::Elf(ref elf) => {
                 rv.push(Object {
                     fat_object: self,
