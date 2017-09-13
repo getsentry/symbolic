@@ -11,15 +11,21 @@ use errors::Result;
 ///
 /// This type can be used to uniformly access bytes that were created
 /// either from mmapping in a path, a vector or a borrowed slice.
-pub enum ByteView<'a> {
+pub enum ByteViewInner<'a> {
     Buf(Cow<'a, [u8]>),
     Mmap(Mmap),
+}
+
+pub struct ByteView<'a> {
+    inner: ByteViewInner<'a>,
 }
 
 impl<'a> ByteView<'a> {
     /// Constructs a byte view from a Cow.
     pub fn from_cow(cow: Cow<'a, [u8]>) -> ByteView<'a> {
-        ByteView::Buf(cow)
+        ByteView {
+            inner: ByteViewInner::Buf(cow)
+        }
     }
 
     /// Constructs an object file from a byte slice.
@@ -35,14 +41,16 @@ impl<'a> ByteView<'a> {
     /// Constructs an object file from a file path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<ByteView<'static>> {
         let mmap = Mmap::open_path(path, Protection::Read)?;
-        Ok(ByteView::Mmap(mmap))
+        Ok(ByteView {
+            inner: ByteViewInner::Mmap(mmap)
+        })
     }
 
     #[inline(always)]
     fn buffer(&self) -> &[u8] {
-        match *self {
-            ByteView::Buf(ref buf) => buf,
-            ByteView::Mmap(ref mmap) => unsafe { mmap.as_slice() },
+        match self.inner {
+            ByteViewInner::Buf(ref buf) => buf,
+            ByteViewInner::Mmap(ref mmap) => unsafe { mmap.as_slice() },
         }
     }
 }
