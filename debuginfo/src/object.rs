@@ -153,13 +153,13 @@ impl<'a> FatObject<'a> {
 
     /// Returns the contents as bytes.
     pub fn as_bytes(&self) -> &'a [u8] {
-        self.backing.storage()
+        ByteViewBacking::get_bytes(&self.backing)
     }
 
     /// Returns a list of variants.
     pub fn objects(&'a self) -> Result<Vec<Object<'a>>> {
         let mut rv = vec![];
-        match *self.backing.object() {
+        match *self.backing {
             FatObjectKind::Elf(ref elf) => {
                 rv.push(Object {
                     fat_object: self,

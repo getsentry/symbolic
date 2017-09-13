@@ -92,12 +92,21 @@ impl<'a, T> ByteViewBacking<'a, T> {
     }
 
     /// Returns the underlying storage (byte slice).
-    pub fn storage(&self) -> &'a [u8] {
-        self.inner.0
+    pub fn get_bytes(this: &ByteViewBacking<'a, T>) -> &'a [u8] {
+        this.inner.0
     }
+}
 
-    /// Returns a reference to the owned object.
-    pub fn object(&self) -> &T {
+impl<'a, T> Deref for ByteViewBacking<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.inner.1
+    }
+}
+
+impl<'a, T> AsRef<T> for ByteViewBacking<'a, T> {
+    fn as_ref(&self) -> &T {
         &self.inner.1
     }
 }
