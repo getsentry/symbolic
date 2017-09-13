@@ -138,7 +138,7 @@ pub struct FatObject<'a> {
 impl<'a> FatObject<'a> {
     /// Provides a view to an object file from a byteview.
     pub fn parse(byteview: ByteView<'a>) -> Result<FatObject<'a>> {
-        Ok(FatObject { handle: ByteViewHandle::new(byteview, |bytes| -> Result<_> {
+        let handle = ByteViewHandle::from_byteview(byteview, |bytes| -> Result<_> {
             let mut cur = Cursor::new(bytes);
             Ok(match goblin::peek(&mut cur)? {
                 Hint::Elf(_) => FatObjectKind::Elf(elf::Elf::parse(bytes)?),
@@ -148,7 +148,10 @@ impl<'a> FatObject<'a> {
                     return Err(ErrorKind::UnsupportedObjectFile.into());
                 }
             })
-        })?})
+        })?;
+        Ok(FatObject {
+            handle: handle
+        })
     }
 
     /// Returns the contents as bytes.

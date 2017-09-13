@@ -7,22 +7,33 @@ use owning_ref::OwningHandle;
 
 use errors::Result;
 
-/// Gives access to bytes loaded from somewhere.
-///
-/// This type can be used to uniformly access bytes that were created
-/// either from mmapping in a path, a vector or a borrowed slice.
 pub enum ByteViewInner<'a> {
     Buf(Cow<'a, [u8]>),
     Mmap(Mmap),
 }
 
+/// A smart pointer for byte data.
+///
+/// This type can be used to uniformly access bytes that were created
+/// either from mmapping in a path, a vector or a borrowed slice.  A
+/// byteview derefs into a `&[u8]` and is used in symbolic in most
+/// situations where binary files are worked with.
+///
+/// A `ByteView` can be constructed from borrowed slices, vectors or
+/// mmaped from the file system directly.
+///
+/// Example use:
+///
+/// ```
+/// # use symbolic_common::ByteView;
+/// let bv = ByteView::from_slice(b"1234");
+/// ```
 pub struct ByteView<'a> {
     inner: ByteViewInner<'a>,
 }
 
 impl<'a> ByteView<'a> {
-    /// Constructs a byte view from a Cow.
-    pub fn from_cow(cow: Cow<'a, [u8]>) -> ByteView<'a> {
+    fn from_cow(cow: Cow<'a, [u8]>) -> ByteView<'a> {
         ByteView {
             inner: ByteViewInner::Buf(cow)
         }
@@ -69,26 +80,54 @@ impl<'a> AsRef<[u8]> for ByteView<'a> {
     }
 }
 
-/// Like `ByteView` but owns an object based on it.
+/// A smart pointer for byte data that owns a derived object.
 ///
 /// In some situations symbolic needs to deal with types that are
 /// based on potentially owned or borrowed bytes and wants to provide
-/// another view at them.
+/// another view at them.  This for instance is used when symbolic
+/// works with partially parsed files (like headers) of byte data.
+///
+/// Upon `deref` the inner type is returned.  Additionally the bytes
+/// are exposed through the static `get_bytes` method.
 pub struct ByteViewHandle<'a, T> {
     inner: OwningHandle<Box<ByteView<'a>>, Box<(&'a [u8], T)>>,
 }
 
 impl<'a, T> ByteViewHandle<'a, T> {
-    /// Creates a new byte view backing from a `ByteView`.
-    pub fn new<F: FnOnce(&'a [u8]) -> Result<T>>(
-        byteview: ByteView<'a>, f: F) -> Result<ByteViewHandle<'a, T>>
+    /// Creates a new `ByteViewHandle` from a `ByteView`.
+    ///
+    /// The closure is invoked with the borrowed bytes from the original
+    /// byte view and the return value is retained in the handle.
+    pub fn from_byteview<F>(view: ByteView<'a>, f: F) -> Result<ByteViewHandle<'a, T>>
+        where F: FnOnce(&'a [u8]) -> Result<T>
     {
         Ok(ByteViewHandle {
-            inner: OwningHandle::try_new(Box::new(byteview), |bv| -> Result<_> {
+            inner: OwningHandle::try_new(Box::new(view), |bv| -> Result<_> {
                 let bytes: &[u8] = unsafe { &*bv };
                 Ok(Box::new((bytes, f(bytes)?)))
             })?
         })
+    }
+
+    /// Constructs an object file from a byte slice.
+    pub fn from_slice<F>(buffer: &'a [u8], f: F) -> Result<ByteViewHandle<'a, T>>
+        where F: FnOnce(&'a [u8]) -> Result<T>
+    {
+        ByteViewHandle::from_byteview(ByteView::from_slice(buffer), f)
+    }
+
+    /// Constructs an object file from a vec
+    pub fn from_vec<F>(vec: Vec<u8>, f: F) -> Result<ByteViewHandle<'a, T>>
+        where F: FnOnce(&'a [u8]) -> Result<T>
+    {
+        ByteViewHandle::from_byteview(ByteView::from_vec(vec), f)
+    }
+
+    /// Constructs an object file from a file path.
+    pub fn from_path<F, P>(path: P, f: F) -> Result<ByteViewHandle<'a, T>>
+        where F: FnOnce(&'a [u8]) -> Result<T>, P: AsRef<Path> 
+    {
+        ByteViewHandle::from_byteview(ByteView::from_path(path)?, f)
     }
 
     /// Returns the underlying storage (byte slice).

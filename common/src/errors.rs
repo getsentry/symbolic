@@ -1,6 +1,5 @@
 use std::io;
 use std::str;
-use std::mem;
 
 #[cfg(feature = "with_dwarf")]
 use gimli;
@@ -71,6 +70,7 @@ error_chain! {
 #[cfg(feature = "with_dwarf")]
 impl From<gimli::Error> for Error {
     fn from(err: gimli::Error) -> Error {
+        use std::mem;
         use std::error::Error;
         // this works because gimli error only returns static strings. UUUGLY
         ErrorKind::BadDwarfData(unsafe { mem::transmute(err.description()) }).into()
