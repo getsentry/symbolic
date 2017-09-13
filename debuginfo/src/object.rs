@@ -5,7 +5,7 @@ use goblin::{elf, mach, Hint};
 use uuid::Uuid;
 
 use dwarf::{DwarfSection, DwarfSectionData};
-use symbolic_common::{Arch, ByteView, Endianness, ErrorKind, Result};
+use symbolic_common::{Arch, ByteView, ByteViewBacking, Endianness, ErrorKind, Result};
 
 enum FatObjectKind<'a> {
     Elf(elf::Elf<'a>),
@@ -132,38 +132,34 @@ fn read_macho_dwarf_section<'a>(
 
 /// Represents a potentially fat object in a fat object.
 pub struct FatObject<'a> {
-    byteview: &'a ByteView<'a>,
-    kind: FatObjectKind<'a>,
+    inner: ByteViewBacking<'a, FatObjectKind<'a>>,
 }
 
 impl<'a> FatObject<'a> {
     /// Provides a view to an object file from a byteview.
-    pub fn parse(byteview: &'a ByteView<'a>) -> Result<FatObject<'a>> {
-        let kind = {
-            let buf = &byteview;
-            let mut cur = Cursor::new(buf);
-            match goblin::peek(&mut cur)? {
-                Hint::Elf(_) => FatObjectKind::Elf(elf::Elf::parse(buf)?),
-                Hint::Mach(_) => FatObjectKind::MachO(mach::Mach::parse(buf)?),
-                Hint::MachFat(_) => FatObjectKind::MachO(mach::Mach::parse(buf)?),
+    pub fn parse(byteview: ByteView<'a>) -> Result<FatObject<'a>> {
+        Ok(FatObject { inner: ByteViewBacking::new(byteview, |bytes| -> Result<_> {
+            let mut cur = Cursor::new(bytes);
+            Ok(match goblin::peek(&mut cur)? {
+                Hint::Elf(_) => FatObjectKind::Elf(elf::Elf::parse(bytes)?),
+                Hint::Mach(_) => FatObjectKind::MachO(mach::Mach::parse(bytes)?),
+                Hint::MachFat(_) => FatObjectKind::MachO(mach::Mach::parse(bytes)?),
                 _ => {
                     return Err(ErrorKind::UnsupportedObjectFile.into());
                 }
-            }
-        };
-
-        Ok(FatObject { byteview, kind })
+            })
+        })?})
     }
 
     /// Returns the contents as bytes.
     pub fn as_bytes(&self) -> &'a [u8] {
-        &self.byteview
+        self.inner.as_bytes()
     }
 
     /// Returns a list of variants.
     pub fn objects(&'a self) -> Result<Vec<Object<'a>>> {
         let mut rv = vec![];
-        match self.kind {
+        match *self.inner.get_value() {
             FatObjectKind::Elf(ref elf) => {
                 rv.push(Object {
                     fat_object: self,

@@ -4,9 +4,11 @@ use std::fmt;
 use std::ffi::CStr;
 
 use symbolic_common::{Result, ErrorKind, ByteView};
+use symbolic_debuginfo::Object;
 
 use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, LineRecord};
 use utils::binsearch_by_key;
+use writer::SymCacheWriter;
 
 /// A matched symbol
 pub struct Symbol<'a> {
@@ -21,7 +23,7 @@ pub struct Symbol<'a> {
 
 /// An abstraction around a symbol cache file.
 pub struct SymCache<'a> {
-    byteview: &'a ByteView<'a>,
+    byteview: ByteView<'a>,
 }
 
 impl<'a> Symbol<'a> {
@@ -78,7 +80,7 @@ impl<'a> fmt::Debug for Symbol<'a> {
 impl<'a> SymCache<'a> {
 
     /// Load a symcache from a byteview.
-    pub fn new(byteview: &'a ByteView<'a>) -> Result<SymCache<'a>> {
+    pub fn new(byteview: ByteView<'a>) -> Result<SymCache<'a>> {
         let rv = SymCache {
             byteview: byteview,
         };
@@ -90,6 +92,16 @@ impl<'a> SymCache<'a> {
             }
         }
         Ok(rv)
+    }
+
+    /// Constructs a symcache from an object.
+    pub fn from_object(obj: &Object) -> Result<SymCache<'a>> {
+        let mut out: Vec<u8> = vec![];
+        {
+            let mut writer = SymCacheWriter::new(&mut out);
+            writer.write_object(obj)?;
+        }
+        SymCache::new(ByteView::from_vec(out))
     }
 
     fn get_segment<T>(&self, seg: &Seg<T>) -> Result<&[T]> {

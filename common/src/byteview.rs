@@ -19,17 +19,17 @@ pub enum ByteView<'a> {
 
 impl<'a> ByteView<'a> {
     /// Constructs a byte view from a Cow.
-    pub fn from_cow(cow: Cow<'a, [u8]>) -> Result<ByteView<'a>> {
-        Ok(ByteView::Buf(cow))
+    pub fn from_cow(cow: Cow<'a, [u8]>) -> ByteView<'a> {
+        ByteView::Buf(cow)
     }
 
     /// Constructs an object file from a byte slice.
-    pub fn from_slice(buffer: &'a [u8]) -> Result<ByteView<'a>> {
+    pub fn from_slice(buffer: &'a [u8]) -> ByteView<'a> {
         ByteView::from_cow(Cow::Borrowed(buffer))
     }
 
     /// Constructs an object file from a vector.
-    pub fn from_vec(buffer: Vec<u8>) -> Result<ByteView<'static>> {
+    pub fn from_vec(buffer: Vec<u8>) -> ByteView<'static> {
         ByteView::from_cow(Cow::Owned(buffer))
     }
 
