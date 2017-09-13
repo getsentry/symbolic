@@ -21,7 +21,7 @@ pub struct Symbol<'a> {
 
 /// An abstraction around a symbol cache file.
 pub struct SymCache<'a> {
-    byteview: &'a ByteView<'a>,
+    byteview: ByteView<'a>,
 }
 
 impl<'a> Symbol<'a> {
@@ -77,7 +77,7 @@ impl<'a> fmt::Debug for Symbol<'a> {
 
 impl<'a> SymCache<'a> {
     /// Load a symcache from a byteview.
-    pub fn new(byteview: &'a ByteView<'a>) -> Result<SymCache<'a>> {
+    pub fn new(byteview: ByteView<'a>) -> Result<SymCache<'a>> {
         let rv = SymCache { byteview: byteview };
         {
             let header = rv.header()?;
