@@ -6,10 +6,14 @@
 
 #[macro_use]
 extern crate error_chain;
+#[cfg(feature = "with_dwarf")]
 extern crate gimli;
+#[cfg(feature = "with_objects")]
 extern crate goblin;
+#[cfg(feature = "with_objects")]
 extern crate scroll;
 extern crate memmap;
+#[cfg(feature = "with_objects")]
 extern crate mach_object;
 extern crate owning_ref;
 

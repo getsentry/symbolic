@@ -64,8 +64,8 @@ pub enum Arch {
 }
 
 impl Arch {
-    #[cfg(feature = "with_objects")]
     /// Constructs an architecture from mach CPU types
+    #[cfg(feature = "with_objects")]
     pub fn from_mach(cputype: u32, cpusubtype: u32) -> Result<Arch> {
         let ty = cputype as i32;
         let subty = cpusubtype as i32;
@@ -77,6 +77,7 @@ impl Arch {
     }
 
     /// Constructs an architecture from ELF flags
+    #[cfg(feature = "with_objects")]
     pub fn from_elf(machine: u16) -> Result<Arch> {
         use goblin::elf::header::*;
         Ok(match machine {
