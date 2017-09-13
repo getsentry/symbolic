@@ -74,16 +74,16 @@ impl<'a> AsRef<[u8]> for ByteView<'a> {
 /// In some situations symbolic needs to deal with types that are
 /// based on potentially owned or borrowed bytes and wants to provide
 /// another view at them.
-pub struct ByteViewBacking<'a, T> {
+pub struct ByteViewHandle<'a, T> {
     inner: OwningHandle<Box<ByteView<'a>>, Box<(&'a [u8], T)>>,
 }
 
-impl<'a, T> ByteViewBacking<'a, T> {
+impl<'a, T> ByteViewHandle<'a, T> {
     /// Creates a new byte view backing from a `ByteView`.
     pub fn new<F: FnOnce(&'a [u8]) -> Result<T>>(
-        byteview: ByteView<'a>, f: F) -> Result<ByteViewBacking<'a, T>>
+        byteview: ByteView<'a>, f: F) -> Result<ByteViewHandle<'a, T>>
     {
-        Ok(ByteViewBacking {
+        Ok(ByteViewHandle {
             inner: OwningHandle::try_new(Box::new(byteview), |bv| -> Result<_> {
                 let bytes: &[u8] = unsafe { &*bv };
                 Ok(Box::new((bytes, f(bytes)?)))
@@ -92,12 +92,12 @@ impl<'a, T> ByteViewBacking<'a, T> {
     }
 
     /// Returns the underlying storage (byte slice).
-    pub fn get_bytes(this: &ByteViewBacking<'a, T>) -> &'a [u8] {
+    pub fn get_bytes(this: &ByteViewHandle<'a, T>) -> &'a [u8] {
         this.inner.0
     }
 }
 
-impl<'a, T> Deref for ByteViewBacking<'a, T> {
+impl<'a, T> Deref for ByteViewHandle<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -105,7 +105,7 @@ impl<'a, T> Deref for ByteViewBacking<'a, T> {
     }
 }
 
-impl<'a, T> AsRef<T> for ByteViewBacking<'a, T> {
+impl<'a, T> AsRef<T> for ByteViewHandle<'a, T> {
     fn as_ref(&self) -> &T {
         &self.inner.1
     }

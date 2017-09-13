@@ -5,7 +5,7 @@ use goblin::{elf, mach, Hint};
 use uuid::Uuid;
 
 use dwarf::{DwarfSection, DwarfSectionData};
-use symbolic_common::{Arch, ByteView, ByteViewBacking, Endianness, ErrorKind, Result};
+use symbolic_common::{Arch, ByteView, ByteViewHandle, Endianness, ErrorKind, Result};
 
 enum FatObjectKind<'a> {
     Elf(elf::Elf<'a>),
@@ -132,13 +132,13 @@ fn read_macho_dwarf_section<'a>(
 
 /// Represents a potentially fat object in a fat object.
 pub struct FatObject<'a> {
-    backing: ByteViewBacking<'a, FatObjectKind<'a>>,
+    handle: ByteViewHandle<'a, FatObjectKind<'a>>,
 }
 
 impl<'a> FatObject<'a> {
     /// Provides a view to an object file from a byteview.
     pub fn parse(byteview: ByteView<'a>) -> Result<FatObject<'a>> {
-        Ok(FatObject { backing: ByteViewBacking::new(byteview, |bytes| -> Result<_> {
+        Ok(FatObject { handle: ByteViewHandle::new(byteview, |bytes| -> Result<_> {
             let mut cur = Cursor::new(bytes);
             Ok(match goblin::peek(&mut cur)? {
                 Hint::Elf(_) => FatObjectKind::Elf(elf::Elf::parse(bytes)?),
@@ -153,13 +153,13 @@ impl<'a> FatObject<'a> {
 
     /// Returns the contents as bytes.
     pub fn as_bytes(&self) -> &'a [u8] {
-        ByteViewBacking::get_bytes(&self.backing)
+        ByteViewHandle::get_bytes(&self.handle)
     }
 
     /// Returns a list of variants.
     pub fn objects(&'a self) -> Result<Vec<Object<'a>>> {
         let mut rv = vec![];
-        match *self.backing {
+        match *self.handle {
             FatObjectKind::Elf(ref elf) => {
                 rv.push(Object {
                     fat_object: self,
