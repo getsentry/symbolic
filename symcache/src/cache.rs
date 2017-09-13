@@ -1,3 +1,4 @@
+use std::io;
 use std::mem;
 use std::str;
 use std::fmt;
@@ -104,11 +105,23 @@ impl<'a> SymCache<'a> {
         SymCache::new(ByteView::from_vec(out))
     }
 
+    fn get_data(&self, start: usize, len: usize) -> Result<&[u8]> {
+        let buffer = &self.byteview;
+        let end = start.wrapping_add(len);
+        if end < start || end > buffer.len() {
+            Err(
+                io::Error::new(io::ErrorKind::UnexpectedEof, "out of range").into(),
+            )
+        } else {
+            Ok(&buffer[start..end])
+        }
+    }
+
     fn get_segment<T>(&self, seg: &Seg<T>) -> Result<&[T]> {
         let offset = seg.offset as usize + mem::size_of::<CacheFileHeader>();
         let size = mem::size_of::<T>() * seg.len as usize;
         unsafe {
-            Ok(mem::transmute(self.byteview.get_data(offset, size)?))
+            Ok(mem::transmute(self.get_data(offset, size)?))
         }
     }
 
@@ -120,7 +133,7 @@ impl<'a> SymCache<'a> {
     #[inline(always)]
     fn header(&self) -> Result<&CacheFileHeader> {
         unsafe {
-            Ok(mem::transmute(self.byteview.get_data(
+            Ok(mem::transmute(self.get_data(
                 0, mem::size_of::<CacheFileHeader>())?.as_ptr()))
         }
     }
