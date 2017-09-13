@@ -155,7 +155,7 @@ impl<'a> FatObject<'a> {
     }
 
     /// Returns the contents as bytes.
-    pub fn as_bytes(&self) -> &'a [u8] {
+    pub fn as_bytes(&self) -> &[u8] {
         ByteViewHandle::get_bytes(&self.handle)
     }
 

@@ -101,6 +101,19 @@ impl<'a, T> ByteViewHandle<'a, T> {
     pub fn from_byteview<F>(view: ByteView<'a>, f: F) -> Result<ByteViewHandle<'a, T>>
         where F: FnOnce(&'a [u8]) -> Result<T>
     {
+        // note on the safety here.  This unsafe pointer juggling causes some
+        // issues.  The underlying OwningHandle is fundamentally unsafe because
+        // it lets you do terrible things with the lifetimes.  A common problem
+        // here is that ByteViewHandle can return views to the underlying data
+        // that outlive it when not written well.
+        //
+        // In particular if you load a ByteView::from_path the lifetime of that
+        // byteview will be 'static.  However the data within that byteview cannot
+        // outlife the byteview.  As such even though the ByteViewHandle is
+        // &'static it must not give out borrows that are that long lasting.
+        //
+        // As such `get_bytes` for instance will only return a borrow scoped
+        // to the lifetime of the `ByteViewHandle`.
         Ok(ByteViewHandle {
             inner: OwningHandle::try_new(Box::new(view), |bv| -> Result<_> {
                 let bytes: &[u8] = unsafe { &*bv };
@@ -117,21 +130,21 @@ impl<'a, T> ByteViewHandle<'a, T> {
     }
 
     /// Constructs an object file from a vec
-    pub fn from_vec<F>(vec: Vec<u8>, f: F) -> Result<ByteViewHandle<'a, T>>
-        where F: FnOnce(&'a [u8]) -> Result<T>
+    pub fn from_vec<F>(vec: Vec<u8>, f: F) -> Result<ByteViewHandle<'static, T>>
+        where F: FnOnce(&'static [u8]) -> Result<T>
     {
         ByteViewHandle::from_byteview(ByteView::from_vec(vec), f)
     }
 
     /// Constructs an object file from a file path.
-    pub fn from_path<F, P>(path: P, f: F) -> Result<ByteViewHandle<'a, T>>
-        where F: FnOnce(&'a [u8]) -> Result<T>, P: AsRef<Path> 
+    pub fn from_path<F, P>(path: P, f: F) -> Result<ByteViewHandle<'static, T>>
+        where F: FnOnce(&'static [u8]) -> Result<T>, P: AsRef<Path>
     {
         ByteViewHandle::from_byteview(ByteView::from_path(path)?, f)
     }
 
     /// Returns the underlying storage (byte slice).
-    pub fn get_bytes(this: &ByteViewHandle<'a, T>) -> &'a [u8] {
+    pub fn get_bytes<'b>(this: &'b ByteViewHandle<'a, T>) -> &'b [u8] {
         this.inner.0
     }
 }
