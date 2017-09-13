@@ -7,7 +7,7 @@ use owning_ref::OwningHandle;
 
 use errors::Result;
 
-pub enum ByteViewInner<'a> {
+enum ByteViewInner<'a> {
     Buf(Cow<'a, [u8]>),
     Mmap(Mmap),
 }
