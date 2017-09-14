@@ -73,7 +73,7 @@ impl<W: Write> SymCacheWriter<W> {
 #[derive(Debug)]
 struct Unit<'input> {
     range: Option<gimli::Range>,
-    lines: Lines,
+    lines: Lines<'input>,
     comp_dir: Option<gimli::EndianBuf<'input, Endianness>>,
     programs: Vec<Program<'input>>,
     language: Option<gimli::DwLang>,
@@ -189,6 +189,11 @@ impl<'input> Unit<'input> {
             let name = Self::resolve_function_name(entry, header, debug_str, &abbrev)?;
 
             println!("{} {:#?}, {:?}", inline, ranges, name);
+            for seq in &unit.lines.sequences {
+                for row in &seq.rows {
+                    println!(">>> {:?}|{:?}", &unit.comp_dir, unit.lines.header.file(row.file_index));
+                }
+            }
         }
 
         Ok(Some(unit))
@@ -347,14 +352,11 @@ impl<'input> Unit<'input> {
             return Ok(Some(name));
         }
 
-        println!("{:#?}", entry);
-
         // If we don't have the link name, check if this function refers to another
         if let Some(abstract_origin) =
             Self::get_entry(entry, header, abbrev, gimli::DW_AT_abstract_origin)
                 .chain_err(|| err("invalid subprogram abstract origin"))?
         {
-            println!("looking at abstract origin");
             let name = Self::resolve_function_name(&abstract_origin, header, debug_str, abbrev)
                 .chain_err(|| err("abstract origin does not resolve to a name"))?;
             return Ok(name);
@@ -388,12 +390,13 @@ impl<'input> Program<'input> {
 }
 
 #[derive(Debug)]
-struct Lines {
+struct Lines<'input> {
     sequences: Vec<Sequence>,
+    header: gimli::LineNumberProgramHeader<gimli::EndianBuf<'input, Endianness>>,
 }
 
-impl Lines {
-    fn new<'input>(
+impl<'input> Lines<'input> {
+    fn new(
         debug_line: &gimli::DebugLine<gimli::EndianBuf<'input, Endianness>>,
         line_offset: gimli::DebugLineOffset,
         address_size: u8,
@@ -406,6 +409,8 @@ impl Lines {
         let mut sequence_rows: Vec<Row> = vec![];
         let mut prev_address = 0;
         let mut program_rows = program.rows();
+        // XXX: do we need a clone here?  Maybe we can do better
+        let header = program_rows.header().clone();
         while let Ok(Some((_, &program_row))) = program_rows.next_row() {
             let address = program_row.address();
             if program_row.end_sequence() {
@@ -469,6 +474,7 @@ impl Lines {
 
         Ok(Lines {
             sequences: sequences,
+            header: header,
         })
     }
 }
