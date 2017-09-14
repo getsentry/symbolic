@@ -2,6 +2,8 @@ use std::str;
 use std::mem;
 use std::io::Write;
 use std::cmp::Ordering;
+use std::collections::HashMap;
+use std::marker::PhantomData;
 
 use symbolic_common::{Error, ErrorKind, Result, ResultExt, Endianness};
 use symbolic_debuginfo::{Object, DwarfSection};
@@ -11,6 +13,48 @@ use fallible_iterator::FallibleIterator;
 
 fn err(msg: &'static str) -> Error {
     Error::from(ErrorKind::BadDwarfData(msg))
+}
+
+struct StringRegistry {
+    files: HashMap<Vec<u8>, u16>,
+    symbols: HashMap<Vec<u8>, u32>,
+}
+
+impl StringRegistry {
+    pub fn new() -> StringRegistry {
+        StringRegistry {
+            files: HashMap::new(),
+            symbols: HashMap::new(),
+        }
+    }
+
+    pub fn get_symbol_id(&mut self, sym: &[u8]) -> Result<u32> {
+        if let Some(&idx) = self.symbols.get(sym) {
+            Ok(idx)
+        } else {
+            let idx = self.symbols.len() as u32;
+            if idx == !0 {
+                Err(ErrorKind::Internal("Too many symbols").into())
+            } else {
+                self.symbols.insert(sym.to_vec(), idx);
+                Ok(idx)
+            }
+        }
+    }
+
+    pub fn get_file_id(&mut self, file: &[u8]) -> Result<u16> {
+        if let Some(&idx) = self.files.get(file) {
+            Ok(idx)
+        } else {
+            let idx = self.files.len() as u16;
+            if idx == !0 {
+                Err(ErrorKind::Internal("Too many files").into())
+            } else {
+                self.files.insert(file.to_vec(), idx);
+                Ok(idx)
+            }
+        }
+    }
 }
 
 pub struct SymCacheWriter<W: Write> {
@@ -42,6 +86,7 @@ impl<W: Write> SymCacheWriter<W> {
             }}
         }
 
+        let mut string_registry = StringRegistry::new();
         let debug_info = section!(DebugInfo, true);
         let debug_abbrev = section!(DebugAbbrev, true);
         let debug_line = section!(DebugLine, true);
@@ -53,6 +98,7 @@ impl<W: Write> SymCacheWriter<W> {
         while let Some(header) = headers.next()
                 .chain_err(|| err("couldn't get DIE header"))? {
             let unit_opt = Unit::try_parse(
+                &mut string_registry,
                 &debug_abbrev,
                 &debug_ranges,
                 &debug_line,
@@ -73,14 +119,12 @@ impl<W: Write> SymCacheWriter<W> {
 
 #[derive(Debug)]
 struct Unit<'input> {
-    range: Option<gimli::Range>,
-    lines: Lines<'input>,
-    comp_dir: Option<gimli::EndianBuf<'input, Endianness>>,
-    language: Option<gimli::DwLang>,
+    _x: PhantomData<&'input ()>,
 }
 
 impl<'input> Unit<'input> {
     fn try_parse(
+        string_registry: &mut StringRegistry,
         debug_abbrev: &gimli::DebugAbbrev<gimli::EndianBuf<Endianness>>,
         debug_ranges: &gimli::DebugRanges<gimli::EndianBuf<Endianness>>,
         debug_line: &gimli::DebugLine<gimli::EndianBuf<'input, Endianness>>,
@@ -92,7 +136,12 @@ impl<'input> Unit<'input> {
             .chain_err(|| err("compilation unit refers to non-existing abbreviations"))?;
         let mut entries = header.entries(&abbrev);
         let base_address;
-        let mut unit = {
+        let lines;
+        let comp_dir;
+        let comp_name;
+        let language;
+        {
+
             // Scoped so that we can continue using entries for the loop below
             let (_, entry) = entries
                 .next_dfs()
@@ -119,10 +168,6 @@ impl<'input> Unit<'input> {
                 },
             };
 
-            // Where does our compilation unit live?
-            let range = Self::parse_contiguous_range(entry)
-                .chain_err(|| "compilation unit has invalid low_pc and/or high_pc")?;
-
             // Extract source file and line information about the compilation unit
             let line_offset = match entry.attr_value(gimli::DW_AT_stmt_list) {
                 Ok(Some(gimli::AttributeValue::DebugLineRef(offset))) => offset,
@@ -134,17 +179,17 @@ impl<'input> Unit<'input> {
                     return Ok(None);
                 }
             };
-            let comp_dir = entry
+            comp_dir = entry
                 .attr(gimli::DW_AT_comp_dir)
                 .map_err(|e| Error::from(e))
                 .chain_err(|| err("invalid compilation unit directory"))?
                 .and_then(|attr| attr.string_value(debug_str));
-            let comp_name = entry
+            comp_name = entry
                 .attr(gimli::DW_AT_name)
                 .map_err(|e| Error::from(e))
                 .chain_err(|| err("invalid compilation unit name"))?
                 .and_then(|attr| attr.string_value(debug_str));
-            let language = entry
+            language = entry
                 .attr(gimli::DW_AT_language)
                 .map_err(|e| Error::from(e))?
                 .and_then(|attr| match attr.value() {
@@ -152,21 +197,14 @@ impl<'input> Unit<'input> {
                     _ => None,
                 });
 
-            let lines = Lines::new(
+            lines = Lines::new(
                 debug_line,
                 line_offset,
                 header.address_size(),
                 comp_dir,
                 comp_name,
             )?;
-
-            Unit {
-                range: range,
-                lines: lines,
-                comp_dir,
-                language: language,
-            }
-        };
+        }
 
         while let Some((_, entry)) = entries
             .next_dfs()
@@ -185,21 +223,28 @@ impl<'input> Unit<'input> {
                 continue;
             }
 
-            if let Some(name) = Self::resolve_function_name(entry, header, debug_str, &abbrev)? {
-                println!("{}", str::from_utf8(name.buf()).unwrap());
-            }
+            let func_name = Self::resolve_function_name(entry, header, debug_str, &abbrev)?
+                .map(|x| x.buf())
+                .unwrap_or(b"");
+            println!("{}", str::from_utf8(func_name).unwrap());
 
             for range in &ranges {
-                let rows = unit.lines.get_rows(range);
+                let rows = lines.get_rows(range);
                 for row in rows {
-                    let comp_dir = str::from_utf8(unit.comp_dir.as_ref().unwrap().buf()).unwrap();
-                    let file_record = unit.lines.header.file(row.file_index).unwrap();
-                    println!("  at {}/{}:{}", comp_dir, str::from_utf8(&file_record.path_name()).unwrap(), row.line.unwrap_or(0));
+                    let comp_dir = comp_dir.as_ref().map(|x| x.buf()).unwrap_or(b"");
+                    let file_record = lines.header
+                        .file(row.file_index)
+                        .map(|x| x.path_name().buf())
+                        .unwrap_or(b"");
+                    let line = row.line.unwrap_or(0);
+                    println!("  at {}/{}:{}", str::from_utf8(comp_dir).unwrap(), str::from_utf8(file_record).unwrap(), line);
                 }
             }
         }
 
-        Ok(Some(unit))
+        Ok(Some(Unit {
+            _x: PhantomData,
+        }))
     }
 
     fn get_ranges(
