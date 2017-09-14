@@ -1,3 +1,4 @@
+use std::str;
 use std::mem;
 use std::io::Write;
 use std::cmp::Ordering;
@@ -75,7 +76,6 @@ struct Unit<'input> {
     range: Option<gimli::Range>,
     lines: Lines<'input>,
     comp_dir: Option<gimli::EndianBuf<'input, Endianness>>,
-    programs: Vec<Program<'input>>,
     language: Option<gimli::DwLang>,
 }
 
@@ -164,7 +164,6 @@ impl<'input> Unit<'input> {
                 range: range,
                 lines: lines,
                 comp_dir,
-                programs: vec![],
                 language: language,
             }
         };
@@ -186,12 +185,16 @@ impl<'input> Unit<'input> {
                 continue;
             }
 
-            let name = Self::resolve_function_name(entry, header, debug_str, &abbrev)?;
+            if let Some(name) = Self::resolve_function_name(entry, header, debug_str, &abbrev)? {
+                println!("{}", str::from_utf8(name.buf()).unwrap());
+            }
 
-            println!("{} {:#?}, {:?}", inline, ranges, name);
-            for seq in &unit.lines.sequences {
-                for row in &seq.rows {
-                    println!(">>> {:?}|{:?}", &unit.comp_dir, unit.lines.header.file(row.file_index));
+            for range in &ranges {
+                let rows = unit.lines.get_rows(range);
+                for row in rows {
+                    let comp_dir = str::from_utf8(unit.comp_dir.as_ref().unwrap().buf()).unwrap();
+                    let file_record = unit.lines.header.file(row.file_index).unwrap();
+                    println!("  at {}/{}:{}", comp_dir, str::from_utf8(&file_record.path_name()).unwrap(), row.line.unwrap_or(0));
                 }
             }
         }
@@ -375,21 +378,6 @@ impl<'input> Unit<'input> {
 }
 
 #[derive(Debug)]
-struct Program<'input> {
-    ranges: Vec<gimli::Range>,
-    name: gimli::EndianBuf<'input, Endianness>,
-    inlined: bool,
-}
-
-impl<'input> Program<'input> {
-    fn contains_address(&self, address: u64) -> bool {
-        self.ranges
-            .iter()
-            .any(|range| address >= range.begin && address < range.end)
-    }
-}
-
-#[derive(Debug)]
 struct Lines<'input> {
     sequences: Vec<Sequence>,
     header: gimli::LineNumberProgramHeader<gimli::EndianBuf<'input, Endianness>>,
@@ -476,6 +464,32 @@ impl<'input> Lines<'input> {
             sequences: sequences,
             header: header,
         })
+    }
+
+    pub fn get_rows(&self, rng: &gimli::Range) -> &[Row] {
+        for seq in &self.sequences {
+            if seq.high_address < rng.begin || seq.low_address > rng.end {
+                continue;
+            }
+            let mut start = !0;
+            let mut end = !0;
+            for (idx, ref row) in seq.rows.iter().enumerate() {
+                if row.address >= rng.begin && start == !0 {
+                    start = idx;
+                } else if row.address > rng.end {
+                    end = idx;
+                    break;
+                }
+            }
+            if start == !0 {
+                continue;
+            }
+            if end == !0 {
+                end = seq.rows.len();
+            }
+            return &seq.rows[start..end]
+        }
+        &[]
     }
 }
 
