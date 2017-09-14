@@ -102,7 +102,8 @@ impl<'a> SymCache<'a> {
             let mut writer = SymCacheWriter::new(&mut out);
             writer.write_object(obj)?;
         }
-        SymCache::new(ByteView::from_vec(out))
+        panic!("this is not implemented yet");
+        //SymCache::new(ByteView::from_vec(out))
     }
 
     fn get_data(&self, start: usize, len: usize) -> Result<&[u8]> {

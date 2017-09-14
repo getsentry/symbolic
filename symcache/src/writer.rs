@@ -25,19 +25,27 @@ impl<W: Write> SymCacheWriter<W> {
 
     pub fn write_object(&mut self, obj: &Object) -> Result<()> {
         macro_rules! section {
-            ($sect:ident) => {{
-                let sect = obj.get_dwarf_section(DwarfSection::$sect)
-                    .ok_or(ErrorKind::MissingSection(
-                        DwarfSection::$sect.get_elf_section()))?;
-                gimli::$sect::new(sect.as_bytes(), obj.endianess())
+            ($sect:ident, $mandatory:expr) => {{
+                let sect = match obj.get_dwarf_section(DwarfSection::$sect) {
+                    Some(sect) => sect.as_bytes(),
+                    None => {
+                        if $mandatory {
+                            return Err(ErrorKind::MissingSection(
+                                DwarfSection::$sect.get_elf_section()).into());
+                        } else {
+                            &[]
+                        }
+                    }
+                };
+                gimli::$sect::new(sect, obj.endianess())
             }}
         }
 
-        let debug_info = section!(DebugInfo);
-        let debug_abbrev = section!(DebugAbbrev);
-        let debug_line = section!(DebugLine);
-        let debug_ranges = section!(DebugRanges);
-        let debug_str = section!(DebugStr);
+        let debug_info = section!(DebugInfo, true);
+        let debug_abbrev = section!(DebugAbbrev, true);
+        let debug_line = section!(DebugLine, true);
+        let debug_ranges = section!(DebugRanges, false);
+        let debug_str = section!(DebugStr, false);
 
         let mut headers = debug_info.units();
 
@@ -178,7 +186,9 @@ impl<'input> Unit<'input> {
                 continue;
             }
 
-            println!("{} {:#?}", inline, ranges);
+            let name = Self::resolve_function_name(entry, header, debug_str, &abbrev)?;
+
+            println!("{} {:#?}, {:?}", inline, ranges, name);
         }
 
         Ok(Some(unit))
@@ -263,6 +273,102 @@ impl<'input> Unit<'input> {
             begin: low_pc,
             end: high_pc,
         }))
+    }
+
+    fn get_entry<'a>(
+        entry: &gimli::DebuggingInformationEntry<'a, 'a, gimli::EndianBuf<'input, Endianness>>,
+        header: &'a gimli::CompilationUnitHeader<gimli::EndianBuf<'input, Endianness>>,
+        abbrev: &'a gimli::Abbreviations,
+        attr: gimli::DwAt,
+    ) -> Result<Option<gimli::DebuggingInformationEntry<'a, 'a, gimli::EndianBuf<'input, Endianness>>>> {
+        let offset = match entry.attr_value(attr)? {
+            Some(gimli::AttributeValue::UnitRef(offset)) => {
+                offset
+            }
+            Some(gimli::AttributeValue::DebugInfoRef(offset)) => {
+                if let Some(unit_offset) = offset.to_unit_offset(header) {
+                    unit_offset
+                } else {
+                    // is this happening in real life?  This would require us to
+                    // either parse other stuff again or cache all units.
+                    return Ok(None);
+                }
+            }
+            None => {
+                return Ok(None);
+            }
+            _ => {
+                // XXX: sadly there is probably more that can come back here
+                return Ok(None);
+            }
+        };
+
+        let mut entries = header.entries_at_offset(abbrev, offset)?;
+        let (_, entry) = entries
+            .next_dfs()?
+            .ok_or_else(|| {
+                err("invalid debug symbols: dangling entry offset")
+            })?;
+        Ok(Some(entry.clone()))
+    }
+
+    fn resolve_function_name<'a, 'b>(
+        entry: &gimli::DebuggingInformationEntry<'a, 'b, gimli::EndianBuf<'input, Endianness>>,
+        header: &gimli::CompilationUnitHeader<gimli::EndianBuf<'input, Endianness>>,
+        debug_str: &gimli::DebugStr<gimli::EndianBuf<'input, Endianness>>,
+        abbrev: &gimli::Abbreviations,
+    ) -> Result<Option<gimli::EndianBuf<'input, Endianness>>> {
+
+        // For naming, we prefer the linked name, if available
+        if let Some(name) = entry
+            .attr(gimli::DW_AT_linkage_name)
+            .map_err(|e| Error::from(e))
+            .chain_err(|| err("invalid subprogram linkage name"))?
+            .and_then(|attr| attr.string_value(debug_str))
+        {
+            return Ok(Some(name));
+        }
+        if let Some(name) = entry
+            .attr(gimli::DW_AT_MIPS_linkage_name)
+            .map_err(|e| Error::from(e))
+            .chain_err(|| err("invalid subprogram linkage name"))?
+            .and_then(|attr| attr.string_value(debug_str))
+        {
+            return Ok(Some(name));
+        }
+
+        // Linked name is not available, so fall back to just plain old name, if that's available.
+        if let Some(name) = entry
+            .attr(gimli::DW_AT_name)
+            .map_err(|e| Error::from(e))
+            .chain_err(|| err("invalid subprogram name"))?
+            .and_then(|attr| attr.string_value(debug_str))
+        {
+            return Ok(Some(name));
+        }
+
+        println!("{:#?}", entry);
+
+        // If we don't have the link name, check if this function refers to another
+        if let Some(abstract_origin) =
+            Self::get_entry(entry, header, abbrev, gimli::DW_AT_abstract_origin)
+                .chain_err(|| err("invalid subprogram abstract origin"))?
+        {
+            println!("looking at abstract origin");
+            let name = Self::resolve_function_name(&abstract_origin, header, debug_str, abbrev)
+                .chain_err(|| err("abstract origin does not resolve to a name"))?;
+            return Ok(name);
+        }
+        if let Some(specification) =
+            Self::get_entry(entry, header, abbrev, gimli::DW_AT_specification)
+                .chain_err(|| err("invalid subprogram specification"))?
+        {
+            let name = Self::resolve_function_name(&specification, header, debug_str, abbrev)
+                .chain_err(|| err("specification does not resolve to a name"))?;
+            return Ok(name);
+        }
+
+        Ok(None)
     }
 }
 
