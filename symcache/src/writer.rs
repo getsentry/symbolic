@@ -476,7 +476,7 @@ impl<'input> Lines<'input> {
             for (idx, ref row) in seq.rows.iter().enumerate() {
                 if row.address >= rng.begin && start == !0 {
                     start = idx;
-                } else if row.address > rng.end {
+                } else if row.address > rng.end - 1 {
                     end = idx;
                     break;
                 }
