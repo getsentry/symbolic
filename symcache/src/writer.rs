@@ -6,6 +6,7 @@ use symbolic_common::{Error, ErrorKind, Result, ResultExt, Endianness};
 use symbolic_debuginfo::{Object, DwarfSection};
 
 use gimli;
+use fallible_iterator::FallibleIterator;
 
 fn err(msg: &'static str) -> Error {
     Error::from(ErrorKind::BadDwarfData(msg))
@@ -53,7 +54,7 @@ impl<W: Write> SymCacheWriter<W> {
                 Some(unit) => unit,
                 None => { continue; }
             };
-            panic!("{:#?}", unit);
+            //println!("{:#?}", unit);
         }
 
         Ok(())
@@ -158,9 +159,68 @@ impl<'input> Unit<'input> {
                 programs: vec![],
                 language: language,
             }
-        };        
+        };
+
+        while let Some((_, entry)) = entries
+            .next_dfs()
+            .chain_err(|| err("tree below compilation unit yielded invalid entry"))?
+        {
+            // skip anything that is not a function
+            let inline = match entry.tag() {
+                gimli::DW_TAG_subprogram => false,
+                gimli::DW_TAG_inlined_subroutine => true,
+                _ => { continue; }
+            };
+
+            let ranges = Self::get_ranges(entry, debug_ranges, header.address_size(), base_address)
+                .chain_err(|| err("subroutine has invalid ranges"))?;
+            if ranges.is_empty() {
+                continue;
+            }
+
+            println!("{} {:#?}", inline, ranges);
+        }
 
         Ok(Some(unit))
+    }
+
+    fn get_ranges(
+        entry: &gimli::DebuggingInformationEntry<gimli::EndianBuf<Endianness>>,
+        debug_ranges: &gimli::DebugRanges<gimli::EndianBuf<Endianness>>,
+        address_size: u8,
+        base_address: u64,
+    ) -> Result<Vec<gimli::Range>> {
+        if let Some(range) = Self::parse_noncontiguous_ranges(
+                entry, debug_ranges, address_size, base_address)? {
+            Ok(range)
+        } else if let Some(range) = Self::parse_contiguous_range(entry)?
+                .map(|range| vec![range]) {
+            Ok(range)
+        } else {
+            Ok(vec![])
+        }
+    }
+
+    fn parse_noncontiguous_ranges(
+        entry: &gimli::DebuggingInformationEntry<gimli::EndianBuf<Endianness>>,
+        debug_ranges: &gimli::DebugRanges<gimli::EndianBuf<Endianness>>,
+        address_size: u8,
+        base_address: u64,
+    ) -> Result<Option<Vec<gimli::Range>>>
+    {
+        let offset = match entry.attr_value(gimli::DW_AT_ranges) {
+            Ok(Some(gimli::AttributeValue::DebugRangesRef(offset))) => offset,
+            Err(e) => {
+                return Err(Error::from(e)).chain_err(|| err("invalid ranges attribute"));
+            }
+            _ => return Ok(None),
+        };
+
+        let ranges = debug_ranges
+            .ranges(offset, address_size, base_address)
+            .chain_err(|| err("range offsets are not valid"))?;
+        let ranges = ranges.collect().chain_err(|| err("range could not be parsed"))?;
+        Ok(Some(ranges))
     }
 
     fn parse_contiguous_range(
@@ -179,8 +239,7 @@ impl<'input> Unit<'input> {
             Ok(Some(gimli::AttributeValue::Addr(addr))) => addr,
             Ok(Some(gimli::AttributeValue::Udata(size))) => low_pc.wrapping_add(size),
             Err(e) => {
-                return Err(Error::from(e))
-                    .chain_err(|| err("invalid high_pc attribute"))
+                return Err(Error::from(e)).chain_err(|| err("invalid high_pc attribute"))
             }
             _ => return Ok(None),
         };

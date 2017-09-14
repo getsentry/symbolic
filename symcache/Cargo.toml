@@ -8,3 +8,4 @@ symbolic-common = { path = "../common", features = ["with_dwarf", "with_objects"
 symbolic-debuginfo = { path = "../debuginfo" }
 uuid = { version = "^0.4", features = ["serde"] }
 gimli = { git = "https://github.com/gimli-rs/gimli.git" }
+fallible-iterator = "0.1"
