@@ -1,3 +1,4 @@
+use std::boxed::Box;
 use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::fmt;
@@ -14,7 +15,15 @@ use types::CacheFileHeader;
 use lru_cache::LruCache;
 use fallible_iterator::FallibleIterator;
 use gimli;
-use owning_ref::ArcRef;
+use owning_ref::{OwningRef, OwningHandle};
+
+type Buf<'input> = gimli::EndianBuf<'input, Endianness>;
+type Die<'abbrev, 'unit, 'input> = gimli::DebuggingInformationEntry<'abbrev, 'unit, Buf<'input>>;
+type Cursor<'abbrev, 'unit, 'input> = gimli::EntriesCursor<'abbrev, 'unit, Buf<'input>>;
+type DieHandle<'info, 'input> = OwningRef<
+    OwningHandle<Arc<gimli::Abbreviations>, Box<Cursor<'info, 'info, 'input>>>,
+    Die<'info, 'info, 'input>
+>;
 
 fn err(msg: &'static str) -> Error {
     Error::from(ErrorKind::BadDwarfData(msg))
@@ -170,29 +179,31 @@ impl<'input> DwarfInfo<'input> {
         Err(err("couln't find unit for ref address"))
     }
 
-    fn entry_at_unit_offset<'me>(
-        &'me self,
+    fn entry_at_unit_offset<'info>(
+        &'info self,
         index: usize,
         offset: gimli::UnitOffset<usize>,
-    ) -> Result<Option<ArcRef<gimli::Abbreviations, gimli::DebuggingInformationEntry<'me, 'me, gimli::EndianBuf<'input, Endianness>>>>> {
+    ) -> Result<DieHandle<'info, 'input>> {
         let header = &self.units[index];
-        let entry_ref = ArcRef::new(self.abbrev(header)?).try_map(|abbrev| {
-            let mut entries = header.entries_at_offset(&abbrev, offset)?;
-            let (_, entry) = entries
-                .next_dfs()?
-                .ok_or_else(|| {
-                    err("invalid debug symbols: dangling entry offset")
-                })?;
-            Ok(entry)
+        let abbrev = self.abbrev(header)?;
+
+        let handle = OwningHandle::try_new(abbrev, |a| -> Result<_> {
+            let mut entries = header.entries_at_offset(unsafe { &*a }, offset)?;
+            entries.next_entry()?;
+            Ok(Box::new(entries))
         })?;
 
-        Ok(Some(entry_ref))
+        OwningRef::new(handle).try_map(|h| {
+            h.current().ok_or_else(|| {
+                err("invalid debug symbols: dangling entry offset")
+            })
+        })
     }
 
     fn entry_at_offset<'info>(
         &'info self,
         offset: gimli::DebugInfoOffset<usize>,
-    ) -> Result<Option<ArcRef<gimli::Abbreviations, gimli::DebuggingInformationEntry<'info, 'info, gimli::EndianBuf<'input, Endianness>>>>> {
+    ) -> Result<DieHandle<'info, 'input>> {
         let (unit, offset) = self.find_unit_offset(offset)?;
         self.entry_at_unit_offset(unit, offset)
     }
@@ -251,7 +262,6 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             }
         }
 
-        // ::std::thread::sleep_ms(100000);
         Ok(())
     }
 }
@@ -498,25 +508,23 @@ impl<'input> Unit<'input> {
         info: &'info DwarfInfo<'input>,
         base_entry: &gimli::DebuggingInformationEntry<'abbrev, 'unit, gimli::EndianBuf<'input, Endianness>>,
         ref_attr: gimli::DwAt,
-    ) -> Result<Option<ArcRef<gimli::Abbreviations, gimli::DebuggingInformationEntry<'info, 'info, gimli::EndianBuf<'input, Endianness>>>>> {
-        match base_entry.attr_value(ref_attr)? {
+    ) -> Result<Option<DieHandle<'info, 'input>>> {
+        Ok(match base_entry.attr_value(ref_attr)? {
             Some(gimli::AttributeValue::UnitRef(offset)) => {
-                info.entry_at_unit_offset(self.index, offset)
+                Some(info.entry_at_unit_offset(self.index, offset)?)
             },
             Some(gimli::AttributeValue::DebugInfoRef(offset)) => {
                 let header = &info.units[self.index];
                 if let Some(unit_offset) = offset.to_unit_offset(header) {
-                    info.entry_at_unit_offset(self.index, unit_offset)
+                    Some(info.entry_at_unit_offset(self.index, unit_offset)?)
                 } else {
-                    info.entry_at_offset(offset)
+                    Some(info.entry_at_offset(offset)?)
                 }
             },
-            None => return Ok(None),
-            _ => {
-                // TODO: there is probably more that can come back here
-                return Ok(None);
-            },
-        }
+            None => None,
+            // TODO: there is probably more that can come back here
+            _ => None,
+        })
     }
 
     fn resolve_function_name<'a, 'b>(
