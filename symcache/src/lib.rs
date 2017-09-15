@@ -5,7 +5,8 @@ extern crate uuid;
 extern crate gimli;
 extern crate num;
 extern crate fallible_iterator;
-
+extern crate lru_cache;
+extern crate owning_ref;
 
 mod types;
 mod cache;
