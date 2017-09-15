@@ -37,6 +37,7 @@ struct Unit<'a> {
 }
 
 struct Function<'a> {
+    pub depth: u8,
     pub name: &'a [u8],
     pub inlines: Vec<Function<'a>>,
     pub lines: Vec<Line<'a>>,
@@ -184,8 +185,6 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             for func in &mut unit.functions {
                 func.dedup_inlines();
             }
-
-            println!("{:#?}", unit);
         }
 
         Ok(())
@@ -280,11 +279,14 @@ impl<'input> Unit<'input> {
             functions: vec![],
         };
 
-        let mut inline_depth = 0;
+        let mut depth = 0;
+
         while let Some((movement, entry)) = entries
             .next_dfs()
             .chain_err(|| err("tree below compilation unit yielded invalid entry"))?
         {
+            depth += movement;
+
             // skip anything that is not a function
             let inline = match entry.tag() {
                 gimli::DW_TAG_subprogram => false,
@@ -305,6 +307,7 @@ impl<'input> Unit<'input> {
                 .unwrap_or(b"");
 
             let mut func = Function {
+                depth: depth as u8,
                 name: name,
                 inlines: vec![],
                 lines: vec![],
@@ -329,14 +332,12 @@ impl<'input> Unit<'input> {
             }
 
             if inline {
-                inline_depth += movement;
-                let mut node = unit.functions.last_mut().unwrap();
-                for _ in 0..inline_depth {
+                let mut node = unit.functions.last_mut().expect("no root function");
+                while { {&node}.inlines.last().map_or(false, |n| (n.depth as isize) < depth) } {
                     node = {node}.inlines.last_mut().unwrap();
                 }
                 node.inlines.push(func);
             } else {
-                inline_depth = 0;
                 unit.functions.push(func);
             }
         }
