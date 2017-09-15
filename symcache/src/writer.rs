@@ -5,7 +5,7 @@ use std::slice;
 use std::cell::RefCell;
 use std::io::{Write, Seek, SeekFrom};
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeSet};
 use std::marker::PhantomData;
 
 use symbolic_common::{Error, ErrorKind, Result, ResultExt, Endianness};
@@ -83,22 +83,16 @@ impl<'a> Function<'a> {
     }
 
     pub fn dedup_inlines(&mut self) {
-        let mut inner_addrs = vec![];
+        let mut inner_addrs = BTreeSet::new();
         for func in &self.inlines {
             for line in &func.lines {
-                inner_addrs.push(line.addr);
+                inner_addrs.insert(line.addr);
             }
         }
 
-        // special cases: if we did not find anything or this function would fully
-        // disappear we want to ensure we do not remove it.  This for instance
-        // happens if a one-liner inline function calls into another one-liner
-        // inline lambda.
-        if inner_addrs.is_empty() ||
-           self.lines.iter().map(|x| x.addr).eq(inner_addrs.iter().map(|&x| x)) {
+        if inner_addrs.is_empty() {
             return;
         }
-
         self.lines.retain(|item| !inner_addrs.contains(&item.addr));
 
         for func in self.inlines.iter_mut() {
