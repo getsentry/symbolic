@@ -113,11 +113,11 @@ pub struct SymCacheWriter<W: Write + Seek> {
 
 #[derive(Debug)]
 struct DwarfInfo<'input> {
-    pub units: Vec<gimli::CompilationUnitHeader<gimli::EndianBuf<'input, Endianness>>>,
-    pub debug_abbrev: gimli::DebugAbbrev<gimli::EndianBuf<'input, Endianness>>,
-    pub debug_ranges: gimli::DebugRanges<gimli::EndianBuf<'input, Endianness>>,
-    pub debug_line: gimli::DebugLine<gimli::EndianBuf<'input, Endianness>>,
-    pub debug_str: gimli::DebugStr<gimli::EndianBuf<'input, Endianness>>,
+    pub units: Vec<gimli::CompilationUnitHeader<Buf<'input>>>,
+    pub debug_abbrev: gimli::DebugAbbrev<Buf<'input>>,
+    pub debug_ranges: gimli::DebugRanges<Buf<'input>>,
+    pub debug_line: gimli::DebugLine<Buf<'input>>,
+    pub debug_str: gimli::DebugStr<Buf<'input>>,
     abbrev_cache: RefCell<LruCache<gimli::DebugAbbrevOffset<usize>, Arc<gimli::Abbreviations>>>,
 }
 
@@ -150,7 +150,7 @@ impl<'input> DwarfInfo<'input> {
         })
     }
 
-    fn abbrev(&self, header: &gimli::CompilationUnitHeader<gimli::EndianBuf<'input, Endianness>>) -> Result<Arc<gimli::Abbreviations>> {
+    fn abbrev(&self, header: &gimli::CompilationUnitHeader<Buf<'input>>) -> Result<Arc<gimli::Abbreviations>> {
         let mut cache = self.abbrev_cache.borrow_mut();
         let offset = header.debug_abbrev_offset();
         if let Some(abbrev) = cache.get_mut(&offset) {
@@ -270,8 +270,8 @@ impl<W: Write + Seek> SymCacheWriter<W> {
 struct Unit<'input> {
     index: usize,
     base_address: u64,
-    comp_dir: Option<gimli::EndianBuf<'input, Endianness>>,
-    comp_name: Option<gimli::EndianBuf<'input, Endianness>>,
+    comp_dir: Option<Buf<'input>>,
+    comp_name: Option<Buf<'input>>,
     language: Option<gimli::DwLang>,
     line_offset: gimli::DebugLineOffset,
 }
@@ -430,7 +430,7 @@ impl<'input> Unit<'input> {
     fn parse_ranges(
         &self,
         info: &DwarfInfo<'input>,
-        entry: &gimli::DebuggingInformationEntry<gimli::EndianBuf<Endianness>>
+        entry: &Die
     ) -> Result<Vec<gimli::Range>> {
         if let Some(range) = self.parse_noncontiguous_ranges(info, entry)? {
             Ok(range)
@@ -444,7 +444,7 @@ impl<'input> Unit<'input> {
     fn parse_noncontiguous_ranges(
         &self,
         info: &DwarfInfo<'input>,
-        entry: &gimli::DebuggingInformationEntry<gimli::EndianBuf<Endianness>>
+        entry: &Die
     ) -> Result<Option<Vec<gimli::Range>>> {
         let offset = match entry.attr_value(gimli::DW_AT_ranges) {
             Ok(Some(gimli::AttributeValue::DebugRangesRef(offset))) => offset,
@@ -462,7 +462,7 @@ impl<'input> Unit<'input> {
     }
 
     fn parse_contiguous_range(
-        entry: &gimli::DebuggingInformationEntry<gimli::EndianBuf<Endianness>>,
+        entry: &Die,
     ) -> Result<Option<gimli::Range>> {
         let low_pc = match entry.attr_value(gimli::DW_AT_low_pc) {
             Ok(Some(gimli::AttributeValue::Addr(addr))) => addr,
@@ -503,10 +503,10 @@ impl<'input> Unit<'input> {
         }))
     }
 
-    fn resolve_reference<'info, 'abbrev, 'unit>(
+    fn resolve_reference<'info>(
         &self,
         info: &'info DwarfInfo<'input>,
-        base_entry: &gimli::DebuggingInformationEntry<'abbrev, 'unit, gimli::EndianBuf<'input, Endianness>>,
+        base_entry: &Die,
         ref_attr: gimli::DwAt,
     ) -> Result<Option<DieHandle<'info, 'input>>> {
         Ok(match base_entry.attr_value(ref_attr)? {
@@ -527,10 +527,10 @@ impl<'input> Unit<'input> {
         })
     }
 
-    fn resolve_function_name<'a, 'b>(
+    fn resolve_function_name<'abbrev, 'unit>(
         &self,
         info: &DwarfInfo<'input>,
-        entry: &gimli::DebuggingInformationEntry<'a, 'b, gimli::EndianBuf<'input, Endianness>>,
+        entry: &Die<'abbrev, 'unit, 'input>,
     ) -> Result<Option<&'input [u8]>> {
         // For naming, we prefer the linked name, if available
         if let Some(name) = entry
@@ -585,7 +585,7 @@ impl<'input> Unit<'input> {
 #[derive(Debug)]
 struct DwarfLineProgram<'input> {
     sequences: Vec<DwarfSeq>,
-    header: gimli::LineNumberProgramHeader<gimli::EndianBuf<'input, Endianness>>,
+    header: gimli::LineNumberProgramHeader<Buf<'input>>,
 }
 
 #[derive(Debug)]
@@ -608,8 +608,8 @@ impl<'input> DwarfLineProgram<'input>
         info: &'info DwarfInfo<'input>,
         line_offset: gimli::DebugLineOffset,
         address_size: u8,
-        comp_dir: Option<gimli::EndianBuf<'input, Endianness>>,
-        comp_name: Option<gimli::EndianBuf<'input, Endianness>>,
+        comp_dir: Option<Buf<'input>>,
+        comp_name: Option<Buf<'input>>,
     ) -> Result<Self> {
         let program = info.debug_line
             .program(line_offset, address_size, comp_dir, comp_name)?;
