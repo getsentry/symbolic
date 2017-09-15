@@ -4,14 +4,12 @@ use std::mem;
 use std::slice;
 use std::cell::RefCell;
 use std::io::{Write, Seek, SeekFrom};
-use std::cmp::Ordering;
-use std::collections::{HashMap, BTreeSet};
-use std::marker::PhantomData;
+use std::collections::BTreeSet;
 
 use symbolic_common::{Error, ErrorKind, Result, ResultExt, Endianness};
 use symbolic_debuginfo::{Object, DwarfSection};
 
-use types::{LineRecord, FuncRecord, CacheFileHeader};
+use types::CacheFileHeader;
 
 use gimli;
 use fallible_iterator::FallibleIterator;
@@ -181,7 +179,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
                 .chain_err(|| err("encountered invalid compilation unit"))?;
 
             // skip units we don't care about
-            let mut unit = match unit_opt {
+            let unit = match unit_opt {
                 Some(unit) => unit,
                 None => { continue; }
             };
@@ -321,8 +319,6 @@ impl<'input> Unit<'input> {
                 gimli::DW_TAG_inlined_subroutine => true,
                 _ => { continue; }
             };
-
-            let mut func_record: FuncRecord = Default::default();
 
             let ranges = self.parse_ranges(entry)
                 .chain_err(|| err("subroutine has invalid ranges"))?;
