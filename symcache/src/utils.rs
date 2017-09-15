@@ -33,6 +33,10 @@ impl<K, I> IdMap<K, I>
         self.counter = idx + I::one();
         idx
     }
+
+    pub fn into_hashmap(self) -> HashMap<K, I> {
+        self.map
+    }
 }
 
 /// A quick binary search by key.
