@@ -15,13 +15,14 @@ use types::CacheFileHeader;
 use lru_cache::LruCache;
 use fallible_iterator::FallibleIterator;
 use gimli;
+use gimli::{EndianBuf, DebuggingInformationEntry, EntriesCursor, Abbreviations, CompilationUnitHeader, DebugAbbrev, DebugRanges, DebugLine, DebugStr, DebugAbbrevOffset, DebugInfo, DebugInfoOffset, UnitOffset, DwLang, DwAt, AttributeValue, DebugLineOffset, Range, LineNumberProgramHeader};
 use owning_ref::{OwningRef, OwningHandle};
 
-type Buf<'input> = gimli::EndianBuf<'input, Endianness>;
-type Die<'abbrev, 'unit, 'input> = gimli::DebuggingInformationEntry<'abbrev, 'unit, Buf<'input>>;
-type Cursor<'abbrev, 'unit, 'input> = gimli::EntriesCursor<'abbrev, 'unit, Buf<'input>>;
+type Buf<'input> = EndianBuf<'input, Endianness>;
+type Die<'abbrev, 'unit, 'input> = DebuggingInformationEntry<'abbrev, 'unit, Buf<'input>>;
+type Cursor<'abbrev, 'unit, 'input> = EntriesCursor<'abbrev, 'unit, Buf<'input>>;
 type DieHandle<'info, 'input> = OwningRef<
-    OwningHandle<Arc<gimli::Abbreviations>, Box<Cursor<'info, 'info, 'input>>>,
+    OwningHandle<Arc<Abbreviations>, Box<Cursor<'info, 'info, 'input>>>,
     Die<'info, 'info, 'input>
 >;
 
@@ -113,12 +114,12 @@ pub struct SymCacheWriter<W: Write + Seek> {
 
 #[derive(Debug)]
 struct DwarfInfo<'input> {
-    pub units: Vec<gimli::CompilationUnitHeader<Buf<'input>>>,
-    pub debug_abbrev: gimli::DebugAbbrev<Buf<'input>>,
-    pub debug_ranges: gimli::DebugRanges<Buf<'input>>,
-    pub debug_line: gimli::DebugLine<Buf<'input>>,
-    pub debug_str: gimli::DebugStr<Buf<'input>>,
-    abbrev_cache: RefCell<LruCache<gimli::DebugAbbrevOffset<usize>, Arc<gimli::Abbreviations>>>,
+    pub units: Vec<CompilationUnitHeader<Buf<'input>>>,
+    pub debug_abbrev: DebugAbbrev<Buf<'input>>,
+    pub debug_ranges: DebugRanges<Buf<'input>>,
+    pub debug_line: DebugLine<Buf<'input>>,
+    pub debug_str: DebugStr<Buf<'input>>,
+    abbrev_cache: RefCell<LruCache<DebugAbbrevOffset<usize>, Arc<Abbreviations>>>,
 }
 
 impl<'input> DwarfInfo<'input> {
@@ -136,7 +137,7 @@ impl<'input> DwarfInfo<'input> {
                         }
                     }
                 };
-                gimli::$sect::new(sect, obj.endianess())
+                $sect::new(sect, obj.endianess())
             }}
         }
 
@@ -150,7 +151,7 @@ impl<'input> DwarfInfo<'input> {
         })
     }
 
-    fn abbrev(&self, header: &gimli::CompilationUnitHeader<Buf<'input>>) -> Result<Arc<gimli::Abbreviations>> {
+    fn abbrev(&self, header: &CompilationUnitHeader<Buf<'input>>) -> Result<Arc<Abbreviations>> {
         let mut cache = self.abbrev_cache.borrow_mut();
         let offset = header.debug_abbrev_offset();
         if let Some(abbrev) = cache.get_mut(&offset) {
@@ -167,8 +168,8 @@ impl<'input> DwarfInfo<'input> {
 
     fn find_unit_offset(
         &self,
-        offset: gimli::DebugInfoOffset<usize>,
-    ) -> Result<(usize, gimli::UnitOffset<usize>)> {
+        offset: DebugInfoOffset<usize>,
+    ) -> Result<(usize, UnitOffset<usize>)> {
         for index in 0..self.units.len() {
             let header = &self.units[index];
             if let Some(unit_offset) = offset.to_unit_offset(header) {
@@ -182,7 +183,7 @@ impl<'input> DwarfInfo<'input> {
     fn entry_at_unit_offset<'info>(
         &'info self,
         index: usize,
-        offset: gimli::UnitOffset<usize>,
+        offset: UnitOffset<usize>,
     ) -> Result<DieHandle<'info, 'input>> {
         let header = &self.units[index];
         let abbrev = self.abbrev(header)?;
@@ -202,7 +203,7 @@ impl<'input> DwarfInfo<'input> {
 
     fn entry_at_offset<'info>(
         &'info self,
-        offset: gimli::DebugInfoOffset<usize>,
+        offset: DebugInfoOffset<usize>,
     ) -> Result<DieHandle<'info, 'input>> {
         let (unit, offset) = self.find_unit_offset(offset)?;
         self.entry_at_unit_offset(unit, offset)
@@ -272,8 +273,8 @@ struct Unit<'input> {
     base_address: u64,
     comp_dir: Option<Buf<'input>>,
     comp_name: Option<Buf<'input>>,
-    language: Option<gimli::DwLang>,
-    line_offset: gimli::DebugLineOffset,
+    language: Option<DwLang>,
+    line_offset: DebugLineOffset,
 }
 
 impl<'input> Unit<'input> {
@@ -296,13 +297,13 @@ impl<'input> Unit<'input> {
         }
 
         let base_address = match entry.attr_value(gimli::DW_AT_low_pc) {
-            Ok(Some(gimli::AttributeValue::Addr(addr))) => addr,
+            Ok(Some(AttributeValue::Addr(addr))) => addr,
             Err(e) => {
                 return Err(Error::from(e))
                     .chain_err(|| err("invalid low_pc attribute"))
             }
             _ => match entry.attr_value(gimli::DW_AT_entry_pc) {
-                Ok(Some(gimli::AttributeValue::Addr(addr))) => addr,
+                Ok(Some(AttributeValue::Addr(addr))) => addr,
                 Err(e) => {
                     return Err(Error::from(e))
                         .chain_err(|| err("invalid entry_pc attribute"))
@@ -327,12 +328,12 @@ impl<'input> Unit<'input> {
             .attr(gimli::DW_AT_language)
             .map_err(|e| Error::from(e))?
             .and_then(|attr| match attr.value() {
-                gimli::AttributeValue::Language(lang) => Some(lang),
+                AttributeValue::Language(lang) => Some(lang),
                 _ => None,
             });
 
         let line_offset = match entry.attr_value(gimli::DW_AT_stmt_list) {
-            Ok(Some(gimli::AttributeValue::DebugLineRef(offset))) => offset,
+            Ok(Some(AttributeValue::DebugLineRef(offset))) => offset,
             Err(e) => {
                 return Err(Error::from(e))
                     .chain_err(|| "invalid compilation unit statement list");
@@ -431,7 +432,7 @@ impl<'input> Unit<'input> {
         &self,
         info: &DwarfInfo<'input>,
         entry: &Die
-    ) -> Result<Vec<gimli::Range>> {
+    ) -> Result<Vec<Range>> {
         if let Some(range) = self.parse_noncontiguous_ranges(info, entry)? {
             Ok(range)
         } else if let Some(range) = Self::parse_contiguous_range(entry)? {
@@ -445,9 +446,9 @@ impl<'input> Unit<'input> {
         &self,
         info: &DwarfInfo<'input>,
         entry: &Die
-    ) -> Result<Option<Vec<gimli::Range>>> {
+    ) -> Result<Option<Vec<Range>>> {
         let offset = match entry.attr_value(gimli::DW_AT_ranges) {
-            Ok(Some(gimli::AttributeValue::DebugRangesRef(offset))) => offset,
+            Ok(Some(AttributeValue::DebugRangesRef(offset))) => offset,
             Err(e) => {
                 return Err(Error::from(e)).chain_err(|| err("invalid ranges attribute"));
             }
@@ -463,9 +464,9 @@ impl<'input> Unit<'input> {
 
     fn parse_contiguous_range(
         entry: &Die,
-    ) -> Result<Option<gimli::Range>> {
+    ) -> Result<Option<Range>> {
         let low_pc = match entry.attr_value(gimli::DW_AT_low_pc) {
-            Ok(Some(gimli::AttributeValue::Addr(addr))) => addr,
+            Ok(Some(AttributeValue::Addr(addr))) => addr,
             Err(e) => {
                 return Err(Error::from(e))
                     .chain_err(|| err("invalid low_pc attribute"))
@@ -474,8 +475,8 @@ impl<'input> Unit<'input> {
         };
 
         let high_pc = match entry.attr_value(gimli::DW_AT_high_pc) {
-            Ok(Some(gimli::AttributeValue::Addr(addr))) => addr,
-            Ok(Some(gimli::AttributeValue::Udata(size))) => low_pc.wrapping_add(size),
+            Ok(Some(AttributeValue::Addr(addr))) => addr,
+            Ok(Some(AttributeValue::Udata(size))) => low_pc.wrapping_add(size),
             Err(e) => {
                 return Err(Error::from(e)).chain_err(|| err("invalid high_pc attribute"))
             }
@@ -497,7 +498,7 @@ impl<'input> Unit<'input> {
             return Err(err("invalid due to inverted range"));
         }
 
-        Ok(Some(gimli::Range {
+        Ok(Some(Range {
             begin: low_pc,
             end: high_pc,
         }))
@@ -507,13 +508,13 @@ impl<'input> Unit<'input> {
         &self,
         info: &'info DwarfInfo<'input>,
         base_entry: &Die,
-        ref_attr: gimli::DwAt,
+        ref_attr: DwAt,
     ) -> Result<Option<DieHandle<'info, 'input>>> {
         Ok(match base_entry.attr_value(ref_attr)? {
-            Some(gimli::AttributeValue::UnitRef(offset)) => {
+            Some(AttributeValue::UnitRef(offset)) => {
                 Some(info.entry_at_unit_offset(self.index, offset)?)
             },
-            Some(gimli::AttributeValue::DebugInfoRef(offset)) => {
+            Some(AttributeValue::DebugInfoRef(offset)) => {
                 let header = &info.units[self.index];
                 if let Some(unit_offset) = offset.to_unit_offset(header) {
                     Some(info.entry_at_unit_offset(self.index, unit_offset)?)
@@ -585,7 +586,7 @@ impl<'input> Unit<'input> {
 #[derive(Debug)]
 struct DwarfLineProgram<'input> {
     sequences: Vec<DwarfSeq>,
-    header: gimli::LineNumberProgramHeader<Buf<'input>>,
+    header: LineNumberProgramHeader<Buf<'input>>,
 }
 
 #[derive(Debug)]
@@ -606,7 +607,7 @@ impl<'input> DwarfLineProgram<'input>
 {
     fn parse<'info>(
         info: &'info DwarfInfo<'input>,
-        line_offset: gimli::DebugLineOffset,
+        line_offset: DebugLineOffset,
         address_size: u8,
         comp_dir: Option<Buf<'input>>,
         comp_name: Option<Buf<'input>>,
@@ -689,7 +690,7 @@ impl<'input> DwarfLineProgram<'input>
         })
     }
 
-    pub fn get_rows(&self, rng: &gimli::Range) -> &[DwarfRow] {
+    pub fn get_rows(&self, rng: &Range) -> &[DwarfRow] {
         for seq in &self.sequences {
             if seq.high_address < rng.begin || seq.low_address > rng.end {
                 continue;
