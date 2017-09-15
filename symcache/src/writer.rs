@@ -201,10 +201,10 @@ struct Unit<'input> {
     header: &'input gimli::CompilationUnitHeader<gimli::EndianBuf<'input, Endianness>>,
     abbrev: gimli::Abbreviations,
     base_address: u64,
-    line_sequences: DwarfLineProgram<'input>,
     comp_dir: Option<gimli::EndianBuf<'input, Endianness>>,
     comp_name: Option<gimli::EndianBuf<'input, Endianness>>,
     language: Option<gimli::DwLang>,
+    line_offset: gimli::DebugLineOffset,
 }
 
 impl<'input> Unit<'input> {
@@ -217,12 +217,14 @@ impl<'input> Unit<'input> {
             .chain_err(|| err("compilation unit refers to non-existing abbreviations"))?;
 
         let base_address;
-        let line_sequences;
         let comp_dir;
         let comp_name;
         let language;
+        let line_offset;
 
         {
+            // Access the compilation unit, which must be the top level DIE
+            // Nested scope is needed to release borrow on abbrev before moving it to the Unit
             let mut entries = header.entries(&abbrev);
             let (_, entry) = entries
                 .next_dfs()
@@ -249,18 +251,6 @@ impl<'input> Unit<'input> {
                 },
             };
 
-            // Extract source file and line information about the compilation unit
-            let line_offset = match entry.attr_value(gimli::DW_AT_stmt_list) {
-                Ok(Some(gimli::AttributeValue::DebugLineRef(offset))) => offset,
-                Err(e) => {
-                    return Err(Error::from(e))
-                        .chain_err(|| "invalid compilation unit statement list");
-                }
-                _ => {
-                    return Ok(None);
-                }
-            };
-
             comp_dir = entry
                 .attr(gimli::DW_AT_comp_dir)
                 .map_err(|e| Error::from(e))
@@ -281,13 +271,16 @@ impl<'input> Unit<'input> {
                     _ => None,
                 });
 
-            line_sequences = DwarfLineProgram::parse(
-                info,
-                line_offset,
-                header.address_size(),
-                comp_dir,
-                comp_name,
-            )?;
+            line_offset = match entry.attr_value(gimli::DW_AT_stmt_list) {
+                Ok(Some(gimli::AttributeValue::DebugLineRef(offset))) => offset,
+                Err(e) => {
+                    return Err(Error::from(e))
+                        .chain_err(|| "invalid compilation unit statement list");
+                }
+                _ => {
+                    return Ok(None);
+                }
+            };
         }
 
         Ok(Some(Unit {
@@ -295,10 +288,10 @@ impl<'input> Unit<'input> {
             header,
             abbrev,
             base_address,
-            line_sequences,
             comp_dir,
             comp_name,
             language,
+            line_offset,
         }))
     }
 
@@ -306,6 +299,14 @@ impl<'input> Unit<'input> {
         let mut depth = 0;
         let mut functions: Vec<Function> = vec![];
         let mut entries = self.header.entries(&self.abbrev);
+
+        let line_program = DwarfLineProgram::parse(
+            self.info,
+            self.line_offset,
+            self.header.address_size(),
+            self.comp_dir,
+            self.comp_name,
+        )?;
 
         while let Some((movement, entry)) = entries
             .next_dfs()
@@ -334,10 +335,10 @@ impl<'input> Unit<'input> {
             };
 
             for range in &ranges {
-                let rows = self.line_sequences.get_rows(range);
+                let rows = line_program.get_rows(range);
                 for row in rows {
-                    let comp_dir = self.comp_dir.as_ref().map(|x| x.buf()).unwrap_or(b"");
-                    let filename = self.line_sequences.header
+                    let comp_dir = self.comp_dir.map(|x| x.buf()).unwrap_or(b"");
+                    let filename = line_program.header
                         .file(row.file_index)
                         .map(|x| x.path_name().buf())
                         .unwrap_or(b"");
