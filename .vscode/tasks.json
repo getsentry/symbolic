@@ -10,7 +10,7 @@
       "type": "shell",
       "presentation": {
         "echo": true,
-        "reveal": "silent",
+        "reveal": "always",
         "focus": false,
         "panel": "shared"
       },
