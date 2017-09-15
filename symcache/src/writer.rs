@@ -107,6 +107,43 @@ pub struct SymCacheWriter<W: Write + Seek> {
     header: CacheFileHeader,
 }
 
+struct DwarfInfo<'input> {
+    units: Vec<gimli::CompilationUnitHeader<gimli::EndianBuf<'input, Endianness>>>,
+    debug_abbrev: gimli::DebugAbbrev<gimli::EndianBuf<'input, Endianness>>,
+    debug_ranges: gimli::DebugRanges<gimli::EndianBuf<'input, Endianness>>,
+    debug_line: gimli::DebugLine<gimli::EndianBuf<'input, Endianness>>,
+    debug_str: gimli::DebugStr<gimli::EndianBuf<'input, Endianness>>,
+}
+
+impl<'input> DwarfInfo<'input> {
+    fn from_object(obj: &'input Object) -> Result<DwarfInfo<'input>> {
+        macro_rules! section {
+            ($sect:ident, $mandatory:expr) => {{
+                let sect = match obj.get_dwarf_section(DwarfSection::$sect) {
+                    Some(sect) => sect.as_bytes(),
+                    None => {
+                        if $mandatory {
+                            return Err(ErrorKind::MissingSection(
+                                DwarfSection::$sect.get_elf_section()).into());
+                        } else {
+                            &[]
+                        }
+                    }
+                };
+                gimli::$sect::new(sect, obj.endianess())
+            }}
+        }
+
+        Ok(DwarfInfo {
+            units: section!(DebugInfo, true).units().collect()?,
+            debug_abbrev: section!(DebugAbbrev, true),
+            debug_line: section!(DebugLine, true),
+            debug_ranges: section!(DebugRanges, false),
+            debug_str: section!(DebugStr, false),
+        })
+    }
+}
+
 impl<W: Write + Seek> SymCacheWriter<W> {
     pub fn new(writer: W) -> SymCacheWriter<W> {
         SymCacheWriter {
@@ -139,41 +176,13 @@ impl<W: Write + Seek> SymCacheWriter<W> {
     }
 
     pub fn write_object(&mut self, obj: &Object) -> Result<()> {
-        macro_rules! section {
-            ($sect:ident, $mandatory:expr) => {{
-                let sect = match obj.get_dwarf_section(DwarfSection::$sect) {
-                    Some(sect) => sect.as_bytes(),
-                    None => {
-                        if $mandatory {
-                            return Err(ErrorKind::MissingSection(
-                                DwarfSection::$sect.get_elf_section()).into());
-                        } else {
-                            &[]
-                        }
-                    }
-                };
-                gimli::$sect::new(sect, obj.endianess())
-            }}
-        }
+        let info = DwarfInfo::from_object(obj)
+            .chain_err(|| err("could not extract debug info from object file"))?;
 
-        let debug_info = section!(DebugInfo, true);
-        let debug_abbrev = section!(DebugAbbrev, true);
-        let debug_line = section!(DebugLine, true);
-        let debug_ranges = section!(DebugRanges, false);
-        let debug_str = section!(DebugStr, false);
-
-        let mut headers = debug_info.units();
-
-        while let Some(header) = headers.next()
-                .chain_err(|| err("couldn't get DIE header"))? {
+        for header in &info.units {
             // attempt to parse a single unit from the given header.
-            let unit_opt = Unit::try_parse(
-                &debug_abbrev,
-                &debug_ranges,
-                &debug_line,
-                &debug_str,
-                &header,
-            ).chain_err(|| err("encountered invalid compilation unit"))?;
+            let unit_opt = Unit::try_parse(&info, header)
+                .chain_err(|| err("encountered invalid compilation unit"))?;
 
             // skip units we don't care about
             let mut unit = match unit_opt {
@@ -191,17 +200,13 @@ impl<W: Write + Seek> SymCacheWriter<W> {
     }
 }
 
-
 impl<'input> Unit<'input> {
     fn try_parse(
-        debug_abbrev: &gimli::DebugAbbrev<gimli::EndianBuf<Endianness>>,
-        debug_ranges: &gimli::DebugRanges<gimli::EndianBuf<Endianness>>,
-        debug_line: &gimli::DebugLine<gimli::EndianBuf<'input, Endianness>>,
-        debug_str: &gimli::DebugStr<gimli::EndianBuf<'input, Endianness>>,
+        info: &'input DwarfInfo,
         header: &gimli::CompilationUnitHeader<gimli::EndianBuf<'input, Endianness>>,
     ) -> Result<Option<Unit<'input>>> {
         let abbrev = header
-            .abbreviations(debug_abbrev)
+            .abbreviations(&info.debug_abbrev)
             .chain_err(|| err("compilation unit refers to non-existing abbreviations"))?;
         let mut entries = header.entries(&abbrev);
         let base_address;
@@ -252,12 +257,12 @@ impl<'input> Unit<'input> {
                 .attr(gimli::DW_AT_comp_dir)
                 .map_err(|e| Error::from(e))
                 .chain_err(|| err("invalid compilation unit directory"))?
-                .and_then(|attr| attr.string_value(debug_str));
+                .and_then(|attr| attr.string_value(&info.debug_str));
             comp_name = entry
                 .attr(gimli::DW_AT_name)
                 .map_err(|e| Error::from(e))
                 .chain_err(|| err("invalid compilation unit name"))?
-                .and_then(|attr| attr.string_value(debug_str));
+                .and_then(|attr| attr.string_value(&info.debug_str));
             language = entry
                 .attr(gimli::DW_AT_language)
                 .map_err(|e| Error::from(e))?
@@ -267,7 +272,7 @@ impl<'input> Unit<'input> {
                 });
 
             line_sequences = DwarfLineProgram::parse(
-                debug_line,
+                info,
                 line_offset,
                 header.address_size(),
                 comp_dir,
@@ -296,13 +301,13 @@ impl<'input> Unit<'input> {
 
             let mut func_record: FuncRecord = Default::default();
 
-            let ranges = Self::get_ranges(entry, debug_ranges, header.address_size(), base_address)
+            let ranges = Self::get_ranges(info, entry, header.address_size(), base_address)
                 .chain_err(|| err("subroutine has invalid ranges"))?;
             if ranges.is_empty() {
                 continue;
             }
 
-            let name = Self::resolve_function_name(entry, header, debug_str, &abbrev)?
+            let name = Self::resolve_function_name(info, entry, header, &abbrev)?
                 .map(|x| x.buf())
                 .unwrap_or(b"");
 
@@ -346,13 +351,13 @@ impl<'input> Unit<'input> {
     }
 
     fn get_ranges(
+        info: &DwarfInfo,
         entry: &gimli::DebuggingInformationEntry<gimli::EndianBuf<Endianness>>,
-        debug_ranges: &gimli::DebugRanges<gimli::EndianBuf<Endianness>>,
         address_size: u8,
         base_address: u64,
     ) -> Result<Vec<gimli::Range>> {
-        if let Some(range) = Self::parse_noncontiguous_ranges(
-                entry, debug_ranges, address_size, base_address)? {
+        // TODO(ja): Do it here
+        if let Some(range) = Self::parse_noncontiguous_ranges(info, entry, address_size, base_address)? {
             Ok(range)
         } else if let Some(range) = Self::parse_contiguous_range(entry)?
                 .map(|range| vec![range]) {
@@ -363,8 +368,8 @@ impl<'input> Unit<'input> {
     }
 
     fn parse_noncontiguous_ranges(
+        info: &DwarfInfo,
         entry: &gimli::DebuggingInformationEntry<gimli::EndianBuf<Endianness>>,
-        debug_ranges: &gimli::DebugRanges<gimli::EndianBuf<Endianness>>,
         address_size: u8,
         base_address: u64,
     ) -> Result<Option<Vec<gimli::Range>>>
@@ -377,7 +382,7 @@ impl<'input> Unit<'input> {
             _ => return Ok(None),
         };
 
-        let ranges = debug_ranges
+        let ranges = info.debug_ranges
             .ranges(offset, address_size, base_address)
             .chain_err(|| err("range offsets are not valid"))?;
         let ranges = ranges.collect().chain_err(|| err("range could not be parsed"))?;
@@ -464,18 +469,17 @@ impl<'input> Unit<'input> {
     }
 
     fn resolve_function_name<'a, 'b>(
+        info: &'input DwarfInfo,
         entry: &gimli::DebuggingInformationEntry<'a, 'b, gimli::EndianBuf<'input, Endianness>>,
         header: &gimli::CompilationUnitHeader<gimli::EndianBuf<'input, Endianness>>,
-        debug_str: &gimli::DebugStr<gimli::EndianBuf<'input, Endianness>>,
         abbrev: &gimli::Abbreviations,
     ) -> Result<Option<gimli::EndianBuf<'input, Endianness>>> {
-
         // For naming, we prefer the linked name, if available
         if let Some(name) = entry
             .attr(gimli::DW_AT_linkage_name)
             .map_err(|e| Error::from(e))
             .chain_err(|| err("invalid subprogram linkage name"))?
-            .and_then(|attr| attr.string_value(debug_str))
+            .and_then(|attr| attr.string_value(&info.debug_str))
         {
             return Ok(Some(name));
         }
@@ -483,7 +487,7 @@ impl<'input> Unit<'input> {
             .attr(gimli::DW_AT_MIPS_linkage_name)
             .map_err(|e| Error::from(e))
             .chain_err(|| err("invalid subprogram linkage name"))?
-            .and_then(|attr| attr.string_value(debug_str))
+            .and_then(|attr| attr.string_value(&info.debug_str))
         {
             return Ok(Some(name));
         }
@@ -493,7 +497,7 @@ impl<'input> Unit<'input> {
             .attr(gimli::DW_AT_name)
             .map_err(|e| Error::from(e))
             .chain_err(|| err("invalid subprogram name"))?
-            .and_then(|attr| attr.string_value(debug_str))
+            .and_then(|attr| attr.string_value(&info.debug_str))
         {
             return Ok(Some(name));
         }
@@ -503,7 +507,7 @@ impl<'input> Unit<'input> {
             Self::get_entry(entry, header, abbrev, gimli::DW_AT_abstract_origin)
                 .chain_err(|| err("invalid subprogram abstract origin"))?
         {
-            let name = Self::resolve_function_name(&abstract_origin, header, debug_str, abbrev)
+            let name = Self::resolve_function_name(info, &abstract_origin, header, abbrev)
                 .chain_err(|| err("abstract origin does not resolve to a name"))?;
             return Ok(name);
         }
@@ -511,7 +515,7 @@ impl<'input> Unit<'input> {
             Self::get_entry(entry, header, abbrev, gimli::DW_AT_specification)
                 .chain_err(|| err("invalid subprogram specification"))?
         {
-            let name = Self::resolve_function_name(&specification, header, debug_str, abbrev)
+            let name = Self::resolve_function_name(info, &specification, header, abbrev)
                 .chain_err(|| err("specification does not resolve to a name"))?;
             return Ok(name);
         }
@@ -542,18 +546,20 @@ struct DwarfRow {
 
 impl<'input> DwarfLineProgram<'input> {
     fn parse(
-        debug_line: &gimli::DebugLine<gimli::EndianBuf<'input, Endianness>>,
+        info: &'input DwarfInfo,
         line_offset: gimli::DebugLineOffset,
         address_size: u8,
         comp_dir: Option<gimli::EndianBuf<'input, Endianness>>,
         comp_name: Option<gimli::EndianBuf<'input, Endianness>>,
     ) -> Result<Self> {
-        let program = debug_line
+        let program = info.debug_line
             .program(line_offset, address_size, comp_dir, comp_name)?;
+
         let mut sequences = vec![];
         let mut sequence_rows: Vec<DwarfRow> = vec![];
         let mut prev_address = 0;
         let mut program_rows = program.rows();
+
         // XXX: do we need a clone here?  Maybe we can do better
         let header = program_rows.header().clone();
         while let Ok(Some((_, &program_row))) = program_rows.next_row() {
