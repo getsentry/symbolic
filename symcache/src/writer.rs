@@ -1,12 +1,17 @@
 use std::str;
+use std::fmt;
 use std::mem;
-use std::io::Write;
+use std::slice;
+use std::cell::RefCell;
+use std::io::{Write, Seek, SeekFrom};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
 use symbolic_common::{Error, ErrorKind, Result, ResultExt, Endianness};
 use symbolic_debuginfo::{Object, DwarfSection};
+
+use types::{LineRecord, FuncRecord, CacheFileHeader};
 
 use gimli;
 use fallible_iterator::FallibleIterator;
@@ -15,57 +20,127 @@ fn err(msg: &'static str) -> Error {
     Error::from(ErrorKind::BadDwarfData(msg))
 }
 
-struct StringRegistry {
-    files: HashMap<Vec<u8>, u16>,
-    symbols: HashMap<Vec<u8>, u32>,
+pub fn write_sym_cache<W: Write + Seek>(w: W, obj: &Object) -> Result<()> {
+    let mut writer = SymCacheWriter::new(w);
+    // write the initial header into the file.  This positions the cursor after it.
+    writer.write_header()?;
+    // write object data.
+    writer.write_object(obj)?;
+    // write the updated header.
+    writer.write_header()?;
+    Ok(())
 }
 
-impl StringRegistry {
-    pub fn new() -> StringRegistry {
-        StringRegistry {
-            files: HashMap::new(),
-            symbols: HashMap::new(),
-        }
-    }
+#[derive(Debug)]
+struct Unit<'a> {
+    pub functions: Vec<Function<'a>>,
+}
 
-    pub fn get_symbol_id(&mut self, sym: &[u8]) -> Result<u32> {
-        if let Some(&idx) = self.symbols.get(sym) {
-            Ok(idx)
-        } else {
-            let idx = self.symbols.len() as u32;
-            if idx == !0 {
-                Err(ErrorKind::Internal("Too many symbols").into())
-            } else {
-                self.symbols.insert(sym.to_vec(), idx);
-                Ok(idx)
+struct Function<'a> {
+    pub name: &'a [u8],
+    pub inlines: Vec<Function<'a>>,
+    pub lines: Vec<Line<'a>>,
+}
+
+struct Line<'a> {
+    pub addr: u64,
+    pub comp_dir: &'a [u8],
+    pub filename: &'a [u8],
+    pub line: u32,
+}
+
+impl<'a> fmt::Debug for Line<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Line")
+            .field("addr", &self.addr)
+            .field("comp_dir", &String::from_utf8_lossy(self.comp_dir))
+            .field("filename", &String::from_utf8_lossy(self.filename))
+            .field("line", &self.line)
+            .finish()
+    }
+}
+
+impl<'a> fmt::Debug for Function<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Function")
+            .field("name", &String::from_utf8_lossy(self.name))
+            .field("inlines", &self.inlines)
+            .field("lines", &self.lines)
+            .finish()
+    }
+}
+
+impl<'a> Function<'a> {
+    pub fn append_line_if_changed(&mut self, line: Line<'a>) {
+        if let Some(last_line) = self.lines.last() {
+            if last_line.filename == line.filename &&
+               last_line.comp_dir == line.comp_dir &&
+               last_line.line == line.line {
+                return;
             }
         }
+        self.lines.push(line);
     }
 
-    pub fn get_file_id(&mut self, file: &[u8]) -> Result<u16> {
-        if let Some(&idx) = self.files.get(file) {
-            Ok(idx)
-        } else {
-            let idx = self.files.len() as u16;
-            if idx == !0 {
-                Err(ErrorKind::Internal("Too many files").into())
-            } else {
-                self.files.insert(file.to_vec(), idx);
-                Ok(idx)
+    pub fn dedup_inlines(&mut self) {
+        let mut inner_addrs = vec![];
+        for func in &self.inlines {
+            for line in &func.lines {
+                inner_addrs.push(line.addr);
             }
+        }
+
+        // special cases: if we did not find anything or this function would fully
+        // disappear we want to ensure we do not remove it.  This for instance
+        // happens if a one-liner inline function calls into another one-liner
+        // inline lambda.
+        if inner_addrs.is_empty() ||
+           self.lines.iter().map(|x| x.addr).eq(inner_addrs.iter().map(|&x| x)) {
+            return;
+        }
+
+        self.lines.retain(|item| !inner_addrs.contains(&item.addr));
+
+        for func in self.inlines.iter_mut() {
+            func.dedup_inlines();
         }
     }
 }
 
-pub struct SymCacheWriter<W: Write> {
-    writer: W,
+pub struct SymCacheWriter<W: Write + Seek> {
+    writer: RefCell<W>,
+    header: CacheFileHeader,
 }
 
-impl<W: Write> SymCacheWriter<W> {
+impl<W: Write + Seek> SymCacheWriter<W> {
     pub fn new(writer: W) -> SymCacheWriter<W> {
         SymCacheWriter {
-            writer: writer,
+            writer: RefCell::new(writer),
+            header: Default::default(),
         }
+    }
+
+    fn with_file<T, F: FnOnce(&mut W) -> T>(&self, f: F) -> T {
+        f(&mut *self.writer.borrow_mut() as &mut W)
+    }
+
+    fn write<T>(&self, x: &T) -> Result<usize> {
+        unsafe {
+            let bytes : *const u8 = mem::transmute(x);
+            let size = mem::size_of_val(x);
+            self.with_file(|writer| {
+                writer.write_all(slice::from_raw_parts(bytes, size))
+            })?;
+            Ok(size)
+        }
+    }
+
+    pub fn write_header(&self) -> Result<()> {
+        self.with_file(|writer| {
+            writer.seek(SeekFrom::Start(0))
+        })?;
+        self.write(&self.header)?;
+        Ok(())
     }
 
     pub fn write_object(&mut self, obj: &Object) -> Result<()> {
@@ -86,7 +161,6 @@ impl<W: Write> SymCacheWriter<W> {
             }}
         }
 
-        let mut string_registry = StringRegistry::new();
         let debug_info = section!(DebugInfo, true);
         let debug_abbrev = section!(DebugAbbrev, true);
         let debug_line = section!(DebugLine, true);
@@ -97,19 +171,27 @@ impl<W: Write> SymCacheWriter<W> {
 
         while let Some(header) = headers.next()
                 .chain_err(|| err("couldn't get DIE header"))? {
+            // attempt to parse a single unit from the given header.
             let unit_opt = Unit::try_parse(
-                &mut string_registry,
                 &debug_abbrev,
                 &debug_ranges,
                 &debug_line,
                 &debug_str,
                 &header,
             ).chain_err(|| err("encountered invalid compilation unit"))?;
-            let unit = match unit_opt {
+
+            // skip units we don't care about
+            let mut unit = match unit_opt {
                 Some(unit) => unit,
                 None => { continue; }
             };
-            //println!("{:#?}", unit);
+
+            // dedup instructions from inline functions
+            for func in &mut unit.functions {
+                func.dedup_inlines();
+            }
+
+            println!("{:#?}", unit);
         }
 
         Ok(())
@@ -117,14 +199,8 @@ impl<W: Write> SymCacheWriter<W> {
 }
 
 
-#[derive(Debug)]
-struct Unit<'input> {
-    _x: PhantomData<&'input ()>,
-}
-
 impl<'input> Unit<'input> {
     fn try_parse(
-        string_registry: &mut StringRegistry,
         debug_abbrev: &gimli::DebugAbbrev<gimli::EndianBuf<Endianness>>,
         debug_ranges: &gimli::DebugRanges<gimli::EndianBuf<Endianness>>,
         debug_line: &gimli::DebugLine<gimli::EndianBuf<'input, Endianness>>,
@@ -136,7 +212,7 @@ impl<'input> Unit<'input> {
             .chain_err(|| err("compilation unit refers to non-existing abbreviations"))?;
         let mut entries = header.entries(&abbrev);
         let base_address;
-        let lines;
+        let line_sequences;
         let comp_dir;
         let comp_name;
         let language;
@@ -197,7 +273,7 @@ impl<'input> Unit<'input> {
                     _ => None,
                 });
 
-            lines = Lines::new(
+            line_sequences = DwarfLineProgram::parse(
                 debug_line,
                 line_offset,
                 header.address_size(),
@@ -206,7 +282,12 @@ impl<'input> Unit<'input> {
             )?;
         }
 
-        while let Some((_, entry)) = entries
+        let mut unit = Unit {
+            functions: vec![],
+        };
+
+        let mut inline_depth = 0;
+        while let Some((movement, entry)) = entries
             .next_dfs()
             .chain_err(|| err("tree below compilation unit yielded invalid entry"))?
         {
@@ -217,34 +298,56 @@ impl<'input> Unit<'input> {
                 _ => { continue; }
             };
 
+            let mut func_record: FuncRecord = Default::default();
+
             let ranges = Self::get_ranges(entry, debug_ranges, header.address_size(), base_address)
                 .chain_err(|| err("subroutine has invalid ranges"))?;
             if ranges.is_empty() {
                 continue;
             }
 
-            let func_name = Self::resolve_function_name(entry, header, debug_str, &abbrev)?
+            let name = Self::resolve_function_name(entry, header, debug_str, &abbrev)?
                 .map(|x| x.buf())
                 .unwrap_or(b"");
-            println!("{}", str::from_utf8(func_name).unwrap());
+
+            let mut func = Function {
+                name: name,
+                inlines: vec![],
+                lines: vec![],
+            };
 
             for range in &ranges {
-                let rows = lines.get_rows(range);
+                let rows = line_sequences.get_rows(range);
                 for row in rows {
                     let comp_dir = comp_dir.as_ref().map(|x| x.buf()).unwrap_or(b"");
-                    let file_record = lines.header
+                    let filename = line_sequences.header
                         .file(row.file_index)
                         .map(|x| x.path_name().buf())
                         .unwrap_or(b"");
-                    let line = row.line.unwrap_or(0);
-                    println!("  at {}/{}:{}", str::from_utf8(comp_dir).unwrap(), str::from_utf8(file_record).unwrap(), line);
+                    let new_line = Line {
+                        addr: row.address,
+                        filename: filename,
+                        comp_dir: comp_dir,
+                        line: row.line.unwrap_or(0) as u32,
+                    };
+                    func.append_line_if_changed(new_line);
                 }
+            }
+
+            if inline {
+                inline_depth += movement;
+                let mut node = unit.functions.last_mut().unwrap();
+                for _ in 0..inline_depth {
+                    node = {node}.inlines.last_mut().unwrap();
+                }
+                node.inlines.push(func);
+            } else {
+                inline_depth = 0;
+                unit.functions.push(func);
             }
         }
 
-        Ok(Some(Unit {
-            _x: PhantomData,
-        }))
+        Ok(Some(unit))
     }
 
     fn get_ranges(
@@ -423,13 +526,27 @@ impl<'input> Unit<'input> {
 }
 
 #[derive(Debug)]
-struct Lines<'input> {
-    sequences: Vec<Sequence>,
+struct DwarfLineProgram<'input> {
+    sequences: Vec<DwarfSeq>,
     header: gimli::LineNumberProgramHeader<gimli::EndianBuf<'input, Endianness>>,
 }
 
-impl<'input> Lines<'input> {
-    fn new(
+#[derive(Debug)]
+struct DwarfSeq {
+    low_address: u64,
+    high_address: u64,
+    rows: Vec<DwarfRow>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct DwarfRow {
+    address: u64,
+    file_index: u64,
+    line: Option<u64>,
+}
+
+impl<'input> DwarfLineProgram<'input> {
+    fn parse(
         debug_line: &gimli::DebugLine<gimli::EndianBuf<'input, Endianness>>,
         line_offset: gimli::DebugLineOffset,
         address_size: u8,
@@ -439,7 +556,7 @@ impl<'input> Lines<'input> {
         let program = debug_line
             .program(line_offset, address_size, comp_dir, comp_name)?;
         let mut sequences = vec![];
-        let mut sequence_rows: Vec<Row> = vec![];
+        let mut sequence_rows: Vec<DwarfRow> = vec![];
         let mut prev_address = 0;
         let mut program_rows = program.rows();
         // XXX: do we need a clone here?  Maybe we can do better
@@ -456,7 +573,7 @@ impl<'input> Lines<'input> {
                     };
                     let mut rows = vec![];
                     mem::swap(&mut rows, &mut sequence_rows);
-                    sequences.push(Sequence {
+                    sequences.push(DwarfSeq {
                         low_address,
                         high_address,
                         rows,
@@ -482,7 +599,7 @@ impl<'input> Lines<'input> {
                     }
                 }
                 if !duplicate {
-                    sequence_rows.push(Row {
+                    sequence_rows.push(DwarfRow {
                         address,
                         file_index,
                         line,
@@ -496,22 +613,23 @@ impl<'input> Lines<'input> {
             // Let's assume the last row covered 1 byte.
             let low_address = sequence_rows[0].address;
             let high_address = prev_address + 1;
-            sequences.push(Sequence {
+            sequences.push(DwarfSeq {
                 low_address,
                 high_address,
                 rows: sequence_rows,
             });
         }
-        // Sort so we can binary search.
+
+        // make sure this is sorted
         sequences.sort_by(|a, b| a.low_address.cmp(&b.low_address));
 
-        Ok(Lines {
+        Ok(DwarfLineProgram {
             sequences: sequences,
             header: header,
         })
     }
 
-    pub fn get_rows(&self, rng: &gimli::Range) -> &[Row] {
+    pub fn get_rows(&self, rng: &gimli::Range) -> &[DwarfRow] {
         for seq in &self.sequences {
             if seq.high_address < rng.begin || seq.low_address > rng.end {
                 continue;
@@ -536,18 +654,4 @@ impl<'input> Lines<'input> {
         }
         &[]
     }
-}
-
-#[derive(Debug)]
-struct Sequence {
-    low_address: u64,
-    high_address: u64,
-    rows: Vec<Row>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-struct Row {
-    address: u64,
-    file_index: u64,
-    line: Option<u64>,
 }

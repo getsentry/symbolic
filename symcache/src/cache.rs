@@ -9,7 +9,7 @@ use symbolic_debuginfo::Object;
 
 use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, LineRecord};
 use utils::binsearch_by_key;
-use writer::SymCacheWriter;
+use writer::write_sym_cache;
 
 /// A matched symbol
 pub struct Symbol<'a> {
@@ -98,10 +98,7 @@ impl<'a> SymCache<'a> {
     /// Constructs a symcache from an object.
     pub fn from_object(obj: &Object) -> Result<SymCache<'a>> {
         let mut out: Vec<u8> = vec![];
-        {
-            let mut writer = SymCacheWriter::new(&mut out);
-            writer.write_object(obj)?;
-        }
+        write_sym_cache(io::Cursor::new(out), obj)?;
         panic!("this is not implemented yet");
         //SymCache::new(ByteView::from_vec(out))
     }
@@ -160,7 +157,7 @@ impl<'a> SymCache<'a> {
 
     fn functions(&'a self) -> Result<&'a [FuncRecord]> {
         let header = self.header()?;
-        self.get_segment(&header.function_index)
+        self.get_segment(&header.function_records)
     }
 
     fn line_records(&'a self) -> Result<&'a [Seg<LineRecord>]> {

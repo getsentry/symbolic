@@ -47,10 +47,9 @@ pub struct CacheFileHeader {
     pub version: u32,
     pub uuid: Uuid,
     pub arch: [i8; 16],
-    pub name_id: u32,
     pub symbols: Seg<Seg<u8>>,
     pub files: Seg<FileRecord>,
-    pub function_index: Seg<FuncRecord>,
+    pub function_records: Seg<FuncRecord>,
     pub line_records: Seg<Seg<LineRecord>>,
 }
 
