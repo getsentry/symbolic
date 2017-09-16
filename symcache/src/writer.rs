@@ -40,7 +40,8 @@ pub fn write_sym_cache<W: Write + Seek>(w: W, obj: &Object) -> Result<()> {
 }
 
 struct Function<'a> {
-    pub depth: isize,
+    pub depth: u16,
+    pub len: u32,
     pub name: &'a [u8],
     pub inlines: Vec<Function<'a>>,
     pub lines: Vec<Line<'a>>,
@@ -355,7 +356,8 @@ impl<'input> Unit<'input> {
             }
 
             let mut func = Function {
-                depth,
+                depth: depth as u16,
+                len: (ranges[ranges.len() - 1].end - ranges[0].begin) as u32,
                 name: self.resolve_function_name(info, entry)?.unwrap_or(b""),
                 inlines: vec![],
                 lines: vec![],
@@ -385,7 +387,7 @@ impl<'input> Unit<'input> {
             if inline {
                 let mut node = functions.last_mut()
                     .ok_or_else(|| err("no root function"))?;
-                while { {&node}.inlines.last().map_or(false, |n| n.depth < depth) } {
+                while {&node}.inlines.last().map_or(false, |n| (n.depth as isize) < depth) {
                     node = {node}.inlines.last_mut().unwrap();
                 }
                 node.inlines.push(func);
