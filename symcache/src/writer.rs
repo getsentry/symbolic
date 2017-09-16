@@ -451,14 +451,18 @@ impl<'input> Unit<'input> {
         }))
     }
 
-    fn with_resolve_reference<'info, T, F>(
+    /// Resolves an entry and if found invokes a function to transform it.
+    ///
+    /// As this might resolve into cached information the data borrowed from
+    /// abbrev can only be temporarily accessed in the callback.
+    fn resolve_reference<'info, T, F>(
         &self,
         info: &'info DwarfInfo<'input>,
         base_entry: &Die,
         ref_attr: DwAt,
         f: F,
-    ) -> Result<T>
-        where for<'r> F: FnOnce(Option<&Die<'r, 'info, 'input>>) -> Result<T>
+    ) -> Result<Option<T>>
+        where for<'abbrev> F: FnOnce(&Die<'abbrev, 'info, 'input>) -> Result<Option<T>>
     {
         let (index, offset) = match base_entry.attr_value(ref_attr)? {
             Some(AttributeValue::UnitRef(offset)) => {
@@ -468,36 +472,23 @@ impl<'input> Unit<'input> {
                 let (index, unit_offset) = info.find_unit_offset(offset)?;
                 (index, unit_offset)
             }
-            None => { return f(None) }
+            None => { return Ok(None); }
             // TODO: there is probably more that can come back here
-            _ => { return f(None); }
+            _ => { return Ok(None); }
         };
 
         let header = &info.units[index];
         let abbrev = info.get_abbrev(header)?;
         let mut entries = header.entries_at_offset(&*abbrev, offset)?;
         entries.next_entry()?;
-        f(entries.current())
+        if let Some(entry) = entries.current() {
+            f(entry)
+        } else {
+            Ok(None)
+        }
     }
 
-    fn resolve_reference<'info, T, F>(
-        &self,
-        info: &'info DwarfInfo<'input>,
-        base_entry: &Die,
-        ref_attr: DwAt,
-        f: F,
-    ) -> Result<Option<T>>
-        where for<'r> F: FnOnce(&Die<'r, 'info, 'input>) -> Result<Option<T>>
-    {
-        self.with_resolve_reference(info, base_entry, ref_attr, |die_opt| {
-            if let Some(die) = die_opt {
-                f(die)
-            } else {
-                Ok(None)
-            }
-        })
-    }
-
+    /// Resolves the function name of a debug entry.
     fn resolve_function_name<'abbrev, 'unit>(
         &self,
         info: &DwarfInfo<'input>,
