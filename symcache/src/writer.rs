@@ -1,4 +1,4 @@
-use std::boxed::Box;
+
 use std::cell::RefCell;
 use std::collections::BTreeSet;
 use std::fmt;
@@ -12,22 +12,17 @@ use symbolic_debuginfo::{DwarfSection, Object};
 
 use types::CacheFileHeader;
 
-use lru_cache::LruCache;
 use fallible_iterator::FallibleIterator;
+use lru_cache::LruCache;
 use gimli;
 use gimli::{Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbbrev, DebugAbbrevOffset,
             DebugInfo, DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr,
-            DebuggingInformationEntry, DwAt, DwLang, EndianBuf, EntriesCursor,
+            DebuggingInformationEntry, DwAt, DwLang, EndianBuf,
             LineNumberProgramHeader, Range, UnitOffset};
 use owning_ref::{OwningHandle, OwningRef};
 
 type Buf<'input> = EndianBuf<'input, Endianness>;
 type Die<'abbrev, 'unit, 'input> = DebuggingInformationEntry<'abbrev, 'unit, Buf<'input>>;
-type Cursor<'abbrev, 'unit, 'input> = EntriesCursor<'abbrev, 'unit, Buf<'input>>;
-type DieHandle<'info, 'input> = OwningRef<
-    OwningHandle<Arc<Abbreviations>, Box<Cursor<'info, 'info, 'input>>>,
-    Die<'info, 'info, 'input>,
->;
 
 fn err(msg: &'static str) -> Error {
     Error::from(ErrorKind::BadDwarfData(msg))
@@ -150,66 +145,39 @@ impl<'input> DwarfInfo<'input> {
             debug_line: section!(DebugLine, true),
             debug_ranges: section!(DebugRanges, false),
             debug_str: section!(DebugStr, false),
-            abbrev_cache: RefCell::new(LruCache::new(10)), // TODO: How many?
+            abbrev_cache: RefCell::new(LruCache::new(10)),
         })
     }
 
-    fn abbrev(&self, header: &CompilationUnitHeader<Buf<'input>>) -> Result<Arc<Abbreviations>> {
-        let mut cache = self.abbrev_cache.borrow_mut();
+    fn get_abbrev(&self, header: &CompilationUnitHeader<Buf<'input>>)
+        -> Result<Arc<Abbreviations>>
+    {
         let offset = header.debug_abbrev_offset();
+        let mut cache = self.abbrev_cache.borrow_mut();
         if let Some(abbrev) = cache.get_mut(&offset) {
             return Ok(abbrev.clone());
         }
-
-        let abbrev = header
-            .abbreviations(&self.debug_abbrev)
-            .chain_err(|| {
-                err("compilation unit refers to non-existing abbreviations")
-            })?;
-
-        cache.insert(offset, Arc::new(abbrev));
+        {
+            let abbrev = header
+                .abbreviations(&self.debug_abbrev)
+                .chain_err(|| {
+                    err("compilation unit refers to non-existing abbreviations")
+                })?;
+            let mut cache_mut = self.abbrev_cache.borrow_mut();
+            cache_mut.insert(offset, Arc::new(abbrev));
+        }
         Ok(cache.get_mut(&offset).unwrap().clone())
     }
 
-    fn find_unit_offset(
-        &self,
-        offset: DebugInfoOffset<usize>,
-    ) -> Result<(usize, UnitOffset<usize>)> {
-        for index in 0..self.units.len() {
-            let header = &self.units[index];
+    fn find_unit_offset(&self, offset: DebugInfoOffset<usize>)
+        -> Result<(usize, UnitOffset<usize>)>
+    {
+        for (index, header) in self.units.iter().enumerate() {
             if let Some(unit_offset) = offset.to_unit_offset(header) {
                 return Ok((index, unit_offset));
             }
         }
-
         Err(err("couln't find unit for ref address"))
-    }
-
-    fn entry_at_unit_offset<'info>(
-        &'info self,
-        index: usize,
-        offset: UnitOffset<usize>,
-    ) -> Result<DieHandle<'info, 'input>> {
-        let header = &self.units[index];
-        let abbrev = self.abbrev(header)?;
-
-        let handle = OwningHandle::try_new(abbrev, |a| -> Result<_> {
-            let mut entries = header.entries_at_offset(unsafe { &*a }, offset)?;
-            entries.next_entry()?;
-            Ok(Box::new(entries))
-        })?;
-
-        OwningRef::new(handle).try_map(|h| {
-            h.current().ok_or_else(|| err("invalid debug symbols: dangling entry offset"))
-        })
-    }
-
-    fn entry_at_offset<'info>(
-        &'info self,
-        offset: DebugInfoOffset<usize>,
-    ) -> Result<DieHandle<'info, 'input>> {
-        let (unit, offset) = self.find_unit_offset(offset)?;
-        self.entry_at_unit_offset(unit, offset)
     }
 }
 
@@ -261,6 +229,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             let functions = unit.functions(&info)?;
             for mut func in functions {
                 func.dedup_inlines();
+                println!("{:#?}", func);
             }
         }
 
@@ -279,11 +248,11 @@ struct Unit<'input> {
 }
 
 impl<'input> Unit<'input> {
-    fn parse(info: &mut DwarfInfo<'input>, index: usize) -> Result<Option<Unit<'input>>> {
+    fn parse(info: &DwarfInfo<'input>, index: usize) -> Result<Option<Unit<'input>>> {
         let header = &info.units[index];
 
         // Access the compilation unit, which must be the top level DIE
-        let abbrev = info.abbrev(header)?;
+        let abbrev = info.get_abbrev(header)?;
         let mut entries = header.entries(&*abbrev);
         let (_, entry) = entries
             .next_dfs()
@@ -306,19 +275,17 @@ impl<'input> Unit<'input> {
 
         let comp_dir = entry
             .attr(gimli::DW_AT_comp_dir)
-            .map_err(|e| Error::from(e))
             .chain_err(|| err("invalid compilation unit directory"))?
             .and_then(|attr| attr.string_value(&info.debug_str));
 
         let comp_name = entry
             .attr(gimli::DW_AT_name)
-            .map_err(|e| Error::from(e))
             .chain_err(|| err("invalid compilation unit name"))?
             .and_then(|attr| attr.string_value(&info.debug_str));
 
         let language = entry
             .attr(gimli::DW_AT_language)
-            .map_err(|e| Error::from(e))?
+            .chain_err(|| err("invalid language"))?
             .and_then(|attr| match attr.value() {
                 AttributeValue::Language(lang) => Some(lang),
                 _ => None,
@@ -344,7 +311,7 @@ impl<'input> Unit<'input> {
         let mut depth = 0;
         let mut functions: Vec<Function> = vec![];
         let header = &info.units[self.index];
-        let abbrev = info.abbrev(header)?;
+        let abbrev = info.get_abbrev(header)?;
         let mut entries = header.entries(&*abbrev);
 
         let line_program = DwarfLineProgram::parse(
@@ -484,27 +451,50 @@ impl<'input> Unit<'input> {
         }))
     }
 
-    fn resolve_reference<'info>(
+    fn with_resolve_reference<'info, T, F>(
         &self,
         info: &'info DwarfInfo<'input>,
         base_entry: &Die,
         ref_attr: DwAt,
-    ) -> Result<Option<DieHandle<'info, 'input>>> {
-        Ok(match base_entry.attr_value(ref_attr)? {
+        f: F,
+    ) -> Result<T>
+        where for<'r> F: FnOnce(Option<&Die<'r, 'info, 'input>>) -> Result<T>
+    {
+        let (index, offset) = match base_entry.attr_value(ref_attr)? {
             Some(AttributeValue::UnitRef(offset)) => {
-                Some(info.entry_at_unit_offset(self.index, offset)?)
+                (self.index, offset)
             }
             Some(AttributeValue::DebugInfoRef(offset)) => {
-                let header = &info.units[self.index];
-                if let Some(unit_offset) = offset.to_unit_offset(header) {
-                    Some(info.entry_at_unit_offset(self.index, unit_offset)?)
-                } else {
-                    Some(info.entry_at_offset(offset)?)
-                }
+                let (index, unit_offset) = info.find_unit_offset(offset)?;
+                (index, unit_offset)
             }
-            None => None,
+            None => { return f(None) }
             // TODO: there is probably more that can come back here
-            _ => None,
+            _ => { return f(None); }
+        };
+
+        let header = &info.units[index];
+        let abbrev = info.get_abbrev(header)?;
+        let mut entries = header.entries_at_offset(&*abbrev, offset)?;
+        entries.next_entry()?;
+        f(entries.current())
+    }
+
+    fn resolve_reference<'info, T, F>(
+        &self,
+        info: &'info DwarfInfo<'input>,
+        base_entry: &Die,
+        ref_attr: DwAt,
+        f: F,
+    ) -> Result<Option<T>>
+        where for<'r> F: FnOnce(&Die<'r, 'info, 'input>) -> Result<Option<T>>
+    {
+        self.with_resolve_reference(info, base_entry, ref_attr, |die_opt| {
+            if let Some(die) = die_opt {
+                f(die)
+            } else {
+                Ok(None)
+            }
         })
     }
 
@@ -516,7 +506,6 @@ impl<'input> Unit<'input> {
         // For naming, we prefer the linked name, if available
         if let Some(name) = entry
             .attr(gimli::DW_AT_linkage_name)
-            .map_err(|e| Error::from(e))
             .chain_err(|| err("invalid subprogram linkage name"))?
             .and_then(|attr| attr.string_value(&info.debug_str))
         {
@@ -524,7 +513,6 @@ impl<'input> Unit<'input> {
         }
         if let Some(name) = entry
             .attr(gimli::DW_AT_MIPS_linkage_name)
-            .map_err(|e| Error::from(e))
             .chain_err(|| err("invalid subprogram linkage name"))?
             .and_then(|attr| attr.string_value(&info.debug_str))
         {
@@ -534,7 +522,6 @@ impl<'input> Unit<'input> {
         // Linked name is not available, so fall back to just plain old name, if that's available.
         if let Some(name) = entry
             .attr(gimli::DW_AT_name)
-            .map_err(|e| Error::from(e))
             .chain_err(|| err("invalid subprogram name"))?
             .and_then(|attr| attr.string_value(&info.debug_str))
         {
@@ -542,20 +529,19 @@ impl<'input> Unit<'input> {
         }
 
         // If we don't have the link name, check if this function refers to another
-        if let Some(abstract_origin) =
-            self.resolve_reference(info, entry, gimli::DW_AT_abstract_origin)
-                .chain_err(|| err("invalid subprogram abstract origin"))?
-        {
-            let name = self.resolve_function_name(info, &*abstract_origin)
-                .chain_err(|| err("abstract origin does not resolve to a name"))?;
+        if let Some(name) = self.resolve_reference(info, entry, gimli::DW_AT_abstract_origin, |entry| {
+            self.resolve_function_name(info, entry)
+                .map(|name| Some(name))
+                .chain_err(|| err("abstract origin does not resolve to a name"))
+        }).chain_err(|| err("invalid subprogram abstract origin"))? {
             return Ok(name);
         }
-        if let Some(specification) =
-            self.resolve_reference(info, entry, gimli::DW_AT_specification)
-                .chain_err(|| err("invalid subprogram specification"))?
-        {
-            let name = self.resolve_function_name(info, &*specification)
-                .chain_err(|| err("specification does not resolve to a name"))?;
+
+        if let Some(name) = self.resolve_reference(info, entry, gimli::DW_AT_specification, |entry| {
+            self.resolve_function_name(info, entry)
+                .map(|name| Some(name))
+                .chain_err(|| err("specification does not resolve to a name"))
+        }).chain_err(|| err("invalid subprogram specification"))? {
             return Ok(name);
         }
 
