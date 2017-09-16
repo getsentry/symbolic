@@ -11,6 +11,7 @@ use symbolic_common::{Endianness, Error, ErrorKind, Result, ResultExt};
 use symbolic_debuginfo::{DwarfSection, Object};
 
 use types::CacheFileHeader;
+use utils::IdMap;
 
 use fallible_iterator::FallibleIterator;
 use lru_cache::LruCache;
@@ -69,6 +70,7 @@ impl<'a> fmt::Debug for Function<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Function")
             .field("name", &String::from_utf8_lossy(self.name))
+            .field("depth", &self.depth)
             .field("inlines", &self.inlines)
             .field("lines", &self.lines)
             .finish()
@@ -110,6 +112,8 @@ impl<'a> Function<'a> {
 pub struct SymCacheWriter<W: Write + Seek> {
     writer: RefCell<W>,
     header: CacheFileHeader,
+    symbols: IdMap<Vec<u8>, u32>,
+    file_names: IdMap<Vec<u8>, u32>,
 }
 
 #[derive(Debug)]
@@ -190,6 +194,8 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         SymCacheWriter {
             writer: RefCell::new(writer),
             header: Default::default(),
+            file_names: IdMap::new(),
+            symbols: IdMap::new(),
         }
     }
 
