@@ -77,8 +77,9 @@ impl<'a> fmt::Debug for Function<'a> {
 impl<'a> Function<'a> {
     pub fn append_line_if_changed(&mut self, line: Line<'a>) {
         if let Some(last_line) = self.lines.last() {
-            if last_line.filename == line.filename && last_line.comp_dir == line.comp_dir &&
-                last_line.line == line.line
+            if last_line.filename == line.filename &&
+               last_line.comp_dir == line.comp_dir &&
+               last_line.line == line.line
             {
                 return;
             }
@@ -267,12 +268,18 @@ impl<'input> Unit<'input> {
 
         let base_address = match entry.attr_value(gimli::DW_AT_low_pc) {
             Ok(Some(AttributeValue::Addr(addr))) => addr,
-            Err(e) => return Err(e).chain_err(|| err("invalid low_pc attribute")),
-            _ => match entry.attr_value(gimli::DW_AT_entry_pc) {
-                Ok(Some(AttributeValue::Addr(addr))) => addr,
-                Err(e) => return Err(e).chain_err(|| err("invalid entry_pc attribute")),
-                _ => 0,
-            },
+            Err(e) => {
+                return Err(e).chain_err(|| err("invalid low_pc attribute"));
+            }
+            _ => {
+                match entry.attr_value(gimli::DW_AT_entry_pc) {
+                    Ok(Some(AttributeValue::Addr(addr))) => addr,
+                    Err(e) => {
+                        return Err(e).chain_err(|| err("invalid entry_pc attribute"));
+                    }
+                    _ => 0,
+                }
+            }
         };
 
         let comp_dir = entry
@@ -295,8 +302,12 @@ impl<'input> Unit<'input> {
 
         let line_offset = match entry.attr_value(gimli::DW_AT_stmt_list) {
             Ok(Some(AttributeValue::DebugLineRef(offset))) => offset,
-            Err(e) => return Err(e).chain_err(|| "invalid compilation unit statement list"),
-            _ => return Ok(None),
+            Err(e) => {
+                return Err(e).chain_err(|| "invalid compilation unit statement list");
+            }
+            _ => {
+                return Ok(None);
+            }
         };
 
         Ok(Some(Unit {
@@ -372,9 +383,10 @@ impl<'input> Unit<'input> {
             }
 
             if inline {
-                let mut node = functions.last_mut().expect("no root function");
-                while { { &node }.inlines.last().map_or(false, |n| n.depth < depth) } {
-                    node = { node }.inlines.last_mut().unwrap();
+                let mut node = functions.last_mut()
+                    .ok_or_else(|| err("no root function"))?;
+                while { {&node}.inlines.last().map_or(false, |n| n.depth < depth) } {
+                    node = {node}.inlines.last_mut().unwrap();
                 }
                 node.inlines.push(func);
             } else {
@@ -395,11 +407,9 @@ impl<'input> Unit<'input> {
         }
     }
 
-    fn parse_noncontiguous_ranges(
-        &self,
-        info: &DwarfInfo<'input>,
-        entry: &Die,
-    ) -> Result<Option<Vec<Range>>> {
+    fn parse_noncontiguous_ranges(&self, info: &DwarfInfo<'input>, entry: &Die)
+        -> Result<Option<Vec<Range>>>
+    {
         let offset = match entry.attr_value(gimli::DW_AT_ranges) {
             Ok(Some(AttributeValue::DebugRangesRef(offset))) => offset,
             Err(e) => {
@@ -421,24 +431,34 @@ impl<'input> Unit<'input> {
     fn parse_contiguous_range(entry: &Die) -> Result<Option<Range>> {
         let low_pc = match entry.attr_value(gimli::DW_AT_low_pc) {
             Ok(Some(AttributeValue::Addr(addr))) => addr,
-            Err(e) => return Err(Error::from(e)).chain_err(|| err("invalid low_pc attribute")),
-            _ => return Ok(None),
+            Err(e) => {
+                return Err(Error::from(e)).chain_err(|| err("invalid low_pc attribute"));
+            }
+            _ => {
+                return Ok(None);
+            }
         };
 
         let high_pc = match entry.attr_value(gimli::DW_AT_high_pc) {
             Ok(Some(AttributeValue::Addr(addr))) => addr,
             Ok(Some(AttributeValue::Udata(size))) => low_pc.wrapping_add(size),
-            Err(e) => return Err(Error::from(e)).chain_err(|| err("invalid high_pc attribute")),
-            _ => return Ok(None),
+            Err(e) => {
+                return Err(Error::from(e)).chain_err(|| err("invalid high_pc attribute"));
+            }
+            _ => {
+                return Ok(None);
+            }
         };
 
         if low_pc == 0 {
-            // https://sourceware.org/git/gitweb.cgi?p=binutils-gdb.git;a=blob;f=gdb/dwarf2read.c;h=ed10e03812f381ccdb5c51e1c689df8d61ab87f6;hb=HEAD#l16000
+            // to go by the logic in dwarf2read a low_pc of 0 can indicate an
+            // eliminated duplicate when the GNU linker is used.
             // TODO: *technically* there could be a relocatable section placed at VA 0
             return Ok(None);
         }
 
         if low_pc == high_pc {
+            // most likely low_pc == high_pc means the DIE should be ignored.
             // https://sourceware.org/ml/gdb-patches/2011-03/msg00739.html
             return Ok(None);
         }
@@ -522,16 +542,20 @@ impl<'input> Unit<'input> {
         }
 
         // If we don't have the link name, check if this function refers to another
-        if let Some(name) = self.resolve_reference(info, entry, gimli::DW_AT_abstract_origin, |entry| {
-            self.resolve_function_name(info, entry)
+        if let Some(name) = self.resolve_reference(
+            info, entry, gimli::DW_AT_abstract_origin, |referenced_entry|
+        {
+            self.resolve_function_name(info, referenced_entry)
                 .map(|name| Some(name))
                 .chain_err(|| err("abstract origin does not resolve to a name"))
         }).chain_err(|| err("invalid subprogram abstract origin"))? {
             return Ok(name);
         }
 
-        if let Some(name) = self.resolve_reference(info, entry, gimli::DW_AT_specification, |entry| {
-            self.resolve_function_name(info, entry)
+        if let Some(name) = self.resolve_reference(
+            info, entry, gimli::DW_AT_specification, |referenced_entry|
+        {
+            self.resolve_function_name(info, referenced_entry)
                 .map(|name| Some(name))
                 .chain_err(|| err("specification does not resolve to a name"))
         }).chain_err(|| err("invalid subprogram specification"))? {
