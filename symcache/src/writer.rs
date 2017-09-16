@@ -121,7 +121,7 @@ struct DwarfInfo<'input> {
 }
 
 impl<'input> DwarfInfo<'input> {
-    fn from_object(obj: &'input Object) -> Result<DwarfInfo<'input>> {
+    pub fn from_object(obj: &'input Object) -> Result<DwarfInfo<'input>> {
         macro_rules! section {
             ($sect:ident, $mandatory:expr) => {{
                 let sect = match obj.get_dwarf_section(DwarfSection::$sect) {
@@ -130,9 +130,8 @@ impl<'input> DwarfInfo<'input> {
                         if $mandatory {
                             return Err(ErrorKind::MissingSection(
                                 DwarfSection::$sect.get_elf_section()).into());
-                        } else {
-                            &[]
                         }
+                        &[]
                     }
                 };
                 $sect::new(sect, obj.endianess())
@@ -149,7 +148,13 @@ impl<'input> DwarfInfo<'input> {
         })
     }
 
-    fn get_abbrev(&self, header: &CompilationUnitHeader<Buf<'input>>)
+    pub fn get_unit_header(&self, index: usize)
+        -> Result<&CompilationUnitHeader<Buf<'input>>>
+    {
+        self.units.get(index).ok_or_else(|| err("non existing unit"))
+    }
+
+    pub fn get_abbrev(&self, header: &CompilationUnitHeader<Buf<'input>>)
         -> Result<Arc<Abbreviations>>
     {
         let offset = header.debug_abbrev_offset();
@@ -157,15 +162,12 @@ impl<'input> DwarfInfo<'input> {
         if let Some(abbrev) = cache.get_mut(&offset) {
             return Ok(abbrev.clone());
         }
-        {
-            let abbrev = header
-                .abbreviations(&self.debug_abbrev)
-                .chain_err(|| {
-                    err("compilation unit refers to non-existing abbreviations")
-                })?;
-            let mut cache_mut = self.abbrev_cache.borrow_mut();
-            cache_mut.insert(offset, Arc::new(abbrev));
-        }
+        let abbrev = header
+            .abbreviations(&self.debug_abbrev)
+            .chain_err(|| {
+                err("compilation unit refers to non-existing abbreviations")
+            })?;
+        cache.insert(offset, Arc::new(abbrev));
         Ok(cache.get_mut(&offset).unwrap().clone())
     }
 
@@ -214,9 +216,9 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         let mut info = DwarfInfo::from_object(obj)
             .chain_err(|| err("could not extract debug info from object file"))?;
 
-        for index in 0..info.units.len() {
+        for (index, header) in info.units.iter().enumerate() {
             // attempt to parse a single unit from the given header.
-            let unit_opt = Unit::parse(&mut info, index)
+            let unit_opt = Unit::parse(&info, index)
                 .chain_err(|| err("encountered invalid compilation unit"))?;
 
             // skip units we don't care about
@@ -249,7 +251,7 @@ struct Unit<'input> {
 
 impl<'input> Unit<'input> {
     fn parse(info: &DwarfInfo<'input>, index: usize) -> Result<Option<Unit<'input>>> {
-        let header = &info.units[index];
+        let header = info.get_unit_header(index)?;
 
         // Access the compilation unit, which must be the top level DIE
         let abbrev = info.get_abbrev(header)?;
@@ -310,7 +312,7 @@ impl<'input> Unit<'input> {
     fn functions(&self, info: &DwarfInfo<'input>) -> Result<Vec<Function<'input>>> {
         let mut depth = 0;
         let mut functions: Vec<Function> = vec![];
-        let header = &info.units[self.index];
+        let header = info.get_unit_header(self.index)?;
         let abbrev = info.get_abbrev(header)?;
         let mut entries = header.entries(&*abbrev);
 
@@ -406,7 +408,7 @@ impl<'input> Unit<'input> {
             _ => return Ok(None),
         };
 
-        let header = &info.units[self.index];
+        let header = info.get_unit_header(self.index)?;
         let ranges = info.debug_ranges
             .ranges(offset, header.address_size(), self.base_address)
             .chain_err(|| err("range offsets are not valid"))?
@@ -477,7 +479,7 @@ impl<'input> Unit<'input> {
             _ => { return Ok(None); }
         };
 
-        let header = &info.units[index];
+        let header = info.get_unit_header(index)?;
         let abbrev = info.get_abbrev(header)?;
         let mut entries = header.entries_at_offset(&*abbrev, offset)?;
         entries.next_entry()?;
