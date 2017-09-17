@@ -97,10 +97,9 @@ impl<'a> SymCache<'a> {
 
     /// Constructs a symcache from an object.
     pub fn from_object(obj: &Object) -> Result<SymCache<'a>> {
-        let mut out: Vec<u8> = vec![];
-        write_sym_cache(io::Cursor::new(out), obj)?;
-        panic!("this is not implemented yet");
-        //SymCache::new(ByteView::from_vec(out))
+        let mut cur = io::Cursor::new(Vec::<u8>::new());
+        write_sym_cache(&mut cur, obj)?;
+        SymCache::new(ByteView::from_vec(cur.into_inner()))
     }
 
     fn get_data(&self, start: usize, len: usize) -> Result<&[u8]> {
