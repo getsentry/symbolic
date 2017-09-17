@@ -223,8 +223,12 @@ impl<'a> SymCache<'a> {
     /// an empty vector.
     pub fn lookup(&'a self, addr: u64) -> Result<Vec<Symbol<'a>>> {
         let funcs = self.functions()?;
+
+        // functions in the function segment are ordered by start address
+        // primarily and by depth secondarily.  As a result we want to have
+        // a secondary comparison by the item index.
         let mut fun = match binsearch_by_key(
-            funcs, (addr, !0), |x| (x.addr_start(), x.parent().unwrap_or(0)))
+            funcs, (addr, !0), |idx, rec| (rec.addr_start(), idx))
         {
             Some(fun) => fun,
             None => { return Ok(vec![]); }

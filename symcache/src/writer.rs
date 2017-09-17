@@ -216,6 +216,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         f(&mut *self.writer.borrow_mut() as &mut W)
     }
 
+    #[inline(always)]
     fn write<T>(&self, x: &T) -> Result<Seg<u8>> {
         unsafe {
             let bytes: *const u8 = mem::transmute(x);
