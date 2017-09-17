@@ -87,7 +87,7 @@ impl<'a> SymCache<'a> {
         };
         {
             let header = rv.header()?;
-            if header.version != 2 {
+            if header.version != 1 {
                 return Err(ErrorKind::UnknownCacheFileVersion(
                     header.version).into());
             }

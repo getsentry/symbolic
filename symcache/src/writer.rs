@@ -302,6 +302,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             }
         }
 
+        self.header.version = 1;
         if let Some(uuid) = obj.uuid() {
             self.header.uuid = *uuid;
         }
