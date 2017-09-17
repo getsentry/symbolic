@@ -225,7 +225,7 @@ impl<'a> SymCache<'a> {
             None => { return Ok(vec![]); }
         };
 
-        // the binsearch might mis the function
+        // the binsearch might miss the function
         while !fun.addr_in_range(addr) {
             if let Some(parent_id) = fun.get_parent_func() {
                 fun = &funcs[parent_id];

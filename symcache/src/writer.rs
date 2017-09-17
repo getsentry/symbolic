@@ -160,7 +160,7 @@ impl<'input> DwarfInfo<'input> {
             debug_line: section!(DebugLine, true),
             debug_ranges: section!(DebugRanges, false),
             debug_str: section!(DebugStr, false),
-            abbrev_cache: RefCell::new(LruCache::new(10)),
+            abbrev_cache: RefCell::new(LruCache::new(30)),
         })
     }
 
@@ -295,11 +295,10 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             };
 
             // dedup instructions from inline functions
-            let functions = unit.functions(&info)?;
-            for mut func in functions {
+            unit.for_each_function(&info, |mut func| {
                 func.dedup_inlines();
-                self.write_function(&func, !0)?;
-            }
+                self.write_function(&func, !0)
+            })?;
         }
 
         self.header.version = 1;
@@ -448,12 +447,15 @@ impl<'input> Unit<'input> {
         }))
     }
 
-    fn functions(&self, info: &DwarfInfo<'input>) -> Result<Vec<Function<'input>>> {
+    fn for_each_function<T, F>(&self, info: &DwarfInfo<'input>, mut f: F)
+        -> Result<()>
+    where F: FnMut(Function<'input>) -> Result<T>
+    {
         let mut depth = 0;
-        let mut functions: Vec<Function> = vec![];
         let header = info.get_unit_header(self.index)?;
         let abbrev = info.get_abbrev(header)?;
         let mut entries = header.entries(&*abbrev);
+        let mut last_func: Option<Function> = None;
 
         let line_program = DwarfLineProgram::parse(
             info,
@@ -512,18 +514,25 @@ impl<'input> Unit<'input> {
             }
 
             if inline {
-                let mut node = functions.last_mut()
+                let mut node = last_func.as_mut()
                     .ok_or_else(|| err("no root function"))?;
                 while {&node}.inlines.last().map_or(false, |n| (n.depth as isize) < depth) {
                     node = {node}.inlines.last_mut().unwrap();
                 }
                 node.inlines.push(func);
             } else {
-                functions.push(func);
+                if let Some(func) = last_func {
+                    f(func)?;
+                }
+                last_func = Some(func);
             }
         }
 
-        Ok(functions)
+        if let Some(func) = last_func {
+            f(func)?;
+        }
+
+        Ok(())
     }
 
     fn parse_ranges(&self, info: &DwarfInfo<'input>, entry: &Die) -> Result<Vec<Range>> {
