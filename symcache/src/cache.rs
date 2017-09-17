@@ -102,6 +102,11 @@ impl<'a> SymCache<'a> {
         SymCache::new(ByteView::from_vec(cur.into_inner()))
     }
 
+    /// The total size of the cache file
+    pub fn size(&self) -> usize {
+        self.byteview.len()
+    }
+
     fn get_data(&self, start: usize, len: usize) -> Result<&[u8]> {
         let buffer = &self.byteview;
         let end = start.wrapping_add(len);
