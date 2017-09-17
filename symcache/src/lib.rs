@@ -3,7 +3,6 @@ extern crate symbolic_common;
 extern crate symbolic_debuginfo;
 extern crate uuid;
 extern crate gimli;
-extern crate num;
 extern crate fallible_iterator;
 extern crate lru_cache;
 extern crate owning_ref;

@@ -1,6 +1,5 @@
-
 use std::cell::RefCell;
-use std::collections::BTreeSet;
+use std::collections::{HashMap, BTreeSet};
 use std::fmt;
 use std::io::{Seek, SeekFrom, Write};
 use std::mem;
@@ -10,8 +9,7 @@ use std::sync::Arc;
 use symbolic_common::{Endianness, Error, ErrorKind, Result, ResultExt};
 use symbolic_debuginfo::{DwarfSection, Object};
 
-use types::CacheFileHeader;
-use utils::IdMap;
+use types::{CacheFileHeader, Seg, FuncRecord, LineRecord, FileRecord};
 
 use fallible_iterator::FallibleIterator;
 use lru_cache::LruCache;
@@ -20,7 +18,6 @@ use gimli::{Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbbrev, D
             DebugInfo, DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr,
             DebuggingInformationEntry, DwAt, DwLang, EndianBuf,
             LineNumberProgramHeader, Range, UnitOffset};
-use owning_ref::{OwningHandle, OwningRef};
 
 type Buf<'input> = EndianBuf<'input, Endianness>;
 type Die<'abbrev, 'unit, 'input> = DebuggingInformationEntry<'abbrev, 'unit, Buf<'input>>;
@@ -107,13 +104,26 @@ impl<'a> Function<'a> {
             func.dedup_inlines();
         }
     }
+
+    pub fn get_addr(&self) -> u64 {
+        if let Some(line) = self.lines.get(0) {
+            line.addr
+        } else if let Some(func) = self.inlines.get(0) {
+            func.get_addr()
+        } else {
+            0
+        }
+    }
 }
 
 pub struct SymCacheWriter<W: Write + Seek> {
     writer: RefCell<W>,
     header: CacheFileHeader,
-    symbols: IdMap<Vec<u8>, u32>,
-    file_names: IdMap<Vec<u8>, u32>,
+    symbols: HashMap<Vec<u8>, (u32, Seg<u8>)>,
+    files: HashMap<Vec<u8>, Seg<u8>>,
+    file_records: HashMap<FileRecord, u16>,
+    func_records: Vec<FuncRecord>,
+    line_records: Vec<Seg<LineRecord>>,
 }
 
 #[derive(Debug)]
@@ -194,37 +204,86 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         SymCacheWriter {
             writer: RefCell::new(writer),
             header: Default::default(),
-            file_names: IdMap::new(),
-            symbols: IdMap::new(),
+            symbols: HashMap::new(),
+            files: HashMap::new(),
+            file_records: HashMap::new(),
+            func_records: vec![],
+            line_records: vec![],
         }
     }
 
-    fn with_file<T, F: FnOnce(&mut W) -> T>(&self, f: F) -> T {
+    fn with_file<T, F: FnOnce(&mut W) -> Result<T>>(&self, f: F) -> Result<T> {
         f(&mut *self.writer.borrow_mut() as &mut W)
     }
 
-    fn write<T>(&self, x: &T) -> Result<usize> {
+    fn write<T>(&self, x: &T) -> Result<Seg<u8>> {
         unsafe {
             let bytes: *const u8 = mem::transmute(x);
             let size = mem::size_of_val(x);
             self.with_file(|writer| {
-                writer.write_all(slice::from_raw_parts(bytes, size))
-            })?;
-            Ok(size)
+                let offset = writer.seek(SeekFrom::Current(0))?;
+                writer.write_all(slice::from_raw_parts(bytes, size))?;
+                Ok(Seg::new(offset as u32, size as u32))
+            })
         }
     }
 
+    fn write_seg<T>(&self, x: &[T]) -> Result<Seg<T>> {
+        let mut first_seg = None;
+        for item in x {
+            let seg = self.write(item)?;
+            if first_seg.is_none() {
+                first_seg = Some(seg);
+            }
+        }
+        Ok(Seg::new(first_seg.map(|x| x.offset).unwrap_or(0), x.len() as u32))
+    }
+
+    fn write_symbol_if_missing(&mut self, sym: &[u8]) -> Result<u32> {
+        if let Some(item) = self.symbols.get(sym) {
+            return Ok(item.0);
+        }
+        let idx = self.symbols.len() as u32;
+        let seg = self.write_seg(sym)?;
+        self.symbols.insert(sym.to_owned(), (idx, seg));
+        Ok(idx)
+    }
+
+    fn write_file_if_missing(&mut self, filename: &[u8]) -> Result<Seg<u8>> {
+        if let Some(item) = self.files.get(filename) {
+            return Ok(*item);
+        }
+        let seg = self.write_seg(filename)?;
+        self.files.insert(filename.to_owned(), seg);
+        Ok(seg)
+    }
+
+    fn write_file_record_if_missing(&mut self, comp_dir: &[u8], filename: &[u8]) -> Result<u16> {
+        let comp_dir_seg = self.write_file_if_missing(comp_dir)?;
+        let filename_seg = self.write_file_if_missing(filename)?;
+        let key = FileRecord {
+            filename: filename_seg,
+            comp_dir: comp_dir_seg,
+        };
+        if let Some(idx) = self.file_records.get(&key) {
+            return Ok(*idx);
+        }
+        let idx = self.file_records.len() as u16;
+        self.file_records.insert(key, idx);
+        Ok(idx)
+    }
+
     pub fn write_header(&self) -> Result<()> {
-        self.with_file(|writer| writer.seek(SeekFrom::Start(0)))?;
+        self.with_file(|writer| Ok(writer.seek(SeekFrom::Start(0))?))?;
         self.write(&self.header)?;
         Ok(())
     }
 
     pub fn write_object(&mut self, obj: &Object) -> Result<()> {
-        let mut info = DwarfInfo::from_object(obj)
+        let info = DwarfInfo::from_object(obj)
             .chain_err(|| err("could not extract debug info from object file"))?;
 
-        for (index, header) in info.units.iter().enumerate() {
+        for index in 0..info.units.len() {
             // attempt to parse a single unit from the given header.
             let unit_opt = Unit::parse(&info, index)
                 .chain_err(|| err("encountered invalid compilation unit"))?;
@@ -239,8 +298,72 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             let functions = unit.functions(&info)?;
             for mut func in functions {
                 func.dedup_inlines();
-                println!("{:#?}", func);
+                self.write_function(&func, !0)?;
             }
+        }
+
+        if let Some(uuid) = obj.uuid() {
+            self.header.uuid = *uuid;
+        }
+
+        let mut symbols: Vec<_> = self.symbols.values().collect();
+        symbols.sort_by_key(|x| x.0);
+        let symbols: Vec<_> = symbols.into_iter().map(|x| x.1).collect();
+        self.header.symbols = self.write_seg(&symbols)?;
+
+        let mut file_records: Vec<_> = self.file_records.iter().collect();
+        file_records.sort_by_key(|x| x.1);
+        let file_records: Vec<_> = file_records.into_iter().map(|x| *x.0).collect();
+        self.header.files = self.write_seg(&file_records)?;
+
+        self.header.function_records = self.write_seg(&self.func_records)?;
+        self.header.line_records = self.write_seg(&self.line_records)?;
+
+        Ok(())
+    }
+
+    fn write_function<'a>(&mut self, func: &Function<'a>, parent_id: u32)
+        -> Result<()>
+    {
+        let func_addr = func.get_addr();
+        let func_id = self.func_records.len() as u32;
+
+        let mut func_record = FuncRecord {
+            addr_low: (func_addr & 0xffffffff) as u32,
+            addr_high: ((func_addr << 32) & 0xffff) as u16,
+            // XXX: overflow needs to write a second func record
+            len: func.len as u16,
+            symbol_id: self.write_symbol_if_missing(func.name)?,
+            parent_id: parent_id,
+            line_record_id: !0,
+            line_start: func.lines.get(0).map(|x| x.line).unwrap_or(0),
+        };
+
+        let mut line_records = vec![];
+        let mut last_addr = func_record.addr_start();
+        let mut last_line = func_record.line_start;
+        for line in &func.lines {
+            // XXX: handle overflows as multiple records
+            let line_record = LineRecord {
+                addr_off: (line.addr - last_addr) as u16,
+                file_id: self.write_file_record_if_missing(line.comp_dir, line.filename)?,
+                line: (line.line - last_line) as u8,
+            };
+            last_addr += line_record.addr_off as u64;
+            last_line += line_record.line as u32;
+            line_records.push(line_record);
+        }
+
+        if !line_records.is_empty() {
+            let seg = self.write_seg(&line_records)?;
+            let line_record_id = self.line_records.len() as u32;
+            self.line_records.push(seg);
+            func_record.line_record_id = line_record_id;
+        }
+
+        self.func_records.push(func_record);
+        for inline_func in &func.inlines {
+            self.write_function(inline_func, func_id)?;
         }
 
         Ok(())

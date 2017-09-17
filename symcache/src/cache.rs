@@ -116,7 +116,7 @@ impl<'a> SymCache<'a> {
     }
 
     fn get_segment<T>(&self, seg: &Seg<T>) -> Result<&[T]> {
-        let offset = seg.offset as usize + mem::size_of::<CacheFileHeader>();
+        let offset = seg.offset as usize;
         let size = mem::size_of::<T>() * seg.len as usize;
         unsafe {
             Ok(mem::transmute(self.get_data(offset, size)?))

@@ -4,15 +4,25 @@ use uuid::Uuid;
 
 
 #[repr(C, packed)]
-#[derive(Default, Copy, Clone)]
+#[derive(Eq, PartialEq, Hash, Default, Copy, Clone)]
 pub struct Seg<T> {
     pub offset: u32,
     pub len: u32,
     _ty: PhantomData<T>,
 }
 
+impl<T> Seg<T> {
+    pub fn new(offset: u32, len: u32) -> Seg<T> {
+        Seg {
+            offset: offset,
+            len: len,
+            _ty: PhantomData,
+        }
+    }
+}
+
 #[repr(C, packed)]
-#[derive(Default, Copy, Clone)]
+#[derive(PartialEq, Eq, Hash, Default, Copy, Clone)]
 pub struct FileRecord {
     pub filename: Seg<u8>,
     pub comp_dir: Seg<u8>,
@@ -21,12 +31,21 @@ pub struct FileRecord {
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone)]
 pub struct FuncRecord {
+    /// low bits of the address.
     pub addr_low: u32,
+    /// high bits of the address
     pub addr_high: u16,
+    /// the length of the function.
     pub len: u16,
     pub symbol_id: u32,
+    /// The ID of the parent function.  If the function has no
+    /// parent then it will be ~0
     pub parent_id: u32,
+    /// The line record of this function.  If it fully overlaps
+    /// with an inline the record could be ~0
     pub line_record_id: u32,
+    /// The offset for all line records.  If there are none then
+    /// this is an undefined value.
     pub line_start: u32,
 }
 
