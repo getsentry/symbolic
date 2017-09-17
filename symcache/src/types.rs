@@ -37,6 +37,7 @@ pub struct FuncRecord {
     pub addr_high: u16,
     /// the length of the function.
     pub len: u16,
+    /// The ID of the symbol of this function or ~0 if no symbol.
     pub symbol_id: u32,
     /// The ID of the parent function.  If the function has no
     /// parent then it will be ~0
@@ -82,7 +83,7 @@ impl FuncRecord {
         addr >= self.addr_start() && addr <= self.addr_end()
     }
 
-    pub fn get_parent_func(&self) -> Option<usize> {
+    pub fn parent(&self) -> Option<usize> {
         if self.parent_id == !0 {
             None
         } else {

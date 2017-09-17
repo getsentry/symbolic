@@ -150,6 +150,9 @@ impl<'a> SymCache<'a> {
 
     /// Looks up a single symbol
     fn get_symbol(&self, idx: u32) -> Result<Option<&str>> {
+        if idx == !0 {
+            return Ok(None);
+        }
         let header = self.header()?;
         let syms = self.get_segment(&header.symbols)?;
         if let Some(ref seg) = syms.get(idx as usize) {
@@ -220,14 +223,16 @@ impl<'a> SymCache<'a> {
     /// an empty vector.
     pub fn lookup(&'a self, addr: u64) -> Result<Vec<Symbol<'a>>> {
         let funcs = self.functions()?;
-        let mut fun = match binsearch_by_key(funcs, addr, |x| x.addr_start()) {
+        let mut fun = match binsearch_by_key(
+            funcs, (addr, !0), |x| (x.addr_start(), x.parent().unwrap_or(0)))
+        {
             Some(fun) => fun,
             None => { return Ok(vec![]); }
         };
 
         // the binsearch might miss the function
         while !fun.addr_in_range(addr) {
-            if let Some(parent_id) = fun.get_parent_func() {
+            if let Some(parent_id) = fun.parent() {
                 fun = &funcs[parent_id];
             } else {
                 // we missed entirely :(
@@ -241,7 +246,7 @@ impl<'a> SymCache<'a> {
         rv.push(self.build_symbol(&fun, addr)?);
 
         // inlined outer parts
-        while let Some(parent_id) = fun.get_parent_func() {
+        while let Some(parent_id) = fun.parent() {
             let outer_addr = fun.addr_start();
             fun = &funcs[parent_id];
             rv.push(self.build_symbol(&fun, outer_addr)?);
