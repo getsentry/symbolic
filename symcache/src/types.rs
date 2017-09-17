@@ -44,9 +44,6 @@ pub struct FuncRecord {
     /// The line record of this function.  If it fully overlaps
     /// with an inline the record could be ~0
     pub line_record_id: u32,
-    /// The offset for all line records.  If there are none then
-    /// this is an undefined value.
-    pub line_start: u32,
 }
 
 #[repr(C, packed)]
@@ -56,8 +53,8 @@ pub struct LineRecord {
     pub addr_off: u16,
     /// absolutely indexed file
     pub file_id: u16,
-    /// offset to previous item or line record
-    pub line: u8,
+    /// the line of the line record
+    pub line: u16,
 }
 
 #[repr(C, packed)]

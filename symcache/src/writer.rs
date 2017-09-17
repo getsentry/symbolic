@@ -337,21 +337,18 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             symbol_id: self.write_symbol_if_missing(func.name)?,
             parent_id: parent_id,
             line_record_id: !0,
-            line_start: func.lines.get(0).map(|x| x.line).unwrap_or(0),
         };
 
         let mut line_records = vec![];
         let mut last_addr = func_record.addr_start();
-        let mut last_line = func_record.line_start;
         for line in &func.lines {
             // XXX: handle overflows as multiple records
             let line_record = LineRecord {
                 addr_off: (line.addr - last_addr) as u16,
                 file_id: self.write_file_record_if_missing(line.comp_dir, line.filename)?,
-                line: (line.line - last_line) as u8,
+                line: line.line as u16,
             };
             last_addr += line_record.addr_off as u64;
-            last_line += line_record.line as u32;
             line_records.push(line_record);
         }
 

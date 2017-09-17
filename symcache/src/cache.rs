@@ -177,17 +177,16 @@ impl<'a> SymCache<'a> {
         let records = self.get_segment(records_seg)?;
 
         let mut file_id = !0u16;
+        let mut running_addr = fun.addr_start() as u64;
         let mut line = 0u32;
-        let mut running_addr = fun.line_start as u64;
 
         for rec in records {
             let new_instr = running_addr + rec.addr_off as u64;
-            let new_line = line + rec.line as u32;
             if new_instr >= addr {
                 break;
             }
             running_addr = new_instr;
-            line = new_line;
+            line = rec.line as u32;
             file_id = rec.file_id;
         }
 
