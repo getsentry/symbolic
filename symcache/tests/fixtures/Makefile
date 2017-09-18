@@ -5,7 +5,11 @@ OUT_DIR ?= build
 DOCKER = docker
 
 # build command for cross compiling
-BUILD.docker = $(DOCKER) run -it --rm -v $(CURDIR):/workdir -e CROSS_TRIPLE=$@ multiarch/crossbuild
+BUILD.docker = $(DOCKER) run -it --rm \
+	-v $(CURDIR):/workdir \
+	-e CROSS_TRIPLE=$@ \
+	-e OUT_DIR=$(OUT_DIR) \
+	multiarch/crossbuild
 
 # all supported targets
 TARGETS = \
