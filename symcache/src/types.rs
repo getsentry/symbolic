@@ -71,6 +71,7 @@ pub struct LineRecord {
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone, Debug)]
 pub struct CacheFileHeader {
+    pub magic: [u8; 4],
     pub version: u32,
     pub uuid: Uuid,
     pub arch: u32,

@@ -12,6 +12,8 @@ use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, LineRecord};
 use utils::binsearch_by_key;
 use writer::write_symcache;
 
+pub const SYMCACHE_MAGIC: [u8; 4] = [b'S', b'Y', b'M', b'C'];
+
 /// A matched symbol
 pub struct Symbol<'a> {
     cache: &'a SymCache<'a>,
@@ -272,9 +274,11 @@ impl<'a> SymCache<'a> {
         };
         {
             let header = rv.header()?;
+            if header.magic != SYMCACHE_MAGIC {
+                return Err(ErrorKind::BadCacheFile("Bad file magic").into());
+            }
             if header.version != 1 {
-                return Err(ErrorKind::UnknownCacheFileVersion(
-                    header.version).into());
+                return Err(ErrorKind::BadCacheFile("Unsupported file version").into());
             }
         }
         Ok(rv)

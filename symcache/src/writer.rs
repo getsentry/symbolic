@@ -11,6 +11,7 @@ use symbolic_debuginfo::{DwarfSection, Object};
 
 use types::{CacheFileHeader, Seg, FuncRecord, LineRecord, FileRecord};
 use utils::binsearch_by_key;
+use cache::SYMCACHE_MAGIC;
 
 use fallible_iterator::FallibleIterator;
 use lru_cache::LruCache;
@@ -319,6 +320,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             })?;
         }
 
+        self.header.magic = SYMCACHE_MAGIC;
         self.header.version = 1;
         self.header.arch = obj.arch() as u32;
         if let Some(uuid) = obj.uuid() {

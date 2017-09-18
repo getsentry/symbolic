@@ -41,9 +41,9 @@ error_chain! {
             display("malformed object file: {}", &message)
         }
         /// Raised for unknown cache file versions.
-        UnknownCacheFileVersion(version: u32) {
-            description("unknown cache file version")
-            display("unknown cache file version '{}'", version)
+        BadCacheFile(msg: &'static str) {
+            description("bad cache file")
+            display("bad cache file: {}", msg)
         }
         /// Raised if a section is missing in an object file.
         MissingSection(section: &'static str) {
