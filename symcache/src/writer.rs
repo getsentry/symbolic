@@ -321,7 +321,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
 
         self.header.version = 1;
         if let Some(uuid) = obj.uuid() {
-            self.header.uuid = *uuid;
+            self.header.uuid = uuid;
         }
 
         self.header.symbols = self.write_seg(&self.symbols)?;
