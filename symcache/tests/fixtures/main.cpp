@@ -14,7 +14,7 @@ int run() {
   // NOTE: Next line covers function sub-scopes
   while (true) {
     // NOTE: Next line covers template expansion
-    int guess = read<int>("Place your guess: ");
+    int guess = read<int>("Place your guess");
     // NOTE: Next line covers simple return value optimization
     int secret = random();
     if (guess == secret)
