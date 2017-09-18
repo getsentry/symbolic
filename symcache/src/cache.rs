@@ -2,6 +2,7 @@ use std::io;
 use std::mem;
 use std::str;
 use std::fmt;
+use std::slice;
 use std::ffi::CStr;
 
 use symbolic_common::{Result, ErrorKind, ByteView};
@@ -9,7 +10,7 @@ use symbolic_debuginfo::Object;
 
 use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, LineRecord};
 use utils::binsearch_by_key;
-use writer::write_sym_cache;
+use writer::write_symcache;
 
 /// A matched symbol
 pub struct Symbol<'a> {
@@ -64,6 +65,14 @@ impl<'a> Symbol<'a> {
     }
 }
 
+impl<'a> fmt::Display for Symbol<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\n", self.symbol())?;
+        write!(f, "  at {}/{} line {}", self.comp_dir(), self.filename(), self.line())?;
+        Ok(())
+    }
+}
+
 impl<'a> fmt::Debug for Symbol<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Symbol")
@@ -98,7 +107,7 @@ impl<'a> SymCache<'a> {
     /// Constructs a symcache from an object.
     pub fn from_object(obj: &Object) -> Result<SymCache<'a>> {
         let mut cur = io::Cursor::new(Vec::<u8>::new());
-        write_sym_cache(&mut cur, obj)?;
+        write_symcache(&mut cur, obj)?;
         SymCache::new(ByteView::from_vec(cur.into_inner()))
     }
 
@@ -123,7 +132,11 @@ impl<'a> SymCache<'a> {
         let offset = seg.offset as usize;
         let size = mem::size_of::<T>() * seg.len as usize;
         unsafe {
-            Ok(mem::transmute(self.get_data(offset, size)?))
+            let bytes = self.get_data(offset, size)?;
+            Ok(slice::from_raw_parts(
+                mem::transmute(bytes.as_ptr()),
+                seg.len as usize
+            ))
         }
     }
 
@@ -185,7 +198,7 @@ impl<'a> SymCache<'a> {
 
         for rec in records {
             let new_instr = running_addr + rec.addr_off as u64;
-            if new_instr >= addr {
+            if new_instr > addr {
                 break;
             }
             running_addr = new_instr;
