@@ -24,7 +24,7 @@ extern crate symbolic_common;
 extern crate rustc_demangle;
 extern crate cpp_demangle;
 
-use symbolic_common::{ErrorKind, Result};
+use symbolic_common::{ErrorKind, Result, Language};
 use std::fmt;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
@@ -37,15 +37,6 @@ extern "C" {
         simplified: c_int,
     ) -> c_int;
     fn symbolic_demangle_is_swift_symbol(sym: *const c_char) -> c_int;
-}
-
-/// Supported programming languages for demangling
-#[derive(Eq, PartialEq, Hash, Debug, Copy, Clone)]
-pub enum Language {
-    Cpp,
-    Rust,
-    Swift,
-    ObjC,
 }
 
 /// Defines the output format of the demangler
@@ -195,7 +186,7 @@ impl<'a> Symbol<'a> {
             Some(Language::Rust) => try_demangle_rust(self.mangled, opts),
             Some(Language::Cpp) => try_demangle_cpp(self.mangled, opts),
             Some(Language::Swift) => try_demangle_swift(self.mangled, opts),
-            None => Ok(None),
+            _ => Ok(None),
         }
     }
 }

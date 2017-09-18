@@ -176,3 +176,37 @@ impl fmt::Display for Arch {
         )
     }
 }
+
+/// Supported programming languages for demangling
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+pub enum Language {
+    C,
+    Cpp,
+    D,
+    Go,
+    ObjC,
+    ObjCpp,
+    Rust,
+    Swift,
+}
+
+impl Language {
+    /// Converts a DWARF language tag into a supported language.
+    #[cfg(feature="with_dwarf")]
+    pub fn from_dwarf_lang(lang: gimli::DwLang) -> Option<Language> {
+        match lang {
+            gimli::DW_LANG_C | gimli::DW_LANG_C11 |
+            gimli::DW_LANG_C89 | gimli::DW_LANG_C99 => Some(Language::C),
+            gimli::DW_LANG_C_plus_plus | gimli::DW_LANG_C_plus_plus_03 |
+            gimli::DW_LANG_C_plus_plus_11 |
+            gimli::DW_LANG_C_plus_plus_14 => Some(Language::Cpp),
+            gimli::DW_LANG_D => Some(Language::D),
+            gimli::DW_LANG_Go => Some(Language::Go),
+            gimli::DW_LANG_ObjC => Some(Language::ObjC),
+            gimli::DW_LANG_ObjC_plus_plus => Some(Language::ObjCpp),
+            gimli::DW_LANG_Rust => Some(Language::Rust),
+            gimli::DW_LANG_Swift => Some(Language::Swift),
+            _ => None,
+        }
+    }
+}
