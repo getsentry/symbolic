@@ -20,6 +20,20 @@
       "problemMatcher": "$rustc"
     },
     {
+      "taskName": "cargo check all",
+      "type": "shell",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "command": "cargo",
+      "args": ["check", "--all", "--tests"],
+      "group": "build",
+      "problemMatcher": "$rustc"
+    },
+    {
       "taskName": "cargo run",
       "type": "shell",
       "presentation": {
