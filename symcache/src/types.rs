@@ -1,3 +1,4 @@
+use std::fmt;
 use std::marker::PhantomData;
 
 use uuid::Uuid;
@@ -21,15 +22,24 @@ impl<T> Seg<T> {
     }
 }
 
+impl<T> fmt::Debug for Seg<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Seg")
+            .field("offset", &self.offset)
+            .field("len", &self.len)
+            .finish()
+    }
+}
+
 #[repr(C, packed)]
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Default, Copy, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Default, Copy, Clone, Debug)]
 pub struct FileRecord {
     pub filename: Seg<u8>,
     pub comp_dir: Seg<u8>,
 }
 
 #[repr(C, packed)]
-#[derive(Default, Copy, Clone)]
+#[derive(Default, Copy, Clone, Debug)]
 pub struct FuncRecord {
     /// low bits of the address.
     pub addr_low: u32,
@@ -48,7 +58,7 @@ pub struct FuncRecord {
 }
 
 #[repr(C, packed)]
-#[derive(Default, Copy, Clone)]
+#[derive(Default, Copy, Clone, Debug)]
 pub struct LineRecord {
     /// offset to function item or line record
     pub addr_off: u16,
@@ -59,7 +69,7 @@ pub struct LineRecord {
 }
 
 #[repr(C, packed)]
-#[derive(Default, Copy, Clone)]
+#[derive(Default, Copy, Clone, Debug)]
 pub struct CacheFileHeader {
     pub version: u32,
     pub uuid: Uuid,

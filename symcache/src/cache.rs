@@ -2,6 +2,7 @@ use std::io;
 use std::mem;
 use std::str;
 use std::fmt;
+use std::slice;
 use std::ffi::CStr;
 
 use symbolic_common::{Result, ErrorKind, ByteView};
@@ -9,7 +10,7 @@ use symbolic_debuginfo::Object;
 
 use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, LineRecord};
 use utils::binsearch_by_key;
-use writer::write_sym_cache;
+use writer::write_symcache;
 
 /// A matched symbol
 pub struct Symbol<'a> {
@@ -64,6 +65,14 @@ impl<'a> Symbol<'a> {
     }
 }
 
+impl<'a> fmt::Display for Symbol<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\n", self.symbol())?;
+        write!(f, "  at {}/{} line {}", self.comp_dir(), self.filename(), self.line())?;
+        Ok(())
+    }
+}
+
 impl<'a> fmt::Debug for Symbol<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Symbol")
@@ -98,7 +107,7 @@ impl<'a> SymCache<'a> {
     /// Constructs a symcache from an object.
     pub fn from_object(obj: &Object) -> Result<SymCache<'a>> {
         let mut cur = io::Cursor::new(Vec::<u8>::new());
-        write_sym_cache(&mut cur, obj)?;
+        write_symcache(&mut cur, obj)?;
         SymCache::new(ByteView::from_vec(cur.into_inner()))
     }
 
@@ -123,7 +132,11 @@ impl<'a> SymCache<'a> {
         let offset = seg.offset as usize;
         let size = mem::size_of::<T>() * seg.len as usize;
         unsafe {
-            Ok(mem::transmute(self.get_data(offset, size)?))
+            let bytes = self.get_data(offset, size)?;
+            Ok(slice::from_raw_parts(
+                mem::transmute(bytes.as_ptr()),
+                seg.len as usize
+            ))
         }
     }
 
@@ -167,17 +180,25 @@ impl<'a> SymCache<'a> {
         self.get_segment(&header.function_records)
     }
 
-    fn line_records(&'a self) -> Result<&'a [Seg<LineRecord>]> {
+    fn get_line_records(&'a self, id: u32) -> Result<Option<&'a [LineRecord]>> {
+        if id == !0 {
+            return Ok(None);
+        }
         let header = self.header()?;
-        self.get_segment(&header.line_records)
+        let records = self.get_segment(&header.line_records)?;
+        match records.get(id as usize) {
+            Some(records_seg) => Ok(Some(self.get_segment(records_seg)?)),
+            None => Err(ErrorKind::Internal("unknown line record").into())
+        }
     }
 
-    fn run_to_line(&'a self, fun: &'a FuncRecord, addr: u64) -> Result<(&FileRecord, u32)> {
-        let records_seg = match self.line_records()?.get(fun.line_record_id as usize) {
+    fn run_to_line(&'a self, fun: &'a FuncRecord, addr: u64)
+        -> Result<Option<(&FileRecord, u32)>>
+    {
+        let records = match self.get_line_records(fun.line_record_id)? {
             Some(records) => records,
-            None => { return Err(ErrorKind::Internal("unknown line record").into()) }
+            None => { return Ok(None); }
         };
-        let records = self.get_segment(records_seg)?;
 
         let mut file_id = !0u16;
         let mut running_addr = fun.addr_start() as u64;
@@ -185,7 +206,7 @@ impl<'a> SymCache<'a> {
 
         for rec in records {
             let new_instr = running_addr + rec.addr_off as u64;
-            if new_instr >= addr {
+            if new_instr > addr {
                 break;
             }
             running_addr = new_instr;
@@ -197,22 +218,38 @@ impl<'a> SymCache<'a> {
         let files = self.get_segment(&header.files)?;
 
         if let Some(ref record) = files.get(file_id as usize) {
-            Ok((record, line))
+            Ok(Some((record, line)))
         } else {
             Err(ErrorKind::Internal("unknown file id").into())
         }
     }
 
-    fn build_symbol(&'a self, fun: &'a FuncRecord, addr: u64) -> Result<Symbol<'a>> {
-        let (file_record, line) = self.run_to_line(fun, addr)?;
+    fn build_symbol(&'a self, fun: &'a FuncRecord, addr: u64,
+                    inner_sym: Option<&Symbol<'a>>) -> Result<Symbol<'a>> {
+        let (line, filename, comp_dir) = match self.run_to_line(fun, addr)? {
+            Some((file_record, line)) => {
+                (
+                    line,
+                    self.get_segment_as_string(&file_record.filename)?,
+                    self.get_segment_as_string(&file_record.comp_dir)?,
+                )
+            }
+            None => {
+                if let Some(inner_sym) = inner_sym {
+                    (inner_sym.line, inner_sym.filename, inner_sym.comp_dir)
+                } else {
+                    (0, "", "")
+                }
+            }
+        };
         Ok(Symbol {
             cache: self,
             sym_addr: fun.addr_start(),
             instr_addr: addr,
             line: line,
             symbol: self.get_symbol(fun.symbol_id)?,
-            filename: self.get_segment_as_string(&file_record.filename)?,
-            comp_dir: self.get_segment_as_string(&file_record.comp_dir)?,
+            filename: filename,
+            comp_dir: comp_dir,
         })
     }
 
@@ -247,13 +284,16 @@ impl<'a> SymCache<'a> {
         let mut rv = vec![];
 
         // what we hit directly
-        rv.push(self.build_symbol(&fun, addr)?);
+        rv.push(self.build_symbol(&fun, addr, None)?);
 
         // inlined outer parts
         while let Some(parent_id) = fun.parent() {
             let outer_addr = fun.addr_start();
             fun = &funcs[parent_id];
-            rv.push(self.build_symbol(&fun, outer_addr)?);
+            let symbol = {
+                self.build_symbol(&fun, outer_addr, Some(&rv[rv.len() - 1]))?
+            };
+            rv.push(symbol);
         }
 
         Ok(rv)

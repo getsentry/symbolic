@@ -13,4 +13,4 @@ mod writer;
 mod utils;
 
 pub use cache::{Symbol, SymCache};
-pub use writer::SymCacheWriter;
+pub use writer::write_symcache;

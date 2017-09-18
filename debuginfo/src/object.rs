@@ -25,10 +25,23 @@ pub struct Object<'a> {
     target: ObjectTarget<'a>,
 }
 
+fn get_macho_uuid(macho: &mach::MachO) -> Option<Uuid> {
+    for cmd in &macho.load_commands {
+        if let mach::load_command::CommandVariant::Uuid(ref uuid_cmd) = cmd.command {
+            return Uuid::from_bytes(&uuid_cmd.uuid).ok();
+        }
+    }
+    None
+}
+
 impl<'a> Object<'a> {
     /// Returns the UUID of the object
-    pub fn uuid(&self) -> Option<&Uuid> {
-        None
+    pub fn uuid(&self) -> Option<Uuid> {
+        match self.target {
+            ObjectTarget::Elf(ref elf) => Uuid::from_bytes(&elf.header.e_ident).ok(),
+            ObjectTarget::MachOSingle(macho) => get_macho_uuid(macho),
+            ObjectTarget::MachOFat(_, ref macho) => get_macho_uuid(macho),
+        }
     }
 
     /// Returns the architecture of the object

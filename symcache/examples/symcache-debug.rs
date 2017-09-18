@@ -6,13 +6,13 @@ use std::env;
 use std::fs;
 use std::io::Read;
 
-use symbolic_symcache::SymCache;
+use symbolic_symcache::{SymCache, write_symcache};
 use symbolic_debuginfo::FatObject;
 use symbolic_common::ByteView;
 
 fn main() {
     let args: Vec<_> = env::args().collect();
-    if args.len() != 2 {
+    if args.len() != 2 && args.len() != 3 {
         panic!("takes example one argument");
     }
 
@@ -28,7 +28,19 @@ fn main() {
 
     let fat_obj = FatObject::parse(bv).unwrap();
     let objects = fat_obj.objects().unwrap();
-    let cache = SymCache::from_object(&objects[0]).unwrap();
 
-    println!("Cache file size: {}", cache.size());
+    let cachefile = format!("{}.symcache", filename);
+    write_symcache(fs::File::create(&cachefile).unwrap(), &objects[0]).unwrap();
+
+    let cache = SymCache::new(ByteView::from_path(&cachefile).unwrap()).unwrap();
+
+    if args.len() == 3 {
+        let m = cache.lookup(args[2].parse().unwrap()).unwrap();
+        for sym in m {
+            println!("{}", sym);
+        }
+    } else {
+        println!("Cache file size: {}", cache.size());
+    }
 }
+

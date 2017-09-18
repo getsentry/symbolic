@@ -27,7 +27,14 @@ fn err(msg: &'static str) -> Error {
     Error::from(ErrorKind::BadDwarfData(msg))
 }
 
-pub fn write_sym_cache<W: Write + Seek>(w: W, obj: &Object) -> Result<()> {
+/// Given a writer and object, dumps the object into the writer as symcache.
+///
+/// In case a symcache is to be constructed from memory the `SymCache::from_object`
+/// method can be used instead.
+///
+/// As a special requirement the writer needs to implement seek as the headers
+/// are overwritten later.
+pub fn write_symcache<W: Write + Seek>(w: W, obj: &Object) -> Result<()> {
     let mut writer = SymCacheWriter::new(w);
     // write the initial header into the file.  This positions the cursor after it.
     writer.write_header()?;
@@ -314,7 +321,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
 
         self.header.version = 1;
         if let Some(uuid) = obj.uuid() {
-            self.header.uuid = *uuid;
+            self.header.uuid = uuid;
         }
 
         self.header.symbols = self.write_seg(&self.symbols)?;
