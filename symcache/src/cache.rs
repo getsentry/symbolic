@@ -90,10 +90,21 @@ impl<'a> fmt::Debug for Symbol<'a> {
 /// A view of a single function in a sym cache.
 pub struct Function<'a> {
     cache: &'a SymCache<'a>,
+    id: u32,
     fun: &'a FuncRecord,
 }
 
 impl<'a> Function<'a> {
+    /// The ID of the function
+    pub fn id(&self) -> usize {
+        self.id as usize
+    }
+
+    /// The parent ID of the function
+    pub fn parent_id(&self) -> Option<usize> {
+        self.fun.parent()
+    }
+
     /// The address where the function starts.
     pub fn addr(&self) -> u64 {
         self.fun.addr_start()
@@ -115,6 +126,7 @@ impl<'a> Function<'a> {
     }
 }
 
+/// An iterator over all lines.
 pub struct Lines<'a> {
     cache: &'a SymCache<'a>,
     addr: u64,
@@ -122,6 +134,7 @@ pub struct Lines<'a> {
     idx: usize,
 }
 
+/// Represents a single line.
 pub struct Line<'a> {
     cache: &'a SymCache<'a>,
     addr: u64,
@@ -155,6 +168,7 @@ impl<'a> Iterator for Functions<'a> {
             self.idx += 1;
             Some(Ok(Function {
                 cache: self.cache,
+                id: (self.idx - 1) as u32,
                 fun: fun,
             }))
         } else {
@@ -199,9 +213,11 @@ impl<'a> fmt::Debug for LineDebug<'a> {
 impl<'a> fmt::Debug for Function<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Function")
+            .field("id", &self.id())
+            .field("parent_id", &self.parent_id())
             .field("symbol", &self.symbol())
             .field("addr", &self.addr())
-            .field("lines", &LineDebug(RefCell::new(Some(self.lines()))))
+            .field("lines()", &LineDebug(RefCell::new(Some(self.lines()))))
             .finish()
     }
 }
@@ -211,22 +227,39 @@ impl<'a> fmt::Debug for Line<'a> {
         f.debug_struct("Line")
             .field("addr", &self.addr)
             .field("line", &self.line)
-            .field("file_id", &self.file_id)
+            .field("comp_dir", &self.comp_dir())
+            .field("filename", &self.filename())
             .finish()
     }
 }
 
 impl<'a> Line<'a> {
+    /// The filename of the line.
+    pub fn filename(&self) -> &str {
+        if let Some(rec) = self.cache.get_file_record(self.file_id).unwrap_or(None) {
+            self.cache.get_segment_as_string(&rec.filename).unwrap_or("")
+        } else {
+            ""
+        }
+    }
+
+    /// The comp_dir of the line.
+    pub fn comp_dir(&self) -> &str {
+        if let Some(rec) = self.cache.get_file_record(self.file_id).unwrap_or(None) {
+            self.cache.get_segment_as_string(&rec.comp_dir).unwrap_or("")
+        } else {
+            ""
+        }
+    }
+
+    /// The address of the line.
     pub fn addr(&self) -> u64 {
         self.addr
     }
 
+    /// The line number of the line.
     pub fn line(&self) -> u16 {
         self.line
-    }
-
-    pub fn file_id(&self) -> u16 {
-        self.file_id
     }
 }
 
@@ -332,6 +365,12 @@ impl<'a> SymCache<'a> {
         }
     }
 
+    fn get_file_record(&self, idx: u16) -> Result<Option<&FileRecord>> {
+        let header = self.header()?;
+        let files = self.get_segment(&header.files)?;
+        Ok(files.get(idx as usize))
+    }
+
     fn run_to_line(&'a self, fun: &'a FuncRecord, addr: u64)
         -> Result<Option<(&FileRecord, u32)>>
     {
@@ -354,10 +393,7 @@ impl<'a> SymCache<'a> {
             file_id = rec.file_id;
         }
 
-        let header = self.header()?;
-        let files = self.get_segment(&header.files)?;
-
-        if let Some(ref record) = files.get(file_id as usize) {
+        if let Some(ref record) = self.get_file_record(file_id)? {
             Ok(Some((record, line)))
         } else {
             Err(ErrorKind::Internal("unknown file id").into())
