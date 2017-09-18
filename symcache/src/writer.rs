@@ -823,14 +823,10 @@ impl<'input> DwarfLineProgram<'input> {
                 Some((idx, _)) => idx,
                 None => { continue; }
             };
-            match binsearch_by_key(&seq.rows[start..], rng.end, |_, x| x.address) {
-                Some((idx, _)) => {
-                    return &seq.rows[start..start + idx]
-                }
-                None => {
-                    return &seq.rows[start..]
-                }
-            }
+            return match binsearch_by_key(&seq.rows[start..], rng.end, |_, x| x.address) {
+                Some((idx, _)) => &seq.rows[start..start + idx],
+                None => &seq.rows[start..],
+            };
         }
         &[]
     }
