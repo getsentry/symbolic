@@ -4,15 +4,25 @@ use uuid::Uuid;
 
 
 #[repr(C, packed)]
-#[derive(Default, Copy, Clone)]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Default, Copy, Clone)]
 pub struct Seg<T> {
     pub offset: u32,
     pub len: u32,
     _ty: PhantomData<T>,
 }
 
+impl<T> Seg<T> {
+    pub fn new(offset: u32, len: u32) -> Seg<T> {
+        Seg {
+            offset: offset,
+            len: len,
+            _ty: PhantomData,
+        }
+    }
+}
+
 #[repr(C, packed)]
-#[derive(Default, Copy, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Default, Copy, Clone)]
 pub struct FileRecord {
     pub filename: Seg<u8>,
     pub comp_dir: Seg<u8>,
@@ -21,13 +31,20 @@ pub struct FileRecord {
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone)]
 pub struct FuncRecord {
+    /// low bits of the address.
     pub addr_low: u32,
+    /// high bits of the address
     pub addr_high: u16,
+    /// the length of the function.
     pub len: u16,
+    /// The ID of the symbol of this function or ~0 if no symbol.
     pub symbol_id: u32,
+    /// The ID of the parent function.  If the function has no
+    /// parent then it will be ~0
     pub parent_id: u32,
+    /// The line record of this function.  If it fully overlaps
+    /// with an inline the record could be ~0
     pub line_record_id: u32,
-    pub line_start: u32,
 }
 
 #[repr(C, packed)]
@@ -37,8 +54,8 @@ pub struct LineRecord {
     pub addr_off: u16,
     /// absolutely indexed file
     pub file_id: u16,
-    /// offset to previous item or line record
-    pub line: u8,
+    /// the line of the line record
+    pub line: u16,
 }
 
 #[repr(C, packed)]
@@ -47,10 +64,9 @@ pub struct CacheFileHeader {
     pub version: u32,
     pub uuid: Uuid,
     pub arch: [i8; 16],
-    pub name_id: u32,
     pub symbols: Seg<Seg<u8>>,
     pub files: Seg<FileRecord>,
-    pub function_index: Seg<FuncRecord>,
+    pub function_records: Seg<FuncRecord>,
     pub line_records: Seg<Seg<LineRecord>>,
 }
 
@@ -67,7 +83,7 @@ impl FuncRecord {
         addr >= self.addr_start() && addr <= self.addr_end()
     }
 
-    pub fn get_parent_func(&self) -> Option<usize> {
+    pub fn parent(&self) -> Option<usize> {
         if self.parent_id == !0 {
             None
         } else {

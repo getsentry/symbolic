@@ -16,7 +16,7 @@ pub enum DwarfSection {
 
 impl DwarfSection {
     /// Return the name for elf
-    pub fn get_elf_section(&self) -> &str {
+    pub fn get_elf_section(&self) -> &'static str {
         match *self {
             DwarfSection::EhFrame => ".eh_frame",
             DwarfSection::DebugFrame => ".debug_frame",
@@ -33,7 +33,7 @@ impl DwarfSection {
     }
 
     /// Return the name for macho
-    pub fn get_macho_section(&self) -> &str {
+    pub fn get_macho_section(&self) -> &'static str {
         match *self {
             DwarfSection::EhFrame => "__eh_frame",
             DwarfSection::DebugFrame => "__debug_frame",
@@ -68,7 +68,7 @@ impl<'a> DwarfSectionData<'a> {
     }
 
     /// Return the section as bytes
-    pub fn as_bytes(&self) -> &[u8] {
+    pub fn as_bytes(&self) -> &'a [u8] {
         self.data
     }
 

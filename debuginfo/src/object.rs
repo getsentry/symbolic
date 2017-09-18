@@ -5,7 +5,7 @@ use goblin::{elf, mach, Hint};
 use uuid::Uuid;
 
 use dwarf::{DwarfSection, DwarfSectionData};
-use symbolic_common::{Arch, ByteView, Endianness, ErrorKind, Result};
+use symbolic_common::{Arch, ByteView, ByteViewHandle, Endianness, ErrorKind, Result};
 
 enum FatObjectKind<'a> {
     Elf(elf::Elf<'a>),
@@ -56,7 +56,7 @@ impl<'a> Object<'a> {
     }
 
     /// Returns the content of the object as bytes
-    pub fn as_bytes(&self) -> &[u8] {
+    pub fn as_bytes(&self) -> &'a [u8] {
         match self.target {
             ObjectTarget::Elf(..) => self.fat_object.as_bytes(),
             ObjectTarget::MachOSingle(_) => self.fat_object.as_bytes(),
@@ -68,7 +68,7 @@ impl<'a> Object<'a> {
     }
 
     /// Loads a specific dwarf section if its in the file.
-    pub fn get_dwarf_section(&self, sect: DwarfSection) -> Option<DwarfSectionData> {
+    pub fn get_dwarf_section(&self, sect: DwarfSection) -> Option<DwarfSectionData<'a>> {
         match self.target {
             ObjectTarget::Elf(ref elf) => read_elf_dwarf_section(elf, self.as_bytes(), sect),
             ObjectTarget::MachOSingle(macho) => read_macho_dwarf_section(macho, sect),
@@ -132,38 +132,37 @@ fn read_macho_dwarf_section<'a>(
 
 /// Represents a potentially fat object in a fat object.
 pub struct FatObject<'a> {
-    byteview: &'a ByteView<'a>,
-    kind: FatObjectKind<'a>,
+    handle: ByteViewHandle<'a, FatObjectKind<'a>>,
 }
 
 impl<'a> FatObject<'a> {
     /// Provides a view to an object file from a byteview.
-    pub fn parse(byteview: &'a ByteView<'a>) -> Result<FatObject<'a>> {
-        let kind = {
-            let buf = &byteview;
-            let mut cur = Cursor::new(buf);
-            match goblin::peek(&mut cur)? {
-                Hint::Elf(_) => FatObjectKind::Elf(elf::Elf::parse(buf)?),
-                Hint::Mach(_) => FatObjectKind::MachO(mach::Mach::parse(buf)?),
-                Hint::MachFat(_) => FatObjectKind::MachO(mach::Mach::parse(buf)?),
+    pub fn parse(byteview: ByteView<'a>) -> Result<FatObject<'a>> {
+        let handle = ByteViewHandle::from_byteview(byteview, |bytes| -> Result<_> {
+            let mut cur = Cursor::new(bytes);
+            Ok(match goblin::peek(&mut cur)? {
+                Hint::Elf(_) => FatObjectKind::Elf(elf::Elf::parse(bytes)?),
+                Hint::Mach(_) => FatObjectKind::MachO(mach::Mach::parse(bytes)?),
+                Hint::MachFat(_) => FatObjectKind::MachO(mach::Mach::parse(bytes)?),
                 _ => {
                     return Err(ErrorKind::UnsupportedObjectFile.into());
                 }
-            }
-        };
-
-        Ok(FatObject { byteview, kind })
+            })
+        })?;
+        Ok(FatObject {
+            handle: handle
+        })
     }
 
     /// Returns the contents as bytes.
     pub fn as_bytes(&self) -> &[u8] {
-        &self.byteview
+        ByteViewHandle::get_bytes(&self.handle)
     }
 
     /// Returns a list of variants.
     pub fn objects(&'a self) -> Result<Vec<Object<'a>>> {
         let mut rv = vec![];
-        match self.kind {
+        match *self.handle {
             FatObjectKind::Elf(ref elf) => {
                 rv.push(Object {
                     fat_object: self,

@@ -1,6 +1,5 @@
 use std::io;
 use std::str;
-use std::mem;
 
 #[cfg(feature = "with_dwarf")]
 use gimli;
@@ -32,7 +31,6 @@ error_chain! {
             description("format error")
             display("format error: {}", message)
         }
-
         /// Raised if unsupported object files are loaded.
         UnsupportedObjectFile {
             description("unsupported object file")
@@ -46,6 +44,11 @@ error_chain! {
         UnknownCacheFileVersion(version: u32) {
             description("unknown cache file version")
             display("unknown cache file version '{}'", version)
+        }
+        /// Raised if a section is missing in an object file.
+        MissingSection(section: &'static str) {
+            description("missing object section")
+            display("missing object section '{}'", section)
         }
         /// Raised for DWARF failures.
         BadDwarfData(message: &'static str) {
@@ -67,6 +70,7 @@ error_chain! {
 #[cfg(feature = "with_dwarf")]
 impl From<gimli::Error> for Error {
     fn from(err: gimli::Error) -> Error {
+        use std::mem;
         use std::error::Error;
         // this works because gimli error only returns static strings. UUUGLY
         ErrorKind::BadDwarfData(unsafe { mem::transmute(err.description()) }).into()

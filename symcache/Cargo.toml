@@ -4,5 +4,10 @@ version = "0.1.0"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
 [dependencies]
-symbolic-common = { path = "../common" }
-uuid = { version = "^0.4", features = ["serde"] }
+symbolic-common = { path = "../common", features = ["with_dwarf", "with_objects"] }
+symbolic-debuginfo = { path = "../debuginfo" }
+uuid = { version = "^0.5", features = ["serde"] }
+gimli = { git = "https://github.com/gimli-rs/gimli.git" }
+fallible-iterator = "0.1"
+lru-cache = "0.1"
+owning_ref = "0.3"

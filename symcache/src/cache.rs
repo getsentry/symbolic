@@ -1,12 +1,15 @@
+use std::io;
 use std::mem;
 use std::str;
 use std::fmt;
 use std::ffi::CStr;
 
-use types::{CacheFileHeader, FileRecord, FuncRecord, LineRecord, Seg};
-use writer::SymCacheWriter;
-use symbolic_common::{Result, ErrorKind, ByteView, Object};
+use symbolic_common::{Result, ErrorKind, ByteView};
+use symbolic_debuginfo::Object;
+
+use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, LineRecord};
 use utils::binsearch_by_key;
+use writer::write_sym_cache;
 
 /// A matched symbol
 pub struct Symbol<'a> {
@@ -76,30 +79,52 @@ impl<'a> fmt::Debug for Symbol<'a> {
 }
 
 impl<'a> SymCache<'a> {
+
     /// Load a symcache from a byteview.
     pub fn new(byteview: ByteView<'a>) -> Result<SymCache<'a>> {
-        let rv = SymCache { byteview: byteview };
+        let rv = SymCache {
+            byteview: byteview,
+        };
         {
             let header = rv.header()?;
-            if header.version != 2 {
-                return Err(ErrorKind::UnknownCacheFileVersion(header.version).into());
+            if header.version != 1 {
+                return Err(ErrorKind::UnknownCacheFileVersion(
+                    header.version).into());
             }
         }
         Ok(rv)
     }
 
-    /// Creates a symcache from an object.
-    pub fn from_object(&self, obj: &Object) -> Result<SymCache<'static>> {
-        let mut out: Vec<u8> = Vec::new();
-        let writer = SymCacheWriter::new(&mut out);
-        writer.write_object(obj)?;
-        Ok(SymCache::new(ByteView::from_vec(out)))
+    /// Constructs a symcache from an object.
+    pub fn from_object(obj: &Object) -> Result<SymCache<'a>> {
+        let mut cur = io::Cursor::new(Vec::<u8>::new());
+        write_sym_cache(&mut cur, obj)?;
+        SymCache::new(ByteView::from_vec(cur.into_inner()))
+    }
+
+    /// The total size of the cache file
+    pub fn size(&self) -> usize {
+        self.byteview.len()
+    }
+
+    fn get_data(&self, start: usize, len: usize) -> Result<&[u8]> {
+        let buffer = &self.byteview;
+        let end = start.wrapping_add(len);
+        if end < start || end > buffer.len() {
+            Err(
+                io::Error::new(io::ErrorKind::UnexpectedEof, "out of range").into(),
+            )
+        } else {
+            Ok(&buffer[start..end])
+        }
     }
 
     fn get_segment<T>(&self, seg: &Seg<T>) -> Result<&[T]> {
-        let offset = seg.offset as usize + mem::size_of::<CacheFileHeader>();
+        let offset = seg.offset as usize;
         let size = mem::size_of::<T>() * seg.len as usize;
-        unsafe { Ok(mem::transmute(self.byteview.get_data(offset, size)?)) }
+        unsafe {
+            Ok(mem::transmute(self.get_data(offset, size)?))
+        }
     }
 
     fn get_segment_as_string(&self, seg: &Seg<u8>) -> Result<&str> {
@@ -110,22 +135,24 @@ impl<'a> SymCache<'a> {
     #[inline(always)]
     fn header(&self) -> Result<&CacheFileHeader> {
         unsafe {
-            Ok(mem::transmute(
-                self.byteview
-                    .get_data(0, mem::size_of::<CacheFileHeader>())?
-                    .as_ptr(),
-            ))
+            Ok(mem::transmute(self.get_data(
+                0, mem::size_of::<CacheFileHeader>())?.as_ptr()))
         }
     }
 
     /// The architecture of the cache file
     pub fn arch(&self) -> Result<&str> {
         let header = self.header()?;
-        unsafe { Ok(CStr::from_ptr(header.arch.as_ptr()).to_str()?) }
+        unsafe {
+            Ok(CStr::from_ptr(header.arch.as_ptr()).to_str()?)
+        }
     }
 
     /// Looks up a single symbol
     fn get_symbol(&self, idx: u32) -> Result<Option<&str>> {
+        if idx == !0 {
+            return Ok(None);
+        }
         let header = self.header()?;
         let syms = self.get_segment(&header.symbols)?;
         if let Some(ref seg) = syms.get(idx as usize) {
@@ -137,7 +164,7 @@ impl<'a> SymCache<'a> {
 
     fn functions(&'a self) -> Result<&'a [FuncRecord]> {
         let header = self.header()?;
-        self.get_segment(&header.function_index)
+        self.get_segment(&header.function_records)
     }
 
     fn line_records(&'a self) -> Result<&'a [Seg<LineRecord>]> {
@@ -148,22 +175,21 @@ impl<'a> SymCache<'a> {
     fn run_to_line(&'a self, fun: &'a FuncRecord, addr: u64) -> Result<(&FileRecord, u32)> {
         let records_seg = match self.line_records()?.get(fun.line_record_id as usize) {
             Some(records) => records,
-            None => return Err(ErrorKind::Internal("unknown line record").into()),
+            None => { return Err(ErrorKind::Internal("unknown line record").into()) }
         };
         let records = self.get_segment(records_seg)?;
 
         let mut file_id = !0u16;
+        let mut running_addr = fun.addr_start() as u64;
         let mut line = 0u32;
-        let mut running_addr = fun.line_start as u64;
 
         for rec in records {
             let new_instr = running_addr + rec.addr_off as u64;
-            let new_line = line + rec.line as u32;
             if new_instr >= addr {
                 break;
             }
             running_addr = new_instr;
-            line = new_line;
+            line = rec.line as u32;
             file_id = rec.file_id;
         }
 
@@ -197,16 +223,20 @@ impl<'a> SymCache<'a> {
     /// an empty vector.
     pub fn lookup(&'a self, addr: u64) -> Result<Vec<Symbol<'a>>> {
         let funcs = self.functions()?;
-        let mut fun = match binsearch_by_key(funcs, addr, |x| x.addr_start()) {
-            Some(fun) => fun,
-            None => {
-                return Ok(vec![]);
-            }
+
+        // functions in the function segment are ordered by start address
+        // primarily and by depth secondarily.  As a result we want to have
+        // a secondary comparison by the item index.
+        let mut fun = match binsearch_by_key(
+            funcs, (addr, !0), |idx, rec| (rec.addr_start(), idx))
+        {
+            Some((_, fun)) => fun,
+            None => { return Ok(vec![]); }
         };
 
-        // the binsearch might mis the function
+        // the binsearch might miss the function
         while !fun.addr_in_range(addr) {
-            if let Some(parent_id) = fun.get_parent_func() {
+            if let Some(parent_id) = fun.parent() {
                 fun = &funcs[parent_id];
             } else {
                 // we missed entirely :(
@@ -220,7 +250,7 @@ impl<'a> SymCache<'a> {
         rv.push(self.build_symbol(&fun, addr)?);
 
         // inlined outer parts
-        while let Some(parent_id) = fun.get_parent_func() {
+        while let Some(parent_id) = fun.parent() {
             let outer_addr = fun.addr_start();
             fun = &funcs[parent_id];
             rv.push(self.build_symbol(&fun, outer_addr)?);
