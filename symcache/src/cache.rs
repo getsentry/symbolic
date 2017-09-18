@@ -230,7 +230,7 @@ impl<'a> SymCache<'a> {
         let mut fun = match binsearch_by_key(
             funcs, (addr, !0), |idx, rec| (rec.addr_start(), idx))
         {
-            Some(fun) => fun,
+            Some((_, fun)) => fun,
             None => { return Ok(vec![]); }
         };
 

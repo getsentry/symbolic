@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 
 #[repr(C, packed)]
-#[derive(Eq, PartialEq, Hash, Default, Copy, Clone)]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Default, Copy, Clone)]
 pub struct Seg<T> {
     pub offset: u32,
     pub len: u32,
@@ -22,7 +22,7 @@ impl<T> Seg<T> {
 }
 
 #[repr(C, packed)]
-#[derive(PartialEq, Eq, Hash, Default, Copy, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Default, Copy, Clone)]
 pub struct FileRecord {
     pub filename: Seg<u8>,
     pub comp_dir: Seg<u8>,

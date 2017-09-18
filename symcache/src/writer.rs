@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, BTreeSet};
+use std::collections::{HashMap, BTreeMap, BTreeSet};
 use std::fmt;
 use std::io::{Seek, SeekFrom, Write};
 use std::mem;
@@ -10,14 +10,15 @@ use symbolic_common::{Endianness, Error, ErrorKind, Result, ResultExt};
 use symbolic_debuginfo::{DwarfSection, Object};
 
 use types::{CacheFileHeader, Seg, FuncRecord, LineRecord, FileRecord};
+use utils::binsearch_by_key;
 
 use fallible_iterator::FallibleIterator;
 use lru_cache::LruCache;
 use gimli;
 use gimli::{Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbbrev, DebugAbbrevOffset,
             DebugInfo, DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr,
-            DebuggingInformationEntry, DwAt, DwLang, EndianBuf,
-            LineNumberProgramHeader, Range, UnitOffset};
+            DebuggingInformationEntry, DwAt, DwLang, EndianBuf, StateMachine,
+            IncompleteLineNumberProgram, Range, UnitOffset};
 
 type Buf<'input> = EndianBuf<'input, Endianness>;
 type Die<'abbrev, 'unit, 'input> = DebuggingInformationEntry<'abbrev, 'unit, Buf<'input>>;
@@ -119,9 +120,11 @@ impl<'a> Function<'a> {
 pub struct SymCacheWriter<W: Write + Seek> {
     writer: RefCell<W>,
     header: CacheFileHeader,
-    symbols: HashMap<Vec<u8>, (u32, Seg<u8>)>,
+    symbol_map: HashMap<Vec<u8>, u32>,
+    symbols: Vec<Seg<u8>>,
     files: HashMap<Vec<u8>, Seg<u8>>,
-    file_records: HashMap<FileRecord, u16>,
+    file_record_map: BTreeMap<FileRecord, u16>,
+    file_records: Vec<FileRecord>,
     func_records: Vec<FuncRecord>,
     line_records: Vec<Seg<LineRecord>>,
 }
@@ -190,10 +193,13 @@ impl<'input> DwarfInfo<'input> {
     fn find_unit_offset(&self, offset: DebugInfoOffset<usize>)
         -> Result<(usize, UnitOffset<usize>)>
     {
-        for (index, header) in self.units.iter().enumerate() {
-            if let Some(unit_offset) = offset.to_unit_offset(header) {
-                return Ok((index, unit_offset));
+        match binsearch_by_key(&self.units, offset.0, |_, x| x.offset().0) {
+            Some((index, header)) => {
+                if let Some(unit_offset) = offset.to_unit_offset(header) {
+                    return Ok((index, unit_offset));
+                }
             }
+            None => {}
         }
         Err(err("couln't find unit for ref address"))
     }
@@ -204,9 +210,11 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         SymCacheWriter {
             writer: RefCell::new(writer),
             header: Default::default(),
-            symbols: HashMap::new(),
+            symbol_map: HashMap::new(),
+            symbols: vec![],
             files: HashMap::new(),
-            file_records: HashMap::new(),
+            file_record_map: BTreeMap::new(),
+            file_records: vec![],
             func_records: vec![],
             line_records: vec![],
         }
@@ -241,12 +249,13 @@ impl<W: Write + Seek> SymCacheWriter<W> {
     }
 
     fn write_symbol_if_missing(&mut self, sym: &[u8]) -> Result<u32> {
-        if let Some(item) = self.symbols.get(sym) {
-            return Ok(item.0);
+        if let Some(&index) = self.symbol_map.get(sym) {
+            return Ok(index);
         }
         let idx = self.symbols.len() as u32;
         let seg = self.write_seg(sym)?;
-        self.symbols.insert(sym.to_owned(), (idx, seg));
+        self.symbols.push(seg);
+        self.symbol_map.insert(sym.to_owned(), idx);
         Ok(idx)
     }
 
@@ -266,11 +275,12 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             filename: filename_seg,
             comp_dir: comp_dir_seg,
         };
-        if let Some(idx) = self.file_records.get(&key) {
+        if let Some(idx) = self.file_record_map.get(&key) {
             return Ok(*idx);
         }
         let idx = self.file_records.len() as u16;
-        self.file_records.insert(key, idx);
+        self.file_record_map.insert(key, idx);
+        self.file_records.push(key);
         Ok(idx)
     }
 
@@ -307,16 +317,8 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             self.header.uuid = *uuid;
         }
 
-        let mut symbols: Vec<_> = self.symbols.values().collect();
-        symbols.sort_by_key(|x| x.0);
-        let symbols: Vec<_> = symbols.into_iter().map(|x| x.1).collect();
-        self.header.symbols = self.write_seg(&symbols)?;
-
-        let mut file_records: Vec<_> = self.file_records.iter().collect();
-        file_records.sort_by_key(|x| x.1);
-        let file_records: Vec<_> = file_records.into_iter().map(|x| *x.0).collect();
-        self.header.files = self.write_seg(&file_records)?;
-
+        self.header.symbols = self.write_seg(&self.symbols)?;
+        self.header.files = self.write_seg(&self.file_records)?;
         self.header.function_records = self.write_seg(&self.func_records)?;
         self.header.line_records = self.write_seg(&self.line_records)?;
 
@@ -497,11 +499,7 @@ impl<'input> Unit<'input> {
                 let rows = line_program.get_rows(range);
                 for row in rows {
                     let comp_dir = self.comp_dir.map(|x| x.buf()).unwrap_or(b"");
-                    let filename = line_program
-                        .header
-                        .file(row.file_index)
-                        .map(|x| x.path_name().buf())
-                        .unwrap_or(b"");
+                    let filename = line_program.get_filename(row.file_index).unwrap_or(b"");
 
                     let new_line = Line {
                         addr: row.address,
@@ -708,7 +706,7 @@ impl<'input> Unit<'input> {
 #[derive(Debug)]
 struct DwarfLineProgram<'input> {
     sequences: Vec<DwarfSeq>,
-    header: LineNumberProgramHeader<Buf<'input>>,
+    program_rows: StateMachine<Buf<'input>, IncompleteLineNumberProgram<Buf<'input>>>,
 }
 
 #[derive(Debug)]
@@ -742,7 +740,6 @@ impl<'input> DwarfLineProgram<'input> {
         let mut program_rows = program.rows();
 
         // XXX: do we need a clone here?  Maybe we can do better
-        let header = program_rows.header().clone();
         while let Ok(Some((_, &program_row))) = program_rows.next_row() {
             let address = program_row.address();
             if program_row.end_sequence() {
@@ -802,13 +799,17 @@ impl<'input> DwarfLineProgram<'input> {
             });
         }
 
-        // make sure this is sorted
-        sequences.sort_by(|a, b| a.low_address.cmp(&b.low_address));
-
         Ok(DwarfLineProgram {
             sequences: sequences,
-            header: header,
+            program_rows: program_rows,
         })
+    }
+
+    pub fn get_filename(&self, idx: u64) -> Option<&'input [u8]> {
+        self
+            .program_rows.header()
+            .file(idx)
+            .map(|x| x.path_name().buf())
     }
 
     pub fn get_rows(&self, rng: &Range) -> &[DwarfRow] {
@@ -816,23 +817,19 @@ impl<'input> DwarfLineProgram<'input> {
             if seq.high_address < rng.begin || seq.low_address > rng.end {
                 continue;
             }
-            let mut start = !0;
-            let mut end = !0;
-            for (idx, ref row) in seq.rows.iter().enumerate() {
-                if row.address >= rng.begin && start == !0 {
-                    start = idx;
-                } else if row.address > rng.end - 1 {
-                    end = idx;
-                    break;
+
+            let start = match binsearch_by_key(&seq.rows, rng.begin, |_, x| x.address) {
+                Some((idx, _)) => idx,
+                None => { continue; }
+            };
+            match binsearch_by_key(&seq.rows[start..], rng.end, |_, x| x.address) {
+                Some((idx, _)) => {
+                    return &seq.rows[start..start + idx]
+                }
+                None => {
+                    return &seq.rows[start..]
                 }
             }
-            if start == !0 {
-                continue;
-            }
-            if end == !0 {
-                end = seq.rows.len();
-            }
-            return &seq.rows[start..end];
         }
         &[]
     }
