@@ -42,7 +42,7 @@ fn main() {
     } else {
         println!("Cache file size: {}", cache.size());
         for func in cache.functions() {
-            println!("- {:?}", func.unwrap());
+            println!("{:#?}", func.unwrap());
         }
     }
 }

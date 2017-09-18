@@ -3,6 +3,7 @@ use std::mem;
 use std::str;
 use std::fmt;
 use std::slice;
+use std::cell::RefCell;
 
 use symbolic_common::{Result, ErrorKind, ByteView, Arch};
 use symbolic_debuginfo::Object;
@@ -88,18 +89,44 @@ impl<'a> fmt::Debug for Symbol<'a> {
 
 /// A view of a single function in a sym cache.
 pub struct Function<'a> {
-    symbol: Option<&'a str>,
-    addr: u64,
+    cache: &'a SymCache<'a>,
+    fun: &'a FuncRecord,
 }
 
 impl<'a> Function<'a> {
+    /// The address where the function starts.
     pub fn addr(&self) -> u64 {
-        self.addr
+        self.fun.addr_start()
     }
 
+    /// The symbol of the function.
     pub fn symbol(&self) -> &str {
-        self.symbol.unwrap_or("")
+        self.cache.get_symbol(self.fun.symbol_id).unwrap_or(None).unwrap_or("")
     }
+
+    /// An iterator over all lines in the function
+    pub fn lines(&'a self) -> Lines<'a> {
+        Lines {
+            cache: self.cache,
+            record_id: self.fun.line_record_id,
+            addr: self.fun.addr_start(),
+            idx: 0,
+        }
+    }
+}
+
+pub struct Lines<'a> {
+    cache: &'a SymCache<'a>,
+    addr: u64,
+    record_id: u32,
+    idx: usize,
+}
+
+pub struct Line<'a> {
+    cache: &'a SymCache<'a>,
+    addr: u64,
+    line: u16,
+    file_id: u16,
 }
 
 /// An iterator over all functions in a sym cache.
@@ -127,12 +154,45 @@ impl<'a> Iterator for Functions<'a> {
         if let Some(fun) = records.get(self.idx) {
             self.idx += 1;
             Some(Ok(Function {
-                symbol: itry!(self.cache.get_symbol(fun.symbol_id)),
-                addr: fun.addr_start(),
+                cache: self.cache,
+                fun: fun,
             }))
         } else {
             None
         }
+    }
+}
+
+impl<'a> Iterator for Lines<'a> {
+    type Item = Result<Line<'a>>;
+
+    fn next(&mut self) -> Option<Result<Line<'a>>> {
+        let records = match itry!(self.cache.get_line_records(self.record_id)) {
+            Some(records) => records,
+            None => { return None; }
+        };
+        if let Some(rec) = records.get(self.idx) {
+            self.idx += 1;
+            self.addr += rec.addr_off as u64;
+            Some(Ok(Line {
+                cache: self.cache,
+                addr: self.addr,
+                line: rec.line,
+                file_id: rec.file_id,
+            }))
+        } else {
+            None
+        }
+    }
+}
+
+struct LineDebug<'a>(RefCell<Option<Lines<'a>>>);
+
+impl<'a> fmt::Debug for LineDebug<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list()
+            .entries(self.0.borrow_mut().take().unwrap().filter_map(|x| x.ok()))
+            .finish()
     }
 }
 
@@ -141,7 +201,32 @@ impl<'a> fmt::Debug for Function<'a> {
         f.debug_struct("Function")
             .field("symbol", &self.symbol())
             .field("addr", &self.addr())
+            .field("lines", &LineDebug(RefCell::new(Some(self.lines()))))
             .finish()
+    }
+}
+
+impl<'a> fmt::Debug for Line<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Line")
+            .field("addr", &self.addr)
+            .field("line", &self.line)
+            .field("file_id", &self.file_id)
+            .finish()
+    }
+}
+
+impl<'a> Line<'a> {
+    pub fn addr(&self) -> u64 {
+        self.addr
+    }
+
+    pub fn line(&self) -> u16 {
+        self.line
+    }
+
+    pub fn file_id(&self) -> u16 {
+        self.file_id
     }
 }
 
