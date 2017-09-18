@@ -86,6 +86,63 @@ impl<'a> fmt::Debug for Symbol<'a> {
     }
 }
 
+pub struct Function<'a> {
+    symbol: Option<&'a str>,
+    addr: u64,
+}
+
+impl<'a> Function<'a> {
+    pub fn addr(&self) -> u64 {
+        self.addr
+    }
+
+    pub fn symbol(&self) -> &str {
+        self.symbol.unwrap_or("")
+    }
+}
+
+pub struct Functions<'a> {
+    cache: &'a SymCache<'a>,
+    idx: usize,
+}
+
+macro_rules! itry {
+    ($expr:expr) => {
+        match $expr {
+            Ok(rv) => rv,
+            Err(err) => {
+                return Some(Err(::std::convert::From::from(err)));
+            }
+        }
+    }
+}
+
+impl<'a> Iterator for Functions<'a> {
+    type Item = Result<Function<'a>>;
+
+    fn next(&mut self) -> Option<Result<Function<'a>>> {
+        let records = itry!(self.cache.function_records());
+        if let Some(fun) = records.get(self.idx) {
+            self.idx += 1;
+            Some(Ok(Function {
+                symbol: itry!(self.cache.get_symbol(fun.symbol_id)),
+                addr: fun.addr_start(),
+            }))
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> fmt::Debug for Function<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Function")
+            .field("symbol", &self.symbol())
+            .field("addr", &self.addr())
+            .finish()
+    }
+}
+
 impl<'a> SymCache<'a> {
 
     /// Load a symcache from a byteview.
@@ -171,7 +228,7 @@ impl<'a> SymCache<'a> {
         }
     }
 
-    fn functions(&'a self) -> Result<&'a [FuncRecord]> {
+    fn function_records(&'a self) -> Result<&'a [FuncRecord]> {
         let header = self.header()?;
         self.get_segment(&header.function_records)
     }
@@ -249,13 +306,21 @@ impl<'a> SymCache<'a> {
         })
     }
 
+    /// Returns an iterator over all functions.
+    pub fn functions(&'a self) -> Functions<'a> {
+        Functions {
+            cache: self,
+            idx: 0,
+        }
+    }
+
     /// Given an address this looks up the symbol at that point.
     ///
     /// Because of inling information this returns a vector of zero or
     /// more symbols.  If nothing is found then the return value will be
     /// an empty vector.
     pub fn lookup(&'a self, addr: u64) -> Result<Vec<Symbol<'a>>> {
-        let funcs = self.functions()?;
+        let funcs = self.function_records()?;
 
         // functions in the function segment are ordered by start address
         // primarily and by depth secondarily.  As a result we want to have
