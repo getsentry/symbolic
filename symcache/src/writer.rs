@@ -320,6 +320,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         }
 
         self.header.version = 1;
+        self.header.arch = obj.arch() as u32;
         if let Some(uuid) = obj.uuid() {
             self.header.uuid = uuid;
         }

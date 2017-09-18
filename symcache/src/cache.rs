@@ -3,9 +3,8 @@ use std::mem;
 use std::str;
 use std::fmt;
 use std::slice;
-use std::ffi::CStr;
 
-use symbolic_common::{Result, ErrorKind, ByteView};
+use symbolic_common::{Result, ErrorKind, ByteView, Arch};
 use symbolic_debuginfo::Object;
 
 use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, LineRecord};
@@ -30,8 +29,8 @@ pub struct SymCache<'a> {
 
 impl<'a> Symbol<'a> {
     /// The architecture of the matched symbol.
-    pub fn arch(&self) -> &str {
-        self.cache.arch().unwrap_or("unknown")
+    pub fn arch(&self) -> Arch {
+        self.cache.arch().unwrap_or(Arch::Unknown)
     }
 
     /// The address where the symbol starts.
@@ -154,11 +153,8 @@ impl<'a> SymCache<'a> {
     }
 
     /// The architecture of the cache file
-    pub fn arch(&self) -> Result<&str> {
-        let header = self.header()?;
-        unsafe {
-            Ok(CStr::from_ptr(header.arch.as_ptr()).to_str()?)
-        }
+    pub fn arch(&self) -> Result<Arch> {
+        Arch::from_u32(self.header()?.arch)
     }
 
     /// Looks up a single symbol
