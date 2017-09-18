@@ -739,7 +739,6 @@ impl<'input> DwarfLineProgram<'input> {
         let mut prev_address = 0;
         let mut program_rows = program.rows();
 
-        // XXX: do we need a clone here?  Maybe we can do better
         while let Ok(Some((_, &program_row))) = program_rows.next_row() {
             let address = program_row.address();
             if program_row.end_sequence() {
@@ -798,6 +797,8 @@ impl<'input> DwarfLineProgram<'input> {
                 rows: sequence_rows,
             });
         }
+
+        // XXX: assert everything is sorted
 
         Ok(DwarfLineProgram {
             sequences: sequences,
