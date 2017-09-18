@@ -1,3 +1,4 @@
+use std::mem;
 use std::fmt;
 
 #[cfg(feature = "with_objects")]
@@ -49,10 +50,11 @@ pub enum CpuFamily {
 /// An enum of supported architectures.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 #[allow(non_camel_case_types)]
+#[repr(u32)]
 pub enum Arch {
+    Unknown,
     X86,
     X86_64,
-    Arm64,
     ArmV5,
     ArmV6,
     ArmV7,
@@ -61,9 +63,27 @@ pub enum Arch {
     ArmV7k,
     ArmV7m,
     ArmV7em,
+    Arm64,
+    #[doc(hidden)]
+    __Max
+}
+
+impl Default for Arch {
+    fn default() -> Arch {
+        Arch::Unknown
+    }
 }
 
 impl Arch {
+    /// Creates an arch from the u32 it represents
+    pub fn from_u32(val: u32) -> Result<Arch> {
+        if val >= (Arch::__Max as u32) {
+            Err(ErrorKind::Parse("unknown architecture").into())
+        } else {
+            Ok(unsafe { mem::transmute(val) })
+        }
+    }
+
     /// Constructs an architecture from mach CPU types
     #[cfg(feature = "with_objects")]
     pub fn from_mach(cputype: u32, cpusubtype: u32) -> Result<Arch> {
@@ -114,6 +134,7 @@ impl Arch {
     pub fn cpu_family(&self) -> CpuFamily {
         use Arch::*;
         match *self {
+            Unknown | __Max => CpuFamily::Unknown,
             X86 => CpuFamily::Intel32,
             X86_64 => CpuFamily::Intel64,
             Arm64 => CpuFamily::Arm64,
@@ -125,6 +146,7 @@ impl Arch {
     pub fn pointer_size(&self) -> Option<usize> {
         use Arch::*;
         match *self {
+            Unknown | __Max => None,
             X86_64 | Arm64 => Some(8),
             X86 | ArmV5 | ArmV6 | ArmV7 | ArmV7f | ArmV7s | ArmV7k | ArmV7m | ArmV7em => Some(4),
         }
@@ -138,6 +160,7 @@ impl fmt::Display for Arch {
             f,
             "{}",
             match *self {
+                Unknown | __Max => "unknown",
                 X86 => "x86",
                 X86_64 => "x86_64",
                 Arm64 => "arm64",

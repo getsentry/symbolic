@@ -73,7 +73,7 @@ pub struct LineRecord {
 pub struct CacheFileHeader {
     pub version: u32,
     pub uuid: Uuid,
-    pub arch: [i8; 16],
+    pub arch: u32,
     pub symbols: Seg<Seg<u8>>,
     pub files: Seg<FileRecord>,
     pub function_records: Seg<FuncRecord>,
