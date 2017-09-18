@@ -14,4 +14,7 @@ matrix:
   allow_failures:
     - rust: nightly
 
+before_script:
+  - docker pull multiarch/crossbuild:latest
+
 script: make
