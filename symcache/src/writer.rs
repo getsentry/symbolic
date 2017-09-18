@@ -6,7 +6,7 @@ use std::mem;
 use std::slice;
 use std::sync::Arc;
 
-use symbolic_common::{Endianness, Error, ErrorKind, Result, ResultExt};
+use symbolic_common::{Endianness, Error, ErrorKind, Result, ResultExt, Language};
 use symbolic_debuginfo::{DwarfSection, Object};
 
 use types::{CacheFileHeader, Seg, FuncRecord, LineRecord, FileRecord};
@@ -59,6 +59,7 @@ struct Line<'a> {
     pub comp_dir: &'a [u8],
     pub filename: &'a [u8],
     pub line: u32,
+    pub lang: Language,
 }
 
 impl<'a> fmt::Debug for Line<'a> {
@@ -88,7 +89,8 @@ impl<'a> Function<'a> {
         if let Some(last_line) = self.lines.last() {
             if last_line.filename == line.filename &&
                last_line.comp_dir == line.comp_dir &&
-               last_line.line == line.line
+               last_line.line == line.line &&
+               last_line.lang == line.lang
             {
                 return;
             }
@@ -276,12 +278,16 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         Ok(seg)
     }
 
-    fn write_file_record_if_missing(&mut self, comp_dir: &[u8], filename: &[u8]) -> Result<u16> {
+    fn write_file_record_if_missing(&mut self, comp_dir: &[u8],
+                                    filename: &[u8], lang: Language)
+        -> Result<u16>
+    {
         let comp_dir_seg = self.write_file_if_missing(comp_dir)?;
         let filename_seg = self.write_file_if_missing(filename)?;
         let key = FileRecord {
             filename: filename_seg,
             comp_dir: comp_dir_seg,
+            lang: lang as u32,
         };
         if let Some(idx) = self.file_record_map.get(&key) {
             return Ok(*idx);
@@ -357,7 +363,8 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             // XXX: handle overflows as multiple records
             let line_record = LineRecord {
                 addr_off: (line.addr - last_addr) as u16,
-                file_id: self.write_file_record_if_missing(line.comp_dir, line.filename)?,
+                file_id: self.write_file_record_if_missing(
+                    line.comp_dir, line.filename, line.lang)?,
                 line: line.line as u16,
             };
             last_addr += line_record.addr_off as u64;
@@ -516,6 +523,9 @@ impl<'input> Unit<'input> {
                         filename: filename,
                         comp_dir: comp_dir,
                         line: row.line.unwrap_or(0) as u32,
+                        lang: self.language
+                            .and_then(|lang| Language::from_dwarf_lang(lang))
+                            .unwrap_or(Language::Unknown)
                     };
 
                     func.append_line_if_changed(new_line);

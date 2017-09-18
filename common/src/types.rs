@@ -179,7 +179,9 @@ impl fmt::Display for Arch {
 
 /// Supported programming languages for demangling
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+#[repr(u32)]
 pub enum Language {
+    Unknown,
     C,
     Cpp,
     D,
@@ -188,9 +190,20 @@ pub enum Language {
     ObjCpp,
     Rust,
     Swift,
+    #[doc(hidden)]
+    __Max
 }
 
 impl Language {
+    /// Creates a language from the u32 it represents
+    pub fn from_u32(val: u32) -> Result<Language> {
+        if val >= (Language::__Max as u32) {
+            Err(ErrorKind::Parse("unknown language").into())
+        } else {
+            Ok(unsafe { mem::transmute(val) })
+        }
+    }
+
     /// Converts a DWARF language tag into a supported language.
     #[cfg(feature="with_dwarf")]
     pub fn from_dwarf_lang(lang: gimli::DwLang) -> Option<Language> {

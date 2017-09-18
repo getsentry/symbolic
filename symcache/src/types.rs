@@ -36,6 +36,7 @@ impl<T> fmt::Debug for Seg<T> {
 pub struct FileRecord {
     pub filename: Seg<u8>,
     pub comp_dir: Seg<u8>,
+    pub lang: u32,
 }
 
 #[repr(C, packed)]
