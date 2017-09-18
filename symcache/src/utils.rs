@@ -23,15 +23,6 @@ pub fn binsearch_by_key<'a, T, B, F>(slice: &'a [T], item: B, mut f: F) -> Optio
 }
 
 #[test]
-fn test_idmap() {
-    let mut m: IdMap<String, u8> = IdMap::new();
-    assert_eq!(m.get_id("foo"), 0u8);
-    assert_eq!(m.get_id("bar"), 1u8);
-    assert_eq!(m.get_id("bar"), 1u8);
-    assert_eq!(m.get_id("foo"), 0u8);
-}
-
-#[test]
 fn test_binsearch() {
     let seq = [0u32, 2, 4, 6, 8, 10];
     let m = binsearch_by_key(&seq[..], 5, |_, &x| x);
