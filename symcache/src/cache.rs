@@ -86,6 +86,7 @@ impl<'a> fmt::Debug for Symbol<'a> {
     }
 }
 
+/// A view of a single function in a sym cache.
 pub struct Function<'a> {
     symbol: Option<&'a str>,
     addr: u64,
@@ -101,6 +102,7 @@ impl<'a> Function<'a> {
     }
 }
 
+/// An iterator over all functions in a sym cache.
 pub struct Functions<'a> {
     cache: &'a SymCache<'a>,
     idx: usize,

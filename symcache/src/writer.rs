@@ -124,7 +124,7 @@ impl<'a> Function<'a> {
     }
 }
 
-pub struct SymCacheWriter<W: Write + Seek> {
+struct SymCacheWriter<W: Write + Seek> {
     writer: RefCell<W>,
     header: CacheFileHeader,
     symbol_map: HashMap<Vec<u8>, u32>,
