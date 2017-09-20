@@ -23,6 +23,7 @@ pub struct Symbol<'a> {
     lang: Language,
     symbol: Option<&'a str>,
     filename: &'a str,
+    base_dir: &'a str,
     comp_dir: &'a str,
 }
 
@@ -67,7 +68,12 @@ impl<'a> Symbol<'a> {
         self.filename
     }
 
-    /// The compilation dir of the current line.
+    /// The base dir of the current line.
+    pub fn base_dir(&self) -> &str {
+        self.base_dir
+    }
+
+    /// The compilation dir of the function.
     pub fn comp_dir(&self) -> &str {
         self.comp_dir
     }
@@ -76,7 +82,7 @@ impl<'a> Symbol<'a> {
 impl<'a> fmt::Display for Symbol<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}\n", self.symbol())?;
-        write!(f, "  at {}/{} line {}", self.comp_dir(), self.filename(), self.line())?;
+        write!(f, "  at {}/{} line {}", self.base_dir(), self.filename(), self.line())?;
         Ok(())
     }
 }
@@ -90,6 +96,7 @@ impl<'a> fmt::Debug for Symbol<'a> {
             .field("line", &self.line())
             .field("symbol", &self.symbol())
             .field("filename", &self.filename())
+            .field("base_dir", &self.base_dir())
             .field("comp_dir", &self.comp_dir())
             .finish()
     }
@@ -121,6 +128,16 @@ impl<'a> Function<'a> {
     /// The symbol of the function.
     pub fn symbol(&self) -> &str {
         self.cache.get_symbol(self.fun.symbol_id).unwrap_or(None).unwrap_or("")
+    }
+
+    /// The language of the function
+    pub fn lang(&self) -> Language {
+        Language::from_u32(self.fun.lang).unwrap_or(Language::Unknown)
+    }
+
+    /// The compilation dir of the function
+    pub fn comp_dir(&self) -> &str {
+        self.cache.get_segment_as_string(&self.fun.comp_dir).unwrap_or("")
     }
 
     /// An iterator over all lines in the function
@@ -225,6 +242,8 @@ impl<'a> fmt::Debug for Function<'a> {
             .field("parent_id", &self.parent_id())
             .field("symbol", &self.symbol())
             .field("addr", &self.addr())
+            .field("comp_dir", &self.comp_dir())
+            .field("lang", &self.lang())
             .field("lines()", &LineDebug(RefCell::new(Some(self.lines()))))
             .finish()
     }
@@ -235,9 +254,8 @@ impl<'a> fmt::Debug for Line<'a> {
         f.debug_struct("Line")
             .field("addr", &self.addr)
             .field("line", &self.line)
-            .field("comp_dir", &self.comp_dir())
+            .field("base_dir", &self.base_dir())
             .field("filename", &self.filename())
-            .field("lang", &self.lang())
             .finish()
     }
 }
@@ -252,10 +270,10 @@ impl<'a> Line<'a> {
         }
     }
 
-    /// The comp_dir of the line.
-    pub fn comp_dir(&self) -> &str {
+    /// The base_dir of the line.
+    pub fn base_dir(&self) -> &str {
         if let Some(rec) = self.cache.get_file_record(self.file_id).unwrap_or(None) {
-            self.cache.get_segment_as_string(&rec.comp_dir).unwrap_or("")
+            self.cache.get_segment_as_string(&rec.base_dir).unwrap_or("")
         } else {
             ""
         }
@@ -269,15 +287,6 @@ impl<'a> Line<'a> {
     /// The line number of the line.
     pub fn line(&self) -> u16 {
         self.line
-    }
-
-    /// The language of the line.
-    pub fn lang(&self) -> Language {
-        if let Some(rec) = self.cache.get_file_record(self.file_id).unwrap_or(None) {
-            Language::from_u32(rec.lang).unwrap_or(Language::Unknown)
-        } else {
-            Language::Unknown
-        }
     }
 }
 
@@ -422,21 +431,19 @@ impl<'a> SymCache<'a> {
 
     fn build_symbol(&'a self, fun: &'a FuncRecord, addr: u64,
                     inner_sym: Option<&Symbol<'a>>) -> Result<Symbol<'a>> {
-        let (line, lang, filename, comp_dir) = match self.run_to_line(fun, addr)? {
+        let (line, filename, base_dir) = match self.run_to_line(fun, addr)? {
             Some((file_record, line)) => {
                 (
                     line,
-                    Language::from_u32(file_record.lang).unwrap_or(Language::Unknown),
                     self.get_segment_as_string(&file_record.filename)?,
-                    self.get_segment_as_string(&file_record.comp_dir)?,
+                    self.get_segment_as_string(&file_record.base_dir)?,
                 )
             }
             None => {
                 if let Some(inner_sym) = inner_sym {
-                    (inner_sym.line, inner_sym.lang, inner_sym.filename,
-                     inner_sym.comp_dir)
+                    (inner_sym.line, inner_sym.filename, inner_sym.base_dir)
                 } else {
-                    (0, Language::Unknown, "", "")
+                    (0, "", "")
                 }
             }
         };
@@ -445,10 +452,11 @@ impl<'a> SymCache<'a> {
             sym_addr: fun.addr_start(),
             instr_addr: addr,
             line: line,
-            lang: lang,
+            lang: Language::from_u32(fun.lang).unwrap_or(Language::Unknown),
             symbol: self.get_symbol(fun.symbol_id)?,
             filename: filename,
-            comp_dir: comp_dir,
+            base_dir: base_dir,
+            comp_dir: self.get_segment_as_string(&fun.comp_dir)?,
         })
     }
 

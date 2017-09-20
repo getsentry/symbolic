@@ -6,7 +6,7 @@ use std::env;
 use std::fs;
 use std::io::Read;
 
-use symbolic_symcache::{SymCache, write_symcache};
+use symbolic_symcache::{SymCache, write_symcache, Line};
 use symbolic_debuginfo::FatObject;
 use symbolic_common::ByteView;
 
@@ -42,7 +42,18 @@ fn main() {
     } else {
         println!("Cache file size: {}", cache.size());
         for func in cache.functions() {
-            println!("{:#?}", func.unwrap());
+            let func = func.unwrap();
+            let mut last_line: Option<Line> = None;
+            for line in func.lines() {
+                let line = line.unwrap();
+                if let Some(last_line) = last_line {
+                    if last_line.filename() != line.filename() {
+                        println!("{:#?}", &func);
+                        break;
+                    }
+                }
+                last_line = Some(line);
+            }
         }
     }
 }

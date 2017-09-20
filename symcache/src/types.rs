@@ -35,8 +35,7 @@ impl<T> fmt::Debug for Seg<T> {
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Default, Copy, Clone, Debug)]
 pub struct FileRecord {
     pub filename: Seg<u8>,
-    pub comp_dir: Seg<u8>,
-    pub lang: u32,
+    pub base_dir: Seg<u8>,
 }
 
 #[repr(C, packed)]
@@ -56,6 +55,10 @@ pub struct FuncRecord {
     /// The line record of this function.  If it fully overlaps
     /// with an inline the record could be ~0
     pub line_record_id: u32,
+    /// The comp dir of the file record
+    pub comp_dir: Seg<u8>,
+    /// The language of the func record.
+    pub lang: u32,
 }
 
 #[repr(C, packed)]

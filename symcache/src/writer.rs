@@ -52,21 +52,22 @@ struct Function<'a> {
     pub name: &'a [u8],
     pub inlines: Vec<Function<'a>>,
     pub lines: Vec<Line<'a>>,
+    pub comp_dir: &'a [u8],
+    pub lang: Language,
 }
 
 struct Line<'a> {
     pub addr: u64,
-    pub comp_dir: &'a [u8],
     pub filename: &'a [u8],
+    pub base_dir: &'a [u8],
     pub line: u32,
-    pub lang: Language,
 }
 
 impl<'a> fmt::Debug for Line<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Line")
             .field("addr", &self.addr)
-            .field("comp_dir", &String::from_utf8_lossy(self.comp_dir))
+            .field("base_dir", &String::from_utf8_lossy(self.base_dir))
             .field("filename", &String::from_utf8_lossy(self.filename))
             .field("line", &self.line)
             .finish()
@@ -79,6 +80,8 @@ impl<'a> fmt::Debug for Function<'a> {
             .field("name", &String::from_utf8_lossy(self.name))
             .field("depth", &self.depth)
             .field("inlines", &self.inlines)
+            .field("comp_dir", &self.comp_dir)
+            .field("lang", &self.lang)
             .field("lines", &self.lines)
             .finish()
     }
@@ -88,9 +91,8 @@ impl<'a> Function<'a> {
     pub fn append_line_if_changed(&mut self, line: Line<'a>) {
         if let Some(last_line) = self.lines.last() {
             if last_line.filename == line.filename &&
-               last_line.comp_dir == line.comp_dir &&
-               last_line.line == line.line &&
-               last_line.lang == line.lang
+               last_line.base_dir == line.base_dir &&
+               last_line.line == line.line
             {
                 return;
             }
@@ -98,12 +100,19 @@ impl<'a> Function<'a> {
         self.lines.push(line);
     }
 
+    fn get_all_addresses(&self, rv: &mut BTreeSet<u64>) {
+        for line in &self.lines {
+            rv.insert(line.addr);
+        }
+        for func in &self.inlines {
+            func.get_all_addresses(rv);
+        }
+    }
+
     pub fn dedup_inlines(&mut self) {
         let mut inner_addrs = BTreeSet::new();
         for func in &self.inlines {
-            for line in &func.lines {
-                inner_addrs.insert(line.addr);
-            }
+            func.get_all_addresses(&mut inner_addrs);
         }
 
         if inner_addrs.is_empty() {
@@ -278,23 +287,15 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         Ok(seg)
     }
 
-    fn write_file_record_if_missing(&mut self, comp_dir: &[u8],
-                                    filename: &[u8], lang: Language)
+    fn write_file_record_if_missing(&mut self, record: FileRecord)
         -> Result<u16>
     {
-        let comp_dir_seg = self.write_file_if_missing(comp_dir)?;
-        let filename_seg = self.write_file_if_missing(filename)?;
-        let key = FileRecord {
-            filename: filename_seg,
-            comp_dir: comp_dir_seg,
-            lang: lang as u32,
-        };
-        if let Some(idx) = self.file_record_map.get(&key) {
+        if let Some(idx) = self.file_record_map.get(&record) {
             return Ok(*idx);
         }
         let idx = self.file_records.len() as u16;
-        self.file_record_map.insert(key, idx);
-        self.file_records.push(key);
+        self.file_record_map.insert(record, idx);
+        self.file_records.push(record);
         Ok(idx)
     }
 
@@ -355,18 +356,25 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             symbol_id: self.write_symbol_if_missing(func.name)?,
             parent_id: parent_id,
             line_record_id: !0,
+            comp_dir: self.write_file_if_missing(func.comp_dir)?,
+            lang: func.lang as u32,
         };
 
         let mut line_records = vec![];
         let mut last_addr = func_record.addr_start();
         for line in &func.lines {
+            let file_record = FileRecord {
+                filename: self.write_file_if_missing(line.filename)?,
+                base_dir: self.write_file_if_missing(line.base_dir)?,
+            };
+
             // XXX: handle overflows as multiple records
             let line_record = LineRecord {
                 addr_off: (line.addr - last_addr) as u16,
-                file_id: self.write_file_record_if_missing(
-                    line.comp_dir, line.filename, line.lang)?,
+                file_id: self.write_file_record_if_missing(file_record)?,
                 line: line.line as u16,
             };
+
             last_addr += line_record.addr_off as u64;
             line_records.push(line_record);
         }
@@ -510,22 +518,22 @@ impl<'input> Unit<'input> {
                 name: self.resolve_function_name(info, entry)?.unwrap_or(b""),
                 inlines: vec![],
                 lines: vec![],
+                comp_dir: self.comp_dir.map(|x| x.buf()).unwrap_or(b""),
+                lang: self.language
+                    .and_then(|lang| Language::from_dwarf_lang(lang))
+                    .unwrap_or(Language::Unknown)
             };
 
             for range in &ranges {
                 let rows = line_program.get_rows(range);
                 for row in rows {
-                    let comp_dir = self.comp_dir.map(|x| x.buf()).unwrap_or(b"");
-                    let filename = line_program.get_filename(row.file_index).unwrap_or(b"");
+                    let (base_dir, filename) = line_program.get_filename(row.file_index)?;
 
                     let new_line = Line {
                         addr: row.address,
                         filename: filename,
-                        comp_dir: comp_dir,
+                        base_dir: base_dir,
                         line: row.line.unwrap_or(0) as u32,
-                        lang: self.language
-                            .and_then(|lang| Language::from_dwarf_lang(lang))
-                            .unwrap_or(Language::Unknown)
                     };
 
                     func.append_line_if_changed(new_line);
@@ -826,11 +834,15 @@ impl<'input> DwarfLineProgram<'input> {
         })
     }
 
-    pub fn get_filename(&self, idx: u64) -> Option<&'input [u8]> {
-        self
-            .program_rows.header()
+    pub fn get_filename(&self, idx: u64) -> Result<(&'input [u8], &'input [u8])> {
+        let header = self.program_rows.header();
+        let file = header
             .file(idx)
-            .map(|x| x.path_name().buf())
+            .ok_or_else(|| ErrorKind::BadDwarfData("invalid file reference"))?;
+        Ok((
+            file.directory(header).map(|x| x.buf()).unwrap_or(b""),
+            file.path_name().buf()
+        ))
     }
 
     pub fn get_rows(&self, rng: &Range) -> &[DwarfRow] {
