@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, BTreeMap, BTreeSet};
+use std::collections::{HashMap, BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
 use std::io::{Seek, SeekFrom, Write};
 use std::mem;
@@ -100,19 +100,12 @@ impl<'a> Function<'a> {
         self.lines.push(line);
     }
 
-    fn get_all_addresses(&self, rv: &mut BTreeSet<u64>) {
-        for line in &self.lines {
-            rv.insert(line.addr);
-        }
-        for func in &self.inlines {
-            func.get_all_addresses(rv);
-        }
-    }
-
     pub fn dedup_inlines(&mut self) {
         let mut inner_addrs = BTreeSet::new();
         for func in &self.inlines {
-            func.get_all_addresses(&mut inner_addrs);
+            for line in &func.lines {
+                inner_addrs.insert(line.addr);
+            }
         }
 
         if inner_addrs.is_empty() {
@@ -239,6 +232,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         }
     }
 
+    #[inline(always)]
     fn with_file<T, F: FnOnce(&mut W) -> Result<T>>(&self, f: F) -> Result<T> {
         f(&mut *self.writer.borrow_mut() as &mut W)
     }
@@ -256,6 +250,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         }
     }
 
+    #[inline]
     fn write_seg<T>(&self, x: &[T]) -> Result<Seg<T>> {
         let mut first_seg = None;
         for item in x {
@@ -278,6 +273,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         Ok(idx)
     }
 
+    #[inline]
     fn write_file_if_missing(&mut self, filename: &[u8]) -> Result<Seg<u8>> {
         if let Some(item) = self.files.get(filename) {
             return Ok(*item);
@@ -309,6 +305,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         let info = DwarfInfo::from_object(obj)
             .chain_err(|| err("could not extract debug info from object file"))?;
 
+        let mut range_buf = Vec::with_capacity(128);
         for index in 0..info.units.len() {
             // attempt to parse a single unit from the given header.
             let unit_opt = Unit::parse(&info, index)
@@ -321,7 +318,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             };
 
             // dedup instructions from inline functions
-            unit.for_each_function(&info, |mut func| {
+            unit.for_each_function(&info, &mut range_buf, |mut func| {
                 func.dedup_inlines();
                 self.write_function(&func, !0)
             })?;
@@ -345,50 +342,55 @@ impl<W: Write + Seek> SymCacheWriter<W> {
     fn write_function<'a>(&mut self, func: &Function<'a>, parent_id: u32)
         -> Result<()>
     {
-        let func_addr = func.get_addr();
-        let func_id = self.func_records.len() as u32;
+        let mut to_write = VecDeque::new();
+        to_write.push_front((func, parent_id));
 
-        let mut func_record = FuncRecord {
-            addr_low: (func_addr & 0xffffffff) as u32,
-            addr_high: ((func_addr << 32) & 0xffff) as u16,
-            // XXX: overflow needs to write a second func record
-            len: func.len as u16,
-            symbol_id: self.write_symbol_if_missing(func.name)?,
-            parent_id: parent_id,
-            line_record_id: !0,
-            comp_dir: self.write_file_if_missing(func.comp_dir)?,
-            lang: func.lang as u32,
-        };
+        while let Some((func, parent_id)) = to_write.pop_front() {
+            let func_addr = func.get_addr();
+            let func_id = self.func_records.len() as u32;
 
-        let mut line_records = vec![];
-        let mut last_addr = func_record.addr_start();
-        for line in &func.lines {
-            let file_record = FileRecord {
-                filename: self.write_file_if_missing(line.filename)?,
-                base_dir: self.write_file_if_missing(line.base_dir)?,
+            let mut func_record = FuncRecord {
+                addr_low: (func_addr & 0xffffffff) as u32,
+                addr_high: ((func_addr << 32) & 0xffff) as u16,
+                // XXX: overflow needs to write a second func record
+                len: func.len as u16,
+                symbol_id: self.write_symbol_if_missing(func.name)?,
+                parent_id: parent_id,
+                line_record_id: !0,
+                comp_dir: self.write_file_if_missing(func.comp_dir)?,
+                lang: func.lang as u32,
             };
 
-            // XXX: handle overflows as multiple records
-            let line_record = LineRecord {
-                addr_off: (line.addr - last_addr) as u16,
-                file_id: self.write_file_record_if_missing(file_record)?,
-                line: line.line as u16,
-            };
+            let mut line_records = vec![];
+            let mut last_addr = func_record.addr_start();
+            for line in &func.lines {
+                let file_record = FileRecord {
+                    filename: self.write_file_if_missing(line.filename)?,
+                    base_dir: self.write_file_if_missing(line.base_dir)?,
+                };
 
-            last_addr += line_record.addr_off as u64;
-            line_records.push(line_record);
-        }
+                // XXX: handle overflows as multiple records
+                let line_record = LineRecord {
+                    addr_off: (line.addr - last_addr) as u16,
+                    file_id: self.write_file_record_if_missing(file_record)?,
+                    line: line.line as u16,
+                };
 
-        if !line_records.is_empty() {
-            let seg = self.write_seg(&line_records)?;
-            let line_record_id = self.line_records.len() as u32;
-            self.line_records.push(seg);
-            func_record.line_record_id = line_record_id;
-        }
+                last_addr += line_record.addr_off as u64;
+                line_records.push(line_record);
+            }
 
-        self.func_records.push(func_record);
-        for inline_func in &func.inlines {
-            self.write_function(inline_func, func_id)?;
+            if !line_records.is_empty() {
+                let seg = self.write_seg(&line_records)?;
+                let line_record_id = self.line_records.len() as u32;
+                self.line_records.push(seg);
+                func_record.line_record_id = line_record_id;
+            }
+
+            self.func_records.push(func_record);
+            for inline_func in &func.inlines {
+                to_write.push_back((inline_func, func_id));
+            }
         }
 
         Ok(())
@@ -475,7 +477,8 @@ impl<'input> Unit<'input> {
         }))
     }
 
-    fn for_each_function<T, F>(&self, info: &DwarfInfo<'input>, mut f: F)
+    fn for_each_function<T, F>(&self, info: &DwarfInfo<'input>,
+                               range_buf: &mut Vec<Range>, mut f: F)
         -> Result<()>
     where F: FnMut(Function<'input>) -> Result<T>
     {
@@ -506,7 +509,7 @@ impl<'input> Unit<'input> {
                 _ => continue,
             };
 
-            let ranges = self.parse_ranges(info, entry)
+            let ranges = self.parse_ranges(info, entry, range_buf)
                 .chain_err(|| err("subroutine has invalid ranges"))?;
             if ranges.is_empty() {
                 continue;
@@ -524,7 +527,7 @@ impl<'input> Unit<'input> {
                     .unwrap_or(Language::Unknown)
             };
 
-            for range in &ranges {
+            for range in ranges {
                 let rows = line_program.get_rows(range);
                 for row in rows {
                     let (base_dir, filename) = line_program.get_filename(row.file_index)?;
@@ -562,35 +565,41 @@ impl<'input> Unit<'input> {
         Ok(())
     }
 
-    fn parse_ranges(&self, info: &DwarfInfo<'input>, entry: &Die) -> Result<Vec<Range>> {
-        if let Some(range) = self.parse_noncontiguous_ranges(info, entry)? {
-            Ok(range)
+    fn parse_ranges<'a>(&self, info: &DwarfInfo<'input>, entry: &Die,
+                        buf: &'a mut Vec<Range>) -> Result<&'a [Range]> {
+        buf.clear();
+        if self.parse_noncontiguous_ranges(info, entry, buf)? {
+            Ok(&buf[..])
         } else if let Some(range) = Self::parse_contiguous_range(entry)? {
-            Ok(vec![range])
+            buf.push(range);
+            Ok(&buf[..])
         } else {
-            Ok(vec![])
+            Ok(&[])
         }
     }
 
-    fn parse_noncontiguous_ranges(&self, info: &DwarfInfo<'input>, entry: &Die)
-        -> Result<Option<Vec<Range>>>
+    fn parse_noncontiguous_ranges(&self, info: &DwarfInfo<'input>, entry: &Die,
+                                  buf: &mut Vec<Range>)
+        -> Result<bool>
     {
         let offset = match entry.attr_value(gimli::DW_AT_ranges) {
             Ok(Some(AttributeValue::DebugRangesRef(offset))) => offset,
             Err(e) => {
                 return Err(Error::from(e)).chain_err(|| err("invalid ranges attribute"));
             }
-            _ => return Ok(None),
+            _ => return Ok(false),
         };
 
         let header = info.get_unit_header(self.index)?;
-        let ranges = info.debug_ranges
+        let mut fiter = info.debug_ranges
             .ranges(offset, header.address_size(), self.base_address)
-            .chain_err(|| err("range offsets are not valid"))?
-            .collect()
-            .chain_err(|| err("range could not be parsed"))?;
+            .chain_err(|| err("range offsets are not valid"))?;
 
-        Ok(Some(ranges))
+        while let Some(item) = fiter.next()? {
+            buf.push(item);
+        }
+
+        Ok(true)
     }
 
     fn parse_contiguous_range(entry: &Die) -> Result<Option<Range>> {
