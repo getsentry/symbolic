@@ -15,10 +15,15 @@
 //! ## Examples
 //!
 //! ```rust
-//! # use symbolic_demangle::{Symbol, Language};
+//! # extern crate symbolic_demangle;
+//! # extern crate symbolic_common;
+//! # use symbolic_demangle::Symbol;
+//! # use symbolic_common::Language;
+//! # fn main() {
 //! let sym = Symbol::new("__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E");
 //! assert_eq!(sym.language(), Some(Language::Rust));
 //! assert_eq!(sym.to_string(), "std::io::Read::read_to_end");
+//! # }
 //! ```
 extern crate symbolic_common;
 extern crate rustc_demangle;
