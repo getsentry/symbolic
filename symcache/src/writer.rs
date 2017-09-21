@@ -366,7 +366,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             let mut line_records = vec![];
             let mut last_addr = func_record.addr_start();
             for line in &func.lines {
-                let (file_record, file_id) = if let Some(&x) = local_cache.get(&line.original_file_id) {
+                let file_id = if let Some(&x) = local_cache.get(&line.original_file_id) {
                     x
                 } else {
                     let file_record = FileRecord {
@@ -374,8 +374,8 @@ impl<W: Write + Seek> SymCacheWriter<W> {
                         base_dir: self.write_file_if_missing(line.base_dir)?,
                     };
                     let file_id = self.write_file_record_if_missing(file_record)?;
-                    local_cache.insert(line.original_file_id, (file_record, file_id));
-                    (file_record, file_id)
+                    local_cache.insert(line.original_file_id, file_id);
+                    file_id
                 };
 
                 // XXX: handle overflows as multiple records
