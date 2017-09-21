@@ -102,6 +102,8 @@ impl<'a> Function<'a> {
     }
 
     pub fn dedup_inlines(&mut self) {
+        // XXX: this function is bizarre.  We should do this differently and
+        // actually verify that what we do here makes sense.
         let mut inner_addrs = BTreeSet::new();
         for func in &self.inlines {
             for line in &func.lines {
