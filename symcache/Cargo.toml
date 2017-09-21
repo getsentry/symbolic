@@ -11,3 +11,4 @@ gimli = { git = "https://github.com/gimli-rs/gimli.git" }
 fallible-iterator = "0.1"
 lru-cache = "0.1"
 owning_ref = "0.3"
+fnv = "1.0"

@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::fmt;
 use std::io::{Seek, SeekFrom, Write};
 use std::mem;
@@ -15,7 +15,7 @@ use cache::SYMCACHE_MAGIC;
 
 use fallible_iterator::FallibleIterator;
 use lru_cache::LruCache;
-use fnv::FnvHashSet;
+use fnv::{FnvHashSet, FnvHashMap};
 use gimli;
 use gimli::{Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbbrev, DebugAbbrevOffset,
             DebugInfo, DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr,
@@ -114,21 +114,6 @@ impl<'a> Function<'a> {
             }
         }
         self.lines.push(line);
-    }
-
-    pub fn dedup_inlines(&mut self) {
-        let mut addrs = FnvHashSet::default();
-        self.dedup_inlines_walk(&mut addrs);
-    }
-
-    fn dedup_inlines_walk(&mut self, addrs: &mut FnvHashSet<u64>) {
-        for func in self.inlines.iter_mut() {
-            func.dedup_inlines_walk(addrs);
-        }
-        self.lines.retain(|item| !addrs.contains(&item.addr));
-        for line in &self.lines {
-            addrs.insert(line.addr);
-        }
     }
 
     pub fn get_addr(&self) -> u64 {
@@ -325,9 +310,10 @@ impl<W: Write> SymCacheWriter<W> {
             };
 
             // dedup instructions from inline functions
-            unit.for_each_function(&info, &mut range_buf, |mut func| {
-                func.dedup_inlines();
-                self.write_function(&func, !0)
+            unit.for_each_function(&info, &mut range_buf, |func| {
+                let mut addrs = FnvHashSet::default();
+                let mut local_cache = FnvHashMap::default();
+                self.write_function(&func, &mut addrs, &mut local_cache, !0)
             })?;
         }
 
@@ -346,66 +332,69 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(())
     }
 
-    fn write_function<'a>(&mut self, func: &Function<'a>, parent_id: u32)
+    fn write_function<'a>(&mut self, func: &Function<'a>,
+                          addrs: &mut FnvHashSet<u64>,
+                          local_cache: &mut FnvHashMap<u64, u16>,
+                          parent_id: u32)
         -> Result<()>
     {
-        let mut to_write = VecDeque::new();
-        to_write.push_front((func, parent_id));
-        let mut local_cache = HashMap::new();
+        let func_id = self.line_records.len() as u32;
+        let func_addr = func.get_addr();
+        let func_record = FuncRecord {
+            addr_low: (func_addr & 0xffffffff) as u32,
+            addr_high: ((func_addr << 32) & 0xffff) as u16,
+            // XXX: overflow needs to write a second func record
+            len: func.len as u16,
+            symbol_id: self.write_symbol_if_missing(func.name)?,
+            parent_id: parent_id,
+            line_record_id: !0,
+            comp_dir: self.write_file_if_missing(func.comp_dir)?,
+            lang: func.lang as u32,
+        };
+        let mut last_addr = func_record.addr_start();
+        self.func_records.push(func_record);
 
-        while let Some((func, parent_id)) = to_write.pop_front() {
-            let func_addr = func.get_addr();
-            let func_id = self.func_records.len() as u32;
+        // recurse first.  As we recurse down the address rejection will
+        // do the job it's supposed to do.
+        for inline_func in &func.inlines {
+            self.write_function(inline_func, addrs, local_cache, func_id)?;
+        }
 
-            let mut func_record = FuncRecord {
-                addr_low: (func_addr & 0xffffffff) as u32,
-                addr_high: ((func_addr << 32) & 0xffff) as u16,
-                // XXX: overflow needs to write a second func record
-                len: func.len as u16,
-                symbol_id: self.write_symbol_if_missing(func.name)?,
-                parent_id: parent_id,
-                line_record_id: !0,
-                comp_dir: self.write_file_if_missing(func.comp_dir)?,
-                lang: func.lang as u32,
+        let mut line_records = vec![];
+        for line in &func.lines {
+            if addrs.contains(&line.addr) {
+                continue;
+            }
+            addrs.insert(line.addr);
+
+            let file_id = if let Some(&x) = local_cache.get(&line.original_file_id) {
+                x
+            } else {
+                let file_record = FileRecord {
+                    filename: self.write_file_if_missing(line.filename)?,
+                    base_dir: self.write_file_if_missing(line.base_dir)?,
+                };
+                let file_id = self.write_file_record_if_missing(file_record)?;
+                local_cache.insert(line.original_file_id, file_id);
+                file_id
             };
 
-            let mut line_records = vec![];
-            let mut last_addr = func_record.addr_start();
-            for line in &func.lines {
-                let file_id = if let Some(&x) = local_cache.get(&line.original_file_id) {
-                    x
-                } else {
-                    let file_record = FileRecord {
-                        filename: self.write_file_if_missing(line.filename)?,
-                        base_dir: self.write_file_if_missing(line.base_dir)?,
-                    };
-                    let file_id = self.write_file_record_if_missing(file_record)?;
-                    local_cache.insert(line.original_file_id, file_id);
-                    file_id
-                };
+            // XXX: handle overflows as multiple records
+            let line_record = LineRecord {
+                addr_off: (line.addr - last_addr) as u16,
+                file_id: file_id,
+                line: line.line as u16,
+            };
 
-                // XXX: handle overflows as multiple records
-                let line_record = LineRecord {
-                    addr_off: (line.addr - last_addr) as u16,
-                    file_id: file_id,
-                    line: line.line as u16,
-                };
+            last_addr += line_record.addr_off as u64;
+            line_records.push(line_record);
+        }
 
-                last_addr += line_record.addr_off as u64;
-                line_records.push(line_record);
-            }
-
-            if !line_records.is_empty() {
-                let seg = self.write_seg(&line_records)?;
-                let line_record_id = self.line_records.len() as u32;
-                self.line_records.push(seg);
-                func_record.line_record_id = line_record_id;
-            }
-
-            self.func_records.push(func_record);
-            for inline_func in &func.inlines {
-                to_write.push_back((inline_func, func_id));
-            }
+        if !line_records.is_empty() {
+            let seg = self.write_seg(&line_records)?;
+            let line_record_id = self.line_records.len() as u32;
+            self.line_records.push(seg);
+            self.func_records[func_id as usize].line_record_id = line_record_id;
         }
 
         Ok(())
