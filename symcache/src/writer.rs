@@ -579,84 +579,88 @@ impl<'input> Unit<'input> {
 
     fn parse_ranges<'a>(&self, info: &DwarfInfo<'input>, entry: &Die,
                         buf: &'a mut Vec<Range>) -> Result<&'a [Range]> {
+        let mut low_pc = None;
+        let mut high_pc = None;
+        let mut high_pc_rel = None;
+
         buf.clear();
-        if self.parse_noncontiguous_ranges(info, entry, buf)? {
-            Ok(&buf[..])
-        } else if let Some(range) = Self::parse_contiguous_range(entry)? {
-            buf.push(range);
-            Ok(&buf[..])
-        } else {
-            Ok(&[])
-        }
-    }
 
-    fn parse_noncontiguous_ranges(&self, info: &DwarfInfo<'input>, entry: &Die,
-                                  buf: &mut Vec<Range>)
-        -> Result<bool>
-    {
-        let offset = match entry.attr_value(gimli::DW_AT_ranges) {
-            Ok(Some(AttributeValue::DebugRangesRef(offset))) => offset,
-            Err(e) => {
-                return Err(Error::from(e)).chain_err(|| err("invalid ranges attribute"));
-            }
-            _ => return Ok(false),
-        };
-
-        let header = info.get_unit_header(self.index)?;
-        let mut fiter = info.debug_ranges
-            .ranges(offset, header.address_size(), self.base_address)
-            .chain_err(|| err("range offsets are not valid"))?;
-
-        while let Some(item) = fiter.next()? {
-            buf.push(item);
+        macro_rules! set_pc {
+            ($var:ident, $val:expr) => {{
+                $var = Some($val);
+                if low_pc.is_some() && (high_pc.is_some() || high_pc_rel.is_some()) {
+                    break;
+                }
+            }}
         }
 
-        Ok(true)
-    }
+        let mut fiter = entry.attrs();
+        while let Some(attr) = fiter.next()? {
+            match attr.name() {
+                gimli::DW_AT_ranges => {
+                    match attr.value() {
+                        AttributeValue::DebugRangesRef(offset) => {
+                            let header = info.get_unit_header(self.index)?;
+                            let mut fiter = info.debug_ranges
+                                .ranges(offset, header.address_size(), self.base_address)
+                                .chain_err(|| err("range offsets are not valid"))?;
 
-    fn parse_contiguous_range(entry: &Die) -> Result<Option<Range>> {
-        let low_pc = match entry.attr_value(gimli::DW_AT_low_pc) {
-            Ok(Some(AttributeValue::Addr(addr))) => addr,
-            Err(e) => {
-                return Err(Error::from(e)).chain_err(|| err("invalid low_pc attribute"));
+                            while let Some(item) = fiter.next()? {
+                                buf.push(item);
+                            }
+                            return Ok(&buf[..]);
+                        }
+                        // XXX: error?
+                        _ => continue
+                    }
+                }
+                gimli::DW_AT_low_pc => {
+                    match attr.value() {
+                        AttributeValue::Addr(addr) => set_pc!(low_pc, addr),
+                        _ => return Ok(&[])
+                    }
+                }
+                gimli::DW_AT_high_pc => {
+                    match attr.value() {
+                        AttributeValue::Addr(addr) => set_pc!(high_pc, addr),
+                        AttributeValue::Udata(size) => set_pc!(high_pc_rel, size),
+                        _ => return Ok(&[])
+                    }
+                }
+                _ => continue
             }
-            _ => {
-                return Ok(None);
-            }
-        };
-
-        let high_pc = match entry.attr_value(gimli::DW_AT_high_pc) {
-            Ok(Some(AttributeValue::Addr(addr))) => addr,
-            Ok(Some(AttributeValue::Udata(size))) => low_pc.wrapping_add(size),
-            Err(e) => {
-                return Err(Error::from(e)).chain_err(|| err("invalid high_pc attribute"));
-            }
-            _ => {
-                return Ok(None);
-            }
-        };
-
-        if low_pc == 0 {
-            // to go by the logic in dwarf2read a low_pc of 0 can indicate an
-            // eliminated duplicate when the GNU linker is used.
-            // TODO: *technically* there could be a relocatable section placed at VA 0
-            return Ok(None);
         }
+
+        // to go by the logic in dwarf2read a low_pc of 0 can indicate an
+        // eliminated duplicate when the GNU linker is used.
+        // TODO: *technically* there could be a relocatable section placed at VA 0
+        let low_pc = match low_pc {
+            Some(low_pc) if low_pc != 0 => low_pc,
+            _ => return Ok(&[])
+        };
+
+        let high_pc = match (high_pc, high_pc_rel) {
+            (Some(high_pc), _) => high_pc,
+            (_, Some(high_pc_rel)) => low_pc.wrapping_add(high_pc_rel),
+            _ => return Ok(&[])
+        };
 
         if low_pc == high_pc {
             // most likely low_pc == high_pc means the DIE should be ignored.
             // https://sourceware.org/ml/gdb-patches/2011-03/msg00739.html
-            return Ok(None);
+            return Ok(&[]);
         }
 
         if low_pc > high_pc {
+            // XXX: consider swallowing errors?
             return Err(err("invalid due to inverted range"));
         }
 
-        Ok(Some(Range {
+        buf.push(Range {
             begin: low_pc,
             end: high_pc,
-        }))
+        });
+        Ok(&buf[..])
     }
 
     /// Resolves an entry and if found invokes a function to transform it.
