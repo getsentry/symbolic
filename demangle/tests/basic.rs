@@ -1,6 +1,8 @@
 extern crate symbolic_demangle;
+extern crate symbolic_common;
 
-use symbolic_demangle::{demangle, DemangleOptions, Symbol, Language};
+use symbolic_demangle::{demangle, DemangleOptions, Symbol};
+use symbolic_common::Language;
 
 
 fn assert_mangle(input: &str, output: Option<&str>, opts: DemangleOptions) {
