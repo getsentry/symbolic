@@ -6,6 +6,7 @@ extern crate gimli;
 extern crate fallible_iterator;
 extern crate lru_cache;
 extern crate owning_ref;
+extern crate fnv;
 
 mod types;
 mod cache;

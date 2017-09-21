@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, BTreeSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::io::{Seek, SeekFrom, Write};
 use std::mem;
@@ -15,6 +15,7 @@ use cache::SYMCACHE_MAGIC;
 
 use fallible_iterator::FallibleIterator;
 use lru_cache::LruCache;
+use fnv::FnvHashSet;
 use gimli;
 use gimli::{Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbbrev, DebugAbbrevOffset,
             DebugInfo, DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr,
@@ -116,22 +117,17 @@ impl<'a> Function<'a> {
     }
 
     pub fn dedup_inlines(&mut self) {
-        // XXX: this function is bizarre.  We should do this differently and
-        // actually verify that what we do here makes sense.
-        let mut inner_addrs = BTreeSet::new();
-        for func in &self.inlines {
-            for line in &func.lines {
-                inner_addrs.insert(line.addr);
-            }
-        }
+        let mut addrs = FnvHashSet::default();
+        self.dedup_inlines_walk(&mut addrs);
+    }
 
-        if inner_addrs.is_empty() {
-            return;
-        }
-        self.lines.retain(|item| !inner_addrs.contains(&item.addr));
-
+    fn dedup_inlines_walk(&mut self, addrs: &mut FnvHashSet<u64>) {
         for func in self.inlines.iter_mut() {
-            func.dedup_inlines();
+            func.dedup_inlines_walk(addrs);
+        }
+        self.lines.retain(|item| !addrs.contains(&item.addr));
+        for line in &self.lines {
+            addrs.insert(line.addr);
         }
     }
 
