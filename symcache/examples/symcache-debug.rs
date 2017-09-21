@@ -6,7 +6,7 @@ use std::env;
 use std::fs;
 use std::io::Read;
 
-use symbolic_symcache::{SymCache, write_symcache, Line};
+use symbolic_symcache::SymCache;
 use symbolic_debuginfo::FatObject;
 use symbolic_common::ByteView;
 
@@ -29,10 +29,13 @@ fn main() {
     let fat_obj = FatObject::parse(bv).unwrap();
     let objects = fat_obj.objects().unwrap();
 
+    /*
     let cachefile = format!("{}.symcache", filename);
     write_symcache(fs::File::create(&cachefile).unwrap(), &objects[0]).unwrap();
 
     let cache = SymCache::new(ByteView::from_path(&cachefile).unwrap()).unwrap();
+    */
+    let cache = SymCache::from_object(&objects[0]).unwrap();
 
     if args.len() == 3 {
         let m = cache.lookup(args[2].parse().unwrap()).unwrap();
@@ -43,17 +46,7 @@ fn main() {
         println!("Cache file size: {}", cache.size());
         for func in cache.functions() {
             let func = func.unwrap();
-            let mut last_line: Option<Line> = None;
-            for line in func.lines() {
-                let line = line.unwrap();
-                if let Some(last_line) = last_line {
-                    if last_line.filename() != line.filename() {
-                        println!("{:#?}", &func);
-                        break;
-                    }
-                }
-                last_line = Some(line);
-            }
+            println!("{:#?}", func);
         }
     }
 }
