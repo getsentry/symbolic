@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, BTreeMap, BTreeSet, VecDeque};
+use std::collections::{HashMap, BTreeSet, VecDeque};
 use std::fmt;
 use std::io::{Seek, SeekFrom, Write};
 use std::mem;
@@ -136,7 +136,7 @@ struct SymCacheWriter<W: Write + Seek> {
     symbol_map: HashMap<Vec<u8>, u32>,
     symbols: Vec<Seg<u8>>,
     files: HashMap<Vec<u8>, Seg<u8>>,
-    file_record_map: BTreeMap<FileRecord, u16>,
+    file_record_map: HashMap<FileRecord, u16>,
     file_records: Vec<FileRecord>,
     func_records: Vec<FuncRecord>,
     line_records: Vec<Seg<LineRecord>>,
@@ -226,7 +226,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             symbol_map: HashMap::new(),
             symbols: vec![],
             files: HashMap::new(),
-            file_record_map: BTreeMap::new(),
+            file_record_map: HashMap::new(),
             file_records: vec![],
             func_records: vec![],
             line_records: vec![],
@@ -344,8 +344,8 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         -> Result<()>
     {
         let mut to_write = VecDeque::new();
-        let mut last_file_record = None;
         to_write.push_front((func, parent_id));
+        let mut local_cache = HashMap::new();
 
         while let Some((func, parent_id)) = to_write.pop_front() {
             let func_addr = func.get_addr();
@@ -366,16 +366,16 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             let mut line_records = vec![];
             let mut last_addr = func_record.addr_start();
             for line in &func.lines {
-                let (file_record, file_id) = match last_file_record {
-                    Some((original_file_id, file_record, file_id))
-                        if original_file_id == line.original_file_id => (file_record, file_id),
-                    _ => {
-                        let file_record = FileRecord {
-                            filename: self.write_file_if_missing(line.filename)?,
-                            base_dir: self.write_file_if_missing(line.base_dir)?,
-                        };
-                        (file_record, self.write_file_record_if_missing(file_record)?)
-                    }
+                let (file_record, file_id) = if let Some(&x) = local_cache.get(&line.original_file_id) {
+                    x
+                } else {
+                    let file_record = FileRecord {
+                        filename: self.write_file_if_missing(line.filename)?,
+                        base_dir: self.write_file_if_missing(line.base_dir)?,
+                    };
+                    let file_id = self.write_file_record_if_missing(file_record)?;
+                    local_cache.insert(line.original_file_id, (file_record, file_id));
+                    (file_record, file_id)
                 };
 
                 // XXX: handle overflows as multiple records
@@ -387,7 +387,6 @@ impl<W: Write + Seek> SymCacheWriter<W> {
 
                 last_addr += line_record.addr_off as u64;
                 line_records.push(line_record);
-                last_file_record = Some((line.original_file_id, file_record, file_id));
             }
 
             if !line_records.is_empty() {
