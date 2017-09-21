@@ -25,6 +25,6 @@ $(TARGETS):
 
 $(OUT_DIR)/%: main.cpp
 	@mkdir -p $(@D)
-	c++ -std=c++11 -g -O3 -o $@ main.cpp
+	$(CXX) -std=c++11 -g -O3 -o $@ main.cpp
 
 .PHONY: all $(TARGETS)
