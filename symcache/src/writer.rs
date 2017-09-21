@@ -18,7 +18,7 @@ use lru_cache::LruCache;
 use gimli;
 use gimli::{Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbbrev, DebugAbbrevOffset,
             DebugInfo, DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr,
-            DebuggingInformationEntry, DwAt, DwLang, EndianBuf, StateMachine,
+            DebuggingInformationEntry, DwLang, EndianBuf, StateMachine,
             IncompleteLineNumberProgram, Range, UnitOffset};
 
 type Buf<'input> = EndianBuf<'input, Endianness>;
@@ -670,21 +670,19 @@ impl<'input> Unit<'input> {
     fn resolve_reference<'info, T, F>(
         &self,
         info: &'info DwarfInfo<'input>,
-        base_entry: &Die,
-        ref_attr: DwAt,
+        attr_value: AttributeValue<Buf<'input>>,
         f: F,
     ) -> Result<Option<T>>
         where for<'abbrev> F: FnOnce(&Die<'abbrev, 'info, 'input>) -> Result<Option<T>>
     {
-        let (index, offset) = match base_entry.attr_value(ref_attr)? {
-            Some(AttributeValue::UnitRef(offset)) => {
+        let (index, offset) = match attr_value {
+            AttributeValue::UnitRef(offset) => {
                 (self.index, offset)
             }
-            Some(AttributeValue::DebugInfoRef(offset)) => {
+            AttributeValue::DebugInfoRef(offset) => {
                 let (index, unit_offset) = info.find_unit_offset(offset)?;
                 (index, unit_offset)
             }
-            None => { return Ok(None); }
             // TODO: there is probably more that can come back here
             _ => { return Ok(None); }
         };
@@ -706,50 +704,39 @@ impl<'input> Unit<'input> {
         info: &DwarfInfo<'input>,
         entry: &Die<'abbrev, 'unit, 'input>,
     ) -> Result<Option<&'input [u8]>> {
-        // For naming, we prefer the linked name, if available
-        if let Some(name) = entry
-            .attr(gimli::DW_AT_linkage_name)
-            .chain_err(|| err("invalid subprogram linkage name"))?
-            .and_then(|attr| attr.string_value(&info.debug_str))
-        {
-            return Ok(Some(name.buf()));
-        }
-        if let Some(name) = entry
-            .attr(gimli::DW_AT_MIPS_linkage_name)
-            .chain_err(|| err("invalid subprogram linkage name"))?
-            .and_then(|attr| attr.string_value(&info.debug_str))
-        {
-            return Ok(Some(name.buf()));
+        let mut fiter = entry.attrs();
+        let mut fallback_name = None;
+        let mut reference_target = None;
+
+        while let Some(attr) = fiter.next()? {
+            match attr.name() {
+                // prioritize these.  If we get them, take them.
+                gimli::DW_AT_linkage_name |
+                gimli::DW_AT_MIPS_linkage_name => {
+                    return Ok(attr.string_value(&info.debug_str).map(|x| x.buf()));
+                }
+                gimli::DW_AT_name => {
+                    fallback_name = Some(attr);
+                }
+                gimli::DW_AT_abstract_origin |
+                gimli::DW_AT_specification => {
+                    reference_target = Some(attr);
+                }
+                _ => {}
+            }
         }
 
-        // Linked name is not available, so fall back to just plain old name, if that's available.
-        if let Some(name) = entry
-            .attr(gimli::DW_AT_name)
-            .chain_err(|| err("invalid subprogram name"))?
-            .and_then(|attr| attr.string_value(&info.debug_str))
-        {
-            return Ok(Some(name.buf()));
+        if let Some(attr) = fallback_name {
+            return Ok(attr.string_value(&info.debug_str).map(|x| x.buf()));
         }
 
-        // If we don't have the link name, check if this function refers to another
-        if let Some(name) = self.resolve_reference(
-            info, entry, gimli::DW_AT_abstract_origin, |referenced_entry|
-        {
-            self.resolve_function_name(info, referenced_entry)
-                .map(|name| Some(name))
-                .chain_err(|| err("abstract origin does not resolve to a name"))
-        }).chain_err(|| err("invalid subprogram abstract origin"))? {
-            return Ok(name);
-        }
-
-        if let Some(name) = self.resolve_reference(
-            info, entry, gimli::DW_AT_specification, |referenced_entry|
-        {
-            self.resolve_function_name(info, referenced_entry)
-                .map(|name| Some(name))
-                .chain_err(|| err("specification does not resolve to a name"))
-        }).chain_err(|| err("invalid subprogram specification"))? {
-            return Ok(name);
+        if let Some(attr) = reference_target {
+            if let Some(name) = self.resolve_reference(info, attr.value(), |ref_entry| {
+                self.resolve_function_name(info, ref_entry)
+                    .chain_err(|| err("reference does not resolve to a name"))
+            })? {
+                return Ok(Some(name));
+            }
         }
 
         Ok(None)
