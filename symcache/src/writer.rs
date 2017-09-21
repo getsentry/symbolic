@@ -28,22 +28,36 @@ fn err(msg: &'static str) -> Error {
     Error::from(ErrorKind::BadDwarfData(msg))
 }
 
-/// Given a writer and object, dumps the object into the writer as symcache.
+/// Given a writer and object, dumps the object into the writer.
 ///
 /// In case a symcache is to be constructed from memory the `SymCache::from_object`
 /// method can be used instead.
 ///
-/// As a special requirement the writer needs to implement seek as the headers
-/// are overwritten later.
-pub fn write_symcache<W: Write + Seek>(w: W, obj: &Object) -> Result<()> {
-    let mut writer = SymCacheWriter::new(w);
-    // write the initial header into the file.  This positions the cursor after it.
-    writer.write_header()?;
-    // write object data.
-    writer.write_object(obj)?;
-    // write the updated header.
-    writer.write_header()?;
+/// This requires the writer to be seekable.
+pub fn to_writer<W: Write + Seek>(mut w: W, obj: &Object) -> Result<()> {
+    w.write_all(CacheFileHeader::default().as_bytes())?;
+    let header = {
+        let mut writer = SymCacheWriter::new(&mut w);
+        writer.write_object(obj)?;
+        writer.header
+    };
+    w.seek(SeekFrom::Start(0))?;
+    w.write_all(header.as_bytes())?;
     Ok(())
+}
+
+/// Converts an object into a vector of symcache data.
+pub fn to_vec(obj: &Object) -> Result<Vec<u8>> {
+    let mut buf = Vec::<u8>::new();
+    buf.write_all(CacheFileHeader::default().as_bytes())?;
+    let header = {
+        let mut writer = SymCacheWriter::new(&mut buf);
+        writer.write_object(obj)?;
+        writer.header
+    };
+    let header_bytes = header.as_bytes();
+    (&mut buf[..header_bytes.len()]).copy_from_slice(header_bytes);
+    Ok(buf)
 }
 
 struct Function<'a> {
@@ -132,8 +146,8 @@ impl<'a> Function<'a> {
     }
 }
 
-struct SymCacheWriter<W: Write + Seek> {
-    writer: RefCell<W>,
+struct SymCacheWriter<W: Write> {
+    writer: RefCell<(u64, W)>,
     header: CacheFileHeader,
     symbol_map: HashMap<Vec<u8>, u32>,
     symbols: Vec<Seg<u8>>,
@@ -220,10 +234,10 @@ impl<'input> DwarfInfo<'input> {
     }
 }
 
-impl<W: Write + Seek> SymCacheWriter<W> {
+impl<W: Write> SymCacheWriter<W> {
     pub fn new(writer: W) -> SymCacheWriter<W> {
         SymCacheWriter {
-            writer: RefCell::new(writer),
+            writer: RefCell::new((0, writer)),
             header: Default::default(),
             symbol_map: HashMap::new(),
             symbols: vec![],
@@ -236,20 +250,20 @@ impl<W: Write + Seek> SymCacheWriter<W> {
     }
 
     #[inline(always)]
-    fn with_file<T, F: FnOnce(&mut W) -> Result<T>>(&self, f: F) -> Result<T> {
-        f(&mut *self.writer.borrow_mut() as &mut W)
+    fn write_bytes(&self, bytes: &[u8]) -> Result<Seg<u8>> {
+        let (ref mut pos, ref mut writer) = *self.writer.borrow_mut();
+        let offset = *pos;
+        *pos += bytes.len() as u64;
+        writer.write_all(bytes)?;
+        Ok(Seg::new(offset as u32, bytes.len() as u32))
     }
 
     #[inline(always)]
-    fn write<T>(&self, x: &T) -> Result<Seg<u8>> {
+    fn write_item<T>(&self, x: &T) -> Result<Seg<u8>> {
         unsafe {
             let bytes: *const u8 = mem::transmute(x);
             let size = mem::size_of_val(x);
-            self.with_file(|writer| {
-                let offset = writer.seek(SeekFrom::Current(0))?;
-                writer.write_all(slice::from_raw_parts(bytes, size))?;
-                Ok(Seg::new(offset as u32, size as u32))
-            })
+            self.write_bytes(slice::from_raw_parts(bytes, size))
         }
     }
 
@@ -257,7 +271,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
     fn write_seg<T>(&self, x: &[T]) -> Result<Seg<T>> {
         let mut first_seg = None;
         for item in x {
-            let seg = self.write(item)?;
+            let seg = self.write_item(item)?;
             if first_seg.is_none() {
                 first_seg = Some(seg);
             }
@@ -270,7 +284,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             return Ok(index);
         }
         let idx = self.symbols.len() as u32;
-        let seg = self.write_seg(sym)?;
+        let seg = self.write_bytes(sym)?;
         self.symbols.push(seg);
         self.symbol_map.insert(sym.to_owned(), idx);
         Ok(idx)
@@ -281,7 +295,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         if let Some(item) = self.files.get(filename) {
             return Ok(*item);
         }
-        let seg = self.write_seg(filename)?;
+        let seg = self.write_bytes(filename)?;
         self.files.insert(filename.to_owned(), seg);
         Ok(seg)
     }
@@ -298,17 +312,11 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         Ok(idx)
     }
 
-    pub fn write_header(&self) -> Result<()> {
-        self.with_file(|writer| Ok(writer.seek(SeekFrom::Start(0))?))?;
-        self.write(&self.header)?;
-        Ok(())
-    }
-
     pub fn write_object(&mut self, obj: &Object) -> Result<()> {
         let info = DwarfInfo::from_object(obj)
             .chain_err(|| err("could not extract debug info from object file"))?;
 
-        let mut range_buf = Vec::with_capacity(128);
+        let mut range_buf = Vec::new();
         for index in 0..info.units.len() {
             // attempt to parse a single unit from the given header.
             let unit_opt = Unit::parse(&info, index)

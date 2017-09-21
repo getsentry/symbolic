@@ -10,7 +10,7 @@ use symbolic_debuginfo::Object;
 
 use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, LineRecord};
 use utils::binsearch_by_key;
-use writer::write_symcache;
+use writer;
 
 pub const SYMCACHE_MAGIC: [u8; 4] = [b'S', b'Y', b'M', b'C'];
 
@@ -311,9 +311,8 @@ impl<'a> SymCache<'a> {
 
     /// Constructs a symcache from an object.
     pub fn from_object(obj: &Object) -> Result<SymCache<'a>> {
-        let mut cur = io::Cursor::new(Vec::<u8>::new());
-        write_symcache(&mut cur, obj)?;
-        SymCache::new(ByteView::from_vec(cur.into_inner()))
+        let vec = writer::to_vec(obj)?;
+        SymCache::new(ByteView::from_vec(vec))
     }
 
     /// The total size of the cache file
@@ -334,7 +333,8 @@ impl<'a> SymCache<'a> {
     }
 
     fn get_segment<T>(&self, seg: &Seg<T>) -> Result<&[T]> {
-        let offset = seg.offset as usize;
+        let offset = seg.offset as usize +
+            mem::size_of::<CacheFileHeader>() as usize;
         let size = mem::size_of::<T>() * seg.len as usize;
         unsafe {
             let bytes = self.get_data(offset, size)?;

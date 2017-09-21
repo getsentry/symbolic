@@ -1,4 +1,6 @@
 use std::fmt;
+use std::mem;
+use std::slice;
 use std::marker::PhantomData;
 
 use uuid::Uuid;
@@ -83,6 +85,18 @@ pub struct CacheFileHeader {
     pub files: Seg<FileRecord>,
     pub function_records: Seg<FuncRecord>,
     pub line_records: Seg<Seg<LineRecord>>,
+}
+
+impl CacheFileHeader {
+    pub fn as_bytes(&self) -> &[u8] {
+        unsafe {
+            let bytes: *const u8 = mem::transmute(self);
+            slice::from_raw_parts(
+                bytes,
+                mem::size_of::<CacheFileHeader>()
+            )
+        }
+    }
 }
 
 impl FuncRecord {
