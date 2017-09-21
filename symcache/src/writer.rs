@@ -58,6 +58,7 @@ struct Function<'a> {
 
 struct Line<'a> {
     pub addr: u64,
+    pub original_file_id: u64,
     pub filename: &'a [u8],
     pub base_dir: &'a [u8],
     pub line: u32,
@@ -68,6 +69,7 @@ impl<'a> fmt::Debug for Line<'a> {
         f.debug_struct("Line")
             .field("addr", &self.addr)
             .field("base_dir", &String::from_utf8_lossy(self.base_dir))
+            .field("original_file_id", &self.original_file_id)
             .field("filename", &String::from_utf8_lossy(self.filename))
             .field("line", &self.line)
             .finish()
@@ -90,8 +92,7 @@ impl<'a> fmt::Debug for Function<'a> {
 impl<'a> Function<'a> {
     pub fn append_line_if_changed(&mut self, line: Line<'a>) {
         if let Some(last_line) = self.lines.last() {
-            if last_line.filename == line.filename &&
-               last_line.base_dir == line.base_dir &&
+            if last_line.original_file_id == line.original_file_id &&
                last_line.line == line.line
             {
                 return;
@@ -343,6 +344,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         -> Result<()>
     {
         let mut to_write = VecDeque::new();
+        let mut last_file_record = None;
         to_write.push_front((func, parent_id));
 
         while let Some((func, parent_id)) = to_write.pop_front() {
@@ -364,20 +366,28 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             let mut line_records = vec![];
             let mut last_addr = func_record.addr_start();
             for line in &func.lines {
-                let file_record = FileRecord {
-                    filename: self.write_file_if_missing(line.filename)?,
-                    base_dir: self.write_file_if_missing(line.base_dir)?,
+                let (file_record, file_id) = match last_file_record {
+                    Some((original_file_id, file_record, file_id))
+                        if original_file_id == line.original_file_id => (file_record, file_id),
+                    _ => {
+                        let file_record = FileRecord {
+                            filename: self.write_file_if_missing(line.filename)?,
+                            base_dir: self.write_file_if_missing(line.base_dir)?,
+                        };
+                        (file_record, self.write_file_record_if_missing(file_record)?)
+                    }
                 };
 
                 // XXX: handle overflows as multiple records
                 let line_record = LineRecord {
                     addr_off: (line.addr - last_addr) as u16,
-                    file_id: self.write_file_record_if_missing(file_record)?,
+                    file_id: file_id,
                     line: line.line as u16,
                 };
 
                 last_addr += line_record.addr_off as u64;
                 line_records.push(line_record);
+                last_file_record = Some((line.original_file_id, file_record, file_id));
             }
 
             if !line_records.is_empty() {
@@ -534,6 +544,7 @@ impl<'input> Unit<'input> {
 
                     let new_line = Line {
                         addr: row.address,
+                        original_file_id: row.file_index as u64,
                         filename: filename,
                         base_dir: base_dir,
                         line: row.line.unwrap_or(0) as u32,
