@@ -369,7 +369,17 @@ impl<W: Write> SymCacheWriter<W> {
             len: func.len as u16,
             symbol_id_low: (symbol_id & 0xffff) as u16,
             symbol_id_high: ((symbol_id << 16) & 0xff) as u8,
-            parent_offset: if parent_id == !0 { !0 } else { (func_id - parent_id) as u8 },
+            parent_offset: if parent_id == !0 {
+                !0
+            } else {
+                let parent_offset = func_id.wrapping_sub(parent_id);
+                if parent_offset >= 0xfffe {
+                    println!("{} / {}", func_id, parent_id);
+                    return Err(ErrorKind::Internal(
+                        "parent function range too big for file format").into());
+                }
+                parent_offset as u16
+            },
             line_records: Seg::default(),
             comp_dir: self.write_file_if_missing(func.comp_dir)?,
             lang: func.lang as u8,
