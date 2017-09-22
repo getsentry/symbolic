@@ -366,8 +366,9 @@ impl<W: Write> SymCacheWriter<W> {
         let func_record = FuncRecord {
             addr_low: (func_addr & 0xffffffff) as u32,
             addr_high: ((func_addr << 32) & 0xffff) as u16,
-            // XXX: overflow needs to write a second func record
-            len: func.len as u16,
+            // XXX: we have not seen this yet, but in theory this should be
+            // stored as multiple function records.
+            len: cmp::min(func.len, 0xffff) as u16,
             symbol_id_low: (symbol_id & 0xffff) as u16,
             symbol_id_high: ((symbol_id << 16) & 0xff) as u8,
             parent_offset: if parent_id == !0 {
