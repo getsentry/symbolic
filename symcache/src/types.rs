@@ -56,7 +56,7 @@ pub struct FuncRecord {
     pub parent_id: u32,
     /// The line record of this function.  If it fully overlaps
     /// with an inline the record could be ~0
-    pub line_record_id: u32,
+    pub line_records: Seg<LineRecord>,
     /// The comp dir of the file record
     pub comp_dir: Seg<u8>,
     /// The language of the func record.
@@ -84,7 +84,6 @@ pub struct CacheFileHeader {
     pub symbols: Seg<Seg<u8>>,
     pub files: Seg<FileRecord>,
     pub function_records: Seg<FuncRecord>,
-    pub line_records: Seg<Seg<LineRecord>>,
 }
 
 impl CacheFileHeader {

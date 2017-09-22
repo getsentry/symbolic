@@ -136,7 +136,7 @@ struct SymCacheWriter<W: Write> {
     file_record_map: HashMap<FileRecord, u16>,
     file_records: Vec<FileRecord>,
     func_records: Vec<FuncRecord>,
-    line_records: Vec<Seg<LineRecord>>,
+    line_record_bytes: RefCell<u64>,
 }
 
 #[derive(Debug)]
@@ -226,7 +226,7 @@ impl<W: Write> SymCacheWriter<W> {
             file_record_map: HashMap::new(),
             file_records: vec![],
             func_records: vec![],
-            line_records: vec![],
+            line_record_bytes: RefCell::new(0),
         }
     }
 
@@ -327,7 +327,6 @@ impl<W: Write> SymCacheWriter<W> {
         self.header.symbols = self.write_seg(&self.symbols)?;
         self.header.files = self.write_seg(&self.file_records)?;
         self.header.function_records = self.write_seg(&self.func_records)?;
-        self.header.line_records = self.write_seg(&self.line_records)?;
 
         Ok(())
     }
@@ -338,7 +337,7 @@ impl<W: Write> SymCacheWriter<W> {
                           parent_id: u32)
         -> Result<()>
     {
-        let func_id = self.line_records.len() as u32;
+        let func_id = self.func_records.len() as u32;
         let func_addr = func.get_addr();
         let func_record = FuncRecord {
             addr_low: (func_addr & 0xffffffff) as u32,
@@ -347,7 +346,7 @@ impl<W: Write> SymCacheWriter<W> {
             len: func.len as u16,
             symbol_id: self.write_symbol_if_missing(func.name)?,
             parent_id: parent_id,
-            line_record_id: !0,
+            line_records: Seg::default(),
             comp_dir: self.write_file_if_missing(func.comp_dir)?,
             lang: func.lang as u32,
         };
@@ -388,13 +387,13 @@ impl<W: Write> SymCacheWriter<W> {
 
             last_addr += line_record.addr_off as u64;
             line_records.push(line_record);
+
+            let mut counter = self.line_record_bytes.borrow_mut();
+            *counter += mem::size_of::<LineRecord>() as u64;
         }
 
         if !line_records.is_empty() {
-            let seg = self.write_seg(&line_records)?;
-            let line_record_id = self.line_records.len() as u32;
-            self.line_records.push(seg);
-            self.func_records[func_id as usize].line_record_id = line_record_id;
+            self.func_records[func_id as usize].line_records = self.write_seg(&line_records)?;
         }
 
         Ok(())

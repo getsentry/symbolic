@@ -144,7 +144,7 @@ impl<'a> Function<'a> {
     pub fn lines(&'a self) -> Lines<'a> {
         Lines {
             cache: self.cache,
-            record_id: self.fun.line_record_id,
+            fun: &self.fun,
             addr: self.fun.addr_start(),
             idx: 0,
         }
@@ -154,8 +154,8 @@ impl<'a> Function<'a> {
 /// An iterator over all lines.
 pub struct Lines<'a> {
     cache: &'a SymCache<'a>,
+    fun: &'a FuncRecord,
     addr: u64,
-    record_id: u32,
     idx: usize,
 }
 
@@ -206,10 +206,7 @@ impl<'a> Iterator for Lines<'a> {
     type Item = Result<Line<'a>>;
 
     fn next(&mut self) -> Option<Result<Line<'a>>> {
-        let records = match itry!(self.cache.get_line_records(self.record_id)) {
-            Some(records) => records,
-            None => { return None; }
-        };
+        let records = itry!(self.cache.get_segment(&self.fun.line_records));
         if let Some(rec) = records.get(self.idx) {
             self.idx += 1;
             self.addr += rec.addr_off as u64;
@@ -252,8 +249,8 @@ impl<'a> fmt::Debug for Function<'a> {
 impl<'a> fmt::Debug for Line<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Line")
-            .field("addr", &self.addr)
-            .field("line", &self.line)
+            .field("addr", &self.addr())
+            .field("line", &self.line())
             .field("base_dir", &self.base_dir())
             .field("filename", &self.filename())
             .finish()
@@ -382,18 +379,6 @@ impl<'a> SymCache<'a> {
         self.get_segment(&header.function_records)
     }
 
-    fn get_line_records(&'a self, id: u32) -> Result<Option<&'a [LineRecord]>> {
-        if id == !0 {
-            return Ok(None);
-        }
-        let header = self.header()?;
-        let records = self.get_segment(&header.line_records)?;
-        match records.get(id as usize) {
-            Some(records_seg) => Ok(Some(self.get_segment(records_seg)?)),
-            None => Err(ErrorKind::Internal("unknown line record").into())
-        }
-    }
-
     fn get_file_record(&self, idx: u16) -> Result<Option<&FileRecord>> {
         let header = self.header()?;
         let files = self.get_segment(&header.files)?;
@@ -403,10 +388,7 @@ impl<'a> SymCache<'a> {
     fn run_to_line(&'a self, fun: &'a FuncRecord, addr: u64)
         -> Result<Option<(&FileRecord, u32)>>
     {
-        let records = match self.get_line_records(fun.line_record_id)? {
-            Some(records) => records,
-            None => { return Ok(None); }
-        };
+        let records = self.get_segment(&fun.line_records)?;
 
         let mut file_id = !0u16;
         let mut running_addr = fun.addr_start() as u64;
