@@ -51,7 +51,7 @@ pub struct FuncRecord {
     pub len: u16,
     /// The line record of this function.  If it fully overlaps
     /// with an inline the record could be ~0
-    pub line_records: Seg<LineRecord>,
+    pub line_records: Seg<LineRecord, u16>,
     /// The comp dir of the file record
     pub comp_dir: Seg<u8, u8>,
     /// The ID offset of the parent funciton.  Will be ~0 if the function has
@@ -69,7 +69,7 @@ pub struct FuncRecord {
 #[derive(Default, Copy, Clone, Debug)]
 pub struct LineRecord {
     /// offset to function item or line record
-    pub addr_off: u16,
+    pub addr_off: u8,
     /// absolutely indexed file
     pub file_id: u16,
     /// the line of the line record

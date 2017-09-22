@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
+use std::cmp;
 use std::io::{Seek, SeekFrom, Write};
 use std::mem;
 use std::slice;
@@ -77,7 +78,7 @@ struct Line<'a> {
     pub original_file_id: u64,
     pub filename: &'a [u8],
     pub base_dir: &'a [u8],
-    pub line: u32,
+    pub line: u16,
 }
 
 impl<'a> fmt::Debug for Line<'a> {
@@ -412,15 +413,17 @@ impl<W: Write> SymCacheWriter<W> {
                 file_id
             };
 
-            // XXX: handle overflows as multiple records
-            let line_record = LineRecord {
-                addr_off: (line.addr - last_addr) as u16,
-                file_id: file_id,
-                line: line.line as u16,
-            };
-
-            last_addr += line_record.addr_off as u64;
-            line_records.push(line_record);
+            let mut diff = (line.addr - last_addr) as i64;
+            while diff > 0 {
+                let line_record = LineRecord {
+                    addr_off: (diff & 0xff) as u8,
+                    file_id: file_id,
+                    line: line.line,
+                };
+                last_addr += line_record.addr_off as u64;
+                line_records.push(line_record);
+                diff -= 0xff;
+            }
 
             let mut counter = self.line_record_bytes.borrow_mut();
             *counter += mem::size_of::<LineRecord>() as u64;
@@ -574,7 +577,7 @@ impl<'input> Unit<'input> {
                         original_file_id: row.file_index as u64,
                         filename: filename,
                         base_dir: base_dir,
-                        line: row.line.unwrap_or(0) as u32,
+                        line: cmp::min(row.line.unwrap_or(0), 0xffff) as u16,
                     };
 
                     func.append_line_if_changed(new_line);

@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use symbolic_common::{Result, ErrorKind, ByteView, Arch, Language};
 use symbolic_debuginfo::Object;
 
-use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, LineRecord};
+use types::{CacheFileHeader, Seg, FileRecord, FuncRecord};
 use utils::binsearch_by_key;
 use writer;
 
