@@ -3,10 +3,7 @@ use std::mem;
 use std::slice;
 use std::marker::PhantomData;
 
-use num;
 use uuid::Uuid;
-
-use symbolic_common::{ErrorKind, Result};
 
 
 #[repr(C, packed)]
@@ -17,7 +14,7 @@ pub struct Seg<T, L=u32> {
     _ty: PhantomData<T>,
 }
 
-impl<T, L: Copy + num::FromPrimitive> Seg<T, L> {
+impl<T, L> Seg<T, L> {
     pub fn new(offset: u32, len: L) -> Seg<T, L> {
         Seg {
             offset: offset,
