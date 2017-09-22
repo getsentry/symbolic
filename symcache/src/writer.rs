@@ -16,6 +16,7 @@ use cache::SYMCACHE_MAGIC;
 use fallible_iterator::FallibleIterator;
 use lru_cache::LruCache;
 use fnv::{FnvHashSet, FnvHashMap};
+use num;
 use gimli;
 use gimli::{Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbbrev, DebugAbbrevOffset,
             DebugInfo, DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr,
@@ -231,16 +232,25 @@ impl<W: Write> SymCacheWriter<W> {
     }
 
     #[inline(always)]
-    fn write_bytes(&self, bytes: &[u8]) -> Result<Seg<u8>> {
+    fn write_bytes<L>(&self, bytes: &[u8]) -> Result<Seg<u8, L>>
+        where L: Copy + num::FromPrimitive
+    {
         let (ref mut pos, ref mut writer) = *self.writer.borrow_mut();
         let offset = *pos;
         *pos += bytes.len() as u64;
         writer.write_all(bytes)?;
-        Ok(Seg::new(offset as u32, bytes.len() as u32))
+        // XXX: error handling
+        Ok(Seg::new(
+            offset as u32,
+            num::FromPrimitive::from_usize(bytes.len())
+                .ok_or_else(|| ErrorKind::Internal("out of range for byte segment"))?
+        ))
     }
 
     #[inline(always)]
-    fn write_item<T>(&self, x: &T) -> Result<Seg<u8>> {
+    fn write_item<T, L>(&self, x: &T) -> Result<Seg<u8, L>>
+        where L: Copy + num::FromPrimitive
+    {
         unsafe {
             let bytes: *const u8 = mem::transmute(x);
             let size = mem::size_of_val(x);
@@ -249,15 +259,21 @@ impl<W: Write> SymCacheWriter<W> {
     }
 
     #[inline]
-    fn write_seg<T>(&self, x: &[T]) -> Result<Seg<T>> {
-        let mut first_seg = None;
+    fn write_seg<T, L>(&self, x: &[T]) -> Result<Seg<T, L>>
+        where L: Copy + num::FromPrimitive
+    {
+        let mut first_seg: Option<Seg<u8>> = None;
         for item in x {
             let seg = self.write_item(item)?;
             if first_seg.is_none() {
                 first_seg = Some(seg);
             }
         }
-        Ok(Seg::new(first_seg.map(|x| x.offset).unwrap_or(0), x.len() as u32))
+        Ok(Seg::new(
+            first_seg.map(|x| x.offset).unwrap_or(0),
+            num::FromPrimitive::from_usize(x.len())
+                .ok_or_else(|| ErrorKind::Internal("out of range for item segment"))?
+        ))
     }
 
     fn write_symbol_if_missing(&mut self, sym: &[u8]) -> Result<u32> {
@@ -265,7 +281,7 @@ impl<W: Write> SymCacheWriter<W> {
             return Ok(index);
         }
         let idx = self.symbols.len() as u32;
-        let seg = self.write_bytes(sym)?.to_small_seg()?;
+        let seg = self.write_bytes(sym)?;
         self.symbols.push(seg);
         self.symbol_map.insert(sym.to_owned(), idx);
         Ok(idx)
@@ -276,7 +292,7 @@ impl<W: Write> SymCacheWriter<W> {
         if let Some(item) = self.files.get(filename) {
             return Ok(*item);
         }
-        let seg = self.write_bytes(filename)?.to_tiny_seg()?;
+        let seg = self.write_bytes(filename)?;
         self.files.insert(filename.to_owned(), seg);
         Ok(seg)
     }
@@ -325,7 +341,7 @@ impl<W: Write> SymCacheWriter<W> {
         }
 
         self.header.symbols = self.write_seg(&self.symbols)?;
-        self.header.files = self.write_seg(&self.file_records)?.to_small_seg()?;
+        self.header.files = self.write_seg(&self.file_records)?;
         self.header.function_records = self.write_seg(&self.func_records)?;
 
         Ok(())

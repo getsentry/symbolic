@@ -7,6 +7,7 @@ extern crate fallible_iterator;
 extern crate lru_cache;
 extern crate owning_ref;
 extern crate fnv;
+extern crate num;
 
 mod types;
 mod cache;

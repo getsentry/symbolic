@@ -3,6 +3,7 @@ use std::mem;
 use std::slice;
 use std::marker::PhantomData;
 
+use num;
 use uuid::Uuid;
 
 use symbolic_common::{ErrorKind, Result};
@@ -16,39 +17,13 @@ pub struct Seg<T, L=u32> {
     _ty: PhantomData<T>,
 }
 
-impl<T, L: Copy + Into<u64>> Seg<T, L> {
+impl<T, L: Copy + num::FromPrimitive> Seg<T, L> {
     pub fn new(offset: u32, len: L) -> Seg<T, L> {
         Seg {
             offset: offset,
             len: len,
             _ty: PhantomData,
         }
-    }
-
-    pub fn to_small_seg(&self) -> Result<Seg<T, u16>> {
-        let len_tmp: u64 = self.len.into();
-        let new_len = len_tmp as u16;
-        if (new_len as u64) != len_tmp {
-            return Err(ErrorKind::Internal("overflow on small segment").into());
-        }
-        Ok(Seg {
-            offset: self.offset,
-            len: new_len,
-            _ty: PhantomData,
-        })
-    }
-
-    pub fn to_tiny_seg(&self) -> Result<Seg<T, u8>> {
-        let len_tmp: u64 = self.len.into();
-        let new_len = len_tmp as u8;
-        if (new_len as u64) != len_tmp {
-            return Err(ErrorKind::Internal("overflow on tiny segment").into());
-        }
-        Ok(Seg {
-            offset: self.offset,
-            len: new_len,
-            _ty: PhantomData,
-        })
     }
 }
 
