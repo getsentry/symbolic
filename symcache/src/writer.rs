@@ -272,13 +272,16 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(Seg::new(
             first_seg.map(|x| x.offset).unwrap_or(0),
             num::FromPrimitive::from_usize(x.len())
-                .ok_or_else(|| ErrorKind::Internal("out of range for item segment"))?
+                .ok_or_else(|| ErrorKind::BadDwarfData("out of range for item segment"))?
         ))
     }
 
     fn write_symbol_if_missing(&mut self, sym: &[u8]) -> Result<u32> {
         if let Some(&index) = self.symbol_map.get(sym) {
             return Ok(index);
+        }
+        if self.symbols.len() >= 0xffffff {
+            return Err(ErrorKind::BadDwarfData("Too many symbols").into());
         }
         let idx = self.symbols.len() as u32;
         let seg = self.write_bytes(sym)?;
@@ -302,6 +305,9 @@ impl<W: Write> SymCacheWriter<W> {
     {
         if let Some(idx) = self.file_record_map.get(&record) {
             return Ok(*idx);
+        }
+        if self.file_records.len() >= 0xffff {
+            return Err(ErrorKind::BadDwarfData("Too many symbols").into());
         }
         let idx = self.file_records.len() as u16;
         self.file_record_map.insert(record, idx);
