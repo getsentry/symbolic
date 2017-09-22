@@ -77,8 +77,6 @@ pub struct FuncRecord {
     pub addr_high: u16,
     /// the length of the function.
     pub len: u16,
-    /// The ID of the symbol of this function or ~0 if no symbol.
-    pub symbol_id: u32,
     /// The line record of this function.  If it fully overlaps
     /// with an inline the record could be ~0
     pub line_records: Seg<LineRecord>,
@@ -87,6 +85,10 @@ pub struct FuncRecord {
     /// The ID offset of the parent funciton.  Will be ~0 if the function has
     /// no parent.
     pub parent_offset: u8,
+    /// The low bits of the ID of the symbol of this function or ~0 if no symbol.
+    pub symbol_id_low: u16,
+    /// The high bits of the ID of the symbol of this function or ~0 if no symbol.
+    pub symbol_id_high: u8,
     /// The language of the func record.
     pub lang: u8,
 }
@@ -110,7 +112,7 @@ pub struct CacheFileHeader {
     pub uuid: Uuid,
     pub arch: u32,
     pub symbols: Seg<Seg<u8, u16>>,
-    pub files: Seg<FileRecord>,
+    pub files: Seg<FileRecord, u16>,
     pub function_records: Seg<FuncRecord>,
 }
 
@@ -127,6 +129,10 @@ impl CacheFileHeader {
 }
 
 impl FuncRecord {
+    pub fn symbol_id(&self) -> u32 {
+        ((self.symbol_id_high as u32) << 16) | self.symbol_id_low as u32
+    }
+
     pub fn addr_start(&self) -> u64 {
         ((self.addr_high as u64) << 32) | self.addr_low as u64
     }

@@ -127,7 +127,7 @@ impl<'a> Function<'a> {
 
     /// The symbol of the function.
     pub fn symbol(&self) -> &str {
-        self.cache.get_symbol(self.fun.symbol_id).unwrap_or(None).unwrap_or("")
+        self.cache.get_symbol(self.fun.symbol_id()).unwrap_or(None).unwrap_or("")
     }
 
     /// The language of the function
@@ -437,7 +437,7 @@ impl<'a> SymCache<'a> {
             instr_addr: addr,
             line: line,
             lang: Language::from_u32(fun.lang as u32).unwrap_or(Language::Unknown),
-            symbol: self.get_symbol(fun.symbol_id)?,
+            symbol: self.get_symbol(fun.symbol_id())?,
             filename: filename,
             base_dir: base_dir,
             comp_dir: self.get_segment_as_string(&fun.comp_dir)?,

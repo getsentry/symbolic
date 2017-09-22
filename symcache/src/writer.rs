@@ -325,7 +325,7 @@ impl<W: Write> SymCacheWriter<W> {
         }
 
         self.header.symbols = self.write_seg(&self.symbols)?;
-        self.header.files = self.write_seg(&self.file_records)?;
+        self.header.files = self.write_seg(&self.file_records)?.to_small_seg()?;
         self.header.function_records = self.write_seg(&self.func_records)?;
 
         Ok(())
@@ -339,12 +339,14 @@ impl<W: Write> SymCacheWriter<W> {
     {
         let func_id = self.func_records.len() as u32;
         let func_addr = func.get_addr();
+        let symbol_id = self.write_symbol_if_missing(func.name)?;
         let func_record = FuncRecord {
             addr_low: (func_addr & 0xffffffff) as u32,
             addr_high: ((func_addr << 32) & 0xffff) as u16,
             // XXX: overflow needs to write a second func record
             len: func.len as u16,
-            symbol_id: self.write_symbol_if_missing(func.name)?,
+            symbol_id_low: (symbol_id & 0xffff) as u16,
+            symbol_id_high: ((symbol_id << 16) & 0xff) as u8,
             parent_offset: if parent_id == !0 { !0 } else { (func_id - parent_id) as u8 },
             line_records: Seg::default(),
             comp_dir: self.write_file_if_missing(func.comp_dir)?,
