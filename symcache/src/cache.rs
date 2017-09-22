@@ -12,6 +12,7 @@ use types::{CacheFileHeader, Seg, FileRecord, FuncRecord};
 use utils::binsearch_by_key;
 use writer;
 
+/// The magic file header to identify symcache files.
 pub const SYMCACHE_MAGIC: [u8; 4] = [b'S', b'Y', b'M', b'C'];
 
 /// A matched symbol
