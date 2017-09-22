@@ -117,7 +117,7 @@ impl<'a> Function<'a> {
 
     /// The parent ID of the function
     pub fn parent_id(&self) -> Option<usize> {
-        self.fun.parent()
+        self.fun.parent(self.id())
     }
 
     /// The address where the function starts.
@@ -132,7 +132,7 @@ impl<'a> Function<'a> {
 
     /// The language of the function
     pub fn lang(&self) -> Language {
-        Language::from_u32(self.fun.lang).unwrap_or(Language::Unknown)
+        Language::from_u32(self.fun.lang as u32).unwrap_or(Language::Unknown)
     }
 
     /// The compilation dir of the function
@@ -434,7 +434,7 @@ impl<'a> SymCache<'a> {
             sym_addr: fun.addr_start(),
             instr_addr: addr,
             line: line,
-            lang: Language::from_u32(fun.lang).unwrap_or(Language::Unknown),
+            lang: Language::from_u32(fun.lang as u32).unwrap_or(Language::Unknown),
             symbol: self.get_symbol(fun.symbol_id)?,
             filename: filename,
             base_dir: base_dir,
@@ -461,17 +461,18 @@ impl<'a> SymCache<'a> {
         // functions in the function segment are ordered by start address
         // primarily and by depth secondarily.  As a result we want to have
         // a secondary comparison by the item index.
-        let mut fun = match binsearch_by_key(
+        let (mut func_id, mut fun) = match binsearch_by_key(
             funcs, (addr, !0), |idx, rec| (rec.addr_start(), idx))
         {
-            Some((_, fun)) => fun,
+            Some(item) => item,
             None => { return Ok(vec![]); }
         };
 
         // the binsearch might miss the function
         while !fun.addr_in_range(addr) {
-            if let Some(parent_id) = fun.parent() {
+            if let Some(parent_id) = fun.parent(func_id) {
                 fun = &funcs[parent_id];
+                func_id = parent_id;
             } else {
                 // we missed entirely :(
                 return Ok(vec![]);
@@ -484,9 +485,10 @@ impl<'a> SymCache<'a> {
         rv.push(self.build_symbol(&fun, addr, None)?);
 
         // inlined outer parts
-        while let Some(parent_id) = fun.parent() {
+        while let Some(parent_id) = fun.parent(func_id) {
             let outer_addr = fun.addr_start();
             fun = &funcs[parent_id];
+            func_id = parent_id;
             let symbol = {
                 self.build_symbol(&fun, outer_addr, Some(&rv[rv.len() - 1]))?
             };

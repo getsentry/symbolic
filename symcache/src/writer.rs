@@ -345,10 +345,10 @@ impl<W: Write> SymCacheWriter<W> {
             // XXX: overflow needs to write a second func record
             len: func.len as u16,
             symbol_id: self.write_symbol_if_missing(func.name)?,
-            parent_id: parent_id,
+            parent_offset: if parent_id == !0 { !0 } else { (func_id - parent_id) as u8 },
             line_records: Seg::default(),
             comp_dir: self.write_file_if_missing(func.comp_dir)?,
-            lang: func.lang as u32,
+            lang: func.lang as u8,
         };
         let mut last_addr = func_record.addr_start();
         self.func_records.push(func_record);

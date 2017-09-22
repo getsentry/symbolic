@@ -51,16 +51,16 @@ pub struct FuncRecord {
     pub len: u16,
     /// The ID of the symbol of this function or ~0 if no symbol.
     pub symbol_id: u32,
-    /// The ID of the parent function.  If the function has no
-    /// parent then it will be ~0
-    pub parent_id: u32,
     /// The line record of this function.  If it fully overlaps
     /// with an inline the record could be ~0
     pub line_records: Seg<LineRecord>,
     /// The comp dir of the file record
     pub comp_dir: Seg<u8>,
+    /// The ID offset of the parent funciton.  Will be ~0 if the function has
+    /// no parent.
+    pub parent_offset: u8,
     /// The language of the func record.
-    pub lang: u32,
+    pub lang: u8,
 }
 
 #[repr(C, packed)]
@@ -111,11 +111,11 @@ impl FuncRecord {
         addr >= self.addr_start() && addr <= self.addr_end()
     }
 
-    pub fn parent(&self) -> Option<usize> {
-        if self.parent_id == !0 {
+    pub fn parent(&self, func_id: usize) -> Option<usize> {
+        if self.parent_offset == !0 {
             None
         } else {
-            Some(self.parent_id as usize)
+            Some(func_id + (self.parent_offset as usize))
         }
     }
 }
