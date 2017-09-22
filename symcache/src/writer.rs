@@ -375,7 +375,6 @@ impl<W: Write> SymCacheWriter<W> {
             } else {
                 let parent_offset = func_id.wrapping_sub(parent_id);
                 if parent_offset >= 0xfffe {
-                    println!("{} / {}", func_id, parent_id);
                     return Err(ErrorKind::Internal(
                         "parent function range too big for file format").into());
                 }
@@ -383,7 +382,11 @@ impl<W: Write> SymCacheWriter<W> {
             },
             line_records: Seg::default(),
             comp_dir: self.write_file_if_missing(func.comp_dir)?,
-            lang: func.lang as u8,
+            lang: if func.lang as u32 > 0xff {
+                return Err(ErrorKind::Internal("language out of range for file format").into());
+            } else {
+                func.lang as u8
+            }
         };
         let mut last_addr = func_record.addr_start();
         self.func_records.push(func_record);
