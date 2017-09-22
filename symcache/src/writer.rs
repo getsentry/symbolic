@@ -131,8 +131,8 @@ struct SymCacheWriter<W: Write> {
     writer: RefCell<(u64, W)>,
     header: CacheFileHeader,
     symbol_map: HashMap<Vec<u8>, u32>,
-    symbols: Vec<Seg<u8>>,
-    files: HashMap<Vec<u8>, Seg<u8>>,
+    symbols: Vec<Seg<u8, u16>>,
+    files: HashMap<Vec<u8>, Seg<u8, u8>>,
     file_record_map: HashMap<FileRecord, u16>,
     file_records: Vec<FileRecord>,
     func_records: Vec<FuncRecord>,
@@ -265,18 +265,18 @@ impl<W: Write> SymCacheWriter<W> {
             return Ok(index);
         }
         let idx = self.symbols.len() as u32;
-        let seg = self.write_bytes(sym)?;
+        let seg = self.write_bytes(sym)?.to_small_seg()?;
         self.symbols.push(seg);
         self.symbol_map.insert(sym.to_owned(), idx);
         Ok(idx)
     }
 
     #[inline]
-    fn write_file_if_missing(&mut self, filename: &[u8]) -> Result<Seg<u8>> {
+    fn write_file_if_missing(&mut self, filename: &[u8]) -> Result<Seg<u8, u8>> {
         if let Some(item) = self.files.get(filename) {
             return Ok(*item);
         }
-        let seg = self.write_bytes(filename)?;
+        let seg = self.write_bytes(filename)?.to_tiny_seg()?;
         self.files.insert(filename.to_owned(), seg);
         Ok(seg)
     }

@@ -5,26 +5,54 @@ use std::marker::PhantomData;
 
 use uuid::Uuid;
 
+use symbolic_common::{ErrorKind, Result};
+
 
 #[repr(C, packed)]
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Default, Copy, Clone)]
-pub struct Seg<T> {
+pub struct Seg<T, L=u32> {
     pub offset: u32,
-    pub len: u32,
+    pub len: L,
     _ty: PhantomData<T>,
 }
 
-impl<T> Seg<T> {
-    pub fn new(offset: u32, len: u32) -> Seg<T> {
+impl<T, L: Copy + Into<u64>> Seg<T, L> {
+    pub fn new(offset: u32, len: L) -> Seg<T, L> {
         Seg {
             offset: offset,
             len: len,
             _ty: PhantomData,
         }
     }
+
+    pub fn to_small_seg(&self) -> Result<Seg<T, u16>> {
+        let len_tmp: u64 = self.len.into();
+        let new_len = len_tmp as u16;
+        if (new_len as u64) != len_tmp {
+            return Err(ErrorKind::Internal("overflow on small segment").into());
+        }
+        Ok(Seg {
+            offset: self.offset,
+            len: new_len,
+            _ty: PhantomData,
+        })
+    }
+
+    pub fn to_tiny_seg(&self) -> Result<Seg<T, u8>> {
+        let len_tmp: u64 = self.len.into();
+        let new_len = len_tmp as u8;
+        if (new_len as u64) != len_tmp {
+            return Err(ErrorKind::Internal("overflow on tiny segment").into());
+        }
+        Ok(Seg {
+            offset: self.offset,
+            len: new_len,
+            _ty: PhantomData,
+        })
+    }
 }
 
-impl<T> fmt::Debug for Seg<T> {
+impl<T, L: fmt::Debug> fmt::Debug for Seg<T, L> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Seg")
             .field("offset", &self.offset)
@@ -36,8 +64,8 @@ impl<T> fmt::Debug for Seg<T> {
 #[repr(C, packed)]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Default, Copy, Clone, Debug)]
 pub struct FileRecord {
-    pub filename: Seg<u8>,
-    pub base_dir: Seg<u8>,
+    pub filename: Seg<u8, u8>,
+    pub base_dir: Seg<u8, u8>,
 }
 
 #[repr(C, packed)]
@@ -55,7 +83,7 @@ pub struct FuncRecord {
     /// with an inline the record could be ~0
     pub line_records: Seg<LineRecord>,
     /// The comp dir of the file record
-    pub comp_dir: Seg<u8>,
+    pub comp_dir: Seg<u8, u8>,
     /// The ID offset of the parent funciton.  Will be ~0 if the function has
     /// no parent.
     pub parent_offset: u8,
@@ -81,7 +109,7 @@ pub struct CacheFileHeader {
     pub version: u32,
     pub uuid: Uuid,
     pub arch: u32,
-    pub symbols: Seg<Seg<u8>>,
+    pub symbols: Seg<Seg<u8, u16>>,
     pub files: Seg<FileRecord>,
     pub function_records: Seg<FuncRecord>,
 }

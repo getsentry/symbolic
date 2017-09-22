@@ -329,20 +329,22 @@ impl<'a> SymCache<'a> {
         }
     }
 
-    fn get_segment<T>(&self, seg: &Seg<T>) -> Result<&[T]> {
+    fn get_segment<T, L: Copy + Into<u64>>(&self, seg: &Seg<T, L>) -> Result<&[T]> {
         let offset = seg.offset as usize +
             mem::size_of::<CacheFileHeader>() as usize;
-        let size = mem::size_of::<T>() * seg.len as usize;
+        let len: u64 = seg.len.into();
+        let len = len as usize;
+        let size = mem::size_of::<T>() * len;
         unsafe {
             let bytes = self.get_data(offset, size)?;
             Ok(slice::from_raw_parts(
                 mem::transmute(bytes.as_ptr()),
-                seg.len as usize
+                len
             ))
         }
     }
 
-    fn get_segment_as_string(&self, seg: &Seg<u8>) -> Result<&str> {
+    fn get_segment_as_string<L: Copy + Into<u64>>(&self, seg: &Seg<u8, L>) -> Result<&str> {
         let bytes = self.get_segment(seg)?;
         Ok(str::from_utf8(bytes)?)
     }
