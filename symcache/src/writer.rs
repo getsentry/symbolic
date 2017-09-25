@@ -240,7 +240,6 @@ impl<W: Write> SymCacheWriter<W> {
         let offset = *pos;
         *pos += bytes.len() as u64;
         writer.write_all(bytes)?;
-        // XXX: error handling
         Ok(Seg::new(
             offset as u32,
             num::FromPrimitive::from_usize(bytes.len())
@@ -365,12 +364,12 @@ impl<W: Write> SymCacheWriter<W> {
         let symbol_id = self.write_symbol_if_missing(func.name)?;
         let func_record = FuncRecord {
             addr_low: (func_addr & 0xffffffff) as u32,
-            addr_high: ((func_addr << 32) & 0xffff) as u16,
+            addr_high: ((func_addr >> 32) & 0xffff) as u16,
             // XXX: we have not seen this yet, but in theory this should be
             // stored as multiple function records.
             len: cmp::min(func.len, 0xffff) as u16,
             symbol_id_low: (symbol_id & 0xffff) as u16,
-            symbol_id_high: ((symbol_id << 16) & 0xff) as u8,
+            symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
             parent_offset: if parent_id == !0 {
                 !0
             } else {
@@ -397,6 +396,7 @@ impl<W: Write> SymCacheWriter<W> {
         for inline_func in &func.inlines {
             self.write_function(inline_func, addrs, local_cache, func_id)?;
         }
+
 
         let mut line_records = vec![];
         for line in &func.lines {
