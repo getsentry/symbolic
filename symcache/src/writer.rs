@@ -326,7 +326,7 @@ impl<W: Write> SymCacheWriter<W> {
 
         match DwarfInfo::from_object(obj) {
             Ok(ref info) => {
-                self.write_dwarf_info_from_object(obj, info)
+                self.write_dwarf_info(info)
                     .chain_err(|| err("could not process DWARF data"))
             }
             Err(e) => {
@@ -369,7 +369,7 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(())
     }
 
-    fn write_dwarf_info_from_object(&mut self, obj: &Object, info: &DwarfInfo) -> Result<()> {
+    fn write_dwarf_info(&mut self, info: &DwarfInfo) -> Result<()> {
         let mut range_buf = Vec::new();
         for index in 0..info.units.len() {
             // attempt to parse a single unit from the given header.

@@ -128,7 +128,7 @@ impl<'a> Function<'a> {
 
     /// The symbol of the function.
     pub fn symbol(&self) -> &str {
-        self.cache.get_symbol(self.fun.symbol_id()).unwrap_or(None).unwrap_or("")
+        self.cache.get_symbol(self.fun.symbol_id()).unwrap_or(None).unwrap_or("?")
     }
 
     /// The language of the function
@@ -381,6 +381,9 @@ impl<'a> SymCache<'a> {
         -> Result<Option<(&FileRecord, u32)>>
     {
         let records = self.get_segment(&fun.line_records)?;
+        if records.is_empty() {
+            return Ok(None);
+        }
 
         let mut file_id = !0u16;
         let mut running_addr = fun.addr_start() as u64;

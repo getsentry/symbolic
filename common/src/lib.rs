@@ -17,6 +17,7 @@ extern crate memmap;
 extern crate mach_object;
 extern crate owning_ref;
 
+mod macros;
 mod errors;
 mod types;
 mod byteview;
