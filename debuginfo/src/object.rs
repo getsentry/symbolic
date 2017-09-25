@@ -1,4 +1,5 @@
 use std::io::Cursor;
+use std::collections::HashSet;
 
 use goblin;
 use goblin::{elf, mach, Hint};
@@ -81,6 +82,77 @@ impl<'a> Object<'a> {
             ObjectTarget::Elf(ref elf) => read_elf_dwarf_section(elf, self.as_bytes(), sect),
             ObjectTarget::MachOSingle(macho) => read_macho_dwarf_section(macho, sect),
             ObjectTarget::MachOFat(_, ref macho) => read_macho_dwarf_section(macho, sect),
+        }
+    }
+
+    /// Gives access to contained symbols
+    pub fn symbols(&'a self) -> Symbols<'a> {
+        match self.target {
+            ObjectTarget::Elf(..) => {
+                Symbols {
+                    iter: SymbolsIteratorTarget::Empty,
+                    sections: None
+                }
+            }
+            ObjectTarget::MachOSingle(macho) => get_macho_symbols(macho),
+            ObjectTarget::MachOFat(_, ref macho) => get_macho_symbols(macho),
+        }
+    }
+}
+
+enum SymbolsIteratorTarget<'a> {
+    Empty,
+    Mach(goblin::mach::symbols::SymbolIterator<'a>),
+}
+
+/// An iterator over a contained symbol table.
+pub struct Symbols<'a> {
+    iter: SymbolsIteratorTarget<'a>,
+    sections: Option<HashSet<usize>>,
+}
+
+fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Symbols<'a> {
+    let mut sections = HashSet::new();
+    let mut idx = 0;
+    for segment in &macho.segments {
+        for section in segment {
+            idx += 1;
+            if_chain! {
+                if let Ok((section, _)) = section;
+                if let Ok(name) = section.name();
+                if name == "__stubs" || name == "__text";
+                then {
+                    sections.insert(idx);
+                }
+            }
+        }
+    }
+    Symbols {
+        iter: SymbolsIteratorTarget::Mach(macho.symbols()),
+        sections: Some(sections),
+    }
+}
+
+impl<'a> Iterator for Symbols<'a> {
+    type Item = Result<(u64, &'a str)>;
+
+    fn next(&mut self) -> Option<Result<(u64, &'a str)>> {
+        loop {
+            match self.iter {
+                SymbolsIteratorTarget::Empty => { return None; }
+                SymbolsIteratorTarget::Mach(ref mut iter) => {
+                    if let Some(item) = iter.next() {
+                        let (symbol, nlist) = itry!(item);
+                        let sections = self.sections.as_ref().unwrap();
+                        if nlist.n_type == mach::symbols::N_SECT &&
+                           sections.contains(&nlist.n_sect) {
+                            return Some(Ok((nlist.n_value, symbol)));
+                        }
+                    } else {
+                        return None;
+                    }
+                }
+            }
         }
     }
 }

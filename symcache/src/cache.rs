@@ -174,17 +174,6 @@ pub struct Functions<'a> {
     idx: usize,
 }
 
-macro_rules! itry {
-    ($expr:expr) => {
-        match $expr {
-            Ok(rv) => rv,
-            Err(err) => {
-                return Some(Err(::std::convert::From::from(err)));
-            }
-        }
-    }
-}
-
 impl<'a> Iterator for Functions<'a> {
     type Item = Result<Function<'a>>;
 

@@ -48,6 +48,23 @@ impl DwarfSection {
             DwarfSection::DebugTypes => "__debug_types",
         }
     }
+
+    /// Return the name of the section for debug purposes
+    pub fn name(&self) -> &'static str {
+        match *self {
+            DwarfSection::EhFrame => "eh_frame",
+            DwarfSection::DebugFrame => "debug_frame",
+            DwarfSection::DebugAbbrev => "debug_abbrev",
+            DwarfSection::DebugAranges => "debug_aranges",
+            DwarfSection::DebugLine => "debug_line",
+            DwarfSection::DebugLoc => "debug_loc",
+            DwarfSection::DebugPubNames => "debug_pubnames",
+            DwarfSection::DebugRanges => "debug_ranges",
+            DwarfSection::DebugStr => "debug_str",
+            DwarfSection::DebugInfo => "debug_info",
+            DwarfSection::DebugTypes => "debug_types",
+        }
+    }
 }
 
 /// Gives access to a section in a dwarf file.

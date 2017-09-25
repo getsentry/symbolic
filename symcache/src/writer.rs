@@ -160,7 +160,7 @@ impl<'input> DwarfInfo<'input> {
                     None => {
                         if $mandatory {
                             return Err(ErrorKind::MissingSection(
-                                DwarfSection::$sect.get_elf_section()).into());
+                                DwarfSection::$sect.name()).into());
                         }
                         &[]
                     }
@@ -316,9 +316,60 @@ impl<W: Write> SymCacheWriter<W> {
     }
 
     pub fn write_object(&mut self, obj: &Object) -> Result<()> {
-        let info = DwarfInfo::from_object(obj)
-            .chain_err(|| err("could not extract debug info from object file"))?;
+        // common header values
+        self.header.magic = SYMCACHE_MAGIC;
+        self.header.version = 1;
+        self.header.arch = obj.arch() as u32;
+        if let Some(uuid) = obj.uuid() {
+            self.header.uuid = uuid;
+        }
 
+        match DwarfInfo::from_object(obj) {
+            Ok(ref info) => {
+                self.write_dwarf_info_from_object(obj, info)
+                    .chain_err(|| err("could not process DWARF data"))
+            }
+            Err(e) => {
+                match e.kind() {
+                    &ErrorKind::MissingSection(..) => {
+                        self.write_symbol_table_from_object(obj)
+                            .chain_err(|| err("could not process symbol debug info"))
+                    }
+                    _ => {
+                        Err(e).chain_err(|| err("could not extract debug info from DWARF data"))?
+                    }
+                }
+            }
+        }
+    }
+
+    fn write_symbol_table_from_object(&mut self, obj: &Object) -> Result<()> {
+        for sym_rv in obj.symbols() {
+            let (func_addr, symbol) = sym_rv?;
+            let func_id = self.func_records.len() as u32;
+            let symbol_id = self.write_symbol_if_missing(symbol.as_bytes())?;
+            self.func_records.push(FuncRecord {
+                addr_low: (func_addr & 0xffffffff) as u32,
+                addr_high: ((func_addr >> 32) & 0xffff) as u16,
+                // XXX: we have not seen this yet, but in theory this should be
+                // stored as multiple function records.
+                len: !0,
+                symbol_id_low: (symbol_id & 0xffff) as u16,
+                symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
+                parent_offset: !0,
+                line_records: Seg::default(),
+                comp_dir: Seg::default(),
+                lang: Language::Unknown as u8,
+            });
+        }
+
+        self.header.symbols = self.write_seg(&self.symbols)?;
+        self.header.function_records = self.write_seg(&self.func_records)?;
+
+        Ok(())
+    }
+
+    fn write_dwarf_info_from_object(&mut self, obj: &Object, info: &DwarfInfo) -> Result<()> {
         let mut range_buf = Vec::new();
         for index in 0..info.units.len() {
             // attempt to parse a single unit from the given header.
@@ -337,13 +388,6 @@ impl<W: Write> SymCacheWriter<W> {
                 let mut local_cache = FnvHashMap::default();
                 self.write_function(&func, &mut addrs, &mut local_cache, !0)
             })?;
-        }
-
-        self.header.magic = SYMCACHE_MAGIC;
-        self.header.version = 1;
-        self.header.arch = obj.arch() as u32;
-        if let Some(uuid) = obj.uuid() {
-            self.header.uuid = uuid;
         }
 
         self.header.symbols = self.write_seg(&self.symbols)?;

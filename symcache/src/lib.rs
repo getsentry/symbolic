@@ -1,5 +1,5 @@
 //! Provides symcache support.
-extern crate symbolic_common;
+#[macro_use] extern crate symbolic_common;
 extern crate symbolic_debuginfo;
 extern crate uuid;
 extern crate gimli;

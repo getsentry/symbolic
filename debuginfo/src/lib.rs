@@ -5,9 +5,8 @@ extern crate goblin;
 extern crate gimli;
 extern crate memmap;
 extern crate scroll;
-extern crate symbolic_common;
-#[macro_use]
-extern crate if_chain;
+#[macro_use] extern crate symbolic_common;
+#[macro_use] extern crate if_chain;
 
 mod object;
 mod dwarf;
