@@ -49,11 +49,6 @@ impl<'a> Object<'a> {
         self.arch
     }
 
-    /// Returns the object name of the object
-    pub fn object_name(&self) -> Option<&str> {
-        None
-    }
-
     /// True if little endian, false if not.
     pub fn endianess(&self) -> Endianness {
         let little = match self.target {
