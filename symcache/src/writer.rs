@@ -346,7 +346,6 @@ impl<W: Write> SymCacheWriter<W> {
     fn write_symbol_table_from_object(&mut self, obj: &Object) -> Result<()> {
         for sym_rv in obj.symbols() {
             let (func_addr, symbol) = sym_rv?;
-            let func_id = self.func_records.len() as u32;
             let symbol_id = self.write_symbol_if_missing(symbol.as_bytes())?;
             self.func_records.push(FuncRecord {
                 addr_low: (func_addr & 0xffffffff) as u32,
