@@ -86,13 +86,10 @@ impl<'a> Object<'a> {
     }
 
     /// Gives access to contained symbols
-    pub fn symbols(&'a self) -> Symbols<'a> {
+    pub fn symbols(&'a self) -> Result<Symbols<'a>> {
         match self.target {
             ObjectTarget::Elf(..) => {
-                Symbols {
-                    iter: SymbolsIteratorTarget::Empty,
-                    sections: None
-                }
+                Err(ErrorKind::MissingDebugInfo("unsupported symbol table in file").into())
             }
             ObjectTarget::MachOSingle(macho) => get_macho_symbols(macho),
             ObjectTarget::MachOFat(_, ref macho) => get_macho_symbols(macho),
@@ -100,37 +97,30 @@ impl<'a> Object<'a> {
     }
 }
 
-enum SymbolsIteratorTarget<'a> {
-    Empty,
-    Mach(goblin::mach::symbols::SymbolIterator<'a>),
-}
-
 /// An iterator over a contained symbol table.
 pub struct Symbols<'a> {
-    iter: SymbolsIteratorTarget<'a>,
-    sections: Option<HashSet<usize>>,
+    // note: if we need elf here later, we can move this into an internal wrapper
+    macho_iter: goblin::mach::symbols::SymbolIterator<'a>,
+    sections: HashSet<usize>,
 }
 
-fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Symbols<'a> {
+fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Result<Symbols<'a>> {
     let mut sections = HashSet::new();
     let mut idx = 0;
     for segment in &macho.segments {
-        for section in segment {
+        for section_rv in segment {
             idx += 1;
-            if_chain! {
-                if let Ok((section, _)) = section;
-                if let Ok(name) = section.name();
-                if name == "__stubs" || name == "__text";
-                then {
-                    sections.insert(idx);
-                }
+            let (section, _) = section_rv?;
+            let name = section.name()?;
+            if name == "__stubs" || name == "__text" {
+                sections.insert(idx);
             }
         }
     }
-    Symbols {
-        iter: SymbolsIteratorTarget::Mach(macho.symbols()),
-        sections: Some(sections),
-    }
+    Ok(Symbols {
+        macho_iter: macho.symbols(),
+        sections: sections,
+    })
 }
 
 impl<'a> Iterator for Symbols<'a> {
@@ -138,20 +128,14 @@ impl<'a> Iterator for Symbols<'a> {
 
     fn next(&mut self) -> Option<Result<(u64, &'a str)>> {
         loop {
-            match self.iter {
-                SymbolsIteratorTarget::Empty => { return None; }
-                SymbolsIteratorTarget::Mach(ref mut iter) => {
-                    if let Some(item) = iter.next() {
-                        let (symbol, nlist) = itry!(item);
-                        let sections = self.sections.as_ref().unwrap();
-                        if nlist.n_type == mach::symbols::N_SECT &&
-                           sections.contains(&nlist.n_sect) {
-                            return Some(Ok((nlist.n_value, symbol)));
-                        }
-                    } else {
-                        return None;
-                    }
+            if let Some(item) = self.macho_iter.next() {
+                let (symbol, nlist) = itry!(item);
+                if nlist.n_type == mach::symbols::N_SECT &&
+                   self.sections.contains(&nlist.n_sect) {
+                    return Some(Ok((nlist.n_value, symbol)));
                 }
+            } else {
+                return None;
             }
         }
     }

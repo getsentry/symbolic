@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use symbolic_common::{Result, ErrorKind, ByteView, Arch, Language};
 use symbolic_debuginfo::Object;
 
-use types::{CacheFileHeader, Seg, FileRecord, FuncRecord};
+use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, DataSource};
 use utils::binsearch_by_key;
 use writer;
 
@@ -350,6 +350,24 @@ impl<'a> SymCache<'a> {
     /// The architecture of the cache file
     pub fn arch(&self) -> Result<Arch> {
         Arch::from_u32(self.header()?.arch)
+    }
+
+    /// The source of the sym cache.
+    pub fn data_source(&self) -> Result<DataSource> {
+        DataSource::from_u32(self.header()?.data_source as u32)
+    }
+
+    /// Returns true if line information is included.
+    pub fn has_line_info(&self) -> Result<bool> {
+        Ok(self.header()?.has_line_records != 0)
+    }
+
+    /// Returns true if file information is included.
+    pub fn has_file_info(&self) -> Result<bool> {
+        Ok(match self.data_source()? {
+            DataSource::Dwarf => self.has_line_info()?,
+            _ => false,
+        })
     }
 
     /// Looks up a single symbol

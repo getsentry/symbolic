@@ -10,7 +10,7 @@ use std::sync::Arc;
 use symbolic_common::{Endianness, Error, ErrorKind, Result, ResultExt, Language};
 use symbolic_debuginfo::{DwarfSection, Object};
 
-use types::{CacheFileHeader, Seg, FuncRecord, LineRecord, FileRecord};
+use types::{CacheFileHeader, Seg, FuncRecord, LineRecord, FileRecord, DataSource};
 use utils::binsearch_by_key;
 use cache::SYMCACHE_MAGIC;
 
@@ -344,7 +344,7 @@ impl<W: Write> SymCacheWriter<W> {
     }
 
     fn write_symbol_table_from_object(&mut self, obj: &Object) -> Result<()> {
-        for sym_rv in obj.symbols() {
+        for sym_rv in obj.symbols()? {
             let (func_addr, symbol) = sym_rv?;
             let symbol_id = self.write_symbol_if_missing(symbol.as_bytes())?;
             self.func_records.push(FuncRecord {
@@ -362,6 +362,7 @@ impl<W: Write> SymCacheWriter<W> {
             });
         }
 
+        self.header.data_source = DataSource::SymbolTable as u8;
         self.header.symbols = self.write_seg(&self.symbols)?;
         self.header.function_records = self.write_seg(&self.func_records)?;
 
@@ -389,6 +390,7 @@ impl<W: Write> SymCacheWriter<W> {
             })?;
         }
 
+        self.header.data_source = DataSource::Dwarf as u8;
         self.header.symbols = self.write_seg(&self.symbols)?;
         self.header.files = self.write_seg(&self.file_records)?;
         self.header.function_records = self.write_seg(&self.func_records)?;
@@ -478,6 +480,7 @@ impl<W: Write> SymCacheWriter<W> {
 
         if !line_records.is_empty() {
             self.func_records[func_id as usize].line_records = self.write_seg(&line_records)?;
+            self.header.has_line_records = 1;
         }
 
         Ok(())

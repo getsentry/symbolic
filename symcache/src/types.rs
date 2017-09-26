@@ -5,6 +5,8 @@ use std::marker::PhantomData;
 
 use uuid::Uuid;
 
+use symbolic_common::{Result, ErrorKind};
+
 
 #[repr(C, packed)]
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Default, Copy, Clone)]
@@ -76,6 +78,33 @@ pub struct LineRecord {
     pub line: u16,
 }
 
+#[repr(u32)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+pub enum DataSource {
+    Unknown,
+    Dwarf,
+    SymbolTable,
+    #[doc(hidden)]
+    __Max
+}
+
+impl DataSource {
+    /// Creates a data soure from the u32 it represents
+    pub fn from_u32(val: u32) -> Result<DataSource> {
+        if val >= (DataSource::__Max as u32) {
+            Err(ErrorKind::Parse("unknown data source").into())
+        } else {
+            Ok(unsafe { mem::transmute(val as u32) })
+        }
+    }
+}
+
+impl Default for DataSource {
+    fn default() -> DataSource {
+        DataSource::Unknown
+    }
+}
+
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone, Debug)]
 pub struct CacheFileHeader {
@@ -83,6 +112,8 @@ pub struct CacheFileHeader {
     pub version: u32,
     pub uuid: Uuid,
     pub arch: u32,
+    pub data_source: u8,
+    pub has_line_records: u8,
     pub symbols: Seg<Seg<u8, u16>>,
     pub files: Seg<FileRecord, u16>,
     pub function_records: Seg<FuncRecord>,

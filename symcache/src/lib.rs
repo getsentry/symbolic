@@ -14,5 +14,6 @@ mod cache;
 mod writer;
 mod utils;
 
+pub use types::DataSource;
 pub use cache::*;
 pub use writer::*;
