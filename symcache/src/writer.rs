@@ -8,7 +8,7 @@ use std::slice;
 use std::sync::Arc;
 
 use symbolic_common::{Endianness, Error, ErrorKind, Result, ResultExt, Language};
-use symbolic_debuginfo::{DwarfSection, Object};
+use symbolic_debuginfo::{DwarfSection, Object, Symbols};
 
 use types::{CacheFileHeader, Seg, FuncRecord, LineRecord, FileRecord, DataSource};
 use utils::binsearch_by_key;
@@ -324,27 +324,40 @@ impl<W: Write> SymCacheWriter<W> {
             self.header.uuid = uuid;
         }
 
+        // try dwarf data first.  If we cannot find the necessary dwarf sections
+        // we just skip over to symbol table processing.
         match DwarfInfo::from_object(obj) {
             Ok(ref info) => {
-                self.write_dwarf_info(info)
-                    .chain_err(|| err("could not process DWARF data"))
+                return self.write_dwarf_info(info)
+                    .chain_err(|| err("could not process DWARF data"));
             }
+            // ignore missing sections
+            Err(Error(ErrorKind::MissingSection(..), ..)) => {}
             Err(e) => {
-                match e.kind() {
-                    &ErrorKind::MissingSection(..) => {
-                        self.write_symbol_table_from_object(obj)
-                            .chain_err(|| err("could not process symbol debug info"))
-                    }
-                    _ => {
-                        Err(e).chain_err(|| err("could not extract debug info from DWARF data"))?
-                    }
-                }
+                return Err(e)
+                    .chain_err(|| err("could not load DWARF data"))?;
             }
         }
+
+        // fallback to symbol table.
+        match obj.symbols() {
+            Ok(symbols) => {
+                return self.write_symbol_table(symbols)
+                    .chain_err(|| err("Could not process symbol table"));
+            }
+            // ignore missing debug info
+            Err(Error(ErrorKind::MissingDebugInfo(..), ..)) => {}
+            Err(e) => {
+                return Err(e)
+                    .chain_err(|| err("could not load symnbol table"));
+            }
+        }
+
+        Err(ErrorKind::MissingDebugInfo("No debug info found in file").into())
     }
 
-    fn write_symbol_table_from_object(&mut self, obj: &Object) -> Result<()> {
-        for sym_rv in obj.symbols()? {
+    fn write_symbol_table(&mut self, symbols: Symbols) -> Result<()> {
+        for sym_rv in symbols {
             let (func_addr, symbol) = sym_rv?;
             let symbol_id = self.write_symbol_if_missing(symbol.as_bytes())?;
             self.func_records.push(FuncRecord {
