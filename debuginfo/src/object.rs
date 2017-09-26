@@ -1,3 +1,4 @@
+use std::fmt;
 use std::io::Cursor;
 use std::collections::HashSet;
 
@@ -6,7 +7,8 @@ use goblin::{elf, mach, Hint};
 use uuid::Uuid;
 
 use dwarf::{DwarfSection, DwarfSectionData};
-use symbolic_common::{Arch, ByteView, ByteViewHandle, Endianness, ErrorKind, Result};
+use symbolic_common::{Arch, ByteView, ByteViewHandle, Endianness, ObjectKind,
+    ErrorKind, Result};
 
 enum FatObjectKind<'a> {
     Elf(elf::Elf<'a>),
@@ -42,6 +44,15 @@ impl<'a> Object<'a> {
             ObjectTarget::Elf(ref elf) => Uuid::from_bytes(&elf.header.e_ident).ok(),
             ObjectTarget::MachOSingle(macho) => get_macho_uuid(macho),
             ObjectTarget::MachOFat(_, ref macho) => get_macho_uuid(macho),
+        }
+    }
+
+    /// Returns the kind of the object
+    pub fn kind(&self) -> ObjectKind {
+        match self.target {
+            ObjectTarget::Elf(..) => ObjectKind::Elf,
+            ObjectTarget::MachOSingle(..) => ObjectKind::MachO,
+            ObjectTarget::MachOFat(..) => ObjectKind::MachO,
         }
     }
 
@@ -94,6 +105,17 @@ impl<'a> Object<'a> {
             ObjectTarget::MachOSingle(macho) => get_macho_symbols(macho),
             ObjectTarget::MachOFat(_, ref macho) => get_macho_symbols(macho),
         }
+    }
+}
+
+impl<'a> fmt::Debug for Object<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Object")
+            .field("uuid", &self.uuid())
+            .field("arch", &self.arch)
+            .field("endianess", &self.endianess())
+            .field("kind", &self.kind())
+            .finish()
     }
 }
 

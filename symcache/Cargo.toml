@@ -13,3 +13,6 @@ lru-cache = "0.1"
 owning_ref = "0.3"
 fnv = "1.0"
 num = "0.1"
+
+[dev-dependencies]
+clap = "2"

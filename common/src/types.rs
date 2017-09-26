@@ -223,3 +223,10 @@ impl Language {
         }
     }
 }
+
+/// Represents the kind of an object.
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+pub enum ObjectKind {
+    MachO,
+    Elf,
+}
