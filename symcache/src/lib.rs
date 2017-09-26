@@ -8,6 +8,8 @@ extern crate lru_cache;
 extern crate owning_ref;
 extern crate fnv;
 extern crate num;
+#[macro_use] extern crate matches;
+#[macro_use] extern crate if_chain;
 
 mod types;
 mod cache;

@@ -9,7 +9,7 @@ use symbolic_common::{Result, ErrorKind, ByteView, Arch, Language};
 use symbolic_debuginfo::Object;
 
 use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, DataSource};
-use utils::binsearch_by_key;
+use utils::{binsearch_by_key, common_join_path};
 use writer;
 
 /// The magic file header to identify symcache files.
@@ -74,6 +74,11 @@ impl<'a> Symbol<'a> {
         self.base_dir
     }
 
+    /// The fully joined file name.
+    pub fn full_filename(&self) -> String {
+        common_join_path(self.base_dir, self.filename)
+    }
+
     /// The compilation dir of the function.
     pub fn comp_dir(&self) -> &str {
         self.comp_dir
@@ -82,8 +87,18 @@ impl<'a> Symbol<'a> {
 
 impl<'a> fmt::Display for Symbol<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\n", self.symbol())?;
-        write!(f, "  at {}/{} line {}", self.base_dir(), self.filename(), self.line())?;
+        write!(f, "{}", self.symbol())?;
+        let full_filename = self.full_filename();
+        let line = self.line();
+        if full_filename != "" || line != 0 {
+            write!(f, "\n ")?;
+            if full_filename != "" {
+                write!(f, " at {}", full_filename)?;
+            }
+            if line != 0 {
+                write!(f, " line {}", line)?;
+            }
+        }
         Ok(())
     }
 }
