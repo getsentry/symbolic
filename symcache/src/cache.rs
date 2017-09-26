@@ -449,6 +449,10 @@ impl<'a> SymCache<'a> {
     }
 
     fn get_file_record(&self, idx: u16) -> Result<Option<&FileRecord>> {
+        // no match
+        if idx == !0 {
+            return Ok(None);
+        }
         let header = self.header()?;
         let files = self.get_segment(&header.files)?;
         Ok(files.get(idx as usize))
@@ -462,9 +466,13 @@ impl<'a> SymCache<'a> {
             return Ok(None);
         }
 
-        let mut file_id = !0u16;
+        // because of how we determine the outer address on expanding
+        // inlines the first address might actually already be missing
+        // the record.  Because of that we pick in any case the first
+        // record as fallback.
+        let mut file_id = records[0].file_id;
+        let mut line = records[0].line as u32;
         let mut running_addr = fun.addr_start() as u64;
-        let mut line = 0u32;
 
         for rec in records {
             let new_instr = running_addr + rec.addr_off as u64;
