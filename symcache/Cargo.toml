@@ -6,6 +6,7 @@ authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 [dependencies]
 symbolic-common = { path = "../common", features = ["with_dwarf", "with_objects"] }
 symbolic-debuginfo = { path = "../debuginfo" }
+symbolic-demangle = { path = "../demangle" }
 uuid = { version = "^0.5", features = ["serde"] }
 gimli = { git = "https://github.com/gimli-rs/gimli.git" }
 fallible-iterator = "0.1"
@@ -13,6 +14,8 @@ lru-cache = "0.1"
 owning_ref = "0.3"
 fnv = "1.0"
 num = "0.1"
+matches = "0.1"
+if_chain = "0.1"
 
 [dev-dependencies]
 clap = "2"

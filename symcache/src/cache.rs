@@ -7,6 +7,7 @@ use std::cell::RefCell;
 
 use symbolic_common::{Result, ErrorKind, ByteView, Arch, Language};
 use symbolic_debuginfo::Object;
+use symbolic_demangle;
 
 use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, DataSource};
 use utils::{binsearch_by_key, common_join_path};
@@ -31,6 +32,10 @@ pub struct Symbol<'a> {
 /// An abstraction around a symbol cache file.
 pub struct SymCache<'a> {
     byteview: ByteView<'a>,
+}
+
+fn demangle(sym: &str) -> String {
+    symbolic_demangle::Symbol::new(sym).to_string()
 }
 
 impl<'a> Symbol<'a> {
@@ -64,6 +69,14 @@ impl<'a> Symbol<'a> {
         self.symbol.unwrap_or("?")
     }
 
+    /// The demangled function name.
+    ///
+    /// This demangles with default settings.  For further control the symbolic
+    /// demangle crate can be manually used on the symbol.
+    pub fn function_name(&self) -> String {
+        demangle(self.symbol())
+    }
+
     /// The filename of the current line.
     pub fn filename(&self) -> &str {
         self.filename
@@ -87,7 +100,7 @@ impl<'a> Symbol<'a> {
 
 impl<'a> fmt::Display for Symbol<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.symbol())?;
+        write!(f, "{}", self.function_name())?;
         let full_filename = self.full_filename();
         let line = self.line();
         if full_filename != "" || line != 0 {
@@ -144,6 +157,14 @@ impl<'a> Function<'a> {
     /// The symbol of the function.
     pub fn symbol(&self) -> &str {
         self.cache.get_symbol(self.fun.symbol_id()).unwrap_or(None).unwrap_or("?")
+    }
+
+    /// The demangled function name.
+    ///
+    /// This demangles with default settings.  For further control the symbolic
+    /// demangle crate can be manually used on the symbol.
+    pub fn function_name(&self) -> String {
+        demangle(self.symbol())
     }
 
     /// The language of the function

@@ -1,6 +1,7 @@
 //! Provides symcache support.
 #[macro_use] extern crate symbolic_common;
 extern crate symbolic_debuginfo;
+extern crate symbolic_demangle;
 extern crate uuid;
 extern crate gimli;
 extern crate fallible_iterator;
