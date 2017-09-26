@@ -224,6 +224,22 @@ impl Language {
     }
 }
 
+impl fmt::Display for Language {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", match *self {
+            Language::Unknown | Language::__Max => "unknown",
+            Language::C => "C",
+            Language::Cpp => "C++",
+            Language::D => "D",
+            Language::Go => "Go",
+            Language::ObjC => "Objective-C",
+            Language::ObjCpp => "Objective-C++",
+            Language::Rust => "Rust",
+            Language::Swift => "Swift"
+        })
+    }
+}
+
 /// Represents the kind of an object.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub enum ObjectKind {

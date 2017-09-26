@@ -1,4 +1,5 @@
 use std::io;
+use std::io::Write;
 use std::mem;
 use std::str;
 use std::fmt;
@@ -101,15 +102,21 @@ impl<'a> Symbol<'a> {
 impl<'a> fmt::Display for Symbol<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.function_name())?;
-        let full_filename = self.full_filename();
-        let line = self.line();
-        if full_filename != "" || line != 0 {
-            write!(f, "\n ")?;
-            if full_filename != "" {
-                write!(f, " at {}", full_filename)?;
-            }
-            if line != 0 {
-                write!(f, " line {}", line)?;
+        if f.alternate() {
+            let full_filename = self.full_filename();
+            let line = self.line();
+            let lang = self.lang();
+            if full_filename != "" || line != 0 || lang != Language::Unknown {
+                write!(f, "\n ")?;
+                if full_filename != "" {
+                    write!(f, " at {}", full_filename)?;
+                }
+                if line != 0 {
+                    write!(f, " line {}", line)?;
+                }
+                if lang != Language::Unknown {
+                    write!(f, " lang {}", lang)?;
+                }
             }
         }
         Ok(())
@@ -272,6 +279,16 @@ impl<'a> fmt::Debug for Function<'a> {
     }
 }
 
+impl<'a> fmt::Display for Function<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.function_name())?;
+        if f.alternate() && self.lang() != Language::Unknown {
+            write!(f, " [{}]", self.lang())?;
+        }
+        Ok(())
+    }
+}
+
 impl<'a> fmt::Debug for Line<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Line")
@@ -341,6 +358,12 @@ impl<'a> SymCache<'a> {
     /// The total size of the cache file
     pub fn size(&self) -> usize {
         self.byteview.len()
+    }
+
+    /// Write the symcache into a new writer.
+    pub fn to_writer<W: Write>(&self, mut writer: W) -> Result<()> {
+        io::copy(&mut &self.byteview[..], &mut writer)?;
+        Ok(())
     }
 
     fn get_data(&self, start: usize, len: usize) -> Result<&[u8]> {
@@ -545,5 +568,18 @@ impl<'a> SymCache<'a> {
         }
 
         Ok(rv)
+    }
+}
+
+impl<'a> fmt::Debug for SymCache<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("SymCache")
+            .field("size", &self.size())
+            .field("arch", &self.arch().unwrap_or(Arch::Unknown))
+            .field("data_source", &self.data_source().unwrap_or(DataSource::Unknown))
+            .field("has_line_info", &self.has_line_info().unwrap_or(false))
+            .field("has_file_info", &self.has_file_info().unwrap_or(false))
+            .field("functions", &self.function_records().map(|x| x.len()).unwrap_or(0))
+            .finish()
     }
 }
