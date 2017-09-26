@@ -65,6 +65,7 @@ pub fn to_vec(obj: &Object) -> Result<Vec<u8>> {
 
 struct Function<'a> {
     pub depth: u16,
+    pub addr: u64,
     pub len: u32,
     pub name: &'a [u8],
     pub inlines: Vec<Function<'a>>,
@@ -97,9 +98,11 @@ impl<'a> fmt::Debug for Function<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Function")
             .field("name", &String::from_utf8_lossy(self.name))
+            .field("addr", &self.addr)
+            .field("len", &self.len)
             .field("depth", &self.depth)
             .field("inlines", &self.inlines)
-            .field("comp_dir", &self.comp_dir)
+            .field("comp_dir", &String::from_utf8_lossy(self.comp_dir))
             .field("lang", &self.lang)
             .field("lines", &self.lines)
             .finish()
@@ -119,13 +122,13 @@ impl<'a> Function<'a> {
     }
 
     pub fn get_addr(&self) -> u64 {
-        if let Some(line) = self.lines.get(0) {
-            line.addr
-        } else if let Some(func) = self.inlines.get(0) {
-            func.get_addr()
-        } else {
-            0
-        }
+        self.addr
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.lines.is_empty() && (
+            self.inlines.is_empty() ||
+            self.inlines.iter().all(|x| x.is_empty()))
     }
 }
 
@@ -417,6 +420,13 @@ impl<W: Write> SymCacheWriter<W> {
                           parent_id: u32)
         -> Result<()>
     {
+        // if we have a function without any instructions we just skip it.  This
+        // saves memory and since we only care about instructions where we can
+        // actually crash this is a reasonable optimization.
+        if func.is_empty() {
+            return Ok(());
+        }
+
         let func_id = self.func_records.len() as u32;
         let func_addr = func.get_addr();
         let symbol_id = self.write_symbol_if_missing(func.name)?;
@@ -454,7 +464,6 @@ impl<W: Write> SymCacheWriter<W> {
         for inline_func in &func.inlines {
             self.write_function(inline_func, addrs, local_cache, func_id)?;
         }
-
 
         let mut line_records = vec![];
         for line in &func.lines {
@@ -620,6 +629,7 @@ impl<'input> Unit<'input> {
 
             let mut func = Function {
                 depth: depth as u16,
+                addr: ranges[0].begin,
                 len: (ranges[ranges.len() - 1].end - ranges[0].begin) as u32,
                 name: self.resolve_function_name(info, entry)?.unwrap_or(b""),
                 inlines: vec![],

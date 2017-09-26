@@ -4,16 +4,14 @@ extern crate symbolic_debuginfo;
 extern crate symbolic_common;
 
 use std::u64;
-use std::env;
 use std::process;
 use std::fs;
 use std::io;
 use std::error::Error;
-use std::io::Read;
 
 use clap::{App, ArgMatches, Arg};
 
-use symbolic_symcache::{SymCache, to_writer};
+use symbolic_symcache::SymCache;
 use symbolic_debuginfo::FatObject;
 use symbolic_common::{Arch, ByteView};
 
@@ -23,7 +21,7 @@ fn err(msg: &str) -> Box<Error> {
 
 
 fn execute(matches: &ArgMatches) -> Result<(), Box<Error>> {
-    let mut symcache;
+    let symcache;
 
     // load an object from the debug info file.
     if let Some(file_path) = matches.value_of("debug_file_path") {
