@@ -30,7 +30,6 @@ extern crate rustc_demangle;
 
 use symbolic_common::{ErrorKind, Result, Language};
 use std::fmt;
-use std::mem;
 use std::ptr;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
@@ -82,7 +81,8 @@ impl Default for DemangleOptions {
 fn try_demangle_cpp(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
     let ident = unsafe {
         let mut buf_out = ptr::null_mut();
-        let rv = symbolic_demangle_cpp(mem::transmute(ident.as_bytes().as_ptr()), &mut buf_out);
+        let sym = CString::new(ident.replace("\x00", "")).unwrap();
+        let rv = symbolic_demangle_cpp(sym.as_ptr(), &mut buf_out);
         if rv == 0 {
             return Err(ErrorKind::BadSymbol("not a valid C++ identifier".into()).into());
         }
