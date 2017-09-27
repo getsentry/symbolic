@@ -27,10 +27,11 @@
 //! ```
 extern crate symbolic_common;
 extern crate rustc_demangle;
-extern crate cpp_demangle;
 
 use symbolic_common::{ErrorKind, Result, Language};
 use std::fmt;
+use std::mem;
+use std::ptr;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 
@@ -42,6 +43,11 @@ extern "C" {
         simplified: c_int,
     ) -> c_int;
     fn symbolic_demangle_is_swift_symbol(sym: *const c_char) -> c_int;
+    fn symbolic_demangle_cpp(
+        sym: *const c_char,
+        buf_out: *mut *mut c_char,
+    ) -> c_int;
+    fn symbolic_demangle_cpp_free(buf: *mut c_char);
 }
 
 /// Defines the output format of the demangler
@@ -74,13 +80,21 @@ impl Default for DemangleOptions {
 }
 
 fn try_demangle_cpp(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
-    match cpp_demangle::Symbol::new(ident) {
-        Ok(sym) => Ok(
-            sym.demangle(&cpp_demangle::DemangleOptions {
-                no_params: !opts.with_arguments,
-            }).ok(),
-        ),
-        Err(err) => Err(ErrorKind::BadSymbol(err.to_string()).into()),
+    let ident = unsafe {
+        let mut buf_out = ptr::null_mut();
+        let rv = symbolic_demangle_cpp(mem::transmute(ident.as_bytes().as_ptr()), &mut buf_out);
+        if rv == 0 {
+            return Err(ErrorKind::BadSymbol("not a valid C++ identifier".into()).into());
+        }
+        let rv = CStr::from_ptr(buf_out).to_string_lossy().into_owned();
+        symbolic_demangle_cpp_free(buf_out);
+        rv
+    };
+
+    if opts.with_arguments {
+        Ok(Some(ident))
+    } else {
+        Ok(ident.split('(').next().map(|x| x.to_string()))
     }
 }
 
