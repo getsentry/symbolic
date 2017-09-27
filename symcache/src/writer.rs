@@ -151,6 +151,7 @@ struct DwarfInfo<'input> {
     pub debug_ranges: DebugRanges<Buf<'input>>,
     pub debug_line: DebugLine<Buf<'input>>,
     pub debug_str: DebugStr<Buf<'input>>,
+    pub vmaddr: u64,
     abbrev_cache: RefCell<LruCache<DebugAbbrevOffset<usize>, Arc<Abbreviations>>>,
 }
 
@@ -178,6 +179,7 @@ impl<'input> DwarfInfo<'input> {
             debug_line: section!(DebugLine, true),
             debug_ranges: section!(DebugRanges, false),
             debug_str: section!(DebugStr, false),
+            vmaddr: obj.vmaddr()?,
             abbrev_cache: RefCell::new(LruCache::new(30)),
         })
     }
@@ -345,7 +347,7 @@ impl<W: Write> SymCacheWriter<W> {
         // fallback to symbol table.
         match obj.symbols() {
             Ok(symbols) => {
-                return self.write_symbol_table(symbols)
+                return self.write_symbol_table(symbols, obj.vmaddr()?)
                     .chain_err(|| err("Could not process symbol table"));
             }
             // ignore missing debug info
@@ -359,10 +361,11 @@ impl<W: Write> SymCacheWriter<W> {
         Err(ErrorKind::MissingDebugInfo("No debug info found in file").into())
     }
 
-    fn write_symbol_table(&mut self, symbols: Symbols) -> Result<()> {
+    fn write_symbol_table(&mut self, symbols: Symbols, vmaddr: u64) -> Result<()> {
         for sym_rv in symbols {
-            let (func_addr, symbol) = sym_rv?;
+            let (mut func_addr, symbol) = sym_rv?;
             let symbol_id = self.write_symbol_if_missing(symbol.as_bytes())?;
+            func_addr -= vmaddr;
             self.func_records.push(FuncRecord {
                 addr_low: (func_addr & 0xffffffff) as u32,
                 addr_high: ((func_addr >> 32) & 0xffff) as u16,
@@ -629,7 +632,7 @@ impl<'input> Unit<'input> {
 
             let mut func = Function {
                 depth: depth as u16,
-                addr: ranges[0].begin,
+                addr: ranges[0].begin - info.vmaddr,
                 len: (ranges[ranges.len() - 1].end - ranges[0].begin) as u32,
                 name: self.resolve_function_name(info, entry)?.unwrap_or(b""),
                 inlines: vec![],
@@ -646,7 +649,7 @@ impl<'input> Unit<'input> {
                     let (base_dir, filename) = line_program.get_filename(row.file_index)?;
 
                     let new_line = Line {
-                        addr: row.address,
+                        addr: row.address - info.vmaddr,
                         original_file_id: row.file_index as u64,
                         filename: filename,
                         base_dir: base_dir,

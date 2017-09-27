@@ -61,6 +61,19 @@ impl<'a> Object<'a> {
         self.arch
     }
 
+    /// Return the vmaddr of the code portion of the image.
+    pub fn vmaddr(&self) -> Result<u64> {
+        match self.target {
+            ObjectTarget::Elf(..) => Ok(0),
+            ObjectTarget::MachOSingle(macho) => {
+                get_macho_vmaddr(macho)
+            }
+            ObjectTarget::MachOFat(_, ref macho) => {
+                get_macho_vmaddr(macho)
+            }
+        }
+    }
+
     /// True if little endian, false if not.
     pub fn endianess(&self) -> Endianness {
         let little = match self.target {
@@ -113,6 +126,7 @@ impl<'a> fmt::Debug for Object<'a> {
         f.debug_struct("Object")
             .field("uuid", &self.uuid())
             .field("arch", &self.arch)
+            .field("vmaddr", &self.vmaddr().unwrap_or(0))
             .field("endianess", &self.endianess())
             .field("kind", &self.kind())
             .finish()
@@ -124,6 +138,15 @@ pub struct Symbols<'a> {
     // note: if we need elf here later, we can move this into an internal wrapper
     macho_iter: goblin::mach::symbols::SymbolIterator<'a>,
     sections: HashSet<usize>,
+}
+
+fn get_macho_vmaddr(macho: &mach::MachO) -> Result<u64> {
+    for seg in &macho.segments {
+        if seg.name()? == "__TEXT" {
+            return Ok(seg.vmaddr);
+        }
+    }
+    Ok(0)
 }
 
 fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Result<Symbols<'a>> {
