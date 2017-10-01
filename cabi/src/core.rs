@@ -1,6 +1,8 @@
 use std::mem;
 use std::ptr;
-use std::ffi::CString;
+use std::str;
+use std::slice;
+use std::ffi::CStr;
 use std::os::raw::c_char;
 
 use utils::LAST_ERROR;
@@ -54,6 +56,13 @@ impl SymbolicStr {
             self.data = ptr::null_mut();
             self.len = 0;
             self.owned = false;
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        unsafe {
+            str::from_utf8_unchecked(slice::from_raw_parts(
+                self.data as *const _, self.len))
         }
     }
 }
@@ -147,17 +156,30 @@ pub unsafe extern "C" fn symbolic_err_clear() {
     });
 }
 
-/// Frees a symbolic str.
-#[no_mangle]
-pub unsafe extern "C" fn symbolic_str_free(s: *mut SymbolicStr) {
-    (*s).free()
+ffi_fn! {
+    /// Creates a symbolic str from a c string.
+    ///
+    /// This sets the string to owned.  In case it's not owned you either have
+    /// to make sure you are not freeing the memory or you need to set the
+    /// owned flag to false.
+    unsafe fn symbolic_str_from_cstr(s: *const c_char) -> Result<SymbolicStr> {
+        let s = CStr::from_ptr(s).to_str()?;
+        Ok(SymbolicStr {
+            data: s.as_ptr() as *mut _,
+            len: s.len(),
+            owned: true,
+        })
+    }
 }
 
-/// Frees a C-string allocated in symbolic.
+/// Frees a symbolic str.
+///
+/// If the string is marked as not owned then this function does not
+/// do anything.
 #[no_mangle]
-pub unsafe extern "C" fn symbolic_cstr_free(s: *mut c_char) {
+pub unsafe extern "C" fn symbolic_str_free(s: *mut SymbolicStr) {
     if !s.is_null() {
-        let _ = CString::from_raw(s);
+        (*s).free()
     }
 }
 
