@@ -6,7 +6,7 @@ use std::ffi::CStr;
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{Object, FatObject};
 
-use core::SymbolicUuid;
+use core::{SymbolicStr, SymbolicUuid};
 
 use uuid::Uuid;
 
@@ -65,10 +65,10 @@ ffi_fn! {
 ffi_fn! {
     /// Returns the architecture of the object.
     unsafe fn symbolic_di_object_get_arch(so: *const SymbolicObject)
-        -> Result<*const c_char>
+        -> Result<SymbolicStr>
     {
         let o = so as *mut Object<'static>;
-        Ok((*o).arch().name_cstr().as_ptr())
+        Ok(SymbolicStr::new((*o).arch().name()))
     }
 }
 

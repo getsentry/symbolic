@@ -1,3 +1,4 @@
+use std::mem;
 use std::ptr;
 use std::ffi::CString;
 use std::os::raw::c_char;
@@ -9,8 +10,58 @@ use uuid::Uuid;
 use symbolic_common::ErrorKind;
 
 
+/// Represents a string.
+#[repr(C)]
+pub struct SymbolicStr {
+    pub data: *mut c_char,
+    pub len: usize,
+    pub owned: bool,
+}
+
+impl Default for SymbolicStr {
+    fn default() -> SymbolicStr {
+        SymbolicStr {
+            data: ptr::null_mut(),
+            len: 0,
+            owned: false,
+        }
+    }
+}
+
+impl SymbolicStr {
+    pub fn new(s: &'static str) -> SymbolicStr {
+        SymbolicStr {
+            data: s.as_ptr() as *mut c_char,
+            len: s.len(),
+            owned: false,
+        }
+    }
+
+    pub fn from_string(mut s: String) -> SymbolicStr {
+        s.shrink_to_fit();
+        let rv = SymbolicStr {
+            data: s.as_ptr() as *mut c_char,
+            len: s.len(),
+            owned: true,
+        };
+        mem::forget(s);
+        rv
+    }
+
+    pub unsafe fn free(&mut self) {
+        if self.owned {
+            String::from_raw_parts(self.data as *mut _, self.len, self.len);
+            self.data = ptr::null_mut();
+            self.len = 0;
+            self.owned = false;
+        }
+    }
+}
+
 /// Represents a UUID
-pub type SymbolicUuid = [u8; 16];
+pub struct SymbolicUuid {
+    pub data: [u8; 16]
+}
 
 /// Indicates the error that ocurred
 #[repr(u32)]
@@ -75,17 +126,16 @@ pub unsafe extern "C" fn symbolic_err_get_last_code() -> SymbolicErrorCode {
 
 /// Returns the last error message.
 ///
-/// If there is no error, 0 is returned.  This allocates new memory that needs
-/// to be freed with `symbolic_cstr_free`.
+/// If there is no error an empty string is returned.  This allocates new memory
+/// that needs to be freed with `symbolic_str_free`.
 #[no_mangle]
-pub unsafe extern "C" fn symbolic_err_get_last_message() -> *mut c_char {
+pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
     LAST_ERROR.with(|e| {
         if let Some(ref err) = *e.borrow() {
-            if let Ok(rv) = CString::new(err.to_string()) {
-                return rv.into_raw();
-            }
+            SymbolicStr::from_string(err.to_string())
+        } else {
+            Default::default()
         }
-        ptr::null_mut()
     })
 }
 
@@ -95,6 +145,12 @@ pub unsafe extern "C" fn symbolic_err_clear() {
     LAST_ERROR.with(|e| {
         *e.borrow_mut() = None;
     });
+}
+
+/// Frees a symbolic str.
+#[no_mangle]
+pub unsafe extern "C" fn symbolic_str_free(s: *mut SymbolicStr) {
+    (*s).free()
 }
 
 /// Frees a C-string allocated in symbolic.
@@ -107,8 +163,8 @@ pub unsafe extern "C" fn symbolic_cstr_free(s: *mut c_char) {
 
 /// Returns true if the uuid is nil
 #[no_mangle]
-pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: SymbolicUuid) -> bool {
-    if let Ok(uuid) = Uuid::from_bytes(&uuid[..]) {
+pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: *const SymbolicUuid) -> bool {
+    if let Ok(uuid) = Uuid::from_bytes(&(*uuid).data[..]) {
         uuid == Uuid::nil()
     } else {
         false
@@ -120,7 +176,7 @@ pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: SymbolicUuid) -> bool {
 /// The string is newly allocated and needs to be released with
 /// `symbolic_cstr_free`.
 #[no_mangle]
-pub unsafe extern "C" fn symbolic_uuid_to_cstr(uuid: SymbolicUuid) -> *mut c_char {
-    let uuid =  Uuid::from_bytes(&uuid[..]).unwrap_or(Uuid::nil());
-    CString::new(uuid.hyphenated().to_string()).unwrap().into_raw()
+pub unsafe extern "C" fn symbolic_uuid_to_str(uuid: *const SymbolicUuid) -> SymbolicStr {
+    let uuid =  Uuid::from_bytes(&(*uuid).data[..]).unwrap_or(Uuid::nil());
+    SymbolicStr::from_string(uuid.hyphenated().to_string())
 }

@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <stdio.h>
 #include <assert.h>
 #include "symbolic.h"
@@ -15,9 +16,12 @@ int main()
     char *rv = symbolic_demangle("\xff\x23");
     assert(rv == 0);
     printf("Error code: %d\n", symbolic_err_get_last_code());
-    char *msg = symbolic_err_get_last_message();
-    printf("Error message: %s\n", msg);
-    symbolic_cstr_free(msg);
+    SymbolicStr msg = symbolic_err_get_last_message();
+    printf("Error message: ");
+    fflush(stdout);
+    write(1, msg.data, msg.len);
+    printf("\n");
+    symbolic_str_free(&msg);
 
     return 0;
 }
