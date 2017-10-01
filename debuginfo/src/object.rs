@@ -23,7 +23,7 @@ enum ObjectTarget<'a> {
 
 /// Represents a single object in a fat object.
 pub struct Object<'a> {
-    fat_object: &'a FatObject<'a>,
+    fat_bytes: &'a [u8],
     arch: Arch,
     target: ObjectTarget<'a>,
 }
@@ -91,10 +91,10 @@ impl<'a> Object<'a> {
     /// Returns the content of the object as bytes
     pub fn as_bytes(&self) -> &'a [u8] {
         match self.target {
-            ObjectTarget::Elf(..) => self.fat_object.as_bytes(),
-            ObjectTarget::MachOSingle(_) => self.fat_object.as_bytes(),
+            ObjectTarget::Elf(..) => self.fat_bytes,
+            ObjectTarget::MachOSingle(_) => self.fat_bytes,
             ObjectTarget::MachOFat(ref arch, _) => {
-                let bytes = self.fat_object.as_bytes();
+                let bytes = self.fat_bytes;
                 &bytes[arch.offset as usize..(arch.offset + arch.size) as usize]
             }
         }
@@ -274,7 +274,7 @@ impl<'a> FatObject<'a> {
         match *self.handle {
             FatObjectKind::Elf(ref elf) => {
                 rv.push(Object {
-                    fat_object: self,
+                    fat_bytes: self.as_bytes(),
                     arch: Arch::from_elf(elf.header.e_machine)?,
                     target: ObjectTarget::Elf(elf),
                 });
@@ -283,14 +283,14 @@ impl<'a> FatObject<'a> {
                 mach::Mach::Fat(ref fat) => for (idx, arch) in fat.iter_arches().enumerate() {
                     let arch = arch?;
                     rv.push(Object {
-                        fat_object: self,
+                        fat_bytes: self.as_bytes(),
                         arch: Arch::from_mach(arch.cputype as u32, arch.cpusubtype as u32)?,
                         target: ObjectTarget::MachOFat(arch, fat.get(idx)?),
                     });
                 },
                 mach::Mach::Binary(ref macho) => {
                     rv.push(Object {
-                        fat_object: self,
+                        fat_bytes: self.as_bytes(),
                         arch: Arch::from_mach(
                             macho.header.cputype as u32,
                             macho.header.cpusubtype as u32,
