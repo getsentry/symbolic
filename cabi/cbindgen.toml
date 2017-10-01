@@ -1,0 +1,9 @@
+header = "/* c bindings to the symbolic library */"
+include_guard = "SYMBOLIC_H_INCLUDED"
+language = "C"
+
+[parse]
+expand = ["symbolic-cabi"]
+
+[enum]
+rename_variants = "QualifiedScreamingSnakeCase"
