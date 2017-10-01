@@ -1,4 +1,11 @@
-header:
-	cbindgen -c cbindgen.toml . -o target/symbolic.h
+target/symbolic.h:
+	cbindgen -c cbindgen.toml . -o $@
 
-.PHONY: header
+target/debug/c-tests/demangle: c-tests/demangle.c target/symbolic.h
+	mkdir -p target/debug/c-tests
+	$(CC) -Itarget -Ltarget/debug -lsymbolic $< -o $@
+
+ctest: target/debug/c-tests/demangle
+	./target/debug/c-tests/demangle
+
+.PHONY: header ctest

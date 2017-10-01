@@ -3,6 +3,10 @@ name = "symbolic-cabi"
 version = "0.1.0"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
+[lib]
+name = "symbolic"
+crate-type = ["cdylib"]
+
 [workspace]
 
 [dependencies.symbolic-common]
