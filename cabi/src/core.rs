@@ -4,8 +4,13 @@ use std::os::raw::c_char;
 
 use utils::LAST_ERROR;
 
+use uuid::Uuid;
+
 use symbolic_common::ErrorKind;
 
+
+/// Represents a UUID
+pub type SymbolicUuid = [u8; 16];
 
 /// Indicates the error that ocurred
 #[repr(u32)]
@@ -16,7 +21,8 @@ pub enum SymbolicErrorCode {
     Msg = 3,
     Unknown = 4,
     Parse = 101,
-    Format = 102,
+    NotFound = 102,
+    Format = 103,
     BadSymbol = 1001,
     UnsupportedObjectFile = 1002,
     MalformedObjectFile = 1003,
@@ -36,6 +42,7 @@ impl SymbolicErrorCode {
             ErrorKind::BadSymbol(..) => SymbolicErrorCode::BadSymbol,
             ErrorKind::Internal(..) => SymbolicErrorCode::Internal,
             ErrorKind::Parse(..) => SymbolicErrorCode::Parse,
+            ErrorKind::NotFound(..) => SymbolicErrorCode::NotFound,
             ErrorKind::Format(..) => SymbolicErrorCode::Format,
             ErrorKind::UnsupportedObjectFile => SymbolicErrorCode::UnsupportedObjectFile,
             ErrorKind::MalformedObjectFile(..) => SymbolicErrorCode::MalformedObjectFile,
@@ -95,5 +102,15 @@ pub unsafe extern "C" fn symbolic_err_clear() {
 pub unsafe extern "C" fn symbolic_cstr_free(s: *mut c_char) {
     if !s.is_null() {
         let _ = CString::from_raw(s);
+    }
+}
+
+/// Returns true if the uuid is nil
+#[no_mangle]
+pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: SymbolicUuid) -> bool {
+    if let Ok(uuid) = Uuid::from_bytes(&uuid[..]) {
+        uuid == Uuid::nil()
+    } else {
+        false
     }
 }

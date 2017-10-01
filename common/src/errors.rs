@@ -32,6 +32,11 @@ error_chain! {
             description("parse error")
             display("parse error: {}", message)
         }
+        /// General error for missing information.
+        NotFound(message: &'static str) {
+            description("not found")
+            display("not found: {}", message)
+        }
         /// Raised for bad input on parsing in symbolic.
         Format(message: &'static str) {
             description("format error")

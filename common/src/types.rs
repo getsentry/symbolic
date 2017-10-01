@@ -1,5 +1,6 @@
 use std::mem;
 use std::fmt;
+use std::ffi::CStr;
 
 #[cfg(feature = "with_objects")]
 use mach_object;
@@ -151,29 +152,36 @@ impl Arch {
             X86 | ArmV5 | ArmV6 | ArmV7 | ArmV7f | ArmV7s | ArmV7k | ArmV7m | ArmV7em => Some(4),
         }
     }
+
+    #[doc(hidden)]
+    pub fn name_cstr(&self) -> &'static CStr {
+        use Arch::*;
+        CStr::from_bytes_with_nul(match *self {
+            Unknown | __Max => b"unknown\0",
+            X86 => b"x86\0",
+            X86_64 => b"x86_64\0",
+            Arm64 => b"arm64\0",
+            ArmV5 => b"armv5\0",
+            ArmV6 => b"armv6\0",
+            ArmV7 => b"armv7\0",
+            ArmV7f => b"armv7f\0",
+            ArmV7s => b"armv7s\0",
+            ArmV7k => b"armv7k\0",
+            ArmV7m => b"armv7m\0",
+            ArmV7em => b"armv7em\0",
+        }).unwrap()
+    }
+
+    /// Returns the name of the arch
+    pub fn name(&self) -> &'static str {
+        let s_with_nul = self.name_cstr().to_str().unwrap();
+        &s_with_nul[..s_with_nul.len() - 1]
+    }
 }
 
 impl fmt::Display for Arch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use Arch::*;
-        write!(
-            f,
-            "{}",
-            match *self {
-                Unknown | __Max => "unknown",
-                X86 => "x86",
-                X86_64 => "x86_64",
-                Arm64 => "arm64",
-                ArmV5 => "armv5",
-                ArmV6 => "armv6",
-                ArmV7 => "armv7",
-                ArmV7f => "armv7f",
-                ArmV7s => "armv7s",
-                ArmV7k => "armv7k",
-                ArmV7m => "armv7m",
-                ArmV7em => "armv7em",
-            }
-        )
+        write!(f, "{}", self.name())
     }
 }
 

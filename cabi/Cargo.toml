@@ -9,6 +9,9 @@ crate-type = ["cdylib"]
 
 [workspace]
 
+[dependencies]
+uuid = "0"
+
 [dependencies.symbolic-common]
 path = "../common"
 features = ["with_dwarf", "with_objects"]
