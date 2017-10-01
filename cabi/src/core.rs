@@ -114,3 +114,13 @@ pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: SymbolicUuid) -> bool {
         false
     }
 }
+
+/// Formats the UUID into a string.
+///
+/// The string is newly allocated and needs to be released with
+/// `symbolic_cstr_free`.
+#[no_mangle]
+pub unsafe extern "C" fn symbolic_uuid_to_cstr(uuid: SymbolicUuid) -> *mut c_char {
+    let uuid =  Uuid::from_bytes(&uuid[..]).unwrap_or(Uuid::nil());
+    CString::new(uuid.hyphenated().to_string()).unwrap().into_raw()
+}
