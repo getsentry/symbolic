@@ -11,6 +11,13 @@ crate-type = ["cdylib"]
 
 [dependencies.symbolic-common]
 path = "../common"
+features = ["with_dwarf", "with_objects"]
 
 [dependencies.symbolic-demangle]
 path = "../demangle"
+
+[dependencies.symbolic-debuginfo]
+path = "../debuginfo"
+
+[dependencies.symbolic-symcache]
+path = "../symcache"
