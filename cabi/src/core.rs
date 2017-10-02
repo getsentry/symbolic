@@ -31,7 +31,7 @@ impl Default for SymbolicStr {
 }
 
 impl SymbolicStr {
-    pub fn new(s: &'static str) -> SymbolicStr {
+    pub fn new(s: &str) -> SymbolicStr {
         SymbolicStr {
             data: s.as_ptr() as *mut c_char,
             len: s.len(),

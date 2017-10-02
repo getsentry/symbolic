@@ -5,7 +5,7 @@ authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
 [lib]
 name = "symbolic"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "dylib"]
 
 [workspace]
 
