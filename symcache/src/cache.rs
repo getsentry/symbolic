@@ -360,6 +360,11 @@ impl<'a> SymCache<'a> {
         self.byteview.len()
     }
 
+    /// Returns a pointer to the internal bytes of the cache file
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.byteview
+    }
+
     /// Write the symcache into a new writer.
     pub fn to_writer<W: Write>(&self, mut writer: W) -> Result<()> {
         io::copy(&mut &self.byteview[..], &mut writer)?;

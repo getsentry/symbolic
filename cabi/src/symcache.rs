@@ -50,6 +50,48 @@ ffi_fn! {
 }
 
 ffi_fn! {
+    /// Returns the internal buffer of the symcache.
+    ///
+    /// The internal buffer is exactly `symbolic_symcache_get_size` bytes long.
+    unsafe fn symbolic_symcache_get_bytes(scache: *const SymbolicSymCache) -> Result<*const u8> {
+        let cache = scache as *mut SymCache<'static>;
+        Ok((*cache).as_bytes().as_ptr())
+    }
+}
+
+ffi_fn! {
+    /// Returns the size in bytes of the symcache.
+    unsafe fn symbolic_symcache_get_size(scache: *const SymbolicSymCache) -> Result<usize> {
+        let cache = scache as *mut SymCache<'static>;
+        Ok((*cache).size())
+    }
+}
+
+ffi_fn! {
+    /// Returns the architecture of the symcache.
+    unsafe fn symbolic_symcache_get_arch(scache: *const SymbolicSymCache) -> Result<SymbolicStr> {
+        let cache = scache as *mut SymCache<'static>;
+        Ok(SymbolicStr::new((*cache).arch()?.name()))
+    }
+}
+
+ffi_fn! {
+    /// Returns true if the symcache has line infos.
+    unsafe fn symbolic_symcache_has_line_info(scache: *const SymbolicSymCache) -> Result<bool> {
+        let cache = scache as *mut SymCache<'static>;
+        Ok((*cache).has_line_info()?)
+    }
+}
+
+ffi_fn! {
+    /// Returns true if the symcache has file infos.
+    unsafe fn symbolic_symcache_has_file_info(scache: *const SymbolicSymCache) -> Result<bool> {
+        let cache = scache as *mut SymCache<'static>;
+        Ok((*cache).has_file_info()?)
+    }
+}
+
+ffi_fn! {
     /// Looks up a single symbol.
     unsafe fn symbolic_symcache_lookup(scache: *const SymbolicSymCache,
                                        addr: u64) -> Result<SymbolicLookupResult> {
