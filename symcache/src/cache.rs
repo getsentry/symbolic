@@ -66,7 +66,7 @@ impl<'a> Symbol<'a> {
     }
 
     /// The string value of the symbol (mangled).
-    pub fn symbol(&self) -> &str {
+    pub fn symbol(&self) -> &'a str {
         self.symbol.unwrap_or("?")
     }
 
@@ -79,7 +79,7 @@ impl<'a> Symbol<'a> {
     }
 
     /// The filename of the current line.
-    pub fn filename(&self) -> &str {
+    pub fn filename(&self) -> &'a str {
         self.filename
     }
 
@@ -94,7 +94,7 @@ impl<'a> Symbol<'a> {
     }
 
     /// The compilation dir of the function.
-    pub fn comp_dir(&self) -> &str {
+    pub fn comp_dir(&self) -> &'a str {
         self.comp_dir
     }
 }
