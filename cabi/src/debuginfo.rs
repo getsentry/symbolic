@@ -18,7 +18,7 @@ pub struct SymbolicObject;
 
 ffi_fn! {
     /// Loads a fat object from a given path.
-    unsafe fn symbolic_di_fatobject_open(path: *const c_char)
+    unsafe fn symbolic_fatobject_open(path: *const c_char)
         -> Result<*mut SymbolicFatObject>
     {
         let byteview = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
@@ -29,7 +29,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Frees the given fat object.
-    unsafe fn symbolic_di_fatobject_free(sfo: *mut SymbolicFatObject) {
+    unsafe fn symbolic_fatobject_free(sfo: *mut SymbolicFatObject) {
         if !sfo.is_null() {
             let fo = sfo as *mut FatObject<'static>;
             Box::from_raw(fo);
@@ -39,7 +39,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns the number of contained objects.
-    unsafe fn symbolic_di_fatobject_object_count(sfo: *const SymbolicFatObject)
+    unsafe fn symbolic_fatobject_object_count(sfo: *const SymbolicFatObject)
         -> Result<usize>
     {
         let fo = sfo as *const FatObject<'static>;
@@ -49,7 +49,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns the n-th object.
-    unsafe fn symbolic_di_fatobject_get_object(sfo: *const SymbolicFatObject,
+    unsafe fn symbolic_fatobject_get_object(sfo: *const SymbolicFatObject,
                                                idx: usize)
         -> Result<*mut SymbolicObject>
     {
@@ -64,7 +64,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns the architecture of the object.
-    unsafe fn symbolic_di_object_get_arch(so: *const SymbolicObject)
+    unsafe fn symbolic_object_get_arch(so: *const SymbolicObject)
         -> Result<SymbolicStr>
     {
         let o = so as *mut Object<'static>;
@@ -74,7 +74,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns the UUID of an object.
-    unsafe fn symbolic_di_object_get_uuid(so: *const SymbolicObject)
+    unsafe fn symbolic_object_get_uuid(so: *const SymbolicObject)
         -> Result<SymbolicUuid>
     {
         let o = so as *mut Object<'static>;
@@ -84,7 +84,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Frees an object returned from a fat object.
-    unsafe fn symbolic_di_object_free(so: *mut SymbolicObject) {
+    unsafe fn symbolic_object_free(so: *mut SymbolicObject) {
         if !so.is_null() {
             let o = so as *mut Object<'static>;
             Box::from_raw(o);
