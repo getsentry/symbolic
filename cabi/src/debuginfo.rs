@@ -50,7 +50,7 @@ ffi_fn! {
 ffi_fn! {
     /// Returns the n-th object.
     unsafe fn symbolic_fatobject_get_object(sfo: *const SymbolicFatObject,
-                                               idx: usize)
+                                            idx: usize)
         -> Result<*mut SymbolicObject>
     {
         let fo = sfo as *const FatObject<'static>;

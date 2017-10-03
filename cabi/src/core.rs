@@ -68,6 +68,7 @@ impl SymbolicStr {
 }
 
 /// Represents a UUID
+#[repr(C)]
 pub struct SymbolicUuid {
     pub data: [u8; 16]
 }
