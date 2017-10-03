@@ -2,7 +2,7 @@ from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib, ffi
 from symbolic.demangle import demangle
 from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
-     common_path_join, strip_common_path_prefix
+     common_path_join, strip_common_path_prefix, encode_path
 
 
 @implements_to_string
@@ -49,6 +49,19 @@ class Symbol(object):
 class SymCache(RustObject):
     __dealloc_func__ = lib.symbolic_symcache_free
 
+    @classmethod
+    def from_path(self, path):
+        """Loads a symcache from a file via mmap."""
+        return SymCache._from_objptr(
+            rustcall(lib.symbolic_symcache_from_path, path))
+
+    @classmethod
+    def from_bytes(self, bytes):
+        """Loads a symcache from a file via mmap."""
+        bytes = memoryview(bytes)
+        return SymCache._from_objptr(
+            rustcall(lib.symbolic_symcache_from_bytes, bytes, len(bytes)))
+
     @property
     def arch(self):
         """The architecture of the symcache."""
@@ -69,6 +82,12 @@ class SymCache(RustObject):
     def has_file_info(self):
         """Does this file have file information?"""
         return self._methodcall(lib.symbolic_symcache_has_file_info)
+
+    def dump(self, f):
+        """Dumps the symcache into a file object."""
+        buf = self._methodcall(lib.symbolic_symcache_get_bytes)
+        size = self._methodcall(lib.symbolic_symcache_get_size)
+        f.write(ffi.buffer(buf, size))
 
     def lookup(self, addr):
         """Look up a single address."""
