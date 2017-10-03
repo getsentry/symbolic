@@ -1,5 +1,6 @@
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid
+from symbolic.symcache import SymCache
 
 
 class FatObject(RustObject):
@@ -56,6 +57,11 @@ class Object(RustObject):
     def uuid(self):
         """The UUID of the object."""
         return decode_uuid(self._methodcall(lib.symbolic_object_get_uuid))
+
+    def make_symcache(self):
+        """Creates a symcache from the object."""
+        return SymCache._from_objptr(self._methodcall(
+            lib.symbolic_symcache_from_object))
 
     def __repr__(self):
         return '<Object %s %r>' % (

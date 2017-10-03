@@ -6,6 +6,8 @@ use std::fmt;
 use std::slice;
 use std::cell::RefCell;
 
+use uuid::Uuid;
+
 use symbolic_common::{Result, ErrorKind, ByteView, Arch, Language};
 use symbolic_debuginfo::Object;
 use symbolic_demangle;
@@ -43,6 +45,11 @@ impl<'a> Symbol<'a> {
     /// The architecture of the matched symbol.
     pub fn arch(&self) -> Arch {
         self.cache.arch().unwrap_or(Arch::Unknown)
+    }
+
+    /// The uuid of the matched symbol.
+    pub fn uuid(&self) -> Uuid {
+        self.cache.uuid().unwrap_or(Uuid::nil())
     }
 
     /// The address where the symbol starts.
@@ -414,6 +421,11 @@ impl<'a> SymCache<'a> {
     /// The architecture of the cache file
     pub fn arch(&self) -> Result<Arch> {
         Arch::from_u32(self.header()?.arch)
+    }
+
+    /// The uuid of the cache file.
+    pub fn uuid(&self) -> Result<Uuid> {
+        Ok(self.header()?.uuid)
     }
 
     /// The source of the sym cache.

@@ -1,9 +1,11 @@
 use std::mem;
 
+use uuid::Uuid;
+
 use symbolic_debuginfo::Object;
 use symbolic_symcache::SymCache;
 
-use core::SymbolicStr;
+use core::{SymbolicStr, SymbolicUuid};
 use debuginfo::SymbolicObject;
 
 /// Represents a symbolic sym cache.
@@ -72,6 +74,14 @@ ffi_fn! {
     unsafe fn symbolic_symcache_get_arch(scache: *const SymbolicSymCache) -> Result<SymbolicStr> {
         let cache = scache as *mut SymCache<'static>;
         Ok(SymbolicStr::new((*cache).arch()?.name()))
+    }
+}
+
+ffi_fn! {
+    /// Returns the architecture of the symcache.
+    unsafe fn symbolic_symcache_get_uuid(scache: *const SymbolicSymCache) -> Result<SymbolicUuid> {
+        let cache = scache as *mut SymCache<'static>;
+        Ok(mem::transmute(*(*cache).uuid().unwrap_or(Uuid::nil()).as_bytes()))
     }
 }
 
