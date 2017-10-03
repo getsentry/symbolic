@@ -1,9 +1,13 @@
 use std::mem;
+use std::slice;
+use std::os::raw::c_char;
+use std::ffi::CStr;
 
 use uuid::Uuid;
 
 use symbolic_debuginfo::Object;
 use symbolic_symcache::SymCache;
+use symbolic_common::ByteView;
 
 use core::{SymbolicStr, SymbolicUuid};
 use debuginfo::SymbolicObject;
@@ -30,6 +34,29 @@ pub struct SymbolicLookupResult {
     pub len: usize,
 }
 
+
+ffi_fn! {
+    /// Creates a symcache from a given path.
+    unsafe fn symbolic_symcache_from_path(path: *const c_char)
+        -> Result<*mut SymbolicSymCache>
+    {
+        let byteview = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
+        let cache = SymCache::new(byteview)?;
+        Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicSymCache)
+    }
+}
+
+ffi_fn! {
+    /// Creates a symcache from bytes
+    unsafe fn symbolic_symcache_from_bytes(bytes: *const u8, len: usize)
+        -> Result<*mut SymbolicSymCache>
+    {
+        let vec = slice::from_raw_parts(bytes, len).to_owned();
+        let byteview = ByteView::from_vec(vec);
+        let cache = SymCache::new(byteview)?;
+        Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicSymCache)
+    }
+}
 
 ffi_fn! {
     /// Creates a symcache from a given object.
