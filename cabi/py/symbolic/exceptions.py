@@ -1,10 +1,11 @@
-from symbolic._compat import PY2
+from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib
 
 
 exceptions_by_code = {}
 
 
+@implements_to_string
 class SymbolicError(Exception):
     code = None
 
@@ -14,11 +15,6 @@ class SymbolicError(Exception):
 
     def __str__(self):
         return self.message
-
-    if PY2:
-        __unicode__ = __str__
-        def __str__(self):
-            return unicode(self).encode('utf-8')
 
 
 def _make_exceptions():

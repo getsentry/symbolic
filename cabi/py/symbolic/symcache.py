@@ -1,7 +1,11 @@
+from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib, ffi
-from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid
+from symbolic.demangle import demangle
+from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
+     common_path_join, strip_common_path_prefix
 
 
+@implements_to_string
 class Symbol(object):
 
     def __init__(self, sym_addr, instr_addr, line, symbol,
@@ -13,6 +17,28 @@ class Symbol(object):
         self.filename = filename
         self.base_dir = base_dir
         self.comp_dir = comp_dir
+
+    @property
+    def function_name(self):
+        """The demangled function name."""
+        return demangle(self.symbol)
+
+    @property
+    def abs_path(self):
+        """Returns the absolute path."""
+        return common_path_join(self.base_dir, self.filename)
+
+    @property
+    def rel_path(self):
+        """Returns the relative path to the comp dir."""
+        return strip_common_path_prefix(self.abs_path, self.comp_dir)
+
+    def __str__(self):
+        return '%s:%s (%s)' % (
+            self.function_name,
+            self.line,
+            self.rel_path,
+        )
 
     def __repr__(self):
         return 'Symbol(%s)' % (

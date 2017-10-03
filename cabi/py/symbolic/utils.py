@@ -1,7 +1,26 @@
 import uuid
+import ntpath
+import posixpath
 from symbolic._lowlevel import ffi, lib
 from symbolic._compat import text_type, NUL
 from symbolic.exceptions import exceptions_by_code, SymbolicError
+
+
+def common_path_join(a, b):
+    if '\\' in a or ntpath.isabs(a):
+        return ntpath.normpath(ntpath.join(a, b))
+    return posixpath.join(a, b)
+
+
+def strip_common_path_prefix(a, b):
+    if '\\' in a or ntpath.isabs(a):
+        path = ntpath
+    else:
+        path = posixpath
+    pieces_a = path.normpath(a).split(path.sep)
+    pieces_b = path.normpath(b).split(path.sep)
+    prefix = path.commonprefix([pieces_a, pieces_b])
+    return path.sep.join(pieces_a[len(prefix):])
 
 
 class RustObject(object):
