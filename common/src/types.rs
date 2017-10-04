@@ -178,6 +178,16 @@ impl Arch {
             ArmV7em => "armv7em",
         }
     }
+
+    /// The name of the IP register if known.
+    pub fn ip_reg_name(&self) -> Option<&'static str> {
+        match self.cpu_family() {
+            CpuFamily::Intel32 => Some("eip"),
+            CpuFamily::Intel64 => Some("rip"),
+            CpuFamily::Arm32 | CpuFamily::Arm64 => Some("pc"),
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for Arch {

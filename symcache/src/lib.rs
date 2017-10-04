@@ -14,8 +14,10 @@ extern crate num;
 mod types;
 mod cache;
 mod writer;
+mod heuristics;
 mod utils;
 
 pub use types::DataSource;
 pub use cache::*;
 pub use writer::*;
+pub use heuristics::*;
