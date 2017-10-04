@@ -22,6 +22,7 @@ matrix:
 
   include:
     - script: make wheel
+      before_script: pip install wheel
       env: DEPLOY=1
       osx_image: xcode6.4
       os: osx
