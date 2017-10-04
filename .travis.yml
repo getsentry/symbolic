@@ -51,4 +51,5 @@ deploy:
   upload-dir: $TRAVIS_REPO_SLUG/$TRAVIS_COMMIT
   acl: public_read
   on:
+    all_branches: true
     condition: $DEPLOY = 1
