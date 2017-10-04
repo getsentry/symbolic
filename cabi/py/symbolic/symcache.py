@@ -83,11 +83,16 @@ class SymCache(RustObject):
         """Does this file have file information?"""
         return self._methodcall(lib.symbolic_symcache_has_file_info)
 
-    def dump(self, f):
-        """Dumps the symcache into a file object."""
+    @property
+    def buffer(self):
+        """Returns the underlying bytes of the cache."""
         buf = self._methodcall(lib.symbolic_symcache_get_bytes)
         size = self._methodcall(lib.symbolic_symcache_get_size)
-        f.write(ffi.buffer(buf, size))
+        return ffi.buffer(buf, size)
+
+    def dump(self, f):
+        """Dumps the symcache into a file object."""
+        f.write(self.buffer)
 
     def lookup(self, addr):
         """Look up a single address."""
