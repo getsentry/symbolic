@@ -265,3 +265,13 @@ pub enum ObjectKind {
     MachO,
     Elf,
 }
+
+impl ObjectKind {
+    /// Returns the name of the object kind.
+    pub fn name(&self) -> &'static str {
+        match *self {
+            ObjectKind::MachO => "macho",
+            ObjectKind::Elf => "elf",
+        }
+    }
+}

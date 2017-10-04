@@ -83,6 +83,16 @@ ffi_fn! {
 }
 
 ffi_fn! {
+    /// Returns the object kind
+    unsafe fn symbolic_object_get_kind(so: *const SymbolicObject)
+        -> Result<SymbolicStr>
+    {
+        let o = so as *mut Object<'static>;
+        Ok(SymbolicStr::new((*o).kind().name()))
+    }
+}
+
+ffi_fn! {
     /// Frees an object returned from a fat object.
     unsafe fn symbolic_object_free(so: *mut SymbolicObject) {
         if !so.is_null() {

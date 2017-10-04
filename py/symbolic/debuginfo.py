@@ -61,6 +61,11 @@ class Object(RustObject):
         """The UUID of the object."""
         return decode_uuid(self._methodcall(lib.symbolic_object_get_uuid))
 
+    @property
+    def kind(self):
+        """The object kind."""
+        return str(decode_str(self._methodcall(lib.symbolic_object_get_kind)))
+
     def make_symcache(self):
         """Creates a symcache from the object."""
         return SymCache._from_objptr(self._methodcall(

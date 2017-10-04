@@ -213,6 +213,11 @@ void symbolic_object_free(SymbolicObject *so);
 SymbolicStr symbolic_object_get_arch(const SymbolicObject *so);
 
 /*
+ * Returns the object kind
+ */
+SymbolicStr symbolic_object_get_kind(const SymbolicObject *so);
+
+/*
  * Returns the UUID of an object.
  */
 SymbolicUuid symbolic_object_get_uuid(const SymbolicObject *so);
