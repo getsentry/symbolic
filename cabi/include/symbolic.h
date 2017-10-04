@@ -97,6 +97,11 @@ typedef struct {
 SymbolicStr symbolic_arch_from_macho(const SymbolicMachoArch *arch);
 
 /*
+ * Returns the name of the instruction pointer if known.
+ */
+SymbolicStr symbolic_arch_ip_reg_name(const SymbolicStr *arch);
+
+/*
  * Checks if an architecture is known.
  */
 bool symbolic_arch_is_known(const SymbolicStr *arch);

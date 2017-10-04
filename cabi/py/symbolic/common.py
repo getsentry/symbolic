@@ -1,10 +1,14 @@
 from symbolic._lowlevel import lib, ffi
 from symbolic._compat import string_types, int_types
 from symbolic.utils import rustcall, encode_str, decode_str
+from symbolic import exceptions
 
 
 __all__ = ['arch_is_known', 'arch_from_macho', 'arch_to_macho',
-           'parse_addr']
+           'arch_get_ip_reg_name', 'parse_addr']
+
+
+ignore_arch_exc = (exceptions.NotFound, exceptions.Parse)
 
 
 def arch_is_known(value):
@@ -17,13 +21,28 @@ def arch_from_macho(cputype, cpusubtype):
     arch = ffi.new('SymbolicMachoArch *')
     arch[0].cputype = cputype
     arch[0].cpusubtype = cpusubtype
-    return str(decode_str(rustcall(lib.symbolic_arch_from_macho, arch)))
+    try:
+        return str(decode_str(rustcall(lib.symbolic_arch_from_macho, arch)))
+    except ignore_arch_exc:
+        pass
 
 
 def arch_to_macho(arch):
     """Converts a macho arch tuple into an arch string."""
-    arch = rustcall(lib.symbolic_arch_to_macho, encode_str(arch))
-    return (arch.cputype, arch.cpusubtype)
+    try:
+        arch = rustcall(lib.symbolic_arch_to_macho, encode_str(arch))
+        return (arch.cputype, arch.cpusubtype)
+    except ignore_arch_exc:
+        pass
+
+
+def arch_get_ip_reg_name(arch):
+    """Returns the ip register if known for this arch."""
+    try:
+        return str(decode_str(rustcall(
+            lib.symbolic_arch_ip_reg_name, encode_str(arch))))
+    except ignore_arch_exc:
+        pass
 
 
 def parse_addr(value):

@@ -1,4 +1,4 @@
-use symbolic_common::Arch;
+use symbolic_common::{Arch, ErrorKind};
 
 use core::SymbolicStr;
 
@@ -30,5 +30,15 @@ ffi_fn! {
             cputype: cputype,
             cpusubtype: cpusubtype,
         })
+    }
+}
+
+ffi_fn! {
+    /// Returns the name of the instruction pointer if known.
+    unsafe fn symbolic_arch_ip_reg_name(arch: *const SymbolicStr) -> Result<SymbolicStr> {
+        Ok(SymbolicStr::new(
+            Arch::parse((*arch).as_str())?
+                .ip_reg_name()
+                .ok_or(ErrorKind::NotFound("ip reg unknown for architecture"))?))
     }
 }
