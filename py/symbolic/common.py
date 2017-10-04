@@ -45,7 +45,7 @@ def arch_get_ip_reg_name(arch):
         pass
 
 
-def parse_addr(value):
+def parse_addr(x):
     """Parses an address."""
     if x is None:
         return 0

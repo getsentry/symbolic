@@ -3,6 +3,7 @@ from symbolic._lowlevel import lib, ffi
 from symbolic.demangle import demangle_symbol
 from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
      encode_str, common_path_join, strip_common_path_prefix, encode_path
+from symbolic.common import parse_addr
 from symbolic import exceptions
 
 
@@ -115,6 +116,7 @@ class SymCache(RustObject):
 
     def lookup(self, addr):
         """Look up a single address."""
+        addr = parse_addr(addr)
         rv = self._methodcall(lib.symbolic_symcache_lookup, addr)
         try:
             matches = []
@@ -139,13 +141,14 @@ def find_best_instruction(addr, arch, crashing_frame=False,
     """Given an instruction and meta data attempts to find the best one
     by using a heuristic we inherited from symsynd.
     """
+    addr = parse_addr(addr)
     arch = encode_str(arch)
     ii = ffi.new('SymbolicInstructionInfo *')
     ii[0].addr = addr
     ii[0].arch = arch[0]
     ii[0].crashing_frame = crashing_frame
     ii[0].signal = signal or 0
-    ii[0].ip_reg = ip_reg or 0
+    ii[0].ip_reg = parse_addr(ip_reg)
     try:
         return int(rustcall(lib.symbolic_find_best_instruction, ii))
     except (exceptions.Parse, exceptions.NotFound):
