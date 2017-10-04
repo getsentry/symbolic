@@ -64,6 +64,32 @@ typedef struct {
 } SymbolicMachoArch;
 
 /*
+ * Represents an instruction info.
+ */
+typedef struct {
+  /*
+   * The address of the instruction we want to use as a base.
+   */
+  uint64_t addr;
+  /*
+   * The architecture we are dealing with.
+   */
+  SymbolicStr arch;
+  /*
+   * This is true if the frame is the cause of the crash.
+   */
+  bool crashing_frame;
+  /*
+   * If a signal is know that triggers the crash, it can be stored here (0 if unknown)
+   */
+  uint32_t signal;
+  /*
+   * The optional value of the IP register (0 if unknown).
+   */
+  uint64_t ip_reg;
+} SymbolicInstructionInfo;
+
+/*
  * Represents a single symbol after lookup.
  */
 typedef struct {
@@ -165,6 +191,11 @@ size_t symbolic_fatobject_object_count(const SymbolicFatObject *sfo);
  * Loads a fat object from a given path.
  */
 SymbolicFatObject *symbolic_fatobject_open(const char *path);
+
+/*
+ * Return the best instruction for an isntruction info
+ */
+uint64_t symbolic_find_best_instruction(const SymbolicInstructionInfo *ii);
 
 /*
  * Frees a lookup result.

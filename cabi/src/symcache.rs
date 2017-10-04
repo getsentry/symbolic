@@ -6,8 +6,8 @@ use std::ffi::CStr;
 use uuid::Uuid;
 
 use symbolic_debuginfo::Object;
-use symbolic_symcache::SymCache;
-use symbolic_common::ByteView;
+use symbolic_symcache::{SymCache, InstructionInfo};
+use symbolic_common::{ByteView, Arch};
 
 use core::{SymbolicStr, SymbolicUuid};
 use debuginfo::SymbolicObject;
@@ -32,6 +32,21 @@ pub struct SymbolicSymbol {
 pub struct SymbolicLookupResult {
     pub items: *mut SymbolicSymbol,
     pub len: usize,
+}
+
+/// Represents an instruction info.
+#[repr(C)]
+pub struct SymbolicInstructionInfo {
+    /// The address of the instruction we want to use as a base.
+    pub addr: u64,
+    /// The architecture we are dealing with.
+    pub arch: SymbolicStr,
+    /// This is true if the frame is the cause of the crash.
+    pub crashing_frame: bool,
+    /// If a signal is know that triggers the crash, it can be stored here (0 if unknown)
+    pub signal: u32,
+    /// The optional value of the IP register (0 if unknown).
+    pub ip_reg: u64,
 }
 
 
@@ -164,5 +179,21 @@ ffi_fn! {
         if !slr.is_null() {
             Vec::from_raw_parts((*slr).items, (*slr).len, (*slr).len);
         }
+    }
+}
+
+ffi_fn! {
+    /// Return the best instruction for an isntruction info
+    unsafe fn symbolic_find_best_instruction(ii: *const SymbolicInstructionInfo)
+        -> Result<u64>
+    {
+        let real_ii = InstructionInfo {
+            addr: (*ii).addr,
+            arch: Arch::parse((*ii).arch.as_str())?,
+            crashing_frame: (*ii).crashing_frame,
+            signal: if (*ii).signal == 0 { None } else { Some((*ii).signal) },
+            ip_reg: if (*ii).ip_reg == 0 { None } else { Some((*ii).ip_reg) },
+        };
+        Ok(real_ii.find_best_instruction())
     }
 }

@@ -2,10 +2,11 @@ from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib, ffi
 from symbolic.demangle import demangle_symbol
 from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
-     common_path_join, strip_common_path_prefix, encode_path
+     encode_str, common_path_join, strip_common_path_prefix, encode_path
+from symbolic import exceptions
 
 
-__all__ = ['Symbol', 'SymCache']
+__all__ = ['Symbol', 'SymCache', 'find_best_instruction']
 
 
 @implements_to_string
@@ -116,3 +117,21 @@ class SymCache(RustObject):
         finally:
             rustcall(lib.symbolic_lookup_result_free, ffi.addressof(rv))
         return matches
+
+
+def find_best_instruction(addr, arch, crashing_frame=False,
+                          signal=None, ip_reg=None):
+    """Given an instruction and meta data attempts to find the best one
+    by using a heuristic we inherited from symsynd.
+    """
+    arch = encode_str(arch)
+    ii = ffi.new('SymbolicInstructionInfo *')
+    ii[0].addr = addr
+    ii[0].arch = arch[0]
+    ii[0].crashing_frame = crashing_frame
+    ii[0].signal = signal or 0
+    ii[0].ip_reg = ip_reg or 0
+    try:
+        return int(rustcall(lib.symbolic_find_best_instruction, ii))
+    except (exceptions.Parse, exceptions.NotFound):
+        return int(addr)
