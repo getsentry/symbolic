@@ -6,6 +6,8 @@ use std::fmt;
 use std::slice;
 use std::cell::RefCell;
 
+use uuid::Uuid;
+
 use symbolic_common::{Result, ErrorKind, ByteView, Arch, Language};
 use symbolic_debuginfo::Object;
 use symbolic_demangle;
@@ -45,6 +47,11 @@ impl<'a> Symbol<'a> {
         self.cache.arch().unwrap_or(Arch::Unknown)
     }
 
+    /// The uuid of the matched symbol.
+    pub fn uuid(&self) -> Uuid {
+        self.cache.uuid().unwrap_or(Uuid::nil())
+    }
+
     /// The address where the symbol starts.
     pub fn sym_addr(&self) -> u64 {
         self.sym_addr
@@ -66,7 +73,7 @@ impl<'a> Symbol<'a> {
     }
 
     /// The string value of the symbol (mangled).
-    pub fn symbol(&self) -> &str {
+    pub fn symbol(&self) -> &'a str {
         self.symbol.unwrap_or("?")
     }
 
@@ -79,7 +86,7 @@ impl<'a> Symbol<'a> {
     }
 
     /// The filename of the current line.
-    pub fn filename(&self) -> &str {
+    pub fn filename(&self) -> &'a str {
         self.filename
     }
 
@@ -94,7 +101,7 @@ impl<'a> Symbol<'a> {
     }
 
     /// The compilation dir of the function.
-    pub fn comp_dir(&self) -> &str {
+    pub fn comp_dir(&self) -> &'a str {
         self.comp_dir
     }
 }
@@ -360,6 +367,11 @@ impl<'a> SymCache<'a> {
         self.byteview.len()
     }
 
+    /// Returns a pointer to the internal bytes of the cache file
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.byteview
+    }
+
     /// Write the symcache into a new writer.
     pub fn to_writer<W: Write>(&self, mut writer: W) -> Result<()> {
         io::copy(&mut &self.byteview[..], &mut writer)?;
@@ -409,6 +421,11 @@ impl<'a> SymCache<'a> {
     /// The architecture of the cache file
     pub fn arch(&self) -> Result<Arch> {
         Arch::from_u32(self.header()?.arch)
+    }
+
+    /// The uuid of the cache file.
+    pub fn uuid(&self) -> Result<Uuid> {
+        Ok(self.header()?.uuid)
     }
 
     /// The source of the sym cache.

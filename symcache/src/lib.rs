@@ -6,7 +6,6 @@ extern crate uuid;
 extern crate gimli;
 extern crate fallible_iterator;
 extern crate lru_cache;
-extern crate owning_ref;
 extern crate fnv;
 extern crate num;
 #[macro_use] extern crate matches;

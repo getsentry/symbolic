@@ -213,7 +213,7 @@ impl<'a> Symbol<'a> {
 impl<'a> fmt::Display for Symbol<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Ok(Some(sym)) = self.demangle(&DemangleOptions {
-            with_arguments: false,
+            with_arguments: f.alternate(),
             ..Default::default()
         }) {
             write!(f, "{}", sym)

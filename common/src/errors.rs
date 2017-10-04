@@ -1,5 +1,6 @@
 use std::io;
 use std::str;
+use std::ffi;
 
 #[cfg(feature = "with_dwarf")]
 use gimli;
@@ -10,6 +11,11 @@ use scroll;
 
 error_chain! {
     errors {
+        /// Raised in some cases if panics are caught
+        Panic(message: String) {
+            description("panic")
+            display("panic: {}", message)
+        }
         /// Raised on operations that work on symbols if the symbol
         /// data is bad.
         BadSymbol(message: String) {
@@ -25,6 +31,11 @@ error_chain! {
         Parse(message: &'static str) {
             description("parse error")
             display("parse error: {}", message)
+        }
+        /// General error for missing information.
+        NotFound(message: &'static str) {
+            description("not found")
+            display("not found: {}", message)
         }
         /// Raised for bad input on parsing in symbolic.
         Format(message: &'static str) {
@@ -104,5 +115,11 @@ impl From<scroll::Error> for Error {
             Custom(s) => io::Error::new(io::ErrorKind::Other, s).into(),
             IO(err) => Error::from(err),
         }
+    }
+}
+
+impl From<ffi::NulError> for Error {
+    fn from(_err: ffi::NulError) -> Error {
+        ErrorKind::Internal("unexpected null byte in c-string").into()
     }
 }

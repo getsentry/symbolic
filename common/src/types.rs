@@ -151,29 +151,30 @@ impl Arch {
             X86 | ArmV5 | ArmV6 | ArmV7 | ArmV7f | ArmV7s | ArmV7k | ArmV7m | ArmV7em => Some(4),
         }
     }
+
+    /// Returns the name of the arch
+    pub fn name(&self) -> &'static str {
+        use Arch::*;
+        match *self {
+            Unknown | __Max => "unknown",
+            X86 => "x86",
+            X86_64 => "x86_64",
+            Arm64 => "arm64",
+            ArmV5 => "armv5",
+            ArmV6 => "armv6",
+            ArmV7 => "armv7",
+            ArmV7f => "armv7f",
+            ArmV7s => "armv7s",
+            ArmV7k => "armv7k",
+            ArmV7m => "armv7m",
+            ArmV7em => "armv7em",
+        }
+    }
 }
 
 impl fmt::Display for Arch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use Arch::*;
-        write!(
-            f,
-            "{}",
-            match *self {
-                Unknown | __Max => "unknown",
-                X86 => "x86",
-                X86_64 => "x86_64",
-                Arm64 => "arm64",
-                ArmV5 => "armv5",
-                ArmV6 => "armv6",
-                ArmV7 => "armv7",
-                ArmV7f => "armv7f",
-                ArmV7s => "armv7s",
-                ArmV7k => "armv7k",
-                ArmV7m => "armv7m",
-                ArmV7em => "armv7em",
-            }
-        )
+        write!(f, "{}", self.name())
     }
 }
 
