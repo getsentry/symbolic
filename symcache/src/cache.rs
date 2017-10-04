@@ -19,6 +19,9 @@ use writer;
 /// The magic file header to identify symcache files.
 pub const SYMCACHE_MAGIC: [u8; 4] = [b'S', b'Y', b'M', b'C'];
 
+/// The latest version of the file format.
+pub const SYMCACHE_LATEST_VERSION: u32 = 1;
+
 /// A matched symbol
 pub struct Symbol<'a> {
     cache: &'a SymCache<'a>,
@@ -444,6 +447,11 @@ impl<'a> SymCache<'a> {
             DataSource::Dwarf => self.has_line_info()?,
             _ => false,
         })
+    }
+
+    /// The version of the cache file.
+    pub fn file_format_version(&self) -> Result<u32> {
+        Ok(self.header()?.version)
     }
 
     /// Looks up a single symbol

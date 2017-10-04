@@ -235,6 +235,11 @@ void symbolic_str_free(SymbolicStr *s);
 SymbolicStr symbolic_str_from_cstr(const char *s);
 
 /*
+ * Returns the version of the cache file.
+ */
+uint32_t symbolic_symcache_file_format_version(const SymbolicSymCache *scache);
+
+/*
  * Frees a symcache object.
  */
 void symbolic_symcache_free(SymbolicSymCache *scache);
@@ -285,6 +290,11 @@ bool symbolic_symcache_has_file_info(const SymbolicSymCache *scache);
  * Returns true if the symcache has line infos.
  */
 bool symbolic_symcache_has_line_info(const SymbolicSymCache *scache);
+
+/*
+ * Returns the version of the cache file.
+ */
+uint32_t symbolic_symcache_latest_file_format_version();
 
 /*
  * Looks up a single symbol.

@@ -6,7 +6,7 @@ use std::ffi::CStr;
 use uuid::Uuid;
 
 use symbolic_debuginfo::Object;
-use symbolic_symcache::{SymCache, InstructionInfo};
+use symbolic_symcache::{SymCache, InstructionInfo, SYMCACHE_LATEST_VERSION};
 use symbolic_common::{ByteView, Arch};
 
 use core::{SymbolicStr, SymbolicUuid};
@@ -144,6 +144,14 @@ ffi_fn! {
 }
 
 ffi_fn! {
+    /// Returns the version of the cache file.
+    unsafe fn symbolic_symcache_file_format_version(scache: *const SymbolicSymCache) -> Result<u32> {
+        let cache = scache as *mut SymCache<'static>;
+        (*cache).file_format_version()
+    }
+}
+
+ffi_fn! {
     /// Looks up a single symbol.
     unsafe fn symbolic_symcache_lookup(scache: *const SymbolicSymCache,
                                        addr: u64) -> Result<SymbolicLookupResult> {
@@ -195,5 +203,12 @@ ffi_fn! {
             ip_reg: if (*ii).ip_reg == 0 { None } else { Some((*ii).ip_reg) },
         };
         Ok(real_ii.find_best_instruction())
+    }
+}
+
+ffi_fn! {
+    /// Returns the version of the cache file.
+    unsafe fn symbolic_symcache_latest_file_format_version() -> Result<u32> {
+        Ok(SYMCACHE_LATEST_VERSION)
     }
 }

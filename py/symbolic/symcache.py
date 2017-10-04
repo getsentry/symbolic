@@ -9,6 +9,11 @@ from symbolic import exceptions
 __all__ = ['Symbol', 'SymCache', 'find_best_instruction']
 
 
+# the most recent version for the symcache file format.
+SYMCACHE_LATEST_VERSION = rustcall(
+    lib.symbolic_symcache_latest_file_format_version)
+
+
 @implements_to_string
 class Symbol(object):
 
@@ -86,6 +91,16 @@ class SymCache(RustObject):
     def has_file_info(self):
         """Does this file have file information?"""
         return self._methodcall(lib.symbolic_symcache_has_file_info)
+
+    @property
+    def file_format_version(self):
+        """Version of the file format."""
+        return self._methodcall(lib.symbolic_symcache_file_format_version)
+
+    @property
+    def is_latest_file_format(self):
+        """Returns true if this is the latest file format."""
+        return self.file_format_version >= SYMCACHE_LATEST_VERSION
 
     @property
     def buffer(self):
