@@ -1,13 +1,52 @@
 language: rust
 dist: trusty
+osx_version: xcode7.3
+
+os:
+  - linux
+  - osx
 
 rust:
   - stable
   - beta
   - nightly
 
+git:
+  depth: 1
+
+script: make
+
 matrix:
   allow_failures:
     - rust: nightly
 
-script: make
+  include:
+    - script: make wheel
+      env: DEPLOY=1
+      osx_image: xcode6.4
+      os: osx
+
+    - script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_x86_64
+      env: DEPLOY=1
+      sudo: required
+      services:
+        - docker
+
+    - script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_i686
+      env: DEPLOY=1
+      sudo: required
+      services:
+        - docker
+
+deploy:
+  provider: s3
+  access_key_id: AKIAJKYWAF3QS7SFL75Q
+  secret_access_key:
+    secure: QCXIoUbIJ53PHskm36Nm9exO44/4gHH1sGA6O3pLt36HLDU+Q02GQVnI4IvWkXeA8zzUVLqXUMpxvgnt2OsosaCufQ9x9xTSItqs+en4hmew1z3pnugq7S9Efsk6qcffN5VCGuKBGpQxS0XSlvB7I1o+ZfuoUsdjoD1w7WZ219H9tImqe1wzCsbqKnLwCLtuoeTJFHg5gcdMWIrSxP3Q959mdzzJr60HH8z2c9UIz/eKIlKPyh2LSqbkocg5XCpw23lg+Jw1spwshbRn2k4w0I4hnN/UWQ3pkW1gzAhPwG4G63u4u9r2eRQ8D3kfSwz/MOyQkTPIQlapAFZPzeBzW6anle0W/KMW/qZ4PDLc+CZ8+UwwL9MgWKP4H2aYpZlz40d7Nl4JrfIyOfP/2Yd3CcjYHrWWC3cTyeQeVwmTJn5Xy+EPu1AksENOj8WXjqWEfzwk/S2+QbBejx2korZZIIiBKCyOwmmJoDYiqnaN1lHtbyZ8GwkGrV0HabwuG7cmJaG3l2NGB5rhLwqyHDRxhqoSbCtgyiRRk/ZhW6tr5Aw89HcIrSQPMkROJNq+6zVQrbaqzFk9YFcS5maH6u8tyPoeqsa0NVLHjWdBMfkvqZ3ZyBKKIJeDHJR4pfVR/dnkHTCpmsSwlcEZ9ke69JcEgS8B00snVa5E59yKC155Isc=
+  bucket: getsentry-builds
+  skip_cleanup: true
+  local_dir: py/dist
+  upload-dir: $TRAVIS_REPO_SLUG/$TRAVIS_COMMIT
+  acl: public_read
+  on:
+    condition: $DEPLOY = 1
