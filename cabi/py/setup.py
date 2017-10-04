@@ -25,6 +25,9 @@ setup(
     install_requires=[
         'milksnake',
     ],
+    setup_requires=[
+        'milksnake',
+    ],
     milksnake_tasks=[
         build_native,
     ]
