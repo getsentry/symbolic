@@ -96,6 +96,14 @@ impl Arch {
         }
     }
 
+    /// Returns the macho arch for this arch.
+    #[cfg(feature = "with_objects")]
+    pub fn to_mach(&self) -> Result<(u32, u32)> {
+        let rv = mach_object::get_arch_from_flag(&self.name())
+            .ok_or(ErrorKind::NotFound("Arch does not exist in macho"))?;
+        Ok((rv.0 as u32, rv.1 as u32))
+    }
+
     /// Constructs an architecture from ELF flags
     #[cfg(feature = "with_objects")]
     pub fn from_elf(machine: u16) -> Result<Arch> {
