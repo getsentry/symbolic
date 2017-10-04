@@ -4,7 +4,7 @@ def build_native(spec):
     # Step 1: build the rust library
     build = spec.add_external_build(
         cmd=['cargo', 'build', '--release'],
-        path='../'
+        path='../cabi'
     )
 
     spec.add_cffi_module(

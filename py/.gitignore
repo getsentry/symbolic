@@ -1,5 +1,6 @@
 symbolic/_lowlevel*
 *.egg-info
+.eggs
 dist
 build
 venv
