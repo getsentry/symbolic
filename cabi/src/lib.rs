@@ -8,11 +8,13 @@ extern crate uuid;
 #[macro_use] mod utils;
 
 mod core;
+mod common;
 mod demangle;
 mod debuginfo;
 mod symcache;
 
 pub use core::*;
+pub use common::*;
 pub use demangle::*;
 pub use debuginfo::*;
 pub use symcache::*;

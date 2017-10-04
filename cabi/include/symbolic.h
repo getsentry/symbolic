@@ -58,6 +58,11 @@ typedef struct {
   bool owned;
 } SymbolicStr;
 
+typedef struct {
+  uint32_t cputype;
+  uint32_t cpusubtype;
+} SymbolicMachoArch;
+
 /*
  * Represents a single symbol after lookup.
  */
@@ -85,6 +90,21 @@ typedef struct {
 typedef struct {
   uint8_t data[16];
 } SymbolicUuid;
+
+/*
+ * Checks if an architecture is known.
+ */
+SymbolicStr symbolic_arch_from_macho(const SymbolicMachoArch *arch);
+
+/*
+ * Checks if an architecture is known.
+ */
+bool symbolic_arch_is_known(const SymbolicStr *arch);
+
+/*
+ * Returns the macho code for a CPU architecture.
+ */
+SymbolicMachoArch symbolic_arch_to_macho(const SymbolicStr *arch);
 
 /*
  * Demangles a given identifier.
