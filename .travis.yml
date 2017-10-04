@@ -21,8 +21,9 @@ matrix:
     - rust: nightly
 
   include:
-    - script: make wheel
+    - stage: deploy
       before_script: pip install wheel
+      script: make wheel
       env: DEPLOY=1
       osx_image: xcode6.4
       os: osx
