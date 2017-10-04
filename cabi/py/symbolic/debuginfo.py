@@ -3,6 +3,9 @@ from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid
 from symbolic.symcache import SymCache
 
 
+__all__ = ['FatObject', 'Object']
+
+
 class FatObject(RustObject):
     __dealloc_func__ = lib.symbolic_fatobject_free
 

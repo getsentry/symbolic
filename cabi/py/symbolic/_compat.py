@@ -5,6 +5,8 @@ PY2 = sys.version_info[0] == 2
 
 if PY2:
     text_type = unicode
+    int_types = (int, long)
+    string_types = (str, unicode)
     NUL = '\x00'
     def implements_to_string(cls):
         cls.__unicode__ = cls.__str__
@@ -12,5 +14,7 @@ if PY2:
         return cls
 else:
     text_type = str
+    int_types = (int,)
+    string_types = (str,)
     NUL = 0
     implements_to_string = lambda x: x

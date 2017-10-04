@@ -1,8 +1,11 @@
 from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib, ffi
-from symbolic.demangle import demangle
+from symbolic.demangle import demangle_symbol
 from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
      common_path_join, strip_common_path_prefix, encode_path
+
+
+__all__ = ['Symbol', 'SymCache']
 
 
 @implements_to_string
@@ -21,7 +24,7 @@ class Symbol(object):
     @property
     def function_name(self):
         """The demangled function name."""
-        return demangle(self.symbol)
+        return demangle_symbol(self.symbol)
 
     @property
     def abs_path(self):

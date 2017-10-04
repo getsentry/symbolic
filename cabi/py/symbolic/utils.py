@@ -6,21 +6,31 @@ from symbolic._compat import text_type, NUL
 from symbolic.exceptions import exceptions_by_code, SymbolicError
 
 
+__all__ = ['common_path_join', 'strip_common_path_prefix']
+
+
+def _is_win_path(x):
+    return '\\' in x or (ntpath.isabs(x) and not posixpath.isabs(x))
+
+
 def common_path_join(a, b):
-    if '\\' in a or ntpath.isabs(a):
+    """Joins two paths together while guessing the platform (win vs unix)."""
+    if _is_win_path(a):
         return ntpath.normpath(ntpath.join(a, b))
     return posixpath.join(a, b)
 
 
-def strip_common_path_prefix(a, b):
-    if '\\' in a or ntpath.isabs(a):
+def strip_common_path_prefix(base, prefix):
+    """Strips `prefix` from `a`."""
+    if _is_win_path(base):
         path = ntpath
     else:
         path = posixpath
-    pieces_a = path.normpath(a).split(path.sep)
-    pieces_b = path.normpath(b).split(path.sep)
-    prefix = path.commonprefix([pieces_a, pieces_b])
-    return path.sep.join(pieces_a[len(prefix):])
+    pieces_a = path.normpath(base).split(path.sep)
+    pieces_b = path.normpath(prefix).split(path.sep)
+    if pieces_a[:len(pieces_b)] == pieces_b:
+        return path.sep.join(pieces_a[len(pieces_b):])
+    return path.normpath(base)
 
 
 class RustObject(object):

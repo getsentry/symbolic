@@ -2,6 +2,7 @@ from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib
 
 
+__all__ = ['SymbolicError']
 exceptions_by_code = {}
 
 
@@ -29,6 +30,7 @@ def _make_exceptions():
         Exc.code = getattr(lib, attr)
         globals()[Exc.__name__] = Exc
         exceptions_by_code[Exc.code] = Exc
+        __all__.append(Exc.__name__)
 
 
 _make_exceptions()
