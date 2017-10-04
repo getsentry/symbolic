@@ -1,8 +1,6 @@
 use std::mem;
 use std::fmt;
 
-#[cfg(feature = "with_objects")]
-use mach_object;
 #[cfg(feature = "with_dwarf")]
 use gimli;
 
@@ -55,8 +53,10 @@ pub enum Arch {
     Unknown,
     X86,
     X86_64,
+    X86_64h,
     ArmV5,
     ArmV6,
+    ArmV6m,
     ArmV7,
     ArmV7f,
     ArmV7s,
@@ -64,6 +64,7 @@ pub enum Arch {
     ArmV7m,
     ArmV7em,
     Arm64,
+    Arm64V8,
     #[doc(hidden)]
     __Max
 }
@@ -87,20 +88,51 @@ impl Arch {
     /// Constructs an architecture from mach CPU types
     #[cfg(feature = "with_objects")]
     pub fn from_mach(cputype: u32, cpusubtype: u32) -> Result<Arch> {
-        let ty = cputype as i32;
-        let subty = cpusubtype as i32;
-        if let Some(arch) = mach_object::get_arch_name_from_types(ty, subty) {
-            Arch::parse(arch)
-        } else {
-            Err(ErrorKind::Parse("unknown architecture").into())
-        }
+        use mach_object::*;
+        Ok(match (cputype as i32, cpusubtype as i32) {
+            (CPU_TYPE_I386, CPU_SUBTYPE_I386_ALL) => Arch::X86,
+            (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_ALL) => Arch::X86_64,
+            (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H) => Arch::X86_64h,
+            (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_ALL) => Arch::Arm64,
+            (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_V8) => Arch::Arm64V8,
+            (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V5TEJ) => Arch::ArmV5,
+            (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V6) => Arch::ArmV6,
+            (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V6M) => Arch::ArmV6m,
+            (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7) => Arch::ArmV7,
+            (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7F) => Arch::ArmV7f,
+            (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7S) => Arch::ArmV7s,
+            (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7K) => Arch::ArmV7k,
+            (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7M) => Arch::ArmV7m,
+            (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7EM) => Arch::ArmV7em,
+            _ => {
+                return Err(ErrorKind::Parse("unknown architecture").into());
+            }
+        })
     }
 
     /// Returns the macho arch for this arch.
     #[cfg(feature = "with_objects")]
     pub fn to_mach(&self) -> Result<(u32, u32)> {
-        let rv = mach_object::get_arch_from_flag(&self.name())
-            .ok_or(ErrorKind::NotFound("Arch does not exist in macho"))?;
+        use mach_object::*;
+        let rv = match *self {
+            Arch::X86 => (CPU_TYPE_I386, CPU_SUBTYPE_I386_ALL),
+            Arch::X86_64 => (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_ALL),
+            Arch::X86_64h => (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H),
+            Arch::Arm64 => (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_ALL),
+            Arch::Arm64V8 => (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_V8),
+            Arch::ArmV5 => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V5TEJ),
+            Arch::ArmV6 => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V6),
+            Arch::ArmV6m => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V6M),
+            Arch::ArmV7 => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7),
+            Arch::ArmV7f => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7F),
+            Arch::ArmV7s => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7S),
+            Arch::ArmV7k => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7K),
+            Arch::ArmV7m => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7M),
+            Arch::ArmV7em => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7EM),
+            _ => {
+                return Err(ErrorKind::NotFound("Unknown architecture for macho").into());
+            }
+        };
         Ok((rv.0 as u32, rv.1 as u32))
     }
 
@@ -121,11 +153,16 @@ impl Arch {
     pub fn parse(string: &str) -> Result<Arch> {
         use Arch::*;
         Ok(match string {
+            // this is an alias that is known among macho users
+            "i386" => X86,
             "x86" => X86,
             "x86_64" => X86_64,
+            "x86_64h" => X86_64h,
             "arm64" => Arm64,
+            "arm64v8" => Arm64V8,
             "armv5" => ArmV5,
             "armv6" => ArmV6,
+            "armv6m" => ArmV6m,
             "armv7" => ArmV7,
             "armv7f" => ArmV7f,
             "armv7s" => ArmV7s,
@@ -144,9 +181,10 @@ impl Arch {
         match *self {
             Unknown | __Max => CpuFamily::Unknown,
             X86 => CpuFamily::Intel32,
-            X86_64 => CpuFamily::Intel64,
-            Arm64 => CpuFamily::Arm64,
-            ArmV5 | ArmV6 | ArmV7 | ArmV7f | ArmV7s | ArmV7k | ArmV7m | ArmV7em => CpuFamily::Arm32,
+            X86_64 | X86_64h => CpuFamily::Intel64,
+            Arm64 | Arm64V8 => CpuFamily::Arm64,
+            ArmV5 | ArmV6 | ArmV6m | ArmV7 | ArmV7f | ArmV7s | ArmV7k |
+                ArmV7m | ArmV7em => CpuFamily::Arm32,
         }
     }
 
@@ -155,8 +193,9 @@ impl Arch {
         use Arch::*;
         match *self {
             Unknown | __Max => None,
-            X86_64 | Arm64 => Some(8),
-            X86 | ArmV5 | ArmV6 | ArmV7 | ArmV7f | ArmV7s | ArmV7k | ArmV7m | ArmV7em => Some(4),
+            X86_64 | X86_64h | Arm64 | Arm64V8 => Some(8),
+            X86 | ArmV5 | ArmV6 | ArmV6m | ArmV7 | ArmV7f | ArmV7s | ArmV7k |
+                ArmV7m | ArmV7em => Some(4),
         }
     }
 
@@ -167,9 +206,12 @@ impl Arch {
             Unknown | __Max => "unknown",
             X86 => "x86",
             X86_64 => "x86_64",
+            X86_64h => "x86_64h",
             Arm64 => "arm64",
+            Arm64V8 => "arm64V8",
             ArmV5 => "armv5",
             ArmV6 => "armv6",
+            ArmV6m => "armv6m",
             ArmV7 => "armv7",
             ArmV7f => "armv7f",
             ArmV7s => "armv7s",
