@@ -10,7 +10,7 @@ def build_native(spec):
     spec.add_cffi_module(
         module_path='symbolic._lowlevel',
         dylib=lambda: build.find_dylib('symbolic', in_path='target/release'),
-        header_filename=lambda: build.find_header('symbolic.h', in_path='target'),
+        header_filename=lambda: build.find_header('symbolic.h', in_path='include'),
         rtld_flags=['NOW', 'NODELETE']
     )
 
