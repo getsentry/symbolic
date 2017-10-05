@@ -1,9 +1,14 @@
+import bisect
+
+from symbolic._compat import itervalues
 from symbolic._lowlevel import lib, ffi
-from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid
+from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
+    make_uuid
+from symbolic.common import parse_addr, arch_is_known, arch_from_macho
 from symbolic.symcache import SymCache
 
 
-__all__ = ['FatObject', 'Object']
+__all__ = ['FatObject', 'Object', 'ObjectLookup']
 
 
 class FatObject(RustObject):
@@ -76,3 +81,68 @@ class Object(RustObject):
             self.uuid,
             self.arch,
         )
+
+
+class ObjectRef(object):
+    """Holds a reference to an object in a format."""
+
+    def __init__(self, data):
+        self.addr = parse_addr(data['image_addr'])
+        # not a real address but why handle it differently
+        self.size = parse_addr(data['image_size'])
+        self.vmaddr = data.get('image_vmaddr')
+        self.uuid = make_uuid(data['uuid'])
+        if 'arch' in data and arch_is_known(data['arch']):
+            self.arch = data['arch']
+        elif 'cpu_type' in data and 'cpu_subtype' in data:
+            self.arch = arch_from_macho(data['cpu_type'],
+                                        data['cpu_subtype'])
+        else:
+            self.arch = None
+
+    def __repr__(self):
+        return '<ObjectRef %s %r>' % (
+            self.uuid,
+            self.arch,
+        )
+
+
+class ObjectLookup(object):
+    """Helper to look up objects based on the info a client provides."""
+
+    def __init__(self, objects):
+        self._addresses = []
+        self._by_addr = {}
+        self.objects = {}
+        for ref_data in objects:
+            obj = ObjectRef(ref_data)
+            self._addresses.append(obj.addr)
+            self._by_addr[obj.addr] = obj
+            self.objects[obj.uuid] = obj
+        self._addresses.sort()
+
+    def iter_objects(self):
+        """Iterates over all objects."""
+        return itervalues(self.objects)
+
+    def get_uuids(self):
+        """Returns a list of uuids."""
+        return sorted(self.objects)
+
+    def iter_uuids(self):
+        """Iterates over all uuids."""
+        return iter(self.objects)
+
+    def find_object(self, addr):
+        """Given an instruction address this locates the image this address
+        is contained in.
+        """
+        idx = bisect.bisect_left(self._addresses, parse_addr(addr))
+        if idx > 0:
+            rv = self._by_addr[self._addresses[idx - 1]]
+            if not rv.size or addr < rv.addr + rv.size:
+                return rv
+
+    def get_object(self, uuid):
+        """Finds an object by the given uuid."""
+        return self._uuids.get(uuid)
