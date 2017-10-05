@@ -74,7 +74,7 @@ typedef struct {
   /*
    * The architecture we are dealing with.
    */
-  SymbolicStr arch;
+  const SymbolicStr *arch;
   /*
    * This is true if the frame is the cause of the crash.
    */

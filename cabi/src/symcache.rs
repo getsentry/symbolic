@@ -40,7 +40,7 @@ pub struct SymbolicInstructionInfo {
     /// The address of the instruction we want to use as a base.
     pub addr: u64,
     /// The architecture we are dealing with.
-    pub arch: SymbolicStr,
+    pub arch: *const SymbolicStr,
     /// This is true if the frame is the cause of the crash.
     pub crashing_frame: bool,
     /// If a signal is know that triggers the crash, it can be stored here (0 if unknown)
@@ -197,7 +197,7 @@ ffi_fn! {
     {
         let real_ii = InstructionInfo {
             addr: (*ii).addr,
-            arch: Arch::parse((*ii).arch.as_str())?,
+            arch: Arch::parse((*(*ii).arch).as_str())?,
             crashing_frame: (*ii).crashing_frame,
             signal: if (*ii).signal == 0 { None } else { Some((*ii).signal) },
             ip_reg: if (*ii).ip_reg == 0 { None } else { Some((*ii).ip_reg) },

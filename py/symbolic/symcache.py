@@ -142,10 +142,9 @@ def find_best_instruction(addr, arch, crashing_frame=False,
     by using a heuristic we inherited from symsynd.
     """
     addr = parse_addr(addr)
-    arch = encode_str(arch)
     ii = ffi.new('SymbolicInstructionInfo *')
     ii[0].addr = addr
-    ii[0].arch = arch[0]
+    ii[0].arch = encode_str(arch)
     ii[0].crashing_frame = crashing_frame
     ii[0].signal = signal or 0
     ii[0].ip_reg = parse_addr(ip_reg)
