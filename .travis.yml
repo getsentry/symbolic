@@ -22,7 +22,9 @@ matrix:
 
   include:
     - stage: deploy
-      before_script: pip install wheel
+      before_script:
+        - virtualenv -p python ~/virtualenv
+        - ~/virtualenv/bin/activate
       script: make wheel
       env: DEPLOY=1
       osx_image: xcode6.4
