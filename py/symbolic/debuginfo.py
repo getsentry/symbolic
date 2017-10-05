@@ -94,7 +94,7 @@ class ObjectRef(object):
         self.size = parse_addr(data['image_size'])
         self.vmaddr = data.get('image_vmaddr')
         self.uuid = make_uuid(data['uuid'])
-        if 'arch' in data and arch_is_known(data['arch']):
+        if data.get('arch') is not None and arch_is_known(data['arch']):
             self.arch = data['arch']
         elif data.get('cpu_type') is not None \
              and data.get('cpu_subtype') is not None:
