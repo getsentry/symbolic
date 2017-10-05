@@ -21,7 +21,7 @@ SYMCACHE_LATEST_VERSION = rustcall(
 class Symbol(object):
 
     def __init__(self, sym_addr, instr_addr, line, symbol,
-                 filename, base_dir, comp_dir):
+                 filename=None, base_dir=None, comp_dir=None):
         self.sym_addr = sym_addr
         self.instr_addr = instr_addr
         self.line = line
@@ -38,11 +38,15 @@ class Symbol(object):
     @property
     def abs_path(self):
         """Returns the absolute path."""
+        if self.base_dir is None:
+            return self.filename
         return common_path_join(self.base_dir, self.filename)
 
     @property
     def rel_path(self):
         """Returns the relative path to the comp dir."""
+        if self.comp_dir is None:
+            return self.abs_path
         return strip_common_path_prefix(self.abs_path, self.comp_dir)
 
     def __str__(self):
