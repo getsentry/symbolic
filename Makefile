@@ -1,9 +1,9 @@
-all: test doc
+all: build test
 
-doc:
-	@cargo doc
+build:
+	@cargo build --all
 
-test:
+test: build
 	@cargo test --all
 
 wheel:

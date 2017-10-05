@@ -14,8 +14,6 @@ rust:
 git:
   depth: 1
 
-script: make
-
 matrix:
   allow_failures:
     - rust: nightly
