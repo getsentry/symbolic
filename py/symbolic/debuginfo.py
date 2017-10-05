@@ -32,6 +32,8 @@ class FatObject(RustObject):
 
     def get_object(self, uuid=None, arch=None):
         """Get an object by either arch or uuid."""
+        if uuid is not None:
+            uuid = make_uuid(uuid)
         for obj in self.iter_objects():
             if obj.uuid == uuid or obj.arch == arch:
                 return obj

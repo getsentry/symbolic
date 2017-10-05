@@ -1,3 +1,4 @@
+import shutil
 from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib, ffi
 from symbolic.demangle import demangle_symbol
@@ -7,7 +8,8 @@ from symbolic.common import parse_addr
 from symbolic import exceptions
 
 
-__all__ = ['Symbol', 'SymCache', 'find_best_instruction']
+__all__ = ['Symbol', 'SymCache', 'find_best_instruction',
+           'SYMCACHE_LATEST_VERSION']
 
 
 # the most recent version for the symcache file format.
@@ -54,6 +56,22 @@ class Symbol(object):
         return 'Symbol(%s)' % (
             ', '.join('%s=%r' % x for x in sorted(self.__dict__.items()))
         )
+
+
+class _SymCacheReader(object):
+
+    def __init__(self, buffer):
+        self.buffer = buffer
+        self.pos = 0
+
+    def read(self, n=None):
+        if n is None:
+            end = len(self.buffer)
+        else:
+            end = min(self.pos + n, len(self.buffer))
+        rv = self.buffer[self.pos:end]
+        self.pos = end
+        return rv
 
 
 class SymCache(RustObject):
@@ -110,9 +128,13 @@ class SymCache(RustObject):
         size = self._methodcall(lib.symbolic_symcache_get_size)
         return ffi.buffer(buf, size)
 
-    def dump(self, f):
+    def open_stream(self):
+        """Returns a stream to read files from the buffer."""
+        return _SymCacheReader(self.buffer)
+
+    def dump_into(self, f):
         """Dumps the symcache into a file object."""
-        f.write(self.buffer)
+        shutil.copyfileobj(self.open_stream(), f)
 
     def lookup(self, addr):
         """Look up a single address."""
