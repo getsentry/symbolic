@@ -102,6 +102,7 @@ class ObjectRef(object):
                                         data['cpu_subtype'])
         else:
             self.arch = None
+        self.name = data.get('name')
 
     def __repr__(self):
         return '<ObjectRef %s %r>' % (
