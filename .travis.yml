@@ -21,7 +21,8 @@ matrix:
   include:
     - stage: deploy
       before_script:
-        - virtualenv -p python ~/virtualenv
+        - sudo easy_install virtualenv
+        - virtualenv ~/virtualenv
         - ~/virtualenv/bin/activate
       script: make wheel
       env: DEPLOY=1
