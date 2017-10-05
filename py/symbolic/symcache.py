@@ -46,7 +46,7 @@ class Symbol(object):
     def rel_path(self):
         """Returns the relative path to the comp dir."""
         if self.comp_dir is None:
-            return self.abs_path
+            return self.filename
         return strip_common_path_prefix(self.abs_path, self.comp_dir)
 
     def __str__(self):
