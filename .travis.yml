@@ -23,7 +23,7 @@ matrix:
       before_script:
         - sudo easy_install virtualenv
         - virtualenv ~/virtualenv
-        - ~/virtualenv/bin/activate
+        - source ~/virtualenv/bin/activate
       script: make wheel
       env: DEPLOY=1
       osx_image: xcode6.4
