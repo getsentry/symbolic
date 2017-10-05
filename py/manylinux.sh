@@ -9,4 +9,5 @@ curl https://sh.rustup.rs -sSf | sh -s -- -y
 export PATH=~/.cargo/bin:$PATH
 
 # Build wheels
-/opt/python/cp27-cp27mu/bin/python setup.py bdist_wheel
+which linux32 && LINUX32=linux32
+$LINUX32 /opt/python/cp27-cp27mu/bin/python setup.py bdist_wheel
