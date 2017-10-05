@@ -96,7 +96,8 @@ class ObjectRef(object):
         self.uuid = make_uuid(data['uuid'])
         if 'arch' in data and arch_is_known(data['arch']):
             self.arch = data['arch']
-        elif 'cpu_type' in data and 'cpu_subtype' in data:
+        elif data.get('cpu_type') is not None \
+             and data.get('cpu_subtype') is not None:
             self.arch = arch_from_macho(data['cpu_type'],
                                         data['cpu_subtype'])
         else:
