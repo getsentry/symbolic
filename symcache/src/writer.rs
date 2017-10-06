@@ -529,10 +529,12 @@ impl<'input> Unit<'input> {
         // Access the compilation unit, which must be the top level DIE
         let abbrev = info.get_abbrev(header)?;
         let mut entries = header.entries(&*abbrev);
-        let (_, entry) = entries
+        let entry = match entries
             .next_dfs()
-            .chain_err(|| err("compilation unit is broken"))?
-            .ok_or_else(|| err("unit without compilation unit"))?;
+            .chain_err(|| err("compilation unit is broken"))? {
+            Some((_, entry)) => entry,
+            None => { return Ok(None); }
+        };
 
         if entry.tag() != gimli::DW_TAG_compile_unit {
             return Err(err("missing compilation unit"));
