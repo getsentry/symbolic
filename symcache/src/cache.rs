@@ -487,6 +487,8 @@ impl<'a> SymCache<'a> {
         -> Result<Option<(&FileRecord, u32)>>
     {
         let records = self.get_segment(&fun.line_records)?;
+        println!("{:#?}", &records);
+
         if records.is_empty() {
             return Ok(None);
         }

@@ -1,4 +1,5 @@
 import bisect
+from weakref import WeakValueDictionary
 
 from symbolic._compat import itervalues
 from symbolic._lowlevel import lib, ffi
@@ -43,7 +44,7 @@ class FatObject(RustObject):
         """Returns the object at a certain index."""
         cache = getattr(self, '_objcache', None)
         if cache is None:
-            cache = self._objcache = {}
+            cache = self._objcache = WeakValueDictionary()
         rv = cache.get(idx)
         if rv is not None:
             return rv
@@ -51,6 +52,9 @@ class FatObject(RustObject):
         if ptr == ffi.NULL:
             raise LookupError('No object #%d' % idx)
         rv = cache[idx] = Object._from_objptr(ptr)
+        # Hold a reference here so that we don't crash if the fat object
+        # is not held otherwise
+        rv.__fatobject = self
         return rv
 
 
