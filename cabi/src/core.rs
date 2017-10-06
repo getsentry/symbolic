@@ -140,9 +140,17 @@ pub unsafe extern "C" fn symbolic_err_get_last_code() -> SymbolicErrorCode {
 /// that needs to be freed with `symbolic_str_free`.
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
+    use std::fmt::Write;
+    use std::error::Error;
     LAST_ERROR.with(|e| {
         if let Some(ref err) = *e.borrow() {
-            SymbolicStr::from_string(err.to_string())
+            let mut msg = err.to_string();
+            let mut cause = err.cause();
+            while let Some(the_cause) = cause {
+                write!(&mut msg, "\n  caused by: {}", the_cause).ok();
+                cause = the_cause.cause();
+            }
+            SymbolicStr::from_string(msg)
         } else {
             Default::default()
         }
