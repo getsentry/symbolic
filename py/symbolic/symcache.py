@@ -85,7 +85,7 @@ class SymCache(RustObject):
     def from_path(self, path):
         """Loads a symcache from a file via mmap."""
         return SymCache._from_objptr(
-            rustcall(lib.symbolic_symcache_from_path, path))
+            rustcall(lib.symbolic_symcache_from_path, encode_path(path)))
 
     @classmethod
     def from_bytes(self, bytes):
