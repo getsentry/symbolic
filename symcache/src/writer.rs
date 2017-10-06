@@ -488,7 +488,7 @@ impl<W: Write> SymCacheWriter<W> {
             };
 
             let mut diff = (line.addr - last_addr) as i64;
-            while diff > 0 {
+            while diff >= 0 {
                 let line_record = LineRecord {
                     addr_off: (diff & 0xff) as u8,
                     file_id: file_id,
