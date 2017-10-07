@@ -25,24 +25,21 @@ matrix:
         - virtualenv ~/virtualenv
         - source ~/virtualenv/bin/activate
       script: make wheel
-      env: DEPLOY=1
+      env: DEPLOY=1 PY_DIST=mac-wheel
       osx_image: xcode6.4
       os: osx
 
     - script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_x86_64
-      env: DEPLOY=1
+      env: DEPLOY=1 PY_DIST=linux-x86-wheel
       sudo: required
       services:
         - docker
 
     - script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_i686
-      env: DEPLOY=1
+      env: DEPLOY=1 PY_DIST=linux-x86_64-wheel
       sudo: required
       services:
         - docker
-
-    - script: make sdist
-      env: DEPLOY=1
 
 deploy:
   provider: s3
