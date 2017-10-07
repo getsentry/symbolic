@@ -41,6 +41,9 @@ matrix:
       services:
         - docker
 
+    - script: make sdist
+      env: DEPLOY=1
+
 deploy:
   provider: s3
   access_key_id: AKIAJKYWAF3QS7SFL75Q
