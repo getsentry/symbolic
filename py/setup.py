@@ -1,4 +1,13 @@
+import re
 from setuptools import setup, find_packages
+
+
+_version_re = re.compile(r'^version\s*=\s*"(.*?)"\s*$(?m)')
+
+
+with open('../Cargo.toml') as f:
+    version = _version_re.search(f.read()).group(1)
+
 
 def build_native(spec):
     # Step 1: build the rust library
@@ -17,7 +26,7 @@ def build_native(spec):
 
 setup(
     name='symbolic-python',
-    version='0.0.1',
+    version=version,
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
