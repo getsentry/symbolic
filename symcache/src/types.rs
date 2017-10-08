@@ -152,7 +152,7 @@ impl FuncRecord {
         if self.parent_offset == !0 {
             None
         } else {
-            Some(func_id + (self.parent_offset as usize))
+            Some(func_id - (self.parent_offset as usize))
         }
     }
 }

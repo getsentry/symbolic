@@ -444,8 +444,8 @@ impl<W: Write> SymCacheWriter<W> {
             parent_offset: if parent_id == !0 {
                 !0
             } else {
-                let parent_offset = func_id.wrapping_sub(parent_id);
-                if parent_offset >= 0xfffe {
+                let parent_offset = func_id.saturating_sub(parent_id);
+                if parent_offset == !0 {
                     return Err(ErrorKind::Internal(
                         "parent function range too big for file format").into());
                 }
