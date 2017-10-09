@@ -1,8 +1,74 @@
+import os
 import sys
 import json
+import uuid
 import pytest
 
+from symbolic import ObjectLookup, FatObject, find_best_instruction, parse_addr
+
 diff_report = None
+
+
+def get_symcache(path, object_lookup):
+    dsym_path = os.path.join(path, 'Contents/Resources/DWARF')
+    if not os.path.isdir(dsym_path):
+        return
+    for fn in os.listdir(dsym_path):
+        fo = FatObject.from_path(os.path.join(dsym_path, fn))
+        for obj in fo.iter_objects():
+            if object_lookup.get_object(uuid=obj.uuid) is not None:
+                print os.path.join(dsym_path, fn)
+                return obj.make_symcache()
+
+
+class ReportSymbolizer(object):
+
+    def __init__(self, dsym_paths, binary_images):
+        self.objects = ObjectLookup(binary_images)
+        self.symcaches = {}
+
+        for path in dsym_paths:
+            if not path.endswith('.dSYM'):
+                continue
+            symcache = get_symcache(path, self.objects)
+            if symcache is not None:
+                self.symcaches[symcache.uuid] = symcache
+
+    def symbolize_backtrace(self, backtrace, meta=None):
+        def symbolize(frame, frame_idx):
+            instr = frame['instruction_addr']
+            instr = find_best_instruction(instr, crashing_frame=frame_idx == 0,
+                                          **(meta or {}))
+            obj_ref = self.objects.find_object(instr)
+            if obj_ref is None:
+                return [frame]
+            symcache = self.symcaches.get(obj_ref.uuid)
+            if symcache is None:
+                return [frame]
+
+            rv = symcache.lookup(instr - parse_addr(obj_ref.addr))
+            if not rv:
+                return [frame]
+
+            result = []
+            for sym in rv:
+                frame = dict(frame)
+                frame['symbol_name'] = sym.symbol
+                frame['function'] = sym.function_name
+                frame['abs_path'] = sym.abs_path
+                frame['filename'] = sym.filename
+                frame['line'] = sym.line
+                result.append(frame)
+            return result
+
+        rv = []
+        for idx, f in enumerate(backtrace):
+            rv.extend(symbolize(f, idx))
+
+        for frame in rv:
+            frame.setdefault('function', frame.get('symbol_name'))
+
+        return rv
 
 
 class DiffReport(object):
@@ -123,3 +189,14 @@ def pytest_runtest_makereport(item, call):
 def pytest_report_teststatus(report):
     if getattr(report, '_wasdebugskip', False):
         return 'debugfailed', 'x', 'DEBUGFAIL'
+
+
+@pytest.fixture(scope='module')
+def res_path():
+    here = os.path.abspath(os.path.dirname(__file__))
+    return os.path.join(here, 'res')
+
+
+@pytest.fixture(scope='function')
+def make_report_sym(request):
+    return ReportSymbolizer
