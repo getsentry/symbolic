@@ -24,3 +24,6 @@ path = "../debuginfo"
 
 [dependencies.symbolic-symcache]
 path = "../symcache"
+
+[replace]
+"goblin:0.0.11" = { git = "https://github.com/mitsuhiko/goblin", rev = "a5ddb5f47cad3afc564c7cff02608f1da5b00a6b" }
