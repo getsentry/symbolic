@@ -487,7 +487,12 @@ impl<W: Write> SymCacheWriter<W> {
                 file_id
             };
 
-            let mut diff = (line.addr - last_addr) as i64;
+            // We have seen that swift can generate line records that lie outside
+            // of the function start.  Why this happens is unclear but it happens
+            // with highly inlined function calls.  Instead of panicking we want
+            // to just assume there is a single record at the address of the function
+            // and in case there are more the offsets are just slightly off.
+            let mut diff = (line.addr.saturating_sub(last_addr)) as i64;
 
             while diff >= 0 {
                 let line_record = LineRecord {
