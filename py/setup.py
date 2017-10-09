@@ -14,11 +14,16 @@ with open('../Cargo.toml') as f:
 
 
 def build_native(spec):
-    target = DEBUG_BUILD and 'debug' or 'release'
+    cmd = ['cargo', 'build']
+    if not DEBUG_BUILD:
+        cmd.append('--release')
+        target = 'release'
+    else:
+        target = 'debug'
 
     # Step 1: build the rust library
     build = spec.add_external_build(
-        cmd=['cargo', 'build', '--' + target],
+        cmd=cmd,
         path='../cabi'
     )
 
