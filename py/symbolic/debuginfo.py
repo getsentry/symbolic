@@ -29,7 +29,10 @@ class FatObject(RustObject):
     def iter_objects(self):
         """Iterates over all objects."""
         for idx in range(self.object_count):
-            yield self._get_object(idx)
+            try:
+                yield self._get_object(idx)
+            except LookupError:
+                pass
 
     def get_object(self, uuid=None, arch=None):
         """Get an object by either arch or uuid."""
@@ -153,4 +156,4 @@ class ObjectLookup(object):
 
     def get_object(self, uuid):
         """Finds an object by the given uuid."""
-        return self._uuids.get(uuid)
+        return self.objects.get(uuid)

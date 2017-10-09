@@ -102,7 +102,7 @@ def encode_path(s):
 
 def decode_uuid(value):
     """Decodes the given uuid value."""
-    return uuid.UUID(bytes=ffi.string(value.data))
+    return uuid.UUID(bytes=bytes(bytearray(ffi.unpack(value.data, 16))))
 
 
 def make_uuid(value):
