@@ -421,6 +421,8 @@ impl<W: Write> SymCacheWriter<W> {
         let symbols = symbols.as_ref();
         let mut symbol_iter = symbols.map(|x| x.iter().peekable());
         let mut last_addr = !0;
+        let mut addrs = FnvHashSet::default();
+        let mut local_cache = FnvHashMap::default();
 
         for index in 0..info.units.len() {
             // attempt to parse a single unit from the given header.
@@ -433,15 +435,18 @@ impl<W: Write> SymCacheWriter<W> {
                 None => continue,
             };
 
+            let addrs_inner = &mut addrs;
+            let local_cache_inner = &mut local_cache;
+            addrs_inner.clear();
+            local_cache_inner.clear();
+
             for func in unit.get_functions(&info, &mut range_buf, symbols)? {
                 // dedup instructions from inline functions
-                let mut addrs = FnvHashSet::default();
-                let mut local_cache = FnvHashMap::default();
                 if let &mut Some(ref mut symbol_iter) = &mut symbol_iter {
                     self.write_missing_functions_from_symboltable(
                         &mut last_addr, func.addr, info.vmaddr, symbol_iter)?;
                 }
-                self.write_dwarf_function(&func, &mut addrs, &mut local_cache, !0)?;
+                self.write_dwarf_function(&func, addrs_inner, local_cache_inner, !0)?;
                 last_addr = func.addr + func.len as u64;
             }
         }
