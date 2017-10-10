@@ -174,12 +174,11 @@ fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Result<Symbols<'a>> {
 
     // build an ordered map of the symbols
     let mut symbol_map = BTreeMap::new();
-    for sym_rv in macho.symbols() {
+    for (id, sym_rv) in macho.symbols().enumerate() {
         let (_, nlist) = sym_rv?;
         if nlist.n_type == mach::symbols::N_SECT &&
            sections.contains(&nlist.n_sect) {
-            let id = symbol_map.len() as u32;
-            symbol_map.insert(nlist.n_value, id);
+            symbol_map.insert(nlist.n_value, id as u32);
         }
     }
 
