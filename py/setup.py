@@ -36,7 +36,7 @@ def build_native(spec):
 
 
 setup(
-    name='symbolic-python',
+    name='symbolic',
     version=version,
     packages=find_packages(),
     include_package_data=True,
