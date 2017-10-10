@@ -18,6 +18,7 @@ use fallible_iterator::FallibleIterator;
 use lru_cache::LruCache;
 use fnv::{FnvHashSet, FnvHashMap};
 use num;
+use dmsort;
 use gimli;
 use gimli::{Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbbrev, DebugAbbrevOffset,
             DebugInfo, DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr,
@@ -751,7 +752,7 @@ impl<'input> Unit<'input> {
 
         // we definitely have to sort this here.  Functions unfortunately do not
         // appear sorted in dwarf files.
-        funcs.sort_by_key(|x| x.addr);
+        dmsort::sort_by_key(&mut funcs, |x| x.addr);
 
         Ok(funcs)
     }
@@ -1018,7 +1019,7 @@ impl<'input> DwarfLineProgram<'input> {
         }
 
         // we might have to sort this here :(
-        sequences.sort_by(|a, b| a.low_address.cmp(&b.low_address));
+        dmsort::sort_by_key(&mut sequences, |x| x.low_address);
 
         Ok(DwarfLineProgram {
             sequences: sequences,
