@@ -7,7 +7,7 @@ if [ -z "$1" ]; then
     exit 0
 fi
 
-if [ $(git diff --shortstat 2> /dev/null | tail -n1) != "" ]; then
+if [ "$(git diff --shortstat 2> /dev/null | tail -n1)" != "" ]; then
     echo "ERROR: There are uncommitted changes in this repository!"
     echo "Please commit all changes before tagging a new version."
     exit 1
