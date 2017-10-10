@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::cmp;
 use std::io::{Seek, SeekFrom, Write};
+use std::iter::Peekable;
 use std::mem;
 use std::slice;
 use std::sync::Arc;
@@ -374,6 +375,31 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(())
     }
 
+    fn write_missing_functions_from_symboltable(
+        &mut self, last_addr: &mut u64, cur_addr: u64, vmaddr: u64,
+        symbol_iter: &mut Peekable<SymbolIterator>
+    ) -> Result<()>
+    {
+        while let Some(&Ok((mut sym_addr, sym_len, sym))) = symbol_iter.peek() {
+            sym_addr -= vmaddr;
+
+            // skip forward until we hit a relevant symbol
+            if *last_addr != !0 && sym_addr < *last_addr {
+                symbol_iter.next();
+                continue;
+            }
+
+            if (*last_addr == !0 || sym_addr >= *last_addr) && sym_addr < cur_addr {
+                self.write_simple_function(sym_addr, sym_len, sym)?;
+                symbol_iter.next();
+                *last_addr = sym_addr + sym_len as u64;
+            } else {
+                break;
+            }
+        }
+        Ok(())
+    }
+
     fn write_simple_function(&mut self, func_addr: u64, len: u32, symbol: &str) -> Result<()> {
         let symbol_id = self.write_symbol_if_missing(symbol.as_bytes())?;
         self.func_records.push(FuncRecord {
@@ -411,34 +437,18 @@ impl<W: Write> SymCacheWriter<W> {
                 // dedup instructions from inline functions
                 let mut addrs = FnvHashSet::default();
                 let mut local_cache = FnvHashMap::default();
-
-                /*
                 if let &mut Some(ref mut symbol_iter) = &mut symbol_iter {
-                    while let Some(&Ok((mut sym_addr, sym_len, sym))) = symbol_iter.peek() {
-                        sym_addr -= info.vmaddr;
-
-                        // skip forward until we hit a relevant symbol
-                        if last_addr != !0 && sym_addr < last_addr {
-                            symbol_iter.next();
-                            continue;
-                        }
-
-                        if (last_addr == !0 || sym_addr > last_addr) &&
-                            sym_addr + (sym_len as u64) < func.addr
-                        {
-                            self.write_simple_function(sym_addr, sym_len, sym)?;
-                            symbol_iter.next();
-                            last_addr = sym_addr + sym_len as u64;
-                        } else {
-                            break;
-                        }
-                    }
+                    self.write_missing_functions_from_symboltable(
+                        &mut last_addr, func.addr, info.vmaddr, symbol_iter)?;
                 }
-                */
-
                 self.write_dwarf_function(&func, &mut addrs, &mut local_cache, !0)?;
                 last_addr = func.addr + func.len as u64;
             }
+        }
+
+        if let &mut Some(ref mut symbol_iter) = &mut symbol_iter {
+            self.write_missing_functions_from_symboltable(
+                &mut last_addr, !0, info.vmaddr, symbol_iter)?;
         }
 
         self.header.data_source = DataSource::Dwarf as u8;
