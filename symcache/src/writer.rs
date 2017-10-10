@@ -407,7 +407,7 @@ impl<W: Write> SymCacheWriter<W> {
                 None => continue,
             };
 
-            unit.for_each_function(&info, &mut range_buf, symbols, |func| {
+            for func in unit.get_functions(&info, &mut range_buf, symbols)? {
                 // dedup instructions from inline functions
                 let mut addrs = FnvHashSet::default();
                 let mut local_cache = FnvHashMap::default();
@@ -438,9 +438,7 @@ impl<W: Write> SymCacheWriter<W> {
 
                 self.write_dwarf_function(&func, &mut addrs, &mut local_cache, !0)?;
                 last_addr = func.addr + func.len as u64;
-
-                Ok(())
-            })?;
+            }
         }
 
         self.header.data_source = DataSource::Dwarf as u8;
@@ -635,18 +633,15 @@ impl<'input> Unit<'input> {
         }))
     }
 
-    fn for_each_function<T, F>(&self, info: &DwarfInfo<'input>,
-                               range_buf: &mut Vec<Range>,
-                               symbols: Option<&'input Symbols<'input>>,
-                               mut f: F)
-        -> Result<()>
-    where F: FnMut(Function<'input>) -> Result<T>
+    fn get_functions(&self, info: &DwarfInfo<'input>,
+                     range_buf: &mut Vec<Range>,
+                     symbols: Option<&'input Symbols<'input>>)
+        -> Result<Vec<Function<'input>>>
     {
         let mut depth = 0;
         let header = info.get_unit_header(self.index)?;
         let abbrev = info.get_abbrev(header)?;
         let mut entries = header.entries(&*abbrev);
-        let mut last_func: Option<Function> = None;
 
         let line_program = DwarfLineProgram::parse(
             info,
@@ -655,6 +650,7 @@ impl<'input> Unit<'input> {
             self.comp_dir,
             self.comp_name,
         )?;
+        let mut funcs: Vec<Function> = vec![];
 
         while let Some((movement, entry)) = entries
             .next_dfs()
@@ -725,25 +721,24 @@ impl<'input> Unit<'input> {
             }
 
             if inline {
-                let mut node = last_func.as_mut()
-                    .ok_or_else(|| err("no root function"))?;
+                if funcs.is_empty() {
+                    return Err(err("no root function"));
+                }
+                let mut node = funcs.last_mut().unwrap();
                 while {&node}.inlines.last().map_or(false, |n| (n.depth as isize) < depth) {
                     node = {node}.inlines.last_mut().unwrap();
                 }
                 node.inlines.push(func);
             } else {
-                if let Some(func) = last_func {
-                    f(func)?;
-                }
-                last_func = Some(func);
+                funcs.push(func);
             }
         }
 
-        if let Some(func) = last_func {
-            f(func)?;
-        }
+        // we definitely have to sort this here.  Functions unfortunately do not
+        // appear sorted in dwarf files.
+        funcs.sort_by_key(|x| x.addr);
 
-        Ok(())
+        Ok(funcs)
     }
 
     fn parse_ranges<'a>(&self, info: &DwarfInfo<'input>, entry: &Die,
@@ -1007,7 +1002,8 @@ impl<'input> DwarfLineProgram<'input> {
             });
         }
 
-        // XXX: assert everything is sorted
+        // we might have to sort this here :(
+        sequences.sort_by(|a, b| a.low_address.cmp(&b.low_address));
 
         Ok(DwarfLineProgram {
             sequences: sequences,
