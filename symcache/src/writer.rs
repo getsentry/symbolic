@@ -3,21 +3,22 @@ use std::collections::HashMap;
 use std::fmt;
 use std::cmp;
 use std::io::{Seek, SeekFrom, Write};
+use std::iter::Peekable;
 use std::mem;
 use std::slice;
 use std::sync::Arc;
 
 use symbolic_common::{Endianness, Error, ErrorKind, Result, ResultExt, Language};
-use symbolic_debuginfo::{DwarfSection, Object, Symbols};
+use symbolic_debuginfo::{DwarfSection, Object, Symbols, SymbolIterator};
 
 use types::{CacheFileHeader, Seg, FuncRecord, LineRecord, FileRecord, DataSource};
-use utils::binsearch_by_key;
 use cache::SYMCACHE_MAGIC;
 
 use fallible_iterator::FallibleIterator;
 use lru_cache::LruCache;
 use fnv::{FnvHashSet, FnvHashMap};
 use num;
+use dmsort;
 use gimli;
 use gimli::{Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbbrev, DebugAbbrevOffset,
             DebugInfo, DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr,
@@ -210,15 +211,16 @@ impl<'input> DwarfInfo<'input> {
     fn find_unit_offset(&self, offset: DebugInfoOffset<usize>)
         -> Result<(usize, UnitOffset<usize>)>
     {
-        match binsearch_by_key(&self.units, offset.0, |_, x| x.offset().0) {
-            Some((index, header)) => {
-                if let Some(unit_offset) = offset.to_unit_offset(header) {
-                    return Ok((index, unit_offset));
-                }
-            }
-            None => {}
+        let idx = match self.units.binary_search_by_key(&offset.0, |x| x.offset().0) {
+            Ok(idx) => idx,
+            Err(0) => return Err(err("couln't find unit for ref address")),
+            Err(next_idx) => next_idx - 1,
+        };
+        let header = &self.units[idx];
+        if let Some(unit_offset) = offset.to_unit_offset(header) {
+            return Ok((idx, unit_offset));
         }
-        Err(err("couln't find unit for ref address"))
+        Err(err("unit offset not within unit"))
     }
 }
 
@@ -333,7 +335,7 @@ impl<W: Write> SymCacheWriter<W> {
         // we just skip over to symbol table processing.
         match DwarfInfo::from_object(obj) {
             Ok(ref info) => {
-                return self.write_dwarf_info(info)
+                return self.write_dwarf_info(info, obj.symbols().ok())
                     .chain_err(|| err("could not process DWARF data"));
             }
             // ignore missing sections
@@ -347,7 +349,7 @@ impl<W: Write> SymCacheWriter<W> {
         // fallback to symbol table.
         match obj.symbols() {
             Ok(symbols) => {
-                return self.write_symbol_table(symbols, obj.vmaddr()?)
+                return self.write_symbol_table(symbols.iter(), obj.vmaddr()?)
                     .chain_err(|| err("Could not process symbol table"));
             }
             // ignore missing debug info
@@ -361,24 +363,10 @@ impl<W: Write> SymCacheWriter<W> {
         Err(ErrorKind::MissingDebugInfo("No debug info found in file").into())
     }
 
-    fn write_symbol_table(&mut self, symbols: Symbols, vmaddr: u64) -> Result<()> {
+    fn write_symbol_table(&mut self, symbols: SymbolIterator, vmaddr: u64) -> Result<()> {
         for sym_rv in symbols {
-            let (mut func_addr, symbol) = sym_rv?;
-            let symbol_id = self.write_symbol_if_missing(symbol.as_bytes())?;
-            func_addr -= vmaddr;
-            self.func_records.push(FuncRecord {
-                addr_low: (func_addr & 0xffffffff) as u32,
-                addr_high: ((func_addr >> 32) & 0xffff) as u16,
-                // XXX: we have not seen this yet, but in theory this should be
-                // stored as multiple function records.
-                len: !0,
-                symbol_id_low: (symbol_id & 0xffff) as u16,
-                symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
-                parent_offset: !0,
-                line_records: Seg::default(),
-                comp_dir: Seg::default(),
-                lang: Language::Unknown as u8,
-            });
+            let (func_addr, len, symbol) = sym_rv?;
+            self.write_simple_function(func_addr - vmaddr, len, symbol)?;
         }
 
         self.header.data_source = DataSource::SymbolTable as u8;
@@ -388,8 +376,55 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(())
     }
 
-    fn write_dwarf_info(&mut self, info: &DwarfInfo) -> Result<()> {
+    fn write_missing_functions_from_symboltable(
+        &mut self, last_addr: &mut u64, cur_addr: u64, vmaddr: u64,
+        symbol_iter: &mut Peekable<SymbolIterator>
+    ) -> Result<()>
+    {
+        while let Some(&Ok((mut sym_addr, sym_len, sym))) = symbol_iter.peek() {
+            sym_addr -= vmaddr;
+
+            // skip forward until we hit a relevant symbol
+            if *last_addr != !0 && sym_addr < *last_addr {
+                symbol_iter.next();
+                continue;
+            }
+
+            if (*last_addr == !0 || sym_addr >= *last_addr) && sym_addr < cur_addr {
+                self.write_simple_function(sym_addr, sym_len, sym)?;
+                symbol_iter.next();
+                *last_addr = sym_addr + sym_len as u64;
+            } else {
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    fn write_simple_function(&mut self, func_addr: u64, len: u32, symbol: &str) -> Result<()> {
+        let symbol_id = self.write_symbol_if_missing(symbol.as_bytes())?;
+        self.func_records.push(FuncRecord {
+            addr_low: (func_addr & 0xffffffff) as u32,
+            addr_high: ((func_addr >> 32) & 0xffff) as u16,
+            len: len as u16,
+            symbol_id_low: (symbol_id & 0xffff) as u16,
+            symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
+            parent_offset: !0,
+            line_records: Seg::default(),
+            comp_dir: Seg::default(),
+            lang: Language::Unknown as u8,
+        });
+        Ok(())
+    }
+
+    fn write_dwarf_info(&mut self, info: &DwarfInfo, symbols: Option<Symbols>) -> Result<()> {
         let mut range_buf = Vec::new();
+        let symbols = symbols.as_ref();
+        let mut symbol_iter = symbols.map(|x| x.iter().peekable());
+        let mut last_addr = !0;
+        let mut addrs = FnvHashSet::default();
+        let mut local_cache = FnvHashMap::default();
+
         for index in 0..info.units.len() {
             // attempt to parse a single unit from the given header.
             let unit_opt = Unit::parse(&info, index)
@@ -401,12 +436,25 @@ impl<W: Write> SymCacheWriter<W> {
                 None => continue,
             };
 
-            // dedup instructions from inline functions
-            unit.for_each_function(&info, &mut range_buf, |func| {
-                let mut addrs = FnvHashSet::default();
-                let mut local_cache = FnvHashMap::default();
-                self.write_function(&func, &mut addrs, &mut local_cache, !0)
-            })?;
+            let addrs_inner = &mut addrs;
+            let local_cache_inner = &mut local_cache;
+            addrs_inner.clear();
+            local_cache_inner.clear();
+
+            for func in unit.get_functions(&info, &mut range_buf, symbols)? {
+                // dedup instructions from inline functions
+                if let &mut Some(ref mut symbol_iter) = &mut symbol_iter {
+                    self.write_missing_functions_from_symboltable(
+                        &mut last_addr, func.addr, info.vmaddr, symbol_iter)?;
+                }
+                self.write_dwarf_function(&func, addrs_inner, local_cache_inner, !0)?;
+                last_addr = func.addr + func.len as u64;
+            }
+        }
+
+        if let &mut Some(ref mut symbol_iter) = &mut symbol_iter {
+            self.write_missing_functions_from_symboltable(
+                &mut last_addr, !0, info.vmaddr, symbol_iter)?;
         }
 
         self.header.data_source = DataSource::Dwarf as u8;
@@ -417,10 +465,10 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(())
     }
 
-    fn write_function<'a>(&mut self, func: &Function<'a>,
-                          addrs: &mut FnvHashSet<u64>,
-                          local_cache: &mut FnvHashMap<u64, u16>,
-                          parent_id: u32)
+    fn write_dwarf_function<'a>(&mut self, func: &Function<'a>,
+                                addrs: &mut FnvHashSet<u64>,
+                                local_cache: &mut FnvHashMap<u64, u16>,
+                                parent_id: u32)
         -> Result<()>
     {
         // if we have a function without any instructions we just skip it.  This
@@ -432,6 +480,7 @@ impl<W: Write> SymCacheWriter<W> {
 
         let func_id = self.func_records.len() as u32;
         let func_addr = func.get_addr();
+
         let symbol_id = self.write_symbol_if_missing(func.name)?;
         let func_record = FuncRecord {
             addr_low: (func_addr & 0xffffffff) as u32,
@@ -465,7 +514,7 @@ impl<W: Write> SymCacheWriter<W> {
         // recurse first.  As we recurse down the address rejection will
         // do the job it's supposed to do.
         for inline_func in &func.inlines {
-            self.write_function(inline_func, addrs, local_cache, func_id)?;
+            self.write_dwarf_function(inline_func, addrs, local_cache, func_id)?;
         }
 
         let mut line_records = vec![];
@@ -600,16 +649,15 @@ impl<'input> Unit<'input> {
         }))
     }
 
-    fn for_each_function<T, F>(&self, info: &DwarfInfo<'input>,
-                               range_buf: &mut Vec<Range>, mut f: F)
-        -> Result<()>
-    where F: FnMut(Function<'input>) -> Result<T>
+    fn get_functions(&self, info: &DwarfInfo<'input>,
+                     range_buf: &mut Vec<Range>,
+                     symbols: Option<&'input Symbols<'input>>)
+        -> Result<Vec<Function<'input>>>
     {
         let mut depth = 0;
         let header = info.get_unit_header(self.index)?;
         let abbrev = info.get_abbrev(header)?;
         let mut entries = header.entries(&*abbrev);
-        let mut last_func: Option<Function> = None;
 
         let line_program = DwarfLineProgram::parse(
             info,
@@ -618,6 +666,7 @@ impl<'input> Unit<'input> {
             self.comp_dir,
             self.comp_name,
         )?;
+        let mut funcs: Vec<Function> = vec![];
 
         while let Some((movement, entry)) = entries
             .next_dfs()
@@ -638,11 +687,30 @@ impl<'input> Unit<'input> {
                 continue;
             }
 
+            // try to find the symbol in the symbol table first if we are not an
+            // inlined function.
+            //
+            // XXX: maybe we should actually parse the ranges in the resolve
+            // function and always look at the symbol table based on the start of
+            // the Die range.
+            let func_name = if_chain! {
+                if !inline;
+                if let Some(symbols) = symbols;
+                if let Some((sym_addr, sym_len, symbol)) = symbols.lookup(ranges[0].begin)?;
+                if sym_addr + (sym_len as u64) <= ranges[ranges.len() - 1].end;
+                then {
+                    Some(symbol.as_bytes())
+                } else {
+                    // fall back to dwarf info
+                    self.resolve_function_name(info, entry)?
+                }
+            };
+
             let mut func = Function {
                 depth: depth as u16,
                 addr: ranges[0].begin - info.vmaddr,
                 len: (ranges[ranges.len() - 1].end - ranges[0].begin) as u32,
-                name: self.resolve_function_name(info, entry)?.unwrap_or(b""),
+                name: func_name.unwrap_or(b""),
                 inlines: vec![],
                 lines: vec![],
                 comp_dir: self.comp_dir.map(|x| x.buf()).unwrap_or(b""),
@@ -669,25 +737,24 @@ impl<'input> Unit<'input> {
             }
 
             if inline {
-                let mut node = last_func.as_mut()
-                    .ok_or_else(|| err("no root function"))?;
+                if funcs.is_empty() {
+                    return Err(err("no root function"));
+                }
+                let mut node = funcs.last_mut().unwrap();
                 while {&node}.inlines.last().map_or(false, |n| (n.depth as isize) < depth) {
                     node = {node}.inlines.last_mut().unwrap();
                 }
                 node.inlines.push(func);
             } else {
-                if let Some(func) = last_func {
-                    f(func)?;
-                }
-                last_func = Some(func);
+                funcs.push(func);
             }
         }
 
-        if let Some(func) = last_func {
-            f(func)?;
-        }
+        // we definitely have to sort this here.  Functions unfortunately do not
+        // appear sorted in dwarf files.
+        dmsort::sort_by_key(&mut funcs, |x| x.addr);
 
-        Ok(())
+        Ok(funcs)
     }
 
     fn parse_ranges<'a>(&self, info: &DwarfInfo<'input>, entry: &Die,
@@ -951,7 +1018,8 @@ impl<'input> DwarfLineProgram<'input> {
             });
         }
 
-        // XXX: assert everything is sorted
+        // we might have to sort this here :(
+        dmsort::sort_by_key(&mut sequences, |x| x.low_address);
 
         Ok(DwarfLineProgram {
             sequences: sequences,
@@ -976,14 +1044,16 @@ impl<'input> DwarfLineProgram<'input> {
                 continue;
             }
 
-            let start = match binsearch_by_key(&seq.rows, rng.begin, |_, x| x.address) {
-                Some((idx, _)) => idx,
-                None => { continue; }
+            let start = match seq.rows.binary_search_by_key(&rng.begin, |x| x.address) {
+                Ok(idx) => idx,
+                Err(0) => continue,
+                Err(next_idx) => next_idx - 1,
             };
-            return match binsearch_by_key(&seq.rows[start..], rng.end, |_, x| x.address) {
-                Some((idx, _)) => &seq.rows[start..start + idx],
-                None => &seq.rows[start..],
-            };
+
+            let len = seq.rows[start..]
+                .binary_search_by_key(&rng.end, |x| x.address)
+                .unwrap_or_else(|e| e);
+            return &seq.rows[start..start + len];
         }
         &[]
     }

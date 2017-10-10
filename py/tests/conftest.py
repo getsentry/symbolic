@@ -17,7 +17,6 @@ def get_symcache(path, object_lookup):
         fo = FatObject.from_path(os.path.join(dsym_path, fn))
         for obj in fo.iter_objects():
             if object_lookup.get_object(uuid=obj.uuid) is not None:
-                print os.path.join(dsym_path, fn)
                 return obj.make_symcache()
 
 
@@ -42,6 +41,7 @@ class ReportSymbolizer(object):
             obj_ref = self.objects.find_object(instr)
             if obj_ref is None:
                 return [frame]
+
             symcache = self.symcaches.get(obj_ref.uuid)
             if symcache is None:
                 return [frame]
@@ -67,6 +67,8 @@ class ReportSymbolizer(object):
 
         for frame in rv:
             frame.setdefault('function', frame.get('symbol_name'))
+            frame.setdefault('filename')
+            frame.setdefault('line')
 
         return rv
 
@@ -98,6 +100,7 @@ class DiffReport(object):
         return {}
 
     def diff_with_run(self, old):
+        return
         a = old
         b = self.results
 

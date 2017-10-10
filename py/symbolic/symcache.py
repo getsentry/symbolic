@@ -26,9 +26,9 @@ class Symbol(object):
         self.instr_addr = instr_addr
         self.line = line
         self.symbol = symbol
-        self.filename = filename
-        self.base_dir = base_dir
-        self.comp_dir = comp_dir
+        self.filename = filename or None
+        self.base_dir = base_dir or None
+        self.comp_dir = comp_dir or None
 
     @property
     def function_name(self):

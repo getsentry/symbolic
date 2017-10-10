@@ -13,7 +13,7 @@ use symbolic_debuginfo::Object;
 use symbolic_demangle;
 
 use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, DataSource};
-use utils::{binsearch_by_key, common_join_path};
+use utils::common_join_path;
 use writer;
 
 /// The magic file header to identify symcache files.
@@ -567,12 +567,21 @@ impl<'a> SymCache<'a> {
         // functions in the function segment are ordered by start address
         // primarily and by depth secondarily.  As a result we want to have
         // a secondary comparison by the item index.
-        let (mut func_id, mut fun) = match binsearch_by_key(
-            funcs, (addr, !0), |idx, rec| (rec.addr_start(), idx))
-        {
-            Some(item) => item,
-            None => { return Ok(vec![]); }
+        let mut func_id = match funcs.binary_search_by_key(&addr, |x| x.addr_start()) {
+            Ok(idx) => idx,
+            Err(0) => return Ok(vec![]),
+            Err(next_idx) => next_idx - 1,
         };
+
+        // seek forward to the deepest inlined function at the same address.
+        while let Some(fun) = funcs.get(func_id + 1) {
+            if fun.addr_start() != funcs[func_id].addr_start() {
+                break;
+            }
+            func_id += 1;
+        }
+
+        let mut fun = &funcs[func_id];
 
         // the binsearch might miss the function
         while !fun.addr_in_range(addr) {

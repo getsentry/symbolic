@@ -8,6 +8,7 @@ extern crate fallible_iterator;
 extern crate lru_cache;
 extern crate fnv;
 extern crate num;
+extern crate dmsort;
 #[macro_use] extern crate matches;
 #[macro_use] extern crate if_chain;
 
