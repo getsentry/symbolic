@@ -675,21 +675,24 @@ impl<'input> Unit<'input> {
                 continue;
             }
 
-            let mut func_name = None;
-
-            // try to find the symbol in the symbol table first
-            if let Some(symbols) = symbols {
-                if let Some((sym_addr, sym_len, symbol)) = symbols.lookup(ranges[0].begin)? {
-                    if ranges[ranges.len() - 1].end < sym_addr + sym_len as u64 {
-                        func_name = Some(symbol.as_bytes());
-                    }
+            // try to find the symbol in the symbol table first if we are not an
+            // inlined function.
+            //
+            // XXX: maybe we should actually parse the ranges in the resolve
+            // function and always look at the symbol table based on the start of
+            // the Die range.
+            let func_name = if_chain! {
+                if !inline;
+                if let Some(symbols) = symbols;
+                if let Some((sym_addr, sym_len, symbol)) = symbols.lookup(ranges[0].begin)?;
+                if sym_addr + (sym_len as u64) <= ranges[ranges.len() - 1].end;
+                then {
+                    Some(symbol.as_bytes())
+                } else {
+                    // fall back to dwarf info
+                    self.resolve_function_name(info, entry)?
                 }
             };
-
-            // fall back to dwarf info
-            if func_name.is_none() {
-                func_name = self.resolve_function_name(info, entry)?;
-            }
 
             let mut func = Function {
                 depth: depth as u16,

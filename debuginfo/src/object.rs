@@ -161,14 +161,15 @@ fn get_macho_vmaddr(macho: &mach::MachO) -> Result<u64> {
 fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Result<Symbols<'a>> {
     let mut sections = HashSet::new();
     let mut idx = 0;
+
     for segment in &macho.segments {
         for section_rv in segment {
-            idx += 1;
             let (section, _) = section_rv?;
             let name = section.name()?;
             if name == "__stubs" || name == "__text" {
                 sections.insert(idx);
             }
+            idx += 1;
         }
     }
 
@@ -176,8 +177,9 @@ fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Result<Symbols<'a>> {
     let mut symbol_map = BTreeMap::new();
     for (id, sym_rv) in macho.symbols().enumerate() {
         let (_, nlist) = sym_rv?;
-        if nlist.n_type == mach::symbols::N_SECT &&
-           sections.contains(&nlist.n_sect) {
+        if nlist.get_type() == mach::symbols::N_SECT &&
+           nlist.n_sect != (mach::symbols::NO_SECT as usize) &&
+           sections.contains(&(nlist.n_sect - 1)) {
             symbol_map.insert(nlist.n_value, id as u32);
         }
     }
@@ -186,6 +188,10 @@ fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Result<Symbols<'a>> {
         macho_symbols: macho.symbols.as_ref(),
         symbol_list: symbol_map.into_iter().collect(),
     })
+}
+
+fn try_strip_symbol(s: &str) -> &str {
+    if s.starts_with("_") { &s[1..] } else { s }
 }
 
 impl<'a> Symbols<'a> {
@@ -203,7 +209,7 @@ impl<'a> Symbols<'a> {
 
         let symbols = self.macho_symbols.unwrap();
         let (symbol, _) = symbols.get(sym_id as usize)?;
-        Ok(Some((sym_addr, sym_len as u32, symbol)))
+        Ok(Some((sym_addr, sym_len as u32, try_strip_symbol(symbol))))
     }
 
     pub fn iter(&'a self) -> SymbolIterator<'a> {
@@ -220,7 +226,7 @@ impl<'a> Iterator for SymbolIterator<'a> {
     fn next(&mut self) -> Option<Result<(u64, u32, &'a str)>> {
         if let Some(&(addr, id)) = self.iter.next() {
             Some(if let Some(ref mo) = self.symbols.macho_symbols {
-                let sym = itry!(mo.get(id as usize).map(|x| x.0));
+                let sym = try_strip_symbol(itry!(mo.get(id as usize).map(|x| x.0)));
                 if let Some(&&(next_addr, _)) = self.iter.peek() {
                     Ok((addr, (next_addr - addr) as u32, sym))
                 } else {
