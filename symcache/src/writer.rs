@@ -11,7 +11,6 @@ use symbolic_common::{Endianness, Error, ErrorKind, Result, ResultExt, Language}
 use symbolic_debuginfo::{DwarfSection, Object, Symbols, SymbolIterator};
 
 use types::{CacheFileHeader, Seg, FuncRecord, LineRecord, FileRecord, DataSource};
-use utils::binsearch_by_key;
 use cache::SYMCACHE_MAGIC;
 
 use fallible_iterator::FallibleIterator;
@@ -210,15 +209,16 @@ impl<'input> DwarfInfo<'input> {
     fn find_unit_offset(&self, offset: DebugInfoOffset<usize>)
         -> Result<(usize, UnitOffset<usize>)>
     {
-        match binsearch_by_key(&self.units, offset.0, |_, x| x.offset().0) {
-            Some((index, header)) => {
-                if let Some(unit_offset) = offset.to_unit_offset(header) {
-                    return Ok((index, unit_offset));
-                }
-            }
-            None => {}
+        let idx = match self.units.binary_search_by_key(&offset.0, |x| x.offset().0) {
+            Ok(idx) => idx,
+            Err(0) => return Err(err("couln't find unit for ref address")),
+            Err(next_idx) => next_idx - 1,
+        };
+        let header = &self.units[idx];
+        if let Some(unit_offset) = offset.to_unit_offset(header) {
+            return Ok((idx, unit_offset));
         }
-        Err(err("couln't find unit for ref address"))
+        Err(err("unit offset not within unit"))
     }
 }
 
@@ -1029,14 +1029,16 @@ impl<'input> DwarfLineProgram<'input> {
                 continue;
             }
 
-            let start = match binsearch_by_key(&seq.rows, rng.begin, |_, x| x.address) {
-                Some((idx, _)) => idx,
-                None => { continue; }
+            let start = match seq.rows.binary_search_by_key(&rng.begin, |x| x.address) {
+                Ok(idx) => idx,
+                Err(0) => continue,
+                Err(next_idx) => next_idx - 1,
             };
-            return match binsearch_by_key(&seq.rows[start..], rng.end, |_, x| x.address) {
-                Some((idx, _)) => &seq.rows[start..start + idx],
-                None => &seq.rows[start..],
-            };
+
+            let len = seq.rows[start..]
+                .binary_search_by_key(&rng.end, |x| x.address)
+                .unwrap_or_else(|e| e);
+            return &seq.rows[start..start + len];
         }
         &[]
     }

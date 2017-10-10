@@ -84,6 +84,10 @@ fn test_binsearch() {
     let seq = [0u32, 2, 4, 6, 8, 10];
     let m = binsearch_by_key(&seq[..], 5, |_, &x| x);
     assert_eq!(*m.unwrap().1, 4);
+
+    let m = binsearch_by_key(&seq[..], 4, |_, &x| x);
+    assert_eq!(m.unwrap().0, 2);
+    assert_eq!(*m.unwrap().1, 4);
 }
 
 #[test]

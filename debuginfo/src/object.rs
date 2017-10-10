@@ -191,23 +191,20 @@ fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Result<Symbols<'a>> {
 
 impl<'a> Symbols<'a> {
     pub fn lookup(&self, addr: u64) -> Result<Option<(u64, u32, &'a str)>> {
-        let mut id = match self.symbol_list.binary_search_by(|&(ref_addr, _)| {
-            ref_addr.cmp(&addr)
-        }) {
-            Ok(idx) => idx - 1,
-            Err(_) => { return Ok(None); }
+        let idx = match self.symbol_list.binary_search_by_key(&addr, |&x| x.0) {
+            Ok(idx) => idx,
+            Err(0) => return Ok(None),
+            Err(next_idx) => next_idx - 1,
         };
-        while let Some(&(sym_addr, sym_id)) = self.symbol_list.get(id) {
-            id += 1;
-            let symbols = self.macho_symbols.unwrap();
-            let (symbol, _) = symbols.get(sym_id as usize)?;
-            return Ok(Some(if let Some(&(next_sym_addr, _)) = self.symbol_list.get(id) {
-                (sym_addr, (next_sym_addr - sym_addr) as u32, symbol)
-            } else {
-                (sym_addr, !0, symbol)
-            }));
-        }
-        Ok(None)
+        let (sym_addr, sym_id) = self.symbol_list[idx];
+
+        let sym_len = self.symbol_list.get(idx + 1)
+            .map(|next| next.0 - sym_addr)
+            .unwrap_or(!0);
+
+        let symbols = self.macho_symbols.unwrap();
+        let (symbol, _) = symbols.get(sym_id as usize)?;
+        Ok(Some((sym_addr, sym_len as u32, symbol)))
     }
 
     pub fn iter(&'a self) -> SymbolIterator<'a> {
