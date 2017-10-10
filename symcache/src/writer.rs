@@ -8,7 +8,7 @@ use std::slice;
 use std::sync::Arc;
 
 use symbolic_common::{Endianness, Error, ErrorKind, Result, ResultExt, Language};
-use symbolic_debuginfo::{DwarfSection, Object, Symbols};
+use symbolic_debuginfo::{DwarfSection, Object, Symbols, SymbolIterator};
 
 use types::{CacheFileHeader, Seg, FuncRecord, LineRecord, FileRecord, DataSource};
 use utils::binsearch_by_key;
@@ -333,7 +333,7 @@ impl<W: Write> SymCacheWriter<W> {
         // we just skip over to symbol table processing.
         match DwarfInfo::from_object(obj) {
             Ok(ref info) => {
-                return self.write_dwarf_info(info)
+                return self.write_dwarf_info(info, obj.symbols().ok())
                     .chain_err(|| err("could not process DWARF data"));
             }
             // ignore missing sections
@@ -347,7 +347,7 @@ impl<W: Write> SymCacheWriter<W> {
         // fallback to symbol table.
         match obj.symbols() {
             Ok(symbols) => {
-                return self.write_symbol_table(symbols, obj.vmaddr()?)
+                return self.write_symbol_table(symbols.iter(), obj.vmaddr()?)
                     .chain_err(|| err("Could not process symbol table"));
             }
             // ignore missing debug info
@@ -361,24 +361,10 @@ impl<W: Write> SymCacheWriter<W> {
         Err(ErrorKind::MissingDebugInfo("No debug info found in file").into())
     }
 
-    fn write_symbol_table(&mut self, symbols: Symbols, vmaddr: u64) -> Result<()> {
+    fn write_symbol_table(&mut self, symbols: SymbolIterator, vmaddr: u64) -> Result<()> {
         for sym_rv in symbols {
-            let (mut func_addr, symbol) = sym_rv?;
-            let symbol_id = self.write_symbol_if_missing(symbol.as_bytes())?;
-            func_addr -= vmaddr;
-            self.func_records.push(FuncRecord {
-                addr_low: (func_addr & 0xffffffff) as u32,
-                addr_high: ((func_addr >> 32) & 0xffff) as u16,
-                // XXX: we have not seen this yet, but in theory this should be
-                // stored as multiple function records.
-                len: !0,
-                symbol_id_low: (symbol_id & 0xffff) as u16,
-                symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
-                parent_offset: !0,
-                line_records: Seg::default(),
-                comp_dir: Seg::default(),
-                lang: Language::Unknown as u8,
-            });
+            let (func_addr, len, symbol) = sym_rv?;
+            self.write_simple_function(func_addr - vmaddr, len, symbol)?;
         }
 
         self.header.data_source = DataSource::SymbolTable as u8;
@@ -388,8 +374,28 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(())
     }
 
-    fn write_dwarf_info(&mut self, info: &DwarfInfo) -> Result<()> {
+    fn write_simple_function(&mut self, func_addr: u64, len: u32, symbol: &str) -> Result<()> {
+        let symbol_id = self.write_symbol_if_missing(symbol.as_bytes())?;
+        self.func_records.push(FuncRecord {
+            addr_low: (func_addr & 0xffffffff) as u32,
+            addr_high: ((func_addr >> 32) & 0xffff) as u16,
+            len: len as u16,
+            symbol_id_low: (symbol_id & 0xffff) as u16,
+            symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
+            parent_offset: !0,
+            line_records: Seg::default(),
+            comp_dir: Seg::default(),
+            lang: Language::Unknown as u8,
+        });
+        Ok(())
+    }
+
+    fn write_dwarf_info(&mut self, info: &DwarfInfo, symbols: Option<Symbols>) -> Result<()> {
         let mut range_buf = Vec::new();
+        let symbols = symbols.as_ref();
+        let mut symbol_iter = symbols.map(|x| x.iter().peekable());
+        let mut last_addr = !0;
+
         for index in 0..info.units.len() {
             // attempt to parse a single unit from the given header.
             let unit_opt = Unit::parse(&info, index)
@@ -401,11 +407,39 @@ impl<W: Write> SymCacheWriter<W> {
                 None => continue,
             };
 
-            // dedup instructions from inline functions
-            unit.for_each_function(&info, &mut range_buf, |func| {
+            unit.for_each_function(&info, &mut range_buf, symbols, |func| {
+                // dedup instructions from inline functions
                 let mut addrs = FnvHashSet::default();
                 let mut local_cache = FnvHashMap::default();
-                self.write_function(&func, &mut addrs, &mut local_cache, !0)
+
+                /*
+                if let &mut Some(ref mut symbol_iter) = &mut symbol_iter {
+                    while let Some(&Ok((mut sym_addr, sym_len, sym))) = symbol_iter.peek() {
+                        sym_addr -= info.vmaddr;
+
+                        // skip forward until we hit a relevant symbol
+                        if last_addr != !0 && sym_addr < last_addr {
+                            symbol_iter.next();
+                            continue;
+                        }
+
+                        if (last_addr == !0 || sym_addr > last_addr) &&
+                            sym_addr + (sym_len as u64) < func.addr
+                        {
+                            self.write_simple_function(sym_addr, sym_len, sym)?;
+                            symbol_iter.next();
+                            last_addr = sym_addr + sym_len as u64;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                */
+
+                self.write_dwarf_function(&func, &mut addrs, &mut local_cache, !0)?;
+                last_addr = func.addr + func.len as u64;
+
+                Ok(())
             })?;
         }
 
@@ -417,10 +451,10 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(())
     }
 
-    fn write_function<'a>(&mut self, func: &Function<'a>,
-                          addrs: &mut FnvHashSet<u64>,
-                          local_cache: &mut FnvHashMap<u64, u16>,
-                          parent_id: u32)
+    fn write_dwarf_function<'a>(&mut self, func: &Function<'a>,
+                                addrs: &mut FnvHashSet<u64>,
+                                local_cache: &mut FnvHashMap<u64, u16>,
+                                parent_id: u32)
         -> Result<()>
     {
         // if we have a function without any instructions we just skip it.  This
@@ -432,6 +466,7 @@ impl<W: Write> SymCacheWriter<W> {
 
         let func_id = self.func_records.len() as u32;
         let func_addr = func.get_addr();
+
         let symbol_id = self.write_symbol_if_missing(func.name)?;
         let func_record = FuncRecord {
             addr_low: (func_addr & 0xffffffff) as u32,
@@ -465,7 +500,7 @@ impl<W: Write> SymCacheWriter<W> {
         // recurse first.  As we recurse down the address rejection will
         // do the job it's supposed to do.
         for inline_func in &func.inlines {
-            self.write_function(inline_func, addrs, local_cache, func_id)?;
+            self.write_dwarf_function(inline_func, addrs, local_cache, func_id)?;
         }
 
         let mut line_records = vec![];
@@ -601,7 +636,9 @@ impl<'input> Unit<'input> {
     }
 
     fn for_each_function<T, F>(&self, info: &DwarfInfo<'input>,
-                               range_buf: &mut Vec<Range>, mut f: F)
+                               range_buf: &mut Vec<Range>,
+                               symbols: Option<&'input Symbols<'input>>,
+                               mut f: F)
         -> Result<()>
     where F: FnMut(Function<'input>) -> Result<T>
     {
@@ -638,11 +675,27 @@ impl<'input> Unit<'input> {
                 continue;
             }
 
+            let mut func_name = None;
+
+            // try to find the symbol in the symbol table first
+            if let Some(symbols) = symbols {
+                if let Some((sym_addr, sym_len, symbol)) = symbols.lookup(ranges[0].begin)? {
+                    if ranges[ranges.len() - 1].end < sym_addr + sym_len as u64 {
+                        func_name = Some(symbol.as_bytes());
+                    }
+                }
+            };
+
+            // fall back to dwarf info
+            if func_name.is_none() {
+                func_name = self.resolve_function_name(info, entry)?;
+            }
+
             let mut func = Function {
                 depth: depth as u16,
                 addr: ranges[0].begin - info.vmaddr,
                 len: (ranges[ranges.len() - 1].end - ranges[0].begin) as u32,
-                name: self.resolve_function_name(info, entry)?.unwrap_or(b""),
+                name: func_name.unwrap_or(b""),
                 inlines: vec![],
                 lines: vec![],
                 comp_dir: self.comp_dir.map(|x| x.buf()).unwrap_or(b""),

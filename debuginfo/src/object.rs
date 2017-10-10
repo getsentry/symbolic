@@ -1,6 +1,8 @@
 use std::fmt;
+use std::iter::Peekable;
 use std::io::Cursor;
-use std::collections::HashSet;
+use std::collections::{HashSet, BTreeMap};
+use std::slice::Iter as SliceIter;
 
 use goblin;
 use goblin::{elf, mach, Hint};
@@ -133,11 +135,18 @@ impl<'a> fmt::Debug for Object<'a> {
     }
 }
 
-/// An iterator over a contained symbol table.
+/// Gives access to symbols in a symbol table.
 pub struct Symbols<'a> {
     // note: if we need elf here later, we can move this into an internal wrapper
-    macho_iter: goblin::mach::symbols::SymbolIterator<'a>,
-    sections: HashSet<usize>,
+    macho_symbols: Option<&'a goblin::mach::symbols::Symbols<'a>>,
+    symbol_list: Vec<(u64, u32)>,
+}
+
+/// An iterator over a contained symbol table.
+pub struct SymbolIterator<'a> {
+    // note: if we need elf here later, we can move this into an internal wrapper
+    symbols: &'a Symbols<'a>,
+    iter: Peekable<SliceIter<'a, (u64, u32)>>,
 }
 
 fn get_macho_vmaddr(macho: &mach::MachO) -> Result<u64> {
@@ -162,26 +171,70 @@ fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Result<Symbols<'a>> {
             }
         }
     }
+
+    // build an ordered map of the symbols
+    let mut symbol_map = BTreeMap::new();
+    for sym_rv in macho.symbols() {
+        let (_, nlist) = sym_rv?;
+        if nlist.n_type == mach::symbols::N_SECT &&
+           sections.contains(&nlist.n_sect) {
+            let id = symbol_map.len() as u32;
+            symbol_map.insert(nlist.n_value, id);
+        }
+    }
+
     Ok(Symbols {
-        macho_iter: macho.symbols(),
-        sections: sections,
+        macho_symbols: macho.symbols.as_ref(),
+        symbol_list: symbol_map.into_iter().collect(),
     })
 }
 
-impl<'a> Iterator for Symbols<'a> {
-    type Item = Result<(u64, &'a str)>;
+impl<'a> Symbols<'a> {
+    pub fn lookup(&self, addr: u64) -> Result<Option<(u64, u32, &'a str)>> {
+        let mut id = match self.symbol_list.binary_search_by(|&(ref_addr, _)| {
+            ref_addr.cmp(&addr)
+        }) {
+            Ok(idx) => idx - 1,
+            Err(_) => { return Ok(None); }
+        };
+        while let Some(&(sym_addr, sym_id)) = self.symbol_list.get(id) {
+            id += 1;
+            let symbols = self.macho_symbols.unwrap();
+            let (symbol, _) = symbols.get(sym_id as usize)?;
+            return Ok(Some(if let Some(&(next_sym_addr, _)) = self.symbol_list.get(id) {
+                (sym_addr, (next_sym_addr - sym_addr) as u32, symbol)
+            } else {
+                (sym_addr, !0, symbol)
+            }));
+        }
+        Ok(None)
+    }
 
-    fn next(&mut self) -> Option<Result<(u64, &'a str)>> {
-        loop {
-            if let Some(item) = self.macho_iter.next() {
-                let (symbol, nlist) = itry!(item);
-                if nlist.n_type == mach::symbols::N_SECT &&
-                   self.sections.contains(&nlist.n_sect) {
-                    return Some(Ok((nlist.n_value, symbol)));
+    pub fn iter(&'a self) -> SymbolIterator<'a> {
+        SymbolIterator {
+            symbols: self,
+            iter: self.symbol_list.iter().peekable(),
+        }
+    }
+}
+
+impl<'a> Iterator for SymbolIterator<'a> {
+    type Item = Result<(u64, u32, &'a str)>;
+
+    fn next(&mut self) -> Option<Result<(u64, u32, &'a str)>> {
+        if let Some(&(addr, id)) = self.iter.next() {
+            Some(if let Some(ref mo) = self.symbols.macho_symbols {
+                let sym = itry!(mo.get(id as usize).map(|x| x.0));
+                if let Some(&&(next_addr, _)) = self.iter.peek() {
+                    Ok((addr, (next_addr - addr) as u32, sym))
+                } else {
+                    Ok((addr, !0, sym))
                 }
             } else {
-                return None;
-            }
+                Err(ErrorKind::Internal("out of range for symbol iteration").into())
+            })
+        } else {
+            None
         }
     }
 }
