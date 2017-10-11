@@ -180,7 +180,7 @@ pub unsafe extern "C" fn symbolic_err_get_panic_info() -> SymbolicStr {
 
                     let ip = frame.ip();
                     let symbols = frame.symbols();
-                    for (idx, symbol) in symbols.iter().enumerate() {
+                    for symbol in symbols.iter() {
                         write!(&mut out, "\n{:18?} ", ip).ok();
 
                         if let Some(name) = symbol.name() {
