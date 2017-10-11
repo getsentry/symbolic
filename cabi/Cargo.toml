@@ -14,20 +14,11 @@ debug = true
 lto = true
 
 [dependencies]
-uuid = "0"
-
-[dependencies.symbolic-common]
-path = "../common"
-features = ["with_dwarf", "with_objects"]
-
-[dependencies.symbolic-demangle]
-path = "../demangle"
-
-[dependencies.symbolic-debuginfo]
-path = "../debuginfo"
-
-[dependencies.symbolic-symcache]
-path = "../symcache"
+uuid = "0.5"
+symbolic-common = { path = "../common", features = ["with_dwarf", "with_objects"] }
+symbolic-demangle = { path = "../demangle" }
+symbolic-debuginfo = { path = "../debuginfo" }
+symbolic-symcache = { path = "../symcache" }
 
 [replace]
 "goblin:0.0.11" = { git = "https://github.com/mitsuhiko/goblin", rev = "c4fd7a6a8abbf422166748d1a5321be720542c51" }
