@@ -1,3 +1,8 @@
 target/
 **/*.rs.bk
 Cargo.lock
+
+# Python
+*.pyc
+__pycache__/
+.last-run
