@@ -13,3 +13,6 @@ symbolic-proguard = { path = "proguard" }
 symbolic-sourcemap = { path = "sourcemap" }
 symbolic-symcache = { path = "symcache" }
 symbolic-debuginfo = { path = "debuginfo" }
+
+[replace]
+"goblin:0.0.11" = { git = "https://github.com/mitsuhiko/goblin", rev = "c4fd7a6a8abbf422166748d1a5321be720542c51" }
