@@ -11,6 +11,10 @@ __all__ = ['arch_is_known', 'arch_from_macho', 'arch_to_macho',
 ignore_arch_exc = (exceptions.NotFound, exceptions.Parse)
 
 
+# Make sure we init the lib
+ffi.init_once(lib.symbolic_init, 'init')
+
+
 def arch_is_known(value):
     """Checks if an architecture is known."""
     return rustcall(lib.symbolic_arch_is_known, encode_str(value))

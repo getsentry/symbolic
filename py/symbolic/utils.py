@@ -73,7 +73,11 @@ def rustcall(func, *args):
         return rv
     msg = lib.symbolic_err_get_last_message()
     cls = exceptions_by_code.get(err, SymbolicError)
-    raise cls(decode_str(msg))
+    exc = cls(decode_str(msg))
+    panic_info = decode_str(lib.symbolic_err_get_panic_info())
+    if panic_info:
+        exc.panic_info = panic_info
+    raise exc
 
 
 def decode_str(s):

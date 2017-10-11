@@ -5,7 +5,7 @@ use std::slice;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-use utils::LAST_ERROR;
+use utils::{set_panic_hook, LAST_ERROR, LAST_PANIC};
 
 use uuid::Uuid;
 
@@ -120,6 +120,12 @@ impl SymbolicErrorCode {
     }
 }
 
+/// Initializes the library
+#[no_mangle]
+pub unsafe extern "C" fn symbolic_init() {
+    set_panic_hook();
+}
+
 /// Returns the last error code.
 ///
 /// If there is no error, 0 is returned.
@@ -157,10 +163,60 @@ pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
     })
 }
 
+/// Returns the panic information as string.
+#[no_mangle]
+pub unsafe extern "C" fn symbolic_err_get_panic_info() -> SymbolicStr {
+    LAST_PANIC.with(|e| {
+        if let Some((ref info, ref backtrace)) = *e.borrow() {
+            use std::fmt::Write;
+            let mut out = format!("{}\nstacktrace:", info);
+            let frames = backtrace.frames();
+            if frames.len() > 5 {
+                let mut done = false;
+                for frame in frames[6..].iter() {
+                    if done {
+                        break;
+                    }
+
+                    let ip = frame.ip();
+                    let symbols = frame.symbols();
+                    for (idx, symbol) in symbols.iter().enumerate() {
+                        write!(&mut out, "\n{:18?} ", ip).ok();
+
+                        if let Some(name) = symbol.name() {
+                            write!(&mut out, "{}", name).ok();
+                            // hack hack hack: make smaller stacktraces in case we are
+                            // a python binding.
+                            if name.as_bytes() == b"ffi_call" {
+                                done = true;
+                            }
+                        } else {
+                            write!(&mut out, "<unknown>").ok();
+                        }
+
+                        if let Some(file) = symbol.filename() {
+                            if let Some(filename) = file.file_name() {
+                                write!(&mut out, " ({}:{})", filename.to_string_lossy(),
+                                       symbol.lineno().unwrap_or(0)).ok();
+                            }
+                        }
+                    }
+                }
+            }
+            SymbolicStr::from_string(out)
+        } else {
+            Default::default()
+        }
+    })
+}
+
 /// Clears the last error.
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_err_clear() {
     LAST_ERROR.with(|e| {
+        *e.borrow_mut() = None;
+    });
+    LAST_PANIC.with(|e| {
         *e.borrow_mut() = None;
     });
 }

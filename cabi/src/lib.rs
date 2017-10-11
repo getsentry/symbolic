@@ -4,6 +4,7 @@ extern crate symbolic_demangle;
 extern crate symbolic_debuginfo;
 extern crate symbolic_symcache;
 extern crate uuid;
+extern crate backtrace;
 
 #[macro_use] mod utils;
 

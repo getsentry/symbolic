@@ -173,6 +173,11 @@ SymbolicErrorCode symbolic_err_get_last_code();
 SymbolicStr symbolic_err_get_last_message();
 
 /*
+ * Returns the panic information as string.
+ */
+SymbolicStr symbolic_err_get_panic_info();
+
+/*
  * Frees the given fat object.
  */
 void symbolic_fatobject_free(SymbolicFatObject *sfo);
@@ -196,6 +201,11 @@ SymbolicFatObject *symbolic_fatobject_open(const char *path);
  * Return the best instruction for an isntruction info
  */
 uint64_t symbolic_find_best_instruction(const SymbolicInstructionInfo *ii);
+
+/*
+ * Initializes the library
+ */
+void symbolic_init();
 
 /*
  * Frees a lookup result.

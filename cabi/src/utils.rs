@@ -1,11 +1,15 @@
 use std::mem;
 use std::panic;
+use std::thread;
 use std::cell::RefCell;
 
 use symbolic_common::{ErrorKind, Error, Result};
 
+use backtrace::Backtrace;
+
 thread_local! {
     pub static LAST_ERROR: RefCell<Option<Error>> = RefCell::new(None);
+    pub static LAST_PANIC: RefCell<Option<(String, Backtrace)>> = RefCell::new(None);
 }
 
 
@@ -13,6 +17,39 @@ fn notify_err(err: Error) {
     LAST_ERROR.with(|e| {
         *e.borrow_mut() = Some(err);
     });
+}
+
+pub unsafe fn set_panic_hook() {
+    panic::set_hook(Box::new(|info| {
+        let backtrace = Backtrace::new();
+        let thread = thread::current();
+        let thread = thread.name().unwrap_or("unnamed");
+
+        let msg = match info.payload().downcast_ref::<&str>() {
+            Some(s) => *s,
+            None => {
+                match info.payload().downcast_ref::<String>() {
+                    Some(s) => &**s,
+                    None => "Box<Any>",
+                }
+            }
+        };
+
+        let panic_info = match info.location() {
+            Some(location) => {
+                format!("thread '{}' panicked with '{}' at {}:{}",
+                                     thread, msg, location.file(),
+                                     location.line())
+            }
+            None => {
+                format!("thread '{}' panicked with '{}'", thread, msg)
+            }
+        };
+
+        LAST_PANIC.with(|e| {
+            *e.borrow_mut() = Some((panic_info, backtrace));
+        });
+    }));
 }
 
 pub unsafe fn landingpad<F: FnOnce() -> Result<T> + panic::UnwindSafe, T>(

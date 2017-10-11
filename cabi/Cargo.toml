@@ -14,7 +14,8 @@ debug = true
 lto = true
 
 [dependencies]
-uuid = "0.5"
+uuid = "0"
+backtrace = "0"
 symbolic-common = { path = "../common", features = ["with_dwarf", "with_objects"] }
 symbolic-demangle = { path = "../demangle" }
 symbolic-debuginfo = { path = "../debuginfo" }
