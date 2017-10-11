@@ -41,6 +41,7 @@ esac
 echo "Current version: $VERSION"
 echo "Bumping version: $TARGET"
 
+find . -name Cargo.lock -type f -exec rm {} \;
 find . -name Cargo.toml -type f -exec sed -i '' -e "s/^version.*/version = \"$TARGET\"/" {} \;
 git commit -a -m "release: $TARGET"
 git tag "$TARGET"
