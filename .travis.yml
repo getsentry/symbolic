@@ -14,6 +14,11 @@ rust:
 git:
   depth: 1
 
+before_script:
+  - sudo easy_install virtualenv
+  - virtualenv ~/virtualenv
+  - source ~/virtualenv/bin/activate
+
 script: make
 
 matrix:
@@ -22,10 +27,6 @@ matrix:
 
   include:
     - stage: deploy
-      before_script:
-        - sudo easy_install virtualenv
-        - virtualenv ~/virtualenv
-        - source ~/virtualenv/bin/activate
       script: make wheel
       env: DEPLOY=1 PY_DIST=mac-wheel
       osx_image: xcode6.4
