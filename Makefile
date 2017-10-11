@@ -5,7 +5,8 @@ build:
 
 test: build
 	@cargo test --all
-	pip install -v --editable py && pytest -v py
+	@pip install pytest > /dev/null
+	@pip install -v --editable py && pytest -v py
 
 wheel:
 	cd py && python setup.py bdist_wheel
