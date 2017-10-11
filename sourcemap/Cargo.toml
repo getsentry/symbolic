@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-sourcemap"
-version = "0.9.4"
+version = "0.9.5"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
 [dependencies.symbolic-common]
