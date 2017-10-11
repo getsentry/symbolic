@@ -22,4 +22,4 @@ symbolic-debuginfo = { path = "../debuginfo" }
 symbolic-symcache = { path = "../symcache" }
 
 [replace]
-"goblin:0.0.11" = { git = "https://github.com/mitsuhiko/goblin", rev = "b771f298d8b24b79d947ef5c140d169b72b41eb8" }
+"goblin:0.0.11" = { git = "https://github.com/m4b/goblin", rev = "d40a1a217cd0fd23d01d3928612743100ad33561" }
