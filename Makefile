@@ -1,10 +1,14 @@
-all: build test
+all: test
 
 build:
 	@cargo build --all
 
-test: build
+test: cargotest pytest
+
+cargotest:
 	@cargo test --all
+
+pytest:
 	@pip install pytest > /dev/null
 	@pip install -v --editable py && pytest -v py
 
