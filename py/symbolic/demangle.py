@@ -11,4 +11,4 @@ def demangle_symbol(symbol, no_args=False):
         func = lib.symbolic_demangle_no_args
     else:
         func = lib.symbolic_demangle
-    return decode_str(rustcall(func, encode_str(symbol)))
+    return decode_str(rustcall(func, encode_str(symbol)), free=True)
