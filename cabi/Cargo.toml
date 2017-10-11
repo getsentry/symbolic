@@ -9,6 +9,10 @@ crate-type = ["cdylib"]
 
 [workspace]
 
+[profile.release]
+debug = true
+lto = true
+
 [dependencies]
 uuid = "0"
 
