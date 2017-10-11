@@ -1,6 +1,6 @@
 [package]
 name = "symbolic"
-version = "0.9.2"
+version = "0.9.3"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
 [workspace]
