@@ -354,7 +354,7 @@ impl<'a> FatObject<'a> {
                         let arch = arch?;
                         Ok(Some(Object {
                             fat_bytes: self.as_bytes(),
-                            arch: Arch::from_mach(arch.cputype as u32, arch.cpusubtype as u32)?,
+                            arch: Arch::from_mach(arch.cputype(), arch.cpusubtype())?,
                             target: ObjectTarget::MachOFat(arch, fat.get(idx)?),
                         }))
                     } else {
@@ -366,8 +366,8 @@ impl<'a> FatObject<'a> {
                         Ok(Some(Object {
                             fat_bytes: self.as_bytes(),
                             arch: Arch::from_mach(
-                                macho.header.cputype as u32,
-                                macho.header.cpusubtype as u32,
+                                macho.header.cputype(),
+                                macho.header.cpusubtype(),
                             )?,
                             target: ObjectTarget::MachOSingle(macho),
                         }))

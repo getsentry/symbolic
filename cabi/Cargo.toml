@@ -30,4 +30,4 @@ path = "../debuginfo"
 path = "../symcache"
 
 [replace]
-"goblin:0.0.11" = { git = "https://github.com/m4b/goblin", rev = "2675fd5d3bbafec360a6ddaa208a6f1643e429cd" }
+"goblin:0.0.11" = { git = "https://github.com/mitsuhiko/goblin", rev = "c4fd7a6a8abbf422166748d1a5321be720542c51" }

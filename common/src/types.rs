@@ -88,8 +88,8 @@ impl Arch {
     /// Constructs an architecture from mach CPU types
     #[cfg(feature = "with_objects")]
     pub fn from_mach(cputype: u32, cpusubtype: u32) -> Result<Arch> {
-        use mach_object::*;
-        Ok(match (cputype as i32, cpusubtype as i32) {
+        use goblin::mach::constants::cputype::*;
+        Ok(match (cputype, cpusubtype) {
             (CPU_TYPE_I386, CPU_SUBTYPE_I386_ALL) => Arch::X86,
             (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_ALL) => Arch::X86_64,
             (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H) => Arch::X86_64h,
@@ -113,7 +113,7 @@ impl Arch {
     /// Returns the macho arch for this arch.
     #[cfg(feature = "with_objects")]
     pub fn to_mach(&self) -> Result<(u32, u32)> {
-        use mach_object::*;
+        use goblin::mach::constants::cputype::*;
         let rv = match *self {
             Arch::X86 => (CPU_TYPE_I386, CPU_SUBTYPE_I386_ALL),
             Arch::X86_64 => (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_ALL),

@@ -13,8 +13,6 @@ extern crate goblin;
 #[cfg(feature = "with_objects")]
 extern crate scroll;
 extern crate memmap;
-#[cfg(feature = "with_objects")]
-extern crate mach_object;
 extern crate owning_ref;
 
 mod macros;
