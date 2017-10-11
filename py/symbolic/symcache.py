@@ -38,6 +38,8 @@ class Symbol(object):
     @property
     def abs_path(self):
         """Returns the absolute path."""
+        if self.filename is None:
+            return None
         if self.base_dir is None:
             return self.filename
         return common_path_join(self.base_dir, self.filename)
@@ -45,6 +47,8 @@ class Symbol(object):
     @property
     def rel_path(self):
         """Returns the relative path to the comp dir."""
+        if self.filename is None:
+            return None
         if self.comp_dir is None:
             return self.filename
         return strip_common_path_prefix(self.abs_path, self.comp_dir)
