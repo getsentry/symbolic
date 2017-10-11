@@ -82,6 +82,8 @@ def rustcall(func, *args):
 
 def decode_str(s):
     """Decodes a SymbolicStr"""
+    if s.len == 0:
+        return u''
     return ffi.unpack(s.data, s.len).decode('utf-8')
 
 
