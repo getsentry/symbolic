@@ -23,8 +23,8 @@ def arch_is_known(value):
 def arch_from_macho(cputype, cpusubtype):
     """Converts a macho arch tuple into an arch string."""
     arch = ffi.new('SymbolicMachoArch *')
-    arch[0].cputype = cputype
-    arch[0].cpusubtype = cpusubtype
+    arch[0].cputype = cputype & 0xffffffff
+    arch[0].cpusubtype = cpusubtype & 0xffffffff
     try:
         return str(decode_str(rustcall(lib.symbolic_arch_from_macho, arch)))
     except ignore_arch_exc:
