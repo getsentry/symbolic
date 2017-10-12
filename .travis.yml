@@ -21,18 +21,18 @@ matrix:
   include:
     - stage: deploy
       script: make wheel
-      env: DEPLOY=1 PY_DIST=mac-wheel
+      env: DEPLOY=mac-wheel
       osx_image: xcode6.4
       os: osx
 
     - script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_x86_64
-      env: DEPLOY=1 PY_DIST=linux-x86-wheel
+      env: DEPLOY=linux-x86-wheel
       sudo: required
       services:
         - docker
 
     - script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_i686
-      env: DEPLOY=1 PY_DIST=linux-x86_64-wheel
+      env: DEPLOY=linux-x86_64-wheel
       sudo: required
       services:
         - docker
@@ -49,4 +49,4 @@ deploy:
   acl: public_read
   on:
     all_branches: true
-    condition: $DEPLOY = 1
+    condition: -n "$DEPLOY"
