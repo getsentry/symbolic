@@ -15,6 +15,7 @@ before_script:
   - source ~/virtualenv/bin/activate
 
 script: make
+if: tag IS blank
 
 matrix:
   allow_failures:
