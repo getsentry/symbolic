@@ -16,7 +16,7 @@ use cache::SYMCACHE_MAGIC;
 
 use fallible_iterator::FallibleIterator;
 use lru_cache::LruCache;
-use fnv::{FnvHashSet, FnvHashMap};
+use fnv::{FnvHashSet, FnvHashMap, FnvBuildHasher};
 use num;
 use dmsort;
 use gimli;
@@ -153,7 +153,7 @@ struct DwarfInfo<'input> {
     pub debug_line: DebugLine<Buf<'input>>,
     pub debug_str: DebugStr<Buf<'input>>,
     pub vmaddr: u64,
-    abbrev_cache: RefCell<LruCache<DebugAbbrevOffset<usize>, Arc<Abbreviations>>>,
+    abbrev_cache: RefCell<LruCache<DebugAbbrevOffset<usize>, Arc<Abbreviations>, FnvBuildHasher>>,
 }
 
 impl<'input> DwarfInfo<'input> {
@@ -181,10 +181,12 @@ impl<'input> DwarfInfo<'input> {
             debug_ranges: section!(DebugRanges, false),
             debug_str: section!(DebugStr, false),
             vmaddr: obj.vmaddr()?,
-            abbrev_cache: RefCell::new(LruCache::new(30)),
+            abbrev_cache: RefCell::new(
+                LruCache::with_hasher(30, Default::default())),
         })
     }
 
+    #[inline(always)]
     pub fn get_unit_header(&self, index: usize)
         -> Result<&CompilationUnitHeader<Buf<'input>>>
     {
@@ -424,6 +426,7 @@ impl<W: Write> SymCacheWriter<W> {
         let mut last_addr = !0;
         let mut addrs = FnvHashSet::default();
         let mut local_cache = FnvHashMap::default();
+        let mut funcs = vec![];
 
         for index in 0..info.units.len() {
             // attempt to parse a single unit from the given header.
@@ -436,12 +439,15 @@ impl<W: Write> SymCacheWriter<W> {
                 None => continue,
             };
 
+            // clear our function local caches and infos
             let addrs_inner = &mut addrs;
             let local_cache_inner = &mut local_cache;
             addrs_inner.clear();
             local_cache_inner.clear();
+            funcs.clear();
 
-            for func in unit.get_functions(&info, &mut range_buf, symbols)? {
+            unit.get_functions(&info, &mut range_buf, symbols, &mut funcs)?;
+            for func in &funcs {
                 // dedup instructions from inline functions
                 if let &mut Some(ref mut symbol_iter) = &mut symbol_iter {
                     self.write_missing_functions_from_symboltable(
@@ -651,8 +657,9 @@ impl<'input> Unit<'input> {
 
     fn get_functions(&self, info: &DwarfInfo<'input>,
                      range_buf: &mut Vec<Range>,
-                     symbols: Option<&'input Symbols<'input>>)
-        -> Result<Vec<Function<'input>>>
+                     symbols: Option<&'input Symbols<'input>>,
+                     funcs: &mut Vec<Function<'input>>)
+        -> Result<()>
     {
         let mut depth = 0;
         let header = info.get_unit_header(self.index)?;
@@ -666,7 +673,6 @@ impl<'input> Unit<'input> {
             self.comp_dir,
             self.comp_name,
         )?;
-        let mut funcs: Vec<Function> = vec![];
 
         while let Some((movement, entry)) = entries
             .next_dfs()
@@ -752,9 +758,9 @@ impl<'input> Unit<'input> {
 
         // we definitely have to sort this here.  Functions unfortunately do not
         // appear sorted in dwarf files.
-        dmsort::sort_by_key(&mut funcs, |x| x.addr);
+        dmsort::sort_by_key(funcs, |x| x.addr);
 
-        Ok(funcs)
+        Ok(())
     }
 
     fn parse_ranges<'a>(&self, info: &DwarfInfo<'input>, entry: &Die,
