@@ -6,11 +6,6 @@ os:
   - linux
   - osx
 
-rust:
-  - stable
-  - beta
-  - nightly
-
 git:
   depth: 1
 
