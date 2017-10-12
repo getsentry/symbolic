@@ -96,7 +96,7 @@ def encode_str(s):
     rv = ffi.new('SymbolicStr *')
     if isinstance(s, text_type):
         s = s.encode('utf-8')
-    rv[0].data = ffi.from_buffer(s)
+    rv[0].data = ffi.new('char[]', s)
     rv[0].len = len(s)
     return rv
 
