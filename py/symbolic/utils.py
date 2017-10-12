@@ -90,6 +90,7 @@ def decode_str(s, free=False):
         if free:
             lib.symbolic_str_free(ffi.addressof(s))
 
+
 def encode_str(s):
     """Encodes a SymbolicStr"""
     rv = ffi.new('SymbolicStr *')
