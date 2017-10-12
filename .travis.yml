@@ -18,9 +18,6 @@ script: make
 if: tag IS blank
 
 matrix:
-  allow_failures:
-    - rust: nightly
-
   include:
     - stage: deploy
       script: make wheel
