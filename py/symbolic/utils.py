@@ -1,5 +1,6 @@
 import uuid
 import ntpath
+import weakref
 import posixpath
 from symbolic._lowlevel import ffi, lib
 from symbolic._compat import text_type, NUL
@@ -7,6 +8,9 @@ from symbolic.exceptions import exceptions_by_code, SymbolicError
 
 
 __all__ = ['common_path_join', 'strip_common_path_prefix']
+
+
+attached_refs = weakref.WeakKeyDictionary()
 
 
 def _is_win_path(x):
@@ -96,8 +100,11 @@ def encode_str(s):
     rv = ffi.new('SymbolicStr *')
     if isinstance(s, text_type):
         s = s.encode('utf-8')
-    rv[0].data = ffi.new('char[]', s)
-    rv[0].len = len(s)
+    rv.data = ffi.from_buffer(s)
+    rv.len = len(s)
+    # we have to hold a weak reference here to ensure our string does not
+    # get collected before the string is used.
+    attached_refs[rv] = s
     return rv
 
 

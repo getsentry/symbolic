@@ -4,7 +4,7 @@ from weakref import WeakValueDictionary
 from symbolic._compat import itervalues
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
-    make_uuid
+    make_uuid, attached_refs
 from symbolic.common import parse_addr, arch_is_known, arch_from_macho
 from symbolic.symcache import SymCache
 
@@ -57,7 +57,7 @@ class FatObject(RustObject):
         rv = cache[idx] = Object._from_objptr(ptr)
         # Hold a reference here so that we don't crash if the fat object
         # is not held otherwise
-        rv.__fatobject = self
+        attached_refs[rv] = self
         return rv
 
 
