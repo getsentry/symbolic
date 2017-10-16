@@ -1,12 +1,50 @@
 import os
+import posixpath
 from symbolic import SourceView, SourceMapView
 
 
-def test_basics(res_path):
-    with open(os.path.join(res_path, 'demo.min.js'), 'rb') as f:
-        minified_source = SourceView.from_bytes(f.read())
-    with open(os.path.join(res_path, 'demo.js.map'), 'rb') as f:
-        sourcemap = SourceMapView.from_json_bytes(f.read())
+def verify_index(index, sources):
+    def get_source_line(token):
+        return sources[posixpath.basename(token.src)][token.src_line]
+
+    for token in index:
+        # Ignore tokens that are None.
+        # There's no simple way to verify they're correct
+        if token.name is None:
+            continue
+        source_line = get_source_line(token)
+        start = token.src_col
+        end = start + len(token.name)
+        substring = source_line[start:end]
+
+        # jQuery's sourcemap has a few tokens that are identified
+        # incorrectly.
+        # For example, they have a token for 'embed', and
+        # it maps to '"embe', which is wrong. This only happened
+        # for a few strings, so we ignore
+        if substring[:1] == '"':
+            continue
+
+        assert token.name == substring
+
+
+def verify_token_search(index):
+    for idx, token in enumerate(index):
+        if not token.name:
+            continue
+        try:
+            next_token = index[idx + 1]
+            rng = range(token.dst_col, next_token.dst_col)
+        except LookupError:
+            rng = (token.dst_col,)
+        for col in rng:
+            token_match = index.lookup(token.dst_line, col)
+            assert token_match == token
+
+
+def test_basics(get_sourceview, get_sourcemapview):
+    minified_source = get_sourceview('demo.min.js')
+    sourcemap = get_sourcemapview('demo.js.map')
 
     locs = [
         (0, 107, "e", "onFailure", 11, 10),
@@ -34,3 +72,62 @@ def test_basics(res_path):
     assert sv[0] == u'var makeAFailure = (function() {'
     assert sv[1] == u'  function testingStuff() {'
     assert len(sv) == 31
+
+
+def test_load_index(get_sourceview, get_sourcemapview):
+    view = get_sourcemapview('indexed.sourcemap.js')
+    f1 = get_sourceview('file1.js')
+    f2 = get_sourceview('file2.js')
+    verify_index(view, {
+        'file1.js': f1,
+        'file2.js': f2,
+    })
+    verify_token_search(view)
+
+
+def test_jquery(get_sourceview, get_sourcemapview):
+    source = get_sourceview('jquery.js')
+    index = get_sourcemapview('jquery.min.map')
+    verify_index(index, {
+        'jquery.js': source
+    })
+
+
+def test_coolstuff(get_sourceview, get_sourcemapview):
+    source = get_sourceview('coolstuff.js')
+    index = get_sourcemapview('coolstuff.min.map')
+    verify_index(index, {
+        'coolstuff.js': source
+    })
+
+
+def test_unicode_names(get_sourceview, get_sourcemapview):
+    source = get_sourceview('unicode.js')
+    index = get_sourcemapview('unicode.min.map')
+    verify_index(index, {
+        'unicode.js': source
+    })
+
+
+def test_react_dom(get_sourceview, get_sourcemapview):
+    source = get_sourceview('react-dom.js')
+    index = get_sourcemapview('react-dom.min.map')
+    verify_index(index, {
+        'react-dom.js': source
+    })
+
+    react_token = index.lookup(0, 319)
+    assert react_token.dst_line == 0
+    assert react_token.dst_col == 319
+    assert react_token.src_line == 39
+    assert react_token.src_col == 12
+    assert react_token.src_id == 0
+    assert react_token.src == 'react-dom.js'
+    assert react_token.name == 'React'
+    verify_token_search(index)
+
+
+def test_source_access(get_sourcemapview):
+    index = get_sourcemapview('react-dom-full.min.map')
+    assert index.get_sourceview(0) is not None
+    assert index.get_sourceview(1) is None

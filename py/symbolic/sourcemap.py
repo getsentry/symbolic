@@ -24,6 +24,14 @@ class TokenMatch(object):
         rv.function_name = decode_str(tm.function_name) or None
         return rv
 
+    def __eq__(self, other):
+        if self.__class__ is not other.__class__:
+            return False
+        return self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     def __repr__(self):
         return '<TokenMatch %s:%d>' % (
             self.src,
@@ -86,9 +94,8 @@ class SourceMapView(RustObject):
 
     def get_sourceview(self, idx):
         rv = self._methodcall(lib.symbolic_sourcemapview_get_sourceview, idx)
-        if rv == ffi.NULL:
-            raise LookupError('No source with such ID')
-        return SourceView._from_objptr(rv, shared=True)
+        if rv != ffi.NULL:
+            return SourceView._from_objptr(rv, shared=True)
 
     def __len__(self):
         return self._methodcall(lib.symbolic_sourcemapview_get_tokens)
@@ -101,3 +108,7 @@ class SourceMapView(RustObject):
             return TokenMatch._from_objptr(rv)
         finally:
             rustcall(lib.symbolic_token_match_free, rv)
+
+    def __iter__(self):
+        for x in range_type(len(self)):
+            yield self[x]
