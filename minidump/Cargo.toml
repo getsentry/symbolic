@@ -4,7 +4,6 @@ version = "0.9.8"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
 [dependencies]
-breakpad = "0.1"
 gimli = { git = "https://github.com/gimli-rs/gimli.git" }
 goblin = "0.0"
 
