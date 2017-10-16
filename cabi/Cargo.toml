@@ -16,7 +16,7 @@ lto = true
 [dependencies]
 uuid = "0"
 backtrace = "0"
-symbolic-common = { path = "../common", features = ["with_dwarf", "with_objects"] }
+symbolic-common = { path = "../common", features = ["with_dwarf", "with_objects", "with_sourcemaps"] }
 symbolic-demangle = { path = "../demangle" }
 symbolic-debuginfo = { path = "../debuginfo" }
 symbolic-symcache = { path = "../symcache" }
