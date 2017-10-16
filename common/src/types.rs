@@ -54,6 +54,7 @@ pub enum Arch {
     X86,
     X86_64,
     X86_64h,
+    Arm,
     ArmV5,
     ArmV6,
     ArmV6m,
@@ -95,6 +96,7 @@ impl Arch {
             (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H) => Arch::X86_64h,
             (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_ALL) => Arch::Arm64,
             (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_V8) => Arch::Arm64V8,
+            (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_ALL) => Arch::Arm,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V5TEJ) => Arch::ArmV5,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V6) => Arch::ArmV6,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V6M) => Arch::ArmV6m,
@@ -120,6 +122,7 @@ impl Arch {
             Arch::X86_64h => (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H),
             Arch::Arm64 => (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_ALL),
             Arch::Arm64V8 => (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_V8),
+            Arch::Arm => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_ALL),
             Arch::ArmV5 => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V5TEJ),
             Arch::ArmV6 => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V6),
             Arch::ArmV6m => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V6M),
@@ -143,8 +146,16 @@ impl Arch {
         Ok(match machine {
             EM_386 => Arch::X86,
             EM_X86_64 => Arch::X86_64,
-            // FIXME: This is incorrect! ARM information is located in the .ARM.attributes section
-            EM_ARM => Arch::ArmV7,
+            EM_AARCH64 => Arch::Arm64,
+            // NOTE: This could actually be any of the other 32bit ARMs. Since we don't need this
+            // information, we use the generic Arch::Arm. By reading CPU_arch and FP_arch attributes
+            // from the SHT_ARM_ATTRIBUTES section it would be possible to distinguish the ARM arch
+            // version and infer hard/soft FP.
+            //
+            // For more information, see:
+            // http://code.metager.de/source/xref/gnu/src/binutils/readelf.c#11282
+            // https://stackoverflow.com/a/20556156/4228225
+            EM_ARM => Arch::Arm,
             _ => return Err(ErrorKind::Parse("unknown architecture").into()),
         })
     }
@@ -160,6 +171,7 @@ impl Arch {
             "x86_64h" => X86_64h,
             "arm64" => Arm64,
             "arm64v8" => Arm64V8,
+            "arm" => Arm,
             "armv5" => ArmV5,
             "armv6" => ArmV6,
             "armv6m" => ArmV6m,
@@ -183,7 +195,7 @@ impl Arch {
             X86 => CpuFamily::Intel32,
             X86_64 | X86_64h => CpuFamily::Intel64,
             Arm64 | Arm64V8 => CpuFamily::Arm64,
-            ArmV5 | ArmV6 | ArmV6m | ArmV7 | ArmV7f | ArmV7s | ArmV7k |
+            Arm | ArmV5 | ArmV6 | ArmV6m | ArmV7 | ArmV7f | ArmV7s | ArmV7k |
                 ArmV7m | ArmV7em => CpuFamily::Arm32,
         }
     }
@@ -194,7 +206,7 @@ impl Arch {
         match *self {
             Unknown | __Max => None,
             X86_64 | X86_64h | Arm64 | Arm64V8 => Some(8),
-            X86 | ArmV5 | ArmV6 | ArmV6m | ArmV7 | ArmV7f | ArmV7s | ArmV7k |
+            X86 | Arm | ArmV5 | ArmV6 | ArmV6m | ArmV7 | ArmV7f | ArmV7s | ArmV7k |
                 ArmV7m | ArmV7em => Some(4),
         }
     }
@@ -209,6 +221,7 @@ impl Arch {
             X86_64h => "x86_64h",
             Arm64 => "arm64",
             Arm64V8 => "arm64V8",
+            Arm => "arm",
             ArmV5 => "armv5",
             ArmV6 => "armv6",
             ArmV6m => "armv6m",
