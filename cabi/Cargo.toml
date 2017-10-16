@@ -20,6 +20,7 @@ symbolic-common = { path = "../common", features = ["with_dwarf", "with_objects"
 symbolic-demangle = { path = "../demangle" }
 symbolic-debuginfo = { path = "../debuginfo" }
 symbolic-symcache = { path = "../symcache" }
+symbolic-sourcemap = { path = "../sourcemap" }
 
 [replace]
 "goblin:0.0.11" = { git = "https://github.com/m4b/goblin", rev = "d40a1a217cd0fd23d01d3928612743100ad33561" }

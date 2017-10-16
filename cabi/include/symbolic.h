@@ -26,6 +26,9 @@ enum SymbolicErrorCode {
   SYMBOLIC_ERROR_CODE_MISSING_SECTION = 1005,
   SYMBOLIC_ERROR_CODE_BAD_DWARF_DATA = 1006,
   SYMBOLIC_ERROR_CODE_MISSING_DEBUG_INFO = 1007,
+  SYMBOLIC_ERROR_CODE_BAD_JSON = 1008,
+  SYMBOLIC_ERROR_CODE_BAD_SOURCEMAP = 1009,
+  SYMBOLIC_ERROR_CODE_CANNOT_FLATTEN_SOURCEMAP = 1010,
   SYMBOLIC_ERROR_CODE_IO = 10001,
   SYMBOLIC_ERROR_CODE_UTF8_ERROR = 10002,
 };
@@ -42,6 +45,18 @@ typedef struct SymbolicFatObject SymbolicFatObject;
  */
 struct SymbolicObject;
 typedef struct SymbolicObject SymbolicObject;
+
+/*
+ * Represents a sourcemap view
+ */
+struct SymbolicSourceMapView;
+typedef struct SymbolicSourceMapView SymbolicSourceMapView;
+
+/*
+ * Represents a source view
+ */
+struct SymbolicSourceView;
+typedef struct SymbolicSourceView SymbolicSourceView;
 
 /*
  * Represents a symbolic sym cache.
@@ -116,6 +131,19 @@ typedef struct {
 typedef struct {
   uint8_t data[16];
 } SymbolicUuid;
+
+/*
+ * Represents a single token after lookup.
+ */
+typedef struct {
+  uint32_t src_line;
+  uint32_t src_col;
+  uint32_t dst_line;
+  uint32_t dst_col;
+  SymbolicStr name;
+  SymbolicStr src;
+  SymbolicStr function_name;
+} SymbolicTokenMatch;
 
 /*
  * Checks if an architecture is known.
@@ -233,6 +261,59 @@ SymbolicStr symbolic_object_get_kind(const SymbolicObject *so);
 SymbolicUuid symbolic_object_get_uuid(const SymbolicObject *so);
 
 /*
+ * Frees a source map view
+ */
+void symbolic_sourcemapview_free(const SymbolicSourceMapView *smv);
+
+/*
+ * Loads a sourcemap from a JSON byte slice.
+ */
+SymbolicSourceMapView *symbolic_sourcemapview_from_json_slice(const char *data, size_t len);
+
+/*
+ * Looks up a token.
+ */
+SymbolicTokenMatch *symbolic_sourcemapview_lookup_token(const SymbolicSourceMapView *ssm,
+                                                        uint32_t line,
+                                                        uint32_t col);
+
+/*
+ * Looks up a token.
+ */
+SymbolicTokenMatch *symbolic_sourcemapview_lookup_token_with_function_name(const SymbolicSourceMapView *ssm,
+                                                                           uint32_t line,
+                                                                           uint32_t col,
+                                                                           const SymbolicStr *minified_name,
+                                                                           const SymbolicSourceView *ssv);
+
+/*
+ * Returns the underlying source (borrowed).
+ */
+SymbolicStr symbolic_sourceview_as_str(const SymbolicSourceView *ssv);
+
+/*
+ * Frees a source view.
+ */
+void symbolic_sourceview_free(SymbolicSourceView *ssv);
+
+/*
+ * Creates a source view from a given path.
+ * 
+ * This shares the underlying memory and does not copy it.
+ */
+SymbolicSourceView *symbolic_sourceview_from_bytes(const char *bytes, size_t len);
+
+/*
+ * Returns a specific line.
+ */
+SymbolicStr symbolic_sourceview_get_line(const SymbolicSourceView *ssv, uint32_t idx);
+
+/*
+ * Returns the number of lines.
+ */
+uint32_t symbolic_sourceview_get_line_count(const SymbolicSourceView *ssv);
+
+/*
  * Frees a symbolic str.
  * 
  * If the string is marked as not owned then this function does not
@@ -315,6 +396,11 @@ uint32_t symbolic_symcache_latest_file_format_version();
  * Looks up a single symbol.
  */
 SymbolicLookupResult symbolic_symcache_lookup(const SymbolicSymCache *scache, uint64_t addr);
+
+/*
+ * Free a token match
+ */
+void symbolic_token_match_free(SymbolicTokenMatch *stm);
 
 /*
  * Returns true if the uuid is nil

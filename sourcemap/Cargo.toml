@@ -5,4 +5,4 @@ authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
 [dependencies]
 symbolic-common = { path = "../common", features = ["with_sourcemaps"] }
-sourcemap = "1.2.0"
+sourcemap = "2.0.0"

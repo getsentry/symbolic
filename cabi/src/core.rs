@@ -91,6 +91,9 @@ pub enum SymbolicErrorCode {
     MissingSection = 1005,
     BadDwarfData = 1006,
     MissingDebugInfo = 1007,
+    BadJson = 1008,
+    BadSourcemap = 1009,
+    CannotFlattenSourcemap = 1010,
     Io = 10001,
     Utf8Error = 10002,
 }
@@ -111,6 +114,9 @@ impl SymbolicErrorCode {
             ErrorKind::MissingSection(..) => SymbolicErrorCode::MissingSection,
             ErrorKind::BadDwarfData(..) => SymbolicErrorCode::BadDwarfData,
             ErrorKind::MissingDebugInfo(..) => SymbolicErrorCode::MissingDebugInfo,
+            ErrorKind::BadJson(..) => SymbolicErrorCode::BadJson,
+            ErrorKind::BadSourcemap(..) => SymbolicErrorCode::BadSourcemap,
+            ErrorKind::CannotFlattenSourcemap(..) => SymbolicErrorCode::CannotFlattenSourcemap,
             ErrorKind::Io(..) => SymbolicErrorCode::Io,
             ErrorKind::Utf8Error(..) => SymbolicErrorCode::Utf8Error,
             // we don't use _ here but the hidden field on error kind so that

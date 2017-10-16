@@ -54,7 +54,7 @@ impl SourceMapView {
     /// If the sourcemap is an index it is being flattened.  If flattening
     /// is not possible then an error is raised.
     pub fn from_json_slice(buffer: &[u8]) -> Result<SourceMapView> {
-        Ok(SourceMap {
+        Ok(SourceMapView {
             sm: match sourcemap::decode_slice(buffer)? {
                 sourcemap::DecodedMap::Regular(sm) => sm,
                 sourcemap::DecodedMap::Index(smi) => smi.flatten()?,
