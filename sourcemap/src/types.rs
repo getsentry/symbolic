@@ -1,3 +1,5 @@
+use std::mem;
+
 use sourcemap;
 
 use symbolic_common::Result;
@@ -19,6 +21,7 @@ pub struct TokenMatch<'a> {
     pub src_col: u32,
     pub dst_line: u32,
     pub dst_col: u32,
+    pub src_id: u32,
     pub name: Option<&'a str>,
     pub src: Option<&'a str>,
     pub function_name: Option<String>,
@@ -38,7 +41,7 @@ impl<'a> SourceView<'a> {
     }
 
     /// Returns a specific line.
-    pub fn get_line(&self, idx: u32) -> Option<&'a str> {
+    pub fn get_line(&self, idx: u32) -> Option<&str> {
         self.sv.get_line(idx)
     }
 
@@ -69,6 +72,11 @@ impl SourceMapView {
         })
     }
 
+    /// Returns a source view for the given source.
+    pub fn get_source_view<'a>(&'a self, idx: u32) -> Option<&'a SourceView<'a>> {
+        self.sm.get_source_view(idx).map(|x| unsafe { mem::transmute(x) })
+    }
+
     /// Looks up a token and the original function name.
     ///
     /// This is similar to `lookup_token` but if a minified function name and
@@ -95,6 +103,7 @@ impl SourceMapView {
             src_col: tok.get_src_col(),
             dst_line: tok.get_dst_line(),
             dst_col: tok.get_dst_col(),
+            src_id: tok.get_src_id(),
             name: tok.get_name(),
             src: tok.get_source(),
             function_name: None,

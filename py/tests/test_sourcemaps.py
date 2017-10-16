@@ -27,3 +27,10 @@ def test_basics(res_path):
         assert tok.src_line == src_line
         assert tok.src_col == src_col
         assert tok.function_name is None
+
+    sv = sourcemap.get_sourceview(0)
+    assert sv is not None
+    assert sv._shared
+    assert sv[0] == u'var makeAFailure = (function() {'
+    assert sv[1] == u'  function testingStuff() {'
+    assert len(sv) == 31

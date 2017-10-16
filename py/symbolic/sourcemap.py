@@ -18,6 +18,7 @@ class TokenMatch(object):
         rv.src_col = tm.src_col
         rv.dst_line = tm.dst_line
         rv.dst_col = tm.dst_col
+        rv.src_id = tm.src_id
         rv.name = decode_str(tm.name) or None
         rv.src = decode_str(tm.src) or None
         rv.function_name = decode_str(tm.function_name) or None
@@ -82,3 +83,9 @@ class SourceMapView(RustObject):
                 return TokenMatch._from_objptr(rv)
             finally:
                 rustcall(lib.symbolic_token_match_free, rv)
+
+    def get_sourceview(self, idx):
+        rv = self._methodcall(lib.symbolic_sourcemapview_get_sourceview, idx)
+        if rv == ffi.NULL:
+            raise LookupError('No source with such ID')
+        return SourceView._from_objptr(rv, shared=True)

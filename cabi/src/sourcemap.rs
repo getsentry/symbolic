@@ -22,6 +22,7 @@ pub struct SymbolicTokenMatch {
     pub src_col: u32,
     pub dst_line: u32,
     pub dst_col: u32,
+    pub src_id: u32,
     pub name: SymbolicStr,
     pub src: SymbolicStr,
     pub function_name: SymbolicStr,
@@ -113,6 +114,7 @@ fn convert_token_match(token: Option<TokenMatch>) -> Result<*mut SymbolicTokenMa
             src_col: token.src_col,
             dst_line: token.dst_line,
             dst_col: token.dst_col,
+            src_id: token.src_id,
             name: SymbolicStr::new(token.name.unwrap_or("")),
             src: SymbolicStr::new(token.src.unwrap_or("")),
             function_name: token.function_name
@@ -144,6 +146,20 @@ ffi_fn! {
         let sv = ssv as *const SourceView<'static>;
         convert_token_match((*sm).lookup_token_with_function_name(
             line, col, (*minified_name).as_str(), mem::transmute(sv)))
+    }
+}
+
+ffi_fn! {
+    /// Return the sourceview for a given source.
+    unsafe fn symbolic_sourcemapview_get_sourceview(ssm: *const SymbolicSourceMapView,
+                                                    index: u32)
+        -> Result<*const SymbolicSourceView>
+    {
+        let sm = ssm as *const SourceMapView;
+        Ok((*sm)
+           .get_source_view(index)
+           .map(|x| mem::transmute(x))
+           .unwrap_or(ptr::null()))
     }
 }
 

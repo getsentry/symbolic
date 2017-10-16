@@ -140,6 +140,7 @@ typedef struct {
   uint32_t src_col;
   uint32_t dst_line;
   uint32_t dst_col;
+  uint32_t src_id;
   SymbolicStr name;
   SymbolicStr src;
   SymbolicStr function_name;
@@ -269,6 +270,12 @@ void symbolic_sourcemapview_free(const SymbolicSourceMapView *smv);
  * Loads a sourcemap from a JSON byte slice.
  */
 SymbolicSourceMapView *symbolic_sourcemapview_from_json_slice(const char *data, size_t len);
+
+/*
+ * Return the sourceview for a given source.
+ */
+const SymbolicSourceView *symbolic_sourcemapview_get_sourceview(const SymbolicSourceMapView *ssm,
+                                                                uint32_t index);
 
 /*
  * Looks up a token.
