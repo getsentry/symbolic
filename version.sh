@@ -44,3 +44,7 @@ find . -name Cargo.lock -type f -exec rm {} \;
 find . -name Cargo.toml -type f -exec sed -i '' -e "s/^version.*/version = \"$TARGET\"/" {} \;
 git commit -a -m "release: $TARGET"
 git tag "$TARGET"
+
+echo
+echo "Updated version and tagged release $TARGET, please run:"
+echo " git push origin master $TARGET"
