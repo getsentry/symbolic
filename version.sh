@@ -2,9 +2,7 @@
 set -e
 
 if [ -z "$1" ]; then
-    echo "Usage: $0 <version | major | minor | patch>"
-    echo "Version must be a valid version in format 'x.y.z'"
-    exit 0
+    set -- "patch"
 fi
 
 if [ "$(git diff --shortstat 2> /dev/null | tail -n1)" != "" ]; then
@@ -30,7 +28,8 @@ patch)
     ;;
 *)
     if ! echo "$1" | grep -Eq '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$'; then
-        echo "ERROR: Valid version number expected!"
+        echo "Usage: $0 <version | major | minor | patch>"
+        echo "ERROR: Version must be a valid semver in format 'x.y.z'"
         exit 1
     fi
 
