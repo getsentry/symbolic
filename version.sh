@@ -18,10 +18,10 @@ PATCH=$(echo "$VERSION" | cut -d. -f3)
 
 case $1 in
 major)
-    TARGET="$(($MAJOR + 1)).$MINOR.$PATCH"
+    TARGET="$(($MAJOR + 1)).0.0"
     ;;
 minor)
-    TARGET="$MAJOR.$(($MINOR + 1)).$PATCH"
+    TARGET="$MAJOR.$(($MINOR + 1)).0"
     ;;
 patch)
     TARGET="$MAJOR.$MINOR.$(($PATCH + 1))"
