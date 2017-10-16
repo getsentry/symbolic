@@ -72,6 +72,18 @@ impl SourceMapView {
         })
     }
 
+    /// Returns a token for a specific index.
+    pub fn get_token<'a>(&'a self, idx: u32) -> Option<TokenMatch<'a>> {
+        self.sm.get_token(idx).map(|tok| {
+            self.make_token_match(tok)
+        })
+    }
+
+    /// Returns the number of tokens.
+    pub fn get_token_count(&self) -> u32 {
+        self.sm.get_token_count()
+    }
+
     /// Returns a source view for the given source.
     pub fn get_source_view<'a>(&'a self, idx: u32) -> Option<&'a SourceView<'a>> {
         self.sm.get_source_view(idx).map(|x| unsafe { mem::transmute(x) })

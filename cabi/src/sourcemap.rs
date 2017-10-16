@@ -164,6 +164,27 @@ ffi_fn! {
 }
 
 ffi_fn! {
+    /// Returns a specific token.
+    unsafe fn symbolic_sourcemapview_get_token(ssm: *const SymbolicSourceMapView,
+                                               idx: u32)
+        -> Result<*mut SymbolicTokenMatch>
+    {
+        let sm = ssm as *const SourceMapView;
+        convert_token_match((*sm).get_token(idx))
+    }
+}
+
+ffi_fn! {
+    /// Returns the number of tokens.
+    unsafe fn symbolic_sourcemapview_get_tokens(ssm: *const SymbolicSourceMapView)
+        -> Result<u32>
+    {
+        let sm = ssm as *const SourceMapView;
+        Ok((*sm).get_token_count())
+    }
+}
+
+ffi_fn! {
     /// Free a token match
     unsafe fn symbolic_token_match_free(stm: *mut SymbolicTokenMatch) {
         if !stm.is_null() {

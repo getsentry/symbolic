@@ -89,3 +89,15 @@ class SourceMapView(RustObject):
         if rv == ffi.NULL:
             raise LookupError('No source with such ID')
         return SourceView._from_objptr(rv, shared=True)
+
+    def __len__(self):
+        return self._methodcall(lib.symbolic_sourcemapview_get_tokens)
+
+    def __getitem__(self, idx):
+        rv = self._methodcall(lib.symbolic_sourcemapview_get_token, idx)
+        if rv == ffi.NULL:
+            raise LookupError('Token out of range')
+        try:
+            return TokenMatch._from_objptr(rv)
+        finally:
+            rustcall(lib.symbolic_token_match_free, rv)

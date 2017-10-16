@@ -278,6 +278,17 @@ const SymbolicSourceView *symbolic_sourcemapview_get_sourceview(const SymbolicSo
                                                                 uint32_t index);
 
 /*
+ * Returns a specific token.
+ */
+SymbolicTokenMatch *symbolic_sourcemapview_get_token(const SymbolicSourceMapView *ssm,
+                                                     uint32_t idx);
+
+/*
+ * Returns the number of tokens.
+ */
+uint32_t symbolic_sourcemapview_get_tokens(const SymbolicSourceMapView *ssm);
+
+/*
  * Looks up a token.
  */
 SymbolicTokenMatch *symbolic_sourcemapview_lookup_token(const SymbolicSourceMapView *ssm,
