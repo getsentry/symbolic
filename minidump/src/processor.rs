@@ -419,7 +419,7 @@ pub struct ProcessState<'a> {
 /// This information is required by the stackwalker in case framepointers are
 /// missing in the raw stacktraces. Frame information is given as plain ASCII
 /// text as specified in the Breakpad symbol file specification.
-pub type FrameInfoMap<'a> = BTreeMap<CodeModuleId, &'a [u8]>;
+pub type FrameInfoMap<'a> = BTreeMap<CodeModuleId, ByteView<'a>>;
 
 impl<'a> ProcessState<'a> {
     /// Processes a minidump supplied via raw binary data
