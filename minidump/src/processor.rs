@@ -3,12 +3,12 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::ffi::CString;
+use std::marker::PhantomData;
 use std::hash::{Hash, Hasher};
 use std::os::raw::{c_char, c_void};
-use std::path::Path;
 use uuid::Uuid;
 
-use symbolic_common::{ErrorKind, Result};
+use symbolic_common::{ByteView, ErrorKind, Result};
 
 use utils;
 
@@ -409,8 +409,9 @@ type IProcessState = c_void;
 /// To get source code information for `StackFrame`s, create a `Resolver` and
 /// load all `CodeModules` included in one of the frames. To get a list of all
 /// these modules use `referenced_modules`.
-pub struct ProcessState {
+pub struct ProcessState<'a> {
     internal: *mut IProcessState,
+    _ty: PhantomData<ByteView<'a>>,
 }
 
 /// Contains stack frame information for `CodeModules`
@@ -420,31 +421,17 @@ pub struct ProcessState {
 /// text as specified in the Breakpad symbol file specification.
 pub type FrameInfoMap<'a> = BTreeMap<CodeModuleId, &'a [u8]>;
 
-impl ProcessState {
-    /// Reads a minidump from the filesystem into memory and processes it
-    ///
-    /// Returns a `ProcessState` that contains information about the crashed
-    /// process. The parameter `frame_infos` expects a map of Breakpad symbols
-    /// containing STACK CFI and STACK WIN records to allow stackwalking with
-    /// omitted frame pointers.
-    pub fn from_minidump_file<P: AsRef<Path>>(
-        file_path: P,
-        frame_infos: Option<&FrameInfoMap>,
-    ) -> Result<ProcessState> {
-        let buffer = utils::read_buffer(file_path)?;
-        Self::from_minidump_buffer(buffer.as_slice(), frame_infos)
-    }
-
+impl<'a> ProcessState<'a> {
     /// Processes a minidump supplied via raw binary data
     ///
     /// Returns a `ProcessState` that contains information about the crashed
     /// process. The parameter `frame_infos` expects a map of Breakpad symbols
     /// containing STACK CFI and STACK WIN records to allow stackwalking with
     /// omitted frame pointers.
-    pub fn from_minidump_buffer(
-        buffer: &[u8],
+    pub fn from_minidump(
+        buffer: ByteView<'a>,
         frame_infos: Option<&FrameInfoMap>,
-    ) -> Result<ProcessState> {
+    ) -> Result<ProcessState<'a>> {
         let cfi_count = frame_infos.map_or(0, |s| s.len());
         let mut result: ProcessResult = ProcessResult::Ok;
 
@@ -478,7 +465,7 @@ impl ProcessState {
         };
 
         if result == ProcessResult::Ok && !internal.is_null() {
-            Ok(ProcessState { internal })
+            Ok(ProcessState { internal, _ty: PhantomData })
         } else {
             Err(ErrorKind::Stackwalk(result.to_string()).into())
         }
@@ -504,13 +491,13 @@ impl ProcessState {
     }
 }
 
-impl Drop for ProcessState {
+impl<'a> Drop for ProcessState<'a> {
     fn drop(&mut self) {
         unsafe { process_state_delete(self.internal) };
     }
 }
 
-impl fmt::Debug for ProcessState {
+impl<'a> fmt::Debug for ProcessState<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("ProcessState")
             .field("threads", &self.threads())
