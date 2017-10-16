@@ -1,0 +1,6 @@
+[submodule "minidump/third_party/breakpad"]
+	path = minidump/third_party/breakpad
+	url = https://chromium.googlesource.com/breakpad/breakpad/src
+[submodule "minidump/third_party/lss"]
+	path = minidump/third_party/lss
+	url = https://chromium.googlesource.com/linux-syscall-support
