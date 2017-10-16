@@ -12,6 +12,8 @@ extern crate gimli;
 extern crate goblin;
 #[cfg(feature = "with_objects")]
 extern crate scroll;
+#[cfg(feature = "with_sourcemaps")]
+extern crate sourcemap;
 extern crate memmap;
 extern crate owning_ref;
 

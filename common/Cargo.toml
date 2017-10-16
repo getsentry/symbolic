@@ -9,9 +9,11 @@ memmap = "0.5"
 gimli = { git = "https://github.com/gimli-rs/gimli.git", optional = true }
 goblin = { version = "0.0", optional = true }
 scroll = { version = "0.7", optional = true }
+sourcemap = { version = "1.2", optional = true }
 owning_ref = "0.3"
 
 [features]
 default = []
 with_dwarf = ["gimli"]
 with_objects = ["goblin", "scroll"]
+with_sourcemaps = ["sourcemap"]
