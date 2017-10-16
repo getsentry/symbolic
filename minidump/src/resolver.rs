@@ -1,14 +1,13 @@
 use std::fmt;
 use std::borrow::Cow;
 use std::ffi::CStr;
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::os::raw::{c_char, c_int, c_void};
-use std::path::Path;
 
-use symbolic_common::{ErrorKind, Result};
+use symbolic_common::{ByteView, ErrorKind, Result};
 
 use processor::StackFrame;
-use utils;
 
 extern "C" {
     fn stack_frame_function_name(frame: *const StackFrame) -> *const c_char;
@@ -107,26 +106,20 @@ type IResolver = c_void;
 /// line information.
 ///
 /// See `ResolvedStackFrame` for all available information.
-pub struct Resolver {
+pub struct Resolver<'a> {
     internal: *mut IResolver,
+    _ty: PhantomData<ByteView<'a>>,
 }
 
-impl Resolver {
-    /// Creates a new `Resolver` instance from a Breakpad symbol file in the
-    /// file system
-    pub fn from_file<P: AsRef<Path>>(file_path: P) -> Result<Resolver> {
-        let buffer = utils::read_buffer(file_path)?;
-        Self::from_buffer(buffer.as_slice())
-    }
-
-    /// Creates a new `Resolver` instance from a buffer containing Breakpad symbols
-    pub fn from_buffer(buffer: &[u8]) -> Result<Resolver> {
+impl<'a> Resolver<'a> {
+    /// Creates a new `Resolver` instance from Breakpad symbols in a `ByteView`
+    pub fn new(buffer: ByteView) -> Result<Resolver> {
         let internal = unsafe { resolver_new(buffer.as_ptr() as *const c_char, buffer.len()) };
 
         if internal.is_null() {
             Err(ErrorKind::Resolver("Could not load symbols".into()).into())
         } else {
-            Ok(Resolver { internal })
+            Ok(Resolver { internal, _ty: PhantomData })
         }
     }
 
@@ -145,7 +138,7 @@ impl Resolver {
     }
 }
 
-impl Drop for Resolver {
+impl<'a> Drop for Resolver<'a> {
     fn drop(&mut self) {
         unsafe { resolver_delete(self.internal) };
     }
