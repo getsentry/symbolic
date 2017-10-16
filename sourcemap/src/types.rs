@@ -2,11 +2,14 @@ use sourcemap;
 
 use symbolic_common::Result;
 
-pub use sourcemap::SourceView;
 
+/// Represents JS sourcecode.
+pub struct SourceView<'a> {
+    sv: sourcemap::SourceView<'a>,
+}
 
 /// Represents a sourcemap.
-pub struct SourceMap {
+pub struct SourceMapView {
     sm: sourcemap::SourceMap,
 }
 
@@ -21,12 +24,36 @@ pub struct TokenMatch<'a> {
     pub function_name: Option<String>,
 }
 
-impl SourceMap {
+impl<'a> SourceView<'a> {
+    /// Returns a view from a given source string.
+    pub fn new(source: &'a str) -> SourceView<'a> {
+        SourceView {
+            sv: sourcemap::SourceView::new(source)
+        }
+    }
+
+    /// Returns the embedded source a string.
+    pub fn as_str(&self) -> &str {
+        self.sv.source()
+    }
+
+    /// Returns a specific line.
+    pub fn get_line(&self, idx: u32) -> Option<&'a str> {
+        self.sv.get_line(idx)
+    }
+
+    /// Returns the number of lines.
+    pub fn line_count(&self) -> usize {
+        self.sv.line_count()
+    }
+}
+
+impl SourceMapView {
     /// Constructs a sourcemap from a slice.
     ///
     /// If the sourcemap is an index it is being flattened.  If flattening
     /// is not possible then an error is raised.
-    pub fn from_slice(buffer: &[u8]) -> Result<SourceMap> {
+    pub fn from_json_slice(buffer: &[u8]) -> Result<SourceMapView> {
         Ok(SourceMap {
             sm: match sourcemap::decode_slice(buffer)? {
                 sourcemap::DecodedMap::Regular(sm) => sm,
@@ -55,7 +82,7 @@ impl SourceMap {
     {
         self.sm.lookup_token(line, col).map(|token| {
             let mut rv = self.make_token_match(token);
-            rv.function_name = source
+            rv.function_name = source.sv
                 .get_original_function_name(token, minified_name)
                 .map(|x| x.to_string());
             rv
