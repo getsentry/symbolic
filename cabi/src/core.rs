@@ -91,8 +91,11 @@ pub enum SymbolicErrorCode {
     MissingSection = 1005,
     BadDwarfData = 1006,
     MissingDebugInfo = 1007,
+    Stackwalk = 2001,
+    Resolver = 2002,
     Io = 10001,
     Utf8Error = 10002,
+    ParseInt = 10003,
 }
 
 impl SymbolicErrorCode {
@@ -111,8 +114,11 @@ impl SymbolicErrorCode {
             ErrorKind::MissingSection(..) => SymbolicErrorCode::MissingSection,
             ErrorKind::BadDwarfData(..) => SymbolicErrorCode::BadDwarfData,
             ErrorKind::MissingDebugInfo(..) => SymbolicErrorCode::MissingDebugInfo,
+            ErrorKind::Stackwalk(..) => SymbolicErrorCode::Stackwalk,
+            ErrorKind::Resolver(..) => SymbolicErrorCode::Resolver,
             ErrorKind::Io(..) => SymbolicErrorCode::Io,
             ErrorKind::Utf8Error(..) => SymbolicErrorCode::Utf8Error,
+            ErrorKind::ParseInt(..) => SymbolicErrorCode::ParseInt,
             // we don't use _ here but the hidden field on error kind so that
             // we don't accidentally forget to map them to error codes.
             ErrorKind::__Nonexhaustive { .. } => unreachable!(),

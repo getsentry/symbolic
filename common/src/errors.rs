@@ -85,7 +85,7 @@ error_chain! {
     foreign_links {
         Io(io::Error);
         Utf8Error(str::Utf8Error);
-        ParseIntError(::std::num::ParseIntError);
+        ParseInt(::std::num::ParseIntError);
     }
 }
 
