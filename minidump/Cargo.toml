@@ -1,14 +1,12 @@
 [package]
 name = "symbolic-minidump"
 version = "0.9.8"
+build = "build.rs"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
 [dependencies]
 gimli = { git = "https://github.com/gimli-rs/gimli.git" }
 goblin = "0.0"
-
-[dependencies.symbolic-common]
-path = "../common"
-
-[dependencies.symbolic-debuginfo]
-path = "../debuginfo"
+symbolic-common = { path = "../common" }
+symbolic-debuginfo = { path = "../debuginfo" }
+uuid = { version = "0.5", features = ["use_std"] }

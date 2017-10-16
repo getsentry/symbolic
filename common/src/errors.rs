@@ -70,11 +70,22 @@ error_chain! {
             description("missing debug info")
             display("missing debug info: {}", message)
         }
+        /// Raised while stackwalking minidumps.
+        Stackwalk(message: String) {
+            description("stackwalking error")
+            display("stackwalking error: {}", message)
+        }
+        /// Raised when a resolver cannot load its symbols file.
+        Resolver(message: String) {
+            description("resolver error")
+            display("resolver error: {}", message)
+        }
     }
 
     foreign_links {
         Io(io::Error);
         Utf8Error(str::Utf8Error);
+        ParseIntError(::std::num::ParseIntError);
     }
 }
 
