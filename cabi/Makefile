@@ -1,5 +1,5 @@
 include/symbolic.h:
-	cbindgen -c cbindgen.toml . -o $@
+	RUSTUP_TOOLCHAIN=nightly cbindgen -c cbindgen.toml . -o $@
 
 target/debug/c-tests/demangle: c-tests/demangle.c include/symbolic.h
 	mkdir -p target/debug/c-tests
