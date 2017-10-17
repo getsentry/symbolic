@@ -287,6 +287,11 @@ void symbolic_proguardmappingview_free(SymbolicProguardMappingView *spmv);
 SymbolicProguardMappingView *symbolic_proguardmappingview_from_bytes(const char *bytes, size_t len);
 
 /*
+ * Creates a proguard mapping view from a path.
+ */
+SymbolicProguardMappingView *symbolic_proguardmappingview_from_path(const char *path);
+
+/*
  * Returns the UUID
  */
 SymbolicUuid symbolic_proguardmappingview_get_uuid(SymbolicProguardMappingView *spmv);
