@@ -8,4 +8,4 @@ target/debug/c-tests/demangle: c-tests/demangle.c include/symbolic.h
 ctest: target/debug/c-tests/demangle
 	./target/debug/c-tests/demangle
 
-.PHONY: header ctest
+.PHONY: include/symbolic.h ctest
