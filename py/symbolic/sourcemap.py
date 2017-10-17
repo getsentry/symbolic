@@ -4,14 +4,21 @@ from symbolic.utils import RustObject, rustcall, decode_str, encode_str, \
     attached_refs
 
 
-__all__ = ['SourceView', 'SourceMapView', 'TokenMatch']
+__all__ = ['SourceView', 'SourceMapView', 'SourceMapTokenMatch']
 
 
-class TokenMatch(object):
+class SourceMapTokenMatch(object):
     """Represents a token matched or looked up from the index."""
 
-    def __init__(self):
-        raise TypeError('Cannot create token match objects')
+    def __init__(self, src_line, src_col, dst_line, dst_col,
+                 src_id=None, name=None, src=None, function_name=None):
+        self.src_line = src_line
+        self.src_col = src_col
+        self.dst_line = dst_line
+        self.src_id = src_id
+        self.name = name
+        self.src = src
+        self.function_name = function_name
 
     @classmethod
     def _from_objptr(cls, tm):
@@ -35,7 +42,7 @@ class TokenMatch(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return '<TokenMatch %s:%d>' % (
+        return '<SourceMapTokenMatch %s:%d>' % (
             self.src,
             self.src_line,
         )
@@ -106,7 +113,7 @@ class SourceMapView(RustObject):
                 minified_source._objptr)
         if rv != ffi.NULL:
             try:
-                return TokenMatch._from_objptr(rv)
+                return SourceMapTokenMatch._from_objptr(rv)
             finally:
                 rustcall(lib.symbolic_token_match_free, rv)
 
@@ -139,7 +146,7 @@ class SourceMapView(RustObject):
         if rv == ffi.NULL:
             raise LookupError('Token out of range')
         try:
-            return TokenMatch._from_objptr(rv)
+            return SourceMapTokenMatch._from_objptr(rv)
         finally:
             rustcall(lib.symbolic_token_match_free, rv)
 
