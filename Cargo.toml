@@ -16,4 +16,4 @@ symbolic-debuginfo = { path = "debuginfo" }
 
 [replace]
 "goblin:0.0.11" = { git = "https://github.com/m4b/goblin", rev = "d40a1a217cd0fd23d01d3928612743100ad33561" }
-"sourcemap:1.2.0" = { path = "/Users/mitsuhiko/Development/rust-sourcemap" }
+"sourcemap:2.1.0" = { path = "/Users/mitsuhiko/Development/rust-sourcemap" }
