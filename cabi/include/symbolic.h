@@ -19,16 +19,16 @@ enum SymbolicErrorCode {
   SYMBOLIC_ERROR_CODE_PARSE = 101,
   SYMBOLIC_ERROR_CODE_NOT_FOUND = 102,
   SYMBOLIC_ERROR_CODE_FORMAT = 103,
+  SYMBOLIC_ERROR_CODE_MISSING_DEBUG_INFO = 104,
+  SYMBOLIC_ERROR_CODE_BAD_JSON = 105,
   SYMBOLIC_ERROR_CODE_BAD_SYMBOL = 1001,
   SYMBOLIC_ERROR_CODE_UNSUPPORTED_OBJECT_FILE = 1002,
   SYMBOLIC_ERROR_CODE_MALFORMED_OBJECT_FILE = 1003,
   SYMBOLIC_ERROR_CODE_BAD_CACHE_FILE = 1004,
   SYMBOLIC_ERROR_CODE_MISSING_SECTION = 1005,
   SYMBOLIC_ERROR_CODE_BAD_DWARF_DATA = 1006,
-  SYMBOLIC_ERROR_CODE_MISSING_DEBUG_INFO = 1007,
-  SYMBOLIC_ERROR_CODE_BAD_JSON = 1008,
-  SYMBOLIC_ERROR_CODE_BAD_SOURCEMAP = 1009,
-  SYMBOLIC_ERROR_CODE_CANNOT_FLATTEN_SOURCEMAP = 1010,
+  SYMBOLIC_ERROR_CODE_BAD_SOURCEMAP = 2001,
+  SYMBOLIC_ERROR_CODE_CANNOT_FLATTEN_SOURCEMAP = 2002,
   SYMBOLIC_ERROR_CODE_IO = 10001,
   SYMBOLIC_ERROR_CODE_UTF8_ERROR = 10002,
 };
@@ -174,14 +174,14 @@ SymbolicMachoArch symbolic_arch_to_macho(const SymbolicStr *arch);
 
 /*
  * Demangles a given identifier.
- * 
+ *
  * This demangles with the default behavior in symbolic.
  */
 SymbolicStr symbolic_demangle(const SymbolicStr *ident);
 
 /*
  * Demangles a given identifier.
- * 
+ *
  * This is similar to `symbolic_demangle` but does not demangle the
  * arguments and instead strips them.
  */
@@ -194,14 +194,14 @@ void symbolic_err_clear();
 
 /*
  * Returns the last error code.
- * 
+ *
  * If there is no error, 0 is returned.
  */
 SymbolicErrorCode symbolic_err_get_last_code();
 
 /*
  * Returns the last error message.
- * 
+ *
  * If there is no error an empty string is returned.  This allocates new memory
  * that needs to be freed with `symbolic_str_free`.
  */
@@ -281,7 +281,7 @@ void symbolic_proguardmappingview_free(SymbolicProguardMappingView *spmv);
 
 /*
  * Creates a proguard mapping view from bytes.
- * 
+ *
  * This shares the underlying memory and does not copy it.
  */
 SymbolicProguardMappingView *symbolic_proguardmappingview_from_bytes(const char *bytes, size_t len);
@@ -351,7 +351,7 @@ void symbolic_sourceview_free(SymbolicSourceView *ssv);
 
 /*
  * Creates a source view from a given path.
- * 
+ *
  * This shares the underlying memory and does not copy it.
  */
 SymbolicSourceView *symbolic_sourceview_from_bytes(const char *bytes, size_t len);
@@ -368,7 +368,7 @@ uint32_t symbolic_sourceview_get_line_count(const SymbolicSourceView *ssv);
 
 /*
  * Frees a symbolic str.
- * 
+ *
  * If the string is marked as not owned then this function does not
  * do anything.
  */
@@ -376,7 +376,7 @@ void symbolic_str_free(SymbolicStr *s);
 
 /*
  * Creates a symbolic str from a c string.
- * 
+ *
  * This sets the string to owned.  In case it's not owned you either have
  * to make sure you are not freeing the memory or you need to set the
  * owned flag to false.
@@ -415,7 +415,7 @@ SymbolicStr symbolic_symcache_get_arch(const SymbolicSymCache *scache);
 
 /*
  * Returns the internal buffer of the symcache.
- * 
+ *
  * The internal buffer is exactly `symbolic_symcache_get_size` bytes long.
  */
 const uint8_t *symbolic_symcache_get_bytes(const SymbolicSymCache *scache);
@@ -462,7 +462,7 @@ bool symbolic_uuid_is_nil(const SymbolicUuid *uuid);
 
 /*
  * Formats the UUID into a string.
- * 
+ *
  * The string is newly allocated and needs to be released with
  * `symbolic_cstr_free`.
  */
