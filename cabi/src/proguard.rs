@@ -2,6 +2,7 @@ use std::mem;
 use std::slice;
 use std::os::raw::c_char;
 
+use symbolic_common::ByteView;
 use symbolic_proguard::ProguardMappingView;
 
 use core::{SymbolicStr, SymbolicUuid};
@@ -17,7 +18,8 @@ ffi_fn! {
         -> Result<*mut SymbolicProguardMappingView>
     {
         let s = slice::from_raw_parts(bytes as *const _, len);
-        let sv = ProguardMappingView::from_slice(s)?;
+        let bv = ByteView::from_slice(s);
+        let sv = ProguardMappingView::parse(bv)?;
         Ok(Box::into_raw(Box::new(sv)) as *mut SymbolicProguardMappingView)
     }
 }
