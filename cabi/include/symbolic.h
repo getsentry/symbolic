@@ -312,6 +312,17 @@ void symbolic_sourcemapview_free(const SymbolicSourceMapView *smv);
 SymbolicSourceMapView *symbolic_sourcemapview_from_json_slice(const char *data, size_t len);
 
 /*
+ * Return the number of sources.
+ */
+uint32_t symbolic_sourcemapview_get_source_count(const SymbolicSourceMapView *ssm);
+
+/*
+ * Return the source name for an index.
+ */
+SymbolicStr symbolic_sourcemapview_get_source_name(const SymbolicSourceMapView *ssm,
+                                                   uint32_t index);
+
+/*
  * Return the sourceview for a given source.
  */
 const SymbolicSourceView *symbolic_sourcemapview_get_sourceview(const SymbolicSourceMapView *ssm,

@@ -116,6 +116,21 @@ class SourceMapView(RustObject):
         if rv != ffi.NULL:
             return SourceView._from_objptr(rv, shared=True)
 
+    @property
+    def source_count(self):
+        """Returns the number of sources."""
+        return self._methodcall(lib.symbolic_sourcemapview_get_source_count)
+
+    def get_source_name(self, idx):
+        """Returns the name of the source at the given index."""
+        return decode_str(self._methodcall(
+            lib.symbolic_sourcemapview_get_source_name, idx)) or None
+
+    def iter_sources(self):
+        """Iterates over the sources in the file."""
+        for src_id in range_type(self.source_count):
+            yield src_id, self.get_source_name(src_id)
+
     def __len__(self):
         return self._methodcall(lib.symbolic_sourcemapview_get_tokens)
 
