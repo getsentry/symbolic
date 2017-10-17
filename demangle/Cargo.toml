@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-demangle"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 build = "build.rs"
 
