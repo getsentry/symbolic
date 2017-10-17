@@ -1,7 +1,7 @@
 [package]
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 name = "symbolic-debuginfo"
-version = "0.9.8"
+version = "1.0.0"
 
 [dependencies]
 gimli = { git = "https://github.com/gimli-rs/gimli.git" }

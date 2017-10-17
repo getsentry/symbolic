@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-minidump"
-version = "0.9.8"
+version = "1.0.0"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
 [dependencies]
