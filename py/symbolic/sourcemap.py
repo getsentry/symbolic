@@ -8,6 +8,7 @@ __all__ = ['SourceView', 'SourceMapView', 'TokenMatch']
 
 
 class TokenMatch(object):
+    """Represents a token matched or looked up from the index."""
 
     def __init__(self):
         raise TypeError('Cannot create token match objects')
@@ -41,10 +42,12 @@ class TokenMatch(object):
 
 
 class SourceView(RustObject):
+    """Gives reasonably efficient access to javascript sourcecode."""
     __dealloc_func__ = lib.symbolic_sourceview_free
 
     @classmethod
     def from_bytes(cls, data):
+        """Constructs a source view from bytes."""
         data = bytes(data)
         rv = cls._from_objptr(rustcall(lib.symbolic_sourceview_from_bytes,
                               data, len(data)))
@@ -67,16 +70,21 @@ class SourceView(RustObject):
 
 
 class SourceMapView(RustObject):
+    """Gives access to a source map."""
     __dealloc_func__ = lib.symbolic_sourceview_free
 
     @classmethod
     def from_json_bytes(cls, data):
+        """Constructs a sourcemap from bytes of JSON data."""
         data = bytes(data)
         return cls._from_objptr(rustcall(
             lib.symbolic_sourcemapview_from_json_slice, data, len(data)))
 
     def lookup(self, line, col, minified_function_name=None,
                minified_source=None):
+        """Looks up a token from the sourcemap and optionally also
+        resolves a function name from a stacktrace to the original one.
+        """
         if minified_function_name is None or minified_source is None:
             rv = self._methodcall(
                 lib.symbolic_sourcemapview_lookup_token, line, col)
@@ -94,6 +102,7 @@ class SourceMapView(RustObject):
                 rustcall(lib.symbolic_token_match_free, rv)
 
     def get_sourceview(self, idx):
+        """Given a source index returns the source view that created it."""
         rv = self._methodcall(lib.symbolic_sourcemapview_get_sourceview, idx)
         if rv != ffi.NULL:
             return SourceView._from_objptr(rv, shared=True)

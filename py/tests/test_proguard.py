@@ -1,4 +1,5 @@
 import os
+import uuid
 from symbolic import ProguardMappingView
 
 
@@ -8,6 +9,7 @@ def test_basics(res_path):
 
     view = ProguardMappingView.from_bytes(mapping)
     assert view.has_line_info
+    assert view.uuid == uuid.UUID('5cd8e873-1127-5276-81b7-8ff25043ecfd')
 
     assert view.lookup('android.support.constraint.ConstraintLayout$a') \
         == 'android.support.constraint.ConstraintLayout$LayoutParams'
