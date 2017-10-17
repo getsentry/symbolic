@@ -3,5 +3,7 @@ name = "symbolic-proguard"
 version = "0.9.8"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
-[dependencies.symbolic-common]
-path = "../common"
+[dependencies]
+symbolic-common = { path = "../common" }
+proguard = "0.4.0"
+uuid = "0"

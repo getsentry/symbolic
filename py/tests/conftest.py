@@ -4,7 +4,8 @@ import json
 import uuid
 import pytest
 
-from symbolic import ObjectLookup, FatObject, find_best_instruction, parse_addr
+from symbolic import ObjectLookup, FatObject, SourceMapView, SourceView, \
+    find_best_instruction, parse_addr
 
 diff_report = None
 
@@ -203,3 +204,19 @@ def res_path():
 @pytest.fixture(scope='function')
 def make_report_sym(request):
     return ReportSymbolizer
+
+
+@pytest.fixture(scope='function')
+def get_sourceview(res_path):
+    def getter(path):
+        with open(os.path.join(res_path, 'sourcemaps', path), 'rb') as f:
+            return SourceView.from_bytes(f.read())
+    return getter
+
+
+@pytest.fixture(scope='function')
+def get_sourcemapview(res_path):
+    def getter(path):
+        with open(os.path.join(res_path, 'sourcemaps', path), 'rb') as f:
+            return SourceMapView.from_json_bytes(f.read())
+    return getter
