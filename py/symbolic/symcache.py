@@ -86,7 +86,7 @@ class SymCache(RustObject):
     __dealloc_func__ = lib.symbolic_symcache_free
 
     @classmethod
-    def from_path(clsf, path):
+    def from_path(cls, path):
         """Loads a symcache from a file via mmap."""
         return cls._from_objptr(
             rustcall(lib.symbolic_symcache_from_path, encode_path(path)))
