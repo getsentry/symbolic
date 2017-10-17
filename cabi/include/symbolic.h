@@ -47,6 +47,12 @@ struct SymbolicObject;
 typedef struct SymbolicObject SymbolicObject;
 
 /*
+ * Represents a proguard mapping view
+ */
+struct SymbolicProguardMappingView;
+typedef struct SymbolicProguardMappingView SymbolicProguardMappingView;
+
+/*
  * Represents a sourcemap view
  */
 struct SymbolicSourceMapView;
@@ -260,6 +266,35 @@ SymbolicStr symbolic_object_get_kind(const SymbolicObject *so);
  * Returns the UUID of an object.
  */
 SymbolicUuid symbolic_object_get_uuid(const SymbolicObject *so);
+
+/*
+ * Converts a dotted path at a line number
+ */
+SymbolicStr symbolic_proguardmappingview_convert_dotted_path(const SymbolicProguardMappingView *spmv,
+                                                             const SymbolicStr *path,
+                                                             uint32_t lineno);
+
+/*
+ * Frees a proguard mapping view.
+ */
+void symbolic_proguardmappingview_free(SymbolicProguardMappingView *spmv);
+
+/*
+ * Creates a proguard mapping view from bytes.
+ * 
+ * This shares the underlying memory and does not copy it.
+ */
+SymbolicProguardMappingView *symbolic_proguardmappingview_from_bytes(const char *bytes, size_t len);
+
+/*
+ * Returns the UUID
+ */
+SymbolicUuid symbolic_proguardmappingview_get_uuid(SymbolicProguardMappingView *spmv);
+
+/*
+ * Returns true if the mapping file has line infos.
+ */
+bool symbolic_proguardmappingview_has_line_info(const SymbolicProguardMappingView *spmv);
 
 /*
  * Frees a source map view

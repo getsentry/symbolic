@@ -1,6 +1,7 @@
 from symbolic._lowlevel import lib, ffi
 from symbolic._compat import range_type
-from symbolic.utils import RustObject, rustcall, decode_str, encode_str
+from symbolic.utils import RustObject, rustcall, decode_str, encode_str, \
+    attached_refs
 
 
 __all__ = ['SourceView', 'SourceMapView', 'TokenMatch']
@@ -48,7 +49,7 @@ class SourceView(RustObject):
         rv = cls._from_objptr(rustcall(lib.symbolic_sourceview_from_bytes,
                               data, len(data)))
         # we need to keep this reference alive or we crash. hard.
-        rv.__bytes = data
+        attached_refs[rv] = data
         return rv
 
     def __len__(self):
