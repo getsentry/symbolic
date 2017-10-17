@@ -97,8 +97,8 @@ pub enum SymbolicErrorCode {
     MissingSection = 1005,
     BadDwarfData = 1006,
     // sourcemaps
-    BadSourcemap = 2009,
-    CannotFlattenSourcemap = 2010,
+    BadSourcemap = 2001,
+    CannotFlattenSourcemap = 2002,
     // external errors
     Io = 10001,
     Utf8Error = 10002,
