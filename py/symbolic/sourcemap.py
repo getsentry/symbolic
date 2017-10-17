@@ -15,6 +15,7 @@ class SourceMapTokenMatch(object):
         self.src_line = src_line
         self.src_col = src_col
         self.dst_line = dst_line
+        self.dst_col = dst_col
         self.src_id = src_id
         self.name = name
         self.src = src
@@ -62,6 +63,9 @@ class SourceView(RustObject):
         attached_refs[rv] = data
         return rv
 
+    def get_source(self):
+        return decode_str(self._methodcall(lib.symbolic_sourceview_as_str))
+
     def __len__(self):
         return self._methodcall(lib.symbolic_sourceview_get_line_count)
 
@@ -87,7 +91,7 @@ class SourceView(RustObject):
 
 class SourceMapView(RustObject):
     """Gives access to a source map."""
-    __dealloc_func__ = lib.symbolic_sourceview_free
+    __dealloc_func__ = lib.symbolic_sourcemapview_free
 
     @classmethod
     def from_json_bytes(cls, data):
