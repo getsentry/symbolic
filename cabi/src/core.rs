@@ -76,24 +76,30 @@ pub struct SymbolicUuid {
 /// Indicates the error that ocurred
 #[repr(u32)]
 pub enum SymbolicErrorCode {
+    // no error
     NoError = 0,
+    // panics and internals
     Panic = 1,
     Internal = 2,
     Msg = 3,
     Unknown = 4,
+    // generic errors
     Parse = 101,
     NotFound = 102,
     Format = 103,
+    MissingDebugInfo = 104,
+    BadJson = 105,
+    // debuginfo/symcache
     BadSymbol = 1001,
     UnsupportedObjectFile = 1002,
     MalformedObjectFile = 1003,
     BadCacheFile = 1004,
     MissingSection = 1005,
     BadDwarfData = 1006,
-    MissingDebugInfo = 1007,
-    BadJson = 1008,
-    BadSourcemap = 1009,
-    CannotFlattenSourcemap = 1010,
+    // sourcemaps
+    BadSourcemap = 2009,
+    CannotFlattenSourcemap = 2010,
+    // external errors
     Io = 10001,
     Utf8Error = 10002,
 }
