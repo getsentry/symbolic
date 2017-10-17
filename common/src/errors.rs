@@ -8,6 +8,8 @@ use gimli;
 use goblin;
 #[cfg(feature = "with_objects")]
 use scroll;
+#[cfg(feature = "with_sourcemaps")]
+use sourcemap;
 
 error_chain! {
     errors {
@@ -70,6 +72,16 @@ error_chain! {
             description("missing debug info")
             display("missing debug info: {}", message)
         }
+        /// Raised for JSON parse errors.
+        BadJson(msg: String) {
+            description("bad json")
+            display("bad json: {}", &msg)
+        }
+        /// Raised for bad sourcemap data.
+        BadSourcemap(msg: String) {
+            description("bad sourcemap")
+            display("bad sourcemap: {}", &msg)
+        }
         /// Raised while stackwalking minidumps.
         Stackwalk(message: String) {
             description("stackwalking error")
@@ -79,6 +91,11 @@ error_chain! {
         Resolver(message: String) {
             description("resolver error")
             display("resolver error: {}", message)
+        }
+        /// Raised if sourcemaps cannot be flattened.
+        CannotFlattenSourcemap(msg: String) {
+            description("cannot flatten sourcemap")
+            display("cannot flatten sourcemap: {}", &msg)
         }
     }
 
@@ -125,6 +142,20 @@ impl From<scroll::Error> for Error {
             BadInput { .. } => io::Error::new(io::ErrorKind::InvalidData, "Bad input").into(),
             Custom(s) => io::Error::new(io::ErrorKind::Other, s).into(),
             IO(err) => Error::from(err),
+        }
+    }
+}
+
+#[cfg(feature = "with_sourcemaps")]
+impl From<sourcemap::Error> for Error {
+    fn from(err: sourcemap::Error) -> Error {
+        use sourcemap::Error::*;
+        match err {
+            Io(err) => Error::from(err),
+            Utf8(err) => Error::from(err),
+            BadJson(err) => Error::from(ErrorKind::BadJson(err.to_string())),
+            CannotFlatten(msg) => Error::from(ErrorKind::CannotFlattenSourcemap(msg)),
+            err => Error::from(ErrorKind::BadSourcemap(err.to_string())),
         }
     }
 }

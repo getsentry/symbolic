@@ -76,23 +76,33 @@ pub struct SymbolicUuid {
 /// Indicates the error that ocurred
 #[repr(u32)]
 pub enum SymbolicErrorCode {
+    // no error
     NoError = 0,
+    // panics and internals
     Panic = 1,
     Internal = 2,
     Msg = 3,
     Unknown = 4,
+    // generic errors
     Parse = 101,
     NotFound = 102,
     Format = 103,
+    MissingDebugInfo = 104,
+    BadJson = 105,
+    // debuginfo/symcache
     BadSymbol = 1001,
     UnsupportedObjectFile = 1002,
     MalformedObjectFile = 1003,
     BadCacheFile = 1004,
     MissingSection = 1005,
     BadDwarfData = 1006,
-    MissingDebugInfo = 1007,
-    Stackwalk = 2001,
-    Resolver = 2002,
+    // sourcemaps
+    BadSourcemap = 2001,
+    CannotFlattenSourcemap = 2002,
+    // minidump
+    Stackwalk = 3001,
+    Resolver = 3002,
+    // external errors
     Io = 10001,
     Utf8Error = 10002,
     ParseInt = 10003,
@@ -114,6 +124,9 @@ impl SymbolicErrorCode {
             ErrorKind::MissingSection(..) => SymbolicErrorCode::MissingSection,
             ErrorKind::BadDwarfData(..) => SymbolicErrorCode::BadDwarfData,
             ErrorKind::MissingDebugInfo(..) => SymbolicErrorCode::MissingDebugInfo,
+            ErrorKind::BadJson(..) => SymbolicErrorCode::BadJson,
+            ErrorKind::BadSourcemap(..) => SymbolicErrorCode::BadSourcemap,
+            ErrorKind::CannotFlattenSourcemap(..) => SymbolicErrorCode::CannotFlattenSourcemap,
             ErrorKind::Stackwalk(..) => SymbolicErrorCode::Stackwalk,
             ErrorKind::Resolver(..) => SymbolicErrorCode::Resolver,
             ErrorKind::Io(..) => SymbolicErrorCode::Io,

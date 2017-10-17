@@ -3,5 +3,6 @@ name = "symbolic-sourcemap"
 version = "0.9.8"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
-[dependencies.symbolic-common]
-path = "../common"
+[dependencies]
+symbolic-common = { path = "../common", features = ["with_sourcemaps"] }
+sourcemap = "2.1.0"
