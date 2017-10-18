@@ -5,6 +5,7 @@ extern crate symbolic_debuginfo;
 extern crate symbolic_symcache;
 extern crate symbolic_sourcemap;
 extern crate symbolic_proguard;
+extern crate symbolic_minidump;
 extern crate uuid;
 extern crate backtrace;
 
@@ -17,6 +18,7 @@ mod debuginfo;
 mod symcache;
 mod sourcemap;
 mod proguard;
+mod minidump;
 
 pub use core::*;
 pub use common::*;
@@ -25,3 +27,4 @@ pub use debuginfo::*;
 pub use symcache::*;
 pub use sourcemap::*;
 pub use proguard::*;
+pub use minidump::*;
