@@ -49,12 +49,19 @@ enum SymbolicFrameTrust {
   SYMBOLIC_FRAME_TRUST_PREWALKED = 5,
   SYMBOLIC_FRAME_TRUST_CONTEXT = 6,
 };
+typedef uint32_t SymbolicFrameTrust;
 
 /*
  * A potential multi arch object.
  */
 struct SymbolicFatObject;
 typedef struct SymbolicFatObject SymbolicFatObject;
+
+/*
+ * Contains stack frame information (CFI) for images
+ */
+struct SymbolicFrameInfoMap;
+typedef struct SymbolicFrameInfoMap SymbolicFrameInfoMap;
 
 /*
  * A single arch object.
@@ -125,13 +132,6 @@ typedef struct {
    */
   uint64_t ip_reg;
 } SymbolicInstructionInfo;
-
-/*
- * Contains stack frame information (CFI) for images
- */
-typedef struct {
-
-} SymbolicFrameInfoMap;
 
 /*
  * Represents a UUID

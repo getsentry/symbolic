@@ -9,12 +9,10 @@ use symbolic_minidump::{CallStack, CodeModuleId, FrameInfoMap, ProcessState, Sta
 use core::SymbolicUuid;
 
 /// Contains stack frame information (CFI) for images
-#[repr(C)]
 pub struct SymbolicFrameInfoMap;
 
-
 /// Indicates how well the instruction pointer derived during stack walking is trusted
-#[repr(C)]
+#[repr(u32)]
 pub enum SymbolicFrameTrust {
     None,
     Scan,
