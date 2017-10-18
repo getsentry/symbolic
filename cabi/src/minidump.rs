@@ -16,9 +16,9 @@ pub struct SymbolicFrameInfoMap;
 pub enum SymbolicFrameTrust {
     None,
     Scan,
-    CFIScan,
-    FP,
-    CFI,
+    CfiScan,
+    Fp,
+    Cfi,
     Prewalked,
     Context,
 }
