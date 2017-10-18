@@ -51,7 +51,7 @@ impl Drop for SymbolicCallStack {
     }
 }
 
-/// Result of processing a Minidump or Microdump file
+/// State of a crashed process
 #[repr(C)]
 pub struct SymbolicProcessState {
     pub threads: *mut SymbolicCallStack,
