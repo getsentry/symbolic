@@ -1,9 +1,11 @@
+import io
 import shutil
 from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib, ffi
 from symbolic.demangle import demangle_symbol
 from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
-     encode_str, common_path_join, strip_common_path_prefix, encode_path
+     encode_str, common_path_join, strip_common_path_prefix, encode_path, \
+     attached_refs
 from symbolic.common import parse_addr
 from symbolic import exceptions
 
@@ -66,20 +68,28 @@ class Symbol(object):
         )
 
 
-class _SymCacheReader(object):
+class _SymCacheReader(io.RawIOBase):
 
-    def __init__(self, buffer):
-        self.buffer = buffer
+    def __init__(self, buffer, symcache):
+        self._buffer = buffer
+        # Hold the symcache so we do not lose the reference and crash on
+        # the buffer disappearing
+        self.symcache = symcache
         self.pos = 0
 
-    def read(self, n=None):
+    def readable(self):
+        return True
+
+    def readinto(self, buf):
+        n = len(buf)
         if n is None:
-            end = len(self.buffer)
+            end = len(self._buffer)
         else:
-            end = min(self.pos + n, len(self.buffer))
-        rv = self.buffer[self.pos:end]
+            end = min(self.pos + n, len(self._buffer))
+        rv = self._buffer[self.pos:end]
+        buf[:len(rv)] = rv
         self.pos = end
-        return rv
+        return len(rv)
 
 
 class SymCache(RustObject):
@@ -92,11 +102,10 @@ class SymCache(RustObject):
             rustcall(lib.symbolic_symcache_from_path, encode_path(path)))
 
     @classmethod
-    def from_bytes(cls, bytes):
+    def from_bytes(cls, data):
         """Loads a symcache from a file via mmap."""
-        bytes = memoryview(bytes)
         return cls._from_objptr(
-            rustcall(lib.symbolic_symcache_from_bytes, bytes, len(bytes)))
+            rustcall(lib.symbolic_symcache_from_bytes, data, len(data)))
 
     @property
     def arch(self):
@@ -129,16 +138,12 @@ class SymCache(RustObject):
         """Returns true if this is the latest file format."""
         return self.file_format_version >= SYMCACHE_LATEST_VERSION
 
-    @property
-    def buffer(self):
-        """Returns the underlying bytes of the cache."""
+    def open_stream(self):
+        """Returns a stream to read files from the internal buffer."""
         buf = self._methodcall(lib.symbolic_symcache_get_bytes)
         size = self._methodcall(lib.symbolic_symcache_get_size)
-        return ffi.buffer(buf, size)
-
-    def open_stream(self):
-        """Returns a stream to read files from the buffer."""
-        return _SymCacheReader(self.buffer)
+        rv = ffi.buffer(buf, size)
+        return io.BufferedReader(_SymCacheReader(rv, self))
 
     def dump_into(self, f):
         """Dumps the symcache into a file object."""
