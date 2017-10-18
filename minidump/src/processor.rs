@@ -240,7 +240,7 @@ fn test_parse_error() {
 /// stack scanning, it can wind up with dubious frames.
 ///
 /// In rough order of "trust metric".
-#[repr(C)]
+#[repr(u32)]
 #[derive(Debug)]
 pub enum FrameTrust {
     /// Unknown trust.
