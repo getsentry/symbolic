@@ -14,7 +14,7 @@ def test_macos_without_cfi(res_path):
     assert thread.frame_count == 9
 
     frame = thread.get_frame(1)
-    assert frame.trust == 'SCAN'
+    assert frame.trust == 'scan'
     assert frame.instruction == 4329952133
     assert frame.image_addr == 4329947136
     assert frame.image_size == 172032
@@ -32,7 +32,7 @@ def test_linux_without_cfi(res_path):
     assert thread.frame_count == 18
 
     frame = thread.get_frame(1)
-    assert frame.trust == 'SCAN'
+    assert frame.trust == 'scan'
     assert frame.instruction == 4202617
     assert frame.image_addr == 4194304
     assert frame.image_size == 196608

@@ -13,8 +13,10 @@ def _make_frame_trust():
 
     for attr in dir(lib):
         if attr.startswith('SYMBOLIC_FRAME_TRUST_'):
-            enums[attr[21:]] = getattr(lib, attr)
-            by_value[getattr(lib, attr)] = attr[21:]
+            name = attr[21:].lower().replace('_', '-')
+            value = getattr(lib, attr)
+            enums[name] = value
+            by_value[value] = name
 
     enums['by_value'] = by_value
     return type('FrameTrust', (), enums)
