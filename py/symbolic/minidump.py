@@ -4,9 +4,25 @@ from symbolic._compat import range_type
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, attached_refs, decode_uuid
 
-__all__ = ['CallStack', 'ProcessState', 'StackFrame']
+__all__ = ['CallStack', 'FrameTrust', 'ProcessState', 'StackFrame']
 
-#TODO: Export FrameTrust somehow...
+
+def _make_frame_trust():
+    enums = {}
+    for attr in dir(lib):
+        if not attr.startswith('SYMBOLIC_FRAME_TRUST_'):
+            continue
+
+        name = attr[21:].title()
+        value = getattr(lib, attr)
+        enums[name] = value
+
+    return type('FrameTrust', (), enums)
+
+
+FrameTrust = _make_frame_trust()
+del _make_frame_trust
+
 
 class StackFrame(RustObject):
     """A single frame in the call stack of a crashed process"""
