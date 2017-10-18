@@ -1,6 +1,6 @@
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, decode_str, encode_str, \
-    decode_uuid, attached_refs
+    decode_uuid, encode_path, attached_refs
 
 
 __all__ = ['ProguardMappingView']
@@ -20,6 +20,13 @@ class ProguardMappingView(RustObject):
         # we need to keep this reference alive or we crash. hard.
         attached_refs[rv] = data
         return rv
+
+    @classmethod
+    def from_path(cls, path):
+        """Constructs a mapping file from a path."""
+        return cls._from_objptr(rustcall(
+            lib.symbolic_proguardmappingview_from_path,
+            encode_path(path)))
 
     @property
     def uuid(self):

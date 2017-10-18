@@ -4,14 +4,22 @@ from symbolic.utils import RustObject, rustcall, decode_str, encode_str, \
     attached_refs
 
 
-__all__ = ['SourceView', 'SourceMapView', 'TokenMatch']
+__all__ = ['SourceView', 'SourceMapView', 'SourceMapTokenMatch']
 
 
-class TokenMatch(object):
+class SourceMapTokenMatch(object):
     """Represents a token matched or looked up from the index."""
 
-    def __init__(self):
-        raise TypeError('Cannot create token match objects')
+    def __init__(self, src_line, src_col, dst_line, dst_col,
+                 src_id=None, name=None, src=None, function_name=None):
+        self.src_line = src_line
+        self.src_col = src_col
+        self.dst_line = dst_line
+        self.dst_col = dst_col
+        self.src_id = src_id
+        self.name = name
+        self.src = src
+        self.function_name = function_name
 
     @classmethod
     def _from_objptr(cls, tm):
@@ -35,7 +43,7 @@ class TokenMatch(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return '<TokenMatch %s:%d>' % (
+        return '<SourceMapTokenMatch %s:%d>' % (
             self.src,
             self.src_line,
         )
@@ -55,14 +63,26 @@ class SourceView(RustObject):
         attached_refs[rv] = data
         return rv
 
+    def get_source(self):
+        return decode_str(self._methodcall(lib.symbolic_sourceview_as_str))
+
     def __len__(self):
         return self._methodcall(lib.symbolic_sourceview_get_line_count)
 
     def __getitem__(self, idx):
-        if idx >= len(self):
-            raise LookupError('No such line')
-        return decode_str(self._methodcall(
-            lib.symbolic_sourceview_get_line, idx))
+        if not isinstance(idx, slice):
+            if idx >= len(self):
+                raise LookupError('No such line')
+            return decode_str(self._methodcall(
+                lib.symbolic_sourceview_get_line, idx))
+
+        rv = []
+        for idx in range_type(*idx.indices(len(self))):
+            try:
+                rv.append(self[idx])
+            except LookupError:
+                pass
+        return rv
 
     def __iter__(self):
         for x in range_type(len(self)):
@@ -71,7 +91,7 @@ class SourceView(RustObject):
 
 class SourceMapView(RustObject):
     """Gives access to a source map."""
-    __dealloc_func__ = lib.symbolic_sourceview_free
+    __dealloc_func__ = lib.symbolic_sourcemapview_free
 
     @classmethod
     def from_json_bytes(cls, data):
@@ -97,7 +117,7 @@ class SourceMapView(RustObject):
                 minified_source._objptr)
         if rv != ffi.NULL:
             try:
-                return TokenMatch._from_objptr(rv)
+                return SourceMapTokenMatch._from_objptr(rv)
             finally:
                 rustcall(lib.symbolic_token_match_free, rv)
 
@@ -107,6 +127,21 @@ class SourceMapView(RustObject):
         if rv != ffi.NULL:
             return SourceView._from_objptr(rv, shared=True)
 
+    @property
+    def source_count(self):
+        """Returns the number of sources."""
+        return self._methodcall(lib.symbolic_sourcemapview_get_source_count)
+
+    def get_source_name(self, idx):
+        """Returns the name of the source at the given index."""
+        return decode_str(self._methodcall(
+            lib.symbolic_sourcemapview_get_source_name, idx)) or None
+
+    def iter_sources(self):
+        """Iterates over the sources in the file."""
+        for src_id in range_type(self.source_count):
+            yield src_id, self.get_source_name(src_id)
+
     def __len__(self):
         return self._methodcall(lib.symbolic_sourcemapview_get_tokens)
 
@@ -115,7 +150,7 @@ class SourceMapView(RustObject):
         if rv == ffi.NULL:
             raise LookupError('Token out of range')
         try:
-            return TokenMatch._from_objptr(rv)
+            return SourceMapTokenMatch._from_objptr(rv)
         finally:
             rustcall(lib.symbolic_token_match_free, rv)
 

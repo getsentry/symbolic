@@ -71,7 +71,7 @@ def test_basics(get_sourceview, get_sourcemapview):
     assert sv._shared
     assert sv[0] == u'var makeAFailure = (function() {'
     assert sv[1] == u'  function testingStuff() {'
-    assert len(sv) == 31
+    assert len(sv) == 32
 
 
 def test_load_index(get_sourceview, get_sourcemapview):

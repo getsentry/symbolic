@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-cabi"
-version = "0.9.8"
+version = "1.0.2"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
 [lib]

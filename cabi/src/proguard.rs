@@ -1,13 +1,26 @@
 use std::mem;
 use std::slice;
 use std::os::raw::c_char;
+use std::ffi::CStr;
 
+use symbolic_common::ByteView;
 use symbolic_proguard::ProguardMappingView;
 
 use core::{SymbolicStr, SymbolicUuid};
 
 /// Represents a proguard mapping view
 pub struct SymbolicProguardMappingView;
+
+ffi_fn! {
+    /// Creates a proguard mapping view from a path.
+    unsafe fn symbolic_proguardmappingview_from_path(path: *const c_char)
+        -> Result<*mut SymbolicProguardMappingView>
+    {
+        let bv = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
+        let sv = ProguardMappingView::parse(bv)?;
+        Ok(Box::into_raw(Box::new(sv)) as *mut SymbolicProguardMappingView)
+    }
+}
 
 ffi_fn! {
     /// Creates a proguard mapping view from bytes.
@@ -17,7 +30,8 @@ ffi_fn! {
         -> Result<*mut SymbolicProguardMappingView>
     {
         let s = slice::from_raw_parts(bytes as *const _, len);
-        let sv = ProguardMappingView::from_slice(s)?;
+        let bv = ByteView::from_slice(s);
+        let sv = ProguardMappingView::parse(bv)?;
         Ok(Box::into_raw(Box::new(sv)) as *mut SymbolicProguardMappingView)
     }
 }

@@ -89,6 +89,16 @@ impl SourceMapView {
         self.sm.get_source_view(idx).map(|x| unsafe { mem::transmute(x) })
     }
 
+    /// Returns the source name for an index.
+    pub fn get_source_name(&self, idx: u32) -> Option<&str> {
+        self.sm.get_source(idx)
+    }
+
+    /// Returns the number of sources.
+    pub fn get_source_count(&self) -> u32 {
+        self.sm.get_source_count()
+    }
+
     /// Looks up a token and the original function name.
     ///
     /// This is similar to `lookup_token` but if a minified function name and

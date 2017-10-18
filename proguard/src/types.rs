@@ -1,19 +1,21 @@
 use uuid;
 use proguard;
 
-use symbolic_common::Result;
+use symbolic_common::{Result, ByteView, ByteViewHandle};
 
 
 pub struct ProguardMappingView<'a> {
-    mv: proguard::MappingView<'a>,
+    mv: ByteViewHandle<'a, proguard::MappingView<'a>>,
 }
 
 impl<'a> ProguardMappingView<'a> {
 
     /// Creates a new proguard mapping view from a byte slice.
-    pub fn from_slice(b: &'a [u8]) -> Result<ProguardMappingView<'a>> {
+    pub fn parse(byteview: ByteView<'a>) -> Result<ProguardMappingView<'a>> {
         Ok(ProguardMappingView {
-            mv: proguard::MappingView::from_slice(b)?,
+            mv: ByteViewHandle::from_byteview(byteview, |bytes| -> Result<_> {
+                Ok(proguard::MappingView::from_slice(bytes)?)
+            })?
         })
     }
 

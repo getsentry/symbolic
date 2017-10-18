@@ -164,6 +164,29 @@ ffi_fn! {
 }
 
 ffi_fn! {
+    /// Return the source name for an index.
+    unsafe fn symbolic_sourcemapview_get_source_name(ssm: *const SymbolicSourceMapView,
+                                                     index: u32)
+        -> Result<SymbolicStr>
+    {
+        let sm = ssm as *const SourceMapView;
+        Ok(SymbolicStr::new((*sm)
+           .get_source_name(index)
+           .unwrap_or("")))
+    }
+}
+
+ffi_fn! {
+    /// Return the number of sources.
+    unsafe fn symbolic_sourcemapview_get_source_count(ssm: *const SymbolicSourceMapView)
+        -> Result<u32>
+    {
+        let sm = ssm as *const SourceMapView;
+        Ok((*sm).get_source_count())
+    }
+}
+
+ffi_fn! {
     /// Returns a specific token.
     unsafe fn symbolic_sourcemapview_get_token(ssm: *const SymbolicSourceMapView,
                                                idx: u32)

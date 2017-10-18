@@ -366,6 +366,11 @@ void symbolic_proguardmappingview_free(SymbolicProguardMappingView *spmv);
 SymbolicProguardMappingView *symbolic_proguardmappingview_from_bytes(const char *bytes, size_t len);
 
 /*
+ * Creates a proguard mapping view from a path.
+ */
+SymbolicProguardMappingView *symbolic_proguardmappingview_from_path(const char *path);
+
+/*
  * Returns the UUID
  */
 SymbolicUuid symbolic_proguardmappingview_get_uuid(SymbolicProguardMappingView *spmv);
@@ -384,6 +389,17 @@ void symbolic_sourcemapview_free(const SymbolicSourceMapView *smv);
  * Loads a sourcemap from a JSON byte slice.
  */
 SymbolicSourceMapView *symbolic_sourcemapview_from_json_slice(const char *data, size_t len);
+
+/*
+ * Return the number of sources.
+ */
+uint32_t symbolic_sourcemapview_get_source_count(const SymbolicSourceMapView *ssm);
+
+/*
+ * Return the source name for an index.
+ */
+SymbolicStr symbolic_sourcemapview_get_source_name(const SymbolicSourceMapView *ssm,
+                                                   uint32_t index);
 
 /*
  * Return the sourceview for a given source.
