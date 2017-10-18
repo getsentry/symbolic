@@ -9,14 +9,14 @@ __all__ = ['CallStack', 'FrameTrust', 'ProcessState', 'StackFrame']
 
 def _make_frame_trust():
     enums = {}
+    by_value = {}
+
     for attr in dir(lib):
-        if not attr.startswith('SYMBOLIC_FRAME_TRUST_'):
-            continue
+        if attr.startswith('SYMBOLIC_FRAME_TRUST_'):
+            enums[attr[21:]] = getattr(lib, attr)
+            by_value[getattr(lib, attr)] = attr[21:]
 
-        name = attr[21:].title()
-        value = getattr(lib, attr)
-        enums[name] = value
-
+    enums['by_value'] = by_value
     return type('FrameTrust', (), enums)
 
 
@@ -36,7 +36,7 @@ class StackFrame(RustObject):
     @property
     def trust(self):
         """The confidence with with the instruction pointer was retrieved"""
-        return self._objptr.trust
+        return FrameTrust.by_value[self._objptr.trust]
 
     @property
     def image_uuid(self):
@@ -76,7 +76,7 @@ class CallStack(RustObject):
     def get_frame(self, idx):
         """Retrieves the stack frame at the given index (0 is the current frame)"""
         if idx < self.frame_count:
-            frame = StackFrame._from_objptr(self._objptr[idx], shared=True)
+            frame = StackFrame._from_objptr(self._objptr.frames[idx], shared=True)
             attached_refs[frame] = self
             return frame
         else:
