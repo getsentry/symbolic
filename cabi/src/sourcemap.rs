@@ -1,4 +1,3 @@
-use std::str;
 use std::ptr;
 use std::mem;
 use std::slice;
@@ -32,13 +31,13 @@ pub struct SymbolicTokenMatch {
 ffi_fn! {
     /// Creates a source view from a given path.
     ///
-    /// This shares the underlying memory and does not copy it.
+    /// This shares the underlying memory and does not copy it if that is
+    /// possible.  Will ignore utf-8 decoding errors.
     unsafe fn symbolic_sourceview_from_bytes(bytes: *const c_char, len: usize)
         -> Result<*mut SymbolicSourceView>
     {
-        let s = str::from_utf8(slice::from_raw_parts(
-            bytes as *const _, len))?;
-        let sv = SourceView::new(s);
+        let sv = SourceView::from_bytes(
+            slice::from_raw_parts(bytes as *const _, len));
         Ok(Box::into_raw(Box::new(sv)) as *mut SymbolicSourceView)
     }
 }

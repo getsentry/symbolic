@@ -1,5 +1,6 @@
+# coding: utf-8
 import os
-from symbolic import FatObject, SymCache
+from symbolic import FatObject, SymCache, SourceView
 
 
 def test_basic(res_path):
@@ -15,3 +16,8 @@ def test_basic(res_path):
     # Make s symcache from the entire thing
     stream = sc.open_stream()
     SymCache.from_bytes(stream.read())
+
+
+def test_unicode_ignore_decode():
+    sv = SourceView.from_bytes(u'fööbar'.encode('latin1'))
+    assert sv[0] == u'f\ufffd\ufffdbar'
