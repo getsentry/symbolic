@@ -171,10 +171,14 @@ def find_best_instruction(addr, arch, crashing_frame=False,
     """Given an instruction and meta data attempts to find the best one
     by using a heuristic we inherited from symsynd.
     """
+    # Ensure we keep this local alive until this function returns as we
+    # would otherwise operate on garbage
+    encoded_arch = encode_str(arch)
+
     addr = parse_addr(addr)
     ii = ffi.new('SymbolicInstructionInfo *')
     ii[0].addr = addr
-    ii[0].arch = encode_str(arch)
+    ii[0].arch = encoded_arch
     ii[0].crashing_frame = crashing_frame
     ii[0].signal = signal or 0
     ii[0].ip_reg = parse_addr(ip_reg)

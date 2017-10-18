@@ -1,7 +1,7 @@
 import bisect
 from weakref import WeakValueDictionary
 
-from symbolic._compat import itervalues
+from symbolic._compat import itervalues, range_type
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
     make_uuid, attached_refs
@@ -28,7 +28,7 @@ class FatObject(RustObject):
 
     def iter_objects(self):
         """Iterates over all objects."""
-        for idx in range(self.object_count):
+        for idx in range_type(self.object_count):
             try:
                 yield self._get_object(idx)
             except LookupError:
