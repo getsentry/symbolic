@@ -176,7 +176,7 @@ ffi_fn! {
     /// Frees a process state object
     unsafe fn symbolic_process_state_free(sstate: *mut SymbolicProcessState) {
         if !sstate.is_null() {
-            let state = sstate as *mut ProcessState<'static>;
+            let state = sstate as *mut SymbolicProcessState;
             Box::from_raw(state);
         }
     }
