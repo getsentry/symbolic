@@ -50,7 +50,7 @@ pub struct CodeModuleId {
 }
 
 impl CodeModuleId {
-    /// Parses a CodeModuleId from a 33 character `String`
+    /// Parses a `CodeModuleId` from a 33 character `String`
     pub fn parse(input: &str) -> Result<CodeModuleId> {
         if input.len() != 33 {
             return Err(ErrorKind::Parse("Invalid input string length").into());
@@ -60,6 +60,16 @@ impl CodeModuleId {
             .map_err(|_| ErrorKind::Parse("UUID parse error"))?;
         let age = u32::from_str_radix(&input[32..], 16)?;
         Ok(CodeModuleId { uuid, age })
+    }
+
+    /// Constructs a `CodeModuleId` from its `uuid`
+    pub fn from_uuid(uuid: Uuid) -> CodeModuleId {
+        Self::from_parts(uuid, 0)
+    }
+
+    /// Constructs a `CodeModuleId` from its `uuid` and `age` parts
+    pub fn from_parts(uuid: Uuid, age: u32) -> CodeModuleId {
+        CodeModuleId { uuid, age }
     }
 
     /// Returns the UUID part of the code module's debug_identifier
