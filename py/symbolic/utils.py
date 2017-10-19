@@ -1,3 +1,4 @@
+import io
 import uuid
 import ntpath
 import weakref
@@ -136,3 +137,27 @@ def make_uuid(value):
     if isinstance(value, uuid.UUID):
         return value
     return uuid.UUID(value)
+
+
+class CacheReader(io.RawIOBase):
+    """A buffered reader that keeps the cache in memory"""
+    def __init__(self, buf, cache):
+        self._buffer = buf
+        # Hold the cache so we do not lose the reference and crash on
+        # the buffer disappearing
+        self.cache = cache
+        self.pos = 0
+
+    def readable(self):
+        return True
+
+    def readinto(self, buf):
+        n = len(buf)
+        if n is None:
+            end = len(self._buffer)
+        else:
+            end = min(self.pos + n, len(self._buffer))
+        rv = self._buffer[self.pos:end]
+        buf[:len(rv)] = rv
+        self.pos = end
+        return len(rv)
