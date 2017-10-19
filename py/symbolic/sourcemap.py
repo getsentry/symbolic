@@ -72,7 +72,7 @@ class SourceView(RustObject):
     def __getitem__(self, idx):
         if not isinstance(idx, slice):
             if idx >= len(self):
-                raise LookupError('No such line')
+                raise IndexError('No such line')
             return decode_str(self._methodcall(
                 lib.symbolic_sourceview_get_line, idx))
 
@@ -80,7 +80,7 @@ class SourceView(RustObject):
         for idx in range_type(*idx.indices(len(self))):
             try:
                 rv.append(self[idx])
-            except LookupError:
+            except IndexError:
                 pass
         return rv
 
@@ -148,7 +148,7 @@ class SourceMapView(RustObject):
     def __getitem__(self, idx):
         rv = self._methodcall(lib.symbolic_sourcemapview_get_token, idx)
         if rv == ffi.NULL:
-            raise LookupError('Token out of range')
+            raise IndexError('Token out of range')
         try:
             return SourceMapTokenMatch._from_objptr(rv)
         finally:

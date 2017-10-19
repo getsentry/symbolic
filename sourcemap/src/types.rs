@@ -1,4 +1,5 @@
 use std::mem;
+use std::borrow::Cow;
 
 use sourcemap;
 
@@ -32,6 +33,21 @@ impl<'a> SourceView<'a> {
     pub fn new(source: &'a str) -> SourceView<'a> {
         SourceView {
             sv: sourcemap::SourceView::new(source)
+        }
+    }
+
+    /// Creates a view from a string.
+    pub fn from_string(source: String) -> SourceView<'static> {
+        SourceView {
+            sv: sourcemap::SourceView::from_string(source)
+        }
+    }
+
+    /// Creates a soruce view from bytes ignoring utf-8 errors.
+    pub fn from_bytes(source: &'a [u8]) -> SourceView<'a> {
+        match String::from_utf8_lossy(source) {
+            Cow::Owned(s) => SourceView::from_string(s),
+            Cow::Borrowed(s) => SourceView::new(s),
         }
     }
 
