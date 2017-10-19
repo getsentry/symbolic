@@ -107,6 +107,11 @@ typedef struct {
   uint32_t cpusubtype;
 } SymbolicMachoArch;
 
+typedef struct {
+  uint8_t *bytes;
+  size_t len;
+} SymbolicCfiCache;
+
 /*
  * Represents an instruction info.
  */
@@ -222,6 +227,10 @@ bool symbolic_arch_is_known(const SymbolicStr *arch);
  * Returns the macho code for a CPU architecture.
  */
 SymbolicMachoArch symbolic_arch_to_macho(const SymbolicStr *arch);
+
+void symbolic_cfi_cache_free(SymbolicCfiCache *scache);
+
+SymbolicCfiCache *symbolic_cfi_cache_from_object(const SymbolicObject *sobj);
 
 /*
  * Demangles a given identifier.

@@ -4,9 +4,12 @@ use std::os::raw::c_char;
 use uuid::Uuid;
 
 use symbolic_common::ByteView;
-use symbolic_minidump::{CallStack, CodeModuleId, FrameInfoMap, ProcessState, StackFrame};
+use symbolic_debuginfo::Object;
+use symbolic_minidump::{BreakpadAsciiCfiWriter, CallStack, CodeModuleId, FrameInfoMap,
+                        ProcessState, StackFrame};
 
 use core::SymbolicUuid;
+use debuginfo::SymbolicObject;
 
 /// Contains stack frame information (CFI) for images
 pub struct SymbolicFrameInfoMap;
@@ -145,8 +148,7 @@ ffi_fn! {
     /// Frees a frame info map object
     unsafe fn symbolic_frame_info_map_free(smap: *mut SymbolicFrameInfoMap) {
         if !smap.is_null() {
-            let map = smap as *mut FrameInfoMap<'static>;
-            Box::from_raw(map);
+            Box::from_raw(smap as *mut FrameInfoMap<'static>);
         }
     }
 }
@@ -167,8 +169,7 @@ ffi_fn! {
 
         let state = ProcessState::from_minidump(byteview, map)?;
         let sstate = map_process_state(&state);
-
-        Ok(Box::into_raw(Box::new(sstate)) as *mut SymbolicProcessState)
+        Ok(Box::into_raw(Box::new(sstate)))
     }
 }
 
@@ -176,8 +177,50 @@ ffi_fn! {
     /// Frees a process state object
     unsafe fn symbolic_process_state_free(sstate: *mut SymbolicProcessState) {
         if !sstate.is_null() {
-            let state = sstate as *mut SymbolicProcessState;
-            Box::from_raw(state);
+            Box::from_raw(sstate);
+        }
+    }
+}
+
+#[repr(C)]
+pub struct SymbolicCfiCache {
+    pub bytes: *mut u8,
+    pub len: usize,
+}
+
+impl Drop for SymbolicCfiCache {
+    fn drop(&mut self) {
+        unsafe {
+            Vec::from_raw_parts(self.bytes, self.len, self.len);
+        }
+    }
+}
+
+ffi_fn! {
+    unsafe fn symbolic_cfi_cache_from_object(
+        sobj: *const SymbolicObject,
+    ) -> Result<*mut SymbolicCfiCache> {
+        let mut buffer = vec![] as Vec<u8>;
+
+        {
+            let mut writer = BreakpadAsciiCfiWriter::new(&mut buffer);
+            writer.process(&*(sobj as *const Object))?;
+        }
+
+        buffer.shrink_to_fit();
+        let bytes = mem::transmute(buffer.as_ptr());
+        let len = buffer.len();
+        mem::forget(buffer);
+
+        let scache = SymbolicCfiCache { bytes, len };
+        Ok(Box::into_raw(Box::new(scache)))
+    }
+}
+
+ffi_fn! {
+    unsafe fn symbolic_cfi_cache_free(scache: *mut SymbolicCfiCache) {
+        if !scache.is_null() {
+            Box::from_raw(scache);
         }
     }
 }
