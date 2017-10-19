@@ -1,10 +1,14 @@
 """Minidump processing"""
 
+import io
+import shutil
+
 from symbolic._compat import range_type
 from symbolic._lowlevel import lib, ffi
-from symbolic.utils import RustObject, rustcall, attached_refs, decode_uuid
+from symbolic.utils import RustObject, rustcall, attached_refs, decode_uuid, encode_path, \
+    encode_uuid, CacheReader
 
-__all__ = ['CallStack', 'FrameTrust', 'ProcessState', 'StackFrame']
+__all__ = ['CallStack', 'FrameInfoMap', 'FrameTrust', 'ProcessState', 'StackFrame']
 
 
 def _make_frame_trust():
@@ -90,10 +94,11 @@ class ProcessState(RustObject):
     __dealloc_func__ = lib.symbolic_process_state_free
 
     @classmethod
-    def from_minidump(cls, path, cfis=ffi.NULL):
+    def from_minidump(cls, path, frame_infos=None):
         """Processes a minidump and get the state of the crashed process"""
+        frame_infos_ptr = frame_infos._objptr if frame_infos is not None else ffi.NULL
         return ProcessState._from_objptr(
-            rustcall(lib.symbolic_process_minidump, path, cfis))
+            rustcall(lib.symbolic_process_minidump, encode_path(path), frame_infos_ptr))
 
     @property
     def thread_count(self):
@@ -113,3 +118,33 @@ class ProcessState(RustObject):
             return stack
         else:
             raise IndexError("index %d out of bounds %d" % (idx, self.thread_count))
+
+
+class FrameInfoMap(RustObject):
+    """Stack frame information (CFI) for images"""
+    __dealloc_func__ = lib.symbolic_frame_info_map_free
+
+    @classmethod
+    def new(cls):
+        """Creates a new, empty frame info map"""
+        return FrameInfoMap._from_objptr(
+            rustcall(lib.symbolic_frame_info_map_new))
+
+    def add(self, uuid, path):
+        """Adds CFI for a code module specified by the `uuid` argument"""
+        self._methodcall(lib.symbolic_frame_info_map_add,
+            encode_uuid(uuid), encode_path(path))
+
+
+class CfiCache(RustObject):
+    """A cache for call frame information (CFI) to improve minidump stackwalking"""
+    __dealloc_func__ = lib.symbolic_cfi_cache_free
+
+    def open_stream(self):
+        """Returns the underlying bytes of the cache."""
+        buf = ffi.buffer(self._objptr.bytes, self._objptr.len)
+        return io.BufferedReader(CacheReader(buf, self))
+
+    def write_to(self, f):
+        """Writes the symcache into a file object."""
+        shutil.copyfileobj(self.open_stream(), f)
