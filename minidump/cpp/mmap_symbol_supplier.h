@@ -35,7 +35,7 @@ class MmapSymbolSupplier : public google_breakpad::SymbolSupplier {
   virtual void FreeSymbolData(const google_breakpad::CodeModule *module);
 
  private:
-  std::map<std::string, const symbol_entry_t *> cache;
+  std::map<std::string, std::string> cache;
 };
 
 #endif

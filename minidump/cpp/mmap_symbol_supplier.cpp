@@ -10,7 +10,7 @@ MmapSymbolSupplier::MmapSymbolSupplier(size_t symbol_count,
                                        const symbol_entry_t *symbols) {
   for (const symbol_entry_t *entry = symbols; entry < symbols + symbol_count;
        ++entry) {
-    cache[entry->debug_identifier] = entry;
+    cache[entry->debug_identifier] = std::string(entry->symbol_data, entry->symbol_size);
   }
 }
 
@@ -52,12 +52,12 @@ MmapSymbolSupplier::SymbolResult MmapSymbolSupplier::GetCStringSymbolData(
   }
 
   *symbol_file = it->first;
-  *symbol_size = it->second->symbol_size;
-  *symbol_data = const_cast<char *>(it->second->symbol_data);
+  *symbol_size = it->second.size() + 1;
+  *symbol_data = &it->second[0];
 
   return FOUND;
 }
 
 void MmapSymbolSupplier::FreeSymbolData(const CodeModule *module) {
-  // Nothing to do. Managed by the owner of the supplier
+  // Nothing to do. Automatically released in the destructor.
 }
