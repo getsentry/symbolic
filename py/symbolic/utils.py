@@ -124,6 +124,13 @@ def decode_uuid(value):
     return uuid.UUID(bytes=bytes(bytearray(ffi.unpack(value.data, 16))))
 
 
+def encode_uuid(value):
+    """Encodes the given uuid value for FFI."""
+    encoded = ffi.new("SymbolicUuid *")
+    encoded.data[0:16] = bytearray(make_uuid(value).bytes)
+    return encoded
+
+
 def make_uuid(value):
     """Converts a value into a python uuid object."""
     if isinstance(value, uuid.UUID):
