@@ -28,6 +28,12 @@ extern "C" {
     fn call_stack_frames(stack: *const CallStack, size_out: *mut usize)
         -> *const *const StackFrame;
 
+    fn system_info_os_name(info: *const SystemInfo) -> *mut c_char;
+    fn system_info_os_version(info: *const SystemInfo) -> *mut c_char;
+    fn system_info_cpu_family(info: *const SystemInfo) -> *mut c_char;
+    fn system_info_cpu_info(info: *const SystemInfo) -> *mut c_char;
+    fn system_info_cpu_count(info: *const SystemInfo) -> u32;
+
     fn process_minidump(
         buffer: *const c_char,
         buffer_size: usize,
@@ -40,6 +46,12 @@ extern "C" {
         state: *const IProcessState,
         size_out: *mut usize,
     ) -> *const *const CallStack;
+    fn process_state_requesting_thread(state: *const IProcessState) -> i32;
+    fn process_state_timestamp(state: *const IProcessState) -> u64;
+    fn process_state_crash_address(state: *const IProcessState) -> u64;
+    fn process_state_crash_reason(state: *const IProcessState) -> *mut c_char;
+    fn process_state_assertion(state: *const IProcessState) -> *mut c_char;
+    fn process_state_system_info(state: *const IProcessState) -> *mut SystemInfo;
 }
 
 /// Unique identifier of a `CodeModule`
@@ -56,8 +68,7 @@ impl CodeModuleId {
             return Err(ErrorKind::Parse("Invalid input string length").into());
         }
 
-        let uuid = Uuid::parse_str(&input[..32])
-            .map_err(|_| ErrorKind::Parse("UUID parse error"))?;
+        let uuid = Uuid::parse_str(&input[..32]).map_err(|_| ErrorKind::Parse("UUID parse error"))?;
         let age = u32::from_str_radix(&input[32..], 16)?;
         Ok(CodeModuleId { uuid, age })
     }
@@ -121,7 +132,7 @@ impl CodeModule {
         unsafe { code_module_size(self) }
     }
 
-    // Returns the path or file name that the code module was loaded from.
+    /// Returns the path or file name that the code module was loaded from.
     pub fn code_file(&self) -> String {
         unsafe {
             let ptr = code_module_code_file(self);
@@ -129,10 +140,10 @@ impl CodeModule {
         }
     }
 
-    // An identifying string used to discriminate between multiple versions and
-    // builds of the same code module.  This may contain a UUID, timestamp,
-    // version number, or any combination of this or other information, in an
-    // implementation-defined format.
+    /// An identifying string used to discriminate between multiple versions and
+    /// builds of the same code module.  This may contain a UUID, timestamp,
+    /// version number, or any combination of this or other information, in an
+    /// implementation-defined format.
     pub fn code_identifier(&self) -> String {
         unsafe {
             let ptr = code_module_code_identifier(self);
@@ -354,9 +365,77 @@ impl fmt::Debug for CallStack {
     }
 }
 
+/// Information about the CPU and OS on which a minidump was generated.
+#[repr(C)]
+pub struct SystemInfo(c_void);
+
+impl SystemInfo {
+    /// A string identifying the operating system, such as "Windows NT",
+    /// "Mac OS X", or "Linux".  If the information is present in the dump but
+    /// its value is unknown, this field will contain a numeric value.  If
+    /// the information is not present in the dump, this field will be empty.
+    pub fn os_name(&self) -> String {
+        unsafe {
+            let ptr = system_info_os_name(self);
+            utils::ptr_to_string(ptr)
+        }
+    }
+
+    /// A string identifying the version of the operating system, such as
+    /// "5.1.2600 Service Pack 2" or "10.4.8 8L2127".  If the dump does not
+    /// contain this information, this field will be empty.
+    pub fn os_version(&self) -> String {
+        unsafe {
+            let ptr = system_info_os_version(self);
+            utils::ptr_to_string(ptr)
+        }
+    }
+
+    /// A string identifying the basic CPU family, such as "x86" or "ppc".
+    /// If this information is present in the dump but its value is unknown,
+    /// this field will contain a numeric value.  If the information is not
+    /// present in the dump, this field will be empty.  The values stored in
+    /// this field should match those used by MinidumpSystemInfo::GetCPU.
+    pub fn cpu_family(&self) -> String {
+        unsafe {
+            let ptr = system_info_cpu_family(self);
+            utils::ptr_to_string(ptr)
+        }
+    }
+
+    /// A string further identifying the specific CPU, such as
+    /// "GenuineIntel level 6 model 13 stepping 8".  If the information is not
+    /// present in the dump, or additional identifying information is not
+    /// defined for the CPU family, this field will be empty.
+    pub fn cpu_info(&self) -> String {
+        unsafe {
+            let ptr = system_info_cpu_info(self);
+            utils::ptr_to_string(ptr)
+        }
+    }
+
+    /// The number of processors in the system.  Will be greater than one for
+    /// multi-core systems.
+    pub fn cpu_count(&self) -> u32 {
+        unsafe { system_info_cpu_count(self) }
+    }
+}
+
+impl fmt::Debug for SystemInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("SystemInfo")
+            .field("os_name", &self.os_name())
+            .field("os_version", &self.os_version())
+            .field("cpu_family", &self.cpu_family())
+            .field("cpu_info", &self.cpu_info())
+            .field("cpu_count", &self.cpu_count())
+            .finish()
+    }
+}
+
 /// Result of processing a Minidump or Microdump file.
 /// Usually included in `ProcessError` when the file cannot be processed.
-#[repr(C)]
+#[repr(u32)]
 #[derive(Debug, Eq, PartialEq)]
 pub enum ProcessResult {
     /// The dump was processed successfully.
@@ -475,10 +554,64 @@ impl<'a> ProcessState<'a> {
         };
 
         if result == ProcessResult::Ok && !internal.is_null() {
-            Ok(ProcessState { internal, _ty: PhantomData })
+            Ok(ProcessState {
+                internal,
+                _ty: PhantomData,
+            })
         } else {
             Err(ErrorKind::Stackwalk(result.to_string()).into())
         }
+    }
+
+    /// The index of the thread that requested a dump be written in the
+    /// threads vector.  If a dump was produced as a result of a crash, this
+    /// will point to the thread that crashed.  If the dump was produced as
+    /// by user code without crashing, and the dump contains extended Breakpad
+    /// information, this will point to the thread that requested the dump.
+    /// If the dump was not produced as a result of an exception and no
+    /// extended Breakpad information is present, this field will be set to -1,
+    /// indicating that the dump thread is not available.
+    pub fn requesting_thread(&self) -> i32 {
+        unsafe { process_state_requesting_thread(self.internal) }
+    }
+
+    /// The time-date stamp of the minidump
+    pub fn timestamp(&self) -> u64 {
+        unsafe { process_state_timestamp(self.internal) }
+    }
+
+    /// If the process crashed, and if crash_reason implicates memory,
+    /// the memory address that caused the crash.  For data access errors,
+    /// this will be the data address that caused the fault.  For code errors,
+    /// this will be the address of the instruction that caused the fault.
+    pub fn crash_address(&self) -> u64 {
+        unsafe { process_state_crash_address(self.internal) }
+    }
+
+    /// If the process crashed, the type of crash.  OS- and possibly CPU-
+    /// specific.  For example, "EXCEPTION_ACCESS_VIOLATION" (Windows),
+    /// "EXC_BAD_ACCESS / KERN_INVALID_ADDRESS" (Mac OS X), "SIGSEGV"
+    /// (other Unix).
+    pub fn crash_reason(&self) -> String {
+        unsafe {
+            let ptr = process_state_crash_reason(self.internal);
+            utils::ptr_to_string(ptr)
+        }
+    }
+
+    /// If there was an assertion that was hit, a textual representation
+    /// of that assertion, possibly including the file and line at which
+    /// it occurred.
+    pub fn assertion(&self) -> String {
+        unsafe {
+            let ptr = process_state_assertion(self.internal);
+            utils::ptr_to_string(ptr)
+        }
+    }
+
+    /// Returns OS and CPU information.
+    pub fn system_info(&self) -> &SystemInfo {
+        unsafe { process_state_system_info(self.internal).as_ref().unwrap() }
     }
 
     /// Returns a list of `CallStack`s in the minidump.
@@ -510,6 +643,12 @@ impl<'a> Drop for ProcessState<'a> {
 impl<'a> fmt::Debug for ProcessState<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("ProcessState")
+            .field("requesting_thread", &self.requesting_thread())
+            .field("timestamp", &self.timestamp())
+            .field("crash_address", &self.crash_address())
+            .field("crash_reason", &self.crash_reason())
+            .field("assertion", &self.assertion())
+            .field("system_info", &self.system_info())
             .field("threads", &self.threads())
             .finish()
     }
