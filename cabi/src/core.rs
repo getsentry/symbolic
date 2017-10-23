@@ -99,9 +99,13 @@ pub enum SymbolicErrorCode {
     // sourcemaps
     BadSourcemap = 2001,
     CannotFlattenSourcemap = 2002,
+    // minidump
+    Stackwalk = 3001,
+    Resolver = 3002,
     // external errors
     Io = 10001,
     Utf8Error = 10002,
+    ParseInt = 10003,
 }
 
 impl SymbolicErrorCode {
@@ -123,8 +127,11 @@ impl SymbolicErrorCode {
             ErrorKind::BadJson(..) => SymbolicErrorCode::BadJson,
             ErrorKind::BadSourcemap(..) => SymbolicErrorCode::BadSourcemap,
             ErrorKind::CannotFlattenSourcemap(..) => SymbolicErrorCode::CannotFlattenSourcemap,
+            ErrorKind::Stackwalk(..) => SymbolicErrorCode::Stackwalk,
+            ErrorKind::Resolver(..) => SymbolicErrorCode::Resolver,
             ErrorKind::Io(..) => SymbolicErrorCode::Io,
             ErrorKind::Utf8Error(..) => SymbolicErrorCode::Utf8Error,
+            ErrorKind::ParseInt(..) => SymbolicErrorCode::ParseInt,
             // we don't use _ here but the hidden field on error kind so that
             // we don't accidentally forget to map them to error codes.
             ErrorKind::__Nonexhaustive { .. } => unreachable!(),

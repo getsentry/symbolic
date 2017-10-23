@@ -5,7 +5,7 @@ from symbolic._lowlevel import lib, ffi
 from symbolic.demangle import demangle_symbol
 from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
      encode_str, common_path_join, strip_common_path_prefix, encode_path, \
-     attached_refs
+     attached_refs, CacheReader
 from symbolic.common import parse_addr
 from symbolic import exceptions
 
@@ -68,30 +68,6 @@ class Symbol(object):
         )
 
 
-class _SymCacheReader(io.RawIOBase):
-
-    def __init__(self, buffer, symcache):
-        self._buffer = buffer
-        # Hold the symcache so we do not lose the reference and crash on
-        # the buffer disappearing
-        self.symcache = symcache
-        self.pos = 0
-
-    def readable(self):
-        return True
-
-    def readinto(self, buf):
-        n = len(buf)
-        if n is None:
-            end = len(self._buffer)
-        else:
-            end = min(self.pos + n, len(self._buffer))
-        rv = self._buffer[self.pos:end]
-        buf[:len(rv)] = rv
-        self.pos = end
-        return len(rv)
-
-
 class SymCache(RustObject):
     __dealloc_func__ = lib.symbolic_symcache_free
 
@@ -142,8 +118,7 @@ class SymCache(RustObject):
         """Returns a stream to read files from the internal buffer."""
         buf = self._methodcall(lib.symbolic_symcache_get_bytes)
         size = self._methodcall(lib.symbolic_symcache_get_size)
-        rv = ffi.buffer(buf, size)
-        return io.BufferedReader(_SymCacheReader(rv, self))
+        return io.BufferedReader(CacheReader(ffi.buffer(buf, size), self))
 
     def dump_into(self, f):
         """Dumps the symcache into a file object."""

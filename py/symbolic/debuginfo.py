@@ -7,6 +7,7 @@ from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
     make_uuid, attached_refs
 from symbolic.common import parse_addr, arch_is_known, arch_from_macho
 from symbolic.symcache import SymCache
+from symbolic.minidump import CfiCache
 
 
 __all__ = ['FatObject', 'Object', 'ObjectLookup']
@@ -84,6 +85,11 @@ class Object(RustObject):
         """Creates a symcache from the object."""
         return SymCache._from_objptr(self._methodcall(
             lib.symbolic_symcache_from_object))
+
+    def make_cfi_cache(self):
+        """Creates a cfi cache from the object."""
+        return CfiCache._from_objptr(self._methodcall(
+            lib.symbolic_cfi_cache_from_object))
 
     def __repr__(self):
         return '<Object %s %r>' % (

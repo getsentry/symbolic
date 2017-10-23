@@ -29,16 +29,39 @@ enum SymbolicErrorCode {
   SYMBOLIC_ERROR_CODE_BAD_DWARF_DATA = 1006,
   SYMBOLIC_ERROR_CODE_BAD_SOURCEMAP = 2001,
   SYMBOLIC_ERROR_CODE_CANNOT_FLATTEN_SOURCEMAP = 2002,
+  SYMBOLIC_ERROR_CODE_STACKWALK = 3001,
+  SYMBOLIC_ERROR_CODE_RESOLVER = 3002,
   SYMBOLIC_ERROR_CODE_IO = 10001,
   SYMBOLIC_ERROR_CODE_UTF8_ERROR = 10002,
+  SYMBOLIC_ERROR_CODE_PARSE_INT = 10003,
 };
 typedef uint32_t SymbolicErrorCode;
+
+/*
+ * Indicates how well the instruction pointer derived during stack walking is trusted
+ */
+enum SymbolicFrameTrust {
+  SYMBOLIC_FRAME_TRUST_NONE = 0,
+  SYMBOLIC_FRAME_TRUST_SCAN = 1,
+  SYMBOLIC_FRAME_TRUST_CFI_SCAN = 2,
+  SYMBOLIC_FRAME_TRUST_FP = 3,
+  SYMBOLIC_FRAME_TRUST_CFI = 4,
+  SYMBOLIC_FRAME_TRUST_PREWALKED = 5,
+  SYMBOLIC_FRAME_TRUST_CONTEXT = 6,
+};
+typedef uint32_t SymbolicFrameTrust;
 
 /*
  * A potential multi arch object.
  */
 struct SymbolicFatObject;
 typedef struct SymbolicFatObject SymbolicFatObject;
+
+/*
+ * Contains stack frame information (CFI) for images
+ */
+struct SymbolicFrameInfoMap;
+typedef struct SymbolicFrameInfoMap SymbolicFrameInfoMap;
 
 /*
  * A single arch object.
@@ -84,6 +107,11 @@ typedef struct {
   uint32_t cpusubtype;
 } SymbolicMachoArch;
 
+typedef struct {
+  uint8_t *bytes;
+  size_t len;
+} SymbolicCfiCache;
+
 /*
  * Represents an instruction info.
  */
@@ -111,6 +139,13 @@ typedef struct {
 } SymbolicInstructionInfo;
 
 /*
+ * Represents a UUID
+ */
+typedef struct {
+  uint8_t data[16];
+} SymbolicUuid;
+
+/*
  * Represents a single symbol after lookup.
  */
 typedef struct {
@@ -132,11 +167,32 @@ typedef struct {
 } SymbolicLookupResult;
 
 /*
- * Represents a UUID
+ * Contains the absolute instruction address and image information of a stack frame
  */
 typedef struct {
-  uint8_t data[16];
-} SymbolicUuid;
+  uint64_t instruction;
+  SymbolicFrameTrust trust;
+  SymbolicUuid image_uuid;
+  uint64_t image_addr;
+  uint64_t image_size;
+} SymbolicStackFrame;
+
+/*
+ * Represents a thread of the process state which holds a list of stack frames
+ */
+typedef struct {
+  uint32_t thread_id;
+  SymbolicStackFrame *frames;
+  size_t frame_count;
+} SymbolicCallStack;
+
+/*
+ * State of a crashed process
+ */
+typedef struct {
+  SymbolicCallStack *threads;
+  size_t thread_count;
+} SymbolicProcessState;
 
 /*
  * Represents a single token after lookup.
@@ -171,6 +227,10 @@ bool symbolic_arch_is_known(const SymbolicStr *arch);
  * Returns the macho code for a CPU architecture.
  */
 SymbolicMachoArch symbolic_arch_to_macho(const SymbolicStr *arch);
+
+void symbolic_cfi_cache_free(SymbolicCfiCache *scache);
+
+SymbolicCfiCache *symbolic_cfi_cache_from_object(const SymbolicObject *sobj);
 
 /*
  * Demangles a given identifier.
@@ -238,6 +298,23 @@ SymbolicFatObject *symbolic_fatobject_open(const char *path);
 uint64_t symbolic_find_best_instruction(const SymbolicInstructionInfo *ii);
 
 /*
+ * Adds CFI for a code module specified by the `suuid` argument
+ */
+void symbolic_frame_info_map_add(const SymbolicFrameInfoMap *smap,
+                                 const SymbolicUuid *suuid,
+                                 const char *path);
+
+/*
+ * Frees a frame info map object
+ */
+void symbolic_frame_info_map_free(SymbolicFrameInfoMap *smap);
+
+/*
+ * Creates a new frame info map
+ */
+SymbolicFrameInfoMap *symbolic_frame_info_map_new();
+
+/*
  * Initializes the library
  */
 void symbolic_init();
@@ -266,6 +343,17 @@ SymbolicStr symbolic_object_get_kind(const SymbolicObject *so);
  * Returns the UUID of an object.
  */
 SymbolicUuid symbolic_object_get_uuid(const SymbolicObject *so);
+
+/*
+ * Processes a minidump with optional CFI information and returns the state
+ * of the process at the time of the crash
+ */
+SymbolicProcessState *symbolic_process_minidump(const char *path, const SymbolicFrameInfoMap *smap);
+
+/*
+ * Frees a process state object
+ */
+void symbolic_process_state_free(SymbolicProcessState *sstate);
 
 /*
  * Converts a dotted path at a line number

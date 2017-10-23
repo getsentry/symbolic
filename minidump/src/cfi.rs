@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::io::Write;
 
-use gimli::{BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDescriptionEntry, Reader,
-            ReaderOffset, RegisterRule, UninitializedUnwindContext, UnwindOffset, UnwindSection,
-            UnwindTable};
+use gimli::{self, BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDescriptionEntry,
+            Reader, ReaderOffset, RegisterRule, UninitializedUnwindContext, UnwindOffset,
+            UnwindSection, UnwindTable};
 
 use symbolic_common::{Arch, Result};
 use symbolic_common::ErrorKind::MissingDebugInfo;
@@ -85,8 +85,13 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
         // Collect all rows first, as we need to know the final end address in order to write the
         // CFI INIT record describing the extent of the whole unwind table.
         let mut rows = Vec::new();
-        while let Some(row) = table.next_row()? {
-            rows.push(row.clone());
+        loop {
+            match table.next_row() {
+                Ok(None) => break,
+                Ok(Some(row)) => rows.push(row.clone()),
+                Err(gimli::Error::UnknownCallFrameInstruction(_)) => continue,
+                Err(e) => return Err(e.into()),
+            }
         }
 
         if let Some(first_row) = rows.first() {

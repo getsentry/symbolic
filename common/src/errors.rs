@@ -82,6 +82,16 @@ error_chain! {
             description("bad sourcemap")
             display("bad sourcemap: {}", &msg)
         }
+        /// Raised while stackwalking minidumps.
+        Stackwalk(message: String) {
+            description("stackwalking error")
+            display("stackwalking error: {}", message)
+        }
+        /// Raised when a resolver cannot load its symbols file.
+        Resolver(message: String) {
+            description("resolver error")
+            display("resolver error: {}", message)
+        }
         /// Raised if sourcemaps cannot be flattened.
         CannotFlattenSourcemap(msg: String) {
             description("cannot flatten sourcemap")
@@ -92,6 +102,7 @@ error_chain! {
     foreign_links {
         Io(io::Error);
         Utf8Error(str::Utf8Error);
+        ParseInt(::std::num::ParseIntError);
     }
 }
 

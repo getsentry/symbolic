@@ -6,3 +6,6 @@ Cargo.lock
 *.pyc
 __pycache__/
 .last-run
+
+# Editors
+.vscode/settings.json
