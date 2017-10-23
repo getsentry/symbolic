@@ -2,11 +2,12 @@
 
 import io
 import shutil
+from datetime import datetime
 
 from symbolic._compat import range_type
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, attached_refs, decode_uuid, encode_path, \
-    encode_uuid, CacheReader
+    encode_uuid, decode_str, CacheReader
 
 __all__ = ['CallStack', 'FrameInfoMap', 'FrameTrust', 'ProcessState', 'StackFrame']
 
@@ -89,6 +90,50 @@ class CallStack(RustObject):
             raise IndexError("index %d out of bounds %d" % (idx, self.frame_count))
 
 
+class SystemInfo(RustObject):
+    """Information about the CPU and OS on which a minidump was generated."""
+    __dealloc_func__ = None
+
+    @property
+    def os_name(self):
+        """A string identifying the operating system, such as "Windows NT",
+        "Mac OS X", or "Linux".  If the information is present in the dump but
+        its value is unknown, this field will contain a numeric value.  If
+        the information is not present in the dump, this field will be empty.
+        """
+        return decode_str(self._objptr.os_name)
+
+    @property
+    def os_version(self):
+        """A string identifying the version of the operating system, such as
+        "5.1.2600 Service Pack 2" or "10.4.8 8L2127".  If the dump does not
+        contain this information, this field will be empty."""
+        return decode_str(self._objptr.os_version)
+
+    @property
+    def cpu_family(self):
+        """A string identifying the basic CPU family, such as "x86" or "ppc".
+        If this information is present in the dump but its value is unknown,
+        this field will contain a numeric value.  If the information is not
+        present in the dump, this field will be empty.  The values stored in
+        this field should match those used by MinidumpSystemInfo::GetCPU."""
+        return decode_str(self._objptr.cpu_family)
+
+    @property
+    def cpu_info(self):
+        """A string further identifying the specific CPU, such as
+        "GenuineIntel level 6 model 13 stepping 8".  If the information is not
+        present in the dump, or additional identifying information is not
+        defined for the CPU family, this field will be empty."""
+        return decode_str(self._objptr.cpu_info)
+
+    @property
+    def cpu_count(self):
+        """The number of processors in the system.  Will be greater than one for
+        multi-core systems."""
+        return self._objptr.cpu_count
+
+
 class ProcessState(RustObject):
     """State of a crashed process"""
     __dealloc_func__ = lib.symbolic_process_state_free
@@ -99,6 +144,60 @@ class ProcessState(RustObject):
         frame_infos_ptr = frame_infos._objptr if frame_infos is not None else ffi.NULL
         return ProcessState._from_objptr(
             rustcall(lib.symbolic_process_minidump, encode_path(path), frame_infos_ptr))
+
+    @property
+    def requesting_thread(self):
+        """The index of the thread that requested a dump be written in the
+        threads vector.  If a dump was produced as a result of a crash, this
+        will point to the thread that crashed.  If the dump was produced as
+        by user code without crashing, and the dump contains extended Breakpad
+        information, this will point to the thread that requested the dump.
+        If the dump was not produced as a result of an exception and no
+        extended Breakpad information is present, this field will be set to -1,
+        indicating that the dump thread is not available."""
+        return self._objptr.requesting_thread
+
+    @property
+    def timestamp(self):
+        """The time-date stamp of the minidump (time_t format)"""
+        return self._objptr.timestamp
+
+    @property
+    def crash_time(self):
+        """The time at which the process crashed"""
+        if self.timestamp == 0:
+            return None
+        return datetime.fromtimestamp(float(self.timestamp))
+
+    @property
+    def crash_address(self):
+        """If the process crashed, and if crash_reason implicates memory,
+        the memory address that caused the crash.  For data access errors,
+        this will be the data address that caused the fault.  For code errors,
+        this will be the address of the instruction that caused the fault."""
+        return self._objptr.crash_address
+
+    @property
+    def crash_reason(self):
+        """If the process crashed, the type of crash.  OS- and possibly CPU-
+        specific.  For example, "EXCEPTION_ACCESS_VIOLATION" (Windows),
+        "EXC_BAD_ACCESS / KERN_INVALID_ADDRESS" (Mac OS X), "SIGSEGV"
+        (other Unix)."""
+        return decode_str(self._objptr.crash_reason)
+
+    @property
+    def assertion(self):
+        """If there was an assertion that was hit, a textual representation
+        of that assertion, possibly including the file and line at which
+        it occurred."""
+        return decode_str(self._objptr.assertion)
+
+    @property
+    def system_info(self):
+        """Returns a weak pointer to OS and CPU information."""
+        info = SystemInfo._from_objptr(self._objptr.system_info, shared=True)
+        attached_refs[info] = self
+        return info
 
     @property
     def thread_count(self):
