@@ -164,10 +164,10 @@ class ProcessState(RustObject):
 
     @property
     def crash_time(self):
-        """The time at which the process crashed"""
+        """The UTC time at which the process crashed"""
         if self.timestamp == 0:
             return None
-        return datetime.fromtimestamp(float(self.timestamp))
+        return datetime.utcfromtimestamp(float(self.timestamp))
 
     @property
     def crash_address(self):
