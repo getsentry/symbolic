@@ -18,33 +18,33 @@ process_state_t *process_minidump(const char *buffer,
                                   symbol_entry_t *symbols,
                                   size_t symbol_count,
                                   int *result_out) {
-  if (buffer == nullptr) {
-    *result_out = google_breakpad::PROCESS_ERROR_MINIDUMP_NOT_FOUND;
-    return nullptr;
-  }
+    if (buffer == nullptr) {
+        *result_out = google_breakpad::PROCESS_ERROR_MINIDUMP_NOT_FOUND;
+        return nullptr;
+    }
 
-  ProcessState *state = new ProcessState();
-  if (state == nullptr) {
-    *result_out = -1;  // Memory allocation issue
-    return nullptr;
-  }
+    ProcessState *state = new ProcessState();
+    if (state == nullptr) {
+        *result_out = -1;  // Memory allocation issue
+        return nullptr;
+    }
 
-  BasicSourceLineResolver resolver;
-  MmapSymbolSupplier supplier(symbol_count, symbols);
-  MinidumpProcessor processor(&supplier, &resolver);
+    BasicSourceLineResolver resolver;
+    MmapSymbolSupplier supplier(symbol_count, symbols);
+    MinidumpProcessor processor(&supplier, &resolver);
 
-  imemstream in(buffer, buffer_size);
-  Minidump minidump(in);
-  if (!minidump.Read()) {
-    *result_out = google_breakpad::PROCESS_ERROR_MINIDUMP_NOT_FOUND;
-    return nullptr;
-  }
+    imemstream in(buffer, buffer_size);
+    Minidump minidump(in);
+    if (!minidump.Read()) {
+        *result_out = google_breakpad::PROCESS_ERROR_MINIDUMP_NOT_FOUND;
+        return nullptr;
+    }
 
-  *result_out = processor.Process(&minidump, state);
-  if (*result_out != google_breakpad::PROCESS_OK) {
-    delete state;
-    return nullptr;
-  }
+    *result_out = processor.Process(&minidump, state);
+    if (*result_out != google_breakpad::PROCESS_OK) {
+        delete state;
+        return nullptr;
+    }
 
-  return process_state_t::cast(state);
+    return process_state_t::cast(state);
 }

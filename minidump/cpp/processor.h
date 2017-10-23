@@ -10,14 +10,14 @@ extern "C" {
 
 /// Data transfer object for symbols in memory
 struct symbol_entry_t {
-  /// The debug identifier of the code module these symbols are for
-  const char *debug_identifier;
+    /// The debug identifier of the code module these symbols are for
+    const char *debug_identifier;
 
-  /// Size of the buffer inside symbol_data
-  const size_t symbol_size;
+    /// Size of the buffer inside symbol_data
+    const size_t symbol_size;
 
-  /// Raw data of the symbol file passed to the symbolizer
-  const char *symbol_data;
+    /// Raw data of the symbol file passed to the symbolizer
+    const char *symbol_data;
 };
 
 /// Reads a minidump from a memory buffer and processes it. Returns an owning
