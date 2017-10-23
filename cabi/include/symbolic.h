@@ -167,6 +167,17 @@ typedef struct {
 } SymbolicLookupResult;
 
 /*
+ * OS and CPU information
+ */
+typedef struct {
+  SymbolicStr os_name;
+  SymbolicStr os_version;
+  SymbolicStr cpu_family;
+  SymbolicStr cpu_info;
+  uint32_t cpu_count;
+} SymbolicSystemInfo;
+
+/*
  * Contains the absolute instruction address and image information of a stack frame
  */
 typedef struct {
@@ -190,6 +201,12 @@ typedef struct {
  * State of a crashed process
  */
 typedef struct {
+  int32_t requesting_thread;
+  uint64_t timestamp;
+  uint64_t crash_address;
+  SymbolicStr crash_reason;
+  SymbolicStr assertion;
+  SymbolicSystemInfo system_info;
   SymbolicCallStack *threads;
   size_t thread_count;
 } SymbolicProcessState;
@@ -456,7 +473,8 @@ void symbolic_sourceview_free(SymbolicSourceView *ssv);
 /*
  * Creates a source view from a given path.
  *
- * This shares the underlying memory and does not copy it.
+ * This shares the underlying memory and does not copy it if that is
+ * possible.  Will ignore utf-8 decoding errors.
  */
 SymbolicSourceView *symbolic_sourceview_from_bytes(const char *bytes, size_t len);
 
