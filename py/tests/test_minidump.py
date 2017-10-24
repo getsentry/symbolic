@@ -11,6 +11,7 @@ def test_macos_without_cfi(res_path):
     assert state.thread_count == 1
     assert state.requesting_thread == 0
     assert state.timestamp == 1505305307L
+    assert state.crashed == True
     assert state.crash_time == datetime(2017, 9, 13, 12, 21, 47)
     assert state.crash_address == 69  # memory address: *(0x45) = 0;
     assert state.crash_reason == 'EXC_BAD_ACCESS / KERN_INVALID_ADDRESS'
@@ -44,6 +45,7 @@ def test_linux_without_cfi(res_path):
     assert state.thread_count == 1
     assert state.requesting_thread == 0
     assert state.timestamp == 1505305040L
+    assert state.crashed == True
     assert state.crash_time == datetime(2017, 9, 13, 12, 17, 20)
     assert state.crash_address == 0  # memory address: *(0x0) = 0;
     assert state.crash_reason == 'SIGSEGV'
@@ -81,6 +83,7 @@ def test_macos_with_cfi(res_path):
     assert state.thread_count == 1
     assert state.requesting_thread == 0
     assert state.timestamp == 1505305307L
+    assert state.crashed == True
     assert state.crash_time == datetime(2017, 9, 13, 12, 21, 47)
     assert state.crash_address == 69  # memory address: *(0x45) = 0;
     assert state.crash_reason == 'EXC_BAD_ACCESS / KERN_INVALID_ADDRESS'
@@ -118,6 +121,7 @@ def test_linux_with_cfi(res_path):
     assert state.thread_count == 1
     assert state.requesting_thread == 0
     assert state.timestamp == 1505305040L
+    assert state.crashed == True
     assert state.crash_time == datetime(2017, 9, 13, 12, 17, 20)
     assert state.crash_address == 0  # memory address: *(0x0) = 0;
     assert state.crash_reason == 'SIGSEGV'

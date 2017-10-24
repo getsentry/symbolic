@@ -48,6 +48,7 @@ extern "C" {
     ) -> *const *const CallStack;
     fn process_state_requesting_thread(state: *const IProcessState) -> i32;
     fn process_state_timestamp(state: *const IProcessState) -> u64;
+    fn process_state_crashed(state: *const IProcessState) -> bool;
     fn process_state_crash_address(state: *const IProcessState) -> u64;
     fn process_state_crash_reason(state: *const IProcessState) -> *mut c_char;
     fn process_state_assertion(state: *const IProcessState) -> *mut c_char;
@@ -578,6 +579,12 @@ impl<'a> ProcessState<'a> {
     /// The time-date stamp of the minidump
     pub fn timestamp(&self) -> u64 {
         unsafe { process_state_timestamp(self.internal) }
+    }
+
+    /// True if the process crashed, false if the dump was produced outside
+    /// of an exception handler.
+    pub fn crashed(&self) -> bool {
+        unsafe { process_state_crashed(self.internal) }
     }
 
     /// If the process crashed, and if crash_reason implicates memory,

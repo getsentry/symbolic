@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdbool>
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,6 +52,10 @@ int32_t process_state_requesting_thread(const process_state_t *state);
 
 /// The time-date stamp of the minidump (time_t format)
 uint64_t process_state_timestamp(const process_state_t *state);
+
+/// True if the process crashed, false if the dump was produced outside
+/// of an exception handler.
+bool process_state_crashed(const process_state_t *state);
 
 /// If the process crashed, and if crash_reason implicates memory,
 /// the memory address that caused the crash.  For data access errors,

@@ -173,6 +173,12 @@ class ProcessState(RustObject):
         return self._objptr.timestamp
 
     @property
+    def crashed(self):
+        """True if the process crashed, false if the dump was produced outside
+        of an exception handler."""
+        return self._objptr.crashed
+
+    @property
     def crash_time(self):
         """The UTC time at which the process crashed"""
         if self.timestamp == 0:

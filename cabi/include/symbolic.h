@@ -210,6 +210,7 @@ typedef struct {
 typedef struct {
   int32_t requesting_thread;
   uint64_t timestamp;
+  bool crashed;
   uint64_t crash_address;
   SymbolicStr crash_reason;
   SymbolicStr assertion;

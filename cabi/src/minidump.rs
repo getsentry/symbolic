@@ -76,6 +76,7 @@ pub struct SymbolicSystemInfo {
 pub struct SymbolicProcessState {
     pub requesting_thread: i32,
     pub timestamp: u64,
+    pub crashed: bool,
     pub crash_address: u64,
     pub crash_reason: SymbolicStr,
     pub assertion: SymbolicStr,
@@ -187,6 +188,7 @@ unsafe fn map_process_state(state: &ProcessState) -> SymbolicProcessState {
     SymbolicProcessState {
         requesting_thread: state.requesting_thread(),
         timestamp: state.timestamp(),
+        crashed: state.crashed(),
         crash_address: state.crash_address(),
         crash_reason: SymbolicStr::from_string(state.crash_reason()),
         assertion: SymbolicStr::from_string(state.assertion()),

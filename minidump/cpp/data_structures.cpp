@@ -42,6 +42,14 @@ uint64_t process_state_timestamp(const process_state_t *state) {
     return process_state_t::cast(state)->time_date_stamp();
 }
 
+bool process_state_crashed(const process_state_t *state) {
+    if (state == nullptr) {
+        return false;
+    }
+
+    return process_state_t::cast(state)->crashed();
+}
+
 uint64_t process_state_crash_address(const process_state_t *state) {
     if (state == nullptr) {
         return 0;
