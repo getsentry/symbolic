@@ -6,13 +6,9 @@ insert_final_newline = true
 trim_trailing_whitespace = true
 charset = utf-8
 
-[*.{rs,json}]
+[*.{c,cc,cpp,h,rs,json}]
 indent_style = space
 indent_size = 4
-
-[*.{c,cc,cpp,h}]
-indent_style = space
-indent_size = 2
 
 [.travis.yml]
 indent_style = space

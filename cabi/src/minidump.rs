@@ -6,9 +6,9 @@ use uuid::Uuid;
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
 use symbolic_minidump::{BreakpadAsciiCfiWriter, CallStack, CodeModuleId, FrameInfoMap,
-                        ProcessState, StackFrame};
+                        ProcessState, StackFrame, SystemInfo};
 
-use core::SymbolicUuid;
+use core::{SymbolicStr, SymbolicUuid};
 use debuginfo::SymbolicObject;
 
 /// Contains stack frame information (CFI) for images
@@ -52,9 +52,25 @@ impl Drop for SymbolicCallStack {
     }
 }
 
+/// OS and CPU information
+#[repr(C)]
+pub struct SymbolicSystemInfo {
+    pub os_name: SymbolicStr,
+    pub os_version: SymbolicStr,
+    pub cpu_family: SymbolicStr,
+    pub cpu_info: SymbolicStr,
+    pub cpu_count: u32,
+}
+
 /// State of a crashed process
 #[repr(C)]
 pub struct SymbolicProcessState {
+    pub requesting_thread: i32,
+    pub timestamp: u64,
+    pub crash_address: u64,
+    pub crash_reason: SymbolicStr,
+    pub assertion: SymbolicStr,
+    pub system_info: SymbolicSystemInfo,
     pub threads: *mut SymbolicCallStack,
     pub thread_count: usize,
 }
@@ -110,10 +126,27 @@ unsafe fn map_call_stack(stack: &CallStack) -> SymbolicCallStack {
     }
 }
 
+/// Maps a `SystemInfo` to its FFI type
+unsafe fn map_system_info(info: &SystemInfo) -> SymbolicSystemInfo {
+    SymbolicSystemInfo {
+        os_name: SymbolicStr::from_string(info.os_name()),
+        os_version: SymbolicStr::from_string(info.os_version()),
+        cpu_family: SymbolicStr::from_string(info.cpu_family()),
+        cpu_info: SymbolicStr::from_string(info.cpu_info()),
+        cpu_count: info.cpu_count(),
+    }
+}
+
 /// Maps a `ProcessState` to its FFI type
 unsafe fn map_process_state(state: &ProcessState) -> SymbolicProcessState {
     let (threads, thread_count) = map_slice(state.threads(), |s| map_call_stack(s));
     SymbolicProcessState {
+        requesting_thread: state.requesting_thread(),
+        timestamp: state.timestamp(),
+        crash_address: state.crash_address(),
+        crash_reason: SymbolicStr::from_string(state.crash_reason()),
+        assertion: SymbolicStr::from_string(state.assertion()),
+        system_info: map_system_info(state.system_info()),
         threads,
         thread_count,
     }

@@ -1,6 +1,7 @@
 import os
 import uuid
 
+from datetime import datetime
 from symbolic import FatObject, FrameInfoMap, ProcessState
 
 
@@ -8,6 +9,19 @@ def test_macos_without_cfi(res_path):
     path = os.path.join(res_path, 'minidump', 'crash_macos.dmp')
     state = ProcessState.from_minidump(path)
     assert state.thread_count == 1
+    assert state.requesting_thread == 0
+    assert state.timestamp == 1505305307L
+    assert state.crash_time == datetime(2017, 9, 13, 12, 21, 47)
+    assert state.crash_address == 69  # memory address: *(0x45) = 0;
+    assert state.crash_reason == 'EXC_BAD_ACCESS / KERN_INVALID_ADDRESS'
+    assert state.assertion == ''
+
+    info = state.system_info
+    assert info.os_name == 'Mac OS X'
+    assert info.os_version == '10.12.6 16G29'
+    assert info.cpu_family == 'amd64'
+    assert info.cpu_info == 'family 6 model 70 stepping 1'
+    assert info.cpu_count == 8
 
     thread = state.get_thread(0)
     assert thread.thread_id == 775
@@ -26,6 +40,19 @@ def test_linux_without_cfi(res_path):
     path = os.path.join(res_path, 'minidump', 'crash_linux.dmp')
     state = ProcessState.from_minidump(path)
     assert state.thread_count == 1
+    assert state.requesting_thread == 0
+    assert state.timestamp == 1505305040L
+    assert state.crash_time == datetime(2017, 9, 13, 12, 17, 20)
+    assert state.crash_address == 0  # memory address: *(0x0) = 0;
+    assert state.crash_reason == 'SIGSEGV'
+    assert state.assertion == ''
+
+    info = state.system_info
+    assert info.os_name == 'Linux'
+    assert info.os_version == '0.0.0 Linux 4.9.46-moby #1 SMP Thu Sep 7 02:53:42 UTC 2017 x86_64'
+    assert info.cpu_family == 'amd64'
+    assert info.cpu_info == 'family 6 model 70 stepping 1'
+    assert info.cpu_count == 4
 
     thread = state.get_thread(0)
     assert thread.thread_id == 133
@@ -48,6 +75,19 @@ def test_macos_with_cfi(res_path):
     minidump_path = os.path.join(res_path, "minidump", "crash_macos.dmp")
     state = ProcessState.from_minidump(minidump_path, cfi)
     assert state.thread_count == 1
+    assert state.requesting_thread == 0
+    assert state.timestamp == 1505305307L
+    assert state.crash_time == datetime(2017, 9, 13, 12, 21, 47)
+    assert state.crash_address == 69  # memory address: *(0x45) = 0;
+    assert state.crash_reason == 'EXC_BAD_ACCESS / KERN_INVALID_ADDRESS'
+    assert state.assertion == ''
+
+    info = state.system_info
+    assert info.os_name == 'Mac OS X'
+    assert info.os_version == '10.12.6 16G29'
+    assert info.cpu_family == 'amd64'
+    assert info.cpu_info == 'family 6 model 70 stepping 1'
+    assert info.cpu_count == 8
 
     thread = state.get_thread(0)
     assert thread.thread_id == 775
@@ -70,6 +110,19 @@ def test_linux_with_cfi(res_path):
     minidump_path = os.path.join(res_path, "minidump", "crash_linux.dmp")
     state = ProcessState.from_minidump(minidump_path, cfi)
     assert state.thread_count == 1
+    assert state.requesting_thread == 0
+    assert state.timestamp == 1505305040L
+    assert state.crash_time == datetime(2017, 9, 13, 12, 17, 20)
+    assert state.crash_address == 0  # memory address: *(0x0) = 0;
+    assert state.crash_reason == 'SIGSEGV'
+    assert state.assertion == ''
+
+    info = state.system_info
+    assert info.os_name == 'Linux'
+    assert info.os_version == '0.0.0 Linux 4.9.46-moby #1 SMP Thu Sep 7 02:53:42 UTC 2017 x86_64'
+    assert info.cpu_family == 'amd64'
+    assert info.cpu_info == 'family 6 model 70 stepping 1'
+    assert info.cpu_count == 4
 
     thread = state.get_thread(0)
     assert thread.thread_id == 133

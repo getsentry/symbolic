@@ -26,6 +26,94 @@ call_stack_t *const *process_state_threads(process_state_t *state,
     return reinterpret_cast<call_stack_t *const *>(threads->data());
 }
 
+int32_t process_state_requesting_thread(const process_state_t *state) {
+    if (state == nullptr) {
+        return -1;
+    }
+
+    return process_state_t::cast(state)->requesting_thread();
+}
+
+uint64_t process_state_timestamp(const process_state_t *state) {
+    if (state == nullptr) {
+        return 0;
+    }
+
+    return process_state_t::cast(state)->time_date_stamp();
+}
+
+uint64_t process_state_crash_address(const process_state_t *state) {
+    if (state == nullptr) {
+        return 0;
+    }
+
+    return process_state_t::cast(state)->crash_address();
+}
+
+char *process_state_crash_reason(const process_state_t *state) {
+    if (state == nullptr) {
+        return nullptr;
+    }
+
+    return string_from(process_state_t::cast(state)->crash_reason());
+}
+
+char *process_state_assertion(const process_state_t *state) {
+    if (state == nullptr) {
+        return nullptr;
+    }
+
+    return string_from(process_state_t::cast(state)->assertion());
+}
+
+const system_info_t *process_state_system_info(const process_state_t *state) {
+    if (state == nullptr) {
+        return nullptr;
+    }
+
+    return system_info_t::cast(process_state_t::cast(state)->system_info());
+}
+
+char *system_info_os_name(const system_info_t *info) {
+    if (info == nullptr) {
+        return nullptr;
+    }
+
+    return string_from(system_info_t::cast(info)->os);
+}
+
+char *system_info_os_version(const system_info_t *info) {
+    if (info == nullptr) {
+        return nullptr;
+    }
+
+    return string_from(system_info_t::cast(info)->os_version);
+}
+
+char *system_info_cpu_family(const system_info_t *info) {
+    if (info == nullptr) {
+        return nullptr;
+    }
+
+    return string_from(system_info_t::cast(info)->cpu);
+}
+
+char *system_info_cpu_info(const system_info_t *info) {
+    if (info == nullptr) {
+        return nullptr;
+    }
+
+    return string_from(system_info_t::cast(info)->cpu_info);
+}
+
+uint32_t system_info_cpu_count(const system_info_t *info) {
+    if (info == nullptr) {
+        return 0;
+    }
+
+    return system_info_t::cast(info)->cpu_count;
+}
+
 uint32_t call_stack_thread_id(const call_stack_t *stack) {
     return (stack == nullptr) ? 0 : call_stack_t::cast(stack)->tid();
 }
