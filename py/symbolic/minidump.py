@@ -31,6 +31,31 @@ FrameTrust = _make_frame_trust()
 del _make_frame_trust
 
 
+class CodeModule(RustObject):
+    """Carries information about a code module loaded into the crashed process"""
+    __dealloc_func__ = None
+
+    @property
+    def uuid(self):
+        """UUID of the loaded module containing the instruction"""
+        return decode_uuid(self._objptr.uuid)
+
+    @property
+    def addr(self):
+        """Address at which the module is loaded in virtual memory"""
+        return self._objptr.addr
+
+    @property
+    def size(self):
+        """Size of the loaded module in virtual memory"""
+        return self._objptr.size
+
+    @property
+    def name(self):
+        """File name of the loaded module's debug file"""
+        return decode_str(self._objptr.name)
+
+
 class StackFrame(RustObject):
     """A single frame in the call stack of a crashed process"""
     __dealloc_func__ = None
@@ -44,21 +69,6 @@ class StackFrame(RustObject):
     def trust(self):
         """The confidence with with the instruction pointer was retrieved"""
         return FrameTrust.by_value[self._objptr.trust]
-
-    @property
-    def image_uuid(self):
-        """UUID of the loaded module containing the instruction"""
-        return decode_uuid(self._objptr.image_uuid)
-
-    @property
-    def image_addr(self):
-        """Address at which the module is loaded in virtual memory"""
-        return self._objptr.image_addr
-
-    @property
-    def image_size(self):
-        """Size of the loaded module in virtual memory"""
-        return self._objptr.image_size
 
 
 class CallStack(RustObject):
@@ -217,6 +227,24 @@ class ProcessState(RustObject):
             return stack
         else:
             raise IndexError("index %d out of bounds %d" % (idx, self.thread_count))
+
+    @property
+    def module_count(self):
+        return self._objptr.module_count
+
+    def modules(self):
+        for idx in range_type(self.module_count):
+            yield self.get_module(idx)
+
+    def get_module(self, idx):
+        if idx < self.module_count:
+            module = CodeModule._from_objptr(
+                self._objptr.modules[idx], shared=True)
+            attached_refs[module] = self
+            return module
+        else:
+            raise IndexError("index %d out of bounds %d" %
+                             (idx, self.module_count))
 
 
 class FrameInfoMap(RustObject):

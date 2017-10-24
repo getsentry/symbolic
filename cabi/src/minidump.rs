@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
-use symbolic_minidump::{BreakpadAsciiCfiWriter, CallStack, CodeModuleId, FrameInfoMap,
+use symbolic_minidump::{BreakpadAsciiCfiWriter, CallStack, CodeModule, CodeModuleId, FrameInfoMap,
                         ProcessState, StackFrame, SystemInfo};
 
 use core::{SymbolicStr, SymbolicUuid};
@@ -26,14 +26,23 @@ pub enum SymbolicFrameTrust {
     Context,
 }
 
+/// Carries information about a code module loaded into the process during the crash
+#[repr(C)]
+pub struct SymbolicCodeModule {
+    pub uuid: SymbolicUuid,
+    pub addr: u64,
+    pub size: u64,
+    pub name: SymbolicStr,
+}
+
 /// Contains the absolute instruction address and image information of a stack frame
 #[repr(C)]
 pub struct SymbolicStackFrame {
     pub instruction: u64,
     pub trust: SymbolicFrameTrust,
-    pub image_uuid: SymbolicUuid,
-    pub image_addr: u64,
-    pub image_size: u64,
+    // pub image_uuid: SymbolicUuid,
+    // pub image_addr: u64,
+    // pub image_size: u64,
 }
 
 /// Represents a thread of the process state which holds a list of stack frames
@@ -73,12 +82,15 @@ pub struct SymbolicProcessState {
     pub system_info: SymbolicSystemInfo,
     pub threads: *mut SymbolicCallStack,
     pub thread_count: usize,
+    pub modules: *mut SymbolicCodeModule,
+    pub module_count: usize,
 }
 
 impl Drop for SymbolicProcessState {
     fn drop(&mut self) {
         unsafe {
             Vec::from_raw_parts(self.threads, self.thread_count, self.thread_count);
+            Vec::from_raw_parts(self.modules, self.module_count, self.module_count);
         }
     }
 }
@@ -105,14 +117,43 @@ where
     (ptr, len)
 }
 
+/// Creates a packed array of mapped FFI elements from an iterator
+unsafe fn map_iter<T, S, I, F>(items: I, mut mapper: F) -> (*mut S, usize)
+where
+    I: Iterator<Item = T>,
+    F: FnMut(&T) -> S,
+{
+    let mut vec = Vec::with_capacity(items.size_hint().0);
+    for ref item in items {
+        vec.push(mapper(item));
+    }
+
+    vec.shrink_to_fit();
+    let ptr = mem::transmute(vec.as_ptr());
+    let len = vec.len();
+
+    mem::forget(vec);
+    (ptr, len)
+}
+
+/// Maps a `CodeModule` to its FFI type
+unsafe fn map_code_module(module: &CodeModule) -> SymbolicCodeModule {
+    SymbolicCodeModule {
+        uuid: map_uuid(&module.id().uuid()),
+        addr: module.base_address(),
+        size: module.size(),
+        name: SymbolicStr::from_string(module.code_file()),
+    }
+}
+
 /// Maps a `StackFrame` to its FFI type
 unsafe fn map_stack_frame(frame: &StackFrame) -> SymbolicStackFrame {
     SymbolicStackFrame {
         instruction: frame.instruction(),
         trust: mem::transmute(frame.trust()),
-        image_uuid: map_uuid(&frame.module().map_or(Uuid::nil(), |m| m.id().uuid())),
-        image_addr: frame.module().map_or(0, |m| m.base_address()),
-        image_size: frame.module().map_or(0, |m| m.size()),
+        // image_uuid: map_uuid(&frame.module().map_or(Uuid::nil(), |m| m.id().uuid())),
+        // image_addr: frame.module().map_or(0, |m| m.base_address()),
+        // image_size: frame.module().map_or(0, |m| m.size()),
     }
 }
 
@@ -140,6 +181,9 @@ unsafe fn map_system_info(info: &SystemInfo) -> SymbolicSystemInfo {
 /// Maps a `ProcessState` to its FFI type
 unsafe fn map_process_state(state: &ProcessState) -> SymbolicProcessState {
     let (threads, thread_count) = map_slice(state.threads(), |s| map_call_stack(s));
+    let (modules, module_count) =
+        map_iter(state.referenced_modules().iter(), |m| map_code_module(m));
+
     SymbolicProcessState {
         requesting_thread: state.requesting_thread(),
         timestamp: state.timestamp(),
@@ -149,6 +193,8 @@ unsafe fn map_process_state(state: &ProcessState) -> SymbolicProcessState {
         system_info: map_system_info(state.system_info()),
         threads,
         thread_count,
+        modules,
+        module_count,
     }
 }
 

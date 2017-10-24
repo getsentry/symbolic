@@ -183,9 +183,6 @@ typedef struct {
 typedef struct {
   uint64_t instruction;
   SymbolicFrameTrust trust;
-  SymbolicUuid image_uuid;
-  uint64_t image_addr;
-  uint64_t image_size;
 } SymbolicStackFrame;
 
 /*
@@ -196,6 +193,16 @@ typedef struct {
   SymbolicStackFrame *frames;
   size_t frame_count;
 } SymbolicCallStack;
+
+/*
+ * Carries information about a code module loaded into the process during the crash
+ */
+typedef struct {
+  SymbolicUuid uuid;
+  uint64_t addr;
+  uint64_t size;
+  SymbolicStr name;
+} SymbolicCodeModule;
 
 /*
  * State of a crashed process
@@ -209,6 +216,8 @@ typedef struct {
   SymbolicSystemInfo system_info;
   SymbolicCallStack *threads;
   size_t thread_count;
+  SymbolicCodeModule *modules;
+  size_t module_count;
 } SymbolicProcessState;
 
 /*

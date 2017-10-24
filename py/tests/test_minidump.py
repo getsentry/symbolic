@@ -30,10 +30,12 @@ def test_macos_without_cfi(res_path):
     frame = thread.get_frame(1)
     assert frame.trust == 'scan'
     assert frame.instruction == 4329952133
-    assert frame.image_addr == 4329947136
-    assert frame.image_size == 172032
-    assert frame.image_uuid == uuid.UUID(
-        "3f58bc3d-eabe-3361-b5fb-52a676298598")
+
+    mid = uuid.UUID("3f58bc3d-eabe-3361-b5fb-52a676298598")
+    module = next(module for module in state.modules() if module.uuid == mid)
+    assert module.addr == 4329947136
+    assert module.size == 172032
+    assert module.name == '/Users/jauer/Coding/breakpad/examples/target/crash_macos'
 
 
 def test_linux_without_cfi(res_path):
@@ -61,10 +63,12 @@ def test_linux_without_cfi(res_path):
     frame = thread.get_frame(1)
     assert frame.trust == 'scan'
     assert frame.instruction == 4202617
-    assert frame.image_addr == 4194304
-    assert frame.image_size == 196608
-    assert frame.image_uuid == uuid.UUID(
-        "d2554cdb-9261-36c4-b976-6a086583b9b5")
+
+    mid = uuid.UUID("d2554cdb-9261-36c4-b976-6a086583b9b5")
+    module = next(module for module in state.modules() if module.uuid == mid)
+    assert module.addr == 4194304
+    assert module.size == 196608
+    assert module.name == '/breakpad/examples/target/crash_linux'
 
 
 def test_macos_with_cfi(res_path):
@@ -96,10 +100,12 @@ def test_macos_with_cfi(res_path):
     frame = thread.get_frame(1)
     assert frame.trust == 'cfi'
     assert frame.instruction == 4329952133
-    assert frame.image_addr == 4329947136
-    assert frame.image_size == 172032
-    assert frame.image_uuid == uuid.UUID(
-        "3f58bc3d-eabe-3361-b5fb-52a676298598")
+
+    mid = uuid.UUID("3f58bc3d-eabe-3361-b5fb-52a676298598")
+    module = next(module for module in state.modules() if module.uuid == mid)
+    assert module.addr == 4329947136
+    assert module.size == 172032
+    assert module.name == '/Users/jauer/Coding/breakpad/examples/target/crash_macos'
 
 
 def test_linux_with_cfi(res_path):
@@ -131,10 +137,12 @@ def test_linux_with_cfi(res_path):
     frame = thread.get_frame(1)
     assert frame.trust == 'cfi'
     assert frame.instruction == 4202617
-    assert frame.image_addr == 4194304
-    assert frame.image_size == 196608
-    assert frame.image_uuid == uuid.UUID(
-        "d2554cdb-9261-36c4-b976-6a086583b9b5")
+
+    mid = uuid.UUID("d2554cdb-9261-36c4-b976-6a086583b9b5")
+    module = next(module for module in state.modules() if module.uuid == mid)
+    assert module.addr == 4194304
+    assert module.size == 196608
+    assert module.name == '/breakpad/examples/target/crash_linux'
 
 
 def test_macos_cfi_cache(res_path):
