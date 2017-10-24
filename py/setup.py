@@ -18,8 +18,8 @@ with open('README', 'rb') as f:
     readme = f.read()
 
 
-if os.path.isfile('../Cargo.toml'):
-    with open('../Cargo.toml') as f:
+if os.path.isfile('../cabi/Cargo.toml'):
+    with open('../cabi/Cargo.toml') as f:
         version = _version_re.search(f.read()).group(1)
 else:
     with open('version.txt') as f:
@@ -27,8 +27,8 @@ else:
 
 
 def vendor_rust_deps():
-    subprocess.Popen(['git', 'archive', '--worktree-attributes',
-                      '-o', 'py/rustsrc.zip', 'HEAD'], cwd='..').wait()
+    subprocess.Popen(['scripts/git-archive-all', 'py/rustsrc.zip'],
+                     cwd='..').wait()
 
 
 def write_version():
@@ -52,14 +52,14 @@ def build_native(spec):
         target = 'debug'
 
     # Step 0: find rust sources
-    if os.path.isfile('rustsrc.zip'):
+    if not os.path.isfile('../cabi/Cargo.toml'):
         scratchpad = tempfile.mkdtemp()
         @atexit.register
         def delete_scratchpad():
             shutil.rmtree(scratchpad)
         zf = zipfile.ZipFile('rustsrc.zip')
         zf.extractall(scratchpad)
-        rust_path = scratchpad + '/cabi'
+        rust_path = scratchpad + '/rustsrc/cabi'
     else:
         rust_path = '../cabi'
         scratchpad = None
