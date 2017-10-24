@@ -6,3 +6,6 @@ symbolic/_lowlevel*
 dist
 build
 venv
+MANIFEST
+rustsrc.zip
+version.txt
