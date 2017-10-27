@@ -2,7 +2,7 @@
 
 <a href="https://pypi.python.org/pypi/Symbolic"><img src="https://img.shields.io/pypi/v/symbolic.svg" alt=""></a>
 <a href="https://travis-ci.org/getsentry/symbolic"><img src="https://travis-ci.org/getsentry/symbolic.svg?branch=master" alt=""></a>
-<img src="https://img.shields.io/pypi/l/Symbolic.svg" alt="">
+<a href="https://github.com/getsentry/symbolic/blob/master/LICENSE"><img src="https://img.shields.io/pypi/l/Symbolic.svg" alt=""></a>
 
 Symbolic is a library written in Rust which is used at [Sentry](https://sentry.io/)
 to implement symbolication of native crashes, sourcemap handling of JavaScript
