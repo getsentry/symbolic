@@ -56,7 +56,10 @@ def build_native(spec):
         scratchpad = tempfile.mkdtemp()
         @atexit.register
         def delete_scratchpad():
-            shutil.rmtree(scratchpad)
+            try:
+                shutil.rmtree(scratchpad)
+            except (IOError, OSError):
+                pass
         zf = zipfile.ZipFile('rustsrc.zip')
         zf.extractall(scratchpad)
         rust_path = scratchpad + '/rustsrc/cabi'
