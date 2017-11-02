@@ -19,8 +19,7 @@ if: tag IS blank
 
 matrix:
   include:
-    - stage: deploy
-      script: make wheel
+    - script: make wheel
       env: DEPLOY=mac-wheel
       osx_image: xcode6.4
       os: osx
