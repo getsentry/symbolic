@@ -17,6 +17,10 @@ before_script:
 script: make
 if: tag IS blank
 
+after_success:
+  - npm install -g zeus-ci
+  - test "$DEPLOY" && zeus-ci upload -t "application/zip+wheel" dist/*
+
 matrix:
   include:
     - script: make wheel
@@ -52,3 +56,13 @@ deploy:
   on:
     all_branches: true
     condition: -n "$DEPLOY"
+
+notifications:
+  webhooks:
+    urls:
+      - https://zeus.ci/hooks/3be2453a-c595-11e7-8cdd-0a580a28020a/public/provider/travis/webhook
+    on_success: always
+    on_failure: always
+    on_start: always
+    on_cancel: always
+    on_error: always
