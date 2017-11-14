@@ -5,5 +5,5 @@ authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 
 [dependencies]
 symbolic-common = { path = "../common" }
-proguard = "0.4.0"
+proguard = "1.0.0"
 uuid = "0"
