@@ -18,8 +18,8 @@ script: make
 if: tag IS blank
 
 after_success:
-  - npm install -g zeus-ci
-  - test "$DEPLOY" && zeus-ci upload -t "application/zip+wheel" py/dist/*
+  - npm install -g @zeus-ci/cli
+  - test "$DEPLOY" && zeus upload -t "application/zip+wheel" py/dist/*
 
 matrix:
   include:
