@@ -24,6 +24,7 @@ after_success:
 matrix:
   include:
     - script: make wheel
+      before_install: HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade node
       env: DEPLOY=mac-wheel
       osx_image: xcode6.4
       os: osx
