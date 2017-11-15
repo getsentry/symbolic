@@ -29,13 +29,13 @@ matrix:
       os: osx
 
     - script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_x86_64
-      env: DEPLOY=linux-x86-wheel
+      env: DEPLOY=linux-x86_64-wheel
       sudo: required
       services:
         - docker
 
     - script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_i686
-      env: DEPLOY=linux-x86_64-wheel
+      env: DEPLOY=linux-x86-wheel
       sudo: required
       services:
         - docker
