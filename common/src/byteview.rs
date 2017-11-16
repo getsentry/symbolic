@@ -1,3 +1,4 @@
+use std::io;
 use std::path::Path;
 use std::borrow::Cow;
 use std::ops::Deref;
@@ -51,9 +52,19 @@ impl<'a> ByteView<'a> {
 
     /// Constructs an object file from a file path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<ByteView<'static>> {
-        let mmap = Mmap::open_path(path, Protection::Read)?;
+        let inner = match Mmap::open_path(path, Protection::Read) {
+            Ok(mmap) => ByteViewInner::Mmap(mmap),
+            Err(err) => {
+                // this is raised on empty mmaps which we want to ignore
+                if err.kind() == io::ErrorKind::InvalidInput {
+                    ByteViewInner::Buf(Cow::Borrowed(b""))
+                } else {
+                    return Err(err.into());
+                }
+            }
+        };
         Ok(ByteView {
-            inner: ByteViewInner::Mmap(mmap)
+            inner: inner,
         })
     }
 
