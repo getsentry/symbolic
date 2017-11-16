@@ -15,4 +15,5 @@ fn test_basics() {
     }
     let bv = ByteView::from_path(&path).unwrap();
     assert_eq!(&bv[..], &b""[..]);
+    fs::remove_file(&path).unwrap();
 }
