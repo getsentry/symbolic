@@ -6,13 +6,10 @@ authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 [workspace]
 
 [dependencies]
-symbolic-common = { path = "common" }
-symbolic-demangle = { path = "demangle" }
-symbolic-minidump = { path = "minidump" }
-symbolic-proguard = { path = "proguard" }
-symbolic-sourcemap = { path = "sourcemap" }
-symbolic-symcache = { path = "symcache" }
-symbolic-debuginfo = { path = "debuginfo" }
-
-[replace]
-"goblin:0.0.11" = { git = "https://github.com/m4b/goblin", rev = "d40a1a217cd0fd23d01d3928612743100ad33561" }
+symbolic-common = { version = "1.1.3", path = "common" }
+symbolic-demangle = { version = "1.1.3", path = "demangle" }
+symbolic-minidump = { version = "1.1.3", path = "minidump" }
+symbolic-proguard = { version = "1.1.3", path = "proguard" }
+symbolic-sourcemap = { version = "1.1.3", path = "sourcemap" }
+symbolic-symcache = { version = "1.1.3", path = "symcache" }
+symbolic-debuginfo = { version = "1.1.3", path = "debuginfo" }
