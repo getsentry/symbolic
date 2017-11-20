@@ -33,7 +33,7 @@ def get_packages():
         ))
     return sort_by_dep(graph)
 
-for pkg, _ in get_packages():
+for pkg, _ in reversed(get_packages()):
     # this is a bit of a hack
     if os.path.isdir(pkg):
         subprocess.Popen(['cargo', 'publish'], cwd=pkg).wait()
