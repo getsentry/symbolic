@@ -2,3 +2,4 @@ store: zeus
 targets:
   - github
   - pypi
+  - cargo
