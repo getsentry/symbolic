@@ -1,7 +1,18 @@
 [package]
 name = "symbolic-minidump"
 version = "1.1.4"
-authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
+license = "MIT"
+authors = [
+    "Armin Ronacher <armin.ronacher@active-4.com>",
+    "Jan Michael Auer <mail@jauer.org>",
+]
+documentation = "https://docs.rs/symbolic-minidump"
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+readme = "README.md"
+description = """
+A library to process and inspect Minidump crash reports
+"""
 build = "build.rs"
 
 [dependencies]

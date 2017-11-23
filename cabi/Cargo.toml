@@ -1,7 +1,18 @@
 [package]
 name = "symbolic-cabi"
 version = "1.1.4"
-authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
+license = "MIT"
+authors = [
+    "Armin Ronacher <armin.ronacher@active-4.com>",
+    "Jan Michael Auer <mail@jauer.org>",
+]
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+description = """
+C interface wrapper for symbolic, a library to symbolicate and process stack
+traces from native applications, minidumps, minified JavaScripts or ProGuard
+optimized Android apps.
+"""
 
 [lib]
 name = "symbolic"

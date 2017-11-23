@@ -1,7 +1,18 @@
 [package]
 name = "symbolic-sourcemap"
 version = "1.1.4"
-authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
+license = "MIT"
+authors = [
+    "Armin Ronacher <armin.ronacher@active-4.com>",
+    "Jan Michael Auer <mail@jauer.org>",
+]
+documentation = "https://docs.rs/symbolic-sourcemap"
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+description = """
+A library to process JavaScript sourcemaps and resolve symbols in minified
+source code or stack traces.
+"""
 
 [dependencies]
 symbolic-common = { version = "1.1.4", path = "../common", features = ["with_sourcemaps"] }

@@ -1,7 +1,18 @@
 [package]
-authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
 name = "symbolic-debuginfo"
 version = "1.1.4"
+license = "MIT"
+authors = [
+    "Armin Ronacher <armin.ronacher@active-4.com>",
+    "Jan Michael Auer <mail@jauer.org>",
+]
+documentation = "https://docs.rs/symbolic-debuginfo"
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+description = """
+A library to inspect and load DWARF debugging information from binaries, such
+as Mach-O or ELF.
+"""
 
 [dependencies]
 gimli = { git = "https://github.com/gimli-rs/gimli.git" }
