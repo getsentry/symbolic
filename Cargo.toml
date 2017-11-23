@@ -2,6 +2,11 @@
 name = "symbolic"
 version = "1.1.4"
 authors = ["Armin Ronacher <armin.ronacher@active-4.com>"]
+exclude = [
+    ".vscode/**/*",
+    "py/**/*",
+    "scripts/**/*",
+]
 
 [workspace]
 
