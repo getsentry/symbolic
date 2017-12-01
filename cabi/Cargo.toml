@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-cabi"
-version = "1.1.4"
+version = "1.1.5"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -27,13 +27,13 @@ lto = true
 [dependencies]
 uuid = "0"
 backtrace = "0"
-symbolic-common = { version = "1.1.4", path = "../common", features = ["with_dwarf", "with_objects", "with_sourcemaps"] }
-symbolic-demangle = { version = "1.1.4", path = "../demangle" }
-symbolic-debuginfo = { version = "1.1.4", path = "../debuginfo" }
-symbolic-symcache = { version = "1.1.4", path = "../symcache" }
-symbolic-sourcemap = { version = "1.1.4", path = "../sourcemap" }
-symbolic-proguard = { version = "1.1.4", path = "../proguard" }
-symbolic-minidump = { version = "1.1.4", path = "../minidump" }
+symbolic-common = { version = "1.1.5", path = "../common", features = ["with_dwarf", "with_objects", "with_sourcemaps"] }
+symbolic-demangle = { version = "1.1.5", path = "../demangle" }
+symbolic-debuginfo = { version = "1.1.5", path = "../debuginfo" }
+symbolic-symcache = { version = "1.1.5", path = "../symcache" }
+symbolic-sourcemap = { version = "1.1.5", path = "../sourcemap" }
+symbolic-proguard = { version = "1.1.5", path = "../proguard" }
+symbolic-minidump = { version = "1.1.5", path = "../minidump" }
 
 [replace]
 "goblin:0.0.11" = { git = "https://github.com/m4b/goblin", rev = "d40a1a217cd0fd23d01d3928612743100ad33561" }

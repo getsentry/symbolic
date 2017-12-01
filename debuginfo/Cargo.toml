@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-debuginfo"
-version = "1.1.4"
+version = "1.1.5"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -21,4 +21,4 @@ if_chain = "0.1"
 memmap = "0.5"
 scroll = "0.7"
 uuid = "0.5"
-symbolic-common = { path = "../common", version = "1.1.4", features = ["with_objects", "with_dwarf"] }
+symbolic-common = { path = "../common", version = "1.1.5", features = ["with_objects", "with_dwarf"] }

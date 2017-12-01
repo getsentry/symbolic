@@ -1,6 +1,6 @@
 [package]
 name = "symbolic"
-version = "1.1.4"
+version = "1.1.5"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -23,10 +23,10 @@ exclude = [
 [workspace]
 
 [dependencies]
-symbolic-common = { version = "1.1.4", path = "common" }
-symbolic-demangle = { version = "1.1.4", path = "demangle" }
-symbolic-minidump = { version = "1.1.4", path = "minidump" }
-symbolic-proguard = { version = "1.1.4", path = "proguard" }
-symbolic-sourcemap = { version = "1.1.4", path = "sourcemap" }
-symbolic-symcache = { version = "1.1.4", path = "symcache" }
-symbolic-debuginfo = { version = "1.1.4", path = "debuginfo" }
+symbolic-common = { version = "1.1.5", path = "common" }
+symbolic-demangle = { version = "1.1.5", path = "demangle" }
+symbolic-minidump = { version = "1.1.5", path = "minidump" }
+symbolic-proguard = { version = "1.1.5", path = "proguard" }
+symbolic-sourcemap = { version = "1.1.5", path = "sourcemap" }
+symbolic-symcache = { version = "1.1.5", path = "symcache" }
+symbolic-debuginfo = { version = "1.1.5", path = "debuginfo" }

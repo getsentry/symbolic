@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-demangle"
-version = "1.1.4"
+version = "1.1.5"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -15,7 +15,7 @@ A library to demangle symbols from various languages and compilers.
 build = "build.rs"
 
 [dependencies]
-symbolic-common = { version = "1.1.4", path = "../common" }
+symbolic-common = { version = "1.1.5", path = "../common" }
 rustc-demangle = "0.1"
 
 [build-dependencies]
