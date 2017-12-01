@@ -19,7 +19,7 @@ symbolic-common = { version = "1.1.4", path = "../common", features = ["with_dwa
 symbolic-debuginfo = { version = "1.1.4", path = "../debuginfo" }
 symbolic-demangle = { version = "1.1.4", path = "../demangle" }
 uuid = { version = "^0.5", features = ["serde"] }
-gimli = { git = "https://github.com/gimli-rs/gimli.git" }
+gimli = "0.15"
 fallible-iterator = "0.1"
 lru-cache = "0.1"
 owning_ref = "0.3"

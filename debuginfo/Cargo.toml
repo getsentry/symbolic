@@ -15,7 +15,7 @@ as Mach-O or ELF.
 """
 
 [dependencies]
-gimli = { git = "https://github.com/gimli-rs/gimli.git" }
+gimli = "0.15"
 goblin = "0.0"
 if_chain = "0.1"
 memmap = "0.5"
