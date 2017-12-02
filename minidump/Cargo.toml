@@ -9,7 +9,6 @@ authors = [
 documentation = "https://docs.rs/symbolic-minidump"
 homepage = "https://github.com/getsentry/symbolic"
 repository = "https://github.com/getsentry/symbolic"
-readme = "README.md"
 description = """
 A library to process and inspect Minidump crash reports
 """
