@@ -165,7 +165,7 @@ ffi_fn! {
                 sym_addr: symbol.sym_addr(),
                 instr_addr: symbol.instr_addr(),
                 line: symbol.line(),
-                lang: SymbolicStr::from_string(symbol.lang().to_string()),
+                lang: SymbolicStr::new(symbol.lang().name()),
                 symbol: SymbolicStr::new(symbol.symbol()),
                 filename: SymbolicStr::new(symbol.filename()),
                 base_dir: SymbolicStr::new(symbol.base_dir()),

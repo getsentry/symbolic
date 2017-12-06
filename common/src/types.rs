@@ -297,19 +297,35 @@ impl Language {
         }
     }
 
-    pub fn parse(string: &str) -> Language {
+    /// Parses a language from its name
+    pub fn parse(name: &str) -> Language {
         use Language::*;
-
-        match string {
-            "C" => C,
-            "C++" => Cpp,
-            "D" => D,
-            "Go" => Go,
-            "Objective-C" => ObjC,
-            "Objective-C++" => ObjCpp,
-            "Rust" => Rust,
-            "Swift" => Swift,
+        match name {
+            "c" => C,
+            "cpp" => Cpp,
+            "d" => D,
+            "go" => Go,
+            "objc" => ObjC,
+            "objcpp" => ObjCpp,
+            "rust" => Rust,
+            "swift" => Swift,
             _ => Unknown,
+        }
+    }
+
+    /// Returns the name of the language
+    pub fn name(&self) -> &'static str {
+        use Language::*;
+        match *self {
+            Language::Unknown | Language::__Max => "unknown",
+            Language::C => "c",
+            Language::Cpp => "cpp",
+            Language::D => "d",
+            Language::Go => "go",
+            Language::ObjC => "objc",
+            Language::ObjCpp => "objcpp",
+            Language::Rust => "rust",
+            Language::Swift => "swift",
         }
     }
 }
@@ -325,7 +341,7 @@ impl fmt::Display for Language {
             Language::ObjC => "Objective-C",
             Language::ObjCpp => "Objective-C++",
             Language::Rust => "Rust",
-            Language::Swift => "Swift"
+            Language::Swift => "Swift",
         })
     }
 }
