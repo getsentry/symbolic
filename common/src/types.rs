@@ -317,31 +317,32 @@ impl Language {
     pub fn name(&self) -> &'static str {
         use Language::*;
         match *self {
-            Language::Unknown | Language::__Max => "unknown",
-            Language::C => "c",
-            Language::Cpp => "cpp",
-            Language::D => "d",
-            Language::Go => "go",
-            Language::ObjC => "objc",
-            Language::ObjCpp => "objcpp",
-            Language::Rust => "rust",
-            Language::Swift => "swift",
+            Unknown | __Max => "unknown",
+            C => "c",
+            Cpp => "cpp",
+            D => "d",
+            Go => "go",
+            ObjC => "objc",
+            ObjCpp => "objcpp",
+            Rust => "rust",
+            Swift => "swift",
         }
     }
 }
 
 impl fmt::Display for Language {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use Language::*;
         write!(f, "{}", match *self {
-            Language::Unknown | Language::__Max => "unknown",
-            Language::C => "C",
-            Language::Cpp => "C++",
-            Language::D => "D",
-            Language::Go => "Go",
-            Language::ObjC => "Objective-C",
-            Language::ObjCpp => "Objective-C++",
-            Language::Rust => "Rust",
-            Language::Swift => "Swift",
+            Unknown | __Max => "unknown",
+            C => "C",
+            Cpp => "C++",
+            D => "D",
+            Go => "Go",
+            ObjC => "Objective-C",
+            ObjCpp => "Objective-C++",
+            Rust => "Rust",
+            Swift => "Swift",
         })
     }
 }

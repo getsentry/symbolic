@@ -214,11 +214,12 @@ impl<'a> Symbol<'a> {
 
     /// Demangles a symbol with the given options.
     pub fn demangle(&self, opts: &DemangleOptions) -> Result<Option<String>> {
+        use Language::*;
         match self.language() {
-            Some(Language::ObjC) => Ok(Some(self.mangled.to_string())),
-            Some(Language::Rust) => try_demangle_rust(self.mangled, opts),
-            Some(Language::Cpp) => try_demangle_cpp(self.mangled, opts),
-            Some(Language::Swift) => try_demangle_swift(self.mangled, opts),
+            Some(ObjC) => Ok(Some(self.mangled.to_string())),
+            Some(Rust) => try_demangle_rust(self.mangled, opts),
+            Some(Cpp) => try_demangle_cpp(self.mangled, opts),
+            Some(Swift) => try_demangle_swift(self.mangled, opts),
             _ => Ok(None),
         }
     }
