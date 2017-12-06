@@ -36,7 +36,7 @@ class Symbol(object):
     @property
     def function_name(self):
         """The demangled function name."""
-        return demangle_symbol(self.symbol)
+        return demangle_symbol(self.symbol, lang=self.lang)
 
     @property
     def abs_path(self):
