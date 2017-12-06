@@ -78,6 +78,16 @@ impl Default for DemangleOptions {
     }
 }
 
+fn is_maybe_objc(ident: &str) -> bool {
+    (ident.starts_with("-[") || ident.starts_with("+[")) &&
+        ident.ends_with("]")
+}
+
+fn is_maybe_cpp(ident: &str) -> bool {
+    ident.starts_with("_Z") || ident.starts_with("__Z")
+}
+
+
 fn try_demangle_cpp(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
     let ident = unsafe {
         let mut buf_out = ptr::null_mut();
@@ -137,6 +147,20 @@ fn try_demangle_swift(ident: &str, opts: &DemangleOptions) -> Result<Option<Stri
     }
 }
 
+fn try_demangle_objc(ident: &str, _opts: &DemangleOptions) -> Result<Option<String>> {
+    Ok(Some(ident.to_string()))
+}
+
+fn try_demangle_objcpp(ident: &str, opts: &DemangleOptions) -> Result<Option<String>> {
+    if is_maybe_objc(ident) {
+        try_demangle_objc(ident, opts)
+    } else if is_maybe_cpp(ident) {
+        try_demangle_cpp(ident, opts)
+    } else {
+        Ok(None)
+    }
+}
+
 /// Represents a mangled symbol.
 ///
 /// When created from a string this type wraps a potentially mangled
@@ -183,20 +207,15 @@ impl<'a> Symbol<'a> {
             return Some(lang);
         }
 
-        // objc?
-        if (self.mangled.starts_with("-[") || self.mangled.starts_with("+[")) &&
-            self.mangled.ends_with("]")
-        {
+        if is_maybe_objc(self.mangled) {
             return Some(Language::ObjC);
         }
 
-        // rust?
         if rustc_demangle::try_demangle(self.mangled).is_ok() {
             return Some(Language::Rust);
         }
 
-        // c++
-        if self.mangled.starts_with("_Z") || self.mangled.starts_with("__Z") {
+        if is_maybe_cpp(self.mangled) {
             return Some(Language::Cpp);
         }
 
@@ -216,7 +235,8 @@ impl<'a> Symbol<'a> {
     pub fn demangle(&self, opts: &DemangleOptions) -> Result<Option<String>> {
         use Language::*;
         match self.language() {
-            Some(ObjC) => Ok(Some(self.mangled.to_string())),
+            Some(ObjC) => try_demangle_objc(self.mangled, opts),
+            Some(ObjCpp) => try_demangle_objcpp(self.mangled, opts),
             Some(Rust) => try_demangle_rust(self.mangled, opts),
             Some(Cpp) => try_demangle_cpp(self.mangled, opts),
             Some(Swift) => try_demangle_swift(self.mangled, opts),
