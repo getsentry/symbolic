@@ -147,12 +147,24 @@ fn try_demangle_swift(ident: &str, opts: &DemangleOptions) -> Result<Option<Stri
 /// arguments).
 pub struct Symbol<'a> {
     mangled: &'a str,
+    lang: Option<Language>,
 }
 
 impl<'a> Symbol<'a> {
     /// Constructs a new mangled symbol.
     pub fn new(mangled: &'a str) -> Symbol<'a> {
-        Symbol { mangled: mangled }
+        Symbol { mangled: mangled, lang: None }
+    }
+
+    /// Constructs a new mangled symbol with known language.
+    pub fn with_language(mangled: &'a str, lang: Language) -> Symbol<'a> {
+        let lang_opt = match lang {
+            // Ignore unknown languages and apply heuristics instead
+            Language::Unknown | Language::__Max => None,
+            _ => Some(lang),
+        };
+
+        Symbol { mangled: mangled, lang: lang_opt }
     }
 
     /// The raw string of the symbol.
@@ -167,6 +179,10 @@ impl<'a> Symbol<'a> {
     /// In case the symbol is not mangled or not one of the supported languages
     /// the return value will be `None`.
     pub fn language(&self) -> Option<Language> {
+        if let Some(lang) = self.lang {
+            return Some(lang);
+        }
+
         // objc?
         if (self.mangled.starts_with("-[") || self.mangled.starts_with("+[")) &&
             self.mangled.ends_with("]")

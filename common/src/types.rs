@@ -296,6 +296,22 @@ impl Language {
             _ => None,
         }
     }
+
+    pub fn parse(string: &str) -> Language {
+        use Language::*;
+
+        match string {
+            "C" => C,
+            "C++" => Cpp,
+            "D" => D,
+            "Go" => Go,
+            "Objective-C" => ObjC,
+            "Objective-C++" => ObjCpp,
+            "Rust" => Rust,
+            "Swift" => Swift,
+            _ => Unknown,
+        }
+    }
 }
 
 impl fmt::Display for Language {
