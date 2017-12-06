@@ -54,43 +54,36 @@ typedef uint32_t SymbolicFrameTrust;
 /*
  * A potential multi arch object.
  */
-struct SymbolicFatObject;
 typedef struct SymbolicFatObject SymbolicFatObject;
 
 /*
  * Contains stack frame information (CFI) for images
  */
-struct SymbolicFrameInfoMap;
 typedef struct SymbolicFrameInfoMap SymbolicFrameInfoMap;
 
 /*
  * A single arch object.
  */
-struct SymbolicObject;
 typedef struct SymbolicObject SymbolicObject;
 
 /*
  * Represents a proguard mapping view
  */
-struct SymbolicProguardMappingView;
 typedef struct SymbolicProguardMappingView SymbolicProguardMappingView;
 
 /*
  * Represents a sourcemap view
  */
-struct SymbolicSourceMapView;
 typedef struct SymbolicSourceMapView SymbolicSourceMapView;
 
 /*
  * Represents a source view
  */
-struct SymbolicSourceView;
 typedef struct SymbolicSourceView SymbolicSourceView;
 
 /*
  * Represents a symbolic sym cache.
  */
-struct SymbolicSymCache;
 typedef struct SymbolicSymCache SymbolicSymCache;
 
 /*
@@ -152,6 +145,7 @@ typedef struct {
   uint64_t sym_addr;
   uint64_t instr_addr;
   uint32_t line;
+  SymbolicStr lang;
   SymbolicStr symbol;
   SymbolicStr filename;
   SymbolicStr base_dir;
@@ -262,17 +256,19 @@ SymbolicCfiCache *symbolic_cfi_cache_from_object(const SymbolicObject *sobj);
 /*
  * Demangles a given identifier.
  *
- * This demangles with the default behavior in symbolic.
+ * This demangles with the default behavior in symbolic. If no language
+ * is specified, it will be auto-detected.
  */
-SymbolicStr symbolic_demangle(const SymbolicStr *ident);
+SymbolicStr symbolic_demangle(const SymbolicStr *ident, const SymbolicStr *lang);
 
 /*
  * Demangles a given identifier.
  *
  * This is similar to `symbolic_demangle` but does not demangle the
- * arguments and instead strips them.
+ * arguments and instead strips them. If no language is specified, it
+ * will be auto-detected.
  */
-SymbolicStr symbolic_demangle_no_args(const SymbolicStr *ident);
+SymbolicStr symbolic_demangle_no_args(const SymbolicStr *ident, const SymbolicStr *lang);
 
 /*
  * Clears the last error.

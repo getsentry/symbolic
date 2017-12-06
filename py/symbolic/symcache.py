@@ -4,8 +4,8 @@ from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib, ffi
 from symbolic.demangle import demangle_symbol
 from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
-     encode_str, common_path_join, strip_common_path_prefix, encode_path, \
-     attached_refs, CacheReader
+    encode_str, common_path_join, strip_common_path_prefix, encode_path, \
+    attached_refs, CacheReader
 from symbolic.common import parse_addr
 from symbolic import exceptions
 
@@ -22,11 +22,12 @@ SYMCACHE_LATEST_VERSION = rustcall(
 @implements_to_string
 class Symbol(object):
 
-    def __init__(self, sym_addr, instr_addr, line, symbol,
+    def __init__(self, sym_addr, instr_addr, line, lang, symbol,
                  filename=None, base_dir=None, comp_dir=None):
         self.sym_addr = sym_addr
         self.instr_addr = instr_addr
         self.line = line
+        self.lang = lang
         self.symbol = symbol
         self.filename = filename or None
         self.base_dir = base_dir or None
@@ -35,7 +36,7 @@ class Symbol(object):
     @property
     def function_name(self):
         """The demangled function name."""
-        return demangle_symbol(self.symbol)
+        return demangle_symbol(self.symbol, lang=self.lang)
 
     @property
     def abs_path(self):
@@ -136,6 +137,7 @@ class SymCache(RustObject):
                     sym_addr=sym.sym_addr,
                     instr_addr=sym.instr_addr,
                     line=sym.line,
+                    lang=decode_str(sym.lang),
                     symbol=decode_str(sym.symbol),
                     filename=decode_str(sym.filename),
                     base_dir=decode_str(sym.base_dir),

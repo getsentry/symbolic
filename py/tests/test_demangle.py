@@ -4,6 +4,12 @@ from symbolic import demangle_symbol
 def test_swift_demangle():
     mangled = '_TFC12Swift_Tester14ViewController11doSomethingfS0_FT_T_'
     expected = 'ViewController.doSomething(_:)'
+    assert demangle_symbol(mangled, lang='Swift') == expected
+
+
+def test_swift_demangle_implicit():
+    mangled = '_TFC12Swift_Tester14ViewController11doSomethingfS0_FT_T_'
+    expected = 'ViewController.doSomething(_:)'
     assert demangle_symbol(mangled) == expected
 
 
