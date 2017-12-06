@@ -34,15 +34,17 @@ fn test_cpp_demangle() {
                       with_arguments: false,
                       ..Default::default()
                   });
-    assert_mangle("_Z28JS_GetPropertyDescriptorByIdP9JSContextN2JS6HandleIP8JSObjectEENS2_I4jsidEENS1_13MutableHandleINS1_18PropertyDescriptorEEE",
-                  Some("JS_GetPropertyDescriptorById(JSContext*, JS::Handle<JSObject*>, JS::Handle<jsid>, JS::MutableHandle<JS::PropertyDescriptor>)"), DemangleOptions {
-                      with_arguments: true,
-                      ..Default::default()
-                  });
 
     let sym = Symbol::new("_Z28JS_GetPropertyDescriptorByIdP9JSContextN2JS6HandleIP8JSObjectEENS2_I4jsidEENS1_13MutableHandleINS1_18PropertyDescriptorEEE");
     assert_eq!(sym.language(), Some(Language::Cpp));
     assert_eq!(sym.to_string(), "JS_GetPropertyDescriptorById");
+}
+
+#[test]
+fn test_cpp_potential_rust_demangle() {
+    // TODO: This symbol yields inconsistent results in C++
+    let sym = Symbol::new("_ZN4base8internal7InvokerINS0_9BindStateIMN4mate19TrackableObjectBaseEFvvEJNS_7WeakPtrIS4_EEEEEFvvEE7RunImplIRKS6_RKNSt3__15tupleIJS8_EEEJLm0EEEEvOT_OT0_NS_13IndexSequenceIJXspT1_EEEE");
+    assert_eq!(sym.language(), Some(Language::Cpp));
 }
 
 #[test]

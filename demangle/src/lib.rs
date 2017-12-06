@@ -174,10 +174,8 @@ impl<'a> Symbol<'a> {
             return Some(Language::ObjC);
         }
 
-        // rust
-        if (self.mangled.starts_with("_ZN") || self.mangled.starts_with("__ZN")) &&
-            self.mangled.ends_with("E")
-        {
+        // rust?
+        if rustc_demangle::try_demangle(self.mangled).is_ok() {
             return Some(Language::Rust);
         }
 
