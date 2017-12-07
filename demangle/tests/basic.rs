@@ -28,6 +28,18 @@ fn test_rust_demangle() {
 }
 
 #[test]
+fn test_objcpp_cpp_demangle() {
+    let sym = Symbol::with_language("_ZN4base24MessagePumpNSApplication5DoRunEPNS_11MessagePump8DelegateE", Language::ObjCpp);
+    assert_eq!(sym.to_string(), "base::MessagePumpNSApplication::DoRun");
+}
+
+#[test]
+fn test_objcpp_objc_demangle() {
+    let sym = Symbol::with_language("+[KSCrashReportFilterObjectForKey filterWithKey:allowNotFound:]", Language::ObjCpp);
+    assert_eq!(sym.to_string(), "+[KSCrashReportFilterObjectForKey filterWithKey:allowNotFound:]");
+}
+
+#[test]
 fn test_cpp_demangle() {
     assert_mangle("_Z28JS_GetPropertyDescriptorByIdP9JSContextN2JS6HandleIP8JSObjectEENS2_I4jsidEENS1_13MutableHandleINS1_18PropertyDescriptorEEE",
                   Some("JS_GetPropertyDescriptorById"), DemangleOptions {
