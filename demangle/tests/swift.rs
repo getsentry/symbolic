@@ -14,9 +14,7 @@ const DEMANGLE_FORMAT: DemangleOptions = DemangleOptions {
 };
 
 fn assert_demangle(input: &str, output: Option<&str>) {
-    let symbol = Symbol::new(input);
-    assert_eq!(symbol.language(), Some(Language::Swift));
-
+    let symbol = Symbol::with_language(input, Language::Swift);
     if let Some(rv) = symbol.demangle(&DEMANGLE_FORMAT).unwrap() {
         assert_eq!(Some(rv.as_str()), output);
     } else {
