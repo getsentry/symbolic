@@ -28,18 +28,6 @@ fn test_rust_demangle() {
 }
 
 #[test]
-fn test_objcpp_cpp_demangle() {
-    let sym = Symbol::with_language("_ZN4base24MessagePumpNSApplication5DoRunEPNS_11MessagePump8DelegateE", Language::ObjCpp);
-    assert_eq!(sym.to_string(), "base::MessagePumpNSApplication::DoRun");
-}
-
-#[test]
-fn test_objcpp_objc_demangle() {
-    let sym = Symbol::with_language("+[KSCrashReportFilterObjectForKey filterWithKey:allowNotFound:]", Language::ObjCpp);
-    assert_eq!(sym.to_string(), "+[KSCrashReportFilterObjectForKey filterWithKey:allowNotFound:]");
-}
-
-#[test]
 fn test_cpp_demangle() {
     assert_mangle("_Z28JS_GetPropertyDescriptorByIdP9JSContextN2JS6HandleIP8JSObjectEENS2_I4jsidEENS1_13MutableHandleINS1_18PropertyDescriptorEEE",
                   Some("JS_GetPropertyDescriptorById"), DemangleOptions {
@@ -50,13 +38,6 @@ fn test_cpp_demangle() {
     let sym = Symbol::new("_Z28JS_GetPropertyDescriptorByIdP9JSContextN2JS6HandleIP8JSObjectEENS2_I4jsidEENS1_13MutableHandleINS1_18PropertyDescriptorEEE");
     assert_eq!(sym.language(), Some(Language::Cpp));
     assert_eq!(sym.to_string(), "JS_GetPropertyDescriptorById");
-}
-
-#[test]
-fn test_cpp_potential_rust_demangle() {
-    // TODO: This symbol yields inconsistent results in C++
-    let sym = Symbol::new("_ZN4base8internal7InvokerINS0_9BindStateIMN4mate19TrackableObjectBaseEFvvEJNS_7WeakPtrIS4_EEEEEFvvEE7RunImplIRKS6_RKNSt3__15tupleIJS8_EEEJLm0EEEEvOT_OT0_NS_13IndexSequenceIJXspT1_EEEE");
-    assert_eq!(sym.language(), Some(Language::Cpp));
 }
 
 #[test]
