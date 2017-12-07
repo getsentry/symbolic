@@ -53,13 +53,6 @@ fn test_cpp_demangle() {
 }
 
 #[test]
-fn test_cpp_potential_rust_demangle() {
-    // TODO: This symbol yields inconsistent results in C++
-    let sym = Symbol::new("_ZN4base8internal7InvokerINS0_9BindStateIMN4mate19TrackableObjectBaseEFvvEJNS_7WeakPtrIS4_EEEEEFvvEE7RunImplIRKS6_RKNSt3__15tupleIJS8_EEEJLm0EEEEvOT_OT0_NS_13IndexSequenceIJXspT1_EEEE");
-    assert_eq!(sym.language(), Some(Language::Cpp));
-}
-
-#[test]
 fn test_objc_demangle_noop() {
     let sym = Symbol::new("+[KSCrashReportFilterObjectForKey filterWithKey:allowNotFound:]");
     assert_eq!(sym.language(), Some(Language::ObjC));
