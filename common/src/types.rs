@@ -42,6 +42,8 @@ pub enum CpuFamily {
     Intel64,
     Arm32,
     Arm64,
+    Ppc32,
+    Ppc64,
     Unknown,
 }
 
@@ -66,6 +68,8 @@ pub enum Arch {
     ArmV7em,
     Arm64,
     Arm64V8,
+    Ppc,
+    Ppc64,
     #[doc(hidden)]
     __Max
 }
@@ -106,6 +110,8 @@ impl Arch {
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7K) => Arch::ArmV7k,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7M) => Arch::ArmV7m,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7EM) => Arch::ArmV7em,
+            (CPU_TYPE_POWERPC, CPU_SUBTYPE_POWERPC_ALL) => Arch::Ppc,
+            (CPU_TYPE_POWERPC64, CPU_SUBTYPE_POWERPC_ALL) => Arch::Ppc64,
             _ => {
                 return Err(ErrorKind::Parse("unknown architecture").into());
             }
@@ -132,6 +138,7 @@ impl Arch {
             Arch::ArmV7k => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7K),
             Arch::ArmV7m => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7M),
             Arch::ArmV7em => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7EM),
+            Arch::Ppc => (CPU_TYPE_POWERPC, CPU_SUBTYPE_POWERPC_ALL),
             _ => {
                 return Err(ErrorKind::NotFound("Unknown architecture for macho").into());
             }
@@ -157,6 +164,21 @@ impl Arch {
             // https://stackoverflow.com/a/20556156/4228225
             EM_ARM => Arch::Arm,
             _ => return Err(ErrorKind::Parse("unknown architecture").into()),
+        })
+    }
+
+    /// Constructs an architecture from ELF flags
+    #[cfg(feature = "with_objects")]
+    pub fn from_breakpad(string: &str) -> Result<Arch> {
+        use Arch::*;
+        Ok(match string {
+            "x86" => X86,
+            "x86_64" => X86_64,
+            "ppc" => Ppc,
+            "ppc64" => Ppc64,
+            _ => {
+                return Err(ErrorKind::NotFound("Unknown architecture for Breakpad").into());
+            }
         })
     }
 
@@ -197,6 +219,8 @@ impl Arch {
             Arm64 | Arm64V8 => CpuFamily::Arm64,
             Arm | ArmV5 | ArmV6 | ArmV6m | ArmV7 | ArmV7f | ArmV7s | ArmV7k |
                 ArmV7m | ArmV7em => CpuFamily::Arm32,
+            Ppc => CpuFamily::Ppc32,
+            Ppc64 => CpuFamily::Ppc64,
         }
     }
 
@@ -205,9 +229,9 @@ impl Arch {
         use Arch::*;
         match *self {
             Unknown | __Max => None,
-            X86_64 | X86_64h | Arm64 | Arm64V8 => Some(8),
+            X86_64 | X86_64h | Arm64 | Arm64V8 | Ppc64 => Some(8),
             X86 | Arm | ArmV5 | ArmV6 | ArmV6m | ArmV7 | ArmV7f | ArmV7s | ArmV7k |
-                ArmV7m | ArmV7em => Some(4),
+                ArmV7m | ArmV7em | Ppc => Some(4),
         }
     }
 
@@ -231,6 +255,8 @@ impl Arch {
             ArmV7k => "armv7k",
             ArmV7m => "armv7m",
             ArmV7em => "armv7em",
+            Ppc => "ppc",
+            Ppc64 => "ppc64",
         }
     }
 
@@ -350,16 +376,18 @@ impl fmt::Display for Language {
 /// Represents the kind of an object.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub enum ObjectKind {
-    MachO,
+    Breakpad,
     Elf,
+    MachO,
 }
 
 impl ObjectKind {
     /// Returns the name of the object kind.
     pub fn name(&self) -> &'static str {
         match *self {
-            ObjectKind::MachO => "macho",
+            ObjectKind::Breakpad => "breakpad",
             ObjectKind::Elf => "elf",
+            ObjectKind::MachO => "macho",
         }
     }
 }
