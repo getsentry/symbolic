@@ -112,10 +112,16 @@ impl<'input> BreakpadInfo<'input> {
     }
 
     fn parse(&mut self, bytes: &'input [u8]) -> Result<()> {
-        // TODO(ja): Support windows line endings
-        let lines = bytes.split(|b| *b == b'\n');
-        let mut in_func = false;
+        let lines = bytes.split(|b| *b == b'\n').map(|line| {
+            let len = line.len();
+            if len > 0 && line[len - 1] == b'\r' {
+                &line[0..len-1]
+            } else {
+                line
+            }
+        });
 
+        let mut in_func = false;
         for line in lines {
             let mut words = line.splitn(2, |b| *b == b' ');
             let magic = words.next().unwrap_or(b"");
