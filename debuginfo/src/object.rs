@@ -25,7 +25,6 @@ impl Breakpad {
     /// MODULE mac x86_64 13DA2547B1D53AF99F55ED66AF0C7AF70 Electron Framework
     /// ```
     pub fn parse(bytes: &[u8]) -> Result<Breakpad> {
-        // TODO(ja): Make sure this does not read the whole file in worst case
         let mut words = bytes.splitn(5, |b| *b == b' ');
 
         match words.next() {
@@ -116,7 +115,7 @@ impl<'a> Object<'a> {
     /// Return the vmaddr of the code portion of the image.
     pub fn vmaddr(&self) -> Result<u64> {
         match self.target {
-            ObjectTarget::Breakpad(..) => Ok(0), // TODO(ja): Check this
+            ObjectTarget::Breakpad(..) => Ok(0),
             ObjectTarget::Elf(..) => Ok(0),
             ObjectTarget::MachOSingle(macho) => get_macho_vmaddr(macho),
             ObjectTarget::MachOFat(_, ref macho) => get_macho_vmaddr(macho),
@@ -124,9 +123,11 @@ impl<'a> Object<'a> {
     }
 
     /// True if little endian, false if not.
+    /// TODO: Should return Option<Endianness>
+    /// TODO: Should be renamed to "endianness"
     pub fn endianess(&self) -> Endianness {
         let little = match self.target {
-            ObjectTarget::Breakpad(..) => true, // TODO(ja): Return None here..?
+            ObjectTarget::Breakpad(..) => true,
             ObjectTarget::Elf(ref elf) => elf.little_endian,
             ObjectTarget::MachOSingle(macho) => macho.little_endian,
             ObjectTarget::MachOFat(_, ref macho) => macho.little_endian,
@@ -176,7 +177,7 @@ impl<'a> Object<'a> {
     /// Gives access to contained symbols
     pub fn symbols(&'a self) -> Result<Symbols<'a>> {
         match self.target {
-            ObjectTarget::Breakpad(..) => Err("Not implemented".into()), // TODO(ja): Implement
+            ObjectTarget::Breakpad(..) => Err("Not implemented".into()),
             ObjectTarget::Elf(..) => {
                 Err(ErrorKind::MissingDebugInfo("unsupported symbol table in file").into())
             }
