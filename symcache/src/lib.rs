@@ -13,6 +13,7 @@ extern crate dmsort;
 #[macro_use] extern crate if_chain;
 
 mod breakpad;
+mod dwarf;
 mod types;
 mod cache;
 mod writer;
