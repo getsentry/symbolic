@@ -96,6 +96,7 @@ pub enum SymbolicErrorCode {
     BadCacheFile = 1004,
     MissingSection = 1005,
     BadDwarfData = 1006,
+    BadBreakpadSym = 1007,
     // sourcemaps
     BadSourcemap = 2001,
     CannotFlattenSourcemap = 2002,
@@ -123,6 +124,7 @@ impl SymbolicErrorCode {
             ErrorKind::BadCacheFile(..) => SymbolicErrorCode::BadCacheFile,
             ErrorKind::MissingSection(..) => SymbolicErrorCode::MissingSection,
             ErrorKind::BadDwarfData(..) => SymbolicErrorCode::BadDwarfData,
+            ErrorKind::BadBreakpadSym(..) => SymbolicErrorCode::BadBreakpadSym,
             ErrorKind::MissingDebugInfo(..) => SymbolicErrorCode::MissingDebugInfo,
             ErrorKind::BadJson(..) => SymbolicErrorCode::BadJson,
             ErrorKind::BadSourcemap(..) => SymbolicErrorCode::BadSourcemap,
