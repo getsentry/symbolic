@@ -82,6 +82,11 @@ error_chain! {
             description("bad sourcemap")
             display("bad sourcemap: {}", &msg)
         }
+        /// Raised for bad breakpad symbols.
+        BadBreakpadSym(msg: &'static str) {
+            description("bad breakpad sym")
+            display("bad breakpad sym: {}", msg)
+        }
         /// Raised while stackwalking minidumps.
         Stackwalk(message: String) {
             description("stackwalking error")
