@@ -18,6 +18,7 @@ Currently it provides the following functionality:
 * Symbol cache file generators from:
   * Mach and ELF symbol tables
   * Mach and ELF embedded DWARF data
+  * Breakpad Symbol files
 * Demangling support
   * Swift
   * C++
