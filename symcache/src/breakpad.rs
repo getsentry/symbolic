@@ -1,21 +1,40 @@
+use std::fmt;
+use std::cmp;
 use std::str::FromStr;
 
 use uuid::Uuid;
 
-use symbolic_common::{Arch, ErrorKind, Result};
+use symbolic_common::{Arch, Error, ErrorKind, Result};
 use symbolic_debuginfo::Object;
 
-#[derive(Debug)]
 pub struct BreakpadModuleRecord<'input> {
     pub arch: Arch,
     pub uuid: Uuid,
     pub name: &'input [u8],
 }
 
-#[derive(Debug)]
+impl<'input> fmt::Debug for BreakpadModuleRecord<'input> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("BreakpadModuleRecord")
+            .field("arch", &self.arch)
+            .field("uuid", &self.uuid)
+            .field("name", &String::from_utf8_lossy(self.name))
+            .finish()
+    }
+}
+
 pub struct BreakpadFileRecord<'input> {
     pub id: u16,
     pub name: &'input [u8],
+}
+
+impl<'input> fmt::Debug for BreakpadFileRecord<'input> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("BreakpadFileRecord")
+            .field("id", &self.id)
+            .field("name", &String::from_utf8_lossy(self.name))
+            .finish()
+    }
 }
 
 #[derive(Debug)]
@@ -25,7 +44,6 @@ pub struct BreakpadLineRecord {
     pub file_id: u16,
 }
 
-#[derive(Debug)]
 pub struct BreakpadFuncRecord<'input> {
     pub address: u64,
     pub size: u64,
@@ -33,11 +51,31 @@ pub struct BreakpadFuncRecord<'input> {
     pub lines: Vec<BreakpadLineRecord>,
 }
 
-#[derive(Debug)]
+impl<'input> fmt::Debug for BreakpadFuncRecord<'input> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("BreakpadFuncRecord")
+            .field("address", &self.address)
+            .field("size", &self.size)
+            .field("name", &String::from_utf8_lossy(self.name))
+            .field("lines", &self.lines)
+            .finish()
+    }
+}
+
 pub struct BreakpadPublicRecord<'input> {
     pub address: u64,
     pub size: u64,
     pub name: &'input [u8],
+}
+
+impl<'input> fmt::Debug for BreakpadPublicRecord<'input> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("BreakpadPublicRecord")
+            .field("address", &self.address)
+            .field("size", &self.size)
+            .field("name", &String::from_utf8_lossy(self.name))
+            .finish()
+    }
 }
 
 #[derive(Debug)]
@@ -79,7 +117,7 @@ impl<'input> BreakpadInfo<'input> {
         let mut in_func = false;
 
         for line in lines {
-            let mut words = line.splitn(1, |b| *b == b' ');
+            let mut words = line.splitn(2, |b| *b == b' ');
             let magic = words.next().unwrap_or(b"");
             let record = words.next().unwrap_or(b"");
 
@@ -110,7 +148,7 @@ impl<'input> BreakpadInfo<'input> {
                 _ => {
                     if !in_func {
                         // No known magic and we don't expect a line record
-                        return Err(ErrorKind::BadBreakpadSym("Unexpected line record").into());
+                        return Err(ErrorKind::BadBreakpadSym("unexpected line record").into());
                     }
 
                     // Pass the whole line down as there is no magic
@@ -132,29 +170,29 @@ impl<'input> BreakpadInfo<'input> {
             return Err(ErrorKind::BadBreakpadSym("Multiple MODULE records not supported").into());
         }
 
-        let mut record = line.splitn(3, |b| *b == b' ');
+        let mut record = line.splitn(4, |b| *b == b' ');
 
         // Skip "os" field
         record.next();
 
         let arch = match record.next() {
             Some(word) => String::from_utf8_lossy(word),
-            None => return Err(ErrorKind::BadBreakpadSym("Missing module arch").into()),
+            None => return Err(ErrorKind::BadBreakpadSym("missing module arch").into()),
         };
 
         let uuid_hex = match record.next() {
             Some(word) => String::from_utf8_lossy(word),
-            None => return Err(ErrorKind::BadBreakpadSym("Missing module uuid").into()),
+            None => return Err(ErrorKind::BadBreakpadSym("missing module uuid").into()),
         };
 
-        let uuid = match Uuid::parse_str(&uuid_hex[0..31]) {
+        let uuid = match Uuid::parse_str(&uuid_hex[0..32]) {
             Ok(uuid) => uuid,
-            Err(_) => return Err(ErrorKind::Parse("Invalid breakpad uuid").into()),
+            Err(_) => return Err(ErrorKind::Parse("invalid breakpad uuid").into()),
         };
 
         let name = match record.next() {
             Some(word) => word,
-            None => return Err(ErrorKind::BadBreakpadSym("Missing module name").into()),
+            None => return Err(ErrorKind::BadBreakpadSym("missing module name").into()),
         };
 
         self.module = Some(BreakpadModuleRecord {
@@ -172,16 +210,17 @@ impl<'input> BreakpadInfo<'input> {
     /// Example: "FILE 2 /home/jimb/mc/in/browser/app/nsBrowserApp.cpp"
     /// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#file-records
     fn parse_file(&mut self, line: &'input [u8]) -> Result<()> {
-        let mut record = line.splitn(1, |b| *b == b' ');
+        let mut record = line.splitn(2, |b| *b == b' ');
 
         let id = match record.next() {
-            Some(text) => u16::from_str(&String::from_utf8_lossy(text))?,
-            None => return Err(ErrorKind::Parse("Missing file ID").into()),
+            Some(text) => u16::from_str(&String::from_utf8_lossy(text))
+                .map_err(|e| Error::with_chain(e, "invalid file id"))?,
+            None => return Err(ErrorKind::Parse("missing file ID").into()),
         };
 
         let name = match record.next() {
             Some(text) => text,
-            None => return Err(ErrorKind::Parse("Missing file name").into()),
+            None => return Err(ErrorKind::Parse("missing file name").into()),
         };
 
         self.files.push(BreakpadFileRecord { id: id, name: name });
@@ -200,16 +239,18 @@ impl<'input> BreakpadInfo<'input> {
         } else {
             line
         };
-        let mut record = line.splitn(3, |b| *b == b' ');
+        let mut record = line.splitn(4, |b| *b == b' ');
 
         let address = match record.next() {
-            Some(text) => u64::from_str_radix(&String::from_utf8_lossy(text), 16)?,
-            None => return Err(ErrorKind::Parse("Missing function address").into()),
+            Some(text) => u64::from_str_radix(&String::from_utf8_lossy(text), 16)
+                .map_err(|e| Error::with_chain(e, "invalid function address"))?,
+            None => return Err(ErrorKind::Parse("missing function address").into()),
         };
 
         let size = match record.next() {
-            Some(text) => u64::from_str_radix(&String::from_utf8_lossy(text), 16)?,
-            None => return Err(ErrorKind::Parse("Missing function size").into()),
+            Some(text) => u64::from_str_radix(&String::from_utf8_lossy(text), 16)
+                .map_err(|e| Error::with_chain(e, "invalid function size"))?,
+            None => return Err(ErrorKind::Parse("missing function size").into()),
         };
 
         // Skip the parameter_size field
@@ -217,7 +258,7 @@ impl<'input> BreakpadInfo<'input> {
 
         let name = match record.next() {
             Some(text) => text,
-            None => return Err(ErrorKind::Parse("Missing function name").into()),
+            None => return Err(ErrorKind::Parse("missing function name").into()),
         };
 
         self.funcs.push(BreakpadFuncRecord {
@@ -258,11 +299,12 @@ impl<'input> BreakpadInfo<'input> {
         } else {
             line
         };
-        let mut record = line.splitn(3, |b| *b == b' ');
+        let mut record = line.splitn(4, |b| *b == b' ');
 
         let address = match record.next() {
-            Some(text) => u64::from_str_radix(&String::from_utf8_lossy(text), 16)?,
-            None => return Err(ErrorKind::Parse("Missing function address").into()),
+            Some(text) => u64::from_str_radix(&String::from_utf8_lossy(text), 16)
+                .map_err(|e| Error::with_chain(e, "invalid symbol address"))?,
+            None => return Err(ErrorKind::Parse("missing symbol address").into()),
         };
 
         // Skip the parameter_size field
@@ -270,7 +312,7 @@ impl<'input> BreakpadInfo<'input> {
 
         let name = match record.next() {
             Some(text) => text,
-            None => return Err(ErrorKind::Parse("Missing function name").into()),
+            None => return Err(ErrorKind::Parse("missing function name").into()),
         };
 
         if let Some(last_rec) = self.syms.last_mut() {
@@ -298,10 +340,11 @@ impl<'input> BreakpadInfo<'input> {
             None => return Err(ErrorKind::BadBreakpadSym("Unexpected line record").into()),
         };
 
-        let mut record = line.splitn(3, |b| *b == b' ');
+        let mut record = line.splitn(4, |b| *b == b' ');
 
         let address = match record.next() {
-            Some(text) => u64::from_str_radix(&String::from_utf8_lossy(text), 16)?,
+            Some(text) => u64::from_str_radix(&String::from_utf8_lossy(text), 16)
+                .map_err(|e| Error::with_chain(e, "invalid line address"))?,
             None => return Err(ErrorKind::Parse("Missing line address").into()),
         };
 
@@ -309,18 +352,20 @@ impl<'input> BreakpadInfo<'input> {
         record.next();
 
         let line_number = match record.next() {
-            Some(text) => u16::from_str(&String::from_utf8_lossy(text))?,
+            Some(text) => u64::from_str(&String::from_utf8_lossy(text))
+                .map_err(|e| Error::with_chain(e, "invalid line number"))?,
             None => return Err(ErrorKind::Parse("Missing line number").into()),
         };
 
         let file_id = match record.next() {
-            Some(text) => u16::from_str(&String::from_utf8_lossy(text))?,
-            None => return Err(ErrorKind::Parse("Missing line file id").into()),
+            Some(text) => u16::from_str(&String::from_utf8_lossy(text))
+                .map_err(|e| Error::with_chain(e, "invalid line file id"))?,
+            None => return Err(ErrorKind::Parse("missing line file id").into()),
         };
 
         func.lines.push(BreakpadLineRecord {
             address: address,
-            line: line_number,
+            line: cmp::min(line_number, 0xffff) as u16,
             file_id: file_id,
         });
 

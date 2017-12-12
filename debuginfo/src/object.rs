@@ -1,7 +1,7 @@
 use std::fmt;
 use std::iter::Peekable;
 use std::io::Cursor;
-use std::collections::{HashSet, BTreeMap};
+use std::collections::{BTreeMap, HashSet};
 use std::slice::Iter as SliceIter;
 
 use goblin;
@@ -9,8 +9,8 @@ use goblin::{elf, mach, Hint};
 use uuid::Uuid;
 
 use dwarf::{DwarfSection, DwarfSectionData};
-use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, ObjectKind,
-    Error, ErrorKind, Result};
+use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, ErrorKind,
+                      ObjectKind, Result};
 
 struct Breakpad {
     uuid: Uuid,
@@ -26,11 +26,11 @@ impl Breakpad {
     /// ```
     pub fn parse(bytes: &[u8]) -> Result<Breakpad> {
         // TODO(ja): Make sure this does not read the whole file in worst case
-        let mut words = bytes.splitn(4, |b| *b == b' ');
+        let mut words = bytes.splitn(5, |b| *b == b' ');
 
         match words.next() {
             Some(b"MODULE") => (),
-            _ => return Err(ErrorKind::MalformedObjectFile("Invalid breakpad magic".into()).into())
+            _ => return Err(ErrorKind::BadBreakpadSym("Invalid breakpad magic").into()),
         };
 
         // Operating system not needed
@@ -38,17 +38,21 @@ impl Breakpad {
 
         let arch = match words.next() {
             Some(word) => String::from_utf8_lossy(word),
-            None => return Err(ErrorKind::MalformedObjectFile("Missing breakpad arch".into()).into()),
+            None => return Err(ErrorKind::BadBreakpadSym("Missing breakpad arch").into()),
         };
 
-        let uuid = match words.next() {
+        let uuid_hex = match words.next() {
             Some(word) => String::from_utf8_lossy(word),
-            None => return Err(ErrorKind::MalformedObjectFile("Missing breakpad uuid".into()).into()),
+            None => return Err(ErrorKind::BadBreakpadSym("Missing breakpad uuid").into()),
+        };
+
+        let uuid = match Uuid::parse_str(&uuid_hex[0..32]) {
+            Ok(uuid) => uuid,
+            Err(_) => return Err(ErrorKind::Parse("Invalid breakpad uuid").into()),
         };
 
         Ok(Breakpad {
-            uuid: Uuid::parse_str(&uuid[0..31])
-                .map_err(|_| Error::from(ErrorKind::Parse("Invalid breakpad uuid")))?,
+            uuid: uuid,
             arch: Arch::from_breakpad(arch.as_ref())?,
         })
     }
@@ -114,12 +118,8 @@ impl<'a> Object<'a> {
         match self.target {
             ObjectTarget::Breakpad(..) => Ok(0), // TODO(ja): Check this
             ObjectTarget::Elf(..) => Ok(0),
-            ObjectTarget::MachOSingle(macho) => {
-                get_macho_vmaddr(macho)
-            }
-            ObjectTarget::MachOFat(_, ref macho) => {
-                get_macho_vmaddr(macho)
-            }
+            ObjectTarget::MachOSingle(macho) => get_macho_vmaddr(macho),
+            ObjectTarget::MachOFat(_, ref macho) => get_macho_vmaddr(macho),
         }
     }
 
@@ -157,8 +157,9 @@ impl<'a> Object<'a> {
             ObjectTarget::Breakpad(..) => DebugKind::Breakpad,
             // NOTE: ELF and MachO could technically also contain other debug formats,
             // but for now we only support Dwarf.
-            ObjectTarget::Elf(..) | ObjectTarget::MachOSingle(..) |
-                ObjectTarget::MachOFat(..) => DebugKind::Dwarf,
+            ObjectTarget::Elf(..) | ObjectTarget::MachOSingle(..) | ObjectTarget::MachOFat(..) => {
+                DebugKind::Dwarf
+            }
         }
     }
 
@@ -239,9 +240,10 @@ fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Result<Symbols<'a>> {
     let mut symbol_map = BTreeMap::new();
     for (id, sym_rv) in macho.symbols().enumerate() {
         let (_, nlist) = sym_rv?;
-        if nlist.get_type() == mach::symbols::N_SECT &&
-           nlist.n_sect != (mach::symbols::NO_SECT as usize) &&
-           sections.contains(&(nlist.n_sect - 1)) {
+        if nlist.get_type() == mach::symbols::N_SECT
+            && nlist.n_sect != (mach::symbols::NO_SECT as usize)
+            && sections.contains(&(nlist.n_sect - 1))
+        {
             symbol_map.insert(nlist.n_value, id as u32);
         }
     }
@@ -253,7 +255,11 @@ fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Result<Symbols<'a>> {
 }
 
 fn try_strip_symbol(s: &str) -> &str {
-    if s.starts_with("_") { &s[1..] } else { s }
+    if s.starts_with("_") {
+        &s[1..]
+    } else {
+        s
+    }
 }
 
 impl<'a> Symbols<'a> {
@@ -265,7 +271,8 @@ impl<'a> Symbols<'a> {
         };
         let (sym_addr, sym_id) = self.symbol_list[idx];
 
-        let sym_len = self.symbol_list.get(idx + 1)
+        let sym_len = self.symbol_list
+            .get(idx + 1)
             .map(|next| next.0 - sym_addr)
             .unwrap_or(!0);
 
@@ -379,9 +386,7 @@ impl<'a> FatObject<'a> {
                 }
             })
         })?;
-        Ok(FatObject {
-            handle: handle
-        })
+        Ok(FatObject { handle: handle })
     }
 
     /// Returns the contents as bytes.
@@ -396,7 +401,7 @@ impl<'a> FatObject<'a> {
             FatObjectKind::Elf(..) => 1,
             FatObjectKind::MachO(ref mach) => match *mach {
                 mach::Mach::Fat(ref fat) => fat.iter_arches().count(),
-                mach::Mach::Binary(..) => 1
+                mach::Mach::Binary(..) => 1,
             },
         }
     }
@@ -414,7 +419,7 @@ impl<'a> FatObject<'a> {
                 } else {
                     Ok(None)
                 }
-            },
+            }
             FatObjectKind::Elf(ref elf) => {
                 if idx == 0 {
                     Ok(Some(Object {
@@ -438,7 +443,7 @@ impl<'a> FatObject<'a> {
                     } else {
                         Ok(None)
                     }
-                },
+                }
                 mach::Mach::Binary(ref macho) => {
                     if idx == 0 {
                         Ok(Some(Object {

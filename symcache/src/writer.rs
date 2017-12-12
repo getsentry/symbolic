@@ -203,7 +203,7 @@ impl<W: Write> SymCacheWriter<W> {
                 // ignore missing sections
             }
             Err(e) => {
-                return Err(e).chain_err(|| err("could not load DWARF data"))?;
+                return Err(e).chain_err(|| err("could not load debug data"))?;
             }
         }
 
@@ -312,7 +312,8 @@ impl<W: Write> SymCacheWriter<W> {
             }
 
             // Skip symbols that are also defined in info.functions()
-            while syms.peek().map_or(false, |s| s.address == function.address) {
+            let next_address = function.address + cmp::max(function.size, 1);
+            while syms.peek().map_or(false, |s| s.address < next_address) {
                 syms.next();
             }
 
@@ -347,6 +348,11 @@ impl<W: Write> SymCacheWriter<W> {
 
             self.func_records[func_id].line_records = self.write_seg(&line_records)?;
             self.header.has_line_records = 1;
+        }
+
+        // Flush out all remaining symbols from the symbol table (PUBLIC records)
+        for symbol in syms {
+            self.write_simple_function(symbol.address, symbol.size as u32, symbol.name)?;
         }
 
         self.header.data_source = DataSource::BreakpadSym as u8;
@@ -448,7 +454,9 @@ impl<W: Write> SymCacheWriter<W> {
             } else {
                 let parent_offset = func_id.saturating_sub(parent_id);
                 if parent_offset == !0 {
-                    return Err(ErrorKind::Internal("parent function range too big for file format").into());
+                    return Err(ErrorKind::Internal(
+                        "parent function range too big for file format",
+                    ).into());
                 }
                 parent_offset as u16
             },
