@@ -12,19 +12,19 @@ use dwarf::{DwarfSection, DwarfSectionData};
 use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, ErrorKind,
                       ObjectKind, Result};
 
-struct Breakpad {
+struct BreakpadObject {
     uuid: Uuid,
     arch: Arch,
 }
 
-impl Breakpad {
+impl BreakpadObject {
     /// Parses a breakpad file header
     ///
     /// Example:
     /// ```
     /// MODULE mac x86_64 13DA2547B1D53AF99F55ED66AF0C7AF70 Electron Framework
     /// ```
-    pub fn parse(bytes: &[u8]) -> Result<Breakpad> {
+    pub fn parse(bytes: &[u8]) -> Result<BreakpadObject> {
         let mut words = bytes.splitn(5, |b| *b == b' ');
 
         match words.next() {
@@ -50,7 +50,7 @@ impl Breakpad {
             Err(_) => return Err(ErrorKind::Parse("Invalid breakpad uuid").into()),
         };
 
-        Ok(Breakpad {
+        Ok(BreakpadObject {
             uuid: uuid,
             arch: Arch::from_breakpad(arch.as_ref())?,
         })
@@ -58,13 +58,13 @@ impl Breakpad {
 }
 
 enum FatObjectKind<'a> {
-    Breakpad(Breakpad),
+    Breakpad(BreakpadObject),
     Elf(elf::Elf<'a>),
     MachO(mach::Mach<'a>),
 }
 
 enum ObjectTarget<'a> {
-    Breakpad(&'a Breakpad),
+    Breakpad(&'a BreakpadObject),
     Elf(&'a elf::Elf<'a>),
     MachOSingle(&'a mach::MachO<'a>),
     MachOFat(mach::fat::FatArch, mach::MachO<'a>),
@@ -380,7 +380,7 @@ impl<'a> FatObject<'a> {
                 Hint::MachFat(_) => FatObjectKind::MachO(mach::Mach::parse(bytes)?),
                 _ => {
                     if bytes.starts_with(b"MODULE ") {
-                        return Ok(FatObjectKind::Breakpad(Breakpad::parse(bytes)?));
+                        return Ok(FatObjectKind::Breakpad(BreakpadObject::parse(bytes)?));
                     }
 
                     return Err(ErrorKind::UnsupportedObjectFile.into());
