@@ -384,10 +384,29 @@ pub enum ObjectKind {
 impl ObjectKind {
     /// Returns the name of the object kind.
     pub fn name(&self) -> &'static str {
+        use ObjectKind::*;
         match *self {
-            ObjectKind::Breakpad => "breakpad",
-            ObjectKind::Elf => "elf",
-            ObjectKind::MachO => "macho",
+            Breakpad => "breakpad",
+            Elf => "elf",
+            MachO => "macho",
+        }
+    }
+}
+
+/// Represents the kind of debug information inside an object.
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+pub enum DebugKind {
+    Dwarf,
+    Breakpad,
+}
+
+impl DebugKind {
+    /// Returns the name of the object kind.
+    pub fn name(&self) -> &'static str {
+        use DebugKind::*;
+        match *self {
+            Dwarf => "dwarf",
+            Breakpad => "breakpad",
         }
     }
 }

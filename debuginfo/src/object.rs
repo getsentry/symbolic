@@ -9,25 +9,24 @@ use goblin::{elf, mach, Hint};
 use uuid::Uuid;
 
 use dwarf::{DwarfSection, DwarfSectionData};
-use symbolic_common::{Arch, ByteView, ByteViewHandle, Endianness, ObjectKind,
+use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, ObjectKind,
     Error, ErrorKind, Result};
 
-struct Breakpad<'a> {
-    bytes: &'a [u8],
+struct Breakpad {
     uuid: Uuid,
     arch: Arch,
 }
 
-impl<'a> Breakpad<'a> {
+impl Breakpad {
     /// Parses a breakpad file header
     ///
     /// Example:
     /// ```
     /// MODULE mac x86_64 13DA2547B1D53AF99F55ED66AF0C7AF70 Electron Framework
     /// ```
-    pub fn parse(bytes: &'a [u8]) -> Result<Breakpad<'a>> {
+    pub fn parse(bytes: &[u8]) -> Result<Breakpad> {
         // TODO(ja): Make sure this does not read the whole file in worst case
-        let mut words = bytes.split(|b| *b == b' ');
+        let mut words = bytes.splitn(4, |b| *b == b' ');
 
         match words.next() {
             Some(b"MODULE") => (),
@@ -50,20 +49,19 @@ impl<'a> Breakpad<'a> {
         Ok(Breakpad {
             uuid: Uuid::parse_str(&uuid[0..31])
                 .map_err(|_| Error::from(ErrorKind::Parse("Invalid breakpad uuid")))?,
-            bytes: bytes,
             arch: Arch::from_breakpad(arch.as_ref())?,
         })
     }
 }
 
 enum FatObjectKind<'a> {
-    Breakpad(Breakpad<'a>),
+    Breakpad(Breakpad),
     Elf(elf::Elf<'a>),
     MachO(mach::Mach<'a>),
 }
 
 enum ObjectTarget<'a> {
-    Breakpad(&'a Breakpad<'a>),
+    Breakpad(&'a Breakpad),
     Elf(&'a elf::Elf<'a>),
     MachOSingle(&'a mach::MachO<'a>),
     MachOFat(mach::fat::FatArch, mach::MachO<'a>),
@@ -150,6 +148,17 @@ impl<'a> Object<'a> {
                 let bytes = self.fat_bytes;
                 &bytes[arch.offset as usize..(arch.offset + arch.size) as usize]
             }
+        }
+    }
+
+    /// Returns the type of debug data contained in this object file
+    pub fn debug_kind(&self) -> DebugKind {
+        match self.target {
+            ObjectTarget::Breakpad(..) => DebugKind::Breakpad,
+            // NOTE: ELF and MachO could technically also contain other debug formats,
+            // but for now we only support Dwarf.
+            ObjectTarget::Elf(..) | ObjectTarget::MachOSingle(..) |
+                ObjectTarget::MachOFat(..) => DebugKind::Dwarf,
         }
     }
 
