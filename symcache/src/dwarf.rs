@@ -59,38 +59,39 @@ impl<'input> DwarfInfo<'input> {
             debug_ranges: section!(DebugRanges, false),
             debug_str: section!(DebugStr, false),
             vmaddr: obj.vmaddr()?,
-            abbrev_cache: RefCell::new(
-                LruCache::with_hasher(30, Default::default())),
+            abbrev_cache: RefCell::new(LruCache::with_hasher(30, Default::default())),
         })
     }
 
     #[inline(always)]
-    pub fn get_unit_header(&self, index: usize)
-        -> Result<&CompilationUnitHeader<Buf<'input>>>
-    {
-        self.units.get(index).ok_or_else(|| err("non existing unit"))
+    pub fn get_unit_header(&self, index: usize) -> Result<&CompilationUnitHeader<Buf<'input>>> {
+        self.units
+            .get(index)
+            .ok_or_else(|| err("non existing unit"))
     }
 
-    pub fn get_abbrev(&self, header: &CompilationUnitHeader<Buf<'input>>)
-        -> Result<Arc<Abbreviations>>
-    {
+    pub fn get_abbrev(
+        &self,
+        header: &CompilationUnitHeader<Buf<'input>>,
+    ) -> Result<Arc<Abbreviations>> {
         let offset = header.debug_abbrev_offset();
         let mut cache = self.abbrev_cache.borrow_mut();
         if let Some(abbrev) = cache.get_mut(&offset) {
             return Ok(abbrev.clone());
         }
+
         let abbrev = header
             .abbreviations(&self.debug_abbrev)
-            .chain_err(|| {
-                err("compilation unit refers to non-existing abbreviations")
-            })?;
+            .chain_err(|| err("compilation unit refers to non-existing abbreviations"))?;
+
         cache.insert(offset, Arc::new(abbrev));
         Ok(cache.get_mut(&offset).unwrap().clone())
     }
 
-    fn find_unit_offset(&self, offset: DebugInfoOffset<usize>)
-        -> Result<(usize, UnitOffset<usize>)>
-    {
+    fn find_unit_offset(
+        &self,
+        offset: DebugInfoOffset<usize>,
+    ) -> Result<(usize, UnitOffset<usize>)> {
         let idx = match self.units.binary_search_by_key(&offset.0, |x| x.offset().0) {
             Ok(idx) => idx,
             Err(0) => return Err(err("couln't find unit for ref address")),
@@ -138,9 +139,7 @@ pub struct Function<'a> {
 impl<'a> Function<'a> {
     pub fn append_line_if_changed(&mut self, line: Line<'a>) {
         if let Some(last_line) = self.lines.last() {
-            if last_line.original_file_id == line.original_file_id &&
-               last_line.line == line.line
-            {
+            if last_line.original_file_id == line.original_file_id && last_line.line == line.line {
                 return;
             }
         }
@@ -152,9 +151,8 @@ impl<'a> Function<'a> {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.lines.is_empty() && (
-            self.inlines.is_empty() ||
-            self.inlines.iter().all(|x| x.is_empty()))
+        self.lines.is_empty()
+            && (self.inlines.is_empty() || self.inlines.iter().all(|x| x.is_empty()))
     }
 }
 
@@ -192,9 +190,10 @@ impl<'input> Unit<'input> {
         let mut entries = header.entries(&*abbrev);
         let entry = match entries
             .next_dfs()
-            .chain_err(|| err("compilation unit is broken"))? {
+            .chain_err(|| err("compilation unit is broken"))?
+        {
             Some((_, entry)) => entry,
-            None => { return Ok(None); }
+            None => return Ok(None),
         };
 
         if entry.tag() != gimli::DW_TAG_compile_unit {
@@ -206,15 +205,13 @@ impl<'input> Unit<'input> {
             Err(e) => {
                 return Err(e).chain_err(|| err("invalid low_pc attribute"));
             }
-            _ => {
-                match entry.attr_value(gimli::DW_AT_entry_pc) {
-                    Ok(Some(AttributeValue::Addr(addr))) => addr,
-                    Err(e) => {
-                        return Err(e).chain_err(|| err("invalid entry_pc attribute"));
-                    }
-                    _ => 0,
+            _ => match entry.attr_value(gimli::DW_AT_entry_pc) {
+                Ok(Some(AttributeValue::Addr(addr))) => addr,
+                Err(e) => {
+                    return Err(e).chain_err(|| err("invalid entry_pc attribute"));
                 }
-            }
+                _ => 0,
+            },
         };
 
         let comp_dir = entry
@@ -255,12 +252,13 @@ impl<'input> Unit<'input> {
         }))
     }
 
-    pub fn get_functions(&self, info: &DwarfInfo<'input>,
-                     range_buf: &mut Vec<Range>,
-                     symbols: Option<&'input Symbols<'input>>,
-                     funcs: &mut Vec<Function<'input>>)
-        -> Result<()>
-    {
+    pub fn get_functions(
+        &self,
+        info: &DwarfInfo<'input>,
+        range_buf: &mut Vec<Range>,
+        symbols: Option<&'input Symbols<'input>>,
+        funcs: &mut Vec<Function<'input>>,
+    ) -> Result<()> {
         let mut depth = 0;
         let header = info.get_unit_header(self.index)?;
         let abbrev = info.get_abbrev(header)?;
@@ -322,7 +320,7 @@ impl<'input> Unit<'input> {
                 comp_dir: self.comp_dir.map(|x| x.buf()).unwrap_or(b""),
                 lang: self.language
                     .and_then(|lang| Language::from_dwarf_lang(lang))
-                    .unwrap_or(Language::Unknown)
+                    .unwrap_or(Language::Unknown),
             };
 
             for range in ranges {
@@ -347,8 +345,8 @@ impl<'input> Unit<'input> {
                     return Err(err("no root function"));
                 }
                 let mut node = funcs.last_mut().unwrap();
-                while {&node}.inlines.last().map_or(false, |n| (n.depth as isize) < depth) {
-                    node = {node}.inlines.last_mut().unwrap();
+                while { &node }.inlines.last().map_or(false, |n| (n.depth as isize) < depth) {
+                    node = { node }.inlines.last_mut().unwrap();
                 }
                 node.inlines.push(func);
             } else {
@@ -363,8 +361,12 @@ impl<'input> Unit<'input> {
         Ok(())
     }
 
-    fn parse_ranges<'a>(&self, info: &DwarfInfo<'input>, entry: &Die,
-                        buf: &'a mut Vec<Range>) -> Result<&'a [Range]> {
+    fn parse_ranges<'a>(
+        &self,
+        info: &DwarfInfo<'input>,
+        entry: &Die,
+        buf: &'a mut Vec<Range>,
+    ) -> Result<&'a [Range]> {
         let mut low_pc = None;
         let mut high_pc = None;
         let mut high_pc_rel = None;
@@ -397,23 +399,19 @@ impl<'input> Unit<'input> {
                             return Ok(&buf[..]);
                         }
                         // XXX: error?
-                        _ => continue
+                        _ => continue,
                     }
                 }
-                gimli::DW_AT_low_pc => {
-                    match attr.value() {
-                        AttributeValue::Addr(addr) => set_pc!(low_pc, addr),
-                        _ => return Ok(&[])
-                    }
-                }
-                gimli::DW_AT_high_pc => {
-                    match attr.value() {
-                        AttributeValue::Addr(addr) => set_pc!(high_pc, addr),
-                        AttributeValue::Udata(size) => set_pc!(high_pc_rel, size),
-                        _ => return Ok(&[])
-                    }
-                }
-                _ => continue
+                gimli::DW_AT_low_pc => match attr.value() {
+                    AttributeValue::Addr(addr) => set_pc!(low_pc, addr),
+                    _ => return Ok(&[]),
+                },
+                gimli::DW_AT_high_pc => match attr.value() {
+                    AttributeValue::Addr(addr) => set_pc!(high_pc, addr),
+                    AttributeValue::Udata(size) => set_pc!(high_pc_rel, size),
+                    _ => return Ok(&[]),
+                },
+                _ => continue,
             }
         }
 
@@ -422,13 +420,13 @@ impl<'input> Unit<'input> {
         // TODO: *technically* there could be a relocatable section placed at VA 0
         let low_pc = match low_pc {
             Some(low_pc) if low_pc != 0 => low_pc,
-            _ => return Ok(&[])
+            _ => return Ok(&[]),
         };
 
         let high_pc = match (high_pc, high_pc_rel) {
             (Some(high_pc), _) => high_pc,
             (_, Some(high_pc_rel)) => low_pc.wrapping_add(high_pc_rel),
-            _ => return Ok(&[])
+            _ => return Ok(&[]),
         };
 
         if low_pc == high_pc {
@@ -459,18 +457,17 @@ impl<'input> Unit<'input> {
         attr_value: AttributeValue<Buf<'input>>,
         f: F,
     ) -> Result<Option<T>>
-        where for<'abbrev> F: FnOnce(&Die<'abbrev, 'info, 'input>) -> Result<Option<T>>
+    where
+        for<'abbrev> F: FnOnce(&Die<'abbrev, 'info, 'input>) -> Result<Option<T>>,
     {
         let (index, offset) = match attr_value {
-            AttributeValue::UnitRef(offset) => {
-                (self.index, offset)
-            }
+            AttributeValue::UnitRef(offset) => (self.index, offset),
             AttributeValue::DebugInfoRef(offset) => {
                 let (index, unit_offset) = info.find_unit_offset(offset)?;
                 (index, unit_offset)
             }
             // TODO: there is probably more that can come back here
-            _ => { return Ok(None); }
+            _ => return Ok(None),
         };
 
         let header = info.get_unit_header(index)?;
@@ -497,15 +494,13 @@ impl<'input> Unit<'input> {
         while let Some(attr) = fiter.next()? {
             match attr.name() {
                 // prioritize these.  If we get them, take them.
-                gimli::DW_AT_linkage_name |
-                gimli::DW_AT_MIPS_linkage_name => {
+                gimli::DW_AT_linkage_name | gimli::DW_AT_MIPS_linkage_name => {
                     return Ok(attr.string_value(&info.debug_str).map(|x| x.buf()));
                 }
                 gimli::DW_AT_name => {
                     fallback_name = Some(attr);
                 }
-                gimli::DW_AT_abstract_origin |
-                gimli::DW_AT_specification => {
+                gimli::DW_AT_abstract_origin | gimli::DW_AT_specification => {
                     reference_target = Some(attr);
                 }
                 _ => {}
@@ -640,7 +635,7 @@ impl<'input> DwarfLineProgram<'input> {
             .ok_or_else(|| ErrorKind::BadDwarfData("invalid file reference"))?;
         Ok((
             file.directory(header).map(|x| x.buf()).unwrap_or(b""),
-            file.path_name().buf()
+            file.path_name().buf(),
         ))
     }
 

@@ -97,7 +97,8 @@ impl<W: Write> SymCacheWriter<W> {
 
     #[inline(always)]
     fn write_bytes<L>(&self, bytes: &[u8]) -> Result<Seg<u8, L>>
-        where L: Copy + num::FromPrimitive
+    where
+        L: Copy + num::FromPrimitive,
     {
         let (ref mut pos, ref mut writer) = *self.writer.borrow_mut();
         let offset = *pos;
@@ -106,13 +107,14 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(Seg::new(
             offset as u32,
             num::FromPrimitive::from_usize(bytes.len())
-                .ok_or_else(|| ErrorKind::Internal("out of range for byte segment"))?
+                .ok_or_else(|| ErrorKind::Internal("out of range for byte segment"))?,
         ))
     }
 
     #[inline(always)]
     fn write_item<T, L>(&self, x: &T) -> Result<Seg<u8, L>>
-        where L: Copy + num::FromPrimitive
+    where
+        L: Copy + num::FromPrimitive,
     {
         unsafe {
             let bytes: *const u8 = mem::transmute(x);
@@ -123,7 +125,8 @@ impl<W: Write> SymCacheWriter<W> {
 
     #[inline]
     fn write_seg<T, L>(&self, x: &[T]) -> Result<Seg<T, L>>
-        where L: Copy + num::FromPrimitive
+    where
+        L: Copy + num::FromPrimitive,
     {
         let mut first_seg: Option<Seg<u8>> = None;
         for item in x {
@@ -135,7 +138,7 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(Seg::new(
             first_seg.map(|x| x.offset).unwrap_or(0),
             num::FromPrimitive::from_usize(x.len())
-                .ok_or_else(|| ErrorKind::BadDwarfData("out of range for item segment"))?
+                .ok_or_else(|| ErrorKind::BadDwarfData("out of range for item segment"))?,
         ))
     }
 
@@ -163,9 +166,7 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(seg)
     }
 
-    fn write_file_record_if_missing(&mut self, record: FileRecord)
-        -> Result<u16>
-    {
+    fn write_file_record_if_missing(&mut self, record: FileRecord) -> Result<u16> {
         if let Some(idx) = self.file_record_map.get(&record) {
             return Ok(*idx);
         }
@@ -193,17 +194,17 @@ impl<W: Write> SymCacheWriter<W> {
             Ok(DebugInfo::Dwarf(ref info)) => {
                 return self.write_dwarf_info(info, obj.symbols().ok())
                     .chain_err(|| err("could not process DWARF data"));
-            },
+            }
             Ok(DebugInfo::Breakpad(ref info)) => {
                 return self.write_breakpad_info(info)
                     .chain_err(|| err("could not process Breakpad symbols"));
-            },
-            // ignore missing sections
-            Err(Error(ErrorKind::MissingSection(..), ..)) => (),
+            }
+            Err(Error(ErrorKind::MissingSection(..), ..)) => {
+                // ignore missing sections
+            }
             Err(e) => {
-                return Err(e)
-                    .chain_err(|| err("could not load DWARF data"))?;
-            },
+                return Err(e).chain_err(|| err("could not load DWARF data"))?;
+            }
         }
 
         // fallback to symbol table.
@@ -212,11 +213,11 @@ impl<W: Write> SymCacheWriter<W> {
                 return self.write_symbol_table(symbols.iter(), obj.vmaddr()?)
                     .chain_err(|| err("Could not process symbol table"));
             }
-            // ignore missing debug info
-            Err(Error(ErrorKind::MissingDebugInfo(..), ..)) => {}
+            Err(Error(ErrorKind::MissingDebugInfo(..), ..)) => {
+                // ignore missing debug info
+            }
             Err(e) => {
-                return Err(e)
-                    .chain_err(|| err("could not load symnbol table"));
+                return Err(e).chain_err(|| err("could not load symnbol table"));
             }
         }
 
@@ -237,10 +238,12 @@ impl<W: Write> SymCacheWriter<W> {
     }
 
     fn write_missing_functions_from_symboltable(
-        &mut self, last_addr: &mut u64, cur_addr: u64, vmaddr: u64,
-        symbol_iter: &mut Peekable<SymbolIterator>
-    ) -> Result<()>
-    {
+        &mut self,
+        last_addr: &mut u64,
+        cur_addr: u64,
+        vmaddr: u64,
+        symbol_iter: &mut Peekable<SymbolIterator>,
+    ) -> Result<()> {
         while let Some(&Ok((mut sym_addr, sym_len, sym))) = symbol_iter.peek() {
             sym_addr -= vmaddr;
 
@@ -263,7 +266,7 @@ impl<W: Write> SymCacheWriter<W> {
 
     fn write_simple_function<S>(&mut self, func_addr: u64, len: u32, symbol: S) -> Result<()>
     where
-        S: AsRef<[u8]>
+        S: AsRef<[u8]>,
     {
         let symbol_id = self.write_symbol_if_missing(symbol.as_ref())?;
 
@@ -305,11 +308,7 @@ impl<W: Write> SymCacheWriter<W> {
             // Write all symbols that are not defined in info.functions()
             while syms.peek().map_or(false, |s| s.address < function.address) {
                 let symbol = syms.next().unwrap();
-                self.write_simple_function(
-                    symbol.address,
-                    symbol.size as u32,
-                    symbol.name
-                )?;
+                self.write_simple_function(symbol.address, symbol.size as u32, symbol.name)?;
             }
 
             // Skip symbols that are also defined in info.functions()
@@ -318,11 +317,7 @@ impl<W: Write> SymCacheWriter<W> {
             }
 
             let func_id = self.func_records.len();
-            self.write_simple_function(
-                function.address,
-                function.size as u32,
-                function.name
-            )?;
+            self.write_simple_function(function.address, function.size as u32, function.name)?;
 
             if function.lines.is_empty() {
                 continue;
@@ -394,7 +389,11 @@ impl<W: Write> SymCacheWriter<W> {
                 // dedup instructions from inline functions
                 if let &mut Some(ref mut symbol_iter) = &mut symbol_iter {
                     self.write_missing_functions_from_symboltable(
-                        &mut last_addr, func.addr, info.vmaddr, symbol_iter)?;
+                        &mut last_addr,
+                        func.addr,
+                        info.vmaddr,
+                        symbol_iter,
+                    )?;
                 }
                 self.write_dwarf_function(&func, addrs_inner, local_cache_inner, !0)?;
                 last_addr = func.addr + func.len as u64;
@@ -403,7 +402,11 @@ impl<W: Write> SymCacheWriter<W> {
 
         if let &mut Some(ref mut symbol_iter) = &mut symbol_iter {
             self.write_missing_functions_from_symboltable(
-                &mut last_addr, !0, info.vmaddr, symbol_iter)?;
+                &mut last_addr,
+                !0,
+                info.vmaddr,
+                symbol_iter,
+            )?;
         }
 
         self.header.data_source = DataSource::Dwarf as u8;
@@ -414,12 +417,13 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(())
     }
 
-    fn write_dwarf_function<'a>(&mut self, func: &Function<'a>,
-                                addrs: &mut FnvHashSet<u64>,
-                                local_cache: &mut FnvHashMap<u64, u16>,
-                                parent_id: u32)
-        -> Result<()>
-    {
+    fn write_dwarf_function<'a>(
+        &mut self,
+        func: &Function<'a>,
+        addrs: &mut FnvHashSet<u64>,
+        local_cache: &mut FnvHashMap<u64, u16>,
+        parent_id: u32,
+    ) -> Result<()> {
         // if we have a function without any instructions we just skip it.  This
         // saves memory and since we only care about instructions where we can
         // actually crash this is a reasonable optimization.
@@ -444,8 +448,7 @@ impl<W: Write> SymCacheWriter<W> {
             } else {
                 let parent_offset = func_id.saturating_sub(parent_id);
                 if parent_offset == !0 {
-                    return Err(ErrorKind::Internal(
-                        "parent function range too big for file format").into());
+                    return Err(ErrorKind::Internal("parent function range too big for file format").into());
                 }
                 parent_offset as u16
             },
@@ -455,7 +458,7 @@ impl<W: Write> SymCacheWriter<W> {
                 return Err(ErrorKind::Internal("language out of range for file format").into());
             } else {
                 func.lang as u8
-            }
+            },
         };
         let mut last_addr = func_record.addr_start();
         self.func_records.push(func_record);
