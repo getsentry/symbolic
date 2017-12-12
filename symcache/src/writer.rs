@@ -8,9 +8,10 @@ use std::mem;
 use std::slice;
 use std::sync::Arc;
 
-use symbolic_common::{Endianness, Error, ErrorKind, Result, ResultExt, Language};
+use symbolic_common::{Endianness, Error, DebugKind, ErrorKind, Result, ResultExt, Language};
 use symbolic_debuginfo::{DwarfSection, Object, Symbols, SymbolIterator};
 
+use breakpad::BreakpadInfo;
 use types::{CacheFileHeader, Seg, FuncRecord, LineRecord, FileRecord, DataSource};
 use cache::SYMCACHE_MAGIC;
 
@@ -21,7 +22,7 @@ use num;
 use dmsort;
 use gimli;
 use gimli::{Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbbrev, DebugAbbrevOffset,
-            DebugInfo, DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr,
+            DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr,
             DebuggingInformationEntry, DwLang, EndianBuf, StateMachine,
             IncompleteLineNumberProgram, Range, UnitOffset};
 
@@ -146,6 +147,21 @@ struct SymCacheWriter<W: Write> {
 }
 
 #[derive(Debug)]
+enum DebugInfo<'input> {
+    Dwarf(DwarfInfo<'input>),
+    Breakpad(BreakpadInfo<'input>),
+}
+
+impl<'input> DebugInfo<'input> {
+    pub fn from_object(object: &'input Object) -> Result<DebugInfo<'input>> {
+        Ok(match object.debug_kind() {
+            DebugKind::Dwarf => DebugInfo::Dwarf(DwarfInfo::from_object(object)?),
+            DebugKind::Breakpad => DebugInfo::Breakpad(BreakpadInfo::from_object(object)?),
+        })
+    }
+}
+
+#[derive(Debug)]
 struct DwarfInfo<'input> {
     pub units: Vec<CompilationUnitHeader<Buf<'input>>>,
     pub debug_abbrev: DebugAbbrev<Buf<'input>>,
@@ -170,7 +186,7 @@ impl<'input> DwarfInfo<'input> {
                         &[]
                     }
                 };
-                $sect::new(sect, obj.endianess())
+                gimli::$sect::new(sect, obj.endianess())
             }}
         }
 
@@ -335,17 +351,21 @@ impl<W: Write> SymCacheWriter<W> {
 
         // try dwarf data first.  If we cannot find the necessary dwarf sections
         // we just skip over to symbol table processing.
-        match DwarfInfo::from_object(obj) {
-            Ok(ref info) => {
+        match DebugInfo::from_object(obj) {
+            Ok(DebugInfo::Dwarf(ref info)) => {
                 return self.write_dwarf_info(info, obj.symbols().ok())
                     .chain_err(|| err("could not process DWARF data"));
-            }
+            },
+            Ok(DebugInfo::Breakpad(ref info)) => {
+                return self.write_breakpad_info(info)
+                    .chain_err(|| err("could not process Breakpad symbols"));
+            },
             // ignore missing sections
-            Err(Error(ErrorKind::MissingSection(..), ..)) => {}
+            Err(Error(ErrorKind::MissingSection(..), ..)) => (),
             Err(e) => {
                 return Err(e)
                     .chain_err(|| err("could not load DWARF data"))?;
-            }
+            },
         }
 
         // fallback to symbol table.
@@ -403,12 +423,18 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(())
     }
 
-    fn write_simple_function(&mut self, func_addr: u64, len: u32, symbol: &str) -> Result<()> {
-        let symbol_id = self.write_symbol_if_missing(symbol.as_bytes())?;
+    fn write_simple_function<S>(&mut self, func_addr: u64, len: u32, symbol: S) -> Result<()>
+    where
+        S: AsRef<[u8]>
+    {
+        let symbol_id = self.write_symbol_if_missing(symbol.as_ref())?;
+
         self.func_records.push(FuncRecord {
             addr_low: (func_addr & 0xffffffff) as u32,
             addr_high: ((func_addr >> 32) & 0xffff) as u16,
-            len: len as u16,
+            // XXX: we have not seen this yet, but in theory this should be
+            // stored as multiple function records.
+            len: cmp::min(len, 0xffff) as u16,
             symbol_id_low: (symbol_id & 0xffff) as u16,
             symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
             parent_offset: !0,
@@ -416,6 +442,85 @@ impl<W: Write> SymCacheWriter<W> {
             comp_dir: Seg::default(),
             lang: Language::Unknown as u8,
         });
+        Ok(())
+    }
+
+    fn write_breakpad_info(&mut self, info: &BreakpadInfo) -> Result<()> {
+        let mut file_cache = FnvHashMap::default();
+
+        for file in info.files() {
+            if file_cache.contains_key(&file.id) {
+                continue;
+            }
+
+            let file_record = FileRecord {
+                filename: self.write_file_if_missing(file.name)?,
+                base_dir: self.write_file_if_missing(b"")?,
+            };
+
+            let file_id = self.write_file_record_if_missing(file_record)?;
+            file_cache.insert(&file.id, file_id);
+        }
+
+        let mut syms = info.symbols().iter().peekable();
+        for function in info.functions() {
+            // Write all symbols that are not defined in info.functions()
+            while syms.peek().map_or(false, |s| s.address < function.address) {
+                let symbol = syms.next().unwrap();
+                self.write_simple_function(
+                    symbol.address,
+                    symbol.size as u32,
+                    symbol.name
+                )?;
+            }
+
+            // Skip symbols that are also defined in info.functions()
+            while syms.peek().map_or(false, |s| s.address == function.address) {
+                syms.next();
+            }
+
+            let func_id = self.func_records.len();
+            self.write_simple_function(
+                function.address,
+                function.size as u32,
+                function.name
+            )?;
+
+            if function.lines.is_empty() {
+                continue;
+            }
+
+            let mut line_records = vec![];
+            let mut last_addr = function.address;
+            for line in &function.lines {
+                let mut diff = line.address.saturating_sub(last_addr) as i64;
+                last_addr += diff as u64;
+
+                while diff >= 0 {
+                    let file_id = match file_cache.get(&line.file_id) {
+                        Some(id) => *id,
+                        None => return Err(ErrorKind::BadBreakpadSym("Invalid file_id").into()),
+                    };
+
+                    line_records.push(LineRecord {
+                        addr_off: (diff & 0xff) as u8,
+                        file_id: file_id,
+                        line: line.line,
+                    });
+
+                    diff -= 0xff;
+                }
+            }
+
+            self.func_records[func_id].line_records = self.write_seg(&line_records)?;
+            self.header.has_line_records = 1;
+        }
+
+        self.header.data_source = DataSource::BreakpadSym as u8;
+        self.header.symbols = self.write_seg(&self.symbols)?;
+        self.header.files = self.write_seg(&self.file_records)?;
+        self.header.function_records = self.write_seg(&self.func_records)?;
+
         Ok(())
     }
 

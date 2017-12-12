@@ -84,6 +84,7 @@ pub enum DataSource {
     Unknown,
     Dwarf,
     SymbolTable,
+    BreakpadSym,
     #[doc(hidden)]
     __Max
 }
