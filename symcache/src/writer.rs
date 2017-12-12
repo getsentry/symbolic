@@ -339,7 +339,7 @@ impl<W: Write> SymCacheWriter<W> {
                     line_records.push(LineRecord {
                         addr_off: (diff & 0xff) as u8,
                         file_id: file_id,
-                        line: line.line,
+                        line: cmp::min(line.line, 0xffff) as u16,
                     });
 
                     diff -= 0xff;

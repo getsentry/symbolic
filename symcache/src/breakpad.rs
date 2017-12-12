@@ -1,5 +1,4 @@
 use std::fmt;
-use std::cmp;
 use std::str::FromStr;
 
 use uuid::Uuid;
@@ -40,7 +39,7 @@ impl<'input> fmt::Debug for BreakpadFileRecord<'input> {
 #[derive(Debug)]
 pub struct BreakpadLineRecord {
     pub address: u64,
-    pub line: u16,
+    pub line: u64,
     pub file_id: u16,
 }
 
@@ -371,7 +370,7 @@ impl<'input> BreakpadInfo<'input> {
 
         func.lines.push(BreakpadLineRecord {
             address: address,
-            line: cmp::min(line_number, 0xffff) as u16,
+            line: line_number,
             file_id: file_id,
         });
 
