@@ -20,3 +20,6 @@ goblin = "0.0"
 symbolic-common = { version = "1.1.5", path = "../common" }
 symbolic-debuginfo = { version = "1.1.5", path = "../debuginfo" }
 uuid = { version = "0.5", features = ["use_std"] }
+
+[build-dependencies]
+cc = { version = "1.0", features = ["parallel"] }
