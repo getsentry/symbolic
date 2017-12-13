@@ -68,6 +68,11 @@ error_chain! {
             description("bad dwarf data")
             display("bad dwarf data: {}", message)
         }
+        /// Raised for bad breakpad symbols.
+        BadBreakpadSym(msg: &'static str) {
+            description("bad breakpad sym")
+            display("bad breakpad sym: {}", msg)
+        }
         MissingDebugInfo(message: &'static str) {
             description("missing debug info")
             display("missing debug info: {}", message)

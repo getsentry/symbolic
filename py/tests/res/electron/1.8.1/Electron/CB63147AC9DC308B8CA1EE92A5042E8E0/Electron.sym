@@ -1,0 +1,19 @@
+MODULE mac x86_64 CB63147AC9DC308B8CA1EE92A5042E8E0 Electron
+FILE 0 /Users/electron/workspace/electron-osx-x64/out/R/../../atom/app/atom_main.cc
+FUNC f00 2b 0 main
+f00 c 181 0
+f0c 5 182 0
+f11 5 186 0
+f16 4 182 0
+f1a 7 183 0
+f21 5 186 0
+f26 5 187 0
+FUNC f30 21 0 (anonymous namespace)::IsEnvSet(char const*)
+f30 4 40 0
+f34 c 46 0
+f40 3 47 0
+f43 2 47 0
+f45 6 47 0
+f4b 4 0 0
+f4f 2 47 0
+PUBLIC 0 0 _mh_execute_header

@@ -1,0 +1,379 @@
+use std::fmt;
+use std::str::FromStr;
+
+use uuid::Uuid;
+
+use symbolic_common::{Arch, Error, ErrorKind, Result};
+use symbolic_debuginfo::Object;
+
+pub struct BreakpadModuleRecord<'input> {
+    pub arch: Arch,
+    pub uuid: Uuid,
+    pub name: &'input [u8],
+}
+
+impl<'input> fmt::Debug for BreakpadModuleRecord<'input> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("BreakpadModuleRecord")
+            .field("arch", &self.arch)
+            .field("uuid", &self.uuid)
+            .field("name", &String::from_utf8_lossy(self.name))
+            .finish()
+    }
+}
+
+pub struct BreakpadFileRecord<'input> {
+    pub id: u16,
+    pub name: &'input [u8],
+}
+
+impl<'input> fmt::Debug for BreakpadFileRecord<'input> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("BreakpadFileRecord")
+            .field("id", &self.id)
+            .field("name", &String::from_utf8_lossy(self.name))
+            .finish()
+    }
+}
+
+#[derive(Debug)]
+pub struct BreakpadLineRecord {
+    pub address: u64,
+    pub line: u64,
+    pub file_id: u16,
+}
+
+pub struct BreakpadFuncRecord<'input> {
+    pub address: u64,
+    pub size: u64,
+    pub name: &'input [u8],
+    pub lines: Vec<BreakpadLineRecord>,
+}
+
+impl<'input> fmt::Debug for BreakpadFuncRecord<'input> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("BreakpadFuncRecord")
+            .field("address", &self.address)
+            .field("size", &self.size)
+            .field("name", &String::from_utf8_lossy(self.name))
+            .field("lines", &self.lines)
+            .finish()
+    }
+}
+
+pub struct BreakpadPublicRecord<'input> {
+    pub address: u64,
+    pub size: u64,
+    pub name: &'input [u8],
+}
+
+impl<'input> fmt::Debug for BreakpadPublicRecord<'input> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("BreakpadPublicRecord")
+            .field("address", &self.address)
+            .field("size", &self.size)
+            .field("name", &String::from_utf8_lossy(self.name))
+            .finish()
+    }
+}
+
+#[derive(Debug)]
+pub struct BreakpadInfo<'input> {
+    module: Option<BreakpadModuleRecord<'input>>,
+    files: Vec<BreakpadFileRecord<'input>>,
+    funcs: Vec<BreakpadFuncRecord<'input>>,
+    syms: Vec<BreakpadPublicRecord<'input>>,
+}
+
+impl<'input> BreakpadInfo<'input> {
+    pub fn from_object(object: &'input Object) -> Result<BreakpadInfo<'input>> {
+        let mut info = BreakpadInfo {
+            module: None,
+            files: vec![],
+            funcs: vec![],
+            syms: vec![],
+        };
+
+        info.parse(object.as_bytes())?;
+        Ok(info)
+    }
+
+    pub fn files(&self) -> &[BreakpadFileRecord] {
+        self.files.as_slice()
+    }
+
+    pub fn functions(&self) -> &[BreakpadFuncRecord] {
+        self.funcs.as_slice()
+    }
+
+    pub fn symbols(&self) -> &[BreakpadPublicRecord] {
+        self.syms.as_slice()
+    }
+
+    fn parse(&mut self, bytes: &'input [u8]) -> Result<()> {
+        let lines = bytes.split(|b| *b == b'\n').map(|line| {
+            let len = line.len();
+            if len > 0 && line[len - 1] == b'\r' {
+                &line[0..len-1]
+            } else {
+                line
+            }
+        });
+
+        let mut in_func = false;
+        for line in lines {
+            let mut words = line.splitn(2, |b| *b == b' ');
+            let magic = words.next().unwrap_or(b"");
+            let record = words.next().unwrap_or(b"");
+
+            match magic {
+                b"MODULE" => {
+                    self.parse_module(record)?;
+                    in_func = false;
+                }
+                b"FILE" => {
+                    self.parse_file(record)?;
+                    in_func = false;
+                }
+                b"FUNC" => {
+                    self.parse_func(record)?;
+                    in_func = true;
+                }
+                b"STACK" => {
+                    self.parse_stack(record)?;
+                    in_func = false;
+                }
+                b"PUBLIC" => {
+                    self.parse_public(record)?;
+                    in_func = false;
+                }
+                b"" => {
+                    // Ignore empty lines
+                }
+                _ => {
+                    if !in_func {
+                        // No known magic and we don't expect a line record
+                        return Err(ErrorKind::BadBreakpadSym("unexpected line record").into());
+                    }
+
+                    // Pass the whole line down as there is no magic
+                    self.parse_line(line)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Parses a breakpad MODULE record
+    ///
+    /// Syntax: "MODULE operatingsystem architecture id name"
+    /// Example: "MODULE Linux x86 D3096ED481217FD4C16B29CD9BC208BA0 firefox-bin"
+    /// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#module-records
+    fn parse_module(&mut self, line: &'input [u8]) -> Result<()> {
+        if self.module.is_some() {
+            return Err(ErrorKind::BadBreakpadSym("Multiple MODULE records not supported").into());
+        }
+
+        let mut record = line.splitn(4, |b| *b == b' ');
+
+        // Skip "os" field
+        record.next();
+
+        let arch = match record.next() {
+            Some(word) => String::from_utf8_lossy(word),
+            None => return Err(ErrorKind::BadBreakpadSym("missing module arch").into()),
+        };
+
+        let uuid_hex = match record.next() {
+            Some(word) => String::from_utf8_lossy(word),
+            None => return Err(ErrorKind::BadBreakpadSym("missing module uuid").into()),
+        };
+
+        let uuid = match Uuid::parse_str(&uuid_hex[0..32]) {
+            Ok(uuid) => uuid,
+            Err(_) => return Err(ErrorKind::Parse("invalid breakpad uuid").into()),
+        };
+
+        let name = match record.next() {
+            Some(word) => word,
+            None => return Err(ErrorKind::BadBreakpadSym("missing module name").into()),
+        };
+
+        self.module = Some(BreakpadModuleRecord {
+            name: name,
+            arch: Arch::from_breakpad(&arch)?,
+            uuid: uuid,
+        });
+
+        Ok(())
+    }
+
+    /// Parses a breakpad FILE record
+    ///
+    /// Syntax: "FILE number name"
+    /// Example: "FILE 2 /home/jimb/mc/in/browser/app/nsBrowserApp.cpp"
+    /// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#file-records
+    fn parse_file(&mut self, line: &'input [u8]) -> Result<()> {
+        let mut record = line.splitn(2, |b| *b == b' ');
+
+        let id = match record.next() {
+            Some(text) => u16::from_str(&String::from_utf8_lossy(text))
+                .map_err(|e| Error::with_chain(e, "invalid file id"))?,
+            None => return Err(ErrorKind::Parse("missing file ID").into()),
+        };
+
+        let name = match record.next() {
+            Some(text) => text,
+            None => return Err(ErrorKind::Parse("missing file name").into()),
+        };
+
+        self.files.push(BreakpadFileRecord { id: id, name: name });
+        Ok(())
+    }
+
+    /// Parses a breakpad FUNC record
+    ///
+    /// Syntax: "FUNC [m] address size parameter_size name"
+    /// Example: "FUNC m c184 30 0 nsQueryInterfaceWithError::operator()(nsID const&, void**) const"
+    /// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#func-records
+    fn parse_func(&mut self, line: &'input [u8]) -> Result<()> {
+        // Strip the optional "m" parameter; it has no meaning to us
+        let line = if line.starts_with(b"m ") {
+            &line[2..]
+        } else {
+            line
+        };
+        let mut record = line.splitn(4, |b| *b == b' ');
+
+        let address = match record.next() {
+            Some(text) => u64::from_str_radix(&String::from_utf8_lossy(text), 16)
+                .map_err(|e| Error::with_chain(e, "invalid function address"))?,
+            None => return Err(ErrorKind::Parse("missing function address").into()),
+        };
+
+        let size = match record.next() {
+            Some(text) => u64::from_str_radix(&String::from_utf8_lossy(text), 16)
+                .map_err(|e| Error::with_chain(e, "invalid function size"))?,
+            None => return Err(ErrorKind::Parse("missing function size").into()),
+        };
+
+        // Skip the parameter_size field
+        record.next();
+
+        let name = match record.next() {
+            Some(text) => text,
+            None => return Err(ErrorKind::Parse("missing function name").into()),
+        };
+
+        self.funcs.push(BreakpadFuncRecord {
+            address: address,
+            size: size,
+            name: name,
+            lines: vec![],
+        });
+
+        Ok(())
+    }
+
+    /// Parses a breakpad STACK record
+    ///
+    /// Can either be a STACK WIN record...
+    /// Syntax: "STACK WIN type rva code_size prologue_size epilogue_size parameter_size saved_register_size local_size max_stack_size has_program_string program_string_OR_allocates_base_pointer"
+    /// Example: "STACK WIN 4 2170 14 1 0 0 0 0 0 1 $eip 4 + ^ = $esp $ebp 8 + = $ebp $ebp ^ ="
+    /// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-win-records
+    ///
+    /// ... or a STACK CFI record
+    /// Syntax: "STACK CFI INIT address size register1: expression1 register2: expression2 ..."
+    /// Example: "STACK CFI INIT 804c4b0 40 .cfa: $esp 4 + $eip: .cfa 4 - ^"
+    /// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-cfi-records
+    fn parse_stack(&mut self, _line: &'input [u8]) -> Result<()> {
+        // Ignored
+        Ok(())
+    }
+
+    /// Parses a breakpad PUBLIC record
+    ///
+    /// Syntax: "PUBLIC [m] address parameter_size name"
+    /// Example: "PUBLIC m 2160 0 Public2_1"
+    /// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#public-records
+    fn parse_public(&mut self, line: &'input [u8]) -> Result<()> {
+        // Strip the optional "m" parameter; it has no meaning to us
+        let line = if line.starts_with(b"m ") {
+            &line[2..]
+        } else {
+            line
+        };
+        let mut record = line.splitn(4, |b| *b == b' ');
+
+        let address = match record.next() {
+            Some(text) => u64::from_str_radix(&String::from_utf8_lossy(text), 16)
+                .map_err(|e| Error::with_chain(e, "invalid symbol address"))?,
+            None => return Err(ErrorKind::Parse("missing symbol address").into()),
+        };
+
+        // Skip the parameter_size field
+        record.next();
+
+        let name = match record.next() {
+            Some(text) => text,
+            None => return Err(ErrorKind::Parse("missing function name").into()),
+        };
+
+        if let Some(last_rec) = self.syms.last_mut() {
+            // The last PUBLIC record's size can now be computed
+            last_rec.size = address.saturating_sub(last_rec.address);
+        }
+
+        self.syms.push(BreakpadPublicRecord {
+            address: address,
+            size: 0, // will be computed with the next PUBLIC record
+            name: name,
+        });
+
+        Ok(())
+    }
+
+    /// Parses a breakpad line record (after funcs)
+    ///
+    /// Syntax: "address size line filenum"
+    /// Example: "c184 7 59 4"
+    /// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#line-records
+    fn parse_line(&mut self, line: &'input [u8]) -> Result<()> {
+        let func = match self.funcs.last_mut() {
+            Some(func) => func,
+            None => return Err(ErrorKind::BadBreakpadSym("Unexpected line record").into()),
+        };
+
+        let mut record = line.splitn(4, |b| *b == b' ');
+
+        let address = match record.next() {
+            Some(text) => u64::from_str_radix(&String::from_utf8_lossy(text), 16)
+                .map_err(|e| Error::with_chain(e, "invalid line address"))?,
+            None => return Err(ErrorKind::Parse("Missing line address").into()),
+        };
+
+        // Skip the size field
+        record.next();
+
+        let line_number = match record.next() {
+            Some(text) => u64::from_str(&String::from_utf8_lossy(text))
+                .map_err(|e| Error::with_chain(e, "invalid line number"))?,
+            None => return Err(ErrorKind::Parse("Missing line number").into()),
+        };
+
+        let file_id = match record.next() {
+            Some(text) => u16::from_str(&String::from_utf8_lossy(text))
+                .map_err(|e| Error::with_chain(e, "invalid line file id"))?,
+            None => return Err(ErrorKind::Parse("missing line file id").into()),
+        };
+
+        func.lines.push(BreakpadLineRecord {
+            address: address,
+            line: line_number,
+            file_id: file_id,
+        });
+
+        Ok(())
+    }
+}
