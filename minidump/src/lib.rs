@@ -9,9 +9,7 @@ extern crate symbolic_debuginfo;
 mod cfi;
 mod processor;
 mod registers;
-mod resolver;
 mod utils;
 
 pub use cfi::*;
 pub use processor::*;
-pub use resolver::*;

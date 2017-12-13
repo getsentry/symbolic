@@ -100,7 +100,6 @@ libbreakpad_OBJ = \
 	cpp/data_structures.o \
 	cpp/mmap_symbol_supplier.o \
 	cpp/processor.o \
-	cpp/resolver.o \
 	$(NULL)
 
 cargo: $(LIBRARIES)

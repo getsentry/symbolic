@@ -280,10 +280,6 @@ pub enum FrameTrust {
 /// Contains information from the memorydump, especially the frame's instruction
 /// pointer. Also references an optional `CodeModule` that contains the
 /// instruction of this stack frame.
-///
-/// Use a `Resolver` to fill a stack frame with source code information. The
-/// resolver needs symbols for this frame's `CodeModule` in order to provide
-/// debug information.
 #[repr(C)]
 pub struct StackFrame(c_void);
 
@@ -495,10 +491,6 @@ type IProcessState = c_void;
 
 /// Snapshot of the state of a processes during its crash. The object can be
 /// obtained by processing Minidump or Microdump files.
-///
-/// To get source code information for `StackFrame`s, create a `Resolver` and
-/// load all `CodeModules` included in one of the frames. To get a list of all
-/// these modules use `referenced_modules`.
 pub struct ProcessState<'a> {
     internal: *mut IProcessState,
     _ty: PhantomData<ByteView<'a>>,
