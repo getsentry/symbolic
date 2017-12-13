@@ -22,7 +22,7 @@ fn main() {
     cc::Build::new()
         .cpp(true)
         .warnings(false)
-        .flag("-std=c++14")
+        .flag("-std=c++11")
         .include(".")
         .include("third_party/breakpad")
         .define("BPLOG_MINIMUM_SEVERITY", "SEVERITY_ERROR")
