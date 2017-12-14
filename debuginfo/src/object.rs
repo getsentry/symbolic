@@ -370,24 +370,48 @@ pub struct FatObject<'a> {
 }
 
 impl<'a> FatObject<'a> {
+    /// Returns the type of the FatObject
+    pub fn peek<B>(bytes: B) -> Result<ObjectKind>
+    where
+        B: AsRef<[u8]>
+    {
+        let bytes = bytes.as_ref();
+        let mut cur = Cursor::new(bytes);
+
+        match goblin::peek(&mut cur)? {
+            Hint::Elf(_) => return Ok(ObjectKind::Elf),
+            Hint::Mach(_) => return Ok(ObjectKind::MachO),
+            Hint::MachFat(_) => return Ok(ObjectKind::MachO),
+            _ => (),
+        };
+
+        if bytes.starts_with(b"MODULE ") {
+            return Ok(ObjectKind::Breakpad);
+        }
+
+        return Err(ErrorKind::UnsupportedObjectFile.into());
+    }
+
     /// Provides a view to an object file from a byteview.
     pub fn parse(byteview: ByteView<'a>) -> Result<FatObject<'a>> {
         let handle = ByteViewHandle::from_byteview(byteview, |bytes| -> Result<_> {
-            let mut cur = Cursor::new(bytes);
-            Ok(match goblin::peek(&mut cur)? {
-                Hint::Elf(_) => FatObjectKind::Elf(elf::Elf::parse(bytes)?),
-                Hint::Mach(_) => FatObjectKind::MachO(mach::Mach::parse(bytes)?),
-                Hint::MachFat(_) => FatObjectKind::MachO(mach::Mach::parse(bytes)?),
-                _ => {
-                    if bytes.starts_with(b"MODULE ") {
-                        return Ok(FatObjectKind::Breakpad(BreakpadObject::parse(bytes)?));
-                    }
-
-                    return Err(ErrorKind::UnsupportedObjectFile.into());
-                }
+            Ok(match FatObject::peek(bytes)? {
+                ObjectKind::Elf => FatObjectKind::Elf(elf::Elf::parse(bytes)?),
+                ObjectKind::MachO => FatObjectKind::MachO(mach::Mach::parse(bytes)?),
+                ObjectKind::Breakpad => FatObjectKind::Breakpad(BreakpadObject::parse(bytes)?),
             })
         })?;
+
         Ok(FatObject { handle: handle })
+    }
+
+    /// Returns the kind of this FatObject
+    pub fn kind(&self) -> ObjectKind {
+        match *self.handle {
+            FatObjectKind::Breakpad(_) => ObjectKind::Breakpad,
+            FatObjectKind::Elf(..) => ObjectKind::Elf,
+            FatObjectKind::MachO(..) => ObjectKind::MachO,
+        }
     }
 
     /// Returns the contents as bytes.
