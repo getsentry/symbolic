@@ -10,7 +10,7 @@ use fnv::{FnvHashMap, FnvHashSet};
 use num;
 
 use symbolic_common::{DebugKind, Error, ErrorKind, Language, Result, ResultExt};
-use symbolic_debuginfo::{Object, SymbolIterator, Symbols};
+use symbolic_debuginfo::{Object, SymbolIterator, Symbols, SymbolTable};
 
 use breakpad::BreakpadInfo;
 use cache::SYMCACHE_MAGIC;

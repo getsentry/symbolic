@@ -1,8 +1,5 @@
 use std::fmt;
-use std::iter::Peekable;
 use std::io::Cursor;
-use std::collections::{BTreeMap, HashSet};
-use std::slice::Iter as SliceIter;
 
 use goblin;
 use goblin::{elf, mach, Hint};
@@ -14,13 +11,7 @@ use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, Err
 use breakpad::BreakpadSym;
 use dwarf::{DwarfSection, DwarfSectionData};
 
-enum FatObjectKind<'a> {
-    Breakpad(BreakpadSym),
-    Elf(elf::Elf<'a>),
-    MachO(mach::Mach<'a>),
-}
-
-enum ObjectTarget<'a> {
+pub(crate) enum ObjectTarget<'a> {
     Breakpad(&'a BreakpadSym),
     Elf(&'a elf::Elf<'a>),
     MachOSingle(&'a mach::MachO<'a>),
@@ -31,7 +22,7 @@ enum ObjectTarget<'a> {
 pub struct Object<'a> {
     fat_bytes: &'a [u8],
     arch: Arch,
-    target: ObjectTarget<'a>,
+    pub(crate) target: ObjectTarget<'a>,
 }
 
 fn get_macho_uuid(macho: &mach::MachO) -> Option<Uuid> {
@@ -128,18 +119,6 @@ impl<'a> Object<'a> {
             ObjectTarget::MachOFat(_, ref macho) => read_macho_dwarf_section(macho, sect),
         }
     }
-
-    /// Gives access to contained symbols
-    pub fn symbols(&'a self) -> Result<Symbols<'a>> {
-        match self.target {
-            ObjectTarget::Breakpad(..) => Err("Not implemented".into()),
-            ObjectTarget::Elf(..) => {
-                Err(ErrorKind::MissingDebugInfo("unsupported symbol table in file").into())
-            }
-            ObjectTarget::MachOSingle(macho) => get_macho_symbols(macho),
-            ObjectTarget::MachOFat(_, ref macho) => get_macho_symbols(macho),
-        }
-    }
 }
 
 impl<'a> fmt::Debug for Object<'a> {
@@ -154,20 +133,6 @@ impl<'a> fmt::Debug for Object<'a> {
     }
 }
 
-/// Gives access to symbols in a symbol table.
-pub struct Symbols<'a> {
-    // note: if we need elf here later, we can move this into an internal wrapper
-    macho_symbols: Option<&'a goblin::mach::symbols::Symbols<'a>>,
-    symbol_list: Vec<(u64, u32)>,
-}
-
-/// An iterator over a contained symbol table.
-pub struct SymbolIterator<'a> {
-    // note: if we need elf here later, we can move this into an internal wrapper
-    symbols: &'a Symbols<'a>,
-    iter: Peekable<SliceIter<'a, (u64, u32)>>,
-}
-
 fn get_macho_vmaddr(macho: &mach::MachO) -> Result<u64> {
     for seg in &macho.segments {
         if seg.name()? == "__TEXT" {
@@ -175,95 +140,6 @@ fn get_macho_vmaddr(macho: &mach::MachO) -> Result<u64> {
         }
     }
     Ok(0)
-}
-
-fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Result<Symbols<'a>> {
-    let mut sections = HashSet::new();
-    let mut idx = 0;
-
-    for segment in &macho.segments {
-        for section_rv in segment {
-            let (section, _) = section_rv?;
-            let name = section.name()?;
-            if name == "__stubs" || name == "__text" {
-                sections.insert(idx);
-            }
-            idx += 1;
-        }
-    }
-
-    // build an ordered map of the symbols
-    let mut symbol_map = BTreeMap::new();
-    for (id, sym_rv) in macho.symbols().enumerate() {
-        let (_, nlist) = sym_rv?;
-        if nlist.get_type() == mach::symbols::N_SECT
-            && nlist.n_sect != (mach::symbols::NO_SECT as usize)
-            && sections.contains(&(nlist.n_sect - 1))
-        {
-            symbol_map.insert(nlist.n_value, id as u32);
-        }
-    }
-
-    Ok(Symbols {
-        macho_symbols: macho.symbols.as_ref(),
-        symbol_list: symbol_map.into_iter().collect(),
-    })
-}
-
-fn try_strip_symbol(s: &str) -> &str {
-    if s.starts_with("_") {
-        &s[1..]
-    } else {
-        s
-    }
-}
-
-impl<'a> Symbols<'a> {
-    pub fn lookup(&self, addr: u64) -> Result<Option<(u64, u32, &'a str)>> {
-        let idx = match self.symbol_list.binary_search_by_key(&addr, |&x| x.0) {
-            Ok(idx) => idx,
-            Err(0) => return Ok(None),
-            Err(next_idx) => next_idx - 1,
-        };
-        let (sym_addr, sym_id) = self.symbol_list[idx];
-
-        let sym_len = self.symbol_list
-            .get(idx + 1)
-            .map(|next| next.0 - sym_addr)
-            .unwrap_or(!0);
-
-        let symbols = self.macho_symbols.unwrap();
-        let (symbol, _) = symbols.get(sym_id as usize)?;
-        Ok(Some((sym_addr, sym_len as u32, try_strip_symbol(symbol))))
-    }
-
-    pub fn iter(&'a self) -> SymbolIterator<'a> {
-        SymbolIterator {
-            symbols: self,
-            iter: self.symbol_list.iter().peekable(),
-        }
-    }
-}
-
-impl<'a> Iterator for SymbolIterator<'a> {
-    type Item = Result<(u64, u32, &'a str)>;
-
-    fn next(&mut self) -> Option<Result<(u64, u32, &'a str)>> {
-        if let Some(&(addr, id)) = self.iter.next() {
-            Some(if let Some(ref mo) = self.symbols.macho_symbols {
-                let sym = try_strip_symbol(itry!(mo.get(id as usize).map(|x| x.0)));
-                if let Some(&&(next_addr, _)) = self.iter.peek() {
-                    Ok((addr, (next_addr - addr) as u32, sym))
-                } else {
-                    Ok((addr, !0, sym))
-                }
-            } else {
-                Err(ErrorKind::Internal("out of range for symbol iteration").into())
-            })
-        } else {
-            None
-        }
-    }
 }
 
 fn read_elf_dwarf_section<'a>(
@@ -317,6 +193,12 @@ fn read_macho_dwarf_section<'a>(
     }
 
     None
+}
+
+pub(crate) enum FatObjectKind<'a> {
+    Breakpad(BreakpadSym),
+    Elf(elf::Elf<'a>),
+    MachO(mach::Mach<'a>),
 }
 
 /// Represents a potentially fat object in a fat object.
