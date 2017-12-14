@@ -8,63 +8,20 @@ use goblin;
 use goblin::{elf, mach, Hint};
 use uuid::Uuid;
 
-use dwarf::{DwarfSection, DwarfSectionData};
 use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, ErrorKind,
                       ObjectKind, Result};
 
-struct BreakpadObject {
-    uuid: Uuid,
-    arch: Arch,
-}
-
-impl BreakpadObject {
-    /// Parses a breakpad file header
-    ///
-    /// Example:
-    /// ```
-    /// MODULE mac x86_64 13DA2547B1D53AF99F55ED66AF0C7AF70 Electron Framework
-    /// ```
-    pub fn parse(bytes: &[u8]) -> Result<BreakpadObject> {
-        let mut words = bytes.splitn(5, |b| *b == b' ');
-
-        match words.next() {
-            Some(b"MODULE") => (),
-            _ => return Err(ErrorKind::BadBreakpadSym("Invalid breakpad magic").into()),
-        };
-
-        // Operating system not needed
-        words.next();
-
-        let arch = match words.next() {
-            Some(word) => String::from_utf8_lossy(word),
-            None => return Err(ErrorKind::BadBreakpadSym("Missing breakpad arch").into()),
-        };
-
-        let uuid_hex = match words.next() {
-            Some(word) => String::from_utf8_lossy(word),
-            None => return Err(ErrorKind::BadBreakpadSym("Missing breakpad uuid").into()),
-        };
-
-        let uuid = match Uuid::parse_str(&uuid_hex[0..32]) {
-            Ok(uuid) => uuid,
-            Err(_) => return Err(ErrorKind::Parse("Invalid breakpad uuid").into()),
-        };
-
-        Ok(BreakpadObject {
-            uuid: uuid,
-            arch: Arch::from_breakpad(arch.as_ref())?,
-        })
-    }
-}
+use breakpad::BreakpadSym;
+use dwarf::{DwarfSection, DwarfSectionData};
 
 enum FatObjectKind<'a> {
-    Breakpad(BreakpadObject),
+    Breakpad(BreakpadSym),
     Elf(elf::Elf<'a>),
     MachO(mach::Mach<'a>),
 }
 
 enum ObjectTarget<'a> {
-    Breakpad(&'a BreakpadObject),
+    Breakpad(&'a BreakpadSym),
     Elf(&'a elf::Elf<'a>),
     MachOSingle(&'a mach::MachO<'a>),
     MachOFat(mach::fat::FatArch, mach::MachO<'a>),
@@ -90,7 +47,7 @@ impl<'a> Object<'a> {
     /// Returns the UUID of the object
     pub fn uuid(&self) -> Option<Uuid> {
         match self.target {
-            ObjectTarget::Breakpad(ref breakpad) => Some(breakpad.uuid),
+            ObjectTarget::Breakpad(ref breakpad) => Some(breakpad.uuid()),
             ObjectTarget::Elf(ref elf) => Uuid::from_bytes(&elf.header.e_ident).ok(),
             ObjectTarget::MachOSingle(macho) => get_macho_uuid(macho),
             ObjectTarget::MachOFat(_, ref macho) => get_macho_uuid(macho),
@@ -398,7 +355,7 @@ impl<'a> FatObject<'a> {
             Ok(match FatObject::peek(bytes)? {
                 ObjectKind::Elf => FatObjectKind::Elf(elf::Elf::parse(bytes)?),
                 ObjectKind::MachO => FatObjectKind::MachO(mach::Mach::parse(bytes)?),
-                ObjectKind::Breakpad => FatObjectKind::Breakpad(BreakpadObject::parse(bytes)?),
+                ObjectKind::Breakpad => FatObjectKind::Breakpad(BreakpadSym::parse(bytes)?),
             })
         })?;
 
@@ -438,7 +395,7 @@ impl<'a> FatObject<'a> {
                 if idx == 0 {
                     Ok(Some(Object {
                         fat_bytes: self.as_bytes(),
-                        arch: breakpad.arch,
+                        arch: breakpad.arch(),
                         target: ObjectTarget::Breakpad(breakpad),
                     }))
                 } else {
