@@ -79,12 +79,10 @@ impl<'a> Object<'a> {
         }
     }
 
-    /// True if little endian, false if not.
-    /// TODO: Should return Option<Endianness>
-    /// TODO: Should be renamed to "endianness"
-    pub fn endianess(&self) -> Endianness {
+    /// True if little endian, false if not
+    pub fn endianness(&self) -> Endianness {
         let little = match self.target {
-            ObjectTarget::Breakpad(..) => true,
+            ObjectTarget::Breakpad(..) => return Endianness::default(),
             ObjectTarget::Elf(ref elf) => elf.little_endian,
             ObjectTarget::MachOSingle(macho) => macho.little_endian,
             ObjectTarget::MachOFat(_, ref macho) => macho.little_endian,
@@ -150,7 +148,7 @@ impl<'a> fmt::Debug for Object<'a> {
             .field("uuid", &self.uuid())
             .field("arch", &self.arch)
             .field("vmaddr", &self.vmaddr().unwrap_or(0))
-            .field("endianess", &self.endianess())
+            .field("endianness", &self.endianness())
             .field("kind", &self.kind())
             .finish()
     }

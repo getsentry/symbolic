@@ -48,7 +48,7 @@ impl<'input> DwarfInfo<'input> {
                         &[]
                     }
                 };
-                gimli::$sect::new(sect, obj.endianess())
+                gimli::$sect::new(sect, obj.endianness())
             }}
         }
 

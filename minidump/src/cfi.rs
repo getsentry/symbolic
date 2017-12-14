@@ -21,7 +21,7 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
     }
 
     pub fn process(&mut self, object: &Object) -> Result<()> {
-        let endianness = object.endianess();
+        let endianness = object.endianness();
 
         if let Some(section) = object.get_dwarf_section(DwarfSection::EhFrame) {
             let frame = EhFrame::new(section.as_bytes(), endianness);

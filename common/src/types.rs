@@ -6,7 +6,7 @@ use gimli;
 
 use errors::{ErrorKind, Result};
 
-/// Represents endianess.
+/// Represents endianness.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum Endianness {
     Little,
