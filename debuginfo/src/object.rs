@@ -9,7 +9,26 @@ use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, Err
                       ObjectKind, Result};
 
 use breakpad::BreakpadSym;
-use dwarf::{DwarfSection, DwarfSectionData};
+
+fn get_macho_uuid(macho: &mach::MachO) -> Option<Uuid> {
+    for cmd in &macho.load_commands {
+        if let mach::load_command::CommandVariant::Uuid(ref uuid_cmd) = cmd.command {
+            return Uuid::from_bytes(&uuid_cmd.uuid).ok();
+        }
+    }
+
+    None
+}
+
+fn get_macho_vmaddr(macho: &mach::MachO) -> Result<u64> {
+    for seg in &macho.segments {
+        if seg.name()? == "__TEXT" {
+            return Ok(seg.vmaddr);
+        }
+    }
+
+    Ok(0)
+}
 
 pub(crate) enum ObjectTarget<'a> {
     Breakpad(&'a BreakpadSym),
@@ -23,15 +42,6 @@ pub struct Object<'a> {
     fat_bytes: &'a [u8],
     arch: Arch,
     pub(crate) target: ObjectTarget<'a>,
-}
-
-fn get_macho_uuid(macho: &mach::MachO) -> Option<Uuid> {
-    for cmd in &macho.load_commands {
-        if let mach::load_command::CommandVariant::Uuid(ref uuid_cmd) = cmd.command {
-            return Uuid::from_bytes(&uuid_cmd.uuid).ok();
-        }
-    }
-    None
 }
 
 impl<'a> Object<'a> {
@@ -109,16 +119,6 @@ impl<'a> Object<'a> {
             }
         }
     }
-
-    /// Loads a specific dwarf section if its in the file.
-    pub fn get_dwarf_section(&self, sect: DwarfSection) -> Option<DwarfSectionData<'a>> {
-        match self.target {
-            ObjectTarget::Breakpad(..) => None,
-            ObjectTarget::Elf(ref elf) => read_elf_dwarf_section(elf, self.as_bytes(), sect),
-            ObjectTarget::MachOSingle(macho) => read_macho_dwarf_section(macho, sect),
-            ObjectTarget::MachOFat(_, ref macho) => read_macho_dwarf_section(macho, sect),
-        }
-    }
 }
 
 impl<'a> fmt::Debug for Object<'a> {
@@ -131,68 +131,6 @@ impl<'a> fmt::Debug for Object<'a> {
             .field("kind", &self.kind())
             .finish()
     }
-}
-
-fn get_macho_vmaddr(macho: &mach::MachO) -> Result<u64> {
-    for seg in &macho.segments {
-        if seg.name()? == "__TEXT" {
-            return Ok(seg.vmaddr);
-        }
-    }
-    Ok(0)
-}
-
-fn read_elf_dwarf_section<'a>(
-    elf: &elf::Elf<'a>,
-    data: &'a [u8],
-    sect: DwarfSection,
-) -> Option<DwarfSectionData<'a>> {
-    let section_name = sect.get_elf_section();
-
-    for header in &elf.section_headers {
-        if let Some(Ok(name)) = elf.shdr_strtab.get(header.sh_name) {
-            if name == section_name {
-                let sec_data = &data[header.sh_offset as usize..][..header.sh_size as usize];
-                return Some(DwarfSectionData::new(sect, sec_data, header.sh_offset));
-            }
-        }
-    }
-
-    None
-}
-
-fn read_macho_dwarf_section<'a>(
-    macho: &mach::MachO<'a>,
-    sect: DwarfSection,
-) -> Option<DwarfSectionData<'a>> {
-    let dwarf_segment = if sect == DwarfSection::EhFrame {
-        "__TEXT"
-    } else {
-        "__DWARF"
-    };
-
-    let dwarf_section_name = sect.get_macho_section();
-    for segment in &macho.segments {
-        if_chain! {
-            if let Ok(seg) = segment.name();
-            if dwarf_segment == seg;
-            then {
-                for section in segment {
-                    if_chain! {
-                        if let Ok((section, data)) = section;
-                        if let Ok(name) = section.name();
-                        if name == dwarf_section_name;
-                        then {
-                            return Some(DwarfSectionData::new(
-                                sect, data, section.offset as u64));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    None
 }
 
 pub(crate) enum FatObjectKind<'a> {
@@ -210,7 +148,7 @@ impl<'a> FatObject<'a> {
     /// Returns the type of the FatObject
     pub fn peek<B>(bytes: B) -> Result<ObjectKind>
     where
-        B: AsRef<[u8]>
+        B: AsRef<[u8]>,
     {
         let bytes = bytes.as_ref();
         let mut cur = Cursor::new(bytes);

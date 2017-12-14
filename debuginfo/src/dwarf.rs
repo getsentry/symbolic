@@ -1,3 +1,29 @@
+use goblin::{elf, mach};
+
+use object::{Object, ObjectTarget};
+
+pub trait DwarfData {
+    /// Loads a specific dwarf section if its in the file.
+    fn get_dwarf_section<'input>(
+        &'input self,
+        section: DwarfSection,
+    ) -> Option<DwarfSectionData<'input>>;
+}
+
+impl<'input> DwarfData for Object<'input> {
+    fn get_dwarf_section<'data>(
+        &'data self,
+        section: DwarfSection,
+    ) -> Option<DwarfSectionData<'data>> {
+        match self.target {
+            ObjectTarget::Elf(ref elf) => read_elf_dwarf_section(elf, self.as_bytes(), section),
+            ObjectTarget::MachOSingle(macho) => read_macho_dwarf_section(macho, section),
+            ObjectTarget::MachOFat(_, ref macho) => read_macho_dwarf_section(macho, section),
+            _ => None,
+        }
+    }
+}
+
 /// Represents the name of the section.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
 pub enum DwarfSection {
@@ -16,7 +42,7 @@ pub enum DwarfSection {
 
 impl DwarfSection {
     /// Return the name for elf
-    pub fn get_elf_section(&self) -> &'static str {
+    pub fn elf_name(&self) -> &'static str {
         match *self {
             DwarfSection::EhFrame => ".eh_frame",
             DwarfSection::DebugFrame => ".debug_frame",
@@ -33,7 +59,7 @@ impl DwarfSection {
     }
 
     /// Return the name for macho
-    pub fn get_macho_section(&self) -> &'static str {
+    pub fn macho_name(&self) -> &'static str {
         match *self {
             DwarfSection::EhFrame => "__eh_frame",
             DwarfSection::DebugFrame => "__debug_frame",
@@ -98,4 +124,57 @@ impl<'a> DwarfSectionData<'a> {
     pub fn section(&self) -> DwarfSection {
         self.section
     }
+}
+
+fn read_elf_dwarf_section<'a>(
+    elf: &elf::Elf<'a>,
+    data: &'a [u8],
+    sect: DwarfSection,
+) -> Option<DwarfSectionData<'a>> {
+    let section_name = sect.elf_name();
+
+    for header in &elf.section_headers {
+        if let Some(Ok(name)) = elf.shdr_strtab.get(header.sh_name) {
+            if name == section_name {
+                let sec_data = &data[header.sh_offset as usize..][..header.sh_size as usize];
+                return Some(DwarfSectionData::new(sect, sec_data, header.sh_offset));
+            }
+        }
+    }
+
+    None
+}
+
+fn read_macho_dwarf_section<'a>(
+    macho: &mach::MachO<'a>,
+    sect: DwarfSection,
+) -> Option<DwarfSectionData<'a>> {
+    let dwarf_segment = if sect == DwarfSection::EhFrame {
+        "__TEXT"
+    } else {
+        "__DWARF"
+    };
+
+    let dwarf_section_name = sect.macho_name();
+    for segment in &macho.segments {
+        if_chain! {
+            if let Ok(seg) = segment.name();
+            if dwarf_segment == seg;
+            then {
+                for section in segment {
+                    if_chain! {
+                        if let Ok((section, data)) = section;
+                        if let Ok(name) = section.name();
+                        if name == dwarf_section_name;
+                        then {
+                            return Some(DwarfSectionData::new(
+                                sect, data, section.offset as u64));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }

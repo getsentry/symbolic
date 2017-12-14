@@ -7,7 +7,7 @@ use gimli::{self, BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDe
 
 use symbolic_common::{Arch, Result};
 use symbolic_common::ErrorKind::MissingDebugInfo;
-use symbolic_debuginfo::{DwarfSection, Object};
+use symbolic_debuginfo::{DwarfData, DwarfSection, Object};
 
 use registers::get_register_name;
 

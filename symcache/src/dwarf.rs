@@ -5,7 +5,7 @@ use std::mem;
 use std::sync::Arc;
 
 use symbolic_common::{Endianness, Error, ErrorKind, Language, Result, ResultExt};
-use symbolic_debuginfo::{DwarfSection, Object, Symbols};
+use symbolic_debuginfo::{DwarfData, DwarfSection, Object, Symbols};
 
 use fallible_iterator::FallibleIterator;
 use lru_cache::LruCache;
