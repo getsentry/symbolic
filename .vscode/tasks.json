@@ -1,62 +1,64 @@
 {
-  "version": "2.0.0",
-  "presentation": {
-    "reveal": "always",
-    "panel": "new"
-  },
-  "tasks": [
-    {
-      "taskName": "cargo build",
-      "type": "shell",
-      "presentation": {
-        "echo": true,
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "presentation": {
         "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      },
-      "command": "cargo",
-      "args": ["build"],
-      "group": "build",
-      "problemMatcher": "$rustc"
+        "panel": "new"
     },
-    {
-      "taskName": "cargo run",
-      "type": "shell",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      },
-      "command": "cargo",
-      "args": ["run"],
-      "problemMatcher": "$rustc"
-    },
-    {
-      "taskName": "cargo test",
-      "type": "shell",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      },
-      "command": "cargo",
-      "args": ["test"],
-      "group": "test",
-      "problemMatcher": "$rustc"
-    },
-    {
-      "taskName": "cargo clean",
-      "type": "shell",
-      "presentation": {
-        "echo": true,
-        "reveal": "never",
-        "focus": false,
-        "panel": "shared"
-      },
-      "command": "cargo",
-      "args": ["clean"]
-    }
-  ]
+    "tasks": [
+        {
+            "label": "cargo build",
+            "type": "shell",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "command": "cargo",
+            "args": ["build"],
+            "group": "build",
+            "problemMatcher": "$rustc"
+        },
+        {
+            "label": "cargo run",
+            "type": "shell",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "command": "cargo",
+            "args": ["run"],
+            "problemMatcher": "$rustc"
+        },
+        {
+            "label": "cargo test",
+            "type": "shell",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "command": "cargo",
+            "args": ["test", "--all"],
+            "group": "test",
+            "problemMatcher": "$rustc"
+        },
+        {
+            "label": "cargo clean",
+            "type": "shell",
+            "presentation": {
+                "echo": true,
+                "reveal": "never",
+                "focus": false,
+                "panel": "shared"
+            },
+            "command": "cargo",
+            "args": ["clean"]
+        }
+    ]
 }
