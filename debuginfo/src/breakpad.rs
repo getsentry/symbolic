@@ -89,7 +89,7 @@ fn test_parse_error() {
 
 /// Provides access to information in a breakpad file
 #[derive(Debug)]
-pub struct BreakpadSym {
+pub(crate) struct BreakpadSym {
     id: BreakpadId,
     arch: Arch,
 }
