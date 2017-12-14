@@ -95,14 +95,14 @@ impl DwarfSection {
 
 /// Gives access to a section in a dwarf file.
 #[derive(Eq, PartialEq, Debug, Clone)]
-pub struct DwarfSectionData<'a> {
+pub struct DwarfSectionData<'data> {
     section: DwarfSection,
-    data: &'a [u8],
+    data: &'data [u8],
     offset: u64,
 }
 
-impl<'a> DwarfSectionData<'a> {
-    pub fn new(section: DwarfSection, data: &'a [u8], offset: u64) -> DwarfSectionData<'a> {
+impl<'data> DwarfSectionData<'data> {
+    pub fn new(section: DwarfSection, data: &'data [u8], offset: u64) -> DwarfSectionData<'data> {
         DwarfSectionData {
             section: section,
             data: data,
@@ -111,7 +111,7 @@ impl<'a> DwarfSectionData<'a> {
     }
 
     /// Return the section as bytes
-    pub fn as_bytes(&self) -> &'a [u8] {
+    pub fn as_bytes(&self) -> &'data [u8] {
         self.data
     }
 
@@ -126,11 +126,11 @@ impl<'a> DwarfSectionData<'a> {
     }
 }
 
-fn read_elf_dwarf_section<'a>(
-    elf: &elf::Elf<'a>,
-    data: &'a [u8],
+fn read_elf_dwarf_section<'data>(
+    elf: &elf::Elf<'data>,
+    data: &'data [u8],
     sect: DwarfSection,
-) -> Option<DwarfSectionData<'a>> {
+) -> Option<DwarfSectionData<'data>> {
     let section_name = sect.elf_name();
 
     for header in &elf.section_headers {
@@ -145,10 +145,10 @@ fn read_elf_dwarf_section<'a>(
     None
 }
 
-fn read_macho_dwarf_section<'a>(
-    macho: &mach::MachO<'a>,
+fn read_macho_dwarf_section<'data>(
+    macho: &mach::MachO<'data>,
     sect: DwarfSection,
-) -> Option<DwarfSectionData<'a>> {
+) -> Option<DwarfSectionData<'data>> {
     let dwarf_segment = if sect == DwarfSection::EhFrame {
         "__TEXT"
     } else {

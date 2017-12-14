@@ -30,21 +30,21 @@ fn get_macho_vmaddr(macho: &mach::MachO) -> Result<u64> {
     Ok(0)
 }
 
-pub(crate) enum ObjectTarget<'a> {
-    Breakpad(&'a BreakpadSym),
-    Elf(&'a elf::Elf<'a>),
-    MachOSingle(&'a mach::MachO<'a>),
-    MachOFat(mach::fat::FatArch, mach::MachO<'a>),
+pub(crate) enum ObjectTarget<'bytes> {
+    Breakpad(&'bytes BreakpadSym),
+    Elf(&'bytes elf::Elf<'bytes>),
+    MachOSingle(&'bytes mach::MachO<'bytes>),
+    MachOFat(mach::fat::FatArch, mach::MachO<'bytes>),
 }
 
 /// Represents a single object in a fat object.
-pub struct Object<'a> {
-    fat_bytes: &'a [u8],
+pub struct Object<'bytes> {
+    fat_bytes: &'bytes [u8],
     arch: Arch,
-    pub(crate) target: ObjectTarget<'a>,
+    pub(crate) target: ObjectTarget<'bytes>,
 }
 
-impl<'a> Object<'a> {
+impl<'bytes> Object<'bytes> {
     /// Returns the UUID of the object
     pub fn uuid(&self) -> Option<Uuid> {
         match self.target {
@@ -96,7 +96,7 @@ impl<'a> Object<'a> {
     }
 
     /// Returns the content of the object as bytes
-    pub fn as_bytes(&self) -> &'a [u8] {
+    pub fn as_bytes(&self) -> &'bytes [u8] {
         match self.target {
             ObjectTarget::Breakpad(..) => self.fat_bytes,
             ObjectTarget::Elf(..) => self.fat_bytes,
@@ -121,7 +121,7 @@ impl<'a> Object<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Object<'a> {
+impl<'bytes> fmt::Debug for Object<'bytes> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Object")
             .field("uuid", &self.uuid())
@@ -133,18 +133,18 @@ impl<'a> fmt::Debug for Object<'a> {
     }
 }
 
-pub(crate) enum FatObjectKind<'a> {
+pub(crate) enum FatObjectKind<'bytes> {
     Breakpad(BreakpadSym),
-    Elf(elf::Elf<'a>),
-    MachO(mach::Mach<'a>),
+    Elf(elf::Elf<'bytes>),
+    MachO(mach::Mach<'bytes>),
 }
 
 /// Represents a potentially fat object in a fat object.
-pub struct FatObject<'a> {
-    handle: ByteViewHandle<'a, FatObjectKind<'a>>,
+pub struct FatObject<'bytes> {
+    handle: ByteViewHandle<'bytes, FatObjectKind<'bytes>>,
 }
 
-impl<'a> FatObject<'a> {
+impl<'bytes> FatObject<'bytes> {
     /// Returns the type of the FatObject
     pub fn peek<B>(bytes: B) -> Result<ObjectKind>
     where
@@ -168,7 +168,7 @@ impl<'a> FatObject<'a> {
     }
 
     /// Provides a view to an object file from a byteview.
-    pub fn parse(byteview: ByteView<'a>) -> Result<FatObject<'a>> {
+    pub fn parse(byteview: ByteView<'bytes>) -> Result<FatObject<'bytes>> {
         let handle = ByteViewHandle::from_byteview(byteview, |bytes| -> Result<_> {
             Ok(match FatObject::peek(bytes)? {
                 ObjectKind::Elf => FatObjectKind::Elf(elf::Elf::parse(bytes)?),
@@ -207,7 +207,7 @@ impl<'a> FatObject<'a> {
     }
 
     /// Returns the n-th object.
-    pub fn get_object(&'a self, idx: usize) -> Result<Option<Object<'a>>> {
+    pub fn get_object(&'bytes self, idx: usize) -> Result<Option<Object<'bytes>>> {
         match *self.handle {
             FatObjectKind::Breakpad(ref breakpad) => {
                 if idx == 0 {
@@ -263,7 +263,7 @@ impl<'a> FatObject<'a> {
     }
 
     /// Returns a vector of object variants.
-    pub fn objects(&'a self) -> Result<Vec<Object<'a>>> {
+    pub fn objects(&'bytes self) -> Result<Vec<Object<'bytes>>> {
         let mut rv = vec![];
         for idx in 0..self.object_count() {
             rv.push(self.get_object(idx)?.unwrap());

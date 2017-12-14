@@ -12,7 +12,7 @@ pub trait SymbolTable {
     fn symbols(&self) -> Result<Symbols>;
 }
 
-impl<'a> SymbolTable for Object<'a> {
+impl<'data> SymbolTable for Object<'data> {
     fn symbols(&self) -> Result<Symbols> {
         match self.target {
             ObjectTarget::MachOSingle(macho) => get_macho_symbols(macho),
@@ -23,14 +23,14 @@ impl<'a> SymbolTable for Object<'a> {
 }
 
 /// Gives access to symbols in a symbol table.
-pub struct Symbols<'a> {
+pub struct Symbols<'data> {
     // note: if we need elf here later, we can move this into an internal wrapper
-    macho_symbols: Option<&'a mach::symbols::Symbols<'a>>,
+    macho_symbols: Option<&'data mach::symbols::Symbols<'data>>,
     symbol_list: Vec<(u64, u32)>,
 }
 
-impl<'a> Symbols<'a> {
-    pub fn lookup(&self, addr: u64) -> Result<Option<(u64, u32, &'a str)>> {
+impl<'data> Symbols<'data> {
+    pub fn lookup(&self, addr: u64) -> Result<Option<(u64, u32, &'data str)>> {
         let idx = match self.symbol_list.binary_search_by_key(&addr, |&x| x.0) {
             Ok(idx) => idx,
             Err(0) => return Ok(None),
@@ -48,7 +48,7 @@ impl<'a> Symbols<'a> {
         Ok(Some((sym_addr, sym_len as u32, try_strip_symbol(symbol))))
     }
 
-    pub fn iter(&'a self) -> SymbolIterator<'a> {
+    pub fn iter(&'data self) -> SymbolIterator<'data> {
         SymbolIterator {
             symbols: self,
             iter: self.symbol_list.iter().peekable(),
@@ -57,16 +57,16 @@ impl<'a> Symbols<'a> {
 }
 
 /// An iterator over a contained symbol table.
-pub struct SymbolIterator<'a> {
+pub struct SymbolIterator<'data> {
     // note: if we need elf here later, we can move this into an internal wrapper
-    symbols: &'a Symbols<'a>,
-    iter: Peekable<SliceIter<'a, (u64, u32)>>,
+    symbols: &'data Symbols<'data>,
+    iter: Peekable<SliceIter<'data, (u64, u32)>>,
 }
 
-impl<'a> Iterator for SymbolIterator<'a> {
-    type Item = Result<(u64, u32, &'a str)>;
+impl<'data> Iterator for SymbolIterator<'data> {
+    type Item = Result<(u64, u32, &'data str)>;
 
-    fn next(&mut self) -> Option<Result<(u64, u32, &'a str)>> {
+    fn next(&mut self) -> Option<Result<(u64, u32, &'data str)>> {
         if let Some(&(addr, id)) = self.iter.next() {
             Some(if let Some(ref mo) = self.symbols.macho_symbols {
                 let sym = try_strip_symbol(itry!(mo.get(id as usize).map(|x| x.0)));
@@ -84,7 +84,7 @@ impl<'a> Iterator for SymbolIterator<'a> {
     }
 }
 
-fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Result<Symbols<'a>> {
+fn get_macho_symbols<'data>(macho: &'data mach::MachO) -> Result<Symbols<'data>> {
     let mut sections = HashSet::new();
     let mut idx = 0;
 
