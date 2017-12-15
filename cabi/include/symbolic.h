@@ -359,9 +359,19 @@ void symbolic_object_free(SymbolicObject *so);
 SymbolicStr symbolic_object_get_arch(const SymbolicObject *so);
 
 /*
+ * Returns the object class
+ */
+SymbolicStr symbolic_object_get_debug_kind(const SymbolicObject *so);
+
+/*
  * Returns the object kind
  */
 SymbolicStr symbolic_object_get_kind(const SymbolicObject *so);
+
+/*
+ * Returns the object type
+ */
+SymbolicStr symbolic_object_get_type(const SymbolicObject *so);
 
 /*
  * Returns the UUID of an object.

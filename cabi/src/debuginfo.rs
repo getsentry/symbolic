@@ -4,7 +4,7 @@ use std::os::raw::c_char;
 use std::ffi::CStr;
 
 use symbolic_common::ByteView;
-use symbolic_debuginfo::{Object, FatObject};
+use symbolic_debuginfo::{FatObject, Object};
 
 use core::{SymbolicStr, SymbolicUuid};
 
@@ -89,6 +89,30 @@ ffi_fn! {
     {
         let o = so as *mut Object<'static>;
         Ok(SymbolicStr::new((*o).kind().name()))
+    }
+}
+
+ffi_fn! {
+    /// Returns the object type
+    unsafe fn symbolic_object_get_type(so: *const SymbolicObject)
+        -> Result<SymbolicStr>
+    {
+        let o = so as *mut Object<'static>;
+        Ok(SymbolicStr::new((*o).class().name()))
+    }
+}
+
+ffi_fn! {
+    /// Returns the object class
+    unsafe fn symbolic_object_get_debug_kind(so: *const SymbolicObject)
+        -> Result<SymbolicStr>
+    {
+        let o = so as *mut Object<'static>;
+        Ok(if let Some(kind) = (*o).debug_kind() {
+            SymbolicStr::new(kind.name())
+        } else {
+            SymbolicStr::default()
+        })
     }
 }
 
