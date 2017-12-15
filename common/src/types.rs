@@ -92,9 +92,9 @@ impl Arch {
 
     /// Constructs an architecture from mach CPU types
     #[cfg(feature = "with_objects")]
-    pub fn from_mach(cputype: u32, cpusubtype: u32) -> Result<Arch> {
+    pub fn from_mach(cputype: u32, cpusubtype: u32) -> Arch {
         use goblin::mach::constants::cputype::*;
-        Ok(match (cputype, cpusubtype) {
+        match (cputype, cpusubtype) {
             (CPU_TYPE_I386, CPU_SUBTYPE_I386_ALL) => Arch::X86,
             (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_ALL) => Arch::X86_64,
             (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H) => Arch::X86_64h,
@@ -112,10 +112,8 @@ impl Arch {
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7EM) => Arch::ArmV7em,
             (CPU_TYPE_POWERPC, CPU_SUBTYPE_POWERPC_ALL) => Arch::Ppc,
             (CPU_TYPE_POWERPC64, CPU_SUBTYPE_POWERPC_ALL) => Arch::Ppc64,
-            _ => {
-                return Err(ErrorKind::Parse("unknown architecture").into());
-            }
-        })
+            _ => Arch::Unknown,
+        }
     }
 
     /// Returns the macho arch for this arch.
@@ -149,9 +147,9 @@ impl Arch {
 
     /// Constructs an architecture from ELF flags
     #[cfg(feature = "with_objects")]
-    pub fn from_elf(machine: u16) -> Result<Arch> {
+    pub fn from_elf(machine: u16) -> Arch {
         use goblin::elf::header::*;
-        Ok(match machine {
+        match machine {
             EM_386 => Arch::X86,
             EM_X86_64 => Arch::X86_64,
             EM_AARCH64 => Arch::Arm64,
@@ -166,23 +164,21 @@ impl Arch {
             EM_ARM => Arch::Arm,
             EM_PPC => Arch::Ppc,
             EM_PPC64 => Arch::Ppc64,
-            _ => return Err(ErrorKind::Parse("unknown architecture").into()),
-        })
+            _ => Arch::Unknown,
+        }
     }
 
     /// Constructs an architecture from ELF flags
     #[cfg(feature = "with_objects")]
-    pub fn from_breakpad(string: &str) -> Result<Arch> {
+    pub fn from_breakpad(string: &str) -> Arch {
         use Arch::*;
-        Ok(match string {
+        match string {
             "x86" => X86,
             "x86_64" => X86_64,
             "ppc" => Ppc,
             "ppc64" => Ppc64,
-            _ => {
-                return Err(ErrorKind::NotFound("Unknown architecture for Breakpad").into());
-            }
-        })
+            _ => Unknown,
+        }
     }
 
     /// Parses an architecture from a string.
@@ -309,20 +305,20 @@ impl Language {
 
     /// Converts a DWARF language tag into a supported language.
     #[cfg(feature="with_dwarf")]
-    pub fn from_dwarf_lang(lang: gimli::DwLang) -> Option<Language> {
+    pub fn from_dwarf_lang(lang: gimli::DwLang) -> Language {
         match lang {
             gimli::DW_LANG_C | gimli::DW_LANG_C11 |
-            gimli::DW_LANG_C89 | gimli::DW_LANG_C99 => Some(Language::C),
+            gimli::DW_LANG_C89 | gimli::DW_LANG_C99 => Language::C,
             gimli::DW_LANG_C_plus_plus | gimli::DW_LANG_C_plus_plus_03 |
             gimli::DW_LANG_C_plus_plus_11 |
-            gimli::DW_LANG_C_plus_plus_14 => Some(Language::Cpp),
-            gimli::DW_LANG_D => Some(Language::D),
-            gimli::DW_LANG_Go => Some(Language::Go),
-            gimli::DW_LANG_ObjC => Some(Language::ObjC),
-            gimli::DW_LANG_ObjC_plus_plus => Some(Language::ObjCpp),
-            gimli::DW_LANG_Rust => Some(Language::Rust),
-            gimli::DW_LANG_Swift => Some(Language::Swift),
-            _ => None,
+            gimli::DW_LANG_C_plus_plus_14 => Language::Cpp,
+            gimli::DW_LANG_D => Language::D,
+            gimli::DW_LANG_Go => Language::Go,
+            gimli::DW_LANG_ObjC => Language::ObjC,
+            gimli::DW_LANG_ObjC_plus_plus => Language::ObjCpp,
+            gimli::DW_LANG_Rust => Language::Rust,
+            gimli::DW_LANG_Swift => Language::Swift,
+            _ => Language::Unknown,
         }
     }
 

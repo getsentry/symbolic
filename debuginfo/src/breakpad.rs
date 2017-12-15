@@ -211,7 +211,7 @@ impl BreakpadSym {
 
         Ok(BreakpadSym {
             id: id,
-            arch: Arch::from_breakpad(arch.as_ref())?,
+            arch: Arch::from_breakpad(arch.as_ref()),
         })
     }
 
@@ -365,7 +365,7 @@ fn parse_module<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>> {
 
     Ok(BreakpadRecord::Module(BreakpadModuleRecord {
         name: name,
-        arch: Arch::from_breakpad(&arch)?,
+        arch: Arch::from_breakpad(&arch),
         uuid: uuid,
     }))
 }

@@ -319,7 +319,7 @@ impl<'input> Unit<'input> {
                 lines: vec![],
                 comp_dir: self.comp_dir.map(|x| x.buf()).unwrap_or(b""),
                 lang: self.language
-                    .and_then(|lang| Language::from_dwarf_lang(lang))
+                    .map(|lang| Language::from_dwarf_lang(lang))
                     .unwrap_or(Language::Unknown),
             };
 

@@ -6,7 +6,7 @@ use goblin::{elf, mach, Hint};
 use uuid::Uuid;
 
 use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, ErrorKind,
-                      ObjectKind, ObjectClass, Result};
+                      ObjectClass, ObjectKind, Result};
 
 use breakpad::BreakpadSym;
 
@@ -40,7 +40,6 @@ pub(crate) enum ObjectTarget<'bytes> {
 /// Represents a single object in a fat object.
 pub struct Object<'bytes> {
     fat_bytes: &'bytes [u8],
-    arch: Arch,
     pub(crate) target: ObjectTarget<'bytes>,
 }
 
@@ -67,7 +66,16 @@ impl<'bytes> Object<'bytes> {
 
     /// Returns the architecture of the object
     pub fn arch(&self) -> Arch {
-        self.arch
+        match self.target {
+            ObjectTarget::Breakpad(ref breakpad) => breakpad.arch(),
+            ObjectTarget::Elf(ref elf) => Arch::from_elf(elf.header.e_machine),
+            ObjectTarget::MachOSingle(ref mach) => {
+                Arch::from_mach(mach.header.cputype(), mach.header.cpusubtype())
+            }
+            ObjectTarget::MachOFat(_, ref mach) => {
+                Arch::from_mach(mach.header.cputype(), mach.header.cpusubtype())
+            }
+        }
     }
 
     /// Return the vmaddr of the code portion of the image.
@@ -135,7 +143,7 @@ impl<'bytes> fmt::Debug for Object<'bytes> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Object")
             .field("uuid", &self.uuid())
-            .field("arch", &self.arch)
+            .field("arch", &self.arch())
             .field("vmaddr", &self.vmaddr().unwrap_or(0))
             .field("endianness", &self.endianness())
             .field("kind", &self.kind())
@@ -223,7 +231,6 @@ impl<'bytes> FatObject<'bytes> {
                 if idx == 0 {
                     Ok(Some(Object {
                         fat_bytes: self.as_bytes(),
-                        arch: breakpad.arch(),
                         target: ObjectTarget::Breakpad(breakpad),
                     }))
                 } else {
@@ -234,7 +241,6 @@ impl<'bytes> FatObject<'bytes> {
                 if idx == 0 {
                     Ok(Some(Object {
                         fat_bytes: self.as_bytes(),
-                        arch: Arch::from_elf(elf.header.e_machine)?,
                         target: ObjectTarget::Elf(elf),
                     }))
                 } else {
@@ -244,11 +250,9 @@ impl<'bytes> FatObject<'bytes> {
             FatObjectKind::MachO(ref mach) => match *mach {
                 mach::Mach::Fat(ref fat) => {
                     if let Some((idx, arch)) = fat.iter_arches().enumerate().skip(idx).next() {
-                        let arch = arch?;
                         Ok(Some(Object {
                             fat_bytes: self.as_bytes(),
-                            arch: Arch::from_mach(arch.cputype(), arch.cpusubtype())?,
-                            target: ObjectTarget::MachOFat(arch, fat.get(idx)?),
+                            target: ObjectTarget::MachOFat(arch?, fat.get(idx)?),
                         }))
                     } else {
                         Ok(None)
@@ -258,10 +262,6 @@ impl<'bytes> FatObject<'bytes> {
                     if idx == 0 {
                         Ok(Some(Object {
                             fat_bytes: self.as_bytes(),
-                            arch: Arch::from_mach(
-                                macho.header.cputype(),
-                                macho.header.cpusubtype(),
-                            )?,
                             target: ObjectTarget::MachOSingle(macho),
                         }))
                     } else {
