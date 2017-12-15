@@ -3,6 +3,9 @@ use goblin::{elf, mach};
 use object::{Object, ObjectTarget};
 
 pub trait DwarfData {
+    /// Checks whether this object contains DWARF infos.
+    fn has_dwarf_data(&self) -> bool;
+
     /// Loads a specific dwarf section if its in the file.
     fn get_dwarf_section<'input>(
         &'input self,
@@ -11,13 +14,33 @@ pub trait DwarfData {
 }
 
 impl<'input> DwarfData for Object<'input> {
+    fn has_dwarf_data(&self) -> bool {
+        match self.target {
+            // We assume an ELF contains debug information if it still contains
+            // the debug_info section. The file utility uses a similar mechanism,
+            // except that it checks for the ".symtab" section instead.
+            ObjectTarget::Elf(ref elf) => has_elf_section(elf, DwarfSection::DebugInfo),
+
+            // MachO generally stores debug information in the "__DWARF" segment,
+            // so we simply check if it is present. The only exception to this
+            // rule is call frame information (CFI), which is stored in the __TEXT
+            // segment of the executable. This, however, requires more specific
+            // logic anyway, so we ignore this here.
+            ObjectTarget::MachOSingle(ref macho) => has_macho_segment(macho, "__DWARF"),
+            ObjectTarget::MachOFat(_, ref macho) => has_macho_segment(macho, "__DWARF"),
+
+            // We do not support DWARF in any other object targets
+            _ => false,
+        }
+    }
+
     fn get_dwarf_section<'data>(
         &'data self,
         section: DwarfSection,
     ) -> Option<DwarfSectionData<'data>> {
         match self.target {
             ObjectTarget::Elf(ref elf) => read_elf_dwarf_section(elf, self.as_bytes(), section),
-            ObjectTarget::MachOSingle(macho) => read_macho_dwarf_section(macho, section),
+            ObjectTarget::MachOSingle(ref macho) => read_macho_dwarf_section(macho, section),
             ObjectTarget::MachOFat(_, ref macho) => read_macho_dwarf_section(macho, section),
             _ => None,
         }
@@ -167,8 +190,7 @@ fn read_macho_dwarf_section<'data>(
                         if let Ok(name) = section.name();
                         if name == dwarf_section_name;
                         then {
-                            return Some(DwarfSectionData::new(
-                                sect, data, section.offset as u64));
+                            return Some(DwarfSectionData::new(sect, data, section.offset as u64));
                         }
                     }
                 }
@@ -177,4 +199,26 @@ fn read_macho_dwarf_section<'data>(
     }
 
     None
+}
+
+fn has_elf_section(elf: &elf::Elf, section: DwarfSection) -> bool {
+    for header in &elf.section_headers {
+        if let Some(Ok(name)) = elf.shdr_strtab.get(header.sh_name) {
+            if name == section.elf_name() {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+fn has_macho_segment(macho: &mach::MachO, name: &str) -> bool {
+    for segment in &macho.segments {
+        if segment.name().map(|seg| seg == name).unwrap_or(false) {
+            return true;
+        }
+    }
+
+    false
 }
