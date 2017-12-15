@@ -6,7 +6,7 @@ use goblin::{elf, mach, Hint};
 use uuid::Uuid;
 
 use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, ErrorKind,
-                      ObjectKind, Result};
+                      ObjectKind, ObjectClass, Result};
 
 use breakpad::BreakpadSym;
 
@@ -105,6 +105,16 @@ impl<'bytes> Object<'bytes> {
                 let bytes = self.fat_bytes;
                 &bytes[arch.offset as usize..(arch.offset + arch.size) as usize]
             }
+        }
+    }
+
+    /// Returns the desiganted use of the object file and hints at its contents.
+    pub fn class(&self) -> ObjectClass {
+        match self.target {
+            ObjectTarget::Breakpad(..) => ObjectClass::Debug,
+            ObjectTarget::Elf(ref elf) => ObjectClass::from_elf(elf.header.e_type),
+            ObjectTarget::MachOSingle(macho) => ObjectClass::from_mach(macho.header.filetype),
+            ObjectTarget::MachOFat(_, ref macho) => ObjectClass::from_mach(macho.header.filetype),
         }
     }
 
