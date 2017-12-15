@@ -506,6 +506,21 @@ impl ObjectClass {
     }
 
     #[cfg(feature = "with_objects")]
+    pub fn from_elf_full(elf_type: u16, has_interpreter: bool) -> ObjectClass {
+        let class = ObjectClass::from_elf(elf_type);
+
+        // When stripping debug information into a separate file with objcopy,
+        // the eh_type field still reads ET_EXEC. However, the interpreter is
+        // removed. Since an executable without interpreter does not make any
+        // sense, we assume ``Debug`` in this case.
+        if class == ObjectClass::Executable && !has_interpreter {
+            ObjectClass::Debug
+        } else {
+            class
+        }
+    }
+
+    #[cfg(feature = "with_objects")]
     pub fn to_elf(&self) -> Result<u16> {
         use goblin::elf::header::*;
         use ObjectClass::*;

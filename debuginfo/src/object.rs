@@ -120,7 +120,9 @@ impl<'bytes> Object<'bytes> {
     pub fn class(&self) -> ObjectClass {
         match self.target {
             ObjectTarget::Breakpad(..) => ObjectClass::Debug,
-            ObjectTarget::Elf(ref elf) => ObjectClass::from_elf(elf.header.e_type),
+            ObjectTarget::Elf(ref elf) => {
+                ObjectClass::from_elf_full(elf.header.e_type, elf.interpreter.is_some())
+            }
             ObjectTarget::MachOSingle(macho) => ObjectClass::from_mach(macho.header.filetype),
             ObjectTarget::MachOFat(_, ref macho) => ObjectClass::from_mach(macho.header.filetype),
         }
