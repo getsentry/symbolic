@@ -139,6 +139,7 @@ impl Arch {
             Arch::ArmV7m => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7M),
             Arch::ArmV7em => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7EM),
             Arch::Ppc => (CPU_TYPE_POWERPC, CPU_SUBTYPE_POWERPC_ALL),
+            Arch::Ppc64 => (CPU_TYPE_POWERPC64, CPU_SUBTYPE_POWERPC_ALL),
             _ => {
                 return Err(ErrorKind::NotFound("Unknown architecture for macho").into());
             }
@@ -163,6 +164,8 @@ impl Arch {
             // http://code.metager.de/source/xref/gnu/src/binutils/readelf.c#11282
             // https://stackoverflow.com/a/20556156/4228225
             EM_ARM => Arch::Arm,
+            EM_PPC => Arch::Ppc,
+            EM_PPC64 => Arch::Ppc64,
             _ => return Err(ErrorKind::Parse("unknown architecture").into()),
         })
     }
