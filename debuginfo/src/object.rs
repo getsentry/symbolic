@@ -157,7 +157,7 @@ pub(crate) enum FatObjectKind<'bytes> {
     MachO(mach::Mach<'bytes>),
 }
 
-/// Represents a potentially fat object in a fat object.
+/// Represents a potentially fat object containing one or more objects.
 pub struct FatObject<'bytes> {
     handle: ByteViewHandle<'bytes, FatObjectKind<'bytes>>,
 }
@@ -226,50 +226,26 @@ impl<'bytes> FatObject<'bytes> {
 
     /// Returns the n-th object.
     pub fn get_object(&'bytes self, idx: usize) -> Result<Option<Object<'bytes>>> {
-        match *self.handle {
-            FatObjectKind::Breakpad(ref breakpad) => {
-                if idx == 0 {
-                    Ok(Some(Object {
-                        fat_bytes: self.as_bytes(),
-                        target: ObjectTarget::Breakpad(breakpad),
-                    }))
-                } else {
-                    Ok(None)
-                }
-            }
-            FatObjectKind::Elf(ref elf) => {
-                if idx == 0 {
-                    Ok(Some(Object {
-                        fat_bytes: self.as_bytes(),
-                        target: ObjectTarget::Elf(elf),
-                    }))
-                } else {
-                    Ok(None)
-                }
-            }
+        if idx > self.object_count() {
+            return Ok(None);
+        }
+
+        let target = match *self.handle {
+            FatObjectKind::Breakpad(ref breakpad) => ObjectTarget::Breakpad(breakpad),
+            FatObjectKind::Elf(ref elf) => ObjectTarget::Elf(elf),
             FatObjectKind::MachO(ref mach) => match *mach {
+                mach::Mach::Binary(ref bin) => ObjectTarget::MachOSingle(bin),
                 mach::Mach::Fat(ref fat) => {
-                    if let Some((idx, arch)) = fat.iter_arches().enumerate().skip(idx).next() {
-                        Ok(Some(Object {
-                            fat_bytes: self.as_bytes(),
-                            target: ObjectTarget::MachOFat(arch?, fat.get(idx)?),
-                        }))
-                    } else {
-                        Ok(None)
-                    }
-                }
-                mach::Mach::Binary(ref macho) => {
-                    if idx == 0 {
-                        Ok(Some(Object {
-                            fat_bytes: self.as_bytes(),
-                            target: ObjectTarget::MachOSingle(macho),
-                        }))
-                    } else {
-                        Ok(None)
-                    }
+                    let (idx, arch) = fat.iter_arches().enumerate().skip(idx).next().unwrap();
+                    ObjectTarget::MachOFat(arch?, fat.get(idx)?)
                 }
             },
-        }
+        };
+
+        Ok(Some(Object {
+            fat_bytes: self.as_bytes(),
+            target: target,
+        }))
     }
 
     /// Returns a vector of object variants.
