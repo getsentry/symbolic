@@ -10,7 +10,7 @@ use fnv::{FnvHashMap, FnvHashSet};
 use num;
 
 use symbolic_common::{DebugKind, Error, ErrorKind, Language, Result, ResultExt};
-use symbolic_debuginfo::{Object, SymbolIterator, Symbols, SymbolTable};
+use symbolic_debuginfo::{Object, SymbolIterator, SymbolTable, Symbols};
 
 use breakpad::BreakpadInfo;
 use cache::SYMCACHE_MAGIC;
@@ -62,8 +62,15 @@ enum DebugInfo<'input> {
 impl<'input> DebugInfo<'input> {
     pub fn from_object(object: &'input Object) -> Result<DebugInfo<'input>> {
         Ok(match object.debug_kind() {
-            DebugKind::Dwarf => DebugInfo::Dwarf(DwarfInfo::from_object(object)?),
-            DebugKind::Breakpad => DebugInfo::Breakpad(BreakpadInfo::from_object(object)?),
+            Some(DebugKind::Dwarf) => DebugInfo::Dwarf(DwarfInfo::from_object(object)?),
+            Some(DebugKind::Breakpad) => DebugInfo::Breakpad(BreakpadInfo::from_object(object)?),
+            // Add this when more object kinds are added in symbolic_debuginfo:
+            // Some(_) => return Err(ErrorKind::UnsupportedObjectFile.into()),
+            None => {
+                return Err(
+                    ErrorKind::MissingDebugInfo("symcache only supports DWARF and Breakpad").into(),
+                )
+            }
         })
     }
 }

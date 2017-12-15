@@ -9,6 +9,7 @@ use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, Err
                       ObjectClass, ObjectKind, Result};
 
 use breakpad::BreakpadSym;
+use dwarf::DwarfData;
 
 fn get_macho_uuid(macho: &mach::MachO) -> Option<Uuid> {
     for cmd in &macho.load_commands {
@@ -46,33 +47,36 @@ pub struct Object<'bytes> {
 impl<'bytes> Object<'bytes> {
     /// Returns the UUID of the object
     pub fn uuid(&self) -> Option<Uuid> {
+        use ObjectTarget::*;
         match self.target {
-            ObjectTarget::Breakpad(ref breakpad) => Some(breakpad.uuid()),
-            ObjectTarget::Elf(ref elf) => Uuid::from_bytes(&elf.header.e_ident).ok(),
-            ObjectTarget::MachOSingle(macho) => get_macho_uuid(macho),
-            ObjectTarget::MachOFat(_, ref macho) => get_macho_uuid(macho),
+            Breakpad(ref breakpad) => Some(breakpad.uuid()),
+            Elf(ref elf) => Uuid::from_bytes(&elf.header.e_ident).ok(),
+            MachOSingle(macho) => get_macho_uuid(macho),
+            MachOFat(_, ref macho) => get_macho_uuid(macho),
         }
     }
 
     /// Returns the kind of the object
     pub fn kind(&self) -> ObjectKind {
+        use ObjectTarget::*;
         match self.target {
-            ObjectTarget::Breakpad(..) => ObjectKind::Breakpad,
-            ObjectTarget::Elf(..) => ObjectKind::Elf,
-            ObjectTarget::MachOSingle(..) => ObjectKind::MachO,
-            ObjectTarget::MachOFat(..) => ObjectKind::MachO,
+            Breakpad(..) => ObjectKind::Breakpad,
+            Elf(..) => ObjectKind::Elf,
+            MachOSingle(..) => ObjectKind::MachO,
+            MachOFat(..) => ObjectKind::MachO,
         }
     }
 
     /// Returns the architecture of the object
     pub fn arch(&self) -> Arch {
+        use ObjectTarget::*;
         match self.target {
-            ObjectTarget::Breakpad(ref breakpad) => breakpad.arch(),
-            ObjectTarget::Elf(ref elf) => Arch::from_elf(elf.header.e_machine),
-            ObjectTarget::MachOSingle(ref mach) => {
+            Breakpad(ref breakpad) => breakpad.arch(),
+            Elf(ref elf) => Arch::from_elf(elf.header.e_machine),
+            MachOSingle(ref mach) => {
                 Arch::from_mach(mach.header.cputype(), mach.header.cpusubtype())
             }
-            ObjectTarget::MachOFat(_, ref mach) => {
+            MachOFat(_, ref mach) => {
                 Arch::from_mach(mach.header.cputype(), mach.header.cpusubtype())
             }
         }
@@ -80,21 +84,23 @@ impl<'bytes> Object<'bytes> {
 
     /// Return the vmaddr of the code portion of the image.
     pub fn vmaddr(&self) -> Result<u64> {
+        use ObjectTarget::*;
         match self.target {
-            ObjectTarget::Breakpad(..) => Ok(0),
-            ObjectTarget::Elf(..) => Ok(0),
-            ObjectTarget::MachOSingle(macho) => get_macho_vmaddr(macho),
-            ObjectTarget::MachOFat(_, ref macho) => get_macho_vmaddr(macho),
+            Breakpad(..) => Ok(0),
+            Elf(..) => Ok(0),
+            MachOSingle(macho) => get_macho_vmaddr(macho),
+            MachOFat(_, ref macho) => get_macho_vmaddr(macho),
         }
     }
 
     /// True if little endian, false if not
     pub fn endianness(&self) -> Endianness {
+        use ObjectTarget::*;
         let little = match self.target {
-            ObjectTarget::Breakpad(..) => return Endianness::default(),
-            ObjectTarget::Elf(ref elf) => elf.little_endian,
-            ObjectTarget::MachOSingle(macho) => macho.little_endian,
-            ObjectTarget::MachOFat(_, ref macho) => macho.little_endian,
+            Breakpad(..) => return Endianness::default(),
+            Elf(ref elf) => elf.little_endian,
+            MachOSingle(macho) => macho.little_endian,
+            MachOFat(_, ref macho) => macho.little_endian,
         };
         if little {
             Endianness::Little
@@ -105,11 +111,12 @@ impl<'bytes> Object<'bytes> {
 
     /// Returns the content of the object as bytes
     pub fn as_bytes(&self) -> &'bytes [u8] {
+        use ObjectTarget::*;
         match self.target {
-            ObjectTarget::Breakpad(..) => self.fat_bytes,
-            ObjectTarget::Elf(..) => self.fat_bytes,
-            ObjectTarget::MachOSingle(_) => self.fat_bytes,
-            ObjectTarget::MachOFat(ref arch, _) => {
+            Breakpad(..) => self.fat_bytes,
+            Elf(..) => self.fat_bytes,
+            MachOSingle(_) => self.fat_bytes,
+            MachOFat(ref arch, _) => {
                 let bytes = self.fat_bytes;
                 &bytes[arch.offset as usize..(arch.offset + arch.size) as usize]
             }
@@ -118,24 +125,28 @@ impl<'bytes> Object<'bytes> {
 
     /// Returns the desiganted use of the object file and hints at its contents.
     pub fn class(&self) -> ObjectClass {
+        use ObjectTarget::*;
         match self.target {
-            ObjectTarget::Breakpad(..) => ObjectClass::Debug,
-            ObjectTarget::Elf(ref elf) => {
+            Breakpad(..) => ObjectClass::Debug,
+            Elf(ref elf) => {
                 ObjectClass::from_elf_full(elf.header.e_type, elf.interpreter.is_some())
             }
-            ObjectTarget::MachOSingle(macho) => ObjectClass::from_mach(macho.header.filetype),
-            ObjectTarget::MachOFat(_, ref macho) => ObjectClass::from_mach(macho.header.filetype),
+            MachOSingle(macho) => ObjectClass::from_mach(macho.header.filetype),
+            MachOFat(_, ref macho) => ObjectClass::from_mach(macho.header.filetype),
         }
     }
 
     /// Returns the type of debug data contained in this object file
-    pub fn debug_kind(&self) -> DebugKind {
+    pub fn debug_kind(&self) -> Option<DebugKind> {
+        use ObjectTarget::*;
         match self.target {
-            ObjectTarget::Breakpad(..) => DebugKind::Breakpad,
-            // NOTE: ELF and MachO could technically also contain other debug formats,
-            // but for now we only support Dwarf.
-            ObjectTarget::Elf(..) | ObjectTarget::MachOSingle(..) | ObjectTarget::MachOFat(..) => {
-                DebugKind::Dwarf
+            Breakpad(..) => Some(DebugKind::Breakpad),
+            Elf(..) | MachOSingle(..) | MachOFat(..) => {
+                if self.has_dwarf_data() {
+                    Some(DebugKind::Dwarf)
+                } else {
+                    None
+                }
             }
         }
     }
