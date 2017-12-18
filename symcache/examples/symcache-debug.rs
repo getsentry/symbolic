@@ -19,7 +19,6 @@ fn err(msg: &str) -> Box<Error> {
     Box::new(io::Error::new(io::ErrorKind::Other, msg))
 }
 
-
 fn execute(matches: &ArgMatches) -> Result<(), Box<Error>> {
     let symcache;
 
@@ -31,7 +30,8 @@ fn execute(matches: &ArgMatches) -> Result<(), Box<Error>> {
         };
         let byteview = ByteView::from_path(&file_path)?;
         let fat_obj = FatObject::parse(byteview)?;
-        let objects = fat_obj.objects()?;
+        let objects_result: Result<Vec<_>, _> = fat_obj.objects().collect();
+        let objects = objects_result?;
         if arch == Arch::Unknown && objects.len() != 1 {
             println!("Contained architectures:");
             for obj in objects {

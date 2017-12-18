@@ -164,6 +164,47 @@ impl<'bytes> fmt::Debug for Object<'bytes> {
     }
 }
 
+/// Iterator over `Object`s in a `FatObject`
+pub struct Objects<'fat> {
+    fat: &'fat FatObject<'fat>,
+    index: usize,
+}
+
+impl<'fat> Objects<'fat> {
+    fn new(fat: &'fat FatObject<'fat>) -> Objects<'fat> {
+        Objects {
+            fat: fat,
+            index: 0,
+        }
+    }
+}
+
+impl<'fat> Iterator for Objects<'fat> {
+    type Item = Result<Object<'fat>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.fat.get_object(self.index) {
+            Ok(Some(object)) => {
+                self.index += 1;
+                Some(Ok(object))
+            }
+            Ok(None) => None,
+            Err(err) => Some(Err(err)),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.fat.object_count() - self.index;
+        (remaining, Some(remaining))
+    }
+
+    fn count(mut self) -> usize {
+        let (remaining, _) = self.size_hint();
+        self.index += remaining;
+        remaining
+    }
+}
+
 pub(crate) enum FatObjectKind<'bytes> {
     Breakpad(BreakpadSym),
     Elf(elf::Elf<'bytes>),
@@ -261,12 +302,8 @@ impl<'bytes> FatObject<'bytes> {
         }))
     }
 
-    /// Returns a vector of object variants.
-    pub fn objects(&'bytes self) -> Result<Vec<Object<'bytes>>> {
-        let mut rv = vec![];
-        for idx in 0..self.object_count() {
-            rv.push(self.get_object(idx)?.unwrap());
-        }
-        Ok(rv)
+    /// Returns a iterator over object variants in this fat object.
+    pub fn objects(&'bytes self) -> Objects<'bytes> {
+        Objects::new(self)
     }
 }
