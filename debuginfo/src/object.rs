@@ -249,7 +249,7 @@ impl<'bytes> FatObject<'bytes> {
             FatObjectKind::MachO(ref mach) => match *mach {
                 mach::Mach::Binary(ref bin) => ObjectTarget::MachOSingle(bin),
                 mach::Mach::Fat(ref fat) => {
-                    let (idx, arch) = fat.iter_arches().enumerate().skip(idx).next().unwrap();
+                    let arch = fat.iter_arches().nth(idx).unwrap();
                     ObjectTarget::MachOFat(arch?, fat.get(idx)?)
                 }
             },
