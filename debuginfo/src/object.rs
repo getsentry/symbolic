@@ -231,7 +231,7 @@ impl<'bytes> FatObject<'bytes> {
             FatObjectKind::Breakpad(_) => 1,
             FatObjectKind::Elf(..) => 1,
             FatObjectKind::MachO(ref mach) => match *mach {
-                mach::Mach::Fat(ref fat) => fat.iter_arches().count(),
+                mach::Mach::Fat(ref fat) => fat.narches,
                 mach::Mach::Binary(..) => 1,
             },
         }
