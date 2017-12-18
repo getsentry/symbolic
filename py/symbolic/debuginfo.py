@@ -81,6 +81,16 @@ class Object(RustObject):
         """The object kind."""
         return str(decode_str(self._methodcall(lib.symbolic_object_get_kind)))
 
+    @property
+    def type(self):
+        """The object type."""
+        return str(decode_str(self._methodcall(lib.symbolic_object_get_type)))
+
+    @property
+    def debug_kind(self):
+        """The kind of debug information in this object."""
+        return str(decode_str(self._methodcall(lib.symbolic_object_get_debug_kind)))
+
     def make_symcache(self):
         """Creates a symcache from the object."""
         return SymCache._from_objptr(self._methodcall(

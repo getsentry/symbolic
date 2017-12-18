@@ -6,7 +6,7 @@ use gimli;
 
 use errors::{ErrorKind, Result};
 
-/// Represents endianess.
+/// Represents endianness.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum Endianness {
     Little,
@@ -92,9 +92,9 @@ impl Arch {
 
     /// Constructs an architecture from mach CPU types
     #[cfg(feature = "with_objects")]
-    pub fn from_mach(cputype: u32, cpusubtype: u32) -> Result<Arch> {
+    pub fn from_mach(cputype: u32, cpusubtype: u32) -> Arch {
         use goblin::mach::constants::cputype::*;
-        Ok(match (cputype, cpusubtype) {
+        match (cputype, cpusubtype) {
             (CPU_TYPE_I386, CPU_SUBTYPE_I386_ALL) => Arch::X86,
             (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_ALL) => Arch::X86_64,
             (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H) => Arch::X86_64h,
@@ -112,10 +112,8 @@ impl Arch {
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7EM) => Arch::ArmV7em,
             (CPU_TYPE_POWERPC, CPU_SUBTYPE_POWERPC_ALL) => Arch::Ppc,
             (CPU_TYPE_POWERPC64, CPU_SUBTYPE_POWERPC_ALL) => Arch::Ppc64,
-            _ => {
-                return Err(ErrorKind::Parse("unknown architecture").into());
-            }
-        })
+            _ => Arch::Unknown,
+        }
     }
 
     /// Returns the macho arch for this arch.
@@ -139,6 +137,7 @@ impl Arch {
             Arch::ArmV7m => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7M),
             Arch::ArmV7em => (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7EM),
             Arch::Ppc => (CPU_TYPE_POWERPC, CPU_SUBTYPE_POWERPC_ALL),
+            Arch::Ppc64 => (CPU_TYPE_POWERPC64, CPU_SUBTYPE_POWERPC_ALL),
             _ => {
                 return Err(ErrorKind::NotFound("Unknown architecture for macho").into());
             }
@@ -148,9 +147,9 @@ impl Arch {
 
     /// Constructs an architecture from ELF flags
     #[cfg(feature = "with_objects")]
-    pub fn from_elf(machine: u16) -> Result<Arch> {
+    pub fn from_elf(machine: u16) -> Arch {
         use goblin::elf::header::*;
-        Ok(match machine {
+        match machine {
             EM_386 => Arch::X86,
             EM_X86_64 => Arch::X86_64,
             EM_AARCH64 => Arch::Arm64,
@@ -163,23 +162,23 @@ impl Arch {
             // http://code.metager.de/source/xref/gnu/src/binutils/readelf.c#11282
             // https://stackoverflow.com/a/20556156/4228225
             EM_ARM => Arch::Arm,
-            _ => return Err(ErrorKind::Parse("unknown architecture").into()),
-        })
+            EM_PPC => Arch::Ppc,
+            EM_PPC64 => Arch::Ppc64,
+            _ => Arch::Unknown,
+        }
     }
 
     /// Constructs an architecture from ELF flags
     #[cfg(feature = "with_objects")]
-    pub fn from_breakpad(string: &str) -> Result<Arch> {
+    pub fn from_breakpad(string: &str) -> Arch {
         use Arch::*;
-        Ok(match string {
+        match string {
             "x86" => X86,
             "x86_64" => X86_64,
             "ppc" => Ppc,
             "ppc64" => Ppc64,
-            _ => {
-                return Err(ErrorKind::NotFound("Unknown architecture for Breakpad").into());
-            }
-        })
+            _ => Unknown,
+        }
     }
 
     /// Parses an architecture from a string.
@@ -306,20 +305,20 @@ impl Language {
 
     /// Converts a DWARF language tag into a supported language.
     #[cfg(feature="with_dwarf")]
-    pub fn from_dwarf_lang(lang: gimli::DwLang) -> Option<Language> {
+    pub fn from_dwarf_lang(lang: gimli::DwLang) -> Language {
         match lang {
             gimli::DW_LANG_C | gimli::DW_LANG_C11 |
-            gimli::DW_LANG_C89 | gimli::DW_LANG_C99 => Some(Language::C),
+            gimli::DW_LANG_C89 | gimli::DW_LANG_C99 => Language::C,
             gimli::DW_LANG_C_plus_plus | gimli::DW_LANG_C_plus_plus_03 |
             gimli::DW_LANG_C_plus_plus_11 |
-            gimli::DW_LANG_C_plus_plus_14 => Some(Language::Cpp),
-            gimli::DW_LANG_D => Some(Language::D),
-            gimli::DW_LANG_Go => Some(Language::Go),
-            gimli::DW_LANG_ObjC => Some(Language::ObjC),
-            gimli::DW_LANG_ObjC_plus_plus => Some(Language::ObjCpp),
-            gimli::DW_LANG_Rust => Some(Language::Rust),
-            gimli::DW_LANG_Swift => Some(Language::Swift),
-            _ => None,
+            gimli::DW_LANG_C_plus_plus_14 => Language::Cpp,
+            gimli::DW_LANG_D => Language::D,
+            gimli::DW_LANG_Go => Language::Go,
+            gimli::DW_LANG_ObjC => Language::ObjC,
+            gimli::DW_LANG_ObjC_plus_plus => Language::ObjCpp,
+            gimli::DW_LANG_Rust => Language::Rust,
+            gimli::DW_LANG_Swift => Language::Swift,
+            _ => Language::Unknown,
         }
     }
 
@@ -373,7 +372,7 @@ impl fmt::Display for Language {
     }
 }
 
-/// Represents the kind of an object.
+/// Represents the physical object file format.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub enum ObjectKind {
     Breakpad,
@@ -390,6 +389,151 @@ impl ObjectKind {
             Elf => "elf",
             MachO => "macho",
         }
+    }
+}
+
+/// Represents the designated use of the object file and hints at its contents.
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+pub enum ObjectClass {
+    /// There is no object class specified for this object file.
+    None,
+
+    /// The Relocatable file type is the format used for intermediate object
+    /// files. It is a very compact format containing all its sections in one
+    /// segment. The compiler and assembler usually create one Relocatable file
+    /// for each source code file. By convention, the file name extension for
+    /// this format is .o.
+    Relocatable,
+
+    /// The Executable file type is the format used by standard executable
+    /// programs.
+    Executable,
+
+    /// The Library file type is for dynamic shared libraries. It contains
+    /// some additional tables to support multiple modules. By convention, the
+    /// file name extension for this format is .dylib, except for the main
+    /// shared library of a framework, which does not usually have a file name
+    /// extension.
+    Library,
+
+    /// The Dump file type is used to store core files, which are
+    /// traditionally created when a program crashes. Core files store the
+    /// entire address space of a process at the time it crashed. You can
+    /// later run gdb on the core file to figure out why the crash occurred.
+    Dump,
+
+    /// The Debug file type designates files that store symbol information
+    /// for a corresponding binary file.
+    Debug,
+
+    /// The Other type represents any valid object class that does not fit any
+    /// of the other classes. These are mostly CPU or OS dependent, or unique
+    /// to a single kind of object.
+    Other,
+}
+
+impl ObjectClass {
+    pub fn name(&self) -> &'static str {
+        use ObjectClass::*;
+        match *self {
+            None => "none",
+            Relocatable => "rel",
+            Executable => "exe",
+            Library => "lib",
+            Dump => "dump",
+            Debug => "dbg",
+            Other => "other",
+        }
+    }
+
+    pub fn parse(string: &str) -> Result<ObjectClass> {
+        use ObjectClass::*;
+        Ok(match string {
+            "none" => None,
+            "rel" => Relocatable,
+            "exe" => Executable,
+            "lib" => Library,
+            "dump" => Dump,
+            "dbg" => Debug,
+            "other" => Other,
+            _ => return Err(ErrorKind::Parse("unknown object class").into()),
+        })
+    }
+
+    #[cfg(feature = "with_objects")]
+    pub fn from_mach(mach_type: u32) -> ObjectClass {
+        use goblin::mach::header::*;
+        use ObjectClass::*;
+
+        match mach_type {
+            MH_OBJECT => Relocatable,
+            MH_EXECUTE => Executable,
+            MH_DYLIB => Library,
+            MH_CORE => Dump,
+            MH_DSYM => Debug,
+            _ => Other,
+        }
+    }
+
+    #[cfg(feature = "with_objects")]
+    pub fn to_mach(&self) -> Result<u32> {
+        use goblin::mach::header::*;
+        use ObjectClass::*;
+
+        Ok(match *self {
+            Relocatable => MH_OBJECT,
+            Executable => MH_EXECUTE,
+            Library => MH_DYLIB,
+            Dump => MH_CORE,
+            Debug => MH_DSYM,
+            _ => return Err(ErrorKind::NotFound("unknown file_type for MachO").into()),
+        })
+    }
+
+    #[cfg(feature = "with_objects")]
+    pub fn from_elf(elf_type: u16) -> ObjectClass {
+        use goblin::elf::header::*;
+        use ObjectClass::*;
+
+        match elf_type {
+            ET_NONE => None,
+            ET_REL => Relocatable,
+            ET_EXEC => Executable,
+            ET_DYN => Library,
+            ET_CORE => Dump,
+            _ => Other,
+        }
+    }
+
+    #[cfg(feature = "with_objects")]
+    pub fn from_elf_full(elf_type: u16, has_interpreter: bool) -> ObjectClass {
+        let class = ObjectClass::from_elf(elf_type);
+
+        // When stripping debug information into a separate file with objcopy,
+        // the eh_type field still reads ET_EXEC. However, the interpreter is
+        // removed. Since an executable without interpreter does not make any
+        // sense, we assume ``Debug`` in this case.
+        if class == ObjectClass::Executable && !has_interpreter {
+            ObjectClass::Debug
+        } else {
+            class
+        }
+    }
+
+    #[cfg(feature = "with_objects")]
+    pub fn to_elf(&self) -> Result<u16> {
+        use goblin::elf::header::*;
+        use ObjectClass::*;
+
+        Ok(match *self {
+            None => ET_NONE,
+            Relocatable => ET_REL,
+            Executable => ET_EXEC,
+            Library => ET_DYN,
+            Dump => ET_CORE,
+            Debug => ET_EXEC,
+            _ => return Err(ErrorKind::NotFound("unknown file_type for ELF").into()),
+        })
     }
 }
 

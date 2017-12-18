@@ -7,7 +7,7 @@ use gimli::{self, BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDe
 
 use symbolic_common::{Arch, Result};
 use symbolic_common::ErrorKind::MissingDebugInfo;
-use symbolic_debuginfo::{DwarfSection, Object};
+use symbolic_debuginfo::{DwarfData, DwarfSection, Object};
 
 use registers::get_register_name;
 
@@ -21,7 +21,7 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
     }
 
     pub fn process(&mut self, object: &Object) -> Result<()> {
-        let endianness = object.endianess();
+        let endianness = object.endianness();
 
         if let Some(section) = object.get_dwarf_section(DwarfSection::EhFrame) {
             let frame = EhFrame::new(section.as_bytes(), endianness);

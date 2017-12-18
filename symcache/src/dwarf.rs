@@ -5,7 +5,7 @@ use std::mem;
 use std::sync::Arc;
 
 use symbolic_common::{Endianness, Error, ErrorKind, Language, Result, ResultExt};
-use symbolic_debuginfo::{DwarfSection, Object, Symbols};
+use symbolic_debuginfo::{DwarfData, DwarfSection, Object, Symbols};
 
 use fallible_iterator::FallibleIterator;
 use lru_cache::LruCache;
@@ -48,7 +48,7 @@ impl<'input> DwarfInfo<'input> {
                         &[]
                     }
                 };
-                gimli::$sect::new(sect, obj.endianess())
+                gimli::$sect::new(sect, obj.endianness())
             }}
         }
 
@@ -319,7 +319,7 @@ impl<'input> Unit<'input> {
                 lines: vec![],
                 comp_dir: self.comp_dir.map(|x| x.buf()).unwrap_or(b""),
                 lang: self.language
-                    .and_then(|lang| Language::from_dwarf_lang(lang))
+                    .map(|lang| Language::from_dwarf_lang(lang))
                     .unwrap_or(Language::Unknown),
             };
 

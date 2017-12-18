@@ -1,81 +1,15 @@
 use std::fmt;
-use std::iter::Peekable;
 use std::io::Cursor;
-use std::collections::{BTreeMap, HashSet};
-use std::slice::Iter as SliceIter;
 
 use goblin;
 use goblin::{elf, mach, Hint};
 use uuid::Uuid;
 
-use dwarf::{DwarfSection, DwarfSectionData};
 use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, ErrorKind,
-                      ObjectKind, Result};
+                      ObjectClass, ObjectKind, Result};
 
-struct BreakpadObject {
-    uuid: Uuid,
-    arch: Arch,
-}
-
-impl BreakpadObject {
-    /// Parses a breakpad file header
-    ///
-    /// Example:
-    /// ```
-    /// MODULE mac x86_64 13DA2547B1D53AF99F55ED66AF0C7AF70 Electron Framework
-    /// ```
-    pub fn parse(bytes: &[u8]) -> Result<BreakpadObject> {
-        let mut words = bytes.splitn(5, |b| *b == b' ');
-
-        match words.next() {
-            Some(b"MODULE") => (),
-            _ => return Err(ErrorKind::BadBreakpadSym("Invalid breakpad magic").into()),
-        };
-
-        // Operating system not needed
-        words.next();
-
-        let arch = match words.next() {
-            Some(word) => String::from_utf8_lossy(word),
-            None => return Err(ErrorKind::BadBreakpadSym("Missing breakpad arch").into()),
-        };
-
-        let uuid_hex = match words.next() {
-            Some(word) => String::from_utf8_lossy(word),
-            None => return Err(ErrorKind::BadBreakpadSym("Missing breakpad uuid").into()),
-        };
-
-        let uuid = match Uuid::parse_str(&uuid_hex[0..32]) {
-            Ok(uuid) => uuid,
-            Err(_) => return Err(ErrorKind::Parse("Invalid breakpad uuid").into()),
-        };
-
-        Ok(BreakpadObject {
-            uuid: uuid,
-            arch: Arch::from_breakpad(arch.as_ref())?,
-        })
-    }
-}
-
-enum FatObjectKind<'a> {
-    Breakpad(BreakpadObject),
-    Elf(elf::Elf<'a>),
-    MachO(mach::Mach<'a>),
-}
-
-enum ObjectTarget<'a> {
-    Breakpad(&'a BreakpadObject),
-    Elf(&'a elf::Elf<'a>),
-    MachOSingle(&'a mach::MachO<'a>),
-    MachOFat(mach::fat::FatArch, mach::MachO<'a>),
-}
-
-/// Represents a single object in a fat object.
-pub struct Object<'a> {
-    fat_bytes: &'a [u8],
-    arch: Arch,
-    target: ObjectTarget<'a>,
-}
+use breakpad::BreakpadSym;
+use dwarf::DwarfData;
 
 fn get_macho_uuid(macho: &mach::MachO) -> Option<Uuid> {
     for cmd in &macho.load_commands {
@@ -83,54 +17,90 @@ fn get_macho_uuid(macho: &mach::MachO) -> Option<Uuid> {
             return Uuid::from_bytes(&uuid_cmd.uuid).ok();
         }
     }
+
     None
 }
 
-impl<'a> Object<'a> {
+fn get_macho_vmaddr(macho: &mach::MachO) -> Result<u64> {
+    for seg in &macho.segments {
+        if seg.name()? == "__TEXT" {
+            return Ok(seg.vmaddr);
+        }
+    }
+
+    Ok(0)
+}
+
+pub(crate) enum ObjectTarget<'bytes> {
+    Breakpad(&'bytes BreakpadSym),
+    Elf(&'bytes elf::Elf<'bytes>),
+    MachOSingle(&'bytes mach::MachO<'bytes>),
+    MachOFat(mach::fat::FatArch, mach::MachO<'bytes>),
+}
+
+/// Represents a single object in a fat object.
+pub struct Object<'bytes> {
+    fat_bytes: &'bytes [u8],
+    pub(crate) target: ObjectTarget<'bytes>,
+}
+
+impl<'bytes> Object<'bytes> {
     /// Returns the UUID of the object
     pub fn uuid(&self) -> Option<Uuid> {
+        use ObjectTarget::*;
         match self.target {
-            ObjectTarget::Breakpad(ref breakpad) => Some(breakpad.uuid),
-            ObjectTarget::Elf(ref elf) => Uuid::from_bytes(&elf.header.e_ident).ok(),
-            ObjectTarget::MachOSingle(macho) => get_macho_uuid(macho),
-            ObjectTarget::MachOFat(_, ref macho) => get_macho_uuid(macho),
+            Breakpad(ref breakpad) => Some(breakpad.uuid()),
+            Elf(ref elf) => Uuid::from_bytes(&elf.header.e_ident).ok(),
+            MachOSingle(macho) => get_macho_uuid(macho),
+            MachOFat(_, ref macho) => get_macho_uuid(macho),
         }
     }
 
     /// Returns the kind of the object
     pub fn kind(&self) -> ObjectKind {
+        use ObjectTarget::*;
         match self.target {
-            ObjectTarget::Breakpad(..) => ObjectKind::Breakpad,
-            ObjectTarget::Elf(..) => ObjectKind::Elf,
-            ObjectTarget::MachOSingle(..) => ObjectKind::MachO,
-            ObjectTarget::MachOFat(..) => ObjectKind::MachO,
+            Breakpad(..) => ObjectKind::Breakpad,
+            Elf(..) => ObjectKind::Elf,
+            MachOSingle(..) => ObjectKind::MachO,
+            MachOFat(..) => ObjectKind::MachO,
         }
     }
 
     /// Returns the architecture of the object
     pub fn arch(&self) -> Arch {
-        self.arch
+        use ObjectTarget::*;
+        match self.target {
+            Breakpad(ref breakpad) => breakpad.arch(),
+            Elf(ref elf) => Arch::from_elf(elf.header.e_machine),
+            MachOSingle(ref mach) => {
+                Arch::from_mach(mach.header.cputype(), mach.header.cpusubtype())
+            }
+            MachOFat(_, ref mach) => {
+                Arch::from_mach(mach.header.cputype(), mach.header.cpusubtype())
+            }
+        }
     }
 
     /// Return the vmaddr of the code portion of the image.
     pub fn vmaddr(&self) -> Result<u64> {
+        use ObjectTarget::*;
         match self.target {
-            ObjectTarget::Breakpad(..) => Ok(0),
-            ObjectTarget::Elf(..) => Ok(0),
-            ObjectTarget::MachOSingle(macho) => get_macho_vmaddr(macho),
-            ObjectTarget::MachOFat(_, ref macho) => get_macho_vmaddr(macho),
+            Breakpad(..) => Ok(0),
+            Elf(..) => Ok(0),
+            MachOSingle(macho) => get_macho_vmaddr(macho),
+            MachOFat(_, ref macho) => get_macho_vmaddr(macho),
         }
     }
 
-    /// True if little endian, false if not.
-    /// TODO: Should return Option<Endianness>
-    /// TODO: Should be renamed to "endianness"
-    pub fn endianess(&self) -> Endianness {
+    /// True if little endian, false if not
+    pub fn endianness(&self) -> Endianness {
+        use ObjectTarget::*;
         let little = match self.target {
-            ObjectTarget::Breakpad(..) => true,
-            ObjectTarget::Elf(ref elf) => elf.little_endian,
-            ObjectTarget::MachOSingle(macho) => macho.little_endian,
-            ObjectTarget::MachOFat(_, ref macho) => macho.little_endian,
+            Breakpad(..) => return Endianness::default(),
+            Elf(ref elf) => elf.little_endian,
+            MachOSingle(macho) => macho.little_endian,
+            MachOFat(_, ref macho) => macho.little_endian,
         };
         if little {
             Endianness::Little
@@ -140,254 +110,114 @@ impl<'a> Object<'a> {
     }
 
     /// Returns the content of the object as bytes
-    pub fn as_bytes(&self) -> &'a [u8] {
+    pub fn as_bytes(&self) -> &'bytes [u8] {
+        use ObjectTarget::*;
         match self.target {
-            ObjectTarget::Breakpad(..) => self.fat_bytes,
-            ObjectTarget::Elf(..) => self.fat_bytes,
-            ObjectTarget::MachOSingle(_) => self.fat_bytes,
-            ObjectTarget::MachOFat(ref arch, _) => {
+            Breakpad(..) => self.fat_bytes,
+            Elf(..) => self.fat_bytes,
+            MachOSingle(_) => self.fat_bytes,
+            MachOFat(ref arch, _) => {
                 let bytes = self.fat_bytes;
                 &bytes[arch.offset as usize..(arch.offset + arch.size) as usize]
             }
         }
     }
 
+    /// Returns the desiganted use of the object file and hints at its contents.
+    pub fn class(&self) -> ObjectClass {
+        use ObjectTarget::*;
+        match self.target {
+            Breakpad(..) => ObjectClass::Debug,
+            Elf(ref elf) => {
+                ObjectClass::from_elf_full(elf.header.e_type, elf.interpreter.is_some())
+            }
+            MachOSingle(macho) => ObjectClass::from_mach(macho.header.filetype),
+            MachOFat(_, ref macho) => ObjectClass::from_mach(macho.header.filetype),
+        }
+    }
+
     /// Returns the type of debug data contained in this object file
-    pub fn debug_kind(&self) -> DebugKind {
+    pub fn debug_kind(&self) -> Option<DebugKind> {
+        use ObjectTarget::*;
         match self.target {
-            ObjectTarget::Breakpad(..) => DebugKind::Breakpad,
-            // NOTE: ELF and MachO could technically also contain other debug formats,
-            // but for now we only support Dwarf.
-            ObjectTarget::Elf(..) | ObjectTarget::MachOSingle(..) | ObjectTarget::MachOFat(..) => {
-                DebugKind::Dwarf
+            Breakpad(..) => Some(DebugKind::Breakpad),
+            Elf(..) | MachOSingle(..) | MachOFat(..) => {
+                if self.has_dwarf_data() {
+                    Some(DebugKind::Dwarf)
+                } else {
+                    None
+                }
             }
-        }
-    }
-
-    /// Loads a specific dwarf section if its in the file.
-    pub fn get_dwarf_section(&self, sect: DwarfSection) -> Option<DwarfSectionData<'a>> {
-        match self.target {
-            ObjectTarget::Breakpad(..) => None,
-            ObjectTarget::Elf(ref elf) => read_elf_dwarf_section(elf, self.as_bytes(), sect),
-            ObjectTarget::MachOSingle(macho) => read_macho_dwarf_section(macho, sect),
-            ObjectTarget::MachOFat(_, ref macho) => read_macho_dwarf_section(macho, sect),
-        }
-    }
-
-    /// Gives access to contained symbols
-    pub fn symbols(&'a self) -> Result<Symbols<'a>> {
-        match self.target {
-            ObjectTarget::Breakpad(..) => Err("Not implemented".into()),
-            ObjectTarget::Elf(..) => {
-                Err(ErrorKind::MissingDebugInfo("unsupported symbol table in file").into())
-            }
-            ObjectTarget::MachOSingle(macho) => get_macho_symbols(macho),
-            ObjectTarget::MachOFat(_, ref macho) => get_macho_symbols(macho),
         }
     }
 }
 
-impl<'a> fmt::Debug for Object<'a> {
+impl<'bytes> fmt::Debug for Object<'bytes> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Object")
             .field("uuid", &self.uuid())
-            .field("arch", &self.arch)
+            .field("arch", &self.arch())
             .field("vmaddr", &self.vmaddr().unwrap_or(0))
-            .field("endianess", &self.endianess())
+            .field("endianness", &self.endianness())
             .field("kind", &self.kind())
             .finish()
     }
 }
 
-/// Gives access to symbols in a symbol table.
-pub struct Symbols<'a> {
-    // note: if we need elf here later, we can move this into an internal wrapper
-    macho_symbols: Option<&'a goblin::mach::symbols::Symbols<'a>>,
-    symbol_list: Vec<(u64, u32)>,
+pub(crate) enum FatObjectKind<'bytes> {
+    Breakpad(BreakpadSym),
+    Elf(elf::Elf<'bytes>),
+    MachO(mach::Mach<'bytes>),
 }
 
-/// An iterator over a contained symbol table.
-pub struct SymbolIterator<'a> {
-    // note: if we need elf here later, we can move this into an internal wrapper
-    symbols: &'a Symbols<'a>,
-    iter: Peekable<SliceIter<'a, (u64, u32)>>,
+/// Represents a potentially fat object containing one or more objects.
+pub struct FatObject<'bytes> {
+    handle: ByteViewHandle<'bytes, FatObjectKind<'bytes>>,
 }
 
-fn get_macho_vmaddr(macho: &mach::MachO) -> Result<u64> {
-    for seg in &macho.segments {
-        if seg.name()? == "__TEXT" {
-            return Ok(seg.vmaddr);
-        }
-    }
-    Ok(0)
-}
+impl<'bytes> FatObject<'bytes> {
+    /// Returns the type of the FatObject
+    pub fn peek<B>(bytes: B) -> Result<ObjectKind>
+    where
+        B: AsRef<[u8]>,
+    {
+        let bytes = bytes.as_ref();
+        let mut cur = Cursor::new(bytes);
 
-fn get_macho_symbols<'a>(macho: &'a mach::MachO) -> Result<Symbols<'a>> {
-    let mut sections = HashSet::new();
-    let mut idx = 0;
-
-    for segment in &macho.segments {
-        for section_rv in segment {
-            let (section, _) = section_rv?;
-            let name = section.name()?;
-            if name == "__stubs" || name == "__text" {
-                sections.insert(idx);
-            }
-            idx += 1;
-        }
-    }
-
-    // build an ordered map of the symbols
-    let mut symbol_map = BTreeMap::new();
-    for (id, sym_rv) in macho.symbols().enumerate() {
-        let (_, nlist) = sym_rv?;
-        if nlist.get_type() == mach::symbols::N_SECT
-            && nlist.n_sect != (mach::symbols::NO_SECT as usize)
-            && sections.contains(&(nlist.n_sect - 1))
-        {
-            symbol_map.insert(nlist.n_value, id as u32);
-        }
-    }
-
-    Ok(Symbols {
-        macho_symbols: macho.symbols.as_ref(),
-        symbol_list: symbol_map.into_iter().collect(),
-    })
-}
-
-fn try_strip_symbol(s: &str) -> &str {
-    if s.starts_with("_") {
-        &s[1..]
-    } else {
-        s
-    }
-}
-
-impl<'a> Symbols<'a> {
-    pub fn lookup(&self, addr: u64) -> Result<Option<(u64, u32, &'a str)>> {
-        let idx = match self.symbol_list.binary_search_by_key(&addr, |&x| x.0) {
-            Ok(idx) => idx,
-            Err(0) => return Ok(None),
-            Err(next_idx) => next_idx - 1,
+        match goblin::peek(&mut cur)? {
+            Hint::Elf(_) => return Ok(ObjectKind::Elf),
+            Hint::Mach(_) => return Ok(ObjectKind::MachO),
+            Hint::MachFat(_) => return Ok(ObjectKind::MachO),
+            _ => (),
         };
-        let (sym_addr, sym_id) = self.symbol_list[idx];
 
-        let sym_len = self.symbol_list
-            .get(idx + 1)
-            .map(|next| next.0 - sym_addr)
-            .unwrap_or(!0);
-
-        let symbols = self.macho_symbols.unwrap();
-        let (symbol, _) = symbols.get(sym_id as usize)?;
-        Ok(Some((sym_addr, sym_len as u32, try_strip_symbol(symbol))))
-    }
-
-    pub fn iter(&'a self) -> SymbolIterator<'a> {
-        SymbolIterator {
-            symbols: self,
-            iter: self.symbol_list.iter().peekable(),
+        if bytes.starts_with(b"MODULE ") {
+            return Ok(ObjectKind::Breakpad);
         }
-    }
-}
 
-impl<'a> Iterator for SymbolIterator<'a> {
-    type Item = Result<(u64, u32, &'a str)>;
-
-    fn next(&mut self) -> Option<Result<(u64, u32, &'a str)>> {
-        if let Some(&(addr, id)) = self.iter.next() {
-            Some(if let Some(ref mo) = self.symbols.macho_symbols {
-                let sym = try_strip_symbol(itry!(mo.get(id as usize).map(|x| x.0)));
-                if let Some(&&(next_addr, _)) = self.iter.peek() {
-                    Ok((addr, (next_addr - addr) as u32, sym))
-                } else {
-                    Ok((addr, !0, sym))
-                }
-            } else {
-                Err(ErrorKind::Internal("out of range for symbol iteration").into())
-            })
-        } else {
-            None
-        }
-    }
-}
-
-fn read_elf_dwarf_section<'a>(
-    elf: &elf::Elf<'a>,
-    data: &'a [u8],
-    sect: DwarfSection,
-) -> Option<DwarfSectionData<'a>> {
-    let section_name = sect.get_elf_section();
-
-    for header in &elf.section_headers {
-        if let Some(Ok(name)) = elf.shdr_strtab.get(header.sh_name) {
-            if name == section_name {
-                let sec_data = &data[header.sh_offset as usize..][..header.sh_size as usize];
-                return Some(DwarfSectionData::new(sect, sec_data, header.sh_offset));
-            }
-        }
+        return Err(ErrorKind::UnsupportedObjectFile.into());
     }
 
-    None
-}
-
-fn read_macho_dwarf_section<'a>(
-    macho: &mach::MachO<'a>,
-    sect: DwarfSection,
-) -> Option<DwarfSectionData<'a>> {
-    let dwarf_segment = if sect == DwarfSection::EhFrame {
-        "__TEXT"
-    } else {
-        "__DWARF"
-    };
-
-    let dwarf_section_name = sect.get_macho_section();
-    for segment in &macho.segments {
-        if_chain! {
-            if let Ok(seg) = segment.name();
-            if dwarf_segment == seg;
-            then {
-                for section in segment {
-                    if_chain! {
-                        if let Ok((section, data)) = section;
-                        if let Ok(name) = section.name();
-                        if name == dwarf_section_name;
-                        then {
-                            return Some(DwarfSectionData::new(
-                                sect, data, section.offset as u64));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    None
-}
-
-/// Represents a potentially fat object in a fat object.
-pub struct FatObject<'a> {
-    handle: ByteViewHandle<'a, FatObjectKind<'a>>,
-}
-
-impl<'a> FatObject<'a> {
     /// Provides a view to an object file from a byteview.
-    pub fn parse(byteview: ByteView<'a>) -> Result<FatObject<'a>> {
+    pub fn parse(byteview: ByteView<'bytes>) -> Result<FatObject<'bytes>> {
         let handle = ByteViewHandle::from_byteview(byteview, |bytes| -> Result<_> {
-            let mut cur = Cursor::new(bytes);
-            Ok(match goblin::peek(&mut cur)? {
-                Hint::Elf(_) => FatObjectKind::Elf(elf::Elf::parse(bytes)?),
-                Hint::Mach(_) => FatObjectKind::MachO(mach::Mach::parse(bytes)?),
-                Hint::MachFat(_) => FatObjectKind::MachO(mach::Mach::parse(bytes)?),
-                _ => {
-                    if bytes.starts_with(b"MODULE ") {
-                        return Ok(FatObjectKind::Breakpad(BreakpadObject::parse(bytes)?));
-                    }
-
-                    return Err(ErrorKind::UnsupportedObjectFile.into());
-                }
+            Ok(match FatObject::peek(bytes)? {
+                ObjectKind::Elf => FatObjectKind::Elf(elf::Elf::parse(bytes)?),
+                ObjectKind::MachO => FatObjectKind::MachO(mach::Mach::parse(bytes)?),
+                ObjectKind::Breakpad => FatObjectKind::Breakpad(BreakpadSym::parse(bytes)?),
             })
         })?;
+
         Ok(FatObject { handle: handle })
+    }
+
+    /// Returns the kind of this FatObject
+    pub fn kind(&self) -> ObjectKind {
+        match *self.handle {
+            FatObjectKind::Breakpad(_) => ObjectKind::Breakpad,
+            FatObjectKind::Elf(..) => ObjectKind::Elf,
+            FatObjectKind::MachO(..) => ObjectKind::MachO,
+        }
     }
 
     /// Returns the contents as bytes.
@@ -408,63 +238,31 @@ impl<'a> FatObject<'a> {
     }
 
     /// Returns the n-th object.
-    pub fn get_object(&'a self, idx: usize) -> Result<Option<Object<'a>>> {
-        match *self.handle {
-            FatObjectKind::Breakpad(ref breakpad) => {
-                if idx == 0 {
-                    Ok(Some(Object {
-                        fat_bytes: self.as_bytes(),
-                        arch: breakpad.arch,
-                        target: ObjectTarget::Breakpad(breakpad),
-                    }))
-                } else {
-                    Ok(None)
-                }
-            }
-            FatObjectKind::Elf(ref elf) => {
-                if idx == 0 {
-                    Ok(Some(Object {
-                        fat_bytes: self.as_bytes(),
-                        arch: Arch::from_elf(elf.header.e_machine)?,
-                        target: ObjectTarget::Elf(elf),
-                    }))
-                } else {
-                    Ok(None)
-                }
-            }
+    pub fn get_object(&'bytes self, idx: usize) -> Result<Option<Object<'bytes>>> {
+        if idx > self.object_count() {
+            return Ok(None);
+        }
+
+        let target = match *self.handle {
+            FatObjectKind::Breakpad(ref breakpad) => ObjectTarget::Breakpad(breakpad),
+            FatObjectKind::Elf(ref elf) => ObjectTarget::Elf(elf),
             FatObjectKind::MachO(ref mach) => match *mach {
+                mach::Mach::Binary(ref bin) => ObjectTarget::MachOSingle(bin),
                 mach::Mach::Fat(ref fat) => {
-                    if let Some((idx, arch)) = fat.iter_arches().enumerate().skip(idx).next() {
-                        let arch = arch?;
-                        Ok(Some(Object {
-                            fat_bytes: self.as_bytes(),
-                            arch: Arch::from_mach(arch.cputype(), arch.cpusubtype())?,
-                            target: ObjectTarget::MachOFat(arch, fat.get(idx)?),
-                        }))
-                    } else {
-                        Ok(None)
-                    }
-                }
-                mach::Mach::Binary(ref macho) => {
-                    if idx == 0 {
-                        Ok(Some(Object {
-                            fat_bytes: self.as_bytes(),
-                            arch: Arch::from_mach(
-                                macho.header.cputype(),
-                                macho.header.cpusubtype(),
-                            )?,
-                            target: ObjectTarget::MachOSingle(macho),
-                        }))
-                    } else {
-                        Ok(None)
-                    }
+                    let (idx, arch) = fat.iter_arches().enumerate().skip(idx).next().unwrap();
+                    ObjectTarget::MachOFat(arch?, fat.get(idx)?)
                 }
             },
-        }
+        };
+
+        Ok(Some(Object {
+            fat_bytes: self.as_bytes(),
+            target: target,
+        }))
     }
 
     /// Returns a vector of object variants.
-    pub fn objects(&'a self) -> Result<Vec<Object<'a>>> {
+    pub fn objects(&'bytes self) -> Result<Vec<Object<'bytes>>> {
         let mut rv = vec![];
         for idx in 0..self.object_count() {
             rv.push(self.get_object(idx)?.unwrap());

@@ -18,7 +18,7 @@ ffi_fn! {
 ffi_fn! {
     /// Checks if an architecture is known.
     unsafe fn symbolic_arch_from_macho(arch: &SymbolicMachoArch) -> Result<SymbolicStr> {
-        Ok(SymbolicStr::new(Arch::from_mach(arch.cputype, arch.cpusubtype).map(|x| x.name())?))
+        Ok(SymbolicStr::new(Arch::from_mach(arch.cputype, arch.cpusubtype).name()))
     }
 }
 
