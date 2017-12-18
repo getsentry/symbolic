@@ -272,7 +272,7 @@ impl<'bytes> FatObject<'bytes> {
             FatObjectKind::Breakpad(_) => 1,
             FatObjectKind::Elf(..) => 1,
             FatObjectKind::MachO(ref mach) => match *mach {
-                mach::Mach::Fat(ref fat) => fat.iter_arches().count(),
+                mach::Mach::Fat(ref fat) => fat.narches,
                 mach::Mach::Binary(..) => 1,
             },
         }
@@ -280,7 +280,7 @@ impl<'bytes> FatObject<'bytes> {
 
     /// Returns the n-th object.
     pub fn get_object(&'bytes self, idx: usize) -> Result<Option<Object<'bytes>>> {
-        if idx > self.object_count() {
+        if idx >= self.object_count() {
             return Ok(None);
         }
 
@@ -290,7 +290,7 @@ impl<'bytes> FatObject<'bytes> {
             FatObjectKind::MachO(ref mach) => match *mach {
                 mach::Mach::Binary(ref bin) => ObjectTarget::MachOSingle(bin),
                 mach::Mach::Fat(ref fat) => {
-                    let (idx, arch) = fat.iter_arches().enumerate().skip(idx).next().unwrap();
+                    let arch = fat.iter_arches().nth(idx).unwrap();
                     ObjectTarget::MachOFat(arch?, fat.get(idx)?)
                 }
             },
