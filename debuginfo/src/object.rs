@@ -239,7 +239,7 @@ impl<'bytes> FatObject<'bytes> {
 
     /// Returns the n-th object.
     pub fn get_object(&'bytes self, idx: usize) -> Result<Option<Object<'bytes>>> {
-        if idx > self.object_count() {
+        if idx >= self.object_count() {
             return Ok(None);
         }
 
