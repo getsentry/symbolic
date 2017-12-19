@@ -253,7 +253,6 @@ impl<W: Write> SymCacheWriter<W> {
     ) -> Result<()> {
         while let Some(&Ok(symbol)) = symbol_iter.peek() {
             let sym_addr = symbol.addr() - vmaddr;
-            let sym_len = symbol.len().unwrap_or(!0);
 
             // skip forward until we hit a relevant symbol
             if *last_addr != !0 && sym_addr < *last_addr {
@@ -262,9 +261,9 @@ impl<W: Write> SymCacheWriter<W> {
             }
 
             if (*last_addr == !0 || sym_addr >= *last_addr) && sym_addr < cur_addr {
-                self.write_simple_function(sym_addr, sym_len, symbol.name())?;
+                self.write_simple_function(sym_addr, symbol.len().unwrap_or(!0), symbol.name())?;
                 symbol_iter.next();
-                *last_addr = sym_addr + sym_len;
+                *last_addr = sym_addr + symbol.len().unwrap_or(1);
             } else {
                 break;
             }

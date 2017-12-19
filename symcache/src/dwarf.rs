@@ -301,7 +301,8 @@ impl<'input> Unit<'input> {
                 if !inline;
                 if let Some(symbols) = symbols;
                 if let Some(symbol) = symbols.lookup(ranges[0].begin)?;
-                if symbol.addr() + symbol.len().unwrap_or(!0) <= ranges[ranges.len() - 1].end;
+                if let Some(len) = symbol.len();
+                if symbol.addr() + len <= ranges[ranges.len() - 1].end;
                 then {
                     Some(symbol.name())
                 } else {
