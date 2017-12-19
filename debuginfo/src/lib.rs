@@ -3,7 +3,6 @@
 extern crate goblin;
 #[macro_use]
 extern crate if_chain;
-#[macro_use]
 extern crate symbolic_common;
 extern crate uuid;
 

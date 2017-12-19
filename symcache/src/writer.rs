@@ -232,9 +232,9 @@ impl<W: Write> SymCacheWriter<W> {
     }
 
     fn write_symbol_table(&mut self, symbols: SymbolIterator, vmaddr: u64) -> Result<()> {
-        for sym_rv in symbols {
-            let (func_addr, len, symbol) = sym_rv?;
-            self.write_simple_function(func_addr - vmaddr, len, symbol)?;
+        for symbol_result in symbols {
+            let func = symbol_result?;
+            self.write_simple_function(func.addr() - vmaddr, func.len().unwrap_or(!0), func.name())?;
         }
 
         self.header.data_source = DataSource::SymbolTable as u8;
@@ -251,8 +251,8 @@ impl<W: Write> SymCacheWriter<W> {
         vmaddr: u64,
         symbol_iter: &mut Peekable<SymbolIterator>,
     ) -> Result<()> {
-        while let Some(&Ok((mut sym_addr, sym_len, sym))) = symbol_iter.peek() {
-            sym_addr -= vmaddr;
+        while let Some(&Ok(symbol)) = symbol_iter.peek() {
+            let sym_addr = symbol.addr() - vmaddr;
 
             // skip forward until we hit a relevant symbol
             if *last_addr != !0 && sym_addr < *last_addr {
@@ -261,9 +261,9 @@ impl<W: Write> SymCacheWriter<W> {
             }
 
             if (*last_addr == !0 || sym_addr >= *last_addr) && sym_addr < cur_addr {
-                self.write_simple_function(sym_addr, sym_len, sym)?;
+                self.write_simple_function(sym_addr, symbol.len().unwrap_or(!0), symbol.name())?;
                 symbol_iter.next();
-                *last_addr = sym_addr + sym_len as u64;
+                *last_addr = sym_addr + symbol.len().unwrap_or(1);
             } else {
                 break;
             }
@@ -271,7 +271,7 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(())
     }
 
-    fn write_simple_function<S>(&mut self, func_addr: u64, len: u32, symbol: S) -> Result<()>
+    fn write_simple_function<S>(&mut self, func_addr: u64, len: u64, symbol: S) -> Result<()>
     where
         S: AsRef<[u8]>,
     {
@@ -315,7 +315,7 @@ impl<W: Write> SymCacheWriter<W> {
             // Write all symbols that are not defined in info.functions()
             while syms.peek().map_or(false, |s| s.address < function.address) {
                 let symbol = syms.next().unwrap();
-                self.write_simple_function(symbol.address, symbol.size as u32, symbol.name)?;
+                self.write_simple_function(symbol.address, symbol.size, symbol.name)?;
             }
 
             // Skip symbols that are also defined in info.functions()
@@ -325,7 +325,7 @@ impl<W: Write> SymCacheWriter<W> {
             }
 
             let func_id = self.func_records.len();
-            self.write_simple_function(function.address, function.size as u32, function.name)?;
+            self.write_simple_function(function.address, function.size, function.name)?;
 
             if function.lines.is_empty() {
                 continue;
@@ -359,7 +359,7 @@ impl<W: Write> SymCacheWriter<W> {
 
         // Flush out all remaining symbols from the symbol table (PUBLIC records)
         for symbol in syms {
-            self.write_simple_function(symbol.address, symbol.size as u32, symbol.name)?;
+            self.write_simple_function(symbol.address, symbol.size, symbol.name)?;
         }
 
         self.header.data_source = DataSource::BreakpadSym as u8;
@@ -371,8 +371,9 @@ impl<W: Write> SymCacheWriter<W> {
     }
 
     fn write_dwarf_info(&mut self, info: &DwarfInfo, symbols: Option<Symbols>) -> Result<()> {
-        let mut range_buf = Vec::new();
         let symbols = symbols.as_ref();
+
+        let mut range_buf = Vec::new();
         let mut symbol_iter = symbols.map(|x| x.iter().peekable());
         let mut last_addr = !0;
         let mut addrs = FnvHashSet::default();

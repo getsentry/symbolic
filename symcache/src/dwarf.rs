@@ -300,10 +300,11 @@ impl<'input> Unit<'input> {
             let func_name = if_chain! {
                 if !inline;
                 if let Some(symbols) = symbols;
-                if let Some((sym_addr, sym_len, symbol)) = symbols.lookup(ranges[0].begin)?;
-                if sym_addr + (sym_len as u64) <= ranges[ranges.len() - 1].end;
+                if let Some(symbol) = symbols.lookup(ranges[0].begin)?;
+                if let Some(len) = symbol.len();
+                if symbol.addr() + len <= ranges[ranges.len() - 1].end;
                 then {
-                    Some(symbol.as_bytes())
+                    Some(symbol.name())
                 } else {
                     // fall back to dwarf info
                     self.resolve_function_name(info, entry)?
