@@ -68,12 +68,13 @@ impl<'data> SymbolsInternal<'data> {
 
                 // The length is only calculated if `next` is specified and does
                 // not result in an error. Otherwise, errors here are swallowed.
+                let addr = nlist.n_value;
                 let len = next.and_then(|index| symbols.get(index).ok())
-                    .map(|(_, nlist)| nlist.n_value);
+                    .map(|(_, nlist)| nlist.n_value - addr);
 
                 Symbol {
                     name: stripped.as_bytes(),
-                    addr: nlist.n_value,
+                    addr: addr,
                     len: len,
                 }
             }
@@ -94,7 +95,7 @@ type IndexMapping = (u64, usize);
 /// `Symbols::lookup` instead.
 pub struct SymbolIterator<'data, 'sym>
 where
-    'data: 'sym
+    'data: 'sym,
 {
     symbols: &'sym Symbols<'data>,
     iter: Peekable<slice::Iter<'sym, IndexMapping>>,
