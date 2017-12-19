@@ -234,7 +234,7 @@ impl<W: Write> SymCacheWriter<W> {
     fn write_symbol_table(&mut self, symbols: SymbolIterator, vmaddr: u64) -> Result<()> {
         for symbol_result in symbols {
             let func = symbol_result?;
-            self.write_simple_function(func.addr - vmaddr, func.len.unwrap_or(!0), func.name)?;
+            self.write_simple_function(func.addr() - vmaddr, func.len().unwrap_or(!0), func.name())?;
         }
 
         self.header.data_source = DataSource::SymbolTable as u8;
@@ -252,8 +252,8 @@ impl<W: Write> SymCacheWriter<W> {
         symbol_iter: &mut Peekable<SymbolIterator>,
     ) -> Result<()> {
         while let Some(&Ok(symbol)) = symbol_iter.peek() {
-            let sym_addr = symbol.addr - vmaddr;
-            let sym_len = symbol.len.unwrap_or(!0);
+            let sym_addr = symbol.addr() - vmaddr;
+            let sym_len = symbol.len().unwrap_or(!0);
 
             // skip forward until we hit a relevant symbol
             if *last_addr != !0 && sym_addr < *last_addr {
@@ -262,7 +262,7 @@ impl<W: Write> SymCacheWriter<W> {
             }
 
             if (*last_addr == !0 || sym_addr >= *last_addr) && sym_addr < cur_addr {
-                self.write_simple_function(sym_addr, sym_len, symbol.name)?;
+                self.write_simple_function(sym_addr, sym_len, symbol.name())?;
                 symbol_iter.next();
                 *last_addr = sym_addr + sym_len;
             } else {

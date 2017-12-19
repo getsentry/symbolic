@@ -301,9 +301,9 @@ impl<'input> Unit<'input> {
                 if !inline;
                 if let Some(symbols) = symbols;
                 if let Some(symbol) = symbols.lookup(ranges[0].begin)?;
-                if symbol.addr + symbol.len.unwrap_or(!0) <= ranges[ranges.len() - 1].end;
+                if symbol.addr() + symbol.len().unwrap_or(!0) <= ranges[ranges.len() - 1].end;
                 then {
-                    Some(symbol.name)
+                    Some(symbol.name())
                 } else {
                     // fall back to dwarf info
                     self.resolve_function_name(info, entry)?

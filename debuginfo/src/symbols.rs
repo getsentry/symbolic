@@ -12,15 +12,29 @@ use object::{Object, ObjectTarget};
 /// A single symbol
 #[derive(Clone, Copy)]
 pub struct Symbol<'data> {
-    /// Binary string value of the symbol
-    pub name: &'data [u8],
-    /// Address of this symbol
-    pub addr: u64,
-    /// Presumed length of the symbol
-    pub len: Option<u64>,
+    name: &'data [u8],
+    addr: u64,
+    len: Option<u64>,
 }
 
-impl<'a> fmt::Debug for Symbol<'a> {
+impl<'data> Symbol<'data> {
+    /// Binary string value of the symbol
+    pub fn name(&self) -> &'data [u8] {
+        self.name
+    }
+
+    /// Address of this symbol
+    pub fn addr(&self) -> u64 {
+        self.addr
+    }
+
+    /// Presumed length of the symbol
+    pub fn len(&self) -> Option<u64> {
+        self.len
+    }
+}
+
+impl<'data> fmt::Debug for Symbol<'data> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Symbol")
             .field("name", &String::from_utf8_lossy(self.name))
