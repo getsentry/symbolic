@@ -4,10 +4,15 @@ use std::iter::{IntoIterator, Peekable};
 use std::slice;
 
 use goblin::mach;
+use regex::Regex;
 
 use symbolic_common::{ErrorKind, Result};
 
 use object::{Object, ObjectTarget};
+
+lazy_static! {
+    static ref HIDDEN_SYMBOL_RE: Regex = Regex::new("__hidden#\\d+").unwrap();
+}
 
 /// A single symbol
 #[derive(Clone, Copy)]
@@ -190,6 +195,25 @@ impl<'data> Symbols<'data> {
         let index = self.mappings[found].1;
         let next = self.mappings.get(found + 1).map(|mapping| mapping.1);
         self.internal.get(index, next)
+    }
+
+    /// Checks whether this binary contains hidden symbols
+    ///
+    /// This is an indication that BCSymbolMaps are needed to symbolicate
+    /// symbols correctly.
+    pub fn requires_symbolmap(&self) -> Result<bool> {
+        // Hidden symbols can only ever occur in Apple's dSYM
+        match self.internal {
+            SymbolsInternal::MachO(..) => (),
+        };
+
+        for symbol in self.iter() {
+            if HIDDEN_SYMBOL_RE.is_match(&String::from_utf8_lossy(symbol?.name())) {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
     }
 
     pub fn iter<'sym>(&'sym self) -> SymbolIterator<'data, 'sym> {
