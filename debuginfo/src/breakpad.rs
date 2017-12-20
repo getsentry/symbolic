@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use symbolic_common::{Arch, Error, ErrorKind, ObjectKind, Result};
 
-use object::Object;
+use object::{FatObject, Object};
 
 /// Unique identifier of a Breakpad code module
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy)]
@@ -328,12 +328,22 @@ impl<'data> BreakpadData for Object<'data> {
     }
 }
 
+impl<'data> BreakpadData for FatObject<'data> {
+    fn has_breakpad_data(&self) -> bool {
+        self.kind() == ObjectKind::Breakpad
+    }
+
+    fn breakpad_records<'input>(&'input self) -> BreakpadRecords<'input> {
+        BreakpadRecords::from_bytes(self.as_bytes())
+    }
+}
+
 /// Parses a breakpad MODULE record
 ///
 /// Syntax: "MODULE operatingsystem architecture id name"
 /// Example: "MODULE Linux x86 D3096ED481217FD4C16B29CD9BC208BA0 firefox-bin"
 /// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#module-records
-fn parse_module<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>> {
+fn parse_module(line: &[u8]) -> Result<BreakpadRecord> {
     // if self.module.is_some() {
     //     return Err(ErrorKind::BadBreakpadSym("Multiple MODULE records not supported").into());
     // }
