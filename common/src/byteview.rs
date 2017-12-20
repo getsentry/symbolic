@@ -8,8 +8,8 @@ use owning_ref::OwningHandle;
 
 use errors::Result;
 
-enum ByteViewInner<'a> {
-    Buf(Cow<'a, [u8]>),
+enum ByteViewInner<'bytes> {
+    Buf(Cow<'bytes, [u8]>),
     Mmap(Mmap),
 }
 
@@ -29,28 +29,41 @@ enum ByteViewInner<'a> {
 /// # use symbolic_common::ByteView;
 /// let bv = ByteView::from_slice(b"1234");
 /// ```
-pub struct ByteView<'a> {
-    inner: ByteViewInner<'a>,
+pub struct ByteView<'bytes> {
+    inner: ByteViewInner<'bytes>,
 }
 
-impl<'a> ByteView<'a> {
-    fn from_cow(cow: Cow<'a, [u8]>) -> ByteView<'a> {
+impl<'bytes> ByteView<'bytes> {
+    /// Constructs a `ByteView` from a `Cow`
+    fn from_cow(cow: Cow<'bytes, [u8]>) -> ByteView<'bytes> {
         ByteView {
-            inner: ByteViewInner::Buf(cow)
+            inner: ByteViewInner::Buf(cow),
         }
     }
 
-    /// Constructs an object file from a byte slice.
-    pub fn from_slice(buffer: &'a [u8]) -> ByteView<'a> {
+    /// Constructs a `ByteView` from a byte slice
+    pub fn from_slice(buffer: &'bytes [u8]) -> ByteView<'bytes> {
         ByteView::from_cow(Cow::Borrowed(buffer))
     }
 
-    /// Constructs an object file from a vector.
+    /// Constructs a `ByteView` from a vector of bytes
     pub fn from_vec(buffer: Vec<u8>) -> ByteView<'static> {
         ByteView::from_cow(Cow::Owned(buffer))
     }
 
-    /// Constructs an object file from a file path.
+    /// Constructs a `ByteView` from any `std::io::Reader`
+    ///
+    /// This currently consumes the entire reader and stores its data in an
+    /// internal buffer. Prefer `ByteView::from_path` when reading from the file
+    /// system or `ByteView::from_slice`/`ByteView::from_vec` for in-memory
+    /// operations. This behavior might change in the future.
+    pub fn from_reader<R: io::Read>(mut reader: R) -> Result<ByteView<'static>> {
+        let mut buffer = vec![];
+        reader.read_to_end(&mut buffer)?;
+        Ok(ByteView::from_vec(buffer))
+    }
+
+    /// Constructs a `ByteView` from a file path
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<ByteView<'static>> {
         let inner = match Mmap::open_path(path, Protection::Read) {
             Ok(mmap) => ByteViewInner::Mmap(mmap),
@@ -63,21 +76,21 @@ impl<'a> ByteView<'a> {
                 }
             }
         };
-        Ok(ByteView {
-            inner: inner,
-        })
+        Ok(ByteView { inner: inner })
     }
 
     #[inline(always)]
     fn buffer(&self) -> &[u8] {
         match self.inner {
             ByteViewInner::Buf(ref buf) => buf,
-            ByteViewInner::Mmap(ref mmap) => unsafe { mmap.as_slice() },
+            ByteViewInner::Mmap(ref mmap) => unsafe {
+                mmap.as_slice()
+            },
         }
     }
 }
 
-impl<'a> Deref for ByteView<'a> {
+impl<'bytes> Deref for ByteView<'bytes> {
     type Target = [u8];
 
     fn deref(&self) -> &[u8] {
@@ -85,7 +98,7 @@ impl<'a> Deref for ByteView<'a> {
     }
 }
 
-impl<'a> AsRef<[u8]> for ByteView<'a> {
+impl<'bytes> AsRef<[u8]> for ByteView<'bytes> {
     fn as_ref(&self) -> &[u8] {
         self.buffer()
     }
@@ -100,17 +113,18 @@ impl<'a> AsRef<[u8]> for ByteView<'a> {
 ///
 /// Upon `deref` the inner type is returned.  Additionally the bytes
 /// are exposed through the static `get_bytes` method.
-pub struct ByteViewHandle<'a, T> {
-    inner: OwningHandle<Box<ByteView<'a>>, Box<(&'a [u8], T)>>,
+pub struct ByteViewHandle<'bytes, T> {
+    inner: OwningHandle<Box<ByteView<'bytes>>, Box<(&'bytes [u8], T)>>,
 }
 
-impl<'a, T> ByteViewHandle<'a, T> {
-    /// Creates a new `ByteViewHandle` from a `ByteView`.
+impl<'bytes, T> ByteViewHandle<'bytes, T> {
+    /// Creates a new `ByteViewHandle` from a `ByteView`
     ///
     /// The closure is invoked with the borrowed bytes from the original
     /// byte view and the return value is retained in the handle.
-    pub fn from_byteview<F>(view: ByteView<'a>, f: F) -> Result<ByteViewHandle<'a, T>>
-        where F: FnOnce(&'a [u8]) -> Result<T>
+    pub fn from_byteview<F>(view: ByteView<'bytes>, f: F) -> Result<ByteViewHandle<'bytes, T>>
+    where
+        F: FnOnce(&'bytes [u8]) -> Result<T>,
     {
         // note on the safety here.  This unsafe pointer juggling causes some
         // issues.  The underlying OwningHandle is fundamentally unsafe because
@@ -129,38 +143,51 @@ impl<'a, T> ByteViewHandle<'a, T> {
             inner: OwningHandle::try_new(Box::new(view), |bv| -> Result<_> {
                 let bytes: &[u8] = unsafe { &*bv };
                 Ok(Box::new((bytes, f(bytes)?)))
-            })?
+            })?,
         })
     }
 
-    /// Constructs an object file from a byte slice.
-    pub fn from_slice<F>(buffer: &'a [u8], f: F) -> Result<ByteViewHandle<'a, T>>
-        where F: FnOnce(&'a [u8]) -> Result<T>
+    /// Constructs a `ByteViewHandle` from a byte slice
+    pub fn from_slice<F>(buffer: &'bytes [u8], f: F) -> Result<ByteViewHandle<'bytes, T>>
+    where
+        F: FnOnce(&'bytes [u8]) -> Result<T>,
     {
         ByteViewHandle::from_byteview(ByteView::from_slice(buffer), f)
     }
 
-    /// Constructs an object file from a vec
+    /// Constructs a `ByteViewHandle` from a vector of bytes
     pub fn from_vec<F>(vec: Vec<u8>, f: F) -> Result<ByteViewHandle<'static, T>>
-        where F: FnOnce(&'static [u8]) -> Result<T>
+    where
+        F: FnOnce(&'static [u8]) -> Result<T>,
     {
         ByteViewHandle::from_byteview(ByteView::from_vec(vec), f)
     }
 
-    /// Constructs an object file from a file path.
+    /// Constructs a `ByteViewHandle` from a file path
+    pub fn from_reader<F, R>(reader: R, f: F) -> Result<ByteViewHandle<'static, T>>
+    where
+        F: FnOnce(&'static [u8]) -> Result<T>,
+        R: io::Read,
+    {
+        ByteViewHandle::from_byteview(ByteView::from_reader(reader)?, f)
+    }
+
+    /// Constructs a `ByteViewHandle` from a file path
     pub fn from_path<F, P>(path: P, f: F) -> Result<ByteViewHandle<'static, T>>
-        where F: FnOnce(&'static [u8]) -> Result<T>, P: AsRef<Path>
+    where
+        F: FnOnce(&'static [u8]) -> Result<T>,
+        P: AsRef<Path>,
     {
         ByteViewHandle::from_byteview(ByteView::from_path(path)?, f)
     }
 
-    /// Returns the underlying storage (byte slice).
-    pub fn get_bytes<'b>(this: &'b ByteViewHandle<'a, T>) -> &'b [u8] {
+    /// Returns the underlying storage (byte slice)
+    pub fn get_bytes<'b>(this: &'b ByteViewHandle<'bytes, T>) -> &'b [u8] {
         this.inner.0
     }
 }
 
-impl<'a, T> Deref for ByteViewHandle<'a, T> {
+impl<'bytes, T> Deref for ByteViewHandle<'bytes, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -168,7 +195,7 @@ impl<'a, T> Deref for ByteViewHandle<'a, T> {
     }
 }
 
-impl<'a, T> AsRef<T> for ByteViewHandle<'a, T> {
+impl<'bytes, T> AsRef<T> for ByteViewHandle<'bytes, T> {
     fn as_ref(&self) -> &T {
         &self.inner.1
     }
