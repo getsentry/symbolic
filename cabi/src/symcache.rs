@@ -17,7 +17,7 @@ pub struct SymbolicSymCache;
 
 /// Represents a single symbol after lookup.
 #[repr(C)]
-pub struct SymbolicSymbol {
+pub struct SymbolicLineInfo {
     pub sym_addr: u64,
     pub instr_addr: u64,
     pub line: u32,
@@ -31,7 +31,7 @@ pub struct SymbolicSymbol {
 /// Represents a lookup result of one or more items.
 #[repr(C)]
 pub struct SymbolicLookupResult {
-    pub items: *mut SymbolicSymbol,
+    pub items: *mut SymbolicLineInfo,
     pub len: usize,
 }
 
@@ -160,16 +160,16 @@ ffi_fn! {
         let vec = (*cache).lookup(addr)?;
 
         let mut items = vec![];
-        for symbol in vec {
-            items.push(SymbolicSymbol {
-                sym_addr: symbol.sym_addr(),
-                instr_addr: symbol.instr_addr(),
-                line: symbol.line(),
-                lang: SymbolicStr::new(symbol.lang().name()),
-                symbol: SymbolicStr::new(symbol.symbol()),
-                filename: SymbolicStr::new(symbol.filename()),
-                base_dir: SymbolicStr::new(symbol.base_dir()),
-                comp_dir: SymbolicStr::new(symbol.comp_dir()),
+        for line_info in vec {
+            items.push(SymbolicLineInfo {
+                sym_addr: line_info.sym_addr(),
+                instr_addr: line_info.instr_addr(),
+                line: line_info.line(),
+                lang: SymbolicStr::new(line_info.lang().name()),
+                symbol: SymbolicStr::new(line_info.symbol()),
+                filename: SymbolicStr::new(line_info.filename()),
+                base_dir: SymbolicStr::new(line_info.base_dir()),
+                comp_dir: SymbolicStr::new(line_info.comp_dir()),
             });
         }
 

@@ -22,8 +22,8 @@ pub const SYMCACHE_MAGIC: [u8; 4] = [b'S', b'Y', b'M', b'C'];
 /// The latest version of the file format.
 pub const SYMCACHE_LATEST_VERSION: u32 = 1;
 
-/// A matched symbol
-pub struct Symbol<'a> {
+/// Information on a matched source line
+pub struct LineInfo<'a> {
     cache: &'a SymCache<'a>,
     sym_addr: u64,
     instr_addr: u64,
@@ -35,23 +35,23 @@ pub struct Symbol<'a> {
     comp_dir: &'a str,
 }
 
-/// An abstraction around a symbol cache file.
+/// An abstraction around a symbolication cache file.
 pub struct SymCache<'a> {
     byteview: ByteView<'a>,
 }
 
-impl<'a> Symbol<'a> {
-    /// The architecture of the matched symbol.
+impl<'a> LineInfo<'a> {
+    /// The architecture of the matched line.
     pub fn arch(&self) -> Arch {
         self.cache.arch().unwrap_or(Arch::Unknown)
     }
 
-    /// The uuid of the matched symbol.
+    /// The uuid of the matched line.
     pub fn uuid(&self) -> Uuid {
         self.cache.uuid().unwrap_or(Uuid::nil())
     }
 
-    /// The address where the symbol starts.
+    /// The instruction address where the line starts.
     pub fn sym_addr(&self) -> u64 {
         self.sym_addr
     }
@@ -66,7 +66,7 @@ impl<'a> Symbol<'a> {
         self.line
     }
 
-    /// The current language.
+    /// The current source code language.
     pub fn lang(&self) -> Language {
         self.lang
     }
@@ -105,7 +105,7 @@ impl<'a> Symbol<'a> {
     }
 }
 
-impl<'a> fmt::Display for Symbol<'a> {
+impl<'a> fmt::Display for LineInfo<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.function_name())?;
         if f.alternate() {
@@ -129,9 +129,9 @@ impl<'a> fmt::Display for Symbol<'a> {
     }
 }
 
-impl<'a> fmt::Debug for Symbol<'a> {
+impl<'a> fmt::Debug for LineInfo<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Symbol")
+        f.debug_struct("LineInfo")
             .field("arch", &self.arch())
             .field("sym_addr", &self.sym_addr())
             .field("instr_addr", &self.instr_addr())
@@ -514,7 +514,7 @@ impl<'a> SymCache<'a> {
     }
 
     fn build_symbol(&'a self, fun: &'a FuncRecord, addr: u64,
-                    inner_sym: Option<&Symbol<'a>>) -> Result<Symbol<'a>> {
+                    inner_sym: Option<&LineInfo<'a>>) -> Result<LineInfo<'a>> {
         let (line, filename, base_dir) = match self.run_to_line(fun, addr)? {
             Some((file_record, line)) => {
                 (
@@ -531,7 +531,7 @@ impl<'a> SymCache<'a> {
                 }
             }
         };
-        Ok(Symbol {
+        Ok(LineInfo {
             cache: self,
             sym_addr: fun.addr_start(),
             instr_addr: addr,
@@ -557,7 +557,7 @@ impl<'a> SymCache<'a> {
     /// Because of inling information this returns a vector of zero or
     /// more symbols.  If nothing is found then the return value will be
     /// an empty vector.
-    pub fn lookup(&'a self, addr: u64) -> Result<Vec<Symbol<'a>>> {
+    pub fn lookup(&'a self, addr: u64) -> Result<Vec<LineInfo<'a>>> {
         let funcs = self.function_records()?;
 
         // functions in the function segment are ordered by start address
