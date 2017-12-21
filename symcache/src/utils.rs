@@ -76,7 +76,7 @@ pub fn shorten_filename<'a>(filename: &'a str, length: usize) -> Cow<'a, str> {
     let mut last_idx = 0;
     let mut piece_iter = filename.match_indices(&['\\', '/'][..]);
     let mut final_sep = "/";
-    let max_len = length - 3;
+    let max_len = length - 4;
 
     // make sure we get two segments at the start.
     loop {
@@ -118,14 +118,14 @@ pub fn shorten_filename<'a>(filename: &'a str, length: usize) -> Cow<'a, str> {
     if rv.len() > max_len || rest.len() == 0 {
         let basename = filename.rsplit(&['\\', '/'][..]).next().unwrap();
         if basename.len() > max_len {
-            return Cow::Owned(format!("...{}", &basename[basename.len() - max_len..]));
+            return Cow::Owned(format!("...{}", &basename[basename.len() - max_len + 1..]));
         } else {
-            return Cow::Owned(format!("..{}{}", final_sep, basename));
+            return Cow::Owned(format!("...{}{}", final_sep, basename));
         }
     }
 
     rest.reverse();
-    rv.push_str("..");
+    rv.push_str("...");
     rv.push_str(final_sep);
     for item in rest {
         rv.push_str(&item);
@@ -152,12 +152,12 @@ fn test_common_join_path() {
 fn test_shorten_filename() {
     assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 6), "/fo...");
     assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 2), "/f");
-    assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 20), "/foo/../blafasel");
-    assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 21), "/foo/../blah/blafasel");
-    assert_eq!(&shorten_filename("C:\\bar\\baz\\blah\\blafasel", 20), "C:\\bar\\..\\blafasel");
-    assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 26), "/foo/bar/baz/blah/blafasel");
-    assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 25), "/foo/../baz/blah/blafasel");
-    assert_eq!(&shorten_filename("/foo/b/baz/blah/blafasel", 23), "/foo/../blah/blafasel");
-    assert_eq!(&shorten_filename("/foobarbaz/blahblah", 16), "../blahblah");
-    assert_eq!(&shorten_filename("/foobarbazblahblah", 12), "...zblahblah");
+    assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 21), "/foo/.../blafasel");
+    assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 22), "/foo/.../blah/blafasel");
+    assert_eq!(&shorten_filename("C:\\bar\\baz\\blah\\blafasel", 20), "C:\\bar\\...\\blafasel");
+    assert_eq!(&shorten_filename("/foo/blar/baz/blah/blafasel", 27), "/foo/blar/baz/blah/blafasel");
+    assert_eq!(&shorten_filename("/foo/blar/baz/blah/blafasel", 26), "/foo/.../baz/blah/blafasel");
+    assert_eq!(&shorten_filename("/foo/b/baz/blah/blafasel", 23), "/foo/.../blah/blafasel");
+    assert_eq!(&shorten_filename("/foobarbaz/blahblah", 16), ".../blahblah");
+    assert_eq!(&shorten_filename("/foobarbazblahblah", 12), "...lahblah");
 }
