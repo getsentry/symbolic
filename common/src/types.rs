@@ -1,5 +1,6 @@
-use std::mem;
+use std::borrow::Cow;
 use std::fmt;
+use std::mem;
 
 #[cfg(feature = "with_dwarf")]
 use gimli;
@@ -70,8 +71,7 @@ pub enum Arch {
     Arm64V8,
     Ppc,
     Ppc64,
-    #[doc(hidden)]
-    __Max
+    #[doc(hidden)] __Max,
 }
 
 impl Default for Arch {
@@ -290,7 +290,7 @@ pub enum Language {
     Rust,
     Swift,
     #[doc(hidden)]
-    __Max
+    __Max,
 }
 
 impl Language {
@@ -304,7 +304,7 @@ impl Language {
     }
 
     /// Converts a DWARF language tag into a supported language.
-    #[cfg(feature="with_dwarf")]
+    #[cfg(feature = "with_dwarf")]
     pub fn from_dwarf_lang(lang: gimli::DwLang) -> Language {
         match lang {
             gimli::DW_LANG_C | gimli::DW_LANG_C11 |
@@ -369,6 +369,65 @@ impl fmt::Display for Language {
             Rust => "Rust",
             Swift => "Swift",
         })
+    }
+}
+
+/// Represents a potentially mangled symbol
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub struct Name<'a> {
+    string: Cow<'a, str>,
+    lang: Option<Language>,
+}
+
+impl<'a> Name<'a> {
+    /// Constructs a new mangled symbol
+    pub fn new<S>(string: S) -> Name<'a>
+    where
+        S: Into<Cow<'a, str>>
+    {
+        Name {
+            string: string.into(),
+            lang: None,
+        }
+    }
+
+    /// Constructs a new mangled symbol with known language
+    pub fn with_language<S>(string: S, lang: Language) -> Name<'a>
+    where
+        S: Into<Cow<'a, str>>
+    {
+        let lang_opt = match lang {
+            // Ignore unknown languages and apply heuristics instead
+            Language::Unknown | Language::__Max => None,
+            _ => Some(lang),
+        };
+
+        Name {
+            string: string.into(),
+            lang: lang_opt,
+        }
+    }
+
+    /// The raw, mangled string of the symbol
+    pub fn as_str(&self) -> &str {
+        &self.string
+    }
+
+    /// The language of the mangled symbol
+    pub fn language(&self) -> Option<Language> {
+        self.lang
+    }
+}
+
+impl<'a> AsRef<str> for Name<'a> {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl<'a> fmt::Display for Name<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.as_str())
     }
 }
 

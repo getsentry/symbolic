@@ -5,8 +5,8 @@
 extern crate symbolic_common;
 extern crate symbolic_demangle;
 
-use symbolic_demangle::{DemangleFormat, DemangleOptions, Symbol};
-use symbolic_common::Language;
+use symbolic_common::{Language, Name};
+use symbolic_demangle::{Demangle, DemangleFormat, DemangleOptions};
 
 const DEMANGLE_FORMAT: DemangleOptions = DemangleOptions {
     format: DemangleFormat::Short,
@@ -14,10 +14,10 @@ const DEMANGLE_FORMAT: DemangleOptions = DemangleOptions {
 };
 
 fn assert_demangle(input: &str, output: Option<&str>) {
-    let symbol = Symbol::new(input);
-    assert_eq!(symbol.language(), Some(Language::Swift));
+    let name = Name::new(input);
+    assert_eq!(name.detect_language(), Some(Language::Swift));
 
-    if let Some(rv) = symbol.demangle(&DEMANGLE_FORMAT).unwrap() {
+    if let Some(rv) = name.demangle(DEMANGLE_FORMAT).unwrap() {
         assert_eq!(Some(rv.as_str()), output);
     } else {
         assert_eq!(None, output);

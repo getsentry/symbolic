@@ -8,11 +8,11 @@ use std::cell::RefCell;
 
 use uuid::Uuid;
 
-use symbolic_common::{Result, ErrorKind, ByteView, Arch, Language};
+use symbolic_common::{Arch, ByteView, ErrorKind, Language, Result};
 use symbolic_debuginfo::Object;
-use symbolic_demangle;
+use symbolic_demangle::demangle;
 
-use types::{CacheFileHeader, Seg, FileRecord, FuncRecord, DataSource};
+use types::{CacheFileHeader, DataSource, FileRecord, FuncRecord, Seg};
 use utils::common_join_path;
 use writer;
 
@@ -38,10 +38,6 @@ pub struct Symbol<'a> {
 /// An abstraction around a symbol cache file.
 pub struct SymCache<'a> {
     byteview: ByteView<'a>,
-}
-
-fn demangle(sym: &str) -> String {
-    symbolic_demangle::Symbol::new(sym).to_string()
 }
 
 impl<'a> Symbol<'a> {
