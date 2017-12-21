@@ -425,6 +425,18 @@ impl<'a> AsRef<str> for Name<'a> {
     }
 }
 
+impl<'a> Into<String> for Name<'a> {
+    fn into(self) -> String {
+        self.string.into()
+    }
+}
+
+impl<'a> Into<Cow<'a, str>> for Name<'a> {
+    fn into(self) -> Cow<'a, str> {
+        self.string
+    }
+}
+
 impl<'a> fmt::Display for Name<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.as_str())

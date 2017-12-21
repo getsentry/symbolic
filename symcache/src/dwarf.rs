@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fmt;
 use std::cmp;
@@ -129,7 +130,7 @@ pub struct Function<'a> {
     pub depth: u16,
     pub addr: u64,
     pub len: u32,
-    pub name: &'a [u8],
+    pub name: Cow<'a, str>,
     pub inlines: Vec<Function<'a>>,
     pub lines: Vec<Line<'a>>,
     pub comp_dir: &'a [u8],
@@ -159,7 +160,7 @@ impl<'a> Function<'a> {
 impl<'a> fmt::Debug for Function<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Function")
-            .field("name", &String::from_utf8_lossy(self.name))
+            .field("name", &self.name)
             .field("addr", &self.addr)
             .field("len", &self.len)
             .field("depth", &self.depth)
@@ -304,7 +305,7 @@ impl<'input> Unit<'input> {
                 if let Some(len) = symbol.len();
                 if symbol.addr() + len <= ranges[ranges.len() - 1].end;
                 then {
-                    Some(symbol.name())
+                    Some(symbol.into())
                 } else {
                     // fall back to dwarf info
                     self.resolve_function_name(info, entry)?
@@ -315,7 +316,7 @@ impl<'input> Unit<'input> {
                 depth: depth as u16,
                 addr: ranges[0].begin - info.vmaddr,
                 len: (ranges[ranges.len() - 1].end - ranges[0].begin) as u32,
-                name: func_name.unwrap_or(b""),
+                name: func_name.unwrap_or("".into()),
                 inlines: vec![],
                 lines: vec![],
                 comp_dir: self.comp_dir.map(|x| x.buf()).unwrap_or(b""),
@@ -487,7 +488,7 @@ impl<'input> Unit<'input> {
         &self,
         info: &DwarfInfo<'input>,
         entry: &Die<'abbrev, 'unit, 'input>,
-    ) -> Result<Option<&'input [u8]>> {
+    ) -> Result<Option<Cow<'input, str>>> {
         let mut fiter = entry.attrs();
         let mut fallback_name = None;
         let mut reference_target = None;
@@ -496,7 +497,7 @@ impl<'input> Unit<'input> {
             match attr.name() {
                 // prioritize these.  If we get them, take them.
                 gimli::DW_AT_linkage_name | gimli::DW_AT_MIPS_linkage_name => {
-                    return Ok(attr.string_value(&info.debug_str).map(|x| x.buf()));
+                    return Ok(attr.string_value(&info.debug_str).map(|s| s.to_string_lossy()));
                 }
                 gimli::DW_AT_name => {
                     fallback_name = Some(attr);
@@ -509,7 +510,7 @@ impl<'input> Unit<'input> {
         }
 
         if let Some(attr) = fallback_name {
-            return Ok(attr.string_value(&info.debug_str).map(|x| x.buf()));
+            return Ok(attr.string_value(&info.debug_str).map(|s| s.to_string_lossy()));
         }
 
         if let Some(attr) = reference_target {
