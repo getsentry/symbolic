@@ -1,7 +1,16 @@
-use symbolic_demangle::Symbol;
-use symbolic_common::Language;
+use symbolic_common::{Language, Name};
+use symbolic_demangle::{Demangle, DemangleFormat, DemangleOptions};
 
 use core::SymbolicStr;
+
+unsafe fn get_name(ident: *const SymbolicStr, lang: *const SymbolicStr) -> Name<'static> {
+    if lang.is_null() {
+        Name::new((*ident).as_str())
+    } else {
+        let lang = Language::parse((*lang).as_str());
+        Name::with_language((*ident).as_str(), lang)
+    }
+}
 
 ffi_fn! {
     /// Demangles a given identifier.
@@ -12,14 +21,12 @@ ffi_fn! {
         ident: *const SymbolicStr,
         lang: *const SymbolicStr,
     ) -> Result<SymbolicStr> {
-        let sym = if lang.is_null() {
-            Symbol::new((*ident).as_str())
-        } else {
-            let lang = Language::parse((*lang).as_str());
-            Symbol::with_language((*ident).as_str(), lang)
-        };
+        let demangled = get_name(ident, lang).try_demangle(DemangleOptions {
+            with_arguments: true,
+            format: DemangleFormat::Short,
+        });
 
-        Ok(SymbolicStr::from_string(format!("{:#}", sym)))
+        Ok(SymbolicStr::from_string(demangled))
     }
 }
 
@@ -33,13 +40,11 @@ ffi_fn! {
         ident: *const SymbolicStr,
         lang: *const SymbolicStr,
     ) -> Result<SymbolicStr> {
-        let sym = if lang.is_null() {
-            Symbol::new((*ident).as_str())
-        } else {
-            let lang = Language::parse((*lang).as_str());
-            Symbol::with_language((*ident).as_str(), lang)
-        };
+        let demangled = get_name(ident, lang).try_demangle(DemangleOptions {
+            with_arguments: false,
+            format: DemangleFormat::Short,
+        });
 
-        Ok(SymbolicStr::from_string(format!("{}", sym)))
+        Ok(SymbolicStr::from_string(demangled))
     }
 }

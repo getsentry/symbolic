@@ -146,11 +146,5 @@ fn main() {
              .help("Print all symbols"))
         .get_matches();
 
-    match execute(&matches) {
-        Ok(()) => {},
-        Err(err) => {
-            println!("error: {}", err);
-            process::exit(1);
-        }
-    }
+    execute(&matches).unwrap()
 }
