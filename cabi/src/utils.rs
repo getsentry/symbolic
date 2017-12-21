@@ -9,11 +9,16 @@ use backtrace::Backtrace;
 
 thread_local! {
     pub static LAST_ERROR: RefCell<Option<Error>> = RefCell::new(None);
-    pub static LAST_PANIC: RefCell<Option<(String, Backtrace)>> = RefCell::new(None);
+    pub static LAST_BACKTRACE: RefCell<Option<(Option<String>, Backtrace)>> = RefCell::new(None);
 }
 
 
 fn notify_err(err: Error) {
+    if let Some(backtrace) = err.backtrace() {
+        LAST_BACKTRACE.with(|e| {
+            *e.borrow_mut() = Some((None, backtrace.clone()));
+        });
+    }
     LAST_ERROR.with(|e| {
         *e.borrow_mut() = Some(err);
     });
@@ -46,8 +51,8 @@ pub unsafe fn set_panic_hook() {
             }
         };
 
-        LAST_PANIC.with(|e| {
-            *e.borrow_mut() = Some((panic_info, backtrace));
+        LAST_BACKTRACE.with(|e| {
+            *e.borrow_mut() = Some((Some(panic_info), backtrace));
         });
     }));
 }

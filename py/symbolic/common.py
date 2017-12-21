@@ -1,3 +1,4 @@
+import os
 from symbolic._lowlevel import lib, ffi
 from symbolic._compat import string_types, int_types
 from symbolic.utils import rustcall, encode_str, decode_str
@@ -11,7 +12,8 @@ __all__ = ['arch_is_known', 'arch_from_macho', 'arch_to_macho',
 ignore_arch_exc = (exceptions.NotFound, exceptions.Parse)
 
 
-# Make sure we init the lib
+# Make sure we init the lib and turn on rust backtraces
+os.environ['RUST_BACKTRACE'] = '1'
 ffi.init_once(lib.symbolic_init, 'init')
 
 
