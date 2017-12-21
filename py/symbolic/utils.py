@@ -81,9 +81,9 @@ def rustcall(func, *args):
     msg = lib.symbolic_err_get_last_message()
     cls = exceptions_by_code.get(err, SymbolicError)
     exc = cls(decode_str(msg))
-    panic_info = decode_str(lib.symbolic_err_get_panic_info())
-    if panic_info:
-        exc.panic_info = panic_info
+    backtrace = decode_str(lib.symbolic_err_get_backtrace())
+    if backtrace:
+        exc.rust_info = backtrace
     raise exc
 
 

@@ -13,12 +13,12 @@ class SymbolicError(Exception):
     def __init__(self, msg):
         Exception.__init__(self)
         self.message = msg
-        self.panic_info = None
+        self.rust_info = None
 
     def __str__(self):
         rv = self.message
-        if self.panic_info is not None:
-            return u'%s\n\n%s' % (rv, self.panic_info)
+        if self.rust_info is not None:
+            return u'%s\n\n%s' % (rv, self.rust_info)
         return rv
 
 

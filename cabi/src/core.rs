@@ -5,7 +5,7 @@ use std::slice;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-use utils::{set_panic_hook, LAST_ERROR, LAST_PANIC};
+use utils::{set_panic_hook, LAST_ERROR, LAST_BACKTRACE};
 
 use uuid::Uuid;
 
@@ -186,11 +186,15 @@ pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
 
 /// Returns the panic information as string.
 #[no_mangle]
-pub unsafe extern "C" fn symbolic_err_get_panic_info() -> SymbolicStr {
-    LAST_PANIC.with(|e| {
+pub unsafe extern "C" fn symbolic_err_get_backtrace() -> SymbolicStr {
+    LAST_BACKTRACE.with(|e| {
         if let Some((ref info, ref backtrace)) = *e.borrow() {
             use std::fmt::Write;
-            let mut out = format!("{}\nstacktrace:", info);
+            let mut out = String::new();
+            if let &Some(ref info) = info {
+                write!(&mut out, "{}\n", info).ok();
+            }
+            write!(&mut out, "stacktrace:").ok();
             let frames = backtrace.frames();
             if frames.len() > 5 {
                 let mut done = false;
@@ -237,7 +241,7 @@ pub unsafe extern "C" fn symbolic_err_clear() {
     LAST_ERROR.with(|e| {
         *e.borrow_mut() = None;
     });
-    LAST_PANIC.with(|e| {
+    LAST_BACKTRACE.with(|e| {
         *e.borrow_mut() = None;
     });
 }

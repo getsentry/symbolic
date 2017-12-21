@@ -277,6 +277,11 @@ SymbolicStr symbolic_demangle_no_args(const SymbolicStr *ident, const SymbolicSt
 void symbolic_err_clear();
 
 /*
+ * Returns the panic information as string.
+ */
+SymbolicStr symbolic_err_get_backtrace();
+
+/*
  * Returns the last error code.
  *
  * If there is no error, 0 is returned.
@@ -290,11 +295,6 @@ SymbolicErrorCode symbolic_err_get_last_code();
  * that needs to be freed with `symbolic_str_free`.
  */
 SymbolicStr symbolic_err_get_last_message();
-
-/*
- * Returns the panic information as string.
- */
-SymbolicStr symbolic_err_get_panic_info();
 
 /*
  * Frees the given fat object.
