@@ -1,12 +1,12 @@
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashSet};
-use std::fmt;
 use std::iter::{IntoIterator, Peekable};
 use std::slice;
 
 use goblin::mach;
 use regex::Regex;
 
-use symbolic_common::{ErrorKind, Result};
+use symbolic_common::{ErrorKind, Name, Result};
 
 use object::{Object, ObjectTarget};
 
@@ -15,17 +15,17 @@ lazy_static! {
 }
 
 /// A single symbol
-#[derive(Clone, Copy)]
+#[derive(Debug)]
 pub struct Symbol<'data> {
-    name: &'data [u8],
+    name: Cow<'data, str>,
     addr: u64,
     len: Option<u64>,
 }
 
 impl<'data> Symbol<'data> {
     /// Binary string value of the symbol
-    pub fn name(&self) -> &'data [u8] {
-        self.name
+    pub fn name(&self) -> &Cow<'data, str> {
+        &self.name
     }
 
     /// Address of this symbol
@@ -37,15 +37,28 @@ impl<'data> Symbol<'data> {
     pub fn len(&self) -> Option<u64> {
         self.len
     }
+
+    /// Returns the string representation of this symbol
+    pub fn as_str(&self) -> &str {
+        self.name().as_ref()
+    }
 }
 
-impl<'data> fmt::Debug for Symbol<'data> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Symbol")
-            .field("name", &String::from_utf8_lossy(self.name))
-            .field("addr", &self.addr)
-            .field("len", &self.len)
-            .finish()
+impl<'data> Into<Name<'data>> for Symbol<'data> {
+    fn into(self) -> Name<'data> {
+        Name::new(self.name)
+    }
+}
+
+impl<'data> Into<Cow<'data, str>> for Symbol<'data> {
+    fn into(self) -> Cow<'data, str> {
+        self.name
+    }
+}
+
+impl<'data> Into<String> for Symbol<'data> {
+    fn into(self) -> String {
+        self.name.into()
     }
 }
 
@@ -78,7 +91,7 @@ impl<'data> SymbolsInternal<'data> {
                     .map(|(_, nlist)| nlist.n_value - addr);
 
                 Symbol {
-                    name: stripped.as_bytes(),
+                    name: Cow::Borrowed(stripped),
                     addr: addr,
                     len: len,
                 }
@@ -208,7 +221,7 @@ impl<'data> Symbols<'data> {
         };
 
         for symbol in self.iter() {
-            if HIDDEN_SYMBOL_RE.is_match(&String::from_utf8_lossy(symbol?.name())) {
+            if HIDDEN_SYMBOL_RE.is_match(symbol?.as_str()) {
                 return Ok(true);
             }
         }

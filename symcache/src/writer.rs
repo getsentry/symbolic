@@ -239,7 +239,7 @@ impl<W: Write> SymCacheWriter<W> {
     fn write_symbol_table(&mut self, symbols: SymbolIterator, vmaddr: u64) -> Result<()> {
         for symbol_result in symbols {
             let func = symbol_result?;
-            self.write_simple_function(func.addr() - vmaddr, func.len().unwrap_or(!0), func.name())?;
+            self.write_simple_function(func.addr() - vmaddr, func.len().unwrap_or(!0), func.as_str())?;
         }
 
         self.header.data_source = DataSource::SymbolTable as u8;
@@ -256,8 +256,11 @@ impl<W: Write> SymCacheWriter<W> {
         vmaddr: u64,
         symbol_iter: &mut Peekable<SymbolIterator>,
     ) -> Result<()> {
-        while let Some(&Ok(symbol)) = symbol_iter.peek() {
-            let sym_addr = symbol.addr() - vmaddr;
+        loop {
+            let sym_addr = match symbol_iter.peek() {
+                Some(&Ok(ref symbol)) => symbol.addr() - vmaddr,
+                _ => break,
+            };
 
             // skip forward until we hit a relevant symbol
             if *last_addr != !0 && sym_addr < *last_addr {
@@ -266,8 +269,8 @@ impl<W: Write> SymCacheWriter<W> {
             }
 
             if (*last_addr == !0 || sym_addr >= *last_addr) && sym_addr < cur_addr {
-                self.write_simple_function(sym_addr, symbol.len().unwrap_or(!0), symbol.name())?;
-                symbol_iter.next();
+                let symbol = symbol_iter.next().unwrap()?;
+                self.write_simple_function(sym_addr, symbol.len().unwrap_or(!0), symbol.as_str())?;
                 *last_addr = sym_addr + symbol.len().unwrap_or(1);
             } else {
                 break;
@@ -453,7 +456,7 @@ impl<W: Write> SymCacheWriter<W> {
         let func_id = self.func_records.len() as u32;
         let func_addr = func.get_addr();
 
-        let symbol_id = self.write_symbol_if_missing(func.name)?;
+        let symbol_id = self.write_symbol_if_missing(func.name.as_bytes())?;
         let func_record = FuncRecord {
             addr_low: (func_addr & 0xffffffff) as u32,
             addr_high: ((func_addr >> 32) & 0xffff) as u16,
