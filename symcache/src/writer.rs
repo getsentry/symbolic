@@ -16,6 +16,7 @@ use breakpad::BreakpadInfo;
 use cache::SYMCACHE_MAGIC;
 use dwarf::{DwarfInfo, Function, Unit};
 use types::{CacheFileHeader, DataSource, FileRecord, FuncRecord, LineRecord, Seg};
+use utils::shorten_filename;
 
 fn err(msg: &'static str) -> Error {
     Error::from(ErrorKind::BadDwarfData(msg))
@@ -165,11 +166,15 @@ impl<W: Write> SymCacheWriter<W> {
 
     #[inline]
     fn write_file_if_missing(&mut self, filename: &[u8]) -> Result<Seg<u8, u8>> {
-        if let Some(item) = self.files.get(filename) {
+        // since we store the filename in a u8 segment we are limited to a total
+        // length of 255 characters.
+        let filename_unicode = String::from_utf8_lossy(filename);
+        let filename = shorten_filename(&filename_unicode, 255);
+        if let Some(item) = self.files.get(filename.as_bytes()) {
             return Ok(*item);
         }
-        let seg = self.write_bytes(filename)?;
-        self.files.insert(filename.to_owned(), seg);
+        let seg = self.write_bytes(filename.as_bytes())?;
+        self.files.insert(filename.into_owned().into_bytes(), seg);
         Ok(seg)
     }
 
