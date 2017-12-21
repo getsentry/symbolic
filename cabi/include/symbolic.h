@@ -151,13 +151,13 @@ typedef struct {
   SymbolicStr filename;
   SymbolicStr base_dir;
   SymbolicStr comp_dir;
-} SymbolicSymbol;
+} SymbolicLineInfo;
 
 /*
  * Represents a lookup result of one or more items.
  */
 typedef struct {
-  SymbolicSymbol *items;
+  SymbolicLineInfo *items;
   size_t len;
 } SymbolicLookupResult;
 

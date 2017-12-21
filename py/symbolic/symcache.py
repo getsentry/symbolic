@@ -2,7 +2,7 @@ import io
 import shutil
 from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib, ffi
-from symbolic.demangle import demangle_symbol
+from symbolic.demangle import demangle_name
 from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
     encode_str, common_path_join, strip_common_path_prefix, encode_path, \
     attached_refs, CacheReader
@@ -10,7 +10,7 @@ from symbolic.common import parse_addr
 from symbolic import exceptions
 
 
-__all__ = ['Symbol', 'SymCache', 'find_best_instruction',
+__all__ = ['LineInfo', 'SymCache', 'find_best_instruction',
            'SYMCACHE_LATEST_VERSION']
 
 
@@ -20,7 +20,7 @@ SYMCACHE_LATEST_VERSION = rustcall(
 
 
 @implements_to_string
-class Symbol(object):
+class LineInfo(object):
 
     def __init__(self, sym_addr, instr_addr, line, lang, symbol,
                  filename=None, base_dir=None, comp_dir=None):
@@ -36,7 +36,7 @@ class Symbol(object):
     @property
     def function_name(self):
         """The demangled function name."""
-        return demangle_symbol(self.symbol, lang=self.lang)
+        return demangle_name(self.symbol, lang=self.lang)
 
     @property
     def abs_path(self):
@@ -64,7 +64,7 @@ class Symbol(object):
         )
 
     def __repr__(self):
-        return 'Symbol(%s)' % (
+        return 'LineInfo(%s)' % (
             ', '.join('%s=%r' % x for x in sorted(self.__dict__.items()))
         )
 
@@ -133,7 +133,7 @@ class SymCache(RustObject):
             matches = []
             for idx in range(rv.len):
                 sym = rv.items[idx]
-                matches.append(Symbol(
+                matches.append(LineInfo(
                     sym_addr=sym.sym_addr,
                     instr_addr=sym.instr_addr,
                     line=sym.line,
