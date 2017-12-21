@@ -1,3 +1,6 @@
+use std::borrow::Cow;
+
+
 fn is_absolute_windows_path(s: &str) -> bool {
     // UNC
     if s.len() > 2 && &s[..2] == "\\\\" {
@@ -55,6 +58,82 @@ pub fn common_join_path(base: &str, other: &str) -> String {
     };
 }
 
+/// Trims a path to a given length.
+///
+/// This attempts to not completely destroy the path in the process.
+pub fn shorten_filename<'a>(filename: &'a str, length: usize) -> Cow<'a, str> {
+    // trivial cases
+    if filename.len() <= length {
+        return Cow::Borrowed(filename);
+    } else if length <= 10 {
+        if length > 3 {
+            return Cow::Owned(format!("{}...", &filename[..length - 3]));
+        }
+        return Cow::Borrowed(&filename[..length]);
+    }
+
+    let mut rv = String::new();
+    let mut last_idx = 0;
+    let mut piece_iter = filename.match_indices(&['\\', '/'][..]);
+    let mut final_sep = "/";
+    let max_len = length - 4;
+
+    // make sure we get two segments at the start.
+    loop {
+        if let Some((idx, sep)) = piece_iter.next() {
+            let slice = &filename[last_idx..idx + sep.len()];
+            rv.push_str(slice);
+            let done = last_idx > 0;
+            last_idx = idx + sep.len();
+            final_sep = sep;
+            if done {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+
+    // collect the rest of the segments into a temporary we can then reverse.
+    let mut final_length = rv.len() as i64;
+    let mut rest = vec![];
+    let mut next_idx = filename.len();
+
+    while let Some((idx, _)) = piece_iter.next_back() {
+        if idx <= last_idx {
+            break;
+        }
+        let slice = &filename[idx + 1..next_idx];
+        if final_length + (slice.len() as i64) > max_len as i64 {
+            break;
+        }
+
+        rest.push(slice);
+        next_idx = idx + 1;
+        final_length += slice.len() as i64;
+    }
+
+    // if at this point already we're too long we just take the last element
+    // of the filename and strip it.
+    if rv.len() > max_len || rest.len() == 0 {
+        let basename = filename.rsplit(&['\\', '/'][..]).next().unwrap();
+        if basename.len() > max_len {
+            return Cow::Owned(format!("...{}", &basename[basename.len() - max_len + 1..]));
+        } else {
+            return Cow::Owned(format!("...{}{}", final_sep, basename));
+        }
+    }
+
+    rest.reverse();
+    rv.push_str("...");
+    rv.push_str(final_sep);
+    for item in rest {
+        rv.push_str(&item);
+    }
+
+    Cow::Owned(rv)
+}
+
 #[test]
 fn test_common_join_path() {
     assert_eq!(common_join_path("C:\\test", "other"), "C:\\test\\other");
@@ -67,4 +146,18 @@ fn test_common_join_path() {
     assert_eq!(common_join_path("/usr/local", "bin/bash"), "/usr/local/bin/bash");
     assert_eq!(common_join_path("/usr/bin", "/usr/local/bin"), "/usr/local/bin");
     assert_eq!(common_join_path("foo/bar/", "blah"), "foo/bar/blah");
+}
+
+#[test]
+fn test_shorten_filename() {
+    assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 6), "/fo...");
+    assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 2), "/f");
+    assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 21), "/foo/.../blafasel");
+    assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 22), "/foo/.../blah/blafasel");
+    assert_eq!(&shorten_filename("C:\\bar\\baz\\blah\\blafasel", 20), "C:\\bar\\...\\blafasel");
+    assert_eq!(&shorten_filename("/foo/blar/baz/blah/blafasel", 27), "/foo/blar/baz/blah/blafasel");
+    assert_eq!(&shorten_filename("/foo/blar/baz/blah/blafasel", 26), "/foo/.../baz/blah/blafasel");
+    assert_eq!(&shorten_filename("/foo/b/baz/blah/blafasel", 23), "/foo/.../blah/blafasel");
+    assert_eq!(&shorten_filename("/foobarbaz/blahblah", 16), ".../blahblah");
+    assert_eq!(&shorten_filename("/foobarbazblahblah", 12), "...lahblah");
 }
