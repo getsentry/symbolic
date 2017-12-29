@@ -385,6 +385,14 @@ SymbolicUuid symbolic_object_get_uuid(const SymbolicObject *so);
 SymbolicProcessState *symbolic_process_minidump(const char *path, const SymbolicFrameInfoMap *smap);
 
 /*
+ * Processes a minidump with optional CFI information and returns the state
+ * of the process at the time of the crash
+ */
+SymbolicProcessState *symbolic_process_minidump_buffer(const char *buffer,
+                                                       size_t length,
+                                                       const SymbolicFrameInfoMap *smap);
+
+/*
  * Frees a process state object
  */
 void symbolic_process_state_free(SymbolicProcessState *sstate);

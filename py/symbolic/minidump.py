@@ -155,6 +155,17 @@ class ProcessState(RustObject):
         return ProcessState._from_objptr(
             rustcall(lib.symbolic_process_minidump, encode_path(path), frame_infos_ptr))
 
+    @classmethod
+    def from_minidump_buffer(cls, buffer, frame_infos=None):
+        """Processes a minidump and get the state of the crashed process"""
+        frame_infos_ptr = frame_infos._objptr if frame_infos is not None else ffi.NULL
+        return ProcessState._from_objptr(rustcall(
+            lib.symbolic_process_minidump_buffer,
+            ffi.from_buffer(buffer),
+            len(buffer),
+            frame_infos_ptr,
+        ))
+
     @property
     def requesting_thread(self):
         """The index of the thread that requested a dump be written in the

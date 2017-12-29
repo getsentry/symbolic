@@ -1,6 +1,7 @@
 use std::ffi::CStr;
 use std::mem;
 use std::os::raw::c_char;
+use std::slice;
 use uuid::Uuid;
 
 use symbolic_common::ByteView;
@@ -242,6 +243,28 @@ ffi_fn! {
         smap: *const SymbolicFrameInfoMap,
     ) -> Result<*mut SymbolicProcessState> {
         let byteview = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
+        let map = if smap.is_null() {
+            None
+        } else {
+            Some(&*(smap as *const FrameInfoMap<'static>))
+        };
+
+        let state = ProcessState::from_minidump(byteview, map)?;
+        let sstate = map_process_state(&state);
+        Ok(Box::into_raw(Box::new(sstate)))
+    }
+}
+
+ffi_fn! {
+    /// Processes a minidump with optional CFI information and returns the state
+    /// of the process at the time of the crash
+    unsafe fn symbolic_process_minidump_buffer(
+        buffer: *const c_char,
+        length: usize,
+        smap: *const SymbolicFrameInfoMap,
+    ) -> Result<*mut SymbolicProcessState> {
+        let bytes = slice::from_raw_parts(buffer as *const u8, length);
+        let byteview = ByteView::from_slice(bytes);
         let map = if smap.is_null() {
             None
         } else {
