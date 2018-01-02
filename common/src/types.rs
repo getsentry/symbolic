@@ -174,7 +174,7 @@ impl Arch {
         use Arch::*;
         match string {
             "x86" => X86,
-            "x86_64" => X86_64,
+            "amd64" => X86_64,
             "ppc" => Ppc,
             "ppc64" => Ppc64,
             _ => Unknown,
@@ -202,6 +202,8 @@ impl Arch {
             "armv7k" => ArmV7k,
             "armv7m" => ArmV7m,
             "armv7em" => ArmV7em,
+            "ppc" => Ppc,
+            "ppc64" => Ppc64,
             _ => {
                 return Err(ErrorKind::Parse("unknown architecture").into());
             }
@@ -243,7 +245,7 @@ impl Arch {
             X86_64 => "x86_64",
             X86_64h => "x86_64h",
             Arm64 => "arm64",
-            Arm64V8 => "arm64V8",
+            Arm64V8 => "arm64v8",
             Arm => "arm",
             ArmV5 => "armv5",
             ArmV6 => "armv6",
