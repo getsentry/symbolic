@@ -174,7 +174,8 @@ impl Arch {
         use Arch::*;
         match string {
             "x86" => X86,
-            "amd64" => X86_64,
+            // This is different in minidumps and breakpad symbols
+            "x86_64" | "amd64" => X86_64,
             "arm" => Arm,
             "arm64" => Arm64,
             "ppc" => Ppc,
@@ -188,7 +189,8 @@ impl Arch {
         use CpuFamily::*;
         match self.cpu_family() {
             Intel32 => "x86",
-            Intel64 => "amd64",
+            // Use the breakpad symbol constant here
+            Intel64 => "x86_64",
             Arm32 => "arm",
             Arm64 => "arm64",
             Ppc32 => "ppc",
