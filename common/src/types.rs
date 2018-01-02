@@ -174,10 +174,28 @@ impl Arch {
         use Arch::*;
         match string {
             "x86" => X86,
-            "x86_64" => X86_64,
+            // This is different in minidumps and breakpad symbols
+            "x86_64" | "amd64" => X86_64,
+            "arm" => Arm,
+            "arm64" => Arm64,
             "ppc" => Ppc,
             "ppc64" => Ppc64,
             _ => Unknown,
+        }
+    }
+
+    /// Returns the breakpad name for this Arch
+    pub fn to_breakpad(&self) -> &'static str {
+        use CpuFamily::*;
+        match self.cpu_family() {
+            Intel32 => "x86",
+            // Use the breakpad symbol constant here
+            Intel64 => "x86_64",
+            Arm32 => "arm",
+            Arm64 => "arm64",
+            Ppc32 => "ppc",
+            Ppc64 => "ppc64",
+            Unknown => "unknown",
         }
     }
 
@@ -202,6 +220,8 @@ impl Arch {
             "armv7k" => ArmV7k,
             "armv7m" => ArmV7m,
             "armv7em" => ArmV7em,
+            "ppc" => Ppc,
+            "ppc64" => Ppc64,
             _ => {
                 return Err(ErrorKind::Parse("unknown architecture").into());
             }
@@ -243,7 +263,7 @@ impl Arch {
             X86_64 => "x86_64",
             X86_64h => "x86_64h",
             Arm64 => "arm64",
-            Arm64V8 => "arm64V8",
+            Arm64V8 => "arm64v8",
             Arm => "arm",
             ArmV5 => "armv5",
             ArmV6 => "armv6",
