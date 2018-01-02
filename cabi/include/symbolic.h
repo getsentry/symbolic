@@ -96,6 +96,16 @@ typedef struct {
   bool owned;
 } SymbolicStr;
 
+/*
+ * ELF architecture
+ */
+typedef struct {
+  uint16_t machine;
+} SymbolicElfArch;
+
+/*
+ * Mach-O architecture
+ */
 typedef struct {
   uint32_t cputype;
   uint32_t cpusubtype;
@@ -231,7 +241,17 @@ typedef struct {
 } SymbolicTokenMatch;
 
 /*
- * Checks if an architecture is known.
+ * Parses a Breakpad architecture.
+ */
+SymbolicStr symbolic_arch_from_breakpad(const SymbolicStr *arch);
+
+/*
+ * Parses an ELF architecture.
+ */
+SymbolicStr symbolic_arch_from_elf(const SymbolicElfArch *arch);
+
+/*
+ * Parses a Mach-O architecture.
  */
 SymbolicStr symbolic_arch_from_macho(const SymbolicMachoArch *arch);
 
@@ -246,7 +266,12 @@ SymbolicStr symbolic_arch_ip_reg_name(const SymbolicStr *arch);
 bool symbolic_arch_is_known(const SymbolicStr *arch);
 
 /*
- * Returns the macho code for a CPU architecture.
+ * Returns the breakpad name for an architecture.
+ */
+SymbolicStr symbolic_arch_to_breakpad(const SymbolicStr *arch);
+
+/*
+ * Returns the macho code for an architecture.
  */
 SymbolicMachoArch symbolic_arch_to_macho(const SymbolicStr *arch);
 

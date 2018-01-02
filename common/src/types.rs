@@ -175,9 +175,25 @@ impl Arch {
         match string {
             "x86" => X86,
             "amd64" => X86_64,
+            "arm" => Arm,
+            "arm64" => Arm64,
             "ppc" => Ppc,
             "ppc64" => Ppc64,
             _ => Unknown,
+        }
+    }
+
+    /// Returns the breakpad name for this Arch
+    pub fn to_breakpad(&self) -> &'static str {
+        use CpuFamily::*;
+        match self.cpu_family() {
+            Intel32 => "x86",
+            Intel64 => "amd64",
+            Arm32 => "arm",
+            Arm64 => "arm64",
+            Ppc32 => "ppc",
+            Ppc64 => "ppc64",
+            Unknown => "unknown",
         }
     }
 

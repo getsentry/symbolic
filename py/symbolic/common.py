@@ -6,6 +6,7 @@ from symbolic import exceptions
 
 
 __all__ = ['arch_is_known', 'arch_from_macho', 'arch_to_macho',
+           'arch_from_elf', 'arch_from_breakpad', 'arch_to_breakpad',
            'arch_get_ip_reg_name', 'parse_addr']
 
 
@@ -34,10 +35,36 @@ def arch_from_macho(cputype, cpusubtype):
 
 
 def arch_to_macho(arch):
-    """Converts a macho arch tuple into an arch string."""
+    """Converts an arch string into a macho arch tuple."""
     try:
         arch = rustcall(lib.symbolic_arch_to_macho, encode_str(arch))
         return (arch.cputype, arch.cpusubtype)
+    except ignore_arch_exc:
+        pass
+
+
+def arch_from_elf(machine):
+    """Converts an ELF machine id into an arch string."""
+    arch = ffi.new('SymbolicElfArch *')
+    arch[0].machine = machine & 0xffff
+    try:
+        return str(decode_str(rustcall(lib.symbolic_arch_from_elf, encode_str(arch))))
+    except ignore_arch_exc:
+        pass
+
+
+def arch_from_breakpad(arch):
+    """Converts a Breakpad arch into our arch string"""
+    try:
+        return str(decode_str(rustcall(lib.symbolic_arch_from_breakpad, encode_str(arch))))
+    except ignore_arch_exc:
+        pass
+
+
+def arch_to_breakpad(arch):
+    """Converts an arch string into a Breakpad arch"""
+    try:
+        return str(decode_str(rustcall(lib.symbolic_arch_to_breakpad, arch)))
     except ignore_arch_exc:
         pass
 
