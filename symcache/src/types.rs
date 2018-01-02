@@ -1,16 +1,17 @@
+use std::cmp::Ordering;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::mem;
 use std::slice;
 use std::marker::PhantomData;
 
 use uuid::Uuid;
 
-use symbolic_common::{Result, ErrorKind};
-
+use symbolic_common::{ErrorKind, Result};
 
 #[repr(C, packed)]
-#[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Default, Copy, Clone)]
-pub struct Seg<T, L=u32> {
+#[derive(Default)]
+pub struct Seg<T, L = u32> {
     pub offset: u32,
     pub len: L,
     _ty: PhantomData<T>,
@@ -26,11 +27,45 @@ impl<T, L> Seg<T, L> {
     }
 }
 
-impl<T, L: fmt::Debug> fmt::Debug for Seg<T, L> {
+impl<T, L: Copy> Copy for Seg<T, L> {}
+
+impl<T, L: Copy> Clone for Seg<T, L> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T, L> PartialEq for Seg<T, L> {
+    fn eq(&self, other: &Self) -> bool {
+        self.offset == other.offset
+    }
+}
+
+impl<T, L> Eq for Seg<T, L> {}
+
+impl<T, L> PartialOrd for Seg<T, L> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        { self.offset }.partial_cmp(&{ other.offset })
+    }
+}
+
+impl<T, L> Ord for Seg<T, L> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        { self.offset }.cmp(&{ other.offset })
+    }
+}
+
+impl<T, L> Hash for Seg<T, L> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        { self.offset }.hash(state);
+    }
+}
+
+impl<T, L: fmt::Debug + Copy> fmt::Debug for Seg<T, L> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Seg")
-            .field("offset", &self.offset)
-            .field("len", &self.len)
+            .field("offset", &{self.offset})
+            .field("len", &{self.len})
             .finish()
     }
 }
@@ -85,8 +120,7 @@ pub enum DataSource {
     Dwarf,
     SymbolTable,
     BreakpadSym,
-    #[doc(hidden)]
-    __Max
+    #[doc(hidden)] __Max,
 }
 
 impl DataSource {
@@ -124,10 +158,7 @@ impl CacheFileHeader {
     pub fn as_bytes(&self) -> &[u8] {
         unsafe {
             let bytes: *const u8 = mem::transmute(self);
-            slice::from_raw_parts(
-                bytes,
-                mem::size_of::<CacheFileHeader>()
-            )
+            slice::from_raw_parts(bytes, mem::size_of::<CacheFileHeader>())
         }
     }
 }
