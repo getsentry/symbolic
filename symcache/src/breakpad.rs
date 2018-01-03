@@ -37,8 +37,8 @@ impl<'input> BreakpadInfo<'input> {
 
     fn parse(&mut self, object: &'input Object) -> Result<()> {
         let mut records = object.breakpad_records();
-        while let Some(Ok(record)) = records.next() {
-            match record {
+        while let Some(record) = records.next() {
+            match record? {
                 BreakpadRecord::Module(m) => self.module = Some(m),
                 BreakpadRecord::File(f) => self.files.push(f),
                 BreakpadRecord::Function(f) => self.funcs.push(f),
@@ -59,6 +59,9 @@ impl<'input> BreakpadInfo<'input> {
                     }
 
                     self.syms.push(p);
+                }
+                BreakpadRecord::Info(_) => {
+                    // not relevant
                 }
                 BreakpadRecord::Stack => {
                     // not relevant
