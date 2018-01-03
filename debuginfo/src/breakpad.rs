@@ -95,6 +95,7 @@ pub enum BreakpadRecord<'input> {
     Function(BreakpadFuncRecord<'input>),
     Line(BreakpadLineRecord),
     Public(BreakpadPublicRecord<'input>),
+    Info(&'input [u8]),
     Stack,
 }
 
@@ -278,6 +279,10 @@ impl<'data> BreakpadRecords<'data> {
             b"PUBLIC" => {
                 self.state = IterState::Reading;
                 parse_public(record)
+            }
+            b"INFO" => {
+                self.state = IterState::Reading;
+                parse_info(record)
             }
             _ => {
                 if self.state == IterState::Function {
@@ -496,6 +501,15 @@ fn parse_public<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>> {
         size: 0, // will be computed with the next PUBLIC record
         name: name,
     }))
+}
+
+/// Parses a breakpad INFO record
+///
+/// Syntax: "INFO text"
+/// Example: "INFO CODE_ID C22813AC7D101E2FF2598697023E1F28"
+/// no documentation available
+fn parse_info<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>> {
+    Ok(BreakpadRecord::Info(line))
 }
 
 /// Parses a breakpad line record (after funcs)
