@@ -41,9 +41,7 @@ pub struct SymbolicCodeModule {
 pub struct SymbolicStackFrame {
     pub instruction: u64,
     pub trust: SymbolicFrameTrust,
-    // pub image_uuid: SymbolicUuid,
-    // pub image_addr: u64,
-    // pub image_size: u64,
+    pub module: SymbolicCodeModule,
 }
 
 /// Represents a thread of the process state which holds a list of stack frames
@@ -153,9 +151,7 @@ unsafe fn map_stack_frame(frame: &StackFrame) -> SymbolicStackFrame {
     SymbolicStackFrame {
         instruction: frame.instruction(),
         trust: mem::transmute(frame.trust()),
-        // image_uuid: map_uuid(&frame.module().map_or(Uuid::nil(), |m| m.id().uuid())),
-        // image_addr: frame.module().map_or(0, |m| m.base_address()),
-        // image_size: frame.module().map_or(0, |m| m.size()),
+        module: frame.module().map_or(mem::zeroed(), |m| map_code_module(m)),
     }
 }
 
