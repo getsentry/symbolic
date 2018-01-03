@@ -70,6 +70,16 @@ class StackFrame(RustObject):
         """The confidence with with the instruction pointer was retrieved"""
         return FrameTrust.by_value[self._objptr.trust]
 
+    @property
+    def module(self):
+        """The code module that defines code for this frame"""
+        module = CodeModule._from_objptr(self._objptr.module, shared=True)
+        if not module.uuid.int and not module.addr and not module.size:
+            return None
+
+        attached_refs[module] = self
+        return module
+
 
 class CallStack(RustObject):
     """A thread of the crashed process"""
