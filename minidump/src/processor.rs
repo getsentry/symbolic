@@ -15,7 +15,7 @@ use symbolic_common::{ByteView, ErrorKind, Result};
 use utils;
 
 lazy_static! {
-    static ref LINUX_BUILD_RE: Regex = Regex::new(r"^Linux ([^ ]+) (.*) \w+ [^ ]+$").unwrap();
+    static ref LINUX_BUILD_RE: Regex = Regex::new(r"^Linux ([^ ]+) (.*) \w+(?: GNU/Linux)?$").unwrap();
 }
 
 extern "C" {
