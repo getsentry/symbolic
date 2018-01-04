@@ -126,9 +126,17 @@ class SystemInfo(RustObject):
     @property
     def os_version(self):
         """A string identifying the version of the operating system, such as
-        "5.1.2600 Service Pack 2" or "10.4.8 8L2127".  If the dump does not
-        contain this information, this field will be empty."""
+        "5.1.2600" or "10.4.8".  The version will be formatted as three-
+        component semantic version.  If the dump does not contain this
+        information, this field will contain "0.0.0"."""
         return decode_str(self._objptr.os_version)
+
+    @property
+    def os_build(self):
+        """A string identifying the build of the operating system, such as
+        "Service Pack 2" or "8L2127".  If the dump does not contain this
+        information, this field will be empty."""
+        return decode_str(self._objptr.os_build)
 
     @property
     def cpu_family(self):
