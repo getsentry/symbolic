@@ -65,6 +65,7 @@ impl Drop for SymbolicCallStack {
 pub struct SymbolicSystemInfo {
     pub os_name: SymbolicStr,
     pub os_version: SymbolicStr,
+    pub os_build: SymbolicStr,
     pub cpu_family: SymbolicStr,
     pub cpu_info: SymbolicStr,
     pub cpu_count: u32,
@@ -170,6 +171,7 @@ unsafe fn map_system_info(info: &SystemInfo) -> SymbolicSystemInfo {
     SymbolicSystemInfo {
         os_name: SymbolicStr::from_string(info.os_name()),
         os_version: SymbolicStr::from_string(info.os_version()),
+        os_build: SymbolicStr::from_string(info.os_build()),
         cpu_family: SymbolicStr::from_string(info.cpu_family()),
         cpu_info: SymbolicStr::from_string(info.cpu_info()),
         cpu_count: info.cpu_count(),

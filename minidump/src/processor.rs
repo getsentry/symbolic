@@ -6,11 +6,17 @@ use std::ffi::CString;
 use std::marker::PhantomData;
 use std::hash::{Hash, Hasher};
 use std::os::raw::{c_char, c_void};
+
+use regex::Regex;
 use uuid::Uuid;
 
 use symbolic_common::{ByteView, ErrorKind, Result};
 
 use utils;
+
+lazy_static! {
+    static ref LINUX_BUILD_RE: Regex = Regex::new(r"^Linux ([^ ]+) (.*) \w+(?: GNU/Linux)?$").unwrap();
+}
 
 extern "C" {
     fn code_module_base_address(module: *const CodeModule) -> u64;
@@ -378,14 +384,49 @@ impl SystemInfo {
         }
     }
 
-    /// A string identifying the version of the operating system, such as
-    /// "5.1.2600 Service Pack 2" or "10.4.8 8L2127".  If the dump does not
-    /// contain this information, this field will be empty.
-    pub fn os_version(&self) -> String {
-        unsafe {
+    /// Strings identifying the version and build number of the operating
+    /// system.  If the dump does not contain either information, the component
+    /// will be empty.
+    ///
+    /// Tries to parse the version number from the build if it is not apparent
+    /// from the version string.
+    pub fn os_parts(&self) -> (String, String) {
+        let string = unsafe {
             let ptr = system_info_os_version(self);
             utils::ptr_to_string(ptr)
+        };
+
+        let mut parts = string.splitn(2, ' ');
+        let version = parts.next().unwrap_or("0.0.0");
+        let build = parts.next().unwrap_or("");
+
+        if version == "0.0.0" {
+            // Try to parse the Linux build string. Breakpad and Crashpad run
+            // `uname -srvmo` to generate it. This roughtly resembles:
+            // "Linux [version] [build...] [arch] Linux/GNU"
+            if let Some(captures) = LINUX_BUILD_RE.captures(&build) {
+                let version = captures.get(1).unwrap(); // uname -r portion
+                let build = captures.get(2).unwrap();   // uname -v portion
+                return (version.as_str().into(), build.as_str().into());
+            }
         }
+
+        (version.into(), build.into())
+    }
+
+    /// A string identifying the version of the operating system, such as
+    /// "5.1.2600" or "10.4.8".  The version will be formatted as three-
+    /// component semantic version.  If the dump does not contain this
+    /// information, this field will contain "0.0.0".
+    pub fn os_version(&self) -> String {
+        self.os_parts().0
+    }
+
+    /// A string identifying the build of the operating system, such as
+    /// "Service Pack 2" or "8L2127".  If the dump does not contain this
+    /// information, this field will be empty.
+    pub fn os_build(&self) -> String {
+        self.os_parts().1
     }
 
     /// A string identifying the basic CPU family, such as "x86" or "ppc".

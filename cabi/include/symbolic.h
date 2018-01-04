@@ -177,6 +177,7 @@ typedef struct {
 typedef struct {
   SymbolicStr os_name;
   SymbolicStr os_version;
+  SymbolicStr os_build;
   SymbolicStr cpu_family;
   SymbolicStr cpu_info;
   uint32_t cpu_count;
