@@ -19,7 +19,8 @@ def test_macos_without_cfi(res_path):
 
     info = state.system_info
     assert info.os_name == 'Mac OS X'
-    assert info.os_version == '10.12.6 16G29'
+    assert info.os_version == '10.12.6'
+    assert info.os_build == '16G29'
     assert info.cpu_family == 'amd64'
     assert info.cpu_info == 'family 6 model 70 stepping 1'
     assert info.cpu_count == 8
@@ -53,7 +54,8 @@ def test_linux_without_cfi(res_path):
 
     info = state.system_info
     assert info.os_name == 'Linux'
-    assert info.os_version == '0.0.0 Linux 4.9.46-moby #1 SMP Thu Sep 7 02:53:42 UTC 2017 x86_64'
+    assert info.os_version == '4.9.46-moby'
+    assert info.os_build == '#1 SMP Thu Sep 7 02:53:42 UTC 2017'
     assert info.cpu_family == 'amd64'
     assert info.cpu_info == 'family 6 model 70 stepping 1'
     assert info.cpu_count == 4
@@ -91,7 +93,8 @@ def test_macos_with_cfi(res_path):
 
     info = state.system_info
     assert info.os_name == 'Mac OS X'
-    assert info.os_version == '10.12.6 16G29'
+    assert info.os_version == '10.12.6'
+    assert info.os_build == '16G29'
     assert info.cpu_family == 'amd64'
     assert info.cpu_info == 'family 6 model 70 stepping 1'
     assert info.cpu_count == 8
@@ -129,7 +132,8 @@ def test_linux_with_cfi(res_path):
 
     info = state.system_info
     assert info.os_name == 'Linux'
-    assert info.os_version == '0.0.0 Linux 4.9.46-moby #1 SMP Thu Sep 7 02:53:42 UTC 2017 x86_64'
+    assert info.os_version == '4.9.46-moby'
+    assert info.os_build == '#1 SMP Thu Sep 7 02:53:42 UTC 2017'
     assert info.cpu_family == 'amd64'
     assert info.cpu_info == 'family 6 model 70 stepping 1'
     assert info.cpu_count == 4
