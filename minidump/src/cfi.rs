@@ -24,7 +24,16 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
         match object.debug_kind() {
             Some(DebugKind::Dwarf) => self.process_dwarf(object),
             Some(DebugKind::Breakpad) => self.process_breakpad(object),
-            _ => Err(MissingDebugInfo("Unsupported debugging format").into()),
+
+            // clang on darwin moves CFI to the "__eh_frame" section in the
+            // exectuable rather than the dSYM. This allows processes to unwind
+            // exceptions during runtime. However, we do not detect these files
+            // as `DebugKind::Dwarf` to avoid false positives in all other
+            // cases. Therefore, simply try find the __eh_frame section and
+            // otherwise fail. The file is already loaded and relevant pages
+            // are already in the cache, so the overhead is justifiable.
+            _ => self.process_dwarf(object)
+                .map_err(|_| MissingDebugInfo("Unsupported debugging format").into()),
         }
     }
 
