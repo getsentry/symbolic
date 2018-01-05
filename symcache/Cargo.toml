@@ -28,6 +28,3 @@ num = "0.1"
 matches = "0.1"
 if_chain = "0.1"
 dmsort = "0.1"
-
-[dev-dependencies]
-clap = "2"
