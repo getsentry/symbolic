@@ -20,7 +20,7 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
         BreakpadAsciiCfiWriter { inner }
     }
 
-    fn process(&mut self, object: &Object) -> Result<()> {
+    pub fn process(&mut self, object: &Object) -> Result<()> {
         match object.debug_kind() {
             Some(DebugKind::Dwarf) => self.process_dwarf(object),
             Some(DebugKind::Breakpad) => self.process_breakpad(object),
@@ -32,7 +32,7 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
         for line in object.as_bytes().split(|b| *b == b'\n') {
             if line.starts_with(b"STACK") {
                 self.inner.write_all(line)?;
-                self.inner.write(b"\n");
+                self.inner.write(b"\n")?;
             }
         }
 
