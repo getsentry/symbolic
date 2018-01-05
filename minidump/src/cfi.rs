@@ -5,7 +5,7 @@ use gimli::{self, BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDe
             Reader, ReaderOffset, RegisterRule, UninitializedUnwindContext, UnwindOffset,
             UnwindSection, UnwindTable};
 
-use symbolic_common::{Arch, Result};
+use symbolic_common::{Arch, DebugKind, Result};
 use symbolic_common::ErrorKind::MissingDebugInfo;
 use symbolic_debuginfo::{DwarfData, DwarfSection, Object};
 
@@ -21,6 +21,34 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
     }
 
     pub fn process(&mut self, object: &Object) -> Result<()> {
+        match object.debug_kind() {
+            Some(DebugKind::Dwarf) => self.process_dwarf(object),
+            Some(DebugKind::Breakpad) => self.process_breakpad(object),
+
+            // clang on darwin moves CFI to the "__eh_frame" section in the
+            // exectuable rather than the dSYM. This allows processes to unwind
+            // exceptions during runtime. However, we do not detect these files
+            // as `DebugKind::Dwarf` to avoid false positives in all other
+            // cases. Therefore, simply try find the __eh_frame section and
+            // otherwise fail. The file is already loaded and relevant pages
+            // are already in the cache, so the overhead is justifiable.
+            _ => self.process_dwarf(object)
+                .map_err(|_| MissingDebugInfo("Unsupported debugging format").into()),
+        }
+    }
+
+    fn process_breakpad(&mut self, object: &Object) -> Result<()> {
+        for line in object.as_bytes().split(|b| *b == b'\n') {
+            if line.starts_with(b"STACK") {
+                self.inner.write_all(line)?;
+                self.inner.write(b"\n")?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn process_dwarf(&mut self, object: &Object) -> Result<()> {
         let endianness = object.endianness();
 
         if let Some(section) = object.get_dwarf_section(DwarfSection::EhFrame) {
@@ -177,5 +205,13 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
 
         write!(self.inner, " {}: {}", register_name, formatted)?;
         Ok(true)
+    }
+}
+
+impl<W: Write + Default> BreakpadAsciiCfiWriter<W> {
+    pub fn transform(object: &Object) -> Result<W> {
+        let mut writer = Default::default();
+        BreakpadAsciiCfiWriter::new(&mut writer).process(object)?;
+        Ok(writer)
     }
 }

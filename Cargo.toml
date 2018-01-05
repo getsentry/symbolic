@@ -30,3 +30,7 @@ symbolic-proguard = { version = "2.0.2", path = "proguard" }
 symbolic-sourcemap = { version = "2.0.2", path = "sourcemap" }
 symbolic-symcache = { version = "2.0.2", path = "symcache" }
 symbolic-debuginfo = { version = "2.0.2", path = "debuginfo" }
+
+[dev-dependencies]
+clap = "2.29.0"
+walkdir = "2.0.1"
