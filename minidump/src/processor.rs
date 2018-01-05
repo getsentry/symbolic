@@ -552,7 +552,7 @@ impl<'a> ProcessState<'a> {
     /// containing STACK CFI and STACK WIN records to allow stackwalking with
     /// omitted frame pointers.
     pub fn from_minidump(
-        buffer: ByteView<'a>,
+        buffer: &ByteView<'a>,
         frame_infos: Option<&FrameInfoMap>,
     ) -> Result<ProcessState<'a>> {
         let cfi_count = frame_infos.map_or(0, |s| s.len());

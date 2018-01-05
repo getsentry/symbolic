@@ -247,7 +247,7 @@ ffi_fn! {
             Some(&*(smap as *const FrameInfoMap<'static>))
         };
 
-        let state = ProcessState::from_minidump(byteview, map)?;
+        let state = ProcessState::from_minidump(&byteview, map)?;
         let sstate = map_process_state(&state);
         Ok(Box::into_raw(Box::new(sstate)))
     }
@@ -269,7 +269,7 @@ ffi_fn! {
             Some(&*(smap as *const FrameInfoMap<'static>))
         };
 
-        let state = ProcessState::from_minidump(byteview, map)?;
+        let state = ProcessState::from_minidump(&byteview, map)?;
         let sstate = map_process_state(&state);
         Ok(Box::into_raw(Box::new(sstate)))
     }
