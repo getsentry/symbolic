@@ -126,6 +126,8 @@ impl<'a> fmt::Debug for Line<'a> {
     }
 }
 
+type FunctionLocation<'a> = (Option<u64>, Option<u64>, &'a [Range]);
+
 pub struct Function<'a> {
     pub depth: u16,
     pub addr: u64,
@@ -286,7 +288,7 @@ impl<'input> Unit<'input> {
                 _ => continue,
             };
 
-            let ranges = self.parse_ranges(info, entry, range_buf)
+            let (call_line, call_file, ranges) = self.parse_location(info, entry, range_buf)
                 .chain_err(|| err("subroutine has invalid ranges"))?;
             if ranges.is_empty() {
                 continue;
@@ -342,18 +344,56 @@ impl<'input> Unit<'input> {
                 }
             }
 
-            if inline {
-                if funcs.is_empty() {
-                    return Err(err("no root function"));
-                }
-                let mut node = funcs.last_mut().unwrap();
-                while { &node }.inlines.last().map_or(false, |n| (n.depth as isize) < depth) {
-                    node = { node }.inlines.last_mut().unwrap();
-                }
-                node.inlines.push(func);
-            } else {
+            if !inline {
                 funcs.push(func);
+                continue;
             }
+
+            if funcs.is_empty() {
+                return Err(err("no root function"));
+            }
+
+            // Search the inner-most parent function from the inlines tree. At
+            // the very bottom we will attach to that parent as inline function.
+            let mut node = funcs.last_mut().unwrap();
+            while { &node }.inlines.last().map_or(false, |n| (n.depth as isize) < depth) {
+                node = { node }.inlines.last_mut().unwrap();
+            }
+
+            // Make sure there is correct line information for the call site
+            // of this inlined function. In general, a compiler should always
+            // output the call line and call file for inlined subprograms. If
+            // this info is missing, the lookup might return invalid line
+            // numbers.
+            if let (Some(call_line), Some(call_file)) = (call_line, call_file) {
+                let (base_dir, filename) = line_program.get_filename(call_file)?;
+                match node.lines.binary_search_by_key(&func.addr, |x| x.addr) {
+                    Ok(idx) => {
+                        // We found a line record that points to this function.
+                        // This happens especially, if the function range overlaps
+                        // exactly. Patch the call info with the correct location.
+                        let line = &mut node.lines[idx];
+                        line.line = cmp::min(call_line, 0xffff) as u16;
+                        line.base_dir = base_dir;
+                        line.filename = filename;
+                        line.original_file_id = call_file;
+                    }
+                    Err(idx) => {
+                        // There is no line record pointing to this function, so
+                        // add one to the correct call location. Note that "base_dir"
+                        // be inherited safely here.
+                        node.lines.insert(idx, Line {
+                            addr: func.addr,
+                            original_file_id: call_file,
+                            filename: filename,
+                            base_dir: base_dir,
+                            line: cmp::min(call_line, 0xffff) as u16,
+                        });
+                    }
+                };
+            }
+
+            node.inlines.push(func);
         }
 
         // we definitely have to sort this here.  Functions unfortunately do not
@@ -363,58 +403,60 @@ impl<'input> Unit<'input> {
         Ok(())
     }
 
-    fn parse_ranges<'a>(
+    fn parse_location<'a>(
         &self,
         info: &DwarfInfo<'input>,
         entry: &Die,
         buf: &'a mut Vec<Range>,
-    ) -> Result<&'a [Range]> {
+    ) -> Result<FunctionLocation<'a>> {
+        let mut tuple = FunctionLocation::default();
         let mut low_pc = None;
         let mut high_pc = None;
         let mut high_pc_rel = None;
 
         buf.clear();
 
-        macro_rules! set_pc {
-            ($var:ident, $val:expr) => {{
-                $var = Some($val);
-                if low_pc.is_some() && (high_pc.is_some() || high_pc_rel.is_some()) {
-                    break;
-                }
-            }}
-        }
-
-        let mut fiter = entry.attrs();
-        while let Some(attr) = fiter.next()? {
+        let mut attrs = entry.attrs();
+        while let Some(attr) = attrs.next()? {
             match attr.name() {
-                gimli::DW_AT_ranges => {
-                    match attr.value() {
-                        AttributeValue::DebugRangesRef(offset) => {
-                            let header = info.get_unit_header(self.index)?;
-                            let mut fiter = info.debug_ranges
-                                .ranges(offset, header.address_size(), self.base_address)
-                                .chain_err(|| err("range offsets are not valid"))?;
+                gimli::DW_AT_ranges => match attr.value() {
+                    AttributeValue::DebugRangesRef(offset) => {
+                        let header = info.get_unit_header(self.index)?;
+                        let mut attrs = info.debug_ranges
+                            .ranges(offset, header.address_size(), self.base_address)
+                            .chain_err(|| err("range offsets are not valid"))?;
 
-                            while let Some(item) = fiter.next()? {
-                                buf.push(item);
-                            }
-                            return Ok(&buf[..]);
+                        while let Some(item) = attrs.next()? {
+                            buf.push(item);
                         }
-                        // XXX: error?
-                        _ => continue,
                     }
+                    _ => unreachable!(),
                 }
                 gimli::DW_AT_low_pc => match attr.value() {
-                    AttributeValue::Addr(addr) => set_pc!(low_pc, addr),
-                    _ => return Ok(&[]),
-                },
+                    AttributeValue::Addr(addr) => low_pc = Some(addr),
+                    _ => unreachable!(),
+                }
                 gimli::DW_AT_high_pc => match attr.value() {
-                    AttributeValue::Addr(addr) => set_pc!(high_pc, addr),
-                    AttributeValue::Udata(size) => set_pc!(high_pc_rel, size),
-                    _ => return Ok(&[]),
-                },
+                    AttributeValue::Addr(addr) => high_pc = Some(addr),
+                    AttributeValue::Udata(size) => high_pc_rel = Some(size),
+                    _ => unreachable!(),
+                }
+                gimli::DW_AT_call_line => match attr.value() {
+                    AttributeValue::Udata(line) => tuple.0 = Some(line),
+                    _ => unreachable!(),
+                }
+                gimli::DW_AT_call_file => match attr.value() {
+                    AttributeValue::FileIndex(file) => tuple.1 = Some(file),
+                    _ => unreachable!(),
+                }
                 _ => continue,
             }
+        }
+
+        // Found DW_AT_ranges, so early-exit here
+        if !buf.is_empty() {
+            tuple.2 = &buf[..];
+            return Ok(tuple);
         }
 
         // to go by the logic in dwarf2read a low_pc of 0 can indicate an
@@ -422,19 +464,19 @@ impl<'input> Unit<'input> {
         // TODO: *technically* there could be a relocatable section placed at VA 0
         let low_pc = match low_pc {
             Some(low_pc) if low_pc != 0 => low_pc,
-            _ => return Ok(&[]),
+            _ => return Ok(tuple),
         };
 
         let high_pc = match (high_pc, high_pc_rel) {
             (Some(high_pc), _) => high_pc,
             (_, Some(high_pc_rel)) => low_pc.wrapping_add(high_pc_rel),
-            _ => return Ok(&[]),
+            _ => return Ok(tuple),
         };
 
         if low_pc == high_pc {
             // most likely low_pc == high_pc means the DIE should be ignored.
             // https://sourceware.org/ml/gdb-patches/2011-03/msg00739.html
-            return Ok(&[]);
+            return Ok(tuple);
         }
 
         if low_pc > high_pc {
@@ -446,7 +488,9 @@ impl<'input> Unit<'input> {
             begin: low_pc,
             end: high_pc,
         });
-        Ok(&buf[..])
+
+        tuple.2 = &buf[..];
+        return Ok(tuple);
     }
 
     /// Resolves an entry and if found invokes a function to transform it.
@@ -489,11 +533,11 @@ impl<'input> Unit<'input> {
         info: &DwarfInfo<'input>,
         entry: &Die<'abbrev, 'unit, 'input>,
     ) -> Result<Option<Cow<'input, str>>> {
-        let mut fiter = entry.attrs();
+        let mut attrs = entry.attrs();
         let mut fallback_name = None;
         let mut reference_target = None;
 
-        while let Some(attr) = fiter.next()? {
+        while let Some(attr) = attrs.next()? {
             match attr.name() {
                 // prioritize these.  If we get them, take them.
                 gimli::DW_AT_linkage_name | gimli::DW_AT_MIPS_linkage_name => {

@@ -442,7 +442,7 @@ impl<W: Write> SymCacheWriter<W> {
     fn write_dwarf_function<'a>(
         &mut self,
         func: &Function<'a>,
-        addrs: &mut FnvHashSet<u64>,
+        addrs: &mut FnvHashSet<(u64, u16)>,
         local_cache: &mut FnvHashMap<u64, u16>,
         parent_id: u32,
     ) -> Result<()> {
@@ -495,10 +495,10 @@ impl<W: Write> SymCacheWriter<W> {
 
         let mut line_records = vec![];
         for line in &func.lines {
-            if addrs.contains(&line.addr) {
+            if addrs.contains(&(line.addr, line.line)) {
                 continue;
             }
-            addrs.insert(line.addr);
+            addrs.insert((line.addr, line.line));
 
             let file_id = if let Some(&x) = local_cache.get(&line.original_file_id) {
                 x
