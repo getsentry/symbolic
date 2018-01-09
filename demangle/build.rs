@@ -19,12 +19,4 @@ fn main() {
         .warnings(false)
         .include("vendor/swift/include")
         .compile("swiftdemangle");
-
-    gcc::Build::new()
-        .cpp(true)
-        .files(&[
-            "src/cppdemangle.cpp",
-        ])
-        .warnings(false)
-        .compile("cppdemangle");
 }

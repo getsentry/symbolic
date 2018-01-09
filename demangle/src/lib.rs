@@ -25,12 +25,14 @@
 //! assert_eq!(&name.try_demangle(Default::default()), "std::io::Read::read_to_end");
 //! # }
 //! ```
-extern crate symbolic_common;
+extern crate cpp_demangle;
 extern crate rustc_demangle;
+extern crate symbolic_common;
 
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
-use std::ptr;
+
+use cpp_demangle::{DemangleOptions as CppOptions, Symbol};
 
 use symbolic_common::{ErrorKind, Language, Name, Result};
 
@@ -43,13 +45,6 @@ extern "C" {
     ) -> c_int;
 
     fn symbolic_demangle_is_swift_symbol(sym: *const c_char) -> c_int;
-
-    fn symbolic_demangle_cpp(
-        sym: *const c_char,
-        buf_out: *mut *mut c_char,
-    ) -> c_int;
-
-    fn symbolic_demangle_cpp_free(buf: *mut c_char);
 }
 
 /// Defines the output format of the demangler
@@ -83,42 +78,31 @@ impl Default for DemangleOptions {
 }
 
 fn is_maybe_objc(ident: &str) -> bool {
-    (ident.starts_with("-[") || ident.starts_with("+[")) &&
-        ident.ends_with("]")
+    (ident.starts_with("-[") || ident.starts_with("+[")) && ident.ends_with("]")
 }
 
 fn is_maybe_cpp(ident: &str) -> bool {
     ident.starts_with("_Z") || ident.starts_with("__Z")
 }
 
-
 fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Result<Option<String>> {
-    let ident = unsafe {
-        let mut buf_out = ptr::null_mut();
-        let sym = CString::new(ident.replace("\x00", "")).unwrap();
-        let rv = symbolic_demangle_cpp(sym.as_ptr(), &mut buf_out);
-        if rv == 0 {
-            return Err(ErrorKind::BadSymbol("not a valid C++ identifier".into()).into());
-        }
-        let rv = CStr::from_ptr(buf_out).to_string_lossy().into_owned();
-        symbolic_demangle_cpp_free(buf_out);
-        rv
+    let symbol = match Symbol::new(ident) {
+        Ok(symbol) => symbol,
+        Err(_) => return Ok(None),
     };
 
-    if opts.with_arguments {
-        Ok(Some(ident))
-    } else {
-        Ok(ident.split('(').next().map(|x| x.to_string()))
-    }
+    let opts = CppOptions { no_params: !opts.with_arguments };
+    Ok(match symbol.demangle(&opts) {
+        Ok(demangled) => Some(demangled),
+        Err(_) => None,
+    })
 }
 
 fn try_demangle_rust(ident: &str, _opts: DemangleOptions) -> Result<Option<String>> {
     if let Ok(dm) = rustc_demangle::try_demangle(ident) {
         Ok(Some(format!("{:#}", dm)))
     } else {
-        Err(
-            ErrorKind::BadSymbol("Not a valid Rust symbol".into()).into(),
-        )
+        Err(ErrorKind::BadSymbol("Not a valid Rust symbol".into()).into())
     }
 }
 
