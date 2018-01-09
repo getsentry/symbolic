@@ -4,28 +4,17 @@
 
 extern crate symbolic_common;
 extern crate symbolic_demangle;
+mod utils;
 
-use symbolic_common::{Language, Name};
-use symbolic_demangle::{Demangle, DemangleFormat, DemangleOptions};
-
-const DEMANGLE_FORMAT: DemangleOptions = DemangleOptions {
-    format: DemangleFormat::Short,
-    with_arguments: true,
-};
-
-fn assert_demangle(input: &str, output: Option<&str>) {
-    let name = Name::with_language(input, Language::ObjCpp);
-    if let Some(rv) = name.demangle(DEMANGLE_FORMAT).unwrap() {
-        assert_eq!(Some(rv.as_str()), output);
-    } else {
-        assert_eq!(None, output);
-    }
-}
+use symbolic_common::Language;
+use utils::assert_demangle;
 
 #[test]
 fn objc() {
     assert_demangle(
+        Language::ObjCpp,
         "+[Foo bar:blub:]",
+        Some("+[Foo bar:blub:]"),
         Some("+[Foo bar:blub:]"),
     );
 }
@@ -33,24 +22,30 @@ fn objc() {
 #[test]
 fn cpp() {
     assert_demangle(
+        Language::ObjCpp,
         "_ZN4base24MessagePumpNSApplication5DoRunEPNS_11MessagePump8DelegateE",
         Some("base::MessagePumpNSApplication::DoRun(base::MessagePump::Delegate*)"),
+        Some("base::MessagePumpNSApplication::DoRun"),
     );
 }
 
 #[test]
 fn cpp_objc_object() {
     assert_demangle(
+        Language::ObjCpp,
         "_ZL29SupportsTextureSampleCountMTLPU19objcproto9MTLDevice11objc_objectm",
         Some("SupportsTextureSampleCountMTL(objc_object objcproto9MTLDevice*, unsigned long)"),
+        Some("SupportsTextureSampleCountMTL"),
     );
 }
 
 #[test]
 fn cpp_nsstring() {
     assert_demangle(
+        Language::ObjCpp,
         "_ZL19StringContainsEmojiP8NSString",
         Some("StringContainsEmoji(NSString*)"),
+        Some("StringContainsEmoji"),
     );
 }
 
@@ -59,5 +54,5 @@ fn invalid() {
     // If Objective C++ is specified explicitly, the demangler should not fall
     // back to auto-detection. If invalid symbols are passed in, they should not
     // be demangled anymore.
-    assert_demangle("invalid", None);
+    assert_demangle(Language::ObjCpp, "invalid", None, None);
 }

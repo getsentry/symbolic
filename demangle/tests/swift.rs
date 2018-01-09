@@ -4,23 +4,10 @@
 
 extern crate symbolic_common;
 extern crate symbolic_demangle;
+mod utils;
 
-use symbolic_common::{Language, Name};
-use symbolic_demangle::{Demangle, DemangleFormat, DemangleOptions};
-
-const DEMANGLE_FORMAT: DemangleOptions = DemangleOptions {
-    format: DemangleFormat::Short,
-    with_arguments: true,
-};
-
-fn assert_demangle(input: &str, output: Option<&str>) {
-    let name = Name::with_language(input, Language::Swift);
-    if let Some(rv) = name.demangle(DEMANGLE_FORMAT).unwrap() {
-        assert_eq!(Some(rv.as_str()), output);
-    } else {
-        assert_eq!(None, output);
-    }
-}
+use symbolic_common::Language;
+use utils::assert_demangle;
 
 /// These examples are from RFC 3492, which defines the Punycode encoding used
 /// by name mangling.
@@ -31,8 +18,10 @@ fn assert_demangle(input: &str, output: Option<&str>) {
 #[test]
 fn unicode_arabic() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling0022egbpdajGbuEbxfgehfvwxnyyF",
         Some("ليهمابتكلموشعربي؟()"),
+        Some("ليهمابتكلموشعربي؟"),
     );
 }
 
@@ -45,8 +34,10 @@ fn unicode_arabic() {
 #[test]
 fn unicode_chinese1() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling0024ihqwcrbEcvIaIdqgAFGpqjyeyyF",
         Some("他们为什么不说中文()"),
+        Some("他们为什么不说中文"),
     );
 }
 
@@ -59,8 +50,10 @@ fn unicode_chinese1() {
 #[test]
 fn unicode_chinese2() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling0027ihqwctvzcJBfGFJdrssDxIboAybyyF",
         Some("他們爲什麽不說中文()"),
+        Some("他們爲什麽不說中文"),
     );
 }
 
@@ -73,8 +66,10 @@ fn unicode_chinese2() {
 #[test]
 fn unicode_czech() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling0030Proprostnemluvesky_uybCEdmaEBayyF",
         Some("Pročprostěnemluvíčesky()"),
+        Some("Pročprostěnemluvíčesky"),
     );
 }
 
@@ -87,8 +82,10 @@ fn unicode_czech() {
 #[test]
 fn param_array() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling9r13757744ySaySiG1x_tF",
         Some("r13757744(x:)"),
+        Some("r13757744"),
     );
 }
 
@@ -101,8 +98,10 @@ fn param_array() {
 #[test]
 fn param_variadic() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling9r13757744ySaySiG1xd_tF",
         Some("r13757744(x:)"),
+        Some("r13757744"),
     );
 }
 
@@ -112,8 +111,10 @@ fn param_variadic() {
 #[test]
 fn param_variadic_first() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling14varargsVsArrayySaySiG3arrd_SS1ntF",
         Some("varargsVsArray(arr:n:)"),
+        Some("varargsVsArray"),
     );
 }
 
@@ -123,8 +124,10 @@ fn param_variadic_first() {
 #[test]
 fn param_array_first() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling14varargsVsArrayySaySiG3arr_SS1ntF",
         Some("varargsVsArray(arr:n:)"),
+        Some("varargsVsArray"),
     );
 }
 
@@ -137,7 +140,12 @@ fn param_array_first() {
 /// ```
 #[test]
 fn operator_prefix() {
-    assert_demangle("_T08mangling2psopyxlF", Some("+- prefix<A>(_:)"));
+    assert_demangle(
+        Language::Swift,
+        "_T08mangling2psopyxlF",
+        Some("+- prefix<A>(_:)"),
+        Some("+- prefix<A>"),
+    );
 }
 
 /// <rdar://problem/13757750> Prefix, postfix, and infix operators need
@@ -149,7 +157,12 @@ fn operator_prefix() {
 /// ```
 #[test]
 fn operator_postfix() {
-    assert_demangle("_T08mangling2psoPyxlF", Some("+- postfix<A>(_:)"));
+    assert_demangle(
+        Language::Swift,
+        "_T08mangling2psoPyxlF",
+        Some("+- postfix<A>(_:)"),
+        Some("+- postfix<A>"),
+    );
 }
 
 /// <rdar://problem/13757750> Prefix, postfix, and infix operators need
@@ -161,7 +174,12 @@ fn operator_postfix() {
 /// ```
 #[test]
 fn operator_infix() {
-    assert_demangle("_T08mangling2psoiyx_xtlF", Some("+- infix<A>(_:_:)"));
+    assert_demangle(
+        Language::Swift,
+        "_T08mangling2psoiyx_xtlF",
+        Some("+- infix<A>(_:_:)"),
+        Some("+- infix<A>"),
+    );
 }
 
 /// <rdar://problem/13757750> Prefix, postfix, and infix operators need
@@ -174,8 +192,10 @@ fn operator_infix() {
 #[test]
 fn operator_prefix_generic() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling2psopyx1a_x1bt_tlF",
         Some("+- prefix<A>(_:)"),
+        Some("+- prefix<A>"),
     );
 }
 
@@ -189,8 +209,10 @@ fn operator_prefix_generic() {
 #[test]
 fn operator_postfix_generic() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling2psoPyx1a_x1bt_tlF",
         Some("+- postfix<A>(_:)"),
+        Some("+- postfix<A>"),
     );
 }
 
@@ -204,8 +226,10 @@ fn operator_postfix_generic() {
 #[test]
 fn operator_infix_utf() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling007p_qcaDcoiS2i_SitF",
         Some("«+» infix(_:_:)"),
+        Some("«+» infix"),
     );
 }
 
@@ -215,8 +239,10 @@ fn operator_infix_utf() {
 #[test]
 fn operator_nil_coalescing() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling2qqoiySi_SitF",
-        Some("?? infix(_:_:)")
+        Some("?? infix(_:_:)"),
+        Some("?? infix"),
     );
 }
 
@@ -228,8 +254,10 @@ fn operator_nil_coalescing() {
 #[test]
 fn protocols_any() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling12any_protocolyypF",
         Some("any_protocol(_:)"),
+        Some("any_protocol"),
     );
 }
 
@@ -241,8 +269,10 @@ fn protocols_any() {
 #[test]
 fn protocols_one() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling12one_protocolyAA3Foo_pF",
         Some("one_protocol(_:)"),
+        Some("one_protocol"),
     );
 }
 
@@ -254,8 +284,10 @@ fn protocols_one() {
 #[test]
 fn protocols_twice() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling18one_protocol_twiceyAA3Foo_p_AaC_ptF",
         Some("one_protocol_twice(_:_:)"),
+        Some("one_protocol_twice"),
     );
 }
 
@@ -267,8 +299,10 @@ fn protocols_twice() {
 #[test]
 fn protocols_composed() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling12two_protocolyAA3Bar_AA3FoopF",
         Some("two_protocol(_:)"),
+        Some("two_protocol"),
     );
 }
 
@@ -282,8 +316,10 @@ fn protocols_composed() {
 #[test]
 fn archetypes1() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling3ZimC4zangyx_qd__tlF",
         Some("Zim.zang<A>(_:_:)"),
+        Some("Zim.zang<A>"),
     );
 }
 
@@ -297,8 +333,10 @@ fn archetypes1() {
 #[test]
 fn archetypes2() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling3ZimC4zungyqd___xtlF",
         Some("Zim.zung<A>(_:_:)"),
+        Some("Zim.zung<A>"),
     );
 }
 
@@ -312,8 +350,10 @@ fn archetypes2() {
 #[test]
 fn protocol_single_composition() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling27single_protocol_compositionyAA3Foo_p1x_tF",
         Some("single_protocol_composition(x:)"),
+        Some("single_protocol_composition"),
     );
 }
 
@@ -326,8 +366,10 @@ fn protocol_single_composition() {
 #[test]
 fn clang_imported_class() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling28uses_objc_class_and_protocolySo8NSObjectC1o_So8NSAnsing_p1ptF",
         Some("uses_objc_class_and_protocol(o:p:)"),
+        Some("uses_objc_class_and_protocol"),
     );
 }
 
@@ -341,8 +383,10 @@ fn clang_imported_class() {
 #[test]
 fn clang_imported_struct() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling17uses_clang_structySC6CGRectV1r_tF",
         Some("uses_clang_struct(r:)"),
+        Some("uses_clang_struct"),
     );
 }
 
@@ -352,8 +396,10 @@ fn clang_imported_struct() {
 #[test]
 fn optionals() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling14uses_optionalss7UnicodeO6ScalarVSgSiSg1x_tF",
         Some("uses_optionals(x:)"),
+        Some("uses_optionals"),
     );
 }
 
@@ -365,8 +411,10 @@ fn optionals() {
 #[test]
 fn generic_union() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling12GenericUnionO3FooACyxGSicAEmlF",
         Some("GenericUnion.Foo<A>(_:)"),
+        Some("GenericUnion.Foo<A>"),
     );
 }
 
@@ -378,8 +426,10 @@ fn generic_union() {
 #[test]
 fn generic_instanciation() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling34instantiateGenericUnionConstructoryxlF",
         Some("instantiateGenericUnionConstructor<A>(_:)"),
+        Some("instantiateGenericUnionConstructor<A>"),
     );
 }
 
@@ -391,7 +441,9 @@ fn generic_instanciation() {
 #[test]
 fn static_materialize_autoclosure() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling10HasVarInitV5stateSbfmZytfU_",
+        Some("closure #1 in static HasVarInit.state.materializeForSet"),
         Some("closure #1 in static HasVarInit.state.materializeForSet"),
     );
 }
@@ -406,8 +458,10 @@ fn static_materialize_autoclosure() {
 #[test]
 fn autoclosure_overload() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling19autoClosureOverloadySiyXK1f_tF",
         Some("autoClosureOverload(f:)"),
+        Some("autoClosureOverload"),
     );
 }
 
@@ -421,8 +475,10 @@ fn autoclosure_overload() {
 #[test]
 fn closure_overload() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling19autoClosureOverloadySiyc1f_tF",
         Some("autoClosureOverload(f:)"),
+        Some("autoClosureOverload"),
     );
 }
 
@@ -441,8 +497,10 @@ fn closure_overload() {
 #[test]
 fn associated_type() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling4fooAyxAA12HasAssocTypeRzlF",
         Some("fooA<A>(_:)"),
+        Some("fooA<A>"),
     );
 }
 
@@ -461,8 +519,10 @@ fn associated_type() {
 #[test]
 fn associated_type_condition() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling4fooByxAA12HasAssocTypeRzAA0D4Reqt0D0RpzlF",
         Some("fooB<A>(_:)"),
+        Some("fooB<A>"),
     );
 }
 
@@ -485,7 +545,9 @@ fn associated_type_condition() {
 #[test]
 fn property_instance_getter() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling24InstanceAndClassPropertyV8propertySifg",
+        Some("InstanceAndClassProperty.property.getter"),
         Some("InstanceAndClassProperty.property.getter"),
     );
 }
@@ -509,7 +571,9 @@ fn property_instance_getter() {
 #[test]
 fn property_instance_setter() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling24InstanceAndClassPropertyV8propertySifs",
+        Some("InstanceAndClassProperty.property.setter"),
         Some("InstanceAndClassProperty.property.setter"),
     );
 }
@@ -533,7 +597,9 @@ fn property_instance_setter() {
 #[test]
 fn property_class_getter() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling24InstanceAndClassPropertyV8propertySifgZ",
+        Some("static InstanceAndClassProperty.property.getter"),
         Some("static InstanceAndClassProperty.property.getter"),
     );
 }
@@ -557,7 +623,9 @@ fn property_class_getter() {
 #[test]
 fn property_class_setter() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling24InstanceAndClassPropertyV8propertySifsZ",
+        Some("static InstanceAndClassProperty.property.setter"),
         Some("static InstanceAndClassProperty.property.setter"),
     );
 }
@@ -568,8 +636,10 @@ fn property_class_setter() {
 #[test]
 fn throws_no_return() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling12curry1ThrowsyyKF",
         Some("curry1Throws()"),
+        Some("curry1Throws"),
     );
 }
 
@@ -579,8 +649,10 @@ fn throws_no_return() {
 #[test]
 fn throws_return() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling3barSiyKF",
         Some("bar()"),
+        Some("bar"),
     );
 }
 
@@ -591,8 +663,10 @@ fn throws_return() {
 #[test]
 fn throws_return_lambda() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling12curry2ThrowsyycyKF",
         Some("curry2Throws()"),
+        Some("curry2Throws"),
     );
 }
 
@@ -603,23 +677,29 @@ fn throws_return_lambda() {
 #[test]
 fn throws_return_throwing() {
     assert_demangle(
+        Language::Swift,
         "_T08mangling12curry3ThrowsyyKcyKF",
         Some("curry3Throws()"),
+        Some("curry3Throws"),
     );
 }
 
 #[test]
 fn protocol_witness() {
     assert_demangle(
+        Language::Swift,
         "_TTWVSC29UIApplicationLaunchOptionsKeys21_ObjectiveCBridgeable5UIKitZFS0_36_unconditionallyBridgeFromObjectiveCfGSqwx15_ObjectiveCType_x",
         Some("protocol witness for static _ObjectiveCBridgeable._unconditionallyBridgeFromObjectiveC(_:) in conformance UIApplicationLaunchOptionsKey"),
+        Some("protocol witness for static _ObjectiveCBridgeable._unconditionallyBridgeFromObjectiveC in conformance UIApplicationLaunchOptionsKey"),
     );
 }
 
 #[test]
 fn controller_method() {
     assert_demangle(
+        Language::Swift,
         "_TFC12Swift_Tester14ViewController11doSomethingfS0_FT_T_",
         Some("ViewController.doSomething(_:)"),
+        Some("ViewController.doSomething"),
     );
 }
