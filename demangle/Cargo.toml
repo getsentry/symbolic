@@ -15,8 +15,9 @@ A library to demangle symbols from various languages and compilers.
 build = "build.rs"
 
 [dependencies]
+cpp_demangle = "0.2.7"
+rustc-demangle = "0.1.5"
 symbolic-common = { version = "2.0.3", path = "../common" }
-rustc-demangle = "0.1"
 
 [build-dependencies]
-gcc = "0.3"
+cc = "1.0.4"
