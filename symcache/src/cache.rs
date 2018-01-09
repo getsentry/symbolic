@@ -8,9 +8,9 @@ use std::cell::RefCell;
 
 use uuid::Uuid;
 
-use symbolic_common::{Arch, ByteView, ErrorKind, Language, Result};
+use symbolic_common::{Arch, ByteView, ErrorKind, Language, Name, Result};
 use symbolic_debuginfo::Object;
-use symbolic_demangle::demangle;
+use symbolic_demangle::Demangle;
 
 use types::{CacheFileHeader, DataSource, FileRecord, FuncRecord, Seg};
 use utils::common_join_path;
@@ -81,7 +81,7 @@ impl<'a> LineInfo<'a> {
     /// This demangles with default settings.  For further control the symbolic
     /// demangle crate can be manually used on the symbol.
     pub fn function_name(&self) -> String {
-        demangle(self.symbol())
+        Name::with_language(self.symbol(), self.lang()).try_demangle(Default::default())
     }
 
     /// The filename of the current line.
@@ -177,7 +177,7 @@ impl<'a> Function<'a> {
     /// This demangles with default settings.  For further control the symbolic
     /// demangle crate can be manually used on the symbol.
     pub fn function_name(&self) -> String {
-        demangle(self.symbol())
+        Name::with_language(self.symbol(), self.lang()).try_demangle(Default::default())
     }
 
     /// The language of the function
