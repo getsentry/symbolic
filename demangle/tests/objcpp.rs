@@ -39,6 +39,22 @@ fn cpp() {
 }
 
 #[test]
+fn cpp_objc_object() {
+    assert_demangle(
+        "_ZL29SupportsTextureSampleCountMTLPU19objcproto9MTLDevice11objc_objectm",
+        Some("SupportsTextureSampleCountMTL(objc_object objcproto9MTLDevice*, unsigned long)"),
+    );
+}
+
+#[test]
+fn cpp_nsstring() {
+    assert_demangle(
+        "_ZL19StringContainsEmojiP8NSString",
+        Some("StringContainsEmoji(NSString*)"),
+    );
+}
+
+#[test]
 fn invalid() {
     // If Objective C++ is specified explicitly, the demangler should not fall
     // back to auto-detection. If invalid symbols are passed in, they should not
