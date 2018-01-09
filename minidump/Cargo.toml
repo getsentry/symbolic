@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-minidump"
-version = "2.0.2"
+version = "2.0.3"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -19,8 +19,8 @@ gimli = "0.15"
 goblin = "0.0"
 lazy_static = "1.0"
 regex = "0.2"
-symbolic-common = { version = "2.0.2", path = "../common" }
-symbolic-debuginfo = { version = "2.0.2", path = "../debuginfo" }
+symbolic-common = { version = "2.0.3", path = "../common" }
+symbolic-debuginfo = { version = "2.0.3", path = "../debuginfo" }
 uuid = { version = "0.5", features = ["use_std"] }
 
 [build-dependencies]
