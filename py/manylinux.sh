@@ -2,7 +2,7 @@
 set -e
 
 # Install dependencies needed by our wheel
-yum -y install gcc libffi-devel
+yum -y -q -e 0 install gcc libffi-devel
 
 # Install Rust
 curl https://sh.rustup.rs -sSf | sh -s -- -y
