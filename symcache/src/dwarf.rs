@@ -381,7 +381,7 @@ impl<'input> Unit<'input> {
                     Err(idx) => {
                         // There is no line record pointing to this function, so
                         // add one to the correct call location. Note that "base_dir"
-                        // be inherited safely here.
+                        // can be inherited safely here.
                         node.lines.insert(idx, Line {
                             addr: func.addr,
                             original_file_id: call_file,
