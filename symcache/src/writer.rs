@@ -384,7 +384,7 @@ impl<W: Write> SymCacheWriter<W> {
         let mut range_buf = Vec::new();
         let mut symbol_iter = symbols.map(|x| x.iter().peekable());
         let mut last_addr = !0;
-        let mut addrs = FnvHashSet::default();
+        let mut locations = FnvHashSet::default();
         let mut local_cache = FnvHashMap::default();
         let mut funcs = vec![];
 
@@ -400,9 +400,9 @@ impl<W: Write> SymCacheWriter<W> {
             };
 
             // clear our function local caches and infos
-            let addrs_inner = &mut addrs;
+            let locations_inner = &mut locations;
             let local_cache_inner = &mut local_cache;
-            addrs_inner.clear();
+            locations_inner.clear();
             local_cache_inner.clear();
             funcs.clear();
 
@@ -417,7 +417,7 @@ impl<W: Write> SymCacheWriter<W> {
                         symbol_iter,
                     )?;
                 }
-                self.write_dwarf_function(&func, addrs_inner, local_cache_inner, !0)?;
+                self.write_dwarf_function(&func, locations_inner, local_cache_inner, !0)?;
                 last_addr = func.addr + func.len as u64;
             }
         }
@@ -442,7 +442,7 @@ impl<W: Write> SymCacheWriter<W> {
     fn write_dwarf_function<'a>(
         &mut self,
         func: &Function<'a>,
-        addrs: &mut FnvHashSet<(u64, u16)>,
+        locations: &mut FnvHashSet<(u64, u16)>,
         local_cache: &mut FnvHashMap<u64, u16>,
         parent_id: u32,
     ) -> Result<()> {
@@ -490,15 +490,15 @@ impl<W: Write> SymCacheWriter<W> {
         // recurse first.  As we recurse down the address rejection will
         // do the job it's supposed to do.
         for inline_func in &func.inlines {
-            self.write_dwarf_function(inline_func, addrs, local_cache, func_id)?;
+            self.write_dwarf_function(inline_func, locations, local_cache, func_id)?;
         }
 
         let mut line_records = vec![];
         for line in &func.lines {
-            if addrs.contains(&(line.addr, line.line)) {
+            if locations.contains(&(line.addr, line.line)) {
                 continue;
             }
-            addrs.insert((line.addr, line.line));
+            locations.insert((line.addr, line.line));
 
             let file_id = if let Some(&x) = local_cache.get(&line.original_file_id) {
                 x
