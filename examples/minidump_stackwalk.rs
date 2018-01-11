@@ -177,7 +177,7 @@ fn print_state(state: &ProcessState, symcaches: &SymCaches, crashed_only: bool) 
                             info.function_name(),
                             info.filename(),
                             info.line(),
-                            info.instr_addr() - info.sym_addr(),
+                            info.instr_addr() - info.line_addr(),
                         );
 
                         if i + 1 < line_infos.len() {

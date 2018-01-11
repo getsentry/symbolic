@@ -23,8 +23,9 @@ SYMCACHE_LATEST_VERSION = rustcall(
 class LineInfo(object):
 
     def __init__(self, sym_addr, instr_addr, line, lang, symbol,
-                 filename=None, base_dir=None, comp_dir=None):
+                 line_addr=None, filename=None, base_dir=None, comp_dir=None):
         self.sym_addr = sym_addr
+        self.line_addr = line_addr
         self.instr_addr = instr_addr
         self.line = line
         self.lang = lang
@@ -135,6 +136,7 @@ class SymCache(RustObject):
                 sym = rv.items[idx]
                 matches.append(LineInfo(
                     sym_addr=sym.sym_addr,
+                    line_addr=sym.line_addr,
                     instr_addr=sym.instr_addr,
                     line=sym.line,
                     lang=decode_str(sym.lang),
