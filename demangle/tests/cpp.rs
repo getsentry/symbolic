@@ -39,13 +39,26 @@ fn lambda() {
     );
 }
 
+#[test]
 // TODO: disabled until cpp_demangle fixes this
-// #[test]
-// fn decltype() {
-//     assert_demangle(
-//         Language::Cpp,
-//         "_Z3MinIiiEDTqultfp_fp0_cl7forwardIT_Efp_Ecl7forwardIT0_Efp0_EEOS0_OS1_",
-//         Some("decltype (({parm#1}<{parm#2})?((forward<int>)({parm#1})) : ((forward<int>)({parm#2}))) Min<int, int>(int&&, int&&)"),
-//         Some("decltype (({parm#1}<{parm#2})?((forward<int>)({parm#1})) : ((forward<int>)({parm#2}))) Min<int, int>"),
-//     );
-// }
+#[should_panic(expected = "assertion failed")]
+fn empty_template_vararg() {
+    assert_demangle(
+        Language::Cpp,
+        "_ZN4base8internal13FunctorTraitsIPFvvEvE6InvokeIJEEEvS3_DpOT_",
+        Some("void base::internal::FunctorTraits<void (*)(), void>::Invoke<>(void (*)())"),
+        Some("void base::internal::FunctorTraits<void (*)(), void>::Invoke<>"),
+    )
+}
+
+#[test]
+// TODO: disabled until cpp_demangle fixes this
+#[should_panic(expected = "assertion failed")]
+fn decltype() {
+    assert_demangle(
+        Language::Cpp,
+        "_Z3MinIiiEDTqultfp_fp0_cl7forwardIT_Efp_Ecl7forwardIT0_Efp0_EEOS0_OS1_",
+        Some("decltype (({parm#1}<{parm#2})?((forward<int>)({parm#1})) : ((forward<int>)({parm#2}))) Min<int, int>(int&&, int&&)"),
+        Some("decltype (({parm#1}<{parm#2})?((forward<int>)({parm#1})) : ((forward<int>)({parm#2}))) Min<int, int>"),
+    );
+}
