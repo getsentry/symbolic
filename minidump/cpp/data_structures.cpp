@@ -140,6 +140,14 @@ stack_frame_t *const *call_stack_frames(const call_stack_t *stack,
     return reinterpret_cast<stack_frame_t *const *>(frames->data());
 }
 
+uint64_t stack_frame_return_address(const stack_frame_t *frame) {
+    if (frame == nullptr) {
+        return 0;
+    }
+
+    return stack_frame_t::cast(frame)->ReturnAddress();
+}
+
 uint64_t stack_frame_instruction(const stack_frame_t *frame) {
     if (frame == nullptr) {
         return 0;

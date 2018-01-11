@@ -10,7 +10,7 @@ use std::os::raw::{c_char, c_void};
 use regex::Regex;
 use uuid::Uuid;
 
-use symbolic_common::{ByteView, ErrorKind, Result};
+use symbolic_common::{Arch, ByteView, CpuFamily, ErrorKind, Result};
 
 use utils;
 
@@ -26,6 +26,7 @@ extern "C" {
     fn code_module_debug_file(module: *const CodeModule) -> *mut c_char;
     fn code_module_debug_identifier(module: *const CodeModule) -> *mut c_char;
 
+    fn stack_frame_return_address(frame: *const StackFrame) -> u64;
     fn stack_frame_instruction(frame: *const StackFrame) -> u64;
     fn stack_frame_module(frame: *const StackFrame) -> *const CodeModule;
     fn stack_frame_trust(frame: *const StackFrame) -> FrameTrust;
@@ -333,6 +334,24 @@ impl StackFrame {
         unsafe { stack_frame_instruction(self) }
     }
 
+    // Return the actual return address, as saved on the stack or in a
+    // register. See the comments for `StackFrame::instruction' for
+    // details.
+    pub fn return_address(&self, arch: Arch) -> u64 {
+        let address = unsafe { stack_frame_return_address(self) };
+
+        // The return address reported for ARM* frames is actually the
+        // instruction with heuristics from Breakpad applied already.
+        // To resolve the original return address value, compensate
+        // by adding the offsets applied in `StackwalkerARM::GetCallerFrame`
+        // and `StackwalkerARM64::GetCallerFrame`.
+        match arch.cpu_family() {
+            CpuFamily::Arm32 => address + 2,
+            CpuFamily::Arm64 => address + 4,
+            _ => address,
+        }
+    }
+
     /// Returns the `CodeModule` that contains this frame's instruction.
     pub fn module(&self) -> Option<&CodeModule> {
         unsafe { stack_frame_module(self).as_ref() }
@@ -347,6 +366,7 @@ impl StackFrame {
 impl fmt::Debug for StackFrame {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("StackFrame")
+            .field("return_address", &self.return_address(Arch::Unknown))
             .field("instruction", &self.instruction())
             .field("trust", &self.trust())
             .field("module", &self.module())
@@ -448,13 +468,19 @@ impl SystemInfo {
     /// A string identifying the basic CPU family, such as "x86" or "ppc".
     /// If this information is present in the dump but its value is unknown,
     /// this field will contain a numeric value.  If the information is not
-    /// present in the dump, this field will be empty.  The values stored in
-    /// this field should match those used by MinidumpSystemInfo::GetCPU.
+    /// present in the dump, this field will be empty.
     pub fn cpu_family(&self) -> String {
         unsafe {
             let ptr = system_info_cpu_family(self);
             utils::ptr_to_string(ptr)
         }
+    }
+
+    /// The architecture of the CPU parsed from `ProcessState::cpu_family`.
+    /// If this information is present in the dump but its value is unknown
+    /// or ifthe value is missing, this field will contain `Arch::Unknown`.
+    pub fn cpu_arch(&self) -> Arch {
+        Arch::from_breakpad(&self.cpu_family())
     }
 
     /// A string further identifying the specific CPU, such as
