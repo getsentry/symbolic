@@ -176,7 +176,10 @@ impl<'a> Function<'a> {
 
     /// The symbol of the function.
     pub fn symbol(&self) -> &str {
-        self.cache.get_symbol(self.fun.symbol_id()).unwrap_or(None).unwrap_or("?")
+        self.cache
+            .get_symbol(self.fun.symbol_id())
+            .unwrap_or(None)
+            .unwrap_or("?")
     }
 
     /// The demangled function name.
@@ -194,7 +197,9 @@ impl<'a> Function<'a> {
 
     /// The compilation dir of the function
     pub fn comp_dir(&self) -> &str {
-        self.cache.get_segment_as_string(&self.fun.comp_dir).unwrap_or("")
+        self.cache
+            .get_segment_as_string(&self.fun.comp_dir)
+            .unwrap_or("")
     }
 
     /// An iterator over all lines in the function
@@ -317,7 +322,9 @@ impl<'a> Line<'a> {
     /// The filename of the line.
     pub fn filename(&self) -> &str {
         if let Some(rec) = self.cache.get_file_record(self.file_id).unwrap_or(None) {
-            self.cache.get_segment_as_string(&rec.filename).unwrap_or("")
+            self.cache
+                .get_segment_as_string(&rec.filename)
+                .unwrap_or("")
         } else {
             ""
         }
@@ -326,7 +333,9 @@ impl<'a> Line<'a> {
     /// The base_dir of the line.
     pub fn base_dir(&self) -> &str {
         if let Some(rec) = self.cache.get_file_record(self.file_id).unwrap_or(None) {
-            self.cache.get_segment_as_string(&rec.base_dir).unwrap_or("")
+            self.cache
+                .get_segment_as_string(&rec.base_dir)
+                .unwrap_or("")
         } else {
             ""
         }
@@ -346,9 +355,7 @@ impl<'a> Line<'a> {
 impl<'a> SymCache<'a> {
     /// Load a symcache from a byteview.
     pub fn new(byteview: ByteView<'a>) -> Result<SymCache<'a>> {
-        let rv = SymCache {
-            byteview: byteview,
-        };
+        let rv = SymCache { byteview: byteview };
         {
             let header = rv.header()?;
             if header.magic != SYMCACHE_MAGIC {
@@ -388,9 +395,7 @@ impl<'a> SymCache<'a> {
         let buffer = &self.byteview;
         let end = start.wrapping_add(len);
         if end < start || end > buffer.len() {
-            Err(
-                io::Error::new(io::ErrorKind::UnexpectedEof, "out of range").into(),
-            )
+            Err(io::Error::new(io::ErrorKind::UnexpectedEof, "out of range").into())
         } else {
             Ok(&buffer[start..end])
         }
@@ -398,17 +403,13 @@ impl<'a> SymCache<'a> {
 
     /// Loads data from a segment.
     fn get_segment<T, L: Copy + Into<u64>>(&self, seg: &Seg<T, L>) -> Result<&[T]> {
-        let offset = seg.offset as usize +
-            mem::size_of::<CacheFileHeader>() as usize;
+        let offset = seg.offset as usize + mem::size_of::<CacheFileHeader>() as usize;
         let len: u64 = seg.len.into();
         let len = len as usize;
         let size = mem::size_of::<T>() * len;
         unsafe {
             let bytes = self.get_data(offset, size)?;
-            Ok(slice::from_raw_parts(
-                mem::transmute(bytes.as_ptr()),
-                len
-            ))
+            Ok(slice::from_raw_parts(mem::transmute(bytes.as_ptr()), len))
         }
     }
 
@@ -424,8 +425,8 @@ impl<'a> SymCache<'a> {
     #[inline(always)]
     fn header(&self) -> Result<&CacheFileHeader> {
         unsafe {
-            Ok(mem::transmute(self.get_data(
-                0, mem::size_of::<CacheFileHeader>())?.as_ptr()))
+            let data = self.get_data(0, mem::size_of::<CacheFileHeader>())?;
+            Ok(mem::transmute(data.as_ptr()))
         }
     }
 
@@ -578,8 +579,12 @@ impl<'a> SymCache<'a> {
     /// If the function has no own instructions (e.g. due to complete inlining),
     /// this information is taken from `inner_sym`. If that fails, the file and
     /// line information will be empty (0 or "").
-    fn build_line_info(&'a self, fun: &'a FuncRecord, addr: u64,
-                    inner_sym: Option<&LineInfo<'a>>) -> Result<LineInfo<'a>> {
+    fn build_line_info(
+        &'a self,
+        fun: &'a FuncRecord,
+        addr: u64,
+        inner_sym: Option<&LineInfo<'a>>,
+    ) -> Result<LineInfo<'a>> {
         let (line, line_addr, filename, base_dir) =
             if let Some((file_record, line_addr, line)) = self.run_to_line(fun, addr)? {
                 // The address was found in the function's line records, so use
@@ -691,9 +696,7 @@ impl<'a> SymCache<'a> {
             let outer_addr = fun.addr_start();
             fun = &funcs[parent_id];
             func_id = parent_id;
-            let symbol = {
-                self.build_line_info(&fun, outer_addr, Some(&rv[rv.len() - 1]))?
-            };
+            let symbol = { self.build_line_info(&fun, outer_addr, Some(&rv[rv.len() - 1]))? };
             rv.push(symbol);
         }
 
@@ -706,10 +709,16 @@ impl<'a> fmt::Debug for SymCache<'a> {
         f.debug_struct("SymCache")
             .field("size", &self.size())
             .field("arch", &self.arch().unwrap_or(Arch::Unknown))
-            .field("data_source", &self.data_source().unwrap_or(DataSource::Unknown))
+            .field(
+                "data_source",
+                &self.data_source().unwrap_or(DataSource::Unknown),
+            )
             .field("has_line_info", &self.has_line_info().unwrap_or(false))
             .field("has_file_info", &self.has_file_info().unwrap_or(false))
-            .field("functions", &self.function_records().map(|x| x.len()).unwrap_or(0))
+            .field(
+                "functions",
+                &self.function_records().map(|x| x.len()).unwrap_or(0),
+            )
             .finish()
     }
 }
