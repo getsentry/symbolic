@@ -283,6 +283,22 @@ pub enum FrameTrust {
     Context,
 }
 
+impl fmt::Display for FrameTrust {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let string = match *self {
+            FrameTrust::None => "none",
+            FrameTrust::Scan => "stack scanning",
+            FrameTrust::CFIScan => "call frame info with scanning",
+            FrameTrust::FP => "previous frame's frame pointer",
+            FrameTrust::CFI => "call frame info",
+            FrameTrust::Prewalked => "recovered by external stack walker",
+            FrameTrust::Context => "given as instruction pointer in context",
+        };
+
+        write!(f, "{}", string)
+    }
+}
+
 /// Contains information from the memorydump, especially the frame's instruction
 /// pointer. Also references an optional `CodeModule` that contains the
 /// instruction of this stack frame.

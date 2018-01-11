@@ -150,7 +150,7 @@ fn print_state(state: &ProcessState, symcaches: &SymCaches, crashed_only: bool) 
         println!("Assertion:     {}", state.assertion());
     }
     println!("Crash reason:  {}", state.crash_reason());
-    println!("Crash address: 0x{:0>16x}", state.crash_address());
+    println!("Crash address: 0x{:x}", state.crash_address());
     println!("Crash time:    {}", state.timestamp());
 
     for (ti, thread) in state.threads().iter().enumerate() {
@@ -165,21 +165,40 @@ fn print_state(state: &ProcessState, symcaches: &SymCaches, crashed_only: bool) 
             println!("\nThread {} (crashed)", ti);
         }
 
-        for (fi, frame) in thread.frames().iter().enumerate() {
-            let addr = frame.instruction();
-            if let Some(line_infos) = symbolize(&symcaches, frame)? {
-                for info in line_infos {
-                    println!("{:>3}  {}", fi, info.function_name());
-                    println!("     at {}:{}", info.full_filename(), info.line());
+        let mut index = 0;
+        for frame in thread.frames().iter() {
+            if let Some(module) = frame.module() {
+                if let Some(line_infos) = symbolize(&symcaches, frame)? {
+                    for (i, info) in line_infos.iter().enumerate() {
+                        println!(
+                            "{:>3}  {}!{} [{} : {} + 0x{:x}]",
+                            index,
+                            module.debug_file(),
+                            info.function_name(),
+                            info.filename(),
+                            info.line(),
+                            info.instr_addr() - info.sym_addr(),
+                        );
+
+                        if i + 1 < line_infos.len() {
+                            println!("     Found by: inlined into previous frame");
+                            index += 1;
+                        }
+                    }
+                } else {
+                    println!(
+                        "{:>3}  {} + 0x{:x}",
+                        index,
+                        module.debug_file(),
+                        frame.instruction() - module.base_address()
+                    );
                 }
             } else {
-                println!("{:>3}  0x{:0>16x}", fi, addr);
-            }
-            if let Some(module) = frame.module() {
-                println!("     in {}", module.debug_file());
+                println!("{:>3}  0x{:x}", index, frame.instruction());
             }
 
-            println!("     Found by: {:?}", frame.trust());
+            println!("     Found by: {}", frame.trust());
+            index += 1;
         }
     }
 

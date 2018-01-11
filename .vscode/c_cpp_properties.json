@@ -10,7 +10,7 @@
                 "/usr/include",
                 "/usr/include/machine",
                 "${workspaceRoot}/minidump",
-                "${workspaceRoot}/minidump/third_party/breakpad"
+                "${workspaceRoot}/minidump/third_party/breakpad/src"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
@@ -23,7 +23,7 @@
                     "/usr/include",
                     "/usr/include/machine",
                     "${workspaceRoot}/minidump",
-                    "${workspaceRoot}/minidump/third_party/breakpad"
+                    "${workspaceRoot}/minidump/third_party/breakpad/src"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
@@ -39,7 +39,7 @@
                 "/usr/include",
                 "/usr/local/include",
                 "${workspaceRoot}/minidump",
-                "${workspaceRoot}/minidump/third_party/breakpad"
+                "${workspaceRoot}/minidump/third_party/breakpad/src"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
@@ -48,7 +48,7 @@
                     "/usr/include",
                     "/usr/local/include",
                     "${workspaceRoot}/minidump",
-                    "${workspaceRoot}/minidump/third_party/breakpad"
+                    "${workspaceRoot}/minidump/third_party/breakpad/src"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
@@ -60,18 +60,15 @@
                 "C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include",
                 "${workspaceRoot}",
                 "${workspaceRoot}/minidump",
-                "${workspaceRoot}/minidump/third_party/breakpad"
+                "${workspaceRoot}/minidump/third_party/breakpad/src"
             ],
-            "defines": [
-                "_DEBUG",
-                "UNICODE"
-            ],
+            "defines": ["_DEBUG", "UNICODE"],
             "intelliSenseMode": "msvc-x64",
             "browse": {
                 "path": [
                     "C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include/*",
                     "${workspaceRoot}/minidump",
-                    "${workspaceRoot}/minidump/third_party/breakpad"
+                    "${workspaceRoot}/minidump/third_party/breakpad/src"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
