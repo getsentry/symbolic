@@ -26,6 +26,7 @@ pub const SYMCACHE_LATEST_VERSION: u32 = 1;
 pub struct LineInfo<'a> {
     cache: &'a SymCache<'a>,
     sym_addr: u64,
+    line_addr: u64,
     instr_addr: u64,
     line: u32,
     lang: Language,
@@ -51,9 +52,14 @@ impl<'a> LineInfo<'a> {
         self.cache.uuid().unwrap_or(Uuid::nil())
     }
 
-    /// The instruction address where the line starts.
+    /// The instruction address where the function starts.
     pub fn sym_addr(&self) -> u64 {
         self.sym_addr
+    }
+
+    /// The instruction address where the line starts.
+    pub fn line_addr(&self) -> u64 {
+        self.line_addr
     }
 
     /// The actual instruction address.
@@ -134,6 +140,7 @@ impl<'a> fmt::Debug for LineInfo<'a> {
         f.debug_struct("LineInfo")
             .field("arch", &self.arch())
             .field("sym_addr", &self.sym_addr())
+            .field("line_addr", &self.line_addr())
             .field("instr_addr", &self.instr_addr())
             .field("line", &self.line())
             .field("symbol", &self.symbol())
@@ -480,10 +487,9 @@ impl<'a> SymCache<'a> {
     }
 
     fn run_to_line(&'a self, fun: &'a FuncRecord, addr: u64)
-        -> Result<Option<(&FileRecord, u32)>>
+        -> Result<Option<(&FileRecord, u64, u32)>>
     {
         let records = self.get_segment(&fun.line_records)?;
-
         if records.is_empty() {
             return Ok(None);
         }
@@ -495,19 +501,28 @@ impl<'a> SymCache<'a> {
         let mut file_id = records[0].file_id;
         let mut line = records[0].line as u32;
         let mut running_addr = fun.addr_start() as u64;
+        let mut line_addr = running_addr;
 
         for rec in records {
-            let new_instr = running_addr + rec.addr_off as u64;
-            if new_instr > addr {
+            // Keep running until we exceed the search address
+            running_addr = running_addr + rec.addr_off as u64;
+            if running_addr > addr {
                 break;
             }
-            running_addr = new_instr;
+
+            // Remember the starting address of the current line. There might be
+            // multiple line records for a single line if `addr_off` overflows.
+            // So only update `line_addr` if we actually hit a new line.
+            if rec.line as u32 != line {
+                line_addr = running_addr;
+            }
+
             line = rec.line as u32;
             file_id = rec.file_id;
         }
 
         if let Some(ref record) = self.get_file_record(file_id)? {
-            Ok(Some((record, line)))
+            Ok(Some((record, line_addr, line)))
         } else {
             Err(ErrorKind::Internal("unknown file id").into())
         }
@@ -515,25 +530,28 @@ impl<'a> SymCache<'a> {
 
     fn build_line_info(&'a self, fun: &'a FuncRecord, addr: u64,
                     inner_sym: Option<&LineInfo<'a>>) -> Result<LineInfo<'a>> {
-        let (line, filename, base_dir) = match self.run_to_line(fun, addr)? {
-            Some((file_record, line)) => {
+        let (line, line_addr, filename, base_dir) = match self.run_to_line(fun, addr)? {
+            Some((file_record, line_addr, line)) => {
                 (
                     line,
+                    line_addr,
                     self.get_segment_as_string(&file_record.filename)?,
                     self.get_segment_as_string(&file_record.base_dir)?,
                 )
             }
             None => {
                 if let Some(inner_sym) = inner_sym {
-                    (inner_sym.line, inner_sym.filename, inner_sym.base_dir)
+                    (inner_sym.line, inner_sym.line_addr, inner_sym.filename, inner_sym.base_dir)
                 } else {
-                    (0, "", "")
+                    (0, 0, "", "")
                 }
             }
         };
+
         Ok(LineInfo {
             cache: self,
             sym_addr: fun.addr_start(),
+            line_addr: line_addr,
             instr_addr: addr,
             line: line,
             lang: Language::from_u32(fun.lang as u32).unwrap_or(Language::Unknown),
