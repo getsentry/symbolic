@@ -198,6 +198,7 @@ typedef struct {
  * Contains the absolute instruction address and image information of a stack frame
  */
 typedef struct {
+  uint64_t return_address;
   uint64_t instruction;
   SymbolicFrameTrust trust;
   SymbolicCodeModule module;

@@ -32,6 +32,7 @@ def test_macos_without_cfi(res_path):
     frame = thread.get_frame(1)
     assert frame.trust == 'scan'
     assert frame.instruction == 4329952133
+    assert frame.return_address == 4329952134
 
     mid = uuid.UUID("3f58bc3d-eabe-3361-b5fb-52a676298598")
     module = next(module for module in state.modules() if module.uuid == mid)
@@ -67,6 +68,7 @@ def test_linux_without_cfi(res_path):
     frame = thread.get_frame(1)
     assert frame.trust == 'scan'
     assert frame.instruction == 4202617
+    assert frame.return_address == 4202618
 
     mid = uuid.UUID("d2554cdb-9261-36c4-b976-6a086583b9b5")
     module = next(module for module in state.modules() if module.uuid == mid)
@@ -106,6 +108,7 @@ def test_macos_with_cfi(res_path):
     frame = thread.get_frame(1)
     assert frame.trust == 'cfi'
     assert frame.instruction == 4329952133
+    assert frame.return_address == 4329952134
 
     mid = uuid.UUID("3f58bc3d-eabe-3361-b5fb-52a676298598")
     module = next(module for module in state.modules() if module.uuid == mid)
@@ -145,6 +148,7 @@ def test_linux_with_cfi(res_path):
     frame = thread.get_frame(1)
     assert frame.trust == 'cfi'
     assert frame.instruction == 4202617
+    assert frame.return_address == 4202618
 
     mid = uuid.UUID("d2554cdb-9261-36c4-b976-6a086583b9b5")
     module = next(module for module in state.modules() if module.uuid == mid)
