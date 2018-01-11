@@ -513,7 +513,7 @@ impl<'a> SymCache<'a> {
         }
     }
 
-    fn build_symbol(&'a self, fun: &'a FuncRecord, addr: u64,
+    fn build_line_info(&'a self, fun: &'a FuncRecord, addr: u64,
                     inner_sym: Option<&LineInfo<'a>>) -> Result<LineInfo<'a>> {
         let (line, filename, base_dir) = match self.run_to_line(fun, addr)? {
             Some((file_record, line)) => {
@@ -593,7 +593,7 @@ impl<'a> SymCache<'a> {
         let mut rv = vec![];
 
         // what we hit directly
-        rv.push(self.build_symbol(&fun, addr, None)?);
+        rv.push(self.build_line_info(&fun, addr, None)?);
 
         // inlined outer parts
         while let Some(parent_id) = fun.parent(func_id) {
@@ -601,7 +601,7 @@ impl<'a> SymCache<'a> {
             fun = &funcs[parent_id];
             func_id = parent_id;
             let symbol = {
-                self.build_symbol(&fun, outer_addr, Some(&rv[rv.len() - 1]))?
+                self.build_line_info(&fun, outer_addr, Some(&rv[rv.len() - 1]))?
             };
             rv.push(symbol);
         }
