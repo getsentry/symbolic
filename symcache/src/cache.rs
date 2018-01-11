@@ -22,7 +22,7 @@ pub const SYMCACHE_MAGIC: [u8; 4] = [b'S', b'Y', b'M', b'C'];
 /// The latest version of the file format.
 pub const SYMCACHE_LATEST_VERSION: u32 = 1;
 
-/// Information on a matched source line
+/// Information on a matched source line.
 pub struct LineInfo<'a> {
     cache: &'a SymCache<'a>,
     sym_addr: u64,
@@ -151,7 +151,7 @@ impl<'a> fmt::Debug for LineInfo<'a> {
     }
 }
 
-/// A view of a single function in a sym cache.
+/// A view of a single function in a `SymCache`.
 pub struct Function<'a> {
     cache: &'a SymCache<'a>,
     id: u32,
@@ -224,7 +224,7 @@ pub struct Line<'a> {
     file_id: u16,
 }
 
-/// An iterator over all functions in a sym cache.
+/// An iterator over all functions in a `SymCache`.
 pub struct Functions<'a> {
     cache: &'a SymCache<'a>,
     idx: usize,
@@ -344,7 +344,6 @@ impl<'a> Line<'a> {
 }
 
 impl<'a> SymCache<'a> {
-
     /// Load a symcache from a byteview.
     pub fn new(byteview: ByteView<'a>) -> Result<SymCache<'a>> {
         let rv = SymCache {
@@ -378,12 +377,13 @@ impl<'a> SymCache<'a> {
         &self.byteview
     }
 
-    /// Write the symcache into a new writer.
+    /// Writes the symcache into a new writer.
     pub fn to_writer<W: Write>(&self, mut writer: W) -> Result<()> {
         io::copy(&mut &self.byteview[..], &mut writer)?;
         Ok(())
     }
 
+    /// Loads binary data from a segment.
     fn get_data(&self, start: usize, len: usize) -> Result<&[u8]> {
         let buffer = &self.byteview;
         let end = start.wrapping_add(len);
@@ -396,6 +396,7 @@ impl<'a> SymCache<'a> {
         }
     }
 
+    /// Loads data from a segment.
     fn get_segment<T, L: Copy + Into<u64>>(&self, seg: &Seg<T, L>) -> Result<&[T]> {
         let offset = seg.offset as usize +
             mem::size_of::<CacheFileHeader>() as usize;
@@ -411,11 +412,15 @@ impl<'a> SymCache<'a> {
         }
     }
 
+    /// Returns a reference to the UTF8 representation of a segment.
+    ///
+    /// This will error if the segment contains non-UTF8 data.
     fn get_segment_as_string<L: Copy + Into<u64>>(&self, seg: &Seg<u8, L>) -> Result<&str> {
         let bytes = self.get_segment(seg)?;
         Ok(str::from_utf8(bytes)?)
     }
 
+    /// Returns the SymCache header record.
     #[inline(always)]
     fn header(&self) -> Result<&CacheFileHeader> {
         unsafe {
@@ -424,7 +429,7 @@ impl<'a> SymCache<'a> {
         }
     }
 
-    /// The architecture of the cache file
+    /// The architecture of the symbol file.
     pub fn arch(&self) -> Result<Arch> {
         Arch::from_u32(self.header()?.arch)
     }
@@ -434,7 +439,7 @@ impl<'a> SymCache<'a> {
         Ok(self.header()?.uuid)
     }
 
-    /// The source of the sym cache.
+    /// The source of the `SymCache`.
     pub fn data_source(&self) -> Result<DataSource> {
         DataSource::from_u32(self.header()?.data_source as u32)
     }
@@ -457,7 +462,7 @@ impl<'a> SymCache<'a> {
         Ok(self.header()?.version)
     }
 
-    /// Looks up a single symbol
+    /// Looks up a single symbol.
     fn get_symbol(&self, idx: u32) -> Result<Option<&str>> {
         if idx == !0 {
             return Ok(None);
@@ -471,11 +476,13 @@ impl<'a> SymCache<'a> {
         }
     }
 
+    /// Resolves a `FuncRecord` from the functions segment.
     fn function_records(&'a self) -> Result<&'a [FuncRecord]> {
         let header = self.header()?;
         self.get_segment(&header.function_records)
     }
 
+    /// Resolves a `FileRecord` from the files segment.
     fn get_file_record(&self, idx: u16) -> Result<Option<&FileRecord>> {
         // no match
         if idx == !0 {
@@ -486,11 +493,39 @@ impl<'a> SymCache<'a> {
         Ok(files.get(idx as usize))
     }
 
-    fn run_to_line(&'a self, fun: &'a FuncRecord, addr: u64)
-        -> Result<Option<(&FileRecord, u64, u32)>>
-    {
+    /// Locates the source line for an instruction address within a function.
+    ///
+    /// This function runs through all line records of the given function and
+    /// returns the line closest to the specified instruction. `addr` must be
+    /// within the function range, otherwise the response is implementation
+    /// defined. However, `addr` may point to any address within an instruction.
+    ///
+    /// Returns some tuple containing:
+    ///  - `.0`: The file containing the source code
+    ///  - `.1`: First instruction address of the source line
+    ///  - `.2`: Line number in the file
+    ///
+    /// Returns `None` if the function does not have line records.
+    fn run_to_line(
+        &'a self,
+        fun: &'a FuncRecord,
+        addr: u64,
+    ) -> Result<Option<(&FileRecord, u64, u32)>> {
         let records = self.get_segment(&fun.line_records)?;
         if records.is_empty() {
+            // A non-empty function without line records can happen in a couple
+            // of cases:
+            //  1. There was no line information present while generating the
+            //     symcache. This could be due to unsupported debug symbols or
+            //     because they were stripped during the build process.
+            //  2. The symbol was not pulled from debug info but a symbol table.
+            //     such function records will generally have an estimated "size"
+            //     but never line records.
+            //  3. The body of this function consists of only inlined function
+            //     calls. The actual line records of the address range will be
+            //     found in the inlined `FuncRecord`s. The `SymCacheWriter` will
+            //     try to emit synthetic line records in this case, but they
+            //     will be missing if there is not enough debug information.
             return Ok(None);
         }
 
@@ -524,29 +559,60 @@ impl<'a> SymCache<'a> {
         if let Some(ref record) = self.get_file_record(file_id)? {
             Ok(Some((record, line_addr, line)))
         } else {
+            // This should not happen and indicates an invalid symcache
             Err(ErrorKind::Internal("unknown file id").into())
         }
     }
 
+    /// Extracts source line information for an instruction address within the
+    /// given `FuncRecord`.
+    ///
+    /// For parents of inlined frames, pass `Some(inner)` to `inner_sym`;
+    /// otherwise None.
+    ///
+    /// This function tries to resolve the source file and line in which the
+    /// corresponding instruction was defined and resolves the full path and
+    /// file name.
+    ///
+    /// The location is first searched within the line records of this function.
+    /// If the function has no own instructions (e.g. due to complete inlining),
+    /// this information is taken from `inner_sym`. If that fails, the file and
+    /// line information will be empty (0 or "").
     fn build_line_info(&'a self, fun: &'a FuncRecord, addr: u64,
                     inner_sym: Option<&LineInfo<'a>>) -> Result<LineInfo<'a>> {
-        let (line, line_addr, filename, base_dir) = match self.run_to_line(fun, addr)? {
-            Some((file_record, line_addr, line)) => {
+        let (line, line_addr, filename, base_dir) =
+            if let Some((file_record, line_addr, line)) = self.run_to_line(fun, addr)? {
+                // The address was found in the function's line records, so use
+                // it directly. This should is the default case for all valid
+                // debugging information and the majority of all frames.
                 (
                     line,
                     line_addr,
                     self.get_segment_as_string(&file_record.filename)?,
                     self.get_segment_as_string(&file_record.base_dir)?,
                 )
-            }
-            None => {
-                if let Some(inner_sym) = inner_sym {
-                    (inner_sym.line, inner_sym.line_addr, inner_sym.filename, inner_sym.base_dir)
-                } else {
-                    (0, 0, "", "")
-                }
-            }
-        };
+            } else if let Some(inner_sym) = inner_sym {
+                // The source line was not declared in this function. This
+                // happens, if the function body consists of a single inlined
+                // function call. Usually, the `SymCacheWriter` should emit a
+                // synthetic line record in this case; but if debug symbols did
+                // not provide sufficient information, we will still hit this
+                // case. Use the inlined frame's source location as a
+                // replacement to point somewhere useful.
+                (
+                    inner_sym.line,
+                    inner_sym.line_addr,
+                    inner_sym.filename,
+                    inner_sym.base_dir,
+                )
+            } else {
+                // We were unable to find any source code. This can happen for
+                // synthetic functions, such as Swift method thunks. In that
+                // case, we can only return empty line information. Also top-
+                // level functions without line records pulled from the symbol
+                // table will hit this branch.
+                (0, 0, "", "")
+            };
 
         Ok(LineInfo {
             cache: self,
@@ -578,7 +644,7 @@ impl<'a> SymCache<'a> {
     pub fn lookup(&'a self, addr: u64) -> Result<Vec<LineInfo<'a>>> {
         let funcs = self.function_records()?;
 
-        // functions in the function segment are ordered by start address
+        // Functions in the function segment are ordered by start address
         // primarily and by depth secondarily.  As a result we want to have
         // a secondary comparison by the item index.
         let mut func_id = match funcs.binary_search_by_key(&addr, |x| x.addr_start()) {
@@ -587,7 +653,7 @@ impl<'a> SymCache<'a> {
             Err(next_idx) => next_idx - 1,
         };
 
-        // seek forward to the deepest inlined function at the same address.
+        // Seek forward to the deepest inlined function at the same address.
         while let Some(fun) = funcs.get(func_id + 1) {
             if fun.addr_start() != funcs[func_id].addr_start() {
                 break;
@@ -597,23 +663,30 @@ impl<'a> SymCache<'a> {
 
         let mut fun = &funcs[func_id];
 
-        // the binsearch might miss the function
+        // The binary search matches the closest function that starts before our
+        // search address. However, that function might end before that already,
+        // for two reasons:
+        //  1. It is inlined and one of the ancestors will contain the code. Try
+        //     to move up the inlining hierarchy until we contain the address.
+        //  2. There is a gap between the functions and the instruction is not
+        //     covered by any of our function records.
         while !fun.addr_in_range(addr) {
             if let Some(parent_id) = fun.parent(func_id) {
+                // Parent might contain the instruction (case 1)
                 fun = &funcs[parent_id];
                 func_id = parent_id;
             } else {
-                // we missed entirely :(
+                // We missed entirely (case 2)
                 return Ok(vec![]);
             }
         }
 
         let mut rv = vec![];
 
-        // what we hit directly
+        // Line info for the direct (innermost) match
         rv.push(self.build_line_info(&fun, addr, None)?);
 
-        // inlined outer parts
+        // Line infos for all inlining ancestors, if any
         while let Some(parent_id) = fun.parent(func_id) {
             let outer_addr = fun.addr_start();
             fun = &funcs[parent_id];
