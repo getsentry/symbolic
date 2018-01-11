@@ -19,6 +19,7 @@ pub struct SymbolicSymCache;
 #[repr(C)]
 pub struct SymbolicLineInfo {
     pub sym_addr: u64,
+    pub line_addr: u64,
     pub instr_addr: u64,
     pub line: u32,
     pub lang: SymbolicStr,
@@ -163,6 +164,7 @@ ffi_fn! {
         for line_info in vec {
             items.push(SymbolicLineInfo {
                 sym_addr: line_info.sym_addr(),
+                line_addr: line_info.line_addr(),
                 instr_addr: line_info.instr_addr(),
                 line: line_info.line(),
                 lang: SymbolicStr::new(line_info.lang().name()),

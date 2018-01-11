@@ -154,6 +154,7 @@ typedef struct {
  */
 typedef struct {
   uint64_t sym_addr;
+  uint64_t line_addr;
   uint64_t instr_addr;
   uint32_t line;
   SymbolicStr lang;
