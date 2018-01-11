@@ -12,11 +12,11 @@ use std::path::Path;
 use clap::{App, Arg, ArgMatches};
 use walkdir::WalkDir;
 
-use symbolic_common::{ByteView, DebugKind};
+use symbolic_common::{Arch, ByteView, DebugKind};
 use symbolic_debuginfo::{FatObject, Object};
 use symbolic_minidump::{BreakpadAsciiCfiWriter, CodeModuleId, FrameInfoMap, ProcessState,
                         StackFrame};
-use symbolic_symcache::{LineInfo, SymCache};
+use symbolic_symcache::{InstructionInfo, LineInfo, SymCache};
 
 type Result<T> = ::std::result::Result<T, Box<Error>>;
 type SymCaches<'a> = BTreeMap<CodeModuleId, SymCache<'a>>;
@@ -116,6 +116,8 @@ where
 fn symbolize<'a>(
     symcaches: &'a SymCaches<'a>,
     frame: &StackFrame,
+    arch: Arch,
+    crashing: bool,
 ) -> Result<Option<Vec<LineInfo<'a>>>> {
     let module = match frame.module() {
         Some(module) => module,
@@ -127,11 +129,20 @@ fn symbolize<'a>(
         None => return Ok(None),
     };
 
-    let infos = symcache.lookup(frame.instruction() - module.base_address())?;
-    if infos.is_empty() {
+    // TODO: Extract and supply signal and IP register
+    let instruction = InstructionInfo {
+        addr: frame.return_address(arch),
+        arch: arch,
+        crashing_frame: crashing,
+        signal: None,
+        ip_reg: None,
+    };
+
+    let lines = symcache.lookup(instruction.caller_address() - module.base_address())?;
+    if lines.is_empty() {
         Ok(None)
     } else {
-        Ok(Some(infos))
+        Ok(Some(lines))
     }
 }
 
@@ -153,6 +164,7 @@ fn print_state(state: &ProcessState, symcaches: &SymCaches, crashed_only: bool) 
     println!("Crash address: 0x{:x}", state.crash_address());
     println!("Crash time:    {}", state.timestamp());
 
+    let arch = state.system_info().cpu_arch();
     for (ti, thread) in state.threads().iter().enumerate() {
         let crashed = (ti as i32) != state.requesting_thread();
         if crashed_only && crashed {
@@ -166,9 +178,9 @@ fn print_state(state: &ProcessState, symcaches: &SymCaches, crashed_only: bool) 
         }
 
         let mut index = 0;
-        for frame in thread.frames().iter() {
+        for (fi, frame) in thread.frames().iter().enumerate() {
             if let Some(module) = frame.module() {
-                if let Some(line_infos) = symbolize(&symcaches, frame)? {
+                if let Some(line_infos) = symbolize(&symcaches, frame, arch, fi == 0)? {
                     for (i, info) in line_infos.iter().enumerate() {
                         println!(
                             "{:>3}  {}!{} [{} : {} + 0x{:x}]",
