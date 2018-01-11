@@ -280,12 +280,25 @@ impl Arch {
     }
 
     /// The name of the IP register if known.
-    pub fn ip_reg_name(&self) -> Option<&'static str> {
+    pub fn ip_register_name(&self) -> Option<&'static str> {
         match self.cpu_family() {
             CpuFamily::Intel32 => Some("eip"),
             CpuFamily::Intel64 => Some("rip"),
             CpuFamily::Arm32 | CpuFamily::Arm64 => Some("pc"),
-            _ => None,
+            CpuFamily::Ppc32 | CpuFamily::Ppc64 => Some("srr0"),
+            CpuFamily::Unknown => None,
+        }
+    }
+
+    /// Returns instruction alignment if fixed.
+    pub fn instruction_alignment(&self) -> Option<u64> {
+        match self.cpu_family() {
+            CpuFamily::Arm32 => Some(2),
+            CpuFamily::Arm64 => Some(4),
+            CpuFamily::Ppc32 => Some(4),
+            CpuFamily::Ppc64 => Some(8),
+            CpuFamily::Intel32 | CpuFamily::Intel64 => None,
+            CpuFamily::Unknown => None,
         }
     }
 }
