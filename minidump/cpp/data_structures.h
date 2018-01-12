@@ -1,9 +1,9 @@
 #ifndef SENTRY_DATA_STRUCTURES_H
 #define SENTRY_DATA_STRUCTURES_H
 
+#include <cstdbool>
 #include <cstddef>
 #include <cstdint>
-#include <cstdbool>
 
 #ifdef __cplusplus
 extern "C" {
@@ -125,6 +125,11 @@ uint32_t call_stack_thread_id(const call_stack_t *stack);
 /// in the size_out parameter.
 stack_frame_t *const *call_stack_frames(const call_stack_t *stack,
                                         size_t *size_out);
+
+// Return the actual return address, as saved on the stack or in a
+// register. See the comments for 'stack_frameinstruction', below,
+// for details.
+uint64_t stack_frame_return_address(const stack_frame_t *frame);
 
 /// Returns the program counter location as an absolute virtual address.
 ///

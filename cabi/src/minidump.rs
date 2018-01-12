@@ -4,7 +4,7 @@ use std::os::raw::c_char;
 use std::slice;
 use uuid::Uuid;
 
-use symbolic_common::ByteView;
+use symbolic_common::{Arch, ByteView};
 use symbolic_debuginfo::Object;
 use symbolic_minidump::{BreakpadAsciiCfiWriter, CallStack, CodeModule, CodeModuleId, FrameInfoMap,
                         ProcessState, StackFrame, SystemInfo};
@@ -39,6 +39,7 @@ pub struct SymbolicCodeModule {
 /// Contains the absolute instruction address and image information of a stack frame
 #[repr(C)]
 pub struct SymbolicStackFrame {
+    pub return_address: u64,
     pub instruction: u64,
     pub trust: SymbolicFrameTrust,
     pub module: SymbolicCodeModule,
@@ -148,17 +149,18 @@ unsafe fn map_code_module(module: &CodeModule) -> SymbolicCodeModule {
 }
 
 /// Maps a `StackFrame` to its FFI type
-unsafe fn map_stack_frame(frame: &StackFrame) -> SymbolicStackFrame {
+unsafe fn map_stack_frame(frame: &StackFrame, arch: Arch) -> SymbolicStackFrame {
     SymbolicStackFrame {
         instruction: frame.instruction(),
+        return_address: frame.return_address(arch),
         trust: mem::transmute(frame.trust()),
         module: frame.module().map_or(mem::zeroed(), |m| map_code_module(m)),
     }
 }
 
 /// Maps a `CallStack` to its FFI type
-unsafe fn map_call_stack(stack: &CallStack) -> SymbolicCallStack {
-    let (frames, frame_count) = map_slice(stack.frames(), |f| map_stack_frame(f));
+unsafe fn map_call_stack(stack: &CallStack, arch: Arch) -> SymbolicCallStack {
+    let (frames, frame_count) = map_slice(stack.frames(), |f| map_stack_frame(f, arch));
     SymbolicCallStack {
         thread_id: stack.thread_id(),
         frames,
@@ -180,7 +182,8 @@ unsafe fn map_system_info(info: &SystemInfo) -> SymbolicSystemInfo {
 
 /// Maps a `ProcessState` to its FFI type
 unsafe fn map_process_state(state: &ProcessState) -> SymbolicProcessState {
-    let (threads, thread_count) = map_slice(state.threads(), |s| map_call_stack(s));
+    let arch = state.system_info().cpu_arch();
+    let (threads, thread_count) = map_slice(state.threads(), |s| map_call_stack(s, arch));
     let (modules, module_count) =
         map_iter(state.referenced_modules().iter(), |m| map_code_module(m));
 

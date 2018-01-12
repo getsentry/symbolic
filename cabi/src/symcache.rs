@@ -206,7 +206,7 @@ ffi_fn! {
             signal: if (*ii).signal == 0 { None } else { Some((*ii).signal) },
             ip_reg: if (*ii).ip_reg == 0 { None } else { Some((*ii).ip_reg) },
         };
-        Ok(real_ii.find_best_instruction())
+        Ok(real_ii.caller_address())
     }
 }
 

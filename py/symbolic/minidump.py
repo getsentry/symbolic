@@ -61,6 +61,11 @@ class StackFrame(RustObject):
     __dealloc_func__ = None
 
     @property
+    def return_address(self):
+        """The frame's return address as saved in registers or on the stack"""
+        return self._objptr.return_address
+
+    @property
     def instruction(self):
         """The frame's program counter location as absolute virtual address"""
         return self._objptr.instruction

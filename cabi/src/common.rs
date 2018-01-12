@@ -67,7 +67,7 @@ ffi_fn! {
     unsafe fn symbolic_arch_ip_reg_name(arch: *const SymbolicStr) -> Result<SymbolicStr> {
         Ok(SymbolicStr::new(
             Arch::parse((*arch).as_str())?
-                .ip_reg_name()
+                .ip_register_name()
                 .ok_or(ErrorKind::NotFound("ip reg unknown for architecture"))?))
     }
 }
