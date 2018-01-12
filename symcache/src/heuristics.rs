@@ -1,4 +1,4 @@
-use symbolic_common::{Arch, CpuFamily};
+use symbolic_common::Arch;
 
 const SIGILL: u32 = 4;
 const SIGBUS: u32 = 10;
@@ -81,36 +81,42 @@ impl InstructionInfo {
             return true;
         }
 
-        // The crashing frame usually contains the actual register contents,
-        // which points to the exact instruction that crashed and must not be
-        // adjusted. A notable exception to this is if we crashed with one of
-        // the crash signals.
-        // TODO: Document reason of this
+        // KSCrash applies a heuristic to remove the signal handler frame from
+        // the top of the stack trace, if the crash was caused by certain
+        // signals. However, that means that the top-most frame contains a
+        // return address just like any other and needs to be adjusted.
         if let Some(ip) = self.ip_reg {
             if ip != self.addr && self.is_crash_signal() {
                 return true;
             }
         }
 
+        // The crashing frame usually contains the actual register contents,
+        // which points to the exact instruction that crashed and must not be
+        // adjusted.
         return false;
     }
 
-    /// Give the information in the instruction info this returns the
-    /// most accurate instruction.
+    /// Determines the address of the call site based on a return address.
+    ///
+    /// In the top most frame (often referred to as context frame), this is the
+    /// value of the instruction pointer register. In all other frames, the
+    /// return address is generally one instruction after the jump / call.
+    ///
+    /// This function actually resolves an address _within_ the call instruction
+    /// rather than its beginning. Also, in some cases the top most frame has
+    /// been modified by certain signal handlers or return optimizations. A set
+    /// of heuristics tries to recover this for well-known cases.
     pub fn caller_address(&self) -> u64 {
-        let addr = if self.should_adjust_caller() {
+        if self.should_adjust_caller() {
             self.previous_address()
         } else {
             self.aligned_address()
-        };
-
-        // For some crashes on ARM, the aligned address resolved to the wrong
-        // symbol.
-        // TODO: Document details for this
-        match self.arch.cpu_family() {
-            CpuFamily::Arm32 => addr + 1,
-            CpuFamily::Arm64 => addr + 3,
-            _ => addr,
         }
+
+        // NOTE: Currently, we only provide stack traces from KSCrash and
+        // Breakpad. Both already apply a set of heuristics while stackwalking
+        // in order to fix return addresses. It seems that no further heuristics
+        // are necessary at the moment.
     }
 }
