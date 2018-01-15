@@ -63,66 +63,32 @@ pub fn has_elf_section(elf: &elf::Elf, sh_type: u32, name: &str) -> bool {
     false
 }
 
-/// Locates and reads a `Note` within a note section
-///
-/// The note iterator can either be obtained from a PT_NOTE program header entry
-/// or a SHT_NOTE section. Both data contents look identical.
-fn find_elf_note<'data>(
-    mut notes: elf::note::NoteIterator<'data>,
-    n_type: u32,
-) -> Option<&'data [u8]> {
-    while let Some(Ok(note)) = notes.next() {
-        if note.n_type == n_type {
-            return Some(note.desc);
-        }
-    }
-
-    None
-}
-
 /// Searches for a GNU build identifier node in an ELF file
 ///
 /// Depending on the compiler and linker, the build ID can be declared in a
-/// NT_GNU_BUILD_ID program header entry, the ".note.gnu.build-id" section, or
-/// even both.
-fn find_build_id<'data>(elf: &elf::Elf, data: &'data [u8]) -> Option<&'data [u8]> {
-    // First, search the PT_NOTE program header entries for a NT_GNU_BUILD_ID.
+/// PT_NOTE program header entry, the ".note.gnu.build-id" section, or even
+/// both.
+fn find_build_id<'data>(elf: &elf::Elf<'data>, data: &'data [u8]) -> Option<&'data [u8]> {
+    // First, search the note program headers (PT_NOTE) for a NT_GNU_BUILD_ID.
     // We swallow all errors during this process and simply fall back to the
-    // next method below. Since lld generates two PT_NOTEs, we cannot rely on
-    // `Elf::iter_notes` and have to walk all headers manually.
-    for phdr in &elf.program_headers {
-        if phdr.p_type != elf::program_header::PT_NOTE {
-            continue;
-        }
-
-        let offset = phdr.p_offset as usize;
-        let mut notes = elf::note::NoteIterator {
-            data,
-            offset,
-            size: offset + phdr.p_filesz as usize,
-            ctx: (phdr.p_align as usize, elf.ctx),
-        };
-
-        if let Some(note) = find_elf_note(notes, elf::note::NT_GNU_BUILD_ID) {
-            return Some(note);
+    // next method below.
+    if let Some(mut notes) = elf.iter_note_headers(data) {
+        while let Some(Ok(note)) = notes.next() {
+            if note.n_type == elf::note::NT_GNU_BUILD_ID {
+                return Some(note.desc);
+            }
         }
     }
 
-    // Next, load the SHT_NOTE section called ".note.gnu.build-id". It contains
-    // the same data as the PT_NOTE program header. Again, swallow all errors
+    // Some old linkers or compilers might not output the above PT_NOTE headers.
+    // In that case, search for a note section (SHT_NOTE). We are looking for a
+    // note within the ".note.gnu.build-id" section. Again, swallow all errors
     // and fall through if reading the section is not possible.
-    let sh_type = elf::section_header::SHT_NOTE;
-    if let Some(section) = find_elf_section(elf, data, sh_type, ".note.gnu.build-id") {
-        let offset = section.header.sh_offset as usize;
-        let mut notes = elf::note::NoteIterator {
-            data,
-            offset,
-            size: offset + section.header.sh_size as usize,
-            ctx: (section.header.sh_addralign as usize, elf.ctx),
-        };
-
-        if let Some(note) = find_elf_note(notes, elf::note::NT_GNU_BUILD_ID) {
-            return Some(note);
+    if let Some(mut notes) = elf.iter_note_sections(data) {
+        while let Some(Ok(note)) = notes.next() {
+            if note.n_type == elf::note::NT_GNU_BUILD_ID {
+                return Some(note.desc);
+            }
         }
     }
 
