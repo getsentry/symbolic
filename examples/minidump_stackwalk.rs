@@ -193,7 +193,7 @@ fn print_state(state: &ProcessState, symcaches: &SymCaches, crashed_only: bool) 
                         );
 
                         if i + 1 < line_infos.len() {
-                            println!("     Found by: inlined into previous frame");
+                            println!("     Found by: inlined into next frame");
                             index += 1;
                         }
                     }
