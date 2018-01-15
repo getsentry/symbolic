@@ -9,7 +9,7 @@ use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, Err
 
 use breakpad::BreakpadSym;
 use dwarf::DwarfData;
-use elf::get_elf_uuid;
+use elf::{get_elf_uuid, get_elf_vmaddr};
 use mach::{get_mach_uuid, get_mach_vmaddr};
 
 /// Contains type specific data of `Object`s
@@ -69,7 +69,7 @@ impl<'bytes> Object<'bytes> {
         use ObjectTarget::*;
         match self.target {
             Breakpad(..) => Ok(0),
-            Elf(..) => Ok(0),
+            Elf(elf) => get_elf_vmaddr(elf),
             MachOSingle(macho) => get_mach_vmaddr(macho),
             MachOFat(_, ref macho) => get_mach_vmaddr(macho),
         }
