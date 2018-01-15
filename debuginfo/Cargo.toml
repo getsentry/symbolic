@@ -17,7 +17,6 @@ as Mach-O or ELF.
 [dependencies]
 gimli = "0.15"
 goblin = "0.0"
-if_chain = "0.1"
 lazy_static = "1.0"
 memmap = "0.5"
 regex = "0.2"

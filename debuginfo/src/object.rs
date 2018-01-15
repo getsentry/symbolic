@@ -1,8 +1,7 @@
 use std::fmt;
 use std::io::Cursor;
 
-use goblin;
-use goblin::{elf, mach, Hint};
+use goblin::{self, elf, mach, Hint};
 use uuid::Uuid;
 
 use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, ErrorKind,
@@ -10,27 +9,10 @@ use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, Err
 
 use breakpad::BreakpadSym;
 use dwarf::DwarfData;
+use elf::get_elf_uuid;
+use mach::{get_mach_uuid, get_mach_vmaddr};
 
-fn get_macho_uuid(macho: &mach::MachO) -> Option<Uuid> {
-    for cmd in &macho.load_commands {
-        if let mach::load_command::CommandVariant::Uuid(ref uuid_cmd) = cmd.command {
-            return Uuid::from_bytes(&uuid_cmd.uuid).ok();
-        }
-    }
-
-    None
-}
-
-fn get_macho_vmaddr(macho: &mach::MachO) -> Result<u64> {
-    for seg in &macho.segments {
-        if seg.name()? == "__TEXT" {
-            return Ok(seg.vmaddr);
-        }
-    }
-
-    Ok(0)
-}
-
+/// Contains type specific data of `Object`s
 pub(crate) enum ObjectTarget<'bytes> {
     Breakpad(&'bytes BreakpadSym),
     Elf(&'bytes elf::Elf<'bytes>),
@@ -50,9 +32,9 @@ impl<'bytes> Object<'bytes> {
         use ObjectTarget::*;
         match self.target {
             Breakpad(ref breakpad) => Some(breakpad.uuid()),
-            Elf(ref elf) => Uuid::from_bytes(&elf.header.e_ident).ok(),
-            MachOSingle(macho) => get_macho_uuid(macho),
-            MachOFat(_, ref macho) => get_macho_uuid(macho),
+            Elf(ref elf) => get_elf_uuid(elf, self.fat_bytes),
+            MachOSingle(macho) => get_mach_uuid(macho),
+            MachOFat(_, ref macho) => get_mach_uuid(macho),
         }
     }
 
@@ -88,8 +70,8 @@ impl<'bytes> Object<'bytes> {
         match self.target {
             Breakpad(..) => Ok(0),
             Elf(..) => Ok(0),
-            MachOSingle(macho) => get_macho_vmaddr(macho),
-            MachOFat(_, ref macho) => get_macho_vmaddr(macho),
+            MachOSingle(macho) => get_mach_vmaddr(macho),
+            MachOFat(_, ref macho) => get_mach_vmaddr(macho),
         }
     }
 
@@ -172,10 +154,7 @@ pub struct Objects<'fat> {
 
 impl<'fat> Objects<'fat> {
     fn new(fat: &'fat FatObject<'fat>) -> Objects<'fat> {
-        Objects {
-            fat: fat,
-            index: 0,
-        }
+        Objects { fat: fat, index: 0 }
     }
 }
 
