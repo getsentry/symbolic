@@ -68,6 +68,7 @@ impl<'bytes> Object<'bytes> {
     pub fn vmaddr(&self) -> Result<u64> {
         use ObjectTarget::*;
         match self.target {
+            // Breakpad accounts for the vmaddr when dumping symbols
             Breakpad(..) => Ok(0),
             Elf(elf) => get_elf_vmaddr(elf),
             MachOSingle(macho) => get_mach_vmaddr(macho),
