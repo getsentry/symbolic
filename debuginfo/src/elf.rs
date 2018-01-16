@@ -84,7 +84,7 @@ fn find_build_id<'data>(elf: &elf::Elf<'data>, data: &'data [u8]) -> Option<&'da
     // In that case, search for a note section (SHT_NOTE). We are looking for a
     // note within the ".note.gnu.build-id" section. Again, swallow all errors
     // and fall through if reading the section is not possible.
-    if let Some(mut notes) = elf.iter_note_sections(data) {
+    if let Some(mut notes) = elf.iter_note_sections(data, Some(".note.gnu.build-id")) {
         while let Some(Ok(note)) = notes.next() {
             if note.n_type == elf::note::NT_GNU_BUILD_ID {
                 return Some(note.desc);
