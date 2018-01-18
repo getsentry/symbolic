@@ -214,6 +214,18 @@ fn print_state(state: &ProcessState, symcaches: &SymCaches, crashed_only: bool) 
         }
     }
 
+    println!("");
+    println!("Loaded modules:");
+    for module in state.referenced_modules() {
+        println!(
+            "0x{:x} - 0x{:x}  {}  ({})",
+            module.base_address(),
+            module.base_address() + module.size() - 1,
+            module.code_file().rsplit("/").next().unwrap(),
+            module.id(),
+        );
+    }
+
     Ok(())
 }
 
