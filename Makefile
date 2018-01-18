@@ -1,24 +1,35 @@
 all: test
 
 build:
-	@cargo build --all
+	cargo build --all
 
-test: cargotest pytest
+test: styletest cargotest pytest
 
-cargotest:
-	@cargo test --all
+styletest:
+	@cargo install rustfmt-nightly --force
+	cargo fmt -- --write-mode diff
 
-pytest:
-	@pip install pytest > /dev/null
-	@pip install -v --editable py && pytest -v py
+cargotest: build
+	cargo test --all
 
-wheel:
+virtualenv:
+	@which virtualenv || sudo easy_install virtualenv
+	@virtualenv virtualenv
+
+pytest: virtualenv
+	@. virtualenv/bin/activate                      ;\
+	which pytest || pip install pytest > /dev/null  ;\
+	pip install -v --editable py && pytest -v py
+
+wheel: virtualenv
+	@. virtualenv/bin/activate                      ;\
 	cd py && python setup.py bdist_wheel
 
-sdist:
+sdist: virtualenv
+	@. virtualenv/bin/activate                      ;\
 	cd py && python setup.py sdist --format=zip
 
 wheel-manylinux:
 	docker run --rm -it -v $(CURDIR):/work -w /work/py $(IMAGE) sh manylinux.sh
 
-.PHONY: all doc test docker wheel sdist wheel-manylinux
+.PHONY: all build test cargotest pytest wheel sdist wheel-manylinux
