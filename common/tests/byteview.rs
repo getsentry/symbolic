@@ -5,7 +5,6 @@ use std::env;
 
 use symbolic_common::ByteView;
 
-
 #[test]
 fn test_basics() {
     let mut path = env::temp_dir();

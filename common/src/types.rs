@@ -236,8 +236,9 @@ impl Arch {
             X86 => CpuFamily::Intel32,
             X86_64 | X86_64h => CpuFamily::Intel64,
             Arm64 | Arm64V8 => CpuFamily::Arm64,
-            Arm | ArmV5 | ArmV6 | ArmV6m | ArmV7 | ArmV7f | ArmV7s | ArmV7k |
-                ArmV7m | ArmV7em => CpuFamily::Arm32,
+            Arm | ArmV5 | ArmV6 | ArmV6m | ArmV7 | ArmV7f | ArmV7s | ArmV7k | ArmV7m | ArmV7em => {
+                CpuFamily::Arm32
+            }
             Ppc => CpuFamily::Ppc32,
             Ppc64 => CpuFamily::Ppc64,
         }
@@ -249,8 +250,8 @@ impl Arch {
         match *self {
             Unknown | __Max => None,
             X86_64 | X86_64h | Arm64 | Arm64V8 | Ppc64 => Some(8),
-            X86 | Arm | ArmV5 | ArmV6 | ArmV6m | ArmV7 | ArmV7f | ArmV7s | ArmV7k |
-                ArmV7m | ArmV7em | Ppc => Some(4),
+            X86 | Arm | ArmV5 | ArmV6 | ArmV6m | ArmV7 | ArmV7f | ArmV7s | ArmV7k | ArmV7m
+            | ArmV7em | Ppc => Some(4),
         }
     }
 
@@ -322,8 +323,7 @@ pub enum Language {
     ObjCpp,
     Rust,
     Swift,
-    #[doc(hidden)]
-    __Max,
+    #[doc(hidden)] __Max,
 }
 
 impl Language {
@@ -340,11 +340,13 @@ impl Language {
     #[cfg(feature = "with_dwarf")]
     pub fn from_dwarf_lang(lang: gimli::DwLang) -> Language {
         match lang {
-            gimli::DW_LANG_C | gimli::DW_LANG_C11 |
-            gimli::DW_LANG_C89 | gimli::DW_LANG_C99 => Language::C,
-            gimli::DW_LANG_C_plus_plus | gimli::DW_LANG_C_plus_plus_03 |
-            gimli::DW_LANG_C_plus_plus_11 |
-            gimli::DW_LANG_C_plus_plus_14 => Language::Cpp,
+            gimli::DW_LANG_C | gimli::DW_LANG_C11 | gimli::DW_LANG_C89 | gimli::DW_LANG_C99 => {
+                Language::C
+            }
+            gimli::DW_LANG_C_plus_plus
+            | gimli::DW_LANG_C_plus_plus_03
+            | gimli::DW_LANG_C_plus_plus_11
+            | gimli::DW_LANG_C_plus_plus_14 => Language::Cpp,
             gimli::DW_LANG_D => Language::D,
             gimli::DW_LANG_Go => Language::Go,
             gimli::DW_LANG_ObjC => Language::ObjC,
@@ -391,7 +393,7 @@ impl Language {
 impl fmt::Display for Language {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Language::*;
-        write!(f, "{}", match *self {
+        let formatted = match *self {
             Unknown | __Max => "unknown",
             C => "C",
             Cpp => "C++",
@@ -401,7 +403,9 @@ impl fmt::Display for Language {
             ObjCpp => "Objective-C++",
             Rust => "Rust",
             Swift => "Swift",
-        })
+        };
+
+        write!(f, "{}", formatted)
     }
 }
 
@@ -416,7 +420,7 @@ impl<'a> Name<'a> {
     /// Constructs a new mangled symbol
     pub fn new<S>(string: S) -> Name<'a>
     where
-        S: Into<Cow<'a, str>>
+        S: Into<Cow<'a, str>>,
     {
         Name {
             string: string.into(),
@@ -427,7 +431,7 @@ impl<'a> Name<'a> {
     /// Constructs a new mangled symbol with known language
     pub fn with_language<S>(string: S, lang: Language) -> Name<'a>
     where
-        S: Into<Cow<'a, str>>
+        S: Into<Cow<'a, str>>,
     {
         let lang_opt = match lang {
             // Ignore unknown languages and apply heuristics instead

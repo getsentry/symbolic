@@ -91,7 +91,10 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Result<Option<String>
         Err(_) => return Ok(None),
     };
 
-    let opts = CppOptions { no_params: !opts.with_arguments };
+    let opts = CppOptions {
+        no_params: !opts.with_arguments,
+    };
+
     Ok(match symbol.demangle(&opts) {
         Ok(demangled) => Some(demangled),
         Err(_) => None,

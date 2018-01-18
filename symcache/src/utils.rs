@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-
 fn is_absolute_windows_path(s: &str) -> bool {
     // UNC
     if s.len() > 2 && &s[..2] == "\\\\" {
@@ -50,11 +49,17 @@ pub fn common_join_path(base: &str, other: &str) -> String {
     let win_style = win_abs || (!unix_abs && base.chars().any(|x| x == '\\'));
 
     return if win_style {
-        format!("{}\\{}", base.trim_right_matches(&['\\', '/'][..]),
-                other.trim_left_matches(&['\\', '/'][..]))
+        format!(
+            "{}\\{}",
+            base.trim_right_matches(&['\\', '/'][..]),
+            other.trim_left_matches(&['\\', '/'][..])
+        )
     } else {
-        format!("{}/{}", base.trim_right_matches('/'),
-                other.trim_left_matches('/'))
+        format!(
+            "{}/{}",
+            base.trim_right_matches('/'),
+            other.trim_left_matches('/')
+        )
     };
 }
 
@@ -138,13 +143,25 @@ pub fn shorten_filename<'a>(filename: &'a str, length: usize) -> Cow<'a, str> {
 fn test_common_join_path() {
     assert_eq!(common_join_path("C:\\test", "other"), "C:\\test\\other");
     assert_eq!(common_join_path("C:/test", "other"), "C:/test\\other");
-    assert_eq!(common_join_path("C:\\test", "other\\stuff"), "C:\\test\\other\\stuff");
+    assert_eq!(
+        common_join_path("C:\\test", "other\\stuff"),
+        "C:\\test\\other\\stuff"
+    );
     assert_eq!(common_join_path("C:/test", "C:\\other"), "C:\\other");
-    assert_eq!(common_join_path("foo\\bar\\baz", "blub\\blah"), "foo\\bar\\baz\\blub\\blah");
+    assert_eq!(
+        common_join_path("foo\\bar\\baz", "blub\\blah"),
+        "foo\\bar\\baz\\blub\\blah"
+    );
 
     assert_eq!(common_join_path("/usr/bin", "bash"), "/usr/bin/bash");
-    assert_eq!(common_join_path("/usr/local", "bin/bash"), "/usr/local/bin/bash");
-    assert_eq!(common_join_path("/usr/bin", "/usr/local/bin"), "/usr/local/bin");
+    assert_eq!(
+        common_join_path("/usr/local", "bin/bash"),
+        "/usr/local/bin/bash"
+    );
+    assert_eq!(
+        common_join_path("/usr/bin", "/usr/local/bin"),
+        "/usr/local/bin"
+    );
     assert_eq!(common_join_path("foo/bar/", "blah"), "foo/bar/blah");
 }
 
@@ -152,12 +169,30 @@ fn test_common_join_path() {
 fn test_shorten_filename() {
     assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 6), "/fo...");
     assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 2), "/f");
-    assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 21), "/foo/.../blafasel");
-    assert_eq!(&shorten_filename("/foo/bar/baz/blah/blafasel", 22), "/foo/.../blah/blafasel");
-    assert_eq!(&shorten_filename("C:\\bar\\baz\\blah\\blafasel", 20), "C:\\bar\\...\\blafasel");
-    assert_eq!(&shorten_filename("/foo/blar/baz/blah/blafasel", 27), "/foo/blar/baz/blah/blafasel");
-    assert_eq!(&shorten_filename("/foo/blar/baz/blah/blafasel", 26), "/foo/.../baz/blah/blafasel");
-    assert_eq!(&shorten_filename("/foo/b/baz/blah/blafasel", 23), "/foo/.../blah/blafasel");
+    assert_eq!(
+        &shorten_filename("/foo/bar/baz/blah/blafasel", 21),
+        "/foo/.../blafasel"
+    );
+    assert_eq!(
+        &shorten_filename("/foo/bar/baz/blah/blafasel", 22),
+        "/foo/.../blah/blafasel"
+    );
+    assert_eq!(
+        &shorten_filename("C:\\bar\\baz\\blah\\blafasel", 20),
+        "C:\\bar\\...\\blafasel"
+    );
+    assert_eq!(
+        &shorten_filename("/foo/blar/baz/blah/blafasel", 27),
+        "/foo/blar/baz/blah/blafasel"
+    );
+    assert_eq!(
+        &shorten_filename("/foo/blar/baz/blah/blafasel", 26),
+        "/foo/.../baz/blah/blafasel"
+    );
+    assert_eq!(
+        &shorten_filename("/foo/b/baz/blah/blafasel", 23),
+        "/foo/.../blah/blafasel"
+    );
     assert_eq!(&shorten_filename("/foobarbaz/blahblah", 16), ".../blahblah");
     assert_eq!(&shorten_filename("/foobarbazblahblah", 12), "...lahblah");
 }

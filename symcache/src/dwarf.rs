@@ -356,7 +356,11 @@ impl<'input> Unit<'input> {
             // Search the inner-most parent function from the inlines tree. At
             // the very bottom we will attach to that parent as inline function.
             let mut node = funcs.last_mut().unwrap();
-            while { &node }.inlines.last().map_or(false, |n| (n.depth as isize) < depth) {
+            while { &node }
+                .inlines
+                .last()
+                .map_or(false, |n| (n.depth as isize) < depth)
+            {
                 node = { node }.inlines.last_mut().unwrap();
             }
 
@@ -382,13 +386,14 @@ impl<'input> Unit<'input> {
                         // There is no line record pointing to this function, so
                         // add one to the correct call location. Note that "base_dir"
                         // can be inherited safely here.
-                        node.lines.insert(idx, Line {
+                        let line = Line {
                             addr: func.addr,
                             original_file_id: call_file,
                             filename: filename,
                             base_dir: base_dir,
                             line: cmp::min(call_line, 0xffff) as u16,
-                        });
+                        };
+                        node.lines.insert(idx, line);
                     }
                 };
             }
@@ -431,24 +436,24 @@ impl<'input> Unit<'input> {
                         }
                     }
                     _ => unreachable!(),
-                }
+                },
                 gimli::DW_AT_low_pc => match attr.value() {
                     AttributeValue::Addr(addr) => low_pc = Some(addr),
                     _ => unreachable!(),
-                }
+                },
                 gimli::DW_AT_high_pc => match attr.value() {
                     AttributeValue::Addr(addr) => high_pc = Some(addr),
                     AttributeValue::Udata(size) => high_pc_rel = Some(size),
                     _ => unreachable!(),
-                }
+                },
                 gimli::DW_AT_call_line => match attr.value() {
                     AttributeValue::Udata(line) => tuple.0 = Some(line),
                     _ => unreachable!(),
-                }
+                },
                 gimli::DW_AT_call_file => match attr.value() {
                     AttributeValue::FileIndex(file) => tuple.1 = Some(file),
                     _ => unreachable!(),
-                }
+                },
                 _ => continue,
             }
         }
@@ -541,7 +546,8 @@ impl<'input> Unit<'input> {
             match attr.name() {
                 // prioritize these.  If we get them, take them.
                 gimli::DW_AT_linkage_name | gimli::DW_AT_MIPS_linkage_name => {
-                    return Ok(attr.string_value(&info.debug_str).map(|s| s.to_string_lossy()));
+                    return Ok(attr.string_value(&info.debug_str)
+                        .map(|s| s.to_string_lossy()));
                 }
                 gimli::DW_AT_name => {
                     fallback_name = Some(attr);
@@ -554,7 +560,8 @@ impl<'input> Unit<'input> {
         }
 
         if let Some(attr) = fallback_name {
-            return Ok(attr.string_value(&info.debug_str).map(|s| s.to_string_lossy()));
+            return Ok(attr.string_value(&info.debug_str)
+                .map(|s| s.to_string_lossy()));
         }
 
         if let Some(attr) = reference_target {

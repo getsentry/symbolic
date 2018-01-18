@@ -1,16 +1,19 @@
 //! Provides symcache support.
-#[macro_use] extern crate symbolic_common;
+extern crate dmsort;
+extern crate fallible_iterator;
+extern crate fnv;
+extern crate gimli;
+#[macro_use]
+extern crate if_chain;
+extern crate lru_cache;
+#[macro_use]
+extern crate matches;
+extern crate num;
+#[macro_use]
+extern crate symbolic_common;
 extern crate symbolic_debuginfo;
 extern crate symbolic_demangle;
 extern crate uuid;
-extern crate gimli;
-extern crate fallible_iterator;
-extern crate lru_cache;
-extern crate fnv;
-extern crate num;
-extern crate dmsort;
-#[macro_use] extern crate matches;
-#[macro_use] extern crate if_chain;
 
 mod breakpad;
 mod dwarf;

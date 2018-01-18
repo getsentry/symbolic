@@ -10,12 +10,12 @@ extern crate error_chain;
 extern crate gimli;
 #[cfg(feature = "with_objects")]
 extern crate goblin;
+extern crate memmap;
+extern crate owning_ref;
 #[cfg(feature = "with_objects")]
 extern crate scroll;
 #[cfg(feature = "with_sourcemaps")]
 extern crate sourcemap;
-extern crate memmap;
-extern crate owning_ref;
 
 mod macros;
 mod errors;
