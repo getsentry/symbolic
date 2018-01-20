@@ -1,20 +1,12 @@
 language: rust
-dist: trusty
-osx_version: xcode7.3
-
-os:
-  - linux
-  - osx
+cache:
+  - $HOME/.cargo
+  - $TRAVIS_BUILD_DIR/target
+  - $TRAVIS_BUILD_DIR/cabi/target
 
 git:
   depth: 1
 
-before_script:
-  - sudo easy_install virtualenv
-  - virtualenv ~/virtualenv
-  - source ~/virtualenv/bin/activate
-
-script: make
 if: tag IS blank
 
 after_success:
@@ -23,25 +15,46 @@ after_success:
 
 matrix:
   include:
-    - script: make wheel
+    # Rust test suite
+    - os: linux
+      script: make styletest
+      env: TEST=style-rust
+      rust: nightly
+    - os: linux
+      script: make cargotest
+      env: TEST=linux-rust
+    - os: osx
+      script: make cargotest
+      env: TEST=mac-rust
+
+    # Python test suite
+    - os: linux
+      script: make pytest
+      env: TEST=linux-python
+    - os: osx
+      script: make pytest
+      env: TEST=mac-python
+
+    # Build wheels
+    - os: osx
+      script: make wheel
       before_install: HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade node
       env: DEPLOY=mac-wheel
       osx_image: xcode6.4
-      os: osx
-
-    - script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_x86_64
+    - os: linux
+      script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_x86_64
       env: DEPLOY=linux-x86_64-wheel
       sudo: required
       services:
         - docker
-
-    - script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_i686
+    - os: linux
+      script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_i686
       env: DEPLOY=linux-x86-wheel
       sudo: required
       services:
         - docker
-
-    - script: make sdist
+    - os: linux
+      script: make sdist
       env: DEPLOY=sdist
 
 notifications:

@@ -1,6 +1,6 @@
 //! Provides sourcemap support.
-extern crate symbolic_common;
 extern crate sourcemap;
+extern crate symbolic_common;
 
 mod types;
 

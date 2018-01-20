@@ -5,7 +5,6 @@ use sourcemap;
 
 use symbolic_common::Result;
 
-
 /// Represents JS sourcecode.
 pub struct SourceView<'a> {
     sv: sourcemap::SourceView<'a>,
@@ -32,14 +31,14 @@ impl<'a> SourceView<'a> {
     /// Returns a view from a given source string.
     pub fn new(source: &'a str) -> SourceView<'a> {
         SourceView {
-            sv: sourcemap::SourceView::new(source)
+            sv: sourcemap::SourceView::new(source),
         }
     }
 
     /// Creates a view from a string.
     pub fn from_string(source: String) -> SourceView<'static> {
         SourceView {
-            sv: sourcemap::SourceView::from_string(source)
+            sv: sourcemap::SourceView::from_string(source),
         }
     }
 
@@ -77,22 +76,20 @@ impl SourceMapView {
             sm: match sourcemap::decode_slice(buffer)? {
                 sourcemap::DecodedMap::Regular(sm) => sm,
                 sourcemap::DecodedMap::Index(smi) => smi.flatten()?,
-            }
+            },
         })
     }
 
     /// Looks up a token and returns it.
     pub fn lookup_token<'a>(&'a self, line: u32, col: u32) -> Option<TokenMatch<'a>> {
-        self.sm.lookup_token(line, col).map(|tok| {
-            self.make_token_match(tok)
-        })
+        self.sm
+            .lookup_token(line, col)
+            .map(|tok| self.make_token_match(tok))
     }
 
     /// Returns a token for a specific index.
     pub fn get_token<'a>(&'a self, idx: u32) -> Option<TokenMatch<'a>> {
-        self.sm.get_token(idx).map(|tok| {
-            self.make_token_match(tok)
-        })
+        self.sm.get_token(idx).map(|tok| self.make_token_match(tok))
     }
 
     /// Returns the number of tokens.
@@ -102,7 +99,9 @@ impl SourceMapView {
 
     /// Returns a source view for the given source.
     pub fn get_source_view<'a>(&'a self, idx: u32) -> Option<&'a SourceView<'a>> {
-        self.sm.get_source_view(idx).map(|x| unsafe { mem::transmute(x) })
+        self.sm
+            .get_source_view(idx)
+            .map(|x| unsafe { mem::transmute(x) })
     }
 
     /// Returns the source name for an index.
@@ -121,14 +120,17 @@ impl SourceMapView {
     /// the sourceview to the minified source is available this function will
     /// also resolve the original function name.  This is used to fully
     /// resolve tracebacks.
-    pub fn lookup_token_with_function_name<'a, 'b>(&'a self, line: u32, col: u32,
-                                                   minified_name: &str,
-                                                   source: &SourceView<'b>)
-        -> Option<TokenMatch<'a>>
-    {
+    pub fn lookup_token_with_function_name<'a, 'b>(
+        &'a self,
+        line: u32,
+        col: u32,
+        minified_name: &str,
+        source: &SourceView<'b>,
+    ) -> Option<TokenMatch<'a>> {
         self.sm.lookup_token(line, col).map(|token| {
             let mut rv = self.make_token_match(token);
-            rv.function_name = source.sv
+            rv.function_name = source
+                .sv
                 .get_original_function_name(token, minified_name)
                 .map(|x| x.to_string());
             rv

@@ -239,7 +239,11 @@ impl<W: Write> SymCacheWriter<W> {
     fn write_symbol_table(&mut self, symbols: SymbolIterator, vmaddr: u64) -> Result<()> {
         for symbol_result in symbols {
             let func = symbol_result?;
-            self.write_simple_function(func.addr() - vmaddr, func.len().unwrap_or(!0), func.as_str())?;
+            self.write_simple_function(
+                func.addr() - vmaddr,
+                func.len().unwrap_or(!0),
+                func.as_str(),
+            )?;
         }
 
         self.header.data_source = DataSource::SymbolTable as u8;

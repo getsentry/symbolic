@@ -442,7 +442,7 @@ impl SystemInfo {
             // "Linux [version] [build...] [arch] Linux/GNU"
             if let Some(captures) = LINUX_BUILD_RE.captures(&build) {
                 let version = captures.get(1).unwrap(); // uname -r portion
-                let build = captures.get(2).unwrap();   // uname -v portion
+                let build = captures.get(2).unwrap(); // uname -v portion
                 return (version.as_str().into(), build.as_str().into());
             }
         }
@@ -610,12 +610,10 @@ impl<'a> ProcessState<'a> {
         // Keep a reference to all symbol entries to extend their lifetime
         let cfi_entries: Vec<_> = cfi_vec
             .iter()
-            .map(|&(ref id, size, data)| {
-                SymbolEntry {
-                    debug_identifier: id.as_ref().map(|i| i.as_ptr()).unwrap_or(ptr::null()),
-                    symbol_size: size,
-                    symbol_data: data,
-                }
+            .map(|&(ref id, size, data)| SymbolEntry {
+                debug_identifier: id.as_ref().map(|i| i.as_ptr()).unwrap_or(ptr::null()),
+                symbol_size: size,
+                symbol_data: data,
             })
             .collect();
 

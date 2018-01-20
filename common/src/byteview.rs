@@ -83,9 +83,7 @@ impl<'bytes> ByteView<'bytes> {
     fn buffer(&self) -> &[u8] {
         match self.inner {
             ByteViewInner::Buf(ref buf) => buf,
-            ByteViewInner::Mmap(ref mmap) => unsafe {
-                mmap.as_slice()
-            },
+            ByteViewInner::Mmap(ref mmap) => unsafe { mmap.as_slice() },
         }
     }
 }

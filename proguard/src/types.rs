@@ -1,21 +1,19 @@
 use uuid;
 use proguard;
 
-use symbolic_common::{Result, ByteView, ByteViewHandle};
-
+use symbolic_common::{ByteView, ByteViewHandle, Result};
 
 pub struct ProguardMappingView<'a> {
     mv: ByteViewHandle<'a, proguard::MappingView<'a>>,
 }
 
 impl<'a> ProguardMappingView<'a> {
-
     /// Creates a new proguard mapping view from a byte slice.
     pub fn parse(byteview: ByteView<'a>) -> Result<ProguardMappingView<'a>> {
         Ok(ProguardMappingView {
             mv: ByteViewHandle::from_byteview(byteview, |bytes| -> Result<_> {
                 Ok(proguard::MappingView::from_slice(bytes)?)
-            })?
+            })?,
         })
     }
 
@@ -37,11 +35,13 @@ impl<'a> ProguardMappingView<'a> {
         if let Some(cls) = self.mv.find_class(cls_name) {
             let class_name = cls.class_name();
             if let Some(meth_name) = meth_name {
-                let methods = cls.get_methods(meth_name, if lineno == 0 {
+                let lineno = if lineno == 0 {
                     None
                 } else {
                     Some(lineno as u32)
-                });
+                };
+
+                let methods = cls.get_methods(meth_name, lineno);
                 if !methods.is_empty() {
                     format!("{}:{}", class_name, methods[0].name())
                 } else {
