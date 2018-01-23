@@ -5,12 +5,11 @@ use std::slice;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-use utils::{set_panic_hook, LAST_ERROR, LAST_BACKTRACE};
-
 use uuid::Uuid;
 
 use symbolic_common::ErrorKind;
 
+use utils::{set_panic_hook, LAST_ERROR};
 
 /// Represents a string.
 #[repr(C)]
@@ -187,48 +186,57 @@ pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
 /// Returns the panic information as string.
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_err_get_backtrace() -> SymbolicStr {
-    LAST_BACKTRACE.with(|e| {
-        if let Some((ref info, ref backtrace)) = *e.borrow() {
-            use std::fmt::Write;
-            let mut out = String::new();
-            if let &Some(ref info) = info {
-                write!(&mut out, "{}\n", info).ok();
-            }
-            write!(&mut out, "stacktrace:").ok();
-            let frames = backtrace.frames();
-            if frames.len() > 5 {
-                let mut done = false;
-                for frame in frames[6..].iter() {
-                    if done {
-                        break;
-                    }
+    LAST_ERROR.with(|e| {
+        if let Some(ref error) = *e.borrow() {
+            if let Some(backtrace) = error.backtrace() {
+                use std::fmt::Write;
+                let skip = match *error.kind() {
+                    // Panics contain more frames from std::panicking
+                    ErrorKind::Panic(_) => 5,
+                    // Errors just have two frames from error_chain
+                    _ => 2,
+                };
 
-                    let ip = frame.ip();
-                    let symbols = frame.symbols();
-                    for symbol in symbols.iter() {
-                        write!(&mut out, "\n{:18?} ", ip).ok();
+                let mut out = String::new();
+                write!(&mut out, "stacktrace:").ok();
+                let frames = backtrace.frames();
+                if frames.len() > skip {
+                    let mut done = false;
+                    for (i, frame) in frames[skip..].iter().enumerate() {
+                        let ip = frame.ip();
+                        let symbols = frame.symbols();
+                        for symbol in symbols.iter() {
+                            write!(&mut out, "\n{:18?} ", ip).ok();
 
-                        if let Some(name) = symbol.name() {
-                            write!(&mut out, "{}", name).ok();
-                            // hack hack hack: make smaller stacktraces in case we are
-                            // a python binding.
-                            if name.as_bytes() == b"ffi_call" {
-                                done = true;
+                            if let Some(name) = symbol.name() {
+                                write!(&mut out, "{}", name).ok();
+                                // hack hack hack: make smaller stacktraces in case we are
+                                // a python binding.
+                                if name.as_bytes() == b"ffi_call" {
+                                    done = true;
+                                }
+                            } else {
+                                write!(&mut out, "<unknown>").ok();
                             }
-                        } else {
-                            write!(&mut out, "<unknown>").ok();
+
+                            if let Some(file) = symbol.filename() {
+                                if let Some(filename) = file.file_name() {
+                                    write!(&mut out, " ({}:{})", filename.to_string_lossy(),
+                                        symbol.lineno().unwrap_or(0)).ok();
+                                }
+                            }
                         }
 
-                        if let Some(file) = symbol.filename() {
-                            if let Some(filename) = file.file_name() {
-                                write!(&mut out, " ({}:{})", filename.to_string_lossy(),
-                                       symbol.lineno().unwrap_or(0)).ok();
-                            }
+                        if done {
+                            write!(&mut out, "\n{:18} [{} python frames omitted]", "", frames.len() - i);
+                            break;
                         }
                     }
                 }
+                SymbolicStr::from_string(out)
+            } else {
+                Default::default()
             }
-            SymbolicStr::from_string(out)
         } else {
             Default::default()
         }
@@ -239,9 +247,6 @@ pub unsafe extern "C" fn symbolic_err_get_backtrace() -> SymbolicStr {
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_err_clear() {
     LAST_ERROR.with(|e| {
-        *e.borrow_mut() = None;
-    });
-    LAST_BACKTRACE.with(|e| {
         *e.borrow_mut() = None;
     });
 }

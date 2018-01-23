@@ -26,7 +26,6 @@ lto = true
 
 [dependencies]
 uuid = "0"
-backtrace = "0"
 symbolic-common = { version = "2.0.4", path = "../common", features = ["with_dwarf", "with_objects", "with_sourcemaps"] }
 symbolic-demangle = { version = "2.0.4", path = "../demangle" }
 symbolic-debuginfo = { version = "2.0.4", path = "../debuginfo" }

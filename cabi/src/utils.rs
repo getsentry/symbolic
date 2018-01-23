@@ -3,22 +3,13 @@ use std::panic;
 use std::thread;
 use std::cell::RefCell;
 
-use symbolic_common::{ErrorKind, Error, Result};
-
-use backtrace::Backtrace;
+use symbolic_common::{Error, ErrorKind, Result};
 
 thread_local! {
     pub static LAST_ERROR: RefCell<Option<Error>> = RefCell::new(None);
-    pub static LAST_BACKTRACE: RefCell<Option<(Option<String>, Backtrace)>> = RefCell::new(None);
 }
 
-
-fn notify_err(err: Error) {
-    if let Some(backtrace) = err.backtrace() {
-        LAST_BACKTRACE.with(|e| {
-            *e.borrow_mut() = Some((None, backtrace.clone()));
-        });
-    }
+fn set_last_error(err: Error) {
     LAST_ERROR.with(|e| {
         *e.borrow_mut() = Some(err);
     });
@@ -26,57 +17,42 @@ fn notify_err(err: Error) {
 
 pub unsafe fn set_panic_hook() {
     panic::set_hook(Box::new(|info| {
-        let backtrace = Backtrace::new();
         let thread = thread::current();
         let thread = thread.name().unwrap_or("unnamed");
-
-        let msg = match info.payload().downcast_ref::<&str>() {
+        let message = match info.payload().downcast_ref::<&str>() {
             Some(s) => *s,
-            None => {
-                match info.payload().downcast_ref::<String>() {
-                    Some(s) => &**s,
-                    None => "Box<Any>",
-                }
-            }
+            None => match info.payload().downcast_ref::<String>() {
+                Some(s) => &**s,
+                None => "Box<Any>",
+            },
         };
 
-        let panic_info = match info.location() {
-            Some(location) => {
-                format!("thread '{}' panicked with '{}' at {}:{}",
-                                     thread, msg, location.file(),
-                                     location.line())
-            }
-            None => {
-                format!("thread '{}' panicked with '{}'", thread, msg)
-            }
+        let description = match info.location() {
+            Some(location) => format!(
+                "thread '{}' panicked with '{}' at {}:{}",
+                thread,
+                message,
+                location.file(),
+                location.line()
+            ),
+            None => format!("thread '{}' panicked with '{}'", thread, message),
         };
 
-        LAST_BACKTRACE.with(|e| {
-            *e.borrow_mut() = Some((Some(panic_info), backtrace));
-        });
+        set_last_error(ErrorKind::Panic(description).into())
     }));
 }
 
-pub unsafe fn landingpad<F: FnOnce() -> Result<T> + panic::UnwindSafe, T>(
-    f: F) -> T
+pub unsafe fn landingpad<F, T>(f: F) -> T
+where
+    F: FnOnce() -> Result<T> + panic::UnwindSafe,
 {
     match panic::catch_unwind(f) {
-        Ok(rv) => rv.map_err(|err| notify_err(err)).unwrap_or(mem::zeroed()),
-        Err(err) => {
-            use std::any::Any;
-            let err = &*err as &Any;
-            let msg = match err.downcast_ref::<&str>() {
-                Some(s) => *s,
-                None => {
-                    match err.downcast_ref::<String>() {
-                        Some(s) => &**s,
-                        None => "Box<Any>",
-                    }
-                }
-            };
-            notify_err(ErrorKind::Panic(msg.to_string()).into());
+        Ok(Ok(result)) => result,
+        Ok(Err(err)) => {
+            set_last_error(err);
             mem::zeroed()
         }
+        Err(_) => mem::zeroed(),
     }
 }
 

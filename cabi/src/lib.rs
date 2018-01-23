@@ -7,7 +7,6 @@ extern crate symbolic_sourcemap;
 extern crate symbolic_proguard;
 extern crate symbolic_minidump;
 extern crate uuid;
-extern crate backtrace;
 
 #[macro_use] mod utils;
 
