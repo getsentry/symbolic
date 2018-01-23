@@ -72,13 +72,6 @@ where
         }
     }
 
-    // Report all UUIDs that haven't been found
-    for ref id in search_ids {
-        if !collected.contains_key(id) {
-            println!("WARNING: Could not find symbols for {}", id);
-        }
-    }
-
     Ok(collected)
 }
 
@@ -146,7 +139,12 @@ fn symbolize<'a>(
     }
 }
 
-fn print_state(state: &ProcessState, symcaches: &SymCaches, crashed_only: bool) -> Result<()> {
+fn print_state(
+    state: &ProcessState,
+    symcaches: &SymCaches,
+    cfi: &FrameInfoMap,
+    crashed_only: bool,
+) -> Result<()> {
     let sys = state.system_info();
     println!("Operating system: {}", sys.os_name());
     println!("                  {} {}", sys.os_version(), sys.os_build());
@@ -217,13 +215,23 @@ fn print_state(state: &ProcessState, symcaches: &SymCaches, crashed_only: bool) 
     println!("");
     println!("Loaded modules:");
     for module in state.referenced_modules() {
-        println!(
-            "0x{:x} - 0x{:x}  {}  ({})",
+        print!(
+            "0x{:x} - 0x{:x}  {}  ({}",
             module.base_address(),
             module.base_address() + module.size() - 1,
             module.code_file().rsplit("/").next().unwrap(),
             module.id(),
         );
+
+        if !symcaches.contains_key(&module.id()) {
+            print!("; no symbols");
+        }
+
+        if !cfi.contains_key(&module.id()) {
+            print!("; no CFI");
+        }
+
+        println!(")");
     }
 
     Ok(())
@@ -237,11 +245,14 @@ fn execute(matches: &ArgMatches) -> Result<()> {
     let byteview = ByteView::from_path(&minidump_path)?;
     let mut state = ProcessState::from_minidump(&byteview, None)?;
 
-    if matches.is_present("cfi") {
+    let cfi = if matches.is_present("cfi") {
         // Reprocess with Call Frame Information
         let frame_info = prepare_cfi(&symbols_path, &state)?;
         state = ProcessState::from_minidump(&byteview, Some(&frame_info))?;
-    }
+        frame_info
+    } else {
+        Default::default()
+    };
 
     let symcaches = if matches.is_present("symbolize") {
         prepare_symcaches(&symbols_path, &state)?
@@ -249,7 +260,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
         Default::default()
     };
 
-    print_state(&state, &symcaches, matches.is_present("only_crash"))?;
+    print_state(&state, &symcaches, &cfi, matches.is_present("only_crash"))?;
     Ok(())
 }
 
