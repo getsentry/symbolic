@@ -26,6 +26,7 @@ fn main() {
         .include(".")
         .include("third_party/breakpad/src")
         .define("BPLOG_MINIMUM_SEVERITY", "SEVERITY_ERROR")
+        .define("BPLOG(severity)", "1 ? (void)0 : google_breakpad::LogMessageVoidify() & (BPLOG_ERROR)")
 
         // Processor
         .file("third_party/breakpad/src/processor/basic_code_modules.cc")
