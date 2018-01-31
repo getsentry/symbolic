@@ -96,6 +96,7 @@ pub enum SymbolicErrorCode {
     MissingSection = 1005,
     BadDwarfData = 1006,
     BadBreakpadSym = 1007,
+    BadSymbolTable = 1008,
     // sourcemaps
     BadSourcemap = 2001,
     CannotFlattenSourcemap = 2002,
@@ -125,6 +126,7 @@ impl SymbolicErrorCode {
             ErrorKind::BadDwarfData(..) => SymbolicErrorCode::BadDwarfData,
             ErrorKind::BadBreakpadSym(..) => SymbolicErrorCode::BadBreakpadSym,
             ErrorKind::MissingDebugInfo(..) => SymbolicErrorCode::MissingDebugInfo,
+            ErrorKind::BadSymbolTable(..) => SymbolicErrorCode::BadSymbolTable,
             ErrorKind::BadJson(..) => SymbolicErrorCode::BadJson,
             ErrorKind::BadSourcemap(..) => SymbolicErrorCode::BadSourcemap,
             ErrorKind::CannotFlattenSourcemap(..) => SymbolicErrorCode::CannotFlattenSourcemap,
