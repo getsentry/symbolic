@@ -8,11 +8,13 @@ use std::hash::{Hash, Hasher};
 use std::os::raw::{c_char, c_void};
 
 use regex::Regex;
-use uuid::Uuid;
 
 use symbolic_common::{Arch, ByteView, CpuFamily, ErrorKind, Result};
+use symbolic_debuginfo::ObjectId;
 
 use utils;
+
+pub type CodeModuleId = ObjectId;
 
 lazy_static! {
     static ref LINUX_BUILD_RE: Regex = Regex::new(r"^Linux ([^ ]+) (.*) \w+(?: GNU/Linux)?$").unwrap();
@@ -60,62 +62,6 @@ extern "C" {
     fn process_state_crash_reason(state: *const IProcessState) -> *mut c_char;
     fn process_state_assertion(state: *const IProcessState) -> *mut c_char;
     fn process_state_system_info(state: *const IProcessState) -> *mut SystemInfo;
-}
-
-/// Unique identifier of a `CodeModule`
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy)]
-pub struct CodeModuleId {
-    uuid: Uuid,
-    age: u32,
-}
-
-impl CodeModuleId {
-    /// Parses a `CodeModuleId` from a 33 character `String`
-    pub fn parse(input: &str) -> Result<CodeModuleId> {
-        if input.len() != 33 {
-            return Err(ErrorKind::Parse("Invalid input string length").into());
-        }
-
-        let uuid = Uuid::parse_str(&input[..32]).map_err(|_| ErrorKind::Parse("UUID parse error"))?;
-        let age = u32::from_str_radix(&input[32..], 16)?;
-        Ok(CodeModuleId { uuid, age })
-    }
-
-    /// Constructs a `CodeModuleId` from its `uuid`
-    pub fn from_uuid(uuid: Uuid) -> CodeModuleId {
-        Self::from_parts(uuid, 0)
-    }
-
-    /// Constructs a `CodeModuleId` from its `uuid` and `age` parts
-    pub fn from_parts(uuid: Uuid, age: u32) -> CodeModuleId {
-        CodeModuleId { uuid, age }
-    }
-
-    /// Returns the UUID part of the code module's debug_identifier
-    pub fn uuid(&self) -> Uuid {
-        self.uuid
-    }
-
-    /// Returns the age part of the code module's debug identifier
-    ///
-    /// On Windows, this is an incrementing counter to identify the build.
-    /// On all other platforms, this value will always be zero.
-    pub fn age(&self) -> u32 {
-        self.age
-    }
-}
-
-impl fmt::Display for CodeModuleId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let uuid = self.uuid.simple().to_string().to_uppercase();
-        write!(f, "{}{:X}", uuid, self.age)
-    }
-}
-
-impl Into<String> for CodeModuleId {
-    fn into(self) -> String {
-        self.to_string()
-    }
 }
 
 /// Carries information about a code module loaded into the process during the
@@ -226,32 +172,6 @@ impl fmt::Debug for CodeModule {
             .field("debug_identifier", &self.debug_identifier())
             .finish()
     }
-}
-
-#[test]
-fn test_parse() {
-    assert_eq!(
-        CodeModuleId::parse("DFB8E43AF2423D73A453AEB6A777EF75A").unwrap(),
-        CodeModuleId {
-            uuid: Uuid::parse_str("DFB8E43AF2423D73A453AEB6A777EF75").unwrap(),
-            age: 10,
-        }
-    );
-}
-
-#[test]
-fn test_to_string() {
-    let id = CodeModuleId {
-        uuid: Uuid::parse_str("DFB8E43AF2423D73A453AEB6A777EF75").unwrap(),
-        age: 10,
-    };
-
-    assert_eq!(id.to_string(), "DFB8E43AF2423D73A453AEB6A777EF75A");
-}
-
-#[test]
-fn test_parse_error() {
-    assert!(CodeModuleId::parse("DFB8E43AF2423D73A").is_err());
 }
 
 /// Indicates how well the instruction pointer derived during
