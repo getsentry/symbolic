@@ -116,7 +116,7 @@ impl<'input> fmt::Debug for BreakpadModuleRecord<'input> {
 }
 
 pub struct BreakpadFileRecord<'input> {
-    pub id: u16,
+    pub id: u64,
     pub name: &'input [u8],
 }
 
@@ -133,7 +133,7 @@ impl<'input> fmt::Debug for BreakpadFileRecord<'input> {
 pub struct BreakpadLineRecord {
     pub address: u64,
     pub line: u64,
-    pub file_id: u16,
+    pub file_id: u64,
 }
 
 pub struct BreakpadFuncRecord<'input> {
@@ -394,7 +394,7 @@ fn parse_file<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>> {
     let mut record = line.splitn(2, |b| *b == b' ');
 
     let id = match record.next() {
-        Some(text) => u16::from_str(&String::from_utf8_lossy(text))
+        Some(text) => u64::from_str(&String::from_utf8_lossy(text))
             .map_err(|e| Error::with_chain(e, "invalid file id"))?,
         None => return Err(ErrorKind::Parse("missing file ID").into()),
     };
@@ -536,7 +536,7 @@ fn parse_line<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>> {
     };
 
     let file_id = match record.next() {
-        Some(text) => u16::from_str(&String::from_utf8_lossy(text))
+        Some(text) => u64::from_str(&String::from_utf8_lossy(text))
             .map_err(|e| Error::with_chain(e, "invalid line file id"))?,
         None => return Err(ErrorKind::Parse("missing line file id").into()),
     };
