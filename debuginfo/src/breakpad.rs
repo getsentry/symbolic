@@ -302,15 +302,13 @@ impl<'data> Iterator for BreakpadRecords<'data> {
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(next) = self.lines.next() {
-            let len = next.len();
-            let line = if len > 0 && next[len - 1] == b'\r' {
-                &next[0..len - 1]
-            } else {
-                next
-            };
+            let mut len = next.len();
+            while len > 0 && next[len - 1] == b'\r' {
+                len -= 1;
+            }
 
-            if line.len() > 0 {
-                return Some(self.parse(line));
+            if len > 0 {
+                return Some(self.parse(&next[0..len]));
             }
         }
 
