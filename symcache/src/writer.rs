@@ -18,10 +18,6 @@ use dwarf::{DwarfInfo, Function, Unit};
 use types::{CacheFileHeader, DataSource, FileRecord, FuncRecord, LineRecord, Seg};
 use utils::shorten_filename;
 
-fn err(msg: &'static str) -> Error {
-    Error::from(ErrorKind::BadDwarfData(msg))
-}
-
 /// Given a writer and object, dumps the object into the writer.
 ///
 /// In case a symcache is to be constructed from memory the `SymCache::from_object`
@@ -205,17 +201,17 @@ impl<W: Write> SymCacheWriter<W> {
         match DebugInfo::from_object(obj) {
             Ok(DebugInfo::Dwarf(ref info)) => {
                 return self.write_dwarf_info(info, obj.symbols().ok())
-                    .chain_err(|| err("could not process DWARF data"));
+                    .chain_err(|| ErrorKind::BadDwarfData("could not process DWARF data"));
             }
             Ok(DebugInfo::Breakpad(ref info)) => {
                 return self.write_breakpad_info(info)
-                    .chain_err(|| err("could not process Breakpad symbols"));
+                    .chain_err(|| ErrorKind::BadBreakpadSym("could not process Breakpad symbols"));
             }
             Err(Error(ErrorKind::MissingSection(..), ..)) => {
                 // ignore missing sections
             }
             Err(e) => {
-                return Err(e).chain_err(|| err("could not load debug data"))?;
+                return Err(e).chain_err(|| ErrorKind::UnsupportedObjectFile)?;
             }
         }
 
@@ -223,17 +219,18 @@ impl<W: Write> SymCacheWriter<W> {
         match obj.symbols() {
             Ok(symbols) => {
                 return self.write_symbol_table(symbols.iter(), obj.vmaddr()?)
-                    .chain_err(|| err("Could not process symbol table"));
+                    .chain_err(|| ErrorKind::BadSymbolTable("could not process symbol table"));
             }
             Err(Error(ErrorKind::MissingDebugInfo(..), ..)) => {
                 // ignore missing debug info
             }
             Err(e) => {
-                return Err(e).chain_err(|| err("could not load symnbol table"));
+                return Err(e)
+                    .chain_err(|| ErrorKind::BadSymbolTable("could not load symnbol table"));
             }
         }
 
-        Err(ErrorKind::MissingDebugInfo("No debug info found in file").into())
+        Err(ErrorKind::MissingDebugInfo("no debug info found in file").into())
     }
 
     fn write_symbol_table(&mut self, symbols: SymbolIterator, vmaddr: u64) -> Result<()> {
@@ -395,7 +392,7 @@ impl<W: Write> SymCacheWriter<W> {
         for index in 0..info.units.len() {
             // attempt to parse a single unit from the given header.
             let unit_opt = Unit::parse(&info, index)
-                .chain_err(|| err("encountered invalid compilation unit"))?;
+                .chain_err(|| ErrorKind::BadDwarfData("encountered invalid compilation unit"))?;
 
             // skip units we don't care about
             let unit = match unit_opt {

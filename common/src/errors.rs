@@ -77,6 +77,10 @@ error_chain! {
             description("missing debug info")
             display("missing debug info: {}", message)
         }
+        BadSymbolTable(message: &'static str) {
+            description("bad symbol table")
+            display("bad symbol table: {}", message)
+        }
         /// Raised for JSON parse errors.
         BadJson(msg: String) {
             description("bad json")
