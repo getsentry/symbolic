@@ -120,7 +120,8 @@ pub enum DataSource {
     Dwarf,
     SymbolTable,
     BreakpadSym,
-    #[doc(hidden)] __Max,
+    #[doc(hidden)]
+    __Max,
 }
 
 impl DataSource {
