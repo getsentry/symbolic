@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-symcache"
-version = "2.0.4"
+version = "2.0.5"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -15,9 +15,9 @@ stack frames in debugging information.
 """
 
 [dependencies]
-symbolic-common = { version = "2.0.4", path = "../common", features = ["with_dwarf", "with_objects"] }
-symbolic-debuginfo = { version = "2.0.4", path = "../debuginfo" }
-symbolic-demangle = { version = "2.0.4", path = "../demangle" }
+symbolic-common = { version = "2.0.5", path = "../common", features = ["with_dwarf", "with_objects"] }
+symbolic-debuginfo = { version = "2.0.5", path = "../debuginfo" }
+symbolic-demangle = { version = "2.0.5", path = "../demangle" }
 uuid = { version = "^0.5", features = ["serde"] }
 gimli = "0.15"
 fallible-iterator = "0.1"
