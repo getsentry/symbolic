@@ -13,7 +13,7 @@ use elf::{get_elf_id, get_elf_vmaddr};
 use mach::{get_mach_id, get_mach_vmaddr};
 
 /// Unique identifier for `Object` files and their debug information.
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy)]
+#[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy)]
 pub struct ObjectId {
     uuid: Uuid,
     age: u32,
