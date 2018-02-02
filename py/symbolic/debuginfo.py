@@ -62,6 +62,20 @@ class FatObject(RustObject):
         return rv
 
 
+class ObjectId(object):
+    """Unique identifier for Objects and their debug information."""
+
+    def __init__(self, data):
+        self.uuid = decode_uuid(data.uuid)
+        self.age = data.age
+
+    def __repr__(self):
+        return '<ObjectId %s %s>' % (
+            self.uuid,
+            self.age,
+        )
+
+
 class Object(RustObject):
     __dealloc_func__ = lib.symbolic_object_free
 
@@ -72,8 +86,13 @@ class Object(RustObject):
         return str(decode_str(self._methodcall(lib.symbolic_object_get_arch)))
 
     @property
+    def id(self):
+        """The unique ID of the object."""
+        return ObjectId(self._methodcall(lib.symbolic_object_get_id))
+
+    @property
     def uuid(self):
-        """The UUID of the object."""
+        """The UUID of the object. Use object.id() instead."""
         return decode_uuid(self._methodcall(lib.symbolic_object_get_uuid))
 
     @property
