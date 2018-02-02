@@ -9,8 +9,8 @@ use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, Err
 
 use breakpad::BreakpadSym;
 use dwarf::DwarfData;
-use elf::{get_elf_uuid, get_elf_vmaddr};
-use mach::{get_mach_uuid, get_mach_vmaddr};
+use elf::{get_elf_id, get_elf_vmaddr};
+use mach::{get_mach_id, get_mach_vmaddr};
 
 /// Unique identifier for `Object` files and their debug information.
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy)]
@@ -66,7 +66,7 @@ impl fmt::Display for ObjectId {
     }
 }
 
-/// Contains type specific data of `Object`s
+/// Contains type specific data of `Object`s.
 pub(crate) enum ObjectTarget<'bytes> {
     Breakpad(&'bytes BreakpadSym),
     Elf(&'bytes elf::Elf<'bytes>),
@@ -81,18 +81,25 @@ pub struct Object<'bytes> {
 }
 
 impl<'bytes> Object<'bytes> {
-    /// Returns the UUID of the object
-    pub fn uuid(&self) -> Option<Uuid> {
+    /// Returns the identifier of the object.
+    pub fn id(&self) -> Option<ObjectId> {
         use ObjectTarget::*;
         match self.target {
-            Breakpad(ref breakpad) => Some(breakpad.uuid()),
-            Elf(ref elf) => get_elf_uuid(elf, self.fat_bytes),
-            MachOSingle(macho) => get_mach_uuid(macho),
-            MachOFat(_, ref macho) => get_mach_uuid(macho),
+            Breakpad(ref breakpad) => Some(breakpad.id()),
+            Elf(ref elf) => get_elf_id(elf, self.fat_bytes),
+            MachOSingle(macho) => get_mach_id(macho),
+            MachOFat(_, ref macho) => get_mach_id(macho),
         }
     }
 
-    /// Returns the kind of the object
+    /// Returns the UUID of the object.
+    ///
+    /// Unless the UUID is specifically required, consider using `Object::id` instead.
+    pub fn uuid(&self) -> Option<Uuid> {
+        self.id().map(|id| id.uuid())
+    }
+
+    /// Returns the kind of the object.
     pub fn kind(&self) -> ObjectKind {
         use ObjectTarget::*;
         match self.target {
@@ -103,7 +110,7 @@ impl<'bytes> Object<'bytes> {
         }
     }
 
-    /// Returns the architecture of the object
+    /// Returns the architecture of the object.
     pub fn arch(&self) -> Arch {
         use ObjectTarget::*;
         match self.target {
@@ -130,7 +137,7 @@ impl<'bytes> Object<'bytes> {
         }
     }
 
-    /// True if little endian, false if not
+    /// True if little endian, false if not.
     pub fn endianness(&self) -> Endianness {
         use ObjectTarget::*;
         let little = match self.target {
@@ -146,7 +153,7 @@ impl<'bytes> Object<'bytes> {
         }
     }
 
-    /// Returns the content of the object as bytes
+    /// Returns the content of the object as bytes.
     pub fn as_bytes(&self) -> &'bytes [u8] {
         use ObjectTarget::*;
         match self.target {
@@ -173,7 +180,7 @@ impl<'bytes> Object<'bytes> {
         }
     }
 
-    /// Returns the type of debug data contained in this object file
+    /// Returns the type of debug data contained in this object file.
     pub fn debug_kind(&self) -> Option<DebugKind> {
         use ObjectTarget::*;
         match self.target {
@@ -201,7 +208,7 @@ impl<'bytes> fmt::Debug for Object<'bytes> {
     }
 }
 
-/// Iterator over `Object`s in a `FatObject`
+/// Iterator over `Object`s in a `FatObject`.
 pub struct Objects<'fat> {
     fat: &'fat FatObject<'fat>,
     index: usize,
@@ -251,7 +258,7 @@ pub struct FatObject<'bytes> {
 }
 
 impl<'bytes> FatObject<'bytes> {
-    /// Returns the type of the FatObject
+    /// Returns the type of the FatObject.
     pub fn peek<B>(bytes: B) -> Result<ObjectKind>
     where
         B: AsRef<[u8]>,
@@ -273,7 +280,7 @@ impl<'bytes> FatObject<'bytes> {
         return Err(ErrorKind::UnsupportedObjectFile.into());
     }
 
-    /// Provides a view to an object file from a byteview.
+    /// Provides a view to an object file from a `ByteView`.
     pub fn parse(byteview: ByteView<'bytes>) -> Result<FatObject<'bytes>> {
         let handle = ByteViewHandle::from_byteview(byteview, |bytes| -> Result<_> {
             Ok(match FatObject::peek(bytes)? {
@@ -286,7 +293,7 @@ impl<'bytes> FatObject<'bytes> {
         Ok(FatObject { handle: handle })
     }
 
-    /// Returns the kind of this FatObject
+    /// Returns the kind of this `FatObject`.
     pub fn kind(&self) -> ObjectKind {
         match *self.handle {
             FatObjectKind::Breakpad(_) => ObjectKind::Breakpad,

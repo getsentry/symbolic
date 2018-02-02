@@ -3,18 +3,20 @@ use uuid::Uuid;
 
 use symbolic_common::Result;
 
-/// A segment inside a Mach object file containing multiple sections
+use object::ObjectId;
+
+/// A segment inside a Mach object file containing multiple sections.
 type MachSegment<'mach, 'data> = &'mach mach::segment::Segment<'data>;
 
-/// A section inside a Mach object file
+/// A section inside a Mach object file.
 pub struct MachSection<'data> {
-    // The header struct
+    // The header struct.
     pub header: mach::segment::Section,
-    // The raw data
+    // The raw data.
     pub data: &'data [u8],
 }
 
-/// Locates and reads a segment in a Mach object file
+/// Locates and reads a segment in a Mach object file.
 pub fn find_mach_segment<'mach, 'data>(
     mach: &'mach mach::MachO<'data>,
     name: &str,
@@ -28,7 +30,7 @@ pub fn find_mach_segment<'mach, 'data>(
     None
 }
 
-/// Checks whether a Mach object file contains a segment
+/// Checks whether a Mach object file contains a segment.
 ///
 /// This is useful to determine whether the object contains certain information
 /// without iterating over all section headers and loading their data.
@@ -36,7 +38,7 @@ pub fn has_mach_segment(mach: &mach::MachO, name: &str) -> bool {
     find_mach_segment(mach, name).is_some()
 }
 
-/// Locates and reads a section in a Mach object file
+/// Locates and reads a section in a Mach object file.
 ///
 /// Depending on its name, the segment will be loaded from either the `"__TEXT"`
 /// or the `"__DWARF"` segment.
@@ -65,7 +67,7 @@ pub fn find_mach_section<'data>(
     None
 }
 
-/// Checks whether a Mach object file contains a section
+/// Checks whether a Mach object file contains a section.
 ///
 /// Depending on its name, the section will searched in the `"__TEXT"` or the
 /// `"__DWARF"` segment. This is useful to determine whether the object contains
@@ -75,18 +77,18 @@ pub fn has_mach_section(mach: &mach::MachO, name: &str) -> bool {
     find_mach_section(mach, name).is_some()
 }
 
-/// Resolves the UUID from Mach object load commands
-pub fn get_mach_uuid(macho: &mach::MachO) -> Option<Uuid> {
+/// Resolves the object identifier from Mach object load commands.
+pub fn get_mach_id(macho: &mach::MachO) -> Option<ObjectId> {
     for cmd in &macho.load_commands {
         if let mach::load_command::CommandVariant::Uuid(ref uuid_cmd) = cmd.command {
-            return Uuid::from_bytes(&uuid_cmd.uuid).ok();
+            return Uuid::from_bytes(&uuid_cmd.uuid).ok().map(ObjectId::from_uuid);
         }
     }
 
     None
 }
 
-/// Loads the virtual memory address of this object's __TEXT (code) segment
+/// Loads the virtual memory address of this object's __TEXT (code) segment.
 pub fn get_mach_vmaddr(macho: &mach::MachO) -> Result<u64> {
     for seg in &macho.segments {
         if seg.name()? == "__TEXT" {

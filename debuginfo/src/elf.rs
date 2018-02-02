@@ -5,16 +5,18 @@ use uuid::Uuid;
 
 use symbolic_common::Result;
 
+use object::ObjectId;
+
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;
 
-/// A section inside an ELF binary
+/// A section inside an ELF binary.
 pub struct ElfSection<'elf, 'data> {
     pub header: &'elf elf::SectionHeader,
     pub data: &'data [u8],
 }
 
-/// Locates and reads a section in an ELF binary
+/// Locates and reads a section in an ELF binary.
 pub fn find_elf_section<'elf, 'data>(
     elf: &'elf elf::Elf,
     data: &'data [u8],
@@ -43,7 +45,7 @@ pub fn find_elf_section<'elf, 'data>(
     None
 }
 
-/// Checks whether an ELF binary contains a section
+/// Checks whether an ELF binary contains a section.
 ///
 /// This is useful to determine whether the binary contains certain information
 /// without loading its section data.
@@ -63,7 +65,7 @@ pub fn has_elf_section(elf: &elf::Elf, sh_type: u32, name: &str) -> bool {
     false
 }
 
-/// Searches for a GNU build identifier node in an ELF file
+/// Searches for a GNU build identifier node in an ELF file.
 ///
 /// Depending on the compiler and linker, the build ID can be declared in a
 /// PT_NOTE program header entry, the ".note.gnu.build-id" section, or even
@@ -95,12 +97,14 @@ fn find_build_id<'data>(elf: &elf::Elf<'data>, data: &'data [u8]) -> Option<&'da
     None
 }
 
-/// Converts an ELF object identifier into a `Uuid`
+/// Converts an ELF object identifier into a `ObjectId`.
 ///
 /// The identifier data is first truncated or extended to match 16 byte size of
 /// Uuids. If the data is declared in little endian, the first three Uuid fields
 /// are flipped to match the big endian expected by the breakpad processor.
-fn create_elf_uuid(identifier: &[u8], little_endian: bool) -> Option<Uuid> {
+///
+/// The `ObjectId::age` field is always `0` for ELF.
+fn create_elf_id(identifier: &[u8], little_endian: bool) -> Option<ObjectId> {
     // Make sure that we have exactly UUID_SIZE bytes available
     let mut data = [0 as u8; UUID_SIZE];
     let len = cmp::min(identifier.len(), UUID_SIZE);
@@ -115,10 +119,10 @@ fn create_elf_uuid(identifier: &[u8], little_endian: bool) -> Option<Uuid> {
         data[6..8].reverse(); // uuid field 3
     }
 
-    Uuid::from_bytes(&data).ok()
+    Uuid::from_bytes(&data).ok().map(ObjectId::from_uuid)
 }
 
-/// Tries to obtain the object UUID of an ELF object.
+/// Tries to obtain the object identifier of an ELF object.
 ///
 /// As opposed to Mach-O, ELF does not specify a unique ID for object files in
 /// its header. Compilers and linkers usually add either `SHT_NOTE` sections or
@@ -128,13 +132,13 @@ fn create_elf_uuid(identifier: &[u8], little_endian: bool) -> Option<Uuid> {
 /// of the `.text` section (program code) to synthesize a unique ID. This is
 /// likely not a valid UUID since was generated off a hash value.
 ///
-/// If all of the above fails, the UUID will be `None`.
-pub fn get_elf_uuid(elf: &elf::Elf, data: &[u8]) -> Option<Uuid> {
+/// If all of the above fails, the identifier will be `None`.
+pub fn get_elf_id(elf: &elf::Elf, data: &[u8]) -> Option<ObjectId> {
     // Search for a GNU build identifier node in the program headers or the
     // build ID section. If errors occur during this process, fall through
     // silently to the next method.
     if let Some(identifier) = find_build_id(elf, data) {
-        return create_elf_uuid(identifier, elf.little_endian);
+        return create_elf_id(identifier, elf.little_endian);
     }
 
     // We were not able to locate the build ID, so fall back to hashing the
@@ -146,13 +150,13 @@ pub fn get_elf_uuid(elf: &elf::Elf, data: &[u8]) -> Option<Uuid> {
             hash[i % UUID_SIZE] ^= section.data[i];
         }
 
-        return create_elf_uuid(&hash, elf.little_endian);
+        return create_elf_id(&hash, elf.little_endian);
     }
 
     None
 }
 
-/// Gets the virtual memory address of this object's .text (code) section
+/// Gets the virtual memory address of this object's .text (code) section.
 pub fn get_elf_vmaddr(elf: &elf::Elf) -> Result<u64> {
     // For non-PIC executables (e_type == ET_EXEC), the load address is
     // the start address of the first PT_LOAD segment.  (ELF requires
