@@ -1,4 +1,3 @@
-use std::mem;
 use std::ptr;
 use std::os::raw::c_char;
 use std::ffi::CStr;
@@ -67,7 +66,7 @@ ffi_fn! {
     unsafe fn symbolic_object_get_arch(so: *const SymbolicObject)
         -> Result<SymbolicStr>
     {
-        let o = so as *mut Object<'static>;
+        let o = so as *const Object<'static>;
         Ok(SymbolicStr::new((*o).arch().name()))
     }
 }
@@ -77,8 +76,8 @@ ffi_fn! {
     unsafe fn symbolic_object_get_uuid(so: *const SymbolicObject)
         -> Result<SymbolicUuid>
     {
-        let o = so as *mut Object<'static>;
-        Ok(mem::transmute(*(*o).uuid().unwrap_or(Uuid::nil()).as_bytes()))
+        let o = so as *const Object<'static>;
+        Ok((*o).uuid().unwrap_or_default().into())
     }
 }
 
@@ -87,7 +86,7 @@ ffi_fn! {
     unsafe fn symbolic_object_get_kind(so: *const SymbolicObject)
         -> Result<SymbolicStr>
     {
-        let o = so as *mut Object<'static>;
+        let o = so as *const Object<'static>;
         Ok(SymbolicStr::new((*o).kind().name()))
     }
 }
@@ -107,7 +106,7 @@ ffi_fn! {
     unsafe fn symbolic_object_get_debug_kind(so: *const SymbolicObject)
         -> Result<SymbolicStr>
     {
-        let o = so as *mut Object<'static>;
+        let o = so as *const Object<'static>;
         Ok(if let Some(kind) = (*o).debug_kind() {
             SymbolicStr::new(kind.name())
         } else {

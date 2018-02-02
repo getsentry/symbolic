@@ -72,6 +72,18 @@ pub struct SymbolicUuid {
     pub data: [u8; 16]
 }
 
+impl Default for SymbolicUuid {
+    fn default() -> SymbolicUuid {
+        Uuid::nil().into()
+    }
+}
+
+impl From<Uuid> for SymbolicUuid {
+    fn from(uuid: Uuid) -> SymbolicUuid {
+        unsafe { mem::transmute(*uuid.as_bytes()) }
+    }
+}
+
 /// Indicates the error that ocurred
 #[repr(u32)]
 pub enum SymbolicErrorCode {
@@ -230,7 +242,7 @@ pub unsafe extern "C" fn symbolic_err_get_backtrace() -> SymbolicStr {
                         }
 
                         if done {
-                            write!(&mut out, "\n{:18} [{} python frames omitted]", "", frames.len() - i);
+                            write!(&mut out, "\n{:18} [{} python frames omitted]", "", frames.len() - i).ok();
                             break;
                         }
                     }
