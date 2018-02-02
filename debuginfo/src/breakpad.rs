@@ -88,7 +88,7 @@ impl<'input> fmt::Debug for BreakpadPublicRecord<'input> {
     }
 }
 
-/// Provides access to information in a breakpad file
+/// Provides access to information in a breakpad file.
 #[derive(Debug)]
 pub(crate) struct BreakpadSym {
     id: ObjectId,
@@ -96,7 +96,7 @@ pub(crate) struct BreakpadSym {
 }
 
 impl BreakpadSym {
-    /// Parses a breakpad file header
+    /// Parses a breakpad file header.
     ///
     /// Example:
     /// ```
@@ -136,11 +136,6 @@ impl BreakpadSym {
 
     pub fn id(&self) -> ObjectId {
         self.id
-    }
-
-    pub fn uuid(&self) -> Uuid {
-        // TODO: To avoid collisions, this should hash the age in
-        self.id().uuid()
     }
 
     pub fn arch(&self) -> Arch {

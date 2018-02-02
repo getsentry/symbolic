@@ -97,11 +97,6 @@ impl Drop for SymbolicProcessState {
     }
 }
 
-/// Maps a native UUID to the FFI type
-unsafe fn map_uuid(uuid: &Uuid) -> SymbolicUuid {
-    mem::transmute(*uuid.as_bytes())
-}
-
 /// Creates a packed array of mapped FFI elements from a slice
 unsafe fn map_slice<T, S, F>(items: &[T], mut mapper: F) -> (*mut S, usize)
 where
@@ -141,7 +136,7 @@ where
 /// Maps a `CodeModule` to its FFI type
 unsafe fn map_code_module(module: &CodeModule) -> SymbolicCodeModule {
     SymbolicCodeModule {
-        uuid: map_uuid(&module.id().uuid()),
+        uuid: module.id().uuid().into(),
         addr: module.base_address(),
         size: module.size(),
         name: SymbolicStr::from_string(module.code_file()),

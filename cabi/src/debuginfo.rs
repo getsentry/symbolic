@@ -1,10 +1,9 @@
-use std::mem;
 use std::ptr;
 use std::os::raw::c_char;
 use std::ffi::CStr;
 
 use symbolic_common::ByteView;
-use symbolic_debuginfo::{FatObject, Object};
+use symbolic_debuginfo::{FatObject, Object, ObjectId};
 
 use core::{SymbolicStr, SymbolicUuid};
 
@@ -15,6 +14,31 @@ pub struct SymbolicFatObject;
 
 /// A single arch object.
 pub struct SymbolicObject;
+
+/// Unique identifier for Objects.
+#[repr(C)]
+pub struct SymbolicObjectId {
+    pub uuid: SymbolicUuid,
+    pub age: u32,
+}
+
+impl Default for SymbolicObjectId {
+    fn default() -> SymbolicObjectId {
+        SymbolicObjectId {
+            uuid: Uuid::nil().into(),
+            age: 0,
+        }
+    }
+}
+
+impl From<ObjectId> for SymbolicObjectId {
+    fn from(id: ObjectId) -> SymbolicObjectId {
+        SymbolicObjectId {
+            uuid: id.uuid().into(),
+            age: id.age(),
+        }
+    }
+}
 
 ffi_fn! {
     /// Loads a fat object from a given path.
@@ -67,8 +91,17 @@ ffi_fn! {
     unsafe fn symbolic_object_get_arch(so: *const SymbolicObject)
         -> Result<SymbolicStr>
     {
-        let o = so as *mut Object<'static>;
+        let o = so as *const Object<'static>;
         Ok(SymbolicStr::new((*o).arch().name()))
+    }
+}
+
+ffi_fn! {
+    unsafe fn symbolic_object_get_id(so: *const SymbolicObject)
+        -> Result<SymbolicObjectId>
+    {
+        let o = so as *const Object<'static>;
+        Ok((*o).id().unwrap_or_default().into())
     }
 }
 
@@ -77,8 +110,8 @@ ffi_fn! {
     unsafe fn symbolic_object_get_uuid(so: *const SymbolicObject)
         -> Result<SymbolicUuid>
     {
-        let o = so as *mut Object<'static>;
-        Ok(mem::transmute(*(*o).uuid().unwrap_or(Uuid::nil()).as_bytes()))
+        let o = so as *const Object<'static>;
+        Ok((*o).uuid().unwrap_or_default().into())
     }
 }
 
@@ -87,7 +120,7 @@ ffi_fn! {
     unsafe fn symbolic_object_get_kind(so: *const SymbolicObject)
         -> Result<SymbolicStr>
     {
-        let o = so as *mut Object<'static>;
+        let o = so as *const Object<'static>;
         Ok(SymbolicStr::new((*o).kind().name()))
     }
 }
@@ -107,7 +140,7 @@ ffi_fn! {
     unsafe fn symbolic_object_get_debug_kind(so: *const SymbolicObject)
         -> Result<SymbolicStr>
     {
-        let o = so as *mut Object<'static>;
+        let o = so as *const Object<'static>;
         Ok(if let Some(kind) = (*o).debug_kind() {
             SymbolicStr::new(kind.name())
         } else {

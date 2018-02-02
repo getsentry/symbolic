@@ -1,4 +1,3 @@
-use std::mem;
 use std::slice;
 use std::os::raw::c_char;
 use std::ffi::CStr;
@@ -47,12 +46,12 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Returns the UUID 
+    /// Returns the UUID
     unsafe fn symbolic_proguardmappingview_get_uuid(spmv: *mut SymbolicProguardMappingView)
         -> Result<SymbolicUuid>
     {
         let pmv = spmv as *mut ProguardMappingView<'static>;
-        Ok(mem::transmute((*pmv).uuid()))
+        Ok((*pmv).uuid().into())
     }
 }
 

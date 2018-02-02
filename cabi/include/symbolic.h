@@ -174,6 +174,14 @@ typedef struct {
 } SymbolicLookupResult;
 
 /*
+ * Unique identifier for Objects.
+ */
+typedef struct {
+  SymbolicUuid uuid;
+  uint32_t age;
+} SymbolicObjectId;
+
+/*
  * OS and CPU information
  */
 typedef struct {
@@ -392,6 +400,8 @@ SymbolicStr symbolic_object_get_arch(const SymbolicObject *so);
  * Returns the object class
  */
 SymbolicStr symbolic_object_get_debug_kind(const SymbolicObject *so);
+
+SymbolicObjectId symbolic_object_get_id(const SymbolicObject *so);
 
 /*
  * Returns the object kind

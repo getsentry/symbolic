@@ -3,8 +3,6 @@ use std::slice;
 use std::os::raw::c_char;
 use std::ffi::CStr;
 
-use uuid::Uuid;
-
 use symbolic_debuginfo::Object;
 use symbolic_symcache::{SymCache, InstructionInfo, SYMCACHE_LATEST_VERSION};
 use symbolic_common::{ByteView, Arch};
@@ -125,7 +123,7 @@ ffi_fn! {
     /// Returns the architecture of the symcache.
     unsafe fn symbolic_symcache_get_uuid(scache: *const SymbolicSymCache) -> Result<SymbolicUuid> {
         let cache = scache as *mut SymCache<'static>;
-        Ok(mem::transmute(*(*cache).uuid().unwrap_or(Uuid::nil()).as_bytes()))
+        Ok((*cache).uuid().unwrap_or_default().into())
     }
 }
 
