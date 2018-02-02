@@ -81,7 +81,9 @@ pub fn has_mach_section(mach: &mach::MachO, name: &str) -> bool {
 pub fn get_mach_id(macho: &mach::MachO) -> Option<ObjectId> {
     for cmd in &macho.load_commands {
         if let mach::load_command::CommandVariant::Uuid(ref uuid_cmd) = cmd.command {
-            return Uuid::from_bytes(&uuid_cmd.uuid).ok().map(ObjectId::from_uuid);
+            return Uuid::from_bytes(&uuid_cmd.uuid)
+                .ok()
+                .map(ObjectId::from_uuid);
         }
     }
 
