@@ -11,7 +11,7 @@ use symbolic_common::{ErrorKind, Name, Result};
 use object::{Object, ObjectTarget};
 
 lazy_static! {
-    static ref HIDDEN_SYMBOL_RE: Regex = Regex::new("__hidden#\\d+").unwrap();
+    static ref HIDDEN_SYMBOL_RE: Regex = Regex::new("__?hidden#\\d+_").unwrap();
 }
 
 /// A single symbol
