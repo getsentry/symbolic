@@ -72,7 +72,8 @@ pub enum Arch {
     Arm64V8,
     Ppc,
     Ppc64,
-    #[doc(hidden)] __Max,
+    #[doc(hidden)]
+    __Max,
 }
 
 impl Default for Arch {
@@ -332,7 +333,8 @@ pub enum Language {
     ObjCpp,
     Rust,
     Swift,
-    #[doc(hidden)] __Max,
+    #[doc(hidden)]
+    __Max,
 }
 
 impl Language {
