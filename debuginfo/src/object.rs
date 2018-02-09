@@ -349,6 +349,15 @@ impl<'bytes> FatObject<'bytes> {
     }
 }
 
+impl<'bytes> fmt::Debug for FatObject<'bytes> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Object")
+            .field("kind", &self.kind())
+            .field("object_count", &self.object_count())
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
