@@ -1,11 +1,12 @@
 use std::borrow::Cow;
 use std::fmt;
 use std::mem;
+use std::str;
 
 #[cfg(feature = "with_dwarf")]
 use gimli;
 
-use errors::{ErrorKind, Result};
+use errors::{Error, ErrorKind, Result};
 
 /// Represents endianness.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
@@ -311,6 +312,14 @@ impl fmt::Display for Arch {
     }
 }
 
+impl str::FromStr for Arch {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Arch> {
+        Arch::parse(string)
+    }
+}
+
 /// Supported programming languages for demangling
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 #[repr(u32)]
@@ -411,6 +420,17 @@ impl fmt::Display for Language {
     }
 }
 
+impl str::FromStr for Language {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<Language> {
+        match Language::parse(string) {
+            Language::Unknown | Language::__Max => Err(ErrorKind::Parse("unknown language").into()),
+            lang => Ok(lang),
+        }
+    }
+}
+
 /// Represents a potentially mangled symbol
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct Name<'a> {
@@ -499,6 +519,25 @@ impl ObjectKind {
             Elf => "elf",
             MachO => "macho",
         }
+    }
+}
+
+impl fmt::Display for ObjectKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
+impl str::FromStr for ObjectKind {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<ObjectKind> {
+        Ok(match string {
+            "breakpad" => ObjectKind::Breakpad,
+            "elf" => ObjectKind::Elf,
+            "macho" => ObjectKind::MachO,
+            _ => return Err(ErrorKind::Parse("unknown object kind").into()),
+        })
     }
 }
 
@@ -647,6 +686,20 @@ impl ObjectClass {
     }
 }
 
+impl fmt::Display for ObjectClass {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
+impl str::FromStr for ObjectClass {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<ObjectClass> {
+        ObjectClass::parse(string)
+    }
+}
+
 /// Represents the kind of debug information inside an object.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub enum DebugKind {
@@ -662,5 +715,28 @@ impl DebugKind {
             Dwarf => "dwarf",
             Breakpad => "breakpad",
         }
+    }
+
+    /// Parses the object kind from its name.
+    pub fn parse(string: &str) -> Result<DebugKind> {
+        Ok(match string {
+            "dwarf" => DebugKind::Dwarf,
+            "breakpad" => DebugKind::Breakpad,
+            _ => return Err(ErrorKind::Parse("unknown debug kind").into()),
+        })
+    }
+}
+
+impl fmt::Display for DebugKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
+impl str::FromStr for DebugKind {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<DebugKind> {
+        DebugKind::parse(string)
     }
 }

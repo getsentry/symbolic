@@ -66,6 +66,12 @@ impl fmt::Display for ObjectId {
     }
 }
 
+impl From<Uuid> for ObjectId {
+    fn from(uuid: Uuid) -> ObjectId {
+        ObjectId::from_uuid(uuid)
+    }
+}
+
 /// Contains type specific data of `Object`s.
 pub(crate) enum ObjectTarget<'bytes> {
     Breakpad(&'bytes BreakpadSym),
