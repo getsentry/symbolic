@@ -5,6 +5,7 @@ import shutil
 import zipfile
 import tempfile
 import subprocess
+import platform
 from setuptools import setup, find_packages
 from distutils.command.sdist import sdist
 
@@ -73,11 +74,13 @@ def build_native(spec):
         path=rust_path
     )
 
+    rtld_flags = ['NOW']
+    rtld_flags.append('NODELETE') if platform.system() != 'OpenBSD' else None
     spec.add_cffi_module(
         module_path='symbolic._lowlevel',
         dylib=lambda: build.find_dylib('symbolic', in_path='target/%s' % target),
         header_filename=lambda: build.find_header('symbolic.h', in_path='include'),
-        rtld_flags=['NOW', 'NODELETE']
+        rtld_flags=rtld_flags
     )
 
 
