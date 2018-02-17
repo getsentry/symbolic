@@ -1,11 +1,11 @@
 import os
 import re
+import sys
 import atexit
 import shutil
 import zipfile
 import tempfile
 import subprocess
-import platform
 from setuptools import setup, find_packages
 from distutils.command.sdist import sdist
 
@@ -75,7 +75,7 @@ def build_native(spec):
     )
 
     rtld_flags = ['NOW']
-    rtld_flags.append('NODELETE') if platform.system() == 'Darwin' else None
+    rtld_flags.append('NODELETE') if sys.platform == 'darwin' else None
     spec.add_cffi_module(
         module_path='symbolic._lowlevel',
         dylib=lambda: build.find_dylib('symbolic', in_path='target/%s' % target),
