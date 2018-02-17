@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import atexit
 import shutil
 import zipfile
@@ -73,11 +74,14 @@ def build_native(spec):
         path=rust_path
     )
 
+    rtld_flags = ['NOW']
+    if sys.platform == 'darwin':
+        rtld_flags.append('NODELETE')
     spec.add_cffi_module(
         module_path='symbolic._lowlevel',
         dylib=lambda: build.find_dylib('symbolic', in_path='target/%s' % target),
         header_filename=lambda: build.find_header('symbolic.h', in_path='include'),
-        rtld_flags=['NOW', 'NODELETE']
+        rtld_flags=rtld_flags
     )
 
 
