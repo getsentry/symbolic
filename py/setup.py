@@ -75,7 +75,8 @@ def build_native(spec):
     )
 
     rtld_flags = ['NOW']
-    rtld_flags.append('NODELETE') if sys.platform == 'darwin' else None
+    if sys.platform == 'darwin':
+        rtld_flags.append('NODELETE')
     spec.add_cffi_module(
         module_path='symbolic._lowlevel',
         dylib=lambda: build.find_dylib('symbolic', in_path='target/%s' % target),
