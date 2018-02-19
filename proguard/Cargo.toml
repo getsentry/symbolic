@@ -16,5 +16,5 @@ optimized applications.
 
 [dependencies]
 symbolic-common = { version = "2.0.6", path = "../common" }
-proguard = "1.0.0"
-uuid = "0"
+proguard = "1.1.0"
+uuid = "0.6.0"
