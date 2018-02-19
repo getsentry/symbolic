@@ -18,7 +18,7 @@ stack frames in debugging information.
 symbolic-common = { version = "2.0.6", path = "../common", features = ["with_dwarf", "with_objects"] }
 symbolic-debuginfo = { version = "2.0.6", path = "../debuginfo" }
 symbolic-demangle = { version = "2.0.6", path = "../demangle" }
-uuid = { version = "^0.5", features = ["serde"] }
+uuid = { version = "0.6", features = ["serde"] }
 gimli = "0.15"
 fallible-iterator = "0.1"
 lru-cache = "0.1"
