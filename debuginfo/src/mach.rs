@@ -67,16 +67,6 @@ pub fn find_mach_section<'data>(
     None
 }
 
-/// Checks whether a Mach object file contains a section.
-///
-/// Depending on its name, the section will searched in the `"__TEXT"` or the
-/// `"__DWARF"` segment. This is useful to determine whether the object contains
-/// certain information without iterating over all section headers and loading
-/// their data.
-pub fn has_mach_section(mach: &mach::MachO, name: &str) -> bool {
-    find_mach_section(mach, name).is_some()
-}
-
 /// Resolves the object identifier from Mach object load commands.
 pub fn get_mach_id(macho: &mach::MachO) -> Option<ObjectId> {
     for cmd in &macho.load_commands {
