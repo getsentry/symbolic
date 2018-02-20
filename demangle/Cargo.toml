@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-demangle"
-version = "2.0.6"
+version = "2.0.7"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -17,7 +17,7 @@ build = "build.rs"
 [dependencies]
 cpp_demangle = "0.2.7"
 rustc-demangle = "0.1.5"
-symbolic-common = { version = "2.0.6", path = "../common" }
+symbolic-common = { version = "2.0.7", path = "../common" }
 
 [build-dependencies]
 cc = "1.0.4"

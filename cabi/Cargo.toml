@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-cabi"
-version = "2.0.6"
+version = "2.0.7"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -26,10 +26,10 @@ lto = true
 
 [dependencies]
 uuid = "0.6.0"
-symbolic-common = { version = "2.0.6", path = "../common", features = ["with_dwarf", "with_objects", "with_sourcemaps"] }
-symbolic-demangle = { version = "2.0.6", path = "../demangle" }
-symbolic-debuginfo = { version = "2.0.6", path = "../debuginfo" }
-symbolic-symcache = { version = "2.0.6", path = "../symcache" }
-symbolic-sourcemap = { version = "2.0.6", path = "../sourcemap" }
-symbolic-proguard = { version = "2.0.6", path = "../proguard" }
-symbolic-minidump = { version = "2.0.6", path = "../minidump" }
+symbolic-common = { version = "2.0.7", path = "../common", features = ["with_dwarf", "with_objects", "with_sourcemaps"] }
+symbolic-demangle = { version = "2.0.7", path = "../demangle" }
+symbolic-debuginfo = { version = "2.0.7", path = "../debuginfo" }
+symbolic-symcache = { version = "2.0.7", path = "../symcache" }
+symbolic-sourcemap = { version = "2.0.7", path = "../sourcemap" }
+symbolic-proguard = { version = "2.0.7", path = "../proguard" }
+symbolic-minidump = { version = "2.0.7", path = "../minidump" }
