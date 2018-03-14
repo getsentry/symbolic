@@ -2,7 +2,6 @@ use std::fmt;
 use std::io::Cursor;
 
 use goblin::{self, elf, mach, Hint};
-use uuid::Uuid;
 
 use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, ErrorKind,
                       ObjectClass, ObjectKind, Result};
@@ -37,13 +36,6 @@ impl<'bytes> Object<'bytes> {
             MachOSingle(macho) => get_mach_id(macho),
             MachOFat(_, ref macho) => get_mach_id(macho),
         }
-    }
-
-    /// Returns the UUID of the object.
-    ///
-    /// Unless the UUID is specifically required, consider using `Object::id` instead.
-    pub fn uuid(&self) -> Option<Uuid> {
-        self.id().map(|id| id.uuid())
     }
 
     /// Returns the kind of the object.
@@ -146,7 +138,7 @@ impl<'bytes> Object<'bytes> {
 impl<'bytes> fmt::Debug for Object<'bytes> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Object")
-            .field("uuid", &self.uuid())
+            .field("id", &self.id())
             .field("arch", &self.arch())
             .field("vmaddr", &self.vmaddr().unwrap_or(0))
             .field("endianness", &self.endianness())
