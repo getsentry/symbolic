@@ -34,11 +34,11 @@ impl<'a> fmt::Display for BreakpadFormat<'a> {
 /// # extern crate symbolic_debuginfo;
 /// use std::str::FromStr;
 /// # use symbolic_common::Result;
-/// use symbolic_debuginfo::ObjectId;
+/// use symbolic_debuginfo::{BreakpadId, ObjectId};
 ///
 /// # fn foo() -> Result<()> {
 /// let id = ObjectId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75a")?;
-/// assert_eq!("DFB8E43AF2423D73A453AEB6A777EF75a".breakpad().to_string(), id.to_string());
+/// assert_eq!("DFB8E43AF2423D73A453AEB6A777EF75a".to_string(), id.breakpad().to_string());
 /// # Ok(())
 /// # }
 ///

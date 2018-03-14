@@ -102,6 +102,22 @@ impl CodeModuleId {
     pub fn age(&self) -> u32 {
         self.inner.appendix() as u32
     }
+
+    pub fn as_object_id(&self) -> ObjectId {
+        self.inner
+    }
+}
+
+impl From<ObjectId> for CodeModuleId {
+    fn from(inner: ObjectId) -> Self {
+        CodeModuleId { inner }
+    }
+}
+
+impl Into<ObjectId> for CodeModuleId {
+    fn into(self) -> ObjectId {
+        self.inner
+    }
 }
 
 impl fmt::Display for CodeModuleId {

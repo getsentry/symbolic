@@ -33,7 +33,7 @@ where
     let search_ids: HashSet<_> = state
         .referenced_modules()
         .iter()
-        .map(|module| CodeModuleId::from_uuid(module.id().uuid()))
+        .map(|module| module.id())
         .collect();
 
     let mut collected = BTreeMap::new();
@@ -55,13 +55,12 @@ where
             // Fail for invalid matching objects but silently skip objects
             // without a UUID
             let object = object?;
-            let uuid = match object.uuid() {
-                Some(uuid) => uuid,
+            let id = match object.id() {
+                Some(id) => CodeModuleId::from(id),
                 None => continue,
             };
 
             // Make sure we haven't converted this object already
-            let id = CodeModuleId::from_uuid(uuid);
             if !search_ids.contains(&id) || collected.contains_key(&id) {
                 continue;
             }
