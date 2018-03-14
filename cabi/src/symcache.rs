@@ -7,7 +7,7 @@ use symbolic_debuginfo::Object;
 use symbolic_symcache::{SymCache, InstructionInfo, SYMCACHE_LATEST_VERSION};
 use symbolic_common::{ByteView, Arch};
 
-use core::{SymbolicStr, SymbolicUuid};
+use core::{SymbolicStr};
 use debuginfo::SymbolicObject;
 
 /// Represents a symbolic sym cache.
@@ -121,9 +121,9 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns the architecture of the symcache.
-    unsafe fn symbolic_symcache_get_uuid(scache: *const SymbolicSymCache) -> Result<SymbolicUuid> {
+    unsafe fn symbolic_symcache_get_id(scache: *const SymbolicSymCache) -> Result<SymbolicStr> {
         let cache = scache as *mut SymCache<'static>;
-        Ok((*cache).uuid().unwrap_or_default().into())
+        Ok((*cache).id().unwrap_or_default().to_string().into())
     }
 }
 
