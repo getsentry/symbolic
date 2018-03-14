@@ -8,16 +8,87 @@ use symbolic_common::{Arch, Error, ErrorKind, ObjectKind, Result};
 use object::{FatObject, Object};
 use id::ObjectId;
 
+/// Wrapper around `ObjectId` for Breakpad formatting.
+#[derive(Debug)]
+pub struct BreakpadFormat<'a> {
+    inner: &'a ObjectId,
+}
+
+impl<'a> fmt::Display for BreakpadFormat<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{:X}{:x}",
+            self.inner.uuid().simple(),
+            self.inner.appendix()
+        )
+    }
+}
+
+/// A trait to format `ObjectId`s for Breakpad.
+///
+/// **Example:**
+///
+/// ```
+/// # extern crate symbolic_common;
+/// # extern crate symbolic_debuginfo;
+/// use std::str::FromStr;
+/// # use symbolic_common::Result;
+/// use symbolic_debuginfo::ObjectId;
+///
+/// # fn foo() -> Result<()> {
+/// let id = ObjectId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75a")?;
+/// assert_eq!("DFB8E43AF2423D73A453AEB6A777EF75a".breakpad().to_string(), id.to_string());
+/// # Ok(())
+/// # }
+///
+/// # fn main() { foo().unwrap() }
+/// ```
+pub trait BreakpadId {
+    /// Returns a wrapper which when formatted via `fmt::Display` will format a
+    /// a breakpad identifier.
+    fn breakpad(&self) -> BreakpadFormat;
+
+    /// Parses a breakpad identifier from a string.
+    fn from_breakpad(string: &str) -> Result<ObjectId>;
+}
+
+impl BreakpadId for ObjectId {
+    fn breakpad(&self) -> BreakpadFormat {
+        BreakpadFormat { inner: self }
+    }
+
+    fn from_breakpad(string: &str) -> Result<ObjectId> {
+        if string.len() < 33 || string.len() > 40 {
+            return Err(ErrorKind::Parse("Invalid input string length").into());
+        }
+
+        let uuid =
+            Uuid::parse_str(&string[..32]).map_err(|_| ErrorKind::Parse("UUID parse error"))?;
+        let appendix = u32::from_str_radix(&string[32..], 16)?;
+        Ok(ObjectId::from_parts(uuid, appendix as u64))
+    }
+}
+
+/// A Breakpad symbol record.
 pub enum BreakpadRecord<'input> {
+    /// Header record containing module information.
     Module(BreakpadModuleRecord<'input>),
+    /// Source file declaration.
     File(BreakpadFileRecord<'input>),
+    /// Source function declaration.
     Function(BreakpadFuncRecord<'input>),
+    /// Source line mapping.
     Line(BreakpadLineRecord),
+    /// Linker visible symbol.
     Public(BreakpadPublicRecord<'input>),
+    /// Meta data record (e.g. Build ID)
     Info(&'input [u8]),
+    /// Call Frame Information (CFI) record.
     Stack,
 }
 
+/// Breakpad module record containing general information on the file.
 pub struct BreakpadModuleRecord<'input> {
     pub arch: Arch,
     pub uuid: Uuid,
@@ -34,6 +105,7 @@ impl<'input> fmt::Debug for BreakpadModuleRecord<'input> {
     }
 }
 
+/// Breakpad file record declaring a source file.
 pub struct BreakpadFileRecord<'input> {
     pub id: u64,
     pub name: &'input [u8],
@@ -48,6 +120,8 @@ impl<'input> fmt::Debug for BreakpadFileRecord<'input> {
     }
 }
 
+/// Breakpad line record declaring the mapping of a memory address to file and
+/// line number.
 #[derive(Debug)]
 pub struct BreakpadLineRecord {
     pub address: u64,
@@ -55,6 +129,7 @@ pub struct BreakpadLineRecord {
     pub file_id: u64,
 }
 
+/// Breakpad function record declaring address and size of a source function.
 pub struct BreakpadFuncRecord<'input> {
     pub address: u64,
     pub size: u64,
@@ -73,6 +148,7 @@ impl<'input> fmt::Debug for BreakpadFuncRecord<'input> {
     }
 }
 
+/// Breakpad public record declaring a linker-visible symbol.
 pub struct BreakpadPublicRecord<'input> {
     pub address: u64,
     pub size: u64,
@@ -124,8 +200,8 @@ impl BreakpadSym {
             None => return Err(ErrorKind::BadBreakpadSym("Missing breakpad uuid").into()),
         };
 
-        let id = match ObjectId::parse(&uuid_hex[0..33]) {
-            Ok(uuid) => uuid,
+        let id = match ObjectId::from_breakpad(&uuid_hex[0..33]) {
+            Ok(id) => id,
             Err(_) => return Err(ErrorKind::Parse("Invalid breakpad uuid").into()),
         };
 
@@ -151,6 +227,7 @@ enum IterState {
     Function,
 }
 
+/// An iterator over records in a Breakpad symbol file.
 pub struct BreakpadRecords<'data> {
     lines: Box<Iterator<Item = &'data [u8]> + 'data>,
     state: IterState,
@@ -230,8 +307,12 @@ impl<'data> Iterator for BreakpadRecords<'data> {
     }
 }
 
+/// Gives access to Breakpad debugging information.
 pub trait BreakpadData {
+    /// Determines whether this `Object` contains Breakpad debugging information.
     fn has_breakpad_data(&self) -> bool;
+
+    /// Returns an iterator over all records of the Breakpad symbol file.
     fn breakpad_records<'input>(&'input self) -> BreakpadRecords<'input>;
 }
 
@@ -458,4 +539,91 @@ fn parse_line<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>> {
         line: line_number,
         file_id: file_id,
     }))
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_parse_zero() {
+        assert_eq!(
+            ObjectId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF750").unwrap(),
+            ObjectId::from_parts(
+                Uuid::parse_str("DFB8E43AF2423D73A453AEB6A777EF75").unwrap(),
+                0,
+            )
+        );
+    }
+
+    #[test]
+    fn test_parse_short() {
+        assert_eq!(
+            ObjectId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75a").unwrap(),
+            ObjectId::from_parts(
+                Uuid::parse_str("DFB8E43AF2423D73A453AEB6A777EF75").unwrap(),
+                10,
+            )
+        );
+    }
+
+    #[test]
+    fn test_parse_long() {
+        assert_eq!(
+            ObjectId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75feedface").unwrap(),
+            ObjectId::from_parts(
+                Uuid::parse_str("DFB8E43AF2423D73A453AEB6A777EF75").unwrap(),
+                4277009102,
+            )
+        );
+    }
+
+    #[test]
+    fn test_to_string_zero() {
+        let id = ObjectId::from_parts(
+            Uuid::parse_str("DFB8E43AF2423D73A453AEB6A777EF75").unwrap(),
+            0,
+        );
+
+        assert_eq!(
+            id.breakpad().to_string(),
+            "DFB8E43AF2423D73A453AEB6A777EF750"
+        );
+    }
+
+    #[test]
+    fn test_to_string_short() {
+        let id = ObjectId::from_parts(
+            Uuid::parse_str("DFB8E43AF2423D73A453AEB6A777EF75").unwrap(),
+            10,
+        );
+
+        assert_eq!(
+            id.breakpad().to_string(),
+            "DFB8E43AF2423D73A453AEB6A777EF75a"
+        );
+    }
+
+    #[test]
+    fn test_to_string_long() {
+        let id = ObjectId::from_parts(
+            Uuid::parse_str("DFB8E43AF2423D73A453AEB6A777EF75").unwrap(),
+            4277009102,
+        );
+
+        assert_eq!(
+            id.breakpad().to_string(),
+            "DFB8E43AF2423D73A453AEB6A777EF75feedface"
+        );
+    }
+
+    #[test]
+    fn test_parse_error_short() {
+        assert!(ObjectId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75").is_err());
+    }
+
+    #[test]
+    fn test_parse_error_long() {
+        assert!(ObjectId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75feedface1").is_err())
+    }
 }
