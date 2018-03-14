@@ -1,4 +1,4 @@
-use std::{fmt, mem, ptr, str, slice};
+use std::{fmt, mem, ptr, slice, str};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::collections::HashSet;
@@ -91,7 +91,7 @@ pub struct CodeModuleId {
 impl CodeModuleId {
     pub fn from_parts(uuid: Uuid, age: u32) -> CodeModuleId {
         CodeModuleId {
-            inner: ObjectId::from_parts(uuid, age as u64)
+            inner: ObjectId::from_parts(uuid, age as u64),
         }
     }
 
@@ -130,7 +130,9 @@ impl str::FromStr for CodeModuleId {
     type Err = Error;
 
     fn from_str(string: &str) -> Result<CodeModuleId> {
-        Ok(CodeModuleId { inner: ObjectId::from_breakpad(string)? })
+        Ok(CodeModuleId {
+            inner: ObjectId::from_breakpad(string)?,
+        })
     }
 }
 
