@@ -5,7 +5,8 @@ use uuid::Uuid;
 
 use symbolic_common::{Arch, Error, ErrorKind, ObjectKind, Result};
 
-use object::{FatObject, Object, ObjectId};
+use object::{FatObject, Object};
+use id::ObjectId;
 
 pub enum BreakpadRecord<'input> {
     Module(BreakpadModuleRecord<'input>),
