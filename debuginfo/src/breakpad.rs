@@ -91,7 +91,7 @@ pub enum BreakpadRecord<'input> {
 /// Breakpad module record containing general information on the file.
 pub struct BreakpadModuleRecord<'input> {
     pub arch: Arch,
-    pub uuid: Uuid,
+    pub id: ObjectId,
     pub name: &'input [u8],
 }
 
@@ -99,7 +99,7 @@ impl<'input> fmt::Debug for BreakpadModuleRecord<'input> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("BreakpadModuleRecord")
             .field("arch", &self.arch)
-            .field("uuid", &self.uuid)
+            .field("id", &self.id)
             .field("name", &String::from_utf8_lossy(self.name))
             .finish()
     }
@@ -195,12 +195,12 @@ impl BreakpadSym {
             None => return Err(ErrorKind::BadBreakpadSym("Missing breakpad arch").into()),
         };
 
-        let uuid_hex = match words.next() {
+        let id_hex = match words.next() {
             Some(word) => String::from_utf8_lossy(word),
             None => return Err(ErrorKind::BadBreakpadSym("Missing breakpad uuid").into()),
         };
 
-        let id = match ObjectId::from_breakpad(&uuid_hex[0..33]) {
+        let id = match ObjectId::from_breakpad(&id_hex) {
             Ok(id) => id,
             Err(_) => return Err(ErrorKind::Parse("Invalid breakpad uuid").into()),
         };
@@ -356,14 +356,14 @@ fn parse_module(line: &[u8]) -> Result<BreakpadRecord> {
         None => return Err(ErrorKind::BadBreakpadSym("missing module arch").into()),
     };
 
-    let uuid_hex = match record.next() {
+    let id_hex = match record.next() {
         Some(word) => String::from_utf8_lossy(word),
-        None => return Err(ErrorKind::BadBreakpadSym("missing module uuid").into()),
+        None => return Err(ErrorKind::BadBreakpadSym("missing module id").into()),
     };
 
-    let uuid = match Uuid::parse_str(&uuid_hex[0..32]) {
-        Ok(uuid) => uuid,
-        Err(_) => return Err(ErrorKind::Parse("invalid breakpad uuid").into()),
+    let id = match ObjectId::from_breakpad(&id_hex) {
+        Ok(id) => id,
+        Err(_) => return Err(ErrorKind::Parse("invalid breakpad id").into()),
     };
 
     let name = match record.next() {
@@ -374,7 +374,7 @@ fn parse_module(line: &[u8]) -> Result<BreakpadRecord> {
     Ok(BreakpadRecord::Module(BreakpadModuleRecord {
         name: name,
         arch: Arch::from_breakpad(&arch),
-        uuid: uuid,
+        id: id,
     }))
 }
 
