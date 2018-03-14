@@ -8,6 +8,7 @@ use std::marker::PhantomData;
 use uuid::Uuid;
 
 use symbolic_common::{ErrorKind, Result};
+use symbolic_debuginfo::ObjectId;
 
 #[repr(C, packed)]
 #[derive(Default)]
@@ -120,8 +121,7 @@ pub enum DataSource {
     Dwarf,
     SymbolTable,
     BreakpadSym,
-    #[doc(hidden)]
-    __Max,
+    #[doc(hidden)] __Max,
 }
 
 impl DataSource {
@@ -143,9 +143,25 @@ impl Default for DataSource {
 
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone, Debug)]
-pub struct CacheFileHeader {
+pub struct CacheFilePreamble {
     pub magic: [u8; 4],
     pub version: u32,
+}
+
+pub trait CacheFileHeader {
+    fn id(&self) -> ObjectId;
+    fn arch(&self) -> u32;
+    fn data_source(&self) -> u8;
+    fn has_line_records(&self) -> u8;
+    fn symbols(&self) -> &Seg<Seg<u8, u16>>;
+    fn files(&self) -> &Seg<FileRecord, u16>;
+    fn function_records(&self) -> &Seg<FuncRecord>;
+}
+
+#[repr(C, packed)]
+#[derive(Default, Copy, Clone, Debug)]
+pub struct CacheFileHeaderV1 {
+    pub preamble: CacheFilePreamble,
     pub uuid: Uuid,
     pub arch: u32,
     pub data_source: u8,
@@ -155,12 +171,85 @@ pub struct CacheFileHeader {
     pub function_records: Seg<FuncRecord>,
 }
 
-impl CacheFileHeader {
+impl CacheFileHeader for CacheFileHeaderV1 {
+    fn id(&self) -> ObjectId {
+        ObjectId::from_uuid(self.uuid)
+    }
+
+    fn arch(&self) -> u32 {
+        self.arch
+    }
+
+    fn data_source(&self) -> u8 {
+        self.data_source
+    }
+
+    fn has_line_records(&self) -> u8 {
+        self.has_line_records
+    }
+
+    fn symbols(&self) -> &Seg<Seg<u8, u16>> {
+        &self.symbols
+    }
+
+    fn files(&self) -> &Seg<FileRecord, u16> {
+        &self.files
+    }
+
+    fn function_records(&self) -> &Seg<FuncRecord> {
+        &self.function_records
+    }
+}
+
+#[repr(C, packed)]
+#[derive(Default, Copy, Clone, Debug)]
+pub struct CacheFileHeaderV2 {
+    pub preamble: CacheFilePreamble,
+    pub id: ObjectId,
+    pub arch: u32,
+    pub data_source: u8,
+    pub has_line_records: u8,
+    pub symbols: Seg<Seg<u8, u16>>,
+    pub files: Seg<FileRecord, u16>,
+    pub function_records: Seg<FuncRecord>,
+}
+
+impl CacheFileHeaderV2 {
     pub fn as_bytes(&self) -> &[u8] {
         unsafe {
             let bytes: *const u8 = mem::transmute(self);
-            slice::from_raw_parts(bytes, mem::size_of::<CacheFileHeader>())
+            slice::from_raw_parts(bytes, mem::size_of::<CacheFilePreamble>())
         }
+    }
+}
+
+impl CacheFileHeader for CacheFileHeaderV2 {
+    fn id(&self) -> ObjectId {
+        self.id
+    }
+
+    fn arch(&self) -> u32 {
+        self.arch
+    }
+
+    fn data_source(&self) -> u8 {
+        self.data_source
+    }
+
+    fn has_line_records(&self) -> u8 {
+        self.has_line_records
+    }
+
+    fn symbols(&self) -> &Seg<Seg<u8, u16>> {
+        &self.symbols
+    }
+
+    fn files(&self) -> &Seg<FileRecord, u16> {
+        &self.files
+    }
+
+    fn function_records(&self) -> &Seg<FuncRecord> {
+        &self.function_records
     }
 }
 

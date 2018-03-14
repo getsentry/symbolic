@@ -15,7 +15,7 @@ use symbolic_debuginfo::{Object, SymbolIterator, SymbolTable, Symbols};
 use breakpad::BreakpadInfo;
 use cache::SYMCACHE_MAGIC;
 use dwarf::{DwarfInfo, Function, Unit};
-use types::{CacheFileHeader, DataSource, FileRecord, FuncRecord, LineRecord, Seg};
+use types::{CacheFileHeaderV2, DataSource, FileRecord, FuncRecord, LineRecord, Seg};
 use utils::shorten_filename;
 
 /// Given a writer and object, dumps the object into the writer.
@@ -25,7 +25,7 @@ use utils::shorten_filename;
 ///
 /// This requires the writer to be seekable.
 pub fn to_writer<W: Write + Seek>(mut w: W, obj: &Object) -> Result<()> {
-    w.write_all(CacheFileHeader::default().as_bytes())?;
+    w.write_all(CacheFileHeaderV2::default().as_bytes())?;
     let header = {
         let mut writer = SymCacheWriter::new(&mut w);
         writer.write_object(obj)?;
@@ -39,7 +39,7 @@ pub fn to_writer<W: Write + Seek>(mut w: W, obj: &Object) -> Result<()> {
 /// Converts an object into a vector of symcache data.
 pub fn to_vec(obj: &Object) -> Result<Vec<u8>> {
     let mut buf = Vec::<u8>::new();
-    buf.write_all(CacheFileHeader::default().as_bytes())?;
+    buf.write_all(CacheFileHeaderV2::default().as_bytes())?;
     let header = {
         let mut writer = SymCacheWriter::new(&mut buf);
         writer.write_object(obj)?;
@@ -74,7 +74,7 @@ impl<'input> DebugInfo<'input> {
 
 struct SymCacheWriter<W: Write> {
     writer: RefCell<(u64, W)>,
-    header: CacheFileHeader,
+    header: CacheFileHeaderV2,
     symbol_map: HashMap<Vec<u8>, u32>,
     symbols: Vec<Seg<u8, u16>>,
     files: HashMap<Vec<u8>, Seg<u8, u8>>,
@@ -189,11 +189,11 @@ impl<W: Write> SymCacheWriter<W> {
 
     pub fn write_object(&mut self, obj: &Object) -> Result<()> {
         // common header values
-        self.header.magic = SYMCACHE_MAGIC;
-        self.header.version = 1;
+        self.header.preamble.magic = SYMCACHE_MAGIC;
+        self.header.preamble.version = 1;
         self.header.arch = obj.arch() as u32;
-        if let Some(uuid) = obj.uuid() {
-            self.header.uuid = uuid;
+        if let Some(id) = obj.id() {
+            self.header.id = id;
         }
 
         // try dwarf data first.  If we cannot find the necessary dwarf sections
