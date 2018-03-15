@@ -218,7 +218,7 @@ impl CacheFileHeaderV2 {
     pub fn as_bytes(&self) -> &[u8] {
         unsafe {
             let bytes: *const u8 = mem::transmute(self);
-            slice::from_raw_parts(bytes, mem::size_of::<CacheFilePreamble>())
+            slice::from_raw_parts(bytes, mem::size_of::<CacheFileHeaderV2>())
         }
     }
 }

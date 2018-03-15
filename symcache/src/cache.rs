@@ -19,7 +19,7 @@ use writer;
 pub const SYMCACHE_MAGIC: [u8; 4] = [b'S', b'Y', b'M', b'C'];
 
 /// The latest version of the file format.
-pub const SYMCACHE_LATEST_VERSION: u32 = 1;
+pub const SYMCACHE_LATEST_VERSION: u32 = 2;
 
 /// Information on a matched source line.
 pub struct LineInfo<'a> {
@@ -360,7 +360,7 @@ impl<'a> SymCache<'a> {
             if preamble.magic != SYMCACHE_MAGIC {
                 return Err(ErrorKind::BadCacheFile("Bad file magic").into());
             }
-            if preamble.version != 1 {
+            if preamble.version < 1 || preamble.version > SYMCACHE_LATEST_VERSION {
                 return Err(ErrorKind::BadCacheFile("Unsupported file version").into());
             }
         }
