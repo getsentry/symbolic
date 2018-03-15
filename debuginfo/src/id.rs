@@ -33,6 +33,7 @@ use symbolic_common::{Error, ErrorKind, Result};
 pub struct ObjectId {
     uuid: Uuid,
     appendix: u64,
+    _padding: u64,
 }
 
 impl ObjectId {
@@ -43,7 +44,11 @@ impl ObjectId {
 
     /// Constructs a `ObjectId` from its `uuid` and `appendix` parts.
     pub fn from_parts(uuid: Uuid, appendix: u64) -> ObjectId {
-        ObjectId { uuid, appendix }
+        ObjectId {
+            uuid,
+            appendix,
+            _padding: 0,
+        }
     }
 
     /// Returns the UUID part of the code module's debug_identifier.
@@ -83,7 +88,7 @@ impl str::FromStr for ObjectId {
         let appendix = string
             .get(37..)
             .map_or(Ok(0), |s| u64::from_str_radix(s, 16))?;
-        Ok(ObjectId { uuid, appendix })
+        Ok(ObjectId::from_parts(uuid, appendix))
     }
 }
 
@@ -109,10 +114,10 @@ mod test {
     fn test_parse_zero() {
         assert_eq!(
             ObjectId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
-            ObjectId {
-                uuid: Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
-                appendix: 0,
-            }
+            ObjectId::from_parts(
+                Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
+                0,
+            )
         );
     }
 
@@ -120,10 +125,10 @@ mod test {
     fn test_parse_short() {
         assert_eq!(
             ObjectId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-a").unwrap(),
-            ObjectId {
-                uuid: Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
-                appendix: 10,
-            }
+            ObjectId::from_parts(
+                Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
+                10,
+            )
         );
     }
 
@@ -131,39 +136,39 @@ mod test {
     fn test_parse_long() {
         assert_eq!(
             ObjectId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-feedface").unwrap(),
-            ObjectId {
-                uuid: Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
-                appendix: 4277009102,
-            }
+            ObjectId::from_parts(
+                Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
+                4277009102,
+            )
         );
     }
 
     #[test]
     fn test_to_string_zero() {
-        let id = ObjectId {
-            uuid: Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
-            appendix: 0,
-        };
+        let id = ObjectId::from_parts(
+            Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
+            0,
+        );
 
         assert_eq!(id.to_string(), "dfb8e43a-f242-3d73-a453-aeb6a777ef75");
     }
 
     #[test]
     fn test_to_string_short() {
-        let id = ObjectId {
-            uuid: Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
-            appendix: 10,
-        };
+        let id = ObjectId::from_parts(
+            Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
+            10,
+        );
 
         assert_eq!(id.to_string(), "dfb8e43a-f242-3d73-a453-aeb6a777ef75-a");
     }
 
     #[test]
     fn test_to_string_long() {
-        let id = ObjectId {
-            uuid: Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
-            appendix: 4277009102,
-        };
+        let id = ObjectId::from_parts(
+            Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
+            4277009102,
+        );
 
         assert_eq!(
             id.to_string(),
