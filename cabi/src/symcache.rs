@@ -123,7 +123,7 @@ ffi_fn! {
     /// Returns the architecture of the symcache.
     unsafe fn symbolic_symcache_get_id(scache: *const SymbolicSymCache) -> Result<SymbolicStr> {
         let cache = scache as *mut SymCache<'static>;
-        Ok((*cache).id().unwrap_or_default().to_string().into())
+        Ok((*cache).id().map(|id| id.to_string()).unwrap_or_default().into())
     }
 }
 

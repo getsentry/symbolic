@@ -213,7 +213,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Adds CFI for a code module specified by the `suuid` argument
+    /// Adds CFI for a code module specified by the `sid` argument
     unsafe fn symbolic_frame_info_map_add(
         smap: *const SymbolicFrameInfoMap,
         sid: *const SymbolicStr,
