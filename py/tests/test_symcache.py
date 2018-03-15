@@ -4,7 +4,8 @@ from symbolic import FatObject, SymCache, SourceView
 
 
 def test_basic(res_path):
-    path = os.path.join(res_path, 'ext/1.4.1/release/dSYMs/F9C4433B-260E-32C9-B5BB-ED10D8D591C3.dSYM/Contents/Resources/DWARF/CrashLibiOS')
+    path = os.path.join(
+        res_path, 'ext/1.4.1/release/dSYMs/F9C4433B-260E-32C9-B5BB-ED10D8D591C3.dSYM/Contents/Resources/DWARF/CrashLibiOS')
     fo = FatObject.from_path(path)
     o = fo.get_object(arch='armv7')
     sc = o.make_symcache()
@@ -19,7 +20,8 @@ def test_basic(res_path):
 
 
 def test_symbolicate_electron_darwin_dsym(res_path):
-    path = os.path.join(res_path, 'electron/1.8.1/Electron/CB63147AC9DC308B8CA1EE92A5042E8E0/Electron.app.dSYM/Contents/Resources/DWARF/Electron')
+    path = os.path.join(
+        res_path, 'electron/1.8.1/Electron/CB63147AC9DC308B8CA1EE92A5042E8E0/Electron.app.dSYM/Contents/Resources/DWARF/Electron')
     fo = FatObject.from_path(path)
     o = fo.get_object(arch='x86_64')
     sc = o.make_symcache()
@@ -43,7 +45,8 @@ def test_symbolicate_electron_darwin_dsym(res_path):
 
 
 def test_symbolicate_electron_darwin_sym(res_path):
-    path = os.path.join(res_path, 'electron/1.8.1/Electron/CB63147AC9DC308B8CA1EE92A5042E8E0/Electron.sym')
+    path = os.path.join(
+        res_path, 'electron/1.8.1/Electron/CB63147AC9DC308B8CA1EE92A5042E8E0/Electron.sym')
     fo = FatObject.from_path(path)
     o = fo.get_object(arch='x86_64')
     sc = o.make_symcache()

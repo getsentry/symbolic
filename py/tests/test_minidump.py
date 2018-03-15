@@ -1,5 +1,4 @@
 import os
-import uuid
 
 from datetime import datetime
 from symbolic import FatObject, FrameInfoMap, ProcessState
@@ -34,8 +33,8 @@ def test_macos_without_cfi(res_path):
     assert frame.instruction == 4329952133
     assert frame.return_address == 4329952134
 
-    mid = uuid.UUID("3f58bc3d-eabe-3361-b5fb-52a676298598")
-    module = next(module for module in state.modules() if module.uuid == mid)
+    mid = '3F58BC3DEABE3361B5FB52A6762985980'
+    module = next(module for module in state.modules() if module.id == mid)
     assert module.addr == 4329947136
     assert module.size == 172032
     assert module.name == '/Users/jauer/Coding/breakpad/examples/target/crash_macos'
@@ -70,17 +69,19 @@ def test_linux_without_cfi(res_path):
     assert frame.instruction == 4202617
     assert frame.return_address == 4202618
 
-    mid = uuid.UUID("d2554cdb-9261-36c4-b976-6a086583b9b5")
-    module = next(module for module in state.modules() if module.uuid == mid)
+    mid = 'D2554CDB926136C4B9766A086583B9B50'
+    module = next(module for module in state.modules() if module.id == mid)
     assert module.addr == 4194304
     assert module.size == 196608
     assert module.name == '/breakpad/examples/target/crash_linux'
 
 
 def test_macos_with_cfi(res_path):
+    module_id = '3F58BC3DEABE3361B5FB52A6762985980'
+
     cfi = FrameInfoMap.new()
     cfi_path = os.path.join(res_path, "minidump", "crash_macos.sym")
-    cfi.add("3f58bc3d-eabe-3361-b5fb-52a676298598", cfi_path)
+    cfi.add(module_id, cfi_path)
 
     minidump_path = os.path.join(res_path, "minidump", "crash_macos.dmp")
     state = ProcessState.from_minidump(minidump_path, cfi)
@@ -110,17 +111,19 @@ def test_macos_with_cfi(res_path):
     assert frame.instruction == 4329952133
     assert frame.return_address == 4329952134
 
-    mid = uuid.UUID("3f58bc3d-eabe-3361-b5fb-52a676298598")
-    module = next(module for module in state.modules() if module.uuid == mid)
+    module = next(module for module in state.modules()
+                  if module.id == module_id)
     assert module.addr == 4329947136
     assert module.size == 172032
     assert module.name == '/Users/jauer/Coding/breakpad/examples/target/crash_macos'
 
 
 def test_linux_with_cfi(res_path):
+    module_id = 'D2554CDB926136C4B9766A086583B9B50'
+
     cfi = FrameInfoMap.new()
     cfi_path = os.path.join(res_path, "minidump", "crash_linux.sym")
-    cfi.add("d2554cdb-9261-36c4-b976-6a086583b9b5", cfi_path)
+    cfi.add(module_id, cfi_path)
 
     minidump_path = os.path.join(res_path, "minidump", "crash_linux.dmp")
     state = ProcessState.from_minidump(minidump_path, cfi)
@@ -150,8 +153,8 @@ def test_linux_with_cfi(res_path):
     assert frame.instruction == 4202617
     assert frame.return_address == 4202618
 
-    mid = uuid.UUID("d2554cdb-9261-36c4-b976-6a086583b9b5")
-    module = next(module for module in state.modules() if module.uuid == mid)
+    module = next(module for module in state.modules()
+                  if module.id == module_id)
     assert module.addr == 4194304
     assert module.size == 196608
     assert module.name == '/breakpad/examples/target/crash_linux'

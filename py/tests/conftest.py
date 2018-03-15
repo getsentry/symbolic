@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import uuid
 import pytest
 
 from symbolic import ObjectLookup, FatObject, SourceMapView, SourceView, \
@@ -17,7 +16,7 @@ def get_symcache(path, object_lookup):
     for fn in os.listdir(dsym_path):
         fo = FatObject.from_path(os.path.join(dsym_path, fn))
         for obj in fo.iter_objects():
-            if object_lookup.get_object(uuid=obj.uuid) is not None:
+            if object_lookup.get_object(id=obj.id) is not None:
                 return obj.make_symcache()
 
 
@@ -32,7 +31,7 @@ class ReportSymbolizer(object):
                 continue
             symcache = get_symcache(path, self.objects)
             if symcache is not None:
-                self.symcaches[symcache.uuid] = symcache
+                self.symcaches[symcache.id] = symcache
 
     def symbolize_backtrace(self, backtrace, meta=None):
         def symbolize(frame, frame_idx):
@@ -43,7 +42,7 @@ class ReportSymbolizer(object):
             if obj_ref is None:
                 return [frame]
 
-            symcache = self.symcaches.get(obj_ref.uuid)
+            symcache = self.symcaches.get(obj_ref.id)
             if symcache is None:
                 return [frame]
 
@@ -155,8 +154,8 @@ class DiffReport(object):
 def pytest_addoption(parser):
     group = parser.getgroup('general')
     group.addoption('--fail-debugskip',
-           action='store_true', dest='fail_debugskip', default=False,
-           help='do not ignore debugskip tests but fail them')
+                    action='store_true', dest='fail_debugskip', default=False,
+                    help='do not ignore debugskip tests but fail them')
 
 
 def pytest_configure(config):
@@ -186,7 +185,7 @@ def pytest_runtest_makereport(item, call):
     rep = outcome.get_result()
     if rep.when == 'call':
         if rep.outcome == 'failed':
-            change_some_failed_to_skipped(item ,rep)
+            change_some_failed_to_skipped(item, rep)
         diff_report.record_result(item.nodeid, rep.outcome)
 
 
