@@ -71,7 +71,7 @@ class Object(RustObject):
     @property
     def id(self):
         """The unique ID of the object."""
-        return ObjectId(self._methodcall(lib.symbolic_object_get_id))
+        return decode_str(self._methodcall(lib.symbolic_object_get_id))
 
     @property
     def kind(self):
@@ -117,7 +117,7 @@ class ObjectRef(object):
         if data.get('arch') is not None and arch_is_known(data['arch']):
             self.arch = data['arch']
         elif data.get('cpu_type') is not None \
-             and data.get('cpu_subtype') is not None:
+                and data.get('cpu_subtype') is not None:
             self.arch = arch_from_macho(data['cpu_type'],
                                         data['cpu_subtype'])
         else:
