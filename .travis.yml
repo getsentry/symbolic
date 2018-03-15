@@ -19,7 +19,6 @@ matrix:
     - os: linux
       script: make styletest
       env: TEST=style-rust
-      rust: nightly
     - os: linux
       script: make cargotest
       env: TEST=linux-rust
