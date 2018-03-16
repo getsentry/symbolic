@@ -12,7 +12,7 @@ use regex::Regex;
 use uuid::Uuid;
 
 use symbolic_common::{Arch, ByteView, CpuFamily, Error, ErrorKind, Result};
-use symbolic_debuginfo::{BreakpadId, ObjectId};
+use symbolic_debuginfo::ObjectId;
 
 use utils;
 

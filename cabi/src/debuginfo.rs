@@ -3,7 +3,7 @@ use std::os::raw::c_char;
 use std::ffi::CStr;
 
 use symbolic_common::ByteView;
-use symbolic_debuginfo::{BreakpadId, FatObject, Object, ObjectId};
+use symbolic_debuginfo::{FatObject, Object, ObjectId};
 
 use core::SymbolicStr;
 
