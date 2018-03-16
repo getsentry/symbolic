@@ -6,7 +6,7 @@ build:
 test: styletest cargotest pytest
 
 styletest:
-	@cargo install rustfmt-nightly --force
+	@rustup component add rustfmt-preview
 	cargo fmt -- --write-mode diff
 
 cargotest: build

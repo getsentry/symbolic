@@ -2,14 +2,14 @@ use std::ffi::CStr;
 use std::mem;
 use std::os::raw::c_char;
 use std::slice;
-use uuid::Uuid;
+use std::str::FromStr;
 
 use symbolic_common::{Arch, ByteView};
 use symbolic_debuginfo::Object;
 use symbolic_minidump::{BreakpadAsciiCfiWriter, CallStack, CodeModule, CodeModuleId, FrameInfoMap,
                         ProcessState, StackFrame, SystemInfo};
 
-use core::{SymbolicStr, SymbolicUuid};
+use core::SymbolicStr;
 use debuginfo::SymbolicObject;
 
 /// Contains stack frame information (CFI) for images
@@ -30,7 +30,7 @@ pub enum SymbolicFrameTrust {
 /// Carries information about a code module loaded into the process during the crash
 #[repr(C)]
 pub struct SymbolicCodeModule {
-    pub uuid: SymbolicUuid,
+    pub id: SymbolicStr,
     pub addr: u64,
     pub size: u64,
     pub name: SymbolicStr,
@@ -136,7 +136,7 @@ where
 /// Maps a `CodeModule` to its FFI type
 unsafe fn map_code_module(module: &CodeModule) -> SymbolicCodeModule {
     SymbolicCodeModule {
-        uuid: module.id().uuid().into(),
+        id: module.id().to_string().into(),
         addr: module.base_address(),
         size: module.size(),
         name: SymbolicStr::from_string(module.code_file()),
@@ -145,11 +145,18 @@ unsafe fn map_code_module(module: &CodeModule) -> SymbolicCodeModule {
 
 /// Maps a `StackFrame` to its FFI type
 unsafe fn map_stack_frame(frame: &StackFrame, arch: Arch) -> SymbolicStackFrame {
+    let empty_module = SymbolicCodeModule {
+        id: "".into(),
+        addr: 0,
+        size: 0,
+        name: "".into(),
+    };
+
     SymbolicStackFrame {
         instruction: frame.instruction(),
         return_address: frame.return_address(arch),
         trust: mem::transmute(frame.trust()),
-        module: frame.module().map_or(mem::zeroed(), |m| map_code_module(m)),
+        module: frame.module().map_or(empty_module, |m| map_code_module(m)),
     }
 }
 
@@ -206,16 +213,15 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Adds CFI for a code module specified by the `suuid` argument
+    /// Adds CFI for a code module specified by the `sid` argument
     unsafe fn symbolic_frame_info_map_add(
         smap: *const SymbolicFrameInfoMap,
-        suuid: *const SymbolicUuid,
+        sid: *const SymbolicStr,
         path: *const c_char,
     ) -> Result<()> {
         let map = smap as *mut FrameInfoMap<'static>;
         let byteview = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
-        let uuid = Uuid::from_bytes(&(*suuid).data[..]).unwrap_or(Uuid::nil());
-        let id = CodeModuleId::from_uuid(uuid);
+        let id = CodeModuleId::from_str((*sid).as_str())?;
 
         (*map).insert(id, byteview);
         Ok(())

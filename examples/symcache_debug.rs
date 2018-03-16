@@ -36,7 +36,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Box<Error>> {
             for obj in objects {
                 println!(
                     "  {} [{}]",
-                    obj.uuid().unwrap_or(Default::default()),
+                    obj.id().unwrap_or(Default::default()),
                     obj.arch()
                 );
             }

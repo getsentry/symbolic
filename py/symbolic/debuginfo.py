@@ -3,14 +3,13 @@ from weakref import WeakValueDictionary
 
 from symbolic._compat import itervalues, range_type
 from symbolic._lowlevel import lib, ffi
-from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
-    make_uuid, attached_refs
+from symbolic.utils import RustObject, rustcall, decode_str, attached_refs
 from symbolic.common import parse_addr, arch_is_known, arch_from_macho
 from symbolic.symcache import SymCache
 from symbolic.minidump import CfiCache
 
 
-__all__ = ['FatObject', 'Object', 'ObjectLookup']
+__all__ = ['FatObject', 'Object', 'ObjectLookup', 'id_from_breakpad']
 
 
 class FatObject(RustObject):
@@ -35,12 +34,12 @@ class FatObject(RustObject):
             except LookupError:
                 pass
 
-    def get_object(self, uuid=None, arch=None):
-        """Get an object by either arch or uuid."""
-        if uuid is not None:
-            uuid = make_uuid(uuid)
+    def get_object(self, id=None, arch=None):
+        """Get an object by either arch or id."""
+        if id is not None:
+            id = id.lower()
         for obj in self.iter_objects():
-            if obj.uuid == uuid or obj.arch == arch:
+            if obj.id == id or obj.arch == arch:
                 return obj
         raise LookupError('Object not found')
 
@@ -62,20 +61,6 @@ class FatObject(RustObject):
         return rv
 
 
-class ObjectId(object):
-    """Unique identifier for Objects and their debug information."""
-
-    def __init__(self, data):
-        self.uuid = decode_uuid(data.uuid)
-        self.age = data.age
-
-    def __repr__(self):
-        return '<ObjectId %s %s>' % (
-            self.uuid,
-            self.age,
-        )
-
-
 class Object(RustObject):
     __dealloc_func__ = lib.symbolic_object_free
 
@@ -88,12 +73,7 @@ class Object(RustObject):
     @property
     def id(self):
         """The unique ID of the object."""
-        return ObjectId(self._methodcall(lib.symbolic_object_get_id))
-
-    @property
-    def uuid(self):
-        """The UUID of the object. Use object.id() instead."""
-        return decode_uuid(self._methodcall(lib.symbolic_object_get_uuid))
+        return decode_str(self._methodcall(lib.symbolic_object_get_id))
 
     @property
     def kind(self):
@@ -122,7 +102,7 @@ class Object(RustObject):
 
     def __repr__(self):
         return '<Object %s %r>' % (
-            self.uuid,
+            self.id,
             self.arch,
         )
 
@@ -135,11 +115,11 @@ class ObjectRef(object):
         # not a real address but why handle it differently
         self.size = parse_addr(data['image_size'])
         self.vmaddr = data.get('image_vmaddr')
-        self.uuid = make_uuid(data['uuid'])
+        self.id = data['id'].lower()
         if data.get('arch') is not None and arch_is_known(data['arch']):
             self.arch = data['arch']
         elif data.get('cpu_type') is not None \
-             and data.get('cpu_subtype') is not None:
+                and data.get('cpu_subtype') is not None:
             self.arch = arch_from_macho(data['cpu_type'],
                                         data['cpu_subtype'])
         else:
@@ -148,7 +128,7 @@ class ObjectRef(object):
 
     def __repr__(self):
         return '<ObjectRef %s %r>' % (
-            self.uuid,
+            self.id,
             self.arch,
         )
 
@@ -164,19 +144,19 @@ class ObjectLookup(object):
             obj = ObjectRef(ref_data)
             self._addresses.append(obj.addr)
             self._by_addr[obj.addr] = obj
-            self.objects[obj.uuid] = obj
+            self.objects[obj.id] = obj
         self._addresses.sort()
 
     def iter_objects(self):
         """Iterates over all objects."""
         return itervalues(self.objects)
 
-    def get_uuids(self):
-        """Returns a list of uuids."""
+    def get_ids(self):
+        """Returns a list of ids."""
         return sorted(self.objects)
 
-    def iter_uuids(self):
-        """Iterates over all uuids."""
+    def iter_ids(self):
+        """Iterates over all ids."""
         return iter(self.objects)
 
     def find_object(self, addr):
@@ -189,6 +169,13 @@ class ObjectLookup(object):
             if not rv.size or addr < rv.addr + rv.size:
                 return rv
 
-    def get_object(self, uuid):
-        """Finds an object by the given uuid."""
-        return self.objects.get(uuid)
+    def get_object(self, id):
+        """Finds an object by the given id."""
+        return self.objects.get(id)
+
+
+def id_from_breakpad(breakpad_id):
+    """Converts a Breakpad CodeModuleId to ObjectId"""
+    s = encode_str(breakpad_id)
+    id = rustcall(lib.symbolic_id_from_breakpad, s)
+    return decode_str(id)

@@ -1,20 +1,20 @@
-use std::{fmt, mem, ptr, slice};
+use std::{fmt, mem, ptr, slice, str};
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::ffi::CString;
-use std::marker::PhantomData;
 use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
 use std::os::raw::{c_char, c_void};
+use std::str::FromStr;
 
 use regex::Regex;
+use uuid::Uuid;
 
-use symbolic_common::{Arch, ByteView, CpuFamily, ErrorKind, Result};
+use symbolic_common::{Arch, ByteView, CpuFamily, Error, ErrorKind, Result};
 use symbolic_debuginfo::ObjectId;
 
 use utils;
-
-pub type CodeModuleId = ObjectId;
 
 lazy_static! {
     static ref LINUX_BUILD_RE: Regex = Regex::new(r"^Linux ([^ ]+) (.*) \w+(?: GNU/Linux)?$").unwrap();
@@ -64,6 +64,78 @@ extern "C" {
     fn process_state_system_info(state: *const IProcessState) -> *mut SystemInfo;
 }
 
+/// Breakpad code module IDs.
+///
+/// **Example:**
+///
+/// ```
+/// # extern crate symbolic_common;
+/// # extern crate symbolic_minidump;
+/// use std::str::FromStr;
+/// # use symbolic_common::Result;
+/// use symbolic_minidump::CodeModuleId;
+///
+/// # fn foo() -> Result<()> {
+/// let id = CodeModuleId::from_str("DFB8E43AF2423D73A453AEB6A777EF75a")?;
+/// assert_eq!("DFB8E43AF2423D73A453AEB6A777EF75a".to_string(), id.to_string());
+/// # Ok(())
+/// # }
+///
+/// # fn main() { foo().unwrap() }
+/// ```
+#[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy)]
+pub struct CodeModuleId {
+    inner: ObjectId,
+}
+
+impl CodeModuleId {
+    pub fn from_parts(uuid: Uuid, age: u32) -> CodeModuleId {
+        CodeModuleId {
+            inner: ObjectId::from_parts(uuid, age as u64),
+        }
+    }
+
+    pub fn uuid(&self) -> Uuid {
+        self.inner.uuid()
+    }
+
+    pub fn age(&self) -> u32 {
+        self.inner.appendix() as u32
+    }
+
+    pub fn as_object_id(&self) -> ObjectId {
+        self.inner
+    }
+}
+
+impl From<ObjectId> for CodeModuleId {
+    fn from(inner: ObjectId) -> Self {
+        CodeModuleId { inner }
+    }
+}
+
+impl Into<ObjectId> for CodeModuleId {
+    fn into(self) -> ObjectId {
+        self.inner
+    }
+}
+
+impl fmt::Display for CodeModuleId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.inner.breakpad().fmt(f)
+    }
+}
+
+impl str::FromStr for CodeModuleId {
+    type Err = Error;
+
+    fn from_str(string: &str) -> Result<CodeModuleId> {
+        Ok(CodeModuleId {
+            inner: ObjectId::from_breakpad(string)?,
+        })
+    }
+}
+
 /// Carries information about a code module loaded into the process during the
 /// crash. The `debug_identifier` uniquely identifies this module.
 #[repr(C)]
@@ -72,7 +144,7 @@ pub struct CodeModule(c_void);
 impl CodeModule {
     /// Returns the unique identifier of this `CodeModule`.
     pub fn id(&self) -> CodeModuleId {
-        CodeModuleId::parse(&self.debug_identifier()).unwrap()
+        CodeModuleId::from_str(&self.debug_identifier()).unwrap()
     }
 
     /// Returns the base address of this code module as it was loaded by the

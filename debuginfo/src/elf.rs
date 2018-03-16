@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use symbolic_common::Result;
 
-use object::ObjectId;
+use id::ObjectId;
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;

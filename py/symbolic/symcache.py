@@ -3,9 +3,9 @@ import shutil
 from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib, ffi
 from symbolic.demangle import demangle_name
-from symbolic.utils import RustObject, rustcall, decode_str, decode_uuid, \
-    encode_str, common_path_join, strip_common_path_prefix, encode_path, \
-    attached_refs, CacheReader
+from symbolic.utils import RustObject, rustcall, decode_str, encode_str, \
+    common_path_join, strip_common_path_prefix, encode_path, attached_refs, \
+    CacheReader
 from symbolic.common import parse_addr
 from symbolic import exceptions
 
@@ -92,9 +92,9 @@ class SymCache(RustObject):
         return str(decode_str(self._methodcall(lib.symbolic_symcache_get_arch)))
 
     @property
-    def uuid(self):
-        """The UUID of the object."""
-        return decode_uuid(self._methodcall(lib.symbolic_symcache_get_uuid))
+    def id(self):
+        """The ID of the object."""
+        return decode_str(self._methodcall(lib.symbolic_symcache_get_id))
 
     @property
     def has_line_info(self):

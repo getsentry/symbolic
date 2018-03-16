@@ -1,7 +1,7 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::cmp;
-use std::io::{Seek, SeekFrom, Write};
+use std::collections::HashMap;
+use std::io::{Cursor, Seek, SeekFrom, Write};
 use std::iter::Peekable;
 use std::mem;
 use std::slice;
@@ -13,9 +13,9 @@ use symbolic_common::{DebugKind, Error, ErrorKind, Language, Result, ResultExt};
 use symbolic_debuginfo::{Object, SymbolIterator, SymbolTable, Symbols};
 
 use breakpad::BreakpadInfo;
-use cache::SYMCACHE_MAGIC;
+use cache::{SYMCACHE_LATEST_VERSION, SYMCACHE_MAGIC};
 use dwarf::{DwarfInfo, Function, Unit};
-use types::{CacheFileHeader, DataSource, FileRecord, FuncRecord, LineRecord, Seg};
+use types::{CacheFileHeaderV2, DataSource, FileRecord, FuncRecord, LineRecord, Seg};
 use utils::shorten_filename;
 
 /// Given a writer and object, dumps the object into the writer.
@@ -25,29 +25,14 @@ use utils::shorten_filename;
 ///
 /// This requires the writer to be seekable.
 pub fn to_writer<W: Write + Seek>(mut w: W, obj: &Object) -> Result<()> {
-    w.write_all(CacheFileHeader::default().as_bytes())?;
-    let header = {
-        let mut writer = SymCacheWriter::new(&mut w);
-        writer.write_object(obj)?;
-        writer.header
-    };
-    w.seek(SeekFrom::Start(0))?;
-    w.write_all(header.as_bytes())?;
-    Ok(())
+    SymCacheWriter::new(&mut w).write_object(obj)
 }
 
 /// Converts an object into a vector of symcache data.
 pub fn to_vec(obj: &Object) -> Result<Vec<u8>> {
-    let mut buf = Vec::<u8>::new();
-    buf.write_all(CacheFileHeader::default().as_bytes())?;
-    let header = {
-        let mut writer = SymCacheWriter::new(&mut buf);
-        writer.write_object(obj)?;
-        writer.header
-    };
-    let header_bytes = header.as_bytes();
-    (&mut buf[..header_bytes.len()]).copy_from_slice(header_bytes);
-    Ok(buf)
+    let mut cursor = Cursor::new(Vec::new());
+    SymCacheWriter::new(&mut cursor).write_object(obj)?;
+    Ok(cursor.into_inner())
 }
 
 #[derive(Debug)]
@@ -74,7 +59,7 @@ impl<'input> DebugInfo<'input> {
 
 struct SymCacheWriter<W: Write> {
     writer: RefCell<(u64, W)>,
-    header: CacheFileHeader,
+    header: CacheFileHeaderV2,
     symbol_map: HashMap<Vec<u8>, u32>,
     symbols: Vec<Seg<u8, u16>>,
     files: HashMap<Vec<u8>, Seg<u8, u8>>,
@@ -84,7 +69,7 @@ struct SymCacheWriter<W: Write> {
     line_record_bytes: RefCell<u64>,
 }
 
-impl<W: Write> SymCacheWriter<W> {
+impl<W: Write + Seek> SymCacheWriter<W> {
     pub fn new(writer: W) -> SymCacheWriter<W> {
         SymCacheWriter {
             writer: RefCell::new((0, writer)),
@@ -187,15 +172,18 @@ impl<W: Write> SymCacheWriter<W> {
         Ok(idx)
     }
 
-    pub fn write_object(&mut self, obj: &Object) -> Result<()> {
-        // common header values
-        self.header.magic = SYMCACHE_MAGIC;
-        self.header.version = 1;
-        self.header.arch = obj.arch() as u32;
-        if let Some(uuid) = obj.uuid() {
-            self.header.uuid = uuid;
-        }
+    fn write_header(&mut self) -> Result<()> {
+        let (ref mut pos, ref mut writer) = *self.writer.borrow_mut();
+        writer.seek(SeekFrom::Start(0))?;
 
+        let bytes = self.header.as_bytes();
+        writer.write_all(bytes)?;
+        *pos = bytes.len() as u64;
+
+        Ok(())
+    }
+
+    pub fn write_debug_info(&mut self, obj: &Object) -> Result<()> {
         // try dwarf data first.  If we cannot find the necessary dwarf sections
         // we just skip over to symbol table processing.
         match DebugInfo::from_object(obj) {
@@ -231,6 +219,26 @@ impl<W: Write> SymCacheWriter<W> {
         }
 
         Err(ErrorKind::MissingDebugInfo("no debug info found in file").into())
+    }
+
+    pub fn write_object(mut self, obj: &Object) -> Result<()> {
+        // reserve space for the header before writing segments
+        self.write_header()?;
+
+        // set up common header values
+        self.header.preamble.magic = SYMCACHE_MAGIC;
+        self.header.preamble.version = SYMCACHE_LATEST_VERSION;
+        self.header.arch = obj.arch() as u32;
+        if let Some(id) = obj.id() {
+            self.header.id = id;
+        }
+
+        // do the actual work
+        self.write_debug_info(obj)?;
+
+        // once done, patch the header
+        self.write_header()?;
+        Ok(())
     }
 
     fn write_symbol_table(&mut self, symbols: SymbolIterator, vmaddr: u64) -> Result<()> {

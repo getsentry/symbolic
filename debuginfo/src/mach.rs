@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use symbolic_common::Result;
 
-use object::ObjectId;
+use id::ObjectId;
 
 /// A segment inside a Mach object file containing multiple sections.
 type MachSegment<'mach, 'data> = &'mach mach::segment::Segment<'data>;

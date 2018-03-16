@@ -1,25 +1,33 @@
 use std::fmt;
 use std::str::FromStr;
 
-use uuid::Uuid;
-
 use symbolic_common::{Arch, Error, ErrorKind, ObjectKind, Result};
 
-use object::{FatObject, Object, ObjectId};
+use object::{FatObject, Object};
+use id::ObjectId;
 
+/// A Breakpad symbol record.
 pub enum BreakpadRecord<'input> {
+    /// Header record containing module information.
     Module(BreakpadModuleRecord<'input>),
+    /// Source file declaration.
     File(BreakpadFileRecord<'input>),
+    /// Source function declaration.
     Function(BreakpadFuncRecord<'input>),
+    /// Source line mapping.
     Line(BreakpadLineRecord),
+    /// Linker visible symbol.
     Public(BreakpadPublicRecord<'input>),
+    /// Meta data record (e.g. Build ID)
     Info(&'input [u8]),
+    /// Call Frame Information (CFI) record.
     Stack,
 }
 
+/// Breakpad module record containing general information on the file.
 pub struct BreakpadModuleRecord<'input> {
     pub arch: Arch,
-    pub uuid: Uuid,
+    pub id: ObjectId,
     pub name: &'input [u8],
 }
 
@@ -27,12 +35,13 @@ impl<'input> fmt::Debug for BreakpadModuleRecord<'input> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("BreakpadModuleRecord")
             .field("arch", &self.arch)
-            .field("uuid", &self.uuid)
+            .field("id", &self.id)
             .field("name", &String::from_utf8_lossy(self.name))
             .finish()
     }
 }
 
+/// Breakpad file record declaring a source file.
 pub struct BreakpadFileRecord<'input> {
     pub id: u64,
     pub name: &'input [u8],
@@ -47,6 +56,8 @@ impl<'input> fmt::Debug for BreakpadFileRecord<'input> {
     }
 }
 
+/// Breakpad line record declaring the mapping of a memory address to file and
+/// line number.
 #[derive(Debug)]
 pub struct BreakpadLineRecord {
     pub address: u64,
@@ -54,6 +65,7 @@ pub struct BreakpadLineRecord {
     pub file_id: u64,
 }
 
+/// Breakpad function record declaring address and size of a source function.
 pub struct BreakpadFuncRecord<'input> {
     pub address: u64,
     pub size: u64,
@@ -72,6 +84,7 @@ impl<'input> fmt::Debug for BreakpadFuncRecord<'input> {
     }
 }
 
+/// Breakpad public record declaring a linker-visible symbol.
 pub struct BreakpadPublicRecord<'input> {
     pub address: u64,
     pub size: u64,
@@ -118,13 +131,13 @@ impl BreakpadSym {
             None => return Err(ErrorKind::BadBreakpadSym("Missing breakpad arch").into()),
         };
 
-        let uuid_hex = match words.next() {
+        let id_hex = match words.next() {
             Some(word) => String::from_utf8_lossy(word),
             None => return Err(ErrorKind::BadBreakpadSym("Missing breakpad uuid").into()),
         };
 
-        let id = match ObjectId::parse(&uuid_hex[0..33]) {
-            Ok(uuid) => uuid,
+        let id = match ObjectId::from_breakpad(&id_hex) {
+            Ok(id) => id,
             Err(_) => return Err(ErrorKind::Parse("Invalid breakpad uuid").into()),
         };
 
@@ -150,6 +163,7 @@ enum IterState {
     Function,
 }
 
+/// An iterator over records in a Breakpad symbol file.
 pub struct BreakpadRecords<'data> {
     lines: Box<Iterator<Item = &'data [u8]> + 'data>,
     state: IterState,
@@ -229,8 +243,12 @@ impl<'data> Iterator for BreakpadRecords<'data> {
     }
 }
 
+/// Gives access to Breakpad debugging information.
 pub trait BreakpadData {
+    /// Determines whether this `Object` contains Breakpad debugging information.
     fn has_breakpad_data(&self) -> bool;
+
+    /// Returns an iterator over all records of the Breakpad symbol file.
     fn breakpad_records<'input>(&'input self) -> BreakpadRecords<'input>;
 }
 
@@ -274,14 +292,14 @@ fn parse_module(line: &[u8]) -> Result<BreakpadRecord> {
         None => return Err(ErrorKind::BadBreakpadSym("missing module arch").into()),
     };
 
-    let uuid_hex = match record.next() {
+    let id_hex = match record.next() {
         Some(word) => String::from_utf8_lossy(word),
-        None => return Err(ErrorKind::BadBreakpadSym("missing module uuid").into()),
+        None => return Err(ErrorKind::BadBreakpadSym("missing module id").into()),
     };
 
-    let uuid = match Uuid::parse_str(&uuid_hex[0..32]) {
-        Ok(uuid) => uuid,
-        Err(_) => return Err(ErrorKind::Parse("invalid breakpad uuid").into()),
+    let id = match ObjectId::from_breakpad(&id_hex) {
+        Ok(id) => id,
+        Err(_) => return Err(ErrorKind::Parse("invalid breakpad id").into()),
     };
 
     let name = match record.next() {
@@ -292,7 +310,7 @@ fn parse_module(line: &[u8]) -> Result<BreakpadRecord> {
     Ok(BreakpadRecord::Module(BreakpadModuleRecord {
         name: name,
         arch: Arch::from_breakpad(&arch),
-        uuid: uuid,
+        id: id,
     }))
 }
 

@@ -5,40 +5,13 @@ use std::ffi::CStr;
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{FatObject, Object, ObjectId};
 
-use core::{SymbolicStr, SymbolicUuid};
-
-use uuid::Uuid;
+use core::SymbolicStr;
 
 /// A potential multi arch object.
 pub struct SymbolicFatObject;
 
 /// A single arch object.
 pub struct SymbolicObject;
-
-/// Unique identifier for Objects.
-#[repr(C)]
-pub struct SymbolicObjectId {
-    pub uuid: SymbolicUuid,
-    pub age: u32,
-}
-
-impl Default for SymbolicObjectId {
-    fn default() -> SymbolicObjectId {
-        SymbolicObjectId {
-            uuid: Uuid::nil().into(),
-            age: 0,
-        }
-    }
-}
-
-impl From<ObjectId> for SymbolicObjectId {
-    fn from(id: ObjectId) -> SymbolicObjectId {
-        SymbolicObjectId {
-            uuid: id.uuid().into(),
-            age: id.age(),
-        }
-    }
-}
 
 ffi_fn! {
     /// Loads a fat object from a given path.
@@ -98,20 +71,10 @@ ffi_fn! {
 
 ffi_fn! {
     unsafe fn symbolic_object_get_id(so: *const SymbolicObject)
-        -> Result<SymbolicObjectId>
+        -> Result<SymbolicStr>
     {
         let o = so as *const Object<'static>;
-        Ok((*o).id().unwrap_or_default().into())
-    }
-}
-
-ffi_fn! {
-    /// Returns the UUID of an object.
-    unsafe fn symbolic_object_get_uuid(so: *const SymbolicObject)
-        -> Result<SymbolicUuid>
-    {
-        let o = so as *const Object<'static>;
-        Ok((*o).uuid().unwrap_or_default().into())
+        Ok((*o).id().unwrap_or_default().to_string().into())
     }
 }
 
@@ -156,5 +119,13 @@ ffi_fn! {
             let o = so as *mut Object<'static>;
             Box::from_raw(o);
         }
+    }
+}
+
+ffi_fn! {
+    /// Converts a Breakpad CodeModuleId to ObjectId
+    unsafe fn symbolic_id_from_breakpad(sid: *const SymbolicStr)
+            -> Result<SymbolicStr> {
+        Ok(ObjectId::from_breakpad((*sid).as_str())?.to_string().into())
     }
 }

@@ -43,13 +43,13 @@ typedef uint32_t SymbolicErrorCode;
  * Indicates how well the instruction pointer derived during stack walking is trusted
  */
 enum SymbolicFrameTrust {
-  SYMBOLIC_FRAME_TRUST_NONE = 0,
-  SYMBOLIC_FRAME_TRUST_SCAN = 1,
-  SYMBOLIC_FRAME_TRUST_CFI_SCAN = 2,
-  SYMBOLIC_FRAME_TRUST_FP = 3,
-  SYMBOLIC_FRAME_TRUST_CFI = 4,
-  SYMBOLIC_FRAME_TRUST_PREWALKED = 5,
-  SYMBOLIC_FRAME_TRUST_CONTEXT = 6,
+  SYMBOLIC_FRAME_TRUST_NONE,
+  SYMBOLIC_FRAME_TRUST_SCAN,
+  SYMBOLIC_FRAME_TRUST_CFI_SCAN,
+  SYMBOLIC_FRAME_TRUST_FP,
+  SYMBOLIC_FRAME_TRUST_CFI,
+  SYMBOLIC_FRAME_TRUST_PREWALKED,
+  SYMBOLIC_FRAME_TRUST_CONTEXT,
 };
 typedef uint32_t SymbolicFrameTrust;
 
@@ -93,7 +93,7 @@ typedef struct SymbolicSymCache SymbolicSymCache;
  */
 typedef struct {
   char *data;
-  size_t len;
+  uintptr_t len;
   bool owned;
 } SymbolicStr;
 
@@ -114,7 +114,7 @@ typedef struct {
 
 typedef struct {
   uint8_t *bytes;
-  size_t len;
+  uintptr_t len;
 } SymbolicCfiCache;
 
 /*
@@ -144,13 +144,6 @@ typedef struct {
 } SymbolicInstructionInfo;
 
 /*
- * Represents a UUID
- */
-typedef struct {
-  uint8_t data[16];
-} SymbolicUuid;
-
-/*
  * Represents a single symbol after lookup.
  */
 typedef struct {
@@ -170,16 +163,8 @@ typedef struct {
  */
 typedef struct {
   SymbolicLineInfo *items;
-  size_t len;
+  uintptr_t len;
 } SymbolicLookupResult;
-
-/*
- * Unique identifier for Objects.
- */
-typedef struct {
-  SymbolicUuid uuid;
-  uint32_t age;
-} SymbolicObjectId;
 
 /*
  * OS and CPU information
@@ -197,7 +182,7 @@ typedef struct {
  * Carries information about a code module loaded into the process during the crash
  */
 typedef struct {
-  SymbolicUuid uuid;
+  SymbolicStr id;
   uint64_t addr;
   uint64_t size;
   SymbolicStr name;
@@ -219,7 +204,7 @@ typedef struct {
 typedef struct {
   uint32_t thread_id;
   SymbolicStackFrame *frames;
-  size_t frame_count;
+  uintptr_t frame_count;
 } SymbolicCallStack;
 
 /*
@@ -234,10 +219,17 @@ typedef struct {
   SymbolicStr assertion;
   SymbolicSystemInfo system_info;
   SymbolicCallStack *threads;
-  size_t thread_count;
+  uintptr_t thread_count;
   SymbolicCodeModule *modules;
-  size_t module_count;
+  uintptr_t module_count;
 } SymbolicProcessState;
+
+/*
+ * Represents a UUID
+ */
+typedef struct {
+  uint8_t data[16];
+} SymbolicUuid;
 
 /*
  * Represents a single token after lookup.
@@ -312,19 +304,19 @@ SymbolicStr symbolic_demangle_no_args(const SymbolicStr *ident, const SymbolicSt
 /*
  * Clears the last error.
  */
-void symbolic_err_clear();
+void symbolic_err_clear(void);
 
 /*
  * Returns the panic information as string.
  */
-SymbolicStr symbolic_err_get_backtrace();
+SymbolicStr symbolic_err_get_backtrace(void);
 
 /*
  * Returns the last error code.
  *
  * If there is no error, 0 is returned.
  */
-SymbolicErrorCode symbolic_err_get_last_code();
+SymbolicErrorCode symbolic_err_get_last_code(void);
 
 /*
  * Returns the last error message.
@@ -332,7 +324,7 @@ SymbolicErrorCode symbolic_err_get_last_code();
  * If there is no error an empty string is returned.  This allocates new memory
  * that needs to be freed with `symbolic_str_free`.
  */
-SymbolicStr symbolic_err_get_last_message();
+SymbolicStr symbolic_err_get_last_message(void);
 
 /*
  * Frees the given fat object.
@@ -342,12 +334,12 @@ void symbolic_fatobject_free(SymbolicFatObject *sfo);
 /*
  * Returns the n-th object.
  */
-SymbolicObject *symbolic_fatobject_get_object(const SymbolicFatObject *sfo, size_t idx);
+SymbolicObject *symbolic_fatobject_get_object(const SymbolicFatObject *sfo, uintptr_t idx);
 
 /*
  * Returns the number of contained objects.
  */
-size_t symbolic_fatobject_object_count(const SymbolicFatObject *sfo);
+uintptr_t symbolic_fatobject_object_count(const SymbolicFatObject *sfo);
 
 /*
  * Loads a fat object from a given path.
@@ -363,7 +355,7 @@ uint64_t symbolic_find_best_instruction(const SymbolicInstructionInfo *ii);
  * Adds CFI for a code module specified by the `suuid` argument
  */
 void symbolic_frame_info_map_add(const SymbolicFrameInfoMap *smap,
-                                 const SymbolicUuid *suuid,
+                                 const SymbolicStr *sid,
                                  const char *path);
 
 /*
@@ -374,12 +366,17 @@ void symbolic_frame_info_map_free(SymbolicFrameInfoMap *smap);
 /*
  * Creates a new frame info map
  */
-SymbolicFrameInfoMap *symbolic_frame_info_map_new();
+SymbolicFrameInfoMap *symbolic_frame_info_map_new(void);
+
+/*
+ * Converts a Breakpad CodeModuleId to ObjectId
+ */
+SymbolicStr symbolic_id_from_breakpad(const SymbolicStr *sid);
 
 /*
  * Initializes the library
  */
-void symbolic_init();
+void symbolic_init(void);
 
 /*
  * Frees a lookup result.
@@ -401,7 +398,7 @@ SymbolicStr symbolic_object_get_arch(const SymbolicObject *so);
  */
 SymbolicStr symbolic_object_get_debug_kind(const SymbolicObject *so);
 
-SymbolicObjectId symbolic_object_get_id(const SymbolicObject *so);
+SymbolicStr symbolic_object_get_id(const SymbolicObject *so);
 
 /*
  * Returns the object kind
@@ -414,11 +411,6 @@ SymbolicStr symbolic_object_get_kind(const SymbolicObject *so);
 SymbolicStr symbolic_object_get_type(const SymbolicObject *so);
 
 /*
- * Returns the UUID of an object.
- */
-SymbolicUuid symbolic_object_get_uuid(const SymbolicObject *so);
-
-/*
  * Processes a minidump with optional CFI information and returns the state
  * of the process at the time of the crash
  */
@@ -429,7 +421,7 @@ SymbolicProcessState *symbolic_process_minidump(const char *path, const Symbolic
  * of the process at the time of the crash
  */
 SymbolicProcessState *symbolic_process_minidump_buffer(const char *buffer,
-                                                       size_t length,
+                                                       uintptr_t length,
                                                        const SymbolicFrameInfoMap *smap);
 
 /*
@@ -454,7 +446,8 @@ void symbolic_proguardmappingview_free(SymbolicProguardMappingView *spmv);
  *
  * This shares the underlying memory and does not copy it.
  */
-SymbolicProguardMappingView *symbolic_proguardmappingview_from_bytes(const char *bytes, size_t len);
+SymbolicProguardMappingView *symbolic_proguardmappingview_from_bytes(const char *bytes,
+                                                                     uintptr_t len);
 
 /*
  * Creates a proguard mapping view from a path.
@@ -479,7 +472,7 @@ void symbolic_sourcemapview_free(const SymbolicSourceMapView *smv);
 /*
  * Loads a sourcemap from a JSON byte slice.
  */
-SymbolicSourceMapView *symbolic_sourcemapview_from_json_slice(const char *data, size_t len);
+SymbolicSourceMapView *symbolic_sourcemapview_from_json_slice(const char *data, uintptr_t len);
 
 /*
  * Return the number of sources.
@@ -541,7 +534,7 @@ void symbolic_sourceview_free(SymbolicSourceView *ssv);
  * This shares the underlying memory and does not copy it if that is
  * possible.  Will ignore utf-8 decoding errors.
  */
-SymbolicSourceView *symbolic_sourceview_from_bytes(const char *bytes, size_t len);
+SymbolicSourceView *symbolic_sourceview_from_bytes(const char *bytes, uintptr_t len);
 
 /*
  * Returns a specific line.
@@ -583,7 +576,7 @@ void symbolic_symcache_free(SymbolicSymCache *scache);
 /*
  * Creates a symcache from bytes
  */
-SymbolicSymCache *symbolic_symcache_from_bytes(const uint8_t *bytes, size_t len);
+SymbolicSymCache *symbolic_symcache_from_bytes(const uint8_t *bytes, uintptr_t len);
 
 /*
  * Creates a symcache from a given object.
@@ -608,14 +601,14 @@ SymbolicStr symbolic_symcache_get_arch(const SymbolicSymCache *scache);
 const uint8_t *symbolic_symcache_get_bytes(const SymbolicSymCache *scache);
 
 /*
- * Returns the size in bytes of the symcache.
- */
-size_t symbolic_symcache_get_size(const SymbolicSymCache *scache);
-
-/*
  * Returns the architecture of the symcache.
  */
-SymbolicUuid symbolic_symcache_get_uuid(const SymbolicSymCache *scache);
+SymbolicStr symbolic_symcache_get_id(const SymbolicSymCache *scache);
+
+/*
+ * Returns the size in bytes of the symcache.
+ */
+uintptr_t symbolic_symcache_get_size(const SymbolicSymCache *scache);
 
 /*
  * Returns true if the symcache has file infos.
@@ -630,7 +623,7 @@ bool symbolic_symcache_has_line_info(const SymbolicSymCache *scache);
 /*
  * Returns the version of the cache file.
  */
-uint32_t symbolic_symcache_latest_file_format_version();
+uint32_t symbolic_symcache_latest_file_format_version(void);
 
 /*
  * Looks up a single symbol.

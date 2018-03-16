@@ -6,10 +6,11 @@ from datetime import datetime
 
 from symbolic._compat import range_type
 from symbolic._lowlevel import lib, ffi
-from symbolic.utils import RustObject, rustcall, attached_refs, decode_uuid, encode_path, \
-    encode_uuid, decode_str, CacheReader
+from symbolic.utils import RustObject, rustcall, attached_refs, encode_path, \
+    encode_str, decode_str, CacheReader
 
-__all__ = ['CallStack', 'FrameInfoMap', 'FrameTrust', 'ProcessState', 'StackFrame']
+__all__ = ['CallStack', 'FrameInfoMap',
+           'FrameTrust', 'ProcessState', 'StackFrame']
 
 
 def _make_frame_trust():
@@ -36,9 +37,9 @@ class CodeModule(RustObject):
     __dealloc_func__ = None
 
     @property
-    def uuid(self):
-        """UUID of the loaded module containing the instruction"""
-        return decode_uuid(self._objptr.uuid)
+    def id(self):
+        """ID of the loaded module containing the instruction"""
+        return decode_str(self._objptr.id)
 
     @property
     def addr(self):
@@ -79,7 +80,7 @@ class StackFrame(RustObject):
     def module(self):
         """The code module that defines code for this frame"""
         module = CodeModule._from_objptr(self._objptr.module, shared=True)
-        if not module.uuid.int and not module.addr and not module.size:
+        if not module.id and not module.addr and not module.size:
             return None
 
         attached_refs[module] = self
@@ -108,11 +109,13 @@ class CallStack(RustObject):
     def get_frame(self, idx):
         """Retrieves the stack frame at the given index (0 is the current frame)"""
         if idx < self.frame_count:
-            frame = StackFrame._from_objptr(self._objptr.frames[idx], shared=True)
+            frame = StackFrame._from_objptr(
+                self._objptr.frames[idx], shared=True)
             attached_refs[frame] = self
             return frame
         else:
-            raise IndexError("index %d out of bounds %d" % (idx, self.frame_count))
+            raise IndexError("index %d out of bounds %d" %
+                             (idx, self.frame_count))
 
 
 class SystemInfo(RustObject):
@@ -262,11 +265,13 @@ class ProcessState(RustObject):
     def get_thread(self, idx):
         """Retrieves the thread with the specified index"""
         if idx < self.thread_count:
-            stack = CallStack._from_objptr(self._objptr.threads[idx], shared=True)
+            stack = CallStack._from_objptr(
+                self._objptr.threads[idx], shared=True)
             attached_refs[stack] = self
             return stack
         else:
-            raise IndexError("index %d out of bounds %d" % (idx, self.thread_count))
+            raise IndexError("index %d out of bounds %d" %
+                             (idx, self.thread_count))
 
     @property
     def module_count(self):
@@ -297,10 +302,10 @@ class FrameInfoMap(RustObject):
         return FrameInfoMap._from_objptr(
             rustcall(lib.symbolic_frame_info_map_new))
 
-    def add(self, uuid, path):
-        """Adds CFI for a code module specified by the `uuid` argument"""
+    def add(self, id, path):
+        """Adds CFI for a code module specified by the `id` argument"""
         self._methodcall(lib.symbolic_frame_info_map_add,
-            encode_uuid(uuid), encode_path(path))
+                         encode_str(id), encode_path(path))
 
 
 class CfiCache(RustObject):

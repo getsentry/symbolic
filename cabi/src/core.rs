@@ -66,6 +66,18 @@ impl SymbolicStr {
     }
 }
 
+impl From<String> for SymbolicStr {
+    fn from(string: String) -> SymbolicStr {
+        SymbolicStr::from_string(string)
+    }
+}
+
+impl<'a> From<&'a str> for SymbolicStr {
+    fn from(string: &str) -> SymbolicStr {
+        SymbolicStr::new(string)
+    }
+}
+
 /// Represents a UUID
 #[repr(C)]
 pub struct SymbolicUuid {
