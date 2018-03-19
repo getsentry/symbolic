@@ -15,16 +15,15 @@ stack frames in debugging information.
 """
 
 [dependencies]
+dmsort = "0.1.3"
+fallible-iterator = "0.1.4"
+fnv = "1.0.6"
+gimli = "0.15.0"
+if_chain = "0.1.2"
+lru-cache = "0.1.1"
+matches = "0.1.6"
+num = "0.1.42"
 symbolic-common = { version = "2.0.7", path = "../common", features = ["with_dwarf", "with_objects"] }
 symbolic-debuginfo = { version = "2.0.7", path = "../debuginfo" }
 symbolic-demangle = { version = "2.0.7", path = "../demangle" }
-uuid = { version = "0.6", features = ["serde"] }
-gimli = "0.15"
-fallible-iterator = "0.1"
-lru-cache = "0.1"
-owning_ref = "0.3"
-fnv = "1.0"
-num = "0.1"
-matches = "0.1"
-if_chain = "0.1"
-dmsort = "0.1"
+uuid = { version = "0.6.1", features = ["serde"] }

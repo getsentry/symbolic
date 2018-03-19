@@ -1,9 +1,10 @@
 use std::io;
+use std::fs::File;
 use std::path::Path;
 use std::borrow::Cow;
 use std::ops::Deref;
 
-use memmap::{Mmap, Protection};
+use memmap::Mmap;
 use owning_ref::OwningHandle;
 
 use errors::Result;
@@ -65,7 +66,8 @@ impl<'bytes> ByteView<'bytes> {
 
     /// Constructs a `ByteView` from a file path
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<ByteView<'static>> {
-        let inner = match Mmap::open_path(path, Protection::Read) {
+        let file = File::open(path)?;
+        let inner = match unsafe { Mmap::map(&file) } {
             Ok(mmap) => ByteViewInner::Mmap(mmap),
             Err(err) => {
                 // this is raised on empty mmaps which we want to ignore
@@ -83,7 +85,7 @@ impl<'bytes> ByteView<'bytes> {
     fn buffer(&self) -> &[u8] {
         match self.inner {
             ByteViewInner::Buf(ref buf) => buf,
-            ByteViewInner::Mmap(ref mmap) => unsafe { mmap.as_slice() },
+            ByteViewInner::Mmap(ref mmap) => mmap.deref(),
         }
     }
 }
