@@ -7,7 +7,7 @@ use std::slice;
 use std::cell::RefCell;
 
 use symbolic_common::{Arch, ByteView, ErrorKind, Language, Name, Result};
-use symbolic_debuginfo::{Object, ObjectId};
+use symbolic_debuginfo::{Object, DebugId};
 use symbolic_demangle::Demangle;
 
 use types::{CacheFileHeader, CacheFileHeaderV1, CacheFileHeaderV2, CacheFilePreamble, DataSource,
@@ -47,7 +47,7 @@ impl<'a> LineInfo<'a> {
     }
 
     /// The id of the matched line.
-    pub fn id(&self) -> ObjectId {
+    pub fn id(&self) -> DebugId {
         self.cache.id().unwrap_or(Default::default())
     }
 
@@ -461,7 +461,7 @@ impl<'a> SymCache<'a> {
     }
 
     /// The id of the cache file.
-    pub fn id(&self) -> Result<ObjectId> {
+    pub fn id(&self) -> Result<DebugId> {
         Ok(self.header()?.id())
     }
 

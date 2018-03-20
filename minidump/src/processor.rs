@@ -12,7 +12,7 @@ use regex::Regex;
 use uuid::Uuid;
 
 use symbolic_common::{Arch, ByteView, CpuFamily, Error, ErrorKind, Result};
-use symbolic_debuginfo::ObjectId;
+use symbolic_debuginfo::DebugId;
 
 use utils;
 
@@ -85,13 +85,13 @@ extern "C" {
 /// ```
 #[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy)]
 pub struct CodeModuleId {
-    inner: ObjectId,
+    inner: DebugId,
 }
 
 impl CodeModuleId {
     pub fn from_parts(uuid: Uuid, age: u32) -> CodeModuleId {
         CodeModuleId {
-            inner: ObjectId::from_parts(uuid, age as u64),
+            inner: DebugId::from_parts(uuid, age as u64),
         }
     }
 
@@ -103,19 +103,19 @@ impl CodeModuleId {
         self.inner.appendix() as u32
     }
 
-    pub fn as_object_id(&self) -> ObjectId {
+    pub fn as_object_id(&self) -> DebugId {
         self.inner
     }
 }
 
-impl From<ObjectId> for CodeModuleId {
-    fn from(inner: ObjectId) -> Self {
+impl From<DebugId> for CodeModuleId {
+    fn from(inner: DebugId) -> Self {
         CodeModuleId { inner }
     }
 }
 
-impl Into<ObjectId> for CodeModuleId {
-    fn into(self) -> ObjectId {
+impl Into<DebugId> for CodeModuleId {
+    fn into(self) -> DebugId {
         self.inner
     }
 }
@@ -131,7 +131,7 @@ impl str::FromStr for CodeModuleId {
 
     fn from_str(string: &str) -> Result<CodeModuleId> {
         Ok(CodeModuleId {
-            inner: ObjectId::from_breakpad(string)?,
+            inner: DebugId::from_breakpad(string)?,
         })
     }
 }

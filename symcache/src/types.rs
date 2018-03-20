@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use uuid::Uuid;
 
 use symbolic_common::{ErrorKind, Result};
-use symbolic_debuginfo::ObjectId;
+use symbolic_debuginfo::DebugId;
 
 #[repr(C, packed)]
 #[derive(Default)]
@@ -149,7 +149,7 @@ pub struct CacheFilePreamble {
 }
 
 pub trait CacheFileHeader {
-    fn id(&self) -> ObjectId;
+    fn id(&self) -> DebugId;
     fn arch(&self) -> u32;
     fn data_source(&self) -> u8;
     fn has_line_records(&self) -> u8;
@@ -172,8 +172,8 @@ pub struct CacheFileHeaderV1 {
 }
 
 impl CacheFileHeader for CacheFileHeaderV1 {
-    fn id(&self) -> ObjectId {
-        ObjectId::from_uuid(self.uuid)
+    fn id(&self) -> DebugId {
+        DebugId::from_uuid(self.uuid)
     }
 
     fn arch(&self) -> u32 {
@@ -205,7 +205,7 @@ impl CacheFileHeader for CacheFileHeaderV1 {
 #[derive(Default, Copy, Clone, Debug)]
 pub struct CacheFileHeaderV2 {
     pub preamble: CacheFilePreamble,
-    pub id: ObjectId,
+    pub id: DebugId,
     pub arch: u32,
     pub data_source: u8,
     pub has_line_records: u8,
@@ -224,7 +224,7 @@ impl CacheFileHeaderV2 {
 }
 
 impl CacheFileHeader for CacheFileHeaderV2 {
-    fn id(&self) -> ObjectId {
+    fn id(&self) -> DebugId {
         self.id
     }
 

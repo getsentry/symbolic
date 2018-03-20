@@ -9,7 +9,7 @@ use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, Err
 use breakpad::BreakpadSym;
 use dwarf::DwarfData;
 use elf::{get_elf_id, get_elf_vmaddr};
-use id::ObjectId;
+use id::DebugId;
 use mach::{get_mach_id, get_mach_vmaddr};
 
 /// Contains type specific data of `Object`s.
@@ -28,7 +28,7 @@ pub struct Object<'bytes> {
 
 impl<'bytes> Object<'bytes> {
     /// Returns the identifier of the object.
-    pub fn id(&self) -> Option<ObjectId> {
+    pub fn id(&self) -> Option<DebugId> {
         use ObjectTarget::*;
         match self.target {
             Breakpad(ref breakpad) => Some(breakpad.id()),

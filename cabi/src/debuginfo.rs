@@ -3,7 +3,7 @@ use std::os::raw::c_char;
 use std::ffi::CStr;
 
 use symbolic_common::ByteView;
-use symbolic_debuginfo::{FatObject, Object, ObjectId};
+use symbolic_debuginfo::{FatObject, Object, DebugId};
 
 use core::SymbolicStr;
 
@@ -123,9 +123,9 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Converts a Breakpad CodeModuleId to ObjectId
+    /// Converts a Breakpad CodeModuleId to DebugId
     unsafe fn symbolic_id_from_breakpad(sid: *const SymbolicStr)
             -> Result<SymbolicStr> {
-        Ok(ObjectId::from_breakpad((*sid).as_str())?.to_string().into())
+        Ok(DebugId::from_breakpad((*sid).as_str())?.to_string().into())
     }
 }

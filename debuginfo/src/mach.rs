@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use symbolic_common::Result;
 
-use id::ObjectId;
+use id::DebugId;
 
 /// A segment inside a Mach object file containing multiple sections.
 type MachSegment<'mach, 'data> = &'mach mach::segment::Segment<'data>;
@@ -68,12 +68,12 @@ pub fn find_mach_section<'data>(
 }
 
 /// Resolves the object identifier from Mach object load commands.
-pub fn get_mach_id(macho: &mach::MachO) -> Option<ObjectId> {
+pub fn get_mach_id(macho: &mach::MachO) -> Option<DebugId> {
     for cmd in &macho.load_commands {
         if let mach::load_command::CommandVariant::Uuid(ref uuid_cmd) = cmd.command {
             return Uuid::from_bytes(&uuid_cmd.uuid)
                 .ok()
-                .map(ObjectId::from_uuid);
+                .map(DebugId::from_uuid);
         }
     }
 

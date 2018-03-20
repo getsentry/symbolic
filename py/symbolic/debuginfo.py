@@ -175,7 +175,7 @@ class ObjectLookup(object):
 
 
 def id_from_breakpad(breakpad_id):
-    """Converts a Breakpad CodeModuleId to ObjectId"""
+    """Converts a Breakpad CodeModuleId to DebugId"""
     s = encode_str(breakpad_id)
     id = rustcall(lib.symbolic_id_from_breakpad, s)
     return decode_str(id)

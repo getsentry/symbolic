@@ -4,7 +4,7 @@ use std::str::FromStr;
 use symbolic_common::{Arch, Error, ErrorKind, ObjectKind, Result};
 
 use object::{FatObject, Object};
-use id::ObjectId;
+use id::DebugId;
 
 /// A Breakpad symbol record.
 pub enum BreakpadRecord<'input> {
@@ -27,7 +27,7 @@ pub enum BreakpadRecord<'input> {
 /// Breakpad module record containing general information on the file.
 pub struct BreakpadModuleRecord<'input> {
     pub arch: Arch,
-    pub id: ObjectId,
+    pub id: DebugId,
     pub name: &'input [u8],
 }
 
@@ -104,7 +104,7 @@ impl<'input> fmt::Debug for BreakpadPublicRecord<'input> {
 /// Provides access to information in a breakpad file.
 #[derive(Debug)]
 pub(crate) struct BreakpadSym {
-    id: ObjectId,
+    id: DebugId,
     arch: Arch,
 }
 
@@ -136,7 +136,7 @@ impl BreakpadSym {
             None => return Err(ErrorKind::BadBreakpadSym("Missing breakpad uuid").into()),
         };
 
-        let id = match ObjectId::from_breakpad(&id_hex) {
+        let id = match DebugId::from_breakpad(&id_hex) {
             Ok(id) => id,
             Err(_) => return Err(ErrorKind::Parse("Invalid breakpad uuid").into()),
         };
@@ -147,7 +147,7 @@ impl BreakpadSym {
         })
     }
 
-    pub fn id(&self) -> ObjectId {
+    pub fn id(&self) -> DebugId {
         self.id
     }
 
@@ -297,7 +297,7 @@ fn parse_module(line: &[u8]) -> Result<BreakpadRecord> {
         None => return Err(ErrorKind::BadBreakpadSym("missing module id").into()),
     };
 
-    let id = match ObjectId::from_breakpad(&id_hex) {
+    let id = match DebugId::from_breakpad(&id_hex) {
         Ok(id) => id,
         Err(_) => return Err(ErrorKind::Parse("invalid breakpad id").into()),
     };

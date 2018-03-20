@@ -3,7 +3,7 @@ use std::str;
 use uuid::Uuid;
 use symbolic_common::{Error, ErrorKind, Result};
 
-/// Unique identifier for `Object` files and their debug information.
+/// Unique identifier for debug information files and their debug information.
 ///
 /// The string representation must be between 33 and 40 characters long and
 /// consist of:
@@ -18,10 +18,10 @@ use symbolic_common::{Error, ErrorKind, Result};
 /// # extern crate symbolic_debuginfo;
 /// use std::str::FromStr;
 /// # use symbolic_common::Result;
-/// use symbolic_debuginfo::ObjectId;
+/// use symbolic_debuginfo::DebugId;
 ///
 /// # fn foo() -> Result<()> {
-/// let id = ObjectId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-a")?;
+/// let id = DebugId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-a")?;
 /// assert_eq!("dfb8e43a-f242-3d73-a453-aeb6a777ef75-a".to_string(), id.to_string());
 /// # Ok(())
 /// # }
@@ -30,21 +30,21 @@ use symbolic_common::{Error, ErrorKind, Result};
 /// ```
 #[repr(C, packed)]
 #[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy)]
-pub struct ObjectId {
+pub struct DebugId {
     uuid: Uuid,
     appendix: u64,
     _padding: u64,
 }
 
-impl ObjectId {
-    /// Constructs a `ObjectId` from its `uuid`.
-    pub fn from_uuid(uuid: Uuid) -> ObjectId {
+impl DebugId {
+    /// Constructs a `DebugId` from its `uuid`.
+    pub fn from_uuid(uuid: Uuid) -> DebugId {
         Self::from_parts(uuid, 0)
     }
 
-    /// Constructs a `ObjectId` from its `uuid` and `appendix` parts.
-    pub fn from_parts(uuid: Uuid, appendix: u64) -> ObjectId {
-        ObjectId {
+    /// Constructs a `DebugId` from its `uuid` and `appendix` parts.
+    pub fn from_parts(uuid: Uuid, appendix: u64) -> DebugId {
+        DebugId {
             uuid,
             appendix,
             _padding: 0,
@@ -52,7 +52,7 @@ impl ObjectId {
     }
 
     /// Parses a breakpad identifier from a string.
-    pub fn from_breakpad(string: &str) -> Result<ObjectId> {
+    pub fn from_breakpad(string: &str) -> Result<DebugId> {
         if string.len() < 33 || string.len() > 40 {
             return Err(ErrorKind::Parse("Invalid input string length").into());
         }
@@ -60,7 +60,7 @@ impl ObjectId {
         let uuid =
             Uuid::parse_str(&string[..32]).map_err(|_| ErrorKind::Parse("UUID parse error"))?;
         let appendix = u32::from_str_radix(&string[32..], 16)?;
-        Ok(ObjectId::from_parts(uuid, appendix as u64))
+        Ok(DebugId::from_parts(uuid, appendix as u64))
     }
 
     /// Returns the UUID part of the code module's debug_identifier.
@@ -83,7 +83,7 @@ impl ObjectId {
     }
 }
 
-impl fmt::Display for ObjectId {
+impl fmt::Display for DebugId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.uuid.fmt(f)?;
         if self.appendix > 0 {
@@ -93,10 +93,10 @@ impl fmt::Display for ObjectId {
     }
 }
 
-impl str::FromStr for ObjectId {
+impl str::FromStr for DebugId {
     type Err = Error;
 
-    fn from_str(string: &str) -> Result<ObjectId> {
+    fn from_str(string: &str) -> Result<DebugId> {
         if string.len() < 36 || string.len() > 53 {
             return Err(ErrorKind::Parse("Invalid input string length").into());
         }
@@ -106,30 +106,30 @@ impl str::FromStr for ObjectId {
         let appendix = string
             .get(37..)
             .map_or(Ok(0), |s| u64::from_str_radix(s, 16))?;
-        Ok(ObjectId::from_parts(uuid, appendix))
+        Ok(DebugId::from_parts(uuid, appendix))
     }
 }
 
-impl From<Uuid> for ObjectId {
-    fn from(uuid: Uuid) -> ObjectId {
-        ObjectId::from_uuid(uuid)
+impl From<Uuid> for DebugId {
+    fn from(uuid: Uuid) -> DebugId {
+        DebugId::from_uuid(uuid)
     }
 }
 
-impl From<(Uuid, u64)> for ObjectId {
-    fn from(tuple: (Uuid, u64)) -> ObjectId {
+impl From<(Uuid, u64)> for DebugId {
+    fn from(tuple: (Uuid, u64)) -> DebugId {
         let (uuid, appendix) = tuple;
-        ObjectId::from_parts(uuid, appendix)
+        DebugId::from_parts(uuid, appendix)
     }
 }
 
 #[cfg(feature = "with_serde")]
-derive_deserialize_from_str!(ObjectId, "ObjectId");
+derive_deserialize_from_str!(DebugId, "DebugId");
 
 #[cfg(feature = "with_serde")]
-derive_serialize_from_display!(ObjectId);
+derive_serialize_from_display!(DebugId);
 
-/// Wrapper around `ObjectId` for Breakpad formatting.
+/// Wrapper around `DebugId` for Breakpad formatting.
 ///
 /// **Example:**
 ///
@@ -138,10 +138,10 @@ derive_serialize_from_display!(ObjectId);
 /// # extern crate symbolic_debuginfo;
 /// use std::str::FromStr;
 /// # use symbolic_common::Result;
-/// use symbolic_debuginfo::ObjectId;
+/// use symbolic_debuginfo::DebugId;
 ///
 /// # fn foo() -> Result<()> {
-/// let id = ObjectId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75a")?;
+/// let id = DebugId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75a")?;
 /// assert_eq!("DFB8E43AF2423D73A453AEB6A777EF75a".to_string(), id.breakpad().to_string());
 /// # Ok(())
 /// # }
@@ -150,7 +150,7 @@ derive_serialize_from_display!(ObjectId);
 /// ```
 #[derive(Debug)]
 pub struct BreakpadFormat<'a> {
-    inner: &'a ObjectId,
+    inner: &'a DebugId,
 }
 
 impl<'a> fmt::Display for BreakpadFormat<'a> {
@@ -172,8 +172,8 @@ mod test {
     #[test]
     fn test_parse_zero() {
         assert_eq!(
-            ObjectId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
-            ObjectId::from_parts(
+            DebugId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
+            DebugId::from_parts(
                 Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
                 0,
             )
@@ -183,8 +183,8 @@ mod test {
     #[test]
     fn test_parse_short() {
         assert_eq!(
-            ObjectId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-a").unwrap(),
-            ObjectId::from_parts(
+            DebugId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-a").unwrap(),
+            DebugId::from_parts(
                 Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
                 10,
             )
@@ -194,8 +194,8 @@ mod test {
     #[test]
     fn test_parse_long() {
         assert_eq!(
-            ObjectId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-feedface").unwrap(),
-            ObjectId::from_parts(
+            DebugId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-feedface").unwrap(),
+            DebugId::from_parts(
                 Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
                 4277009102,
             )
@@ -204,7 +204,7 @@ mod test {
 
     #[test]
     fn test_to_string_zero() {
-        let id = ObjectId::from_parts(
+        let id = DebugId::from_parts(
             Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
             0,
         );
@@ -214,7 +214,7 @@ mod test {
 
     #[test]
     fn test_to_string_short() {
-        let id = ObjectId::from_parts(
+        let id = DebugId::from_parts(
             Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
             10,
         );
@@ -224,7 +224,7 @@ mod test {
 
     #[test]
     fn test_to_string_long() {
-        let id = ObjectId::from_parts(
+        let id = DebugId::from_parts(
             Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
             4277009102,
         );
@@ -237,21 +237,21 @@ mod test {
 
     #[test]
     fn test_parse_error_short() {
-        assert!(ObjectId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef7").is_err());
+        assert!(DebugId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef7").is_err());
     }
 
     #[test]
     fn test_parse_error_long() {
         assert!(
-            ObjectId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-feedfacefeedface1").is_err()
+            DebugId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-feedfacefeedface1").is_err()
         )
     }
 
     #[test]
     fn test_parse_breakpad_zero() {
         assert_eq!(
-            ObjectId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF750").unwrap(),
-            ObjectId::from_parts(
+            DebugId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF750").unwrap(),
+            DebugId::from_parts(
                 Uuid::parse_str("DFB8E43AF2423D73A453AEB6A777EF75").unwrap(),
                 0,
             )
@@ -261,8 +261,8 @@ mod test {
     #[test]
     fn test_parse_breakpad_short() {
         assert_eq!(
-            ObjectId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75a").unwrap(),
-            ObjectId::from_parts(
+            DebugId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75a").unwrap(),
+            DebugId::from_parts(
                 Uuid::parse_str("DFB8E43AF2423D73A453AEB6A777EF75").unwrap(),
                 10,
             )
@@ -272,8 +272,8 @@ mod test {
     #[test]
     fn test_parse_breakpad_long() {
         assert_eq!(
-            ObjectId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75feedface").unwrap(),
-            ObjectId::from_parts(
+            DebugId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75feedface").unwrap(),
+            DebugId::from_parts(
                 Uuid::parse_str("DFB8E43AF2423D73A453AEB6A777EF75").unwrap(),
                 4277009102,
             )
@@ -282,7 +282,7 @@ mod test {
 
     #[test]
     fn test_to_string_breakpad_zero() {
-        let id = ObjectId::from_parts(
+        let id = DebugId::from_parts(
             Uuid::parse_str("DFB8E43AF2423D73A453AEB6A777EF75").unwrap(),
             0,
         );
@@ -295,7 +295,7 @@ mod test {
 
     #[test]
     fn test_to_string_breakpad_short() {
-        let id = ObjectId::from_parts(
+        let id = DebugId::from_parts(
             Uuid::parse_str("DFB8E43AF2423D73A453AEB6A777EF75").unwrap(),
             10,
         );
@@ -308,7 +308,7 @@ mod test {
 
     #[test]
     fn test_to_string_breakpad_long() {
-        let id = ObjectId::from_parts(
+        let id = DebugId::from_parts(
             Uuid::parse_str("DFB8E43AF2423D73A453AEB6A777EF75").unwrap(),
             4277009102,
         );
@@ -321,11 +321,11 @@ mod test {
 
     #[test]
     fn test_parse_breakpad_error_short() {
-        assert!(ObjectId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75").is_err());
+        assert!(DebugId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75").is_err());
     }
 
     #[test]
     fn test_parse_breakpad_error_long() {
-        assert!(ObjectId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75feedface1").is_err())
+        assert!(DebugId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75feedface1").is_err())
     }
 }
