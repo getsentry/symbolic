@@ -3,53 +3,54 @@
 #ifndef SYMBOLIC_H_INCLUDED
 #define SYMBOLIC_H_INCLUDED
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdbool.h>
 
 /*
  * Indicates the error that ocurred
  */
 enum SymbolicErrorCode {
-  SYMBOLIC_ERROR_CODE_NO_ERROR = 0,
-  SYMBOLIC_ERROR_CODE_PANIC = 1,
-  SYMBOLIC_ERROR_CODE_INTERNAL = 2,
-  SYMBOLIC_ERROR_CODE_MSG = 3,
-  SYMBOLIC_ERROR_CODE_UNKNOWN = 4,
-  SYMBOLIC_ERROR_CODE_PARSE = 101,
-  SYMBOLIC_ERROR_CODE_NOT_FOUND = 102,
-  SYMBOLIC_ERROR_CODE_FORMAT = 103,
-  SYMBOLIC_ERROR_CODE_MISSING_DEBUG_INFO = 104,
-  SYMBOLIC_ERROR_CODE_BAD_JSON = 105,
-  SYMBOLIC_ERROR_CODE_BAD_SYMBOL = 1001,
-  SYMBOLIC_ERROR_CODE_UNSUPPORTED_OBJECT_FILE = 1002,
-  SYMBOLIC_ERROR_CODE_MALFORMED_OBJECT_FILE = 1003,
-  SYMBOLIC_ERROR_CODE_BAD_CACHE_FILE = 1004,
-  SYMBOLIC_ERROR_CODE_MISSING_SECTION = 1005,
-  SYMBOLIC_ERROR_CODE_BAD_DWARF_DATA = 1006,
-  SYMBOLIC_ERROR_CODE_BAD_BREAKPAD_SYM = 1007,
-  SYMBOLIC_ERROR_CODE_BAD_SYMBOL_TABLE = 1008,
-  SYMBOLIC_ERROR_CODE_BAD_SOURCEMAP = 2001,
-  SYMBOLIC_ERROR_CODE_CANNOT_FLATTEN_SOURCEMAP = 2002,
-  SYMBOLIC_ERROR_CODE_STACKWALK = 3001,
-  SYMBOLIC_ERROR_CODE_RESOLVER = 3002,
-  SYMBOLIC_ERROR_CODE_IO = 10001,
-  SYMBOLIC_ERROR_CODE_UTF8_ERROR = 10002,
-  SYMBOLIC_ERROR_CODE_PARSE_INT = 10003,
+    SYMBOLIC_ERROR_CODE_NO_ERROR = 0,
+    SYMBOLIC_ERROR_CODE_PANIC = 1,
+    SYMBOLIC_ERROR_CODE_INTERNAL = 2,
+    SYMBOLIC_ERROR_CODE_MSG = 3,
+    SYMBOLIC_ERROR_CODE_UNKNOWN = 4,
+    SYMBOLIC_ERROR_CODE_PARSE = 101,
+    SYMBOLIC_ERROR_CODE_NOT_FOUND = 102,
+    SYMBOLIC_ERROR_CODE_FORMAT = 103,
+    SYMBOLIC_ERROR_CODE_MISSING_DEBUG_INFO = 104,
+    SYMBOLIC_ERROR_CODE_BAD_JSON = 105,
+    SYMBOLIC_ERROR_CODE_BAD_SYMBOL = 1001,
+    SYMBOLIC_ERROR_CODE_UNSUPPORTED_OBJECT_FILE = 1002,
+    SYMBOLIC_ERROR_CODE_MALFORMED_OBJECT_FILE = 1003,
+    SYMBOLIC_ERROR_CODE_BAD_CACHE_FILE = 1004,
+    SYMBOLIC_ERROR_CODE_MISSING_SECTION = 1005,
+    SYMBOLIC_ERROR_CODE_BAD_DWARF_DATA = 1006,
+    SYMBOLIC_ERROR_CODE_BAD_BREAKPAD_SYM = 1007,
+    SYMBOLIC_ERROR_CODE_BAD_SYMBOL_TABLE = 1008,
+    SYMBOLIC_ERROR_CODE_BAD_SOURCEMAP = 2001,
+    SYMBOLIC_ERROR_CODE_CANNOT_FLATTEN_SOURCEMAP = 2002,
+    SYMBOLIC_ERROR_CODE_STACKWALK = 3001,
+    SYMBOLIC_ERROR_CODE_RESOLVER = 3002,
+    SYMBOLIC_ERROR_CODE_IO = 10001,
+    SYMBOLIC_ERROR_CODE_UTF8_ERROR = 10002,
+    SYMBOLIC_ERROR_CODE_PARSE_INT = 10003,
 };
 typedef uint32_t SymbolicErrorCode;
 
 /*
- * Indicates how well the instruction pointer derived during stack walking is trusted
+ * Indicates how well the instruction pointer derived during stack walking is
+ * trusted
  */
 enum SymbolicFrameTrust {
-  SYMBOLIC_FRAME_TRUST_NONE,
-  SYMBOLIC_FRAME_TRUST_SCAN,
-  SYMBOLIC_FRAME_TRUST_CFI_SCAN,
-  SYMBOLIC_FRAME_TRUST_FP,
-  SYMBOLIC_FRAME_TRUST_CFI,
-  SYMBOLIC_FRAME_TRUST_PREWALKED,
-  SYMBOLIC_FRAME_TRUST_CONTEXT,
+    SYMBOLIC_FRAME_TRUST_NONE,
+    SYMBOLIC_FRAME_TRUST_SCAN,
+    SYMBOLIC_FRAME_TRUST_CFI_SCAN,
+    SYMBOLIC_FRAME_TRUST_FP,
+    SYMBOLIC_FRAME_TRUST_CFI,
+    SYMBOLIC_FRAME_TRUST_PREWALKED,
+    SYMBOLIC_FRAME_TRUST_CONTEXT,
 };
 typedef uint32_t SymbolicFrameTrust;
 
@@ -92,157 +93,160 @@ typedef struct SymbolicSymCache SymbolicSymCache;
  * Represents a string.
  */
 typedef struct {
-  char *data;
-  uintptr_t len;
-  bool owned;
+    char *data;
+    uintptr_t len;
+    bool owned;
 } SymbolicStr;
 
 /*
  * ELF architecture
  */
 typedef struct {
-  uint16_t machine;
+    uint16_t machine;
 } SymbolicElfArch;
 
 /*
  * Mach-O architecture
  */
 typedef struct {
-  uint32_t cputype;
-  uint32_t cpusubtype;
+    uint32_t cputype;
+    uint32_t cpusubtype;
 } SymbolicMachoArch;
 
 typedef struct {
-  uint8_t *bytes;
-  uintptr_t len;
+    uint8_t *bytes;
+    uintptr_t len;
 } SymbolicCfiCache;
 
 /*
  * Represents an instruction info.
  */
 typedef struct {
-  /*
-   * The address of the instruction we want to use as a base.
-   */
-  uint64_t addr;
-  /*
-   * The architecture we are dealing with.
-   */
-  const SymbolicStr *arch;
-  /*
-   * This is true if the frame is the cause of the crash.
-   */
-  bool crashing_frame;
-  /*
-   * If a signal is know that triggers the crash, it can be stored here (0 if unknown)
-   */
-  uint32_t signal;
-  /*
-   * The optional value of the IP register (0 if unknown).
-   */
-  uint64_t ip_reg;
+    /*
+     * The address of the instruction we want to use as a base.
+     */
+    uint64_t addr;
+    /*
+     * The architecture we are dealing with.
+     */
+    const SymbolicStr *arch;
+    /*
+     * This is true if the frame is the cause of the crash.
+     */
+    bool crashing_frame;
+    /*
+     * If a signal is know that triggers the crash, it can be stored here (0 if
+     * unknown)
+     */
+    uint32_t signal;
+    /*
+     * The optional value of the IP register (0 if unknown).
+     */
+    uint64_t ip_reg;
 } SymbolicInstructionInfo;
 
 /*
  * Represents a single symbol after lookup.
  */
 typedef struct {
-  uint64_t sym_addr;
-  uint64_t line_addr;
-  uint64_t instr_addr;
-  uint32_t line;
-  SymbolicStr lang;
-  SymbolicStr symbol;
-  SymbolicStr filename;
-  SymbolicStr base_dir;
-  SymbolicStr comp_dir;
+    uint64_t sym_addr;
+    uint64_t line_addr;
+    uint64_t instr_addr;
+    uint32_t line;
+    SymbolicStr lang;
+    SymbolicStr symbol;
+    SymbolicStr filename;
+    SymbolicStr base_dir;
+    SymbolicStr comp_dir;
 } SymbolicLineInfo;
 
 /*
  * Represents a lookup result of one or more items.
  */
 typedef struct {
-  SymbolicLineInfo *items;
-  uintptr_t len;
+    SymbolicLineInfo *items;
+    uintptr_t len;
 } SymbolicLookupResult;
 
 /*
  * OS and CPU information
  */
 typedef struct {
-  SymbolicStr os_name;
-  SymbolicStr os_version;
-  SymbolicStr os_build;
-  SymbolicStr cpu_family;
-  SymbolicStr cpu_info;
-  uint32_t cpu_count;
+    SymbolicStr os_name;
+    SymbolicStr os_version;
+    SymbolicStr os_build;
+    SymbolicStr cpu_family;
+    SymbolicStr cpu_info;
+    uint32_t cpu_count;
 } SymbolicSystemInfo;
 
 /*
- * Carries information about a code module loaded into the process during the crash
+ * Carries information about a code module loaded into the process during the
+ * crash
  */
 typedef struct {
-  SymbolicStr id;
-  uint64_t addr;
-  uint64_t size;
-  SymbolicStr name;
+    SymbolicStr id;
+    uint64_t addr;
+    uint64_t size;
+    SymbolicStr name;
 } SymbolicCodeModule;
 
 /*
- * Contains the absolute instruction address and image information of a stack frame
+ * Contains the absolute instruction address and image information of a stack
+ * frame
  */
 typedef struct {
-  uint64_t return_address;
-  uint64_t instruction;
-  SymbolicFrameTrust trust;
-  SymbolicCodeModule module;
+    uint64_t return_address;
+    uint64_t instruction;
+    SymbolicFrameTrust trust;
+    SymbolicCodeModule module;
 } SymbolicStackFrame;
 
 /*
  * Represents a thread of the process state which holds a list of stack frames
  */
 typedef struct {
-  uint32_t thread_id;
-  SymbolicStackFrame *frames;
-  uintptr_t frame_count;
+    uint32_t thread_id;
+    SymbolicStackFrame *frames;
+    uintptr_t frame_count;
 } SymbolicCallStack;
 
 /*
  * State of a crashed process
  */
 typedef struct {
-  int32_t requesting_thread;
-  uint64_t timestamp;
-  bool crashed;
-  uint64_t crash_address;
-  SymbolicStr crash_reason;
-  SymbolicStr assertion;
-  SymbolicSystemInfo system_info;
-  SymbolicCallStack *threads;
-  uintptr_t thread_count;
-  SymbolicCodeModule *modules;
-  uintptr_t module_count;
+    int32_t requesting_thread;
+    uint64_t timestamp;
+    bool crashed;
+    uint64_t crash_address;
+    SymbolicStr crash_reason;
+    SymbolicStr assertion;
+    SymbolicSystemInfo system_info;
+    SymbolicCallStack *threads;
+    uintptr_t thread_count;
+    SymbolicCodeModule *modules;
+    uintptr_t module_count;
 } SymbolicProcessState;
 
 /*
  * Represents a UUID
  */
 typedef struct {
-  uint8_t data[16];
+    uint8_t data[16];
 } SymbolicUuid;
 
 /*
  * Represents a single token after lookup.
  */
 typedef struct {
-  uint32_t src_line;
-  uint32_t src_col;
-  uint32_t dst_line;
-  uint32_t dst_col;
-  uint32_t src_id;
-  SymbolicStr name;
-  SymbolicStr src;
-  SymbolicStr function_name;
+    uint32_t src_line;
+    uint32_t src_col;
+    uint32_t dst_line;
+    uint32_t dst_col;
+    uint32_t src_id;
+    SymbolicStr name;
+    SymbolicStr src;
+    SymbolicStr function_name;
 } SymbolicTokenMatch;
 
 /*
@@ -290,7 +294,8 @@ SymbolicCfiCache *symbolic_cfi_cache_from_object(const SymbolicObject *sobj);
  * This demangles with the default behavior in symbolic. If no language
  * is specified, it will be auto-detected.
  */
-SymbolicStr symbolic_demangle(const SymbolicStr *ident, const SymbolicStr *lang);
+SymbolicStr symbolic_demangle(const SymbolicStr *ident,
+                              const SymbolicStr *lang);
 
 /*
  * Demangles a given identifier.
@@ -299,7 +304,8 @@ SymbolicStr symbolic_demangle(const SymbolicStr *ident, const SymbolicStr *lang)
  * arguments and instead strips them. If no language is specified, it
  * will be auto-detected.
  */
-SymbolicStr symbolic_demangle_no_args(const SymbolicStr *ident, const SymbolicStr *lang);
+SymbolicStr symbolic_demangle_no_args(const SymbolicStr *ident,
+                                      const SymbolicStr *lang);
 
 /*
  * Clears the last error.
@@ -334,7 +340,8 @@ void symbolic_fatobject_free(SymbolicFatObject *sfo);
 /*
  * Returns the n-th object.
  */
-SymbolicObject *symbolic_fatobject_get_object(const SymbolicFatObject *sfo, uintptr_t idx);
+SymbolicObject *symbolic_fatobject_get_object(const SymbolicFatObject *sfo,
+                                              uintptr_t idx);
 
 /*
  * Returns the number of contained objects.
@@ -369,7 +376,7 @@ void symbolic_frame_info_map_free(SymbolicFrameInfoMap *smap);
 SymbolicFrameInfoMap *symbolic_frame_info_map_new(void);
 
 /*
- * Converts a Breakpad CodeModuleId to ObjectId
+ * Converts a Breakpad CodeModuleId to DebugId
  */
 SymbolicStr symbolic_id_from_breakpad(const SymbolicStr *sid);
 
@@ -414,15 +421,15 @@ SymbolicStr symbolic_object_get_type(const SymbolicObject *so);
  * Processes a minidump with optional CFI information and returns the state
  * of the process at the time of the crash
  */
-SymbolicProcessState *symbolic_process_minidump(const char *path, const SymbolicFrameInfoMap *smap);
+SymbolicProcessState *symbolic_process_minidump(
+    const char *path, const SymbolicFrameInfoMap *smap);
 
 /*
  * Processes a minidump with optional CFI information and returns the state
  * of the process at the time of the crash
  */
-SymbolicProcessState *symbolic_process_minidump_buffer(const char *buffer,
-                                                       uintptr_t length,
-                                                       const SymbolicFrameInfoMap *smap);
+SymbolicProcessState *symbolic_process_minidump_buffer(
+    const char *buffer, uintptr_t length, const SymbolicFrameInfoMap *smap);
 
 /*
  * Frees a process state object
@@ -432,9 +439,10 @@ void symbolic_process_state_free(SymbolicProcessState *sstate);
 /*
  * Converts a dotted path at a line number
  */
-SymbolicStr symbolic_proguardmappingview_convert_dotted_path(const SymbolicProguardMappingView *spmv,
-                                                             const SymbolicStr *path,
-                                                             uint32_t lineno);
+SymbolicStr symbolic_proguardmappingview_convert_dotted_path(
+    const SymbolicProguardMappingView *spmv,
+    const SymbolicStr *path,
+    uint32_t lineno);
 
 /*
  * Frees a proguard mapping view.
@@ -446,23 +454,26 @@ void symbolic_proguardmappingview_free(SymbolicProguardMappingView *spmv);
  *
  * This shares the underlying memory and does not copy it.
  */
-SymbolicProguardMappingView *symbolic_proguardmappingview_from_bytes(const char *bytes,
-                                                                     uintptr_t len);
+SymbolicProguardMappingView *symbolic_proguardmappingview_from_bytes(
+    const char *bytes, uintptr_t len);
 
 /*
  * Creates a proguard mapping view from a path.
  */
-SymbolicProguardMappingView *symbolic_proguardmappingview_from_path(const char *path);
+SymbolicProguardMappingView *symbolic_proguardmappingview_from_path(
+    const char *path);
 
 /*
  * Returns the UUID
  */
-SymbolicUuid symbolic_proguardmappingview_get_uuid(SymbolicProguardMappingView *spmv);
+SymbolicUuid symbolic_proguardmappingview_get_uuid(
+    SymbolicProguardMappingView *spmv);
 
 /*
  * Returns true if the mapping file has line infos.
  */
-bool symbolic_proguardmappingview_has_line_info(const SymbolicProguardMappingView *spmv);
+bool symbolic_proguardmappingview_has_line_info(
+    const SymbolicProguardMappingView *spmv);
 
 /*
  * Frees a source map view
@@ -472,30 +483,32 @@ void symbolic_sourcemapview_free(const SymbolicSourceMapView *smv);
 /*
  * Loads a sourcemap from a JSON byte slice.
  */
-SymbolicSourceMapView *symbolic_sourcemapview_from_json_slice(const char *data, uintptr_t len);
+SymbolicSourceMapView *symbolic_sourcemapview_from_json_slice(const char *data,
+                                                              uintptr_t len);
 
 /*
  * Return the number of sources.
  */
-uint32_t symbolic_sourcemapview_get_source_count(const SymbolicSourceMapView *ssm);
+uint32_t symbolic_sourcemapview_get_source_count(
+    const SymbolicSourceMapView *ssm);
 
 /*
  * Return the source name for an index.
  */
-SymbolicStr symbolic_sourcemapview_get_source_name(const SymbolicSourceMapView *ssm,
-                                                   uint32_t index);
+SymbolicStr symbolic_sourcemapview_get_source_name(
+    const SymbolicSourceMapView *ssm, uint32_t index);
 
 /*
  * Return the sourceview for a given source.
  */
-const SymbolicSourceView *symbolic_sourcemapview_get_sourceview(const SymbolicSourceMapView *ssm,
-                                                                uint32_t index);
+const SymbolicSourceView *symbolic_sourcemapview_get_sourceview(
+    const SymbolicSourceMapView *ssm, uint32_t index);
 
 /*
  * Returns a specific token.
  */
-SymbolicTokenMatch *symbolic_sourcemapview_get_token(const SymbolicSourceMapView *ssm,
-                                                     uint32_t idx);
+SymbolicTokenMatch *symbolic_sourcemapview_get_token(
+    const SymbolicSourceMapView *ssm, uint32_t idx);
 
 /*
  * Returns the number of tokens.
@@ -505,18 +518,18 @@ uint32_t symbolic_sourcemapview_get_tokens(const SymbolicSourceMapView *ssm);
 /*
  * Looks up a token.
  */
-SymbolicTokenMatch *symbolic_sourcemapview_lookup_token(const SymbolicSourceMapView *ssm,
-                                                        uint32_t line,
-                                                        uint32_t col);
+SymbolicTokenMatch *symbolic_sourcemapview_lookup_token(
+    const SymbolicSourceMapView *ssm, uint32_t line, uint32_t col);
 
 /*
  * Looks up a token.
  */
-SymbolicTokenMatch *symbolic_sourcemapview_lookup_token_with_function_name(const SymbolicSourceMapView *ssm,
-                                                                           uint32_t line,
-                                                                           uint32_t col,
-                                                                           const SymbolicStr *minified_name,
-                                                                           const SymbolicSourceView *ssv);
+SymbolicTokenMatch *symbolic_sourcemapview_lookup_token_with_function_name(
+    const SymbolicSourceMapView *ssm,
+    uint32_t line,
+    uint32_t col,
+    const SymbolicStr *minified_name,
+    const SymbolicSourceView *ssv);
 
 /*
  * Returns the underlying source (borrowed).
@@ -534,12 +547,14 @@ void symbolic_sourceview_free(SymbolicSourceView *ssv);
  * This shares the underlying memory and does not copy it if that is
  * possible.  Will ignore utf-8 decoding errors.
  */
-SymbolicSourceView *symbolic_sourceview_from_bytes(const char *bytes, uintptr_t len);
+SymbolicSourceView *symbolic_sourceview_from_bytes(const char *bytes,
+                                                   uintptr_t len);
 
 /*
  * Returns a specific line.
  */
-SymbolicStr symbolic_sourceview_get_line(const SymbolicSourceView *ssv, uint32_t idx);
+SymbolicStr symbolic_sourceview_get_line(const SymbolicSourceView *ssv,
+                                         uint32_t idx);
 
 /*
  * Returns the number of lines.
@@ -576,7 +591,8 @@ void symbolic_symcache_free(SymbolicSymCache *scache);
 /*
  * Creates a symcache from bytes
  */
-SymbolicSymCache *symbolic_symcache_from_bytes(const uint8_t *bytes, uintptr_t len);
+SymbolicSymCache *symbolic_symcache_from_bytes(const uint8_t *bytes,
+                                               uintptr_t len);
 
 /*
  * Creates a symcache from a given object.
@@ -628,7 +644,8 @@ uint32_t symbolic_symcache_latest_file_format_version(void);
 /*
  * Looks up a single symbol.
  */
-SymbolicLookupResult symbolic_symcache_lookup(const SymbolicSymCache *scache, uint64_t addr);
+SymbolicLookupResult symbolic_symcache_lookup(const SymbolicSymCache *scache,
+                                              uint64_t addr);
 
 /*
  * Free a token match

@@ -1,14 +1,15 @@
 //! Exposes a C-ABI for symbolic
 extern crate symbolic_common;
-extern crate symbolic_demangle;
 extern crate symbolic_debuginfo;
-extern crate symbolic_symcache;
-extern crate symbolic_sourcemap;
-extern crate symbolic_proguard;
+extern crate symbolic_demangle;
 extern crate symbolic_minidump;
+extern crate symbolic_proguard;
+extern crate symbolic_sourcemap;
+extern crate symbolic_symcache;
 extern crate uuid;
 
-#[macro_use] mod utils;
+#[macro_use]
+mod utils;
 
 mod core;
 mod common;

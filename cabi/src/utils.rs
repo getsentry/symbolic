@@ -64,8 +64,7 @@ macro_rules! ffi_fn (
     ) => (
         #[no_mangle]
         $(#[$attr])*
-        pub unsafe extern "C" fn $name($($aname: $aty,)*) -> $rv
-        {
+        pub unsafe extern "C" fn $name($($aname: $aty,)*) -> $rv {
             $crate::utils::landingpad(|| $body)
         }
     );
@@ -77,8 +76,7 @@ macro_rules! ffi_fn (
     ) => {
         #[no_mangle]
         $(#[$attr])*
-        pub unsafe extern "C" fn $name($($aname: $aty,)*)
-        {
+        pub unsafe extern "C" fn $name($($aname: $aty,)*) {
             // this silences panics and stuff
             $crate::utils::landingpad(|| { $body; Ok(0 as ::std::os::raw::c_int) });
         }

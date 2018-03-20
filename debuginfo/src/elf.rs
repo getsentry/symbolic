@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use symbolic_common::Result;
 
-use id::ObjectId;
+use id::DebugId;
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;
@@ -97,14 +97,14 @@ fn find_build_id<'data>(elf: &elf::Elf<'data>, data: &'data [u8]) -> Option<&'da
     None
 }
 
-/// Converts an ELF object identifier into a `ObjectId`.
+/// Converts an ELF object identifier into a `DebugId`.
 ///
 /// The identifier data is first truncated or extended to match 16 byte size of
 /// Uuids. If the data is declared in little endian, the first three Uuid fields
 /// are flipped to match the big endian expected by the breakpad processor.
 ///
-/// The `ObjectId::age` field is always `0` for ELF.
-fn create_elf_id(identifier: &[u8], little_endian: bool) -> Option<ObjectId> {
+/// The `DebugId::appendix` field is always `0` for ELF.
+fn create_elf_id(identifier: &[u8], little_endian: bool) -> Option<DebugId> {
     // Make sure that we have exactly UUID_SIZE bytes available
     let mut data = [0 as u8; UUID_SIZE];
     let len = cmp::min(identifier.len(), UUID_SIZE);
@@ -119,7 +119,7 @@ fn create_elf_id(identifier: &[u8], little_endian: bool) -> Option<ObjectId> {
         data[6..8].reverse(); // uuid field 3
     }
 
-    Uuid::from_bytes(&data).ok().map(ObjectId::from_uuid)
+    Uuid::from_bytes(&data).ok().map(DebugId::from_uuid)
 }
 
 /// Tries to obtain the object identifier of an ELF object.
@@ -133,7 +133,7 @@ fn create_elf_id(identifier: &[u8], little_endian: bool) -> Option<ObjectId> {
 /// likely not a valid UUID since was generated off a hash value.
 ///
 /// If all of the above fails, the identifier will be `None`.
-pub fn get_elf_id(elf: &elf::Elf, data: &[u8]) -> Option<ObjectId> {
+pub fn get_elf_id(elf: &elf::Elf, data: &[u8]) -> Option<DebugId> {
     // Search for a GNU build identifier node in the program headers or the
     // build ID section. If errors occur during this process, fall through
     // silently to the next method.
