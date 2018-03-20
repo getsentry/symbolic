@@ -14,6 +14,11 @@ extern crate memmap;
 extern crate owning_ref;
 #[cfg(feature = "with_objects")]
 extern crate scroll;
+#[cfg(feature = "with_serde")]
+extern crate serde;
+#[macro_use]
+#[cfg(feature = "with_serde")]
+extern crate serde_plain;
 #[cfg(feature = "with_sourcemaps")]
 extern crate sourcemap;
 

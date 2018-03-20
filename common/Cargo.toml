@@ -22,10 +22,13 @@ goblin = { version = "0.0.14", optional = true }
 memmap = "0.6.2"
 owning_ref = "0.3.3"
 scroll = { version = "0.8.0", optional = true }
+serde = { version = "1.0.33", optional = true }
+serde_plain = { version = "0.3.0", optional = true }
 sourcemap = { version = "2.2.0", optional = true }
 
 [features]
 default = []
 with_dwarf = ["gimli"]
 with_objects = ["goblin", "scroll"]
+with_serde = ["serde", "serde_plain"]
 with_sourcemaps = ["sourcemap"]
