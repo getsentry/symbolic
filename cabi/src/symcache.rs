@@ -4,10 +4,10 @@ use std::os::raw::c_char;
 use std::ffi::CStr;
 
 use symbolic_debuginfo::Object;
-use symbolic_symcache::{SymCache, InstructionInfo, SYMCACHE_LATEST_VERSION};
-use symbolic_common::{ByteView, Arch};
+use symbolic_symcache::{InstructionInfo, SymCache, SYMCACHE_LATEST_VERSION};
+use symbolic_common::{Arch, ByteView};
 
-use core::{SymbolicStr};
+use core::SymbolicStr;
 use debuginfo::SymbolicObject;
 
 /// Represents a symbolic sym cache.
@@ -49,12 +49,9 @@ pub struct SymbolicInstructionInfo {
     pub ip_reg: u64,
 }
 
-
 ffi_fn! {
     /// Creates a symcache from a given path.
-    unsafe fn symbolic_symcache_from_path(path: *const c_char)
-        -> Result<*mut SymbolicSymCache>
-    {
+    unsafe fn symbolic_symcache_from_path(path: *const c_char) -> Result<*mut SymbolicSymCache> {
         let byteview = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
         let cache = SymCache::new(byteview)?;
         Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicSymCache)
@@ -63,9 +60,10 @@ ffi_fn! {
 
 ffi_fn! {
     /// Creates a symcache from bytes
-    unsafe fn symbolic_symcache_from_bytes(bytes: *const u8, len: usize)
-        -> Result<*mut SymbolicSymCache>
-    {
+    unsafe fn symbolic_symcache_from_bytes(
+        bytes: *const u8,
+        len: usize,
+    ) -> Result<*mut SymbolicSymCache> {
         let vec = slice::from_raw_parts(bytes, len).to_owned();
         let byteview = ByteView::from_vec(vec);
         let cache = SymCache::new(byteview)?;
@@ -75,9 +73,9 @@ ffi_fn! {
 
 ffi_fn! {
     /// Creates a symcache from a given object.
-    unsafe fn symbolic_symcache_from_object(sobj: *const SymbolicObject)
-        -> Result<*mut SymbolicSymCache>
-    {
+    unsafe fn symbolic_symcache_from_object(
+        sobj: *const SymbolicObject,
+    ) -> Result<*mut SymbolicSymCache> {
         let cache = SymCache::from_object(&*(sobj as *const Object))?;
         Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicSymCache)
     }
@@ -145,7 +143,9 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns the version of the cache file.
-    unsafe fn symbolic_symcache_file_format_version(scache: *const SymbolicSymCache) -> Result<u32> {
+    unsafe fn symbolic_symcache_file_format_version(
+        scache: *const SymbolicSymCache,
+    ) -> Result<u32> {
         let cache = scache as *mut SymCache<'static>;
         (*cache).file_format_version()
     }
@@ -153,8 +153,10 @@ ffi_fn! {
 
 ffi_fn! {
     /// Looks up a single symbol.
-    unsafe fn symbolic_symcache_lookup(scache: *const SymbolicSymCache,
-                                       addr: u64) -> Result<SymbolicLookupResult> {
+    unsafe fn symbolic_symcache_lookup(
+        scache: *const SymbolicSymCache,
+        addr: u64,
+    ) -> Result<SymbolicLookupResult> {
         let cache = scache as *const SymCache<'static>;
         let vec = (*cache).lookup(addr)?;
 
@@ -194,9 +196,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Return the best instruction for an isntruction info
-    unsafe fn symbolic_find_best_instruction(ii: *const SymbolicInstructionInfo)
-        -> Result<u64>
-    {
+    unsafe fn symbolic_find_best_instruction(ii: *const SymbolicInstructionInfo) -> Result<u64> {
         let real_ii = InstructionInfo {
             addr: (*ii).addr,
             arch: Arch::parse((*(*ii).arch).as_str())?,

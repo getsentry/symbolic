@@ -59,10 +59,7 @@ impl SymbolicStr {
     }
 
     pub fn as_str(&self) -> &str {
-        unsafe {
-            str::from_utf8_unchecked(slice::from_raw_parts(
-                self.data as *const _, self.len))
-        }
+        unsafe { str::from_utf8_unchecked(slice::from_raw_parts(self.data as *const _, self.len)) }
     }
 }
 
@@ -81,7 +78,7 @@ impl<'a> From<&'a str> for SymbolicStr {
 /// Represents a UUID
 #[repr(C)]
 pub struct SymbolicUuid {
-    pub data: [u8; 16]
+    pub data: [u8; 16],
 }
 
 impl Default for SymbolicUuid {
@@ -247,14 +244,23 @@ pub unsafe extern "C" fn symbolic_err_get_backtrace() -> SymbolicStr {
 
                             if let Some(file) = symbol.filename() {
                                 if let Some(filename) = file.file_name() {
-                                    write!(&mut out, " ({}:{})", filename.to_string_lossy(),
-                                        symbol.lineno().unwrap_or(0)).ok();
+                                    write!(
+                                        &mut out,
+                                        " ({}:{})",
+                                        filename.to_string_lossy(),
+                                        symbol.lineno().unwrap_or(0)
+                                    ).ok();
                                 }
                             }
                         }
 
                         if done {
-                            write!(&mut out, "\n{:18} [{} python frames omitted]", "", frames.len() - i).ok();
+                            write!(
+                                &mut out,
+                                "\n{:18} [{} python frames omitted]",
+                                "",
+                                frames.len() - i
+                            ).ok();
                             break;
                         }
                     }
@@ -320,6 +326,6 @@ pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: *const SymbolicUuid) -> bool
 /// `symbolic_cstr_free`.
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_uuid_to_str(uuid: *const SymbolicUuid) -> SymbolicStr {
-    let uuid =  Uuid::from_bytes(&(*uuid).data[..]).unwrap_or(Uuid::nil());
+    let uuid = Uuid::from_bytes(&(*uuid).data[..]).unwrap_or(Uuid::nil());
     SymbolicStr::from_string(uuid.hyphenated().to_string())
 }

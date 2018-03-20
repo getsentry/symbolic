@@ -7,7 +7,7 @@ use std::slice;
 use std::cell::RefCell;
 
 use symbolic_common::{Arch, ByteView, ErrorKind, Language, Name, Result};
-use symbolic_debuginfo::{Object, DebugId};
+use symbolic_debuginfo::{DebugId, Object};
 use symbolic_demangle::Demangle;
 
 use types::{CacheFileHeader, CacheFileHeaderV1, CacheFileHeaderV2, CacheFilePreamble, DataSource,
