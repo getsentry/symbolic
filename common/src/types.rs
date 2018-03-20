@@ -319,6 +319,12 @@ impl str::FromStr for Arch {
     }
 }
 
+#[cfg(feature = "with_serde")]
+derive_deserialize_from_str!(Arch, "Arch");
+
+#[cfg(feature = "with_serde")]
+derive_serialize_from_display!(Arch);
+
 /// Supported programming languages for demangling
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 #[repr(u32)]
@@ -429,6 +435,12 @@ impl str::FromStr for Language {
     }
 }
 
+#[cfg(feature = "with_serde")]
+derive_deserialize_from_str!(Language, "Language");
+
+#[cfg(feature = "with_serde")]
+derive_serialize_from_display!(Language);
+
 /// Represents a potentially mangled symbol
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct Name<'a> {
@@ -538,6 +550,12 @@ impl str::FromStr for ObjectKind {
         })
     }
 }
+
+#[cfg(feature = "with_serde")]
+derive_deserialize_from_str!(ObjectKind, "ObjectKind");
+
+#[cfg(feature = "with_serde")]
+derive_serialize_from_display!(ObjectKind);
 
 /// Represents the designated use of the object file and hints at its contents.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
@@ -698,6 +716,12 @@ impl str::FromStr for ObjectClass {
     }
 }
 
+#[cfg(feature = "with_serde")]
+derive_deserialize_from_str!(ObjectClass, "ObjectClass");
+
+#[cfg(feature = "with_serde")]
+derive_serialize_from_display!(ObjectClass);
+
 /// Represents the kind of debug information inside an object.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub enum DebugKind {
@@ -738,3 +762,9 @@ impl str::FromStr for DebugKind {
         DebugKind::parse(string)
     }
 }
+
+#[cfg(feature = "with_serde")]
+derive_deserialize_from_str!(DebugKind, "DebugKind");
+
+#[cfg(feature = "with_serde")]
+derive_serialize_from_display!(DebugKind);

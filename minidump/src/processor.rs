@@ -136,6 +136,12 @@ impl str::FromStr for CodeModuleId {
     }
 }
 
+#[cfg(feature = "with_serde")]
+derive_deserialize_from_str!(CodeModuleId, "CodeModuleId");
+
+#[cfg(feature = "with_serde")]
+derive_serialize_from_display!(CodeModuleId);
+
 /// Carries information about a code module loaded into the process during the
 /// crash. The `debug_identifier` uniquely identifies this module.
 #[repr(C)]

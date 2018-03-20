@@ -123,6 +123,12 @@ impl From<(Uuid, u64)> for ObjectId {
     }
 }
 
+#[cfg(feature = "with_serde")]
+derive_deserialize_from_str!(ObjectId, "ObjectId");
+
+#[cfg(feature = "with_serde")]
+derive_serialize_from_display!(ObjectId);
+
 /// Wrapper around `ObjectId` for Breakpad formatting.
 ///
 /// **Example:**
