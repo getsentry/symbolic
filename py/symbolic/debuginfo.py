@@ -121,7 +121,7 @@ class ObjectRef(object):
         # not a real address but why handle it differently
         self.size = parse_addr(data['image_size'])
         self.vmaddr = data.get('image_vmaddr')
-        self.id = data['id'].lower()
+        self.id = normalize_debug_id(data.get('id') or data.get('uuid') or '')
         if data.get('arch') is not None and arch_is_known(data['arch']):
             self.arch = data['arch']
         elif data.get('cpu_type') is not None \
