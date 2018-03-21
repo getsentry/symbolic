@@ -9,7 +9,13 @@ from symbolic.symcache import SymCache
 from symbolic.minidump import CfiCache
 
 
-__all__ = ['FatObject', 'Object', 'ObjectLookup', 'id_from_breakpad']
+__all__ = [
+    'FatObject',
+    'Object',
+    'ObjectLookup',
+    'id_from_breakpad',
+    'normalize_debug_id',
+]
 
 
 class FatObject(RustObject):
@@ -178,4 +184,11 @@ def id_from_breakpad(breakpad_id):
     """Converts a Breakpad CodeModuleId to DebugId"""
     s = encode_str(breakpad_id)
     id = rustcall(lib.symbolic_id_from_breakpad, s)
+    return decode_str(id)
+
+
+def normalize_debug_id(debug_id):
+    """Normalizes a debug identifier to default representation"""
+    s = encode_str(debug_id)
+    id = rustcall(lib.symbolic_normalize_debug_id, s)
     return decode_str(id)

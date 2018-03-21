@@ -1,6 +1,7 @@
-use std::ptr;
-use std::os::raw::c_char;
 use std::ffi::CStr;
+use std::os::raw::c_char;
+use std::ptr;
+use std::str::FromStr;
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{DebugId, FatObject, Object};
@@ -109,8 +110,15 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Converts a Breakpad CodeModuleId to DebugId
+    /// Converts a Breakpad CodeModuleId to DebugId.
     unsafe fn symbolic_id_from_breakpad(sid: *const SymbolicStr) -> Result<SymbolicStr> {
         Ok(DebugId::from_breakpad((*sid).as_str())?.to_string().into())
+    }
+}
+
+ffi_fn! {
+    /// Normalizes a debug identifier to default representation.
+    unsafe fn symbolic_normalize_debug_id(sid: *const SymbolicStr) -> Result<SymbolicStr> {
+        Ok(DebugId::from_str((*sid).as_str())?.to_string().into())
     }
 }
