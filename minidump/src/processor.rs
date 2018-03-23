@@ -91,7 +91,7 @@ pub struct CodeModuleId {
 impl CodeModuleId {
     pub fn from_parts(uuid: Uuid, age: u32) -> CodeModuleId {
         CodeModuleId {
-            inner: DebugId::from_parts(uuid, age as u64),
+            inner: DebugId::from_parts(uuid, age),
         }
     }
 
@@ -100,7 +100,7 @@ impl CodeModuleId {
     }
 
     pub fn age(&self) -> u32 {
-        self.inner.appendix() as u32
+        self.inner.appendix()
     }
 
     pub fn as_object_id(&self) -> DebugId {
