@@ -1,0 +1,105 @@
+ProcessState {
+    requesting_thread: 0,
+    timestamp: 1521713398,
+    crash_address: 69,
+    crash_reason: "EXC_BAD_ACCESS / KERN_INVALID_ADDRESS",
+    assertion: "",
+    system_info: SystemInfo {
+        os_name: "Mac OS X",
+        os_version: "10.12.6",
+        cpu_family: "amd64",
+        cpu_info: "family 6 model 58 stepping 9",
+        cpu_count: 2
+    },
+    threads: [
+        CallStack {
+            thread_id: 775,
+            frames: [
+                StackFrame {
+                    return_address: 4458187797,
+                    instruction: 4458187797,
+                    trust: Context,
+                    module: Some(
+                        CodeModule {
+                            id: CodeModuleId {
+                                inner: DebugId {
+                                    uuid: Uuid("67e9247c-814e-392b-a027-dbde6748fcbf"),
+                                    appendix: 0
+                                }
+                            },
+                            base_address: 4458131456,
+                            size: 69632,
+                            code_file: "/Users/travis/build/getsentry/breakpad-tools/macos/build/./crash",
+                            code_identifier: "id",
+                            debug_file: "crash",
+                            debug_identifier: "67E9247C814E392BA027DBDE6748FCBF0"
+                        }
+                    )
+                },
+                StackFrame {
+                    return_address: 4458187888,
+                    instruction: 4458187887,
+                    trust: Scan,
+                    module: Some(
+                        CodeModule {
+                            id: CodeModuleId {
+                                inner: DebugId {
+                                    uuid: Uuid("67e9247c-814e-392b-a027-dbde6748fcbf"),
+                                    appendix: 0
+                                }
+                            },
+                            base_address: 4458131456,
+                            size: 69632,
+                            code_file: "/Users/travis/build/getsentry/breakpad-tools/macos/build/./crash",
+                            code_identifier: "id",
+                            debug_file: "crash",
+                            debug_identifier: "67E9247C814E392BA027DBDE6748FCBF0"
+                        }
+                    )
+                },
+                StackFrame {
+                    return_address: 140737084568117,
+                    instruction: 140737084568116,
+                    trust: Scan,
+                    module: Some(
+                        CodeModule {
+                            id: CodeModuleId {
+                                inner: DebugId {
+                                    uuid: Uuid("9b2ac56d-107c-3541-a127-9094a751f2c9"),
+                                    appendix: 0
+                                }
+                            },
+                            base_address: 140737084547072,
+                            size: 24576,
+                            code_file: "/usr/lib/system/libdyld.dylib",
+                            code_identifier: "id",
+                            debug_file: "libdyld.dylib",
+                            debug_identifier: "9B2AC56D107C3541A1279094A751F2C90"
+                        }
+                    )
+                },
+                StackFrame {
+                    return_address: 140737084568117,
+                    instruction: 140737084568116,
+                    trust: Scan,
+                    module: Some(
+                        CodeModule {
+                            id: CodeModuleId {
+                                inner: DebugId {
+                                    uuid: Uuid("9b2ac56d-107c-3541-a127-9094a751f2c9"),
+                                    appendix: 0
+                                }
+                            },
+                            base_address: 140737084547072,
+                            size: 24576,
+                            code_file: "/usr/lib/system/libdyld.dylib",
+                            code_identifier: "id",
+                            debug_file: "libdyld.dylib",
+                            debug_identifier: "9B2AC56D107C3541A1279094A751F2C90"
+                        }
+                    )
+                }
+            ]
+        }
+    ]
+}

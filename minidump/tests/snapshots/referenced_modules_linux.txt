@@ -1,0 +1,30 @@
+{
+    CodeModule {
+        id: CodeModuleId {
+            inner: DebugId {
+                uuid: Uuid("3aca1732-a953-c730-bb1e-5c83789d09b3"),
+                appendix: 0
+            }
+        },
+        base_address: 47417533423616,
+        size: 1826816,
+        code_file: "/lib/x86_64-linux-gnu/libc-2.19.so",
+        code_identifier: "3217ca3a53a930c7bb1e5c83789d09b30b0f3b39",
+        debug_file: "/lib/x86_64-linux-gnu/libc-2.19.so",
+        debug_identifier: "3ACA1732A953C730BB1E5C83789D09B30"
+    },
+    CodeModule {
+        id: CodeModuleId {
+            inner: DebugId {
+                uuid: Uuid("492e2dd2-3cc3-06ca-9c49-4eef1533a381"),
+                appendix: 0
+            }
+        },
+        base_address: 4194304,
+        size: 94208,
+        code_file: "/home/travis/build/getsentry/breakpad-tools/linux/build/crash",
+        code_identifier: "d22d2e49c33cca069c494eef1533a381",
+        debug_file: "/home/travis/build/getsentry/breakpad-tools/linux/build/crash",
+        debug_identifier: "492E2DD23CC306CA9C494EEF1533A3810"
+    }
+}
