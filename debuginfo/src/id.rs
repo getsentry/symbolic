@@ -277,9 +277,7 @@ mod test {
 
     #[test]
     fn test_parse_error_long() {
-        assert!(
-            DebugId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-feedface1").is_err()
-        )
+        assert!(DebugId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-feedface1").is_err())
     }
 
     #[test]
