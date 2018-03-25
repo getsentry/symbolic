@@ -1,5 +1,7 @@
 # Symbolic
 
+<a href="https://travis-ci.org/getsentry/symbolic"><img src="https://travis-ci.org/getsentry/symbolic.svg?branch=master" alt=""></a>
+<a href="https://crates.io/crates/symbolic"><img src="https://img.shields.io/crates/v/symbolic.svg" alt=""></a>
 <a href="https://pypi.python.org/pypi/Symbolic"><img src="https://img.shields.io/pypi/v/symbolic.svg" alt=""></a>
 <a href="https://travis-ci.org/getsentry/symbolic"><img src="https://travis-ci.org/getsentry/symbolic.svg?branch=master" alt=""></a>
 <a href="https://github.com/getsentry/symbolic/blob/master/LICENSE"><img src="https://img.shields.io/pypi/l/Symbolic.svg" alt=""></a>
