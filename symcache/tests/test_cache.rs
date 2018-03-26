@@ -56,7 +56,8 @@ fn test_lookup() {
     let buffer = ByteView::from_path(fixture_path("symcache/current/macos.symc"))
         .expect("Could not open symcache");
     let symcache = SymCache::new(buffer).expect("Could not load symcache");
-    let line_infos = symcache.lookup(4458187797 - 4458131456)
+    let line_infos = symcache
+        .lookup(4458187797 - 4458131456)
         .expect("Could not lookup");
     assert_snapshot("lookup.txt", &line_infos);
 }

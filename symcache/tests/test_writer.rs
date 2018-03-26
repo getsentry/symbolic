@@ -13,8 +13,7 @@ fn get_functions(symcache: &SymCache) -> String {
     let mut s = String::new();
     for func in symcache.functions() {
         let func = func.expect("Could not read symcache functions");
-        writeln!(s, "{:>16x} {:#}", func.addr(), func)
-            .expect("Could not format symcache function");
+        writeln!(s, "{:>16x} {:#}", func.addr(), func).expect("Could not format symcache function");
     }
     s
 }
