@@ -35,8 +35,8 @@ fn cfi_from_elf() {
 
 #[test]
 fn cfi_from_macho() {
-    let buffer = ByteView::from_path(fixture_path("macos/crash"))
-        .expect("Could not open the symbol file");
+    let buffer =
+        ByteView::from_path(fixture_path("macos/crash")).expect("Could not open the symbol file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
     let object = fat.get_object(0)
         .expect("Could not get the first object")
