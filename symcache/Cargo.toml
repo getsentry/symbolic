@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-symcache"
-version = "2.0.7"
+version = "3.0.0"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -23,9 +23,9 @@ if_chain = "0.1.2"
 lru-cache = "0.1.1"
 matches = "0.1.6"
 num = "0.1.42"
-symbolic-common = { version = "2.0.7", path = "../common", features = ["with_dwarf", "with_objects"] }
-symbolic-debuginfo = { version = "2.0.7", path = "../debuginfo" }
-symbolic-demangle = { version = "2.0.7", path = "../demangle" }
+symbolic-common = { version = "3.0.0", path = "../common", features = ["with_dwarf", "with_objects"] }
+symbolic-debuginfo = { version = "3.0.0", path = "../debuginfo" }
+symbolic-demangle = { version = "3.0.0", path = "../demangle" }
 uuid = { version = "0.6.1", features = ["serde"] }
 
 [dev-dependencies]
