@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-minidump"
-version = "3.0.0"
+version = "3.0.1"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -20,15 +20,15 @@ lazy_static = "1.0.0"
 regex = "0.2.10"
 serde = { version = "1.0.33", optional = true }
 serde_plain = { version = "0.3.0", optional = true }
-symbolic-common = { version = "3.0.0", path = "../common" }
-symbolic-debuginfo = { version = "3.0.0", path = "../debuginfo" }
+symbolic-common = { version = "3.0.1", path = "../common" }
+symbolic-debuginfo = { version = "3.0.1", path = "../debuginfo" }
 uuid = "0.6.1"
 
 [build-dependencies]
 cc = { version = "1.0.8", features = ["parallel"] }
 
 [dev-dependencies]
-symbolic-testutils = { version = "3.0.0", path = "../testutils" }
+symbolic-testutils = { version = "3.0.1", path = "../testutils" }
 
 [features]
 default = []
