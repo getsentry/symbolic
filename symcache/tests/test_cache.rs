@@ -1,12 +1,12 @@
 extern crate symbolic_common;
 extern crate symbolic_debuginfo;
 extern crate symbolic_symcache;
-extern crate testutils;
+extern crate symbolic_testutils;
 
 use std::fmt::Write;
 use symbolic_common::ByteView;
 use symbolic_symcache::SymCache;
-use testutils::{assert_snapshot, assert_snapshot_plain, fixture_path};
+use symbolic_testutils::{assert_snapshot, assert_snapshot_plain, fixture_path};
 
 fn get_functions(symcache: &SymCache) -> String {
     let mut s = String::new();

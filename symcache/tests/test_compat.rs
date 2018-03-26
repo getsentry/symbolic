@@ -1,11 +1,11 @@
 extern crate symbolic_common;
 extern crate symbolic_debuginfo;
 extern crate symbolic_symcache;
-extern crate testutils;
+extern crate symbolic_testutils;
 
 use symbolic_common::ByteView;
 use symbolic_symcache::SymCache;
-use testutils::fixture_path;
+use symbolic_testutils::fixture_path;
 
 #[test]
 fn test_v1() {

@@ -1,8 +1,16 @@
 [package]
-name = "testutils"
+name = "symbolic-testutils"
 version = "3.0.0"
+license = "MIT"
+authors = [
+    "Armin Ronacher <armin.ronacher@active-4.com>",
+    "Jan Michael Auer <mail@jauer.org>",
+]
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+description = """
+Helper crate for testing symbolic.
+"""
 
 [dependencies]
 difference = "2.0.0"
-
-[workspace]

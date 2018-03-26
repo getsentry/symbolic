@@ -28,7 +28,7 @@ uuid = "0.6.1"
 cc = { version = "1.0.8", features = ["parallel"] }
 
 [dev-dependencies]
-testutils = { path = "../testutils" }
+symbolic-testutils = { version = "3.0.0", path = "../testutils" }
 
 [features]
 default = []

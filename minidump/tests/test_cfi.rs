@@ -1,13 +1,13 @@
 extern crate symbolic_common;
 extern crate symbolic_debuginfo;
 extern crate symbolic_minidump;
-extern crate testutils;
+extern crate symbolic_testutils;
 
 use std::str;
 use symbolic_common::ByteView;
 use symbolic_debuginfo::FatObject;
 use symbolic_minidump::BreakpadAsciiCfiWriter;
-use testutils::{assert_snapshot_plain, fixture_path};
+use symbolic_testutils::{assert_snapshot_plain, fixture_path};
 
 #[test]
 fn cfi_from_elf() {
