@@ -28,7 +28,7 @@ uuid = "0.6.1"
 cc = { version = "1.0.8", features = ["parallel"] }
 
 [dev-dependencies]
-difference = "2.0.0"
+testutils = { path = "../testutils" }
 
 [features]
 default = []

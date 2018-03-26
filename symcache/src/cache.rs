@@ -732,6 +732,7 @@ impl<'a> SymCache<'a> {
 impl<'a> fmt::Debug for SymCache<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("SymCache")
+            .field("id", &self.id())
             .field("size", &self.size())
             .field("arch", &self.arch().unwrap_or(Arch::Unknown))
             .field(

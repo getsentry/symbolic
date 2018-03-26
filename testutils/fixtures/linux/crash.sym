@@ -1,3 +1,172 @@
+MODULE Linux x86_64 C0BCC3F19827FE653058404B2831D9E60 crash
+INFO CODE_ID F1C3BCC0279865FE3058404B2831D9E64135386C
+PUBLIC 1558 0 _init
+PUBLIC 1900 0 google_breakpad::PageAllocator::FreeAll() [clone .isra.6]
+PUBLIC 194a 0 google_breakpad::ProcCpuInfoReader::GetValueAndLen(unsigned long*) [clone .isra.20] [clone .part.21]
+PUBLIC 196a 0 google_breakpad::TypedMDRVA<MDRawDirectory>::CopyIndex(unsigned int, MDRawDirectory*) [clone .isra.32] [clone .part.33]
+PUBLIC 198a 0 google_breakpad::TypedMDRVA<MDRawDirectory>::CopyIndex(unsigned int, MDRawDirectory*) [clone .isra.32]
+PUBLIC 19a8 0 google_breakpad::TypedMDRVA<unsigned int>::CopyIndexAfterObject(unsigned int, void const*, unsigned long) [clone .isra.34] [clone .part.35]
+PUBLIC 19c8 0 (anonymous namespace)::MinidumpWriter::MinidumpWriter(char const*, int, google_breakpad::ExceptionHandler::CrashContext const*, std::__cxx11::list<google_breakpad::MappingEntry, std::allocator<google_breakpad::MappingEntry> > const&, std::__cxx11::list<google_breakpad::AppMemory, std::allocator<google_breakpad::AppMemory> > const&, bool, unsigned long, bool, google_breakpad::LinuxDumper*) [clone .part.93]
+PUBLIC 19e8 0 (anonymous namespace)::MinidumpWriter::~MinidumpWriter() [clone .constprop.123]
+PUBLIC 1a14 0 (anonymous namespace)::MinidumpWriter::WriteFile(MDLocationDescriptor*, char const*) [clone .constprop.120]
+PUBLIC 1c00 0 (anonymous namespace)::MinidumpWriter::WriteProcFile(MDLocationDescriptor*, int, char const*) [clone .constprop.119]
+PUBLIC 1c70 0 main
+PUBLIC 1dc0 0 _start
+PUBLIC 1df0 0 deregister_tm_clones
+PUBLIC 1e30 0 register_tm_clones
+PUBLIC 1e70 0 __do_global_dtors_aux
+PUBLIC 1e90 0 frame_dummy
+PUBLIC 1ec0 0 (anonymous namespace)::callback(google_breakpad::MinidumpDescriptor const&, void*, bool)
+PUBLIC 1f00 0 google_breakpad::MinidumpDescriptor::~MinidumpDescriptor()
+PUBLIC 1f40 0 google_breakpad::ExceptionHandler::InstallHandlersLocked()
+PUBLIC 2070 0 google_breakpad::ExceptionHandler::RestoreHandlersLocked()
+PUBLIC 20f0 0 google_breakpad::ExceptionHandler::~ExceptionHandler()
+PUBLIC 2440 0 google_breakpad::ExceptionHandler::SendContinueSignalToChild()
+PUBLIC 2520 0 google_breakpad::ExceptionHandler::GenerateDump(google_breakpad::ExceptionHandler::CrashContext*)
+PUBLIC 29f0 0 google_breakpad::ExceptionHandler::HandleSignal(int, siginfo_t*, void*)
+PUBLIC 2bd0 0 google_breakpad::ExceptionHandler::SignalHandler(int, siginfo_t*, void*)
+PUBLIC 2dc0 0 google_breakpad::ExceptionHandler::SimulateSignalDelivery(int)
+PUBLIC 2e40 0 google_breakpad::ExceptionHandler::WaitForContinueSignal()
+PUBLIC 2f30 0 google_breakpad::ExceptionHandler::DoDump(int, void const*, unsigned long)
+PUBLIC 2fe0 0 google_breakpad::ExceptionHandler::ThreadEntry(void*)
+PUBLIC 3070 0 google_breakpad::ExceptionHandler::WriteMinidump()
+PUBLIC 3210 0 google_breakpad::ExceptionHandler::AddMappingInfo(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, unsigned char const*, unsigned long, unsigned long, unsigned long)
+PUBLIC 3300 0 google_breakpad::ExceptionHandler::RegisterAppMemory(void*, unsigned long)
+PUBLIC 33a0 0 google_breakpad::ExceptionHandler::UnregisterAppMemory(void*)
+PUBLIC 3400 0 google_breakpad::ExceptionHandler::WriteMinidumpForChild(int, int, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool (*)(google_breakpad::MinidumpDescriptor const&, void*, bool), void*)
+PUBLIC 3660 0 google_breakpad::SetFirstChanceExceptionHandler(bool (*)(int, void*, void*))
+PUBLIC 3670 0 google_breakpad::ExceptionHandler::ExceptionHandler(google_breakpad::MinidumpDescriptor const&, bool (*)(void*), bool (*)(google_breakpad::MinidumpDescriptor const&, void*, bool), void*, bool, int)
+PUBLIC 3a10 0 google_breakpad::ExceptionHandler::WriteMinidump(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, bool (*)(google_breakpad::MinidumpDescriptor const&, void*, bool), void*)
+PUBLIC 3cb0 0 void std::vector<google_breakpad::ExceptionHandler*, std::allocator<google_breakpad::ExceptionHandler*> >::_M_emplace_back_aux<google_breakpad::ExceptionHandler*>(google_breakpad::ExceptionHandler*&&)
+PUBLIC 3da0 0 google_breakpad::MinidumpDescriptor::MinidumpDescriptor(google_breakpad::MinidumpDescriptor const&)
+PUBLIC 3f20 0 google_breakpad::MinidumpDescriptor::UpdatePath()
+PUBLIC 42f0 0 google_breakpad::MinidumpDescriptor::operator=(google_breakpad::MinidumpDescriptor const&)
+PUBLIC 43c0 0 logger::write(char const*, unsigned long)
+PUBLIC 4400 0 google_breakpad::WriteMicrodump(int, void const*, unsigned long, std::__cxx11::list<google_breakpad::MappingEntry, std::allocator<google_breakpad::MappingEntry> > const&, bool, unsigned long, bool, google_breakpad::MicrodumpExtraInfo const&)
+PUBLIC 6e10 0 void std::vector<unsigned char, google_breakpad::PageStdAllocator<unsigned char> >::_M_range_insert<unsigned char const*>(__gnu_cxx::__normal_iterator<unsigned char*, std::vector<unsigned char, google_breakpad::PageStdAllocator<unsigned char> > >, unsigned char const*, unsigned char const*, std::forward_iterator_tag)
+PUBLIC 71f0 0 google_breakpad::LinuxDumper::LateInit()
+PUBLIC 7200 0 google_breakpad::LinuxDumper::EnumerateMappings()
+PUBLIC 7ac0 0 google_breakpad::LinuxDumper::LinuxDumper(int, char const*)
+PUBLIC 8300 0 google_breakpad::LinuxDumper::~LinuxDumper()
+PUBLIC 8370 0 google_breakpad::LinuxDumper::~LinuxDumper()
+PUBLIC 8390 0 google_breakpad::LinuxDumper::GetCrashSignalString() const
+PUBLIC 8590 0 google_breakpad::LinuxDumper::GetMappingAbsolutePath(google_breakpad::MappingInfo const&, char*) const
+PUBLIC 85e0 0 google_breakpad::(anonymous namespace)::ElfFileSoName(google_breakpad::LinuxDumper const&, google_breakpad::MappingInfo const&, char*, unsigned long) [clone .constprop.55]
+PUBLIC 8770 0 google_breakpad::LinuxDumper::HandleDeletedFileInMapping(char*) const [clone .part.12] [clone .constprop.56]
+PUBLIC 8920 0 google_breakpad::LinuxDumper::GetMappingEffectiveNameAndPath(google_breakpad::MappingInfo const&, char*, unsigned long, char*, unsigned long)
+PUBLIC 8a10 0 google_breakpad::LinuxDumper::ReadAuxv()
+PUBLIC 8b30 0 google_breakpad::LinuxDumper::Init()
+PUBLIC 8b70 0 google_breakpad::LinuxDumper::StackHasPointerToMapping(unsigned char const*, unsigned long, unsigned long, google_breakpad::MappingInfo const&)
+PUBLIC 8be0 0 google_breakpad::LinuxDumper::FindMapping(void const*) const
+PUBLIC 8c30 0 google_breakpad::LinuxDumper::GetStackInfo(void const**, unsigned long*, unsigned long)
+PUBLIC 8cb0 0 google_breakpad::LinuxDumper::FindMappingNoBias(unsigned long) const
+PUBLIC 8d00 0 google_breakpad::LinuxDumper::SanitizeStackCopy(unsigned char*, unsigned long, unsigned long, unsigned long)
+PUBLIC 8fa0 0 google_breakpad::LinuxDumper::HandleDeletedFileInMapping(char*) const
+PUBLIC 9000 0 google_breakpad::LinuxDumper::ElfFileIdentifierForMapping(google_breakpad::MappingInfo const&, bool, unsigned int, google_breakpad::wasteful_vector<unsigned char>&)
+PUBLIC 9350 0 google_breakpad::PageAllocator::Alloc(unsigned long)
+PUBLIC 94a0 0 google_breakpad::LinuxPtraceDumper::IsPostMortem() const
+PUBLIC 94b0 0 google_breakpad::LinuxPtraceDumper::CopyFromProcess(void*, int, void const*, unsigned long)
+PUBLIC 9640 0 google_breakpad::LinuxPtraceDumper::ThreadsResume()
+PUBLIC 9700 0 google_breakpad::LinuxPtraceDumper::BuildProcPath(char*, int, char const*) const [clone .localalias.19]
+PUBLIC 97c0 0 google_breakpad::LinuxPtraceDumper::EnumerateThreads()
+PUBLIC 9e50 0 google_breakpad::LinuxPtraceDumper::LinuxPtraceDumper(int)
+PUBLIC 9e80 0 google_breakpad::LinuxPtraceDumper::ReadRegisterSet(google_breakpad::ThreadInfo*, int)
+PUBLIC 9f70 0 google_breakpad::LinuxPtraceDumper::ReadRegisters(google_breakpad::ThreadInfo*, int)
+PUBLIC a050 0 google_breakpad::LinuxPtraceDumper::GetThreadInfoByIndex(unsigned long, google_breakpad::ThreadInfo*)
+PUBLIC a690 0 google_breakpad::LinuxPtraceDumper::ThreadsSuspend()
+PUBLIC a8f0 0 google_breakpad::LinuxPtraceDumper::~LinuxPtraceDumper()
+PUBLIC a910 0 google_breakpad::LinuxPtraceDumper::~LinuxPtraceDumper()
+PUBLIC a930 0 std::vector<int, google_breakpad::PageStdAllocator<int> >::_M_default_append(unsigned long)
+PUBLIC abc0 0 (anonymous namespace)::MinidumpWriter::WriteThreadListStream(MDRawDirectory*) [clone .constprop.105]
+PUBLIC bb80 0 (anonymous namespace)::MinidumpWriter::Dump() [clone .constprop.104]
+PUBLIC de00 0 google_breakpad::WriteMinidump(char const*, std::__cxx11::list<google_breakpad::MappingEntry, std::allocator<google_breakpad::MappingEntry> > const&, std::__cxx11::list<google_breakpad::AppMemory, std::allocator<google_breakpad::AppMemory> > const&, google_breakpad::LinuxDumper*)
+PUBLIC e370 0 google_breakpad::WriteMinidump(char const*, int, int)
+PUBLIC ea30 0 (anonymous namespace)::WriteMinidumpImpl(char const*, int, long, int, void const*, unsigned long, std::__cxx11::list<google_breakpad::MappingEntry, std::allocator<google_breakpad::MappingEntry> > const&, std::__cxx11::list<google_breakpad::AppMemory, std::allocator<google_breakpad::AppMemory> > const&, bool, unsigned long, bool)
+PUBLIC f0c0 0 google_breakpad::WriteMinidump(char const*, int, void const*, unsigned long, bool, unsigned long, bool)
+PUBLIC f1e0 0 google_breakpad::WriteMinidump(int, int, void const*, unsigned long, bool, unsigned long, bool)
+PUBLIC f300 0 google_breakpad::WriteMinidump(char const*, int, void const*, unsigned long, std::__cxx11::list<google_breakpad::MappingEntry, std::allocator<google_breakpad::MappingEntry> > const&, std::__cxx11::list<google_breakpad::AppMemory, std::allocator<google_breakpad::AppMemory> > const&, bool, unsigned long, bool)
+PUBLIC f340 0 google_breakpad::WriteMinidump(int, int, void const*, unsigned long, std::__cxx11::list<google_breakpad::MappingEntry, std::allocator<google_breakpad::MappingEntry> > const&, std::__cxx11::list<google_breakpad::AppMemory, std::allocator<google_breakpad::AppMemory> > const&, bool, unsigned long, bool)
+PUBLIC f380 0 google_breakpad::WriteMinidump(char const*, long, int, void const*, unsigned long, std::__cxx11::list<google_breakpad::MappingEntry, std::allocator<google_breakpad::MappingEntry> > const&, std::__cxx11::list<google_breakpad::AppMemory, std::allocator<google_breakpad::AppMemory> > const&, bool, unsigned long, bool)
+PUBLIC f3c0 0 google_breakpad::WriteMinidump(int, long, int, void const*, unsigned long, std::__cxx11::list<google_breakpad::MappingEntry, std::allocator<google_breakpad::MappingEntry> > const&, std::__cxx11::list<google_breakpad::AppMemory, std::allocator<google_breakpad::AppMemory> > const&, bool, unsigned long, bool)
+PUBLIC f400 0 google_breakpad::ProcCpuInfoReader::GetNextField(char const**)
+PUBLIC f660 0 std::vector<char, google_breakpad::PageStdAllocator<char> >::resize(unsigned long)
+PUBLIC f8c0 0 void std::vector<MDMemoryDescriptor, google_breakpad::PageStdAllocator<MDMemoryDescriptor> >::_M_emplace_back_aux<MDMemoryDescriptor const&>(MDMemoryDescriptor const&)
+PUBLIC fb10 0 google_breakpad::TypedMDRVA<MDString>::CopyIndexAfterObject(unsigned int, void const*, unsigned long) [clone .isra.7] [clone .part.8]
+PUBLIC fb40 0 google_breakpad::MinidumpFileWriter::MinidumpFileWriter()
+PUBLIC fb60 0 google_breakpad::MinidumpFileWriter::Open(char const*)
+PUBLIC fbe0 0 google_breakpad::MinidumpFileWriter::SetFile(int)
+PUBLIC fc10 0 google_breakpad::MinidumpFileWriter::Close()
+PUBLIC fc70 0 google_breakpad::MinidumpFileWriter::~MinidumpFileWriter()
+PUBLIC fc90 0 google_breakpad::MinidumpFileWriter::Allocate(unsigned long)
+PUBLIC fd50 0 google_breakpad::MinidumpFileWriter::Copy(unsigned int, void const*, long)
+PUBLIC fe50 0 google_breakpad::MinidumpFileWriter::CopyStringToMDString(wchar_t const*, unsigned int, google_breakpad::TypedMDRVA<MDString>*)
+PUBLIC ff50 0 google_breakpad::MinidumpFileWriter::CopyStringToMDString(char const*, unsigned int, google_breakpad::TypedMDRVA<MDString>*)
+PUBLIC 10050 0 google_breakpad::UntypedMDRVA::Allocate(unsigned long)
+PUBLIC 100a0 0 google_breakpad::MinidumpFileWriter::WriteString(wchar_t const*, unsigned int, MDLocationDescriptor*)
+PUBLIC 102e0 0 google_breakpad::MinidumpFileWriter::WriteString(char const*, unsigned int, MDLocationDescriptor*)
+PUBLIC 10520 0 google_breakpad::UntypedMDRVA::Copy(unsigned int, void const*, unsigned long)
+PUBLIC 105b0 0 google_breakpad::MinidumpFileWriter::WriteMemory(void const*, unsigned long, MDMemoryDescriptor*)
+PUBLIC 10690 0 google_breakpad::UTF8ToUTF16Char(char const*, int, unsigned short*)
+PUBLIC 10750 0 google_breakpad::UTF32ToUTF16Char(wchar_t, unsigned short*)
+PUBLIC 107d0 0 google_breakpad::UTF16ToUTF8[abi:cxx11](std::vector<unsigned short, std::allocator<unsigned short> > const&, bool)
+PUBLIC 10ce0 0 google_breakpad::UTF32ToUTF16(wchar_t const*, std::vector<unsigned short, std::allocator<unsigned short> >*)
+PUBLIC 10ec0 0 google_breakpad::UTF8ToUTF16(char const*, std::vector<unsigned short, std::allocator<unsigned short> >*)
+PUBLIC 110a0 0 std::vector<unsigned short, std::allocator<unsigned short> >::_M_default_append(unsigned long)
+PUBLIC 11200 0 google_breakpad::IsValidElf(void const*)
+PUBLIC 11220 0 google_breakpad::ElfClass(void const*)
+PUBLIC 11230 0 google_breakpad::FindElfSection(void const*, char const*, unsigned int, void const**, unsigned long*)
+PUBLIC 116a0 0 google_breakpad::FindElfSegments(void const*, unsigned int, google_breakpad::wasteful_vector<google_breakpad::ElfSegment>*)
+PUBLIC 11990 0 void std::vector<google_breakpad::ElfSegment, google_breakpad::PageStdAllocator<google_breakpad::ElfSegment> >::_M_emplace_back_aux<google_breakpad::ElfSegment const&>(google_breakpad::ElfSegment const&)
+PUBLIC 11be0 0 google_breakpad::FileID::FileID(char const*)
+PUBLIC 11cc0 0 google_breakpad::FileID::ConvertIdentifierToUUIDString[abi:cxx11](google_breakpad::wasteful_vector<unsigned char> const&)
+PUBLIC 11e70 0 google_breakpad::FileID::ConvertIdentifierToString[abi:cxx11](google_breakpad::wasteful_vector<unsigned char> const&)
+PUBLIC 11fb0 0 google_breakpad::FileID::ElfFileIdentifierFromMappedFile(void const*, google_breakpad::wasteful_vector<unsigned char>&)
+PUBLIC 12bc0 0 google_breakpad::FileID::ElfFileIdentifier(google_breakpad::wasteful_vector<unsigned char>&)
+PUBLIC 12c40 0 CreateGUID(MDGUID*)
+PUBLIC 12d00 0 GUIDToString(MDGUID const*, char*, int)
+PUBLIC 12d80 0 GUIDGenerator::InitOnceImpl()
+PUBLIC 12db0 0 my_strlen
+PUBLIC 12dd0 0 my_strcmp
+PUBLIC 12e20 0 my_strncmp
+PUBLIC 12e80 0 my_strtoui
+PUBLIC 12ed0 0 my_uint_len
+PUBLIC 12f10 0 my_uitos
+PUBLIC 12f50 0 my_strchr
+PUBLIC 12f90 0 my_strrchr
+PUBLIC 12fc0 0 my_memchr
+PUBLIC 13000 0 my_read_hex_ptr
+PUBLIC 13080 0 my_read_decimal_ptr
+PUBLIC 130c0 0 my_memset
+PUBLIC 130e0 0 my_strlcpy
+PUBLIC 13120 0 my_strlcat
+PUBLIC 13160 0 my_isspace
+PUBLIC 13210 0 google_breakpad::MemoryMappedFile::MemoryMappedFile()
+PUBLIC 13220 0 google_breakpad::MemoryMappedFile::Unmap()
+PUBLIC 13270 0 google_breakpad::MemoryMappedFile::~MemoryMappedFile()
+PUBLIC 13280 0 google_breakpad::MemoryMappedFile::Map(char const*, unsigned long)
+PUBLIC 13430 0 google_breakpad::MemoryMappedFile::MemoryMappedFile(char const*, unsigned long)
+PUBLIC 13450 0 google_breakpad::SafeReadLink(char const*, char*, unsigned long)
+PUBLIC 13490 0 google_breakpad::(anonymous namespace)::CrashGenerationClientImpl::~CrashGenerationClientImpl()
+PUBLIC 134a0 0 google_breakpad::(anonymous namespace)::CrashGenerationClientImpl::RequestDump(void const*, unsigned long)
+PUBLIC 136c0 0 google_breakpad::(anonymous namespace)::CrashGenerationClientImpl::~CrashGenerationClientImpl()
+PUBLIC 136d0 0 google_breakpad::CrashGenerationClient::TryCreate(int)
+PUBLIC 13700 0 google_breakpad::ThreadInfo::GetInstructionPointer() const
+PUBLIC 13710 0 google_breakpad::ThreadInfo::FillCPUContext(MDRawContextAMD64*) const
+PUBLIC 13a10 0 google_breakpad::ThreadInfo::GetGeneralPurposeRegisters(void**, unsigned long*)
+PUBLIC 13a60 0 google_breakpad::ThreadInfo::GetFloatingPointRegisters(void**, unsigned long*)
+PUBLIC 13ab0 0 google_breakpad::UContextReader::GetStackPointer(ucontext const*)
+PUBLIC 13ac0 0 google_breakpad::UContextReader::GetInstructionPointer(ucontext const*)
+PUBLIC 13ad0 0 google_breakpad::UContextReader::FillCPUContext(MDRawContextAMD64*, ucontext const*, _libc_fpstate const*)
+PUBLIC 13d30 0 ConvertUTF32toUTF16
+PUBLIC 13eb0 0 ConvertUTF16toUTF32
+PUBLIC 14050 0 ConvertUTF16toUTF8
+PUBLIC 14250 0 isLegalUTF8Sequence
+PUBLIC 14330 0 ConvertUTF8toUTF16
+PUBLIC 14660 0 ConvertUTF32toUTF8
+PUBLIC 14920 0 ConvertUTF8toUTF32
+PUBLIC 14c30 0 __libc_csu_init
+PUBLIC 14ca0 0 __libc_csu_fini
+PUBLIC 14ca4 0 _fini
 STACK CFI INIT 1dc0 2a .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI INIT 1580 370 .cfa: $rsp 16 + .ra: .cfa -8 + ^
 STACK CFI 1586 .cfa: $rsp 24 +

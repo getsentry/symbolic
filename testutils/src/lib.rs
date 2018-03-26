@@ -1,3 +1,5 @@
+extern crate difference;
+
 use difference::Changeset;
 use std::{fmt, io};
 use std::fs::File;
@@ -14,7 +16,10 @@ fn load_file<P: AsRef<Path>>(path: P) -> io::Result<String> {
 
 /// Resolves the full path to a fixture file.
 pub fn fixture_path<S: AsRef<str>>(file_name: S) -> PathBuf {
-    Path::new("..").join("fixtures").join(file_name.as_ref())
+    Path::new("..")
+        .join("testutils")
+        .join("fixtures")
+        .join(file_name.as_ref())
 }
 
 /// Loads the fixture file with the given name and returns its contents
@@ -23,7 +28,7 @@ pub fn load_fixture<S: AsRef<str>>(file_name: S) -> io::Result<String> {
     load_file(fixture_path(file_name))
 }
 
-/// Assets that the given object matches the snapshot saved in the snapshot
+/// Asserts that the given object matches the snapshot saved in the snapshot
 /// file. The object is serialized using the Debug trait.
 ///
 /// If the value differs from the snapshot, the assertion fails and prints
@@ -32,7 +37,7 @@ pub fn assert_snapshot<S: AsRef<str>, T: fmt::Debug>(snapshot_name: S, val: &T) 
     assert_snapshot_plain(snapshot_name, &format!("{:#?}", val));
 }
 
-/// Assets that the given string matches the snapshot saved in the snapshot
+/// Asserts that the given string matches the snapshot saved in the snapshot
 /// file. The given string will be used as plain output and directly compared
 /// with the stored snapshot.
 ///
