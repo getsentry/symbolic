@@ -27,6 +27,9 @@ uuid = "0.6.1"
 [build-dependencies]
 cc = { version = "1.0.8", features = ["parallel"] }
 
+[dev-dependencies]
+difference = "2.0.0"
+
 [features]
 default = []
 with_serde = ["serde", "serde_plain"]

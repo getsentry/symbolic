@@ -1,7 +1,6 @@
 use std::{fmt, mem, ptr, slice, str};
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::CString;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -703,7 +702,7 @@ impl<'a> ProcessState<'a> {
     }
 
     /// Returns a list of all `CodeModule`s referenced in one of the `CallStack`s.
-    pub fn referenced_modules(&self) -> HashSet<&CodeModule> {
+    pub fn referenced_modules(&self) -> BTreeSet<&CodeModule> {
         self.threads()
             .iter()
             .flat_map(|stack| stack.frames().iter())
