@@ -1,7 +1,13 @@
 use std::fmt;
 use std::str;
+use regex::Regex;
 use uuid::Uuid;
+
 use symbolic_common::{Error, ErrorKind, Result};
+
+lazy_static! {
+    static ref DEBUG_ID_RE: Regex = Regex::new(r"^(?i)([0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12})-?([0-9a-f]{1,8})?$").unwrap();
+}
 
 /// Unique identifier for debug information files and their debug information.
 ///
@@ -29,11 +35,11 @@ use symbolic_common::{Error, ErrorKind, Result};
 /// # fn main() { foo().unwrap() }
 /// ```
 #[repr(C, packed)]
-#[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy)]
+#[derive(Default, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy)]
 pub struct DebugId {
     uuid: Uuid,
-    appendix: u64,
-    _padding: u64,
+    appendix: u32,
+    _padding: [u8; 12],
 }
 
 impl DebugId {
@@ -43,24 +49,19 @@ impl DebugId {
     }
 
     /// Constructs a `DebugId` from its `uuid` and `appendix` parts.
-    pub fn from_parts(uuid: Uuid, appendix: u64) -> DebugId {
+    pub fn from_parts(uuid: Uuid, appendix: u32) -> DebugId {
         DebugId {
             uuid,
             appendix,
-            _padding: 0,
+            _padding: [0; 12],
         }
     }
 
     /// Parses a breakpad identifier from a string.
     pub fn from_breakpad(string: &str) -> Result<DebugId> {
-        if string.len() < 33 || string.len() > 40 {
-            return Err(ErrorKind::Parse("Invalid input string length").into());
-        }
-
-        let uuid =
-            Uuid::parse_str(&string[..32]).map_err(|_| ErrorKind::Parse("UUID parse error"))?;
-        let appendix = u32::from_str_radix(&string[32..], 16)?;
-        Ok(DebugId::from_parts(uuid, appendix as u64))
+        // Technically, we are are too permissive here by allowing dashes, but
+        // we are complete.
+        string.parse()
     }
 
     /// Returns the UUID part of the code module's debug_identifier.
@@ -72,7 +73,7 @@ impl DebugId {
     ///
     /// On Windows, this is an incrementing counter to identify the build.
     /// On all other platforms, this value will always be zero.
-    pub fn appendix(&self) -> u64 {
+    pub fn appendix(&self) -> u32 {
         self.appendix
     }
 
@@ -80,6 +81,15 @@ impl DebugId {
     /// a breakpad identifier.
     pub fn breakpad(&self) -> BreakpadFormat {
         BreakpadFormat { inner: self }
+    }
+}
+
+impl fmt::Debug for DebugId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("DebugId")
+            .field("uuid", &self.uuid())
+            .field("appendix", &self.appendix())
+            .finish()
     }
 }
 
@@ -97,15 +107,18 @@ impl str::FromStr for DebugId {
     type Err = Error;
 
     fn from_str(string: &str) -> Result<DebugId> {
-        if string.len() < 36 || string.len() > 53 {
-            return Err(ErrorKind::Parse("Invalid input string length").into());
-        }
-
-        let uuid =
-            Uuid::parse_str(&string[..36]).map_err(|_| ErrorKind::Parse("UUID parse error"))?;
-        let appendix = string
-            .get(37..)
-            .map_or(Ok(0), |s| u64::from_str_radix(s, 16))?;
+        let captures = DEBUG_ID_RE
+            .captures(string)
+            .ok_or("Invalid debug identifier")?;
+        let uuid = captures
+            .get(1)
+            .unwrap()
+            .as_str()
+            .parse()
+            .map_err(|_| ErrorKind::Parse("Invalid UUID"))?;
+        let appendix = captures
+            .get(2)
+            .map_or(Ok(0), |s| u32::from_str_radix(s.as_str(), 16))?;
         Ok(DebugId::from_parts(uuid, appendix))
     }
 }
@@ -116,8 +129,8 @@ impl From<Uuid> for DebugId {
     }
 }
 
-impl From<(Uuid, u64)> for DebugId {
-    fn from(tuple: (Uuid, u64)) -> DebugId {
+impl From<(Uuid, u32)> for DebugId {
+    fn from(tuple: (Uuid, u32)) -> DebugId {
         let (uuid, appendix) = tuple;
         DebugId::from_parts(uuid, appendix)
     }
@@ -203,6 +216,28 @@ mod test {
     }
 
     #[test]
+    fn test_parse_compact() {
+        assert_eq!(
+            DebugId::from_str("dfb8e43af2423d73a453aeb6a777ef75feedface").unwrap(),
+            DebugId::from_parts(
+                Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
+                4277009102,
+            )
+        );
+    }
+
+    #[test]
+    fn test_parse_upper() {
+        assert_eq!(
+            DebugId::from_str("DFB8E43A-F242-3D73-A453-AEB6A777EF75-FEEDFACE").unwrap(),
+            DebugId::from_parts(
+                Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
+                4277009102,
+            )
+        );
+    }
+
+    #[test]
     fn test_to_string_zero() {
         let id = DebugId::from_parts(
             Uuid::parse_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75").unwrap(),
@@ -242,9 +277,7 @@ mod test {
 
     #[test]
     fn test_parse_error_long() {
-        assert!(
-            DebugId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-feedfacefeedface1").is_err()
-        )
+        assert!(DebugId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-feedface1").is_err())
     }
 
     #[test]
@@ -321,7 +354,7 @@ mod test {
 
     #[test]
     fn test_parse_breakpad_error_short() {
-        assert!(DebugId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75").is_err());
+        assert!(DebugId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF7").is_err());
     }
 
     #[test]
