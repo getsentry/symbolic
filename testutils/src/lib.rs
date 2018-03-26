@@ -28,7 +28,7 @@ pub fn load_fixture<S: AsRef<str>>(file_name: S) -> io::Result<String> {
     load_file(fixture_path(file_name))
 }
 
-/// Assets that the given object matches the snapshot saved in the snapshot
+/// Asserts that the given object matches the snapshot saved in the snapshot
 /// file. The object is serialized using the Debug trait.
 ///
 /// If the value differs from the snapshot, the assertion fails and prints
@@ -37,7 +37,7 @@ pub fn assert_snapshot<S: AsRef<str>, T: fmt::Debug>(snapshot_name: S, val: &T) 
     assert_snapshot_plain(snapshot_name, &format!("{:#?}", val));
 }
 
-/// Assets that the given string matches the snapshot saved in the snapshot
+/// Asserts that the given string matches the snapshot saved in the snapshot
 /// file. The given string will be used as plain output and directly compared
 /// with the stored snapshot.
 ///

@@ -1,0 +1,14 @@
+SymCache {
+    id: Ok(
+        DebugId {
+            uuid: Uuid("67e9247c-814e-392b-a027-dbde6748fcbf"),
+            appendix: 0
+        }
+    ),
+    size: 121371,
+    arch: X86_64,
+    data_source: Dwarf,
+    has_line_info: true,
+    has_file_info: true,
+    functions: 1863
+}
