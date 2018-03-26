@@ -1,3 +1,5 @@
+extern crate difference;
+
 use difference::Changeset;
 use std::{fmt, io};
 use std::fs::File;
@@ -14,7 +16,10 @@ fn load_file<P: AsRef<Path>>(path: P) -> io::Result<String> {
 
 /// Resolves the full path to a fixture file.
 pub fn fixture_path<S: AsRef<str>>(file_name: S) -> PathBuf {
-    Path::new("..").join("fixtures").join(file_name.as_ref())
+    Path::new("..")
+        .join("testutils")
+        .join("fixtures")
+        .join(file_name.as_ref())
 }
 
 /// Loads the fixture file with the given name and returns its contents

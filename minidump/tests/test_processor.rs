@@ -1,12 +1,10 @@
-extern crate difference;
 extern crate symbolic_common;
 extern crate symbolic_minidump;
-
-mod common;
+extern crate testutils;
 
 use symbolic_common::ByteView;
 use symbolic_minidump::ProcessState;
-use common::{assert_snapshot, fixture_path};
+use testutils::{assert_snapshot, fixture_path};
 
 #[test]
 fn process_minidump_linux() {
