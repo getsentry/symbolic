@@ -148,8 +148,8 @@ pub struct CodeModule(c_void);
 
 impl CodeModule {
     /// Returns the unique identifier of this `CodeModule`.
-    pub fn id(&self) -> CodeModuleId {
-        CodeModuleId::from_str(&self.debug_identifier()).unwrap()
+    pub fn id(&self) -> Option<CodeModuleId> {
+        CodeModuleId::from_str(&self.debug_identifier()).ok()
     }
 
     /// Returns the base address of this code module as it was loaded by the

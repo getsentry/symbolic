@@ -33,7 +33,7 @@ where
     let search_ids: HashSet<_> = state
         .referenced_modules()
         .iter()
-        .map(|module| module.id())
+        .filter_map(|module| module.id())
         .collect();
 
     let mut collected = BTreeMap::new();
@@ -116,7 +116,7 @@ fn symbolize<'a>(
         None => return Ok(None),
     };
 
-    let symcache = match symcaches.get(&module.id()) {
+    let symcache = match module.id().and_then(|id| symcaches.get(&id)) {
         Some(symcache) => symcache,
         None => return Ok(None),
     };
@@ -195,6 +195,7 @@ fn print_state(
                         }
                     }
                 } else {
+                    println!("{:#?}", module);
                     println!(
                         "{:>3}  {} + 0x{:x}",
                         index,
@@ -215,18 +216,22 @@ fn print_state(
     println!("Loaded modules:");
     for module in state.referenced_modules() {
         print!(
-            "0x{:x} - 0x{:x}  {}  ({}",
+            "0x{:x} - 0x{:x}  {}  (",
             module.base_address(),
             module.base_address() + module.size() - 1,
             module.code_file().rsplit("/").next().unwrap(),
-            module.id(),
         );
 
-        if !symcaches.contains_key(&module.id()) {
+        match module.id() {
+            Some(id) => print!("{}", id),
+            None => print!("<missing debug identifier>"),
+        };
+
+        if !module.id().map_or(false, |id| symcaches.contains_key(&id)) {
             print!("; no symbols");
         }
 
-        if !cfi.contains_key(&module.id()) {
+        if !module.id().map_or(false, |id| cfi.contains_key(&id)) {
             print!("; no CFI");
         }
 

@@ -39,7 +39,7 @@ class CodeModule(RustObject):
     @property
     def id(self):
         """ID of the loaded module containing the instruction"""
-        return decode_str(self._objptr.id)
+        return decode_str(self._objptr.id) or None
 
     @property
     def addr(self):
