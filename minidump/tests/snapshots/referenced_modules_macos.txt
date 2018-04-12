@@ -1,11 +1,13 @@
 {
     CodeModule {
-        id: CodeModuleId {
-            inner: DebugId {
-                uuid: Uuid("67e9247c-814e-392b-a027-dbde6748fcbf"),
-                appendix: 0
+        id: Some(
+            CodeModuleId {
+                inner: DebugId {
+                    uuid: Uuid("67e9247c-814e-392b-a027-dbde6748fcbf"),
+                    appendix: 0
+                }
             }
-        },
+        ),
         base_address: 4458131456,
         size: 69632,
         code_file: "/Users/travis/build/getsentry/breakpad-tools/macos/build/./crash",
@@ -14,12 +16,14 @@
         debug_identifier: "67E9247C814E392BA027DBDE6748FCBF0"
     },
     CodeModule {
-        id: CodeModuleId {
-            inner: DebugId {
-                uuid: Uuid("9b2ac56d-107c-3541-a127-9094a751f2c9"),
-                appendix: 0
+        id: Some(
+            CodeModuleId {
+                inner: DebugId {
+                    uuid: Uuid("9b2ac56d-107c-3541-a127-9094a751f2c9"),
+                    appendix: 0
+                }
             }
-        },
+        ),
         base_address: 140737084547072,
         size: 24576,
         code_file: "/usr/lib/system/libdyld.dylib",

@@ -136,7 +136,7 @@ where
 /// Maps a `CodeModule` to its FFI type
 unsafe fn map_code_module(module: &CodeModule) -> SymbolicCodeModule {
     SymbolicCodeModule {
-        id: module.id().to_string().into(),
+        id: module.id().map(|id| id.to_string().into()).unwrap_or_default(),
         addr: module.base_address(),
         size: module.size(),
         name: SymbolicStr::from_string(module.code_file()),

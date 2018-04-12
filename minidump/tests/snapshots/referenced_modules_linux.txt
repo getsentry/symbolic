@@ -1,11 +1,13 @@
 {
     CodeModule {
-        id: CodeModuleId {
-            inner: DebugId {
-                uuid: Uuid("451a38b5-0679-79d2-0738-22a5ceb24c4b"),
-                appendix: 0
+        id: Some(
+            CodeModuleId {
+                inner: DebugId {
+                    uuid: Uuid("451a38b5-0679-79d2-0738-22a5ceb24c4b"),
+                    appendix: 0
+                }
             }
-        },
+        ),
         base_address: 139986944249856,
         size: 1835008,
         code_file: "/lib/x86_64-linux-gnu/libc-2.23.so",
@@ -14,12 +16,14 @@
         debug_identifier: "451A38B5067979D2073822A5CEB24C4B0"
     },
     CodeModule {
-        id: CodeModuleId {
-            inner: DebugId {
-                uuid: Uuid("59627b5d-2255-a375-c17b-d4c3fd05f5a6"),
-                appendix: 0
+        id: Some(
+            CodeModuleId {
+                inner: DebugId {
+                    uuid: Uuid("59627b5d-2255-a375-c17b-d4c3fd05f5a6"),
+                    appendix: 0
+                }
             }
-        },
+        ),
         base_address: 139986956304384,
         size: 155648,
         code_file: "/lib/x86_64-linux-gnu/ld-2.23.so",
@@ -28,12 +32,14 @@
         debug_identifier: "59627B5D2255A375C17BD4C3FD05F5A60"
     },
     CodeModule {
-        id: CodeModuleId {
-            inner: DebugId {
-                uuid: Uuid("c0bcc3f1-9827-fe65-3058-404b2831d9e6"),
-                appendix: 0
+        id: Some(
+            CodeModuleId {
+                inner: DebugId {
+                    uuid: Uuid("c0bcc3f1-9827-fe65-3058-404b2831d9e6"),
+                    appendix: 0
+                }
             }
-        },
+        ),
         base_address: 4194304,
         size: 106496,
         code_file: "/work/linux/build/crash",
