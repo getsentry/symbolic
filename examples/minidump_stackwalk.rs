@@ -195,7 +195,6 @@ fn print_state(
                         }
                     }
                 } else {
-                    println!("{:#?}", module);
                     println!(
                         "{:>3}  {} + 0x{:x}",
                         index,
