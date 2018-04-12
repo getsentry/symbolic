@@ -31,7 +31,10 @@
             "macFrameworkPath": [
                 "/System/Library/Frameworks",
                 "/Library/Frameworks"
-            ]
+            ],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c11",
+            "cppStandard": "c++17"
         },
         {
             "name": "Linux",
@@ -62,7 +65,10 @@
                 "${workspaceRoot}/minidump",
                 "${workspaceRoot}/minidump/third_party/breakpad/src"
             ],
-            "defines": ["_DEBUG", "UNICODE"],
+            "defines": [
+                "_DEBUG",
+                "UNICODE"
+            ],
             "intelliSenseMode": "msvc-x64",
             "browse": {
                 "path": [
