@@ -32,5 +32,5 @@ symbolic-symcache = { version = "3.0.1", path = "symcache" }
 symbolic-debuginfo = { version = "3.0.1", path = "debuginfo" }
 
 [dev-dependencies]
-clap = "2.29.0"
-walkdir = "2.0.1"
+clap = "2.31.2"
+walkdir = "2.1.4"
