@@ -121,7 +121,8 @@ class ObjectRef(object):
         # not a real address but why handle it differently
         self.size = parse_addr(data['image_size'])
         self.vmaddr = data.get('image_vmaddr')
-        self.id = normalize_debug_id(data.get('id') or data.get('uuid') or '')
+        self.id = normalize_debug_id(
+            data.get('id') or data.get('uuid') or None)
         if data.get('arch') is not None and arch_is_known(data['arch']):
             self.arch = data['arch']
         elif data.get('cpu_type') is not None \
@@ -182,6 +183,9 @@ class ObjectLookup(object):
 
 def id_from_breakpad(breakpad_id):
     """Converts a Breakpad CodeModuleId to DebugId"""
+    if breakpad_id is None:
+        return None
+
     s = encode_str(breakpad_id)
     id = rustcall(lib.symbolic_id_from_breakpad, s)
     return decode_str(id)
@@ -189,6 +193,9 @@ def id_from_breakpad(breakpad_id):
 
 def normalize_debug_id(debug_id):
     """Normalizes a debug identifier to default representation"""
+    if debug_id is None:
+        return None
+
     s = encode_str(debug_id)
     id = rustcall(lib.symbolic_normalize_debug_id, s)
     return decode_str(id)
