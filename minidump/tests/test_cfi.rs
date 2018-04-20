@@ -4,9 +4,9 @@ extern crate symbolic_minidump;
 extern crate symbolic_testutils;
 
 use std::str;
-use symbolic_common::ByteView;
+use symbolic_common::byteview::ByteView;
 use symbolic_debuginfo::FatObject;
-use symbolic_minidump::BreakpadAsciiCfiWriter;
+use symbolic_minidump::cfi::AsciiCfiWriter;
 use symbolic_testutils::{assert_snapshot_plain, fixture_path};
 
 #[test]
@@ -20,7 +20,7 @@ fn cfi_from_elf() {
 
     let mut cfi = Vec::new();
     {
-        let mut writer = BreakpadAsciiCfiWriter::new(&mut cfi);
+        let mut writer = AsciiCfiWriter::new(&mut cfi);
         writer.process(&object).expect("Could not write CFI");
     }
 
@@ -42,7 +42,7 @@ fn cfi_from_macho() {
 
     let mut cfi = Vec::new();
     {
-        let mut writer = BreakpadAsciiCfiWriter::new(&mut cfi);
+        let mut writer = AsciiCfiWriter::new(&mut cfi);
         writer.process(&object).expect("Could not write CFI");
     }
 
@@ -64,7 +64,7 @@ fn cfi_from_sym_linux() {
 
     let mut cfi = Vec::new();
     {
-        let mut writer = BreakpadAsciiCfiWriter::new(&mut cfi);
+        let mut writer = AsciiCfiWriter::new(&mut cfi);
         writer.process(&object).expect("Could not write CFI");
     }
 
@@ -83,7 +83,7 @@ fn cfi_from_sym_macos() {
 
     let mut cfi = Vec::new();
     {
-        let mut writer = BreakpadAsciiCfiWriter::new(&mut cfi);
+        let mut writer = AsciiCfiWriter::new(&mut cfi);
         writer.process(&object).expect("Could not write CFI");
     }
 
@@ -102,7 +102,7 @@ fn cfi_from_sym_windows() {
 
     let mut cfi = Vec::new();
     {
-        let mut writer = BreakpadAsciiCfiWriter::new(&mut cfi);
+        let mut writer = AsciiCfiWriter::new(&mut cfi);
         writer.process(&object).expect("Could not write CFI");
     }
 

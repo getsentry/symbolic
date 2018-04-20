@@ -1,15 +1,14 @@
-use symbolic_common::{Arch, ErrorKind, Result};
+use symbolic_common::types::{Arch, CpuFamily, UnknownArchError};
 
-pub fn get_register_name(arch: Arch, register: u8) -> Result<&'static str> {
-    use symbolic_common::CpuFamily::*;
+pub fn get_register_name(arch: Arch, register: u8) -> Result<&'static str, UnknownArchError> {
     let index = register as usize;
 
     Ok(match arch.cpu_family() {
-        Intel32 => I386[index],
-        Intel64 => X86_64[index],
-        Arm64 => ARM64[index],
-        Arm32 => ARM[index],
-        _ => return Err(ErrorKind::Format("unsupported CPU family").into()),
+        CpuFamily::Intel32 => I386[index],
+        CpuFamily::Intel64 => X86_64[index],
+        CpuFamily::Arm64 => ARM64[index],
+        CpuFamily::Arm32 => ARM[index],
+        _ => return Err(UnknownArchError),
     })
 }
 

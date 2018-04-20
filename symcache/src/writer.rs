@@ -6,15 +6,17 @@ use std::iter::Peekable;
 use std::mem;
 use std::slice;
 
+use failure::ResultExt;
 use fnv::{FnvHashMap, FnvHashSet};
 use num;
 
-use symbolic_common::{DebugKind, Error, ErrorKind, Language, Result, ResultExt};
-use symbolic_debuginfo::{Object, SymbolIterator, SymbolTable, Symbols};
+use symbolic_common::types::{DebugKind, Language};
+use symbolic_debuginfo::{Object, ObjectErrorKind, SymbolIterator, SymbolTable, Symbols};
 
 use breakpad::BreakpadInfo;
 use cache::{SYMCACHE_LATEST_VERSION, SYMCACHE_MAGIC};
 use dwarf::{DwarfInfo, Function, Unit};
+use error::{ConversionError, SymCacheError, SymCacheErrorKind};
 use types::{CacheFileHeaderV2, DataSource, FileRecord, FuncRecord, LineRecord, Seg};
 use utils::shorten_filename;
 
@@ -24,12 +26,12 @@ use utils::shorten_filename;
 /// method can be used instead.
 ///
 /// This requires the writer to be seekable.
-pub fn to_writer<W: Write + Seek>(mut w: W, obj: &Object) -> Result<()> {
+pub fn to_writer<W: Write + Seek>(mut w: W, obj: &Object) -> Result<(), SymCacheError> {
     SymCacheWriter::new(&mut w).write_object(obj)
 }
 
 /// Converts an object into a vector of symcache data.
-pub fn to_vec(obj: &Object) -> Result<Vec<u8>> {
+pub fn to_vec(obj: &Object) -> Result<Vec<u8>, SymCacheError> {
     let mut cursor = Cursor::new(Vec::new());
     SymCacheWriter::new(&mut cursor).write_object(obj)?;
     Ok(cursor.into_inner())
@@ -42,17 +44,13 @@ enum DebugInfo<'input> {
 }
 
 impl<'input> DebugInfo<'input> {
-    pub fn from_object(object: &'input Object) -> Result<DebugInfo<'input>> {
+    pub fn from_object(object: &'input Object) -> Result<DebugInfo<'input>, SymCacheError> {
         Ok(match object.debug_kind() {
             Some(DebugKind::Dwarf) => DebugInfo::Dwarf(DwarfInfo::from_object(object)?),
             Some(DebugKind::Breakpad) => DebugInfo::Breakpad(BreakpadInfo::from_object(object)?),
             // Add this when more object kinds are added in symbolic_debuginfo:
-            // Some(_) => return Err(ErrorKind::UnsupportedObjectFile.into()),
-            None => {
-                return Err(
-                    ErrorKind::MissingDebugInfo("symcache only supports DWARF and Breakpad").into(),
-                )
-            }
+            // Some(_) => return Err(SymCacheErrorKind::UnsupportedDebugKind.into()),
+            None => return Err(SymCacheErrorKind::MissingDebugInfo.into()),
         })
     }
 }
@@ -85,23 +83,26 @@ impl<W: Write + Seek> SymCacheWriter<W> {
     }
 
     #[inline(always)]
-    fn write_bytes<L>(&self, bytes: &[u8]) -> Result<Seg<u8, L>>
+    fn write_bytes<L>(&self, bytes: &[u8]) -> Result<Seg<u8, L>, SymCacheError>
     where
         L: Copy + num::FromPrimitive,
     {
         let (ref mut pos, ref mut writer) = *self.writer.borrow_mut();
         let offset = *pos;
         *pos += bytes.len() as u64;
-        writer.write_all(bytes)?;
+        writer
+            .write_all(bytes)
+            .context(SymCacheErrorKind::WriteFailed)?;
+
         Ok(Seg::new(
             offset as u32,
             num::FromPrimitive::from_usize(bytes.len())
-                .ok_or_else(|| ErrorKind::Internal("out of range for byte segment"))?,
+                .ok_or_else(|| SymCacheErrorKind::ValueTooLarge)?,
         ))
     }
 
     #[inline(always)]
-    fn write_item<T, L>(&self, x: &T) -> Result<Seg<u8, L>>
+    fn write_item<T, L>(&self, x: &T) -> Result<Seg<u8, L>, SymCacheError>
     where
         L: Copy + num::FromPrimitive,
     {
@@ -113,40 +114,45 @@ impl<W: Write + Seek> SymCacheWriter<W> {
     }
 
     #[inline]
-    fn write_seg<T, L>(&self, x: &[T]) -> Result<Seg<T, L>>
+    fn write_seg<T, L>(&self, x: &[T]) -> Result<Seg<T, L>, SymCacheError>
     where
         L: Copy + num::FromPrimitive,
     {
         let mut first_seg: Option<Seg<u8>> = None;
+
         for item in x {
             let seg = self.write_item(item)?;
             if first_seg.is_none() {
                 first_seg = Some(seg);
             }
         }
+
         Ok(Seg::new(
             first_seg.map(|x| x.offset).unwrap_or(0),
             num::FromPrimitive::from_usize(x.len())
-                .ok_or_else(|| ErrorKind::BadDwarfData("out of range for item segment"))?,
+                .ok_or_else(|| SymCacheErrorKind::ValueTooLarge)?,
         ))
     }
 
-    fn write_symbol_if_missing(&mut self, sym: &[u8]) -> Result<u32> {
+    fn write_symbol_if_missing(&mut self, sym: &[u8]) -> Result<u32, SymCacheError> {
         if let Some(&index) = self.symbol_map.get(sym) {
             return Ok(index);
         }
+
         if self.symbols.len() >= 0xffffff {
-            return Err(ErrorKind::BadDwarfData("Too many symbols").into());
+            return Err(SymCacheErrorKind::ValueTooLarge.into());
         }
+
         let idx = self.symbols.len() as u32;
         let seg = self.write_bytes(sym)?;
         self.symbols.push(seg);
         self.symbol_map.insert(sym.to_owned(), idx);
+
         Ok(idx)
     }
 
     #[inline]
-    fn write_file_if_missing(&mut self, filename: &[u8]) -> Result<Seg<u8, u8>> {
+    fn write_file_if_missing(&mut self, filename: &[u8]) -> Result<Seg<u8, u8>, SymCacheError> {
         // since we store the filename in a u8 segment we are limited to a total
         // length of 255 characters.
         let filename_unicode = String::from_utf8_lossy(filename);
@@ -154,81 +160,87 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         if let Some(item) = self.files.get(filename.as_bytes()) {
             return Ok(*item);
         }
+
         let seg = self.write_bytes(filename.as_bytes())?;
         self.files.insert(filename.into_owned().into_bytes(), seg);
         Ok(seg)
     }
 
-    fn write_file_record_if_missing(&mut self, record: FileRecord) -> Result<u16> {
+    fn write_file_record_if_missing(&mut self, record: FileRecord) -> Result<u16, SymCacheError> {
         if let Some(idx) = self.file_record_map.get(&record) {
             return Ok(*idx);
         }
+
         if self.file_records.len() >= 0xffff {
-            return Err(ErrorKind::BadDwarfData("Too many symbols").into());
+            return Err(SymCacheErrorKind::ValueTooLarge.into());
         }
+
         let idx = self.file_records.len() as u16;
         self.file_record_map.insert(record, idx);
         self.file_records.push(record);
         Ok(idx)
     }
 
-    fn write_header(&mut self) -> Result<()> {
+    fn write_header(&mut self) -> Result<(), SymCacheError> {
         let (ref mut pos, ref mut writer) = *self.writer.borrow_mut();
-        writer.seek(SeekFrom::Start(0))?;
+        writer
+            .seek(SeekFrom::Start(0))
+            .context(SymCacheErrorKind::WriteFailed)?;
 
         let bytes = self.header.as_bytes();
-        writer.write_all(bytes)?;
+        writer
+            .write_all(bytes)
+            .context(SymCacheErrorKind::WriteFailed)?;
         *pos = bytes.len() as u64;
 
         Ok(())
     }
 
-    pub fn write_debug_info(&mut self, obj: &Object) -> Result<()> {
+    pub fn write_debug_info(&mut self, obj: &Object) -> Result<(), SymCacheError> {
         // try dwarf data first.  If we cannot find the necessary dwarf sections
         // we just skip over to symbol table processing.
         match DebugInfo::from_object(obj) {
             Ok(DebugInfo::Dwarf(ref info)) => {
-                return self.write_dwarf_info(info, obj.symbols().ok())
-                    .chain_err(|| ErrorKind::BadDwarfData("could not process DWARF data"));
+                return self.write_dwarf_info(info, obj.symbols().ok());
             }
             Ok(DebugInfo::Breakpad(ref info)) => {
-                return self.write_breakpad_info(info)
-                    .chain_err(|| ErrorKind::BadBreakpadSym("could not process Breakpad symbols"));
+                return self.write_breakpad_info(info);
             }
-            Err(Error(ErrorKind::MissingSection(..), ..)) => {
-                // ignore missing sections
+            Err(ref e) if e.kind() == SymCacheErrorKind::MissingDebugSection => {
+                // ignore missing sections and try the symbol table
             }
             Err(e) => {
-                return Err(e).chain_err(|| ErrorKind::UnsupportedObjectFile)?;
+                return Err(e);
             }
         }
 
         // fallback to symbol table.
         match obj.symbols() {
             Ok(symbols) => {
-                return self.write_symbol_table(symbols.iter(), obj.vmaddr()?)
-                    .chain_err(|| ErrorKind::BadSymbolTable("could not process symbol table"));
+                return self.write_symbol_table(symbols.iter(), obj.vmaddr());
             }
-            Err(Error(ErrorKind::MissingDebugInfo(..), ..)) => {
-                // ignore missing debug info
+            Err(ref e)
+                if e.kind() == ObjectErrorKind::MissingSymbolTable
+                    || e.kind() == ObjectErrorKind::UnsupportedSymbolTable =>
+            {
+                // ignore missing debug info and return a default error
             }
             Err(e) => {
-                return Err(e)
-                    .chain_err(|| ErrorKind::BadSymbolTable("could not load symnbol table"));
+                return Err(e.into());
             }
         }
 
-        Err(ErrorKind::MissingDebugInfo("no debug info found in file").into())
+        Err(SymCacheErrorKind::MissingDebugInfo.into())
     }
 
-    pub fn write_object(mut self, obj: &Object) -> Result<()> {
+    pub fn write_object(mut self, obj: &Object) -> Result<(), SymCacheError> {
         // reserve space for the header before writing segments
         self.write_header()?;
 
         // set up common header values
         self.header.preamble.magic = SYMCACHE_MAGIC;
         self.header.preamble.version = SYMCACHE_LATEST_VERSION;
-        self.header.arch = obj.arch() as u32;
+        self.header.arch = obj.arch().unwrap_or_default() as u32;
         if let Some(id) = obj.id() {
             self.header.id = id;
         }
@@ -241,7 +253,11 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         Ok(())
     }
 
-    fn write_symbol_table(&mut self, symbols: SymbolIterator, vmaddr: u64) -> Result<()> {
+    fn write_symbol_table(
+        &mut self,
+        symbols: SymbolIterator,
+        vmaddr: u64,
+    ) -> Result<(), SymCacheError> {
         for symbol_result in symbols {
             let func = symbol_result?;
             self.write_simple_function(
@@ -264,7 +280,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         cur_addr: u64,
         vmaddr: u64,
         symbol_iter: &mut Peekable<SymbolIterator>,
-    ) -> Result<()> {
+    ) -> Result<(), SymCacheError> {
         loop {
             let sym_addr = match symbol_iter.peek() {
                 Some(&Ok(ref symbol)) => symbol.addr() - vmaddr,
@@ -288,7 +304,12 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         Ok(())
     }
 
-    fn write_simple_function<S>(&mut self, func_addr: u64, len: u64, symbol: S) -> Result<()>
+    fn write_simple_function<S>(
+        &mut self,
+        func_addr: u64,
+        len: u64,
+        symbol: S,
+    ) -> Result<(), SymCacheError>
     where
         S: AsRef<[u8]>,
     {
@@ -310,7 +331,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         Ok(())
     }
 
-    fn write_breakpad_info(&mut self, info: &BreakpadInfo) -> Result<()> {
+    fn write_breakpad_info(&mut self, info: &BreakpadInfo) -> Result<(), SymCacheError> {
         let mut file_cache = FnvHashMap::default();
 
         for file in info.files() {
@@ -357,7 +378,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
                 while diff >= 0 {
                     let file_id = match file_cache.get(&line.file_id) {
                         Some(id) => *id,
-                        None => return Err(ErrorKind::BadBreakpadSym("Invalid file_id").into()),
+                        None => return Err(ConversionError("invalid breakpad file id").into()),
                     };
 
                     line_records.push(LineRecord {
@@ -387,7 +408,11 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         Ok(())
     }
 
-    fn write_dwarf_info(&mut self, info: &DwarfInfo, symbols: Option<Symbols>) -> Result<()> {
+    fn write_dwarf_info(
+        &mut self,
+        info: &DwarfInfo,
+        symbols: Option<Symbols>,
+    ) -> Result<(), SymCacheError> {
         let symbols = symbols.as_ref();
 
         let mut range_buf = Vec::new();
@@ -399,8 +424,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
 
         for index in 0..info.units.len() {
             // attempt to parse a single unit from the given header.
-            let unit_opt = Unit::parse(&info, index)
-                .chain_err(|| ErrorKind::BadDwarfData("encountered invalid compilation unit"))?;
+            let unit_opt = Unit::parse(&info, index)?;
 
             // skip units we don't care about
             let unit = match unit_opt {
@@ -454,7 +478,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         locations: &mut FnvHashSet<(u64, u16)>,
         local_cache: &mut FnvHashMap<u64, u16>,
         parent_id: u32,
-    ) -> Result<()> {
+    ) -> Result<(), SymCacheError> {
         // if we have a function without any instructions we just skip it.  This
         // saves memory and since we only care about instructions where we can
         // actually crash this is a reasonable optimization.
@@ -479,16 +503,14 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             } else {
                 let parent_offset = func_id.saturating_sub(parent_id);
                 if parent_offset == !0 {
-                    return Err(ErrorKind::Internal(
-                        "parent function range too big for file format",
-                    ).into());
+                    return Err(SymCacheErrorKind::ValueTooLarge.into());
                 }
                 parent_offset as u16
             },
             line_records: Seg::default(),
             comp_dir: self.write_file_if_missing(func.comp_dir)?,
             lang: if func.lang as u32 > 0xff {
-                return Err(ErrorKind::Internal("language out of range for file format").into());
+                return Err(SymCacheErrorKind::ValueTooLarge.into());
             } else {
                 func.lang as u8
             },

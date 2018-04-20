@@ -1,10 +1,11 @@
 use std::fmt;
 use std::io::Cursor;
 
+use failure::{Backtrace, Context, Fail, ResultExt};
 use goblin::{self, elf, mach, Hint};
 
-use symbolic_common::{Arch, ByteView, ByteViewHandle, DebugKind, Endianness, ErrorKind,
-                      ObjectClass, ObjectKind, Result};
+use symbolic_common::byteview::{ByteView, ByteViewHandle};
+use symbolic_common::types::{Arch, DebugKind, Endianness, ObjectClass, ObjectKind};
 
 use breakpad::BreakpadSym;
 use dwarf::DwarfData;
@@ -20,6 +21,59 @@ pub(crate) enum ObjectTarget<'bytes> {
     MachOFat(mach::fat::FatArch, mach::MachO<'bytes>),
 }
 
+#[derive(Debug, Fail, Copy, Clone, Eq, PartialEq)]
+pub enum ObjectErrorKind {
+    #[fail(display = "unsupported object file")]
+    UnsupportedObject,
+    #[fail(display = "failed to read object file")]
+    BadObject,
+    #[fail(display = "object file has no symbol table")]
+    MissingSymbolTable,
+    #[fail(display = "symbol table not supported for this object format")]
+    UnsupportedSymbolTable,
+}
+
+#[derive(Debug)]
+pub struct ObjectError {
+    inner: Context<ObjectErrorKind>,
+}
+
+impl Fail for ObjectError {
+    fn cause(&self) -> Option<&Fail> {
+        self.inner.cause()
+    }
+
+    fn backtrace(&self) -> Option<&Backtrace> {
+        self.inner.backtrace()
+    }
+}
+
+impl fmt::Display for ObjectError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.inner, f)
+    }
+}
+
+impl ObjectError {
+    pub fn kind(&self) -> ObjectErrorKind {
+        *self.inner.get_context()
+    }
+}
+
+impl From<ObjectErrorKind> for ObjectError {
+    fn from(kind: ObjectErrorKind) -> ObjectError {
+        ObjectError {
+            inner: Context::new(kind),
+        }
+    }
+}
+
+impl From<Context<ObjectErrorKind>> for ObjectError {
+    fn from(inner: Context<ObjectErrorKind>) -> ObjectError {
+        ObjectError { inner }
+    }
+}
+
 /// Represents a single object in a fat object.
 pub struct Object<'bytes> {
     fat_bytes: &'bytes [u8],
@@ -29,62 +83,62 @@ pub struct Object<'bytes> {
 impl<'bytes> Object<'bytes> {
     /// Returns the identifier of the object.
     pub fn id(&self) -> Option<DebugId> {
-        use ObjectTarget::*;
         match self.target {
-            Breakpad(ref breakpad) => Some(breakpad.id()),
-            Elf(ref elf) => get_elf_id(elf, self.fat_bytes),
-            MachOSingle(macho) => get_mach_id(macho),
-            MachOFat(_, ref macho) => get_mach_id(macho),
+            ObjectTarget::Breakpad(ref breakpad) => Some(breakpad.id()),
+            ObjectTarget::Elf(ref elf) => get_elf_id(elf, self.fat_bytes),
+            ObjectTarget::MachOSingle(macho) => get_mach_id(macho),
+            ObjectTarget::MachOFat(_, ref macho) => get_mach_id(macho),
         }
     }
 
     /// Returns the kind of the object.
     pub fn kind(&self) -> ObjectKind {
-        use ObjectTarget::*;
         match self.target {
-            Breakpad(..) => ObjectKind::Breakpad,
-            Elf(..) => ObjectKind::Elf,
-            MachOSingle(..) => ObjectKind::MachO,
-            MachOFat(..) => ObjectKind::MachO,
+            ObjectTarget::Breakpad(..) => ObjectKind::Breakpad,
+            ObjectTarget::Elf(..) => ObjectKind::Elf,
+            ObjectTarget::MachOSingle(..) => ObjectKind::MachO,
+            ObjectTarget::MachOFat(..) => ObjectKind::MachO,
         }
     }
 
     /// Returns the architecture of the object.
-    pub fn arch(&self) -> Arch {
-        use ObjectTarget::*;
-        match self.target {
-            Breakpad(ref breakpad) => breakpad.arch(),
-            Elf(ref elf) => Arch::from_elf(elf.header.e_machine),
-            MachOSingle(ref mach) => {
-                Arch::from_mach(mach.header.cputype(), mach.header.cpusubtype())
+    pub fn arch(&self) -> Result<Arch, ObjectError> {
+        Ok(match self.target {
+            ObjectTarget::Breakpad(ref breakpad) => breakpad.arch(),
+            ObjectTarget::Elf(ref elf) => {
+                Arch::from_elf(elf.header.e_machine).context(ObjectErrorKind::UnsupportedObject)?
             }
-            MachOFat(_, ref mach) => {
+            ObjectTarget::MachOSingle(mach) => {
                 Arch::from_mach(mach.header.cputype(), mach.header.cpusubtype())
+                    .context(ObjectErrorKind::UnsupportedObject)?
             }
-        }
+            ObjectTarget::MachOFat(_, ref mach) => {
+                Arch::from_mach(mach.header.cputype(), mach.header.cpusubtype())
+                    .context(ObjectErrorKind::UnsupportedObject)?
+            }
+        })
     }
 
     /// Return the vmaddr of the code portion of the image.
-    pub fn vmaddr(&self) -> Result<u64> {
-        use ObjectTarget::*;
+    pub fn vmaddr(&self) -> u64 {
         match self.target {
             // Breakpad accounts for the vmaddr when dumping symbols
-            Breakpad(..) => Ok(0),
-            Elf(elf) => get_elf_vmaddr(elf),
-            MachOSingle(macho) => get_mach_vmaddr(macho),
-            MachOFat(_, ref macho) => get_mach_vmaddr(macho),
+            ObjectTarget::Breakpad(..) => 0,
+            ObjectTarget::Elf(elf) => get_elf_vmaddr(elf),
+            ObjectTarget::MachOSingle(macho) => get_mach_vmaddr(macho),
+            ObjectTarget::MachOFat(_, ref macho) => get_mach_vmaddr(macho),
         }
     }
 
     /// True if little endian, false if not.
     pub fn endianness(&self) -> Endianness {
-        use ObjectTarget::*;
         let little = match self.target {
-            Breakpad(..) => return Endianness::default(),
-            Elf(ref elf) => elf.little_endian,
-            MachOSingle(macho) => macho.little_endian,
-            MachOFat(_, ref macho) => macho.little_endian,
+            ObjectTarget::Breakpad(..) => return Endianness::default(),
+            ObjectTarget::Elf(ref elf) => elf.little_endian,
+            ObjectTarget::MachOSingle(macho) => macho.little_endian,
+            ObjectTarget::MachOFat(_, ref macho) => macho.little_endian,
         };
+
         if little {
             Endianness::Little
         } else {
@@ -94,12 +148,11 @@ impl<'bytes> Object<'bytes> {
 
     /// Returns the content of the object as bytes.
     pub fn as_bytes(&self) -> &'bytes [u8] {
-        use ObjectTarget::*;
         match self.target {
-            Breakpad(..) => self.fat_bytes,
-            Elf(..) => self.fat_bytes,
-            MachOSingle(_) => self.fat_bytes,
-            MachOFat(ref arch, _) => {
+            ObjectTarget::Breakpad(..) => self.fat_bytes,
+            ObjectTarget::Elf(..) => self.fat_bytes,
+            ObjectTarget::MachOSingle(_) => self.fat_bytes,
+            ObjectTarget::MachOFat(ref arch, _) => {
                 let bytes = self.fat_bytes;
                 &bytes[arch.offset as usize..(arch.offset + arch.size) as usize]
             }
@@ -108,29 +161,26 @@ impl<'bytes> Object<'bytes> {
 
     /// Returns the desiganted use of the object file and hints at its contents.
     pub fn class(&self) -> ObjectClass {
-        use ObjectTarget::*;
         match self.target {
-            Breakpad(..) => ObjectClass::Debug,
-            Elf(ref elf) => {
+            ObjectTarget::Breakpad(..) => ObjectClass::Debug,
+            ObjectTarget::Elf(ref elf) => {
                 ObjectClass::from_elf_full(elf.header.e_type, elf.interpreter.is_some())
             }
-            MachOSingle(macho) => ObjectClass::from_mach(macho.header.filetype),
-            MachOFat(_, ref macho) => ObjectClass::from_mach(macho.header.filetype),
+            ObjectTarget::MachOSingle(macho) => ObjectClass::from_mach(macho.header.filetype),
+            ObjectTarget::MachOFat(_, ref macho) => ObjectClass::from_mach(macho.header.filetype),
         }
     }
 
     /// Returns the type of debug data contained in this object file.
     pub fn debug_kind(&self) -> Option<DebugKind> {
-        use ObjectTarget::*;
         match self.target {
-            Breakpad(..) => Some(DebugKind::Breakpad),
-            Elf(..) | MachOSingle(..) | MachOFat(..) => {
-                if self.has_dwarf_data() {
-                    Some(DebugKind::Dwarf)
-                } else {
-                    None
-                }
+            ObjectTarget::Breakpad(..) => Some(DebugKind::Breakpad),
+            ObjectTarget::Elf(..) | ObjectTarget::MachOSingle(..) | ObjectTarget::MachOFat(..)
+                if self.has_dwarf_data() =>
+            {
+                Some(DebugKind::Dwarf)
             }
+            _ => None,
         }
     }
 }
@@ -140,7 +190,7 @@ impl<'bytes> fmt::Debug for Object<'bytes> {
         f.debug_struct("Object")
             .field("id", &self.id())
             .field("arch", &self.arch())
-            .field("vmaddr", &self.vmaddr().unwrap_or(0))
+            .field("vmaddr", &self.vmaddr())
             .field("endianness", &self.endianness())
             .field("kind", &self.kind())
             .finish()
@@ -160,7 +210,7 @@ impl<'fat> Objects<'fat> {
 }
 
 impl<'fat> Iterator for Objects<'fat> {
-    type Item = Result<Object<'fat>>;
+    type Item = Result<Object<'fat>, ObjectError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.fat.get_object(self.index) {
@@ -198,34 +248,44 @@ pub struct FatObject<'bytes> {
 
 impl<'bytes> FatObject<'bytes> {
     /// Returns the type of the FatObject.
-    pub fn peek<B>(bytes: B) -> Result<ObjectKind>
+    pub fn peek<B>(bytes: B) -> Result<Option<ObjectKind>, ObjectError>
     where
         B: AsRef<[u8]>,
     {
         let bytes = bytes.as_ref();
         let mut cur = Cursor::new(bytes);
 
-        match goblin::peek(&mut cur)? {
-            Hint::Elf(_) => return Ok(ObjectKind::Elf),
-            Hint::Mach(_) => return Ok(ObjectKind::MachO),
-            Hint::MachFat(_) => return Ok(ObjectKind::MachO),
+        match goblin::peek(&mut cur).context(ObjectErrorKind::BadObject)? {
+            Hint::Elf(_) => return Ok(Some(ObjectKind::Elf)),
+            Hint::Mach(_) => return Ok(Some(ObjectKind::MachO)),
+            Hint::MachFat(_) => return Ok(Some(ObjectKind::MachO)),
             _ => (),
         };
 
         if bytes.starts_with(b"MODULE ") {
-            return Ok(ObjectKind::Breakpad);
+            return Ok(Some(ObjectKind::Breakpad));
         }
 
-        return Err(ErrorKind::UnsupportedObjectFile.into());
+        Ok(None)
     }
 
     /// Provides a view to an object file from a `ByteView`.
-    pub fn parse(byteview: ByteView<'bytes>) -> Result<FatObject<'bytes>> {
-        let handle = ByteViewHandle::from_byteview(byteview, |bytes| -> Result<_> {
+    pub fn parse(byteview: ByteView<'bytes>) -> Result<FatObject<'bytes>, ObjectError> {
+        let handle = ByteViewHandle::from_byteview(byteview, |bytes| -> Result<_, ObjectError> {
             Ok(match FatObject::peek(bytes)? {
-                ObjectKind::Elf => FatObjectKind::Elf(elf::Elf::parse(bytes)?),
-                ObjectKind::MachO => FatObjectKind::MachO(mach::Mach::parse(bytes)?),
-                ObjectKind::Breakpad => FatObjectKind::Breakpad(BreakpadSym::parse(bytes)?),
+                Some(ObjectKind::Elf) => {
+                    let inner = elf::Elf::parse(bytes).context(ObjectErrorKind::BadObject)?;
+                    FatObjectKind::Elf(inner)
+                }
+                Some(ObjectKind::MachO) => {
+                    let inner = mach::Mach::parse(bytes).context(ObjectErrorKind::BadObject)?;
+                    FatObjectKind::MachO(inner)
+                }
+                Some(ObjectKind::Breakpad) => {
+                    let inner = BreakpadSym::parse(bytes).context(ObjectErrorKind::BadObject)?;
+                    FatObjectKind::Breakpad(inner)
+                }
+                None => return Err(ObjectErrorKind::UnsupportedObject.into()),
             })
         })?;
 
@@ -259,8 +319,8 @@ impl<'bytes> FatObject<'bytes> {
     }
 
     /// Returns the n-th object.
-    pub fn get_object(&'bytes self, idx: usize) -> Result<Option<Object<'bytes>>> {
-        if idx >= self.object_count() {
+    pub fn get_object(&'bytes self, index: usize) -> Result<Option<Object<'bytes>>, ObjectError> {
+        if index >= self.object_count() {
             return Ok(None);
         }
 
@@ -270,8 +330,13 @@ impl<'bytes> FatObject<'bytes> {
             FatObjectKind::MachO(ref mach) => match *mach {
                 mach::Mach::Binary(ref bin) => ObjectTarget::MachOSingle(bin),
                 mach::Mach::Fat(ref fat) => {
-                    let arch = fat.iter_arches().nth(idx).unwrap();
-                    ObjectTarget::MachOFat(arch?, fat.get(idx)?)
+                    let mach = fat.get(index).context(ObjectErrorKind::BadObject)?;
+                    let arch = fat.iter_arches()
+                        .nth(index)
+                        .unwrap()
+                        .context(ObjectErrorKind::BadObject)?;
+
+                    ObjectTarget::MachOFat(arch, mach)
                 }
             },
         };

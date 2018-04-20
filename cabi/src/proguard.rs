@@ -2,8 +2,8 @@ use std::slice;
 use std::os::raw::c_char;
 use std::ffi::CStr;
 
-use symbolic_common::ByteView;
-use symbolic_proguard::ProguardMappingView;
+use symbolic::common::byteview::ByteView;
+use symbolic::proguard::ProguardMappingView;
 
 use core::{SymbolicStr, SymbolicUuid};
 

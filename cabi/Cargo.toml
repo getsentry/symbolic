@@ -26,10 +26,6 @@ lto = true
 
 [dependencies]
 uuid = "0.6.2"
-symbolic-common = { version = "4.0.0", path = "../common", features = ["with_dwarf", "with_objects", "with_sourcemaps"] }
-symbolic-demangle = { version = "4.0.0", path = "../demangle" }
-symbolic-debuginfo = { version = "4.0.0", path = "../debuginfo" }
-symbolic-symcache = { version = "4.0.0", path = "../symcache" }
-symbolic-sourcemap = { version = "4.0.0", path = "../sourcemap" }
-symbolic-proguard = { version = "4.0.0", path = "../proguard" }
-symbolic-minidump = { version = "4.0.0", path = "../minidump" }
+failure = "0.1.1"
+failure_derive = "0.1.1"
+symbolic = { version = "4.0.0", path = "..", features = ["with_dwarf", "with_objects", "with_sourcemaps"] }

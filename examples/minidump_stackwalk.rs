@@ -1,34 +1,32 @@
 extern crate clap;
-extern crate symbolic_common;
-extern crate symbolic_debuginfo;
-extern crate symbolic_minidump;
-extern crate symbolic_symcache;
+extern crate failure;
+extern crate symbolic;
 extern crate walkdir;
 
 use std::collections::{BTreeMap, HashSet};
-use std::error::Error;
 use std::path::Path;
 
 use clap::{App, Arg, ArgMatches};
+use failure::Error;
 use walkdir::WalkDir;
 
-use symbolic_common::{Arch, ByteView, DebugKind};
-use symbolic_debuginfo::{FatObject, Object};
-use symbolic_minidump::{BreakpadAsciiCfiWriter, CodeModuleId, FrameInfoMap, ProcessState,
-                        StackFrame};
-use symbolic_symcache::{InstructionInfo, LineInfo, SymCache};
+use symbolic::common::byteview::ByteView;
+use symbolic::common::types::{Arch, DebugKind};
+use symbolic::debuginfo::{FatObject, Object};
+use symbolic::minidump::cfi::AsciiCfiWriter;
+use symbolic::minidump::processor::{CodeModuleId, FrameInfoMap, ProcessState, StackFrame};
+use symbolic::symcache::{InstructionInfo, LineInfo, SymCache};
 
-type Result<T> = ::std::result::Result<T, Box<Error>>;
 type SymCaches<'a> = BTreeMap<CodeModuleId, SymCache<'a>>;
 
 fn collect_referenced_objects<P, F, T>(
     path: P,
     state: &ProcessState,
     mut func: F,
-) -> Result<BTreeMap<CodeModuleId, T>>
+) -> Result<BTreeMap<CodeModuleId, T>, Error>
 where
     P: AsRef<Path>,
-    F: FnMut(Object) -> Result<Option<T>>,
+    F: FnMut(Object) -> Result<Option<T>, Error>,
 {
     let search_ids: HashSet<_> = state
         .referenced_modules()
@@ -74,20 +72,20 @@ where
     Ok(collected)
 }
 
-fn prepare_cfi<P>(path: P, state: &ProcessState) -> Result<FrameInfoMap<'static>>
+fn prepare_cfi<P>(path: P, state: &ProcessState) -> Result<FrameInfoMap<'static>, Error>
 where
     P: AsRef<Path>,
 {
     collect_referenced_objects(path, state, |object| {
         // Silently skip all debug symbols without CFI
-        Ok(match BreakpadAsciiCfiWriter::transform(&object) {
+        Ok(match AsciiCfiWriter::transform(&object) {
             Ok(buffer) => Some(ByteView::from_vec(buffer)),
             Err(_) => None,
         })
     })
 }
 
-fn prepare_symcaches<P>(path: P, state: &ProcessState) -> Result<SymCaches<'static>>
+fn prepare_symcaches<P>(path: P, state: &ProcessState) -> Result<SymCaches<'static>, Error>
 where
     P: AsRef<Path>,
 {
@@ -110,7 +108,7 @@ fn symbolize<'a>(
     frame: &StackFrame,
     arch: Arch,
     crashing: bool,
-) -> Result<Option<Vec<LineInfo<'a>>>> {
+) -> Result<Option<Vec<LineInfo<'a>>>, Error> {
     let module = match frame.module() {
         Some(module) => module,
         None => return Ok(None),
@@ -143,7 +141,7 @@ fn print_state(
     symcaches: &SymCaches,
     cfi: &FrameInfoMap,
     crashed_only: bool,
-) -> Result<()> {
+) -> Result<(), Error> {
     let sys = state.system_info();
     println!("Operating system: {}", sys.os_name());
     println!("                  {} {}", sys.os_version(), sys.os_build());
@@ -240,7 +238,7 @@ fn print_state(
     Ok(())
 }
 
-fn execute(matches: &ArgMatches) -> Result<()> {
+fn execute(matches: &ArgMatches) -> Result<(), Error> {
     let minidump_path = matches.value_of("minidump_file_path").unwrap();
     let symbols_path = matches.value_of("debug_symbols_path").unwrap();
 

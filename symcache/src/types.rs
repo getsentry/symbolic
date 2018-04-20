@@ -7,7 +7,6 @@ use std::marker::PhantomData;
 
 use uuid::Uuid;
 
-use symbolic_common::{ErrorKind, Result};
 use symbolic_debuginfo::DebugId;
 
 #[repr(C, packed)]
@@ -114,6 +113,10 @@ pub struct LineRecord {
     pub line: u16,
 }
 
+#[derive(Debug, Fail, Copy, Clone)]
+#[fail(display = "unknown symcache data source")]
+pub struct UnknownDataSourceError;
+
 #[repr(u32)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub enum DataSource {
@@ -127,9 +130,9 @@ pub enum DataSource {
 
 impl DataSource {
     /// Creates a data soure from the u32 it represents
-    pub fn from_u32(val: u32) -> Result<DataSource> {
+    pub fn from_u32(val: u32) -> Result<DataSource, UnknownDataSourceError> {
         if val >= (DataSource::__Max as u32) {
-            Err(ErrorKind::Parse("unknown data source").into())
+            Err(UnknownDataSourceError)
         } else {
             Ok(unsafe { mem::transmute(val as u32) })
         }

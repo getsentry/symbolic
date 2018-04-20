@@ -26,5 +26,3 @@ pub use symbolic_minidump as minidump;
 pub use symbolic_symcache as symcache;
 pub use symbolic_debuginfo as debuginfo;
 pub use symbolic_common as common;
-
-pub use common::{Error, ErrorKind, Result, ResultExt};

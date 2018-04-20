@@ -15,6 +15,8 @@ A library to process and inspect Minidump crash reports
 build = "build.rs"
 
 [dependencies]
+failure = "0.1.1"
+failure_derive = "0.1.1"
 gimli = "0.15.0"
 lazy_static = "1.0.0"
 regex = "0.2.10"

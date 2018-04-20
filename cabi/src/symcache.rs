@@ -3,9 +3,9 @@ use std::slice;
 use std::os::raw::c_char;
 use std::ffi::CStr;
 
-use symbolic_debuginfo::Object;
-use symbolic_symcache::{InstructionInfo, SymCache, SYMCACHE_LATEST_VERSION};
-use symbolic_common::{Arch, ByteView};
+use symbolic::common::{byteview::ByteView, types::Arch};
+use symbolic::debuginfo::Object;
+use symbolic::symcache::{InstructionInfo, SymCache, SYMCACHE_LATEST_VERSION};
 
 use core::SymbolicStr;
 use debuginfo::SymbolicObject;
@@ -147,7 +147,7 @@ ffi_fn! {
         scache: *const SymbolicSymCache,
     ) -> Result<u32> {
         let cache = scache as *mut SymCache<'static>;
-        (*cache).file_format_version()
+        Ok((*cache).file_format_version()?)
     }
 }
 
@@ -199,7 +199,7 @@ ffi_fn! {
     unsafe fn symbolic_find_best_instruction(ii: *const SymbolicInstructionInfo) -> Result<u64> {
         let real_ii = InstructionInfo {
             addr: (*ii).addr,
-            arch: Arch::parse((*(*ii).arch).as_str())?,
+            arch: (*(*ii).arch).as_str().parse::<Arch>()?,
             crashing_frame: (*ii).crashing_frame,
             signal: if (*ii).signal == 0 { None } else { Some((*ii).signal) },
             ip_reg: if (*ii).ip_reg == 0 { None } else { Some((*ii).ip_reg) },

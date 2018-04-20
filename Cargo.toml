@@ -22,6 +22,17 @@ exclude = [
 
 [workspace]
 
+[features]
+default = []
+with_dwarf = ["symbolic-common/with_dwarf"]
+with_objects = ["symbolic-common/with_objects"]
+with_serde = [
+    "symbolic-common/with_serde",
+    "symbolic-debuginfo/with_serde",
+    "symbolic-minidump/with_serde"
+]
+with_sourcemaps = ["symbolic-common/with_sourcemaps"]
+
 [dependencies]
 symbolic-common = { version = "4.0.0", path = "common" }
 symbolic-demangle = { version = "4.0.0", path = "demangle" }
@@ -33,4 +44,5 @@ symbolic-debuginfo = { version = "4.0.0", path = "debuginfo" }
 
 [dev-dependencies]
 clap = "2.31.2"
+failure = "0.1.1"
 walkdir = "2.1.4"

@@ -1,4 +1,4 @@
-use symbolic_common::{Language, Name};
+use symbolic_common::types::{Language, Name};
 use symbolic_demangle::{Demangle, DemangleFormat, DemangleOptions};
 
 const WITH_ARGS: DemangleOptions = DemangleOptions {
@@ -18,13 +18,13 @@ pub fn assert_demangle(
     without_args: Option<&str>,
 ) {
     let name = Name::with_language(input, language);
-    if let Some(rv) = name.demangle(WITH_ARGS).unwrap() {
+    if let Some(rv) = name.demangle(WITH_ARGS) {
         assert_eq!(Some(rv.as_str()), with_args);
     } else {
         assert_eq!(None, with_args);
     }
 
-    if let Some(rv) = name.demangle(WITHOUT_ARGS).unwrap() {
+    if let Some(rv) = name.demangle(WITHOUT_ARGS) {
         assert_eq!(Some(rv.as_str()), without_args);
     } else {
         assert_eq!(None, without_args);

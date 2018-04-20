@@ -4,10 +4,11 @@ use std::os::raw::c_char;
 use std::slice;
 use std::str::FromStr;
 
-use symbolic_common::{Arch, ByteView};
-use symbolic_debuginfo::Object;
-use symbolic_minidump::{BreakpadAsciiCfiWriter, CallStack, CodeModule, CodeModuleId, FrameInfoMap,
-                        ProcessState, StackFrame, SystemInfo};
+use symbolic::common::{byteview::ByteView, types::Arch};
+use symbolic::debuginfo::Object;
+use symbolic::minidump::cfi::AsciiCfiWriter;
+use symbolic::minidump::processor::{CallStack, CodeModule, CodeModuleId, FrameInfoMap,
+                                    ProcessState, StackFrame, SystemInfo};
 
 use core::SymbolicStr;
 use debuginfo::SymbolicObject;
@@ -136,7 +137,10 @@ where
 /// Maps a `CodeModule` to its FFI type
 unsafe fn map_code_module(module: &CodeModule) -> SymbolicCodeModule {
     SymbolicCodeModule {
-        id: module.id().map(|id| id.to_string().into()).unwrap_or_default(),
+        id: module
+            .id()
+            .map(|id| id.to_string().into())
+            .unwrap_or_default(),
         addr: module.base_address(),
         size: module.size(),
         name: SymbolicStr::from_string(module.code_file()),
@@ -309,7 +313,7 @@ ffi_fn! {
         let mut buffer = vec![] as Vec<u8>;
 
         {
-            let mut writer = BreakpadAsciiCfiWriter::new(&mut buffer);
+            let mut writer = AsciiCfiWriter::new(&mut buffer);
             writer.process(&*(sobj as *const Object))?;
         }
 

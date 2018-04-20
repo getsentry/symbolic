@@ -1,4 +1,7 @@
 //! Provides minidump support.
+extern crate failure;
+#[macro_use]
+extern crate failure_derive;
 extern crate gimli;
 #[macro_use]
 extern crate lazy_static;
@@ -13,10 +16,7 @@ extern crate uuid;
 extern crate symbolic_common;
 extern crate symbolic_debuginfo;
 
-mod cfi;
-mod processor;
+pub mod cfi;
+pub mod processor;
 mod registers;
 mod utils;
-
-pub use cfi::*;
-pub use processor::*;

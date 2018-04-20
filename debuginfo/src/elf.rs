@@ -3,8 +3,6 @@ use std::cmp;
 use goblin::elf;
 use uuid::Uuid;
 
-use symbolic_common::Result;
-
 use id::DebugId;
 
 const UUID_SIZE: usize = 16;
@@ -157,7 +155,7 @@ pub fn get_elf_id(elf: &elf::Elf, data: &[u8]) -> Option<DebugId> {
 }
 
 /// Gets the virtual memory address of this object's .text (code) section.
-pub fn get_elf_vmaddr(elf: &elf::Elf) -> Result<u64> {
+pub fn get_elf_vmaddr(elf: &elf::Elf) -> u64 {
     // For non-PIC executables (e_type == ET_EXEC), the load address is
     // the start address of the first PT_LOAD segment.  (ELF requires
     // the segments to be sorted by load address.)  For PIC executables
@@ -165,9 +163,9 @@ pub fn get_elf_vmaddr(elf: &elf::Elf) -> Result<u64> {
     // normally be zero.
     for phdr in &elf.program_headers {
         if phdr.p_type == elf::program_header::PT_LOAD {
-            return Ok(phdr.p_vaddr);
+            return phdr.p_vaddr;
         }
     }
 
-    Ok(0)
+    0
 }

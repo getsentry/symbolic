@@ -4,7 +4,7 @@ extern crate symbolic_symcache;
 extern crate symbolic_testutils;
 
 use std::fmt::Write;
-use symbolic_common::ByteView;
+use symbolic_common::byteview::ByteView;
 use symbolic_debuginfo::FatObject;
 use symbolic_symcache::SymCache;
 use symbolic_testutils::{assert_snapshot, assert_snapshot_plain, fixture_path};

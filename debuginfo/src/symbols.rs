@@ -3,12 +3,13 @@ use std::collections::{BTreeMap, HashSet};
 use std::iter::{IntoIterator, Peekable};
 use std::slice;
 
+use failure::ResultExt;
 use goblin::mach;
 use regex::Regex;
 
-use symbolic_common::{ErrorKind, Name, Result};
+use symbolic_common::types::Name;
 
-use object::{Object, ObjectTarget};
+use object::{Object, ObjectError, ObjectErrorKind, ObjectTarget};
 
 lazy_static! {
     static ref HIDDEN_SYMBOL_RE: Regex = Regex::new("__?hidden#\\d+_").unwrap();
@@ -73,15 +74,17 @@ impl<'data> SymbolsInternal<'data> {
     ///
     /// To compute the presumed length of a symbol, pass the index of the
     /// logically next symbol (i.e. the one with the next greater address).
-    pub fn get(&self, index: usize, next: Option<usize>) -> Result<Option<Symbol<'data>>> {
+    pub fn get(
+        &self,
+        index: usize,
+        next: Option<usize>,
+    ) -> Result<Option<Symbol<'data>>, ObjectError> {
         Ok(Some(match *self {
             SymbolsInternal::MachO(symbols) => {
-                let (name, nlist) = symbols.get(index)?;
-
-                let stripped = if name.starts_with("_") {
-                    &name[1..]
-                } else {
-                    name
+                let (name, nlist) = symbols.get(index).context(ObjectErrorKind::BadObject)?;
+                let stripped = match name.starts_with("_") {
+                    true => &name[1..],
+                    false => name,
                 };
 
                 // The length is only calculated if `next` is specified and does
@@ -120,7 +123,7 @@ where
 }
 
 impl<'data, 'sym> Iterator for SymbolIterator<'data, 'sym> {
-    type Item = Result<Symbol<'data>>;
+    type Item = Result<Symbol<'data>, ObjectError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let index = match self.iter.next() {
@@ -157,10 +160,10 @@ pub struct Symbols<'data> {
 
 impl<'data> Symbols<'data> {
     /// Creates a `Symbols` wrapper for MachO
-    fn from_macho(macho: &'data mach::MachO) -> Result<Symbols<'data>> {
+    fn from_macho(macho: &'data mach::MachO) -> Result<Symbols<'data>, ObjectError> {
         let macho_symbols = match macho.symbols {
             Some(ref symbols) => symbols,
-            None => return Err(ErrorKind::MissingDebugInfo("symbol table missing").into()),
+            None => return Err(ObjectErrorKind::MissingSymbolTable.into()),
         };
 
         let mut sections = HashSet::new();
@@ -169,8 +172,8 @@ impl<'data> Symbols<'data> {
         // Cache section indices that we are interested in
         for segment in &macho.segments {
             for section_rv in segment {
-                let (section, _) = section_rv?;
-                let name = section.name()?;
+                let (section, _) = section_rv.context(ObjectErrorKind::BadObject)?;
+                let name = section.name().context(ObjectErrorKind::BadObject)?;
                 if name == "__stubs" || name == "__text" {
                     sections.insert(section_index);
                 }
@@ -181,7 +184,7 @@ impl<'data> Symbols<'data> {
         // Build an ordered map of only symbols we are interested in
         let mut symbol_map = BTreeMap::new();
         for (symbol_index, symbol_result) in macho.symbols().enumerate() {
-            let (_, nlist) = symbol_result?;
+            let (_, nlist) = symbol_result.context(ObjectErrorKind::BadObject)?;
             let in_valid_section = nlist.get_type() == mach::symbols::N_SECT
                 && nlist.n_sect != (mach::symbols::NO_SECT as usize)
                 && sections.contains(&(nlist.n_sect - 1));
@@ -198,7 +201,7 @@ impl<'data> Symbols<'data> {
     }
 
     /// Searches for a single `Symbol` inside the symbol table
-    pub fn lookup(&self, addr: u64) -> Result<Option<Symbol<'data>>> {
+    pub fn lookup(&self, addr: u64) -> Result<Option<Symbol<'data>>, ObjectError> {
         let found = match self.mappings.binary_search_by_key(&addr, |&x| x.0) {
             Ok(idx) => idx,
             Err(0) => return Ok(None),
@@ -214,19 +217,22 @@ impl<'data> Symbols<'data> {
     ///
     /// This is an indication that BCSymbolMaps are needed to symbolicate
     /// symbols correctly.
-    pub fn requires_symbolmap(&self) -> Result<bool> {
+    pub fn requires_symbolmap(&self) -> bool {
         // Hidden symbols can only ever occur in Apple's dSYM
         match self.internal {
             SymbolsInternal::MachO(..) => (),
         };
 
         for symbol in self.iter() {
-            if HIDDEN_SYMBOL_RE.is_match(symbol?.as_str()) {
-                return Ok(true);
+            if symbol
+                .map(|s| HIDDEN_SYMBOL_RE.is_match(s.as_str()))
+                .unwrap_or(false)
+            {
+                return true;
             }
         }
 
-        Ok(false)
+        false
     }
 
     pub fn iter<'sym>(&'sym self) -> SymbolIterator<'data, 'sym> {
@@ -240,15 +246,15 @@ impl<'data> Symbols<'data> {
 /// Gives access to the symbol table of an `Object` file
 pub trait SymbolTable {
     /// Returns the symbols of this `Object`
-    fn symbols(&self) -> Result<Symbols>;
+    fn symbols(&self) -> Result<Symbols, ObjectError>;
 }
 
 impl<'data> SymbolTable for Object<'data> {
-    fn symbols(&self) -> Result<Symbols> {
+    fn symbols(&self) -> Result<Symbols, ObjectError> {
         match self.target {
             ObjectTarget::MachOSingle(macho) => Symbols::from_macho(macho),
             ObjectTarget::MachOFat(_, ref macho) => Symbols::from_macho(macho),
-            _ => Err(ErrorKind::Internal("symbol table not implemented").into()),
+            _ => Err(ObjectErrorKind::UnsupportedSymbolTable.into()),
         }
     }
 }

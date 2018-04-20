@@ -1,6 +1,8 @@
-use symbolic_common::{ErrorKind, Result};
+use failure::ResultExt;
 use symbolic_debuginfo::{BreakpadData, BreakpadFileRecord, BreakpadFuncRecord,
                          BreakpadModuleRecord, BreakpadPublicRecord, BreakpadRecord, Object};
+
+use error::{ConversionError, SymCacheError, SymCacheErrorKind};
 
 #[derive(Debug)]
 pub struct BreakpadInfo<'input> {
@@ -11,7 +13,7 @@ pub struct BreakpadInfo<'input> {
 }
 
 impl<'input> BreakpadInfo<'input> {
-    pub fn from_object(object: &'input Object) -> Result<BreakpadInfo<'input>> {
+    pub fn from_object(object: &'input Object) -> Result<BreakpadInfo<'input>, SymCacheError> {
         let mut info = BreakpadInfo {
             module: None,
             files: vec![],
@@ -35,19 +37,17 @@ impl<'input> BreakpadInfo<'input> {
         self.syms.as_slice()
     }
 
-    fn parse(&mut self, object: &'input Object) -> Result<()> {
+    fn parse(&mut self, object: &'input Object) -> Result<(), SymCacheError> {
         let mut records = object.breakpad_records();
         while let Some(record) = records.next() {
-            match record? {
+            match record.context(SymCacheErrorKind::BadDebugFile)? {
                 BreakpadRecord::Module(m) => self.module = Some(m),
                 BreakpadRecord::File(f) => self.files.push(f),
                 BreakpadRecord::Function(f) => self.funcs.push(f),
                 BreakpadRecord::Line(l) => {
                     let func = match self.funcs.last_mut() {
                         Some(func) => func,
-                        None => {
-                            return Err(ErrorKind::BadBreakpadSym("Unexpected line record").into());
-                        }
+                        None => return Err(ConversionError("unexpected line record").into()),
                     };
 
                     func.lines.push(l);

@@ -3,7 +3,7 @@ extern crate symbolic_common;
 use std::fs;
 use std::env;
 
-use symbolic_common::ByteView;
+use symbolic_common::byteview::ByteView;
 
 #[test]
 fn test_basics() {

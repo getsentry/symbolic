@@ -3,8 +3,8 @@ use std::os::raw::c_char;
 use std::ptr;
 use std::str::FromStr;
 
-use symbolic_common::ByteView;
-use symbolic_debuginfo::{DebugId, FatObject, Object};
+use symbolic::common::byteview::ByteView;
+use symbolic::debuginfo::{DebugId, FatObject, Object};
 
 use core::SymbolicStr;
 
@@ -60,7 +60,7 @@ ffi_fn! {
     /// Returns the architecture of the object.
     unsafe fn symbolic_object_get_arch(so: *const SymbolicObject) -> Result<SymbolicStr> {
         let o = so as *const Object<'static>;
-        Ok(SymbolicStr::new((*o).arch().name()))
+        Ok(SymbolicStr::new((*o).arch()?.name()))
     }
 }
 

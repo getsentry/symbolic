@@ -5,9 +5,10 @@ use std::cmp;
 use std::mem;
 use std::sync::Arc;
 
-use symbolic_common::{Endianness, Error, ErrorKind, Language, Result, ResultExt};
+use symbolic_common::types::{Endianness, Language};
 use symbolic_debuginfo::{DwarfData, DwarfSection, Object, Symbols};
 
+use failure::Fail;
 use fallible_iterator::FallibleIterator;
 use lru_cache::LruCache;
 use fnv::FnvBuildHasher;
@@ -17,12 +18,10 @@ use gimli::{self, Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbb
             DebuggingInformationEntry, DwLang, EndianBuf, IncompleteLineNumberProgram, Range,
             StateMachine, UnitOffset};
 
+use error::{ConversionError, SymCacheError, SymCacheErrorKind};
+
 type Buf<'input> = EndianBuf<'input, Endianness>;
 type Die<'abbrev, 'unit, 'input> = DebuggingInformationEntry<'abbrev, 'unit, Buf<'input>>;
-
-fn err(msg: &'static str) -> Error {
-    Error::from(ErrorKind::BadDwarfData(msg))
-}
 
 #[derive(Debug)]
 pub struct DwarfInfo<'input> {
@@ -36,15 +35,16 @@ pub struct DwarfInfo<'input> {
 }
 
 impl<'input> DwarfInfo<'input> {
-    pub fn from_object(obj: &'input Object) -> Result<DwarfInfo<'input>> {
+    pub fn from_object(obj: &'input Object) -> Result<DwarfInfo<'input>, SymCacheError> {
         macro_rules! section {
             ($sect:ident, $mandatory:expr) => {{
                 let sect = match obj.get_dwarf_section(DwarfSection::$sect) {
                     Some(sect) => sect.as_bytes(),
                     None => {
                         if $mandatory {
-                            return Err(ErrorKind::MissingSection(
-                                DwarfSection::$sect.name()).into());
+                            return Err(ConversionError(stringify!(missing required $sect section))
+                                .context(SymCacheErrorKind::MissingDebugSection)
+                                .into());
                         }
                         &[]
                     }
@@ -59,31 +59,32 @@ impl<'input> DwarfInfo<'input> {
             debug_line: section!(DebugLine, true),
             debug_ranges: section!(DebugRanges, false),
             debug_str: section!(DebugStr, false),
-            vmaddr: obj.vmaddr()?,
+            vmaddr: obj.vmaddr(),
             abbrev_cache: RefCell::new(LruCache::with_hasher(30, Default::default())),
         })
     }
 
     #[inline(always)]
-    pub fn get_unit_header(&self, index: usize) -> Result<&CompilationUnitHeader<Buf<'input>>> {
+    pub fn get_unit_header(
+        &self,
+        index: usize,
+    ) -> Result<&CompilationUnitHeader<Buf<'input>>, SymCacheError> {
         self.units
             .get(index)
-            .ok_or_else(|| err("non existing unit"))
+            .ok_or_else(|| ConversionError("compilation unit does not exist").into())
     }
 
     pub fn get_abbrev(
         &self,
         header: &CompilationUnitHeader<Buf<'input>>,
-    ) -> Result<Arc<Abbreviations>> {
+    ) -> Result<Arc<Abbreviations>, SymCacheError> {
         let offset = header.debug_abbrev_offset();
         let mut cache = self.abbrev_cache.borrow_mut();
         if let Some(abbrev) = cache.get_mut(&offset) {
             return Ok(abbrev.clone());
         }
 
-        let abbrev = header
-            .abbreviations(&self.debug_abbrev)
-            .chain_err(|| err("compilation unit refers to non-existing abbreviations"))?;
+        let abbrev = header.abbreviations(&self.debug_abbrev)?;
 
         cache.insert(offset, Arc::new(abbrev));
         Ok(cache.get_mut(&offset).unwrap().clone())
@@ -92,17 +93,21 @@ impl<'input> DwarfInfo<'input> {
     fn find_unit_offset(
         &self,
         offset: DebugInfoOffset<usize>,
-    ) -> Result<(usize, UnitOffset<usize>)> {
+    ) -> Result<(usize, UnitOffset<usize>), SymCacheError> {
         let idx = match self.units.binary_search_by_key(&offset.0, |x| x.offset().0) {
             Ok(idx) => idx,
-            Err(0) => return Err(err("couln't find unit for ref address")),
+            Err(0) => {
+                return Err(ConversionError("could not find compilation unit at address").into())
+            }
             Err(next_idx) => next_idx - 1,
         };
+
         let header = &self.units[idx];
         if let Some(unit_offset) = offset.to_unit_offset(header) {
             return Ok((idx, unit_offset));
         }
-        Err(err("unit offset not within unit"))
+
+        Err(ConversionError("compilation unit out of range").into())
     }
 }
 
@@ -185,64 +190,50 @@ pub struct Unit<'input> {
 }
 
 impl<'input> Unit<'input> {
-    pub fn parse(info: &DwarfInfo<'input>, index: usize) -> Result<Option<Unit<'input>>> {
+    pub fn parse(
+        info: &DwarfInfo<'input>,
+        index: usize,
+    ) -> Result<Option<Unit<'input>>, SymCacheError> {
         let header = info.get_unit_header(index)?;
 
         // Access the compilation unit, which must be the top level DIE
         let abbrev = info.get_abbrev(header)?;
         let mut entries = header.entries(&*abbrev);
-        let entry = match entries
-            .next_dfs()
-            .chain_err(|| err("compilation unit is broken"))?
-        {
+        let entry = match entries.next_dfs()? {
             Some((_, entry)) => entry,
             None => return Ok(None),
         };
 
         if entry.tag() != gimli::DW_TAG_compile_unit {
-            return Err(err("missing compilation unit"));
+            return Err(ConversionError("missing compilation unit").into());
         }
 
-        let base_address = match entry.attr_value(gimli::DW_AT_low_pc) {
-            Ok(Some(AttributeValue::Addr(addr))) => addr,
-            Err(e) => {
-                return Err(e).chain_err(|| err("invalid low_pc attribute"));
-            }
-            _ => match entry.attr_value(gimli::DW_AT_entry_pc) {
-                Ok(Some(AttributeValue::Addr(addr))) => addr,
-                Err(e) => {
-                    return Err(e).chain_err(|| err("invalid entry_pc attribute"));
-                }
+        let base_address = match entry.attr_value(gimli::DW_AT_low_pc)? {
+            Some(AttributeValue::Addr(addr)) => addr,
+            _ => match entry.attr_value(gimli::DW_AT_entry_pc)? {
+                Some(AttributeValue::Addr(addr)) => addr,
                 _ => 0,
             },
         };
 
         let comp_dir = entry
-            .attr(gimli::DW_AT_comp_dir)
-            .chain_err(|| err("invalid compilation unit directory"))?
+            .attr(gimli::DW_AT_comp_dir)?
             .and_then(|attr| attr.string_value(&info.debug_str));
 
         let comp_name = entry
-            .attr(gimli::DW_AT_name)
-            .chain_err(|| err("invalid compilation unit name"))?
+            .attr(gimli::DW_AT_name)?
             .and_then(|attr| attr.string_value(&info.debug_str));
 
         let language = entry
-            .attr(gimli::DW_AT_language)
-            .chain_err(|| err("invalid language"))?
+            .attr(gimli::DW_AT_language)?
             .and_then(|attr| match attr.value() {
                 AttributeValue::Language(lang) => Some(lang),
                 _ => None,
             });
 
-        let line_offset = match entry.attr_value(gimli::DW_AT_stmt_list) {
-            Ok(Some(AttributeValue::DebugLineRef(offset))) => offset,
-            Err(e) => {
-                return Err(e).chain_err(|| "invalid compilation unit statement list");
-            }
-            _ => {
-                return Ok(None);
-            }
+        let line_offset = match entry.attr_value(gimli::DW_AT_stmt_list)? {
+            Some(AttributeValue::DebugLineRef(offset)) => offset,
+            _ => return Ok(None),
         };
 
         Ok(Some(Unit {
@@ -261,7 +252,7 @@ impl<'input> Unit<'input> {
         range_buf: &mut Vec<Range>,
         symbols: Option<&'input Symbols<'input>>,
         funcs: &mut Vec<Function<'input>>,
-    ) -> Result<()> {
+    ) -> Result<(), SymCacheError> {
         let mut depth = 0;
         let header = info.get_unit_header(self.index)?;
         let abbrev = info.get_abbrev(header)?;
@@ -275,10 +266,7 @@ impl<'input> Unit<'input> {
             self.comp_name,
         )?;
 
-        while let Some((movement, entry)) = entries
-            .next_dfs()
-            .chain_err(|| err("tree below compilation unit yielded invalid entry"))?
-        {
+        while let Some((movement, entry)) = entries.next_dfs()? {
             depth += movement;
 
             // skip anything that is not a function
@@ -288,8 +276,7 @@ impl<'input> Unit<'input> {
                 _ => continue,
             };
 
-            let (call_line, call_file, ranges) = self.parse_location(info, entry, range_buf)
-                .chain_err(|| err("subroutine has invalid ranges"))?;
+            let (call_line, call_file, ranges) = self.parse_location(info, entry, range_buf)?;
             if ranges.is_empty() {
                 continue;
             }
@@ -323,7 +310,7 @@ impl<'input> Unit<'input> {
                 lines: vec![],
                 comp_dir: self.comp_dir.map(|x| x.buf()).unwrap_or(b""),
                 lang: self.language
-                    .map(|lang| Language::from_dwarf_lang(lang))
+                    .and_then(|lang| Language::from_dwarf_lang(lang).ok())
                     .unwrap_or(Language::Unknown),
             };
 
@@ -350,7 +337,7 @@ impl<'input> Unit<'input> {
             }
 
             if funcs.is_empty() {
-                return Err(err("no root function"));
+                return Err(ConversionError("could not find root function").into());
             }
 
             // Search the inner-most parent function from the inlines tree. At
@@ -413,7 +400,7 @@ impl<'input> Unit<'input> {
         info: &DwarfInfo<'input>,
         entry: &Die,
         buf: &'a mut Vec<Range>,
-    ) -> Result<FunctionLocation<'a>> {
+    ) -> Result<FunctionLocation<'a>, SymCacheError> {
         let mut tuple = FunctionLocation::default();
         let mut low_pc = None;
         let mut high_pc = None;
@@ -427,9 +414,11 @@ impl<'input> Unit<'input> {
                 gimli::DW_AT_ranges => match attr.value() {
                     AttributeValue::DebugRangesRef(offset) => {
                         let header = info.get_unit_header(self.index)?;
-                        let mut attrs = info.debug_ranges
-                            .ranges(offset, header.address_size(), self.base_address)
-                            .chain_err(|| err("range offsets are not valid"))?;
+                        let mut attrs = info.debug_ranges.ranges(
+                            offset,
+                            header.address_size(),
+                            self.base_address,
+                        )?;
 
                         while let Some(item) = attrs.next()? {
                             buf.push(item);
@@ -485,8 +474,8 @@ impl<'input> Unit<'input> {
         }
 
         if low_pc > high_pc {
-            // XXX: consider swallowing errors?
-            return Err(err("invalid due to inverted range"));
+            // TODO: consider swallowing errors here?
+            return Err(ConversionError("invalid function with inverted range").into());
         }
 
         buf.push(Range {
@@ -507,9 +496,9 @@ impl<'input> Unit<'input> {
         info: &'info DwarfInfo<'input>,
         attr_value: AttributeValue<Buf<'input>>,
         f: F,
-    ) -> Result<Option<T>>
+    ) -> Result<Option<T>, SymCacheError>
     where
-        for<'abbrev> F: FnOnce(&Die<'abbrev, 'info, 'input>) -> Result<Option<T>>,
+        for<'abbrev> F: FnOnce(&Die<'abbrev, 'info, 'input>) -> Result<Option<T>, SymCacheError>,
     {
         let (index, offset) = match attr_value {
             AttributeValue::UnitRef(offset) => (self.index, offset),
@@ -524,6 +513,7 @@ impl<'input> Unit<'input> {
         let header = info.get_unit_header(index)?;
         let abbrev = info.get_abbrev(header)?;
         let mut entries = header.entries_at_offset(&*abbrev, offset)?;
+
         entries.next_entry()?;
         if let Some(entry) = entries.current() {
             f(entry)
@@ -537,7 +527,7 @@ impl<'input> Unit<'input> {
         &self,
         info: &DwarfInfo<'input>,
         entry: &Die<'abbrev, 'unit, 'input>,
-    ) -> Result<Option<Cow<'input, str>>> {
+    ) -> Result<Option<Cow<'input, str>>, SymCacheError> {
         let mut attrs = entry.attrs();
         let mut fallback_name = None;
         let mut reference_target = None;
@@ -567,7 +557,6 @@ impl<'input> Unit<'input> {
         if let Some(attr) = reference_target {
             if let Some(name) = self.resolve_reference(info, attr.value(), |ref_entry| {
                 self.resolve_function_name(info, ref_entry)
-                    .chain_err(|| err("reference does not resolve to a name"))
             })? {
                 return Ok(Some(name));
             }
@@ -604,7 +593,7 @@ impl<'input> DwarfLineProgram<'input> {
         address_size: u8,
         comp_dir: Option<Buf<'input>>,
         comp_name: Option<Buf<'input>>,
-    ) -> Result<Self> {
+    ) -> Result<Self, SymCacheError> {
         let program = info.debug_line
             .program(line_offset, address_size, comp_dir, comp_name)?;
 
@@ -681,11 +670,12 @@ impl<'input> DwarfLineProgram<'input> {
         })
     }
 
-    pub fn get_filename(&self, idx: u64) -> Result<(&'input [u8], &'input [u8])> {
+    pub fn get_filename(&self, idx: u64) -> Result<(&'input [u8], &'input [u8]), SymCacheError> {
         let header = self.program_rows.header();
         let file = header
             .file(idx)
-            .ok_or_else(|| ErrorKind::BadDwarfData("invalid file reference"))?;
+            .ok_or_else(|| SymCacheError::from(ConversionError("invalid file reference")))?;
+
         Ok((
             file.directory(header).map(|x| x.buf()).unwrap_or(b""),
             file.path_name().buf(),

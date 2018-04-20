@@ -6,10 +6,9 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 
 use uuid::Uuid;
+use failure::Error;
 
-use symbolic_common::ErrorKind;
-
-use utils::{set_panic_hook, LAST_ERROR};
+use utils::{set_panic_hook, Panic, LAST_ERROR};
 
 /// Represents a string.
 #[repr(C)]
@@ -75,10 +74,20 @@ impl<'a> From<&'a str> for SymbolicStr {
     }
 }
 
-/// Represents a UUID
+/// Represents a UUID.
 #[repr(C)]
 pub struct SymbolicUuid {
     pub data: [u8; 16],
+}
+
+impl SymbolicUuid {
+    pub fn new(uuid: Uuid) -> SymbolicUuid {
+        unsafe { mem::transmute(*uuid.as_bytes()) }
+    }
+
+    pub fn as_uuid(&self) -> &Uuid {
+        unsafe { mem::transmute(self) }
+    }
 }
 
 impl Default for SymbolicUuid {
@@ -89,77 +98,37 @@ impl Default for SymbolicUuid {
 
 impl From<Uuid> for SymbolicUuid {
     fn from(uuid: Uuid) -> SymbolicUuid {
-        unsafe { mem::transmute(*uuid.as_bytes()) }
+        SymbolicUuid::new(uuid)
     }
 }
 
-/// Indicates the error that ocurred
+/// Represents all possible error codes
 #[repr(u32)]
 pub enum SymbolicErrorCode {
-    // no error
     NoError = 0,
-    // panics and internals
     Panic = 1,
-    Internal = 2,
-    Msg = 3,
-    Unknown = 4,
-    // generic errors
-    Parse = 101,
-    NotFound = 102,
-    Format = 103,
-    MissingDebugInfo = 104,
-    BadJson = 105,
-    // debuginfo/symcache
-    BadSymbol = 1001,
-    UnsupportedObjectFile = 1002,
-    MalformedObjectFile = 1003,
-    BadCacheFile = 1004,
-    MissingSection = 1005,
-    BadDwarfData = 1006,
-    BadBreakpadSym = 1007,
-    BadSymbolTable = 1008,
-    // sourcemaps
-    BadSourcemap = 2001,
-    CannotFlattenSourcemap = 2002,
-    // minidump
-    Stackwalk = 3001,
-    Resolver = 3002,
-    // external errors
-    Io = 10001,
-    Utf8Error = 10002,
-    ParseInt = 10003,
+    Unknown = 2,
+
+    // symbolic_aorta::auth::KeyParseError
+    KeyParseErrorBadEncoding = 1000,
+    KeyParseErrorBadKey = 1001,
+
+    // symbolic_aorta::auth::UnpackError
+    UnpackErrorBadSignature = 1003,
+    UnpackErrorBadPayload = 1004,
+    UnpackErrorSignatureExpired = 1005,
 }
 
 impl SymbolicErrorCode {
-    pub fn from_kind(kind: &ErrorKind) -> SymbolicErrorCode {
-        match *kind {
-            ErrorKind::Panic(..) => SymbolicErrorCode::Panic,
-            ErrorKind::Msg(..) => SymbolicErrorCode::Msg,
-            ErrorKind::BadSymbol(..) => SymbolicErrorCode::BadSymbol,
-            ErrorKind::Internal(..) => SymbolicErrorCode::Internal,
-            ErrorKind::Parse(..) => SymbolicErrorCode::Parse,
-            ErrorKind::NotFound(..) => SymbolicErrorCode::NotFound,
-            ErrorKind::Format(..) => SymbolicErrorCode::Format,
-            ErrorKind::UnsupportedObjectFile => SymbolicErrorCode::UnsupportedObjectFile,
-            ErrorKind::MalformedObjectFile(..) => SymbolicErrorCode::MalformedObjectFile,
-            ErrorKind::BadCacheFile(..) => SymbolicErrorCode::BadCacheFile,
-            ErrorKind::MissingSection(..) => SymbolicErrorCode::MissingSection,
-            ErrorKind::BadDwarfData(..) => SymbolicErrorCode::BadDwarfData,
-            ErrorKind::BadBreakpadSym(..) => SymbolicErrorCode::BadBreakpadSym,
-            ErrorKind::MissingDebugInfo(..) => SymbolicErrorCode::MissingDebugInfo,
-            ErrorKind::BadSymbolTable(..) => SymbolicErrorCode::BadSymbolTable,
-            ErrorKind::BadJson(..) => SymbolicErrorCode::BadJson,
-            ErrorKind::BadSourcemap(..) => SymbolicErrorCode::BadSourcemap,
-            ErrorKind::CannotFlattenSourcemap(..) => SymbolicErrorCode::CannotFlattenSourcemap,
-            ErrorKind::Stackwalk(..) => SymbolicErrorCode::Stackwalk,
-            ErrorKind::Resolver(..) => SymbolicErrorCode::Resolver,
-            ErrorKind::Io(..) => SymbolicErrorCode::Io,
-            ErrorKind::Utf8Error(..) => SymbolicErrorCode::Utf8Error,
-            ErrorKind::ParseInt(..) => SymbolicErrorCode::ParseInt,
-            // we don't use _ here but the hidden field on error kind so that
-            // we don't accidentally forget to map them to error codes.
-            ErrorKind::__Nonexhaustive { .. } => unreachable!(),
+    /// This maps all errors that can possibly happen.
+    pub fn from_error(error: &Error) -> SymbolicErrorCode {
+        for cause in error.causes() {
+            if let Some(..) = cause.downcast_ref::<Panic>() {
+                return SymbolicErrorCode::Panic;
+            }
         }
+
+        SymbolicErrorCode::Unknown
     }
 }
 
@@ -176,7 +145,7 @@ pub unsafe extern "C" fn symbolic_init() {
 pub unsafe extern "C" fn symbolic_err_get_last_code() -> SymbolicErrorCode {
     LAST_ERROR.with(|e| {
         if let Some(ref err) = *e.borrow() {
-            SymbolicErrorCode::from_kind(err.kind())
+            SymbolicErrorCode::from_error(err)
         } else {
             SymbolicErrorCode::NoError
         }
@@ -190,14 +159,11 @@ pub unsafe extern "C" fn symbolic_err_get_last_code() -> SymbolicErrorCode {
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
     use std::fmt::Write;
-    use std::error::Error;
     LAST_ERROR.with(|e| {
         if let Some(ref err) = *e.borrow() {
             let mut msg = err.to_string();
-            let mut cause = err.cause();
-            while let Some(the_cause) = cause {
-                write!(&mut msg, "\n  caused by: {}", the_cause).ok();
-                cause = the_cause.cause();
+            for cause in err.causes().skip(1) {
+                write!(&mut msg, "\n  caused by: {}", cause).ok();
             }
             SymbolicStr::from_string(msg)
         } else {
@@ -211,60 +177,11 @@ pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
 pub unsafe extern "C" fn symbolic_err_get_backtrace() -> SymbolicStr {
     LAST_ERROR.with(|e| {
         if let Some(ref error) = *e.borrow() {
-            if let Some(backtrace) = error.backtrace() {
+            let backtrace = error.backtrace().to_string();
+            if !backtrace.is_empty() {
                 use std::fmt::Write;
-                let skip = match *error.kind() {
-                    // Panics contain more frames from std::panicking
-                    ErrorKind::Panic(_) => 5,
-                    // Errors just have two frames from error_chain
-                    _ => 2,
-                };
-
                 let mut out = String::new();
-                write!(&mut out, "stacktrace:").ok();
-                let frames = backtrace.frames();
-                if frames.len() > skip {
-                    let mut done = false;
-                    for (i, frame) in frames[skip..].iter().enumerate() {
-                        let ip = frame.ip();
-                        let symbols = frame.symbols();
-                        for symbol in symbols.iter() {
-                            write!(&mut out, "\n{:18?} ", ip).ok();
-
-                            if let Some(name) = symbol.name() {
-                                write!(&mut out, "{}", name).ok();
-                                // hack hack hack: make smaller stacktraces in case we are
-                                // a python binding.
-                                if name.as_bytes() == b"ffi_call" {
-                                    done = true;
-                                }
-                            } else {
-                                write!(&mut out, "<unknown>").ok();
-                            }
-
-                            if let Some(file) = symbol.filename() {
-                                if let Some(filename) = file.file_name() {
-                                    write!(
-                                        &mut out,
-                                        " ({}:{})",
-                                        filename.to_string_lossy(),
-                                        symbol.lineno().unwrap_or(0)
-                                    ).ok();
-                                }
-                            }
-                        }
-
-                        if done {
-                            write!(
-                                &mut out,
-                                "\n{:18} [{} python frames omitted]",
-                                "",
-                                frames.len() - i
-                            ).ok();
-                            break;
-                        }
-                    }
-                }
+                write!(&mut out, "stacktrace: {}", backtrace).ok();
                 SymbolicStr::from_string(out)
             } else {
                 Default::default()
@@ -326,6 +243,6 @@ pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: *const SymbolicUuid) -> bool
 /// `symbolic_cstr_free`.
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_uuid_to_str(uuid: *const SymbolicUuid) -> SymbolicStr {
-    let uuid = Uuid::from_bytes(&(*uuid).data[..]).unwrap_or(Uuid::nil());
+    let uuid = Uuid::from_bytes(&(*uuid).data[..]).unwrap_or_default();
     SymbolicStr::from_string(uuid.hyphenated().to_string())
 }

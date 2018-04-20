@@ -10,8 +10,9 @@ use std::str::FromStr;
 use regex::Regex;
 use uuid::Uuid;
 
-use symbolic_common::{Arch, ByteView, CpuFamily, Error, ErrorKind, Result};
-use symbolic_debuginfo::DebugId;
+use symbolic_common::byteview::ByteView;
+use symbolic_common::types::{Arch, CpuFamily};
+use symbolic_debuginfo::{DebugId, ParseDebugIdError};
 
 use utils;
 
@@ -63,6 +64,8 @@ extern "C" {
     fn process_state_system_info(state: *const IProcessState) -> *mut SystemInfo;
 }
 
+pub type ParseCodeModuleIdError = ParseDebugIdError;
+
 /// Breakpad code module IDs.
 ///
 /// **Example:**
@@ -71,10 +74,10 @@ extern "C" {
 /// # extern crate symbolic_common;
 /// # extern crate symbolic_minidump;
 /// use std::str::FromStr;
-/// # use symbolic_common::Result;
-/// use symbolic_minidump::CodeModuleId;
+/// use symbolic_minidump::processor::CodeModuleId;
+/// # use symbolic_minidump::processor::ParseCodeModuleIdError;
 ///
-/// # fn foo() -> Result<()> {
+/// # fn foo() -> Result<(), ParseCodeModuleIdError> {
 /// let id = CodeModuleId::from_str("DFB8E43AF2423D73A453AEB6A777EF75a")?;
 /// assert_eq!("DFB8E43AF2423D73A453AEB6A777EF75a".to_string(), id.to_string());
 /// # Ok(())
@@ -126,9 +129,9 @@ impl fmt::Display for CodeModuleId {
 }
 
 impl str::FromStr for CodeModuleId {
-    type Err = Error;
+    type Err = ParseCodeModuleIdError;
 
-    fn from_str(string: &str) -> Result<CodeModuleId> {
+    fn from_str(string: &str) -> Result<CodeModuleId, ParseCodeModuleIdError> {
         Ok(CodeModuleId {
             inner: DebugId::from_breakpad(string)?,
         })
@@ -475,9 +478,9 @@ impl SystemInfo {
 
     /// The architecture of the CPU parsed from `ProcessState::cpu_family`.
     /// If this information is present in the dump but its value is unknown
-    /// or ifthe value is missing, this field will contain `Arch::Unknown`.
+    /// or if the value is missing, this field will contain `Arch::Unknown`.
     pub fn cpu_arch(&self) -> Arch {
-        Arch::from_breakpad(&self.cpu_family())
+        Arch::from_breakpad(&self.cpu_family()).unwrap_or_default()
     }
 
     /// A string further identifying the specific CPU, such as
@@ -513,7 +516,7 @@ impl fmt::Debug for SystemInfo {
 /// Result of processing a Minidump or Microdump file.
 /// Usually included in `ProcessError` when the file cannot be processed.
 #[repr(u32)]
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum ProcessResult {
     /// The dump was processed successfully.
     Ok,
@@ -543,21 +546,23 @@ pub enum ProcessResult {
 impl fmt::Display for ProcessResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let formatted = match self {
-            &ProcessResult::Ok => "Dump processed successfully",
-            &ProcessResult::MinidumpNotFound => "Minidump file was not found",
-            &ProcessResult::NoMinidumpHeader => "Minidump file had no header",
-            &ProcessResult::ErrorNoThreadList => "Minidump file has no thread list",
-            &ProcessResult::ErrorGettingThread => "Error getting one thread's data",
-            &ProcessResult::ErrorGettingThreadId => "Error getting a thread id",
-            &ProcessResult::DuplicateRequestingThreads => {
-                "There was more than one requesting thread"
-            }
-            &ProcessResult::SymbolSupplierInterrupted => "Processing was interrupted (not fatal)",
+            &ProcessResult::Ok => "dump processed successfully",
+            &ProcessResult::MinidumpNotFound => "file could not be opened",
+            &ProcessResult::NoMinidumpHeader => "minidump header missing",
+            &ProcessResult::ErrorNoThreadList => "minidump has no thread list",
+            &ProcessResult::ErrorGettingThread => "could not get thread data",
+            &ProcessResult::ErrorGettingThreadId => "could not get a thread id",
+            &ProcessResult::DuplicateRequestingThreads => "multiple requesting threads",
+            &ProcessResult::SymbolSupplierInterrupted => "processing was interrupted (not fatal)",
         };
 
         write!(f, "{}", formatted)
     }
 }
+
+#[derive(Debug, Fail, Copy, Clone)]
+#[fail(display = "minidump processing failed: {}", _0)]
+pub struct ProcessMinidumpError(ProcessResult);
 
 /// Internal type used to transfer Breakpad symbols over FFI
 #[repr(C)]
@@ -567,6 +572,13 @@ struct SymbolEntry {
     symbol_data: *const u8,
 }
 
+/// Contains stack frame information for `CodeModules`
+///
+/// This information is required by the stackwalker in case framepointers are
+/// missing in the raw stacktraces. Frame information is given as plain ASCII
+/// text as specified in the Breakpad symbol file specification.
+pub type FrameInfoMap<'a> = BTreeMap<CodeModuleId, ByteView<'a>>;
+
 type IProcessState = c_void;
 
 /// Snapshot of the state of a processes during its crash. The object can be
@@ -575,13 +587,6 @@ pub struct ProcessState<'a> {
     internal: *mut IProcessState,
     _ty: PhantomData<ByteView<'a>>,
 }
-
-/// Contains stack frame information for `CodeModules`
-///
-/// This information is required by the stackwalker in case framepointers are
-/// missing in the raw stacktraces. Frame information is given as plain ASCII
-/// text as specified in the Breakpad symbol file specification.
-pub type FrameInfoMap<'a> = BTreeMap<CodeModuleId, ByteView<'a>>;
 
 impl<'a> ProcessState<'a> {
     /// Processes a minidump supplied via raw binary data
@@ -593,7 +598,7 @@ impl<'a> ProcessState<'a> {
     pub fn from_minidump(
         buffer: &ByteView<'a>,
         frame_infos: Option<&FrameInfoMap>,
-    ) -> Result<ProcessState<'a>> {
+    ) -> Result<ProcessState<'a>, ProcessMinidumpError> {
         let cfi_count = frame_infos.map_or(0, |s| s.len());
         let mut result: ProcessResult = ProcessResult::Ok;
 
@@ -630,7 +635,7 @@ impl<'a> ProcessState<'a> {
                 _ty: PhantomData,
             })
         } else {
-            Err(ErrorKind::Stackwalk(result.to_string()).into())
+            Err(ProcessMinidumpError(result))
         }
     }
 

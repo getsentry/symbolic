@@ -17,8 +17,9 @@
 //! ```rust
 //! # extern crate symbolic_demangle;
 //! # extern crate symbolic_common;
-//! # use symbolic_common::{Language, Name};
-//! # use symbolic_demangle::Demangle;
+//! use symbolic_common::types::{Language, Name};
+//! use symbolic_demangle::Demangle;
+//!
 //! # fn main() {
 //! let name = Name::new("__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E");
 //! assert_eq!(name.detect_language(), Some(Language::Rust));
@@ -34,7 +35,7 @@ use std::os::raw::{c_char, c_int};
 
 use cpp_demangle::{DemangleOptions as CppOptions, Symbol};
 
-use symbolic_common::{ErrorKind, Language, Name, Result};
+use symbolic_common::types::{Language, Name};
 
 extern "C" {
     fn symbolic_demangle_swift(
@@ -85,37 +86,34 @@ fn is_maybe_cpp(ident: &str) -> bool {
     ident.starts_with("_Z") || ident.starts_with("__Z")
 }
 
-fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Result<Option<String>> {
+fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
     let symbol = match Symbol::new(ident) {
         Ok(symbol) => symbol,
-        Err(_) => return Ok(None),
+        Err(_) => return None,
     };
 
     let opts = CppOptions {
         no_params: !opts.with_arguments,
     };
 
-    Ok(match symbol.demangle(&opts) {
+    match symbol.demangle(&opts) {
         Ok(demangled) => Some(demangled),
         Err(_) => None,
-    })
-}
-
-fn try_demangle_rust(ident: &str, _opts: DemangleOptions) -> Result<Option<String>> {
-    if let Ok(dm) = rustc_demangle::try_demangle(ident) {
-        Ok(Some(format!("{:#}", dm)))
-    } else {
-        Err(ErrorKind::BadSymbol("Not a valid Rust symbol".into()).into())
     }
 }
 
-fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Result<Option<String>> {
+fn try_demangle_rust(ident: &str, _opts: DemangleOptions) -> Option<String> {
+    match rustc_demangle::try_demangle(ident) {
+        Ok(demangled) => Some(format!("{:#}", demangled)),
+        Err(_) => None,
+    }
+}
+
+fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
     let mut buf = vec![0 as c_char; 4096];
     let sym = match CString::new(ident) {
         Ok(sym) => sym,
-        Err(_) => {
-            return Err(ErrorKind::Internal("embedded null byte").into());
-        }
+        Err(_) => return None,
     };
 
     let simplified = match opts.format {
@@ -130,25 +128,25 @@ fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Result<Option<Strin
     unsafe {
         let rv = symbolic_demangle_swift(sym.as_ptr(), buf.as_mut_ptr(), buf.len(), simplified);
         if rv == 0 {
-            return Ok(None);
+            return None;
+        } else {
+            let s = CStr::from_ptr(buf.as_ptr()).to_string_lossy();
+            Some(s.to_string())
         }
-
-        let s = CStr::from_ptr(buf.as_ptr()).to_string_lossy();
-        return Ok(Some(s.to_string()));
     }
 }
 
-fn try_demangle_objc(ident: &str, _opts: DemangleOptions) -> Result<Option<String>> {
-    Ok(Some(ident.to_string()))
+fn try_demangle_objc(ident: &str, _opts: DemangleOptions) -> Option<String> {
+    Some(ident.to_string())
 }
 
-fn try_demangle_objcpp(ident: &str, opts: DemangleOptions) -> Result<Option<String>> {
+fn try_demangle_objcpp(ident: &str, opts: DemangleOptions) -> Option<String> {
     if is_maybe_objc(ident) {
         try_demangle_objc(ident, opts)
     } else if is_maybe_cpp(ident) {
         try_demangle_cpp(ident, opts)
     } else {
-        Ok(None)
+        None
     }
 }
 
@@ -166,7 +164,7 @@ pub trait Demangle {
     fn detect_language(&self) -> Option<Language>;
 
     /// Demangles the name with the given options
-    fn demangle(&self, opts: DemangleOptions) -> Result<Option<String>>;
+    fn demangle(&self, opts: DemangleOptions) -> Option<String>;
 
     /// Tries to demangle the name and falls back to the original name
     fn try_demangle(&self, opts: DemangleOptions) -> String;
@@ -202,7 +200,7 @@ impl<'a> Demangle for Name<'a> {
         None
     }
 
-    fn demangle(&self, opts: DemangleOptions) -> Result<Option<String>> {
+    fn demangle(&self, opts: DemangleOptions) -> Option<String> {
         use Language::*;
         match self.detect_language() {
             Some(ObjC) => try_demangle_objc(self.as_str(), opts),
@@ -210,14 +208,14 @@ impl<'a> Demangle for Name<'a> {
             Some(Rust) => try_demangle_rust(self.as_str(), opts),
             Some(Cpp) => try_demangle_cpp(self.as_str(), opts),
             Some(Swift) => try_demangle_swift(self.as_str(), opts),
-            _ => Ok(None),
+            _ => None,
         }
     }
 
     fn try_demangle(&self, opts: DemangleOptions) -> String {
         match self.demangle(opts) {
-            Ok(Some(demangled)) => demangled,
-            _ => self.as_str().into(),
+            Some(demangled) => demangled,
+            None => self.as_str().into(),
         }
     }
 }

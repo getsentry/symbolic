@@ -3,11 +3,15 @@ use std::panic;
 use std::thread;
 use std::cell::RefCell;
 
-use symbolic_common::{Error, ErrorKind, Result};
+use failure::Error;
 
 thread_local! {
     pub static LAST_ERROR: RefCell<Option<Error>> = RefCell::new(None);
 }
+
+#[derive(Fail, Debug)]
+#[fail(display = "smith panicked: {}", _0)]
+pub struct Panic(String);
 
 fn set_last_error(err: Error) {
     LAST_ERROR.with(|e| {
@@ -19,6 +23,7 @@ pub unsafe fn set_panic_hook() {
     panic::set_hook(Box::new(|info| {
         let thread = thread::current();
         let thread = thread.name().unwrap_or("unnamed");
+
         let message = match info.payload().downcast_ref::<&str>() {
             Some(s) => *s,
             None => match info.payload().downcast_ref::<String>() {
@@ -38,13 +43,13 @@ pub unsafe fn set_panic_hook() {
             None => format!("thread '{}' panicked with '{}'", thread, message),
         };
 
-        set_last_error(ErrorKind::Panic(description).into())
+        set_last_error(Panic(description).into())
     }));
 }
 
 pub unsafe fn landingpad<F, T>(f: F) -> T
 where
-    F: FnOnce() -> Result<T> + panic::UnwindSafe,
+    F: FnOnce() -> Result<T, Error> + panic::UnwindSafe,
 {
     match panic::catch_unwind(f) {
         Ok(Ok(result)) => result,

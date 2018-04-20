@@ -5,7 +5,7 @@ from symbolic.utils import rustcall, encode_str, decode_str
 from symbolic import exceptions
 
 
-__all__ = ['arch_is_known', 'arch_from_macho', 'arch_to_macho',
+__all__ = ['arch_is_known', 'arch_from_macho',
            'arch_from_elf', 'arch_from_breakpad', 'arch_to_breakpad',
            'arch_get_ip_reg_name', 'parse_addr']
 
@@ -30,15 +30,6 @@ def arch_from_macho(cputype, cpusubtype):
     arch[0].cpusubtype = cpusubtype & 0xffffffff
     try:
         return str(decode_str(rustcall(lib.symbolic_arch_from_macho, arch)))
-    except ignore_arch_exc:
-        pass
-
-
-def arch_to_macho(arch):
-    """Converts an arch string into a macho arch tuple."""
-    try:
-        arch = rustcall(lib.symbolic_arch_to_macho, encode_str(arch))
-        return (arch.cputype, arch.cpusubtype)
     except ignore_arch_exc:
         pass
 
