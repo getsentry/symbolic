@@ -1,8 +1,9 @@
 language: rust
 cache:
-  - $HOME/.cargo
-  - $TRAVIS_BUILD_DIR/target
-  - $TRAVIS_BUILD_DIR/cabi/target
+  directories:
+    - $HOME/.cargo
+    - $TRAVIS_BUILD_DIR/target
+    - $TRAVIS_BUILD_DIR/cabi/target
 
 git:
   depth: 1
