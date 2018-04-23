@@ -3,6 +3,7 @@ use symbolic::demangle::{Demangle, DemangleFormat, DemangleOptions};
 
 use core::SymbolicStr;
 
+/// Creates a name from a string passed via FFI.
 unsafe fn get_name(ident: *const SymbolicStr, lang: *const SymbolicStr) -> Name<'static> {
     if lang.is_null() {
         Name::new((*ident).as_str())

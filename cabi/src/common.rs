@@ -2,14 +2,14 @@ use symbolic::common::types::{Arch, UnknownArchError};
 
 use core::SymbolicStr;
 
-/// Mach-O architecture
+/// Mach-O architecture.
 #[repr(C)]
 pub struct SymbolicMachoArch {
     pub cputype: u32,
     pub cpusubtype: u32,
 }
 
-/// ELF architecture
+/// ELF architecture.
 #[repr(C)]
 pub struct SymbolicElfArch {
     pub machine: u16,

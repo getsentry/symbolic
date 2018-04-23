@@ -4,12 +4,12 @@ use object::{Object, ObjectTarget};
 use elf::{find_elf_section, has_elf_section};
 use mach::{find_mach_section, has_mach_segment};
 
-/// Provides access to DWARF debugging information in object files
+/// Provides access to DWARF debugging information in object files.
 pub trait DwarfData {
-    /// Checks whether this object contains DWARF infos
+    /// Checks whether this object contains DWARF infos.
     fn has_dwarf_data(&self) -> bool;
 
-    /// Loads a specific dwarf section if its in the file
+    /// Loads a specific dwarf section if its in the file.
     fn get_dwarf_section<'input>(
         &'input self,
         section: DwarfSection,
@@ -54,7 +54,7 @@ impl<'input> DwarfData for Object<'input> {
     }
 }
 
-/// Represents the name of the section
+/// Represents the name of a DWARF debug section.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
 pub enum DwarfSection {
     EhFrame,
@@ -71,7 +71,7 @@ pub enum DwarfSection {
 }
 
 impl DwarfSection {
-    /// Return the name for elf
+    /// Return the name for ELF.
     pub fn elf_name(&self) -> &'static str {
         match *self {
             DwarfSection::EhFrame => ".eh_frame",
@@ -88,7 +88,7 @@ impl DwarfSection {
         }
     }
 
-    /// Return the name for macho
+    /// Return the name for MachO.
     pub fn macho_name(&self) -> &'static str {
         match *self {
             DwarfSection::EhFrame => "__eh_frame",
@@ -105,7 +105,7 @@ impl DwarfSection {
         }
     }
 
-    /// Return the name of the section for debug purposes
+    /// Return the name of the section for debug purposes.
     pub fn name(&self) -> &'static str {
         match *self {
             DwarfSection::EhFrame => "eh_frame",
@@ -123,7 +123,7 @@ impl DwarfSection {
     }
 }
 
-/// Gives access to a section in a dwarf file
+/// Gives access to a section in a dwarf file.
 #[derive(Eq, PartialEq, Debug, Clone)]
 pub struct DwarfSectionData<'data> {
     section: DwarfSection,
@@ -132,6 +132,7 @@ pub struct DwarfSectionData<'data> {
 }
 
 impl<'data> DwarfSectionData<'data> {
+    /// Constructs a `DwarfSectionData` object from raw data.
     pub fn new(section: DwarfSection, data: &'data [u8], offset: u64) -> DwarfSectionData<'data> {
         DwarfSectionData {
             section: section,
@@ -140,23 +141,23 @@ impl<'data> DwarfSectionData<'data> {
         }
     }
 
-    /// Return the section data as bytes
+    /// Return the section data as bytes.
     pub fn as_bytes(&self) -> &'data [u8] {
         self.data
     }
 
-    /// Get the absolute file offset
+    /// Get the absolute file offset.
     pub fn offset(&self) -> u64 {
         self.offset
     }
 
-    /// Get the section name
+    /// Get the section name.
     pub fn section(&self) -> DwarfSection {
         self.section
     }
 }
 
-/// Reads a single `DwarfSection` from an ELF object file
+/// Reads a single `DwarfSection` from an ELF object file.
 fn read_elf_dwarf_section<'data>(
     elf: &elf::Elf<'data>,
     data: &'data [u8],
@@ -167,7 +168,7 @@ fn read_elf_dwarf_section<'data>(
         .map(|section| DwarfSectionData::new(sect, section.data, section.header.sh_offset))
 }
 
-/// Reads a single `DwarfSection` from Mach object file
+/// Reads a single `DwarfSection` from Mach object file.
 fn read_mach_dwarf_section<'data>(
     macho: &mach::MachO<'data>,
     sect: DwarfSection,

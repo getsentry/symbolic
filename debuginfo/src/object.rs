@@ -21,18 +21,25 @@ pub(crate) enum ObjectTarget<'bytes> {
     MachOFat(mach::fat::FatArch, mach::MachO<'bytes>),
 }
 
+/// The kind of an `ObjectError`.
 #[derive(Debug, Fail, Copy, Clone, Eq, PartialEq)]
 pub enum ObjectErrorKind {
+    /// The `Object` file format is not supported.
     #[fail(display = "unsupported object file")]
     UnsupportedObject,
+
+    /// The `Object` file contains invalid data.
     #[fail(display = "failed to read object file")]
     BadObject,
-    #[fail(display = "object file has no symbol table")]
-    MissingSymbolTable,
+
+    /// Reading symbol tables is not supported for this `Object` file format.
     #[fail(display = "symbol table not supported for this object format")]
     UnsupportedSymbolTable,
 }
 
+/// An error returned when working with `Object` and `FatObject`.
+///
+/// This error contains a context with a stack trace and error causes.
 #[derive(Debug)]
 pub struct ObjectError {
     inner: Context<ObjectErrorKind>,
@@ -235,6 +242,7 @@ impl<'fat> Iterator for Objects<'fat> {
     }
 }
 
+/// Internal data used to access platform-specific data of a `FatObject`.
 pub(crate) enum FatObjectKind<'bytes> {
     Breakpad(BreakpadSym),
     Elf(elf::Elf<'bytes>),

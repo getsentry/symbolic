@@ -1,3 +1,5 @@
+//! Common types and errors used in `symbolic`.
+
 use std::borrow::Cow;
 use std::fmt;
 use std::mem;
@@ -35,7 +37,7 @@ impl gimli::Endianity for Endianness {
     }
 }
 
-/// Represents a family of CPUs
+/// Represents a family of CPUs.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum CpuFamily {
     Intel32,
@@ -47,6 +49,7 @@ pub enum CpuFamily {
     Unknown,
 }
 
+/// An error returned for unknown or invalid `Arch`s.
 #[derive(Debug, Fail, Clone, Copy)]
 #[fail(display = "unknown architecture")]
 pub struct UnknownArchError;
@@ -79,7 +82,7 @@ pub enum Arch {
 }
 
 impl Arch {
-    /// Creates an arch from the u32 it represents
+    /// Creates an arch from the u32 it represents.
     pub fn from_u32(val: u32) -> Result<Arch, UnknownArchError> {
         if val >= (Arch::__Max as u32) {
             Err(UnknownArchError)
@@ -88,7 +91,7 @@ impl Arch {
         }
     }
 
-    /// Constructs an architecture from mach CPU types
+    /// Constructs an architecture from mach CPU types.
     #[cfg(feature = "with_objects")]
     pub fn from_mach(cputype: u32, cpusubtype: u32) -> Result<Arch, UnknownArchError> {
         use goblin::mach::constants::cputype::*;
@@ -114,7 +117,7 @@ impl Arch {
         })
     }
 
-    /// Constructs an architecture from ELF flags
+    /// Constructs an architecture from ELF flags.
     #[cfg(feature = "with_objects")]
     pub fn from_elf(machine: u16) -> Result<Arch, UnknownArchError> {
         use goblin::elf::header::*;
@@ -137,7 +140,7 @@ impl Arch {
         })
     }
 
-    /// Constructs an architecture from ELF flags
+    /// Constructs an architecture from ELF flags.
     #[cfg(feature = "with_objects")]
     pub fn from_breakpad(string: &str) -> Result<Arch, UnknownArchError> {
         Ok(match string {
@@ -152,7 +155,7 @@ impl Arch {
         })
     }
 
-    /// Returns the breakpad name for this Arch
+    /// Returns the breakpad name for this Arch.
     pub fn to_breakpad(&self) -> &'static str {
         match self.cpu_family() {
             CpuFamily::Intel32 => "x86",
@@ -166,7 +169,7 @@ impl Arch {
         }
     }
 
-    /// Returns the CPU family
+    /// Returns the CPU family.
     pub fn cpu_family(&self) -> CpuFamily {
         match *self {
             Arch::Unknown | Arch::__Max => CpuFamily::Unknown,
@@ -188,7 +191,7 @@ impl Arch {
         }
     }
 
-    /// Returns the native pointer size
+    /// Returns the native pointer size.
     pub fn pointer_size(&self) -> Option<usize> {
         match *self {
             Arch::Unknown | Arch::__Max => None,
@@ -208,7 +211,7 @@ impl Arch {
         }
     }
 
-    /// Returns the name of the arch
+    /// Returns the name of the arch.
     pub fn name(&self) -> &'static str {
         match *self {
             Arch::Unknown | Arch::__Max => "unknown",
@@ -303,11 +306,12 @@ derive_deserialize_from_str!(Arch, "Arch");
 #[cfg(feature = "with_serde")]
 derive_serialize_from_display!(Arch);
 
+/// An error returned for unknown or invalid `Language`s.
 #[derive(Debug, Fail, Clone, Copy)]
 #[fail(display = "unknown language")]
 pub struct UnknownLanguageError;
 
-/// Supported programming languages for demangling
+/// Supported programming languages for demangling.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 #[repr(u32)]
 pub enum Language {
@@ -325,7 +329,7 @@ pub enum Language {
 }
 
 impl Language {
-    /// Creates a language from the u32 it represents
+    /// Creates a language from the u32 it represents.
     pub fn from_u32(val: u32) -> Result<Language, UnknownLanguageError> {
         if val >= (Language::__Max as u32) {
             Err(UnknownLanguageError)
@@ -355,7 +359,7 @@ impl Language {
         })
     }
 
-    /// Returns the name of the language
+    /// Returns the name of the language.
     pub fn name(&self) -> &'static str {
         match *self {
             Language::Unknown | Language::__Max => "unknown",
@@ -419,7 +423,7 @@ derive_deserialize_from_str!(Language, "Language");
 #[cfg(feature = "with_serde")]
 derive_serialize_from_display!(Language);
 
-/// Represents a potentially mangled symbol
+/// Represents a potentially mangled symbol.
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct Name<'a> {
     string: Cow<'a, str>,
@@ -427,7 +431,7 @@ pub struct Name<'a> {
 }
 
 impl<'a> Name<'a> {
-    /// Constructs a new mangled symbol
+    /// Constructs a new mangled symbol.
     pub fn new<S>(string: S) -> Name<'a>
     where
         S: Into<Cow<'a, str>>,
@@ -438,7 +442,7 @@ impl<'a> Name<'a> {
         }
     }
 
-    /// Constructs a new mangled symbol with known language
+    /// Constructs a new mangled symbol with known language.
     pub fn with_language<S>(string: S, lang: Language) -> Name<'a>
     where
         S: Into<Cow<'a, str>>,
@@ -455,12 +459,12 @@ impl<'a> Name<'a> {
         }
     }
 
-    /// The raw, mangled string of the symbol
+    /// The raw, mangled string of the symbol.
     pub fn as_str(&self) -> &str {
         &self.string
     }
 
-    /// The language of the mangled symbol
+    /// The language of the mangled symbol.
     pub fn language(&self) -> Option<Language> {
         self.lang
     }
@@ -490,6 +494,7 @@ impl<'a> fmt::Display for Name<'a> {
     }
 }
 
+/// An error returned for unknown or invalid `ObjectKind`s.
 #[derive(Debug, Fail, Clone, Copy)]
 #[fail(display = "unknown object kind")]
 pub struct UnknownObjectKindError;
@@ -538,6 +543,7 @@ derive_deserialize_from_str!(ObjectKind, "ObjectKind");
 #[cfg(feature = "with_serde")]
 derive_serialize_from_display!(ObjectKind);
 
+/// An error returned for unknown or invalid `ObjectClass`es.
 #[derive(Debug, Fail, Clone, Copy)]
 #[fail(display = "unknown object class")]
 pub struct UnknownObjectClassError;
@@ -668,6 +674,7 @@ derive_deserialize_from_str!(ObjectClass, "ObjectClass");
 #[cfg(feature = "with_serde")]
 derive_serialize_from_display!(ObjectClass);
 
+/// An error returned for unknown or invalid `DebugKind`s.
 #[derive(Debug, Fail, Clone, Copy)]
 #[fail(display = "unknown debug kind")]
 pub struct UnknownDebugKindError;

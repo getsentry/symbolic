@@ -9,6 +9,7 @@ use std::borrow::Cow;
 
 use failure::Fail;
 
+/// An error returned when parsing source maps.
 #[derive(Debug)]
 pub struct ParseSourceMapError(sourcemap::Error);
 
@@ -40,12 +41,12 @@ impl From<sourcemap::Error> for ParseSourceMapError {
     }
 }
 
-/// Represents JS sourcecode.
+/// Represents JS source code.
 pub struct SourceView<'a> {
     sv: sourcemap::SourceView<'a>,
 }
 
-/// Represents a sourcemap.
+/// Represents a source map.
 pub struct SourceMapView {
     sm: sourcemap::SourceMap,
 }

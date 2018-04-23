@@ -162,12 +162,12 @@ pub struct Function<'a> {
 }
 
 impl<'a> Function<'a> {
-    /// The ID of the function
+    /// The ID of the function.
     pub fn id(&self) -> usize {
         self.id as usize
     }
 
-    /// The parent ID of the function
+    /// The parent ID of the function.
     pub fn parent_id(&self) -> Option<usize> {
         self.fun.parent(self.id())
     }
@@ -193,19 +193,19 @@ impl<'a> Function<'a> {
         Name::with_language(self.symbol(), self.lang()).try_demangle(Default::default())
     }
 
-    /// The language of the function
+    /// The language of the function.
     pub fn lang(&self) -> Language {
         Language::from_u32(self.fun.lang as u32).unwrap_or(Language::Unknown)
     }
 
-    /// The compilation dir of the function
+    /// The compilation dir of the function.
     pub fn comp_dir(&self) -> &str {
         self.cache
             .get_segment_as_string(&self.fun.comp_dir)
             .unwrap_or("")
     }
 
-    /// An iterator over all lines in the function
+    /// An iterator over all lines in the function.
     pub fn lines(&'a self) -> Lines<'a> {
         Lines {
             cache: self.cache,
@@ -577,7 +577,7 @@ impl<'a> SymCache<'a> {
             return Ok(None);
         }
 
-        // because of how we determine the outer address on expanding
+        // Because of how we determine the outer address on expanding
         // inlines the first address might actually already be missing
         // the record.  Because of that we pick in any case the first
         // record as fallback.

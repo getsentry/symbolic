@@ -8,7 +8,7 @@
 #include <stdbool.h>
 
 /*
- * Represents all possible error codes
+ * Represents all possible error codes.
  */
 enum SymbolicErrorCode {
   SYMBOLIC_ERROR_CODE_NO_ERROR = 0,

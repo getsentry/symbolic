@@ -6,6 +6,7 @@ extern "C" {
 }
 
 /// Converts an owned raw pointer to characters to an owned `String`.
+///
 /// If the pointer is NULL, an empty string `""` is returned.
 pub fn ptr_to_string(ptr: *mut c_char) -> String {
     if ptr.is_null() {

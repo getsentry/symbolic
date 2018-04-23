@@ -7,6 +7,7 @@ lazy_static! {
     static ref DEBUG_ID_RE: Regex = Regex::new(r"^(?i)([0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12})-?([0-9a-f]{1,8})?$").unwrap();
 }
 
+/// An error returned when parsing invalid debug identifiers.
 #[derive(Debug, Fail, Clone, Copy)]
 #[fail(display = "invalid debug id")]
 pub struct ParseDebugIdError;
@@ -65,12 +66,12 @@ impl DebugId {
         string.parse()
     }
 
-    /// Returns the UUID part of the code module's debug_identifier.
+    /// Returns the UUID part of the debug identifier.
     pub fn uuid(&self) -> Uuid {
         self.uuid
     }
 
-    /// Returns the appendix part of the code module's debug identifier.
+    /// Returns the appendix part of the debug identifier.
     ///
     /// On Windows, this is an incrementing counter to identify the build.
     /// On all other platforms, this value will always be zero.

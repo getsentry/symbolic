@@ -10,7 +10,7 @@ use failure::Error;
 
 use utils::{set_panic_hook, Panic, LAST_ERROR};
 
-/// Represents a string.
+/// CABI wrapper around a Rust string.
 #[repr(C)]
 pub struct SymbolicStr {
     pub data: *mut c_char,
@@ -29,6 +29,7 @@ impl Default for SymbolicStr {
 }
 
 impl SymbolicStr {
+    /// Creates a new `SymbolicStr` from a Rust string.
     pub fn new(s: &str) -> SymbolicStr {
         SymbolicStr {
             data: s.as_ptr() as *mut c_char,
@@ -37,6 +38,7 @@ impl SymbolicStr {
         }
     }
 
+    /// Creates a new `SymbolicStr` from an owned Rust string.
     pub fn from_string(mut s: String) -> SymbolicStr {
         s.shrink_to_fit();
         let rv = SymbolicStr {
@@ -48,6 +50,7 @@ impl SymbolicStr {
         rv
     }
 
+    /// Releases memory held by an unmanaged `SymbolicStr`.
     pub unsafe fn free(&mut self) {
         if self.owned {
             String::from_raw_parts(self.data as *mut _, self.len, self.len);
@@ -57,6 +60,7 @@ impl SymbolicStr {
         }
     }
 
+    /// Returns the Rust string managed by a `SymbolicStr`.
     pub fn as_str(&self) -> &str {
         unsafe { str::from_utf8_unchecked(slice::from_raw_parts(self.data as *const _, self.len)) }
     }
@@ -74,17 +78,19 @@ impl<'a> From<&'a str> for SymbolicStr {
     }
 }
 
-/// Represents a UUID.
+/// CABI wrapper around a UUID.
 #[repr(C)]
 pub struct SymbolicUuid {
     pub data: [u8; 16],
 }
 
 impl SymbolicUuid {
+    /// Creates a new `SymbolicUuid` from a raw uuid.
     pub fn new(uuid: Uuid) -> SymbolicUuid {
         unsafe { mem::transmute(*uuid.as_bytes()) }
     }
 
+    /// Returns the Rust UUID managed by a `SymbolicUUID`.
     pub fn as_uuid(&self) -> &Uuid {
         unsafe { mem::transmute(self) }
     }
@@ -124,8 +130,7 @@ pub enum SymbolicErrorCode {
     ParseDebugIdError = 2002,
     ObjectErrorUnsupportedObject = 2003,
     ObjectErrorBadObject = 2004,
-    ObjectErrorMissingSymbolTable = 2005,
-    ObjectErrorUnsupportedSymbolTable = 2006,
+    ObjectErrorUnsupportedSymbolTable = 2005,
 
     // symbolic::minidump::cfi
     CfiErrorMissingDebugInfo = 3001,
@@ -135,7 +140,13 @@ pub enum SymbolicErrorCode {
     CfiErrorWriteError = 3005,
 
     // symbolic::minidump::processor
-    ProcessMinidumpError = 4001,
+    ProcessMinidumpErrorMinidumpNotFound = 4001,
+    ProcessMinidumpErrorNoMinidumpHeader = 4002,
+    ProcessMinidumpErrorNoThreadList = 4003,
+    ProcessMinidumpErrorInvalidThreadIndex = 4004,
+    ProcessMinidumpErrorInvalidThreadId = 4005,
+    ProcessMinidumpErrorDuplicateRequestingThreads = 4006,
+    ProcessMinidumpErrorSymbolSupplierInterrupted = 4007,
 
     // symbolic::sourcemap
     ParseSourceMapError = 5001,
@@ -194,9 +205,6 @@ impl SymbolicErrorCode {
                         SymbolicErrorCode::ObjectErrorUnsupportedObject
                     }
                     ObjectErrorKind::BadObject => SymbolicErrorCode::ObjectErrorBadObject,
-                    ObjectErrorKind::MissingSymbolTable => {
-                        SymbolicErrorCode::ObjectErrorMissingSymbolTable
-                    }
                     ObjectErrorKind::UnsupportedSymbolTable => {
                         SymbolicErrorCode::ObjectErrorUnsupportedSymbolTable
                     }
@@ -216,9 +224,33 @@ impl SymbolicErrorCode {
                 };
             }
 
-            use symbolic::minidump::processor::ProcessMinidumpError;
-            if let Some(_) = cause.downcast_ref::<ProcessMinidumpError>() {
-                return SymbolicErrorCode::ProcessMinidumpError;
+            use symbolic::minidump::processor::{ProcessMinidumpError, ProcessResult};
+            if let Some(error) = cause.downcast_ref::<ProcessMinidumpError>() {
+                return match error.kind() {
+                    // `Ok` is not used in errors
+                    ProcessResult::Ok => SymbolicErrorCode::Unknown,
+                    ProcessResult::MinidumpNotFound => {
+                        SymbolicErrorCode::ProcessMinidumpErrorMinidumpNotFound
+                    }
+                    ProcessResult::NoMinidumpHeader => {
+                        SymbolicErrorCode::ProcessMinidumpErrorNoMinidumpHeader
+                    }
+                    ProcessResult::NoThreadList => {
+                        SymbolicErrorCode::ProcessMinidumpErrorNoThreadList
+                    }
+                    ProcessResult::InvalidThreadIndex => {
+                        SymbolicErrorCode::ProcessMinidumpErrorInvalidThreadIndex
+                    }
+                    ProcessResult::InvalidThreadId => {
+                        SymbolicErrorCode::ProcessMinidumpErrorInvalidThreadId
+                    }
+                    ProcessResult::DuplicateRequestingThreads => {
+                        SymbolicErrorCode::ProcessMinidumpErrorDuplicateRequestingThreads
+                    }
+                    ProcessResult::SymbolSupplierInterrupted => {
+                        SymbolicErrorCode::ProcessMinidumpErrorSymbolSupplierInterrupted
+                    }
+                };
             }
 
             use symbolic::sourcemap::ParseSourceMapError;
@@ -260,7 +292,7 @@ impl SymbolicErrorCode {
     }
 }
 
-/// Initializes the library
+/// Initializes the symbolic library.
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_init() {
     set_panic_hook();
@@ -329,7 +361,7 @@ pub unsafe extern "C" fn symbolic_err_clear() {
 }
 
 ffi_fn! {
-    /// Creates a symbolic str from a c string.
+    /// Creates a symbolic string from a raw C string.
     ///
     /// This sets the string to owned.  In case it's not owned you either have
     /// to make sure you are not freeing the memory or you need to set the
@@ -355,7 +387,7 @@ pub unsafe extern "C" fn symbolic_str_free(s: *mut SymbolicStr) {
     }
 }
 
-/// Returns true if the uuid is nil
+/// Returns true if the uuid is nil.
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: *const SymbolicUuid) -> bool {
     if let Ok(uuid) = Uuid::from_bytes(&(*uuid).data[..]) {

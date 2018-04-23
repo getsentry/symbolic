@@ -59,7 +59,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Creates a symcache from bytes
+    /// Creates a symcache from a byte buffer.
     unsafe fn symbolic_symcache_from_bytes(
         bytes: *const u8,
         len: usize,
@@ -195,7 +195,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Return the best instruction for an isntruction info
+    /// Return the best instruction for an isntruction info.
     unsafe fn symbolic_find_best_instruction(ii: *const SymbolicInstructionInfo) -> Result<u64> {
         let real_ii = InstructionInfo {
             addr: (*ii).addr,

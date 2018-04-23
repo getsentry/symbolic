@@ -6,6 +6,7 @@ use symbolic_common::types::{Arch, ObjectKind};
 use object::{FatObject, Object};
 use id::DebugId;
 
+/// An error returned when parsing breakpad files fails.
 #[derive(Fail, Debug, Copy, Clone)]
 #[fail(display = "invalid breakpad symbol: {}", _0)]
 pub struct ParseBreakpadError(&'static str);
@@ -122,7 +123,7 @@ impl BreakpadSym {
     /// Parses a breakpad file header.
     ///
     /// Example:
-    /// ```ignore
+    /// ```plain
     /// MODULE mac x86_64 13DA2547B1D53AF99F55ED66AF0C7AF70 Electron Framework
     /// ```
     pub fn parse(bytes: &[u8]) -> Result<BreakpadSym, ParseBreakpadError> {
@@ -279,11 +280,11 @@ impl<'data> BreakpadData for FatObject<'data> {
     }
 }
 
-/// Parses a breakpad MODULE record
+/// Parses a breakpad MODULE record.
 ///
 /// Syntax: "MODULE operatingsystem architecture id name"
 /// Example: "MODULE Linux x86 D3096ED481217FD4C16B29CD9BC208BA0 firefox-bin"
-/// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#module-records
+/// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#module-records>
 fn parse_module(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
     let mut record = line.splitn(4, |b| *b == b' ');
 
@@ -313,11 +314,11 @@ fn parse_module(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
     }))
 }
 
-/// Parses a breakpad FILE record
+/// Parses a breakpad FILE record.
 ///
 /// Syntax: "FILE number name"
 /// Example: "FILE 2 /home/jimb/mc/in/browser/app/nsBrowserApp.cpp"
-/// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#file-records
+/// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#file-records>
 fn parse_file<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBreakpadError> {
     let mut record = line.splitn(2, |b| *b == b' ');
 
@@ -336,11 +337,11 @@ fn parse_file<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBr
     }))
 }
 
-/// Parses a breakpad FUNC record
+/// Parses a breakpad FUNC record.
 ///
 /// Syntax: "FUNC [m] address size parameter_size name"
 /// Example: "FUNC m c184 30 0 nsQueryInterfaceWithError::operator()(nsID const&, void**) const"
-/// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#func-records
+/// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#func-records>
 fn parse_func<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBreakpadError> {
     // Strip the optional "m" parameter; it has no meaning to us
     let line = match line.starts_with(b"m ") {
@@ -376,28 +377,28 @@ fn parse_func<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBr
     }))
 }
 
-/// Parses a breakpad STACK record
+/// Parses a breakpad STACK record.
 ///
 /// Can either be a STACK WIN record...
 /// Syntax: "STACK WIN type rva code_size prologue_size epilogue_size parameter_size saved_register_
 /// size local_size max_stack_size has_program_string program_string_OR_allocates_base_pointer"
 /// Example: "STACK WIN 4 2170 14 1 0 0 0 0 0 1 $eip 4 + ^ = $esp $ebp 8 + = $ebp $ebp ^ ="
-/// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-win-records
+/// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-win-records>
 ///
 /// ... or a STACK CFI record
 /// Syntax: "STACK CFI INIT address size register1: expression1 register2: expression2 ..."
 /// Example: "STACK CFI INIT 804c4b0 40 .cfa: $esp 4 + $eip: .cfa 4 - ^"
-/// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-cfi-records
+/// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-cfi-records>
 fn parse_stack<'data>(_line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBreakpadError> {
     // Ignored
     Ok(BreakpadRecord::Stack)
 }
 
-/// Parses a breakpad PUBLIC record
+/// Parses a breakpad PUBLIC record.
 ///
 /// Syntax: "PUBLIC [m] address parameter_size name"
 /// Example: "PUBLIC m 2160 0 Public2_1"
-/// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#public-records
+/// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#public-records>
 fn parse_public<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBreakpadError> {
     // Strip the optional "m" parameter; it has no meaning to us
     let line = match line.starts_with(b"m ") {
@@ -426,7 +427,7 @@ fn parse_public<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, Parse
     }))
 }
 
-/// Parses a breakpad INFO record
+/// Parses a breakpad INFO record.
 ///
 /// Syntax: "INFO text"
 /// Example: "INFO CODE_ID C22813AC7D101E2FF2598697023E1F28"
@@ -435,11 +436,11 @@ fn parse_info<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBr
     Ok(BreakpadRecord::Info(line))
 }
 
-/// Parses a breakpad line record (after funcs)
+/// Parses a breakpad line record (after funcs).
 ///
 /// Syntax: "address size line filenum"
 /// Example: "c184 7 59 4"
-/// see https://github.com/google/breakpad/blob/master/docs/symbol_files.md#line-records
+/// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#line-records>
 fn parse_line<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBreakpadError> {
     let mut record = line.splitn(4, |b| *b == b' ');
 

@@ -11,7 +11,7 @@ use fnv::{FnvHashMap, FnvHashSet};
 use num;
 
 use symbolic_common::types::{DebugKind, Language};
-use symbolic_debuginfo::{Object, ObjectErrorKind, SymbolIterator, SymbolTable, Symbols};
+use symbolic_debuginfo::{Object, SymbolIterator, SymbolTable, Symbols};
 
 use breakpad::BreakpadInfo;
 use cache::{SYMCACHE_LATEST_VERSION, SYMCACHE_MAGIC};
@@ -201,7 +201,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         // we just skip over to symbol table processing.
         match DebugInfo::from_object(obj) {
             Ok(DebugInfo::Dwarf(ref info)) => {
-                return self.write_dwarf_info(info, obj.symbols().ok());
+                return self.write_dwarf_info(info, obj.symbols().unwrap_or(None));
             }
             Ok(DebugInfo::Breakpad(ref info)) => {
                 return self.write_breakpad_info(info);
@@ -216,14 +216,11 @@ impl<W: Write + Seek> SymCacheWriter<W> {
 
         // fallback to symbol table.
         match obj.symbols() {
-            Ok(symbols) => {
+            Ok(Some(symbols)) => {
                 return self.write_symbol_table(symbols.iter(), obj.vmaddr());
             }
-            Err(ref e)
-                if e.kind() == ObjectErrorKind::MissingSymbolTable
-                    || e.kind() == ObjectErrorKind::UnsupportedSymbolTable =>
-            {
-                // ignore missing debug info and return a default error
+            Ok(None) => {
+                // ignore missing symbol tables and return a default error
             }
             Err(e) => {
                 return Err(e.into());

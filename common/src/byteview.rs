@@ -1,3 +1,7 @@
+//! A wrapper type providing random access to binary data.
+//!
+//! See the `ByteView` struct for more documentation.
+
 use std::io;
 use std::fs::File;
 use std::path::Path;
@@ -33,24 +37,24 @@ pub struct ByteView<'bytes> {
 }
 
 impl<'bytes> ByteView<'bytes> {
-    /// Constructs a `ByteView` from a `Cow`
+    /// Constructs a `ByteView` from a `Cow`.
     fn from_cow(cow: Cow<'bytes, [u8]>) -> ByteView<'bytes> {
         ByteView {
             inner: ByteViewInner::Buf(cow),
         }
     }
 
-    /// Constructs a `ByteView` from a byte slice
+    /// Constructs a `ByteView` from a byte slice.
     pub fn from_slice(buffer: &'bytes [u8]) -> ByteView<'bytes> {
         ByteView::from_cow(Cow::Borrowed(buffer))
     }
 
-    /// Constructs a `ByteView` from a vector of bytes
+    /// Constructs a `ByteView` from a vector of bytes.
     pub fn from_vec(buffer: Vec<u8>) -> ByteView<'static> {
         ByteView::from_cow(Cow::Owned(buffer))
     }
 
-    /// Constructs a `ByteView` from any `std::io::Reader`
+    /// Constructs a `ByteView` from any `std::io::Reader`.
     ///
     /// This currently consumes the entire reader and stores its data in an
     /// internal buffer. Prefer `ByteView::from_path` when reading from the file
@@ -62,7 +66,7 @@ impl<'bytes> ByteView<'bytes> {
         Ok(ByteView::from_vec(buffer))
     }
 
-    /// Constructs a `ByteView` from a file path
+    /// Constructs a `ByteView` from a file path.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<ByteView<'static>, io::Error> {
         let file = File::open(path)?;
         let inner = match unsafe { Mmap::map(&file) } {
@@ -116,7 +120,7 @@ pub struct ByteViewHandle<'bytes, T> {
 }
 
 impl<'bytes, T> ByteViewHandle<'bytes, T> {
-    /// Creates a new `ByteViewHandle` from a `ByteView`
+    /// Creates a new `ByteViewHandle` from a `ByteView`.
     ///
     /// The closure is invoked with the borrowed bytes from the original
     /// byte view and the return value is retained in the handle.
@@ -145,7 +149,7 @@ impl<'bytes, T> ByteViewHandle<'bytes, T> {
         })
     }
 
-    /// Constructs a `ByteViewHandle` from a byte slice
+    /// Constructs a `ByteViewHandle` from a byte slice.
     pub fn from_slice<F, E>(buffer: &'bytes [u8], f: F) -> Result<ByteViewHandle<'bytes, T>, E>
     where
         F: FnOnce(&'bytes [u8]) -> Result<T, E>,
@@ -153,7 +157,7 @@ impl<'bytes, T> ByteViewHandle<'bytes, T> {
         ByteViewHandle::from_byteview(ByteView::from_slice(buffer), f)
     }
 
-    /// Constructs a `ByteViewHandle` from a vector of bytes
+    /// Constructs a `ByteViewHandle` from a vector of bytes.
     pub fn from_vec<F, E>(vec: Vec<u8>, f: F) -> Result<ByteViewHandle<'static, T>, E>
     where
         F: FnOnce(&'static [u8]) -> Result<T, E>,
@@ -161,7 +165,7 @@ impl<'bytes, T> ByteViewHandle<'bytes, T> {
         ByteViewHandle::from_byteview(ByteView::from_vec(vec), f)
     }
 
-    /// Constructs a `ByteViewHandle` from a file path
+    /// Constructs a `ByteViewHandle` from a file path.
     pub fn from_reader<F, R, E>(reader: R, f: F) -> Result<ByteViewHandle<'static, T>, E>
     where
         F: FnOnce(&'static [u8]) -> Result<T, E>,
@@ -171,7 +175,7 @@ impl<'bytes, T> ByteViewHandle<'bytes, T> {
         ByteViewHandle::from_byteview(ByteView::from_reader(reader)?, f)
     }
 
-    /// Constructs a `ByteViewHandle` from a file path
+    /// Constructs a `ByteViewHandle` from a file path.
     pub fn from_path<F, P, E>(path: P, f: F) -> Result<ByteViewHandle<'static, T>, E>
     where
         F: FnOnce(&'static [u8]) -> Result<T, E>,
@@ -181,7 +185,7 @@ impl<'bytes, T> ByteViewHandle<'bytes, T> {
         ByteViewHandle::from_byteview(ByteView::from_path(path)?, f)
     }
 
-    /// Returns the underlying storage (byte slice)
+    /// Returns the underlying storage (byte slice).
     pub fn get_bytes<'b>(this: &'b ByteViewHandle<'bytes, T>) -> &'b [u8] {
         this.inner.0
     }

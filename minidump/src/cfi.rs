@@ -12,20 +12,33 @@ use symbolic_debuginfo::{DwarfData, DwarfSection, Object};
 
 use registers::get_register_name;
 
+/// Possible error kinds of `CfiError`.
 #[derive(Debug, Fail, Copy, Clone)]
 pub enum CfiErrorKind {
+    /// Required debug sections are missing in the `Object` file.
     #[fail(display = "missing cfi debug sections")]
     MissingDebugInfo,
+
+    /// The debug information in the `Object` file is not supported.
     #[fail(display = "unsupported debug format")]
     UnsupportedDebugFormat,
+
+    /// The debug information in the `Object` file is invalid.
     #[fail(display = "bad debug information")]
     BadDebugInfo,
+
+    /// The `Object`s architecture is not supported by symbolic.
     #[fail(display = "unsupported architecture")]
     UnsupportedArch,
+
+    /// Generic error when writing CFI information, likely IO.
     #[fail(display = "failed to write cfi")]
     WriteError,
 }
 
+/// An error returned by `AsciiCfiWriter`.
+///
+/// This error contains a context with stack traces and an error cause.
 #[derive(Debug)]
 pub struct CfiError {
     inner: Context<CfiErrorKind>,
@@ -73,15 +86,67 @@ impl From<UnknownArchError> for CfiError {
     }
 }
 
+/// A service that converts call frame information (CFI) from an object file to Breakpad ASCII
+/// format and writes it to the given writer.
+///
+/// The default way to use this writer is to create a writer, pass it to the `AsciiCfiWriter` and
+/// then process an object:
+///
+/// ```rust,no_run
+/// # extern crate symbolic_common;
+/// # extern crate symbolic_debuginfo;
+/// # extern crate symbolic_minidump;
+/// # extern crate failure;
+/// use symbolic_common::byteview::ByteView;
+/// use symbolic_debuginfo::FatObject;
+/// use symbolic_minidump::cfi::AsciiCfiWriter;
+///
+/// # fn foo() -> Result<(), ::failure::Error> {
+/// let byteview = ByteView::from_path("/path/to/object")?;
+/// let fat = FatObject::parse(byteview)?;
+/// let object = fat.get_object(0)?.unwrap();
+///
+/// let mut writer = Vec::new();
+/// AsciiCfiWriter::new(&mut writer).process(&object)?;
+/// # Ok(())
+/// # }
+///
+/// # fn main() { foo().unwrap() }
+/// ```
+///
+/// For writers that implement `Default`, there is a convenience method that creates an instance and
+/// returns it right away:
+///
+/// ```rust,no_run
+/// # extern crate symbolic_common;
+/// # extern crate symbolic_debuginfo;
+/// # extern crate symbolic_minidump;
+/// # extern crate failure;
+/// use symbolic_common::byteview::ByteView;
+/// use symbolic_debuginfo::FatObject;
+/// use symbolic_minidump::cfi::AsciiCfiWriter;
+///
+/// # fn foo() -> Result<(), ::failure::Error> {
+/// let byteview = ByteView::from_path("/path/to/object")?;
+/// let fat = FatObject::parse(byteview)?;
+/// let object = fat.get_object(0)?.unwrap();
+///
+/// let buffer: Vec<u8> = AsciiCfiWriter::transform(&object)?;
+/// # Ok(())
+/// # }
+/// # fn main() { foo().unwrap() }
+/// ```
 pub struct AsciiCfiWriter<W: Write> {
     inner: W,
 }
 
 impl<W: Write> AsciiCfiWriter<W> {
+    /// Creates a new `AsciiCfiWriter` that outputs to a writer.
     pub fn new(inner: W) -> Self {
         AsciiCfiWriter { inner }
     }
 
+    /// Extracts CFI from the given object file.
     pub fn process(&mut self, object: &Object) -> Result<(), CfiError> {
         match object.debug_kind() {
             Some(DebugKind::Dwarf) => self.process_dwarf(object),
@@ -283,6 +348,7 @@ impl<W: Write> AsciiCfiWriter<W> {
 }
 
 impl<W: Write + Default> AsciiCfiWriter<W> {
+    /// Extracts CFI from the given object and pipes it to a new writer instance.
     pub fn transform(object: &Object) -> Result<W, CfiError> {
         let mut writer = Default::default();
         AsciiCfiWriter::new(&mut writer).process(object)?;

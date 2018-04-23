@@ -9,6 +9,7 @@ thread_local! {
     pub static LAST_ERROR: RefCell<Option<Error>> = RefCell::new(None);
 }
 
+/// An error thrown by `landingpad` in place of panics.
 #[derive(Fail, Debug)]
 #[fail(display = "smith panicked: {}", _0)]
 pub struct Panic(String);

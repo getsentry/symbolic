@@ -7,7 +7,7 @@
 //! * Swift
 //! * ObjC (only symbol detection)
 //!
-//! As the demangling schemes for different languages are different the
+//! As the demangling schemes for different languages are different, the
 //! feature set is also inconsistent.  In particular Rust for instance has
 //! no overloading so argument types are generally not expected to be
 //! encoded into the function name whereas they are in Swift and C++.
@@ -48,20 +48,23 @@ extern "C" {
     fn symbolic_demangle_is_swift_symbol(sym: *const c_char) -> c_int;
 }
 
-/// Defines the output format of the demangler
+/// Defines the output format of the demangler.
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum DemangleFormat {
+    /// Strips parameter names and sometimes packages or namespaces.
     Short,
+
+    /// Outputs the full demangled name.
     Full,
 }
 
-/// Options for the demangling
+/// Options for the demangling.
 #[derive(Debug, Copy, Clone)]
 pub struct DemangleOptions {
-    /// Format to use for the output
+    /// Format to use for the output.
     pub format: DemangleFormat,
 
-    /// Should arguments be returned
+    /// Should arguments be returned.
     ///
     /// The default behavior is that arguments are not included in the
     /// demangled output, however they are if you convert the symbol
@@ -150,23 +153,23 @@ fn try_demangle_objcpp(ident: &str, opts: DemangleOptions) -> Option<String> {
     }
 }
 
-/// Allows to demangle potentially mangled names. Non-mangled names are largely
-/// ignored and language detection will not return a language.
+/// Allows to demangle potentially mangled names.
 ///
-/// Upon formatting the symbol is automatically demangled (without
-/// arguments).
+/// Non-mangled names are largely ignored and language detection will not
+/// return a language. Upon formatting, the symbol is automatically demangled
+/// (without arguments).
 pub trait Demangle {
-    /// Infers the language of a mangled name
+    /// Infers the language of a mangled name.
     ///
     /// In case the symbol is not mangled or not one of the supported languages
     /// the return value will be `None`. If the language of the symbol was
     /// specified explicitly, this is returned instead.
     fn detect_language(&self) -> Option<Language>;
 
-    /// Demangles the name with the given options
+    /// Demangles the name with the given options.
     fn demangle(&self, opts: DemangleOptions) -> Option<String>;
 
-    /// Tries to demangle the name and falls back to the original name
+    /// Tries to demangle the name and falls back to the original name.
     fn try_demangle(&self, opts: DemangleOptions) -> String;
 }
 

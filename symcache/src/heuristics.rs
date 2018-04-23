@@ -10,7 +10,7 @@ const SIGSEGV: u32 = 11;
 /// some heuristics to determine the call site of a function call based on the
 /// return address. See `InstructionInfo::caller_address` for more information.
 ///
-/// See https://goo.gl/g17EAn for detailed information on this topic.
+/// See <https://goo.gl/g17EAn> for detailed information on this topic.
 pub struct InstructionInfo {
     /// The address of the instruction we want to use as a base.
     pub addr: u64,

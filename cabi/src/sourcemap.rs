@@ -7,10 +7,10 @@ use symbolic::sourcemap::{SourceMapView, SourceView, TokenMatch};
 
 use core::SymbolicStr;
 
-/// Represents a source view
+/// Represents a source view.
 pub struct SymbolicSourceView;
 
-/// Represents a sourcemap view
+/// Represents a sourcemap view.
 pub struct SymbolicSourceMapView;
 
 /// Represents a single token after lookup.
@@ -91,7 +91,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Frees a source map view
+    /// Frees a source map view.
     unsafe fn symbolic_sourcemapview_free(smv: *const SymbolicSourceMapView) {
         if !smv.is_null() {
             let sm = smv as *mut SourceMapView;
@@ -204,7 +204,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Free a token match
+    /// Free a token match.
     unsafe fn symbolic_token_match_free(stm: *mut SymbolicTokenMatch) {
         if !stm.is_null() {
             let tm = stm as *mut SymbolicTokenMatch;

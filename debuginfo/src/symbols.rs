@@ -15,7 +15,7 @@ lazy_static! {
     static ref HIDDEN_SYMBOL_RE: Regex = Regex::new("__?hidden#\\d+_").unwrap();
 }
 
-/// A single symbol
+/// A single symbol in a `SymbolTable`.
 #[derive(Debug)]
 pub struct Symbol<'data> {
     name: Cow<'data, str>,
@@ -24,22 +24,22 @@ pub struct Symbol<'data> {
 }
 
 impl<'data> Symbol<'data> {
-    /// Binary string value of the symbol
+    /// Binary string value of the symbol.
     pub fn name(&self) -> &Cow<'data, str> {
         &self.name
     }
 
-    /// Address of this symbol
+    /// Address of this symbol.
     pub fn addr(&self) -> u64 {
         self.addr
     }
 
-    /// Presumed length of the symbol
+    /// Presumed length of the symbol.
     pub fn len(&self) -> Option<u64> {
         self.len
     }
 
-    /// Returns the string representation of this symbol
+    /// Returns the string representation of this symbol.
     pub fn as_str(&self) -> &str {
         self.name().as_ref()
     }
@@ -63,14 +63,14 @@ impl<'data> Into<String> for Symbol<'data> {
     }
 }
 
-/// Internal wrapper around certain symbol table implementations
+/// Internal wrapper around certain symbol table implementations.
 #[derive(Clone, Copy, Debug)]
 enum SymbolsInternal<'data> {
     MachO(&'data mach::symbols::Symbols<'data>),
 }
 
 impl<'data> SymbolsInternal<'data> {
-    /// Returns the symbol at the given index
+    /// Returns the symbol at the given index.
     ///
     /// To compute the presumed length of a symbol, pass the index of the
     /// logically next symbol (i.e. the one with the next greater address).
@@ -103,15 +103,15 @@ impl<'data> SymbolsInternal<'data> {
     }
 }
 
-/// Internal type used to map addresses to symbol indices
+/// Internal type used to map addresses to symbol indices.
 ///
-/// `mapping.0`: The address of a symbol
-/// `mapping.1`: The index of a symbol in the symbol list
+///  - `mapping.0`: The address of a symbol
+///  - `mapping.1`: The index of a symbol in the symbol list
 type IndexMapping = (u64, usize);
 
-/// An iterator over `Symbol`s in a symbol table
+/// An iterator over `Symbol`s in a symbol table.
 ///
-/// Can be obtained via `SymbolTable::symbols`. This is primarily intended for
+/// It can be obtained via `SymbolTable::symbols`. This is primarily intended for
 /// consuming all symbols in an object file. To lookup single symbols, use
 /// `Symbols::lookup` instead.
 pub struct SymbolIterator<'data, 'sym>
@@ -148,7 +148,7 @@ impl<'data, 'sym> Iterator for SymbolIterator<'data, 'sym> {
     }
 }
 
-/// Provides access to `Symbol`s of an `Object`
+/// Provides access to `Symbol`s of an `Object`.
 ///
 /// It allows to either lookup single symbols with `Symbols::lookup` or iterate
 /// them using `Symbols::into_iter`. Use `SymbolTable::lookup` on an `Object` to
@@ -159,11 +159,11 @@ pub struct Symbols<'data> {
 }
 
 impl<'data> Symbols<'data> {
-    /// Creates a `Symbols` wrapper for MachO
-    fn from_macho(macho: &'data mach::MachO) -> Result<Symbols<'data>, ObjectError> {
+    /// Creates a `Symbols` wrapper for MachO.
+    fn from_macho(macho: &'data mach::MachO) -> Result<Option<Symbols<'data>>, ObjectError> {
         let macho_symbols = match macho.symbols {
             Some(ref symbols) => symbols,
-            None => return Err(ObjectErrorKind::MissingSymbolTable.into()),
+            None => return Ok(None),
         };
 
         let mut sections = HashSet::new();
@@ -194,13 +194,13 @@ impl<'data> Symbols<'data> {
             }
         }
 
-        Ok(Symbols {
+        Ok(Some(Symbols {
             internal: SymbolsInternal::MachO(macho_symbols),
             mappings: symbol_map.into_iter().collect(),
-        })
+        }))
     }
 
-    /// Searches for a single `Symbol` inside the symbol table
+    /// Searches for a single `Symbol` inside the symbol table.
     pub fn lookup(&self, addr: u64) -> Result<Option<Symbol<'data>>, ObjectError> {
         let found = match self.mappings.binary_search_by_key(&addr, |&x| x.0) {
             Ok(idx) => idx,
@@ -213,7 +213,7 @@ impl<'data> Symbols<'data> {
         self.internal.get(index, next)
     }
 
-    /// Checks whether this binary contains hidden symbols
+    /// Checks whether this binary contains hidden symbols.
     ///
     /// This is an indication that BCSymbolMaps are needed to symbolicate
     /// symbols correctly.
@@ -243,14 +243,18 @@ impl<'data> Symbols<'data> {
     }
 }
 
-/// Gives access to the symbol table of an `Object` file
+/// Gives access to the symbol table of an `Object` file.
 pub trait SymbolTable {
-    /// Returns the symbols of this `Object`
-    fn symbols(&self) -> Result<Symbols, ObjectError>;
+    /// Returns the symbols of this `Object`.
+    ///
+    /// If the symbol table has been stripped from the object, `None` is returned. In case a symbol
+    /// table is present, but the trait has not been implemented for the object kind, an error is
+    /// returned.
+    fn symbols(&self) -> Result<Option<Symbols>, ObjectError>;
 }
 
 impl<'data> SymbolTable for Object<'data> {
-    fn symbols(&self) -> Result<Symbols, ObjectError> {
+    fn symbols(&self) -> Result<Option<Symbols>, ObjectError> {
         match self.target {
             ObjectTarget::MachOSingle(macho) => Symbols::from_macho(macho),
             ObjectTarget::MachOFat(_, ref macho) => Symbols::from_macho(macho),
