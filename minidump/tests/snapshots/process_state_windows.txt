@@ -24,7 +24,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("3249d99d-0c40-4931-8610-f4e4fb0b6936"),
+                                        uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
                                         appendix: 1
                                     }
                                 }
@@ -47,7 +47,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("3249d99d-0c40-4931-8610-f4e4fb0b6936"),
+                                        uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
                                         appendix: 1
                                     }
                                 }
@@ -70,7 +70,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("ae131c67-27a7-4fa1-9916-b5a4aef41190"),
+                                        uuid: "ae131c67-27a7-4fa1-9916-b5a4aef41190",
                                         appendix: 1
                                     }
                                 }
@@ -99,7 +99,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("aec7ef2f-df4b-4642-a471-4c3e5fe8760a"),
+                                        uuid: "aec7ef2f-df4b-4642-a471-4c3e5fe8760a",
                                         appendix: 1
                                     }
                                 }
@@ -128,7 +128,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("ae131c67-27a7-4fa1-9916-b5a4aef41190"),
+                                        uuid: "ae131c67-27a7-4fa1-9916-b5a4aef41190",
                                         appendix: 1
                                     }
                                 }
@@ -151,7 +151,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("3249d99d-0c40-4931-8610-f4e4fb0b6936"),
+                                        uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
                                         appendix: 1
                                     }
                                 }
@@ -174,7 +174,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("3249d99d-0c40-4931-8610-f4e4fb0b6936"),
+                                        uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
                                         appendix: 1
                                     }
                                 }
@@ -197,7 +197,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("d3474559-96f7-47d6-bf43-c176b2171e68"),
+                                        uuid: "d3474559-96f7-47d6-bf43-c176b2171e68",
                                         appendix: 1
                                     }
                                 }
@@ -220,7 +220,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("971f98e5-ce60-41ff-b2d7-235bbeb34578"),
+                                        uuid: "971f98e5-ce60-41ff-b2d7-235bbeb34578",
                                         appendix: 1
                                     }
                                 }
@@ -243,7 +243,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("971f98e5-ce60-41ff-b2d7-235bbeb34578"),
+                                        uuid: "971f98e5-ce60-41ff-b2d7-235bbeb34578",
                                         appendix: 1
                                     }
                                 }
@@ -271,7 +271,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("971f98e5-ce60-41ff-b2d7-235bbeb34578"),
+                                        uuid: "971f98e5-ce60-41ff-b2d7-235bbeb34578",
                                         appendix: 1
                                     }
                                 }
@@ -294,7 +294,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("d3474559-96f7-47d6-bf43-c176b2171e68"),
+                                        uuid: "d3474559-96f7-47d6-bf43-c176b2171e68",
                                         appendix: 1
                                     }
                                 }
@@ -317,7 +317,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("971f98e5-ce60-41ff-b2d7-235bbeb34578"),
+                                        uuid: "971f98e5-ce60-41ff-b2d7-235bbeb34578",
                                         appendix: 1
                                     }
                                 }
@@ -340,7 +340,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("971f98e5-ce60-41ff-b2d7-235bbeb34578"),
+                                        uuid: "971f98e5-ce60-41ff-b2d7-235bbeb34578",
                                         appendix: 1
                                     }
                                 }
@@ -368,7 +368,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("971f98e5-ce60-41ff-b2d7-235bbeb34578"),
+                                        uuid: "971f98e5-ce60-41ff-b2d7-235bbeb34578",
                                         appendix: 1
                                     }
                                 }
@@ -391,7 +391,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("d3474559-96f7-47d6-bf43-c176b2171e68"),
+                                        uuid: "d3474559-96f7-47d6-bf43-c176b2171e68",
                                         appendix: 1
                                     }
                                 }
@@ -414,7 +414,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("971f98e5-ce60-41ff-b2d7-235bbeb34578"),
+                                        uuid: "971f98e5-ce60-41ff-b2d7-235bbeb34578",
                                         appendix: 1
                                     }
                                 }
@@ -437,7 +437,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("971f98e5-ce60-41ff-b2d7-235bbeb34578"),
+                                        uuid: "971f98e5-ce60-41ff-b2d7-235bbeb34578",
                                         appendix: 1
                                     }
                                 }
@@ -465,7 +465,7 @@ ProcessState {
                             id: Some(
                                 CodeModuleId {
                                     inner: DebugId {
-                                        uuid: Uuid("971f98e5-ce60-41ff-b2d7-235bbeb34578"),
+                                        uuid: "971f98e5-ce60-41ff-b2d7-235bbeb34578",
                                         appendix: 1
                                     }
                                 }

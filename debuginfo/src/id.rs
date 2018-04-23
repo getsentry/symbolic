@@ -88,7 +88,7 @@ impl DebugId {
 impl fmt::Debug for DebugId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("DebugId")
-            .field("uuid", &self.uuid())
+            .field("uuid", &self.uuid().hyphenated().to_string())
             .field("appendix", &self.appendix())
             .finish()
     }

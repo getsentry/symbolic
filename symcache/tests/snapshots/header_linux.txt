@@ -1,7 +1,7 @@
 SymCache {
     id: Ok(
         DebugId {
-            uuid: Uuid("c0bcc3f1-9827-fe65-3058-404b2831d9e6"),
+            uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
             appendix: 0
         }
     ),
