@@ -23,7 +23,7 @@ exclude = [
 [workspace]
 
 [features]
-default = []
+default = ["debuginfo"]
 debuginfo = ["symbolic-debuginfo"]
 demangle = ["symbolic-demangle"]
 minidump = ["debuginfo", "symbolic-minidump"]
@@ -52,8 +52,8 @@ walkdir = "2.1.4"
 
 [[example]]
 name = "minidump_stackwalk"
-required-features = ["debuginfo", "minidump", "symcache"]
+required-features = ["minidump", "symcache"]
 
 [[example]]
 name = "symcache_debug"
-required-features = ["debuginfo", "symcache"]
+required-features = ["symcache"]
