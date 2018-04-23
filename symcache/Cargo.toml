@@ -28,7 +28,7 @@ num = "0.1.42"
 symbolic-common = { version = "4.0.0", path = "../common", features = ["with_dwarf", "with_objects"] }
 symbolic-debuginfo = { version = "4.0.0", path = "../debuginfo" }
 symbolic-demangle = { version = "4.0.0", path = "../demangle" }
-uuid = { version = "0.6.1", features = ["serde"] }
+uuid = { version = "0.6.3", features = ["serde"] }
 
 [dev-dependencies]
 symbolic-testutils = { version = "4.0.0", path = "../testutils" }

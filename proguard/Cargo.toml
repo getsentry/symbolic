@@ -17,4 +17,4 @@ optimized applications.
 [dependencies]
 proguard = "1.1.0"
 symbolic-common = { version = "4.0.0", path = "../common" }
-uuid = "0.6.1"
+uuid = "0.6.3"
