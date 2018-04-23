@@ -1,26 +1,153 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::io::Write;
 
+use failure::{Backtrace, Context, Fail, ResultExt};
 use gimli::{self, BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDescriptionEntry,
             Reader, ReaderOffset, RegisterRule, UninitializedUnwindContext, UnwindOffset,
             UnwindSection, UnwindTable};
 
-use symbolic_common::{Arch, DebugKind, Result};
-use symbolic_common::ErrorKind::MissingDebugInfo;
+use symbolic_common::types::{Arch, DebugKind, UnknownArchError};
 use symbolic_debuginfo::{DwarfData, DwarfSection, Object};
 
 use registers::get_register_name;
 
-pub struct BreakpadAsciiCfiWriter<W: Write> {
+/// Possible error kinds of `CfiError`.
+#[derive(Debug, Fail, Copy, Clone)]
+pub enum CfiErrorKind {
+    /// Required debug sections are missing in the `Object` file.
+    #[fail(display = "missing cfi debug sections")]
+    MissingDebugInfo,
+
+    /// The debug information in the `Object` file is not supported.
+    #[fail(display = "unsupported debug format")]
+    UnsupportedDebugFormat,
+
+    /// The debug information in the `Object` file is invalid.
+    #[fail(display = "bad debug information")]
+    BadDebugInfo,
+
+    /// The `Object`s architecture is not supported by symbolic.
+    #[fail(display = "unsupported architecture")]
+    UnsupportedArch,
+
+    /// Generic error when writing CFI information, likely IO.
+    #[fail(display = "failed to write cfi")]
+    WriteError,
+}
+
+/// An error returned by `AsciiCfiWriter`.
+///
+/// This error contains a context with stack traces and an error cause.
+#[derive(Debug)]
+pub struct CfiError {
+    inner: Context<CfiErrorKind>,
+}
+
+impl Fail for CfiError {
+    fn cause(&self) -> Option<&Fail> {
+        self.inner.cause()
+    }
+
+    fn backtrace(&self) -> Option<&Backtrace> {
+        self.inner.backtrace()
+    }
+}
+
+impl fmt::Display for CfiError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.inner, f)
+    }
+}
+
+impl CfiError {
+    pub fn kind(&self) -> CfiErrorKind {
+        *self.inner.get_context()
+    }
+}
+
+impl From<CfiErrorKind> for CfiError {
+    fn from(kind: CfiErrorKind) -> CfiError {
+        CfiError {
+            inner: Context::new(kind),
+        }
+    }
+}
+
+impl From<Context<CfiErrorKind>> for CfiError {
+    fn from(inner: Context<CfiErrorKind>) -> CfiError {
+        CfiError { inner: inner }
+    }
+}
+
+impl From<UnknownArchError> for CfiError {
+    fn from(_: UnknownArchError) -> CfiError {
+        CfiErrorKind::UnsupportedArch.into()
+    }
+}
+
+/// A service that converts call frame information (CFI) from an object file to Breakpad ASCII
+/// format and writes it to the given writer.
+///
+/// The default way to use this writer is to create a writer, pass it to the `AsciiCfiWriter` and
+/// then process an object:
+///
+/// ```rust,no_run
+/// # extern crate symbolic_common;
+/// # extern crate symbolic_debuginfo;
+/// # extern crate symbolic_minidump;
+/// # extern crate failure;
+/// use symbolic_common::byteview::ByteView;
+/// use symbolic_debuginfo::FatObject;
+/// use symbolic_minidump::cfi::AsciiCfiWriter;
+///
+/// # fn foo() -> Result<(), ::failure::Error> {
+/// let byteview = ByteView::from_path("/path/to/object")?;
+/// let fat = FatObject::parse(byteview)?;
+/// let object = fat.get_object(0)?.unwrap();
+///
+/// let mut writer = Vec::new();
+/// AsciiCfiWriter::new(&mut writer).process(&object)?;
+/// # Ok(())
+/// # }
+///
+/// # fn main() { foo().unwrap() }
+/// ```
+///
+/// For writers that implement `Default`, there is a convenience method that creates an instance and
+/// returns it right away:
+///
+/// ```rust,no_run
+/// # extern crate symbolic_common;
+/// # extern crate symbolic_debuginfo;
+/// # extern crate symbolic_minidump;
+/// # extern crate failure;
+/// use symbolic_common::byteview::ByteView;
+/// use symbolic_debuginfo::FatObject;
+/// use symbolic_minidump::cfi::AsciiCfiWriter;
+///
+/// # fn foo() -> Result<(), ::failure::Error> {
+/// let byteview = ByteView::from_path("/path/to/object")?;
+/// let fat = FatObject::parse(byteview)?;
+/// let object = fat.get_object(0)?.unwrap();
+///
+/// let buffer: Vec<u8> = AsciiCfiWriter::transform(&object)?;
+/// # Ok(())
+/// # }
+/// # fn main() { foo().unwrap() }
+/// ```
+pub struct AsciiCfiWriter<W: Write> {
     inner: W,
 }
 
-impl<W: Write> BreakpadAsciiCfiWriter<W> {
+impl<W: Write> AsciiCfiWriter<W> {
+    /// Creates a new `AsciiCfiWriter` that outputs to a writer.
     pub fn new(inner: W) -> Self {
-        BreakpadAsciiCfiWriter { inner }
+        AsciiCfiWriter { inner }
     }
 
-    pub fn process(&mut self, object: &Object) -> Result<()> {
+    /// Extracts CFI from the given object file.
+    pub fn process(&mut self, object: &Object) -> Result<(), CfiError> {
         match object.debug_kind() {
             Some(DebugKind::Dwarf) => self.process_dwarf(object),
             Some(DebugKind::Breakpad) => self.process_breakpad(object),
@@ -33,36 +160,40 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
             // otherwise fail. The file is already loaded and relevant pages
             // are already in the cache, so the overhead is justifiable.
             _ => self.process_dwarf(object)
-                .map_err(|_| MissingDebugInfo("Unsupported debugging format").into()),
+                .map_err(|_| CfiErrorKind::UnsupportedDebugFormat.into()),
         }
     }
 
-    fn process_breakpad(&mut self, object: &Object) -> Result<()> {
+    fn process_breakpad(&mut self, object: &Object) -> Result<(), CfiError> {
         for line in object.as_bytes().split(|b| *b == b'\n') {
             if line.starts_with(b"STACK") {
-                self.inner.write_all(line)?;
-                self.inner.write(b"\n")?;
+                self.inner
+                    .write_all(line)
+                    .context(CfiErrorKind::WriteError)?;
+                self.inner.write(b"\n").context(CfiErrorKind::WriteError)?;
             }
         }
 
         Ok(())
     }
 
-    fn process_dwarf(&mut self, object: &Object) -> Result<()> {
+    fn process_dwarf(&mut self, object: &Object) -> Result<(), CfiError> {
         let endianness = object.endianness();
 
         if let Some(section) = object.get_dwarf_section(DwarfSection::EhFrame) {
             let frame = EhFrame::new(section.as_bytes(), endianness);
-            self.read_cfi(object.arch(), frame, section.offset())
+            let arch = object.arch().map_err(|_| CfiErrorKind::UnsupportedArch)?;
+            self.read_cfi(arch, frame, section.offset())
         } else if let Some(section) = object.get_dwarf_section(DwarfSection::DebugFrame) {
             let frame = DebugFrame::new(section.as_bytes(), endianness);
-            self.read_cfi(object.arch(), frame, section.offset())
+            let arch = object.arch().map_err(|_| CfiErrorKind::UnsupportedArch)?;
+            self.read_cfi(arch, frame, section.offset())
         } else {
-            Err(MissingDebugInfo("CFI debug sections missing").into())
+            Err(CfiErrorKind::MissingDebugInfo.into())
         }
     }
 
-    fn read_cfi<U, R>(&mut self, arch: Arch, frame: U, base: u64) -> Result<()>
+    fn read_cfi<U, R>(&mut self, arch: Arch, frame: U, base: u64) -> Result<(), CfiError>
     where
         R: Reader + Eq,
         U: UnwindSection<R>,
@@ -73,7 +204,7 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
         let bases = BaseAddresses::default().set_cfi(base);
 
         let mut entries = frame.entries(&bases);
-        while let Some(entry) = entries.next()? {
+        while let Some(entry) = entries.next().context(CfiErrorKind::BadDebugInfo)? {
             // We skip all Common Information Entries and only process Frame Description Items here.
             // The iterator yields partial FDEs which need their associated CIE passed in via a
             // callback. This function is provided by the UnwindSection (frame), which then parses
@@ -92,7 +223,7 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
         &mut self,
         arch: Arch,
         fde: FrameDescriptionEntry<S, R, O>,
-    ) -> Result<()>
+    ) -> Result<(), CfiError>
     where
         R: Reader<Offset = O> + Eq,
         O: ReaderOffset,
@@ -107,7 +238,9 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
         // table that contains rules for retrieving registers at every instruction address. These
         // rules can directly be transcribed to breakpad STACK CFI records.
         let ctx = UninitializedUnwindContext::new();
-        let mut ctx = ctx.initialize(fde.cie()).map_err(|(e, _)| e)?;
+        let mut ctx = ctx.initialize(fde.cie())
+            .map_err(|(e, _)| e)
+            .context(CfiErrorKind::BadDebugInfo)?;
         let mut table = UnwindTable::new(&mut ctx, &fde);
 
         // Collect all rows first, as we need to know the final end address in order to write the
@@ -118,7 +251,7 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
                 Ok(None) => break,
                 Ok(Some(row)) => rows.push(row.clone()),
                 Err(gimli::Error::UnknownCallFrameInstruction(_)) => continue,
-                Err(e) => return Err(e.into()),
+                Err(e) => return Err(e.context(CfiErrorKind::BadDebugInfo).into()),
             }
         }
 
@@ -137,9 +270,11 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
                 // Depending on whether this is the first row or any subsequent row, print a INIT or
                 // normal STACK CFI record.
                 if row.start_address() == start {
-                    write!(self.inner, "STACK CFI INIT {:x} {:x}", start, length)?;
+                    write!(self.inner, "STACK CFI INIT {:x} {:x}", start, length)
+                        .context(CfiErrorKind::WriteError)?;
                 } else {
-                    write!(self.inner, "STACK CFI {:x}", row.start_address())?;
+                    write!(self.inner, "STACK CFI {:x}", row.start_address())
+                        .context(CfiErrorKind::WriteError)?;
                 }
 
                 // Write the mandatory CFA rule for this row, followed by optional register rules.
@@ -156,14 +291,18 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
                     }
                 }
 
-                write!(self.inner, "\n")?;
+                write!(self.inner, "\n").context(CfiErrorKind::WriteError)?;
             }
         }
 
         Ok(())
     }
 
-    fn write_cfa_rule<R: Reader>(&mut self, arch: Arch, rule: &CfaRule<R>) -> Result<bool> {
+    fn write_cfa_rule<R: Reader>(
+        &mut self,
+        arch: Arch,
+        rule: &CfaRule<R>,
+    ) -> Result<bool, CfiError> {
         use gimli::CfaRule::*;
         let formatted = match rule {
             &RegisterAndOffset { register, offset } => {
@@ -172,7 +311,7 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
             &Expression(_) => return Ok(false),
         };
 
-        write!(self.inner, " .cfa: {}", formatted)?;
+        write!(self.inner, " .cfa: {}", formatted).context(CfiErrorKind::WriteError)?;
         Ok(true)
     }
 
@@ -182,7 +321,7 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
         register: u8,
         rule: &RegisterRule<R>,
         ra: u64,
-    ) -> Result<bool> {
+    ) -> Result<bool, CfiError> {
         use gimli::RegisterRule::*;
         let formatted = match rule {
             &Undefined => return Ok(false),
@@ -203,15 +342,16 @@ impl<W: Write> BreakpadAsciiCfiWriter<W> {
             get_register_name(arch, register)?
         };
 
-        write!(self.inner, " {}: {}", register_name, formatted)?;
+        write!(self.inner, " {}: {}", register_name, formatted).context(CfiErrorKind::WriteError)?;
         Ok(true)
     }
 }
 
-impl<W: Write + Default> BreakpadAsciiCfiWriter<W> {
-    pub fn transform(object: &Object) -> Result<W> {
+impl<W: Write + Default> AsciiCfiWriter<W> {
+    /// Extracts CFI from the given object and pipes it to a new writer instance.
+    pub fn transform(object: &Object) -> Result<W, CfiError> {
         let mut writer = Default::default();
-        BreakpadAsciiCfiWriter::new(&mut writer).process(object)?;
+        AsciiCfiWriter::new(&mut writer).process(object)?;
         Ok(writer)
     }
 }

@@ -3,7 +3,7 @@ extern crate symbolic_debuginfo;
 extern crate symbolic_symcache;
 extern crate symbolic_testutils;
 
-use symbolic_common::ByteView;
+use symbolic_common::byteview::ByteView;
 use symbolic_symcache::SymCache;
 use symbolic_testutils::fixture_path;
 

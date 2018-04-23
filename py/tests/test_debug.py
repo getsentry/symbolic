@@ -1,9 +1,4 @@
-from symbolic import arch_from_macho, arch_to_macho, id_from_breakpad, normalize_debug_id
-
-
-def test_macho_cpu_names():
-    assert arch_from_macho(12, 9) == 'armv7'
-    tup = arch_to_macho('arm64')
+from symbolic import arch_from_macho, id_from_breakpad, normalize_debug_id
 
 
 def test_id_from_breakpad():

@@ -1,8 +1,6 @@
 use goblin::mach;
 use uuid::Uuid;
 
-use symbolic_common::Result;
-
 use id::DebugId;
 
 /// A segment inside a Mach object file containing multiple sections.
@@ -81,12 +79,12 @@ pub fn get_mach_id(macho: &mach::MachO) -> Option<DebugId> {
 }
 
 /// Loads the virtual memory address of this object's __TEXT (code) segment.
-pub fn get_mach_vmaddr(macho: &mach::MachO) -> Result<u64> {
+pub fn get_mach_vmaddr(macho: &mach::MachO) -> u64 {
     for seg in &macho.segments {
-        if seg.name()? == "__TEXT" {
-            return Ok(seg.vmaddr);
+        if seg.name().map(|name| name == "__TEXT").unwrap_or(false) {
+            return seg.vmaddr;
         }
     }
 
-    Ok(0)
+    0
 }

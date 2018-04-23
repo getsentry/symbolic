@@ -4,18 +4,19 @@ use std::os::raw::c_char;
 use std::slice;
 use std::str::FromStr;
 
-use symbolic_common::{Arch, ByteView};
-use symbolic_debuginfo::Object;
-use symbolic_minidump::{BreakpadAsciiCfiWriter, CallStack, CodeModule, CodeModuleId, FrameInfoMap,
-                        ProcessState, StackFrame, SystemInfo};
+use symbolic::common::{byteview::ByteView, types::Arch};
+use symbolic::debuginfo::Object;
+use symbolic::minidump::cfi::AsciiCfiWriter;
+use symbolic::minidump::processor::{CallStack, CodeModule, CodeModuleId, FrameInfoMap,
+                                    ProcessState, StackFrame, SystemInfo};
 
 use core::SymbolicStr;
 use debuginfo::SymbolicObject;
 
-/// Contains stack frame information (CFI) for images
+/// Contains stack frame information (CFI) for images.
 pub struct SymbolicFrameInfoMap;
 
-/// Indicates how well the instruction pointer derived during stack walking is trusted
+/// Indicates how well the instruction pointer derived during stack walking is trusted.
 #[repr(u32)]
 pub enum SymbolicFrameTrust {
     None,
@@ -27,7 +28,7 @@ pub enum SymbolicFrameTrust {
     Context,
 }
 
-/// Carries information about a code module loaded into the process during the crash
+/// Carries information about a code module loaded into the process during the crash.
 #[repr(C)]
 pub struct SymbolicCodeModule {
     pub id: SymbolicStr,
@@ -36,7 +37,7 @@ pub struct SymbolicCodeModule {
     pub name: SymbolicStr,
 }
 
-/// Contains the absolute instruction address and image information of a stack frame
+/// Contains the absolute instruction address and image information of a stack frame.
 #[repr(C)]
 pub struct SymbolicStackFrame {
     pub return_address: u64,
@@ -45,7 +46,7 @@ pub struct SymbolicStackFrame {
     pub module: SymbolicCodeModule,
 }
 
-/// Represents a thread of the process state which holds a list of stack frames
+/// Represents a thread of the process state which holds a list of stack frames.
 #[repr(C)]
 pub struct SymbolicCallStack {
     pub thread_id: u32,
@@ -61,7 +62,7 @@ impl Drop for SymbolicCallStack {
     }
 }
 
-/// OS and CPU information
+/// OS and CPU information in a minidump.
 #[repr(C)]
 pub struct SymbolicSystemInfo {
     pub os_name: SymbolicStr,
@@ -72,7 +73,7 @@ pub struct SymbolicSystemInfo {
     pub cpu_count: u32,
 }
 
-/// State of a crashed process
+/// State of a crashed process in a minidump.
 #[repr(C)]
 pub struct SymbolicProcessState {
     pub requesting_thread: i32,
@@ -97,7 +98,7 @@ impl Drop for SymbolicProcessState {
     }
 }
 
-/// Creates a packed array of mapped FFI elements from a slice
+/// Creates a packed array of mapped FFI elements from a slice.
 unsafe fn map_slice<T, S, F>(items: &[T], mut mapper: F) -> (*mut S, usize)
 where
     F: FnMut(&T) -> S,
@@ -114,7 +115,7 @@ where
     (ptr, len)
 }
 
-/// Creates a packed array of mapped FFI elements from an iterator
+/// Creates a packed array of mapped FFI elements from an iterator.
 unsafe fn map_iter<T, S, I, F>(items: I, mut mapper: F) -> (*mut S, usize)
 where
     I: Iterator<Item = T>,
@@ -133,17 +134,20 @@ where
     (ptr, len)
 }
 
-/// Maps a `CodeModule` to its FFI type
+/// Maps a `CodeModule` to its FFI type.
 unsafe fn map_code_module(module: &CodeModule) -> SymbolicCodeModule {
     SymbolicCodeModule {
-        id: module.id().map(|id| id.to_string().into()).unwrap_or_default(),
+        id: module
+            .id()
+            .map(|id| id.to_string().into())
+            .unwrap_or_default(),
         addr: module.base_address(),
         size: module.size(),
         name: SymbolicStr::from_string(module.code_file()),
     }
 }
 
-/// Maps a `StackFrame` to its FFI type
+/// Maps a `StackFrame` to its FFI type.
 unsafe fn map_stack_frame(frame: &StackFrame, arch: Arch) -> SymbolicStackFrame {
     let empty_module = SymbolicCodeModule {
         id: "".into(),
@@ -160,7 +164,7 @@ unsafe fn map_stack_frame(frame: &StackFrame, arch: Arch) -> SymbolicStackFrame 
     }
 }
 
-/// Maps a `CallStack` to its FFI type
+/// Maps a `CallStack` to its FFI type.
 unsafe fn map_call_stack(stack: &CallStack, arch: Arch) -> SymbolicCallStack {
     let (frames, frame_count) = map_slice(stack.frames(), |f| map_stack_frame(f, arch));
     SymbolicCallStack {
@@ -170,7 +174,7 @@ unsafe fn map_call_stack(stack: &CallStack, arch: Arch) -> SymbolicCallStack {
     }
 }
 
-/// Maps a `SystemInfo` to its FFI type
+/// Maps a `SystemInfo` to its FFI type.
 unsafe fn map_system_info(info: &SystemInfo) -> SymbolicSystemInfo {
     SymbolicSystemInfo {
         os_name: SymbolicStr::from_string(info.os_name()),
@@ -182,7 +186,7 @@ unsafe fn map_system_info(info: &SystemInfo) -> SymbolicSystemInfo {
     }
 }
 
-/// Maps a `ProcessState` to its FFI type
+/// Maps a `ProcessState` to its FFI type.
 unsafe fn map_process_state(state: &ProcessState) -> SymbolicProcessState {
     let arch = state.system_info().cpu_arch();
     let (threads, thread_count) = map_slice(state.threads(), |s| map_call_stack(s, arch));
@@ -205,7 +209,7 @@ unsafe fn map_process_state(state: &ProcessState) -> SymbolicProcessState {
 }
 
 ffi_fn! {
-    /// Creates a new frame info map
+    /// Creates a new frame info map.
     unsafe fn symbolic_frame_info_map_new() -> Result<*mut SymbolicFrameInfoMap> {
         let map = Box::into_raw(Box::new(FrameInfoMap::new())) as *mut SymbolicFrameInfoMap;
         Ok(map)
@@ -213,7 +217,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Adds CFI for a code module specified by the `sid` argument
+    /// Adds CFI for a code module specified by the `sid` argument.
     unsafe fn symbolic_frame_info_map_add(
         smap: *const SymbolicFrameInfoMap,
         sid: *const SymbolicStr,
@@ -229,7 +233,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Frees a frame info map object
+    /// Frees a frame info map object.
     unsafe fn symbolic_frame_info_map_free(smap: *mut SymbolicFrameInfoMap) {
         if !smap.is_null() {
             Box::from_raw(smap as *mut FrameInfoMap<'static>);
@@ -239,7 +243,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Processes a minidump with optional CFI information and returns the state
-    /// of the process at the time of the crash
+    /// of the process at the time of the crash.
     unsafe fn symbolic_process_minidump(
         path: *const c_char,
         smap: *const SymbolicFrameInfoMap,
@@ -259,7 +263,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Processes a minidump with optional CFI information and returns the state
-    /// of the process at the time of the crash
+    /// of the process at the time of the crash.
     unsafe fn symbolic_process_minidump_buffer(
         buffer: *const c_char,
         length: usize,
@@ -280,7 +284,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Frees a process state object
+    /// Frees a process state object.
     unsafe fn symbolic_process_state_free(sstate: *mut SymbolicProcessState) {
         if !sstate.is_null() {
             Box::from_raw(sstate);
@@ -303,13 +307,17 @@ impl Drop for SymbolicCfiCache {
 }
 
 ffi_fn! {
+    /// Extracts call frame information (CFI) from an Object in ASCII format.
+    ///
+    /// To use this, create a `SymbolicFrameInfoMap` and pass it CFI for referenced modules during
+    /// minidump processing to receive improved stack traces.
     unsafe fn symbolic_cfi_cache_from_object(
         sobj: *const SymbolicObject,
     ) -> Result<*mut SymbolicCfiCache> {
         let mut buffer = vec![] as Vec<u8>;
 
         {
-            let mut writer = BreakpadAsciiCfiWriter::new(&mut buffer);
+            let mut writer = AsciiCfiWriter::new(&mut buffer);
             writer.process(&*(sobj as *const Object))?;
         }
 
@@ -324,6 +332,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
+    /// Releases memory held by an unmanaged `SymbolicCfiCache` instance.
     unsafe fn symbolic_cfi_cache_free(scache: *mut SymbolicCfiCache) {
         if !scache.is_null() {
             Box::from_raw(scache);

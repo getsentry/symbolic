@@ -6,12 +6,11 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 
 use uuid::Uuid;
+use failure::Error;
 
-use symbolic_common::ErrorKind;
+use utils::{set_panic_hook, Panic, LAST_ERROR};
 
-use utils::{set_panic_hook, LAST_ERROR};
-
-/// Represents a string.
+/// CABI wrapper around a Rust string.
 #[repr(C)]
 pub struct SymbolicStr {
     pub data: *mut c_char,
@@ -30,6 +29,7 @@ impl Default for SymbolicStr {
 }
 
 impl SymbolicStr {
+    /// Creates a new `SymbolicStr` from a Rust string.
     pub fn new(s: &str) -> SymbolicStr {
         SymbolicStr {
             data: s.as_ptr() as *mut c_char,
@@ -38,6 +38,7 @@ impl SymbolicStr {
         }
     }
 
+    /// Creates a new `SymbolicStr` from an owned Rust string.
     pub fn from_string(mut s: String) -> SymbolicStr {
         s.shrink_to_fit();
         let rv = SymbolicStr {
@@ -49,6 +50,7 @@ impl SymbolicStr {
         rv
     }
 
+    /// Releases memory held by an unmanaged `SymbolicStr`.
     pub unsafe fn free(&mut self) {
         if self.owned {
             String::from_raw_parts(self.data as *mut _, self.len, self.len);
@@ -58,6 +60,7 @@ impl SymbolicStr {
         }
     }
 
+    /// Returns the Rust string managed by a `SymbolicStr`.
     pub fn as_str(&self) -> &str {
         unsafe { str::from_utf8_unchecked(slice::from_raw_parts(self.data as *const _, self.len)) }
     }
@@ -75,10 +78,22 @@ impl<'a> From<&'a str> for SymbolicStr {
     }
 }
 
-/// Represents a UUID
+/// CABI wrapper around a UUID.
 #[repr(C)]
 pub struct SymbolicUuid {
     pub data: [u8; 16],
+}
+
+impl SymbolicUuid {
+    /// Creates a new `SymbolicUuid` from a raw uuid.
+    pub fn new(uuid: Uuid) -> SymbolicUuid {
+        unsafe { mem::transmute(*uuid.as_bytes()) }
+    }
+
+    /// Returns the Rust UUID managed by a `SymbolicUUID`.
+    pub fn as_uuid(&self) -> &Uuid {
+        unsafe { mem::transmute(self) }
+    }
 }
 
 impl Default for SymbolicUuid {
@@ -89,81 +104,195 @@ impl Default for SymbolicUuid {
 
 impl From<Uuid> for SymbolicUuid {
     fn from(uuid: Uuid) -> SymbolicUuid {
-        unsafe { mem::transmute(*uuid.as_bytes()) }
+        SymbolicUuid::new(uuid)
     }
 }
 
-/// Indicates the error that ocurred
+/// Represents all possible error codes.
 #[repr(u32)]
 pub enum SymbolicErrorCode {
-    // no error
     NoError = 0,
-    // panics and internals
     Panic = 1,
-    Internal = 2,
-    Msg = 3,
-    Unknown = 4,
-    // generic errors
-    Parse = 101,
-    NotFound = 102,
-    Format = 103,
-    MissingDebugInfo = 104,
-    BadJson = 105,
-    // debuginfo/symcache
-    BadSymbol = 1001,
-    UnsupportedObjectFile = 1002,
-    MalformedObjectFile = 1003,
-    BadCacheFile = 1004,
-    MissingSection = 1005,
-    BadDwarfData = 1006,
-    BadBreakpadSym = 1007,
-    BadSymbolTable = 1008,
-    // sourcemaps
-    BadSourcemap = 2001,
-    CannotFlattenSourcemap = 2002,
-    // minidump
-    Stackwalk = 3001,
-    Resolver = 3002,
-    // external errors
-    Io = 10001,
-    Utf8Error = 10002,
-    ParseInt = 10003,
+    Unknown = 2,
+
+    // std::io
+    IoError = 101,
+
+    // symbolic::common::types
+    UnknownArchError = 1001,
+    UnknownLanguageError = 1002,
+    UnknownObjectKindError = 1003,
+    UnknownObjectClassError = 1004,
+    UnknownDebugKindError = 1005,
+
+    // symbolic::debuginfo
+    ParseBreakpadError = 2001,
+    ParseDebugIdError = 2002,
+    ObjectErrorUnsupportedObject = 2003,
+    ObjectErrorBadObject = 2004,
+    ObjectErrorUnsupportedSymbolTable = 2005,
+
+    // symbolic::minidump::cfi
+    CfiErrorMissingDebugInfo = 3001,
+    CfiErrorUnsupportedDebugFormat = 3002,
+    CfiErrorBadDebugInfo = 3003,
+    CfiErrorUnsupportedArch = 3004,
+    CfiErrorWriteError = 3005,
+
+    // symbolic::minidump::processor
+    ProcessMinidumpErrorMinidumpNotFound = 4001,
+    ProcessMinidumpErrorNoMinidumpHeader = 4002,
+    ProcessMinidumpErrorNoThreadList = 4003,
+    ProcessMinidumpErrorInvalidThreadIndex = 4004,
+    ProcessMinidumpErrorInvalidThreadId = 4005,
+    ProcessMinidumpErrorDuplicateRequestingThreads = 4006,
+    ProcessMinidumpErrorSymbolSupplierInterrupted = 4007,
+
+    // symbolic::sourcemap
+    ParseSourceMapError = 5001,
+
+    // symbolic::symcache
+    SymCacheErrorBadFileMagic = 6001,
+    SymCacheErrorBadFileHeader = 6002,
+    SymCacheErrorBadSegment = 6003,
+    SymCacheErrorBadCacheFile = 6004,
+    SymCacheErrorUnsupportedVersion = 6005,
+    SymCacheErrorBadDebugFile = 6006,
+    SymCacheErrorMissingDebugSection = 6007,
+    SymCacheErrorMissingDebugInfo = 6008,
+    SymCacheErrorUnsupportedDebugKind = 6009,
+    SymCacheErrorValueTooLarge = 6010,
+    SymCacheErrorWriteFailed = 6011,
 }
 
 impl SymbolicErrorCode {
-    pub fn from_kind(kind: &ErrorKind) -> SymbolicErrorCode {
-        match *kind {
-            ErrorKind::Panic(..) => SymbolicErrorCode::Panic,
-            ErrorKind::Msg(..) => SymbolicErrorCode::Msg,
-            ErrorKind::BadSymbol(..) => SymbolicErrorCode::BadSymbol,
-            ErrorKind::Internal(..) => SymbolicErrorCode::Internal,
-            ErrorKind::Parse(..) => SymbolicErrorCode::Parse,
-            ErrorKind::NotFound(..) => SymbolicErrorCode::NotFound,
-            ErrorKind::Format(..) => SymbolicErrorCode::Format,
-            ErrorKind::UnsupportedObjectFile => SymbolicErrorCode::UnsupportedObjectFile,
-            ErrorKind::MalformedObjectFile(..) => SymbolicErrorCode::MalformedObjectFile,
-            ErrorKind::BadCacheFile(..) => SymbolicErrorCode::BadCacheFile,
-            ErrorKind::MissingSection(..) => SymbolicErrorCode::MissingSection,
-            ErrorKind::BadDwarfData(..) => SymbolicErrorCode::BadDwarfData,
-            ErrorKind::BadBreakpadSym(..) => SymbolicErrorCode::BadBreakpadSym,
-            ErrorKind::MissingDebugInfo(..) => SymbolicErrorCode::MissingDebugInfo,
-            ErrorKind::BadSymbolTable(..) => SymbolicErrorCode::BadSymbolTable,
-            ErrorKind::BadJson(..) => SymbolicErrorCode::BadJson,
-            ErrorKind::BadSourcemap(..) => SymbolicErrorCode::BadSourcemap,
-            ErrorKind::CannotFlattenSourcemap(..) => SymbolicErrorCode::CannotFlattenSourcemap,
-            ErrorKind::Stackwalk(..) => SymbolicErrorCode::Stackwalk,
-            ErrorKind::Resolver(..) => SymbolicErrorCode::Resolver,
-            ErrorKind::Io(..) => SymbolicErrorCode::Io,
-            ErrorKind::Utf8Error(..) => SymbolicErrorCode::Utf8Error,
-            ErrorKind::ParseInt(..) => SymbolicErrorCode::ParseInt,
-            // we don't use _ here but the hidden field on error kind so that
-            // we don't accidentally forget to map them to error codes.
-            ErrorKind::__Nonexhaustive { .. } => unreachable!(),
+    /// This maps all errors that can possibly happen.
+    pub fn from_error(error: &Error) -> SymbolicErrorCode {
+        for cause in error.causes() {
+            if let Some(_) = cause.downcast_ref::<Panic>() {
+                return SymbolicErrorCode::Panic;
+            }
+
+            use std::io::Error as IoError;
+            if let Some(_) = cause.downcast_ref::<IoError>() {
+                return SymbolicErrorCode::IoError;
+            }
+
+            use symbolic::common::types::{UnknownArchError, UnknownDebugKindError,
+                                          UnknownLanguageError, UnknownObjectClassError,
+                                          UnknownObjectKindError};
+            if let Some(_) = cause.downcast_ref::<UnknownArchError>() {
+                return SymbolicErrorCode::UnknownArchError;
+            } else if let Some(_) = cause.downcast_ref::<UnknownLanguageError>() {
+                return SymbolicErrorCode::UnknownLanguageError;
+            } else if let Some(_) = cause.downcast_ref::<UnknownDebugKindError>() {
+                return SymbolicErrorCode::UnknownDebugKindError;
+            } else if let Some(_) = cause.downcast_ref::<UnknownObjectClassError>() {
+                return SymbolicErrorCode::UnknownObjectClassError;
+            } else if let Some(_) = cause.downcast_ref::<UnknownObjectKindError>() {
+                return SymbolicErrorCode::UnknownObjectKindError;
+            }
+
+            use symbolic::debuginfo::{ObjectError, ObjectErrorKind, ParseBreakpadError,
+                                      ParseDebugIdError};
+            if let Some(_) = cause.downcast_ref::<ParseBreakpadError>() {
+                return SymbolicErrorCode::ParseBreakpadError;
+            } else if let Some(_) = cause.downcast_ref::<ParseDebugIdError>() {
+                return SymbolicErrorCode::ParseDebugIdError;
+            } else if let Some(error) = cause.downcast_ref::<ObjectError>() {
+                return match error.kind() {
+                    ObjectErrorKind::UnsupportedObject => {
+                        SymbolicErrorCode::ObjectErrorUnsupportedObject
+                    }
+                    ObjectErrorKind::BadObject => SymbolicErrorCode::ObjectErrorBadObject,
+                    ObjectErrorKind::UnsupportedSymbolTable => {
+                        SymbolicErrorCode::ObjectErrorUnsupportedSymbolTable
+                    }
+                };
+            }
+
+            use symbolic::minidump::cfi::{CfiError, CfiErrorKind};
+            if let Some(error) = cause.downcast_ref::<CfiError>() {
+                return match error.kind() {
+                    CfiErrorKind::MissingDebugInfo => SymbolicErrorCode::CfiErrorMissingDebugInfo,
+                    CfiErrorKind::UnsupportedDebugFormat => {
+                        SymbolicErrorCode::CfiErrorUnsupportedDebugFormat
+                    }
+                    CfiErrorKind::BadDebugInfo => SymbolicErrorCode::CfiErrorBadDebugInfo,
+                    CfiErrorKind::UnsupportedArch => SymbolicErrorCode::CfiErrorUnsupportedArch,
+                    CfiErrorKind::WriteError => SymbolicErrorCode::CfiErrorWriteError,
+                };
+            }
+
+            use symbolic::minidump::processor::{ProcessMinidumpError, ProcessResult};
+            if let Some(error) = cause.downcast_ref::<ProcessMinidumpError>() {
+                return match error.kind() {
+                    // `Ok` is not used in errors
+                    ProcessResult::Ok => SymbolicErrorCode::Unknown,
+                    ProcessResult::MinidumpNotFound => {
+                        SymbolicErrorCode::ProcessMinidumpErrorMinidumpNotFound
+                    }
+                    ProcessResult::NoMinidumpHeader => {
+                        SymbolicErrorCode::ProcessMinidumpErrorNoMinidumpHeader
+                    }
+                    ProcessResult::NoThreadList => {
+                        SymbolicErrorCode::ProcessMinidumpErrorNoThreadList
+                    }
+                    ProcessResult::InvalidThreadIndex => {
+                        SymbolicErrorCode::ProcessMinidumpErrorInvalidThreadIndex
+                    }
+                    ProcessResult::InvalidThreadId => {
+                        SymbolicErrorCode::ProcessMinidumpErrorInvalidThreadId
+                    }
+                    ProcessResult::DuplicateRequestingThreads => {
+                        SymbolicErrorCode::ProcessMinidumpErrorDuplicateRequestingThreads
+                    }
+                    ProcessResult::SymbolSupplierInterrupted => {
+                        SymbolicErrorCode::ProcessMinidumpErrorSymbolSupplierInterrupted
+                    }
+                };
+            }
+
+            use symbolic::sourcemap::ParseSourceMapError;
+            if let Some(_) = cause.downcast_ref::<ParseSourceMapError>() {
+                return SymbolicErrorCode::ParseSourceMapError;
+            }
+
+            use symbolic::symcache::{SymCacheError, SymCacheErrorKind};
+            if let Some(error) = cause.downcast_ref::<SymCacheError>() {
+                return match error.kind() {
+                    SymCacheErrorKind::BadFileMagic => SymbolicErrorCode::SymCacheErrorBadFileMagic,
+                    SymCacheErrorKind::BadFileHeader => {
+                        SymbolicErrorCode::SymCacheErrorBadFileHeader
+                    }
+                    SymCacheErrorKind::BadSegment => SymbolicErrorCode::SymCacheErrorBadSegment,
+                    SymCacheErrorKind::BadCacheFile => SymbolicErrorCode::SymCacheErrorBadCacheFile,
+                    SymCacheErrorKind::UnsupportedVersion => {
+                        SymbolicErrorCode::SymCacheErrorUnsupportedVersion
+                    }
+                    SymCacheErrorKind::BadDebugFile => SymbolicErrorCode::SymCacheErrorBadDebugFile,
+                    SymCacheErrorKind::MissingDebugSection => {
+                        SymbolicErrorCode::SymCacheErrorMissingDebugSection
+                    }
+                    SymCacheErrorKind::MissingDebugInfo => {
+                        SymbolicErrorCode::SymCacheErrorMissingDebugInfo
+                    }
+                    SymCacheErrorKind::UnsupportedDebugKind => {
+                        SymbolicErrorCode::SymCacheErrorUnsupportedDebugKind
+                    }
+                    SymCacheErrorKind::ValueTooLarge => {
+                        SymbolicErrorCode::SymCacheErrorValueTooLarge
+                    }
+                    SymCacheErrorKind::WriteFailed => SymbolicErrorCode::SymCacheErrorWriteFailed,
+                };
+            }
         }
+
+        SymbolicErrorCode::Unknown
     }
 }
 
-/// Initializes the library
+/// Initializes the symbolic library.
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_init() {
     set_panic_hook();
@@ -176,7 +305,7 @@ pub unsafe extern "C" fn symbolic_init() {
 pub unsafe extern "C" fn symbolic_err_get_last_code() -> SymbolicErrorCode {
     LAST_ERROR.with(|e| {
         if let Some(ref err) = *e.borrow() {
-            SymbolicErrorCode::from_kind(err.kind())
+            SymbolicErrorCode::from_error(err)
         } else {
             SymbolicErrorCode::NoError
         }
@@ -190,14 +319,11 @@ pub unsafe extern "C" fn symbolic_err_get_last_code() -> SymbolicErrorCode {
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
     use std::fmt::Write;
-    use std::error::Error;
     LAST_ERROR.with(|e| {
         if let Some(ref err) = *e.borrow() {
             let mut msg = err.to_string();
-            let mut cause = err.cause();
-            while let Some(the_cause) = cause {
-                write!(&mut msg, "\n  caused by: {}", the_cause).ok();
-                cause = the_cause.cause();
+            for cause in err.causes().skip(1) {
+                write!(&mut msg, "\n  caused by: {}", cause).ok();
             }
             SymbolicStr::from_string(msg)
         } else {
@@ -211,60 +337,11 @@ pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
 pub unsafe extern "C" fn symbolic_err_get_backtrace() -> SymbolicStr {
     LAST_ERROR.with(|e| {
         if let Some(ref error) = *e.borrow() {
-            if let Some(backtrace) = error.backtrace() {
+            let backtrace = error.backtrace().to_string();
+            if !backtrace.is_empty() {
                 use std::fmt::Write;
-                let skip = match *error.kind() {
-                    // Panics contain more frames from std::panicking
-                    ErrorKind::Panic(_) => 5,
-                    // Errors just have two frames from error_chain
-                    _ => 2,
-                };
-
                 let mut out = String::new();
-                write!(&mut out, "stacktrace:").ok();
-                let frames = backtrace.frames();
-                if frames.len() > skip {
-                    let mut done = false;
-                    for (i, frame) in frames[skip..].iter().enumerate() {
-                        let ip = frame.ip();
-                        let symbols = frame.symbols();
-                        for symbol in symbols.iter() {
-                            write!(&mut out, "\n{:18?} ", ip).ok();
-
-                            if let Some(name) = symbol.name() {
-                                write!(&mut out, "{}", name).ok();
-                                // hack hack hack: make smaller stacktraces in case we are
-                                // a python binding.
-                                if name.as_bytes() == b"ffi_call" {
-                                    done = true;
-                                }
-                            } else {
-                                write!(&mut out, "<unknown>").ok();
-                            }
-
-                            if let Some(file) = symbol.filename() {
-                                if let Some(filename) = file.file_name() {
-                                    write!(
-                                        &mut out,
-                                        " ({}:{})",
-                                        filename.to_string_lossy(),
-                                        symbol.lineno().unwrap_or(0)
-                                    ).ok();
-                                }
-                            }
-                        }
-
-                        if done {
-                            write!(
-                                &mut out,
-                                "\n{:18} [{} python frames omitted]",
-                                "",
-                                frames.len() - i
-                            ).ok();
-                            break;
-                        }
-                    }
-                }
+                write!(&mut out, "stacktrace: {}", backtrace).ok();
                 SymbolicStr::from_string(out)
             } else {
                 Default::default()
@@ -284,7 +361,7 @@ pub unsafe extern "C" fn symbolic_err_clear() {
 }
 
 ffi_fn! {
-    /// Creates a symbolic str from a c string.
+    /// Creates a symbolic string from a raw C string.
     ///
     /// This sets the string to owned.  In case it's not owned you either have
     /// to make sure you are not freeing the memory or you need to set the
@@ -310,7 +387,7 @@ pub unsafe extern "C" fn symbolic_str_free(s: *mut SymbolicStr) {
     }
 }
 
-/// Returns true if the uuid is nil
+/// Returns true if the uuid is nil.
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: *const SymbolicUuid) -> bool {
     if let Ok(uuid) = Uuid::from_bytes(&(*uuid).data[..]) {
@@ -326,6 +403,6 @@ pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: *const SymbolicUuid) -> bool
 /// `symbolic_cstr_free`.
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_uuid_to_str(uuid: *const SymbolicUuid) -> SymbolicStr {
-    let uuid = Uuid::from_bytes(&(*uuid).data[..]).unwrap_or(Uuid::nil());
+    let uuid = Uuid::from_bytes(&(*uuid).data[..]).unwrap_or_default();
     SymbolicStr::from_string(uuid.hyphenated().to_string())
 }

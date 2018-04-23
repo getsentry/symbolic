@@ -6,10 +6,14 @@ use std::fmt;
 use std::slice;
 use std::cell::RefCell;
 
-use symbolic_common::{Arch, ByteView, ErrorKind, Language, Name, Result};
+use failure::ResultExt;
+
+use symbolic_common::types::{Arch, Language, Name};
+use symbolic_common::byteview::ByteView;
 use symbolic_debuginfo::{DebugId, Object};
 use symbolic_demangle::Demangle;
 
+use error::{SymCacheError, SymCacheErrorKind};
 use types::{CacheFileHeader, CacheFileHeaderV1, CacheFileHeaderV2, CacheFilePreamble, DataSource,
             FileRecord, FuncRecord, Seg};
 use utils::common_join_path;
@@ -158,12 +162,12 @@ pub struct Function<'a> {
 }
 
 impl<'a> Function<'a> {
-    /// The ID of the function
+    /// The ID of the function.
     pub fn id(&self) -> usize {
         self.id as usize
     }
 
-    /// The parent ID of the function
+    /// The parent ID of the function.
     pub fn parent_id(&self) -> Option<usize> {
         self.fun.parent(self.id())
     }
@@ -189,19 +193,19 @@ impl<'a> Function<'a> {
         Name::with_language(self.symbol(), self.lang()).try_demangle(Default::default())
     }
 
-    /// The language of the function
+    /// The language of the function.
     pub fn lang(&self) -> Language {
         Language::from_u32(self.fun.lang as u32).unwrap_or(Language::Unknown)
     }
 
-    /// The compilation dir of the function
+    /// The compilation dir of the function.
     pub fn comp_dir(&self) -> &str {
         self.cache
             .get_segment_as_string(&self.fun.comp_dir)
             .unwrap_or("")
     }
 
-    /// An iterator over all lines in the function
+    /// An iterator over all lines in the function.
     pub fn lines(&'a self) -> Lines<'a> {
         Lines {
             cache: self.cache,
@@ -235,40 +239,50 @@ pub struct Functions<'a> {
 }
 
 impl<'a> Iterator for Functions<'a> {
-    type Item = Result<Function<'a>>;
+    type Item = Result<Function<'a>, SymCacheError>;
 
-    fn next(&mut self) -> Option<Result<Function<'a>>> {
-        let records = itry!(self.cache.function_records());
-        if let Some(fun) = records.get(self.idx) {
-            self.idx += 1;
-            Some(Ok(Function {
-                cache: self.cache,
-                id: (self.idx - 1) as u32,
-                fun: fun,
-            }))
-        } else {
-            None
-        }
+    fn next(&mut self) -> Option<Self::Item> {
+        let records = match self.cache.function_records() {
+            Ok(records) => records,
+            Err(e) => return Some(Err(e)),
+        };
+
+        let function = match records.get(self.idx) {
+            Some(function) => function,
+            None => return None,
+        };
+
+        self.idx += 1;
+        Some(Ok(Function {
+            cache: self.cache,
+            id: (self.idx - 1) as u32,
+            fun: function,
+        }))
     }
 }
 
 impl<'a> Iterator for Lines<'a> {
-    type Item = Result<Line<'a>>;
+    type Item = Result<Line<'a>, SymCacheError>;
 
-    fn next(&mut self) -> Option<Result<Line<'a>>> {
-        let records = itry!(self.cache.get_segment(&self.fun.line_records));
-        if let Some(rec) = records.get(self.idx) {
-            self.idx += 1;
-            self.addr += rec.addr_off as u64;
-            Some(Ok(Line {
-                cache: self.cache,
-                addr: self.addr,
-                line: rec.line,
-                file_id: rec.file_id,
-            }))
-        } else {
-            None
-        }
+    fn next(&mut self) -> Option<Self::Item> {
+        let segment = match self.cache.get_segment(&self.fun.line_records) {
+            Ok(segment) => segment,
+            Err(e) => return Some(Err(e)),
+        };
+
+        let record = match segment.get(self.idx) {
+            Some(record) => record,
+            None => return None,
+        };
+
+        self.idx += 1;
+        self.addr += record.addr_off as u64;
+        Some(Ok(Line {
+            cache: self.cache,
+            addr: self.addr,
+            line: record.line,
+            file_id: record.file_id,
+        }))
     }
 }
 
@@ -353,22 +367,22 @@ impl<'a> Line<'a> {
 
 impl<'a> SymCache<'a> {
     /// Load a symcache from a byteview.
-    pub fn new(byteview: ByteView<'a>) -> Result<SymCache<'a>> {
+    pub fn new(byteview: ByteView<'a>) -> Result<SymCache<'a>, SymCacheError> {
         let rv = SymCache { byteview: byteview };
         {
             let preamble = rv.preamble()?;
             if preamble.magic != SYMCACHE_MAGIC {
-                return Err(ErrorKind::BadCacheFile("Bad file magic").into());
+                return Err(SymCacheErrorKind::BadFileMagic.into());
             }
             if preamble.version < 1 || preamble.version > SYMCACHE_LATEST_VERSION {
-                return Err(ErrorKind::BadCacheFile("Unsupported file version").into());
+                return Err(SymCacheErrorKind::UnsupportedVersion.into());
             }
         }
         Ok(rv)
     }
 
     /// Constructs a symcache from an object.
-    pub fn from_object(obj: &Object) -> Result<SymCache<'a>> {
+    pub fn from_object(obj: &Object) -> Result<SymCache<'a>, SymCacheError> {
         let vec = writer::to_vec(obj)?;
         SymCache::new(ByteView::from_vec(vec))
     }
@@ -384,24 +398,24 @@ impl<'a> SymCache<'a> {
     }
 
     /// Writes the symcache into a new writer.
-    pub fn to_writer<W: Write>(&self, mut writer: W) -> Result<()> {
+    pub fn to_writer<W: Write>(&self, mut writer: W) -> Result<(), io::Error> {
         io::copy(&mut &self.byteview[..], &mut writer)?;
         Ok(())
     }
 
     /// Loads binary data from a segment.
-    fn get_data(&self, start: usize, len: usize) -> Result<&[u8]> {
+    fn get_data(&self, start: usize, len: usize) -> Result<&[u8], io::Error> {
         let buffer = &self.byteview;
         let end = start.wrapping_add(len);
         if end < start || end > buffer.len() {
-            Err(io::Error::new(io::ErrorKind::UnexpectedEof, "out of range").into())
+            Err(io::Error::new(io::ErrorKind::UnexpectedEof, "out of range"))
         } else {
             Ok(&buffer[start..end])
         }
     }
 
     /// Returns the base offset for all segments
-    fn get_segment_offset(&self) -> Result<usize> {
+    fn get_segment_offset(&self) -> Result<usize, SymCacheError> {
         Ok(match self.preamble()?.version {
             1 => mem::size_of::<CacheFileHeaderV1>(),
             _ => 0,
@@ -409,13 +423,14 @@ impl<'a> SymCache<'a> {
     }
 
     /// Loads data from a segment.
-    fn get_segment<T, L: Copy + Into<u64>>(&self, seg: &Seg<T, L>) -> Result<&[T]> {
+    fn get_segment<T, L: Copy + Into<u64>>(&self, seg: &Seg<T, L>) -> Result<&[T], SymCacheError> {
         let offset = seg.offset as usize + self.get_segment_offset()?;
         let len: u64 = seg.len.into();
         let len = len as usize;
         let size = mem::size_of::<T>() * len;
         unsafe {
-            let bytes = self.get_data(offset, size)?;
+            let bytes = self.get_data(offset, size)
+                .context(SymCacheErrorKind::BadSegment)?;
             Ok(slice::from_raw_parts(mem::transmute(bytes.as_ptr()), len))
         }
     }
@@ -423,60 +438,67 @@ impl<'a> SymCache<'a> {
     /// Returns a reference to the UTF8 representation of a segment.
     ///
     /// This will error if the segment contains non-UTF8 data.
-    fn get_segment_as_string<L: Copy + Into<u64>>(&self, seg: &Seg<u8, L>) -> Result<&str> {
+    fn get_segment_as_string<L: Copy + Into<u64>>(
+        &self,
+        seg: &Seg<u8, L>,
+    ) -> Result<&str, SymCacheError> {
         let bytes = self.get_segment(seg)?;
-        Ok(str::from_utf8(bytes)?)
+        Ok(str::from_utf8(bytes).context(SymCacheErrorKind::BadSegment)?)
     }
 
     /// Returns the SymCache preamble record.
     #[inline(always)]
-    fn preamble(&self) -> Result<&CacheFilePreamble> {
+    fn preamble(&self) -> Result<&CacheFilePreamble, SymCacheError> {
         unsafe {
-            let data = self.get_data(0, mem::size_of::<CacheFilePreamble>())?;
+            let data = self.get_data(0, mem::size_of::<CacheFilePreamble>())
+                .context(SymCacheErrorKind::BadFileHeader)?;
             Ok(mem::transmute(data.as_ptr()))
         }
     }
 
     /// Returns the SymCache preamble record.
     #[inline(always)]
-    fn header(&self) -> Result<&CacheFileHeader> {
+    fn header(&self) -> Result<&CacheFileHeader, SymCacheError> {
         let preamble = self.preamble()?;
 
         match preamble.version {
             1 => {
-                let data = self.get_data(0, mem::size_of::<CacheFileHeaderV1>())?;
+                let data = self.get_data(0, mem::size_of::<CacheFileHeaderV1>())
+                    .context(SymCacheErrorKind::BadFileHeader)?;
                 Ok(unsafe { mem::transmute::<_, &CacheFileHeaderV1>(data.as_ptr()) })
             }
             2 => {
-                let data = self.get_data(0, mem::size_of::<CacheFileHeaderV2>())?;
+                let data = self.get_data(0, mem::size_of::<CacheFileHeaderV2>())
+                    .context(SymCacheErrorKind::BadFileHeader)?;
                 Ok(unsafe { mem::transmute::<_, &CacheFileHeaderV2>(data.as_ptr()) })
             }
-            _ => Err(ErrorKind::BadCacheFile("unsupported version").into()),
+            _ => Err(SymCacheErrorKind::UnsupportedVersion.into()),
         }
     }
 
     /// The architecture of the symbol file.
-    pub fn arch(&self) -> Result<Arch> {
-        Arch::from_u32(self.header()?.arch())
+    pub fn arch(&self) -> Result<Arch, SymCacheError> {
+        Ok(Arch::from_u32(self.header()?.arch()).context(SymCacheErrorKind::BadFileHeader)?)
     }
 
     /// The id of the cache file.
-    pub fn id(&self) -> Result<DebugId> {
+    pub fn id(&self) -> Result<DebugId, SymCacheError> {
         Ok(self.header()?.id())
     }
 
     /// The source of the `SymCache`.
-    pub fn data_source(&self) -> Result<DataSource> {
-        DataSource::from_u32(self.header()?.data_source() as u32)
+    pub fn data_source(&self) -> Result<DataSource, SymCacheError> {
+        Ok(DataSource::from_u32(self.header()?.data_source() as u32)
+            .context(SymCacheErrorKind::BadFileHeader)?)
     }
 
     /// Returns true if line information is included.
-    pub fn has_line_info(&self) -> Result<bool> {
+    pub fn has_line_info(&self) -> Result<bool, SymCacheError> {
         Ok(self.header()?.has_line_records() != 0)
     }
 
     /// Returns true if file information is included.
-    pub fn has_file_info(&self) -> Result<bool> {
+    pub fn has_file_info(&self) -> Result<bool, SymCacheError> {
         Ok(match self.data_source()? {
             DataSource::Dwarf => self.has_line_info()?,
             _ => false,
@@ -484,12 +506,12 @@ impl<'a> SymCache<'a> {
     }
 
     /// The version of the cache file.
-    pub fn file_format_version(&self) -> Result<u32> {
+    pub fn file_format_version(&self) -> Result<u32, SymCacheError> {
         Ok(self.preamble()?.version)
     }
 
     /// Looks up a single symbol.
-    fn get_symbol(&self, idx: u32) -> Result<Option<&str>> {
+    fn get_symbol(&self, idx: u32) -> Result<Option<&str>, SymCacheError> {
         if idx == !0 {
             return Ok(None);
         }
@@ -503,13 +525,13 @@ impl<'a> SymCache<'a> {
     }
 
     /// Resolves a `FuncRecord` from the functions segment.
-    fn function_records(&'a self) -> Result<&'a [FuncRecord]> {
+    fn function_records(&'a self) -> Result<&'a [FuncRecord], SymCacheError> {
         let header = self.header()?;
         self.get_segment(header.function_records())
     }
 
     /// Resolves a `FileRecord` from the files segment.
-    fn get_file_record(&self, idx: u16) -> Result<Option<&FileRecord>> {
+    fn get_file_record(&self, idx: u16) -> Result<Option<&FileRecord>, SymCacheError> {
         // no match
         if idx == !0 {
             return Ok(None);
@@ -536,7 +558,7 @@ impl<'a> SymCache<'a> {
         &'a self,
         fun: &'a FuncRecord,
         addr: u64,
-    ) -> Result<Option<(&FileRecord, u64, u32)>> {
+    ) -> Result<Option<(&FileRecord, u64, u32)>, SymCacheError> {
         let records = self.get_segment(&fun.line_records)?;
         if records.is_empty() {
             // A non-empty function without line records can happen in a couple
@@ -555,7 +577,7 @@ impl<'a> SymCache<'a> {
             return Ok(None);
         }
 
-        // because of how we determine the outer address on expanding
+        // Because of how we determine the outer address on expanding
         // inlines the first address might actually already be missing
         // the record.  Because of that we pick in any case the first
         // record as fallback.
@@ -586,7 +608,7 @@ impl<'a> SymCache<'a> {
             Ok(Some((record, line_addr, line)))
         } else {
             // This should not happen and indicates an invalid symcache
-            Err(ErrorKind::Internal("unknown file id").into())
+            Err(SymCacheErrorKind::BadCacheFile.into())
         }
     }
 
@@ -609,7 +631,7 @@ impl<'a> SymCache<'a> {
         fun: &'a FuncRecord,
         addr: u64,
         inner_sym: Option<&LineInfo<'a>>,
-    ) -> Result<LineInfo<'a>> {
+    ) -> Result<LineInfo<'a>, SymCacheError> {
         let (line, line_addr, filename, base_dir) =
             if let Some((file_record, line_addr, line)) = self.run_to_line(fun, addr)? {
                 // The address was found in the function's line records, so use
@@ -671,7 +693,7 @@ impl<'a> SymCache<'a> {
     /// Because of inling information this returns a vector of zero or
     /// more symbols.  If nothing is found then the return value will be
     /// an empty vector.
-    pub fn lookup(&'a self, addr: u64) -> Result<Vec<LineInfo<'a>>> {
+    pub fn lookup(&'a self, addr: u64) -> Result<Vec<LineInfo<'a>>, SymCacheError> {
         let funcs = self.function_records()?;
 
         // Functions in the function segment are ordered by start address

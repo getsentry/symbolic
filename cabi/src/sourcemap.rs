@@ -3,15 +3,14 @@ use std::mem;
 use std::slice;
 use std::os::raw::c_char;
 
-use symbolic_common::Result;
-use symbolic_sourcemap::{SourceMapView, SourceView, TokenMatch};
+use symbolic::sourcemap::{SourceMapView, SourceView, TokenMatch};
 
 use core::SymbolicStr;
 
-/// Represents a source view
+/// Represents a source view.
 pub struct SymbolicSourceView;
 
-/// Represents a sourcemap view
+/// Represents a sourcemap view.
 pub struct SymbolicSourceMapView;
 
 /// Represents a single token after lookup.
@@ -92,7 +91,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Frees a source map view
+    /// Frees a source map view.
     unsafe fn symbolic_sourcemapview_free(smv: *const SymbolicSourceMapView) {
         if !smv.is_null() {
             let sm = smv as *mut SourceMapView;
@@ -101,8 +100,8 @@ ffi_fn! {
     }
 }
 
-fn convert_token_match(token: Option<TokenMatch>) -> Result<*mut SymbolicTokenMatch> {
-    Ok(token
+fn convert_token_match(token: Option<TokenMatch>) -> *mut SymbolicTokenMatch {
+    token
         .map(|token| {
             Box::into_raw(Box::new(SymbolicTokenMatch {
                 src_line: token.src_line,
@@ -118,7 +117,7 @@ fn convert_token_match(token: Option<TokenMatch>) -> Result<*mut SymbolicTokenMa
                     .unwrap_or(Default::default()),
             }))
         })
-        .unwrap_or(ptr::null_mut()))
+        .unwrap_or(ptr::null_mut())
 }
 
 ffi_fn! {
@@ -129,7 +128,7 @@ ffi_fn! {
         col: u32,
     ) -> Result<*mut SymbolicTokenMatch> {
         let sm = ssm as *const SourceMapView;
-        convert_token_match((*sm).lookup_token(line, col))
+        Ok(convert_token_match((*sm).lookup_token(line, col)))
     }
 }
 
@@ -143,8 +142,8 @@ ffi_fn! {
     ) -> Result<*mut SymbolicTokenMatch> {
         let sm = ssm as *const SourceMapView;
         let sv = ssv as *const SourceView<'static>;
-        convert_token_match((*sm).lookup_token_with_function_name(
-            line, col, (*minified_name).as_str(), mem::transmute(sv)))
+        Ok(convert_token_match((*sm).lookup_token_with_function_name(
+            line, col, (*minified_name).as_str(), mem::transmute(sv))))
     }
 }
 
@@ -192,7 +191,7 @@ ffi_fn! {
         idx: u32
     ) -> Result<*mut SymbolicTokenMatch> {
         let sm = ssm as *const SourceMapView;
-        convert_token_match((*sm).get_token(idx))
+        Ok(convert_token_match((*sm).get_token(idx)))
     }
 }
 
@@ -205,7 +204,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Free a token match
+    /// Free a token match.
     unsafe fn symbolic_token_match_free(stm: *mut SymbolicTokenMatch) {
         if !stm.is_null() {
             let tm = stm as *mut SymbolicTokenMatch;

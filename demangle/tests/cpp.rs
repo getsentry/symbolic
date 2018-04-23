@@ -6,7 +6,7 @@ extern crate symbolic_common;
 extern crate symbolic_demangle;
 mod utils;
 
-use symbolic_common::Language;
+use symbolic_common::types::Language;
 use utils::assert_demangle;
 
 #[test]

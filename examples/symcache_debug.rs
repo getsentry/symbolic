@@ -1,30 +1,24 @@
 extern crate clap;
-extern crate symbolic_common;
-extern crate symbolic_debuginfo;
-extern crate symbolic_symcache;
+extern crate failure;
+extern crate symbolic;
 
 use std::u64;
 use std::fs;
-use std::io;
-use std::error::Error;
 
 use clap::{App, Arg, ArgMatches};
+use failure::{err_msg, Error};
 
-use symbolic_symcache::SymCache;
-use symbolic_debuginfo::FatObject;
-use symbolic_common::{Arch, ByteView};
+use symbolic::common::{byteview::ByteView, types::Arch};
+use symbolic::debuginfo::FatObject;
+use symbolic::symcache::SymCache;
 
-fn err(msg: &str) -> Box<Error> {
-    Box::new(io::Error::new(io::ErrorKind::Other, msg))
-}
-
-fn execute(matches: &ArgMatches) -> Result<(), Box<Error>> {
+fn execute(matches: &ArgMatches) -> Result<(), Error> {
     let symcache;
 
     // load an object from the debug info file.
     if let Some(file_path) = matches.value_of("debug_file_path") {
         let arch = match matches.value_of("arch") {
-            Some(arch) => Arch::parse(arch)?,
+            Some(arch) => arch.parse()?,
             None => Arch::Unknown,
         };
         let byteview = ByteView::from_path(&file_path)?;
@@ -36,8 +30,8 @@ fn execute(matches: &ArgMatches) -> Result<(), Box<Error>> {
             for obj in objects {
                 println!(
                     "  {} [{}]",
-                    obj.id().unwrap_or(Default::default()),
-                    obj.arch()
+                    obj.id().unwrap_or_default(),
+                    obj.arch().unwrap_or_default(),
                 );
             }
             return Ok(());
@@ -49,7 +43,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Box<Error>> {
             obj = Some(&objects[0]);
         } else {
             for o in &objects {
-                if o.arch() == arch {
+                if o.arch().unwrap_or_default() == arch {
                     obj = Some(o);
                     break;
                 }
@@ -58,7 +52,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Box<Error>> {
 
         let obj = match obj {
             Some(obj) => obj,
-            None => return Err(err(&format!("did not find architecture {}", arch))),
+            None => return Err(err_msg(format!("did not find architecture {}", arch))),
         };
 
         symcache = SymCache::from_object(obj)?;
@@ -76,7 +70,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Box<Error>> {
         let byteview = ByteView::from_path(file_path)?;
         symcache = SymCache::new(byteview)?;
     } else {
-        return Err(err("No debug file or sym cache provided"));
+        return Err(err_msg("No debug file or sym cache provided"));
     }
 
     // report

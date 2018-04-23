@@ -2,12 +2,12 @@ use std::slice;
 use std::os::raw::c_char;
 use std::ffi::CStr;
 
-use symbolic_common::ByteView;
-use symbolic_proguard::ProguardMappingView;
+use symbolic::common::byteview::ByteView;
+use symbolic::proguard::ProguardMappingView;
 
 use core::{SymbolicStr, SymbolicUuid};
 
-/// Represents a proguard mapping view
+/// Represents a proguard mapping view.
 pub struct SymbolicProguardMappingView;
 
 ffi_fn! {
@@ -47,7 +47,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Returns the UUID
+    /// Returns the UUID of a proguard mapping file.
     unsafe fn symbolic_proguardmappingview_get_uuid(
         spmv: *mut SymbolicProguardMappingView,
     ) -> Result<SymbolicUuid> {
@@ -57,7 +57,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Converts a dotted path at a line number
+    /// Converts a dotted path at a line number.
     unsafe fn symbolic_proguardmappingview_convert_dotted_path(
         spmv: *const SymbolicProguardMappingView,
         path: *const SymbolicStr,

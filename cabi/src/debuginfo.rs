@@ -3,8 +3,8 @@ use std::os::raw::c_char;
 use std::ptr;
 use std::str::FromStr;
 
-use symbolic_common::ByteView;
-use symbolic_debuginfo::{DebugId, FatObject, Object};
+use symbolic::common::byteview::ByteView;
+use symbolic::debuginfo::{DebugId, FatObject, Object};
 
 use core::SymbolicStr;
 
@@ -60,11 +60,12 @@ ffi_fn! {
     /// Returns the architecture of the object.
     unsafe fn symbolic_object_get_arch(so: *const SymbolicObject) -> Result<SymbolicStr> {
         let o = so as *const Object<'static>;
-        Ok(SymbolicStr::new((*o).arch().name()))
+        Ok(SymbolicStr::new((*o).arch()?.name()))
     }
 }
 
 ffi_fn! {
+    /// Returns the debug identifier of the object.
     unsafe fn symbolic_object_get_id(so: *const SymbolicObject) -> Result<SymbolicStr> {
         let o = so as *const Object<'static>;
         Ok((*o).id().unwrap_or_default().to_string().into())
@@ -72,7 +73,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Returns the object kind
+    /// Returns the object kind (e.g. MachO, ELF, ...).
     unsafe fn symbolic_object_get_kind(so: *const SymbolicObject) -> Result<SymbolicStr> {
         let o = so as *const Object<'static>;
         Ok(SymbolicStr::new((*o).kind().name()))
@@ -80,7 +81,8 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Returns the object type
+    /// Returns the desiganted use of the object file and hints at its contents (e.g. debug,
+    /// executable, ...).
     unsafe fn symbolic_object_get_type(so: *const SymbolicObject) -> Result<SymbolicStr> {
         let o = so as *mut Object<'static>;
         Ok(SymbolicStr::new((*o).class().name()))
@@ -88,7 +90,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Returns the object class
+    /// Returns the kind of debug data contained in this object file, if any (e.g. DWARF).
     unsafe fn symbolic_object_get_debug_kind(so: *const SymbolicObject) -> Result<SymbolicStr> {
         let o = so as *const Object<'static>;
         Ok(if let Some(kind) = (*o).debug_kind() {

@@ -15,5 +15,6 @@ source code or stack traces.
 """
 
 [dependencies]
+failure = "0.1.1"
 sourcemap = "2.2.0"
 symbolic-common = { version = "4.0.0", path = "../common", features = ["with_sourcemaps"] }

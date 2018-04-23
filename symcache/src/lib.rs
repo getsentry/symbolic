@@ -1,5 +1,8 @@
 //! Provides symcache support.
 extern crate dmsort;
+extern crate failure;
+#[macro_use]
+extern crate failure_derive;
 extern crate fallible_iterator;
 extern crate fnv;
 extern crate gimli;
@@ -9,21 +12,22 @@ extern crate lru_cache;
 #[macro_use]
 extern crate matches;
 extern crate num;
-#[macro_use]
 extern crate symbolic_common;
 extern crate symbolic_debuginfo;
 extern crate symbolic_demangle;
 extern crate uuid;
 
 mod breakpad;
-mod dwarf;
-mod types;
 mod cache;
-mod writer;
+mod dwarf;
+mod error;
 mod heuristics;
+mod types;
 mod utils;
+mod writer;
 
-pub use types::DataSource;
 pub use cache::*;
-pub use writer::*;
+pub use error::*;
 pub use heuristics::*;
+pub use types::DataSource;
+pub use writer::*;

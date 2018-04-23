@@ -1,13 +1,14 @@
-use symbolic_common::{Language, Name};
-use symbolic_demangle::{Demangle, DemangleFormat, DemangleOptions};
+use symbolic::common::types::Name;
+use symbolic::demangle::{Demangle, DemangleFormat, DemangleOptions};
 
 use core::SymbolicStr;
 
+/// Creates a name from a string passed via FFI.
 unsafe fn get_name(ident: *const SymbolicStr, lang: *const SymbolicStr) -> Name<'static> {
     if lang.is_null() {
         Name::new((*ident).as_str())
     } else {
-        let lang = Language::parse((*lang).as_str());
+        let lang = (*lang).as_str().parse().unwrap_or_default();
         Name::with_language((*ident).as_str(), lang)
     }
 }

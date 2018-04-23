@@ -3,11 +3,14 @@ use std::str;
 use regex::Regex;
 use uuid::Uuid;
 
-use symbolic_common::{Error, ErrorKind, Result};
-
 lazy_static! {
     static ref DEBUG_ID_RE: Regex = Regex::new(r"^(?i)([0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12})-?([0-9a-f]{1,8})?$").unwrap();
 }
+
+/// An error returned when parsing invalid debug identifiers.
+#[derive(Debug, Fail, Clone, Copy)]
+#[fail(display = "invalid debug id")]
+pub struct ParseDebugIdError;
 
 /// Unique identifier for debug information files and their debug information.
 ///
@@ -20,13 +23,12 @@ lazy_static! {
 /// **Example:**
 ///
 /// ```
-/// # extern crate symbolic_common;
 /// # extern crate symbolic_debuginfo;
 /// use std::str::FromStr;
-/// # use symbolic_common::Result;
 /// use symbolic_debuginfo::DebugId;
+/// # use symbolic_debuginfo::ParseDebugIdError;
 ///
-/// # fn foo() -> Result<()> {
+/// # fn foo() -> Result<(), ParseDebugIdError> {
 /// let id = DebugId::from_str("dfb8e43a-f242-3d73-a453-aeb6a777ef75-a")?;
 /// assert_eq!("dfb8e43a-f242-3d73-a453-aeb6a777ef75-a".to_string(), id.to_string());
 /// # Ok(())
@@ -58,18 +60,18 @@ impl DebugId {
     }
 
     /// Parses a breakpad identifier from a string.
-    pub fn from_breakpad(string: &str) -> Result<DebugId> {
+    pub fn from_breakpad(string: &str) -> Result<DebugId, ParseDebugIdError> {
         // Technically, we are are too permissive here by allowing dashes, but
         // we are complete.
         string.parse()
     }
 
-    /// Returns the UUID part of the code module's debug_identifier.
+    /// Returns the UUID part of the debug identifier.
     pub fn uuid(&self) -> Uuid {
         self.uuid
     }
 
-    /// Returns the appendix part of the code module's debug identifier.
+    /// Returns the appendix part of the debug identifier.
     ///
     /// On Windows, this is an incrementing counter to identify the build.
     /// On all other platforms, this value will always be zero.
@@ -87,7 +89,7 @@ impl DebugId {
 impl fmt::Debug for DebugId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("DebugId")
-            .field("uuid", &self.uuid())
+            .field("uuid", &self.uuid().hyphenated().to_string())
             .field("appendix", &self.appendix())
             .finish()
     }
@@ -104,21 +106,20 @@ impl fmt::Display for DebugId {
 }
 
 impl str::FromStr for DebugId {
-    type Err = Error;
+    type Err = ParseDebugIdError;
 
-    fn from_str(string: &str) -> Result<DebugId> {
-        let captures = DEBUG_ID_RE
-            .captures(string)
-            .ok_or("Invalid debug identifier")?;
+    fn from_str(string: &str) -> Result<DebugId, ParseDebugIdError> {
+        let captures = DEBUG_ID_RE.captures(string).ok_or(ParseDebugIdError)?;
         let uuid = captures
             .get(1)
             .unwrap()
             .as_str()
             .parse()
-            .map_err(|_| ErrorKind::Parse("Invalid UUID"))?;
+            .map_err(|_| ParseDebugIdError)?;
         let appendix = captures
             .get(2)
-            .map_or(Ok(0), |s| u32::from_str_radix(s.as_str(), 16))?;
+            .map_or(Ok(0), |s| u32::from_str_radix(s.as_str(), 16))
+            .map_err(|_| ParseDebugIdError)?;
         Ok(DebugId::from_parts(uuid, appendix))
     }
 }
@@ -147,13 +148,12 @@ derive_serialize_from_display!(DebugId);
 /// **Example:**
 ///
 /// ```
-/// # extern crate symbolic_common;
 /// # extern crate symbolic_debuginfo;
 /// use std::str::FromStr;
-/// # use symbolic_common::Result;
 /// use symbolic_debuginfo::DebugId;
+/// # use symbolic_debuginfo::ParseDebugIdError;
 ///
-/// # fn foo() -> Result<()> {
+/// # fn foo() -> Result<(), ParseDebugIdError> {
 /// let id = DebugId::from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75a")?;
 /// assert_eq!("DFB8E43AF2423D73A453AEB6A777EF75a".to_string(), id.breakpad().to_string());
 /// # Ok(())

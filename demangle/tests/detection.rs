@@ -3,7 +3,7 @@
 extern crate symbolic_common;
 extern crate symbolic_demangle;
 
-use symbolic_common::{Language, Name};
+use symbolic_common::types::{Language, Name};
 use symbolic_demangle::Demangle;
 
 fn assert_language(input: &str, lang: Language) {

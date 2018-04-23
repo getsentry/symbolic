@@ -1,5 +1,8 @@
 //! Abstraction for reading debug info files.
 
+extern crate failure;
+#[macro_use]
+extern crate failure_derive;
 extern crate goblin;
 #[macro_use]
 extern crate lazy_static;
