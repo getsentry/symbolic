@@ -23,26 +23,37 @@ exclude = [
 [workspace]
 
 [features]
-default = []
-with_dwarf = ["symbolic-common/with_dwarf"]
-with_objects = ["symbolic-common/with_objects"]
+default = ["debuginfo"]
+debuginfo = ["symbolic-debuginfo"]
+demangle = ["symbolic-demangle"]
+minidump = ["debuginfo", "symbolic-minidump"]
+proguard = ["symbolic-proguard"]
+sourcemap = ["symbolic-sourcemap"]
+symcache = ["debuginfo", "demangle", "symbolic-symcache"]
 with_serde = [
     "symbolic-common/with_serde",
     "symbolic-debuginfo/with_serde",
     "symbolic-minidump/with_serde"
 ]
-with_sourcemaps = ["symbolic-common/with_sourcemaps"]
 
 [dependencies]
 symbolic-common = { version = "4.0.0", path = "common" }
-symbolic-demangle = { version = "4.0.0", path = "demangle" }
-symbolic-minidump = { version = "4.0.0", path = "minidump" }
-symbolic-proguard = { version = "4.0.0", path = "proguard" }
-symbolic-sourcemap = { version = "4.0.0", path = "sourcemap" }
-symbolic-symcache = { version = "4.0.0", path = "symcache" }
-symbolic-debuginfo = { version = "4.0.0", path = "debuginfo" }
+symbolic-debuginfo = { version = "4.0.0", path = "debuginfo", optional = true }
+symbolic-demangle = { version = "4.0.0", path = "demangle", optional = true }
+symbolic-minidump = { version = "4.0.0", path = "minidump", optional = true }
+symbolic-proguard = { version = "4.0.0", path = "proguard", optional = true }
+symbolic-sourcemap = { version = "4.0.0", path = "sourcemap", optional = true }
+symbolic-symcache = { version = "4.0.0", path = "symcache", optional = true }
 
 [dev-dependencies]
 clap = "2.31.2"
 failure = "0.1.1"
 walkdir = "2.1.4"
+
+[[example]]
+name = "minidump_stackwalk"
+required-features = ["minidump", "symcache"]
+
+[[example]]
+name = "symcache_debug"
+required-features = ["symcache"]
