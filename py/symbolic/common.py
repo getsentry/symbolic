@@ -10,7 +10,7 @@ __all__ = ['arch_is_known', 'arch_from_macho',
            'arch_get_ip_reg_name', 'parse_addr']
 
 
-ignore_arch_exc = (exceptions.NotFound, exceptions.Parse)
+ignore_arch_exc = (exceptions.UnknownArchError,)
 
 
 # Make sure we init the lib and turn on rust backtraces

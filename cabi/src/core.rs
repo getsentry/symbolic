@@ -102,29 +102,157 @@ impl From<Uuid> for SymbolicUuid {
     }
 }
 
-/// Represents all possible error codes
+/// Represents all possible error codes.
 #[repr(u32)]
 pub enum SymbolicErrorCode {
     NoError = 0,
     Panic = 1,
     Unknown = 2,
 
-    // symbolic_aorta::auth::KeyParseError
-    KeyParseErrorBadEncoding = 1000,
-    KeyParseErrorBadKey = 1001,
+    // std::io
+    IoError = 101,
 
-    // symbolic_aorta::auth::UnpackError
-    UnpackErrorBadSignature = 1003,
-    UnpackErrorBadPayload = 1004,
-    UnpackErrorSignatureExpired = 1005,
+    // symbolic::common::types
+    UnknownArchError = 1001,
+    UnknownLanguageError = 1002,
+    UnknownObjectKindError = 1003,
+    UnknownObjectClassError = 1004,
+    UnknownDebugKindError = 1005,
+
+    // symbolic::debuginfo
+    ParseBreakpadError = 2001,
+    ParseDebugIdError = 2002,
+    ObjectErrorUnsupportedObject = 2003,
+    ObjectErrorBadObject = 2004,
+    ObjectErrorMissingSymbolTable = 2005,
+    ObjectErrorUnsupportedSymbolTable = 2006,
+
+    // symbolic::minidump::cfi
+    CfiErrorMissingDebugInfo = 3001,
+    CfiErrorUnsupportedDebugFormat = 3002,
+    CfiErrorBadDebugInfo = 3003,
+    CfiErrorUnsupportedArch = 3004,
+    CfiErrorWriteError = 3005,
+
+    // symbolic::minidump::processor
+    ProcessMinidumpError = 4001,
+
+    // symbolic::sourcemap
+    ParseSourceMapError = 5001,
+
+    // symbolic::symcache
+    SymCacheErrorBadFileMagic = 6001,
+    SymCacheErrorBadFileHeader = 6002,
+    SymCacheErrorBadSegment = 6003,
+    SymCacheErrorBadCacheFile = 6004,
+    SymCacheErrorUnsupportedVersion = 6005,
+    SymCacheErrorBadDebugFile = 6006,
+    SymCacheErrorMissingDebugSection = 6007,
+    SymCacheErrorMissingDebugInfo = 6008,
+    SymCacheErrorUnsupportedDebugKind = 6009,
+    SymCacheErrorValueTooLarge = 6010,
+    SymCacheErrorWriteFailed = 6011,
 }
 
 impl SymbolicErrorCode {
     /// This maps all errors that can possibly happen.
     pub fn from_error(error: &Error) -> SymbolicErrorCode {
         for cause in error.causes() {
-            if let Some(..) = cause.downcast_ref::<Panic>() {
+            if let Some(_) = cause.downcast_ref::<Panic>() {
                 return SymbolicErrorCode::Panic;
+            }
+
+            use std::io::Error as IoError;
+            if let Some(_) = cause.downcast_ref::<IoError>() {
+                return SymbolicErrorCode::IoError;
+            }
+
+            use symbolic::common::types::{UnknownArchError, UnknownDebugKindError,
+                                          UnknownLanguageError, UnknownObjectClassError,
+                                          UnknownObjectKindError};
+            if let Some(_) = cause.downcast_ref::<UnknownArchError>() {
+                return SymbolicErrorCode::UnknownArchError;
+            } else if let Some(_) = cause.downcast_ref::<UnknownLanguageError>() {
+                return SymbolicErrorCode::UnknownLanguageError;
+            } else if let Some(_) = cause.downcast_ref::<UnknownDebugKindError>() {
+                return SymbolicErrorCode::UnknownDebugKindError;
+            } else if let Some(_) = cause.downcast_ref::<UnknownObjectClassError>() {
+                return SymbolicErrorCode::UnknownObjectClassError;
+            } else if let Some(_) = cause.downcast_ref::<UnknownObjectKindError>() {
+                return SymbolicErrorCode::UnknownObjectKindError;
+            }
+
+            use symbolic::debuginfo::{ObjectError, ObjectErrorKind, ParseBreakpadError,
+                                      ParseDebugIdError};
+            if let Some(_) = cause.downcast_ref::<ParseBreakpadError>() {
+                return SymbolicErrorCode::ParseBreakpadError;
+            } else if let Some(_) = cause.downcast_ref::<ParseDebugIdError>() {
+                return SymbolicErrorCode::ParseDebugIdError;
+            } else if let Some(error) = cause.downcast_ref::<ObjectError>() {
+                return match error.kind() {
+                    ObjectErrorKind::UnsupportedObject => {
+                        SymbolicErrorCode::ObjectErrorUnsupportedObject
+                    }
+                    ObjectErrorKind::BadObject => SymbolicErrorCode::ObjectErrorBadObject,
+                    ObjectErrorKind::MissingSymbolTable => {
+                        SymbolicErrorCode::ObjectErrorMissingSymbolTable
+                    }
+                    ObjectErrorKind::UnsupportedSymbolTable => {
+                        SymbolicErrorCode::ObjectErrorUnsupportedSymbolTable
+                    }
+                };
+            }
+
+            use symbolic::minidump::cfi::{CfiError, CfiErrorKind};
+            if let Some(error) = cause.downcast_ref::<CfiError>() {
+                return match error.kind() {
+                    CfiErrorKind::MissingDebugInfo => SymbolicErrorCode::CfiErrorMissingDebugInfo,
+                    CfiErrorKind::UnsupportedDebugFormat => {
+                        SymbolicErrorCode::CfiErrorUnsupportedDebugFormat
+                    }
+                    CfiErrorKind::BadDebugInfo => SymbolicErrorCode::CfiErrorBadDebugInfo,
+                    CfiErrorKind::UnsupportedArch => SymbolicErrorCode::CfiErrorUnsupportedArch,
+                    CfiErrorKind::WriteError => SymbolicErrorCode::CfiErrorWriteError,
+                };
+            }
+
+            use symbolic::minidump::processor::ProcessMinidumpError;
+            if let Some(_) = cause.downcast_ref::<ProcessMinidumpError>() {
+                return SymbolicErrorCode::ProcessMinidumpError;
+            }
+
+            use symbolic::sourcemap::ParseSourceMapError;
+            if let Some(_) = cause.downcast_ref::<ParseSourceMapError>() {
+                return SymbolicErrorCode::ParseSourceMapError;
+            }
+
+            use symbolic::symcache::{SymCacheError, SymCacheErrorKind};
+            if let Some(error) = cause.downcast_ref::<SymCacheError>() {
+                return match error.kind() {
+                    SymCacheErrorKind::BadFileMagic => SymbolicErrorCode::SymCacheErrorBadFileMagic,
+                    SymCacheErrorKind::BadFileHeader => {
+                        SymbolicErrorCode::SymCacheErrorBadFileHeader
+                    }
+                    SymCacheErrorKind::BadSegment => SymbolicErrorCode::SymCacheErrorBadSegment,
+                    SymCacheErrorKind::BadCacheFile => SymbolicErrorCode::SymCacheErrorBadCacheFile,
+                    SymCacheErrorKind::UnsupportedVersion => {
+                        SymbolicErrorCode::SymCacheErrorUnsupportedVersion
+                    }
+                    SymCacheErrorKind::BadDebugFile => SymbolicErrorCode::SymCacheErrorBadDebugFile,
+                    SymCacheErrorKind::MissingDebugSection => {
+                        SymbolicErrorCode::SymCacheErrorMissingDebugSection
+                    }
+                    SymCacheErrorKind::MissingDebugInfo => {
+                        SymbolicErrorCode::SymCacheErrorMissingDebugInfo
+                    }
+                    SymCacheErrorKind::UnsupportedDebugKind => {
+                        SymbolicErrorCode::SymCacheErrorUnsupportedDebugKind
+                    }
+                    SymCacheErrorKind::ValueTooLarge => {
+                        SymbolicErrorCode::SymCacheErrorValueTooLarge
+                    }
+                    SymCacheErrorKind::WriteFailed => SymbolicErrorCode::SymCacheErrorWriteFailed,
+                };
             }
         }
 
