@@ -24,14 +24,19 @@ enum SymbolicErrorCode {
   SYMBOLIC_ERROR_CODE_PARSE_DEBUG_ID_ERROR = 2002,
   SYMBOLIC_ERROR_CODE_OBJECT_ERROR_UNSUPPORTED_OBJECT = 2003,
   SYMBOLIC_ERROR_CODE_OBJECT_ERROR_BAD_OBJECT = 2004,
-  SYMBOLIC_ERROR_CODE_OBJECT_ERROR_MISSING_SYMBOL_TABLE = 2005,
-  SYMBOLIC_ERROR_CODE_OBJECT_ERROR_UNSUPPORTED_SYMBOL_TABLE = 2006,
+  SYMBOLIC_ERROR_CODE_OBJECT_ERROR_UNSUPPORTED_SYMBOL_TABLE = 2005,
   SYMBOLIC_ERROR_CODE_CFI_ERROR_MISSING_DEBUG_INFO = 3001,
   SYMBOLIC_ERROR_CODE_CFI_ERROR_UNSUPPORTED_DEBUG_FORMAT = 3002,
   SYMBOLIC_ERROR_CODE_CFI_ERROR_BAD_DEBUG_INFO = 3003,
   SYMBOLIC_ERROR_CODE_CFI_ERROR_UNSUPPORTED_ARCH = 3004,
   SYMBOLIC_ERROR_CODE_CFI_ERROR_WRITE_ERROR = 3005,
-  SYMBOLIC_ERROR_CODE_PROCESS_MINIDUMP_ERROR = 4001,
+  SYMBOLIC_ERROR_CODE_PROCESS_MINIDUMP_ERROR_MINIDUMP_NOT_FOUND = 4001,
+  SYMBOLIC_ERROR_CODE_PROCESS_MINIDUMP_ERROR_NO_MINIDUMP_HEADER = 4002,
+  SYMBOLIC_ERROR_CODE_PROCESS_MINIDUMP_ERROR_NO_THREAD_LIST = 4003,
+  SYMBOLIC_ERROR_CODE_PROCESS_MINIDUMP_ERROR_INVALID_THREAD_INDEX = 4004,
+  SYMBOLIC_ERROR_CODE_PROCESS_MINIDUMP_ERROR_INVALID_THREAD_ID = 4005,
+  SYMBOLIC_ERROR_CODE_PROCESS_MINIDUMP_ERROR_DUPLICATE_REQUESTING_THREADS = 4006,
+  SYMBOLIC_ERROR_CODE_PROCESS_MINIDUMP_ERROR_SYMBOL_SUPPLIER_INTERRUPTED = 4007,
   SYMBOLIC_ERROR_CODE_PARSE_SOURCE_MAP_ERROR = 5001,
   SYMBOLIC_ERROR_CODE_SYM_CACHE_ERROR_BAD_FILE_MAGIC = 6001,
   SYMBOLIC_ERROR_CODE_SYM_CACHE_ERROR_BAD_FILE_HEADER = 6002,
@@ -48,7 +53,7 @@ enum SymbolicErrorCode {
 typedef uint32_t SymbolicErrorCode;
 
 /*
- * Indicates how well the instruction pointer derived during stack walking is trusted
+ * Indicates how well the instruction pointer derived during stack walking is trusted.
  */
 enum SymbolicFrameTrust {
   SYMBOLIC_FRAME_TRUST_NONE,
@@ -67,7 +72,7 @@ typedef uint32_t SymbolicFrameTrust;
 typedef struct SymbolicFatObject SymbolicFatObject;
 
 /*
- * Contains stack frame information (CFI) for images
+ * Contains stack frame information (CFI) for images.
  */
 typedef struct SymbolicFrameInfoMap SymbolicFrameInfoMap;
 
@@ -77,17 +82,17 @@ typedef struct SymbolicFrameInfoMap SymbolicFrameInfoMap;
 typedef struct SymbolicObject SymbolicObject;
 
 /*
- * Represents a proguard mapping view
+ * Represents a proguard mapping view.
  */
 typedef struct SymbolicProguardMappingView SymbolicProguardMappingView;
 
 /*
- * Represents a sourcemap view
+ * Represents a sourcemap view.
  */
 typedef struct SymbolicSourceMapView SymbolicSourceMapView;
 
 /*
- * Represents a source view
+ * Represents a source view.
  */
 typedef struct SymbolicSourceView SymbolicSourceView;
 
@@ -97,7 +102,7 @@ typedef struct SymbolicSourceView SymbolicSourceView;
 typedef struct SymbolicSymCache SymbolicSymCache;
 
 /*
- * Represents a string.
+ * CABI wrapper around a Rust string.
  */
 typedef struct {
   char *data;
@@ -106,14 +111,14 @@ typedef struct {
 } SymbolicStr;
 
 /*
- * ELF architecture
+ * ELF architecture.
  */
 typedef struct {
   uint16_t machine;
 } SymbolicElfArch;
 
 /*
- * Mach-O architecture
+ * Mach-O architecture.
  */
 typedef struct {
   uint32_t cputype;
@@ -175,7 +180,7 @@ typedef struct {
 } SymbolicLookupResult;
 
 /*
- * OS and CPU information
+ * OS and CPU information in a minidump.
  */
 typedef struct {
   SymbolicStr os_name;
@@ -187,7 +192,7 @@ typedef struct {
 } SymbolicSystemInfo;
 
 /*
- * Carries information about a code module loaded into the process during the crash
+ * Carries information about a code module loaded into the process during the crash.
  */
 typedef struct {
   SymbolicStr id;
@@ -197,7 +202,7 @@ typedef struct {
 } SymbolicCodeModule;
 
 /*
- * Contains the absolute instruction address and image information of a stack frame
+ * Contains the absolute instruction address and image information of a stack frame.
  */
 typedef struct {
   uint64_t return_address;
@@ -207,7 +212,7 @@ typedef struct {
 } SymbolicStackFrame;
 
 /*
- * Represents a thread of the process state which holds a list of stack frames
+ * Represents a thread of the process state which holds a list of stack frames.
  */
 typedef struct {
   uint32_t thread_id;
@@ -216,7 +221,7 @@ typedef struct {
 } SymbolicCallStack;
 
 /*
- * State of a crashed process
+ * State of a crashed process in a minidump.
  */
 typedef struct {
   int32_t requesting_thread;
@@ -233,7 +238,7 @@ typedef struct {
 } SymbolicProcessState;
 
 /*
- * Represents a UUID.
+ * CABI wrapper around a UUID.
  */
 typedef struct {
   uint8_t data[16];
@@ -283,8 +288,17 @@ bool symbolic_arch_is_known(const SymbolicStr *arch);
  */
 SymbolicStr symbolic_arch_to_breakpad(const SymbolicStr *arch);
 
+/*
+ * Releases memory held by an unmanaged `SymbolicCfiCache` instance.
+ */
 void symbolic_cfi_cache_free(SymbolicCfiCache *scache);
 
+/*
+ * Extracts call frame information (CFI) from an Object in ASCII format.
+ *
+ * To use this, create a `SymbolicFrameInfoMap` and pass it CFI for referenced modules during
+ * minidump processing to receive improved stack traces.
+ */
 SymbolicCfiCache *symbolic_cfi_cache_from_object(const SymbolicObject *sobj);
 
 /*
@@ -350,24 +364,24 @@ uintptr_t symbolic_fatobject_object_count(const SymbolicFatObject *sfo);
 SymbolicFatObject *symbolic_fatobject_open(const char *path);
 
 /*
- * Return the best instruction for an isntruction info
+ * Return the best instruction for an isntruction info.
  */
 uint64_t symbolic_find_best_instruction(const SymbolicInstructionInfo *ii);
 
 /*
- * Adds CFI for a code module specified by the `sid` argument
+ * Adds CFI for a code module specified by the `sid` argument.
  */
 void symbolic_frame_info_map_add(const SymbolicFrameInfoMap *smap,
                                  const SymbolicStr *sid,
                                  const char *path);
 
 /*
- * Frees a frame info map object
+ * Frees a frame info map object.
  */
 void symbolic_frame_info_map_free(SymbolicFrameInfoMap *smap);
 
 /*
- * Creates a new frame info map
+ * Creates a new frame info map.
  */
 SymbolicFrameInfoMap *symbolic_frame_info_map_new(void);
 
@@ -377,7 +391,7 @@ SymbolicFrameInfoMap *symbolic_frame_info_map_new(void);
 SymbolicStr symbolic_id_from_breakpad(const SymbolicStr *sid);
 
 /*
- * Initializes the library
+ * Initializes the symbolic library.
  */
 void symbolic_init(void);
 
@@ -402,43 +416,47 @@ void symbolic_object_free(SymbolicObject *so);
 SymbolicStr symbolic_object_get_arch(const SymbolicObject *so);
 
 /*
- * Returns the object class
+ * Returns the kind of debug data contained in this object file, if any (e.g. DWARF).
  */
 SymbolicStr symbolic_object_get_debug_kind(const SymbolicObject *so);
 
+/*
+ * Returns the debug identifier of the object.
+ */
 SymbolicStr symbolic_object_get_id(const SymbolicObject *so);
 
 /*
- * Returns the object kind
+ * Returns the object kind (e.g. MachO, ELF, ...).
  */
 SymbolicStr symbolic_object_get_kind(const SymbolicObject *so);
 
 /*
- * Returns the object type
+ * Returns the desiganted use of the object file and hints at its contents (e.g. debug,
+ * executable, ...).
  */
 SymbolicStr symbolic_object_get_type(const SymbolicObject *so);
 
 /*
  * Processes a minidump with optional CFI information and returns the state
- * of the process at the time of the crash
+ * of the process at the time of the crash.
  */
 SymbolicProcessState *symbolic_process_minidump(const char *path, const SymbolicFrameInfoMap *smap);
 
 /*
  * Processes a minidump with optional CFI information and returns the state
- * of the process at the time of the crash
+ * of the process at the time of the crash.
  */
 SymbolicProcessState *symbolic_process_minidump_buffer(const char *buffer,
                                                        uintptr_t length,
                                                        const SymbolicFrameInfoMap *smap);
 
 /*
- * Frees a process state object
+ * Frees a process state object.
  */
 void symbolic_process_state_free(SymbolicProcessState *sstate);
 
 /*
- * Converts a dotted path at a line number
+ * Converts a dotted path at a line number.
  */
 SymbolicStr symbolic_proguardmappingview_convert_dotted_path(const SymbolicProguardMappingView *spmv,
                                                              const SymbolicStr *path,
@@ -463,7 +481,7 @@ SymbolicProguardMappingView *symbolic_proguardmappingview_from_bytes(const char 
 SymbolicProguardMappingView *symbolic_proguardmappingview_from_path(const char *path);
 
 /*
- * Returns the UUID
+ * Returns the UUID of a proguard mapping file.
  */
 SymbolicUuid symbolic_proguardmappingview_get_uuid(SymbolicProguardMappingView *spmv);
 
@@ -473,7 +491,7 @@ SymbolicUuid symbolic_proguardmappingview_get_uuid(SymbolicProguardMappingView *
 bool symbolic_proguardmappingview_has_line_info(const SymbolicProguardMappingView *spmv);
 
 /*
- * Frees a source map view
+ * Frees a source map view.
  */
 void symbolic_sourcemapview_free(const SymbolicSourceMapView *smv);
 
@@ -563,7 +581,7 @@ uint32_t symbolic_sourceview_get_line_count(const SymbolicSourceView *ssv);
 void symbolic_str_free(SymbolicStr *s);
 
 /*
- * Creates a symbolic str from a c string.
+ * Creates a symbolic string from a raw C string.
  *
  * This sets the string to owned.  In case it's not owned you either have
  * to make sure you are not freeing the memory or you need to set the
@@ -582,7 +600,7 @@ uint32_t symbolic_symcache_file_format_version(const SymbolicSymCache *scache);
 void symbolic_symcache_free(SymbolicSymCache *scache);
 
 /*
- * Creates a symcache from bytes
+ * Creates a symcache from a byte buffer.
  */
 SymbolicSymCache *symbolic_symcache_from_bytes(const uint8_t *bytes, uintptr_t len);
 
@@ -639,12 +657,12 @@ uint32_t symbolic_symcache_latest_file_format_version(void);
 SymbolicLookupResult symbolic_symcache_lookup(const SymbolicSymCache *scache, uint64_t addr);
 
 /*
- * Free a token match
+ * Free a token match.
  */
 void symbolic_token_match_free(SymbolicTokenMatch *stm);
 
 /*
- * Returns true if the uuid is nil
+ * Returns true if the uuid is nil.
  */
 bool symbolic_uuid_is_nil(const SymbolicUuid *uuid);
 
