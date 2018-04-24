@@ -30,11 +30,9 @@ minidump = ["debuginfo", "symbolic-minidump"]
 proguard = ["symbolic-proguard"]
 sourcemap = ["symbolic-sourcemap"]
 symcache = ["debuginfo", "demangle", "symbolic-symcache"]
-with_serde = [
-    "symbolic-common/with_serde",
-    "symbolic-debuginfo/with_serde",
-    "symbolic-minidump/with_serde"
-]
+with_serde = ["symbolic-common/with_serde"]
+with_serde_debuginfo = ["symbolic-debuginfo/with_serde"]
+with_serde_minidump = ["symbolic-minidump/with_serde"]
 
 [dependencies]
 symbolic-common = { version = "4.0.0", path = "common" }
