@@ -22,6 +22,9 @@ exclude = [
 
 [workspace]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [features]
 default = ["debuginfo"]
 debuginfo = ["symbolic-debuginfo"]
