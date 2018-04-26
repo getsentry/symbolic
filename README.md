@@ -34,7 +34,7 @@ Currently it provides the following functionality:
   * Process Minidumps to resolve process state
 * Convenient C and Python library
 
-## Source crates
+## Source Crates
 
 A lot of functionality exposed by this library come from independent Rust crates
 for better use:
@@ -47,6 +47,13 @@ for better use:
 Additionally we use the following C++ libraries to fill in gaps:
 
 * [breakpad](https://chromium.googlesource.com/breakpad/breakpad/)
+
+## Building and Development
+
+Symbolic comes as a python library with prebuilt wheels for linux and macOS. On
+other operating systems or when using as rust library, you need to build
+symbolic manually. This always requires the latest stable Rust and Cargo, as
+well as a C++11 compiler.
 
 ## License
 
