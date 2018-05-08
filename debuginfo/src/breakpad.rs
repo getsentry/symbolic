@@ -1,10 +1,9 @@
 use std::fmt;
 use std::str::FromStr;
 
-use symbolic_common::types::{Arch, ObjectKind};
+use symbolic_common::types::{Arch, DebugId, ObjectKind};
 
 use object::{FatObject, Object};
-use id::DebugId;
 
 /// An error returned when parsing breakpad files fails.
 #[derive(Fail, Debug, Copy, Clone)]

@@ -8,9 +8,9 @@ use std::cell::RefCell;
 
 use failure::ResultExt;
 
-use symbolic_common::types::{Arch, Language, Name};
+use symbolic_common::types::{Arch, DebugId, Language, Name};
 use symbolic_common::byteview::ByteView;
-use symbolic_debuginfo::{DebugId, Object};
+use symbolic_debuginfo::Object;
 use symbolic_demangle::Demangle;
 
 use error::{SymCacheError, SymCacheErrorKind};

@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 
 use uuid::Uuid;
 
-use symbolic_debuginfo::DebugId;
+use symbolic_common::types::DebugId;
 
 #[repr(C, packed)]
 #[derive(Default)]

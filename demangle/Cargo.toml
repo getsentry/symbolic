@@ -16,8 +16,8 @@ build = "build.rs"
 
 [dependencies]
 cpp_demangle = "0.2.7"
-rustc-demangle = "0.1.7"
+rustc-demangle = "0.1.8"
 symbolic-common = { version = "5.0.1", path = "../common" }
 
 [build-dependencies]
-cc = "1.0.10"
+cc = "1.0.15"

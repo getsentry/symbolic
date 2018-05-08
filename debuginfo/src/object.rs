@@ -5,12 +5,11 @@ use failure::{Backtrace, Context, Fail, ResultExt};
 use goblin::{self, elf, mach, Hint};
 
 use symbolic_common::byteview::{ByteView, ByteViewHandle};
-use symbolic_common::types::{Arch, DebugKind, Endianness, ObjectClass, ObjectKind};
+use symbolic_common::types::{Arch, DebugId, DebugKind, Endianness, ObjectClass, ObjectKind};
 
 use breakpad::BreakpadSym;
 use dwarf::DwarfData;
 use elf::{get_elf_id, get_elf_vmaddr};
-use id::DebugId;
 use mach::{get_mach_id, get_mach_vmaddr};
 
 /// Contains type specific data of `Object`s.

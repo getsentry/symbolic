@@ -3,7 +3,7 @@ use std::cmp;
 use goblin::elf;
 use uuid::Uuid;
 
-use id::DebugId;
+use symbolic_common::types::DebugId;
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;

@@ -11,8 +11,7 @@ use regex::Regex;
 use uuid::Uuid;
 
 use symbolic_common::byteview::ByteView;
-use symbolic_common::types::{Arch, CpuFamily};
-use symbolic_debuginfo::{DebugId, ParseDebugIdError};
+use symbolic_common::types::{Arch, CpuFamily, DebugId, ParseDebugIdError};
 
 use utils;
 

@@ -719,3 +719,5 @@ derive_deserialize_from_str!(DebugKind, "DebugKind");
 
 #[cfg(feature = "with_serde")]
 derive_serialize_from_display!(DebugKind);
+
+pub use debugid::*;

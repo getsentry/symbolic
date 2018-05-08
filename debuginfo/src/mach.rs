@@ -1,7 +1,7 @@
 use goblin::mach;
 use uuid::Uuid;
 
-use id::DebugId;
+use symbolic_common::types::DebugId;
 
 /// A segment inside a Mach object file containing multiple sections.
 type MachSegment<'mach, 'data> = &'mach mach::segment::Segment<'data>;
