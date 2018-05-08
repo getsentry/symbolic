@@ -24,4 +24,4 @@ pub use dwarf::*;
 pub use object::*;
 pub use symbols::*;
 #[deprecated]
-pub use symbolic_common::types::{DebugId, ParseDebugIdError, BreakpadFormat};
+pub use symbolic_common::types::{BreakpadFormat, DebugId, ParseDebugIdError};
