@@ -32,5 +32,5 @@ debugid = "0.2.0"
 default = []
 with_dwarf = ["gimli"]
 with_objects = ["goblin"]
-with_serde = ["serde", "serde_plain"]
+with_serde = ["serde", "serde_plain", "debugid/with_serde"]
 with_sourcemaps = ["sourcemap"]

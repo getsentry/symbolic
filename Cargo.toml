@@ -58,3 +58,6 @@ required-features = ["minidump", "symcache"]
 [[example]]
 name = "symcache_debug"
 required-features = ["symcache"]
+
+[[example]]
+name = "object_debug"

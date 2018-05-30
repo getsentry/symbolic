@@ -219,14 +219,17 @@ impl<'fat> Iterator for Objects<'fat> {
     type Item = Result<Object<'fat>, ObjectError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.fat.get_object(self.index) {
-            Ok(Some(object)) => {
-                self.index += 1;
-                Some(Ok(object))
-            }
+        let result = match self.fat.get_object(self.index) {
+            Ok(Some(object)) => Some(Ok(object)),
             Ok(None) => None,
             Err(err) => Some(Err(err)),
+        };
+
+        if result.is_some() {
+            self.index += 1;
         }
+
+        result
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
