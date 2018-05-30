@@ -32,11 +32,15 @@ fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     for object in fat.objects() {
         match object {
             Ok(object) => {
-                println!(" - {}: {} ({}, {})",
+                println!(
+                    " - {}: {} ({}, {})",
                     object.arch()?,
                     object.id().unwrap_or_default(),
                     object.class(),
-                    object.debug_kind().map(|k| k.to_string()).unwrap_or("no debug".into()),
+                    object
+                        .debug_kind()
+                        .map(|k| k.to_string())
+                        .unwrap_or("no debug".into()),
                 );
             }
             Err(e) => {
