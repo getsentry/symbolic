@@ -35,7 +35,7 @@ fn lambda() {
         Language::Cpp,
         "_ZZN12_GLOBAL__N_15helloEvENK3$_0clEv",
         Some("(anonymous namespace)::hello()::$_0::operator()() const"),
-        Some("(anonymous namespace)::hello::$_0::operator() const"),
+        Some("(anonymous namespace)::hello()::$_0::operator() const"),
     );
 }
 
