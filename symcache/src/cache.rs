@@ -1,15 +1,15 @@
+use std::cell::RefCell;
+use std::fmt;
 use std::io;
 use std::io::Write;
 use std::mem;
-use std::str;
-use std::fmt;
 use std::slice;
-use std::cell::RefCell;
+use std::str;
 
 use failure::ResultExt;
 
-use symbolic_common::types::{Arch, DebugId, Language, Name};
 use symbolic_common::byteview::ByteView;
+use symbolic_common::types::{Arch, DebugId, Language, Name};
 use symbolic_debuginfo::Object;
 use symbolic_demangle::Demangle;
 

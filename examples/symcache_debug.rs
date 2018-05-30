@@ -2,8 +2,8 @@ extern crate clap;
 extern crate failure;
 extern crate symbolic;
 
-use std::u64;
 use std::fs;
+use std::u64;
 
 use clap::{App, Arg, ArgMatches};
 use failure::{err_msg, Error};

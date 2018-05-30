@@ -1,4 +1,3 @@
-use std::{fmt, mem, ptr, slice, str};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::CString;
@@ -6,6 +5,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::os::raw::{c_char, c_void};
 use std::str::FromStr;
+use std::{fmt, mem, ptr, slice, str};
 
 use regex::Regex;
 use uuid::Uuid;

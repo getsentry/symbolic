@@ -1,7 +1,7 @@
 extern crate symbolic_common;
 
-use std::fs;
 use std::env;
+use std::fs;
 
 use symbolic_common::byteview::ByteView;
 

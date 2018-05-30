@@ -1,9 +1,9 @@
 use std::cmp::Ordering;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
 use std::mem;
 use std::slice;
-use std::marker::PhantomData;
 
 use uuid::Uuid;
 

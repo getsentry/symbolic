@@ -2,11 +2,11 @@
 //!
 //! See the `ByteView` struct for more documentation.
 
-use std::io;
-use std::fs::File;
-use std::path::Path;
 use std::borrow::Cow;
+use std::fs::File;
+use std::io;
 use std::ops::Deref;
+use std::path::Path;
 
 use memmap::Mmap;
 use owning_ref::OwningHandle;

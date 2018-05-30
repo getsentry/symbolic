@@ -1,22 +1,22 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::fmt;
 use std::cmp;
+use std::fmt;
 use std::mem;
 use std::sync::Arc;
 
 use symbolic_common::types::{Endianness, Language};
 use symbolic_debuginfo::{DwarfData, DwarfSection, Object, Symbols};
 
+use dmsort;
 use failure::Fail;
 use fallible_iterator::FallibleIterator;
-use lru_cache::LruCache;
 use fnv::FnvBuildHasher;
-use dmsort;
 use gimli::{self, Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbbrev,
             DebugAbbrevOffset, DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr,
             DebuggingInformationEntry, DwLang, EndianBuf, IncompleteLineNumberProgram, Range,
             StateMachine, UnitOffset};
+use lru_cache::LruCache;
 
 use error::{ConversionError, SymCacheError, SymCacheErrorKind};
 
@@ -50,7 +50,7 @@ impl<'input> DwarfInfo<'input> {
                     }
                 };
                 gimli::$sect::new(sect, obj.endianness())
-            }}
+            }};
         }
 
         Ok(DwarfInfo {

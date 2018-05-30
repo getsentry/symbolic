@@ -1,10 +1,10 @@
 extern crate difference;
 
 use difference::Changeset;
-use std::{fmt, io};
 use std::fs::File;
-use std::path::{Path, PathBuf};
 use std::io::prelude::*;
+use std::path::{Path, PathBuf};
+use std::{fmt, io};
 
 /// Loads the file at the given location and returns its contents as string.
 fn load_file<P: AsRef<Path>>(path: P) -> io::Result<String> {

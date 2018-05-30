@@ -20,5 +20,5 @@ extern crate serde;
 #[cfg(feature = "with_serde")]
 extern crate serde_plain;
 
-pub mod types;
 pub mod byteview;
+pub mod types;

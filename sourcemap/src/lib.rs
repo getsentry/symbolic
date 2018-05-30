@@ -3,9 +3,9 @@ extern crate failure;
 extern crate sourcemap;
 extern crate symbolic_common;
 
+use std::borrow::Cow;
 use std::fmt;
 use std::mem;
-use std::borrow::Cow;
 
 use failure::Fail;
 
