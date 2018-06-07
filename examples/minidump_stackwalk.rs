@@ -11,7 +11,7 @@ use failure::Error;
 use walkdir::WalkDir;
 
 use symbolic::common::byteview::ByteView;
-use symbolic::common::types::{Arch, DebugKind};
+use symbolic::common::types::{Arch, ObjectKind};
 use symbolic::debuginfo::{FatObject, Object};
 use symbolic::minidump::cfi::AsciiCfiWriter;
 use symbolic::minidump::processor::{CodeModuleId, FrameInfoMap, ProcessState, StackFrame};
@@ -35,6 +35,7 @@ where
         .collect();
 
     let mut collected = BTreeMap::new();
+    let mut final_ids = HashSet::new();
     for entry in WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
         // Folders will be recursed into automatically
         if !entry.metadata()?.is_file() {
@@ -59,12 +60,19 @@ where
             };
 
             // Make sure we haven't converted this object already
-            if !search_ids.contains(&id) || collected.contains_key(&id) {
+            if !search_ids.contains(&id) || final_ids.contains(&id) {
                 continue;
             }
 
+            let kind = object.kind();
             if let Some(t) = func(object)? {
                 collected.insert(id, t);
+
+                // Keep looking if we "only" found a breakpad symbols.
+                // We should prefer native symbols if we can get them.
+                if kind != ObjectKind::Breakpad {
+                    final_ids.insert(id);
+                }
             }
         }
     }
@@ -90,11 +98,6 @@ where
     P: AsRef<Path>,
 {
     collect_referenced_objects(path, state, |object| {
-        // Ignore breakpad symbols as they do not support function inlining
-        if object.debug_kind() == Some(DebugKind::Breakpad) {
-            return Ok(None);
-        }
-
         // Silently skip all incompatible debug symbols
         Ok(match SymCache::from_object(&object) {
             Ok(symcache) => Some(symcache),
