@@ -16,7 +16,8 @@ use symbolic_common::types::{Arch, CpuFamily, DebugId, ParseDebugIdError};
 use utils;
 
 lazy_static! {
-    static ref LINUX_BUILD_RE: Regex = Regex::new(r"^Linux ([^ ]+) (.*) \w+(?: GNU/Linux)?$").unwrap();
+    static ref LINUX_BUILD_RE: Regex =
+        Regex::new(r"^Linux ([^ ]+) (.*) \w+(?: GNU/Linux)?$").unwrap();
 }
 
 extern "C" {

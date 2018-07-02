@@ -12,10 +12,11 @@ use dmsort;
 use failure::Fail;
 use fallible_iterator::FallibleIterator;
 use fnv::FnvBuildHasher;
-use gimli::{self, Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbbrev,
-            DebugAbbrevOffset, DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr,
-            DebuggingInformationEntry, DwLang, EndianBuf, IncompleteLineNumberProgram, Range,
-            StateMachine, UnitOffset};
+use gimli::{
+    self, Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbbrev, DebugAbbrevOffset,
+    DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr, DebuggingInformationEntry,
+    DwLang, EndianBuf, IncompleteLineNumberProgram, Range, StateMachine, UnitOffset,
+};
 use lru_cache::LruCache;
 
 use error::{ConversionError, SymCacheError, SymCacheErrorKind};

@@ -3,9 +3,11 @@ use std::fmt;
 use std::io::Write;
 
 use failure::{Backtrace, Context, Fail, ResultExt};
-use gimli::{self, BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDescriptionEntry,
-            Reader, ReaderOffset, RegisterRule, UninitializedUnwindContext, UnwindOffset,
-            UnwindSection, UnwindTable};
+use gimli::{
+    self, BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDescriptionEntry, Reader,
+    ReaderOffset, RegisterRule, UninitializedUnwindContext, UnwindOffset, UnwindSection,
+    UnwindTable,
+};
 
 use symbolic_common::types::{Arch, DebugKind, UnknownArchError};
 use symbolic_debuginfo::{DwarfData, DwarfSection, Object};

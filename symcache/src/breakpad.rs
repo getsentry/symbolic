@@ -1,6 +1,8 @@
 use failure::ResultExt;
-use symbolic_debuginfo::{BreakpadData, BreakpadFileRecord, BreakpadFuncRecord,
-                         BreakpadModuleRecord, BreakpadPublicRecord, BreakpadRecord, Object};
+use symbolic_debuginfo::{
+    BreakpadData, BreakpadFileRecord, BreakpadFuncRecord, BreakpadModuleRecord,
+    BreakpadPublicRecord, BreakpadRecord, Object,
+};
 
 use error::{ConversionError, SymCacheError, SymCacheErrorKind};
 

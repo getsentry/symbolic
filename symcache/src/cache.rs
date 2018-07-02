@@ -14,8 +14,10 @@ use symbolic_debuginfo::Object;
 use symbolic_demangle::Demangle;
 
 use error::{SymCacheError, SymCacheErrorKind};
-use types::{CacheFileHeader, CacheFileHeaderV1, CacheFileHeaderV2, CacheFilePreamble, DataSource,
-            FileRecord, FuncRecord, Seg};
+use types::{
+    CacheFileHeader, CacheFileHeaderV1, CacheFileHeaderV2, CacheFilePreamble, DataSource,
+    FileRecord, FuncRecord, Seg,
+};
 use utils::common_join_path;
 use writer;
 
