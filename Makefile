@@ -40,7 +40,7 @@ sdist: virtualenv
 
 lint:
 	rustup component add clippy-preview --toolchain nightly
-	cargo +nightly clippy --all-features --tests -- -D clippy
+	cargo +nightly clippy --all-features --tests --all -- -D clippy
 .PHONY: lint
 
 wheel-manylinux:

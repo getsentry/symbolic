@@ -57,7 +57,7 @@ fn test_lookup() {
         .expect("Could not open symcache");
     let symcache = SymCache::new(buffer).expect("Could not load symcache");
     let line_infos = symcache
-        .lookup(4458187797 - 4458131456)
+        .lookup(4_458_187_797 - 4_458_131_456)
         .expect("Could not lookup");
     assert_snapshot("lookup.txt", &line_infos);
 }

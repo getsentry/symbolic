@@ -48,9 +48,9 @@ pub fn assert_snapshot_plain<S: AsRef<str>>(snapshot_name: S, output: &str) {
     let name = snapshot_name.as_ref();
 
     let snapshot_path = Path::new("tests").join("snapshots").join(name);
-    let snapshot = load_file(snapshot_path).unwrap_or("".into());
+    let snapshot = load_file(snapshot_path).unwrap_or_else(|_| "".into());
 
-    let expected = if snapshot.ends_with("\n") && !output.ends_with("\n") {
+    let expected = if snapshot.ends_with('\n') && !output.ends_with('\n') {
         &snapshot[0..snapshot.len() - 1]
     } else {
         &snapshot
