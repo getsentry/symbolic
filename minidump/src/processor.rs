@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::os::raw::{c_char, c_void};
@@ -32,6 +32,12 @@ extern "C" {
     fn stack_frame_instruction(frame: *const StackFrame) -> u64;
     fn stack_frame_module(frame: *const StackFrame) -> *const CodeModule;
     fn stack_frame_trust(frame: *const StackFrame) -> FrameTrust;
+    fn stack_frame_registers(
+        frame: *const StackFrame,
+        family: u32,
+        size_out: *mut usize,
+    ) -> *mut IRegVal;
+    fn regval_delete(state: *mut IRegVal);
 
     fn call_stack_thread_id(stack: *const CallStack) -> u32;
     fn call_stack_frames(stack: *const CallStack, size_out: *mut usize)
@@ -308,6 +314,32 @@ impl fmt::Display for FrameTrust {
     }
 }
 
+/// Helper for register values.
+#[repr(C)]
+struct IRegVal {
+    name: *const c_char,
+    value: u64,
+    size: u8,
+}
+
+/// Value of a stack frame register.
+#[derive(Clone, Copy, Debug)]
+pub enum RegVal {
+    /// 32-bit register value.
+    U32(u32),
+    /// 64-bit register value.
+    U64(u64),
+}
+
+impl fmt::Display for RegVal {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            RegVal::U32(u) => write!(f, "{:#010x}", u),
+            RegVal::U64(u) => write!(f, "{:#018x}", u),
+        }
+    }
+}
+
 /// Contains information from the memorydump, especially the frame's instruction
 /// pointer. Also references an optional `CodeModule` that contains the
 /// instruction of this stack frame.
@@ -368,6 +400,30 @@ impl StackFrame {
     /// Returns how well the instruction pointer is trusted.
     pub fn trust(&self) -> FrameTrust {
         unsafe { stack_frame_trust(self) }
+    }
+
+    /// Returns a mapping of registers to their known values, if any.
+    pub fn registers(&self, arch: Arch) -> BTreeMap<&'static str, RegVal> {
+        unsafe {
+            let mut size = 0 as usize;
+            let values = stack_frame_registers(self, arch.cpu_family() as u32, &mut size);
+            let map = slice::from_raw_parts(values, size)
+                .into_iter()
+                .filter_map(|v| {
+                    Some((
+                        CStr::from_ptr(v.name).to_str().unwrap(),
+                        match v.size {
+                            4 => RegVal::U32(v.value as u32),
+                            8 => RegVal::U64(v.value),
+                            _ => return None,
+                        },
+                    ))
+                })
+                .collect();
+
+            regval_delete(values);
+            map
+        }
     }
 }
 

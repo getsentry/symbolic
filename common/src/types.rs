@@ -39,14 +39,15 @@ impl gimli::Endianity for Endianness {
 
 /// Represents a family of CPUs.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+#[repr(u32)]
 pub enum CpuFamily {
+    Unknown,
     Intel32,
     Intel64,
     Arm32,
     Arm64,
     Ppc32,
     Ppc64,
-    Unknown,
 }
 
 /// An error returned for unknown or invalid `Arch`s.
