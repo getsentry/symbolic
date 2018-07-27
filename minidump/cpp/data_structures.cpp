@@ -195,23 +195,23 @@ regval_t *stack_frame_registers(const stack_frame_t *frame,
                 reinterpret_cast<const StackFrameX86 *>(frame);
 
             if (frame_x86->context_validity & StackFrameX86::CONTEXT_VALID_EIP)
-                registers.push_back({"$eip", frame_x86->context.eip, 4});
+                registers.push_back({"eip", frame_x86->context.eip, 4});
             if (frame_x86->context_validity & StackFrameX86::CONTEXT_VALID_ESP)
-                registers.push_back({"$esp", frame_x86->context.esp, 4});
+                registers.push_back({"esp", frame_x86->context.esp, 4});
             if (frame_x86->context_validity & StackFrameX86::CONTEXT_VALID_EBP)
-                registers.push_back({"$ebp", frame_x86->context.ebp, 4});
+                registers.push_back({"ebp", frame_x86->context.ebp, 4});
             if (frame_x86->context_validity & StackFrameX86::CONTEXT_VALID_EBX)
-                registers.push_back({"$ebx", frame_x86->context.ebx, 4});
+                registers.push_back({"ebx", frame_x86->context.ebx, 4});
             if (frame_x86->context_validity & StackFrameX86::CONTEXT_VALID_ESI)
-                registers.push_back({"$esi", frame_x86->context.esi, 4});
+                registers.push_back({"esi", frame_x86->context.esi, 4});
             if (frame_x86->context_validity & StackFrameX86::CONTEXT_VALID_EDI)
-                registers.push_back({"$edi", frame_x86->context.edi, 4});
+                registers.push_back({"edi", frame_x86->context.edi, 4});
             if (frame_x86->context_validity ==
                 StackFrameX86::CONTEXT_VALID_ALL) {
-                registers.push_back({"$eax", frame_x86->context.eax, 4});
-                registers.push_back({"$ecx", frame_x86->context.ecx, 4});
-                registers.push_back({"$edx", frame_x86->context.edx, 4});
-                registers.push_back({"$eflags", frame_x86->context.eflags, 4});
+                registers.push_back({"eax", frame_x86->context.eax, 4});
+                registers.push_back({"ecx", frame_x86->context.ecx, 4});
+                registers.push_back({"edx", frame_x86->context.edx, 4});
+                registers.push_back({"eflags", frame_x86->context.eflags, 4});
             }
 
             break;
@@ -223,55 +223,55 @@ regval_t *stack_frame_registers(const stack_frame_t *frame,
 
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_RAX)
-                registers.push_back({"$rax", frame_amd64->context.rax, 8});
+                registers.push_back({"rax", frame_amd64->context.rax, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_RDX)
-                registers.push_back({"$rdx", frame_amd64->context.rdx, 8});
+                registers.push_back({"rdx", frame_amd64->context.rdx, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_RCX)
-                registers.push_back({"$rcx", frame_amd64->context.rcx, 8});
+                registers.push_back({"rcx", frame_amd64->context.rcx, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_RBX)
-                registers.push_back({"$rbx", frame_amd64->context.rbx, 8});
+                registers.push_back({"rbx", frame_amd64->context.rbx, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_RSI)
-                registers.push_back({"$rsi", frame_amd64->context.rsi, 8});
+                registers.push_back({"rsi", frame_amd64->context.rsi, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_RDI)
-                registers.push_back({"$rdi", frame_amd64->context.rdi, 8});
+                registers.push_back({"rdi", frame_amd64->context.rdi, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_RBP)
-                registers.push_back({"$rbp", frame_amd64->context.rbp, 8});
+                registers.push_back({"rbp", frame_amd64->context.rbp, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_RSP)
-                registers.push_back({"$rsp", frame_amd64->context.rsp, 8});
+                registers.push_back({"rsp", frame_amd64->context.rsp, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_R8)
-                registers.push_back({"$r8", frame_amd64->context.r8, 8});
+                registers.push_back({"r8", frame_amd64->context.r8, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_R9)
-                registers.push_back({"$r9", frame_amd64->context.r9, 8});
+                registers.push_back({"r9", frame_amd64->context.r9, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_R10)
-                registers.push_back({"$r10", frame_amd64->context.r10, 8});
+                registers.push_back({"r10", frame_amd64->context.r10, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_R11)
-                registers.push_back({"$r11", frame_amd64->context.r11, 8});
+                registers.push_back({"r11", frame_amd64->context.r11, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_R12)
-                registers.push_back({"$r12", frame_amd64->context.r12, 8});
+                registers.push_back({"r12", frame_amd64->context.r12, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_R13)
-                registers.push_back({"$r13", frame_amd64->context.r13, 8});
+                registers.push_back({"r13", frame_amd64->context.r13, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_R14)
-                registers.push_back({"$r14", frame_amd64->context.r14, 8});
+                registers.push_back({"r14", frame_amd64->context.r14, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_R15)
-                registers.push_back({"$r15", frame_amd64->context.r15, 8});
+                registers.push_back({"r15", frame_amd64->context.r15, 8});
             if (frame_amd64->context_validity &
                 StackFrameAMD64::CONTEXT_VALID_RIP)
-                registers.push_back({"$rip", frame_amd64->context.rip, 8});
+                registers.push_back({"rip", frame_amd64->context.rip, 8});
 
             break;
         }

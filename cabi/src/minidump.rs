@@ -56,7 +56,7 @@ pub struct SymbolicStackFrame {
     pub register_count: usize,
 }
 
-impl Drop for SymbolicCallStack {
+impl Drop for SymbolicStackFrame {
     fn drop(&mut self) {
         unsafe {
             Vec::from_raw_parts(self.registers, self.register_count, self.register_count);
