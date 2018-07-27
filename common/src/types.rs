@@ -156,7 +156,7 @@ impl Arch {
     }
 
     /// Returns the breakpad name for this Arch.
-    pub fn to_breakpad(&self) -> &'static str {
+    pub fn to_breakpad(self) -> &'static str {
         match self.cpu_family() {
             CpuFamily::Intel32 => "x86",
             // Use the breakpad symbol constant here
@@ -170,8 +170,8 @@ impl Arch {
     }
 
     /// Returns the CPU family.
-    pub fn cpu_family(&self) -> CpuFamily {
-        match *self {
+    pub fn cpu_family(self) -> CpuFamily {
+        match self {
             Arch::Unknown | Arch::__Max => CpuFamily::Unknown,
             Arch::X86 => CpuFamily::Intel32,
             Arch::X86_64 | Arch::X86_64h => CpuFamily::Intel64,
@@ -192,8 +192,8 @@ impl Arch {
     }
 
     /// Returns the native pointer size.
-    pub fn pointer_size(&self) -> Option<usize> {
-        match *self {
+    pub fn pointer_size(self) -> Option<usize> {
+        match self {
             Arch::Unknown | Arch::__Max => None,
             Arch::X86_64 | Arch::X86_64h | Arch::Arm64 | Arch::Arm64V8 | Arch::Ppc64 => Some(8),
             Arch::X86
@@ -212,8 +212,8 @@ impl Arch {
     }
 
     /// Returns the name of the arch.
-    pub fn name(&self) -> &'static str {
-        match *self {
+    pub fn name(self) -> &'static str {
+        match self {
             Arch::Unknown | Arch::__Max => "unknown",
             Arch::X86 => "x86",
             Arch::X86_64 => "x86_64",
@@ -236,7 +236,7 @@ impl Arch {
     }
 
     /// The name of the IP register if known.
-    pub fn ip_register_name(&self) -> Option<&'static str> {
+    pub fn ip_register_name(self) -> Option<&'static str> {
         match self.cpu_family() {
             CpuFamily::Intel32 => Some("eip"),
             CpuFamily::Intel64 => Some("rip"),
@@ -247,7 +247,7 @@ impl Arch {
     }
 
     /// Returns instruction alignment if fixed.
-    pub fn instruction_alignment(&self) -> Option<u64> {
+    pub fn instruction_alignment(self) -> Option<u64> {
         match self.cpu_family() {
             CpuFamily::Arm32 => Some(2),
             CpuFamily::Arm64 => Some(4),
@@ -360,8 +360,8 @@ impl Language {
     }
 
     /// Returns the name of the language.
-    pub fn name(&self) -> &'static str {
-        match *self {
+    pub fn name(self) -> &'static str {
+        match self {
             Language::Unknown | Language::__Max => "unknown",
             Language::C => "c",
             Language::Cpp => "cpp",
@@ -509,8 +509,8 @@ pub enum ObjectKind {
 
 impl ObjectKind {
     /// Returns the name of the object kind.
-    pub fn name(&self) -> &'static str {
-        match *self {
+    pub fn name(self) -> &'static str {
+        match self {
             ObjectKind::Breakpad => "breakpad",
             ObjectKind::Elf => "elf",
             ObjectKind::MachO => "macho",
@@ -589,8 +589,8 @@ pub enum ObjectClass {
 }
 
 impl ObjectClass {
-    pub fn name(&self) -> &'static str {
-        match *self {
+    pub fn name(self) -> &'static str {
+        match self {
             ObjectClass::None => "none",
             ObjectClass::Relocatable => "rel",
             ObjectClass::Executable => "exe",
@@ -688,8 +688,8 @@ pub enum DebugKind {
 
 impl DebugKind {
     /// Returns the name of the object kind.
-    pub fn name(&self) -> &'static str {
-        match *self {
+    pub fn name(self) -> &'static str {
+        match self {
             DebugKind::Dwarf => "dwarf",
             DebugKind::Breakpad => "breakpad",
         }

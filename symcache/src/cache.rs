@@ -54,7 +54,7 @@ impl<'a> LineInfo<'a> {
 
     /// The id of the matched line.
     pub fn id(&self) -> DebugId {
-        self.cache.id().unwrap_or(Default::default())
+        self.cache.id().unwrap_or_default()
     }
 
     /// The instruction address where the function starts.
@@ -197,7 +197,7 @@ impl<'a> Function<'a> {
 
     /// The language of the function.
     pub fn lang(&self) -> Language {
-        Language::from_u32(self.fun.lang as u32).unwrap_or(Language::Unknown)
+        Language::from_u32(self.fun.lang.into()).unwrap_or(Language::Unknown)
     }
 
     /// The compilation dir of the function.
@@ -278,7 +278,7 @@ impl<'a> Iterator for Lines<'a> {
         };
 
         self.idx += 1;
-        self.addr += record.addr_off as u64;
+        self.addr += u64::from(record.addr_off);
         Some(Ok(Line {
             cache: self.cache,
             addr: self.addr,
@@ -370,7 +370,7 @@ impl<'a> Line<'a> {
 impl<'a> SymCache<'a> {
     /// Load a symcache from a byteview.
     pub fn new(byteview: ByteView<'a>) -> Result<SymCache<'a>, SymCacheError> {
-        let rv = SymCache { byteview: byteview };
+        let rv = SymCache { byteview };
         {
             let preamble = rv.preamble()?;
             if preamble.magic != SYMCACHE_MAGIC {
@@ -430,11 +430,9 @@ impl<'a> SymCache<'a> {
         let len: u64 = seg.len.into();
         let len = len as usize;
         let size = mem::size_of::<T>() * len;
-        unsafe {
-            let bytes = self.get_data(offset, size)
-                .context(SymCacheErrorKind::BadSegment)?;
-            Ok(slice::from_raw_parts(mem::transmute(bytes.as_ptr()), len))
-        }
+        let bytes = self.get_data(offset, size)
+            .context(SymCacheErrorKind::BadSegment)?;
+        Ok(unsafe { slice::from_raw_parts(bytes.as_ptr() as *const T, len) })
     }
 
     /// Returns a reference to the UTF8 representation of a segment.
@@ -451,11 +449,10 @@ impl<'a> SymCache<'a> {
     /// Returns the SymCache preamble record.
     #[inline(always)]
     fn preamble(&self) -> Result<&CacheFilePreamble, SymCacheError> {
-        unsafe {
-            let data = self.get_data(0, mem::size_of::<CacheFilePreamble>())
-                .context(SymCacheErrorKind::BadFileHeader)?;
-            Ok(mem::transmute(data.as_ptr()))
-        }
+        let data = self.get_data(0, mem::size_of::<CacheFilePreamble>())
+            .context(SymCacheErrorKind::BadFileHeader)?;
+
+        Ok(unsafe { &*(data.as_ptr() as *const CacheFilePreamble) })
     }
 
     /// Returns the SymCache preamble record.
@@ -467,12 +464,12 @@ impl<'a> SymCache<'a> {
             1 => {
                 let data = self.get_data(0, mem::size_of::<CacheFileHeaderV1>())
                     .context(SymCacheErrorKind::BadFileHeader)?;
-                Ok(unsafe { mem::transmute::<_, &CacheFileHeaderV1>(data.as_ptr()) })
+                Ok(unsafe { &*(data.as_ptr() as *const CacheFileHeaderV1) })
             }
             2 => {
                 let data = self.get_data(0, mem::size_of::<CacheFileHeaderV2>())
                     .context(SymCacheErrorKind::BadFileHeader)?;
-                Ok(unsafe { mem::transmute::<_, &CacheFileHeaderV2>(data.as_ptr()) })
+                Ok(unsafe { &*(data.as_ptr() as *const CacheFileHeaderV2) })
             }
             _ => Err(SymCacheErrorKind::UnsupportedVersion.into()),
         }
@@ -490,7 +487,7 @@ impl<'a> SymCache<'a> {
 
     /// The source of the `SymCache`.
     pub fn data_source(&self) -> Result<DataSource, SymCacheError> {
-        Ok(DataSource::from_u32(self.header()?.data_source() as u32)
+        Ok(DataSource::from_u32(self.header()?.data_source().into())
             .context(SymCacheErrorKind::BadFileHeader)?)
     }
 
@@ -584,13 +581,13 @@ impl<'a> SymCache<'a> {
         // the record.  Because of that we pick in any case the first
         // record as fallback.
         let mut file_id = records[0].file_id;
-        let mut line = records[0].line as u32;
+        let mut line = u32::from(records[0].line);
         let mut running_addr = fun.addr_start() as u64;
         let mut line_addr = running_addr;
 
         for rec in records {
             // Keep running until we exceed the search address
-            running_addr = running_addr + rec.addr_off as u64;
+            running_addr += u64::from(rec.addr_off);
             if running_addr > addr {
                 break;
             }
@@ -598,11 +595,11 @@ impl<'a> SymCache<'a> {
             // Remember the starting address of the current line. There might be
             // multiple line records for a single line if `addr_off` overflows.
             // So only update `line_addr` if we actually hit a new line.
-            if rec.line as u32 != line {
+            if u32::from(rec.line) != line {
                 line_addr = running_addr;
             }
 
-            line = rec.line as u32;
+            line = u32::from(rec.line);
             file_id = rec.file_id;
         }
 
@@ -671,13 +668,13 @@ impl<'a> SymCache<'a> {
         Ok(LineInfo {
             cache: self,
             sym_addr: fun.addr_start(),
-            line_addr: line_addr,
+            line_addr,
             instr_addr: addr,
-            line: line,
-            lang: Language::from_u32(fun.lang as u32).unwrap_or(Language::Unknown),
+            line,
+            lang: Language::from_u32(fun.lang.into()).unwrap_or(Language::Unknown),
             symbol: self.get_symbol(fun.symbol_id())?,
-            filename: filename,
-            base_dir: base_dir,
+            filename,
+            base_dir,
             comp_dir: self.get_segment_as_string(&fun.comp_dir)?,
         })
     }

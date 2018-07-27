@@ -82,7 +82,7 @@ impl Default for DemangleOptions {
 }
 
 fn is_maybe_objc(ident: &str) -> bool {
-    (ident.starts_with("-[") || ident.starts_with("+[")) && ident.ends_with("]")
+    (ident.starts_with("-[") || ident.starts_with("+[")) && ident.ends_with(']')
 }
 
 fn is_maybe_cpp(ident: &str) -> bool {
@@ -129,12 +129,9 @@ fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
     };
 
     unsafe {
-        let rv = symbolic_demangle_swift(sym.as_ptr(), buf.as_mut_ptr(), buf.len(), simplified);
-        if rv == 0 {
-            return None;
-        } else {
-            let s = CStr::from_ptr(buf.as_ptr()).to_string_lossy();
-            Some(s.to_string())
+        match symbolic_demangle_swift(sym.as_ptr(), buf.as_mut_ptr(), buf.len(), simplified) {
+            0 => None,
+            _ => Some(CStr::from_ptr(buf.as_ptr()).to_string_lossy().to_string()),
         }
     }
 }

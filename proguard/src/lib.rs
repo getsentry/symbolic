@@ -52,10 +52,10 @@ impl<'a> ProguardMappingView<'a> {
                     format!("{}:{}", class_name, meth_name)
                 }
             } else {
-                format!("{}", class_name)
+                class_name.to_string()
             }
         } else {
-            format!("{}", path)
+            path.to_string()
         }
     }
 }

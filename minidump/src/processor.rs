@@ -5,7 +5,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::os::raw::{c_char, c_void};
 use std::str::FromStr;
-use std::{fmt, mem, ptr, slice, str};
+use std::{fmt, ptr, slice, str};
 
 use regex::Regex;
 use uuid::Uuid;
@@ -397,8 +397,7 @@ impl CallStack {
         unsafe {
             let mut size = 0 as usize;
             let data = call_stack_frames(self, &mut size);
-            let slice = slice::from_raw_parts(data, size);
-            mem::transmute(slice)
+            slice::from_raw_parts(data as *const &StackFrame, size)
         }
     }
 }
@@ -557,15 +556,15 @@ pub enum ProcessResult {
 
 impl fmt::Display for ProcessResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let formatted = match self {
-            &ProcessResult::Ok => "dump processed successfully",
-            &ProcessResult::MinidumpNotFound => "file could not be opened",
-            &ProcessResult::NoMinidumpHeader => "minidump header missing",
-            &ProcessResult::NoThreadList => "minidump has no thread list",
-            &ProcessResult::InvalidThreadIndex => "could not get thread data",
-            &ProcessResult::InvalidThreadId => "could not get a thread by id",
-            &ProcessResult::DuplicateRequestingThreads => "multiple requesting threads",
-            &ProcessResult::SymbolSupplierInterrupted => "processing was interrupted (not fatal)",
+        let formatted = match *self {
+            ProcessResult::Ok => "dump processed successfully",
+            ProcessResult::MinidumpNotFound => "file could not be opened",
+            ProcessResult::NoMinidumpHeader => "minidump header missing",
+            ProcessResult::NoThreadList => "minidump has no thread list",
+            ProcessResult::InvalidThreadIndex => "could not get thread data",
+            ProcessResult::InvalidThreadId => "could not get a thread by id",
+            ProcessResult::DuplicateRequestingThreads => "multiple requesting threads",
+            ProcessResult::SymbolSupplierInterrupted => "processing was interrupted (not fatal)",
         };
 
         write!(f, "{}", formatted)
@@ -579,7 +578,7 @@ pub struct ProcessMinidumpError(ProcessResult);
 
 impl ProcessMinidumpError {
     /// Returns the kind of this error.
-    pub fn kind(&self) -> ProcessResult {
+    pub fn kind(self) -> ProcessResult {
         self.0
     }
 }
@@ -721,8 +720,7 @@ impl<'a> ProcessState<'a> {
         unsafe {
             let mut size = 0 as usize;
             let data = process_state_threads(self.internal, &mut size);
-            let slice = slice::from_raw_parts(data, size);
-            mem::transmute(slice)
+            slice::from_raw_parts(data as *const &CallStack, size)
         }
     }
 

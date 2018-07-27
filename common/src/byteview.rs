@@ -80,7 +80,7 @@ impl<'bytes> ByteView<'bytes> {
                 }
             }
         };
-        Ok(ByteView { inner: inner })
+        Ok(ByteView { inner })
     }
 
     #[inline(always)]

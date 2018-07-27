@@ -10,10 +10,7 @@ pub trait DwarfData {
     fn has_dwarf_data(&self) -> bool;
 
     /// Loads a specific dwarf section if its in the file.
-    fn get_dwarf_section<'input>(
-        &'input self,
-        section: DwarfSection,
-    ) -> Option<DwarfSectionData<'input>>;
+    fn get_dwarf_section(&self, section: DwarfSection) -> Option<DwarfSectionData>;
 }
 
 impl<'input> DwarfData for Object<'input> {
@@ -41,10 +38,7 @@ impl<'input> DwarfData for Object<'input> {
         }
     }
 
-    fn get_dwarf_section<'data>(
-        &'data self,
-        section: DwarfSection,
-    ) -> Option<DwarfSectionData<'data>> {
+    fn get_dwarf_section(&self, section: DwarfSection) -> Option<DwarfSectionData> {
         match self.target {
             ObjectTarget::Elf(ref elf) => read_elf_dwarf_section(elf, self.as_bytes(), section),
             ObjectTarget::MachOSingle(ref macho) => read_mach_dwarf_section(macho, section),
@@ -72,8 +66,8 @@ pub enum DwarfSection {
 
 impl DwarfSection {
     /// Return the name for ELF.
-    pub fn elf_name(&self) -> &'static str {
-        match *self {
+    pub fn elf_name(self) -> &'static str {
+        match self {
             DwarfSection::EhFrame => ".eh_frame",
             DwarfSection::DebugFrame => ".debug_frame",
             DwarfSection::DebugAbbrev => ".debug_abbrev",
@@ -89,8 +83,8 @@ impl DwarfSection {
     }
 
     /// Return the name for MachO.
-    pub fn macho_name(&self) -> &'static str {
-        match *self {
+    pub fn macho_name(self) -> &'static str {
+        match self {
             DwarfSection::EhFrame => "__eh_frame",
             DwarfSection::DebugFrame => "__debug_frame",
             DwarfSection::DebugAbbrev => "__debug_abbrev",
@@ -106,8 +100,8 @@ impl DwarfSection {
     }
 
     /// Return the name of the section for debug purposes.
-    pub fn name(&self) -> &'static str {
-        match *self {
+    pub fn name(self) -> &'static str {
+        match self {
             DwarfSection::EhFrame => "eh_frame",
             DwarfSection::DebugFrame => "debug_frame",
             DwarfSection::DebugAbbrev => "debug_abbrev",
@@ -133,11 +127,11 @@ pub struct DwarfSectionData<'data> {
 
 impl<'data> DwarfSectionData<'data> {
     /// Constructs a `DwarfSectionData` object from raw data.
-    pub fn new(section: DwarfSection, data: &'data [u8], offset: u64) -> DwarfSectionData<'data> {
+    pub fn new(section: DwarfSection, data: &[u8], offset: u64) -> DwarfSectionData {
         DwarfSectionData {
-            section: section,
-            data: data,
-            offset: offset,
+            section,
+            data,
+            offset,
         }
     }
 
@@ -174,5 +168,5 @@ fn read_mach_dwarf_section<'data>(
     sect: DwarfSection,
 ) -> Option<DwarfSectionData<'data>> {
     find_mach_section(macho, sect.macho_name())
-        .map(|section| DwarfSectionData::new(sect, section.data, section.header.offset as u64))
+        .map(|section| DwarfSectionData::new(sect, section.data, section.header.offset.into()))
 }

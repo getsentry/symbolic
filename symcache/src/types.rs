@@ -20,8 +20,8 @@ pub struct Seg<T, L = u32> {
 impl<T, L> Seg<T, L> {
     pub fn new(offset: u32, len: L) -> Seg<T, L> {
         Seg {
-            offset: offset,
-            len: len,
+            offset,
+            len,
             _ty: PhantomData,
         }
     }
@@ -221,7 +221,7 @@ pub struct CacheFileHeaderV2 {
 impl CacheFileHeaderV2 {
     pub fn as_bytes(&self) -> &[u8] {
         unsafe {
-            let bytes: *const u8 = mem::transmute(self);
+            let bytes = self as *const Self as *const u8;
             slice::from_raw_parts(bytes, mem::size_of::<CacheFileHeaderV2>())
         }
     }
@@ -259,15 +259,15 @@ impl CacheFileHeader for CacheFileHeaderV2 {
 
 impl FuncRecord {
     pub fn symbol_id(&self) -> u32 {
-        ((self.symbol_id_high as u32) << 16) | self.symbol_id_low as u32
+        (u32::from(self.symbol_id_high) << 16) | u32::from(self.symbol_id_low)
     }
 
     pub fn addr_start(&self) -> u64 {
-        ((self.addr_high as u64) << 32) | self.addr_low as u64
+        (u64::from(self.addr_high) << 32) | u64::from(self.addr_low)
     }
 
     pub fn addr_end(&self) -> u64 {
-        self.addr_start() + self.len as u64
+        self.addr_start() + u64::from(self.len)
     }
 
     pub fn addr_in_range(&self, addr: u64) -> bool {

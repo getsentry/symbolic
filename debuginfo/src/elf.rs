@@ -34,7 +34,7 @@ pub fn find_elf_section<'elf, 'data>(
             let offset = header.sh_offset as usize;
             let size = header.sh_size as usize;
             return Some(ElfSection {
-                header: header,
+                header,
                 data: &data[offset..][..size],
             });
         }

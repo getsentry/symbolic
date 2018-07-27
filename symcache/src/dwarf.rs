@@ -306,7 +306,7 @@ impl<'input> Unit<'input> {
                 depth: depth as u16,
                 addr: ranges[0].begin - info.vmaddr,
                 len: (ranges[ranges.len() - 1].end - ranges[0].begin) as u32,
-                name: func_name.unwrap_or("".into()),
+                name: func_name.unwrap_or_else(|| "".into()),
                 inlines: vec![],
                 lines: vec![],
                 comp_dir: self.comp_dir.map(|x| x.buf()).unwrap_or(b""),
@@ -323,8 +323,8 @@ impl<'input> Unit<'input> {
                     let new_line = Line {
                         addr: row.address - info.vmaddr,
                         original_file_id: row.file_index as u64,
-                        filename: filename,
-                        base_dir: base_dir,
+                        filename,
+                        base_dir,
                         line: cmp::min(row.line.unwrap_or(0), 0xffff) as u16,
                     };
 
@@ -377,8 +377,8 @@ impl<'input> Unit<'input> {
                         let line = Line {
                             addr: func.addr,
                             original_file_id: call_file,
-                            filename: filename,
-                            base_dir: base_dir,
+                            filename,
+                            base_dir,
                             line: cmp::min(call_line, 0xffff) as u16,
                         };
                         node.lines.insert(idx, line);
@@ -485,7 +485,7 @@ impl<'input> Unit<'input> {
         });
 
         tuple.2 = &buf[..];
-        return Ok(tuple);
+        Ok(tuple)
     }
 
     /// Resolves an entry and if found invokes a function to transform it.
@@ -666,8 +666,8 @@ impl<'input> DwarfLineProgram<'input> {
         dmsort::sort_by_key(&mut sequences, |x| x.low_address);
 
         Ok(DwarfLineProgram {
-            sequences: sequences,
-            program_rows: program_rows,
+            sequences,
+            program_rows,
         })
     }
 

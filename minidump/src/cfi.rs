@@ -78,7 +78,7 @@ impl From<CfiErrorKind> for CfiError {
 
 impl From<Context<CfiErrorKind>> for CfiError {
     fn from(inner: Context<CfiErrorKind>) -> CfiError {
-        CfiError { inner: inner }
+        CfiError { inner }
     }
 }
 
@@ -185,17 +185,17 @@ impl<W: Write> AsciiCfiWriter<W> {
         if let Some(section) = object.get_dwarf_section(DwarfSection::EhFrame) {
             let frame = EhFrame::new(section.as_bytes(), endianness);
             let arch = object.arch().map_err(|_| CfiErrorKind::UnsupportedArch)?;
-            self.read_cfi(arch, frame, section.offset())
+            self.read_cfi(arch, &frame, section.offset())
         } else if let Some(section) = object.get_dwarf_section(DwarfSection::DebugFrame) {
             let frame = DebugFrame::new(section.as_bytes(), endianness);
             let arch = object.arch().map_err(|_| CfiErrorKind::UnsupportedArch)?;
-            self.read_cfi(arch, frame, section.offset())
+            self.read_cfi(arch, &frame, section.offset())
         } else {
             Err(CfiErrorKind::MissingDebugInfo.into())
         }
     }
 
-    fn read_cfi<U, R>(&mut self, arch: Arch, frame: U, base: u64) -> Result<(), CfiError>
+    fn read_cfi<U, R>(&mut self, arch: Arch, frame: &U, base: u64) -> Result<(), CfiError>
     where
         R: Reader + Eq,
         U: UnwindSection<R>,
@@ -213,7 +213,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             // the CIE and returns it for the FDE.
             if let CieOrFde::Fde(partial_fde) = entry {
                 if let Ok(fde) = partial_fde.parse(|off| frame.cie_from_offset(&bases, off)) {
-                    self.process_fde(arch, fde)?
+                    self.process_fde(arch, &fde)?
                 }
             }
         }
@@ -224,7 +224,7 @@ impl<W: Write> AsciiCfiWriter<W> {
     fn process_fde<S, R, O>(
         &mut self,
         arch: Arch,
-        fde: FrameDescriptionEntry<S, R, O>,
+        fde: &FrameDescriptionEntry<S, R, O>,
     ) -> Result<(), CfiError>
     where
         R: Reader<Offset = O> + Eq,
@@ -293,7 +293,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                     }
                 }
 
-                write!(self.inner, "\n").context(CfiErrorKind::WriteError)?;
+                writeln!(self.inner).context(CfiErrorKind::WriteError)?;
             }
         }
 
@@ -307,10 +307,10 @@ impl<W: Write> AsciiCfiWriter<W> {
     ) -> Result<bool, CfiError> {
         use gimli::CfaRule::*;
         let formatted = match rule {
-            &RegisterAndOffset { register, offset } => {
-                format!("{} {} +", get_register_name(arch, register)?, offset)
+            RegisterAndOffset { register, offset } => {
+                format!("{} {} +", get_register_name(arch, *register)?, *offset)
             }
-            &Expression(_) => return Ok(false),
+            Expression(_) => return Ok(false),
         };
 
         write!(self.inner, " .cfa: {}", formatted).context(CfiErrorKind::WriteError)?;
@@ -326,19 +326,19 @@ impl<W: Write> AsciiCfiWriter<W> {
     ) -> Result<bool, CfiError> {
         use gimli::RegisterRule::*;
         let formatted = match rule {
-            &Undefined => return Ok(false),
-            &SameValue => get_register_name(arch, register)?.into(),
-            &Offset(offset) => format!(".cfa {} + ^", offset),
-            &ValOffset(offset) => format!(".cfa {} +", offset),
-            &Register(register) => get_register_name(arch, register)?.into(),
-            &Expression(_) => return Ok(false),
-            &ValExpression(_) => return Ok(false),
-            &Architectural => return Ok(false),
+            Undefined => return Ok(false),
+            SameValue => get_register_name(arch, register)?.into(),
+            Offset(offset) => format!(".cfa {} + ^", offset),
+            ValOffset(offset) => format!(".cfa {} +", offset),
+            Register(register) => get_register_name(arch, *register)?.into(),
+            Expression(_) => return Ok(false),
+            ValExpression(_) => return Ok(false),
+            Architectural => return Ok(false),
         };
 
         // Breakpad requires an explicit name for the return address register. In all other cases,
         // we use platform specific names for each register as specified by Breakpad.
-        let register_name = if register as u64 == ra {
+        let register_name = if u64::from(register) == ra {
             ".ra"
         } else {
             get_register_name(arch, register)?

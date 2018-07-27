@@ -256,7 +256,7 @@ pub trait BreakpadData {
     fn has_breakpad_data(&self) -> bool;
 
     /// Returns an iterator over all records of the Breakpad symbol file.
-    fn breakpad_records<'input>(&'input self) -> BreakpadRecords<'input>;
+    fn breakpad_records(&self) -> BreakpadRecords;
 }
 
 impl<'data> BreakpadData for Object<'data> {
@@ -264,7 +264,7 @@ impl<'data> BreakpadData for Object<'data> {
         self.kind() == ObjectKind::Breakpad
     }
 
-    fn breakpad_records<'input>(&'input self) -> BreakpadRecords<'input> {
+    fn breakpad_records(&self) -> BreakpadRecords {
         BreakpadRecords::from_bytes(self.as_bytes())
     }
 }
@@ -274,7 +274,7 @@ impl<'data> BreakpadData for FatObject<'data> {
         self.kind() == ObjectKind::Breakpad
     }
 
-    fn breakpad_records<'input>(&'input self) -> BreakpadRecords<'input> {
+    fn breakpad_records(&self) -> BreakpadRecords {
         BreakpadRecords::from_bytes(self.as_bytes())
     }
 }
@@ -309,7 +309,7 @@ fn parse_module(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
             .map_err(|_| ParseBreakpadError("unknown module architecture"))?,
         id: DebugId::from_breakpad(&id)
             .map_err(|_| ParseBreakpadError("invalid module identifier"))?,
-        name: name,
+        name,
     }))
 }
 
@@ -318,7 +318,7 @@ fn parse_module(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
 /// Syntax: "FILE number name"
 /// Example: "FILE 2 /home/jimb/mc/in/browser/app/nsBrowserApp.cpp"
 /// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#file-records>
-fn parse_file<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBreakpadError> {
+fn parse_file(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
     let mut record = line.splitn(2, |b| *b == b' ');
 
     let id = record
@@ -332,7 +332,7 @@ fn parse_file<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBr
 
     Ok(BreakpadRecord::File(BreakpadFileRecord {
         id: u64::from_str(&id).map_err(|_| ParseBreakpadError("invalid file identifier"))?,
-        name: name,
+        name,
     }))
 }
 
@@ -341,11 +341,12 @@ fn parse_file<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBr
 /// Syntax: "FUNC [m] address size parameter_size name"
 /// Example: "FUNC m c184 30 0 nsQueryInterfaceWithError::operator()(nsID const&, void**) const"
 /// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#func-records>
-fn parse_func<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBreakpadError> {
+fn parse_func(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
     // Strip the optional "m" parameter; it has no meaning to us
-    let line = match line.starts_with(b"m ") {
-        true => &line[2..],
-        false => line,
+    let line = if line.starts_with(b"m ") {
+        &line[2..]
+    } else {
+        line
     };
     let mut record = line.splitn(4, |b| *b == b' ');
 
@@ -371,7 +372,7 @@ fn parse_func<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBr
             .map_err(|_| ParseBreakpadError("invalid function address"))?,
         size: u64::from_str_radix(&size, 16)
             .map_err(|_| ParseBreakpadError("invalid function size"))?,
-        name: name,
+        name,
         lines: vec![],
     }))
 }
@@ -388,7 +389,7 @@ fn parse_func<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBr
 /// Syntax: "STACK CFI INIT address size register1: expression1 register2: expression2 ..."
 /// Example: "STACK CFI INIT 804c4b0 40 .cfa: $esp 4 + $eip: .cfa 4 - ^"
 /// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-cfi-records>
-fn parse_stack<'data>(_line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBreakpadError> {
+fn parse_stack(_line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
     // Ignored
     Ok(BreakpadRecord::Stack)
 }
@@ -398,11 +399,12 @@ fn parse_stack<'data>(_line: &'data [u8]) -> Result<BreakpadRecord<'data>, Parse
 /// Syntax: "PUBLIC [m] address parameter_size name"
 /// Example: "PUBLIC m 2160 0 Public2_1"
 /// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#public-records>
-fn parse_public<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBreakpadError> {
+fn parse_public(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
     // Strip the optional "m" parameter; it has no meaning to us
-    let line = match line.starts_with(b"m ") {
-        true => &line[2..],
-        false => line,
+    let line = if line.starts_with(b"m ") {
+        &line[2..]
+    } else {
+        line
     };
     let mut record = line.splitn(4, |b| *b == b' ');
 
@@ -422,7 +424,7 @@ fn parse_public<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, Parse
         address: u64::from_str_radix(&address, 16)
             .map_err(|_| ParseBreakpadError("invalid function address"))?,
         size: 0, // will be computed with the next PUBLIC record
-        name: name,
+        name,
     }))
 }
 
@@ -431,7 +433,7 @@ fn parse_public<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, Parse
 /// Syntax: "INFO text"
 /// Example: "INFO CODE_ID C22813AC7D101E2FF2598697023E1F28"
 /// no documentation available
-fn parse_info<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBreakpadError> {
+fn parse_info(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
     Ok(BreakpadRecord::Info(line))
 }
 
@@ -440,7 +442,7 @@ fn parse_info<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBr
 /// Syntax: "address size line filenum"
 /// Example: "c184 7 59 4"
 /// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#line-records>
-fn parse_line<'data>(line: &'data [u8]) -> Result<BreakpadRecord<'data>, ParseBreakpadError> {
+fn parse_line(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
     let mut record = line.splitn(4, |b| *b == b' ');
 
     let address = record

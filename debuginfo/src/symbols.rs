@@ -39,6 +39,11 @@ impl<'data> Symbol<'data> {
         self.len
     }
 
+    /// Indicates if this function spans instructions.
+    pub fn is_empty(&self) -> bool {
+        self.len().map_or(false, |l| l == 0)
+    }
+
     /// Returns the string representation of this symbol.
     pub fn as_str(&self) -> &str {
         self.name().as_ref()
@@ -64,7 +69,7 @@ impl<'data> Into<String> for Symbol<'data> {
 }
 
 /// Internal wrapper around certain symbol table implementations.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 enum SymbolsInternal<'data> {
     MachO(&'data mach::symbols::Symbols<'data>),
 }
@@ -82,9 +87,10 @@ impl<'data> SymbolsInternal<'data> {
         Ok(Some(match *self {
             SymbolsInternal::MachO(symbols) => {
                 let (name, nlist) = symbols.get(index).context(ObjectErrorKind::BadObject)?;
-                let stripped = match name.starts_with("_") {
-                    true => &name[1..],
-                    false => name,
+                let stripped = if name.starts_with('_') {
+                    &name[1..]
+                } else {
+                    name
                 };
 
                 // The length is only calculated if `next` is specified and does
@@ -95,8 +101,8 @@ impl<'data> SymbolsInternal<'data> {
 
                 Symbol {
                     name: Cow::Borrowed(stripped),
-                    addr: addr,
-                    len: len,
+                    addr,
+                    len,
                 }
             }
         }))

@@ -5,7 +5,6 @@ extern crate symbolic_common;
 
 use std::borrow::Cow;
 use std::fmt;
-use std::mem;
 
 use failure::Fail;
 
@@ -117,14 +116,14 @@ impl SourceMapView {
     }
 
     /// Looks up a token and returns it.
-    pub fn lookup_token<'a>(&'a self, line: u32, col: u32) -> Option<TokenMatch<'a>> {
+    pub fn lookup_token(&self, line: u32, col: u32) -> Option<TokenMatch> {
         self.sm
             .lookup_token(line, col)
             .map(|tok| self.make_token_match(tok))
     }
 
     /// Returns a token for a specific index.
-    pub fn get_token<'a>(&'a self, idx: u32) -> Option<TokenMatch<'a>> {
+    pub fn get_token(&self, idx: u32) -> Option<TokenMatch> {
         self.sm.get_token(idx).map(|tok| self.make_token_match(tok))
     }
 
@@ -134,10 +133,10 @@ impl SourceMapView {
     }
 
     /// Returns a source view for the given source.
-    pub fn get_source_view<'a>(&'a self, idx: u32) -> Option<&'a SourceView<'a>> {
+    pub fn get_source_view(&self, idx: u32) -> Option<&SourceView> {
         self.sm
             .get_source_view(idx)
-            .map(|x| unsafe { mem::transmute(x) })
+            .map(|s| unsafe { &*(s as *const _ as *const SourceView) })
     }
 
     /// Returns the source name for an index.

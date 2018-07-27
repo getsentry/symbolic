@@ -13,6 +13,7 @@ use elf::{get_elf_id, get_elf_vmaddr};
 use mach::{get_mach_id, get_mach_vmaddr};
 
 /// Contains type specific data of `Object`s.
+#[cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
 pub(crate) enum ObjectTarget<'bytes> {
     Breakpad(&'bytes BreakpadSym),
     Elf(&'bytes elf::Elf<'bytes>),
@@ -211,7 +212,7 @@ pub struct Objects<'fat> {
 
 impl<'fat> Objects<'fat> {
     fn new(fat: &'fat FatObject<'fat>) -> Objects<'fat> {
-        Objects { fat: fat, index: 0 }
+        Objects { fat, index: 0 }
     }
 }
 
@@ -245,6 +246,7 @@ impl<'fat> Iterator for Objects<'fat> {
 }
 
 /// Internal data used to access platform-specific data of a `FatObject`.
+#[cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
 pub(crate) enum FatObjectKind<'bytes> {
     Breakpad(BreakpadSym),
     Elf(elf::Elf<'bytes>),
@@ -299,7 +301,7 @@ impl<'bytes> FatObject<'bytes> {
             })
         })?;
 
-        Ok(FatObject { handle: handle })
+        Ok(FatObject { handle })
     }
 
     /// Returns the kind of this `FatObject`.
@@ -353,7 +355,7 @@ impl<'bytes> FatObject<'bytes> {
 
         Ok(Some(Object {
             fat_bytes: self.as_bytes(),
-            target: target,
+            target,
         }))
     }
 

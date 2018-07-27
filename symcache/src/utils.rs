@@ -16,11 +16,11 @@ fn is_absolute_windows_path(s: &str) -> bool {
         if let Some(tc) = char_iter.next();
         if tc == '\\' || tc == '/';
         then {
-            true
-        } else {
-            false
+            return true;
         }
     }
+
+    false
 }
 
 fn is_absolute_unix_path(s: &str) -> bool {
@@ -48,7 +48,7 @@ pub fn common_join_path(base: &str, other: &str) -> String {
     let unix_abs = is_absolute_unix_path(base);
     let win_style = win_abs || (!unix_abs && base.chars().any(|x| x == '\\'));
 
-    return if win_style {
+    if win_style {
         format!(
             "{}\\{}",
             base.trim_right_matches(&['\\', '/'][..]),
@@ -60,13 +60,13 @@ pub fn common_join_path(base: &str, other: &str) -> String {
             base.trim_right_matches('/'),
             other.trim_left_matches('/')
         )
-    };
+    }
 }
 
 /// Trims a path to a given length.
 ///
 /// This attempts to not completely destroy the path in the process.
-pub fn shorten_filename<'a>(filename: &'a str, length: usize) -> Cow<'a, str> {
+pub fn shorten_filename(filename: &str, length: usize) -> Cow<str> {
     // trivial cases
     if filename.len() <= length {
         return Cow::Borrowed(filename);
@@ -84,17 +84,13 @@ pub fn shorten_filename<'a>(filename: &'a str, length: usize) -> Cow<'a, str> {
     let max_len = length - 4;
 
     // make sure we get two segments at the start.
-    loop {
-        if let Some((idx, sep)) = piece_iter.next() {
-            let slice = &filename[last_idx..idx + sep.len()];
-            rv.push_str(slice);
-            let done = last_idx > 0;
-            last_idx = idx + sep.len();
-            final_sep = sep;
-            if done {
-                break;
-            }
-        } else {
+    while let Some((idx, sep)) = piece_iter.next() {
+        let slice = &filename[last_idx..idx + sep.len()];
+        rv.push_str(slice);
+        let done = last_idx > 0;
+        last_idx = idx + sep.len();
+        final_sep = sep;
+        if done {
             break;
         }
     }
@@ -120,7 +116,7 @@ pub fn shorten_filename<'a>(filename: &'a str, length: usize) -> Cow<'a, str> {
 
     // if at this point already we're too long we just take the last element
     // of the filename and strip it.
-    if rv.len() > max_len || rest.len() == 0 {
+    if rv.len() > max_len || rest.is_empty() {
         let basename = filename.rsplit(&['\\', '/'][..]).next().unwrap();
         if basename.len() > max_len {
             return Cow::Owned(format!("...{}", &basename[basename.len() - max_len + 1..]));

@@ -40,8 +40,7 @@ impl<'input> BreakpadInfo<'input> {
     }
 
     fn parse(&mut self, object: &'input Object) -> Result<(), SymCacheError> {
-        let mut records = object.breakpad_records();
-        while let Some(record) = records.next() {
+        for record in object.breakpad_records() {
             match record.context(SymCacheErrorKind::BadDebugFile)? {
                 BreakpadRecord::Module(m) => self.module = Some(m),
                 BreakpadRecord::File(f) => self.files.push(f),

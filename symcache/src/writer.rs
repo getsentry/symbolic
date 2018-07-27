@@ -107,7 +107,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         L: Copy + num::FromPrimitive,
     {
         unsafe {
-            let bytes: *const u8 = mem::transmute(x);
+            let bytes = x as *const T as *const u8;
             let size = mem::size_of_val(x);
             self.write_bytes(slice::from_raw_parts(bytes, size))
         }
@@ -139,7 +139,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             return Ok(index);
         }
 
-        if self.symbols.len() >= 0xffffff {
+        if self.symbols.len() >= 0x00ff_ffff {
             return Err(SymCacheErrorKind::ValueTooLarge.into());
         }
 
@@ -201,7 +201,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         // we just skip over to symbol table processing.
         match DebugInfo::from_object(obj) {
             Ok(DebugInfo::Dwarf(ref info)) => {
-                return self.write_dwarf_info(info, obj.symbols().unwrap_or(None));
+                return self.write_dwarf_info(info, obj.symbols().unwrap_or(None).as_ref());
             }
             Ok(DebugInfo::Breakpad(ref info)) => {
                 return self.write_breakpad_info(info);
@@ -278,6 +278,8 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         vmaddr: u64,
         symbol_iter: &mut Peekable<SymbolIterator>,
     ) -> Result<(), SymCacheError> {
+        // NB: we can't use while let here, since we need to borrow symbol_iter mutably twice
+        #[cfg_attr(feature = "cargo-clippy", allow(while_let_loop))]
         loop {
             let sym_addr = match symbol_iter.peek() {
                 Some(&Ok(ref symbol)) => symbol.addr() - vmaddr,
@@ -313,7 +315,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         let symbol_id = self.write_symbol_if_missing(symbol.as_ref())?;
 
         self.func_records.push(FuncRecord {
-            addr_low: (func_addr & 0xffffffff) as u32,
+            addr_low: (func_addr & 0xffff_ffff) as u32,
             addr_high: ((func_addr >> 32) & 0xffff) as u16,
             // XXX: we have not seen this yet, but in theory this should be
             // stored as multiple function records.
@@ -380,7 +382,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
 
                     line_records.push(LineRecord {
                         addr_off: (diff & 0xff) as u8,
-                        file_id: file_id,
+                        file_id,
                         line: cmp::min(line.line, 0xffff) as u16,
                     });
 
@@ -408,10 +410,8 @@ impl<W: Write + Seek> SymCacheWriter<W> {
     fn write_dwarf_info(
         &mut self,
         info: &DwarfInfo,
-        symbols: Option<Symbols>,
+        symbols: Option<&Symbols>,
     ) -> Result<(), SymCacheError> {
-        let symbols = symbols.as_ref();
-
         let mut range_buf = Vec::new();
         let mut symbol_iter = symbols.map(|x| x.iter().peekable());
         let mut last_addr = !0;
@@ -439,7 +439,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             unit.get_functions(&info, &mut range_buf, symbols, &mut funcs)?;
             for func in &funcs {
                 // dedup instructions from inline functions
-                if let &mut Some(ref mut symbol_iter) = &mut symbol_iter {
+                if let Some(ref mut symbol_iter) = symbol_iter {
                     self.write_missing_functions_from_symboltable(
                         &mut last_addr,
                         func.addr,
@@ -448,11 +448,11 @@ impl<W: Write + Seek> SymCacheWriter<W> {
                     )?;
                 }
                 self.write_dwarf_function(&func, locations_inner, local_cache_inner, !0)?;
-                last_addr = func.addr + func.len as u64;
+                last_addr = func.addr + u64::from(func.len);
             }
         }
 
-        if let &mut Some(ref mut symbol_iter) = &mut symbol_iter {
+        if let Some(ref mut symbol_iter) = symbol_iter {
             self.write_missing_functions_from_symboltable(
                 &mut last_addr,
                 !0,
@@ -488,7 +488,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
 
         let symbol_id = self.write_symbol_if_missing(func.name.as_bytes())?;
         let func_record = FuncRecord {
-            addr_low: (func_addr & 0xffffffff) as u32,
+            addr_low: (func_addr & 0xffff_ffff) as u32,
             addr_high: ((func_addr >> 32) & 0xffff) as u16,
             // XXX: we have not seen this yet, but in theory this should be
             // stored as multiple function records.
@@ -550,10 +550,10 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             while diff >= 0 {
                 let line_record = LineRecord {
                     addr_off: (diff & 0xff) as u8,
-                    file_id: file_id,
+                    file_id,
                     line: line.line,
                 };
-                last_addr += line_record.addr_off as u64;
+                last_addr += u64::from(line_record.addr_off);
                 line_records.push(line_record);
                 diff -= 0xff;
             }

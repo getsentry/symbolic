@@ -94,7 +94,7 @@ impl InstructionInfo {
         // The crashing frame usually contains the actual register contents,
         // which points to the exact instruction that crashed and must not be
         // adjusted.
-        return false;
+        false
     }
 
     /// Determines the address of the call site based on a return address.
