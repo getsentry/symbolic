@@ -7,8 +7,9 @@ use std::str::FromStr;
 use symbolic::common::{byteview::ByteView, types::Arch};
 use symbolic::debuginfo::Object;
 use symbolic::minidump::cfi::AsciiCfiWriter;
-use symbolic::minidump::processor::{CallStack, CodeModule, CodeModuleId, FrameInfoMap,
-                                    ProcessState, StackFrame, SystemInfo};
+use symbolic::minidump::processor::{
+    CallStack, CodeModule, CodeModuleId, FrameInfoMap, ProcessState, RegVal, StackFrame, SystemInfo,
+};
 
 use core::SymbolicStr;
 use debuginfo::SymbolicObject;
@@ -37,6 +38,13 @@ pub struct SymbolicCodeModule {
     pub name: SymbolicStr,
 }
 
+/// The CPU register value of a stack frame.
+#[repr(C)]
+pub struct SymbolicRegVal {
+    pub name: SymbolicStr,
+    pub value: SymbolicStr,
+}
+
 /// Contains the absolute instruction address and image information of a stack frame.
 #[repr(C)]
 pub struct SymbolicStackFrame {
@@ -44,6 +52,8 @@ pub struct SymbolicStackFrame {
     pub instruction: u64,
     pub trust: SymbolicFrameTrust,
     pub module: SymbolicCodeModule,
+    pub registers: *mut SymbolicRegVal,
+    pub register_count: usize,
 }
 
 /// Represents a thread of the process state which holds a list of stack frames.
@@ -116,13 +126,13 @@ where
 }
 
 /// Creates a packed array of mapped FFI elements from an iterator.
-unsafe fn map_iter<T, S, I, F>(items: I, mut mapper: F) -> (*mut S, usize)
+unsafe fn map_iter<T, S, I, F>(items: I, mapper: F) -> (*mut S, usize)
 where
     I: Iterator<Item = T>,
-    F: FnMut(&T) -> S,
+    F: Fn(T) -> S,
 {
     let mut vec = Vec::with_capacity(items.size_hint().0);
-    for ref item in items {
+    for item in items {
         vec.push(mapper(item));
     }
 
@@ -147,6 +157,14 @@ unsafe fn map_code_module(module: &CodeModule) -> SymbolicCodeModule {
     }
 }
 
+/// Maps a pair of register name and value to its FFI type.
+unsafe fn map_regval(regval: (&str, RegVal)) -> SymbolicRegVal {
+    SymbolicRegVal {
+        name: regval.0.into(),
+        value: regval.1.to_string().into(),
+    }
+}
+
 /// Maps a `StackFrame` to its FFI type.
 unsafe fn map_stack_frame(frame: &StackFrame, arch: Arch) -> SymbolicStackFrame {
     let empty_module = SymbolicCodeModule {
@@ -156,11 +174,16 @@ unsafe fn map_stack_frame(frame: &StackFrame, arch: Arch) -> SymbolicStackFrame 
         name: "".into(),
     };
 
+    let (registers, register_count) =
+        map_iter(frame.registers(arch).into_iter(), |r| map_regval(r));
+
     SymbolicStackFrame {
         instruction: frame.instruction(),
         return_address: frame.return_address(arch),
         trust: mem::transmute(frame.trust()),
         module: frame.module().map_or(empty_module, |m| map_code_module(m)),
+        registers,
+        register_count,
     }
 }
 

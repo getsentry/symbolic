@@ -202,6 +202,14 @@ typedef struct {
 } SymbolicCodeModule;
 
 /*
+ * The CPU register value of a stack frame.
+ */
+typedef struct {
+  SymbolicStr name;
+  SymbolicStr value;
+} SymbolicRegVal;
+
+/*
  * Contains the absolute instruction address and image information of a stack frame.
  */
 typedef struct {
@@ -209,6 +217,8 @@ typedef struct {
   uint64_t instruction;
   SymbolicFrameTrust trust;
   SymbolicCodeModule module;
+  SymbolicRegVal *registers;
+  uintptr_t register_count;
 } SymbolicStackFrame;
 
 /*
