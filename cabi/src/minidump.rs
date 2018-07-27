@@ -56,6 +56,14 @@ pub struct SymbolicStackFrame {
     pub register_count: usize,
 }
 
+impl Drop for SymbolicCallStack {
+    fn drop(&mut self) {
+        unsafe {
+            Vec::from_raw_parts(self.registers, self.register_count, self.register_count);
+        }
+    }
+}
+
 /// Represents a thread of the process state which holds a list of stack frames.
 #[repr(C)]
 pub struct SymbolicCallStack {
