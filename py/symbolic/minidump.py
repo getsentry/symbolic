@@ -86,6 +86,20 @@ class StackFrame(RustObject):
         attached_refs[module] = self
         return module
 
+    @property
+    def registers(self):
+        if hasattr(self, '_registers'):
+            return self._registers
+
+        self._registers = {}
+        for idx in range_type(self._objptr.register_count):
+            register = self._objptr.registers[idx]
+            name = decode_str(register.name)
+            value = decode_str(register.value)
+            self._registers[name] = value
+
+        return self._registers
+
 
 class CallStack(RustObject):
     """A thread of the crashed process"""
