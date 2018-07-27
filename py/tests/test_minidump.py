@@ -32,6 +32,9 @@ def test_macos_without_cfi(res_path):
     assert frame.trust == 'scan'
     assert frame.instruction == 4329952133
     assert frame.return_address == 4329952134
+    assert frame.registers == {'rbp': '0x00007fff5daa37c8',
+                               'rip': '0x000000010215d386',
+                               'rsp': '0x00007fff5daa3600'}
 
     mid = '3F58BC3DEABE3361B5FB52A6762985980'
     module = next(module for module in state.modules() if module.id == mid)
@@ -68,6 +71,9 @@ def test_linux_without_cfi(res_path):
     assert frame.trust == 'scan'
     assert frame.instruction == 4202617
     assert frame.return_address == 4202618
+    assert frame.registers == {'rbp': '0x00007ffea5979ce0',
+                               'rip': '0x000000000040207a',
+                               'rsp': '0x00007ffea5979b28'}
 
     mid = 'D2554CDB926136C4B9766A086583B9B50'
     module = next(module for module in state.modules() if module.id == mid)
@@ -110,6 +116,14 @@ def test_macos_with_cfi(res_path):
     assert frame.trust == 'cfi'
     assert frame.instruction == 4329952133
     assert frame.return_address == 4329952134
+    assert frame.registers == {'rip': '0x000000010215d386',
+                               'rsp': '0x00007fff5daa3600',
+                               'r15': '0x0000000000000000',
+                               'r14': '0x0000000000000000',
+                               'rbx': '0x0000000000000000',
+                               'r13': '0x0000000000000000',
+                               'r12': '0x0000000000000000',
+                               'rbp': '0x00007fff5daa37c8'}
 
     module = next(module for module in state.modules()
                   if module.id == module_id)
@@ -152,6 +166,14 @@ def test_linux_with_cfi(res_path):
     assert frame.trust == 'cfi'
     assert frame.instruction == 4202617
     assert frame.return_address == 4202618
+    assert frame.registers == {'rip': '0x000000000040207a',
+                               'rsp': '0x00007ffea5979b28',
+                               'r15': '0x0000000000000000',
+                               'r14': '0x0000000000000000',
+                               'rbx': '0x0000000000000000',
+                               'r13': '0x00007ffea5979dc0',
+                               'r12': '0x0000000000401f10',
+                               'rbp': '0x00007ffea5979ce0'}
 
     module = next(module for module in state.modules()
                   if module.id == module_id)

@@ -207,6 +207,19 @@ fn print_state(
                 println!("{:>3}  0x{:x}", index, frame.instruction());
             }
 
+            let mut newline = true;
+            for (name, value) in frame.registers(arch) {
+                newline = !newline;
+                print!("     {:>4} = {}", name, value);
+                if newline {
+                    println!();
+                }
+            }
+
+            if !newline {
+                println!();
+            }
+
             println!("     Found by: {}", frame.trust());
             index += 1;
         }

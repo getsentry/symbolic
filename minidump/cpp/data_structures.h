@@ -31,6 +31,16 @@ struct stack_frame_t;
 /// Information about the CPU and OS on which a minidump was generated.
 struct system_info_t;
 
+/// Structure holding the name and value of a CPU register.
+struct regval_t {
+    /// The register name as specified by the CPU architecture.
+    const char *name;
+    /// The register value (lowest bits if smaller than 8 bytes).
+    uint64_t value;
+    /// Size of the register value in bytes.
+    uint8_t size;
+};
+
 /// Releases memory of a process state struct. Assumes ownership of the pointer.
 void process_state_delete(process_state_t *state);
 
@@ -165,6 +175,15 @@ const code_module_t *stack_frame_module(const stack_frame_t *frame);
 /// stack scanning, it can wind up with dubious frames.
 /// In rough order of "trust metric".
 int stack_frame_trust(const stack_frame_t *frame);
+
+/// Returns an owned pointer to a list of register values of this frame. The
+/// number of values is returned in the size_out parameter.
+regval_t *stack_frame_registers(const stack_frame_t *frame,
+                                uint32_t family,
+                                size_t *size_out);
+
+/// Releases memory of a regval struct. Assumes ownership of the pointer.
+void regval_delete(regval_t *regval);
 
 /// Returns the base address of this code module as it was loaded by the
 /// process. (uint64_t)-1 on error.
