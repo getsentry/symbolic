@@ -27,6 +27,7 @@ extern "C" {
     fn code_module_code_identifier(module: *const CodeModule) -> *mut c_char;
     fn code_module_debug_file(module: *const CodeModule) -> *mut c_char;
     fn code_module_debug_identifier(module: *const CodeModule) -> *mut c_char;
+    fn code_modules_delete(state: *mut *const CodeModule);
 
     fn stack_frame_return_address(frame: *const StackFrame) -> u64;
     fn stack_frame_instruction(frame: *const StackFrame) -> u64;
@@ -68,6 +69,10 @@ extern "C" {
     fn process_state_crash_reason(state: *const IProcessState) -> *mut c_char;
     fn process_state_assertion(state: *const IProcessState) -> *mut c_char;
     fn process_state_system_info(state: *const IProcessState) -> *mut SystemInfo;
+    fn process_state_modules(
+        state: *const IProcessState,
+        size_out: *mut usize,
+    ) -> *mut *const CodeModule;
 }
 
 /// An error returned when parsing invalid `CodeModuleId`s.
@@ -780,6 +785,17 @@ impl<'a> ProcessState<'a> {
         }
     }
 
+    /// Returns the full list of loaded `CodeModule`s.
+    pub fn modules(&self) -> Vec<&CodeModule> {
+        unsafe {
+            let mut size = 0 as usize;
+            let data = process_state_modules(self.internal, &mut size);
+            let vec = slice::from_raw_parts(data as *mut &CodeModule, size).to_vec();
+            code_modules_delete(data);
+            vec
+        }
+    }
+
     /// Returns a list of all `CodeModule`s referenced in one of the `CallStack`s.
     pub fn referenced_modules(&self) -> BTreeSet<&CodeModule> {
         self.threads()
@@ -806,6 +822,7 @@ impl<'a> fmt::Debug for ProcessState<'a> {
             .field("assertion", &self.assertion())
             .field("system_info", &self.system_info())
             .field("threads", &self.threads())
+            .field("modules", &self.modules())
             .finish()
     }
 }

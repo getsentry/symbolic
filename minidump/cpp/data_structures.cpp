@@ -34,6 +34,27 @@ call_stack_t *const *process_state_threads(process_state_t *state,
     return reinterpret_cast<call_stack_t *const *>(threads->data());
 }
 
+const code_module_t **process_state_modules(process_state_t *state,
+                                            size_t *size_out) {
+    if (state == nullptr) {
+        return nullptr;
+    }
+
+    auto *modules = process_state_t::cast(state)->modules();
+    unsigned int size = modules->module_count();
+
+    const code_module_t **buffer = new const code_module_t *[size];
+    for (unsigned int i = 0; i < size; i++) {
+        buffer[i] = code_module_t::cast(modules->GetModuleAtIndex(i));
+    }
+
+    if (size_out != nullptr) {
+        *size_out = size;
+    }
+
+    return buffer;
+}
+
 int32_t process_state_requesting_thread(const process_state_t *state) {
     if (state == nullptr) {
         return -1;
@@ -515,4 +536,10 @@ char *code_module_debug_identifier(const code_module_t *module) {
     }
 
     return string_from(code_module_t::cast(module)->debug_identifier());
+}
+
+void code_modules_delete(code_module_t **modules) {
+    if (modules != nullptr) {
+        delete modules;
+    }
 }
