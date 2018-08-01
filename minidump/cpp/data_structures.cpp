@@ -494,7 +494,7 @@ regval_t *stack_frame_registers(const stack_frame_t *frame,
 
 void regval_delete(regval_t *regval) {
     if (regval != nullptr) {
-        delete regval;
+        delete[] regval;
     }
 }
 
@@ -540,6 +540,6 @@ char *code_module_debug_identifier(const code_module_t *module) {
 
 void code_modules_delete(code_module_t **modules) {
     if (modules != nullptr) {
-        delete modules;
+        delete[] modules;
     }
 }
