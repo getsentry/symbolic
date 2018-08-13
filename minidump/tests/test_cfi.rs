@@ -14,7 +14,8 @@ fn cfi_from_elf() {
     let buffer = ByteView::from_path(fixture_path("linux/crash"))
         .expect("Could not open the executable file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat.get_object(0)
+    let object = fat
+        .get_object(0)
         .expect("Could not get the first object")
         .expect("Missing object");
 
@@ -36,7 +37,8 @@ fn cfi_from_macho() {
     let buffer =
         ByteView::from_path(fixture_path("macos/crash")).expect("Could not open the symbol file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat.get_object(0)
+    let object = fat
+        .get_object(0)
         .expect("Could not get the first object")
         .expect("Missing object");
 
@@ -58,7 +60,8 @@ fn cfi_from_sym_linux() {
     let buffer = ByteView::from_path(fixture_path("linux/crash.sym"))
         .expect("Could not open the symbol file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat.get_object(0)
+    let object = fat
+        .get_object(0)
         .expect("Could not get the first object")
         .expect("Missing object");
 
@@ -77,7 +80,8 @@ fn cfi_from_sym_macos() {
     let buffer = ByteView::from_path(fixture_path("macos/crash.sym"))
         .expect("Could not open the symbol file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat.get_object(0)
+    let object = fat
+        .get_object(0)
         .expect("Could not get the first object")
         .expect("Missing object");
 
@@ -96,7 +100,8 @@ fn cfi_from_sym_windows() {
     let buffer = ByteView::from_path(fixture_path("windows/crash.sym"))
         .expect("Could not open the symbol file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat.get_object(0)
+    let object = fat
+        .get_object(0)
         .expect("Could not get the first object")
         .expect("Missing object");
 

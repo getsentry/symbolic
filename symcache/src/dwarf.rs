@@ -310,7 +310,8 @@ impl<'input> Unit<'input> {
                 inlines: vec![],
                 lines: vec![],
                 comp_dir: self.comp_dir.map(|x| x.buf()).unwrap_or(b""),
-                lang: self.language
+                lang: self
+                    .language
                     .and_then(|lang| Language::from_dwarf_lang(lang).ok())
                     .unwrap_or(Language::Unknown),
             };
@@ -537,7 +538,8 @@ impl<'input> Unit<'input> {
             match attr.name() {
                 // prioritize these.  If we get them, take them.
                 gimli::DW_AT_linkage_name | gimli::DW_AT_MIPS_linkage_name => {
-                    return Ok(attr.string_value(&info.debug_str)
+                    return Ok(attr
+                        .string_value(&info.debug_str)
                         .map(|s| s.to_string_lossy()));
                 }
                 gimli::DW_AT_name => {
@@ -551,7 +553,8 @@ impl<'input> Unit<'input> {
         }
 
         if let Some(attr) = fallback_name {
-            return Ok(attr.string_value(&info.debug_str)
+            return Ok(attr
+                .string_value(&info.debug_str)
                 .map(|s| s.to_string_lossy()));
         }
 
@@ -595,7 +598,8 @@ impl<'input> DwarfLineProgram<'input> {
         comp_dir: Option<Buf<'input>>,
         comp_name: Option<Buf<'input>>,
     ) -> Result<Self, SymCacheError> {
-        let program = info.debug_line
+        let program = info
+            .debug_line
             .program(line_offset, address_size, comp_dir, comp_name)?;
 
         let mut sequences = vec![];

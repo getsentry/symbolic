@@ -10,7 +10,7 @@ test: styletest cargotest pytest lint
 
 styletest:
 	@rustup component add rustfmt-preview
-	cargo fmt -- --write-mode diff
+	@cargo fmt -- --check
 .PHONY: styletest
 
 cargotest: build

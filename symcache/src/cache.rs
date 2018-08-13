@@ -430,7 +430,8 @@ impl<'a> SymCache<'a> {
         let len: u64 = seg.len.into();
         let len = len as usize;
         let size = mem::size_of::<T>() * len;
-        let bytes = self.get_data(offset, size)
+        let bytes = self
+            .get_data(offset, size)
             .context(SymCacheErrorKind::BadSegment)?;
         Ok(unsafe { slice::from_raw_parts(bytes.as_ptr() as *const T, len) })
     }
@@ -449,7 +450,8 @@ impl<'a> SymCache<'a> {
     /// Returns the SymCache preamble record.
     #[inline(always)]
     fn preamble(&self) -> Result<&CacheFilePreamble, SymCacheError> {
-        let data = self.get_data(0, mem::size_of::<CacheFilePreamble>())
+        let data = self
+            .get_data(0, mem::size_of::<CacheFilePreamble>())
             .context(SymCacheErrorKind::BadFileHeader)?;
 
         Ok(unsafe { &*(data.as_ptr() as *const CacheFilePreamble) })
@@ -462,12 +464,14 @@ impl<'a> SymCache<'a> {
 
         match preamble.version {
             1 => {
-                let data = self.get_data(0, mem::size_of::<CacheFileHeaderV1>())
+                let data = self
+                    .get_data(0, mem::size_of::<CacheFileHeaderV1>())
                     .context(SymCacheErrorKind::BadFileHeader)?;
                 Ok(unsafe { &*(data.as_ptr() as *const CacheFileHeaderV1) })
             }
             2 => {
-                let data = self.get_data(0, mem::size_of::<CacheFileHeaderV2>())
+                let data = self
+                    .get_data(0, mem::size_of::<CacheFileHeaderV2>())
                     .context(SymCacheErrorKind::BadFileHeader)?;
                 Ok(unsafe { &*(data.as_ptr() as *const CacheFileHeaderV2) })
             }

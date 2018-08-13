@@ -161,7 +161,8 @@ impl<W: Write> AsciiCfiWriter<W> {
             // cases. Therefore, simply try find the __eh_frame section and
             // otherwise fail. The file is already loaded and relevant pages
             // are already in the cache, so the overhead is justifiable.
-            _ => self.process_dwarf(object)
+            _ => self
+                .process_dwarf(object)
                 .map_err(|_| CfiErrorKind::UnsupportedDebugFormat.into()),
         }
     }
@@ -240,7 +241,8 @@ impl<W: Write> AsciiCfiWriter<W> {
         // table that contains rules for retrieving registers at every instruction address. These
         // rules can directly be transcribed to breakpad STACK CFI records.
         let ctx = UninitializedUnwindContext::new();
-        let mut ctx = ctx.initialize(fde.cie())
+        let mut ctx = ctx
+            .initialize(fde.cie())
             .map_err(|(e, _)| e)
             .context(CfiErrorKind::BadDebugInfo)?;
         let mut table = UnwindTable::new(&mut ctx, &fde);

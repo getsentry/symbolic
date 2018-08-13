@@ -343,7 +343,8 @@ impl<'bytes> FatObject<'bytes> {
                 mach::Mach::Binary(ref bin) => ObjectTarget::MachOSingle(bin),
                 mach::Mach::Fat(ref fat) => {
                     let mach = fat.get(index).context(ObjectErrorKind::BadObject)?;
-                    let arch = fat.iter_arches()
+                    let arch = fat
+                        .iter_arches()
                         .nth(index)
                         .unwrap()
                         .context(ObjectErrorKind::BadObject)?;

@@ -23,7 +23,8 @@ fn test_write_header_linux() {
     let buffer = ByteView::from_path(fixture_path("linux/crash.debug"))
         .expect("Could not open the minidump file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat.get_object(0)
+    let object = fat
+        .get_object(0)
         .expect("Could not get the first object")
         .expect("Missing object");
 
@@ -36,7 +37,8 @@ fn test_write_functions_linux() {
     let buffer = ByteView::from_path(fixture_path("linux/crash.debug"))
         .expect("Could not open the minidump file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat.get_object(0)
+    let object = fat
+        .get_object(0)
         .expect("Could not get the first object")
         .expect("Missing object");
 
@@ -51,7 +53,8 @@ fn test_write_header_macos() {
         "macos/crash.dSYM/Contents/Resources/DWARF/crash",
     )).expect("Could not open the minidump file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat.get_object(0)
+    let object = fat
+        .get_object(0)
         .expect("Could not get the first object")
         .expect("Missing object");
 
@@ -65,7 +68,8 @@ fn test_write_functions_macos() {
         "macos/crash.dSYM/Contents/Resources/DWARF/crash",
     )).expect("Could not open the minidump file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat.get_object(0)
+    let object = fat
+        .get_object(0)
         .expect("Could not get the first object")
         .expect("Missing object");
 

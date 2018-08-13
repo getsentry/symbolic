@@ -96,7 +96,8 @@ impl<'data> SymbolsInternal<'data> {
                 // The length is only calculated if `next` is specified and does
                 // not result in an error. Otherwise, errors here are swallowed.
                 let addr = nlist.n_value;
-                let len = next.and_then(|index| symbols.get(index).ok())
+                let len = next
+                    .and_then(|index| symbols.get(index).ok())
                     .map(|(_, nlist)| nlist.n_value - addr);
 
                 Symbol {
