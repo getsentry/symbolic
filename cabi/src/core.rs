@@ -1,12 +1,12 @@
-use std::mem;
-use std::ptr;
-use std::str;
-use std::slice;
 use std::ffi::CStr;
+use std::mem;
 use std::os::raw::c_char;
+use std::ptr;
+use std::slice;
+use std::str;
 
-use uuid::Uuid;
 use failure::Error;
+use uuid::Uuid;
 
 use utils::{set_panic_hook, Panic, LAST_ERROR};
 
@@ -168,7 +168,7 @@ pub enum SymbolicErrorCode {
 impl SymbolicErrorCode {
     /// This maps all errors that can possibly happen.
     pub fn from_error(error: &Error) -> SymbolicErrorCode {
-        for cause in error.causes() {
+        for cause in error.iter_causes() {
             if let Some(_) = cause.downcast_ref::<Panic>() {
                 return SymbolicErrorCode::Panic;
             }
@@ -178,9 +178,10 @@ impl SymbolicErrorCode {
                 return SymbolicErrorCode::IoError;
             }
 
-            use symbolic::common::types::{UnknownArchError, UnknownDebugKindError,
-                                          UnknownLanguageError, UnknownObjectClassError,
-                                          UnknownObjectKindError};
+            use symbolic::common::types::{
+                UnknownArchError, UnknownDebugKindError, UnknownLanguageError,
+                UnknownObjectClassError, UnknownObjectKindError,
+            };
             if let Some(_) = cause.downcast_ref::<UnknownArchError>() {
                 return SymbolicErrorCode::UnknownArchError;
             } else if let Some(_) = cause.downcast_ref::<UnknownLanguageError>() {
@@ -193,8 +194,9 @@ impl SymbolicErrorCode {
                 return SymbolicErrorCode::UnknownObjectKindError;
             }
 
-            use symbolic::debuginfo::{ObjectError, ObjectErrorKind, ParseBreakpadError,
-                                      ParseDebugIdError};
+            use symbolic::debuginfo::{
+                ObjectError, ObjectErrorKind, ParseBreakpadError, ParseDebugIdError,
+            };
             if let Some(_) = cause.downcast_ref::<ParseBreakpadError>() {
                 return SymbolicErrorCode::ParseBreakpadError;
             } else if let Some(_) = cause.downcast_ref::<ParseDebugIdError>() {
@@ -322,7 +324,7 @@ pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
     LAST_ERROR.with(|e| {
         if let Some(ref err) = *e.borrow() {
             let mut msg = err.to_string();
-            for cause in err.causes().skip(1) {
+            for cause in err.iter_causes().skip(1) {
                 write!(&mut msg, "\n  caused by: {}", cause).ok();
             }
             SymbolicStr::from_string(msg)
