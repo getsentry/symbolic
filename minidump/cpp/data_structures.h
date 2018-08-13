@@ -50,6 +50,11 @@ void process_state_delete(process_state_t *state);
 call_stack_t *const *process_state_threads(process_state_t *state,
                                            size_t *size_out);
 
+/// Returns an owned pointer to a list of loaded code modules in the minidump.
+/// The number of modules is returned in the size_out parameter.
+const code_module_t **process_state_modules(process_state_t *state,
+                                            size_t *size_out);
+
 /// The index of the thread that requested a dump be written in the
 /// threads vector.  If a dump was produced as a result of a crash, this
 /// will point to the thread that crashed.  If the dump was produced as
@@ -226,6 +231,9 @@ char *code_module_debug_file(const code_module_t *module);
 ///
 /// The return value is an owning pointer. Release memory with string_delete.
 char *code_module_debug_identifier(const code_module_t *module);
+
+/// Releases memory of a code modules list. Assumes ownership of the pointer.
+void code_modules_delete(code_module_t **modules);
 
 #ifdef __cplusplus
 }

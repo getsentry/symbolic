@@ -221,8 +221,7 @@ unsafe fn map_system_info(info: &SystemInfo) -> SymbolicSystemInfo {
 unsafe fn map_process_state(state: &ProcessState) -> SymbolicProcessState {
     let arch = state.system_info().cpu_arch();
     let (threads, thread_count) = map_slice(state.threads(), |s| map_call_stack(s, arch));
-    let (modules, module_count) =
-        map_iter(state.referenced_modules().iter(), |m| map_code_module(m));
+    let (modules, module_count) = map_iter(state.modules().iter(), |m| map_code_module(m));
 
     SymbolicProcessState {
         requesting_thread: state.requesting_thread(),
