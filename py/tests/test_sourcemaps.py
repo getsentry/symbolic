@@ -135,6 +135,9 @@ def test_source_access(get_sourcemapview):
 
 def test_wrong_rn_sourcemaps_android(get_sourceview, get_sourcemapview):
     index = get_sourcemapview('android-release.bundle.map')
+    # Users need to update their jsc version for android
+    # https://github.com/react-community/jsc-android-buildscripts
+    # then the correct col will be reported.
     inline = index.lookup(308, 765)
     # To print found token
     # import pprint; pprint.pprint(inline.__dict__)
