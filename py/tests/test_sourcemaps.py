@@ -135,10 +135,10 @@ def test_source_access(get_sourcemapview):
 
 def test_wrong_rn_sourcemaps_android(get_sourceview, get_sourcemapview):
     index = get_sourcemapview('android-release.bundle.map')
-    inline = index.lookup(308, 1116)
+    inline = index.lookup(308, 765)
     # To print found token
     # import pprint; pprint.pprint(inline.__dict__)
-    _failHere = index.lookup(308, 924)
+    function = index.lookup(308, 573)
     # To print found token
     # import pprint; pprint.pprint(inline.__dict__)
 
@@ -148,9 +148,9 @@ def test_wrong_rn_sourcemaps_android(get_sourceview, get_sourcemapview):
     assert inline.src_col == 72
     assert inline.src_line == 40 # + 1
 
-    assert _failHere.name == 'invalidFunction'
-    assert _failHere.src_col == 9
-    assert _failHere.src_line == 34 # + 1
+    assert function.name == 'invalidFunction'
+    assert function.src_col == 9
+    assert function.src_line == 34 # + 1
 
 
 def test_wrong_rn_sourcemaps_ios(get_sourceview, get_sourcemapview):
@@ -158,7 +158,7 @@ def test_wrong_rn_sourcemaps_ios(get_sourceview, get_sourcemapview):
     inline = index.lookup(311, 765)
     # To print found token
     # import pprint; pprint.pprint(inline.__dict__)
-    _failHere = index.lookup(311, 573)
+    function = index.lookup(311, 573)
     # To print found token
     # import pprint; pprint.pprint(inline.__dict__)
 
@@ -168,6 +168,6 @@ def test_wrong_rn_sourcemaps_ios(get_sourceview, get_sourcemapview):
     assert inline.src_col == 72
     assert inline.src_line == 40 # + 1
 
-    assert _failHere.name == 'invalidFunction'
-    assert _failHere.src_col == 9
-    assert _failHere.src_line == 34 # + 1
+    assert function.name == 'invalidFunction'
+    assert function.src_col == 9
+    assert function.src_line == 34 # + 1
