@@ -406,13 +406,13 @@ impl<'a> SymCache<'a> {
     }
 
     /// Loads binary data from a segment.
-    fn get_data(&self, start: usize, len: usize) -> Result<&[u8], io::Error> {
+    fn get_data(&self, from: usize, len: usize) -> Result<&[u8], io::Error> {
         let buffer = &self.byteview;
-        let end = start.wrapping_add(len);
-        if end < start || end > buffer.len() {
+        let to = from.wrapping_add(len);
+        if to < from || to > buffer.len() {
             Err(io::Error::new(io::ErrorKind::UnexpectedEof, "out of range"))
         } else {
-            Ok(&buffer[start..end])
+            Ok(&buffer[from..to])
         }
     }
 

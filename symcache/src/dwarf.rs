@@ -693,16 +693,16 @@ impl<'input> DwarfLineProgram<'input> {
                 continue;
             }
 
-            let start = match seq.rows.binary_search_by_key(&rng.begin, |x| x.address) {
+            let from = match seq.rows.binary_search_by_key(&rng.begin, |x| x.address) {
                 Ok(idx) => idx,
                 Err(0) => continue,
                 Err(next_idx) => next_idx - 1,
             };
 
-            let len = seq.rows[start..]
+            let len = seq.rows[from..]
                 .binary_search_by_key(&rng.end, |x| x.address)
                 .unwrap_or_else(|e| e);
-            return &seq.rows[start..start + len];
+            return &seq.rows[from..from + len];
         }
         &[]
     }
