@@ -163,6 +163,7 @@ pub enum SymbolicErrorCode {
     SymCacheErrorUnsupportedDebugKind = 6009,
     SymCacheErrorValueTooLarge = 6010,
     SymCacheErrorWriteFailed = 6011,
+    SymCacheErrorTooManyValues = 6012,
 }
 
 impl SymbolicErrorCode {
@@ -285,7 +286,12 @@ impl SymbolicErrorCode {
                     SymCacheErrorKind::ValueTooLarge => {
                         SymbolicErrorCode::SymCacheErrorValueTooLarge
                     }
-                    SymCacheErrorKind::WriteFailed => SymbolicErrorCode::SymCacheErrorWriteFailed,
+                    SymCacheErrorKind::WriteFailed(_) => {
+                        SymbolicErrorCode::SymCacheErrorWriteFailed
+                    }
+                    SymCacheErrorKind::TooManyValues(_) => {
+                        SymbolicErrorCode::SymCacheErrorTooManyValues
+                    }
                 };
             }
         }

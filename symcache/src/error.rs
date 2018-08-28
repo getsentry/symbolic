@@ -12,6 +12,30 @@ use symbolic_debuginfo::ObjectError;
 #[fail(display = "{}", _0)]
 pub(crate) struct ConversionError(pub &'static str);
 
+#[doc(hidden)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum ValueKind {
+    Symbol,
+    Function,
+    File,
+    Line,
+    ParentOffset,
+    Language,
+}
+
+impl fmt::Display for ValueKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ValueKind::Symbol => write!(f, "symbol"),
+            ValueKind::Function => write!(f, "function"),
+            ValueKind::File => write!(f, "file"),
+            ValueKind::Line => write!(f, "line record"),
+            ValueKind::ParentOffset => write!(f, "inline parent offset"),
+            ValueKind::Language => write!(f, "language"),
+        }
+    }
+}
+
 /// Variants of `SymCacheError`.
 #[derive(Debug, Fail, Copy, Clone, Eq, PartialEq)]
 pub enum SymCacheErrorKind {
@@ -51,9 +75,13 @@ pub enum SymCacheErrorKind {
     #[fail(display = "unsupported debug information")]
     UnsupportedDebugKind,
 
-    /// A value cannot be written to symcache as it overflows the data format.
-    #[fail(display = "value too large for symcache file format")]
-    ValueTooLarge,
+    /// A value cannot be written to symcache as it overflows the record size.
+    #[fail(display = "{} too large for symcache file format", _0)]
+    ValueTooLarge(ValueKind),
+
+    /// A value cannot be written to symcache as it overflows the segment counter.
+    #[fail(display = "too many {}s for symcache", _0)]
+    TooManyValues(ValueKind),
 
     /// Generic error when writing a symcache, most likely IO.
     #[fail(display = "failed to write symcache")]
