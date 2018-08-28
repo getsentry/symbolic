@@ -5,6 +5,7 @@ use std::io::{Cursor, Seek, SeekFrom, Write};
 use std::iter::Peekable;
 use std::mem;
 use std::slice;
+use std::u16;
 
 use failure::ResultExt;
 use fnv::{FnvHashMap, FnvHashSet};
@@ -16,7 +17,7 @@ use symbolic_debuginfo::{Object, SymbolIterator, SymbolTable, Symbols};
 use breakpad::BreakpadInfo;
 use cache::{SYMCACHE_LATEST_VERSION, SYMCACHE_MAGIC};
 use dwarf::{DwarfInfo, Function, Unit};
-use error::{ConversionError, SymCacheError, SymCacheErrorKind};
+use error::{ConversionError, SymCacheError, SymCacheErrorKind, ValueKind};
 use types::{CacheFileHeaderV2, DataSource, FileRecord, FuncRecord, LineRecord, Seg};
 use utils::shorten_filename;
 
@@ -83,7 +84,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
     }
 
     #[inline(always)]
-    fn write_bytes<L>(&self, bytes: &[u8]) -> Result<Seg<u8, L>, SymCacheError>
+    fn write_bytes<L>(&self, bytes: &[u8], kind: ValueKind) -> Result<Seg<u8, L>, SymCacheError>
     where
         L: Copy + num::FromPrimitive,
     {
@@ -97,31 +98,31 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         Ok(Seg::new(
             offset as u32,
             num::FromPrimitive::from_usize(bytes.len())
-                .ok_or_else(|| SymCacheErrorKind::ValueTooLarge)?,
+                .ok_or_else(|| SymCacheErrorKind::ValueTooLarge(kind))?,
         ))
     }
 
     #[inline(always)]
-    fn write_item<T, L>(&self, x: &T) -> Result<Seg<u8, L>, SymCacheError>
+    fn write_item<T, L>(&self, x: &T, kind: ValueKind) -> Result<Seg<u8, L>, SymCacheError>
     where
         L: Copy + num::FromPrimitive,
     {
         unsafe {
             let bytes = x as *const T as *const u8;
             let size = mem::size_of_val(x);
-            self.write_bytes(slice::from_raw_parts(bytes, size))
+            self.write_bytes(slice::from_raw_parts(bytes, size), kind)
         }
     }
 
     #[inline]
-    fn write_seg<T, L>(&self, x: &[T]) -> Result<Seg<T, L>, SymCacheError>
+    fn write_seg<T, L>(&self, x: &[T], kind: ValueKind) -> Result<Seg<T, L>, SymCacheError>
     where
         L: Copy + num::FromPrimitive,
     {
         let mut first_seg: Option<Seg<u8>> = None;
 
         for item in x {
-            let seg = self.write_item(item)?;
+            let seg = self.write_item(item, kind)?;
             if first_seg.is_none() {
                 first_seg = Some(seg);
             }
@@ -130,21 +131,25 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         Ok(Seg::new(
             first_seg.map(|x| x.offset).unwrap_or(0),
             num::FromPrimitive::from_usize(x.len())
-                .ok_or_else(|| SymCacheErrorKind::ValueTooLarge)?,
+                .ok_or_else(|| SymCacheErrorKind::TooManyValues(kind))?,
         ))
     }
 
-    fn write_symbol_if_missing(&mut self, sym: &[u8]) -> Result<u32, SymCacheError> {
+    fn write_symbol_if_missing(&mut self, mut sym: &[u8]) -> Result<u32, SymCacheError> {
+        if sym.len() > u16::MAX.into() {
+            sym = &sym[..u16::MAX.into()];
+        }
+
         if let Some(&index) = self.symbol_map.get(sym) {
             return Ok(index);
         }
 
         if self.symbols.len() >= 0x00ff_ffff {
-            return Err(SymCacheErrorKind::ValueTooLarge.into());
+            return Err(SymCacheErrorKind::TooManyValues(ValueKind::Symbol).into());
         }
 
         let idx = self.symbols.len() as u32;
-        let seg = self.write_bytes(sym)?;
+        let seg = self.write_bytes(sym, ValueKind::Symbol)?;
         self.symbols.push(seg);
         self.symbol_map.insert(sym.to_owned(), idx);
 
@@ -161,7 +166,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             return Ok(*item);
         }
 
-        let seg = self.write_bytes(filename.as_bytes())?;
+        let seg = self.write_bytes(filename.as_bytes(), ValueKind::File)?;
         self.files.insert(filename.into_owned().into_bytes(), seg);
         Ok(seg)
     }
@@ -172,7 +177,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         }
 
         if self.file_records.len() >= 0xffff {
-            return Err(SymCacheErrorKind::ValueTooLarge.into());
+            return Err(SymCacheErrorKind::TooManyValues(ValueKind::File).into());
         }
 
         let idx = self.file_records.len() as u16;
@@ -265,8 +270,8 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         }
 
         self.header.data_source = DataSource::SymbolTable as u8;
-        self.header.symbols = self.write_seg(&self.symbols)?;
-        self.header.function_records = self.write_seg(&self.func_records)?;
+        self.header.symbols = self.write_seg(&self.symbols, ValueKind::Symbol)?;
+        self.header.function_records = self.write_seg(&self.func_records, ValueKind::Function)?;
 
         Ok(())
     }
@@ -390,7 +395,8 @@ impl<W: Write + Seek> SymCacheWriter<W> {
                 }
             }
 
-            self.func_records[func_id].line_records = self.write_seg(&line_records)?;
+            self.func_records[func_id].line_records =
+                self.write_seg(&line_records, ValueKind::Function)?;
             self.header.has_line_records = 1;
         }
 
@@ -400,9 +406,9 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         }
 
         self.header.data_source = DataSource::BreakpadSym as u8;
-        self.header.symbols = self.write_seg(&self.symbols)?;
-        self.header.files = self.write_seg(&self.file_records)?;
-        self.header.function_records = self.write_seg(&self.func_records)?;
+        self.header.symbols = self.write_seg(&self.symbols, ValueKind::Symbol)?;
+        self.header.files = self.write_seg(&self.file_records, ValueKind::File)?;
+        self.header.function_records = self.write_seg(&self.func_records, ValueKind::Function)?;
 
         Ok(())
     }
@@ -462,9 +468,9 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         }
 
         self.header.data_source = DataSource::Dwarf as u8;
-        self.header.symbols = self.write_seg(&self.symbols)?;
-        self.header.files = self.write_seg(&self.file_records)?;
-        self.header.function_records = self.write_seg(&self.func_records)?;
+        self.header.symbols = self.write_seg(&self.symbols, ValueKind::Symbol)?;
+        self.header.files = self.write_seg(&self.file_records, ValueKind::File)?;
+        self.header.function_records = self.write_seg(&self.func_records, ValueKind::Function)?;
 
         Ok(())
     }
@@ -500,14 +506,14 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             } else {
                 let parent_offset = func_id.saturating_sub(parent_id);
                 if parent_offset == !0 {
-                    return Err(SymCacheErrorKind::ValueTooLarge.into());
+                    return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::ParentOffset).into());
                 }
                 parent_offset as u16
             },
             line_records: Seg::default(),
             comp_dir: self.write_file_if_missing(func.comp_dir)?,
             lang: if func.lang as u32 > 0xff {
-                return Err(SymCacheErrorKind::ValueTooLarge.into());
+                return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::Language).into());
             } else {
                 func.lang as u8
             },
@@ -563,7 +569,8 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         }
 
         if !line_records.is_empty() {
-            self.func_records[func_id as usize].line_records = self.write_seg(&line_records)?;
+            self.func_records[func_id as usize].line_records =
+                self.write_seg(&line_records, ValueKind::Line)?;
             self.header.has_line_records = 1;
         }
 
