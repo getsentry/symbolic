@@ -21,7 +21,7 @@ fn get_functions(symcache: &SymCache) -> String {
 #[test]
 fn test_write_header_linux() {
     let buffer = ByteView::from_path(fixture_path("linux/crash.debug"))
-        .expect("Could not open the minidump file");
+        .expect("Could not open the ELF file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
     let object = fat
         .get_object(0)
@@ -35,7 +35,7 @@ fn test_write_header_linux() {
 #[test]
 fn test_write_functions_linux() {
     let buffer = ByteView::from_path(fixture_path("linux/crash.debug"))
-        .expect("Could not open the minidump file");
+        .expect("Could not open the ELF file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
     let object = fat
         .get_object(0)
@@ -51,7 +51,7 @@ fn test_write_functions_linux() {
 fn test_write_header_macos() {
     let buffer = ByteView::from_path(fixture_path(
         "macos/crash.dSYM/Contents/Resources/DWARF/crash",
-    )).expect("Could not open the minidump file");
+    )).expect("Could not open the dSYM file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
     let object = fat
         .get_object(0)
@@ -66,7 +66,7 @@ fn test_write_header_macos() {
 fn test_write_functions_macos() {
     let buffer = ByteView::from_path(fixture_path(
         "macos/crash.dSYM/Contents/Resources/DWARF/crash",
-    )).expect("Could not open the minidump file");
+    )).expect("Could not open the dSYM file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
     let object = fat
         .get_object(0)
@@ -76,4 +76,17 @@ fn test_write_functions_macos() {
     let symcache = SymCache::from_object(&object).expect("Could not generate symcache");
     let functions = get_functions(&symcache);
     assert_snapshot_plain("functions_macos.txt", &functions);
+}
+
+#[test]
+fn test_write_large_symbol_names() {
+    let buffer = ByteView::from_path(fixture_path("regression/large_symbol.sym"))
+        .expect("Could not open breakpad sym");
+    let fat = FatObject::parse(buffer).expect("Could not create an object");
+    let object = fat
+        .get_object(0)
+        .expect("Could not get the first object")
+        .expect("Missing object");
+
+    SymCache::from_object(&object).expect("Failed to process large symbol name");
 }
