@@ -283,12 +283,10 @@ impl SymbolicErrorCode {
                     SymCacheErrorKind::UnsupportedDebugKind => {
                         SymbolicErrorCode::SymCacheErrorUnsupportedDebugKind
                     }
-                    SymCacheErrorKind::ValueTooLarge => {
+                    SymCacheErrorKind::ValueTooLarge(_) => {
                         SymbolicErrorCode::SymCacheErrorValueTooLarge
                     }
-                    SymCacheErrorKind::WriteFailed(_) => {
-                        SymbolicErrorCode::SymCacheErrorWriteFailed
-                    }
+                    SymCacheErrorKind::WriteFailed => SymbolicErrorCode::SymCacheErrorWriteFailed,
                     SymCacheErrorKind::TooManyValues(_) => {
                         SymbolicErrorCode::SymCacheErrorTooManyValues
                     }
