@@ -1,0 +1,9 @@
+---
+github:
+  owner: getsentry
+  repo: symbolic
+preReleaseCommand: bash scripts/bump-version
+targets:
+  - name: crates
+  - name: pypi
+  - name: github
