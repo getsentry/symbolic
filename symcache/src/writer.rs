@@ -5,6 +5,7 @@ use std::io::{Cursor, Seek, SeekFrom, Write};
 use std::iter::Peekable;
 use std::mem;
 use std::slice;
+use std::u16;
 
 use failure::ResultExt;
 use fnv::{FnvHashMap, FnvHashSet};
@@ -134,7 +135,11 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         ))
     }
 
-    fn write_symbol_if_missing(&mut self, sym: &[u8]) -> Result<u32, SymCacheError> {
+    fn write_symbol_if_missing(&mut self, mut sym: &[u8]) -> Result<u32, SymCacheError> {
+        if sym.len() > u16::MAX.into() {
+            sym = &sym[..u16::MAX.into()];
+        }
+
         if let Some(&index) = self.symbol_map.get(sym) {
             return Ok(index);
         }
