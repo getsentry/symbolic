@@ -12,7 +12,7 @@ if: tag IS blank
 
 after_success:
   - npm install -g @zeus-ci/cli
-  - test "$DEPLOY" && zeus upload -t "application/zip+wheel" py/dist/*
+  - test "$DEPLOY" && ( zeus upload -t "application/zip+wheel" py/dist/* || exit 1 )
 
 matrix:
   include:
