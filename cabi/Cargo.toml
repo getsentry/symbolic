@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-cabi"
-version = "5.1.0"
+version = "5.1.1"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -28,4 +28,4 @@ lto = true
 uuid = "0.6.3"
 failure = "0.1.1"
 failure_derive = "0.1.1"
-symbolic = { version = "5.1.0", path = "..", features = ["debuginfo", "demangle", "minidump", "proguard", "sourcemap", "symcache"] }
+symbolic = { version = "5.1.1", path = "..", features = ["debuginfo", "demangle", "minidump", "proguard", "sourcemap", "symcache"] }
