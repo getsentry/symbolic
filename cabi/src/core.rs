@@ -169,7 +169,7 @@ pub enum SymbolicErrorCode {
 impl SymbolicErrorCode {
     /// This maps all errors that can possibly happen.
     pub fn from_error(error: &Error) -> SymbolicErrorCode {
-        for cause in error.iter_causes() {
+        for cause in error.iter_chain() {
             if let Some(_) = cause.downcast_ref::<Panic>() {
                 return SymbolicErrorCode::Panic;
             }
@@ -328,7 +328,7 @@ pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
     LAST_ERROR.with(|e| {
         if let Some(ref err) = *e.borrow() {
             let mut msg = err.to_string();
-            for cause in err.iter_causes().skip(1) {
+            for cause in err.iter_causes() {
                 write!(&mut msg, "\n  caused by: {}", cause).ok();
             }
             SymbolicStr::from_string(msg)
