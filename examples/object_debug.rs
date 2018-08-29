@@ -13,7 +13,7 @@ use symbolic::debuginfo::FatObject;
 fn print_error(error: Error) {
     println!("Error: {}", error);
 
-    for cause in error.iter_causes().skip(1) {
+    for cause in error.iter_causes() {
         println!("   caused by {}", cause);
     }
 }
