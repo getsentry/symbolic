@@ -131,3 +131,46 @@ def test_source_access(get_sourcemapview):
     index = get_sourcemapview('react-dom-full.min.map')
     assert index.get_sourceview(0) is not None
     assert index.get_sourceview(1) is None
+
+
+def test_wrong_rn_sourcemaps_android(get_sourceview, get_sourcemapview):
+    index = get_sourcemapview('android-release.bundle.map')
+    # Users need to update their jsc version for android
+    # https://github.com/react-community/jsc-android-buildscripts
+    # then the correct col will be reported.
+    inline = index.lookup(308, 765)
+    # To print found token
+    # import pprint; pprint.pprint(inline.__dict__)
+    function = index.lookup(308, 573)
+    # To print found token
+    # import pprint; pprint.pprint(inline.__dict__)
+
+    # To print source code of file
+    # print(str(index.get_sourceview(308).get_source()))
+    assert inline.name == 'invalidFunction'
+    assert inline.src_col == 72
+    assert inline.src_line == 40 # + 1
+
+    assert function.name == 'invalidFunction'
+    assert function.src_col == 9
+    assert function.src_line == 34 # + 1
+
+
+def test_wrong_rn_sourcemaps_ios(get_sourceview, get_sourcemapview):
+    index = get_sourcemapview('ios-release.bundle.map')
+    inline = index.lookup(311, 765)
+    # To print found token
+    # import pprint; pprint.pprint(inline.__dict__)
+    function = index.lookup(311, 573)
+    # To print found token
+    # import pprint; pprint.pprint(inline.__dict__)
+
+    # To print source code of file
+    # print(str(index.get_sourceview(311).get_source()))
+    assert inline.name == 'invalidFunction'
+    assert inline.src_col == 72
+    assert inline.src_line == 40 # + 1
+
+    assert function.name == 'invalidFunction'
+    assert function.src_col == 9
+    assert function.src_line == 34 # + 1
