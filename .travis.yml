@@ -23,7 +23,6 @@ matrix:
     - os: linux
       script: make lint
       env: TEST=lint-rust
-      rust: nightly
     - os: linux
       script: make cargotest
       env: TEST=linux-rust
