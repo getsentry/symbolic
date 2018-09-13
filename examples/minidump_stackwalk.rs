@@ -289,32 +289,27 @@ fn main() {
                 .required(true)
                 .value_name("minidump")
                 .help("Path to the minidump file"),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("debug_symbols_path")
                 .required(true)
                 .value_name("symbols")
                 .help("Path to a folder containing debug symbols"),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("cfi")
                 .short("c")
                 .long("cfi")
                 .help("Use CFI while stackwalking"),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("symbolize")
                 .short("s")
                 .long("symbolize")
                 .help("Symbolize frames (file, function and line number)"),
-        )
-        .arg(
+        ).arg(
             Arg::with_name("only_crash")
                 .short("o")
                 .long("only-crash")
                 .help("Only output the crashed thread"),
-        )
-        .get_matches();
+        ).get_matches();
 
     match execute(&matches) {
         Ok(()) => (),

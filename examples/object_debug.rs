@@ -78,8 +78,7 @@ fn main() {
                 .help("Path to the minidump file")
                 .number_of_values(1)
                 .index(1),
-        )
-        .get_matches();
+        ).get_matches();
 
     match execute(&matches) {
         Ok(()) => (),

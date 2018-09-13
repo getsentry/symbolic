@@ -346,7 +346,8 @@ impl<W: Write> AsciiCfiWriter<W> {
             get_register_name(arch, register)?
         };
 
-        write!(self.inner, " {}: {}", register_name, formatted).context(CfiErrorKind::WriteError)?;
+        write!(self.inner, " {}: {}", register_name, formatted)
+            .context(CfiErrorKind::WriteError)?;
         Ok(true)
     }
 }

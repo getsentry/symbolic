@@ -763,13 +763,11 @@ impl<'a> fmt::Debug for SymCache<'a> {
             .field(
                 "data_source",
                 &self.data_source().unwrap_or(DataSource::Unknown),
-            )
-            .field("has_line_info", &self.has_line_info().unwrap_or(false))
+            ).field("has_line_info", &self.has_line_info().unwrap_or(false))
             .field("has_file_info", &self.has_file_info().unwrap_or(false))
             .field(
                 "functions",
                 &self.function_records().map(|x| x.len()).unwrap_or(0),
-            )
-            .finish()
+            ).finish()
     }
 }
