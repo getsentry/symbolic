@@ -5,6 +5,7 @@ extern crate uuid;
 
 use std::io;
 use symbolic_common::byteview::{ByteView, ByteViewHandle};
+use uuid::Uuid;
 
 /// A view over a proguard mapping text file.
 pub struct ProguardMappingView<'a> {
@@ -23,7 +24,8 @@ impl<'a> ProguardMappingView<'a> {
 
     /// Returns the mapping UUID.
     pub fn uuid(&self) -> uuid::Uuid {
-        self.mv.uuid()
+        // TODO: Remove this once `proguard` has been converted to uuid v0.7.
+        Uuid::from_slice(&self.mv.uuid().as_bytes()[..]).unwrap()
     }
 
     /// Returns true if this file has line infos.

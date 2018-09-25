@@ -69,7 +69,7 @@ pub fn find_mach_section<'data>(
 pub fn get_mach_id(macho: &mach::MachO) -> Option<DebugId> {
     for cmd in &macho.load_commands {
         if let mach::load_command::CommandVariant::Uuid(ref uuid_cmd) = cmd.command {
-            return Uuid::from_bytes(&uuid_cmd.uuid)
+            return Uuid::from_slice(&uuid_cmd.uuid)
                 .ok()
                 .map(DebugId::from_uuid);
         }
