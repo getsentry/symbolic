@@ -14,23 +14,23 @@ use fallible_iterator::FallibleIterator;
 use fnv::FnvBuildHasher;
 use gimli::{
     self, Abbreviations, AttributeValue, CompilationUnitHeader, DebugAbbrev, DebugAbbrevOffset,
-    DebugInfoOffset, DebugLine, DebugLineOffset, DebugRanges, DebugStr, DebuggingInformationEntry,
-    DwLang, EndianBuf, IncompleteLineNumberProgram, Range, StateMachine, UnitOffset,
+    DebugInfoOffset, DebugLine, DebugLineOffset, DebugStr, DebuggingInformationEntry, DwLang,
+    EndianSlice, IncompleteLineNumberProgram, Range, RangeLists, StateMachine, UnitOffset,
 };
 use lru_cache::LruCache;
 
 use error::{ConversionError, SymCacheError, SymCacheErrorKind};
 
-type Buf<'input> = EndianBuf<'input, Endianness>;
+type Buf<'input> = EndianSlice<'input, Endianness>;
 type Die<'abbrev, 'unit, 'input> = DebuggingInformationEntry<'abbrev, 'unit, Buf<'input>>;
 
 #[derive(Debug)]
 pub struct DwarfInfo<'input> {
     pub units: Vec<CompilationUnitHeader<Buf<'input>>>,
     pub debug_abbrev: DebugAbbrev<Buf<'input>>,
-    pub debug_ranges: DebugRanges<Buf<'input>>,
     pub debug_line: DebugLine<Buf<'input>>,
     pub debug_str: DebugStr<Buf<'input>>,
+    pub range_lists: RangeLists<Buf<'input>>,
     pub vmaddr: u64,
     abbrev_cache: RefCell<LruCache<DebugAbbrevOffset<usize>, Arc<Abbreviations>, FnvBuildHasher>>,
 }
@@ -58,8 +58,11 @@ impl<'input> DwarfInfo<'input> {
             units: section!(DebugInfo, true).units().collect()?,
             debug_abbrev: section!(DebugAbbrev, true),
             debug_line: section!(DebugLine, true),
-            debug_ranges: section!(DebugRanges, false),
             debug_str: section!(DebugStr, false),
+            range_lists: RangeLists::new(
+                section!(DebugRanges, false),
+                section!(DebugRngLists, false),
+            )?,
             vmaddr: obj.vmaddr(),
             abbrev_cache: RefCell::new(LruCache::with_hasher(30, Default::default())),
         })
@@ -183,6 +186,7 @@ impl<'a> fmt::Debug for Function<'a> {
 #[derive(Debug)]
 pub struct Unit<'input> {
     index: usize,
+    version: u16,
     base_address: u64,
     comp_dir: Option<Buf<'input>>,
     comp_name: Option<Buf<'input>>,
@@ -196,6 +200,7 @@ impl<'input> Unit<'input> {
         index: usize,
     ) -> Result<Option<Unit<'input>>, SymCacheError> {
         let header = info.get_unit_header(index)?;
+        let version = header.version();
 
         // Access the compilation unit, which must be the top level DIE
         let abbrev = info.get_abbrev(header)?;
@@ -239,6 +244,7 @@ impl<'input> Unit<'input> {
 
         Ok(Some(Unit {
             index,
+            version,
             base_address,
             comp_dir,
             comp_name,
@@ -309,7 +315,7 @@ impl<'input> Unit<'input> {
                 name: func_name.unwrap_or_else(|| "".into()),
                 inlines: vec![],
                 lines: vec![],
-                comp_dir: self.comp_dir.map(|x| x.buf()).unwrap_or(b""),
+                comp_dir: self.comp_dir.map(|x| x.slice()).unwrap_or(b""),
                 lang: self
                     .language
                     .and_then(|lang| Language::from_dwarf_lang(lang).ok())
@@ -414,10 +420,11 @@ impl<'input> Unit<'input> {
         while let Some(attr) = attrs.next()? {
             match attr.name() {
                 gimli::DW_AT_ranges => match attr.value() {
-                    AttributeValue::DebugRangesRef(offset) => {
+                    AttributeValue::RangeListsRef(offset) => {
                         let header = info.get_unit_header(self.index)?;
-                        let mut attrs = info.debug_ranges.ranges(
+                        let mut attrs = info.range_lists.ranges(
                             offset,
+                            self.version,
                             header.address_size(),
                             self.base_address,
                         )?;
@@ -682,8 +689,8 @@ impl<'input> DwarfLineProgram<'input> {
             .ok_or_else(|| SymCacheError::from(ConversionError("invalid file reference")))?;
 
         Ok((
-            file.directory(header).map(|x| x.buf()).unwrap_or(b""),
-            file.path_name().buf(),
+            file.directory(header).map(|x| x.slice()).unwrap_or(b""),
+            file.path_name().slice(),
         ))
     }
 

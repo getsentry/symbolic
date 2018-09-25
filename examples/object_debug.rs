@@ -10,7 +10,7 @@ use failure::Error;
 use symbolic::common::byteview::ByteView;
 use symbolic::debuginfo::FatObject;
 
-fn print_error(error: Error) {
+fn print_error(error: &Error) {
     println!("Error: {}", error);
 
     for cause in error.iter_causes() {
@@ -40,12 +40,12 @@ fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Error> {
                     object
                         .debug_kind()
                         .map(|k| k.to_string())
-                        .unwrap_or("no debug".into()),
+                        .unwrap_or_else(|| "no debug".into()),
                 );
             }
             Err(e) => {
                 print!(" - ");
-                print_error(e.into());
+                print_error(&e.into());
                 continue;
             }
         }
@@ -58,10 +58,10 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
     for path in matches.values_of("paths").unwrap_or_default() {
         match inspect_object(path) {
             Ok(()) => (),
-            Err(e) => print_error(e),
+            Err(e) => print_error(&e),
         }
 
-        println!("");
+        println!();
     }
 
     Ok(())
@@ -82,6 +82,6 @@ fn main() {
 
     match execute(&matches) {
         Ok(()) => (),
-        Err(e) => print_error(e),
+        Err(e) => print_error(&e),
     };
 }

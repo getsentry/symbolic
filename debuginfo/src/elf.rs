@@ -117,7 +117,7 @@ fn create_elf_id(identifier: &[u8], little_endian: bool) -> Option<DebugId> {
         data[6..8].reverse(); // uuid field 3
     }
 
-    Uuid::from_bytes(&data).ok().map(DebugId::from_uuid)
+    Uuid::from_slice(&data).ok().map(DebugId::from_uuid)
 }
 
 /// Tries to obtain the object identifier of an ELF object.

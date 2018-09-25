@@ -125,7 +125,7 @@ fn symbolize<'a>(
     // TODO: Extract and supply signal and IP register
     let instruction = InstructionInfo {
         addr: frame.return_address(arch),
-        arch: arch,
+        arch,
         crashing_frame: crashing,
         signal: None,
         ip_reg: None,
@@ -148,12 +148,12 @@ fn print_state(
     let sys = state.system_info();
     println!("Operating system: {}", sys.os_name());
     println!("                  {} {}", sys.os_version(), sys.os_build());
-    println!("");
+    println!();
 
     println!("CPU: {}", sys.cpu_family());
     println!("     {}", sys.cpu_info());
     println!("     {} CPUs", sys.cpu_count());
-    println!("");
+    println!();
 
     if !state.assertion().is_empty() {
         println!("Assertion:     {}", state.assertion());
@@ -225,14 +225,14 @@ fn print_state(
         }
     }
 
-    println!("");
+    println!();
     println!("Loaded modules:");
     for module in state.referenced_modules() {
         print!(
             "0x{:x} - 0x{:x}  {}  (",
             module.base_address(),
             module.base_address() + module.size() - 1,
-            module.code_file().rsplit("/").next().unwrap(),
+            module.code_file().rsplit('/').next().unwrap(),
         );
 
         match module.id() {

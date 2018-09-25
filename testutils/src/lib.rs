@@ -58,8 +58,9 @@ pub fn assert_snapshot_plain<S: AsRef<str>>(snapshot_name: S, output: &str) {
 
     assert!(
         expected == output,
-        "Value does not match stored snapshot {}:\n\n{}",
+        "Value does not match stored snapshot {}:\n{}\n{}",
         name,
+        Changeset::new("- snapshot", "+ actual output", "\n"),
         Changeset::new(expected, &output, "\n")
     );
 }
