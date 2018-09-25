@@ -20,10 +20,10 @@ exclude = [
     "scripts/**/*",
 ]
 
-[workspace]
-
 [package.metadata.docs.rs]
 all-features = true
+
+[workspace]
 
 [features]
 default = ["debuginfo"]
@@ -47,9 +47,9 @@ symbolic-sourcemap = { version = "5.1.2", path = "sourcemap", optional = true }
 symbolic-symcache = { version = "5.1.2", path = "symcache", optional = true }
 
 [dev-dependencies]
-clap = "2.31.2"
-failure = "0.1.1"
-walkdir = "2.1.4"
+clap = "2.32.0"
+failure = "0.1.2"
+walkdir = "2.2.5"
 
 [[example]]
 name = "minidump_stackwalk"

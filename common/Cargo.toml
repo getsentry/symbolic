@@ -16,17 +16,17 @@ ProGuard optimized Android apps.
 """
 
 [dependencies]
-error-chain = "0.11.0"
-gimli = { version = "0.15.0", optional = true }
-goblin = { version = "0.0.15", optional = true }
-memmap = "0.6.2"
-owning_ref = "0.3.3"
-serde = { version = "1.0.50", optional = true }
+error-chain = "0.12.0"
+gimli = { version = "0.16.1", optional = true }
+goblin = { version = "0.0.17", optional = true }
+memmap = "0.7.0"
+owning_ref = "0.4.0"
+serde = { version = "1.0.79", optional = true }
 serde_plain = { version = "0.3.0", optional = true }
-sourcemap = { version = "2.2.0", optional = true }
-failure = "0.1.1"
-failure_derive = "0.1.1"
-debugid = "0.2.0"
+sourcemap = { version = "2.2.1", optional = true }
+failure = "0.1.2"
+failure_derive = "0.1.2"
+debugid = "0.3.0"
 
 [features]
 default = []
