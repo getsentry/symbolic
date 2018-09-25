@@ -2,7 +2,7 @@ all: test
 .PHONY: all
 
 build:
-	cargo build --all
+	@cargo build --all --all-features
 .PHONY: build
 
 test: styletest cargotest pytest lint
@@ -14,7 +14,7 @@ styletest:
 .PHONY: styletest
 
 cargotest: build
-	cargo test --all
+	cargo test --all --all-features
 .PHONY: cargotest
 
 virtualenv:
@@ -45,7 +45,7 @@ format:
 
 lint:
 	@rustup component add clippy-preview 2> /dev/null
-	@cargo clippy --all-features --tests --all -- -D clippy
+	@cargo clippy --all-features --tests --all --examples -- -D clippy
 .PHONY: lint
 
 wheel-manylinux:
