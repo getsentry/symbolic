@@ -39,13 +39,16 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
 
         let mut obj = None;
 
-        if arch == Arch::Unknown && objects.len() == 1 {
-            obj = Some(&objects[0]);
-        } else {
-            for o in &objects {
-                if o.arch().unwrap_or_default() == arch {
-                    obj = Some(o);
-                    break;
+        #[cfg_attr(feature = "cargo-clippy", allow(useless_let_if_seq))]
+        {
+            if arch == Arch::Unknown && objects.len() == 1 {
+                obj = Some(&objects[0]);
+            } else {
+                for o in &objects {
+                    if o.arch().unwrap_or_default() == arch {
+                        obj = Some(o);
+                        break;
+                    }
                 }
             }
         }
