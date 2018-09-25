@@ -1,12 +1,13 @@
 target/
 **/*.rs.bk
-Cargo.lock
+# Only ignore the library's lockfile, not for the CABI
+/Cargo.lock
 
 # Python
 *.pyc
 __pycache__/
 .last-run
+/virtualenv
 
 # Editors
 .vscode/settings.json
-whatever
