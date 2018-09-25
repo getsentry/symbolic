@@ -315,7 +315,7 @@ impl<'input> Unit<'input> {
                 name: func_name.unwrap_or_else(|| "".into()),
                 inlines: vec![],
                 lines: vec![],
-                comp_dir: self.comp_dir.map(|x| x.buf()).unwrap_or(b""),
+                comp_dir: self.comp_dir.map(|x| x.slice()).unwrap_or(b""),
                 lang: self
                     .language
                     .and_then(|lang| Language::from_dwarf_lang(lang).ok())
@@ -689,8 +689,8 @@ impl<'input> DwarfLineProgram<'input> {
             .ok_or_else(|| SymCacheError::from(ConversionError("invalid file reference")))?;
 
         Ok((
-            file.directory(header).map(|x| x.buf()).unwrap_or(b""),
-            file.path_name().buf(),
+            file.directory(header).map(|x| x.slice()).unwrap_or(b""),
+            file.path_name().slice(),
         ))
     }
 
