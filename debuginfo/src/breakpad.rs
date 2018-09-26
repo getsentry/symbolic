@@ -17,6 +17,7 @@ impl ParseBreakpadError {
 }
 
 /// A Breakpad symbol record.
+#[derive(Debug, PartialEq)]
 pub enum BreakpadRecord<'input> {
     /// Header record containing module information.
     Module(BreakpadModuleRecord<'input>),
@@ -35,6 +36,7 @@ pub enum BreakpadRecord<'input> {
 }
 
 /// Breakpad module record containing general information on the file.
+#[derive(PartialEq)]
 pub struct BreakpadModuleRecord<'input> {
     pub arch: Arch,
     pub id: DebugId,
@@ -52,6 +54,7 @@ impl<'input> fmt::Debug for BreakpadModuleRecord<'input> {
 }
 
 /// Breakpad file record declaring a source file.
+#[derive(PartialEq)]
 pub struct BreakpadFileRecord<'input> {
     pub id: u64,
     pub name: &'input [u8],
@@ -68,7 +71,7 @@ impl<'input> fmt::Debug for BreakpadFileRecord<'input> {
 
 /// Breakpad line record declaring the mapping of a memory address to file and
 /// line number.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct BreakpadLineRecord {
     pub address: u64,
     pub line: u64,
@@ -76,6 +79,7 @@ pub struct BreakpadLineRecord {
 }
 
 /// Breakpad function record declaring address and size of a source function.
+#[derive(PartialEq)]
 pub struct BreakpadFuncRecord<'input> {
     pub address: u64,
     pub size: u64,
@@ -95,6 +99,7 @@ impl<'input> fmt::Debug for BreakpadFuncRecord<'input> {
 }
 
 /// Breakpad public record declaring a linker-visible symbol.
+#[derive(PartialEq)]
 pub struct BreakpadPublicRecord<'input> {
     pub address: u64,
     pub size: u64,
@@ -406,7 +411,7 @@ fn parse_public(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
     } else {
         line
     };
-    let mut record = line.splitn(4, |b| *b == b' ');
+    let mut record = line.splitn(3, |b| *b == b' ');
 
     let address = record
         .next()
@@ -469,4 +474,25 @@ fn parse_line(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
         line: u64::from_str(&line).map_err(|_| ParseBreakpadError("invalid line number"))?,
         file_id: u64::from_str(&file_id).map_err(|_| ParseBreakpadError("invalid line file id"))?,
     }))
+}
+
+#[test]
+fn test_parse_line() {
+    let iter = BreakpadRecords::from_bytes(&b"\
+        PUBLIC 2f30 0 google_breakpad::ExceptionHandler::DoDump(int, void const*, unsigned long)\n\
+        FUNC 1000 114 0 google_breakpad::CrashGenerationClient::RequestDump(_EXCEPTION_POINTERS *,MDRawAssertionInfo *)\
+    "[..]);
+    let records: Vec<_> = iter.map(|x| x.unwrap()).collect();
+    assert_eq!(records.len(), 2);
+    assert_eq!(records[0], BreakpadRecord::Public(BreakpadPublicRecord {
+        address: 12080,
+        size: 0,
+        name: &b"google_breakpad::ExceptionHandler::DoDump(int, void const*, unsigned long)"[..],
+    }));
+    assert_eq!(records[1], BreakpadRecord::Function(BreakpadFuncRecord {
+        address: 4096,
+        size: 276,
+        name: &b"google_breakpad::CrashGenerationClient::RequestDump(_EXCEPTION_POINTERS *,MDRawAssertionInfo *)"[..],
+        lines: vec![],
+    }));
 }
