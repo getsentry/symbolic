@@ -484,11 +484,14 @@ fn test_parse_line() {
     "[..]);
     let records: Vec<_> = iter.map(|x| x.unwrap()).collect();
     assert_eq!(records.len(), 2);
-    assert_eq!(records[0], BreakpadRecord::Public(BreakpadPublicRecord {
-        address: 12080,
-        size: 0,
-        name: &b"google_breakpad::ExceptionHandler::DoDump(int, void const*, unsigned long)"[..],
-    }));
+    assert_eq!(
+        records[0],
+        BreakpadRecord::Public(BreakpadPublicRecord {
+            address: 12080,
+            size: 0,
+            name: &b"google_breakpad::ExceptionHandler::DoDump(int, void const*, unsigned long)"[..],
+        })
+    );
     assert_eq!(records[1], BreakpadRecord::Function(BreakpadFuncRecord {
         address: 4096,
         size: 276,
