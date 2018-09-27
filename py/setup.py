@@ -10,12 +10,12 @@ from setuptools import setup, find_packages
 from distutils.command.sdist import sdist
 
 
-_version_re = re.compile(r'^version\s*=\s*"(.*?)"\s*$(?m)')
+_version_re = re.compile(r'(?m)^version\s*=\s*"(.*?)"\s*$')
 
 
 DEBUG_BUILD = os.environ.get('SYMBOLIC_DEBUG') == '1'
 
-with open('README', 'rb') as f:
+with open('README') as f:
     readme = f.read()
 
 
@@ -33,7 +33,7 @@ def vendor_rust_deps():
 
 
 def write_version():
-    with open('version.txt', 'wb') as f:
+    with open('version.txt', 'w') as f:
         f.write('%s\n' % version)
 
 
