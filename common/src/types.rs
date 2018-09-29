@@ -76,6 +76,7 @@ pub enum Arch {
     ArmV7em,
     Arm64,
     Arm64V8,
+    Arm64e,
     Ppc,
     Ppc64,
     #[doc(hidden)]
@@ -96,12 +97,15 @@ impl Arch {
     #[cfg(feature = "with_objects")]
     pub fn from_mach(cputype: u32, cpusubtype: u32) -> Result<Arch, UnknownArchError> {
         use goblin::mach::constants::cputype::*;
+        // from dyld-519.2.2
+        const CPU_SUBTYPE_ARM64_E: u32 = 2;
         Ok(match (cputype, cpusubtype) {
             (CPU_TYPE_I386, CPU_SUBTYPE_I386_ALL) => Arch::X86,
             (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_ALL) => Arch::X86_64,
             (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H) => Arch::X86_64h,
             (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_ALL) => Arch::Arm64,
             (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_V8) => Arch::Arm64V8,
+            (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_E) => Arch::Arm64e,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_ALL) => Arch::Arm,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V5TEJ) => Arch::ArmV5,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V6) => Arch::ArmV6,
@@ -176,7 +180,7 @@ impl Arch {
             Arch::Unknown | Arch::__Max => CpuFamily::Unknown,
             Arch::X86 => CpuFamily::Intel32,
             Arch::X86_64 | Arch::X86_64h => CpuFamily::Intel64,
-            Arch::Arm64 | Arch::Arm64V8 => CpuFamily::Arm64,
+            Arch::Arm64 | Arch::Arm64V8 | Arch::Arm64e => CpuFamily::Arm64,
             Arch::Arm
             | Arch::ArmV5
             | Arch::ArmV6
@@ -196,7 +200,12 @@ impl Arch {
     pub fn pointer_size(self) -> Option<usize> {
         match self {
             Arch::Unknown | Arch::__Max => None,
-            Arch::X86_64 | Arch::X86_64h | Arch::Arm64 | Arch::Arm64V8 | Arch::Ppc64 => Some(8),
+            Arch::X86_64
+            | Arch::X86_64h
+            | Arch::Arm64
+            | Arch::Arm64V8
+            | Arch::Arm64e
+            | Arch::Ppc64 => Some(8),
             Arch::X86
             | Arch::Arm
             | Arch::ArmV5
@@ -221,6 +230,7 @@ impl Arch {
             Arch::X86_64h => "x86_64h",
             Arch::Arm64 => "arm64",
             Arch::Arm64V8 => "arm64v8",
+            Arch::Arm64e => "arm64e",
             Arch::Arm => "arm",
             Arch::ArmV5 => "armv5",
             Arch::ArmV6 => "armv6",
@@ -284,6 +294,7 @@ impl str::FromStr for Arch {
             "x86_64h" => Arch::X86_64h,
             "arm64" => Arch::Arm64,
             "arm64v8" => Arch::Arm64V8,
+            "arm64e" => Arch::Arm64e,
             "arm" => Arch::Arm,
             "armv5" => Arch::ArmV5,
             "armv6" => Arch::ArmV6,
