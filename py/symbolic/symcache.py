@@ -168,5 +168,5 @@ def find_best_instruction(addr, arch, crashing_frame=False,
     ii[0].ip_reg = parse_addr(ip_reg)
     try:
         return int(rustcall(lib.symbolic_find_best_instruction, ii))
-    except (exceptions.Parse, exceptions.NotFound):
+    except exceptions.UnknownArchError:
         return int(addr)
