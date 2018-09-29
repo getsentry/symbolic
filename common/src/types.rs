@@ -200,7 +200,12 @@ impl Arch {
     pub fn pointer_size(self) -> Option<usize> {
         match self {
             Arch::Unknown | Arch::__Max => None,
-            Arch::X86_64 | Arch::X86_64h | Arch::Arm64 | Arch::Arm64V8 | Arch::Arm64e | Arch::Ppc64 => Some(8),
+            Arch::X86_64
+            | Arch::X86_64h
+            | Arch::Arm64
+            | Arch::Arm64V8
+            | Arch::Arm64e
+            | Arch::Ppc64 => Some(8),
             Arch::X86
             | Arch::Arm
             | Arch::ArmV5
