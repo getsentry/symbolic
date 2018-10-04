@@ -27,13 +27,15 @@
 //! # }
 //! ```
 extern crate cpp_demangle;
+extern crate msvc_demangler;
 extern crate rustc_demangle;
 extern crate symbolic_common;
 
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 
-use cpp_demangle::{DemangleOptions as CppOptions, Symbol};
+use cpp_demangle::{DemangleOptions as CppOptions, Symbol as CppSymbol};
+use msvc_demangler::DemangleFlags as MsvcFlags;
 
 use symbolic_common::types::{Language, Name};
 
@@ -89,8 +91,26 @@ fn is_maybe_cpp(ident: &str) -> bool {
     ident.starts_with("_Z") || ident.starts_with("__Z")
 }
 
+fn is_maybe_msvc(ident: &str) -> bool {
+    ident.starts_with('?') || ident.starts_with("@?")
+}
+
+fn is_maybe_switf(ident: &str) -> bool {
+    CString::new(ident)
+        .map(|cstr| unsafe { symbolic_demangle_is_swift_symbol(cstr.as_ptr()) != 0 })
+        .unwrap_or(false)
+}
+
+fn try_demangle_msvc(ident: &str, _opts: DemangleOptions) -> Option<String> {
+    msvc_demangler::demangle(ident, MsvcFlags::LessWhitespace).ok()
+}
+
 fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
-    let symbol = match Symbol::new(ident) {
+    if is_maybe_msvc(ident) {
+        return try_demangle_msvc(ident, opts);
+    }
+
+    let symbol = match CppSymbol::new(ident) {
         Ok(symbol) => symbol,
         Err(_) => return None,
     };
@@ -184,17 +204,12 @@ impl<'a> Demangle for Name<'a> {
             return Some(Language::Rust);
         }
 
-        if is_maybe_cpp(self.as_str()) {
+        if is_maybe_cpp(self.as_str()) || is_maybe_msvc(self.as_str()) {
             return Some(Language::Cpp);
         }
 
-        // swift?
-        if let Ok(sym) = CString::new(self.as_str()) {
-            unsafe {
-                if symbolic_demangle_is_swift_symbol(sym.as_ptr()) != 0 {
-                    return Some(Language::Swift);
-                }
-            }
+        if is_maybe_switf(self.as_str()) {
+            return Some(Language::Swift);
         }
 
         None
