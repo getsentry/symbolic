@@ -16,6 +16,7 @@ build = "build.rs"
 
 [dependencies]
 cpp_demangle = "0.2.12"
+msvc-demangler = "0.6.0"
 rustc-demangle = "0.1.9"
 symbolic-common = { version = "5.3.0", path = "../common" }
 

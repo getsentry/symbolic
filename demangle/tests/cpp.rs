@@ -1,6 +1,6 @@
 //! C++ Itanium Demangling Tests
 //! We use cpp_demangle under the hood which runs the libiberty test suite
-//! Still, we run some tests here -- also to prepare for MSVC.
+//! Still, we run some basic regression tests here to detect demangling differences.
 
 extern crate symbolic_common;
 extern crate symbolic_demangle;
