@@ -1,10 +1,11 @@
 use std::ffi::CStr;
+use std::mem;
 use std::os::raw::c_char;
 use std::ptr;
 use std::str::FromStr;
 
 use symbolic::common::byteview::ByteView;
-use symbolic::debuginfo::{DebugId, FatObject, Object};
+use symbolic::debuginfo::{DebugFeatures, DebugId, FatObject, Object};
 
 use core::SymbolicStr;
 
@@ -13,6 +14,13 @@ pub struct SymbolicFatObject;
 
 /// A single arch object.
 pub struct SymbolicObject;
+
+/// A list of object features.
+#[repr(C)]
+pub struct SymbolicObjectFeatures {
+    data: *mut SymbolicStr,
+    len: usize,
+}
 
 ffi_fn! {
     /// Loads a fat object from a given path.
@@ -98,6 +106,34 @@ ffi_fn! {
         } else {
             SymbolicStr::default()
         })
+    }
+}
+
+ffi_fn! {
+    unsafe fn symbolic_object_get_features(
+        so: *const SymbolicObject,
+    ) -> Result<SymbolicObjectFeatures> {
+        let o = so as *const Object<'static>;
+
+        let mut features = Vec::new();
+        for feature in (*o).features() {
+            features.push(SymbolicStr::from(feature.to_string()));
+        }
+        features.shrink_to_fit();
+
+        let result = SymbolicObjectFeatures {
+            len: features.len(),
+            data: features.as_mut_ptr(),
+        };
+
+        mem::forget(features);
+        Ok(result)
+    }
+}
+
+ffi_fn! {
+    unsafe fn symbolic_object_features_free(f: *mut SymbolicObjectFeatures) {
+        Vec::from_raw_parts((*f).data, (*f).len, (*f).len)
     }
 }
 

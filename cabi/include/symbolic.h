@@ -181,6 +181,14 @@ typedef struct {
 } SymbolicLookupResult;
 
 /*
+ * A list of object features.
+ */
+typedef struct {
+  SymbolicStr *data;
+  uintptr_t len;
+} SymbolicObjectFeatures;
+
+/*
  * OS and CPU information in a minidump.
  */
 typedef struct {
@@ -416,6 +424,8 @@ void symbolic_lookup_result_free(SymbolicLookupResult *slr);
  */
 SymbolicStr symbolic_normalize_debug_id(const SymbolicStr *sid);
 
+void symbolic_object_features_free(SymbolicObjectFeatures *f);
+
 /*
  * Frees an object returned from a fat object.
  */
@@ -430,6 +440,8 @@ SymbolicStr symbolic_object_get_arch(const SymbolicObject *so);
  * Returns the kind of debug data contained in this object file, if any (e.g. DWARF).
  */
 SymbolicStr symbolic_object_get_debug_kind(const SymbolicObject *so);
+
+SymbolicObjectFeatures symbolic_object_get_features(const SymbolicObject *so);
 
 /*
  * Returns the debug identifier of the object.
