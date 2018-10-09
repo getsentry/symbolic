@@ -30,12 +30,23 @@ fn has_breakpad_unwind_info(object: &Object) -> bool {
 /// A debug feature of an `Object` file.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum ObjectFeature {
-    /// This object contains debug information. It can be used to symbolicate crashes.
+    /// This object contains debug information.
+    ///
+    /// It can be used to resolve native memory addresses to stack frames. Examples are Dwarf's
+    /// .debug_info and related sections, or the Debug Info (DBI) stream in PDBs.
     DebugInfo,
 
-    /// This object contains unwind information. It can be used to improve stack walking on stack
-    /// memory.
+    /// This object contains unwind information.
+    ///
+    /// It can be used to improve stack walking on stack memory. Examples are Call Frame Information
+    /// (CFI) Dwarf or FPO-Info in PDBs.
     UnwindInfo,
+
+    /// This object contains source name mapping information.
+    ///
+    /// It can be used to map obfuscated or shortened names to their original representations.
+    /// Examples are JavaScript source maps or Proguard mapping files.
+    Mapping,
 }
 
 impl fmt::Display for ObjectFeature {
@@ -43,6 +54,7 @@ impl fmt::Display for ObjectFeature {
         match *self {
             ObjectFeature::DebugInfo => write!(f, "debug"),
             ObjectFeature::UnwindInfo => write!(f, "unwind"),
+            ObjectFeature::Mapping => write!(f, "mapping"),
         }
     }
 }
@@ -54,6 +66,9 @@ pub trait DebugFeatures {
 
     /// Checks whether this object contains processable unwind information (CFI).
     fn has_unwind_info(&self) -> bool;
+
+    /// Checks whether this object contains processable name mapping info.
+    fn has_mapping(&self) -> bool;
 
     /// Checks whether this object has a given feature.
     fn has_feature(&self, tag: ObjectFeature) -> bool;
@@ -81,10 +96,16 @@ impl<'a> DebugFeatures for Object<'a> {
         }
     }
 
+    fn has_mapping(&self) -> bool {
+        // Added for future proofing
+        false
+    }
+
     fn has_feature(&self, tag: ObjectFeature) -> bool {
         match tag {
             ObjectFeature::DebugInfo => self.has_debug_info(),
             ObjectFeature::UnwindInfo => self.has_unwind_info(),
+            ObjectFeature::Mapping => self.has_mapping(),
         }
     }
 
@@ -97,6 +118,10 @@ impl<'a> DebugFeatures for Object<'a> {
 
         if self.has_feature(ObjectFeature::UnwindInfo) {
             features.insert(ObjectFeature::UnwindInfo);
+        }
+
+        if self.has_feature(ObjectFeature::Mapping) {
+            features.insert(ObjectFeature::Mapping);
         }
 
         features
