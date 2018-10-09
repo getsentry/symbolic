@@ -32,6 +32,14 @@ pub fn find_elf_section<'elf, 'data>(
             }
 
             let offset = header.sh_offset as usize;
+            if offset == 0 {
+                // We're defensive here. On darwin, dsymutil leaves phantom section headers while
+                // stripping their data from the file by setting their offset to 0. We know that no
+                // section can start at an absolute file offset of zero, so we can safely skip them
+                // in case similar things happen on linux.
+                return None;
+            }
+
             let size = header.sh_size as usize;
             return Some(ElfSection {
                 header,

@@ -57,7 +57,14 @@ pub fn find_mach_section<'data>(
     for section in segment {
         if let Ok((header, data)) = section {
             if header.name().map(|sec| sec == name).unwrap_or(false) {
-                return Some(MachSection { header, data });
+                // In some cases, dsymutil leaves sections headers but removes their data from the
+                // file. While the addr and size parameters are still set, `header.offset` is 0 in
+                // that case. We skip them just like the section was missing to avoid loading
+                // invalid data.
+                return match header.offset {
+                    0 => None,
+                    _ => Some(MachSection { header, data }),
+                };
             }
         }
     }
