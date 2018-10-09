@@ -619,7 +619,7 @@ impl ObjectClass {
             ObjectClass::Relocatable => "object",
             ObjectClass::Executable => "executable",
             ObjectClass::Library => "library",
-            ObjectClass::Dump => "dump",
+            ObjectClass::Dump => "memory dump",
             ObjectClass::Debug => "debug companion",
             ObjectClass::Other => "file",
         }
