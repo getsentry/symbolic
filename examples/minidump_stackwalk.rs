@@ -13,7 +13,7 @@ use walkdir::WalkDir;
 use symbolic::common::byteview::ByteView;
 use symbolic::common::types::{Arch, ObjectKind};
 use symbolic::debuginfo::{FatObject, Object};
-use symbolic::minidump::cfi::AsciiCfiWriter;
+use symbolic::minidump::cfi::CfiCache;
 use symbolic::minidump::processor::{CodeModuleId, FrameInfoMap, ProcessState, StackFrame};
 use symbolic::symcache::{InstructionInfo, LineInfo, SymCache};
 
@@ -86,8 +86,8 @@ where
 {
     collect_referenced_objects(path, state, |object| {
         // Silently skip all debug symbols without CFI
-        Ok(match AsciiCfiWriter::transform(&object) {
-            Ok(buffer) => Some(ByteView::from_vec(buffer)),
+        Ok(match CfiCache::from_object(&object) {
+            Ok(cficache) => Some(cficache),
             Err(_) => None,
         })
     })
