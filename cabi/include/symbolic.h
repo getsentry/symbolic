@@ -30,6 +30,7 @@ enum SymbolicErrorCode {
   SYMBOLIC_ERROR_CODE_CFI_ERROR_BAD_DEBUG_INFO = 3003,
   SYMBOLIC_ERROR_CODE_CFI_ERROR_UNSUPPORTED_ARCH = 3004,
   SYMBOLIC_ERROR_CODE_CFI_ERROR_WRITE_ERROR = 3005,
+  SYMBOLIC_ERROR_CODE_CFI_ERROR_BAD_FILE_MAGIC = 3006,
   SYMBOLIC_ERROR_CODE_PROCESS_MINIDUMP_ERROR_MINIDUMP_NOT_FOUND = 4001,
   SYMBOLIC_ERROR_CODE_PROCESS_MINIDUMP_ERROR_NO_MINIDUMP_HEADER = 4002,
   SYMBOLIC_ERROR_CODE_PROCESS_MINIDUMP_ERROR_NO_THREAD_LIST = 4003,
@@ -66,6 +67,11 @@ enum SymbolicFrameTrust {
   SYMBOLIC_FRAME_TRUST_CONTEXT,
 };
 typedef uint32_t SymbolicFrameTrust;
+
+/*
+ * Represents a symbolic CFI cache.
+ */
+typedef struct SymbolicCfiCache SymbolicCfiCache;
 
 /*
  * A potential multi arch object.
@@ -125,11 +131,6 @@ typedef struct {
   uint32_t cputype;
   uint32_t cpusubtype;
 } SymbolicMachoArch;
-
-typedef struct {
-  uint8_t *bytes;
-  uintptr_t len;
-} SymbolicCfiCache;
 
 /*
  * Represents an instruction info.
@@ -313,12 +314,34 @@ SymbolicStr symbolic_arch_to_breakpad(const SymbolicStr *arch);
 void symbolic_cfi_cache_free(SymbolicCfiCache *scache);
 
 /*
- * Extracts call frame information (CFI) from an Object in ASCII format.
- *
- * To use this, create a `SymbolicFrameInfoMap` and pass it CFI for referenced modules during
- * minidump processing to receive improved stack traces.
+ * Extracts call frame information (CFI) from an Object.
  */
 SymbolicCfiCache *symbolic_cfi_cache_from_object(const SymbolicObject *sobj);
+
+/*
+ * Loads a CFI cache from the given path.
+ */
+SymbolicCfiCache *symbolic_cfi_cache_from_path(const char *path);
+
+/*
+ * Returns a pointer to the raw buffer of the CFI cache.
+ */
+const uint8_t *symbolic_cfi_cache_get_bytes(const SymbolicCfiCache *scache);
+
+/*
+ * Returns the size of the raw buffer of the CFI cache.
+ */
+uintptr_t symbolic_cfi_cache_get_size(const SymbolicCfiCache *scache);
+
+/*
+ * Returns the file format version of the CFI cache.
+ */
+uint32_t symbolic_cfi_cache_get_version(const SymbolicCfiCache *scache);
+
+/*
+ * Returns the latest CFI cache version.
+ */
+uint32_t symbolic_cfi_cache_latest_version(void);
 
 /*
  * Demangles a given identifier.
@@ -388,7 +411,7 @@ SymbolicFatObject *symbolic_fatobject_open(const char *path);
 uint64_t symbolic_find_best_instruction(const SymbolicInstructionInfo *ii);
 
 /*
- * Adds CFI for a code module specified by the `sid` argument.
+ * Adds the CfiCache for a module specified by the `sid` argument.
  */
 void symbolic_frame_info_map_add(const SymbolicFrameInfoMap *smap,
                                  const SymbolicStr *sid,
@@ -670,7 +693,7 @@ bool symbolic_symcache_has_file_info(const SymbolicSymCache *scache);
 bool symbolic_symcache_has_line_info(const SymbolicSymCache *scache);
 
 /*
- * Returns the version of the cache file.
+ * Returns the latest symcache version.
  */
 uint32_t symbolic_symcache_latest_file_format_version(void);
 

@@ -138,6 +138,7 @@ pub enum SymbolicErrorCode {
     CfiErrorBadDebugInfo = 3003,
     CfiErrorUnsupportedArch = 3004,
     CfiErrorWriteError = 3005,
+    CfiErrorBadFileMagic = 3006,
 
     // symbolic::minidump::processor
     ProcessMinidumpErrorMinidumpNotFound = 4001,
@@ -224,6 +225,7 @@ impl SymbolicErrorCode {
                     CfiErrorKind::BadDebugInfo => SymbolicErrorCode::CfiErrorBadDebugInfo,
                     CfiErrorKind::UnsupportedArch => SymbolicErrorCode::CfiErrorUnsupportedArch,
                     CfiErrorKind::WriteError => SymbolicErrorCode::CfiErrorWriteError,
+                    CfiErrorKind::BadFileMagic => SymbolicErrorCode::CfiErrorBadFileMagic,
                 };
             }
 

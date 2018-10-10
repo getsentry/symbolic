@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
-use std::io::Write;
+use std::io::{self, Write};
 
 use failure::{Backtrace, Context, Fail, ResultExt};
 use gimli::{
@@ -9,10 +9,14 @@ use gimli::{
     UnwindTable,
 };
 
+use symbolic_common::byteview::ByteView;
 use symbolic_common::types::{Arch, DebugKind, UnknownArchError};
 use symbolic_debuginfo::{DwarfData, DwarfSection, Object};
 
 use registers::get_register_name;
+
+/// The latest version of the file format.
+pub const CFICACHE_LATEST_VERSION: u32 = 1;
 
 /// Possible error kinds of `CfiError`.
 #[derive(Debug, Fail, Copy, Clone)]
@@ -36,6 +40,10 @@ pub enum CfiErrorKind {
     /// Generic error when writing CFI information, likely IO.
     #[fail(display = "failed to write cfi")]
     WriteError,
+
+    /// Invalid magic bytes in the cfi cache header.
+    #[fail(display = "bad cfi cache magic")]
+    BadFileMagic,
 }
 
 /// An error returned by `AsciiCfiWriter`.
@@ -358,5 +366,111 @@ impl<W: Write + Default> AsciiCfiWriter<W> {
         let mut writer = Default::default();
         AsciiCfiWriter::new(&mut writer).process(object)?;
         Ok(writer)
+    }
+}
+
+struct CfiCacheV1<'a> {
+    byteview: ByteView<'a>,
+}
+
+impl<'a> CfiCacheV1<'a> {
+    pub fn raw(&self) -> &[u8] {
+        &self.byteview
+    }
+}
+
+enum CfiCacheInner<'a> {
+    V1(CfiCacheV1<'a>),
+}
+
+/// A cache file for call frame information (CFI).
+///
+/// The default way to use this cache is to construct it from an `Object` and save it to a file.
+/// Then, load it from the file and pass it to the minidump processor.
+///
+/// ```rust,no_run
+/// # extern crate symbolic_common;
+/// # extern crate symbolic_debuginfo;
+/// # extern crate symbolic_minidump;
+/// # extern crate failure;
+/// use std::fs::File;
+/// use symbolic_common::byteview::ByteView;
+/// use symbolic_debuginfo::FatObject;
+/// use symbolic_minidump::cfi::CfiCache;
+///
+/// # fn foo() -> Result<(), ::failure::Error> {
+/// let byteview = ByteView::from_path("/path/to/object")?;
+/// let fat = FatObject::parse(byteview)?;
+/// if let Some(object) = fat.get_object(0)? {
+///     let cache = CfiCache::from_object(&object)?;
+///     cache.write_to(File::create("my.cficache")?)?;
+/// }
+/// # Ok(())
+/// # }
+///
+/// # fn main() { foo().unwrap() }
+/// ```
+///
+/// ```rust,no_run
+/// # extern crate symbolic_common;
+/// # extern crate symbolic_debuginfo;
+/// # extern crate symbolic_minidump;
+/// # extern crate failure;
+/// use symbolic_common::byteview::ByteView;
+/// use symbolic_debuginfo::FatObject;
+/// use symbolic_minidump::cfi::CfiCache;
+///
+/// # fn foo() -> Result<(), ::failure::Error> {
+/// let byteview = ByteView::from_path("my.cficache")?;
+/// let cache = CfiCache::from_bytes(byteview)?;
+/// # Ok(())
+/// # }
+///
+/// # fn main() { foo().unwrap() }
+/// ```
+///
+pub struct CfiCache<'a> {
+    inner: CfiCacheInner<'a>,
+}
+
+impl CfiCache<'static> {
+    /// Construct a CFI cache from an `Object`.
+    pub fn from_object(object: &Object) -> Result<Self, CfiError> {
+        let buffer = AsciiCfiWriter::transform(object)?;
+        let byteview = ByteView::from_vec(buffer);
+        let inner = CfiCacheInner::V1(CfiCacheV1 { byteview });
+        Ok(CfiCache { inner })
+    }
+}
+
+impl<'a> CfiCache<'a> {
+    /// Load a symcache from a `ByteView`.
+    pub fn from_bytes(byteview: ByteView<'a>) -> Result<Self, CfiError> {
+        if byteview.starts_with(b"STACK") {
+            let inner = CfiCacheInner::V1(CfiCacheV1 { byteview });
+            return Ok(CfiCache { inner });
+        }
+
+        Err(CfiErrorKind::BadFileMagic.into())
+    }
+
+    /// Returns the cache file format version.
+    pub fn version(&self) -> u32 {
+        match self.inner {
+            CfiCacheInner::V1(_) => 1,
+        }
+    }
+
+    /// Returns the raw buffer of the cache file.
+    pub fn as_slice(&self) -> &[u8] {
+        match self.inner {
+            CfiCacheInner::V1(ref v1) => v1.raw(),
+        }
+    }
+
+    /// Writes the cache to the given writer.
+    pub fn write_to<W: Write>(&self, mut writer: W) -> Result<(), io::Error> {
+        io::copy(&mut self.as_slice(), &mut writer)?;
+        Ok(())
     }
 }

@@ -22,7 +22,7 @@ use utils::common_join_path;
 use writer;
 
 /// The magic file preamble to identify symcache files.
-pub const SYMCACHE_MAGIC: [u8; 4] = [b'S', b'Y', b'M', b'C'];
+pub const SYMCACHE_MAGIC: [u8; 4] = *b"SYMC";
 
 /// The latest version of the file format.
 pub const SYMCACHE_LATEST_VERSION: u32 = 2;
