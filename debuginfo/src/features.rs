@@ -3,6 +3,7 @@ use std::fmt;
 
 use dwarf::{DwarfData, DwarfSection};
 use object::{Object, ObjectTarget};
+use symbols::SymbolTable;
 
 fn has_dwarf_unwind_info(object: &Object) -> bool {
     object.get_dwarf_section(DwarfSection::EhFrame).is_some()
@@ -19,17 +20,15 @@ fn has_breakpad_record(object: &Object, record: &[u8]) -> bool {
     false
 }
 
-fn has_breakpad_debug_info(object: &Object) -> bool {
-    has_breakpad_record(object, b"FUNC")
-}
-
-fn has_breakpad_unwind_info(object: &Object) -> bool {
-    has_breakpad_record(object, b"STACK")
-}
-
 /// A debug feature of an `Object` file.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum ObjectFeature {
+    /// This object contains a symbol table.
+    ///
+    /// It can be used as a fallback for memory address symbolication if `DebugInfo` is not
+    /// available. Symbol tables are usually contained in both executables and debug files.
+    SymbolTable,
+
     /// This object contains debug information.
     ///
     /// It can be used to resolve native memory addresses to stack frames. Examples are Dwarf's
@@ -52,6 +51,7 @@ pub enum ObjectFeature {
 impl fmt::Display for ObjectFeature {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
+            ObjectFeature::SymbolTable => write!(f, "symtab"),
             ObjectFeature::DebugInfo => write!(f, "debug"),
             ObjectFeature::UnwindInfo => write!(f, "unwind"),
             ObjectFeature::Mapping => write!(f, "mapping"),
@@ -61,6 +61,9 @@ impl fmt::Display for ObjectFeature {
 
 /// Inspects features of `Object` files.
 pub trait DebugFeatures {
+    /// Checks whether this file contains a symbol table.
+    fn has_symbol_table(&self) -> bool;
+
     /// Checks whether this object file contains processable debug information.
     fn has_debug_info(&self) -> bool;
 
@@ -78,12 +81,16 @@ pub trait DebugFeatures {
 }
 
 impl<'a> DebugFeatures for Object<'a> {
+    fn has_symbol_table(&self) -> bool {
+        self.has_symbols()
+    }
+
     fn has_debug_info(&self) -> bool {
         match self.target {
             ObjectTarget::Elf(..) => self.has_dwarf_data(),
             ObjectTarget::MachOSingle(..) => self.has_dwarf_data(),
             ObjectTarget::MachOFat(..) => self.has_dwarf_data(),
-            ObjectTarget::Breakpad(..) => has_breakpad_debug_info(self),
+            ObjectTarget::Breakpad(..) => has_breakpad_record(self, b"FUNC"),
         }
     }
 
@@ -92,7 +99,7 @@ impl<'a> DebugFeatures for Object<'a> {
             ObjectTarget::Elf(..) => has_dwarf_unwind_info(self),
             ObjectTarget::MachOSingle(..) => has_dwarf_unwind_info(self),
             ObjectTarget::MachOFat(..) => has_dwarf_unwind_info(self),
-            ObjectTarget::Breakpad(..) => has_breakpad_unwind_info(self),
+            ObjectTarget::Breakpad(..) => has_breakpad_record(self, b"STACK"),
         }
     }
 
@@ -101,8 +108,9 @@ impl<'a> DebugFeatures for Object<'a> {
         false
     }
 
-    fn has_feature(&self, tag: ObjectFeature) -> bool {
-        match tag {
+    fn has_feature(&self, feature: ObjectFeature) -> bool {
+        match feature {
+            ObjectFeature::SymbolTable => self.has_symbol_table(),
             ObjectFeature::DebugInfo => self.has_debug_info(),
             ObjectFeature::UnwindInfo => self.has_unwind_info(),
             ObjectFeature::Mapping => self.has_mapping(),
@@ -111,6 +119,10 @@ impl<'a> DebugFeatures for Object<'a> {
 
     fn features(&self) -> BTreeSet<ObjectFeature> {
         let mut features = BTreeSet::new();
+
+        if self.has_feature(ObjectFeature::SymbolTable) {
+            features.insert(ObjectFeature::SymbolTable);
+        }
 
         if self.has_feature(ObjectFeature::DebugInfo) {
             features.insert(ObjectFeature::DebugInfo);
