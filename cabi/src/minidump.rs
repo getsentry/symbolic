@@ -328,7 +328,7 @@ pub struct SymbolicCfiCache;
 
 ffi_fn! {
     /// Extracts call frame information (CFI) from an Object.
-    unsafe fn symbolic_cfi_cache_from_object(
+    unsafe fn symbolic_cficache_from_object(
         sobj: *const SymbolicObject,
     ) -> Result<*mut SymbolicCfiCache> {
         let cache = CfiCache::from_object(&*(sobj as *const Object))?;
@@ -338,7 +338,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Loads a CFI cache from the given path.
-    unsafe fn symbolic_cfi_cache_from_path(path: *const c_char) -> Result<*mut SymbolicCfiCache> {
+    unsafe fn symbolic_cficache_from_path(path: *const c_char) -> Result<*mut SymbolicCfiCache> {
         let byteview = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
         let cache = CfiCache::from_bytes(byteview)?;
         Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicCfiCache)
@@ -347,7 +347,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns the file format version of the CFI cache.
-    unsafe fn symbolic_cfi_cache_get_version(scache: *const SymbolicCfiCache) -> Result<u32> {
+    unsafe fn symbolic_cficache_get_version(scache: *const SymbolicCfiCache) -> Result<u32> {
         let cache = scache as *const CfiCache<'static>;
         Ok((*cache).version())
     }
@@ -355,7 +355,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns a pointer to the raw buffer of the CFI cache.
-    unsafe fn symbolic_cfi_cache_get_bytes(scache: *const SymbolicCfiCache) -> Result<*const u8> {
+    unsafe fn symbolic_cficache_get_bytes(scache: *const SymbolicCfiCache) -> Result<*const u8> {
         let cache = scache as *const CfiCache<'static>;
         Ok((*cache).as_slice().as_ptr())
     }
@@ -363,7 +363,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns the size of the raw buffer of the CFI cache.
-    unsafe fn symbolic_cfi_cache_get_size(scache: *const SymbolicCfiCache) -> Result<usize> {
+    unsafe fn symbolic_cficache_get_size(scache: *const SymbolicCfiCache) -> Result<usize> {
         let cache = scache as *const CfiCache<'static>;
         Ok((*cache).as_slice().len())
     }
@@ -371,7 +371,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Releases memory held by an unmanaged `SymbolicCfiCache` instance.
-    unsafe fn symbolic_cfi_cache_free(scache: *mut SymbolicCfiCache) {
+    unsafe fn symbolic_cficache_free(scache: *mut SymbolicCfiCache) {
         if !scache.is_null() {
             let cache = scache as *mut CfiCache<'static>;
             Box::from_raw(cache);
@@ -381,7 +381,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns the latest CFI cache version.
-    unsafe fn symbolic_cfi_cache_latest_version() -> Result<u32> {
+    unsafe fn symbolic_cficache_latest_version() -> Result<u32> {
         Ok(CFICACHE_LATEST_VERSION)
     }
 }

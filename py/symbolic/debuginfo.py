@@ -109,10 +109,10 @@ class Object(RustObject):
         return SymCache._from_objptr(self._methodcall(
             lib.symbolic_symcache_from_object))
 
-    def make_cfi_cache(self):
-        """Creates a cfi cache from the object."""
+    def make_cficache(self):
+        """Creates a cficache from the object."""
         return CfiCache._from_objptr(self._methodcall(
-            lib.symbolic_cfi_cache_from_object))
+            lib.symbolic_cficache_from_object))
 
     def __repr__(self):
         return '<Object %s %r>' % (

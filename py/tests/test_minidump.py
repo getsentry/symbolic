@@ -182,11 +182,11 @@ def test_linux_with_cfi(res_path):
     assert module.name == '/breakpad/examples/target/crash_linux'
 
 
-def test_macos_cfi_cache(res_path):
+def test_macos_cficache(res_path):
     binary_path = os.path.join(res_path, 'minidump', 'crash_macos')
     fat = FatObject.from_path(binary_path)
     obj = fat.get_object(arch="x86_64")
-    cache = obj.make_cfi_cache()
+    cache = obj.make_cficache()
 
     sym_path = os.path.join(res_path, 'minidump', 'crash_macos.sym')
     with cache.open_stream() as sym_cache:
@@ -194,11 +194,11 @@ def test_macos_cfi_cache(res_path):
             assert sym_cache.read() == sym_file.read()
 
 
-def test_linux_cfi_cache(res_path):
+def test_linux_cficache(res_path):
     binary_path = os.path.join(res_path, 'minidump', 'crash_linux')
     fat = FatObject.from_path(binary_path)
     obj = fat.get_object(arch="x86_64")
-    cache = obj.make_cfi_cache()
+    cache = obj.make_cficache()
 
     sym_path = os.path.join(res_path, 'minidump', 'crash_linux.sym')
     with cache.open_stream() as sym_cache:

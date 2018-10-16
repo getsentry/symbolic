@@ -311,37 +311,37 @@ SymbolicStr symbolic_arch_to_breakpad(const SymbolicStr *arch);
 /*
  * Releases memory held by an unmanaged `SymbolicCfiCache` instance.
  */
-void symbolic_cfi_cache_free(SymbolicCfiCache *scache);
+void symbolic_cficache_free(SymbolicCfiCache *scache);
 
 /*
  * Extracts call frame information (CFI) from an Object.
  */
-SymbolicCfiCache *symbolic_cfi_cache_from_object(const SymbolicObject *sobj);
+SymbolicCfiCache *symbolic_cficache_from_object(const SymbolicObject *sobj);
 
 /*
  * Loads a CFI cache from the given path.
  */
-SymbolicCfiCache *symbolic_cfi_cache_from_path(const char *path);
+SymbolicCfiCache *symbolic_cficache_from_path(const char *path);
 
 /*
  * Returns a pointer to the raw buffer of the CFI cache.
  */
-const uint8_t *symbolic_cfi_cache_get_bytes(const SymbolicCfiCache *scache);
+const uint8_t *symbolic_cficache_get_bytes(const SymbolicCfiCache *scache);
 
 /*
  * Returns the size of the raw buffer of the CFI cache.
  */
-uintptr_t symbolic_cfi_cache_get_size(const SymbolicCfiCache *scache);
+uintptr_t symbolic_cficache_get_size(const SymbolicCfiCache *scache);
 
 /*
  * Returns the file format version of the CFI cache.
  */
-uint32_t symbolic_cfi_cache_get_version(const SymbolicCfiCache *scache);
+uint32_t symbolic_cficache_get_version(const SymbolicCfiCache *scache);
 
 /*
  * Returns the latest CFI cache version.
  */
-uint32_t symbolic_cfi_cache_latest_version(void);
+uint32_t symbolic_cficache_latest_version(void);
 
 /*
  * Demangles a given identifier.

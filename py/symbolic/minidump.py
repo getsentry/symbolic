@@ -323,23 +323,23 @@ class FrameInfoMap(RustObject):
 
 
 # the most recent version for the CFI cache file format.
-SYMCACHE_LATEST_VERSION = rustcall(lib.symbolic_cfi_cache_latest_version)
+SYMCACHE_LATEST_VERSION = rustcall(lib.symbolic_cficache_latest_version)
 
 
 class CfiCache(RustObject):
     """A cache for call frame information (CFI) to improve native stackwalking"""
-    __dealloc_func__ = lib.symbolic_cfi_cache_free
+    __dealloc_func__ = lib.symbolic_cficache_free
 
     @classmethod
     def from_path(cls, path):
         """Loads a symcache from a file via mmap."""
         return cls._from_objptr(
-            rustcall(lib.symbolic_cfi_cache_from_path, encode_path(path)))
+            rustcall(lib.symbolic_cficache_from_path, encode_path(path)))
 
     @property
     def version(self):
         """Version of the file format."""
-        return self._methodcall(lib.symbolic_cfi_cache_get_version)
+        return self._methodcall(lib.symbolic_cficache_get_version)
 
     @property
     def is_latest_file_format(self):
@@ -348,8 +348,8 @@ class CfiCache(RustObject):
 
     def open_stream(self):
         """Returns a stream to read files from the internal buffer."""
-        buf = self._methodcall(lib.symbolic_cfi_cache_get_bytes)
-        size = self._methodcall(lib.symbolic_cfi_cache_get_size)
+        buf = self._methodcall(lib.symbolic_cficache_get_bytes)
+        size = self._methodcall(lib.symbolic_cficache_get_size)
         return io.BufferedReader(CacheReader(ffi.buffer(buf, size), self))
 
         buf = ffi.buffer(self._objptr.bytes, self._objptr.len)
