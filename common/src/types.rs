@@ -613,6 +613,18 @@ impl ObjectClass {
         }
     }
 
+    pub fn human_name(self) -> &'static str {
+        match self {
+            ObjectClass::None => "file",
+            ObjectClass::Relocatable => "object",
+            ObjectClass::Executable => "executable",
+            ObjectClass::Library => "library",
+            ObjectClass::Dump => "memory dump",
+            ObjectClass::Debug => "debug companion",
+            ObjectClass::Other => "file",
+        }
+    }
+
     #[cfg(feature = "with_objects")]
     pub fn from_mach(mach_type: u32) -> ObjectClass {
         use goblin::mach::header::*;
@@ -659,7 +671,11 @@ impl ObjectClass {
 
 impl fmt::Display for ObjectClass {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.name())
+        if f.alternate() {
+            write!(f, "{}", self.human_name())
+        } else {
+            write!(f, "{}", self.name())
+        }
     }
 }
 
