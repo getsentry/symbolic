@@ -33,10 +33,7 @@ fn test_features_elf_dbg() {
 
     assert_eq!(
         object.features(),
-        [ObjectFeature::SymbolTable, ObjectFeature::DebugInfo]
-            .iter()
-            .cloned()
-            .collect()
+        [ObjectFeature::DebugInfo].iter().cloned().collect()
     );
 }
 
@@ -71,7 +68,10 @@ fn test_features_mach_dbg() {
 
     assert_eq!(
         object.features(),
-        [ObjectFeature::DebugInfo].iter().cloned().collect()
+        [ObjectFeature::SymbolTable, ObjectFeature::DebugInfo]
+            .iter()
+            .cloned()
+            .collect()
     );
 }
 
