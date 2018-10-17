@@ -1,4 +1,24 @@
-from symbolic import arch_from_macho, id_from_breakpad, normalize_debug_id
+import os
+from symbolic import FatObject, arch_from_macho, id_from_breakpad, normalize_debug_id
+
+
+def test_object_features_mac(res_path):
+    binary_path = os.path.join(res_path, 'minidump', 'crash_macos')
+    fat = FatObject.from_path(binary_path)
+    obj = fat.get_object(arch="x86_64")
+    assert obj.features == set(['symtab', 'unwind'])
+
+    binary_path = os.path.join(res_path, 'minidump', 'crash_macos.dSYM', 'Contents', 'Resources', 'DWARF', 'crash_macos')
+    fat = FatObject.from_path(binary_path)
+    obj = fat.get_object(arch="x86_64")
+    assert obj.features == set(['symtab', 'debug'])
+
+
+def test_object_features_linux(res_path):
+    binary_path = os.path.join(res_path, 'minidump', 'crash_linux')
+    fat = FatObject.from_path(binary_path)
+    obj = fat.get_object(arch="x86_64")
+    assert obj.features == set(['debug', 'unwind'])
 
 
 def test_id_from_breakpad():

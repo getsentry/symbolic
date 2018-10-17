@@ -96,6 +96,14 @@ class Object(RustObject):
         """The kind of debug information in this object."""
         return str(decode_str(self._methodcall(lib.symbolic_object_get_debug_kind)))
 
+    @property
+    def features(self):
+        """The list of features offered by this debug file."""
+        struct = self._methodcall(lib.symbolic_object_get_features)
+        features = set(decode_str(struct.data[i]) for i in range(0, struct.len))
+        rustcall(lib.symbolic_object_features_free, ffi.addressof(struct))
+        return frozenset(features)
+
     def make_symcache(self):
         """Creates a symcache from the object."""
         return SymCache._from_objptr(self._methodcall(

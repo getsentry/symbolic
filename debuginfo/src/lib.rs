@@ -15,12 +15,14 @@ extern crate uuid;
 mod breakpad;
 mod dwarf;
 mod elf;
+mod features;
 mod mach;
 mod object;
 mod symbols;
 
 pub use breakpad::*;
 pub use dwarf::*;
+pub use features::*;
 pub use object::*;
 #[deprecated]
 pub use symbolic_common::types::{BreakpadFormat, DebugId, ParseDebugIdError};

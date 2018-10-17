@@ -25,6 +25,9 @@ uuid = "0.7.1"
 failure = "0.1.2"
 failure_derive = "0.1.2"
 
+[dev-dependencies]
+symbolic-testutils = { version = "5.3.0", path = "../testutils" }
+
 [features]
 default = []
 with_serde = ["serde", "serde_plain"]

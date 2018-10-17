@@ -252,6 +252,9 @@ impl<'data> Symbols<'data> {
 
 /// Gives access to the symbol table of an `Object` file.
 pub trait SymbolTable {
+    /// Checks whether this object contains DWARF infos.
+    fn has_symbols(&self) -> bool;
+
     /// Returns the symbols of this `Object`.
     ///
     /// If the symbol table has been stripped from the object, `None` is returned. In case a symbol
@@ -261,6 +264,16 @@ pub trait SymbolTable {
 }
 
 impl<'data> SymbolTable for Object<'data> {
+    fn has_symbols(&self) -> bool {
+        match self.target {
+            ObjectTarget::MachOSingle(macho) => macho.symbols.is_some(),
+            ObjectTarget::MachOFat(_, ref macho) => macho.symbols.is_some(),
+            // We don't support symbols for these yet
+            ObjectTarget::Elf(..) => false,
+            ObjectTarget::Breakpad(..) => false,
+        }
+    }
+
     fn symbols(&self) -> Result<Option<Symbols>, ObjectError> {
         match self.target {
             ObjectTarget::MachOSingle(macho) => Symbols::from_macho(macho),
