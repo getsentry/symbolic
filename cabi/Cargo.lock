@@ -655,30 +655,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "symbolic"
-version = "5.3.0"
+version = "5.4.0"
 dependencies = [
- "symbolic-common 5.3.0",
- "symbolic-debuginfo 5.3.0",
- "symbolic-demangle 5.3.0",
- "symbolic-minidump 5.3.0",
- "symbolic-proguard 5.3.0",
- "symbolic-sourcemap 5.3.0",
- "symbolic-symcache 5.3.0",
+ "symbolic-common 5.4.0",
+ "symbolic-debuginfo 5.4.0",
+ "symbolic-demangle 5.4.0",
+ "symbolic-minidump 5.4.0",
+ "symbolic-proguard 5.4.0",
+ "symbolic-sourcemap 5.4.0",
+ "symbolic-symcache 5.4.0",
 ]
 
 [[package]]
 name = "symbolic-cabi"
-version = "5.3.0"
+version = "5.4.0"
 dependencies = [
  "failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure_derive 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "symbolic 5.3.0",
+ "symbolic 5.4.0",
  "uuid 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "symbolic-common"
-version = "5.3.0"
+version = "5.4.0"
 dependencies = [
  "debugid 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -693,31 +693,31 @@ dependencies = [
 
 [[package]]
 name = "symbolic-debuginfo"
-version = "5.3.0"
+version = "5.4.0"
 dependencies = [
  "failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure_derive 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "goblin 0.0.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "symbolic-common 5.3.0",
+ "symbolic-common 5.4.0",
  "uuid 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "symbolic-demangle"
-version = "5.3.0"
+version = "5.4.0"
 dependencies = [
  "cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "cpp_demangle 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "msvc-demangler 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-demangle 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "symbolic-common 5.3.0",
+ "symbolic-common 5.4.0",
 ]
 
 [[package]]
 name = "symbolic-minidump"
-version = "5.3.0"
+version = "5.4.0"
 dependencies = [
  "cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -725,32 +725,32 @@ dependencies = [
  "gimli 0.16.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "symbolic-common 5.3.0",
- "symbolic-debuginfo 5.3.0",
+ "symbolic-common 5.4.0",
+ "symbolic-debuginfo 5.4.0",
  "uuid 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "symbolic-proguard"
-version = "5.3.0"
+version = "5.4.0"
 dependencies = [
  "proguard 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "symbolic-common 5.3.0",
+ "symbolic-common 5.4.0",
  "uuid 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "symbolic-sourcemap"
-version = "5.3.0"
+version = "5.4.0"
 dependencies = [
  "failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "sourcemap 2.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "symbolic-common 5.3.0",
+ "symbolic-common 5.4.0",
 ]
 
 [[package]]
 name = "symbolic-symcache"
-version = "5.3.0"
+version = "5.4.0"
 dependencies = [
  "dmsort 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -762,9 +762,9 @@ dependencies = [
  "lru-cache 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "matches 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "symbolic-common 5.3.0",
- "symbolic-debuginfo 5.3.0",
- "symbolic-demangle 5.3.0",
+ "symbolic-common 5.4.0",
+ "symbolic-debuginfo 5.4.0",
+ "symbolic-demangle 5.4.0",
  "uuid 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
