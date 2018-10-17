@@ -9,8 +9,8 @@ from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, attached_refs, encode_path, \
     encode_str, decode_str, CacheReader
 
-__all__ = ['CallStack', 'FrameInfoMap',
-           'FrameTrust', 'ProcessState', 'StackFrame']
+__all__ = ['CallStack', 'FrameInfoMap', 'FrameTrust', 'ProcessState',
+           'StackFrame', 'CfiCache']
 
 
 def _make_frame_trust():
