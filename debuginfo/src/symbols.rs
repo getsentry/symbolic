@@ -4,7 +4,7 @@ use std::iter::{IntoIterator, Peekable};
 use std::slice;
 
 use failure::ResultExt;
-use goblin::mach;
+use goblin::{elf, mach, strtab};
 use regex::Regex;
 
 use symbolic_common::types::Name;
@@ -72,6 +72,7 @@ impl<'data> Into<String> for Symbol<'data> {
 #[derive(Clone, Debug)]
 enum SymbolsInternal<'data> {
     MachO(&'data mach::symbols::Symbols<'data>),
+    Elf(&'data elf::Symtab<'data>, &'data strtab::Strtab<'data>),
 }
 
 impl<'data> SymbolsInternal<'data> {
@@ -105,6 +106,26 @@ impl<'data> SymbolsInternal<'data> {
                     addr,
                     len,
                 }
+            }
+            SymbolsInternal::Elf(symtab, strtab) => {
+                let sym = match symtab.get(index) {
+                    Some(sym) => sym,
+                    None => return Ok(None),
+                };
+
+                let name = match strtab.get(sym.st_name) {
+                    Some(Ok(name)) => Cow::Borrowed(name),
+                    Some(Err(error)) => Err(error).context(ObjectErrorKind::BadObject)?,
+                    None => Cow::Borrowed(""),
+                };
+
+                let addr = sym.st_value;
+                let len = match sym.st_size {
+                    0 => None,
+                    size => Some(size),
+                };
+
+                Symbol { name, addr, len }
             }
         }))
     }
@@ -207,6 +228,25 @@ impl<'data> Symbols<'data> {
         }))
     }
 
+    fn from_elf(elf: &'data elf::Elf) -> Result<Option<Symbols<'data>>, ObjectError> {
+        if elf.syms.len() == 0 {
+            return Ok(None);
+        }
+
+        // Only keep function symbols and order them by address
+        let mut symbol_map = BTreeMap::new();
+        for (symbol_index, symbol) in elf.syms.iter().enumerate() {
+            if symbol.is_function() {
+                symbol_map.insert(symbol.st_value, symbol_index);
+            }
+        }
+
+        Ok(Some(Symbols {
+            internal: SymbolsInternal::Elf(&elf.syms, &elf.strtab),
+            mappings: symbol_map.into_iter().collect(),
+        }))
+    }
+
     /// Searches for a single `Symbol` inside the symbol table.
     pub fn lookup(&self, addr: u64) -> Result<Option<Symbol<'data>>, ObjectError> {
         let found = match self.mappings.binary_search_by_key(&addr, |&x| x.0) {
@@ -228,6 +268,7 @@ impl<'data> Symbols<'data> {
         // Hidden symbols can only ever occur in Apple's dSYM
         match self.internal {
             SymbolsInternal::MachO(..) => (),
+            _ => return false,
         };
 
         for symbol in self.iter() {
@@ -268,9 +309,8 @@ impl<'data> SymbolTable for Object<'data> {
         match self.target {
             ObjectTarget::MachOSingle(macho) => macho.symbols.is_some(),
             ObjectTarget::MachOFat(_, ref macho) => macho.symbols.is_some(),
-            // We don't support symbols for these yet
-            ObjectTarget::Elf(..) => false,
-            ObjectTarget::Breakpad(..) => false,
+            ObjectTarget::Elf(elf) => elf.syms.len() > 0,
+            ObjectTarget::Breakpad(breakpad) => false,
         }
     }
 
@@ -278,6 +318,7 @@ impl<'data> SymbolTable for Object<'data> {
         match self.target {
             ObjectTarget::MachOSingle(macho) => Symbols::from_macho(macho),
             ObjectTarget::MachOFat(_, ref macho) => Symbols::from_macho(macho),
+            ObjectTarget::Elf(elf) => Symbols::from_elf(elf),
             _ => Err(ObjectErrorKind::UnsupportedSymbolTable.into()),
         }
     }
