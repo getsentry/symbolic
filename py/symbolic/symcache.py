@@ -80,6 +80,12 @@ class SymCache(RustObject):
             rustcall(lib.symbolic_symcache_from_path, encode_path(path)))
 
     @classmethod
+    def from_object(cls, obj):
+        """Creates a symcache from the given object."""
+        return cls._from_objptr(
+            rustcall(lib.symbolic_symcache_from_object, obj._get_objptr()))
+
+    @classmethod
     def from_bytes(cls, data):
         """Loads a symcache from a file via mmap."""
         return cls._from_objptr(

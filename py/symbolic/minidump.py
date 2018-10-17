@@ -332,9 +332,15 @@ class CfiCache(RustObject):
 
     @classmethod
     def from_path(cls, path):
-        """Loads a symcache from a file via mmap."""
+        """Loads a cficache from a file via mmap."""
         return cls._from_objptr(
             rustcall(lib.symbolic_cficache_from_path, encode_path(path)))
+
+    @classmethod
+    def from_object(cls, obj):
+        """Creates a cficache from the given object."""
+        return cls._from_objptr(
+            rustcall(lib.symbolic_cficache_from_object, obj._get_objptr()))
 
     @property
     def version(self):
