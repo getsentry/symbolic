@@ -322,8 +322,8 @@ class FrameInfoMap(RustObject):
                          encode_str(id), encode_path(path))
 
 
-# the most recent version for the CFI cache file format.
-SYMCACHE_LATEST_VERSION = rustcall(lib.symbolic_cficache_latest_version)
+# The most recent version for the CFI cache file format
+CFICACHE_LATEST_VERSION = rustcall(lib.symbolic_cficache_latest_version)
 
 
 class CfiCache(RustObject):
@@ -343,14 +343,14 @@ class CfiCache(RustObject):
             rustcall(lib.symbolic_cficache_from_object, obj._get_objptr()))
 
     @property
-    def version(self):
+    def file_format_version(self):
         """Version of the file format."""
         return self._methodcall(lib.symbolic_cficache_get_version)
 
     @property
     def is_latest_file_format(self):
         """Returns true if this is the latest file format."""
-        return self.version >= CFICACHE_LATEST_VERSION
+        return self.file_format_version >= CFICACHE_LATEST_VERSION
 
     def open_stream(self):
         """Returns a stream to read files from the internal buffer."""
