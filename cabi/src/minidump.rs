@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use symbolic::common::{byteview::ByteView, types::Arch};
 use symbolic::debuginfo::Object;
-use symbolic::minidump::cfi::AsciiCfiWriter;
+use symbolic::minidump::cfi::{CfiCache, CFICACHE_LATEST_VERSION};
 use symbolic::minidump::processor::{
     CallStack, CodeModule, CodeModuleId, FrameInfoMap, ProcessState, RegVal, StackFrame, SystemInfo,
 };
@@ -247,7 +247,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Adds CFI for a code module specified by the `sid` argument.
+    /// Adds the CfiCache for a module specified by the `sid` argument.
     unsafe fn symbolic_frame_info_map_add(
         smap: *const SymbolicFrameInfoMap,
         sid: *const SymbolicStr,
@@ -255,9 +255,10 @@ ffi_fn! {
     ) -> Result<()> {
         let map = smap as *mut FrameInfoMap<'static>;
         let byteview = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
+        let cache = CfiCache::from_bytes(byteview)?;
         let id = CodeModuleId::from_str((*sid).as_str())?;
 
-        (*map).insert(id, byteview);
+        (*map).insert(id, cache);
         Ok(())
     }
 }
@@ -322,50 +323,65 @@ ffi_fn! {
     }
 }
 
-#[repr(C)]
-pub struct SymbolicCfiCache {
-    pub bytes: *mut u8,
-    pub len: usize,
-}
+/// Represents a symbolic CFI cache.
+pub struct SymbolicCfiCache;
 
-impl Drop for SymbolicCfiCache {
-    fn drop(&mut self) {
-        unsafe {
-            Vec::from_raw_parts(self.bytes, self.len, self.len);
-        }
+ffi_fn! {
+    /// Extracts call frame information (CFI) from an Object.
+    unsafe fn symbolic_cficache_from_object(
+        sobj: *const SymbolicObject,
+    ) -> Result<*mut SymbolicCfiCache> {
+        let cache = CfiCache::from_object(&*(sobj as *const Object))?;
+        Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicCfiCache)
     }
 }
 
 ffi_fn! {
-    /// Extracts call frame information (CFI) from an Object in ASCII format.
-    ///
-    /// To use this, create a `SymbolicFrameInfoMap` and pass it CFI for referenced modules during
-    /// minidump processing to receive improved stack traces.
-    unsafe fn symbolic_cfi_cache_from_object(
-        sobj: *const SymbolicObject,
-    ) -> Result<*mut SymbolicCfiCache> {
-        let mut buffer = vec![] as Vec<u8>;
+    /// Loads a CFI cache from the given path.
+    unsafe fn symbolic_cficache_from_path(path: *const c_char) -> Result<*mut SymbolicCfiCache> {
+        let byteview = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
+        let cache = CfiCache::from_bytes(byteview)?;
+        Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicCfiCache)
+    }
+}
 
-        {
-            let mut writer = AsciiCfiWriter::new(&mut buffer);
-            writer.process(&*(sobj as *const Object))?;
-        }
+ffi_fn! {
+    /// Returns the file format version of the CFI cache.
+    unsafe fn symbolic_cficache_get_version(scache: *const SymbolicCfiCache) -> Result<u32> {
+        let cache = scache as *const CfiCache<'static>;
+        Ok((*cache).version())
+    }
+}
 
-        buffer.shrink_to_fit();
-        let bytes = mem::transmute(buffer.as_ptr());
-        let len = buffer.len();
-        mem::forget(buffer);
+ffi_fn! {
+    /// Returns a pointer to the raw buffer of the CFI cache.
+    unsafe fn symbolic_cficache_get_bytes(scache: *const SymbolicCfiCache) -> Result<*const u8> {
+        let cache = scache as *const CfiCache<'static>;
+        Ok((*cache).as_slice().as_ptr())
+    }
+}
 
-        let scache = SymbolicCfiCache { bytes, len };
-        Ok(Box::into_raw(Box::new(scache)))
+ffi_fn! {
+    /// Returns the size of the raw buffer of the CFI cache.
+    unsafe fn symbolic_cficache_get_size(scache: *const SymbolicCfiCache) -> Result<usize> {
+        let cache = scache as *const CfiCache<'static>;
+        Ok((*cache).as_slice().len())
     }
 }
 
 ffi_fn! {
     /// Releases memory held by an unmanaged `SymbolicCfiCache` instance.
-    unsafe fn symbolic_cfi_cache_free(scache: *mut SymbolicCfiCache) {
+    unsafe fn symbolic_cficache_free(scache: *mut SymbolicCfiCache) {
         if !scache.is_null() {
-            Box::from_raw(scache);
+            let cache = scache as *mut CfiCache<'static>;
+            Box::from_raw(cache);
         }
+    }
+}
+
+ffi_fn! {
+    /// Returns the latest CFI cache version.
+    unsafe fn symbolic_cficache_latest_version() -> Result<u32> {
+        Ok(CFICACHE_LATEST_VERSION)
     }
 }

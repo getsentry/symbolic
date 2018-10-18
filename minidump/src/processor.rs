@@ -13,6 +13,7 @@ use uuid::Uuid;
 use symbolic_common::byteview::ByteView;
 use symbolic_common::types::{Arch, CpuFamily, DebugId, ParseDebugIdError};
 
+use cfi::CfiCache;
 use utils;
 
 lazy_static! {
@@ -656,7 +657,7 @@ struct SymbolEntry {
 /// This information is required by the stackwalker in case framepointers are
 /// missing in the raw stacktraces. Frame information is given as plain ASCII
 /// text as specified in the Breakpad symbol file specification.
-pub type FrameInfoMap<'a> = BTreeMap<CodeModuleId, ByteView<'a>>;
+pub type FrameInfoMap<'a> = BTreeMap<CodeModuleId, CfiCache<'a>>;
 
 type IProcessState = c_void;
 
@@ -684,8 +685,13 @@ impl<'a> ProcessState<'a> {
         // Keep a reference to all CStrings to extend their lifetime.
         let cfi_vec: Vec<_> = frame_infos.map_or(Vec::new(), |s| {
             s.iter()
-                .map(|(k, v)| (CString::new(k.to_string()), v.len(), v.as_ptr()))
-                .collect()
+                .map(|(k, v)| {
+                    (
+                        CString::new(k.to_string()),
+                        v.as_slice().len(),
+                        v.as_slice().as_ptr(),
+                    )
+                }).collect()
         });
 
         // Keep a reference to all symbol entries to extend their lifetime.
