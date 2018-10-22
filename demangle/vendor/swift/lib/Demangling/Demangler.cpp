@@ -315,11 +315,11 @@ void NodeFactory::freeSlabs(Slab *slab) {
     slab = prev;
   }
 }
-  
+
 void NodeFactory::clear() {
   if (CurrentSlab) {
     freeSlabs(CurrentSlab->Previous);
-    
+
     // Recycle the last allocated slab.
     // Note that the size of the last slab is at least as big as all previous
     // slabs combined. Therefore it's not worth the effort of reusing all slabs.
@@ -389,7 +389,7 @@ void Demangler::init(StringRef MangledName) {
   Text = MangledName;
   Pos = 0;
 }
-  
+
 NodePointer Demangler::demangleSymbol(StringRef MangledName) {
   init(MangledName);
 
@@ -541,14 +541,14 @@ NodePointer Demangler::demangleTypeMangling() {
   TypeMangling = addChild(TypeMangling, Type);
   return TypeMangling;
 }
-  
+
 NodePointer Demangler::demangleSymbolicReference(const void *at) {
   // The symbolic reference is a 4-byte machine integer encoded in the following
   // four bytes.
   int32_t value;
   memcpy(&value, Text.data() + Pos, 4);
   Pos += 4;
-  
+
   // Use the resolver, if any, to produce the demangling tree the symbolic
   // reference represents.
   NodePointer resolved = nullptr;
@@ -558,7 +558,7 @@ NodePointer Demangler::demangleSymbolicReference(const void *at) {
   // information in the node.
   if (!resolved)
     resolved = createNode(Node::Kind::UnresolvedSymbolicReference, value);
-  
+
   // Register the result as a substitution.
   addSubstitution(resolved);
   return resolved;
@@ -1188,7 +1188,7 @@ NodePointer Demangler::popTypeList() {
         return nullptr;
       Root->addChild(Ty, *this);
     } while (!firstElem);
-    
+
     Root->reverseChildren();
   }
   return Root;
@@ -1262,7 +1262,7 @@ NodePointer Demangler::demangleBoundGenericArgs(NodePointer Nominal,
   // TODO: This would be a lot easier if we represented bound generic args
   // flatly in the demangling tree, since that's how they're mangled and also
   // how the runtime generally wants to consume them.
-  
+
   if (!Nominal)
     return nullptr;
 
@@ -1498,7 +1498,7 @@ NodePointer Demangler::demangleMetatype() {
       return nullptr;
   }
 }
-  
+
 NodePointer Demangler::demanglePrivateContextDescriptor() {
   switch (nextChar()) {
   case 'E': {
@@ -1520,7 +1520,7 @@ NodePointer Demangler::demanglePrivateContextDescriptor() {
     auto Context = popContext();
     if (!Context)
       return nullptr;
-    
+
     auto node = createNode(Node::Kind::AnonymousDescriptor);
     node->addChild(Context, *this);
     node->addChild(Discriminator, *this);
@@ -1629,7 +1629,7 @@ NodePointer Demangler::popAssocTypeName() {
   addChild(AssocTy, Proto);
   return AssocTy;
 }
-  
+
 NodePointer Demangler::popAssocTypePath() {
   NodePointer AssocTypePath = createNode(Node::Kind::AssocTypePath);
   bool firstElem = false;
@@ -1765,7 +1765,7 @@ NodePointer Demangler::demangleThunkOrSpecialization() {
         types.push_back(node);
         node = popNode();
       } while (node && node->getKind() == Node::Kind::Type);
-      
+
       NodePointer result;
       if (node) {
         if (node->getKind() == Node::Kind::DependentGenericSignature) {
@@ -1790,7 +1790,7 @@ NodePointer Demangler::demangleThunkOrSpecialization() {
                                : Node::Kind::KeyPathHashThunkHelper;
       NodePointer genericSig = nullptr;
       std::vector<NodePointer> types;
-      
+
       auto node = popNode();
       if (node) {
         if (node->getKind() == Node::Kind::DependentGenericSignature) {
@@ -1803,14 +1803,14 @@ NodePointer Demangler::demangleThunkOrSpecialization() {
       } else {
         return nullptr;
       }
-      
+
       while (auto node = popNode()) {
         if (node->getKind() != Node::Kind::Type) {
           return nullptr;
         }
         types.push_back(node);
       }
-      
+
       NodePointer result = createNode(nodeKind);
       for (auto i = types.rbegin(), e = types.rend(); i != e; ++i) {
         result->addChild(*i, *this);
@@ -1991,34 +1991,34 @@ NodePointer Demangler::demangleFuncSpecParam(Node::IndexType ParamIdx) {
       }
     }
     case 'd': {
-      unsigned Value = unsigned(FunctionSigSpecializationParamKind::Dead);
+      unsigned Value = (unsigned) FunctionSigSpecializationParamKind::Dead;
       if (nextIf('G'))
-        Value |= unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed);
+        Value |= (unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed;
       if (nextIf('X'))
-        Value |= unsigned(FunctionSigSpecializationParamKind::SROA);
+        Value |= (unsigned) FunctionSigSpecializationParamKind::SROA;
       return addChild(Param, createNode(
                   Node::Kind::FunctionSignatureSpecializationParamKind, Value));
     }
     case 'g': {
-      unsigned Value = unsigned(FunctionSigSpecializationParamKind::
-                                OwnedToGuaranteed);
+      unsigned Value = (unsigned) FunctionSigSpecializationParamKind::
+                                OwnedToGuaranteed;
       if (nextIf('X'))
-        Value |= unsigned(FunctionSigSpecializationParamKind::SROA);
+        Value |= (unsigned) FunctionSigSpecializationParamKind::SROA;
       return addChild(Param, createNode(
                   Node::Kind::FunctionSignatureSpecializationParamKind, Value));
     }
     case 'x':
       return addChild(Param, createNode(
                 Node::Kind::FunctionSignatureSpecializationParamKind,
-                unsigned(FunctionSigSpecializationParamKind::SROA)));
+                (unsigned) FunctionSigSpecializationParamKind::SROA));
     case 'i':
       return addChild(Param, createNode(
                 Node::Kind::FunctionSignatureSpecializationParamKind,
-                unsigned(FunctionSigSpecializationParamKind::BoxToValue)));
+                (unsigned) FunctionSigSpecializationParamKind::BoxToValue));
     case 's':
       return addChild(Param, createNode(
                 Node::Kind::FunctionSignatureSpecializationParamKind,
-                unsigned(FunctionSigSpecializationParamKind::BoxToStack)));
+                (unsigned) FunctionSigSpecializationParamKind::BoxToStack));
     default:
       return nullptr;
   }
@@ -2027,7 +2027,7 @@ NodePointer Demangler::demangleFuncSpecParam(Node::IndexType ParamIdx) {
 NodePointer Demangler::addFuncSpecParamNumber(NodePointer Param,
                                     FunctionSigSpecializationParamKind Kind) {
   Param->addChild(createNode(
-        Node::Kind::FunctionSignatureSpecializationParamKind, unsigned(Kind)),
+        Node::Kind::FunctionSignatureSpecializationParamKind, (unsigned) Kind),
         *this);
   CharVector Str;
   while (isDigit(peekChar())) {
@@ -2075,14 +2075,14 @@ NodePointer Demangler::demangleWitness() {
       return createWithChild(Node::Kind::ValueWitnessTable,
                              popNode(Node::Kind::Type));
     case 'v': {
-      unsigned Directness;
+      unsigned directness;
       switch (nextChar()) {
-        case 'd': Directness = unsigned(Directness::Direct); break;
-        case 'i': Directness = unsigned(Directness::Indirect); break;
+        case 'd': directness = (unsigned) Directness::Direct; break;
+        case 'i': directness = (unsigned) Directness::Indirect; break;
         default: return nullptr;
       }
       return createWithChildren(Node::Kind::FieldOffset,
-                        createNode(Node::Kind::Directness, Directness),
+                        createNode(Node::Kind::Directness, directness),
                         popNode(isEntity));
     }
     case 'P':
@@ -2278,7 +2278,7 @@ NodePointer Demangler::demangleSpecialType() {
         if (!genericArgs)
           return nullptr;
       }
-      
+
       auto fieldTypes = popTypeList();
       if (!fieldTypes)
         return nullptr;
@@ -2516,10 +2516,10 @@ NodePointer Demangler::demangleGenericSignature(bool hasParamCounts) {
 }
 
 NodePointer Demangler::demangleGenericRequirement() {
-  
+
   enum { Generic, Assoc, CompoundAssoc, Substitution } TypeKind;
   enum { Protocol, BaseClass, SameType, Layout } ConstraintKind;
-  
+
   switch (nextChar()) {
     case 'c': ConstraintKind = BaseClass; TypeKind = Assoc; break;
     case 'C': ConstraintKind = BaseClass; TypeKind = CompoundAssoc; break;
@@ -2648,7 +2648,7 @@ NodePointer Demangler::demangleValueWitness() {
   int Kind = decodeValueWitnessKind(StringRef(Code, 2));
   if (Kind < 0)
     return nullptr;
-  NodePointer VW = createNode(Node::Kind::ValueWitness, unsigned(Kind));
+  NodePointer VW = createNode(Node::Kind::ValueWitness, (unsigned) Kind);
   return addChild(VW, popNode(Node::Kind::Type));
 }
 
