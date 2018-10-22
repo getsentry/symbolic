@@ -1,32 +1,44 @@
-use symbolic_common::types::{Language, Name};
-use symbolic_demangle::{Demangle, DemangleFormat, DemangleOptions};
+use symbolic_demangle::{DemangleFormat, DemangleOptions};
 
-const WITH_ARGS: DemangleOptions = DemangleOptions {
+#[allow(unused)]
+pub const WITH_ARGS: DemangleOptions = DemangleOptions {
     format: DemangleFormat::Short,
     with_arguments: true,
 };
 
-const WITHOUT_ARGS: DemangleOptions = DemangleOptions {
+#[allow(unused)]
+pub const WITHOUT_ARGS: DemangleOptions = DemangleOptions {
     format: DemangleFormat::Short,
     with_arguments: false,
 };
 
-pub fn assert_demangle(
-    language: Language,
-    input: &str,
-    with_args: Option<&str>,
-    without_args: Option<&str>,
-) {
-    let name = Name::with_language(input, language);
-    if let Some(rv) = name.demangle(WITH_ARGS) {
-        assert_eq!(Some(rv.as_str()), with_args);
-    } else {
-        assert_eq!(None, with_args);
-    }
+#[macro_export]
+macro_rules! assert_demangle {
+    ($l:expr, $o:expr, { $($m:expr => $d:expr),* }) => {{
+        let mut __failures: Vec<String> = Vec::new();
 
-    if let Some(rv) = name.demangle(WITHOUT_ARGS) {
-        assert_eq!(Some(rv.as_str()), without_args);
-    } else {
-        assert_eq!(None, without_args);
-    }
+        $({
+            use symbolic_demangle::Demangle;
+
+            let __mangled = $m;
+            let __demangled = ::symbolic_common::types::Name::with_language(__mangled, $l).demangle($o);
+            let __demangled = __demangled.as_ref().map(|s| s.as_str()).unwrap_or("<demangling failed>");
+
+            if __demangled != $d {
+                __failures.push(format!(
+                    "{}\n   expected: {}\n   actual:   {}",
+                    __mangled,
+                    $d,
+                    __demangled
+                ));
+            }
+        })*
+
+        if !__failures.is_empty() {
+            panic!("demangling failed: \n\n{}\n", __failures.join("\n\n"));
+        }
+    }};
+    ($l:expr, $o:expr, { $($m:expr => $d:expr,)* }) => {
+        assert_demangle!($l, $o, { $($m => $d),* })
+    };
 }
