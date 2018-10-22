@@ -22,10 +22,10 @@ matrix:
       env: TEST=style-rust
     - os: linux
       script: make lint
-      env: TEST=lint-rust
+      env: TEST=lint-rust CXX=clang
     - os: linux
       script: make cargotest
-      env: TEST=linux-rust
+      env: TEST=linux-rust CXX=clang
     - os: osx
       script: make cargotest
       env: TEST=mac-rust
@@ -33,7 +33,7 @@ matrix:
     # Python test suite
     - os: linux
       script: make pytest
-      env: TEST=linux-python
+      env: TEST=linux-python CXX=clang
     - os: osx
       script: make pytest
       env: TEST=mac-python
