@@ -124,11 +124,14 @@ impl Arch {
         const CPU_SUBTYPE_ARM64_E: u32 = 2;
         Ok(match (cputype, cpusubtype) {
             (CPU_TYPE_I386, CPU_SUBTYPE_I386_ALL) => Arch::X86,
+            (CPU_TYPE_I386, _) => Arch::X86Unknown,
             (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_ALL) => Arch::X86_64,
             (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H) => Arch::X86_64h,
+            (CPU_TYPE_X86_64, _) => Arch::X86_64Unknown,
             (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_ALL) => Arch::Arm64,
             (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_V8) => Arch::Arm64V8,
             (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_E) => Arch::Arm64e,
+            (CPU_TYPE_ARM64, _) => Arch::Arm64Unknown,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_ALL) => Arch::Arm,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V5TEJ) => Arch::ArmV5,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V6) => Arch::ArmV6,
@@ -139,7 +142,7 @@ impl Arch {
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7K) => Arch::ArmV7k,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7M) => Arch::ArmV7m,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7EM) => Arch::ArmV7em,
-            (CPU_TYPE_ARM, _) => Arch::Arm,
+            (CPU_TYPE_ARM, _) => Arch::ArmUnknown,
             (CPU_TYPE_POWERPC, CPU_SUBTYPE_POWERPC_ALL) => Arch::Ppc,
             (CPU_TYPE_POWERPC64, CPU_SUBTYPE_POWERPC_ALL) => Arch::Ppc64,
             _ => return Err(UnknownArchError),
