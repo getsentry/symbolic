@@ -145,7 +145,7 @@ impl Arch {
             (CPU_TYPE_ARM, _) => Arch::ArmUnknown,
             (CPU_TYPE_POWERPC, CPU_SUBTYPE_POWERPC_ALL) => Arch::Ppc,
             (CPU_TYPE_POWERPC64, CPU_SUBTYPE_POWERPC_ALL) => Arch::Ppc64,
-            _ => return Err(UnknownArchError),
+            (_, _) => Arch::Unknown,
         })
     }
 
