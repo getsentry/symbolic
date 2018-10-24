@@ -238,14 +238,14 @@ impl Arch {
         match self {
             Arch::Unknown => "unknown",
             Arch::X86 => "x86",
-            Arch::X86Unknown => "x86?",
+            Arch::X86Unknown => "x86_unknown",
             Arch::X86_64 => "x86_64",
             Arch::X86_64h => "x86_64h",
-            Arch::X86_64Unknown => "x86_64?",
+            Arch::X86_64Unknown => "x86_64_unknown",
             Arch::Arm64 => "arm64",
             Arch::Arm64V8 => "arm64v8",
             Arch::Arm64e => "arm64e",
-            Arch::Arm64Unknown => "arm64?",
+            Arch::Arm64Unknown => "arm64_unknown",
             Arch::Arm => "arm",
             Arch::ArmV5 => "armv5",
             Arch::ArmV6 => "armv6",
@@ -256,7 +256,7 @@ impl Arch {
             Arch::ArmV7k => "armv7k",
             Arch::ArmV7m => "armv7m",
             Arch::ArmV7em => "armv7em",
-            Arch::ArmUnknown => "arm?",
+            Arch::ArmUnknown => "arm_unknown",
             Arch::Ppc => "ppc",
             Arch::Ppc64 => "ppc64",
         }
@@ -284,6 +284,18 @@ impl Arch {
             CpuFamily::Unknown => None,
         }
     }
+
+    /// Returns whether this architecture is well-known.
+    pub fn well_known(self) -> bool {
+        match self {
+            Arch::Unknown
+            | Arch::ArmUnknown
+            | Arch::Arm64Unknown
+            | Arch::X86Unknown
+            | Arch::X86_64Unknown => false,
+            _ => true,
+        }
+    }
 }
 
 impl Default for Arch {
@@ -303,14 +315,18 @@ impl str::FromStr for Arch {
 
     fn from_str(string: &str) -> Result<Arch, UnknownArchError> {
         Ok(match string {
+            "unknown" => Arch::Unknown,
             // this is an alias that is known among macho users
             "i386" => Arch::X86,
             "x86" => Arch::X86,
+            "x86_unknown" => Arch::X86Unknown,
             "x86_64" => Arch::X86_64,
             "x86_64h" => Arch::X86_64h,
+            "x86_64_unknown" => Arch::X86_64Unknown,
             "arm64" => Arch::Arm64,
             "arm64v8" => Arch::Arm64V8,
             "arm64e" => Arch::Arm64e,
+            "arm64_unknown" => Arch::Arm64Unknown,
             "arm" => Arch::Arm,
             "armv5" => Arch::ArmV5,
             "armv6" => Arch::ArmV6,
@@ -321,6 +337,7 @@ impl str::FromStr for Arch {
             "armv7k" => Arch::ArmV7k,
             "armv7m" => Arch::ArmV7m,
             "armv7em" => Arch::ArmV7em,
+            "arm_unknown" => Arch::ArmUnknown,
             "ppc" => Arch::Ppc,
             "ppc64" => Arch::Ppc64,
             _ => return Err(UnknownArchError),
