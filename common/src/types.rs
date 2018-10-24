@@ -60,37 +60,60 @@ pub struct UnknownArchError;
 #[allow(non_camel_case_types)]
 #[repr(u32)]
 pub enum Arch {
-    Unknown,
-    X86,
-    X86_64,
-    X86_64h,
-    Arm,
-    ArmV5,
-    ArmV6,
-    ArmV6m,
-    ArmV7,
-    ArmV7f,
-    ArmV7s,
-    ArmV7k,
-    ArmV7m,
-    ArmV7em,
-    Arm64,
-    Arm64V8,
-    Arm64e,
-    Ppc,
-    Ppc64,
-    #[doc(hidden)]
-    __Max,
+    Unknown = 0,
+    X86 = 101,
+    X86Unknown = 199,
+    X86_64 = 201,
+    X86_64h = 202,
+    X86_64Unknown = 299,
+    Arm = 301,
+    ArmV5 = 302,
+    ArmV6 = 303,
+    ArmV6m = 304,
+    ArmV7 = 305,
+    ArmV7f = 306,
+    ArmV7s = 307,
+    ArmV7k = 308,
+    ArmV7m = 309,
+    ArmV7em = 310,
+    ArmUnknown = 399,
+    Arm64 = 401,
+    Arm64V8 = 402,
+    Arm64e = 403,
+    Arm64Unknown = 499,
+    Ppc = 501,
+    Ppc64 = 601,
 }
 
 impl Arch {
     /// Creates an arch from the u32 it represents.
     pub fn from_u32(val: u32) -> Result<Arch, UnknownArchError> {
-        if val >= (Arch::__Max as u32) {
-            Err(UnknownArchError)
-        } else {
-            Ok(unsafe { mem::transmute(val) })
-        }
+        Ok(match val {
+            0 => Arch::Unknown,
+            1 | 101 => Arch::X86,
+            199 => Arch::X86Unknown,
+            2 | 201 => Arch::X86_64,
+            3 | 202 => Arch::X86_64h,
+            299 => Arch::X86_64Unknown,
+            4 | 301 => Arch::Arm,
+            5 | 302 => Arch::ArmV5,
+            6 | 303 => Arch::ArmV6,
+            7 | 304 => Arch::ArmV6m,
+            8 | 305 => Arch::ArmV7,
+            9 | 306 => Arch::ArmV7f,
+            10 | 307 => Arch::ArmV7s,
+            11 | 308 => Arch::ArmV7k,
+            12 | 309 => Arch::ArmV7m,
+            13 | 310 => Arch::ArmV7em,
+            399 => Arch::ArmUnknown,
+            14 | 401 => Arch::Arm64,
+            15 | 402 => Arch::Arm64V8,
+            16 | 403 => Arch::Arm64e,
+            499 => Arch::Arm64Unknown,
+            17 | 501 => Arch::Ppc,
+            18 | 601 => Arch::Ppc64,
+            _ => return Err(UnknownArchError),
+        })
     }
 
     /// Constructs an architecture from mach CPU types.
@@ -101,11 +124,14 @@ impl Arch {
         const CPU_SUBTYPE_ARM64_E: u32 = 2;
         Ok(match (cputype, cpusubtype) {
             (CPU_TYPE_I386, CPU_SUBTYPE_I386_ALL) => Arch::X86,
+            (CPU_TYPE_I386, _) => Arch::X86Unknown,
             (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_ALL) => Arch::X86_64,
             (CPU_TYPE_X86_64, CPU_SUBTYPE_X86_64_H) => Arch::X86_64h,
+            (CPU_TYPE_X86_64, _) => Arch::X86_64Unknown,
             (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_ALL) => Arch::Arm64,
             (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_V8) => Arch::Arm64V8,
             (CPU_TYPE_ARM64, CPU_SUBTYPE_ARM64_E) => Arch::Arm64e,
+            (CPU_TYPE_ARM64, _) => Arch::Arm64Unknown,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_ALL) => Arch::Arm,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V5TEJ) => Arch::ArmV5,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V6) => Arch::ArmV6,
@@ -116,9 +142,10 @@ impl Arch {
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7K) => Arch::ArmV7k,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7M) => Arch::ArmV7m,
             (CPU_TYPE_ARM, CPU_SUBTYPE_ARM_V7EM) => Arch::ArmV7em,
+            (CPU_TYPE_ARM, _) => Arch::ArmUnknown,
             (CPU_TYPE_POWERPC, CPU_SUBTYPE_POWERPC_ALL) => Arch::Ppc,
             (CPU_TYPE_POWERPC64, CPU_SUBTYPE_POWERPC_ALL) => Arch::Ppc64,
-            _ => return Err(UnknownArchError),
+            (_, _) => Arch::Unknown,
         })
     }
 
@@ -177,10 +204,10 @@ impl Arch {
     /// Returns the CPU family.
     pub fn cpu_family(self) -> CpuFamily {
         match self {
-            Arch::Unknown | Arch::__Max => CpuFamily::Unknown,
-            Arch::X86 => CpuFamily::Intel32,
-            Arch::X86_64 | Arch::X86_64h => CpuFamily::Intel64,
-            Arch::Arm64 | Arch::Arm64V8 | Arch::Arm64e => CpuFamily::Arm64,
+            Arch::Unknown => CpuFamily::Unknown,
+            Arch::X86 | Arch::X86Unknown => CpuFamily::Intel32,
+            Arch::X86_64 | Arch::X86_64h | Arch::X86_64Unknown => CpuFamily::Intel64,
+            Arch::Arm64 | Arch::Arm64V8 | Arch::Arm64e | Arch::Arm64Unknown => CpuFamily::Arm64,
             Arch::Arm
             | Arch::ArmV5
             | Arch::ArmV6
@@ -190,7 +217,8 @@ impl Arch {
             | Arch::ArmV7s
             | Arch::ArmV7k
             | Arch::ArmV7m
-            | Arch::ArmV7em => CpuFamily::Arm32,
+            | Arch::ArmV7em
+            | Arch::ArmUnknown => CpuFamily::Arm32,
             Arch::Ppc => CpuFamily::Ppc32,
             Arch::Ppc64 => CpuFamily::Ppc64,
         }
@@ -198,39 +226,26 @@ impl Arch {
 
     /// Returns the native pointer size.
     pub fn pointer_size(self) -> Option<usize> {
-        match self {
-            Arch::Unknown | Arch::__Max => None,
-            Arch::X86_64
-            | Arch::X86_64h
-            | Arch::Arm64
-            | Arch::Arm64V8
-            | Arch::Arm64e
-            | Arch::Ppc64 => Some(8),
-            Arch::X86
-            | Arch::Arm
-            | Arch::ArmV5
-            | Arch::ArmV6
-            | Arch::ArmV6m
-            | Arch::ArmV7
-            | Arch::ArmV7f
-            | Arch::ArmV7s
-            | Arch::ArmV7k
-            | Arch::ArmV7m
-            | Arch::ArmV7em
-            | Arch::Ppc => Some(4),
+        match self.cpu_family() {
+            CpuFamily::Unknown => None,
+            CpuFamily::Intel64 | CpuFamily::Arm64 | CpuFamily::Ppc64 => Some(8),
+            CpuFamily::Intel32 | CpuFamily::Arm32 | CpuFamily::Ppc32 => Some(4),
         }
     }
 
     /// Returns the name of the arch.
     pub fn name(self) -> &'static str {
         match self {
-            Arch::Unknown | Arch::__Max => "unknown",
+            Arch::Unknown => "unknown",
             Arch::X86 => "x86",
+            Arch::X86Unknown => "x86?",
             Arch::X86_64 => "x86_64",
             Arch::X86_64h => "x86_64h",
+            Arch::X86_64Unknown => "x86_64?",
             Arch::Arm64 => "arm64",
             Arch::Arm64V8 => "arm64v8",
             Arch::Arm64e => "arm64e",
+            Arch::Arm64Unknown => "arm64?",
             Arch::Arm => "arm",
             Arch::ArmV5 => "armv5",
             Arch::ArmV6 => "armv6",
@@ -241,6 +256,7 @@ impl Arch {
             Arch::ArmV7k => "armv7k",
             Arch::ArmV7m => "armv7m",
             Arch::ArmV7em => "armv7em",
+            Arch::ArmUnknown => "arm?",
             Arch::Ppc => "ppc",
             Arch::Ppc64 => "ppc64",
         }
