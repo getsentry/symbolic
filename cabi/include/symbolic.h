@@ -415,7 +415,7 @@ uint64_t symbolic_find_best_instruction(const SymbolicInstructionInfo *ii);
  */
 void symbolic_frame_info_map_add(const SymbolicFrameInfoMap *smap,
                                  const SymbolicStr *sid,
-                                 const char *path);
+                                 SymbolicCfiCache *cficache);
 
 /*
  * Frees a frame info map object.

@@ -251,12 +251,11 @@ ffi_fn! {
     unsafe fn symbolic_frame_info_map_add(
         smap: *const SymbolicFrameInfoMap,
         sid: *const SymbolicStr,
-        path: *const c_char,
+        cficache: *mut SymbolicCfiCache,
     ) -> Result<()> {
         let map = smap as *mut FrameInfoMap<'static>;
-        let byteview = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
-        let cache = CfiCache::from_bytes(byteview)?;
         let id = CodeModuleId::from_str((*sid).as_str())?;
+        let cache = *Box::from_raw(cficache as *mut CfiCache<'static>);
 
         (*map).insert(id, cache);
         Ok(())
