@@ -64,8 +64,9 @@ class RustObject(object):
 
     def _move(self, target):
         self._shared = True
-        attached_refs[self] = target
-        return self._get_objptr()
+        ptr = self._get_objptr()
+        self._objptr = None
+        return ptr
 
     def __del__(self):
         if self._objptr is None or self._shared:
