@@ -26,8 +26,10 @@ fn main() {
         .include(".")
         .include("third_party/breakpad/src")
         .define("BPLOG_MINIMUM_SEVERITY", "SEVERITY_ERROR")
-        .define("BPLOG(severity)", "1 ? (void)0 : google_breakpad::LogMessageVoidify() & (BPLOG_ERROR)")
-
+        .define(
+            "BPLOG(severity)",
+            "1 ? (void)0 : google_breakpad::LogMessageVoidify() & (BPLOG_ERROR)",
+        )
         // Processor
         .file("third_party/breakpad/src/processor/basic_code_modules.cc")
         .file("third_party/breakpad/src/processor/basic_source_line_resolver.cc")
@@ -54,7 +56,6 @@ fn main() {
         .file("third_party/breakpad/src/processor/stackwalker_sparc.cc")
         .file("third_party/breakpad/src/processor/stackwalker_x86.cc")
         .file("third_party/breakpad/src/processor/tokenize.cc")
-
         // Minidump
         .file("third_party/breakpad/src/processor/exploitability.cc")
         .file("third_party/breakpad/src/processor/exploitability_linux.cc")
@@ -62,7 +63,6 @@ fn main() {
         .file("third_party/breakpad/src/processor/minidump.cc")
         .file("third_party/breakpad/src/processor/minidump_processor.cc")
         .file("third_party/breakpad/src/processor/symbolic_constants_win.cc")
-
         // Symbolic bindings
         .file("cpp/c_string.cpp")
         .file("cpp/data_structures.cpp")

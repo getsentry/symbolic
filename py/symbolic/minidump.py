@@ -10,7 +10,7 @@ from symbolic.utils import RustObject, rustcall, attached_refs, encode_path, \
     encode_str, decode_str, CacheReader
 
 __all__ = ['CallStack', 'FrameInfoMap', 'FrameTrust', 'ProcessState',
-           'StackFrame', 'CfiCache']
+           'StackFrame', 'CfiCache', 'CFICACHE_LATEST_VERSION']
 
 
 def _make_frame_trust():
@@ -316,10 +316,10 @@ class FrameInfoMap(RustObject):
         return FrameInfoMap._from_objptr(
             rustcall(lib.symbolic_frame_info_map_new))
 
-    def add(self, id, path):
+    def add(self, id, cficache):
         """Adds CFI for a code module specified by the `id` argument"""
         self._methodcall(lib.symbolic_frame_info_map_add,
-                         encode_str(id), encode_path(path))
+                         encode_str(id), cficache._move(self))
 
 
 # The most recent version for the CFI cache file format
