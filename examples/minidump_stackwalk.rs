@@ -12,7 +12,7 @@ use walkdir::WalkDir;
 
 use symbolic::common::byteview::ByteView;
 use symbolic::common::types::{Arch, ObjectKind};
-use symbolic::debuginfo::{FatObject, Object};
+use symbolic::debuginfo::{DebugFeatures, FatObject, Object};
 use symbolic::minidump::cfi::CfiCache;
 use symbolic::minidump::processor::{CodeModuleId, FrameInfoMap, ProcessState, StackFrame};
 use symbolic::symcache::{InstructionInfo, LineInfo, SymCache};
@@ -86,6 +86,11 @@ where
 {
     collect_referenced_objects(path, state, |object| {
         // Silently skip all debug symbols without CFI
+        if !object.has_unwind_info() {
+            return Ok(None);
+        }
+
+        // Silently skip conversion errors
         Ok(match CfiCache::from_object(&object) {
             Ok(cficache) => Some(cficache),
             Err(_) => None,
@@ -99,6 +104,11 @@ where
 {
     collect_referenced_objects(path, state, |object| {
         // Silently skip all incompatible debug symbols
+        if !object.has_debug_info() {
+            return Ok(None);
+        }
+
+        // Silently skip conversion errors
         Ok(match SymCache::from_object(&object) {
             Ok(symcache) => Some(symcache),
             Err(_) => None,
