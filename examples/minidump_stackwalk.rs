@@ -139,11 +139,16 @@ fn symbolize<'a>(
     }
 }
 
+struct PrintOptions {
+    crashed_only: bool,
+    show_modules: bool,
+}
+
 fn print_state(
     state: &ProcessState,
     symcaches: &SymCaches,
     cfi: &FrameInfoMap,
-    crashed_only: bool,
+    options: PrintOptions,
 ) -> Result<(), Error> {
     let sys = state.system_info();
     println!("Operating system: {}", sys.os_name());
@@ -165,7 +170,7 @@ fn print_state(
     let arch = state.system_info().cpu_arch();
     for (ti, thread) in state.threads().iter().enumerate() {
         let crashed = (ti as i32) != state.requesting_thread();
-        if crashed_only && crashed {
+        if options.crashed_only && crashed {
             continue;
         }
 
@@ -225,30 +230,32 @@ fn print_state(
         }
     }
 
-    println!();
-    println!("Loaded modules:");
-    for module in state.modules() {
-        print!(
-            "0x{:x} - 0x{:x}  {}  (",
-            module.base_address(),
-            module.base_address() + module.size() - 1,
-            module.code_file().rsplit('/').next().unwrap(),
-        );
+    if options.show_modules {
+        println!();
+        println!("Loaded modules:");
+        for module in state.modules() {
+            print!(
+                "0x{:x} - 0x{:x}  {}  (",
+                module.base_address(),
+                module.base_address() + module.size() - 1,
+                module.code_file().rsplit('/').next().unwrap(),
+            );
 
-        match module.id() {
-            Some(id) => print!("{}", id),
-            None => print!("<missing debug identifier>"),
-        };
+            match module.id() {
+                Some(id) => print!("{}", id),
+                None => print!("<missing debug identifier>"),
+            };
 
-        if !module.id().map_or(false, |id| symcaches.contains_key(&id)) {
-            print!("; no symbols");
+            if !module.id().map_or(false, |id| symcaches.contains_key(&id)) {
+                print!("; no symbols");
+            }
+
+            if !module.id().map_or(false, |id| cfi.contains_key(&id)) {
+                print!("; no CFI");
+            }
+
+            println!(")");
         }
-
-        if !module.id().map_or(false, |id| cfi.contains_key(&id)) {
-            print!("; no CFI");
-        }
-
-        println!(")");
     }
 
     Ok(())
@@ -277,7 +284,12 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
         Default::default()
     };
 
-    print_state(&state, &symcaches, &cfi, matches.is_present("only_crash"))?;
+    let options = PrintOptions {
+        crashed_only: matches.is_present("only_crash"),
+        show_modules: !matches.is_present("no_modules"),
+    };
+    print_state(&state, &symcaches, &cfi, options)?;
+
     Ok(())
 }
 
@@ -309,6 +321,11 @@ fn main() {
                 .short("o")
                 .long("only-crash")
                 .help("Only output the crashed thread"),
+        ).arg(
+            Arg::with_name("no_modules")
+                .short("n")
+                .long("no-modules")
+                .help("Do not output loaded modules"),
         ).get_matches();
 
     match execute(&matches) {
