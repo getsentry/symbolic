@@ -29,7 +29,7 @@ where
     F: FnMut(Object) -> Result<Option<T>, Error>,
 {
     let search_ids: HashSet<_> = state
-        .referenced_modules()
+        .modules()
         .iter()
         .filter_map(|module| module.id())
         .collect();
@@ -227,7 +227,7 @@ fn print_state(
 
     println!();
     println!("Loaded modules:");
-    for module in state.referenced_modules() {
+    for module in state.modules() {
         print!(
             "0x{:x} - 0x{:x}  {}  (",
             module.base_address(),
