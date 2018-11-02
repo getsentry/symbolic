@@ -22,6 +22,20 @@
             "problemMatcher": "$rustc"
         },
         {
+            "label": "cargo build unreal_engine_crash",
+            "type": "shell",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared"
+            },
+            "command": "cargo",
+            "args": ["build", "--example", "unreal_engine_crash", "--all-features"],
+            "group": "build",
+            "problemMatcher": "$rustc"
+        },
+        {
             "label": "cargo run",
             "type": "shell",
             "presentation": {

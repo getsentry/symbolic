@@ -1,0 +1,19 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Unreal Engine crash",
+            "program": "${workspaceFolder}/target/debug/examples/unreal_engine_crash-89db62a68e7042c9",
+            "args": [
+                "/Users/bruno/Downloads/body.bin",
+            ],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "cargo build unreal_engine_crash",
+        }
+    ]
+}

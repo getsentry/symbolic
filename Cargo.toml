@@ -50,6 +50,9 @@ symbolic-symcache = { version = "5.5.3", path = "symcache", optional = true }
 clap = "2.32.0"
 failure = "0.1.2"
 walkdir = "2.2.5"
+compress = "0.1.2"
+byteorder = "1.1.0"
+bytes = "0.4.10"
 
 [[example]]
 name = "minidump_stackwalk"
@@ -61,3 +64,6 @@ required-features = ["symcache"]
 
 [[example]]
 name = "object_debug"
+
+[[example]]
+name = "unreal_engine_crash"
