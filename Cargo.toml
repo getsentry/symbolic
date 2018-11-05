@@ -1,6 +1,6 @@
 [package]
 name = "symbolic"
-version = "5.5.3"
+version = "5.5.4"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -38,13 +38,13 @@ with_serde_debuginfo = ["symbolic-debuginfo/with_serde"]
 with_serde_minidump = ["symbolic-minidump/with_serde"]
 
 [dependencies]
-symbolic-common = { version = "5.5.3", path = "common" }
-symbolic-debuginfo = { version = "5.5.3", path = "debuginfo", optional = true }
-symbolic-demangle = { version = "5.5.3", path = "demangle", optional = true }
-symbolic-minidump = { version = "5.5.3", path = "minidump", optional = true }
-symbolic-proguard = { version = "5.5.3", path = "proguard", optional = true }
-symbolic-sourcemap = { version = "5.5.3", path = "sourcemap", optional = true }
-symbolic-symcache = { version = "5.5.3", path = "symcache", optional = true }
+symbolic-common = { version = "5.5.4", path = "common" }
+symbolic-debuginfo = { version = "5.5.4", path = "debuginfo", optional = true }
+symbolic-demangle = { version = "5.5.4", path = "demangle", optional = true }
+symbolic-minidump = { version = "5.5.4", path = "minidump", optional = true }
+symbolic-proguard = { version = "5.5.4", path = "proguard", optional = true }
+symbolic-sourcemap = { version = "5.5.4", path = "sourcemap", optional = true }
+symbolic-symcache = { version = "5.5.4", path = "symcache", optional = true }
 
 [dev-dependencies]
 clap = "2.32.0"
