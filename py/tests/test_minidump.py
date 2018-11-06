@@ -110,7 +110,7 @@ def test_macos_with_cfi(res_path):
 
     thread = state.get_thread(0)
     assert thread.thread_id == 775
-    assert thread.frame_count == 3
+    assert thread.frame_count == 9
 
     frame = thread.get_frame(1)
     assert frame.trust == 'cfi'
@@ -160,7 +160,7 @@ def test_linux_with_cfi(res_path):
 
     thread = state.get_thread(0)
     assert thread.thread_id == 133
-    assert thread.frame_count == 8
+    assert thread.frame_count == 5
 
     frame = thread.get_frame(1)
     assert frame.trust == 'cfi'
