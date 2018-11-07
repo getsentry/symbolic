@@ -1,9 +1,9 @@
 use std::collections::BTreeSet;
 use std::fmt;
 
-use dwarf::{DwarfData, DwarfSection};
-use object::{Object, ObjectTarget};
-use symbols::SymbolTable;
+use crate::dwarf::{DwarfData, DwarfSection};
+use crate::object::{Object, ObjectTarget};
+use crate::symbols::SymbolTable;
 
 fn has_dwarf_unwind_info(object: &Object) -> bool {
     object.get_dwarf_section(DwarfSection::EhFrame).is_some()

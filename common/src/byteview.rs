@@ -72,8 +72,12 @@ impl<'bytes> ByteView<'bytes> {
         let inner = match unsafe { Mmap::map(&file) } {
             Ok(mmap) => ByteViewInner::Mmap(mmap),
             Err(err) => {
-                // this is raised on empty mmaps which we want to ignore
-                if err.kind() == io::ErrorKind::InvalidInput {
+                // this is raised on empty mmaps which we want to ignore.  The
+                // 1006 windows error looks like "The volume for a file has been externally
+                // altered so that the opened file is no longer valid."
+                if err.kind() == io::ErrorKind::InvalidInput
+                    || (cfg!(windows) && err.raw_os_error() == Some(1006))
+                {
                     ByteViewInner::Buf(Cow::Borrowed(b""))
                 } else {
                     return Err(err);

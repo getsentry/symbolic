@@ -1,8 +1,8 @@
 use goblin::{elf, mach};
 
-use elf::{find_elf_section, has_elf_section};
-use mach::{find_mach_section, has_mach_segment};
-use object::{Object, ObjectTarget};
+use crate::elf::{find_elf_section, has_elf_section};
+use crate::mach::{find_mach_section, has_mach_segment};
+use crate::object::{Object, ObjectTarget};
 
 /// Provides access to DWARF debugging information in object files.
 pub trait DwarfData {

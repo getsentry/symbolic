@@ -13,13 +13,13 @@ use symbolic_common::types::{Arch, DebugId, Language, Name};
 use symbolic_debuginfo::Object;
 use symbolic_demangle::Demangle;
 
-use error::{SymCacheError, SymCacheErrorKind};
-use types::{
+use crate::error::{SymCacheError, SymCacheErrorKind};
+use crate::types::{
     CacheFileHeader, CacheFileHeaderV1, CacheFileHeaderV2, CacheFilePreamble, DataSource,
     FileRecord, FuncRecord, Seg,
 };
-use utils::common_join_path;
-use writer;
+use crate::utils::common_join_path;
+use crate::writer;
 
 /// The magic file preamble to identify symcache files.
 pub const SYMCACHE_MAGIC: [u8; 4] = *b"SYMC";

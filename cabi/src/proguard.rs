@@ -1,11 +1,11 @@
-use std::slice;
-use std::os::raw::c_char;
 use std::ffi::CStr;
+use std::os::raw::c_char;
+use std::slice;
 
 use symbolic::common::byteview::ByteView;
 use symbolic::proguard::ProguardMappingView;
 
-use core::{SymbolicStr, SymbolicUuid};
+use crate::core::{SymbolicStr, SymbolicUuid};
 
 /// Represents a proguard mapping view.
 pub struct SymbolicProguardMappingView;

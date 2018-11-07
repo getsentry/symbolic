@@ -2,7 +2,7 @@ ProcessState {
     requesting_thread: 0,
     timestamp: 1522061032,
     crash_address: 69,
-    crash_reason: "SIGSEGV",
+    crash_reason: "SIGSEGV /0x00000000",
     assertion: "",
     system_info: SystemInfo {
         os_name: "Linux",

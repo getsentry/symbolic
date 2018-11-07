@@ -52,7 +52,7 @@ def test_linux_without_cfi(res_path):
     assert state.crashed == True
     assert state.crash_time == datetime(2017, 9, 13, 12, 17, 20)
     assert state.crash_address == 0  # memory address: *(0x0) = 0;
-    assert state.crash_reason == 'SIGSEGV'
+    assert state.crash_reason == 'SIGSEGV /0x00000000'
     assert state.assertion == ''
 
     info = state.system_info
@@ -110,7 +110,7 @@ def test_macos_with_cfi(res_path):
 
     thread = state.get_thread(0)
     assert thread.thread_id == 775
-    assert thread.frame_count == 3
+    assert thread.frame_count == 9
 
     frame = thread.get_frame(1)
     assert frame.trust == 'cfi'
@@ -147,7 +147,7 @@ def test_linux_with_cfi(res_path):
     assert state.crashed == True
     assert state.crash_time == datetime(2017, 9, 13, 12, 17, 20)
     assert state.crash_address == 0  # memory address: *(0x0) = 0;
-    assert state.crash_reason == 'SIGSEGV'
+    assert state.crash_reason == 'SIGSEGV /0x00000000'
     assert state.assertion == ''
 
     info = state.system_info
@@ -160,7 +160,7 @@ def test_linux_with_cfi(res_path):
 
     thread = state.get_thread(0)
     assert thread.thread_id == 133
-    assert thread.frame_count == 8
+    assert thread.frame_count == 5
 
     frame = thread.get_frame(1)
     assert frame.trust == 'cfi'

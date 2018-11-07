@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-sourcemap"
-version = "5.5.3"
+version = "5.5.5"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -17,4 +17,4 @@ source code or stack traces.
 [dependencies]
 failure = "0.1.2"
 sourcemap = "2.2.1"
-symbolic-common = { version = "5.5.3", path = "../common", features = ["with_sourcemaps"] }
+symbolic-common = { version = "5.5.5", path = "../common", features = ["with_sourcemaps"] }

@@ -8,7 +8,7 @@ use clap::{App, Arg, ArgMatches};
 use failure::Error;
 
 use symbolic::common::byteview::ByteView;
-use symbolic::debuginfo::FatObject;
+use symbolic::debuginfo::{DebugFeatures, FatObject};
 
 fn print_error(error: &Error) {
     println!("Error: {}", error);
@@ -32,16 +32,21 @@ fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     for object in fat.objects() {
         match object {
             Ok(object) => {
+                println!(" - {}: {}", object.arch()?, object.id().unwrap_or_default(),);
+                println!("   object class: {}", object.class());
                 println!(
-                    " - {}: {} ({}, {})",
-                    object.arch()?,
-                    object.id().unwrap_or_default(),
-                    object.class(),
+                    "   debug kind: {}",
                     object
                         .debug_kind()
                         .map(|k| k.to_string())
-                        .unwrap_or_else(|| "no debug".into()),
+                        .unwrap_or_else(|| "no debug".into())
                 );
+                let features: Vec<String> = object
+                    .features()
+                    .into_iter()
+                    .map(|f| f.to_string())
+                    .collect();
+                println!("   features: {}", features.join(", "));
             }
             Err(e) => {
                 print!(" - ");

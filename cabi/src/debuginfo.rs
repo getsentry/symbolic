@@ -7,7 +7,7 @@ use std::str::FromStr;
 use symbolic::common::byteview::ByteView;
 use symbolic::debuginfo::{DebugFeatures, DebugId, FatObject, Object};
 
-use core::SymbolicStr;
+use crate::core::SymbolicStr;
 
 /// A potential multi arch object.
 pub struct SymbolicFatObject;

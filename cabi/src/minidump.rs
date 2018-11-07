@@ -11,8 +11,8 @@ use symbolic::minidump::processor::{
     CallStack, CodeModule, CodeModuleId, FrameInfoMap, ProcessState, RegVal, StackFrame, SystemInfo,
 };
 
-use core::SymbolicStr;
-use debuginfo::SymbolicObject;
+use crate::core::SymbolicStr;
+use crate::debuginfo::SymbolicObject;
 
 /// Contains stack frame information (CFI) for images.
 pub struct SymbolicFrameInfoMap;
