@@ -55,7 +55,7 @@ pub struct Unreal4Crash {
 impl Unreal4Crash {
     /// Creates an instance of `Unreal4Crash` from the original, compressed bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Unreal4Crash, Unreal4ParseError> {
-        if bytes.len() == 0 {
+        if bytes.is_empty() {
             return Err(Unreal4ParseError::UnknownBytesFormat);
         }
 
@@ -130,7 +130,7 @@ fn read_ansi_string(buffer: &mut Cursor<&[u8]>) -> String {
     let size = buffer.get_u32_le() as usize;
     let dir_name = String::from_utf8_lossy(&Buf::bytes(&buffer)[..size]).into_owned();
     buffer.advance(size);
-    return dir_name.trim_end_matches('\0').into();
+    dir_name.trim_end_matches('\0').into()
 }
 
 fn read_header(cursor: &mut Cursor<&[u8]>) -> Header {
