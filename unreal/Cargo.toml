@@ -1,0 +1,25 @@
+[package]
+name = "symbolic-unreal"
+version = "5.5.3"
+license = "MIT"
+authors = [
+    "Armin Ronacher <armin.ronacher@active-4.com>",
+    "Jan Michael Auer <mail@jauer.org>",
+    "Bruno Garcia <bruno@brunogarcia.com>",
+]
+documentation = "https://docs.rs/symbolic-unreal"
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+description = """
+Parsing and processing utilities for Unreal Engine 4 crash files.
+"""
+
+[dependencies]
+failure = "0.1.2"
+failure_derive = "0.1.2"
+compress = "0.1.2"
+byteorder = "1.1.0"
+bytes = "0.4.10"
+
+[dev-dependencies]
+symbolic-testutils = { version = "5.5.3", path = "../testutils" }

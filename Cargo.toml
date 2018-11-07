@@ -12,7 +12,7 @@ repository = "https://github.com/getsentry/symbolic"
 readme = "README.md"
 description = """
 A library to symbolicate and process stack traces from native applications,
-minidumps, minified JavaScripts or ProGuard optimized Android apps.
+minidumps, Unreal Engine 4, minified JavaScripts or ProGuard optimized Android apps.
 """
 exclude = [
     ".vscode/**/*",
@@ -36,6 +36,7 @@ symcache = ["debuginfo", "demangle", "symbolic-symcache"]
 with_serde = ["symbolic-common/with_serde"]
 with_serde_debuginfo = ["symbolic-debuginfo/with_serde"]
 with_serde_minidump = ["symbolic-minidump/with_serde"]
+unreal = ["symbolic-unreal"]
 
 [dependencies]
 symbolic-common = { version = "5.5.3", path = "common" }
@@ -45,14 +46,12 @@ symbolic-minidump = { version = "5.5.3", path = "minidump", optional = true }
 symbolic-proguard = { version = "5.5.3", path = "proguard", optional = true }
 symbolic-sourcemap = { version = "5.5.3", path = "sourcemap", optional = true }
 symbolic-symcache = { version = "5.5.3", path = "symcache", optional = true }
+symbolic-unreal = { version = "5.5.3", path = "unreal", optional = true }
 
 [dev-dependencies]
 clap = "2.32.0"
 failure = "0.1.2"
 walkdir = "2.2.5"
-compress = "0.1.2"
-byteorder = "1.1.0"
-bytes = "0.4.10"
 
 [[example]]
 name = "minidump_stackwalk"
@@ -67,3 +66,4 @@ name = "object_debug"
 
 [[example]]
 name = "unreal_engine_crash"
+required-features = ["unreal"]

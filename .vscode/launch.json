@@ -12,6 +12,7 @@
             "args": [
                 "/Users/bruno/Downloads/body.bin",
             ],
+            "env": {"RUST_BACKTRACE": "1"},
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "cargo build unreal_engine_crash",
         }
