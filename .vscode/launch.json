@@ -8,7 +8,7 @@
             "type": "lldb",
             "request": "launch",
             "name": "Unreal Engine crash",
-            "program": "${workspaceFolder}/target/debug/examples/unreal_engine_crash-89db62a68e7042c9",
+            "program": "${workspaceFolder}/target/debug/examples/unreal_engine_crash-f1edfdc0337259e0",
             "args": [
                 "/Users/bruno/Downloads/body.bin",
             ],

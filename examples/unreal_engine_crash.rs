@@ -3,7 +3,7 @@ extern crate failure;
 extern crate symbolic;
 
 use clap::{App, Arg, ArgMatches};
-use failure::{Error};
+use failure::Error;
 
 use std::fs::File;
 use std::io::Read;
@@ -20,9 +20,9 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
     let ue4_crash = Unreal4Crash::from_bytes(&file_content)?;
 
     match ue4_crash.get_minidump_bytes()? {
-        Some(m) => println!("Minidump size: {0} bytes.", m.len()),
-        None => println!("No minidump found in the Unreal Crash provided.")
-    };
+        Some(m) => println!("Minidump size: {} bytes.", m.len()),
+        None => println!("No minidump found in the Unreal Crash provided."),
+    }
 
     Ok(())
 }

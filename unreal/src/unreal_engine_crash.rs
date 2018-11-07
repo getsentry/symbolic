@@ -1,17 +1,7 @@
-// extern crate byteorder;
-// extern crate bytes;
-// extern crate compress;
-// extern crate failure;
-
-use failure::Fail;
-use failure::{Error};
-
-use compress::zlib;
-use std::fs::File;
-use std::io::{self, Cursor, Read};
-use std::path::Path;
-
 use bytes::{Buf, Bytes};
+use compress::zlib;
+use failure::Fail;
+use std::io::{self, Cursor, Read};
 
 pub struct FCompressedHeader {
     pub directory_name: String,
@@ -20,11 +10,16 @@ pub struct FCompressedHeader {
     pub file_count: i32,
 }
 
+// Meta-data about a file within a UE4 crash file
 #[derive(Debug)]
 pub struct CrashFileMeta {
+    // The original index within the UE4 crash file
     pub index: usize,
+    // File name
     pub file_name: String,
+    // Start of the file within crash dumb
     pub offset: usize,
+    // Length of bytes from offset
     pub len: usize,
 }
 
@@ -54,7 +49,7 @@ fn get_files_from_bytes(bytes: &Bytes) -> Result<Vec<CrashFileMeta>, Unreal4Pars
     let file_count = Cursor::new(
         &bytes
             .get(bytes.len() - 4..)
-            .ok_or(Unreal4ParseError::OutOfBounds)?
+            .ok_or(Unreal4ParseError::OutOfBounds)?,
     ).get_i32_le();
 
     let mut cursor = Cursor::new(&bytes[..]);
@@ -118,29 +113,39 @@ impl Unreal4Crash {
         })
     }
 
-    pub fn files(&self) -> impl Iterator<Item=&CrashFileMeta> {
+    pub fn files(&self) -> impl Iterator<Item = &CrashFileMeta> {
         self.files.iter()
     }
 
     pub fn file_count(&self) -> usize {
         self.files.len() as usize
     }
-    // pub fn file_by_index(&self, idx: usize) -> Option<&CrashFileMeta>;
-    // pub fn file_contents_by_index(&self, usize) -> Option<&[u8]>;
+
+    pub fn file_by_index(&self, index: usize) -> Option<&CrashFileMeta> {
+        self.files().find(|f| f.index == index)
+    }
+
+    pub fn file_contents_by_index(&self, index: usize) -> Result<Option<&[u8]>, Unreal4ParseError> {
+        match self.file_by_index(index) {
+            Some(f) => Ok(Some(self.get_file_content(f)?)),
+            None => Ok(None),
+        }
+    }
 
     pub fn get_minidump_bytes(&self) -> Result<Option<&[u8]>, Unreal4ParseError> {
-        let minidump = match self.files()
+        let minidump = match self
+            .files()
             // https://github.com/EpicGames/UnrealEngine/blob/5e997dc7b5a4efb7f1be22fa8c4875c9c0034394/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L60
-            .find(|f| f.file_name == "UE4Minidump.dmp") {
-                Some(m) => m,
-                None => return Ok(None),
-            };
+            .find(|f| f.file_name == "UE4Minidump.dmp")
+        {
+            Some(m) => m,
+            None => return Ok(None),
+        };
 
         Ok(Some(self.get_file_content(minidump)?))
     }
 
     fn get_file_content(&self, file_meta: &CrashFileMeta) -> Result<&[u8], Unreal4ParseError> {
-
         let start = file_meta.offset;
         let end = file_meta.offset + file_meta.len;
 
