@@ -14,12 +14,12 @@ use num;
 use symbolic_common::types::{DebugKind, Language};
 use symbolic_debuginfo::{Object, SymbolIterator, SymbolTable, Symbols};
 
-use breakpad::BreakpadInfo;
-use cache::{SYMCACHE_LATEST_VERSION, SYMCACHE_MAGIC};
-use dwarf::{DwarfInfo, Function, Unit};
-use error::{ConversionError, SymCacheError, SymCacheErrorKind, ValueKind};
-use types::{CacheFileHeaderV2, DataSource, FileRecord, FuncRecord, LineRecord, Seg};
-use utils::shorten_filename;
+use crate::breakpad::BreakpadInfo;
+use crate::cache::{SYMCACHE_LATEST_VERSION, SYMCACHE_MAGIC};
+use crate::dwarf::{DwarfInfo, Function, Unit};
+use crate::error::{ConversionError, SymCacheError, SymCacheErrorKind, ValueKind};
+use crate::types::{CacheFileHeaderV2, DataSource, FileRecord, FuncRecord, LineRecord, Seg};
+use crate::utils::shorten_filename;
 
 /// Given a writer and object, dumps the object into the writer.
 ///

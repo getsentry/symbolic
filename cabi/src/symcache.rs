@@ -7,8 +7,8 @@ use symbolic::common::{byteview::ByteView, types::Arch};
 use symbolic::debuginfo::Object;
 use symbolic::symcache::{InstructionInfo, SymCache, SYMCACHE_LATEST_VERSION};
 
-use core::SymbolicStr;
-use debuginfo::SymbolicObject;
+use crate::core::SymbolicStr;
+use crate::debuginfo::SymbolicObject;
 
 /// Represents a symbolic sym cache.
 pub struct SymbolicSymCache;

@@ -1,7 +1,7 @@
+use std::cell::RefCell;
 use std::mem;
 use std::panic;
 use std::thread;
-use std::cell::RefCell;
 
 use failure::Error;
 
@@ -84,7 +84,7 @@ macro_rules! ffi_fn (
         $(#[$attr])*
         pub unsafe extern "C" fn $name($($aname: $aty,)*) {
             // this silences panics and stuff
-            $crate::utils::landingpad(|| { $body; Ok(0 as ::std::os::raw::c_int) });
+            $crate::utils::landingpad(|| { $body; Ok(0 as std::os::raw::c_int) });
         }
     }
 );

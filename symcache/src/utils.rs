@@ -52,13 +52,13 @@ pub fn common_join_path(base: &str, other: &str) -> String {
         format!(
             "{}\\{}",
             base.trim_right_matches(&['\\', '/'][..]),
-            other.trim_left_matches(&['\\', '/'][..])
+            other.trim_start_matches(&['\\', '/'][..])
         )
     } else {
         format!(
             "{}/{}",
             base.trim_right_matches('/'),
-            other.trim_left_matches('/')
+            other.trim_start_matches('/')
         )
     }
 }

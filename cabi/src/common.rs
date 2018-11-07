@@ -1,6 +1,6 @@
 use symbolic::common::types::{Arch, UnknownArchError};
 
-use core::SymbolicStr;
+use crate::core::SymbolicStr;
 
 /// Mach-O architecture.
 #[repr(C)]

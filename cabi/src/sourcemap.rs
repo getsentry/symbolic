@@ -1,11 +1,11 @@
-use std::ptr;
 use std::mem;
-use std::slice;
 use std::os::raw::c_char;
+use std::ptr;
+use std::slice;
 
 use symbolic::sourcemap::{SourceMapView, SourceView, TokenMatch};
 
-use core::SymbolicStr;
+use crate::core::SymbolicStr;
 
 /// Represents a source view.
 pub struct SymbolicSourceView;
@@ -116,8 +116,7 @@ fn convert_token_match(token: Option<TokenMatch>) -> *mut SymbolicTokenMatch {
                     .map(|name| SymbolicStr::from_string(name))
                     .unwrap_or(Default::default()),
             }))
-        })
-        .unwrap_or(ptr::null_mut())
+        }).unwrap_or(ptr::null_mut())
 }
 
 ffi_fn! {

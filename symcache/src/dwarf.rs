@@ -19,7 +19,7 @@ use gimli::{
 };
 use lru_cache::LruCache;
 
-use error::{ConversionError, SymCacheError, SymCacheErrorKind};
+use crate::error::{ConversionError, SymCacheError, SymCacheErrorKind};
 
 type Buf<'input> = EndianSlice<'input, Endianness>;
 type Die<'abbrev, 'unit, 'input> = DebuggingInformationEntry<'abbrev, 'unit, Buf<'input>>;

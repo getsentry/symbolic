@@ -216,7 +216,7 @@ impl<'a> Demangle for Name<'a> {
     }
 
     fn demangle(&self, opts: DemangleOptions) -> Option<String> {
-        use Language::*;
+        use crate::Language::*;
         match self.detect_language() {
             Some(ObjC) => try_demangle_objc(self.as_str(), opts),
             Some(ObjCpp) => try_demangle_objcpp(self.as_str(), opts),

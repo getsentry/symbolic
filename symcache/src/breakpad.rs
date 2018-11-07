@@ -1,10 +1,11 @@
 use failure::ResultExt;
+
 use symbolic_debuginfo::{
     BreakpadData, BreakpadFileRecord, BreakpadFuncRecord, BreakpadModuleRecord,
     BreakpadPublicRecord, BreakpadRecord, Object,
 };
 
-use error::{ConversionError, SymCacheError, SymCacheErrorKind};
+use crate::error::{ConversionError, SymCacheError, SymCacheErrorKind};
 
 #[derive(Debug)]
 pub struct BreakpadInfo<'input> {

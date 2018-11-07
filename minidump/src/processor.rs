@@ -13,8 +13,8 @@ use uuid::Uuid;
 use symbolic_common::byteview::ByteView;
 use symbolic_common::types::{Arch, CpuFamily, DebugId, ParseDebugIdError};
 
-use cfi::CfiCache;
-use utils;
+use crate::cfi::CfiCache;
+use crate::utils;
 
 lazy_static! {
     static ref LINUX_BUILD_RE: Regex =

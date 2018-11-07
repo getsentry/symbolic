@@ -8,7 +8,7 @@ use std::str;
 use failure::Error;
 use uuid::Uuid;
 
-use utils::{set_panic_hook, Panic, LAST_ERROR};
+use crate::utils::{set_panic_hook, Panic, LAST_ERROR};
 
 /// CABI wrapper around a Rust string.
 #[repr(C)]

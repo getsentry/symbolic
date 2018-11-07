@@ -20,10 +20,10 @@ mod mach;
 mod object;
 mod symbols;
 
-pub use breakpad::*;
-pub use dwarf::*;
-pub use features::*;
-pub use object::*;
+pub use crate::breakpad::*;
+pub use crate::dwarf::*;
+pub use crate::features::*;
+pub use crate::object::*;
 #[deprecated]
 pub use symbolic_common::types::{BreakpadFormat, DebugId, ParseDebugIdError};
-pub use symbols::*;
+pub use crate::symbols::*;

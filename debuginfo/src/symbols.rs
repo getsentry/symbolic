@@ -9,7 +9,7 @@ use regex::Regex;
 
 use symbolic_common::types::Name;
 
-use object::{Object, ObjectError, ObjectErrorKind, ObjectTarget};
+use crate::object::{Object, ObjectError, ObjectErrorKind, ObjectTarget};
 
 lazy_static! {
     static ref HIDDEN_SYMBOL_RE: Regex = Regex::new("__?hidden#\\d+_").unwrap();

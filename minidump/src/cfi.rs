@@ -13,7 +13,7 @@ use symbolic_common::byteview::ByteView;
 use symbolic_common::types::{Arch, DebugKind, UnknownArchError};
 use symbolic_debuginfo::{DwarfData, DwarfSection, Object};
 
-use registers::get_register_name;
+use crate::registers::get_register_name;
 
 /// The latest version of the file format.
 pub const CFICACHE_LATEST_VERSION: u32 = 1;
@@ -111,7 +111,7 @@ impl From<UnknownArchError> for CfiError {
 /// use symbolic_debuginfo::FatObject;
 /// use symbolic_minidump::cfi::AsciiCfiWriter;
 ///
-/// # fn foo() -> Result<(), ::failure::Error> {
+/// # fn foo() -> Result<(), failure::Error> {
 /// let byteview = ByteView::from_path("/path/to/object")?;
 /// let fat = FatObject::parse(byteview)?;
 /// let object = fat.get_object(0)?.unwrap();
@@ -136,7 +136,7 @@ impl From<UnknownArchError> for CfiError {
 /// use symbolic_debuginfo::FatObject;
 /// use symbolic_minidump::cfi::AsciiCfiWriter;
 ///
-/// # fn foo() -> Result<(), ::failure::Error> {
+/// # fn foo() -> Result<(), failure::Error> {
 /// let byteview = ByteView::from_path("/path/to/object")?;
 /// let fat = FatObject::parse(byteview)?;
 /// let object = fat.get_object(0)?.unwrap();
@@ -398,7 +398,7 @@ enum CfiCacheInner<'a> {
 /// use symbolic_debuginfo::FatObject;
 /// use symbolic_minidump::cfi::CfiCache;
 ///
-/// # fn foo() -> Result<(), ::failure::Error> {
+/// # fn foo() -> Result<(), failure::Error> {
 /// let byteview = ByteView::from_path("/path/to/object")?;
 /// let fat = FatObject::parse(byteview)?;
 /// if let Some(object) = fat.get_object(0)? {
@@ -420,7 +420,7 @@ enum CfiCacheInner<'a> {
 /// use symbolic_debuginfo::FatObject;
 /// use symbolic_minidump::cfi::CfiCache;
 ///
-/// # fn foo() -> Result<(), ::failure::Error> {
+/// # fn foo() -> Result<(), failure::Error> {
 /// let byteview = ByteView::from_path("my.cficache")?;
 /// let cache = CfiCache::from_bytes(byteview)?;
 /// # Ok(())
