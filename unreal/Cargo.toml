@@ -22,4 +22,4 @@ byteorder = "1.1.0"
 bytes = "0.4.10"
 
 [dev-dependencies]
-symbolic-testutils = { version = "5.5.3", path = "../testutils" }
+symbolic-testutils = { version = "5.5.5", path = "../testutils" }
