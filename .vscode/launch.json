@@ -8,13 +8,13 @@
             "type": "lldb",
             "request": "launch",
             "name": "Unreal Engine crash",
-            "program": "${workspaceFolder}/target/debug/examples/unreal_engine_crash-f1edfdc0337259e0",
+            "program": "${workspaceFolder}/target/debug/examples/unreal_engine_crash",
             "args": [
-                "/Users/bruno/Downloads/body.bin",
+                "${workspaceFolder}/testutils/fixtures/unreal/unreal_crash"
             ],
-            "env": {"RUST_BACKTRACE": "1"},
+            "env": { "RUST_BACKTRACE": "1" },
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "cargo build unreal_engine_crash",
+            "preLaunchTask": "cargo build unreal_engine_crash"
         }
     ]
 }
