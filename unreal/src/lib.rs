@@ -113,7 +113,8 @@ impl Unreal4Crash {
         Ok(Some(self.get_file_content(minidump)?))
     }
 
-    fn get_file_content(&self, file_meta: &CrashFileMeta) -> Result<&[u8], Unreal4ParseError> {
+    /// Get file content
+    pub fn get_file_content(&self, file_meta: &CrashFileMeta) -> Result<&[u8], Unreal4ParseError> {
         let start = file_meta.offset;
         let end = file_meta.offset + file_meta.len;
 
