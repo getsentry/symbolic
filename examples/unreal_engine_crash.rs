@@ -26,10 +26,12 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
     }
 
     for file_meta in ue4_crash.files() {
-        println!("File name: {:?}, size: {:?}, preview {:?}",
+        println!(
+            "File name: {:?}, size: {:?}, preview {:?}",
             file_meta.file_name,
             file_meta.len,
-            String::from_utf8_lossy(&ue4_crash.get_file_content(file_meta)?[..50]));
+            String::from_utf8_lossy(&ue4_crash.get_file_content(file_meta)?[..50])
+        );
     }
 
     Ok(())
