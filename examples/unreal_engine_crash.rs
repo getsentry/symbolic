@@ -2,13 +2,14 @@ extern crate clap;
 extern crate failure;
 extern crate symbolic;
 
-use clap::{App, Arg, ArgMatches};
-use failure::Error;
-
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use symbolic::unreal::unreal_engine_crash::Unreal4Crash;
+
+use clap::{App, Arg, ArgMatches};
+use failure::Error;
+
+use symbolic::unreal::Unreal4Crash;
 
 fn execute(matches: &ArgMatches) -> Result<(), Error> {
     let crash_file_path = matches.value_of("crash_file_path").unwrap();
