@@ -24,6 +24,9 @@ pub extern crate symbolic_sourcemap;
 #[doc(hidden)]
 #[cfg(feature = "symcache")]
 pub extern crate symbolic_symcache;
+#[doc(hidden)]
+#[cfg(feature = "unreal")]
+pub extern crate symbolic_unreal;
 
 pub use symbolic_common as common;
 #[cfg(feature = "debuginfo")]
@@ -38,3 +41,5 @@ pub use symbolic_proguard as proguard;
 pub use symbolic_sourcemap as sourcemap;
 #[cfg(feature = "symcache")]
 pub use symbolic_symcache as symcache;
+#[cfg(feature = "unreal")]
+pub use symbolic_unreal as unreal;
