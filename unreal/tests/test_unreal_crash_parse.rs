@@ -22,7 +22,7 @@ fn parse_unreal_crash() {
         .expect("expected Minidump file read without errors")
         .expect("expected Minidump file bytes exists");
 
-    assert_eq!(minidump_bytes.len(), 410700);
+    assert_eq!(minidump_bytes.len(), 410_700);
 
     assert_eq!(ue4_crash.file_count(), 4);
     assert_eq!(ue4_crash.files().count(), 4);

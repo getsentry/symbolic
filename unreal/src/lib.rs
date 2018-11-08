@@ -47,6 +47,7 @@ pub enum Unreal4ParseError {
 }
 
 /// Unreal Engine 4 crash file
+#[derive(Debug)]
 pub struct Unreal4Crash {
     bytes: Bytes,
     files: Vec<CrashFileMeta>,
@@ -171,4 +172,30 @@ fn get_files_from_bytes(bytes: &Bytes) -> Result<Vec<CrashFileMeta>, Unreal4Pars
     }
 
     Ok(rv)
+}
+
+#[test]
+fn test_from_bytes_empty_buffer() {
+    let crash = &[];
+
+    let result = Unreal4Crash::from_bytes(crash);
+
+    assert!(match result.expect_err("empty crash") {
+        Unreal4ParseError::UnknownBytesFormat => true,
+        _ => false,
+    })
+}
+
+#[test]
+fn test_from_bytes_invalid_input() {
+    let crash = &[0u8; 1];
+
+    let result = Unreal4Crash::from_bytes(crash);
+
+    let err = match result.expect_err("empty crash") {
+        Unreal4ParseError::BadCompression(b) => b.to_string(),
+        _ => panic!(),
+    };
+
+    assert_eq!("unexpected EOF", err)
 }
