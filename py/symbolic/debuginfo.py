@@ -178,10 +178,10 @@ class ObjectLookup(object):
         """Given an instruction address this locates the image this address
         is contained in.
         """
-        idx = bisect.bisect_left(self._addresses, parse_addr(addr))
+        idx = bisect.bisect_right(self._addresses, parse_addr(addr))
         if idx > 0:
             rv = self._by_addr[self._addresses[idx - 1]]
-            if not rv.size or addr < rv.addr + rv.size:
+            if not rv.size or parse_addr(addr) < rv.addr + rv.size:
                 return rv
 
     def get_object(self, id):
