@@ -15,7 +15,7 @@ fn parse_unreal_crash() {
     let mut file_content = Vec::new();
     file.read_to_end(&mut file_content).expect("fixture file");
 
-    let ue4_crash = Unreal4Crash::from_bytes(&file_content).expect("crash file loaded");
+    let ue4_crash = Unreal4Crash::from_slice(&file_content).expect("crash file loaded");
 
     let minidump_bytes = ue4_crash
         .get_minidump_bytes()
@@ -45,7 +45,7 @@ fn parse_unreal_crash() {
     );
 
     let xml = ue4_crash
-        .get_file_content(ue4_crash.file_by_index(0).expect("xml file in pos 0"))
+        .get_file_contents(ue4_crash.file_by_index(0).expect("xml file in pos 0"))
         .expect("contents of xml file");
 
     assert_eq!(xml[0] as char, '<');

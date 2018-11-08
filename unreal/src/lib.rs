@@ -1,4 +1,4 @@
-//! API to process Unreal Engine 4 crashes
+//! API to process Unreal Engine 4 crashes.
 #![warn(missing_docs)]
 
 extern crate byteorder;
@@ -12,6 +12,9 @@ use bytes::{Buf, Bytes};
 use compress::zlib;
 use failure::Fail;
 
+// https://github.com/EpicGames/UnrealEngine/blob/5e997dc7b5a4efb7f1be22fa8c4875c9c0034394/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L60
+const MINIDUMP_FILE_NAME: &str = "UE4Minidump.dmp";
+
 struct Header {
     pub directory_name: String,
     pub file_name: String,
@@ -19,34 +22,37 @@ struct Header {
     pub file_count: i32,
 }
 
-/// Meta-data about a file within a UE4 crash file
+/// Meta-data about a file within a UE4 crash file.
 #[derive(Debug)]
 pub struct CrashFileMeta {
-    /// The original index within the UE4 crash file
+    /// The original index within the UE4 crash file.
     pub index: usize,
     /// File name
     pub file_name: String,
-    /// Start of the file within crash dumb
+    /// Start of the file within crash dumb.
     pub offset: usize,
-    /// Length of bytes from offset
+    /// Length of bytes from offset.
     pub len: usize,
 }
 
-/// Errors related to parsing an UE4 crash file
+/// Errors related to parsing an UE4 crash file.
 #[derive(Fail, Debug)]
-pub enum Unreal4ParseError {
-    /// Expected UnrealEngine4 crash (zlib compressed)
+pub enum Unreal4Error {
+    /// Expected UnrealEngine4 crash (zlib compressed).
     #[fail(display = "unknown bytes format")]
     UnknownBytesFormat,
-    /// Value out of bounds
+    /// Empty data blob received.
+    #[fail(display = "empty crash")]
+    Empty,
+    /// Value out of bounds.
     #[fail(display = "out of bounds")]
     OutOfBounds,
-    /// Invalid compressed data
+    /// Invalid compressed data.
     #[fail(display = "bad compression")]
     BadCompression(io::Error),
 }
 
-/// Unreal Engine 4 crash file
+/// Unreal Engine 4 crash file.
 #[derive(Debug)]
 pub struct Unreal4Crash {
     bytes: Bytes,
@@ -54,10 +60,10 @@ pub struct Unreal4Crash {
 }
 
 impl Unreal4Crash {
-    /// Creates an instance of `Unreal4Crash` from the original, compressed bytes
-    pub fn from_bytes(bytes: &[u8]) -> Result<Unreal4Crash, Unreal4ParseError> {
+    /// Creates an instance of `Unreal4Crash` from the original, compressed bytes.
+    pub fn from_slice(bytes: &[u8]) -> Result<Unreal4Crash, Unreal4Error> {
         if bytes.is_empty() {
-            return Err(Unreal4ParseError::UnknownBytesFormat);
+            return Err(Unreal4Error::Empty);
         }
 
         let mut zlib_decoder = zlib::Decoder::new(bytes);
@@ -65,11 +71,11 @@ impl Unreal4Crash {
         let mut decompressed = Vec::new();
         zlib_decoder
             .read_to_end(&mut decompressed)
-            .map_err(Unreal4ParseError::BadCompression)?;
+            .map_err(Unreal4Error::BadCompression)?;
 
         let decompressed = Bytes::from(decompressed);
 
-        let file_meta = get_files_from_bytes(&decompressed)?;
+        let file_meta = get_files_from_slice(&decompressed)?;
 
         Ok(Unreal4Crash {
             bytes: decompressed,
@@ -77,53 +83,48 @@ impl Unreal4Crash {
         })
     }
 
-    /// Files within the UE4 crash dump
+    /// Files within the UE4 crash dump.
     pub fn files(&self) -> impl Iterator<Item = &CrashFileMeta> {
         self.files.iter()
     }
 
-    /// Count of files within the UE4 crash dump
+    /// Count of files within the UE4 crash dump.
     pub fn file_count(&self) -> usize {
         self.files.len() as usize
     }
 
-    /// Get a `CrashFileMeta` by its index
+    /// Get a `CrashFileMeta` by its index.
     pub fn file_by_index(&self, index: usize) -> Option<&CrashFileMeta> {
         self.files().find(|f| f.index == index)
     }
 
-    /// Get the contents of a file by its index
-    pub fn file_contents_by_index(&self, index: usize) -> Result<Option<&[u8]>, Unreal4ParseError> {
+    /// Get the contents of a file by its index.
+    pub fn file_contents_by_index(&self, index: usize) -> Result<Option<&[u8]>, Unreal4Error> {
         match self.file_by_index(index) {
-            Some(f) => Ok(Some(self.get_file_content(f)?)),
+            Some(f) => Ok(Some(self.get_file_contents(f)?)),
             None => Ok(None),
         }
     }
 
-    /// Get the Minidump file bytes
-    pub fn get_minidump_bytes(&self) -> Result<Option<&[u8]>, Unreal4ParseError> {
-        let minidump = match self
-            .files()
-            // https://github.com/EpicGames/UnrealEngine/blob/5e997dc7b5a4efb7f1be22fa8c4875c9c0034394/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L60
-            .find(|f| f.file_name == "UE4Minidump.dmp")
-        {
+    /// Get the Minidump file bytes.
+    pub fn get_minidump_bytes(&self) -> Result<Option<&[u8]>, Unreal4Error> {
+        let minidump = match self.files().find(|f| f.file_name == MINIDUMP_FILE_NAME) {
             Some(m) => m,
             None => return Ok(None),
         };
 
-        Ok(Some(self.get_file_content(minidump)?))
+        Ok(Some(self.get_file_contents(minidump)?))
     }
 
-    /// Get file content
-    pub fn get_file_content(&self, file_meta: &CrashFileMeta) -> Result<&[u8], Unreal4ParseError> {
-        let start = file_meta.offset;
-        let end = file_meta.offset + file_meta.len;
-
-        if self.bytes.len() < start || self.bytes.len() < end {
-            return Err(Unreal4ParseError::OutOfBounds);
-        }
-
-        Ok(&self.bytes[start..end])
+    /// Get file content.
+    pub fn get_file_contents(&self, file_meta: &CrashFileMeta) -> Result<&[u8], Unreal4Error> {
+        let end = file_meta
+            .offset
+            .checked_add(file_meta.len)
+            .ok_or(Unreal4Error::OutOfBounds)?;
+        self.bytes
+            .get(file_meta.offset..end)
+            .ok_or(Unreal4Error::OutOfBounds)
     }
 }
 
@@ -143,17 +144,13 @@ fn read_header(cursor: &mut Cursor<&[u8]>) -> Header {
     }
 }
 
-fn get_files_from_bytes(bytes: &Bytes) -> Result<Vec<CrashFileMeta>, Unreal4ParseError> {
-    if bytes.len() < 1024 {
-        return Err(Unreal4ParseError::UnknownBytesFormat);
-    }
-
+fn get_files_from_slice(bytes: &Bytes) -> Result<Vec<CrashFileMeta>, Unreal4Error> {
     let mut rv = vec![];
 
     let file_count = Cursor::new(
         &bytes
             .get(bytes.len() - 4..)
-            .ok_or(Unreal4ParseError::OutOfBounds)?,
+            .ok_or(Unreal4Error::OutOfBounds)?,
     ).get_i32_le();
 
     let mut cursor = Cursor::new(&bytes[..]);
@@ -175,25 +172,25 @@ fn get_files_from_bytes(bytes: &Bytes) -> Result<Vec<CrashFileMeta>, Unreal4Pars
 }
 
 #[test]
-fn test_from_bytes_empty_buffer() {
+fn test_from_slice_empty_buffer() {
     let crash = &[];
 
-    let result = Unreal4Crash::from_bytes(crash);
+    let result = Unreal4Crash::from_slice(crash);
 
     assert!(match result.expect_err("empty crash") {
-        Unreal4ParseError::UnknownBytesFormat => true,
+        Unreal4Error::Empty => true,
         _ => false,
     })
 }
 
 #[test]
-fn test_from_bytes_invalid_input() {
+fn test_from_slice_invalid_input() {
     let crash = &[0u8; 1];
 
-    let result = Unreal4Crash::from_bytes(crash);
+    let result = Unreal4Crash::from_slice(crash);
 
     let err = match result.expect_err("empty crash") {
-        Unreal4ParseError::BadCompression(b) => b.to_string(),
+        Unreal4Error::BadCompression(b) => b.to_string(),
         _ => panic!(),
     };
 

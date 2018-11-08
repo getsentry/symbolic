@@ -2,9 +2,9 @@ extern crate clap;
 extern crate failure;
 extern crate symbolic;
 
+use std::cmp;
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
 
 use clap::{App, Arg, ArgMatches};
 use failure::Error;
@@ -14,11 +14,11 @@ use symbolic::unreal::Unreal4Crash;
 fn execute(matches: &ArgMatches) -> Result<(), Error> {
     let crash_file_path = matches.value_of("crash_file_path").unwrap();
 
-    let mut file = File::open(Path::new(crash_file_path))?;
+    let mut file = File::open(crash_file_path)?;
     let mut file_content = Vec::new();
     file.read_to_end(&mut file_content)?;
 
-    let ue4_crash = Unreal4Crash::from_bytes(&file_content)?;
+    let ue4_crash = Unreal4Crash::from_slice(&file_content)?;
 
     match ue4_crash.get_minidump_bytes()? {
         Some(m) => println!("Minidump size: {} bytes.", m.len()),
@@ -26,11 +26,12 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
     }
 
     for file_meta in ue4_crash.files() {
+        let contents = &ue4_crash.get_file_contents(file_meta)?;
         println!(
             "File name: {:?}, size: {:?}, preview {:?}",
             file_meta.file_name,
             file_meta.len,
-            String::from_utf8_lossy(&ue4_crash.get_file_content(file_meta)?[..50])
+            String::from_utf8_lossy(&contents[..cmp::min(50, contents.len())])
         );
     }
 
