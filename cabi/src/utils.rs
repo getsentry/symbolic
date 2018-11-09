@@ -11,7 +11,7 @@ thread_local! {
 
 /// An error thrown by `landingpad` in place of panics.
 #[derive(Fail, Debug)]
-#[fail(display = "smith panicked: {}", _0)]
+#[fail(display = "symbolic panicked: {}", _0)]
 pub struct Panic(String);
 
 fn set_last_error(err: Error) {
