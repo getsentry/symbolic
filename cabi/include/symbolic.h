@@ -108,6 +108,8 @@ typedef struct SymbolicSourceView SymbolicSourceView;
  */
 typedef struct SymbolicSymCache SymbolicSymCache;
 
+typedef struct SymbolicUnreal4Crash SymbolicUnreal4Crash;
+
 /*
  * CABI wrapper around a Rust string.
  */
@@ -706,6 +708,13 @@ SymbolicLookupResult symbolic_symcache_lookup(const SymbolicSymCache *scache, ui
  * Free a token match.
  */
 void symbolic_token_match_free(SymbolicTokenMatch *stm);
+
+void symbolic_unreal4_crash_free(SymbolicUnreal4Crash *unreal);
+
+SymbolicUnreal4Crash *symbolic_unreal4_crash_from_bytes(const char *bytes, uintptr_t len);
+
+const uint8_t *symbolic_unreal4_crash_get_minidump_bytes(const SymbolicUnreal4Crash *unreal,
+                                                         uintptr_t *len);
 
 /*
  * Returns true if the uuid is nil.

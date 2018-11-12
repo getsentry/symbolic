@@ -16,6 +16,7 @@ mod minidump;
 mod proguard;
 mod sourcemap;
 mod symcache;
+mod unreal;
 
 pub use crate::common::*;
 pub use crate::core::*;
@@ -25,3 +26,4 @@ pub use crate::minidump::*;
 pub use crate::proguard::*;
 pub use crate::sourcemap::*;
 pub use crate::symcache::*;
+pub use crate::unreal::*;
