@@ -19,4 +19,4 @@ class Unreal4Crash(RustObject):
         rv = self._methodcall(lib.symbolic_unreal4_crash_get_minidump_bytes, len_out)
         if rv == ffi.NULL:
             return None
-        return ffi.unpack(rv, len_out[0])
+        return ffi.buffer(rv, len_out[0])
