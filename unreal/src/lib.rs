@@ -24,7 +24,7 @@ struct Header {
 
 /// Meta-data about a file within a UE4 crash file.
 #[derive(Debug)]
-pub struct CrashFileMeta {
+pub struct Unreal4CrashFile {
     /// The original index within the UE4 crash file.
     pub index: usize,
     /// File name
@@ -56,7 +56,7 @@ pub enum Unreal4Error {
 #[derive(Debug)]
 pub struct Unreal4Crash {
     bytes: Bytes,
-    files: Vec<CrashFileMeta>,
+    files: Vec<Unreal4CrashFile>,
 }
 
 impl Unreal4Crash {
@@ -84,7 +84,7 @@ impl Unreal4Crash {
     }
 
     /// Files within the UE4 crash dump.
-    pub fn files(&self) -> impl Iterator<Item = &CrashFileMeta> {
+    pub fn files(&self) -> impl Iterator<Item = &Unreal4CrashFile> {
         self.files.iter()
     }
 
@@ -93,8 +93,8 @@ impl Unreal4Crash {
         self.files.len() as usize
     }
 
-    /// Get a `CrashFileMeta` by its index.
-    pub fn file_by_index(&self, index: usize) -> Option<&CrashFileMeta> {
+    /// Get a `Unreal4CrashFile` by its index.
+    pub fn file_by_index(&self, index: usize) -> Option<&Unreal4CrashFile> {
         self.files().find(|f| f.index == index)
     }
 
@@ -117,7 +117,7 @@ impl Unreal4Crash {
     }
 
     /// Get file content.
-    pub fn get_file_contents(&self, file_meta: &CrashFileMeta) -> Result<&[u8], Unreal4Error> {
+    pub fn get_file_contents(&self, file_meta: &Unreal4CrashFile) -> Result<&[u8], Unreal4Error> {
         let end = file_meta
             .offset
             .checked_add(file_meta.len)
@@ -144,7 +144,7 @@ fn read_header(cursor: &mut Cursor<&[u8]>) -> Header {
     }
 }
 
-fn get_files_from_slice(bytes: &Bytes) -> Result<Vec<CrashFileMeta>, Unreal4Error> {
+fn get_files_from_slice(bytes: &Bytes) -> Result<Vec<Unreal4CrashFile>, Unreal4Error> {
     let mut rv = vec![];
 
     let file_count = Cursor::new(
@@ -157,7 +157,7 @@ fn get_files_from_slice(bytes: &Bytes) -> Result<Vec<CrashFileMeta>, Unreal4Erro
     read_header(&mut cursor);
 
     for _ in 0..file_count {
-        let meta = CrashFileMeta {
+        let meta = Unreal4CrashFile {
             index: cursor.get_i32_le() as usize,
             file_name: read_ansi_string(&mut cursor),
             len: cursor.get_i32_le() as usize,

@@ -73,8 +73,6 @@ typedef uint32_t SymbolicFrameTrust;
  */
 typedef struct SymbolicCfiCache SymbolicCfiCache;
 
-typedef struct SymbolicCrashFileMeta SymbolicCrashFileMeta;
-
 /*
  * A potential multi arch object.
  */
@@ -111,6 +109,8 @@ typedef struct SymbolicSourceView SymbolicSourceView;
 typedef struct SymbolicSymCache SymbolicSymCache;
 
 typedef struct SymbolicUnreal4Crash SymbolicUnreal4Crash;
+
+typedef struct SymbolicUnreal4CrashFile SymbolicUnreal4CrashFile;
 
 /*
  * CABI wrapper around a Rust string.
@@ -711,16 +711,16 @@ SymbolicLookupResult symbolic_symcache_lookup(const SymbolicSymCache *scache, ui
  */
 void symbolic_token_match_free(SymbolicTokenMatch *stm);
 
-const SymbolicCrashFileMeta *symbolic_unreal4_crash_file_by_index(const SymbolicUnreal4Crash *unreal,
-                                                                  uintptr_t idx);
+const SymbolicUnreal4CrashFile *symbolic_unreal4_crash_file_by_index(const SymbolicUnreal4Crash *unreal,
+                                                                     uintptr_t idx);
 
 uintptr_t symbolic_unreal4_crash_file_count(const SymbolicUnreal4Crash *unreal);
 
-const uint8_t *symbolic_unreal4_crash_file_meta_contents(const SymbolicCrashFileMeta *meta,
+const uint8_t *symbolic_unreal4_crash_file_meta_contents(const SymbolicUnreal4CrashFile *meta,
                                                          const SymbolicUnreal4Crash *unreal,
                                                          uintptr_t *len);
 
-SymbolicStr symbolic_unreal4_crash_file_meta_name(const SymbolicCrashFileMeta *meta);
+SymbolicStr symbolic_unreal4_crash_file_meta_name(const SymbolicUnreal4CrashFile *meta);
 
 void symbolic_unreal4_crash_free(SymbolicUnreal4Crash *unreal);
 

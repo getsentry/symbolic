@@ -35,7 +35,7 @@ class Unreal4Crash(RustObject):
         if rv == ffi.NULL:
             return None
 
-        rv = CrashFileMeta._from_objptr(rv)
+        rv = Unreal4CrashFile._from_objptr(rv)
         rv.crash = self
         return rv
 
@@ -44,7 +44,7 @@ class Unreal4Crash(RustObject):
             yield self._file_by_index(idx)
 
 
-class CrashFileMeta(RustObject):
+class Unreal4CrashFile(RustObject):
 
     @property
     def name(self):
