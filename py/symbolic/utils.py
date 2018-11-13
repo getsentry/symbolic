@@ -145,7 +145,7 @@ def make_uuid(value):
     return uuid.UUID(value)
 
 
-class CacheReader(io.RawIOBase):
+class SliceReader(io.RawIOBase):
     """A buffered reader that keeps the cache in memory"""
     def __init__(self, buf, cache):
         self._buffer = buf

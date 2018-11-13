@@ -5,7 +5,7 @@ from symbolic._lowlevel import lib, ffi
 from symbolic.demangle import demangle_name
 from symbolic.utils import RustObject, rustcall, decode_str, encode_str, \
     common_path_join, strip_common_path_prefix, encode_path, attached_refs, \
-    CacheReader
+    SliceReader
 from symbolic.common import parse_addr
 from symbolic import exceptions
 
@@ -126,7 +126,7 @@ class SymCache(RustObject):
         """Returns a stream to read files from the internal buffer."""
         buf = self._methodcall(lib.symbolic_symcache_get_bytes)
         size = self._methodcall(lib.symbolic_symcache_get_size)
-        return io.BufferedReader(CacheReader(ffi.buffer(buf, size), self))
+        return io.BufferedReader(SliceReader(ffi.buffer(buf, size), self))
 
     def dump_into(self, f):
         """Dumps the symcache into a file object."""
