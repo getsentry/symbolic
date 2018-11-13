@@ -9,3 +9,19 @@ def test_unreal_crash(res_path):
         unreal_crash = Unreal4Crash.from_bytes(buffer)
         minidump = unreal_crash.minidump_bytes()
         assert len(minidump) == 410700
+
+def test_unreal_crash_files(res_path):
+    path = os.path.join(res_path, 'unreal', 'unreal_crash')
+    with open(path, mode='rb') as crash_file:
+        buffer = crash_file.read()
+        unreal_crash = Unreal4Crash.from_bytes(buffer)
+        files = list(unreal_crash.files())
+        assert 4 == len(files)
+        assert "CrashContext.runtime-xml" == files[0].name
+        assert 6545 == len(files[0].contents)
+        assert "CrashReportClient.ini" == files[1].name
+        assert 204 == len(files[1].contents)
+        assert "MyProject.log" == files[2].name
+        assert 21143 == len(files[2].contents)
+        assert "UE4Minidump.dmp" == files[3].name
+        assert 410700 == len(files[3].contents)

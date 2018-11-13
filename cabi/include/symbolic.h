@@ -73,6 +73,8 @@ typedef uint32_t SymbolicFrameTrust;
  */
 typedef struct SymbolicCfiCache SymbolicCfiCache;
 
+typedef struct SymbolicCrashFileMeta SymbolicCrashFileMeta;
+
 /*
  * A potential multi arch object.
  */
@@ -708,6 +710,17 @@ SymbolicLookupResult symbolic_symcache_lookup(const SymbolicSymCache *scache, ui
  * Free a token match.
  */
 void symbolic_token_match_free(SymbolicTokenMatch *stm);
+
+const SymbolicCrashFileMeta *symbolic_unreal4_crash_file_by_index(const SymbolicUnreal4Crash *unreal,
+                                                                  uintptr_t idx);
+
+uintptr_t symbolic_unreal4_crash_file_count(const SymbolicUnreal4Crash *unreal);
+
+const uint8_t *symbolic_unreal4_crash_file_meta_contents(const SymbolicCrashFileMeta *meta,
+                                                         const SymbolicUnreal4Crash *unreal,
+                                                         uintptr_t *len);
+
+SymbolicStr symbolic_unreal4_crash_file_meta_name(const SymbolicCrashFileMeta *meta);
 
 void symbolic_unreal4_crash_free(SymbolicUnreal4Crash *unreal);
 
