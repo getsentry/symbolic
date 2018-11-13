@@ -1,6 +1,7 @@
+import io
 from symbolic._lowlevel import lib, ffi
 from symbolic._compat import range_type
-from symbolic.utils import RustObject, rustcall, decode_str, attached_refs
+from symbolic.utils import RustObject, rustcall, decode_str, attached_refs, SliceReader
 
 __all__ = ['Unreal4Crash']
 
@@ -51,13 +52,10 @@ class Unreal4CrashFile(RustObject):
         """The file name."""
         return str(decode_str(self._methodcall(lib.symbolic_unreal4_crash_file_meta_name)))
 
-    @property
-    def contents(self):
-        """The contents of the file"""
+    def open_stream(self):
+        """Returns a stream to read files from the internal buffer."""
         len_out = ffi.new('uintptr_t *')
         rv = self._methodcall(lib.symbolic_unreal4_crash_file_meta_contents, self.crash._objptr, len_out)
         if rv == ffi.NULL:
             return None
-        rv = ffi.buffer(rv, len_out[0])
-        # attached_refs[rv] = self.crash
-        return rv
+        return io.BufferedReader(SliceReader(ffi.buffer(rv, len_out[0]), self))
