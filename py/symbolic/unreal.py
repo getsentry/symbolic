@@ -41,6 +41,7 @@ class Unreal4Crash(RustObject):
         return rv
 
     def files(self):
+        """Enumerate files within the UE4 crash"""
         for idx in range_type(self._file_count):
             yield self._file_by_index(idx)
 
