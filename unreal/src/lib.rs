@@ -6,14 +6,12 @@ extern crate bytes;
 extern crate compress;
 extern crate failure;
 
+use std::fmt;
 use std::io::{self, Cursor, Read};
 
 use bytes::{Buf, Bytes};
 use compress::zlib;
 use failure::Fail;
-
-// https://github.com/EpicGames/UnrealEngine/blob/5e997dc7b5a4efb7f1be22fa8c4875c9c0034394/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L60
-const MINIDUMP_FILE_NAME: &str = "UE4Minidump.dmp";
 
 struct Header {
     pub directory_name: String,
@@ -22,17 +20,70 @@ struct Header {
     pub file_count: i32,
 }
 
+/// The type of the file within the UE4 crash.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Unreal4FileType {
+    /// Minidump.
+    Minidump,
+    /// Log file.
+    Log,
+    /// The .ini config file.
+    Config,
+    /// The XML context file.
+    Context,
+    /// Unknown file type.
+    Unknown,
+}
+
+impl Unreal4FileType {
+    /// Returns the display name of this file type.
+    pub fn name(self) -> &'static str {
+        match self {
+            Unreal4FileType::Minidump => "minidump",
+            Unreal4FileType::Log => "log",
+            Unreal4FileType::Config => "config",
+            Unreal4FileType::Context => "context",
+            Unreal4FileType::Unknown => "unknown",
+        }
+    }
+}
+
+impl fmt::Display for Unreal4FileType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
 /// Meta-data about a file within a UE4 crash file.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Unreal4CrashFile {
     /// The original index within the UE4 crash file.
     pub index: usize,
-    /// File name
+    /// File name.
     pub file_name: String,
     /// Start of the file within crash dumb.
     pub offset: usize,
     /// Length of bytes from offset.
     pub len: usize,
+}
+
+impl Unreal4CrashFile {
+    /// Returns the file type.
+    pub fn ty(&self) -> Unreal4FileType {
+        match self.file_name.as_str() {
+            // https://github.com/EpicGames/UnrealEngine/blob/5e997dc7b5a4efb7f1be22fa8c4875c9c0034394/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L60
+            "UE4Minidump.dmp" => Unreal4FileType::Minidump,
+            "CrashReportClient.ini" => Unreal4FileType::Config,
+            "CrashContext.runtime-xml" => Unreal4FileType::Context,
+            name => {
+                if name.ends_with(".log") {
+                    Unreal4FileType::Log
+                } else {
+                    Unreal4FileType::Unknown
+                }
+            }
+        }
+    }
 }
 
 /// Errors related to parsing an UE4 crash file.
@@ -107,8 +158,8 @@ impl Unreal4Crash {
     }
 
     /// Get the Minidump file bytes.
-    pub fn get_minidump_bytes(&self) -> Result<Option<&[u8]>, Unreal4Error> {
-        let minidump = match self.files().find(|f| f.file_name == MINIDUMP_FILE_NAME) {
+    pub fn get_minidump_slice(&self) -> Result<Option<&[u8]>, Unreal4Error> {
+        let minidump = match self.files().find(|f| f.ty() == Unreal4FileType::Minidump) {
             Some(m) => m,
             None => return Ok(None),
         };

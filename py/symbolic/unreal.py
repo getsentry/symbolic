@@ -1,6 +1,9 @@
 import io
+
 from symbolic._lowlevel import lib, ffi
 from symbolic._compat import range_type
+
+from symbolic.minidump import ProcessState
 from symbolic.utils import RustObject, rustcall, decode_str, attached_refs, SliceReader
 
 __all__ = ['Unreal4Crash']
@@ -17,13 +20,11 @@ class Unreal4Crash(RustObject):
         attached_refs[rv] = buffer
         return rv
 
-    def minidump_bytes(self):
-        """The minidump from the Unreal Engine 4 crash"""
-        len_out = ffi.new('uintptr_t *')
-        rv = self._methodcall(lib.symbolic_unreal4_crash_get_minidump_bytes, len_out)
+    def process_minidump(self):
+        rv = self._methodcall(lib.symbolic_unreal4_crash_process_minidump)
         if rv == ffi.NULL:
             return None
-        return ffi.buffer(rv, len_out[0])
+        return ProcessState._from_objptr(rv)
 
     @property
     def _file_count(self):
@@ -52,6 +53,11 @@ class Unreal4CrashFile(RustObject):
     def name(self):
         """The file name."""
         return str(decode_str(self._methodcall(lib.symbolic_unreal4_crash_file_meta_name)))
+
+    @property
+    def type(self):
+        """The type of the file"""
+        return "default"
 
     def open_stream(self):
         """Returns a stream to read files from the internal buffer."""
