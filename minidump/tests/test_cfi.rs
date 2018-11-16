@@ -6,8 +6,15 @@ extern crate symbolic_testutils;
 use std::str;
 use symbolic_common::byteview::ByteView;
 use symbolic_debuginfo::FatObject;
-use symbolic_minidump::cfi::AsciiCfiWriter;
+use symbolic_minidump::cfi::{AsciiCfiWriter, CfiCache};
 use symbolic_testutils::{assert_snapshot_plain, fixture_path};
+
+#[test]
+fn load_empty_cfi_cache() {
+    let buffer = ByteView::from_slice(&[]);
+    let cache = CfiCache::from_bytes(buffer).expect("Could not load empty cache file");
+    assert_eq!(cache.version(), 1);
+}
 
 #[test]
 fn cfi_from_elf() {

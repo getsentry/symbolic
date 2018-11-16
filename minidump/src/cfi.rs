@@ -446,7 +446,7 @@ impl CfiCache<'static> {
 impl<'a> CfiCache<'a> {
     /// Load a symcache from a `ByteView`.
     pub fn from_bytes(byteview: ByteView<'a>) -> Result<Self, CfiError> {
-        if byteview.starts_with(b"STACK") {
+        if byteview.len() == 0 || byteview.starts_with(b"STACK") {
             let inner = CfiCacheInner::V1(CfiCacheV1 { byteview });
             return Ok(CfiCache { inner });
         }
