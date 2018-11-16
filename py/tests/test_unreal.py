@@ -10,12 +10,16 @@ def test_unreal_crash_files(res_path):
         files = list(unreal_crash.files())
         assert 4 == len(files)
         assert "CrashContext.runtime-xml" == files[0].name
+        assert "context" == files[0].type
         assert 6545 == len(files[0].open_stream().read())
         assert "CrashReportClient.ini" == files[1].name
+        assert "config" == files[1].type
         assert 204 == len(files[1].open_stream().read())
         assert "MyProject.log" == files[2].name
+        assert "log" == files[2].type
         assert 21143 == len(files[2].open_stream().read())
         assert "UE4Minidump.dmp" == files[3].name
+        assert "minidump" == files[3].type
         assert 410700 == len(files[3].open_stream().read())
 
 

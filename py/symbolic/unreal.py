@@ -57,7 +57,7 @@ class Unreal4CrashFile(RustObject):
     @property
     def type(self):
         """The type of the file"""
-        return "default"
+        return str(decode_str(self._methodcall(lib.symbolic_unreal4_crash_file_meta_type)))
 
     def open_stream(self):
         """Returns a stream to read files from the internal buffer."""
