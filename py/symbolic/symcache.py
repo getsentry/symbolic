@@ -87,9 +87,11 @@ class SymCache(RustObject):
 
     @classmethod
     def from_bytes(cls, data):
-        """Loads a symcache from a file via mmap."""
-        return cls._from_objptr(
+        """Loads a symcache from a binary buffer."""
+        symcache = cls._from_objptr(
             rustcall(lib.symbolic_symcache_from_bytes, data, len(data)))
+        attached_refs[symcache] = data
+        return symcache
 
     @property
     def arch(self):
