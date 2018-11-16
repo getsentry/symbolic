@@ -20,7 +20,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
 
     let ue4_crash = Unreal4Crash::from_slice(&file_content)?;
 
-    match ue4_crash.get_minidump_bytes()? {
+    match ue4_crash.get_minidump_slice()? {
         Some(m) => println!("Minidump size: {} bytes.", m.len()),
         None => println!("No minidump found in the Unreal Crash provided."),
     }
@@ -28,8 +28,9 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
     for file_meta in ue4_crash.files() {
         let contents = &ue4_crash.get_file_contents(file_meta)?;
         println!(
-            "File name: {:?}, size: {:?}, preview {:?}",
+            "File name: {:?}, Type: {:?}, size: {:?}, preview {:?}",
             file_meta.file_name,
+            file_meta.ty(),
             file_meta.len,
             String::from_utf8_lossy(&contents[..cmp::min(50, contents.len())])
         );

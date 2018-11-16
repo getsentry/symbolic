@@ -18,7 +18,7 @@ fn parse_unreal_crash() {
     let ue4_crash = Unreal4Crash::from_slice(&file_content).expect("crash file loaded");
 
     let minidump_bytes = ue4_crash
-        .get_minidump_bytes()
+        .get_minidump_slice()
         .expect("expected Minidump file read without errors")
         .expect("expected Minidump file bytes exists");
 

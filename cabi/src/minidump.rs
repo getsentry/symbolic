@@ -107,6 +107,12 @@ pub struct SymbolicProcessState {
     pub module_count: usize,
 }
 
+impl SymbolicProcessState {
+    pub unsafe fn from_process_state(state: &ProcessState) -> Self {
+        map_process_state(state)
+    }
+}
+
 impl Drop for SymbolicProcessState {
     fn drop(&mut self) {
         unsafe {
@@ -286,7 +292,7 @@ ffi_fn! {
         };
 
         let state = ProcessState::from_minidump(&byteview, map)?;
-        let sstate = map_process_state(&state);
+        let sstate = SymbolicProcessState::from_process_state(&state);
         Ok(Box::into_raw(Box::new(sstate)))
     }
 }

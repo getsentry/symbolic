@@ -7,7 +7,7 @@ from datetime import datetime
 from symbolic._compat import range_type
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, attached_refs, encode_path, \
-    encode_str, decode_str, CacheReader
+    encode_str, decode_str, SliceReader
 
 __all__ = ['CallStack', 'FrameInfoMap', 'FrameTrust', 'ProcessState',
            'StackFrame', 'CfiCache', 'CFICACHE_LATEST_VERSION']
@@ -356,7 +356,7 @@ class CfiCache(RustObject):
         """Returns a stream to read files from the internal buffer."""
         buf = self._methodcall(lib.symbolic_cficache_get_bytes)
         size = self._methodcall(lib.symbolic_cficache_get_size)
-        return io.BufferedReader(CacheReader(ffi.buffer(buf, size), self))
+        return io.BufferedReader(SliceReader(ffi.buffer(buf, size), self))
 
     def write_to(self, f):
         """Writes the CFI cache into a file object."""

@@ -51,6 +51,10 @@ enum SymbolicErrorCode {
   SYMBOLIC_ERROR_CODE_SYM_CACHE_ERROR_VALUE_TOO_LARGE = 6010,
   SYMBOLIC_ERROR_CODE_SYM_CACHE_ERROR_WRITE_FAILED = 6011,
   SYMBOLIC_ERROR_CODE_SYM_CACHE_ERROR_TOO_MANY_VALUES = 6012,
+  SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_UNKNOWN_BYTES_FORMAT = 7001,
+  SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_EMPTY = 7002,
+  SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_OUT_OF_BOUNDS = 7003,
+  SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_BAD_COMPRESSION = 7004,
 };
 typedef uint32_t SymbolicErrorCode;
 
@@ -109,6 +113,8 @@ typedef struct SymbolicSourceView SymbolicSourceView;
 typedef struct SymbolicSymCache SymbolicSymCache;
 
 typedef struct SymbolicUnreal4Crash SymbolicUnreal4Crash;
+
+typedef struct SymbolicUnreal4CrashFile SymbolicUnreal4CrashFile;
 
 /*
  * CABI wrapper around a Rust string.
@@ -709,12 +715,24 @@ SymbolicLookupResult symbolic_symcache_lookup(const SymbolicSymCache *scache, ui
  */
 void symbolic_token_match_free(SymbolicTokenMatch *stm);
 
+const SymbolicUnreal4CrashFile *symbolic_unreal4_crash_file_by_index(const SymbolicUnreal4Crash *unreal,
+                                                                     uintptr_t idx);
+
+uintptr_t symbolic_unreal4_crash_file_count(const SymbolicUnreal4Crash *unreal);
+
+const uint8_t *symbolic_unreal4_crash_file_meta_contents(const SymbolicUnreal4CrashFile *meta,
+                                                         const SymbolicUnreal4Crash *unreal,
+                                                         uintptr_t *len);
+
+SymbolicStr symbolic_unreal4_crash_file_meta_name(const SymbolicUnreal4CrashFile *meta);
+
+SymbolicStr symbolic_unreal4_crash_file_meta_type(const SymbolicUnreal4CrashFile *meta);
+
 void symbolic_unreal4_crash_free(SymbolicUnreal4Crash *unreal);
 
 SymbolicUnreal4Crash *symbolic_unreal4_crash_from_bytes(const char *bytes, uintptr_t len);
 
-const uint8_t *symbolic_unreal4_crash_get_minidump_bytes(const SymbolicUnreal4Crash *unreal,
-                                                         uintptr_t *len);
+SymbolicProcessState *symbolic_unreal4_crash_process_minidump(const SymbolicUnreal4Crash *unreal);
 
 /*
  * Returns true if the uuid is nil.
