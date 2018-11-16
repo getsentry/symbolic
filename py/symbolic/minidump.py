@@ -358,9 +358,6 @@ class CfiCache(RustObject):
         size = self._methodcall(lib.symbolic_cficache_get_size)
         return io.BufferedReader(SliceReader(ffi.buffer(buf, size), self))
 
-        buf = ffi.buffer(self._objptr.bytes, self._objptr.len)
-        return io.BufferedReader(SliceReader(buf, self))
-
     def write_to(self, f):
         """Writes the CFI cache into a file object."""
         shutil.copyfileobj(self.open_stream(), f)
