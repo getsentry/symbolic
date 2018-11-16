@@ -15,10 +15,10 @@ Parsing and processing utilities for Unreal Engine 4 crash files.
 """
 
 [dependencies]
-failure = "0.1.2"
-failure_derive = "0.1.2"
+failure = "0.1.3"
+failure_derive = "0.1.3"
 compress = "0.1.2"
-byteorder = "1.1.0"
+byteorder = "1.2.7"
 bytes = "0.4.10"
 
 [dev-dependencies]
