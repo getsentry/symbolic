@@ -273,7 +273,7 @@ fn print_state(
 
 fn execute(matches: &ArgMatches) -> Result<(), Error> {
     let minidump_path = matches.value_of("minidump_file_path").unwrap();
-    let symbols_path = matches.value_of("debug_symbols_path").unwrap();
+    let symbols_path = matches.value_of("debug_symbols_path").unwrap_or("invalid");
 
     // Initially process without CFI
     let byteview = ByteView::from_path(&minidump_path)?;
@@ -313,7 +313,6 @@ fn main() {
                 .help("Path to the minidump file"),
         ).arg(
             Arg::with_name("debug_symbols_path")
-                .required(true)
                 .value_name("symbols")
                 .help("Path to a folder containing debug symbols"),
         ).arg(
