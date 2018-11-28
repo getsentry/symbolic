@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-unreal"
-version = "5.7.0"
+version = "5.7.1"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -22,4 +22,4 @@ byteorder = "1.2.7"
 bytes = "0.4.10"
 
 [dev-dependencies]
-symbolic-testutils = { version = "5.7.0", path = "../testutils" }
+symbolic-testutils = { version = "5.7.1", path = "../testutils" }
