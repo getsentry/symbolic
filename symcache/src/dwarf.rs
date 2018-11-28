@@ -261,6 +261,8 @@ impl<'input> Unit<'input> {
         funcs: &mut Vec<Function<'input>>,
     ) -> Result<(), SymCacheError> {
         let mut depth = 0;
+        let mut skipped_depth = None;
+
         let header = info.get_unit_header(self.index)?;
         let abbrev = info.get_abbrev(header)?;
         let mut entries = header.entries(&*abbrev);
@@ -276,6 +278,14 @@ impl<'input> Unit<'input> {
         while let Some((movement, entry)) = entries.next_dfs()? {
             depth += movement;
 
+            // If we're navigating within a skipped function (see below), we can ignore this entry
+            // completely. Otherwise, we've moved out of any skipped function and can reset the
+            // stored depth.
+            match skipped_depth {
+                Some(skipped) if depth > skipped => continue,
+                _ => skipped_depth = None,
+            }
+
             // skip anything that is not a function
             let inline = match entry.tag() {
                 gimli::DW_TAG_subprogram => false,
@@ -284,7 +294,13 @@ impl<'input> Unit<'input> {
             };
 
             let (call_line, call_file, ranges) = self.parse_location(info, entry, range_buf)?;
+
+            // Ranges can be empty for two reasons: (1) the function is a no-op and does not contain
+            // any code, or (2) the function did contain eliminated dead code. In the latter case, a
+            // surrogate DIE remains with `DW_AT_low_pc(0)` and empty ranges. That DIE might still
+            // contain inlined functions with actual ranges, which must all be skipped.
             if ranges.is_empty() {
+                skipped_depth = Some(depth);
                 continue;
             }
 
