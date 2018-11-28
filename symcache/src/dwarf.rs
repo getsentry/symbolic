@@ -360,13 +360,14 @@ impl<'input> Unit<'input> {
                 continue;
             }
 
-            if funcs.is_empty() {
-                return Err(ConversionError("could not find root function").into());
-            }
+            // An inlined function must always have a parent. An empty list of funcs indicates
+            // invalid debug information.
+            let mut node = funcs
+                .last_mut()
+                .ok_or(ConversionError("could not find inline parent function"))?;
 
             // Search the inner-most parent function from the inlines tree. At
             // the very bottom we will attach to that parent as inline function.
-            let mut node = funcs.last_mut().unwrap();
             while { &node }
                 .inlines
                 .last()
