@@ -55,11 +55,11 @@ impl<'a> DwarfBuffers<'a> {
     pub fn from_object(obj: &'a Object) -> Result<Self, SymCacheError> {
         Ok(DwarfBuffers {
             debug_info: load_section(obj, DwarfSection::DebugInfo, true)?,
-            debug_abbrev: load_section(obj, DwarfSection::DebugInfo, true)?,
-            debug_line: load_section(obj, DwarfSection::DebugInfo, true)?,
-            debug_str: load_section(obj, DwarfSection::DebugInfo, false)?,
-            debug_ranges: load_section(obj, DwarfSection::DebugInfo, false)?,
-            debug_rnglists: load_section(obj, DwarfSection::DebugInfo, false)?,
+            debug_abbrev: load_section(obj, DwarfSection::DebugAbbrev, true)?,
+            debug_line: load_section(obj, DwarfSection::DebugLine, true)?,
+            debug_str: load_section(obj, DwarfSection::DebugStr, false)?,
+            debug_ranges: load_section(obj, DwarfSection::DebugRanges, false)?,
+            debug_rnglists: load_section(obj, DwarfSection::DebugRngLists, false)?,
         })
     }
 }
