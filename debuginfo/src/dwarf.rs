@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use goblin::{elf, mach};
 
 use crate::elf::{find_elf_section, has_elf_section};
@@ -125,13 +127,13 @@ impl DwarfSection {
 #[derive(Eq, PartialEq, Debug, Clone)]
 pub struct DwarfSectionData<'data> {
     section: DwarfSection,
-    data: &'data [u8],
+    data: Cow<'data, [u8]>,
     offset: u64,
 }
 
 impl<'data> DwarfSectionData<'data> {
     /// Constructs a `DwarfSectionData` object from raw data.
-    pub fn new(section: DwarfSection, data: &[u8], offset: u64) -> DwarfSectionData {
+    pub fn new(section: DwarfSection, data: Cow<[u8]>, offset: u64) -> DwarfSectionData {
         DwarfSectionData {
             section,
             data,
@@ -140,8 +142,8 @@ impl<'data> DwarfSectionData<'data> {
     }
 
     /// Return the section data as bytes.
-    pub fn as_bytes(&self) -> &'data [u8] {
-        self.data
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.data
     }
 
     /// Get the absolute file offset.
@@ -153,6 +155,11 @@ impl<'data> DwarfSectionData<'data> {
     pub fn section(&self) -> DwarfSection {
         self.section
     }
+
+    /// Unwraps the buffer of this section.
+    pub fn into_bytes(self) -> Cow<'data, [u8]> {
+        self.data
+    }
 }
 
 /// Reads a single `DwarfSection` from an ELF object file.
@@ -162,8 +169,9 @@ fn read_elf_dwarf_section<'data>(
     sect: DwarfSection,
 ) -> Option<DwarfSectionData<'data>> {
     let sh_type = elf::section_header::SHT_PROGBITS;
-    find_elf_section(elf, data, sh_type, sect.elf_name())
-        .map(|section| DwarfSectionData::new(sect, section.data, section.header.sh_offset))
+    find_elf_section(elf, data, sh_type, sect.elf_name()).map(|section| {
+        DwarfSectionData::new(sect, Cow::Borrowed(section.data), section.header.sh_offset)
+    })
 }
 
 /// Reads a single `DwarfSection` from Mach object file.
@@ -171,6 +179,11 @@ fn read_mach_dwarf_section<'data>(
     macho: &mach::MachO<'data>,
     sect: DwarfSection,
 ) -> Option<DwarfSectionData<'data>> {
-    find_mach_section(macho, sect.macho_name())
-        .map(|section| DwarfSectionData::new(sect, section.data, section.header.offset.into()))
+    find_mach_section(macho, sect.macho_name()).map(|section| {
+        DwarfSectionData::new(
+            sect,
+            Cow::Borrowed(section.data),
+            section.header.offset.into(),
+        )
+    })
 }

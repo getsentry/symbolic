@@ -425,7 +425,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         let mut local_cache = FnvHashMap::default();
         let mut funcs = vec![];
 
-        for index in 0..info.units.len() {
+        for index in 0..info.unit_count() {
             // attempt to parse a single unit from the given header.
             let unit_opt = Unit::parse(&info, index)?;
 
@@ -449,7 +449,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
                     self.write_missing_functions_from_symboltable(
                         &mut last_addr,
                         func.addr,
-                        info.vmaddr,
+                        info.vmaddr(),
                         symbol_iter,
                     )?;
                 }
@@ -462,7 +462,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
             self.write_missing_functions_from_symboltable(
                 &mut last_addr,
                 !0,
-                info.vmaddr,
+                info.vmaddr(),
                 symbol_iter,
             )?;
         }
