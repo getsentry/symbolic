@@ -169,9 +169,8 @@ fn read_elf_dwarf_section<'data>(
     sect: DwarfSection,
 ) -> Option<DwarfSectionData<'data>> {
     let sh_type = elf::section_header::SHT_PROGBITS;
-    find_elf_section(elf, data, sh_type, sect.elf_name()).map(|section| {
-        DwarfSectionData::new(sect, Cow::Borrowed(section.data), section.header.sh_offset)
-    })
+    find_elf_section(elf, data, sh_type, sect.elf_name())
+        .map(|section| DwarfSectionData::new(sect, section.data, section.header.sh_offset))
 }
 
 /// Reads a single `DwarfSection` from Mach object file.
