@@ -49,7 +49,7 @@ impl<'input> BreakpadInfo<'input> {
                 BreakpadRecord::Line(l) => {
                     let func = match self.funcs.last_mut() {
                         Some(func) => func,
-                        None => return Err(ConversionError("unexpected line record").into()),
+                        None => return Err(ConversionError::new("unexpected line record").into()),
                     };
 
                     func.lines.push(l);

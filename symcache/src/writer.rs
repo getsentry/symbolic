@@ -382,7 +382,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
                 while diff >= 0 {
                     let file_id = match file_cache.get(&line.file_id) {
                         Some(id) => *id,
-                        None => return Err(ConversionError("invalid breakpad file id").into()),
+                        None => return Err(ConversionError::new("invalid breakpad file id").into()),
                     };
 
                     line_records.push(LineRecord {
