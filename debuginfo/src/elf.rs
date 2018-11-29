@@ -93,9 +93,11 @@ pub fn has_elf_section(elf: &elf::Elf, sh_type: u32, name: &str) -> bool {
         }
 
         if let Some(Ok(section_name)) = elf.shdr_strtab.get(header.sh_name) {
-            if section_name == name {
-                return true;
+            if section_name != name {
+                continue;
             }
+
+            return header.sh_offset != 0;
         }
     }
 
