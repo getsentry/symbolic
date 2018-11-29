@@ -30,8 +30,8 @@ fn load_section<'a>(
         Some(sect) => sect.into_bytes(),
         None => {
             if required {
-                // TODO(ja): Better message
-                return Err(ConversionError("missing required .fooo section")
+                let message = format!("missing required {} section", section);
+                return Err(ConversionError::new(message)
                     .context(SymCacheErrorKind::MissingDebugSection)
                     .into());
             }
@@ -130,7 +130,7 @@ impl<'a> DwarfInfo<'a> {
         self.sections
             .units
             .get(index)
-            .ok_or_else(|| ConversionError("compilation unit does not exist").into())
+            .ok_or_else(|| ConversionError::new("compilation unit does not exist").into())
     }
 
     pub fn get_abbrev(
@@ -168,7 +168,9 @@ impl<'a> DwarfInfo<'a> {
         {
             Ok(idx) => idx,
             Err(0) => {
-                return Err(ConversionError("could not find compilation unit at address").into())
+                return Err(
+                    ConversionError::new("could not find compilation unit at address").into(),
+                )
             }
             Err(next_idx) => next_idx - 1,
         };
@@ -178,7 +180,7 @@ impl<'a> DwarfInfo<'a> {
             return Ok((idx, unit_offset));
         }
 
-        Err(ConversionError("compilation unit out of range").into())
+        Err(ConversionError::new("compilation unit out of range").into())
     }
 }
 
@@ -275,7 +277,7 @@ impl<'a> Unit<'a> {
         };
 
         if entry.tag() != gimli::DW_TAG_compile_unit {
-            return Err(ConversionError("missing compilation unit").into());
+            return Err(ConversionError::new("missing compilation unit").into());
         }
 
         let base_address = match entry.attr_value(gimli::DW_AT_low_pc)? {
@@ -426,9 +428,9 @@ impl<'a> Unit<'a> {
 
             // An inlined function must always have a parent. An empty list of funcs indicates
             // invalid debug information.
-            let mut node = funcs
-                .last_mut()
-                .ok_or(ConversionError("could not find inline parent function"))?;
+            let mut node = funcs.last_mut().ok_or(ConversionError::new(
+                "could not find inline parent function",
+            ))?;
 
             // Search the inner-most parent function from the inlines tree. At
             // the very bottom we will attach to that parent as inline function.
@@ -565,7 +567,7 @@ impl<'a> Unit<'a> {
 
         if low_pc > high_pc {
             // TODO: consider swallowing errors here?
-            return Err(ConversionError("invalid function with inverted range").into());
+            return Err(ConversionError::new("invalid function with inverted range").into());
         }
 
         buf.push(Range {
@@ -768,7 +770,7 @@ impl<'a> DwarfLineProgram<'a> {
         let header = self.program_rows.header();
         let file = header
             .file(idx)
-            .ok_or_else(|| SymCacheError::from(ConversionError("invalid file reference")))?;
+            .ok_or_else(|| SymCacheError::from(ConversionError::new("invalid file reference")))?;
 
         Ok((
             file.directory(header).map(|x| x.slice()).unwrap_or(b""),

@@ -123,6 +123,12 @@ impl DwarfSection {
     }
 }
 
+impl std::fmt::Display for DwarfSection {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
 /// Gives access to a section in a dwarf file.
 #[derive(Eq, PartialEq, Debug, Clone)]
 pub struct DwarfSectionData<'data> {
