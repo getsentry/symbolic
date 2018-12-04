@@ -1,13 +1,18 @@
+use std::borrow::Cow;
+
 use goblin::{elf, mach};
 
 use crate::elf::{find_elf_section, has_elf_section};
-use crate::mach::{find_mach_section, has_mach_segment};
+use crate::mach::{find_mach_section, has_mach_section, has_mach_segment};
 use crate::object::{Object, ObjectTarget};
 
 /// Provides access to DWARF debugging information in object files.
 pub trait DwarfData {
     /// Checks whether this object contains DWARF infos.
     fn has_dwarf_data(&self) -> bool;
+
+    /// Checks whether a DWARF section is present in the file.
+    fn has_dwarf_section(&self, section: DwarfSection) -> bool;
 
     /// Loads a specific dwarf section if its in the file.
     fn get_dwarf_section(&self, section: DwarfSection) -> Option<DwarfSectionData>;
@@ -34,6 +39,17 @@ impl<'input> DwarfData for Object<'input> {
             ObjectTarget::MachOFat(_, ref macho) => has_mach_segment(macho, "__DWARF"),
 
             // We do not support DWARF in any other object targets
+            _ => false,
+        }
+    }
+
+    fn has_dwarf_section(&self, section: DwarfSection) -> bool {
+        match self.target {
+            ObjectTarget::Elf(ref elf) => {
+                has_elf_section(elf, elf::section_header::SHT_PROGBITS, section.elf_name())
+            }
+            ObjectTarget::MachOSingle(ref macho) => has_mach_section(macho, section.macho_name()),
+            ObjectTarget::MachOFat(_, ref macho) => has_mach_section(macho, section.macho_name()),
             _ => false,
         }
     }
@@ -121,17 +137,23 @@ impl DwarfSection {
     }
 }
 
+impl std::fmt::Display for DwarfSection {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
+
 /// Gives access to a section in a dwarf file.
 #[derive(Eq, PartialEq, Debug, Clone)]
 pub struct DwarfSectionData<'data> {
     section: DwarfSection,
-    data: &'data [u8],
+    data: Cow<'data, [u8]>,
     offset: u64,
 }
 
 impl<'data> DwarfSectionData<'data> {
     /// Constructs a `DwarfSectionData` object from raw data.
-    pub fn new(section: DwarfSection, data: &[u8], offset: u64) -> DwarfSectionData {
+    pub fn new(section: DwarfSection, data: Cow<[u8]>, offset: u64) -> DwarfSectionData {
         DwarfSectionData {
             section,
             data,
@@ -140,8 +162,8 @@ impl<'data> DwarfSectionData<'data> {
     }
 
     /// Return the section data as bytes.
-    pub fn as_bytes(&self) -> &'data [u8] {
-        self.data
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.data
     }
 
     /// Get the absolute file offset.
@@ -152,6 +174,11 @@ impl<'data> DwarfSectionData<'data> {
     /// Get the section name.
     pub fn section(&self) -> DwarfSection {
         self.section
+    }
+
+    /// Unwraps the buffer of this section.
+    pub fn into_bytes(self) -> Cow<'data, [u8]> {
+        self.data
     }
 }
 
@@ -171,6 +198,11 @@ fn read_mach_dwarf_section<'data>(
     macho: &mach::MachO<'data>,
     sect: DwarfSection,
 ) -> Option<DwarfSectionData<'data>> {
-    find_mach_section(macho, sect.macho_name())
-        .map(|section| DwarfSectionData::new(sect, section.data, section.header.offset.into()))
+    find_mach_section(macho, sect.macho_name()).map(|section| {
+        DwarfSectionData::new(
+            sect,
+            Cow::Borrowed(section.data),
+            section.header.offset.into(),
+        )
+    })
 }

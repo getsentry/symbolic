@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt;
 
 use failure::{Backtrace, Context, Fail};
@@ -8,9 +9,18 @@ use symbolic_debuginfo::ObjectError;
 ///
 /// This error is used as cause for `BadDebugFile` errors to add more information to the generic
 /// error kind. It should not be exposed to the user.
-#[derive(Debug, Fail, Copy, Clone)]
+#[derive(Debug, Fail, Clone)]
 #[fail(display = "{}", _0)]
-pub(crate) struct ConversionError(pub &'static str);
+pub(crate) struct ConversionError(pub Cow<'static, str>);
+
+impl ConversionError {
+    pub fn new<C>(message: C) -> Self
+    where
+        C: Into<Cow<'static, str>>,
+    {
+        ConversionError(message.into())
+    }
+}
 
 #[doc(hidden)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

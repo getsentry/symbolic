@@ -72,6 +72,15 @@ pub fn find_mach_section<'data>(
     None
 }
 
+/// Checks whether a Mach object file contains a section.
+///
+/// This is useful to determine whether the binary contains certain information
+/// without loading its section data.
+pub fn has_mach_section(mach: &mach::MachO, name: &str) -> bool {
+    // Loading the data is comparably cheap, so we can delegate
+    find_mach_section(mach, name).is_some()
+}
+
 /// Resolves the object identifier from Mach object load commands.
 pub fn get_mach_id(macho: &mach::MachO) -> Option<DebugId> {
     for cmd in &macho.load_commands {

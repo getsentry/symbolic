@@ -1,6 +1,9 @@
+use std::borrow::Cow;
 use std::cmp;
 
-use goblin::elf;
+use flate2::{Decompress, FlushDecompress};
+use goblin::elf::compression_header::{CompressionHeader, ELFCOMPRESS_ZLIB};
+use goblin::{container::Ctx, elf};
 use uuid::Uuid;
 
 use symbolic_common::types::DebugId;
@@ -11,7 +14,27 @@ const PAGE_SIZE: usize = 4096;
 /// A section inside an ELF binary.
 pub struct ElfSection<'elf, 'data> {
     pub header: &'elf elf::SectionHeader,
-    pub data: &'data [u8],
+    pub data: Cow<'data, [u8]>,
+}
+
+/// Decompresses the given compressed section data, if supported.
+fn decompress_section(elf: &elf::Elf, data: &[u8]) -> Option<Vec<u8>> {
+    let container = elf.header.container().ok()?;
+    let endianness = elf.header.endianness().ok()?;
+    let context = Ctx::new(container, endianness);
+
+    let compression = CompressionHeader::parse(&data, 0, context).ok()?;
+    if compression.ch_type != ELFCOMPRESS_ZLIB {
+        return None;
+    }
+
+    let compressed = &data[CompressionHeader::size(&context)..];
+    let mut decompressed = Vec::with_capacity(compression.ch_size as usize);
+    Decompress::new(true)
+        .decompress_vec(compressed, &mut decompressed, FlushDecompress::Finish)
+        .ok()?;
+
+    Some(decompressed)
 }
 
 /// Locates and reads a section in an ELF binary.
@@ -41,9 +64,17 @@ pub fn find_elf_section<'elf, 'data>(
             }
 
             let size = header.sh_size as usize;
+            let mut section_data = Cow::Borrowed(&data[offset..][..size]);
+
+            // Check for zlib compression of the section data. Once we've arrived here, we can
+            // return None on error since each section will only occur once.
+            if header.sh_flags & u64::from(elf::section_header::SHF_COMPRESSED) != 0 {
+                section_data = Cow::Owned(decompress_section(elf, &section_data)?);
+            }
+
             return Some(ElfSection {
                 header,
-                data: &data[offset..][..size],
+                data: section_data,
             });
         }
     }
@@ -62,9 +93,11 @@ pub fn has_elf_section(elf: &elf::Elf, sh_type: u32, name: &str) -> bool {
         }
 
         if let Some(Ok(section_name)) = elf.shdr_strtab.get(header.sh_name) {
-            if section_name == name {
-                return true;
+            if section_name != name {
+                continue;
             }
+
+            return header.sh_offset != 0;
         }
     }
 

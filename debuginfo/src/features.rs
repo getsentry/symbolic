@@ -6,8 +6,8 @@ use crate::object::{Object, ObjectTarget};
 use crate::symbols::SymbolTable;
 
 fn has_dwarf_unwind_info(object: &Object) -> bool {
-    object.get_dwarf_section(DwarfSection::EhFrame).is_some()
-        || object.get_dwarf_section(DwarfSection::DebugFrame).is_some()
+    object.has_dwarf_section(DwarfSection::EhFrame)
+        || object.has_dwarf_section(DwarfSection::DebugFrame)
 }
 
 fn has_breakpad_record(object: &Object, record: &[u8]) -> bool {
