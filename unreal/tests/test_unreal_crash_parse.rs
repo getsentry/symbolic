@@ -7,15 +7,23 @@ use std::fs::File;
 use std::io::Read;
 
 use symbolic_testutils::fixture_path;
-use symbolic_unreal::Unreal4Crash;
+use symbolic_unreal::{Unreal4Crash, Unreal4Error};
 
-#[test]
-fn parse_unreal_crash() {
+fn get_unreal_crash() -> Result<Unreal4Crash, Unreal4Error> {
     let mut file = File::open(fixture_path("unreal/unreal_crash")).expect("example file opens");
     let mut file_content = Vec::new();
     file.read_to_end(&mut file_content).expect("fixture file");
+    Unreal4Crash::from_slice(&file_content)
+}
 
-    let ue4_crash = Unreal4Crash::from_slice(&file_content).expect("crash file loaded");
+#[test]
+fn load_unreal_crash() {
+    get_unreal_crash().expect("crash file loaded");
+}
+
+#[test]
+fn parse_unreal_crash() {
+    let ue4_crash = get_unreal_crash().expect("test crash file loads");
 
     let minidump_bytes = ue4_crash
         .get_minidump_slice()
