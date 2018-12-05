@@ -17,12 +17,12 @@ fn get_unreal_crash() -> Result<Unreal4Crash, Unreal4Error> {
 }
 
 #[test]
-fn load_unreal_crash() {
+fn test_load_unreal_crash() {
     get_unreal_crash().expect("crash file loaded");
 }
 
 #[test]
-fn parse_unreal_crash() {
+fn test_get_minidump_slice() {
     let ue4_crash = get_unreal_crash().expect("test crash file loads");
 
     let minidump_bytes = ue4_crash
@@ -31,6 +31,11 @@ fn parse_unreal_crash() {
         .expect("expected Minidump file bytes exists");
 
     assert_eq!(minidump_bytes.len(), 410_700);
+}
+
+#[test]
+fn test_files_api() {
+    let ue4_crash = get_unreal_crash().expect("test crash file loads");
 
     assert_eq!(ue4_crash.file_count(), 4);
     assert_eq!(ue4_crash.files().count(), 4);
