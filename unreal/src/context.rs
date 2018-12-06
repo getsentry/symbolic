@@ -77,18 +77,12 @@ fn get_runtime_properties(root: &Element) -> Option<Unreal4ContextRuntimePropert
 
     for child in list.children() {
         if child.tag() == &QName::from("CrashGUID") {
-            let text = child.text().to_string();
+            let text = child.text();
             if text != "" {
                 rv.crash_guid = Some(child.text().to_string());
             }
         } else if child.tag() == &QName::from("ProcessId") {
-            let int = child.text().parse::<u32>();
-            match int {
-                Ok(i) => {
-                    rv.process_id = Some(i);
-                }
-                Err(_) => {}
-            }
+            rv.process_id = child.text().parse::<u32>().ok();
         }
     }
 
@@ -109,13 +103,7 @@ fn get_platform_properties(root: &Element) -> Option<Unreal4ContextPlatformPrope
                 Err(_) => {}
             }
         } else if child.tag() == &QName::from("PlatformCallbackResult") {
-            let int = child.text().parse::<i32>();
-            match int {
-                Ok(i) => {
-                    rv.callback_result = Some(i);
-                }
-                Err(_) => {}
-            }
+            rv.callback_result = child.text().parse::<i32>().ok();
         }
     }
 
