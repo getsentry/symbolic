@@ -34,6 +34,53 @@ fn test_get_minidump_slice() {
 }
 
 #[test]
+fn test_contexts_runtime_properties() {
+    let ue4_crash = get_unreal_crash().expect("test crash file loads");
+
+    let ue4_context = ue4_crash
+        .get_context()
+        .expect("no errors parsing the context file")
+        .expect("context file exists in sample crash");
+
+    let runtime_properties = ue4_context
+        .runtime_properties
+        .expect("runtime properties exist within sample crash");
+
+    assert_eq!(
+        "UE4CC-Windows-379993BB42BD8FBED67986857D8844B5_0000",
+        runtime_properties.crash_guid.expect("crash guid")
+    );
+}
+
+#[test]
+fn test_contexts_platform_properties() {
+    let ue4_crash = get_unreal_crash().expect("test crash file loads");
+
+    let ue4_context = ue4_crash
+        .get_context()
+        .expect("no errors parsing the context file")
+        .expect("context file exists in sample crash");
+
+    let platform_properties = ue4_context
+        .platform_properties
+        .expect("platform properties exist within sample crash");
+
+    assert_eq!(
+        platform_properties
+            .is_windows
+            .expect("sample contains value as 1 for true"),
+        true
+    );
+
+    assert_eq!(
+        platform_properties
+            .callback_result
+            .expect("sample contains value 0"),
+        0
+    );
+}
+
+#[test]
 fn test_files_api() {
     let ue4_crash = get_unreal_crash().expect("test crash file loads");
 
