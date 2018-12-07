@@ -1,8 +1,3 @@
-extern crate symbolic_common;
-extern crate symbolic_debuginfo;
-extern crate symbolic_symcache;
-extern crate symbolic_testutils;
-
 use symbolic_common::byteview::ByteView;
 use symbolic_symcache::SymCache;
 use symbolic_testutils::fixture_path;
@@ -11,7 +6,7 @@ use symbolic_testutils::fixture_path;
 fn test_v1() {
     let buffer = ByteView::from_path(fixture_path("symcache/compat/v1.symc"))
         .expect("Could not open symcache");
-    let symcache = SymCache::new(buffer).expect("Could not load symcache");
+    let symcache = SymCache::parse(buffer).expect("Could not load symcache");
 
     // The symcache ID has changed from UUID to DebugId
     assert_eq!(

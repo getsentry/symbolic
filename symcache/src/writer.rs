@@ -9,7 +9,6 @@ use std::u16;
 
 use failure::ResultExt;
 use fnv::{FnvHashMap, FnvHashSet};
-use num;
 
 use symbolic_common::types::{DebugKind, Language};
 use symbolic_debuginfo::{Object, SymbolIterator, SymbolTable, Symbols};
@@ -27,12 +26,12 @@ use crate::utils::shorten_filename;
 /// method can be used instead.
 ///
 /// This requires the writer to be seekable.
-pub fn to_writer<W: Write + Seek>(mut w: W, obj: &Object) -> Result<(), SymCacheError> {
+pub fn to_writer<W: Write + Seek>(mut w: W, obj: &Object<'_>) -> Result<(), SymCacheError> {
     SymCacheWriter::new(&mut w).write_object(obj)
 }
 
 /// Converts an object into a vector of symcache data.
-pub fn to_vec(obj: &Object) -> Result<Vec<u8>, SymCacheError> {
+pub fn to_vec(obj: &Object<'_>) -> Result<Vec<u8>, SymCacheError> {
     let mut cursor = Cursor::new(Vec::new());
     SymCacheWriter::new(&mut cursor).write_object(obj)?;
     Ok(cursor.into_inner())
@@ -45,7 +44,7 @@ enum DebugInfo<'input> {
 }
 
 impl<'input> DebugInfo<'input> {
-    pub fn from_object(object: &'input Object) -> Result<DebugInfo<'input>, SymCacheError> {
+    pub fn from_object(object: &'input Object<'_>) -> Result<DebugInfo<'input>, SymCacheError> {
         Ok(match object.debug_kind() {
             Some(DebugKind::Dwarf) => DebugInfo::Dwarf(DwarfInfo::from_object(object)?),
             Some(DebugKind::Breakpad) => DebugInfo::Breakpad(BreakpadInfo::from_object(object)?),
@@ -201,7 +200,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         Ok(())
     }
 
-    pub fn write_debug_info(&mut self, obj: &Object) -> Result<(), SymCacheError> {
+    pub fn write_debug_info(&mut self, obj: &Object<'_>) -> Result<(), SymCacheError> {
         // try dwarf data first.  If we cannot find the necessary dwarf sections
         // we just skip over to symbol table processing.
         match DebugInfo::from_object(obj) {
@@ -235,7 +234,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         Err(SymCacheErrorKind::MissingDebugInfo.into())
     }
 
-    pub fn write_object(mut self, obj: &Object) -> Result<(), SymCacheError> {
+    pub fn write_object(mut self, obj: &Object<'_>) -> Result<(), SymCacheError> {
         // reserve space for the header before writing segments
         self.write_header()?;
 
@@ -257,7 +256,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
 
     fn write_symbol_table(
         &mut self,
-        symbols: SymbolIterator,
+        symbols: SymbolIterator<'_, '_>,
         vmaddr: u64,
     ) -> Result<(), SymCacheError> {
         for symbol_result in symbols {
@@ -281,10 +280,10 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         last_addr: &mut u64,
         cur_addr: u64,
         vmaddr: u64,
-        symbol_iter: &mut Peekable<SymbolIterator>,
+        symbol_iter: &mut Peekable<SymbolIterator<'_, '_>>,
     ) -> Result<(), SymCacheError> {
         // NB: we can't use while let here, since we need to borrow symbol_iter mutably twice
-        #[cfg_attr(feature = "cargo-clippy", allow(while_let_loop))]
+        #[allow(clippy::while_let_loop)]
         loop {
             let sym_addr = match symbol_iter.peek() {
                 Some(&Ok(ref symbol)) => symbol.addr() - vmaddr,
@@ -335,7 +334,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         Ok(())
     }
 
-    fn write_breakpad_info(&mut self, info: &BreakpadInfo) -> Result<(), SymCacheError> {
+    fn write_breakpad_info(&mut self, info: &BreakpadInfo<'_>) -> Result<(), SymCacheError> {
         let mut file_cache = FnvHashMap::default();
 
         for file in info.files() {
@@ -415,8 +414,8 @@ impl<W: Write + Seek> SymCacheWriter<W> {
 
     fn write_dwarf_info(
         &mut self,
-        info: &DwarfInfo,
-        symbols: Option<&Symbols>,
+        info: &DwarfInfo<'_>,
+        symbols: Option<&Symbols<'_>>,
     ) -> Result<(), SymCacheError> {
         let mut range_buf = Vec::new();
         let mut symbol_iter = symbols.map(|x| x.iter().peekable());

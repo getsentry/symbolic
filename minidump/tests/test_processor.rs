@@ -1,7 +1,3 @@
-extern crate symbolic_common;
-extern crate symbolic_minidump;
-extern crate symbolic_testutils;
-
 use symbolic_common::byteview::ByteView;
 use symbolic_minidump::processor::ProcessState;
 use symbolic_testutils::{assert_snapshot, fixture_path};

@@ -7,6 +7,8 @@ use std::os::raw::{c_char, c_void};
 use std::str::FromStr;
 use std::{fmt, ptr, slice, str};
 
+use failure::Fail;
+use lazy_static::lazy_static;
 use regex::Regex;
 use uuid::Uuid;
 
@@ -84,8 +86,6 @@ pub type ParseCodeModuleIdError = ParseDebugIdError;
 /// **Example:**
 ///
 /// ```
-/// # extern crate symbolic_common;
-/// # extern crate symbolic_minidump;
 /// use std::str::FromStr;
 /// use symbolic_minidump::processor::CodeModuleId;
 /// # use symbolic_minidump::processor::ParseCodeModuleIdError;
@@ -143,7 +143,7 @@ impl Into<DebugId> for CodeModuleId {
 }
 
 impl fmt::Display for CodeModuleId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.breakpad().fmt(f)
     }
 }
@@ -159,10 +159,10 @@ impl str::FromStr for CodeModuleId {
 }
 
 #[cfg(feature = "with_serde")]
-derive_deserialize_from_str!(CodeModuleId, "CodeModuleId");
+serde_plain::derive_deserialize_from_str!(CodeModuleId, "CodeModuleId");
 
 #[cfg(feature = "with_serde")]
-derive_serialize_from_display!(CodeModuleId);
+serde_plain::derive_serialize_from_display!(CodeModuleId);
 
 /// Carries information about a code module loaded into the process during the
 /// crash. The `debug_identifier` uniquely identifies this module.
@@ -261,7 +261,7 @@ impl PartialOrd for CodeModule {
 }
 
 impl fmt::Debug for CodeModule {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CodeModule")
             .field("id", &self.id())
             .field("base_address", &self.base_address())
@@ -305,7 +305,7 @@ pub enum FrameTrust {
 }
 
 impl fmt::Display for FrameTrust {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let string = match *self {
             FrameTrust::None => "none",
             FrameTrust::Scan => "stack scanning",
@@ -338,7 +338,7 @@ pub enum RegVal {
 }
 
 impl fmt::Display for RegVal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             RegVal::U32(u) => write!(f, "{:#010x}", u),
             RegVal::U64(u) => write!(f, "{:#018x}", u),
@@ -424,7 +424,8 @@ impl StackFrame {
                             _ => return None,
                         },
                     ))
-                }).collect();
+                })
+                .collect();
 
             regval_delete(values);
             map
@@ -433,7 +434,7 @@ impl StackFrame {
 }
 
 impl fmt::Debug for StackFrame {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("StackFrame")
             .field("return_address", &self.return_address(Arch::Unknown))
             .field("instruction", &self.instruction())
@@ -464,7 +465,7 @@ impl CallStack {
 }
 
 impl fmt::Debug for CallStack {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CallStack")
             .field("thread_id", &self.thread_id())
             .field("frames", &self.frames())
@@ -573,7 +574,7 @@ impl SystemInfo {
 }
 
 impl fmt::Debug for SystemInfo {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SystemInfo")
             .field("os_name", &self.os_name())
             .field("os_version", &self.os_version())
@@ -616,7 +617,7 @@ pub enum ProcessResult {
 }
 
 impl fmt::Display for ProcessResult {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let formatted = match *self {
             ProcessResult::Ok => "dump processed successfully",
             ProcessResult::MinidumpNotFound => "file could not be opened",
@@ -677,7 +678,7 @@ impl<'a> ProcessState<'a> {
     /// omitted frame pointers.
     pub fn from_minidump(
         buffer: &ByteView<'a>,
-        frame_infos: Option<&FrameInfoMap>,
+        frame_infos: Option<&FrameInfoMap<'_>>,
     ) -> Result<ProcessState<'a>, ProcessMinidumpError> {
         let cfi_count = frame_infos.map_or(0, |s| s.len());
         let mut result: ProcessResult = ProcessResult::Ok;
@@ -691,7 +692,8 @@ impl<'a> ProcessState<'a> {
                         v.as_slice().len(),
                         v.as_slice().as_ptr(),
                     )
-                }).collect()
+                })
+                .collect()
         });
 
         // Keep a reference to all symbol entries to extend their lifetime.
@@ -701,7 +703,8 @@ impl<'a> ProcessState<'a> {
                 debug_identifier: id.as_ref().map(|i| i.as_ptr()).unwrap_or(ptr::null()),
                 symbol_size: size,
                 symbol_data: data,
-            }).collect();
+            })
+            .collect();
 
         let internal = unsafe {
             process_minidump(
@@ -817,7 +820,7 @@ impl<'a> Drop for ProcessState<'a> {
 }
 
 impl<'a> fmt::Debug for ProcessState<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ProcessState")
             .field("requesting_thread", &self.requesting_thread())
             .field("timestamp", &self.timestamp())

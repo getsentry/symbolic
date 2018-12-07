@@ -1,5 +1,3 @@
-extern crate symbolic_common;
-
 use std::env;
 use std::fs;
 

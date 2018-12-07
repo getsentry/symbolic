@@ -15,8 +15,6 @@
 //! ## Examples
 //!
 //! ```rust
-//! # extern crate symbolic_demangle;
-//! # extern crate symbolic_common;
 //! use symbolic_common::types::{Language, Name};
 //! use symbolic_demangle::Demangle;
 //!
@@ -26,11 +24,6 @@
 //! assert_eq!(&name.try_demangle(Default::default()), "std::io::Read::read_to_end");
 //! # }
 //! ```
-extern crate cpp_demangle;
-extern crate msvc_demangler;
-extern crate rustc_demangle;
-extern crate symbolic_common;
-
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 
@@ -101,8 +94,19 @@ fn is_maybe_switf(ident: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn try_demangle_msvc(ident: &str, _opts: DemangleOptions) -> Option<String> {
-    msvc_demangler::demangle(ident, MsvcFlags::LessWhitespace).ok()
+fn try_demangle_msvc(ident: &str, opts: DemangleOptions) -> Option<String> {
+    let flags = match opts.format {
+        DemangleFormat::Full => MsvcFlags::COMPLETE,
+        DemangleFormat::Short => {
+            if opts.with_arguments {
+                MsvcFlags::NO_FUNCTION_RETURNS
+            } else {
+                MsvcFlags::NAME_ONLY
+            }
+        }
+    };
+
+    msvc_demangler::demangle(ident, flags).ok()
 }
 
 fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
@@ -140,11 +144,13 @@ fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
     };
 
     let simplified = match opts.format {
-        DemangleFormat::Short => if opts.with_arguments {
-            1
-        } else {
-            2
-        },
+        DemangleFormat::Short => {
+            if opts.with_arguments {
+                1
+            } else {
+                2
+            }
+        }
         DemangleFormat::Full => 0,
     };
 

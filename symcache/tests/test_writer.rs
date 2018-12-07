@@ -1,15 +1,11 @@
-extern crate symbolic_common;
-extern crate symbolic_debuginfo;
-extern crate symbolic_symcache;
-extern crate symbolic_testutils;
-
 use std::fmt::Write;
+
 use symbolic_common::byteview::ByteView;
 use symbolic_debuginfo::FatObject;
 use symbolic_symcache::SymCache;
 use symbolic_testutils::{assert_snapshot, assert_snapshot_plain, fixture_path};
 
-fn get_functions(symcache: &SymCache) -> String {
+fn get_functions(symcache: &SymCache<'_>) -> String {
     let mut s = String::new();
     for func in symcache.functions() {
         let func = func.expect("Could not read symcache functions");
@@ -51,7 +47,8 @@ fn test_write_functions_linux() {
 fn test_write_header_macos() {
     let buffer = ByteView::from_path(fixture_path(
         "macos/crash.dSYM/Contents/Resources/DWARF/crash",
-    )).expect("Could not open the dSYM file");
+    ))
+    .expect("Could not open the dSYM file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
     let object = fat
         .get_object(0)
@@ -66,7 +63,8 @@ fn test_write_header_macos() {
 fn test_write_functions_macos() {
     let buffer = ByteView::from_path(fixture_path(
         "macos/crash.dSYM/Contents/Resources/DWARF/crash",
-    )).expect("Could not open the dSYM file");
+    ))
+    .expect("Could not open the dSYM file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
     let object = fat
         .get_object(0)

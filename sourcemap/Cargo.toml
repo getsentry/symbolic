@@ -13,6 +13,7 @@ description = """
 A library to process JavaScript sourcemaps and resolve symbols in minified
 source code or stack traces.
 """
+edition = "2018"
 
 [dependencies]
 failure = "0.1.3"

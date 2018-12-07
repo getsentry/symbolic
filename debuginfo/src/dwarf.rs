@@ -15,7 +15,7 @@ pub trait DwarfData {
     fn has_dwarf_section(&self, section: DwarfSection) -> bool;
 
     /// Loads a specific dwarf section if its in the file.
-    fn get_dwarf_section(&self, section: DwarfSection) -> Option<DwarfSectionData>;
+    fn get_dwarf_section(&self, section: DwarfSection) -> Option<DwarfSectionData<'_>>;
 }
 
 impl<'input> DwarfData for Object<'input> {
@@ -54,7 +54,7 @@ impl<'input> DwarfData for Object<'input> {
         }
     }
 
-    fn get_dwarf_section(&self, section: DwarfSection) -> Option<DwarfSectionData> {
+    fn get_dwarf_section(&self, section: DwarfSection) -> Option<DwarfSectionData<'_>> {
         match self.target {
             ObjectTarget::Elf(ref elf) => read_elf_dwarf_section(elf, self.as_bytes(), section),
             ObjectTarget::MachOSingle(ref macho) => read_mach_dwarf_section(macho, section),
@@ -138,7 +138,7 @@ impl DwarfSection {
 }
 
 impl std::fmt::Display for DwarfSection {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name())
     }
 }
@@ -153,7 +153,7 @@ pub struct DwarfSectionData<'data> {
 
 impl<'data> DwarfSectionData<'data> {
     /// Constructs a `DwarfSectionData` object from raw data.
-    pub fn new(section: DwarfSection, data: Cow<[u8]>, offset: u64) -> DwarfSectionData {
+    pub fn new(section: DwarfSection, data: Cow<'_, [u8]>, offset: u64) -> DwarfSectionData<'_> {
         DwarfSectionData {
             section,
             data,

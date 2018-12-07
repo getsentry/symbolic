@@ -1,4 +1,3 @@
-use std::mem;
 use std::os::raw::c_char;
 use std::ptr;
 use std::slice;
@@ -100,7 +99,7 @@ ffi_fn! {
     }
 }
 
-fn convert_token_match(token: Option<TokenMatch>) -> *mut SymbolicTokenMatch {
+fn convert_token_match(token: Option<TokenMatch<'_>>) -> *mut SymbolicTokenMatch {
     token
         .map(|token| {
             Box::into_raw(Box::new(SymbolicTokenMatch {
@@ -113,10 +112,11 @@ fn convert_token_match(token: Option<TokenMatch>) -> *mut SymbolicTokenMatch {
                 src: SymbolicStr::new(token.src.unwrap_or("")),
                 function_name: token
                     .function_name
-                    .map(|name| SymbolicStr::from_string(name))
-                    .unwrap_or(Default::default()),
+                    .map(SymbolicStr::from_string)
+                    .unwrap_or_default(),
             }))
-        }).unwrap_or(ptr::null_mut())
+        })
+        .unwrap_or(ptr::null_mut())
 }
 
 ffi_fn! {
@@ -141,8 +141,13 @@ ffi_fn! {
     ) -> Result<*mut SymbolicTokenMatch> {
         let sm = ssm as *const SourceMapView;
         let sv = ssv as *const SourceView<'static>;
-        Ok(convert_token_match((*sm).lookup_token_with_function_name(
-            line, col, (*minified_name).as_str(), mem::transmute(sv))))
+        let token = (*sm).lookup_token_with_function_name(
+            line,
+            col,
+            (*minified_name).as_str(),
+            &*(sv as *const _),
+        );
+        Ok(convert_token_match(token))
     }
 }
 
@@ -155,7 +160,7 @@ ffi_fn! {
         let sm = ssm as *const SourceMapView;
         Ok((*sm)
            .get_source_view(index)
-           .map(|x| mem::transmute(x))
+           .map(|x| x as *const _ as *const _)
            .unwrap_or(ptr::null()))
     }
 }

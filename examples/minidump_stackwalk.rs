@@ -1,8 +1,3 @@
-extern crate clap;
-extern crate failure;
-extern crate symbolic;
-extern crate walkdir;
-
 use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
 
@@ -149,6 +144,7 @@ fn symbolize<'a>(
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 struct PrintOptions {
     crashed_only: bool,
     show_modules: bool,
@@ -311,31 +307,37 @@ fn main() {
                 .required(true)
                 .value_name("minidump")
                 .help("Path to the minidump file"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("debug_symbols_path")
                 .value_name("symbols")
                 .help("Path to a folder containing debug symbols"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("cfi")
                 .short("c")
                 .long("cfi")
                 .help("Use CFI while stackwalking"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("symbolize")
                 .short("s")
                 .long("symbolize")
                 .help("Symbolize frames (file, function and line number)"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("only_crash")
                 .short("o")
                 .long("only-crash")
                 .help("Only output the crashed thread"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("no_modules")
                 .short("n")
                 .long("no-modules")
                 .help("Do not output loaded modules"),
-        ).get_matches();
+        )
+        .get_matches();
 
     match execute(&matches) {
         Ok(()) => (),

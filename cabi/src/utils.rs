@@ -3,7 +3,7 @@ use std::mem;
 use std::panic;
 use std::thread;
 
-use failure::Error;
+use failure::{Error, Fail};
 
 thread_local! {
     pub static LAST_ERROR: RefCell<Option<Error>> = RefCell::new(None);

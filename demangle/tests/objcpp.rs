@@ -2,8 +2,6 @@
 //! Objective C++ code can contain both C++ and Objective C symbols. If the
 //! language is passed explicitly, the correct demangler must be chosen.
 
-extern crate symbolic_common;
-extern crate symbolic_demangle;
 #[macro_use]
 mod utils;
 
