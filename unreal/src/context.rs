@@ -153,6 +153,8 @@ fn get_runtime_properties(root: &Element) -> Option<Unreal4ContextRuntimePropert
             }
         } else if child.tag() == &QName::from("ProcessId") {
             rv.process_id = child.text().parse::<u32>().ok();
+        } else if child.tag() == &QName::from("IsInternalBuild") {
+            rv.is_internal_build = child.text().parse::<bool>().ok();
         }
     }
 
@@ -222,17 +224,43 @@ fn test_get_platform_properties_no_children() {
     assert_eq!(Unreal4ContextPlatformProperties::default(), actual)
 }
 
-#[test]
-fn test_get_runtime_properties() {
-    let root = Element::from_reader(
-        r#"<FGenericCrashContext><RuntimeProperties><CrashGUID>UE4CC-Windows-379993BB42BD8FBED67986857D8844B5_0000</CrashGUID></RuntimeProperties></FGenericCrashContext>"#.as_bytes(),
-    ).unwrap();
-    let runtime_properties = get_runtime_properties(&root).expect("RuntimeProperties exists");
-    assert_eq!(
-        "UE4CC-Windows-379993BB42BD8FBED67986857D8844B5_0000",
-        runtime_properties.crash_guid.expect("crash guid")
-    );
+macro_rules! test_unreal_context_str {
+    ($name:ident, $xml_elm:expr, $expect:expr $(,)*) => {
+        mod $name {
+            use super::*;
+
+            #[test]
+            fn test_some() {
+                #[rustfmt::skip]
+                let xml = concat!("<FGenericCrashContext><RuntimeProperties><", $xml_elm, ">", $expect, "</", $xml_elm, "></RuntimeProperties></FGenericCrashContext>");
+                let root = Element::from_reader(xml.as_bytes()).unwrap();
+                let runtime_properties = get_runtime_properties(&root).expect("RuntimeProperties exists");
+                assert_eq!(
+                    $expect,
+                    runtime_properties.$name.expect("missing property value")
+                );
+            }
+
+            #[test]
+            fn test_none() {
+                #[rustfmt::skip]
+                let xml = concat!("<FGenericCrashContext><RuntimeProperties><", $xml_elm, "></", $xml_elm, "></RuntimeProperties></FGenericCrashContext>");
+                let root = Element::from_reader(xml.as_bytes()).unwrap();
+                let runtime_properties = get_runtime_properties(&root).expect("RuntimeProperties exists");
+                assert!(runtime_properties.$name.is_none());
+            }
+        }
+    };
 }
+
+test_unreal_context_str!(
+    crash_guid,
+    "CrashGUID",
+    "UE4CC-Windows-379993BB42BD8FBED67986857D8844B5_0000",
+);
+
+test_unreal_context_str!(process_id, "ProcessId", 2576);
+test_unreal_context_str!(is_internal_build, "IsInternalBuild", true);
 
 #[test]
 fn test_get_platform_properties() {
@@ -243,8 +271,10 @@ fn test_get_platform_properties() {
 		<PlatformIsRunningWindows>0</PlatformIsRunningWindows>
 	</PlatformProperties>
 </FGenericCrashContext>
-"#.as_bytes(),
-    ).unwrap();
+"#
+        .as_bytes(),
+    )
+    .unwrap();
 
     let platform_properties = get_platform_properties(&root).expect("PlatformProperties exists");
     assert!(!platform_properties.is_windows.expect("is windows"));
