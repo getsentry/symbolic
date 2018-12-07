@@ -101,8 +101,19 @@ fn is_maybe_switf(ident: &str) -> bool {
         .unwrap_or(false)
 }
 
-fn try_demangle_msvc(ident: &str, _opts: DemangleOptions) -> Option<String> {
-    msvc_demangler::demangle(ident, MsvcFlags::LessWhitespace).ok()
+fn try_demangle_msvc(ident: &str, opts: DemangleOptions) -> Option<String> {
+    let flags = match opts.format {
+        DemangleFormat::Full => MsvcFlags::COMPLETE,
+        DemangleFormat::Short => {
+            if opts.with_arguments {
+                MsvcFlags::NO_FUNCTION_RETURNS
+            } else {
+                MsvcFlags::NAME_ONLY
+            }
+        }
+    };
+
+    msvc_demangler::demangle(ident, flags).ok()
 }
 
 fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
