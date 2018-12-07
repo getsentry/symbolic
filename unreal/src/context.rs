@@ -131,7 +131,7 @@ impl Unreal4Context {
             None => return Ok(None),
         };
 
-        let root = Element::from_reader(file).map_err(|e| Unreal4Error::InvalidXml(e))?;
+        let root = Element::from_reader(file).map_err(Unreal4Error::InvalidXml)?;
 
         Ok(Some(Unreal4Context {
             runtime_properties: get_runtime_properties(&root),
@@ -158,7 +158,7 @@ fn get_runtime_properties(root: &Element) -> Option<Unreal4ContextRuntimePropert
         let tag = child.tag();
 
         // We don't expect an XML with namespace here
-        if !tag.ns().is_none() {
+        if tag.ns().is_some() {
             continue;
         }
         match tag.name() {
@@ -289,6 +289,7 @@ fn test_get_platform_properties_no_children() {
 
 macro_rules! test_unreal_runtime_properties {
     ($name:ident, $xml_elm:expr, $expect:expr $(,)*) => {
+        #[cfg(test)]
         mod $name {
             use super::*;
 
