@@ -306,7 +306,7 @@ impl Default for Arch {
 }
 
 impl fmt::Display for Arch {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name())
     }
 }
@@ -422,7 +422,7 @@ impl Default for Language {
 }
 
 impl fmt::Display for Language {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let formatted = match *self {
             Language::Unknown | Language::__Max => "unknown",
             Language::C => "C",
@@ -523,7 +523,7 @@ impl<'a> Into<Cow<'a, str>> for Name<'a> {
 }
 
 impl<'a> fmt::Display for Name<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
@@ -553,7 +553,7 @@ impl ObjectKind {
 }
 
 impl fmt::Display for ObjectKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name())
     }
 }
@@ -686,7 +686,7 @@ impl ObjectClass {
 }
 
 impl fmt::Display for ObjectClass {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() {
             write!(f, "{}", self.human_name())
         } else {
@@ -735,7 +735,7 @@ impl DebugKind {
 }
 
 impl fmt::Display for DebugKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name())
     }
 }

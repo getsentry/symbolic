@@ -63,7 +63,7 @@ impl<T, L> Hash for Seg<T, L> {
 }
 
 impl<T, L: fmt::Debug + Copy> fmt::Debug for Seg<T, L> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Seg")
             .field("offset", &{ self.offset })
             .field("len", &{ self.len })

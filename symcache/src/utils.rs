@@ -13,7 +13,7 @@ fn is_absolute_windows_path(s: &str) -> bool {
     let mut char_iter = s.chars();
     if_chain! {
         if let Some(fc) = char_iter.next();
-        if matches!(fc, 'A'...'Z') || matches!(fc, 'a'...'z');
+        if matches!(fc, 'A'..='Z') || matches!(fc, 'a'..='z');
         if let Some(sc) = char_iter.next();
         if sc == ':';
         if let Some(tc) = char_iter.next();
@@ -69,7 +69,7 @@ pub fn common_join_path(base: &str, other: &str) -> String {
 /// Trims a path to a given length.
 ///
 /// This attempts to not completely destroy the path in the process.
-pub fn shorten_filename(filename: &str, length: usize) -> Cow<str> {
+pub fn shorten_filename(filename: &str, length: usize) -> Cow<'_, str> {
     // trivial cases
     if filename.len() <= length {
         return Cow::Borrowed(filename);

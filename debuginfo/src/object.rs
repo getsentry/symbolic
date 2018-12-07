@@ -46,7 +46,7 @@ pub struct ObjectError {
 }
 
 impl Fail for ObjectError {
-    fn cause(&self) -> Option<&Fail> {
+    fn cause(&self) -> Option<&dyn Fail> {
         self.inner.cause()
     }
 
@@ -56,7 +56,7 @@ impl Fail for ObjectError {
 }
 
 impl fmt::Display for ObjectError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.inner, f)
     }
 }
@@ -193,7 +193,7 @@ impl<'bytes> Object<'bytes> {
 }
 
 impl<'bytes> fmt::Debug for Object<'bytes> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Object")
             .field("id", &self.id())
             .field("arch", &self.arch())
@@ -367,7 +367,7 @@ impl<'bytes> FatObject<'bytes> {
 }
 
 impl<'bytes> fmt::Debug for FatObject<'bytes> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Object")
             .field("kind", &self.kind())
             .field("object_count", &self.object_count())

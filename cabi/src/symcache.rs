@@ -76,7 +76,7 @@ ffi_fn! {
     unsafe fn symbolic_symcache_from_object(
         sobj: *const SymbolicObject,
     ) -> Result<*mut SymbolicSymCache> {
-        let cache = SymCache::from_object(&*(sobj as *const Object))?;
+        let cache = SymCache::from_object(&*(sobj as *const Object<'_>))?;
         Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicSymCache)
     }
 }

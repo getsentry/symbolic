@@ -16,7 +16,7 @@ pub struct BreakpadInfo<'input> {
 }
 
 impl<'input> BreakpadInfo<'input> {
-    pub fn from_object(object: &'input Object) -> Result<BreakpadInfo<'input>, SymCacheError> {
+    pub fn from_object(object: &'input Object<'_>) -> Result<BreakpadInfo<'input>, SymCacheError> {
         let mut info = BreakpadInfo {
             module: None,
             files: vec![],
@@ -28,19 +28,19 @@ impl<'input> BreakpadInfo<'input> {
         Ok(info)
     }
 
-    pub fn files(&self) -> &[BreakpadFileRecord] {
+    pub fn files(&self) -> &[BreakpadFileRecord<'_>] {
         self.files.as_slice()
     }
 
-    pub fn functions(&self) -> &[BreakpadFuncRecord] {
+    pub fn functions(&self) -> &[BreakpadFuncRecord<'_>] {
         self.funcs.as_slice()
     }
 
-    pub fn symbols(&self) -> &[BreakpadPublicRecord] {
+    pub fn symbols(&self) -> &[BreakpadPublicRecord<'_>] {
         self.syms.as_slice()
     }
 
-    fn parse(&mut self, object: &'input Object) -> Result<(), SymCacheError> {
+    fn parse(&mut self, object: &'input Object<'_>) -> Result<(), SymCacheError> {
         for record in object.breakpad_records() {
             match record.context(SymCacheErrorKind::BadDebugFile)? {
                 BreakpadRecord::Module(m) => self.module = Some(m),

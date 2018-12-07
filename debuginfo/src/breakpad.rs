@@ -46,7 +46,7 @@ pub struct BreakpadModuleRecord<'input> {
 }
 
 impl<'input> fmt::Debug for BreakpadModuleRecord<'input> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BreakpadModuleRecord")
             .field("arch", &self.arch)
             .field("id", &self.id)
@@ -63,7 +63,7 @@ pub struct BreakpadFileRecord<'input> {
 }
 
 impl<'input> fmt::Debug for BreakpadFileRecord<'input> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BreakpadFileRecord")
             .field("id", &self.id)
             .field("name", &String::from_utf8_lossy(self.name))
@@ -90,7 +90,7 @@ pub struct BreakpadFuncRecord<'input> {
 }
 
 impl<'input> fmt::Debug for BreakpadFuncRecord<'input> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BreakpadFuncRecord")
             .field("address", &self.address)
             .field("size", &self.size)
@@ -109,7 +109,7 @@ pub struct BreakpadPublicRecord<'input> {
 }
 
 impl<'input> fmt::Debug for BreakpadPublicRecord<'input> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BreakpadPublicRecord")
             .field("address", &self.address)
             .field("size", &self.size)
@@ -179,7 +179,7 @@ enum IterState {
 
 /// An iterator over records in a Breakpad symbol file.
 pub struct BreakpadRecords<'data> {
-    lines: Box<Iterator<Item = &'data [u8]> + 'data>,
+    lines: Box<dyn Iterator<Item = &'data [u8]> + 'data>,
     state: IterState,
 }
 
@@ -263,7 +263,7 @@ pub trait BreakpadData {
     fn has_breakpad_data(&self) -> bool;
 
     /// Returns an iterator over all records of the Breakpad symbol file.
-    fn breakpad_records(&self) -> BreakpadRecords;
+    fn breakpad_records(&self) -> BreakpadRecords<'_>;
 }
 
 impl<'data> BreakpadData for Object<'data> {
@@ -271,7 +271,7 @@ impl<'data> BreakpadData for Object<'data> {
         self.kind() == ObjectKind::Breakpad
     }
 
-    fn breakpad_records(&self) -> BreakpadRecords {
+    fn breakpad_records(&self) -> BreakpadRecords<'_> {
         BreakpadRecords::from_bytes(self.as_bytes())
     }
 }
@@ -281,7 +281,7 @@ impl<'data> BreakpadData for FatObject<'data> {
         self.kind() == ObjectKind::Breakpad
     }
 
-    fn breakpad_records(&self) -> BreakpadRecords {
+    fn breakpad_records(&self) -> BreakpadRecords<'_> {
         BreakpadRecords::from_bytes(self.as_bytes())
     }
 }
@@ -291,7 +291,7 @@ impl<'data> BreakpadData for FatObject<'data> {
 /// Syntax: "MODULE operatingsystem architecture id name"
 /// Example: "MODULE Linux x86 D3096ED481217FD4C16B29CD9BC208BA0 firefox-bin"
 /// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#module-records>
-fn parse_module(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
+fn parse_module(line: &[u8]) -> Result<BreakpadRecord<'_>, ParseBreakpadError> {
     let mut record = line.splitn(4, |b| *b == b' ');
 
     // Skip "os" field
@@ -325,7 +325,7 @@ fn parse_module(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
 /// Syntax: "FILE number name"
 /// Example: "FILE 2 /home/jimb/mc/in/browser/app/nsBrowserApp.cpp"
 /// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#file-records>
-fn parse_file(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
+fn parse_file(line: &[u8]) -> Result<BreakpadRecord<'_>, ParseBreakpadError> {
     let mut record = line.splitn(2, |b| *b == b' ');
 
     let id = record
@@ -348,7 +348,7 @@ fn parse_file(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
 /// Syntax: "FUNC [m] address size parameter_size name"
 /// Example: "FUNC m c184 30 0 nsQueryInterfaceWithError::operator()(nsID const&, void**) const"
 /// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#func-records>
-fn parse_func(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
+fn parse_func(line: &[u8]) -> Result<BreakpadRecord<'_>, ParseBreakpadError> {
     // Strip the optional "m" parameter; it has no meaning to us
     let line = if line.starts_with(b"m ") {
         &line[2..]
@@ -396,7 +396,7 @@ fn parse_func(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
 /// Syntax: "STACK CFI INIT address size register1: expression1 register2: expression2 ..."
 /// Example: "STACK CFI INIT 804c4b0 40 .cfa: $esp 4 + $eip: .cfa 4 - ^"
 /// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-cfi-records>
-fn parse_stack(_line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
+fn parse_stack(_line: &[u8]) -> Result<BreakpadRecord<'_>, ParseBreakpadError> {
     // Ignored
     Ok(BreakpadRecord::Stack)
 }
@@ -406,7 +406,7 @@ fn parse_stack(_line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
 /// Syntax: "PUBLIC [m] address parameter_size name"
 /// Example: "PUBLIC m 2160 0 Public2_1"
 /// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#public-records>
-fn parse_public(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
+fn parse_public(line: &[u8]) -> Result<BreakpadRecord<'_>, ParseBreakpadError> {
     // Strip the optional "m" parameter; it has no meaning to us
     let line = if line.starts_with(b"m ") {
         &line[2..]
@@ -440,7 +440,7 @@ fn parse_public(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
 /// Syntax: "INFO text"
 /// Example: "INFO CODE_ID C22813AC7D101E2FF2598697023E1F28"
 /// no documentation available
-fn parse_info(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
+fn parse_info(line: &[u8]) -> Result<BreakpadRecord<'_>, ParseBreakpadError> {
     Ok(BreakpadRecord::Info(line))
 }
 
@@ -449,7 +449,7 @@ fn parse_info(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
 /// Syntax: "address size line filenum"
 /// Example: "c184 7 59 4"
 /// see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#line-records>
-fn parse_line(line: &[u8]) -> Result<BreakpadRecord, ParseBreakpadError> {
+fn parse_line(line: &[u8]) -> Result<BreakpadRecord<'_>, ParseBreakpadError> {
     let mut record = line.splitn(4, |b| *b == b' ');
 
     let address = record

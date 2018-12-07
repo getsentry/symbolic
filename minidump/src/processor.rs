@@ -143,7 +143,7 @@ impl Into<DebugId> for CodeModuleId {
 }
 
 impl fmt::Display for CodeModuleId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.breakpad().fmt(f)
     }
 }
@@ -261,7 +261,7 @@ impl PartialOrd for CodeModule {
 }
 
 impl fmt::Debug for CodeModule {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CodeModule")
             .field("id", &self.id())
             .field("base_address", &self.base_address())
@@ -305,7 +305,7 @@ pub enum FrameTrust {
 }
 
 impl fmt::Display for FrameTrust {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let string = match *self {
             FrameTrust::None => "none",
             FrameTrust::Scan => "stack scanning",
@@ -338,7 +338,7 @@ pub enum RegVal {
 }
 
 impl fmt::Display for RegVal {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             RegVal::U32(u) => write!(f, "{:#010x}", u),
             RegVal::U64(u) => write!(f, "{:#018x}", u),
@@ -434,7 +434,7 @@ impl StackFrame {
 }
 
 impl fmt::Debug for StackFrame {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("StackFrame")
             .field("return_address", &self.return_address(Arch::Unknown))
             .field("instruction", &self.instruction())
@@ -465,7 +465,7 @@ impl CallStack {
 }
 
 impl fmt::Debug for CallStack {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CallStack")
             .field("thread_id", &self.thread_id())
             .field("frames", &self.frames())
@@ -574,7 +574,7 @@ impl SystemInfo {
 }
 
 impl fmt::Debug for SystemInfo {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SystemInfo")
             .field("os_name", &self.os_name())
             .field("os_version", &self.os_version())
@@ -617,7 +617,7 @@ pub enum ProcessResult {
 }
 
 impl fmt::Display for ProcessResult {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let formatted = match *self {
             ProcessResult::Ok => "dump processed successfully",
             ProcessResult::MinidumpNotFound => "file could not be opened",
@@ -678,7 +678,7 @@ impl<'a> ProcessState<'a> {
     /// omitted frame pointers.
     pub fn from_minidump(
         buffer: &ByteView<'a>,
-        frame_infos: Option<&FrameInfoMap>,
+        frame_infos: Option<&FrameInfoMap<'_>>,
     ) -> Result<ProcessState<'a>, ProcessMinidumpError> {
         let cfi_count = frame_infos.map_or(0, |s| s.len());
         let mut result: ProcessResult = ProcessResult::Ok;
@@ -820,7 +820,7 @@ impl<'a> Drop for ProcessState<'a> {
 }
 
 impl<'a> fmt::Debug for ProcessState<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ProcessState")
             .field("requesting_thread", &self.requesting_thread())
             .field("timestamp", &self.timestamp())

@@ -5,12 +5,12 @@ use crate::dwarf::{DwarfData, DwarfSection};
 use crate::object::{Object, ObjectTarget};
 use crate::symbols::SymbolTable;
 
-fn has_dwarf_unwind_info(object: &Object) -> bool {
+fn has_dwarf_unwind_info(object: &Object<'_>) -> bool {
     object.has_dwarf_section(DwarfSection::EhFrame)
         || object.has_dwarf_section(DwarfSection::DebugFrame)
 }
 
-fn has_breakpad_record(object: &Object, record: &[u8]) -> bool {
+fn has_breakpad_record(object: &Object<'_>, record: &[u8]) -> bool {
     for line in object.as_bytes().split(|b| *b == b'\n') {
         if line.starts_with(record) {
             return true;
@@ -49,7 +49,7 @@ pub enum ObjectFeature {
 }
 
 impl fmt::Display for ObjectFeature {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ObjectFeature::SymbolTable => write!(f, "symtab"),
             ObjectFeature::DebugInfo => write!(f, "debug"),

@@ -55,7 +55,7 @@ fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     Ok(())
 }
 
-fn execute(matches: &ArgMatches) -> Result<(), Error> {
+fn execute(matches: &ArgMatches<'_>) -> Result<(), Error> {
     for path in matches.values_of("paths").unwrap_or_default() {
         match inspect_object(path) {
             Ok(()) => (),

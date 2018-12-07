@@ -99,7 +99,7 @@ ffi_fn! {
     }
 }
 
-fn convert_token_match(token: Option<TokenMatch>) -> *mut SymbolicTokenMatch {
+fn convert_token_match(token: Option<TokenMatch<'_>>) -> *mut SymbolicTokenMatch {
     token
         .map(|token| {
             Box::into_raw(Box::new(SymbolicTokenMatch {

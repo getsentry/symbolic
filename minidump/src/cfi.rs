@@ -55,7 +55,7 @@ pub struct CfiError {
 }
 
 impl Fail for CfiError {
-    fn cause(&self) -> Option<&Fail> {
+    fn cause(&self) -> Option<&dyn Fail> {
         self.inner.cause()
     }
 
@@ -65,7 +65,7 @@ impl Fail for CfiError {
 }
 
 impl fmt::Display for CfiError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.inner, f)
     }
 }
@@ -149,7 +149,7 @@ impl<W: Write> AsciiCfiWriter<W> {
     }
 
     /// Extracts CFI from the given object file.
-    pub fn process(&mut self, object: &Object) -> Result<(), CfiError> {
+    pub fn process(&mut self, object: &Object<'_>) -> Result<(), CfiError> {
         match object.debug_kind() {
             Some(DebugKind::Dwarf) => self.process_dwarf(object),
             Some(DebugKind::Breakpad) => self.process_breakpad(object),
@@ -167,7 +167,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         }
     }
 
-    fn process_breakpad(&mut self, object: &Object) -> Result<(), CfiError> {
+    fn process_breakpad(&mut self, object: &Object<'_>) -> Result<(), CfiError> {
         for line in object.as_bytes().split(|b| *b == b'\n') {
             if line.starts_with(b"STACK") {
                 self.inner
@@ -180,7 +180,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         Ok(())
     }
 
-    fn process_dwarf(&mut self, object: &Object) -> Result<(), CfiError> {
+    fn process_dwarf(&mut self, object: &Object<'_>) -> Result<(), CfiError> {
         let endianness = object.endianness();
 
         if let Some(section) = object.get_dwarf_section(DwarfSection::EhFrame) {
@@ -354,7 +354,7 @@ impl<W: Write> AsciiCfiWriter<W> {
 
 impl<W: Write + Default> AsciiCfiWriter<W> {
     /// Extracts CFI from the given object and pipes it to a new writer instance.
-    pub fn transform(object: &Object) -> Result<W, CfiError> {
+    pub fn transform(object: &Object<'_>) -> Result<W, CfiError> {
         let mut writer = Default::default();
         AsciiCfiWriter::new(&mut writer).process(object)?;
         Ok(writer)
@@ -419,7 +419,7 @@ pub struct CfiCache<'a> {
 
 impl CfiCache<'static> {
     /// Construct a CFI cache from an `Object`.
-    pub fn from_object(object: &Object) -> Result<Self, CfiError> {
+    pub fn from_object(object: &Object<'_>) -> Result<Self, CfiError> {
         let buffer = AsciiCfiWriter::transform(object)?;
         let byteview = ByteView::from_vec(buffer);
         let inner = CfiCacheInner::V1(CfiCacheV1 { byteview });

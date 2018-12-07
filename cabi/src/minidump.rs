@@ -108,7 +108,7 @@ pub struct SymbolicProcessState {
 }
 
 impl SymbolicProcessState {
-    pub unsafe fn from_process_state(state: &ProcessState) -> Self {
+    pub unsafe fn from_process_state(state: &ProcessState<'_>) -> Self {
         map_process_state(state)
     }
 }
@@ -224,7 +224,7 @@ unsafe fn map_system_info(info: &SystemInfo) -> SymbolicSystemInfo {
 }
 
 /// Maps a `ProcessState` to its FFI type.
-unsafe fn map_process_state(state: &ProcessState) -> SymbolicProcessState {
+unsafe fn map_process_state(state: &ProcessState<'_>) -> SymbolicProcessState {
     let arch = state.system_info().cpu_arch();
     let (threads, thread_count) = map_slice(state.threads(), |s| map_call_stack(s, arch));
     let (modules, module_count) = map_iter(state.modules().iter(), |m| map_code_module(m));
@@ -336,7 +336,7 @@ ffi_fn! {
     unsafe fn symbolic_cficache_from_object(
         sobj: *const SymbolicObject,
     ) -> Result<*mut SymbolicCfiCache> {
-        let cache = CfiCache::from_object(&*(sobj as *const Object))?;
+        let cache = CfiCache::from_object(&*(sobj as *const Object<'_>))?;
         Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicCfiCache)
     }
 }

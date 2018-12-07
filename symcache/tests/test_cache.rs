@@ -4,7 +4,7 @@ use symbolic_common::byteview::ByteView;
 use symbolic_symcache::SymCache;
 use symbolic_testutils::{assert_snapshot, assert_snapshot_plain, fixture_path};
 
-fn get_functions(symcache: &SymCache) -> String {
+fn get_functions(symcache: &SymCache<'_>) -> String {
     let mut s = String::new();
     for func in symcache.functions() {
         let func = func.expect("Could not read symcache functions");

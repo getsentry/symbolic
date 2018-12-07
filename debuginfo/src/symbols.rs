@@ -168,7 +168,7 @@ pub struct Symbols<'data> {
 
 impl<'data> Symbols<'data> {
     /// Creates a `Symbols` wrapper for MachO.
-    fn from_macho(macho: &'data mach::MachO) -> Result<Option<Symbols<'data>>, ObjectError> {
+    fn from_macho(macho: &'data mach::MachO<'_>) -> Result<Option<Symbols<'data>>, ObjectError> {
         let macho_symbols = match macho.symbols {
             Some(ref symbols) => symbols,
             None => return Ok(None),
@@ -261,7 +261,7 @@ pub trait SymbolTable {
     /// If the symbol table has been stripped from the object, `None` is returned. In case a symbol
     /// table is present, but the trait has not been implemented for the object kind, an error is
     /// returned.
-    fn symbols(&self) -> Result<Option<Symbols>, ObjectError>;
+    fn symbols(&self) -> Result<Option<Symbols<'_>>, ObjectError>;
 }
 
 impl<'data> SymbolTable for Object<'data> {
@@ -275,7 +275,7 @@ impl<'data> SymbolTable for Object<'data> {
         }
     }
 
-    fn symbols(&self) -> Result<Option<Symbols>, ObjectError> {
+    fn symbols(&self) -> Result<Option<Symbols<'_>>, ObjectError> {
         match self.target {
             ObjectTarget::MachOSingle(macho) => Symbols::from_macho(macho),
             ObjectTarget::MachOFat(_, ref macho) => Symbols::from_macho(macho),

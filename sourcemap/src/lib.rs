@@ -9,7 +9,7 @@ use failure::Fail;
 pub struct ParseSourceMapError(sourcemap::Error);
 
 impl fmt::Display for ParseSourceMapError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {
             sourcemap::Error::Io(..) => write!(f, "sourcemap parsing failed with io error"),
             sourcemap::Error::Utf8(..) => write!(f, "sourcemap parsing failed due to bad utf-8"),
@@ -20,7 +20,7 @@ impl fmt::Display for ParseSourceMapError {
 }
 
 impl Fail for ParseSourceMapError {
-    fn cause(&self) -> Option<&Fail> {
+    fn cause(&self) -> Option<&dyn Fail> {
         Some(match self.0 {
             sourcemap::Error::Io(ref err) => err,
             sourcemap::Error::Utf8(ref err) => err,
@@ -112,14 +112,14 @@ impl SourceMapView {
     }
 
     /// Looks up a token and returns it.
-    pub fn lookup_token(&self, line: u32, col: u32) -> Option<TokenMatch> {
+    pub fn lookup_token(&self, line: u32, col: u32) -> Option<TokenMatch<'_>> {
         self.sm
             .lookup_token(line, col)
             .map(|tok| self.make_token_match(tok))
     }
 
     /// Returns a token for a specific index.
-    pub fn get_token(&self, idx: u32) -> Option<TokenMatch> {
+    pub fn get_token(&self, idx: u32) -> Option<TokenMatch<'_>> {
         self.sm.get_token(idx).map(|tok| self.make_token_match(tok))
     }
 
@@ -129,10 +129,10 @@ impl SourceMapView {
     }
 
     /// Returns a source view for the given source.
-    pub fn get_source_view(&self, idx: u32) -> Option<&SourceView> {
+    pub fn get_source_view(&self, idx: u32) -> Option<&SourceView<'_>> {
         self.sm
             .get_source_view(idx)
-            .map(|s| unsafe { &*(s as *const _ as *const SourceView) })
+            .map(|s| unsafe { &*(s as *const _ as *const SourceView<'_>) })
     }
 
     /// Returns the source name for an index.

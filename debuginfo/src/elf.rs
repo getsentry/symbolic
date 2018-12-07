@@ -18,7 +18,7 @@ pub struct ElfSection<'elf, 'data> {
 }
 
 /// Decompresses the given compressed section data, if supported.
-fn decompress_section(elf: &elf::Elf, data: &[u8]) -> Option<Vec<u8>> {
+fn decompress_section(elf: &elf::Elf<'_>, data: &[u8]) -> Option<Vec<u8>> {
     let container = elf.header.container().ok()?;
     let endianness = elf.header.endianness().ok()?;
     let context = Ctx::new(container, endianness);
@@ -39,7 +39,7 @@ fn decompress_section(elf: &elf::Elf, data: &[u8]) -> Option<Vec<u8>> {
 
 /// Locates and reads a section in an ELF binary.
 pub fn find_elf_section<'elf, 'data>(
-    elf: &'elf elf::Elf,
+    elf: &'elf elf::Elf<'_>,
     data: &'data [u8],
     sh_type: u32,
     name: &str,
@@ -86,7 +86,7 @@ pub fn find_elf_section<'elf, 'data>(
 ///
 /// This is useful to determine whether the binary contains certain information
 /// without loading its section data.
-pub fn has_elf_section(elf: &elf::Elf, sh_type: u32, name: &str) -> bool {
+pub fn has_elf_section(elf: &elf::Elf<'_>, sh_type: u32, name: &str) -> bool {
     for header in &elf.section_headers {
         if header.sh_type != sh_type {
             continue;
@@ -172,7 +172,7 @@ fn create_elf_id(identifier: &[u8], little_endian: bool) -> Option<DebugId> {
 /// likely not a valid UUID since was generated off a hash value.
 ///
 /// If all of the above fails, the identifier will be `None`.
-pub fn get_elf_id(elf: &elf::Elf, data: &[u8]) -> Option<DebugId> {
+pub fn get_elf_id(elf: &elf::Elf<'_>, data: &[u8]) -> Option<DebugId> {
     // Search for a GNU build identifier node in the program headers or the
     // build ID section. If errors occur during this process, fall through
     // silently to the next method.
@@ -196,7 +196,7 @@ pub fn get_elf_id(elf: &elf::Elf, data: &[u8]) -> Option<DebugId> {
 }
 
 /// Gets the virtual memory address of this object's .text (code) section.
-pub fn get_elf_vmaddr(elf: &elf::Elf) -> u64 {
+pub fn get_elf_vmaddr(elf: &elf::Elf<'_>) -> u64 {
     // For non-PIC executables (e_type == ET_EXEC), the load address is
     // the start address of the first PT_LOAD segment.  (ELF requires
     // the segments to be sorted by load address.)  For PIC executables

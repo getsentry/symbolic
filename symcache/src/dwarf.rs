@@ -22,7 +22,7 @@ type Buf<'a> = gimli::EndianSlice<'a, Endianness>;
 type Die<'abbrev, 'unit, 'a> = gimli::DebuggingInformationEntry<'abbrev, 'unit, Buf<'a>>;
 
 fn load_section<'a>(
-    obj: &'a Object,
+    obj: &'a Object<'_>,
     section: DwarfSection,
     required: bool,
 ) -> Result<Cow<'a, [u8]>, SymCacheError> {
@@ -52,7 +52,7 @@ struct DwarfBuffers<'a> {
 }
 
 impl<'a> DwarfBuffers<'a> {
-    pub fn from_object(obj: &'a Object) -> Result<Self, SymCacheError> {
+    pub fn from_object(obj: &'a Object<'_>) -> Result<Self, SymCacheError> {
         Ok(DwarfBuffers {
             debug_info: load_section(obj, DwarfSection::DebugInfo, true)?,
             debug_abbrev: load_section(obj, DwarfSection::DebugAbbrev, true)?,
@@ -103,13 +103,13 @@ pub struct DwarfInfo<'a> {
 }
 
 impl<'a> std::fmt::Debug for DwarfInfo<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         (*self.sections).fmt(f)
     }
 }
 
 impl<'a> DwarfInfo<'a> {
-    pub fn from_object(obj: &'a Object) -> Result<Self, SymCacheError> {
+    pub fn from_object(obj: &'a Object<'_>) -> Result<Self, SymCacheError> {
         let buffers = DwarfBuffers::from_object(obj)?;
         let handle = OwningHandle::try_new(Box::new(buffers), |buffers| {
             DwarfSections::from_buffers(unsafe { &*buffers }, obj.endianness()).map(Box::new)
@@ -193,7 +193,7 @@ pub struct Line<'a> {
 }
 
 impl<'a> fmt::Debug for Line<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Line")
             .field("addr", &self.addr)
             .field("base_dir", &String::from_utf8_lossy(self.base_dir))
@@ -238,7 +238,7 @@ impl<'a> Function<'a> {
 }
 
 impl<'a> fmt::Debug for Function<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Function")
             .field("name", &self.name)
             .field("addr", &self.addr)
@@ -489,7 +489,7 @@ impl<'a> Unit<'a> {
     fn parse_location<'r>(
         &self,
         info: &DwarfInfo<'a>,
-        entry: &Die,
+        entry: &Die<'_, '_, '_>,
         buf: &'r mut Vec<Range>,
     ) -> Result<FunctionLocation<'r>, SymCacheError> {
         let mut tuple = FunctionLocation::default();

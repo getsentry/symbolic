@@ -63,7 +63,7 @@ ffi_fn! {
         path: *const SymbolicStr,
         lineno: u32,
     ) -> Result<SymbolicStr> {
-        let pmv = spmv as *const ProguardMappingView;
+        let pmv = spmv as *const ProguardMappingView<'_>;
         let path = (*path).as_str();
         Ok(SymbolicStr::from_string((*pmv).convert_dotted_path(path, lineno)))
     }
@@ -74,7 +74,7 @@ ffi_fn! {
     unsafe fn symbolic_proguardmappingview_has_line_info(
         spmv: *const SymbolicProguardMappingView,
     ) -> Result<bool> {
-        let pmv = spmv as *const ProguardMappingView;
+        let pmv = spmv as *const ProguardMappingView<'_>;
         Ok((*pmv).has_line_info())
     }
 }

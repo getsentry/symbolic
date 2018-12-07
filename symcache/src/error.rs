@@ -33,7 +33,7 @@ pub enum ValueKind {
 }
 
 impl fmt::Display for ValueKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             ValueKind::Symbol => write!(f, "symbol"),
             ValueKind::Function => write!(f, "function"),
@@ -104,7 +104,7 @@ pub struct SymCacheError {
 }
 
 impl Fail for SymCacheError {
-    fn cause(&self) -> Option<&Fail> {
+    fn cause(&self) -> Option<&dyn Fail> {
         self.inner.cause()
     }
 
@@ -114,7 +114,7 @@ impl Fail for SymCacheError {
 }
 
 impl fmt::Display for SymCacheError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.inner, f)
     }
 }
