@@ -1,22 +1,16 @@
 //! API to process Unreal Engine 4 crashes.
 #![warn(missing_docs)]
 
-extern crate byteorder;
-extern crate bytes;
-extern crate compress;
-extern crate elementtree;
-extern crate failure;
-
-mod context;
-
 use std::fmt;
 use std::io::{self, Cursor, Read};
-
-use context::Unreal4Context;
 
 use bytes::{Buf, Bytes};
 use compress::zlib;
 use failure::Fail;
+
+use crate::context::Unreal4Context;
+
+mod context;
 
 struct Header {
     pub directory_name: String,
@@ -54,7 +48,7 @@ impl Unreal4FileType {
 }
 
 impl fmt::Display for Unreal4FileType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name())
     }
 }

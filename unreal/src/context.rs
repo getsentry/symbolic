@@ -1,13 +1,11 @@
 //! Unreal Engine 4 crash context information
 #![warn(missing_docs)]
 
-extern crate failure;
-
-use Unreal4Crash;
-use Unreal4Error;
-use Unreal4FileType;
-
 use elementtree::{Element, QName};
+
+use crate::Unreal4Crash;
+use crate::Unreal4Error;
+use crate::Unreal4FileType;
 
 /// The context data found in the context xml file.
 /// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp)

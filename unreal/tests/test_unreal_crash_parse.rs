@@ -1,8 +1,3 @@
-extern crate bytes;
-extern crate failure;
-extern crate symbolic_testutils;
-extern crate symbolic_unreal;
-
 use std::fs::File;
 use std::io::Read;
 
