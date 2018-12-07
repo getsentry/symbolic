@@ -1,3 +1,6 @@
+use if_chain::if_chain;
+use matches::matches;
+
 use std::borrow::Cow;
 
 fn is_absolute_windows_path(s: &str) -> bool {

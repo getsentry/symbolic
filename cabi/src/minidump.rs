@@ -132,7 +132,7 @@ where
         vec.push(mapper(item));
     }
 
-    let ptr = mem::transmute(vec.as_ptr());
+    let ptr = vec.as_ptr() as *mut S;
     let len = vec.len();
 
     mem::forget(vec);
@@ -151,7 +151,7 @@ where
     }
 
     vec.shrink_to_fit();
-    let ptr = mem::transmute(vec.as_ptr());
+    let ptr = vec.as_ptr() as *mut S;
     let len = vec.len();
 
     mem::forget(vec);

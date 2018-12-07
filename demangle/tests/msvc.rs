@@ -2,8 +2,6 @@
 //! We use msvc_demangler under the hood which runs its own test suite.
 //! Tests here make it easier to detect regressions.
 
-extern crate symbolic_common;
-extern crate symbolic_demangle;
 #[macro_use]
 mod utils;
 

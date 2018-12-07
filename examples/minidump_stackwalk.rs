@@ -1,8 +1,3 @@
-extern crate clap;
-extern crate failure;
-extern crate symbolic;
-extern crate walkdir;
-
 use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
 
@@ -149,6 +144,7 @@ fn symbolize<'a>(
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 struct PrintOptions {
     crashed_only: bool,
     show_modules: bool,

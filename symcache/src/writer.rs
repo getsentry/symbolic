@@ -9,7 +9,6 @@ use std::u16;
 
 use failure::ResultExt;
 use fnv::{FnvHashMap, FnvHashSet};
-use num;
 
 use symbolic_common::types::{DebugKind, Language};
 use symbolic_debuginfo::{Object, SymbolIterator, SymbolTable, Symbols};
@@ -284,7 +283,7 @@ impl<W: Write + Seek> SymCacheWriter<W> {
         symbol_iter: &mut Peekable<SymbolIterator>,
     ) -> Result<(), SymCacheError> {
         // NB: we can't use while let here, since we need to borrow symbol_iter mutably twice
-        #[cfg_attr(feature = "cargo-clippy", allow(while_let_loop))]
+        #[allow(clippy::while_let_loop)]
         loop {
             let sym_addr = match symbol_iter.peek() {
                 Some(&Ok(ref symbol)) => symbol.addr() - vmaddr,

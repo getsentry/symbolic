@@ -1,9 +1,5 @@
 //! Exposes a C-ABI for symbolic
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
-extern crate symbolic;
-extern crate uuid;
+#![allow(clippy::cast_ptr_alignment)]
 
 #[macro_use]
 mod utils;

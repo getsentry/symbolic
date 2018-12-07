@@ -14,6 +14,9 @@ description = """
 A library to symbolicate and process stack traces from native applications,
 minidumps, Unreal Engine 4, minified JavaScripts or ProGuard optimized Android apps.
 """
+edition = "2018"
+autoexamples = true
+
 exclude = [
     ".vscode/**/*",
     "py/**/*",
@@ -60,9 +63,6 @@ required-features = ["minidump", "symcache"]
 [[example]]
 name = "symcache_debug"
 required-features = ["symcache"]
-
-[[example]]
-name = "object_debug"
 
 [[example]]
 name = "unreal_engine_crash"

@@ -7,6 +7,8 @@ use std::os::raw::{c_char, c_void};
 use std::str::FromStr;
 use std::{fmt, ptr, slice, str};
 
+use failure::Fail;
+use lazy_static::lazy_static;
 use regex::Regex;
 use uuid::Uuid;
 
@@ -84,8 +86,6 @@ pub type ParseCodeModuleIdError = ParseDebugIdError;
 /// **Example:**
 ///
 /// ```
-/// # extern crate symbolic_common;
-/// # extern crate symbolic_minidump;
 /// use std::str::FromStr;
 /// use symbolic_minidump::processor::CodeModuleId;
 /// # use symbolic_minidump::processor::ParseCodeModuleIdError;
@@ -159,10 +159,10 @@ impl str::FromStr for CodeModuleId {
 }
 
 #[cfg(feature = "with_serde")]
-derive_deserialize_from_str!(CodeModuleId, "CodeModuleId");
+serde_plain::derive_deserialize_from_str!(CodeModuleId, "CodeModuleId");
 
 #[cfg(feature = "with_serde")]
-derive_serialize_from_display!(CodeModuleId);
+serde_plain::derive_serialize_from_display!(CodeModuleId);
 
 /// Carries information about a code module loaded into the process during the
 /// crash. The `debug_identifier` uniquely identifies this module.

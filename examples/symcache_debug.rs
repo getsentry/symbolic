@@ -1,7 +1,3 @@
-extern crate clap;
-extern crate failure;
-extern crate symbolic;
-
 use std::fs;
 use std::u64;
 
@@ -39,7 +35,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
 
         let mut obj = None;
 
-        #[cfg_attr(feature = "cargo-clippy", allow(useless_let_if_seq))]
+        #[allow(clippy::useless_let_if_seq)]
         {
             if arch == Arch::Unknown && objects.len() == 1 {
                 obj = Some(&objects[0]);
@@ -71,7 +67,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
         }
     } else if let Some(file_path) = matches.value_of("symcache_file_path") {
         let byteview = ByteView::from_path(file_path)?;
-        symcache = SymCache::new(byteview)?;
+        symcache = SymCache::parse(byteview)?;
     } else {
         return Err(err_msg("No debug file or sym cache provided"));
     }

@@ -369,7 +369,7 @@ impl<'a> Line<'a> {
 
 impl<'a> SymCache<'a> {
     /// Load a symcache from a byteview.
-    pub fn new(byteview: ByteView<'a>) -> Result<SymCache<'a>, SymCacheError> {
+    pub fn parse(byteview: ByteView<'a>) -> Result<Self, SymCacheError> {
         let rv = SymCache { byteview };
         {
             let preamble = rv.preamble()?;
@@ -384,9 +384,9 @@ impl<'a> SymCache<'a> {
     }
 
     /// Constructs a symcache from an object.
-    pub fn from_object(obj: &Object) -> Result<SymCache<'a>, SymCacheError> {
+    pub fn from_object(obj: &Object) -> Result<Self, SymCacheError> {
         let vec = writer::to_vec(obj)?;
-        SymCache::new(ByteView::from_vec(vec))
+        SymCache::parse(ByteView::from_vec(vec))
     }
 
     /// The total size of the cache file

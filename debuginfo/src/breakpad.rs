@@ -1,6 +1,8 @@
 use std::fmt;
 use std::str::FromStr;
 
+use failure::Fail;
+
 use symbolic_common::types::{Arch, DebugId, ObjectKind};
 
 use crate::object::{FatObject, Object};

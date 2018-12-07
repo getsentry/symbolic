@@ -8,11 +8,11 @@ use std::sync::Arc;
 use symbolic_common::types::{Endianness, Language};
 use symbolic_debuginfo::{DwarfData, DwarfSection, Object, Symbols};
 
-use dmsort;
 use failure::Fail;
 use fallible_iterator::FallibleIterator;
 use fnv::FnvBuildHasher;
 use gimli::{Abbreviations, AttributeValue, CompilationUnitHeader, DebugLineOffset, DwLang, Range};
+use if_chain::if_chain;
 use lru_cache::LruCache;
 use owning_ref::OwningHandle;
 
@@ -428,9 +428,9 @@ impl<'a> Unit<'a> {
 
             // An inlined function must always have a parent. An empty list of funcs indicates
             // invalid debug information.
-            let mut node = funcs.last_mut().ok_or(ConversionError::new(
-                "could not find inline parent function",
-            ))?;
+            let mut node = funcs
+                .last_mut()
+                .ok_or_else(|| ConversionError::new("could not find inline parent function"))?;
 
             // Search the inner-most parent function from the inlines tree. At
             // the very bottom we will attach to that parent as inline function.

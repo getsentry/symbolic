@@ -1,9 +1,8 @@
 //! Swift Demangling Tests
 //! All functions were compiled with Swift 4.0 in a file called mangling.swift
 //! see https://github.com/apple/swift/blob/master/test/SILGen/mangling.swift
+#![allow(clippy::cyclomatic_complexity)]
 
-extern crate symbolic_common;
-extern crate symbolic_demangle;
 #[macro_use]
 mod utils;
 

@@ -9,7 +9,7 @@ test: styletest cargotest pytest lint
 .PHONY: test
 
 styletest:
-	@rustup component add rustfmt-preview 2> /dev/null
+	@rustup component add rustfmt 2> /dev/null
 	@cargo fmt -- --check
 .PHONY: styletest
 
@@ -39,13 +39,13 @@ sdist: virtualenv
 .PHONY: sdist
 
 format:
-	@rustup component add rustfmt-preview 2> /dev/null
+	@rustup component add rustfmt 2> /dev/null
 	@cargo fmt
 .PHONY: format
 
 lint:
-	@rustup component add clippy-preview 2> /dev/null
-	@cargo clippy --all-features --tests --all --examples -- -D clippy
+	@rustup component add clippy 2> /dev/null
+	@cargo clippy --all-features --tests --all --examples -- -D clippy::all
 .PHONY: lint
 
 wheel-manylinux:

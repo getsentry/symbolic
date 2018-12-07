@@ -1,9 +1,5 @@
-extern crate symbolic_common;
-extern crate symbolic_debuginfo;
-extern crate symbolic_symcache;
-extern crate symbolic_testutils;
-
 use std::fmt::Write;
+
 use symbolic_common::byteview::ByteView;
 use symbolic_debuginfo::FatObject;
 use symbolic_symcache::SymCache;

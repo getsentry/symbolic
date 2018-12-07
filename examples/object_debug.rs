@@ -1,7 +1,3 @@
-extern crate clap;
-extern crate failure;
-extern crate symbolic;
-
 use std::path::Path;
 
 use clap::{App, Arg, ArgMatches};

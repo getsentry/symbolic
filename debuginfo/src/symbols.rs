@@ -5,6 +5,7 @@ use std::slice;
 
 use failure::ResultExt;
 use goblin::mach;
+use lazy_static::lazy_static;
 use regex::Regex;
 
 use symbolic_common::types::Name;

@@ -1,9 +1,5 @@
-extern crate symbolic_common;
-extern crate symbolic_debuginfo;
-extern crate symbolic_symcache;
-extern crate symbolic_testutils;
-
 use std::fmt::Write;
+
 use symbolic_common::byteview::ByteView;
 use symbolic_symcache::SymCache;
 use symbolic_testutils::{assert_snapshot, assert_snapshot_plain, fixture_path};
@@ -21,7 +17,7 @@ fn get_functions(symcache: &SymCache) -> String {
 fn test_load_header_linux() {
     let buffer = ByteView::from_path(fixture_path("symcache/current/linux.symc"))
         .expect("Could not open symcache");
-    let symcache = SymCache::new(buffer).expect("Could not load symcache");
+    let symcache = SymCache::parse(buffer).expect("Could not load symcache");
     assert_snapshot("header_linux.txt", &symcache);
 }
 
@@ -29,7 +25,7 @@ fn test_load_header_linux() {
 fn test_load_functions_linux() {
     let buffer = ByteView::from_path(fixture_path("symcache/current/linux.symc"))
         .expect("Could not open symcache");
-    let symcache = SymCache::new(buffer).expect("Could not load symcache");
+    let symcache = SymCache::parse(buffer).expect("Could not load symcache");
     let functions = get_functions(&symcache);
     assert_snapshot_plain("functions_linux.txt", &functions);
 }
@@ -38,7 +34,7 @@ fn test_load_functions_linux() {
 fn test_load_header_macos() {
     let buffer = ByteView::from_path(fixture_path("symcache/current/macos.symc"))
         .expect("Could not open symcache");
-    let symcache = SymCache::new(buffer).expect("Could not load symcache");
+    let symcache = SymCache::parse(buffer).expect("Could not load symcache");
     assert_snapshot("header_macos.txt", &symcache);
 }
 
@@ -46,7 +42,7 @@ fn test_load_header_macos() {
 fn test_load_functions_macos() {
     let buffer = ByteView::from_path(fixture_path("symcache/current/macos.symc"))
         .expect("Could not open symcache");
-    let symcache = SymCache::new(buffer).expect("Could not load symcache");
+    let symcache = SymCache::parse(buffer).expect("Could not load symcache");
     let functions = get_functions(&symcache);
     assert_snapshot_plain("functions_macos.txt", &functions);
 }
@@ -55,7 +51,7 @@ fn test_load_functions_macos() {
 fn test_lookup() {
     let buffer = ByteView::from_path(fixture_path("symcache/current/macos.symc"))
         .expect("Could not open symcache");
-    let symcache = SymCache::new(buffer).expect("Could not load symcache");
+    let symcache = SymCache::parse(buffer).expect("Could not load symcache");
     let line_infos = symcache
         .lookup(4_458_187_797 - 4_458_131_456)
         .expect("Could not lookup");

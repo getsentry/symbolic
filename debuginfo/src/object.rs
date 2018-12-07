@@ -2,7 +2,7 @@ use std::fmt;
 use std::io::Cursor;
 
 use failure::{Backtrace, Context, Fail, ResultExt};
-use goblin::{self, elf, mach, Hint};
+use goblin::{elf, mach, Hint};
 
 use symbolic_common::byteview::{ByteView, ByteViewHandle};
 use symbolic_common::types::{Arch, DebugId, DebugKind, Endianness, ObjectClass, ObjectKind};
@@ -13,7 +13,7 @@ use crate::elf::{get_elf_id, get_elf_vmaddr};
 use crate::mach::{get_mach_id, get_mach_vmaddr};
 
 /// Contains type specific data of `Object`s.
-#[cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum ObjectTarget<'bytes> {
     Breakpad(&'bytes BreakpadSym),
     Elf(&'bytes elf::Elf<'bytes>),
@@ -246,7 +246,7 @@ impl<'fat> Iterator for Objects<'fat> {
 }
 
 /// Internal data used to access platform-specific data of a `FatObject`.
-#[cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum FatObjectKind<'bytes> {
     Breakpad(BreakpadSym),
     Elf(elf::Elf<'bytes>),

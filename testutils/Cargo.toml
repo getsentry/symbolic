@@ -11,6 +11,7 @@ repository = "https://github.com/getsentry/symbolic"
 description = """
 Helper crate for testing symbolic.
 """
+edition = "2018"
 
 [dependencies]
 difference = "2.0.0"

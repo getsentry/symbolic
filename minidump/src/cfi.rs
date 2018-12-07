@@ -4,7 +4,7 @@ use std::io::{self, Write};
 
 use failure::{Backtrace, Context, Fail, ResultExt};
 use gimli::{
-    self, BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDescriptionEntry, Reader,
+    BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDescriptionEntry, Reader,
     ReaderOffset, RegisterRule, UninitializedUnwindContext, UnwindOffset, UnwindSection,
     UnwindTable,
 };
@@ -103,10 +103,6 @@ impl From<UnknownArchError> for CfiError {
 /// then process an object:
 ///
 /// ```rust,no_run
-/// # extern crate symbolic_common;
-/// # extern crate symbolic_debuginfo;
-/// # extern crate symbolic_minidump;
-/// # extern crate failure;
 /// use symbolic_common::byteview::ByteView;
 /// use symbolic_debuginfo::FatObject;
 /// use symbolic_minidump::cfi::AsciiCfiWriter;
@@ -128,10 +124,6 @@ impl From<UnknownArchError> for CfiError {
 /// returns it right away:
 ///
 /// ```rust,no_run
-/// # extern crate symbolic_common;
-/// # extern crate symbolic_debuginfo;
-/// # extern crate symbolic_minidump;
-/// # extern crate failure;
 /// use symbolic_common::byteview::ByteView;
 /// use symbolic_debuginfo::FatObject;
 /// use symbolic_minidump::cfi::AsciiCfiWriter;
@@ -389,10 +381,6 @@ enum CfiCacheInner<'a> {
 /// Then, load it from the file and pass it to the minidump processor.
 ///
 /// ```rust,no_run
-/// # extern crate symbolic_common;
-/// # extern crate symbolic_debuginfo;
-/// # extern crate symbolic_minidump;
-/// # extern crate failure;
 /// use std::fs::File;
 /// use symbolic_common::byteview::ByteView;
 /// use symbolic_debuginfo::FatObject;
@@ -412,10 +400,6 @@ enum CfiCacheInner<'a> {
 /// ```
 ///
 /// ```rust,no_run
-/// # extern crate symbolic_common;
-/// # extern crate symbolic_debuginfo;
-/// # extern crate symbolic_minidump;
-/// # extern crate failure;
 /// use symbolic_common::byteview::ByteView;
 /// use symbolic_debuginfo::FatObject;
 /// use symbolic_minidump::cfi::CfiCache;

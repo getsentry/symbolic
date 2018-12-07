@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::slice;
 
+use failure::Fail;
 use uuid::Uuid;
 
 use symbolic_common::types::DebugId;

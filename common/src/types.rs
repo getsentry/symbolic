@@ -5,6 +5,7 @@ use std::fmt;
 use std::mem;
 use std::str;
 
+use failure::Fail;
 #[cfg(feature = "with_dwarf")]
 use gimli;
 
@@ -345,12 +346,6 @@ impl str::FromStr for Arch {
     }
 }
 
-#[cfg(feature = "with_serde")]
-derive_deserialize_from_str!(Arch, "Arch");
-
-#[cfg(feature = "with_serde")]
-derive_serialize_from_display!(Arch);
-
 /// An error returned for unknown or invalid `Language`s.
 #[derive(Debug, Fail, Clone, Copy)]
 #[fail(display = "unknown language")]
@@ -461,12 +456,6 @@ impl str::FromStr for Language {
         })
     }
 }
-
-#[cfg(feature = "with_serde")]
-derive_deserialize_from_str!(Language, "Language");
-
-#[cfg(feature = "with_serde")]
-derive_serialize_from_display!(Language);
 
 /// Represents a potentially mangled symbol.
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -581,12 +570,6 @@ impl str::FromStr for ObjectKind {
         })
     }
 }
-
-#[cfg(feature = "with_serde")]
-derive_deserialize_from_str!(ObjectKind, "ObjectKind");
-
-#[cfg(feature = "with_serde")]
-derive_serialize_from_display!(ObjectKind);
 
 /// An error returned for unknown or invalid `ObjectClass`es.
 #[derive(Debug, Fail, Clone, Copy)]
@@ -729,12 +712,6 @@ impl str::FromStr for ObjectClass {
     }
 }
 
-#[cfg(feature = "with_serde")]
-derive_deserialize_from_str!(ObjectClass, "ObjectClass");
-
-#[cfg(feature = "with_serde")]
-derive_serialize_from_display!(ObjectClass);
-
 /// An error returned for unknown or invalid `DebugKind`s.
 #[derive(Debug, Fail, Clone, Copy)]
 #[fail(display = "unknown debug kind")]
@@ -775,10 +752,25 @@ impl str::FromStr for DebugKind {
     }
 }
 
-#[cfg(feature = "with_serde")]
-derive_deserialize_from_str!(DebugKind, "DebugKind");
-
-#[cfg(feature = "with_serde")]
-derive_serialize_from_display!(DebugKind);
-
 pub use debugid::*;
+
+#[cfg(feature = "with_serde")]
+mod derive_serde {
+    use super::*;
+    use serde_plain::{derive_deserialize_from_str, derive_serialize_from_display};
+
+    derive_deserialize_from_str!(Arch, "Arch");
+    derive_serialize_from_display!(Arch);
+
+    derive_deserialize_from_str!(Language, "Language");
+    derive_serialize_from_display!(Language);
+
+    derive_deserialize_from_str!(ObjectKind, "ObjectKind");
+    derive_serialize_from_display!(ObjectKind);
+
+    derive_deserialize_from_str!(ObjectClass, "ObjectClass");
+    derive_serialize_from_display!(ObjectClass);
+
+    derive_deserialize_from_str!(DebugKind, "DebugKind");
+    derive_serialize_from_display!(DebugKind);
+}

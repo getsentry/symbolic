@@ -1,8 +1,5 @@
 //! Language auto-detection tests
 
-extern crate symbolic_common;
-extern crate symbolic_demangle;
-
 use symbolic_common::types::{Language, Name};
 use symbolic_demangle::Demangle;
 

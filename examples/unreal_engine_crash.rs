@@ -1,7 +1,3 @@
-extern crate clap;
-extern crate failure;
-extern crate symbolic;
-
 use std::cmp;
 use std::fs::File;
 use std::io::Read;

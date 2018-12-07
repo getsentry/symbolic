@@ -15,8 +15,6 @@
 //! ## Examples
 //!
 //! ```rust
-//! # extern crate symbolic_demangle;
-//! # extern crate symbolic_common;
 //! use symbolic_common::types::{Language, Name};
 //! use symbolic_demangle::Demangle;
 //!
@@ -26,11 +24,6 @@
 //! assert_eq!(&name.try_demangle(Default::default()), "std::io::Read::read_to_end");
 //! # }
 //! ```
-extern crate cpp_demangle;
-extern crate msvc_demangler;
-extern crate rustc_demangle;
-extern crate symbolic_common;
-
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 

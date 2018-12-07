@@ -1,7 +1,3 @@
-extern crate symbolic_common;
-extern crate symbolic_debuginfo;
-extern crate symbolic_testutils;
-
 use symbolic_common::byteview::ByteView;
 use symbolic_debuginfo::{DebugFeatures, FatObject, ObjectFeature};
 use symbolic_testutils::fixture_path;
