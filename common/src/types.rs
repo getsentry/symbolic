@@ -5,6 +5,7 @@ use std::fmt;
 use std::mem;
 use std::str;
 
+use failure::Fail;
 #[cfg(feature = "with_dwarf")]
 use gimli;
 
@@ -305,7 +306,7 @@ impl Default for Arch {
 }
 
 impl fmt::Display for Arch {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name())
     }
 }
@@ -344,12 +345,6 @@ impl str::FromStr for Arch {
         })
     }
 }
-
-#[cfg(feature = "with_serde")]
-derive_deserialize_from_str!(Arch, "Arch");
-
-#[cfg(feature = "with_serde")]
-derive_serialize_from_display!(Arch);
 
 /// An error returned for unknown or invalid `Language`s.
 #[derive(Debug, Fail, Clone, Copy)]
@@ -427,7 +422,7 @@ impl Default for Language {
 }
 
 impl fmt::Display for Language {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let formatted = match *self {
             Language::Unknown | Language::__Max => "unknown",
             Language::C => "C",
@@ -461,12 +456,6 @@ impl str::FromStr for Language {
         })
     }
 }
-
-#[cfg(feature = "with_serde")]
-derive_deserialize_from_str!(Language, "Language");
-
-#[cfg(feature = "with_serde")]
-derive_serialize_from_display!(Language);
 
 /// Represents a potentially mangled symbol.
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -534,7 +523,7 @@ impl<'a> Into<Cow<'a, str>> for Name<'a> {
 }
 
 impl<'a> fmt::Display for Name<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
@@ -564,7 +553,7 @@ impl ObjectKind {
 }
 
 impl fmt::Display for ObjectKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name())
     }
 }
@@ -581,12 +570,6 @@ impl str::FromStr for ObjectKind {
         })
     }
 }
-
-#[cfg(feature = "with_serde")]
-derive_deserialize_from_str!(ObjectKind, "ObjectKind");
-
-#[cfg(feature = "with_serde")]
-derive_serialize_from_display!(ObjectKind);
 
 /// An error returned for unknown or invalid `ObjectClass`es.
 #[derive(Debug, Fail, Clone, Copy)]
@@ -703,7 +686,7 @@ impl ObjectClass {
 }
 
 impl fmt::Display for ObjectClass {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if f.alternate() {
             write!(f, "{}", self.human_name())
         } else {
@@ -729,12 +712,6 @@ impl str::FromStr for ObjectClass {
     }
 }
 
-#[cfg(feature = "with_serde")]
-derive_deserialize_from_str!(ObjectClass, "ObjectClass");
-
-#[cfg(feature = "with_serde")]
-derive_serialize_from_display!(ObjectClass);
-
 /// An error returned for unknown or invalid `DebugKind`s.
 #[derive(Debug, Fail, Clone, Copy)]
 #[fail(display = "unknown debug kind")]
@@ -758,7 +735,7 @@ impl DebugKind {
 }
 
 impl fmt::Display for DebugKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name())
     }
 }
@@ -775,10 +752,25 @@ impl str::FromStr for DebugKind {
     }
 }
 
-#[cfg(feature = "with_serde")]
-derive_deserialize_from_str!(DebugKind, "DebugKind");
-
-#[cfg(feature = "with_serde")]
-derive_serialize_from_display!(DebugKind);
-
 pub use debugid::*;
+
+#[cfg(feature = "with_serde")]
+mod derive_serde {
+    use super::*;
+    use serde_plain::{derive_deserialize_from_str, derive_serialize_from_display};
+
+    derive_deserialize_from_str!(Arch, "Arch");
+    derive_serialize_from_display!(Arch);
+
+    derive_deserialize_from_str!(Language, "Language");
+    derive_serialize_from_display!(Language);
+
+    derive_deserialize_from_str!(ObjectKind, "ObjectKind");
+    derive_serialize_from_display!(ObjectKind);
+
+    derive_deserialize_from_str!(ObjectClass, "ObjectClass");
+    derive_serialize_from_display!(ObjectClass);
+
+    derive_deserialize_from_str!(DebugKind, "DebugKind");
+    derive_serialize_from_display!(DebugKind);
+}

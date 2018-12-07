@@ -1,8 +1,4 @@
 //! Provides proguard support.
-extern crate proguard;
-extern crate symbolic_common;
-extern crate uuid;
-
 use std::io;
 use symbolic_common::byteview::{ByteView, ByteViewHandle};
 use uuid::Uuid;

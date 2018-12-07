@@ -117,7 +117,7 @@ impl<'a> LineInfo<'a> {
 }
 
 impl<'a> fmt::Display for LineInfo<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.function_name())?;
         if f.alternate() {
             let full_filename = self.full_filename();
@@ -141,7 +141,7 @@ impl<'a> fmt::Display for LineInfo<'a> {
 }
 
 impl<'a> fmt::Debug for LineInfo<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("LineInfo")
             .field("arch", &self.arch())
             .field("sym_addr", &self.sym_addr())
@@ -291,7 +291,7 @@ impl<'a> Iterator for Lines<'a> {
 struct LineDebug<'a>(RefCell<Option<Lines<'a>>>);
 
 impl<'a> fmt::Debug for LineDebug<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
             .entries(self.0.borrow_mut().take().unwrap().filter_map(|x| x.ok()))
             .finish()
@@ -299,7 +299,7 @@ impl<'a> fmt::Debug for LineDebug<'a> {
 }
 
 impl<'a> fmt::Debug for Function<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Function")
             .field("id", &self.id())
             .field("parent_id", &self.parent_id())
@@ -313,7 +313,7 @@ impl<'a> fmt::Debug for Function<'a> {
 }
 
 impl<'a> fmt::Display for Function<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.function_name())?;
         if f.alternate() && self.lang() != Language::Unknown {
             write!(f, " [{}]", self.lang())?;
@@ -323,7 +323,7 @@ impl<'a> fmt::Display for Function<'a> {
 }
 
 impl<'a> fmt::Debug for Line<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Line")
             .field("addr", &self.addr())
             .field("line", &self.line())
@@ -369,7 +369,7 @@ impl<'a> Line<'a> {
 
 impl<'a> SymCache<'a> {
     /// Load a symcache from a byteview.
-    pub fn new(byteview: ByteView<'a>) -> Result<SymCache<'a>, SymCacheError> {
+    pub fn parse(byteview: ByteView<'a>) -> Result<Self, SymCacheError> {
         let rv = SymCache { byteview };
         {
             let preamble = rv.preamble()?;
@@ -384,9 +384,9 @@ impl<'a> SymCache<'a> {
     }
 
     /// Constructs a symcache from an object.
-    pub fn from_object(obj: &Object) -> Result<SymCache<'a>, SymCacheError> {
+    pub fn from_object(obj: &Object<'_>) -> Result<Self, SymCacheError> {
         let vec = writer::to_vec(obj)?;
-        SymCache::new(ByteView::from_vec(vec))
+        SymCache::parse(ByteView::from_vec(vec))
     }
 
     /// The total size of the cache file
@@ -459,7 +459,7 @@ impl<'a> SymCache<'a> {
 
     /// Returns the SymCache preamble record.
     #[inline(always)]
-    fn header(&self) -> Result<&CacheFileHeader, SymCacheError> {
+    fn header(&self) -> Result<&dyn CacheFileHeader, SymCacheError> {
         let preamble = self.preamble()?;
 
         match preamble.version {
@@ -755,7 +755,7 @@ impl<'a> SymCache<'a> {
 }
 
 impl<'a> fmt::Debug for SymCache<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SymCache")
             .field("id", &self.id())
             .field("size", &self.size())
@@ -763,11 +763,13 @@ impl<'a> fmt::Debug for SymCache<'a> {
             .field(
                 "data_source",
                 &self.data_source().unwrap_or(DataSource::Unknown),
-            ).field("has_line_info", &self.has_line_info().unwrap_or(false))
+            )
+            .field("has_line_info", &self.has_line_info().unwrap_or(false))
             .field("has_file_info", &self.has_file_info().unwrap_or(false))
             .field(
                 "functions",
                 &self.function_records().map(|x| x.len()).unwrap_or(0),
-            ).finish()
+            )
+            .finish()
     }
 }

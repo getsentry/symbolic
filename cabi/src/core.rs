@@ -92,7 +92,7 @@ impl SymbolicUuid {
 
     /// Returns the Rust UUID managed by a `SymbolicUUID`.
     pub fn as_uuid(&self) -> &Uuid {
-        unsafe { mem::transmute(self) }
+        unsafe { &*(self as *const Self as *const Uuid) }
     }
 }
 
@@ -175,14 +175,15 @@ pub enum SymbolicErrorCode {
 
 impl SymbolicErrorCode {
     /// This maps all errors that can possibly happen.
+    #[allow(clippy::cyclomatic_complexity)]
     pub fn from_error(error: &Error) -> SymbolicErrorCode {
         for cause in error.iter_chain() {
-            if let Some(_) = cause.downcast_ref::<Panic>() {
+            if cause.downcast_ref::<Panic>().is_some() {
                 return SymbolicErrorCode::Panic;
             }
 
             use std::io::Error as IoError;
-            if let Some(_) = cause.downcast_ref::<IoError>() {
+            if cause.downcast_ref::<IoError>().is_some() {
                 return SymbolicErrorCode::IoError;
             }
 
@@ -190,24 +191,24 @@ impl SymbolicErrorCode {
                 UnknownArchError, UnknownDebugKindError, UnknownLanguageError,
                 UnknownObjectClassError, UnknownObjectKindError,
             };
-            if let Some(_) = cause.downcast_ref::<UnknownArchError>() {
+            if cause.downcast_ref::<UnknownArchError>().is_some() {
                 return SymbolicErrorCode::UnknownArchError;
-            } else if let Some(_) = cause.downcast_ref::<UnknownLanguageError>() {
+            } else if cause.downcast_ref::<UnknownLanguageError>().is_some() {
                 return SymbolicErrorCode::UnknownLanguageError;
-            } else if let Some(_) = cause.downcast_ref::<UnknownDebugKindError>() {
+            } else if cause.downcast_ref::<UnknownDebugKindError>().is_some() {
                 return SymbolicErrorCode::UnknownDebugKindError;
-            } else if let Some(_) = cause.downcast_ref::<UnknownObjectClassError>() {
+            } else if cause.downcast_ref::<UnknownObjectClassError>().is_some() {
                 return SymbolicErrorCode::UnknownObjectClassError;
-            } else if let Some(_) = cause.downcast_ref::<UnknownObjectKindError>() {
+            } else if cause.downcast_ref::<UnknownObjectKindError>().is_some() {
                 return SymbolicErrorCode::UnknownObjectKindError;
             }
 
             use symbolic::debuginfo::{
                 ObjectError, ObjectErrorKind, ParseBreakpadError, ParseDebugIdError,
             };
-            if let Some(_) = cause.downcast_ref::<ParseBreakpadError>() {
+            if cause.downcast_ref::<ParseBreakpadError>().is_some() {
                 return SymbolicErrorCode::ParseBreakpadError;
-            } else if let Some(_) = cause.downcast_ref::<ParseDebugIdError>() {
+            } else if cause.downcast_ref::<ParseDebugIdError>().is_some() {
                 return SymbolicErrorCode::ParseDebugIdError;
             } else if let Some(error) = cause.downcast_ref::<ObjectError>() {
                 return match error.kind() {
@@ -265,7 +266,7 @@ impl SymbolicErrorCode {
             }
 
             use symbolic::sourcemap::ParseSourceMapError;
-            if let Some(_) = cause.downcast_ref::<ParseSourceMapError>() {
+            if cause.downcast_ref::<ParseSourceMapError>().is_some() {
                 return SymbolicErrorCode::ParseSourceMapError;
             }
 

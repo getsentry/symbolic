@@ -4,30 +4,6 @@
 //! symbolicate stacktraces.  It is built to also be used independently
 //! of Sentry and in parts.
 
-#[doc(hidden)]
-pub extern crate symbolic_common;
-#[doc(hidden)]
-#[cfg(feature = "debuginfo")]
-pub extern crate symbolic_debuginfo;
-#[doc(hidden)]
-#[cfg(feature = "demangle")]
-pub extern crate symbolic_demangle;
-#[doc(hidden)]
-#[cfg(feature = "minidump")]
-pub extern crate symbolic_minidump;
-#[doc(hidden)]
-#[cfg(feature = "proguard")]
-pub extern crate symbolic_proguard;
-#[doc(hidden)]
-#[cfg(feature = "sourcemap")]
-pub extern crate symbolic_sourcemap;
-#[doc(hidden)]
-#[cfg(feature = "symcache")]
-pub extern crate symbolic_symcache;
-#[doc(hidden)]
-#[cfg(feature = "unreal")]
-pub extern crate symbolic_unreal;
-
 pub use symbolic_common as common;
 #[cfg(feature = "debuginfo")]
 pub use symbolic_debuginfo as debuginfo;

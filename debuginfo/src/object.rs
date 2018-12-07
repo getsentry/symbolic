@@ -2,7 +2,7 @@ use std::fmt;
 use std::io::Cursor;
 
 use failure::{Backtrace, Context, Fail, ResultExt};
-use goblin::{self, elf, mach, Hint};
+use goblin::{elf, mach, Hint};
 
 use symbolic_common::byteview::{ByteView, ByteViewHandle};
 use symbolic_common::types::{Arch, DebugId, DebugKind, Endianness, ObjectClass, ObjectKind};
@@ -13,7 +13,7 @@ use crate::elf::{get_elf_id, get_elf_vmaddr};
 use crate::mach::{get_mach_id, get_mach_vmaddr};
 
 /// Contains type specific data of `Object`s.
-#[cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum ObjectTarget<'bytes> {
     Breakpad(&'bytes BreakpadSym),
     Elf(&'bytes elf::Elf<'bytes>),
@@ -46,7 +46,7 @@ pub struct ObjectError {
 }
 
 impl Fail for ObjectError {
-    fn cause(&self) -> Option<&Fail> {
+    fn cause(&self) -> Option<&dyn Fail> {
         self.inner.cause()
     }
 
@@ -56,7 +56,7 @@ impl Fail for ObjectError {
 }
 
 impl fmt::Display for ObjectError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.inner, f)
     }
 }
@@ -193,7 +193,7 @@ impl<'bytes> Object<'bytes> {
 }
 
 impl<'bytes> fmt::Debug for Object<'bytes> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Object")
             .field("id", &self.id())
             .field("arch", &self.arch())
@@ -246,7 +246,7 @@ impl<'fat> Iterator for Objects<'fat> {
 }
 
 /// Internal data used to access platform-specific data of a `FatObject`.
-#[cfg_attr(feature = "cargo-clippy", allow(large_enum_variant))]
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum FatObjectKind<'bytes> {
     Breakpad(BreakpadSym),
     Elf(elf::Elf<'bytes>),
@@ -367,7 +367,7 @@ impl<'bytes> FatObject<'bytes> {
 }
 
 impl<'bytes> fmt::Debug for FatObject<'bytes> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Object")
             .field("kind", &self.kind())
             .field("object_count", &self.object_count())

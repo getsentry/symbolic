@@ -13,11 +13,11 @@ description = """
 An optimizied cache file for fast and memory efficient lookup of symbols and
 stack frames in debugging information.
 """
+edition = "2018"
 
 [dependencies]
 dmsort = "1.0.0"
 failure = "0.1.3"
-failure_derive = "0.1.3"
 fallible-iterator = "0.1.5"
 fnv = "1.0.6"
 gimli = "0.16.1"

@@ -32,7 +32,7 @@ pub fn find_mach_segment<'mach, 'data>(
 ///
 /// This is useful to determine whether the object contains certain information
 /// without iterating over all section headers and loading their data.
-pub fn has_mach_segment(mach: &mach::MachO, name: &str) -> bool {
+pub fn has_mach_segment(mach: &mach::MachO<'_>, name: &str) -> bool {
     find_mach_segment(mach, name).is_some()
 }
 
@@ -76,13 +76,13 @@ pub fn find_mach_section<'data>(
 ///
 /// This is useful to determine whether the binary contains certain information
 /// without loading its section data.
-pub fn has_mach_section(mach: &mach::MachO, name: &str) -> bool {
+pub fn has_mach_section(mach: &mach::MachO<'_>, name: &str) -> bool {
     // Loading the data is comparably cheap, so we can delegate
     find_mach_section(mach, name).is_some()
 }
 
 /// Resolves the object identifier from Mach object load commands.
-pub fn get_mach_id(macho: &mach::MachO) -> Option<DebugId> {
+pub fn get_mach_id(macho: &mach::MachO<'_>) -> Option<DebugId> {
     for cmd in &macho.load_commands {
         if let mach::load_command::CommandVariant::Uuid(ref uuid_cmd) = cmd.command {
             return Uuid::from_slice(&uuid_cmd.uuid)
@@ -95,7 +95,7 @@ pub fn get_mach_id(macho: &mach::MachO) -> Option<DebugId> {
 }
 
 /// Loads the virtual memory address of this object's __TEXT (code) segment.
-pub fn get_mach_vmaddr(macho: &mach::MachO) -> u64 {
+pub fn get_mach_vmaddr(macho: &mach::MachO<'_>) -> u64 {
     for seg in &macho.segments {
         if seg.name().map(|name| name == "__TEXT").unwrap_or(false) {
             return seg.vmaddr;

@@ -13,6 +13,7 @@ description = """
 A library to process ProGuard mapping files and symbolicate frames from
 optimized applications.
 """
+edition = "2018"
 
 [dependencies]
 proguard = "1.1.0"

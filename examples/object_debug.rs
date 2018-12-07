@@ -1,7 +1,3 @@
-extern crate clap;
-extern crate failure;
-extern crate symbolic;
-
 use std::path::Path;
 
 use clap::{App, Arg, ArgMatches};
@@ -59,7 +55,7 @@ fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     Ok(())
 }
 
-fn execute(matches: &ArgMatches) -> Result<(), Error> {
+fn execute(matches: &ArgMatches<'_>) -> Result<(), Error> {
     for path in matches.values_of("paths").unwrap_or_default() {
         match inspect_object(path) {
             Ok(()) => (),
@@ -83,7 +79,8 @@ fn main() {
                 .help("Path to the minidump file")
                 .number_of_values(1)
                 .index(1),
-        ).get_matches();
+        )
+        .get_matches();
 
     match execute(&matches) {
         Ok(()) => (),

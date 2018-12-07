@@ -53,7 +53,7 @@ ffi_fn! {
     /// Creates a symcache from a given path.
     unsafe fn symbolic_symcache_from_path(path: *const c_char) -> Result<*mut SymbolicSymCache> {
         let byteview = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
-        let cache = SymCache::new(byteview)?;
+        let cache = SymCache::parse(byteview)?;
         Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicSymCache)
     }
 }
@@ -66,7 +66,7 @@ ffi_fn! {
     ) -> Result<*mut SymbolicSymCache> {
         let vec = slice::from_raw_parts(bytes, len).to_owned();
         let byteview = ByteView::from_vec(vec);
-        let cache = SymCache::new(byteview)?;
+        let cache = SymCache::parse(byteview)?;
         Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicSymCache)
     }
 }
@@ -76,7 +76,7 @@ ffi_fn! {
     unsafe fn symbolic_symcache_from_object(
         sobj: *const SymbolicObject,
     ) -> Result<*mut SymbolicSymCache> {
-        let cache = SymCache::from_object(&*(sobj as *const Object))?;
+        let cache = SymCache::from_object(&*(sobj as *const Object<'_>))?;
         Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicSymCache)
     }
 }
