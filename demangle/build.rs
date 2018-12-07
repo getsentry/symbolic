@@ -14,7 +14,8 @@ fn main() {
             "vendor/swift/lib/Demangling/NodeDumper.cpp",
             "vendor/swift/lib/Demangling/OldDemangler.cpp",
             "vendor/swift/lib/Demangling/Punycode.cpp",
-        ]).flag("-std=c++11")
+        ])
+        .flag("-std=c++11")
         .warnings(false)
         .include("vendor/swift/include")
         .compile("swiftdemangle");

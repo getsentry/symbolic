@@ -120,7 +120,8 @@ fn main() {
                 .long("debug-file")
                 .value_name("PATH")
                 .help("Path to the debug info file"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("write_cache_file")
                 .short("w")
                 .long("write-cache-file")
@@ -129,32 +130,38 @@ fn main() {
                      provided via --symcache-file it will be written to the source file \
                      with the .symcache suffix.",
                 ),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("arch")
                 .short("a")
                 .long("arch")
                 .value_name("ARCH")
                 .help("The architecture of the object to work with."),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("report")
                 .long("report")
                 .help("Spit out some debug information"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("symcache_file_path")
                 .short("c")
                 .long("symcache-file")
                 .value_name("PATH")
                 .help("Path to the symcache file"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("lookup_addr")
                 .long("lookup")
                 .value_name("ADDR")
                 .help("Looks up an address in the debug file"),
-        ).arg(
+        )
+        .arg(
             Arg::with_name("print_symbols")
                 .long("symbols")
                 .help("Print all symbols"),
-        ).get_matches();
+        )
+        .get_matches();
 
     execute(&matches).unwrap()
 }

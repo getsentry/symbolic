@@ -424,7 +424,8 @@ impl StackFrame {
                             _ => return None,
                         },
                     ))
-                }).collect();
+                })
+                .collect();
 
             regval_delete(values);
             map
@@ -691,7 +692,8 @@ impl<'a> ProcessState<'a> {
                         v.as_slice().len(),
                         v.as_slice().as_ptr(),
                     )
-                }).collect()
+                })
+                .collect()
         });
 
         // Keep a reference to all symbol entries to extend their lifetime.
@@ -701,7 +703,8 @@ impl<'a> ProcessState<'a> {
                 debug_identifier: id.as_ref().map(|i| i.as_ptr()).unwrap_or(ptr::null()),
                 symbol_size: size,
                 symbol_data: data,
-            }).collect();
+            })
+            .collect();
 
         let internal = unsafe {
             process_minidump(

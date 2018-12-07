@@ -140,11 +140,13 @@ fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
     };
 
     let simplified = match opts.format {
-        DemangleFormat::Short => if opts.with_arguments {
-            1
-        } else {
-            2
-        },
+        DemangleFormat::Short => {
+            if opts.with_arguments {
+                1
+            } else {
+                2
+            }
+        }
         DemangleFormat::Full => 0,
     };
 

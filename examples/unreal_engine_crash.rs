@@ -47,7 +47,8 @@ fn main() {
                 .required(true)
                 .value_name("crash_file_path")
                 .help("Path to the crash file"),
-        ).get_matches();
+        )
+        .get_matches();
 
     match execute(&matches) {
         Ok(()) => (),

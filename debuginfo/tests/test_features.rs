@@ -59,7 +59,8 @@ fn test_features_mach_bin() {
 fn test_features_mach_dbg() {
     let buffer = ByteView::from_path(fixture_path(
         "macos/crash.dSYM/Contents/Resources/DWARF/crash",
-    )).expect("Could not open file");
+    ))
+    .expect("Could not open file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
     let object = fat
         .get_object(0)

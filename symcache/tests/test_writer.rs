@@ -51,7 +51,8 @@ fn test_write_functions_linux() {
 fn test_write_header_macos() {
     let buffer = ByteView::from_path(fixture_path(
         "macos/crash.dSYM/Contents/Resources/DWARF/crash",
-    )).expect("Could not open the dSYM file");
+    ))
+    .expect("Could not open the dSYM file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
     let object = fat
         .get_object(0)
@@ -66,7 +67,8 @@ fn test_write_header_macos() {
 fn test_write_functions_macos() {
     let buffer = ByteView::from_path(fixture_path(
         "macos/crash.dSYM/Contents/Resources/DWARF/crash",
-    )).expect("Could not open the dSYM file");
+    ))
+    .expect("Could not open the dSYM file");
     let fat = FatObject::parse(buffer).expect("Could not create an object");
     let object = fat
         .get_object(0)

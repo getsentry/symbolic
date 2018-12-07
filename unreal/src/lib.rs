@@ -202,7 +202,8 @@ fn get_files_from_slice(bytes: &Bytes) -> Result<Vec<Unreal4CrashFile>, Unreal4E
         &bytes
             .get(bytes.len() - 4..)
             .ok_or(Unreal4Error::OutOfBounds)?,
-    ).get_i32_le();
+    )
+    .get_i32_le();
 
     let mut cursor = Cursor::new(&bytes[..]);
     read_header(&mut cursor);
