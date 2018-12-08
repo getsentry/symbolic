@@ -237,6 +237,11 @@ fn get_platform_properties(root: &Element) -> Option<Unreal4ContextPlatformPrope
                 Ok(_) => {}
                 Err(_) => {}
             }
+            match child.text().parse::<bool>() {
+                Ok(true) => rv.is_windows = Some(true),
+                Ok(false) => rv.is_windows = Some(false),
+                Err(_) => {}
+            }
         } else if child.tag() == &QName::from("PlatformCallbackResult") {
             rv.callback_result = child.text().parse::<i32>().ok();
         }
@@ -287,8 +292,8 @@ fn test_get_platform_properties_no_children() {
     assert_eq!(Unreal4ContextPlatformProperties::default(), actual)
 }
 
-macro_rules! test_unreal_runtime_properties {
-    ($name:ident, $xml_elm:expr, $expect:expr $(,)*) => {
+macro_rules! test_unreal_contect {
+    ($xml_parent:expr, $func_name:expr, $name:ident, $xml_elm:expr, $expect:expr, $(,)*) => {
         #[cfg(test)]
         mod $name {
             use super::*;
@@ -296,9 +301,9 @@ macro_rules! test_unreal_runtime_properties {
             #[test]
             fn test_some() {
                 #[rustfmt::skip]
-                let xml = concat!("<FGenericCrashContext><RuntimeProperties><", $xml_elm, ">", $expect, "</", $xml_elm, "></RuntimeProperties></FGenericCrashContext>");
+                let xml = concat!("<FGenericCrashContext><", $xml_parent, "><", $xml_elm, ">", $expect, "</", $xml_elm, "></", $xml_parent, "></FGenericCrashContext>");
                 let root = Element::from_reader(xml.as_bytes()).unwrap();
-                let runtime_properties = get_runtime_properties(&root).expect("RuntimeProperties exists");
+                let runtime_properties = $func_name(&root).expect("RuntimeProperties exists");
                 assert_eq!(
                     $expect,
                     runtime_properties.$name.expect("missing property value")
@@ -308,12 +313,36 @@ macro_rules! test_unreal_runtime_properties {
             #[test]
             fn test_none() {
                 #[rustfmt::skip]
-                let xml = concat!("<FGenericCrashContext><RuntimeProperties><", $xml_elm, "></", $xml_elm, "></RuntimeProperties></FGenericCrashContext>");
+                let xml = concat!("<FGenericCrashContext><", $xml_parent, "><", $xml_elm, "></", $xml_elm, "></", $xml_parent, "></FGenericCrashContext>");
                 let root = Element::from_reader(xml.as_bytes()).unwrap();
-                let runtime_properties = get_runtime_properties(&root).expect("RuntimeProperties exists");
+                let runtime_properties = $func_name(&root).expect("RuntimeProperties exists");
                 assert!(runtime_properties.$name.is_none());
             }
         }
+    };
+}
+
+macro_rules! test_unreal_runtime_properties {
+    ($name:ident, $xml_elm:expr, $expect:expr $(,)*) => {
+        test_unreal_contect!(
+            "RuntimeProperties",
+            get_runtime_properties,
+            $name,
+            $xml_elm,
+            $expect,
+        );
+    };
+}
+
+macro_rules! test_unreal_platform_properties {
+    ($name:ident, $xml_elm:expr, $expect:expr $(,)*) => {
+        test_unreal_contect!(
+            "PlatformProperties",
+            get_platform_properties,
+            $name,
+            $xml_elm,
+            $expect,
+        );
     };
 }
 
@@ -397,12 +426,12 @@ test_unreal_runtime_properties!(game_state_name, "GameStateName", "game state");
 test_unreal_runtime_properties!(
     memory_stats_total_physical,
     "MemoryStats.TotalPhysical",
-    6896832512
+    6_896_832_512,
 );
 test_unreal_runtime_properties!(
     memory_stats_total_virtual,
     "MemoryStats.TotalVirtual",
-    140737488224256
+    140_737_488_224_256,
 );
 test_unreal_runtime_properties!(memory_stats_page_size, "MemoryStats.PageSize", 4096);
 test_unreal_runtime_properties!(
@@ -410,32 +439,15 @@ test_unreal_runtime_properties!(
     "MemoryStats.TotalPhysicalGB",
     7
 );
-test_unreal_runtime_properties!(time_of_crash, "TimeOfCrash", 636783195289630000);
+test_unreal_runtime_properties!(time_of_crash, "TimeOfCrash", 636_783_195_289_630_000,);
 test_unreal_runtime_properties!(allowed_to_be_contacted, "bAllowToBeContacted", true);
 test_unreal_runtime_properties!(
     crash_reporter_client_version,
     "CrashReportClientVersion",
-    "1.0"
+    "1.0",
 );
 test_unreal_runtime_properties!(modules, "Modules", r#"\\Mac\Home\Desktop\WindowsNoEditor\YetAnother\Binaries\Win64\YetAnother.exe
 \\Mac\Home\Desktop\WindowsNoEditor\Engine\Binaries\ThirdParty\Vorbis\Win64\VS2015\libvorbis_64.dll"#);
 
-#[test]
-fn test_get_platform_properties() {
-    let root = Element::from_reader(
-        r#"<?xml version="1.0" encoding="UTF-8"?>
-<FGenericCrashContext>
-	<PlatformProperties>
-		<PlatformIsRunningWindows>0</PlatformIsRunningWindows>
-		<PlatformCallbackResult>123</PlatformCallbackResult>
-	</PlatformProperties>
-</FGenericCrashContext>
-"#
-        .as_bytes(),
-    )
-    .unwrap();
-
-    let platform_properties = get_platform_properties(&root).expect("PlatformProperties exists");
-    assert!(!platform_properties.is_windows.expect("is windows"));
-    assert_eq!(platform_properties.callback_result.expect("has value"), 123);
-}
+test_unreal_platform_properties!(is_windows, "PlatformIsRunningWindows", true);
+test_unreal_platform_properties!(callback_result, "PlatformCallbackResult", 123);
