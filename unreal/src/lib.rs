@@ -1,17 +1,16 @@
 //! API to process Unreal Engine 4 crashes.
 #![warn(missing_docs)]
 
-extern crate byteorder;
-extern crate bytes;
-extern crate compress;
-extern crate failure;
-
 use std::fmt;
 use std::io::{self, Cursor, Read};
 
 use bytes::{Buf, Bytes};
 use compress::zlib;
 use failure::Fail;
+
+use crate::context::Unreal4Context;
+
+mod context;
 
 struct Header {
     pub directory_name: String,
@@ -49,7 +48,7 @@ impl Unreal4FileType {
 }
 
 impl fmt::Display for Unreal4FileType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name())
     }
 }
@@ -101,6 +100,9 @@ pub enum Unreal4Error {
     /// Invalid compressed data.
     #[fail(display = "bad compression")]
     BadCompression(io::Error),
+    /// Invalid XML
+    #[fail(display = "invalid xml")]
+    InvalidXml(elementtree::Error),
 }
 
 /// Unreal Engine 4 crash file.
@@ -159,12 +161,20 @@ impl Unreal4Crash {
 
     /// Get the Minidump file bytes.
     pub fn get_minidump_slice(&self) -> Result<Option<&[u8]>, Unreal4Error> {
-        let minidump = match self.files().find(|f| f.ty() == Unreal4FileType::Minidump) {
+        self.get_file_slice(Unreal4FileType::Minidump)
+    }
+
+    /// Get the file contents by its file type.
+    pub fn get_file_slice(
+        &self,
+        file_type: Unreal4FileType,
+    ) -> Result<Option<&[u8]>, Unreal4Error> {
+        let file = match self.files().find(|f| f.ty() == file_type) {
             Some(m) => m,
             None => return Ok(None),
         };
 
-        Ok(Some(self.get_file_contents(minidump)?))
+        Ok(Some(self.get_file_contents(file)?))
     }
 
     /// Get file content.
@@ -176,6 +186,13 @@ impl Unreal4Crash {
         self.bytes
             .get(file_meta.offset..end)
             .ok_or(Unreal4Error::OutOfBounds)
+    }
+
+    /// Get the `Unreal4Context` of this crash.
+    /// This is achieved by reading the context (xml) file
+    /// If the file doesn't exist in the crash, `None` is returned.
+    pub fn get_context(&self) -> Result<Option<Unreal4Context>, Unreal4Error> {
+        Unreal4Context::from_crash(self)
     }
 }
 
