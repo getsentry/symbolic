@@ -716,8 +716,6 @@ SymbolicLookupResult symbolic_symcache_lookup(const SymbolicSymCache *scache, ui
  */
 void symbolic_token_match_free(SymbolicTokenMatch *stm);
 
-SymbolicStr symbolic_unreal4_context(SymbolicUnreal4Crash *unreal);
-
 const SymbolicUnreal4CrashFile *symbolic_unreal4_crash_file_by_index(const SymbolicUnreal4Crash *unreal,
                                                                      uintptr_t idx);
 
@@ -736,6 +734,8 @@ void symbolic_unreal4_crash_free(SymbolicUnreal4Crash *unreal);
 SymbolicUnreal4Crash *symbolic_unreal4_crash_from_bytes(const char *bytes, uintptr_t len);
 
 SymbolicProcessState *symbolic_unreal4_crash_process_minidump(const SymbolicUnreal4Crash *unreal);
+
+SymbolicStr symbolic_unreal4_get_context(SymbolicUnreal4Crash *unreal);
 
 /*
  * Returns true if the uuid is nil.
