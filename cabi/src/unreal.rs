@@ -29,6 +29,15 @@ ffi_fn! {
 }
 
 ffi_fn! {
+    unsafe fn symbolic_unreal4_get_context(unreal: *mut SymbolicUnreal4Crash) -> Result<SymbolicStr> {
+        let unreal = &*(unreal as *const Unreal4Crash);
+
+        let context = unreal.get_context()?;
+        Ok(SymbolicStr::from_string(serde_json::to_string(&context)?))
+    }
+}
+
+ffi_fn! {
     unsafe fn symbolic_unreal4_crash_process_minidump(
         unreal: *const SymbolicUnreal4Crash
     ) -> Result<*mut SymbolicProcessState> {

@@ -2,6 +2,7 @@
 #![warn(missing_docs)]
 
 use elementtree::{Element, QName};
+use serde::Serialize;
 
 use crate::Unreal4Crash;
 use crate::Unreal4Error;
@@ -9,114 +10,161 @@ use crate::Unreal4FileType;
 
 /// The context data found in the context xml file.
 /// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp)
-#[derive(Default, Clone, Debug, PartialEq)]
+#[derive(Serialize, Default, Clone, Debug, PartialEq)]
 pub struct Unreal4Context {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub runtime_properties: Option<Unreal4ContextRuntimeProperties>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub platform_properties: Option<Unreal4ContextPlatformProperties>,
 }
 
 /// RuntimeProperties context element
 /// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L274)
-#[derive(Default, Clone, Debug, PartialEq)]
+#[derive(Serialize, Default, Clone, Debug, PartialEq)]
 pub struct Unreal4ContextRuntimeProperties {
     /// CrashGUID
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub crash_guid: Option<String>,
     /// ProcessId
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub process_id: Option<u32>,
     /// IsInternalBuild
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub is_internal_build: Option<bool>,
     /// IsSourceDistribution
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub is_source_distribution: Option<bool>,
     /// IsAssert
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub is_assert: Option<bool>,
     /// IsEnsure
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub is_ensure: Option<bool>,
     /// CrashType
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub crash_type: Option<String>,
     /// SecondsSinceStart
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub seconds_since_start: Option<u32>,
     /// GameName
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub game_name: Option<String>,
     /// ExecutableName
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub executable_name: Option<String>,
     /// BuildConfiguration
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub build_configuration: Option<String>,
     /// PlatformName
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub platform_name: Option<String>,
     /// EngineMode
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub engine_mode: Option<String>,
     /// EngineVersion
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub engine_version: Option<String>,
     /// LanguageLCID
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub language_lcid: Option<i32>,
     /// AppDefaultLocale
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub app_default_locate: Option<String>,
     /// BuildVersion
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub build_version: Option<String>,
     /// IsUE4Release
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub is_ue4_release: Option<bool>,
     /// UserName
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
     /// BaseDir
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub base_dir: Option<String>,
     /// RootDir
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub root_dir: Option<String>,
     /// MachineId
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub machine_id: Option<String>,
     /// LoginId
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub login_id: Option<String>,
     /// EpicAccountId
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub epic_account_id: Option<String>,
     /// CallStack
     /// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L326-L327)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub legacy_call_stack: Option<String>,
     /// PCallStack
     // [Sopurce](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L329-L330)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub portable_call_stack: Option<String>,
     /// ErrorMessage
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub error_message: Option<String>,
     /// CrashReporterMessage
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub crash_reporter_message: Option<String>,
     /// Misc.NumberOfCores
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub misc_number_of_cores: Option<u32>,
     /// Misc.NumberOfCoresIncludingHyperthreads
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub misc_number_of_cores_inc_hyperthread: Option<u32>,
     /// Misc.Is64bitOperatingSystem
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub misc_is_64bit: Option<bool>,
     /// Misc.CPUVendor
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub misc_cpu_vendor: Option<String>,
     /// Misc.CPUBrand
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub misc_cpu_brand: Option<String>,
     /// Misc.PrimaryGPUBrand
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub misc_primary_cpu_brand: Option<String>,
     /// Misc.OSVersionMajor
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub misc_os_version_major: Option<String>,
     /// Misc.OSVersionMinor
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub misc_os_version_minor: Option<String>,
     /// GameStateName
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub game_state_name: Option<String>,
     /// MemoryStats.TotalPhysical
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub memory_stats_total_physical: Option<u64>,
     /// MemoryStats.TotalVirtual
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub memory_stats_total_virtual: Option<u64>,
     /// MemoryStats.PageSize
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub memory_stats_page_size: Option<u64>,
     /// MemoryStats.TotalPhysicalGB
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub memory_stats_total_phsysical_gb: Option<u32>,
     /// TimeOfCrash
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub time_of_crash: Option<u64>,
     /// bAllowToBeContacted
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub allowed_to_be_contacted: Option<bool>,
     /// CrashReportClientVersion
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub crash_reporter_client_version: Option<String>,
     /// Modules
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub modules: Option<String>,
 }
 
 /// Platform specific properties.
 /// [Source[(https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L451-L455)
 /// [Windows](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/Windows/WindowsPlatformCrashContext.cpp#L39-L44)
-#[derive(Default, Clone, Debug, PartialEq)]
+#[derive(Serialize, Default, Clone, Debug, PartialEq)]
 pub struct Unreal4ContextPlatformProperties {
     /// Whether the crash happened on a Windows device.
     pub is_windows: Option<bool>,

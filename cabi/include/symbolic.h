@@ -735,6 +735,8 @@ SymbolicUnreal4Crash *symbolic_unreal4_crash_from_bytes(const char *bytes, uintp
 
 SymbolicProcessState *symbolic_unreal4_crash_process_minidump(const SymbolicUnreal4Crash *unreal);
 
+SymbolicStr symbolic_unreal4_get_context(SymbolicUnreal4Crash *unreal);
+
 /*
  * Returns true if the uuid is nil.
  */

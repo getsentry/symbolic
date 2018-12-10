@@ -1,4 +1,5 @@
 import io
+import json
 
 from symbolic._lowlevel import lib, ffi
 from symbolic._compat import range_type
@@ -25,6 +26,10 @@ class Unreal4Crash(RustObject):
         if rv == ffi.NULL:
             return None
         return ProcessState._from_objptr(rv)
+
+    def get_context(self):
+        rv = json.loads(decode_str(self._methodcall(lib.symbolic_unreal4_get_context)))
+        return rv
 
     @property
     def _file_count(self):
