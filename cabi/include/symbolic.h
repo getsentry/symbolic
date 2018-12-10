@@ -716,6 +716,8 @@ SymbolicLookupResult symbolic_symcache_lookup(const SymbolicSymCache *scache, ui
  */
 void symbolic_token_match_free(SymbolicTokenMatch *stm);
 
+SymbolicStr symbolic_unreal4_context(SymbolicUnreal4Crash *unreal);
+
 const SymbolicUnreal4CrashFile *symbolic_unreal4_crash_file_by_index(const SymbolicUnreal4Crash *unreal,
                                                                      uintptr_t idx);
 

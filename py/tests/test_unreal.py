@@ -22,6 +22,14 @@ def test_unreal_crash_files(res_path):
         assert "minidump" == files[3].type
         assert 410700 == len(files[3].open_stream().read())
 
+def test_unreal_crash_context(res_path):
+    path = os.path.join(res_path, 'unreal', 'unreal_crash')
+    with open(path, mode='rb') as crash_file:
+        buffer = crash_file.read()
+        unreal_crash = Unreal4Crash.from_bytes(buffer)
+        context = unreal_crash.get_context()
+        assert "UE4CC-Windows-379993BB42BD8FBED67986857D8844B5_0000" == context['runtime_properties']['crash_guid']
+
 
 def test_unreal_crash_get_process_state(res_path):
     path = os.path.join(res_path, 'unreal', 'unreal_crash')
