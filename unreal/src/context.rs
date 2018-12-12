@@ -102,6 +102,9 @@ pub struct Unreal4ContextRuntimeProperties {
     // [Sopurce](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L329-L330)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub portable_call_stack: Option<String>,
+    /// UserDescription
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_description: Option<String>,
     /// ErrorMessage
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error_message: Option<String>,
@@ -236,6 +239,7 @@ fn get_runtime_properties(root: &Element) -> Option<Unreal4ContextRuntimePropert
             "EpicAccountId" => rv.epic_account_id = get_text_or_none(&child),
             "CallStack" => rv.legacy_call_stack = get_text_or_none(&child),
             "PCallStack" => rv.portable_call_stack = get_text_or_none(&child),
+            "UserDescription" => rv.user_description = get_text_or_none(&child),
             "ErrorMessage" => rv.error_message = get_text_or_none(&child),
             "CrashReporterMessage" => rv.crash_reporter_message = get_text_or_none(&child),
             "Misc.NumberOfCores" => rv.misc_number_of_cores = child.text().parse::<u32>().ok(),
