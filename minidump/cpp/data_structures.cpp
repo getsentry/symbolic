@@ -41,8 +41,11 @@ const code_module_t **process_state_modules(process_state_t *state,
     }
 
     auto *modules = process_state_t::cast(state)->modules();
-    unsigned int size = modules->module_count();
+    if (modules == nullptr) {
+        return nullptr;
+    }
 
+    unsigned int size = modules->module_count();
     const code_module_t **buffer = new const code_module_t *[size];
     for (unsigned int i = 0; i < size; i++) {
         buffer[i] = code_module_t::cast(modules->GetModuleAtIndex(i));
