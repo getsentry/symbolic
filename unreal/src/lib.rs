@@ -2,11 +2,15 @@
 #![warn(missing_docs)]
 
 use std::fmt;
-use std::io::{self, Cursor, Read};
+use std::io::prelude::*;
+use std::io::{self, BufReader, Cursor, Read};
 
+use anylog::LogEntry;
 use bytes::{Buf, Bytes};
+use chrono::prelude::*;
 use compress::zlib;
 use failure::Fail;
+use serde::Serialize;
 
 use crate::context::Unreal4Context;
 
@@ -66,6 +70,19 @@ pub struct Unreal4CrashFile {
     pub len: usize,
 }
 
+/// A log entry from an Unreal Engine 4 crash.
+#[derive(Serialize)]
+pub struct Unreal4LogEntry {
+    /// The timestamp of the message, when available.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timestamp: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    /// The component that issued the log, when available.
+    pub component: Option<String>,
+    /// The log message.
+    pub message: String,
+}
+
 impl Unreal4CrashFile {
     /// Returns the file type.
     pub fn ty(&self) -> Unreal4FileType {
@@ -100,6 +117,9 @@ pub enum Unreal4Error {
     /// Invalid compressed data.
     #[fail(display = "bad compression")]
     BadCompression(io::Error),
+    /// Can't process log entry.
+    #[fail(display = "invalid log entry")]
+    InvalidLogEntry(io::Error),
     /// Invalid XML
     #[fail(display = "invalid xml")]
     InvalidXml(elementtree::Error),
@@ -193,6 +213,28 @@ impl Unreal4Crash {
     /// If the file doesn't exist in the crash, `None` is returned.
     pub fn get_context(&self) -> Result<Option<Unreal4Context>, Unreal4Error> {
         Unreal4Context::from_crash(self)
+    }
+
+    /// Get the log messages of this crash.
+    pub fn get_logs(&self) -> Result<Vec<Unreal4LogEntry>, Unreal4Error> {
+        Ok(match self.get_file_slice(Unreal4FileType::Log)? {
+            Some(f) => {
+                let reader = BufReader::new(f);
+                let mut logs = Vec::new();
+                for line in reader.lines() {
+                    let line = line.map_err(Unreal4Error::InvalidLogEntry)?;
+                    let entry = LogEntry::parse(line.as_bytes());
+                    let (component, message) = entry.component_and_message();
+                    logs.push(Unreal4LogEntry {
+                        timestamp: entry.utc_timestamp(),
+                        component,
+                        message,
+                    });
+                }
+                logs
+            }
+            None => Vec::with_capacity(0),
+        })
     }
 }
 

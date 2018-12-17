@@ -107,3 +107,27 @@ fn test_files_api() {
     // there are two line breaks after closing tag:
     assert_eq!(xml[xml.len() - 3] as char, '>');
 }
+
+#[test]
+fn test_get_logs() {
+    let ue4_crash = get_unreal_crash().expect("test crash file loads");
+
+    let logs = ue4_crash.get_logs().expect("log file");
+
+    assert_eq!(logs.len(), 245);
+    assert!(logs[1].timestamp.is_none());
+    assert_eq!(logs[1].component.as_ref().expect("component"), "LogWindows");
+    assert_eq!(
+        logs[1].message,
+        "Failed to load 'aqProf.dll' (GetLastError=126)"
+    );
+    assert_eq!(
+        logs[243].timestamp.expect("timestamp").to_rfc3339(),
+        "2018-10-29T15:56:38+00:00"
+    );
+    assert_eq!(logs[243].component.as_ref().expect("component"), "LogWorld");
+    assert_eq!(
+        logs[243].message,
+        "Bringing up level for play took: 0.003112"
+    );
+}
