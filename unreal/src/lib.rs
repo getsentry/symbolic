@@ -2,12 +2,11 @@
 #![warn(missing_docs)]
 
 use std::fmt;
-use std::io::prelude::*;
-use std::io::{self, BufReader, Cursor, Read};
+use std::io::{self, BufRead, BufReader, Cursor, Read};
 
 use anylog::LogEntry;
 use bytes::{Buf, Bytes};
-use chrono::prelude::*;
+use chrono::{DateTime, Utc};
 use compress::zlib;
 use failure::Fail;
 use serde::Serialize;
@@ -233,7 +232,7 @@ impl Unreal4Crash {
                 }
                 logs
             }
-            None => Vec::with_capacity(0),
+            None => Vec::new(),
         })
     }
 }
