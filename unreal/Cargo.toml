@@ -23,6 +23,8 @@ elementtree = "0.5.0"
 anylog = "0.3.0"
 serde = {version = "1.0.80", features = ["derive"]}
 chrono = {version = "0.4.6", features = ["serde"]}
+regex = "1"
+lazy_static = "1.2.0"
 
 [dev-dependencies]
 symbolic-testutils = { version = "5.7.4", path = "../testutils" }

@@ -3,15 +3,25 @@
 
 use std::fmt;
 use std::io::{self, BufRead, BufReader, Cursor, Read};
+use std::ops::Index;
 
 use anylog::LogEntry;
 use bytes::{Buf, Bytes};
-use chrono::{DateTime, Utc};
+use chrono::{offset::TimeZone, DateTime, Utc};
 use compress::zlib;
 use failure::Fail;
+use lazy_static::lazy_static;
+use regex::Regex;
 use serde::Serialize;
 
 use crate::context::Unreal4Context;
+
+lazy_static! {
+    // https://github.com/EpicGames/UnrealEngine/blob/f509bb2d6c62806882d9a10476f3654cf1ee0634/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L79-L93
+    // Note: Date is always in US format (dd/MM/yyyy) and time is local
+    // Example: Log file open, 12/13/18 15:54:53
+    static ref LOG_FIRST_LINE: Regex = Regex::new(r"Log file open, (?P<month>\d\d)/(?P<day>\d\d)/(?P<year>\d\d) (?P<hour>\d\d):(?P<minute>\d\d):(?P<second>\d\d)$").unwrap();
+}
 
 mod context;
 
@@ -220,12 +230,32 @@ impl Unreal4Crash {
             Some(f) => {
                 let reader = BufReader::new(f);
                 let mut logs = Vec::new();
-                for line in reader.lines() {
+                let mut default_timestamp: Option<DateTime<Utc>> = None;
+                for (i, line) in reader.lines().enumerate() {
                     let line = line.map_err(Unreal4Error::InvalidLogEntry)?;
+                    if i == 0 {
+                        println!("Line: {:?}", line);
+                        // First line includes the timestamp of the following 100 some lines
+                        if let Some(captures) = LOG_FIRST_LINE.captures(&line) {
+                            default_timestamp = Some(
+                                Utc.ymd(
+                                    // https://github.com/EpicGames/UnrealEngine/blob/f7626ddd147fe20a6144b521a26739c863546f4a/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L46
+                                    captures.index("year").parse::<i32>().unwrap() + 2000,
+                                    captures.index("month").parse::<u32>().unwrap(),
+                                    captures.index("day").parse::<u32>().unwrap(),
+                                )
+                                .and_hms(
+                                    captures.index("hour").parse::<u32>().unwrap(),
+                                    captures.index("minute").parse::<u32>().unwrap(),
+                                    captures.index("second").parse::<u32>().unwrap(),
+                                ),
+                            );
+                        }
+                    }
                     let entry = LogEntry::parse(line.as_bytes());
                     let (component, message) = entry.component_and_message();
                     logs.push(Unreal4LogEntry {
-                        timestamp: entry.utc_timestamp(),
+                        timestamp: entry.utc_timestamp().or_else(|| default_timestamp),
                         component,
                         message,
                     });

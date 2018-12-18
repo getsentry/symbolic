@@ -115,7 +115,10 @@ fn test_get_logs() {
     let logs = ue4_crash.get_logs().expect("log file");
 
     assert_eq!(logs.len(), 245);
-    assert!(logs[1].timestamp.is_none());
+    assert_eq!(
+        logs[1].timestamp.expect("timestamp").to_rfc3339(),
+        "2018-10-29T17:56:37+00:00"
+    );
     assert_eq!(logs[1].component.as_ref().expect("component"), "LogWindows");
     assert_eq!(
         logs[1].message,
