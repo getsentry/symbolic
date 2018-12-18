@@ -254,7 +254,7 @@ impl Unreal4Crash {
                     let entry = LogEntry::parse(line.as_bytes());
                     let (component, message) = entry.component_and_message();
                     logs.push(Unreal4LogEntry {
-                        timestamp: entry.utc_timestamp().or_else(|| default_timestamp),
+                        timestamp: entry.utc_timestamp().or(default_timestamp),
                         component,
                         message,
                     });
