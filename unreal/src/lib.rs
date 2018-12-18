@@ -234,7 +234,6 @@ impl Unreal4Crash {
                 for (i, line) in reader.lines().enumerate() {
                     let line = line.map_err(Unreal4Error::InvalidLogEntry)?;
                     if i == 0 {
-                        println!("Line: {:?}", line);
                         // First line includes the timestamp of the following 100 some lines
                         if let Some(captures) = LOG_FIRST_LINE.captures(&line) {
                             default_timestamp = Some(
