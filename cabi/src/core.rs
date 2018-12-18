@@ -172,6 +172,7 @@ pub enum SymbolicErrorCode {
     Unreal4ErrorOutOfBounds = 7003,
     Unreal4ErrorBadCompression = 7004,
     Unreal4ErrorInvalidXml = 7005,
+    Unreal4ErrorInvalidLogEntry = 7006,
 }
 
 impl SymbolicErrorCode {
@@ -315,6 +316,7 @@ impl SymbolicErrorCode {
                         SymbolicErrorCode::Unreal4ErrorBadCompression
                     }
                     Unreal4Error::InvalidXml(_) => SymbolicErrorCode::Unreal4ErrorInvalidXml,
+                    Unreal4Error::InvalidLogEntry(_) => SymbolicErrorCode::Unreal4ErrorInvalidLogEntry,
                 };
             }
         }
