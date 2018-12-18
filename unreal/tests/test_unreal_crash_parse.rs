@@ -111,26 +111,30 @@ fn test_files_api() {
 #[test]
 fn test_get_logs() {
     let ue4_crash = get_unreal_crash().expect("test crash file loads");
+    let limit = 100;
+    let logs = ue4_crash.get_logs(limit).expect("log file");
 
-    let logs = ue4_crash.get_logs().expect("log file");
-
-    assert_eq!(logs.len(), 245);
+    assert_eq!(logs.len(), limit);
     assert_eq!(
         logs[1].timestamp.expect("timestamp").to_rfc3339(),
-        "2018-10-29T17:56:37+00:00"
-    );
-    assert_eq!(logs[1].component.as_ref().expect("component"), "LogWindows");
-    assert_eq!(
-        logs[1].message,
-        "Failed to load 'aqProf.dll' (GetLastError=126)"
+        "2018-10-29T16:56:37+00:00"
     );
     assert_eq!(
-        logs[243].timestamp.expect("timestamp").to_rfc3339(),
-        "2018-10-29T15:56:38+00:00"
+        logs[0].component.as_ref().expect("component"),
+        "LogD3D11RHI"
     );
-    assert_eq!(logs[243].component.as_ref().expect("component"), "LogWorld");
+    assert_eq!(logs[0].message, "Chosen D3D11 Adapter: 0");
+
     assert_eq!(
-        logs[243].message,
-        "Bringing up level for play took: 0.003112"
+        logs[99].timestamp.expect("timestamp").to_rfc3339(),
+        "2018-10-29T16:56:38+00:00"
+    );
+    assert_eq!(
+        logs[99].component.as_ref().expect("component"),
+        "LogWindows"
+    );
+    assert_eq!(
+        logs[99].message,
+        "Windows GetLastError: The operation completed successfully. (0)"
     );
 }

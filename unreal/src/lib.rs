@@ -2,12 +2,12 @@
 #![warn(missing_docs)]
 
 use std::fmt;
-use std::io::{self, BufRead, BufReader, Cursor, Read};
+use std::io::{self, Cursor, Read};
 use std::ops::Index;
 
 use anylog::LogEntry;
 use bytes::{Buf, Bytes};
-use chrono::{offset::TimeZone, DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use compress::zlib;
 use failure::Fail;
 use lazy_static::lazy_static;
@@ -128,7 +128,7 @@ pub enum Unreal4Error {
     BadCompression(io::Error),
     /// Can't process log entry.
     #[fail(display = "invalid log entry")]
-    InvalidLogEntry(io::Error),
+    InvalidLogEntry(std::str::Utf8Error),
     /// Invalid XML
     #[fail(display = "invalid xml")]
     InvalidXml(elementtree::Error),
@@ -224,46 +224,65 @@ impl Unreal4Crash {
         Unreal4Context::from_crash(self)
     }
 
-    /// Get the log messages of this crash.
-    pub fn get_logs(&self) -> Result<Vec<Unreal4LogEntry>, Unreal4Error> {
-        Ok(match self.get_file_slice(Unreal4FileType::Log)? {
-            Some(f) => {
-                let reader = BufReader::new(f);
-                let mut logs = Vec::new();
-                let mut default_timestamp: Option<DateTime<Utc>> = None;
-                for (i, line) in reader.lines().enumerate() {
-                    let line = line.map_err(Unreal4Error::InvalidLogEntry)?;
-                    if i == 0 {
-                        // First line includes the timestamp of the following 100 some lines
-                        if let Some(captures) = LOG_FIRST_LINE.captures(&line) {
-                            default_timestamp = Some(
-                                Utc.ymd(
-                                    // https://github.com/EpicGames/UnrealEngine/blob/f7626ddd147fe20a6144b521a26739c863546f4a/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L46
-                                    captures.index("year").parse::<i32>().unwrap() + 2000,
-                                    captures.index("month").parse::<u32>().unwrap(),
-                                    captures.index("day").parse::<u32>().unwrap(),
-                                )
-                                .and_hms(
-                                    captures.index("hour").parse::<u32>().unwrap(),
-                                    captures.index("minute").parse::<u32>().unwrap(),
-                                    captures.index("second").parse::<u32>().unwrap(),
-                                ),
-                            );
-                        }
-                    }
-                    let entry = LogEntry::parse(line.as_bytes());
-                    let (component, message) = entry.component_and_message();
-                    logs.push(Unreal4LogEntry {
-                        timestamp: entry.utc_timestamp().or(default_timestamp),
-                        component,
-                        message,
-                    });
-                }
-                logs
-            }
-            None => Vec::new(),
-        })
+    /// Get up to `limit` log entries of this crash.
+    pub fn get_logs(&self, limit: usize) -> Result<Vec<Unreal4LogEntry>, Unreal4Error> {
+        match self.get_file_slice(Unreal4FileType::Log)? {
+            Some(f) => parse_log_from_slice(f, limit),
+            None => Ok(Vec::new()),
+        }
     }
+}
+
+fn parse_log_from_slice(
+    log_slice: &[u8],
+    limit: usize,
+) -> Result<Vec<Unreal4LogEntry>, Unreal4Error> {
+    let mut fallback_timestamp = None;
+    let logs_utf8 = std::str::from_utf8(log_slice).map_err(Unreal4Error::InvalidLogEntry)?;
+
+    if let Some(first_line) = logs_utf8.lines().next() {
+        // First line includes the timestamp of the following 100 and some lines until
+        // log entries actually include timestamps
+        if let Some(captures) = LOG_FIRST_LINE.captures(&first_line) {
+            fallback_timestamp = Some(
+                // Using UTC but this entry is local time. Unfortunately there's no way to find the offset.
+                Utc.ymd(
+                    // https://github.com/EpicGames/UnrealEngine/blob/f7626ddd147fe20a6144b521a26739c863546f4a/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L46
+                    captures.index("year").parse::<i32>().unwrap() + 2000,
+                    captures.index("month").parse::<u32>().unwrap(),
+                    captures.index("day").parse::<u32>().unwrap(),
+                )
+                .and_hms(
+                    captures.index("hour").parse::<u32>().unwrap(),
+                    captures.index("minute").parse::<u32>().unwrap(),
+                    captures.index("second").parse::<u32>().unwrap(),
+                ),
+            );
+        }
+    }
+
+    let mut logs: Vec<_> = logs_utf8
+        .lines()
+        .rev()
+        .take(limit)
+        .map(|line| {
+            let entry = LogEntry::parse(line.as_bytes());
+            let (component, message) = entry.component_and_message();
+            // Reads in reverse where logs include timestamp. If it never reached the point of adding
+            // timestamp to log entries, the first record's timestamp (local time, above) will be used
+            // on all records.
+            fallback_timestamp = entry.utc_timestamp().or(fallback_timestamp);
+
+            Unreal4LogEntry {
+                timestamp: fallback_timestamp,
+                component,
+                message,
+            }
+        })
+        .collect();
+
+    logs.reverse();
+    Ok(logs)
 }
 
 fn read_ansi_string(buffer: &mut Cursor<&[u8]>) -> String {
@@ -334,4 +353,22 @@ fn test_from_slice_invalid_input() {
     };
 
     assert_eq!("unexpected EOF", err)
+}
+
+#[test]
+fn test_parse_log_from_slice_no_entries_with_timestamp() {
+    let log_bytes = r"Log file open, 12/13/18 15:54:53
+LogWindows: Failed to load 'aqProf.dll' (GetLastError=126)
+LogWindows: File 'aqProf.dll' does not exist"
+        .as_bytes();
+
+    let logs = parse_log_from_slice(log_bytes, 1000).expect("logs");
+
+    assert_eq!(logs.len(), 3);
+    assert_eq!(logs[2].component.as_ref().expect("component"), "LogWindows");
+    assert_eq!(
+        logs[2].timestamp.expect("timestamp").to_rfc3339(),
+        "2018-12-13T15:54:53+00:00"
+    );
+    assert_eq!(logs[2].message, "File 'aqProf.dll' does not exist");
 }

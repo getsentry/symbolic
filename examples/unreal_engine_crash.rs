@@ -32,7 +32,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
         );
     }
 
-    for log in ue4_crash.get_logs().unwrap().iter() {
+    for log in ue4_crash.get_logs(1000).unwrap().iter() {
         println!(
             "{:?} - {:?} - {:?}",
             log.timestamp, log.component, log.message
