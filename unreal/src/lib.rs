@@ -3,7 +3,6 @@
 
 use std::fmt;
 use std::io::{self, Cursor, Read};
-use std::ops::Index;
 
 use anylog::LogEntry;
 use bytes::{Buf, Bytes};
@@ -357,10 +356,9 @@ fn test_from_slice_invalid_input() {
 
 #[test]
 fn test_parse_log_from_slice_no_entries_with_timestamp() {
-    let log_bytes = r"Log file open, 12/13/18 15:54:53
+    let log_bytes = br"Log file open, 12/13/18 15:54:53
 LogWindows: Failed to load 'aqProf.dll' (GetLastError=126)
-LogWindows: File 'aqProf.dll' does not exist"
-        .as_bytes();
+LogWindows: File 'aqProf.dll' does not exist";
 
     let logs = parse_log_from_slice(log_bytes, 1000).expect("logs");
 
