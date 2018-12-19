@@ -1,0 +1,54 @@
+{
+    // Formatting
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.tabSize": 4,
+    "editor.rulers": [100],
+    "files.autoSave": "onWindowChange",
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+
+    // Rust configuration
+    "rust-client.channel": "stable",
+    "rust.clippy_preference": "on",
+    "rust.cfg_test": true,
+    "rust.rustfmt_path": "rustfmt",
+    "rust-client.rlsPath": "rls",
+
+    // Python configuration
+    "python.pythonPath": "${workspaceFolder}/virtualenv/bin/python",
+
+    // Created by CPP Extension
+    "files.associations": {
+        "stack": "cpp",
+        "memory": "cpp",
+        "list": "cpp",
+        "__locale": "cpp",
+        "__bit_reference": "cpp",
+        "__functional_base": "cpp",
+        "atomic": "cpp",
+        "bitset": "cpp",
+        "chrono": "cpp",
+        "deque": "cpp",
+        "functional": "cpp",
+        "iterator": "cpp",
+        "limits": "cpp",
+        "locale": "cpp",
+        "ratio": "cpp",
+        "system_error": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "vector": "cpp",
+        "utility": "cpp",
+        "string": "cpp",
+        "__config": "cpp",
+        "__nullptr": "cpp",
+        "cstddef": "cpp",
+        "exception": "cpp",
+        "initializer_list": "cpp",
+        "stdexcept": "cpp",
+        "typeinfo": "cpp",
+        "algorithm": "cpp"
+    }
+}

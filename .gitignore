@@ -9,6 +9,3 @@ __pycache__/
 .last-run
 /virtualenv
 .pytest_cache
-
-# Editors
-.vscode/settings.json
