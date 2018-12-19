@@ -248,14 +248,14 @@ fn parse_log_from_slice(
                 // Using UTC but this entry is local time. Unfortunately there's no way to find the offset.
                 Utc.ymd(
                     // https://github.com/EpicGames/UnrealEngine/blob/f7626ddd147fe20a6144b521a26739c863546f4a/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L46
-                    captures.index("year").parse::<i32>().unwrap() + 2000,
-                    captures.index("month").parse::<u32>().unwrap(),
-                    captures.index("day").parse::<u32>().unwrap(),
+                    captures["year"].parse::<i32>().unwrap() + 2000,
+                    captures["month"].parse::<u32>().unwrap(),
+                    captures["day"].parse::<u32>().unwrap(),
                 )
                 .and_hms(
-                    captures.index("hour").parse::<u32>().unwrap(),
-                    captures.index("minute").parse::<u32>().unwrap(),
-                    captures.index("second").parse::<u32>().unwrap(),
+                    captures["hour"].parse::<u32>().unwrap(),
+                    captures["minute"].parse::<u32>().unwrap(),
+                    captures["second"].parse::<u32>().unwrap(),
                 ),
             );
         }
