@@ -31,6 +31,10 @@ class Unreal4Crash(RustObject):
         rv = json.loads(decode_str(self._methodcall(lib.symbolic_unreal4_get_context)))
         return rv
 
+    def get_logs(self):
+        rv = json.loads(decode_str(self._methodcall(lib.symbolic_unreal4_get_logs)))
+        return rv
+
     @property
     def _file_count(self):
         """The count of files within the crash dump"""
