@@ -1,6 +1,6 @@
 [package]
 name = "symbolic"
-version = "5.7.4"
+version = "5.7.5"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -42,14 +42,14 @@ with_serde_minidump = ["symbolic-minidump/with_serde"]
 unreal = ["symbolic-unreal"]
 
 [dependencies]
-symbolic-common = { version = "5.7.4", path = "common" }
-symbolic-debuginfo = { version = "5.7.4", path = "debuginfo", optional = true }
-symbolic-demangle = { version = "5.7.4", path = "demangle", optional = true }
-symbolic-minidump = { version = "5.7.4", path = "minidump", optional = true }
-symbolic-proguard = { version = "5.7.4", path = "proguard", optional = true }
-symbolic-sourcemap = { version = "5.7.4", path = "sourcemap", optional = true }
-symbolic-symcache = { version = "5.7.4", path = "symcache", optional = true }
-symbolic-unreal = { version = "5.7.4", path = "unreal", optional = true }
+symbolic-common = { version = "5.7.5", path = "common" }
+symbolic-debuginfo = { version = "5.7.5", path = "debuginfo", optional = true }
+symbolic-demangle = { version = "5.7.5", path = "demangle", optional = true }
+symbolic-minidump = { version = "5.7.5", path = "minidump", optional = true }
+symbolic-proguard = { version = "5.7.5", path = "proguard", optional = true }
+symbolic-sourcemap = { version = "5.7.5", path = "sourcemap", optional = true }
+symbolic-symcache = { version = "5.7.5", path = "symcache", optional = true }
+symbolic-unreal = { version = "5.7.5", path = "unreal", optional = true }
 
 [dev-dependencies]
 clap = "2.32.0"
@@ -67,6 +67,3 @@ required-features = ["symcache"]
 [[example]]
 name = "unreal_engine_crash"
 required-features = ["unreal"]
-
-[patch.crates-io]
-anylog = { git = "https://github.com/bruno-garcia/rust-anylog.git", branch = "fix/unreal-log-utc" }
