@@ -56,6 +56,7 @@ enum SymbolicErrorCode {
   SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_OUT_OF_BOUNDS = 7003,
   SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_BAD_COMPRESSION = 7004,
   SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_INVALID_XML = 7005,
+  SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_INVALID_LOG_ENTRY = 7006,
 };
 typedef uint32_t SymbolicErrorCode;
 
@@ -736,6 +737,8 @@ SymbolicUnreal4Crash *symbolic_unreal4_crash_from_bytes(const char *bytes, uintp
 SymbolicProcessState *symbolic_unreal4_crash_process_minidump(const SymbolicUnreal4Crash *unreal);
 
 SymbolicStr symbolic_unreal4_get_context(SymbolicUnreal4Crash *unreal);
+
+SymbolicStr symbolic_unreal4_get_logs(SymbolicUnreal4Crash *unreal);
 
 /*
  * Returns true if the uuid is nil.
