@@ -29,7 +29,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    unsafe fn symbolic_unreal4_get_context(unreal: *mut SymbolicUnreal4Crash) -> Result<SymbolicStr> {
+    unsafe fn symbolic_unreal4_get_context(unreal: *const SymbolicUnreal4Crash) -> Result<SymbolicStr> {
         let unreal = &*(unreal as *const Unreal4Crash);
 
         let context = unreal.get_context()?;
@@ -38,7 +38,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    unsafe fn symbolic_unreal4_get_logs(unreal: *mut SymbolicUnreal4Crash) -> Result<SymbolicStr> {
+    unsafe fn symbolic_unreal4_get_logs(unreal: *const SymbolicUnreal4Crash) -> Result<SymbolicStr> {
         let unreal = &*(unreal as *const Unreal4Crash);
 
         let context = unreal.get_logs(100)?;
