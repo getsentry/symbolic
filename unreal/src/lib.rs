@@ -3,7 +3,6 @@
 
 use std::fmt;
 use std::io::{self, Cursor, Read};
-use std::ops::Index;
 
 use anylog::LogEntry;
 use bytes::{Buf, Bytes};
@@ -248,14 +247,14 @@ fn parse_log_from_slice(
                 // Using UTC but this entry is local time. Unfortunately there's no way to find the offset.
                 Utc.ymd(
                     // https://github.com/EpicGames/UnrealEngine/blob/f7626ddd147fe20a6144b521a26739c863546f4a/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L46
-                    captures.index("year").parse::<i32>().unwrap() + 2000,
-                    captures.index("month").parse::<u32>().unwrap(),
-                    captures.index("day").parse::<u32>().unwrap(),
+                    captures["year"].parse::<i32>().unwrap() + 2000,
+                    captures["month"].parse::<u32>().unwrap(),
+                    captures["day"].parse::<u32>().unwrap(),
                 )
                 .and_hms(
-                    captures.index("hour").parse::<u32>().unwrap(),
-                    captures.index("minute").parse::<u32>().unwrap(),
-                    captures.index("second").parse::<u32>().unwrap(),
+                    captures["hour"].parse::<u32>().unwrap(),
+                    captures["minute"].parse::<u32>().unwrap(),
+                    captures["second"].parse::<u32>().unwrap(),
                 ),
             );
         }
@@ -357,10 +356,9 @@ fn test_from_slice_invalid_input() {
 
 #[test]
 fn test_parse_log_from_slice_no_entries_with_timestamp() {
-    let log_bytes = r"Log file open, 12/13/18 15:54:53
+    let log_bytes = br"Log file open, 12/13/18 15:54:53
 LogWindows: Failed to load 'aqProf.dll' (GetLastError=126)
-LogWindows: File 'aqProf.dll' does not exist"
-        .as_bytes();
+LogWindows: File 'aqProf.dll' does not exist";
 
     let logs = parse_log_from_slice(log_bytes, 1000).expect("logs");
 

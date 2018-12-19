@@ -37,10 +37,10 @@ def test_unreal_crash_logs(res_path):
         unreal_crash = Unreal4Crash.from_bytes(buffer)
         logs = unreal_crash.get_logs()
         assert len(logs) == 100
-        assert logs[0]['timestamp'] == "2018-10-29T15:56:37Z"
+        assert logs[0]['timestamp'] == "2018-10-29T16:56:37Z"
         assert logs[0]['component'] == "LogD3D11RHI"
         assert logs[0]['message'] == "Chosen D3D11 Adapter: 0"
-        assert logs[99]['timestamp'] == "2018-10-29T15:56:38Z"
+        assert logs[99]['timestamp'] == "2018-10-29T16:56:38Z"
         assert logs[99]['component'] == "LogWindows"
         assert logs[99]['message'] == "Windows GetLastError: The operation completed successfully. (0)"
 
