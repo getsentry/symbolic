@@ -701,19 +701,19 @@ impl<'a> DwarfLineProgram<'a> {
         while let Ok(Some((_, &program_row))) = program_rows.next_row() {
             let address = program_row.address();
             if program_row.end_sequence() {
+                // Theoretically, there could be multiple DW_LNE_end_sequence in a row. We're not
+                // interested in empty sequences, so we can skip them completely.
                 if !sequence_rows.is_empty() {
-                    let low_address = sequence_rows[0].address;
-                    let high_address = if address < prev_address {
-                        prev_address + 1
-                    } else {
-                        address
-                    };
-                    let mut rows = vec![];
-                    mem::swap(&mut rows, &mut sequence_rows);
                     sequences.push(DwarfSeq {
-                        low_address,
-                        high_address,
-                        rows,
+                        low_address: sequence_rows[0].address,
+                        // Take a defensive approach and ensure that `high_address` always covers
+                        // the last encountered row, assuming a 1 byte instruction.
+                        high_address: if address < prev_address {
+                            prev_address + 1
+                        } else {
+                            address
+                        },
+                        rows: mem::replace(&mut sequence_rows, vec![]),
                     });
                 }
                 prev_address = 0;
@@ -780,7 +780,7 @@ impl<'a> DwarfLineProgram<'a> {
 
     pub fn get_rows(&self, rng: &Range) -> &[DwarfRow] {
         for seq in &self.sequences {
-            if seq.high_address < rng.begin || seq.low_address > rng.end {
+            if seq.high_address <= rng.begin || seq.low_address > rng.end {
                 continue;
             }
 

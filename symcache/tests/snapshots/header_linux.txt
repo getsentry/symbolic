@@ -5,7 +5,7 @@ SymCache {
             appendix: 0
         }
     ),
-    size: 148579,
+    size: 148654,
     arch: X86_64,
     data_source: Dwarf,
     has_line_info: true,
