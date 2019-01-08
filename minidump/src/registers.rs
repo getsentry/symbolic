@@ -1,19 +1,16 @@
 use symbolic_common::types::{Arch, CpuFamily, UnknownArchError};
 
 /// Returns the name of a register in a given architecture.
-///
-/// This can fail if register names for the CPU family are not known or the register number is
-/// invalid.
 pub fn get_register_name(arch: Arch, register: u8) -> Result<&'static str, UnknownArchError> {
     let index = register as usize;
 
     Ok(match arch.cpu_family() {
-        CpuFamily::Intel32 => I386[index],
-        CpuFamily::Intel64 => X86_64[index],
-        CpuFamily::Arm64 => ARM64[index],
-        CpuFamily::Arm32 => ARM[index],
+        CpuFamily::Intel32 => I386.get(index),
+        CpuFamily::Intel64 => X86_64.get(index),
+        CpuFamily::Arm64 => ARM64.get(index),
+        CpuFamily::Arm32 => ARM.get(index),
         _ => return Err(UnknownArchError),
-    })
+    }.cloned().unwrap_or("<unknown>"))
 }
 
 /// Names for x86 CPU registers by register number.
