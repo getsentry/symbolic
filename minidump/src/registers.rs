@@ -10,7 +10,9 @@ pub fn get_register_name(arch: Arch, register: u8) -> Result<&'static str, Unkno
         CpuFamily::Arm64 => ARM64.get(index),
         CpuFamily::Arm32 => ARM.get(index),
         _ => return Err(UnknownArchError),
-    }.cloned().unwrap_or("<unknown>"))
+    }
+    .cloned()
+    .unwrap_or("<unknown>"))
 }
 
 /// Names for x86 CPU registers by register number.
