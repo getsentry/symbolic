@@ -203,7 +203,7 @@ pub fn get_elf_vmaddr(elf: &elf::Elf<'_>) -> u64 {
     // and dynamic libraries (e_type == ET_DYN), this address will
     // normally be zero.
     for phdr in &elf.program_headers {
-        if phdr.p_type == elf::program_header::PT_LOAD {
+        if phdr.p_type == elf::program_header::PT_LOAD && phdr.is_executable() {
             return phdr.p_vaddr;
         }
     }
