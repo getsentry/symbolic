@@ -1,8 +1,9 @@
 use symbolic_common::types::{Arch, CpuFamily, UnknownArchError};
+use gimli::Register;
 
 /// Returns the name of a register in a given architecture.
-pub fn get_register_name(arch: Arch, register: u8) -> Result<&'static str, UnknownArchError> {
-    let index = register as usize;
+pub fn get_register_name(arch: Arch, register: Register) -> Result<&'static str, UnknownArchError> {
+    let index = register.0 as usize;
 
     Ok(match arch.cpu_family() {
         CpuFamily::Intel32 => I386.get(index),

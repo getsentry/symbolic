@@ -5,7 +5,7 @@ use std::io::{self, Write};
 use failure::{Backtrace, Context, Fail, ResultExt};
 use gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDescriptionEntry, Reader,
-    ReaderOffset, RegisterRule, UninitializedUnwindContext, UnwindOffset, UnwindSection,
+    ReaderOffset, Register, RegisterRule, UninitializedUnwindContext, UnwindOffset, UnwindSection,
     UnwindTable,
 };
 
@@ -204,7 +204,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         // CFI information can have relative offsets to the base address of thir respective debug
         // section (either `.eh_frame` or `.debug_frame`). We need to supply this offset to the
         // entries iterator before starting to interpret instructions.
-        let bases = BaseAddresses::default().set_cfi(base);
+        let bases = BaseAddresses::default().set_eh_frame(base);
 
         let mut entries = frame.entries(&bases);
         while let Some(entry) = entries.next().context(CfiErrorKind::BadDebugInfo)? {
@@ -253,9 +253,14 @@ impl<W: Write> AsciiCfiWriter<W> {
         loop {
             match table.next_row() {
                 Ok(None) => break,
-                Ok(Some(row)) => rows.push(row.clone()),
+                Ok(Some(row)) => {
+                    println!("{:?}", row);
+                    rows.push(row.clone());
+                }
                 Err(gimli::Error::UnknownCallFrameInstruction(_)) => continue,
-                Err(e) => return Err(e.context(CfiErrorKind::BadDebugInfo).into()),
+                Err(e) => {
+                    return Err(e.context(CfiErrorKind::BadDebugInfo).into());
+                }
             }
         }
 
@@ -322,9 +327,9 @@ impl<W: Write> AsciiCfiWriter<W> {
     fn write_register_rule<R: Reader>(
         &mut self,
         arch: Arch,
-        register: u8,
+        register: Register,
         rule: &RegisterRule<R>,
-        ra: u64,
+        ra: Register,
     ) -> Result<bool, CfiError> {
         use gimli::RegisterRule::*;
         let formatted = match rule {
@@ -340,7 +345,7 @@ impl<W: Write> AsciiCfiWriter<W> {
 
         // Breakpad requires an explicit name for the return address register. In all other cases,
         // we use platform specific names for each register as specified by Breakpad.
-        let register_name = if u64::from(register) == ra {
+        let register_name = if register == ra {
             ".ra"
         } else {
             get_register_name(arch, register)?
