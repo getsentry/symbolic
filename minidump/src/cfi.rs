@@ -253,10 +253,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         loop {
             match table.next_row() {
                 Ok(None) => break,
-                Ok(Some(row)) => {
-                    println!("{:?}", row);
-                    rows.push(row.clone());
-                }
+                Ok(Some(row)) => rows.push(row.clone()),
                 Err(gimli::Error::UnknownCallFrameInstruction(_)) => continue,
                 Err(e) => {
                     return Err(e.context(CfiErrorKind::BadDebugInfo).into());
