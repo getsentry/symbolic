@@ -184,12 +184,18 @@ impl<W: Write> AsciiCfiWriter<W> {
         let endianness = object.endianness();
 
         if let Some(section) = object.get_dwarf_section(DwarfSection::EhFrame) {
-            let frame = EhFrame::new(section.as_bytes(), endianness);
+            let mut frame = EhFrame::new(section.as_bytes(), endianness);
             let arch = object.arch().map_err(|_| CfiErrorKind::UnsupportedArch)?;
+            if let Some(pointer_size) = arch.pointer_size() {
+                frame.set_address_size(pointer_size as u8);
+            }
             self.read_cfi(arch, &frame, section.offset())
         } else if let Some(section) = object.get_dwarf_section(DwarfSection::DebugFrame) {
-            let frame = DebugFrame::new(section.as_bytes(), endianness);
+            let mut frame = DebugFrame::new(section.as_bytes(), endianness);
             let arch = object.arch().map_err(|_| CfiErrorKind::UnsupportedArch)?;
+            if let Some(pointer_size) = arch.pointer_size() {
+                frame.set_address_size(pointer_size as u8);
+            }
             self.read_cfi(arch, &frame, section.offset())
         } else {
             Err(CfiErrorKind::MissingDebugInfo.into())
