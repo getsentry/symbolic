@@ -3,8 +3,7 @@
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
-    "configurations": [
-        {
+    "configurations": [{
             "type": "lldb",
             "request": "launch",
             "name": "Unreal Engine crash",
@@ -12,9 +11,24 @@
             "args": [
                 "${workspaceFolder}/testutils/fixtures/unreal/unreal_crash"
             ],
-            "env": { "RUST_BACKTRACE": "1" },
+            "env": {
+                "RUST_BACKTRACE": "1"
+            },
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "cargo build unreal_engine_crash"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Unreal Engine test",
+            "program": "${workspaceFolder}/target/debug/deps/test_unreal_crash_parse-35353d4f679450ac",
+            "args": [
+                "test_get_apple_crash_report"
+            ],
+            "env": {
+                "RUST_BACKTRACE": "1"
+            },
+            "cwd": "${workspaceFolder}/unreal"
         }
     ]
 }
