@@ -1,8 +1,11 @@
+use symbolic_common::shared_gimli::Register;
 use symbolic_common::types::{Arch, CpuFamily, UnknownArchError};
-use gimli::Register;
 
 /// Returns the name of a register in a given architecture.
-pub fn get_register_name(arch: Arch, register: Register) -> Result<&'static str, UnknownArchError> {
+pub fn get_register_name(
+    arch: Arch,
+    register: Register,
+) -> Result<Option<&'static str>, UnknownArchError> {
     let index = register.0 as usize;
 
     Ok(match arch.cpu_family() {
@@ -12,8 +15,7 @@ pub fn get_register_name(arch: Arch, register: Register) -> Result<&'static str,
         CpuFamily::Arm32 => ARM.get(index),
         _ => return Err(UnknownArchError),
     }
-    .cloned()
-    .unwrap_or("<unknown>"))
+    .cloned())
 }
 
 /// Names for x86 CPU registers by register number.

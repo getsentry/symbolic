@@ -260,7 +260,9 @@ impl<W: Write> AsciiCfiWriter<W> {
             match table.next_row() {
                 Ok(None) => break,
                 Ok(Some(row)) => rows.push(row.clone()),
-                Err(gimli::Error::UnknownCallFrameInstruction(_)) => continue,
+                Err(symbolic_common::shared_gimli::Error::UnknownCallFrameInstruction(_)) => {
+                    continue
+                }
                 Err(e) => {
                     return Err(e.context(CfiErrorKind::BadDebugInfo).into());
                 }
@@ -315,10 +317,14 @@ impl<W: Write> AsciiCfiWriter<W> {
         arch: Arch,
         rule: &CfaRule<R>,
     ) -> Result<bool, CfiError> {
-        use gimli::CfaRule::*;
+        use symbolic_common::shared_gimli::CfaRule::*;
         let formatted = match rule {
             RegisterAndOffset { register, offset } => {
-                format!("{} {} +", get_register_name(arch, *register)?, *offset)
+                if let Some(reg) = get_register_name(arch, *register)? {
+                    format!("{} {} +", reg, *offset)
+                } else {
+                    return Ok(false);
+                }
             }
             Expression(_) => return Ok(false),
         };
@@ -334,13 +340,19 @@ impl<W: Write> AsciiCfiWriter<W> {
         rule: &RegisterRule<R>,
         ra: Register,
     ) -> Result<bool, CfiError> {
-        use gimli::RegisterRule::*;
+        use symbolic_common::shared_gimli::RegisterRule::*;
         let formatted = match rule {
             Undefined => return Ok(false),
-            SameValue => get_register_name(arch, register)?.into(),
+            SameValue => match get_register_name(arch, register)? {
+                Some(reg) => reg.into(),
+                None => return Ok(false),
+            },
             Offset(offset) => format!(".cfa {} + ^", offset),
             ValOffset(offset) => format!(".cfa {} +", offset),
-            Register(register) => get_register_name(arch, *register)?.into(),
+            Register(register) => match get_register_name(arch, *register)? {
+                Some(reg) => reg.into(),
+                None => return Ok(false),
+            },
             Expression(_) => return Ok(false),
             ValExpression(_) => return Ok(false),
             Architectural => return Ok(false),
@@ -351,7 +363,10 @@ impl<W: Write> AsciiCfiWriter<W> {
         let register_name = if register == ra {
             ".ra"
         } else {
-            get_register_name(arch, register)?
+            match get_register_name(arch, register)? {
+                Some(reg) => reg,
+                None => return Ok(false),
+            }
         };
 
         write!(self.inner, " {}: {}", register_name, formatted)

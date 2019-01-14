@@ -6,8 +6,8 @@ use failure::{err_msg, Error};
 
 use symbolic::common::{byteview::ByteView, types::Arch};
 use symbolic::debuginfo::FatObject;
-use symbolic::symcache::SymCache;
 use symbolic::minidump::cfi::AsciiCfiWriter;
+use symbolic::symcache::SymCache;
 
 fn execute(matches: &ArgMatches) -> Result<(), Error> {
     let symcache;

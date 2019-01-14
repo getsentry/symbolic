@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::fmt;
 
 use failure::{Backtrace, Context, Fail};
+use symbolic_common::shared_gimli as gimli;
 use symbolic_debuginfo::ObjectError;
 
 /// An internal error thrown during symcache conversion.

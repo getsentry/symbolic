@@ -6,7 +6,8 @@ use std::mem;
 use std::sync::Arc;
 
 use symbolic_common::shared_gimli::{
-    Abbreviations, AttributeValue, CompilationUnitHeader, DebugLineOffset, DwLang, Range,
+    self as gimli, Abbreviations, AttributeValue, CompilationUnitHeader, DebugLineOffset, DwLang,
+    Range,
 };
 use symbolic_common::types::{Endianness, Language};
 use symbolic_debuginfo::{DwarfData, DwarfSection, Object, Symbols};
