@@ -3,13 +3,13 @@ use std::fmt;
 use std::io::{self, Write};
 
 use failure::{Backtrace, Context, Fail, ResultExt};
-use gimli::{
-    BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDescriptionEntry, Reader,
-    ReaderOffset, RegisterRule, UninitializedUnwindContext, UnwindOffset, UnwindSection,
-    UnwindTable,
-};
 
 use symbolic_common::byteview::ByteView;
+use symbolic_common::shared_gimli::{
+    BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDescriptionEntry, Reader,
+    ReaderOffset, Register, RegisterRule, UninitializedUnwindContext, UnwindOffset, UnwindSection,
+    UnwindTable,
+};
 use symbolic_common::types::{Arch, DebugKind, UnknownArchError};
 use symbolic_debuginfo::{DwarfData, DwarfSection, Object};
 
@@ -184,12 +184,18 @@ impl<W: Write> AsciiCfiWriter<W> {
         let endianness = object.endianness();
 
         if let Some(section) = object.get_dwarf_section(DwarfSection::EhFrame) {
-            let frame = EhFrame::new(section.as_bytes(), endianness);
+            let mut frame = EhFrame::new(section.as_bytes(), endianness);
             let arch = object.arch().map_err(|_| CfiErrorKind::UnsupportedArch)?;
+            if let Some(pointer_size) = arch.pointer_size() {
+                frame.set_address_size(pointer_size as u8);
+            }
             self.read_cfi(arch, &frame, section.offset())
         } else if let Some(section) = object.get_dwarf_section(DwarfSection::DebugFrame) {
-            let frame = DebugFrame::new(section.as_bytes(), endianness);
+            let mut frame = DebugFrame::new(section.as_bytes(), endianness);
             let arch = object.arch().map_err(|_| CfiErrorKind::UnsupportedArch)?;
+            if let Some(pointer_size) = arch.pointer_size() {
+                frame.set_address_size(pointer_size as u8);
+            }
             self.read_cfi(arch, &frame, section.offset())
         } else {
             Err(CfiErrorKind::MissingDebugInfo.into())
@@ -204,7 +210,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         // CFI information can have relative offsets to the base address of thir respective debug
         // section (either `.eh_frame` or `.debug_frame`). We need to supply this offset to the
         // entries iterator before starting to interpret instructions.
-        let bases = BaseAddresses::default().set_cfi(base);
+        let bases = BaseAddresses::default().set_eh_frame(base);
 
         let mut entries = frame.entries(&bases);
         while let Some(entry) = entries.next().context(CfiErrorKind::BadDebugInfo)? {
@@ -254,8 +260,12 @@ impl<W: Write> AsciiCfiWriter<W> {
             match table.next_row() {
                 Ok(None) => break,
                 Ok(Some(row)) => rows.push(row.clone()),
-                Err(gimli::Error::UnknownCallFrameInstruction(_)) => continue,
-                Err(e) => return Err(e.context(CfiErrorKind::BadDebugInfo).into()),
+                Err(symbolic_common::shared_gimli::Error::UnknownCallFrameInstruction(_)) => {
+                    continue
+                }
+                Err(e) => {
+                    return Err(e.context(CfiErrorKind::BadDebugInfo).into());
+                }
             }
         }
 
@@ -307,10 +317,14 @@ impl<W: Write> AsciiCfiWriter<W> {
         arch: Arch,
         rule: &CfaRule<R>,
     ) -> Result<bool, CfiError> {
-        use gimli::CfaRule::*;
+        use symbolic_common::shared_gimli::CfaRule::*;
         let formatted = match rule {
             RegisterAndOffset { register, offset } => {
-                format!("{} {} +", get_register_name(arch, *register)?, *offset)
+                if let Some(reg) = get_register_name(arch, *register)? {
+                    format!("{} {} +", reg, *offset)
+                } else {
+                    return Ok(false);
+                }
             }
             Expression(_) => return Ok(false),
         };
@@ -322,17 +336,23 @@ impl<W: Write> AsciiCfiWriter<W> {
     fn write_register_rule<R: Reader>(
         &mut self,
         arch: Arch,
-        register: u8,
+        register: Register,
         rule: &RegisterRule<R>,
-        ra: u64,
+        ra: Register,
     ) -> Result<bool, CfiError> {
-        use gimli::RegisterRule::*;
+        use symbolic_common::shared_gimli::RegisterRule::*;
         let formatted = match rule {
             Undefined => return Ok(false),
-            SameValue => get_register_name(arch, register)?.into(),
+            SameValue => match get_register_name(arch, register)? {
+                Some(reg) => reg.into(),
+                None => return Ok(false),
+            },
             Offset(offset) => format!(".cfa {} + ^", offset),
             ValOffset(offset) => format!(".cfa {} +", offset),
-            Register(register) => get_register_name(arch, *register)?.into(),
+            Register(register) => match get_register_name(arch, *register)? {
+                Some(reg) => reg.into(),
+                None => return Ok(false),
+            },
             Expression(_) => return Ok(false),
             ValExpression(_) => return Ok(false),
             Architectural => return Ok(false),
@@ -340,10 +360,13 @@ impl<W: Write> AsciiCfiWriter<W> {
 
         // Breakpad requires an explicit name for the return address register. In all other cases,
         // we use platform specific names for each register as specified by Breakpad.
-        let register_name = if u64::from(register) == ra {
+        let register_name = if register == ra {
             ".ra"
         } else {
-            get_register_name(arch, register)?
+            match get_register_name(arch, register)? {
+                Some(reg) => reg,
+                None => return Ok(false),
+            }
         };
 
         write!(self.inner, " {}: {}", register_name, formatted)

@@ -6,6 +6,7 @@ use failure::{err_msg, Error};
 
 use symbolic::common::{byteview::ByteView, types::Arch};
 use symbolic::debuginfo::FatObject;
+use symbolic::minidump::cfi::AsciiCfiWriter;
 use symbolic::symcache::SymCache;
 
 fn execute(matches: &ArgMatches) -> Result<(), Error> {
@@ -53,6 +54,9 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
             Some(obj) => obj,
             None => return Err(err_msg(format!("did not find architecture {}", arch))),
         };
+
+        let mut writer = Vec::new();
+        AsciiCfiWriter::new(&mut writer).process(&obj)?;
 
         symcache = SymCache::from_object(obj)?;
 

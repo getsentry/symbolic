@@ -61,8 +61,8 @@ name = "minidump_stackwalk"
 required-features = ["minidump", "symcache"]
 
 [[example]]
-name = "symcache_debug"
-required-features = ["symcache"]
+name = "cache_debug"
+required-features = ["symcache", "minidump"]
 
 [[example]]
 name = "unreal_engine_crash"
