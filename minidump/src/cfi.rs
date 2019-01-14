@@ -3,13 +3,13 @@ use std::fmt;
 use std::io::{self, Write};
 
 use failure::{Backtrace, Context, Fail, ResultExt};
-use gimli::{
+
+use symbolic_common::byteview::ByteView;
+use symbolic_common::shared_gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDescriptionEntry, Reader,
     ReaderOffset, Register, RegisterRule, UninitializedUnwindContext, UnwindOffset, UnwindSection,
     UnwindTable,
 };
-
-use symbolic_common::byteview::ByteView;
 use symbolic_common::types::{Arch, DebugKind, UnknownArchError};
 use symbolic_debuginfo::{DwarfData, DwarfSection, Object};
 
