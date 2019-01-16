@@ -125,9 +125,9 @@ class ObjectRef(object):
     """Holds a reference to an object in a format."""
 
     def __init__(self, data):
-        self.addr = parse_addr(data['image_addr'])
+        self.addr = parse_addr(data.get('image_addr'))
         # not a real address but why handle it differently
-        self.size = parse_addr(data['image_size'])
+        self.size = parse_addr(data.get('image_size'))
         self.vmaddr = data.get('image_vmaddr')
         self.id = normalize_debug_id(
             data.get('id') or data.get('uuid') or None)
