@@ -4,6 +4,7 @@ github:
   repo: symbolic
 preReleaseCommand: bash scripts/bump-version
 targets:
-  - name: crates
+  # temporarily removed because of git dependencies
+  #  - name: crates
   - name: pypi
   - name: github

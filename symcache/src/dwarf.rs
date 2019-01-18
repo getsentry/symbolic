@@ -5,13 +5,16 @@ use std::fmt;
 use std::mem;
 use std::sync::Arc;
 
+use symbolic_common::shared_gimli::{
+    self as gimli, Abbreviations, AttributeValue, CompilationUnitHeader, DebugLineOffset, DwLang,
+    Range,
+};
 use symbolic_common::types::{Endianness, Language};
 use symbolic_debuginfo::{DwarfData, DwarfSection, Object, Symbols};
 
 use failure::Fail;
 use fallible_iterator::FallibleIterator;
 use fnv::FnvBuildHasher;
-use gimli::{Abbreviations, AttributeValue, CompilationUnitHeader, DebugLineOffset, DwLang, Range};
 use if_chain::if_chain;
 use lru_cache::LruCache;
 use owning_ref::OwningHandle;
