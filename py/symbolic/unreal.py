@@ -27,6 +27,10 @@ class Unreal4Crash(RustObject):
             return None
         return ProcessState._from_objptr(rv)
 
+    def get_apple_crash_report(self):
+        rv = json.loads(decode_str(self._methodcall(lib.symbolic_unreal4_crash_get_apple_crash_report)))
+        return rv
+
     def get_context(self):
         rv = json.loads(decode_str(self._methodcall(lib.symbolic_unreal4_get_context)))
         return rv
