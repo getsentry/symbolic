@@ -261,7 +261,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                 Ok(None) => break,
                 Ok(Some(row)) => rows.push(row.clone()),
                 Err(symbolic_common::shared_gimli::Error::UnknownCallFrameInstruction(_)) => {
-                    continue
+                    continue;
                 }
                 Err(e) => {
                     return Err(e.context(CfiErrorKind::BadDebugInfo).into());

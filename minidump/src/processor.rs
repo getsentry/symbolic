@@ -414,7 +414,7 @@ impl StackFrame {
             let mut size = 0 as usize;
             let values = stack_frame_registers(self, arch.cpu_family() as u32, &mut size);
             let map = slice::from_raw_parts(values, size)
-                .into_iter()
+                .iter()
                 .filter_map(|v| {
                     Some((
                         CStr::from_ptr(v.name).to_str().unwrap(),
