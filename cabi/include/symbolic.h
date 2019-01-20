@@ -57,6 +57,10 @@ enum SymbolicErrorCode {
   SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_BAD_COMPRESSION = 7004,
   SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_INVALID_XML = 7005,
   SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_INVALID_LOG_ENTRY = 7006,
+  SYMBOLIC_ERROR_CODE_APPLE_CRASH_REPORT_PARSE_ERROR_IO = 8001,
+  SYMBOLIC_ERROR_CODE_APPLE_CRASH_REPORT_PARSE_ERROR_INVALID_INCIDENT_IDENTIFIER = 8002,
+  SYMBOLIC_ERROR_CODE_APPLE_CRASH_REPORT_PARSE_ERROR_INVALID_REPORT_VERSION = 8003,
+  SYMBOLIC_ERROR_CODE_APPLE_CRASH_REPORT_PARSE_ERROR_INVALID_TIMESTAMP = 8004,
 };
 typedef uint32_t SymbolicErrorCode;
 
@@ -733,6 +737,8 @@ SymbolicStr symbolic_unreal4_crash_file_meta_type(const SymbolicUnreal4CrashFile
 void symbolic_unreal4_crash_free(SymbolicUnreal4Crash *unreal);
 
 SymbolicUnreal4Crash *symbolic_unreal4_crash_from_bytes(const char *bytes, uintptr_t len);
+
+SymbolicStr symbolic_unreal4_crash_get_apple_crash_report(const SymbolicUnreal4Crash *unreal);
 
 SymbolicProcessState *symbolic_unreal4_crash_process_minidump(const SymbolicUnreal4Crash *unreal);
 

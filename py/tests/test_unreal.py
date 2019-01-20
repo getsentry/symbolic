@@ -22,6 +22,19 @@ def test_unreal_crash_files(res_path):
         assert files[3].type == "minidump"
         assert len(files[3].open_stream().read()) == 410700
 
+def test_get_apple_crash_report(res_path):
+    path = os.path.join(res_path, 'unreal', 'unreal_crash_apple')
+    with open(path, mode='rb') as crash_file:
+        buffer = crash_file.read()
+        unreal_crash = Unreal4Crash.from_bytes(buffer)
+        apple_crash_report = unreal_crash.get_apple_crash_report()
+
+        assert apple_crash_report['code_type'] == 'X86-64'
+        assert apple_crash_report['threads'][0]['frames'][0]['instruction_addr'] == '0x7fff61bc6c2a'
+        assert apple_crash_report['threads'][0]['frames'][0]['module'] == 'libsystem_kernel.dylib'
+        assert apple_crash_report['threads'][5]['crashed'] == True
+        assert apple_crash_report['metadata']['OS Version'] == 'Mac OS X 10.14.0 (18A391)'
+
 def test_unreal_crash_context(res_path):
     path = os.path.join(res_path, 'unreal', 'unreal_crash')
     with open(path, mode='rb') as crash_file:

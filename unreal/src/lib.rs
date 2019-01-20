@@ -97,6 +97,8 @@ impl Unreal4CrashFile {
         match self.file_name.as_str() {
             // https://github.com/EpicGames/UnrealEngine/blob/5e997dc7b5a4efb7f1be22fa8c4875c9c0034394/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L60
             "UE4Minidump.dmp" => Unreal4FileType::Minidump,
+            // https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/Mac/MacPlatformMisc.cpp#L1636
+            "minidump.dmp" => Unreal4FileType::Minidump,
             "CrashReportClient.ini" => Unreal4FileType::Config,
             "CrashContext.runtime-xml" => Unreal4FileType::Context,
             name => {
@@ -138,6 +140,15 @@ pub enum Unreal4Error {
 pub struct Unreal4Crash {
     bytes: Bytes,
     files: Vec<Unreal4CrashFile>,
+}
+
+/// The type of native crash report contained in the unreal 4 crash
+#[derive(Debug, Clone)]
+pub enum NativeCrash<'a> {
+    /// A crash report that is a minidump
+    MiniDump(&'a [u8]),
+    /// A crash report that is an apple text file crash report
+    AppleCrashReport(&'a str),
 }
 
 impl Unreal4Crash {
@@ -187,9 +198,43 @@ impl Unreal4Crash {
         }
     }
 
+    /// Returns the native crash report contained.
+    pub fn get_native_crash(&self) -> Result<Option<NativeCrash<'_>>, Unreal4Error> {
+        Ok(self
+            .get_file_slice(Unreal4FileType::Minidump)?
+            .and_then(|bytes| {
+                if bytes.get(..4) == Some(b"MDMP") {
+                    return Some(NativeCrash::MiniDump(bytes));
+                }
+                if bytes.get(..20) == Some(b"Incident Identifier:") {
+                    if let Ok(s) = std::str::from_utf8(bytes) {
+                        return Some(NativeCrash::AppleCrashReport(s));
+                    }
+                }
+                None
+            }))
+    }
+
     /// Get the Minidump file bytes.
     pub fn get_minidump_slice(&self) -> Result<Option<&[u8]>, Unreal4Error> {
-        self.get_file_slice(Unreal4FileType::Minidump)
+        Ok(self.get_native_crash()?.and_then(|ft| {
+            if let NativeCrash::MiniDump(md) = ft {
+                Some(md)
+            } else {
+                None
+            }
+        }))
+    }
+
+    /// Gets the native apple crash report as str.
+    pub fn get_apple_crash_report(&self) -> Result<Option<&str>, Unreal4Error> {
+        Ok(self.get_native_crash()?.and_then(|ft| {
+            if let NativeCrash::AppleCrashReport(s) = ft {
+                Some(s)
+            } else {
+                None
+            }
+        }))
     }
 
     /// Get the file contents by its file type.

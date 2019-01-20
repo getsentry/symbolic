@@ -2,10 +2,18 @@ use std::fs::File;
 use std::io::Read;
 
 use symbolic_testutils::fixture_path;
-use symbolic_unreal::{Unreal4Crash, Unreal4Error};
+use symbolic_unreal::{NativeCrash, Unreal4Crash, Unreal4Error};
 
 fn get_unreal_crash() -> Result<Unreal4Crash, Unreal4Error> {
     let mut file = File::open(fixture_path("unreal/unreal_crash")).expect("example file opens");
+    let mut file_content = Vec::new();
+    file.read_to_end(&mut file_content).expect("fixture file");
+    Unreal4Crash::from_slice(&file_content)
+}
+
+fn get_unreal_apple_crash() -> Result<Unreal4Crash, Unreal4Error> {
+    let mut file =
+        File::open(fixture_path("unreal/unreal_crash_apple")).expect("example file opens");
     let mut file_content = Vec::new();
     file.read_to_end(&mut file_content).expect("fixture file");
     Unreal4Crash::from_slice(&file_content)
@@ -25,7 +33,35 @@ fn test_get_minidump_slice() {
         .expect("expected Minidump file read without errors")
         .expect("expected Minidump file bytes exists");
 
+    let native_crash = ue4_crash
+        .get_native_crash()
+        .expect("expected Minidump file read without errors")
+        .expect("expected Minidump file bytes exists");
+
+    if let NativeCrash::MiniDump(..) = native_crash {
+    } else {
+        panic!("Expected a minidump as native crash");
+    }
+
     assert_eq!(minidump_bytes.len(), 410_700);
+}
+
+#[test]
+fn test_get_apple_crash_report() {
+    let ue4_crash = get_unreal_apple_crash().expect("test crash file loads");
+
+    assert_eq!(ue4_crash.get_minidump_slice().unwrap(), None);
+
+    let native_crash = ue4_crash
+        .get_native_crash()
+        .expect("expected native file read without errors")
+        .expect("expected native file bytes exists");
+
+    if let NativeCrash::AppleCrashReport(s) = native_crash {
+        assert!(s.contains("Report Version:"));
+    } else {
+        panic!("Expected an apple crash report as native crash");
+    }
 }
 
 #[test]

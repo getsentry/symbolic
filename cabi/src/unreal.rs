@@ -1,9 +1,12 @@
 use std::os::raw::c_char;
 use std::slice;
+use std::str::FromStr;
 
 use symbolic::common::byteview::ByteView;
 use symbolic::minidump::processor::ProcessState;
 use symbolic::unreal::{Unreal4Crash, Unreal4CrashFile};
+
+use apple_crash_report_parser::AppleCrashReport;
 
 use crate::core::SymbolicStr;
 use crate::minidump::SymbolicProcessState;
@@ -60,6 +63,20 @@ ffi_fn! {
         let state = ProcessState::from_minidump(&byte_view, None)?;
         let sstate = SymbolicProcessState::from_process_state(&state);
         Ok(Box::into_raw(Box::new(sstate)))
+    }
+}
+
+ffi_fn! {
+    unsafe fn symbolic_unreal4_crash_get_apple_crash_report(unreal: *const SymbolicUnreal4Crash) -> Result<SymbolicStr> {
+        let unreal = &*(unreal as *const Unreal4Crash);
+        let apple_crash = unreal.get_apple_crash_report()?;
+
+        match apple_crash {
+            Some(report) => {
+                Ok(SymbolicStr::from_string(serde_json::to_string(&AppleCrashReport::from_str(report)?)?))
+            },
+            None => Ok(SymbolicStr::from_string("{}".to_string()))
+        }
     }
 }
 

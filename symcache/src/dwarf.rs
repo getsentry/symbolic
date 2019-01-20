@@ -173,7 +173,7 @@ impl<'a> DwarfInfo<'a> {
             Err(0) => {
                 return Err(
                     ConversionError::new("could not find compilation unit at address").into(),
-                )
+                );
             }
             Err(next_idx) => next_idx - 1,
         };
