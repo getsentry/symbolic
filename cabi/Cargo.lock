@@ -23,7 +23,7 @@ dependencies = [
 
 [[package]]
 name = "apple-crash-report-parser"
-version = "0.1.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1009,7 +1009,7 @@ dependencies = [
 name = "symbolic-cabi"
 version = "5.7.9"
 dependencies = [
- "apple-crash-report-parser 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "apple-crash-report-parser 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.84 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1294,7 +1294,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum adler32 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "7e522997b529f05601e05166c07ed17789691f562762c7f3b987263d2dedee5c"
 "checksum aho-corasick 0.6.9 (registry+https://github.com/rust-lang/crates.io-index)" = "1e9a933f4e58658d7b12defcf96dc5c720f20832deebe3e0a19efd3b6aaeeb9e"
 "checksum anylog 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "6e5568c64239bc579e9755cb7e4693f9ed9fc382a31d6ceeed623a94dacc4af1"
-"checksum apple-crash-report-parser 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "6652788c09210375cb4bce786e275fd485de9104a27366599f2000e7e718bab9"
+"checksum apple-crash-report-parser 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "acaf5067ed27997c2e9d3d81eda269d380b67c59694f43bf2b7abd834e84d37c"
 "checksum arrayvec 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "f405cc4c21cd8b784f6c8fc2adf9bc00f59558f0049b5ec21517f875963040cc"
 "checksum backtrace 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)" = "89a47830402e9981c5c41223151efcced65a0510c13097c769cede7efb34782a"
 "checksum backtrace-sys 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)" = "c66d56ac8dabd07f6aacdaf633f4b8262f5b3601a810a0dcddffd5c22c69daa0"
