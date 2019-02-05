@@ -7,15 +7,16 @@ authors = [
     "Jan Michael Auer <mail@jauer.org>",
 ]
 documentation = "https://docs.rs/symbolic-proguard"
+keywords = ["proguard", "retrace", "R8"]
 homepage = "https://github.com/getsentry/symbolic"
 repository = "https://github.com/getsentry/symbolic"
 description = """
-A library to process ProGuard mapping files and symbolicate frames from
+A library to process ProGuard and R8 mapping files and symbolicate frames from
 optimized applications.
 """
 edition = "2018"
 
 [dependencies]
-proguard = "1.1.0"
-symbolic-common = { version = "5.8.0", path = "../common" }
-uuid = "0.7.1"
+proguard = "2.0.0"
+symbolic-common = { version = "5.8.0", path = "../common", features = ["with_dwarf"] }
+uuid = "0.7.2"
