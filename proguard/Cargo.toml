@@ -18,5 +18,5 @@ edition = "2018"
 
 [dependencies]
 proguard = "2.0.0"
-symbolic-common = { version = "5.8.0", path = "../common" }
-uuid = "0.7.1"
+symbolic-common = { version = "5.8.0", path = "../common", features = ["with_dwarf"] }
+uuid = "0.7.2"
