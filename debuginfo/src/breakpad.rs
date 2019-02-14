@@ -503,3 +503,18 @@ fn test_parse_line() {
         lines: vec![],
     }));
 }
+
+#[test]
+fn test_parse_negative_line() {
+    let line = b"e0fd10 5 -376 2225";
+    let record = parse_line(line).expect("failed to parse line");
+
+    assert_eq!(
+        record,
+        BreakpadRecord::Line(BreakpadLineRecord {
+            address: 0x00e0_fd10,
+            line: 4_294_966_920, // This is obviously garbage
+            file_id: 2225,
+        })
+    )
+}
