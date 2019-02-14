@@ -473,7 +473,9 @@ fn parse_line(line: &[u8]) -> Result<BreakpadRecord<'_>, ParseBreakpadError> {
     Ok(BreakpadRecord::Line(BreakpadLineRecord {
         address: u64::from_str_radix(&address, 16)
             .map_err(|_| ParseBreakpadError("invalid line address"))?,
-        line: u64::from_str(&line).map_err(|_| ParseBreakpadError("invalid line number"))?,
+        line: i32::from_str(&line)
+            .map(|line| u64::from(line as u32))
+            .map_err(|_| ParseBreakpadError("invalid line number"))?,
         file_id: u64::from_str(&file_id).map_err(|_| ParseBreakpadError("invalid line file id"))?,
     }))
 }
