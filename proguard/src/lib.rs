@@ -1,32 +1,46 @@
 //! Provides proguard support.
 use std::io;
-use symbolic_common::byteview::{ByteView, ByteViewHandle};
-use uuid::Uuid;
+
+use proguard::MappingView;
+
+use symbolic_common::{AsSelf, ByteView, SelfCell, Uuid};
+
+struct Inner<'a>(MappingView<'a>);
+
+impl<'a, 'slf: 'a> AsSelf<'slf> for Inner<'a> {
+    type Ref = MappingView<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        &self.0
+    }
+}
 
 /// A view over a proguard mapping text file.
 pub struct ProguardMappingView<'a> {
-    mv: ByteViewHandle<'a, proguard::MappingView<'a>>,
+    inner: SelfCell<ByteView<'a>, Inner<'a>>,
 }
 
 impl<'a> ProguardMappingView<'a> {
     /// Creates a new proguard mapping view from a byte slice.
     pub fn parse(byteview: ByteView<'a>) -> Result<ProguardMappingView<'a>, io::Error> {
-        Ok(ProguardMappingView {
-            mv: ByteViewHandle::from_byteview(byteview, |bytes| -> Result<_, io::Error> {
-                Ok(proguard::MappingView::from_slice(bytes)?)
-            })?,
-        })
+        // NB: Since ByteView does not expose it's inner data structure, we need to use a SelfCell
+        // to construct a `proguard::MappingView`. Ideally, we would pass the ByteView's backing to
+        // the MappingView constructor directly, instead.
+        let inner = SelfCell::try_new(byteview, |data| {
+            MappingView::from_slice(unsafe { &*data }).map(Inner)
+        })?;
+
+        Ok(ProguardMappingView { inner })
     }
 
     /// Returns the mapping UUID.
-    pub fn uuid(&self) -> uuid::Uuid {
-        // TODO: Remove this once `proguard` has been converted to uuid v0.7.
-        Uuid::from_slice(&self.mv.uuid().as_bytes()[..]).unwrap()
+    pub fn uuid(&self) -> Uuid {
+        self.inner.get().uuid()
     }
 
     /// Returns true if this file has line infos.
     pub fn has_line_info(&self) -> bool {
-        self.mv.has_line_info()
+        self.inner.get().has_line_info()
     }
 
     /// Converts a dotted path.
@@ -34,7 +48,7 @@ impl<'a> ProguardMappingView<'a> {
         let mut iter = path.splitn(2, ':');
         let cls_name = iter.next().unwrap_or("");
         let meth_name = iter.next();
-        if let Some(cls) = self.mv.find_class(cls_name) {
+        if let Some(cls) = self.inner.get().find_class(cls_name) {
             let class_name = cls.class_name();
             if let Some(meth_name) = meth_name {
                 let lineno = if lineno == 0 {
