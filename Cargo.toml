@@ -39,7 +39,7 @@ sourcemap = ["symbolic-sourcemap"]
 symcache = ["debuginfo", "symbolic-symcache"]
 # symcache = ["debuginfo", "demangle", "symbolic-symcache"]
 # # serde = ["symbolic-common/serde", "symbolic-debuginfo/serde", "symbolic-minidump/serde"]
-# unreal = ["symbolic-unreal"]
+unreal = ["symbolic-unreal"]
 
 [dependencies]
 symbolic-common = { version = "5.8.1", path = "common" }
@@ -49,7 +49,7 @@ symbolic-demangle = { version = "5.8.1", path = "demangle", optional = true }
 symbolic-proguard = { version = "5.8.1", path = "proguard", optional = true }
 symbolic-sourcemap = { version = "5.8.1", path = "sourcemap", optional = true }
 symbolic-symcache = { version = "5.8.1", path = "symcache", optional = true }
-# symbolic-unreal = { version = "5.8.1", path = "unreal", optional = true }
+symbolic-unreal = { version = "5.8.1", path = "unreal", optional = true }
 
 [dev-dependencies]
 clap = "2.32.0"

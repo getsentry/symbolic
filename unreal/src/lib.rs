@@ -11,6 +11,8 @@ use compress::zlib;
 use failure::Fail;
 use lazy_static::lazy_static;
 use regex::Regex;
+
+#[cfg(feature = "with-serde")]
 use serde::Serialize;
 
 use crate::context::Unreal4Context;
@@ -79,12 +81,12 @@ pub struct Unreal4CrashFile {
 }
 
 /// A log entry from an Unreal Engine 4 crash.
-#[derive(Serialize)]
+#[cfg_attr(feature = "with-serde", derive(Serialize))]
 pub struct Unreal4LogEntry {
     /// The timestamp of the message, when available.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
     pub timestamp: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
     /// The component that issued the log, when available.
     pub component: Option<String>,
     /// The log message.
