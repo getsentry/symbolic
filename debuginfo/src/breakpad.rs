@@ -473,7 +473,9 @@ fn parse_line(line: &[u8]) -> Result<BreakpadRecord<'_>, ParseBreakpadError> {
     Ok(BreakpadRecord::Line(BreakpadLineRecord {
         address: u64::from_str_radix(&address, 16)
             .map_err(|_| ParseBreakpadError("invalid line address"))?,
-        line: u64::from_str(&line).map_err(|_| ParseBreakpadError("invalid line number"))?,
+        line: i32::from_str(&line)
+            .map(|line| u64::from(line as u32))
+            .map_err(|_| ParseBreakpadError("invalid line number"))?,
         file_id: u64::from_str(&file_id).map_err(|_| ParseBreakpadError("invalid line file id"))?,
     }))
 }
@@ -500,4 +502,19 @@ fn test_parse_line() {
         name: &b"google_breakpad::CrashGenerationClient::RequestDump(_EXCEPTION_POINTERS *,MDRawAssertionInfo *)"[..],
         lines: vec![],
     }));
+}
+
+#[test]
+fn test_parse_negative_line() {
+    let line = b"e0fd10 5 -376 2225";
+    let record = parse_line(line).expect("failed to parse line");
+
+    assert_eq!(
+        record,
+        BreakpadRecord::Line(BreakpadLineRecord {
+            address: 0x00e0_fd10,
+            line: 4_294_966_920, // This is obviously garbage
+            file_id: 2225,
+        })
+    )
 }
