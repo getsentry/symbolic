@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-debuginfo"
-version = "5.8.0"
+version = "5.8.1"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -37,7 +37,7 @@ smallvec = "0.6.8"
 symbolic-common = { path = "../common", version = "5.8.0" }
 
 [dev-dependencies]
-symbolic-testutils = { version = "5.8.0", path = "../testutils" }
+symbolic-testutils = { version = "5.8.1", path = "../testutils" }
 
 [features]
 default = []

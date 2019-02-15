@@ -20,8 +20,8 @@
 //!
 //! # fn main() {
 //! let name = Name::new("__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E");
-//! assert_eq!(name.detect_language(), Some(Language::Rust));
-//! assert_eq!(&name.try_demangle(Default::default()), "std::io::Read::read_to_end");
+//! assert_eq!(name.detect_language(), Language::Rust);
+//! assert_eq!(name.try_demangle(Default::default()), "std::io::Read::read_to_end");
 //! # }
 //! ```
 use std::borrow::Cow;
