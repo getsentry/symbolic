@@ -27,7 +27,6 @@ regex = "1.1.0"
 serde = { version = "1.0.87", optional = true, features = ["derive"] }
 
 [features]
-default = ["serde"]
 with-serde = ["serde", "chrono/serde"]
 
 [dev-dependencies]
