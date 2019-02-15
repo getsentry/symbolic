@@ -9,7 +9,7 @@ use symbolic_common::{Arch, DebugId, Language};
 use symbolic_debuginfo::{DebugSession, Debugging, FileInfo, Function, ObjectLike, Symbol};
 
 use crate::error::{SymCacheError, SymCacheErrorKind, ValueKind};
-use crate::format::{self, DataSource};
+use crate::format;
 
 fn is_empty_function(function: &Function<'_>) -> bool {
     function.lines.is_empty() && function.inlinees.is_empty()
@@ -20,12 +20,75 @@ fn clean_function(function: &mut Function<'_>) {
         clean_function(inlinee);
     }
 
-    function.inlinees.retain(is_empty_function);
+    function.inlinees.retain(|f| !is_empty_function(f));
+}
+
+struct FormatWriter<W> {
+    writer: W,
+    position: u64,
+}
+
+impl<W> FormatWriter<W>
+where
+    W: Write + Seek,
+{
+    fn new(writer: W) -> Self {
+        FormatWriter {
+            writer,
+            position: 0,
+        }
+    }
+
+    fn into_inner(self) -> W {
+        self.writer
+    }
+
+    fn seek(&mut self, position: u64) -> Result<(), SymCacheError> {
+        self.position = position;
+        self.writer
+            .seek(io::SeekFrom::Start(position))
+            .context(SymCacheErrorKind::WriteFailed)?;
+
+        Ok(())
+    }
+
+    #[inline]
+    fn write_bytes(&mut self, data: &[u8]) -> Result<(), SymCacheError> {
+        self.writer
+            .write_all(data)
+            .context(SymCacheErrorKind::WriteFailed)?;
+
+        self.position += data.len() as u64;
+        Ok(())
+    }
+
+    #[inline]
+    fn write_segment<T, L>(
+        &mut self,
+        data: &[T],
+        kind: ValueKind,
+    ) -> Result<format::Seg<T, L>, SymCacheError>
+    where
+        L: Default + Copy + num::FromPrimitive,
+    {
+        if data.is_empty() {
+            return Ok(format::Seg::default());
+        }
+
+        let byte_size = std::mem::size_of_val(data);
+        let bytes = unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, byte_size) };
+
+        let segment_pos = self.position as u32;
+        let segment_len =
+            L::from_usize(data.len()).ok_or_else(|| SymCacheErrorKind::TooManyValues(kind))?;
+
+        self.write_bytes(bytes)?;
+        Ok(format::Seg::new(segment_pos, segment_len))
+    }
 }
 
 pub struct SymCacheWriter<W> {
-    writer: W,
-    position: u64,
+    writer: FormatWriter<W>,
     header: format::HeaderV2,
     files: Vec<format::FileRecord>,
     symbols: Vec<format::Seg<u8, u16>>,
@@ -49,7 +112,7 @@ where
         writer.set_id(object.id());
 
         let mut last_address = 0;
-        let mut symbols = object.symbol_map().into_iter();
+        let mut symbols = object.symbol_map().into_iter().peekable();
         let mut session = object
             .debug_session()
             .context(SymCacheErrorKind::BadDebugFile)?;
@@ -59,15 +122,19 @@ where
             .context(SymCacheErrorKind::BadDebugFile)?;
 
         for function in functions {
-            for symbol in &mut symbols {
-                if symbol.address >= function.address {
-                    break; // TODO(ja): This is wrong, it skips a symbol
-                } else if symbol.address > last_address {
+            while symbols
+                .peek()
+                .map_or(false, |s| s.address < function.address)
+            {
+                let symbol = symbols.next().unwrap();
+                if symbol.address >= last_address {
                     writer.add_symbol(symbol)?;
                 }
             }
 
-            last_address = function.address;
+            // Ensure that symbols at the function address are skipped even if the function size is
+            // zero. We trust that the function range (address to address + size) spans all lines.
+            last_address = function.address + std::cmp::max(1, function.size);
             writer.add_function(function)?;
         }
 
@@ -80,19 +147,16 @@ where
         writer.finish()
     }
 
-    pub fn new(mut writer: W) -> Result<Self, SymCacheError> {
+    pub fn new(writer: W) -> Result<Self, SymCacheError> {
         let mut header = format::HeaderV2::default();
         header.preamble.magic = format::SYMCACHE_MAGIC;
         header.preamble.version = format::SYMCACHE_VERSION;
 
-        let position = std::mem::size_of_val(&header) as u64;
-        writer
-            .seek(io::SeekFrom::Start(position))
-            .context(SymCacheErrorKind::WriteFailed)?;
+        let mut writer = FormatWriter::new(writer);
+        writer.seek(std::mem::size_of_val(&header) as u64)?;
 
         Ok(SymCacheWriter {
             writer,
-            position,
             header,
             files: Vec::new(),
             symbols: Vec::new(),
@@ -119,12 +183,17 @@ where
 
         let symbol_id = self.insert_symbol(name)?;
 
+        let size = match symbol.size {
+            0 => !0, // TODO(ja): Check if this is needed
+            s => s,
+        };
+
         self.functions.push(format::FuncRecord {
             addr_low: (symbol.address & 0xffff_ffff) as u32,
             addr_high: ((symbol.address >> 32) & 0xffff) as u16,
             // XXX: we have not seen this yet, but in theory this should be
             // stored as multiple function records.
-            len: std::cmp::min(symbol.size, 0xffff) as u16,
+            len: std::cmp::min(size, 0xffff) as u16,
             symbol_id_low: (symbol_id & 0xffff) as u16,
             symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
             line_records: format::Seg::default(),
@@ -137,9 +206,9 @@ where
     }
 
     pub fn add_function(&mut self, mut function: Function<'_>) -> Result<(), SymCacheError> {
-        // if we have a function without any instructions we just skip it.  This
-        // saves memory and since we only care about instructions where we can
-        // actually crash this is a reasonable optimization.
+        // If we encounter a function without any instructions we just skip it.  This saves memory
+        // and since we only care about instructions where we can actually crash this is a
+        // reasonable optimization.
         clean_function(&mut function);
         if is_empty_function(&function) {
             return Ok(());
@@ -150,44 +219,16 @@ where
 
     pub fn finish(self) -> Result<W, SymCacheError> {
         let mut writer = self.writer;
+        let mut header = self.header;
 
-        writer
-            .seek(io::SeekFrom::Start(0))
-            .context(SymCacheErrorKind::WriteFailed)?;
-        writer
-            .write_all(format::as_slice(&self.header))
-            .context(SymCacheErrorKind::WriteFailed)?;
+        header.symbols = writer.write_segment(&self.symbols, ValueKind::Symbol)?;
+        header.files = writer.write_segment(&self.files, ValueKind::File)?;
+        header.functions = writer.write_segment(&self.functions, ValueKind::Function)?;
 
-        Ok(writer)
-    }
+        writer.seek(0)?;
+        writer.write_bytes(format::as_slice(&header))?;
 
-    #[inline]
-    fn write_bytes(&mut self, data: &[u8]) -> Result<(), SymCacheError> {
-        self.writer
-            .write_all(data)
-            .context(SymCacheErrorKind::WriteFailed)?;
-
-        Ok(())
-    }
-
-    #[inline]
-    fn write_segment<T, L>(
-        &mut self,
-        data: &[T],
-        kind: ValueKind,
-    ) -> Result<format::Seg<T, L>, SymCacheError>
-    where
-        L: Copy + num::FromPrimitive,
-    {
-        let byte_size = std::mem::size_of::<T>() * data.len();
-        let bytes = unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, byte_size) };
-
-        let segment_pos = self.position as u32;
-        let segment_len =
-            L::from_usize(byte_size).ok_or_else(|| SymCacheErrorKind::TooManyValues(kind))?;
-
-        self.write_bytes(bytes)?;
-        Ok(format::Seg::new(segment_pos, segment_len))
+        Ok(writer.into_inner())
     }
 
     fn write_path(&mut self, path: Cow<'_, str>) -> Result<format::Seg<u8, u8>, SymCacheError> {
@@ -197,7 +238,9 @@ where
 
         // Path segments use u8 length indicators
         let shortened = symbolic_common::shorten_path(&path, std::u8::MAX.into());
-        let segment = self.write_segment(shortened.as_bytes(), ValueKind::File)?;
+        let segment = self
+            .writer
+            .write_segment(shortened.as_bytes(), ValueKind::File)?;
         self.path_cache.insert(path.into_owned(), segment);
         Ok(segment)
     }
@@ -244,9 +287,11 @@ where
         let mut name = name.into_owned();
         name.truncate(len);
 
-        let segment = self.write_segment(name.as_bytes(), ValueKind::Symbol)?;
-        self.symbols.push(segment);
+        let segment = self
+            .writer
+            .write_segment(name.as_bytes(), ValueKind::Symbol)?;
         let index = self.symbols.len() as u32;
+        self.symbols.push(segment);
         self.symbol_cache.insert(name, index);
         Ok(index)
     }
@@ -273,7 +318,7 @@ where
             !0
         } else {
             let parent_offset = index.saturating_sub(parent_index);
-            if parent_offset == !0 {
+            if parent_offset > std::u16::MAX.into() {
                 return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::ParentOffset).into());
             }
             parent_offset as u16
@@ -331,7 +376,7 @@ where
 
         if !line_segment.is_empty() {
             self.functions[index as usize].line_records =
-                self.write_segment(&line_segment, ValueKind::Line)?;
+                self.writer.write_segment(&line_segment, ValueKind::Line)?;
             self.header.has_line_records = 1;
         }
 

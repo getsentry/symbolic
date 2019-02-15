@@ -3,7 +3,7 @@ use std::fmt;
 use symbolic_common::{Arch, DebugId, Language, Name};
 
 use crate::error::{SymCacheError, SymCacheErrorKind};
-use crate::format::{self, DataSource};
+use crate::format;
 
 /// A platform independent symbolication cache.
 pub struct SymCache<'a> {
@@ -59,7 +59,7 @@ impl<'a> SymCache<'a> {
     /// Returns an iterator over all functions.
     pub fn functions(&self) -> Functions<'a> {
         Functions {
-            functions: self.header.function_records,
+            functions: self.header.functions,
             symbols: self.header.symbols,
             files: self.header.files,
             data: self.data,
@@ -122,7 +122,7 @@ impl<'a> SymCache<'a> {
 
     /// Resolves the raw list of `FuncRecords` from the funcs segment.
     fn function_records(&self) -> Result<&'a [format::FuncRecord], SymCacheError> {
-        self.header.function_records.read(self.data)
+        self.header.functions.read(self.data)
     }
 
     /// Locates the source line for an instruction address within a function.
@@ -268,15 +268,12 @@ impl fmt::Debug for SymCache<'_> {
             .field("arch", &self.arch())
             .field("has_line_info", &self.has_line_info())
             .field("has_file_info", &self.has_file_info())
-            .field(
-                "functions",
-                &self.function_records().map(|x| x.len()).unwrap_or(0),
-            )
+            .field("functions", &self.function_records().unwrap_or(&[]).len())
             .finish()
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Lookup<'a, 'c> {
     cache: &'c SymCache<'a>,
     funcs: &'a [format::FuncRecord],
@@ -319,8 +316,25 @@ impl<'a, 'c> Iterator for Lookup<'a, 'c> {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+impl fmt::Debug for Lookup<'_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut list = f.debug_list();
+        for line in self.clone() {
+            match line {
+                Ok(line) => {
+                    list.entry(&line);
+                }
+                Err(error) => {
+                    return error.fmt(f);
+                }
+            }
+        }
+        list.finish()
+    }
+}
+
 /// Information on a matched source line.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LineInfo<'a> {
     arch: Arch,
     id: DebugId,
@@ -526,8 +540,18 @@ struct LinesDebug<'a>(Lines<'a>);
 
 impl fmt::Debug for LinesDebug<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let entries = self.0.clone().filter_map(|x| x.ok());
-        f.debug_list().entries(entries).finish()
+        let mut list = f.debug_list();
+        for line in self.0.clone() {
+            match line {
+                Ok(line) => {
+                    list.entry(&line);
+                }
+                Err(error) => {
+                    return error.fmt(f);
+                }
+            }
+        }
+        list.finish()
     }
 }
 

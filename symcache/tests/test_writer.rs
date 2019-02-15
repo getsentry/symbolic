@@ -12,13 +12,14 @@ struct Shim<'a>(symbolic_common::Name<'a>);
 
 impl std::fmt::Display for Shim<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use symbolic_common::Language;
         use symbolic_demangle::Demangle;
-        write!(
-            f,
-            "{} [{}]",
-            self.0.try_demangle(Default::default()),
-            self.0.language()
-        )
+        let demangled = self.0.try_demangle(Default::default());
+
+        match self.0.language() {
+            Language::Unknown => f.write_str(&demangled),
+            language => write!(f, "{} [{}]", demangled, language),
+        }
     }
 }
 

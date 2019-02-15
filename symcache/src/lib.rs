@@ -8,5 +8,4 @@ pub mod format;
 
 pub use cache::*;
 pub use error::*;
-pub use format::DataSource;
 pub use writer::*;

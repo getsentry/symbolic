@@ -1,5 +1,6 @@
 breakpad = { SOI ~ module ~ (NEWLINE ~ record)* ~ NEWLINE* ~ EOI }
-record = { module | info | file | func | public | stack_win | stack_cfi }
+record = { module | info | file | func_lines | public | stack_win | stack_cfi }
+func_lines = { func ~ (NEWLINE ~ !record ~ line)* }
 
 // MODULE record
 // Example: "MODULE Linux x86 D3096ED481217FD4C16B29CD9BC208BA0 firefox-bin"
@@ -23,7 +24,7 @@ file_id = @{ dec }
 // FUNC record
 // Example: "FUNC m c184 30 0 nsQueryInterfaceWithError::operator()(nsID const&, void**) const"
 // see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#func-records>
-func = { "FUNC" ~ multiple? ~ addr ~ size ~ param_size ~ name ~ (NEWLINE ~ !record ~ line)* }
+func = { "FUNC" ~ multiple? ~ addr ~ size ~ param_size ~ name }
 param_size = @{ hex }
 
 // LINE record (part of functions)

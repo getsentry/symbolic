@@ -41,7 +41,6 @@ pub fn as_slice<T>(data: &T) -> &[u8] {
 }
 
 #[repr(C, packed)]
-#[derive(Default)]
 pub struct Seg<T, L = u32> {
     pub offset: u32,
     pub len: L,
@@ -88,7 +87,14 @@ where
     }
 }
 
-impl<T, L> Seg<T, L> where L: Copy + Into<u64> {}
+impl<T, L> Default for Seg<T, L>
+where
+    L: Default,
+{
+    fn default() -> Self {
+        Seg::new(0, L::default())
+    }
+}
 
 impl<T, L: Copy> Copy for Seg<T, L> {}
 
@@ -202,32 +208,32 @@ pub struct LineRecord {
     pub line: u16,
 }
 
-#[repr(u8)]
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
-pub enum DataSource {
-    Unknown,
-    Dwarf,
-    SymbolTable,
-    BreakpadSym,
-    #[doc(hidden)]
-    __Max,
-}
+// #[repr(u8)]
+// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
+// pub enum DataSource {
+//     Unknown,
+//     Dwarf,
+//     SymbolTable,
+//     BreakpadSym,
+//     #[doc(hidden)]
+//     __Max,
+// }
 
-impl DataSource {
-    pub fn from_u8(value: u8) -> Self {
-        if value >= (DataSource::__Max as u8) {
-            DataSource::Unknown
-        } else {
-            unsafe { std::mem::transmute(value) }
-        }
-    }
-}
+// impl DataSource {
+//     pub fn from_u8(value: u8) -> Self {
+//         if value >= (DataSource::__Max as u8) {
+//             DataSource::Unknown
+//         } else {
+//             unsafe { std::mem::transmute(value) }
+//         }
+//     }
+// }
 
-impl Default for DataSource {
-    fn default() -> DataSource {
-        DataSource::Unknown
-    }
-}
+// impl Default for DataSource {
+//     fn default() -> DataSource {
+//         DataSource::Unknown
+//     }
+// }
 
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone, Debug)]
@@ -246,7 +252,7 @@ pub struct HeaderV1 {
     pub has_line_records: u8,
     pub symbols: Seg<Seg<u8, u16>>,
     pub files: Seg<FileRecord, u16>,
-    pub function_records: Seg<FuncRecord>,
+    pub functions: Seg<FuncRecord>,
 }
 
 #[repr(C, packed)]
@@ -259,7 +265,7 @@ pub struct HeaderV2 {
     pub has_line_records: u8,
     pub symbols: Seg<Seg<u8, u16>>,
     pub files: Seg<FileRecord, u16>,
-    pub function_records: Seg<FuncRecord>,
+    pub functions: Seg<FuncRecord>,
 }
 
 /// Version independent representation of the header.
@@ -272,7 +278,7 @@ pub struct Header {
     pub has_line_records: u8,
     pub symbols: Seg<Seg<u8, u16>>,
     pub files: Seg<FileRecord, u16>,
-    pub function_records: Seg<FuncRecord>,
+    pub functions: Seg<FuncRecord>,
 }
 
 impl Header {
@@ -305,7 +311,7 @@ impl From<&'_ HeaderV1> for Header {
             has_line_records: header.has_line_records,
             symbols: header.symbols,
             files: header.files,
-            function_records: header.function_records,
+            functions: header.functions,
         }
     }
 }
@@ -320,7 +326,7 @@ impl From<&'_ HeaderV2> for Header {
             has_line_records: header.has_line_records,
             symbols: header.symbols,
             files: header.files,
-            function_records: header.function_records,
+            functions: header.functions,
         }
     }
 }

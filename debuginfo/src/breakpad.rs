@@ -89,7 +89,7 @@ pub struct BreakpadFileRecord<'d> {
 impl<'d> BreakpadFileRecord<'d> {
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
-        let parsed = BreakpadParser::parse(Rule::public, string)?.next().unwrap();
+        let parsed = BreakpadParser::parse(Rule::file, string)?.next().unwrap();
         let mut record = BreakpadFileRecord::default();
 
         for pair in parsed.into_inner() {
@@ -221,7 +221,7 @@ pub struct BreakpadFuncRecord<'d> {
 impl<'d> BreakpadFuncRecord<'d> {
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
-        let parsed = BreakpadParser::parse(Rule::public, string)?.next().unwrap();
+        let parsed = BreakpadParser::parse(Rule::func, string)?.next().unwrap();
         let mut record = BreakpadFuncRecord::default();
 
         for pair in parsed.into_inner() {
@@ -323,7 +323,7 @@ pub struct BreakpadLineRecord {
 impl BreakpadLineRecord {
     pub fn parse(data: &[u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
-        let parsed = BreakpadParser::parse(Rule::public, string)?.next().unwrap();
+        let parsed = BreakpadParser::parse(Rule::line, string)?.next().unwrap();
         let mut record = BreakpadLineRecord::default();
 
         for pair in parsed.into_inner() {
@@ -377,7 +377,7 @@ impl<'d> Iterator for BreakpadLineRecords<'d> {
         if let Some(line) = self.lines.next() {
             // Stop parsing LINE records once other expected records are encountered.
             if !line.starts_with(b"FUNC ")
-                && !line.starts_with(b"PUBLIC")
+                && !line.starts_with(b"PUBLIC ")
                 && !line.starts_with(b"STACK ")
             {
                 return Some(BreakpadLineRecord::parse(line));

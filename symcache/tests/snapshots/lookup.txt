@@ -1,33 +1,54 @@
 [
     LineInfo {
         arch: X86_64,
+        id: DebugId {
+            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
+            appendix: 0
+        },
         sym_addr: 56341,
         line_addr: 56341,
         instr_addr: 56341,
         line: 21,
-        symbol: "_ZN12_GLOBAL__N_15crashEv",
+        lang: Cpp,
+        symbol: Some(
+            "_ZN12_GLOBAL__N_15crashEv"
+        ),
         filename: "main.cpp",
         base_dir: "../macos",
         comp_dir: "/Users/travis/build/getsentry/breakpad-tools/macos"
     },
     LineInfo {
         arch: X86_64,
+        id: DebugId {
+            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
+            appendix: 0
+        },
         sym_addr: 56341,
         line_addr: 56341,
         instr_addr: 56341,
         line: 25,
-        symbol: "_ZN12_GLOBAL__N_15startEv",
+        lang: Cpp,
+        symbol: Some(
+            "_ZN12_GLOBAL__N_15startEv"
+        ),
         filename: "main.cpp",
         base_dir: "../macos",
         comp_dir: "/Users/travis/build/getsentry/breakpad-tools/macos"
     },
     LineInfo {
         arch: X86_64,
+        id: DebugId {
+            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
+            appendix: 0
+        },
         sym_addr: 56224,
         line_addr: 56341,
         instr_addr: 56341,
         line: 32,
-        symbol: "main",
+        lang: Cpp,
+        symbol: Some(
+            "main"
+        ),
         filename: "main.cpp",
         base_dir: "../macos",
         comp_dir: "/Users/travis/build/getsentry/breakpad-tools/macos"

@@ -442,6 +442,29 @@ impl fmt::Display for Name<'_> {
     }
 }
 
+macro_rules! impl_eq {
+    ($lhs:ty, $rhs: ty) => {
+        impl<'a, 'b> PartialEq<$rhs> for $lhs {
+            #[inline]
+            fn eq(&self, other: &$rhs) -> bool {
+                PartialEq::eq(&self.string, other)
+            }
+        }
+
+        impl<'a, 'b> PartialEq<$lhs> for $rhs {
+            #[inline]
+            fn eq(&self, other: &$lhs) -> bool {
+                PartialEq::eq(self, &other.string)
+            }
+        }
+    };
+}
+
+impl_eq! { Name<'a>, str }
+impl_eq! { Name<'a>, &'b str }
+impl_eq! { Name<'a>, String }
+impl_eq! { Name<'a>, std::borrow::Cow<'b, str> }
+
 // /// An error returned for unknown or invalid `ObjectKind`s.
 // #[derive(Debug, Fail, Clone, Copy)]
 // #[fail(display = "unknown object kind")]

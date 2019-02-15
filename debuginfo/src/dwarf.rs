@@ -9,7 +9,7 @@ use lru_cache::LruCache;
 
 use symbolic_common::{derive_failure, AsSelf, Language, Name, SelfCell};
 
-use crate::common::*;
+use crate::base::*;
 
 #[doc(hidden)]
 pub use gimli;
@@ -203,8 +203,8 @@ struct DwarfLineProgram<'a> {
 
 impl<'a> DwarfLineProgram<'a> {
     fn prepare(program: IncompleteLineNumberProgram<'a>) -> Result<Self, DwarfError> {
-        let mut sequences = vec![];
-        let mut sequence_rows: Vec<DwarfRow> = vec![];
+        let mut sequences = Vec::new();
+        let mut sequence_rows = Vec::<DwarfRow>::new();
         let mut prev_address = 0;
         let mut state_machine = program.rows();
 
@@ -223,7 +223,7 @@ impl<'a> DwarfLineProgram<'a> {
                         } else {
                             address
                         },
-                        rows: std::mem::replace(&mut sequence_rows, vec![]),
+                        rows: sequence_rows.drain(..).collect(),
                     });
                 }
                 prev_address = 0;
@@ -255,6 +255,7 @@ impl<'a> DwarfLineProgram<'a> {
                 prev_address = address;
             }
         }
+
         if !sequence_rows.is_empty() {
             // A sequence without an end_sequence row.
             // Let's assume the last row covered 1 byte.
@@ -293,7 +294,7 @@ impl<'a> DwarfLineProgram<'a> {
 
     pub fn get_rows(&self, range: &gimli::Range) -> &[DwarfRow] {
         for seq in &self.sequences {
-            if seq.start <= range.begin || seq.end > range.end {
+            if seq.end <= range.begin || seq.start > range.end {
                 continue;
             }
 
@@ -429,8 +430,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         let mut high_pc = None;
         let mut high_pc_rel = None;
 
-        buf.clear();
-
         let mut attrs = entry.attrs();
         while let Some(attr) = attrs.next()? {
             match attr.name() {
@@ -557,9 +556,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         lines: &mut Vec<LineInfo<'d>>,
     ) -> Result<(), DwarfError> {
         let mut last = None;
-
-        lines.clear();
-
         for range in ranges {
             for row in self.line_program.get_rows(range) {
                 let file = self.line_program.get_fileinfo(row.file_index)?;
@@ -687,7 +683,8 @@ impl<'a> FunctionStack<'a> {
         }
 
         // The top function in the flushed part of the stack was an inline function. Since it is
-        // also being flushed out, we now append it to its parent.
+        // also being flushed out, we now append it to its parent. The topmost function in the stack
+        // is verified to be a non-inline function before inserting.
         if let Some(inlinee) = inlinee {
             self.peek_mut().unwrap().inlinees.push(inlinee);
         }
@@ -764,9 +761,10 @@ impl<'d> DwarfInfo<'d> {
 
                 // Flush all functions out that exceed the current iteration depth. Since we
                 // encountered a function at this level, there will be no more inlinees to the
-                // previous function and it's children.
+                // previous function at the same level or any of it's children.
                 stack.flush(depth, &mut functions);
 
+                range_buf.clear();
                 let (call_line, call_file) = unit.parse_ranges(entry, &mut range_buf)?;
 
                 // Ranges can be empty for two reasons: (1) the function is a no-op and does not
@@ -801,6 +799,9 @@ impl<'d> DwarfInfo<'d> {
                     None => unit.resolve_function_name(entry, &mut abbrevs)?,
                 };
 
+                // Avoid constant allocations by collecting repeatedly into the same buffer and
+                // draining the results out of it. This keeps the original buffer allocated and
+                // allows for a single allocation per call to `resolve_lines`.
                 unit.resolve_lines(&range_buf, &mut line_buf)?;
 
                 let function = Function {
@@ -808,7 +809,7 @@ impl<'d> DwarfInfo<'d> {
                     size: function_size,
                     name: Name::with_language(name.unwrap_or_default(), unit.language),
                     compilation_dir: unit.comp_dir.clone(),
-                    lines: line_buf.clone(),
+                    lines: line_buf.drain(..).collect(),
                     inlinees: Vec::new(),
                     inline,
                 };
