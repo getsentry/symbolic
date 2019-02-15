@@ -1,18 +1,13 @@
-//! Abstraction for reading debug info files.
-
-mod breakpad;
-mod dwarf;
-mod elf;
-mod features;
-mod mach;
+mod base;
 mod object;
-mod symbols;
+mod private;
 
-pub use crate::breakpad::*;
-pub use crate::dwarf::*;
-pub use crate::features::*;
+pub mod breakpad;
+pub mod dwarf;
+pub mod elf;
+pub mod macho;
+pub mod pdb;
+pub mod pe;
+
+pub use crate::base::*;
 pub use crate::object::*;
-pub use crate::symbols::*;
-
-#[deprecated]
-pub use symbolic_common::types::{BreakpadFormat, DebugId, ParseDebugIdError};

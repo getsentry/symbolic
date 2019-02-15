@@ -1,4 +1,4 @@
-use symbolic_common::types::Arch;
+use crate::types::Arch;
 
 const SIGILL: u32 = 4;
 const SIGBUS: u32 = 10;

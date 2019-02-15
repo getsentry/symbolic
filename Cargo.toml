@@ -15,7 +15,8 @@ A library to symbolicate and process stack traces from native applications,
 minidumps, Unreal Engine 4, minified JavaScripts or ProGuard optimized Android apps.
 """
 edition = "2018"
-autoexamples = true
+# TODO(ja): Change this back!
+autoexamples = false
 
 exclude = [
     ".vscode/**/*",
@@ -32,38 +33,37 @@ all-features = true
 default = ["debuginfo"]
 debuginfo = ["symbolic-debuginfo"]
 demangle = ["symbolic-demangle"]
-minidump = ["debuginfo", "symbolic-minidump"]
-proguard = ["symbolic-proguard"]
-sourcemap = ["symbolic-sourcemap"]
-symcache = ["debuginfo", "demangle", "symbolic-symcache"]
-with_serde = ["symbolic-common/with_serde"]
-with_serde_debuginfo = ["symbolic-debuginfo/with_serde"]
-with_serde_minidump = ["symbolic-minidump/with_serde"]
-unreal = ["symbolic-unreal"]
+# minidump = ["debuginfo", "symbolic-minidump"]
+# proguard = ["symbolic-proguard"]
+# sourcemap = ["symbolic-sourcemap"]
+symcache = ["debuginfo", "symbolic-symcache"]
+# symcache = ["debuginfo", "demangle", "symbolic-symcache"]
+# # serde = ["symbolic-common/serde", "symbolic-debuginfo/serde", "symbolic-minidump/serde"]
+# unreal = ["symbolic-unreal"]
 
 [dependencies]
 symbolic-common = { version = "5.8.0", path = "common" }
 symbolic-debuginfo = { version = "5.8.0", path = "debuginfo", optional = true }
 symbolic-demangle = { version = "5.8.0", path = "demangle", optional = true }
-symbolic-minidump = { version = "5.8.0", path = "minidump", optional = true }
-symbolic-proguard = { version = "5.8.0", path = "proguard", optional = true }
-symbolic-sourcemap = { version = "5.8.0", path = "sourcemap", optional = true }
+# symbolic-minidump = { version = "5.8.0", path = "minidump", optional = true }
+# symbolic-proguard = { version = "5.8.0", path = "proguard", optional = true }
+# symbolic-sourcemap = { version = "5.8.0", path = "sourcemap", optional = true }
 symbolic-symcache = { version = "5.8.0", path = "symcache", optional = true }
-symbolic-unreal = { version = "5.8.0", path = "unreal", optional = true }
+# symbolic-unreal = { version = "5.8.0", path = "unreal", optional = true }
 
 [dev-dependencies]
 clap = "2.32.0"
-failure = "0.1.3"
+failure = "0.1.5"
 walkdir = "2.2.7"
 
-[[example]]
-name = "minidump_stackwalk"
-required-features = ["minidump", "symcache"]
+# [[example]]
+# name = "minidump_stackwalk"
+# required-features = ["minidump", "symcache"]
 
-[[example]]
-name = "cache_debug"
-required-features = ["symcache", "minidump"]
+# [[example]]
+# name = "cache_debug"
+# required-features = ["symcache", "minidump"]
 
-[[example]]
-name = "unreal_engine_crash"
-required-features = ["unreal"]
+# [[example]]
+# name = "unreal_engine_crash"
+# required-features = ["unreal"]

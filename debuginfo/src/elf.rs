@@ -1,212 +1,436 @@
 use std::borrow::Cow;
-use std::cmp;
+use std::io::Cursor;
+use std::sync::Arc;
 
+use failure::Fail;
 use flate2::{Decompress, FlushDecompress};
 use goblin::elf::compression_header::{CompressionHeader, ELFCOMPRESS_ZLIB};
-use goblin::{container::Ctx, elf};
-use uuid::Uuid;
+use goblin::{container::Ctx, elf, error::Error as GoblinError, strtab};
 
-use symbolic_common::types::DebugId;
+use symbolic_common::{Arch, DebugId, Uuid};
+
+use crate::base::*;
+use crate::dwarf::{Dwarf, DwarfData, DwarfError, DwarfSection, DwarfSession, Endian};
+use crate::private::Parse;
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;
+const SHN_UNDEF: usize = elf::section_header::SHN_UNDEF as usize;
 
-/// A section inside an ELF binary.
-pub struct ElfSection<'elf, 'data> {
-    pub header: &'elf elf::SectionHeader,
-    pub data: Cow<'data, [u8]>,
+#[derive(Debug, Fail)]
+pub enum ElfError {
+    #[fail(display = "invalid ELF file")]
+    Goblin(#[fail(cause)] GoblinError),
 }
 
-/// Decompresses the given compressed section data, if supported.
-fn decompress_section(elf: &elf::Elf<'_>, data: &[u8]) -> Option<Vec<u8>> {
-    let container = elf.header.container().ok()?;
-    let endianness = elf.header.endianness().ok()?;
-    let context = Ctx::new(container, endianness);
+#[derive(Clone, Debug)]
+pub struct ElfObject<'d> {
+    elf: Arc<elf::Elf<'d>>,
+    data: &'d [u8],
+}
 
-    let compression = CompressionHeader::parse(&data, 0, context).ok()?;
-    if compression.ch_type != ELFCOMPRESS_ZLIB {
-        return None;
+impl<'d> ElfObject<'d> {
+    pub fn test(data: &[u8]) -> bool {
+        match goblin::peek(&mut Cursor::new(data)) {
+            Ok(goblin::Hint::Elf(_)) => true,
+            _ => false,
+        }
     }
 
-    let compressed = &data[CompressionHeader::size(&context)..];
-    let mut decompressed = Vec::with_capacity(compression.ch_size as usize);
-    Decompress::new(true)
-        .decompress_vec(compressed, &mut decompressed, FlushDecompress::Finish)
-        .ok()?;
+    pub fn parse(data: &'d [u8]) -> Result<Self, ElfError> {
+        elf::Elf::parse(data)
+            .map(|elf| ElfObject {
+                elf: Arc::new(elf),
+                data,
+            })
+            .map_err(ElfError::Goblin)
+    }
 
-    Some(decompressed)
-}
+    pub fn file_format(&self) -> FileFormat {
+        FileFormat::Elf
+    }
 
-/// Locates and reads a section in an ELF binary.
-pub fn find_elf_section<'elf, 'data>(
-    elf: &'elf elf::Elf<'_>,
-    data: &'data [u8],
-    sh_type: u32,
-    name: &str,
-) -> Option<ElfSection<'elf, 'data>> {
-    for header in &elf.section_headers {
-        if header.sh_type != sh_type {
-            continue;
+    /// Tries to obtain the object identifier of an ELF object.
+    ///
+    /// As opposed to Mach-O, ELF does not specify a unique ID for object files in
+    /// its header. Compilers and linkers usually add either `SHT_NOTE` sections or
+    /// `PT_NOTE` program header elements for this purpose.
+    ///
+    /// If neither of the above are present, this function will hash the first page
+    /// of the `.text` section (program code) to synthesize a unique ID. This is
+    /// likely not a valid UUID since was generated off a hash value.
+    ///
+    /// If all of the above fails, the identifier will be `None`.
+    pub fn id(&self) -> DebugId {
+        // Search for a GNU build identifier node in the program headers or the
+        // build ID section. If errors occur during this process, fall through
+        // silently to the next method.
+        if let Some(identifier) = self.find_build_id() {
+            return self.compute_debug_id(identifier);
         }
 
-        if let Some(Ok(section_name)) = elf.shdr_strtab.get(header.sh_name) {
-            if section_name != name {
+        // We were not able to locate the build ID, so fall back to hashing the
+        // first page of the ".text" (program code) section. This algorithm XORs
+        // 16-byte chunks directly into a UUID buffer.
+        if let Some((_, data)) = self.find_section(".text") {
+            let mut hash = [0; UUID_SIZE];
+            for i in 0..std::cmp::min(data.len(), PAGE_SIZE) {
+                hash[i % UUID_SIZE] ^= data[i];
+            }
+
+            return self.compute_debug_id(&hash);
+        }
+
+        DebugId::default()
+    }
+
+    pub fn arch(&self) -> Arch {
+        match self.elf.header.e_machine {
+            goblin::elf::header::EM_386 => Arch::X86,
+            goblin::elf::header::EM_X86_64 => Arch::X86_64,
+            goblin::elf::header::EM_AARCH64 => Arch::Arm64,
+            // NOTE: This could actually be any of the other 32bit ARMs. Since we don't need this
+            // information, we use the generic Arch::Arm. By reading CPU_arch and FP_arch attributes
+            // from the SHT_ARM_ATTRIBUTES section it would be possible to distinguish the ARM arch
+            // version and infer hard/soft FP.
+            //
+            // For more information, see:
+            // http://code.metager.de/source/xref/gnu/src/binutils/readelf.c#11282
+            // https://stackoverflow.com/a/20556156/4228225
+            goblin::elf::header::EM_ARM => Arch::Arm,
+            goblin::elf::header::EM_PPC => Arch::Ppc,
+            goblin::elf::header::EM_PPC64 => Arch::Ppc64,
+            _ => Arch::Unknown,
+        }
+    }
+
+    pub fn kind(&self) -> ObjectKind {
+        let kind = match self.elf.header.e_type {
+            goblin::elf::header::ET_NONE => ObjectKind::None,
+            goblin::elf::header::ET_REL => ObjectKind::Relocatable,
+            goblin::elf::header::ET_EXEC => ObjectKind::Executable,
+            goblin::elf::header::ET_DYN => ObjectKind::Library,
+            goblin::elf::header::ET_CORE => ObjectKind::Dump,
+            _ => ObjectKind::Other,
+        };
+
+        // When stripping debug information into a separate file with objcopy,
+        // the eh_type field still reads ET_EXEC. However, the interpreter is
+        // removed. Since an executable without interpreter does not make any
+        // sense, we assume ``Debug`` in this case.
+        if kind == ObjectKind::Executable && self.elf.interpreter.is_none() {
+            ObjectKind::Debug
+        } else {
+            kind
+        }
+    }
+
+    pub fn load_address(&self) -> u64 {
+        // For non-PIC executables (e_type == ET_EXEC), the load address is
+        // the start address of the first PT_LOAD segment.  (ELF requires
+        // the segments to be sorted by load address.)  For PIC executables
+        // and dynamic libraries (e_type == ET_DYN), this address will
+        // normally be zero.
+        for phdr in &self.elf.program_headers {
+            if phdr.p_type == elf::program_header::PT_LOAD && phdr.is_executable() {
+                return phdr.p_vaddr;
+            }
+        }
+
+        0
+    }
+
+    pub fn has_symbols(&self) -> bool {
+        self.elf.syms.len() > 0
+    }
+
+    pub fn symbols(&self) -> ElfSymbolIterator<'d, '_> {
+        ElfSymbolIterator {
+            symbols: self.elf.syms.iter(),
+            strtab: &self.elf.strtab,
+            sections: &self.elf.section_headers,
+            load_addr: self.load_address(),
+        }
+    }
+
+    pub fn symbol_map(&self) -> SymbolMap<'d> {
+        self.symbols().collect()
+    }
+
+    /// Decompresses the given compressed section data, if supported.
+    fn decompress_section(&self, section_data: &[u8]) -> Option<Vec<u8>> {
+        let container = self.elf.header.container().ok()?;
+        let endianness = self.elf.header.endianness().ok()?;
+        let context = Ctx::new(container, endianness);
+
+        let compression = CompressionHeader::parse(&section_data, 0, context).ok()?;
+        if compression.ch_type != ELFCOMPRESS_ZLIB {
+            return None;
+        }
+
+        let compressed = &section_data[CompressionHeader::size(&context)..];
+        let mut decompressed = Vec::with_capacity(compression.ch_size as usize);
+        Decompress::new(true)
+            .decompress_vec(compressed, &mut decompressed, FlushDecompress::Finish)
+            .ok()?;
+
+        Some(decompressed)
+    }
+
+    /// Locates and reads a section in an ELF binary.
+    fn find_section(&self, name: &str) -> Option<(&elf::SectionHeader, &'d [u8])> {
+        for header in &self.elf.section_headers {
+            if header.sh_type != elf::section_header::SHT_PROGBITS {
                 continue;
             }
 
-            let offset = header.sh_offset as usize;
-            if offset == 0 {
-                // We're defensive here. On darwin, dsymutil leaves phantom section headers while
-                // stripping their data from the file by setting their offset to 0. We know that no
-                // section can start at an absolute file offset of zero, so we can safely skip them
-                // in case similar things happen on linux.
-                return None;
+            if let Some(Ok(section_name)) = self.elf.shdr_strtab.get(header.sh_name) {
+                if section_name != name {
+                    continue;
+                }
+
+                let offset = header.sh_offset as usize;
+                if offset == 0 {
+                    // We're defensive here. On darwin, dsymutil leaves phantom section headers while
+                    // stripping their data from the file by setting their offset to 0. We know that no
+                    // section can start at an absolute file offset of zero, so we can safely skip them
+                    // in case similar things happen on linux.
+                    return None;
+                }
+
+                let size = header.sh_size as usize;
+                let data = &self.data[offset..][..size];
+                return Some((header, data));
+            }
+        }
+
+        None
+    }
+
+    /// Searches for a GNU build identifier node in an ELF file.
+    ///
+    /// Depending on the compiler and linker, the build ID can be declared in a
+    /// PT_NOTE program header entry, the ".note.gnu.build-id" section, or even
+    /// both.
+    fn find_build_id(&self) -> Option<&'d [u8]> {
+        // First, search the note program headers (PT_NOTE) for a NT_GNU_BUILD_ID.
+        // We swallow all errors during this process and simply fall back to the
+        // next method below.
+        if let Some(mut notes) = self.elf.iter_note_headers(self.data) {
+            while let Some(Ok(note)) = notes.next() {
+                if note.n_type == elf::note::NT_GNU_BUILD_ID {
+                    return Some(note.desc);
+                }
+            }
+        }
+
+        // Some old linkers or compilers might not output the above PT_NOTE headers.
+        // In that case, search for a note section (SHT_NOTE). We are looking for a
+        // note within the ".note.gnu.build-id" section. Again, swallow all errors
+        // and fall through if reading the section is not possible.
+        if let Some(mut notes) = self
+            .elf
+            .iter_note_sections(self.data, Some(".note.gnu.build-id"))
+        {
+            while let Some(Ok(note)) = notes.next() {
+                if note.n_type == elf::note::NT_GNU_BUILD_ID {
+                    return Some(note.desc);
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Converts an ELF object identifier into a `DebugId`.
+    ///
+    /// The identifier data is first truncated or extended to match 16 byte size of
+    /// Uuids. If the data is declared in little endian, the first three Uuid fields
+    /// are flipped to match the big endian expected by the breakpad processor.
+    ///
+    /// The `DebugId::appendix` field is always `0` for ELF.
+    fn compute_debug_id(&self, identifier: &[u8]) -> DebugId {
+        // Make sure that we have exactly UUID_SIZE bytes available
+        let mut data = [0 as u8; UUID_SIZE];
+        let len = std::cmp::min(identifier.len(), UUID_SIZE);
+        data[0..len].copy_from_slice(&identifier[0..len]);
+
+        if self.elf.little_endian {
+            // The file ELF file targets a little endian architecture. Convert to
+            // network byte order (big endian) to match the Breakpad processor's
+            // expectations. For big endian object files, this is not needed.
+            data[0..4].reverse(); // uuid field 1
+            data[4..6].reverse(); // uuid field 2
+            data[6..8].reverse(); // uuid field 3
+        }
+
+        Uuid::from_slice(&data)
+            .map(DebugId::from_uuid)
+            .unwrap_or_default()
+    }
+}
+
+fn elf_section_name(section: DwarfSection) -> &'static str {
+    match section {
+        DwarfSection::EhFrame => ".eh_frame",
+        DwarfSection::DebugFrame => ".debug_frame",
+        DwarfSection::DebugAbbrev => ".debug_abbrev",
+        DwarfSection::DebugAranges => ".debug_aranges",
+        DwarfSection::DebugLine => ".debug_line",
+        DwarfSection::DebugLoc => ".debug_loc",
+        DwarfSection::DebugPubNames => ".debug_pubnames",
+        DwarfSection::DebugRanges => ".debug_ranges",
+        DwarfSection::DebugRngLists => ".debug_rnglists",
+        DwarfSection::DebugStr => ".debug_str",
+        DwarfSection::DebugInfo => ".debug_info",
+        DwarfSection::DebugTypes => ".debug_types",
+    }
+}
+
+impl<'d> Parse<'d> for ElfObject<'d> {
+    type Error = ElfError;
+
+    fn test(data: &[u8]) -> bool {
+        Self::test(data)
+    }
+
+    fn parse(data: &'d [u8]) -> Result<Self, ElfError> {
+        Self::parse(data)
+    }
+}
+
+impl ObjectLike for ElfObject<'_> {
+    fn file_format(&self) -> FileFormat {
+        self.file_format()
+    }
+
+    fn id(&self) -> DebugId {
+        self.id()
+    }
+
+    fn arch(&self) -> Arch {
+        self.arch()
+    }
+
+    fn kind(&self) -> ObjectKind {
+        self.kind()
+    }
+
+    fn load_address(&self) -> u64 {
+        self.load_address()
+    }
+
+    fn has_symbols(&self) -> bool {
+        self.has_symbols()
+    }
+
+    fn symbol_map(&self) -> SymbolMap<'_> {
+        self.symbol_map()
+    }
+}
+
+impl<'d> Dwarf<'d> for ElfObject<'d> {
+    fn endianity(&self) -> Endian {
+        if self.elf.little_endian {
+            Endian::Little
+        } else {
+            Endian::Big
+        }
+    }
+
+    fn raw_data(&self, section: DwarfSection) -> Option<&'d [u8]> {
+        let name = elf_section_name(section);
+        self.find_section(name).map(|(_, data)| data)
+    }
+
+    fn section_data(&self, section: DwarfSection) -> Option<Cow<'d, [u8]>> {
+        let name = elf_section_name(section);
+        let (header, data) = self.find_section(name)?;
+
+        // Check for zlib compression of the section data. Once we've arrived here, we can
+        // return None on error since each section will only occur once.
+        if header.sh_flags & u64::from(elf::section_header::SHF_COMPRESSED) != 0 {
+            Some(Cow::Owned(self.decompress_section(data)?))
+        } else {
+            Some(Cow::Borrowed(data))
+        }
+    }
+}
+
+impl<'d> Debugging for ElfObject<'d> {
+    type Error = DwarfError;
+    type Session = DwarfSession<'d>;
+
+    fn has_debug_info(&self) -> bool {
+        self.has_section(DwarfSection::DebugInfo)
+    }
+
+    fn debug_session(&self) -> Result<Self::Session, Self::Error> {
+        let data = DwarfData::from_dwarf(self)?;
+        let symbols = self.symbol_map();
+        DwarfSession::parse(data, symbols, self.load_address())
+    }
+}
+
+pub struct ElfSymbolIterator<'d, 'o> {
+    symbols: elf::sym::SymIterator<'d>,
+    strtab: &'o strtab::Strtab<'d>,
+    sections: &'o [elf::SectionHeader],
+    load_addr: u64,
+}
+
+impl<'d, 'o> Iterator for ElfSymbolIterator<'d, 'o> {
+    type Item = Symbol<'d>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(symbol) = self.symbols.next() {
+            // Only check for function symbols.
+            if symbol.st_type() != elf::sym::STT_FUNC {
+                continue;
             }
 
-            let size = header.sh_size as usize;
-            let mut section_data = Cow::Borrowed(&data[offset..][..size]);
-
-            // Check for zlib compression of the section data. Once we've arrived here, we can
-            // return None on error since each section will only occur once.
-            if header.sh_flags & u64::from(elf::section_header::SHF_COMPRESSED) != 0 {
-                section_data = Cow::Owned(decompress_section(elf, &section_data)?);
+            // Sanity check of the symbol address. Since we only intend to iterate over function
+            // symbols, they need to be mapped after the image's load address.
+            if symbol.st_value < self.load_addr {
+                continue;
             }
 
-            return Some(ElfSection {
-                header,
-                data: section_data,
+            let section = match symbol.st_shndx {
+                self::SHN_UNDEF => None,
+                index => self.sections.get(index),
+            };
+
+            // We are only interested in symbols pointing into a program code section
+            // (`SHT_PROGBITS`). Since the program might load R/W or R/O data sections via
+            // SHT_PROGBITS, also check for the executable flag.
+            let is_valid_section = section.map_or(false, |header| {
+                header.sh_type == elf::section_header::SHT_PROGBITS && header.is_executable()
+            });
+
+            if !is_valid_section {
+                continue;
+            }
+
+            let mut name = self
+                .strtab
+                .get(symbol.st_name)
+                .and_then(Result::ok)
+                .map(Cow::Borrowed);
+
+            // Trim leading underscores from mangled C++ names.
+            if let Some(Cow::Borrowed(ref mut name)) = name {
+                if name.starts_with('_') {
+                    *name = &name[1..];
+                }
+            }
+
+            return Some(Symbol {
+                name,
+                address: symbol.st_value - self.load_addr,
+                size: symbol.st_size,
             });
         }
+
+        None
     }
-
-    None
-}
-
-/// Checks whether an ELF binary contains a section.
-///
-/// This is useful to determine whether the binary contains certain information
-/// without loading its section data.
-pub fn has_elf_section(elf: &elf::Elf<'_>, sh_type: u32, name: &str) -> bool {
-    for header in &elf.section_headers {
-        if header.sh_type != sh_type {
-            continue;
-        }
-
-        if let Some(Ok(section_name)) = elf.shdr_strtab.get(header.sh_name) {
-            if section_name != name {
-                continue;
-            }
-
-            return header.sh_offset != 0;
-        }
-    }
-
-    false
-}
-
-/// Searches for a GNU build identifier node in an ELF file.
-///
-/// Depending on the compiler and linker, the build ID can be declared in a
-/// PT_NOTE program header entry, the ".note.gnu.build-id" section, or even
-/// both.
-fn find_build_id<'data>(elf: &elf::Elf<'data>, data: &'data [u8]) -> Option<&'data [u8]> {
-    // First, search the note program headers (PT_NOTE) for a NT_GNU_BUILD_ID.
-    // We swallow all errors during this process and simply fall back to the
-    // next method below.
-    if let Some(mut notes) = elf.iter_note_headers(data) {
-        while let Some(Ok(note)) = notes.next() {
-            if note.n_type == elf::note::NT_GNU_BUILD_ID {
-                return Some(note.desc);
-            }
-        }
-    }
-
-    // Some old linkers or compilers might not output the above PT_NOTE headers.
-    // In that case, search for a note section (SHT_NOTE). We are looking for a
-    // note within the ".note.gnu.build-id" section. Again, swallow all errors
-    // and fall through if reading the section is not possible.
-    if let Some(mut notes) = elf.iter_note_sections(data, Some(".note.gnu.build-id")) {
-        while let Some(Ok(note)) = notes.next() {
-            if note.n_type == elf::note::NT_GNU_BUILD_ID {
-                return Some(note.desc);
-            }
-        }
-    }
-
-    None
-}
-
-/// Converts an ELF object identifier into a `DebugId`.
-///
-/// The identifier data is first truncated or extended to match 16 byte size of
-/// Uuids. If the data is declared in little endian, the first three Uuid fields
-/// are flipped to match the big endian expected by the breakpad processor.
-///
-/// The `DebugId::appendix` field is always `0` for ELF.
-fn create_elf_id(identifier: &[u8], little_endian: bool) -> Option<DebugId> {
-    // Make sure that we have exactly UUID_SIZE bytes available
-    let mut data = [0 as u8; UUID_SIZE];
-    let len = cmp::min(identifier.len(), UUID_SIZE);
-    data[0..len].copy_from_slice(&identifier[0..len]);
-
-    if little_endian {
-        // The file ELF file targets a little endian architecture. Convert to
-        // network byte order (big endian) to match the Breakpad processor's
-        // expectations. For big endian object files, this is not needed.
-        data[0..4].reverse(); // uuid field 1
-        data[4..6].reverse(); // uuid field 2
-        data[6..8].reverse(); // uuid field 3
-    }
-
-    Uuid::from_slice(&data).ok().map(DebugId::from_uuid)
-}
-
-/// Tries to obtain the object identifier of an ELF object.
-///
-/// As opposed to Mach-O, ELF does not specify a unique ID for object files in
-/// its header. Compilers and linkers usually add either `SHT_NOTE` sections or
-/// `PT_NOTE` program header elements for this purpose.
-///
-/// If neither of the above are present, this function will hash the first page
-/// of the `.text` section (program code) to synthesize a unique ID. This is
-/// likely not a valid UUID since was generated off a hash value.
-///
-/// If all of the above fails, the identifier will be `None`.
-pub fn get_elf_id(elf: &elf::Elf<'_>, data: &[u8]) -> Option<DebugId> {
-    // Search for a GNU build identifier node in the program headers or the
-    // build ID section. If errors occur during this process, fall through
-    // silently to the next method.
-    if let Some(identifier) = find_build_id(elf, data) {
-        return create_elf_id(identifier, elf.little_endian);
-    }
-
-    // We were not able to locate the build ID, so fall back to hashing the
-    // first page of the ".text" (program code) section. This algorithm XORs
-    // 16-byte chunks directly into a UUID buffer.
-    if let Some(section) = find_elf_section(elf, data, elf::section_header::SHT_PROGBITS, ".text") {
-        let mut hash = [0; UUID_SIZE];
-        for i in 0..cmp::min(section.data.len(), PAGE_SIZE) {
-            hash[i % UUID_SIZE] ^= section.data[i];
-        }
-
-        return create_elf_id(&hash, elf.little_endian);
-    }
-
-    None
-}
-
-/// Gets the virtual memory address of this object's .text (code) section.
-pub fn get_elf_vmaddr(elf: &elf::Elf<'_>) -> u64 {
-    // For non-PIC executables (e_type == ET_EXEC), the load address is
-    // the start address of the first PT_LOAD segment.  (ELF requires
-    // the segments to be sorted by load address.)  For PIC executables
-    // and dynamic libraries (e_type == ET_DYN), this address will
-    // normally be zero.
-    for phdr in &elf.program_headers {
-        if phdr.p_type == elf::program_header::PT_LOAD && phdr.is_executable() {
-            return phdr.p_vaddr;
-        }
-    }
-
-    0
 }

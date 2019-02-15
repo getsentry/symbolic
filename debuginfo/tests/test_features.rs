@@ -1,3 +1,6 @@
+// TODO(ja): Add tests again
+#![cfg(feature = "disabled")]
+
 use symbolic_common::byteview::ByteView;
 use symbolic_debuginfo::{DebugFeatures, FatObject, ObjectFeature};
 use symbolic_testutils::fixture_path;

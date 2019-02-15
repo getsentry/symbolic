@@ -1,26 +1,9 @@
-use std::borrow::Cow;
 use std::fmt;
 
-use failure::{Backtrace, Context, Fail};
-use symbolic_common::shared_gimli as gimli;
-use symbolic_debuginfo::ObjectError;
+use failure::Fail;
 
-/// An internal error thrown during symcache conversion.
-///
-/// This error is used as cause for `BadDebugFile` errors to add more information to the generic
-/// error kind. It should not be exposed to the user.
-#[derive(Debug, Fail, Clone)]
-#[fail(display = "{}", _0)]
-pub(crate) struct ConversionError(pub Cow<'static, str>);
-
-impl ConversionError {
-    pub fn new<C>(message: C) -> Self
-    where
-        C: Into<Cow<'static, str>>,
-    {
-        ConversionError(message.into())
-    }
-}
+use symbolic_common::derive_failure;
+use symbolic_debuginfo::{dwarf::gimli, ObjectError};
 
 #[doc(hidden)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -47,7 +30,7 @@ impl fmt::Display for ValueKind {
 }
 
 /// Variants of `SymCacheError`.
-#[derive(Debug, Fail, Copy, Clone, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 pub enum SymCacheErrorKind {
     /// Invalid magic bytes in the symcache header.
     #[fail(display = "bad symcache magic")]
@@ -98,48 +81,8 @@ pub enum SymCacheErrorKind {
     WriteFailed,
 }
 
-/// An error returned when handling symcaches.
-#[derive(Debug)]
-pub struct SymCacheError {
-    inner: Context<SymCacheErrorKind>,
-}
-
-impl Fail for SymCacheError {
-    fn cause(&self) -> Option<&dyn Fail> {
-        self.inner.cause()
-    }
-
-    fn backtrace(&self) -> Option<&Backtrace> {
-        self.inner.backtrace()
-    }
-}
-
-impl fmt::Display for SymCacheError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.inner, f)
-    }
-}
-
-impl SymCacheError {
-    /// Returns the error kind of this error.
-    pub fn kind(&self) -> SymCacheErrorKind {
-        *self.inner.get_context()
-    }
-}
-
-impl From<SymCacheErrorKind> for SymCacheError {
-    fn from(kind: SymCacheErrorKind) -> SymCacheError {
-        SymCacheError {
-            inner: Context::new(kind),
-        }
-    }
-}
-
-impl From<Context<SymCacheErrorKind>> for SymCacheError {
-    fn from(inner: Context<SymCacheErrorKind>) -> SymCacheError {
-        SymCacheError { inner }
-    }
-}
+/// An error returned when handling `SymCaches`.
+derive_failure!(SymCacheError, SymCacheErrorKind);
 
 impl From<ObjectError> for SymCacheError {
     fn from(error: ObjectError) -> SymCacheError {
@@ -149,12 +92,6 @@ impl From<ObjectError> for SymCacheError {
 
 impl From<gimli::Error> for SymCacheError {
     fn from(error: gimli::Error) -> SymCacheError {
-        error.context(SymCacheErrorKind::BadDebugFile).into()
-    }
-}
-
-impl From<ConversionError> for SymCacheError {
-    fn from(error: ConversionError) -> SymCacheError {
         error.context(SymCacheErrorKind::BadDebugFile).into()
     }
 }

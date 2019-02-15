@@ -5,7 +5,7 @@
 #[macro_use]
 mod utils;
 
-use symbolic_common::types::{Language, Name};
+use symbolic_common::{Language, Name};
 use symbolic_demangle::Demangle;
 
 #[test]

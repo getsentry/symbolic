@@ -14,4 +14,4 @@ Helper crate for testing symbolic.
 edition = "2018"
 
 [dependencies]
-difference = "2.0.0"
+difference = "1.0.0"

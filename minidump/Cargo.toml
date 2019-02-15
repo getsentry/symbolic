@@ -21,7 +21,7 @@ lazy_static = "1.2.0"
 regex = "1.1.0"
 serde = { version = "1.0.80", optional = true }
 serde_plain = { version = "0.3.0", optional = true }
-symbolic-common = { version = "5.8.0", path = "../common", features = ["with_dwarf"] }
+symbolic-common = { version = "5.8.0", path = "../common" }
 symbolic-debuginfo = { version = "5.8.0", path = "../debuginfo" }
 uuid = "0.7.1"
 
@@ -33,4 +33,4 @@ symbolic-testutils = { version = "5.8.0", path = "../testutils" }
 
 [features]
 default = []
-with_serde = ["serde", "serde_plain"]
+# with_serde = ["serde", "serde_plain"]

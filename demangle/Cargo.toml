@@ -18,8 +18,8 @@ edition = "2018"
 [dependencies]
 cpp_demangle = "0.2.12"
 msvc-demangler = "0.7.0"
-rustc-demangle = "0.1.9"
+rustc-demangle = "0.1.13"
 symbolic-common = { version = "5.8.0", path = "../common" }
 
 [build-dependencies]
-cc = "1.0.25"
+cc = "1.0.29"

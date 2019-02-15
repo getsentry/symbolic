@@ -18,4 +18,4 @@ edition = "2018"
 [dependencies]
 failure = "0.1.3"
 sourcemap = "2.2.1"
-symbolic-common = { version = "5.8.0", path = "../common", features = ["with_sourcemaps"] }
+symbolic-common = { version = "5.8.0", path = "../common" }

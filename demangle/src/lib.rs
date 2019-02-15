@@ -15,7 +15,7 @@
 //! ## Examples
 //!
 //! ```rust
-//! use symbolic_common::types::{Language, Name};
+//! use symbolic_common::{Language, Name};
 //! use symbolic_demangle::Demangle;
 //!
 //! # fn main() {
@@ -24,13 +24,14 @@
 //! assert_eq!(&name.try_demangle(Default::default()), "std::io::Read::read_to_end");
 //! # }
 //! ```
+use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 
 use cpp_demangle::{DemangleOptions as CppOptions, Symbol as CppSymbol};
 use msvc_demangler::DemangleFlags as MsvcFlags;
 
-use symbolic_common::types::{Language, Name};
+use symbolic_common::{Language, Name};
 
 extern "C" {
     fn symbolic_demangle_swift(
@@ -187,56 +188,55 @@ pub trait Demangle {
     /// In case the symbol is not mangled or not one of the supported languages
     /// the return value will be `None`. If the language of the symbol was
     /// specified explicitly, this is returned instead.
-    fn detect_language(&self) -> Option<Language>;
+    fn detect_language(&self) -> Language;
 
     /// Demangles the name with the given options.
     fn demangle(&self, opts: DemangleOptions) -> Option<String>;
 
     /// Tries to demangle the name and falls back to the original name.
-    fn try_demangle(&self, opts: DemangleOptions) -> String;
+    fn try_demangle(&self, opts: DemangleOptions) -> Cow<'_, str>;
 }
 
 impl<'a> Demangle for Name<'a> {
-    fn detect_language(&self) -> Option<Language> {
-        if let Some(lang) = self.language() {
-            return Some(lang);
+    fn detect_language(&self) -> Language {
+        if self.language() != Language::Unknown {
+            return self.language();
         }
 
         if is_maybe_objc(self.as_str()) {
-            return Some(Language::ObjC);
+            return Language::ObjC;
         }
 
         if rustc_demangle::try_demangle(self.as_str()).is_ok() {
-            return Some(Language::Rust);
+            return Language::Rust;
         }
 
         if is_maybe_cpp(self.as_str()) || is_maybe_msvc(self.as_str()) {
-            return Some(Language::Cpp);
+            return Language::Cpp;
         }
 
         if is_maybe_switf(self.as_str()) {
-            return Some(Language::Swift);
+            return Language::Swift;
         }
 
-        None
+        Language::Unknown
     }
 
     fn demangle(&self, opts: DemangleOptions) -> Option<String> {
-        use crate::Language::*;
         match self.detect_language() {
-            Some(ObjC) => try_demangle_objc(self.as_str(), opts),
-            Some(ObjCpp) => try_demangle_objcpp(self.as_str(), opts),
-            Some(Rust) => try_demangle_rust(self.as_str(), opts),
-            Some(Cpp) => try_demangle_cpp(self.as_str(), opts),
-            Some(Swift) => try_demangle_swift(self.as_str(), opts),
+            Language::ObjC => try_demangle_objc(self.as_str(), opts),
+            Language::ObjCpp => try_demangle_objcpp(self.as_str(), opts),
+            Language::Rust => try_demangle_rust(self.as_str(), opts),
+            Language::Cpp => try_demangle_cpp(self.as_str(), opts),
+            Language::Swift => try_demangle_swift(self.as_str(), opts),
             _ => None,
         }
     }
 
-    fn try_demangle(&self, opts: DemangleOptions) -> String {
+    fn try_demangle(&self, opts: DemangleOptions) -> Cow<'_, str> {
         match self.demangle(opts) {
-            Some(demangled) => demangled,
-            None => self.as_str().into(),
+            Some(demangled) => Cow::Owned(demangled),
+            None => Cow::Borrowed(self.as_str()),
         }
     }
 }
@@ -250,6 +250,9 @@ impl<'a> Demangle for Name<'a> {
 /// let rv = demangle("_ZN3foo3barE");
 /// assert_eq!(&rv, "foo::bar");
 /// ```
-pub fn demangle(ident: &str) -> String {
-    Name::new(ident).try_demangle(Default::default())
+pub fn demangle(ident: &str) -> Cow<'_, str> {
+    match Name::new(ident).demangle(Default::default()) {
+        Some(demangled) => Cow::Owned(demangled),
+        None => Cow::Borrowed(ident),
+    }
 }
