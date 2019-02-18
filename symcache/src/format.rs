@@ -42,7 +42,9 @@ pub fn as_slice<T>(data: &T) -> &[u8] {
 
 #[repr(C, packed)]
 pub struct Seg<T, L = u32> {
+    /// Absolute file offset of this segment.
     pub offset: u32,
+    /// Number of items in this segment.
     pub len: L,
     _ty: PhantomData<T>,
 }
@@ -142,26 +144,27 @@ impl<T, L: fmt::Debug + Copy> fmt::Debug for Seg<T, L> {
 #[repr(C, packed)]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Default, Copy, Clone, Debug)]
 pub struct FileRecord {
+    /// Segment offset of the file name.
     pub filename: Seg<u8, u8>,
+    /// Segment offset of the base directory.
     pub base_dir: Seg<u8, u8>,
 }
 
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone, Debug)]
 pub struct FuncRecord {
-    /// low bits of the address.
+    /// Low bits of the address.
     pub addr_low: u32,
-    /// high bits of the address
+    /// High bits of the address.
     pub addr_high: u16,
-    /// the length of the function.
+    /// The length of the function.
     pub len: u16,
-    /// The line record of this function.  If it fully overlaps
-    /// with an inline the record could be ~0
+    /// The line record of this function.  If it fully overlaps with an inline the record could be
+    /// `~0`.
     pub line_records: Seg<LineRecord, u16>,
-    /// The comp dir of the file record
+    /// The comp dir of the file record.
     pub comp_dir: Seg<u8, u8>,
-    /// The ID offset of the parent funciton.  Will be ~0 if the function has
-    /// no parent.
+    /// The ID offset of the parent funciton.  Will be ~0 if the function has no parent.
     pub parent_offset: u16,
     /// The low bits of the ID of the symbol of this function or ~0 if no symbol.
     pub symbol_id_low: u16,
@@ -200,45 +203,20 @@ impl FuncRecord {
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone, Debug)]
 pub struct LineRecord {
-    /// offset to function item or line record
+    /// Offset to function item or line record.
     pub addr_off: u8,
-    /// absolutely indexed file
+    /// Index of the file record.
     pub file_id: u16,
-    /// the line of the line record
+    /// The line of the line record.
     pub line: u16,
 }
-
-// #[repr(u8)]
-// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
-// pub enum DataSource {
-//     Unknown,
-//     Dwarf,
-//     SymbolTable,
-//     BreakpadSym,
-//     #[doc(hidden)]
-//     __Max,
-// }
-
-// impl DataSource {
-//     pub fn from_u8(value: u8) -> Self {
-//         if value >= (DataSource::__Max as u8) {
-//             DataSource::Unknown
-//         } else {
-//             unsafe { std::mem::transmute(value) }
-//         }
-//     }
-// }
-
-// impl Default for DataSource {
-//     fn default() -> DataSource {
-//         DataSource::Unknown
-//     }
-// }
 
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone, Debug)]
 pub struct Preamble {
+    /// Magic bytes, see `SYMCACHE_MAGIC`.
     pub magic: [u8; 4],
+    /// Version of the SymCache file format.
     pub version: u32,
 }
 

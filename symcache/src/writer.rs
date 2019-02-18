@@ -183,8 +183,12 @@ where
 
         let symbol_id = self.insert_symbol(name)?;
 
+        // NB: SymbolMap usually fills in sizes of consecutive symbols already. This is not done if
+        // there is only one symbol and for the last symbol. `FuncRecord::addr_in_range` always
+        // requires some address range. Since we can't possibly know the actual size, just assume
+        // that the symbol is VERY large.
         let size = match symbol.size {
-            0 => !0, // TODO(ja): Check if this is needed
+            0 => !0,
             s => s,
         };
 
