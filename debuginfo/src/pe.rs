@@ -108,7 +108,7 @@ impl<'d> PeObject<'d> {
     }
 }
 
-impl<'slf: 'd, 'd> AsSelf<'slf> for PeObject<'d> {
+impl<'d, 'slf: 'd> AsSelf<'slf> for PeObject<'d> {
     type Ref = PeObject<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
@@ -202,7 +202,7 @@ impl DebugSession for PeDebugSession<'_> {
     }
 }
 
-impl<'slf: 'd, 'd> AsSelf<'slf> for PeDebugSession<'d> {
+impl<'d, 'slf: 'd> AsSelf<'slf> for PeDebugSession<'d> {
     type Ref = PeDebugSession<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {

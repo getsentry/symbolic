@@ -197,7 +197,7 @@ impl<'d> Object<'d> {
     }
 }
 
-impl<'slf: 'd, 'd> AsSelf<'slf> for Object<'d> {
+impl<'d, 'slf: 'd> AsSelf<'slf> for Object<'d> {
     type Ref = Object<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
@@ -363,7 +363,7 @@ impl<'d> Archive<'d> {
     }
 }
 
-impl<'slf: 'd, 'd> AsSelf<'slf> for Archive<'d> {
+impl<'d, 'slf: 'd> AsSelf<'slf> for Archive<'d> {
     type Ref = Archive<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {

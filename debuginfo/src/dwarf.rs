@@ -896,7 +896,7 @@ impl<'d> DwarfInfo<'d> {
     }
 }
 
-impl<'slf: 'd, 'd> AsSelf<'slf> for DwarfInfo<'d> {
+impl<'d, 'slf: 'd> AsSelf<'slf> for DwarfInfo<'d> {
     type Ref = DwarfInfo<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
@@ -928,7 +928,7 @@ impl<'d> DwarfDebugSession<'d> {
     }
 }
 
-impl<'slf: 'd, 'd> AsSelf<'slf> for DwarfDebugSession<'d> {
+impl<'d, 'slf: 'd> AsSelf<'slf> for DwarfDebugSession<'d> {
     type Ref = DwarfDebugSession<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {

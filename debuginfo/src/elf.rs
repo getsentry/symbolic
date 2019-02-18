@@ -301,7 +301,7 @@ fn elf_section_name(section: DwarfSection) -> &'static str {
     }
 }
 
-impl<'slf: 'd, 'd> AsSelf<'slf> for ElfObject<'d> {
+impl<'d, 'slf: 'd> AsSelf<'slf> for ElfObject<'d> {
     type Ref = ElfObject<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {

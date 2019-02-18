@@ -117,7 +117,7 @@ impl<'d> PdbObject<'d> {
     }
 }
 
-impl<'slf: 'd, 'd> AsSelf<'slf> for PdbObject<'d> {
+impl<'d, 'slf: 'd> AsSelf<'slf> for PdbObject<'d> {
     type Ref = PdbObject<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
@@ -239,7 +239,7 @@ impl DebugSession for PdbDebugSession<'_> {
     }
 }
 
-impl<'slf: 'd, 'd> AsSelf<'slf> for PdbDebugSession<'d> {
+impl<'d, 'slf: 'd> AsSelf<'slf> for PdbDebugSession<'d> {
     type Ref = PdbDebugSession<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
