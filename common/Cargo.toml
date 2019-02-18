@@ -21,7 +21,9 @@ debugid = { git = "https://github.com/getsentry/rust-debugid" }
 failure = "0.1.5"
 memmap = "0.7.0"
 stable_deref_trait = "1.1.1"
+_serde = { package = "serde", version = "1.0.88", optional = true }
 uuid = "0.7.2"
 
 [features]
 default = []
+serde = ["_serde", "debugid/serde"]

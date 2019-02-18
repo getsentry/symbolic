@@ -27,6 +27,7 @@ lru-cache = "0.1.1"
 pdb = { git = "https://github.com/willglynn/pdb" }
 pest = "2.1.0"
 pest_derive = "2.1.0"
+serde = { version = "1.0.88", optional = true }
 smallvec = "0.6.9"
 symbolic-common = { version = "5.8.2", path = "../common" }
 

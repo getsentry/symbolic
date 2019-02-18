@@ -157,48 +157,6 @@ impl FromStr for FileFormat {
     }
 }
 
-// /// An error returned for unknown or invalid `DebugKind`s.
-// #[derive(Debug, Fail, Clone, Copy)]
-// #[fail(display = "unknown debug kind")]
-// pub struct UnknownDebugKindError;
-
-// /// Represents the kind of debug information inside an object.
-// #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-// pub enum DebugKind {
-//     Unknown,
-//     Dwarf,
-//     Breakpad,
-// }
-
-// impl DebugKind {
-//     /// Returns the name of the object kind.
-//     pub fn name(self) -> &'static str {
-//         match self {
-//             DebugKind::Unknown => "unknown",
-//             DebugKind::Dwarf => "dwarf",
-//             DebugKind::Breakpad => "breakpad",
-//         }
-//     }
-// }
-
-// impl fmt::Display for DebugKind {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "{}", self.name())
-//     }
-// }
-
-// impl FromStr for DebugKind {
-//     type Err = UnknownDebugKindError;
-
-//     fn from_str(string: &str) -> Result<DebugKind, UnknownDebugKindError> {
-//         Ok(match string {
-//             "dwarf" => DebugKind::Dwarf,
-//             "breakpad" => DebugKind::Breakpad,
-//             _ => return Err(UnknownDebugKindError),
-//         })
-//     }
-// }
-
 #[derive(Clone, Default, Eq, PartialEq)]
 pub struct Symbol<'data> {
     pub name: Option<Cow<'data, str>>,
@@ -373,4 +331,39 @@ pub trait ObjectLike {
     fn debug_session(&self) -> Result<Self::Session, Self::Error>;
 
     fn has_unwind_info(&self) -> bool;
+}
+
+#[cfg(feature = "serde")]
+mod derive_serde {
+    /// Helper macro to implement string based serialization and deserialization.
+    ///
+    /// If a type implements `FromStr` and `Display` then this automatically
+    /// implements a serializer/deserializer for that type that dispatches
+    /// appropriately.
+    macro_rules! impl_str_serde {
+        ($type:ty) => {
+            impl ::serde::ser::Serialize for $type {
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: ::serde::ser::Serializer,
+                {
+                    serializer.serialize_str(self.name())
+                }
+            }
+
+            impl<'de> ::serde::de::Deserialize<'de> for $type {
+                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                where
+                    D: ::serde::de::Deserializer<'de>,
+                {
+                    <::std::borrow::Cow<str>>::deserialize(deserializer)?
+                        .parse()
+                        .map_err(::serde::de::Error::custom)
+                }
+            }
+        };
+    }
+
+    impl_str_serde!(super::ObjectKind);
+    impl_str_serde!(super::FileFormat);
 }

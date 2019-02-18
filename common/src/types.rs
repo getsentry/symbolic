@@ -490,248 +490,37 @@ impl_eq! { Name<'a>, &'b str }
 impl_eq! { Name<'a>, String }
 impl_eq! { Name<'a>, std::borrow::Cow<'b, str> }
 
-// /// An error returned for unknown or invalid `ObjectKind`s.
-// #[derive(Debug, Fail, Clone, Copy)]
-// #[fail(display = "unknown object kind")]
-// pub struct UnknownObjectKindError;
+#[cfg(feature = "serde")]
+mod derive_serde {
+    /// Helper macro to implement string based serialization and deserialization.
+    ///
+    /// If a type implements `FromStr` and `Display` then this automatically
+    /// implements a serializer/deserializer for that type that dispatches
+    /// appropriately.
+    macro_rules! impl_str_serde {
+        ($type:ty) => {
+            impl ::_serde::ser::Serialize for $type {
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: ::_serde::ser::Serializer,
+                {
+                    serializer.serialize_str(self.name())
+                }
+            }
 
-// /// Represents the physical object file format.
-// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
-// pub enum ObjectKind {
-//     Breakpad,
-//     Elf,
-//     MachO,
-// }
+            impl<'de> ::_serde::de::Deserialize<'de> for $type {
+                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                where
+                    D: ::_serde::de::Deserializer<'de>,
+                {
+                    <::std::borrow::Cow<str>>::deserialize(deserializer)?
+                        .parse()
+                        .map_err(::_serde::de::Error::custom)
+                }
+            }
+        };
+    }
 
-// impl ObjectKind {
-//     /// Returns the name of the object kind.
-//     pub fn name(self) -> &'static str {
-//         match self {
-//             ObjectKind::Breakpad => "breakpad",
-//             ObjectKind::Elf => "elf",
-//             ObjectKind::MachO => "macho",
-//         }
-//     }
-// }
-
-// impl fmt::Display for ObjectKind {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "{}", self.name())
-//     }
-// }
-
-// impl str::FromStr for ObjectKind {
-//     type Err = UnknownObjectKindError;
-
-//     fn from_str(string: &str) -> Result<ObjectKind, UnknownObjectKindError> {
-//         Ok(match string {
-//             "breakpad" => ObjectKind::Breakpad,
-//             "elf" => ObjectKind::Elf,
-//             "macho" => ObjectKind::MachO,
-//             _ => return Err(UnknownObjectKindError),
-//         })
-//     }
-// }
-
-// /// An error returned for unknown or invalid `ObjectClass`es.
-// #[derive(Debug, Fail, Clone, Copy)]
-// #[fail(display = "unknown object class")]
-// pub struct UnknownObjectClassError;
-
-// /// Represents the designated use of the object file and hints at its contents.
-// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
-// pub enum ObjectClass {
-//     /// There is no object class specified for this object file.
-//     None,
-
-//     /// The Relocatable file type is the format used for intermediate object
-//     /// files. It is a very compact format containing all its sections in one
-//     /// segment. The compiler and assembler usually create one Relocatable file
-//     /// for each source code file. By convention, the file name extension for
-//     /// this format is .o.
-//     Relocatable,
-
-//     /// The Executable file type is the format used by standard executable
-//     /// programs.
-//     Executable,
-
-//     /// The Library file type is for dynamic shared libraries. It contains
-//     /// some additional tables to support multiple modules. By convention, the
-//     /// file name extension for this format is .dylib, except for the main
-//     /// shared library of a framework, which does not usually have a file name
-//     /// extension.
-//     Library,
-
-//     /// The Dump file type is used to store core files, which are
-//     /// traditionally created when a program crashes. Core files store the
-//     /// entire address space of a process at the time it crashed. You can
-//     /// later run gdb on the core file to figure out why the crash occurred.
-//     Dump,
-
-//     /// The Debug file type designates files that store symbol information
-//     /// for a corresponding binary file.
-//     Debug,
-
-//     /// The Other type represents any valid object class that does not fit any
-//     /// of the other classes. These are mostly CPU or OS dependent, or unique
-//     /// to a single kind of object.
-//     Other,
-// }
-
-// impl ObjectClass {
-//     pub fn name(self) -> &'static str {
-//         match self {
-//             ObjectClass::None => "none",
-//             ObjectClass::Relocatable => "rel",
-//             ObjectClass::Executable => "exe",
-//             ObjectClass::Library => "lib",
-//             ObjectClass::Dump => "dump",
-//             ObjectClass::Debug => "dbg",
-//             ObjectClass::Other => "other",
-//         }
-//     }
-
-//     pub fn human_name(self) -> &'static str {
-//         match self {
-//             ObjectClass::None => "file",
-//             ObjectClass::Relocatable => "object",
-//             ObjectClass::Executable => "executable",
-//             ObjectClass::Library => "library",
-//             ObjectClass::Dump => "memory dump",
-//             ObjectClass::Debug => "debug companion",
-//             ObjectClass::Other => "file",
-//         }
-//     }
-
-//     #[cfg(feature = "with_objects")]
-//     pub fn from_mach(mach_type: u32) -> ObjectClass {
-//         use goblin::mach::header::*;
-
-//         match mach_type {
-//             MH_OBJECT => ObjectClass::Relocatable,
-//             MH_EXECUTE => ObjectClass::Executable,
-//             MH_DYLIB => ObjectClass::Library,
-//             MH_CORE => ObjectClass::Dump,
-//             MH_DSYM => ObjectClass::Debug,
-//             _ => ObjectClass::Other,
-//         }
-//     }
-
-//     #[cfg(feature = "with_objects")]
-//     pub fn from_elf(elf_type: u16) -> ObjectClass {
-//         use goblin::elf::header::*;
-
-//         match elf_type {
-//             ET_NONE => ObjectClass::None,
-//             ET_REL => ObjectClass::Relocatable,
-//             ET_EXEC => ObjectClass::Executable,
-//             ET_DYN => ObjectClass::Library,
-//             ET_CORE => ObjectClass::Dump,
-//             _ => ObjectClass::Other,
-//         }
-//     }
-
-//     #[cfg(feature = "with_objects")]
-//     pub fn from_elf_full(elf_type: u16, has_interpreter: bool) -> ObjectClass {
-//         let class = ObjectClass::from_elf(elf_type);
-
-//         // When stripping debug information into a separate file with objcopy,
-//         // the eh_type field still reads ET_EXEC. However, the interpreter is
-//         // removed. Since an executable without interpreter does not make any
-//         // sense, we assume ``Debug`` in this case.
-//         if class == ObjectClass::Executable && !has_interpreter {
-//             ObjectClass::Debug
-//         } else {
-//             class
-//         }
-//     }
-// }
-
-// impl fmt::Display for ObjectClass {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         if f.alternate() {
-//             write!(f, "{}", self.human_name())
-//         } else {
-//             write!(f, "{}", self.name())
-//         }
-//     }
-// }
-
-// impl str::FromStr for ObjectClass {
-//     type Err = UnknownObjectClassError;
-
-//     fn from_str(string: &str) -> Result<ObjectClass, UnknownObjectClassError> {
-//         Ok(match string {
-//             "none" => ObjectClass::None,
-//             "rel" => ObjectClass::Relocatable,
-//             "exe" => ObjectClass::Executable,
-//             "lib" => ObjectClass::Library,
-//             "dump" => ObjectClass::Dump,
-//             "dbg" => ObjectClass::Debug,
-//             "other" => ObjectClass::Other,
-//             _ => return Err(UnknownObjectClassError),
-//         })
-//     }
-// }
-
-// /// An error returned for unknown or invalid `DebugKind`s.
-// #[derive(Debug, Fail, Clone, Copy)]
-// #[fail(display = "unknown debug kind")]
-// pub struct UnknownDebugKindError;
-
-// /// Represents the kind of debug information inside an object.
-// #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
-// pub enum DebugKind {
-//     Dwarf,
-//     Breakpad,
-// }
-
-// impl DebugKind {
-//     /// Returns the name of the object kind.
-//     pub fn name(self) -> &'static str {
-//         match self {
-//             DebugKind::Dwarf => "dwarf",
-//             DebugKind::Breakpad => "breakpad",
-//         }
-//     }
-// }
-
-// impl fmt::Display for DebugKind {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "{}", self.name())
-//     }
-// }
-
-// impl str::FromStr for DebugKind {
-//     type Err = UnknownDebugKindError;
-
-//     fn from_str(string: &str) -> Result<DebugKind, UnknownDebugKindError> {
-//         Ok(match string {
-//             "dwarf" => DebugKind::Dwarf,
-//             "breakpad" => DebugKind::Breakpad,
-//             _ => return Err(UnknownDebugKindError),
-//         })
-//     }
-// }
-
-// TODO(ja): Implement serde
-// #[cfg(feature = "with_serde")]
-// mod derive_serde {
-//     use super::*;
-//     use serde_plain::{derive_deserialize_from_str, derive_serialize_from_display};
-
-//     derive_deserialize_from_str!(Arch, "Arch");
-//     derive_serialize_from_display!(Arch);
-
-//     derive_deserialize_from_str!(Language, "Language");
-//     derive_serialize_from_display!(Language);
-
-//     derive_deserialize_from_str!(ObjectKind, "ObjectKind");
-//     derive_serialize_from_display!(ObjectKind);
-
-//     derive_deserialize_from_str!(ObjectClass, "ObjectClass");
-//     derive_serialize_from_display!(ObjectClass);
-
-//     derive_deserialize_from_str!(DebugKind, "DebugKind");
-//     derive_serialize_from_display!(DebugKind);
-// }
+    impl_str_serde!(super::Arch);
+    impl_str_serde!(super::Language);
+}

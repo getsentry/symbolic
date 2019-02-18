@@ -156,12 +156,27 @@ impl str::FromStr for CodeModuleId {
     }
 }
 
-// TODO(ja): Enable this again
-// #[cfg(feature = "with_serde")]
-// serde_plain::derive_deserialize_from_str!(CodeModuleId, "CodeModuleId");
+#[cfg(feature = "serde")]
+impl ::serde::ser::Serialize for CodeModuleId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ::serde::ser::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
 
-// #[cfg(feature = "with_serde")]
-// serde_plain::derive_serialize_from_display!(CodeModuleId);
+#[cfg(feature = "serde")]
+impl<'de> ::serde::de::Deserialize<'de> for CodeModuleId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: ::serde::de::Deserializer<'de>,
+    {
+        <::std::borrow::Cow<str>>::deserialize(deserializer)?
+            .parse()
+            .map_err(::serde::de::Error::custom)
+    }
+}
 
 /// Carries information about a code module loaded into the process during the
 /// crash. The `debug_identifier` uniquely identifies this module.
