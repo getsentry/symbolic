@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-debuginfo"
-version = "5.8.1"
+version = "5.8.2"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -28,10 +28,10 @@ pdb = { git = "https://github.com/willglynn/pdb" }
 pest = "2.1.0"
 pest_derive = "2.1.0"
 smallvec = "0.6.9"
-symbolic-common = { path = "../common", version = "5.8.0" }
+symbolic-common = { version = "5.8.2", path = "../common" }
 
 [dev-dependencies]
-symbolic-testutils = { version = "5.8.1", path = "../testutils" }
+symbolic-testutils = { version = "5.8.2", path = "../testutils" }
 
 [features]
 default = []

@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-unreal"
-version = "5.8.1"
+version = "5.8.2"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -30,4 +30,4 @@ serde = { version = "1.0.88", optional = true, features = ["derive"] }
 with-serde = ["serde", "chrono/serde"]
 
 [dev-dependencies]
-symbolic-testutils = { version = "5.8.1", path = "../testutils" }
+symbolic-testutils = { version = "5.8.2", path = "../testutils" }

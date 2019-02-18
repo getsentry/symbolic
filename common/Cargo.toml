@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-common"
-version = "5.8.1"
+version = "5.8.2"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -25,4 +25,3 @@ uuid = "0.7.2"
 
 [features]
 default = []
-# with_serde = ["serde", "serde_plain", "debugid/with_serde"]
