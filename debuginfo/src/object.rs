@@ -3,7 +3,7 @@ use std::io::Cursor;
 use failure::Fail;
 use goblin::Hint;
 
-use symbolic_common::{Arch, DebugId};
+use symbolic_common::{Arch, AsSelf, DebugId};
 
 use crate::base::*;
 use crate::breakpad::*;
@@ -197,6 +197,14 @@ impl<'d> Object<'d> {
     }
 }
 
+impl<'slf: 'd, 'd> AsSelf<'slf> for Object<'d> {
+    type Ref = Object<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
+    }
+}
+
 impl<'d> ObjectLike for Object<'d> {
     type Error = ObjectError;
     type Session = ObjectDebugSession<'d>;
@@ -246,8 +254,8 @@ impl<'d> ObjectLike for Object<'d> {
 pub enum ObjectDebugSession<'d> {
     Breakpad(BreakpadDebugSession<'d>),
     Dwarf(DwarfDebugSession<'d>),
-    Pdb(PdbDebugSession),
-    Pe(PeDebugSession),
+    Pdb(PdbDebugSession<'d>),
+    Pe(PeDebugSession<'d>),
 }
 
 impl DebugSession for ObjectDebugSession<'_> {
@@ -352,6 +360,14 @@ impl<'d> Archive<'d> {
     pub fn objects(&self) -> ObjectIterator<'d, '_> {
         ObjectIterator(map_inner!(self.0, ArchiveInner(ref o) =>
             ObjectIteratorInner(o.objects())))
+    }
+}
+
+impl<'slf: 'd, 'd> AsSelf<'slf> for Archive<'d> {
+    type Ref = Archive<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
     }
 }
 

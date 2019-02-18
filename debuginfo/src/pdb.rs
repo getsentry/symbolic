@@ -6,7 +6,7 @@ use failure::Fail;
 use fallible_iterator::FallibleIterator;
 use pdb::MachineType;
 
-use symbolic_common::{Arch, DebugId, Uuid};
+use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
 
 use crate::base::*;
 use crate::private::Parse;
@@ -104,8 +104,8 @@ impl<'d> PdbObject<'d> {
         false
     }
 
-    pub fn debug_session(&self) -> Result<PdbDebugSession, PdbError> {
-        Ok(PdbDebugSession)
+    pub fn debug_session(&self) -> Result<PdbDebugSession<'d>, PdbError> {
+        Ok(PdbDebugSession { _ph: PhantomData })
     }
 
     pub fn has_unwind_info(&self) -> bool {
@@ -114,6 +114,14 @@ impl<'d> PdbObject<'d> {
 
     pub fn data(&self) -> &'d [u8] {
         self.data
+    }
+}
+
+impl<'slf: 'd, 'd> AsSelf<'slf> for PdbObject<'d> {
+    type Ref = PdbObject<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
     }
 }
 
@@ -129,9 +137,9 @@ impl<'d> Parse<'d> for PdbObject<'d> {
     }
 }
 
-impl ObjectLike for PdbObject<'_> {
+impl<'d> ObjectLike for PdbObject<'d> {
     type Error = PdbError;
-    type Session = PdbDebugSession;
+    type Session = PdbDebugSession<'d>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -219,12 +227,22 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
 }
 
 #[derive(Debug)]
-pub struct PdbDebugSession;
+pub struct PdbDebugSession<'d> {
+    _ph: PhantomData<&'d ()>,
+}
 
-impl DebugSession for PdbDebugSession {
+impl DebugSession for PdbDebugSession<'_> {
     type Error = PdbError;
 
     fn functions(&mut self) -> Result<Vec<Function<'_>>, PdbError> {
         Ok(Vec::new())
+    }
+}
+
+impl<'slf: 'd, 'd> AsSelf<'slf> for PdbDebugSession<'d> {
+    type Ref = PdbDebugSession<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
     }
 }

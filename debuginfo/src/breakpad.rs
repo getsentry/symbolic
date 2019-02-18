@@ -7,7 +7,7 @@ use failure::Fail;
 use pest::Parser;
 use pest_derive::Parser;
 
-use symbolic_common::{derive_failure, Arch, DebugId, Name};
+use symbolic_common::{derive_failure, Arch, AsSelf, DebugId, Name};
 
 use crate::base::*;
 use crate::private::{Lines, Parse};
@@ -624,6 +624,14 @@ impl<'d> BreakpadObject<'d> {
     }
 }
 
+impl<'slf: 'd, 'd> AsSelf<'slf> for BreakpadObject<'d> {
+    type Ref = BreakpadObject<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
+    }
+}
+
 impl<'d> Parse<'d> for BreakpadObject<'d> {
     type Error = BreakpadError;
 
@@ -746,5 +754,13 @@ impl<'d> DebugSession for BreakpadDebugSession<'d> {
         }
 
         Ok(functions)
+    }
+}
+
+impl<'slf: 'd, 'd> AsSelf<'slf> for BreakpadDebugSession<'d> {
+    type Ref = BreakpadDebugSession<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
     }
 }

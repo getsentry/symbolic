@@ -6,7 +6,7 @@ use flate2::{Decompress, FlushDecompress};
 use goblin::elf::compression_header::{CompressionHeader, ELFCOMPRESS_ZLIB};
 use goblin::{container::Ctx, elf, error::Error as GoblinError, strtab};
 
-use symbolic_common::{Arch, DebugId, Uuid};
+use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfData, DwarfDebugSession, DwarfError, DwarfSection, Endian};
@@ -298,6 +298,14 @@ fn elf_section_name(section: DwarfSection) -> &'static str {
         DwarfSection::DebugStr => ".debug_str",
         DwarfSection::DebugInfo => ".debug_info",
         DwarfSection::DebugTypes => ".debug_types",
+    }
+}
+
+impl<'slf: 'd, 'd> AsSelf<'slf> for ElfObject<'d> {
+    type Ref = ElfObject<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
     }
 }
 

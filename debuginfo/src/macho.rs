@@ -5,7 +5,7 @@ use failure::Fail;
 use goblin::{error::Error as GoblinError, mach};
 use smallvec::SmallVec;
 
-use symbolic_common::{Arch, DebugId, Uuid};
+use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfData, DwarfDebugSession, DwarfError, DwarfSection, Endian};
@@ -175,6 +175,14 @@ impl<'d> MachObject<'d> {
         }
 
         None
+    }
+}
+
+impl<'slf: 'd, 'd> AsSelf<'slf> for MachObject<'d> {
+    type Ref = MachObject<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
     }
 }
 
@@ -381,6 +389,14 @@ impl<'d> FatMachO<'d> {
     }
 }
 
+impl<'slf: 'd, 'd> AsSelf<'slf> for FatMachO<'d> {
+    type Ref = FatMachO<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
+    }
+}
+
 #[allow(clippy::large_enum_variant)]
 enum MachObjectIteratorInner<'d, 'a> {
     Single(MonoArchiveObjects<'d, MachObject<'d>>),
@@ -433,5 +449,13 @@ impl<'d> MachArchive<'d> {
                 MachObjectIteratorInner::Archive(inner.objects())
             }
         })
+    }
+}
+
+impl<'slf: 'd, 'd> AsSelf<'slf> for MachArchive<'d> {
+    type Ref = MachArchive<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
     }
 }

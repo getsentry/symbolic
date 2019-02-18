@@ -1,10 +1,11 @@
 use std::borrow::Cow;
 use std::io::Cursor;
+use std::marker::PhantomData;
 
 use failure::Fail;
 use goblin::{error::Error as GoblinError, pe};
 
-use symbolic_common::{Arch, DebugId, Uuid};
+use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
 
 use crate::base::*;
 use crate::private::Parse;
@@ -94,8 +95,8 @@ impl<'d> PeObject<'d> {
         false
     }
 
-    pub fn debug_session(&self) -> Result<PeDebugSession, PeError> {
-        Ok(PeDebugSession)
+    pub fn debug_session(&self) -> Result<PeDebugSession<'d>, PeError> {
+        Ok(PeDebugSession { _ph: PhantomData })
     }
 
     pub fn has_unwind_info(&self) -> bool {
@@ -104,6 +105,14 @@ impl<'d> PeObject<'d> {
 
     pub fn data(&self) -> &'d [u8] {
         self.data
+    }
+}
+
+impl<'slf: 'd, 'd> AsSelf<'slf> for PeObject<'d> {
+    type Ref = PeObject<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
     }
 }
 
@@ -119,9 +128,9 @@ impl<'d> Parse<'d> for PeObject<'d> {
     }
 }
 
-impl ObjectLike for PeObject<'_> {
+impl<'d> ObjectLike for PeObject<'d> {
     type Error = PeError;
-    type Session = PeDebugSession;
+    type Session = PeDebugSession<'d>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -181,12 +190,22 @@ impl<'d, 'o> Iterator for PeSymbolIterator<'d, 'o> {
 }
 
 #[derive(Debug)]
-pub struct PeDebugSession;
+pub struct PeDebugSession<'d> {
+    _ph: PhantomData<&'d ()>,
+}
 
-impl DebugSession for PeDebugSession {
+impl DebugSession for PeDebugSession<'_> {
     type Error = PeError;
 
     fn functions(&mut self) -> Result<Vec<Function<'_>>, PeError> {
         Ok(Vec::new())
+    }
+}
+
+impl<'slf: 'd, 'd> AsSelf<'slf> for PeDebugSession<'d> {
+    type Ref = PeDebugSession<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
     }
 }

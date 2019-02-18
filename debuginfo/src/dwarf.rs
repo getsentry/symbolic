@@ -928,6 +928,14 @@ impl<'d> DwarfDebugSession<'d> {
     }
 }
 
+impl<'slf: 'd, 'd> AsSelf<'slf> for DwarfDebugSession<'d> {
+    type Ref = DwarfDebugSession<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
+    }
+}
+
 impl<'d> DebugSession for DwarfDebugSession<'d> {
     type Error = DwarfError;
 
