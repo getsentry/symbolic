@@ -344,7 +344,16 @@ pub struct Function<'data> {
     pub inline: bool,
 }
 
+pub trait DebugSession {
+    type Error: Fail;
+
+    fn functions(&mut self) -> Result<Vec<Function<'_>>, Self::Error>;
+}
+
 pub trait ObjectLike {
+    type Error: Fail;
+    type Session: DebugSession<Error = Self::Error>;
+
     fn file_format(&self) -> FileFormat;
 
     fn id(&self) -> DebugId;
@@ -358,39 +367,10 @@ pub trait ObjectLike {
     fn has_symbols(&self) -> bool;
 
     fn symbol_map(&self) -> SymbolMap<'_>;
-}
-
-pub trait Debugging {
-    type Error: Fail;
-    type Session: DebugSession<Error = Self::Error>;
 
     fn has_debug_info(&self) -> bool;
 
     fn debug_session(&self) -> Result<Self::Session, Self::Error>;
-}
 
-pub trait DebugSession {
-    type Error: Fail;
-
-    fn functions(&mut self) -> Result<Vec<Function<'_>>, Self::Error>;
-}
-
-#[derive(Debug, Fail)]
-pub enum NeverError {}
-
-impl fmt::Display for NeverError {
-    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
-        match *self {}
-    }
-}
-
-#[derive(Debug)]
-pub struct NoDebugSession;
-
-impl DebugSession for NoDebugSession {
-    type Error = NeverError;
-
-    fn functions(&mut self) -> Result<Vec<Function<'_>>, NeverError> {
-        Ok(Vec::new())
-    }
+    fn has_unwind_info(&self) -> bool;
 }

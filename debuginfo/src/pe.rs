@@ -90,6 +90,18 @@ impl<'d> PeObject<'d> {
         self.symbols().collect()
     }
 
+    pub fn has_debug_info(&self) -> bool {
+        false
+    }
+
+    pub fn debug_session(&self) -> Result<PeDebugSession, PeError> {
+        Ok(PeDebugSession)
+    }
+
+    pub fn has_unwind_info(&self) -> bool {
+        false
+    }
+
     pub fn data(&self) -> &'d [u8] {
         self.data
     }
@@ -108,6 +120,9 @@ impl<'d> Parse<'d> for PeObject<'d> {
 }
 
 impl ObjectLike for PeObject<'_> {
+    type Error = PeError;
+    type Session = PeDebugSession;
+
     fn file_format(&self) -> FileFormat {
         self.file_format()
     }
@@ -135,18 +150,17 @@ impl ObjectLike for PeObject<'_> {
     fn symbol_map(&self) -> SymbolMap<'_> {
         self.symbol_map()
     }
-}
-
-impl Debugging for PeObject<'_> {
-    type Error = NeverError;
-    type Session = NoDebugSession;
 
     fn has_debug_info(&self) -> bool {
-        false
+        self.has_debug_info()
     }
 
     fn debug_session(&self) -> Result<Self::Session, Self::Error> {
-        Ok(NoDebugSession)
+        self.debug_session()
+    }
+
+    fn has_unwind_info(&self) -> bool {
+        self.has_unwind_info()
     }
 }
 
@@ -163,5 +177,16 @@ impl<'d, 'o> Iterator for PeSymbolIterator<'d, 'o> {
             address: export.rva as u64,
             size: export.size as u64,
         })
+    }
+}
+
+#[derive(Debug)]
+pub struct PeDebugSession;
+
+impl DebugSession for PeDebugSession {
+    type Error = PeError;
+
+    fn functions(&mut self) -> Result<Vec<Function<'_>>, PeError> {
+        Ok(Vec::new())
     }
 }

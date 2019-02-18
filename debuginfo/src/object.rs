@@ -7,7 +7,7 @@ use symbolic_common::{Arch, DebugId};
 
 use crate::base::*;
 use crate::breakpad::*;
-use crate::dwarf::{DwarfError, DwarfSession};
+use crate::dwarf::{DwarfDebugSession, DwarfError};
 use crate::elf::*;
 use crate::macho::*;
 use crate::pdb::*;
@@ -55,8 +55,6 @@ macro_rules! map_result {
 pub enum ObjectError {
     #[fail(display = "unsupported object file format")]
     UnsupportedObject,
-    #[fail(display = "this file does not support debugging")]
-    UnsupportedDebugging,
     #[fail(display = "failed to process breakpad file")]
     Breakpad(#[fail(cause)] BreakpadError),
     #[fail(display = "failed to process elf file")]
@@ -69,12 +67,6 @@ pub enum ObjectError {
     Pe(#[fail(cause)] PeError),
     #[fail(display = "failed to process dwarf info")]
     Dwarf(#[fail(cause)] DwarfError),
-}
-
-impl ObjectError {
-    fn never(error: NeverError) -> Self {
-        match error {}
-    }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -167,12 +159,48 @@ impl<'d> Object<'d> {
         match_inner!(self, Object(ref o) => o.symbol_map())
     }
 
+    pub fn has_debug_info(&self) -> bool {
+        match_inner!(self, Object(ref o) => o.has_debug_info())
+    }
+
+    pub fn debug_session(&self) -> Result<ObjectDebugSession<'d>, ObjectError> {
+        match *self {
+            Object::Breakpad(ref o) => o
+                .debug_session()
+                .map(ObjectDebugSession::Breakpad)
+                .map_err(ObjectError::Breakpad),
+            Object::Elf(ref o) => o
+                .debug_session()
+                .map(ObjectDebugSession::Dwarf)
+                .map_err(ObjectError::Dwarf),
+            Object::MachO(ref o) => o
+                .debug_session()
+                .map(ObjectDebugSession::Dwarf)
+                .map_err(ObjectError::Dwarf),
+            Object::Pdb(ref o) => o
+                .debug_session()
+                .map(ObjectDebugSession::Pdb)
+                .map_err(ObjectError::Pdb),
+            Object::Pe(ref o) => o
+                .debug_session()
+                .map(ObjectDebugSession::Pe)
+                .map_err(ObjectError::Pe),
+        }
+    }
+
+    pub fn has_unwind_info(&self) -> bool {
+        match_inner!(self, Object(ref o) => o.has_unwind_info())
+    }
+
     pub fn data(&self) -> &'d [u8] {
         match_inner!(self, Object(ref o) => o.data())
     }
 }
 
-impl ObjectLike for Object<'_> {
+impl<'d> ObjectLike for Object<'d> {
+    type Error = ObjectError;
+    type Session = ObjectDebugSession<'d>;
+
     fn file_format(&self) -> FileFormat {
         self.file_format()
     }
@@ -200,63 +228,37 @@ impl ObjectLike for Object<'_> {
     fn symbol_map(&self) -> SymbolMap<'_> {
         self.symbol_map()
     }
-}
-
-impl<'d> Debugging for Object<'d> {
-    type Error = ObjectError;
-    type Session = ObjectSession<'d>;
 
     fn has_debug_info(&self) -> bool {
-        match *self {
-            Object::Breakpad(ref o) => o.has_debug_info(),
-            Object::Elf(ref o) => o.has_debug_info(),
-            Object::MachO(ref o) => o.has_debug_info(),
-            Object::Pdb(_) => false,
-            Object::Pe(_) => false,
-        }
+        self.has_debug_info()
     }
 
-    fn debug_session(&self) -> Result<ObjectSession<'d>, ObjectError> {
-        match *self {
-            Object::Breakpad(ref o) => o
-                .debug_session()
-                .map(ObjectSession::Breakpad)
-                .map_err(ObjectError::Breakpad),
-            Object::Elf(ref o) => o
-                .debug_session()
-                .map(ObjectSession::Dwarf)
-                .map_err(ObjectError::Dwarf),
-            Object::MachO(ref o) => o
-                .debug_session()
-                .map(ObjectSession::Dwarf)
-                .map_err(ObjectError::Dwarf),
-            Object::Pdb(ref o) => o
-                .debug_session()
-                .map(ObjectSession::None)
-                .map_err(ObjectError::never),
-            Object::Pe(ref o) => o
-                .debug_session()
-                .map(ObjectSession::None)
-                .map_err(ObjectError::never),
-        }
+    fn debug_session(&self) -> Result<Self::Session, Self::Error> {
+        self.debug_session()
+    }
+
+    fn has_unwind_info(&self) -> bool {
+        self.has_unwind_info()
     }
 }
 
 #[allow(clippy::large_enum_variant)]
-pub enum ObjectSession<'d> {
-    Breakpad(BreakpadSession<'d>),
-    Dwarf(DwarfSession<'d>),
-    None(NoDebugSession),
+pub enum ObjectDebugSession<'d> {
+    Breakpad(BreakpadDebugSession<'d>),
+    Dwarf(DwarfDebugSession<'d>),
+    Pdb(PdbDebugSession),
+    Pe(PeDebugSession),
 }
 
-impl DebugSession for ObjectSession<'_> {
+impl DebugSession for ObjectDebugSession<'_> {
     type Error = ObjectError;
 
     fn functions(&mut self) -> Result<Vec<Function<'_>>, ObjectError> {
         match *self {
-            ObjectSession::Breakpad(ref mut s) => s.functions().map_err(ObjectError::Breakpad),
-            ObjectSession::Dwarf(ref mut s) => s.functions().map_err(ObjectError::Dwarf),
-            ObjectSession::None(ref mut s) => s.functions().map_err(ObjectError::never),
+            ObjectDebugSession::Breakpad(ref mut s) => s.functions().map_err(ObjectError::Breakpad),
+            ObjectDebugSession::Dwarf(ref mut s) => s.functions().map_err(ObjectError::Dwarf),
+            ObjectDebugSession::Pdb(ref mut s) => s.functions().map_err(ObjectError::Pdb),
+            ObjectDebugSession::Pe(ref mut s) => s.functions().map_err(ObjectError::Pe),
         }
     }
 }

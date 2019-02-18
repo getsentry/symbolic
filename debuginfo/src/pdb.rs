@@ -100,6 +100,18 @@ impl<'d> PdbObject<'d> {
         self.symbols().collect()
     }
 
+    pub fn has_debug_info(&self) -> bool {
+        false
+    }
+
+    pub fn debug_session(&self) -> Result<PdbDebugSession, PdbError> {
+        Ok(PdbDebugSession)
+    }
+
+    pub fn has_unwind_info(&self) -> bool {
+        false
+    }
+
     pub fn data(&self) -> &'d [u8] {
         self.data
     }
@@ -118,6 +130,9 @@ impl<'d> Parse<'d> for PdbObject<'d> {
 }
 
 impl ObjectLike for PdbObject<'_> {
+    type Error = PdbError;
+    type Session = PdbDebugSession;
+
     fn file_format(&self) -> FileFormat {
         self.file_format()
     }
@@ -145,18 +160,17 @@ impl ObjectLike for PdbObject<'_> {
     fn symbol_map(&self) -> SymbolMap<'_> {
         self.symbol_map()
     }
-}
-
-impl Debugging for PdbObject<'_> {
-    type Error = NeverError;
-    type Session = NoDebugSession;
 
     fn has_debug_info(&self) -> bool {
-        false
+        self.has_debug_info()
     }
 
     fn debug_session(&self) -> Result<Self::Session, Self::Error> {
-        Ok(NoDebugSession)
+        self.debug_session()
+    }
+
+    fn has_unwind_info(&self) -> bool {
+        self.has_unwind_info()
     }
 }
 
@@ -201,5 +215,16 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
         }
 
         None
+    }
+}
+
+#[derive(Debug)]
+pub struct PdbDebugSession;
+
+impl DebugSession for PdbDebugSession {
+    type Error = PdbError;
+
+    fn functions(&mut self) -> Result<Vec<Function<'_>>, PdbError> {
+        Ok(Vec::new())
     }
 }

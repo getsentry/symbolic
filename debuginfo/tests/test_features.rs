@@ -1,94 +1,67 @@
-// TODO(ja): Add tests again
-#![cfg(feature = "disabled")]
+use failure::Error;
 
-use symbolic_common::byteview::ByteView;
-use symbolic_debuginfo::{DebugFeatures, FatObject, ObjectFeature};
+use symbolic_common::ByteView;
+use symbolic_debuginfo::Object;
 use symbolic_testutils::fixture_path;
 
 #[test]
-fn test_features_elf_bin() {
-    let buffer = ByteView::from_path(fixture_path("linux/crash")).expect("Could not open file");
-    let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat
-        .get_object(0)
-        .expect("Could not get the first object")
-        .expect("Missing object");
+fn test_features_elf_bin() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture_path("linux/crash"))?;
+    let object = Object::parse(&buffer)?;
 
-    assert_eq!(
-        object.features(),
-        [ObjectFeature::UnwindInfo].iter().cloned().collect()
-    );
+    assert!(!object.has_symbols());
+    assert!(!object.has_debug_info());
+    assert!(object.has_unwind_info());
+
+    Ok(())
 }
 
 #[test]
-fn test_features_elf_dbg() {
-    let buffer =
-        ByteView::from_path(fixture_path("linux/crash.debug")).expect("Could not open file");
-    let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat
-        .get_object(0)
-        .expect("Could not get the first object")
-        .expect("Missing object");
+fn test_features_elf_dbg() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture_path("linux/crash.debug"))?;
+    let object = Object::parse(&buffer)?;
 
-    assert_eq!(
-        object.features(),
-        [ObjectFeature::DebugInfo].iter().cloned().collect()
-    );
+    assert!(!object.has_symbols());
+    assert!(object.has_debug_info());
+    assert!(!object.has_unwind_info());
+
+    Ok(())
 }
 
 #[test]
-fn test_features_mach_bin() {
-    let buffer = ByteView::from_path(fixture_path("macos/crash")).expect("Could not open file");
-    let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat
-        .get_object(0)
-        .expect("Could not get the first object")
-        .expect("Missing object");
+fn test_features_mach_bin() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture_path("macos/crash"))?;
+    let object = Object::parse(&buffer)?;
 
-    assert_eq!(
-        object.features(),
-        [ObjectFeature::SymbolTable, ObjectFeature::UnwindInfo]
-            .iter()
-            .cloned()
-            .collect()
-    );
+    assert!(object.has_symbols());
+    assert!(!object.has_debug_info());
+    assert!(object.has_unwind_info());
+
+    Ok(())
 }
 
 #[test]
-fn test_features_mach_dbg() {
-    let buffer = ByteView::from_path(fixture_path(
+fn test_features_mach_dbg() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture_path(
         "macos/crash.dSYM/Contents/Resources/DWARF/crash",
-    ))
-    .expect("Could not open file");
-    let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat
-        .get_object(0)
-        .expect("Could not get the first object")
-        .expect("Missing object");
+    ))?;
+    let object = Object::parse(&buffer)?;
 
-    assert_eq!(
-        object.features(),
-        [ObjectFeature::SymbolTable, ObjectFeature::DebugInfo]
-            .iter()
-            .cloned()
-            .collect()
-    );
+    assert!(object.has_symbols());
+    assert!(object.has_debug_info());
+    assert!(!object.has_unwind_info());
+
+    Ok(())
 }
 
 #[test]
-fn test_features_breakpad() {
-    let buffer = ByteView::from_path(fixture_path("macos/crash.sym")).expect("Could not open file");
-    let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat
-        .get_object(0)
-        .expect("Could not get the first object")
-        .expect("Missing object");
+fn test_features_breakpad() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture_path("macos/crash.sym"))?;
+    let object = Object::parse(&buffer)?;
 
-    assert_eq!(
-        object.features(),
-        [ObjectFeature::DebugInfo, ObjectFeature::UnwindInfo]
-            .iter()
-            .cloned()
-            .collect()
-    );
+    assert!(!object.has_symbols());
+    assert!(object.has_debug_info());
+    assert!(object.has_unwind_info());
+
+    Ok(())
 }

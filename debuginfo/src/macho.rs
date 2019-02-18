@@ -8,7 +8,7 @@ use smallvec::SmallVec;
 use symbolic_common::{Arch, DebugId, Uuid};
 
 use crate::base::*;
-use crate::dwarf::{Dwarf, DwarfData, DwarfError, DwarfSection, DwarfSession, Endian};
+use crate::dwarf::{Dwarf, DwarfData, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 
 #[derive(Debug, Fail)]
@@ -149,6 +149,20 @@ impl<'d> MachObject<'d> {
         self.symbols().collect()
     }
 
+    pub fn has_debug_info(&self) -> bool {
+        self.has_section(DwarfSection::DebugInfo)
+    }
+
+    pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
+        let data = DwarfData::from_dwarf(self)?;
+        let symbols = self.symbol_map();
+        DwarfDebugSession::parse(data, symbols, self.load_address())
+    }
+
+    pub fn has_unwind_info(&self) -> bool {
+        self.has_section(DwarfSection::EhFrame) || self.has_section(DwarfSection::DebugFrame)
+    }
+
     pub fn data(&self) -> &'d [u8] {
         self.data
     }
@@ -176,7 +190,10 @@ impl<'d> Parse<'d> for MachObject<'d> {
     }
 }
 
-impl ObjectLike for MachObject<'_> {
+impl<'d> ObjectLike for MachObject<'d> {
+    type Error = DwarfError;
+    type Session = DwarfDebugSession<'d>;
+
     fn file_format(&self) -> FileFormat {
         self.file_format()
     }
@@ -203,6 +220,18 @@ impl ObjectLike for MachObject<'_> {
 
     fn symbol_map(&self) -> SymbolMap<'_> {
         self.symbol_map()
+    }
+
+    fn has_debug_info(&self) -> bool {
+        self.has_debug_info()
+    }
+
+    fn debug_session(&self) -> Result<Self::Session, Self::Error> {
+        self.debug_session()
+    }
+
+    fn has_unwind_info(&self) -> bool {
+        self.has_unwind_info()
     }
 }
 
@@ -254,21 +283,6 @@ impl<'d> Dwarf<'d> for MachObject<'d> {
         }
 
         None
-    }
-}
-
-impl<'d> Debugging for MachObject<'d> {
-    type Error = DwarfError;
-    type Session = DwarfSession<'d>;
-
-    fn has_debug_info(&self) -> bool {
-        self.has_section(DwarfSection::DebugInfo)
-    }
-
-    fn debug_session(&self) -> Result<Self::Session, Self::Error> {
-        let data = DwarfData::from_dwarf(self)?;
-        let symbols = self.symbol_map();
-        DwarfSession::parse(data, symbols, self.load_address())
     }
 }
 

@@ -569,6 +569,21 @@ impl<'d> BreakpadObject<'d> {
         self.symbols().collect()
     }
 
+    pub fn has_debug_info(&self) -> bool {
+        self.func_records().next().is_some()
+    }
+
+    pub fn debug_session(&self) -> Result<BreakpadDebugSession<'d>, BreakpadError> {
+        Ok(BreakpadDebugSession {
+            file_map: self.file_map(),
+            func_records: self.func_records(),
+        })
+    }
+
+    pub fn has_unwind_info(&self) -> bool {
+        self.stack_records().next().is_some()
+    }
+
     pub fn file_records(&self) -> BreakpadFileRecords<'d> {
         BreakpadFileRecords {
             lines: Lines::new(self.data),
@@ -621,7 +636,10 @@ impl<'d> Parse<'d> for BreakpadObject<'d> {
     }
 }
 
-impl ObjectLike for BreakpadObject<'_> {
+impl<'d> ObjectLike for BreakpadObject<'d> {
+    type Error = BreakpadError;
+    type Session = BreakpadDebugSession<'d>;
+
     fn file_format(&self) -> FileFormat {
         self.file_format()
     }
@@ -649,30 +667,48 @@ impl ObjectLike for BreakpadObject<'_> {
     fn symbol_map(&self) -> SymbolMap<'_> {
         self.symbol_map()
     }
-}
-
-impl<'d> Debugging for BreakpadObject<'d> {
-    type Error = BreakpadError;
-    type Session = BreakpadSession<'d>;
 
     fn has_debug_info(&self) -> bool {
-        self.func_records().next().is_some()
+        self.has_debug_info()
     }
 
     fn debug_session(&self) -> Result<Self::Session, Self::Error> {
-        Ok(BreakpadSession {
-            file_map: self.file_map(),
-            func_records: self.func_records(),
-        })
+        self.debug_session()
+    }
+
+    fn has_unwind_info(&self) -> bool {
+        self.has_unwind_info()
     }
 }
 
-pub struct BreakpadSession<'d> {
+pub struct BreakpadSymbolIterator<'d> {
+    records: BreakpadPublicRecords<'d>,
+}
+
+impl<'d> Iterator for BreakpadSymbolIterator<'d> {
+    type Item = Symbol<'d>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(result) = self.records.next() {
+            if let Ok(record) = result {
+                return Some(Symbol {
+                    name: Some(Cow::Borrowed(record.name)),
+                    address: record.address,
+                    size: 0,
+                });
+            }
+        }
+
+        None
+    }
+}
+
+pub struct BreakpadDebugSession<'d> {
     file_map: BreakpadFileMap<'d>,
     func_records: BreakpadFuncRecords<'d>,
 }
 
-impl<'d> DebugSession for BreakpadSession<'d> {
+impl<'d> DebugSession for BreakpadDebugSession<'d> {
     type Error = BreakpadError;
 
     fn functions(&mut self) -> Result<Vec<Function<'_>>, Self::Error> {
@@ -710,27 +746,5 @@ impl<'d> DebugSession for BreakpadSession<'d> {
         }
 
         Ok(functions)
-    }
-}
-
-pub struct BreakpadSymbolIterator<'d> {
-    records: BreakpadPublicRecords<'d>,
-}
-
-impl<'d> Iterator for BreakpadSymbolIterator<'d> {
-    type Item = Symbol<'d>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        while let Some(result) = self.records.next() {
-            if let Ok(record) = result {
-                return Some(Symbol {
-                    name: Some(Cow::Borrowed(record.name)),
-                    address: record.address,
-                    size: 0,
-                });
-            }
-        }
-
-        None
     }
 }

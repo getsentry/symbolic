@@ -9,7 +9,7 @@ use goblin::{container::Ctx, elf, error::Error as GoblinError, strtab};
 use symbolic_common::{Arch, DebugId, Uuid};
 
 use crate::base::*;
-use crate::dwarf::{Dwarf, DwarfData, DwarfError, DwarfSection, DwarfSession, Endian};
+use crate::dwarf::{Dwarf, DwarfData, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::Parse;
 
 const UUID_SIZE: usize = 16;
@@ -151,6 +151,20 @@ impl<'d> ElfObject<'d> {
 
     pub fn symbol_map(&self) -> SymbolMap<'d> {
         self.symbols().collect()
+    }
+
+    pub fn has_debug_info(&self) -> bool {
+        self.has_section(DwarfSection::DebugInfo)
+    }
+
+    pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
+        let data = DwarfData::from_dwarf(self)?;
+        let symbols = self.symbol_map();
+        DwarfDebugSession::parse(data, symbols, self.load_address())
+    }
+
+    pub fn has_unwind_info(&self) -> bool {
+        self.has_section(DwarfSection::EhFrame) || self.has_section(DwarfSection::DebugFrame)
     }
 
     pub fn data(&self) -> &'d [u8] {
@@ -299,7 +313,10 @@ impl<'d> Parse<'d> for ElfObject<'d> {
     }
 }
 
-impl ObjectLike for ElfObject<'_> {
+impl<'d> ObjectLike for ElfObject<'d> {
+    type Error = DwarfError;
+    type Session = DwarfDebugSession<'d>;
+
     fn file_format(&self) -> FileFormat {
         self.file_format()
     }
@@ -326,6 +343,18 @@ impl ObjectLike for ElfObject<'_> {
 
     fn symbol_map(&self) -> SymbolMap<'_> {
         self.symbol_map()
+    }
+
+    fn has_debug_info(&self) -> bool {
+        self.has_debug_info()
+    }
+
+    fn debug_session(&self) -> Result<Self::Session, Self::Error> {
+        self.debug_session()
+    }
+
+    fn has_unwind_info(&self) -> bool {
+        self.has_unwind_info()
     }
 }
 
@@ -355,21 +384,6 @@ impl<'d> Dwarf<'d> for ElfObject<'d> {
         } else {
             Some((header.sh_offset, Cow::Borrowed(data)))
         }
-    }
-}
-
-impl<'d> Debugging for ElfObject<'d> {
-    type Error = DwarfError;
-    type Session = DwarfSession<'d>;
-
-    fn has_debug_info(&self) -> bool {
-        self.has_section(DwarfSection::DebugInfo)
-    }
-
-    fn debug_session(&self) -> Result<Self::Session, Self::Error> {
-        let data = DwarfData::from_dwarf(self)?;
-        let symbols = self.symbol_map();
-        DwarfSession::parse(data, symbols, self.load_address())
     }
 }
 

@@ -904,13 +904,13 @@ impl<'slf: 'd, 'd> AsSelf<'slf> for DwarfInfo<'d> {
     }
 }
 
-pub struct DwarfSession<'data> {
+pub struct DwarfDebugSession<'data> {
     cell: SelfCell<Box<DwarfData<'data>>, DwarfInfo<'data>>,
     symbols: SymbolMap<'data>,
     abbrev_cache: AbbrevCache,
 }
 
-impl<'d> DwarfSession<'d> {
+impl<'d> DwarfDebugSession<'d> {
     pub fn parse(
         data: DwarfData<'d>,
         symbols: SymbolMap<'d>,
@@ -920,7 +920,7 @@ impl<'d> DwarfSession<'d> {
             DwarfInfo::parse(unsafe { &*d }, load_address)
         })?;
 
-        Ok(DwarfSession {
+        Ok(DwarfDebugSession {
             cell,
             symbols,
             abbrev_cache: AbbrevCache::new(),
@@ -928,7 +928,7 @@ impl<'d> DwarfSession<'d> {
     }
 }
 
-impl<'d> DebugSession for DwarfSession<'d> {
+impl<'d> DebugSession for DwarfDebugSession<'d> {
     type Error = DwarfError;
 
     fn functions(&mut self) -> Result<Vec<Function<'_>>, Self::Error> {

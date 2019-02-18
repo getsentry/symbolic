@@ -6,7 +6,7 @@ use failure::ResultExt;
 use fnv::{FnvHashMap, FnvHashSet};
 
 use symbolic_common::{Arch, DebugId, Language};
-use symbolic_debuginfo::{DebugSession, Debugging, FileInfo, Function, ObjectLike, Symbol};
+use symbolic_debuginfo::{DebugSession, FileInfo, Function, ObjectLike, Symbol};
 
 use crate::error::{SymCacheError, SymCacheErrorKind, ValueKind};
 use crate::format;
@@ -104,7 +104,7 @@ where
 {
     pub fn write_object<O>(object: &O, target: W) -> Result<W, SymCacheError>
     where
-        O: ObjectLike + Debugging,
+        O: ObjectLike,
     {
         let mut writer = SymCacheWriter::new(target).context(SymCacheErrorKind::WriteFailed)?;
 
