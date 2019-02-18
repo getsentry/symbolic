@@ -165,6 +165,10 @@ impl<'d> Object<'d> {
     pub fn symbol_map(&self) -> SymbolMap<'d> {
         match_inner!(self, Object(ref o) => o.symbol_map())
     }
+
+    pub fn data(&self) -> &'d [u8] {
+        match_inner!(self, Object(ref o) => o.data())
+    }
 }
 
 impl ObjectLike for Object<'_> {

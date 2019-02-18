@@ -93,6 +93,10 @@ impl<'d> PeObject<'d> {
     pub fn symbol_map(&self) -> SymbolMap<'d> {
         self.symbols().collect()
     }
+
+    pub fn data(&self) -> &'d [u8] {
+        self.data
+    }
 }
 
 impl<'d> Parse<'d> for PeObject<'d> {

@@ -157,6 +157,10 @@ impl<'d> ElfObject<'d> {
         self.symbols().collect()
     }
 
+    pub fn data(&self) -> &'d [u8] {
+        self.data
+    }
+
     /// Decompresses the given compressed section data, if supported.
     fn decompress_section(&self, section_data: &[u8]) -> Option<Vec<u8>> {
         let container = self.elf.header.container().ok()?;

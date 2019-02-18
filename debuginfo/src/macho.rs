@@ -21,6 +21,7 @@ pub enum MachError {
 #[derive(Clone, Debug)]
 pub struct MachObject<'d> {
     macho: Arc<mach::MachO<'d>>,
+    data: &'d [u8],
 }
 
 impl<'d> MachObject<'d> {
@@ -35,6 +36,7 @@ impl<'d> MachObject<'d> {
         mach::MachO::parse(data, 0)
             .map(|macho| MachObject {
                 macho: Arc::new(macho),
+                data,
             })
             .map_err(MachError::Goblin)
     }
@@ -149,6 +151,10 @@ impl<'d> MachObject<'d> {
 
     pub fn symbol_map(&self) -> SymbolMap<'d> {
         self.symbols().collect()
+    }
+
+    pub fn data(&self) -> &'d [u8] {
+        self.data
     }
 
     fn find_segment(&self, name: &str) -> Option<&mach::segment::Segment<'d>> {

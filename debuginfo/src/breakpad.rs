@@ -603,6 +603,10 @@ impl<'d> BreakpadObject<'d> {
             finished: false,
         }
     }
+
+    pub fn data(&self) -> &'d [u8] {
+        self.data
+    }
 }
 
 impl<'d> Parse<'d> for BreakpadObject<'d> {
