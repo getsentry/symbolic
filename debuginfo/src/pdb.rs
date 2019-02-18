@@ -185,7 +185,7 @@ impl<'d> ObjectLike for PdbObject<'d> {
 pub(crate) fn arch_from_machine(machine: MachineType) -> Arch {
     match machine {
         MachineType::X86 => Arch::X86,
-        MachineType::Amd64 => Arch::X86_64,
+        MachineType::Amd64 => Arch::Amd64,
         MachineType::Arm => Arch::Arm,
         // TODO(ja): Add this when PR is merged
         // MachineType::Arm64 => Arch::Arm64,

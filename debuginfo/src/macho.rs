@@ -59,9 +59,9 @@ impl<'d> MachObject<'d> {
         match (self.macho.header.cputype(), self.macho.header.cpusubtype()) {
             (cputype::CPU_TYPE_I386, cputype::CPU_SUBTYPE_I386_ALL) => Arch::X86,
             (cputype::CPU_TYPE_I386, _) => Arch::X86Unknown,
-            (cputype::CPU_TYPE_X86_64, cputype::CPU_SUBTYPE_X86_64_ALL) => Arch::X86_64,
-            (cputype::CPU_TYPE_X86_64, cputype::CPU_SUBTYPE_X86_64_H) => Arch::X86_64h,
-            (cputype::CPU_TYPE_X86_64, _) => Arch::X86_64Unknown,
+            (cputype::CPU_TYPE_X86_64, cputype::CPU_SUBTYPE_X86_64_ALL) => Arch::Amd64,
+            (cputype::CPU_TYPE_X86_64, cputype::CPU_SUBTYPE_X86_64_H) => Arch::Amd64h,
+            (cputype::CPU_TYPE_X86_64, _) => Arch::Amd64Unknown,
             (cputype::CPU_TYPE_ARM64, cputype::CPU_SUBTYPE_ARM64_ALL) => Arch::Arm64,
             (cputype::CPU_TYPE_ARM64, cputype::CPU_SUBTYPE_ARM64_V8) => Arch::Arm64V8,
             (cputype::CPU_TYPE_ARM64, cputype::CPU_SUBTYPE_ARM64_E) => Arch::Arm64e,

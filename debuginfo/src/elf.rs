@@ -83,7 +83,7 @@ impl<'d> ElfObject<'d> {
     pub fn arch(&self) -> Arch {
         match self.elf.header.e_machine {
             goblin::elf::header::EM_386 => Arch::X86,
-            goblin::elf::header::EM_X86_64 => Arch::X86_64,
+            goblin::elf::header::EM_X86_64 => Arch::Amd64,
             goblin::elf::header::EM_AARCH64 => Arch::Arm64,
             // NOTE: This could actually be any of the other 32bit ARMs. Since we don't need this
             // information, we use the generic Arch::Arm. By reading CPU_arch and FP_arch attributes

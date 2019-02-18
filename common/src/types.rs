@@ -74,16 +74,14 @@ pub struct UnknownArchError;
 
 /// An enum of supported architectures.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[allow(non_camel_case_types)]
 #[repr(u32)]
 pub enum Arch {
     Unknown = 0,
     X86 = 101,
     X86Unknown = 199,
-    // TODO(ja): Rename to Amd64 (TODO: Implications on CABI?)
-    X86_64 = 201,
-    X86_64h = 202,
-    X86_64Unknown = 299,
+    Amd64 = 201,
+    Amd64h = 202,
+    Amd64Unknown = 299,
     Arm = 301,
     ArmV5 = 302,
     ArmV6 = 303,
@@ -110,9 +108,9 @@ impl Arch {
             0 => Arch::Unknown,
             1 | 101 => Arch::X86,
             199 => Arch::X86Unknown,
-            2 | 201 => Arch::X86_64,
-            3 | 202 => Arch::X86_64h,
-            299 => Arch::X86_64Unknown,
+            2 | 201 => Arch::Amd64,
+            3 | 202 => Arch::Amd64h,
+            299 => Arch::Amd64Unknown,
             4 | 301 => Arch::Arm,
             5 | 302 => Arch::ArmV5,
             6 | 303 => Arch::ArmV6,
@@ -139,7 +137,7 @@ impl Arch {
         match self {
             Arch::Unknown => CpuFamily::Unknown,
             Arch::X86 | Arch::X86Unknown => CpuFamily::Intel32,
-            Arch::X86_64 | Arch::X86_64h | Arch::X86_64Unknown => CpuFamily::Intel64,
+            Arch::Amd64 | Arch::Amd64h | Arch::Amd64Unknown => CpuFamily::Intel64,
             Arch::Arm64 | Arch::Arm64V8 | Arch::Arm64e | Arch::Arm64Unknown => CpuFamily::Arm64,
             Arch::Arm
             | Arch::ArmV5
@@ -163,9 +161,9 @@ impl Arch {
             Arch::Unknown => "unknown",
             Arch::X86 => "x86",
             Arch::X86Unknown => "x86_unknown",
-            Arch::X86_64 => "x86_64",
-            Arch::X86_64h => "x86_64h",
-            Arch::X86_64Unknown => "x86_64_unknown",
+            Arch::Amd64 => "x86_64",
+            Arch::Amd64h => "x86_64h",
+            Arch::Amd64Unknown => "x86_64_unknown",
             Arch::Arm64 => "arm64",
             Arch::Arm64V8 => "arm64v8",
             Arch::Arm64e => "arm64e",
@@ -225,7 +223,7 @@ impl Arch {
             | Arch::ArmUnknown
             | Arch::Arm64Unknown
             | Arch::X86Unknown
-            | Arch::X86_64Unknown => false,
+            | Arch::Amd64Unknown => false,
             _ => true,
         }
     }
@@ -268,9 +266,9 @@ impl str::FromStr for Arch {
             "i386" => Arch::X86,
             "x86" => Arch::X86,
             "x86_unknown" => Arch::X86Unknown,
-            "x86_64" | "amd64" => Arch::X86_64,
-            "x86_64h" => Arch::X86_64h,
-            "x86_64_unknown" => Arch::X86_64Unknown,
+            "x86_64" | "amd64" => Arch::Amd64,
+            "x86_64h" => Arch::Amd64h,
+            "x86_64_unknown" => Arch::Amd64Unknown,
             "arm64" => Arch::Arm64,
             "arm64v8" => Arch::Arm64V8,
             "arm64e" => Arch::Arm64e,
