@@ -10,10 +10,8 @@ use std::{fmt, ptr, slice, str};
 use failure::Fail;
 use lazy_static::lazy_static;
 use regex::Regex;
-use uuid::Uuid;
 
-use symbolic_common::byteview::ByteView;
-use symbolic_common::types::{Arch, CpuFamily, DebugId, ParseDebugIdError};
+use symbolic_common::{Arch, ByteView, CpuFamily, DebugId, ParseDebugIdError, Uuid};
 
 use crate::cfi::CfiCache;
 use crate::utils;
@@ -158,11 +156,12 @@ impl str::FromStr for CodeModuleId {
     }
 }
 
-#[cfg(feature = "with_serde")]
-serde_plain::derive_deserialize_from_str!(CodeModuleId, "CodeModuleId");
+// TODO(ja): Enable this again
+// #[cfg(feature = "with_serde")]
+// serde_plain::derive_deserialize_from_str!(CodeModuleId, "CodeModuleId");
 
-#[cfg(feature = "with_serde")]
-serde_plain::derive_serialize_from_display!(CodeModuleId);
+// #[cfg(feature = "with_serde")]
+// serde_plain::derive_serialize_from_display!(CodeModuleId);
 
 /// Carries information about a code module loaded into the process during the
 /// crash. The `debug_identifier` uniquely identifies this module.
@@ -550,7 +549,7 @@ impl SystemInfo {
     /// If this information is present in the dump but its value is unknown
     /// or if the value is missing, this field will contain `Arch::Unknown`.
     pub fn cpu_arch(&self) -> Arch {
-        Arch::from_breakpad(&self.cpu_family()).unwrap_or_default()
+        self.cpu_family().parse().unwrap_or_default()
     }
 
     /// A string further identifying the specific CPU.

@@ -4,16 +4,16 @@ use std::io::{self, Write};
 
 use failure::{Backtrace, Context, Fail, ResultExt};
 
-use symbolic_common::byteview::ByteView;
-use symbolic_common::shared_gimli::{
-    BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, FrameDescriptionEntry, Reader,
+use symbolic_common::ByteView;
+use symbolic_common::{Arch, UnknownArchError};
+use symbolic_debuginfo::breakpad::{BreakpadObject, BreakpadStackRecord};
+use symbolic_debuginfo::dwarf::gimli::{
+    BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error, FrameDescriptionEntry, Reader,
     ReaderOffset, Register, RegisterRule, UninitializedUnwindContext, UnwindOffset, UnwindSection,
     UnwindTable,
 };
-use symbolic_common::types::{Arch, DebugKind, UnknownArchError};
-use symbolic_debuginfo::{DwarfData, DwarfSection, Object};
-
-use crate::registers::get_register_name;
+use symbolic_debuginfo::dwarf::{Dwarf, DwarfSection};
+use symbolic_debuginfo::Object;
 
 /// The latest version of the file format.
 pub const CFICACHE_LATEST_VERSION: u32 = 1;
@@ -103,40 +103,35 @@ impl From<UnknownArchError> for CfiError {
 /// then process an object:
 ///
 /// ```rust,no_run
-/// use symbolic_common::byteview::ByteView;
-/// use symbolic_debuginfo::FatObject;
+/// use symbolic_common::ByteView;
+/// use symbolic_debuginfo::Object;
 /// use symbolic_minidump::cfi::AsciiCfiWriter;
 ///
-/// # fn foo() -> Result<(), failure::Error> {
-/// let byteview = ByteView::from_path("/path/to/object")?;
-/// let fat = FatObject::parse(byteview)?;
-/// let object = fat.get_object(0)?.unwrap();
+/// # fn main() -> Result<(), failure::Error> {
+/// let view = ByteView::open("/path/to/object")?;
+/// let object = Object::parse(&view)?;
 ///
 /// let mut writer = Vec::new();
 /// AsciiCfiWriter::new(&mut writer).process(&object)?;
 /// # Ok(())
 /// # }
-///
-/// # fn main() { foo().unwrap() }
 /// ```
 ///
 /// For writers that implement `Default`, there is a convenience method that creates an instance and
 /// returns it right away:
 ///
 /// ```rust,no_run
-/// use symbolic_common::byteview::ByteView;
-/// use symbolic_debuginfo::FatObject;
+/// use symbolic_common::ByteView;
+/// use symbolic_debuginfo::Object;
 /// use symbolic_minidump::cfi::AsciiCfiWriter;
 ///
-/// # fn foo() -> Result<(), failure::Error> {
-/// let byteview = ByteView::from_path("/path/to/object")?;
-/// let fat = FatObject::parse(byteview)?;
-/// let object = fat.get_object(0)?.unwrap();
+/// # fn main() -> Result<(), failure::Error> {
+/// let view = ByteView::open("/path/to/object")?;
+/// let object = Object::parse(&view)?;
 ///
-/// let buffer: Vec<u8> = AsciiCfiWriter::transform(&object)?;
+/// let buffer = AsciiCfiWriter::<Vec<u8>>::transform(&object)?;
 /// # Ok(())
 /// # }
-/// # fn main() { foo().unwrap() }
 /// ```
 pub struct AsciiCfiWriter<W: Write> {
     inner: W,
@@ -150,53 +145,49 @@ impl<W: Write> AsciiCfiWriter<W> {
 
     /// Extracts CFI from the given object file.
     pub fn process(&mut self, object: &Object<'_>) -> Result<(), CfiError> {
-        match object.debug_kind() {
-            Some(DebugKind::Dwarf) => self.process_dwarf(object),
-            Some(DebugKind::Breakpad) => self.process_breakpad(object),
-
-            // clang on darwin moves CFI to the "__eh_frame" section in the
-            // exectuable rather than the dSYM. This allows processes to unwind
-            // exceptions during runtime. However, we do not detect these files
-            // as `DebugKind::Dwarf` to avoid false positives in all other
-            // cases. Therefore, simply try find the __eh_frame section and
-            // otherwise fail. The file is already loaded and relevant pages
-            // are already in the cache, so the overhead is justifiable.
-            _ => self
-                .process_dwarf(object)
-                .map_err(|_| CfiErrorKind::UnsupportedDebugFormat.into()),
+        match object {
+            Object::Breakpad(o) => self.process_breakpad(o),
+            Object::MachO(o) => self.process_dwarf(o.arch(), o),
+            Object::Elf(o) => self.process_dwarf(o.arch(), o),
+            _ => Err(CfiErrorKind::UnsupportedDebugFormat.into()),
         }
     }
 
-    fn process_breakpad(&mut self, object: &Object<'_>) -> Result<(), CfiError> {
-        for line in object.as_bytes().split(|b| *b == b'\n') {
-            if line.starts_with(b"STACK") {
-                self.inner
-                    .write_all(line)
-                    .context(CfiErrorKind::WriteError)?;
-                self.inner.write(b"\n").context(CfiErrorKind::WriteError)?;
+    /// Returns the wrapped writer from this instance.
+    pub fn into_inner(self) -> W {
+        self.inner
+    }
+
+    fn process_breakpad(&mut self, object: &BreakpadObject<'_>) -> Result<(), CfiError> {
+        for record in object.stack_records() {
+            match record.context(CfiErrorKind::BadDebugInfo)? {
+                BreakpadStackRecord::Cfi(r) => write!(self.inner, "STACK CFI {}\n", r.text),
+                BreakpadStackRecord::Win(r) => write!(self.inner, "STACK WIN {}\n", r.text),
             }
+            .context(CfiErrorKind::WriteError)?
         }
 
         Ok(())
     }
 
-    fn process_dwarf(&mut self, object: &Object<'_>) -> Result<(), CfiError> {
-        let endianness = object.endianness();
+    fn process_dwarf<'o, O>(&mut self, arch: Arch, object: &O) -> Result<(), CfiError>
+    where
+        O: Dwarf<'o>,
+    {
+        let endian = object.endianity();
 
-        if let Some(section) = object.get_dwarf_section(DwarfSection::EhFrame) {
-            let mut frame = EhFrame::new(section.as_bytes(), endianness);
-            let arch = object.arch().map_err(|_| CfiErrorKind::UnsupportedArch)?;
+        if let Some((offset, data)) = object.section_data(DwarfSection::EhFrame) {
+            let mut frame = EhFrame::new(&data, endian);
             if let Some(pointer_size) = arch.pointer_size() {
                 frame.set_address_size(pointer_size as u8);
             }
-            self.read_cfi(arch, &frame, section.offset())
-        } else if let Some(section) = object.get_dwarf_section(DwarfSection::DebugFrame) {
-            let mut frame = DebugFrame::new(section.as_bytes(), endianness);
-            let arch = object.arch().map_err(|_| CfiErrorKind::UnsupportedArch)?;
+            self.read_cfi(arch, &frame, offset)
+        } else if let Some((offset, data)) = object.section_data(DwarfSection::DebugFrame) {
+            let mut frame = DebugFrame::new(&data, endian);
             if let Some(pointer_size) = arch.pointer_size() {
                 frame.set_address_size(pointer_size as u8);
             }
-            self.read_cfi(arch, &frame, section.offset())
+            self.read_cfi(arch, &frame, offset)
         } else {
             Err(CfiErrorKind::MissingDebugInfo.into())
         }
@@ -260,7 +251,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             match table.next_row() {
                 Ok(None) => break,
                 Ok(Some(row)) => rows.push(row.clone()),
-                Err(symbolic_common::shared_gimli::Error::UnknownCallFrameInstruction(_)) => {
+                Err(Error::UnknownCallFrameInstruction(_)) => {
                     continue;
                 }
                 Err(e) => {
@@ -317,16 +308,14 @@ impl<W: Write> AsciiCfiWriter<W> {
         arch: Arch,
         rule: &CfaRule<R>,
     ) -> Result<bool, CfiError> {
-        use symbolic_common::shared_gimli::CfaRule::*;
         let formatted = match rule {
-            RegisterAndOffset { register, offset } => {
-                if let Some(reg) = get_register_name(arch, *register)? {
-                    format!("{} {} +", reg, *offset)
-                } else {
-                    return Ok(false);
+            CfaRule::RegisterAndOffset { register, offset } => {
+                match arch.register_name(register.0) {
+                    Some(register) => format!("{} {} +", register, *offset),
+                    None => return Ok(false),
                 }
             }
-            Expression(_) => return Ok(false),
+            CfaRule::Expression(_) => return Ok(false),
         };
 
         write!(self.inner, " .cfa: {}", formatted).context(CfiErrorKind::WriteError)?;
@@ -340,22 +329,21 @@ impl<W: Write> AsciiCfiWriter<W> {
         rule: &RegisterRule<R>,
         ra: Register,
     ) -> Result<bool, CfiError> {
-        use symbolic_common::shared_gimli::RegisterRule::*;
         let formatted = match rule {
-            Undefined => return Ok(false),
-            SameValue => match get_register_name(arch, register)? {
+            RegisterRule::Undefined => return Ok(false),
+            RegisterRule::SameValue => match arch.register_name(register.0) {
                 Some(reg) => reg.into(),
                 None => return Ok(false),
             },
-            Offset(offset) => format!(".cfa {} + ^", offset),
-            ValOffset(offset) => format!(".cfa {} +", offset),
-            Register(register) => match get_register_name(arch, *register)? {
+            RegisterRule::Offset(offset) => format!(".cfa {} + ^", offset),
+            RegisterRule::ValOffset(offset) => format!(".cfa {} +", offset),
+            RegisterRule::Register(register) => match arch.register_name(register.0) {
                 Some(reg) => reg.into(),
                 None => return Ok(false),
             },
-            Expression(_) => return Ok(false),
-            ValExpression(_) => return Ok(false),
-            Architectural => return Ok(false),
+            RegisterRule::Expression(_) => return Ok(false),
+            RegisterRule::ValExpression(_) => return Ok(false),
+            RegisterRule::Architectural => return Ok(false),
         };
 
         // Breakpad requires an explicit name for the return address register. In all other cases,
@@ -363,7 +351,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         let register_name = if register == ra {
             ".ra"
         } else {
-            match get_register_name(arch, register)? {
+            match arch.register_name(register.0) {
                 Some(reg) => reg,
                 None => return Ok(false),
             }
@@ -405,35 +393,28 @@ enum CfiCacheInner<'a> {
 ///
 /// ```rust,no_run
 /// use std::fs::File;
-/// use symbolic_common::byteview::ByteView;
-/// use symbolic_debuginfo::FatObject;
+/// use symbolic_common::ByteView;
+/// use symbolic_debuginfo::Object;
 /// use symbolic_minidump::cfi::CfiCache;
 ///
-/// # fn foo() -> Result<(), failure::Error> {
-/// let byteview = ByteView::from_path("/path/to/object")?;
-/// let fat = FatObject::parse(byteview)?;
-/// if let Some(object) = fat.get_object(0)? {
-///     let cache = CfiCache::from_object(&object)?;
-///     cache.write_to(File::create("my.cficache")?)?;
-/// }
+/// # fn main() -> Result<(), failure::Error> {
+/// let view = ByteView::open("/path/to/object")?;
+/// let object = Object::parse(&view)?;
+/// let cache = CfiCache::from_object(&object)?;
+/// cache.write_to(File::create("my.cficache")?)?;
 /// # Ok(())
 /// # }
-///
-/// # fn main() { foo().unwrap() }
 /// ```
 ///
 /// ```rust,no_run
-/// use symbolic_common::byteview::ByteView;
-/// use symbolic_debuginfo::FatObject;
+/// use symbolic_common::ByteView;
 /// use symbolic_minidump::cfi::CfiCache;
 ///
-/// # fn foo() -> Result<(), failure::Error> {
-/// let byteview = ByteView::from_path("my.cficache")?;
-/// let cache = CfiCache::from_bytes(byteview)?;
+/// # fn main() -> Result<(), failure::Error> {
+/// let view = ByteView::open("my.cficache")?;
+/// let cache = CfiCache::from_bytes(view)?;
 /// # Ok(())
 /// # }
-///
-/// # fn main() { foo().unwrap() }
 /// ```
 ///
 pub struct CfiCache<'a> {

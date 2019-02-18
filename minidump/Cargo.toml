@@ -19,20 +19,13 @@ edition = "2018"
 failure = "0.1.5"
 lazy_static = "1.2.0"
 regex = "1.1.0"
-serde = { version = "1.0.85", optional = true }
-serde_plain = { version = "0.3.0", optional = true }
-<<<<<<< HEAD
-symbolic-common = { version = "5.8.0", path = "../common" }
-symbolic-debuginfo = { version = "5.8.0", path = "../debuginfo" }
-uuid = "0.7.1"
-=======
-symbolic-common = { version = "5.8.1", path = "../common", features = ["with_dwarf"] }
+# serde = { version = "1.0.87", optional = true }
+# serde_plain = { version = "0.3.0", optional = true }
+symbolic-common = { version = "5.8.1", path = "../common" }
 symbolic-debuginfo = { version = "5.8.1", path = "../debuginfo" }
-uuid = "0.7.2"
->>>>>>> master
 
 [build-dependencies]
-cc = { version = "1.0.28", features = ["parallel"] }
+cc = { version = "1.0.29", features = ["parallel"] }
 
 [dev-dependencies]
 symbolic-testutils = { version = "5.8.1", path = "../testutils" }
