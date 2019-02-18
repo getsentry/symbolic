@@ -492,7 +492,7 @@ impl<'d> Iterator for BreakpadStackRecords<'d> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct BreakpadObject<'d> {
     id: DebugId,
     arch: Arch,

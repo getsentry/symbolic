@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::io::Cursor;
-use std::sync::Arc;
 
 use failure::Fail;
 use goblin::{error::Error as GoblinError, mach};
@@ -18,9 +17,9 @@ pub enum MachError {
     Goblin(#[fail(cause)] GoblinError),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct MachObject<'d> {
-    macho: Arc<mach::MachO<'d>>,
+    macho: mach::MachO<'d>,
     data: &'d [u8],
 }
 
@@ -34,10 +33,7 @@ impl<'d> MachObject<'d> {
 
     pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
         mach::MachO::parse(data, 0)
-            .map(|macho| MachObject {
-                macho: Arc::new(macho),
-                data,
-            })
+            .map(|macho| MachObject { macho, data })
             .map_err(MachError::Goblin)
     }
 
@@ -345,7 +341,7 @@ impl<'d, 'a> Iterator for FatMachObjectIterator<'d, 'a> {
 
 #[derive(Debug)]
 pub struct FatMachO<'d> {
-    fat: Arc<mach::MultiArch<'d>>,
+    fat: mach::MultiArch<'d>,
     data: &'d [u8],
 }
 
@@ -359,10 +355,7 @@ impl<'d> FatMachO<'d> {
 
     pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
         mach::MultiArch::new(data)
-            .map(|fat| FatMachO {
-                fat: Arc::new(fat),
-                data,
-            })
+            .map(|fat| FatMachO { fat, data })
             .map_err(MachError::Goblin)
     }
 
@@ -374,6 +367,7 @@ impl<'d> FatMachO<'d> {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 enum MachObjectIteratorInner<'d, 'a> {
     Single(MonoArchiveObjects<'d, MachObject<'d>>),
     Archive(FatMachObjectIterator<'d, 'a>),

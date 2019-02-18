@@ -1,6 +1,6 @@
 use std::io::Cursor;
 use std::marker::PhantomData;
-use std::sync::Arc;
+use std::sync::RwLock;
 
 use failure::Fail;
 use fallible_iterator::FallibleIterator;
@@ -21,14 +21,21 @@ pub enum PdbError {
     Pdb(#[fail(cause)] pdb::Error),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct PdbObject<'d> {
-    pdb: Arc<Pdb<'d>>,
-    debug_info: Arc<pdb::DebugInformation<'d>>,
-    pdb_info: Arc<pdb::PDBInformation<'d>>,
-    public_syms: Arc<pdb::SymbolTable<'d>>,
+    pdb: RwLock<Pdb<'d>>,
+    debug_info: pdb::DebugInformation<'d>,
+    pdb_info: pdb::PDBInformation<'d>,
+    public_syms: pdb::SymbolTable<'d>,
     data: &'d [u8],
 }
+
+// NB: The pdb crate simulates mmap behavior on any Read + Seek type. This implementation requires
+// mutability of the `Source` and uses trait objects without a Send + Sync barrier. We know that we
+// only instanciate `&[u8]` as source. Whenever we mutate the reader (to read a new module stream),
+// we acquire a write lock on the PDB, which should be sufficient.
+unsafe impl Send for PdbObject<'_> {}
+unsafe impl Sync for PdbObject<'_> {}
 
 impl<'d> PdbObject<'d> {
     pub fn test(data: &[u8]) -> bool {
@@ -43,10 +50,10 @@ impl<'d> PdbObject<'d> {
         let pubi = pdb.global_symbols().map_err(PdbError::Pdb)?;
 
         Ok(PdbObject {
-            pdb: Arc::new(pdb),
-            debug_info: Arc::new(dbi),
-            pdb_info: Arc::new(pdbi),
-            public_syms: Arc::new(pubi),
+            pdb: RwLock::new(pdb),
+            debug_info: dbi,
+            pdb_info: pdbi,
+            public_syms: pubi,
             data,
         })
     }

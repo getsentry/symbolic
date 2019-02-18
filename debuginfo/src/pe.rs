@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::io::Cursor;
-use std::sync::Arc;
 
 use failure::Fail;
 use goblin::{error::Error as GoblinError, pe};
@@ -16,9 +15,9 @@ pub enum PeError {
     Goblin(#[fail(cause)] GoblinError),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct PeObject<'d> {
-    pe: Arc<pe::PE<'d>>,
+    pe: pe::PE<'d>,
     data: &'d [u8],
 }
 
@@ -32,10 +31,7 @@ impl<'d> PeObject<'d> {
 
     pub fn parse(data: &'d [u8]) -> Result<Self, PeError> {
         pe::PE::parse(data)
-            .map(|pe| PeObject {
-                pe: Arc::new(pe),
-                data,
-            })
+            .map(|pe| PeObject { pe, data })
             .map_err(PeError::Goblin)
     }
 

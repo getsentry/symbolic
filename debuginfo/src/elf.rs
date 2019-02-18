@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::io::Cursor;
-use std::sync::Arc;
 
 use failure::Fail;
 use flate2::{Decompress, FlushDecompress};
@@ -23,9 +22,9 @@ pub enum ElfError {
     Goblin(#[fail(cause)] GoblinError),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct ElfObject<'d> {
-    elf: Arc<elf::Elf<'d>>,
+    elf: elf::Elf<'d>,
     data: &'d [u8],
 }
 
@@ -39,10 +38,7 @@ impl<'d> ElfObject<'d> {
 
     pub fn parse(data: &'d [u8]) -> Result<Self, ElfError> {
         elf::Elf::parse(data)
-            .map(|elf| ElfObject {
-                elf: Arc::new(elf),
-                data,
-            })
+            .map(|elf| ElfObject { elf, data })
             .map_err(ElfError::Goblin)
     }
 

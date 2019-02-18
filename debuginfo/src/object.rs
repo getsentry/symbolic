@@ -77,7 +77,8 @@ impl ObjectError {
     }
 }
 
-#[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug)]
 pub enum Object<'d> {
     Breakpad(BreakpadObject<'d>),
     Elf(ElfObject<'d>),
