@@ -111,10 +111,11 @@ impl std::fmt::Display for DwarfSection {
 pub trait Dwarf<'data> {
     fn endianity(&self) -> Endian;
 
-    fn raw_data(&self, section: DwarfSection) -> Option<&'data [u8]>;
+    fn raw_data(&self, section: DwarfSection) -> Option<(u64, &'data [u8])>;
 
-    fn section_data(&self, section: DwarfSection) -> Option<Cow<'data, [u8]>> {
-        self.raw_data(section).map(Cow::Borrowed)
+    fn section_data(&self, section: DwarfSection) -> Option<(u64, Cow<'data, [u8]>)> {
+        let (offset, data) = self.raw_data(section)?;
+        Some((offset, Cow::Borrowed(data)))
     }
 
     fn has_section(&self, section: DwarfSection) -> bool {
@@ -624,22 +625,28 @@ impl<'d> DwarfData<'d> {
             endianity: dwarf.endianity(),
             debug_info: dwarf
                 .section_data(DwarfSection::DebugInfo)
-                .ok_or_else(|| DwarfErrorKind::MissingSection(DwarfSection::DebugInfo))?,
+                .ok_or_else(|| DwarfErrorKind::MissingSection(DwarfSection::DebugInfo))?
+                .1,
             debug_abbrev: dwarf
                 .section_data(DwarfSection::DebugAbbrev)
-                .ok_or_else(|| DwarfErrorKind::MissingSection(DwarfSection::DebugAbbrev))?,
+                .ok_or_else(|| DwarfErrorKind::MissingSection(DwarfSection::DebugAbbrev))?
+                .1,
             debug_line: dwarf
                 .section_data(DwarfSection::DebugLine)
-                .ok_or_else(|| DwarfErrorKind::MissingSection(DwarfSection::DebugLine))?,
+                .ok_or_else(|| DwarfErrorKind::MissingSection(DwarfSection::DebugLine))?
+                .1,
             debug_str: dwarf
                 .section_data(DwarfSection::DebugStr)
-                .unwrap_or_default(),
+                .unwrap_or_default()
+                .1,
             debug_ranges: dwarf
                 .section_data(DwarfSection::DebugRanges)
-                .unwrap_or_default(),
+                .unwrap_or_default()
+                .1,
             debug_rnglists: dwarf
                 .section_data(DwarfSection::DebugRngLists)
-                .unwrap_or_default(),
+                .unwrap_or_default()
+                .1,
         })
     }
 }

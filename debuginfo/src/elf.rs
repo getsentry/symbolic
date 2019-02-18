@@ -338,21 +338,22 @@ impl<'d> Dwarf<'d> for ElfObject<'d> {
         }
     }
 
-    fn raw_data(&self, section: DwarfSection) -> Option<&'d [u8]> {
+    fn raw_data(&self, section: DwarfSection) -> Option<(u64, &'d [u8])> {
         let name = elf_section_name(section);
-        self.find_section(name).map(|(_, data)| data)
+        let (header, data) = self.find_section(name)?;
+        Some((header.sh_offset, data))
     }
 
-    fn section_data(&self, section: DwarfSection) -> Option<Cow<'d, [u8]>> {
+    fn section_data(&self, section: DwarfSection) -> Option<(u64, Cow<'d, [u8]>)> {
         let name = elf_section_name(section);
         let (header, data) = self.find_section(name)?;
 
         // Check for zlib compression of the section data. Once we've arrived here, we can
         // return None on error since each section will only occur once.
         if header.sh_flags & u64::from(elf::section_header::SHF_COMPRESSED) != 0 {
-            Some(Cow::Owned(self.decompress_section(data)?))
+            Some((header.sh_offset, Cow::Owned(self.decompress_section(data)?)))
         } else {
-            Some(Cow::Borrowed(data))
+            Some((header.sh_offset, Cow::Borrowed(data)))
         }
     }
 }

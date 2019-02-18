@@ -21,7 +21,8 @@ failure = "0.1.5"
 fallible-iterator = "0.1.6"
 flate2 = { version = "1.0.6", features = ["rust_backend"], default-features = false }
 fnv = "1.0.6"
-gimli = "0.16.1"
+# gimli = "0.16.1"
+gimli = { git = "https://github.com/gimli-rs/gimli", rev = "6de997b41f9629326cf1885cf1e63582ddef6c21" }
 goblin = "0.0.20"
 # lazy_static = "1.2.0"
 lru-cache = "0.1.1"

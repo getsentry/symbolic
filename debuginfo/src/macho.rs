@@ -213,7 +213,7 @@ impl<'d> Dwarf<'d> for MachObject<'d> {
         }
     }
 
-    fn raw_data(&self, section: DwarfSection) -> Option<&'d [u8]> {
+    fn raw_data(&self, section: DwarfSection) -> Option<(u64, &'d [u8])> {
         let name = match section {
             DwarfSection::EhFrame => "__eh_frame",
             DwarfSection::DebugFrame => "__debug_frame",
@@ -245,7 +245,7 @@ impl<'d> Dwarf<'d> for MachObject<'d> {
                     // loading invalid data.
                     return match header.offset {
                         0 => None,
-                        _ => Some(data),
+                        offset => Some((offset.into(), data)),
                     };
                 }
             }

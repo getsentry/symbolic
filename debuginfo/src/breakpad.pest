@@ -1,6 +1,7 @@
 breakpad = { SOI ~ module ~ (NEWLINE ~ record)* ~ NEWLINE* ~ EOI }
-record = { module | info | file | func_lines | public | stack_win | stack_cfi }
+record = { module | info | file | func_lines | public | stack }
 func_lines = { func ~ (NEWLINE ~ !record ~ line)* }
+stack = { stack_cfi | stack_win }
 
 // MODULE record
 // Example: "MODULE Linux x86 D3096ED481217FD4C16B29CD9BC208BA0 firefox-bin"

@@ -389,6 +389,109 @@ impl<'d> Iterator for BreakpadLineRecords<'d> {
     }
 }
 
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct BreakpadStackCfiRecord<'d> {
+    pub text: &'d str,
+}
+
+impl<'d> BreakpadStackCfiRecord<'d> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+        let string = str::from_utf8(data)?;
+        let parsed = BreakpadParser::parse(Rule::stack_cfi, string)?
+            .next()
+            .unwrap();
+
+        Self::from_pair(parsed)
+    }
+
+    fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Result<Self, BreakpadError> {
+        let mut record = BreakpadStackCfiRecord::default();
+
+        for pair in pair.into_inner() {
+            match pair.as_rule() {
+                Rule::text => record.text = pair.as_str(),
+                _ => unreachable!(),
+            }
+        }
+
+        Ok(record)
+    }
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct BreakpadStackWinRecord<'d> {
+    pub text: &'d str,
+}
+
+impl<'d> BreakpadStackWinRecord<'d> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+        let string = str::from_utf8(data)?;
+        let parsed = BreakpadParser::parse(Rule::stack_win, string)?
+            .next()
+            .unwrap();
+
+        Self::from_pair(parsed)
+    }
+
+    fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Result<Self, BreakpadError> {
+        let mut record = BreakpadStackWinRecord::default();
+
+        for pair in pair.into_inner() {
+            match pair.as_rule() {
+                Rule::text => record.text = pair.as_str(),
+                _ => unreachable!(),
+            }
+        }
+
+        Ok(record)
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum BreakpadStackRecord<'d> {
+    Cfi(BreakpadStackCfiRecord<'d>),
+    Win(BreakpadStackWinRecord<'d>),
+}
+
+impl<'d> BreakpadStackRecord<'d> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+        let string = str::from_utf8(data)?;
+        let parsed = BreakpadParser::parse(Rule::stack, string)?.next().unwrap();
+        let pair = parsed.into_inner().next().unwrap();
+
+        Ok(match pair.as_rule() {
+            Rule::stack_cfi => BreakpadStackRecord::Cfi(BreakpadStackCfiRecord::from_pair(pair)?),
+            Rule::stack_win => BreakpadStackRecord::Win(BreakpadStackWinRecord::from_pair(pair)?),
+            _ => unreachable!(),
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BreakpadStackRecords<'d> {
+    lines: Lines<'d>,
+    finished: bool,
+}
+
+impl<'d> Iterator for BreakpadStackRecords<'d> {
+    type Item = Result<BreakpadStackRecord<'d>, BreakpadError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
+
+        while let Some(line) = self.lines.next() {
+            if line.starts_with(b"STACK ") {
+                return Some(BreakpadStackRecord::parse(line));
+            }
+        }
+
+        self.finished = true;
+        None
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct BreakpadObject<'d> {
     id: DebugId,
@@ -489,6 +592,13 @@ impl<'d> BreakpadObject<'d> {
 
     pub fn func_records(&self) -> BreakpadFuncRecords<'d> {
         BreakpadFuncRecords {
+            lines: Lines::new(self.data),
+            finished: false,
+        }
+    }
+
+    pub fn stack_records(&self) -> BreakpadStackRecords<'d> {
+        BreakpadStackRecords {
             lines: Lines::new(self.data),
             finished: false,
         }
