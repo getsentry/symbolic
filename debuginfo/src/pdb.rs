@@ -1,10 +1,11 @@
+use std::borrow::Cow;
 use std::io::Cursor;
 use std::marker::PhantomData;
-use std::sync::RwLock;
 
 use failure::Fail;
 use fallible_iterator::FallibleIterator;
-use pdb::MachineType;
+use parking_lot::RwLock;
+use pdb::{AddressTranslator, MachineType, SymbolData};
 
 use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
 
@@ -82,7 +83,10 @@ impl<'d> PdbObject<'d> {
     }
 
     pub fn load_address(&self) -> u64 {
-        unimplemented!()
+        // The PDB only stores relative addresses, so the load_address does not make sense. The
+        // according PE, however does feature a load address (called `image_base`). See
+        // `PeObject::load_address` for more information.
+        0
     }
 
     pub fn has_symbols(&self) -> bool {
@@ -92,7 +96,8 @@ impl<'d> PdbObject<'d> {
     pub fn symbols(&self) -> PdbSymbolIterator<'d, '_> {
         PdbSymbolIterator {
             symbols: self.public_syms.iter(),
-            _ph: PhantomData,
+            // TODO: Only compute this once and cache it internally.
+            translator: self.pdb.write().address_translator().ok(),
         }
     }
 
@@ -196,27 +201,40 @@ pub(crate) fn arch_from_machine(machine: MachineType) -> Arch {
 
 pub struct PdbSymbolIterator<'d, 'o> {
     symbols: pdb::SymbolIter<'o>,
-    _ph: PhantomData<&'d ()>,
+    translator: Option<AddressTranslator<'d>>,
 }
 
 impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
     type Item = Symbol<'d>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        let translator = self.translator.as_ref()?;
+
         while let Ok(Some(symbol)) = self.symbols.next() {
-            if let Ok(pdb::SymbolData::PublicSymbol(public)) = symbol.parse() {
+            if let Ok(SymbolData::PublicSymbol(public)) = symbol.parse() {
                 if !public.function {
                     continue;
                 }
 
-                return Some(Symbol {
+                let address = translator.to_rva(public.segment, public.offset);
+                if address == 0 {
+                    continue;
+                }
+
+                let name = symbol.name().ok().map(|name| {
+                    let cow = name.to_string();
                     // TODO: pdb::SymbolIter offers data bound to its own lifetime.
                     // Thus, we cannot return zero-copy symbols here.
-                    name: symbol
-                        .name()
-                        .ok()
-                        .map(|n| n.to_string().into_owned().into()),
-                    address: u64::from(public.offset),
+                    Cow::from(String::from(if cow.starts_with('_') {
+                        &cow[1..]
+                    } else {
+                        &cow
+                    }))
+                });
+
+                return Some(Symbol {
+                    name,
+                    address: u64::from(address),
                     size: 0, // Computed in `SymbolMap`
                 });
             }

@@ -174,12 +174,20 @@ impl<'data> Symbol<'data> {
     }
 }
 
+struct HexFmt(u64);
+
+impl<'d> fmt::Debug for HexFmt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:#x}", self.0)
+    }
+}
+
 impl<'d> fmt::Debug for Symbol<'d> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Symbol")
             .field("name", &self.name().unwrap_or("<unknown>"))
-            .field("address", &format!("{:#x}", self.address))
-            .field("size", &format!("{:#x}", self.size))
+            .field("address", &HexFmt(self.address))
+            .field("size", &HexFmt(self.size))
             .finish()
     }
 }

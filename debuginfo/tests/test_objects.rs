@@ -31,6 +31,16 @@ fn test_pdb() -> Result<(), Error> {
     let symbols = file.symbol_map();
     assert_eq!(symbols.len(), 139);
 
+    let symbol = symbols.lookup(0x373e);
+    assert_eq!(
+        symbol,
+        Some(&Symbol {
+            name: Some("memset".into()),
+            address: 0x373e,
+            size: 0x6,
+        })
+    );
+
     Ok(())
 }
 

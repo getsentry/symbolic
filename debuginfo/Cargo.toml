@@ -24,7 +24,8 @@ fnv = "1.0.6"
 gimli = { git = "https://github.com/gimli-rs/gimli", rev = "6de997b41f9629326cf1885cf1e63582ddef6c21" }
 goblin = "0.0.20"
 lru-cache = "0.1.1"
-pdb = { git = "https://github.com/willglynn/pdb" }
+pdb = { git = "https://github.com/jan-auer/pdb", branch = "develop" }
+parking_lot = "0.7.1"
 pest = "2.1.0"
 pest_derive = "2.1.0"
 serde = { version = "1.0.88", optional = true }
