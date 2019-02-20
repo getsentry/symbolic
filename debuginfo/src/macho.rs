@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::fmt;
 use std::io::Cursor;
 
 use failure::Fail;
@@ -9,7 +10,7 @@ use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfData, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
+use crate::private::{HexFmt, MonoArchive, MonoArchiveObjects, Parse};
 
 #[derive(Debug, Fail)]
 pub enum MachError {
@@ -17,7 +18,6 @@ pub enum MachError {
     Goblin(#[fail(cause)] GoblinError),
 }
 
-#[derive(Debug)]
 pub struct MachObject<'d> {
     macho: mach::MachO<'d>,
     data: &'d [u8],
@@ -175,6 +175,20 @@ impl<'d> MachObject<'d> {
         }
 
         None
+    }
+}
+
+impl fmt::Debug for MachObject<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("MachObject")
+            .field("id", &self.id())
+            .field("arch", &self.arch())
+            .field("kind", &self.kind())
+            .field("load_address", &HexFmt(self.load_address()))
+            .field("has_symbols", &self.has_symbols())
+            .field("has_debug_info", &self.has_debug_info())
+            .field("has_unwind_info", &self.has_unwind_info())
+            .finish()
     }
 }
 
@@ -361,7 +375,6 @@ impl<'d, 'a> Iterator for FatMachObjectIterator<'d, 'a> {
     }
 }
 
-#[derive(Debug)]
 pub struct FatMachO<'d> {
     fat: mach::MultiArch<'d>,
     data: &'d [u8],
@@ -386,6 +399,12 @@ impl<'d> FatMachO<'d> {
             iter: self.fat.iter_arches(),
             data: self.data,
         }
+    }
+}
+
+impl fmt::Debug for FatMachO<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("FatMachO").field("fat", &self.fat).finish()
     }
 }
 

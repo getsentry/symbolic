@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::fmt;
 use std::io::Cursor;
 use std::marker::PhantomData;
 
@@ -10,7 +11,7 @@ use pdb::{AddressTranslator, MachineType, SymbolData};
 use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
 
 use crate::base::*;
-use crate::private::Parse;
+use crate::private::{HexFmt, Parse};
 
 type Pdb<'d> = pdb::PDB<'d, Cursor<&'d [u8]>>;
 
@@ -22,7 +23,6 @@ pub enum PdbError {
     Pdb(#[fail(cause)] pdb::Error),
 }
 
-#[derive(Debug)]
 pub struct PdbObject<'d> {
     pdb: RwLock<Pdb<'d>>,
     debug_info: pdb::DebugInformation<'d>,
@@ -90,7 +90,8 @@ impl<'d> PdbObject<'d> {
     }
 
     pub fn has_symbols(&self) -> bool {
-        unimplemented!()
+        // We can safely assume that PDBs will always contain symbols.
+        true
     }
 
     pub fn symbols(&self) -> PdbSymbolIterator<'d, '_> {
@@ -106,7 +107,7 @@ impl<'d> PdbObject<'d> {
     }
 
     pub fn has_debug_info(&self) -> bool {
-        false
+        false // TODO(ja): Implement
     }
 
     pub fn debug_session(&self) -> Result<PdbDebugSession<'d>, PdbError> {
@@ -114,11 +115,24 @@ impl<'d> PdbObject<'d> {
     }
 
     pub fn has_unwind_info(&self) -> bool {
-        false
+        false // TODO(ja): Implement
     }
 
     pub fn data(&self) -> &'d [u8] {
         self.data
+    }
+}
+
+impl fmt::Debug for PdbObject<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("PdbObject")
+            .field("id", &self.id())
+            .field("arch", &self.arch())
+            .field("load_address", &HexFmt(self.load_address()))
+            .field("has_symbols", &self.has_symbols())
+            .field("has_debug_info", &self.has_debug_info())
+            .field("has_unwind_info", &self.has_unwind_info())
+            .finish()
     }
 }
 

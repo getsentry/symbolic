@@ -1,3 +1,4 @@
+use std::fmt;
 use std::iter::FusedIterator;
 use std::marker::PhantomData;
 
@@ -108,7 +109,14 @@ pub trait Parse<'data>: Sized {
     }
 }
 
-#[derive(Debug)]
+pub struct HexFmt(pub u64);
+
+impl<'d> fmt::Debug for HexFmt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:#x}", self.0)
+    }
+}
+
 pub struct MonoArchive<'d, P> {
     data: &'d [u8],
     _ph: PhantomData<&'d P>,
@@ -131,6 +139,21 @@ where
 
     pub fn objects(&self) -> MonoArchiveObjects<'d, P> {
         MonoArchiveObjects(Some(self.object()))
+    }
+}
+
+impl<'d, P> fmt::Debug for MonoArchive<'d, P>
+where
+    P: Parse<'d> + fmt::Debug,
+    P::Error: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut tuple = f.debug_tuple("MonoArchive");
+        match self.object() {
+            Ok(object) => tuple.field(&object),
+            Err(error) => tuple.field(&error),
+        };
+        tuple.finish()
     }
 }
 

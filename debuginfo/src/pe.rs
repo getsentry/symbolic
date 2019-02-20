@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::fmt;
 use std::io::Cursor;
 use std::marker::PhantomData;
 
@@ -8,7 +9,7 @@ use goblin::{error::Error as GoblinError, pe};
 use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
 
 use crate::base::*;
-use crate::private::Parse;
+use crate::private::{HexFmt, Parse};
 
 #[derive(Debug, Fail)]
 pub enum PeError {
@@ -16,7 +17,6 @@ pub enum PeError {
     Goblin(#[fail(cause)] GoblinError),
 }
 
-#[derive(Debug)]
 pub struct PeObject<'d> {
     pe: pe::PE<'d>,
     data: &'d [u8],
@@ -105,6 +105,20 @@ impl<'d> PeObject<'d> {
 
     pub fn data(&self) -> &'d [u8] {
         self.data
+    }
+}
+
+impl fmt::Debug for PeObject<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("PeObject")
+            .field("id", &self.id())
+            .field("arch", &self.arch())
+            .field("kind", &self.kind())
+            .field("load_address", &HexFmt(self.load_address()))
+            .field("has_symbols", &self.has_symbols())
+            .field("has_debug_info", &self.has_debug_info())
+            .field("has_unwind_info", &self.has_unwind_info())
+            .finish()
     }
 }
 

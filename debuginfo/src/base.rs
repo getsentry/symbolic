@@ -8,6 +8,8 @@ use failure::Fail;
 
 use symbolic_common::{Arch, DebugId, Name};
 
+use crate::private::HexFmt;
+
 /// An error returned for unknown or invalid `ObjectKinds`.
 #[derive(Debug, Fail, Clone, Copy)]
 #[fail(display = "unknown object class")]
@@ -174,14 +176,6 @@ impl<'data> Symbol<'data> {
     }
 }
 
-struct HexFmt(u64);
-
-impl<'d> fmt::Debug for HexFmt {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:#x}", self.0)
-    }
-}
-
 impl<'d> fmt::Debug for Symbol<'d> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Symbol")
@@ -263,6 +257,7 @@ impl<'d> From<Vec<Symbol<'d>>> for SymbolMap<'d> {
     fn from(mut symbols: Vec<Symbol<'d>>) -> Self {
         if !symbols.is_empty() {
             symbols.sort_unstable_by_key(Self::key);
+            // TODO(ja): dmsort, sort stable, drop duplicates
 
             for i in 0..symbols.len() - 1 {
                 let next = symbols[i + 1].address;

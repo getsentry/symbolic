@@ -492,7 +492,6 @@ impl<'d> Iterator for BreakpadStackRecords<'d> {
     }
 }
 
-#[derive(Debug)]
 pub struct BreakpadObject<'d> {
     id: DebugId,
     arch: Arch,
@@ -545,6 +544,10 @@ impl<'d> BreakpadObject<'d> {
 
     pub fn arch(&self) -> Arch {
         self.arch
+    }
+
+    pub fn name(&self) -> &'d str {
+        self.module.name
     }
 
     pub fn kind(&self) -> ObjectKind {
@@ -621,6 +624,19 @@ impl<'d> BreakpadObject<'d> {
 
     pub fn data(&self) -> &'d [u8] {
         self.data
+    }
+}
+
+impl fmt::Debug for BreakpadObject<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("BreakpadObject")
+            .field("id", &self.id())
+            .field("arch", &self.arch())
+            .field("name", &self.name())
+            .field("has_symbols", &self.has_symbols())
+            .field("has_debug_info", &self.has_debug_info())
+            .field("has_unwind_info", &self.has_unwind_info())
+            .finish()
     }
 }
 

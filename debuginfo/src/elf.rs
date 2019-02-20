@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::fmt;
 use std::io::Cursor;
 
 use failure::Fail;
@@ -10,7 +11,7 @@ use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfData, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::private::Parse;
+use crate::private::{HexFmt, Parse};
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;
@@ -22,7 +23,6 @@ pub enum ElfError {
     Goblin(#[fail(cause)] GoblinError),
 }
 
-#[derive(Debug)]
 pub struct ElfObject<'d> {
     elf: elf::Elf<'d>,
     data: &'d [u8],
@@ -281,6 +281,20 @@ impl<'d> ElfObject<'d> {
         Uuid::from_slice(&data)
             .map(DebugId::from_uuid)
             .unwrap_or_default()
+    }
+}
+
+impl fmt::Debug for ElfObject<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("ElfObject")
+            .field("id", &self.id())
+            .field("arch", &self.arch())
+            .field("kind", &self.kind())
+            .field("load_address", &HexFmt(self.load_address()))
+            .field("has_symbols", &self.has_symbols())
+            .field("has_debug_info", &self.has_debug_info())
+            .field("has_unwind_info", &self.has_unwind_info())
+            .finish()
     }
 }
 
