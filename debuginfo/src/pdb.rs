@@ -230,12 +230,10 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
                     continue;
                 }
 
-                // The RVA translation might yield zero, which in this case will most likely refer
-                // to a missing section or invalid symbol. Silently skip this case.
-                let address = public.rva(translator);
-                if address == 0 {
-                    continue;
-                }
+                let address = match public.rva(translator) {
+                    Some(address) => address,
+                    None => continue,
+                };
 
                 let name = symbol.name().ok().map(|name| {
                     let cow = name.to_string();
