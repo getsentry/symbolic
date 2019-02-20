@@ -384,6 +384,13 @@ impl<'d> Iterator for BreakpadLineRecords<'d> {
                 break;
             }
 
+            // There might be empty lines throughout the file (or at the end). This is the only
+            // iterator that cannot rely on a record identifier, so we have to explicitly skip empty
+            // lines.
+            if line.is_empty() {
+                continue;
+            }
+
             let record = match BreakpadLineRecord::parse(line) {
                 Ok(record) => record,
                 Err(error) => return Some(Err(error)),
