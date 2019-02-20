@@ -216,7 +216,9 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
                     continue;
                 }
 
-                let address = translator.to_rva(public.segment, public.offset);
+                // The RVA translation might yield zero, which in this case will most likely refer
+                // to a missing section or invalid symbol. Silently skip this case.
+                let address = public.rva(translator);
                 if address == 0 {
                     continue;
                 }
