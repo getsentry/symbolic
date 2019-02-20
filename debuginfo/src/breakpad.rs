@@ -219,7 +219,7 @@ pub struct BreakpadFuncRecord<'d> {
 }
 
 impl<'d> BreakpadFuncRecord<'d> {
-    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'d [u8], lines: Lines<'d>) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::func, string)?.next().unwrap();
         let mut record = BreakpadFuncRecord::default();
@@ -244,6 +244,7 @@ impl<'d> BreakpadFuncRecord<'d> {
             }
         }
 
+        record.lines = lines;
         Ok(record)
     }
 
@@ -304,7 +305,7 @@ impl<'d> Iterator for BreakpadFuncRecords<'d> {
                 continue;
             }
 
-            return Some(BreakpadFuncRecord::parse(line));
+            return Some(BreakpadFuncRecord::parse(line, self.lines.clone()));
         }
 
         self.finished = true;
@@ -374,13 +375,23 @@ impl<'d> Iterator for BreakpadLineRecords<'d> {
             return None;
         }
 
-        if let Some(line) = self.lines.next() {
+        while let Some(line) = self.lines.next() {
             // Stop parsing LINE records once other expected records are encountered.
-            if !line.starts_with(b"FUNC ")
-                && !line.starts_with(b"PUBLIC ")
-                && !line.starts_with(b"STACK ")
+            if line.starts_with(b"FUNC ")
+                || line.starts_with(b"PUBLIC ")
+                || line.starts_with(b"STACK ")
             {
-                return Some(BreakpadLineRecord::parse(line));
+                break;
+            }
+
+            let record = match BreakpadLineRecord::parse(line) {
+                Ok(record) => record,
+                Err(error) => return Some(Err(error)),
+            };
+
+            // Skip line records for empty ranges. These do not carry any information.
+            if record.size > 0 {
+                return Some(Ok(record));
             }
         }
 
