@@ -1,96 +1,323 @@
+use std::fmt;
+
 use failure::Error;
+use insta;
 
-use symbolic_common::{Arch, ByteView};
-use symbolic_debuginfo::{Object, ObjectKind, Symbol};
+use symbolic_common::ByteView;
+use symbolic_debuginfo::{DebugSession, Function, Object, SymbolMap};
 
-#[test]
-fn test_pe() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.exe")?;
-    let file = Object::parse(&view)?;
+/// Helper to create neat snapshots for symbol tables.
+struct SymbolsDebug<'a>(&'a SymbolMap<'a>);
 
-    assert_eq!(file.id(), "3249d99d-0c40-4931-8610-f4e4fb0b6936-1".parse()?);
-    assert_eq!(file.arch(), Arch::X86);
-    assert_eq!(file.kind(), ObjectKind::Executable);
-    assert_eq!(file.load_address(), 0x0040_0000);
+impl fmt::Debug for SymbolsDebug<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for symbol in self.0.iter() {
+            writeln!(
+                f,
+                "{:>16x} {}",
+                &symbol.address,
+                &symbol.name().unwrap_or("<unknown>")
+            )?;
+        }
 
-    let symbols = file.symbol_map();
-    assert!(symbols.is_empty());
-
-    Ok(())
+        Ok(())
+    }
 }
 
-#[test]
-fn test_pdb() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
-    let file = Object::parse(&view)?;
+/// Helper to create neat snapshots for function trees.
+struct FunctionsDebug<'a>(&'a [Function<'a>], usize);
 
-    assert_eq!(file.id(), "3249d99d-0c40-4931-8610-f4e4fb0b6936-1".parse()?);
-    assert_eq!(file.arch(), Arch::X86);
-    assert_eq!(file.kind(), ObjectKind::Debug);
+impl fmt::Debug for FunctionsDebug<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for function in self.0 {
+            writeln!(
+                f,
+                "\n{:indent$}> {:#x}: {} ({:#x})",
+                "",
+                function.address,
+                function.name,
+                function.size,
+                indent = self.1 * 2
+            )?;
 
-    let symbols = file.symbol_map();
-    assert_eq!(symbols.len(), 139);
+            for line in &function.lines {
+                writeln!(
+                    f,
+                    "{:indent$}  {:#x}: {}:{} ({})",
+                    "",
+                    line.address,
+                    line.file.name,
+                    line.line,
+                    line.file.dir,
+                    indent = self.1 * 2
+                )?;
+            }
 
-    let symbol = symbols.lookup(0x373e);
-    assert_eq!(
-        symbol,
-        Some(&Symbol {
-            name: Some("memset".into()),
-            address: 0x373e,
-            size: 0x6,
-        })
-    );
+            write!(f, "{:?}", FunctionsDebug(&function.inlinees, self.1 + 1))?;
+        }
 
-    Ok(())
-}
-
-#[test]
-fn test_macho() {
-    // TODO(ja): Implement
-}
-
-#[test]
-fn test_fat_mach() {
-    // TODO(ja): Implement
-}
-
-#[test]
-fn test_elf() {
-    // TODO(ja): Implement
+        Ok(())
+    }
 }
 
 #[test]
 fn test_breakpad() -> Result<(), Error> {
+    // Using the windows version here since it contains all record kinds
     let view = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
-    let file = Object::parse(&view)?;
+    let object = Object::parse(&view)?;
 
-    assert_eq!(file.id(), "3249d99d-0c40-4931-8610-f4e4fb0b6936-1".parse()?);
-    assert_eq!(file.arch(), Arch::X86);
-    assert_eq!(file.kind(), ObjectKind::Debug);
-    assert_eq!(file.load_address(), 0);
-    assert!(file.has_symbols());
+    insta::assert_debug_snapshot_matches!(object, @r###"Breakpad(
+    BreakpadObject {
+        id: DebugId {
+            uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
+            appendix: 1
+        },
+        arch: X86,
+        name: "crash.pdb",
+        has_symbols: true,
+        has_debug_info: true,
+        has_unwind_info: true
+    }
+)"###);
 
-    let symbols = file.symbol_map();
-    assert_eq!(symbols.len(), 35);
+    Ok(())
+}
 
-    assert_eq!(
-        symbols[0],
-        Symbol {
-            name: Some("__CxxFrameHandler3".into()),
-            address: 0x3726,
-            size: 0x6,
-        }
-    );
+#[test]
+fn test_breakpad_symbols() -> Result<(), Error> {
+    let view = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
+    let object = Object::parse(&view)?;
 
-    let symbol = symbols.lookup(0x3753);
-    assert_eq!(
-        symbol,
-        Some(&Symbol {
-            name: Some("_callnewh".into()),
-            address: 0x3750,
-            size: 0x6,
-        })
+    let symbols = object.symbol_map();
+    insta::assert_debug_snapshot_matches!("breakpad_symbols", SymbolsDebug(&symbols));
+
+    Ok(())
+}
+
+#[test]
+fn test_breakpad_functions() -> Result<(), Error> {
+    let view = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
+    let object = Object::parse(&view)?;
+
+    let mut session = object.debug_session()?;
+    let functions = session.functions()?;
+    insta::assert_debug_snapshot_matches!(
+        "breakpad_functions",
+        FunctionsDebug(&functions[..10], 0)
     );
 
     Ok(())
 }
+
+#[test]
+fn test_elf_executable() -> Result<(), Error> {
+    let view = ByteView::open("../testutils/fixtures/linux/crash")?;
+    let object = Object::parse(&view)?;
+
+    insta::assert_debug_snapshot_matches!(object, @r###"Elf(
+    ElfObject {
+        id: DebugId {
+            uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
+            appendix: 0
+        },
+        arch: Amd64,
+        kind: Executable,
+        load_address: 0x400000,
+        has_symbols: true,
+        has_debug_info: false,
+        has_unwind_info: true
+    }
+)"###);
+
+    Ok(())
+}
+
+#[test]
+fn test_elf_debug() -> Result<(), Error> {
+    let view = ByteView::open("../testutils/fixtures/linux/crash.debug")?;
+    let object = Object::parse(&view)?;
+
+    insta::assert_debug_snapshot_matches!(object, @r###"Elf(
+    ElfObject {
+        id: DebugId {
+            uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
+            appendix: 0
+        },
+        arch: Amd64,
+        kind: Debug,
+        load_address: 0x400000,
+        has_symbols: true,
+        has_debug_info: true,
+        has_unwind_info: false
+    }
+)"###);
+
+    Ok(())
+}
+
+#[test]
+fn test_elf_symbols() -> Result<(), Error> {
+    // TODO(ja): Why does crash.debug not retain the symbol table but report has_symbols
+    let view = ByteView::open("../testutils/fixtures/linux/crash")?;
+    let object = Object::parse(&view)?;
+
+    let symbols = object.symbol_map();
+    insta::assert_debug_snapshot_matches!("elf_symbols", SymbolsDebug(&symbols));
+
+    Ok(())
+}
+
+#[test]
+fn test_elf_functions() -> Result<(), Error> {
+    let view = ByteView::open("../testutils/fixtures/linux/crash.debug")?;
+    let object = Object::parse(&view)?;
+
+    let mut session = object.debug_session()?;
+    let functions = session.functions()?;
+    insta::assert_debug_snapshot_matches!("elf_functions", FunctionsDebug(&functions[..10], 0));
+
+    Ok(())
+}
+
+#[test]
+fn test_mach_executable() -> Result<(), Error> {
+    let view = ByteView::open("../testutils/fixtures/macos/crash")?;
+    let object = Object::parse(&view)?;
+
+    insta::assert_debug_snapshot_matches!(object, @r###"MachO(
+    MachObject {
+        id: DebugId {
+            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
+            appendix: 0
+        },
+        arch: Amd64,
+        kind: Executable,
+        load_address: 0x100000000,
+        has_symbols: true,
+        has_debug_info: false,
+        has_unwind_info: true
+    }
+)"###);
+
+    Ok(())
+}
+
+#[test]
+fn test_mach_dsym() -> Result<(), Error> {
+    let view =
+        ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
+    let object = Object::parse(&view)?;
+
+    insta::assert_debug_snapshot_matches!(object, @r###"MachO(
+    MachObject {
+        id: DebugId {
+            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
+            appendix: 0
+        },
+        arch: Amd64,
+        kind: Debug,
+        load_address: 0x100000000,
+        has_symbols: true,
+        has_debug_info: true,
+        has_unwind_info: false
+    }
+)"###);
+
+    Ok(())
+}
+
+#[test]
+fn test_mach_symbols() -> Result<(), Error> {
+    let view = ByteView::open("../testutils/fixtures/macos/crash")?;
+    let object = Object::parse(&view)?;
+
+    let symbols = object.symbol_map();
+    insta::assert_debug_snapshot_matches!("mach_symbols", SymbolsDebug(&symbols));
+
+    Ok(())
+}
+
+#[test]
+fn test_mach_functions() -> Result<(), Error> {
+    let view =
+        ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
+    let object = Object::parse(&view)?;
+
+    let mut session = object.debug_session()?;
+    let functions = session.functions()?;
+    insta::assert_debug_snapshot_matches!("mach_functions", FunctionsDebug(&functions[..10], 0));
+
+    Ok(())
+}
+
+#[test]
+fn test_pe() -> Result<(), Error> {
+    let view = ByteView::open("../testutils/fixtures/windows/crash.exe")?;
+    let object = Object::parse(&view)?;
+
+    insta::assert_debug_snapshot_matches!(object, @r###"Pe(
+    PeObject {
+        id: DebugId {
+            uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
+            appendix: 1
+        },
+        arch: X86,
+        kind: Executable,
+        load_address: 0x400000,
+        has_symbols: false,
+        has_debug_info: false,
+        has_unwind_info: false
+    }
+)"###);
+
+    Ok(())
+}
+
+// NB: No test for PE symbols because our executable does not export any symbols
+// NB: No test for PE functions because we can only read debug info from PDBs
+
+#[test]
+fn test_pdb() -> Result<(), Error> {
+    let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
+    let object = Object::parse(&view)?;
+
+    insta::assert_debug_snapshot_matches!(object, @r###"Pdb(
+    PdbObject {
+        id: DebugId {
+            uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
+            appendix: 1
+        },
+        arch: X86,
+        load_address: 0x0,
+        has_symbols: true,
+        has_debug_info: false,
+        has_unwind_info: false
+    }
+)"###);
+
+    Ok(())
+}
+
+#[test]
+fn test_pdb_symbols() -> Result<(), Error> {
+    let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
+    let object = Object::parse(&view)?;
+
+    let symbols = object.symbol_map();
+    insta::assert_debug_snapshot_matches!("pdb_symbols", SymbolsDebug(&symbols));
+
+    Ok(())
+}
+
+// TODO: PDB debug information not yet supported
+// #[test]
+// fn test_pdb_functions() -> Result<(), Error> {
+//     let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
+//     let object = Object::parse(&view)?;
+
+//     let mut session = object.debug_session()?;
+//     let functions = session.functions()?;
+//     insta::assert_debug_snapshot_matches!("pdb_functions", FunctionsDebug(&functions[..10], 0));
+
+//     Ok(())
+// }

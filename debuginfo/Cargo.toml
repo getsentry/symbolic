@@ -33,7 +33,4 @@ smallvec = "0.6.9"
 symbolic-common = { version = "5.8.2", path = "../common" }
 
 [dev-dependencies]
-symbolic-testutils = { version = "5.8.2", path = "../testutils" }
-
-[features]
-default = []
+insta = "0.6.3"

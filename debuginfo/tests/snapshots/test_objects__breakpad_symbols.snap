@@ -1,0 +1,42 @@
+---
+created: "2019-02-20T11:25:23.767168Z"
+creator: insta@0.6.3
+source: debuginfo/tests/test_objects.rs
+expression: SymbolDebug(&symbols)
+---
+            3726 __CxxFrameHandler3
+            372c __std_exception_copy
+            3732 __std_exception_destroy
+            3738 _CxxThrowException
+            373e memset
+            3744 _except_handler4_common
+            374a exit
+            3750 _callnewh
+            3756 malloc
+            375c _seh_filter_exe
+            3762 _set_app_type
+            3768 __setusermatherr
+            376e _configure_narrow_argv
+            3774 _initialize_narrow_environment
+            377a _get_initial_narrow_environment
+            3780 _initterm
+            3786 _initterm_e
+            378c _exit
+            3792 _set_fmode
+            3798 __p___argc
+            379e __p___argv
+            37a4 _cexit
+            37aa _c_exit
+            37b0 _register_thread_local_exe_atexit_callback
+            37b6 _configthreadlocale
+            37bc _set_new_mode
+            37c2 __p__commode
+            37c8 free
+            37ce _initialize_onexit_table
+            37d4 _register_onexit_function
+            37da _crt_atexit
+            37e0 _controlfp_s
+            37e6 terminate
+            37ec IsProcessorFeaturePresent
+            37f2 memcpy
+
