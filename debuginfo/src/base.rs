@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use failure::Fail;
 
-use symbolic_common::{Arch, DebugId, Name};
+use symbolic_common::{join_path, Arch, DebugId, Name};
 
 use crate::private::HexFmt;
 
@@ -287,14 +287,30 @@ pub struct FileInfo<'data> {
     pub dir: Cow<'data, str>,
 }
 
-#[derive(Clone, Debug)]
+impl<'data> FileInfo<'data> {
+    pub fn path(&self) -> String {
+        join_path(&self.dir, &self.name)
+    }
+}
+
+#[derive(Clone)]
 pub struct LineInfo<'data> {
     pub address: u64,
     pub file: FileInfo<'data>,
     pub line: u64,
 }
 
-#[derive(Clone, Debug)]
+impl fmt::Debug for LineInfo<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("LineInfo")
+            .field("address", &HexFmt(self.address))
+            .field("file", &self.file)
+            .field("line", &self.line)
+            .finish()
+    }
+}
+
+#[derive(Clone)]
 pub struct Function<'data> {
     pub address: u64,
     pub size: u64,
@@ -303,6 +319,20 @@ pub struct Function<'data> {
     pub lines: Vec<LineInfo<'data>>,
     pub inlinees: Vec<Function<'data>>,
     pub inline: bool,
+}
+
+impl fmt::Debug for Function<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Function")
+            .field("address", &HexFmt(self.address))
+            .field("size", &HexFmt(self.size))
+            .field("name", &self.name)
+            .field("compilation_dir", &self.compilation_dir)
+            .field("lines", &self.lines)
+            .field("inlinees", &self.inlinees)
+            .field("inline", &self.inline)
+            .finish()
+    }
 }
 
 pub trait DebugSession {
