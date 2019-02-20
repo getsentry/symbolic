@@ -334,7 +334,8 @@ impl<'d> Iterator for MachOSymbolIterator<'d> {
             // We are only interested in symbols pointing to a code section (type `N_SECT`). The
             // section index is incremented by one to leave room for `NO_SECT` (0). Section indexes
             // of the code sections have been passed in via `self.sections`.
-            let in_valid_section = nlist.get_type() == mach::symbols::N_SECT
+            let in_valid_section = !nlist.is_stab()
+                && nlist.get_type() == mach::symbols::N_SECT
                 && nlist.n_sect != (mach::symbols::NO_SECT as usize)
                 && self.sections.contains(&(nlist.n_sect - 1));
 
