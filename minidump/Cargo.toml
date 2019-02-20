@@ -27,7 +27,4 @@ symbolic-debuginfo = { version = "5.8.2", path = "../debuginfo" }
 cc = { version = "1.0.29", features = ["parallel"] }
 
 [dev-dependencies]
-symbolic-testutils = { version = "5.8.2", path = "../testutils" }
-
-[features]
-default = []
+insta = "0.6.3"

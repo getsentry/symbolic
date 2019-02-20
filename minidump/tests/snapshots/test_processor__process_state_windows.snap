@@ -1,3 +1,9 @@
+---
+created: "2019-02-20T15:42:12.012643Z"
+creator: insta@0.6.3
+source: minidump/tests/test_processor.rs
+expression: "&state"
+---
 ProcessState {
     requesting_thread: 0,
     timestamp: 1521713273,

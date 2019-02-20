@@ -1,99 +1,104 @@
-use std::fmt::Write;
+use std::fmt;
 use std::io::Cursor;
 
 use failure::Error;
+use insta;
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
 use symbolic_symcache::{SymCache, SymCacheWriter};
-use symbolic_testutils::{assert_snapshot, assert_snapshot_plain, fixture_path};
 
-struct Shim<'a>(symbolic_common::Name<'a>);
+/// Helper to create neat snapshots for symbol tables.
+struct FunctionsDebug<'a>(&'a SymCache<'a>);
 
-impl std::fmt::Display for Shim<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use symbolic_common::Language;
-        use symbolic_demangle::Demangle;
-        let demangled = self.0.try_demangle(Default::default());
-
-        match self.0.language() {
-            Language::Unknown => f.write_str(&demangled),
-            language => write!(f, "{} [{}]", demangled, language),
+impl fmt::Debug for FunctionsDebug<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for result in self.0.functions() {
+            match result {
+                Ok(function) => writeln!(f, "{:>16x} {}", &function.address(), &function.name())?,
+                Err(error) => writeln!(f, "{:?}", error)?,
+            }
         }
-    }
-}
 
-fn get_functions(symcache: &SymCache<'_>) -> String {
-    let mut s = String::new();
-    for func in symcache.functions() {
-        let func = func.expect("Could not read symcache functions");
-        writeln!(s, "{:>16x} {}", func.address(), Shim(func.name()))
-            .expect("Could not format symcache function");
+        Ok(())
     }
-    s
 }
 
 #[test]
 fn test_write_header_linux() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture_path("linux/crash.debug"))?;
+    let buffer = ByteView::open("../testutils/fixtures/linux/crash.debug")?;
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
-    assert_snapshot("header_linux.txt", &symcache);
+    insta::assert_debug_snapshot_matches!(symcache, @r###"SymCache {
+    id: DebugId {
+        uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
+        appendix: 0
+    },
+    arch: Amd64,
+    has_line_info: true,
+    has_file_info: true,
+    functions: 1955
+}"###);
 
     Ok(())
 }
 
 #[test]
 fn test_write_functions_linux() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture_path("linux/crash.debug"))?;
+    let buffer = ByteView::open("../testutils/fixtures/linux/crash.debug")?;
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
-    let functions = get_functions(&symcache);
-    assert_snapshot_plain("functions_linux.txt", &functions);
+    insta::assert_debug_snapshot_matches!("functions_linux", FunctionsDebug(&symcache));
 
     Ok(())
 }
 
 #[test]
 fn test_write_header_macos() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture_path(
-        "macos/crash.dSYM/Contents/Resources/DWARF/crash",
-    ))?;
+    let buffer =
+        ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
-    assert_snapshot("header_macos.txt", &symcache);
+    insta::assert_debug_snapshot_matches!(symcache, @r###"SymCache {
+    id: DebugId {
+        uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
+        appendix: 0
+    },
+    arch: Amd64,
+    has_line_info: true,
+    has_file_info: true,
+    functions: 1863
+}"###);
 
     Ok(())
 }
 
 #[test]
 fn test_write_functions_macos() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture_path(
-        "macos/crash.dSYM/Contents/Resources/DWARF/crash",
-    ))?;
+    let buffer =
+        ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
-    let functions = get_functions(&symcache);
-    assert_snapshot_plain("functions_macos.txt", &functions);
+    insta::assert_debug_snapshot_matches!("functions_macos", FunctionsDebug(&symcache));
 
     Ok(())
 }
 
 #[test]
 fn test_write_large_symbol_names() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture_path("regression/large_symbol.sym"))?;
+    let buffer = ByteView::open("../testutils/fixtures/regression/large_symbol.sym")?;
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();

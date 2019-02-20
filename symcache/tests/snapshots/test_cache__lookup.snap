@@ -1,3 +1,9 @@
+---
+created: "2019-02-20T16:25:28.706740Z"
+creator: insta@0.6.3
+source: symcache/tests/test_cache.rs
+expression: "&line_infos"
+---
 [
     LineInfo {
         arch: Amd64,

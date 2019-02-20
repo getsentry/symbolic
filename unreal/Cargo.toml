@@ -15,6 +15,9 @@ Parsing and processing utilities for Unreal Engine 4 crash files.
 """
 edition = "2018"
 
+[features]
+with-serde = ["serde", "chrono/serde"]
+
 [dependencies]
 anylog = "0.3.1"
 bytes = "0.4.11"
@@ -26,8 +29,5 @@ lazy_static = "1.2.0"
 regex = "1.1.0"
 serde = { version = "1.0.88", optional = true, features = ["derive"] }
 
-[features]
-with-serde = ["serde", "chrono/serde"]
-
 [dev-dependencies]
-symbolic-testutils = { version = "5.8.2", path = "../testutils" }
+insta = "0.6.3"

@@ -23,6 +23,4 @@ symbolic-common = { version = "5.8.2", path = "../common" }
 symbolic-debuginfo = { version = "5.8.2", path = "../debuginfo" }
 
 [dev-dependencies]
-# TODO(ja): Remove demangle from tests
-symbolic-demangle = { version = "5.8.2", path = "../demangle" }
-symbolic-testutils = { version = "5.8.2", path = "../testutils" }
+insta = "0.6.3"
