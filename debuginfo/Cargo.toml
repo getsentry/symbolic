@@ -20,10 +20,8 @@ dmsort = "1.0.0"
 failure = "0.1.5"
 fallible-iterator = "0.1.6"
 flate2 = { version = "1.0.6", features = ["rust_backend"], default-features = false }
-fnv = "1.0.6"
-gimli = { git = "https://github.com/gimli-rs/gimli", rev = "6de997b41f9629326cf1885cf1e63582ddef6c21" }
-goblin = "0.0.20"
-lru-cache = "0.1.1"
+gimli = { version = "0.17.0", features = ["read", "std"], default-features = false }
+goblin = "0.0.21"
 pdb = { git = "https://github.com/jan-auer/pdb", branch = "develop" }
 parking_lot = "0.7.1"
 pest = "2.1.0"

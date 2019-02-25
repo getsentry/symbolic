@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
 
 use crate::base::*;
-use crate::dwarf::{Dwarf, DwarfData, DwarfDebugSession, DwarfError, DwarfSection, Endian};
+use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, Endian};
 use crate::private::{HexFmt, MonoArchive, MonoArchiveObjects, Parse};
 
 #[derive(Debug, Fail)]
@@ -150,17 +150,16 @@ impl<'d> MachObject<'d> {
     }
 
     pub fn has_debug_info(&self) -> bool {
-        self.has_section(DwarfSection::DebugInfo)
+        self.has_section("debug_info")
     }
 
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
-        let data = DwarfData::from_dwarf(self)?;
         let symbols = self.symbol_map();
-        DwarfDebugSession::parse(data, symbols, self.load_address())
+        DwarfDebugSession::parse(self, symbols, self.load_address())
     }
 
     pub fn has_unwind_info(&self) -> bool {
-        self.has_section(DwarfSection::EhFrame) || self.has_section(DwarfSection::DebugFrame)
+        self.has_section("eh_frame") || self.has_section("debug_frame")
     }
 
     pub fn data(&self) -> &'d [u8] {
@@ -266,24 +265,9 @@ impl<'d> Dwarf<'d> for MachObject<'d> {
         }
     }
 
-    fn raw_data(&self, section: DwarfSection) -> Option<(u64, &'d [u8])> {
-        let name = match section {
-            DwarfSection::EhFrame => "__eh_frame",
-            DwarfSection::DebugFrame => "__debug_frame",
-            DwarfSection::DebugAbbrev => "__debug_abbrev",
-            DwarfSection::DebugAranges => "__debug_aranges",
-            DwarfSection::DebugLine => "__debug_line",
-            DwarfSection::DebugLoc => "__debug_loc",
-            DwarfSection::DebugPubNames => "__debug_pubnames",
-            DwarfSection::DebugRanges => "__debug_ranges",
-            DwarfSection::DebugRngLists => "__debug_rnglists",
-            DwarfSection::DebugStr => "__debug_str",
-            DwarfSection::DebugInfo => "__debug_info",
-            DwarfSection::DebugTypes => "__debug_types",
-        };
-
-        let segment_name = match section {
-            DwarfSection::EhFrame => "__TEXT",
+    fn raw_data(&self, section_name: &str) -> Option<(u64, &'d [u8])> {
+        let segment_name = match section_name {
+            "eh_frame" => "__TEXT",
             _ => "__DWARF",
         };
 
@@ -291,15 +275,17 @@ impl<'d> Dwarf<'d> for MachObject<'d> {
 
         for section in segment {
             if let Ok((header, data)) = section {
-                if header.name().map(|sec| sec == name).unwrap_or(false) {
-                    // In some cases, dsymutil leaves sections headers but removes their data from
-                    // the file. While the addr and size parameters are still set, `header.offset`
-                    // is 0 in that case. We skip them just like the section was missing to avoid
-                    // loading invalid data.
-                    return match header.offset {
-                        0 => None,
-                        offset => Some((offset.into(), data)),
-                    };
+                if let Ok(sec) = header.name() {
+                    if sec.len() >= 2 && &sec[2..] == section_name {
+                        // In some cases, dsymutil leaves sections headers but removes their data
+                        // from the file. While the addr and size parameters are still set,
+                        // `header.offset` is 0 in that case. We skip them just like the section was
+                        // missing to avoid loading invalid data.
+                        return match header.offset {
+                            0 => None,
+                            offset => Some((offset.into(), data)),
+                        };
+                    }
                 }
             }
         }

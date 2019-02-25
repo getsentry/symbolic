@@ -12,7 +12,7 @@ use symbolic_debuginfo::dwarf::gimli::{
     ReaderOffset, Register, RegisterRule, UninitializedUnwindContext, UnwindOffset, UnwindSection,
     UnwindTable,
 };
-use symbolic_debuginfo::dwarf::{Dwarf, DwarfSection};
+use symbolic_debuginfo::dwarf::Dwarf;
 use symbolic_debuginfo::Object;
 
 /// The latest version of the file format.
@@ -176,13 +176,13 @@ impl<W: Write> AsciiCfiWriter<W> {
     {
         let endian = object.endianity();
 
-        if let Some((offset, data)) = object.section_data(DwarfSection::EhFrame) {
+        if let Some((offset, data)) = object.section_data("eh_frame") {
             let mut frame = EhFrame::new(&data, endian);
             if let Some(pointer_size) = arch.pointer_size() {
                 frame.set_address_size(pointer_size as u8);
             }
             self.read_cfi(arch, &frame, offset)
-        } else if let Some((offset, data)) = object.section_data(DwarfSection::DebugFrame) {
+        } else if let Some((offset, data)) = object.section_data("debug_frame") {
             let mut frame = DebugFrame::new(&data, endian);
             if let Some(pointer_size) = arch.pointer_size() {
                 frame.set_address_size(pointer_size as u8);

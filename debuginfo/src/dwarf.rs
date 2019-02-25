@@ -1,13 +1,13 @@
 use std::borrow::Cow;
+use std::ops::Deref;
 use std::rc::Rc;
 
 use failure::Fail;
 use fallible_iterator::FallibleIterator;
-use fnv::FnvBuildHasher;
-use gimli::AttributeValue;
-use lru_cache::LruCache;
+use gimli::read::{AttributeValue, Range};
+use gimli::{constants, UnitSectionOffset};
 
-use symbolic_common::{derive_failure, AsSelf, Language, Name, SelfCell};
+use symbolic_common::{derive_failure, AsSelf, Language, Name};
 
 use crate::base::*;
 
@@ -15,30 +15,75 @@ use crate::base::*;
 pub use gimli;
 pub use gimli::RunTimeEndian as Endian;
 
-const ABBREV_CACHE_SIZE: usize = 30;
+/// Helper that allows optional ownership of debug data in gimli.
+#[derive(Clone, Debug, Default)]
+struct RcCow<'a>(Rc<Cow<'a, [u8]>>);
 
-type Slice<'a> = gimli::EndianSlice<'a, Endian>;
-type DebugAbbrev<'a> = gimli::DebugAbbrev<Slice<'a>>;
-type DebugInfo<'a> = gimli::DebugInfo<Slice<'a>>;
-type DebugLine<'a> = gimli::DebugLine<Slice<'a>>;
-type DebugRanges<'a> = gimli::DebugRanges<Slice<'a>>;
-type DebugRngLists<'a> = gimli::DebugRngLists<Slice<'a>>;
-type DebugStr<'a> = gimli::DebugStr<Slice<'a>>;
-type RangeLists<'a> = gimli::RangeLists<Slice<'a>>;
+impl<'a> RcCow<'a> {
+    #[inline]
+    fn new(cow: Cow<'a, [u8]>) -> Self {
+        RcCow(Rc::new(cow))
+    }
+}
 
-type CompilationUnitHeader<'a> = gimli::CompilationUnitHeader<Slice<'a>>;
-type Die<'d, 'u> = gimli::DebuggingInformationEntry<'u, 'u, Slice<'d>, usize>;
-type UnitOffset = gimli::UnitOffset<usize>;
+impl Deref for RcCow<'_> {
+    type Target = [u8];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+unsafe impl gimli::StableDeref for RcCow<'_> {}
+unsafe impl gimli::CloneStableDeref for RcCow<'_> {}
+
+impl<'a> From<Cow<'a, [u8]>> for RcCow<'a> {
+    fn from(cow: Cow<'a, [u8]>) -> Self {
+        Self::new(cow)
+    }
+}
+
+impl<'a> From<&'a [u8]> for RcCow<'a> {
+    fn from(slice: &'a [u8]) -> Self {
+        Self::new(Cow::Borrowed(slice))
+    }
+}
+
+impl<'a> From<Vec<u8>> for RcCow<'a> {
+    fn from(vec: Vec<u8>) -> Self {
+        Self::new(Cow::Owned(vec))
+    }
+}
+
+trait ReadExt {
+    fn to_string_lossy(&self) -> Cow<'_, str>;
+}
+
+impl ReadExt for gimli::read::EndianReader<Endian, RcCow<'_>> {
+    #[inline]
+    fn to_string_lossy(&self) -> Cow<'_, str> {
+        String::from_utf8_lossy(&self)
+    }
+}
+
+type Slice<'a> = gimli::read::EndianReader<Endian, RcCow<'a>>;
+type LocationLists<'a> = gimli::read::LocationLists<Slice<'a>>;
+type RangeLists<'a> = gimli::read::RangeLists<Slice<'a>>;
+type Unit<'a> = gimli::read::Unit<Slice<'a>>;
+type DwarfInfo<'a> = gimli::read::Dwarf<Slice<'a>>;
+
+type Die<'d, 'u> = gimli::read::DebuggingInformationEntry<'u, 'u, Slice<'d>, usize>;
+type Attribute<'a> = gimli::read::Attribute<Slice<'a>>;
+type UnitOffset = gimli::read::UnitOffset<usize>;
 type DebugInfoOffset = gimli::DebugInfoOffset<usize>;
 
-type IncompleteLineNumberProgram<'a> = gimli::IncompleteLineNumberProgram<Slice<'a>>;
-type LineNumberProgramHeader<'a> = gimli::LineNumberProgramHeader<Slice<'a>>;
+type IncompleteLineNumberProgram<'a> = gimli::read::IncompleteLineProgram<Slice<'a>>;
+type LineNumberProgramHeader<'a> = gimli::read::LineProgramHeader<Slice<'a>>;
 
 /// Variants of `DwarfError`.
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 pub enum DwarfErrorKind {
-    #[fail(display = "missing required {} section", _0)]
-    MissingSection(DwarfSection),
     #[fail(display = "missing compilation unit")]
     MissingCompileUnit,
     #[fail(display = "compilation unit for offset {} does not exist", _0)]
@@ -51,134 +96,30 @@ pub enum DwarfErrorKind {
     InvertedFunctionRange,
     #[fail(display = "corrupted dwarf debug data")]
     CorruptedData,
-    // #[fail(display = "corrupted dwarf debug data: {}", _0)]
-    // CorruptedDataReason(&'static str),
     #[fail(display = "processing of dwarf debug info failed")]
     ProcessingFailed,
 }
 
 derive_failure!(DwarfError, DwarfErrorKind);
 
-impl From<gimli::Error> for DwarfError {
-    fn from(error: gimli::Error) -> Self {
+impl From<gimli::read::Error> for DwarfError {
+    fn from(error: gimli::read::Error) -> Self {
         error.context(DwarfErrorKind::CorruptedData).into()
-    }
-}
-
-/// Represents the name of a DWARF debug section.
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum DwarfSection {
-    EhFrame,
-    DebugFrame,
-    DebugAbbrev,
-    DebugAranges,
-    DebugLine,
-    DebugLoc,
-    DebugPubNames,
-    DebugRanges,
-    DebugRngLists,
-    DebugStr,
-    DebugInfo,
-    DebugTypes,
-}
-
-impl DwarfSection {
-    /// Return the name of the section for debug purposes.
-    pub fn name(self) -> &'static str {
-        match self {
-            DwarfSection::EhFrame => "eh_frame",
-            DwarfSection::DebugFrame => "debug_frame",
-            DwarfSection::DebugAbbrev => "debug_abbrev",
-            DwarfSection::DebugAranges => "debug_aranges",
-            DwarfSection::DebugLine => "debug_line",
-            DwarfSection::DebugLoc => "debug_loc",
-            DwarfSection::DebugPubNames => "debug_pubnames",
-            DwarfSection::DebugRanges => "debug_ranges",
-            DwarfSection::DebugRngLists => "debug_rnglists",
-            DwarfSection::DebugStr => "debug_str",
-            DwarfSection::DebugInfo => "debug_info",
-            DwarfSection::DebugTypes => "debug_types",
-        }
-    }
-}
-
-impl std::fmt::Display for DwarfSection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())
     }
 }
 
 pub trait Dwarf<'data> {
     fn endianity(&self) -> Endian;
 
-    fn raw_data(&self, section: DwarfSection) -> Option<(u64, &'data [u8])>;
+    fn raw_data(&self, section: &str) -> Option<(u64, &'data [u8])>;
 
-    fn section_data(&self, section: DwarfSection) -> Option<(u64, Cow<'data, [u8]>)> {
+    fn section_data(&self, section: &str) -> Option<(u64, Cow<'data, [u8]>)> {
         let (offset, data) = self.raw_data(section)?;
         Some((offset, Cow::Borrowed(data)))
     }
 
-    fn has_section(&self, section: DwarfSection) -> bool {
+    fn has_section(&self, section: &str) -> bool {
         self.raw_data(section).is_some()
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct AbbrevCache {
-    cache: LruCache<gimli::DebugAbbrevOffset<usize>, Rc<gimli::Abbreviations>, FnvBuildHasher>,
-}
-
-impl AbbrevCache {
-    pub fn new() -> Self {
-        Self::with_capacity(ABBREV_CACHE_SIZE)
-    }
-
-    pub fn with_capacity(capacity: usize) -> Self {
-        let cache = LruCache::with_hasher(capacity, FnvBuildHasher::default());
-        AbbrevCache { cache }
-    }
-
-    pub fn get(
-        &mut self,
-        unit: &CompilationUnitHeader<'_>,
-        debug_abbrev: &DebugAbbrev<'_>,
-    ) -> Result<Rc<gimli::Abbreviations>, DwarfError> {
-        let offset = unit.debug_abbrev_offset();
-        if let Some(abbrev) = self.cache.get_mut(&offset) {
-            Ok(abbrev.clone())
-        } else {
-            let abbrev = Rc::new(unit.abbreviations(&debug_abbrev)?);
-            self.cache.insert(offset, abbrev.clone());
-            Ok(abbrev)
-        }
-    }
-}
-
-impl Default for AbbrevCache {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[derive(Debug)]
-struct AbbrevCacheHandle<'a> {
-    cache: &'a mut AbbrevCache,
-    debug_abbrev: &'a DebugAbbrev<'a>,
-}
-
-impl<'a> AbbrevCacheHandle<'a> {
-    pub fn new(cache: &'a mut AbbrevCache, debug_abbrev: &'a DebugAbbrev<'_>) -> Self {
-        AbbrevCacheHandle {
-            cache,
-            debug_abbrev,
-        }
-    }
-
-    pub fn get(
-        &mut self,
-        unit: &CompilationUnitHeader<'_>,
-    ) -> Result<Rc<gimli::Abbreviations>, DwarfError> {
-        self.cache.get(unit, self.debug_abbrev)
     }
 }
 
@@ -197,13 +138,13 @@ struct DwarfSequence {
 }
 
 #[derive(Debug)]
-struct DwarfLineProgram<'a> {
-    header: LineNumberProgramHeader<'a>,
+struct DwarfLineProgram<'d> {
+    header: LineNumberProgramHeader<'d>,
     sequences: Vec<DwarfSequence>,
 }
 
-impl<'a> DwarfLineProgram<'a> {
-    fn prepare(program: IncompleteLineNumberProgram<'a>) -> Result<Self, DwarfError> {
+impl<'d, 'a> DwarfLineProgram<'d> {
+    fn prepare(program: IncompleteLineNumberProgram<'d>) -> Result<Self, DwarfError> {
         let mut sequences = Vec::new();
         let mut sequence_rows = Vec::<DwarfRow>::new();
         let mut prev_address = 0;
@@ -278,22 +219,7 @@ impl<'a> DwarfLineProgram<'a> {
         })
     }
 
-    pub fn get_fileinfo(&self, index: u64) -> Result<FileInfo<'a>, DwarfError> {
-        let file = self
-            .header
-            .file(index)
-            .ok_or_else(|| DwarfErrorKind::InvalidFileRef(index))?;
-
-        Ok(FileInfo {
-            dir: file
-                .directory(&self.header)
-                .map(|dir| String::from_utf8_lossy(dir.slice()))
-                .unwrap_or_default(),
-            name: String::from_utf8_lossy(file.path_name().slice()),
-        })
-    }
-
-    pub fn get_rows(&self, range: &gimli::Range) -> &[DwarfRow] {
+    pub fn get_rows(&self, range: &Range) -> &[DwarfRow] {
         for seq in &self.sequences {
             if seq.end <= range.begin || seq.start > range.end {
                 continue;
@@ -314,119 +240,63 @@ impl<'a> DwarfLineProgram<'a> {
     }
 }
 
-#[derive(Debug)]
 struct DwarfUnit<'d, 'a> {
-    header: &'a CompilationUnitHeader<'d>,
-    info: &'a DwarfInfo<'d>,
-    base_address: u64,
-    comp_dir: Cow<'d, str>,
+    unit: &'a Unit<'d>,
+    session: &'a DwarfDebugSession<'d>,
     language: Language,
-    line_program: DwarfLineProgram<'d>,
-    abbrev: Rc<gimli::Abbreviations>,
+    line_program: Option<DwarfLineProgram<'d>>,
 }
 
 impl<'d, 'a> DwarfUnit<'d, 'a> {
-    fn parse(
-        header: &'a CompilationUnitHeader<'d>,
-        info: &'a DwarfInfo<'d>,
-        abbrevs: &mut AbbrevCacheHandle<'_>,
-    ) -> Result<Option<Self>, DwarfError> {
-        let abbrev = abbrevs.get(header)?;
-
-        // Access the compilation unit, which must be the top level DIE
-        let mut entries = header.entries(&abbrev);
+    fn parse(unit: &'a Unit<'d>, session: &'a DwarfDebugSession<'d>) -> Result<Self, DwarfError> {
+        let mut entries = unit.entries();
         let entry = match entries.next_dfs()? {
             Some((_, entry)) => entry,
-            None => return Ok(None),
+            None => return Err(gimli::read::Error::MissingUnitDie.into()),
         };
-
-        if entry.tag() != gimli::DW_TAG_compile_unit {
-            return Err(DwarfErrorKind::MissingCompileUnit.into());
-        }
-
-        let base_address = match entry.attr_value(gimli::DW_AT_low_pc)? {
-            Some(AttributeValue::Addr(addr)) => addr,
-            _ => match entry.attr_value(gimli::DW_AT_entry_pc)? {
-                Some(AttributeValue::Addr(addr)) => addr,
-                _ => 0,
-            },
-        };
-
-        // Skip units without without line ranges. They do not contain code.
-        let line_offset = match entry.attr_value(gimli::DW_AT_stmt_list)? {
-            Some(AttributeValue::DebugLineRef(offset)) => offset,
-            _ => return Ok(None),
-        };
-
-        let comp_dir = entry
-            .attr(gimli::DW_AT_comp_dir)?
-            .and_then(|attr| attr.string_value(&info.debug_str));
-
-        let comp_name = entry
-            .attr(gimli::DW_AT_name)?
-            .and_then(|attr| attr.string_value(&info.debug_str));
 
         let language = entry
-            .attr(gimli::DW_AT_language)?
+            .attr(constants::DW_AT_language)?
             .and_then(|attr| match attr.value() {
                 AttributeValue::Language(lang) => Some(language_from_dwarf(lang)),
                 _ => None,
-            });
+            })
+            .unwrap_or(Language::Unknown);
 
-        let program =
-            info.debug_line
-                .program(line_offset, header.address_size(), comp_dir, comp_name)?;
-
-        Ok(Some(DwarfUnit {
-            header,
-            info,
-            base_address,
-            comp_dir: comp_dir
-                .map(|slice| String::from_utf8_lossy(slice.slice()))
-                .unwrap_or_default(),
-            language: language.unwrap_or(Language::Unknown),
-            line_program: DwarfLineProgram::prepare(program)?,
-            abbrev,
-        }))
-    }
-
-    /// Resolves an entry and if found invokes a function to transform it.
-    ///
-    /// As this might resolve into cached information the data borrowed from
-    /// abbrev can only be temporarily accessed in the callback.
-    fn resolve_reference<T, F>(
-        &self,
-        attr_value: AttributeValue<Slice<'_>>,
-        abbrevs: &mut AbbrevCacheHandle<'_>,
-        f: F,
-    ) -> Result<Option<T>, DwarfError>
-    where
-        F: FnOnce(&Die<'d, '_>, &mut AbbrevCacheHandle<'_>) -> Result<Option<T>, DwarfError>,
-    {
-        let (header, offset) = match attr_value {
-            AttributeValue::UnitRef(offset) => (self.header, offset),
-            AttributeValue::DebugInfoRef(offset) => self.info.find_unit_offset(offset)?,
-            // TODO: There is probably more that can come back here.
-            _ => return Ok(None),
+        let line_program = match unit.line_program {
+            Some(ref program) => Some(DwarfLineProgram::prepare(program.clone())?),
+            None => None,
         };
 
-        let abbrev = abbrevs.get(header)?;
-        let mut entries = header.entries_at_offset(&abbrev, offset)?;
+        Ok(DwarfUnit {
+            unit,
+            session,
+            language,
+            line_program,
+        })
+    }
 
-        entries.next_entry()?;
-        if let Some(entry) = entries.current() {
-            f(entry, abbrevs)
-        } else {
-            Ok(None)
+    fn compilation_dir(&self) -> Cow<'d, str> {
+        // TODO(ja): Make this safe
+        match self.unit.comp_dir {
+            Some(ref dir) => unsafe { std::mem::transmute(dir.to_string_lossy()) },
+            None => Cow::default(),
         }
     }
 
+    fn string_value(&self, value: AttributeValue<Slice<'d>>) -> Result<Cow<'d, str>, DwarfError> {
+        // TODO(ja): Make this safe
+        let r = self.session.info.attr_string(self.unit, value)?;
+        Ok(unsafe { std::mem::transmute(r.to_string_lossy()) })
+    }
+
+    /// Parses the call site and range lists of this Debugging Information Entry.
     fn parse_ranges(
         &self,
-        entry: &Die<'_, '_>,
-        buf: &mut Vec<gimli::Range>,
+        entry: &Die<'d, '_>,
+        range_buf: &mut Vec<Range>,
     ) -> Result<(Option<u64>, Option<u64>), DwarfError> {
-        let mut tuple = <(_, _)>::default();
+        let mut tuple = (None, None);
         let mut low_pc = None;
         let mut high_pc = None;
         let mut high_pc_rel = None;
@@ -434,44 +304,36 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         let mut attrs = entry.attrs();
         while let Some(attr) = attrs.next()? {
             match attr.name() {
-                gimli::DW_AT_ranges => match attr.value() {
-                    AttributeValue::RangeListsRef(offset) => {
-                        let mut attrs = self.info.range_lists.ranges(
-                            offset,
-                            self.header.version(),
-                            self.header.address_size(),
-                            self.base_address,
-                        )?;
-
-                        while let Some(item) = attrs.next()? {
-                            buf.push(item);
-                        }
-                    }
-                    _ => unreachable!(),
-                },
-                gimli::DW_AT_low_pc => match attr.value() {
+                constants::DW_AT_low_pc => match attr.value() {
                     AttributeValue::Addr(addr) => low_pc = Some(addr),
                     _ => unreachable!(),
                 },
-                gimli::DW_AT_high_pc => match attr.value() {
+                constants::DW_AT_high_pc => match attr.value() {
                     AttributeValue::Addr(addr) => high_pc = Some(addr),
                     AttributeValue::Udata(size) => high_pc_rel = Some(size),
                     _ => unreachable!(),
                 },
-                gimli::DW_AT_call_line => match attr.value() {
+                constants::DW_AT_call_line => match attr.value() {
                     AttributeValue::Udata(line) => tuple.0 = Some(line),
                     _ => unreachable!(),
                 },
-                gimli::DW_AT_call_file => match attr.value() {
+                constants::DW_AT_call_file => match attr.value() {
                     AttributeValue::FileIndex(file) => tuple.1 = Some(file),
                     _ => unreachable!(),
                 },
-                _ => continue,
+                _ => match self.session.info.attr_ranges(self.unit, attr.value())? {
+                    Some(mut ranges) => {
+                        while let Some(range) = ranges.next()? {
+                            range_buf.push(range);
+                        }
+                    }
+                    None => continue,
+                },
             }
         }
 
         // Found DW_AT_ranges, so early-exit here
-        if !buf.is_empty() {
+        if !range_buf.is_empty() {
             return Ok(tuple);
         }
 
@@ -500,7 +362,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             return Err(DwarfErrorKind::InvertedFunctionRange.into());
         }
 
-        buf.push(gimli::Range {
+        range_buf.push(Range {
             begin: low_pc,
             end: high_pc,
         });
@@ -508,11 +370,35 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         Ok(tuple)
     }
 
+    /// Resolves an entry and if found invokes a function to transform it.
+    ///
+    /// As this might resolve into cached information the data borrowed from
+    /// abbrev can only be temporarily accessed in the callback.
+    fn resolve_reference<T, F>(&self, attr: Attribute<'d>, f: F) -> Result<Option<T>, DwarfError>
+    where
+        F: FnOnce(&Die<'d, '_>) -> Result<Option<T>, DwarfError>,
+    {
+        let (unit, offset) = match attr.value() {
+            AttributeValue::UnitRef(offset) => (self.unit, offset),
+            AttributeValue::DebugInfoRef(offset) => self.session.find_unit_offset(offset)?,
+            // TODO: There is probably more that can come back here.
+            _ => return Ok(None),
+        };
+
+        let mut entries = unit.entries_at_offset(offset)?;
+        entries.next_entry()?;
+
+        if let Some(entry) = entries.current() {
+            f(entry)
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Resolves the function name of a debug entry.
     fn resolve_function_name(
         &self,
         entry: &Die<'d, '_>,
-        abbrevs: &mut AbbrevCacheHandle<'_>,
     ) -> Result<Option<Cow<'d, str>>, DwarfError> {
         let mut attrs = entry.attrs();
         let mut fallback_name = None;
@@ -520,16 +406,14 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         while let Some(attr) = attrs.next()? {
             match attr.name() {
-                // prioritize these.  If we get them, take them.
-                gimli::DW_AT_linkage_name | gimli::DW_AT_MIPS_linkage_name => {
-                    return Ok(attr
-                        .string_value(&self.info.debug_str)
-                        .map(|s| s.to_string_lossy()));
+                // Prioritize these. If we get them, take them.
+                constants::DW_AT_linkage_name | constants::DW_AT_MIPS_linkage_name => {
+                    return self.string_value(attr.value()).map(Some);
                 }
-                gimli::DW_AT_name => {
+                constants::DW_AT_name => {
                     fallback_name = Some(attr);
                 }
-                gimli::DW_AT_abstract_origin | gimli::DW_AT_specification => {
+                constants::DW_AT_abstract_origin | constants::DW_AT_specification => {
                     reference_target = Some(attr);
                 }
                 _ => {}
@@ -537,15 +421,15 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         }
 
         if let Some(attr) = fallback_name {
-            return Ok(attr
-                .string_value(&self.info.debug_str)
-                .map(|s| s.to_string_lossy()));
+            return self.string_value(attr.value()).map(Some);
         }
 
         if let Some(attr) = reference_target {
-            return self.resolve_reference(attr.value(), abbrevs, |ref_entry, abbrevs| {
-                self.resolve_function_name(ref_entry, abbrevs)
-            });
+            if let Some(name) =
+                self.resolve_reference(attr, |ref_entry| self.resolve_function_name(ref_entry))?
+            {
+                return Ok(Some(name));
+            }
         }
 
         Ok(None)
@@ -553,13 +437,19 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
     fn resolve_lines(
         &self,
-        ranges: &[gimli::Range],
+        ranges: &[Range],
         lines: &mut Vec<LineInfo<'d>>,
     ) -> Result<(), DwarfError> {
+        // Early exit in case this unit did not declare a line program.
+        let line_program = match self.line_program {
+            Some(ref program) => program,
+            None => return Ok(()),
+        };
+
         let mut last = None;
         for range in ranges {
-            for row in self.line_program.get_rows(range) {
-                let file = self.line_program.get_fileinfo(row.file_index)?;
+            for row in line_program.get_rows(range) {
+                let file = self.resolve_file(row.file_index)?.unwrap();
                 let line = row.line.unwrap_or(0);
 
                 if let Some((last_file, last_line)) = last {
@@ -570,7 +460,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
                 last = Some((row.file_index, line));
                 lines.push(LineInfo {
-                    address: row.address - self.info.load_address,
+                    address: row.address - self.session.load_address,
                     file,
                     line,
                 });
@@ -580,74 +470,43 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         Ok(())
     }
 
-    fn resolve_file(&self, file_id: u64) -> Result<FileInfo<'d>, DwarfError> {
-        self.line_program.get_fileinfo(file_id)
+    fn resolve_file(&self, file_id: u64) -> Result<Option<FileInfo<'d>>, DwarfError> {
+        let line_program = match self.line_program {
+            Some(ref program) => &program.header,
+            None => return Ok(None),
+        };
+
+        let file = line_program
+            .file(file_id)
+            .ok_or_else(|| DwarfErrorKind::InvalidFileRef(file_id))?;
+
+        Ok(Some(FileInfo {
+            dir: file
+                .directory(line_program)
+                .and_then(|attr| self.string_value(attr).ok())
+                .unwrap_or_default(),
+            name: self.string_value(file.path_name()).unwrap_or_default(),
+        }))
     }
 }
 
 fn language_from_dwarf(language: gimli::DwLang) -> Language {
     match language {
-        gimli::DW_LANG_C => Language::C,
-        gimli::DW_LANG_C11 => Language::C,
-        gimli::DW_LANG_C89 => Language::C,
-        gimli::DW_LANG_C99 => Language::C,
-        gimli::DW_LANG_C_plus_plus => Language::Cpp,
-        gimli::DW_LANG_C_plus_plus_03 => Language::Cpp,
-        gimli::DW_LANG_C_plus_plus_11 => Language::Cpp,
-        gimli::DW_LANG_C_plus_plus_14 => Language::Cpp,
-        gimli::DW_LANG_D => Language::D,
-        gimli::DW_LANG_Go => Language::Go,
-        gimli::DW_LANG_ObjC => Language::ObjC,
-        gimli::DW_LANG_ObjC_plus_plus => Language::ObjCpp,
-        gimli::DW_LANG_Rust => Language::Rust,
-        gimli::DW_LANG_Swift => Language::Swift,
+        constants::DW_LANG_C => Language::C,
+        constants::DW_LANG_C11 => Language::C,
+        constants::DW_LANG_C89 => Language::C,
+        constants::DW_LANG_C99 => Language::C,
+        constants::DW_LANG_C_plus_plus => Language::Cpp,
+        constants::DW_LANG_C_plus_plus_03 => Language::Cpp,
+        constants::DW_LANG_C_plus_plus_11 => Language::Cpp,
+        constants::DW_LANG_C_plus_plus_14 => Language::Cpp,
+        constants::DW_LANG_D => Language::D,
+        constants::DW_LANG_Go => Language::Go,
+        constants::DW_LANG_ObjC => Language::ObjC,
+        constants::DW_LANG_ObjC_plus_plus => Language::ObjCpp,
+        constants::DW_LANG_Rust => Language::Rust,
+        constants::DW_LANG_Swift => Language::Swift,
         _ => Language::Unknown,
-    }
-}
-
-#[derive(Debug)]
-pub struct DwarfData<'d> {
-    endianity: Endian,
-    debug_info: Cow<'d, [u8]>,
-    debug_abbrev: Cow<'d, [u8]>,
-    debug_line: Cow<'d, [u8]>,
-    debug_str: Cow<'d, [u8]>,
-    debug_ranges: Cow<'d, [u8]>,
-    debug_rnglists: Cow<'d, [u8]>,
-}
-
-impl<'d> DwarfData<'d> {
-    pub fn from_dwarf<D>(dwarf: &D) -> Result<Self, DwarfError>
-    where
-        D: Dwarf<'d>,
-    {
-        Ok(DwarfData {
-            endianity: dwarf.endianity(),
-            debug_info: dwarf
-                .section_data(DwarfSection::DebugInfo)
-                .ok_or_else(|| DwarfErrorKind::MissingSection(DwarfSection::DebugInfo))?
-                .1,
-            debug_abbrev: dwarf
-                .section_data(DwarfSection::DebugAbbrev)
-                .ok_or_else(|| DwarfErrorKind::MissingSection(DwarfSection::DebugAbbrev))?
-                .1,
-            debug_line: dwarf
-                .section_data(DwarfSection::DebugLine)
-                .ok_or_else(|| DwarfErrorKind::MissingSection(DwarfSection::DebugLine))?
-                .1,
-            debug_str: dwarf
-                .section_data(DwarfSection::DebugStr)
-                .unwrap_or_default()
-                .1,
-            debug_ranges: dwarf
-                .section_data(DwarfSection::DebugRanges)
-                .unwrap_or_default()
-                .1,
-            debug_rnglists: dwarf
-                .section_data(DwarfSection::DebugRngLists)
-                .unwrap_or_default()
-                .1,
-        })
     }
 }
 
@@ -698,56 +557,116 @@ impl<'a> FunctionStack<'a> {
     }
 }
 
-#[derive(Debug)]
-pub struct DwarfInfo<'d> {
-    units: Vec<CompilationUnitHeader<'d>>,
-    debug_abbrev: DebugAbbrev<'d>,
-    debug_line: DebugLine<'d>,
-    debug_str: DebugStr<'d>,
-    range_lists: RangeLists<'d>,
+fn load_gimli_section<'d, D, S>(dwarf: &D) -> S
+where
+    D: Dwarf<'d>,
+    S: gimli::read::Section<Slice<'d>>,
+{
+    let data = dwarf
+        .section_data(&S::section_name()[1..])
+        .unwrap_or_default()
+        .1;
+    S::from(Slice::new(RcCow::new(data), dwarf.endianity()))
+}
+
+fn empty_gimli_section<'d, S>() -> S
+where
+    S: gimli::read::Section<Slice<'d>>,
+{
+    S::from(Slice::new(RcCow::default(), Default::default()))
+}
+
+pub struct DwarfDebugSession<'data> {
+    info: DwarfInfo<'data>,
+    units: Vec<Unit<'data>>,
+    symbol_map: SymbolMap<'data>,
     load_address: u64,
 }
 
-impl<'d> DwarfInfo<'d> {
-    pub fn parse(data: &'d DwarfData<'_>, load_address: u64) -> Result<Self, DwarfError> {
-        Ok(DwarfInfo {
-            units: DebugInfo::new(&data.debug_info, data.endianity)
-                .units()
-                .collect()?,
-            debug_abbrev: DebugAbbrev::new(&data.debug_abbrev, data.endianity),
-            debug_line: DebugLine::new(&data.debug_line, data.endianity),
-            debug_str: DebugStr::new(&data.debug_str, data.endianity),
-            range_lists: RangeLists::new(
-                DebugRanges::new(&data.debug_ranges, data.endianity),
-                DebugRngLists::new(&data.debug_rnglists, data.endianity),
-            )?,
+impl<'d> DwarfDebugSession<'d> {
+    pub fn parse<D>(
+        dwarf: &D,
+        symbol_map: SymbolMap<'d>,
+        load_address: u64,
+    ) -> Result<Self, DwarfError>
+    where
+        D: Dwarf<'d>,
+    {
+        // Load required sections from the debug file. Unused sections are not loaded.
+        let info = DwarfInfo {
+            debug_abbrev: load_gimli_section(dwarf),
+            debug_addr: empty_gimli_section(),
+            debug_info: load_gimli_section(dwarf),
+            debug_line: load_gimli_section(dwarf),
+            debug_line_str: load_gimli_section(dwarf),
+            debug_str: load_gimli_section(dwarf),
+            debug_str_offsets: load_gimli_section(dwarf),
+            debug_str_sup: empty_gimli_section(),
+            debug_types: empty_gimli_section(),
+            locations: LocationLists::new(empty_gimli_section(), empty_gimli_section()),
+            ranges: RangeLists::new(load_gimli_section(dwarf), load_gimli_section(dwarf)),
+        };
+
+        // Prepare random access to unit headers.
+        let units = info
+            .units()
+            .and_then(|header| Unit::new(&info, header))
+            .collect()?;
+
+        Ok(DwarfDebugSession {
+            info,
+            units,
+            symbol_map,
             load_address,
         })
     }
 
-    pub fn functions(
+    fn find_unit_offset(
         &self,
-        symbol_map: &SymbolMap<'d>,
-        abbrev_cache: &mut AbbrevCache,
-    ) -> Result<Vec<Function<'d>>, DwarfError> {
-        let mut abbrevs = AbbrevCacheHandle::new(abbrev_cache, &self.debug_abbrev);
+        offset: DebugInfoOffset,
+    ) -> Result<(&Unit<'d>, UnitOffset), DwarfError> {
+        let unit_offset = UnitSectionOffset::DebugInfoOffset(offset);
+        let idx = match self.units.binary_search_by_key(&unit_offset, |x| x.offset) {
+            Ok(idx) => idx,
+            Err(0) => return Err(DwarfErrorKind::InvalidUnitRef(offset.0).into()),
+            Err(next_idx) => next_idx - 1,
+        };
+
+        if let Some(unit) = self.units.get(idx) {
+            if let Some(unit_offset) = unit_offset.to_unit_offset(unit) {
+                return Ok((unit, unit_offset));
+            }
+        }
+
+        Err(DwarfErrorKind::InvalidUnitRef(offset.0).into())
+    }
+}
+
+impl<'d, 'slf: 'd> AsSelf<'slf> for DwarfDebugSession<'d> {
+    type Ref = DwarfDebugSession<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
+    }
+}
+
+impl<'d> DebugSession for DwarfDebugSession<'d> {
+    type Error = DwarfError;
+
+    fn functions(&mut self) -> Result<Vec<Function<'_>>, Self::Error> {
         let mut range_buf = Vec::new();
         let mut line_buf = Vec::new();
         let mut functions = Vec::new();
 
-        for header in self.units.iter() {
+        for unit in self.units.iter() {
+            let unit = DwarfUnit::parse(unit, self)?;
             let batch_start = functions.len();
-
-            let unit = match DwarfUnit::parse(header, self, &mut abbrevs)? {
-                Some(unit) => unit,
-                None => continue,
-            };
 
             let mut depth = 0;
             let mut skipped_depth = None;
 
             let mut stack = FunctionStack::new();
-            let mut entries = unit.header.entries(&unit.abbrev);
+            let mut entries = unit.unit.entries();
             while let Some((movement, entry)) = entries.next_dfs()? {
                 depth += movement;
 
@@ -761,8 +680,8 @@ impl<'d> DwarfInfo<'d> {
 
                 // Skip anything that is not a function.
                 let inline = match entry.tag() {
-                    gimli::DW_TAG_subprogram => false,
-                    gimli::DW_TAG_inlined_subroutine => true,
+                    constants::DW_TAG_subprogram => false,
+                    constants::DW_TAG_inlined_subroutine => true,
                     _ => continue,
                 };
 
@@ -794,7 +713,7 @@ impl<'d> DwarfInfo<'d> {
                 // XXX: Maybe we should actually parse the ranges in the resolve function and always
                 // look at the symbol table based on the start of the DIE range.
                 let symbol_name = if !inline {
-                    symbol_map
+                    self.symbol_map
                         .lookup_range(function_address, function_address + function_size)
                         .and_then(|symbol| symbol.name.clone())
                 } else {
@@ -803,7 +722,7 @@ impl<'d> DwarfInfo<'d> {
 
                 let name = match symbol_name {
                     Some(name) => Some(name),
-                    None => unit.resolve_function_name(entry, &mut abbrevs)?,
+                    None => unit.resolve_function_name(entry)?,
                 };
 
                 // Avoid constant allocations by collecting repeatedly into the same buffer and
@@ -815,7 +734,7 @@ impl<'d> DwarfInfo<'d> {
                     address: function_address,
                     size: function_size,
                     name: Name::with_language(name.unwrap_or_default(), unit.language),
-                    compilation_dir: unit.comp_dir.clone(),
+                    compilation_dir: unit.compilation_dir(),
                     lines: line_buf.drain(..).collect(),
                     inlinees: Vec::new(),
                     inline,
@@ -834,31 +753,31 @@ impl<'d> DwarfInfo<'d> {
                     // file for inlined subprograms. If this info is missing, the lookup might
                     // return invalid line numbers.
                     if let (Some(line), Some(file_id)) = (call_line, call_file) {
-                        let file = unit.resolve_file(file_id)?;
-
-                        match parent
-                            .lines
-                            .binary_search_by_key(&function_address, |line| line.address)
-                        {
-                            Ok(idx) => {
-                                // We found a line record that points to this function. This happens
-                                // especially, if the function range overlaps exactly. Patch the
-                                // call info with the correct location.
-                                parent.lines[idx].file = file;
-                                parent.lines[idx].line = line;
+                        if let Some(file) = unit.resolve_file(file_id)? {
+                            match parent
+                                .lines
+                                .binary_search_by_key(&function_address, |line| line.address)
+                            {
+                                Ok(idx) => {
+                                    // We found a line record that points to this function. This happens
+                                    // especially, if the function range overlaps exactly. Patch the
+                                    // call info with the correct location.
+                                    parent.lines[idx].file = file;
+                                    parent.lines[idx].line = line;
+                                }
+                                Err(idx) => {
+                                    // There is no line record pointing to this function, so add one to
+                                    // the correct call location. Note that "base_dir" can be inherited
+                                    // safely here.
+                                    let line_info = LineInfo {
+                                        address: function_address,
+                                        file,
+                                        line,
+                                    };
+                                    parent.lines.insert(idx, line_info);
+                                }
                             }
-                            Err(idx) => {
-                                // There is no line record pointing to this function, so add one to
-                                // the correct call location. Note that "base_dir" can be inherited
-                                // safely here.
-                                let line_info = LineInfo {
-                                    address: function_address,
-                                    file,
-                                    line,
-                                };
-                                parent.lines.insert(idx, line_info);
-                            }
-                        };
+                        }
                     }
                 }
 
@@ -874,74 +793,5 @@ impl<'d> DwarfInfo<'d> {
         }
 
         Ok(functions)
-    }
-
-    fn find_unit_offset(
-        &self,
-        offset: DebugInfoOffset,
-    ) -> Result<(&CompilationUnitHeader<'d>, UnitOffset), DwarfError> {
-        let idx = match self.units.binary_search_by_key(&offset.0, |x| x.offset().0) {
-            Ok(idx) => idx,
-            Err(0) => return Err(DwarfErrorKind::InvalidUnitRef(offset.0).into()),
-            Err(next_idx) => next_idx - 1,
-        };
-
-        if let Some(header) = self.units.get(idx) {
-            if let Some(unit_offset) = offset.to_unit_offset(header) {
-                return Ok((header, unit_offset));
-            }
-        }
-
-        Err(DwarfErrorKind::InvalidUnitRef(offset.0).into())
-    }
-}
-
-impl<'d, 'slf: 'd> AsSelf<'slf> for DwarfInfo<'d> {
-    type Ref = DwarfInfo<'slf>;
-
-    fn as_self(&'slf self) -> &Self::Ref {
-        self
-    }
-}
-
-pub struct DwarfDebugSession<'data> {
-    cell: SelfCell<Box<DwarfData<'data>>, DwarfInfo<'data>>,
-    symbols: SymbolMap<'data>,
-    abbrev_cache: AbbrevCache,
-}
-
-impl<'d> DwarfDebugSession<'d> {
-    pub fn parse(
-        data: DwarfData<'d>,
-        symbols: SymbolMap<'d>,
-        load_address: u64,
-    ) -> Result<Self, DwarfError> {
-        let cell = SelfCell::try_new(Box::new(data), |d| {
-            DwarfInfo::parse(unsafe { &*d }, load_address)
-        })?;
-
-        Ok(DwarfDebugSession {
-            cell,
-            symbols,
-            abbrev_cache: AbbrevCache::new(),
-        })
-    }
-}
-
-impl<'d, 'slf: 'd> AsSelf<'slf> for DwarfDebugSession<'d> {
-    type Ref = DwarfDebugSession<'slf>;
-
-    fn as_self(&'slf self) -> &Self::Ref {
-        self
-    }
-}
-
-impl<'d> DebugSession for DwarfDebugSession<'d> {
-    type Error = DwarfError;
-
-    fn functions(&mut self) -> Result<Vec<Function<'_>>, Self::Error> {
-        self.cell
-            .get()
-            .functions(&self.symbols, &mut self.abbrev_cache)
     }
 }

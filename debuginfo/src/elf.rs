@@ -10,7 +10,7 @@ use goblin::{container::Ctx, elf, error::Error as GoblinError, strtab};
 use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
 
 use crate::base::*;
-use crate::dwarf::{Dwarf, DwarfData, DwarfDebugSession, DwarfError, DwarfSection, Endian};
+use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, Endian};
 use crate::private::{HexFmt, Parse};
 
 const UUID_SIZE: usize = 16;
@@ -68,7 +68,7 @@ impl<'d> ElfObject<'d> {
         // We were not able to locate the build ID, so fall back to hashing the
         // first page of the ".text" (program code) section. This algorithm XORs
         // 16-byte chunks directly into a UUID buffer.
-        if let Some((_, data)) = self.find_section(".text") {
+        if let Some((_, data)) = self.find_section("text") {
             let mut hash = [0; UUID_SIZE];
             for i in 0..std::cmp::min(data.len(), PAGE_SIZE) {
                 hash[i % UUID_SIZE] ^= data[i];
@@ -154,17 +154,16 @@ impl<'d> ElfObject<'d> {
     }
 
     pub fn has_debug_info(&self) -> bool {
-        self.has_section(DwarfSection::DebugInfo)
+        self.has_section("debug_info")
     }
 
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
-        let data = DwarfData::from_dwarf(self)?;
         let symbols = self.symbol_map();
-        DwarfDebugSession::parse(data, symbols, self.load_address())
+        DwarfDebugSession::parse(self, symbols, self.load_address())
     }
 
     pub fn has_unwind_info(&self) -> bool {
-        self.has_section(DwarfSection::EhFrame) || self.has_section(DwarfSection::DebugFrame)
+        self.has_section("eh_frame") || self.has_section("debug_frame")
     }
 
     pub fn data(&self) -> &'d [u8] {
@@ -199,7 +198,7 @@ impl<'d> ElfObject<'d> {
             }
 
             if let Some(Ok(section_name)) = self.elf.shdr_strtab.get(header.sh_name) {
-                if section_name != name {
+                if section_name.is_empty() || &section_name[1..] != name {
                     continue;
                 }
 
@@ -298,23 +297,6 @@ impl fmt::Debug for ElfObject<'_> {
     }
 }
 
-fn elf_section_name(section: DwarfSection) -> &'static str {
-    match section {
-        DwarfSection::EhFrame => ".eh_frame",
-        DwarfSection::DebugFrame => ".debug_frame",
-        DwarfSection::DebugAbbrev => ".debug_abbrev",
-        DwarfSection::DebugAranges => ".debug_aranges",
-        DwarfSection::DebugLine => ".debug_line",
-        DwarfSection::DebugLoc => ".debug_loc",
-        DwarfSection::DebugPubNames => ".debug_pubnames",
-        DwarfSection::DebugRanges => ".debug_ranges",
-        DwarfSection::DebugRngLists => ".debug_rnglists",
-        DwarfSection::DebugStr => ".debug_str",
-        DwarfSection::DebugInfo => ".debug_info",
-        DwarfSection::DebugTypes => ".debug_types",
-    }
-}
-
 impl<'d, 'slf: 'd> AsSelf<'slf> for ElfObject<'d> {
     type Ref = ElfObject<'slf>;
 
@@ -389,15 +371,13 @@ impl<'d> Dwarf<'d> for ElfObject<'d> {
         }
     }
 
-    fn raw_data(&self, section: DwarfSection) -> Option<(u64, &'d [u8])> {
-        let name = elf_section_name(section);
-        let (header, data) = self.find_section(name)?;
+    fn raw_data(&self, section: &str) -> Option<(u64, &'d [u8])> {
+        let (header, data) = self.find_section(section)?;
         Some((header.sh_offset, data))
     }
 
-    fn section_data(&self, section: DwarfSection) -> Option<(u64, Cow<'d, [u8]>)> {
-        let name = elf_section_name(section);
-        let (header, data) = self.find_section(name)?;
+    fn section_data(&self, section: &str) -> Option<(u64, Cow<'d, [u8]>)> {
+        let (header, data) = self.find_section(section)?;
 
         // Check for zlib compression of the section data. Once we've arrived here, we can
         // return None on error since each section will only occur once.
