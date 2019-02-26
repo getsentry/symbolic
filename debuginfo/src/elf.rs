@@ -297,7 +297,7 @@ impl fmt::Debug for ElfObject<'_> {
     }
 }
 
-impl<'d, 'slf: 'd> AsSelf<'slf> for ElfObject<'d> {
+impl<'slf, 'd: 'slf> AsSelf<'slf> for ElfObject<'d> {
     type Ref = ElfObject<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {

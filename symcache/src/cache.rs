@@ -261,7 +261,7 @@ impl<'a> SymCache<'a> {
     }
 }
 
-impl<'d, 'slf: 'd> AsSelf<'slf> for SymCache<'d> {
+impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
     type Ref = SymCache<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {

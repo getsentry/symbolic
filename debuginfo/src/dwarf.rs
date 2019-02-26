@@ -7,7 +7,7 @@ use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Range};
 use gimli::{constants, UnitSectionOffset};
 
-use symbolic_common::{derive_failure, AsSelf, Language, Name};
+use symbolic_common::{derive_failure, Language, Name};
 
 use crate::base::*;
 
@@ -639,14 +639,6 @@ impl<'d> DwarfDebugSession<'d> {
         }
 
         Err(DwarfErrorKind::InvalidUnitRef(offset.0).into())
-    }
-}
-
-impl<'d, 'slf: 'd> AsSelf<'slf> for DwarfDebugSession<'d> {
-    type Ref = DwarfDebugSession<'slf>;
-
-    fn as_self(&'slf self) -> &Self::Ref {
-        self
     }
 }
 

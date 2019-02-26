@@ -658,7 +658,7 @@ impl fmt::Debug for BreakpadObject<'_> {
     }
 }
 
-impl<'d, 'slf: 'd> AsSelf<'slf> for BreakpadObject<'d> {
+impl<'slf, 'd: 'slf> AsSelf<'slf> for BreakpadObject<'d> {
     type Ref = BreakpadObject<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
@@ -791,7 +791,7 @@ impl<'d> DebugSession for BreakpadDebugSession<'d> {
     }
 }
 
-impl<'d, 'slf: 'd> AsSelf<'slf> for BreakpadDebugSession<'d> {
+impl<'slf, 'd: 'slf> AsSelf<'slf> for BreakpadDebugSession<'d> {
     type Ref = BreakpadDebugSession<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {

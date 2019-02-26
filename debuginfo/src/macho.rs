@@ -191,7 +191,7 @@ impl fmt::Debug for MachObject<'_> {
     }
 }
 
-impl<'d, 'slf: 'd> AsSelf<'slf> for MachObject<'d> {
+impl<'slf, 'd: 'slf> AsSelf<'slf> for MachObject<'d> {
     type Ref = MachObject<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
@@ -395,7 +395,7 @@ impl fmt::Debug for FatMachO<'_> {
     }
 }
 
-impl<'d, 'slf: 'd> AsSelf<'slf> for FatMachO<'d> {
+impl<'slf, 'd: 'slf> AsSelf<'slf> for FatMachO<'d> {
     type Ref = FatMachO<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
@@ -458,7 +458,7 @@ impl<'d> MachArchive<'d> {
     }
 }
 
-impl<'d, 'slf: 'd> AsSelf<'slf> for MachArchive<'d> {
+impl<'slf, 'd: 'slf> AsSelf<'slf> for MachArchive<'d> {
     type Ref = MachArchive<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {

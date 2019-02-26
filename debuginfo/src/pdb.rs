@@ -135,11 +135,11 @@ impl fmt::Debug for PdbObject<'_> {
     }
 }
 
-impl<'d, 'slf: 'd> AsSelf<'slf> for PdbObject<'d> {
+impl<'slf, 'd: 'slf> AsSelf<'slf> for PdbObject<'d> {
     type Ref = PdbObject<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
-        self
+        unsafe { std::mem::transmute(self) }
     }
 }
 
@@ -270,7 +270,7 @@ impl DebugSession for PdbDebugSession<'_> {
     }
 }
 
-impl<'d, 'slf: 'd> AsSelf<'slf> for PdbDebugSession<'d> {
+impl<'slf, 'd: 'slf> AsSelf<'slf> for PdbDebugSession<'d> {
     type Ref = PdbDebugSession<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
