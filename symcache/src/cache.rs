@@ -1,6 +1,6 @@
 use std::fmt;
 
-use symbolic_common::{Arch, DebugId, Language, Name};
+use symbolic_common::{Arch, AsSelf, DebugId, Language, Name};
 
 use crate::error::{SymCacheError, SymCacheErrorKind};
 use crate::format;
@@ -258,6 +258,14 @@ impl<'a> SymCache<'a> {
             base_dir,
             comp_dir: fun.comp_dir.read_str(self.data)?,
         })
+    }
+}
+
+impl<'d, 'slf: 'd> AsSelf<'slf> for SymCache<'d> {
+    type Ref = SymCache<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
     }
 }
 
