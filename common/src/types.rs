@@ -49,16 +49,28 @@ static ARM64: &[&'static str] = &[
 ];
 
 /// Represents a family of CPUs.
+///
+/// This is strongly connected to the [`Arch`] type, but reduces the selection to a range of
+/// families with distinct properties, such as a generally common instruction set and pointer size.
+///
+/// [`Arch`]: enum.Arch.html
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(u32)]
 pub enum CpuFamily {
-    Unknown,
-    Intel32,
-    Intel64,
-    Arm32,
-    Arm64,
-    Ppc32,
-    Ppc64,
+    /// Any other CPU family not explicitly supported by `symbolic`.
+    Unknown = 0,
+    /// 32-bit little-endian CPUs using the Intel 8086 instruction set, also known as `x86`.
+    Intel32 = 1,
+    /// 64-bit little-endian, also known as `x86_64`, now widely used by Intel and AMD.
+    Amd64 = 2,
+    /// 32-bit ARM.
+    Arm32 = 3,
+    /// 64-bit ARM (e.g. ARMv8-A)
+    Arm64 = 4,
+    /// 32-bit big-endian PowerPC.
+    Ppc32 = 5,
+    /// 64-bit big-endian PowerPC.
+    Ppc64 = 6,
 }
 
 impl Default for CpuFamily {
@@ -72,7 +84,8 @@ impl Default for CpuFamily {
 #[fail(display = "unknown architecture")]
 pub struct UnknownArchError;
 
-/// An enum of supported architectures.
+/// An enum of CPU architectures and variants.
+#[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(u32)]
 pub enum Arch {
@@ -137,7 +150,7 @@ impl Arch {
         match self {
             Arch::Unknown => CpuFamily::Unknown,
             Arch::X86 | Arch::X86Unknown => CpuFamily::Intel32,
-            Arch::Amd64 | Arch::Amd64h | Arch::Amd64Unknown => CpuFamily::Intel64,
+            Arch::Amd64 | Arch::Amd64h | Arch::Amd64Unknown => CpuFamily::Amd64,
             Arch::Arm64 | Arch::Arm64V8 | Arch::Arm64e | Arch::Arm64Unknown => CpuFamily::Arm64,
             Arch::Arm
             | Arch::ArmV5
@@ -188,7 +201,7 @@ impl Arch {
     pub fn pointer_size(self) -> Option<usize> {
         match self.cpu_family() {
             CpuFamily::Unknown => None,
-            CpuFamily::Intel64 | CpuFamily::Arm64 | CpuFamily::Ppc64 => Some(8),
+            CpuFamily::Amd64 | CpuFamily::Arm64 | CpuFamily::Ppc64 => Some(8),
             CpuFamily::Intel32 | CpuFamily::Arm32 | CpuFamily::Ppc32 => Some(4),
         }
     }
@@ -200,7 +213,7 @@ impl Arch {
             CpuFamily::Arm64 => Some(4),
             CpuFamily::Ppc32 => Some(4),
             CpuFamily::Ppc64 => Some(8),
-            CpuFamily::Intel32 | CpuFamily::Intel64 => None,
+            CpuFamily::Intel32 | CpuFamily::Amd64 => None,
             CpuFamily::Unknown => None,
         }
     }
@@ -209,7 +222,7 @@ impl Arch {
     pub fn ip_register_name(self) -> Option<&'static str> {
         match self.cpu_family() {
             CpuFamily::Intel32 => Some("eip"),
-            CpuFamily::Intel64 => Some("rip"),
+            CpuFamily::Amd64 => Some("rip"),
             CpuFamily::Arm32 | CpuFamily::Arm64 => Some("pc"),
             CpuFamily::Ppc32 | CpuFamily::Ppc64 => Some("srr0"),
             CpuFamily::Unknown => None,
@@ -234,7 +247,7 @@ impl Arch {
 
         let opt = match self.cpu_family() {
             CpuFamily::Intel32 => I386.get(index),
-            CpuFamily::Intel64 => X86_64.get(index),
+            CpuFamily::Amd64 => X86_64.get(index),
             CpuFamily::Arm64 => ARM64.get(index),
             CpuFamily::Arm32 => ARM.get(index),
             _ => None,
@@ -297,6 +310,7 @@ impl str::FromStr for Arch {
 pub struct UnknownLanguageError;
 
 /// Supported programming languages for demangling.
+#[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(u32)]
 pub enum Language {

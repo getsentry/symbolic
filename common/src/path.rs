@@ -26,11 +26,11 @@ fn is_absolute_unix_path(s: &str) -> bool {
     s.starts_with('/')
 }
 
-/// Joins unknown paths together.
+/// Joins paths of various platforms.
 ///
-/// This implements windows/unix path joining semantics but it does
-/// not attempt to be perfect.  It for instance currently does not fully
-/// understand windows paths.
+/// This attempts to detect Windows or Unix paths and joins with the correct directory separator.
+/// Also, trailing directory separators are detected in the base string and empty paths are handled
+/// correctly.
 pub fn join_path(base: &str, other: &str) -> String {
     // absolute paths
     if base == "" || is_absolute_windows_path(other) || is_absolute_unix_path(other) {
@@ -62,6 +62,10 @@ pub fn join_path(base: &str, other: &str) -> String {
 }
 
 /// Splits off the last component of a path.
+///
+/// This attempts to detect Windows or Unix paths and split off the last component of the path
+/// accordingly. Note that for paths with mixed slash and backslash separators this might not lead
+/// to the desired results.
 pub fn split_path(path: &str) -> (Option<&str>, &str) {
     let path = path
         .trim_start_matches(&['\\', '/'][..])
@@ -80,27 +84,29 @@ pub fn split_path(path: &str) -> (Option<&str>, &str) {
 
 /// Trims a path to a given length.
 ///
-/// This attempts to not completely destroy the path in the process.
-pub fn shorten_path(filename: &str, length: usize) -> Cow<'_, str> {
+/// This attempts to not completely destroy the path in the process by trimming off the middle path
+/// segments. In the process, this tries to determine whether the path is a Windows or Unix path and
+/// handle directory separators accordingly.
+pub fn shorten_path(path: &str, length: usize) -> Cow<'_, str> {
     // trivial cases
-    if filename.len() <= length {
-        return Cow::Borrowed(filename);
+    if path.len() <= length {
+        return Cow::Borrowed(path);
     } else if length <= 10 {
         if length > 3 {
-            return Cow::Owned(format!("{}...", &filename[..length - 3]));
+            return Cow::Owned(format!("{}...", &path[..length - 3]));
         }
-        return Cow::Borrowed(&filename[..length]);
+        return Cow::Borrowed(&path[..length]);
     }
 
     let mut rv = String::new();
     let mut last_idx = 0;
-    let mut piece_iter = filename.match_indices(&['\\', '/'][..]);
+    let mut piece_iter = path.match_indices(&['\\', '/'][..]);
     let mut final_sep = "/";
     let max_len = length - 4;
 
     // make sure we get two segments at the start.
     while let Some((idx, sep)) = piece_iter.next() {
-        let slice = &filename[last_idx..idx + sep.len()];
+        let slice = &path[last_idx..idx + sep.len()];
         rv.push_str(slice);
         let done = last_idx > 0;
         last_idx = idx + sep.len();
@@ -113,13 +119,13 @@ pub fn shorten_path(filename: &str, length: usize) -> Cow<'_, str> {
     // collect the rest of the segments into a temporary we can then reverse.
     let mut final_length = rv.len() as i64;
     let mut rest = vec![];
-    let mut next_idx = filename.len();
+    let mut next_idx = path.len();
 
     while let Some((idx, _)) = piece_iter.next_back() {
         if idx <= last_idx {
             break;
         }
-        let slice = &filename[idx + 1..next_idx];
+        let slice = &path[idx + 1..next_idx];
         if final_length + (slice.len() as i64) > max_len as i64 {
             break;
         }
@@ -130,9 +136,9 @@ pub fn shorten_path(filename: &str, length: usize) -> Cow<'_, str> {
     }
 
     // if at this point already we're too long we just take the last element
-    // of the filename and strip it.
+    // of the path and strip it.
     if rv.len() > max_len || rest.is_empty() {
-        let basename = filename.rsplit(&['\\', '/'][..]).next().unwrap();
+        let basename = path.rsplit(&['\\', '/'][..]).next().unwrap();
         if basename.len() > max_len {
             return Cow::Owned(format!("...{}", &basename[basename.len() - max_len + 1..]));
         } else {

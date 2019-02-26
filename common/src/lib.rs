@@ -1,7 +1,17 @@
-//! Common functionality for symbolic.
+//! Common functionality for `symbolic`.
 //!
-//! In particular this defines common error types and similar things
-//! that all symbolic crates want to use.
+//! This crate exposes a set of key types:
+//!
+//!  - **[`ByteView`]**: Gives access to binary data in-memory or on the file system.
+//!  - **[`SelfCell`]**: Allows to create self-referential types.
+//!  - **[`Name`]**: A symbol name that can be demangled with the `demangle` feature.
+//!  - ... and some useful functions to deal with paths in different platforms.
+//!
+//! [`Name`]: struct.Name.html
+//! [`ByteView`]: struct.ByteView.html
+//! [`SelfCell`]: struct.SelfCell.html
+
+#![warn(missing_docs)]
 
 mod byteview;
 mod cell;
@@ -19,8 +29,3 @@ pub use crate::types::*;
 
 pub use debugid::*;
 pub use uuid::Uuid;
-
-// /// We export our gimli dependency out of this crate so other scan use it.  This is just
-// /// so that we have a consistent use of it.
-// #[doc(hidden)]
-// pub use gimli as shared_gimli;

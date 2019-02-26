@@ -1,3 +1,5 @@
+//! Heuristics for correcting instruction pointers based on the CPU architecture.
+
 use crate::types::Arch;
 
 const SIGILL: u32 = 4;
