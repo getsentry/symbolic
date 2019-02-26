@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 use failure::Fail;
 use fallible_iterator::FallibleIterator;
 use parking_lot::RwLock;
-use pdb::{AddressTranslator, MachineType, SymbolData};
+use pdb::{AddressMap, MachineType, SymbolData};
 
 use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
 
@@ -97,8 +97,7 @@ impl<'d> PdbObject<'d> {
     pub fn symbols(&self) -> PdbSymbolIterator<'d, '_> {
         PdbSymbolIterator {
             symbols: self.public_syms.iter(),
-            // TODO: Only compute this once and cache it internally.
-            translator: self.pdb.write().address_translator().ok(),
+            address_map: self.pdb.write().address_map().ok(),
         }
     }
 
@@ -215,14 +214,14 @@ pub(crate) fn arch_from_machine(machine: MachineType) -> Arch {
 
 pub struct PdbSymbolIterator<'d, 'o> {
     symbols: pdb::SymbolIter<'o>,
-    translator: Option<AddressTranslator<'d>>,
+    address_map: Option<AddressMap<'d>>,
 }
 
 impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
     type Item = Symbol<'d>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let translator = self.translator.as_ref()?;
+        let address_map = self.address_map.as_ref()?;
 
         while let Ok(Some(symbol)) = self.symbols.next() {
             if let Ok(SymbolData::PublicSymbol(public)) = symbol.parse() {
@@ -230,7 +229,7 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
                     continue;
                 }
 
-                let address = match public.rva(translator) {
+                let address = match public.offset.to_rva(address_map) {
                     Some(address) => address,
                     None => continue,
                 };
@@ -248,7 +247,7 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
 
                 return Some(Symbol {
                     name,
-                    address: u64::from(address),
+                    address: u64::from(address.0),
                     size: 0, // Computed in `SymbolMap`
                 });
             }
