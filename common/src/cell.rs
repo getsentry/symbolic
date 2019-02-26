@@ -58,6 +58,18 @@ where
     }
 }
 
+impl<'slf, T> AsSelf<'slf> for Vec<T>
+where
+    T: AsSelf<'slf>,
+    T::Ref: Sized,
+{
+    type Ref = [T::Ref];
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        (**self).as_self()
+    }
+}
+
 impl<'slf, T> AsSelf<'slf> for std::rc::Rc<T>
 where
     T: AsSelf<'slf>,
