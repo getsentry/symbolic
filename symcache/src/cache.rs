@@ -290,6 +290,13 @@ impl<'a, 'c> Lookup<'a, 'c> {
             inner: None,
         }
     }
+
+    pub fn collect<B>(self) -> Result<B, SymCacheError>
+    where
+        B: std::iter::FromIterator<LineInfo<'a>>,
+    {
+        Iterator::collect(self)
+    }
 }
 
 impl<'a, 'c> Iterator for Lookup<'a, 'c> {
