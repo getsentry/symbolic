@@ -15,8 +15,7 @@ A library to symbolicate and process stack traces from native applications,
 minidumps, Unreal Engine 4, minified JavaScripts or ProGuard optimized Android apps.
 """
 edition = "2018"
-# TODO(ja): Change this back!
-autoexamples = false
+autoexamples = true
 
 exclude = [
     ".vscode/**/*",
@@ -55,14 +54,14 @@ clap = "2.32.0"
 failure = "0.1.5"
 walkdir = "2.2.7"
 
-# [[example]]
-# name = "minidump_stackwalk"
-# required-features = ["minidump", "symcache"]
+[[example]]
+name = "minidump_stackwalk"
+required-features = ["minidump", "symcache"]
 
-# [[example]]
-# name = "cache_debug"
-# required-features = ["symcache", "minidump"]
+[[example]]
+name = "cache_debug"
+required-features = ["symcache", "minidump"]
 
-# [[example]]
-# name = "unreal_engine_crash"
-# required-features = ["unreal"]
+[[example]]
+name = "unreal_engine_crash"
+required-features = ["unreal"]

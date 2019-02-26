@@ -3,8 +3,8 @@ use std::path::Path;
 use clap::{App, Arg, ArgMatches};
 use failure::Error;
 
-use symbolic::common::byteview::ByteView;
-use symbolic::debuginfo::{DebugFeatures, FatObject};
+use symbolic::common::ByteView;
+use symbolic::debuginfo::Archive;
 
 fn print_error(error: &Error) {
     println!("Error: {}", error);
@@ -18,31 +18,21 @@ fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     let path = path.as_ref();
     println!("Inspecting {}", path.display());
 
-    let buffer = ByteView::from_path(path)?;
-    let fat = FatObject::parse(buffer)?;
+    let buffer = ByteView::open(path)?;
+    let archive = Archive::parse(&buffer)?;
 
-    println!("FatObject kind: {}", fat.kind());
-    println!("Object count:   {}", fat.object_count());
+    println!("File format: {}", archive.file_format());
     println!("Objects:");
 
-    for object in fat.objects() {
+    for object in archive.objects() {
         match object {
             Ok(object) => {
-                println!(" - {}: {}", object.arch()?, object.id().unwrap_or_default(),);
-                println!("   object class: {}", object.class());
-                println!(
-                    "   debug kind: {}",
-                    object
-                        .debug_kind()
-                        .map(|k| k.to_string())
-                        .unwrap_or_else(|| "no debug".into())
-                );
-                let features: Vec<String> = object
-                    .features()
-                    .into_iter()
-                    .map(|f| f.to_string())
-                    .collect();
-                println!("   features: {}", features.join(", "));
+                println!(" - {}: {}", object.arch(), object.id());
+                println!("   object kind:  {:#}", object.kind());
+                println!("   load address: {:#x}", object.load_address());
+                println!("   symbol table: {}", object.has_symbols());
+                println!("   debug info:   {}", object.has_debug_info());
+                println!("   unwind info:  {}", object.has_unwind_info());
             }
             Err(e) => {
                 print!(" - ");

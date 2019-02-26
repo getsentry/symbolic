@@ -1,18 +1,18 @@
 use std::collections::{BTreeMap, HashSet};
+use std::io::Cursor;
 use std::path::Path;
 
 use clap::{App, Arg, ArgMatches};
 use failure::Error;
 use walkdir::WalkDir;
 
-use symbolic::common::byteview::ByteView;
-use symbolic::common::types::{Arch, ObjectKind};
-use symbolic::debuginfo::{DebugFeatures, FatObject, Object};
+use symbolic::common::{Arch, ByteView, InstructionInfo, SelfCell};
+use symbolic::debuginfo::{Archive, FileFormat, Object};
 use symbolic::minidump::cfi::CfiCache;
 use symbolic::minidump::processor::{CodeModuleId, FrameInfoMap, ProcessState, StackFrame};
-use symbolic::symcache::{InstructionInfo, LineInfo, SymCache};
+use symbolic::symcache::{LineInfo, SymCache, SymCacheWriter};
 
-type SymCaches<'a> = BTreeMap<CodeModuleId, SymCache<'a>>;
+type SymCaches<'a> = BTreeMap<CodeModuleId, SelfCell<ByteView<'a>, SymCache<'a>>>;
 
 fn collect_referenced_objects<P, F, T>(
     path: P,
@@ -39,33 +39,30 @@ where
 
         // Try to parse a potential object file. If this is not possible, then
         // we're not dealing with an object file, thus silently skipping it
-        let buffer = ByteView::from_path(entry.path())?;
-        let fat = match FatObject::parse(buffer) {
-            Ok(fat) => fat,
+        let buffer = ByteView::open(entry.path())?;
+        let archive = match Archive::parse(&buffer) {
+            Ok(archive) => archive,
             Err(_) => continue,
         };
 
-        for object in fat.objects() {
+        for object in archive.objects() {
             // Fail for invalid matching objects but silently skip objects
             // without a UUID
             let object = object?;
-            let id = match object.id() {
-                Some(id) => CodeModuleId::from(id),
-                None => continue,
-            };
+            let id = CodeModuleId::from(object.id());
 
             // Make sure we haven't converted this object already
             if !search_ids.contains(&id) || final_ids.contains(&id) {
                 continue;
             }
 
-            let kind = object.kind();
+            let format = object.file_format();
             if let Some(t) = func(object)? {
                 collected.insert(id, t);
 
                 // Keep looking if we "only" found a breakpad symbols.
                 // We should prefer native symbols if we can get them.
-                if kind != ObjectKind::Breakpad {
+                if format != FileFormat::Breakpad {
                     final_ids.insert(id);
                 }
             }
@@ -103,11 +100,15 @@ where
             return Ok(None);
         }
 
+        let mut buffer = Vec::new();
+        SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+
         // Silently skip conversion errors
-        Ok(match SymCache::from_object(&object) {
-            Ok(symcache) => Some(symcache),
-            Err(_) => None,
-        })
+        let result = SelfCell::try_new(ByteView::from_vec(buffer), |ptr| {
+            SymCache::parse(unsafe { &*ptr })
+        });
+
+        Ok(result.ok())
     })
 }
 
@@ -136,7 +137,11 @@ fn symbolize<'a>(
         ip_reg: None,
     };
 
-    let lines = symcache.lookup(instruction.caller_address() - module.base_address())?;
+    let lines = symcache
+        .get()
+        .lookup(instruction.caller_address() - module.base_address())?
+        .collect::<Vec<_>>()?;
+
     if lines.is_empty() {
         Ok(None)
     } else {
@@ -198,7 +203,7 @@ fn print_state(
                             info.function_name(),
                             info.filename(),
                             info.line(),
-                            info.instr_addr() - info.line_addr(),
+                            info.instruction_address() - info.line_address(),
                         );
 
                         if i + 1 < line_infos.len() {
@@ -272,7 +277,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
     let symbols_path = matches.value_of("debug_symbols_path").unwrap_or("invalid");
 
     // Initially process without CFI
-    let byteview = ByteView::from_path(&minidump_path)?;
+    let byteview = ByteView::open(&minidump_path)?;
     let mut state = ProcessState::from_minidump(&byteview, None)?;
 
     let cfi = if matches.is_present("cfi") {
