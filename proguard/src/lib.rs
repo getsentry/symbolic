@@ -1,4 +1,7 @@
 //! Provides proguard support.
+
+#![warn(missing_docs)]
+
 use std::io;
 
 use proguard::MappingView;
@@ -7,7 +10,7 @@ use symbolic_common::{AsSelf, ByteView, SelfCell, Uuid};
 
 struct Inner<'a>(MappingView<'a>);
 
-impl<'a, 'slf: 'a> AsSelf<'slf> for Inner<'a> {
+impl<'slf, 'a: 'slf> AsSelf<'slf> for Inner<'a> {
     type Ref = MappingView<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
@@ -22,8 +25,8 @@ pub struct ProguardMappingView<'a> {
 
 impl<'a> ProguardMappingView<'a> {
     /// Creates a new proguard mapping view from a byte slice.
-    pub fn parse(byteview: ByteView<'a>) -> Result<ProguardMappingView<'a>, io::Error> {
-        // NB: Since ByteView does not expose it's inner data structure, we need to use a SelfCell
+    pub fn parse(byteview: ByteView<'a>) -> Result<Self, io::Error> {
+        // NB: Since ByteView does not expose its inner data structure, we need to use a `SelfCell`
         // to construct a `proguard::MappingView`. Ideally, we would pass the ByteView's backing to
         // the MappingView constructor directly, instead.
         let inner = SelfCell::try_new(byteview, |data| {
