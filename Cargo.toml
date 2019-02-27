@@ -36,7 +36,7 @@ minidump = ["symbolic-minidump", "debuginfo"]
 proguard = ["symbolic-proguard"]
 sourcemap = ["symbolic-sourcemap"]
 symcache = ["symbolic-symcache", "debuginfo"]
-serde = ["symbolic-common/serde", "symbolic-debuginfo/serde", "symbolic-minidump/serde"]
+serde = ["symbolic-common/serde", "symbolic-debuginfo/serde", "symbolic-minidump/serde", "symbolic-unreal/with-serde"]
 unreal = ["symbolic-unreal"]
 
 [dependencies]
