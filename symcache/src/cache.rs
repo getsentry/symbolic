@@ -6,6 +6,10 @@ use crate::error::{SymCacheError, SymCacheErrorKind};
 use crate::format;
 
 /// A platform independent symbolication cache.
+///
+/// Use [`SymCacheWriter`] writer to create SymCaches, including the conversion from object files.
+///
+/// [`SymCacheWriter`]: struct.SymCacheWriter.html
 pub struct SymCache<'a> {
     header: format::Header,
     data: &'a [u8],
@@ -281,6 +285,7 @@ impl fmt::Debug for SymCache<'_> {
     }
 }
 
+/// An iterator over line matches for an address lookup.
 #[derive(Clone)]
 pub struct Lookup<'a, 'c> {
     cache: &'c SymCache<'a>,
@@ -299,6 +304,7 @@ impl<'a, 'c> Lookup<'a, 'c> {
         }
     }
 
+    /// Collects all line matches into a collection.
     pub fn collect<B>(self) -> Result<B, SymCacheError>
     where
         B: std::iter::FromIterator<LineInfo<'a>>,
@@ -490,6 +496,9 @@ impl<'a> Iterator for Functions<'a> {
     }
 }
 
+/// A function in a `SymCache`.
+///
+/// This can be an actual function, an inlined function, or a public symbol.
 #[derive(Clone)]
 pub struct Function<'a> {
     record: &'a format::FuncRecord,
@@ -551,6 +560,7 @@ impl<'a> Function<'a> {
     }
 }
 
+/// Helper for printing a human-readable debug representation of line records.
 struct LinesDebug<'a>(Lines<'a>);
 
 impl fmt::Debug for LinesDebug<'_> {
@@ -584,6 +594,7 @@ impl fmt::Debug for Function<'_> {
     }
 }
 
+/// An iterator over lines of a SymCache function.
 #[derive(Clone)]
 pub struct Lines<'a> {
     lines: format::Seg<format::LineRecord, u16>,
@@ -615,6 +626,7 @@ impl<'a> Iterator for Lines<'a> {
     }
 }
 
+/// A line covered by a [`Function`](struct.Function.html).
 pub struct Line<'a> {
     record: &'a format::LineRecord,
     file: Option<&'a format::FileRecord>,

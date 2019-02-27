@@ -1,4 +1,5 @@
 //! API to process Unreal Engine 4 crashes.
+
 #![warn(missing_docs)]
 
 use std::fmt;
@@ -18,9 +19,9 @@ use serde::Serialize;
 use crate::context::Unreal4Context;
 
 lazy_static! {
-    // https://github.com/EpicGames/UnrealEngine/blob/f509bb2d6c62806882d9a10476f3654cf1ee0634/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L79-L93
-    // Note: Date is always in US format (dd/MM/yyyy) and time is local
-    // Example: Log file open, 12/13/18 15:54:53
+    /// https://github.com/EpicGames/UnrealEngine/blob/f509bb2d6c62806882d9a10476f3654cf1ee0634/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L79-L93
+    /// Note: Date is always in US format (dd/MM/yyyy) and time is local
+    /// Example: Log file open, 12/13/18 15:54:53
     static ref LOG_FIRST_LINE: Regex = Regex::new(r"Log file open, (?P<month>\d\d)/(?P<day>\d\d)/(?P<year>\d\d) (?P<hour>\d\d):(?P<minute>\d\d):(?P<second>\d\d)$").unwrap();
 }
 

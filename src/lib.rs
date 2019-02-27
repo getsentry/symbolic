@@ -4,6 +4,8 @@
 //! symbolicate stacktraces.  It is built to also be used independently
 //! of Sentry and in parts.
 
+#![warn(missing_docs)]
+
 pub use symbolic_common as common;
 #[cfg(feature = "debuginfo")]
 pub use symbolic_debuginfo as debuginfo;

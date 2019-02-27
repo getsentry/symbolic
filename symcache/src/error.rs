@@ -3,7 +3,7 @@ use std::fmt;
 use failure::Fail;
 
 use symbolic_common::derive_failure;
-use symbolic_debuginfo::{dwarf::gimli, ObjectError};
+use symbolic_debuginfo::ObjectError;
 
 #[doc(hidden)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -81,17 +81,14 @@ pub enum SymCacheErrorKind {
     WriteFailed,
 }
 
-/// An error returned when handling `SymCaches`.
-derive_failure!(SymCacheError, SymCacheErrorKind);
+derive_failure!(
+    SymCacheError,
+    SymCacheErrorKind,
+    doc = "An error returned when handling `SymCaches`.",
+);
 
 impl From<ObjectError> for SymCacheError {
     fn from(error: ObjectError) -> SymCacheError {
-        error.context(SymCacheErrorKind::BadDebugFile).into()
-    }
-}
-
-impl From<gimli::Error> for SymCacheError {
-    fn from(error: gimli::Error) -> SymCacheError {
         error.context(SymCacheErrorKind::BadDebugFile).into()
     }
 }

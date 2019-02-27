@@ -11,10 +11,14 @@ use symbolic_debuginfo::{DebugSession, FileInfo, Function, ObjectLike, Symbol};
 use crate::error::{SymCacheError, SymCacheErrorKind, ValueKind};
 use crate::format;
 
+// Performs a shallow check whether this function might contain any lines.
 fn is_empty_function(function: &Function<'_>) -> bool {
     function.lines.is_empty() && function.inlinees.is_empty()
 }
 
+/// Recursively cleans a tree of functions that does not cover any lines.
+///
+/// This first recursively cleans all inlinees and then removes those that have become empty.
 fn clean_function(function: &mut Function<'_>) {
     for inlinee in &mut function.inlinees {
         clean_function(inlinee);
@@ -23,6 +27,7 @@ fn clean_function(function: &mut Function<'_>) {
     function.inlinees.retain(|f| !is_empty_function(f));
 }
 
+/// Low-level helper that writes segments and keeps track of the current offset.
 struct FormatWriter<W> {
     writer: W,
     position: u64,
@@ -32,6 +37,7 @@ impl<W> FormatWriter<W>
 where
     W: Write + Seek,
 {
+    /// Creates a new `FormatWriter`.
     fn new(writer: W) -> Self {
         FormatWriter {
             writer,
@@ -39,10 +45,12 @@ where
         }
     }
 
+    /// Unwraps the inner writer.
     fn into_inner(self) -> W {
         self.writer
     }
 
+    /// Moves to the specified position.
     fn seek(&mut self, position: u64) -> Result<(), SymCacheError> {
         self.position = position;
         self.writer
@@ -52,6 +60,7 @@ where
         Ok(())
     }
 
+    /// Writes the given bytes to the writer.
     #[inline]
     fn write_bytes(&mut self, data: &[u8]) -> Result<(), SymCacheError> {
         self.writer
@@ -62,6 +71,15 @@ where
         Ok(())
     }
 
+    /// Writes a segment as binary data to the writer and returns the [`Seg`] reference.
+    ///
+    /// This operation may fail if the data slice is too large to fit the segment. Each segment
+    /// defines a data type for defining its length, which might not fit as many elements.
+    ///
+    /// The data items are directly transmuted to their binary representation. Thus, they should not
+    /// contain any references and have a stable memory layout (`#[repr(C, packed)]).
+    ///
+    /// [`Seg`]: format/struct.Seg.html
     #[inline]
     fn write_segment<T, L>(
         &mut self,
@@ -87,6 +105,13 @@ where
     }
 }
 
+/// A high level writer that can construct SymCaches.
+///
+/// When using this writer directly, ensure to call [`finish`] at the end, so that all segments are
+/// written to the underlying writer and the header is fixed up with the references. Since segments
+/// are consecutive chunks of memory, this can only be done once at the end of the writing process.
+///
+/// [`finish`]: struct.SymCacheWriter.html#method.finish
 pub struct SymCacheWriter<W> {
     writer: FormatWriter<W>,
     header: format::HeaderV2,
@@ -102,6 +127,7 @@ impl<W> SymCacheWriter<W>
 where
     W: Write + Seek,
 {
+    /// Converts an entire object into a SymCache.
     pub fn write_object<O>(object: &O, target: W) -> Result<W, SymCacheError>
     where
         O: ObjectLike,
@@ -147,6 +173,7 @@ where
         writer.finish()
     }
 
+    /// Constructs a new `SymCacheWriter` and writes the preamble.
     pub fn new(writer: W) -> Result<Self, SymCacheError> {
         let mut header = format::HeaderV2::default();
         header.preamble.magic = format::SYMCACHE_MAGIC;
@@ -167,14 +194,20 @@ where
         })
     }
 
+    /// Sets the CPU architecture of this SymCache.
     pub fn set_arch(&mut self, arch: Arch) {
         self.header.arch = arch as u32;
     }
 
+    /// Sets the debug identifier of this SymCache.
     pub fn set_debug_id(&mut self, debug_id: DebugId) {
         self.header.debug_id = debug_id;
     }
 
+    /// Adds a new symbol to this SymCache.
+    ///
+    /// Symbols **must** be added in ascending order using this method. This will emit a function
+    /// record internally.
     pub fn add_symbol(&mut self, symbol: Symbol<'_>) -> Result<(), SymCacheError> {
         let name = match symbol.name {
             Some(name) => name,
@@ -209,6 +242,10 @@ where
         Ok(())
     }
 
+    /// Adds a function to this SymCache.
+    ///
+    /// Functions **must** be added in ascending order using this method. This emits a function
+    /// record for this function and for each inlinee recursively.
     pub fn add_function(&mut self, mut function: Function<'_>) -> Result<(), SymCacheError> {
         // If we encounter a function without any instructions we just skip it.  This saves memory
         // and since we only care about instructions where we can actually crash this is a
@@ -221,6 +258,7 @@ where
         self.insert_function(function, !0, &mut FnvHashSet::default())
     }
 
+    /// Persists all open segments to the writer and fixes up the header.
     pub fn finish(self) -> Result<W, SymCacheError> {
         let mut writer = self.writer;
         let mut header = self.header;
