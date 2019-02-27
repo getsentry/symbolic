@@ -465,18 +465,11 @@ impl<'d, 'o> Iterator for ElfSymbolIterator<'d, 'o> {
                 continue;
             }
 
-            let mut name = self
+            let name = self
                 .strtab
                 .get(symbol.st_name)
                 .and_then(Result::ok)
                 .map(Cow::Borrowed);
-
-            // Trim leading underscores from mangled C++ names.
-            if let Some(Cow::Borrowed(ref mut name)) = name {
-                if name.starts_with('_') {
-                    *name = &name[1..];
-                }
-            }
 
             return Some(Symbol {
                 name,
