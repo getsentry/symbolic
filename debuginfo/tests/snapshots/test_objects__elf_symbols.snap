@@ -1,8 +1,8 @@
 ---
-created: "2019-02-20T11:25:54.554283Z"
+created: "2019-02-27T12:56:32.829834Z"
 creator: insta@0.6.3
 source: debuginfo/tests/test_objects.rs
-expression: SymbolDebug(&symbols)
+expression: SymbolsDebug(&symbols)
 ---
             1558 init
             1900 ZN15google_breakpad13PageAllocator7FreeAllEv.isra.6
@@ -21,11 +21,9 @@ expression: SymbolDebug(&symbols)
             1e70 _do_global_dtors_aux
             1e90 frame_dummy
             1ec0 ZN12_GLOBAL__N_18callbackERKN15google_breakpad18MinidumpDescriptorEPvb
-            1f00 ZN15google_breakpad18MinidumpDescriptorD2Ev
             1f00 ZN15google_breakpad18MinidumpDescriptorD1Ev
             1f40 ZN15google_breakpad16ExceptionHandler21InstallHandlersLockedEv
             2070 ZN15google_breakpad16ExceptionHandler21RestoreHandlersLockedEv
-            20f0 ZN15google_breakpad16ExceptionHandlerD2Ev
             20f0 ZN15google_breakpad16ExceptionHandlerD1Ev
             2440 ZN15google_breakpad16ExceptionHandler25SendContinueSignalToChildEv
             2520 ZN15google_breakpad16ExceptionHandler12GenerateDumpEPNS0_12CrashContextE
@@ -41,13 +39,10 @@ expression: SymbolDebug(&symbols)
             33a0 ZN15google_breakpad16ExceptionHandler19UnregisterAppMemoryEPv
             3400 ZN15google_breakpad16ExceptionHandler21WriteMinidumpForChildEiiRKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPFbRKNS_18MinidumpDescriptorEPvbESC_
             3660 ZN15google_breakpad30SetFirstChanceExceptionHandlerEPFbiPvS0_E
-            3670 ZN15google_breakpad16ExceptionHandlerC2ERKNS_18MinidumpDescriptorEPFbPvEPFbS3_S4_bES4_bi
             3670 ZN15google_breakpad16ExceptionHandlerC1ERKNS_18MinidumpDescriptorEPFbPvEPFbS3_S4_bES4_bi
             3a10 ZN15google_breakpad16ExceptionHandler13WriteMinidumpERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPFbRKNS_18MinidumpDescriptorEPvbESC_
-            3cb0 ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE19_M_emplace_back_auxIJS2_EEEvDpOT_
             3cb0 ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE19_M_emplace_back_auxIIS2_EEEvDpOT_
             3da0 ZN15google_breakpad18MinidumpDescriptorC1ERKS0_
-            3da0 ZN15google_breakpad18MinidumpDescriptorC2ERKS0_
             3f20 ZN15google_breakpad18MinidumpDescriptor10UpdatePathEv
             42f0 ZN15google_breakpad18MinidumpDescriptoraSERKS0_
             43c0 ZN6logger5writeEPKcm
@@ -56,8 +51,6 @@ expression: SymbolDebug(&symbols)
             71f0 ZN15google_breakpad11LinuxDumper8LateInitEv
             7200 ZN15google_breakpad11LinuxDumper17EnumerateMappingsEv
             7ac0 ZN15google_breakpad11LinuxDumperC1EiPKc
-            7ac0 ZN15google_breakpad11LinuxDumperC2EiPKc
-            8300 ZN15google_breakpad11LinuxDumperD1Ev
             8300 ZN15google_breakpad11LinuxDumperD2Ev
             8370 ZN15google_breakpad11LinuxDumperD0Ev
             8390 ZNK15google_breakpad11LinuxDumper20GetCrashSignalStringEv
@@ -79,16 +72,13 @@ expression: SymbolDebug(&symbols)
             94b0 ZN15google_breakpad17LinuxPtraceDumper15CopyFromProcessEPviPKvm
             9640 ZN15google_breakpad17LinuxPtraceDumper13ThreadsResumeEv
             9700 ZNK15google_breakpad17LinuxPtraceDumper13BuildProcPathEPciPKc
-            9700 ZNK15google_breakpad17LinuxPtraceDumper13BuildProcPathEPciPKc.localalias.19
             97c0 ZN15google_breakpad17LinuxPtraceDumper16EnumerateThreadsEv
-            9e50 ZN15google_breakpad17LinuxPtraceDumperC2Ei
             9e50 ZN15google_breakpad17LinuxPtraceDumperC1Ei
             9e80 ZN15google_breakpad17LinuxPtraceDumper15ReadRegisterSetEPNS_10ThreadInfoEi
             9f70 ZN15google_breakpad17LinuxPtraceDumper13ReadRegistersEPNS_10ThreadInfoEi
             a050 ZN15google_breakpad17LinuxPtraceDumper20GetThreadInfoByIndexEmPNS_10ThreadInfoE
             a690 ZN15google_breakpad17LinuxPtraceDumper14ThreadsSuspendEv
             a8f0 ZN15google_breakpad17LinuxPtraceDumperD1Ev
-            a8f0 ZN15google_breakpad17LinuxPtraceDumperD2Ev
             a910 ZN15google_breakpad17LinuxPtraceDumperD0Ev
             a930 ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE17_M_default_appendEm
             abc0 ZN12_GLOBAL__N_114MinidumpWriter21WriteThreadListStreamEP14MDRawDirectory.constprop.105
@@ -104,16 +94,13 @@ expression: SymbolDebug(&symbols)
             f3c0 ZN15google_breakpad13WriteMinidumpEiliPKvmRKNSt7__cxx114listINS_12MappingEntryESaIS4_EEERKNS3_INS_9AppMemoryESaIS9_EEEbmb
             f400 ZN15google_breakpad17ProcCpuInfoReader12GetNextFieldEPPKc
             f660 ZNSt6vectorIcN15google_breakpad16PageStdAllocatorIcEEE6resizeEm
-            f8c0 ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE19_M_emplace_back_auxIJRKS0_EEEvDpOT_
             f8c0 ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE19_M_emplace_back_auxIIRKS0_EEEvDpOT_
             fb10 ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm.isra.7.part.8
             fb40 ZN15google_breakpad18MinidumpFileWriterC1Ev
-            fb40 ZN15google_breakpad18MinidumpFileWriterC2Ev
             fb60 ZN15google_breakpad18MinidumpFileWriter4OpenEPKc
             fbe0 ZN15google_breakpad18MinidumpFileWriter7SetFileEi
             fc10 ZN15google_breakpad18MinidumpFileWriter5CloseEv
             fc70 ZN15google_breakpad18MinidumpFileWriterD2Ev
-            fc70 ZN15google_breakpad18MinidumpFileWriterD1Ev
             fc90 ZN15google_breakpad18MinidumpFileWriter8AllocateEm
             fd50 ZN15google_breakpad18MinidumpFileWriter4CopyEjPKvl
             fe50 ZN15google_breakpad18MinidumpFileWriter20CopyStringToMDStringEPKwjPNS_10TypedMDRVAI8MDStringEE
@@ -133,10 +120,8 @@ expression: SymbolDebug(&symbols)
            11220 ZN15google_breakpad8ElfClassEPKv
            11230 ZN15google_breakpad14FindElfSectionEPKvPKcjPS1_Pm
            116a0 ZN15google_breakpad15FindElfSegmentsEPKvjPNS_15wasteful_vectorINS_10ElfSegmentEEE
-           11990 ZNSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE19_M_emplace_back_auxIJRKS1_EEEvDpOT_
            11990 ZNSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE19_M_emplace_back_auxIIRKS1_EEEvDpOT_
            11be0 ZN15google_breakpad6FileIDC2EPKc
-           11be0 ZN15google_breakpad6FileIDC1EPKc
            11cc0 ZN15google_breakpad6FileID29ConvertIdentifierToUUIDStringB5cxx11ERKNS_15wasteful_vectorIhEE
            11e70 ZN15google_breakpad6FileID25ConvertIdentifierToStringB5cxx11ERKNS_15wasteful_vectorIhEE
            11fb0 ZN15google_breakpad6FileID31ElfFileIdentifierFromMappedFileEPKvRNS_15wasteful_vectorIhEE
@@ -159,17 +144,13 @@ expression: SymbolDebug(&symbols)
            130e0 my_strlcpy
            13120 my_strlcat
            13160 my_isspace
-           13210 ZN15google_breakpad16MemoryMappedFileC1Ev
            13210 ZN15google_breakpad16MemoryMappedFileC2Ev
            13220 ZN15google_breakpad16MemoryMappedFile5UnmapEv
            13270 ZN15google_breakpad16MemoryMappedFileD2Ev
-           13270 ZN15google_breakpad16MemoryMappedFileD1Ev
            13280 ZN15google_breakpad16MemoryMappedFile3MapEPKcm
-           13430 ZN15google_breakpad16MemoryMappedFileC2EPKcm
            13430 ZN15google_breakpad16MemoryMappedFileC1EPKcm
            13450 ZN15google_breakpad12SafeReadLinkEPKcPcm
            13490 ZN15google_breakpad12_GLOBAL__N_125CrashGenerationClientImplD1Ev
-           13490 ZN15google_breakpad12_GLOBAL__N_125CrashGenerationClientImplD2Ev
            134a0 ZN15google_breakpad12_GLOBAL__N_125CrashGenerationClientImpl11RequestDumpEPKvm
            136c0 ZN15google_breakpad12_GLOBAL__N_125CrashGenerationClientImplD0Ev
            136d0 ZN15google_breakpad21CrashGenerationClient9TryCreateEi

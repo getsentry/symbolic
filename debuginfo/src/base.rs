@@ -338,15 +338,28 @@ impl<'d> AsRef<[Symbol<'d>]> for SymbolMap<'d> {
 impl<'d> From<Vec<Symbol<'d>>> for SymbolMap<'d> {
     fn from(mut symbols: Vec<Symbol<'d>>) -> Self {
         if !symbols.is_empty() {
+            // NB: This might require stable sorting to ensure determinism if multiple symbols point
+            // at the same location. However, this only seems to happen for equivalent variants of
+            // the same function.
+            //
+            // An example would be destructors where D2 (base object destructor) and D1 (complete
+            // object destructor) might share the same code. Since those always demangle to the same
+            // name, we do not care which function to keep in this case.
+            //
+            // Inlined functions will generally not appear in this list, unless they _also_ have an
+            // explicit function body, in which case they will have a unique address, again.
             dmsort::sort_by_key(&mut symbols, Self::key);
 
-            for i in 0..symbols.len() - 1 {
-                let next = symbols[i + 1].address;
-                let symbol = &mut symbols[i];
+            // Compute sizes of consecutive symbols if the size has not been provided by the symbol
+            // iterator. In the same go, drop all but the first symbols at any given address. We do
+            // not rely on the size of symbols in this case, since the ranges might still be
+            // overlapping.
+            symbols.dedup_by(|next, symbol| {
                 if symbol.size == 0 {
-                    symbol.size = next - symbol.address;
+                    symbol.size = next.address - symbol.address;
                 }
-            }
+                symbol.address == next.address
+            })
         }
 
         SymbolMap { symbols }

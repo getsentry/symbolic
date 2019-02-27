@@ -1,8 +1,8 @@
 ---
-created: "2019-02-20T12:34:07.574742Z"
+created: "2019-02-27T12:56:32.839275Z"
 creator: insta@0.6.3
 source: debuginfo/tests/test_objects.rs
-expression: SymbolDebug(&symbols)
+expression: SymbolsDebug(&symbols)
 ---
             1000 ?RequestDump@CrashGenerationClient@google_breakpad@@QAE_NPAU_EXCEPTION_POINTERS@@PAUMDRawAssertionInfo@@@Z
             1120 ??1?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@QAE@XZ
@@ -50,13 +50,7 @@ expression: SymbolDebug(&symbols)
             2e72 ??0bad_array_new_length@std@@QAE@XZ
             2e8a ??0exception@std@@QAE@ABV01@@Z
             2eb6 ??1bad_alloc@std@@UAE@XZ
-            2eb6 ??1bad_array_new_length@std@@UAE@XZ
             2ec7 ??_Eexception@std@@UAEPAXI@Z
-            2ec7 ??_Ebad_array_new_length@std@@UAEPAXI@Z
-            2ec7 ??_Gbad_array_new_length@std@@UAEPAXI@Z
-            2ec7 ??_Ebad_alloc@std@@UAEPAXI@Z
-            2ec7 ??_Gbad_alloc@std@@UAEPAXI@Z
-            2ec7 ??_Gexception@std@@UAEPAXI@Z
             2ef4 ?__scrt_throw_std_bad_alloc@@YAXXZ
             2f11 ?__scrt_throw_std_bad_array_new_length@@YAXXZ
             2f2e ?what@exception@std@@UBEPBDXZ
@@ -70,24 +64,12 @@ expression: SymbolDebug(&symbols)
             31a1 atexit
             3205 __security_init_cookie
             3250 _matherr
-            3250 _get_startup_new_mode
-            3250 _get_startup_thread_locale_mode
-            3250 __scrt_initialize_winrt
-            3250 _get_startup_commit_mode
             3253 _get_startup_argv_mode
             3257 _get_startup_file_mode
             325d ?__scrt_initialize_type_info@@YAXXZ
             3269 __vcrt_uninitialize
-            3269 _should_initialize_environment
-            3269 __vcrt_initialize
-            3269 __acrt_initialize
-            3269 __scrt_stub_for_acrt_initialize
-            3269 __scrt_stub_for_acrt_uninitialize
-            3269 __acrt_uninitialize
             326c _initialize_default_precision
             328d @_guard_check_icall_nop@4
-            328d _initialize_invalid_parameter_handler
-            328d _initialize_denormal_control
             328e __local_stdio_scanf_options
             3294 __scrt_initialize_default_local_stdio_options
             32b1 __scrt_is_user_matherr_present
@@ -105,7 +87,6 @@ expression: SymbolDebug(&symbols)
             3526 _SEH_epilog4
             353b _except_handler4
             355e ??_Gtype_info@@UAEPAXI@Z
-            355e ??_Etype_info@@UAEPAXI@Z
             3581 __isa_available_init
             371a __scrt_is_ucrt_dll_in_use
             3726 __CxxFrameHandler3
