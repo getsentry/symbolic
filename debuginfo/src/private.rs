@@ -138,6 +138,7 @@ where
     }
 
     pub fn objects(&self) -> MonoArchiveObjects<'d, P> {
+        // TODO(ja): Consider parsing this lazily instead.
         MonoArchiveObjects(Some(self.object()))
     }
 }
@@ -171,7 +172,18 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         self.0.take()
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.0.is_some() {
+            (1, Some(1))
+        } else {
+            (0, Some(0))
+        }
+    }
 }
+
+impl<'d, P> FusedIterator for MonoArchiveObjects<'d, P> where P: Parse<'d> {}
+impl<'d, P> ExactSizeIterator for MonoArchiveObjects<'d, P> where P: Parse<'d> {}
 
 #[test]
 fn test_lineoffsets_fused() {

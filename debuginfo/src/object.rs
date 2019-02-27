@@ -452,6 +452,13 @@ impl<'d, 'a> Iterator for ObjectIterator<'d, 'a> {
             ObjectIteratorInner(ref mut iter) => Object(iter.next()?)
         ))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match_inner!(self.0, ObjectIteratorInner(ref iter) => iter.size_hint())
+    }
 }
+
+impl std::iter::FusedIterator for ObjectIterator<'_, '_> {}
+impl ExactSizeIterator for ObjectIterator<'_, '_> {}
 
 // TODO(ja): Implement IntoIterator for Archive

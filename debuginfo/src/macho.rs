@@ -393,6 +393,7 @@ impl<'d> Iterator for MachOSymbolIterator<'d> {
 /// still valid afterwards, however, and can be used to resolve the next object.
 pub struct FatMachObjectIterator<'d, 'a> {
     iter: mach::FatArchIterator<'a>,
+    remaining: usize,
     data: &'d [u8],
 }
 
@@ -400,13 +401,25 @@ impl<'d, 'a> Iterator for FatMachObjectIterator<'d, 'a> {
     type Item = Result<MachObject<'d>, MachError>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining == 0 {
+            return None;
+        }
+
+        self.remaining -= 1;
         match self.iter.next() {
             Some(Ok(arch)) => Some(MachObject::parse(arch.slice(self.data))),
             Some(Err(error)) => Some(Err(MachError::BadObject(error))),
             None => None,
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.remaining, Some(self.remaining))
+    }
 }
+
+impl std::iter::FusedIterator for FatMachObjectIterator<'_, '_> {}
+impl ExactSizeIterator for FatMachObjectIterator<'_, '_> {}
 
 /// A fat MachO container that hosts one or more [`MachObject`]s.
 ///
@@ -436,6 +449,7 @@ impl<'d> FatMachO<'d> {
     pub fn objects(&self) -> FatMachObjectIterator<'d, '_> {
         FatMachObjectIterator {
             iter: self.fat.iter_arches(),
+            remaining: self.fat.narches,
             data: self.data,
         }
     }
@@ -473,7 +487,17 @@ impl<'d, 'a> Iterator for MachObjectIterator<'d, 'a> {
             MachObjectIteratorInner::Archive(ref mut iter) => iter.next(),
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self.0 {
+            MachObjectIteratorInner::Single(ref iter) => iter.size_hint(),
+            MachObjectIteratorInner::Archive(ref iter) => iter.size_hint(),
+        }
+    }
 }
+
+impl std::iter::FusedIterator for MachObjectIterator<'_, '_> {}
+impl ExactSizeIterator for MachObjectIterator<'_, '_> {}
 
 #[derive(Debug)]
 enum MachArchiveInner<'d> {
