@@ -24,6 +24,9 @@
 //! assert_eq!(name.try_demangle(Default::default()), "std::io::Read::read_to_end");
 //! # }
 //! ```
+
+#![warn(missing_docs)]
+
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
