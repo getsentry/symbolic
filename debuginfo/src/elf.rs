@@ -65,7 +65,7 @@ impl<'d> ElfObject<'d> {
     /// likely not a valid UUID since was generated off a hash value.
     ///
     /// If all of the above fails, the identifier will be `None`.
-    pub fn id(&self) -> DebugId {
+    pub fn debug_id(&self) -> DebugId {
         // Search for a GNU build identifier node in the program headers or the
         // build ID section. If errors occur during this process, fall through
         // silently to the next method.
@@ -320,7 +320,7 @@ impl<'d> ElfObject<'d> {
 impl fmt::Debug for ElfObject<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("ElfObject")
-            .field("id", &self.id())
+            .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())
             .field("kind", &self.kind())
             .field("load_address", &HexFmt(self.load_address()))
@@ -359,8 +359,8 @@ impl<'d> ObjectLike for ElfObject<'d> {
         self.file_format()
     }
 
-    fn id(&self) -> DebugId {
-        self.id()
+    fn debug_id(&self) -> DebugId {
+        self.debug_id()
     }
 
     fn arch(&self) -> Arch {

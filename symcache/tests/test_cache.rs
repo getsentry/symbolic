@@ -27,7 +27,7 @@ fn test_load_header_linux() -> Result<(), Error> {
     let buffer = ByteView::open("../testutils/fixtures/symcache/current/linux.symc")?;
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot_matches!(symcache, @r###"SymCache {
-    id: DebugId {
+    debug_id: DebugId {
         uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
         appendix: 0
     },
@@ -52,7 +52,7 @@ fn test_load_header_macos() -> Result<(), Error> {
     let buffer = ByteView::open("../testutils/fixtures/symcache/current/macos.symc")?;
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot_matches!(symcache, @r###"SymCache {
-    id: DebugId {
+    debug_id: DebugId {
         uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
         appendix: 0
     },

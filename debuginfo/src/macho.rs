@@ -53,7 +53,7 @@ impl<'d> MachObject<'d> {
     ///
     /// Mach objects use a UUID which is specified in the load commands that are part of the Mach
     /// header. This UUID is generated at compile / link time and is usually unique per compilation.
-    pub fn id(&self) -> DebugId {
+    pub fn debug_id(&self) -> DebugId {
         for cmd in &self.macho.load_commands {
             if let mach::load_command::CommandVariant::Uuid(ref uuid_cmd) = cmd.command {
                 if let Ok(uuid) = Uuid::from_slice(&uuid_cmd.uuid) {
@@ -219,7 +219,7 @@ impl<'d> MachObject<'d> {
 impl fmt::Debug for MachObject<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("MachObject")
-            .field("id", &self.id())
+            .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())
             .field("kind", &self.kind())
             .field("load_address", &HexFmt(self.load_address()))
@@ -258,8 +258,8 @@ impl<'d> ObjectLike for MachObject<'d> {
         self.file_format()
     }
 
-    fn id(&self) -> DebugId {
-        self.id()
+    fn debug_id(&self) -> DebugId {
+        self.debug_id()
     }
 
     fn arch(&self) -> Arch {

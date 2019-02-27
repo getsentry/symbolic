@@ -686,7 +686,7 @@ impl<'d> BreakpadObject<'d> {
     }
 
     /// The debug information identifier of this object.
-    pub fn id(&self) -> DebugId {
+    pub fn debug_id(&self) -> DebugId {
         self.id
     }
 
@@ -805,7 +805,7 @@ impl<'d> BreakpadObject<'d> {
 impl fmt::Debug for BreakpadObject<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("BreakpadObject")
-            .field("id", &self.id())
+            .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())
             .field("name", &self.name())
             .field("has_symbols", &self.has_symbols())
@@ -843,8 +843,8 @@ impl<'d> ObjectLike for BreakpadObject<'d> {
         self.file_format()
     }
 
-    fn id(&self) -> DebugId {
-        self.id()
+    fn debug_id(&self) -> DebugId {
+        self.debug_id()
     }
 
     fn arch(&self) -> Arch {

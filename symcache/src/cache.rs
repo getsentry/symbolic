@@ -40,9 +40,9 @@ impl<'a> SymCache<'a> {
         Arch::from_u32(self.header.arch)
     }
 
-    /// The id of the cache file.
-    pub fn id(&self) -> DebugId {
-        self.header.id
+    /// The debuig identifier of the cache file.
+    pub fn debug_id(&self) -> DebugId {
+        self.header.debug_id
     }
 
     /// Returns true if line information is included.
@@ -247,7 +247,7 @@ impl<'a> SymCache<'a> {
 
         Ok(LineInfo {
             arch: self.arch(),
-            id: self.id(),
+            debug_id: self.debug_id(),
             sym_addr: fun.addr_start(),
             line_addr,
             instr_addr: addr,
@@ -272,7 +272,7 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
 impl fmt::Debug for SymCache<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SymCache")
-            .field("id", &self.id())
+            .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())
             .field("has_line_info", &self.has_line_info())
             .field("has_file_info", &self.has_file_info())
@@ -352,7 +352,7 @@ impl fmt::Debug for Lookup<'_, '_> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LineInfo<'a> {
     arch: Arch,
-    id: DebugId,
+    debug_id: DebugId,
     sym_addr: u64,
     line_addr: u64,
     instr_addr: u64,
@@ -371,8 +371,8 @@ impl<'a> LineInfo<'a> {
     }
 
     /// Debug identifier of the image referenced by this line.
-    pub fn id(&self) -> DebugId {
-        self.id
+    pub fn debug_id(&self) -> DebugId {
+        self.debug_id
     }
 
     /// The instruction address where the enclosing function starts.

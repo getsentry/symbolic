@@ -1,5 +1,5 @@
 ---
-created: "2019-02-20T16:25:28.706740Z"
+created: "2019-02-27T12:13:30.345704Z"
 creator: insta@0.6.3
 source: symcache/tests/test_cache.rs
 expression: "&line_infos"
@@ -7,7 +7,7 @@ expression: "&line_infos"
 [
     LineInfo {
         arch: Amd64,
-        id: DebugId {
+        debug_id: DebugId {
             uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
             appendix: 0
         },
@@ -25,7 +25,7 @@ expression: "&line_infos"
     },
     LineInfo {
         arch: Amd64,
-        id: DebugId {
+        debug_id: DebugId {
             uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
             appendix: 0
         },
@@ -43,7 +43,7 @@ expression: "&line_infos"
     },
     LineInfo {
         arch: Amd64,
-        id: DebugId {
+        debug_id: DebugId {
             uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
             appendix: 0
         },

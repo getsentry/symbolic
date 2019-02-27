@@ -237,7 +237,7 @@ pub struct HeaderV1 {
 #[derive(Default, Copy, Clone, Debug)]
 pub struct HeaderV2 {
     pub preamble: Preamble,
-    pub id: DebugId,
+    pub debug_id: DebugId,
     pub arch: u32,
     pub data_source: u8,
     pub has_line_records: u8,
@@ -250,7 +250,7 @@ pub struct HeaderV2 {
 #[derive(Clone, Debug)]
 pub struct Header {
     pub preamble: Preamble,
-    pub id: DebugId,
+    pub debug_id: DebugId,
     pub arch: u32,
     pub data_source: u8,
     pub has_line_records: u8,
@@ -283,7 +283,7 @@ impl From<&'_ HeaderV1> for Header {
     fn from(header: &HeaderV1) -> Self {
         Header {
             preamble: header.preamble,
-            id: header.uuid.into(),
+            debug_id: header.uuid.into(),
             arch: header.arch,
             data_source: header.data_source,
             has_line_records: header.has_line_records,
@@ -298,7 +298,7 @@ impl From<&'_ HeaderV2> for Header {
     fn from(header: &HeaderV2) -> Self {
         Header {
             preamble: header.preamble,
-            id: header.id,
+            debug_id: header.debug_id,
             arch: header.arch,
             data_source: header.data_source,
             has_line_records: header.has_line_records,

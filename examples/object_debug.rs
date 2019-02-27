@@ -27,7 +27,7 @@ fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     for object in archive.objects() {
         match object {
             Ok(object) => {
-                println!(" - {}: {}", object.arch(), object.id());
+                println!(" - {}: {}", object.arch(), object.debug_id());
                 println!("   object kind:  {:#}", object.kind());
                 println!("   load address: {:#x}", object.load_address());
                 println!("   symbol table: {}", object.has_symbols());

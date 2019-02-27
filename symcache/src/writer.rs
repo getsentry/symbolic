@@ -109,7 +109,7 @@ where
         let mut writer = SymCacheWriter::new(target).context(SymCacheErrorKind::WriteFailed)?;
 
         writer.set_arch(object.arch());
-        writer.set_id(object.id());
+        writer.set_debug_id(object.debug_id());
 
         let mut last_address = 0;
         let mut symbols = object.symbol_map().into_iter().peekable();
@@ -171,8 +171,8 @@ where
         self.header.arch = arch as u32;
     }
 
-    pub fn set_id(&mut self, id: DebugId) {
-        self.header.id = id;
+    pub fn set_debug_id(&mut self, debug_id: DebugId) {
+        self.header.debug_id = debug_id;
     }
 
     pub fn add_symbol(&mut self, symbol: Symbol<'_>) -> Result<(), SymCacheError> {

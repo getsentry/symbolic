@@ -10,7 +10,7 @@ fn test_v1() -> Result<(), Error> {
 
     // The symcache ID has changed from UUID to DebugId
     assert_eq!(
-        symcache.id(),
+        symcache.debug_id(),
         "67e9247c-814e-392b-a027-dbde6748fcbf".parse().unwrap()
     );
 

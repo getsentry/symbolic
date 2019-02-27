@@ -27,7 +27,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
         if arch == Arch::Unknown && objects.len() != 1 {
             println!("Contained architectures:");
             for obj in objects {
-                println!("  {} [{}]", obj.id(), obj.arch(),);
+                println!("  {} [{}]", obj.debug_id(), obj.arch(),);
             }
             return Ok(());
         }

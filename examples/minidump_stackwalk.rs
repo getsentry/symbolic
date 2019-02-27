@@ -49,7 +49,7 @@ where
             // Fail for invalid matching objects but silently skip objects
             // without a UUID
             let object = object?;
-            let id = CodeModuleId::from(object.id());
+            let id = CodeModuleId::from(object.debug_id());
 
             // Make sure we haven't converted this object already
             if !search_ids.contains(&id) || final_ids.contains(&id) {

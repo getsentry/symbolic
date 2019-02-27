@@ -82,7 +82,7 @@ impl<'d> PdbObject<'d> {
     ///
     /// The same information is also stored in a header in the corresponding PE file, which can be
     /// used to locate a PDB from a PE.
-    pub fn id(&self) -> DebugId {
+    pub fn debug_id(&self) -> DebugId {
         match Uuid::from_slice(&self.pdb_info.guid.as_bytes()[..]) {
             Ok(uuid) => DebugId::from_parts(uuid, self.pdb_info.age),
             Err(_) => DebugId::default(),
@@ -158,7 +158,7 @@ impl<'d> PdbObject<'d> {
 impl fmt::Debug for PdbObject<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("PdbObject")
-            .field("id", &self.id())
+            .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())
             .field("load_address", &HexFmt(self.load_address()))
             .field("has_symbols", &self.has_symbols())
@@ -196,8 +196,8 @@ impl<'d> ObjectLike for PdbObject<'d> {
         self.file_format()
     }
 
-    fn id(&self) -> DebugId {
-        self.id()
+    fn debug_id(&self) -> DebugId {
+        self.debug_id()
     }
 
     fn arch(&self) -> Arch {

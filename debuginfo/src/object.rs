@@ -160,8 +160,8 @@ impl<'d> Object<'d> {
     ///
     /// For platforms that use different identifiers for their code and debug files, this _always_
     /// refers to the debug file, regardless whether this object is a debug file or not.
-    pub fn id(&self) -> DebugId {
-        match_inner!(self, Object(ref o) => o.id())
+    pub fn debug_id(&self) -> DebugId {
+        match_inner!(self, Object(ref o) => o.debug_id())
     }
 
     /// The CPU architecture of this object.
@@ -260,8 +260,8 @@ impl<'d> ObjectLike for Object<'d> {
         self.file_format()
     }
 
-    fn id(&self) -> DebugId {
-        self.id()
+    fn debug_id(&self) -> DebugId {
+        self.debug_id()
     }
 
     fn arch(&self) -> Arch {

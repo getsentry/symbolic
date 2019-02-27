@@ -61,7 +61,7 @@ impl<'d> PeObject<'d> {
     /// Since debug information is stored in an external [`PdbObject`], this identifier actually
     /// refers to the PDB. While strictly the filename of the PDB would also be necessary fully
     /// resolve it, in most instances the GUID and age contained in this identifier are sufficient.
-    pub fn id(&self) -> DebugId {
+    pub fn debug_id(&self) -> DebugId {
         self.pe
             .debug_data
             .as_ref()
@@ -154,7 +154,7 @@ impl<'d> PeObject<'d> {
 impl fmt::Debug for PeObject<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("PeObject")
-            .field("id", &self.id())
+            .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())
             .field("kind", &self.kind())
             .field("load_address", &HexFmt(self.load_address()))
@@ -193,8 +193,8 @@ impl<'d> ObjectLike for PeObject<'d> {
         self.file_format()
     }
 
-    fn id(&self) -> DebugId {
-        self.id()
+    fn debug_id(&self) -> DebugId {
+        self.debug_id()
     }
 
     fn arch(&self) -> Arch {

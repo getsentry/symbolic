@@ -481,7 +481,7 @@ pub trait ObjectLike {
     fn file_format(&self) -> FileFormat;
 
     /// The debug information identifier of this object.
-    fn id(&self) -> DebugId;
+    fn debug_id(&self) -> DebugId;
 
     /// The CPU architecture of this object.
     fn arch(&self) -> Arch;
