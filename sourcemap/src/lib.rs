@@ -1,4 +1,7 @@
 //! Provides sourcemap support.
+
+#![warn(missing_docs)]
+
 use std::borrow::Cow;
 use std::fmt;
 
@@ -48,33 +51,41 @@ pub struct SourceMapView {
 
 /// A matched token.
 pub struct TokenMatch<'a> {
+    /// The line number in the original source file.
     pub src_line: u32,
+    /// The column number in the original source file.
     pub src_col: u32,
+    /// The column number in the minifid source file.
     pub dst_line: u32,
+    /// The column number in the minified source file.
     pub dst_col: u32,
+    /// The source ID of the token.
     pub src_id: u32,
+    /// The token name, if present.
     pub name: Option<&'a str>,
+    /// The source.
     pub src: Option<&'a str>,
+    /// The name of the function containing the token.
     pub function_name: Option<String>,
 }
 
 impl<'a> SourceView<'a> {
-    /// Returns a view from a given source string.
-    pub fn new(source: &'a str) -> SourceView<'a> {
+    /// Creates a view from a string.
+    pub fn new(source: &'a str) -> Self {
         SourceView {
             sv: sourcemap::SourceView::new(source),
         }
     }
 
     /// Creates a view from a string.
-    pub fn from_string(source: String) -> SourceView<'static> {
+    pub fn from_string(source: String) -> Self {
         SourceView {
             sv: sourcemap::SourceView::from_string(source),
         }
     }
 
     /// Creates a soruce view from bytes ignoring utf-8 errors.
-    pub fn from_bytes(source: &'a [u8]) -> SourceView<'a> {
+    pub fn from_slice(source: &'a [u8]) -> Self {
         match String::from_utf8_lossy(source) {
             Cow::Owned(s) => SourceView::from_string(s),
             Cow::Borrowed(s) => SourceView::new(s),
@@ -102,7 +113,7 @@ impl SourceMapView {
     ///
     /// If the sourcemap is an index it is being flattened.  If flattening
     /// is not possible then an error is raised.
-    pub fn from_json_slice(buffer: &[u8]) -> Result<SourceMapView, ParseSourceMapError> {
+    pub fn from_json_slice(buffer: &[u8]) -> Result<Self, ParseSourceMapError> {
         Ok(SourceMapView {
             sm: match sourcemap::decode_slice(buffer)? {
                 sourcemap::DecodedMap::Regular(sm) => sm,
