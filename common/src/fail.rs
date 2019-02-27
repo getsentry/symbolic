@@ -16,16 +16,18 @@
 /// ## Example
 ///
 /// ```rust
+/// use failure::Fail;
 /// # use symbolic_common::derive_failure;
+/// #[derive(Debug, Fail)]
 /// enum MyErrorKind {
-///     Something,
-///     Else,
+///     #[fail(display = "some")] Something,
+///     #[fail(display = "else")] Else,
 /// }
 ///
 /// derive_failure!(MyError, MyErrorKind);
 ///
 /// fn something() -> Result<(), MyError> {
-///     Err(ErrorKind::Something.into())
+///     Err(MyErrorKind::Something.into())
 /// }
 /// ```
 #[macro_export]
