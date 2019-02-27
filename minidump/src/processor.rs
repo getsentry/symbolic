@@ -1,3 +1,14 @@
+//! Minidump processing facilities.
+//!
+//! This crate exposes rust bindings to the Breakpad processor for minidumps. The root type is
+//! [`ProcessState`], which contains the high-level API to open a Minidump and extract most of the
+//! information that is stored inside.
+//!
+//! For more information on the internals of the Breakpad processor, refer to the [official docs].
+//!
+//! [official docs]: https://chromium.googlesource.com/breakpad/breakpad/+/master/docs/processor_design.md
+//! [`ProcessState`]: struct.ProcessState.html
+
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::{CStr, CString};
@@ -76,14 +87,14 @@ extern "C" {
     ) -> *mut *const CodeModule;
 }
 
-/// An error returned when parsing invalid `CodeModuleId`s.
+/// An error returned when parsing an invalid [`CodeModuleId`](struct.CodeModuleId.html).
 pub type ParseCodeModuleIdError = ParseDebugIdError;
 
 /// Breakpad code module IDs.
 ///
-/// **Example:**
+/// # Example
 ///
-/// ```
+/// ```rust
 /// use std::str::FromStr;
 /// use symbolic_minidump::processor::CodeModuleId;
 /// # use symbolic_minidump::processor::ParseCodeModuleIdError;
@@ -184,7 +195,8 @@ impl<'de> ::serde::de::Deserialize<'de> for CodeModuleId {
 pub struct CodeModule(c_void);
 
 impl CodeModule {
-    /// Returns the unique identifier of this `CodeModule`.
+    /// Returns the unique identifier of this `CodeModule`, which corresponds to the identifier
+    /// returned by [`debug_identifier`](struct.CodeModuleId#method.debug_identifier).
     pub fn id(&self) -> Option<CodeModuleId> {
         CodeModuleId::from_str(&self.debug_identifier()).ok()
     }
@@ -394,9 +406,9 @@ impl StackFrame {
         unsafe { stack_frame_instruction(self) }
     }
 
-    // Return the actual return address, as saved on the stack or in a
-    // register. See the comments for `StackFrame::instruction' for
-    // details.
+    /// Return the actual return address, as saved on the stack or in a
+    /// register. See the comments for `StackFrame::instruction' for
+    /// details.
     pub fn return_address(&self, arch: Arch) -> u64 {
         let address = unsafe { stack_frame_return_address(self) };
 
@@ -458,7 +470,9 @@ impl fmt::Debug for StackFrame {
     }
 }
 
-/// Represents a thread of the `ProcessState` which holds a list of `StackFrame`s.
+/// Represents a thread of the `ProcessState` which holds a list of [`StackFrame`]s.
+///
+/// [`StackFrame`]: struct.StackFrame.html
 #[repr(C)]
 pub struct CallStack(c_void);
 
@@ -667,11 +681,13 @@ struct SymbolEntry {
     symbol_data: *const u8,
 }
 
-/// Container for call frame information (CFI) of `CodeModules`.
+/// Container for call frame information (CFI) of [`CodeModule`]s.
 ///
 /// This information is required by the stackwalker in case framepointers are
 /// missing in the raw stacktraces. Frame information is given as plain ASCII
 /// text as specified in the Breakpad symbol file specification.
+///
+/// [`CodeModule`]: struct.CodeModule.html
 pub type FrameInfoMap<'a> = BTreeMap<CodeModuleId, CfiCache<'a>>;
 
 type IProcessState = c_void;

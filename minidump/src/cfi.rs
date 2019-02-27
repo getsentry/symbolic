@@ -1,11 +1,28 @@
+//! Handling of Call Frame Information (stack frame info).
+//!
+//! The root type exposed by this crate is [`CfiCache`], which offers a high-level API to extract
+//! CFI from object files and serialize a format that the Breakpad processor can understand.
+//!
+//! # Background
+//!
+//! Call Frame Information (CFI) is used by the [processor] to improve the quality of stacktraces
+//! during stackwalking. When the executable was compiled with frame pointer omission, the call
+//! stack does not contain sufficient information to resolve frames on its own. CFI contains
+//! programs that can calculate the base address of a frame based on register values of the current
+//! frame.
+//!
+//! Without CFI, the stackwalker needs to scan the stack memory for values that look like valid base
+//! addresses. This fequently yields false-positives.
+//!
+//! [processor]: ../processor/index.html
+//! [`CfiCache`]: struct.CfiCache.html
+
 use std::collections::HashMap;
-use std::fmt;
 use std::io::{self, Write};
 
-use failure::{Backtrace, Context, Fail, ResultExt};
+use failure::{Fail, ResultExt};
 
-use symbolic_common::ByteView;
-use symbolic_common::{Arch, UnknownArchError};
+use symbolic_common::{derive_failure, Arch, ByteView, UnknownArchError};
 use symbolic_debuginfo::breakpad::{BreakpadObject, BreakpadStackRecord};
 use symbolic_debuginfo::dwarf::gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error, FrameDescriptionEntry, Reader,
@@ -46,49 +63,11 @@ pub enum CfiErrorKind {
     BadFileMagic,
 }
 
-/// An error returned by `AsciiCfiWriter`.
-///
-/// This error contains a context with stack traces and an error cause.
-#[derive(Debug)]
-pub struct CfiError {
-    inner: Context<CfiErrorKind>,
-}
-
-impl Fail for CfiError {
-    fn cause(&self) -> Option<&dyn Fail> {
-        self.inner.cause()
-    }
-
-    fn backtrace(&self) -> Option<&Backtrace> {
-        self.inner.backtrace()
-    }
-}
-
-impl fmt::Display for CfiError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.inner, f)
-    }
-}
-
-impl CfiError {
-    pub fn kind(&self) -> CfiErrorKind {
-        *self.inner.get_context()
-    }
-}
-
-impl From<CfiErrorKind> for CfiError {
-    fn from(kind: CfiErrorKind) -> CfiError {
-        CfiError {
-            inner: Context::new(kind),
-        }
-    }
-}
-
-impl From<Context<CfiErrorKind>> for CfiError {
-    fn from(inner: Context<CfiErrorKind>) -> CfiError {
-        CfiError { inner }
-    }
-}
+derive_failure!(
+    CfiError,
+    CfiErrorKind,
+    doc = "An error returned by [`AsciiCfiWriter`](struct.AsciiCfiWriter.html)."
+);
 
 impl From<UnknownArchError> for CfiError {
     fn from(_: UnknownArchError) -> CfiError {
