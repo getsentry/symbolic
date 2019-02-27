@@ -1,3 +1,5 @@
+//! Generic wrappers over various object file formats.
+
 use std::io::Cursor;
 
 use failure::Fail;
@@ -50,36 +52,57 @@ macro_rules! map_result {
     };
 }
 
+/// An error when dealing with any kind of [`Object`](enum.Object.html).
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Fail)]
 pub enum ObjectError {
+    /// The object file format is not supported.
     #[fail(display = "unsupported object file format")]
     UnsupportedObject,
+
+    /// An error in a Breakpad ASCII symbol.
     #[fail(display = "failed to process breakpad file")]
     Breakpad(#[fail(cause)] BreakpadError),
+
+    /// An error in an ELF file.
     #[fail(display = "failed to process elf file")]
     Elf(#[fail(cause)] ElfError),
+
+    /// An error in a Mach object.
     #[fail(display = "failed to process macho file")]
     MachO(#[fail(cause)] MachError),
+
+    /// An error in a Program Database.
     #[fail(display = "failed to process pdb file")]
     Pdb(#[fail(cause)] PdbError),
+
+    /// An error in a Portable Executable.
     #[fail(display = "failed to process pe file")]
     Pe(#[fail(cause)] PeError),
+
+    /// An error in DWARF debugging information.
     #[fail(display = "failed to process dwarf info")]
     Dwarf(#[fail(cause)] DwarfError),
 }
 
+/// A generic object file providing uniform access to various file formats.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Object<'d> {
+    /// Breakpad ASCII symbol.
     Breakpad(BreakpadObject<'d>),
+    /// Executable and Linkable Format, used on Linux.
     Elf(ElfObject<'d>),
+    /// Mach Objects, used on macOS and iOS derivatives.
     MachO(MachObject<'d>),
+    /// Program Database, the debug companion format on Windows.
     Pdb(PdbObject<'d>),
+    /// Portable Executable, an extension of COFF used on Windows.
     Pe(PeObject<'d>),
 }
 
 impl<'d> Object<'d> {
+    /// Tests whether the buffer could contain an object.
     pub fn test(data: &[u8]) -> bool {
         if PdbObject::test(data) || BreakpadObject::test(data) {
             return true;
@@ -96,6 +119,7 @@ impl<'d> Object<'d> {
         }
     }
 
+    /// Tries to parse a supported object from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, ObjectError> {
         macro_rules! parse_object {
             ($kind:ident, $file:ident, $data:expr) => {
@@ -121,6 +145,7 @@ impl<'d> Object<'d> {
         Err(ObjectError::UnsupportedObject)
     }
 
+    /// The container format of this file, corresponding to the variant of this instance.
     pub fn file_format(&self) -> FileFormat {
         match *self {
             Object::Breakpad(_) => FileFormat::Breakpad,
@@ -131,38 +156,58 @@ impl<'d> Object<'d> {
         }
     }
 
+    /// The debug information identifier of this object.
+    ///
+    /// For platforms that use different identifiers for their code and debug files, this _always_
+    /// refers to the debug file, regardless whether this object is a debug file or not.
     pub fn id(&self) -> DebugId {
         match_inner!(self, Object(ref o) => o.id())
     }
 
+    /// The CPU architecture of this object.
     pub fn arch(&self) -> Arch {
         match_inner!(self, Object(ref o) => o.arch())
     }
 
+    /// The kind of this object.
     pub fn kind(&self) -> ObjectKind {
         match_inner!(self, Object(ref o) => o.kind())
     }
 
+    /// The address at which the image prefers to be loaded into memory.
     pub fn load_address(&self) -> u64 {
         match_inner!(self, Object(ref o) => o.load_address())
     }
 
+    /// Determines whether this object exposes a public symbol table.
     pub fn has_symbols(&self) -> bool {
         match_inner!(self, Object(ref o) => o.has_symbols())
     }
 
+    /// Returns an iterator over symbols of a public symbol table.
     pub fn symbols(&self) -> SymbolIterator<'d, '_> {
         map_inner!(self, Object(ref o) => SymbolIterator(o.symbols()))
     }
 
+    /// Returns an ordered map of symbols in the symbol table.
     pub fn symbol_map(&self) -> SymbolMap<'d> {
         match_inner!(self, Object(ref o) => o.symbol_map())
     }
 
+    /// Determines whether this object contains debug information.
     pub fn has_debug_info(&self) -> bool {
         match_inner!(self, Object(ref o) => o.has_debug_info())
     }
 
+    /// Constructs a debugging session.
+    ///
+    /// A debugging session loads certain information from the object file and creates caches for
+    /// efficient access to various records in the debug information. Since this can be quite a
+    /// costly process, try to reuse the debugging session as long as possible.
+    ///
+    /// Objects that do not support debugging or do not contain debugging information return an
+    /// empty debug session. This only returns an error if constructing the debug session fails due
+    /// to invalid debug data in the object.
     pub fn debug_session(&self) -> Result<ObjectDebugSession<'d>, ObjectError> {
         match *self {
             Object::Breakpad(ref o) => o
@@ -188,10 +233,12 @@ impl<'d> Object<'d> {
         }
     }
 
+    /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
         match_inner!(self, Object(ref o) => o.has_unwind_info())
     }
 
+    /// Returns the raw data of the underlying buffer.
     pub fn data(&self) -> &'d [u8] {
         match_inner!(self, Object(ref o) => o.data())
     }
@@ -250,7 +297,9 @@ impl<'d> ObjectLike for Object<'d> {
     }
 }
 
+/// A generic debugging session.
 #[allow(clippy::large_enum_variant)]
+#[allow(missing_docs)]
 pub enum ObjectDebugSession<'d> {
     Breakpad(BreakpadDebugSession<'d>),
     Dwarf(DwarfDebugSession<'d>),
@@ -271,6 +320,8 @@ impl DebugSession for ObjectDebugSession<'_> {
     }
 }
 
+/// A generic symbol iterator
+#[allow(missing_docs)]
 pub enum SymbolIterator<'d, 'o> {
     Breakpad(BreakpadSymbolIterator<'d>),
     Elf(ElfSymbolIterator<'d, 'o>),
@@ -296,10 +347,16 @@ enum ArchiveInner<'d> {
     Pe(MonoArchive<'d, PeObject<'d>>),
 }
 
+/// A generic archive that can contain one or more object files.
+///
+/// Effectively, this will only contain a single object for all file types other than `MachO`. Mach
+/// objects can either be single object files or so-called _fat_ files that contain multiple objects
+/// per architecture.
 #[derive(Debug)]
 pub struct Archive<'d>(ArchiveInner<'d>);
 
 impl<'d> Archive<'d> {
+    /// Tests whether this buffer contains a valid object archive.
     pub fn test(data: &[u8]) -> bool {
         // TODO(ja): Deduplicate with Object::parse
         if PdbObject::test(data) || BreakpadObject::test(data) {
@@ -318,6 +375,7 @@ impl<'d> Archive<'d> {
         }
     }
 
+    /// Tries to parse a generic archive from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, ObjectError> {
         // TODO(ja): Deduplicate with Object::parse
         macro_rules! parse_mono {
@@ -347,6 +405,7 @@ impl<'d> Archive<'d> {
         Err(ObjectError::UnsupportedObject)
     }
 
+    /// The container format of this file.
     pub fn file_format(&self) -> FileFormat {
         match self.0 {
             ArchiveInner::Breakpad(_) => FileFormat::Breakpad,
@@ -357,6 +416,7 @@ impl<'d> Archive<'d> {
         }
     }
 
+    /// Returns an iterator over all objects contained in this archive.
     pub fn objects(&self) -> ObjectIterator<'d, '_> {
         ObjectIterator(map_inner!(self.0, ArchiveInner(ref o) =>
             ObjectIteratorInner(o.objects())))
@@ -380,6 +440,7 @@ enum ObjectIteratorInner<'d, 'a> {
     Pe(MonoArchiveObjects<'d, PeObject<'d>>),
 }
 
+/// An iterator over [`Object`](enum.Object.html)s in an [`Archive`](struct.Archive.html).
 pub struct ObjectIterator<'d, 'a>(ObjectIteratorInner<'d, 'a>);
 
 impl<'d, 'a> Iterator for ObjectIterator<'d, 'a> {

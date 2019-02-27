@@ -56,6 +56,7 @@ pub enum ObjectKind {
 }
 
 impl ObjectKind {
+    /// Returns the name of the object kind.
     pub fn name(self) -> &'static str {
         match self {
             ObjectKind::None => "none",
@@ -68,6 +69,14 @@ impl ObjectKind {
         }
     }
 
+    /// Returns a human readable name of the object kind.
+    ///
+    /// This is also used in alternate formatting:
+    ///
+    /// ```rust
+    /// # use symbolic_debuginfo::ObjectKind;
+    /// assert_eq!(format!("{:#}", ObjectKind::Executable), ObjectKind::Executable.human_name());
+    /// ```
     pub fn human_name(self) -> &'static str {
         match self {
             ObjectKind::None => "file",
@@ -108,7 +117,7 @@ impl FromStr for ObjectKind {
     }
 }
 
-/// An error returned for unknown or invalid `FileFormats`.
+/// An error returned for unknown or invalid [`FileFormats`](enum.FileFormat.html).
 #[derive(Debug, Fail, Clone, Copy)]
 #[fail(display = "unknown file format")]
 pub struct UnknownFileFormatError;
@@ -116,11 +125,17 @@ pub struct UnknownFileFormatError;
 /// Represents the physical object file format.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub enum FileFormat {
+    /// An unknown file format.
     Unknown,
+    /// Breakpad ASCII symbol.
     Breakpad,
+    /// Executable and Linkable Format, used on Linux.
     Elf,
+    /// Mach Objects, used on macOS and iOS derivatives.
     MachO,
+    /// Program Database, the debug companion format on Windows.
     Pdb,
+    /// Portable Executable, an extension of COFF used on Windows.
     Pe,
 }
 
@@ -159,18 +174,38 @@ impl FromStr for FileFormat {
     }
 }
 
+/// A symbol from a symbol table.
 #[derive(Clone, Default, Eq, PartialEq)]
 pub struct Symbol<'data> {
+    /// The name of the symbol.
+    ///
+    /// This name is generally mangled. It can be demangled by constructing a `Name` instance and
+    /// calling demangle on it. Certain object files might only store demangled symbol names.
     pub name: Option<Cow<'data, str>>,
+
+    /// The relative address of this symbol.
     pub address: u64,
+
+    /// The size of this symbol, if known.
+    ///
+    /// When loading symbols from an object file, the size will generally not be known. Instead,
+    /// construct a [`SymbolMap`] from the object, which also fills in sizes.
+    ///
+    /// [`SymbolMap`]: struct.SymbolMap.html
     pub size: u64,
 }
 
 impl<'data> Symbol<'data> {
+    /// Returns the name of this symbol as string.
     pub fn name(&self) -> Option<&str> {
         self.name.as_ref().map(Cow::as_ref)
     }
 
+    /// Determines whether the given address is covered by this symbol.
+    ///
+    /// If the symbol size has not been computed, the address is assumed to be covered if it is
+    /// greated than the symbol address. Otherwise, the address must be in the half-open interval
+    /// `[address, address + size)`.
     pub fn contains(&self, address: u64) -> bool {
         address >= self.address && (self.size == 0 || address < self.address + self.size)
     }
@@ -186,20 +221,51 @@ impl<'d> fmt::Debug for Symbol<'d> {
     }
 }
 
+/// IntoIterator type for [`SymbolMap`](struct.SymbolMap.html).
 pub type SymbolMapIter<'data> = std::vec::IntoIter<Symbol<'data>>;
 
+/// A sorted list of symbols, suitable for quick lookups.
+///
+/// This type can either be computed from a list or iterator of symbols, or preferrably directly
+/// by calling [`ObjectLike::symbol_map`] on any object. Symbols in the symbol map are guaranteed to
+/// have a `size` set, except for the last symbol, which is computed by taking the offset to the
+/// subsequent symbol.
+///
+/// `SymbolMap` also exposes a read-only view on the sorted slice of symbols. It can be converted to
+/// and from lists of symbols.
+///
+/// ## Example
+///
+/// ```rust
+/// # use symbolic_debuginfo::{Symbol, SymbolMap};
+/// let map = SymbolMap::from(vec![
+///     Symbol { name: Some("A".into()), address: 0x4400, size: 0 },
+///     Symbol { name: Some("B".into()), address: 0x4200, size: 0 },
+///     Symbol { name: Some("C".into()), address: 0x4000, size: 0 },
+/// ]);
+///
+/// assert_eq!(map[0], Symbol {
+///     name: Some("C".into()),
+///     address: 0x4000,
+///     size: 0x200,
+/// });
+/// ```
+///
+/// [`ObjectLike::symbol_map`]: trait.ObjectLike.html#tymethod.symbol_map
 #[derive(Clone, Debug, Default)]
 pub struct SymbolMap<'data> {
     symbols: Vec<Symbol<'data>>,
 }
 
 impl<'data> SymbolMap<'data> {
+    /// Creates a new, empty symbol map.
     pub fn new() -> Self {
         SymbolMap {
             symbols: Vec::new(),
         }
     }
 
+    /// Looks up a symbol in the symbol map.
     pub fn lookup(&self, address: u64) -> Option<&Symbol<'data>> {
         match self.symbols.binary_search_by_key(&address, Self::key) {
             Ok(index) => Some(&self.symbols[index]),
@@ -215,6 +281,12 @@ impl<'data> SymbolMap<'data> {
         }
     }
 
+    /// Looks up a symbol covering an entire range.
+    ///
+    /// This is similar to [`lookup`], but it only returns the symbol result if it _also_ covers the
+    /// end address.
+    ///
+    /// [`lookup`]: struct.SymbolMap.html#method.lookup
     pub fn lookup_range(&self, start: u64, end: u64) -> Option<&Symbol<'data>> {
         let symbol = self.lookup(start)?;
         if symbol.contains(end) {
@@ -224,6 +296,7 @@ impl<'data> SymbolMap<'data> {
         }
     }
 
+    /// Returns the lookup key for a symbol, which is the symbol's address.
     #[inline(always)]
     fn key(symbol: &Symbol<'data>) -> u64 {
         symbol.address
@@ -247,6 +320,15 @@ impl<'data> IntoIterator for SymbolMap<'data> {
     }
 }
 
+impl<'data, 'a> IntoIterator for &'a SymbolMap<'data> {
+    type Item = &'a Symbol<'data>;
+    type IntoIter = std::slice::Iter<'a, Symbol<'data>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.symbols.iter()
+    }
+}
+
 impl<'d> AsRef<[Symbol<'d>]> for SymbolMap<'d> {
     fn as_ref(&self) -> &[Symbol<'d>] {
         &self.symbols
@@ -256,8 +338,7 @@ impl<'d> AsRef<[Symbol<'d>]> for SymbolMap<'d> {
 impl<'d> From<Vec<Symbol<'d>>> for SymbolMap<'d> {
     fn from(mut symbols: Vec<Symbol<'d>>) -> Self {
         if !symbols.is_empty() {
-            symbols.sort_unstable_by_key(Self::key);
-            // TODO(ja): dmsort, sort stable, drop duplicates
+            dmsort::sort_by_key(&mut symbols, Self::key);
 
             for i in 0..symbols.len() - 1 {
                 let next = symbols[i + 1].address;
@@ -281,22 +362,33 @@ impl<'d> FromIterator<Symbol<'d>> for SymbolMap<'d> {
     }
 }
 
-#[derive(Clone, Debug)]
+/// File information refered by [`LineInfo`](struct.LineInfo.html) comprising a directory and name.
+///
+/// The file path is usually relative to a compilation directory. It might contain parent directory
+/// segments (`../`).
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FileInfo<'data> {
+    /// The file's basename.
     pub name: Cow<'data, str>,
+    /// Path to the file.
     pub dir: Cow<'data, str>,
 }
 
 impl<'data> FileInfo<'data> {
+    /// The full path to the file, relative to the compilation directory.
     pub fn path(&self) -> String {
         join_path(&self.dir, &self.name)
     }
 }
 
+/// File and line number mapping for an instruction address.
 #[derive(Clone)]
 pub struct LineInfo<'data> {
+    /// The instruction address relative to the image base (load address).
     pub address: u64,
+    /// File name and path.
     pub file: FileInfo<'data>,
+    /// Absolute line number starting at 1. Zero means no line number.
     pub line: u64,
 }
 
@@ -310,14 +402,22 @@ impl fmt::Debug for LineInfo<'_> {
     }
 }
 
+/// Debug information for a function.
 #[derive(Clone)]
 pub struct Function<'data> {
+    /// Relative instruction address of the start of the function.
     pub address: u64,
+    /// Total code size covered by the function body, including inlined functions.
     pub size: u64,
+    /// The name and language of the function symbol.
     pub name: Name<'data>,
+    /// Path to the compilation directory. File paths are relative to this.
     pub compilation_dir: Cow<'data, str>,
+    /// Lines covered by this function, including inlined children.
     pub lines: Vec<LineInfo<'data>>,
+    /// Functions that have been inlined into this function's body.
     pub inlinees: Vec<Function<'data>>,
+    /// Specifies whether this function is inlined.
     pub inline: bool,
 }
 
@@ -335,34 +435,80 @@ impl fmt::Debug for Function<'_> {
     }
 }
 
+/// A stateful session for interfacing with debug information.
+///
+/// Debug sessions can be obtained via [`ObjectLike::debug_session`]. Since computing a session may
+/// be a costly operation, try to reuse the session as much as possible.
+///
+/// ## Implementing DebugSession
+///
+/// Reading debug information from object files usually requires loading multiple sections into
+/// memory and computing maps for quick random access to certain information. Since this can be a
+/// quite costly process, this is encapsulated into a `DebugSession`. The session may hold whatever
+/// data and caches may be necessary for efficiently interfacing with the debug info.
+///
+/// All trait methods on a `DebugSession` receive `&mut self`, to allow mutation of internal cache
+/// structures. Lifetimes of returned types are tied to this session's lifetime, which allows to
+/// borrow data from the session.
+///
+/// Examples for things to compute when building a debug session are:
+///
+///  - Decompress debug information if it is stored with compression.
+///  - Build a symbol map for random access to public symbols.
+///  - Map string tables and other lookup tables.
+///  - Read headers of compilation units (compilands) to resolve cross-unit references.
+///
+/// [`ObjectLike::debug_session`]: trait.ObjectLike.html#tymethod.debug_session
 pub trait DebugSession {
+    /// The error returned when reading debug information fails.
     type Error: Fail;
 
+    /// Compute a list of functions across all compilation units.
+    ///
+    /// This list is guaranteed to be sorted by function address.
     fn functions(&mut self) -> Result<Vec<Function<'_>>, Self::Error>;
 }
 
+/// An object containing debug information.
 pub trait ObjectLike {
+    /// Errors thrown when reading information from this object.
     type Error: Fail;
+
+    /// A session that allows optimized access to debugging information.
     type Session: DebugSession<Error = Self::Error>;
 
+    /// The container format of this file.
     fn file_format(&self) -> FileFormat;
 
+    /// The debug information identifier of this object.
     fn id(&self) -> DebugId;
 
+    /// The CPU architecture of this object.
     fn arch(&self) -> Arch;
 
+    /// The kind of this object.
     fn kind(&self) -> ObjectKind;
 
+    /// The address at which the image prefers to be loaded into memory.
     fn load_address(&self) -> u64;
 
+    /// Determines whether this object exposes a public symbol table.
     fn has_symbols(&self) -> bool;
 
+    /// Returns an ordered map of symbols in the symbol table.
     fn symbol_map(&self) -> SymbolMap<'_>;
 
+    /// Determines whether this object contains debug information.
     fn has_debug_info(&self) -> bool;
 
+    /// Constructs a debugging session.
+    ///
+    /// A debugging session loads certain information from the object file and creates caches for
+    /// efficient access to various records in the debug information. Since this can be quite a
+    /// costly process, try to reuse the debugging session as long as possible.
     fn debug_session(&self) -> Result<Self::Session, Self::Error>;
 
+    /// Determines whether this object contains stack unwinding information.
     fn has_unwind_info(&self) -> bool;
 }
 

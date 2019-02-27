@@ -2,9 +2,9 @@
 //!
 //! This crate exposes a set of key types:
 //!
-//!  - **[`ByteView`]**: Gives access to binary data in-memory or on the file system.
-//!  - **[`SelfCell`]**: Allows to create self-referential types.
-//!  - **[`Name`]**: A symbol name that can be demangled with the `demangle` feature.
+//!  - [`ByteView`]: Gives access to binary data in-memory or on the file system.
+//!  - [`SelfCell`]: Allows to create self-referential types.
+//!  - [`Name`]: A symbol name that can be demangled with the `demangle` feature.
 //!  - ... and some useful functions to deal with paths in different platforms.
 //!
 //! [`Name`]: struct.Name.html

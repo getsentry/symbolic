@@ -1,3 +1,5 @@
+//! Support for Mach Objects, used on macOS and iOS.
+
 use std::borrow::Cow;
 use std::fmt;
 use std::io::Cursor;
@@ -12,18 +14,22 @@ use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, Endian};
 use crate::private::{HexFmt, MonoArchive, MonoArchiveObjects, Parse};
 
+/// An error when dealing with [`MachObject`](struct.MachObject.html).
 #[derive(Debug, Fail)]
 pub enum MachError {
+    /// The data in the MachO file could not be parsed.
     #[fail(display = "invalid MachO file")]
-    Goblin(#[fail(cause)] GoblinError),
+    BadObject(#[fail(cause)] GoblinError),
 }
 
+/// Mach Object containers, used for executables and debug companions on macOS and iOS.
 pub struct MachObject<'d> {
     macho: mach::MachO<'d>,
     data: &'d [u8],
 }
 
 impl<'d> MachObject<'d> {
+    /// Tests whether the buffer could contain a MachO object.
     pub fn test(data: &[u8]) -> bool {
         match goblin::peek(&mut Cursor::new(data)) {
             Ok(goblin::Hint::Mach(_)) => true,
@@ -31,16 +37,22 @@ impl<'d> MachObject<'d> {
         }
     }
 
+    /// Tries to parse a MachO from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
         mach::MachO::parse(data, 0)
             .map(|macho| MachObject { macho, data })
-            .map_err(MachError::Goblin)
+            .map_err(MachError::BadObject)
     }
 
+    /// The container file format, which is always `FileFormat::MachO`.
     pub fn file_format(&self) -> FileFormat {
         FileFormat::MachO
     }
 
+    /// The debug information identifier of a MachO file.
+    ///
+    /// Mach objects use a UUID which is specified in the load commands that are part of the Mach
+    /// header. This UUID is generated at compile / link time and is usually unique per compilation.
     pub fn id(&self) -> DebugId {
         for cmd in &self.macho.load_commands {
             if let mach::load_command::CommandVariant::Uuid(ref uuid_cmd) = cmd.command {
@@ -53,6 +65,7 @@ impl<'d> MachObject<'d> {
         DebugId::default()
     }
 
+    /// The CPU architecture of this object, as specified in the Mach header.
     pub fn arch(&self) -> Arch {
         use goblin::mach::constants::cputype;
 
@@ -83,6 +96,7 @@ impl<'d> MachObject<'d> {
         }
     }
 
+    /// The kind of this object, as specified in the Mach header.
     pub fn kind(&self) -> ObjectKind {
         match self.macho.header.filetype {
             goblin::mach::header::MH_OBJECT => ObjectKind::Relocatable,
@@ -94,6 +108,16 @@ impl<'d> MachObject<'d> {
         }
     }
 
+    /// The address at which the image prefers to be loaded into memory.
+    ///
+    /// MachO files store all internal addresses as if it was loaded at that address. When the image
+    /// is actually loaded, that spot might already be taken by other images and so it must be
+    /// relocated to a new address. At runtime, a relocation table manages the arithmetics behind
+    /// this.
+    ///
+    /// Addresses used in `symbols` or `debug_session` have already been rebased relative to that
+    /// load address, so that the caller only has to deal with addresses relative to the actual
+    /// start of the image.
     pub fn load_address(&self) -> u64 {
         for seg in &self.macho.segments {
             if seg.name().map(|name| name == "__TEXT").unwrap_or(false) {
@@ -104,10 +128,12 @@ impl<'d> MachObject<'d> {
         0
     }
 
+    /// Determines whether this object exposes a public symbol table.
     pub fn has_symbols(&self) -> bool {
         self.macho.symbols.is_some()
     }
 
+    /// Returns an iterator over symbols of a public symbol table.
     pub fn symbols(&self) -> MachOSymbolIterator<'d> {
         // Cache indices of code sections. These are either "__text" or "__stubs", always located in
         // the "__TEXT" segment. It looks like each of those sections only occurs once, but to be
@@ -145,27 +171,40 @@ impl<'d> MachObject<'d> {
         }
     }
 
+    /// Returns an ordered map of symbols in the symbol table.
     pub fn symbol_map(&self) -> SymbolMap<'d> {
         self.symbols().collect()
     }
 
+    /// Determines whether this object contains debug information.
     pub fn has_debug_info(&self) -> bool {
         self.has_section("debug_info")
     }
 
+    /// Constructs a debugging session.
+    ///
+    /// A debugging session loads certain information from the object file and creates caches for
+    /// efficient access to various records in the debug information. Since this can be quite a
+    /// costly process, try to reuse the debugging session as long as possible.
+    ///
+    /// MachO files generally use DWARF debugging information, which is also used by ELF containers
+    /// on Linux.
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
         let symbols = self.symbol_map();
         DwarfDebugSession::parse(self, symbols, self.load_address())
     }
 
+    /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
         self.has_section("eh_frame") || self.has_section("debug_frame")
     }
 
+    /// Returns the raw data of the ELF file.
     pub fn data(&self) -> &'d [u8] {
         self.data
     }
 
+    /// Locates a segment by its name.
     fn find_segment(&self, name: &str) -> Option<&mach::segment::Segment<'d>> {
         for segment in &self.macho.segments {
             if segment.name().map(|seg| seg == name).unwrap_or(false) {
@@ -294,6 +333,9 @@ impl<'d> Dwarf<'d> for MachObject<'d> {
     }
 }
 
+/// An iterator over symbols in the MachO file.
+///
+/// Returned by [`MachObject::symbols`](struct.MachObject.html#method.symbols).
 pub struct MachOSymbolIterator<'d> {
     symbols: mach::symbols::SymbolIterator<'d>,
     sections: SmallVec<[usize; 2]>,
@@ -345,6 +387,10 @@ impl<'d> Iterator for MachOSymbolIterator<'d> {
     }
 }
 
+/// An iterator over objects in a [`FatMachO`](struct.FatMachO.html).
+///
+/// Objects are parsed just-in-time while iterating, which may result in errors. The iterator is
+/// still valid afterwards, however, and can be used to resolve the next object.
 pub struct FatMachObjectIterator<'d, 'a> {
     iter: mach::FatArchIterator<'a>,
     data: &'d [u8],
@@ -356,18 +402,22 @@ impl<'d, 'a> Iterator for FatMachObjectIterator<'d, 'a> {
     fn next(&mut self) -> Option<Self::Item> {
         match self.iter.next() {
             Some(Ok(arch)) => Some(MachObject::parse(arch.slice(self.data))),
-            Some(Err(error)) => Some(Err(MachError::Goblin(error))),
+            Some(Err(error)) => Some(Err(MachError::BadObject(error))),
             None => None,
         }
     }
 }
 
+/// A fat MachO container that hosts one or more [`MachObject`]s.
+///
+/// [`MachObject`]: struct.MachObject.html
 pub struct FatMachO<'d> {
     fat: mach::MultiArch<'d>,
     data: &'d [u8],
 }
 
 impl<'d> FatMachO<'d> {
+    /// Tests whether the buffer could contain an ELF object.
     pub fn test(data: &[u8]) -> bool {
         match goblin::peek(&mut Cursor::new(data)) {
             Ok(goblin::Hint::MachFat(_)) => true,
@@ -375,12 +425,14 @@ impl<'d> FatMachO<'d> {
         }
     }
 
+    /// Tries to parse a fat MachO container from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
         mach::MultiArch::new(data)
             .map(|fat| FatMachO { fat, data })
-            .map_err(MachError::Goblin)
+            .map_err(MachError::BadObject)
     }
 
+    /// Returns an iterator over objects in this container.
     pub fn objects(&self) -> FatMachObjectIterator<'d, '_> {
         FatMachObjectIterator {
             iter: self.fat.iter_arches(),
@@ -409,6 +461,7 @@ enum MachObjectIteratorInner<'d, 'a> {
     Archive(FatMachObjectIterator<'d, 'a>),
 }
 
+/// An iterator over objects in a [`MachArchive`](struct.MachArchive.html).
 pub struct MachObjectIterator<'d, 'a>(MachObjectIteratorInner<'d, 'a>);
 
 impl<'d, 'a> Iterator for MachObjectIterator<'d, 'a> {
@@ -428,10 +481,23 @@ enum MachArchiveInner<'d> {
     Archive(FatMachO<'d>),
 }
 
+/// An archive that can consist of a single [`MachObject`] or a [`FatMachO`] container.
+///
+/// Executables and dSYM files on macOS can be a so-called _Fat Mach Object_: It contains multiple
+/// objects for several architectures. When loading this object, the operating system determines the
+/// object corresponding to the host's architecture. This allows to distribute a single binary with
+/// optimizations for specific CPUs, which is frequently done on iOS.
+///
+/// To abstract over the differences, `MachArchive` simulates the archive interface also for single
+/// Mach objects. This allows uniform access to both file types.
+///
+/// [`MachObject`]: struct.MachObject.html
+/// [`FatMachO`]: struct.FatMachO.html
 #[derive(Debug)]
 pub struct MachArchive<'d>(MachArchiveInner<'d>);
 
 impl<'d> MachArchive<'d> {
+    /// Tests whether the buffer contains either a Mach Object or a Fat Mach Object.
     pub fn test(data: &[u8]) -> bool {
         match goblin::peek(&mut Cursor::new(data)) {
             Ok(goblin::Hint::Mach(_)) => true,
@@ -440,6 +506,7 @@ impl<'d> MachArchive<'d> {
         }
     }
 
+    /// Tries to parse a Mach archive from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
         Ok(MachArchive(match goblin::peek(&mut Cursor::new(data)) {
             Ok(goblin::Hint::MachFat(_)) => MachArchiveInner::Archive(FatMachO::parse(data)?),
@@ -448,6 +515,7 @@ impl<'d> MachArchive<'d> {
         }))
     }
 
+    /// Returns an iterator over all objects contained in this archive.
     pub fn objects(&self) -> MachObjectIterator<'d, '_> {
         MachObjectIterator(match self.0 {
             MachArchiveInner::Single(ref inner) => MachObjectIteratorInner::Single(inner.objects()),

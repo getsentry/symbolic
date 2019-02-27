@@ -57,7 +57,7 @@ static ARM64: &[&'static str] = &[
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(u32)]
 pub enum CpuFamily {
-    /// Any other CPU family not explicitly supported by `symbolic`.
+    /// Any other CPU family that is not explicitly supported.
     Unknown = 0,
     /// 32-bit little-endian CPUs using the Intel 8086 instruction set, also known as `x86`.
     Intel32 = 1,
@@ -65,7 +65,7 @@ pub enum CpuFamily {
     Amd64 = 2,
     /// 32-bit ARM.
     Arm32 = 3,
-    /// 64-bit ARM (e.g. ARMv8-A)
+    /// 64-bit ARM (e.g. ARMv8-A).
     Arm64 = 4,
     /// 32-bit big-endian PowerPC.
     Ppc32 = 5,
@@ -79,7 +79,7 @@ impl Default for CpuFamily {
     }
 }
 
-/// An error returned for unknown or invalid `Arch`s.
+/// An error returned for an invalid [`Arch`](enum.Arch.html).
 #[derive(Clone, Copy, Debug, Fail)]
 #[fail(display = "unknown architecture")]
 pub struct UnknownArchError;
@@ -304,7 +304,7 @@ impl str::FromStr for Arch {
     }
 }
 
-/// An error returned for unknown or invalid `Language`s.
+/// An error returned for an invalid [`Language`](enum.Language.html).
 #[derive(Clone, Copy, Debug, Fail)]
 #[fail(display = "unknown language")]
 pub struct UnknownLanguageError;

@@ -1,3 +1,5 @@
+//! Support for the Executable and Linkable Format, used on Linux.
+
 use std::borrow::Cow;
 use std::fmt;
 use std::io::Cursor;
@@ -17,18 +19,22 @@ const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;
 const SHN_UNDEF: usize = elf::section_header::SHN_UNDEF as usize;
 
+/// An error when dealing with [`ElfObject`](struct.ElfObject.html).
 #[derive(Debug, Fail)]
 pub enum ElfError {
+    /// The data in the ELF file could not be parsed.
     #[fail(display = "invalid ELF file")]
-    Goblin(#[fail(cause)] GoblinError),
+    BadObject(#[fail(cause)] GoblinError),
 }
 
+/// Executable and Linkable Format, used for executables and libraries on Linux.
 pub struct ElfObject<'d> {
     elf: elf::Elf<'d>,
     data: &'d [u8],
 }
 
 impl<'d> ElfObject<'d> {
+    /// Tests whether the buffer could contain an ELF object.
     pub fn test(data: &[u8]) -> bool {
         match goblin::peek(&mut Cursor::new(data)) {
             Ok(goblin::Hint::Elf(_)) => true,
@@ -36,17 +42,19 @@ impl<'d> ElfObject<'d> {
         }
     }
 
+    /// Tries to parse an ELF object from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, ElfError> {
         elf::Elf::parse(data)
             .map(|elf| ElfObject { elf, data })
-            .map_err(ElfError::Goblin)
+            .map_err(ElfError::BadObject)
     }
 
+    /// The container file format, which is always `FileFormat::Elf`.
     pub fn file_format(&self) -> FileFormat {
         FileFormat::Elf
     }
 
-    /// Tries to obtain the object identifier of an ELF object.
+    /// The debug information identifier of an ELF object.
     ///
     /// As opposed to Mach-O, ELF does not specify a unique ID for object files in
     /// its header. Compilers and linkers usually add either `SHT_NOTE` sections or
@@ -80,6 +88,7 @@ impl<'d> ElfObject<'d> {
         DebugId::default()
     }
 
+    /// The CPU architecture of this object, as specified in the ELF header.
     pub fn arch(&self) -> Arch {
         match self.elf.header.e_machine {
             goblin::elf::header::EM_386 => Arch::X86,
@@ -100,6 +109,7 @@ impl<'d> ElfObject<'d> {
         }
     }
 
+    /// The kind of this object, as specified in the ELF header.
     pub fn kind(&self) -> ObjectKind {
         let kind = match self.elf.header.e_type {
             goblin::elf::header::ET_NONE => ObjectKind::None,
@@ -121,6 +131,16 @@ impl<'d> ElfObject<'d> {
         }
     }
 
+    /// The address at which the image prefers to be loaded into memory.
+    ///
+    /// ELF files store all internal addresses as if it was loaded at that address. When the image
+    /// is actually loaded, that spot might already be taken by other images and so it must be
+    /// relocated to a new address. At runtime, a relocation table manages the arithmetics behind
+    /// this.
+    ///
+    /// Addresses used in `symbols` or `debug_session` have already been rebased relative to that
+    /// load address, so that the caller only has to deal with addresses relative to the actual
+    /// start of the image.
     pub fn load_address(&self) -> u64 {
         // For non-PIC executables (e_type == ET_EXEC), the load address is
         // the start address of the first PT_LOAD segment.  (ELF requires
@@ -136,10 +156,12 @@ impl<'d> ElfObject<'d> {
         0
     }
 
+    /// Determines whether this object exposes a public symbol table.
     pub fn has_symbols(&self) -> bool {
         self.elf.syms.len() > 0
     }
 
+    /// Returns an iterator over symbols of a public symbol table.
     pub fn symbols(&self) -> ElfSymbolIterator<'d, '_> {
         ElfSymbolIterator {
             symbols: self.elf.syms.iter(),
@@ -149,23 +171,35 @@ impl<'d> ElfObject<'d> {
         }
     }
 
+    /// Returns an ordered map of symbols in the symbol table.
     pub fn symbol_map(&self) -> SymbolMap<'d> {
         self.symbols().collect()
     }
 
+    /// Determines whether this object contains debug information.
     pub fn has_debug_info(&self) -> bool {
         self.has_section("debug_info")
     }
 
+    /// Constructs a debugging session.
+    ///
+    /// A debugging session loads certain information from the object file and creates caches for
+    /// efficient access to various records in the debug information. Since this can be quite a
+    /// costly process, try to reuse the debugging session as long as possible.
+    ///
+    /// ELF files generally use DWARF debugging information, which is also used by MachO containers
+    /// on macOS.
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
         let symbols = self.symbol_map();
         DwarfDebugSession::parse(self, symbols, self.load_address())
     }
 
+    /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
         self.has_section("eh_frame") || self.has_section("debug_frame")
     }
 
+    /// Returns the raw data of the ELF file.
     pub fn data(&self) -> &'d [u8] {
         self.data
     }
@@ -389,6 +423,9 @@ impl<'d> Dwarf<'d> for ElfObject<'d> {
     }
 }
 
+/// An iterator over symbols in the ELF file.
+///
+/// Returned by [`ElfObject::symbols`](struct.ElfObject.html#method.symbols).
 pub struct ElfSymbolIterator<'d, 'o> {
     symbols: elf::sym::SymIterator<'d>,
     strtab: &'o strtab::Strtab<'d>,

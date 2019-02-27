@@ -1,3 +1,12 @@
+//! Support for DWARF debugging information, common to ELF and MachO.
+//!
+//! The central element of this module is the [`Dwarf`] trait, which is implemented by [`ElfObject`]
+//! and [`MachObject`]. The dwarf debug session object can be obtained via getters on those types.
+//!
+//! [`Dwarf`] trait.Dwarf.html
+//! [`ElfObject`] ../elf/struct.ElfObject.html
+//! [`MachObject`] ../macho/struct.MachObject.html
+
 use std::borrow::Cow;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -81,26 +90,35 @@ type DebugInfoOffset = gimli::DebugInfoOffset<usize>;
 type IncompleteLineNumberProgram<'a> = gimli::read::IncompleteLineProgram<Slice<'a>>;
 type LineNumberProgramHeader<'a> = gimli::read::LineProgramHeader<Slice<'a>>;
 
-/// Variants of `DwarfError`.
+/// Variants of [`DwarfError`](struct.DwarfError.html).
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 pub enum DwarfErrorKind {
-    #[fail(display = "missing compilation unit")]
-    MissingCompileUnit,
+    /// A compilation unit referenced by index does not exist.
     #[fail(display = "compilation unit for offset {} does not exist", _0)]
     InvalidUnitRef(usize),
+
+    /// A file record referenced by index does not exist.
     #[fail(display = "referenced file {} does not exist", _0)]
     InvalidFileRef(u64),
+
+    /// An inline record was encountered without an inlining parent.
     #[fail(display = "unexpected inline function without parent")]
     UnexpectedInline,
+
+    /// The debug_ranges of a function are invalid.
     #[fail(display = "function with inverted address range")]
     InvertedFunctionRange,
+
+    /// The DWARF file is corrupted. See the cause for more information.
     #[fail(display = "corrupted dwarf debug data")]
     CorruptedData,
-    #[fail(display = "processing of dwarf debug info failed")]
-    ProcessingFailed,
 }
 
-derive_failure!(DwarfError, DwarfErrorKind);
+derive_failure!(
+    DwarfError,
+    DwarfErrorKind,
+    doc = "An error handling [`DWARF`](trait.Dwarf.html) debugging information.",
+);
 
 impl From<gimli::read::Error> for DwarfError {
     fn from(error: gimli::read::Error) -> Self {
@@ -108,21 +126,52 @@ impl From<gimli::read::Error> for DwarfError {
     }
 }
 
+/// Provides access to DWARF debugging information independent of the container file type.
+///
+/// When implementing this trait, verify whether the container file type supports compressed section
+/// data. If so, override the provided `section_data` method. Also, if there is a faster way to
+/// check for the existence of a section without loading its data, override `has_section`.
 pub trait Dwarf<'data> {
+    /// Returns whether the file was written on a big-endian or little-endian machine.
+    ///
+    /// This can usually be determined by inspecting the file's headers. Sometimes, this is also
+    /// given by the architecture.
     fn endianity(&self) -> Endian;
 
+    /// Returns the offset and raw data of a section.
+    ///
+    /// The section name is given without leading punctuation, such dots or underscores. For
+    /// instance, the name of the Debug Info section would be `"debug_info"`, which translates to
+    /// `".debug_info"` in ELF and `"__debug_info"` in MachO.
+    ///
+    /// Certain containers might allow compressing section data. In this case, this function returns
+    /// the compressed data. To get uncompressed data instead, use `section_data`.
     fn raw_data(&self, section: &str) -> Option<(u64, &'data [u8])>;
 
+    /// Returns the offset and binary data of a section.
+    ///
+    /// If the section is compressed, this decompresses on the fly and returns allocated memory.
+    /// Otherwise, this should return a slice of the raw data.
+    ///
+    /// The section name is given without leading punctuation, such dots or underscores. For
+    /// instance, the name of the Debug Info section would be `"debug_info"`, which translates to
+    /// `".debug_info"` in ELF and `"__debug_info"` in MachO.
     fn section_data(&self, section: &str) -> Option<(u64, Cow<'data, [u8]>)> {
         let (offset, data) = self.raw_data(section)?;
         Some((offset, Cow::Borrowed(data)))
     }
 
+    /// Determines whether the specified section exists.
+    ///
+    /// The section name is given without leading punctuation, such dots or underscores. For
+    /// instance, the name of the Debug Info section would be `"debug_info"`, which translates to
+    /// `".debug_info"` in ELF and `"__debug_info"` in MachO.
     fn has_section(&self, section: &str) -> bool {
         self.raw_data(section).is_some()
     }
 }
 
+/// A row in the DWARF line program.
 #[derive(Debug)]
 struct DwarfRow {
     address: u64,
@@ -130,6 +179,7 @@ struct DwarfRow {
     line: Option<u64>,
 }
 
+/// A sequence in the DWARF line program.
 #[derive(Debug)]
 struct DwarfSequence {
     start: u64,
@@ -137,6 +187,7 @@ struct DwarfSequence {
     rows: Vec<DwarfRow>,
 }
 
+/// Helper that prepares a DwarfLineProgram for more efficient access.
 #[derive(Debug)]
 struct DwarfLineProgram<'d> {
     header: LineNumberProgramHeader<'d>,
@@ -240,6 +291,7 @@ impl<'d, 'a> DwarfLineProgram<'d> {
     }
 }
 
+/// Wrapper around a DWARF Unit.
 struct DwarfUnit<'d, 'a> {
     unit: &'a Unit<'d>,
     session: &'a DwarfDebugSession<'d>,
@@ -248,6 +300,7 @@ struct DwarfUnit<'d, 'a> {
 }
 
 impl<'d, 'a> DwarfUnit<'d, 'a> {
+    /// Parses this unit.
     fn parse(unit: &'a Unit<'d>, session: &'a DwarfDebugSession<'d>) -> Result<Self, DwarfError> {
         let mut entries = unit.entries();
         let entry = match entries.next_dfs()? {
@@ -276,18 +329,27 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         })
     }
 
+    /// Resolve the actual string value of an attribute.
+    fn string_value(&self, value: AttributeValue<Slice<'d>>) -> Result<Cow<'d, str>, DwarfError> {
+        // TODO(ja): Make this safe. The reader stored in `unit.comp_dir` holds on to a clone of the
+        // Rc in the section storing the name of the compilation dir. At this point, we know that
+        // this section will be held by the `DwarfDebuggingSession` instance, and all records
+        // returned from this function borrow its lifetime.
+
+        // It seems like there is no good solution to this other than cloning all debug sections at
+        // the time `DwarfDebugSession` is created into an `gimli::EndianRcSlice` or alternatively
+        // using a `SelfCell` to hold on to the buffer and the debug structs at the same time.
+        let r = self.session.info.attr_string(self.unit, value)?;
+        Ok(unsafe { std::mem::transmute(r.to_string_lossy()) })
+    }
+
+    /// The path of the compilation directory. File names are usually relative to this path.
     fn compilation_dir(&self) -> Cow<'d, str> {
-        // TODO(ja): Make this safe
+        // TODO(ja): Make this safe. See the comments in `string_value`.
         match self.unit.comp_dir {
             Some(ref dir) => unsafe { std::mem::transmute(dir.to_string_lossy()) },
             None => Cow::default(),
         }
-    }
-
-    fn string_value(&self, value: AttributeValue<Slice<'d>>) -> Result<Cow<'d, str>, DwarfError> {
-        // TODO(ja): Make this safe
-        let r = self.session.info.attr_string(self.unit, value)?;
-        Ok(unsafe { std::mem::transmute(r.to_string_lossy()) })
     }
 
     /// Parses the call site and range lists of this Debugging Information Entry.
@@ -435,6 +497,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         Ok(None)
     }
 
+    /// Resolves line records of a DIE's range list and puts them into the given buffer.
     fn resolve_lines(
         &self,
         ranges: &[Range],
@@ -470,6 +533,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         Ok(())
     }
 
+    /// Resolves a file entry by its index.
     fn resolve_file(&self, file_id: u64) -> Result<Option<FileInfo<'d>>, DwarfError> {
         let line_program = match self.line_program {
             Some(ref program) => &program.header,
@@ -490,6 +554,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 }
 
+/// Converts a DWARF language number into our `Language` type.
 fn language_from_dwarf(language: gimli::DwLang) -> Language {
     match language {
         constants::DW_LANG_C => Language::C,
@@ -510,21 +575,36 @@ fn language_from_dwarf(language: gimli::DwLang) -> Language {
     }
 }
 
+/// A stack for assembling function trees from lists of nested functions.
 struct FunctionStack<'a>(Vec<(isize, Function<'a>)>);
 
 impl<'a> FunctionStack<'a> {
+    /// Creates a new function stack.
     pub fn new() -> Self {
         FunctionStack(Vec::with_capacity(16))
     }
 
+    /// Pushes a new function onto the stack at the given depth.
+    ///
+    /// This assumes that `flush` has been called previously.
     pub fn push(&mut self, depth: isize, function: Function<'a>) {
         self.0.push((depth, function));
     }
 
+    /// Peeks at the current top function (deepest inlining level).
     pub fn peek_mut(&mut self) -> Option<&mut Function<'a>> {
         self.0.last_mut().map(|&mut (_, ref mut function)| function)
     }
 
+    /// Flushes all functions up to the given depth into the destination.
+    ///
+    /// This folds remaining functions into their parents. If a non-inlined function is encountered
+    /// at or below the given depth, it is immediately flushed to the destination. Inlined functions
+    /// are pushed into the inlinees list of their parents, instead.
+    ///
+    /// After this operation, the stack is either empty or its top function (see `peek`) will have a
+    /// depth higher than the given depth. This allows to push new functions at this depth onto the
+    /// stack.
     pub fn flush(&mut self, depth: isize, destination: &mut Vec<Function<'a>>) {
         let len = self.0.len();
 
@@ -557,6 +637,11 @@ impl<'a> FunctionStack<'a> {
     }
 }
 
+/// Loads and uncompresses section data and constructs a gimli record from it.
+///
+/// If the section is not present in the debug file, an empty record is created. If the section data
+/// is compressed, it is uncompressed on the fly and moved into the record. Otherwise, the record is
+/// created on a view onto the raw data.
 fn load_gimli_section<'d, D, S>(dwarf: &D) -> S
 where
     D: Dwarf<'d>,
@@ -569,6 +654,7 @@ where
     S::from(Slice::new(RcCow::new(data), dwarf.endianity()))
 }
 
+/// Constructs an empty gimli record without attempting to load the section data.
 fn empty_gimli_section<'d, S>() -> S
 where
     S: gimli::read::Section<Slice<'d>>,
@@ -576,6 +662,7 @@ where
     S::from(Slice::new(RcCow::default(), Default::default()))
 }
 
+/// A debugging session for DWARF debugging information.
 pub struct DwarfDebugSession<'data> {
     info: DwarfInfo<'data>,
     units: Vec<Unit<'data>>,
@@ -584,6 +671,7 @@ pub struct DwarfDebugSession<'data> {
 }
 
 impl<'d> DwarfDebugSession<'d> {
+    /// Parses a dwarf debugging information from the given dwarf file.
     pub fn parse<D>(
         dwarf: &D,
         symbol_map: SymbolMap<'d>,

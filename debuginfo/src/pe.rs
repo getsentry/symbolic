@@ -1,3 +1,5 @@
+//! Support for Portable Executables, an extension of COFF used on Windows.
+
 use std::borrow::Cow;
 use std::fmt;
 use std::io::Cursor;
@@ -11,18 +13,30 @@ use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
 use crate::base::*;
 use crate::private::{HexFmt, Parse};
 
+/// An error when dealing with [`PeObject`](struct.PeObject.html).
 #[derive(Debug, Fail)]
 pub enum PeError {
+    /// The data in the PE file could not be parsed.
     #[fail(display = "invalid PE file")]
-    Goblin(#[fail(cause)] GoblinError),
+    BadObject(#[fail(cause)] GoblinError),
 }
 
+/// Portable Executable, an extension of COFF used on Windows.
+///
+/// This file format is used to carry program code. Debug information is usually moved to a separate
+/// container, [`PdbObject`]. The PE file contains a reference to the PDB and vice versa to verify
+/// that the files belong together.
+///
+/// While in rare instances, PE files might contain debug information, this case is not supported.
+///
+/// [`PdbObject`]: ../pdb/struct.PdbObject.html
 pub struct PeObject<'d> {
     pe: pe::PE<'d>,
     data: &'d [u8],
 }
 
 impl<'d> PeObject<'d> {
+    /// Tests whether the buffer could contain an PE object.
     pub fn test(data: &[u8]) -> bool {
         match goblin::peek(&mut Cursor::new(data)) {
             Ok(goblin::Hint::PE) => true,
@@ -30,16 +44,23 @@ impl<'d> PeObject<'d> {
         }
     }
 
+    /// Tries to parse a PE object from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, PeError> {
         pe::PE::parse(data)
             .map(|pe| PeObject { pe, data })
-            .map_err(PeError::Goblin)
+            .map_err(PeError::BadObject)
     }
 
+    /// The container file format, which is always `FileFormat::Pe`.
     pub fn file_format(&self) -> FileFormat {
         FileFormat::Pe
     }
 
+    /// The debug information identifier of this PE.
+    ///
+    /// Since debug information is stored in an external [`PdbObject`], this identifier actually
+    /// refers to the PDB. While strictly the filename of the PDB would also be necessary fully
+    /// resolve it, in most instances the GUID and age contained in this identifier are sufficient.
     pub fn id(&self) -> DebugId {
         self.pe
             .debug_data
@@ -60,11 +81,13 @@ impl<'d> PeObject<'d> {
             .unwrap_or_default()
     }
 
+    /// The CPU architecture of this object, as specified in the COFF header.
     pub fn arch(&self) -> Arch {
         let machine = self.pe.header.coff_header.machine;
         crate::pdb::arch_from_machine(machine.into())
     }
 
+    /// The kind of this object, as specified in the PE header.
     pub fn kind(&self) -> ObjectKind {
         if self.pe.is_lib {
             ObjectKind::Library
@@ -73,36 +96,56 @@ impl<'d> PeObject<'d> {
         }
     }
 
+    /// The address at which the image prefers to be loaded into memory.
+    ///
+    /// ELF files store all internal addresses as if it was loaded at that address. When the image
+    /// is actually loaded, that spot might already be taken by other images and so it must be
+    /// relocated to a new address. During load time, the loader rewrites all addresses in the
+    /// program code to match the new load address so that there is no runtime overhead when
+    /// executing the code.
+    ///
+    /// Addresses used in `symbols` or `debug_session` have already been rebased relative to that
+    /// load address, so that the caller only has to deal with addresses relative to the actual
+    /// start of the image.
     pub fn load_address(&self) -> u64 {
         self.pe.image_base as u64
     }
 
+    /// Determines whether this object exposes a public symbol table.
     pub fn has_symbols(&self) -> bool {
         !self.pe.exports.is_empty()
     }
 
+    /// Returns an iterator over symbols of a public symbol table.
     pub fn symbols(&self) -> PeSymbolIterator<'d, '_> {
         PeSymbolIterator {
             exports: self.pe.exports.iter(),
         }
     }
 
+    /// Returns an ordered map of symbols in the symbol table.
     pub fn symbol_map(&self) -> SymbolMap<'d> {
         self.symbols().collect()
     }
 
+    /// Determines whether this object contains debug information.
+    ///
+    /// This is always `false`, as debug information is not supported for PE files.
     pub fn has_debug_info(&self) -> bool {
         false
     }
 
+    /// Constructs a no-op debugging session.
     pub fn debug_session(&self) -> Result<PeDebugSession<'d>, PeError> {
         Ok(PeDebugSession { _ph: PhantomData })
     }
 
+    /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
         false
     }
 
+    /// Returns the raw data of the PE file.
     pub fn data(&self) -> &'d [u8] {
         self.data
     }
@@ -187,6 +230,9 @@ impl<'d> ObjectLike for PeObject<'d> {
     }
 }
 
+/// An iterator over symbols in the PE file.
+///
+/// Returned by [`PeObject::symbols`](struct.PeObject.html#method.symbols).
 pub struct PeSymbolIterator<'d, 'o> {
     exports: std::slice::Iter<'o, pe::export::Export<'d>>,
 }
@@ -203,6 +249,10 @@ impl<'d, 'o> Iterator for PeSymbolIterator<'d, 'o> {
     }
 }
 
+/// Debug session for PE objects.
+///
+/// Since debug information in PE containers is not supported, this session consists of NoOps and
+/// always returns empty results.
 #[derive(Debug)]
 pub struct PeDebugSession<'d> {
     _ph: PhantomData<&'d ()>,

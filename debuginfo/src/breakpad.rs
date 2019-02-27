@@ -1,3 +1,5 @@
+//! Support for Breakpad ASCII symbols, used by the Breakpad and Crashpad libraries.
+
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -5,12 +7,21 @@ use std::str;
 
 use failure::Fail;
 use pest::Parser;
-use pest_derive::Parser;
 
 use symbolic_common::{derive_failure, Arch, AsSelf, DebugId, Name};
 
 use crate::base::*;
 use crate::private::{Lines, Parse};
+
+mod parser {
+    use pest_derive::Parser;
+
+    #[derive(Debug, Parser)]
+    #[grammar = "breakpad.pest"]
+    pub struct BreakpadParser;
+}
+
+use self::parser::{BreakpadParser, Rule};
 
 /// Length at which the breakpad header will be capped.
 ///
@@ -18,21 +29,31 @@ use crate::private::{Lines, Parse};
 /// not contain a valid line break.
 const BREAKPAD_HEADER_CAP: usize = 320;
 
+/// Variants of `BreakpadError`.
 #[derive(Debug, Fail)]
 pub enum BreakpadErrorKind {
+    /// The symbol header (`MODULE` record) is missing.
     #[fail(display = "missing breakpad symbol header")]
     InvalidMagic,
-    #[fail(display = "bad file encoding")]
+
+    /// A part of the file is not encoded in valid UTF-8.
+    #[fail(display = "bad utf-8 sequence")]
     BadEncoding(#[fail(cause)] str::Utf8Error),
+
+    /// A record violates the Breakpad symbol syntax.
     #[fail(display = "{}", _0)]
     BadSyntax(pest::error::Error<Rule>),
+
+    /// Parsing of a record failed.
     #[fail(display = "{}", _0)]
     Parse(&'static str),
-    #[fail(display = "processing of breakpad symbols failed")]
-    ProcessingFailed,
 }
 
-derive_failure!(BreakpadError, BreakpadErrorKind);
+derive_failure!(
+    BreakpadError,
+    BreakpadErrorKind,
+    doc = "An error when dealing with [`BreakpadObject`](struct.BreakpadObject.html).",
+);
 
 impl From<str::Utf8Error> for BreakpadError {
     fn from(error: str::Utf8Error) -> Self {
@@ -48,19 +69,29 @@ impl From<pest::error::Error<Rule>> for BreakpadError {
 
 // TODO(ja): Test the parser
 
-#[derive(Debug, Parser)]
-#[grammar = "breakpad.pest"]
-struct BreakpadParser;
-
+/// A [module record], constituting the header of a Breakpad file.
+///
+/// Example: `MODULE Linux x86 D3096ED481217FD4C16B29CD9BC208BA0 firefox-bin`
+///
+/// [module record]: https://github.com/google/breakpad/blob/master/docs/symbol_files.md#module-records
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct BreakpadModuleRecord<'d> {
+    /// Name of the operating system.
     pub os: &'d str,
+    /// Name of the CPU architecture.
     pub arch: &'d str,
+    /// Breakpad identifier.
     pub id: &'d str,
+    /// Name of the original file.
+    ///
+    /// This usually corresponds to the debug file (such as a PDB), but might not necessarily have a
+    /// special file extension, such as for MachO dSYMs which share the same name as their code
+    /// file.
     pub name: &'d str,
 }
 
 impl<'d> BreakpadModuleRecord<'d> {
+    /// Parses a module record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::module, string)?.next().unwrap();
@@ -80,13 +111,26 @@ impl<'d> BreakpadModuleRecord<'d> {
     }
 }
 
+/// A [file record], specifying the path to a source code file.
+///
+/// The ID of this record is referenced by [`BreakpadLineRecord`]. File records are not necessarily
+/// consecutive or sorted by their identifier. The Breakpad symbol writer might reuse original
+/// identifiers from the source debug file when dumping symbols.
+///
+/// Example: `FILE 2 /home/jimb/mc/in/browser/app/nsBrowserApp.cpp`
+///
+/// [file record]: https://github.com/google/breakpad/blob/master/docs/symbol_files.md#file-records
+/// [`LineRecord`]: struct.BreakpadLineRecord.html
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct BreakpadFileRecord<'d> {
+    /// Breakpad-internal identifier of the file.
     pub id: u64,
+    /// The path to the source file, usually relative to the compilation directory.
     pub name: &'d str,
 }
 
 impl<'d> BreakpadFileRecord<'d> {
+    /// Parses a file record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::file, string)?.next().unwrap();
@@ -107,6 +151,7 @@ impl<'d> BreakpadFileRecord<'d> {
     }
 }
 
+/// An iterator over file records in a Breakpad object.
 #[derive(Clone, Debug)]
 pub struct BreakpadFileRecords<'d> {
     lines: Lines<'d>,
@@ -139,17 +184,28 @@ impl<'d> Iterator for BreakpadFileRecords<'d> {
     }
 }
 
+/// A map of file paths by their file ID.
 pub type BreakpadFileMap<'d> = BTreeMap<u64, &'d str>;
 
+/// A [public function symbol record].
+///
+/// Example: `PUBLIC m 2160 0 Public2_1`
+///
+/// [public function symbol record]: https://github.com/google/breakpad/blob/master/docs/symbol_files.md#public-records
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct BreakpadPublicRecord<'d> {
+    /// Whether this symbol was referenced multiple times.
     pub multiple: bool,
+    /// The address of this symbol relative to the image base (load address).
     pub address: u64,
+    /// The size of the parameters on the runtime stack.
     pub parameter_size: u64,
+    /// The demangled function name of the symbol.
     pub name: &'d str,
 }
 
 impl<'d> BreakpadPublicRecord<'d> {
+    /// Parses a public record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::public, string)?.next().unwrap();
@@ -175,6 +231,7 @@ impl<'d> BreakpadPublicRecord<'d> {
     }
 }
 
+/// An iterator over public symbol records in a Breakpad object.
 #[derive(Clone, Debug)]
 pub struct BreakpadPublicRecords<'d> {
     lines: Lines<'d>,
@@ -208,17 +265,32 @@ impl<'d> Iterator for BreakpadPublicRecords<'d> {
     }
 }
 
+/// A [function record] including line information.
+///
+/// Example: `FUNC m c184 30 0 nsQueryInterfaceWithError::operator()(nsID const&, void**) const`
+///
+/// [function record]: https://github.com/google/breakpad/blob/master/docs/symbol_files.md#func-records
 #[derive(Clone, Default)]
 pub struct BreakpadFuncRecord<'d> {
+    /// Whether this function was referenced multiple times.
     pub multiple: bool,
+    /// The start address of this function relative to the image base (load address).
     pub address: u64,
+    /// The size of the code covered by this function's line records.
     pub size: u64,
+    /// The size of the parameters on the runtime stack.
     pub parameter_size: u64,
+    /// The demangled function name.
     pub name: &'d str,
     lines: Lines<'d>,
 }
 
 impl<'d> BreakpadFuncRecord<'d> {
+    /// Parses a function record from a set of lines.
+    ///
+    /// The first line must contain the function record itself. The lines iterator may contain line
+    /// records for this function, which are read until another record isencountered or the file
+    /// ends.
     pub fn parse(data: &'d [u8], lines: Lines<'d>) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::func, string)?.next().unwrap();
@@ -248,6 +320,7 @@ impl<'d> BreakpadFuncRecord<'d> {
         Ok(record)
     }
 
+    /// Returns an iterator over line records associated to this function.
     pub fn lines(&self) -> BreakpadLineRecords<'d> {
         BreakpadLineRecords {
             lines: self.lines.clone(),
@@ -280,6 +353,7 @@ impl fmt::Debug for BreakpadFuncRecord<'_> {
     }
 }
 
+/// An iterator over function records in a Breakpad object.
 #[derive(Clone, Debug)]
 pub struct BreakpadFuncRecords<'d> {
     lines: Lines<'d>,
@@ -313,15 +387,30 @@ impl<'d> Iterator for BreakpadFuncRecords<'d> {
     }
 }
 
+/// A [line record] associated to a `BreakpadFunctionRecord`.
+///
+/// Line records are so frequent in a Breakpad symbol file that they do not have a record
+/// identifier. They immediately follow the [`BreakpadFuncRecord`] that they belong to. Thus, an
+/// iterator over line records can be obtained from the function record.
+///
+/// Example: `c184 7 59 4`
+///
+/// [line record]: https://github.com/google/breakpad/blob/master/docs/symbol_files.md#line-records
+/// [`BreakpadFuncRecord`]: struct.BreakpadFuncRecord.html
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct BreakpadLineRecord {
+    /// The start address for this line relative to the image base (load address).
     pub address: u64,
+    /// The size of the code covered by this line record.
     pub size: u64,
+    /// The line number (zero means no line number).
     pub line: u64,
+    /// Identifier of the [`BreakpadFileRecord`] specifying the file name.
     pub file_id: u64,
 }
 
 impl BreakpadLineRecord {
+    /// Parses a line record from a single line.
     pub fn parse(data: &[u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::line, string)?.next().unwrap();
@@ -356,11 +445,13 @@ impl BreakpadLineRecord {
         Ok(record)
     }
 
+    /// Resolves the filename for this record in the file map.
     pub fn filename<'d>(&self, file_map: &BreakpadFileMap<'d>) -> Option<&'d str> {
         file_map.get(&self.file_id).cloned()
     }
 }
 
+/// An iterator over line records in a `BreakpadFunctionRecord`.
 #[derive(Clone, Debug)]
 pub struct BreakpadLineRecords<'d> {
     lines: Lines<'d>,
@@ -407,12 +498,19 @@ impl<'d> Iterator for BreakpadLineRecords<'d> {
     }
 }
 
+/// A [call frame information record] for platforms other than Windows x86.
+///
+/// Example: `STACK CFI INIT 804c4b0 40 .cfa: $esp 4 + $eip: .cfa 4 - ^`
+///
+/// [call frame information record]: https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-cfi-records
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct BreakpadStackCfiRecord<'d> {
+    /// The unwind program rules.
     pub text: &'d str,
 }
 
 impl<'d> BreakpadStackCfiRecord<'d> {
+    /// Parses a CFI stack record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::stack_cfi, string)?
@@ -422,6 +520,7 @@ impl<'d> BreakpadStackCfiRecord<'d> {
         Self::from_pair(parsed)
     }
 
+    /// Constructs a stack record directly from a Pest parser pair.
     fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Result<Self, BreakpadError> {
         let mut record = BreakpadStackCfiRecord::default();
 
@@ -436,12 +535,19 @@ impl<'d> BreakpadStackCfiRecord<'d> {
     }
 }
 
+/// A [Windows stack frame record], used on x86.
+///
+/// Example: `STACK WIN 4 2170 14 1 0 0 0 0 0 1 $eip 4 + ^ = $esp $ebp 8 + = $ebp $ebp ^ =`
+///
+/// [Windows stack frame record]: https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-win-records
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct BreakpadStackWinRecord<'d> {
+    /// Variables and the program string.
     pub text: &'d str,
 }
 
 impl<'d> BreakpadStackWinRecord<'d> {
+    /// Parses a Windows stack record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::stack_win, string)?
@@ -451,6 +557,7 @@ impl<'d> BreakpadStackWinRecord<'d> {
         Self::from_pair(parsed)
     }
 
+    // Constructs a stack record directly from a Pest parser pair.
     fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Result<Self, BreakpadError> {
         let mut record = BreakpadStackWinRecord::default();
 
@@ -465,13 +572,17 @@ impl<'d> BreakpadStackWinRecord<'d> {
     }
 }
 
+/// Stack frame information record used for stack unwinding and stackwalking.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum BreakpadStackRecord<'d> {
+    /// CFI stack record, used for all platforms other than Windows x86.
     Cfi(BreakpadStackCfiRecord<'d>),
+    /// Windows stack record, used for x86 binaries.
     Win(BreakpadStackWinRecord<'d>),
 }
 
 impl<'d> BreakpadStackRecord<'d> {
+    /// Parses a stack frame information record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::stack, string)?.next().unwrap();
@@ -485,6 +596,7 @@ impl<'d> BreakpadStackRecord<'d> {
     }
 }
 
+/// An iterator over stack frame records in a Breakpad object.
 #[derive(Clone, Debug)]
 pub struct BreakpadStackRecords<'d> {
     lines: Lines<'d>,
@@ -510,6 +622,20 @@ impl<'d> Iterator for BreakpadStackRecords<'d> {
     }
 }
 
+/// A Breakpad object file.
+///
+/// To process minidump crash reports without having to understand all sorts of native symbol
+/// formats, the Breakpad processor uses a text-based symbol file format. It comprises records
+/// describing the object file, functions and lines, public symbols, as well as unwind information
+/// for stackwalking.
+///
+/// > The platform-specific symbol dumping tools parse the debugging information the compiler
+/// > provides (whether as DWARF or STABS sections in an ELF file or as stand-alone PDB files), and
+/// > write that information back out in the Breakpad symbol file format. This format is much
+/// > simpler and less detailed than compiler debugging information, and values legibility over
+/// > compactness.
+///
+/// The full documentation resides [here](https://chromium.googlesource.com/breakpad/breakpad/+/refs/heads/master/docs/symbol_files.md).
 pub struct BreakpadObject<'d> {
     id: DebugId,
     arch: Arch,
@@ -518,10 +644,12 @@ pub struct BreakpadObject<'d> {
 }
 
 impl<'d> BreakpadObject<'d> {
+    /// Tests whether the buffer could contain a Breakpad object.
     pub fn test(data: &[u8]) -> bool {
         data.starts_with(b"MODULE ")
     }
 
+    /// Tries to parse a Breakpad object from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         // Ensure that we do not read the entire file at once.
         let header = if data.len() > BREAKPAD_HEADER_CAP {
@@ -552,48 +680,70 @@ impl<'d> BreakpadObject<'d> {
         })
     }
 
+    /// The container file format, which is always `FileFormat::Breakpad`.
     pub fn file_format(&self) -> FileFormat {
         FileFormat::Breakpad
     }
 
+    /// The debug information identifier of this object.
     pub fn id(&self) -> DebugId {
         self.id
     }
 
+    /// The CPU architecture of this object.
     pub fn arch(&self) -> Arch {
         self.arch
     }
 
+    /// The debug file name of this object.
+    ///
+    /// This is the name of the original debug file that was used to create the Breakpad file. On
+    /// Windows, this will have a `.pdb` extension, on other platforms that name is likely
+    /// equivalent to the name of the code file (shared library or executable).
     pub fn name(&self) -> &'d str {
         self.module.name
     }
 
+    /// The kind of this object.
     pub fn kind(&self) -> ObjectKind {
         ObjectKind::Debug
     }
 
+    /// The address at which the image prefers to be loaded into memory.
+    ///
+    /// When Breakpad symbols are written, all addresses are rebased relative to the load address.
+    /// Since the original load address is not stored in the file, it is assumed as zero.
     pub fn load_address(&self) -> u64 {
         0 // Breakpad rebases all addresses when dumping symbols
     }
 
+    /// Determines whether this object exposes a public symbol table.
     pub fn has_symbols(&self) -> bool {
         self.public_records().next().is_some()
     }
 
+    /// Returns an iterator over symbols of a public symbol table.
     pub fn symbols(&self) -> BreakpadSymbolIterator<'d> {
         BreakpadSymbolIterator {
             records: self.public_records(),
         }
     }
 
+    /// Returns an ordered map of symbols in the symbol table.
     pub fn symbol_map(&self) -> SymbolMap<'d> {
         self.symbols().collect()
     }
 
+    /// Determines whether this object contains debug information.
     pub fn has_debug_info(&self) -> bool {
         self.func_records().next().is_some()
     }
 
+    /// Constructs a debugging session.
+    ///
+    /// A debugging session loads certain information from the object file and creates caches for
+    /// efficient access to various records in the debug information. Since this can be quite a
+    /// costly process, try to reuse the debugging session as long as possible.
     pub fn debug_session(&self) -> Result<BreakpadDebugSession<'d>, BreakpadError> {
         Ok(BreakpadDebugSession {
             file_map: self.file_map(),
@@ -601,10 +751,12 @@ impl<'d> BreakpadObject<'d> {
         })
     }
 
+    /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
         self.stack_records().next().is_some()
     }
 
+    /// Returns an iterator over file records.
     pub fn file_records(&self) -> BreakpadFileRecords<'d> {
         BreakpadFileRecords {
             lines: Lines::new(self.data),
@@ -612,6 +764,7 @@ impl<'d> BreakpadObject<'d> {
         }
     }
 
+    /// Returns a map for file name lookups by id.
     pub fn file_map(&self) -> BreakpadFileMap<'d> {
         self.file_records()
             .filter_map(|result| result.ok())
@@ -619,6 +772,7 @@ impl<'d> BreakpadObject<'d> {
             .collect()
     }
 
+    /// Returns an iterator over public symbol records.
     pub fn public_records(&self) -> BreakpadPublicRecords<'d> {
         BreakpadPublicRecords {
             lines: Lines::new(self.data),
@@ -626,6 +780,7 @@ impl<'d> BreakpadObject<'d> {
         }
     }
 
+    /// Returns an iterator over function records.
     pub fn func_records(&self) -> BreakpadFuncRecords<'d> {
         BreakpadFuncRecords {
             lines: Lines::new(self.data),
@@ -633,6 +788,7 @@ impl<'d> BreakpadObject<'d> {
         }
     }
 
+    /// Returns an iterator over stack frame records.
     pub fn stack_records(&self) -> BreakpadStackRecords<'d> {
         BreakpadStackRecords {
             lines: Lines::new(self.data),
@@ -640,6 +796,7 @@ impl<'d> BreakpadObject<'d> {
         }
     }
 
+    /// Returns the raw data of the Breakpad file.
     pub fn data(&self) -> &'d [u8] {
         self.data
     }
@@ -723,6 +880,9 @@ impl<'d> ObjectLike for BreakpadObject<'d> {
     }
 }
 
+/// An iterator over symbols in the Breakpad object.
+///
+/// Returned by [`BreakpadObject::symbols`](struct.BreakpadObject.html#method.symbols).
 pub struct BreakpadSymbolIterator<'d> {
     records: BreakpadPublicRecords<'d>,
 }
@@ -745,6 +905,7 @@ impl<'d> Iterator for BreakpadSymbolIterator<'d> {
     }
 }
 
+/// Debug session for Breakpad objects.
 pub struct BreakpadDebugSession<'d> {
     file_map: BreakpadFileMap<'d>,
     func_records: BreakpadFuncRecords<'d>,
