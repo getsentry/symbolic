@@ -4,7 +4,7 @@ use std::os::raw::c_char;
 use std::slice;
 use std::str::FromStr;
 
-use symbolic::common::{byteview::ByteView, types::Arch};
+use symbolic::common::{Arch, ByteView};
 use symbolic::debuginfo::Object;
 use symbolic::minidump::cfi::{CfiCache, CFICACHE_LATEST_VERSION};
 use symbolic::minidump::processor::{
@@ -284,7 +284,7 @@ ffi_fn! {
         path: *const c_char,
         smap: *const SymbolicFrameInfoMap,
     ) -> Result<*mut SymbolicProcessState> {
-        let byteview = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
+        let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
         let map = if smap.is_null() {
             None
         } else {
@@ -344,7 +344,7 @@ ffi_fn! {
 ffi_fn! {
     /// Loads a CFI cache from the given path.
     unsafe fn symbolic_cficache_from_path(path: *const c_char) -> Result<*mut SymbolicCfiCache> {
-        let byteview = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
+        let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
         let cache = CfiCache::from_bytes(byteview)?;
         Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicCfiCache)
     }

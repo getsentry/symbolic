@@ -2,7 +2,7 @@ use std::os::raw::c_char;
 use std::slice;
 use std::str::FromStr;
 
-use symbolic::common::byteview::ByteView;
+use symbolic::common::ByteView;
 use symbolic::minidump::processor::ProcessState;
 use symbolic::unreal::{Unreal4Crash, Unreal4CrashFile};
 

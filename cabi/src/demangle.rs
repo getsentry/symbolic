@@ -1,4 +1,4 @@
-use symbolic::common::types::Name;
+use symbolic::common::Name;
 use symbolic::demangle::{Demangle, DemangleFormat, DemangleOptions};
 
 use crate::core::SymbolicStr;
@@ -22,12 +22,13 @@ ffi_fn! {
         ident: *const SymbolicStr,
         lang: *const SymbolicStr,
     ) -> Result<SymbolicStr> {
-        let demangled = get_name(ident, lang).try_demangle(DemangleOptions {
+        let name = get_name(ident, lang);
+        let demangled = name.try_demangle(DemangleOptions {
             with_arguments: true,
             format: DemangleFormat::Short,
         });
 
-        Ok(SymbolicStr::from_string(demangled))
+        Ok(SymbolicStr::from_string(demangled.into()))
     }
 }
 
@@ -41,11 +42,12 @@ ffi_fn! {
         ident: *const SymbolicStr,
         lang: *const SymbolicStr,
     ) -> Result<SymbolicStr> {
-        let demangled = get_name(ident, lang).try_demangle(DemangleOptions {
+        let name = get_name(ident, lang);
+        let demangled = name.try_demangle(DemangleOptions {
             with_arguments: false,
             format: DemangleFormat::Short,
         });
 
-        Ok(SymbolicStr::from_string(demangled))
+        Ok(SymbolicStr::from_string(demangled.into()))
     }
 }

@@ -2,7 +2,7 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::slice;
 
-use symbolic::common::byteview::ByteView;
+use symbolic::common::ByteView;
 use symbolic::proguard::ProguardMappingView;
 
 use crate::core::{SymbolicStr, SymbolicUuid};
@@ -15,7 +15,7 @@ ffi_fn! {
     unsafe fn symbolic_proguardmappingview_from_path(
         path: *const c_char
     ) -> Result<*mut SymbolicProguardMappingView> {
-        let bv = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
+        let bv = ByteView::open(CStr::from_ptr(path).to_str()?)?;
         let sv = ProguardMappingView::parse(bv)?;
         Ok(Box::into_raw(Box::new(sv)) as *mut SymbolicProguardMappingView)
     }

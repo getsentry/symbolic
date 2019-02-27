@@ -1,13 +1,17 @@
 use std::ffi::CStr;
-use std::mem;
 use std::os::raw::c_char;
 use std::ptr;
 use std::str::FromStr;
 
-use symbolic::common::byteview::ByteView;
-use symbolic::debuginfo::{DebugFeatures, DebugId, FatObject, Object};
+use symbolic::common::{ByteView, DebugId, SelfCell};
+use symbolic::debuginfo::{Archive, Object};
 
 use crate::core::SymbolicStr;
+
+/// Helper to keep a `ByteView` open with an `Archive` referencing it.
+pub type ArchiveCell = SelfCell<ByteView<'static>, Archive<'static>>;
+/// Helper to keep a `ByteView` open with an `Object` referencing it.
+pub(crate) type ObjectCell = SelfCell<ByteView<'static>, Object<'static>>;
 
 /// A potential multi arch object.
 pub struct SymbolicFatObject;
@@ -15,19 +19,20 @@ pub struct SymbolicFatObject;
 /// A single arch object.
 pub struct SymbolicObject;
 
-/// A list of object features.
+/// Features this object contains.
 #[repr(C)]
 pub struct SymbolicObjectFeatures {
-    data: *mut SymbolicStr,
-    len: usize,
+    symtab: bool,
+    debug: bool,
+    unwind: bool,
 }
 
 ffi_fn! {
     /// Loads a fat object from a given path.
     unsafe fn symbolic_fatobject_open(path: *const c_char) -> Result<*mut SymbolicFatObject> {
-        let byteview = ByteView::from_path(CStr::from_ptr(path).to_str()?)?;
-        let obj = FatObject::parse(byteview)?;
-        Ok(Box::into_raw(Box::new(obj)) as *mut SymbolicFatObject)
+        let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
+        let cell = ArchiveCell::try_new(byteview, |p| Archive::parse(&*p))?;
+        Ok(Box::into_raw(Box::new(cell)) as *mut SymbolicFatObject)
     }
 }
 
@@ -35,7 +40,7 @@ ffi_fn! {
     /// Frees the given fat object.
     unsafe fn symbolic_fatobject_free(sfo: *mut SymbolicFatObject) {
         if !sfo.is_null() {
-            let fo = sfo as *mut FatObject<'static>;
+            let fo = sfo as *mut ArchiveCell;
             Box::from_raw(fo);
         }
     }
@@ -44,8 +49,8 @@ ffi_fn! {
 ffi_fn! {
     /// Returns the number of contained objects.
     unsafe fn symbolic_fatobject_object_count(sfo: *const SymbolicFatObject) -> Result<usize> {
-        let fo = sfo as *const FatObject<'static>;
-        Ok((*fo).object_count() as usize)
+        let fo = sfo as *const ArchiveCell;
+        Ok((*fo).get().object_count() as usize)
     }
 }
 
@@ -55,8 +60,8 @@ ffi_fn! {
         sfo: *const SymbolicFatObject,
         idx: usize,
     ) -> Result<*mut SymbolicObject> {
-        let fo = sfo as *const FatObject<'static>;
-        if let Some(obj) = (*fo).get_object(idx)? {
+        let fo = sfo as *const ArchiveCell;
+        if let Some(obj) = (*fo).get().object_by_index(idx)? {
             Ok(Box::into_raw(Box::new(obj)) as *mut SymbolicObject)
         } else {
             Ok(ptr::null_mut())
@@ -67,45 +72,32 @@ ffi_fn! {
 ffi_fn! {
     /// Returns the architecture of the object.
     unsafe fn symbolic_object_get_arch(so: *const SymbolicObject) -> Result<SymbolicStr> {
-        let o = so as *const Object<'static>;
-        Ok(SymbolicStr::new((*o).arch()?.name()))
+        let o = so as *const ObjectCell;
+        Ok(SymbolicStr::new((*o).get().arch().name()))
     }
 }
 
 ffi_fn! {
     /// Returns the debug identifier of the object.
-    unsafe fn symbolic_object_get_id(so: *const SymbolicObject) -> Result<SymbolicStr> {
-        let o = so as *const Object<'static>;
-        Ok((*o).id().unwrap_or_default().to_string().into())
+    unsafe fn symbolic_object_get_debug_id(so: *const SymbolicObject) -> Result<SymbolicStr> {
+        let o = so as *const ObjectCell;
+        Ok((*o).get().debug_id().to_string().into())
     }
 }
 
 ffi_fn! {
-    /// Returns the object kind (e.g. MachO, ELF, ...).
+    /// Returns the object kind (e.g. executable, debug file, library, ...).
     unsafe fn symbolic_object_get_kind(so: *const SymbolicObject) -> Result<SymbolicStr> {
-        let o = so as *const Object<'static>;
-        Ok(SymbolicStr::new((*o).kind().name()))
+        let o = so as *const ObjectCell;
+        Ok(SymbolicStr::new((*o).get().kind().name()))
     }
 }
 
 ffi_fn! {
-    /// Returns the desiganted use of the object file and hints at its contents (e.g. debug,
-    /// executable, ...).
-    unsafe fn symbolic_object_get_type(so: *const SymbolicObject) -> Result<SymbolicStr> {
-        let o = so as *mut Object<'static>;
-        Ok(SymbolicStr::new((*o).class().name()))
-    }
-}
-
-ffi_fn! {
-    /// Returns the kind of debug data contained in this object file, if any (e.g. DWARF).
-    unsafe fn symbolic_object_get_debug_kind(so: *const SymbolicObject) -> Result<SymbolicStr> {
-        let o = so as *const Object<'static>;
-        Ok(if let Some(kind) = (*o).debug_kind() {
-            SymbolicStr::new(kind.name())
-        } else {
-            SymbolicStr::default()
-        })
+    /// Returns the file format of the object file (e.g. MachO, ELF, ...).
+    unsafe fn symbolic_object_get_file_format(so: *const SymbolicObject) -> Result<SymbolicStr> {
+        let o = so as *mut ObjectCell;
+        Ok(SymbolicStr::new((*o).get().file_format().name()))
     }
 }
 
@@ -113,27 +105,14 @@ ffi_fn! {
     unsafe fn symbolic_object_get_features(
         so: *const SymbolicObject,
     ) -> Result<SymbolicObjectFeatures> {
-        let o = so as *const Object<'static>;
+        let o = so as *const ObjectCell;
+        let object = (*o).get();
 
-        let mut features = Vec::new();
-        for feature in (*o).features() {
-            features.push(SymbolicStr::from(feature.to_string()));
-        }
-        features.shrink_to_fit();
-
-        let result = SymbolicObjectFeatures {
-            len: features.len(),
-            data: features.as_mut_ptr(),
-        };
-
-        mem::forget(features);
-        Ok(result)
-    }
-}
-
-ffi_fn! {
-    unsafe fn symbolic_object_features_free(f: *mut SymbolicObjectFeatures) {
-        Vec::from_raw_parts((*f).data, (*f).len, (*f).len)
+        Ok(SymbolicObjectFeatures {
+            symtab: object.has_symbols(),
+            debug: object.has_debug_info(),
+            unwind: object.has_unwind_info(),
+        })
     }
 }
 
@@ -141,7 +120,7 @@ ffi_fn! {
     /// Frees an object returned from a fat object.
     unsafe fn symbolic_object_free(so: *mut SymbolicObject) {
         if !so.is_null() {
-            let o = so as *mut Object<'static>;
+            let o = so as *mut ObjectCell;
             Box::from_raw(o);
         }
     }

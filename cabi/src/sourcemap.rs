@@ -34,7 +34,7 @@ ffi_fn! {
         bytes: *const c_char,
         len: usize,
     ) -> Result<*mut SymbolicSourceView> {
-        let sv = SourceView::from_bytes(slice::from_raw_parts(bytes as *const _, len));
+        let sv = SourceView::from_slice(slice::from_raw_parts(bytes as *const _, len));
         Ok(Box::into_raw(Box::new(sv)) as *mut SymbolicSourceView)
     }
 }
