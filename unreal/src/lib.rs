@@ -322,8 +322,8 @@ fn parse_log_from_slice(
 
             Unreal4LogEntry {
                 timestamp: fallback_timestamp,
-                component,
-                message,
+                component: component.map(Into::into),
+                message: message.into(),
             }
         })
         .collect();
