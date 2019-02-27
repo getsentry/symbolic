@@ -418,8 +418,42 @@ impl<'d> Archive<'d> {
 
     /// Returns an iterator over all objects contained in this archive.
     pub fn objects(&self) -> ObjectIterator<'d, '_> {
-        ObjectIterator(map_inner!(self.0, ArchiveInner(ref o) =>
-            ObjectIteratorInner(o.objects())))
+        ObjectIterator(map_inner!(self.0, ArchiveInner(ref a) =>
+            ObjectIteratorInner(a.objects())))
+    }
+
+    /// Returns the number of objects in this archive.
+    pub fn object_count(&self) -> usize {
+        match_inner!(self.0, ArchiveInner(ref a) => a.object_count())
+    }
+
+    /// Resolves the object at the given index.
+    ///
+    /// Returns `Ok(None)` if the index is out of bounds, or `Err` if the object exists but cannot
+    /// be parsed.
+    pub fn object_by_index(&self, index: usize) -> Result<Option<Object<'d>>, ObjectError> {
+        match self.0 {
+            ArchiveInner::Breakpad(ref a) => a
+                .object_by_index(index)
+                .map(|opt| opt.map(Object::Breakpad))
+                .map_err(ObjectError::Breakpad),
+            ArchiveInner::Elf(ref a) => a
+                .object_by_index(index)
+                .map(|opt| opt.map(Object::Elf))
+                .map_err(ObjectError::Elf),
+            ArchiveInner::MachO(ref a) => a
+                .object_by_index(index)
+                .map(|opt| opt.map(Object::MachO))
+                .map_err(ObjectError::MachO),
+            ArchiveInner::Pdb(ref a) => a
+                .object_by_index(index)
+                .map(|opt| opt.map(Object::Pdb))
+                .map_err(ObjectError::Pdb),
+            ArchiveInner::Pe(ref a) => a
+                .object_by_index(index)
+                .map(|opt| opt.map(Object::Pe))
+                .map_err(ObjectError::Pe),
+        }
     }
 }
 

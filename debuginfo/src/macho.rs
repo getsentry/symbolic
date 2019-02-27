@@ -453,6 +453,24 @@ impl<'d> FatMachO<'d> {
             data: self.data,
         }
     }
+
+    /// Returns the number of objects in this archive.
+    pub fn object_count(&self) -> usize {
+        self.fat.narches
+    }
+
+    /// Resolves the object at the given index.
+    ///
+    /// Returns `Ok(None)` if the index is out of bounds, or `Err` if the object exists but cannot
+    /// be parsed.
+    pub fn object_by_index(&self, index: usize) -> Result<Option<MachObject<'d>>, MachError> {
+        let arch = match self.fat.iter_arches().nth(index) {
+            Some(arch) => arch.map_err(MachError::BadObject)?,
+            None => return Ok(None),
+        };
+
+        MachObject::parse(arch.slice(self.data)).map(Some)
+    }
 }
 
 impl fmt::Debug for FatMachO<'_> {
@@ -547,6 +565,25 @@ impl<'d> MachArchive<'d> {
                 MachObjectIteratorInner::Archive(inner.objects())
             }
         })
+    }
+
+    /// Returns the number of objects in this archive.
+    pub fn object_count(&self) -> usize {
+        match self.0 {
+            MachArchiveInner::Single(ref inner) => inner.object_count(),
+            MachArchiveInner::Archive(ref inner) => inner.object_count(),
+        }
+    }
+
+    /// Resolves the object at the given index.
+    ///
+    /// Returns `Ok(None)` if the index is out of bounds, or `Err` if the object exists but cannot
+    /// be parsed.
+    pub fn object_by_index(&self, index: usize) -> Result<Option<MachObject<'d>>, MachError> {
+        match self.0 {
+            MachArchiveInner::Single(ref inner) => inner.object_by_index(index),
+            MachArchiveInner::Archive(ref inner) => inner.object_by_index(index),
+        }
     }
 }
 

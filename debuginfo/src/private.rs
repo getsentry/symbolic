@@ -141,6 +141,17 @@ where
         // TODO(ja): Consider parsing this lazily instead.
         MonoArchiveObjects(Some(self.object()))
     }
+
+    pub fn object_count(&self) -> usize {
+        1
+    }
+
+    pub fn object_by_index(&self, index: usize) -> Result<Option<P>, P::Error> {
+        match index {
+            0 => self.object().map(Some),
+            _ => Ok(None),
+        }
+    }
 }
 
 impl<'d, P> fmt::Debug for MonoArchive<'d, P>
