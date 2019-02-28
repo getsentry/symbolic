@@ -62,6 +62,7 @@ ffi_fn! {
     ) -> Result<*mut SymbolicObject> {
         let fo = sfo as *const ArchiveCell;
         if let Some(obj) = (*fo).get().object_by_index(idx)? {
+            let obj = ObjectCell::from_raw((*fo).owner().clone(), obj);
             Ok(Box::into_raw(Box::new(obj)) as *mut SymbolicObject)
         } else {
             Ok(ptr::null_mut())

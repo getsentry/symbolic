@@ -12,7 +12,7 @@ use symbolic::minidump::processor::{
 };
 
 use crate::core::SymbolicStr;
-use crate::debuginfo::SymbolicObject;
+use crate::debuginfo::{SymbolicObject, ObjectCell};
 
 /// Contains stack frame information (CFI) for images.
 pub struct SymbolicFrameInfoMap;
@@ -336,7 +336,8 @@ ffi_fn! {
     unsafe fn symbolic_cficache_from_object(
         sobj: *const SymbolicObject,
     ) -> Result<*mut SymbolicCfiCache> {
-        let cache = CfiCache::from_object(&*(sobj as *const Object<'_>))?;
+        let object = &*(sobj as *const ObjectCell);
+        let cache = CfiCache::from_object(object.get())?;
         Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicCfiCache)
     }
 }

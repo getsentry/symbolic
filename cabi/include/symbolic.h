@@ -652,7 +652,7 @@ const uint8_t *symbolic_symcache_get_bytes(const SymbolicSymCache *scache);
 /**
  * Returns the architecture of the symcache.
  */
-SymbolicStr symbolic_symcache_get_id(const SymbolicSymCache *scache);
+SymbolicStr symbolic_symcache_get_debug_id(const SymbolicSymCache *scache);
 
 /**
  * Returns the size in bytes of the symcache.

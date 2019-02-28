@@ -126,7 +126,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns the architecture of the symcache.
-    unsafe fn symbolic_symcache_get_id(scache: *const SymbolicSymCache) -> Result<SymbolicStr> {
+    unsafe fn symbolic_symcache_get_debug_id(scache: *const SymbolicSymCache) -> Result<SymbolicStr> {
         let cache = scache as *const SymCacheCell;
         Ok((*cache).get().debug_id().to_string().into())
     }
