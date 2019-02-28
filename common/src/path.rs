@@ -63,13 +63,14 @@ pub fn join_path(base: &str, other: &str) -> String {
 
 /// Splits off the last component of a path.
 ///
+/// The path should be a path to a file, and not a directory. If this path is a directory or the
+/// root path, the result is undefined.
+///
 /// This attempts to detect Windows or Unix paths and split off the last component of the path
 /// accordingly. Note that for paths with mixed slash and backslash separators this might not lead
 /// to the desired results.
 pub fn split_path(path: &str) -> (Option<&str>, &str) {
-    let path = path
-        .trim_start_matches(&['\\', '/'][..])
-        .trim_end_matches(&['\\', '/'][..]);
+    let path = path.trim_end_matches(&['\\', '/'][..]);
     let split_char = if !path.starts_with('/') && path.contains('\\') {
         '\\' // Probably Windows
     } else {
