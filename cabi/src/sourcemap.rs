@@ -204,11 +204,7 @@ ffi_fn! {
     /// Free a token match.
     unsafe fn symbolic_token_match_free(token_match: *mut SymbolicTokenMatch) {
         if !token_match.is_null() {
-            let mut token_match = Box::from_raw(token_match);
-            token_match.name.free();
-            token_match.src.free();
-            token_match.function_name.free();
-            drop(token_match);
+            Box::from_raw(token_match);
         }
     }
 }

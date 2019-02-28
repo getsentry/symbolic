@@ -67,6 +67,12 @@ impl SymbolicStr {
     }
 }
 
+impl Drop for SymbolicStr {
+    fn drop(&mut self) {
+        unsafe { self.free() }
+    }
+}
+
 impl From<String> for SymbolicStr {
     fn from(string: String) -> SymbolicStr {
         SymbolicStr::from_string(string)
@@ -448,8 +454,8 @@ ffi_fn! {
     /// This sets the string to owned.  In case it's not owned you either have
     /// to make sure you are not freeing the memory or you need to set the
     /// owned flag to false.
-    unsafe fn symbolic_str_from_cstr(s: *const c_char) -> Result<SymbolicStr> {
-        let s = CStr::from_ptr(s).to_str()?;
+    unsafe fn symbolic_str_from_cstr(string: *const c_char) -> Result<SymbolicStr> {
+        let s = CStr::from_ptr(string).to_str()?;
         Ok(SymbolicStr {
             data: s.as_ptr() as *mut _,
             len: s.len(),
@@ -463,10 +469,8 @@ ffi_fn! {
 /// If the string is marked as not owned then this function does not
 /// do anything.
 #[no_mangle]
-pub unsafe extern "C" fn symbolic_str_free(s: *mut SymbolicStr) {
-    if !s.is_null() {
-        (*s).free()
-    }
+pub unsafe extern "C" fn symbolic_str_free(string: *mut SymbolicStr) {
+    (*string).free()
 }
 
 /// Returns true if the uuid is nil.

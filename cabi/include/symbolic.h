@@ -613,7 +613,7 @@ uint32_t symbolic_sourceview_get_line_count(const SymbolicSourceView *source_map
  * If the string is marked as not owned then this function does not
  * do anything.
  */
-void symbolic_str_free(SymbolicStr *s);
+void symbolic_str_free(SymbolicStr *string);
 
 /**
  * Creates a symbolic string from a raw C string.
@@ -621,7 +621,7 @@ void symbolic_str_free(SymbolicStr *s);
  * to make sure you are not freeing the memory or you need to set the
  * owned flag to false.
  */
-SymbolicStr symbolic_str_from_cstr(const char *s);
+SymbolicStr symbolic_str_from_cstr(const char *string);
 
 /**
  * Frees a symcache object.
