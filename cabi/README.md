@@ -7,10 +7,14 @@ meant to be consumed by higher-level wrappers in other languages, such as the
 
 ## Building
 
-Building the library has the same requirements as building the `symbolic` crate:
+Building the dynamic library has the same requirements as building the `symbolic` crate:
 
 - Latest stable Rust and Cargo
 - A C++14 compiler
+- A checkout of this repository and all its GIT submodules.
+
+To build, run `make release` in this directory. This creates a release build of the dynamic library
+in `cabi/target/release/libsymbolic.*`.
 
 ## Usage
 
@@ -32,6 +36,12 @@ int main() {
     symbolic_str_free(&demangled);
     return 0;
 }
+```
+
+In your application, point to the symbolic include directory and specify the symbolic library:
+
+```bash
+$(CC) -Isymbolic/cabi/include -Lsymbolic/cabi/target/release -lsymbolic -o myprogram main.c
 ```
 
 ## Development
@@ -70,7 +80,7 @@ not forget to run at least `make header` to ensure the header is in sync with th
 
 1. Make changes to the `symbolic` crates and add tests.
 2. Update `symbolic_cabi` and add, remove or update functions as needed.
-3. Regenerate the header and run tests by running `make` in the `cabi/` directory.
+3. Regenerate the header and run tests by running `make test` in the `cabi/` directory.
 4. Go to the Python package in the `py/` folder and update the high-level wrappers.
 5. Consider whether this changeset requires a major version bump.
 

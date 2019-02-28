@@ -1,4 +1,4 @@
-all: header test
+all: header test release
 .PHONY: all
 
 header: include/symbolic.h
@@ -11,6 +11,10 @@ test: build header target/debug/c-tests/demangle
 build:
 	cargo build
 .PHONY: build
+
+release:
+	cargo build --release
+.PHONY: release
 
 clean:
 	cargo clean
