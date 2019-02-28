@@ -36,6 +36,23 @@ int main() {
 
 ## Development
 
+### Requirements
+
+In addition to the build requirements, development requires a recent _Rust nightly_ toolchain and
+the `cbindgen` tool. To set this up, run:
+
+```bash
+rustup toolchain add nightly
+cargo install cbindgen
+```
+
+If your machine already has `cbindgen` installed, check the header of [`include/symbolic.h`] for the
+minimum version required. This can be verified by running `cbindgen --version`. It is generally
+advisable to keep `cbindgen` updated to its latest version, and always check in cbindgen updates
+separate from changes to the public interface.
+
+### Makefile
+
 This package contains the Rust crate `symbolic_cabi` that exposes a public FFI interface. There are
 additional build steps involved in generating the header file located at `include/symbolic.h`. To
 aid development, there is a _Makefile_ that exposes all relevant commands for building:
@@ -48,3 +65,19 @@ aid development, there is a _Makefile_ that exposes all relevant commands for bu
 
 For ease of development, the header is always checked into the repository. After making changes, do
 not forget to run at least `make header` to ensure the header is in sync with the library.
+
+### Development Flow
+
+1. Make changes to the `symbolic` crates and add tests.
+2. Update `symbolic_cabi` and add, remove or update functions as needed.
+3. Regenerate the header and run tests by running `make` in the `cabi/` directory.
+4. Go to the Python package in the `py/` folder and update the high-level wrappers.
+5. Consider whether this changeset requires a major version bump.
+
+The general rule for major versions is:
+
+- If everything is backward compatible, do **not major** bump.
+- If the C interface breaks compatibility but high-level wrappers are still backwards compatible, do
+  **not major** bump. The C interface is currently viewed as an implementation detail.
+- If high-level wrappers are no longer backwards compatible or there are breaking changes in the
+  `symbolic` crate itself, **do major** bump.
