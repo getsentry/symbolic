@@ -25,12 +25,12 @@ standard C headers. Then, include it in sources and use like this:
 #include "symbolic.h"
 
 int main() {
-    SymbolicStr mangled = symbolic_str_from_cstr(
-        "__ZN9backtrace5dylib5Dylib3get28_$u7b$$u7b$closure$u7d$$u7d$"
-        "17hc7d4a2b070814ae3E");
+    SymbolicStr mangled = symbolic_str_from_cstr("_ZNSt11char_traitsIcE6assignERcRKc");
     SymbolicStr demangled = symbolic_demangle(&mangled, /* language */ 0);
     if (demangled.len) {
-        printf("  demangled: %.*s\n", (int)demangled.len, demangled.data);
+        printf("demangled: %.*s\n", (int)demangled.len, demangled.data);
+    } else {
+        print("demangling failed.");
     }
 
     symbolic_str_free(&demangled);
