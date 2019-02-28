@@ -10,7 +10,7 @@ use symbolic::symcache::{format::SYMCACHE_VERSION, SymCache, SymCacheWriter};
 use crate::core::SymbolicStr;
 use crate::debuginfo::{ObjectCell, SymbolicObject};
 
-type SymCacheCell = SelfCell<ByteView<'static>, SymCache<'static>>;
+pub(crate) type SymCacheCell = SelfCell<ByteView<'static>, SymCache<'static>>;
 
 /// Represents a symbolic sym cache.
 pub struct SymbolicSymCache;
@@ -61,7 +61,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Creates a symcache from a byte buffer WITHOUT taking ownership.
+    /// Creates a symcache from a byte buffer without taking ownership of the pointer.
     unsafe fn symbolic_symcache_from_bytes(
         bytes: *const u8,
         len: usize,

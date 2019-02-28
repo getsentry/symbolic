@@ -2,19 +2,6 @@ use symbolic::common::{Arch, UnknownArchError};
 
 use crate::core::SymbolicStr;
 
-/// Mach-O architecture.
-#[repr(C)]
-pub struct SymbolicMachoArch {
-    pub cputype: u32,
-    pub cpusubtype: u32,
-}
-
-/// ELF architecture.
-#[repr(C)]
-pub struct SymbolicElfArch {
-    pub machine: u16,
-}
-
 ffi_fn! {
     /// Checks if an architecture is known.
     unsafe fn symbolic_arch_is_known(arch: *const SymbolicStr) -> Result<bool> {

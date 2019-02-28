@@ -9,7 +9,7 @@ use symbolic::debuginfo::{Archive, Object};
 use crate::core::SymbolicStr;
 
 /// Helper to keep a `ByteView` open with an `Archive` referencing it.
-pub type ArchiveCell = SelfCell<ByteView<'static>, Archive<'static>>;
+pub(crate) type ArchiveCell = SelfCell<ByteView<'static>, Archive<'static>>;
 /// Helper to keep a `ByteView` open with an `Object` referencing it.
 pub(crate) type ObjectCell = SelfCell<ByteView<'static>, Object<'static>>;
 
