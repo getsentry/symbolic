@@ -4,7 +4,7 @@ all: header test
 header: include/symbolic.h
 .PHONY: header
 
-test: build target/debug/c-tests/demangle
+test: build header target/debug/c-tests/demangle
 	./target/debug/c-tests/demangle
 .PHONY: test
 

@@ -58,6 +58,8 @@ other operating systems or when using as rust library, you need to build
 symbolic manually. This always requires the latest stable Rust and Cargo, as
 well as a C++11 compiler.
 
+For making changes to the C ABI, refer to the [Symbolic C-ABI readme](cabi/README.md).
+
 ## License
 
 Symbolic is licensed under the MIT license. It uses some Apache2 licensed code

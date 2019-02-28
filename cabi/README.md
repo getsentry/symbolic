@@ -1,0 +1,50 @@
+# Symbolic C-ABI
+
+This package contains the C-ABI of symbolic. It builds a C header file and associated library that
+can be linked to any C or C++ program. Note that the header is C only. Primarily, this package is
+meant to be consumed by higher-level wrappers in other languages, such as the
+[`symbolic`](https://pypi.org/project/symbolic/) Python package.
+
+## Building
+
+Building the library has the same requirements as building the `symbolic` crate:
+
+- Latest stable Rust and Cargo
+- A C++14 compiler
+
+## Usage
+
+The header comes packaged in the `include/` directory. It does not have any dependencies other than
+standard C headers. Then, include it in sources and use like this:
+
+```c
+#include "symbolic.h"
+
+int main() {
+    SymbolicStr mangled = symbolic_str_from_cstr(
+        "__ZN9backtrace5dylib5Dylib3get28_$u7b$$u7b$closure$u7d$$u7d$"
+        "17hc7d4a2b070814ae3E");
+    SymbolicStr demangled = symbolic_demangle(&mangled, /* language */ 0);
+    if (demangled.len) {
+        printf("  demangled: %.*s\n", (int)demangled.len, demangled.data);
+    }
+
+    symbolic_str_free(&demangled);
+    return 0;
+}
+```
+
+## Development
+
+This package contains the Rust crate `symbolic_cabi` that exposes a public FFI interface. There are
+additional build steps involved in generating the header file located at `include/symbolic.h`. To
+aid development, there is a _Makefile_ that exposes all relevant commands for building:
+
+- `make build`: Builds the library using `cargo`.
+- `make header`: Updates the header file based on the public interface of `symbolic_cabi`.
+- `make test`: Runs a small integration test that verifies that the library builds and links.
+- `make clean`: Removes all build artifacts but leaves the header.
+- `make`: Builds the library, the header, and runs tests.
+
+For ease of development, the header is always checked into the repository. After making changes, do
+not forget to run at least `make header` to ensure the header is in sync with the library.
