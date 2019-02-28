@@ -343,14 +343,14 @@ class CfiCache(RustObject):
             rustcall(lib.symbolic_cficache_from_object, obj._get_objptr()))
 
     @property
-    def file_format_version(self):
+    def version(self):
         """Version of the file format."""
         return self._methodcall(lib.symbolic_cficache_get_version)
 
     @property
-    def is_latest_file_format(self):
+    def is_latest_version(self):
         """Returns true if this is the latest file format."""
-        return self.file_format_version >= CFICACHE_LATEST_VERSION
+        return self.version >= CFICACHE_LATEST_VERSION
 
     def open_stream(self):
         """Returns a stream to read files from the internal buffer."""

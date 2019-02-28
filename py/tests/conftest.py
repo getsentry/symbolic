@@ -16,7 +16,7 @@ def get_symcache(path, object_lookup):
     for fn in os.listdir(dsym_path):
         fo = FatObject.from_path(os.path.join(dsym_path, fn))
         for obj in fo.iter_objects():
-            if object_lookup.get_object(id=obj.id) is not None:
+            if object_lookup.get_object(id=obj.debug_id) is not None:
                 return obj.make_symcache()
 
 
@@ -31,7 +31,7 @@ class ReportSymbolizer(object):
                 continue
             symcache = get_symcache(path, self.objects)
             if symcache is not None:
-                self.symcaches[symcache.id] = symcache
+                self.symcaches[symcache.debug_id] = symcache
 
     def symbolize_backtrace(self, backtrace, meta=None):
         def symbolize(frame, frame_idx):
@@ -42,7 +42,7 @@ class ReportSymbolizer(object):
             if obj_ref is None:
                 return [frame]
 
-            symcache = self.symcaches.get(obj_ref.id)
+            symcache = self.symcaches.get(obj_ref.debug_id)
             if symcache is None:
                 return [frame]
 

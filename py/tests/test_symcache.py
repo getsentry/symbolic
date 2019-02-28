@@ -64,9 +64,9 @@ def test_symbolicate_electron_darwin_sym(res_path):
     assert symbol.symbol == 'main'
     assert symbol.lang == 'unknown'
     assert symbol.line == 186
-    # Comprises "comp_dir" and "base_dir"
-    assert symbol.filename == '/Users/electron/workspace/electron-osx-x64/out/R/../../atom/app/atom_main.cc'
-    # "lang", "comp_dir" and "base_dir" are not available in .sym files
+    assert symbol.base_dir == '/Users/electron/workspace/electron-osx-x64/out/R/../../atom/app'
+    assert symbol.filename == 'atom_main.cc'
+    # "lang" and "comp_dir" are not available in .sym files
 
 
 def test_unicode_ignore_decode():

@@ -69,6 +69,7 @@ def build_native(spec):
         scratchpad = None
 
     # Step 1: build the rust library
+    print('running `%s` (%s target)' % (' '.join(cmd), target))
     build = spec.add_external_build(
         cmd=cmd,
         path=rust_path

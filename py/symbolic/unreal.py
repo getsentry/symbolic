@@ -65,17 +65,17 @@ class Unreal4CrashFile(RustObject):
     @property
     def name(self):
         """The file name."""
-        return str(decode_str(self._methodcall(lib.symbolic_unreal4_crash_file_meta_name)))
+        return str(decode_str(self._methodcall(lib.symbolic_unreal4_crash_file_name)))
 
     @property
     def type(self):
         """The type of the file"""
-        return str(decode_str(self._methodcall(lib.symbolic_unreal4_crash_file_meta_type)))
+        return str(decode_str(self._methodcall(lib.symbolic_unreal4_crash_file_type)))
 
     def open_stream(self):
         """Returns a stream to read files from the internal buffer."""
         len_out = ffi.new('uintptr_t *')
-        rv = self._methodcall(lib.symbolic_unreal4_crash_file_meta_contents, self.crash._objptr, len_out)
+        rv = self._methodcall(lib.symbolic_unreal4_crash_file_contents, self.crash._objptr, len_out)
         if rv == ffi.NULL:
             return None
         return io.BufferedReader(SliceReader(ffi.buffer(rv, len_out[0]), self))

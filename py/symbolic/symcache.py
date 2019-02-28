@@ -100,9 +100,9 @@ class SymCache(RustObject):
         return str(decode_str(self._methodcall(lib.symbolic_symcache_get_arch)))
 
     @property
-    def id(self):
-        """The ID of the object."""
-        return decode_str(self._methodcall(lib.symbolic_symcache_get_id))
+    def debug_id(self):
+        """The debug identifier of the object."""
+        return decode_str(self._methodcall(lib.symbolic_symcache_get_debug_id))
 
     @property
     def has_line_info(self):
@@ -115,14 +115,14 @@ class SymCache(RustObject):
         return self._methodcall(lib.symbolic_symcache_has_file_info)
 
     @property
-    def file_format_version(self):
+    def version(self):
         """Version of the file format."""
-        return self._methodcall(lib.symbolic_symcache_file_format_version)
+        return self._methodcall(lib.symbolic_symcache_get_version)
 
     @property
-    def is_latest_file_format(self):
+    def is_latest_version(self):
         """Returns true if this is the latest file format."""
-        return self.file_format_version >= SYMCACHE_LATEST_VERSION
+        return self.version >= SYMCACHE_LATEST_VERSION
 
     def open_stream(self):
         """Returns a stream to read files from the internal buffer."""
