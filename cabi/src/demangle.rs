@@ -28,7 +28,7 @@ ffi_fn! {
             format: DemangleFormat::Short,
         });
 
-        Ok(SymbolicStr::from_string(demangled.into()))
+        Ok(demangled.into())
     }
 }
 
@@ -48,6 +48,6 @@ ffi_fn! {
             format: DemangleFormat::Short,
         });
 
-        Ok(SymbolicStr::from_string(demangled.into()))
+        Ok(demangled.into())
     }
 }

@@ -9,9 +9,5 @@ language = "C"
 [parse]
 expand = ["symbolic-cabi"]
 
-[export]
-# These types generate errors albeit not being exported
-exclude = ["ArchiveCell", "ObjectCell", "SymCacheCell"]
-
 [enum]
 rename_variants = "QualifiedScreamingSnakeCase"

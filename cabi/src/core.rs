@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::ffi::CStr;
 use std::mem;
 use std::os::raw::c_char;
@@ -75,6 +76,15 @@ impl From<String> for SymbolicStr {
 impl<'a> From<&'a str> for SymbolicStr {
     fn from(string: &str) -> SymbolicStr {
         SymbolicStr::new(string)
+    }
+}
+
+impl<'a> From<Cow<'a, str>> for SymbolicStr {
+    fn from(cow: Cow<'a, str>) -> SymbolicStr {
+        match cow {
+            Cow::Borrowed(string) => SymbolicStr::new(string),
+            Cow::Owned(string) => SymbolicStr::from_string(string),
+        }
     }
 }
 

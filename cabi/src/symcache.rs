@@ -8,12 +8,15 @@ use symbolic::common::{Arch, ByteView, InstructionInfo, SelfCell};
 use symbolic::symcache::{format::SYMCACHE_VERSION, SymCache, SymCacheWriter};
 
 use crate::core::SymbolicStr;
-use crate::debuginfo::{ObjectCell, SymbolicObject};
-
-pub(crate) type SymCacheCell = SelfCell<ByteView<'static>, SymCache<'static>>;
+use crate::debuginfo::SymbolicObject;
+use crate::utils::ForeignObject;
 
 /// Represents a symbolic sym cache.
 pub struct SymbolicSymCache;
+
+impl ForeignObject for SymbolicSymCache {
+    type RustObject = SelfCell<ByteView<'static>, SymCache<'static>>;
+}
 
 /// Represents a single symbol after lookup.
 #[repr(C)]
@@ -56,7 +59,7 @@ ffi_fn! {
     unsafe fn symbolic_symcache_from_path(path: *const c_char) -> Result<*mut SymbolicSymCache> {
         let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
         let cell = SelfCell::try_new(byteview, |p| SymCache::parse(&*p))?;
-        Ok(Box::into_raw(Box::new(cell)) as *mut SymbolicSymCache)
+        Ok(SymbolicSymCache::from_rust(cell))
     }
 }
 
@@ -68,33 +71,30 @@ ffi_fn! {
     ) -> Result<*mut SymbolicSymCache> {
         let byteview = ByteView::from_slice(slice::from_raw_parts(bytes, len));
         let cell = SelfCell::try_new(byteview, |p| SymCache::parse(&*p))?;
-        Ok(Box::into_raw(Box::new(cell)) as *mut SymbolicSymCache)
+        Ok(SymbolicSymCache::from_rust(cell))
     }
 }
 
 ffi_fn! {
     /// Creates a symcache from a given object.
     unsafe fn symbolic_symcache_from_object(
-        sobj: *const SymbolicObject,
+        object: *const SymbolicObject,
     ) -> Result<*mut SymbolicSymCache> {
-        let object = (*(sobj as *const ObjectCell)).get();
+        let object = SymbolicObject::as_rust(object).get();
 
         let mut buffer = Vec::new();
         SymCacheWriter::write_object(object, Cursor::new(&mut buffer))?;
 
         let byteview = ByteView::from_vec(buffer);
         let cell = SelfCell::try_new(byteview, |p| SymCache::parse(&*p))?;
-        Ok(Box::into_raw(Box::new(cell)) as *mut SymbolicSymCache)
+        Ok(SymbolicSymCache::from_rust(cell))
     }
 }
 
 ffi_fn! {
     /// Frees a symcache object.
-    unsafe fn symbolic_symcache_free(scache: *mut SymbolicSymCache) {
-        if !scache.is_null() {
-            let cache = scache as *mut SymCacheCell;
-            Box::from_raw(cache);
-        }
+    unsafe fn symbolic_symcache_free(symcache: *mut SymbolicSymCache) {
+        SymbolicSymCache::drop(symcache);
     }
 }
 
@@ -102,71 +102,63 @@ ffi_fn! {
     /// Returns the internal buffer of the symcache.
     ///
     /// The internal buffer is exactly `symbolic_symcache_get_size` bytes long.
-    unsafe fn symbolic_symcache_get_bytes(scache: *const SymbolicSymCache) -> Result<*const u8> {
-        let cache = scache as *const SymCacheCell;
-        Ok((*cache).owner().as_slice().as_ptr())
+    unsafe fn symbolic_symcache_get_bytes(symcache: *const SymbolicSymCache) -> Result<*const u8> {
+        Ok(SymbolicSymCache::as_rust(symcache).owner().as_slice().as_ptr())
     }
 }
 
 ffi_fn! {
     /// Returns the size in bytes of the symcache.
-    unsafe fn symbolic_symcache_get_size(scache: *const SymbolicSymCache) -> Result<usize> {
-        let cache = scache as *const SymCacheCell;
-        Ok((*cache).owner().len())
+    unsafe fn symbolic_symcache_get_size(symcache: *const SymbolicSymCache) -> Result<usize> {
+        Ok(SymbolicSymCache::as_rust(symcache).owner().len())
     }
 }
 
 ffi_fn! {
     /// Returns the architecture of the symcache.
-    unsafe fn symbolic_symcache_get_arch(scache: *const SymbolicSymCache) -> Result<SymbolicStr> {
-        let cache = scache as *const SymCacheCell;
-        Ok(SymbolicStr::new((*cache).get().arch().name()))
+    unsafe fn symbolic_symcache_get_arch(symcache: *const SymbolicSymCache) -> Result<SymbolicStr> {
+        Ok(SymbolicSymCache::as_rust(symcache).get().arch().name().into())
     }
 }
 
 ffi_fn! {
     /// Returns the architecture of the symcache.
-    unsafe fn symbolic_symcache_get_debug_id(scache: *const SymbolicSymCache) -> Result<SymbolicStr> {
-        let cache = scache as *const SymCacheCell;
-        Ok((*cache).get().debug_id().to_string().into())
+    unsafe fn symbolic_symcache_get_debug_id(symcache: *const SymbolicSymCache) -> Result<SymbolicStr> {
+        Ok(SymbolicSymCache::as_rust(symcache).get().debug_id().to_string().into())
     }
 }
 
 ffi_fn! {
     /// Returns true if the symcache has line infos.
-    unsafe fn symbolic_symcache_has_line_info(scache: *const SymbolicSymCache) -> Result<bool> {
-        let cache = scache as *const SymCacheCell;
-        Ok((*cache).get().has_line_info())
+    unsafe fn symbolic_symcache_has_line_info(symcache: *const SymbolicSymCache) -> Result<bool> {
+        Ok(SymbolicSymCache::as_rust(symcache).get().has_line_info())
     }
 }
 
 ffi_fn! {
     /// Returns true if the symcache has file infos.
-    unsafe fn symbolic_symcache_has_file_info(scache: *const SymbolicSymCache) -> Result<bool> {
-        let cache = scache as *const SymCacheCell;
-        Ok((*cache).get().has_file_info())
+    unsafe fn symbolic_symcache_has_file_info(symcache: *const SymbolicSymCache) -> Result<bool> {
+        Ok(SymbolicSymCache::as_rust(symcache).get().has_file_info())
     }
 }
 
 ffi_fn! {
     /// Returns the version of the cache file.
-    unsafe fn symbolic_symcache_get_version(scache: *const SymbolicSymCache) -> Result<u32> {
-        let cache = scache as *const SymCacheCell;
-        Ok((*cache).get().version())
+    unsafe fn symbolic_symcache_get_version(symcache: *const SymbolicSymCache) -> Result<u32> {
+        Ok(SymbolicSymCache::as_rust(symcache).get().version())
     }
 }
 
 ffi_fn! {
     /// Looks up a single symbol.
     unsafe fn symbolic_symcache_lookup(
-        scache: *const SymbolicSymCache,
+        symcache: *const SymbolicSymCache,
         addr: u64,
     ) -> Result<SymbolicLookupResult> {
-        let cache = scache as *const SymCacheCell;
-        let lookup = (*cache).get().lookup(addr)?;
+        let cache = SymbolicSymCache::as_rust(symcache).get();
 
         let mut items = vec![];
-        for line_info in lookup {
+        for line_info in cache.lookup(addr)? {
             let line_info = line_info?;
             items.push(SymbolicLineInfo {
                 sym_addr: line_info.function_address(),
@@ -193,9 +185,10 @@ ffi_fn! {
 
 ffi_fn! {
     /// Frees a lookup result.
-    unsafe fn symbolic_lookup_result_free(slr: *mut SymbolicLookupResult) {
-        if !slr.is_null() {
-            Vec::from_raw_parts((*slr).items, (*slr).len, (*slr).len);
+    unsafe fn symbolic_lookup_result_free(lookup_result: *mut SymbolicLookupResult) {
+        if !lookup_result.is_null() {
+            let result = &*lookup_result;
+            Vec::from_raw_parts(result.items, result.len, result.len);
         }
     }
 }
@@ -203,12 +196,13 @@ ffi_fn! {
 ffi_fn! {
     /// Return the best instruction for an isntruction info.
     unsafe fn symbolic_find_best_instruction(ii: *const SymbolicInstructionInfo) -> Result<u64> {
+        let info = &*ii;
         let real_ii = InstructionInfo {
-            addr: (*ii).addr,
-            arch: (*(*ii).arch).as_str().parse::<Arch>()?,
-            crashing_frame: (*ii).crashing_frame,
-            signal: if (*ii).signal == 0 { None } else { Some((*ii).signal) },
-            ip_reg: if (*ii).ip_reg == 0 { None } else { Some((*ii).ip_reg) },
+            addr: info.addr,
+            arch: (*info.arch).as_str().parse::<Arch>()?,
+            crashing_frame: info.crashing_frame,
+            signal: if info.signal == 0 { None } else { Some(info.signal) },
+            ip_reg: if info.ip_reg == 0 { None } else { Some(info.ip_reg) },
         };
         Ok(real_ii.caller_address())
     }

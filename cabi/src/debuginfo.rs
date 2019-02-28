@@ -7,17 +7,21 @@ use symbolic::common::{ByteView, DebugId, SelfCell};
 use symbolic::debuginfo::{Archive, Object};
 
 use crate::core::SymbolicStr;
-
-/// Helper to keep a `ByteView` open with an `Archive` referencing it.
-pub(crate) type ArchiveCell = SelfCell<ByteView<'static>, Archive<'static>>;
-/// Helper to keep a `ByteView` open with an `Object` referencing it.
-pub(crate) type ObjectCell = SelfCell<ByteView<'static>, Object<'static>>;
+use crate::utils::ForeignObject;
 
 /// A potential multi arch object.
 pub struct SymbolicFatObject;
 
+impl ForeignObject for SymbolicFatObject {
+    type RustObject = SelfCell<ByteView<'static>, Archive<'static>>;
+}
+
 /// A single arch object.
 pub struct SymbolicObject;
+
+impl ForeignObject for SymbolicObject {
+    type RustObject = SelfCell<ByteView<'static>, Object<'static>>;
+}
 
 /// Features this object contains.
 #[repr(C)]
@@ -31,39 +35,35 @@ ffi_fn! {
     /// Loads a fat object from a given path.
     unsafe fn symbolic_fatobject_open(path: *const c_char) -> Result<*mut SymbolicFatObject> {
         let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
-        let cell = ArchiveCell::try_new(byteview, |p| Archive::parse(&*p))?;
-        Ok(Box::into_raw(Box::new(cell)) as *mut SymbolicFatObject)
+        let cell = SelfCell::try_new(byteview, |p| Archive::parse(&*p))?;
+        Ok(SymbolicFatObject::from_rust(cell))
     }
 }
 
 ffi_fn! {
     /// Frees the given fat object.
-    unsafe fn symbolic_fatobject_free(sfo: *mut SymbolicFatObject) {
-        if !sfo.is_null() {
-            let fo = sfo as *mut ArchiveCell;
-            Box::from_raw(fo);
-        }
+    unsafe fn symbolic_fatobject_free(object: *mut SymbolicFatObject) {
+        SymbolicFatObject::drop(object)
     }
 }
 
 ffi_fn! {
     /// Returns the number of contained objects.
-    unsafe fn symbolic_fatobject_object_count(sfo: *const SymbolicFatObject) -> Result<usize> {
-        let fo = sfo as *const ArchiveCell;
-        Ok((*fo).get().object_count() as usize)
+    unsafe fn symbolic_fatobject_object_count(object: *const SymbolicFatObject) -> Result<usize> {
+        Ok(SymbolicFatObject::as_rust(object).get().object_count())
     }
 }
 
 ffi_fn! {
-    /// Returns the n-th object.
+    /// Returns the n-th object, or a null pointer if the object does not exist.
     unsafe fn symbolic_fatobject_get_object(
-        sfo: *const SymbolicFatObject,
-        idx: usize,
+        archive: *const SymbolicFatObject,
+        index: usize,
     ) -> Result<*mut SymbolicObject> {
-        let fo = sfo as *const ArchiveCell;
-        if let Some(obj) = (*fo).get().object_by_index(idx)? {
-            let obj = ObjectCell::from_raw((*fo).owner().clone(), obj);
-            Ok(Box::into_raw(Box::new(obj)) as *mut SymbolicObject)
+        let archive = SymbolicFatObject::as_rust(archive);
+        if let Some(object) = archive.get().object_by_index(index)? {
+            let object = SelfCell::from_raw(archive.owner().clone(), object);
+            Ok(SymbolicObject::from_rust(object))
         } else {
             Ok(ptr::null_mut())
         }
@@ -72,43 +72,39 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns the architecture of the object.
-    unsafe fn symbolic_object_get_arch(so: *const SymbolicObject) -> Result<SymbolicStr> {
-        let o = so as *const ObjectCell;
-        Ok(SymbolicStr::new((*o).get().arch().name()))
+    unsafe fn symbolic_object_get_arch(object: *const SymbolicObject) -> Result<SymbolicStr> {
+        Ok(SymbolicObject::as_rust(object).get().arch().name().into())
     }
 }
 
 ffi_fn! {
     /// Returns the debug identifier of the object.
-    unsafe fn symbolic_object_get_debug_id(so: *const SymbolicObject) -> Result<SymbolicStr> {
-        let o = so as *const ObjectCell;
-        Ok((*o).get().debug_id().to_string().into())
+    unsafe fn symbolic_object_get_debug_id(object: *const SymbolicObject) -> Result<SymbolicStr> {
+        Ok(SymbolicObject::as_rust(object).get().debug_id().to_string().into())
     }
 }
 
 ffi_fn! {
     /// Returns the object kind (e.g. executable, debug file, library, ...).
-    unsafe fn symbolic_object_get_kind(so: *const SymbolicObject) -> Result<SymbolicStr> {
-        let o = so as *const ObjectCell;
-        Ok(SymbolicStr::new((*o).get().kind().name()))
+    unsafe fn symbolic_object_get_kind(object: *const SymbolicObject) -> Result<SymbolicStr> {
+        Ok(SymbolicObject::as_rust(object).get().kind().name().into())
     }
 }
 
 ffi_fn! {
     /// Returns the file format of the object file (e.g. MachO, ELF, ...).
-    unsafe fn symbolic_object_get_file_format(so: *const SymbolicObject) -> Result<SymbolicStr> {
-        let o = so as *mut ObjectCell;
-        Ok(SymbolicStr::new((*o).get().file_format().name()))
+    unsafe fn symbolic_object_get_file_format(
+        object: *const SymbolicObject
+    ) -> Result<SymbolicStr> {
+        Ok(SymbolicObject::as_rust(object).get().file_format().name().into())
     }
 }
 
 ffi_fn! {
     unsafe fn symbolic_object_get_features(
-        so: *const SymbolicObject,
+        object: *const SymbolicObject,
     ) -> Result<SymbolicObjectFeatures> {
-        let o = so as *const ObjectCell;
-        let object = (*o).get();
-
+        let object = SymbolicObject::as_rust(object).get();
         Ok(SymbolicObjectFeatures {
             symtab: object.has_symbols(),
             debug: object.has_debug_info(),
@@ -119,24 +115,21 @@ ffi_fn! {
 
 ffi_fn! {
     /// Frees an object returned from a fat object.
-    unsafe fn symbolic_object_free(so: *mut SymbolicObject) {
-        if !so.is_null() {
-            let o = so as *mut ObjectCell;
-            Box::from_raw(o);
-        }
+    unsafe fn symbolic_object_free(object: *mut SymbolicObject) {
+        SymbolicObject::drop(object);
     }
 }
 
 ffi_fn! {
     /// Converts a Breakpad CodeModuleId to DebugId.
-    unsafe fn symbolic_id_from_breakpad(sid: *const SymbolicStr) -> Result<SymbolicStr> {
-        Ok(DebugId::from_breakpad((*sid).as_str())?.to_string().into())
+    unsafe fn symbolic_id_from_breakpad(breakpad_id: *const SymbolicStr) -> Result<SymbolicStr> {
+        Ok(DebugId::from_breakpad((*breakpad_id).as_str())?.to_string().into())
     }
 }
 
 ffi_fn! {
     /// Normalizes a debug identifier to default representation.
-    unsafe fn symbolic_normalize_debug_id(sid: *const SymbolicStr) -> Result<SymbolicStr> {
-        Ok(DebugId::from_str((*sid).as_str())?.to_string().into())
+    unsafe fn symbolic_normalize_debug_id(debug_id: *const SymbolicStr) -> Result<SymbolicStr> {
+        Ok(DebugId::from_str((*debug_id).as_str())?.to_string().into())
     }
 }

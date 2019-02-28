@@ -5,17 +5,28 @@ use std::slice;
 use std::str::FromStr;
 
 use symbolic::common::{Arch, ByteView};
-use symbolic::debuginfo::Object;
 use symbolic::minidump::cfi::{CfiCache, CFICACHE_LATEST_VERSION};
 use symbolic::minidump::processor::{
     CallStack, CodeModule, CodeModuleId, FrameInfoMap, ProcessState, RegVal, StackFrame, SystemInfo,
 };
 
 use crate::core::SymbolicStr;
-use crate::debuginfo::{SymbolicObject, ObjectCell};
+use crate::debuginfo::SymbolicObject;
+use crate::utils::ForeignObject;
 
-/// Contains stack frame information (CFI) for images.
+/// Contains stack frame information (CFI) for an image.
+pub struct SymbolicCfiCache;
+
+impl ForeignObject for SymbolicCfiCache {
+    type RustObject = CfiCache<'static>;
+}
+
+/// A map of stack frame infos for images.
 pub struct SymbolicFrameInfoMap;
+
+impl ForeignObject for SymbolicFrameInfoMap {
+    type RustObject = FrameInfoMap<'static>;
+}
 
 /// Indicates how well the instruction pointer derived during stack walking is trusted.
 #[repr(u32)]
@@ -247,33 +258,30 @@ unsafe fn map_process_state(state: &ProcessState<'_>) -> SymbolicProcessState {
 ffi_fn! {
     /// Creates a new frame info map.
     unsafe fn symbolic_frame_info_map_new() -> Result<*mut SymbolicFrameInfoMap> {
-        let map = Box::into_raw(Box::new(FrameInfoMap::new())) as *mut SymbolicFrameInfoMap;
-        Ok(map)
+        Ok(SymbolicFrameInfoMap::from_rust(FrameInfoMap::new()))
     }
 }
 
 ffi_fn! {
-    /// Adds the CfiCache for a module specified by the `sid` argument.
+    /// Adds the CfiCache for a module specified by `debug_id`. Assumes ownership over the cache.
     unsafe fn symbolic_frame_info_map_add(
-        smap: *const SymbolicFrameInfoMap,
-        sid: *const SymbolicStr,
-        cficache: *mut SymbolicCfiCache,
+        frame_info_map: *mut SymbolicFrameInfoMap,
+        debug_id: *const SymbolicStr,
+        cfi_cache: *mut SymbolicCfiCache,
     ) -> Result<()> {
-        let map = smap as *mut FrameInfoMap<'static>;
-        let id = CodeModuleId::from_str((*sid).as_str())?;
-        let cache = *Box::from_raw(cficache as *mut CfiCache<'static>);
+        let map = SymbolicFrameInfoMap::as_rust_mut(frame_info_map);
+        let id = CodeModuleId::from_str((*debug_id).as_str())?;
+        let cache = *SymbolicCfiCache::into_rust(cfi_cache);
 
-        (*map).insert(id, cache);
+        map.insert(id, cache);
         Ok(())
     }
 }
 
 ffi_fn! {
     /// Frees a frame info map object.
-    unsafe fn symbolic_frame_info_map_free(smap: *mut SymbolicFrameInfoMap) {
-        if !smap.is_null() {
-            Box::from_raw(smap as *mut FrameInfoMap<'static>);
-        }
+    unsafe fn symbolic_frame_info_map_free(frame_info_map: *mut SymbolicFrameInfoMap) {
+        SymbolicFrameInfoMap::drop(frame_info_map);
     }
 }
 
@@ -282,13 +290,13 @@ ffi_fn! {
     /// of the process at the time of the crash.
     unsafe fn symbolic_process_minidump(
         path: *const c_char,
-        smap: *const SymbolicFrameInfoMap,
+        frame_info_map: *const SymbolicFrameInfoMap,
     ) -> Result<*mut SymbolicProcessState> {
         let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
-        let map = if smap.is_null() {
+        let map = if frame_info_map.is_null() {
             None
         } else {
-            Some(&*(smap as *const FrameInfoMap<'static>))
+            Some(SymbolicFrameInfoMap::as_rust(frame_info_map))
         };
 
         let state = ProcessState::from_minidump(&byteview, map)?;
@@ -303,14 +311,14 @@ ffi_fn! {
     unsafe fn symbolic_process_minidump_buffer(
         buffer: *const c_char,
         length: usize,
-        smap: *const SymbolicFrameInfoMap,
+        frame_info_map: *const SymbolicFrameInfoMap,
     ) -> Result<*mut SymbolicProcessState> {
         let bytes = slice::from_raw_parts(buffer as *const u8, length);
         let byteview = ByteView::from_slice(bytes);
-        let map = if smap.is_null() {
+        let map = if frame_info_map.is_null() {
             None
         } else {
-            Some(&*(smap as *const FrameInfoMap<'static>))
+            Some(SymbolicFrameInfoMap::as_rust(frame_info_map))
         };
 
         let state = ProcessState::from_minidump(&byteview, map)?;
@@ -321,24 +329,21 @@ ffi_fn! {
 
 ffi_fn! {
     /// Frees a process state object.
-    unsafe fn symbolic_process_state_free(sstate: *mut SymbolicProcessState) {
-        if !sstate.is_null() {
-            Box::from_raw(sstate);
+    unsafe fn symbolic_process_state_free(process_state: *mut SymbolicProcessState) {
+        if !process_state.is_null() {
+            Box::from_raw(process_state);
         }
     }
 }
 
-/// Represents a symbolic CFI cache.
-pub struct SymbolicCfiCache;
-
 ffi_fn! {
     /// Extracts call frame information (CFI) from an Object.
     unsafe fn symbolic_cficache_from_object(
-        sobj: *const SymbolicObject,
+        object: *const SymbolicObject,
     ) -> Result<*mut SymbolicCfiCache> {
-        let object = &*(sobj as *const ObjectCell);
-        let cache = CfiCache::from_object(object.get())?;
-        Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicCfiCache)
+        let object = SymbolicObject::as_rust(object).get();
+        let cache = CfiCache::from_object(object)?;
+        Ok(SymbolicCfiCache::from_rust(cache))
     }
 }
 
@@ -347,41 +352,35 @@ ffi_fn! {
     unsafe fn symbolic_cficache_from_path(path: *const c_char) -> Result<*mut SymbolicCfiCache> {
         let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
         let cache = CfiCache::from_bytes(byteview)?;
-        Ok(Box::into_raw(Box::new(cache)) as *mut SymbolicCfiCache)
+        Ok(SymbolicCfiCache::from_rust(cache))
     }
 }
 
 ffi_fn! {
     /// Returns the file format version of the CFI cache.
-    unsafe fn symbolic_cficache_get_version(scache: *const SymbolicCfiCache) -> Result<u32> {
-        let cache = scache as *const CfiCache<'static>;
-        Ok((*cache).version())
+    unsafe fn symbolic_cficache_get_version(cache: *const SymbolicCfiCache) -> Result<u32> {
+        Ok(SymbolicCfiCache::as_rust(cache).version())
     }
 }
 
 ffi_fn! {
     /// Returns a pointer to the raw buffer of the CFI cache.
-    unsafe fn symbolic_cficache_get_bytes(scache: *const SymbolicCfiCache) -> Result<*const u8> {
-        let cache = scache as *const CfiCache<'static>;
-        Ok((*cache).as_slice().as_ptr())
+    unsafe fn symbolic_cficache_get_bytes(cache: *const SymbolicCfiCache) -> Result<*const u8> {
+        Ok(SymbolicCfiCache::as_rust(cache).as_slice().as_ptr())
     }
 }
 
 ffi_fn! {
     /// Returns the size of the raw buffer of the CFI cache.
-    unsafe fn symbolic_cficache_get_size(scache: *const SymbolicCfiCache) -> Result<usize> {
-        let cache = scache as *const CfiCache<'static>;
-        Ok((*cache).as_slice().len())
+    unsafe fn symbolic_cficache_get_size(cache: *const SymbolicCfiCache) -> Result<usize> {
+        Ok(SymbolicCfiCache::as_rust(cache).as_slice().len())
     }
 }
 
 ffi_fn! {
     /// Releases memory held by an unmanaged `SymbolicCfiCache` instance.
-    unsafe fn symbolic_cficache_free(scache: *mut SymbolicCfiCache) {
-        if !scache.is_null() {
-            let cache = scache as *mut CfiCache<'static>;
-            Box::from_raw(cache);
-        }
+    unsafe fn symbolic_cficache_free(cache: *mut SymbolicCfiCache) {
+        SymbolicCfiCache::drop(cache);
     }
 }
 

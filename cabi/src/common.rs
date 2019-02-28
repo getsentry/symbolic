@@ -12,8 +12,7 @@ ffi_fn! {
 ffi_fn! {
     /// Returns the name of the instruction pointer if known.
     unsafe fn symbolic_arch_ip_reg_name(arch: *const SymbolicStr) -> Result<SymbolicStr> {
-        let arch: Arch = (*arch).as_str().parse()?;
-        let name = arch.ip_register_name().ok_or(UnknownArchError)?;
-        Ok(SymbolicStr::new(name))
+        let arch = (*arch).as_str().parse::<Arch>()?;
+        Ok(arch.ip_register_name().ok_or(UnknownArchError)?.into())
     }
 }

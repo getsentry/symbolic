@@ -90,7 +90,7 @@ enum SymbolicFrameTrust {
 typedef uint32_t SymbolicFrameTrust;
 
 /**
- * Represents a symbolic CFI cache.
+ * Contains stack frame information (CFI) for an image.
  */
 typedef struct SymbolicCfiCache SymbolicCfiCache;
 
@@ -100,7 +100,7 @@ typedef struct SymbolicCfiCache SymbolicCfiCache;
 typedef struct SymbolicFatObject SymbolicFatObject;
 
 /**
- * Contains stack frame information (CFI) for images.
+ * A map of stack frame infos for images.
  */
 typedef struct SymbolicFrameInfoMap SymbolicFrameInfoMap;
 
@@ -129,8 +129,14 @@ typedef struct SymbolicSourceView SymbolicSourceView;
  */
 typedef struct SymbolicSymCache SymbolicSymCache;
 
+/**
+ * An Unreal Engine 4 crash report.
+ */
 typedef struct SymbolicUnreal4Crash SymbolicUnreal4Crash;
 
+/**
+ * A file contained in a SymbolicUnreal4Crash.
+ */
 typedef struct SymbolicUnreal4CrashFile SymbolicUnreal4CrashFile;
 
 /**
@@ -302,12 +308,12 @@ bool symbolic_arch_is_known(const SymbolicStr *arch);
 /**
  * Releases memory held by an unmanaged `SymbolicCfiCache` instance.
  */
-void symbolic_cficache_free(SymbolicCfiCache *scache);
+void symbolic_cficache_free(SymbolicCfiCache *cache);
 
 /**
  * Extracts call frame information (CFI) from an Object.
  */
-SymbolicCfiCache *symbolic_cficache_from_object(const SymbolicObject *sobj);
+SymbolicCfiCache *symbolic_cficache_from_object(const SymbolicObject *object);
 
 /**
  * Loads a CFI cache from the given path.
@@ -317,17 +323,17 @@ SymbolicCfiCache *symbolic_cficache_from_path(const char *path);
 /**
  * Returns a pointer to the raw buffer of the CFI cache.
  */
-const uint8_t *symbolic_cficache_get_bytes(const SymbolicCfiCache *scache);
+const uint8_t *symbolic_cficache_get_bytes(const SymbolicCfiCache *cache);
 
 /**
  * Returns the size of the raw buffer of the CFI cache.
  */
-uintptr_t symbolic_cficache_get_size(const SymbolicCfiCache *scache);
+uintptr_t symbolic_cficache_get_size(const SymbolicCfiCache *cache);
 
 /**
  * Returns the file format version of the CFI cache.
  */
-uint32_t symbolic_cficache_get_version(const SymbolicCfiCache *scache);
+uint32_t symbolic_cficache_get_version(const SymbolicCfiCache *cache);
 
 /**
  * Returns the latest CFI cache version.
@@ -377,18 +383,18 @@ SymbolicStr symbolic_err_get_last_message(void);
 /**
  * Frees the given fat object.
  */
-void symbolic_fatobject_free(SymbolicFatObject *sfo);
+void symbolic_fatobject_free(SymbolicFatObject *object);
 
 /**
- * Returns the n-th object.
+ * Returns the n-th object, or a null pointer if the object does not exist.
  */
-SymbolicObject *symbolic_fatobject_get_object(const SymbolicFatObject *sfo,
-                                              uintptr_t idx);
+SymbolicObject *symbolic_fatobject_get_object(const SymbolicFatObject *archive,
+                                              uintptr_t index);
 
 /**
  * Returns the number of contained objects.
  */
-uintptr_t symbolic_fatobject_object_count(const SymbolicFatObject *sfo);
+uintptr_t symbolic_fatobject_object_count(const SymbolicFatObject *object);
 
 /**
  * Loads a fat object from a given path.
@@ -401,16 +407,16 @@ SymbolicFatObject *symbolic_fatobject_open(const char *path);
 uint64_t symbolic_find_best_instruction(const SymbolicInstructionInfo *ii);
 
 /**
- * Adds the CfiCache for a module specified by the `sid` argument.
+ * Adds the CfiCache for a module specified by `debug_id`. Assumes ownership over the cache.
  */
-void symbolic_frame_info_map_add(const SymbolicFrameInfoMap *smap,
-                                 const SymbolicStr *sid,
-                                 SymbolicCfiCache *cficache);
+void symbolic_frame_info_map_add(SymbolicFrameInfoMap *frame_info_map,
+                                 const SymbolicStr *debug_id,
+                                 SymbolicCfiCache *cfi_cache);
 
 /**
  * Frees a frame info map object.
  */
-void symbolic_frame_info_map_free(SymbolicFrameInfoMap *smap);
+void symbolic_frame_info_map_free(SymbolicFrameInfoMap *frame_info_map);
 
 /**
  * Creates a new frame info map.
@@ -420,7 +426,7 @@ SymbolicFrameInfoMap *symbolic_frame_info_map_new(void);
 /**
  * Converts a Breakpad CodeModuleId to DebugId.
  */
-SymbolicStr symbolic_id_from_breakpad(const SymbolicStr *sid);
+SymbolicStr symbolic_id_from_breakpad(const SymbolicStr *breakpad_id);
 
 /**
  * Initializes the symbolic library.
@@ -430,46 +436,46 @@ void symbolic_init(void);
 /**
  * Frees a lookup result.
  */
-void symbolic_lookup_result_free(SymbolicLookupResult *slr);
+void symbolic_lookup_result_free(SymbolicLookupResult *lookup_result);
 
 /**
  * Normalizes a debug identifier to default representation.
  */
-SymbolicStr symbolic_normalize_debug_id(const SymbolicStr *sid);
+SymbolicStr symbolic_normalize_debug_id(const SymbolicStr *debug_id);
 
 /**
  * Frees an object returned from a fat object.
  */
-void symbolic_object_free(SymbolicObject *so);
+void symbolic_object_free(SymbolicObject *object);
 
 /**
  * Returns the architecture of the object.
  */
-SymbolicStr symbolic_object_get_arch(const SymbolicObject *so);
+SymbolicStr symbolic_object_get_arch(const SymbolicObject *object);
 
 /**
  * Returns the debug identifier of the object.
  */
-SymbolicStr symbolic_object_get_debug_id(const SymbolicObject *so);
+SymbolicStr symbolic_object_get_debug_id(const SymbolicObject *object);
 
-SymbolicObjectFeatures symbolic_object_get_features(const SymbolicObject *so);
+SymbolicObjectFeatures symbolic_object_get_features(const SymbolicObject *object);
 
 /**
  * Returns the file format of the object file (e.g. MachO, ELF, ...).
  */
-SymbolicStr symbolic_object_get_file_format(const SymbolicObject *so);
+SymbolicStr symbolic_object_get_file_format(const SymbolicObject *object);
 
 /**
  * Returns the object kind (e.g. executable, debug file, library, ...).
  */
-SymbolicStr symbolic_object_get_kind(const SymbolicObject *so);
+SymbolicStr symbolic_object_get_kind(const SymbolicObject *object);
 
 /**
  * Processes a minidump with optional CFI information and returns the state
  * of the process at the time of the crash.
  */
 SymbolicProcessState *symbolic_process_minidump(const char *path,
-                                                const SymbolicFrameInfoMap *smap);
+                                                const SymbolicFrameInfoMap *frame_info_map);
 
 /**
  * Processes a minidump with optional CFI information and returns the state
@@ -477,24 +483,24 @@ SymbolicProcessState *symbolic_process_minidump(const char *path,
  */
 SymbolicProcessState *symbolic_process_minidump_buffer(const char *buffer,
                                                        uintptr_t length,
-                                                       const SymbolicFrameInfoMap *smap);
+                                                       const SymbolicFrameInfoMap *frame_info_map);
 
 /**
  * Frees a process state object.
  */
-void symbolic_process_state_free(SymbolicProcessState *sstate);
+void symbolic_process_state_free(SymbolicProcessState *process_state);
 
 /**
  * Converts a dotted path at a line number.
  */
-SymbolicStr symbolic_proguardmappingview_convert_dotted_path(const SymbolicProguardMappingView *spmv,
+SymbolicStr symbolic_proguardmappingview_convert_dotted_path(const SymbolicProguardMappingView *view,
                                                              const SymbolicStr *path,
                                                              uint32_t lineno);
 
 /**
  * Frees a proguard mapping view.
  */
-void symbolic_proguardmappingview_free(SymbolicProguardMappingView *spmv);
+void symbolic_proguardmappingview_free(SymbolicProguardMappingView *view);
 
 /**
  * Creates a proguard mapping view from bytes.
@@ -511,17 +517,17 @@ SymbolicProguardMappingView *symbolic_proguardmappingview_from_path(const char *
 /**
  * Returns the UUID of a proguard mapping file.
  */
-SymbolicUuid symbolic_proguardmappingview_get_uuid(SymbolicProguardMappingView *spmv);
+SymbolicUuid symbolic_proguardmappingview_get_uuid(SymbolicProguardMappingView *view);
 
 /**
  * Returns true if the mapping file has line infos.
  */
-bool symbolic_proguardmappingview_has_line_info(const SymbolicProguardMappingView *spmv);
+bool symbolic_proguardmappingview_has_line_info(const SymbolicProguardMappingView *view);
 
 /**
  * Frees a source map view.
  */
-void symbolic_sourcemapview_free(const SymbolicSourceMapView *smv);
+void symbolic_sourcemapview_free(SymbolicSourceMapView *source_map);
 
 /**
  * Loads a sourcemap from a JSON byte slice.
@@ -532,56 +538,56 @@ SymbolicSourceMapView *symbolic_sourcemapview_from_json_slice(const char *data,
 /**
  * Return the number of sources.
  */
-uint32_t symbolic_sourcemapview_get_source_count(const SymbolicSourceMapView *ssm);
+uint32_t symbolic_sourcemapview_get_source_count(const SymbolicSourceMapView *source_map);
 
 /**
  * Return the source name for an index.
  */
-SymbolicStr symbolic_sourcemapview_get_source_name(const SymbolicSourceMapView *ssm,
+SymbolicStr symbolic_sourcemapview_get_source_name(const SymbolicSourceMapView *source_map,
                                                    uint32_t index);
 
 /**
  * Return the sourceview for a given source.
  */
-const SymbolicSourceView *symbolic_sourcemapview_get_sourceview(const SymbolicSourceMapView *ssm,
+const SymbolicSourceView *symbolic_sourcemapview_get_sourceview(const SymbolicSourceMapView *source_map,
                                                                 uint32_t index);
 
 /**
  * Returns a specific token.
  */
-SymbolicTokenMatch *symbolic_sourcemapview_get_token(const SymbolicSourceMapView *ssm,
-                                                     uint32_t idx);
+SymbolicTokenMatch *symbolic_sourcemapview_get_token(const SymbolicSourceMapView *source_map,
+                                                     uint32_t index);
 
 /**
  * Returns the number of tokens.
  */
-uint32_t symbolic_sourcemapview_get_tokens(const SymbolicSourceMapView *ssm);
+uint32_t symbolic_sourcemapview_get_tokens(const SymbolicSourceMapView *source_map);
 
 /**
  * Looks up a token.
  */
-SymbolicTokenMatch *symbolic_sourcemapview_lookup_token(const SymbolicSourceMapView *ssm,
+SymbolicTokenMatch *symbolic_sourcemapview_lookup_token(const SymbolicSourceMapView *source_map,
                                                         uint32_t line,
                                                         uint32_t col);
 
 /**
  * Looks up a token.
  */
-SymbolicTokenMatch *symbolic_sourcemapview_lookup_token_with_function_name(const SymbolicSourceMapView *ssm,
+SymbolicTokenMatch *symbolic_sourcemapview_lookup_token_with_function_name(const SymbolicSourceMapView *source_map,
                                                                            uint32_t line,
                                                                            uint32_t col,
                                                                            const SymbolicStr *minified_name,
-                                                                           const SymbolicSourceView *ssv);
+                                                                           const SymbolicSourceView *view);
 
 /**
  * Returns the underlying source (borrowed).
  */
-SymbolicStr symbolic_sourceview_as_str(const SymbolicSourceView *ssv);
+SymbolicStr symbolic_sourceview_as_str(const SymbolicSourceView *view);
 
 /**
  * Frees a source view.
  */
-void symbolic_sourceview_free(SymbolicSourceView *ssv);
+void symbolic_sourceview_free(SymbolicSourceView *view);
 
 /**
  * Creates a source view from a given path.
@@ -594,13 +600,13 @@ SymbolicSourceView *symbolic_sourceview_from_bytes(const char *bytes,
 /**
  * Returns a specific line.
  */
-SymbolicStr symbolic_sourceview_get_line(const SymbolicSourceView *ssv,
-                                         uint32_t idx);
+SymbolicStr symbolic_sourceview_get_line(const SymbolicSourceView *view,
+                                         uint32_t index);
 
 /**
  * Returns the number of lines.
  */
-uint32_t symbolic_sourceview_get_line_count(const SymbolicSourceView *ssv);
+uint32_t symbolic_sourceview_get_line_count(const SymbolicSourceView *source_map);
 
 /**
  * Frees a symbolic str.
@@ -620,7 +626,7 @@ SymbolicStr symbolic_str_from_cstr(const char *s);
 /**
  * Frees a symcache object.
  */
-void symbolic_symcache_free(SymbolicSymCache *scache);
+void symbolic_symcache_free(SymbolicSymCache *symcache);
 
 /**
  * Creates a symcache from a byte buffer without taking ownership of the pointer.
@@ -631,7 +637,7 @@ SymbolicSymCache *symbolic_symcache_from_bytes(const uint8_t *bytes,
 /**
  * Creates a symcache from a given object.
  */
-SymbolicSymCache *symbolic_symcache_from_object(const SymbolicObject *sobj);
+SymbolicSymCache *symbolic_symcache_from_object(const SymbolicObject *object);
 
 /**
  * Creates a symcache from a given path.
@@ -641,38 +647,38 @@ SymbolicSymCache *symbolic_symcache_from_path(const char *path);
 /**
  * Returns the architecture of the symcache.
  */
-SymbolicStr symbolic_symcache_get_arch(const SymbolicSymCache *scache);
+SymbolicStr symbolic_symcache_get_arch(const SymbolicSymCache *symcache);
 
 /**
  * Returns the internal buffer of the symcache.
  * The internal buffer is exactly `symbolic_symcache_get_size` bytes long.
  */
-const uint8_t *symbolic_symcache_get_bytes(const SymbolicSymCache *scache);
+const uint8_t *symbolic_symcache_get_bytes(const SymbolicSymCache *symcache);
 
 /**
  * Returns the architecture of the symcache.
  */
-SymbolicStr symbolic_symcache_get_debug_id(const SymbolicSymCache *scache);
+SymbolicStr symbolic_symcache_get_debug_id(const SymbolicSymCache *symcache);
 
 /**
  * Returns the size in bytes of the symcache.
  */
-uintptr_t symbolic_symcache_get_size(const SymbolicSymCache *scache);
+uintptr_t symbolic_symcache_get_size(const SymbolicSymCache *symcache);
 
 /**
  * Returns the version of the cache file.
  */
-uint32_t symbolic_symcache_get_version(const SymbolicSymCache *scache);
+uint32_t symbolic_symcache_get_version(const SymbolicSymCache *symcache);
 
 /**
  * Returns true if the symcache has file infos.
  */
-bool symbolic_symcache_has_file_info(const SymbolicSymCache *scache);
+bool symbolic_symcache_has_file_info(const SymbolicSymCache *symcache);
 
 /**
  * Returns true if the symcache has line infos.
  */
-bool symbolic_symcache_has_line_info(const SymbolicSymCache *scache);
+bool symbolic_symcache_has_line_info(const SymbolicSymCache *symcache);
 
 /**
  * Returns the latest symcache version.
@@ -682,38 +688,71 @@ uint32_t symbolic_symcache_latest_file_format_version(void);
 /**
  * Looks up a single symbol.
  */
-SymbolicLookupResult symbolic_symcache_lookup(const SymbolicSymCache *scache,
+SymbolicLookupResult symbolic_symcache_lookup(const SymbolicSymCache *symcache,
                                               uint64_t addr);
 
 /**
  * Free a token match.
  */
-void symbolic_token_match_free(SymbolicTokenMatch *stm);
+void symbolic_token_match_free(SymbolicTokenMatch *token_match);
 
+/**
+ * Returns file meta data of a file in the Unreal 4 crash.
+ */
 const SymbolicUnreal4CrashFile *symbolic_unreal4_crash_file_by_index(const SymbolicUnreal4Crash *unreal,
-                                                                     uintptr_t idx);
+                                                                     uintptr_t index);
 
+/**
+ * Returns file contents data of a file in the Unreal 4 crash.
+ */
+const uint8_t *symbolic_unreal4_crash_file_contents(const SymbolicUnreal4CrashFile *file,
+                                                    const SymbolicUnreal4Crash *unreal,
+                                                    uintptr_t *len);
+
+/**
+ * Returns the number of files in the Unreal 4 crash.
+ */
 uintptr_t symbolic_unreal4_crash_file_count(const SymbolicUnreal4Crash *unreal);
 
-const uint8_t *symbolic_unreal4_crash_file_meta_contents(const SymbolicUnreal4CrashFile *meta,
-                                                         const SymbolicUnreal4Crash *unreal,
-                                                         uintptr_t *len);
+/**
+ * Returns the file name of a file in the Unreal 4 crash.
+ */
+SymbolicStr symbolic_unreal4_crash_file_name(const SymbolicUnreal4CrashFile *file);
 
-SymbolicStr symbolic_unreal4_crash_file_meta_name(const SymbolicUnreal4CrashFile *meta);
+/**
+ * Returns the file type of a file in the Unreal 4 crash.
+ */
+SymbolicStr symbolic_unreal4_crash_file_type(const SymbolicUnreal4CrashFile *file);
 
-SymbolicStr symbolic_unreal4_crash_file_meta_type(const SymbolicUnreal4CrashFile *meta);
-
+/**
+ * Frees an Unreal Engine 4 crash.
+ */
 void symbolic_unreal4_crash_free(SymbolicUnreal4Crash *unreal);
 
+/**
+ * Parses an Unreal Engine 4 crash from the given buffer.
+ */
 SymbolicUnreal4Crash *symbolic_unreal4_crash_from_bytes(const char *bytes,
                                                         uintptr_t len);
 
+/**
+ * Parses the Apple crash report from an Unreal Engine 4 crash.
+ */
 SymbolicStr symbolic_unreal4_crash_get_apple_crash_report(const SymbolicUnreal4Crash *unreal);
 
+/**
+ * Processes the minidump process state from an Unreal Engine 4 crash.
+ */
 SymbolicProcessState *symbolic_unreal4_crash_process_minidump(const SymbolicUnreal4Crash *unreal);
 
+/**
+ * Parses the Unreal Engine 4 context from a crash, returns JSON.
+ */
 SymbolicStr symbolic_unreal4_get_context(const SymbolicUnreal4Crash *unreal);
 
+/**
+ * Parses the Unreal Engine 4 logs from a crash, returns JSON.
+ */
 SymbolicStr symbolic_unreal4_get_logs(const SymbolicUnreal4Crash *unreal);
 
 /**
