@@ -15,6 +15,7 @@ use failure::Fail;
 use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Range};
 use gimli::{constants, UnitSectionOffset};
+use lazycell::LazyCell;
 
 use symbolic_common::{derive_failure, Language, Name};
 
@@ -87,6 +88,7 @@ type Attribute<'a> = gimli::read::Attribute<Slice<'a>>;
 type UnitOffset = gimli::read::UnitOffset<usize>;
 type DebugInfoOffset = gimli::DebugInfoOffset<usize>;
 
+type CompilationUnitHeader<'a> = gimli::read::CompilationUnitHeader<Slice<'a>>;
 type IncompleteLineNumberProgram<'a> = gimli::read::IncompleteLineProgram<Slice<'a>>;
 type LineNumberProgramHeader<'a> = gimli::read::LineProgramHeader<Slice<'a>>;
 
@@ -300,8 +302,11 @@ struct DwarfUnit<'d, 'a> {
 }
 
 impl<'d, 'a> DwarfUnit<'d, 'a> {
-    /// Parses this unit.
-    fn parse(unit: &'a Unit<'d>, session: &'a DwarfDebugSession<'d>) -> Result<Self, DwarfError> {
+    /// Creates a DWARF unit from the gimli `Unit` type.
+    fn from_unit(
+        unit: &'a Unit<'d>,
+        session: &'a DwarfDebugSession<'d>,
+    ) -> Result<Self, DwarfError> {
         let mut entries = unit.entries();
         let entry = match entries.next_dfs()? {
             Some((_, entry)) => entry,
@@ -665,7 +670,8 @@ where
 /// A debugging session for DWARF debugging information.
 pub struct DwarfDebugSession<'data> {
     info: DwarfInfo<'data>,
-    units: Vec<Unit<'data>>,
+    headers: Vec<CompilationUnitHeader<'data>>,
+    units: Vec<LazyCell<Option<Unit<'data>>>>,
     symbol_map: SymbolMap<'data>,
     load_address: u64,
 }
@@ -696,32 +702,54 @@ impl<'d> DwarfDebugSession<'d> {
         };
 
         // Prepare random access to unit headers.
-        let units = info
-            .units()
-            .and_then(|header| Unit::new(&info, header))
-            .collect()?;
+        let headers = info.units().collect::<Vec<_>>()?;
+        let units = headers.iter().map(|_| LazyCell::new()).collect();
 
         Ok(DwarfDebugSession {
             info,
+            headers,
             units,
             symbol_map,
             load_address,
         })
     }
 
+    fn get_unit(&self, index: usize) -> Result<Option<&Unit<'d>>, DwarfError> {
+        // Silently ignore unit references out-of-bound
+        let cell = match self.units.get(index) {
+            Some(cell) => cell,
+            None => return Ok(None),
+        };
+
+        let unit_opt = cell.try_borrow_with(|| {
+            // Parse the compilation unit from the header. This requires a top-level DIE that
+            // describes the unit itself. For some older DWARF files, this DIE might be missing
+            // which causes gimli to error out. We prefer to skip them silently as this simply marks
+            // an empty unit for us.
+            let header = self.headers[index].clone();
+            match self.info.unit(header) {
+                Ok(unit) => Ok(Some(unit)),
+                Err(gimli::read::Error::MissingUnitDie) => Ok(None),
+                Err(error) => Err(DwarfError::from(error)),
+            }
+        })?;
+
+        Ok(unit_opt.as_ref())
+    }
+
     fn find_unit_offset(
         &self,
         offset: DebugInfoOffset,
     ) -> Result<(&Unit<'d>, UnitOffset), DwarfError> {
-        let unit_offset = UnitSectionOffset::DebugInfoOffset(offset);
-        let idx = match self.units.binary_search_by_key(&unit_offset, |x| x.offset) {
-            Ok(idx) => idx,
+        let index = match self.headers.binary_search_by_key(&offset, |h| h.offset()) {
+            Ok(index) => index,
             Err(0) => return Err(DwarfErrorKind::InvalidUnitRef(offset.0).into()),
-            Err(next_idx) => next_idx - 1,
+            Err(next_index) => next_index - 1,
         };
 
-        if let Some(unit) = self.units.get(idx) {
-            if let Some(unit_offset) = unit_offset.to_unit_offset(unit) {
+        if let Some(unit) = self.get_unit(index)? {
+            let offset = UnitSectionOffset::DebugInfoOffset(offset);
+            if let Some(unit_offset) = offset.to_unit_offset(unit) {
                 return Ok((unit, unit_offset));
             }
         }
@@ -738,12 +766,15 @@ impl<'d> DebugSession for DwarfDebugSession<'d> {
         let mut line_buf = Vec::new();
         let mut functions = Vec::new();
 
-        for unit in self.units.iter() {
-            let unit = DwarfUnit::parse(unit, self)?;
-            let batch_start = functions.len();
+        for index in 0..self.headers.len() {
+            let unit = match self.get_unit(index)? {
+                Some(unit) => DwarfUnit::from_unit(unit, self)?,
+                None => continue,
+            };
 
             let mut depth = 0;
             let mut skipped_depth = None;
+            let batch_start = functions.len();
 
             let mut stack = FunctionStack::new();
             let mut entries = unit.unit.entries();
@@ -869,7 +900,7 @@ impl<'d> DebugSession for DwarfDebugSession<'d> {
 
             // Units are sorted by their address range in DWARF, but the functions within may occurr
             // in any order. Sort the batch that was just written, therefore.
-            dmsort::sort_by_key(&mut functions[batch_start..], |f| f.address)
+            dmsort::sort_by_key(&mut functions[batch_start..], |f| f.address);
         }
 
         Ok(functions)

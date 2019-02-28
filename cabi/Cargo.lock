@@ -461,6 +461,11 @@ version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "lazycell"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "libc"
 version = "0.2.48"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1237,6 +1242,7 @@ dependencies = [
  "flate2 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "gimli 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "goblin 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazycell 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "pdb 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "pest 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1548,6 +1554,7 @@ dependencies = [
 "checksum iovec 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "dbe6e417e7d0975db6512b90796e8ce223145ac4e33c377e4a42882a0e88bb08"
 "checksum itoa 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "1306f3464951f30e30d12373d31c79fbd52d236e5e896fd92f96ec7babbbe60b"
 "checksum lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bc5729f27f159ddd61f4df6228e827e86643d4d3e7c32183cb30a1c08f604a14"
+"checksum lazycell 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b294d6fa9ee409a054354afc4352b0b9ef7ca222c69b8812cbea9e7d2bf3783f"
 "checksum libc 0.2.48 (registry+https://github.com/rust-lang/crates.io-index)" = "e962c7641008ac010fa60a7dfdc1712449f29c44ef2d4702394aea943ee75047"
 "checksum linked-hash-map 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7860ec297f7008ff7a1e3382d7f7e1dcd69efc94751a2284bafc3d013c2aa939"
 "checksum linked-hash-map 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "70fb39025bc7cdd76305867c4eccf2f2dcf6e9a57f5b21a93e1c2d86cd03ec9e"
