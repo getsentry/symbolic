@@ -140,8 +140,8 @@ impl<W: Write> AsciiCfiWriter<W> {
     fn process_breakpad(&mut self, object: &BreakpadObject<'_>) -> Result<(), CfiError> {
         for record in object.stack_records() {
             match record.context(CfiErrorKind::BadDebugInfo)? {
-                BreakpadStackRecord::Cfi(r) => write!(self.inner, "STACK CFI {}\n", r.text),
-                BreakpadStackRecord::Win(r) => write!(self.inner, "STACK WIN {}\n", r.text),
+                BreakpadStackRecord::Cfi(r) => writeln!(self.inner, "STACK CFI {}", r.text),
+                BreakpadStackRecord::Win(r) => writeln!(self.inner, "STACK WIN {}", r.text),
             }
             .context(CfiErrorKind::WriteError)?
         }
