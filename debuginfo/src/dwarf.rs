@@ -825,7 +825,7 @@ impl<'d> DebugSession for DwarfDebugSession<'d> {
                 // look at the symbol table based on the start of the DIE range.
                 let symbol_name = if !inline {
                     self.symbol_map
-                        .lookup_range(function_address, function_address + function_size)
+                        .lookup_range(function_address..function_address + function_size)
                         .and_then(|symbol| symbol.name.clone())
                 } else {
                     None

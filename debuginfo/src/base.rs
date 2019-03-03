@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::fmt;
 use std::iter::FromIterator;
-use std::ops::Deref;
+use std::ops::{Bound, Deref, RangeBounds};
 use std::str::FromStr;
 
 use failure::Fail;
@@ -284,12 +284,28 @@ impl<'data> SymbolMap<'data> {
     /// Looks up a symbol covering an entire range.
     ///
     /// This is similar to [`lookup`], but it only returns the symbol result if it _also_ covers the
-    /// end address.
+    /// inclusive end address of the range.
     ///
     /// [`lookup`]: struct.SymbolMap.html#method.lookup
-    pub fn lookup_range(&self, start: u64, end: u64) -> Option<&Symbol<'data>> {
+    pub fn lookup_range<R>(&self, range: R) -> Option<&Symbol<'data>>
+    where
+        R: RangeBounds<u64>,
+    {
+        let start = match range.start_bound() {
+            Bound::Included(start) => *start,
+            Bound::Excluded(start) => *start + 1,
+            Bound::Unbounded => 0,
+        };
+
         let symbol = self.lookup(start)?;
-        if symbol.contains(end) {
+
+        let end = match range.end_bound() {
+            Bound::Included(end) => *end,
+            Bound::Excluded(end) => *end - 1,
+            Bound::Unbounded => u64::max_value(),
+        };
+
+        if end <= start || symbol.contains(end) {
             Some(symbol)
         } else {
             None
