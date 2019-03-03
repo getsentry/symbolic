@@ -24,3 +24,6 @@ symbolic-debuginfo = { version = "5.8.2", path = "../debuginfo" }
 
 [dev-dependencies]
 insta = "0.6.3"
+
+[features]
+bench = []
