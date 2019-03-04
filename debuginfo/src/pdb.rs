@@ -10,7 +10,7 @@ use fallible_iterator::FallibleIterator;
 use parking_lot::RwLock;
 use pdb::{AddressMap, MachineType, SymbolData};
 
-use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
+use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::private::{HexFmt, Parse};
@@ -72,6 +72,14 @@ impl<'d> PdbObject<'d> {
     /// The container file format, which is always `FileFormat::Pdb`.
     pub fn file_format(&self) -> FileFormat {
         FileFormat::Pdb
+    }
+
+    /// The code identifier of this object, always `None`.
+    ///
+    /// PDB files do not contain sufficient information to compute the code identifier, since they
+    /// are lacking the relevant parts of the PE header.
+    pub fn code_id(&self) -> Option<CodeId> {
+        None
     }
 
     /// The debug information identifier of this PDB.
@@ -194,6 +202,10 @@ impl<'d> ObjectLike for PdbObject<'d> {
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
+    }
+
+    fn code_id(&self) -> Option<CodeId> {
+        self.code_id()
     }
 
     fn debug_id(&self) -> DebugId {

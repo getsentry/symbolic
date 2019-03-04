@@ -68,6 +68,11 @@ fn test_breakpad() -> Result<(), Error> {
 
     insta::assert_debug_snapshot_matches!(object, @r###"Breakpad(
     BreakpadObject {
+        code_id: Some(
+            CodeId(
+                "5AB380779000"
+            )
+        ),
         debug_id: DebugId {
             uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
             appendix: 1
@@ -116,6 +121,11 @@ fn test_elf_executable() -> Result<(), Error> {
 
     insta::assert_debug_snapshot_matches!(object, @r###"Elf(
     ElfObject {
+        code_id: Some(
+            CodeId(
+                "f1c3bcc0279865fe3058404b2831d9e64135386c"
+            )
+        ),
         debug_id: DebugId {
             uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
             appendix: 0
@@ -139,6 +149,11 @@ fn test_elf_debug() -> Result<(), Error> {
 
     insta::assert_debug_snapshot_matches!(object, @r###"Elf(
     ElfObject {
+        code_id: Some(
+            CodeId(
+                "f1c3bcc0279865fe3058404b2831d9e64135386c"
+            )
+        ),
         debug_id: DebugId {
             uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
             appendix: 0
@@ -186,6 +201,11 @@ fn test_mach_executable() -> Result<(), Error> {
 
     insta::assert_debug_snapshot_matches!(object, @r###"MachO(
     MachObject {
+        code_id: Some(
+            CodeId(
+                "67E9247C-814E-392B-A027-DBDE6748FCBF"
+            )
+        ),
         debug_id: DebugId {
             uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
             appendix: 0
@@ -210,6 +230,11 @@ fn test_mach_dsym() -> Result<(), Error> {
 
     insta::assert_debug_snapshot_matches!(object, @r###"MachO(
     MachObject {
+        code_id: Some(
+            CodeId(
+                "67E9247C-814E-392B-A027-DBDE6748FCBF"
+            )
+        ),
         debug_id: DebugId {
             uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
             appendix: 0
@@ -257,6 +282,11 @@ fn test_pe() -> Result<(), Error> {
 
     insta::assert_debug_snapshot_matches!(object, @r###"Pe(
     PeObject {
+        code_id: Some(
+            CodeId(
+                "5AB380779000"
+            )
+        ),
         debug_id: DebugId {
             uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
             appendix: 1

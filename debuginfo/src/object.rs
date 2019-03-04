@@ -5,7 +5,7 @@ use std::io::Cursor;
 use failure::Fail;
 use goblin::Hint;
 
-use symbolic_common::{Arch, AsSelf, DebugId};
+use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
 use crate::breakpad::*;
@@ -156,6 +156,15 @@ impl<'d> Object<'d> {
         }
     }
 
+    /// The code identifier of this object.
+    ///
+    /// This is a platform-dependent string of variable length that _always_ refers to the code file
+    /// (e.g. executable or library), even if this object is a debug file. See the variants for the
+    /// semantics of this code identifier.
+    pub fn code_id(&self) -> Option<CodeId> {
+        match_inner!(self, Object(ref o) => o.code_id())
+    }
+
     /// The debug information identifier of this object.
     ///
     /// For platforms that use different identifiers for their code and debug files, this _always_
@@ -258,6 +267,10 @@ impl<'d> ObjectLike for Object<'d> {
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
+    }
+
+    fn code_id(&self) -> Option<CodeId> {
+        self.code_id()
     }
 
     fn debug_id(&self) -> DebugId {

@@ -8,7 +8,7 @@ use std::str;
 use failure::Fail;
 use pest::Parser;
 
-use symbolic_common::{derive_failure, Arch, AsSelf, DebugId, Name};
+use symbolic_common::{derive_failure, Arch, AsSelf, CodeId, DebugId, Name};
 
 use crate::base::*;
 use crate::private::{Lines, Parse};
@@ -108,6 +108,110 @@ impl<'d> BreakpadModuleRecord<'d> {
         }
 
         Ok(record)
+    }
+}
+
+/// An information record.
+///
+/// This record type is not documented, but appears in Breakpad symbols after the header. It seems
+/// that currently only a `CODE_ID` scope is used, which contains the platform-dependent original
+/// code identifier of an object file.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum BreakpadInfoRecord<'d> {
+    /// Information on the code file.
+    CodeId {
+        /// Identifier of the code file.
+        code_id: &'d str,
+        /// File name of the code file.
+        code_file: &'d str,
+    },
+    /// Any other INFO record.
+    Other {
+        /// The scope of this info record.
+        scope: &'d str,
+        /// The information for this scope.
+        info: &'d str,
+    },
+}
+
+impl<'d> BreakpadInfoRecord<'d> {
+    /// Parses an info record from a single line.
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+        let string = str::from_utf8(data)?;
+        let parsed = BreakpadParser::parse(Rule::info, string)?.next().unwrap();
+
+        for pair in parsed.into_inner() {
+            match pair.as_rule() {
+                Rule::info_code_id => return Self::code_info_from_pair(pair),
+                Rule::info_other => return Self::other_from_pair(pair),
+                _ => unreachable!(),
+            }
+        }
+
+        Err(BreakpadErrorKind::Parse("unknown INFO record").into())
+    }
+
+    fn code_info_from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Result<Self, BreakpadError> {
+        let mut code_id = "";
+        let mut code_file = "";
+
+        for pair in pair.into_inner() {
+            match pair.as_rule() {
+                Rule::code_id => code_id = pair.as_str(),
+                Rule::name => code_file = pair.as_str(),
+                _ => unreachable!(),
+            }
+        }
+
+        Ok(BreakpadInfoRecord::CodeId { code_id, code_file })
+    }
+
+    fn other_from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Result<Self, BreakpadError> {
+        let mut scope = "";
+        let mut info = "";
+
+        for pair in pair.into_inner() {
+            match pair.as_rule() {
+                Rule::ident => scope = pair.as_str(),
+                Rule::text => info = pair.as_str(),
+                _ => unreachable!(),
+            }
+        }
+
+        Ok(BreakpadInfoRecord::Other { scope, info })
+    }
+}
+
+/// An iterator over info records in a Breakpad object.
+#[derive(Clone, Debug)]
+pub struct BreakpadInfoRecords<'d> {
+    lines: Lines<'d>,
+    finished: bool,
+}
+
+impl<'d> Iterator for BreakpadInfoRecords<'d> {
+    type Item = Result<BreakpadInfoRecord<'d>, BreakpadError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
+
+        while let Some(line) = self.lines.next() {
+            if line.starts_with(b"MODULE ") {
+                continue;
+            }
+
+            // Fast path: INFO records come right after the header.
+            if !line.starts_with(b"INFO ") {
+                break;
+            }
+
+            return Some(BreakpadInfoRecord::parse(line));
+        }
+
+        self.finished = true;
+        None
     }
 }
 
@@ -685,6 +789,19 @@ impl<'d> BreakpadObject<'d> {
         FileFormat::Breakpad
     }
 
+    /// The code identifier of this object.
+    pub fn code_id(&self) -> Option<CodeId> {
+        for result in self.info_records() {
+            if let Ok(record) = result {
+                if let BreakpadInfoRecord::CodeId { code_id, .. } = record {
+                    return Some(CodeId::new(code_id.into()));
+                }
+            }
+        }
+
+        None
+    }
+
     /// The debug information identifier of this object.
     pub fn debug_id(&self) -> DebugId {
         self.id
@@ -756,6 +873,14 @@ impl<'d> BreakpadObject<'d> {
         self.stack_records().next().is_some()
     }
 
+    /// Returns an iterator over info records.
+    pub fn info_records(&self) -> BreakpadInfoRecords<'d> {
+        BreakpadInfoRecords {
+            lines: Lines::new(self.data),
+            finished: false,
+        }
+    }
+
     /// Returns an iterator over file records.
     pub fn file_records(&self) -> BreakpadFileRecords<'d> {
         BreakpadFileRecords {
@@ -805,6 +930,7 @@ impl<'d> BreakpadObject<'d> {
 impl fmt::Debug for BreakpadObject<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("BreakpadObject")
+            .field("code_id", &self.code_id())
             .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())
             .field("name", &self.name())
@@ -841,6 +967,10 @@ impl<'d> ObjectLike for BreakpadObject<'d> {
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
+    }
+
+    fn code_id(&self) -> Option<CodeId> {
+        self.code_id()
     }
 
     fn debug_id(&self) -> DebugId {

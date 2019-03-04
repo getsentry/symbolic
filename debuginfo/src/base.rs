@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use failure::Fail;
 
-use symbolic_common::{join_path, Arch, DebugId, Name};
+use symbolic_common::{join_path, Arch, CodeId, DebugId, Name};
 
 use crate::private::HexFmt;
 
@@ -508,6 +508,12 @@ pub trait ObjectLike {
 
     /// The container format of this file.
     fn file_format(&self) -> FileFormat;
+
+    /// The code identifier of this object.
+    ///
+    /// The identifier can be `None` if it cannot be determined from the object file, for instance,
+    /// because the identifier was stripped in the build process.
+    fn code_id(&self) -> Option<CodeId>;
 
     /// The debug information identifier of this object.
     fn debug_id(&self) -> DebugId;

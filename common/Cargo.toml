@@ -17,7 +17,7 @@ ProGuard optimized Android apps.
 edition = "2018"
 
 [dependencies]
-debugid = "0.4.0"
+debugid = "0.5.0"
 failure = "0.1.5"
 memmap = "0.7.0"
 stable_deref_trait = "1.1.1"

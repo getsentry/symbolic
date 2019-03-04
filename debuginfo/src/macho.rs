@@ -8,7 +8,7 @@ use failure::Fail;
 use goblin::{error::Error as GoblinError, mach};
 use smallvec::SmallVec;
 
-use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
+use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, Endian};
@@ -49,20 +49,31 @@ impl<'d> MachObject<'d> {
         FileFormat::MachO
     }
 
-    /// The debug information identifier of a MachO file.
-    ///
-    /// Mach objects use a UUID which is specified in the load commands that are part of the Mach
-    /// header. This UUID is generated at compile / link time and is usually unique per compilation.
-    pub fn debug_id(&self) -> DebugId {
+    fn find_uuid(&self) -> Option<Uuid> {
         for cmd in &self.macho.load_commands {
             if let mach::load_command::CommandVariant::Uuid(ref uuid_cmd) = cmd.command {
-                if let Ok(uuid) = Uuid::from_slice(&uuid_cmd.uuid) {
-                    return DebugId::from_uuid(uuid);
-                }
+                return Uuid::from_slice(&uuid_cmd.uuid).ok();
             }
         }
 
-        DebugId::default()
+        None
+    }
+
+    /// The code identifier of this object.
+    ///
+    /// Mach objects use a UUID which is specified in the load commands that are part of the Mach
+    /// header. This UUID is generated at compile / link time and is usually unique per compilation.
+    pub fn code_id(&self) -> Option<CodeId> {
+        let uuid = self.find_uuid()?;
+        let string = format!("{:X}", uuid.to_hyphenated_ref());
+        Some(CodeId::new(string))
+    }
+
+    /// The debug information identifier of a MachO file.
+    ///
+    /// This uses the same UUID as `code_id`.
+    pub fn debug_id(&self) -> DebugId {
+        self.find_uuid().map(DebugId::from_uuid).unwrap_or_default()
     }
 
     /// The CPU architecture of this object, as specified in the Mach header.
@@ -219,6 +230,7 @@ impl<'d> MachObject<'d> {
 impl fmt::Debug for MachObject<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("MachObject")
+            .field("code_id", &self.code_id())
             .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())
             .field("kind", &self.kind())
@@ -256,6 +268,10 @@ impl<'d> ObjectLike for MachObject<'d> {
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
+    }
+
+    fn code_id(&self) -> Option<CodeId> {
+        self.code_id()
     }
 
     fn debug_id(&self) -> DebugId {

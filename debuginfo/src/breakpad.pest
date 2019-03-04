@@ -14,7 +14,10 @@ debug_id = @{ ASCII_HEX_DIGIT{33,40} }
 // INFO record
 // Example: "INFO CODE_ID C22813AC7D101E2FF2598697023E1F28"
 // no documentation available
-info = { "INFO" ~ ident ~ text }
+info = { "INFO" ~ (info_code_id | info_other) }
+info_code_id = { "CODE_ID" ~ code_id ~ name? }
+info_other = { ident ~ text }
+code_id = @{ hex }
 
 // FILE record
 // Example: "FILE 2 /home/jimb/mc/in/browser/app/nsBrowserApp.cpp"

@@ -9,7 +9,7 @@ use flate2::{Decompress, FlushDecompress};
 use goblin::elf::compression_header::{CompressionHeader, ELFCOMPRESS_ZLIB};
 use goblin::{container::Ctx, elf, error::Error as GoblinError, strtab};
 
-use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
+use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, Endian};
@@ -54,17 +54,23 @@ impl<'d> ElfObject<'d> {
         FileFormat::Elf
     }
 
-    /// The debug information identifier of an ELF object.
+    /// The code identifier of this object.
     ///
     /// As opposed to Mach-O, ELF does not specify a unique ID for object files in
     /// its header. Compilers and linkers usually add either `SHT_NOTE` sections or
     /// `PT_NOTE` program header elements for this purpose.
+    pub fn code_id(&self) -> Option<CodeId> {
+        self.find_build_id().map(|slice| CodeId::from_binary(slice))
+    }
+
+    /// The debug information identifier of an ELF object.
     ///
-    /// If neither of the above are present, this function will hash the first page
-    /// of the `.text` section (program code) to synthesize a unique ID. This is
-    /// likely not a valid UUID since was generated off a hash value.
+    /// The debug identifier is a rehash of the first 16 bytes of the `code_id`, if
+    /// present. Otherwise, this function will hash the first page of the `.text`
+    /// section (program code) to synthesize a unique ID. This is likely not a valid
+    /// UUID since was generated off a hash value.
     ///
-    /// If all of the above fails, the identifier will be `None`.
+    /// If all of the above fails, the identifier will be an empty `DebugId`.
     pub fn debug_id(&self) -> DebugId {
         // Search for a GNU build identifier node in the program headers or the
         // build ID section. If errors occur during this process, fall through
@@ -320,6 +326,7 @@ impl<'d> ElfObject<'d> {
 impl fmt::Debug for ElfObject<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("ElfObject")
+            .field("code_id", &self.code_id())
             .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())
             .field("kind", &self.kind())
@@ -357,6 +364,10 @@ impl<'d> ObjectLike for ElfObject<'d> {
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
+    }
+
+    fn code_id(&self) -> Option<CodeId> {
+        self.code_id()
     }
 
     fn debug_id(&self) -> DebugId {

@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use failure::Fail;
 use goblin::{error::Error as GoblinError, pe};
 
-use symbolic_common::{Arch, AsSelf, DebugId, Uuid};
+use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::private::{HexFmt, Parse};
@@ -54,6 +54,22 @@ impl<'d> PeObject<'d> {
     /// The container file format, which is always `FileFormat::Pe`.
     pub fn file_format(&self) -> FileFormat {
         FileFormat::Pe
+    }
+
+    /// The code identifier of this object.
+    ///
+    /// The code identifier consists of the `time_date_stamp` field id the COFF header, followed by
+    /// the `size_of_image` field in the optional header. If the optional PE header is not present,
+    /// this identifier is `None`.
+    pub fn code_id(&self) -> Option<CodeId> {
+        let header = &self.pe.header;
+        let optional_header = header.optional_header.as_ref()?;
+
+        let timestamp = header.coff_header.time_date_stamp;
+        let size_of_image = optional_header.windows_fields.size_of_image;
+        let string = format!("{:08X}{:X}", timestamp, size_of_image);
+
+        Some(CodeId::new(string))
     }
 
     /// The debug information identifier of this PE.
@@ -154,6 +170,7 @@ impl<'d> PeObject<'d> {
 impl fmt::Debug for PeObject<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("PeObject")
+            .field("code_id", &self.code_id())
             .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())
             .field("kind", &self.kind())
@@ -191,6 +208,10 @@ impl<'d> ObjectLike for PeObject<'d> {
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
+    }
+
+    fn code_id(&self) -> Option<CodeId> {
+        self.code_id()
     }
 
     fn debug_id(&self) -> DebugId {
