@@ -224,7 +224,7 @@ where
     #[inline]
     pub fn new<F>(owner: O, derive: F) -> Self
     where
-        F: Fn(*const <O as Deref>::Target) -> T,
+        F: FnOnce(*const <O as Deref>::Target) -> T,
     {
         let derived = derive(owner.deref() as *const _);
         SelfCell { owner, derived }
@@ -237,7 +237,7 @@ where
     #[inline]
     pub fn try_new<E, F>(owner: O, derive: F) -> Result<Self, E>
     where
-        F: Fn(*const <O as Deref>::Target) -> Result<T, E>,
+        F: FnOnce(*const <O as Deref>::Target) -> Result<T, E>,
     {
         let derived = derive(owner.deref() as *const _)?;
         Ok(SelfCell { owner, derived })
