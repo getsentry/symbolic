@@ -217,6 +217,10 @@ impl<'d> Object<'d> {
     /// Objects that do not support debugging or do not contain debugging information return an
     /// empty debug session. This only returns an error if constructing the debug session fails due
     /// to invalid debug data in the object.
+    ///
+    /// Constructing this session will also work if the object does not contain debugging
+    /// information, in which case the session will be a no-op. This can be checked via
+    /// [`has_debug_info`](enum.Object.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<ObjectDebugSession<'d>, ObjectError> {
         match *self {
             Object::Breakpad(ref o) => o

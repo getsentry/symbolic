@@ -195,6 +195,10 @@ impl<'d> ElfObject<'d> {
     ///
     /// ELF files generally use DWARF debugging information, which is also used by MachO containers
     /// on macOS.
+    ///
+    /// Constructing this session will also work if the object does not contain debugging
+    /// information, in which case the session will be a no-op. This can be checked via
+    /// [`has_debug_info`](struct.ElfObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
         let symbols = self.symbol_map();
         DwarfDebugSession::parse(self, symbols, self.load_address())

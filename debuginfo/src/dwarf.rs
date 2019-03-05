@@ -8,6 +8,7 @@
 //! [`MachObject`] ../macho/struct.MachObject.html
 
 use std::borrow::Cow;
+use std::marker::PhantomData;
 use std::ops::Deref;
 
 use failure::Fail;
@@ -41,10 +42,6 @@ type LineNumberProgramHeader<'a> = gimli::read::LineProgramHeader<Slice<'a>>;
 /// Variants of [`DwarfError`](struct.DwarfError.html).
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 pub enum DwarfErrorKind {
-    /// A required DWARF section is missing in the object file.
-    #[fail(display = "missing required {} section", _0)]
-    MissingSection(&'static str),
-
     /// A compilation unit referenced by index does not exist.
     #[fail(display = "compilation unit for offset {} does not exist", _0)]
     InvalidUnitRef(usize),
@@ -737,45 +734,65 @@ impl<'a> FunctionStack<'a> {
     }
 }
 
-struct DwarfData<'data> {
+// Data of a specific DWARF section.
+struct DwarfSection<'data, S> {
+    data: Cow<'data, [u8]>,
     endianity: Endian,
-    debug_abbrev: Cow<'data, [u8]>,
-    debug_info: Cow<'data, [u8]>,
-    debug_line: Cow<'data, [u8]>,
-    debug_line_str: Cow<'data, [u8]>,
-    debug_str: Cow<'data, [u8]>,
-    debug_str_offsets: Cow<'data, [u8]>,
-    debug_ranges: Cow<'data, [u8]>,
-    debug_rnglists: Cow<'data, [u8]>,
+    _ph: PhantomData<S>,
 }
 
-impl<'data> DwarfData<'data> {
+impl<'data, S> DwarfSection<'data, S>
+where
+    S: gimli::read::Section<Slice<'data>>,
+{
+    /// Loads data for this section from the object file.
+    fn load<D>(dwarf: &D) -> Self
+    where
+        D: Dwarf<'data>,
+    {
+        DwarfSection {
+            data: dwarf
+                .section_data(&S::section_name()[1..])
+                .unwrap_or_default()
+                .1,
+            endianity: dwarf.endianity(),
+            _ph: PhantomData,
+        }
+    }
+
+    /// Creates a gimli dwarf section object from the loaded data.
+    fn to_gimli(&'data self) -> S {
+        S::from(Slice::new(&self.data, self.endianity))
+    }
+}
+
+/// All DWARF sections that are needed by `DwarfDebugSession`.
+struct DwarfSections<'data> {
+    debug_abbrev: DwarfSection<'data, gimli::read::DebugAbbrev<Slice<'data>>>,
+    debug_info: DwarfSection<'data, gimli::read::DebugInfo<Slice<'data>>>,
+    debug_line: DwarfSection<'data, gimli::read::DebugLine<Slice<'data>>>,
+    debug_line_str: DwarfSection<'data, gimli::read::DebugLineStr<Slice<'data>>>,
+    debug_str: DwarfSection<'data, gimli::read::DebugStr<Slice<'data>>>,
+    debug_str_offsets: DwarfSection<'data, gimli::read::DebugStrOffsets<Slice<'data>>>,
+    debug_ranges: DwarfSection<'data, gimli::read::DebugRanges<Slice<'data>>>,
+    debug_rnglists: DwarfSection<'data, gimli::read::DebugRngLists<Slice<'data>>>,
+}
+
+impl<'data> DwarfSections<'data> {
+    /// Loads all sections from a DWARF object.
     fn from_dwarf<D>(dwarf: &D) -> Result<Self, DwarfError>
     where
         D: Dwarf<'data>,
     {
-        Ok(DwarfData {
-            endianity: dwarf.endianity(),
-            debug_abbrev: dwarf
-                .section_data("debug_abbrev")
-                .ok_or_else(|| DwarfErrorKind::MissingSection("debug_abbrev"))?
-                .1,
-            debug_info: dwarf
-                .section_data("debug_info")
-                .ok_or_else(|| DwarfErrorKind::MissingSection("debug_info"))?
-                .1,
-            debug_line: dwarf
-                .section_data("debug_line")
-                .ok_or_else(|| DwarfErrorKind::MissingSection("debug_line"))?
-                .1,
-            debug_line_str: dwarf.section_data("debug_line_str").unwrap_or_default().1,
-            debug_str: dwarf.section_data("debug_str").unwrap_or_default().1,
-            debug_str_offsets: dwarf
-                .section_data("debug_str_offsets")
-                .unwrap_or_default()
-                .1,
-            debug_ranges: dwarf.section_data("debug_ranges").unwrap_or_default().1,
-            debug_rnglists: dwarf.section_data("debug_rnglists").unwrap_or_default().1,
+        Ok(DwarfSections {
+            debug_abbrev: DwarfSection::load(dwarf),
+            debug_info: DwarfSection::load(dwarf),
+            debug_line: DwarfSection::load(dwarf),
+            debug_line_str: DwarfSection::load(dwarf),
+            debug_str: DwarfSection::load(dwarf),
+            debug_str_offsets: DwarfSection::load(dwarf),
+            debug_ranges: DwarfSection::load(dwarf),
+            debug_rnglists: DwarfSection::load(dwarf),
         })
     }
 }
@@ -796,33 +813,27 @@ impl<'d> Deref for DwarfInfo<'d> {
     }
 }
 
-fn gimli_section<'d, S>(data: &'d [u8], endianity: Endian) -> S
-where
-    S: gimli::read::Section<Slice<'d>>,
-{
-    S::from(Slice::new(data, endianity))
-}
-
 impl<'d> DwarfInfo<'d> {
+    /// Parses DWARF information from its raw section data.
     pub fn parse(
-        data: &'d DwarfData<'d>,
+        sections: &'d DwarfSections<'d>,
         symbol_map: SymbolMap<'d>,
         load_address: u64,
     ) -> Result<Self, DwarfError> {
         let inner = gimli::read::Dwarf {
-            debug_abbrev: gimli_section(&data.debug_abbrev, data.endianity),
+            debug_abbrev: sections.debug_abbrev.to_gimli(),
             debug_addr: Default::default(),
-            debug_info: gimli_section(&data.debug_info, data.endianity),
-            debug_line: gimli_section(&data.debug_line, data.endianity),
-            debug_line_str: gimli_section(&data.debug_line_str, data.endianity),
-            debug_str: gimli_section(&data.debug_str, data.endianity),
-            debug_str_offsets: gimli_section(&data.debug_str_offsets, data.endianity),
+            debug_info: sections.debug_info.to_gimli(),
+            debug_line: sections.debug_line.to_gimli(),
+            debug_line_str: sections.debug_line_str.to_gimli(),
+            debug_str: sections.debug_str.to_gimli(),
+            debug_str_offsets: sections.debug_str_offsets.to_gimli(),
             debug_str_sup: Default::default(),
             debug_types: Default::default(),
             locations: Default::default(),
             ranges: RangeLists::new(
-                gimli_section(&data.debug_ranges, data.endianity),
-                gimli_section(&data.debug_rnglists, data.endianity),
+                sections.debug_ranges.to_gimli(),
+                sections.debug_rnglists.to_gimli(),
             ),
         };
 
@@ -839,6 +850,7 @@ impl<'d> DwarfInfo<'d> {
         })
     }
 
+    /// Loads a compilation unit.
     fn get_unit(&self, index: usize) -> Result<Option<&Unit<'d>>, DwarfError> {
         // Silently ignore unit references out-of-bound
         let cell = match self.units.get(index) {
@@ -862,6 +874,7 @@ impl<'d> DwarfInfo<'d> {
         Ok(unit_opt.as_ref())
     }
 
+    /// Resolves an offset into a different compilation unit.
     fn find_unit_offset(
         &self,
         offset: DebugInfoOffset,
@@ -882,6 +895,7 @@ impl<'d> DwarfInfo<'d> {
         Err(DwarfErrorKind::InvalidUnitRef(offset.0).into())
     }
 
+    /// Returns an iterator over all compilation units.
     fn units(&'d self) -> DwarfUnitIterator<'_> {
         DwarfUnitIterator {
             info: self,
@@ -898,6 +912,7 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for DwarfInfo<'d> {
     }
 }
 
+/// An iterator over compilation units in a DWARF object.
 struct DwarfUnitIterator<'s> {
     info: &'s DwarfInfo<'s>,
     index: usize,
@@ -925,7 +940,7 @@ impl std::iter::FusedIterator for DwarfUnitIterator<'_> {}
 
 /// A debugging session for DWARF debugging information.
 pub struct DwarfDebugSession<'data> {
-    cell: SelfCell<Box<DwarfData<'data>>, DwarfInfo<'data>>,
+    cell: SelfCell<Box<DwarfSections<'data>>, DwarfInfo<'data>>,
 }
 
 impl<'d> DwarfDebugSession<'d> {
@@ -938,9 +953,9 @@ impl<'d> DwarfDebugSession<'d> {
     where
         D: Dwarf<'d>,
     {
-        let data = DwarfData::from_dwarf(dwarf)?;
-        let cell = SelfCell::try_new(Box::new(data), |data| {
-            DwarfInfo::parse(unsafe { &*data }, symbol_map, load_address)
+        let sections = DwarfSections::from_dwarf(dwarf)?;
+        let cell = SelfCell::try_new(Box::new(sections), |sections| {
+            DwarfInfo::parse(unsafe { &*sections }, symbol_map, load_address)
         })?;
 
         Ok(DwarfDebugSession { cell })

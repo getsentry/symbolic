@@ -861,6 +861,10 @@ impl<'d> BreakpadObject<'d> {
     /// A debugging session loads certain information from the object file and creates caches for
     /// efficient access to various records in the debug information. Since this can be quite a
     /// costly process, try to reuse the debugging session as long as possible.
+    ///
+    /// Constructing this session will also work if the object does not contain debugging
+    /// information, in which case the session will be a no-op. This can be checked via
+    /// [`has_debug_info`](struct.BreakpadObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<BreakpadDebugSession<'d>, BreakpadError> {
         Ok(BreakpadDebugSession {
             file_map: self.file_map(),

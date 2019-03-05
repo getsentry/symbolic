@@ -564,6 +564,10 @@ pub trait ObjectLike {
     /// A debugging session loads certain information from the object file and creates caches for
     /// efficient access to various records in the debug information. Since this can be quite a
     /// costly process, try to reuse the debugging session as long as possible.
+    ///
+    /// Constructing this session will also work if the object does not contain debugging
+    /// information, in which case the session will be a no-op. This can be checked via
+    /// [`has_debug_info`](trait.ObjectLike.html#tymethod.has_debug_info).
     fn debug_session(&self) -> Result<Self::Session, Self::Error>;
 
     /// Determines whether this object contains stack unwinding information.
