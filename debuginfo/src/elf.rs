@@ -167,7 +167,7 @@ impl<'d> ElfObject<'d> {
         self.elf.syms.len() > 0
     }
 
-    /// Returns an iterator over symbols of a public symbol table.
+    /// Returns an iterator over symbols in the public symbol table.
     pub fn symbols(&self) -> ElfSymbolIterator<'d, '_> {
         ElfSymbolIterator {
             symbols: self.elf.syms.iter(),
@@ -388,6 +388,10 @@ impl<'d> ObjectLike for ElfObject<'d> {
 
     fn has_symbols(&self) -> bool {
         self.has_symbols()
+    }
+
+    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
+        Box::new(self.symbols())
     }
 
     fn symbol_map(&self) -> SymbolMap<'_> {

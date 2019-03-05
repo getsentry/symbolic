@@ -132,7 +132,7 @@ impl<'d> PeObject<'d> {
         !self.pe.exports.is_empty()
     }
 
-    /// Returns an iterator over symbols of a public symbol table.
+    /// Returns an iterator over symbols in the public symbol table.
     pub fn symbols(&self) -> PeSymbolIterator<'d, '_> {
         PeSymbolIterator {
             exports: self.pe.exports.iter(),
@@ -234,6 +234,10 @@ impl<'d> ObjectLike for PeObject<'d> {
         self.has_symbols()
     }
 
+    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
+        Box::new(self.symbols())
+    }
+
     fn symbol_map(&self) -> SymbolMap<'_> {
         self.symbol_map()
     }
@@ -289,7 +293,7 @@ impl<'d> PeDebugSession<'d> {
 impl DebugSession for PeDebugSession<'_> {
     type Error = PeError;
 
-    fn functions(&mut self) -> Box<dyn Iterator<Item = Result<Function<'_>, Self::Error>> + '_> {
+    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(std::iter::empty())
     }
 }

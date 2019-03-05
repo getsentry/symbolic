@@ -129,7 +129,7 @@ impl<'d> PdbObject<'d> {
         true
     }
 
-    /// Returns an iterator over symbols of a public symbol table.
+    /// Returns an iterator over symbols in the public symbol table.
     pub fn symbols(&self) -> PdbSymbolIterator<'d, '_> {
         PdbSymbolIterator {
             symbols: self.public_syms.iter(),
@@ -228,6 +228,10 @@ impl<'d> ObjectLike for PdbObject<'d> {
         self.has_symbols()
     }
 
+    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
+        Box::new(self.symbols())
+    }
+
     fn symbol_map(&self) -> SymbolMap<'_> {
         self.symbol_map()
     }
@@ -321,7 +325,7 @@ impl<'d> PdbDebugSession<'d> {
 impl DebugSession for PdbDebugSession<'_> {
     type Error = PdbError;
 
-    fn functions(&mut self) -> Box<dyn Iterator<Item = Result<Function<'_>, Self::Error>> + '_> {
+    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(self.functions())
     }
 }

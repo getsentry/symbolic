@@ -479,6 +479,9 @@ impl fmt::Debug for Function<'_> {
     }
 }
 
+/// A dynamically dispatched iterator over items with the given lifetime.
+pub type DynIterator<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
+
 /// A stateful session for interfacing with debug information.
 ///
 /// Debug sessions can be obtained via [`ObjectLike::debug_session`]. Since computing a session may
@@ -512,7 +515,7 @@ pub trait DebugSession {
     /// The iteration is guaranteed to be sorted by function address and includes all compilation
     /// units. Note that the iterator holds a mutable borrow on the debug session, which allows it
     /// to use caches and optimize resources while resolving function and line information.
-    fn functions(&mut self) -> Box<dyn Iterator<Item = Result<Function<'_>, Self::Error>> + '_>;
+    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>>;
 }
 
 /// An object containing debug information.
@@ -546,6 +549,9 @@ pub trait ObjectLike {
 
     /// Determines whether this object exposes a public symbol table.
     fn has_symbols(&self) -> bool;
+
+    /// Returns an iterator over symbols in the public symbol table.
+    fn symbols(&self) -> DynIterator<'_, Symbol<'_>>;
 
     /// Returns an ordered map of symbols in the symbol table.
     fn symbol_map(&self) -> SymbolMap<'_>;

@@ -960,7 +960,7 @@ impl<'d> DwarfDebugSession<'d> {
 impl<'d> DebugSession for DwarfDebugSession<'d> {
     type Error = DwarfError;
 
-    fn functions(&mut self) -> Box<dyn Iterator<Item = Result<Function<'_>, Self::Error>> + '_> {
+    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(self.functions())
     }
 }

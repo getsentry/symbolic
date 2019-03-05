@@ -193,7 +193,7 @@ impl<'d> Object<'d> {
         match_inner!(self, Object(ref o) => o.has_symbols())
     }
 
-    /// Returns an iterator over symbols of a public symbol table.
+    /// Returns an iterator over symbols in the public symbol table.
     pub fn symbols(&self) -> SymbolIterator<'d, '_> {
         map_inner!(self, Object(ref o) => SymbolIterator(o.symbols()))
     }
@@ -297,6 +297,10 @@ impl<'d> ObjectLike for Object<'d> {
         self.symbol_map()
     }
 
+    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
+        Box::new(self.symbols())
+    }
+
     fn has_debug_info(&self) -> bool {
         self.has_debug_info()
     }
@@ -336,7 +340,7 @@ impl<'d> ObjectDebugSession<'d> {
 impl DebugSession for ObjectDebugSession<'_> {
     type Error = ObjectError;
 
-    fn functions(&mut self) -> Box<dyn Iterator<Item = Result<Function<'_>, Self::Error>> + '_> {
+    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(self.functions())
     }
 }

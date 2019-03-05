@@ -144,7 +144,7 @@ impl<'d> MachObject<'d> {
         self.macho.symbols.is_some()
     }
 
-    /// Returns an iterator over symbols of a public symbol table.
+    /// Returns an iterator over symbols in the public symbol table.
     pub fn symbols(&self) -> MachOSymbolIterator<'d> {
         // Cache indices of code sections. These are either "__text" or "__stubs", always located in
         // the "__TEXT" segment. It looks like each of those sections only occurs once, but to be
@@ -292,6 +292,10 @@ impl<'d> ObjectLike for MachObject<'d> {
 
     fn has_symbols(&self) -> bool {
         self.has_symbols()
+    }
+
+    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
+        Box::new(self.symbols())
     }
 
     fn symbol_map(&self) -> SymbolMap<'_> {
