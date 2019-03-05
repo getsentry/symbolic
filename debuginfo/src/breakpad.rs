@@ -1041,51 +1041,71 @@ pub struct BreakpadDebugSession<'d> {
     func_records: BreakpadFuncRecords<'d>,
 }
 
+impl<'d> BreakpadDebugSession<'d> {
+    /// Returns an iterator over all functions in this debug file.
+    pub fn functions(&mut self) -> BreakpadFunctionIterator<'_> {
+        BreakpadFunctionIterator {
+            file_map: &self.file_map,
+            func_records: self.func_records.clone(),
+        }
+    }
+}
+
 impl<'d> DebugSession for BreakpadDebugSession<'d> {
     type Error = BreakpadError;
 
-    fn functions(&mut self) -> Result<Vec<Function<'_>>, Self::Error> {
-        let mut line_buf = Vec::new();
-        let mut functions = Vec::new();
+    fn functions(&mut self) -> Box<dyn Iterator<Item = Result<Function<'_>, Self::Error>> + '_> {
+        Box::new(self.functions())
+    }
+}
 
-        for func in self.func_records.clone() {
-            let func = func?;
+/// An iterator over functions in a Breakpad object.
+pub struct BreakpadFunctionIterator<'s> {
+    file_map: &'s BreakpadFileMap<'s>,
+    func_records: BreakpadFuncRecords<'s>,
+}
 
-            line_buf.clear();
-            for line in func.lines() {
-                let line = line?;
-                let filename = line.filename(&self.file_map).unwrap_or_default();
-                let (dir, name) = symbolic_common::split_path(filename);
+impl<'s> BreakpadFunctionIterator<'s> {
+    fn convert(&self, record: BreakpadFuncRecord<'s>) -> Result<Function<'s>, BreakpadError> {
+        let mut lines = Vec::new();
+        for line in record.lines() {
+            let line = line?;
+            let filename = line.filename(&self.file_map).unwrap_or_default();
+            let (dir, name) = symbolic_common::split_path(filename);
 
-                line_buf.push(LineInfo {
-                    address: line.address,
-                    file: FileInfo {
-                        name: Cow::Borrowed(name),
-                        dir: Cow::Borrowed(dir.unwrap_or_default()),
-                    },
-                    line: line.line,
-                })
-            }
-
-            functions.push(Function {
-                address: func.address,
-                size: func.size,
-                name: Name::from(func.name),
-                compilation_dir: Cow::Borrowed(""),
-                lines: line_buf.clone(),
-                inlinees: Vec::new(),
-                inline: false,
+            lines.push(LineInfo {
+                address: line.address,
+                file: FileInfo {
+                    id: line.file_id,
+                    name: name.as_bytes(),
+                    dir: dir.unwrap_or_default().as_bytes(),
+                },
+                line: line.line,
             });
         }
 
-        Ok(functions)
+        Ok(Function {
+            address: record.address,
+            size: record.size,
+            name: Name::from(record.name),
+            compilation_dir: &[],
+            lines,
+            inlinees: Vec::new(),
+            inline: false,
+        })
     }
 }
 
-impl<'slf, 'd: 'slf> AsSelf<'slf> for BreakpadDebugSession<'d> {
-    type Ref = BreakpadDebugSession<'slf>;
+impl<'s> Iterator for BreakpadFunctionIterator<'s> {
+    type Item = Result<Function<'s>, BreakpadError>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
-        self
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.func_records.next() {
+            Some(Ok(record)) => Some(self.convert(record)),
+            Some(Err(error)) => Some(Err(error)),
+            None => None,
+        }
     }
 }
+
+impl std::iter::FusedIterator for BreakpadFunctionIterator<'_> {}

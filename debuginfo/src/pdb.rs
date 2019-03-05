@@ -311,18 +311,20 @@ pub struct PdbDebugSession<'d> {
     _ph: PhantomData<&'d ()>,
 }
 
+impl<'d> PdbDebugSession<'d> {
+    /// Returns an iterator over all functions in this debug file.
+    pub fn functions(&mut self) -> PdbFunctionIterator<'_> {
+        std::iter::empty()
+    }
+}
+
 impl DebugSession for PdbDebugSession<'_> {
     type Error = PdbError;
 
-    fn functions(&mut self) -> Result<Vec<Function<'_>>, PdbError> {
-        Ok(Vec::new())
+    fn functions(&mut self) -> Box<dyn Iterator<Item = Result<Function<'_>, Self::Error>> + '_> {
+        Box::new(self.functions())
     }
 }
 
-impl<'slf, 'd: 'slf> AsSelf<'slf> for PdbDebugSession<'d> {
-    type Ref = PdbDebugSession<'slf>;
-
-    fn as_self(&'slf self) -> &Self::Ref {
-        self
-    }
-}
+/// An iterator over functions in a PDB file.
+pub type PdbFunctionIterator<'s> = std::iter::Empty<Result<Function<'s>, PdbError>>;

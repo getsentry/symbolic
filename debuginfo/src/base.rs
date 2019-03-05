@@ -397,16 +397,31 @@ impl<'d> FromIterator<Symbol<'d>> for SymbolMap<'d> {
 /// segments (`../`).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FileInfo<'data> {
+    /// Original identifier of this file.
+    ///
+    /// If this id is non-zero, this can be used to deduplicate file infos when iterating over
+    /// lines. Zero indicates that no identifier could be determined in the debug information.
+    pub id: u64,
     /// The file's basename.
-    pub name: Cow<'data, str>,
+    pub name: &'data [u8],
     /// Path to the file.
-    pub dir: Cow<'data, str>,
+    pub dir: &'data [u8],
 }
 
 impl<'data> FileInfo<'data> {
+    /// The file name as UTF-8 string.
+    pub fn name_str(&self) -> Cow<'data, str> {
+        String::from_utf8_lossy(self.name)
+    }
+
+    /// Path to the file relative to the compilation directory.
+    pub fn dir_str(&self) -> Cow<'data, str> {
+        String::from_utf8_lossy(self.dir)
+    }
+
     /// The full path to the file, relative to the compilation directory.
-    pub fn path(&self) -> String {
-        join_path(&self.dir, &self.name)
+    pub fn path_str(&self) -> String {
+        join_path(&self.dir_str(), &self.name_str())
     }
 }
 
@@ -441,7 +456,7 @@ pub struct Function<'data> {
     /// The name and language of the function symbol.
     pub name: Name<'data>,
     /// Path to the compilation directory. File paths are relative to this.
-    pub compilation_dir: Cow<'data, str>,
+    pub compilation_dir: &'data [u8],
     /// Lines covered by this function, including inlined children.
     pub lines: Vec<LineInfo<'data>>,
     /// Functions that have been inlined into this function's body.
@@ -490,18 +505,20 @@ impl fmt::Debug for Function<'_> {
 /// [`ObjectLike::debug_session`]: trait.ObjectLike.html#tymethod.debug_session
 pub trait DebugSession {
     /// The error returned when reading debug information fails.
-    type Error: Fail;
+    type Error;
 
-    /// Compute a list of functions across all compilation units.
+    /// Returns an iterator over all functions in this debug file.
     ///
-    /// This list is guaranteed to be sorted by function address.
-    fn functions(&mut self) -> Result<Vec<Function<'_>>, Self::Error>;
+    /// The iteration is guaranteed to be sorted by function address and includes all compilation
+    /// units. Note that the iterator holds a mutable borrow on the debug session, which allows it
+    /// to use caches and optimize resources while resolving function and line information.
+    fn functions(&mut self) -> Box<dyn Iterator<Item = Result<Function<'_>, Self::Error>> + '_>;
 }
 
 /// An object containing debug information.
 pub trait ObjectLike {
     /// Errors thrown when reading information from this object.
-    type Error: Fail;
+    type Error;
 
     /// A session that allows optimized access to debugging information.
     type Session: DebugSession<Error = Self::Error>;

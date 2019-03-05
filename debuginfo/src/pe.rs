@@ -279,18 +279,20 @@ pub struct PeDebugSession<'d> {
     _ph: PhantomData<&'d ()>,
 }
 
+impl<'d> PeDebugSession<'d> {
+    /// Returns an iterator over all functions in this debug file.
+    pub fn functions(&mut self) -> PeFunctionIterator<'_> {
+        std::iter::empty()
+    }
+}
+
 impl DebugSession for PeDebugSession<'_> {
     type Error = PeError;
 
-    fn functions(&mut self) -> Result<Vec<Function<'_>>, PeError> {
-        Ok(Vec::new())
+    fn functions(&mut self) -> Box<dyn Iterator<Item = Result<Function<'_>, Self::Error>> + '_> {
+        Box::new(std::iter::empty())
     }
 }
 
-impl<'slf, 'd: 'slf> AsSelf<'slf> for PeDebugSession<'d> {
-    type Ref = PeDebugSession<'slf>;
-
-    fn as_self(&'slf self) -> &Self::Ref {
-        self
-    }
-}
+/// An iterator over functions in a PE file.
+pub type PeFunctionIterator<'s> = std::iter::Empty<Result<Function<'s>, PeError>>;

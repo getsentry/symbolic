@@ -46,9 +46,9 @@ impl fmt::Debug for FunctionsDebug<'_> {
                     "{:indent$}  {:#x}: {}:{} ({})",
                     "",
                     line.address,
-                    line.file.name,
+                    line.file.name_str(),
                     line.line,
-                    line.file.dir,
+                    line.file.dir_str(),
                     indent = self.1 * 2
                 )?;
             }
@@ -105,7 +105,7 @@ fn test_breakpad_functions() -> Result<(), Error> {
     let object = Object::parse(&view)?;
 
     let mut session = object.debug_session()?;
-    let functions = session.functions()?;
+    let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
     insta::assert_debug_snapshot_matches!(
         "breakpad_functions",
         FunctionsDebug(&functions[..10], 0)
@@ -188,7 +188,7 @@ fn test_elf_functions() -> Result<(), Error> {
     let object = Object::parse(&view)?;
 
     let mut session = object.debug_session()?;
-    let functions = session.functions()?;
+    let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
     insta::assert_debug_snapshot_matches!("elf_functions", FunctionsDebug(&functions[..10], 0));
 
     Ok(())
@@ -269,7 +269,7 @@ fn test_mach_functions() -> Result<(), Error> {
     let object = Object::parse(&view)?;
 
     let mut session = object.debug_session()?;
-    let functions = session.functions()?;
+    let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
     insta::assert_debug_snapshot_matches!("mach_functions", FunctionsDebug(&functions[..10], 0));
 
     Ok(())

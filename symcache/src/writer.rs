@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::{self, Seek, Write};
 
-use failure::ResultExt;
+use failure::{Fail, ResultExt};
 use fnv::{FnvHashMap, FnvHashSet};
 
 use symbolic_common::{Arch, DebugId, Language};
@@ -118,8 +118,8 @@ pub struct SymCacheWriter<W> {
     files: Vec<format::FileRecord>,
     symbols: Vec<format::Seg<u8, u16>>,
     functions: Vec<format::FuncRecord>,
-    path_cache: HashMap<String, format::Seg<u8, u8>>,
-    file_cache: FnvHashMap<format::FileRecord, u16>,
+    path_cache: HashMap<Vec<u8>, format::Seg<u8, u8>>,
+    file_cache: FnvHashMap<u64, u16>,
     symbol_cache: HashMap<String, u32>,
 }
 
@@ -131,6 +131,7 @@ where
     pub fn write_object<O>(object: &O, target: W) -> Result<W, SymCacheError>
     where
         O: ObjectLike,
+        O::Error: Fail,
     {
         let mut writer = SymCacheWriter::new(target).context(SymCacheErrorKind::WriteFailed)?;
 
@@ -143,11 +144,9 @@ where
             .debug_session()
             .context(SymCacheErrorKind::BadDebugFile)?;
 
-        let functions = session
-            .functions()
-            .context(SymCacheErrorKind::BadDebugFile)?;
+        for function in session.functions() {
+            let function = function.context(SymCacheErrorKind::BadDebugFile)?;
 
-        for function in functions {
             while symbols
                 .peek()
                 .map_or(false, |s| s.address < function.address)
@@ -255,7 +254,7 @@ where
             return Ok(());
         }
 
-        self.insert_function(function, !0, &mut FnvHashSet::default())
+        self.insert_function(&function, !0, &mut FnvHashSet::default())
     }
 
     /// Persists all open segments to the writer and fixes up the header.
@@ -273,36 +272,37 @@ where
         Ok(writer.into_inner())
     }
 
-    fn write_path(&mut self, path: Cow<'_, str>) -> Result<format::Seg<u8, u8>, SymCacheError> {
-        if let Some(segment) = self.path_cache.get(path.as_ref()) {
+    fn write_path(&mut self, path: &[u8]) -> Result<format::Seg<u8, u8>, SymCacheError> {
+        if let Some(segment) = self.path_cache.get(path) {
             return Ok(*segment);
         }
 
         // Path segments use u8 length indicators
-        let shortened = symbolic_common::shorten_path(&path, std::u8::MAX.into());
+        let unicode = String::from_utf8_lossy(path);
+        let shortened = symbolic_common::shorten_path(&unicode, std::u8::MAX.into());
         let segment = self
             .writer
             .write_segment(shortened.as_bytes(), ValueKind::File)?;
-        self.path_cache.insert(path.into_owned(), segment);
+        self.path_cache.insert(path.into(), segment);
         Ok(segment)
     }
 
-    fn insert_file(&mut self, file: FileInfo<'_>) -> Result<u16, SymCacheError> {
-        let record = format::FileRecord {
-            filename: self.write_path(file.name)?,
-            base_dir: self.write_path(file.dir)?,
-        };
-
-        if let Some(index) = self.file_cache.get(&record) {
+    fn insert_file(&mut self, file: &FileInfo<'_>) -> Result<u16, SymCacheError> {
+        if let Some(index) = self.file_cache.get(&file.id) {
             return Ok(*index);
         }
+
+        let record = format::FileRecord {
+            filename: self.write_path(&file.name)?,
+            base_dir: self.write_path(&file.dir)?,
+        };
 
         if self.files.len() >= std::u16::MAX as usize {
             return Err(SymCacheErrorKind::TooManyValues(ValueKind::File).into());
         }
 
         let index = self.files.len() as u16;
-        self.file_cache.insert(record, index);
+        self.file_cache.insert(file.id, index);
         self.files.push(record);
         Ok(index)
     }
@@ -340,15 +340,15 @@ where
 
     fn insert_function(
         &mut self,
-        function: Function<'_>,
+        function: &Function<'_>,
         parent_index: u32,
         line_cache: &mut FnvHashSet<(u64, u64)>,
     ) -> Result<(), SymCacheError> {
         let index = self.functions.len() as u32;
         let address = function.address;
         let language = function.name.language();
-        let symbol_id = self.insert_symbol(function.name.into_cow())?;
-        let comp_dir = self.write_path(function.compilation_dir)?;
+        let symbol_id = self.insert_symbol(function.name.as_str().into())?;
+        let comp_dir = self.write_path(&function.compilation_dir)?;
 
         let lang = if language as u32 > 0xff {
             return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::Language).into());
@@ -382,19 +382,19 @@ where
 
         // Recurse first including inner line records. Address rejection will prune duplicate line
         // records later on.
-        for inlinee in function.inlinees {
+        for inlinee in &function.inlinees {
             self.insert_function(inlinee, index, line_cache)?;
         }
 
         let mut last_address = address;
         let mut line_segment = vec![];
-        for line in function.lines {
+        for line in &function.lines {
             // Reject this line if it has been covered by one of the inlinees.
             if !line_cache.insert((line.address, line.line)) {
                 continue;
             }
 
-            let file_id = self.insert_file(line.file)?;
+            let file_id = self.insert_file(&line.file)?;
 
             // We have seen that swift can generate line records that lie outside of the function
             // start.  Why this happens is unclear but it happens with highly inlined function

@@ -9,7 +9,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
 use crate::breakpad::*;
-use crate::dwarf::{DwarfDebugSession, DwarfError};
+use crate::dwarf::*;
 use crate::elf::*;
 use crate::macho::*;
 use crate::pdb::*;
@@ -320,15 +320,47 @@ pub enum ObjectDebugSession<'d> {
     Pe(PeDebugSession<'d>),
 }
 
+impl<'d> ObjectDebugSession<'d> {
+    fn functions(&mut self) -> ObjectFunctionIterator<'_> {
+        match *self {
+            ObjectDebugSession::Breakpad(ref mut s) => {
+                ObjectFunctionIterator::Breakpad(s.functions())
+            }
+            ObjectDebugSession::Dwarf(ref mut s) => ObjectFunctionIterator::Dwarf(s.functions()),
+            ObjectDebugSession::Pdb(ref mut s) => ObjectFunctionIterator::Pdb(s.functions()),
+            ObjectDebugSession::Pe(ref mut s) => ObjectFunctionIterator::Pe(s.functions()),
+        }
+    }
+}
+
 impl DebugSession for ObjectDebugSession<'_> {
     type Error = ObjectError;
 
-    fn functions(&mut self) -> Result<Vec<Function<'_>>, ObjectError> {
+    fn functions(&mut self) -> Box<dyn Iterator<Item = Result<Function<'_>, Self::Error>> + '_> {
+        Box::new(self.functions())
+    }
+}
+
+/// An iterator over functions in an [`Object`](enum.Object.html).
+#[allow(missing_docs)]
+pub enum ObjectFunctionIterator<'s> {
+    Breakpad(BreakpadFunctionIterator<'s>),
+    Dwarf(DwarfFunctionIterator<'s>),
+    Pdb(PdbFunctionIterator<'s>),
+    Pe(PeFunctionIterator<'s>),
+}
+
+impl<'s> Iterator for ObjectFunctionIterator<'s> {
+    type Item = Result<Function<'s>, ObjectError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
         match *self {
-            ObjectDebugSession::Breakpad(ref mut s) => s.functions().map_err(ObjectError::Breakpad),
-            ObjectDebugSession::Dwarf(ref mut s) => s.functions().map_err(ObjectError::Dwarf),
-            ObjectDebugSession::Pdb(ref mut s) => s.functions().map_err(ObjectError::Pdb),
-            ObjectDebugSession::Pe(ref mut s) => s.functions().map_err(ObjectError::Pe),
+            ObjectFunctionIterator::Breakpad(ref mut i) => {
+                Some(i.next()?.map_err(ObjectError::Breakpad))
+            }
+            ObjectFunctionIterator::Dwarf(ref mut i) => Some(i.next()?.map_err(ObjectError::Dwarf)),
+            ObjectFunctionIterator::Pdb(ref mut i) => Some(i.next()?.map_err(ObjectError::Pdb)),
+            ObjectFunctionIterator::Pe(ref mut i) => Some(i.next()?.map_err(ObjectError::Pe)),
         }
     }
 }
