@@ -119,7 +119,7 @@ pub struct SymCacheWriter<W> {
     symbols: Vec<format::Seg<u8, u16>>,
     functions: Vec<format::FuncRecord>,
     path_cache: HashMap<Vec<u8>, format::Seg<u8, u8>>,
-    file_cache: FnvHashMap<u64, u16>,
+    file_cache: FnvHashMap<format::FileRecord, u16>,
     symbol_cache: HashMap<String, u32>,
 }
 
@@ -288,21 +288,21 @@ where
     }
 
     fn insert_file(&mut self, file: &FileInfo<'_>) -> Result<u16, SymCacheError> {
-        if let Some(index) = self.file_cache.get(&file.id) {
+        let record = format::FileRecord {
+            filename: self.write_path(file.name)?,
+            base_dir: self.write_path(file.dir)?,
+        };
+
+        if let Some(index) = self.file_cache.get(&record) {
             return Ok(*index);
         }
-
-        let record = format::FileRecord {
-            filename: self.write_path(&file.name)?,
-            base_dir: self.write_path(&file.dir)?,
-        };
 
         if self.files.len() >= std::u16::MAX as usize {
             return Err(SymCacheErrorKind::TooManyValues(ValueKind::File).into());
         }
 
         let index = self.files.len() as u16;
-        self.file_cache.insert(file.id, index);
+        self.file_cache.insert(record, index);
         self.files.push(record);
         Ok(index)
     }
@@ -348,7 +348,7 @@ where
         let address = function.address;
         let language = function.name.language();
         let symbol_id = self.insert_symbol(function.name.as_str().into())?;
-        let comp_dir = self.write_path(&function.compilation_dir)?;
+        let comp_dir = self.write_path(function.compilation_dir)?;
 
         let lang = if language as u32 > 0xff {
             return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::Language).into());

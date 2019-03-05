@@ -502,7 +502,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             .ok_or_else(|| DwarfErrorKind::InvalidFileRef(file_id))?;
 
         Ok(Some(FileInfo {
-            id: file_id,
             dir: file
                 .directory(line_program)
                 .and_then(|attr| self.slice_value(attr))

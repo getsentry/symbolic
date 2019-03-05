@@ -1084,7 +1084,6 @@ impl<'s> BreakpadFunctionIterator<'s> {
             lines.push(LineInfo {
                 address: line.address,
                 file: FileInfo {
-                    id: line.file_id,
                     name: name.as_bytes(),
                     dir: dir.unwrap_or_default().as_bytes(),
                 },

@@ -395,13 +395,8 @@ impl<'d> FromIterator<Symbol<'d>> for SymbolMap<'d> {
 ///
 /// The file path is usually relative to a compilation directory. It might contain parent directory
 /// segments (`../`).
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct FileInfo<'data> {
-    /// Original identifier of this file.
-    ///
-    /// If this id is non-zero, this can be used to deduplicate file infos when iterating over
-    /// lines. Zero indicates that no identifier could be determined in the debug information.
-    pub id: u64,
     /// The file's basename.
     pub name: &'data [u8],
     /// Path to the file.
@@ -422,6 +417,15 @@ impl<'data> FileInfo<'data> {
     /// The full path to the file, relative to the compilation directory.
     pub fn path_str(&self) -> String {
         join_path(&self.dir_str(), &self.name_str())
+    }
+}
+
+impl fmt::Debug for FileInfo<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("FileInfo")
+            .field("name", &String::from_utf8_lossy(self.name))
+            .field("dir", &String::from_utf8_lossy(self.dir))
+            .finish()
     }
 }
 
@@ -471,7 +475,10 @@ impl fmt::Debug for Function<'_> {
             .field("address", &HexFmt(self.address))
             .field("size", &HexFmt(self.size))
             .field("name", &self.name)
-            .field("compilation_dir", &self.compilation_dir)
+            .field(
+                "compilation_dir",
+                &String::from_utf8_lossy(self.compilation_dir),
+            )
             .field("lines", &self.lines)
             .field("inlinees", &self.inlinees)
             .field("inline", &self.inline)
