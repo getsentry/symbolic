@@ -90,14 +90,14 @@ enum SymbolicFrameTrust {
 typedef uint32_t SymbolicFrameTrust;
 
 /**
+ * A potential multi arch object.
+ */
+typedef struct SymbolicArchive SymbolicArchive;
+
+/**
  * Contains stack frame information (CFI) for an image.
  */
 typedef struct SymbolicCfiCache SymbolicCfiCache;
-
-/**
- * A potential multi arch object.
- */
-typedef struct SymbolicFatObject SymbolicFatObject;
 
 /**
  * A map of stack frame infos for images.
@@ -306,6 +306,27 @@ SymbolicStr symbolic_arch_ip_reg_name(const SymbolicStr *arch);
 bool symbolic_arch_is_known(const SymbolicStr *arch);
 
 /**
+ * Frees the given archive.
+ */
+void symbolic_archive_free(SymbolicArchive *archive);
+
+/**
+ * Returns the n-th object, or a null pointer if the object does not exist.
+ */
+SymbolicObject *symbolic_archive_get_object(const SymbolicArchive *archive,
+                                            uintptr_t index);
+
+/**
+ * Returns the number of contained objects.
+ */
+uintptr_t symbolic_archive_object_count(const SymbolicArchive *archive);
+
+/**
+ * Loads an archive from a given path.
+ */
+SymbolicArchive *symbolic_archive_open(const char *path);
+
+/**
  * Releases memory held by an unmanaged `SymbolicCfiCache` instance.
  */
 void symbolic_cficache_free(SymbolicCfiCache *cache);
@@ -381,27 +402,6 @@ SymbolicErrorCode symbolic_err_get_last_code(void);
 SymbolicStr symbolic_err_get_last_message(void);
 
 /**
- * Frees the given fat object.
- */
-void symbolic_fatobject_free(SymbolicFatObject *object);
-
-/**
- * Returns the n-th object, or a null pointer if the object does not exist.
- */
-SymbolicObject *symbolic_fatobject_get_object(const SymbolicFatObject *archive,
-                                              uintptr_t index);
-
-/**
- * Returns the number of contained objects.
- */
-uintptr_t symbolic_fatobject_object_count(const SymbolicFatObject *object);
-
-/**
- * Loads a fat object from a given path.
- */
-SymbolicFatObject *symbolic_fatobject_open(const char *path);
-
-/**
  * Return the best instruction for an isntruction info.
  */
 uint64_t symbolic_find_best_instruction(const SymbolicInstructionInfo *ii);
@@ -444,7 +444,7 @@ void symbolic_lookup_result_free(SymbolicLookupResult *lookup_result);
 SymbolicStr symbolic_normalize_debug_id(const SymbolicStr *debug_id);
 
 /**
- * Frees an object returned from a fat object.
+ * Frees an object returned from an archive.
  */
 void symbolic_object_free(SymbolicObject *object);
 

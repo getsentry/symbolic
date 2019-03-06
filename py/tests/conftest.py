@@ -3,7 +3,7 @@ import sys
 import json
 import pytest
 
-from symbolic import ObjectLookup, FatObject, SourceMapView, SourceView, \
+from symbolic import ObjectLookup, Archive, SourceMapView, SourceView, \
     find_best_instruction, parse_addr
 
 diff_report = None
@@ -14,8 +14,8 @@ def get_symcache(path, object_lookup):
     if not os.path.isdir(dsym_path):
         return
     for fn in os.listdir(dsym_path):
-        fo = FatObject.from_path(os.path.join(dsym_path, fn))
-        for obj in fo.iter_objects():
+        archive = Archive.from_path(os.path.join(dsym_path, fn))
+        for obj in archive.iter_objects():
             if object_lookup.get_object(id=obj.debug_id) is not None:
                 return obj.make_symcache()
 

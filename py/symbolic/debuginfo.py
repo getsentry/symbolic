@@ -10,7 +10,7 @@ from symbolic.minidump import CfiCache
 
 
 __all__ = [
-    'FatObject',
+    'Archive',
     'Object',
     'ObjectLookup',
     'id_from_breakpad',
@@ -18,19 +18,19 @@ __all__ = [
 ]
 
 
-class FatObject(RustObject):
-    __dealloc_func__ = lib.symbolic_fatobject_free
+class Archive(RustObject):
+    __dealloc_func__ = lib.symbolic_archive_free
 
     @classmethod
     def from_path(self, path):
-        """Opens a fat object from a given path."""
-        return FatObject._from_objptr(
-            rustcall(lib.symbolic_fatobject_open, path))
+        """Opens an archive from a given path."""
+        return Archive._from_objptr(
+            rustcall(lib.symbolic_archive_open, path))
 
     @property
     def object_count(self):
-        """The number of objects in this fat object."""
-        return self._methodcall(lib.symbolic_fatobject_object_count)
+        """The number of objects in this archive."""
+        return self._methodcall(lib.symbolic_archive_object_count)
 
     def iter_objects(self):
         """Iterates over all objects."""
@@ -57,7 +57,7 @@ class FatObject(RustObject):
         rv = cache.get(idx)
         if rv is not None:
             return rv
-        ptr = self._methodcall(lib.symbolic_fatobject_get_object, idx)
+        ptr = self._methodcall(lib.symbolic_archive_get_object, idx)
         if ptr == ffi.NULL:
             raise LookupError('No object #%d' % idx)
         rv = cache[idx] = Object._from_objptr(ptr)

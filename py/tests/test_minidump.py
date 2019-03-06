@@ -1,7 +1,7 @@
 import os
 
 from datetime import datetime
-from symbolic import CfiCache, FatObject, FrameInfoMap, ProcessState
+from symbolic import CfiCache, Archive, FrameInfoMap, ProcessState
 
 
 def test_macos_without_cfi(res_path):
@@ -184,8 +184,8 @@ def test_linux_with_cfi(res_path):
 
 def test_macos_cficache(res_path):
     binary_path = os.path.join(res_path, 'minidump', 'crash_macos')
-    fat = FatObject.from_path(binary_path)
-    obj = fat.get_object(arch="x86_64")
+    archive = Archive.from_path(binary_path)
+    obj = archive.get_object(arch="x86_64")
     cache = obj.make_cficache()
 
     sym_path = os.path.join(res_path, 'minidump', 'crash_macos.sym')
@@ -196,8 +196,8 @@ def test_macos_cficache(res_path):
 
 def test_linux_cficache(res_path):
     binary_path = os.path.join(res_path, 'minidump', 'crash_linux')
-    fat = FatObject.from_path(binary_path)
-    obj = fat.get_object(arch="x86_64")
+    archive = Archive.from_path(binary_path)
+    obj = archive.get_object(arch="x86_64")
     cache = obj.make_cficache()
 
     sym_path = os.path.join(res_path, 'minidump', 'crash_linux.sym')

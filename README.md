@@ -69,9 +69,9 @@ need to build symbolic manually. It should be compatible with both Python 2 and 
 The python library ships all of the above features in a flat module:
 
 ```python
-from symbolic import FatObject
+from symbolic import Archive
 
-fat = FatObject.from_path('/path/to/object')
+fat = Archive.from_path('/path/to/object')
 obj = fat.get_object(arch = 'x86_64')
 print 'object debug id: {}' % obj.debug_id
 ```

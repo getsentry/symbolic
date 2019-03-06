@@ -10,9 +10,9 @@ use crate::core::SymbolicStr;
 use crate::utils::ForeignObject;
 
 /// A potential multi arch object.
-pub struct SymbolicFatObject;
+pub struct SymbolicArchive;
 
-impl ForeignObject for SymbolicFatObject {
+impl ForeignObject for SymbolicArchive {
     type RustObject = SelfCell<ByteView<'static>, Archive<'static>>;
 }
 
@@ -32,35 +32,35 @@ pub struct SymbolicObjectFeatures {
 }
 
 ffi_fn! {
-    /// Loads a fat object from a given path.
-    unsafe fn symbolic_fatobject_open(path: *const c_char) -> Result<*mut SymbolicFatObject> {
+    /// Loads an archive from a given path.
+    unsafe fn symbolic_archive_open(path: *const c_char) -> Result<*mut SymbolicArchive> {
         let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
         let cell = SelfCell::try_new(byteview, |p| Archive::parse(&*p))?;
-        Ok(SymbolicFatObject::from_rust(cell))
+        Ok(SymbolicArchive::from_rust(cell))
     }
 }
 
 ffi_fn! {
-    /// Frees the given fat object.
-    unsafe fn symbolic_fatobject_free(object: *mut SymbolicFatObject) {
-        SymbolicFatObject::drop(object)
+    /// Frees the given archive.
+    unsafe fn symbolic_archive_free(archive: *mut SymbolicArchive) {
+        SymbolicArchive::drop(archive)
     }
 }
 
 ffi_fn! {
     /// Returns the number of contained objects.
-    unsafe fn symbolic_fatobject_object_count(object: *const SymbolicFatObject) -> Result<usize> {
-        Ok(SymbolicFatObject::as_rust(object).get().object_count())
+    unsafe fn symbolic_archive_object_count(archive: *const SymbolicArchive) -> Result<usize> {
+        Ok(SymbolicArchive::as_rust(archive).get().object_count())
     }
 }
 
 ffi_fn! {
     /// Returns the n-th object, or a null pointer if the object does not exist.
-    unsafe fn symbolic_fatobject_get_object(
-        archive: *const SymbolicFatObject,
+    unsafe fn symbolic_archive_get_object(
+        archive: *const SymbolicArchive,
         index: usize,
     ) -> Result<*mut SymbolicObject> {
-        let archive = SymbolicFatObject::as_rust(archive);
+        let archive = SymbolicArchive::as_rust(archive);
         if let Some(object) = archive.get().object_by_index(index)? {
             let object = SelfCell::from_raw(archive.owner().clone(), object);
             Ok(SymbolicObject::from_rust(object))
@@ -114,7 +114,7 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Frees an object returned from a fat object.
+    /// Frees an object returned from an archive.
     unsafe fn symbolic_object_free(object: *mut SymbolicObject) {
         SymbolicObject::drop(object);
     }
