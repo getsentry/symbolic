@@ -1,4 +1,18 @@
+use std::path::Path;
+use std::process::Command;
+
 fn main() {
+    if !Path::new("third_party/breakpad/.git").exists() {
+        let status = Command::new("git")
+            .args(&["submodule", "update", "--init"])
+            .status()
+            .expect("Failed to install git submodules");
+
+        if !status.success() {
+            panic!("Failed to install git submodules");
+        }
+    }
+
     cc::Build::new()
         .warnings(false)
         .flag("-Wno-tautological-constant-out-of-range-compare")
