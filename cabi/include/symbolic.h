@@ -454,6 +454,11 @@ void symbolic_object_free(SymbolicObject *object);
 SymbolicStr symbolic_object_get_arch(const SymbolicObject *object);
 
 /**
+ * Returns the code identifier of the object.
+ */
+SymbolicStr symbolic_object_get_code_id(const SymbolicObject *object);
+
+/**
  * Returns the debug identifier of the object.
  */
 SymbolicStr symbolic_object_get_debug_id(const SymbolicObject *object);

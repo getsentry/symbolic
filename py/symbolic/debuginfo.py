@@ -74,6 +74,14 @@ class Object(RustObject):
         return str(decode_str(self._methodcall(lib.symbolic_object_get_arch)))
 
     @property
+    def code_id(self):
+        """The code identifier of the object. Returns None if there is no code id."""
+        code_id = decode_str(self._methodcall(lib.symbolic_object_get_code_id))
+        if code_id:
+            return code_id
+        return None
+
+    @property
     def debug_id(self):
         """The debug identifier of the object."""
         return decode_str(self._methodcall(lib.symbolic_object_get_debug_id))

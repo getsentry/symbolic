@@ -78,6 +78,14 @@ ffi_fn! {
 }
 
 ffi_fn! {
+    /// Returns the code identifier of the object.
+    unsafe fn symbolic_object_get_code_id(object: *const SymbolicObject) -> Result<SymbolicStr> {
+        let id_opt = SymbolicObject::as_rust(object).get().code_id();
+        Ok(id_opt.unwrap_or_default().as_str().into())
+    }
+}
+
+ffi_fn! {
     /// Returns the debug identifier of the object.
     unsafe fn symbolic_object_get_debug_id(object: *const SymbolicObject) -> Result<SymbolicStr> {
         Ok(SymbolicObject::as_rust(object).get().debug_id().to_string().into())
