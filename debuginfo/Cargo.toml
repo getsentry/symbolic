@@ -15,6 +15,10 @@ as Mach-O or ELF.
 """
 edition = "2018"
 
+exclude = [
+    "tests/**/*",
+]
+
 [dependencies]
 dmsort = "1.0.0"
 failure = "0.1.5"

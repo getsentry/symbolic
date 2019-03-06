@@ -17,10 +17,12 @@ minidumps, Unreal Engine 4, minified JavaScripts or ProGuard optimized Android a
 edition = "2018"
 autoexamples = true
 
-exclude = [
-    ".vscode/**/*",
-    "py/**/*",
-    "scripts/**/*",
+include = [
+    "/src/**/*.rs",
+    "/*.toml",
+    "/.gitmodules",
+    "/LICENSE",
+    "/README.md",
 ]
 
 [package.metadata.docs.rs]

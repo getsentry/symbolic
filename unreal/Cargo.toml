@@ -15,6 +15,10 @@ Parsing and processing utilities for Unreal Engine 4 crash files.
 """
 edition = "2018"
 
+exclude = [
+    "tests/**/*",
+]
+
 [features]
 with-serde = ["serde", "chrono/serde"]
 

@@ -15,6 +15,10 @@ stack frames in debugging information.
 """
 edition = "2018"
 
+exclude = [
+    "tests/**/*",
+]
+
 [dependencies]
 failure = "0.1.5"
 fnv = "1.0.6"
