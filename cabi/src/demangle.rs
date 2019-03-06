@@ -28,7 +28,7 @@ ffi_fn! {
             format: DemangleFormat::Short,
         });
 
-        Ok(demangled.into())
+        Ok(demangled.into_owned().into())
     }
 }
 
@@ -48,6 +48,6 @@ ffi_fn! {
             format: DemangleFormat::Short,
         });
 
-        Ok(demangled.into())
+        Ok(demangled.into_owned().into())
     }
 }
