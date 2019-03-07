@@ -257,13 +257,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             None => return Err(gimli::read::Error::MissingUnitDie.into()),
         };
 
-        let language = entry
-            .attr(constants::DW_AT_language)?
-            .and_then(|attr| match attr.value() {
-                AttributeValue::Language(lang) => Some(language_from_dwarf(lang)),
-                _ => None,
-            })
-            .unwrap_or(Language::Unknown);
+        let language = match entry.attr_value(constants::DW_AT_language)? {
+            Some(AttributeValue::Language(lang)) => language_from_dwarf(lang),
+            _ => Language::Unknown,
+        };
 
         let line_program = match unit.line_program {
             Some(ref program) => Some(DwarfLineProgram::prepare(program.clone())?),
@@ -925,7 +922,14 @@ impl<'s> Iterator for DwarfUnitIterator<'s> {
             let result = self.info.get_unit(self.index);
             self.index += 1;
             match result {
-                Ok(Some(unit)) => return Some(DwarfUnit::from_unit(unit, self.info)),
+                // Clang's LLD might eliminate an entire compilation unit and simply set the low_pc
+                // to zero to indicate that it is missing. Skip such a unit, as it does not contain
+                // any code that can be executed. The unit is still cached, though, so that function
+                // name references into that unit can be resolved.
+                Ok(Some(unit)) => match unit.low_pc {
+                    0 => continue,
+                    _ => return Some(DwarfUnit::from_unit(unit, self.info)),
+                },
                 Ok(None) => continue,
                 Err(error) => return Some(Err(error)),
             }
