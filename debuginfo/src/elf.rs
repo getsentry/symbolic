@@ -17,7 +17,9 @@ use crate::private::{HexFmt, Parse};
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;
+
 const SHN_UNDEF: usize = elf::section_header::SHN_UNDEF as usize;
+const SHF_COMPRESSED: u64 = elf::section_header::SHF_COMPRESSED as u64;
 
 /// An error when dealing with [`ElfObject`](struct.ElfObject.html).
 #[derive(Debug, Fail)]
@@ -82,7 +84,7 @@ impl<'d> ElfObject<'d> {
         // We were not able to locate the build ID, so fall back to hashing the
         // first page of the ".text" (program code) section. This algorithm XORs
         // 16-byte chunks directly into a UUID buffer.
-        if let Some((_, data)) = self.find_section("text") {
+        if let Some((_, data)) = self.raw_data("text") {
             let mut hash = [0; UUID_SIZE];
             for i in 0..std::cmp::min(data.len(), PAGE_SIZE) {
                 hash[i % UUID_SIZE] ^= data[i];
@@ -235,29 +237,41 @@ impl<'d> ElfObject<'d> {
     }
 
     /// Locates and reads a section in an ELF binary.
-    fn find_section(&self, name: &str) -> Option<(&elf::SectionHeader, &'d [u8])> {
+    fn find_section(&self, name: &str) -> Option<(&elf::SectionHeader, bool, &'d [u8])> {
         for header in &self.elf.section_headers {
             if header.sh_type != elf::section_header::SHT_PROGBITS {
                 continue;
             }
 
             if let Some(Ok(section_name)) = self.elf.shdr_strtab.get(header.sh_name) {
-                if section_name.is_empty() || &section_name[1..] != name {
+                let offset = header.sh_offset as usize;
+                if offset == 0 {
+                    // We're defensive here. On darwin, dsymutil leaves phantom section headers
+                    // while stripping their data from the file by setting their offset to 0. We
+                    // know that no section can start at an absolute file offset of zero, so we can
+                    // safely skip them in case similar things happen on linux.
+                    return None;
+                }
+
+                if section_name.is_empty() {
                     continue;
                 }
 
-                let offset = header.sh_offset as usize;
-                if offset == 0 {
-                    // We're defensive here. On darwin, dsymutil leaves phantom section headers while
-                    // stripping their data from the file by setting their offset to 0. We know that no
-                    // section can start at an absolute file offset of zero, so we can safely skip them
-                    // in case similar things happen on linux.
-                    return None;
+                // Before SHF_COMPRESSED was a thing, compressed sections were prefixed with `.z`.
+                // Support this as an override to the flag.
+                let (compressed, section_name) = if section_name.starts_with(".z") {
+                    (true, &section_name[2..])
+                } else {
+                    (header.sh_flags & SHF_COMPRESSED != 0, &section_name[1..])
+                };
+
+                if section_name != name {
+                    continue;
                 }
 
                 let size = header.sh_size as usize;
                 let data = &self.data[offset..][..size];
-                return Some((header, data));
+                return Some((header, compressed, data));
             }
         }
 
@@ -425,16 +439,14 @@ impl<'d> Dwarf<'d> for ElfObject<'d> {
     }
 
     fn raw_data(&self, section: &str) -> Option<(u64, &'d [u8])> {
-        let (header, data) = self.find_section(section)?;
+        let (header, _, data) = self.find_section(section)?;
         Some((header.sh_offset, data))
     }
 
     fn section_data(&self, section: &str) -> Option<(u64, Cow<'d, [u8]>)> {
-        let (header, data) = self.find_section(section)?;
+        let (header, compressed, data) = self.find_section(section)?;
 
-        // Check for zlib compression of the section data. Once we've arrived here, we can
-        // return None on error since each section will only occur once.
-        if header.sh_flags & u64::from(elf::section_header::SHF_COMPRESSED) != 0 {
+        if compressed {
             Some((header.sh_offset, Cow::Owned(self.decompress_section(data)?)))
         } else {
             Some((header.sh_offset, Cow::Borrowed(data)))
