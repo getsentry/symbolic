@@ -1,7 +1,5 @@
 //! Generic wrappers over various object file formats.
 
-use std::io::Cursor;
-
 use failure::Fail;
 use goblin::Hint;
 
@@ -85,6 +83,35 @@ pub enum ObjectError {
     Dwarf(#[fail(cause)] DwarfError),
 }
 
+/// Tries to infer the object type from the start of the given buffer.
+///
+/// If `archive` is set to `true`, multi architecture objects will be allowed. Otherwise, only
+/// single-arch objects are checked.
+pub fn peek(data: &[u8], archive: bool) -> FileFormat {
+    if data.len() < 16 {
+        return FileFormat::Unknown;
+    }
+
+    let mut magic = [0; 16];
+    magic.copy_from_slice(&data[..16]);
+
+    match goblin::peek_bytes(&magic) {
+        Ok(Hint::Elf(_)) => return FileFormat::Elf,
+        Ok(Hint::Mach(_)) => return FileFormat::MachO,
+        Ok(Hint::MachFat(_)) if archive => return FileFormat::MachO,
+        Ok(Hint::PE) => return FileFormat::Pe,
+        _ => (),
+    }
+
+    if BreakpadObject::test(data) {
+        FileFormat::Breakpad
+    } else if PdbObject::test(data) {
+        FileFormat::MachO
+    } else {
+        FileFormat::Unknown
+    }
+}
+
 /// A generic object file providing uniform access to various file formats.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -104,45 +131,32 @@ pub enum Object<'d> {
 impl<'d> Object<'d> {
     /// Tests whether the buffer could contain an object.
     pub fn test(data: &[u8]) -> bool {
-        if PdbObject::test(data) || BreakpadObject::test(data) {
-            return true;
-        }
+        Self::peek(data) != FileFormat::Unknown
+    }
 
-        let mut cursor = Cursor::new(data);
-        let hint = goblin::peek(&mut cursor);
-
-        match hint.unwrap_or(Hint::Unknown(0)) {
-            Hint::Elf(_) => true,
-            Hint::Mach(_) => true,
-            Hint::PE => true,
-            _ => false,
-        }
+    /// Tries to infer the object type from the start of the given buffer.
+    pub fn peek(data: &[u8]) -> FileFormat {
+        peek(data, false)
     }
 
     /// Tries to parse a supported object from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, ObjectError> {
         macro_rules! parse_object {
             ($kind:ident, $file:ident, $data:expr) => {
-                Ok(Object::$kind(
-                    $file::parse(data).map_err(ObjectError::$kind)?,
-                ))
+                Object::$kind($file::parse(data).map_err(ObjectError::$kind)?)
             };
         };
 
-        if BreakpadObject::test(data) {
-            return parse_object!(Breakpad, BreakpadObject, data);
-        } else if PdbObject::test(data) {
-            return parse_object!(Pdb, PdbObject, data);
-        } else if let Ok(hint) = goblin::peek(&mut Cursor::new(data)) {
-            match hint {
-                Hint::Elf(_) => return parse_object!(Elf, ElfObject, data),
-                Hint::PE => return parse_object!(Pe, PeObject, data),
-                Hint::Mach(_) => return parse_object!(MachO, MachObject, data),
-                _ => (),
-            }
-        }
+        let object = match Self::peek(data) {
+            FileFormat::Breakpad => parse_object!(Breakpad, BreakpadObject, data),
+            FileFormat::Elf => parse_object!(Elf, ElfObject, data),
+            FileFormat::MachO => parse_object!(MachO, MachObject, data),
+            FileFormat::Pdb => parse_object!(Pdb, PdbObject, data),
+            FileFormat::Pe => parse_object!(Pe, PeObject, data),
+            FileFormat::Unknown => return Err(ObjectError::UnsupportedObject),
+        };
 
-        Err(ObjectError::UnsupportedObject)
+        Ok(object)
     }
 
     /// The container format of this file, corresponding to the variant of this instance.
@@ -411,51 +425,31 @@ pub struct Archive<'d>(ArchiveInner<'d>);
 impl<'d> Archive<'d> {
     /// Tests whether this buffer contains a valid object archive.
     pub fn test(data: &[u8]) -> bool {
-        // TODO(ja): Deduplicate with Object::parse
-        if PdbObject::test(data) || BreakpadObject::test(data) {
-            return true;
-        }
+        Self::peek(data) != FileFormat::Unknown
+    }
 
-        let mut cursor = Cursor::new(data);
-        let hint = goblin::peek(&mut cursor);
-
-        match hint.unwrap_or(Hint::Unknown(0)) {
-            Hint::Elf(_) => true,
-            Hint::Mach(_) => true,
-            Hint::MachFat(_) => true,
-            Hint::PE => true,
-            _ => false,
-        }
+    /// Tries to infer the object archive type from the start of the given buffer.
+    pub fn peek(data: &[u8]) -> FileFormat {
+        peek(data, true)
     }
 
     /// Tries to parse a generic archive from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, ObjectError> {
-        // TODO(ja): Deduplicate with Object::parse
-        macro_rules! parse_mono {
-            ($kind:ident, $file:ident, $data:expr) => {
-                Ok(Archive(ArchiveInner::$kind(MonoArchive::new(data))))
-            };
+        let archive = match Self::peek(data) {
+            FileFormat::Breakpad => Archive(ArchiveInner::Breakpad(MonoArchive::new(data))),
+            FileFormat::Elf => Archive(ArchiveInner::Elf(MonoArchive::new(data))),
+            FileFormat::MachO => {
+                let inner = MachArchive::parse(data)
+                    .map(ArchiveInner::MachO)
+                    .map_err(ObjectError::MachO)?;
+                Archive(inner)
+            }
+            FileFormat::Pdb => Archive(ArchiveInner::Pdb(MonoArchive::new(data))),
+            FileFormat::Pe => Archive(ArchiveInner::Pe(MonoArchive::new(data))),
+            FileFormat::Unknown => return Err(ObjectError::UnsupportedObject),
         };
 
-        if BreakpadObject::test(data) {
-            return parse_mono!(Breakpad, BreakpadObject, data);
-        } else if PdbObject::test(data) {
-            return parse_mono!(Pdb, PdbObject, data);
-        } else if let Ok(hint) = goblin::peek(&mut Cursor::new(data)) {
-            match hint {
-                Hint::Elf(_) => return parse_mono!(Elf, ElfObject, data),
-                Hint::PE => return parse_mono!(Pe, PeObject, data),
-                Hint::Mach(_) | Hint::MachFat(_) => {
-                    let inner = MachArchive::parse(data)
-                        .map(ArchiveInner::MachO)
-                        .map_err(ObjectError::MachO)?;
-                    return Ok(Archive(inner));
-                }
-                _ => (),
-            }
-        }
-
-        Err(ObjectError::UnsupportedObject)
+        Ok(archive)
     }
 
     /// The container format of this file.
