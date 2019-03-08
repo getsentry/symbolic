@@ -219,6 +219,14 @@ impl<'d> MachObject<'d> {
         self.data
     }
 
+    /// Checks whether this mach object contains hidden symbols.
+    ///
+    /// This is an indication that BCSymbolMaps are needed to symbolicate crash reports correctly.
+    pub fn requires_symbolmap(&self) -> bool {
+        self.symbols()
+            .any(|s| s.name().map_or(false, |n| n.starts_with("__?hidden#")))
+    }
+
     /// Locates a segment by its name.
     fn find_segment(&self, name: &str) -> Option<&mach::segment::Segment<'d>> {
         for segment in &self.macho.segments {
