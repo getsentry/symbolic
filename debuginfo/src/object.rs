@@ -106,7 +106,7 @@ pub fn peek(data: &[u8], archive: bool) -> FileFormat {
     if BreakpadObject::test(data) {
         FileFormat::Breakpad
     } else if PdbObject::test(data) {
-        FileFormat::MachO
+        FileFormat::Pdb
     } else {
         FileFormat::Unknown
     }
