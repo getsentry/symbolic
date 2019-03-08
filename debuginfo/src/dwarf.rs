@@ -8,6 +8,7 @@
 //! [`MachObject`] ../macho/struct.MachObject.html
 
 use std::borrow::Cow;
+use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Deref;
 
@@ -240,41 +241,15 @@ impl<'d, 'a> DwarfLineProgram<'d> {
     }
 }
 
-/// Wrapper around a DWARF Unit.
-struct DwarfUnit<'d, 'a> {
-    unit: &'a Unit<'d>,
+/// A slim wrapper around a DWARF unit.
+#[derive(Clone, Copy, Debug)]
+struct UnitRef<'d, 'a> {
     info: &'a DwarfInfo<'d>,
-    language: Language,
-    line_program: Option<DwarfLineProgram<'d>>,
+    unit: &'a Unit<'d>,
 }
 
-impl<'d, 'a> DwarfUnit<'d, 'a> {
-    /// Creates a DWARF unit from the gimli `Unit` type.
-    fn from_unit(unit: &'a Unit<'d>, info: &'a DwarfInfo<'d>) -> Result<Self, DwarfError> {
-        let mut entries = unit.entries();
-        let entry = match entries.next_dfs()? {
-            Some((_, entry)) => entry,
-            None => return Err(gimli::read::Error::MissingUnitDie.into()),
-        };
-
-        let language = match entry.attr_value(constants::DW_AT_language)? {
-            Some(AttributeValue::Language(lang)) => language_from_dwarf(lang),
-            _ => Language::Unknown,
-        };
-
-        let line_program = match unit.line_program {
-            Some(ref program) => Some(DwarfLineProgram::prepare(program.clone())?),
-            None => None,
-        };
-
-        Ok(DwarfUnit {
-            unit,
-            info,
-            language,
-            line_program,
-        })
-    }
-
+impl<'d, 'a> UnitRef<'d, 'a> {
+    /// Resolve the binary value of an attribute.
     #[inline(always)]
     fn slice_value(&self, value: AttributeValue<Slice<'d>>) -> Option<&'d [u8]> {
         self.info
@@ -290,9 +265,120 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         Some(String::from_utf8_lossy(slice))
     }
 
+    /// Resolves an entry and if found invokes a function to transform it.
+    ///
+    /// As this might resolve into cached information the data borrowed from
+    /// abbrev can only be temporarily accessed in the callback.
+    fn resolve_reference<T, F>(&self, attr: Attribute<'d>, f: F) -> Result<Option<T>, DwarfError>
+    where
+        F: FnOnce(UnitRef<'d, '_>, &Die<'d, '_>) -> Result<Option<T>, DwarfError>,
+    {
+        let (unit, offset) = match attr.value() {
+            AttributeValue::UnitRef(offset) => (*self, offset),
+            AttributeValue::DebugInfoRef(offset) => self.info.find_unit_offset(offset)?,
+            // TODO: There is probably more that can come back here.
+            _ => return Ok(None),
+        };
+
+        let mut entries = unit.unit.entries_at_offset(offset)?;
+        entries.next_entry()?;
+
+        if let Some(entry) = entries.current() {
+            f(unit, entry)
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Resolves the function name of a debug entry.
+    fn resolve_function_name(
+        &self,
+        entry: &Die<'d, '_>,
+    ) -> Result<Option<Cow<'d, str>>, DwarfError> {
+        let mut attrs = entry.attrs();
+        let mut fallback_name = None;
+        let mut reference_target = None;
+
+        while let Some(attr) = attrs.next()? {
+            match attr.name() {
+                // Prioritize these. If we get them, take them.
+                constants::DW_AT_linkage_name | constants::DW_AT_MIPS_linkage_name => {
+                    return Ok(self.string_value(attr.value()));
+                }
+                constants::DW_AT_name => {
+                    fallback_name = Some(attr);
+                }
+                constants::DW_AT_abstract_origin | constants::DW_AT_specification => {
+                    reference_target = Some(attr);
+                }
+                _ => {}
+            }
+        }
+
+        if let Some(attr) = fallback_name {
+            return Ok(self.string_value(attr.value()));
+        }
+
+        if let Some(attr) = reference_target {
+            let resolved = self.resolve_reference(attr, |ref_unit, ref_entry| {
+                ref_unit.resolve_function_name(ref_entry)
+            })?;
+
+            if let Some(name) = resolved {
+                return Ok(Some(name));
+            }
+        }
+
+        Ok(None)
+    }
+}
+
+/// Wrapper around a DWARF Unit.
+#[derive(Debug)]
+struct DwarfUnit<'d, 'a> {
+    info: &'a DwarfInfo<'d>,
+    inner: UnitRef<'d, 'a>,
+    language: Language,
+    line_program: Option<DwarfLineProgram<'d>>,
+}
+
+impl<'d, 'a> DwarfUnit<'d, 'a> {
+    /// Creates a DWARF unit from the gimli `Unit` type.
+    fn from_unit(unit: &'a Unit<'d>, info: &'a DwarfInfo<'d>) -> Result<Option<Self>, DwarfError> {
+        let mut entries = unit.entries();
+        let entry = match entries.next_dfs()? {
+            Some((_, entry)) => entry,
+            None => return Err(gimli::read::Error::MissingUnitDie.into()),
+        };
+
+        // Clang's LLD might eliminate an entire compilation unit and simply set the low_pc to zero
+        // and remove all range entries to indicate that it is missing. Skip such a unit, as it does
+        // not contain any code that can be executed.
+        if unit.low_pc == 0 && entry.attr(constants::DW_AT_ranges)?.is_none() {
+            return Ok(None);
+        }
+
+        let language = match entry.attr_value(constants::DW_AT_language)? {
+            Some(AttributeValue::Language(lang)) => language_from_dwarf(lang),
+            _ => Language::Unknown,
+        };
+
+        let line_program = match unit.line_program {
+            Some(ref program) => Some(DwarfLineProgram::prepare(program.clone())?),
+            None => None,
+        };
+
+        Ok(Some(DwarfUnit {
+            info,
+            inner: UnitRef { info, unit },
+            language,
+            line_program,
+        }))
+    }
+
     /// The path of the compilation directory. File names are usually relative to this path.
     fn compilation_dir(&self) -> &'d [u8] {
-        match self.unit.comp_dir {
+        match self.inner.unit.comp_dir {
             Some(ref dir) => dir.slice(),
             None => &[],
         }
@@ -332,7 +418,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 constants::DW_AT_ranges
                 | constants::DW_AT_rnglists_base
                 | constants::DW_AT_start_scope => {
-                    match self.info.attr_ranges(self.unit, attr.value())? {
+                    match self.info.attr_ranges(self.inner.unit, attr.value())? {
                         Some(mut ranges) => {
                             while let Some(range) = ranges.next()? {
                                 range_buf.push(range);
@@ -381,71 +467,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         });
 
         Ok(tuple)
-    }
-
-    /// Resolves an entry and if found invokes a function to transform it.
-    ///
-    /// As this might resolve into cached information the data borrowed from
-    /// abbrev can only be temporarily accessed in the callback.
-    fn resolve_reference<T, F>(&self, attr: Attribute<'d>, f: F) -> Result<Option<T>, DwarfError>
-    where
-        F: FnOnce(&Die<'d, '_>) -> Result<Option<T>, DwarfError>,
-    {
-        let (unit, offset) = match attr.value() {
-            AttributeValue::UnitRef(offset) => (self.unit, offset),
-            AttributeValue::DebugInfoRef(offset) => self.info.find_unit_offset(offset)?,
-            // TODO: There is probably more that can come back here.
-            _ => return Ok(None),
-        };
-
-        let mut entries = unit.entries_at_offset(offset)?;
-        entries.next_entry()?;
-
-        if let Some(entry) = entries.current() {
-            f(entry)
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Resolves the function name of a debug entry.
-    fn resolve_function_name(
-        &self,
-        entry: &Die<'d, '_>,
-    ) -> Result<Option<Cow<'d, str>>, DwarfError> {
-        let mut attrs = entry.attrs();
-        let mut fallback_name = None;
-        let mut reference_target = None;
-
-        while let Some(attr) = attrs.next()? {
-            match attr.name() {
-                // Prioritize these. If we get them, take them.
-                constants::DW_AT_linkage_name | constants::DW_AT_MIPS_linkage_name => {
-                    return Ok(self.string_value(attr.value()));
-                }
-                constants::DW_AT_name => {
-                    fallback_name = Some(attr);
-                }
-                constants::DW_AT_abstract_origin | constants::DW_AT_specification => {
-                    reference_target = Some(attr);
-                }
-                _ => {}
-            }
-        }
-
-        if let Some(attr) = fallback_name {
-            return Ok(self.string_value(attr.value()));
-        }
-
-        if let Some(attr) = reference_target {
-            if let Some(name) =
-                self.resolve_reference(attr, |ref_entry| self.resolve_function_name(ref_entry))?
-            {
-                return Ok(Some(name));
-            }
-        }
-
-        Ok(None)
     }
 
     /// Resolves line records of a DIE's range list and puts them into the given buffer.
@@ -501,9 +522,9 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         Ok(Some(FileInfo {
             dir: file
                 .directory(line_program)
-                .and_then(|attr| self.slice_value(attr))
+                .and_then(|attr| self.inner.slice_value(attr))
                 .unwrap_or_default(),
-            name: self.slice_value(file.path_name()).unwrap_or_default(),
+            name: self.inner.slice_value(file.path_name()).unwrap_or_default(),
         }))
     }
 
@@ -517,7 +538,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         let mut functions = Vec::new();
 
         let mut stack = FunctionStack::new();
-        let mut entries = self.unit.entries();
+        let mut entries = self.inner.unit.entries();
         while let Some((movement, entry)) = entries.next_dfs()? {
             depth += movement;
 
@@ -574,7 +595,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
             let name = match symbol_name {
                 Some(name) => Some(name),
-                None => self.resolve_function_name(entry)?,
+                None => self.inner.resolve_function_name(entry)?,
             };
 
             // Avoid constant allocations by collecting repeatedly into the same buffer and
@@ -730,7 +751,7 @@ impl<'a> FunctionStack<'a> {
     }
 }
 
-// Data of a specific DWARF section.
+/// Data of a specific DWARF section.
 struct DwarfSection<'data, S> {
     data: Cow<'data, [u8]>,
     endianity: Endian,
@@ -759,6 +780,25 @@ where
     /// Creates a gimli dwarf section object from the loaded data.
     fn to_gimli(&'data self) -> S {
         S::from(Slice::new(&self.data, self.endianity))
+    }
+}
+
+impl<'d, S> fmt::Debug for DwarfSection<'d, S>
+where
+    S: gimli::read::Section<Slice<'d>>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let owned = match self.data {
+            Cow::Owned(_) => true,
+            Cow::Borrowed(_) => false,
+        };
+
+        f.debug_struct("DwarfSection")
+            .field("type", &S::section_name())
+            .field("endianity", &self.endianity)
+            .field("len()", &self.data.len())
+            .field("owned()", &owned)
+            .finish()
     }
 }
 
@@ -874,7 +914,7 @@ impl<'d> DwarfInfo<'d> {
     fn find_unit_offset(
         &self,
         offset: DebugInfoOffset,
-    ) -> Result<(&Unit<'d>, UnitOffset), DwarfError> {
+    ) -> Result<(UnitRef<'d, '_>, UnitOffset), DwarfError> {
         let index = match self.headers.binary_search_by_key(&offset, |h| h.offset()) {
             Ok(index) => index,
             Err(0) => return Err(DwarfErrorKind::InvalidUnitRef(offset.0).into()),
@@ -884,7 +924,7 @@ impl<'d> DwarfInfo<'d> {
         if let Some(unit) = self.get_unit(index)? {
             let offset = UnitSectionOffset::DebugInfoOffset(offset);
             if let Some(unit_offset) = offset.to_unit_offset(unit) {
-                return Ok((unit, unit_offset));
+                return Ok((UnitRef { unit, info: self }, unit_offset));
             }
         }
 
@@ -908,6 +948,16 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for DwarfInfo<'d> {
     }
 }
 
+impl fmt::Debug for DwarfInfo<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("DwarfInfo")
+            .field("headers", &self.headers)
+            .field("symbol_map", &self.symbol_map)
+            .field("load_address", &self.load_address)
+            .finish()
+    }
+}
+
 /// An iterator over compilation units in a DWARF object.
 struct DwarfUnitIterator<'s> {
     info: &'s DwarfInfo<'s>,
@@ -921,15 +971,15 @@ impl<'s> Iterator for DwarfUnitIterator<'s> {
         while self.index < self.info.headers.len() {
             let result = self.info.get_unit(self.index);
             self.index += 1;
-            match result {
-                // Clang's LLD might eliminate an entire compilation unit and simply set the low_pc
-                // to zero to indicate that it is missing. Skip such a unit, as it does not contain
-                // any code that can be executed. The unit is still cached, though, so that function
-                // name references into that unit can be resolved.
-                Ok(Some(unit)) => match unit.low_pc {
-                    0 => continue,
-                    _ => return Some(DwarfUnit::from_unit(unit, self.info)),
-                },
+
+            let unit = match result {
+                Ok(Some(unit)) => unit,
+                Ok(None) => continue,
+                Err(error) => return Some(Err(error)),
+            };
+
+            match DwarfUnit::from_unit(unit, self.info) {
+                Ok(Some(unit)) => return Some(Ok(unit)),
                 Ok(None) => continue,
                 Err(error) => return Some(Err(error)),
             }
