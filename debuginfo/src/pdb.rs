@@ -254,8 +254,7 @@ pub(crate) fn arch_from_machine(machine: MachineType) -> Arch {
         MachineType::X86 => Arch::X86,
         MachineType::Amd64 => Arch::Amd64,
         MachineType::Arm => Arch::Arm,
-        // TODO(ja): Add this when PR is merged
-        // MachineType::Arm64 => Arch::Arm64,
+        MachineType::Arm64 => Arch::Arm64,
         MachineType::PowerPC => Arch::Ppc,
         _ => Arch::Unknown,
     }
