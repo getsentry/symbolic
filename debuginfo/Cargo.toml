@@ -27,13 +27,13 @@ flate2 = { version = "1.0.6", features = ["rust_backend"], default-features = fa
 gimli = { version = "0.17.0", features = ["read", "std"], default-features = false }
 goblin = "0.0.21"
 lazycell = "1.2.1"
-pdb = "0.2.2"
+pdb = "0.3.0"
 parking_lot = "0.7.1"
 pest = "2.1.0"
 pest_derive = "2.1.0"
-serde = { version = "1.0.88", optional = true }
+serde = { version = "1.0.89", optional = true }
 smallvec = "0.6.9"
 symbolic-common = { version = "5.8.2", path = "../common" }
 
 [dev-dependencies]
-insta = "0.6.3"
+insta = "0.7.1"

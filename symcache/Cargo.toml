@@ -27,7 +27,7 @@ symbolic-common = { version = "5.8.2", path = "../common" }
 symbolic-debuginfo = { version = "5.8.2", path = "../debuginfo" }
 
 [dev-dependencies]
-insta = "0.6.3"
+insta = "0.7.1"
 
 [features]
 bench = []
