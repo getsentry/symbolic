@@ -10,6 +10,14 @@ ffi_fn! {
 }
 
 ffi_fn! {
+    /// Normalizes an architecture name.
+    unsafe fn symbolic_normalize_arch(arch: *const SymbolicStr) -> Result<SymbolicStr> {
+        let arch = (*arch).as_str().parse::<Arch>()?;
+        Ok(arch.to_string().into())
+    }
+}
+
+ffi_fn! {
     /// Returns the name of the instruction pointer if known.
     unsafe fn symbolic_arch_ip_reg_name(arch: *const SymbolicStr) -> Result<SymbolicStr> {
         let arch = (*arch).as_str().parse::<Arch>()?;

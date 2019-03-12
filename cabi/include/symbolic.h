@@ -439,6 +439,11 @@ void symbolic_init(void);
 void symbolic_lookup_result_free(SymbolicLookupResult *lookup_result);
 
 /**
+ * Normalizes an architecture name.
+ */
+SymbolicStr symbolic_normalize_arch(const SymbolicStr *arch);
+
+/**
  * Normalizes a debug identifier to default representation.
  */
 SymbolicStr symbolic_normalize_debug_id(const SymbolicStr *debug_id);
