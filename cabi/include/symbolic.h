@@ -337,11 +337,6 @@ void symbolic_cficache_free(SymbolicCfiCache *cache);
 SymbolicCfiCache *symbolic_cficache_from_object(const SymbolicObject *object);
 
 /**
- * Loads a CFI cache from the given path.
- */
-SymbolicCfiCache *symbolic_cficache_from_path(const char *path);
-
-/**
  * Returns a pointer to the raw buffer of the CFI cache.
  */
 const uint8_t *symbolic_cficache_get_bytes(const SymbolicCfiCache *cache);
@@ -360,6 +355,11 @@ uint32_t symbolic_cficache_get_version(const SymbolicCfiCache *cache);
  * Returns the latest CFI cache version.
  */
 uint32_t symbolic_cficache_latest_version(void);
+
+/**
+ * Loads a CFI cache from the given path.
+ */
+SymbolicCfiCache *symbolic_cficache_open(const char *path);
 
 /**
  * Demangles a given identifier.
@@ -520,11 +520,6 @@ SymbolicProguardMappingView *symbolic_proguardmappingview_from_bytes(const char 
                                                                      uintptr_t len);
 
 /**
- * Creates a proguard mapping view from a path.
- */
-SymbolicProguardMappingView *symbolic_proguardmappingview_from_path(const char *path);
-
-/**
  * Returns the UUID of a proguard mapping file.
  */
 SymbolicUuid symbolic_proguardmappingview_get_uuid(SymbolicProguardMappingView *view);
@@ -533,6 +528,11 @@ SymbolicUuid symbolic_proguardmappingview_get_uuid(SymbolicProguardMappingView *
  * Returns true if the mapping file has line infos.
  */
 bool symbolic_proguardmappingview_has_line_info(const SymbolicProguardMappingView *view);
+
+/**
+ * Creates a proguard mapping view from a path.
+ */
+SymbolicProguardMappingView *symbolic_proguardmappingview_open(const char *path);
 
 /**
  * Frees a source map view.
@@ -650,11 +650,6 @@ SymbolicSymCache *symbolic_symcache_from_bytes(const uint8_t *bytes,
 SymbolicSymCache *symbolic_symcache_from_object(const SymbolicObject *object);
 
 /**
- * Creates a symcache from a given path.
- */
-SymbolicSymCache *symbolic_symcache_from_path(const char *path);
-
-/**
  * Returns the architecture of the symcache.
  */
 SymbolicStr symbolic_symcache_get_arch(const SymbolicSymCache *symcache);
@@ -700,6 +695,11 @@ uint32_t symbolic_symcache_latest_file_format_version(void);
  */
 SymbolicLookupResult symbolic_symcache_lookup(const SymbolicSymCache *symcache,
                                               uint64_t addr);
+
+/**
+ * Creates a symcache from a given path.
+ */
+SymbolicSymCache *symbolic_symcache_open(const char *path);
 
 /**
  * Free a token match.

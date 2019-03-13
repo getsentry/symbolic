@@ -14,7 +14,7 @@ def get_symcache(path, object_lookup):
     if not os.path.isdir(dsym_path):
         return
     for fn in os.listdir(dsym_path):
-        archive = Archive.from_path(os.path.join(dsym_path, fn))
+        archive = Archive.open(os.path.join(dsym_path, fn))
         for obj in archive.iter_objects():
             if object_lookup.get_object(id=obj.debug_id) is not None:
                 return obj.make_symcache()

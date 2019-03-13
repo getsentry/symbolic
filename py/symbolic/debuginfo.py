@@ -22,7 +22,7 @@ class Archive(RustObject):
     __dealloc_func__ = lib.symbolic_archive_free
 
     @classmethod
-    def from_path(self, path):
+    def open(self, path):
         """Opens an archive from a given path."""
         return Archive._from_objptr(
             rustcall(lib.symbolic_archive_open, path))

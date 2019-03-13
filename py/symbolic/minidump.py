@@ -331,10 +331,10 @@ class CfiCache(RustObject):
     __dealloc_func__ = lib.symbolic_cficache_free
 
     @classmethod
-    def from_path(cls, path):
+    def open(cls, path):
         """Loads a cficache from a file via mmap."""
         return cls._from_objptr(
-            rustcall(lib.symbolic_cficache_from_path, encode_path(path)))
+            rustcall(lib.symbolic_cficache_open, encode_path(path)))
 
     @classmethod
     def from_object(cls, obj):

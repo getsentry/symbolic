@@ -56,7 +56,7 @@ pub struct SymbolicInstructionInfo {
 
 ffi_fn! {
     /// Creates a symcache from a given path.
-    unsafe fn symbolic_symcache_from_path(path: *const c_char) -> Result<*mut SymbolicSymCache> {
+    unsafe fn symbolic_symcache_open(path: *const c_char) -> Result<*mut SymbolicSymCache> {
         let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
         let cell = SelfCell::try_new(byteview, |p| SymCache::parse(&*p))?;
         Ok(SymbolicSymCache::from_rust(cell))

@@ -71,7 +71,7 @@ The python library ships all of the above features in a flat module:
 ```python
 from symbolic import Archive
 
-fat = Archive.from_path('/path/to/object')
+fat = Archive.open('/path/to/object')
 obj = fat.get_object(arch = 'x86_64')
 print 'object debug id: {}' % obj.debug_id
 ```

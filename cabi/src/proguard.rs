@@ -17,7 +17,7 @@ impl ForeignObject for SymbolicProguardMappingView {
 
 ffi_fn! {
     /// Creates a proguard mapping view from a path.
-    unsafe fn symbolic_proguardmappingview_from_path(
+    unsafe fn symbolic_proguardmappingview_open(
         path: *const c_char
     ) -> Result<*mut SymbolicProguardMappingView> {
         let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;

@@ -349,7 +349,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Loads a CFI cache from the given path.
-    unsafe fn symbolic_cficache_from_path(path: *const c_char) -> Result<*mut SymbolicCfiCache> {
+    unsafe fn symbolic_cficache_open(path: *const c_char) -> Result<*mut SymbolicCfiCache> {
         let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
         let cache = CfiCache::from_bytes(byteview)?;
         Ok(SymbolicCfiCache::from_rust(cache))

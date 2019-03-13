@@ -4,7 +4,7 @@
 
 #include "symbolic.h"
 
-void test_object_from_path(void) {
+void test_object_open(void) {
     printf("[TEST] open archive from path:\n");
 
     SymbolicArchive *archive =
@@ -36,7 +36,7 @@ void test_object_from_path(void) {
 }
 
 int main() {
-    test_object_from_path();
+    test_object_open();
 
     return 0;
 }
