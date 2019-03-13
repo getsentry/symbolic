@@ -16,7 +16,7 @@ __all__ = ['LineInfo', 'SymCache', 'find_best_instruction',
 
 # the most recent version for the symcache file format.
 SYMCACHE_LATEST_VERSION = rustcall(
-    lib.symbolic_symcache_latest_file_format_version)
+    lib.symbolic_symcache_latest_version)
 
 
 @implements_to_string

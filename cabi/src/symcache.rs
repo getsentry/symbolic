@@ -210,7 +210,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns the latest symcache version.
-    unsafe fn symbolic_symcache_latest_file_format_version() -> Result<u32> {
+    unsafe fn symbolic_symcache_latest_version() -> Result<u32> {
         Ok(SYMCACHE_VERSION)
     }
 }

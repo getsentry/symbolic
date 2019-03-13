@@ -688,7 +688,7 @@ bool symbolic_symcache_has_line_info(const SymbolicSymCache *symcache);
 /**
  * Returns the latest symcache version.
  */
-uint32_t symbolic_symcache_latest_file_format_version(void);
+uint32_t symbolic_symcache_latest_version(void);
 
 /**
  * Looks up a single symbol.
