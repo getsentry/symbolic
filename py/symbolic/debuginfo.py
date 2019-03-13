@@ -167,11 +167,11 @@ class ObjectLookup(object):
         """Iterates over all objects."""
         return itervalues(self.objects)
 
-    def get_ids(self):
+    def get_debug_ids(self):
         """Returns a list of ids."""
         return sorted(self.objects)
 
-    def iter_ids(self):
+    def iter_debug_ids(self):
         """Iterates over all ids."""
         return iter(self.objects)
 
@@ -185,9 +185,9 @@ class ObjectLookup(object):
             if not rv.size or parse_addr(addr) < rv.addr + rv.size:
                 return rv
 
-    def get_object(self, id):
-        """Finds an object by the given id."""
-        return self.objects.get(id)
+    def get_object(self, debug_id):
+        """Finds an object by the given debug id."""
+        return self.objects.get(debug_id)
 
 
 def id_from_breakpad(breakpad_id):
