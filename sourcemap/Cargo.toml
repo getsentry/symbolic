@@ -17,4 +17,4 @@ edition = "2018"
 
 [dependencies]
 failure = "0.1.5"
-sourcemap = "3.0.0"
+sourcemap = "3.0.1"
