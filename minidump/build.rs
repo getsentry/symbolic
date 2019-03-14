@@ -2,7 +2,7 @@ use std::path::Path;
 use std::process::Command;
 
 fn main() {
-    if !Path::new("third_party/breakpad/.git").exists() {
+    if !Path::new("third_party/breakpad/src").exists() {
         let status = Command::new("git")
             .args(&["submodule", "update", "--init"])
             .status()

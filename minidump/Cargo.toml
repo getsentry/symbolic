@@ -15,9 +15,15 @@ A library to process and inspect Minidump crash reports
 build = "build.rs"
 edition = "2018"
 
-exclude = [
-    "tests/**/*",
-    "third_party/**/*",
+include = [
+    "/cpp/**/*",
+    "/src/**/*",
+    "/third_party/breakpad/src/**/*.h",
+    "/third_party/breakpad/src/**/*.c",
+    "/third_party/breakpad/src/**/*.cc",
+    "/third_party/lss/**/*",
+    "/build.rs",
+    "/Cargo.toml",
 ]
 
 [dependencies]
