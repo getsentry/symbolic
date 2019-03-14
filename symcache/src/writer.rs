@@ -1,575 +1,424 @@
-use std::cell::RefCell;
-use std::cmp;
+use std::borrow::Cow;
 use std::collections::HashMap;
-use std::io::{Cursor, Seek, SeekFrom, Write};
-use std::iter::Peekable;
-use std::mem;
-use std::slice;
-use std::u16;
+use std::io::{self, Seek, Write};
 
-use failure::ResultExt;
+use failure::{Fail, ResultExt};
 use fnv::{FnvHashMap, FnvHashSet};
 
-use symbolic_common::types::{DebugKind, Language};
-use symbolic_debuginfo::{Object, SymbolIterator, SymbolTable, Symbols};
+use symbolic_common::{Arch, DebugId, Language};
+use symbolic_debuginfo::{DebugSession, FileInfo, Function, ObjectLike, Symbol};
 
-use crate::breakpad::BreakpadInfo;
-use crate::cache::{SYMCACHE_LATEST_VERSION, SYMCACHE_MAGIC};
-use crate::dwarf::{DwarfInfo, Function, Unit};
-use crate::error::{ConversionError, SymCacheError, SymCacheErrorKind, ValueKind};
-use crate::types::{CacheFileHeaderV2, DataSource, FileRecord, FuncRecord, LineRecord, Seg};
-use crate::utils::shorten_filename;
+use crate::error::{SymCacheError, SymCacheErrorKind, ValueKind};
+use crate::format;
 
-/// Given a writer and object, dumps the object into the writer.
+// Performs a shallow check whether this function might contain any lines.
+fn is_empty_function(function: &Function<'_>) -> bool {
+    function.lines.is_empty() && function.inlinees.is_empty()
+}
+
+/// Recursively cleans a tree of functions that does not cover any lines.
 ///
-/// In case a symcache is to be constructed from memory the `SymCache::from_object`
-/// method can be used instead.
-///
-/// This requires the writer to be seekable.
-pub fn to_writer<W: Write + Seek>(mut w: W, obj: &Object<'_>) -> Result<(), SymCacheError> {
-    SymCacheWriter::new(&mut w).write_object(obj)
-}
-
-/// Converts an object into a vector of symcache data.
-pub fn to_vec(obj: &Object<'_>) -> Result<Vec<u8>, SymCacheError> {
-    let mut cursor = Cursor::new(Vec::new());
-    SymCacheWriter::new(&mut cursor).write_object(obj)?;
-    Ok(cursor.into_inner())
-}
-
-#[derive(Debug)]
-enum DebugInfo<'input> {
-    Dwarf(DwarfInfo<'input>),
-    Breakpad(BreakpadInfo<'input>),
-}
-
-impl<'input> DebugInfo<'input> {
-    pub fn from_object(object: &'input Object<'_>) -> Result<DebugInfo<'input>, SymCacheError> {
-        Ok(match object.debug_kind() {
-            Some(DebugKind::Dwarf) => DebugInfo::Dwarf(DwarfInfo::from_object(object)?),
-            Some(DebugKind::Breakpad) => DebugInfo::Breakpad(BreakpadInfo::from_object(object)?),
-            // Add this when more object kinds are added in symbolic_debuginfo:
-            // Some(_) => return Err(SymCacheErrorKind::UnsupportedDebugKind.into()),
-            None => return Err(SymCacheErrorKind::MissingDebugInfo.into()),
-        })
+/// This first recursively cleans all inlinees and then removes those that have become empty.
+fn clean_function(function: &mut Function<'_>) {
+    for inlinee in &mut function.inlinees {
+        clean_function(inlinee);
     }
+
+    function.inlinees.retain(|f| !is_empty_function(f));
 }
 
-struct SymCacheWriter<W: Write> {
-    writer: RefCell<(u64, W)>,
-    header: CacheFileHeaderV2,
-    symbol_map: HashMap<Vec<u8>, u32>,
-    symbols: Vec<Seg<u8, u16>>,
-    files: HashMap<Vec<u8>, Seg<u8, u8>>,
-    file_record_map: HashMap<FileRecord, u16>,
-    file_records: Vec<FileRecord>,
-    func_records: Vec<FuncRecord>,
-    line_record_bytes: RefCell<u64>,
+/// Low-level helper that writes segments and keeps track of the current offset.
+struct FormatWriter<W> {
+    writer: W,
+    position: u64,
 }
 
-impl<W: Write + Seek> SymCacheWriter<W> {
-    pub fn new(writer: W) -> SymCacheWriter<W> {
-        SymCacheWriter {
-            writer: RefCell::new((0, writer)),
-            header: Default::default(),
-            symbol_map: HashMap::new(),
-            symbols: vec![],
-            files: HashMap::new(),
-            file_record_map: HashMap::new(),
-            file_records: vec![],
-            func_records: vec![],
-            line_record_bytes: RefCell::new(0),
+impl<W> FormatWriter<W>
+where
+    W: Write + Seek,
+{
+    /// Creates a new `FormatWriter`.
+    fn new(writer: W) -> Self {
+        FormatWriter {
+            writer,
+            position: 0,
         }
     }
 
-    #[inline(always)]
-    fn write_bytes<L>(&self, bytes: &[u8], kind: ValueKind) -> Result<Seg<u8, L>, SymCacheError>
-    where
-        L: Copy + num::FromPrimitive,
-    {
-        let (ref mut pos, ref mut writer) = *self.writer.borrow_mut();
-        let offset = *pos;
-        *pos += bytes.len() as u64;
-        writer
-            .write_all(bytes)
+    /// Unwraps the inner writer.
+    fn into_inner(self) -> W {
+        self.writer
+    }
+
+    /// Moves to the specified position.
+    fn seek(&mut self, position: u64) -> Result<(), SymCacheError> {
+        self.position = position;
+        self.writer
+            .seek(io::SeekFrom::Start(position))
             .context(SymCacheErrorKind::WriteFailed)?;
 
-        Ok(Seg::new(
-            offset as u32,
-            num::FromPrimitive::from_usize(bytes.len())
-                .ok_or_else(|| SymCacheErrorKind::ValueTooLarge(kind))?,
-        ))
+        Ok(())
     }
 
-    #[inline(always)]
-    fn write_item<T, L>(&self, x: &T, kind: ValueKind) -> Result<Seg<u8, L>, SymCacheError>
-    where
-        L: Copy + num::FromPrimitive,
-    {
-        unsafe {
-            let bytes = x as *const T as *const u8;
-            let size = mem::size_of_val(x);
-            self.write_bytes(slice::from_raw_parts(bytes, size), kind)
-        }
-    }
-
+    /// Writes the given bytes to the writer.
     #[inline]
-    fn write_seg<T, L>(&self, x: &[T], kind: ValueKind) -> Result<Seg<T, L>, SymCacheError>
-    where
-        L: Copy + num::FromPrimitive,
-    {
-        let mut first_seg: Option<Seg<u8>> = None;
+    fn write_bytes(&mut self, data: &[u8]) -> Result<(), SymCacheError> {
+        self.writer
+            .write_all(data)
+            .context(SymCacheErrorKind::WriteFailed)?;
 
-        for item in x {
-            let seg = self.write_item(item, kind)?;
-            if first_seg.is_none() {
-                first_seg = Some(seg);
+        self.position += data.len() as u64;
+        Ok(())
+    }
+
+    /// Writes a segment as binary data to the writer and returns the [`Seg`] reference.
+    ///
+    /// This operation may fail if the data slice is too large to fit the segment. Each segment
+    /// defines a data type for defining its length, which might not fit as many elements.
+    ///
+    /// The data items are directly transmuted to their binary representation. Thus, they should not
+    /// contain any references and have a stable memory layout (`#[repr(C, packed)]).
+    ///
+    /// [`Seg`]: format/struct.Seg.html
+    #[inline]
+    fn write_segment<T, L>(
+        &mut self,
+        data: &[T],
+        kind: ValueKind,
+    ) -> Result<format::Seg<T, L>, SymCacheError>
+    where
+        L: Default + Copy + num::FromPrimitive,
+    {
+        if data.is_empty() {
+            return Ok(format::Seg::default());
+        }
+
+        let byte_size = std::mem::size_of_val(data);
+        let bytes = unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, byte_size) };
+
+        let segment_pos = self.position as u32;
+        let segment_len =
+            L::from_usize(data.len()).ok_or_else(|| SymCacheErrorKind::TooManyValues(kind))?;
+
+        self.write_bytes(bytes)?;
+        Ok(format::Seg::new(segment_pos, segment_len))
+    }
+}
+
+/// A high level writer that can construct SymCaches.
+///
+/// When using this writer directly, ensure to call [`finish`] at the end, so that all segments are
+/// written to the underlying writer and the header is fixed up with the references. Since segments
+/// are consecutive chunks of memory, this can only be done once at the end of the writing process.
+///
+/// [`finish`]: struct.SymCacheWriter.html#method.finish
+pub struct SymCacheWriter<W> {
+    writer: FormatWriter<W>,
+    header: format::HeaderV2,
+    files: Vec<format::FileRecord>,
+    symbols: Vec<format::Seg<u8, u16>>,
+    functions: Vec<format::FuncRecord>,
+    path_cache: HashMap<Vec<u8>, format::Seg<u8, u8>>,
+    file_cache: FnvHashMap<format::FileRecord, u16>,
+    symbol_cache: HashMap<String, u32>,
+}
+
+impl<W> SymCacheWriter<W>
+where
+    W: Write + Seek,
+{
+    /// Converts an entire object into a SymCache.
+    pub fn write_object<O>(object: &O, target: W) -> Result<W, SymCacheError>
+    where
+        O: ObjectLike,
+        O::Error: Fail,
+    {
+        let mut writer = SymCacheWriter::new(target).context(SymCacheErrorKind::WriteFailed)?;
+
+        writer.set_arch(object.arch());
+        writer.set_debug_id(object.debug_id());
+
+        let mut last_address = 0;
+        let mut symbols = object.symbol_map().into_iter().peekable();
+        let mut session = object
+            .debug_session()
+            .context(SymCacheErrorKind::BadDebugFile)?;
+
+        for function in session.functions() {
+            let function = function.context(SymCacheErrorKind::BadDebugFile)?;
+
+            while symbols
+                .peek()
+                .map_or(false, |s| s.address < function.address)
+            {
+                let symbol = symbols.next().unwrap();
+                if symbol.address >= last_address {
+                    writer.add_symbol(symbol)?;
+                }
+            }
+
+            // Ensure that symbols at the function address are skipped even if the function size is
+            // zero. We trust that the function range (address to address + size) spans all lines.
+            last_address = function.address + std::cmp::max(1, function.size);
+            writer.add_function(function)?;
+        }
+
+        for symbol in symbols {
+            if symbol.address > last_address {
+                writer.add_symbol(symbol)?;
             }
         }
 
-        Ok(Seg::new(
-            first_seg.map(|x| x.offset).unwrap_or(0),
-            num::FromPrimitive::from_usize(x.len())
-                .ok_or_else(|| SymCacheErrorKind::TooManyValues(kind))?,
-        ))
+        writer.finish()
     }
 
-    fn write_symbol_if_missing(&mut self, mut sym: &[u8]) -> Result<u32, SymCacheError> {
-        if sym.len() > u16::MAX.into() {
-            sym = &sym[..u16::MAX.into()];
+    /// Constructs a new `SymCacheWriter` and writes the preamble.
+    pub fn new(writer: W) -> Result<Self, SymCacheError> {
+        let mut header = format::HeaderV2::default();
+        header.preamble.magic = format::SYMCACHE_MAGIC;
+        header.preamble.version = format::SYMCACHE_VERSION;
+
+        let mut writer = FormatWriter::new(writer);
+        writer.seek(std::mem::size_of_val(&header) as u64)?;
+
+        Ok(SymCacheWriter {
+            writer,
+            header,
+            files: Vec::new(),
+            symbols: Vec::new(),
+            functions: Vec::new(),
+            path_cache: HashMap::new(),
+            file_cache: FnvHashMap::default(),
+            symbol_cache: HashMap::new(),
+        })
+    }
+
+    /// Sets the CPU architecture of this SymCache.
+    pub fn set_arch(&mut self, arch: Arch) {
+        self.header.arch = arch as u32;
+    }
+
+    /// Sets the debug identifier of this SymCache.
+    pub fn set_debug_id(&mut self, debug_id: DebugId) {
+        self.header.debug_id = debug_id;
+    }
+
+    /// Adds a new symbol to this SymCache.
+    ///
+    /// Symbols **must** be added in ascending order using this method. This will emit a function
+    /// record internally.
+    pub fn add_symbol(&mut self, symbol: Symbol<'_>) -> Result<(), SymCacheError> {
+        let name = match symbol.name {
+            Some(name) => name,
+            None => return Ok(()),
+        };
+
+        let symbol_id = self.insert_symbol(name)?;
+
+        // NB: SymbolMap usually fills in sizes of consecutive symbols already. This is not done if
+        // there is only one symbol and for the last symbol. `FuncRecord::addr_in_range` always
+        // requires some address range. Since we can't possibly know the actual size, just assume
+        // that the symbol is VERY large.
+        let size = match symbol.size {
+            0 => !0,
+            s => s,
+        };
+
+        self.functions.push(format::FuncRecord {
+            addr_low: (symbol.address & 0xffff_ffff) as u32,
+            addr_high: ((symbol.address >> 32) & 0xffff) as u16,
+            // XXX: we have not seen this yet, but in theory this should be
+            // stored as multiple function records.
+            len: std::cmp::min(size, 0xffff) as u16,
+            symbol_id_low: (symbol_id & 0xffff) as u16,
+            symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
+            line_records: format::Seg::default(),
+            parent_offset: !0,
+            comp_dir: format::Seg::default(),
+            lang: Language::Unknown as u8,
+        });
+
+        Ok(())
+    }
+
+    /// Adds a function to this SymCache.
+    ///
+    /// Functions **must** be added in ascending order using this method. This emits a function
+    /// record for this function and for each inlinee recursively.
+    pub fn add_function(&mut self, mut function: Function<'_>) -> Result<(), SymCacheError> {
+        // If we encounter a function without any instructions we just skip it.  This saves memory
+        // and since we only care about instructions where we can actually crash this is a
+        // reasonable optimization.
+        clean_function(&mut function);
+        if is_empty_function(&function) {
+            return Ok(());
         }
 
-        if let Some(&index) = self.symbol_map.get(sym) {
-            return Ok(index);
+        self.insert_function(&function, !0, &mut FnvHashSet::default())
+    }
+
+    /// Persists all open segments to the writer and fixes up the header.
+    pub fn finish(self) -> Result<W, SymCacheError> {
+        let mut writer = self.writer;
+        let mut header = self.header;
+
+        header.symbols = writer.write_segment(&self.symbols, ValueKind::Symbol)?;
+        header.files = writer.write_segment(&self.files, ValueKind::File)?;
+        header.functions = writer.write_segment(&self.functions, ValueKind::Function)?;
+
+        writer.seek(0)?;
+        writer.write_bytes(format::as_slice(&header))?;
+
+        Ok(writer.into_inner())
+    }
+
+    fn write_path(&mut self, path: &[u8]) -> Result<format::Seg<u8, u8>, SymCacheError> {
+        if let Some(segment) = self.path_cache.get(path) {
+            return Ok(*segment);
         }
 
+        // Path segments use u8 length indicators
+        let unicode = String::from_utf8_lossy(path);
+        let shortened = symbolic_common::shorten_path(&unicode, std::u8::MAX.into());
+        let segment = self
+            .writer
+            .write_segment(shortened.as_bytes(), ValueKind::File)?;
+        self.path_cache.insert(path.into(), segment);
+        Ok(segment)
+    }
+
+    fn insert_file(&mut self, file: &FileInfo<'_>) -> Result<u16, SymCacheError> {
+        let record = format::FileRecord {
+            filename: self.write_path(file.name)?,
+            base_dir: self.write_path(file.dir)?,
+        };
+
+        if let Some(index) = self.file_cache.get(&record) {
+            return Ok(*index);
+        }
+
+        if self.files.len() >= std::u16::MAX as usize {
+            return Err(SymCacheErrorKind::TooManyValues(ValueKind::File).into());
+        }
+
+        let index = self.files.len() as u16;
+        self.file_cache.insert(record, index);
+        self.files.push(record);
+        Ok(index)
+    }
+
+    fn insert_symbol(&mut self, name: Cow<'_, str>) -> Result<u32, SymCacheError> {
+        let mut len = std::cmp::min(name.len(), std::u16::MAX.into());
+        if len < name.len() {
+            len = match std::str::from_utf8(name[..len].as_bytes()) {
+                Ok(_) => len,
+                Err(error) => error.valid_up_to(),
+            };
+        }
+
+        if let Some(index) = self.symbol_cache.get(&name[..len]) {
+            return Ok(*index);
+        }
+
+        // NB: We only use 48 bits to encode symbol offsets in function records.
         if self.symbols.len() >= 0x00ff_ffff {
             return Err(SymCacheErrorKind::TooManyValues(ValueKind::Symbol).into());
         }
 
-        let idx = self.symbols.len() as u32;
-        let seg = self.write_bytes(sym, ValueKind::Symbol)?;
-        self.symbols.push(seg);
-        self.symbol_map.insert(sym.to_owned(), idx);
+        // Avoid a potential reallocation by reusing name.
+        let mut name = name.into_owned();
+        name.truncate(len);
 
-        Ok(idx)
+        let segment = self
+            .writer
+            .write_segment(name.as_bytes(), ValueKind::Symbol)?;
+        let index = self.symbols.len() as u32;
+        self.symbols.push(segment);
+        self.symbol_cache.insert(name, index);
+        Ok(index)
     }
 
-    #[inline]
-    fn write_file_if_missing(&mut self, filename: &[u8]) -> Result<Seg<u8, u8>, SymCacheError> {
-        // since we store the filename in a u8 segment we are limited to a total
-        // length of 255 characters.
-        let filename_unicode = String::from_utf8_lossy(filename);
-        let filename = shorten_filename(&filename_unicode, 255);
-        if let Some(item) = self.files.get(filename.as_bytes()) {
-            return Ok(*item);
-        }
-
-        let seg = self.write_bytes(filename.as_bytes(), ValueKind::File)?;
-        self.files.insert(filename.into_owned().into_bytes(), seg);
-        Ok(seg)
-    }
-
-    fn write_file_record_if_missing(&mut self, record: FileRecord) -> Result<u16, SymCacheError> {
-        if let Some(idx) = self.file_record_map.get(&record) {
-            return Ok(*idx);
-        }
-
-        if self.file_records.len() >= 0xffff {
-            return Err(SymCacheErrorKind::TooManyValues(ValueKind::File).into());
-        }
-
-        let idx = self.file_records.len() as u16;
-        self.file_record_map.insert(record, idx);
-        self.file_records.push(record);
-        Ok(idx)
-    }
-
-    fn write_header(&mut self) -> Result<(), SymCacheError> {
-        let (ref mut pos, ref mut writer) = *self.writer.borrow_mut();
-        writer
-            .seek(SeekFrom::Start(0))
-            .context(SymCacheErrorKind::WriteFailed)?;
-
-        let bytes = self.header.as_bytes();
-        writer
-            .write_all(bytes)
-            .context(SymCacheErrorKind::WriteFailed)?;
-        *pos = bytes.len() as u64;
-
-        Ok(())
-    }
-
-    pub fn write_debug_info(&mut self, obj: &Object<'_>) -> Result<(), SymCacheError> {
-        // try dwarf data first.  If we cannot find the necessary dwarf sections
-        // we just skip over to symbol table processing.
-        match DebugInfo::from_object(obj) {
-            Ok(DebugInfo::Dwarf(ref info)) => {
-                return self.write_dwarf_info(info, obj.symbols().unwrap_or(None).as_ref());
-            }
-            Ok(DebugInfo::Breakpad(ref info)) => {
-                return self.write_breakpad_info(info);
-            }
-            Err(ref e) if e.kind() == SymCacheErrorKind::MissingDebugSection => {
-                // ignore missing sections and try the symbol table
-            }
-            Err(e) => {
-                return Err(e);
-            }
-        }
-
-        // fallback to symbol table.
-        match obj.symbols() {
-            Ok(Some(symbols)) => {
-                return self.write_symbol_table(symbols.iter(), obj.vmaddr());
-            }
-            Ok(None) => {
-                // ignore missing symbol tables and return a default error
-            }
-            Err(e) => {
-                return Err(e.into());
-            }
-        }
-
-        Err(SymCacheErrorKind::MissingDebugInfo.into())
-    }
-
-    pub fn write_object(mut self, obj: &Object<'_>) -> Result<(), SymCacheError> {
-        // reserve space for the header before writing segments
-        self.write_header()?;
-
-        // set up common header values
-        self.header.preamble.magic = SYMCACHE_MAGIC;
-        self.header.preamble.version = SYMCACHE_LATEST_VERSION;
-        self.header.arch = obj.arch().unwrap_or_default() as u32;
-        if let Some(id) = obj.id() {
-            self.header.id = id;
-        }
-
-        // do the actual work
-        self.write_debug_info(obj)?;
-
-        // once done, patch the header
-        self.write_header()?;
-        Ok(())
-    }
-
-    fn write_symbol_table(
+    fn insert_function(
         &mut self,
-        symbols: SymbolIterator<'_, '_>,
-        vmaddr: u64,
+        function: &Function<'_>,
+        parent_index: u32,
+        line_cache: &mut FnvHashSet<(u64, u64)>,
     ) -> Result<(), SymCacheError> {
-        for symbol_result in symbols {
-            let func = symbol_result?;
-            self.write_simple_function(
-                func.addr() - vmaddr,
-                func.len().unwrap_or(!0),
-                func.as_str(),
-            )?;
-        }
+        let index = self.functions.len() as u32;
+        let address = function.address;
+        let language = function.name.language();
+        let symbol_id = self.insert_symbol(function.name.as_str().into())?;
+        let comp_dir = self.write_path(function.compilation_dir)?;
 
-        self.header.data_source = DataSource::SymbolTable as u8;
-        self.header.symbols = self.write_seg(&self.symbols, ValueKind::Symbol)?;
-        self.header.function_records = self.write_seg(&self.func_records, ValueKind::Function)?;
-
-        Ok(())
-    }
-
-    fn write_missing_functions_from_symboltable(
-        &mut self,
-        last_addr: &mut u64,
-        cur_addr: u64,
-        vmaddr: u64,
-        symbol_iter: &mut Peekable<SymbolIterator<'_, '_>>,
-    ) -> Result<(), SymCacheError> {
-        // NB: we can't use while let here, since we need to borrow symbol_iter mutably twice
-        #[allow(clippy::while_let_loop)]
-        loop {
-            let sym_addr = match symbol_iter.peek() {
-                Some(&Ok(ref symbol)) => symbol.addr() - vmaddr,
-                _ => break,
-            };
-
-            // skip forward until we hit a relevant symbol
-            if *last_addr != !0 && sym_addr < *last_addr {
-                symbol_iter.next();
-                continue;
-            }
-
-            if (*last_addr == !0 || sym_addr >= *last_addr) && sym_addr < cur_addr {
-                let symbol = symbol_iter.next().unwrap()?;
-                self.write_simple_function(sym_addr, symbol.len().unwrap_or(!0), symbol.as_str())?;
-                *last_addr = sym_addr + symbol.len().unwrap_or(1);
-            } else {
-                break;
-            }
-        }
-        Ok(())
-    }
-
-    fn write_simple_function<S>(
-        &mut self,
-        func_addr: u64,
-        len: u64,
-        symbol: S,
-    ) -> Result<(), SymCacheError>
-    where
-        S: AsRef<[u8]>,
-    {
-        let symbol_id = self.write_symbol_if_missing(symbol.as_ref())?;
-
-        self.func_records.push(FuncRecord {
-            addr_low: (func_addr & 0xffff_ffff) as u32,
-            addr_high: ((func_addr >> 32) & 0xffff) as u16,
-            // XXX: we have not seen this yet, but in theory this should be
-            // stored as multiple function records.
-            len: cmp::min(len, 0xffff) as u16,
-            symbol_id_low: (symbol_id & 0xffff) as u16,
-            symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
-            parent_offset: !0,
-            line_records: Seg::default(),
-            comp_dir: Seg::default(),
-            lang: Language::Unknown as u8,
-        });
-        Ok(())
-    }
-
-    fn write_breakpad_info(&mut self, info: &BreakpadInfo<'_>) -> Result<(), SymCacheError> {
-        let mut file_cache = FnvHashMap::default();
-
-        for file in info.files() {
-            if file_cache.contains_key(&file.id) {
-                continue;
-            }
-
-            let file_record = FileRecord {
-                filename: self.write_file_if_missing(file.name)?,
-                base_dir: self.write_file_if_missing(b"")?,
-            };
-
-            let file_id = self.write_file_record_if_missing(file_record)?;
-            file_cache.insert(&file.id, file_id);
-        }
-
-        let mut syms = info.symbols().iter().peekable();
-        for function in info.functions() {
-            // Write all symbols that are not defined in info.functions()
-            while syms.peek().map_or(false, |s| s.address < function.address) {
-                let symbol = syms.next().unwrap();
-                self.write_simple_function(symbol.address, symbol.size, symbol.name)?;
-            }
-
-            // Skip symbols that are also defined in info.functions()
-            let next_address = function.address + cmp::max(function.size, 1);
-            while syms.peek().map_or(false, |s| s.address < next_address) {
-                syms.next();
-            }
-
-            let func_id = self.func_records.len();
-            self.write_simple_function(function.address, function.size, function.name)?;
-
-            if function.lines.is_empty() {
-                continue;
-            }
-
-            let mut line_records = vec![];
-            let mut last_addr = function.address;
-            for line in &function.lines {
-                let mut diff = line.address.saturating_sub(last_addr) as i64;
-                last_addr += diff as u64;
-
-                while diff >= 0 {
-                    let file_id = match file_cache.get(&line.file_id) {
-                        Some(id) => *id,
-                        None => return Err(ConversionError::new("invalid breakpad file id").into()),
-                    };
-
-                    line_records.push(LineRecord {
-                        addr_off: (diff & 0xff) as u8,
-                        file_id,
-                        line: cmp::min(line.line, 0xffff) as u16,
-                    });
-
-                    diff -= 0xff;
-                }
-            }
-
-            self.func_records[func_id].line_records =
-                self.write_seg(&line_records, ValueKind::Function)?;
-            self.header.has_line_records = 1;
-        }
-
-        // Flush out all remaining symbols from the symbol table (PUBLIC records)
-        for symbol in syms {
-            self.write_simple_function(symbol.address, symbol.size, symbol.name)?;
-        }
-
-        self.header.data_source = DataSource::BreakpadSym as u8;
-        self.header.symbols = self.write_seg(&self.symbols, ValueKind::Symbol)?;
-        self.header.files = self.write_seg(&self.file_records, ValueKind::File)?;
-        self.header.function_records = self.write_seg(&self.func_records, ValueKind::Function)?;
-
-        Ok(())
-    }
-
-    fn write_dwarf_info(
-        &mut self,
-        info: &DwarfInfo<'_>,
-        symbols: Option<&Symbols<'_>>,
-    ) -> Result<(), SymCacheError> {
-        let mut range_buf = Vec::new();
-        let mut symbol_iter = symbols.map(|x| x.iter().peekable());
-        let mut last_addr = !0;
-        let mut locations = FnvHashSet::default();
-        let mut local_cache = FnvHashMap::default();
-        let mut funcs = vec![];
-
-        for index in 0..info.unit_count() {
-            // attempt to parse a single unit from the given header.
-            let unit_opt = Unit::parse(&info, index)?;
-
-            // skip units we don't care about
-            let unit = match unit_opt {
-                Some(unit) => unit,
-                None => continue,
-            };
-
-            // clear our function local caches and infos
-            let locations_inner = &mut locations;
-            let local_cache_inner = &mut local_cache;
-            locations_inner.clear();
-            local_cache_inner.clear();
-            funcs.clear();
-
-            unit.get_functions(&info, &mut range_buf, symbols, &mut funcs)?;
-            for func in &funcs {
-                // dedup instructions from inline functions
-                if let Some(ref mut symbol_iter) = symbol_iter {
-                    self.write_missing_functions_from_symboltable(
-                        &mut last_addr,
-                        func.addr,
-                        info.vmaddr(),
-                        symbol_iter,
-                    )?;
-                }
-                self.write_dwarf_function(&func, locations_inner, local_cache_inner, !0)?;
-                last_addr = func.addr + u64::from(func.len);
-            }
-        }
-
-        if let Some(ref mut symbol_iter) = symbol_iter {
-            self.write_missing_functions_from_symboltable(
-                &mut last_addr,
-                !0,
-                info.vmaddr(),
-                symbol_iter,
-            )?;
-        }
-
-        self.header.data_source = DataSource::Dwarf as u8;
-        self.header.symbols = self.write_seg(&self.symbols, ValueKind::Symbol)?;
-        self.header.files = self.write_seg(&self.file_records, ValueKind::File)?;
-        self.header.function_records = self.write_seg(&self.func_records, ValueKind::Function)?;
-
-        Ok(())
-    }
-
-    fn write_dwarf_function<'a>(
-        &mut self,
-        func: &Function<'a>,
-        locations: &mut FnvHashSet<(u64, u16)>,
-        local_cache: &mut FnvHashMap<u64, u16>,
-        parent_id: u32,
-    ) -> Result<(), SymCacheError> {
-        // if we have a function without any instructions we just skip it.  This
-        // saves memory and since we only care about instructions where we can
-        // actually crash this is a reasonable optimization.
-        if func.is_empty() {
-            return Ok(());
-        }
-
-        let func_id = self.func_records.len() as u32;
-        let func_addr = func.get_addr();
-
-        let symbol_id = self.write_symbol_if_missing(func.name.as_bytes())?;
-        let func_record = FuncRecord {
-            addr_low: (func_addr & 0xffff_ffff) as u32,
-            addr_high: ((func_addr >> 32) & 0xffff) as u16,
-            // XXX: we have not seen this yet, but in theory this should be
-            // stored as multiple function records.
-            len: cmp::min(func.len, 0xffff) as u16,
-            symbol_id_low: (symbol_id & 0xffff) as u16,
-            symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
-            parent_offset: if parent_id == !0 {
-                !0
-            } else {
-                let parent_offset = func_id.saturating_sub(parent_id);
-                if parent_offset == !0 {
-                    return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::ParentOffset).into());
-                }
-                parent_offset as u16
-            },
-            line_records: Seg::default(),
-            comp_dir: self.write_file_if_missing(func.comp_dir)?,
-            lang: if func.lang as u32 > 0xff {
-                return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::Language).into());
-            } else {
-                func.lang as u8
-            },
+        let lang = if language as u32 > 0xff {
+            return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::Language).into());
+        } else {
+            language as u8
         };
-        let mut last_addr = func_record.addr_start();
-        self.func_records.push(func_record);
 
-        // recurse first.  As we recurse down the address rejection will
-        // do the job it's supposed to do.
-        for inline_func in &func.inlines {
-            self.write_dwarf_function(inline_func, locations, local_cache, func_id)?;
+        let parent_offset = if parent_index == !0 {
+            !0
+        } else {
+            let parent_offset = index.saturating_sub(parent_index);
+            if parent_offset > std::u16::MAX.into() {
+                return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::ParentOffset).into());
+            }
+            parent_offset as u16
+        };
+
+        self.functions.push(format::FuncRecord {
+            addr_low: (address & 0xffff_ffff) as u32,
+            addr_high: ((address >> 32) & 0xffff) as u16,
+            // XXX: we have not seen this yet, but in theory this should be
+            // stored as multiple function records.
+            len: std::cmp::min(function.size, 0xffff) as u16,
+            symbol_id_low: (symbol_id & 0xffff) as u16,
+            symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
+            line_records: format::Seg::default(),
+            parent_offset,
+            comp_dir,
+            lang,
+        });
+
+        // Recurse first including inner line records. Address rejection will prune duplicate line
+        // records later on.
+        for inlinee in &function.inlinees {
+            self.insert_function(inlinee, index, line_cache)?;
         }
 
-        let mut line_records = vec![];
-        for line in &func.lines {
-            if locations.contains(&(line.addr, line.line)) {
+        let mut last_address = address;
+        let mut line_segment = vec![];
+        for line in &function.lines {
+            // Reject this line if it has been covered by one of the inlinees.
+            if !line_cache.insert((line.address, line.line)) {
                 continue;
             }
-            locations.insert((line.addr, line.line));
 
-            let file_id = if let Some(&x) = local_cache.get(&line.original_file_id) {
-                x
-            } else {
-                let file_record = FileRecord {
-                    filename: self.write_file_if_missing(line.filename)?,
-                    base_dir: self.write_file_if_missing(line.base_dir)?,
-                };
-                let file_id = self.write_file_record_if_missing(file_record)?;
-                local_cache.insert(line.original_file_id, file_id);
-                file_id
-            };
+            let file_id = self.insert_file(&line.file)?;
 
-            // We have seen that swift can generate line records that lie outside
-            // of the function start.  Why this happens is unclear but it happens
-            // with highly inlined function calls.  Instead of panicking we want
-            // to just assume there is a single record at the address of the function
-            // and in case there are more the offsets are just slightly off.
-            let mut diff = (line.addr.saturating_sub(last_addr)) as i64;
+            // We have seen that swift can generate line records that lie outside of the function
+            // start.  Why this happens is unclear but it happens with highly inlined function
+            // calls.  Instead of panicking we want to just assume there is a single record at the
+            // address of the function and in case there are more the offsets are just slightly off.
+            let mut diff = (line.address.saturating_sub(last_address)) as i64;
 
+            // Line records store relative offsets to the previous line's address. If that offset
+            // exceeds 255 (max u8 value), we write multiple line records to fill the gap.
             while diff >= 0 {
-                let line_record = LineRecord {
+                let line_record = format::LineRecord {
                     addr_off: (diff & 0xff) as u8,
                     file_id,
-                    line: line.line,
+                    line: std::cmp::min(line.line, std::u16::MAX.into()) as u16,
                 };
-                last_addr += u64::from(line_record.addr_off);
-                line_records.push(line_record);
+                last_address += u64::from(line_record.addr_off);
+                line_segment.push(line_record);
                 diff -= 0xff;
             }
-
-            let mut counter = self.line_record_bytes.borrow_mut();
-            *counter += mem::size_of::<LineRecord>() as u64;
         }
 
-        if !line_records.is_empty() {
-            self.func_records[func_id as usize].line_records =
-                self.write_seg(&line_records, ValueKind::Line)?;
+        if !line_segment.is_empty() {
+            self.functions[index as usize].line_records =
+                self.writer.write_segment(&line_segment, ValueKind::Line)?;
             self.header.has_line_records = 1;
         }
 

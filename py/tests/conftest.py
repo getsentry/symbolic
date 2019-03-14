@@ -3,7 +3,7 @@ import sys
 import json
 import pytest
 
-from symbolic import ObjectLookup, FatObject, SourceMapView, SourceView, \
+from symbolic import ObjectLookup, Archive, SourceMapView, SourceView, \
     find_best_instruction, parse_addr
 
 diff_report = None
@@ -14,9 +14,9 @@ def get_symcache(path, object_lookup):
     if not os.path.isdir(dsym_path):
         return
     for fn in os.listdir(dsym_path):
-        fo = FatObject.from_path(os.path.join(dsym_path, fn))
-        for obj in fo.iter_objects():
-            if object_lookup.get_object(id=obj.id) is not None:
+        archive = Archive.open(os.path.join(dsym_path, fn))
+        for obj in archive.iter_objects():
+            if object_lookup.get_object(debug_id=obj.debug_id) is not None:
                 return obj.make_symcache()
 
 
@@ -31,7 +31,7 @@ class ReportSymbolizer(object):
                 continue
             symcache = get_symcache(path, self.objects)
             if symcache is not None:
-                self.symcaches[symcache.id] = symcache
+                self.symcaches[symcache.debug_id] = symcache
 
     def symbolize_backtrace(self, backtrace, meta=None):
         def symbolize(frame, frame_idx):
@@ -42,7 +42,7 @@ class ReportSymbolizer(object):
             if obj_ref is None:
                 return [frame]
 
-            symcache = self.symcaches.get(obj_ref.id)
+            symcache = self.symcaches.get(obj_ref.debug_id)
             if symcache is None:
                 return [frame]
 

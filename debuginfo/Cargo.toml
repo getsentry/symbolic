@@ -15,20 +15,25 @@ as Mach-O or ELF.
 """
 edition = "2018"
 
+exclude = [
+    "tests/**/*",
+]
+
 [dependencies]
+dmsort = "1.0.0"
 failure = "0.1.5"
+fallible-iterator = "0.1.6"
 flate2 = { version = "1.0.6", features = ["rust_backend"], default-features = false }
-goblin = "0.0.19"
-lazy_static = "1.2.0"
-regex = "1.1.0"
-serde = { version = "1.0.85", optional = true }
-serde_plain = { version = "0.3.0", optional = true }
-symbolic-common = { path = "../common", version = "5.8.2", features = ["with_objects", "with_dwarf"] }
-uuid = "0.7.2"
+gimli = { version = "0.17.0", features = ["read", "std"], default-features = false }
+goblin = "0.0.21"
+lazycell = "1.2.1"
+pdb = "0.3.0"
+parking_lot = "0.7.1"
+pest = "2.1.0"
+pest_derive = "2.1.0"
+serde = { version = "1.0.89", optional = true }
+smallvec = "0.6.9"
+symbolic-common = { version = "5.8.2", path = "../common" }
 
 [dev-dependencies]
-symbolic-testutils = { version = "5.8.2", path = "../testutils" }
-
-[features]
-default = []
-with_serde = ["serde", "serde_plain"]
+insta = "0.7.1"

@@ -1,376 +1,545 @@
-use std::fmt;
-use std::io::Cursor;
+//! Generic wrappers over various object file formats.
 
-use failure::{Backtrace, Context, Fail, ResultExt};
-use goblin::{elf, mach, Hint};
+use failure::Fail;
+use goblin::Hint;
 
-use symbolic_common::byteview::{ByteView, ByteViewHandle};
-use symbolic_common::types::{Arch, DebugId, DebugKind, Endianness, ObjectClass, ObjectKind};
+use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
-use crate::breakpad::BreakpadSym;
-use crate::dwarf::DwarfData;
-use crate::elf::{get_elf_id, get_elf_vmaddr};
-use crate::mach::{get_mach_id, get_mach_vmaddr};
+use crate::base::*;
+use crate::breakpad::*;
+use crate::dwarf::*;
+use crate::elf::*;
+use crate::macho::*;
+use crate::pdb::*;
+use crate::pe::*;
+use crate::private::{MonoArchive, MonoArchiveObjects};
 
-/// Contains type specific data of `Object`s.
-#[allow(clippy::large_enum_variant)]
-pub(crate) enum ObjectTarget<'bytes> {
-    Breakpad(&'bytes BreakpadSym),
-    Elf(&'bytes elf::Elf<'bytes>),
-    MachOSingle(&'bytes mach::MachO<'bytes>),
-    MachOFat(mach::fat::FatArch, mach::MachO<'bytes>),
+macro_rules! match_inner {
+    ($value:expr, $ty:tt ($pat:pat) => $expr:expr) => {
+        match $value {
+            $ty::Breakpad($pat) => $expr,
+            $ty::Elf($pat) => $expr,
+            $ty::MachO($pat) => $expr,
+            $ty::Pdb($pat) => $expr,
+            $ty::Pe($pat) => $expr,
+        }
+    };
 }
 
-/// The kind of an `ObjectError`.
-#[derive(Debug, Fail, Copy, Clone, Eq, PartialEq)]
-pub enum ObjectErrorKind {
-    /// The `Object` file format is not supported.
-    #[fail(display = "unsupported object file")]
+macro_rules! map_inner {
+    ($value:expr, $from:tt($pat:pat) => $to:tt($expr:expr)) => {
+        match $value {
+            $from::Breakpad($pat) => $to::Breakpad($expr),
+            $from::Elf($pat) => $to::Elf($expr),
+            $from::MachO($pat) => $to::MachO($expr),
+            $from::Pdb($pat) => $to::Pdb($expr),
+            $from::Pe($pat) => $to::Pe($expr),
+        }
+    };
+}
+
+macro_rules! map_result {
+    ($value:expr, $from:tt($pat:pat) => $to:tt($expr:expr)) => {
+        match $value {
+            $from::Breakpad($pat) => $expr.map($to::Breakpad).map_err(ObjectError::Breakpad),
+            $from::Elf($pat) => $expr.map($to::Elf).map_err(ObjectError::Elf),
+            $from::MachO($pat) => $expr.map($to::MachO).map_err(ObjectError::MachO),
+            $from::Pdb($pat) => $expr.map($to::Pdb).map_err(ObjectError::Pdb),
+            $from::Pe($pat) => $expr.map($to::Pe).map_err(ObjectError::Pe),
+        }
+    };
+}
+
+/// An error when dealing with any kind of [`Object`](enum.Object.html).
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Fail)]
+pub enum ObjectError {
+    /// The object file format is not supported.
+    #[fail(display = "unsupported object file format")]
     UnsupportedObject,
 
-    /// The `Object` file contains invalid data.
-    #[fail(display = "failed to read object file")]
-    BadObject,
+    /// An error in a Breakpad ASCII symbol.
+    #[fail(display = "failed to process breakpad file")]
+    Breakpad(#[fail(cause)] BreakpadError),
 
-    /// Reading symbol tables is not supported for this `Object` file format.
-    #[fail(display = "symbol table not supported for this object format")]
-    UnsupportedSymbolTable,
+    /// An error in an ELF file.
+    #[fail(display = "failed to process elf file")]
+    Elf(#[fail(cause)] ElfError),
+
+    /// An error in a Mach object.
+    #[fail(display = "failed to process macho file")]
+    MachO(#[fail(cause)] MachError),
+
+    /// An error in a Program Database.
+    #[fail(display = "failed to process pdb file")]
+    Pdb(#[fail(cause)] PdbError),
+
+    /// An error in a Portable Executable.
+    #[fail(display = "failed to process pe file")]
+    Pe(#[fail(cause)] PeError),
+
+    /// An error in DWARF debugging information.
+    #[fail(display = "failed to process dwarf info")]
+    Dwarf(#[fail(cause)] DwarfError),
 }
 
-/// An error returned when working with `Object` and `FatObject`.
+/// Tries to infer the object type from the start of the given buffer.
 ///
-/// This error contains a context with a stack trace and error causes.
+/// If `archive` is set to `true`, multi architecture objects will be allowed. Otherwise, only
+/// single-arch objects are checked.
+pub fn peek(data: &[u8], archive: bool) -> FileFormat {
+    if data.len() < 16 {
+        return FileFormat::Unknown;
+    }
+
+    let mut magic = [0; 16];
+    magic.copy_from_slice(&data[..16]);
+
+    match goblin::peek_bytes(&magic) {
+        Ok(Hint::Elf(_)) => return FileFormat::Elf,
+        Ok(Hint::Mach(_)) => return FileFormat::MachO,
+        Ok(Hint::MachFat(_)) if archive => return FileFormat::MachO,
+        Ok(Hint::PE) => return FileFormat::Pe,
+        _ => (),
+    }
+
+    if BreakpadObject::test(data) {
+        FileFormat::Breakpad
+    } else if PdbObject::test(data) {
+        FileFormat::Pdb
+    } else {
+        FileFormat::Unknown
+    }
+}
+
+/// A generic object file providing uniform access to various file formats.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
-pub struct ObjectError {
-    inner: Context<ObjectErrorKind>,
+pub enum Object<'d> {
+    /// Breakpad ASCII symbol.
+    Breakpad(BreakpadObject<'d>),
+    /// Executable and Linkable Format, used on Linux.
+    Elf(ElfObject<'d>),
+    /// Mach Objects, used on macOS and iOS derivatives.
+    MachO(MachObject<'d>),
+    /// Program Database, the debug companion format on Windows.
+    Pdb(PdbObject<'d>),
+    /// Portable Executable, an extension of COFF used on Windows.
+    Pe(PeObject<'d>),
 }
 
-impl Fail for ObjectError {
-    fn cause(&self) -> Option<&dyn Fail> {
-        self.inner.cause()
+impl<'d> Object<'d> {
+    /// Tests whether the buffer could contain an object.
+    pub fn test(data: &[u8]) -> bool {
+        Self::peek(data) != FileFormat::Unknown
     }
 
-    fn backtrace(&self) -> Option<&Backtrace> {
-        self.inner.backtrace()
-    }
-}
-
-impl fmt::Display for ObjectError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.inner, f)
-    }
-}
-
-impl ObjectError {
-    pub fn kind(&self) -> ObjectErrorKind {
-        *self.inner.get_context()
-    }
-}
-
-impl From<ObjectErrorKind> for ObjectError {
-    fn from(kind: ObjectErrorKind) -> ObjectError {
-        ObjectError {
-            inner: Context::new(kind),
-        }
-    }
-}
-
-impl From<Context<ObjectErrorKind>> for ObjectError {
-    fn from(inner: Context<ObjectErrorKind>) -> ObjectError {
-        ObjectError { inner }
-    }
-}
-
-/// Represents a single object in a fat object.
-pub struct Object<'bytes> {
-    fat_bytes: &'bytes [u8],
-    pub(crate) target: ObjectTarget<'bytes>,
-}
-
-impl<'bytes> Object<'bytes> {
-    /// Returns the identifier of the object.
-    pub fn id(&self) -> Option<DebugId> {
-        match self.target {
-            ObjectTarget::Breakpad(ref breakpad) => Some(breakpad.id()),
-            ObjectTarget::Elf(ref elf) => get_elf_id(elf, self.fat_bytes),
-            ObjectTarget::MachOSingle(macho) => get_mach_id(macho),
-            ObjectTarget::MachOFat(_, ref macho) => get_mach_id(macho),
-        }
+    /// Tries to infer the object type from the start of the given buffer.
+    pub fn peek(data: &[u8]) -> FileFormat {
+        peek(data, false)
     }
 
-    /// Returns the kind of the object.
-    pub fn kind(&self) -> ObjectKind {
-        match self.target {
-            ObjectTarget::Breakpad(..) => ObjectKind::Breakpad,
-            ObjectTarget::Elf(..) => ObjectKind::Elf,
-            ObjectTarget::MachOSingle(..) => ObjectKind::MachO,
-            ObjectTarget::MachOFat(..) => ObjectKind::MachO,
-        }
-    }
-
-    /// Returns the architecture of the object.
-    pub fn arch(&self) -> Result<Arch, ObjectError> {
-        Ok(match self.target {
-            ObjectTarget::Breakpad(ref breakpad) => breakpad.arch(),
-            ObjectTarget::Elf(ref elf) => {
-                Arch::from_elf(elf.header.e_machine).context(ObjectErrorKind::UnsupportedObject)?
-            }
-            ObjectTarget::MachOSingle(mach) => {
-                Arch::from_mach(mach.header.cputype(), mach.header.cpusubtype())
-                    .context(ObjectErrorKind::UnsupportedObject)?
-            }
-            ObjectTarget::MachOFat(_, ref mach) => {
-                Arch::from_mach(mach.header.cputype(), mach.header.cpusubtype())
-                    .context(ObjectErrorKind::UnsupportedObject)?
-            }
-        })
-    }
-
-    /// Return the vmaddr of the code portion of the image.
-    pub fn vmaddr(&self) -> u64 {
-        match self.target {
-            // Breakpad accounts for the vmaddr when dumping symbols
-            ObjectTarget::Breakpad(..) => 0,
-            ObjectTarget::Elf(elf) => get_elf_vmaddr(elf),
-            ObjectTarget::MachOSingle(macho) => get_mach_vmaddr(macho),
-            ObjectTarget::MachOFat(_, ref macho) => get_mach_vmaddr(macho),
-        }
-    }
-
-    /// True if little endian, false if not.
-    pub fn endianness(&self) -> Endianness {
-        let little = match self.target {
-            ObjectTarget::Breakpad(..) => return Endianness::default(),
-            ObjectTarget::Elf(ref elf) => elf.little_endian,
-            ObjectTarget::MachOSingle(macho) => macho.little_endian,
-            ObjectTarget::MachOFat(_, ref macho) => macho.little_endian,
+    /// Tries to parse a supported object from the given slice.
+    pub fn parse(data: &'d [u8]) -> Result<Self, ObjectError> {
+        macro_rules! parse_object {
+            ($kind:ident, $file:ident, $data:expr) => {
+                Object::$kind($file::parse(data).map_err(ObjectError::$kind)?)
+            };
         };
 
-        if little {
-            Endianness::Little
-        } else {
-            Endianness::Big
+        let object = match Self::peek(data) {
+            FileFormat::Breakpad => parse_object!(Breakpad, BreakpadObject, data),
+            FileFormat::Elf => parse_object!(Elf, ElfObject, data),
+            FileFormat::MachO => parse_object!(MachO, MachObject, data),
+            FileFormat::Pdb => parse_object!(Pdb, PdbObject, data),
+            FileFormat::Pe => parse_object!(Pe, PeObject, data),
+            FileFormat::Unknown => return Err(ObjectError::UnsupportedObject),
+        };
+
+        Ok(object)
+    }
+
+    /// The container format of this file, corresponding to the variant of this instance.
+    pub fn file_format(&self) -> FileFormat {
+        match *self {
+            Object::Breakpad(_) => FileFormat::Breakpad,
+            Object::Elf(_) => FileFormat::Elf,
+            Object::MachO(_) => FileFormat::MachO,
+            Object::Pdb(_) => FileFormat::Pdb,
+            Object::Pe(_) => FileFormat::Pe,
         }
     }
 
-    /// Returns the content of the object as bytes.
-    pub fn as_bytes(&self) -> &'bytes [u8] {
-        match self.target {
-            ObjectTarget::Breakpad(..) => self.fat_bytes,
-            ObjectTarget::Elf(..) => self.fat_bytes,
-            ObjectTarget::MachOSingle(_) => self.fat_bytes,
-            ObjectTarget::MachOFat(ref arch, _) => {
-                let bytes = self.fat_bytes;
-                &bytes[arch.offset as usize..(arch.offset + arch.size) as usize]
+    /// The code identifier of this object.
+    ///
+    /// This is a platform-dependent string of variable length that _always_ refers to the code file
+    /// (e.g. executable or library), even if this object is a debug file. See the variants for the
+    /// semantics of this code identifier.
+    pub fn code_id(&self) -> Option<CodeId> {
+        match_inner!(self, Object(ref o) => o.code_id())
+    }
+
+    /// The debug information identifier of this object.
+    ///
+    /// For platforms that use different identifiers for their code and debug files, this _always_
+    /// refers to the debug file, regardless whether this object is a debug file or not.
+    pub fn debug_id(&self) -> DebugId {
+        match_inner!(self, Object(ref o) => o.debug_id())
+    }
+
+    /// The CPU architecture of this object.
+    pub fn arch(&self) -> Arch {
+        match_inner!(self, Object(ref o) => o.arch())
+    }
+
+    /// The kind of this object.
+    pub fn kind(&self) -> ObjectKind {
+        match_inner!(self, Object(ref o) => o.kind())
+    }
+
+    /// The address at which the image prefers to be loaded into memory.
+    pub fn load_address(&self) -> u64 {
+        match_inner!(self, Object(ref o) => o.load_address())
+    }
+
+    /// Determines whether this object exposes a public symbol table.
+    pub fn has_symbols(&self) -> bool {
+        match_inner!(self, Object(ref o) => o.has_symbols())
+    }
+
+    /// Returns an iterator over symbols in the public symbol table.
+    pub fn symbols(&self) -> SymbolIterator<'d, '_> {
+        map_inner!(self, Object(ref o) => SymbolIterator(o.symbols()))
+    }
+
+    /// Returns an ordered map of symbols in the symbol table.
+    pub fn symbol_map(&self) -> SymbolMap<'d> {
+        match_inner!(self, Object(ref o) => o.symbol_map())
+    }
+
+    /// Determines whether this object contains debug information.
+    pub fn has_debug_info(&self) -> bool {
+        match_inner!(self, Object(ref o) => o.has_debug_info())
+    }
+
+    /// Constructs a debugging session.
+    ///
+    /// A debugging session loads certain information from the object file and creates caches for
+    /// efficient access to various records in the debug information. Since this can be quite a
+    /// costly process, try to reuse the debugging session as long as possible.
+    ///
+    /// Objects that do not support debugging or do not contain debugging information return an
+    /// empty debug session. This only returns an error if constructing the debug session fails due
+    /// to invalid debug data in the object.
+    ///
+    /// Constructing this session will also work if the object does not contain debugging
+    /// information, in which case the session will be a no-op. This can be checked via
+    /// [`has_debug_info`](enum.Object.html#method.has_debug_info).
+    pub fn debug_session(&self) -> Result<ObjectDebugSession<'d>, ObjectError> {
+        match *self {
+            Object::Breakpad(ref o) => o
+                .debug_session()
+                .map(ObjectDebugSession::Breakpad)
+                .map_err(ObjectError::Breakpad),
+            Object::Elf(ref o) => o
+                .debug_session()
+                .map(ObjectDebugSession::Dwarf)
+                .map_err(ObjectError::Dwarf),
+            Object::MachO(ref o) => o
+                .debug_session()
+                .map(ObjectDebugSession::Dwarf)
+                .map_err(ObjectError::Dwarf),
+            Object::Pdb(ref o) => o
+                .debug_session()
+                .map(ObjectDebugSession::Pdb)
+                .map_err(ObjectError::Pdb),
+            Object::Pe(ref o) => o
+                .debug_session()
+                .map(ObjectDebugSession::Pe)
+                .map_err(ObjectError::Pe),
+        }
+    }
+
+    /// Determines whether this object contains stack unwinding information.
+    pub fn has_unwind_info(&self) -> bool {
+        match_inner!(self, Object(ref o) => o.has_unwind_info())
+    }
+
+    /// Returns the raw data of the underlying buffer.
+    pub fn data(&self) -> &'d [u8] {
+        match_inner!(self, Object(ref o) => o.data())
+    }
+}
+
+impl<'slf, 'd: 'slf> AsSelf<'slf> for Object<'d> {
+    type Ref = Object<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
+impl<'d> ObjectLike for Object<'d> {
+    type Error = ObjectError;
+    type Session = ObjectDebugSession<'d>;
+
+    fn file_format(&self) -> FileFormat {
+        self.file_format()
+    }
+
+    fn code_id(&self) -> Option<CodeId> {
+        self.code_id()
+    }
+
+    fn debug_id(&self) -> DebugId {
+        self.debug_id()
+    }
+
+    fn arch(&self) -> Arch {
+        self.arch()
+    }
+
+    fn kind(&self) -> ObjectKind {
+        self.kind()
+    }
+
+    fn load_address(&self) -> u64 {
+        self.load_address()
+    }
+
+    fn has_symbols(&self) -> bool {
+        self.has_symbols()
+    }
+
+    fn symbol_map(&self) -> SymbolMap<'_> {
+        self.symbol_map()
+    }
+
+    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
+        Box::new(self.symbols())
+    }
+
+    fn has_debug_info(&self) -> bool {
+        self.has_debug_info()
+    }
+
+    fn debug_session(&self) -> Result<Self::Session, Self::Error> {
+        self.debug_session()
+    }
+
+    fn has_unwind_info(&self) -> bool {
+        self.has_unwind_info()
+    }
+}
+
+/// A generic debugging session.
+#[allow(clippy::large_enum_variant)]
+#[allow(missing_docs)]
+pub enum ObjectDebugSession<'d> {
+    Breakpad(BreakpadDebugSession<'d>),
+    Dwarf(DwarfDebugSession<'d>),
+    Pdb(PdbDebugSession<'d>),
+    Pe(PeDebugSession<'d>),
+}
+
+impl<'d> ObjectDebugSession<'d> {
+    fn functions(&mut self) -> ObjectFunctionIterator<'_> {
+        match *self {
+            ObjectDebugSession::Breakpad(ref mut s) => {
+                ObjectFunctionIterator::Breakpad(s.functions())
             }
-        }
-    }
-
-    /// Returns the desiganted use of the object file and hints at its contents.
-    pub fn class(&self) -> ObjectClass {
-        match self.target {
-            ObjectTarget::Breakpad(..) => ObjectClass::Debug,
-            ObjectTarget::Elf(ref elf) => {
-                ObjectClass::from_elf_full(elf.header.e_type, elf.interpreter.is_some())
-            }
-            ObjectTarget::MachOSingle(macho) => ObjectClass::from_mach(macho.header.filetype),
-            ObjectTarget::MachOFat(_, ref macho) => ObjectClass::from_mach(macho.header.filetype),
-        }
-    }
-
-    /// Returns the type of debug data contained in this object file.
-    pub fn debug_kind(&self) -> Option<DebugKind> {
-        match self.target {
-            ObjectTarget::Breakpad(..) => Some(DebugKind::Breakpad),
-            ObjectTarget::Elf(..) | ObjectTarget::MachOSingle(..) | ObjectTarget::MachOFat(..)
-                if self.has_dwarf_data() =>
-            {
-                Some(DebugKind::Dwarf)
-            }
-            _ => None,
+            ObjectDebugSession::Dwarf(ref mut s) => ObjectFunctionIterator::Dwarf(s.functions()),
+            ObjectDebugSession::Pdb(ref mut s) => ObjectFunctionIterator::Pdb(s.functions()),
+            ObjectDebugSession::Pe(ref mut s) => ObjectFunctionIterator::Pe(s.functions()),
         }
     }
 }
 
-impl<'bytes> fmt::Debug for Object<'bytes> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Object")
-            .field("id", &self.id())
-            .field("arch", &self.arch())
-            .field("vmaddr", &self.vmaddr())
-            .field("endianness", &self.endianness())
-            .field("kind", &self.kind())
-            .finish()
+impl DebugSession for ObjectDebugSession<'_> {
+    type Error = ObjectError;
+
+    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
+        Box::new(self.functions())
     }
 }
 
-/// Iterator over `Object`s in a `FatObject`.
-pub struct Objects<'fat> {
-    fat: &'fat FatObject<'fat>,
-    index: usize,
+/// An iterator over functions in an [`Object`](enum.Object.html).
+#[allow(missing_docs)]
+pub enum ObjectFunctionIterator<'s> {
+    Breakpad(BreakpadFunctionIterator<'s>),
+    Dwarf(DwarfFunctionIterator<'s>),
+    Pdb(PdbFunctionIterator<'s>),
+    Pe(PeFunctionIterator<'s>),
 }
 
-impl<'fat> Objects<'fat> {
-    fn new(fat: &'fat FatObject<'fat>) -> Objects<'fat> {
-        Objects { fat, index: 0 }
-    }
-}
-
-impl<'fat> Iterator for Objects<'fat> {
-    type Item = Result<Object<'fat>, ObjectError>;
+impl<'s> Iterator for ObjectFunctionIterator<'s> {
+    type Item = Result<Function<'s>, ObjectError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let result = match self.fat.get_object(self.index) {
-            Ok(Some(object)) => Some(Ok(object)),
-            Ok(None) => None,
-            Err(err) => Some(Err(err)),
+        match *self {
+            ObjectFunctionIterator::Breakpad(ref mut i) => {
+                Some(i.next()?.map_err(ObjectError::Breakpad))
+            }
+            ObjectFunctionIterator::Dwarf(ref mut i) => Some(i.next()?.map_err(ObjectError::Dwarf)),
+            ObjectFunctionIterator::Pdb(ref mut i) => Some(i.next()?.map_err(ObjectError::Pdb)),
+            ObjectFunctionIterator::Pe(ref mut i) => Some(i.next()?.map_err(ObjectError::Pe)),
+        }
+    }
+}
+
+/// A generic symbol iterator
+#[allow(missing_docs)]
+pub enum SymbolIterator<'d, 'o> {
+    Breakpad(BreakpadSymbolIterator<'d>),
+    Elf(ElfSymbolIterator<'d, 'o>),
+    MachO(MachOSymbolIterator<'d>),
+    Pdb(PdbSymbolIterator<'d, 'o>),
+    Pe(PeSymbolIterator<'d, 'o>),
+}
+
+impl<'d, 'o> Iterator for SymbolIterator<'d, 'o> {
+    type Item = Symbol<'d>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match_inner!(self, SymbolIterator(ref mut iter) => iter.next())
+    }
+}
+
+#[derive(Debug)]
+enum ArchiveInner<'d> {
+    Breakpad(MonoArchive<'d, BreakpadObject<'d>>),
+    Elf(MonoArchive<'d, ElfObject<'d>>),
+    MachO(MachArchive<'d>),
+    Pdb(MonoArchive<'d, PdbObject<'d>>),
+    Pe(MonoArchive<'d, PeObject<'d>>),
+}
+
+/// A generic archive that can contain one or more object files.
+///
+/// Effectively, this will only contain a single object for all file types other than `MachO`. Mach
+/// objects can either be single object files or so-called _fat_ files that contain multiple objects
+/// per architecture.
+#[derive(Debug)]
+pub struct Archive<'d>(ArchiveInner<'d>);
+
+impl<'d> Archive<'d> {
+    /// Tests whether this buffer contains a valid object archive.
+    pub fn test(data: &[u8]) -> bool {
+        Self::peek(data) != FileFormat::Unknown
+    }
+
+    /// Tries to infer the object archive type from the start of the given buffer.
+    pub fn peek(data: &[u8]) -> FileFormat {
+        peek(data, true)
+    }
+
+    /// Tries to parse a generic archive from the given slice.
+    pub fn parse(data: &'d [u8]) -> Result<Self, ObjectError> {
+        let archive = match Self::peek(data) {
+            FileFormat::Breakpad => Archive(ArchiveInner::Breakpad(MonoArchive::new(data))),
+            FileFormat::Elf => Archive(ArchiveInner::Elf(MonoArchive::new(data))),
+            FileFormat::MachO => {
+                let inner = MachArchive::parse(data)
+                    .map(ArchiveInner::MachO)
+                    .map_err(ObjectError::MachO)?;
+                Archive(inner)
+            }
+            FileFormat::Pdb => Archive(ArchiveInner::Pdb(MonoArchive::new(data))),
+            FileFormat::Pe => Archive(ArchiveInner::Pe(MonoArchive::new(data))),
+            FileFormat::Unknown => return Err(ObjectError::UnsupportedObject),
         };
 
-        if result.is_some() {
-            self.index += 1;
-        }
+        Ok(archive)
+    }
 
-        result
+    /// The container format of this file.
+    pub fn file_format(&self) -> FileFormat {
+        match self.0 {
+            ArchiveInner::Breakpad(_) => FileFormat::Breakpad,
+            ArchiveInner::Elf(_) => FileFormat::Elf,
+            ArchiveInner::MachO(_) => FileFormat::MachO,
+            ArchiveInner::Pdb(_) => FileFormat::Pdb,
+            ArchiveInner::Pe(_) => FileFormat::Pe,
+        }
+    }
+
+    /// Returns an iterator over all objects contained in this archive.
+    pub fn objects(&self) -> ObjectIterator<'d, '_> {
+        ObjectIterator(map_inner!(self.0, ArchiveInner(ref a) =>
+            ObjectIteratorInner(a.objects())))
+    }
+
+    /// Returns the number of objects in this archive.
+    pub fn object_count(&self) -> usize {
+        match_inner!(self.0, ArchiveInner(ref a) => a.object_count())
+    }
+
+    /// Resolves the object at the given index.
+    ///
+    /// Returns `Ok(None)` if the index is out of bounds, or `Err` if the object exists but cannot
+    /// be parsed.
+    pub fn object_by_index(&self, index: usize) -> Result<Option<Object<'d>>, ObjectError> {
+        match self.0 {
+            ArchiveInner::Breakpad(ref a) => a
+                .object_by_index(index)
+                .map(|opt| opt.map(Object::Breakpad))
+                .map_err(ObjectError::Breakpad),
+            ArchiveInner::Elf(ref a) => a
+                .object_by_index(index)
+                .map(|opt| opt.map(Object::Elf))
+                .map_err(ObjectError::Elf),
+            ArchiveInner::MachO(ref a) => a
+                .object_by_index(index)
+                .map(|opt| opt.map(Object::MachO))
+                .map_err(ObjectError::MachO),
+            ArchiveInner::Pdb(ref a) => a
+                .object_by_index(index)
+                .map(|opt| opt.map(Object::Pdb))
+                .map_err(ObjectError::Pdb),
+            ArchiveInner::Pe(ref a) => a
+                .object_by_index(index)
+                .map(|opt| opt.map(Object::Pe))
+                .map_err(ObjectError::Pe),
+        }
+    }
+}
+
+impl<'slf, 'd: 'slf> AsSelf<'slf> for Archive<'d> {
+    type Ref = Archive<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
+#[allow(clippy::large_enum_variant)]
+enum ObjectIteratorInner<'d, 'a> {
+    Breakpad(MonoArchiveObjects<'d, BreakpadObject<'d>>),
+    Elf(MonoArchiveObjects<'d, ElfObject<'d>>),
+    MachO(MachObjectIterator<'d, 'a>),
+    Pdb(MonoArchiveObjects<'d, PdbObject<'d>>),
+    Pe(MonoArchiveObjects<'d, PeObject<'d>>),
+}
+
+/// An iterator over [`Object`](enum.Object.html)s in an [`Archive`](struct.Archive.html).
+pub struct ObjectIterator<'d, 'a>(ObjectIteratorInner<'d, 'a>);
+
+impl<'d, 'a> Iterator for ObjectIterator<'d, 'a> {
+    type Item = Result<Object<'d>, ObjectError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(map_result!(
+            self.0,
+            ObjectIteratorInner(ref mut iter) => Object(iter.next()?)
+        ))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let remaining = self.fat.object_count() - self.index;
-        (remaining, Some(remaining))
-    }
-
-    fn count(mut self) -> usize {
-        let (remaining, _) = self.size_hint();
-        self.index += remaining;
-        remaining
+        match_inner!(self.0, ObjectIteratorInner(ref iter) => iter.size_hint())
     }
 }
 
-/// Internal data used to access platform-specific data of a `FatObject`.
-#[allow(clippy::large_enum_variant)]
-pub(crate) enum FatObjectKind<'bytes> {
-    Breakpad(BreakpadSym),
-    Elf(elf::Elf<'bytes>),
-    MachO(mach::Mach<'bytes>),
-}
+impl std::iter::FusedIterator for ObjectIterator<'_, '_> {}
+impl ExactSizeIterator for ObjectIterator<'_, '_> {}
 
-/// Represents a potentially fat object containing one or more objects.
-pub struct FatObject<'bytes> {
-    handle: ByteViewHandle<'bytes, FatObjectKind<'bytes>>,
-}
-
-impl<'bytes> FatObject<'bytes> {
-    /// Returns the type of the FatObject.
-    pub fn peek<B>(bytes: B) -> Result<Option<ObjectKind>, ObjectError>
-    where
-        B: AsRef<[u8]>,
-    {
-        let bytes = bytes.as_ref();
-        let mut cur = Cursor::new(bytes);
-
-        match goblin::peek(&mut cur).context(ObjectErrorKind::BadObject)? {
-            Hint::Elf(_) => return Ok(Some(ObjectKind::Elf)),
-            Hint::Mach(_) => return Ok(Some(ObjectKind::MachO)),
-            Hint::MachFat(_) => return Ok(Some(ObjectKind::MachO)),
-            _ => (),
-        };
-
-        if bytes.starts_with(b"MODULE ") {
-            return Ok(Some(ObjectKind::Breakpad));
-        }
-
-        Ok(None)
-    }
-
-    /// Provides a view to an object file from a `ByteView`.
-    pub fn parse(byteview: ByteView<'bytes>) -> Result<FatObject<'bytes>, ObjectError> {
-        let handle = ByteViewHandle::from_byteview(byteview, |bytes| -> Result<_, ObjectError> {
-            Ok(match FatObject::peek(bytes)? {
-                Some(ObjectKind::Elf) => {
-                    let inner = elf::Elf::parse(bytes).context(ObjectErrorKind::BadObject)?;
-                    FatObjectKind::Elf(inner)
-                }
-                Some(ObjectKind::MachO) => {
-                    let inner = mach::Mach::parse(bytes).context(ObjectErrorKind::BadObject)?;
-                    FatObjectKind::MachO(inner)
-                }
-                Some(ObjectKind::Breakpad) => {
-                    let inner = BreakpadSym::parse(bytes).context(ObjectErrorKind::BadObject)?;
-                    FatObjectKind::Breakpad(inner)
-                }
-                None => return Err(ObjectErrorKind::UnsupportedObject.into()),
-            })
-        })?;
-
-        Ok(FatObject { handle })
-    }
-
-    /// Returns the kind of this `FatObject`.
-    pub fn kind(&self) -> ObjectKind {
-        match *self.handle {
-            FatObjectKind::Breakpad(_) => ObjectKind::Breakpad,
-            FatObjectKind::Elf(..) => ObjectKind::Elf,
-            FatObjectKind::MachO(..) => ObjectKind::MachO,
-        }
-    }
-
-    /// Returns the contents as bytes.
-    pub fn as_bytes(&self) -> &[u8] {
-        ByteViewHandle::get_bytes(&self.handle)
-    }
-
-    /// Returns the number of contained objects.
-    pub fn object_count(&self) -> usize {
-        match *self.handle {
-            FatObjectKind::Breakpad(_) => 1,
-            FatObjectKind::Elf(..) => 1,
-            FatObjectKind::MachO(ref mach) => match *mach {
-                mach::Mach::Fat(ref fat) => fat.narches,
-                mach::Mach::Binary(..) => 1,
-            },
-        }
-    }
-
-    /// Returns the n-th object.
-    pub fn get_object(&'bytes self, index: usize) -> Result<Option<Object<'bytes>>, ObjectError> {
-        if index >= self.object_count() {
-            return Ok(None);
-        }
-
-        let target = match *self.handle {
-            FatObjectKind::Breakpad(ref breakpad) => ObjectTarget::Breakpad(breakpad),
-            FatObjectKind::Elf(ref elf) => ObjectTarget::Elf(elf),
-            FatObjectKind::MachO(ref mach) => match *mach {
-                mach::Mach::Binary(ref bin) => ObjectTarget::MachOSingle(bin),
-                mach::Mach::Fat(ref fat) => {
-                    let mach = fat.get(index).context(ObjectErrorKind::BadObject)?;
-                    let arch = fat
-                        .iter_arches()
-                        .nth(index)
-                        .unwrap()
-                        .context(ObjectErrorKind::BadObject)?;
-
-                    ObjectTarget::MachOFat(arch, mach)
-                }
-            },
-        };
-
-        Ok(Some(Object {
-            fat_bytes: self.as_bytes(),
-            target,
-        }))
-    }
-
-    /// Returns a iterator over object variants in this fat object.
-    pub fn objects(&'bytes self) -> Objects<'bytes> {
-        Objects::new(self)
-    }
-}
-
-impl<'bytes> fmt::Debug for FatObject<'bytes> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Object")
-            .field("kind", &self.kind())
-            .field("object_count", &self.object_count())
-            .finish()
-    }
-}
+// TODO(ja): Implement IntoIterator for Archive

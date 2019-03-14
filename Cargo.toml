@@ -17,10 +17,12 @@ minidumps, Unreal Engine 4, minified JavaScripts or ProGuard optimized Android a
 edition = "2018"
 autoexamples = true
 
-exclude = [
-    ".vscode/**/*",
-    "py/**/*",
-    "scripts/**/*",
+include = [
+    "/src/**/*.rs",
+    "/*.toml",
+    "/.gitmodules",
+    "/LICENSE",
+    "/README.md",
 ]
 
 [package.metadata.docs.rs]
@@ -32,13 +34,11 @@ all-features = true
 default = ["debuginfo"]
 debuginfo = ["symbolic-debuginfo"]
 demangle = ["symbolic-demangle"]
-minidump = ["debuginfo", "symbolic-minidump"]
+minidump = ["symbolic-minidump", "debuginfo"]
 proguard = ["symbolic-proguard"]
 sourcemap = ["symbolic-sourcemap"]
-symcache = ["debuginfo", "demangle", "symbolic-symcache"]
-with_serde = ["symbolic-common/with_serde"]
-with_serde_debuginfo = ["symbolic-debuginfo/with_serde"]
-with_serde_minidump = ["symbolic-minidump/with_serde"]
+symcache = ["symbolic-symcache", "debuginfo"]
+serde = ["symbolic-common/serde", "symbolic-debuginfo/serde", "symbolic-minidump/serde", "symbolic-unreal/with-serde"]
 unreal = ["symbolic-unreal"]
 
 [dependencies]

@@ -1,0 +1,161 @@
+---
+created: "2019-02-20T15:42:11.796623Z"
+creator: insta@0.6.3
+source: minidump/tests/test_cfi.rs
+expression: cfi
+---
+STACK WIN 4 1000 114 11 0 8 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 100f f5 2 0 8 4 c 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 16 - ^ =
+STACK WIN 4 1030 92 0 0 8 8 c 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 16 - ^ =  $23 $T0 20 - ^ =
+STACK WIN 4 1048 a 0 0 8 c c 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 16 - ^ =  $23 $T0 20 - ^ =  $24 $T0 24 - ^ =
+STACK WIN 4 1120 54 3 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 1121 4b 2 0 0 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =
+STACK WIN 4 1180 150 11 0 8 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 1188 13c 9 0 8 4 8 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 12 - ^ =
+STACK WIN 4 1189 13a 8 0 8 8 8 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 12 - ^ =  $22 $T0 16 - ^ =
+STACK WIN 4 118e 134 3 0 8 c 8 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 12 - ^ =  $22 $T0 16 - ^ =  $23 $T0 20 - ^ =
+STACK WIN 4 118f 132 2 0 8 10 8 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 12 - ^ =  $22 $T0 16 - ^ =  $23 $T0 20 - ^ =  $24 $T0 24 - ^ =
+STACK WIN 4 12ca 6 0 0 8 10 8 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 12 - ^ =  $22 $T0 16 - ^ =  $23 $T0 20 - ^ =  $24 $T0 24 - ^ =
+STACK WIN 4 12d0 c 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 12e0 7f 8 0 4 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 12e1 74 7 0 4 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =
+STACK WIN 4 12e2 70 6 0 4 8 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =  $24 $T0 8 - ^ =
+STACK WIN 4 1360 6 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 1370 35 6 0 c 0 0 0 1 $T1 .raSearch = $T0  $T1 4 - 8 @ = $ebp $T1 4 - ^ = $eip $T1 ^ = $esp $T1 4 + =
+STACK WIN 4 13b0 34 0 0 10 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 13f0 24 0 0 8 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 1420 34a 2d 0 28 10 30 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $20 $T0 52 - ^ =  $23 $T0 56 - ^ =  $24 $T0 60 - ^ =
+STACK WIN 4 1770 310 16 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 177c 2f4 a 0 0 4 4 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 8 - ^ =
+STACK WIN 4 177d 2f2 9 0 0 8 4 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 8 - ^ =  $23 $T0 12 - ^ =
+STACK WIN 4 1784 2ea 2 0 0 c 4 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 8 - ^ =  $23 $T0 12 - ^ =  $24 $T0 16 - ^ =
+STACK WIN 4 1827 36 0 0 0 10 4 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 8 - ^ =  $23 $T0 12 - ^ =  $24 $T0 16 - ^ =  $22 $T0 32 - ^ =
+STACK WIN 4 1a80 109 8 0 4 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 1a81 105 7 0 4 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 4 - ^ =
+STACK WIN 4 1a82 101 6 0 4 8 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 4 - ^ =  $22 $T0 8 - ^ =
+STACK WIN 4 1a83 ff 5 0 4 c 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 4 - ^ =  $22 $T0 8 - ^ =  $23 $T0 12 - ^ =
+STACK WIN 4 1a88 f9 0 0 4 10 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 4 - ^ =  $22 $T0 8 - ^ =  $23 $T0 12 - ^ =  $24 $T0 16 - ^ =
+STACK WIN 4 1b90 70 9 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 1b91 68 8 0 0 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =
+STACK WIN 4 1b92 66 7 0 0 8 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =  $24 $T0 8 - ^ =
+STACK WIN 4 1c00 36 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 1c40 11d 2a 0 4 c 14 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $23 $T0 24 - ^ =  $24 $T0 28 - ^ =
+STACK WIN 4 1d60 18b 2e 0 14 10 644 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $20 $T0 1608 - ^ =  $23 $T0 1612 - ^ =  $24 $T0 1616 - ^ =
+STACK WIN 4 1ef0 129 2c 0 0 8 640 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $23 $T0 1604 - ^ =
+STACK WIN 4 2020 da 3 0 8 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 2021 d6 2 0 8 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =
+STACK WIN 4 2024 d2 0 0 8 8 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =  $24 $T0 8 - ^ =
+STACK WIN 4 2050 a5 0 0 8 c 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =  $24 $T0 8 - ^ =  $20 $T0 12 - ^ =
+STACK WIN 4 2100 71 8 0 c 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 2101 6d 7 0 c 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 4 - ^ =
+STACK WIN 4 2106 67 2 0 c 8 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 4 - ^ =  $23 $T0 8 - ^ =
+STACK WIN 4 2109 63 0 0 c c 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 4 - ^ =  $23 $T0 8 - ^ =  $24 $T0 12 - ^ =
+STACK WIN 4 2180 84 0 0 c 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 219c 1b 0 0 c 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =
+STACK WIN 4 2210 22c 24 0 14 c 84 0 1 $T1 .raSearch = $T0  $T1 4 - 8 @ = $ebp $T1 4 - ^ = $eip $T1 ^ = $esp $T1 4 + = $20 $T0 136 - ^ =  $23 $T0 140 - ^ =  $24 $T0 144 - ^ =
+STACK WIN 4 2440 11e 1e 0 0 8 238 0 1 $T1 .raSearch = $T0  $T1 4 - 16 @ = $ebp $T1 4 - ^ = $eip $T1 ^ = $esp $T1 4 + = $23 $T0 572 - ^ =  $24 $T0 576 - ^ =
+STACK WIN 4 2560 121 5 0 4 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 2562 115 3 0 4 4 4 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 8 - ^ =
+STACK WIN 4 2563 113 2 0 4 8 4 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 8 - ^ =  $23 $T0 12 - ^ =
+STACK WIN 4 25a5 cd 0 0 4 c 4 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 8 - ^ =  $23 $T0 12 - ^ =  $22 $T0 16 - ^ =
+STACK WIN 4 25c4 ad 0 0 4 10 4 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 8 - ^ =  $23 $T0 12 - ^ =  $22 $T0 16 - ^ =  $24 $T0 20 - ^ =
+STACK WIN 4 267b 6 0 0 4 8 4 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 8 - ^ =  $23 $T0 12 - ^ =  $22 $T0 16 - ^ =  $24 $T0 20 - ^ =
+STACK WIN 4 2690 d 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 26a0 43 3 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 26a1 41 2 0 0 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $24 $T0 4 - ^ =
+STACK WIN 4 26bc 1a 0 0 0 8 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $24 $T0 4 - ^ =  $23 $T0 8 - ^ =
+STACK WIN 4 26f0 8c 3 0 4 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 26f1 81 2 0 4 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =
+STACK WIN 4 26f4 7d 0 0 4 8 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =  $24 $T0 8 - ^ =
+STACK WIN 4 2780 c 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 2790 c 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 27a0 2a 0 0 8 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 27d0 1b 0 0 c 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 27f0 ae 15 0 0 4 60 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 100 - ^ =
+STACK WIN 4 28a0 2e 1 0 4 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 28a1 2c 0 0 4 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =
+STACK WIN 4 28d0 33 1 0 18 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 28d1 31 0 0 18 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 4 - ^ =
+STACK WIN 4 2910 15e 36 0 8 4 f4 0 1 $T0 $ebp 204 + =$eip $T0 4 + ^ =$ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 2a6e 11 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 2a7f 30 3 0 4 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 2aaf e 3 0 8 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 2abd 28 3 0 4 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 2ae5 fb 9 0 0 0 324 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 2be0 a4 1 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 2be1 2b 0 0 0 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =
+STACK WIN 4 2c84 8 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 2c8c 12 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 2c9e 177 c 0 0 10 24 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $20 $T0 40 - ^ =  $23 $T0 44 - ^ =  $24 $T0 48 - ^ =
+STACK WIN 4 2dc4 14 0 0 0 10 24 0 1 $T0 $ebp = $T2 $esp = $T1 .raSearchStart = $eip $T1 ^ = $ebp $T0 = $esp $T1 4 + =
+STACK WIN 4 2e15 a 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 2e1f 5 0 0 4 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 2e24 1b 9 0 4 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 2e28 13 5 0 4 4 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $23 $T0 4 - ^ =
+STACK WIN 4 2e3f 18 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 2e57 1b 9 0 4 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 2e5b 13 5 0 4 4 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $23 $T0 4 - ^ =
+STACK WIN 4 2e72 18 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 2e8a 2c 6 0 4 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 2e8e 24 2 0 4 4 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $23 $T0 4 - ^ =
+STACK WIN 4 2eb6 11 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 2ec7 2d 6 0 4 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 2ecb 25 2 0 4 4 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $23 $T0 4 - ^ =
+STACK WIN 4 2ef4 1d 6 0 0 0 c 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 2f11 1d 6 0 0 0 c 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 2f2e d 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 2f3b 44 7 0 8 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 2f42 37 0 0 8 4 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $23 $T0 4 - ^ =
+STACK WIN 4 2f7f 35 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 2f92 21 0 0 0 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =
+STACK WIN 4 2fb4 39 3 0 4 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 2fed aa 6 0 4 0 c 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 3004 87 0 0 4 4 c 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $23 $T0 16 - ^ =
+STACK WIN 4 3048 39 0 0 4 8 c 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $23 $T0 16 - ^ =  $24 $T0 20 - ^ =
+STACK WIN 4 3097 8a c 0 4 10 18 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $20 $T0 28 - ^ =  $23 $T0 32 - ^ =  $24 $T0 36 - ^ =
+STACK WIN 4 30fc 13 0 0 4 10 18 0 1 $T0 $ebp = $T2 $esp = $T1 .raSearchStart = $eip $T1 ^ = $ebp $T0 = $esp $T1 4 + =
+STACK WIN 4 3121 1d 3 0 4 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 313e 28 3 0 8 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 3166 3b 3 0 4 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 31a1 15 3 0 4 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 31b6 4f 6 0 0 0 14 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 3205 4b 8 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 320c 43 1 0 0 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =
+STACK WIN 4 320d 3b 0 0 0 8 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $23 $T0 4 - ^ =  $24 $T0 8 - ^ =
+STACK WIN 4 3250 3 0 0 4 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 3253 4 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 3257 6 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 325d c 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 3269 3 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 326c 21 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 328d 1 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 328e 6 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 3294 1d 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 32b1 c 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 32bd 6 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 32c3 6 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 32c9 11c a 0 4 4 324 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $20 $T0 808 - ^ =
+STACK WIN 4 33e5 44 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 3429 c 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 3435 41 3 0 4 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 3476 8 0 0 4 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 347e 2b 2 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 347f 29 1 0 0 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 4 - ^ =
+STACK WIN 4 3480 27 0 0 0 8 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 4 - ^ =  $23 $T0 8 - ^ =
+STACK WIN 4 348f 17 0 0 0 c 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 4 - ^ =  $23 $T0 8 - ^ =  $24 $T0 12 - ^ =
+STACK WIN 4 34a9 2b 2 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 34aa 29 1 0 0 4 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 4 - ^ =
+STACK WIN 4 34ab 27 0 0 0 8 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 4 - ^ =  $23 $T0 8 - ^ =
+STACK WIN 4 34ba 17 0 0 0 c 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =  $20 $T0 4 - ^ =  $23 $T0 8 - ^ =  $24 $T0 12 - ^ =
+STACK WIN 4 34d4 6 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 4 353b 23 3 0 10 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 355e 23 a 0 4 0 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 3566 17 2 0 4 4 0 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $23 $T0 4 - ^ =
+STACK WIN 4 3581 199 e 0 0 0 24 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =
+STACK WIN 4 358f 187 0 0 0 4 24 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $20 $T0 40 - ^ =
+STACK WIN 4 35b7 ef 0 0 0 8 24 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $20 $T0 40 - ^ =  $23 $T0 44 - ^ =
+STACK WIN 4 35b8 ed 0 0 0 c 24 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $20 $T0 40 - ^ =  $23 $T0 44 - ^ =  $24 $T0 48 - ^ =
+STACK WIN 4 371a c 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+STACK WIN 0 2dc4 14 0 0 0 0 0 0 0 0
+STACK WIN 0 30fc 13 0 0 0 0 0 0 0 0
+

@@ -1,22 +1,17 @@
 //! Language auto-detection tests
 
-use symbolic_common::types::{Language, Name};
+use symbolic_common::{Language, Name};
 use symbolic_demangle::Demangle;
 
 fn assert_language(input: &str, lang: Language) {
     let name = Name::new(input);
-    assert_eq!(name.detect_language(), Some(lang));
-}
-
-fn assert_none(input: &str) {
-    let name = Name::new(input);
-    assert_eq!(name.detect_language(), None);
+    assert_eq!(name.detect_language(), lang);
 }
 
 #[test]
 fn unknown() {
     // Fallback to test false positives
-    assert_none("xxxxxxxxxxx");
+    assert_language("xxxxxxxxxxx", Language::Unknown);
 }
 
 #[test]

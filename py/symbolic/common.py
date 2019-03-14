@@ -1,13 +1,13 @@
 import os
+import six
+
 from symbolic._lowlevel import lib, ffi
 from symbolic._compat import string_types, int_types
 from symbolic.utils import rustcall, encode_str, decode_str
 from symbolic import exceptions
 
 
-__all__ = ['arch_is_known', 'arch_from_macho',
-           'arch_from_elf', 'arch_from_breakpad', 'arch_to_breakpad',
-           'arch_get_ip_reg_name', 'parse_addr']
+__all__ = ['arch_is_known', 'arch_get_ip_reg_name', 'normalize_arch', 'parse_addr']
 
 
 ignore_arch_exc = (exceptions.UnknownArchError,)
@@ -18,46 +18,22 @@ os.environ['RUST_BACKTRACE'] = '1'
 ffi.init_once(lib.symbolic_init, 'init')
 
 
-def arch_is_known(value):
+def arch_is_known(arch):
     """Checks if an architecture is known."""
-    return rustcall(lib.symbolic_arch_is_known, encode_str(value))
+    if not isinstance(arch, six.string_types):
+        return False
+    return rustcall(lib.symbolic_arch_is_known, encode_str(arch))
 
 
-def arch_from_macho(cputype, cpusubtype):
-    """Converts a macho arch tuple into an arch string."""
-    arch = ffi.new('SymbolicMachoArch *')
-    arch[0].cputype = cputype & 0xffffffff
-    arch[0].cpusubtype = cpusubtype & 0xffffffff
-    try:
-        return str(decode_str(rustcall(lib.symbolic_arch_from_macho, arch)))
-    except ignore_arch_exc:
-        pass
+def normalize_arch(arch):
+    """Normalizes an architecture name."""
+    if arch is None:
+        return None
+    if not isinstance(arch, six.string_types):
+        raise ValueError('Invalid architecture: expected string')
 
-
-def arch_from_elf(machine):
-    """Converts an ELF machine id into an arch string."""
-    arch = ffi.new('SymbolicElfArch *')
-    arch[0].machine = machine & 0xffff
-    try:
-        return str(decode_str(rustcall(lib.symbolic_arch_from_elf, encode_str(arch))))
-    except ignore_arch_exc:
-        pass
-
-
-def arch_from_breakpad(arch):
-    """Converts a Breakpad arch into our arch string"""
-    try:
-        return str(decode_str(rustcall(lib.symbolic_arch_from_breakpad, encode_str(arch))))
-    except ignore_arch_exc:
-        pass
-
-
-def arch_to_breakpad(arch):
-    """Converts an arch string into a Breakpad arch"""
-    try:
-        return str(decode_str(rustcall(lib.symbolic_arch_to_breakpad, arch)))
-    except ignore_arch_exc:
-        pass
+    normalized = rustcall(lib.symbolic_normalize_arch, encode_str(arch))
+    return decode_str(normalized)
 
 
 def arch_get_ip_reg_name(arch):

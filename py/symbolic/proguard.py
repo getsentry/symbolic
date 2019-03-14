@@ -22,10 +22,10 @@ class ProguardMappingView(RustObject):
         return rv
 
     @classmethod
-    def from_path(cls, path):
+    def open(cls, path):
         """Constructs a mapping file from a path."""
         return cls._from_objptr(rustcall(
-            lib.symbolic_proguardmappingview_from_path,
+            lib.symbolic_proguardmappingview_open,
             encode_path(path)))
 
     @property

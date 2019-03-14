@@ -15,6 +15,10 @@ A library to demangle symbols from various languages and compilers.
 build = "build.rs"
 edition = "2018"
 
+exclude = [
+    "tests/**/*",
+]
+
 [dependencies]
 cpp_demangle = "0.2.12"
 msvc-demangler = "0.7.0"
@@ -22,4 +26,4 @@ rustc-demangle = "0.1.13"
 symbolic-common = { version = "5.8.2", path = "../common" }
 
 [build-dependencies]
-cc = "1.0.28"
+cc = "1.0.31"

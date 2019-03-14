@@ -9,6 +9,42 @@ thread_local! {
     pub static LAST_ERROR: RefCell<Option<Error>> = RefCell::new(None);
 }
 
+pub trait ForeignObject: Sized {
+    type RustObject;
+
+    #[inline]
+    unsafe fn from_rust(object: Self::RustObject) -> *mut Self {
+        Box::into_raw(Box::new(object)) as *mut Self
+    }
+
+    #[inline]
+    unsafe fn from_ref(object: &Self::RustObject) -> *const Self {
+        object as *const Self::RustObject as *const Self
+    }
+
+    #[inline]
+    unsafe fn as_rust<'a>(pointer: *const Self) -> &'a Self::RustObject {
+        &*(pointer as *const Self::RustObject)
+    }
+
+    #[inline]
+    unsafe fn as_rust_mut<'a>(pointer: *mut Self) -> &'a mut Self::RustObject {
+        &mut *(pointer as *mut Self::RustObject)
+    }
+
+    #[inline]
+    unsafe fn into_rust(pointer: *mut Self) -> Box<Self::RustObject> {
+        Box::from_raw(pointer as *mut Self::RustObject)
+    }
+
+    #[inline]
+    unsafe fn drop(pointer: *mut Self) {
+        if !pointer.is_null() {
+            drop(Self::into_rust(pointer));
+        }
+    }
+}
+
 /// An error thrown by `landingpad` in place of panics.
 #[derive(Fail, Debug)]
 #[fail(display = "symbolic panicked: {}", _0)]

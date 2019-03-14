@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::ffi::CStr;
 use std::mem;
 use std::os::raw::c_char;
@@ -66,6 +67,12 @@ impl SymbolicStr {
     }
 }
 
+impl Drop for SymbolicStr {
+    fn drop(&mut self) {
+        unsafe { self.free() }
+    }
+}
+
 impl From<String> for SymbolicStr {
     fn from(string: String) -> SymbolicStr {
         SymbolicStr::from_string(string)
@@ -75,6 +82,15 @@ impl From<String> for SymbolicStr {
 impl<'a> From<&'a str> for SymbolicStr {
     fn from(string: &str) -> SymbolicStr {
         SymbolicStr::new(string)
+    }
+}
+
+impl<'a> From<Cow<'a, str>> for SymbolicStr {
+    fn from(cow: Cow<'a, str>) -> SymbolicStr {
+        match cow {
+            Cow::Borrowed(string) => SymbolicStr::new(string),
+            Cow::Owned(string) => SymbolicStr::from_string(string),
+        }
     }
 }
 
@@ -115,22 +131,28 @@ pub enum SymbolicErrorCode {
     Panic = 1,
     Unknown = 2,
 
-    // std::io
+    // // std::io
     IoError = 101,
 
-    // symbolic::common::types
+    // symbolic::common
     UnknownArchError = 1001,
     UnknownLanguageError = 1002,
-    UnknownObjectKindError = 1003,
-    UnknownObjectClassError = 1004,
-    UnknownDebugKindError = 1005,
+    ParseDebugIdError = 1003,
 
     // symbolic::debuginfo
-    ParseBreakpadError = 2001,
-    ParseDebugIdError = 2002,
-    ObjectErrorUnsupportedObject = 2003,
-    ObjectErrorBadObject = 2004,
-    ObjectErrorUnsupportedSymbolTable = 2005,
+    UnknownObjectKindError = 2001,
+    UnknownFileFormatError = 2002,
+    ObjectErrorUnsupportedObject = 2101,
+    ObjectErrorBadBreakpadObject = 2102,
+    ObjectErrorBadElfObject = 2103,
+    ObjectErrorBadMachOObject = 2104,
+    ObjectErrorBadPdbObject = 2105,
+    ObjectErrorBadPeObject = 2106,
+    DwarfErrorInvalidUnitRef = 2201,
+    DwarfErrorInvalidFileRef = 2202,
+    DwarfErrorUnexpectedInline = 2203,
+    DwarfErrorInvertedFunctionRange = 2204,
+    DwarfErrorCorruptedData = 2205,
 
     // symbolic::minidump::cfi
     CfiErrorMissingDebugInfo = 3001,
@@ -195,38 +217,47 @@ impl SymbolicErrorCode {
                 return SymbolicErrorCode::IoError;
             }
 
-            use symbolic::common::types::{
-                UnknownArchError, UnknownDebugKindError, UnknownLanguageError,
-                UnknownObjectClassError, UnknownObjectKindError,
-            };
+            use symbolic::common::{ParseDebugIdError, UnknownArchError, UnknownLanguageError};
             if cause.downcast_ref::<UnknownArchError>().is_some() {
                 return SymbolicErrorCode::UnknownArchError;
             } else if cause.downcast_ref::<UnknownLanguageError>().is_some() {
                 return SymbolicErrorCode::UnknownLanguageError;
-            } else if cause.downcast_ref::<UnknownDebugKindError>().is_some() {
-                return SymbolicErrorCode::UnknownDebugKindError;
-            } else if cause.downcast_ref::<UnknownObjectClassError>().is_some() {
-                return SymbolicErrorCode::UnknownObjectClassError;
-            } else if cause.downcast_ref::<UnknownObjectKindError>().is_some() {
-                return SymbolicErrorCode::UnknownObjectKindError;
+            } else if cause.downcast_ref::<ParseDebugIdError>().is_some() {
+                return SymbolicErrorCode::ParseDebugIdError;
             }
 
             use symbolic::debuginfo::{
-                ObjectError, ObjectErrorKind, ParseBreakpadError, ParseDebugIdError,
+                dwarf::DwarfErrorKind, ObjectError, UnknownFileFormatError, UnknownObjectKindError,
             };
-            if cause.downcast_ref::<ParseBreakpadError>().is_some() {
-                return SymbolicErrorCode::ParseBreakpadError;
-            } else if cause.downcast_ref::<ParseDebugIdError>().is_some() {
-                return SymbolicErrorCode::ParseDebugIdError;
+            if cause.downcast_ref::<UnknownObjectKindError>().is_some() {
+                return SymbolicErrorCode::UnknownObjectKindError;
+            } else if cause.downcast_ref::<UnknownFileFormatError>().is_some() {
+                return SymbolicErrorCode::UnknownFileFormatError;
             } else if let Some(error) = cause.downcast_ref::<ObjectError>() {
-                return match error.kind() {
-                    ObjectErrorKind::UnsupportedObject => {
+                return match error {
+                    ObjectError::UnsupportedObject => {
                         SymbolicErrorCode::ObjectErrorUnsupportedObject
                     }
-                    ObjectErrorKind::BadObject => SymbolicErrorCode::ObjectErrorBadObject,
-                    ObjectErrorKind::UnsupportedSymbolTable => {
-                        SymbolicErrorCode::ObjectErrorUnsupportedSymbolTable
-                    }
+                    ObjectError::Breakpad(_) => SymbolicErrorCode::ObjectErrorBadBreakpadObject,
+                    ObjectError::Elf(_) => SymbolicErrorCode::ObjectErrorBadElfObject,
+                    ObjectError::MachO(_) => SymbolicErrorCode::ObjectErrorBadMachOObject,
+                    ObjectError::Pdb(_) => SymbolicErrorCode::ObjectErrorBadPdbObject,
+                    ObjectError::Pe(_) => SymbolicErrorCode::ObjectErrorBadPeObject,
+                    ObjectError::Dwarf(ref e) => match e.kind() {
+                        DwarfErrorKind::InvalidUnitRef(_) => {
+                            SymbolicErrorCode::DwarfErrorInvalidUnitRef
+                        }
+                        DwarfErrorKind::InvalidFileRef(_) => {
+                            SymbolicErrorCode::DwarfErrorInvalidFileRef
+                        }
+                        DwarfErrorKind::UnexpectedInline => {
+                            SymbolicErrorCode::DwarfErrorUnexpectedInline
+                        }
+                        DwarfErrorKind::InvertedFunctionRange => {
+                            SymbolicErrorCode::DwarfErrorInvertedFunctionRange
+                        }
+                        DwarfErrorKind::CorruptedData => SymbolicErrorCode::DwarfErrorCorruptedData,
+                    },
                 };
             }
 
@@ -423,8 +454,8 @@ ffi_fn! {
     /// This sets the string to owned.  In case it's not owned you either have
     /// to make sure you are not freeing the memory or you need to set the
     /// owned flag to false.
-    unsafe fn symbolic_str_from_cstr(s: *const c_char) -> Result<SymbolicStr> {
-        let s = CStr::from_ptr(s).to_str()?;
+    unsafe fn symbolic_str_from_cstr(string: *const c_char) -> Result<SymbolicStr> {
+        let s = CStr::from_ptr(string).to_str()?;
         Ok(SymbolicStr {
             data: s.as_ptr() as *mut _,
             len: s.len(),
@@ -438,10 +469,8 @@ ffi_fn! {
 /// If the string is marked as not owned then this function does not
 /// do anything.
 #[no_mangle]
-pub unsafe extern "C" fn symbolic_str_free(s: *mut SymbolicStr) {
-    if !s.is_null() {
-        (*s).free()
-    }
+pub unsafe extern "C" fn symbolic_str_free(string: *mut SymbolicStr) {
+    (*string).free()
 }
 
 /// Returns true if the uuid is nil.

@@ -1,16 +1,13 @@
 //! Provides symcache support.
 
-mod breakpad;
+#![warn(missing_docs)]
+
 mod cache;
-mod dwarf;
 mod error;
-mod heuristics;
-mod types;
-mod utils;
 mod writer;
 
-pub use crate::cache::*;
-pub use crate::error::*;
-pub use crate::heuristics::*;
-pub use crate::types::DataSource;
-pub use crate::writer::*;
+pub mod format;
+
+pub use cache::*;
+pub use error::*;
+pub use writer::*;

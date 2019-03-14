@@ -19,7 +19,7 @@ def test_basics(res_path):
 
 
 def test_mmap(res_path):
-    view = ProguardMappingView.from_path(os.path.join(res_path, 'proguard.txt'))
+    view = ProguardMappingView.open(os.path.join(res_path, 'proguard.txt'))
     assert view.has_line_info
     assert view.uuid == uuid.UUID('5cd8e873-1127-5276-81b7-8ff25043ecfd')
 

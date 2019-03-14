@@ -4,13 +4,13 @@ from weakref import WeakValueDictionary
 from symbolic._compat import itervalues, range_type
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, decode_str, encode_str, attached_refs
-from symbolic.common import parse_addr, arch_is_known, arch_from_macho
+from symbolic.common import parse_addr, arch_is_known
 from symbolic.symcache import SymCache
 from symbolic.minidump import CfiCache
 
 
 __all__ = [
-    'FatObject',
+    'Archive',
     'Object',
     'ObjectLookup',
     'id_from_breakpad',
@@ -18,19 +18,19 @@ __all__ = [
 ]
 
 
-class FatObject(RustObject):
-    __dealloc_func__ = lib.symbolic_fatobject_free
+class Archive(RustObject):
+    __dealloc_func__ = lib.symbolic_archive_free
 
     @classmethod
-    def from_path(self, path):
-        """Opens a fat object from a given path."""
-        return FatObject._from_objptr(
-            rustcall(lib.symbolic_fatobject_open, path))
+    def open(self, path):
+        """Opens an archive from a given path."""
+        return Archive._from_objptr(
+            rustcall(lib.symbolic_archive_open, path))
 
     @property
     def object_count(self):
-        """The number of objects in this fat object."""
-        return self._methodcall(lib.symbolic_fatobject_object_count)
+        """The number of objects in this archive."""
+        return self._methodcall(lib.symbolic_archive_object_count)
 
     def iter_objects(self):
         """Iterates over all objects."""
@@ -40,12 +40,12 @@ class FatObject(RustObject):
             except LookupError:
                 pass
 
-    def get_object(self, id=None, arch=None):
+    def get_object(self, debug_id=None, arch=None):
         """Get an object by either arch or id."""
-        if id is not None:
-            id = id.lower()
+        if debug_id is not None:
+            debug_id = debug_id.lower()
         for obj in self.iter_objects():
-            if obj.id == id or obj.arch == arch:
+            if obj.debug_id == debug_id or obj.arch == arch:
                 return obj
         raise LookupError('Object not found')
 
@@ -57,13 +57,10 @@ class FatObject(RustObject):
         rv = cache.get(idx)
         if rv is not None:
             return rv
-        ptr = self._methodcall(lib.symbolic_fatobject_get_object, idx)
+        ptr = self._methodcall(lib.symbolic_archive_get_object, idx)
         if ptr == ffi.NULL:
             raise LookupError('No object #%d' % idx)
         rv = cache[idx] = Object._from_objptr(ptr)
-        # Hold a reference here so that we don't crash if the fat object
-        # is not held otherwise
-        attached_refs[rv] = self
         return rv
 
 
@@ -77,31 +74,39 @@ class Object(RustObject):
         return str(decode_str(self._methodcall(lib.symbolic_object_get_arch)))
 
     @property
-    def id(self):
-        """The unique ID of the object."""
-        return decode_str(self._methodcall(lib.symbolic_object_get_id))
+    def code_id(self):
+        """The code identifier of the object. Returns None if there is no code id."""
+        code_id = decode_str(self._methodcall(lib.symbolic_object_get_code_id))
+        if code_id:
+            return code_id
+        return None
+
+    @property
+    def debug_id(self):
+        """The debug identifier of the object."""
+        return decode_str(self._methodcall(lib.symbolic_object_get_debug_id))
 
     @property
     def kind(self):
-        """The object kind."""
+        """The kind of the object (e.g. executable, debug file, library, ...)."""
         return str(decode_str(self._methodcall(lib.symbolic_object_get_kind)))
 
     @property
-    def type(self):
-        """The object type."""
-        return str(decode_str(self._methodcall(lib.symbolic_object_get_type)))
-
-    @property
-    def debug_kind(self):
-        """The kind of debug information in this object."""
-        return str(decode_str(self._methodcall(lib.symbolic_object_get_debug_kind)))
+    def file_format(self):
+        """The file format of the object file (e.g. MachO, ELF, ...)."""
+        return str(decode_str(self._methodcall(lib.symbolic_object_get_file_format)))
 
     @property
     def features(self):
         """The list of features offered by this debug file."""
         struct = self._methodcall(lib.symbolic_object_get_features)
-        features = set(decode_str(struct.data[i]) for i in range(0, struct.len))
-        rustcall(lib.symbolic_object_features_free, ffi.addressof(struct))
+        features = set()
+        if struct.symtab:
+            features.add("symtab")
+        if struct.debug:
+            features.add("debug")
+        if struct.unwind:
+            features.add("unwind")
         return frozenset(features)
 
     def make_symcache(self):
@@ -116,7 +121,7 @@ class Object(RustObject):
 
     def __repr__(self):
         return '<Object %s %r>' % (
-            self.id,
+            self.debug_id,
             self.arch,
         )
 
@@ -129,21 +134,17 @@ class ObjectRef(object):
         # not a real address but why handle it differently
         self.size = parse_addr(data.get('image_size'))
         self.vmaddr = data.get('image_vmaddr')
-        self.id = normalize_debug_id(
+        self.debug_id = normalize_debug_id(
             data.get('id') or data.get('uuid') or None)
         if data.get('arch') is not None and arch_is_known(data['arch']):
             self.arch = data['arch']
-        elif data.get('cpu_type') is not None \
-                and data.get('cpu_subtype') is not None:
-            self.arch = arch_from_macho(data['cpu_type'],
-                                        data['cpu_subtype'])
         else:
             self.arch = None
         self.name = data.get('name')
 
     def __repr__(self):
         return '<ObjectRef %s %r>' % (
-            self.id,
+            self.debug_id,
             self.arch,
         )
 
@@ -159,18 +160,18 @@ class ObjectLookup(object):
             obj = ObjectRef(ref_data)
             self._addresses.append(obj.addr)
             self._by_addr[obj.addr] = obj
-            self.objects[obj.id] = obj
+            self.objects[obj.debug_id] = obj
         self._addresses.sort()
 
     def iter_objects(self):
         """Iterates over all objects."""
         return itervalues(self.objects)
 
-    def get_ids(self):
+    def get_debug_ids(self):
         """Returns a list of ids."""
         return sorted(self.objects)
 
-    def iter_ids(self):
+    def iter_debug_ids(self):
         """Iterates over all ids."""
         return iter(self.objects)
 
@@ -184,9 +185,9 @@ class ObjectLookup(object):
             if not rv.size or parse_addr(addr) < rv.addr + rv.size:
                 return rv
 
-    def get_object(self, id):
-        """Finds an object by the given id."""
-        return self.objects.get(id)
+    def get_object(self, debug_id):
+        """Finds an object by the given debug id."""
+        return self.objects.get(debug_id)
 
 
 def id_from_breakpad(breakpad_id):

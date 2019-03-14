@@ -5,7 +5,7 @@
 #[macro_use]
 mod utils;
 
-use symbolic_common::types::Language;
+use symbolic_common::Language;
 
 #[test]
 fn test_demangle_cpp() {

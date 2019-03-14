@@ -1,16 +1,16 @@
-use symbolic_common::byteview::ByteView;
+use failure::Error;
+
+use symbolic_common::ByteView;
 use symbolic_symcache::SymCache;
-use symbolic_testutils::fixture_path;
 
 #[test]
-fn test_v1() {
-    let buffer = ByteView::from_path(fixture_path("symcache/compat/v1.symc"))
-        .expect("Could not open symcache");
-    let symcache = SymCache::parse(buffer).expect("Could not load symcache");
+fn test_v1() -> Result<(), Error> {
+    let buffer = ByteView::open("../testutils/fixtures/symcache/compat/v1.symc")?;
+    let symcache = SymCache::parse(&buffer)?;
 
     // The symcache ID has changed from UUID to DebugId
     assert_eq!(
-        symcache.id().expect("Could not load symcache id"),
+        symcache.debug_id(),
         "67e9247c-814e-392b-a027-dbde6748fcbf".parse().unwrap()
     );
 
@@ -18,7 +18,8 @@ fn test_v1() {
     let function = symcache
         .functions()
         .next()
-        .expect("Error reading functions")
-        .expect("No functions found for symcache");
-    assert_eq!("_mh_execute_header", &function.function_name());
+        .expect("no functions in symcache")?;
+    assert_eq!("_mh_execute_header", function.name().as_str());
+
+    Ok(())
 }

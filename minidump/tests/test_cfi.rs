@@ -1,119 +1,82 @@
 use std::str;
 
-use symbolic_common::byteview::ByteView;
-use symbolic_debuginfo::FatObject;
+use failure::Error;
+use insta;
+
+use symbolic_common::ByteView;
+use symbolic_debuginfo::Object;
 use symbolic_minidump::cfi::{AsciiCfiWriter, CfiCache};
-use symbolic_testutils::{assert_snapshot_plain, fixture_path};
 
 #[test]
-fn load_empty_cfi_cache() {
+fn load_empty_cfi_cache() -> Result<(), Error> {
     let buffer = ByteView::from_slice(&[]);
-    let cache = CfiCache::from_bytes(buffer).expect("Could not load empty cache file");
+    let cache = CfiCache::from_bytes(buffer)?;
     assert_eq!(cache.version(), 1);
+    Ok(())
 }
 
 #[test]
-fn cfi_from_elf() {
-    let buffer = ByteView::from_path(fixture_path("linux/crash"))
-        .expect("Could not open the executable file");
-    let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat
-        .get_object(0)
-        .expect("Could not get the first object")
-        .expect("Missing object");
+fn cfi_from_elf() -> Result<(), Error> {
+    let buffer = ByteView::open("../testutils/fixtures/linux/crash")?;
+    let object = Object::parse(&buffer)?;
 
-    let mut cfi = Vec::new();
-    {
-        let mut writer = AsciiCfiWriter::new(&mut cfi);
-        writer.process(&object).expect("Could not write CFI");
-    }
-
-    let cfi = str::from_utf8(&cfi).expect("Invalid CFI encoding");
+    let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
+    let cfi = str::from_utf8(&buf)?;
     // NOTE: Breakpad's CFI writer outputs registers in alphabetical order. We
     // write the CFA register first, and then order by register number. Thus,
-    // the output is not identical to `cfi_sym_linux.txt`.
-    assert_snapshot_plain("cfi_elf.txt", cfi);
+    // the output is not identical to `cfi_sym_linux`.
+    insta::assert_snapshot_matches!("cfi_elf", cfi);
+
+    Ok(())
 }
 
 #[test]
-fn cfi_from_macho() {
-    let buffer =
-        ByteView::from_path(fixture_path("macos/crash")).expect("Could not open the symbol file");
-    let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat
-        .get_object(0)
-        .expect("Could not get the first object")
-        .expect("Missing object");
+fn cfi_from_macho() -> Result<(), Error> {
+    let buffer = ByteView::open("../testutils/fixtures/macos/crash")?;
+    let object = Object::parse(&buffer)?;
 
-    let mut cfi = Vec::new();
-    {
-        let mut writer = AsciiCfiWriter::new(&mut cfi);
-        writer.process(&object).expect("Could not write CFI");
-    }
-
-    let cfi = str::from_utf8(&cfi).expect("Invalid CFI encoding");
+    let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
+    let cfi = str::from_utf8(&buf)?;
     // NOTE: Breakpad's CFI writer outputs registers in alphabetical order. We
     // write the CFA register first, and then order by register number. Thus,
-    // the output is not identical to `cfi_sym_macos.txt`.
-    assert_snapshot_plain("cfi_macho.txt", cfi);
+    // the output is not identical to `cfi_sym_macos`.
+    insta::assert_snapshot_matches!("cfi_macho", cfi);
+
+    Ok(())
 }
 
 #[test]
-fn cfi_from_sym_linux() {
-    let buffer = ByteView::from_path(fixture_path("linux/crash.sym"))
-        .expect("Could not open the symbol file");
-    let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat
-        .get_object(0)
-        .expect("Could not get the first object")
-        .expect("Missing object");
+fn cfi_from_sym_linux() -> Result<(), Error> {
+    let buffer = ByteView::open("../testutils/fixtures/linux/crash.sym")?;
+    let object = Object::parse(&buffer)?;
 
-    let mut cfi = Vec::new();
-    {
-        let mut writer = AsciiCfiWriter::new(&mut cfi);
-        writer.process(&object).expect("Could not write CFI");
-    }
+    let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
+    let cfi = str::from_utf8(&buf)?;
+    insta::assert_snapshot_matches!("cfi_sym_linux", cfi);
 
-    let cfi = str::from_utf8(&cfi).expect("Invalid CFI encoding");
-    assert_snapshot_plain("cfi_sym_linux.txt", cfi);
+    Ok(())
 }
 
 #[test]
-fn cfi_from_sym_macos() {
-    let buffer = ByteView::from_path(fixture_path("macos/crash.sym"))
-        .expect("Could not open the symbol file");
-    let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat
-        .get_object(0)
-        .expect("Could not get the first object")
-        .expect("Missing object");
+fn cfi_from_sym_macos() -> Result<(), Error> {
+    let buffer = ByteView::open("../testutils/fixtures/macos/crash.sym")?;
+    let object = Object::parse(&buffer)?;
 
-    let mut cfi = Vec::new();
-    {
-        let mut writer = AsciiCfiWriter::new(&mut cfi);
-        writer.process(&object).expect("Could not write CFI");
-    }
+    let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
+    let cfi = str::from_utf8(&buf)?;
+    insta::assert_snapshot_matches!("cfi_sym_macos", cfi);
 
-    let cfi = str::from_utf8(&cfi).expect("Invalid CFI encoding");
-    assert_snapshot_plain("cfi_sym_macos.txt", cfi);
+    Ok(())
 }
 
 #[test]
-fn cfi_from_sym_windows() {
-    let buffer = ByteView::from_path(fixture_path("windows/crash.sym"))
-        .expect("Could not open the symbol file");
-    let fat = FatObject::parse(buffer).expect("Could not create an object");
-    let object = fat
-        .get_object(0)
-        .expect("Could not get the first object")
-        .expect("Missing object");
+fn cfi_from_sym_windows() -> Result<(), Error> {
+    let buffer = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
+    let object = Object::parse(&buffer)?;
 
-    let mut cfi = Vec::new();
-    {
-        let mut writer = AsciiCfiWriter::new(&mut cfi);
-        writer.process(&object).expect("Could not write CFI");
-    }
+    let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
+    let cfi = str::from_utf8(&buf)?;
+    insta::assert_snapshot_matches!("cfi_sym_windows", cfi);
 
-    let cfi = str::from_utf8(&cfi).expect("Invalid CFI encoding");
-    assert_snapshot_plain("cfi_sym_windows.txt", cfi);
+    Ok(())
 }

@@ -15,16 +15,23 @@ Parsing and processing utilities for Unreal Engine 4 crash files.
 """
 edition = "2018"
 
+exclude = [
+    "tests/**/*",
+]
+
+[features]
+with-serde = ["serde", "chrono/serde"]
+
 [dependencies]
-failure = "0.1.5"
+anylog = "0.4.0"
+bytes = "0.4.12"
+chrono = "0.4.6"
 compress = "0.1.2"
-bytes = "0.4.11"
 elementtree = "0.5.0"
-anylog = "0.3.1"
-serde = { version = "1.0.85", features = ["derive"] }
-chrono = { version = "0.4.6", features = ["serde"] }
-regex = "1.1.0"
-lazy_static = "1.2.0"
+failure = "0.1.5"
+lazy_static = "1.3.0"
+regex = "1.1.2"
+serde = { version = "1.0.89", optional = true, features = ["derive"] }
 
 [dev-dependencies]
-symbolic-testutils = { version = "5.8.2", path = "../testutils" }
+insta = "0.7.1"

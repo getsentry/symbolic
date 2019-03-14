@@ -331,10 +331,10 @@ class CfiCache(RustObject):
     __dealloc_func__ = lib.symbolic_cficache_free
 
     @classmethod
-    def from_path(cls, path):
+    def open(cls, path):
         """Loads a cficache from a file via mmap."""
         return cls._from_objptr(
-            rustcall(lib.symbolic_cficache_from_path, encode_path(path)))
+            rustcall(lib.symbolic_cficache_open, encode_path(path)))
 
     @classmethod
     def from_object(cls, obj):
@@ -343,14 +343,14 @@ class CfiCache(RustObject):
             rustcall(lib.symbolic_cficache_from_object, obj._get_objptr()))
 
     @property
-    def file_format_version(self):
+    def version(self):
         """Version of the file format."""
         return self._methodcall(lib.symbolic_cficache_get_version)
 
     @property
-    def is_latest_file_format(self):
+    def is_latest_version(self):
         """Returns true if this is the latest file format."""
-        return self.file_format_version >= CFICACHE_LATEST_VERSION
+        return self.version >= CFICACHE_LATEST_VERSION
 
     def open_stream(self):
         """Returns a stream to read files from the internal buffer."""

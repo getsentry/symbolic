@@ -1,15 +1,17 @@
-use std::fs;
+use std::fs::File;
+use std::io::{Cursor, Write};
 use std::u64;
 
 use clap::{App, Arg, ArgMatches};
 use failure::{err_msg, Error};
 
-use symbolic::common::{byteview::ByteView, types::Arch};
-use symbolic::debuginfo::FatObject;
+use symbolic::common::{Arch, ByteView};
+use symbolic::debuginfo::Archive;
 use symbolic::minidump::cfi::AsciiCfiWriter;
-use symbolic::symcache::SymCache;
+use symbolic::symcache::{SymCache, SymCacheWriter};
 
 fn execute(matches: &ArgMatches) -> Result<(), Error> {
+    let buffer;
     let symcache;
 
     // load an object from the debug info file.
@@ -18,18 +20,14 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
             Some(arch) => arch.parse()?,
             None => Arch::Unknown,
         };
-        let byteview = ByteView::from_path(&file_path)?;
-        let fat_obj = FatObject::parse(byteview)?;
+        let byteview = ByteView::open(&file_path)?;
+        let fat_obj = Archive::parse(&byteview)?;
         let objects_result: Result<Vec<_>, _> = fat_obj.objects().collect();
         let objects = objects_result?;
         if arch == Arch::Unknown && objects.len() != 1 {
             println!("Contained architectures:");
             for obj in objects {
-                println!(
-                    "  {} [{}]",
-                    obj.id().unwrap_or_default(),
-                    obj.arch().unwrap_or_default(),
-                );
+                println!("  {} [{}]", obj.debug_id(), obj.arch(),);
             }
             return Ok(());
         }
@@ -42,7 +40,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
                 obj = Some(&objects[0]);
             } else {
                 for o in &objects {
-                    if o.arch().unwrap_or_default() == arch {
+                    if o.arch() == arch {
                         obj = Some(o);
                         break;
                     }
@@ -58,7 +56,9 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
         let mut writer = Vec::new();
         AsciiCfiWriter::new(&mut writer).process(&obj)?;
 
-        symcache = SymCache::from_object(obj)?;
+        let writer = SymCacheWriter::write_object(obj, Cursor::new(Vec::new()))?;
+        buffer = ByteView::from_vec(writer.into_inner());
+        symcache = SymCache::parse(&buffer)?;
 
         // write mode
         if matches.is_present("write_cache_file") {
@@ -66,12 +66,12 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
                 .value_of("symcache_file_path")
                 .map(|x| x.to_string())
                 .unwrap_or_else(|| format!("{}.symcache", file_path));
-            symcache.to_writer(fs::File::create(&filename)?)?;
+            File::create(&filename)?.write_all(&buffer)?;
             println!("Cache file written to {}", filename);
         }
     } else if let Some(file_path) = matches.value_of("symcache_file_path") {
-        let byteview = ByteView::from_path(file_path)?;
-        symcache = SymCache::parse(byteview)?;
+        buffer = ByteView::open(file_path)?;
+        symcache = SymCache::parse(&buffer)?;
     } else {
         return Err(err_msg("No debug file or sym cache provided"));
     }
@@ -89,7 +89,8 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
         } else {
             addr.parse()?
         };
-        let m = symcache.lookup(addr)?;
+
+        let m = symcache.lookup(addr)?.collect::<Vec<_>>()?;
         if m.is_empty() {
             println!("No match :(");
         } else {
@@ -104,7 +105,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
     if matches.is_present("print_symbols") {
         for func in symcache.functions() {
             let func = func?;
-            println!("{:>16x} {:#}", func.addr(), func);
+            println!("{:>16x} {:#}", func.address(), func.name());
         }
     }
 

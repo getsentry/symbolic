@@ -1,4 +1,5 @@
 //! API to process Unreal Engine 4 crashes.
+
 #![warn(missing_docs)]
 
 use std::fmt;
@@ -11,14 +12,16 @@ use compress::zlib;
 use failure::Fail;
 use lazy_static::lazy_static;
 use regex::Regex;
+
+#[cfg(feature = "with-serde")]
 use serde::Serialize;
 
 use crate::context::Unreal4Context;
 
 lazy_static! {
-    // https://github.com/EpicGames/UnrealEngine/blob/f509bb2d6c62806882d9a10476f3654cf1ee0634/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L79-L93
-    // Note: Date is always in US format (dd/MM/yyyy) and time is local
-    // Example: Log file open, 12/13/18 15:54:53
+    /// https://github.com/EpicGames/UnrealEngine/blob/f509bb2d6c62806882d9a10476f3654cf1ee0634/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L79-L93
+    /// Note: Date is always in US format (dd/MM/yyyy) and time is local
+    /// Example: Log file open, 12/13/18 15:54:53
     static ref LOG_FIRST_LINE: Regex = Regex::new(r"Log file open, (?P<month>\d\d)/(?P<day>\d\d)/(?P<year>\d\d) (?P<hour>\d\d):(?P<minute>\d\d):(?P<second>\d\d)$").unwrap();
 }
 
@@ -79,12 +82,12 @@ pub struct Unreal4CrashFile {
 }
 
 /// A log entry from an Unreal Engine 4 crash.
-#[derive(Serialize)]
+#[cfg_attr(feature = "with-serde", derive(Serialize))]
 pub struct Unreal4LogEntry {
     /// The timestamp of the message, when available.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
     pub timestamp: Option<DateTime<Utc>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
     /// The component that issued the log, when available.
     pub component: Option<String>,
     /// The log message.
@@ -319,8 +322,8 @@ fn parse_log_from_slice(
 
             Unreal4LogEntry {
                 timestamp: fallback_timestamp,
-                component,
-                message,
+                component: component.map(Into::into),
+                message: message.into(),
             }
         })
         .collect();
