@@ -1,6 +1,6 @@
 [package]
 name = "symbolic"
-version = "5.8.2"
+version = "6.0.0"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -42,14 +42,14 @@ serde = ["symbolic-common/serde", "symbolic-debuginfo/serde", "symbolic-minidump
 unreal = ["symbolic-unreal"]
 
 [dependencies]
-symbolic-common = { version = "5.8.2", path = "common" }
-symbolic-debuginfo = { version = "5.8.2", path = "debuginfo", optional = true }
-symbolic-demangle = { version = "5.8.2", path = "demangle", optional = true }
-symbolic-minidump = { version = "5.8.2", path = "minidump", optional = true }
-symbolic-proguard = { version = "5.8.2", path = "proguard", optional = true }
-symbolic-sourcemap = { version = "5.8.2", path = "sourcemap", optional = true }
-symbolic-symcache = { version = "5.8.2", path = "symcache", optional = true }
-symbolic-unreal = { version = "5.8.2", path = "unreal", optional = true }
+symbolic-common = { version = "6.0.0", path = "common" }
+symbolic-debuginfo = { version = "6.0.0", path = "debuginfo", optional = true }
+symbolic-demangle = { version = "6.0.0", path = "demangle", optional = true }
+symbolic-minidump = { version = "6.0.0", path = "minidump", optional = true }
+symbolic-proguard = { version = "6.0.0", path = "proguard", optional = true }
+symbolic-sourcemap = { version = "6.0.0", path = "sourcemap", optional = true }
+symbolic-symcache = { version = "6.0.0", path = "symcache", optional = true }
+symbolic-unreal = { version = "6.0.0", path = "unreal", optional = true }
 
 [dev-dependencies]
 clap = "2.32.0"
