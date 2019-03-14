@@ -32,14 +32,17 @@ all-features = true
 
 [features]
 default = ["debuginfo"]
+common-serde = ["symbolic-common/serde"]
 debuginfo = ["symbolic-debuginfo"]
+debuginfo-serde = ["debuginfo", "common-serde", "symbolic-debuginfo/serde"]
 demangle = ["symbolic-demangle"]
 minidump = ["symbolic-minidump", "debuginfo"]
+minidump-serde = ["minidump", "debuginfo-serde", "symbolic-minidump/serde"]
 proguard = ["symbolic-proguard"]
 sourcemap = ["symbolic-sourcemap"]
 symcache = ["symbolic-symcache", "debuginfo"]
-serde = ["symbolic-common/serde", "symbolic-debuginfo/serde", "symbolic-minidump/serde", "symbolic-unreal/with-serde"]
 unreal = ["symbolic-unreal"]
+unreal-serde = ["unreal", "common-serde", "symbolic-unreal/with-serde"]
 
 [dependencies]
 symbolic-common = { version = "6.0.0", path = "common" }

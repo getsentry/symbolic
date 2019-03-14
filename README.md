@@ -57,8 +57,15 @@ the features:
   minified function names.
 - **`symcache`**: An optimized, platform-independent storage for common debugging information. This
   allows blazing fast symbolication of instruction addresses to function names and file locations.
-- **`serde`**: Adds implementations for `serde::{Deserialize, Serialize}` on most types.
 - **`unreal`**: Processing of Unreal Engine 4 crash reports.
+
+There are also alternate versions for some of the above features that additionally add
+implementations for `serde::{Deserialize, Serialize}` on suitable types:
+
+- **`common-serde`**
+- **`debuginfo-serde`**
+- **`minidump-serde`**
+- **`unreal-serde`**
 
 ## Python Usage
 
