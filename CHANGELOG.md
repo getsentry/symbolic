@@ -1,6 +1,6 @@
 # Changelog
 
-## 6.0.1
+## 6.0.2
 
 - Fix Rust features: The `serde` feature activated minidump and unreal unintentionally. This is
   addressed by providing separate features for modules with serde. See the Readme for more information.
