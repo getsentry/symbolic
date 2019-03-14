@@ -1,6 +1,12 @@
 # Changelog
 
+## 6.0.3
+
+Re-release on crates.io.
+
 ## 6.0.2
+
+**This release is broken on crates.io**
 
 - Fix Rust features: The `serde` feature activated minidump and unreal unintentionally. This is
   addressed by providing separate features for modules with serde. See the Readme for more information.
