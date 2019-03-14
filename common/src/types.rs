@@ -513,23 +513,23 @@ mod derive_serde {
     /// appropriately.
     macro_rules! impl_str_serde {
         ($type:ty) => {
-            impl ::_serde::ser::Serialize for $type {
+            impl ::serde_::ser::Serialize for $type {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
-                    S: ::_serde::ser::Serializer,
+                    S: ::serde_::ser::Serializer,
                 {
                     serializer.serialize_str(self.name())
                 }
             }
 
-            impl<'de> ::_serde::de::Deserialize<'de> for $type {
+            impl<'de> ::serde_::de::Deserialize<'de> for $type {
                 fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
                 where
-                    D: ::_serde::de::Deserializer<'de>,
+                    D: ::serde_::de::Deserializer<'de>,
                 {
                     <::std::borrow::Cow<str>>::deserialize(deserializer)?
                         .parse()
-                        .map_err(::_serde::de::Error::custom)
+                        .map_err(::serde_::de::Error::custom)
                 }
             }
         };
