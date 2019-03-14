@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-debuginfo"
-version = "6.0.0"
+version = "6.0.2"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -33,7 +33,7 @@ pest = "2.1.0"
 pest_derive = "2.1.0"
 serde = { version = "1.0.89", optional = true }
 smallvec = "0.6.9"
-symbolic-common = { version = "6.0.0", path = "../common" }
+symbolic-common = { version = "6.0.2", path = "../common" }
 
 [dev-dependencies]
 insta = "0.7.1"
