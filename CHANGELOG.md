@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.0.1
+
+- Fix Rust features: The `serde` feature activated minidump and unreal unintentionally. This is
+  addressed by providing separate features for modules with serde. See the Readme for more information.
+- Include breakpad sources in `symbolic-minidump`.
+
 ## 6.0.0
 
 This is a complete rewrite of `symbolic`. The aim of this release is to make the Rust version, the
