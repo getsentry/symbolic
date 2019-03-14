@@ -7,3 +7,4 @@ targets:
   - name: crates
   - name: pypi
   - name: github
+changelogPolicy: simple

@@ -1,0 +1,48 @@
+# Changelog
+
+## 6.0.0
+
+This is a complete rewrite of `symbolic`. The aim of this release is to make the Rust version, the
+C-API and the Python package more convenient to use in different scenarios. As a result, there have
+been quite a few breaking changes.
+
+**Breaking Changes:**
+
+- `ByteViewHandle` has been replaced with the slightly safer type `SelfCell`. It allows to create a
+  self-referential pair of an owning object and a derived object.
+- `Archive` and `Object` are the new types to interface with debug information. There are also
+  direct types exposed for Breakpad, ELF, MachO, PE and PDB; as well as traits to abstract over
+  them.
+- `SymCache` has a cleaner API, and the writing part has been moved to `SymCacheWriter`.
+- Some common types have received better names: `ObjectKind` is now called `FileFormat`.
+  `ObjectClass` is now called `ObjectKind`.
+- Many more small signature changes, such as zero-copy return values or iterators instead of
+  collections.
+
+**New Features:**
+
+- Initial support for PE and PDB is here. It is not complete yet, and will be expanded over the next
+  releases.
+- Symbol tables for ELF are now supported. On the bottom line, this will improve symbolication
+  results on Linux.
+- GNU-style compressed debug information (e.g. `.zdebug_info`) is now supported.
+- Support for most of DWARF 5, thanks to the amazing work on the `gimli` crate.
+- More lenient parsing of Breakpad symbols now handles certain edge cases more gracefully and gives
+  much better error messages.
+- More utilities to join or split paths from any platform.
+
+**Bug Fixes:**
+
+- Fix invalid function name resolution for certain DWARF files.
+- Fix errors on DWARF files generated with LTO.
+- Fix memory leaks when processing Minidumps from Python.
+- Skip STAB symbol entries in MachO files, potentially leading to wrong function names.
+- Do not error on "negative" line numbers in Breakpad symbols.
+
+**Internal Changes:**
+
+- Greatly simplified build process and better documentation for the C library.
+- Improved test suite, docs and READMEs. While there can never be enough tests, this is a
+  significant step to improving the overall quality of symbolic.
+- Automatic cloning of submodules during the build. This should make it easier to start developing
+  on `symbolic`.
