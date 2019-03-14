@@ -30,4 +30,4 @@ serde_json = "1.0.39"
 uuid = "0.7.2"
 failure = "0.1.5"
 apple-crash-report-parser = { version = "0.3.0", features = ["with_serde"] }
-symbolic = { version = "6.0.0", path = "..", features = ["debuginfo", "demangle", "minidump", "proguard", "sourcemap", "symcache", "unreal", "serde"] }
+symbolic = { version = "6.0.0", path = "..", features = ["debuginfo", "demangle", "minidump", "proguard", "sourcemap", "symcache", "unreal-serde"] }
