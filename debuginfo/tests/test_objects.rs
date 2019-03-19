@@ -308,7 +308,7 @@ fn test_pdb() -> Result<(), Error> {
         arch: X86,
         load_address: 0x0,
         has_symbols: true,
-        has_debug_info: false,
+        has_debug_info: true,
         has_unwind_info: false
     }
 )"###);
@@ -327,15 +327,14 @@ fn test_pdb_symbols() -> Result<(), Error> {
     Ok(())
 }
 
-// TODO: PDB debug information not yet supported
-// #[test]
-// fn test_pdb_functions() -> Result<(), Error> {
-//     let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
-//     let object = Object::parse(&view)?;
+#[test]
+fn test_pdb_functions() -> Result<(), Error> {
+    let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
+    let object = Object::parse(&view)?;
 
-//     let mut session = object.debug_session()?;
-//     let functions = session.functions()?;
-//     insta::assert_debug_snapshot_matches!("pdb_functions", FunctionsDebug(&functions[..10], 0));
+    let mut session = object.debug_session()?;
+    let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
+    insta::assert_debug_snapshot_matches!("pdb_functions", FunctionsDebug(&functions[..10], 0));
 
-//     Ok(())
-// }
+    Ok(())
+}
