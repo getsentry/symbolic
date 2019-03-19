@@ -3,14 +3,17 @@
 use std::borrow::Cow;
 use std::fmt;
 use std::io::Cursor;
-use std::marker::PhantomData;
+use std::sync::Arc;
 
 use failure::Fail;
 use fallible_iterator::FallibleIterator;
+use lazycell::LazyCell;
 use parking_lot::RwLock;
-use pdb::{AddressMap, MachineType, SymbolData};
+use pdb::{AddressMap, MachineType, Module, ModuleInfo, SymbolData};
 
-use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
+use symbolic_common::{
+    derive_failure, split_path_bytes, Arch, AsSelf, CodeId, DebugId, Name, SelfCell, Uuid,
+};
 
 use crate::base::*;
 use crate::private::{HexFmt, Parse};
@@ -19,20 +22,32 @@ type Pdb<'d> = pdb::PDB<'d, Cursor<&'d [u8]>>;
 
 const MAGIC_BIG: &[u8] = b"Microsoft C/C++ MSF 7.00\r\n\x1a\x44\x53\x00\x00\x00";
 
-/// An error when dealing with [`PdbObject`](struct.PdbObject.html).
-#[derive(Debug, Fail)]
-pub enum PdbError {
-    /// The data in the PDB file could not be parsed.
-    #[fail(display = "invalid PDB file")]
-    BadObject(#[fail(cause)] pdb::Error),
+/// Variants of [`PdbError`](struct.PdbError.html).
+#[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
+pub enum PdbErrorKind {
+    /// The PDB file is corrupted. See the cause for more information.
+    #[fail(display = "invalid pdb file")]
+    BadObject,
+}
+
+derive_failure!(
+    PdbError,
+    PdbErrorKind,
+    doc = "An error when dealing with [`PdbObject`](struct.PdbObject.html)."
+);
+
+impl From<pdb::Error> for PdbError {
+    fn from(error: pdb::Error) -> Self {
+        error.context(PdbErrorKind::BadObject).into()
+    }
 }
 
 /// Program Database, the debug companion format on Windows.
 ///
 /// This object is a sole debug companion to [`PeObject`](../pdb/struct.PdbObject.html).
 pub struct PdbObject<'d> {
-    pdb: RwLock<Pdb<'d>>,
-    debug_info: pdb::DebugInformation<'d>,
+    pdb: Arc<RwLock<Pdb<'d>>>,
+    debug_info: Arc<pdb::DebugInformation<'d>>,
     pdb_info: pdb::PDBInformation<'d>,
     public_syms: pdb::SymbolTable<'d>,
     data: &'d [u8],
@@ -55,14 +70,14 @@ impl<'d> PdbObject<'d> {
 
     /// Tries to parse a PDB object from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, PdbError> {
-        let mut pdb = Pdb::open(Cursor::new(data)).map_err(PdbError::BadObject)?;
-        let dbi = pdb.debug_information().map_err(PdbError::BadObject)?;
-        let pdbi = pdb.pdb_information().map_err(PdbError::BadObject)?;
-        let pubi = pdb.global_symbols().map_err(PdbError::BadObject)?;
+        let mut pdb = Pdb::open(Cursor::new(data))?;
+        let dbi = pdb.debug_information()?;
+        let pdbi = pdb.pdb_information()?;
+        let pubi = pdb.global_symbols()?;
 
         Ok(PdbObject {
-            pdb: RwLock::new(pdb),
-            debug_info: dbi,
+            pdb: Arc::new(RwLock::new(pdb)),
+            debug_info: Arc::new(dbi),
             pdb_info: pdbi,
             public_syms: pubi,
             data,
@@ -144,12 +159,16 @@ impl<'d> PdbObject<'d> {
 
     /// Determines whether this object contains debug information.
     pub fn has_debug_info(&self) -> bool {
-        false // TODO(ja): Implement
+        // There is no cheap way to find out if a PDB contains debugging information that we care
+        // about. Effectively, we're interested in local symbols declared in the module info
+        // streams. To reliably determine whether any stream is present, we'd have to probe each one
+        // of them, which can result in quite a lot of disk I/O.
+        true
     }
 
     /// Constructs a debugging session.
     pub fn debug_session(&self) -> Result<PdbDebugSession<'d>, PdbError> {
-        Ok(PdbDebugSession { _ph: PhantomData })
+        PdbDebugSession::build(self.pdb.clone(), self.debug_info.clone())
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -308,16 +327,93 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
     }
 }
 
+struct PdbDebugInfo<'d> {
+    pdb: Arc<RwLock<Pdb<'d>>>,
+    modules: Vec<Module<'d>>,
+    module_infos: Vec<LazyCell<Option<ModuleInfo<'d>>>>,
+    address_map: pdb::AddressMap<'d>,
+    string_table: pdb::StringTable<'d>,
+}
+
+impl<'d> PdbDebugInfo<'d> {
+    fn build(
+        pdb: Arc<RwLock<Pdb<'d>>>,
+        debug_info: &'d pdb::DebugInformation<'d>,
+    ) -> Result<Self, PdbError> {
+        let mut p = pdb.write();
+
+        let modules = debug_info.modules()?.collect::<Vec<_>>()?;
+        let module_infos = modules.iter().map(|_| LazyCell::new()).collect();
+        let address_map = p.address_map()?;
+        let string_table = p.string_table()?;
+
+        drop(p);
+
+        Ok(PdbDebugInfo {
+            modules,
+            module_infos,
+            address_map,
+            string_table,
+            pdb,
+        })
+    }
+
+    /// Returns an iterator over all compilation units (modules).
+    fn units(&'d self) -> PdbUnitIterator<'_> {
+        PdbUnitIterator {
+            debug_info: self,
+            index: 0,
+        }
+    }
+
+    fn get_module(&'d self, index: usize) -> Result<Option<&ModuleInfo<'_>>, PdbError> {
+        // Silently ignore module references out-of-bound
+        let cell = match self.module_infos.get(index) {
+            Some(cell) => cell,
+            None => return Ok(None),
+        };
+
+        let module_opt = cell.try_borrow_with(|| {
+            let module = &self.modules[index];
+            self.pdb.write().module_info(module)
+        })?;
+
+        Ok(module_opt.as_ref())
+    }
+}
+
+impl<'slf, 'd: 'slf> AsSelf<'slf> for PdbDebugInfo<'d> {
+    type Ref = PdbDebugInfo<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
 /// Debug session for PDB objects.
-#[derive(Debug)]
 pub struct PdbDebugSession<'d> {
-    _ph: PhantomData<&'d ()>,
+    cell: SelfCell<Arc<pdb::DebugInformation<'d>>, PdbDebugInfo<'d>>,
 }
 
 impl<'d> PdbDebugSession<'d> {
+    fn build(
+        pdb: Arc<RwLock<Pdb<'d>>>,
+        debug_info: Arc<pdb::DebugInformation<'d>>,
+    ) -> Result<Self, PdbError> {
+        let cell = SelfCell::try_new(debug_info, |debug_info| {
+            PdbDebugInfo::build(pdb, unsafe { &*debug_info })
+        })?;
+
+        Ok(PdbDebugSession { cell })
+    }
+
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&mut self) -> PdbFunctionIterator<'_> {
-        std::iter::empty()
+        PdbFunctionIterator {
+            units: self.cell.get().units(),
+            functions: Vec::new().into_iter(),
+            finished: false,
+        }
     }
 }
 
@@ -329,5 +425,131 @@ impl DebugSession for PdbDebugSession<'_> {
     }
 }
 
+struct Unit<'s> {
+    debug_info: &'s PdbDebugInfo<'s>,
+    module: &'s pdb::ModuleInfo<'s>,
+}
+
+impl<'s> Unit<'s> {
+    fn functions(&self) -> Result<Vec<Function<'s>>, PdbError> {
+        let address_map = &self.debug_info.address_map;
+        let string_table = &self.debug_info.string_table;
+
+        let program = self.module.line_program()?;
+        let mut symbols = self.module.symbols()?;
+
+        let mut functions = Vec::new();
+        while let Some(symbol) = symbols.next()? {
+            let proc = match symbol.parse() {
+                Ok(SymbolData::Procedure(proc)) => proc,
+                _ => continue,
+            };
+
+            // TODO(ja): Load the mangled name from the symbol table instead. We're not interested
+            // in the demangled name here.
+            let name = symbol.name()?.to_string();
+            let address = proc.offset.to_rva(&address_map).expect("rva");
+
+            let mut lines = Vec::new();
+            let mut line_iter = program.lines_at_offset(proc.offset);
+            while let Some(line_info) = line_iter.next()? {
+                let rva = line_info.offset.to_rva(&address_map).expect("rva");
+                let file_info = program.get_file_info(line_info.file_index)?;
+                let file_path = file_info.name.to_raw_string(&string_table)?;
+                let (dir, name) = split_path_bytes(file_path.as_bytes());
+
+                lines.push(LineInfo {
+                    address: rva.0.into(),
+                    file: FileInfo {
+                        dir: dir.unwrap_or_default(),
+                        name,
+                    },
+                    line: line_info.line_start.into(),
+                });
+            }
+
+            let func = Function {
+                address: address.0.into(),
+                size: proc.len.into(),
+                name: Name::from(name),
+                compilation_dir: &[],
+                lines,
+                inlinees: Vec::new(),
+                inline: false,
+            };
+
+            functions.push(func);
+        }
+
+        // Functions are not necessarily in RVA order. So far, it seems that modules are.
+        dmsort::sort_by_key(&mut functions, |f| f.address);
+
+        Ok(functions)
+    }
+}
+
+struct PdbUnitIterator<'s> {
+    debug_info: &'s PdbDebugInfo<'s>,
+    index: usize,
+}
+
+impl<'s> Iterator for PdbUnitIterator<'s> {
+    type Item = Result<Unit<'s>, PdbError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let debug_info = self.debug_info;
+        while self.index < debug_info.modules.len() {
+            let result = debug_info.get_module(self.index);
+            self.index += 1;
+
+            let module = match result {
+                Ok(Some(module)) => module,
+                Ok(None) => continue,
+                Err(error) => return Some(Err(error)),
+            };
+
+            return Some(Ok(Unit { debug_info, module }));
+        }
+
+        None
+    }
+}
+
 /// An iterator over functions in a PDB file.
-pub type PdbFunctionIterator<'s> = std::iter::Empty<Result<Function<'s>, PdbError>>;
+pub struct PdbFunctionIterator<'s> {
+    units: PdbUnitIterator<'s>,
+    functions: std::vec::IntoIter<Function<'s>>,
+    finished: bool,
+}
+
+impl<'s> Iterator for PdbFunctionIterator<'s> {
+    type Item = Result<Function<'s>, PdbError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
+
+        loop {
+            if let Some(func) = self.functions.next() {
+                return Some(Ok(func));
+            }
+
+            let unit = match self.units.next() {
+                Some(Ok(unit)) => unit,
+                Some(Err(error)) => return Some(Err(error)),
+                None => break,
+            };
+
+            self.functions = match unit.functions() {
+                Ok(functions) => functions.into_iter(),
+                Err(error) => return Some(Err(error)),
+            };
+        }
+
+        self.finished = true;
+        None
+    }
+}
+
+impl std::iter::FusedIterator for PdbFunctionIterator<'_> {}

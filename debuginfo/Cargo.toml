@@ -27,7 +27,7 @@ flate2 = { version = "1.0.6", features = ["rust_backend"], default-features = fa
 gimli = { version = "0.17.0", features = ["read", "std"], default-features = false }
 goblin = "0.0.21"
 lazycell = "1.2.1"
-pdb = "0.3.0"
+pdb = { git = "https://github.com/jan-auer/pdb", branch = "develop" }
 parking_lot = "0.7.1"
 pest = "2.1.0"
 pest_derive = "2.1.0"
