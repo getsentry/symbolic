@@ -21,7 +21,8 @@ venv: .venv/bin/python
 .PHONY: venv
 
 .venv/bin/python: Makefile
-	rm -rf .venv
+	@rm -rf .venv
+	@which virtualenv || sudo easy_install virtualenv
 	virtualenv -p python2 .venv
 
 pytest: venv
