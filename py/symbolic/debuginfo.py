@@ -134,13 +134,19 @@ class ObjectRef(object):
         # not a real address but why handle it differently
         self.size = parse_addr(data.get('image_size'))
         self.vmaddr = data.get('image_vmaddr')
+        self.code_id = data.get('code_id')
+        self.code_file = data.get('code_file') or data.get('name')
         self.debug_id = normalize_debug_id(
-            data.get('id') or data.get('uuid') or None)
+            data.get('debug_id') or data.get('id') or data.get('uuid') or None)
+        self.debug_file = data.get('debug_file')
+
         if data.get('arch') is not None and arch_is_known(data['arch']):
             self.arch = data['arch']
         else:
             self.arch = None
-        self.name = data.get('name')
+
+        # Legacy alias for backwards compatibility
+        self.name = self.code_file
 
     def __repr__(self):
         return '<ObjectRef %s %r>' % (
