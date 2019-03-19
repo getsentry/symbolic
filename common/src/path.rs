@@ -61,6 +61,35 @@ pub fn join_path(base: &str, other: &str) -> String {
     }
 }
 
+/// Splits off the last component of a binary path.
+///
+/// The path should be a path to a file, and not a directory. If this path is a directory or the
+/// root path, the result is undefined.
+///
+/// This attempts to detect Windows or Unix paths and split off the last component of the path
+/// accordingly. Note that for paths with mixed slash and backslash separators this might not lead
+/// to the desired results.
+pub fn split_path_bytes(path: &[u8]) -> (Option<&[u8]>, &[u8]) {
+    // Trim directory separators at the end, if any.
+    let cutoff = path
+        .iter()
+        .rposition(|b| *b != b'\\' && *b != b'/')
+        .unwrap_or_else(|| path.len());
+    let path = &path[..cutoff];
+
+    // Try to find a backslash which could indicate a Windows path.
+    let split_char = if !path.starts_with(b"/") && path.iter().any(|b| *b == b'\\') {
+        b'\\' // Probably Windows
+    } else {
+        b'/' // Probably UNIX
+    };
+
+    match path.iter().rposition(|b| *b == split_char) {
+        Some(pos) => (Some(&path[..pos]), &path[pos + 1..]),
+        None => (None, path),
+    }
+}
+
 /// Splits off the last component of a path.
 ///
 /// The path should be a path to a file, and not a directory. If this path is a directory or the
@@ -70,17 +99,13 @@ pub fn join_path(base: &str, other: &str) -> String {
 /// accordingly. Note that for paths with mixed slash and backslash separators this might not lead
 /// to the desired results.
 pub fn split_path(path: &str) -> (Option<&str>, &str) {
-    let path = path.trim_end_matches(&['\\', '/'][..]);
-    let split_char = if !path.starts_with('/') && path.contains('\\') {
-        '\\' // Probably Windows
-    } else {
-        '/' // Probably UNIX
-    };
-
-    let mut iter = path.rsplitn(2, split_char);
-    let basename = iter.next().unwrap();
-    let basepath = iter.next();
-    (basepath, basename)
+    let (dir, name) = split_path_bytes(path.as_bytes());
+    unsafe {
+        (
+            dir.map(|b| std::str::from_utf8_unchecked(b)),
+            std::str::from_utf8_unchecked(name),
+        )
+    }
 }
 
 /// Trims a path to a given length.
