@@ -71,20 +71,20 @@ pub fn join_path(base: &str, other: &str) -> String {
 /// to the desired results.
 pub fn split_path_bytes(path: &[u8]) -> (Option<&[u8]>, &[u8]) {
     // Trim directory separators at the end, if any.
-    let cutoff = path
-        .iter()
-        .rposition(|b| *b != b'\\' && *b != b'/')
-        .unwrap_or_else(|| path.len());
-    let path = &path[..cutoff];
+    let path = match path.iter().rposition(|b| *b != b'\\' && *b != b'/') {
+        Some(cutoff) => &path[..=cutoff],
+        None => path,
+    };
 
     // Try to find a backslash which could indicate a Windows path.
-    let split_char = if !path.starts_with(b"/") && path.iter().any(|b| *b == b'\\') {
+    let split_char = if !path.starts_with(b"/") && path.contains(&b'\\') {
         b'\\' // Probably Windows
     } else {
         b'/' // Probably UNIX
     };
 
     match path.iter().rposition(|b| *b == split_char) {
+        Some(0) => (Some(&path[..1]), &path[1..]),
         Some(pos) => (Some(&path[..pos]), &path[pos + 1..]),
         None => (None, path),
     }
@@ -184,52 +184,108 @@ pub fn shorten_path(path: &str, length: usize) -> Cow<'_, str> {
 
 #[test]
 fn test_join_path() {
-    assert_eq!(join_path("C:\\test", "other"), "C:\\test\\other");
-    assert_eq!(join_path("C:/test", "other"), "C:/test\\other");
-    assert_eq!(
-        join_path("C:\\test", "other\\stuff"),
-        "C:\\test\\other\\stuff"
-    );
-    assert_eq!(join_path("C:/test", "C:\\other"), "C:\\other");
-    assert_eq!(
-        join_path("foo\\bar\\baz", "blub\\blah"),
-        "foo\\bar\\baz\\blub\\blah"
-    );
+    assert_eq!(join_path("C:\\a", "b"), "C:\\a\\b");
+    assert_eq!(join_path("C:/a", "b"), "C:/a\\b");
+    assert_eq!(join_path("C:\\a", "b\\c"), "C:\\a\\b\\c");
+    assert_eq!(join_path("C:/a", "C:\\b"), "C:\\b");
+    assert_eq!(join_path("a\\b\\c", "d\\e"), "a\\b\\c\\d\\e");
+    assert_eq!(join_path("\\\\UNC\\", "a"), "\\\\UNC\\a");
 
-    assert_eq!(join_path("/usr/bin", "bash"), "/usr/bin/bash");
-    assert_eq!(join_path("/usr/local", "bin/bash"), "/usr/local/bin/bash");
-    assert_eq!(join_path("/usr/bin", "/usr/local/bin"), "/usr/local/bin");
-    assert_eq!(join_path("foo/bar/", "blah"), "foo/bar/blah");
+    assert_eq!(join_path("/a/b", "c"), "/a/b/c");
+    assert_eq!(join_path("/a/b", "c/d"), "/a/b/c/d");
+    assert_eq!(join_path("/a/b", "/c/d/e"), "/c/d/e");
+    assert_eq!(join_path("a/b/", "c"), "a/b/c");
 }
 
 #[test]
 fn test_shorten_path() {
-    assert_eq!(&shorten_path("/foo/bar/baz/blah/blafasel", 6), "/fo...");
-    assert_eq!(&shorten_path("/foo/bar/baz/blah/blafasel", 2), "/f");
+    assert_eq!(shorten_path("/foo/bar/baz/blah/blafasel", 6), "/fo...");
+    assert_eq!(shorten_path("/foo/bar/baz/blah/blafasel", 2), "/f");
     assert_eq!(
-        &shorten_path("/foo/bar/baz/blah/blafasel", 21),
+        shorten_path("/foo/bar/baz/blah/blafasel", 21),
         "/foo/.../blafasel"
     );
     assert_eq!(
-        &shorten_path("/foo/bar/baz/blah/blafasel", 22),
+        shorten_path("/foo/bar/baz/blah/blafasel", 22),
         "/foo/.../blah/blafasel"
     );
     assert_eq!(
-        &shorten_path("C:\\bar\\baz\\blah\\blafasel", 20),
+        shorten_path("C:\\bar\\baz\\blah\\blafasel", 20),
         "C:\\bar\\...\\blafasel"
     );
     assert_eq!(
-        &shorten_path("/foo/blar/baz/blah/blafasel", 27),
+        shorten_path("/foo/blar/baz/blah/blafasel", 27),
         "/foo/blar/baz/blah/blafasel"
     );
     assert_eq!(
-        &shorten_path("/foo/blar/baz/blah/blafasel", 26),
+        shorten_path("/foo/blar/baz/blah/blafasel", 26),
         "/foo/.../baz/blah/blafasel"
     );
     assert_eq!(
-        &shorten_path("/foo/b/baz/blah/blafasel", 23),
+        shorten_path("/foo/b/baz/blah/blafasel", 23),
         "/foo/.../blah/blafasel"
     );
-    assert_eq!(&shorten_path("/foobarbaz/blahblah", 16), ".../blahblah");
-    assert_eq!(&shorten_path("/foobarbazblahblah", 12), "...lahblah");
+    assert_eq!(shorten_path("/foobarbaz/blahblah", 16), ".../blahblah");
+    assert_eq!(shorten_path("/foobarbazblahblah", 12), "...lahblah");
+    assert_eq!(shorten_path("", 0), "");
+}
+
+#[test]
+fn test_split_path() {
+    assert_eq!(split_path("C:\\a\\b"), (Some("C:\\a"), "b"));
+    assert_eq!(split_path("C:/a\\b"), (Some("C:/a"), "b"));
+    assert_eq!(split_path("C:\\a\\b\\c"), (Some("C:\\a\\b"), "c"));
+    assert_eq!(split_path("a\\b\\c\\d\\e"), (Some("a\\b\\c\\d"), "e"));
+    assert_eq!(split_path("\\\\UNC\\a"), (Some("\\\\UNC"), "a"));
+
+    assert_eq!(split_path("/a/b/c"), (Some("/a/b"), "c"));
+    assert_eq!(split_path("/a/b/c/d"), (Some("/a/b/c"), "d"));
+    assert_eq!(split_path("a/b/c"), (Some("a/b"), "c"));
+
+    assert_eq!(split_path("a"), (None, "a"));
+    assert_eq!(split_path("a/"), (None, "a"));
+    assert_eq!(split_path("/a"), (Some("/"), "a"));
+    assert_eq!(split_path(""), (None, ""));
+}
+
+#[test]
+fn test_split_path_bytes() {
+    assert_eq!(
+        split_path_bytes(&b"C:\\a\\b"[..]),
+        (Some(&b"C:\\a"[..]), &b"b"[..])
+    );
+    assert_eq!(
+        split_path_bytes(&b"C:/a\\b"[..]),
+        (Some(&b"C:/a"[..]), &b"b"[..])
+    );
+    assert_eq!(
+        split_path_bytes(&b"C:\\a\\b\\c"[..]),
+        (Some(&b"C:\\a\\b"[..]), &b"c"[..])
+    );
+    assert_eq!(
+        split_path_bytes(&b"a\\b\\c\\d\\e"[..]),
+        (Some(&b"a\\b\\c\\d"[..]), &b"e"[..])
+    );
+    assert_eq!(
+        split_path_bytes(&b"\\\\UNC\\a"[..]),
+        (Some(&b"\\\\UNC"[..]), &b"a"[..])
+    );
+
+    assert_eq!(
+        split_path_bytes(&b"/a/b/c"[..]),
+        (Some(&b"/a/b"[..]), &b"c"[..])
+    );
+    assert_eq!(
+        split_path_bytes(&b"/a/b/c/d"[..]),
+        (Some(&b"/a/b/c"[..]), &b"d"[..])
+    );
+    assert_eq!(
+        split_path_bytes(&b"a/b/c"[..]),
+        (Some(&b"a/b"[..]), &b"c"[..])
+    );
+
+    assert_eq!(split_path_bytes(&b"a"[..]), (None, &b"a"[..]));
+    assert_eq!(split_path_bytes(&b"a/"[..]), (None, &b"a"[..]));
+    assert_eq!(split_path_bytes(&b"/a"[..]), (Some(&b"/"[..]), &b"a"[..]));
+    assert_eq!(split_path_bytes(&b""[..]), (None, &b""[..]));
 }
