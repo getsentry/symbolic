@@ -53,3 +53,6 @@ lint:
 wheel-manylinux:
 	docker run --rm -it -v $(CURDIR):/work -w /work/py $(IMAGE) sh manylinux.sh
 .PHONY: wheel-manylinux
+
+check: styletest lint
+.PHONY: check
