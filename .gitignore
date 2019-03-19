@@ -7,5 +7,5 @@ target/
 *.pyc
 __pycache__/
 .last-run
-/virtualenv
+.venv
 .pytest_cache

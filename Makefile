@@ -17,24 +17,26 @@ cargotest: build
 	cargo test --all --all-features
 .PHONY: cargotest
 
-virtualenv:
-	@which virtualenv || sudo easy_install virtualenv
-	@virtualenv virtualenv
-.PHONY: virtualenv
+venv: .venv/bin/python
+.PHONY: venv
 
-pytest: virtualenv
-	@. virtualenv/bin/activate                      ;\
+.venv/bin/python: Makefile
+	rm -rf .venv
+	virtualenv -p python2 .venv
+
+pytest: venv
+	@. .venv/bin/activate                           ;\
 	which pytest || pip install pytest > /dev/null  ;\
 	pip install -v --editable py && pytest -v py
 .PHONY: pytest
 
-wheel: virtualenv
-	@. virtualenv/bin/activate                      ;\
+wheel: venv
+	@. .venv/bin/activate                           ;\
 	cd py && python setup.py bdist_wheel
 .PHONY: wheel
 
-sdist: virtualenv
-	@. virtualenv/bin/activate                      ;\
+sdist: venv
+	@. .venv/bin/activate                           ;\
 	cd py && python setup.py sdist --format=zip
 .PHONY: sdist
 
