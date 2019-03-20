@@ -198,7 +198,10 @@ impl CodeModule {
     /// Returns the unique identifier of this `CodeModule`, which corresponds to the identifier
     /// returned by [`debug_identifier`](struct.CodeModuleId#method.debug_identifier).
     pub fn id(&self) -> Option<CodeModuleId> {
-        CodeModuleId::from_str(&self.debug_identifier()).ok()
+        match self.debug_identifier().as_str() {
+            "" => None,
+            id => CodeModuleId::from_str(id).ok(),
+        }
     }
 
     /// Returns the base address of this code module as it was loaded by the
@@ -262,9 +265,18 @@ impl CodeModule {
     /// It usually comprises the library's UUID and an age field. On Windows, the age field is a
     /// generation counter, on all other platforms it is mostly zero.
     pub fn debug_identifier(&self) -> String {
-        unsafe {
+        let id = unsafe {
             let ptr = code_module_debug_identifier(self);
             utils::ptr_to_string(ptr)
+        };
+
+        // The breakpad processor sometimes returns only zeros when it cannot determine a debug
+        // identifier, for example from mapped fonts or shared memory regions. Since this is
+        // clearly a garbage value, return an empty string instead.
+        if id == "000000000000000000000000000000000" {
+            String::new()
+        } else {
+            id
         }
     }
 }
