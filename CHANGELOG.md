@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.0.4
+
+- Exposes code identifiers and debug file names for minidumps in Python. Previously, this was only
+  available in the Rust Crate.
+- `ObjectLookup` now supports `code_file` and `debug_id` in in Python.
+
 ## 6.0.3
 
 Re-release on crates.io.
