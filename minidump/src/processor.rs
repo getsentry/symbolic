@@ -223,12 +223,21 @@ impl CodeModule {
     /// An identifying string used to discriminate between multiple versions and builds of the same
     /// code module.
     ///
-    /// This may contain a UUID, timestamp, version number, or any combination of this or other
-    /// information, in an implementation-defined format.
+    /// The contents of this identifier are implementation defined. GCC generally uses a 40
+    /// character (20 byte) SHA1 checksum of the code. On Windows, this is the program timestamp and
+    /// version number. On macOS, this value is empty.
     pub fn code_identifier(&self) -> String {
-        unsafe {
+        let id = unsafe {
             let ptr = code_module_code_identifier(self);
             utils::ptr_to_string(ptr)
+        };
+
+        // For platforms that do not have explicit code identifiers, the breakpad processor returns
+        // a hardcoded "id". Since this is only a placeholder, return an empty string instead.
+        if id == "id" {
+            String::new()
+        } else {
+            id
         }
     }
 

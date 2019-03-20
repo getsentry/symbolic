@@ -43,10 +43,12 @@ pub enum SymbolicFrameTrust {
 /// Carries information about a code module loaded into the process during the crash.
 #[repr(C)]
 pub struct SymbolicCodeModule {
-    pub id: SymbolicStr,
+    pub code_id: SymbolicStr,
+    pub code_file: SymbolicStr,
+    pub debug_id: SymbolicStr,
+    pub debug_file: SymbolicStr,
     pub addr: u64,
     pub size: u64,
-    pub name: SymbolicStr,
 }
 
 /// The CPU register value of a stack frame.
@@ -172,13 +174,15 @@ where
 /// Maps a `CodeModule` to its FFI type.
 unsafe fn map_code_module(module: &CodeModule) -> SymbolicCodeModule {
     SymbolicCodeModule {
-        id: module
+        code_id: module.code_identifier().into(),
+        code_file: module.code_file().into(),
+        debug_id: module
             .id()
             .map(|id| id.to_string().into())
             .unwrap_or_default(),
+        debug_file: module.debug_file().into(),
         addr: module.base_address(),
         size: module.size(),
-        name: SymbolicStr::from_string(module.code_file()),
     }
 }
 
@@ -193,10 +197,12 @@ unsafe fn map_regval(regval: (&str, RegVal)) -> SymbolicRegVal {
 /// Maps a `StackFrame` to its FFI type.
 unsafe fn map_stack_frame(frame: &StackFrame, arch: Arch) -> SymbolicStackFrame {
     let empty_module = SymbolicCodeModule {
-        id: "".into(),
+        code_id: "".into(),
+        code_file: "".into(),
+        debug_id: "".into(),
+        debug_file: "".into(),
         addr: 0,
         size: 0,
-        name: "".into(),
     };
 
     let (registers, register_count) =

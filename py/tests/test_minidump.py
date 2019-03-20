@@ -37,10 +37,12 @@ def test_macos_without_cfi(res_path):
                                'rsp': '0x00007fff5daa3600'}
 
     mid = '3F58BC3DEABE3361B5FB52A6762985980'
-    module = next(module for module in state.modules() if module.id == mid)
+    module = next(module for module in state.modules() if module.debug_id == mid)
     assert module.addr == 4329947136
     assert module.size == 172032
-    assert module.name == '/Users/jauer/Coding/breakpad/examples/target/crash_macos'
+    assert module.code_id is None
+    assert module.code_file == '/Users/jauer/Coding/breakpad/examples/target/crash_macos'
+    assert module.debug_file == 'crash_macos'
 
 
 def test_linux_without_cfi(res_path):
@@ -76,10 +78,12 @@ def test_linux_without_cfi(res_path):
                                'rsp': '0x00007ffea5979b28'}
 
     mid = 'D2554CDB926136C4B9766A086583B9B50'
-    module = next(module for module in state.modules() if module.id == mid)
+    module = next(module for module in state.modules() if module.debug_id == mid)
     assert module.addr == 4194304
     assert module.size == 196608
-    assert module.name == '/breakpad/examples/target/crash_linux'
+    assert module.code_id == 'db4c55d26192c436b9766a086583b9b5a6d2e271'
+    assert module.code_file == '/breakpad/examples/target/crash_linux'
+    assert module.debug_file == '/breakpad/examples/target/crash_linux'
 
 
 def test_macos_with_cfi(res_path):
@@ -126,10 +130,12 @@ def test_macos_with_cfi(res_path):
                                'rbp': '0x00007fff5daa37c8'}
 
     module = next(module for module in state.modules()
-                  if module.id == module_id)
+                  if module.debug_id == module_id)
     assert module.addr == 4329947136
     assert module.size == 172032
-    assert module.name == '/Users/jauer/Coding/breakpad/examples/target/crash_macos'
+    assert module.code_id is None
+    assert module.code_file == '/Users/jauer/Coding/breakpad/examples/target/crash_macos'
+    assert module.debug_file == 'crash_macos'
 
 
 def test_linux_with_cfi(res_path):
@@ -176,10 +182,12 @@ def test_linux_with_cfi(res_path):
                                'rbp': '0x00007ffea5979ce0'}
 
     module = next(module for module in state.modules()
-                  if module.id == module_id)
+                  if module.debug_id == module_id)
     assert module.addr == 4194304
     assert module.size == 196608
-    assert module.name == '/breakpad/examples/target/crash_linux'
+    assert module.code_id == 'db4c55d26192c436b9766a086583b9b5a6d2e271'
+    assert module.code_file == '/breakpad/examples/target/crash_linux'
+    assert module.debug_file == '/breakpad/examples/target/crash_linux'
 
 
 def test_macos_cficache(res_path):

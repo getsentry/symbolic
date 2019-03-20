@@ -222,10 +222,12 @@ typedef struct {
  * Carries information about a code module loaded into the process during the crash.
  */
 typedef struct {
-  SymbolicStr id;
+  SymbolicStr code_id;
+  SymbolicStr code_file;
+  SymbolicStr debug_id;
+  SymbolicStr debug_file;
   uint64_t addr;
   uint64_t size;
-  SymbolicStr name;
 } SymbolicCodeModule;
 
 /**
