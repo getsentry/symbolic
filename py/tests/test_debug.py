@@ -46,9 +46,62 @@ def test_normalize_debug_id():
     assert normalize_debug_id(None) == None
 
 
-def test_find_object():
+def test_object_ref_legacy_apple():
     lookup = ObjectLookup([{
         'uuid': 'dfb8e43a-f242-3d73-a453-aeb6a777ef75',
+        'image_addr': '0x1000',
+        'image_size': 1024,
+        'name': 'CoreFoundation',
+    }])
+
+    obj = lookup.get_object('dfb8e43a-f242-3d73-a453-aeb6a777ef75')
+    assert obj.name == 'CoreFoundation'
+    assert obj.code_id is None
+    assert obj.code_file == 'CoreFoundation'
+    assert obj.debug_id == 'dfb8e43a-f242-3d73-a453-aeb6a777ef75'
+    assert obj.debug_file is None
+
+
+def test_object_ref_legacy_symbolic():
+    lookup = ObjectLookup([{
+        'id': 'dfb8e43a-f242-3d73-a453-aeb6a777ef75',
+        'image_addr': '0x1000',
+        'image_size': 1024,
+        'name': 'CoreFoundation',
+    }])
+
+    obj = lookup.get_object('dfb8e43a-f242-3d73-a453-aeb6a777ef75')
+    assert obj.name == 'CoreFoundation'
+    assert obj.code_id is None
+    assert obj.code_file == 'CoreFoundation'
+    assert obj.debug_id == 'dfb8e43a-f242-3d73-a453-aeb6a777ef75'
+    assert obj.debug_file is None
+
+
+def test_object_ref():
+    lookup = ObjectLookup([{
+        'code_id': 'DFB8E43A-F242-3D73-A453-AEB6A777EF75',
+        'code_file': 'CoreFoundation',
+        'debug_id': 'dfb8e43a-f242-3d73-a453-aeb6a777ef75',
+        'debug_file': 'CoreFoundation.dSYM',
+        'image_addr': '0x1000',
+        'image_size': 1024,
+    }])
+
+    obj = lookup.get_object('dfb8e43a-f242-3d73-a453-aeb6a777ef75')
+    assert obj.name == 'CoreFoundation'
+    assert obj.code_id == 'DFB8E43A-F242-3D73-A453-AEB6A777EF75'
+    assert obj.code_file == 'CoreFoundation'
+    assert obj.debug_id == 'dfb8e43a-f242-3d73-a453-aeb6a777ef75'
+    assert obj.debug_file == 'CoreFoundation.dSYM'
+
+
+def test_find_object():
+    lookup = ObjectLookup([{
+        'code_id': 'DFB8E43A-F242-3D73-A453-AEB6A777EF75',
+        'code_file': 'CoreFoundation',
+        'debug_id': 'dfb8e43a-f242-3d73-a453-aeb6a777ef75',
+        'debug_file': 'CoreFoundation.dSYM',
         'image_addr': '0x1000',
         'image_size': 1024,
     }])
