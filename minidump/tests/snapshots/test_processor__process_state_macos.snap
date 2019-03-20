@@ -1,6 +1,6 @@
 ---
-created: "2019-02-20T15:42:12.012660Z"
-creator: insta@0.6.3
+created: "2019-03-20T08:50:27.479637Z"
+creator: insta@0.7.1
 source: minidump/tests/test_processor.rs
 expression: "&state"
 ---
@@ -38,7 +38,7 @@ ProcessState {
                             base_address: 4458131456,
                             size: 69632,
                             code_file: "/Users/travis/build/getsentry/breakpad-tools/macos/build/./crash",
-                            code_identifier: "id",
+                            code_identifier: "",
                             debug_file: "crash",
                             debug_identifier: "67E9247C814E392BA027DBDE6748FCBF0"
                         }
@@ -61,7 +61,7 @@ ProcessState {
                             base_address: 4458131456,
                             size: 69632,
                             code_file: "/Users/travis/build/getsentry/breakpad-tools/macos/build/./crash",
-                            code_identifier: "id",
+                            code_identifier: "",
                             debug_file: "crash",
                             debug_identifier: "67E9247C814E392BA027DBDE6748FCBF0"
                         }
@@ -84,7 +84,7 @@ ProcessState {
                             base_address: 140737084547072,
                             size: 24576,
                             code_file: "/usr/lib/system/libdyld.dylib",
-                            code_identifier: "id",
+                            code_identifier: "",
                             debug_file: "libdyld.dylib",
                             debug_identifier: "9B2AC56D107C3541A1279094A751F2C90"
                         }
@@ -107,7 +107,7 @@ ProcessState {
                             base_address: 140737084547072,
                             size: 24576,
                             code_file: "/usr/lib/system/libdyld.dylib",
-                            code_identifier: "id",
+                            code_identifier: "",
                             debug_file: "libdyld.dylib",
                             debug_identifier: "9B2AC56D107C3541A1279094A751F2C90"
                         }
@@ -129,7 +129,7 @@ ProcessState {
             base_address: 4458131456,
             size: 69632,
             code_file: "/Users/travis/build/getsentry/breakpad-tools/macos/build/./crash",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "crash",
             debug_identifier: "67E9247C814E392BA027DBDE6748FCBF0"
         },
@@ -145,7 +145,7 @@ ProcessState {
             base_address: 140736719339520,
             size: 4800512,
             code_file: "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "CoreFoundation",
             debug_identifier: "36385A3A60D332DBBF55C6D8931A7AA60"
         },
@@ -161,7 +161,7 @@ ProcessState {
             base_address: 140737059020800,
             size: 8192,
             code_file: "/usr/lib/libDiagnosticMessagesClient.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libDiagnosticMessagesClient.dylib",
             debug_identifier: "84A04D240E603810A8C090A65E2DF61A0"
         },
@@ -177,7 +177,7 @@ ProcessState {
             base_address: 140737061376000,
             size: 8192,
             code_file: "/usr/lib/libSystem.B.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libSystem.B.dylib",
             debug_identifier: "F18AC1E7C6F134B18069BE571B3231D40"
         },
@@ -193,7 +193,7 @@ ProcessState {
             base_address: 140737063157760,
             size: 356352,
             code_file: "/usr/lib/libc++.1.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libc++.1.dylib",
             debug_identifier: "0B43BB5DE6EB34648DE9B41AC8ED9D1C0"
         },
@@ -209,7 +209,7 @@ ProcessState {
             base_address: 140737063514112,
             size: 172032,
             code_file: "/usr/lib/libc++abi.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libc++abi.dylib",
             debug_identifier: "BC271AD3831B362A9DA7E8C51F285FE40"
         },
@@ -225,7 +225,7 @@ ProcessState {
             base_address: 140737069191168,
             size: 2252800,
             code_file: "/usr/lib/libicucore.A.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libicucore.A.dylib",
             debug_identifier: "CCD2ED243071383B925D8D763BB12A6F0"
         },
@@ -241,7 +241,7 @@ ProcessState {
             base_address: 140737075171328,
             size: 4022272,
             code_file: "/usr/lib/libobjc.A.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libobjc.A.dylib",
             debug_identifier: "4DF3C25C52C23F01A3EF0D9D53A73C1C0"
         },
@@ -257,7 +257,7 @@ ProcessState {
             base_address: 140737083535360,
             size: 73728,
             code_file: "/usr/lib/libz.1.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libz.1.dylib",
             debug_identifier: "46E3FFA24328327A8D34A03E20BFFB8E0"
         },
@@ -273,7 +273,7 @@ ProcessState {
             base_address: 140737083666432,
             size: 20480,
             code_file: "/usr/lib/system/libcache.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libcache.dylib",
             debug_identifier: "093A4DAB83853D47A350E20CB7CCF7BF0"
         },
@@ -289,7 +289,7 @@ ProcessState {
             base_address: 140737083686912,
             size: 45056,
             code_file: "/usr/lib/system/libcommonCrypto.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libcommonCrypto.dylib",
             debug_identifier: "8A64D1B0C70E385C92F0E669079FDA900"
         },
@@ -305,7 +305,7 @@ ProcessState {
             base_address: 140737083731968,
             size: 32768,
             code_file: "/usr/lib/system/libcompiler_rt.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libcompiler_rt.dylib",
             debug_identifier: "55D47421772A32ABB5291A46C2F43B4D0"
         },
@@ -321,7 +321,7 @@ ProcessState {
             base_address: 140737083764736,
             size: 36864,
             code_file: "/usr/lib/system/libcopyfile.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libcopyfile.dylib",
             debug_identifier: "819BEA3CDF113E3DA1A15A51C5BF19610"
         },
@@ -337,7 +337,7 @@ ProcessState {
             base_address: 140737083801600,
             size: 540672,
             code_file: "/usr/lib/system/libcorecrypto.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libcorecrypto.dylib",
             debug_identifier: "65D7165E2E71335DA2D633F78E2DF0C10"
         },
@@ -353,7 +353,7 @@ ProcessState {
             base_address: 140737084342272,
             size: 204800,
             code_file: "/usr/lib/system/libdispatch.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libdispatch.dylib",
             debug_identifier: "6582BAD6ED273B30B62090B1C5A4AE3C0"
         },
@@ -369,7 +369,7 @@ ProcessState {
             base_address: 140737084547072,
             size: 24576,
             code_file: "/usr/lib/system/libdyld.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libdyld.dylib",
             debug_identifier: "9B2AC56D107C3541A1279094A751F2C90"
         },
@@ -385,7 +385,7 @@ ProcessState {
             base_address: 140737084571648,
             size: 4096,
             code_file: "/usr/lib/system/libkeymgr.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libkeymgr.dylib",
             debug_identifier: "7AA011A9DC213488BF733B5B14D1FDD60"
         },
@@ -401,7 +401,7 @@ ProcessState {
             base_address: 140737084628992,
             size: 4096,
             code_file: "/usr/lib/system/liblaunch.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "liblaunch.dylib",
             debug_identifier: "B856ABD2896E3DE0B2C8146A6AF8E2A70"
         },
@@ -417,7 +417,7 @@ ProcessState {
             base_address: 140737084633088,
             size: 24576,
             code_file: "/usr/lib/system/libmacho.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libmacho.dylib",
             debug_identifier: "17D5D855F6C33B04B680E9BF02EF8AED0"
         },
@@ -433,7 +433,7 @@ ProcessState {
             base_address: 140737084657664,
             size: 12288,
             code_file: "/usr/lib/system/libquarantine.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libquarantine.dylib",
             debug_identifier: "12448CC2378E35F3BE339DC395A5B9700"
         },
@@ -449,7 +449,7 @@ ProcessState {
             base_address: 140737084669952,
             size: 8192,
             code_file: "/usr/lib/system/libremovefile.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libremovefile.dylib",
             debug_identifier: "38D4CB9C10CD30D38B7BA515EC75FE850"
         },
@@ -465,7 +465,7 @@ ProcessState {
             base_address: 140737084678144,
             size: 102400,
             code_file: "/usr/lib/system/libsystem_asl.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_asl.dylib",
             debug_identifier: "096E42283B7C30A68B13EC909A64499A0"
         },
@@ -481,7 +481,7 @@ ProcessState {
             base_address: 140737084780544,
             size: 4096,
             code_file: "/usr/lib/system/libsystem_blocks.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_blocks.dylib",
             debug_identifier: "10DC540473AB35B3A277A8AFECB476EB0"
         },
@@ -497,7 +497,7 @@ ProcessState {
             base_address: 140737084784640,
             size: 581632,
             code_file: "/usr/lib/system/libsystem_c.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_c.dylib",
             debug_identifier: "E5AE52447D0C36AC8BB6C7AE7EA52A4B0"
         },
@@ -513,7 +513,7 @@ ProcessState {
             base_address: 140737085366272,
             size: 16384,
             code_file: "/usr/lib/system/libsystem_configuration.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_configuration.dylib",
             debug_identifier: "BECC01A2CA8D31E6BCDFD452965FA9760"
         },
@@ -529,7 +529,7 @@ ProcessState {
             base_address: 140737085382656,
             size: 16384,
             code_file: "/usr/lib/system/libsystem_coreservices.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_coreservices.dylib",
             debug_identifier: "7D26DE79B424345085E1F7FAB32714AB0"
         },
@@ -545,7 +545,7 @@ ProcessState {
             base_address: 140737085399040,
             size: 102400,
             code_file: "/usr/lib/system/libsystem_coretls.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_coretls.dylib",
             debug_identifier: "EC6FCF07DCFB3A039CC96DD3709974C60"
         },
@@ -561,7 +561,7 @@ ProcessState {
             base_address: 140737085501440,
             size: 28672,
             code_file: "/usr/lib/system/libsystem_dnssd.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_dnssd.dylib",
             debug_identifier: "CC9602150B1B3822A13A3DDE96FA796F0"
         },
@@ -577,7 +577,7 @@ ProcessState {
             base_address: 140737085530112,
             size: 172032,
             code_file: "/usr/lib/system/libsystem_info.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_info.dylib",
             debug_identifier: "611DB84CBF703F928702B9F28A9009200"
         },
@@ -593,7 +593,7 @@ ProcessState {
             base_address: 140737085702144,
             size: 143360,
             code_file: "/usr/lib/system/libsystem_kernel.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_kernel.dylib",
             debug_identifier: "34B1F16CBC9C3C5F90450CAE91CB59140"
         },
@@ -609,7 +609,7 @@ ProcessState {
             base_address: 140737085845504,
             size: 294912,
             code_file: "/usr/lib/system/libsystem_m.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_m.dylib",
             debug_identifier: "86D499B5BBDC3D3B8A4E97AE8E6672A40"
         },
@@ -625,7 +625,7 @@ ProcessState {
             base_address: 140737086140416,
             size: 126976,
             code_file: "/usr/lib/system/libsystem_malloc.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_malloc.dylib",
             debug_identifier: "A3D15F1799A633678C7E4280E8619C950"
         },
@@ -641,7 +641,7 @@ ProcessState {
             base_address: 140737086267392,
             size: 368640,
             code_file: "/usr/lib/system/libsystem_network.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_network.dylib",
             debug_identifier: "369D022156CA3C3E9EDE94B41CAE77B70"
         },
@@ -657,7 +657,7 @@ ProcessState {
             base_address: 140737086636032,
             size: 40960,
             code_file: "/usr/lib/system/libsystem_networkextension.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_networkextension.dylib",
             debug_identifier: "B021F2B38A753633ABB0FC012B8E9B0C0"
         },
@@ -673,7 +673,7 @@ ProcessState {
             base_address: 140737086676992,
             size: 40960,
             code_file: "/usr/lib/system/libsystem_notify.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_notify.dylib",
             debug_identifier: "B8160190A0693B3ABDF62AA408221FAE0"
         },
@@ -689,7 +689,7 @@ ProcessState {
             base_address: 140737086717952,
             size: 36864,
             code_file: "/usr/lib/system/libsystem_platform.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_platform.dylib",
             debug_identifier: "897462FDB318321BA554E61982630F7E0"
         },
@@ -705,7 +705,7 @@ ProcessState {
             base_address: 140737086754816,
             size: 45056,
             code_file: "/usr/lib/system/libsystem_pthread.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_pthread.dylib",
             debug_identifier: "B8FB5E20329539E2B5EBB464D1D4B1040"
         },
@@ -721,7 +721,7 @@ ProcessState {
             base_address: 140737086799872,
             size: 16384,
             code_file: "/usr/lib/system/libsystem_sandbox.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_sandbox.dylib",
             debug_identifier: "4B92EC49ACD036AEB07AA2B8152EAF9D0"
         },
@@ -737,7 +737,7 @@ ProcessState {
             base_address: 140737086816256,
             size: 8192,
             code_file: "/usr/lib/system/libsystem_secinit.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_secinit.dylib",
             debug_identifier: "F78B847B35653E4B98A6F7AD40392E2D0"
         },
@@ -753,7 +753,7 @@ ProcessState {
             base_address: 140737086824448,
             size: 32768,
             code_file: "/usr/lib/system/libsystem_symptoms.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_symptoms.dylib",
             debug_identifier: "3390E07CC1CE348FADBD2C5440B45EAA0"
         },
@@ -769,7 +769,7 @@ ProcessState {
             base_address: 140737086857216,
             size: 81920,
             code_file: "/usr/lib/system/libsystem_trace.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libsystem_trace.dylib",
             debug_identifier: "AC63A7FE50D93A3096E6F6B7FF16E4650"
         },
@@ -785,7 +785,7 @@ ProcessState {
             base_address: 140737086939136,
             size: 24576,
             code_file: "/usr/lib/system/libunwind.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libunwind.dylib",
             debug_identifier: "3D50D8A8C460334DA5192DA841102C6B0"
         },
@@ -801,7 +801,7 @@ ProcessState {
             base_address: 140737086963712,
             size: 172032,
             code_file: "/usr/lib/system/libxpc.dylib",
-            code_identifier: "id",
+            code_identifier: "",
             debug_file: "libxpc.dylib",
             debug_identifier: "BF896DF0D8E931A8A4B301120BFEEE520"
         }
