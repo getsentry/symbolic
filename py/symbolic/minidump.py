@@ -3,6 +3,7 @@
 import io
 import shutil
 from datetime import datetime
+import warnings
 
 from symbolic._compat import range_type
 from symbolic._lowlevel import lib, ffi
@@ -37,9 +38,24 @@ class CodeModule(RustObject):
     __dealloc_func__ = None
 
     @property
-    def id(self):
-        """ID of the loaded module containing the instruction"""
-        return decode_str(self._objptr.id) or None
+    def code_id(self):
+        """Platform native identifier of the loaded module containing the instruction"""
+        return decode_str(self._objptr.code_id) or None
+
+    @property
+    def code_file(self):
+        """Path to the loaded module"""
+        return decode_str(self._objptr.code_file) or None
+
+    @property
+    def debug_id(self):
+        """Debug identifier of the loaded module containing the instruction"""
+        return decode_str(self._objptr.debug_id) or None
+
+    @property
+    def debug_file(self):
+        """Name of the debug file associated to this module"""
+        return decode_str(self._objptr.debug_file) or None
 
     @property
     def addr(self):
@@ -52,9 +68,14 @@ class CodeModule(RustObject):
         return self._objptr.size
 
     @property
+    def id(self):
+        warnings.warn('module.id is deprecated, use module.debug_id instead', DeprecationWarning)
+        return self.debug_id
+
+    @property
     def name(self):
-        """File name of the loaded module's debug file"""
-        return decode_str(self._objptr.name)
+        warnings.warn('module.name is deprecated, use module.code_file instead', DeprecationWarning)
+        return self.code_file
 
 
 class StackFrame(RustObject):
@@ -80,7 +101,7 @@ class StackFrame(RustObject):
     def module(self):
         """The code module that defines code for this frame"""
         module = CodeModule._from_objptr(self._objptr.module, shared=True)
-        if not module.id and not module.addr and not module.size:
+        if not module.debug_id and not module.addr and not module.size:
             return None
 
         attached_refs[module] = self
