@@ -1,6 +1,6 @@
 ---
-created: "2019-03-25T14:19:29.743239Z"
-creator: insta@0.7.1
+created: "2019-03-26T15:37:24.643667Z"
+creator: insta@0.7.4
 source: minidump/tests/test_cfi.rs
 expression: cfi
 ---
