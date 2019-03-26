@@ -1,6 +1,6 @@
 ---
-created: "2019-03-19T10:04:55.974468Z"
-creator: insta@0.7.1
+created: "2019-03-26T15:30:00.809482Z"
+creator: insta@0.7.4
 source: debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug(&functions[..10], 0)"
 ---
