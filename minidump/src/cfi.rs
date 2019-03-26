@@ -30,6 +30,8 @@ use symbolic_debuginfo::dwarf::gimli::{
     UnwindTable,
 };
 use symbolic_debuginfo::dwarf::Dwarf;
+use symbolic_debuginfo::pdb::pdb::{FallibleIterator, FrameData, Rva, StringTable};
+use symbolic_debuginfo::pdb::PdbObject;
 use symbolic_debuginfo::Object;
 
 /// The latest version of the file format.
@@ -128,6 +130,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             Object::Breakpad(o) => self.process_breakpad(o),
             Object::MachO(o) => self.process_dwarf(o.arch(), o),
             Object::Elf(o) => self.process_dwarf(o.arch(), o),
+            Object::Pdb(o) => self.process_pdb(o),
             _ => Err(CfiErrorKind::UnsupportedDebugFormat.into()),
         }
     }
@@ -339,6 +342,126 @@ impl<W: Write> AsciiCfiWriter<W> {
         write!(self.inner, " {}: {}", register_name, formatted)
             .context(CfiErrorKind::WriteError)?;
         Ok(true)
+    }
+
+    fn process_pdb(&mut self, pdb: &PdbObject<'_>) -> Result<(), CfiError> {
+        let mut pdb = pdb.inner().write();
+        let frame_table = pdb.frame_table().context(CfiErrorKind::BadDebugInfo)?;
+        let string_table = pdb.string_table().context(CfiErrorKind::BadDebugInfo)?;
+        let address_map = pdb.address_map().context(CfiErrorKind::BadDebugInfo)?;
+        let mut frames = frame_table.iter();
+
+        let mut last_frame: Option<FrameData> = None;
+
+        while let Some(frame) = frames.next().context(CfiErrorKind::BadDebugInfo)? {
+            // Only print a stack record if information has changed from the last list. It is
+            // surprisingly common (especially in system library PDBs) for DIA to return a series of
+            // identical IDiaFrameData objects. For kernel32.pdb from Windows XP SP2 on x86, this
+            // check reduces the size of the dumped symbol file by a third.
+            if let Some(ref last) = last_frame {
+                if frame.ty == last.ty
+                    && frame.code_start == last.code_start
+                    && frame.code_size == last.code_size
+                    && frame.prolog_size == last.prolog_size
+                {
+                    continue;
+                }
+            }
+
+            // Address ranges need to be translated to the RVA address space. The prolog and the
+            // code portions of the frame have to be treated independently as they may have
+            // independently changed in size, or may even have been split.
+            let prolog_size = u32::from(frame.prolog_size);
+            let prolog_end = frame.code_start + prolog_size;
+            let code_end = frame.code_start + frame.code_size;
+
+            let mut prolog_ranges = address_map
+                .rva_ranges(frame.code_start, prolog_end)
+                .collect::<Vec<_>>();
+
+            let mut code_ranges = address_map
+                .rva_ranges(prolog_end, code_end)
+                .collect::<Vec<_>>();
+
+            // Check if the prolog and code bytes remain contiguous and only output a single record.
+            // This is only done for compactness of the symbol file. Since the majority of PDBs
+            // other than the Kernel do not have translated address spaces, this will be true for
+            // most records.
+            let is_contiguous = prolog_ranges.len() == 1
+                && code_ranges.len() == 1
+                && prolog_ranges[0].1 == code_ranges[0].0;
+
+            if is_contiguous {
+                self.write_pdb_stackinfo(
+                    &string_table,
+                    &frame,
+                    prolog_ranges[0].0,
+                    code_ranges[0].1,
+                    prolog_ranges[0].1 - prolog_ranges[0].0,
+                )?;
+            } else {
+                // Output the prolog first, and then code frames in RVA order.
+                prolog_ranges.sort_unstable_by_key(|(start, _)| *start);
+                code_ranges.sort_unstable_by_key(|(start, _)| *start);
+
+                for (start, end) in prolog_ranges {
+                    self.write_pdb_stackinfo(&string_table, &frame, start, end, end - start)?;
+                }
+
+                for (start, end) in code_ranges {
+                    self.write_pdb_stackinfo(&string_table, &frame, start, end, 0)?;
+                }
+            }
+
+            last_frame = Some(frame);
+        }
+
+        Ok(())
+    }
+
+    fn write_pdb_stackinfo(
+        &mut self,
+        string_table: &StringTable<'_>,
+        frame: &FrameData,
+        start: Rva,
+        end: Rva,
+        prolog_size: u32,
+    ) -> Result<(), CfiError> {
+        let code_size = end - start;
+        let program_or_bp = frame.program.is_some() || frame.uses_base_pointer;
+
+        write!(
+            self.inner,
+            "STACK WIN {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {} ",
+            frame.ty as u8,
+            start.0,
+            code_size,
+            prolog_size,
+            0, // epilog_size
+            frame.params_size,
+            frame.saved_regs_size,
+            frame.locals_size,
+            frame.max_stack_size.unwrap_or(0),
+            if program_or_bp { 1 } else { 0 },
+        )
+        .context(CfiErrorKind::WriteError)?;
+
+        match frame.program {
+            Some(ref prog_ref) => {
+                let program_string = prog_ref
+                    .to_string_lossy(&string_table)
+                    .context(CfiErrorKind::BadDebugInfo)?;
+
+                writeln!(self.inner, "{}", program_string.trim())
+                    .context(CfiErrorKind::WriteError)?;
+            }
+            None => {
+                writeln!(self.inner, "{}", if program_or_bp { 1 } else { 0 })
+                    .context(CfiErrorKind::WriteError)?;
+            }
+        }
+
+        Ok(())
     }
 }
 

@@ -22,6 +22,10 @@ type Pdb<'d> = pdb::PDB<'d, Cursor<&'d [u8]>>;
 
 const MAGIC_BIG: &[u8] = b"Microsoft C/C++ MSF 7.00\r\n\x1a\x44\x53\x00\x00\x00";
 
+// Used for CFI, remove once abstraction is complete
+#[doc(hidden)]
+pub use pdb;
+
 /// Variants of [`PdbError`](struct.PdbError.html).
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 pub enum PdbErrorKind {
@@ -179,6 +183,11 @@ impl<'d> PdbObject<'d> {
     /// Returns the raw data of the ELF file.
     pub fn data(&self) -> &'d [u8] {
         self.data
+    }
+
+    #[doc(hidden)]
+    pub fn inner(&self) -> &RwLock<Pdb<'d>> {
+        &self.pdb
     }
 }
 
