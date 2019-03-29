@@ -478,7 +478,8 @@ impl<W: Write> AsciiCfiWriter<W> {
 
             // The minimal stack size is 8 for RIP
             let mut stack_size = 8;
-            let mut rip_offset = 8;
+            // Special handling for machine frames
+            let mut machine_frame_offset = 0;
 
             while let Some(next) = next_function {
                 let unwind_info = exception_data
@@ -495,8 +496,8 @@ impl<W: Write> AsciiCfiWriter<W> {
                             stack_size += size;
                         }
                         UnwindOperation::PushMachineFrame(is_error) => {
-                            stack_size += if is_error { 88 } else { 80 };
-                            rip_offset += 80;
+                            stack_size += if is_error { 48 } else { 40 };
+                            machine_frame_offset = stack_size;
                         }
                         _ => {
                             // All other codes do not modify RSP
@@ -509,19 +510,30 @@ impl<W: Write> AsciiCfiWriter<W> {
 
             writeln!(
                 self.inner,
-                "STACK CFI INIT {:x} {:x} .cfa: $rsp .ra: .cfa {} - ^",
+                "STACK CFI INIT {:x} {:x} .cfa: $rsp 8 + .ra: .cfa 8 - ^",
                 function.begin_address,
                 function.end_address - function.begin_address,
-                rip_offset
             )
             .context(CfiErrorKind::WriteError)?;
 
-            writeln!(
-                self.inner,
-                "STACK CFI {:x} .cfa: $rsp {} +",
-                function.begin_address, stack_size
-            )
-            .context(CfiErrorKind::WriteError)?;
+            if machine_frame_offset > 0 {
+                writeln!(
+                    self.inner,
+                    "STACK CFI {:x} .cfa: $rsp {} + $rsp: .cfa {} - ^ .ra: .cfa {} - ^",
+                    function.begin_address,
+                    stack_size,
+                    stack_size - machine_frame_offset + 24, // old RSP offset
+                    stack_size - machine_frame_offset + 48, // entire frame offset
+                )
+                .context(CfiErrorKind::WriteError)?
+            } else {
+                writeln!(
+                    self.inner,
+                    "STACK CFI {:x} .cfa: $rsp {} +",
+                    function.begin_address, stack_size,
+                )
+                .context(CfiErrorKind::WriteError)?
+            }
         }
 
         Ok(())
