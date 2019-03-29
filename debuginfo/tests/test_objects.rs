@@ -337,7 +337,7 @@ fn test_pdb() -> Result<(), Error> {
         load_address: 0x0,
         has_symbols: true,
         has_debug_info: true,
-        has_unwind_info: false
+        has_unwind_info: true
     }
 )"###);
 
