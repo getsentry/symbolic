@@ -13,6 +13,9 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 use crate::base::*;
 use crate::private::{HexFmt, Parse};
 
+pub use goblin::pe::exception::*;
+pub use goblin::pe::section_table::SectionTable;
+
 /// An error when dealing with [`PeObject`](struct.PeObject.html).
 #[derive(Debug, Fail)]
 pub enum PeError {
@@ -162,12 +165,22 @@ impl<'d> PeObject<'d> {
 
     /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
-        false
+        false // TODO(ja)
     }
 
     /// Returns the raw data of the PE file.
     pub fn data(&self) -> &'d [u8] {
         self.data
+    }
+
+    /// A list of the sections in this PE binary, used to resolve virtual addresses.
+    pub fn sections(&self) -> &[SectionTable] {
+        &self.pe.sections
+    }
+
+    /// Returns exception data containing unwind information.
+    pub fn exception_data(&self) -> Option<&ExceptionData> {
+        self.pe.exception_data.as_ref()
     }
 }
 

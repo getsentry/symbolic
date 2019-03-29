@@ -92,3 +92,15 @@ fn cfi_from_pdb_windows() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[test]
+fn cfi_from_pe_windows() -> Result<(), Error> {
+    let buffer = ByteView::open("../testutils/fixtures/windows/CrashWithException.exe")?;
+    let object = Object::parse(&buffer)?;
+
+    let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
+    let cfi = str::from_utf8(&buf)?;
+    insta::assert_snapshot_matches!("cfi_pe_windows", cfi);
+
+    Ok(())
+}

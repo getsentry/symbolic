@@ -32,6 +32,7 @@ use symbolic_debuginfo::dwarf::gimli::{
 use symbolic_debuginfo::dwarf::Dwarf;
 use symbolic_debuginfo::pdb::pdb::{FallibleIterator, FrameData, Rva, StringTable};
 use symbolic_debuginfo::pdb::PdbObject;
+use symbolic_debuginfo::pe::{PeObject, UnwindOperation};
 use symbolic_debuginfo::Object;
 
 /// The latest version of the file format.
@@ -131,7 +132,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             Object::MachO(o) => self.process_dwarf(o.arch(), o),
             Object::Elf(o) => self.process_dwarf(o.arch(), o),
             Object::Pdb(o) => self.process_pdb(o),
-            _ => Err(CfiErrorKind::UnsupportedDebugFormat.into()),
+            Object::Pe(o) => self.process_pe(o),
         }
     }
 
@@ -459,6 +460,68 @@ impl<W: Write> AsciiCfiWriter<W> {
                 writeln!(self.inner, "{}", if program_or_bp { 1 } else { 0 })
                     .context(CfiErrorKind::WriteError)?;
             }
+        }
+
+        Ok(())
+    }
+
+    fn process_pe(&mut self, pe: &PeObject<'_>) -> Result<(), CfiError> {
+        let sections = pe.sections();
+        let exception_data = match pe.exception_data() {
+            Some(data) => data,
+            None => return Ok(()),
+        };
+
+        for function_result in exception_data {
+            let function = function_result.context(CfiErrorKind::BadDebugInfo)?;
+            let mut next_function = Some(function);
+
+            // The minimal stack size is 8 for RIP
+            let mut stack_size = 8;
+            let mut rip_offset = 8;
+
+            while let Some(next) = next_function {
+                let unwind_info = exception_data
+                    .get_unwind_info(next, sections)
+                    .context(CfiErrorKind::BadDebugInfo)?;
+
+                for code_result in &unwind_info {
+                    let code = code_result.context(CfiErrorKind::BadDebugInfo)?;
+                    match code.operation {
+                        UnwindOperation::PushNonVolatile(_) => {
+                            stack_size += 8;
+                        }
+                        UnwindOperation::Alloc(size) => {
+                            stack_size += size;
+                        }
+                        UnwindOperation::PushMachineFrame(is_error) => {
+                            stack_size += if is_error { 88 } else { 80 };
+                            rip_offset += 80;
+                        }
+                        _ => {
+                            // All other codes do not modify RSP
+                        }
+                    }
+                }
+
+                next_function = unwind_info.chained_info;
+            }
+
+            writeln!(
+                self.inner,
+                "STACK CFI INIT {:x} {:x} .cfa: $rsp .ra: .cfa {} - ^",
+                function.begin_address,
+                function.end_address - function.begin_address,
+                rip_offset
+            )
+            .context(CfiErrorKind::WriteError)?;
+
+            writeln!(
+                self.inner,
+                "STACK CFI {:x} .cfa: $rsp {} +",
+                function.begin_address, stack_size
+            )
+            .context(CfiErrorKind::WriteError)?;
         }
 
         Ok(())
