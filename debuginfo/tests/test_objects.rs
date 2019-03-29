@@ -266,7 +266,7 @@ fn test_mach_functions() -> Result<(), Error> {
 }
 
 #[test]
-fn test_pe() -> Result<(), Error> {
+fn test_pe_32() -> Result<(), Error> {
     let view = ByteView::open("../testutils/fixtures/windows/crash.exe")?;
     let object = Object::parse(&view)?;
 
@@ -285,6 +285,34 @@ fn test_pe() -> Result<(), Error> {
         has_symbols: false,
         has_debug_info: false,
         has_unwind_info: false
+    }
+)"###);
+
+    Ok(())
+}
+
+#[test]
+fn test_pe_64() -> Result<(), Error> {
+    let view = ByteView::open("../testutils/fixtures/windows/CrashWithException.exe")?;
+    let object = Object::parse(&view)?;
+
+    insta::assert_debug_snapshot_matches!(object, @r###"Pe(
+    PeObject {
+        code_id: Some(
+            CodeId(
+                "5C9E09599000"
+            )
+        ),
+        debug_id: DebugId {
+            uuid: "f535c5fb-2ae8-4bb8-aa20-6c30be566c5a",
+            appendix: 1
+        },
+        arch: Amd64,
+        kind: Executable,
+        load_address: 0x140000000,
+        has_symbols: false,
+        has_debug_info: false,
+        has_unwind_info: true
     }
 )"###);
 
