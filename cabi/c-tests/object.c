@@ -21,7 +21,7 @@ void test_object_open(void) {
     printf("  debug_id: %.*s\n", (int)debug_id.len, debug_id.data);
 
     assert(code_id.len > 0);
-    assert(strncmp("5AB380779000", code_id.data, code_id.len) == 0);
+    assert(strncmp("5ab380779000", code_id.data, code_id.len) == 0);
     assert(debug_id.len > 0);
     assert(strncmp("3249d99d-0c40-4931-8610-f4e4fb0b6936-1", debug_id.data,
                    debug_id.len) == 0);
