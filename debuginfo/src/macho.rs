@@ -65,8 +65,7 @@ impl<'d> MachObject<'d> {
     /// header. This UUID is generated at compile / link time and is usually unique per compilation.
     pub fn code_id(&self) -> Option<CodeId> {
         let uuid = self.find_uuid()?;
-        let string = format!("{:X}", uuid.to_hyphenated_ref());
-        Some(CodeId::new(string))
+        Some(CodeId::from_slice(&uuid.as_bytes()[..]))
     }
 
     /// The debug information identifier of a MachO file.
