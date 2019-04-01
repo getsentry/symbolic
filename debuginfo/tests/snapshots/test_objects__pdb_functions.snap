@@ -1,11 +1,11 @@
 ---
-created: "2019-04-01T13:50:13.151542Z"
+created: "2019-04-01T16:21:26.077175Z"
 creator: insta@0.7.4
 source: debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug(&functions[..10], 0)"
 ---
 
-> 0x1000: google_breakpad::CrashGenerationClient::RequestDump (0x114)
+> 0x1000: ?RequestDump@CrashGenerationClient@google_breakpad@@QAE_NPAU_EXCEPTION_POINTERS@@PAUMDRawAssertionInfo@@@Z (0x114)
   0x1000: crash_generation_client.cc:323 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
   0x1011: crash_generation_client.cc:324 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
   0x1017: crash_generation_client.cc:325 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
@@ -21,13 +21,13 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1101: crash_generation_client.cc:337 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
   0x1107: crash_generation_client.cc:338 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
 
-> 0x1120: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::~basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> > (0x54)
+> 0x1120: ??1?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@QAE@XZ (0x54)
   0x1120: xstring:2424 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x1123: xstring:2425 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x116c: xstring:2426 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x116d: xstring:2425 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-> 0x1180: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::assign (0x150)
+> 0x1180: ?assign@?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@QAEAAV12@QB_WI@Z (0x150)
   0x1180: xstring:2612 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x1195: xstring:2614 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x11a0: xstring:2616 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -41,11 +41,11 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x12c1: xstring:2627 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x12ca: xstring:2623 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-> 0x12d0: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Xlen (0xc)
+> 0x12d0: ?_Xlen@?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@SAXXZ (0xc)
   0x12d0: xstring:3918 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x12d0: xstring:3919 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-> 0x12e0: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::operator= (0x7f)
+> 0x12e0: ??4?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@QAEAAV01@$$QAV01@@Z (0x7f)
   0x12e0: xstring:2267 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x12e8: xstring:2268 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x12ec: xstring:2270 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -74,7 +74,7 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x13f4: stdio.h:837 (c:\program files (x86)\windows kits\10\include\10.0.16299.0\ucrt)
   0x1413: stdio.h:840 (c:\program files (x86)\windows kits\10\include\10.0.16299.0\ucrt)
 
-> 0x1420: google_breakpad::ExceptionHandler::Initialize (0x34a)
+> 0x1420: ?Initialize@ExceptionHandler@google_breakpad@@AAEXABV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@P6A_NPAXPAU_EXCEPTION_POINTERS@@PAUMDRawAssertionInfo@@@ZP6A_NPB_W5123_N@Z1HW4_MINIDUMP_TYPE@@51PAVCrashGenerationClient@2@PBUCustomClientInfo@2@@Z (0x34a)
   0x1420: exception_handler.cc:148 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
   0x1450: exception_handler.cc:149 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
   0x145e: exception_handler.cc:150 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)

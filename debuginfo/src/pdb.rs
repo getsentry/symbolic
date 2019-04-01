@@ -168,7 +168,7 @@ impl<'d> PdbObject<'d> {
 
     /// Constructs a debugging session.
     pub fn debug_session(&self) -> Result<PdbDebugSession<'d>, PdbError> {
-        PdbDebugSession::build(self.pdb.clone(), self.debug_info.clone())
+        PdbDebugSession::build(self, self.debug_info.clone())
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -306,8 +306,9 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
 
                 let name = symbol.name().ok().map(|name| {
                     let cow = name.to_string();
-                    // TODO: pdb::SymbolIter offers data bound to its own lifetime.
-                    // Thus, we cannot return zero-copy symbols here.
+                    // pdb::SymbolIter offers data bound to its own lifetime since it holds the
+                    // buffer containing public symbols. The contract requires that we return
+                    // `Symbol<'d>`, so we cannot return zero-copy symbols here.
                     Cow::from(String::from(if cow.starts_with('_') {
                         &cow[1..]
                     } else {
@@ -333,28 +334,32 @@ struct PdbDebugInfo<'d> {
     module_infos: Vec<LazyCell<Option<ModuleInfo<'d>>>>,
     address_map: pdb::AddressMap<'d>,
     string_table: pdb::StringTable<'d>,
+    symbol_map: SymbolMap<'d>,
 }
 
 impl<'d> PdbDebugInfo<'d> {
     fn build(
-        pdb: Arc<RwLock<Pdb<'d>>>,
+        pdb: &PdbObject<'d>,
         debug_info: &'d pdb::DebugInformation<'d>,
     ) -> Result<Self, PdbError> {
-        let mut p = pdb.write();
-
+        let symbol_map = pdb.symbol_map();
         let modules = debug_info.modules()?.collect::<Vec<_>>()?;
         let module_infos = modules.iter().map(|_| LazyCell::new()).collect();
+
+        // Avoid deadlocks by only covering the two access to the address map and string table. For
+        // instance, `pdb.symbol_map()` requires a mutable borrow of the PDB as well.
+        let mut p = pdb.pdb.write();
         let address_map = p.address_map()?;
         let string_table = p.string_table()?;
-
         drop(p);
 
         Ok(PdbDebugInfo {
+            pdb: pdb.pdb.clone(),
             modules,
             module_infos,
             address_map,
             string_table,
-            pdb,
+            symbol_map,
         })
     }
 
@@ -397,7 +402,7 @@ pub struct PdbDebugSession<'d> {
 
 impl<'d> PdbDebugSession<'d> {
     fn build(
-        pdb: Arc<RwLock<Pdb<'d>>>,
+        pdb: &PdbObject<'d>,
         debug_info: Arc<pdb::DebugInformation<'d>>,
     ) -> Result<Self, PdbError> {
         let cell = SelfCell::try_new(debug_info, |debug_info| {
@@ -434,6 +439,7 @@ impl<'s> Unit<'s> {
     fn functions(&self) -> Result<Vec<Function<'s>>, PdbError> {
         let address_map = &self.debug_info.address_map;
         let string_table = &self.debug_info.string_table;
+        let symbol_map = &self.debug_info.symbol_map;
 
         let program = self.module.line_program()?;
         let mut symbols = self.module.symbols()?;
@@ -442,24 +448,40 @@ impl<'s> Unit<'s> {
         while let Some(symbol) = symbols.next()? {
             let proc = match symbol.parse() {
                 Ok(SymbolData::Procedure(proc)) => proc,
+                // We need to ignore errors here since the PDB crate does not yet implement all
+                // symbol types. Instead of erroring too often, it's better to swallow these.
                 _ => continue,
             };
 
-            // TODO(ja): Load the mangled name from the symbol table instead. We're not interested
-            // in the demangled name here.
-            let name = symbol.name()?.to_string();
-            let address = proc.offset.to_rva(&address_map).expect("rva");
+            // Translate the function's address to the PE's address space. If this fails, we're
+            // likely dealing with an invalid function and can skip it.
+            let address = match proc.offset.to_rva(&address_map) {
+                Some(addr) => u64::from(addr.0),
+                None => continue,
+            };
+
+            // Prefer names from the public symbol table as they are mangled. Otherwise, fall back
+            // to the name of the private symbol which is often times demangled. Also, this might
+            // save us some allocations, since the symbol_map is held by the debug session.
+            let name = match symbol_map.lookup(address) {
+                Some(symbol) => Name::new(symbol.name().unwrap_or_default()),
+                None => Name::new(symbol.name()?.to_string()),
+            };
 
             let mut lines = Vec::new();
             let mut line_iter = program.lines_at_offset(proc.offset);
             while let Some(line_info) = line_iter.next()? {
-                let rva = line_info.offset.to_rva(&address_map).expect("rva");
+                let rva = match line_info.offset.to_rva(&address_map) {
+                    Some(rva) => u64::from(rva.0),
+                    None => continue,
+                };
+
                 let file_info = program.get_file_info(line_info.file_index)?;
                 let file_path = file_info.name.to_raw_string(&string_table)?;
                 let (dir, name) = split_path_bytes(file_path.as_bytes());
 
                 lines.push(LineInfo {
-                    address: rva.0.into(),
+                    address: rva,
                     file: FileInfo {
                         dir: dir.unwrap_or_default(),
                         name,
@@ -469,9 +491,9 @@ impl<'s> Unit<'s> {
             }
 
             let func = Function {
-                address: address.0.into(),
+                address,
                 size: proc.len.into(),
-                name: Name::from(name),
+                name,
                 compilation_dir: &[],
                 lines,
                 inlinees: Vec::new(),
