@@ -299,9 +299,7 @@ fn test_pe_64() -> Result<(), Error> {
     insta::assert_debug_snapshot_matches!(object, @r###"Pe(
     PeObject {
         code_id: Some(
-            CodeId(
-                "5C9E09599000"
-            )
+            CodeId(5c9e09599000)
         ),
         debug_id: DebugId {
             uuid: "f535c5fb-2ae8-4bb8-aa20-6c30be566c5a",
