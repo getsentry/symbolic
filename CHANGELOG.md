@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.0.5
+
+- Normalize code identifiers to lowercase (#133).
+
 ## 6.0.4
 
 - Exposes code identifiers and debug file names for minidumps in Python. Previously, this was only
