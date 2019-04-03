@@ -18,24 +18,24 @@ matrix:
   include:
     # Rust test suite
     - os: linux
-      script: make styletest
+      script: make style
       env: TEST=style-rust
     - os: linux
       script: make lint
       env: TEST=lint-rust CXX=clang
     - os: linux
-      script: make cargotest
+      script: make test-rust
       env: TEST=linux-rust CXX=clang
     - os: osx
-      script: make cargotest
+      script: make test-rust
       env: TEST=mac-rust
 
     # Python test suite
     - os: linux
-      script: make pytest
+      script: make test-python
       env: TEST=linux-python CXX=clang
     - os: osx
-      script: make pytest
+      script: make test-python
       env: TEST=mac-python
 
     # Build wheels
