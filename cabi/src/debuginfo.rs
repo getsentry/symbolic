@@ -3,7 +3,7 @@ use std::os::raw::c_char;
 use std::ptr;
 use std::str::FromStr;
 
-use symbolic::common::{ByteView, DebugId, SelfCell};
+use symbolic::common::{ByteView, CodeId, DebugId, SelfCell};
 use symbolic::debuginfo::{Archive, Object};
 
 use crate::core::SymbolicStr;
@@ -132,6 +132,13 @@ ffi_fn! {
     /// Converts a Breakpad CodeModuleId to DebugId.
     unsafe fn symbolic_id_from_breakpad(breakpad_id: *const SymbolicStr) -> Result<SymbolicStr> {
         Ok(DebugId::from_breakpad((*breakpad_id).as_str())?.to_string().into())
+    }
+}
+
+ffi_fn! {
+    /// Normalizes a code identifier to default representation.
+    unsafe fn symbolic_normalize_code_id(code_id: *const SymbolicStr) -> Result<SymbolicStr> {
+        Ok(CodeId::from_str((*code_id).as_str())?.to_string().into())
     }
 }
 

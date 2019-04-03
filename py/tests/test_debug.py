@@ -1,6 +1,6 @@
 import os
 
-from symbolic import ObjectLookup, Archive, id_from_breakpad, normalize_debug_id
+from symbolic import ObjectLookup, Archive, id_from_breakpad, normalize_code_id, normalize_debug_id
 
 
 def test_object_features_mac(res_path):
@@ -30,6 +30,18 @@ def test_id_from_breakpad():
     assert id_from_breakpad(
         'DFB8E43AF2423D73A453AEB6A777EF75feedface') == 'dfb8e43a-f242-3d73-a453-aeb6a777ef75-feedface'
     assert id_from_breakpad(None) == None
+
+
+def test_normalize_code_id():
+    # ELF
+    assert normalize_code_id(
+        'f1c3bcc0279865fe3058404b2831d9e64135386c') == 'f1c3bcc0279865fe3058404b2831d9e64135386c'
+    # MachO
+    assert normalize_code_id(
+        'DFB8E43AF2423D73A453AEB6A777EF75') == 'dfb8e43af2423d73a453aeb6a777ef75'
+    # PE
+    assert normalize_code_id('5AB380779000') == '5ab380779000'
+    assert normalize_code_id(None) == None
 
 
 def test_normalize_debug_id():

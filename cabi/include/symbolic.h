@@ -446,6 +446,11 @@ void symbolic_lookup_result_free(SymbolicLookupResult *lookup_result);
 SymbolicStr symbolic_normalize_arch(const SymbolicStr *arch);
 
 /**
+ * Normalizes a code identifier to default representation.
+ */
+SymbolicStr symbolic_normalize_code_id(const SymbolicStr *code_id);
+
+/**
  * Normalizes a debug identifier to default representation.
  */
 SymbolicStr symbolic_normalize_debug_id(const SymbolicStr *debug_id);

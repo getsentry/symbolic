@@ -14,6 +14,7 @@ __all__ = [
     'Object',
     'ObjectLookup',
     'id_from_breakpad',
+    'normalize_code_id',
     'normalize_debug_id',
 ]
 
@@ -203,6 +204,16 @@ def id_from_breakpad(breakpad_id):
 
     s = encode_str(breakpad_id)
     id = rustcall(lib.symbolic_id_from_breakpad, s)
+    return decode_str(id)
+
+
+def normalize_code_id(code_id):
+    """Normalizes a code identifier to default representation"""
+    if code_id is None:
+        return None
+
+    s = encode_str(code_id)
+    id = rustcall(lib.symbolic_normalize_code_id, s)
     return decode_str(id)
 
 
