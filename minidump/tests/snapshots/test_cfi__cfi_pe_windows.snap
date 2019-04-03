@@ -1,5 +1,5 @@
 ---
-created: "2019-03-29T17:53:10.158844Z"
+created: "2019-04-03T18:49:08.328139Z"
 creator: insta@0.7.4
 source: minidump/tests/test_cfi.rs
 expression: cfi
@@ -86,3 +86,4 @@ STACK CFI INIT 20ac 1e .cfa: $rsp 8 + .ra: .cfa 8 - ^
 STACK CFI 20ac .cfa: $rsp 48 +
 STACK CFI INIT 20ca 18 .cfa: $rsp 8 + .ra: .cfa 8 - ^
 STACK CFI 20ca .cfa: $rsp 16 +
+

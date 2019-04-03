@@ -1,5 +1,5 @@
 ---
-created: "2019-04-01T15:38:11.148875Z"
+created: "2019-04-03T18:49:08.328347Z"
 creator: insta@0.7.4
 source: minidump/tests/test_cfi.rs
 expression: cfi
@@ -156,3 +156,4 @@ STACK WIN 4 358f 187 0 0 0 4 24 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $es
 STACK WIN 4 35b7 ef 0 0 0 8 24 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $20 $T0 40 - ^ =  $23 $T0 44 - ^ =
 STACK WIN 4 35b8 ed 0 0 0 c 24 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + =  $20 $T0 40 - ^ =  $23 $T0 44 - ^ =  $24 $T0 48 - ^ =
 STACK WIN 4 371a c 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
+
