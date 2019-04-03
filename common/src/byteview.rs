@@ -78,20 +78,8 @@ impl<'a> ByteView<'a> {
         ByteView::from_cow(Cow::Owned(buffer))
     }
 
-    /// Constructs a `ByteView` from any `std::io::Reader`.
-    ///
-    /// This currently consumes the entire reader and stores its data in an internal buffer. Prefer
-    /// `ByteView::open` when reading from the file system or `ByteView::from_slice` /
-    /// `ByteView::from_vec` for in-memory operations. This behavior might change in the future.
-    pub fn read<R: io::Read>(mut reader: R) -> Result<Self, io::Error> {
-        let mut buffer = vec![];
-        reader.read_to_end(&mut buffer)?;
-        Ok(ByteView::from_vec(buffer))
-    }
-
-    /// Constructs a `ByteView` from a file path by memory mapping the file.
-    pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, io::Error> {
-        let file = File::open(path)?;
+    /// Constructs a `ByteView` from an open file handle
+    pub fn from_file(file: File) -> Result<Self, io::Error> {
         let backing = match unsafe { Mmap::map(&file) } {
             Ok(mmap) => ByteViewBacking::Mmap(mmap),
             Err(err) => {
@@ -109,6 +97,23 @@ impl<'a> ByteView<'a> {
         };
 
         Ok(ByteView::with_backing(backing))
+    }
+
+    /// Constructs a `ByteView` from any `std::io::Reader`.
+    ///
+    /// This currently consumes the entire reader and stores its data in an internal buffer. Prefer
+    /// `ByteView::open` when reading from the file system or `ByteView::from_slice` /
+    /// `ByteView::from_vec` for in-memory operations. This behavior might change in the future.
+    pub fn read<R: io::Read>(mut reader: R) -> Result<Self, io::Error> {
+        let mut buffer = vec![];
+        reader.read_to_end(&mut buffer)?;
+        Ok(ByteView::from_vec(buffer))
+    }
+
+    /// Constructs a `ByteView` from a file path by memory mapping the file.
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, io::Error> {
+        let file = File::open(path)?;
+        Ok(self.from_file(file))
     }
 
     /// Returns a slice of the underlying data.
