@@ -78,7 +78,7 @@ impl<'a> ByteView<'a> {
         ByteView::from_cow(Cow::Owned(buffer))
     }
 
-    /// Constructs a `ByteView` from an open file handle
+    /// Constructs a `ByteView` from an open file handle by memory mapping the file.
     pub fn from_file(file: File) -> Result<Self, io::Error> {
         let backing = match unsafe { Mmap::map(&file) } {
             Ok(mmap) => ByteViewBacking::Mmap(mmap),
