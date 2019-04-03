@@ -113,7 +113,7 @@ impl<'a> ByteView<'a> {
     /// Constructs a `ByteView` from a file path by memory mapping the file.
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, io::Error> {
         let file = File::open(path)?;
-        Ok(Self::from_file(file))
+        Self::map_file(file)
     }
 
     /// Returns a slice of the underlying data.
