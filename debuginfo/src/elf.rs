@@ -227,7 +227,7 @@ impl<'d> ElfObject<'d> {
             return None;
         }
 
-        let compressed = &section_data[CompressionHeader::size(&context)..];
+        let compressed = &section_data[CompressionHeader::size(context)..];
         let mut decompressed = Vec::with_capacity(compression.ch_size as usize);
         Decompress::new(true)
             .decompress_vec(compressed, &mut decompressed, FlushDecompress::Finish)
