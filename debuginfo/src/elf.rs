@@ -166,7 +166,7 @@ impl<'d> ElfObject<'d> {
 
     /// Determines whether this object exposes a public symbol table.
     pub fn has_symbols(&self) -> bool {
-        self.elf.syms.len() > 0
+        !self.elf.syms.is_empty()
     }
 
     /// Returns an iterator over symbols in the public symbol table.
