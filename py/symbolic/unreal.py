@@ -1,11 +1,11 @@
-import io
 import json
 
 from symbolic._lowlevel import lib, ffi
 from symbolic._compat import range_type
 
 from symbolic.minidump import ProcessState
-from symbolic.utils import RustObject, rustcall, decode_str, attached_refs, SliceReader
+from symbolic.utils import RustObject, rustcall, decode_str, attached_refs, \
+    make_buffered_slice_reader
 
 __all__ = ['Unreal4Crash']
 
@@ -78,4 +78,11 @@ class Unreal4CrashFile(RustObject):
         rv = self._methodcall(lib.symbolic_unreal4_crash_file_contents, self.crash._objptr, len_out)
         if rv == ffi.NULL:
             return None
-        return io.BufferedReader(SliceReader(ffi.buffer(rv, len_out[0]), self))
+        return make_buffered_slice_reader(ffi.buffer(rv, len_out[0]), self)
+
+    @property
+    def size(self):
+        """Returns the size of the file in bytes."""
+        len_out = ffi.new('uintptr_t *')
+        self._methodcall(lib.symbolic_unreal4_crash_file_contents, self.crash._objptr, len_out)
+        return len_out[0]

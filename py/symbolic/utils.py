@@ -154,6 +154,10 @@ class SliceReader(io.RawIOBase):
         self.cache = cache
         self.pos = 0
 
+    @property
+    def size(self):
+        return len(self._buffer)
+
     def readable(self):
         return True
 
@@ -167,3 +171,14 @@ class SliceReader(io.RawIOBase):
         buf[:len(rv)] = rv
         self.pos = end
         return len(rv)
+
+
+class PassThroughBufferedReader(io.BufferedReader):
+    __dict__ = ()
+
+    def __getattr__(self, attr):
+        return getattr(self.raw, attr)
+
+
+def make_buffered_slice_reader(buffer, cache):
+    return PassThroughBufferedReader(SliceReader(buffer, cache))

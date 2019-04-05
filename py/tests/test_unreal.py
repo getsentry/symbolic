@@ -20,7 +20,9 @@ def test_unreal_crash_files(res_path):
         assert len(files[2].open_stream().read()) == 21143
         assert files[3].name == "UE4Minidump.dmp"
         assert files[3].type == "minidump"
-        assert len(files[3].open_stream().read()) == 410700
+        stream = files[3].open_stream()
+        assert stream.size == 410700
+        assert len(stream.read()) == 410700
 
 def test_get_apple_crash_report(res_path):
     path = os.path.join(res_path, 'unreal', 'unreal_crash_apple')
