@@ -4,6 +4,8 @@
   "recommendations": [
     "EditorConfig.editorconfig",
     "ms-vscode.cpptools",
-    "rust-lang.rust"
+    "rust-lang.rust",
+    "bungcip.better-toml",
+    "serayuzgur.crates"
   ]
 }
