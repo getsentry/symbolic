@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.0.6
+
+- Added size attribute to streams returned from minidump/unreal.
+
 ## 6.0.5
 
 - Normalize code identifiers to lowercase (#133).
