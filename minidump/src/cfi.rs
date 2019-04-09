@@ -19,6 +19,7 @@
 
 use std::collections::HashMap;
 use std::io::{self, Write};
+use std::ops::Range;
 
 use failure::{Fail, ResultExt};
 
@@ -387,11 +388,11 @@ impl<W: Write> AsciiCfiWriter<W> {
             let code_end = frame.code_start + frame.code_size;
 
             let mut prolog_ranges = address_map
-                .rva_ranges(frame.code_start, prolog_end)
+                .rva_ranges(frame.code_start..prolog_end)
                 .collect::<Vec<_>>();
 
             let mut code_ranges = address_map
-                .rva_ranges(prolog_end, code_end)
+                .rva_ranges(prolog_end..code_end)
                 .collect::<Vec<_>>();
 
             // Check if the prolog and code bytes remain contiguous and only output a single record.
@@ -400,26 +401,26 @@ impl<W: Write> AsciiCfiWriter<W> {
             // most records.
             let is_contiguous = prolog_ranges.len() == 1
                 && code_ranges.len() == 1
-                && prolog_ranges[0].1 == code_ranges[0].0;
+                && prolog_ranges[0].end == code_ranges[0].start;
 
             if is_contiguous {
                 self.write_pdb_stackinfo(
                     &string_table,
                     &frame,
-                    prolog_ranges[0].0,
-                    code_ranges[0].1,
-                    prolog_ranges[0].1 - prolog_ranges[0].0,
+                    prolog_ranges[0].start,
+                    code_ranges[0].end,
+                    prolog_ranges[0].end - prolog_ranges[0].start,
                 )?;
             } else {
                 // Output the prolog first, and then code frames in RVA order.
-                prolog_ranges.sort_unstable_by_key(|(start, _)| *start);
-                code_ranges.sort_unstable_by_key(|(start, _)| *start);
+                prolog_ranges.sort_unstable_by_key(|range| range.start);
+                code_ranges.sort_unstable_by_key(|range| range.start);
 
-                for (start, end) in prolog_ranges {
+                for Range { start, end } in prolog_ranges {
                     self.write_pdb_stackinfo(&string_table, &frame, start, end, end - start)?;
                 }
 
-                for (start, end) in code_ranges {
+                for Range { start, end } in code_ranges {
                     self.write_pdb_stackinfo(&string_table, &frame, start, end, 0)?;
                 }
             }
