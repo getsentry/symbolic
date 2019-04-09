@@ -355,6 +355,16 @@ impl<W: Write> AsciiCfiWriter<W> {
         let mut last_frame: Option<FrameData> = None;
 
         while let Some(frame) = frames.next().context(CfiErrorKind::BadDebugInfo)? {
+            // Frame data information sometimes contains code_size values close to the maximum `u32`
+            // value, such as `0xffffff6e`. Documentation does not describe the meaning of such
+            // values, but clearly they are not actual code sizes. Since these values also always
+            // occur with a `code_start` close to the end of a function's code range, it seems
+            // likely that these belong to the function epilog and code_size has a different meaning
+            // in this case. Until this value is understood, skip these entries.
+            if frame.code_size > i32::max_value() as u32 {
+                continue;
+            }
+
             // Only print a stack record if information has changed from the last list. It is
             // surprisingly common (especially in system library PDBs) for DIA to return a series of
             // identical IDiaFrameData objects. For kernel32.pdb from Windows XP SP2 on x86, this
