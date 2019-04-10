@@ -1,5 +1,5 @@
 ---
-created: "2019-04-01T16:21:26.077175Z"
+created: "2019-04-10T12:21:36.942698Z"
 creator: insta@0.7.4
 source: debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug(&functions[..10], 0)"
@@ -134,3 +134,4 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1727: exception_handler.cc:289 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
   0x1741: exception_handler.cc:291 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
   0x174c: exception_handler.cc:293 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
+
