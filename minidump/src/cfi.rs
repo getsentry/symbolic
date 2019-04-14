@@ -19,6 +19,7 @@
 
 use std::collections::HashMap;
 use std::io::{self, Write};
+use std::ops::Range;
 
 use failure::{Fail, ResultExt};
 
@@ -30,6 +31,9 @@ use symbolic_debuginfo::dwarf::gimli::{
     UnwindTable,
 };
 use symbolic_debuginfo::dwarf::Dwarf;
+use symbolic_debuginfo::pdb::pdb::{FallibleIterator, FrameData, Rva, StringTable};
+use symbolic_debuginfo::pdb::PdbObject;
+use symbolic_debuginfo::pe::{PeObject, UnwindOperation};
 use symbolic_debuginfo::Object;
 
 /// The latest version of the file format.
@@ -128,7 +132,8 @@ impl<W: Write> AsciiCfiWriter<W> {
             Object::Breakpad(o) => self.process_breakpad(o),
             Object::MachO(o) => self.process_dwarf(o.arch(), o),
             Object::Elf(o) => self.process_dwarf(o.arch(), o),
-            _ => Err(CfiErrorKind::UnsupportedDebugFormat.into()),
+            Object::Pdb(o) => self.process_pdb(o),
+            Object::Pe(o) => self.process_pe(o),
         }
     }
 
@@ -339,6 +344,210 @@ impl<W: Write> AsciiCfiWriter<W> {
         write!(self.inner, " {}: {}", register_name, formatted)
             .context(CfiErrorKind::WriteError)?;
         Ok(true)
+    }
+
+    fn process_pdb(&mut self, pdb: &PdbObject<'_>) -> Result<(), CfiError> {
+        let mut pdb = pdb.inner().write();
+        let frame_table = pdb.frame_table().context(CfiErrorKind::BadDebugInfo)?;
+        let string_table = pdb.string_table().context(CfiErrorKind::BadDebugInfo)?;
+        let address_map = pdb.address_map().context(CfiErrorKind::BadDebugInfo)?;
+        let mut frames = frame_table.iter();
+
+        let mut last_frame: Option<FrameData> = None;
+
+        while let Some(frame) = frames.next().context(CfiErrorKind::BadDebugInfo)? {
+            // Frame data information sometimes contains code_size values close to the maximum `u32`
+            // value, such as `0xffffff6e`. Documentation does not describe the meaning of such
+            // values, but clearly they are not actual code sizes. Since these values also always
+            // occur with a `code_start` close to the end of a function's code range, it seems
+            // likely that these belong to the function epilog and code_size has a different meaning
+            // in this case. Until this value is understood, skip these entries.
+            if frame.code_size > i32::max_value() as u32 {
+                continue;
+            }
+
+            // Only print a stack record if information has changed from the last list. It is
+            // surprisingly common (especially in system library PDBs) for DIA to return a series of
+            // identical IDiaFrameData objects. For kernel32.pdb from Windows XP SP2 on x86, this
+            // check reduces the size of the dumped symbol file by a third.
+            if let Some(ref last) = last_frame {
+                if frame.ty == last.ty
+                    && frame.code_start == last.code_start
+                    && frame.code_size == last.code_size
+                    && frame.prolog_size == last.prolog_size
+                {
+                    continue;
+                }
+            }
+
+            // Address ranges need to be translated to the RVA address space. The prolog and the
+            // code portions of the frame have to be treated independently as they may have
+            // independently changed in size, or may even have been split.
+            let prolog_size = u32::from(frame.prolog_size);
+            let prolog_end = frame.code_start + prolog_size;
+            let code_end = frame.code_start + frame.code_size;
+
+            let mut prolog_ranges = address_map
+                .rva_ranges(frame.code_start..prolog_end)
+                .collect::<Vec<_>>();
+
+            let mut code_ranges = address_map
+                .rva_ranges(prolog_end..code_end)
+                .collect::<Vec<_>>();
+
+            // Check if the prolog and code bytes remain contiguous and only output a single record.
+            // This is only done for compactness of the symbol file. Since the majority of PDBs
+            // other than the Kernel do not have translated address spaces, this will be true for
+            // most records.
+            let is_contiguous = prolog_ranges.len() == 1
+                && code_ranges.len() == 1
+                && prolog_ranges[0].end == code_ranges[0].start;
+
+            if is_contiguous {
+                self.write_pdb_stackinfo(
+                    &string_table,
+                    &frame,
+                    prolog_ranges[0].start,
+                    code_ranges[0].end,
+                    prolog_ranges[0].end - prolog_ranges[0].start,
+                )?;
+            } else {
+                // Output the prolog first, and then code frames in RVA order.
+                prolog_ranges.sort_unstable_by_key(|range| range.start);
+                code_ranges.sort_unstable_by_key(|range| range.start);
+
+                for Range { start, end } in prolog_ranges {
+                    self.write_pdb_stackinfo(&string_table, &frame, start, end, end - start)?;
+                }
+
+                for Range { start, end } in code_ranges {
+                    self.write_pdb_stackinfo(&string_table, &frame, start, end, 0)?;
+                }
+            }
+
+            last_frame = Some(frame);
+        }
+
+        Ok(())
+    }
+
+    fn write_pdb_stackinfo(
+        &mut self,
+        string_table: &StringTable<'_>,
+        frame: &FrameData,
+        start: Rva,
+        end: Rva,
+        prolog_size: u32,
+    ) -> Result<(), CfiError> {
+        let code_size = end - start;
+        let program_or_bp = frame.program.is_some() || frame.uses_base_pointer;
+
+        write!(
+            self.inner,
+            "STACK WIN {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {} ",
+            frame.ty as u8,
+            start.0,
+            code_size,
+            prolog_size,
+            0, // epilog_size
+            frame.params_size,
+            frame.saved_regs_size,
+            frame.locals_size,
+            frame.max_stack_size.unwrap_or(0),
+            if program_or_bp { 1 } else { 0 },
+        )
+        .context(CfiErrorKind::WriteError)?;
+
+        match frame.program {
+            Some(ref prog_ref) => {
+                let program_string = prog_ref
+                    .to_string_lossy(&string_table)
+                    .context(CfiErrorKind::BadDebugInfo)?;
+
+                writeln!(self.inner, "{}", program_string.trim())
+                    .context(CfiErrorKind::WriteError)?;
+            }
+            None => {
+                writeln!(self.inner, "{}", if program_or_bp { 1 } else { 0 })
+                    .context(CfiErrorKind::WriteError)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn process_pe(&mut self, pe: &PeObject<'_>) -> Result<(), CfiError> {
+        let sections = pe.sections();
+        let exception_data = match pe.exception_data() {
+            Some(data) => data,
+            None => return Ok(()),
+        };
+
+        for function_result in exception_data {
+            let function = function_result.context(CfiErrorKind::BadDebugInfo)?;
+            let mut next_function = Some(function);
+
+            // The minimal stack size is 8 for RIP
+            let mut stack_size = 8;
+            // Special handling for machine frames
+            let mut machine_frame_offset = 0;
+
+            while let Some(next) = next_function {
+                let unwind_info = exception_data
+                    .get_unwind_info(next, sections)
+                    .context(CfiErrorKind::BadDebugInfo)?;
+
+                for code_result in &unwind_info {
+                    let code = code_result.context(CfiErrorKind::BadDebugInfo)?;
+                    match code.operation {
+                        UnwindOperation::PushNonVolatile(_) => {
+                            stack_size += 8;
+                        }
+                        UnwindOperation::Alloc(size) => {
+                            stack_size += size;
+                        }
+                        UnwindOperation::PushMachineFrame(is_error) => {
+                            stack_size += if is_error { 48 } else { 40 };
+                            machine_frame_offset = stack_size;
+                        }
+                        _ => {
+                            // All other codes do not modify RSP
+                        }
+                    }
+                }
+
+                next_function = unwind_info.chained_info;
+            }
+
+            writeln!(
+                self.inner,
+                "STACK CFI INIT {:x} {:x} .cfa: $rsp 8 + .ra: .cfa 8 - ^",
+                function.begin_address,
+                function.end_address - function.begin_address,
+            )
+            .context(CfiErrorKind::WriteError)?;
+
+            if machine_frame_offset > 0 {
+                writeln!(
+                    self.inner,
+                    "STACK CFI {:x} .cfa: $rsp {} + $rsp: .cfa {} - ^ .ra: .cfa {} - ^",
+                    function.begin_address,
+                    stack_size,
+                    stack_size - machine_frame_offset + 24, // old RSP offset
+                    stack_size - machine_frame_offset + 48, // entire frame offset
+                )
+                .context(CfiErrorKind::WriteError)?
+            } else {
+                writeln!(
+                    self.inner,
+                    "STACK CFI {:x} .cfa: $rsp {} +",
+                    function.begin_address, stack_size,
+                )
+                .context(CfiErrorKind::WriteError)?
+            }
+        }
+
+        Ok(())
     }
 }
 

@@ -1,0 +1,597 @@
+MODULE windows x86_64 F535C5FB2AE84BB8AA206C30BE566C5A1 CrashWithException.pdb
+INFO CODE_ID 5C9E09599000 CrashWithException.exe
+FILE 1 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\system_error
+FILE 2 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\xstring
+FILE 3 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\xmemory0
+FILE 4 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\xlocinfo
+FILE 5 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\xcall_once.h
+FILE 6 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\ctype.h
+FILE 7 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\sys\stat.h
+FILE 8 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\stdexcept
+FILE 9 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\exception
+FILE 10 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\type_traits
+FILE 11 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\xstddef
+FILE 12 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\vcruntime_new.h
+FILE 13 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\xatomic0.h
+FILE 14 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\xtgmath.h
+FILE 15 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\vcruntime_exception.h
+FILE 16 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\wchar.h
+FILE 17 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\corecrt_wconio.h
+FILE 18 c:\users\sentry\source\repos\crashwithexception\crashwithexception\pch.h
+FILE 19 c:\users\sentry\source\repos\crashwithexception\crashwithexception\crashwithexception.cpp
+FILE 20 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\istream
+FILE 21 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\ostream
+FILE 22 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\ios
+FILE 23 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\xlocnum
+FILE 24 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\limits
+FILE 25 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\corecrt_wstring.h
+FILE 26 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\corecrt_wtime.h
+FILE 27 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\xfacet
+FILE 28 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\streambuf
+FILE 29 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\xiosbase
+FILE 30 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\xlocale
+FILE 31 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\cmath
+FILE 32 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\string.h
+FILE 33 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\cstdlib
+FILE 34 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\corecrt_memory.h
+FILE 35 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\stdlib.h
+FILE 36 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\corecrt_memcpy_s.h
+FILE 37 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\corecrt_math.h
+FILE 38 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\corecrt_wio.h
+FILE 39 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\vcruntime_typeinfo.h
+FILE 40 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\malloc.h
+FILE 41 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\xutility
+FILE 42 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\utility
+FILE 43 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\iosfwd
+FILE 44 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.15.26726\include\memory
+FILE 45 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\stdio.h
+FILE 46 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\corecrt_wstdio.h
+FILE 47 c:\program files (x86)\windows kits\10\include\10.0.17134.0\ucrt\corecrt_stdio_config.h
+FILE 48 c:\users\sentry\source\repos\crashwithexception\crashwithexception\x64\release\crashwithexception.pch
+FILE 50 C:\Users\sentry\AppData\Local\Temp\lnk{DAE8479E-9D83-4BE8-9601-C29456D85E22}.tmp
+FILE 51 f:\dd\externalapis\windows\10\sdk\inc\processthreadsapi.h
+FILE 52 f:\dd\externalapis\unifiedcrt\inc\corecrt_wstring.h
+FILE 53 f:\dd\externalapis\unifiedcrt\inc\malloc.h
+FILE 54 f:\dd\vctools\crt\vcruntime\inc\vcruntime_internal.h
+FILE 55 f:\dd\vctools\crt\vcstartup\src\misc\amd64\cpu_disp.c
+FILE 56 f:\dd\externalapis\windows\10\sdk\inc\evntprov.h
+FILE 57 f:\dd\externalapis\windows\10\sdk\inc\basetsd.h
+FILE 58 f:\dd\externalapis\unifiedcrt\inc\string.h
+FILE 59 f:\dd\externalapis\unifiedcrt\inc\corecrt_memcpy_s.h
+FILE 60 f:\dd\externalapis\windows\10\sdk\inc\stralign.h
+FILE 61 f:\dd\vctools\crt\vcruntime\inc\internal_shared.h
+FILE 62 f:\dd\externalapis\windows\10\sdk\inc\winbase.h
+FILE 63 f:\dd\externalapis\windows\10\sdk\inc\winerror.h
+FILE 64 f:\dd\externalapis\windows\10\sdk\inc\winnt.h
+FILE 65 f:\dd\externalapis\unifiedcrt\inc\ctype.h
+FILE 69 f:\dd\externalapis\unifiedcrt\inc\corecrt_memory.h
+FILE 71 f:\dd\externalapis\windows\10\sdk\inc\winuser.h
+FILE 72 f:\dd\vctools\crt\vcstartup\src\rtc\initsect.cpp
+FILE 74 f:\dd\externalapis\unifiedcrt\inc\stdlib.h
+FILE 76 f:\dd\vctools\crt\vcruntime\inc\vcruntime_new.h
+FILE 85 f:\dd\externalapis\windows\10\sdk\inc\guiddef.h
+FILE 86 f:\dd\vctools\crt\vcstartup\src\gs\amd64\amdsecgs.asm
+FILE 87 f:\dd\ExternalAPIs\Windows\10\sdk\inc\ksamd64.inc
+FILE 88 f:\dd\ExternalAPIs\Windows\10\sdk\inc\kxamd64.inc
+FILE 89 f:\dd\ExternalAPIs\Windows\10\sdk\inc\macamd64.inc
+FILE 90 f:\dd\vctools\crt\vcstartup\src\misc\amd64\guard_dispatch.asm
+FILE 108 f:\dd\vctools\crt\vcstartup\src\gs\gs_report.c
+FILE 121 f:\dd\vctools\crt\vcstartup\src\gs\gs_support.c
+FILE 132 f:\dd\vctools\crt\vcstartup\src\misc\guard_support.c
+FILE 153 f:\dd\vctools\crt\vcstartup\src\utility\dyn_tls_dtor.c
+FILE 157 f:\dd\externalapis\unifiedcrt\inc\math.h
+FILE 165 f:\dd\vctools\crt\vcstartup\src\utility\dyn_tls_init.c
+FILE 174 f:\dd\vctools\crt\vcstartup\src\utility\matherr_detection.c
+FILE 175 f:\dd\vctools\crt\vcstartup\src\utility\ucrt_detection.c
+FILE 176 f:\dd\vctools\crt\vcstartup\src\defaults\argv_mode.cpp
+FILE 177 f:\dd\vctools\crt\vcstartup\src\defaults\commit_mode.cpp
+FILE 183 f:\dd\vctools\crt\vcstartup\src\defaults\default_local_stdio_options.cpp
+FILE 185 f:\dd\vctools\crt\vcstartup\inc\vcstartup_internal.h
+FILE 198 f:\dd\externalapis\unifiedcrt\inc\stdio.h
+FILE 199 f:\dd\externalapis\unifiedcrt\inc\corecrt_wstdio.h
+FILE 200 f:\dd\externalapis\unifiedcrt\inc\corecrt_stdio_config.h
+FILE 201 f:\dd\vctools\crt\vcstartup\src\defaults\denormal_control.cpp
+FILE 202 f:\dd\vctools\crt\vcstartup\src\defaults\env_mode.cpp
+FILE 203 f:\dd\vctools\crt\vcstartup\src\defaults\file_mode.cpp
+FILE 204 f:\dd\vctools\crt\vcstartup\src\defaults\invalid_parameter_handler.cpp
+FILE 205 f:\dd\vctools\crt\vcstartup\src\defaults\matherr.cpp
+FILE 207 f:\dd\vctools\crt\vcstartup\src\defaults\new_mode.cpp
+FILE 208 f:\dd\vctools\crt\vcstartup\src\defaults\thread_locale.cpp
+FILE 209 f:\dd\vctools\crt\vcstartup\src\eh\std_type_info_static.cpp
+FILE 210 f:\dd\vctools\crt\vcruntime\inc\vcruntime_typeinfo.h
+FILE 211 f:\dd\vctools\crt\vcruntime\inc\vcruntime_exception.h
+FILE 218 f:\dd\vctools\crt\vcstartup\src\eh\tncleanup.cpp
+FILE 241 f:\dd\vctools\crt\vcstartup\src\heap\delete_scalar.cpp
+FILE 260 f:\dd\vctools\crt\vcstartup\src\heap\delete_scalar_size.cpp
+FILE 279 f:\dd\vctools\crt\vcstartup\src\heap\new_scalar.cpp
+FILE 299 f:\dd\vctools\crt\vcstartup\src\heap\throw_bad_alloc.cpp
+FILE 321 f:\dd\vctools\crt\vcstartup\src\startup\exe_main.cpp
+FILE 323 f:\dd\vctools\crt\vcstartup\src\startup\exe_common.inl
+FILE 367 f:\dd\vctools\crt\vcstartup\src\utility\utility.cpp
+FILE 382 f:\dd\vctools\crt\vcstartup\src\utility\ucrt_stubs.cpp
+FILE 388 f:\dd\vctools\crt\vcstartup\src\utility\utility_desktop.cpp
+FUNC 1000 8 0 _local_stdio_printf_options
+1000 0 85 47
+1000 7 87 47
+1007 1 88 47
+FUNC 1010 55 0 printf
+1010 1e 954 45
+102e 5 957 45
+1033 2a 958 45
+105d 8 961 45
+FUNC 1070 18 0 std::exception::exception()
+1070 14 50 15
+1084 4 51 15
+FUNC 1090 13 0 std::exception::what()
+1090 0 90 15
+1090 12 91 15
+10a2 1 92 15
+FUNC 10b0 43 0 std::exception::`scalar deleting destructor'(unsigned int)
+FUNC 1100 c 0 X::foo()
+1100 0 9 19
+1100 c 10 19
+FUNC 1110 c 0 X::~X()
+1110 0 12 19
+1110 c 13 19
+FUNC 1120 2d 0 crashing_function()
+1120 4 17 19
+1124 29 18 19
+FUNC 1150 18 0 test()
+1150 d 22 19
+115d 5 24 19
+1162 6 25 19
+FUNC 1170 a 0 main
+1170 4 29 19
+1174 6 30 19
+FUNC 1190 21 0 _security_check_cookie
+FUNC 11b4 5 0 operator delete(void *,unsigned __int64)
+11b4 0 30 260
+11b4 5 31 260
+FUNC 11bc 3c 0 operator new(unsigned __int64)
+11bc 9 32 279
+11c5 2 35 279
+11c7 c 40 279
+11d3 d 35 279
+11e0 6 54 279
+11e6 6 42 279
+11ec 6 48 279
+11f2 6 44 279
+FUNC 11f8 2b 0 type_info::`scalar deleting destructor'(unsigned int)
+FUNC 1224 b7 0 static int pre_c_initialization()
+1224 6 147 323
+122a a 148 323
+1234 c 150 323
+1240 d 151 323
+124d 5 153 323
+1252 2 151 323
+1254 9 153 323
+125d 5 163 323
+1262 c 164 323
+126e 10 167 323
+127e 5 170 323
+1283 9 176 323
+128c c 178 323
+1298 5 182 323
+129d 5 183 323
+12a2 c 189 323
+12ae 9 191 323
+12b7 5 192 323
+12bc 5 194 323
+12c1 9 196 323
+12ca 6 202 323
+12d0 b 198 323
+FUNC 12dc 10 0 static int post_pgo_initialization()
+12dc 4 205 323
+12e0 5 210 323
+12e5 2 212 323
+12e7 5 213 323
+FUNC 12ec 19 0 static void pre_cpp_initialization()
+12ec 4 216 323
+12f0 5 220 323
+12f5 7 222 323
+12fc 4 223 323
+1300 5 222 323
+FUNC 1308 17c 0 static int __scrt_common_main_seh()
+1308 f 236 323
+1317 12 237 323
+1329 8 240 323
+1331 7 243 323
+1338 f 245 323
+1347 4 249 323
+134b a 251 323
+1355 17 253 323
+136c a 254 323
+1376 13 256 323
+1389 a 258 323
+1393 2 260 323
+1395 8 262 323
+139d 7 265 323
+13a4 8 270 323
+13ac 12 271 323
+13be 12 273 323
+13d0 8 278 323
+13d8 12 279 323
+13ea 8 281 323
+13f2 24 288 323
+1416 9 294 323
+141f 5 297 323
+1424 5 298 323
+1429 9 301 323
+1432 4 302 323
+1436 2 304 323
+1438 9 309 323
+1441 7 312 323
+1448 5 313 323
+144d 2 315 323
+144f 10 317 323
+145f b 238 323
+146a a 247 323
+1474 8 295 323
+147c 8 310 323
+FUNC 1484 12 0 mainCRTStartup
+1484 4 15 321
+1488 5 16 321
+148d 4 17 321
+1491 5 16 321
+FUNC 1498 34 0 _raise_securityfailure
+1498 9 140 108
+14a1 8 146 108
+14a9 9 147 108
+14b2 e 160 108
+14c0 5 161 108
+14c5 7 160 108
+FUNC 14cc d1 0 _report_gsfailure
+14cc 9 217 108
+14d5 e 218 108
+14e3 7 220 108
+14ea c 278 108
+14f6 c 279 108
+1502 10 280 108
+1512 e 281 108
+1520 c 282 108
+152c a 286 108
+1536 a 287 108
+1540 a 288 108
+154a 18 289 108
+1562 15 293 108
+1577 15 294 108
+158c c 298 108
+1598 5 299 108
+FUNC 15a0 71 0 static void capture_previous_context(struct _CONTEXT *)
+15a0 b 88 108
+15ab 6 96 108
+15b1 7 98 108
+15b8 2 101 108
+15ba 11 103 108
+15cb 5 105 108
+15d0 39 107 108
+1609 8 122 108
+FUNC 1614 5 0 operator delete(void *)
+1614 0 32 241
+1614 5 36 241
+FUNC 161c 3f 0 std::bad_alloc::bad_alloc(std::bad_alloc const &)
+FUNC 165c 1e 0 std::bad_alloc::bad_alloc()
+165c 0 117 211
+165c 10 116 211
+166c a 117 211
+1676 4 118 211
+FUNC 167c 3f 0 std::bad_array_new_length::bad_array_new_length(std::bad_array_new_length const &)
+FUNC 16bc 1e 0 std::bad_array_new_length::bad_array_new_length()
+16bc 0 137 211
+16bc 10 136 211
+16cc a 137 211
+16d6 4 138 211
+FUNC 16dc 35 0 std::exception::exception(std::exception const &)
+16dc 23 68 211
+16ff 9 69 211
+1708 9 70 211
+FUNC m 1714 13 0 std::bad_alloc::~bad_alloc()
+FUNC m 1728 42 0 std::bad_alloc::`scalar deleting destructor'(unsigned int)
+FUNC 176c 20 0 __scrt_throw_std_bad_alloc()
+176c 4 34 299
+1770 1c 35 299
+FUNC 178c 20 0 __scrt_throw_std_bad_array_new_length()
+178c 4 39 299
+1790 1c 40 299
+FUNC 17ac 39 0 _scrt_acquire_startup_lock
+17ac 4 139 367
+17b0 9 140 367
+17b9 d 146 367
+17c6 2 148 367
+17c8 5 150 367
+17cd d 148 367
+17da 2 156 367
+17dc 5 157 367
+17e1 4 152 367
+FUNC 17e8 49 0 _scrt_initialize_crt
+17e8 6 185 367
+17ee 17 186 367
+1805 5 191 367
+180a 9 194 367
+1813 4 206 367
+1817 9 199 367
+1820 7 201 367
+1827 2 202 367
+1829 2 205 367
+182b 6 206 367
+FUNC 1834 d8 0 _scrt_initialize_onexit_tables
+1834 6 296 367
+183a f 297 367
+1849 9 302 367
+1852 d 307 367
+185f 10 310 367
+186f 10 315 367
+187f 4 317 367
+1883 1d 325 367
+18a0 21 327 367
+18c1 31 328 367
+18f2 7 331 367
+18f9 8 333 367
+1901 b 304 367
+FUNC 190c 99 0 _scrt_is_nonwritable_in_current_image
+190c 7 88 367
+1913 33 99 367
+1946 3 107 367
+1949 3a 108 367
+1983 5 109 367
+1988 4 111 367
+198c 6 116 367
+1992 4 118 367
+1996 4 121 367
+199a 4 101 367
+199e 2 127 367
+19a0 5 129 367
+FUNC 19a8 24 0 _scrt_release_startup_lock
+19a8 8 160 367
+19b0 b 161 367
+19bb 4 167 367
+19bf 7 172 367
+19c6 6 173 367
+FUNC 19cc 2b 0 _scrt_uninitialize_crt
+19cc 6 209 367
+19d2 f 214 367
+19e1 7 220 367
+19e8 7 221 367
+19ef 8 224 367
+FUNC 19f8 4f 0 onexit
+19f8 6 256 367
+19fe 7 257 367
+1a05 3 256 367
+1a08 f 257 367
+1a17 6 259 367
+1a1d a 261 367
+1a27 f 267 367
+1a36 11 271 367
+FUNC 1a48 17 0 atexit
+1a48 4 274 367
+1a4c e 275 367
+1a5a 5 278 367
+FUNC 1a60 ac 0 _security_init_cookie
+1a60 d 158 121
+1a6d 16 169 121
+1a83 5c 184 121
+1adf 11 191 121
+1af0 7 202 121
+1af7 15 205 121
+FUNC m 1b0c 3 0 _scrt_initialize_winrt
+1b0c 0 21 205
+1b0c 2 22 205
+1b0e 1 23 205
+FUNC 1b10 6 0 get_startup_argv_mode
+1b10 0 14 176
+1b10 5 15 176
+1b15 1 16 176
+FUNC 1b18 6 0 get_startup_file_mode
+1b18 0 15 203
+1b18 5 16 203
+1b1d 1 17 203
+FUNC 1b20 e 0 __scrt_initialize_type_info()
+1b20 0 16 218
+1b20 e 17 218
+FUNC m 1b30 3 0 _scrt_stub_for_acrt_initialize
+1b30 0 14 202
+1b30 2 15 202
+1b32 1 16 202
+FUNC m 1b34 3 0 guard_check_icall_nop
+1b34 0 15 204
+1b34 3 17 204
+FUNC 1b38 8 0 _local_stdio_scanf_options
+1b38 0 91 200
+1b38 7 93 200
+1b3f 1 94 200
+FUNC 1b40 1b 0 _scrt_initialize_default_local_stdio_options
+1b40 4 17 183
+1b44 9 18 183
+1b4d 9 19 183
+1b56 5 20 183
+FUNC 1b5c c 0 _scrt_is_user_matherr_present
+1b5c 0 22 174
+1b5c b 23 174
+1b67 1 24 174
+FUNC 1b68 8 0 _scrt_get_dyn_tls_init_callback
+1b68 0 19 165
+1b68 7 20 165
+1b6f 1 21 165
+FUNC 1b70 8 0 _scrt_get_dyn_tls_dtor_callback
+1b70 0 20 153
+1b70 7 21 153
+1b77 1 22 153
+FUNC 1b78 8 0 _crt_debugger_hook
+1b78 0 126 388
+1b78 7 131 388
+1b7f 1 132 388
+FUNC 1b80 14a 0 _scrt_fastfail
+1b80 17 147 388
+1b97 e 150 388
+1ba5 4 151 388
+1ba9 a 158 388
+1bb3 11 160 388
+1bc4 a 189 388
+1bce 7 191 388
+1bd5 13 194 388
+1be8 5 196 388
+1bed 3c 200 388
+1c29 7 211 388
+1c30 2b 216 388
+1c5b 1c 219 388
+1c77 9 221 388
+1c80 16 224 388
+1c96 8 226 388
+1c9e b 227 388
+1ca9 8 231 388
+1cb1 8 232 388
+1cb9 11 233 388
+FUNC 1ccc 5 0 _scrt_initialize_mta
+1ccc 0 82 388
+1ccc 5 83 388
+FUNC 1cd4 52 0 _scrt_is_managed_app
+1cd4 4 32 388
+1cd8 8 33 388
+1ce0 5 34 388
+1ce5 a 37 388
+1cef 7 41 388
+1cf6 8 43 388
+1cfe b 46 388
+1d09 9 53 388
+1d12 9 58 388
+1d1b 4 61 388
+1d1f 2 59 388
+1d21 5 62 388
+FUNC 1d28 e 0 _scrt_set_unhandled_exception_filter
+1d28 0 98 388
+1d28 e 99 388
+FUNC 1d38 38 0 _scrt_unhandled_exception_filter
+1d38 4 87 388
+1d3c 3 88 388
+1d3f 24 89 388
+1d63 2 94 388
+1d65 5 95 388
+1d6a 6 91 388
+FUNC 1d70 3c 0 RTC_Initialize
+FUNC 1dac 3c 0 RTC_Terminate
+FUNC 1de8 1b9 0 _isa_available_init
+FUNC 1fa4 c 0 _scrt_is_ucrt_dll_in_use
+1fa4 0 22 175
+1fa4 b 23 175
+1faf 1 24 175
+PUBLIC 1fb0 0 _CxxFrameHandler3
+PUBLIC 1fb6 0 _std_exception_destroy
+PUBLIC 1fbc 0 _C_specific_handler
+PUBLIC 1fc2 0 _std_exception_copy
+PUBLIC 1fc8 0 CxxThrowException
+PUBLIC 1fce 0 memset
+PUBLIC 1fd4 0 callnewh
+PUBLIC 1fda 0 malloc
+PUBLIC 1fe0 0 seh_filter_exe
+PUBLIC 1fe6 0 set_app_type
+PUBLIC 1fec 0 _setusermatherr
+PUBLIC 1ff2 0 configure_narrow_argv
+PUBLIC 1ff8 0 initialize_narrow_environment
+PUBLIC 1ffe 0 get_initial_narrow_environment
+PUBLIC 2004 0 initterm
+PUBLIC 200a 0 initterm_e
+PUBLIC 2010 0 exit
+PUBLIC 2016 0 exit
+PUBLIC 201c 0 set_fmode
+PUBLIC 2022 0 _p___argc
+PUBLIC 2028 0 _p___argv
+PUBLIC 202e 0 cexit
+PUBLIC 2034 0 c_exit
+PUBLIC 203a 0 register_thread_local_exe_atexit_callback
+PUBLIC 2040 0 configthreadlocale
+PUBLIC 2046 0 set_new_mode
+PUBLIC 204c 0 _p__commode
+PUBLIC 2052 0 free
+PUBLIC 2058 0 initialize_onexit_table
+PUBLIC 205e 0 register_onexit_function
+PUBLIC 2064 0 crt_atexit
+PUBLIC 206a 0 terminate
+PUBLIC 2070 0 IsProcessorFeaturePresent
+FUNC 2090 2 0 guard_dispatch_icall_nop
+FUNC 20a0 c 0 static  `test'::`1'::dtor$0()
+FUNC 20ac 1e 0 static  `__scrt_common_main_seh'::`1'::filt$0()
+20ac 1e 304 323
+FUNC 20ca 18 0 static  __scrt_is_nonwritable_in_current_image$filt$0()
+20ca 18 123 367
+STACK CFI INIT 1010 55 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1010 .cfa: $rsp 80 +
+STACK CFI INIT 10b0 43 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 10b0 .cfa: $rsp 48 +
+STACK CFI INIT 1120 2d .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1120 .cfa: $rsp 48 +
+STACK CFI INIT 1150 18 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1150 .cfa: $rsp 64 +
+STACK CFI INIT 1170 a .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1170 .cfa: $rsp 48 +
+STACK CFI INIT 1190 21 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1190 .cfa: $rsp 8 +
+STACK CFI INIT 11bc 3c .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 11bc .cfa: $rsp 48 +
+STACK CFI INIT 11f8 2b .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 11f8 .cfa: $rsp 48 +
+STACK CFI INIT 1224 b7 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1224 .cfa: $rsp 48 +
+STACK CFI INIT 12dc 10 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 12dc .cfa: $rsp 48 +
+STACK CFI INIT 12ec 19 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 12ec .cfa: $rsp 48 +
+STACK CFI INIT 1308 17c .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1308 .cfa: $rsp 64 +
+STACK CFI INIT 1484 12 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1484 .cfa: $rsp 48 +
+STACK CFI INIT 1498 34 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1498 .cfa: $rsp 48 +
+STACK CFI INIT 14cc d1 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 14cc .cfa: $rsp 64 +
+STACK CFI INIT 15a0 71 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 15a0 .cfa: $rsp 96 +
+STACK CFI INIT 161c 3f .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 161c .cfa: $rsp 48 +
+STACK CFI INIT 167c 3f .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 167c .cfa: $rsp 48 +
+STACK CFI INIT 16dc 35 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 16dc .cfa: $rsp 48 +
+STACK CFI INIT 1728 42 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1728 .cfa: $rsp 48 +
+STACK CFI INIT 176c 20 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 176c .cfa: $rsp 80 +
+STACK CFI INIT 178c 20 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 178c .cfa: $rsp 80 +
+STACK CFI INIT 17ac 39 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 17ac .cfa: $rsp 48 +
+STACK CFI INIT 17e8 49 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 17e8 .cfa: $rsp 48 +
+STACK CFI INIT 1834 d8 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1834 .cfa: $rsp 80 +
+STACK CFI INIT 190c 99 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 190c .cfa: $rsp 32 +
+STACK CFI INIT 19a8 24 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 19a8 .cfa: $rsp 48 +
+STACK CFI INIT 19cc 2b .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 19cc .cfa: $rsp 48 +
+STACK CFI INIT 19f8 4f .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 19f8 .cfa: $rsp 48 +
+STACK CFI INIT 1a48 17 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1a48 .cfa: $rsp 48 +
+STACK CFI INIT 1a60 ac .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1a60 .cfa: $rsp 48 +
+STACK CFI INIT 1b40 1b .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1b40 .cfa: $rsp 48 +
+STACK CFI INIT 1b80 14a .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1b80 .cfa: $rsp 1488 +
+STACK CFI INIT 1cd4 52 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1cd4 .cfa: $rsp 48 +
+STACK CFI INIT 1d38 38 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1d38 .cfa: $rsp 48 +
+STACK CFI INIT 1d70 3c .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1d70 .cfa: $rsp 48 +
+STACK CFI INIT 1dac 3c .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1dac .cfa: $rsp 48 +
+STACK CFI INIT 1de8 1b9 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 1de8 .cfa: $rsp 48 +
+STACK CFI INIT 2090 2 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 2090 .cfa: $rsp 8 +
+STACK CFI INIT 20ac 1e .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 20ac .cfa: $rsp 48 +
+STACK CFI INIT 20ca 18 .cfa: $rsp .ra: .cfa 8 - ^
+STACK CFI 20ca .cfa: $rsp 16 +

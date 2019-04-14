@@ -64,7 +64,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
         if matches.is_present("write_cache_file") {
             let filename = matches
                 .value_of("symcache_file_path")
-                .map(|x| x.to_string())
+                .map(str::to_owned)
                 .unwrap_or_else(|| format!("{}.symcache", file_path));
             File::create(&filename)?.write_all(&buffer)?;
             println!("Cache file written to {}", filename);

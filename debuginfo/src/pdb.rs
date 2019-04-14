@@ -12,7 +12,8 @@ use parking_lot::RwLock;
 use pdb::{AddressMap, MachineType, Module, ModuleInfo, SymbolData};
 
 use symbolic_common::{
-    derive_failure, split_path_bytes, Arch, AsSelf, CodeId, DebugId, Name, SelfCell, Uuid,
+    derive_failure, split_path_bytes, Arch, AsSelf, CodeId, CpuFamily, DebugId, Name, SelfCell,
+    Uuid,
 };
 
 use crate::base::*;
@@ -21,6 +22,10 @@ use crate::private::{HexFmt, Parse};
 type Pdb<'d> = pdb::PDB<'d, Cursor<&'d [u8]>>;
 
 const MAGIC_BIG: &[u8] = b"Microsoft C/C++ MSF 7.00\r\n\x1a\x44\x53\x00\x00\x00";
+
+// Used for CFI, remove once abstraction is complete
+#[doc(hidden)]
+pub use pdb;
 
 /// Variants of [`PdbError`](struct.PdbError.html).
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
@@ -173,12 +178,21 @@ impl<'d> PdbObject<'d> {
 
     /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
-        false // TODO(ja): Implement
+        // The PDB crate currently loads quite a lot of information from the PDB when accessing the
+        // frame table. However, we expect unwind info in every PDB for 32-bit builds, so we can
+        // just assume it's there if the architecture matches.
+        // TODO: Implement a better way by exposing the extra streams in the PDB crate.
+        self.arch().cpu_family() == CpuFamily::Intel32
     }
 
     /// Returns the raw data of the ELF file.
     pub fn data(&self) -> &'d [u8] {
         self.data
+    }
+
+    #[doc(hidden)]
+    pub fn inner(&self) -> &RwLock<Pdb<'d>> {
+        &self.pdb
     }
 }
 

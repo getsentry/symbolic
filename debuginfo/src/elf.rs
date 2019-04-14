@@ -166,7 +166,7 @@ impl<'d> ElfObject<'d> {
 
     /// Determines whether this object exposes a public symbol table.
     pub fn has_symbols(&self) -> bool {
-        self.elf.syms.len() > 0
+        !self.elf.syms.is_empty()
     }
 
     /// Returns an iterator over symbols in the public symbol table.
@@ -227,7 +227,7 @@ impl<'d> ElfObject<'d> {
             return None;
         }
 
-        let compressed = &section_data[CompressionHeader::size(&context)..];
+        let compressed = &section_data[CompressionHeader::size(context)..];
         let mut decompressed = Vec::with_capacity(compression.ch_size as usize);
         Decompress::new(true)
             .decompress_vec(compressed, &mut decompressed, FlushDecompress::Finish)
