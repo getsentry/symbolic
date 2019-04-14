@@ -731,7 +731,7 @@ impl<'a> ProcessState<'a> {
         buffer: &ByteView<'a>,
         frame_infos: Option<&FrameInfoMap<'_>>,
     ) -> Result<ProcessState<'a>, ProcessMinidumpError> {
-        let cfi_count = frame_infos.map_or(0, |s| s.len());
+        let cfi_count = frame_infos.map_or(0, BTreeMap::len);
         let mut result: ProcessResult = ProcessResult::Ok;
 
         // Keep a reference to all CStrings to extend their lifetime.

@@ -915,7 +915,11 @@ impl<'d> DwarfInfo<'d> {
         &self,
         offset: DebugInfoOffset,
     ) -> Result<(UnitRef<'d, '_>, UnitOffset), DwarfError> {
-        let index = match self.headers.binary_search_by_key(&offset, |h| h.offset()) {
+        let search_result = self
+            .headers
+            .binary_search_by_key(&offset, CompilationUnitHeader::offset);
+
+        let index = match search_result {
             Ok(index) => index,
             Err(0) => return Err(DwarfErrorKind::InvalidUnitRef(offset.0).into()),
             Err(next_index) => next_index - 1,

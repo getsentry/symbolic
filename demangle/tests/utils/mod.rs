@@ -22,7 +22,7 @@ macro_rules! assert_demangle {
 
             let __mangled = $m;
             let __demangled = ::symbolic_common::Name::with_language(__mangled, $l).demangle($o);
-            let __demangled = __demangled.as_ref().map(|s| s.as_str()).unwrap_or("<demangling failed>");
+            let __demangled = __demangled.as_ref().map(String::as_str).unwrap_or("<demangling failed>");
 
             if __demangled != $d {
                 __failures.push(format!(

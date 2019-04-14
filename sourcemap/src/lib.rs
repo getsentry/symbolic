@@ -174,7 +174,7 @@ impl SourceMapView {
             rv.function_name = source
                 .sv
                 .get_original_function_name(token, minified_name)
-                .map(|x| x.to_string());
+                .map(str::to_owned);
             rv
         })
     }

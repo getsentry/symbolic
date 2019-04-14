@@ -82,7 +82,7 @@ impl<'a> SymCache<'a> {
         // Functions in the function segment are ordered by start address
         // primarily and by depth secondarily.  As a result we want to have
         // a secondary comparison by the item index.
-        let mut func_id = match funcs.binary_search_by_key(&addr, |x| x.addr_start()) {
+        let mut func_id = match funcs.binary_search_by_key(&addr, format::FuncRecord::addr_start) {
             Ok(idx) => idx,
             Err(0) => return Ok(Lookup::empty(self)),
             Err(next_idx) => next_idx - 1,

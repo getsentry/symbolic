@@ -896,7 +896,7 @@ impl<'d> BreakpadObject<'d> {
     /// Returns a map for file name lookups by id.
     pub fn file_map(&self) -> BreakpadFileMap<'d> {
         self.file_records()
-            .filter_map(|result| result.ok())
+            .filter_map(Result::ok)
             .map(|file| (file.id, file.name))
             .collect()
     }

@@ -31,7 +31,7 @@ where
 
     let mut collected = BTreeMap::new();
     let mut final_ids = HashSet::new();
-    for entry in WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(path).into_iter().filter_map(Result::ok) {
         // Folders will be recursed into automatically
         if !entry.metadata()?.is_file() {
             continue;
