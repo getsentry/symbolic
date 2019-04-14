@@ -12,15 +12,16 @@ bundled together into a C and Python library so it can be used independently of 
 
 ## What's in the package
 
-Currently it provides the following functionality:
+Symbolic provides the following functionality:
 
 - Symbolication based on custom cache files (symcache)
 - Symbol cache file generators from:
-  - Mach and ELF symbol tables
+  - Mach, ELF and PE symbol tables
   - Mach and ELF embedded DWARF data
-  - Breakpad Symbol files
+  - PDB CodeView debug information
+  - Breakpad symbol files
 - Demangling support
-  - C++
+  - C++ (GCC, clang and MSVC)
   - Objective C / Objective C++
   - Rust
   - Swift
@@ -30,14 +31,12 @@ Currently it provides the following functionality:
   - Indexed sourcemap to sourcemap merging
 - Proguard function mappings
 - Minidump / Breakpad processing
-  - Generate Breakpad symbol files from Mach and ELF
-  - Process Minidumps to resolve process state
+  - Generate Breakpad symbol files from Mach, ELF and PDBs
+  - Process Minidumps to retrieve stack traces
 - Convenient C and Python library
 - Processing of Unreal Engine 4 native crash reports
   - Extract and process minidumps
   - Expose logs and UE4 context information
-
-Symbolic comes as a python
 
 ## Rust Usage
 
