@@ -1,8 +1,17 @@
 # Changelog
 
+## 6.1.0
+
+- Support PDB file and line information.
+- Support stack unwind info in PDB files (32-bit).
+- Support stack unwind info in PE files (64-bit).
+- Fix breakpad CFI generation for functions pushing machine frames.
+
 ## 6.0.6
 
-- Added size attribute to streams returned from minidump/unreal.
+- Add `normalize_code_id` in the Python package and C layer.
+- Add `ByteView::map_file` to create a memory map directly from a file handle.
+- Add size attribute to streams returned from Minidumps / UE4 crash reports.
 
 ## 6.0.5
 
