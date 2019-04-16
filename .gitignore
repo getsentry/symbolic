@@ -1,3 +1,4 @@
+# Rust
 target/
 **/*.rs.bk
 # Only ignore the library's lockfile, not for the CABI
@@ -9,3 +10,6 @@ __pycache__/
 .last-run
 .venv
 .pytest_cache
+
+# C++
+.vscode/ipch
