@@ -1,5 +1,7 @@
 //! Generic wrappers over various object file formats.
 
+use std::borrow::Cow;
+
 use failure::Fail;
 use goblin::Hint;
 
@@ -187,6 +189,13 @@ impl<'d> Object<'d> {
         match_inner!(self, Object(ref o) => o.debug_id())
     }
 
+    /// The filename of the debug companion file.
+    ///
+    /// For PE files for instane this will be the name of the PDB file that goes with it.
+    pub fn debug_file_name(&self) -> Option<Cow<'_, str>> {
+        match_inner!(self, Object(ref o) => o.debug_file_name())
+    }
+
     /// The CPU architecture of this object.
     pub fn arch(&self) -> Arch {
         match_inner!(self, Object(ref o) => o.arch())
@@ -293,6 +302,10 @@ impl<'d> ObjectLike for Object<'d> {
 
     fn debug_id(&self) -> DebugId {
         self.debug_id()
+    }
+
+    fn debug_file_name(&self) -> Option<Cow<'_, str>> {
+        self.debug_file_name()
     }
 
     fn arch(&self) -> Arch {

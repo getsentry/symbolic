@@ -545,6 +545,11 @@ pub trait ObjectLike {
     /// The debug information identifier of this object.
     fn debug_id(&self) -> DebugId;
 
+    /// The filename of the debug companion file.
+    fn debug_file_name(&self) -> Option<Cow<'_, str>> {
+        None
+    }
+
     /// The CPU architecture of this object.
     fn arch(&self) -> Arch;
 
