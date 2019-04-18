@@ -104,6 +104,17 @@ impl<'d> PeObject<'d> {
             .unwrap_or_default()
     }
 
+    /// The name of the referenced PDB file.
+    pub fn debug_file_name(&self) -> Option<Cow<'_, str>> {
+        self.pe
+            .debug_data
+            .as_ref()
+            .and_then(|debug_data| debug_data.codeview_pdb70_debug_info.as_ref())
+            .map(|debug_info| {
+                String::from_utf8_lossy(&debug_info.filename[..debug_info.filename.len() - 1])
+            })
+    }
+
     /// The CPU architecture of this object, as specified in the COFF header.
     pub fn arch(&self) -> Arch {
         let machine = self.pe.header.coff_header.machine;
@@ -189,6 +200,7 @@ impl fmt::Debug for PeObject<'_> {
         f.debug_struct("PeObject")
             .field("code_id", &self.code_id())
             .field("debug_id", &self.debug_id())
+            .field("debug_file_name", &self.debug_file_name())
             .field("arch", &self.arch())
             .field("kind", &self.kind())
             .field("load_address", &HexFmt(self.load_address()))
@@ -233,6 +245,10 @@ impl<'d> ObjectLike for PeObject<'d> {
 
     fn debug_id(&self) -> DebugId {
         self.debug_id()
+    }
+
+    fn debug_file_name(&self) -> Option<Cow<'_, str>> {
+        self.debug_file_name()
     }
 
     fn arch(&self) -> Arch {

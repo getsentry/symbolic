@@ -279,6 +279,9 @@ fn test_pe_32() -> Result<(), Error> {
             uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
             appendix: 1
         },
+        debug_file_name: Some(
+            "C:\\projects\\breakpad-tools\\windows\\Release\\crash.pdb"
+        ),
         arch: X86,
         kind: Executable,
         load_address: 0x400000,
@@ -305,6 +308,9 @@ fn test_pe_64() -> Result<(), Error> {
             uuid: "f535c5fb-2ae8-4bb8-aa20-6c30be566c5a",
             appendix: 1
         },
+        debug_file_name: Some(
+            "C:\\Users\\sentry\\source\\repos\\CrashWithException\\x64\\Release\\CrashWithException.pdb"
+        ),
         arch: Amd64,
         kind: Executable,
         load_address: 0x140000000,
