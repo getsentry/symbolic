@@ -12,7 +12,7 @@ use goblin::{container::Ctx, elf, error::Error as GoblinError, strtab};
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
-use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, Endian};
+use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::{HexFmt, Parse};
 
 const UUID_SIZE: usize = 16;
@@ -84,10 +84,10 @@ impl<'d> ElfObject<'d> {
         // We were not able to locate the build ID, so fall back to hashing the
         // first page of the ".text" (program code) section. This algorithm XORs
         // 16-byte chunks directly into a UUID buffer.
-        if let Some((_, data)) = self.raw_data("text") {
+        if let Some(section) = self.raw_section("text") {
             let mut hash = [0; UUID_SIZE];
-            for i in 0..std::cmp::min(data.len(), PAGE_SIZE) {
-                hash[i % UUID_SIZE] ^= data[i];
+            for i in 0..std::cmp::min(section.data.len(), PAGE_SIZE) {
+                hash[i % UUID_SIZE] ^= section.data[i];
             }
 
             return self.compute_debug_id(&hash);
@@ -237,8 +237,10 @@ impl<'d> ElfObject<'d> {
     }
 
     /// Locates and reads a section in an ELF binary.
-    fn find_section(&self, name: &str) -> Option<(&elf::SectionHeader, bool, &'d [u8])> {
+    fn find_section(&self, name: &str) -> Option<(bool, DwarfSection<'d>)> {
         for header in &self.elf.section_headers {
+            // NB: Symbolic does not support MIPS, but if it did we would also need to check
+            // SHT_MIPS_DWARF sections.
             if header.sh_type != elf::section_header::SHT_PROGBITS {
                 continue;
             }
@@ -271,7 +273,14 @@ impl<'d> ElfObject<'d> {
 
                 let size = header.sh_size as usize;
                 let data = &self.data[offset..][..size];
-                return Some((header, compressed, data));
+                let section = DwarfSection {
+                    data: Cow::Borrowed(data),
+                    address: header.sh_addr,
+                    offset: header.sh_offset,
+                    align: header.sh_addralign,
+                };
+
+                return Some((compressed, section));
             }
         }
 
@@ -438,19 +447,20 @@ impl<'d> Dwarf<'d> for ElfObject<'d> {
         }
     }
 
-    fn raw_data(&self, section: &str) -> Option<(u64, &'d [u8])> {
-        let (header, _, data) = self.find_section(section)?;
-        Some((header.sh_offset, data))
+    fn raw_section(&self, name: &str) -> Option<DwarfSection<'d>> {
+        let (_, section) = self.find_section(name)?;
+        Some(section)
     }
 
-    fn section_data(&self, section: &str) -> Option<(u64, Cow<'d, [u8]>)> {
-        let (header, compressed, data) = self.find_section(section)?;
+    fn section(&self, name: &str) -> Option<DwarfSection<'d>> {
+        let (compressed, mut section) = self.find_section(name)?;
 
         if compressed {
-            Some((header.sh_offset, Cow::Owned(self.decompress_section(data)?)))
-        } else {
-            Some((header.sh_offset, Cow::Borrowed(data)))
+            let decompressed = self.decompress_section(&section.data)?;
+            section.data = Cow::Owned(decompressed);
         }
+
+        Some(section)
     }
 }
 

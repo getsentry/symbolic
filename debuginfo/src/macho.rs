@@ -11,7 +11,7 @@ use smallvec::SmallVec;
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
-use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, Endian};
+use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::{HexFmt, MonoArchive, MonoArchiveObjects, Parse};
 
 /// An error when dealing with [`MachObject`](struct.MachObject.html).
@@ -335,7 +335,7 @@ impl<'d> Dwarf<'d> for MachObject<'d> {
         }
     }
 
-    fn raw_data(&self, section_name: &str) -> Option<(u64, &'d [u8])> {
+    fn raw_section(&self, section_name: &str) -> Option<DwarfSection<'d>> {
         let segment_name = match section_name {
             "eh_frame" => "__TEXT",
             _ => "__DWARF",
@@ -351,10 +351,16 @@ impl<'d> Dwarf<'d> for MachObject<'d> {
                         // from the file. While the addr and size parameters are still set,
                         // `header.offset` is 0 in that case. We skip them just like the section was
                         // missing to avoid loading invalid data.
-                        return match header.offset {
-                            0 => None,
-                            offset => Some((offset.into(), data)),
-                        };
+                        if header.offset == 0 {
+                            return None;
+                        }
+
+                        return Some(DwarfSection {
+                            data: Cow::Borrowed(data),
+                            address: header.addr,
+                            offset: u64::from(header.offset),
+                            align: u64::from(header.align),
+                        });
                     }
                 }
             }

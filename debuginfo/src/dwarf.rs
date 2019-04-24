@@ -76,6 +76,37 @@ impl From<gimli::read::Error> for DwarfError {
     }
 }
 
+/// DWARF section information including its data.
+///
+/// This is returned from objects implementing the [`Dwarf`] trait.
+///
+/// [`Dwarf`]: trait.Dwarf.html
+#[derive(Clone)]
+pub struct DwarfSection<'data> {
+    /// Memory address of this section in virtual memory.
+    pub address: u64,
+
+    /// File offset of this section.
+    pub offset: u64,
+
+    /// Section address alignment (power of two).
+    pub align: u64,
+
+    /// Binary data of this section.
+    pub data: Cow<'data, [u8]>,
+}
+
+impl fmt::Debug for DwarfSection<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("DwarfSection")
+            .field("address", &format_args!("{:#x}", self.address))
+            .field("offset", &format_args!("{:#x}", self.offset))
+            .field("align", &format_args!("{:#x}", self.align))
+            .field("len()", &self.data.len())
+            .finish()
+    }
+}
+
 /// Provides access to DWARF debugging information independent of the container file type.
 ///
 /// When implementing this trait, verify whether the container file type supports compressed section
@@ -88,7 +119,24 @@ pub trait Dwarf<'data> {
     /// given by the architecture.
     fn endianity(&self) -> Endian;
 
-    /// Returns the offset and raw data of a section.
+    #[doc(hidden)]
+    #[deprecated(note = "use raw_section instead")]
+    fn raw_data(&self, name: &str) -> Option<(u64, &'data [u8])> {
+        let section = self.raw_section(name)?;
+        match section.data {
+            Cow::Borrowed(data) => Some((section.offset, data)),
+            Cow::Owned(_) => None,
+        }
+    }
+
+    #[doc(hidden)]
+    #[deprecated(note = "use section instead")]
+    fn section_data(&self, name: &str) -> Option<(u64, Cow<'data, [u8]>)> {
+        let section = self.section(name)?;
+        Some((section.offset, section.data))
+    }
+
+    /// Returns information and raw data of a section.
     ///
     /// The section name is given without leading punctuation, such dots or underscores. For
     /// instance, the name of the Debug Info section would be `"debug_info"`, which translates to
@@ -96,9 +144,9 @@ pub trait Dwarf<'data> {
     ///
     /// Certain containers might allow compressing section data. In this case, this function returns
     /// the compressed data. To get uncompressed data instead, use `section_data`.
-    fn raw_data(&self, section: &str) -> Option<(u64, &'data [u8])>;
+    fn raw_section(&self, name: &str) -> Option<DwarfSection<'data>>;
 
-    /// Returns the offset and binary data of a section.
+    /// Returns information and data of a section.
     ///
     /// If the section is compressed, this decompresses on the fly and returns allocated memory.
     /// Otherwise, this should return a slice of the raw data.
@@ -106,9 +154,8 @@ pub trait Dwarf<'data> {
     /// The section name is given without leading punctuation, such dots or underscores. For
     /// instance, the name of the Debug Info section would be `"debug_info"`, which translates to
     /// `".debug_info"` in ELF and `"__debug_info"` in MachO.
-    fn section_data(&self, section: &str) -> Option<(u64, Cow<'data, [u8]>)> {
-        let (offset, data) = self.raw_data(section)?;
-        Some((offset, Cow::Borrowed(data)))
+    fn section(&self, name: &str) -> Option<DwarfSection<'data>> {
+        self.raw_section(name)
     }
 
     /// Determines whether the specified section exists.
@@ -116,8 +163,8 @@ pub trait Dwarf<'data> {
     /// The section name is given without leading punctuation, such dots or underscores. For
     /// instance, the name of the Debug Info section would be `"debug_info"`, which translates to
     /// `".debug_info"` in ELF and `"__debug_info"` in MachO.
-    fn has_section(&self, section: &str) -> bool {
-        self.raw_data(section).is_some()
+    fn has_section(&self, name: &str) -> bool {
+        self.raw_section(name).is_some()
     }
 }
 
@@ -336,7 +383,6 @@ impl<'d, 'a> UnitRef<'d, 'a> {
 /// Wrapper around a DWARF Unit.
 #[derive(Debug)]
 struct DwarfUnit<'d, 'a> {
-    info: &'a DwarfInfo<'d>,
     inner: UnitRef<'d, 'a>,
     language: Language,
     line_program: Option<DwarfLineProgram<'d>>,
@@ -369,7 +415,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         };
 
         Ok(Some(DwarfUnit {
-            info,
             inner: UnitRef { info, unit },
             language,
             line_program,
@@ -418,7 +463,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 constants::DW_AT_ranges
                 | constants::DW_AT_rnglists_base
                 | constants::DW_AT_start_scope => {
-                    match self.info.attr_ranges(self.inner.unit, attr.value())? {
+                    match self.inner.info.attr_ranges(self.inner.unit, attr.value())? {
                         Some(mut ranges) => {
                             while let Some(range) = ranges.next()? {
                                 range_buf.push(range);
@@ -498,7 +543,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
                 last = Some((row.file_index, line));
                 lines.push(LineInfo {
-                    address: row.address - self.info.load_address,
+                    address: row.address - self.inner.info.load_address,
                     file,
                     line,
                 });
@@ -575,7 +620,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 continue;
             }
 
-            let function_address = range_buf[0].begin - self.info.load_address;
+            let function_address = range_buf[0].begin - self.inner.info.load_address;
             let function_size = range_buf[range_buf.len() - 1].end - range_buf[0].begin;
 
             // Resolve functions in the symbol table first. Only if there is no entry, fall back
@@ -585,7 +630,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             // XXX: Maybe we should actually parse the ranges in the resolve function and always
             // look at the symbol table based on the start of the DIE range.
             let symbol_name = if !inline {
-                self.info
+                self.inner
+                    .info
                     .symbol_map
                     .lookup_range(function_address..function_address + function_size)
                     .and_then(|symbol| symbol.name.clone())
@@ -752,13 +798,13 @@ impl<'a> FunctionStack<'a> {
 }
 
 /// Data of a specific DWARF section.
-struct DwarfSection<'data, S> {
+struct DwarfSectionData<'data, S> {
     data: Cow<'data, [u8]>,
     endianity: Endian,
     _ph: PhantomData<S>,
 }
 
-impl<'data, S> DwarfSection<'data, S>
+impl<'data, S> DwarfSectionData<'data, S>
 where
     S: gimli::read::Section<Slice<'data>>,
 {
@@ -767,11 +813,11 @@ where
     where
         D: Dwarf<'data>,
     {
-        DwarfSection {
+        DwarfSectionData {
             data: dwarf
-                .section_data(&S::section_name()[1..])
-                .unwrap_or_default()
-                .1,
+                .section(&S::section_name()[1..])
+                .map(|section| section.data)
+                .unwrap_or_default(),
             endianity: dwarf.endianity(),
             _ph: PhantomData,
         }
@@ -783,7 +829,7 @@ where
     }
 }
 
-impl<'d, S> fmt::Debug for DwarfSection<'d, S>
+impl<'d, S> fmt::Debug for DwarfSectionData<'d, S>
 where
     S: gimli::read::Section<Slice<'d>>,
 {
@@ -793,7 +839,7 @@ where
             Cow::Borrowed(_) => false,
         };
 
-        f.debug_struct("DwarfSection")
+        f.debug_struct("DwarfSectionData")
             .field("type", &S::section_name())
             .field("endianity", &self.endianity)
             .field("len()", &self.data.len())
@@ -804,14 +850,14 @@ where
 
 /// All DWARF sections that are needed by `DwarfDebugSession`.
 struct DwarfSections<'data> {
-    debug_abbrev: DwarfSection<'data, gimli::read::DebugAbbrev<Slice<'data>>>,
-    debug_info: DwarfSection<'data, gimli::read::DebugInfo<Slice<'data>>>,
-    debug_line: DwarfSection<'data, gimli::read::DebugLine<Slice<'data>>>,
-    debug_line_str: DwarfSection<'data, gimli::read::DebugLineStr<Slice<'data>>>,
-    debug_str: DwarfSection<'data, gimli::read::DebugStr<Slice<'data>>>,
-    debug_str_offsets: DwarfSection<'data, gimli::read::DebugStrOffsets<Slice<'data>>>,
-    debug_ranges: DwarfSection<'data, gimli::read::DebugRanges<Slice<'data>>>,
-    debug_rnglists: DwarfSection<'data, gimli::read::DebugRngLists<Slice<'data>>>,
+    debug_abbrev: DwarfSectionData<'data, gimli::read::DebugAbbrev<Slice<'data>>>,
+    debug_info: DwarfSectionData<'data, gimli::read::DebugInfo<Slice<'data>>>,
+    debug_line: DwarfSectionData<'data, gimli::read::DebugLine<Slice<'data>>>,
+    debug_line_str: DwarfSectionData<'data, gimli::read::DebugLineStr<Slice<'data>>>,
+    debug_str: DwarfSectionData<'data, gimli::read::DebugStr<Slice<'data>>>,
+    debug_str_offsets: DwarfSectionData<'data, gimli::read::DebugStrOffsets<Slice<'data>>>,
+    debug_ranges: DwarfSectionData<'data, gimli::read::DebugRanges<Slice<'data>>>,
+    debug_rnglists: DwarfSectionData<'data, gimli::read::DebugRngLists<Slice<'data>>>,
 }
 
 impl<'data> DwarfSections<'data> {
@@ -821,14 +867,14 @@ impl<'data> DwarfSections<'data> {
         D: Dwarf<'data>,
     {
         Ok(DwarfSections {
-            debug_abbrev: DwarfSection::load(dwarf),
-            debug_info: DwarfSection::load(dwarf),
-            debug_line: DwarfSection::load(dwarf),
-            debug_line_str: DwarfSection::load(dwarf),
-            debug_str: DwarfSection::load(dwarf),
-            debug_str_offsets: DwarfSection::load(dwarf),
-            debug_ranges: DwarfSection::load(dwarf),
-            debug_rnglists: DwarfSection::load(dwarf),
+            debug_abbrev: DwarfSectionData::load(dwarf),
+            debug_info: DwarfSectionData::load(dwarf),
+            debug_line: DwarfSectionData::load(dwarf),
+            debug_line_str: DwarfSectionData::load(dwarf),
+            debug_str: DwarfSectionData::load(dwarf),
+            debug_str_offsets: DwarfSectionData::load(dwarf),
+            debug_ranges: DwarfSectionData::load(dwarf),
+            debug_rnglists: DwarfSectionData::load(dwarf),
         })
     }
 }

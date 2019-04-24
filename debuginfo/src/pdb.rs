@@ -6,10 +6,9 @@ use std::io::Cursor;
 use std::sync::Arc;
 
 use failure::Fail;
-use fallible_iterator::FallibleIterator;
 use lazycell::LazyCell;
 use parking_lot::RwLock;
-use pdb::{AddressMap, MachineType, Module, ModuleInfo, SymbolData};
+use pdb::{AddressMap, FallibleIterator, MachineType, Module, ModuleInfo, SymbolData};
 
 use symbolic_common::{
     derive_failure, split_path_bytes, Arch, AsSelf, CodeId, CpuFamily, DebugId, Name, SelfCell,
