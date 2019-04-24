@@ -1,13 +1,12 @@
 ---
-created: "2019-02-20T15:42:11.796597Z"
-creator: insta@0.6.3
+created: "2019-04-24T14:55:14.510136Z"
+creator: insta@0.7.4
 source: minidump/tests/test_cfi.rs
 expression: cfi
 ---
-STACK CFI INIT 1dc0 2a .cfa: $rsp 8 +
+STACK CFI INIT 1dc0 2a .cfa: $rsp 8 + .ra: $rip
 STACK CFI INIT 1580 370 .cfa: $rsp 16 + .ra: .cfa -8 + ^
 STACK CFI 1586 .cfa: $rsp 24 +
-STACK CFI 1590
 STACK CFI INIT 1ec0 3b .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI 1ec3 .cfa: $rsp 16 + $rbx: .cfa -16 + ^
 STACK CFI 1edd .cfa: $rsp 8 +
@@ -21,8 +20,7 @@ STACK CFI 1f31 .cfa: $rsp 8 +
 STACK CFI INIT 1c70 14c .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI 1c71 .cfa: $rsp 16 + $rbp: .cfa -16 + ^
 STACK CFI 1c86 .cfa: $rbp 16 +
-STACK CFI 1c89 .cfa: $rbp 16 + $r14: .cfa -24 + ^ $rbx: .cfa -32 + ^
-STACK CFI 1d68 .cfa: $rbp 16 +
+STACK CFI 1c89 $r14: .cfa -24 + ^ $rbx: .cfa -32 + ^
 STACK CFI 1da3 .cfa: $rsp 8 +
 STACK CFI 1da4 .cfa: $rbp 16 +
 STACK CFI INIT 1f40 122 .cfa: $rsp 8 + .ra: .cfa -8 + ^
@@ -273,10 +271,8 @@ STACK CFI 37e0 .cfa: $rsp 80 +
 STACK CFI INIT 3a10 292 .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI 3a11 .cfa: $rsp 16 + $rbp: .cfa -16 + ^
 STACK CFI 3a14 .cfa: $rbp 16 +
-STACK CFI 3a1c .cfa: $rbp 16 + $r15: .cfa -24 + ^ $r14: .cfa -32 + ^ $r13: .cfa -40 + ^ $r12: .cfa -48 + ^
-STACK CFI 3a20 .cfa: $rbp 16 + $rbx: .cfa -56 + ^
-STACK CFI 3b78 .cfa: $rbp 16 +
-STACK CFI 3b82 .cfa: $rbp 16 +
+STACK CFI 3a1c $r15: .cfa -24 + ^ $r14: .cfa -32 + ^ $r13: .cfa -40 + ^ $r12: .cfa -48 + ^
+STACK CFI 3a20 $rbx: .cfa -56 + ^
 STACK CFI 3be0 .cfa: $rsp 8 +
 STACK CFI 3be8 .cfa: $rbp 16 +
 STACK CFI INIT 3da0 17c .cfa: $rsp 8 + .ra: .cfa -8 + ^
@@ -351,12 +347,10 @@ STACK CFI 7040 .cfa: $rsp 96 +
 STACK CFI INIT 4400 2a01 .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI 4401 .cfa: $rsp 16 + $rbp: .cfa -16 + ^
 STACK CFI 4404 .cfa: $rbp 16 +
-STACK CFI 440c .cfa: $rbp 16 + $r15: .cfa -24 + ^ $r14: .cfa -32 + ^ $r13: .cfa -40 + ^ $r12: .cfa -48 + ^
-STACK CFI 441f .cfa: $rbp 16 + $rbx: .cfa -56 + ^
+STACK CFI 440c $r15: .cfa -24 + ^ $r14: .cfa -32 + ^ $r13: .cfa -40 + ^ $r12: .cfa -48 + ^
+STACK CFI 441f $rbx: .cfa -56 + ^
 STACK CFI 44c0 .cfa: $rsp 8 +
 STACK CFI 44c8 .cfa: $rbp 16 +
-STACK CFI 59b0 .cfa: $rbp 16 +
-STACK CFI 5a1b .cfa: $rbp 16 +
 STACK CFI INIT 71f0 6 .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI INIT 9350 143 .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI 935b .cfa: $rsp 16 + $r15: .cfa -16 + ^
@@ -867,12 +861,10 @@ STACK CFI af86 .cfa: $rsp 2464 +
 STACK CFI INIT bb80 227f .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI bb81 .cfa: $rsp 16 + $rbp: .cfa -16 + ^
 STACK CFI bb89 .cfa: $rbp 16 +
-STACK CFI bb91 .cfa: $rbp 16 + $r15: .cfa -24 + ^ $r14: .cfa -32 + ^ $r13: .cfa -40 + ^ $r12: .cfa -48 + ^
-STACK CFI bb96 .cfa: $rbp 16 + $rbx: .cfa -56 + ^
+STACK CFI bb91 $r15: .cfa -24 + ^ $r14: .cfa -32 + ^ $r13: .cfa -40 + ^ $r12: .cfa -48 + ^
+STACK CFI bb96 $rbx: .cfa -56 + ^
 STACK CFI bcdf .cfa: $rsp 8 +
 STACK CFI bce0 .cfa: $rbp 16 +
-STACK CFI c115 .cfa: $rbp 16 +
-STACK CFI c15c .cfa: $rbp 16 +
 STACK CFI INIT de00 566 .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI de02 .cfa: $rsp 16 + $r15: .cfa -16 + ^
 STACK CFI de04 .cfa: $rsp 24 + $r14: .cfa -24 + ^
@@ -924,15 +916,13 @@ STACK CFI eb10 .cfa: $rsp 544 +
 STACK CFI INIT f0c0 119 .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI f0c1 .cfa: $rsp 16 + $rbp: .cfa -16 + ^
 STACK CFI f0c8 .cfa: $rbp 16 +
-STACK CFI f0cf .cfa: $rbp 16 + $r14: .cfa -24 + ^ $r13: .cfa -32 + ^ $r12: .cfa -40 + ^ $rbx: .cfa -48 + ^
-STACK CFI f130 .cfa: $rbp 16 +
+STACK CFI f0cf $r14: .cfa -24 + ^ $r13: .cfa -32 + ^ $r12: .cfa -40 + ^ $rbx: .cfa -48 + ^
 STACK CFI f196 .cfa: $rsp 8 +
 STACK CFI f197 .cfa: $rbp 16 +
 STACK CFI INIT f1e0 119 .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI f1e1 .cfa: $rsp 16 + $rbp: .cfa -16 + ^
 STACK CFI f1e8 .cfa: $rbp 16 +
-STACK CFI f1ef .cfa: $rbp 16 + $r14: .cfa -24 + ^ $r13: .cfa -32 + ^ $r12: .cfa -40 + ^ $rbx: .cfa -48 + ^
-STACK CFI f24f .cfa: $rbp 16 +
+STACK CFI f1ef $r14: .cfa -24 + ^ $r13: .cfa -32 + ^ $r12: .cfa -40 + ^ $rbx: .cfa -48 + ^
 STACK CFI f2b6 .cfa: $rsp 8 +
 STACK CFI f2b7 .cfa: $rbp 16 +
 STACK CFI INIT f300 36 .cfa: $rsp 8 + .ra: .cfa -8 + ^
@@ -1290,9 +1280,8 @@ STACK CFI 11f79 .cfa: $rsp 96 +
 STACK CFI INIT 11fb0 c01 .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI 11fb1 .cfa: $rsp 16 + $rbp: .cfa -16 + ^
 STACK CFI 11fb4 .cfa: $rbp 16 +
-STACK CFI 11fbc .cfa: $rbp 16 + $r15: .cfa -24 + ^ $r14: .cfa -32 + ^ $r13: .cfa -40 + ^ $r12: .cfa -48 + ^
-STACK CFI 11fc0 .cfa: $rbp 16 + $rbx: .cfa -56 + ^
-STACK CFI 12144 .cfa: $rbp 16 +
+STACK CFI 11fbc $r15: .cfa -24 + ^ $r14: .cfa -32 + ^ $r13: .cfa -40 + ^ $r12: .cfa -48 + ^
+STACK CFI 11fc0 $rbx: .cfa -56 + ^
 STACK CFI 121ce .cfa: $rsp 8 +
 STACK CFI 121cf .cfa: $rbp 16 +
 STACK CFI INIT 12bc0 7c .cfa: $rsp 8 + .ra: .cfa -8 + ^

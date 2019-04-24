@@ -27,14 +27,13 @@ use symbolic_common::{derive_failure, Arch, ByteView, UnknownArchError};
 use symbolic_debuginfo::breakpad::{BreakpadObject, BreakpadStackRecord};
 use symbolic_debuginfo::dwarf::gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error, FrameDescriptionEntry, Reader,
-    ReaderOffset, Register, RegisterRule, UninitializedUnwindContext, UnwindOffset, UnwindSection,
-    UnwindTable,
+    Register, RegisterRule, UninitializedUnwindContext, UnwindSection,
 };
 use symbolic_debuginfo::dwarf::Dwarf;
 use symbolic_debuginfo::pdb::pdb::{FallibleIterator, FrameData, Rva, StringTable};
 use symbolic_debuginfo::pdb::PdbObject;
 use symbolic_debuginfo::pe::{PeObject, UnwindOperation};
-use symbolic_debuginfo::Object;
+use symbolic_debuginfo::{Object, ObjectLike};
 
 /// The latest version of the file format.
 pub const CFICACHE_LATEST_VERSION: u32 = 1;
@@ -58,6 +57,10 @@ pub enum CfiErrorKind {
     #[fail(display = "unsupported architecture")]
     UnsupportedArch,
 
+    /// CFI for an invalid address outside the mapped range was encountered.
+    #[fail(display = "invalid cfi address")]
+    InvalidAddress,
+
     /// Generic error when writing CFI information, likely IO.
     #[fail(display = "failed to write cfi")]
     WriteError,
@@ -76,6 +79,65 @@ derive_failure!(
 impl From<UnknownArchError> for CfiError {
     fn from(_: UnknownArchError) -> CfiError {
         CfiErrorKind::UnsupportedArch.into()
+    }
+}
+
+/// Temporary helper trait to set the address size on any unwind section.
+trait UnwindSectionExt<R>: UnwindSection<R>
+where
+    R: Reader,
+{
+    fn set_address_size(&mut self, address_size: u8);
+}
+
+impl<R: Reader> UnwindSectionExt<R> for EhFrame<R> {
+    fn set_address_size(&mut self, address_size: u8) {
+        self.set_address_size(address_size)
+    }
+}
+
+impl<R: Reader> UnwindSectionExt<R> for DebugFrame<R> {
+    fn set_address_size(&mut self, address_size: u8) {
+        self.set_address_size(address_size)
+    }
+}
+
+/// Context information for unwinding.
+struct UnwindInfo<U> {
+    arch: Arch,
+    load_address: u64,
+    section: U,
+    bases: BaseAddresses,
+}
+
+impl<U> UnwindInfo<U> {
+    pub fn new<O, R>(object: &O, addr: u64, mut section: U) -> Self
+    where
+        O: ObjectLike,
+        R: Reader,
+        U: UnwindSectionExt<R>,
+    {
+        let arch = object.arch();
+        let load_address = object.load_address();
+
+        // CFI information can have relative offsets to the virtual address of thir respective debug
+        // section (either `.eh_frame` or `.debug_frame`). We need to supply this offset to the
+        // entries iterator before starting to interpret instructions. The other base addresses are
+        // not needed for CFI.
+        let bases = BaseAddresses::default().set_eh_frame(addr);
+
+        // Based on the architecture, pointers inside eh_frame and debug_frame have different sizes.
+        // Configure the section to read them appropriately.
+        if let Some(pointer_size) = arch.pointer_size() {
+            section.set_address_size(pointer_size as u8);
+        }
+
+        UnwindInfo {
+            arch,
+            load_address,
+            section,
+            bases,
+        }
     }
 }
 
@@ -130,8 +192,8 @@ impl<W: Write> AsciiCfiWriter<W> {
     pub fn process(&mut self, object: &Object<'_>) -> Result<(), CfiError> {
         match object {
             Object::Breakpad(o) => self.process_breakpad(o),
-            Object::MachO(o) => self.process_dwarf(o.arch(), o),
-            Object::Elf(o) => self.process_dwarf(o.arch(), o),
+            Object::MachO(o) => self.process_dwarf(o),
+            Object::Elf(o) => self.process_dwarf(o),
             Object::Pdb(o) => self.process_pdb(o),
             Object::Pe(o) => self.process_pe(o),
         }
@@ -154,48 +216,48 @@ impl<W: Write> AsciiCfiWriter<W> {
         Ok(())
     }
 
-    fn process_dwarf<'o, O>(&mut self, arch: Arch, object: &O) -> Result<(), CfiError>
+    fn process_dwarf<'o, O>(&mut self, object: &O) -> Result<(), CfiError>
     where
-        O: Dwarf<'o>,
+        O: ObjectLike + Dwarf<'o>,
     {
         let endian = object.endianity();
 
-        if let Some((offset, data)) = object.section_data("eh_frame") {
-            let mut frame = EhFrame::new(&data, endian);
-            if let Some(pointer_size) = arch.pointer_size() {
-                frame.set_address_size(pointer_size as u8);
-            }
-            self.read_cfi(arch, &frame, offset)
-        } else if let Some((offset, data)) = object.section_data("debug_frame") {
-            let mut frame = DebugFrame::new(&data, endian);
-            if let Some(pointer_size) = arch.pointer_size() {
-                frame.set_address_size(pointer_size as u8);
-            }
-            self.read_cfi(arch, &frame, offset)
-        } else {
-            Err(CfiErrorKind::MissingDebugInfo.into())
+        // First load information from the DWARF debug_frame section. It does not contain any
+        // references to other DWARF sections.
+        if let Some(section) = object.section("debug_frame") {
+            let frame = DebugFrame::new(&section.data, endian);
+            let info = UnwindInfo::new(object, section.address, frame);
+            self.read_cfi(&info)?;
         }
+
+        // Indepdendently, Linux C++ exception handling information can also provide unwind info.
+        if let Some(section) = object.section("eh_frame") {
+            let frame = EhFrame::new(&section.data, endian);
+            let info = UnwindInfo::new(object, section.address, frame);
+            self.read_cfi(&info)?;
+        }
+
+        // Ignore if no information was found at all.
+        Ok(())
     }
 
-    fn read_cfi<U, R>(&mut self, arch: Arch, frame: &U, base: u64) -> Result<(), CfiError>
+    fn read_cfi<U, R>(&mut self, info: &UnwindInfo<U>) -> Result<(), CfiError>
     where
         R: Reader + Eq,
         U: UnwindSection<R>,
     {
-        // CFI information can have relative offsets to the base address of thir respective debug
-        // section (either `.eh_frame` or `.debug_frame`). We need to supply this offset to the
-        // entries iterator before starting to interpret instructions.
-        let bases = BaseAddresses::default().set_eh_frame(base);
+        // Initialize an unwind context once and reuse it for the entire section.
+        let mut ctx = UninitializedUnwindContext::new();
 
-        let mut entries = frame.entries(&bases);
+        let mut entries = info.section.entries(&info.bases);
         while let Some(entry) = entries.next().context(CfiErrorKind::BadDebugInfo)? {
             // We skip all Common Information Entries and only process Frame Description Items here.
             // The iterator yields partial FDEs which need their associated CIE passed in via a
             // callback. This function is provided by the UnwindSection (frame), which then parses
             // the CIE and returns it for the FDE.
             if let CieOrFde::Fde(partial_fde) = entry {
-                if let Ok(fde) = partial_fde.parse(|off| frame.cie_from_offset(&bases, off)) {
-                    self.process_fde(arch, &fde)?
+                if let Ok(fde) = partial_fde.parse(U::cie_from_offset) {
+                    self.process_fde(info, &mut ctx, &fde)?
                 }
             }
         }
@@ -203,16 +265,15 @@ impl<W: Write> AsciiCfiWriter<W> {
         Ok(())
     }
 
-    fn process_fde<S, R, O>(
+    fn process_fde<R, U>(
         &mut self,
-        arch: Arch,
-        fde: &FrameDescriptionEntry<S, R, O>,
+        info: &UnwindInfo<U>,
+        ctx: &mut UninitializedUnwindContext<R>,
+        fde: &FrameDescriptionEntry<R>,
     ) -> Result<(), CfiError>
     where
-        R: Reader<Offset = O> + Eq,
-        O: ReaderOffset,
-        S: UnwindSection<R>,
-        S::Offset: UnwindOffset<R::Offset>,
+        R: Reader + Eq,
+        U: UnwindSection<R>,
     {
         // Retrieves the register that specifies the return address. We need to assign a special
         // format to this register for Breakpad.
@@ -221,12 +282,9 @@ impl<W: Write> AsciiCfiWriter<W> {
         // Interpret all DWARF instructions of this Frame Description Entry. This gives us an unwind
         // table that contains rules for retrieving registers at every instruction address. These
         // rules can directly be transcribed to breakpad STACK CFI records.
-        let ctx = UninitializedUnwindContext::new();
-        let mut ctx = ctx
-            .initialize(fde.cie())
-            .map_err(|(e, _)| e)
+        let mut table = fde
+            .rows(&info.section, &info.bases, ctx)
             .context(CfiErrorKind::BadDebugInfo)?;
-        let mut table = UnwindTable::new(&mut ctx, &fde);
 
         // Collect all rows first, as we need to know the final end address in order to write the
         // CFI INIT record describing the extent of the whole unwind table.
@@ -250,25 +308,43 @@ impl<W: Write> AsciiCfiWriter<W> {
             let start = first_row.start_address();
             let length = rows.last().unwrap().end_address() - start;
 
+            // Verify that the CFI entry is in range of the mapped module. Zero values are a special
+            // case and seem to indicate that the entry is no longer valid. All other cases are
+            // considered erroneous CFI.
+            if start < info.load_address {
+                return match start {
+                    0 => Ok(()),
+                    _ => Err(CfiErrorKind::InvalidAddress.into()),
+                };
+            }
+
             // Every register rule in the table will be cached so that it can be compared with
             // subsequent occurrences. Only registers with changed rules will be written.
             let mut rule_cache = HashMap::new();
+            let mut cfa_cache = None;
 
             // Write records for every entry in the unwind table.
             for row in &rows {
+                let mut written = false;
+                let mut line = Vec::new();
+
                 // Depending on whether this is the first row or any subsequent row, print a INIT or
                 // normal STACK CFI record.
                 if row.start_address() == start {
-                    write!(self.inner, "STACK CFI INIT {:x} {:x}", start, length)
+                    let start_addr = start - info.load_address;
+                    write!(line, "STACK CFI INIT {:x} {:x}", start_addr, length)
                         .context(CfiErrorKind::WriteError)?;
                 } else {
-                    write!(self.inner, "STACK CFI {:x}", row.start_address())
-                        .context(CfiErrorKind::WriteError)?;
+                    let start_addr = row.start_address() - info.load_address;
+                    write!(line, "STACK CFI {:x}", start_addr).context(CfiErrorKind::WriteError)?;
                 }
 
                 // Write the mandatory CFA rule for this row, followed by optional register rules.
                 // The actual formatting of the rules depends on their rule type.
-                self.write_cfa_rule(arch, row.cfa())?;
+                if cfa_cache != Some(row.cfa()) {
+                    cfa_cache = Some(row.cfa());
+                    written |= Self::write_cfa_rule(&mut line, info.arch, row.cfa())?;
+                }
 
                 // Print only registers that have changed rules to their previous occurrence to
                 // reduce the number of rules per row. Then, cache the new occurrence for the next
@@ -276,19 +352,34 @@ impl<W: Write> AsciiCfiWriter<W> {
                 for &(register, ref rule) in row.registers() {
                     if !rule_cache.get(&register).map_or(false, |c| c == &rule) {
                         rule_cache.insert(register, rule);
-                        self.write_register_rule(arch, register, rule, ra)?;
+                        written |=
+                            Self::write_register_rule(&mut line, info.arch, register, rule, ra)?;
                     }
                 }
 
-                writeln!(self.inner).context(CfiErrorKind::WriteError)?;
+                // Breakpad STACK CFI records must provide a .ra rule, but DWARF CFI may not
+                // establish any rule for .ra if the return address column is an ordinary register,
+                // and that register holds the return address on entry to the function. So establish
+                // a .ra rule citing the return address register.
+                if !rule_cache.contains_key(&ra) {
+                    let rule = RegisterRule::SameValue::<R>;
+                    written |= Self::write_register_rule(&mut line, info.arch, ra, &rule, ra)?;
+                }
+
+                if written {
+                    self.inner
+                        .write_all(&line)
+                        .and_then(|_| writeln!(self.inner))
+                        .context(CfiErrorKind::WriteError)?;
+                }
             }
         }
 
         Ok(())
     }
 
-    fn write_cfa_rule<R: Reader>(
-        &mut self,
+    fn write_cfa_rule<R: Reader, T: Write>(
+        mut target: T,
         arch: Arch,
         rule: &CfaRule<R>,
     ) -> Result<bool, CfiError> {
@@ -302,12 +393,12 @@ impl<W: Write> AsciiCfiWriter<W> {
             CfaRule::Expression(_) => return Ok(false),
         };
 
-        write!(self.inner, " .cfa: {}", formatted).context(CfiErrorKind::WriteError)?;
+        write!(target, " .cfa: {}", formatted).context(CfiErrorKind::WriteError)?;
         Ok(true)
     }
 
-    fn write_register_rule<R: Reader>(
-        &mut self,
+    fn write_register_rule<R: Reader, T: Write>(
+        mut target: T,
         arch: Arch,
         register: Register,
         rule: &RegisterRule<R>,
@@ -341,8 +432,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             }
         };
 
-        write!(self.inner, " {}: {}", register_name, formatted)
-            .context(CfiErrorKind::WriteError)?;
+        write!(target, " {}: {}", register_name, formatted).context(CfiErrorKind::WriteError)?;
         Ok(true)
     }
 
