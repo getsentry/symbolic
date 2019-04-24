@@ -18,10 +18,16 @@ fn is_empty_function(function: &Function<'_>) -> bool {
 
 /// Recursively cleans a tree of functions that does not cover any lines.
 ///
-/// This first recursively cleans all inlinees and then removes those that have become empty.
+/// This first recursively cleans all inlinees and then removes those that have become empty. Also,
+/// it ensures that each function's start address includes the earliest address of any of its
+/// inlinees. This is due to a requirement that a function occurs before all of its inlinees.
 fn clean_function(function: &mut Function<'_>) {
     for inlinee in &mut function.inlinees {
         clean_function(inlinee);
+
+        let start_shift = function.address.saturating_sub(inlinee.address);
+        function.size += start_shift;
+        function.address -= start_shift;
     }
 
     function.inlinees.retain(|f| !is_empty_function(f));
@@ -224,7 +230,7 @@ where
             s => s,
         };
 
-        self.functions.push(format::FuncRecord {
+        let record = format::FuncRecord {
             addr_low: (symbol.address & 0xffff_ffff) as u32,
             addr_high: ((symbol.address >> 32) & 0xffff) as u16,
             // XXX: we have not seen this yet, but in theory this should be
@@ -236,8 +242,9 @@ where
             parent_offset: !0,
             comp_dir: format::Seg::default(),
             lang: Language::Unknown as u8,
-        });
+        };
 
+        self.push_function(None, record)?;
         Ok(())
     }
 
@@ -254,7 +261,7 @@ where
             return Ok(());
         }
 
-        self.insert_function(&function, !0, &mut FnvHashSet::default())
+        self.insert_function(&function, None, &mut FnvHashSet::default())
     }
 
     /// Persists all open segments to the writer and fixes up the header.
@@ -341,10 +348,9 @@ where
     fn insert_function(
         &mut self,
         function: &Function<'_>,
-        parent_index: u32,
+        parent_index: Option<usize>,
         line_cache: &mut FnvHashSet<(u64, u64)>,
     ) -> Result<(), SymCacheError> {
-        let index = self.functions.len() as u32;
         let address = function.address;
         let language = function.name.language();
         let symbol_id = self.insert_symbol(function.name.as_str().into())?;
@@ -356,17 +362,7 @@ where
             language as u8
         };
 
-        let parent_offset = if parent_index == !0 {
-            !0
-        } else {
-            let parent_offset = index.saturating_sub(parent_index);
-            if parent_offset > std::u16::MAX.into() {
-                return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::ParentOffset).into());
-            }
-            parent_offset as u16
-        };
-
-        self.functions.push(format::FuncRecord {
+        let record = format::FuncRecord {
             addr_low: (address & 0xffff_ffff) as u32,
             addr_high: ((address >> 32) & 0xffff) as u16,
             // XXX: we have not seen this yet, but in theory this should be
@@ -375,15 +371,17 @@ where
             symbol_id_low: (symbol_id & 0xffff) as u16,
             symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
             line_records: format::Seg::default(),
-            parent_offset,
+            parent_offset: !0,
             comp_dir,
             lang,
-        });
+        };
 
-        // Recurse first including inner line records. Address rejection will prune duplicate line
-        // records later on.
+        // Push the record first, then recurse into inline functions and finally push line records.
+        // This ensures that functions are pushed in the right order, while address rejection can
+        // prune duplicate line entries.
+        let index = self.push_function(parent_index, record)?;
         for inlinee in &function.inlinees {
-            self.insert_function(inlinee, index, line_cache)?;
+            self.insert_function(inlinee, Some(index), line_cache)?;
         }
 
         let mut last_address = address;
@@ -417,11 +415,67 @@ where
         }
 
         if !line_segment.is_empty() {
-            self.functions[index as usize].line_records =
+            self.functions[index].line_records =
                 self.writer.write_segment(&line_segment, ValueKind::Line)?;
             self.header.has_line_records = 1;
         }
 
         Ok(())
+    }
+
+    fn push_function(
+        &mut self,
+        parent_index: Option<usize>,
+        mut function: format::FuncRecord,
+    ) -> Result<usize, SymCacheError> {
+        let addr = function.addr_start();
+        let functions = &mut self.functions;
+
+        let is_last = functions
+            .last()
+            .map_or(true, |last| last.addr_start() <= addr);
+
+        let index = if is_last {
+            // Optimize for the common case that functions are added in order. There's no need for a
+            // binary search, just append to the list.
+            functions.len()
+        } else {
+            // Find the place to insert. If a function exists at the same address, this is likely
+            // the inline parent, so it is added afterwards. There's also a slight chance that
+            // functions are fully duplicated, in which case the last inserted function wins during
+            // lookup.
+            match functions.binary_search_by_key(&addr, format::FuncRecord::addr_start) {
+                Ok(index) => index + 1,
+                Err(index) => index,
+            }
+        };
+
+        // Compute the offsret to the parent function. We require that this offset is positive, so
+        // inserting before a parent is strictly forbidden. The parent's range must include its
+        // children, at least at the start. This is enforced in `debuginfo`.
+        if let Some(parent_index) = parent_index {
+            debug_assert!(index > parent_index);
+            let parent_offset = index - parent_index;
+            if parent_offset > std::u16::MAX.into() {
+                return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::ParentOffset).into());
+            }
+            function.parent_offset = parent_offset as u16;
+        }
+
+        functions.insert(index, function);
+
+        // Since a function has been inserted, all following inlined functions need to be fixed up.
+        // Their relative parent offset has just increased by one, since we've inserted after their
+        // parent. Stop once a top-level function has been encountered.
+        for existing in &mut functions[index + 1..] {
+            if existing.parent_offset == !0 {
+                // NB: This assumes that there are no top-level functions with overlapping ranges.
+                break;
+            } else {
+                existing.parent_offset += 1;
+            }
+        }
+
+        Ok(index)
     }
 }

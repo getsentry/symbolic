@@ -82,44 +82,87 @@ impl<'a> SymCache<'a> {
         // Functions in the function segment are ordered by start address
         // primarily and by depth secondarily.  As a result we want to have
         // a secondary comparison by the item index.
-        let mut func_id = match funcs.binary_search_by_key(&addr, format::FuncRecord::addr_start) {
-            Ok(idx) => idx,
+        let mut current_id = match funcs.binary_search_by_key(&addr, format::FuncRecord::addr_start)
+        {
+            Ok(index) => index,
             Err(0) => return Ok(Lookup::empty(self)),
-            Err(next_idx) => next_idx - 1,
+            Err(next) => next - 1,
         };
 
         // Seek forward to the deepest inlined function at the same address.
-        while let Some(fun) = funcs.get(func_id + 1) {
-            if fun.addr_start() != funcs[func_id].addr_start() {
+        while let Some(current_fn) = funcs.get(current_id + 1) {
+            if current_fn.addr_start() != funcs[current_id].addr_start() {
                 break;
             }
-            func_id += 1;
+            current_id += 1;
         }
 
-        let mut fun = &funcs[func_id];
+        // Find the function with the line record closest to the address. There are multiple ways
+        // this lookup can go:
+        //  a. The current function referred to by `current_id` contains the line record responsible
+        //     for the address. However, line records only store the beginning and not the end of
+        //     their range, so we need to check for case (d).
+        //  b. The current function is top-level ends before the search address. This can happen due
+        //     to incomplete debug information or padding sections in the code. There is no match
+        //     for this case.
+        //  c. Same as 2, but for inline functions. Even though the inlinee doesn't match, one of
+        //     its ancestors might still cover with its range. They have to be checked until one
+        //     covers the range. Still, case (d) can apply additionally.
+        //  d. Even though a function covers the search address, it might be interleaved with
+        //     another function that started earlier but contains a line record closer to the search
+        //     address. See below for the lookup strategy.
+        let mut closest = None;
 
-        // The binary search matches the closest function that starts before our
-        // search address. However, that function might end before that already,
-        // for two reasons:
-        //  1. It is inlined and one of the ancestors will contain the code. Try
-        //     to move up the inlining hierarchy until we contain the address.
-        //  2. There is a gap between the functions and the instruction is not
-        //     covered by any of our function records.
-        while !fun.addr_in_range(addr) {
-            if let Some(parent_id) = fun.parent(func_id) {
-                // Parent might contain the instruction (case 1)
-                fun = &funcs[parent_id];
-                func_id = parent_id;
-            } else {
-                // We missed entirely (case 2)
-                return Ok(Lookup::empty(self));
+        // Since functions with overlapping ranges can exist, we need to check multiple functions
+        // until we hit a point where we believe no more functions can overlap. Theoretically, this
+        // is the very start of the list. FOR PERFORMANCE REASONS, THIS IMPLEMENATION ONLY CHECKS
+        // FOR OVERLAPS IN INLINE FUNCTIONS.
+        let mut last_id = current_id;
+        loop {
+            let current_fn = &funcs[current_id];
+
+            // If the current function covers the address, resolve the closest line record before
+            // the search address. If it is closer than what we've seen before, this is a better
+            // candidate, otherwise we can discard this function.
+            if current_fn.addr_in_range(addr) {
+                let current_addr = self
+                    .run_to_line(current_fn, addr)?
+                    // A lookup of `None` indicates that there was no line record at all, so just
+                    // assume the function's start address as start of the line.
+                    .map_or(current_fn.addr_start(), |(line_addr, _, _)| line_addr);
+
+                if closest.map_or(true, |(_, _, a)| current_addr > a) {
+                    closest = Some((current_id, current_fn, current_addr));
+                }
             }
+
+            // We are currently looking at an inline function. Since we're scanning linearly, ensure
+            // that we're also including its parent. This might be from a completely different
+            // inlining branch, so honor the existing `last_id` value as it might be lower.
+            if let Some(parent_id) = current_fn.parent(current_id) {
+                last_id = parent_id.min(last_id);
+            }
+
+            // We've checked the last function (inclusive), so bail out.
+            if current_id == 0 || current_id == last_id {
+                break;
+            }
+
+            // Continue with the immediate predecessor. This is not necessarily the inlining parent,
+            // it might be a completely unrelated function from a different branch. Still, it might
+            // cover the search address, so we cannot jump to the parent directly.
+            current_id -= 1;
         }
+
+        let (closest_id, closest_fn) = match closest {
+            Some((closest_id, closest_fn, _)) => (closest_id, closest_fn),
+            None => return Ok(Lookup::empty(self)),
+        };
 
         Ok(Lookup {
             cache: self,
             funcs,
-            current: Some((addr, func_id, fun)),
+            current: Some((addr, closest_id, closest_fn)),
             inner: None,
         })
     }
@@ -129,7 +172,7 @@ impl<'a> SymCache<'a> {
         self.header.functions.read(self.data)
     }
 
-    /// Locates the source line for an instruction address within a function.
+    /// Locates the source line record for an instruction address within a function.
     ///
     /// This function runs through all line records of the given function and
     /// returns the line closest to the specified instruction. `addr` must be
@@ -137,16 +180,16 @@ impl<'a> SymCache<'a> {
     /// defined. However, `addr` may point to any address within an instruction.
     ///
     /// Returns some tuple containing:
-    ///  - `.0`: The file containing the source code
-    ///  - `.1`: First instruction address of the source line
+    ///  - `.0`: First instruction address of the source line
+    ///  - `.1`: File id of the source file containing this line
     ///  - `.2`: Line number in the file
     ///
     /// Returns `None` if the function does not have line records.
     fn run_to_line(
-        &'a self,
-        fun: &'a format::FuncRecord,
+        &self,
+        fun: &format::FuncRecord,
         addr: u64,
-    ) -> Result<Option<(&format::FileRecord, u64, u32)>, SymCacheError> {
+    ) -> Result<Option<(u64, u16, u32)>, SymCacheError> {
         let records = fun.line_records.read(self.data)?;
         if records.is_empty() {
             // A non-empty function without line records can happen in a couple
@@ -171,7 +214,7 @@ impl<'a> SymCache<'a> {
         // record as fallback.
         let mut file_id = records[0].file_id;
         let mut line = u32::from(records[0].line);
-        let mut running_addr = fun.addr_start() as u64;
+        let mut running_addr = fun.addr_start();
         let mut line_addr = running_addr;
 
         for rec in records {
@@ -192,12 +235,7 @@ impl<'a> SymCache<'a> {
             file_id = rec.file_id;
         }
 
-        if let Some(ref record) = read_file_record(self.data, self.header.files, file_id)? {
-            Ok(Some((record, line_addr, line)))
-        } else {
-            // This should not happen and indicates an invalid symcache
-            Err(SymCacheErrorKind::BadCacheFile.into())
-        }
+        Ok(Some((line_addr, file_id, line)))
     }
 
     /// Extracts source line information for an instruction address within the
@@ -221,7 +259,11 @@ impl<'a> SymCache<'a> {
         inner_sym: Option<(u32, u64, &'a str, &'a str)>,
     ) -> Result<LineInfo<'a>, SymCacheError> {
         let (line, line_addr, filename, base_dir) =
-            if let Some((file_record, line_addr, line)) = self.run_to_line(fun, addr)? {
+            if let Some((line_addr, file_id, line)) = self.run_to_line(fun, addr)? {
+                // A missing file record indicates a bad symcache.
+                let file_record = read_file_record(self.data, self.header.files, file_id)?
+                    .ok_or_else(|| SymCacheErrorKind::BadCacheFile)?;
+
                 // The address was found in the function's line records, so use
                 // it directly. This should is the default case for all valid
                 // debugging information and the majority of all frames.
