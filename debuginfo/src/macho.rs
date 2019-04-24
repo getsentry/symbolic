@@ -12,7 +12,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::private::{HexFmt, MonoArchive, MonoArchiveObjects, Parse};
+use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 
 /// An error when dealing with [`MachObject`](struct.MachObject.html).
 #[derive(Debug, Fail)]
@@ -245,7 +245,7 @@ impl fmt::Debug for MachObject<'_> {
             .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())
             .field("kind", &self.kind())
-            .field("load_address", &HexFmt(self.load_address()))
+            .field("load_address", &format_args!("{:#x}", self.load_address()))
             .field("has_symbols", &self.has_symbols())
             .field("has_debug_info", &self.has_debug_info())
             .field("has_unwind_info", &self.has_unwind_info())

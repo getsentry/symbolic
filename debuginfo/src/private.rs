@@ -109,14 +109,6 @@ pub trait Parse<'data>: Sized {
     }
 }
 
-pub struct HexFmt(pub u64);
-
-impl<'d> fmt::Debug for HexFmt {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:#x}", self.0)
-    }
-}
-
 pub struct MonoArchive<'d, P> {
     data: &'d [u8],
     _ph: PhantomData<&'d P>,

@@ -8,8 +8,6 @@ use failure::Fail;
 
 use symbolic_common::{join_path, Arch, CodeId, DebugId, Name};
 
-use crate::private::HexFmt;
-
 /// An error returned for unknown or invalid `ObjectKinds`.
 #[derive(Debug, Fail, Clone, Copy)]
 #[fail(display = "unknown object class")]
@@ -215,8 +213,8 @@ impl<'d> fmt::Debug for Symbol<'d> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Symbol")
             .field("name", &self.name().unwrap_or("<unknown>"))
-            .field("address", &HexFmt(self.address))
-            .field("size", &HexFmt(self.size))
+            .field("address", &format_args!("{:#x}", self.address))
+            .field("size", &format_args!("{:#x}", self.size))
             .finish()
     }
 }
@@ -443,7 +441,7 @@ pub struct LineInfo<'data> {
 impl fmt::Debug for LineInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("LineInfo")
-            .field("address", &HexFmt(self.address))
+            .field("address", &format_args!("{:#x}", self.address))
             .field("file", &self.file)
             .field("line", &self.line)
             .finish()
@@ -472,8 +470,8 @@ pub struct Function<'data> {
 impl fmt::Debug for Function<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Function")
-            .field("address", &HexFmt(self.address))
-            .field("size", &HexFmt(self.size))
+            .field("address", &format_args!("{:#x}", self.address))
+            .field("size", &format_args!("{:#x}", self.size))
             .field("name", &self.name)
             .field(
                 "compilation_dir",

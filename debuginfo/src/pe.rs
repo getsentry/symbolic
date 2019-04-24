@@ -11,7 +11,7 @@ use goblin::{error::Error as GoblinError, pe};
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
-use crate::private::{HexFmt, Parse};
+use crate::private::Parse;
 
 pub use goblin::pe::exception::*;
 pub use goblin::pe::section_table::SectionTable;
@@ -203,7 +203,7 @@ impl fmt::Debug for PeObject<'_> {
             .field("debug_file_name", &self.debug_file_name())
             .field("arch", &self.arch())
             .field("kind", &self.kind())
-            .field("load_address", &HexFmt(self.load_address()))
+            .field("load_address", &format_args!("{:#x}", self.load_address()))
             .field("has_symbols", &self.has_symbols())
             .field("has_debug_info", &self.has_debug_info())
             .field("has_unwind_info", &self.has_unwind_info())

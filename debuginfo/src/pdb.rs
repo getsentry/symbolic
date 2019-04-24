@@ -16,7 +16,7 @@ use symbolic_common::{
 };
 
 use crate::base::*;
-use crate::private::{HexFmt, Parse};
+use crate::private::Parse;
 
 type Pdb<'d> = pdb::PDB<'d, Cursor<&'d [u8]>>;
 
@@ -200,7 +200,7 @@ impl fmt::Debug for PdbObject<'_> {
         f.debug_struct("PdbObject")
             .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())
-            .field("load_address", &HexFmt(self.load_address()))
+            .field("load_address", &format_args!("{:#x}", self.load_address()))
             .field("has_symbols", &self.has_symbols())
             .field("has_debug_info", &self.has_debug_info())
             .field("has_unwind_info", &self.has_unwind_info())
