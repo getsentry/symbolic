@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.1.1
+
+- Expose PDB file names from PE object files.
+- Fix incorrect CFI extraction from ELF files.
+- Fix broken symcache lookups for certain optimized files.
+
 ## 6.1.0
 
 - Support PDB file and line information.
