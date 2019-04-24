@@ -66,7 +66,7 @@ fn main() {
                 .required(true)
                 .multiple(true)
                 .value_name("PATH")
-                .help("Path to the minidump file")
+                .help("Path to the debug file")
                 .number_of_values(1)
                 .index(1),
         )

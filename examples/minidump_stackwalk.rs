@@ -8,6 +8,7 @@ use walkdir::WalkDir;
 
 use symbolic::common::{Arch, ByteView, InstructionInfo, SelfCell};
 use symbolic::debuginfo::{Archive, FileFormat, Object};
+use symbolic::demangle::Demangle;
 use symbolic::minidump::cfi::CfiCache;
 use symbolic::minidump::processor::{CodeModuleId, FrameInfoMap, ProcessState, StackFrame};
 use symbolic::symcache::{LineInfo, SymCache, SymCacheWriter};
@@ -21,7 +22,7 @@ fn collect_referenced_objects<P, F, T>(
 ) -> Result<BTreeMap<CodeModuleId, T>, Error>
 where
     P: AsRef<Path>,
-    F: FnMut(Object) -> Result<Option<T>, Error>,
+    F: FnMut(Object, &Path) -> Result<Option<T>, Error>,
 {
     let search_ids: HashSet<_> = state
         .modules()
@@ -57,7 +58,7 @@ where
             }
 
             let format = object.file_format();
-            if let Some(t) = func(object)? {
+            if let Some(t) = func(object, entry.path())? {
                 collected.insert(id, t);
 
                 // Keep looking if we "only" found a breakpad symbols.
@@ -76,7 +77,7 @@ fn prepare_cfi<P>(path: P, state: &ProcessState) -> Result<FrameInfoMap<'static>
 where
     P: AsRef<Path>,
 {
-    collect_referenced_objects(path, state, |object| {
+    collect_referenced_objects(path, state, |object, path| {
         // Silently skip all debug symbols without CFI
         if !object.has_unwind_info() {
             return Ok(None);
@@ -85,7 +86,10 @@ where
         // Silently skip conversion errors
         Ok(match CfiCache::from_object(&object) {
             Ok(cficache) => Some(cficache),
-            Err(_) => None,
+            Err(e) => {
+                eprintln!("[cfi] {}: {}", path.display(), e);
+                None
+            }
         })
     })
 }
@@ -94,14 +98,17 @@ fn prepare_symcaches<P>(path: P, state: &ProcessState) -> Result<SymCaches<'stat
 where
     P: AsRef<Path>,
 {
-    collect_referenced_objects(path, state, |object| {
+    collect_referenced_objects(path, state, |object, path| {
         // Silently skip all incompatible debug symbols
         if !object.has_debug_info() {
             return Ok(None);
         }
 
         let mut buffer = Vec::new();
-        SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+        if let Err(e) = SymCacheWriter::write_object(&object, Cursor::new(&mut buffer)) {
+            eprintln!("[sym] {}: {}", path.display(), e);
+            return Ok(None);
+        }
 
         // Silently skip conversion errors
         let result = SelfCell::try_new(ByteView::from_vec(buffer), |ptr| {
@@ -200,7 +207,7 @@ fn print_state(
                             "{:>3}  {}!{} [{} : {} + 0x{:x}]",
                             index,
                             module.debug_file(),
-                            info.function_name(),
+                            info.function_name().try_demangle(Default::default()),
                             info.filename(),
                             info.line(),
                             info.instruction_address() - info.line_address(),
