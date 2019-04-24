@@ -22,9 +22,9 @@ exclude = [
 [dependencies]
 dmsort = "1.0.0"
 failure = "0.1.5"
-fallible-iterator = "0.1.6"
+fallible-iterator = "0.2.0"
 flate2 = { version = "1.0.6", features = ["rust_backend"], default-features = false }
-gimli = { version = "0.17.0", features = ["read", "std"], default-features = false }
+gimli = { git = "http://github.com/gimli-rs/gimli", rev = "340106442721983d32e5dee7f9583a2e3b6877bd", features = ["read", "std"], default-features = false }
 goblin = "0.0.22"
 lazycell = "1.2.1"
 pdb = "0.4.0"
