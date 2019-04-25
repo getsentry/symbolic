@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.1.2
+
+- Demangling support for Swift 5.
+- Fix a performance regression in 6.1.1
+
 ## 6.1.1
 
 - Expose PDB file names from PE object files.
