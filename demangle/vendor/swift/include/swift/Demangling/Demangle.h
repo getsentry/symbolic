@@ -33,6 +33,8 @@ namespace llvm {
 namespace swift {
 namespace Demangle {
 
+enum class SymbolicReferenceKind : uint8_t;
+
 struct DemangleOptions {
   bool SynthesizeSugarOnTypes = false;
   bool DisplayDebuggerGeneratedModule = true;
@@ -95,6 +97,8 @@ enum class FunctionSigSpecializationParamKind : unsigned {
   Dead = 1 << 6,
   OwnedToGuaranteed = 1 << 7,
   SROA = 1 << 8,
+  GuaranteedToOwned = 1 << 9,
+  ExistentialToGeneric = 1 << 10,
 };
 
 /// The pass that caused the specialization to occur. We use this to make sure
@@ -273,6 +277,11 @@ bool isProtocol(llvm::StringRef mangledName);
 /// \param mangledName A null-terminated string containing a mangled name.
 bool isStruct(llvm::StringRef mangledName);
 
+/// Returns true if the mangled name is an Objective-C symbol.
+///
+/// \param mangledName A null-terminated string containing a mangled name.
+bool isObjCSymbol(llvm::StringRef mangledName);
+
 /// Returns true if the mangled name has the old scheme of function type
 /// mangling where labels are part of the type.
 ///
@@ -351,7 +360,7 @@ public:
   /// Returns true if the mangledName refers to a thunk function.
   ///
   /// Thunk functions are either (ObjC) partial apply forwarder, swift-as-ObjC
-  /// or ObjC-as-swift thunks.
+  /// or ObjC-as-swift thunks or allocating init functions.
   bool isThunkSymbol(llvm::StringRef MangledName);
 
   /// Returns the mangled name of the target of a thunk.
@@ -467,7 +476,9 @@ void mangleIdentifier(const char *data, size_t length,
 /// This should always round-trip perfectly with demangleSymbolAsNode.
 std::string mangleNode(const NodePointer &root);
 
-using SymbolicResolver = llvm::function_ref<Demangle::NodePointer (const void *)>;
+using SymbolicResolver =
+  llvm::function_ref<Demangle::NodePointer (SymbolicReferenceKind,
+                                            const void *)>;
 
 /// \brief Remangle a demangled parse tree, using a callback to resolve
 /// symbolic references.
@@ -531,6 +542,8 @@ public:
     return std::move(*this << std::forward<T>(x));
   }
   
+  DemanglerPrinter &writeHex(unsigned long long n) &;
+ 
   std::string &&str() && { return std::move(Stream); }
 
   llvm::StringRef getStringRef() const { return Stream; }
