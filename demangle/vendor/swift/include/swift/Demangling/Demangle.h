@@ -52,6 +52,7 @@ struct DemangleOptions {
   bool ShortenArchetype = false;
   bool ShowPrivateDiscriminators = true;
   bool ShowFunctionArgumentTypes = true;
+  bool ShowFunctionArguments = true;
 
   DemangleOptions() {}
 
