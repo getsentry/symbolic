@@ -185,7 +185,7 @@ public:
     auto _kind = demangle##CHILD_KIND();                           \
     if (!_kind.hasValue()) return nullptr;                         \
     addChild(PARENT, Factory.createNode(Node::Kind::CHILD_KIND,        \
-                                           unsigned(*_kind)));     \
+                                           (unsigned)(*_kind)));     \
   } while (false)
 
   /// Attempt to demangle the source string.  The root node will
@@ -378,7 +378,7 @@ private:
       if (!w.hasValue())
         return nullptr;
       auto witness =
-        Factory.createNode(Node::Kind::ValueWitness, unsigned(w.getValue()));
+        Factory.createNode(Node::Kind::ValueWitness, (unsigned) w.getValue());
       DEMANGLE_CHILD_OR_RETURN(witness, Type);
       return witness;
     }
@@ -641,21 +641,21 @@ private:
         unsigned Value = 0;
         if (Mangled.nextIf('d')) {
           Value |=
-            unsigned(FunctionSigSpecializationParamKind::Dead);
+            (unsigned) FunctionSigSpecializationParamKind::Dead;
         }
 
         if (Mangled.nextIf('g')) {
           Value |=
-              unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed);
+              (unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed;
         }
 
         if (Mangled.nextIf('o')) {
           Value |=
-              unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned);
+              (unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned;
         }
 
         if (Mangled.nextIf('s')) {
-          Value |= unsigned(FunctionSigSpecializationParamKind::SROA);
+          Value |= (unsigned) FunctionSigSpecializationParamKind::SROA;
         }
 
         if (!Mangled.nextIf('_'))
@@ -696,7 +696,7 @@ private:
 
       // Create a node for the pass id.
       spec->addChild(Factory.createNode(Node::Kind::SpecializationPassID,
-                                      unsigned(Mangled.next() - 48)), Factory);
+                                      (unsigned)(Mangled.next() - 48)), Factory);
 
       // And then mangle the generic specialization.
       return demangleGenericSpecialization(spec);
@@ -713,7 +713,7 @@ private:
 
       // Add the pass id.
       spec->addChild(Factory.createNode(Node::Kind::SpecializationPassID,
-                                      unsigned(Mangled.next() - 48)), Factory);
+                                      (unsigned)(Mangled.next() - 48)), Factory);
 
       // Then perform the function signature specialization.
       return demangleFunctionSignatureSpecialization(spec);

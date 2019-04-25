@@ -903,10 +903,10 @@ void Remangler::mangleDidSet(Node *node) {
 }
 
 void Remangler::mangleDirectness(Node *node) {
-  if (node->getIndex() == unsigned(Directness::Direct)) {
+  if (node->getIndex() == (unsigned) Directness::Direct) {
     Buffer << 'd';
   } else {
-    assert(node->getIndex() == unsigned(Directness::Indirect));
+    assert(node->getIndex() == (unsigned) Directness::Indirect);
     Buffer << 'i';
   }
 }
@@ -1107,35 +1107,35 @@ void Remangler::mangleFunctionSignatureSpecializationParam(Node *node) {
       return;
     default:
       if (kindValue &
-          unsigned(
-              FunctionSigSpecializationParamKind::ExistentialToGeneric)) {
+          (unsigned)
+              FunctionSigSpecializationParamKind::ExistentialToGeneric) {
         Buffer << 'e';
-        if (kindValue & unsigned(FunctionSigSpecializationParamKind::Dead))
+        if (kindValue & (unsigned) FunctionSigSpecializationParamKind::Dead)
           Buffer << 'D';
         if (kindValue &
-            unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed))
+            (unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed)
           Buffer << 'G';
         if (kindValue &
-            unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned))
+            (unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned)
           Buffer << 'O';
       } else if (kindValue &
-                 unsigned(FunctionSigSpecializationParamKind::Dead)) {
+                 (unsigned) FunctionSigSpecializationParamKind::Dead) {
         Buffer << 'd';
         if (kindValue &
-            unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed))
+            (unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed)
           Buffer << 'G';
         if (kindValue &
-            unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned))
+            (unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned)
           Buffer << 'O';
       } else if (kindValue &
-              unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed)) {
+              (unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed) {
         Buffer << 'g';
       } else if (kindValue &
-                 unsigned(
-                     FunctionSigSpecializationParamKind::GuaranteedToOwned)) {
+                 (unsigned)
+                     FunctionSigSpecializationParamKind::GuaranteedToOwned) {
         Buffer << 'o';
       }
-      if (kindValue & unsigned(FunctionSigSpecializationParamKind::SROA))
+      if (kindValue & (unsigned) FunctionSigSpecializationParamKind::SROA)
         Buffer << 'X';
       return;
   }

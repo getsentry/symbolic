@@ -2283,47 +2283,47 @@ NodePointer Demangler::demangleFuncSpecParam(Node::IndexType ParamIdx) {
     }
     case 'e': {
       unsigned Value =
-          unsigned(FunctionSigSpecializationParamKind::ExistentialToGeneric);
+          (unsigned) FunctionSigSpecializationParamKind::ExistentialToGeneric;
       if (nextIf('D'))
-        Value |= unsigned(FunctionSigSpecializationParamKind::Dead);
+        Value |= (unsigned) FunctionSigSpecializationParamKind::Dead;
       if (nextIf('G'))
         Value |=
-            unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed);
+            (unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed;
       if (nextIf('O'))
         Value |=
-            unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned);
+            (unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned;
       if (nextIf('X'))
-        Value |= unsigned(FunctionSigSpecializationParamKind::SROA);
+        Value |= (unsigned) FunctionSigSpecializationParamKind::SROA;
       return addChild(
           Param,
           createNode(Node::Kind::FunctionSignatureSpecializationParamKind,
                      Value));
     }
     case 'd': {
-      unsigned Value = unsigned(FunctionSigSpecializationParamKind::Dead);
+      unsigned Value = (unsigned) FunctionSigSpecializationParamKind::Dead;
       if (nextIf('G'))
-        Value |= unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed);
+        Value |= (unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed;
       if (nextIf('O'))
         Value |=
-            unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned);
+            (unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned;
       if (nextIf('X'))
-        Value |= unsigned(FunctionSigSpecializationParamKind::SROA);
+        Value |= (unsigned) FunctionSigSpecializationParamKind::SROA;
       return addChild(Param, createNode(
                   Node::Kind::FunctionSignatureSpecializationParamKind, Value));
     }
     case 'g': {
-      unsigned Value = unsigned(FunctionSigSpecializationParamKind::
-                                OwnedToGuaranteed);
+      unsigned Value = (unsigned) FunctionSigSpecializationParamKind::
+                                OwnedToGuaranteed;
       if (nextIf('X'))
-        Value |= unsigned(FunctionSigSpecializationParamKind::SROA);
+        Value |= (unsigned) FunctionSigSpecializationParamKind::SROA;
       return addChild(Param, createNode(
                   Node::Kind::FunctionSignatureSpecializationParamKind, Value));
     }
     case 'o': {
       unsigned Value =
-          unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned);
+          (unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned;
       if (nextIf('X'))
-        Value |= unsigned(FunctionSigSpecializationParamKind::SROA);
+        Value |= (unsigned) FunctionSigSpecializationParamKind::SROA;
       return addChild(
           Param,
           createNode(Node::Kind::FunctionSignatureSpecializationParamKind,
@@ -2332,15 +2332,15 @@ NodePointer Demangler::demangleFuncSpecParam(Node::IndexType ParamIdx) {
     case 'x':
       return addChild(Param, createNode(
                 Node::Kind::FunctionSignatureSpecializationParamKind,
-                unsigned(FunctionSigSpecializationParamKind::SROA)));
+                (unsigned) FunctionSigSpecializationParamKind::SROA));
     case 'i':
       return addChild(Param, createNode(
                 Node::Kind::FunctionSignatureSpecializationParamKind,
-                unsigned(FunctionSigSpecializationParamKind::BoxToValue)));
+                (unsigned) FunctionSigSpecializationParamKind::BoxToValue));
     case 's':
       return addChild(Param, createNode(
                 Node::Kind::FunctionSignatureSpecializationParamKind,
-                unsigned(FunctionSigSpecializationParamKind::BoxToStack)));
+                (unsigned) FunctionSigSpecializationParamKind::BoxToStack));
     default:
       return nullptr;
   }
@@ -2349,7 +2349,7 @@ NodePointer Demangler::demangleFuncSpecParam(Node::IndexType ParamIdx) {
 NodePointer Demangler::addFuncSpecParamNumber(NodePointer Param,
                                     FunctionSigSpecializationParamKind Kind) {
   Param->addChild(createNode(
-        Node::Kind::FunctionSignatureSpecializationParamKind, unsigned(Kind)),
+        Node::Kind::FunctionSignatureSpecializationParamKind, (unsigned) Kind),
         *this);
   CharVector Str;
   while (isDigit(peekChar())) {
@@ -2387,14 +2387,14 @@ NodePointer Demangler::demangleWitness() {
       return createWithChild(Node::Kind::ValueWitnessTable,
                              popNode(Node::Kind::Type));
     case 'v': {
-      unsigned Directness;
+      unsigned directness;
       switch (nextChar()) {
-        case 'd': Directness = unsigned(Directness::Direct); break;
-        case 'i': Directness = unsigned(Directness::Indirect); break;
+        case 'd': directness = (unsigned) Directness::Direct; break;
+        case 'i': directness = (unsigned) Directness::Indirect; break;
         default: return nullptr;
       }
       return createWithChildren(Node::Kind::FieldOffset,
-                        createNode(Node::Kind::Directness, Directness),
+                        createNode(Node::Kind::Directness, directness),
                         popNode(isEntity));
     }
     case 'S':
@@ -2966,7 +2966,7 @@ NodePointer Demangler::demangleValueWitness() {
   int Kind = decodeValueWitnessKind(StringRef(Code, 2));
   if (Kind < 0)
     return nullptr;
-  NodePointer VW = createNode(Node::Kind::ValueWitness, unsigned(Kind));
+  NodePointer VW = createNode(Node::Kind::ValueWitness, (unsigned) Kind);
   return addChild(VW, popNode(Node::Kind::Type));
 }
 

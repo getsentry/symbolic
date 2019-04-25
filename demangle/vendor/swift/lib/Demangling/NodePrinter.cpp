@@ -873,11 +873,11 @@ unsigned NodePrinter::printFunctionSigSpecializationParam(NodePointer Node,
   }
 
   assert(
-      ((V & unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed)) ||
-       (V & unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned)) ||
-       (V & unsigned(FunctionSigSpecializationParamKind::SROA)) ||
-       (V & unsigned(FunctionSigSpecializationParamKind::Dead))||
-       (V & unsigned(
+      ((V & ((unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed)) ||
+       (V & ((unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned)) ||
+       (V & ((unsigned) FunctionSigSpecializationParamKind::SROA)) ||
+       (V & ((unsigned) FunctionSigSpecializationParamKind::Dead))||
+       (V & ((unsigned) 
                 FunctionSigSpecializationParamKind::ExistentialToGeneric))) &&
       "Invalid OptionSet");
   print(Node->getChild(Idx++));
@@ -1528,7 +1528,7 @@ NodePointer NodePrinter::print(NodePointer Node, bool asPrefixContext) {
     if (Node->getKind() == Node::Kind::ReabstractionThunkHelper)
       Printer << "helper ";
     auto generics = getFirstChildOfKind(Node, Node::Kind::DependentGenericSignature);
-    assert(Node->getNumChildren() == 2 + unsigned(generics != nullptr));
+    assert(Node->getNumChildren() == 2 + (unsigned)(generics != nullptr));
     if (generics) {
       print(generics);
       Printer << " ";
