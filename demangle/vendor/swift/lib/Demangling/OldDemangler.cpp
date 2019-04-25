@@ -649,6 +649,11 @@ private:
               unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed);
         }
 
+        if (Mangled.nextIf('o')) {
+          Value |=
+              unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned);
+        }
+
         if (Mangled.nextIf('s')) {
           Value |= unsigned(FunctionSigSpecializationParamKind::SROA);
         }
@@ -1012,6 +1017,8 @@ private:
         parentOrModule->getKind() != Node::Kind::Function &&
         parentOrModule->getKind() != Node::Kind::Extension) {
       parentOrModule = demangleBoundGenericArgs(parentOrModule);
+      if (!parentOrModule)
+        return nullptr;
 
       // Rebuild this type with the new parent type, which may have
       // had its generic arguments applied.
@@ -1252,6 +1259,16 @@ private:
     } else if (Mangled.nextIf('W')) {
       wrapEntity = true;
       entityKind = Node::Kind::DidSet;
+      name = demangleDeclName();
+      if (!name) return nullptr;
+    } else if (Mangled.nextIf('r')) {
+      wrapEntity = true;
+      entityKind = Node::Kind::ReadAccessor;
+      name = demangleDeclName();
+      if (!name) return nullptr;
+    } else if (Mangled.nextIf('M')) {
+      wrapEntity = true;
+      entityKind = Node::Kind::ModifyAccessor;
       name = demangleDeclName();
       if (!name) return nullptr;
     } else if (Mangled.nextIf('U')) {
@@ -1699,20 +1716,6 @@ private:
     if (Mangled.nextIf('s')) {
       NodePointer stdlib = Factory.createNode(Node::Kind::Module, STDLIB_NAME);
       return makeAssociatedType(stdlib);
-    }
-    if (Mangled.nextIf('q')) {
-      NodePointer index = demangleIndexAsNode();
-      if (!index)
-        return nullptr;
-      NodePointer decl_ctx = Factory.createNode(Node::Kind::DeclContext);
-      NodePointer ctx = demangleContext();
-      if (!ctx)
-        return nullptr;
-      decl_ctx->addChild(ctx, Factory);
-      auto qual_atype = Factory.createNode(Node::Kind::QualifiedArchetype);
-      qual_atype->addChild(index, Factory);
-      qual_atype->addChild(decl_ctx, Factory);
-      return qual_atype;
     }
     return nullptr;
   }
