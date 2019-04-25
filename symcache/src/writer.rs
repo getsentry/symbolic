@@ -111,6 +111,57 @@ where
     }
 }
 
+/// Reference to a function within the `SymCacheWriter`.
+#[derive(Copy, Clone, Debug, Eq, Ord, Hash, PartialEq, PartialOrd)]
+struct FuncRef {
+    /// The start address of the function.
+    pub address: u64,
+    /// The original index in the functions array.
+    pub index: u32,
+}
+
+impl FuncRef {
+    /// Creates a new
+    pub fn new(address: u64, index: u32) -> Self {
+        FuncRef { address, index }
+    }
+
+    pub fn none() -> Self {
+        FuncRef {
+            address: 0,
+            index: !0,
+        }
+    }
+
+    /// Returns the index as `usize`.
+    pub fn as_usize(self) -> Option<usize> {
+        if self.index == !0 {
+            None
+        } else {
+            Some(self.index as usize)
+        }
+    }
+}
+
+impl Default for FuncRef {
+    fn default() -> Self {
+        Self::none()
+    }
+}
+
+/// A function record along with its original position and reference to parent.
+#[derive(Debug)]
+struct FuncHandle {
+    /// Original position in the writer.
+    pub original: FuncRef,
+
+    /// Reference to the original position of the parent function.
+    pub parent: FuncRef,
+
+    /// Data of this record.
+    pub record: format::FuncRecord,
+}
+
 /// A high level writer that can construct SymCaches.
 ///
 /// When using this writer directly, ensure to call [`finish`] at the end, so that all segments are
@@ -123,10 +174,11 @@ pub struct SymCacheWriter<W> {
     header: format::HeaderV2,
     files: Vec<format::FileRecord>,
     symbols: Vec<format::Seg<u8, u16>>,
-    functions: Vec<format::FuncRecord>,
+    functions: Vec<FuncHandle>,
     path_cache: HashMap<Vec<u8>, format::Seg<u8, u8>>,
     file_cache: FnvHashMap<format::FileRecord, u16>,
     symbol_cache: HashMap<String, u32>,
+    sorted: bool,
 }
 
 impl<W> SymCacheWriter<W>
@@ -165,7 +217,7 @@ where
 
             // Ensure that symbols at the function address are skipped even if the function size is
             // zero. We trust that the function range (address to address + size) spans all lines.
-            last_address = function.address + std::cmp::max(1, function.size);
+            last_address = last_address.max(function.address + function.size.max(1));
             writer.add_function(function)?;
         }
 
@@ -196,6 +248,7 @@ where
             path_cache: HashMap::new(),
             file_cache: FnvHashMap::default(),
             symbol_cache: HashMap::new(),
+            sorted: true,
         })
     }
 
@@ -239,12 +292,12 @@ where
             symbol_id_low: (symbol_id & 0xffff) as u16,
             symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
             line_records: format::Seg::default(),
-            parent_offset: !0,
+            parent_offset: !0, // amended during write_functions
             comp_dir: format::Seg::default(),
             lang: Language::Unknown as u8,
         };
 
-        self.push_function(None, record)?;
+        self.push_function(record, FuncRef::none())?;
         Ok(())
     }
 
@@ -261,17 +314,18 @@ where
             return Ok(());
         }
 
-        self.insert_function(&function, None, &mut FnvHashSet::default())
+        self.insert_function(&function, FuncRef::none(), &mut FnvHashSet::default())
     }
 
     /// Persists all open segments to the writer and fixes up the header.
-    pub fn finish(self) -> Result<W, SymCacheError> {
+    pub fn finish(mut self) -> Result<W, SymCacheError> {
+        self.header.functions = self.write_functions()?;
+
         let mut writer = self.writer;
         let mut header = self.header;
 
         header.symbols = writer.write_segment(&self.symbols, ValueKind::Symbol)?;
         header.files = writer.write_segment(&self.files, ValueKind::File)?;
-        header.functions = writer.write_segment(&self.functions, ValueKind::Function)?;
 
         writer.seek(0)?;
         writer.write_bytes(format::as_slice(&header))?;
@@ -348,7 +402,7 @@ where
     fn insert_function(
         &mut self,
         function: &Function<'_>,
-        parent_index: Option<usize>,
+        parent_ref: FuncRef,
         line_cache: &mut FnvHashSet<(u64, u64)>,
     ) -> Result<(), SymCacheError> {
         let address = function.address;
@@ -379,9 +433,9 @@ where
         // Push the record first, then recurse into inline functions and finally push line records.
         // This ensures that functions are pushed in the right order, while address rejection can
         // prune duplicate line entries.
-        let index = self.push_function(parent_index, record)?;
+        let function_ref = self.push_function(record, parent_ref)?;
         for inlinee in &function.inlinees {
-            self.insert_function(inlinee, Some(index), line_cache)?;
+            self.insert_function(inlinee, function_ref, line_cache)?;
         }
 
         let mut last_address = address;
@@ -415,8 +469,8 @@ where
         }
 
         if !line_segment.is_empty() {
-            self.functions[index].line_records =
-                self.writer.write_segment(&line_segment, ValueKind::Line)?;
+            let record = &mut self.functions[function_ref.index as usize].record;
+            record.line_records = self.writer.write_segment(&line_segment, ValueKind::Line)?;
             self.header.has_line_records = 1;
         }
 
@@ -425,57 +479,97 @@ where
 
     fn push_function(
         &mut self,
-        parent_index: Option<usize>,
-        mut function: format::FuncRecord,
-    ) -> Result<usize, SymCacheError> {
-        let addr = function.addr_start();
+        record: format::FuncRecord,
+        parent: FuncRef,
+    ) -> Result<FuncRef, SymCacheError> {
         let functions = &mut self.functions;
+        let addr = record.addr_start();
 
-        let is_last = functions
-            .last()
-            .map_or(true, |last| last.addr_start() <= addr);
-
-        let index = if is_last {
-            // Optimize for the common case that functions are added in order. There's no need for a
-            // binary search, just append to the list.
-            functions.len()
-        } else {
-            // Find the place to insert. If a function exists at the same address, this is likely
-            // the inline parent, so it is added afterwards. There's also a slight chance that
-            // functions are fully duplicated, in which case the last inserted function wins during
-            // lookup.
-            match functions.binary_search_by_key(&addr, format::FuncRecord::addr_start) {
-                Ok(index) => index + 1,
-                Err(index) => index,
-            }
-        };
-
-        // Compute the offsret to the parent function. We require that this offset is positive, so
-        // inserting before a parent is strictly forbidden. The parent's range must include its
-        // children, at least at the start. This is enforced in `debuginfo`.
-        if let Some(parent_index) = parent_index {
-            debug_assert!(index > parent_index);
-            let parent_offset = index - parent_index;
-            if parent_offset > std::u16::MAX.into() {
-                return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::ParentOffset).into());
-            }
-            function.parent_offset = parent_offset as u16;
+        // Functions are not written through `writer.write_segment`, so a manual check for the
+        // maximum number of functions is necessary. This can later be asserted when writing
+        // functions to the file.
+        let index = functions.len();
+        if index >= std::u32::MAX as usize {
+            return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::Function).into());
         }
 
-        functions.insert(index, function);
+        // For optimization purposes, remember if all functions appear in order. If not, parent
+        // offsets need to be fixed up when writing to the file.
+        if let Some(last) = functions.last() {
+            if addr < last.record.addr_start() {
+                self.sorted = false;
+            }
+        }
 
-        // Since a function has been inserted, all following inlined functions need to be fixed up.
-        // Their relative parent offset has just increased by one, since we've inserted after their
-        // parent. Stop once a top-level function has been encountered.
-        for existing in &mut functions[index + 1..] {
-            if existing.parent_offset == !0 {
-                // NB: This assumes that there are no top-level functions with overlapping ranges.
-                break;
+        // Set the original index of this function as the current insert index. If functions need to
+        // be sorted later, this index can be used to resolve parent references via binary search.
+        let original = FuncRef::new(addr, index as u32);
+
+        functions.push(FuncHandle {
+            original,
+            parent,
+            record,
+        });
+
+        Ok(original)
+    }
+
+    fn write_functions(&mut self) -> Result<format::Seg<format::FuncRecord>, SymCacheError> {
+        if self.functions.is_empty() {
+            return Ok(format::Seg::default());
+        }
+
+        // Only sort if functions do not already appear in order. They are sorted primarily by their
+        // start address, and secondarily by the index in which they appeared originally in the
+        // file.
+        // To compute parent offsets after that, one can simply binary search by the parent_ref
+        // handle, allowing for efficient unique lookups.
+        if !self.sorted {
+            self.functions
+                .sort_unstable_by_key(|handle| handle.original);
+        }
+
+        let functions = &self.functions;
+        let segment = format::Seg::new(self.writer.position as u32, functions.len() as u32);
+
+        for (index, function) in functions.iter().enumerate() {
+            let parent_ref = function.parent;
+
+            let parent_index = if self.sorted {
+                // Since the list of functions was given in order, the original parent ref can be
+                // trusted and used to calculate the parent offset.
+                parent_ref.as_usize()
             } else {
-                existing.parent_offset += 1;
+                // The list of functions had to be sorted, so the parent ref must be resolved to its
+                // new index. This lookup should never fail, but to avoid unsafe code it is coerced
+                // into an option here.
+                functions
+                    .binary_search_by_key(&parent_ref, |h| h.original)
+                    .ok()
+            };
+
+            // Calculate the offset to the parent function and put it into the record. This assumes
+            // that the parent is always sorted before its childen, which is enforced by the
+            // debuginfo function iterators.
+            let mut record = function.record;
+            if let Some(parent_index) = parent_index {
+                debug_assert!(parent_index < index);
+
+                let parent_offset = index - parent_index;
+                if parent_offset > std::u16::MAX.into() {
+                    return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::ParentOffset).into());
+                }
+
+                record.parent_offset = parent_offset as u16;
             }
+
+            // Convert to raw bytes and output directly to the writer.
+            let record_size = std::mem::size_of::<format::FuncRecord>();
+            let ptr = &record as *const _ as *const u8;
+            let bytes = unsafe { std::slice::from_raw_parts(ptr, record_size) };
+            self.writer.write_bytes(bytes)?;
         }
 
-        Ok(index)
+        Ok(segment)
     }
 }
