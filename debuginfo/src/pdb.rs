@@ -346,7 +346,7 @@ struct PdbDebugInfo<'d> {
     modules: Vec<Module<'d>>,
     module_infos: Vec<LazyCell<Option<ModuleInfo<'d>>>>,
     address_map: pdb::AddressMap<'d>,
-    string_table: pdb::StringTable<'d>,
+    string_table: Option<pdb::StringTable<'d>>,
     symbol_map: SymbolMap<'d>,
 }
 
@@ -363,7 +363,15 @@ impl<'d> PdbDebugInfo<'d> {
         // instance, `pdb.symbol_map()` requires a mutable borrow of the PDB as well.
         let mut p = pdb.pdb.write();
         let address_map = p.address_map()?;
-        let string_table = p.string_table()?;
+
+        // PDB::string_table errors if the named stream for the string table is not present.
+        // However, this occurs in certain PDBs and does not automatically indicate an error.
+        let string_table = match p.string_table() {
+            Ok(string_table) => Some(string_table),
+            Err(pdb::Error::StreamNameNotFound) => None,
+            Err(e) => return Err(e.into()),
+        };
+
         drop(p);
 
         Ok(PdbDebugInfo {
@@ -490,7 +498,10 @@ impl<'s> Unit<'s> {
                 };
 
                 let file_info = program.get_file_info(line_info.file_index)?;
-                let file_path = file_info.name.to_raw_string(&string_table)?;
+                let file_path = match string_table {
+                    Some(string_table) => file_info.name.to_raw_string(&string_table)?,
+                    None => "".into(),
+                };
                 let (dir, name) = split_path_bytes(file_path.as_bytes());
 
                 lines.push(LineInfo {

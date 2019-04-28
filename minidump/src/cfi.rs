@@ -30,7 +30,7 @@ use symbolic_debuginfo::dwarf::gimli::{
     Register, RegisterRule, UninitializedUnwindContext, UnwindSection,
 };
 use symbolic_debuginfo::dwarf::Dwarf;
-use symbolic_debuginfo::pdb::pdb::{FallibleIterator, FrameData, Rva, StringTable};
+use symbolic_debuginfo::pdb::pdb::{self, FallibleIterator, FrameData, Rva, StringTable};
 use symbolic_debuginfo::pdb::PdbObject;
 use symbolic_debuginfo::pe::{PeObject, UnwindOperation};
 use symbolic_debuginfo::{Object, ObjectLike};
@@ -439,10 +439,16 @@ impl<W: Write> AsciiCfiWriter<W> {
     fn process_pdb(&mut self, pdb: &PdbObject<'_>) -> Result<(), CfiError> {
         let mut pdb = pdb.inner().write();
         let frame_table = pdb.frame_table().context(CfiErrorKind::BadDebugInfo)?;
-        let string_table = pdb.string_table().context(CfiErrorKind::BadDebugInfo)?;
         let address_map = pdb.address_map().context(CfiErrorKind::BadDebugInfo)?;
-        let mut frames = frame_table.iter();
 
+        // See `PdbDebugSession::build`.
+        let string_table = match pdb.string_table() {
+            Ok(string_table) => Some(string_table),
+            Err(pdb::Error::StreamNameNotFound) => None,
+            Err(e) => Err(e).context(CfiErrorKind::BadDebugInfo)?,
+        };
+
+        let mut frames = frame_table.iter();
         let mut last_frame: Option<FrameData> = None;
 
         while let Some(frame) = frames.next().context(CfiErrorKind::BadDebugInfo)? {
@@ -495,7 +501,7 @@ impl<W: Write> AsciiCfiWriter<W> {
 
             if is_contiguous {
                 self.write_pdb_stackinfo(
-                    &string_table,
+                    string_table.as_ref(),
                     &frame,
                     prolog_ranges[0].start,
                     code_ranges[0].end,
@@ -507,11 +513,17 @@ impl<W: Write> AsciiCfiWriter<W> {
                 code_ranges.sort_unstable_by_key(|range| range.start);
 
                 for Range { start, end } in prolog_ranges {
-                    self.write_pdb_stackinfo(&string_table, &frame, start, end, end - start)?;
+                    self.write_pdb_stackinfo(
+                        string_table.as_ref(),
+                        &frame,
+                        start,
+                        end,
+                        end - start,
+                    )?;
                 }
 
                 for Range { start, end } in code_ranges {
-                    self.write_pdb_stackinfo(&string_table, &frame, start, end, 0)?;
+                    self.write_pdb_stackinfo(string_table.as_ref(), &frame, start, end, 0)?;
                 }
             }
 
@@ -523,14 +535,15 @@ impl<W: Write> AsciiCfiWriter<W> {
 
     fn write_pdb_stackinfo(
         &mut self,
-        string_table: &StringTable<'_>,
+        string_table: Option<&StringTable<'_>>,
         frame: &FrameData,
         start: Rva,
         end: Rva,
         prolog_size: u32,
     ) -> Result<(), CfiError> {
         let code_size = end - start;
-        let program_or_bp = frame.program.is_some() || frame.uses_base_pointer;
+        let program_or_bp =
+            frame.program.is_some() && string_table.is_some() || frame.uses_base_pointer;
 
         write!(
             self.inner,
@@ -550,6 +563,11 @@ impl<W: Write> AsciiCfiWriter<W> {
 
         match frame.program {
             Some(ref prog_ref) => {
+                let string_table = match string_table {
+                    Some(string_table) => string_table,
+                    None => return Ok(writeln!(self.inner).context(CfiErrorKind::WriteError)?),
+                };
+
                 let program_string = prog_ref
                     .to_string_lossy(&string_table)
                     .context(CfiErrorKind::BadDebugInfo)?;
