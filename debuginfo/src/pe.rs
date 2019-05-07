@@ -68,15 +68,10 @@ impl<'d> PeObject<'d> {
         let header = &self.pe.header;
         let optional_header = header.optional_header.as_ref()?;
 
-        let timestamp = header.coff_header.time_date_stamp.to_be_bytes();
-        let size_of_image = optional_header.windows_fields.size_of_image.to_be_bytes();
-        let first_size_byte = size_of_image.iter().position(|x| *x != 0).unwrap_or(3);
-
-        let mut code_id = Vec::with_capacity(8);
-        code_id.extend(&timestamp);
-        code_id.extend(&size_of_image[first_size_byte..]);
-
-        Some(CodeId::from_vec(code_id))
+        let timestamp = header.coff_header.time_date_stamp;
+        let size_of_image = optional_header.windows_fields.size_of_image;
+        let string = format!("{:08x}{:x}", timestamp, size_of_image);
+        Some(CodeId::new(string))
     }
 
     /// The debug information identifier of this PE.
