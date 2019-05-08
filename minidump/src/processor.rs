@@ -394,6 +394,12 @@ impl FromStr for FrameTrust {
     }
 }
 
+impl Default for FrameTrust {
+    fn default() -> FrameTrust {
+        FrameTrust::None
+    }
+}
+
 #[cfg(feature = "serde")]
 impl ::serde::ser::Serialize for FrameTrust {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
