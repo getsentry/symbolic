@@ -367,6 +367,63 @@ impl fmt::Display for FrameTrust {
     }
 }
 
+/// Error when converting a string to FrameTrust.
+#[derive(Clone, Copy, Debug)]
+pub struct ParseFrameTrustError;
+
+impl fmt::Display for ParseFrameTrustError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "failed to parse frame trust")
+    }
+}
+
+impl FromStr for FrameTrust {
+    type Err = ParseFrameTrustError;
+
+    fn from_str(string: &str) -> Result<FrameTrust, Self::Err> {
+        Ok(match string {
+            "none" => FrameTrust::None,
+            "scan" => FrameTrust::Scan,
+            "cfiscan" => FrameTrust::CFIScan,
+            "fp" => FrameTrust::FP,
+            "cfi" => FrameTrust::CFI,
+            "prewalked" => FrameTrust::Prewalked,
+            "context" => FrameTrust::Context,
+            _ => return Err(ParseFrameTrustError),
+        })
+    }
+}
+
+#[cfg(feature = "serde")]
+impl ::serde::ser::Serialize for FrameTrust {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ::serde::ser::Serializer,
+    {
+        serializer.serialize_str(match *self {
+            FrameTrust::None => "none",
+            FrameTrust::Scan => "scan",
+            FrameTrust::CFIScan => "cfiscan",
+            FrameTrust::FP => "fp",
+            FrameTrust::CFI => "cfi",
+            FrameTrust::Prewalked => "prewalked",
+            FrameTrust::Context => "context",
+        })
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> ::serde::de::Deserialize<'de> for FrameTrust {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: ::serde::de::Deserializer<'de>,
+    {
+        <::std::borrow::Cow<str>>::deserialize(deserializer)?
+            .parse()
+            .map_err(::serde::de::Error::custom)
+    }
+}
+
 /// Helper for register values.
 #[repr(C)]
 struct IRegVal {
