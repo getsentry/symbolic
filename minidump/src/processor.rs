@@ -327,7 +327,7 @@ impl fmt::Debug for CodeModule {
 ///
 /// In rough order of "trust metric".
 #[repr(u32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum FrameTrust {
     /// Unknown trust.
     None,
