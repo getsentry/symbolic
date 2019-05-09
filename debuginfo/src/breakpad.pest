@@ -9,7 +9,7 @@ stack = { stack_cfi | stack_win }
 module = { "MODULE" ~ os ~ arch ~ debug_id ~ name }
 os = @{ ident }
 arch = @{ ident }
-debug_id = @{ ASCII_HEX_DIGIT{33,40} }
+debug_id = @{ ASCII_HEX_DIGIT{32,40} }
 
 // INFO record
 // Example: "INFO CODE_ID C22813AC7D101E2FF2598697023E1F28"
