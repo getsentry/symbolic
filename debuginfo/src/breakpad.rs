@@ -1116,3 +1116,186 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
 }
 
 impl std::iter::FusedIterator for BreakpadFunctionIterator<'_> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_module_record() -> Result<(), BreakpadError> {
+        let string = b"MODULE Linux x86_64 492E2DD23CC306CA9C494EEF1533A3810 crash";
+        let record = BreakpadModuleRecord::parse(&*string)?;
+
+        insta::assert_debug_snapshot_matches!(record, @r###"BreakpadModuleRecord {
+    os: "Linux",
+    arch: "x86_64",
+    id: "492E2DD23CC306CA9C494EEF1533A3810",
+    name: "crash"
+}"###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_module_record_short_id() -> Result<(), BreakpadError> {
+        // NB: This id is one character short, missing the age. DebugId can handle this, however.
+        let string = b"MODULE Linux x86_64 6216C672A8D33EC9CF4A1BAB8B29D00E libdispatch.so";
+        let record = BreakpadModuleRecord::parse(string)?;
+
+        insta::assert_debug_snapshot_matches!(record, @r###"BreakpadModuleRecord {
+    os: "Linux",
+    arch: "x86_64",
+    id: "6216C672A8D33EC9CF4A1BAB8B29D00E",
+    name: "libdispatch.so"
+}"###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_file_record() -> Result<(), BreakpadError> {
+        let string = b"FILE 37 /usr/include/libkern/i386/_OSByteOrder.h";
+        let record = BreakpadFileRecord::parse(string)?;
+
+        insta::assert_debug_snapshot_matches!(record, @r###"BreakpadFileRecord {
+    id: 37,
+    name: "/usr/include/libkern/i386/_OSByteOrder.h"
+}"###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_file_record_space() -> Result<(), BreakpadError> {
+        let string = b"FILE 38 /usr/local/src/filename with spaces.c";
+        let record = BreakpadFileRecord::parse(string)?;
+
+        insta::assert_debug_snapshot_matches!(record, @r###"BreakpadFileRecord {
+    id: 38,
+    name: "/usr/local/src/filename with spaces.c"
+}"###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_func_record() -> Result<(), BreakpadError> {
+        // Lines will be tested separately
+        let string = b"FUNC 1730 1a 0 <name omitted>";
+        let record = BreakpadFuncRecord::parse(string, Lines::default())?;
+
+        insta::assert_debug_snapshot_matches!(record, @r###"BreakpadFuncRecord {
+    multiple: false,
+    address: 5936,
+    size: 26,
+    parameter_size: 0,
+    name: "<name omitted>"
+}"###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_func_record_multiple() -> Result<(), BreakpadError> {
+        let string = b"FUNC m 1730 1a 0 <name omitted>";
+        let record = BreakpadFuncRecord::parse(string, Lines::default())?;
+
+        insta::assert_debug_snapshot_matches!(record, @r###"BreakpadFuncRecord {
+    multiple: true,
+    address: 5936,
+    size: 26,
+    parameter_size: 0,
+    name: "<name omitted>"
+}"###);
+
+        Ok(())
+    }
+    #[test]
+    fn test_parse_line_record() -> Result<(), BreakpadError> {
+        let string = b"1730 6 93 20";
+        let record = BreakpadLineRecord::parse(string)?;
+
+        insta::assert_debug_snapshot_matches!(record, @r###"BreakpadLineRecord {
+    address: 5936,
+    size: 6,
+    line: 93,
+    file_id: 20
+}"###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_line_record_negative_line() -> Result<(), BreakpadError> {
+        let string = b"e0fd10 5 -376 2225";
+        let record = BreakpadLineRecord::parse(string)?;
+
+        insta::assert_debug_snapshot_matches!(record, @r###"BreakpadLineRecord {
+    address: 14744848,
+    size: 5,
+    line: 4294966920,
+    file_id: 2225
+}"###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_public_record() -> Result<(), BreakpadError> {
+        let string = b"PUBLIC 5180 0 __clang_call_terminate";
+        let record = BreakpadPublicRecord::parse(string)?;
+
+        insta::assert_debug_snapshot_matches!(record, @r###"BreakpadPublicRecord {
+    multiple: false,
+    address: 20864,
+    parameter_size: 0,
+    name: "__clang_call_terminate"
+}"###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_public_record_multiple() -> Result<(), BreakpadError> {
+        let string = b"PUBLIC m 5180 0 __clang_call_terminate";
+        let record = BreakpadPublicRecord::parse(string)?;
+
+        insta::assert_debug_snapshot_matches!(record, @r###"BreakpadPublicRecord {
+    multiple: true,
+    address: 20864,
+    parameter_size: 0,
+    name: "__clang_call_terminate"
+}"###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_stack_cfi_record() -> Result<(), BreakpadError> {
+        let string = b"STACK CFI INIT 1880 2d .cfa: $rsp 8 + .ra: .cfa -8 + ^";
+        let record = BreakpadStackRecord::parse(string)?;
+
+        insta::assert_debug_snapshot_matches!(record, @r###"Cfi(
+    BreakpadStackCfiRecord {
+        text: "INIT 1880 2d .cfa: $rsp 8 + .ra: .cfa -8 + ^"
+    }
+)"###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_stack_win_record() -> Result<(), BreakpadError> {
+        let string =
+            b"STACK WIN 4 371a c 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =";
+        let record = BreakpadStackRecord::parse(string)?;
+
+        insta::assert_debug_snapshot_matches!(record, @r###"Win(
+    BreakpadStackWinRecord {
+        text: "4 371a c 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + ="
+    }
+)"###);
+
+        Ok(())
+    }
+}
