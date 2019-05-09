@@ -10,6 +10,7 @@ using google_breakpad::StackFrame;
 using google_breakpad::StackFrameAMD64;
 using google_breakpad::StackFrameARM;
 using google_breakpad::StackFrameARM64;
+using google_breakpad::StackFrameMIPS;
 using google_breakpad::StackFramePPC;
 using google_breakpad::StackFramePPC64;
 using google_breakpad::StackFrameX86;
@@ -477,6 +478,69 @@ regval_t *stack_frame_registers(const stack_frame_t *frame,
             if (frame_ppc->context_validity &
                 StackFramePPC64::CONTEXT_VALID_GPR1)
                 registers.push_back({"r1", frame_ppc->context.gpr[1], 8});
+
+            break;
+        }
+
+        case 7:    // Mips
+        case 8: {  // Mips64
+            const StackFrameMIPS *frame_mips =
+                reinterpret_cast<const StackFrameMIPS *>(frame);
+
+            uint8_t reg_size = (family == 7) ? 4 : 8;
+
+            if (frame_mips->context_validity & StackFrameMIPS::CONTEXT_VALID_GP)
+                registers.push_back(
+                    {"gp", frame_mips->context.iregs[MD_CONTEXT_MIPS_REG_GP],
+                     reg_size});
+            if (frame_mips->context_validity & StackFrameMIPS::CONTEXT_VALID_SP)
+                registers.push_back(
+                    {"sp", frame_mips->context.iregs[MD_CONTEXT_MIPS_REG_SP],
+                     reg_size});
+            if (frame_mips->context_validity & StackFrameMIPS::CONTEXT_VALID_FP)
+                registers.push_back(
+                    {"fp", frame_mips->context.iregs[MD_CONTEXT_MIPS_REG_FP],
+                     reg_size});
+            if (frame_mips->context_validity & StackFrameMIPS::CONTEXT_VALID_RA)
+                registers.push_back(
+                    {"ra", frame_mips->context.iregs[MD_CONTEXT_MIPS_REG_RA],
+                     reg_size});
+            if (frame_mips->context_validity & StackFrameMIPS::CONTEXT_VALID_PC)
+                registers.push_back({"pc", frame_mips->context.epc, reg_size});
+
+            // Save registers s0-s7
+            if (frame_mips->context_validity & StackFrameMIPS::CONTEXT_VALID_S0)
+                registers.push_back(
+                    {"s0", frame_mips->context.iregs[MD_CONTEXT_MIPS_REG_S0],
+                     reg_size});
+            if (frame_mips->context_validity & StackFrameMIPS::CONTEXT_VALID_S1)
+                registers.push_back(
+                    {"s1", frame_mips->context.iregs[MD_CONTEXT_MIPS_REG_S1],
+                     reg_size});
+            if (frame_mips->context_validity & StackFrameMIPS::CONTEXT_VALID_S2)
+                registers.push_back(
+                    {"s2", frame_mips->context.iregs[MD_CONTEXT_MIPS_REG_S2],
+                     reg_size});
+            if (frame_mips->context_validity & StackFrameMIPS::CONTEXT_VALID_S3)
+                registers.push_back(
+                    {"s3", frame_mips->context.iregs[MD_CONTEXT_MIPS_REG_S3],
+                     reg_size});
+            if (frame_mips->context_validity & StackFrameMIPS::CONTEXT_VALID_S4)
+                registers.push_back(
+                    {"s4", frame_mips->context.iregs[MD_CONTEXT_MIPS_REG_S4],
+                     reg_size});
+            if (frame_mips->context_validity & StackFrameMIPS::CONTEXT_VALID_S5)
+                registers.push_back(
+                    {"s5", frame_mips->context.iregs[MD_CONTEXT_MIPS_REG_S5],
+                     reg_size});
+            if (frame_mips->context_validity & StackFrameMIPS::CONTEXT_VALID_S6)
+                registers.push_back(
+                    {"s6", frame_mips->context.iregs[MD_CONTEXT_MIPS_REG_S6],
+                     reg_size});
+            if (frame_mips->context_validity & StackFrameMIPS::CONTEXT_VALID_S7)
+                registers.push_back(
+                    {"s7", frame_mips->context.iregs[MD_CONTEXT_MIPS_REG_S7],
+                     reg_size});
 
             break;
         }

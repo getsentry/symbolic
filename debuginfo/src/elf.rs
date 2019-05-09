@@ -21,6 +21,20 @@ const PAGE_SIZE: usize = 4096;
 const SHN_UNDEF: usize = elf::section_header::SHN_UNDEF as usize;
 const SHF_COMPRESSED: u64 = elf::section_header::SHF_COMPRESSED as u64;
 
+/// This file follows the first MIPS 32 bit ABI
+#[allow(unused)]
+const EF_MIPS_ABI_O32: u32 = 0x0000_1000;
+/// O32 ABI extended for 64-bit architecture.
+const EF_MIPS_ABI_O64: u32 = 0x0000_2000;
+/// EABI in 32 bit mode.
+#[allow(unused)]
+const EF_MIPS_ABI_EABI32: u32 = 0x0000_3000;
+/// EABI in 64 bit mode.
+const EF_MIPS_ABI_EABI64: u32 = 0x0000_4000;
+
+/// Any flag value that might indicate 64-bit MIPS.
+const MIPS_64_FLAGS: u32 = EF_MIPS_ABI_O64 | EF_MIPS_ABI_EABI64;
+
 /// An error when dealing with [`ElfObject`](struct.ElfObject.html).
 #[derive(Debug, Fail)]
 pub enum ElfError {
@@ -113,6 +127,13 @@ impl<'d> ElfObject<'d> {
             goblin::elf::header::EM_ARM => Arch::Arm,
             goblin::elf::header::EM_PPC => Arch::Ppc,
             goblin::elf::header::EM_PPC64 => Arch::Ppc64,
+            goblin::elf::header::EM_MIPS | goblin::elf::header::EM_MIPS_RS3_LE => {
+                if self.elf.header.e_flags & MIPS_64_FLAGS != 0 {
+                    Arch::Mips64
+                } else {
+                    Arch::Mips
+                }
+            }
             _ => Arch::Unknown,
         }
     }

@@ -48,6 +48,16 @@ static ARM64: &[&'static str] = &[
     "v20", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31",
 ];
 
+/// Names for MIPS CPU registers by register number.
+static MIPS: &[&'static str] = &[
+    "$zero", "$at", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3", "$t0", "$t1", "$t2", "$t3", "$t4",
+    "$t5", "$t6", "$t7", "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$t8", "$t9",
+    "$k0", "$k1", "$gp", "$sp", "$fp", "$ra", "$lo", "$hi", "$pc", "$f0", "$f2", "$f3", "$f4",
+    "$f5", "$f6", "$f7", "$f8", "$f9", "$f10", "$f11", "$f12", "$f13", "$f14", "$f15", "$f16",
+    "$f17", "$f18", "$f19", "$f20", "$f21", "$f22", "$f23", "$f24", "$f25", "$f26", "$f27", "$f28",
+    "$f29", "$f30", "$f31", "$fcsr", "$fir",
+];
+
 /// Represents a family of CPUs.
 ///
 /// This is strongly connected to the [`Arch`] type, but reduces the selection to a range of
@@ -71,6 +81,10 @@ pub enum CpuFamily {
     Ppc32 = 5,
     /// 64-bit big-endian PowerPC.
     Ppc64 = 6,
+    /// 32-bit MIPS.
+    Mips32 = 7,
+    /// 64-bit MIPS.
+    Mips64 = 8,
 }
 
 impl Default for CpuFamily {
@@ -112,6 +126,8 @@ pub enum Arch {
     Arm64Unknown = 499,
     Ppc = 501,
     Ppc64 = 601,
+    Mips = 701,
+    Mips64 = 801,
 }
 
 impl Arch {
@@ -141,6 +157,8 @@ impl Arch {
             499 => Arch::Arm64Unknown,
             17 | 501 => Arch::Ppc,
             18 | 601 => Arch::Ppc64,
+            701 => Arch::Mips,
+            801 => Arch::Mips64,
             _ => Arch::Unknown,
         }
     }
@@ -165,6 +183,8 @@ impl Arch {
             | Arch::ArmUnknown => CpuFamily::Arm32,
             Arch::Ppc => CpuFamily::Ppc32,
             Arch::Ppc64 => CpuFamily::Ppc64,
+            Arch::Mips => CpuFamily::Mips32,
+            Arch::Mips64 => CpuFamily::Mips64,
         }
     }
 
@@ -194,6 +214,8 @@ impl Arch {
             Arch::ArmUnknown => "arm_unknown",
             Arch::Ppc => "ppc",
             Arch::Ppc64 => "ppc64",
+            Arch::Mips => "mips",
+            Arch::Mips64 => "mips64",
         }
     }
 
@@ -201,8 +223,8 @@ impl Arch {
     pub fn pointer_size(self) -> Option<usize> {
         match self.cpu_family() {
             CpuFamily::Unknown => None,
-            CpuFamily::Amd64 | CpuFamily::Arm64 | CpuFamily::Ppc64 => Some(8),
-            CpuFamily::Intel32 | CpuFamily::Arm32 | CpuFamily::Ppc32 => Some(4),
+            CpuFamily::Amd64 | CpuFamily::Arm64 | CpuFamily::Ppc64 | CpuFamily::Mips64 => Some(8),
+            CpuFamily::Intel32 | CpuFamily::Arm32 | CpuFamily::Ppc32 | CpuFamily::Mips32 => Some(4),
         }
     }
 
@@ -211,7 +233,7 @@ impl Arch {
         match self.cpu_family() {
             CpuFamily::Arm32 => Some(2),
             CpuFamily::Arm64 => Some(4),
-            CpuFamily::Ppc32 => Some(4),
+            CpuFamily::Ppc32 | CpuFamily::Mips32 | CpuFamily::Mips64 => Some(4),
             CpuFamily::Ppc64 => Some(8),
             CpuFamily::Intel32 | CpuFamily::Amd64 => None,
             CpuFamily::Unknown => None,
@@ -220,11 +242,14 @@ impl Arch {
 
     /// The name of the IP register if known.
     pub fn ip_register_name(self) -> Option<&'static str> {
+        // NOTE: These values do not correspond to the register names defined in this file, but to
+        // the names exposed by breakpad. This mapping is implemented in `data_structures.cpp`.
         match self.cpu_family() {
             CpuFamily::Intel32 => Some("eip"),
             CpuFamily::Amd64 => Some("rip"),
             CpuFamily::Arm32 | CpuFamily::Arm64 => Some("pc"),
             CpuFamily::Ppc32 | CpuFamily::Ppc64 => Some("srr0"),
+            CpuFamily::Mips32 | CpuFamily::Mips64 => Some("pc"),
             CpuFamily::Unknown => None,
         }
     }
@@ -250,6 +275,7 @@ impl Arch {
             CpuFamily::Amd64 => X86_64.get(index),
             CpuFamily::Arm64 => ARM64.get(index),
             CpuFamily::Arm32 => ARM.get(index),
+            CpuFamily::Mips32 | CpuFamily::Mips64 => MIPS.get(index),
             _ => None,
         };
 
@@ -299,6 +325,8 @@ impl str::FromStr for Arch {
             "arm_unknown" => Arch::ArmUnknown,
             "ppc" => Arch::Ppc,
             "ppc64" => Arch::Ppc64,
+            "mips" => Arch::Mips,
+            "mips64" => Arch::Mips64,
             _ => return Err(UnknownArchError),
         })
     }
