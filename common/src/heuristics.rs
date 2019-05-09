@@ -1,6 +1,6 @@
 //! Heuristics for correcting instruction pointers based on the CPU architecture.
 
-use crate::types::Arch;
+use crate::types::{Arch, CpuFamily};
 
 const SIGILL: u32 = 4;
 const SIGBUS: u32 = 10;
@@ -54,7 +54,16 @@ impl InstructionInfo {
     /// the preceding instruction will be returned. For this reason, the return
     /// value of this function should be considered an upper bound.
     pub fn previous_address(&self) -> u64 {
-        self.aligned_address() - self.arch.instruction_alignment().unwrap_or(1)
+        let instruction_size = self.arch.instruction_alignment().unwrap_or(1);
+
+        // In MIPS, the return address apparently often points two instructions after the the
+        // previous program counter. On other architectures, just subtract one instruction.
+        let pc_offset = match self.arch.cpu_family() {
+            CpuFamily::Mips32 | CpuFamily::Mips64 => 2 * instruction_size,
+            _ => instruction_size,
+        };
+
+        self.aligned_address() - pc_offset
     }
 
     /// Returns whether the application attempted to jump to an invalid,
