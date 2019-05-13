@@ -76,7 +76,9 @@ impl<'d> ElfObject<'d> {
     /// its header. Compilers and linkers usually add either `SHT_NOTE` sections or
     /// `PT_NOTE` program header elements for this purpose.
     pub fn code_id(&self) -> Option<CodeId> {
-        self.find_build_id().map(|slice| CodeId::from_binary(slice))
+        self.find_build_id()
+            .filter(|slice| !slice.is_empty())
+            .map(|slice| CodeId::from_binary(slice))
     }
 
     /// The debug information identifier of an ELF object.
