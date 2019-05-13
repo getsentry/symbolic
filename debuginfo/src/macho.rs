@@ -622,6 +622,16 @@ impl<'d> MachArchive<'d> {
             MachArchiveInner::Archive(ref inner) => inner.object_by_index(index),
         }
     }
+
+    /// Returns whether this is a multi-object archive.
+    ///
+    /// This may also return true if there is only a single object inside the archive.
+    pub fn is_multi(&self) -> bool {
+        match self.0 {
+            MachArchiveInner::Archive(_) => true,
+            MachArchiveInner::Single(_) => false,
+        }
+    }
 }
 
 impl<'slf, 'd: 'slf> AsSelf<'slf> for MachArchive<'d> {

@@ -144,6 +144,10 @@ where
             _ => Ok(None),
         }
     }
+
+    pub fn is_multi(&self) -> bool {
+        false
+    }
 }
 
 impl<'d, P> fmt::Debug for MonoArchive<'d, P>
