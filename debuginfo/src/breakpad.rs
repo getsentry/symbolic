@@ -794,7 +794,9 @@ impl<'d> BreakpadObject<'d> {
         for result in self.info_records() {
             if let Ok(record) = result {
                 if let BreakpadInfoRecord::CodeId { code_id, .. } = record {
-                    return Some(CodeId::new(code_id.into()));
+                    if !code_id.is_empty() {
+                        return Some(CodeId::new(code_id.into()));
+                    }
                 }
             }
         }
