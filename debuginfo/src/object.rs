@@ -515,6 +515,13 @@ impl<'d> Archive<'d> {
                 .map_err(ObjectError::Pe),
         }
     }
+
+    /// Returns whether this is a multi-object archive.
+    ///
+    /// This may also return true if there is only a single object inside the archive.
+    pub fn is_multi(&self) -> bool {
+        match_inner!(self.0, ArchiveInner(ref a) => a.is_multi())
+    }
 }
 
 impl<'slf, 'd: 'slf> AsSelf<'slf> for Archive<'d> {
