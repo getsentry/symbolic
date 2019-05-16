@@ -701,7 +701,7 @@ impl fmt::Debug for SystemInfo {
 ///
 /// Usually included in `ProcessError` when the file cannot be processed.
 #[repr(u32)]
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProcessResult {
     /// The dump was processed successfully.
     Ok,
@@ -726,6 +726,19 @@ pub enum ProcessResult {
 
     /// The dump processing was interrupted (not fatal).
     SymbolSupplierInterrupted,
+}
+
+impl ProcessResult {
+    /// Indicates whether the process state is usable.
+    ///
+    /// Depending on the result, the process state might only contain partial information. For a
+    /// full minidump, check for `ProcessResult::Ok` instead.
+    pub fn is_usable(self) -> bool {
+        match self {
+            ProcessResult::Ok | ProcessResult::NoThreadList => true,
+            _ => false,
+        }
+    }
 }
 
 impl fmt::Display for ProcessResult {
@@ -830,7 +843,7 @@ impl<'a> ProcessState<'a> {
             )
         };
 
-        if result == ProcessResult::Ok && !internal.is_null() {
+        if result.is_usable() && !internal.is_null() {
             Ok(ProcessState {
                 internal,
                 _ty: PhantomData,
