@@ -60,12 +60,16 @@ failure = "0.1.5"
 walkdir = "2.2.7"
 
 [[example]]
+name = "dump_cfi"
+required-features = ["minidump"]
+
+[[example]]
 name = "minidump_stackwalk"
 required-features = ["minidump", "symcache"]
 
 [[example]]
-name = "cache_debug"
-required-features = ["symcache", "minidump"]
+name = "symcache_debug"
+required-features = ["symcache"]
 
 [[example]]
 name = "unreal_engine_crash"
