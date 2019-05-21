@@ -55,7 +55,7 @@ symbolic-symcache = { version = "6.1.2", path = "symcache", optional = true }
 symbolic-unreal = { version = "6.1.2", path = "unreal", optional = true }
 
 [dev-dependencies]
-clap = "2.32.0"
+clap = "2.33.0"
 failure = "0.1.5"
 walkdir = "2.2.7"
 
