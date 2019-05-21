@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-symcache"
-version = "6.1.2"
+version = "6.1.3"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -23,8 +23,8 @@ exclude = [
 failure = "0.1.5"
 fnv = "1.0.6"
 num = "0.2.0"
-symbolic-common = { version = "6.1.2", path = "../common" }
-symbolic-debuginfo = { version = "6.1.2", path = "../debuginfo" }
+symbolic-common = { version = "6.1.3", path = "../common" }
+symbolic-debuginfo = { version = "6.1.3", path = "../debuginfo" }
 
 [dev-dependencies]
 insta = "0.8.1"
