@@ -1,5 +1,23 @@
 # Changelog
 
+## 6.1.3
+
+**Common**:
+
+- Support MIPS and MIPS64 (#141).
+
+**DebugInfo**:
+
+- Fix code identifiers for PE files and do not return empty ones (#139, #142).
+- Support Breakpad debug identifiers without an age field (#140).
+- Add `Archive::is_multi` to check for multi-architecture archives (#143).
+
+**Minidump**:
+
+- Add more trait implementations to minidump processor types.
+- Process minidumps without thread lists (#144).
+- Update the breakpad processor. This allows to stackwalk Unreal Engine 4 minidumps (#145).
+
 ## 6.1.2
 
 - Demangling support for Swift 5.
