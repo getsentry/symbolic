@@ -37,14 +37,10 @@ process_state_t *process_minidump(const char *buffer,
     Minidump minidump(in);
     if (!minidump.Read()) {
         *result_out = google_breakpad::PROCESS_ERROR_MINIDUMP_NOT_FOUND;
-        return nullptr;
-    }
-
-    *result_out = processor.Process(&minidump, state);
-    if (*result_out != google_breakpad::PROCESS_OK) {
         delete state;
         return nullptr;
     }
 
+    *result_out = processor.Process(&minidump, state);
     return process_state_t::cast(state);
 }
