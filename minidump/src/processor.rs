@@ -849,6 +849,7 @@ impl<'a> ProcessState<'a> {
                 _ty: PhantomData,
             })
         } else {
+            unsafe { process_state_delete(internal) };
             Err(ProcessMinidumpError(result))
         }
     }
