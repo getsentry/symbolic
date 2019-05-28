@@ -65,7 +65,7 @@ required-features = ["minidump"]
 
 [[example]]
 name = "minidump_stackwalk"
-required-features = ["minidump", "symcache"]
+required-features = ["minidump", "symcache", "demangle"]
 
 [[example]]
 name = "symcache_debug"
