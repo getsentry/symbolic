@@ -32,16 +32,18 @@ fn test_write_header_linux() -> Result<(), Error> {
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
-    insta::assert_debug_snapshot_matches!(symcache, @r###"SymCache {
-    debug_id: DebugId {
-        uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
-        appendix: 0
-    },
-    arch: Amd64,
-    has_line_info: true,
-    has_file_info: true,
-    functions: 1955
-}"###);
+    insta::assert_debug_snapshot_matches!(symcache, @r###"
+   ⋮SymCache {
+   ⋮    debug_id: DebugId {
+   ⋮        uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
+   ⋮        appendix: 0,
+   ⋮    },
+   ⋮    arch: Amd64,
+   ⋮    has_line_info: true,
+   ⋮    has_file_info: true,
+   ⋮    functions: 1955,
+   ⋮}
+    "###);
 
     Ok(())
 }
@@ -68,16 +70,18 @@ fn test_write_header_macos() -> Result<(), Error> {
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
-    insta::assert_debug_snapshot_matches!(symcache, @r###"SymCache {
-    debug_id: DebugId {
-        uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
-        appendix: 0
-    },
-    arch: Amd64,
-    has_line_info: true,
-    has_file_info: true,
-    functions: 1863
-}"###);
+    insta::assert_debug_snapshot_matches!(symcache, @r###"
+   ⋮SymCache {
+   ⋮    debug_id: DebugId {
+   ⋮        uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
+   ⋮        appendix: 0,
+   ⋮    },
+   ⋮    arch: Amd64,
+   ⋮    has_line_info: true,
+   ⋮    has_file_info: true,
+   ⋮    functions: 1863,
+   ⋮}
+    "###);
 
     Ok(())
 }
