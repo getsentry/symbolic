@@ -1,7 +1,7 @@
 //! Swift Demangling Tests
 //! All functions were compiled with Swift 4.0 in a file called mangling.swift
 //! see https://github.com/apple/swift/blob/master/test/SILGen/mangling.swift
-#![allow(clippy::cyclomatic_complexity)]
+#![allow(clippy::cognitive_complexity)]
 
 #[macro_use]
 mod utils;

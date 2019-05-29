@@ -66,22 +66,24 @@ fn test_breakpad() -> Result<(), Error> {
     let view = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"Breakpad(
-    BreakpadObject {
-        code_id: Some(
-            CodeId(5ab380779000)
-        ),
-        debug_id: DebugId {
-            uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
-            appendix: 1
-        },
-        arch: X86,
-        name: "crash.pdb",
-        has_symbols: true,
-        has_debug_info: true,
-        has_unwind_info: true
-    }
-)"###);
+    insta::assert_debug_snapshot_matches!(object, @r###"
+   ⋮Breakpad(
+   ⋮    BreakpadObject {
+   ⋮        code_id: Some(
+   ⋮            CodeId(5ab380779000),
+   ⋮        ),
+   ⋮        debug_id: DebugId {
+   ⋮            uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
+   ⋮            appendix: 1,
+   ⋮        },
+   ⋮        arch: X86,
+   ⋮        name: "crash.pdb",
+   ⋮        has_symbols: true,
+   ⋮        has_debug_info: true,
+   ⋮        has_unwind_info: true,
+   ⋮    },
+   ⋮)
+    "###);
 
     Ok(())
 }
@@ -117,23 +119,25 @@ fn test_elf_executable() -> Result<(), Error> {
     let view = ByteView::open("../testutils/fixtures/linux/crash")?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"Elf(
-    ElfObject {
-        code_id: Some(
-            CodeId(f1c3bcc0279865fe3058404b2831d9e64135386c)
-        ),
-        debug_id: DebugId {
-            uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
-            appendix: 0
-        },
-        arch: Amd64,
-        kind: Executable,
-        load_address: 0x400000,
-        has_symbols: true,
-        has_debug_info: false,
-        has_unwind_info: true
-    }
-)"###);
+    insta::assert_debug_snapshot_matches!(object, @r###"
+   ⋮Elf(
+   ⋮    ElfObject {
+   ⋮        code_id: Some(
+   ⋮            CodeId(f1c3bcc0279865fe3058404b2831d9e64135386c),
+   ⋮        ),
+   ⋮        debug_id: DebugId {
+   ⋮            uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
+   ⋮            appendix: 0,
+   ⋮        },
+   ⋮        arch: Amd64,
+   ⋮        kind: Executable,
+   ⋮        load_address: 0x400000,
+   ⋮        has_symbols: true,
+   ⋮        has_debug_info: false,
+   ⋮        has_unwind_info: true,
+   ⋮    },
+   ⋮)
+    "###);
 
     Ok(())
 }
@@ -143,23 +147,25 @@ fn test_elf_debug() -> Result<(), Error> {
     let view = ByteView::open("../testutils/fixtures/linux/crash.debug")?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"Elf(
-    ElfObject {
-        code_id: Some(
-            CodeId(f1c3bcc0279865fe3058404b2831d9e64135386c)
-        ),
-        debug_id: DebugId {
-            uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
-            appendix: 0
-        },
-        arch: Amd64,
-        kind: Debug,
-        load_address: 0x400000,
-        has_symbols: true,
-        has_debug_info: true,
-        has_unwind_info: false
-    }
-)"###);
+    insta::assert_debug_snapshot_matches!(object, @r###"
+   ⋮Elf(
+   ⋮    ElfObject {
+   ⋮        code_id: Some(
+   ⋮            CodeId(f1c3bcc0279865fe3058404b2831d9e64135386c),
+   ⋮        ),
+   ⋮        debug_id: DebugId {
+   ⋮            uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
+   ⋮            appendix: 0,
+   ⋮        },
+   ⋮        arch: Amd64,
+   ⋮        kind: Debug,
+   ⋮        load_address: 0x400000,
+   ⋮        has_symbols: true,
+   ⋮        has_debug_info: true,
+   ⋮        has_unwind_info: false,
+   ⋮    },
+   ⋮)
+    "###);
 
     Ok(())
 }
@@ -193,23 +199,25 @@ fn test_mach_executable() -> Result<(), Error> {
     let view = ByteView::open("../testutils/fixtures/macos/crash")?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"MachO(
-    MachObject {
-        code_id: Some(
-            CodeId(67e9247c814e392ba027dbde6748fcbf)
-        ),
-        debug_id: DebugId {
-            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
-            appendix: 0
-        },
-        arch: Amd64,
-        kind: Executable,
-        load_address: 0x100000000,
-        has_symbols: true,
-        has_debug_info: false,
-        has_unwind_info: true
-    }
-)"###);
+    insta::assert_debug_snapshot_matches!(object, @r###"
+   ⋮MachO(
+   ⋮    MachObject {
+   ⋮        code_id: Some(
+   ⋮            CodeId(67e9247c814e392ba027dbde6748fcbf),
+   ⋮        ),
+   ⋮        debug_id: DebugId {
+   ⋮            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
+   ⋮            appendix: 0,
+   ⋮        },
+   ⋮        arch: Amd64,
+   ⋮        kind: Executable,
+   ⋮        load_address: 0x100000000,
+   ⋮        has_symbols: true,
+   ⋮        has_debug_info: false,
+   ⋮        has_unwind_info: true,
+   ⋮    },
+   ⋮)
+    "###);
 
     Ok(())
 }
@@ -220,23 +228,25 @@ fn test_mach_dsym() -> Result<(), Error> {
         ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"MachO(
-    MachObject {
-        code_id: Some(
-            CodeId(67e9247c814e392ba027dbde6748fcbf)
-        ),
-        debug_id: DebugId {
-            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
-            appendix: 0
-        },
-        arch: Amd64,
-        kind: Debug,
-        load_address: 0x100000000,
-        has_symbols: true,
-        has_debug_info: true,
-        has_unwind_info: false
-    }
-)"###);
+    insta::assert_debug_snapshot_matches!(object, @r###"
+   ⋮MachO(
+   ⋮    MachObject {
+   ⋮        code_id: Some(
+   ⋮            CodeId(67e9247c814e392ba027dbde6748fcbf),
+   ⋮        ),
+   ⋮        debug_id: DebugId {
+   ⋮            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
+   ⋮            appendix: 0,
+   ⋮        },
+   ⋮        arch: Amd64,
+   ⋮        kind: Debug,
+   ⋮        load_address: 0x100000000,
+   ⋮        has_symbols: true,
+   ⋮        has_debug_info: true,
+   ⋮        has_unwind_info: false,
+   ⋮    },
+   ⋮)
+    "###);
 
     Ok(())
 }
@@ -270,26 +280,28 @@ fn test_pe_32() -> Result<(), Error> {
     let view = ByteView::open("../testutils/fixtures/windows/crash.exe")?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"Pe(
-    PeObject {
-        code_id: Some(
-            CodeId(5ab380779000)
-        ),
-        debug_id: DebugId {
-            uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
-            appendix: 1
-        },
-        debug_file_name: Some(
-            "C:\\projects\\breakpad-tools\\windows\\Release\\crash.pdb"
-        ),
-        arch: X86,
-        kind: Executable,
-        load_address: 0x400000,
-        has_symbols: false,
-        has_debug_info: false,
-        has_unwind_info: false
-    }
-)"###);
+    insta::assert_debug_snapshot_matches!(object, @r###"
+   ⋮Pe(
+   ⋮    PeObject {
+   ⋮        code_id: Some(
+   ⋮            CodeId(5ab380779000),
+   ⋮        ),
+   ⋮        debug_id: DebugId {
+   ⋮            uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
+   ⋮            appendix: 1,
+   ⋮        },
+   ⋮        debug_file_name: Some(
+   ⋮            "C:\\projects\\breakpad-tools\\windows\\Release\\crash.pdb",
+   ⋮        ),
+   ⋮        arch: X86,
+   ⋮        kind: Executable,
+   ⋮        load_address: 0x400000,
+   ⋮        has_symbols: false,
+   ⋮        has_debug_info: false,
+   ⋮        has_unwind_info: false,
+   ⋮    },
+   ⋮)
+    "###);
 
     Ok(())
 }
@@ -299,26 +311,28 @@ fn test_pe_64() -> Result<(), Error> {
     let view = ByteView::open("../testutils/fixtures/windows/CrashWithException.exe")?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"Pe(
-    PeObject {
-        code_id: Some(
-            CodeId(5c9e09599000)
-        ),
-        debug_id: DebugId {
-            uuid: "f535c5fb-2ae8-4bb8-aa20-6c30be566c5a",
-            appendix: 1
-        },
-        debug_file_name: Some(
-            "C:\\Users\\sentry\\source\\repos\\CrashWithException\\x64\\Release\\CrashWithException.pdb"
-        ),
-        arch: Amd64,
-        kind: Executable,
-        load_address: 0x140000000,
-        has_symbols: false,
-        has_debug_info: false,
-        has_unwind_info: true
-    }
-)"###);
+    insta::assert_debug_snapshot_matches!(object, @r###"
+   ⋮Pe(
+   ⋮    PeObject {
+   ⋮        code_id: Some(
+   ⋮            CodeId(5c9e09599000),
+   ⋮        ),
+   ⋮        debug_id: DebugId {
+   ⋮            uuid: "f535c5fb-2ae8-4bb8-aa20-6c30be566c5a",
+   ⋮            appendix: 1,
+   ⋮        },
+   ⋮        debug_file_name: Some(
+   ⋮            "C:\\Users\\sentry\\source\\repos\\CrashWithException\\x64\\Release\\CrashWithException.pdb",
+   ⋮        ),
+   ⋮        arch: Amd64,
+   ⋮        kind: Executable,
+   ⋮        load_address: 0x140000000,
+   ⋮        has_symbols: false,
+   ⋮        has_debug_info: false,
+   ⋮        has_unwind_info: true,
+   ⋮    },
+   ⋮)
+    "###);
 
     Ok(())
 }
@@ -331,19 +345,21 @@ fn test_pdb() -> Result<(), Error> {
     let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"Pdb(
-    PdbObject {
-        debug_id: DebugId {
-            uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
-            appendix: 1
-        },
-        arch: X86,
-        load_address: 0x0,
-        has_symbols: true,
-        has_debug_info: true,
-        has_unwind_info: true
-    }
-)"###);
+    insta::assert_debug_snapshot_matches!(object, @r###"
+   ⋮Pdb(
+   ⋮    PdbObject {
+   ⋮        debug_id: DebugId {
+   ⋮            uuid: "3249d99d-0c40-4931-8610-f4e4fb0b6936",
+   ⋮            appendix: 1,
+   ⋮        },
+   ⋮        arch: X86,
+   ⋮        load_address: 0x0,
+   ⋮        has_symbols: true,
+   ⋮        has_debug_info: true,
+   ⋮        has_unwind_info: true,
+   ⋮    },
+   ⋮)
+    "###);
 
     Ok(())
 }
