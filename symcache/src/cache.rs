@@ -39,6 +39,11 @@ impl<'a> SymCache<'a> {
         self.header.preamble.version
     }
 
+    /// Returns whether this symcache is the latest version.
+    pub fn is_latest(&self) -> bool {
+        self.version() == format::SYMCACHE_VERSION
+    }
+
     /// The architecture of the symbol file.
     pub fn arch(&self) -> Arch {
         Arch::from_u32(self.header.arch)

@@ -179,7 +179,7 @@ impl<'d> ElfObject<'d> {
         // and dynamic libraries (e_type == ET_DYN), this address will
         // normally be zero.
         for phdr in &self.elf.program_headers {
-            if phdr.p_type == elf::program_header::PT_LOAD && phdr.is_executable() {
+            if phdr.p_type == elf::program_header::PT_LOAD {
                 return phdr.p_vaddr;
             }
         }

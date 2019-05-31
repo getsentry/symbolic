@@ -15,7 +15,7 @@ use crate::error::{SymCacheError, SymCacheErrorKind};
 pub const SYMCACHE_MAGIC: [u8; 4] = *b"SYMC";
 
 /// The latest version of the file format.
-pub const SYMCACHE_VERSION: u32 = 2;
+pub const SYMCACHE_VERSION: u32 = 3;
 
 /// Loads binary data from a segment.
 pub(crate) fn get_slice(data: &[u8], offset: usize, len: usize) -> Result<&[u8], io::Error> {
@@ -322,7 +322,7 @@ impl Header {
             1 => get_record::<HeaderV1>(data, 0)
                 .context(SymCacheErrorKind::BadFileHeader)?
                 .into(),
-            2 => get_record::<HeaderV2>(data, 0)
+            2..=SYMCACHE_VERSION => get_record::<HeaderV2>(data, 0)
                 .context(SymCacheErrorKind::BadFileHeader)?
                 .into(),
             _ => return Err(SymCacheErrorKind::UnsupportedVersion.into()),
