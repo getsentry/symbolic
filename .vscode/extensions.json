@@ -6,6 +6,7 @@
     "ms-vscode.cpptools",
     "rust-lang.rust",
     "bungcip.better-toml",
+    "xoronic.pestfile",
     "serayuzgur.crates"
   ]
 }
