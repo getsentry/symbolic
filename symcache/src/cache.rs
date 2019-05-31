@@ -39,7 +39,7 @@ impl<'a> SymCache<'a> {
         self.header.preamble.version
     }
 
-    /// Returns whether this symcache is the latest version.
+    /// Returns whether this cache is up-to-date.
     pub fn is_latest(&self) -> bool {
         self.version() == format::SYMCACHE_VERSION
     }

@@ -745,6 +745,11 @@ impl<'a> CfiCache<'a> {
         }
     }
 
+    /// Returns whether this cache is up-to-date.
+    pub fn is_latest(&self) -> bool {
+        self.version() == CFICACHE_LATEST_VERSION
+    }
+
     /// Returns the raw buffer of the cache file.
     pub fn as_slice(&self) -> &[u8] {
         match self.inner {
