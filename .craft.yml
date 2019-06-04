@@ -4,7 +4,7 @@ github:
   repo: symbolic
 preReleaseCommand: bash scripts/bump-version
 targets:
-  - name: crates
+  # - name: crates
   - name: pypi
   - name: github
 changelogPolicy: simple

@@ -85,6 +85,8 @@ pub enum CpuFamily {
     Mips32 = 7,
     /// 64-bit MIPS.
     Mips64 = 8,
+    /// ILP32 ABI on 64-bit ARM.
+    Arm64_32 = 9,
 }
 
 impl Default for CpuFamily {
@@ -128,6 +130,9 @@ pub enum Arch {
     Ppc64 = 601,
     Mips = 701,
     Mips64 = 801,
+    Arm64_32 = 901,
+    Arm64_32V8 = 902,
+    Arm64_32Unknown = 999,
 }
 
 impl Arch {
@@ -159,6 +164,9 @@ impl Arch {
             18 | 601 => Arch::Ppc64,
             701 => Arch::Mips,
             801 => Arch::Mips64,
+            901 => Arch::Arm64_32,
+            902 => Arch::Arm64_32V8,
+            999 => Arch::Arm64_32Unknown,
             _ => Arch::Unknown,
         }
     }
@@ -185,6 +193,7 @@ impl Arch {
             Arch::Ppc64 => CpuFamily::Ppc64,
             Arch::Mips => CpuFamily::Mips32,
             Arch::Mips64 => CpuFamily::Mips64,
+            Arch::Arm64_32 | Arch::Arm64_32V8 | Arch::Arm64_32Unknown => CpuFamily::Arm64_32,
         }
     }
 
@@ -216,6 +225,9 @@ impl Arch {
             Arch::Ppc64 => "ppc64",
             Arch::Mips => "mips",
             Arch::Mips64 => "mips64",
+            Arch::Arm64_32 => "arm64_32",
+            Arch::Arm64_32V8 => "arm64_32_v8",
+            Arch::Arm64_32Unknown => "arm64_32_unknown",
         }
     }
 
@@ -223,7 +235,11 @@ impl Arch {
     pub fn pointer_size(self) -> Option<usize> {
         match self.cpu_family() {
             CpuFamily::Unknown => None,
-            CpuFamily::Amd64 | CpuFamily::Arm64 | CpuFamily::Ppc64 | CpuFamily::Mips64 => Some(8),
+            CpuFamily::Amd64
+            | CpuFamily::Arm64
+            | CpuFamily::Ppc64
+            | CpuFamily::Mips64
+            | CpuFamily::Arm64_32 => Some(8),
             CpuFamily::Intel32 | CpuFamily::Arm32 | CpuFamily::Ppc32 | CpuFamily::Mips32 => Some(4),
         }
     }
@@ -232,7 +248,7 @@ impl Arch {
     pub fn instruction_alignment(self) -> Option<u64> {
         match self.cpu_family() {
             CpuFamily::Arm32 => Some(2),
-            CpuFamily::Arm64 => Some(4),
+            CpuFamily::Arm64 | CpuFamily::Arm64_32 => Some(4),
             CpuFamily::Ppc32 | CpuFamily::Mips32 | CpuFamily::Mips64 => Some(4),
             CpuFamily::Ppc64 => Some(8),
             CpuFamily::Intel32 | CpuFamily::Amd64 => None,
@@ -247,7 +263,7 @@ impl Arch {
         match self.cpu_family() {
             CpuFamily::Intel32 => Some("eip"),
             CpuFamily::Amd64 => Some("rip"),
-            CpuFamily::Arm32 | CpuFamily::Arm64 => Some("pc"),
+            CpuFamily::Arm32 | CpuFamily::Arm64 | CpuFamily::Arm64_32 => Some("pc"),
             CpuFamily::Ppc32 | CpuFamily::Ppc64 => Some("srr0"),
             CpuFamily::Mips32 | CpuFamily::Mips64 => Some("pc"),
             CpuFamily::Unknown => None,
@@ -261,7 +277,8 @@ impl Arch {
             | Arch::ArmUnknown
             | Arch::Arm64Unknown
             | Arch::X86Unknown
-            | Arch::Amd64Unknown => false,
+            | Arch::Amd64Unknown
+            | Arch::Arm64_32Unknown => false,
             _ => true,
         }
     }
@@ -273,7 +290,7 @@ impl Arch {
         let opt = match self.cpu_family() {
             CpuFamily::Intel32 => I386.get(index),
             CpuFamily::Amd64 => X86_64.get(index),
-            CpuFamily::Arm64 => ARM64.get(index),
+            CpuFamily::Arm64 | CpuFamily::Arm64_32 => ARM64.get(index),
             CpuFamily::Arm32 => ARM.get(index),
             CpuFamily::Mips32 | CpuFamily::Mips64 => MIPS.get(index),
             _ => None,
@@ -327,6 +344,9 @@ impl str::FromStr for Arch {
             "ppc64" => Arch::Ppc64,
             "mips" => Arch::Mips,
             "mips64" => Arch::Mips64,
+            "arm64_32" => Arch::Arm64_32,
+            "arm64_32_v8" => Arch::Arm64_32V8,
+            "arm64_32_unknown" => Arch::Arm64_32Unknown,
             _ => return Err(UnknownArchError),
         })
     }
