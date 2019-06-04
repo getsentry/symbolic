@@ -225,9 +225,9 @@ impl Arch {
             Arch::Ppc64 => "ppc64",
             Arch::Mips => "mips",
             Arch::Mips64 => "mips64",
-            Arch::Arm64_32 => "arch64_32",
-            Arch::Arm64_32V8 => "arch64_32_v8",
-            Arch::Arm64_32Unknown => "arch64_32_unknown",
+            Arch::Arm64_32 => "arm64_32",
+            Arch::Arm64_32V8 => "arm64_32_v8",
+            Arch::Arm64_32Unknown => "arm64_32_unknown",
         }
     }
 
