@@ -316,7 +316,7 @@ impl str::FromStr for Arch {
     type Err = UnknownArchError;
 
     fn from_str(string: &str) -> Result<Arch, UnknownArchError> {
-        Ok(match string {
+        Ok(match string.to_ascii_lowercase().as_str() {
             "unknown" => Arch::Unknown,
             // this is an alias that is known among macho users
             "i386" => Arch::X86,
@@ -347,6 +347,11 @@ impl str::FromStr for Arch {
             "arm64_32" => Arch::Arm64_32,
             "arm64_32_v8" => Arch::Arm64_32V8,
             "arm64_32_unknown" => Arch::Arm64_32Unknown,
+
+            // apple crash report variants
+            "x86-64" => Arch::Amd64,
+            "arm-64" => Arch::Arm64,
+
             _ => return Err(UnknownArchError),
         })
     }
