@@ -110,8 +110,13 @@ impl<'d> PdbObject<'d> {
     /// The same information is also stored in a header in the corresponding PE file, which can be
     /// used to locate a PDB from a PE.
     pub fn debug_id(&self) -> DebugId {
+        // Prefer the age from the debug information stream, as it is more likely to correspond to
+        // the executable than the PDB info header. The latter is often bumped independently when
+        // the PDB is processed or optimized, which causes it to go out of sync with the original
+        // image.
+        let age = self.debug_info.age().unwrap_or(self.pdb_info.age);
         match Uuid::from_slice(&self.pdb_info.guid.as_bytes()[..]) {
-            Ok(uuid) => DebugId::from_parts(uuid, self.pdb_info.age),
+            Ok(uuid) => DebugId::from_parts(uuid, age),
             Err(_) => DebugId::default(),
         }
     }
