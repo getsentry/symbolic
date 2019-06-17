@@ -54,11 +54,22 @@ pub enum Unreal4Error {
     InvalidXml(elementtree::Error),
 }
 
-struct Header {
+struct Unreal4Header {
     pub directory_name: String,
     pub file_name: String,
     pub uncompressed_size: i32,
     pub file_count: i32,
+}
+
+impl Unreal4Header {
+    fn read(cursor: &mut Cursor<&[u8]>) -> Self {
+        Unreal4Header {
+            directory_name: read_ansi_string(cursor),
+            file_name: read_ansi_string(cursor),
+            uncompressed_size: cursor.get_i32_le(),
+            file_count: cursor.get_i32_le(),
+        }
+    }
 }
 
 /// The type of the file within the UE4 crash.
@@ -106,7 +117,7 @@ pub enum NativeCrash<'a> {
 
 /// Meta-data about a file within a UE4 crash file.
 #[derive(Clone, Debug)]
-pub struct Unreal4CrashFile {
+pub struct Unreal4FileMeta {
     /// The original index within the UE4 crash file.
     pub index: usize,
     /// File name.
@@ -117,7 +128,19 @@ pub struct Unreal4CrashFile {
     pub len: usize,
 }
 
-impl Unreal4CrashFile {
+impl Unreal4FileMeta {
+    fn read(cursor: &mut Cursor<&[u8]>) -> Self {
+        let meta = Unreal4FileMeta {
+            index: cursor.get_i32_le() as usize,
+            file_name: read_ansi_string(cursor),
+            len: cursor.get_i32_le() as usize,
+            offset: cursor.position() as usize,
+        };
+
+        cursor.advance(meta.len);
+        meta
+    }
+
     /// Returns the file type.
     pub fn ty(&self) -> Unreal4FileType {
         match self.file_name.as_str() {
@@ -157,7 +180,7 @@ pub struct Unreal4LogEntry {
 #[derive(Debug)]
 pub struct Unreal4Crash {
     bytes: Bytes,
-    files: Vec<Unreal4CrashFile>,
+    files: Vec<Unreal4FileMeta>,
 }
 
 impl Unreal4Crash {
@@ -175,17 +198,16 @@ impl Unreal4Crash {
             .map_err(Unreal4Error::BadCompression)?;
 
         let decompressed = Bytes::from(decompressed);
-
-        let file_meta = get_files_from_slice(&decompressed)?;
+        let files = get_files_from_slice(&decompressed)?;
 
         Ok(Unreal4Crash {
             bytes: decompressed,
-            files: file_meta,
+            files,
         })
     }
 
     /// Files within the UE4 crash dump.
-    pub fn files(&self) -> impl Iterator<Item = &Unreal4CrashFile> {
+    pub fn files(&self) -> impl Iterator<Item = &Unreal4FileMeta> {
         self.files.iter()
     }
 
@@ -194,8 +216,8 @@ impl Unreal4Crash {
         self.files.len() as usize
     }
 
-    /// Get a `Unreal4CrashFile` by its index.
-    pub fn file_by_index(&self, index: usize) -> Option<&Unreal4CrashFile> {
+    /// Get a `Unreal4FileMeta` by its index.
+    pub fn file_by_index(&self, index: usize) -> Option<&Unreal4FileMeta> {
         self.files().find(|f| f.index == index)
     }
 
@@ -260,7 +282,7 @@ impl Unreal4Crash {
     }
 
     /// Get file content.
-    pub fn get_file_contents(&self, file_meta: &Unreal4CrashFile) -> Result<&[u8], Unreal4Error> {
+    pub fn get_file_contents(&self, file_meta: &Unreal4FileMeta) -> Result<&[u8], Unreal4Error> {
         let end = file_meta
             .offset
             .checked_add(file_meta.len)
@@ -345,16 +367,7 @@ fn read_ansi_string(buffer: &mut Cursor<&[u8]>) -> String {
     dir_name.trim_end_matches('\0').into()
 }
 
-fn read_header(cursor: &mut Cursor<&[u8]>) -> Header {
-    Header {
-        directory_name: read_ansi_string(cursor),
-        file_name: read_ansi_string(cursor),
-        uncompressed_size: cursor.get_i32_le(),
-        file_count: cursor.get_i32_le(),
-    }
-}
-
-fn get_files_from_slice(bytes: &Bytes) -> Result<Vec<Unreal4CrashFile>, Unreal4Error> {
+fn get_files_from_slice(bytes: &[u8]) -> Result<Vec<Unreal4FileMeta>, Unreal4Error> {
     let mut rv = vec![];
 
     let file_count = Cursor::new(
@@ -365,18 +378,10 @@ fn get_files_from_slice(bytes: &Bytes) -> Result<Vec<Unreal4CrashFile>, Unreal4E
     .get_i32_le();
 
     let mut cursor = Cursor::new(&bytes[..]);
-    read_header(&mut cursor);
+    Unreal4Header::read(&mut cursor);
 
     for _ in 0..file_count {
-        let meta = Unreal4CrashFile {
-            index: cursor.get_i32_le() as usize,
-            file_name: read_ansi_string(&mut cursor),
-            len: cursor.get_i32_le() as usize,
-            offset: cursor.position() as usize,
-        };
-
-        cursor.advance(meta.len);
-        rv.push(meta);
+        rv.push(Unreal4FileMeta::read(&mut cursor));
     }
 
     Ok(rv)
