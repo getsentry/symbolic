@@ -10,17 +10,6 @@ use crate::Unreal4Crash;
 use crate::Unreal4Error;
 use crate::Unreal4FileType;
 
-/// The context data found in the context xml file.
-/// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp)
-#[derive(Clone, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "with-serde", derive(Serialize))]
-pub struct Unreal4Context {
-    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub runtime_properties: Option<Unreal4ContextRuntimeProperties>,
-    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub platform_properties: Option<Unreal4ContextPlatformProperties>,
-}
-
 /// RuntimeProperties context element
 /// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L274)
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -178,6 +167,17 @@ pub struct Unreal4ContextPlatformProperties {
     pub is_windows: Option<bool>,
     /// Platform-specific UE4 Core value.
     pub callback_result: Option<i32>,
+}
+
+/// The context data found in the context xml file.
+/// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp)
+#[derive(Clone, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "with-serde", derive(Serialize))]
+pub struct Unreal4Context {
+    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub runtime_properties: Option<Unreal4ContextRuntimeProperties>,
+    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub platform_properties: Option<Unreal4ContextPlatformProperties>,
 }
 
 impl Unreal4Context {

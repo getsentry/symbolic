@@ -1,5 +1,4 @@
 //! API to process Unreal Engine 4 crashes.
-
 #![warn(missing_docs)]
 
 use std::fmt;
@@ -26,6 +25,34 @@ lazy_static! {
 }
 
 mod context;
+
+/// Errors related to parsing an UE4 crash file.
+#[derive(Fail, Debug)]
+pub enum Unreal4Error {
+    /// Expected UnrealEngine4 crash (zlib compressed).
+    #[fail(display = "unknown bytes format")]
+    UnknownBytesFormat,
+
+    /// Empty data blob received.
+    #[fail(display = "empty crash")]
+    Empty,
+
+    /// Value out of bounds.
+    #[fail(display = "out of bounds")]
+    OutOfBounds,
+
+    /// Invalid compressed data.
+    #[fail(display = "bad compression")]
+    BadCompression(io::Error),
+
+    /// Can't process log entry.
+    #[fail(display = "invalid log entry")]
+    InvalidLogEntry(std::str::Utf8Error),
+
+    /// Invalid XML
+    #[fail(display = "invalid xml")]
+    InvalidXml(elementtree::Error),
+}
 
 struct Header {
     pub directory_name: String,
@@ -68,6 +95,15 @@ impl fmt::Display for Unreal4FileType {
     }
 }
 
+/// The type of native crash report contained in the unreal 4 crash
+#[derive(Debug, Clone)]
+pub enum NativeCrash<'a> {
+    /// A crash report that is a minidump
+    Minidump(&'a [u8]),
+    /// A crash report that is an apple text file crash report
+    AppleCrashReport(&'a str),
+}
+
 /// Meta-data about a file within a UE4 crash file.
 #[derive(Clone, Debug)]
 pub struct Unreal4CrashFile {
@@ -79,19 +115,6 @@ pub struct Unreal4CrashFile {
     pub offset: usize,
     /// Length of bytes from offset.
     pub len: usize,
-}
-
-/// A log entry from an Unreal Engine 4 crash.
-#[cfg_attr(feature = "with-serde", derive(Serialize))]
-pub struct Unreal4LogEntry {
-    /// The timestamp of the message, when available.
-    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub timestamp: Option<DateTime<Utc>>,
-    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
-    /// The component that issued the log, when available.
-    pub component: Option<String>,
-    /// The log message.
-    pub message: String,
 }
 
 impl Unreal4CrashFile {
@@ -115,27 +138,19 @@ impl Unreal4CrashFile {
     }
 }
 
-/// Errors related to parsing an UE4 crash file.
-#[derive(Fail, Debug)]
-pub enum Unreal4Error {
-    /// Expected UnrealEngine4 crash (zlib compressed).
-    #[fail(display = "unknown bytes format")]
-    UnknownBytesFormat,
-    /// Empty data blob received.
-    #[fail(display = "empty crash")]
-    Empty,
-    /// Value out of bounds.
-    #[fail(display = "out of bounds")]
-    OutOfBounds,
-    /// Invalid compressed data.
-    #[fail(display = "bad compression")]
-    BadCompression(io::Error),
-    /// Can't process log entry.
-    #[fail(display = "invalid log entry")]
-    InvalidLogEntry(std::str::Utf8Error),
-    /// Invalid XML
-    #[fail(display = "invalid xml")]
-    InvalidXml(elementtree::Error),
+/// A log entry from an Unreal Engine 4 crash.
+#[cfg_attr(feature = "with-serde", derive(Serialize))]
+pub struct Unreal4LogEntry {
+    /// The timestamp of the message, when available.
+    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub timestamp: Option<DateTime<Utc>>,
+
+    /// The component that issued the log, when available.
+    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub component: Option<String>,
+
+    /// The log message.
+    pub message: String,
 }
 
 /// Unreal Engine 4 crash file.
@@ -145,18 +160,9 @@ pub struct Unreal4Crash {
     files: Vec<Unreal4CrashFile>,
 }
 
-/// The type of native crash report contained in the unreal 4 crash
-#[derive(Debug, Clone)]
-pub enum NativeCrash<'a> {
-    /// A crash report that is a minidump
-    MiniDump(&'a [u8]),
-    /// A crash report that is an apple text file crash report
-    AppleCrashReport(&'a str),
-}
-
 impl Unreal4Crash {
     /// Creates an instance of `Unreal4Crash` from the original, compressed bytes.
-    pub fn from_slice(bytes: &[u8]) -> Result<Unreal4Crash, Unreal4Error> {
+    pub fn parse(bytes: &[u8]) -> Result<Unreal4Crash, Unreal4Error> {
         if bytes.is_empty() {
             return Err(Unreal4Error::Empty);
         }
@@ -207,7 +213,7 @@ impl Unreal4Crash {
             .get_file_slice(Unreal4FileType::Minidump)?
             .and_then(|bytes| {
                 if bytes.get(..4) == Some(b"MDMP") {
-                    return Some(NativeCrash::MiniDump(bytes));
+                    return Some(NativeCrash::Minidump(bytes));
                 }
                 if bytes.get(..20) == Some(b"Incident Identifier:") {
                     if let Ok(s) = std::str::from_utf8(bytes) {
@@ -221,7 +227,7 @@ impl Unreal4Crash {
     /// Get the Minidump file bytes.
     pub fn get_minidump_slice(&self) -> Result<Option<&[u8]>, Unreal4Error> {
         Ok(self.get_native_crash()?.and_then(|ft| {
-            if let NativeCrash::MiniDump(md) = ft {
+            if let NativeCrash::Minidump(md) = ft {
                 Some(md)
             } else {
                 None
