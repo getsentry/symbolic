@@ -2,12 +2,11 @@
 #![warn(missing_docs)]
 
 use std::fmt;
-use std::io::Read;
 use std::iter::FusedIterator;
 use std::ops::Deref;
 
 use bytes::Bytes;
-use compress::zlib;
+use flate2::read::ZlibDecoder;
 use scroll::{ctx::TryFromCtx, Endian, Pread};
 
 use crate::context::Unreal4Context;
@@ -152,10 +151,8 @@ impl Unreal4Crash {
             return Err(Unreal4Error::Empty);
         }
 
-        let mut zlib_decoder = zlib::Decoder::new(bytes);
         let mut decompressed = Vec::new();
-        zlib_decoder
-            .read_to_end(&mut decompressed)
+        std::io::copy(&mut ZlibDecoder::new(bytes), &mut decompressed)
             .map_err(Unreal4Error::BadCompression)?;
 
         Self::from_bytes(decompressed.into())
@@ -368,5 +365,5 @@ fn test_parse_invalid_input() {
         _ => panic!(),
     };
 
-    assert_eq!("unexpected EOF", err)
+    assert_eq!("corrupt deflate stream", err)
 }
