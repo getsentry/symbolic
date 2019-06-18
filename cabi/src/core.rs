@@ -196,6 +196,8 @@ pub enum SymbolicErrorCode {
     Unreal4ErrorBadCompression = 7004,
     Unreal4ErrorInvalidXml = 7005,
     Unreal4ErrorInvalidLogEntry = 7006,
+    Unreal4ErrorBadData = 7007,
+    Unreal4ErrorTrailingData = 7008,
 
     // apple-crash-report-parser
     AppleCrashReportParseErrorIo = 8001,
@@ -354,6 +356,8 @@ impl SymbolicErrorCode {
                     Unreal4Error::BadCompression(_) => {
                         SymbolicErrorCode::Unreal4ErrorBadCompression
                     }
+                    Unreal4Error::BadData(_) => SymbolicErrorCode::Unreal4ErrorBadData,
+                    Unreal4Error::TrailingData => SymbolicErrorCode::Unreal4ErrorTrailingData,
                     Unreal4Error::InvalidXml(_) => SymbolicErrorCode::Unreal4ErrorInvalidXml,
                     Unreal4Error::InvalidLogEntry(_) => {
                         SymbolicErrorCode::Unreal4ErrorInvalidLogEntry
