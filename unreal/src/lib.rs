@@ -75,7 +75,7 @@ pub struct Unreal4CrashFile {
     pub index: usize,
     /// File name.
     pub file_name: String,
-    /// Start of the file within crash dumb.
+    /// Start of the file within crash dump.
     pub offset: usize,
     /// Length of bytes from offset.
     pub len: usize,
