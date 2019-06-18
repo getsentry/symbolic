@@ -6,11 +6,10 @@ use elementtree::{Element, QName};
 #[cfg(feature = "with-serde")]
 use serde::Serialize;
 
-use crate::Unreal4Crash;
-use crate::Unreal4Error;
-use crate::Unreal4FileType;
+use crate::error::Unreal4Error;
 
-/// RuntimeProperties context element
+/// RuntimeProperties context element.
+///
 /// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L274)
 #[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "with-serde", derive(Serialize))]
@@ -157,7 +156,103 @@ pub struct Unreal4ContextRuntimeProperties {
     pub modules: Option<String>,
 }
 
+impl Unreal4ContextRuntimeProperties {
+    fn from_xml(root: &Element) -> Option<Self> {
+        let list = root.find("RuntimeProperties")?;
+
+        let mut rv = Unreal4ContextRuntimeProperties::default();
+
+        fn get_text_or_none(elm: &Element) -> Option<String> {
+            let text = elm.text();
+            if text != "" {
+                Some(text.to_string())
+            } else {
+                None
+            }
+        }
+
+        for child in list.children() {
+            let tag = child.tag();
+
+            // We don't expect an XML with namespace here
+            if tag.ns().is_some() {
+                continue;
+            }
+            match tag.name() {
+                "CrashGUID" => rv.crash_guid = get_text_or_none(&child),
+                "ProcessId" => rv.process_id = child.text().parse::<u32>().ok(),
+                "IsInternalBuild" => rv.is_internal_build = child.text().parse::<bool>().ok(),
+                "IsSourceDistribution" => {
+                    rv.is_source_distribution = child.text().parse::<bool>().ok()
+                }
+                "IsAssert" => rv.is_assert = child.text().parse::<bool>().ok(),
+                "IsEnsure" => rv.is_ensure = child.text().parse::<bool>().ok(),
+                "CrashType" => rv.crash_type = get_text_or_none(&child),
+                "SecondsSinceStart" => rv.seconds_since_start = child.text().parse::<u32>().ok(),
+                "GameName" => rv.game_name = get_text_or_none(&child),
+                "ExecutableName" => rv.executable_name = get_text_or_none(&child),
+                "BuildConfiguration" => rv.build_configuration = get_text_or_none(&child),
+                "PlatformName" => rv.platform_name = get_text_or_none(&child),
+                "EngineMode" => rv.engine_mode = get_text_or_none(&child),
+                "EngineVersion" => rv.engine_version = get_text_or_none(&child),
+                "LanguageLCID" => rv.language_lcid = child.text().parse::<i32>().ok(),
+                "AppDefaultLocale" => rv.app_default_locate = get_text_or_none(&child),
+                "BuildVersion" => rv.build_version = get_text_or_none(&child),
+                "IsUE4Release" => rv.is_ue4_release = child.text().parse::<bool>().ok(),
+                "UserName" => rv.username = get_text_or_none(&child),
+                "BaseDir" => rv.base_dir = get_text_or_none(&child),
+                "RootDir" => rv.root_dir = get_text_or_none(&child),
+                "MachineId" => rv.machine_id = get_text_or_none(&child),
+                "LoginId" => rv.login_id = get_text_or_none(&child),
+                "EpicAccountId" => rv.epic_account_id = get_text_or_none(&child),
+                "CallStack" => rv.legacy_call_stack = get_text_or_none(&child),
+                "PCallStack" => rv.portable_call_stack = get_text_or_none(&child),
+                "UserDescription" => rv.user_description = get_text_or_none(&child),
+                "ErrorMessage" => rv.error_message = get_text_or_none(&child),
+                "CrashReporterMessage" => rv.crash_reporter_message = get_text_or_none(&child),
+                "Misc.NumberOfCores" => rv.misc_number_of_cores = child.text().parse::<u32>().ok(),
+                "Misc.NumberOfCoresIncludingHyperthreads" => {
+                    rv.misc_number_of_cores_inc_hyperthread = child.text().parse::<u32>().ok()
+                }
+                "Misc.Is64bitOperatingSystem" => {
+                    rv.misc_is_64bit = child.text().parse::<bool>().ok()
+                }
+                "Misc.CPUVendor" => rv.misc_cpu_vendor = get_text_or_none(&child),
+                "Misc.CPUBrand" => rv.misc_cpu_brand = get_text_or_none(&child),
+                "Misc.PrimaryGPUBrand" => rv.misc_primary_cpu_brand = get_text_or_none(&child),
+                "Misc.OSVersionMajor" => rv.misc_os_version_major = get_text_or_none(&child),
+                "Misc.OSVersionMinor" => rv.misc_os_version_minor = get_text_or_none(&child),
+                "GameStateName" => rv.game_state_name = get_text_or_none(&child),
+                "MemoryStats.TotalPhysical" => {
+                    rv.memory_stats_total_physical = child.text().parse::<u64>().ok()
+                }
+                "MemoryStats.TotalVirtual" => {
+                    rv.memory_stats_total_virtual = child.text().parse::<u64>().ok()
+                }
+                "MemoryStats.PageSize" => {
+                    rv.memory_stats_page_size = child.text().parse::<u64>().ok()
+                }
+                "MemoryStats.TotalPhysicalGB" => {
+                    rv.memory_stats_total_phsysical_gb = child.text().parse::<u32>().ok()
+                }
+                "TimeOfCrash" => rv.time_of_crash = child.text().parse::<u64>().ok(),
+                "bAllowToBeContacted" => {
+                    rv.allowed_to_be_contacted = child.text().parse::<bool>().ok()
+                }
+                "CrashReportClientVersion" => {
+                    rv.crash_reporter_client_version = get_text_or_none(&child)
+                }
+                "Modules" => rv.modules = get_text_or_none(&child),
+                _ => {}
+            }
+        }
+
+        Some(rv)
+    }
+}
+
 /// Platform specific properties.
+///
 /// [Source[(https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L451-L455)
 /// [Windows](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/Windows/WindowsPlatformCrashContext.cpp#L39-L44)
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -169,142 +264,58 @@ pub struct Unreal4ContextPlatformProperties {
     pub callback_result: Option<i32>,
 }
 
+impl Unreal4ContextPlatformProperties {
+    fn from_xml(root: &Element) -> Option<Self> {
+        let list = root.find("PlatformProperties")?;
+
+        let mut rv = Unreal4ContextPlatformProperties::default();
+
+        for child in list.children() {
+            if child.tag() == &QName::from("PlatformIsRunningWindows") {
+                match child.text().parse::<u32>() {
+                    Ok(1) => rv.is_windows = Some(true),
+                    Ok(0) => rv.is_windows = Some(false),
+                    Ok(_) => {}
+                    Err(_) => {}
+                }
+                match child.text().parse::<bool>() {
+                    Ok(true) => rv.is_windows = Some(true),
+                    Ok(false) => rv.is_windows = Some(false),
+                    Err(_) => {}
+                }
+            } else if child.tag() == &QName::from("PlatformCallbackResult") {
+                rv.callback_result = child.text().parse::<i32>().ok();
+            }
+        }
+
+        Some(rv)
+    }
+}
+
 /// The context data found in the context xml file.
+///
 /// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp)
 #[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "with-serde", derive(Serialize))]
 pub struct Unreal4Context {
+    /// RuntimeProperties context element.
     #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
     pub runtime_properties: Option<Unreal4ContextRuntimeProperties>,
+
+    /// Platform specific properties.
     #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
     pub platform_properties: Option<Unreal4ContextPlatformProperties>,
 }
 
 impl Unreal4Context {
-    pub(crate) fn from_crash(crash: &Unreal4Crash) -> Result<Option<Self>, Unreal4Error> {
-        let file = match crash.get_file_slice(Unreal4FileType::Context)? {
-            Some(f) => f,
-            None => return Ok(None),
-        };
+    pub(crate) fn parse(data: &[u8]) -> Result<Self, Unreal4Error> {
+        let root = Element::from_reader(data).map_err(Unreal4Error::InvalidXml)?;
 
-        let root = Element::from_reader(file).map_err(Unreal4Error::InvalidXml)?;
-
-        Ok(Some(Unreal4Context {
-            runtime_properties: get_runtime_properties(&root),
-            platform_properties: get_platform_properties(&root),
-        }))
+        Ok(Unreal4Context {
+            runtime_properties: Unreal4ContextRuntimeProperties::from_xml(&root),
+            platform_properties: Unreal4ContextPlatformProperties::from_xml(&root),
+        })
     }
-}
-
-fn get_runtime_properties(root: &Element) -> Option<Unreal4ContextRuntimeProperties> {
-    let list = root.find("RuntimeProperties")?;
-
-    let mut rv = Unreal4ContextRuntimeProperties::default();
-
-    fn get_text_or_none(elm: &Element) -> Option<String> {
-        let text = elm.text();
-        if text != "" {
-            Some(text.to_string())
-        } else {
-            None
-        }
-    }
-
-    for child in list.children() {
-        let tag = child.tag();
-
-        // We don't expect an XML with namespace here
-        if tag.ns().is_some() {
-            continue;
-        }
-        match tag.name() {
-            "CrashGUID" => rv.crash_guid = get_text_or_none(&child),
-            "ProcessId" => rv.process_id = child.text().parse::<u32>().ok(),
-            "IsInternalBuild" => rv.is_internal_build = child.text().parse::<bool>().ok(),
-            "IsSourceDistribution" => rv.is_source_distribution = child.text().parse::<bool>().ok(),
-            "IsAssert" => rv.is_assert = child.text().parse::<bool>().ok(),
-            "IsEnsure" => rv.is_ensure = child.text().parse::<bool>().ok(),
-            "CrashType" => rv.crash_type = get_text_or_none(&child),
-            "SecondsSinceStart" => rv.seconds_since_start = child.text().parse::<u32>().ok(),
-            "GameName" => rv.game_name = get_text_or_none(&child),
-            "ExecutableName" => rv.executable_name = get_text_or_none(&child),
-            "BuildConfiguration" => rv.build_configuration = get_text_or_none(&child),
-            "PlatformName" => rv.platform_name = get_text_or_none(&child),
-            "EngineMode" => rv.engine_mode = get_text_or_none(&child),
-            "EngineVersion" => rv.engine_version = get_text_or_none(&child),
-            "LanguageLCID" => rv.language_lcid = child.text().parse::<i32>().ok(),
-            "AppDefaultLocale" => rv.app_default_locate = get_text_or_none(&child),
-            "BuildVersion" => rv.build_version = get_text_or_none(&child),
-            "IsUE4Release" => rv.is_ue4_release = child.text().parse::<bool>().ok(),
-            "UserName" => rv.username = get_text_or_none(&child),
-            "BaseDir" => rv.base_dir = get_text_or_none(&child),
-            "RootDir" => rv.root_dir = get_text_or_none(&child),
-            "MachineId" => rv.machine_id = get_text_or_none(&child),
-            "LoginId" => rv.login_id = get_text_or_none(&child),
-            "EpicAccountId" => rv.epic_account_id = get_text_or_none(&child),
-            "CallStack" => rv.legacy_call_stack = get_text_or_none(&child),
-            "PCallStack" => rv.portable_call_stack = get_text_or_none(&child),
-            "UserDescription" => rv.user_description = get_text_or_none(&child),
-            "ErrorMessage" => rv.error_message = get_text_or_none(&child),
-            "CrashReporterMessage" => rv.crash_reporter_message = get_text_or_none(&child),
-            "Misc.NumberOfCores" => rv.misc_number_of_cores = child.text().parse::<u32>().ok(),
-            "Misc.NumberOfCoresIncludingHyperthreads" => {
-                rv.misc_number_of_cores_inc_hyperthread = child.text().parse::<u32>().ok()
-            }
-            "Misc.Is64bitOperatingSystem" => rv.misc_is_64bit = child.text().parse::<bool>().ok(),
-            "Misc.CPUVendor" => rv.misc_cpu_vendor = get_text_or_none(&child),
-            "Misc.CPUBrand" => rv.misc_cpu_brand = get_text_or_none(&child),
-            "Misc.PrimaryGPUBrand" => rv.misc_primary_cpu_brand = get_text_or_none(&child),
-            "Misc.OSVersionMajor" => rv.misc_os_version_major = get_text_or_none(&child),
-            "Misc.OSVersionMinor" => rv.misc_os_version_minor = get_text_or_none(&child),
-            "GameStateName" => rv.game_state_name = get_text_or_none(&child),
-            "MemoryStats.TotalPhysical" => {
-                rv.memory_stats_total_physical = child.text().parse::<u64>().ok()
-            }
-            "MemoryStats.TotalVirtual" => {
-                rv.memory_stats_total_virtual = child.text().parse::<u64>().ok()
-            }
-            "MemoryStats.PageSize" => rv.memory_stats_page_size = child.text().parse::<u64>().ok(),
-            "MemoryStats.TotalPhysicalGB" => {
-                rv.memory_stats_total_phsysical_gb = child.text().parse::<u32>().ok()
-            }
-            "TimeOfCrash" => rv.time_of_crash = child.text().parse::<u64>().ok(),
-            "bAllowToBeContacted" => rv.allowed_to_be_contacted = child.text().parse::<bool>().ok(),
-            "CrashReportClientVersion" => {
-                rv.crash_reporter_client_version = get_text_or_none(&child)
-            }
-            "Modules" => rv.modules = get_text_or_none(&child),
-            _ => {}
-        }
-    }
-
-    Some(rv)
-}
-
-fn get_platform_properties(root: &Element) -> Option<Unreal4ContextPlatformProperties> {
-    let list = root.find("PlatformProperties")?;
-
-    let mut rv = Unreal4ContextPlatformProperties::default();
-
-    for child in list.children() {
-        if child.tag() == &QName::from("PlatformIsRunningWindows") {
-            match child.text().parse::<u32>() {
-                Ok(1) => rv.is_windows = Some(true),
-                Ok(0) => rv.is_windows = Some(false),
-                Ok(_) => {}
-                Err(_) => {}
-            }
-            match child.text().parse::<bool>() {
-                Ok(true) => rv.is_windows = Some(true),
-                Ok(false) => rv.is_windows = Some(false),
-                Err(_) => {}
-            }
-        } else if child.tag() == &QName::from("PlatformCallbackResult") {
-            rv.callback_result = child.text().parse::<i32>().ok();
-        }
-    }
-
-    Some(rv)
 }
 
 #[allow(dead_code)]
@@ -326,26 +337,26 @@ const ONLY_ROOT_AND_CHILD_NODES: &str = r#"<?xml version="1.0" encoding="UTF-8"?
 #[test]
 fn test_get_runtime_properties_missing_element() {
     let root = Element::from_reader(ONLY_ROOT_NODE.as_bytes()).unwrap();
-    assert!(get_runtime_properties(&root).is_none());
+    assert!(Unreal4ContextRuntimeProperties::from_xml(&root).is_none());
 }
 
 #[test]
 fn test_get_platform_properties_missing_element() {
     let root = Element::from_reader(ONLY_ROOT_NODE.as_bytes()).unwrap();
-    assert!(get_platform_properties(&root).is_none());
+    assert!(Unreal4ContextPlatformProperties::from_xml(&root).is_none());
 }
 
 #[test]
 fn test_get_runtime_properties_no_children() {
     let root = Element::from_reader(ONLY_ROOT_AND_CHILD_NODES.as_bytes()).unwrap();
-    let actual = get_runtime_properties(&root).expect("default struct");
+    let actual = Unreal4ContextRuntimeProperties::from_xml(&root).expect("default struct");
     assert_eq!(Unreal4ContextRuntimeProperties::default(), actual)
 }
 
 #[test]
 fn test_get_platform_properties_no_children() {
     let root = Element::from_reader(ONLY_ROOT_AND_CHILD_NODES.as_bytes()).unwrap();
-    let actual = get_platform_properties(&root).expect("default struct");
+    let actual = Unreal4ContextPlatformProperties::from_xml(&root).expect("default struct");
     assert_eq!(Unreal4ContextPlatformProperties::default(), actual)
 }
 
@@ -383,7 +394,7 @@ macro_rules! test_unreal_runtime_properties {
     ($name:ident, $xml_elm:expr, $expect:expr $(,)*) => {
         test_unreal_contect!(
             "RuntimeProperties",
-            get_runtime_properties,
+            Unreal4ContextRuntimeProperties::from_xml,
             $name,
             $xml_elm,
             $expect,
@@ -395,7 +406,7 @@ macro_rules! test_unreal_platform_properties {
     ($name:ident, $xml_elm:expr, $expect:expr $(,)*) => {
         test_unreal_contect!(
             "PlatformProperties",
-            get_platform_properties,
+            Unreal4ContextPlatformProperties::from_xml,
             $name,
             $xml_elm,
             $expect,
