@@ -72,7 +72,7 @@ struct Unreal4Header {
 
 /// Meta-data about a file within a UE4 crash file.
 #[derive(Clone, Debug)]
-pub struct Unreal4FileMeta {
+struct Unreal4FileMeta {
     /// The original index within the UE4 crash file.
     index: usize,
     /// File name.
@@ -156,6 +156,16 @@ impl Unreal4Crash {
             .map_err(Unreal4Error::BadCompression)?;
 
         Self::from_bytes(decompressed.into())
+    }
+
+    /// Returns the file name of this UE4 crash.
+    pub fn name(&self) -> &str {
+        &self.header.file_name
+    }
+
+    /// Returns the directory path of this UE4 crash.
+    pub fn directory_name(&self) -> &str {
+        &self.header.directory_name
     }
 
     /// Returns an iterator over all files within this UE4 crash dump.
