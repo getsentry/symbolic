@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 use std::fs;
+use std::io::{Seek, Write};
 
 use failure::{Fail, ResultExt};
 
@@ -10,14 +11,20 @@ use crate::bundle::{ArtifactBundleWriter, ArtifactFileInfo, ArtifactType};
 use crate::error::{ArtifactBundleError, ArtifactBundleErrorKind};
 
 /// Writes sources of `Object` files to an artifact bundle.
-pub struct DebugSourceWriter {
-    bundle: ArtifactBundleWriter,
+pub struct DebugSourceWriter<W>
+where
+    W: Seek + Write,
+{
+    bundle: ArtifactBundleWriter<W>,
     files_handled: BTreeSet<String>,
 }
 
-impl DebugSourceWriter {
+impl<W> DebugSourceWriter<W>
+where
+    W: Write + Seek,
+{
     /// Creates a new source writer around an artifact bundle writer.
-    pub fn new(bundle: ArtifactBundleWriter) -> Self {
+    pub fn new(bundle: ArtifactBundleWriter<W>) -> Self {
         DebugSourceWriter {
             bundle,
             files_handled: BTreeSet::new(),
@@ -74,7 +81,7 @@ impl DebugSourceWriter {
     }
 
     /// Finishes writing the object file and returns the bundle writer.
-    pub fn finish(self) -> Result<ArtifactBundleWriter, ArtifactBundleError> {
+    pub fn finish(self) -> Result<ArtifactBundleWriter<W>, ArtifactBundleError> {
         Ok(self.bundle)
     }
 }
