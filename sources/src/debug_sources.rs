@@ -1,16 +1,18 @@
 use std::collections::BTreeSet;
+use std::fs;
 
 use failure::{Fail, ResultExt};
 
+use symbolic_common::{clean_path, join_path};
 use symbolic_debuginfo::{DebugSession, ObjectLike};
 
-use crate::bundle::ArtifactBundleWriter;
+use crate::bundle::{ArtifactBundleWriter, ArtifactFileInfo, ArtifactType};
 use crate::error::{ArtifactBundleError, ArtifactBundleErrorKind};
 
 /// Writes sources of `Object` files to an artifact bundle.
 pub struct DebugSourceWriter {
     bundle: ArtifactBundleWriter,
-    ignored_files: BTreeSet<String>,
+    files_handled: BTreeSet<String>,
 }
 
 impl DebugSourceWriter {
@@ -18,7 +20,7 @@ impl DebugSourceWriter {
     pub fn new(bundle: ArtifactBundleWriter) -> Self {
         DebugSourceWriter {
             bundle,
-            ignored_files: BTreeSet::new(),
+            files_handled: BTreeSet::new(),
         }
     }
 
@@ -34,8 +36,38 @@ impl DebugSourceWriter {
             .debug_session()
             .context(ArtifactBundleErrorKind::BadDebugFile)?;
 
-        for function in session.functions() {
-            println!("TODO: {:#?}", function);
+        self.bundle
+            .set_attribute("debug_id", object.debug_id().to_string());
+        for func in session.functions() {
+            let func = func.context(ArtifactBundleErrorKind::BadDebugFile)?;
+            for line in &func.lines {
+                let filename = clean_path(&join_path(
+                    &String::from_utf8_lossy(&func.compilation_dir),
+                    &line.file.path_str(),
+                ));
+                if self.files_handled.contains(&filename) {
+                    continue;
+                }
+                let source = if filename.starts_with('<') && filename.ends_with('>') {
+                    None
+                } else {
+                    fs::read_to_string(&filename).ok()
+                };
+                if let Some(source) = source {
+                    self.bundle
+                        .add_file(
+                            &filename,
+                            source.as_bytes(),
+                            ArtifactFileInfo {
+                                ty: Some(ArtifactType::Script),
+                                path: filename.clone(),
+                                headers: Default::default(),
+                            },
+                        )
+                        .context(ArtifactBundleErrorKind::WriteFailed)?;
+                }
+                self.files_handled.insert(filename);
+            }
         }
 
         Ok(())
