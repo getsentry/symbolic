@@ -50,29 +50,29 @@ where
         O: ObjectLike,
         O::Error: Fail,
     {
-        // TODO: Add attributes to the bundle.
-
         let mut session = object
             .debug_session()
             .context(ArtifactBundleErrorKind::BadDebugFile)?;
 
         self.bundle
             .set_attribute("debug_id", object.debug_id().to_string());
+
         for func in session.functions() {
             let func = func.context(ArtifactBundleErrorKind::BadDebugFile)?;
             for line in &func.lines {
-                let filename = clean_path(&join_path(
-                    &String::from_utf8_lossy(&func.compilation_dir),
-                    &line.file.path_str(),
-                ));
+                let compilation_dir = String::from_utf8_lossy(&func.compilation_dir);
+                let filename = clean_path(&join_path(&compilation_dir, &line.file.path_str()));
+
                 if self.files_handled.contains(&filename) {
                     continue;
                 }
+
                 let source = if filename.starts_with('<') && filename.ends_with('>') {
                     None
                 } else {
                     fs::read_to_string(&filename).ok()
                 };
+
                 if let Some(source) = source {
                     let bundle_path = sanitize_bundle_path(&filename);
                     let info = ArtifactFileInfo {
@@ -85,6 +85,7 @@ where
                         .add_file(bundle_path, source.as_bytes(), info)
                         .context(ArtifactBundleErrorKind::WriteFailed)?;
                 }
+
                 self.files_handled.insert(filename);
             }
         }

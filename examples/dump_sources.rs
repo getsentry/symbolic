@@ -28,8 +28,7 @@ fn write_object_sources(path: &Path, output_path: &Path) -> Result<(), Error> {
             Ok(object) => {
                 let out = output_path.join(&format!("{}.zip", &object.debug_id()));
                 println!("  -> {}", out.display());
-                let mut writer =
-                    DebugSourceWriter::new(ArtifactBundleWriter::create(&out)?);
+                let mut writer = DebugSourceWriter::new(ArtifactBundleWriter::create(&out)?);
                 writer.write_object(&object)?;
                 writer.finish()?.finish()?;
             }
