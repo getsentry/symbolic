@@ -68,7 +68,7 @@ where
                             ArtifactFileInfo {
                                 ty: Some(ArtifactType::Script),
                                 path: filename.clone(),
-                                headers: Default::default(),
+                                ..ArtifactFileInfo::default()
                             },
                         )
                         .context(ArtifactBundleErrorKind::WriteFailed)?;

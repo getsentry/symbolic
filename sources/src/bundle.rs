@@ -55,9 +55,13 @@ pub struct ArtifactFileInfo {
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
     pub ty: Option<ArtifactType>,
 
-    /// An optional file path or URL that this file corresponds to.
-    #[serde(rename = "url", skip_serializing_if = "String::is_empty")]
+    /// An optional file system path that this file corresponds to.
+    #[serde(skip_serializing_if = "String::is_empty")]
     pub path: String,
+
+    /// Optional URL that this file corresponds to.
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub url: String,
 
     /// Attributes represented as headers.
     ///
