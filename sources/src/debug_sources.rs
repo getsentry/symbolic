@@ -63,7 +63,7 @@ where
                 if let Some(source) = source {
                     self.bundle
                         .add_file(
-                            &filename,
+                            filename.as_str(),
                             source.as_bytes(),
                             ArtifactFileInfo {
                                 ty: Some(ArtifactType::Script),

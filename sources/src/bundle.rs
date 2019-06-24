@@ -223,7 +223,6 @@ where
     where
         S: AsRef<str>,
     {
-        // TODO: Fixme
         self.manifest.files.contains_key(path.as_ref())
     }
 
@@ -257,15 +256,15 @@ where
         info: ArtifactFileInfo,
     ) -> Result<(), ArtifactBundleError>
     where
-        S: AsRef<str>,
+        S: Into<String>,
         R: Read,
     {
         // TODO: Sanitize path / URL
-        let path = format!("{}/{}", FILES_PATH, path.as_ref());
-        let unique_path = self.unique_path(path);
+        let unique_path = self.unique_path(path.into());
+        let zip_path = format!("{}/{}", FILES_PATH, unique_path);
 
         self.writer
-            .start_file(unique_path.clone(), FileOptions::default())
+            .start_file(zip_path, FileOptions::default())
             .context(ArtifactBundleErrorKind::WriteFailed)?;
         std::io::copy(&mut file, &mut self.writer).context(ArtifactBundleErrorKind::WriteFailed)?;
 
@@ -338,11 +337,41 @@ impl ArtifactBundleWriter<BufWriter<File>> {
     }
 }
 
-impl<W> Drop for ArtifactBundleWriter<W>
-where
-    W: Seek + Write,
-{
-    fn drop(&mut self) {
-        debug_assert!(self.finished, "ArtifactBundleWriter::finish not called");
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::io::Cursor;
+
+    use failure::Error;
+
+    #[test]
+    fn test_has_file() -> Result<(), Error> {
+        let writer = Cursor::new(Vec::new());
+        let mut bundle = ArtifactBundleWriter::new(writer);
+
+        bundle.add_file("bar.txt", &b"filecontents"[..], ArtifactFileInfo::default())?;
+        assert!(bundle.has_file("bar.txt"));
+
+        bundle.finish()?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_duplicate_files() -> Result<(), Error> {
+        let writer = Cursor::new(Vec::new());
+        let mut bundle = ArtifactBundleWriter::new(writer);
+
+        bundle.add_file("bar.txt", &b"filecontents"[..], ArtifactFileInfo::default())?;
+        bundle.add_file(
+            "bar.txt",
+            &b"othercontents"[..],
+            ArtifactFileInfo::default(),
+        )?;
+        assert!(bundle.has_file("bar.txt"));
+        assert!(bundle.has_file("bar.txt.1"));
+
+        bundle.finish()?;
+        Ok(())
     }
 }
