@@ -6,9 +6,11 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufWriter, Read};
 use std::path::Path;
 
-use failure::Error;
+use failure::ResultExt;
 use serde::Serialize;
 use zip::{write::FileOptions, ZipWriter};
+
+use crate::error::{ArtifactBundleError, ArtifactBundleErrorKind};
 
 /// Version of the bundle and manifest format.
 static BUNDLE_VERSION: u32 = 2;
@@ -178,7 +180,7 @@ impl ArtifactBundleWriter {
     ///
     /// If the file does not exist at the given path, it is created. If the file does exist, it is
     /// overwritten.
-    pub fn create<P>(path: P) -> Result<Self, Error>
+    pub fn create<P>(path: P) -> Result<Self, ArtifactBundleError>
     where
         P: AsRef<Path>,
     {
@@ -186,7 +188,8 @@ impl ArtifactBundleWriter {
             .read(true)
             .write(true)
             .create(true)
-            .open(path)?;
+            .open(path)
+            .context(ArtifactBundleErrorKind::WriteFailed)?;
 
         Ok(Self::new(file))
     }
@@ -264,7 +267,7 @@ impl ArtifactBundleWriter {
         path: S,
         mut file: R,
         info: ArtifactFileInfo,
-    ) -> Result<(), Error>
+    ) -> Result<(), ArtifactBundleError>
     where
         S: AsRef<str>,
         R: Read,
@@ -273,17 +276,20 @@ impl ArtifactBundleWriter {
         let unique_path = self.unique_path(path);
 
         self.writer
-            .start_file(unique_path.clone(), FileOptions::default())?;
-        std::io::copy(&mut file, &mut self.writer)?;
+            .start_file(unique_path.clone(), FileOptions::default())
+            .context(ArtifactBundleErrorKind::WriteFailed)?;
+        std::io::copy(&mut file, &mut self.writer).context(ArtifactBundleErrorKind::WriteFailed)?;
 
         self.manifest.files.insert(unique_path, info);
         Ok(())
     }
 
     /// Writes the manifest to the bundle and flushes the underlying file handle.
-    pub fn finish(mut self) -> Result<(), Error> {
+    pub fn finish(mut self) -> Result<(), ArtifactBundleError> {
         self.write_manifest()?;
-        self.writer.finish()?;
+        self.writer
+            .finish()
+            .context(ArtifactBundleErrorKind::WriteFailed)?;
         self.finished = true;
         Ok(())
     }
@@ -310,10 +316,14 @@ impl ArtifactBundleWriter {
     }
 
     /// Flushes the manifest file to the bundle.
-    fn write_manifest(&mut self) -> Result<(), Error> {
+    fn write_manifest(&mut self) -> Result<(), ArtifactBundleError> {
         self.writer
-            .start_file(MANIFEST_PATH, FileOptions::default())?;
-        serde_json::to_writer(&mut self.writer, &self.manifest)?;
+            .start_file(MANIFEST_PATH, FileOptions::default())
+            .context(ArtifactBundleErrorKind::WriteFailed)?;
+
+        serde_json::to_writer(&mut self.writer, &self.manifest)
+            .context(ArtifactBundleErrorKind::WriteFailed)?;
+
         Ok(())
     }
 }

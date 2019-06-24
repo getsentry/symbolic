@@ -5,5 +5,7 @@
 #![warn(missing_docs)]
 
 mod bundle;
+mod error;
 
 pub use crate::bundle::*;
+pub use crate::error::*;
