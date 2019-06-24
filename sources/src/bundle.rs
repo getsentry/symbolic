@@ -56,7 +56,7 @@ pub struct ArtifactFileInfo {
     pub ty: Option<ArtifactType>,
 
     /// An optional file path or URL that this file corresponds to.
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(rename = "url", skip_serializing_if = "String::is_empty")]
     pub path: String,
 
     /// Attributes represented as headers.
@@ -121,7 +121,7 @@ pub struct ArtifactManifest {
     pub files: HashMap<String, ArtifactFileInfo>,
 
     /// Arbitrary attributes to include in the bundle.
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    #[serde(flatten)]
     pub attributes: BTreeMap<String, String>,
 }
 
