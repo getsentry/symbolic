@@ -30,7 +30,7 @@ fn write_object_sources(path: &Path, output_path: &Path) -> Result<(), Error> {
                 println!("  -> {}", out.display());
                 let mut writer =
                     DebugSourceWriter::new(ArtifactBundleWriter::create(&out)?);
-                writer.write_object(&object)?;
+                writer.write_object(&object, &path.file_name().unwrap().to_string_lossy())?;
                 writer.finish()?.finish()?;
             }
             Err(e) => {

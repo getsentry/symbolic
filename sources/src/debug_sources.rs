@@ -32,7 +32,7 @@ where
     }
 
     /// Writes all source files referenced by functions in this object file to the bundle.
-    pub fn write_object<O>(&mut self, object: &O) -> Result<(), ArtifactBundleError>
+    pub fn write_object<O>(&mut self, object: &O, object_name: &str) -> Result<(), ArtifactBundleError>
     where
         O: ObjectLike,
         O::Error: Fail,
@@ -45,6 +45,8 @@ where
 
         self.bundle
             .set_attribute("debug_id", object.debug_id().to_string());
+        self.bundle
+            .set_attribute("object_name", object_name);
         for func in session.functions() {
             let func = func.context(ArtifactBundleErrorKind::BadDebugFile)?;
             for line in &func.lines {
