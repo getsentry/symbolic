@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 fn is_absolute_windows_path(s: &str) -> bool {
     // UNC
-    if s.len() > 2 && &s[..2] == "\\\\" {
+    if s.len() > 2 && (&s[..2] == "\\\\" || &s[..2] == "//") {
         return true;
     }
 
@@ -12,7 +12,7 @@ fn is_absolute_windows_path(s: &str) -> bool {
 
     match fc.unwrap_or_default() {
         'A'..='Z' | 'a'..='z' => {
-            if sc == Some(':') && tc.map_or(false, |tc| tc == '\\' || tc == '/') {
+            if sc == Some(':') && tc.map_or(true, |tc| tc == '\\' || tc == '/') {
                 return true;
             }
         }
@@ -22,8 +22,16 @@ fn is_absolute_windows_path(s: &str) -> bool {
     false
 }
 
+fn is_semi_absolute_windows_path(s: &str) -> bool {
+    s.starts_with(&['/', '\\'][..])
+}
+
 fn is_absolute_unix_path(s: &str) -> bool {
     s.starts_with('/')
+}
+
+fn is_windows_path(path: &str) -> bool {
+    path.contains('\\') || is_absolute_windows_path(path)
 }
 
 /// Joins paths of various platforms.
@@ -42,9 +50,16 @@ pub fn join_path(base: &str, other: &str) -> String {
         return base.into();
     }
 
-    let win_abs = is_absolute_windows_path(base);
-    let unix_abs = is_absolute_unix_path(base);
-    let win_style = win_abs || (!unix_abs && base.contains('\\'));
+    // C:\test + \bar -> C:\bar
+    if is_semi_absolute_windows_path(other) {
+        if is_absolute_windows_path(base) {
+            return format!("{}{}", &base[..2], other);
+        } else {
+            return other.into();
+        }
+    }
+
+    let win_style = is_windows_path(base) || is_windows_path(other);
 
     if win_style {
         format!(
@@ -59,6 +74,61 @@ pub fn join_path(base: &str, other: &str) -> String {
             other.trim_start_matches('/')
         )
     }
+}
+
+fn pop_path(path: &mut String) -> bool {
+    if let Some(idx) = path.rfind(&['/', '\\'][..]) {
+        path.truncate(idx);
+        true
+    } else if !path.is_empty() {
+        path.truncate(0);
+        true
+    } else {
+        false
+    }
+}
+
+/// Cleans up a path from various platforms.
+///
+/// This removes redundant `../` or `./` references.  Since this does not resolve symlinks this
+/// is a lossy operation.
+pub fn clean_path(path: &str) -> String {
+    let mut rv = String::with_capacity(path.len());
+    let is_windows = path.contains('\\');
+    let mut needs_separator = false;
+    let mut is_past_root = false;
+
+    for segment in path.split_terminator(&['/', '\\'][..]) {
+        if segment == "." {
+            continue;
+        } else if segment == ".." {
+            if !is_past_root && pop_path(&mut rv) {
+                if rv.is_empty() {
+                    needs_separator = false;
+                }
+                continue;
+            } else {
+                if !is_past_root {
+                    needs_separator = false;
+                    is_past_root = true;
+                }
+                if needs_separator {
+                    rv.push(if is_windows { '\\' } else { '/' });
+                }
+                rv.push_str("..");
+                needs_separator = true;
+                continue;
+            }
+        }
+        if needs_separator {
+            rv.push(if is_windows { '\\' } else { '/' });
+        } else {
+            needs_separator = true;
+        }
+        rv.push_str(segment);
+    }
+
+    rv
 }
 
 /// Splits off the last component of a binary path.
@@ -77,7 +147,7 @@ pub fn split_path_bytes(path: &[u8]) -> (Option<&[u8]>, &[u8]) {
     };
 
     // Try to find a backslash which could indicate a Windows path.
-    let split_char = if !path.starts_with(b"/") && path.contains(&b'\\') {
+    let split_char = if path.contains(&b'\\') {
         b'\\' // Probably Windows
     } else {
         b'/' // Probably UNIX
@@ -184,6 +254,8 @@ pub fn shorten_path(path: &str, length: usize) -> Cow<'_, str> {
 
 #[test]
 fn test_join_path() {
+    assert_eq!(join_path("foo", "C:"), "C:");
+    assert_eq!(join_path("foo", "C:bar"), "foo/C:bar");
     assert_eq!(join_path("C:\\a", "b"), "C:\\a\\b");
     assert_eq!(join_path("C:/a", "b"), "C:/a\\b");
     assert_eq!(join_path("C:\\a", "b\\c"), "C:\\a\\b\\c");
@@ -191,10 +263,35 @@ fn test_join_path() {
     assert_eq!(join_path("a\\b\\c", "d\\e"), "a\\b\\c\\d\\e");
     assert_eq!(join_path("\\\\UNC\\", "a"), "\\\\UNC\\a");
 
+    assert_eq!(join_path("C:\\foo/bar", "\\baz"), "C:\\baz");
+    assert_eq!(join_path("\\foo/bar", "\\baz"), "\\baz");
+    assert_eq!(join_path("/a/b", "\\c"), "\\c");
+
     assert_eq!(join_path("/a/b", "c"), "/a/b/c");
     assert_eq!(join_path("/a/b", "c/d"), "/a/b/c/d");
     assert_eq!(join_path("/a/b", "/c/d/e"), "/c/d/e");
     assert_eq!(join_path("a/b/", "c"), "a/b/c");
+}
+
+#[test]
+fn test_clean_path() {
+    assert_eq!(clean_path("/foo/bar/baz/./blah"), "/foo/bar/baz/blah");
+    assert_eq!(clean_path("/foo/bar/baz/./blah/"), "/foo/bar/baz/blah");
+    assert_eq!(clean_path("foo/bar/baz/./blah/"), "foo/bar/baz/blah");
+    assert_eq!(clean_path("foo/bar/baz/../blah/"), "foo/bar/blah");
+    assert_eq!(clean_path("../../blah/"), "../../blah");
+    assert_eq!(clean_path("..\\../blah/"), "..\\..\\blah");
+    assert_eq!(clean_path("foo\\bar\\baz/../blah/"), "foo\\bar\\blah");
+    assert_eq!(clean_path("foo\\bar\\baz/../../../../blah/"), "..\\blah");
+    assert_eq!(clean_path("foo/bar/baz/../../../../blah/"), "../blah");
+    assert_eq!(clean_path("..\\foo"), "..\\foo");
+    assert_eq!(clean_path("foo"), "foo");
+    assert_eq!(clean_path("foo\\bar\\baz/../../../blah/"), "blah");
+    assert_eq!(clean_path("foo/bar/baz/../../../blah/"), "blah");
+
+    // XXX currently known broken tests:
+    //assert_eq!(clean_path("/../../blah/"), "/blah");
+    //assert_eq!(clean_path("c:\\..\\foo"), "c:\\foo");
 }
 
 #[test]
