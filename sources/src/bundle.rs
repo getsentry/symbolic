@@ -1,9 +1,8 @@
 //! Defines the `ArtifactBundle` type and corresponding writer.
 
 use std::collections::{BTreeMap, HashMap};
-use std::fmt::Write;
 use std::fs::{File, OpenOptions};
-use std::io::{BufWriter, Read};
+use std::io::{BufWriter, Read, Seek, Write};
 use std::path::Path;
 
 use failure::ResultExt;
@@ -160,38 +159,26 @@ impl ArtifactManifest {
 /// [existing file]: struct.ArtifactBundleWriter#method.new
 /// [`add_file`]: struct.ArtifactBundleWriter#method.add_file
 /// [`finish`]: struct.ArtifactBundleWriter#method.finish
-pub struct ArtifactBundleWriter {
+pub struct ArtifactBundleWriter<W>
+where
+    W: Seek + Write,
+{
     manifest: ArtifactManifest,
-    writer: ZipWriter<BufWriter<File>>,
+    writer: ZipWriter<W>,
     finished: bool,
 }
 
-impl ArtifactBundleWriter {
+impl<W> ArtifactBundleWriter<W>
+where
+    W: Seek + Write,
+{
     /// Creates a bundle writer on the given file.
-    pub fn new(file: File) -> Self {
+    pub fn new(writer: W) -> Self {
         ArtifactBundleWriter {
             manifest: ArtifactManifest::new(),
-            writer: ZipWriter::new(BufWriter::new(file)),
+            writer: ZipWriter::new(writer),
             finished: false,
         }
-    }
-
-    /// Create a bundle writer that writes its output to the given path.
-    ///
-    /// If the file does not exist at the given path, it is created. If the file does exist, it is
-    /// overwritten.
-    pub fn create<P>(path: P) -> Result<Self, ArtifactBundleError>
-    where
-        P: AsRef<Path>,
-    {
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(path)
-            .context(ArtifactBundleErrorKind::WriteFailed)?;
-
-        Ok(Self::new(file))
     }
 
     /// Sets a meta data attribute of the bundle.
@@ -236,6 +223,7 @@ impl ArtifactBundleWriter {
     where
         S: AsRef<str>,
     {
+        // TODO: Fixme
         self.manifest.files.contains_key(path.as_ref())
     }
 
@@ -272,6 +260,7 @@ impl ArtifactBundleWriter {
         S: AsRef<str>,
         R: Read,
     {
+        // TODO: Sanitize path / URL
         let path = format!("{}/{}", FILES_PATH, path.as_ref());
         let unique_path = self.unique_path(path);
 
@@ -306,6 +295,7 @@ impl ArtifactBundleWriter {
             match duplicates {
                 1 => path.push_str(".1"),
                 _ => {
+                    use std::fmt::Write;
                     trim_end_matches(&mut path, char::is_numeric);
                     write!(path, ".{}", duplicates).unwrap();
                 }
@@ -328,7 +318,30 @@ impl ArtifactBundleWriter {
     }
 }
 
-impl Drop for ArtifactBundleWriter {
+impl ArtifactBundleWriter<BufWriter<File>> {
+    /// Create a bundle writer that writes its output to the given path.
+    ///
+    /// If the file does not exist at the given path, it is created. If the file does exist, it is
+    /// overwritten.
+    pub fn create<P>(path: P) -> Result<ArtifactBundleWriter<BufWriter<File>>, ArtifactBundleError>
+    where
+        P: AsRef<Path>,
+    {
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(path)
+            .context(ArtifactBundleErrorKind::WriteFailed)?;
+
+        Ok(Self::new(BufWriter::new(file)))
+    }
+}
+
+impl<W> Drop for ArtifactBundleWriter<W>
+where
+    W: Seek + Write,
+{
     fn drop(&mut self) {
         debug_assert!(self.finished, "ArtifactBundleWriter::finish not called");
     }
