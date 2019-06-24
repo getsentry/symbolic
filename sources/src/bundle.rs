@@ -227,7 +227,8 @@ where
     where
         S: AsRef<str>,
     {
-        self.manifest.files.contains_key(path.as_ref())
+        let full_path = &self.file_path(path.as_ref());
+        self.manifest.files.contains_key(full_path)
     }
 
     /// Adds a file and its info to the bundle.
@@ -260,15 +261,14 @@ where
         info: ArtifactFileInfo,
     ) -> Result<(), ArtifactBundleError>
     where
-        S: Into<String>,
+        S: AsRef<str>,
         R: Read,
     {
-        // TODO: Sanitize path / URL
-        let unique_path = self.unique_path(path.into());
-        let zip_path = format!("{}/{}", FILES_PATH, unique_path);
+        let full_path = self.file_path(path.as_ref());
+        let unique_path = self.unique_path(full_path);
 
         self.writer
-            .start_file(zip_path, FileOptions::default())
+            .start_file(unique_path.clone(), FileOptions::default())
             .context(ArtifactBundleErrorKind::WriteFailed)?;
         std::io::copy(&mut file, &mut self.writer).context(ArtifactBundleErrorKind::WriteFailed)?;
 
@@ -286,6 +286,11 @@ where
         Ok(())
     }
 
+    /// Returns the full path for a file within the artifact bundle.
+    fn file_path(&self, path: &str) -> String {
+        format!("{}/{}", FILES_PATH, path)
+    }
+
     /// Returns a unique path for a file.
     ///
     /// Returns the path if the file does not exist already. Otherwise, a counter is appended to the
@@ -293,7 +298,7 @@ where
     fn unique_path(&self, mut path: String) -> String {
         let mut duplicates = 0;
 
-        while self.has_file(&path) {
+        while self.manifest.files.contains_key(&path) {
             duplicates += 1;
             match duplicates {
                 1 => path.push_str(".1"),
