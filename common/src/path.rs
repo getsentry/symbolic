@@ -40,6 +40,11 @@ fn is_windows_path(path: &str) -> bool {
 /// Also, trailing directory separators are detected in the base string and empty paths are handled
 /// correctly.
 pub fn join_path(base: &str, other: &str) -> String {
+    // special case for things like <stdin> or others.
+    if other.starts_with('<') && other.ends_with('>') {
+        return other.into();
+    }
+
     // absolute paths
     if base == "" || is_absolute_windows_path(other) || is_absolute_unix_path(other) {
         return other.into();
@@ -271,6 +276,12 @@ fn test_join_path() {
     assert_eq!(join_path("/a/b", "c/d"), "/a/b/c/d");
     assert_eq!(join_path("/a/b", "/c/d/e"), "/c/d/e");
     assert_eq!(join_path("a/b/", "c"), "a/b/c");
+
+    assert_eq!(join_path("a/b/", "<stdin>"), "<stdin>");
+    assert_eq!(
+        join_path("C:\\test", "<::core::macros::assert_eq macros>"),
+        "<::core::macros::assert_eq macros>"
+    );
 }
 
 #[test]
