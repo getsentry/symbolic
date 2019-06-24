@@ -3,12 +3,25 @@ use std::fs;
 use std::io::{Seek, Write};
 
 use failure::{Fail, ResultExt};
+use regex::Regex;
 
 use symbolic_common::{clean_path, join_path};
 use symbolic_debuginfo::{DebugSession, ObjectLike};
 
 use crate::bundle::{ArtifactBundleWriter, ArtifactFileInfo, ArtifactType};
 use crate::error::{ArtifactBundleError, ArtifactBundleErrorKind};
+
+lazy_static::lazy_static! {
+    static ref SANE_PATH_RE: Regex = Regex::new(r#":?[/\\]+"#).unwrap();
+}
+
+fn sanitize_bundle_path(path: &str) -> String {
+    let mut sanitized = SANE_PATH_RE.replace_all(path, "/").into_owned();
+    if sanitized.starts_with('/') {
+        sanitized.remove(0);
+    }
+    sanitized
+}
 
 /// Writes sources of `Object` files to an artifact bundle.
 pub struct DebugSourceWriter<W>
@@ -61,16 +74,15 @@ where
                     fs::read_to_string(&filename).ok()
                 };
                 if let Some(source) = source {
+                    let bundle_path = sanitize_bundle_path(&filename);
+                    let info = ArtifactFileInfo {
+                        ty: Some(ArtifactType::Script),
+                        path: filename.clone(),
+                        ..ArtifactFileInfo::default()
+                    };
+
                     self.bundle
-                        .add_file(
-                            filename.as_str(),
-                            source.as_bytes(),
-                            ArtifactFileInfo {
-                                ty: Some(ArtifactType::Script),
-                                path: filename.clone(),
-                                ..ArtifactFileInfo::default()
-                            },
-                        )
+                        .add_file(bundle_path, source.as_bytes(), info)
                         .context(ArtifactBundleErrorKind::WriteFailed)?;
                 }
                 self.files_handled.insert(filename);
@@ -83,5 +95,20 @@ where
     /// Finishes writing the object file and returns the bundle writer.
     pub fn finish(self) -> Result<ArtifactBundleWriter<W>, ArtifactBundleError> {
         Ok(self.bundle)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bundle_paths() {
+        assert_eq!(sanitize_bundle_path("foo"), "foo");
+        assert_eq!(sanitize_bundle_path("foo/bar"), "foo/bar");
+        assert_eq!(sanitize_bundle_path("/foo/bar"), "foo/bar");
+        assert_eq!(sanitize_bundle_path("C:/foo/bar"), "C/foo/bar");
+        assert_eq!(sanitize_bundle_path("\\foo\\bar"), "foo/bar");
+        assert_eq!(sanitize_bundle_path("\\\\UNC\\foo\\bar"), "UNC/foo/bar");
     }
 }
