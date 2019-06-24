@@ -17,6 +17,8 @@ pub use symbolic_minidump as minidump;
 pub use symbolic_proguard as proguard;
 #[cfg(feature = "sourcemap")]
 pub use symbolic_sourcemap as sourcemap;
+#[cfg(feature = "sources")]
+pub use symbolic_sources as sources;
 #[cfg(feature = "symcache")]
 pub use symbolic_symcache as symcache;
 #[cfg(feature = "unreal")]
