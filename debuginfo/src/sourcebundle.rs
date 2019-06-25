@@ -9,8 +9,10 @@ use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufWriter, Read, Seek, Write};
 use std::path::Path;
+use std::sync::Arc;
 
 use failure::{Fail, ResultExt};
+use parking_lot::Mutex;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use zip::{write::FileOptions, ZipWriter};
@@ -198,8 +200,8 @@ impl SourceBundleManifest {
 
 /// A source bundle.
 pub struct SourceBundle<'d> {
-    manifest: SourceBundleManifest,
-    archive: zip::read::ZipArchive<std::io::Cursor<&'d [u8]>>,
+    manifest: Arc<SourceBundleManifest>,
+    archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'d [u8]>>>>,
     data: &'d [u8],
 }
 
@@ -230,8 +232,8 @@ impl<'d> SourceBundle<'d> {
         let manifest =
             serde_json::from_reader(manifest_file).context(SourceBundleErrorKind::BadDebugFile)?;
         Ok(SourceBundle {
-            manifest,
-            archive,
+            manifest: Arc::new(manifest),
+            archive: Arc::new(Mutex::new(archive)),
             data,
         })
     }
@@ -324,7 +326,8 @@ impl<'d> SourceBundle<'d> {
     /// costly process, try to reuse the debugging session as long as possible.
     pub fn debug_session(&self) -> Result<SourceBundleDebugSession<'d>, SourceBundleError> {
         Ok(SourceBundleDebugSession {
-            _marker: std::marker::PhantomData,
+            manifest: self.manifest.clone(),
+            archive: self.archive.clone(),
         })
     }
 
@@ -441,7 +444,8 @@ impl std::iter::FusedIterator for SourceBundleSymbolIterator<'_> {}
 
 /// Debug session for SourceBundle objects.
 pub struct SourceBundleDebugSession<'d> {
-    _marker: std::marker::PhantomData<&'d [u8]>,
+    manifest: Arc<SourceBundleManifest>,
+    archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'d [u8]>>>>,
 }
 
 impl<'d> SourceBundleDebugSession<'d> {
@@ -458,6 +462,18 @@ impl<'d> DebugSession for SourceBundleDebugSession<'d> {
 
     fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(self.functions())
+    }
+
+    fn get_source_by_full_path_name(&self, path: &str) -> Option<String> {
+        if let Some(fi) = self.manifest.files.get(path) {
+            let mut archive = self.archive.lock();
+            let mut file = archive.by_name(&fi.path).ok()?;
+            let mut rv = String::new();
+            if file.read_to_string(&mut rv).is_ok() {
+                return Some(rv);
+            }
+        }
+        None
     }
 }
 
