@@ -3,18 +3,18 @@
 //! TODO(jauer): Describe contents
 //! Defines the `ArtifactBundle` type and corresponding writer.
 
-use std::collections::{BTreeMap, HashMap, BTreeSet};
-use std::fs::{File, OpenOptions, self};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::fs::{self, File, OpenOptions};
 use std::io::{BufWriter, Read, Seek, Write};
 use std::path::Path;
 
 use failure::{Fail, ResultExt};
+use regex::Regex;
 use serde::Serialize;
 use zip::{write::FileOptions, ZipWriter};
-use regex::Regex;
 
-use symbolic_common::{clean_path, join_path, derive_failure};
 use crate::{DebugSession, ObjectLike};
+use symbolic_common::{clean_path, derive_failure, join_path};
 
 /// Version of the bundle and manifest format.
 static BUNDLE_VERSION: u32 = 2;
@@ -24,6 +24,28 @@ static MANIFEST_PATH: &str = "manifest.json";
 
 /// Path at which files will be written into the bundle.
 static FILES_PATH: &str = "files";
+
+lazy_static::lazy_static! {
+    static ref SANE_PATH_RE: Regex = Regex::new(r#":?[/\\]+"#).unwrap();
+}
+
+/// Variants of [`ArtifactBundleError`](struct.ArtifactBundleError.html).
+#[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
+pub enum ArtifactBundleErrorKind {
+    /// The `Object` contains invalid data and cannot be converted.
+    #[fail(display = "malformed debug info file")]
+    BadDebugFile,
+
+    /// Generic error when writing an artifact bundle, most likely IO.
+    #[fail(display = "failed to write artifact bundle")]
+    WriteFailed,
+}
+
+derive_failure!(
+    ArtifactBundleError,
+    ArtifactBundleErrorKind,
+    doc = "An error returned when handling `ArtifactBundles`.",
+);
 
 /// Trims matching suffices of a string in-place.
 fn trim_end_matches<F>(string: &mut String, pat: F)
@@ -151,7 +173,7 @@ impl ArtifactManifest {
 ///
 /// ```no_run
 /// # use failure::Error; use std::fs::File;
-/// # use symbolic_sources::{ArtifactBundleWriter, ArtifactFileInfo};
+/// # use symbolic_debuginfo::sourcebundle::{ArtifactBundleWriter, ArtifactFileInfo};
 /// # fn main() -> Result<(), Error> {
 /// let mut bundle = ArtifactBundleWriter::create("bundle.zip")?;
 ///
@@ -243,7 +265,7 @@ where
     ///
     /// ```no_run
     /// # use failure::Error; use std::fs::File;
-    /// # use symbolic_sources::{ArtifactBundleWriter, ArtifactFileInfo};
+    /// # use symbolic_debuginfo::sourcebundle::{ArtifactBundleWriter, ArtifactFileInfo};
     /// # fn main() -> Result<(), Error> {
     /// let mut bundle = ArtifactBundleWriter::create("bundle.zip")?;
     ///
@@ -351,49 +373,6 @@ impl ArtifactBundleWriter<BufWriter<File>> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use std::io::Cursor;
-
-    use failure::Error;
-
-    #[test]
-    fn test_has_file() -> Result<(), Error> {
-        let writer = Cursor::new(Vec::new());
-        let mut bundle = ArtifactBundleWriter::new(writer);
-
-        bundle.add_file("bar.txt", &b"filecontents"[..], ArtifactFileInfo::default())?;
-        assert!(bundle.has_file("bar.txt"));
-
-        bundle.finish()?;
-        Ok(())
-    }
-
-    #[test]
-    fn test_duplicate_files() -> Result<(), Error> {
-        let writer = Cursor::new(Vec::new());
-        let mut bundle = ArtifactBundleWriter::new(writer);
-
-        bundle.add_file("bar.txt", &b"filecontents"[..], ArtifactFileInfo::default())?;
-        bundle.add_file(
-            "bar.txt",
-            &b"othercontents"[..],
-            ArtifactFileInfo::default(),
-        )?;
-        assert!(bundle.has_file("bar.txt"));
-        assert!(bundle.has_file("bar.txt.1"));
-
-        bundle.finish()?;
-        Ok(())
-    }
-}
-
-lazy_static::lazy_static! {
-    static ref SANE_PATH_RE: Regex = Regex::new(r#":?[/\\]+"#).unwrap();
-}
-
 fn sanitize_bundle_path(path: &str) -> String {
     let mut sanitized = SANE_PATH_RE.replace_all(path, "/").into_owned();
     if sanitized.starts_with('/') {
@@ -487,6 +466,40 @@ where
 mod tests {
     use super::*;
 
+    use std::io::Cursor;
+
+    use failure::Error;
+
+    #[test]
+    fn test_has_file() -> Result<(), Error> {
+        let writer = Cursor::new(Vec::new());
+        let mut bundle = ArtifactBundleWriter::new(writer);
+
+        bundle.add_file("bar.txt", &b"filecontents"[..], ArtifactFileInfo::default())?;
+        assert!(bundle.has_file("bar.txt"));
+
+        bundle.finish()?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_duplicate_files() -> Result<(), Error> {
+        let writer = Cursor::new(Vec::new());
+        let mut bundle = ArtifactBundleWriter::new(writer);
+
+        bundle.add_file("bar.txt", &b"filecontents"[..], ArtifactFileInfo::default())?;
+        bundle.add_file(
+            "bar.txt",
+            &b"othercontents"[..],
+            ArtifactFileInfo::default(),
+        )?;
+        assert!(bundle.has_file("bar.txt"));
+        assert!(bundle.has_file("bar.txt.1"));
+
+        bundle.finish()?;
+        Ok(())
+    }
+
     #[test]
     fn test_bundle_paths() {
         assert_eq!(sanitize_bundle_path("foo"), "foo");
@@ -497,21 +510,3 @@ mod tests {
         assert_eq!(sanitize_bundle_path("\\\\UNC\\foo\\bar"), "UNC/foo/bar");
     }
 }
-
-/// Variants of [`ArtifactBundleError`](struct.ArtifactBundleError.html).
-#[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
-pub enum ArtifactBundleErrorKind {
-    /// The `Object` contains invalid data and cannot be converted.
-    #[fail(display = "malformed debug info file")]
-    BadDebugFile,
-
-    /// Generic error when writing an artifact bundle, most likely IO.
-    #[fail(display = "failed to write artifact bundle")]
-    WriteFailed,
-}
-
-derive_failure!(
-    ArtifactBundleError,
-    ArtifactBundleErrorKind,
-    doc = "An error returned when handling `ArtifactBundles`.",
-);
