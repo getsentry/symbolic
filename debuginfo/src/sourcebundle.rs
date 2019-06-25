@@ -111,9 +111,9 @@ impl FileInfo {
 
 /// Version number of an source bundle.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct BundleVersion(pub u32);
+pub struct SourceBundleVersion(pub u32);
 
-impl BundleVersion {
+impl SourceBundleVersion {
     /// Creates a new source bundle version.
     pub fn new(version: u32) -> Self {
         Self(version)
@@ -133,7 +133,7 @@ impl BundleVersion {
     }
 }
 
-impl Default for BundleVersion {
+impl Default for SourceBundleVersion {
     fn default() -> Self {
         Self(BUNDLE_VERSION)
     }
@@ -170,7 +170,7 @@ impl Default for SourceBundleHeader {
 
 /// Manifest of an ArtifactBundle containing information on its contents.
 #[derive(Clone, Debug, Default, Serialize)]
-pub struct BundleManifest {
+pub struct SourceBundleManifest {
     /// Descriptors for all artifact files in this bundle.
     #[serde(default)]
     pub files: HashMap<String, FileInfo>,
@@ -180,11 +180,19 @@ pub struct BundleManifest {
     pub attributes: BTreeMap<String, String>,
 }
 
-impl BundleManifest {
+impl SourceBundleManifest {
     /// Creates a new, empty manifest.
     pub fn new() -> Self {
         Self::default()
     }
+}
+
+fn sanitize_bundle_path(path: &str) -> String {
+    let mut sanitized = SANE_PATH_RE.replace_all(path, "/").into_owned();
+    if sanitized.starts_with('/') {
+        sanitized.remove(0);
+    }
+    sanitized
 }
 
 /// Writer to create source bundles.
@@ -218,7 +226,7 @@ pub struct SourceBundleWriter<W>
 where
     W: Seek + Write,
 {
-    manifest: BundleManifest,
+    manifest: SourceBundleManifest,
     writer: ZipWriter<W>,
     finished: bool,
 }
@@ -235,7 +243,7 @@ where
             .context(SourceBundleErrorKind::WriteFailed)?;
 
         Ok(SourceBundleWriter {
-            manifest: BundleManifest::new(),
+            manifest: SourceBundleManifest::new(),
             writer: ZipWriter::new(writer),
             finished: false,
         })
@@ -451,14 +459,6 @@ impl SourceBundleWriter<BufWriter<File>> {
 
         Self::start(BufWriter::new(file))
     }
-}
-
-fn sanitize_bundle_path(path: &str) -> String {
-    let mut sanitized = SANE_PATH_RE.replace_all(path, "/").into_owned();
-    if sanitized.starts_with('/') {
-        sanitized.remove(0);
-    }
-    sanitized
 }
 
 #[cfg(test)]
