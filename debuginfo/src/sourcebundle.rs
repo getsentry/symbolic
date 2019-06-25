@@ -12,7 +12,7 @@ use std::path::Path;
 
 use failure::{Fail, ResultExt};
 use regex::Regex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use zip::{write::FileOptions, ZipWriter};
 
 use crate::base::*;
@@ -63,7 +63,7 @@ where
 }
 
 /// The type of a file in a bundle.
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FileType {
     /// Regular source file.
@@ -80,7 +80,7 @@ pub enum FileType {
 }
 
 /// Meta data information on a bundled file.
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct FileInfo {
     /// The type of an bundled file.
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
@@ -173,7 +173,7 @@ impl Default for SourceBundleHeader {
 }
 
 /// Manifest of an ArtifactBundle containing information on its contents.
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SourceBundleManifest {
     /// Descriptors for all artifact files in this bundle.
     #[serde(default)]
@@ -198,8 +198,8 @@ impl SourceBundleManifest {
 
 /// A source bundle.
 pub struct SourceBundle<'d> {
-    header: SourceBundleHeader,
     manifest: SourceBundleManifest,
+    archive: zip::read::ZipArchive<std::io::Cursor<&'d [u8]>>,
     data: &'d [u8],
 }
 
@@ -221,8 +221,19 @@ impl fmt::Debug for SourceBundle<'_> {
 
 impl<'d> SourceBundle<'d> {
     /// Checks if this is a source bundle.
-    pub fn parse(bytes: &[u8]) -> Result<SourceBundle<'d>, SourceBundleError> {
-        unreachable!()
+    pub fn parse(data: &'d [u8]) -> Result<SourceBundle<'d>, SourceBundleError> {
+        let mut archive = zip::read::ZipArchive::new(std::io::Cursor::new(data))
+            .context(SourceBundleErrorKind::BadDebugFile)?;
+        let manifest_file = archive
+            .by_name("manifest.json")
+            .context(SourceBundleErrorKind::BadDebugFile)?;
+        let manifest =
+            serde_json::from_reader(manifest_file).context(SourceBundleErrorKind::BadDebugFile)?;
+        Ok(SourceBundle {
+            manifest,
+            archive,
+            data,
+        })
     }
 
     /// Checks if this is a source bundle.
@@ -334,7 +345,7 @@ impl<'d> SourceBundle<'d> {
 
     /// Returns the version of this source bundle format.
     pub fn version(&self) -> SourceBundleVersion {
-        SourceBundleVersion(self.header.version)
+        SourceBundleVersion(BUNDLE_VERSION)
     }
 }
 

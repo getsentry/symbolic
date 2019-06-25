@@ -528,6 +528,7 @@ pub trait DebugSession {
 
     /// Looks up a file source by full path name.
     fn get_source_by_full_path_name(&self, path: &str) -> Option<String> {
+        let _path = path;
         None
     }
 }
