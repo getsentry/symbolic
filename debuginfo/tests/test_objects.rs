@@ -104,7 +104,7 @@ fn test_breakpad_functions() -> Result<(), Error> {
     let view = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
     let object = Object::parse(&view)?;
 
-    let mut session = object.debug_session()?;
+    let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
     insta::assert_debug_snapshot_matches!(
         "breakpad_functions",
@@ -187,7 +187,7 @@ fn test_elf_functions() -> Result<(), Error> {
     let view = ByteView::open("../testutils/fixtures/linux/crash.debug")?;
     let object = Object::parse(&view)?;
 
-    let mut session = object.debug_session()?;
+    let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
     insta::assert_debug_snapshot_matches!("elf_functions", FunctionsDebug(&functions[..10], 0));
 
@@ -268,7 +268,7 @@ fn test_mach_functions() -> Result<(), Error> {
         ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
     let object = Object::parse(&view)?;
 
-    let mut session = object.debug_session()?;
+    let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
     insta::assert_debug_snapshot_matches!("mach_functions", FunctionsDebug(&functions[..10], 0));
 
@@ -380,7 +380,7 @@ fn test_pdb_functions() -> Result<(), Error> {
     let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
     let object = Object::parse(&view)?;
 
-    let mut session = object.debug_session()?;
+    let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
     insta::assert_debug_snapshot_matches!("pdb_functions", FunctionsDebug(&functions[..10], 0));
 

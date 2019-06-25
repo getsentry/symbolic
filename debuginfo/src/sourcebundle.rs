@@ -83,7 +83,7 @@ pub enum FileType {
 
 /// Meta data information on a bundled file.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct FileInfo {
+pub struct SourceFileInfo {
     /// The type of an bundled file.
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
     pub ty: Option<FileType>,
@@ -103,7 +103,7 @@ pub struct FileInfo {
     pub headers: BTreeMap<String, String>,
 }
 
-impl FileInfo {
+impl SourceFileInfo {
     /// Creates default file information
     pub fn new() -> Self {
         Self::default()
@@ -179,7 +179,7 @@ impl Default for SourceBundleHeader {
 pub struct SourceBundleManifest {
     /// Descriptors for all artifact files in this bundle.
     #[serde(default)]
-    pub files: HashMap<String, FileInfo>,
+    pub files: HashMap<String, SourceFileInfo>,
 
     /// Arbitrary attributes to include in the bundle.
     #[serde(flatten)]
@@ -522,13 +522,13 @@ fn sanitize_bundle_path(path: &str) -> String {
 ///
 /// ```no_run
 /// # use failure::Error; use std::fs::File;
-/// # use symbolic_debuginfo::sourcebundle::{SourceBundleWriter, FileInfo};
+/// # use symbolic_debuginfo::sourcebundle::{SourceBundleWriter, SourceFileInfo};
 /// # fn main() -> Result<(), Error> {
 /// let mut bundle = SourceBundleWriter::create("bundle.zip")?;
 ///
 /// // Add file called "foo.txt"
 /// let file = File::open("my_file.txt")?;
-/// bundle.add_file("foo.txt", file, FileInfo::default())?;
+/// bundle.add_file("foo.txt", file, SourceFileInfo::default())?;
 ///
 /// // Flush the bundle to disk
 /// bundle.finish()?;
@@ -624,16 +624,16 @@ where
     ///
     /// ```no_run
     /// # use failure::Error; use std::fs::File;
-    /// # use symbolic_debuginfo::sourcebundle::{SourceBundleWriter, FileInfo};
+    /// # use symbolic_debuginfo::sourcebundle::{SourceBundleWriter, SourceFileInfo};
     /// # fn main() -> Result<(), Error> {
     /// let mut bundle = SourceBundleWriter::create("bundle.zip")?;
     ///
     /// // Add file at "foo.txt"
-    /// bundle.add_file("foo.txt", File::open("my_duplicate.txt")?, FileInfo::default())?;
+    /// bundle.add_file("foo.txt", File::open("my_duplicate.txt")?, SourceFileInfo::default())?;
     /// assert!(bundle.has_file("foo.txt"));
     ///
     /// // Add duplicate at "foo.txt.1"
-    /// bundle.add_file("foo.txt", File::open("my_duplicate.txt")?, FileInfo::default())?;
+    /// bundle.add_file("foo.txt", File::open("my_duplicate.txt")?, SourceFileInfo::default())?;
     /// assert!(bundle.has_file("foo.txt.1"));
     /// # Ok(()) }
     /// ```
@@ -644,7 +644,7 @@ where
         &mut self,
         path: S,
         mut file: R,
-        info: FileInfo,
+        info: SourceFileInfo,
     ) -> Result<(), SourceBundleError>
     where
         S: AsRef<str>,
@@ -703,10 +703,10 @@ where
 
                 if let Some(source) = source {
                     let bundle_path = sanitize_bundle_path(&filename);
-                    let info = FileInfo {
+                    let info = SourceFileInfo {
                         ty: Some(FileType::Source),
                         path: filename.clone(),
-                        ..FileInfo::default()
+                        ..SourceFileInfo::default()
                     };
 
                     self.add_file(bundle_path, source.as_bytes(), info)
@@ -803,7 +803,7 @@ mod tests {
         let writer = Cursor::new(Vec::new());
         let mut bundle = SourceBundleWriter::start(writer)?;
 
-        bundle.add_file("bar.txt", &b"filecontents"[..], FileInfo::default())?;
+        bundle.add_file("bar.txt", &b"filecontents"[..], SourceFileInfo::default())?;
         assert!(bundle.has_file("bar.txt"));
 
         bundle.finish()?;
@@ -815,8 +815,8 @@ mod tests {
         let writer = Cursor::new(Vec::new());
         let mut bundle = SourceBundleWriter::start(writer)?;
 
-        bundle.add_file("bar.txt", &b"filecontents"[..], FileInfo::default())?;
-        bundle.add_file("bar.txt", &b"othercontents"[..], FileInfo::default())?;
+        bundle.add_file("bar.txt", &b"filecontents"[..], SourceFileInfo::default())?;
+        bundle.add_file("bar.txt", &b"othercontents"[..], SourceFileInfo::default())?;
         assert!(bundle.has_file("bar.txt"));
         assert!(bundle.has_file("bar.txt.1"));
 
