@@ -29,9 +29,9 @@ lazy_static::lazy_static! {
     static ref SANE_PATH_RE: Regex = Regex::new(r#":?[/\\]+"#).unwrap();
 }
 
-/// Variants of [`ArtifactBundleError`](struct.ArtifactBundleError.html).
+/// Variants of [`SourceBundleError`](struct.SourceBundleError.html).
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
-pub enum ArtifactBundleErrorKind {
+pub enum SourceBundleErrorKind {
     /// The `Object` contains invalid data and cannot be converted.
     #[fail(display = "malformed debug info file")]
     BadDebugFile,
@@ -42,8 +42,8 @@ pub enum ArtifactBundleErrorKind {
 }
 
 derive_failure!(
-    ArtifactBundleError,
-    ArtifactBundleErrorKind,
+    SourceBundleError,
+    SourceBundleErrorKind,
     doc = "An error returned when handling `ArtifactBundles`.",
 );
 
@@ -284,7 +284,7 @@ where
         path: S,
         mut file: R,
         info: FileInfo,
-    ) -> Result<(), ArtifactBundleError>
+    ) -> Result<(), SourceBundleError>
     where
         S: AsRef<str>,
         R: Read,
@@ -294,8 +294,8 @@ where
 
         self.writer
             .start_file(unique_path.clone(), FileOptions::default())
-            .context(ArtifactBundleErrorKind::WriteFailed)?;
-        std::io::copy(&mut file, &mut self.writer).context(ArtifactBundleErrorKind::WriteFailed)?;
+            .context(SourceBundleErrorKind::WriteFailed)?;
+        std::io::copy(&mut file, &mut self.writer).context(SourceBundleErrorKind::WriteFailed)?;
 
         self.manifest.files.insert(unique_path, info);
         Ok(())
@@ -304,11 +304,7 @@ where
     /// Writes a single object into the bundle.
     ///
     /// It's not permissible to write multiple objects into a bundle.
-    pub fn add_object<O>(
-        &mut self,
-        object: &O,
-        object_name: &str,
-    ) -> Result<(), ArtifactBundleError>
+    pub fn add_object<O>(&mut self, object: &O, object_name: &str) -> Result<(), SourceBundleError>
     where
         O: ObjectLike,
         O::Error: Fail,
@@ -316,13 +312,13 @@ where
         let mut files_handled = BTreeSet::new();
         let mut session = object
             .debug_session()
-            .context(ArtifactBundleErrorKind::BadDebugFile)?;
+            .context(SourceBundleErrorKind::BadDebugFile)?;
 
         self.set_attribute("debug_id", object.debug_id().to_string());
         self.set_attribute("object_name", object_name);
 
         for func in session.functions() {
-            let func = func.context(ArtifactBundleErrorKind::BadDebugFile)?;
+            let func = func.context(SourceBundleErrorKind::BadDebugFile)?;
             for line in &func.lines {
                 let compilation_dir = String::from_utf8_lossy(&func.compilation_dir);
                 let filename = clean_path(&join_path(&compilation_dir, &line.file.path_str()));
@@ -346,7 +342,7 @@ where
                     };
 
                     self.add_file(bundle_path, source.as_bytes(), info)
-                        .context(ArtifactBundleErrorKind::WriteFailed)?;
+                        .context(SourceBundleErrorKind::WriteFailed)?;
                 }
 
                 files_handled.insert(filename);
@@ -357,11 +353,11 @@ where
     }
 
     /// Writes the manifest to the bundle and flushes the underlying file handle.
-    pub fn finish(mut self) -> Result<(), ArtifactBundleError> {
+    pub fn finish(mut self) -> Result<(), SourceBundleError> {
         self.write_manifest()?;
         self.writer
             .finish()
-            .context(ArtifactBundleErrorKind::WriteFailed)?;
+            .context(SourceBundleErrorKind::WriteFailed)?;
         self.finished = true;
         Ok(())
     }
@@ -394,13 +390,13 @@ where
     }
 
     /// Flushes the manifest file to the bundle.
-    fn write_manifest(&mut self) -> Result<(), ArtifactBundleError> {
+    fn write_manifest(&mut self) -> Result<(), SourceBundleError> {
         self.writer
             .start_file(MANIFEST_PATH, FileOptions::default())
-            .context(ArtifactBundleErrorKind::WriteFailed)?;
+            .context(SourceBundleErrorKind::WriteFailed)?;
 
         serde_json::to_writer(&mut self.writer, &self.manifest)
-            .context(ArtifactBundleErrorKind::WriteFailed)?;
+            .context(SourceBundleErrorKind::WriteFailed)?;
 
         Ok(())
     }
@@ -411,7 +407,7 @@ impl SourceBundleWriter<BufWriter<File>> {
     ///
     /// If the file does not exist at the given path, it is created. If the file does exist, it is
     /// overwritten.
-    pub fn create<P>(path: P) -> Result<SourceBundleWriter<BufWriter<File>>, ArtifactBundleError>
+    pub fn create<P>(path: P) -> Result<SourceBundleWriter<BufWriter<File>>, SourceBundleError>
     where
         P: AsRef<Path>,
     {
@@ -420,7 +416,7 @@ impl SourceBundleWriter<BufWriter<File>> {
             .write(true)
             .create(true)
             .open(path)
-            .context(ArtifactBundleErrorKind::WriteFailed)?;
+            .context(SourceBundleErrorKind::WriteFailed)?;
 
         Ok(Self::new(BufWriter::new(file)))
     }
