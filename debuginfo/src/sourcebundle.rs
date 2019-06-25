@@ -473,17 +473,26 @@ impl<'d> SourceBundleDebugSession<'d> {
         }
     }
 
+    fn zip_path_by_source_path(&self, path: &str) -> Option<&str> {
+        for (zip_path, file_info) in &self.manifest.files {
+            if file_info.path == path {
+                return Some(&zip_path);
+            }
+        }
+
+        None
+    }
+
     /// Looks up a file's source contents by its full canonicalized path.
     ///
     /// The given path must be canonicalized.
     pub fn source_by_path(&self, path: &str) -> Option<String> {
-        if let Some(fi) = self.manifest.files.get(path) {
-            let mut archive = self.archive.lock();
-            let mut file = archive.by_name(&fi.path).ok()?;
-            let mut rv = String::new();
-            if file.read_to_string(&mut rv).is_ok() {
-                return Some(rv);
-            }
+        let zip_path = self.zip_path_by_source_path(path)?;
+        let mut archive = self.archive.lock();
+        let mut file = archive.by_name(zip_path).ok()?;
+        let mut source_content = String::new();
+        if file.read_to_string(&mut source_content).is_ok() {
+            return Some(source_content);
         }
 
         None
