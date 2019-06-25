@@ -89,17 +89,17 @@ pub struct SourceFileInfo {
     pub ty: Option<FileType>,
 
     /// An optional file system path that this file corresponds to.
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub path: String,
 
     /// Optional URL that this file corresponds to.
-    #[serde(skip_serializing_if = "String::is_empty")]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub url: String,
 
     /// Attributes represented as headers.
     ///
     /// This map can include values such as `Content-Type`.
-    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub headers: BTreeMap<String, String>,
 }
 
