@@ -589,7 +589,6 @@ pub trait ObjectLike {
     fn has_source(&self) -> bool;
 }
 
-#[cfg(feature = "serde")]
 mod derive_serde {
     /// Helper macro to implement string based serialization and deserialization.
     ///
