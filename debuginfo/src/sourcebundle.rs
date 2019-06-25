@@ -463,6 +463,22 @@ impl<'d> SourceBundleDebugSession<'d> {
             _marker: std::marker::PhantomData,
         }
     }
+
+    /// Looks up a file's source contents by its full canonicalized path.
+    ///
+    /// The given path must be canonicalized.
+    pub fn source_by_path(&self, path: &str) -> Option<String> {
+        if let Some(fi) = self.manifest.files.get(path) {
+            let mut archive = self.archive.lock();
+            let mut file = archive.by_name(&fi.path).ok()?;
+            let mut rv = String::new();
+            if file.read_to_string(&mut rv).is_ok() {
+                return Some(rv);
+            }
+        }
+
+        None
+    }
 }
 
 impl<'d> DebugSession for SourceBundleDebugSession<'d> {
@@ -473,15 +489,7 @@ impl<'d> DebugSession for SourceBundleDebugSession<'d> {
     }
 
     fn source_by_path(&self, path: &str) -> Option<String> {
-        if let Some(fi) = self.manifest.files.get(path) {
-            let mut archive = self.archive.lock();
-            let mut file = archive.by_name(&fi.path).ok()?;
-            let mut rv = String::new();
-            if file.read_to_string(&mut rv).is_ok() {
-                return Some(rv);
-            }
-        }
-        None
+        self.source_by_path(path)
     }
 }
 

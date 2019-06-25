@@ -325,6 +325,13 @@ impl<'d> PeDebugSession<'d> {
     pub fn functions(&self) -> PeFunctionIterator<'_> {
         std::iter::empty()
     }
+
+    /// Looks up a file's source contents by its full canonicalized path.
+    ///
+    /// The given path must be canonicalized.
+    pub fn source_by_path(&self, _path: &str) -> Option<String> {
+        None
+    }
 }
 
 impl DebugSession for PeDebugSession<'_> {
@@ -332,6 +339,10 @@ impl DebugSession for PeDebugSession<'_> {
 
     fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(std::iter::empty())
+    }
+
+    fn source_by_path(&self, path: &str) -> Option<String> {
+        self.source_by_path(path)
     }
 }
 

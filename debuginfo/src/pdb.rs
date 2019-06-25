@@ -455,6 +455,13 @@ impl<'d> PdbDebugSession<'d> {
             finished: false,
         }
     }
+
+    /// Looks up a file's source contents by its full canonicalized path.
+    ///
+    /// The given path must be canonicalized.
+    pub fn source_by_path(&self, _path: &str) -> Option<String> {
+        None
+    }
 }
 
 impl DebugSession for PdbDebugSession<'_> {
@@ -462,6 +469,10 @@ impl DebugSession for PdbDebugSession<'_> {
 
     fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(self.functions())
+    }
+
+    fn source_by_path(&self, path: &str) -> Option<String> {
+        self.source_by_path(path)
     }
 }
 

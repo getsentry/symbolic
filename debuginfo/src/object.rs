@@ -386,7 +386,12 @@ pub enum ObjectDebugSession<'d> {
 }
 
 impl<'d> ObjectDebugSession<'d> {
-    fn functions(&self) -> ObjectFunctionIterator<'_> {
+    /// Returns an iterator over all functions in this debug file.
+    ///
+    /// The iteration is guaranteed to be sorted by function address and includes all compilation
+    /// units. Note that the iterator holds a mutable borrow on the debug session, which allows it
+    /// to use caches and optimize resources while resolving function and line information.
+    pub fn functions(&self) -> ObjectFunctionIterator<'_> {
         match *self {
             ObjectDebugSession::Breakpad(ref s) => ObjectFunctionIterator::Breakpad(s.functions()),
             ObjectDebugSession::Dwarf(ref s) => ObjectFunctionIterator::Dwarf(s.functions()),
@@ -397,6 +402,19 @@ impl<'d> ObjectDebugSession<'d> {
             }
         }
     }
+
+    /// Looks up a file's source contents by its full canonicalized path.
+    ///
+    /// The given path must be canonicalized.
+    pub fn source_by_path(&self, path: &str) -> Option<String> {
+        match *self {
+            ObjectDebugSession::Breakpad(ref s) => s.source_by_path(path),
+            ObjectDebugSession::Dwarf(ref s) => s.source_by_path(path),
+            ObjectDebugSession::Pdb(ref s) => s.source_by_path(path),
+            ObjectDebugSession::Pe(ref s) => s.source_by_path(path),
+            ObjectDebugSession::SourceBundle(ref s) => s.source_by_path(path),
+        }
+    }
 }
 
 impl DebugSession for ObjectDebugSession<'_> {
@@ -404,6 +422,10 @@ impl DebugSession for ObjectDebugSession<'_> {
 
     fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(self.functions())
+    }
+
+    fn source_by_path(&self, path: &str) -> Option<String> {
+        self.source_by_path(path)
     }
 }
 
