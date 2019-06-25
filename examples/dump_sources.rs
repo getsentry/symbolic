@@ -5,7 +5,7 @@ use failure::Error;
 
 use symbolic::common::ByteView;
 use symbolic::debuginfo::Archive;
-use symbolic::sources::{ArtifactBundleWriter, DebugSourceWriter};
+use symbolic::debuginfo::sourcebundle::{ArtifactBundleWriter, DebugSourceWriter};
 
 fn print_error(error: &Error) {
     println!("Error: {}", error);

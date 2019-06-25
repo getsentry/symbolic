@@ -1,15 +1,20 @@
+//! A module to bundle sources from debug files for later processing.
+//!
+//! TODO(jauer): Describe contents
 //! Defines the `ArtifactBundle` type and corresponding writer.
 
-use std::collections::{BTreeMap, HashMap};
-use std::fs::{File, OpenOptions};
+use std::collections::{BTreeMap, HashMap, BTreeSet};
+use std::fs::{File, OpenOptions, self};
 use std::io::{BufWriter, Read, Seek, Write};
 use std::path::Path;
 
-use failure::ResultExt;
+use failure::{Fail, ResultExt};
 use serde::Serialize;
 use zip::{write::FileOptions, ZipWriter};
+use regex::Regex;
 
-use crate::error::{ArtifactBundleError, ArtifactBundleErrorKind};
+use symbolic_common::{clean_path, join_path, derive_failure};
+use crate::{DebugSession, ObjectLike};
 
 /// Version of the bundle and manifest format.
 static BUNDLE_VERSION: u32 = 2;
@@ -384,3 +389,129 @@ mod tests {
         Ok(())
     }
 }
+
+lazy_static::lazy_static! {
+    static ref SANE_PATH_RE: Regex = Regex::new(r#":?[/\\]+"#).unwrap();
+}
+
+fn sanitize_bundle_path(path: &str) -> String {
+    let mut sanitized = SANE_PATH_RE.replace_all(path, "/").into_owned();
+    if sanitized.starts_with('/') {
+        sanitized.remove(0);
+    }
+    sanitized
+}
+
+/// Writes sources of `Object` files to an artifact bundle.
+pub struct DebugSourceWriter<W>
+where
+    W: Seek + Write,
+{
+    bundle: ArtifactBundleWriter<W>,
+    files_handled: BTreeSet<String>,
+}
+
+impl<W> DebugSourceWriter<W>
+where
+    W: Write + Seek,
+{
+    /// Creates a new source writer around an artifact bundle writer.
+    pub fn new(bundle: ArtifactBundleWriter<W>) -> Self {
+        DebugSourceWriter {
+            bundle,
+            files_handled: BTreeSet::new(),
+        }
+    }
+
+    /// Writes all source files referenced by functions in this object file to the bundle.
+    pub fn write_object<O>(
+        &mut self,
+        object: &O,
+        object_name: &str,
+    ) -> Result<(), ArtifactBundleError>
+    where
+        O: ObjectLike,
+        O::Error: Fail,
+    {
+        let mut session = object
+            .debug_session()
+            .context(ArtifactBundleErrorKind::BadDebugFile)?;
+
+        self.bundle
+            .set_attribute("debug_id", object.debug_id().to_string());
+        self.bundle.set_attribute("object_name", object_name);
+
+        for func in session.functions() {
+            let func = func.context(ArtifactBundleErrorKind::BadDebugFile)?;
+            for line in &func.lines {
+                let compilation_dir = String::from_utf8_lossy(&func.compilation_dir);
+                let filename = clean_path(&join_path(&compilation_dir, &line.file.path_str()));
+
+                if self.files_handled.contains(&filename) {
+                    continue;
+                }
+
+                let source = if filename.starts_with('<') && filename.ends_with('>') {
+                    None
+                } else {
+                    fs::read_to_string(&filename).ok()
+                };
+
+                if let Some(source) = source {
+                    let bundle_path = sanitize_bundle_path(&filename);
+                    let info = ArtifactFileInfo {
+                        ty: Some(ArtifactType::Script),
+                        path: filename.clone(),
+                        ..ArtifactFileInfo::default()
+                    };
+
+                    self.bundle
+                        .add_file(bundle_path, source.as_bytes(), info)
+                        .context(ArtifactBundleErrorKind::WriteFailed)?;
+                }
+
+                self.files_handled.insert(filename);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Finishes writing the object file and returns the bundle writer.
+    pub fn finish(self) -> Result<ArtifactBundleWriter<W>, ArtifactBundleError> {
+        Ok(self.bundle)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bundle_paths() {
+        assert_eq!(sanitize_bundle_path("foo"), "foo");
+        assert_eq!(sanitize_bundle_path("foo/bar"), "foo/bar");
+        assert_eq!(sanitize_bundle_path("/foo/bar"), "foo/bar");
+        assert_eq!(sanitize_bundle_path("C:/foo/bar"), "C/foo/bar");
+        assert_eq!(sanitize_bundle_path("\\foo\\bar"), "foo/bar");
+        assert_eq!(sanitize_bundle_path("\\\\UNC\\foo\\bar"), "UNC/foo/bar");
+    }
+}
+
+/// Variants of [`ArtifactBundleError`](struct.ArtifactBundleError.html).
+#[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
+pub enum ArtifactBundleErrorKind {
+    /// The `Object` contains invalid data and cannot be converted.
+    #[fail(display = "malformed debug info file")]
+    BadDebugFile,
+
+    /// Generic error when writing an artifact bundle, most likely IO.
+    #[fail(display = "failed to write artifact bundle")]
+    WriteFailed,
+}
+
+derive_failure!(
+    ArtifactBundleError,
+    ArtifactBundleErrorKind,
+    doc = "An error returned when handling `ArtifactBundles`.",
+);

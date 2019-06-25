@@ -34,13 +34,12 @@ all-features = true
 default = ["debuginfo"]
 common-serde = ["symbolic-common/serde"]
 debuginfo = ["symbolic-debuginfo"]
-debuginfo-serde = ["debuginfo", "common-serde", "symbolic-debuginfo/serde"]
+debuginfo-serde = ["debuginfo", "common-serde"]
 demangle = ["symbolic-demangle"]
 minidump = ["symbolic-minidump", "debuginfo"]
-minidump-serde = ["minidump", "debuginfo-serde", "symbolic-minidump/serde"]
+minidump-serde = ["minidump", "debuginfo-serde"]
 proguard = ["symbolic-proguard"]
 sourcemap = ["symbolic-sourcemap"]
-sources = ["symbolic-sources", "debuginfo"]
 symcache = ["symbolic-symcache", "debuginfo"]
 unreal = ["symbolic-unreal"]
 unreal-serde = ["unreal", "common-serde", "symbolic-unreal/with-serde"]
@@ -52,7 +51,6 @@ symbolic-demangle = { version = "6.1.3", path = "demangle", optional = true }
 symbolic-minidump = { version = "6.1.3", path = "minidump", optional = true }
 symbolic-proguard = { version = "6.1.3", path = "proguard", optional = true }
 symbolic-sourcemap = { version = "6.1.3", path = "sourcemap", optional = true }
-symbolic-sources = { version = "6.1.3", path = "sources", optional = true }
 symbolic-symcache = { version = "6.1.3", path = "symcache", optional = true }
 symbolic-unreal = { version = "6.1.3", path = "unreal", optional = true }
 

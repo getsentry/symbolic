@@ -31,9 +31,13 @@ pdb =  { git = "https://github.com/jan-auer/pdb", rev = "da040f145d98c1d86da7cda
 parking_lot = "0.8.0"
 pest = "2.1.1"
 pest_derive = "2.1.0"
-serde = { version = "1.0.91", optional = true }
+serde = "1.0.91"
 smallvec = "0.6.9"
 symbolic-common = { version = "6.1.3", path = "../common" }
+zip = "0.5.2"
+regex = "1.1.7"
+lazy_static = "1.3.0"
+serde_json = "1.0.39"
 
 [dev-dependencies]
 insta = "0.8.1"
