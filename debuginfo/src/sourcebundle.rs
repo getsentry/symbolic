@@ -472,7 +472,7 @@ impl<'d> DebugSession for SourceBundleDebugSession<'d> {
         Box::new(self.functions())
     }
 
-    fn get_source_by_full_path_name(&self, path: &str) -> Option<String> {
+    fn source_by_path(&self, path: &str) -> Option<String> {
         if let Some(fi) = self.manifest.files.get(path) {
             let mut archive = self.archive.lock();
             let mut file = archive.by_name(&fi.path).ok()?;

@@ -533,8 +533,10 @@ pub trait DebugSession {
     /// to use caches and optimize resources while resolving function and line information.
     fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>>;
 
-    /// Looks up a file source by full path name.
-    fn get_source_by_full_path_name(&self, path: &str) -> Option<String> {
+    /// Looks up a file's source contents by its full canonicalized path.
+    ///
+    /// The given path must be canonicalized.
+    fn source_by_path(&self, path: &str) -> Option<String> {
         let _path = path;
         None
     }
