@@ -5,7 +5,7 @@ use failure::Error;
 
 use symbolic::common::ByteView;
 use symbolic::debuginfo::Archive;
-use symbolic::debuginfo::sourcebundle::{ArtifactBundleWriter, DebugSourceWriter};
+use symbolic::debuginfo::sourcebundle::SourceBundleWriter;
 
 fn print_error(error: &Error) {
     println!("Error: {}", error);
@@ -28,9 +28,9 @@ fn write_object_sources(path: &Path, output_path: &Path) -> Result<(), Error> {
             Ok(object) => {
                 let out = output_path.join(&format!("{}.zip", &object.debug_id()));
                 println!("  -> {}", out.display());
-                let mut writer = DebugSourceWriter::new(ArtifactBundleWriter::create(&out)?);
-                writer.write_object(&object, &path.file_name().unwrap().to_string_lossy())?;
-                writer.finish()?.finish()?;
+                let mut writer = SourceBundleWriter::create(&out)?;
+                writer.add_object(&object, &path.file_name().unwrap().to_string_lossy())?;
+                writer.finish()?;
             }
             Err(e) => {
                 print!(" - ");

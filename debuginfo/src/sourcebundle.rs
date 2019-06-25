@@ -59,14 +59,12 @@ where
 /// The type of an artifact file.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum ArtifactType {
+pub enum FileType {
     /// Regular source file.
-    #[serde(rename = "source")]
-    Script,
+    Source,
 
     /// Minified source code.
-    #[serde(rename = "minified_source")]
-    MinifiedScript,
+    MinifiedSource,
 
     /// JavaScript sourcemap.
     SourceMap,
@@ -75,12 +73,12 @@ pub enum ArtifactType {
     IndexedRamBundle,
 }
 
-/// Meta data information on an artifact file.
+/// Meta data information on a bundled file.
 #[derive(Clone, Debug, Default, Serialize)]
-pub struct ArtifactFileInfo {
-    /// The type of an artifact file.
+pub struct FileInfo {
+    /// The type of an bundled file.
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
-    pub ty: Option<ArtifactType>,
+    pub ty: Option<FileType>,
 
     /// An optional file system path that this file corresponds to.
     #[serde(skip_serializing_if = "String::is_empty")]
@@ -97,7 +95,7 @@ pub struct ArtifactFileInfo {
     pub headers: BTreeMap<String, String>,
 }
 
-impl ArtifactFileInfo {
+impl FileInfo {
     /// Creates default artifact information
     pub fn new() -> Self {
         Self::default()
@@ -111,10 +109,10 @@ impl ArtifactFileInfo {
 
 /// Version number of an artifact bundle.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub struct ArtifaceBundleVersion(pub u32);
+pub struct BundleVersion(pub u32);
 
-impl ArtifaceBundleVersion {
-    /// Creates a new artifact bundle version.
+impl BundleVersion {
+    /// Creates a new source bundle version.
     pub fn new(version: u32) -> Self {
         Self(version)
     }
@@ -133,7 +131,7 @@ impl ArtifaceBundleVersion {
     }
 }
 
-impl Default for ArtifaceBundleVersion {
+impl Default for BundleVersion {
     fn default() -> Self {
         Self(BUNDLE_VERSION)
     }
@@ -141,29 +139,29 @@ impl Default for ArtifaceBundleVersion {
 
 /// Manifest of an ArtifactBundle containing information on its contents.
 #[derive(Clone, Debug, Default, Serialize)]
-pub struct ArtifactManifest {
+pub struct BundleManifest {
     /// Version of this artifact bundle.
     ///
     /// The version determines the internal structure and available data.
-    pub version: ArtifaceBundleVersion,
+    pub version: BundleVersion,
 
     /// Descriptors for all artifact files in this bundle.
     #[serde(default)]
-    pub files: HashMap<String, ArtifactFileInfo>,
+    pub files: HashMap<String, FileInfo>,
 
     /// Arbitrary attributes to include in the bundle.
     #[serde(flatten)]
     pub attributes: BTreeMap<String, String>,
 }
 
-impl ArtifactManifest {
+impl BundleManifest {
     /// Creates a new, empty manifest.
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-/// Writer to create artifact bundles.
+/// Writer to create source bundles.
 ///
 /// Writers can either [create a new file] or be created from an [existing file]. Then, use
 /// [`add_file`] to add files and finally call [`finish`] to flush the archive to
@@ -173,40 +171,40 @@ impl ArtifactManifest {
 ///
 /// ```no_run
 /// # use failure::Error; use std::fs::File;
-/// # use symbolic_debuginfo::sourcebundle::{ArtifactBundleWriter, ArtifactFileInfo};
+/// # use symbolic_debuginfo::sourcebundle::{SourceBundleWriter, FileInfo};
 /// # fn main() -> Result<(), Error> {
-/// let mut bundle = ArtifactBundleWriter::create("bundle.zip")?;
+/// let mut bundle = SourceBundleWriter::create("bundle.zip")?;
 ///
 /// // Add file called "foo.txt"
 /// let file = File::open("my_file.txt")?;
-/// bundle.add_file("foo.txt", file, ArtifactFileInfo::default())?;
+/// bundle.add_file("foo.txt", file, FileInfo::default())?;
 ///
 /// // Flush the bundle to disk
 /// bundle.finish()?;
 /// # Ok(()) }
 /// ```
 ///
-/// [create a new file]: struct.ArtifactBundleWriter#method.create
-/// [existing file]: struct.ArtifactBundleWriter#method.new
-/// [`add_file`]: struct.ArtifactBundleWriter#method.add_file
-/// [`finish`]: struct.ArtifactBundleWriter#method.finish
-pub struct ArtifactBundleWriter<W>
+/// [create a new file]: struct.SourceBundleWriter#method.create
+/// [existing file]: struct.SourceBundleWriter#method.new
+/// [`add_file`]: struct.SourceBundleWriter#method.add_file
+/// [`finish`]: struct.SourceBundleWriter#method.finish
+pub struct SourceBundleWriter<W>
 where
     W: Seek + Write,
 {
-    manifest: ArtifactManifest,
+    manifest: BundleManifest,
     writer: ZipWriter<W>,
     finished: bool,
 }
 
-impl<W> ArtifactBundleWriter<W>
+impl<W> SourceBundleWriter<W>
 where
     W: Seek + Write,
 {
     /// Creates a bundle writer on the given file.
     pub fn new(writer: W) -> Self {
-        ArtifactBundleWriter {
-            manifest: ArtifactManifest::new(),
+        SourceBundleWriter {
+            manifest: BundleManifest::new(),
             writer: ZipWriter::new(writer),
             finished: false,
         }
@@ -265,16 +263,16 @@ where
     ///
     /// ```no_run
     /// # use failure::Error; use std::fs::File;
-    /// # use symbolic_debuginfo::sourcebundle::{ArtifactBundleWriter, ArtifactFileInfo};
+    /// # use symbolic_debuginfo::sourcebundle::{SourceBundleWriter, FileInfo};
     /// # fn main() -> Result<(), Error> {
-    /// let mut bundle = ArtifactBundleWriter::create("bundle.zip")?;
+    /// let mut bundle = SourceBundleWriter::create("bundle.zip")?;
     ///
     /// // Add file at "foo.txt"
-    /// bundle.add_file("foo.txt", File::open("my_duplicate.txt")?, ArtifactFileInfo::default())?;
+    /// bundle.add_file("foo.txt", File::open("my_duplicate.txt")?, FileInfo::default())?;
     /// assert!(bundle.has_file("foo.txt"));
     ///
     /// // Add duplicate at "foo.txt.1"
-    /// bundle.add_file("foo.txt", File::open("my_duplicate.txt")?, ArtifactFileInfo::default())?;
+    /// bundle.add_file("foo.txt", File::open("my_duplicate.txt")?, FileInfo::default())?;
     /// assert!(bundle.has_file("foo.txt.1"));
     /// # Ok(()) }
     /// ```
@@ -285,7 +283,7 @@ where
         &mut self,
         path: S,
         mut file: R,
-        info: ArtifactFileInfo,
+        info: FileInfo,
     ) -> Result<(), ArtifactBundleError>
     where
         S: AsRef<str>,
@@ -300,6 +298,61 @@ where
         std::io::copy(&mut file, &mut self.writer).context(ArtifactBundleErrorKind::WriteFailed)?;
 
         self.manifest.files.insert(unique_path, info);
+        Ok(())
+    }
+
+    /// Writes a single object into the bundle.
+    ///
+    /// It's not permissible to write multiple objects into a bundle.
+    pub fn add_object<O>(
+        &mut self,
+        object: &O,
+        object_name: &str,
+    ) -> Result<(), ArtifactBundleError>
+    where
+        O: ObjectLike,
+        O::Error: Fail,
+    {
+        let mut files_handled = BTreeSet::new();
+        let mut session = object
+            .debug_session()
+            .context(ArtifactBundleErrorKind::BadDebugFile)?;
+
+        self.set_attribute("debug_id", object.debug_id().to_string());
+        self.set_attribute("object_name", object_name);
+
+        for func in session.functions() {
+            let func = func.context(ArtifactBundleErrorKind::BadDebugFile)?;
+            for line in &func.lines {
+                let compilation_dir = String::from_utf8_lossy(&func.compilation_dir);
+                let filename = clean_path(&join_path(&compilation_dir, &line.file.path_str()));
+
+                if files_handled.contains(&filename) {
+                    continue;
+                }
+
+                let source = if filename.starts_with('<') && filename.ends_with('>') {
+                    None
+                } else {
+                    fs::read_to_string(&filename).ok()
+                };
+
+                if let Some(source) = source {
+                    let bundle_path = sanitize_bundle_path(&filename);
+                    let info = FileInfo {
+                        ty: Some(FileType::Source),
+                        path: filename.clone(),
+                        ..FileInfo::default()
+                    };
+
+                    self.add_file(bundle_path, source.as_bytes(), info)
+                        .context(ArtifactBundleErrorKind::WriteFailed)?;
+                }
+
+                files_handled.insert(filename);
+            }
+        }
+
         Ok(())
     }
 
@@ -353,12 +406,12 @@ where
     }
 }
 
-impl ArtifactBundleWriter<BufWriter<File>> {
+impl SourceBundleWriter<BufWriter<File>> {
     /// Create a bundle writer that writes its output to the given path.
     ///
     /// If the file does not exist at the given path, it is created. If the file does exist, it is
     /// overwritten.
-    pub fn create<P>(path: P) -> Result<ArtifactBundleWriter<BufWriter<File>>, ArtifactBundleError>
+    pub fn create<P>(path: P) -> Result<SourceBundleWriter<BufWriter<File>>, ArtifactBundleError>
     where
         P: AsRef<Path>,
     {
@@ -381,87 +434,6 @@ fn sanitize_bundle_path(path: &str) -> String {
     sanitized
 }
 
-/// Writes sources of `Object` files to an artifact bundle.
-pub struct DebugSourceWriter<W>
-where
-    W: Seek + Write,
-{
-    bundle: ArtifactBundleWriter<W>,
-    files_handled: BTreeSet<String>,
-}
-
-impl<W> DebugSourceWriter<W>
-where
-    W: Write + Seek,
-{
-    /// Creates a new source writer around an artifact bundle writer.
-    pub fn new(bundle: ArtifactBundleWriter<W>) -> Self {
-        DebugSourceWriter {
-            bundle,
-            files_handled: BTreeSet::new(),
-        }
-    }
-
-    /// Writes all source files referenced by functions in this object file to the bundle.
-    pub fn write_object<O>(
-        &mut self,
-        object: &O,
-        object_name: &str,
-    ) -> Result<(), ArtifactBundleError>
-    where
-        O: ObjectLike,
-        O::Error: Fail,
-    {
-        let mut session = object
-            .debug_session()
-            .context(ArtifactBundleErrorKind::BadDebugFile)?;
-
-        self.bundle
-            .set_attribute("debug_id", object.debug_id().to_string());
-        self.bundle.set_attribute("object_name", object_name);
-
-        for func in session.functions() {
-            let func = func.context(ArtifactBundleErrorKind::BadDebugFile)?;
-            for line in &func.lines {
-                let compilation_dir = String::from_utf8_lossy(&func.compilation_dir);
-                let filename = clean_path(&join_path(&compilation_dir, &line.file.path_str()));
-
-                if self.files_handled.contains(&filename) {
-                    continue;
-                }
-
-                let source = if filename.starts_with('<') && filename.ends_with('>') {
-                    None
-                } else {
-                    fs::read_to_string(&filename).ok()
-                };
-
-                if let Some(source) = source {
-                    let bundle_path = sanitize_bundle_path(&filename);
-                    let info = ArtifactFileInfo {
-                        ty: Some(ArtifactType::Script),
-                        path: filename.clone(),
-                        ..ArtifactFileInfo::default()
-                    };
-
-                    self.bundle
-                        .add_file(bundle_path, source.as_bytes(), info)
-                        .context(ArtifactBundleErrorKind::WriteFailed)?;
-                }
-
-                self.files_handled.insert(filename);
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Finishes writing the object file and returns the bundle writer.
-    pub fn finish(self) -> Result<ArtifactBundleWriter<W>, ArtifactBundleError> {
-        Ok(self.bundle)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -473,9 +445,9 @@ mod tests {
     #[test]
     fn test_has_file() -> Result<(), Error> {
         let writer = Cursor::new(Vec::new());
-        let mut bundle = ArtifactBundleWriter::new(writer);
+        let mut bundle = SourceBundleWriter::new(writer);
 
-        bundle.add_file("bar.txt", &b"filecontents"[..], ArtifactFileInfo::default())?;
+        bundle.add_file("bar.txt", &b"filecontents"[..], FileInfo::default())?;
         assert!(bundle.has_file("bar.txt"));
 
         bundle.finish()?;
@@ -485,14 +457,10 @@ mod tests {
     #[test]
     fn test_duplicate_files() -> Result<(), Error> {
         let writer = Cursor::new(Vec::new());
-        let mut bundle = ArtifactBundleWriter::new(writer);
+        let mut bundle = SourceBundleWriter::new(writer);
 
-        bundle.add_file("bar.txt", &b"filecontents"[..], ArtifactFileInfo::default())?;
-        bundle.add_file(
-            "bar.txt",
-            &b"othercontents"[..],
-            ArtifactFileInfo::default(),
-        )?;
+        bundle.add_file("bar.txt", &b"filecontents"[..], FileInfo::default())?;
+        bundle.add_file("bar.txt", &b"othercontents"[..], FileInfo::default())?;
         assert!(bundle.has_file("bar.txt"));
         assert!(bundle.has_file("bar.txt.1"));
 
