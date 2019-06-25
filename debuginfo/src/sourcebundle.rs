@@ -717,7 +717,7 @@ where
             }
         }
 
-        Ok(self.is_empty())
+        Ok(!self.is_empty())
     }
 
     /// Writes the manifest to the bundle and flushes the underlying file handle.
