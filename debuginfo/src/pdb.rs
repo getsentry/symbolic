@@ -448,7 +448,7 @@ impl<'d> PdbDebugSession<'d> {
     }
 
     /// Returns an iterator over all functions in this debug file.
-    pub fn functions(&mut self) -> PdbFunctionIterator<'_> {
+    pub fn functions(&self) -> PdbFunctionIterator<'_> {
         PdbFunctionIterator {
             units: self.cell.get().units(),
             functions: Vec::new().into_iter(),
@@ -460,7 +460,7 @@ impl<'d> PdbDebugSession<'d> {
 impl DebugSession for PdbDebugSession<'_> {
     type Error = PdbError;
 
-    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
+    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(self.functions())
     }
 }

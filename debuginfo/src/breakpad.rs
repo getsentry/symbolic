@@ -1062,7 +1062,7 @@ pub struct BreakpadDebugSession<'d> {
 
 impl<'d> BreakpadDebugSession<'d> {
     /// Returns an iterator over all functions in this debug file.
-    pub fn functions(&mut self) -> BreakpadFunctionIterator<'_> {
+    pub fn functions(&self) -> BreakpadFunctionIterator<'_> {
         BreakpadFunctionIterator {
             file_map: &self.file_map,
             func_records: self.func_records.clone(),
@@ -1073,7 +1073,7 @@ impl<'d> BreakpadDebugSession<'d> {
 impl<'d> DebugSession for BreakpadDebugSession<'d> {
     type Error = BreakpadError;
 
-    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
+    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(self.functions())
     }
 }

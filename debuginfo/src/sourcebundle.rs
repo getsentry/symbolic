@@ -401,7 +401,7 @@ pub struct SourceBundleDebugSession<'d> {
 
 impl<'d> SourceBundleDebugSession<'d> {
     /// Returns an iterator over all functions in this debug file.
-    pub fn functions(&mut self) -> SourceBundleFunctionIterator<'_> {
+    pub fn functions(&self) -> SourceBundleFunctionIterator<'_> {
         SourceBundleFunctionIterator {
             _marker: std::marker::PhantomData,
         }
@@ -411,7 +411,7 @@ impl<'d> SourceBundleDebugSession<'d> {
 impl<'d> DebugSession for SourceBundleDebugSession<'d> {
     type Error = SourceBundleError;
 
-    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
+    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(self.functions())
     }
 }
@@ -600,7 +600,7 @@ where
         O::Error: Fail,
     {
         let mut files_handled = BTreeSet::new();
-        let mut session = object
+        let session = object
             .debug_session()
             .context(SourceBundleErrorKind::BadDebugFile)?;
 

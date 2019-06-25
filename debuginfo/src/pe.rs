@@ -322,7 +322,7 @@ pub struct PeDebugSession<'d> {
 
 impl<'d> PeDebugSession<'d> {
     /// Returns an iterator over all functions in this debug file.
-    pub fn functions(&mut self) -> PeFunctionIterator<'_> {
+    pub fn functions(&self) -> PeFunctionIterator<'_> {
         std::iter::empty()
     }
 }
@@ -330,7 +330,7 @@ impl<'d> PeDebugSession<'d> {
 impl DebugSession for PeDebugSession<'_> {
     type Error = PeError;
 
-    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
+    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(std::iter::empty())
     }
 }

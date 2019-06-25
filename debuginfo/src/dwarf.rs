@@ -1065,7 +1065,7 @@ impl<'d> DwarfDebugSession<'d> {
     }
 
     /// Returns an iterator over all functions in this debug file.
-    pub fn functions(&mut self) -> DwarfFunctionIterator<'_> {
+    pub fn functions(&self) -> DwarfFunctionIterator<'_> {
         DwarfFunctionIterator {
             units: self.cell.get().units(),
             functions: Vec::new().into_iter(),
@@ -1078,7 +1078,7 @@ impl<'d> DwarfDebugSession<'d> {
 impl<'d> DebugSession for DwarfDebugSession<'d> {
     type Error = DwarfError;
 
-    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
+    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(self.functions())
     }
 }

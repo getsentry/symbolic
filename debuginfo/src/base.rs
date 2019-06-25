@@ -520,7 +520,7 @@ pub trait DebugSession {
     /// The iteration is guaranteed to be sorted by function address and includes all compilation
     /// units. Note that the iterator holds a mutable borrow on the debug session, which allows it
     /// to use caches and optimize resources while resolving function and line information.
-    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>>;
+    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>>;
 }
 
 /// An object containing debug information.

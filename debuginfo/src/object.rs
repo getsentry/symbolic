@@ -365,14 +365,14 @@ pub enum ObjectDebugSession<'d> {
 }
 
 impl<'d> ObjectDebugSession<'d> {
-    fn functions(&mut self) -> ObjectFunctionIterator<'_> {
+    fn functions(&self) -> ObjectFunctionIterator<'_> {
         match *self {
-            ObjectDebugSession::Breakpad(ref mut s) => {
+            ObjectDebugSession::Breakpad(ref s) => {
                 ObjectFunctionIterator::Breakpad(s.functions())
             }
-            ObjectDebugSession::Dwarf(ref mut s) => ObjectFunctionIterator::Dwarf(s.functions()),
-            ObjectDebugSession::Pdb(ref mut s) => ObjectFunctionIterator::Pdb(s.functions()),
-            ObjectDebugSession::Pe(ref mut s) => ObjectFunctionIterator::Pe(s.functions()),
+            ObjectDebugSession::Dwarf(ref s) => ObjectFunctionIterator::Dwarf(s.functions()),
+            ObjectDebugSession::Pdb(ref s) => ObjectFunctionIterator::Pdb(s.functions()),
+            ObjectDebugSession::Pe(ref s) => ObjectFunctionIterator::Pe(s.functions()),
         }
     }
 }
@@ -380,7 +380,7 @@ impl<'d> ObjectDebugSession<'d> {
 impl DebugSession for ObjectDebugSession<'_> {
     type Error = ObjectError;
 
-    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
+    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(self.functions())
     }
 }
