@@ -17,10 +17,11 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use zip::{write::FileOptions, ZipWriter};
 
+use symbolic_common::{clean_path, derive_failure, join_path, Arch, AsSelf, CodeId, DebugId};
+
 use crate::base::*;
 use crate::private::Parse;
 use crate::{DebugSession, ObjectKind, ObjectLike};
-use symbolic_common::{clean_path, derive_failure, join_path, Arch, CodeId, DebugId};
 
 static BUNDLE_MAGIC: [u8; 4] = *b"SYSB";
 
@@ -357,6 +358,14 @@ impl<'d> SourceBundle<'d> {
     /// Returns true if this source bundle contains no source code.
     pub fn is_empty(&self) -> bool {
         self.manifest.files.is_empty()
+    }
+}
+
+impl<'slf, 'd: 'slf> AsSelf<'slf> for SourceBundle<'d> {
+    type Ref = SourceBundle<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        unsafe { std::mem::transmute(self) }
     }
 }
 
