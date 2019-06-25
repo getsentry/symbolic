@@ -47,6 +47,10 @@ pub enum ObjectKind {
     /// for a corresponding binary file.
     Debug,
 
+    /// A container that just stores source code files, but no other debug
+    /// information corresponding to the original object file.
+    Source,
+
     /// The Other type represents any valid object class that does not fit any
     /// of the other classes. These are mostly CPU or OS dependent, or unique
     /// to a single kind of object.
@@ -63,6 +67,7 @@ impl ObjectKind {
             ObjectKind::Library => "lib",
             ObjectKind::Dump => "dump",
             ObjectKind::Debug => "dbg",
+            ObjectKind::Source => "src",
             ObjectKind::Other => "other",
         }
     }
@@ -83,6 +88,7 @@ impl ObjectKind {
             ObjectKind::Library => "library",
             ObjectKind::Dump => "memory dump",
             ObjectKind::Debug => "debug companion",
+            ObjectKind::Source => "source bundle",
             ObjectKind::Other => "file",
         }
     }
@@ -109,6 +115,7 @@ impl FromStr for ObjectKind {
             "lib" => ObjectKind::Library,
             "dump" => ObjectKind::Dump,
             "dbg" => ObjectKind::Debug,
+            "src" => ObjectKind::Source,
             "other" => ObjectKind::Other,
             _ => return Err(UnknownObjectKindError),
         })

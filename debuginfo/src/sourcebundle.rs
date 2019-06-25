@@ -187,7 +187,13 @@ pub struct SourceBundleManifest {
 }
 
 impl SourceBundleManifest {
-    /// Returns the embedded debug id if available
+    /// Returns the architecture of the corresponding object file.
+    pub fn arch(&self) -> Option<Arch> {
+        let arch_str = self.attributes.get("arch")?;
+        Some(arch_str.parse().unwrap_or_default())
+    }
+
+    /// Returns the embedded debug id if available.
     pub fn debug_id(&self) -> Option<DebugId> {
         self.attributes.get("debug_id").and_then(|x| x.parse().ok())
     }
@@ -245,8 +251,7 @@ impl<'d> SourceBundle<'d> {
 
     /// Always returns `FileFormat::Unknown` as there is no real debug file underneath.
     pub fn file_format(&self) -> FileFormat {
-        // TODO: Expose file format and add to `Object` variants.
-        FileFormat::Unknown
+        FileFormat::SourceBundle
     }
 
     /// The code identifier of this object.
@@ -256,7 +261,7 @@ impl<'d> SourceBundle<'d> {
 
     /// The code identifier of this object.
     pub fn debug_id(&self) -> DebugId {
-        self.manifest.debug_id().unwrap_or_else(DebugId::nil)
+        self.manifest.debug_id().unwrap_or_default()
     }
 
     /// The debug file name of this object (never set).
@@ -273,17 +278,15 @@ impl<'d> SourceBundle<'d> {
     }
 
     /// The CPU architecture of this object.
-    ///
-    /// Because source bundles are architecture independent this is always `Arch::Unknown`.
     pub fn arch(&self) -> Arch {
-        Arch::Unknown
+        self.manifest.arch().unwrap_or_default()
     }
 
     /// The kind of this object.
     ///
     /// Because source bundles do not contain real objects this is always `ObjectKind::None`.
     fn kind(&self) -> ObjectKind {
-        ObjectKind::None
+        ObjectKind::Source
     }
 
     /// The address at which the image prefers to be loaded into memory.
@@ -682,6 +685,7 @@ where
             .debug_session()
             .context(SourceBundleErrorKind::BadDebugFile)?;
 
+        self.set_attribute("arch", object.arch().to_string());
         self.set_attribute("debug_id", object.debug_id().to_string());
         self.set_attribute("object_name", object_name);
 
