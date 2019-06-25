@@ -17,6 +17,7 @@ use zip::{write::FileOptions, ZipWriter};
 
 use crate::base::*;
 use crate::{DebugSession, ObjectKind, ObjectLike};
+use crate::private::Parse;
 use symbolic_common::{clean_path, derive_failure, join_path, Arch, CodeId, DebugId};
 
 static BUNDLE_MAGIC: [u8; 4] = *b"SYSB";
@@ -219,6 +220,16 @@ impl fmt::Debug for SourceBundle<'_> {
 }
 
 impl<'d> SourceBundle<'d> {
+    /// Checks if this is a source bundle.
+    pub fn parse(bytes: &[u8]) -> Result<SourceBundle<'d>, SourceBundleError> {
+        unreachable!()
+    }
+
+    /// Checks if this is a source bundle.
+    pub fn test(bytes: &[u8]) -> bool {
+        bytes.get(..4) == Some(&BUNDLE_MAGIC)
+    }
+
     /// Always returns `FileFormat::Unknown` as there is no real debug file underneath.
     pub fn file_format(&self) -> FileFormat {
         // TODO: Expose file format and add to `Object` variants.
@@ -324,6 +335,18 @@ impl<'d> SourceBundle<'d> {
     /// Returns the version of this source bundle format.
     pub fn version(&self) -> SourceBundleVersion {
         SourceBundleVersion(self.header.version)
+    }
+}
+
+impl<'d> Parse<'d> for SourceBundle<'d> {
+    type Error = SourceBundleError;
+
+    fn parse(data: &'d [u8]) -> Result<Self, Self::Error> {
+        SourceBundle::parse(data)
+    }
+
+    fn test(data: &'d [u8]) -> bool {
+        SourceBundle::test(data)
     }
 }
 

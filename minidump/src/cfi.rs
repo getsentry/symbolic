@@ -196,6 +196,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             Object::Elf(o) => self.process_dwarf(o),
             Object::Pdb(o) => self.process_pdb(o),
             Object::Pe(o) => self.process_pe(o),
+            Object::SourceBundle(_) => Ok(()),
         }
     }
 

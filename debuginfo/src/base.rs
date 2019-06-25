@@ -135,8 +135,8 @@ pub enum FileFormat {
     Pdb,
     /// Portable Executable, an extension of COFF used on Windows.
     Pe,
-    // /// Source code bundle ZIP.
-    // SourceBundle,
+    /// Source code bundle ZIP.
+    SourceBundle,
 }
 
 impl FileFormat {
@@ -149,6 +149,7 @@ impl FileFormat {
             FileFormat::MachO => "macho",
             FileFormat::Pdb => "pdb",
             FileFormat::Pe => "pe",
+            FileFormat::SourceBundle => "sourcebundle",
         }
     }
 }
@@ -169,6 +170,7 @@ impl FromStr for FileFormat {
             "macho" => FileFormat::MachO,
             "pdb" => FileFormat::Pdb,
             "pe" => FileFormat::Pe,
+            "sourcebundle" => FileFormat::SourceBundle,
             _ => return Err(UnknownFileFormatError),
         })
     }
