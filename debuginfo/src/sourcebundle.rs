@@ -347,6 +347,11 @@ impl<'d> SourceBundle<'d> {
     pub fn version(&self) -> SourceBundleVersion {
         SourceBundleVersion(BUNDLE_VERSION)
     }
+
+    /// Returns true if this source bundle contains no source code.
+    pub fn is_empty(&self) -> bool {
+        self.manifest.files.is_empty()
+    }
 }
 
 impl<'d> Parse<'d> for SourceBundle<'d> {
@@ -545,6 +550,11 @@ where
         })
     }
 
+    /// Returns whether the bundle contains any files.
+    pub fn is_empty(&self) -> bool {
+        self.manifest.files.is_empty()
+    }
+
     /// Sets a meta data attribute of the bundle.
     ///
     /// Attributes are flushed to the bundle when it is [finished]. Thus, they can be retrieved or
@@ -638,8 +648,15 @@ where
 
     /// Writes a single object into the bundle.
     ///
-    /// It's not permissible to write multiple objects into a bundle.
-    pub fn add_object<O>(&mut self, object: &O, object_name: &str) -> Result<(), SourceBundleError>
+    /// Returns `Ok(true)` if any source files were added to the bundle, or `Ok(false)` if no
+    /// sources could be resolved. Otherwise, an error is returned if writing the bundle fails.
+    ///
+    /// It is not permissible to write multiple objects into a bundle.
+    pub fn add_object<O>(
+        &mut self,
+        object: &O,
+        object_name: &str,
+    ) -> Result<bool, SourceBundleError>
     where
         O: ObjectLike,
         O::Error: Fail,
@@ -684,7 +701,7 @@ where
             }
         }
 
-        Ok(())
+        Ok(self.is_empty())
     }
 
     /// Writes the manifest to the bundle and flushes the underlying file handle.
