@@ -135,6 +135,8 @@ pub enum FileFormat {
     Pdb,
     /// Portable Executable, an extension of COFF used on Windows.
     Pe,
+    // /// Source code bundle ZIP.
+    // SourceBundle,
 }
 
 impl FileFormat {

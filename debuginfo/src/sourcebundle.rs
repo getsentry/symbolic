@@ -220,7 +220,8 @@ impl fmt::Debug for SourceBundle<'_> {
 
 impl<'d> SourceBundle<'d> {
     /// Always returns `FileFormat::Unknown` as there is no real debug file underneath.
-    fn file_format(&self) -> FileFormat {
+    pub fn file_format(&self) -> FileFormat {
+        // TODO: Expose file format and add to `Object` variants.
         FileFormat::Unknown
     }
 
@@ -294,7 +295,12 @@ impl<'d> SourceBundle<'d> {
         false
     }
 
-    fn debug_session(&self) -> Result<SourceBundleDebugSession<'d>, SourceBundleError> {
+    /// Constructs a debugging session.
+    ///
+    /// A debugging session loads certain information from the object file and creates caches for
+    /// efficient access to various records in the debug information. Since this can be quite a
+    /// costly process, try to reuse the debugging session as long as possible.
+    pub fn debug_session(&self) -> Result<SourceBundleDebugSession<'d>, SourceBundleError> {
         Ok(SourceBundleDebugSession {
             _marker: std::marker::PhantomData,
         })
@@ -313,6 +319,11 @@ impl<'d> SourceBundle<'d> {
     /// Returns the raw data of the source bundle.
     pub fn data(&self) -> &'d [u8] {
         self.data
+    }
+
+    /// Returns the version of this source bundle format.
+    pub fn version(&self) -> SourceBundleVersion {
+        SourceBundleVersion(self.header.version)
     }
 }
 
