@@ -16,6 +16,8 @@ use zip::{write::FileOptions, ZipWriter};
 use crate::{DebugSession, ObjectLike};
 use symbolic_common::{clean_path, derive_failure, join_path};
 
+static BUNDLE_MAGIC: [u8; 4] = *b"SYSB";
+
 /// Version of the bundle and manifest format.
 static BUNDLE_VERSION: u32 = 2;
 
@@ -137,15 +139,39 @@ impl Default for BundleVersion {
     }
 }
 
-/// Manifest of an `SourceBundle` containing information on its contents.
+/// Binary header of the source bundle archive.
+///
+/// This header precedes the ZIP archive. It is used to detect these files on the file system.
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug)]
+struct SourceBundleHeader {
+    /// Magic bytes header.
+    pub magic: [u8; 4],
+
+    /// Version of the bundle.
+    pub version: u32,
+}
+
+impl SourceBundleHeader {
+    fn as_bytes(&self) -> &[u8] {
+        let ptr = self as *const Self as *const u8;
+        unsafe { std::slice::from_raw_parts(ptr, std::mem::size_of::<Self>()) }
+    }
+}
+
+impl Default for SourceBundleHeader {
+    fn default() -> Self {
+        SourceBundleHeader {
+            magic: BUNDLE_MAGIC,
+            version: BUNDLE_VERSION,
+        }
+    }
+}
+
+/// Manifest of an ArtifactBundle containing information on its contents.
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct BundleManifest {
-    /// Version of this source bundle.
-    ///
-    /// The version determines the internal structure and available data.
-    pub version: BundleVersion,
-
-    /// Descriptors for all source files in this bundle.
+    /// Descriptors for all artifact files in this bundle.
     #[serde(default)]
     pub files: HashMap<String, FileInfo>,
 
@@ -202,12 +228,17 @@ where
     W: Seek + Write,
 {
     /// Creates a bundle writer on the given file.
-    pub fn new(writer: W) -> Self {
-        SourceBundleWriter {
+    pub fn start(mut writer: W) -> Result<Self, SourceBundleError> {
+        let header = SourceBundleHeader::default();
+        writer
+            .write_all(header.as_bytes())
+            .context(SourceBundleErrorKind::WriteFailed)?;
+
+        Ok(SourceBundleWriter {
             manifest: BundleManifest::new(),
             writer: ZipWriter::new(writer),
             finished: false,
-        }
+        })
     }
 
     /// Sets a meta data attribute of the bundle.
@@ -418,7 +449,7 @@ impl SourceBundleWriter<BufWriter<File>> {
             .open(path)
             .context(SourceBundleErrorKind::WriteFailed)?;
 
-        Ok(Self::new(BufWriter::new(file)))
+        Self::start(BufWriter::new(file))
     }
 }
 
@@ -441,7 +472,7 @@ mod tests {
     #[test]
     fn test_has_file() -> Result<(), Error> {
         let writer = Cursor::new(Vec::new());
-        let mut bundle = SourceBundleWriter::new(writer);
+        let mut bundle = SourceBundleWriter::start(writer)?;
 
         bundle.add_file("bar.txt", &b"filecontents"[..], FileInfo::default())?;
         assert!(bundle.has_file("bar.txt"));
@@ -453,7 +484,7 @@ mod tests {
     #[test]
     fn test_duplicate_files() -> Result<(), Error> {
         let writer = Cursor::new(Vec::new());
-        let mut bundle = SourceBundleWriter::new(writer);
+        let mut bundle = SourceBundleWriter::start(writer)?;
 
         bundle.add_file("bar.txt", &b"filecontents"[..], FileInfo::default())?;
         bundle.add_file("bar.txt", &b"othercontents"[..], FileInfo::default())?;
