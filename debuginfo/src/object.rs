@@ -14,8 +14,8 @@ use crate::elf::*;
 use crate::macho::*;
 use crate::pdb::*;
 use crate::pe::*;
-use crate::sourcebundle::*;
 use crate::private::{MonoArchive, MonoArchiveObjects};
+use crate::sourcebundle::*;
 
 macro_rules! match_inner {
     ($value:expr, $ty:tt ($pat:pat) => $expr:expr) => {
@@ -51,7 +51,9 @@ macro_rules! map_result {
             $from::MachO($pat) => $expr.map($to::MachO).map_err(ObjectError::MachO),
             $from::Pdb($pat) => $expr.map($to::Pdb).map_err(ObjectError::Pdb),
             $from::Pe($pat) => $expr.map($to::Pe).map_err(ObjectError::Pe),
-            $from::SourceBundle($pat) => $expr.map($to::SourceBundle).map_err(ObjectError::SourceBundle),
+            $from::SourceBundle($pat) => $expr
+                .map($to::SourceBundle)
+                .map_err(ObjectError::SourceBundle),
         }
     };
 }
@@ -386,13 +388,13 @@ pub enum ObjectDebugSession<'d> {
 impl<'d> ObjectDebugSession<'d> {
     fn functions(&self) -> ObjectFunctionIterator<'_> {
         match *self {
-            ObjectDebugSession::Breakpad(ref s) => {
-                ObjectFunctionIterator::Breakpad(s.functions())
-            }
+            ObjectDebugSession::Breakpad(ref s) => ObjectFunctionIterator::Breakpad(s.functions()),
             ObjectDebugSession::Dwarf(ref s) => ObjectFunctionIterator::Dwarf(s.functions()),
             ObjectDebugSession::Pdb(ref s) => ObjectFunctionIterator::Pdb(s.functions()),
             ObjectDebugSession::Pe(ref s) => ObjectFunctionIterator::Pe(s.functions()),
-            ObjectDebugSession::SourceBundle(ref s) => ObjectFunctionIterator::SourceBundle(s.functions()),
+            ObjectDebugSession::SourceBundle(ref s) => {
+                ObjectFunctionIterator::SourceBundle(s.functions())
+            }
         }
     }
 }
@@ -426,7 +428,9 @@ impl<'s> Iterator for ObjectFunctionIterator<'s> {
             ObjectFunctionIterator::Dwarf(ref mut i) => Some(i.next()?.map_err(ObjectError::Dwarf)),
             ObjectFunctionIterator::Pdb(ref mut i) => Some(i.next()?.map_err(ObjectError::Pdb)),
             ObjectFunctionIterator::Pe(ref mut i) => Some(i.next()?.map_err(ObjectError::Pe)),
-            ObjectFunctionIterator::SourceBundle(ref mut i) => Some(i.next()?.map_err(ObjectError::SourceBundle)),
+            ObjectFunctionIterator::SourceBundle(ref mut i) => {
+                Some(i.next()?.map_err(ObjectError::SourceBundle))
+            }
         }
     }
 }

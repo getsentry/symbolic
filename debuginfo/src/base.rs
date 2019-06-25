@@ -527,7 +527,9 @@ pub trait DebugSession {
     fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>>;
 
     /// Looks up a file source by full path name.
-    fn get_source_by_full_path_name(&self, path: &str) -> Option<String> { None }
+    fn get_source_by_full_path_name(&self, path: &str) -> Option<String> {
+        None
+    }
 }
 
 /// An object containing debug information.

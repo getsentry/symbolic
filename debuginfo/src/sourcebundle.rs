@@ -16,8 +16,8 @@ use serde::Serialize;
 use zip::{write::FileOptions, ZipWriter};
 
 use crate::base::*;
-use crate::{DebugSession, ObjectKind, ObjectLike};
 use crate::private::Parse;
+use crate::{DebugSession, ObjectKind, ObjectLike};
 use symbolic_common::{clean_path, derive_failure, join_path, Arch, CodeId, DebugId};
 
 static BUNDLE_MAGIC: [u8; 4] = *b"SYSB";
