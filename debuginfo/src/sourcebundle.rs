@@ -3,7 +3,9 @@
 //! TODO(jauer): Describe contents
 //! Defines the `SourceBundle` type and corresponding writer.
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufWriter, Read, Seek, Write};
 use std::path::Path;
@@ -13,8 +15,9 @@ use regex::Regex;
 use serde::Serialize;
 use zip::{write::FileOptions, ZipWriter};
 
-use crate::{DebugSession, ObjectLike};
-use symbolic_common::{clean_path, derive_failure, join_path};
+use crate::base::*;
+use crate::{DebugSession, ObjectKind, ObjectLike};
+use symbolic_common::{clean_path, derive_failure, join_path, Arch, CodeId, DebugId};
 
 static BUNDLE_MAGIC: [u8; 4] = *b"SYSB";
 
@@ -179,6 +182,254 @@ pub struct SourceBundleManifest {
     #[serde(flatten)]
     pub attributes: BTreeMap<String, String>,
 }
+
+impl SourceBundleManifest {
+    /// Returns the embedded debug id if available
+    pub fn debug_id(&self) -> Option<DebugId> {
+        self.attributes.get("debug_id").and_then(|x| x.parse().ok())
+    }
+
+    /// Returns the embedded object name if available.
+    pub fn object_name(&self) -> Option<&str> {
+        self.attributes.get("object_name").map(|x| x.as_str())
+    }
+}
+
+/// A source bundle.
+pub struct SourceBundle<'d> {
+    header: SourceBundleHeader,
+    manifest: SourceBundleManifest,
+    data: &'d [u8],
+}
+
+impl fmt::Debug for SourceBundle<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("SourceBundle")
+            .field("code_id", &self.code_id())
+            .field("debug_id", &self.debug_id())
+            .field("arch", &self.arch())
+            .field("kind", &self.kind())
+            .field("load_address", &format_args!("{:#x}", self.load_address()))
+            .field("has_symbols", &self.has_symbols())
+            .field("has_debug_info", &self.has_debug_info())
+            .field("has_unwind_info", &self.has_unwind_info())
+            .field("has_source", &self.has_source())
+            .finish()
+    }
+}
+
+impl<'d> SourceBundle<'d> {
+    /// Always returns `FileFormat::Unknown` as there is no real debug file underneath.
+    fn file_format(&self) -> FileFormat {
+        FileFormat::Unknown
+    }
+
+    /// The code identifier of this object.
+    pub fn code_id(&self) -> Option<CodeId> {
+        None
+    }
+
+    /// The code identifier of this object.
+    pub fn debug_id(&self) -> DebugId {
+        self.manifest.debug_id().unwrap_or_else(DebugId::nil)
+    }
+
+    /// The debug file name of this object (never set).
+    fn debug_file_name(&self) -> Option<Cow<'_, str>> {
+        None
+    }
+
+    /// The debug file name of this object.
+    ///
+    /// This is the name of the original debug file that was used to create the source bundle.
+    /// This might not be always available.
+    pub fn name(&self) -> Option<&str> {
+        self.manifest.object_name()
+    }
+
+    /// The CPU architecture of this object.
+    ///
+    /// Because source bundles are architecture independent this is always `Arch::Unknown`.
+    pub fn arch(&self) -> Arch {
+        Arch::Unknown
+    }
+
+    /// The kind of this object.
+    ///
+    /// Because source bundles do not contain real objects this is always `ObjectKind::None`.
+    fn kind(&self) -> ObjectKind {
+        ObjectKind::None
+    }
+
+    /// The address at which the image prefers to be loaded into memory.
+    ///
+    /// Because source bundles do not contain this information is always `0`.
+    pub fn load_address(&self) -> u64 {
+        0
+    }
+
+    /// Determines whether this object exposes a public symbol table.
+    ///
+    /// Source bundles never have symbols.
+    pub fn has_symbols(&self) -> bool {
+        false
+    }
+
+    /// Returns an iterator over symbols in the public symbol table.
+    pub fn symbols(&self) -> SourceBundleSymbolIterator<'d> {
+        SourceBundleSymbolIterator {
+            _marker: std::marker::PhantomData,
+        }
+    }
+
+    /// Returns an ordered map of symbols in the symbol table.
+    pub fn symbol_map(&self) -> SymbolMap<'d> {
+        self.symbols().collect()
+    }
+
+    /// Determines whether this object contains debug information.
+    ///
+    /// Source bundles never have debug info.
+    pub fn has_debug_info(&self) -> bool {
+        false
+    }
+
+    fn debug_session(&self) -> Result<SourceBundleDebugSession<'d>, SourceBundleError> {
+        Ok(SourceBundleDebugSession {
+            _marker: std::marker::PhantomData,
+        })
+    }
+
+    /// Determines whether this object contains stack unwinding information.
+    pub fn has_unwind_info(&self) -> bool {
+        false
+    }
+
+    /// Determines whether this object contains embedded source.
+    pub fn has_source(&self) -> bool {
+        true
+    }
+
+    /// Returns the raw data of the source bundle.
+    pub fn data(&self) -> &'d [u8] {
+        self.data
+    }
+}
+
+impl<'d> ObjectLike for SourceBundle<'d> {
+    type Error = SourceBundleError;
+    type Session = SourceBundleDebugSession<'d>;
+
+    fn file_format(&self) -> FileFormat {
+        self.file_format()
+    }
+
+    fn code_id(&self) -> Option<CodeId> {
+        self.code_id()
+    }
+
+    fn debug_id(&self) -> DebugId {
+        self.debug_id()
+    }
+
+    fn debug_file_name(&self) -> Option<Cow<'_, str>> {
+        self.debug_file_name()
+    }
+
+    fn arch(&self) -> Arch {
+        self.arch()
+    }
+
+    fn kind(&self) -> ObjectKind {
+        self.kind()
+    }
+
+    fn load_address(&self) -> u64 {
+        self.load_address()
+    }
+
+    fn has_symbols(&self) -> bool {
+        self.has_symbols()
+    }
+
+    fn symbol_map(&self) -> SymbolMap<'_> {
+        self.symbol_map()
+    }
+
+    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
+        Box::new(self.symbols())
+    }
+
+    fn has_debug_info(&self) -> bool {
+        self.has_debug_info()
+    }
+
+    fn debug_session(&self) -> Result<Self::Session, Self::Error> {
+        self.debug_session()
+    }
+
+    fn has_unwind_info(&self) -> bool {
+        self.has_unwind_info()
+    }
+
+    fn has_source(&self) -> bool {
+        self.has_source()
+    }
+}
+
+/// An iterator yielding symbols from a source bundle
+///
+/// This is always yielding no results.
+pub struct SourceBundleSymbolIterator<'d> {
+    _marker: std::marker::PhantomData<&'d [u8]>,
+}
+
+impl<'d> Iterator for SourceBundleSymbolIterator<'d> {
+    type Item = Symbol<'d>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+impl std::iter::FusedIterator for SourceBundleSymbolIterator<'_> {}
+
+/// Debug session for SourceBundle objects.
+pub struct SourceBundleDebugSession<'d> {
+    _marker: std::marker::PhantomData<&'d [u8]>,
+}
+
+impl<'d> SourceBundleDebugSession<'d> {
+    /// Returns an iterator over all functions in this debug file.
+    pub fn functions(&mut self) -> SourceBundleFunctionIterator<'_> {
+        SourceBundleFunctionIterator {
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'d> DebugSession for SourceBundleDebugSession<'d> {
+    type Error = SourceBundleError;
+
+    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
+        Box::new(self.functions())
+    }
+}
+
+/// An iterator over functions in a SourceBundle object.
+pub struct SourceBundleFunctionIterator<'d> {
+    _marker: std::marker::PhantomData<&'d [u8]>,
+}
+
+impl<'s> Iterator for SourceBundleFunctionIterator<'s> {
+    type Item = Result<Function<'s>, SourceBundleError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+impl std::iter::FusedIterator for SourceBundleFunctionIterator<'_> {}
 
 impl SourceBundleManifest {
     /// Creates a new, empty manifest.

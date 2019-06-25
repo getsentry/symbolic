@@ -582,6 +582,9 @@ pub trait ObjectLike {
 
     /// Determines whether this object contains stack unwinding information.
     fn has_unwind_info(&self) -> bool;
+
+    /// Determines whether this object contains embedded sources.
+    fn has_source(&self) -> bool;
 }
 
 #[cfg(feature = "serde")]

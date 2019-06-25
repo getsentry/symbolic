@@ -175,6 +175,11 @@ impl<'d> PdbObject<'d> {
         true
     }
 
+    /// Determines whether this object contains embedded source.
+    pub fn has_source(&self) -> bool {
+        false
+    }
+
     /// Constructs a debugging session.
     pub fn debug_session(&self) -> Result<PdbDebugSession<'d>, PdbError> {
         PdbDebugSession::build(self, self.debug_info.clone())
@@ -283,6 +288,10 @@ impl<'d> ObjectLike for PdbObject<'d> {
 
     fn has_unwind_info(&self) -> bool {
         self.has_unwind_info()
+    }
+
+    fn has_source(&self) -> bool {
+        self.has_source()
     }
 }
 

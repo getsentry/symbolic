@@ -879,6 +879,11 @@ impl<'d> BreakpadObject<'d> {
         self.stack_records().next().is_some()
     }
 
+    /// Determines whether this object contains embedded source.
+    pub fn has_source(&self) -> bool {
+        false
+    }
+
     /// Returns an iterator over info records.
     pub fn info_records(&self) -> BreakpadInfoRecords<'d> {
         BreakpadInfoRecords {
@@ -1017,6 +1022,10 @@ impl<'d> ObjectLike for BreakpadObject<'d> {
 
     fn has_unwind_info(&self) -> bool {
         self.has_unwind_info()
+    }
+
+    fn has_source(&self) -> bool {
+        self.has_source()
     }
 }
 

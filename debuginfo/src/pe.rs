@@ -164,6 +164,11 @@ impl<'d> PeObject<'d> {
         false
     }
 
+    /// Determines whether this object contains embedded source.
+    pub fn has_source(&self) -> bool {
+        false
+    }
+
     /// Constructs a no-op debugging session.
     pub fn debug_session(&self) -> Result<PeDebugSession<'d>, PeError> {
         Ok(PeDebugSession { _ph: PhantomData })
@@ -280,6 +285,10 @@ impl<'d> ObjectLike for PeObject<'d> {
 
     fn has_unwind_info(&self) -> bool {
         self.has_unwind_info()
+    }
+
+    fn has_source(&self) -> bool {
+        self.has_source()
     }
 }
 

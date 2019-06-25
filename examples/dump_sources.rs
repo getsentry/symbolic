@@ -4,8 +4,8 @@ use clap::{App, Arg, ArgMatches};
 use failure::Error;
 
 use symbolic::common::ByteView;
-use symbolic::debuginfo::Archive;
 use symbolic::debuginfo::sourcebundle::SourceBundleWriter;
+use symbolic::debuginfo::Archive;
 
 fn print_error(error: &Error) {
     println!("Error: {}", error);
