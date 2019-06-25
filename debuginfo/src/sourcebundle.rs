@@ -1,7 +1,7 @@
 //! A module to bundle sources from debug files for later processing.
 //!
 //! TODO(jauer): Describe contents
-//! Defines the `ArtifactBundle` type and corresponding writer.
+//! Defines the `SourceBundle` type and corresponding writer.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs::{self, File, OpenOptions};
@@ -36,15 +36,15 @@ pub enum SourceBundleErrorKind {
     #[fail(display = "malformed debug info file")]
     BadDebugFile,
 
-    /// Generic error when writing an artifact bundle, most likely IO.
-    #[fail(display = "failed to write artifact bundle")]
+    /// Generic error when writing a source bundle, most likely IO.
+    #[fail(display = "failed to write source bundle")]
     WriteFailed,
 }
 
 derive_failure!(
     SourceBundleError,
     SourceBundleErrorKind,
-    doc = "An error returned when handling `ArtifactBundles`.",
+    doc = "An error returned when handling `SourceBundles`.",
 );
 
 /// Trims matching suffices of a string in-place.
@@ -56,7 +56,7 @@ where
     string.truncate(cutoff);
 }
 
-/// The type of an artifact file.
+/// The type of a file in a bundle.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FileType {
@@ -96,7 +96,7 @@ pub struct FileInfo {
 }
 
 impl FileInfo {
-    /// Creates default artifact information
+    /// Creates default file information
     pub fn new() -> Self {
         Self::default()
     }
@@ -107,7 +107,7 @@ impl FileInfo {
     }
 }
 
-/// Version number of an artifact bundle.
+/// Version number of an source bundle.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct BundleVersion(pub u32);
 
@@ -137,15 +137,15 @@ impl Default for BundleVersion {
     }
 }
 
-/// Manifest of an ArtifactBundle containing information on its contents.
+/// Manifest of an `SourceBundle` containing information on its contents.
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct BundleManifest {
-    /// Version of this artifact bundle.
+    /// Version of this source bundle.
     ///
     /// The version determines the internal structure and available data.
     pub version: BundleVersion,
 
-    /// Descriptors for all artifact files in this bundle.
+    /// Descriptors for all source files in this bundle.
     #[serde(default)]
     pub files: HashMap<String, FileInfo>,
 
@@ -217,7 +217,7 @@ where
     ///
     /// If the attribute was set before, the prior value is returned.
     ///
-    /// [finished]: struct.ArtifactBundleWriter.html#method.remove_attribute
+    /// [finished]: struct.SourceBundleWriter.html#method.remove_attribute
     pub fn set_attribute<K, V>(&mut self, key: K, value: V) -> Option<String>
     where
         K: Into<String>,
@@ -362,7 +362,7 @@ where
         Ok(())
     }
 
-    /// Returns the full path for a file within the artifact bundle.
+    /// Returns the full path for a file within the source bundle.
     fn file_path(&self, path: &str) -> String {
         format!("{}/{}", FILES_PATH, path)
     }
