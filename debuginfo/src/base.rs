@@ -523,6 +523,9 @@ pub trait DebugSession {
     /// units. Note that the iterator holds a mutable borrow on the debug session, which allows it
     /// to use caches and optimize resources while resolving function and line information.
     fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>>;
+
+    /// Looks up a file source by full path name.
+    fn get_source_by_full_path_name(&self, path: &str) -> Option<String> { None }
 }
 
 /// An object containing debug information.

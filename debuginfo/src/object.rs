@@ -367,9 +367,7 @@ pub enum ObjectDebugSession<'d> {
 impl<'d> ObjectDebugSession<'d> {
     fn functions(&self) -> ObjectFunctionIterator<'_> {
         match *self {
-            ObjectDebugSession::Breakpad(ref s) => {
-                ObjectFunctionIterator::Breakpad(s.functions())
-            }
+            ObjectDebugSession::Breakpad(ref s) => ObjectFunctionIterator::Breakpad(s.functions()),
             ObjectDebugSession::Dwarf(ref s) => ObjectFunctionIterator::Dwarf(s.functions()),
             ObjectDebugSession::Pdb(ref s) => ObjectFunctionIterator::Pdb(s.functions()),
             ObjectDebugSession::Pe(ref s) => ObjectFunctionIterator::Pe(s.functions()),
