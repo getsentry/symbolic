@@ -108,6 +108,8 @@ class Object(RustObject):
             features.add("debug")
         if struct.unwind:
             features.add("unwind")
+        if struct.source:
+            features.add("source")
         return frozenset(features)
 
     def make_symcache(self):

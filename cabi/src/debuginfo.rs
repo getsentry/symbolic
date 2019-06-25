@@ -29,6 +29,7 @@ pub struct SymbolicObjectFeatures {
     symtab: bool,
     debug: bool,
     unwind: bool,
+    source: bool,
 }
 
 ffi_fn! {
@@ -117,6 +118,7 @@ ffi_fn! {
             symtab: object.has_symbols(),
             debug: object.has_debug_info(),
             unwind: object.has_unwind_info(),
+            source: object.has_source(),
         })
     }
 }
