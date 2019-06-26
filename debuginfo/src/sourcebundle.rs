@@ -12,6 +12,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use failure::{Fail, ResultExt};
+use lazycell::LazyCell;
 use parking_lot::Mutex;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -332,6 +333,7 @@ impl<'d> SourceBundle<'d> {
         Ok(SourceBundleDebugSession {
             manifest: self.manifest.clone(),
             archive: self.archive.clone(),
+            files_by_path: LazyCell::new(),
         })
     }
 
@@ -463,6 +465,7 @@ impl std::iter::FusedIterator for SourceBundleSymbolIterator<'_> {}
 pub struct SourceBundleDebugSession<'d> {
     manifest: Arc<SourceBundleManifest>,
     archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'d [u8]>>>>,
+    files_by_path: LazyCell<HashMap<String, String>>,
 }
 
 impl<'d> SourceBundleDebugSession<'d> {
@@ -473,14 +476,26 @@ impl<'d> SourceBundleDebugSession<'d> {
         }
     }
 
-    fn zip_path_by_source_path(&self, path: &str) -> Option<&str> {
-        for (zip_path, file_info) in &self.manifest.files {
-            if file_info.path == path {
-                return Some(&zip_path);
+    /// Create a reverse mapping of source paths to ZIP paths.
+    fn get_files_by_path(&self) -> HashMap<String, String> {
+        let files = &self.manifest.files;
+        let mut files_by_path = HashMap::with_capacity(files.len());
+
+        for (zip_path, file_info) in files {
+            if !file_info.path.is_empty() {
+                files_by_path.insert(file_info.path.clone(), zip_path.clone());
             }
         }
 
-        None
+        files_by_path
+    }
+
+    /// Get the path of a file in this bundle.
+    fn zip_path_by_source_path(&self, path: &str) -> Option<&str> {
+        self.files_by_path
+            .borrow_with(|| self.get_files_by_path())
+            .get(path)
+            .map(|zip_path| zip_path.as_str())
     }
 
     /// Looks up a file's source contents by its full canonicalized path.
