@@ -247,10 +247,6 @@ impl<'d> ObjectLike for PeObject<'d> {
         self.debug_id()
     }
 
-    fn debug_file_name(&self) -> Option<Cow<'_, str>> {
-        self.debug_file_name()
-    }
-
     fn arch(&self) -> Arch {
         self.arch()
     }

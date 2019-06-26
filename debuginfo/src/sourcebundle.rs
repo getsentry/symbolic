@@ -336,11 +336,6 @@ impl<'d> SourceBundle<'d> {
             .unwrap_or_default()
     }
 
-    /// The debug file name of this object (never set).
-    fn debug_file_name(&self) -> Option<Cow<'_, str>> {
-        None
-    }
-
     /// The debug file name of this object.
     ///
     /// This is only set if the source bundle was created from an [`ObjectLike`]. It can also be set
@@ -483,10 +478,6 @@ impl<'d> ObjectLike for SourceBundle<'d> {
 
     fn debug_id(&self) -> DebugId {
         self.debug_id()
-    }
-
-    fn debug_file_name(&self) -> Option<Cow<'_, str>> {
-        self.debug_file_name()
     }
 
     fn arch(&self) -> Arch {
