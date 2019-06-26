@@ -504,7 +504,9 @@ impl<'d> SourceBundleDebugSession<'d> {
 
     fn source_by_zip_path(&self, zip_path: &str) -> Result<Option<String>, SourceBundleError> {
         let mut archive = self.archive.lock();
-        let mut file = archive.by_name(zip_path).context(SourceBundleErrorKind::BadZip)?;
+        let mut file = archive
+            .by_name(zip_path)
+            .context(SourceBundleErrorKind::BadZip)?;
         let mut source_content = String::new();
 
         match file.read_to_string(&mut source_content) {
@@ -522,7 +524,8 @@ impl<'d> SourceBundleDebugSession<'d> {
             None => return Ok(None),
         };
 
-        self.source_by_zip_path(zip_path).map(|opt| opt.map(Cow::Owned))
+        self.source_by_zip_path(zip_path)
+            .map(|opt| opt.map(Cow::Owned))
     }
 }
 
