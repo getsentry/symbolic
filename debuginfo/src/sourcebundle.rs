@@ -70,10 +70,10 @@ where
     string.truncate(cutoff);
 }
 
-/// The type of a file in a bundle.
+/// The type of a [`SourceFileInfo`](struct.SourceFileInfo.html).
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum FileType {
+pub enum SourceFileType {
     /// Regular source file.
     Source,
 
@@ -87,32 +87,77 @@ pub enum FileType {
     IndexedRamBundle,
 }
 
-/// Meta data information on a bundled file.
+/// Meta data information of a file in a [`SourceBundle`](struct.SourceBundle.html).
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SourceFileInfo {
-    /// The type of an bundled file.
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
-    pub ty: Option<FileType>,
+    ty: Option<SourceFileType>,
 
-    /// An optional file system path that this file corresponds to.
     #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub path: String,
+    path: String,
 
-    /// Optional URL that this file corresponds to.
     #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub url: String,
+    url: String,
 
-    /// Attributes represented as headers.
-    ///
-    /// This map can include values such as `Content-Type`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub headers: BTreeMap<String, String>,
+    headers: BTreeMap<String, String>,
 }
 
 impl SourceFileInfo {
-    /// Creates default file information
+    /// Creates default file information.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Returns the type of the source file.
+    pub fn ty(&self) -> Option<SourceFileType> {
+        self.ty
+    }
+
+    /// Sets the type of the source file.
+    pub fn set_ty(&mut self, ty: SourceFileType) {
+        self.ty = Some(ty);
+    }
+
+    /// Returns the absolute file system path of this file.
+    pub fn path(&self) -> Option<&str> {
+        match self.path.as_str() {
+            "" => None,
+            path => Some(path),
+        }
+    }
+
+    /// Sets the absolute file system path of this file.
+    pub fn set_path(&mut self, path: String) {
+        self.path = path;
+    }
+
+    /// Returns the web URL that of this file.
+    pub fn url(&self) -> Option<&str> {
+        match self.url.as_str() {
+            "" => None,
+            url => Some(url),
+        }
+    }
+
+    /// Sets the web URL of this file.
+    pub fn set_url(&mut self, url: String) {
+        self.url = url;
+    }
+
+    /// Iterates over all attributes represented as headers.
+    pub fn headers(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.headers.iter().map(|(k, v)| (k.as_str(), v.as_str()))
+    }
+
+    /// Retrieves the specified header, if it exists.
+    pub fn header(&self, header: &str) -> Option<&str> {
+        self.headers.get(header).map(String::as_str)
+    }
+
+    /// Adds a custom attribute following header conventions.
+    pub fn add_header(&mut self, header: String, value: String) {
+        self.headers.insert(header, value);
     }
 
     /// Returns `true` if this instance does not carry any information.
@@ -121,7 +166,7 @@ impl SourceFileInfo {
     }
 }
 
-/// Version number of an source bundle.
+/// Version number of a [`SourceBundle`](struct.SourceBundle.html).
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct SourceBundleVersion(pub u32);
 
@@ -180,10 +225,12 @@ impl Default for SourceBundleHeader {
     }
 }
 
-/// Manifest of an ArtifactBundle containing information on its contents.
+/// Manifest of a [`SourceBundle`] containing information on its contents.
+///
+/// [`SourceBundle`]: struct.SourceBundle.html
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct SourceBundleManifest {
-    /// Descriptors for all artifact files in this bundle.
+struct SourceBundleManifest {
+    /// Descriptors for all files in this bundle.
     #[serde(default)]
     pub files: HashMap<String, SourceFileInfo>,
 
@@ -192,25 +239,25 @@ pub struct SourceBundleManifest {
     pub attributes: BTreeMap<String, String>,
 }
 
-impl SourceBundleManifest {
-    /// Returns the architecture of the corresponding object file.
-    pub fn arch(&self) -> Option<Arch> {
-        let arch_str = self.attributes.get("arch")?;
-        Some(arch_str.parse().unwrap_or_default())
-    }
-
-    /// Returns the embedded debug id if available.
-    pub fn debug_id(&self) -> Option<DebugId> {
-        self.attributes.get("debug_id").and_then(|x| x.parse().ok())
-    }
-
-    /// Returns the embedded object name if available.
-    pub fn object_name(&self) -> Option<&str> {
-        self.attributes.get("object_name").map(|x| x.as_str())
-    }
-}
-
-/// A source bundle.
+/// A bundle of source code files.
+///
+/// This file format is used to carry application source code in a platform-agnostic way. Not all
+/// object file containers specify a standardized way to inline sources into debug information.
+///
+/// Source bundles are ZIP files with a custom prepended header. Internally, they have a
+/// well-defined structure:
+///
+/// ```ignore
+/// manifest.json
+/// files/
+///   file1.txt
+///   subfolder/
+///     file2.txt
+/// ```
+///
+/// To create a source bundle, see [`SourceBundleWriter`].
+///
+/// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
 pub struct SourceBundle<'d> {
     manifest: Arc<SourceBundleManifest>,
     archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'d [u8]>>>>,
@@ -234,7 +281,7 @@ impl fmt::Debug for SourceBundle<'_> {
 }
 
 impl<'d> SourceBundle<'d> {
-    /// Checks if this is a source bundle.
+    /// Tries to parse a `SourceBundle` from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<SourceBundle<'d>, SourceBundleError> {
         let mut archive = zip::read::ZipArchive::new(std::io::Cursor::new(data))
             .context(SourceBundleErrorKind::BadZip)?;
@@ -250,24 +297,43 @@ impl<'d> SourceBundle<'d> {
         })
     }
 
-    /// Checks if this is a source bundle.
+    /// Tests whether the buffer could contain a `SourceBundle`.
     pub fn test(bytes: &[u8]) -> bool {
-        bytes.get(..4) == Some(&BUNDLE_MAGIC)
+        bytes.starts_with(&BUNDLE_MAGIC)
     }
 
-    /// Always returns `FileFormat::Unknown` as there is no real debug file underneath.
+    /// The container file format, which is always `FileFormat::SourceBundle`.
     pub fn file_format(&self) -> FileFormat {
         FileFormat::SourceBundle
     }
 
     /// The code identifier of this object.
+    ///
+    /// This is only set if the source bundle was created from an [`ObjectLike`]. It can also be set
+    /// in the [`SourceBundleWriter`] by setting the `"code_id"` attribute.
+    ///
+    /// [`ObjectLike`]: ../trait.ObjectLike.html
+    /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
     pub fn code_id(&self) -> Option<CodeId> {
-        None
+        self.manifest
+            .attributes
+            .get("code_id")
+            .and_then(|x| x.parse().ok())
     }
 
     /// The code identifier of this object.
+    ///
+    /// This is only set if the source bundle was created from an [`ObjectLike`]. It can also be set
+    /// in the [`SourceBundleWriter`] by setting the `"debug_id"` attribute.
+    ///
+    /// [`ObjectLike`]: ../trait.ObjectLike.html
+    /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
     pub fn debug_id(&self) -> DebugId {
-        self.manifest.debug_id().unwrap_or_default()
+        self.manifest
+            .attributes
+            .get("debug_id")
+            .and_then(|x| x.parse().ok())
+            .unwrap_or_default()
     }
 
     /// The debug file name of this object (never set).
@@ -277,15 +343,31 @@ impl<'d> SourceBundle<'d> {
 
     /// The debug file name of this object.
     ///
-    /// This is the name of the original debug file that was used to create the source bundle.
-    /// This might not be always available.
+    /// This is only set if the source bundle was created from an [`ObjectLike`]. It can also be set
+    /// in the [`SourceBundleWriter`] by setting the `"object_name"` attribute.
+    ///
+    /// [`ObjectLike`]: ../trait.ObjectLike.html
+    /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
     pub fn name(&self) -> Option<&str> {
-        self.manifest.object_name()
+        self.manifest
+            .attributes
+            .get("object_name")
+            .map(|x| x.as_str())
     }
 
     /// The CPU architecture of this object.
+    ///
+    /// This is only set if the source bundle was created from an [`ObjectLike`]. It can also be set
+    /// in the [`SourceBundleWriter`] by setting the `"arch"` attribute.
+    ///
+    /// [`ObjectLike`]: ../trait.ObjectLike.html
+    /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
     pub fn arch(&self) -> Arch {
-        self.manifest.arch().unwrap_or_default()
+        self.manifest
+            .attributes
+            .get("arch")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or_default()
     }
 
     /// The kind of this object.
@@ -571,7 +653,7 @@ fn sanitize_bundle_path(path: &str) -> String {
     sanitized
 }
 
-/// Writer to create source bundles.
+/// Writer to create [`SourceBundles`].
 ///
 /// Writers can either [create a new file] or be created from an [existing file]. Then, use
 /// [`add_file`] to add files and finally call [`finish`] to flush the archive to
@@ -594,6 +676,7 @@ fn sanitize_bundle_path(path: &str) -> String {
 /// # Ok(()) }
 /// ```
 ///
+/// [`SourceBundles`]: struct.SourceBundle.html
 /// [create a new file]: struct.SourceBundleWriter#method.create
 /// [existing file]: struct.SourceBundleWriter#method.new
 /// [`add_file`]: struct.SourceBundleWriter#method.add_file
@@ -726,9 +809,9 @@ where
     /// Returns `Ok(true)` if any source files were added to the bundle, or `Ok(false)` if no
     /// sources could be resolved. Otherwise, an error is returned if writing the bundle fails.
     ///
-    /// It is not permissible to write multiple objects into a bundle.
-    pub fn add_object<O>(
-        &mut self,
+    /// This finishes the source bundle and flushes the underlying writer.
+    pub fn write_object<O>(
+        mut self,
         object: &O,
         object_name: &str,
     ) -> Result<bool, SourceBundleError>
@@ -744,6 +827,9 @@ where
         self.set_attribute("arch", object.arch().to_string());
         self.set_attribute("debug_id", object.debug_id().to_string());
         self.set_attribute("object_name", object_name);
+        if let Some(code_id) = object.code_id() {
+            self.set_attribute("code_id", code_id.to_string());
+        }
 
         for func in session.functions() {
             let func = func.context(SourceBundleErrorKind::BadDebugFile)?;
@@ -763,11 +849,9 @@ where
 
                 if let Some(source) = source {
                     let bundle_path = sanitize_bundle_path(&filename);
-                    let info = SourceFileInfo {
-                        ty: Some(FileType::Source),
-                        path: filename.clone(),
-                        ..SourceFileInfo::default()
-                    };
+                    let mut info = SourceFileInfo::new();
+                    info.set_ty(SourceFileType::Source);
+                    info.set_path(filename.clone());
 
                     self.add_file(bundle_path, source.as_bytes(), info)
                         .context(SourceBundleErrorKind::WriteFailed)?;
@@ -777,7 +861,10 @@ where
             }
         }
 
-        Ok(!self.is_empty())
+        let is_empty = self.is_empty();
+        self.finish()?;
+
+        Ok(!is_empty)
     }
 
     /// Writes the manifest to the bundle and flushes the underlying file handle.
