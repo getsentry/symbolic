@@ -536,7 +536,7 @@ pub trait DebugSession {
     /// Looks up a file's source contents by its full canonicalized path.
     ///
     /// The given path must be canonicalized.
-    fn source_by_path(&self, path: &str) -> Option<String>;
+    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error>;
 }
 
 /// An object containing debug information.

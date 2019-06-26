@@ -1077,8 +1077,8 @@ impl<'d> DwarfDebugSession<'d> {
     /// Looks up a file's source contents by its full canonicalized path.
     ///
     /// The given path must be canonicalized.
-    pub fn source_by_path(&self, _path: &str) -> Option<String> {
-        None
+    pub fn source_by_path(&self, _path: &str) -> Result<Option<Cow<'_, str>>, DwarfError> {
+        Ok(None)
     }
 }
 
@@ -1089,7 +1089,7 @@ impl<'d> DebugSession for DwarfDebugSession<'d> {
         Box::new(self.functions())
     }
 
-    fn source_by_path(&self, path: &str) -> Option<String> {
+    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
         self.source_by_path(path)
     }
 }

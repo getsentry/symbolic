@@ -42,6 +42,10 @@ lazy_static::lazy_static! {
 /// Variants of [`SourceBundleError`](struct.SourceBundleError.html).
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 pub enum SourceBundleErrorKind {
+    /// The source bundle container is damanged.
+    #[fail(display = "malformed zip archive")]
+    BadZip,
+
     /// The `Object` contains invalid data and cannot be converted.
     #[fail(display = "malformed debug info file")]
     BadDebugFile,
@@ -233,12 +237,12 @@ impl<'d> SourceBundle<'d> {
     /// Checks if this is a source bundle.
     pub fn parse(data: &'d [u8]) -> Result<SourceBundle<'d>, SourceBundleError> {
         let mut archive = zip::read::ZipArchive::new(std::io::Cursor::new(data))
-            .context(SourceBundleErrorKind::BadDebugFile)?;
+            .context(SourceBundleErrorKind::BadZip)?;
         let manifest_file = archive
             .by_name("manifest.json")
-            .context(SourceBundleErrorKind::BadDebugFile)?;
+            .context(SourceBundleErrorKind::BadZip)?;
         let manifest =
-            serde_json::from_reader(manifest_file).context(SourceBundleErrorKind::BadDebugFile)?;
+            serde_json::from_reader(manifest_file).context(SourceBundleErrorKind::BadZip)?;
         Ok(SourceBundle {
             manifest: Arc::new(manifest),
             archive: Arc::new(Mutex::new(archive)),
@@ -498,19 +502,27 @@ impl<'d> SourceBundleDebugSession<'d> {
             .map(|zip_path| zip_path.as_str())
     }
 
+    fn source_by_zip_path(&self, zip_path: &str) -> Result<Option<String>, SourceBundleError> {
+        let mut archive = self.archive.lock();
+        let mut file = archive.by_name(zip_path).context(SourceBundleErrorKind::BadZip)?;
+        let mut source_content = String::new();
+
+        match file.read_to_string(&mut source_content) {
+            Ok(_) => Ok(Some(source_content)),
+            Err(e) => Err(e).context(SourceBundleErrorKind::BadZip)?,
+        }
+    }
+
     /// Looks up a file's source contents by its full canonicalized path.
     ///
     /// The given path must be canonicalized.
-    pub fn source_by_path(&self, path: &str) -> Option<String> {
-        let zip_path = self.zip_path_by_source_path(path)?;
-        let mut archive = self.archive.lock();
-        let mut file = archive.by_name(zip_path).ok()?;
-        let mut source_content = String::new();
-        if file.read_to_string(&mut source_content).is_ok() {
-            return Some(source_content);
-        }
+    pub fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, SourceBundleError> {
+        let zip_path = match self.zip_path_by_source_path(path) {
+            Some(zip_path) => zip_path,
+            None => return Ok(None),
+        };
 
-        None
+        self.source_by_zip_path(zip_path).map(|opt| opt.map(Cow::Owned))
     }
 }
 
@@ -521,7 +533,7 @@ impl<'d> DebugSession for SourceBundleDebugSession<'d> {
         Box::new(self.functions())
     }
 
-    fn source_by_path(&self, path: &str) -> Option<String> {
+    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
         self.source_by_path(path)
     }
 }
