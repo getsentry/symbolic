@@ -247,7 +247,7 @@ struct SourceBundleManifest {
 /// Source bundles are ZIP files with a custom prepended header. Internally, they have a
 /// well-defined structure:
 ///
-/// ```ignore
+/// ```txt
 /// manifest.json
 /// files/
 ///   file1.txt
@@ -668,10 +668,10 @@ fn sanitize_bundle_path(path: &str) -> String {
 /// ```
 ///
 /// [`SourceBundles`]: struct.SourceBundle.html
-/// [create a new file]: struct.SourceBundleWriter#method.create
-/// [existing file]: struct.SourceBundleWriter#method.new
-/// [`add_file`]: struct.SourceBundleWriter#method.add_file
-/// [`finish`]: struct.SourceBundleWriter#method.finish
+/// [create a new file]: struct.SourceBundleWriter.html#method.create
+/// [existing file]: struct.SourceBundleWriter.html#method.new
+/// [`add_file`]: struct.SourceBundleWriter.html#method.add_file
+/// [`finish`]: struct.SourceBundleWriter.html#method.finish
 pub struct SourceBundleWriter<W>
 where
     W: Seek + Write,
