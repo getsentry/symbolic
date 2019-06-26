@@ -4,7 +4,7 @@ use failure::Error;
 use insta;
 
 use symbolic_common::ByteView;
-use symbolic_debuginfo::{DebugSession, Function, Object, SymbolMap};
+use symbolic_debuginfo::{Function, Object, SymbolMap};
 
 /// Helper to create neat snapshots for symbol tables.
 struct SymbolsDebug<'a>(&'a SymbolMap<'a>);
