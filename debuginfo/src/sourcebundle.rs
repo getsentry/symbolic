@@ -18,7 +18,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use zip::{write::FileOptions, ZipWriter};
 
-use symbolic_common::{clean_path, derive_failure, join_path, Arch, AsSelf, CodeId, DebugId};
+use symbolic_common::{clean_path, derive_failure, Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
 use crate::private::Parse;
@@ -850,34 +850,31 @@ where
             self.set_attribute("code_id", code_id.to_string());
         }
 
-        for func in session.functions() {
-            let func = func.context(SourceBundleErrorKind::BadDebugFile)?;
-            for line in &func.lines {
-                let compilation_dir = String::from_utf8_lossy(&func.compilation_dir);
-                let filename = clean_path(&join_path(&compilation_dir, &line.file.path_str()));
+        for file_result in session.files() {
+            let file = file_result.context(SourceBundleErrorKind::BadDebugFile)?;
+            let filename = clean_path(&file.abs_path_str());
 
-                if files_handled.contains(&filename) {
-                    continue;
-                }
-
-                let source = if filename.starts_with('<') && filename.ends_with('>') {
-                    None
-                } else {
-                    fs::read_to_string(&filename).ok()
-                };
-
-                if let Some(source) = source {
-                    let bundle_path = sanitize_bundle_path(&filename);
-                    let mut info = SourceFileInfo::new();
-                    info.set_ty(SourceFileType::Source);
-                    info.set_path(filename.clone());
-
-                    self.add_file(bundle_path, source.as_bytes(), info)
-                        .context(SourceBundleErrorKind::WriteFailed)?;
-                }
-
-                files_handled.insert(filename);
+            if files_handled.contains(&filename) {
+                continue;
             }
+
+            let source = if filename.starts_with('<') && filename.ends_with('>') {
+                None
+            } else {
+                fs::read_to_string(&filename).ok()
+            };
+
+            if let Some(source) = source {
+                let bundle_path = sanitize_bundle_path(&filename);
+                let mut info = SourceFileInfo::new();
+                info.set_ty(SourceFileType::Source);
+                info.set_path(filename.clone());
+
+                self.add_file(bundle_path, source.as_bytes(), info)
+                    .context(SourceBundleErrorKind::WriteFailed)?;
+            }
+
+            files_handled.insert(filename);
         }
 
         let is_empty = self.is_empty();
