@@ -392,6 +392,17 @@ impl<'d> ObjectDebugSession<'d> {
         }
     }
 
+    /// Returns an iterator over all source files referenced by this debug file.
+    pub fn files(&self) -> ObjectFileIterator<'_> {
+        match *self {
+            ObjectDebugSession::Breakpad(ref s) => ObjectFileIterator::Breakpad(s.files()),
+            ObjectDebugSession::Dwarf(ref s) => ObjectFileIterator::Dwarf(s.files()),
+            ObjectDebugSession::Pdb(ref s) => ObjectFileIterator::Pdb(s.files()),
+            ObjectDebugSession::Pe(ref s) => ObjectFileIterator::Pe(s.files()),
+            ObjectDebugSession::SourceBundle(ref s) => ObjectFileIterator::SourceBundle(s.files()),
+        }
+    }
+
     /// Looks up a file's source contents by its full canonicalized path.
     ///
     /// The given path must be canonicalized.
@@ -415,6 +426,10 @@ impl DebugSession for ObjectDebugSession<'_> {
 
     fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(self.functions())
+    }
+
+    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
+        Box::new(std::iter::empty())
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
@@ -444,6 +459,35 @@ impl<'s> Iterator for ObjectFunctionIterator<'s> {
             ObjectFunctionIterator::Pdb(ref mut i) => Some(i.next()?.map_err(ObjectError::Pdb)),
             ObjectFunctionIterator::Pe(ref mut i) => Some(i.next()?.map_err(ObjectError::Pe)),
             ObjectFunctionIterator::SourceBundle(ref mut i) => {
+                Some(i.next()?.map_err(ObjectError::SourceBundle))
+            }
+        }
+    }
+}
+
+/// An iterator over source files in an [`Object`](enum.Object.html).
+#[allow(missing_docs)]
+#[allow(clippy::large_enum_variant)]
+pub enum ObjectFileIterator<'s> {
+    Breakpad(BreakpadFileIterator<'s>),
+    Dwarf(DwarfFileIterator<'s>),
+    Pdb(PdbFileIterator<'s>),
+    Pe(PeFileIterator<'s>),
+    SourceBundle(SourceBundleFileIterator<'s>),
+}
+
+impl<'s> Iterator for ObjectFileIterator<'s> {
+    type Item = Result<FileEntry<'s>, ObjectError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match *self {
+            ObjectFileIterator::Breakpad(ref mut i) => {
+                Some(i.next()?.map_err(ObjectError::Breakpad))
+            }
+            ObjectFileIterator::Dwarf(ref mut i) => Some(i.next()?.map_err(ObjectError::Dwarf)),
+            ObjectFileIterator::Pdb(ref mut i) => Some(i.next()?.map_err(ObjectError::Pdb)),
+            ObjectFileIterator::Pe(ref mut i) => Some(i.next()?.map_err(ObjectError::Pe)),
+            ObjectFileIterator::SourceBundle(ref mut i) => {
                 Some(i.next()?.map_err(ObjectError::SourceBundle))
             }
         }

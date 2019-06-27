@@ -400,7 +400,7 @@ impl<'d> FromIterator<Symbol<'d>> for SymbolMap<'d> {
     }
 }
 
-/// File information refered by [`LineInfo`](struct.LineInfo.html) comprising a directory and name.
+/// File information referred by [`LineInfo`](struct.LineInfo.html) comprising a directory and name.
 ///
 /// The file path is usually relative to a compilation directory. It might contain parent directory
 /// segments (`../`).
@@ -413,6 +413,16 @@ pub struct FileInfo<'data> {
 }
 
 impl<'data> FileInfo<'data> {
+    /// Creates a `FileInfo` from a joined path by trying to split it.
+    pub(crate) fn from_path(path: &'data [u8]) -> Self {
+        let (dir, name) = symbolic_common::split_path_bytes(path);
+
+        FileInfo {
+            name,
+            dir: dir.unwrap_or_default(),
+        }
+    }
+
     /// The file name as UTF-8 string.
     pub fn name_str(&self) -> Cow<'data, str> {
         String::from_utf8_lossy(self.name)
@@ -435,6 +445,44 @@ impl fmt::Debug for FileInfo<'_> {
             .field("name", &String::from_utf8_lossy(self.name))
             .field("dir", &String::from_utf8_lossy(self.dir))
             .finish()
+    }
+}
+
+/// File information comprising a compilation directory, relative path and name.
+pub struct FileEntry<'data> {
+    /// Path to the compilation directory. File paths are relative to this.
+    pub compilation_dir: &'data [u8],
+    /// File name and path.
+    pub info: FileInfo<'data>,
+}
+
+impl<'data> FileEntry<'data> {
+    /// Path to the compilation directory.
+    pub fn compilation_dir_str(&self) -> Cow<'data, str> {
+        String::from_utf8_lossy(self.compilation_dir)
+    }
+
+    /// Absolute path to the file, including the compilation directory.
+    pub fn abs_path_str(&self) -> String {
+        join_path(&self.compilation_dir_str(), &self.path_str())
+    }
+}
+
+impl fmt::Debug for FileEntry<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("FileInfo")
+            .field("compilation_dir", &self.compilation_dir_str())
+            .field("name", &self.name_str())
+            .field("dir", &self.dir_str())
+            .finish()
+    }
+}
+
+impl<'data> Deref for FileEntry<'data> {
+    type Target = FileInfo<'data>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.info
     }
 }
 
@@ -532,6 +580,9 @@ pub trait DebugSession {
     /// units. Note that the iterator holds a mutable borrow on the debug session, which allows it
     /// to use caches and optimize resources while resolving function and line information.
     fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>>;
+
+    /// Returns an iterator over all source files referenced by this debug file.
+    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>>;
 
     /// Looks up a file's source contents by its full canonicalized path.
     ///

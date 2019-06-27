@@ -546,6 +546,13 @@ pub struct SourceBundleDebugSession<'d> {
 }
 
 impl<'d> SourceBundleDebugSession<'d> {
+    /// Returns an iterator over all source files in this debug file.
+    pub fn files(&self) -> SourceBundleFileIterator<'_> {
+        SourceBundleFileIterator {
+            files: self.manifest.files.values(),
+        }
+    }
+
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> SourceBundleFunctionIterator<'_> {
         SourceBundleFunctionIterator {
@@ -609,8 +616,29 @@ impl<'d> DebugSession for SourceBundleDebugSession<'d> {
         Box::new(self.functions())
     }
 
+    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
+        Box::new(self.files())
+    }
+
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
         self.source_by_path(path)
+    }
+}
+
+/// An iterator over source files in a SourceBundle object.
+pub struct SourceBundleFileIterator<'s> {
+    files: std::collections::hash_map::Values<'s, String, SourceFileInfo>,
+}
+
+impl<'s> Iterator for SourceBundleFileIterator<'s> {
+    type Item = Result<FileEntry<'s>, SourceBundleError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let source_file = self.files.next()?;
+        Some(Ok(FileEntry {
+            compilation_dir: &[],
+            info: FileInfo::from_path(source_file.path.as_bytes()),
+        }))
     }
 }
 

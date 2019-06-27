@@ -322,6 +322,11 @@ impl<'d> PeDebugSession<'d> {
         std::iter::empty()
     }
 
+    /// Returns an iterator over all source files referenced by this debug file.
+    pub fn files(&self) -> PeFileIterator<'_> {
+        std::iter::empty()
+    }
+
     /// Looks up a file's source contents by its full canonicalized path.
     ///
     /// The given path must be canonicalized.
@@ -337,6 +342,10 @@ impl DebugSession for PeDebugSession<'_> {
         Box::new(std::iter::empty())
     }
 
+    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
+        Box::new(std::iter::empty())
+    }
+
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
         self.source_by_path(path)
     }
@@ -344,3 +353,6 @@ impl DebugSession for PeDebugSession<'_> {
 
 /// An iterator over functions in a PE file.
 pub type PeFunctionIterator<'s> = std::iter::Empty<Result<Function<'s>, PeError>>;
+
+/// An iterator over source files in a PE file.
+pub type PeFileIterator<'s> = std::iter::Empty<Result<FileEntry<'s>, PeError>>;

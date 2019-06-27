@@ -28,7 +28,7 @@ gimli = { version = "0.18.0", features = ["read", "std"], default-features = fal
 goblin = { git = "https://github.com/jan-auer/goblin", rev = "dd199e4b9027c9ca4389d5b066f5e264ef507e43" }
 lazycell = "1.2.1"
 lazy_static = "1.3.0"
-pdb =  { git = "https://github.com/jan-auer/pdb", rev = "da040f145d98c1d86da7cda3894fbc4dae1ba796" }
+pdb =  { git = "https://github.com/jan-auer/pdb", rev = "82ccf299aa5cca4c3f969d80bcd5f4ac4439ff99" }
 parking_lot = "0.8.0"
 pest = "2.1.1"
 pest_derive = "2.1.0"

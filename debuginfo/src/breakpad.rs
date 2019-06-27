@@ -1069,6 +1069,13 @@ impl<'d> BreakpadDebugSession<'d> {
         }
     }
 
+    /// Returns an iterator over all source files in this debug file.
+    pub fn files(&self) -> BreakpadFileIterator<'_> {
+        BreakpadFileIterator {
+            files: self.file_map.values(),
+        }
+    }
+
     /// Looks up a file's source contents by its full canonicalized path.
     ///
     /// The given path must be canonicalized.
@@ -1084,8 +1091,29 @@ impl<'d> DebugSession for BreakpadDebugSession<'d> {
         Box::new(self.functions())
     }
 
+    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
+        Box::new(self.files())
+    }
+
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
         self.source_by_path(path)
+    }
+}
+
+/// An iterator over source files in a Breakpad object.
+pub struct BreakpadFileIterator<'s> {
+    files: std::collections::btree_map::Values<'s, u64, &'s str>,
+}
+
+impl<'s> Iterator for BreakpadFileIterator<'s> {
+    type Item = Result<FileEntry<'s>, BreakpadError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let path = self.files.next()?;
+        Some(Ok(FileEntry {
+            compilation_dir: &[],
+            info: FileInfo::from_path(path.as_bytes()),
+        }))
     }
 }
 
@@ -1101,14 +1129,10 @@ impl<'s> BreakpadFunctionIterator<'s> {
         for line in record.lines() {
             let line = line?;
             let filename = line.filename(&self.file_map).unwrap_or_default();
-            let (dir, name) = symbolic_common::split_path(filename);
 
             lines.push(LineInfo {
                 address: line.address,
-                file: FileInfo {
-                    name: name.as_bytes(),
-                    dir: dir.unwrap_or_default().as_bytes(),
-                },
+                file: FileInfo::from_path(filename.as_bytes()),
                 line: line.line,
             });
         }

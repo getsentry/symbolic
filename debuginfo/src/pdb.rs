@@ -11,8 +11,7 @@ use parking_lot::RwLock;
 use pdb::{AddressMap, FallibleIterator, MachineType, Module, ModuleInfo, SymbolData};
 
 use symbolic_common::{
-    derive_failure, split_path_bytes, Arch, AsSelf, CodeId, CpuFamily, DebugId, Name, SelfCell,
-    Uuid,
+    derive_failure, Arch, AsSelf, CodeId, CpuFamily, DebugId, Name, SelfCell, Uuid,
 };
 
 use crate::base::*;
@@ -420,6 +419,15 @@ impl<'d> PdbDebugInfo<'d> {
 
         Ok(module_opt.as_ref())
     }
+
+    fn file_info(&self, file_info: pdb::FileInfo<'d>) -> Result<FileInfo<'_>, PdbError> {
+        let file_path = match self.string_table {
+            Some(ref string_table) => file_info.name.to_raw_string(string_table)?,
+            None => "".into(),
+        };
+
+        Ok(FileInfo::from_path(file_path.as_bytes()))
+    }
 }
 
 impl<'slf, 'd: 'slf> AsSelf<'slf> for PdbDebugInfo<'d> {
@@ -447,6 +455,16 @@ impl<'d> PdbDebugSession<'d> {
         Ok(PdbDebugSession { cell })
     }
 
+    /// Returns an iterator over all source files in this debug file.
+    pub fn files(&self) -> PdbFileIterator<'_> {
+        PdbFileIterator {
+            debug_info: self.cell.get(),
+            units: self.cell.get().units(),
+            files: pdb::FileIterator::default(),
+            finished: false,
+        }
+    }
+
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> PdbFunctionIterator<'_> {
         PdbFunctionIterator {
@@ -471,6 +489,10 @@ impl DebugSession for PdbDebugSession<'_> {
         Box::new(self.functions())
     }
 
+    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
+        Box::new(self.files())
+    }
+
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
         self.source_by_path(path)
     }
@@ -484,7 +506,6 @@ struct Unit<'s> {
 impl<'s> Unit<'s> {
     fn functions(&self) -> Result<Vec<Function<'s>>, PdbError> {
         let address_map = &self.debug_info.address_map;
-        let string_table = &self.debug_info.string_table;
         let symbol_map = &self.debug_info.symbol_map;
 
         let program = self.module.line_program()?;
@@ -523,18 +544,10 @@ impl<'s> Unit<'s> {
                 };
 
                 let file_info = program.get_file_info(line_info.file_index)?;
-                let file_path = match string_table {
-                    Some(string_table) => file_info.name.to_raw_string(&string_table)?,
-                    None => "".into(),
-                };
-                let (dir, name) = split_path_bytes(file_path.as_bytes());
 
                 lines.push(LineInfo {
                     address: rva,
-                    file: FileInfo {
-                        dir: dir.unwrap_or_default(),
-                        name,
-                    },
+                    file: self.debug_info.file_info(file_info)?,
                     line: line_info.line_start.into(),
                 });
             }
@@ -582,6 +595,54 @@ impl<'s> Iterator for PdbUnitIterator<'s> {
             return Some(Ok(Unit { debug_info, module }));
         }
 
+        None
+    }
+}
+
+/// An iterator over source files in a Pdb object.
+pub struct PdbFileIterator<'s> {
+    debug_info: &'s PdbDebugInfo<'s>,
+    units: PdbUnitIterator<'s>,
+    files: pdb::FileIterator<'s>,
+    finished: bool,
+}
+
+impl<'s> Iterator for PdbFileIterator<'s> {
+    type Item = Result<FileEntry<'s>, PdbError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
+
+        loop {
+            if let Some(file_result) = self.files.next().transpose() {
+                let result = file_result
+                    .map_err(|err| err.into())
+                    .and_then(|i| self.debug_info.file_info(i))
+                    .map(|info| FileEntry {
+                        compilation_dir: &[],
+                        info,
+                    });
+
+                return Some(result);
+            }
+
+            let unit = match self.units.next() {
+                Some(Ok(unit)) => unit,
+                Some(Err(error)) => return Some(Err(error)),
+                None => break,
+            };
+
+            let line_program = match unit.module.line_program() {
+                Ok(line_program) => line_program,
+                Err(error) => return Some(Err(error.into())),
+            };
+
+            self.files = line_program.files();
+        }
+
+        self.finished = true;
         None
     }
 }
