@@ -120,10 +120,7 @@ fn test_breakpad_files() -> Result<(), Error> {
     let session = object.debug_session()?;
     let files = session.files().collect::<Result<Vec<_>, _>>()?;
     assert_eq!(files.len(), 147);
-    insta::assert_debug_snapshot_matches!(
-        "breakpad_files",
-        FilesDebug(&files[..10])
-    );
+    insta::assert_debug_snapshot_matches!("breakpad_files", FilesDebug(&files[..10]));
 
     Ok(())
 }
@@ -219,10 +216,7 @@ fn test_elf_files() -> Result<(), Error> {
     let session = object.debug_session()?;
     let files = session.files().collect::<Result<Vec<_>, _>>()?;
     assert_eq!(files.len(), 1012);
-    insta::assert_debug_snapshot_matches!(
-        "elf_files",
-        FilesDebug(&files[..10])
-    );
+    insta::assert_debug_snapshot_matches!("elf_files", FilesDebug(&files[..10]));
 
     Ok(())
 }
@@ -309,16 +303,14 @@ fn test_mach_symbols() -> Result<(), Error> {
 
 #[test]
 fn test_mach_files() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
+    let view =
+        ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
     let files = session.files().collect::<Result<Vec<_>, _>>()?;
     assert_eq!(files.len(), 554);
-    insta::assert_debug_snapshot_matches!(
-        "mach_files",
-        FilesDebug(&files[..10])
-    );
+    insta::assert_debug_snapshot_matches!("mach_files", FilesDebug(&files[..10]));
 
     Ok(())
 }
@@ -444,10 +436,7 @@ fn test_pdb_files() -> Result<(), Error> {
     let session = object.debug_session()?;
     let files = session.files().collect::<Result<Vec<_>, _>>()?;
     assert_eq!(files.len(), 967);
-    insta::assert_debug_snapshot_matches!(
-        "pdb_files",
-        FilesDebug(&files[..10])
-    );
+    insta::assert_debug_snapshot_matches!("pdb_files", FilesDebug(&files[..10]));
 
     Ok(())
 }
