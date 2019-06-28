@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use failure::Fail;
 
-use symbolic_common::{join_path, Arch, CodeId, DebugId, Name};
+use symbolic_common::{clean_path, join_path, Arch, CodeId, DebugId, Name};
 
 /// An error returned for unknown or invalid `ObjectKinds`.
 #[derive(Debug, Fail, Clone, Copy)]
@@ -435,7 +435,8 @@ impl<'data> FileInfo<'data> {
 
     /// The full path to the file, relative to the compilation directory.
     pub fn path_str(&self) -> String {
-        join_path(&self.dir_str(), &self.name_str())
+        let joined = join_path(&self.dir_str(), &self.name_str());
+        clean_path(&joined)
     }
 }
 
@@ -464,7 +465,8 @@ impl<'data> FileEntry<'data> {
 
     /// Absolute path to the file, including the compilation directory.
     pub fn abs_path_str(&self) -> String {
-        join_path(&self.compilation_dir_str(), &self.path_str())
+        let joined = join_path(&self.compilation_dir_str(), &self.path_str());
+        clean_path(&joined)
     }
 }
 
@@ -681,4 +683,59 @@ mod derive_serde {
 
     impl_str_serde!(super::ObjectKind);
     impl_str_serde!(super::FileFormat);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn file_info<'a>(dir: &'a str, name: &'a str) -> FileInfo<'a> {
+        FileInfo {
+            dir: dir.as_bytes(),
+            name: name.as_bytes(),
+        }
+    }
+
+    fn file_entry<'a>(compilation_dir: &'a str, dir: &'a str, name: &'a str) -> FileEntry<'a> {
+        FileEntry {
+            compilation_dir: compilation_dir.as_bytes(),
+            info: file_info(dir, name),
+        }
+    }
+
+    #[test]
+    fn test_file_info() {
+        assert_eq!(file_info("", "foo.h").path_str(), "foo.h");
+        assert_eq!(
+            file_info("C:\\Windows", "foo.h").path_str(),
+            "C:\\Windows\\foo.h"
+        );
+        assert_eq!(
+            file_info("/usr/local", "foo.h").path_str(),
+            "/usr/local/foo.h"
+        );
+        assert_eq!(file_info("/usr/local", "../foo.h").path_str(), "/usr/foo.h");
+        assert_eq!(file_info("/usr/local", "/foo.h").path_str(), "/foo.h");
+    }
+
+    #[test]
+    fn test_file_entry() {
+        assert_eq!(file_entry("", "", "foo.h").abs_path_str(), "foo.h");
+        assert_eq!(
+            file_entry("C:\\Windows", "src", "foo.h").abs_path_str(),
+            "C:\\Windows\\src\\foo.h"
+        );
+        assert_eq!(
+            file_entry("/usr", "local", "foo.h").abs_path_str(),
+            "/usr/local/foo.h"
+        );
+        assert_eq!(
+            file_entry("/usr/local", "..", "foo.h").abs_path_str(),
+            "/usr/foo.h"
+        );
+        assert_eq!(
+            file_entry("/usr", "/src", "foo.h").abs_path_str(),
+            "/src/foo.h"
+        );
+    }
 }

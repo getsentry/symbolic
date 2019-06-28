@@ -1,16 +1,16 @@
 ---
-created: "2019-06-28T08:20:37.425358Z"
+created: "2019-06-28T08:34:30.750035Z"
 creator: insta@0.8.1
 source: debuginfo/tests/test_objects.rs
 expression: "FilesDebug(&files[..10])"
 ---
-/work/linux/../linux/main.cpp
+/work/linux/main.cpp
 /usr/include/x86_64-linux-gnu/bits/stdio2.h
-/work/linux/../deps/breakpad/src/client/linux/handler/minidump_descriptor.h
+/work/deps/breakpad/src/client/linux/handler/minidump_descriptor.h
 /usr/include/c++/5/bits/basic_string.h
 /usr/include/c++/5/ext/new_allocator.h
 /usr/include/c++/5/bits/char_traits.h
-/work/linux/../deps/breakpad/src/client/linux/handler/microdump_extra_info.h
+/work/deps/breakpad/src/client/linux/handler/microdump_extra_info.h
 /usr/lib/gcc/x86_64-linux-gnu/5/include/stddef.h
 /usr/include/x86_64-linux-gnu/bits/types.h
 /usr/include/stdio.h

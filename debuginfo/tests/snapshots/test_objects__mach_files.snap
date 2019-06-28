@@ -1,12 +1,12 @@
 ---
-created: "2019-06-28T08:20:37.433575Z"
+created: "2019-06-28T08:34:30.763613Z"
 creator: insta@0.8.1
 source: debuginfo/tests/test_objects.rs
 expression: "FilesDebug(&files[..10])"
 ---
-/Users/travis/build/getsentry/breakpad-tools/macos/../deps/breakpad/src/client/minidump_file_writer.h
+/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client/minidump_file_writer.h
 /usr/include/_types/_uint32_t.h
-/Users/travis/build/getsentry/breakpad-tools/macos/../deps/breakpad/src/google_breakpad/common/minidump_format.h
+/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/google_breakpad/common/minidump_format.h
 /usr/include/i386/_types.h
 /usr/include/sys/_types/_size_t.h
 /usr/include/_types/_uint64_t.h
