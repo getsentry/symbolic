@@ -49,7 +49,7 @@ pub enum ObjectKind {
 
     /// A container that just stores source code files, but no other debug
     /// information corresponding to the original object file.
-    Source,
+    Sources,
 
     /// The Other type represents any valid object class that does not fit any
     /// of the other classes. These are mostly CPU or OS dependent, or unique
