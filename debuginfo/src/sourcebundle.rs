@@ -37,8 +37,8 @@
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
-use std::fs::{self, File, OpenOptions};
-use std::io::{BufWriter, Read, Seek, Write};
+use std::fs::{File, OpenOptions};
+use std::io::{BufReader, BufWriter, Read, Seek, Write};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -880,7 +880,7 @@ where
             let source = if filename.starts_with('<') && filename.ends_with('>') {
                 None
             } else {
-                fs::read_to_string(&filename).ok()
+                File::open(&filename).ok().map(BufReader::new)
             };
 
             if let Some(source) = source {
@@ -889,7 +889,7 @@ where
                 info.set_ty(SourceFileType::Source);
                 info.set_path(filename.clone());
 
-                self.add_file(bundle_path, source.as_bytes(), info)
+                self.add_file(bundle_path, source, info)
                     .context(SourceBundleErrorKind::WriteFailed)?;
             }
 
