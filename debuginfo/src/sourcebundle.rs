@@ -1,7 +1,38 @@
-//! A module to bundle sources from debug files for later processing.
+//! Support for Source Bundles, a proprietary archive containing source code.
 //!
-//! TODO(jauer): Describe contents
-//! Defines the `SourceBundle` type and corresponding writer.
+//! This module defines the [`SourceBundle`] type. Since not all object file containers specify a
+//! standardized way to inline sources into debug information, this can be used to associate source
+//! contents to debug files.
+//!
+//! Source bundles are ZIP archives with a well-defined internal structure. Most importantly, they
+//! contain source files in a nested directory structure. Additionally, there is meta data
+//! associated to every source file, which allows to store additional properties, such as the
+//! original file system path, a web URL, and custom headers.
+//!
+//! The internal structure is as follows:
+//!
+//! ```txt
+//! manifest.json
+//! files/
+//!   file1.txt
+//!   subfolder/
+//!     file2.txt
+//! ```
+//!
+//! `SourceBundle` implements the [`ObjectLike`] trait. When created from another object, it carries
+//! over its meta data, such as the [`debug_id`] or [`code_id`]. However, source bundles never store
+//! symbols or debug information. To obtain sources or iterate files stored in this source bundle,
+//! use [`SourceBundle::debug_session`].
+//!
+//! Source bundles can be created manually or by converting any `ObjectLike` using
+//! [`SourceBundleWriter`].
+//!
+//! [`ObjectLike`]: ../trait.ObjectLike.html
+//! [`SourceBundle`]: struct.SourceBundle.html
+//! [`debug_id`]: struct.SourceBundle.html#method.debug_id
+//! [`code_id`]: struct.SourceBundle.html#method.code_id
+//! [`SourceBundle::debug_session`]: struct.SourceBundle.html#method.debug_session
+//! [`SourceBundleWriter`]: struct.SourceBundleWriter.html
 
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -241,23 +272,11 @@ struct SourceBundleManifest {
 
 /// A bundle of source code files.
 ///
-/// This file format is used to carry application source code in a platform-agnostic way. Not all
-/// object file containers specify a standardized way to inline sources into debug information.
-///
-/// Source bundles are ZIP files with a custom prepended header. Internally, they have a
-/// well-defined structure:
-///
-/// ```txt
-/// manifest.json
-/// files/
-///   file1.txt
-///   subfolder/
-///     file2.txt
-/// ```
-///
-/// To create a source bundle, see [`SourceBundleWriter`].
+/// To create a source bundle, see [`SourceBundleWriter`]. For more information, see the [module
+/// level documentation].
 ///
 /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
+/// [module level documentation]: index.html
 pub struct SourceBundle<'d> {
     manifest: Arc<SourceBundleManifest>,
     archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'d [u8]>>>>,
@@ -281,6 +300,11 @@ impl fmt::Debug for SourceBundle<'_> {
 }
 
 impl<'d> SourceBundle<'d> {
+    /// Tests whether the buffer could contain a `SourceBundle`.
+    pub fn test(bytes: &[u8]) -> bool {
+        bytes.starts_with(&BUNDLE_MAGIC)
+    }
+
     /// Tries to parse a `SourceBundle` from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<SourceBundle<'d>, SourceBundleError> {
         let mut archive = zip::read::ZipArchive::new(std::io::Cursor::new(data))
@@ -297,9 +321,9 @@ impl<'d> SourceBundle<'d> {
         })
     }
 
-    /// Tests whether the buffer could contain a `SourceBundle`.
-    pub fn test(bytes: &[u8]) -> bool {
-        bytes.starts_with(&BUNDLE_MAGIC)
+    /// Returns the version of this source bundle format.
+    pub fn version(&self) -> SourceBundleVersion {
+        SourceBundleVersion(BUNDLE_VERSION)
     }
 
     /// The container file format, which is always `FileFormat::SourceBundle`.
@@ -431,11 +455,6 @@ impl<'d> SourceBundle<'d> {
     /// Returns the raw data of the source bundle.
     pub fn data(&self) -> &'d [u8] {
         self.data
-    }
-
-    /// Returns the version of this source bundle format.
-    pub fn version(&self) -> SourceBundleVersion {
-        SourceBundleVersion(BUNDLE_VERSION)
     }
 
     /// Returns true if this source bundle contains no source code.
