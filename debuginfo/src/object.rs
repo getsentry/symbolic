@@ -429,7 +429,7 @@ impl DebugSession for ObjectDebugSession<'_> {
     }
 
     fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
-        Box::new(std::iter::empty())
+        Box::new(self.files())
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {

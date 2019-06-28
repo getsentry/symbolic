@@ -49,7 +49,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use zip::{write::FileOptions, ZipWriter};
 
-use symbolic_common::{clean_path, derive_failure, Arch, AsSelf, CodeId, DebugId};
+use symbolic_common::{derive_failure, Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
 use crate::private::Parse;
@@ -871,7 +871,7 @@ where
 
         for file_result in session.files() {
             let file = file_result.context(SourceBundleErrorKind::BadDebugFile)?;
-            let filename = clean_path(&file.abs_path_str());
+            let filename = file.abs_path_str();
 
             if files_handled.contains(&filename) {
                 continue;
