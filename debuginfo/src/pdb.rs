@@ -175,7 +175,7 @@ impl<'d> PdbObject<'d> {
     }
 
     /// Determines whether this object contains embedded source.
-    pub fn has_source(&self) -> bool {
+    pub fn has_sources(&self) -> bool {
         false
     }
 
@@ -289,8 +289,8 @@ impl<'d> ObjectLike for PdbObject<'d> {
         self.has_unwind_info()
     }
 
-    fn has_source(&self) -> bool {
-        self.has_source()
+    fn has_sources(&self) -> bool {
+        self.has_sources()
     }
 }
 

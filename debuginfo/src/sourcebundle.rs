@@ -294,7 +294,7 @@ impl fmt::Debug for SourceBundle<'_> {
             .field("has_symbols", &self.has_symbols())
             .field("has_debug_info", &self.has_debug_info())
             .field("has_unwind_info", &self.has_unwind_info())
-            .field("has_source", &self.has_source())
+            .field("has_sources", &self.has_sources())
             .finish()
     }
 }
@@ -448,7 +448,7 @@ impl<'d> SourceBundle<'d> {
     }
 
     /// Determines whether this object contains embedded source.
-    pub fn has_source(&self) -> bool {
+    pub fn has_sources(&self) -> bool {
         true
     }
 
@@ -535,8 +535,8 @@ impl<'d> ObjectLike for SourceBundle<'d> {
         self.has_unwind_info()
     }
 
-    fn has_source(&self) -> bool {
-        self.has_source()
+    fn has_sources(&self) -> bool {
+        self.has_sources()
     }
 }
 

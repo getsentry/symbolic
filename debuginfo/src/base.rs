@@ -649,7 +649,7 @@ pub trait ObjectLike {
     fn has_unwind_info(&self) -> bool;
 
     /// Determines whether this object contains embedded sources.
-    fn has_source(&self) -> bool;
+    fn has_sources(&self) -> bool;
 }
 
 mod derive_serde {

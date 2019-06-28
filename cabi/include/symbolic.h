@@ -206,7 +206,7 @@ typedef struct {
   bool symtab;
   bool debug;
   bool unwind;
-  bool source;
+  bool sources;
 } SymbolicObjectFeatures;
 
 /**

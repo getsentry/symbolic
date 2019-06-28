@@ -288,8 +288,8 @@ impl<'d> Object<'d> {
     }
 
     /// Determines whether this object contains embedded source
-    pub fn has_source(&self) -> bool {
-        match_inner!(self, Object(ref o) => o.has_source())
+    pub fn has_sources(&self) -> bool {
+        match_inner!(self, Object(ref o) => o.has_sources())
     }
 
     /// Returns the raw data of the underlying buffer.
@@ -358,8 +358,8 @@ impl<'d> ObjectLike for Object<'d> {
         self.has_unwind_info()
     }
 
-    fn has_source(&self) -> bool {
-        self.has_source()
+    fn has_sources(&self) -> bool {
+        self.has_sources()
     }
 }
 
