@@ -465,7 +465,8 @@ impl<'data> FileEntry<'data> {
 
     /// Absolute path to the file, including the compilation directory.
     pub fn abs_path_str(&self) -> String {
-        let joined = join_path(&self.compilation_dir_str(), &self.path_str());
+        let joined_path = join_path(&self.dir_str(), &self.name_str());
+        let joined = join_path(&self.compilation_dir_str(), &joined_path);
         clean_path(&joined)
     }
 }

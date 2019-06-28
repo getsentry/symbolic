@@ -458,9 +458,17 @@ impl<'a> LineInfo<'a> {
         self.filename
     }
 
-    /// The fully joined path and file name.
+    /// The joined path and file name relative to the compilation directory.
     pub fn path(&self) -> String {
-        symbolic_common::join_path(self.base_dir, self.filename)
+        let joined = symbolic_common::join_path(self.base_dir, self.filename);
+        symbolic_common::clean_path(&joined)
+    }
+
+    /// The fully joined absolute path including the compilation directory.
+    pub fn abs_path(&self) -> String {
+        let joined_path = symbolic_common::join_path(self.base_dir, self.filename);
+        let joined = symbolic_common::join_path(self.comp_dir, &joined_path);
+        symbolic_common::clean_path(&joined)
     }
 
     /// The line number within the file.
