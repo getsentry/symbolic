@@ -67,7 +67,7 @@ impl ObjectKind {
             ObjectKind::Library => "lib",
             ObjectKind::Dump => "dump",
             ObjectKind::Debug => "dbg",
-            ObjectKind::Source => "src",
+            ObjectKind::Sources => "src",
             ObjectKind::Other => "other",
         }
     }
@@ -88,7 +88,7 @@ impl ObjectKind {
             ObjectKind::Library => "library",
             ObjectKind::Dump => "memory dump",
             ObjectKind::Debug => "debug companion",
-            ObjectKind::Source => "source bundle",
+            ObjectKind::Sources => "sources",
             ObjectKind::Other => "file",
         }
     }
@@ -115,7 +115,7 @@ impl FromStr for ObjectKind {
             "lib" => ObjectKind::Library,
             "dump" => ObjectKind::Dump,
             "dbg" => ObjectKind::Debug,
-            "src" => ObjectKind::Source,
+            "src" => ObjectKind::Sources,
             "other" => ObjectKind::Other,
             _ => return Err(UnknownObjectKindError),
         })

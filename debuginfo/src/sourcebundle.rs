@@ -393,7 +393,7 @@ impl<'d> SourceBundle<'d> {
     ///
     /// Because source bundles do not contain real objects this is always `ObjectKind::None`.
     fn kind(&self) -> ObjectKind {
-        ObjectKind::Source
+        ObjectKind::Sources
     }
 
     /// The address at which the image prefers to be loaded into memory.
