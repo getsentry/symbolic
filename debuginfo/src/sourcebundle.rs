@@ -965,6 +965,7 @@ impl SourceBundleWriter<BufWriter<File>> {
             .read(true)
             .write(true)
             .create(true)
+            .truncate(true)
             .open(path)
             .context(SourceBundleErrorKind::WriteFailed)?;
 
