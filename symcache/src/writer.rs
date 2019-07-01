@@ -4,9 +4,10 @@ use std::io::{self, Seek, Write};
 
 use failure::{Fail, ResultExt};
 use fnv::{FnvHashMap, FnvHashSet};
+use num::FromPrimitive;
 
 use symbolic_common::{Arch, DebugId, Language};
-use symbolic_debuginfo::{DebugSession, FileInfo, Function, ObjectLike, Symbol};
+use symbolic_debuginfo::{DebugSession, FileInfo, Function, LineInfo, ObjectLike, Symbol};
 
 use crate::error::{SymCacheError, SymCacheErrorKind, ValueKind};
 use crate::format;
@@ -16,21 +17,31 @@ fn is_empty_function(function: &Function<'_>) -> bool {
     function.lines.is_empty() && function.inlinees.is_empty()
 }
 
+/// Performs a check whether this line has already been written in the scope of this function.
+fn is_redundant_line(line: &LineInfo<'_>, line_cache: &mut LineCache) -> bool {
+    !line_cache.insert((line.address, line.line))
+}
+
 /// Recursively cleans a tree of functions that does not cover any lines.
 ///
-/// This first recursively cleans all inlinees and then removes those that have become empty. Also,
-/// it ensures that each function's start address includes the earliest address of any of its
-/// inlinees. This is due to a requirement that a function occurs before all of its inlinees.
-fn clean_function(function: &mut Function<'_>) {
+///  - Removes all redundant line records (see `is_redundant_line`)
+///  - Removes all empty functions (see `is_empty_function`)
+///  - Ensures that the function's address range covers all of its inlinees
+fn clean_function(function: &mut Function<'_>, line_cache: &mut LineCache) {
     for inlinee in &mut function.inlinees {
-        clean_function(inlinee);
+        clean_function(inlinee, line_cache);
 
         let start_shift = function.address.saturating_sub(inlinee.address);
         function.size += start_shift;
         function.address -= start_shift;
+
+        let end_shift =
+            (inlinee.address + inlinee.size).saturating_sub(function.address + function.size);
+        function.size += end_shift;
     }
 
     function.inlinees.retain(|f| !is_empty_function(f));
+    function.lines.retain(|l| !is_redundant_line(l, line_cache));
 }
 
 /// Low-level helper that writes segments and keeps track of the current offset.
@@ -161,6 +172,9 @@ struct FuncHandle {
     /// Data of this record.
     pub record: format::FuncRecord,
 }
+
+/// A cache for line record deduplication across inline functions.
+type LineCache = FnvHashSet<(u64, u64)>;
 
 /// A high level writer that can construct SymCaches.
 ///
@@ -309,12 +323,12 @@ where
         // If we encounter a function without any instructions we just skip it.  This saves memory
         // and since we only care about instructions where we can actually crash this is a
         // reasonable optimization.
-        clean_function(&mut function);
+        clean_function(&mut function, &mut LineCache::default());
         if is_empty_function(&function) {
             return Ok(());
         }
 
-        self.insert_function(&function, FuncRef::none(), &mut FnvHashSet::default())
+        self.insert_function(&function, FuncRef::none())
     }
 
     /// Persists all open segments to the writer and fixes up the header.
@@ -399,53 +413,16 @@ where
         Ok(index)
     }
 
-    fn insert_function(
+    fn insert_lines(
         &mut self,
-        function: &Function<'_>,
-        parent_ref: FuncRef,
-        line_cache: &mut FnvHashSet<(u64, u64)>,
-    ) -> Result<(), SymCacheError> {
-        let address = function.address;
-        let language = function.name.language();
-        let symbol_id = self.insert_symbol(function.name.as_str().into())?;
-        let comp_dir = self.write_path(function.compilation_dir)?;
-
-        let lang = if language as u32 > 0xff {
-            return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::Language).into());
-        } else {
-            language as u8
-        };
-
-        let record = format::FuncRecord {
-            addr_low: (address & 0xffff_ffff) as u32,
-            addr_high: ((address >> 32) & 0xffff) as u16,
-            // XXX: we have not seen this yet, but in theory this should be
-            // stored as multiple function records.
-            len: std::cmp::min(function.size, 0xffff) as u16,
-            symbol_id_low: (symbol_id & 0xffff) as u16,
-            symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
-            line_records: format::Seg::default(),
-            parent_offset: !0,
-            comp_dir,
-            lang,
-        };
-
-        // Push the record first, then recurse into inline functions and finally push line records.
-        // This ensures that functions are pushed in the right order, while address rejection can
-        // prune duplicate line entries.
-        let function_ref = self.push_function(record, parent_ref)?;
-        for inlinee in &function.inlinees {
-            self.insert_function(inlinee, function_ref, line_cache)?;
-        }
-
-        let mut last_address = address;
+        lines: &mut std::iter::Peekable<std::slice::Iter<LineInfo<'_>>>,
+        start_address: u64,
+        end_address: u64,
+    ) -> Result<(Vec<format::LineRecord>, u64), SymCacheError> {
         let mut line_segment = vec![];
-        for line in &function.lines {
-            // Reject this line if it has been covered by one of the inlinees.
-            if !line_cache.insert((line.address, line.line)) {
-                continue;
-            }
+        let mut last_address = start_address;
 
+        while let Some(line) = lines.peek() {
             let file_id = self.insert_file(&line.file)?;
 
             // We have seen that swift can generate line records that lie outside of the function
@@ -463,15 +440,81 @@ where
                     line: std::cmp::min(line.line, std::u16::MAX.into()) as u16,
                 };
                 last_address += u64::from(line_record.addr_off);
+
+                // Check if we can still add a line record to this function without exceeding limits
+                // of the physical format. Otherwise, do an early exit and let the caller iterate.
+                let should_split_function = last_address - start_address > std::u16::MAX.into()
+                    || line_segment.len() >= std::u16::MAX.into();
+
+                if should_split_function {
+                    return Ok((line_segment, last_address));
+                }
+
                 line_segment.push(line_record);
                 diff -= 0xff;
             }
+
+            lines.next();
         }
 
-        if !line_segment.is_empty() {
-            let record = &mut self.functions[function_ref.index as usize].record;
-            record.line_records = self.writer.write_segment(&line_segment, ValueKind::Line)?;
-            self.header.has_line_records = 1;
+        Ok((line_segment, end_address))
+    }
+
+    fn insert_function(
+        &mut self,
+        function: &Function<'_>,
+        parent_ref: FuncRef,
+    ) -> Result<(), SymCacheError> {
+        // There are two conditions under which a function record needs to be split. When a function
+        // is split, its inline functions are also assigned to the according part:
+        //  1. Its address range exceeds 65k bytes. This makes it too large for the `len` field in
+        //     the function record.
+        //  2. There are more than 65k line records. This is larger than the index used for the line
+        //     segment.
+
+        let language = function.name.language();
+        let symbol_id = self.insert_symbol(function.name.as_str().into())?;
+        let comp_dir = self.write_path(function.compilation_dir)?;
+        let lang = u8::from_u32(language as u32)
+            .ok_or_else(|| SymCacheErrorKind::ValueTooLarge(ValueKind::Language))?;
+
+        let mut start_address = function.address;
+        let mut lines = function.lines.iter().peekable();
+
+        while start_address < function.end_address() {
+            // Insert lines for a segment of the function. This will return the list of line
+            // records, and the end of the segment that was written.
+            //  - If all line records were written, the segment ends with the function.
+            //  - Otherwise, it is the address of the subsequent line record that could not be
+            //    written anymore. In the next iteration, output will start with this line record.
+            let (line_segment, end_address) =
+                self.insert_lines(&mut lines, start_address, function.end_address())?;
+
+            let line_records = self.writer.write_segment(&line_segment, ValueKind::Line)?;
+            if !line_segment.is_empty() {
+                self.header.has_line_records = 1;
+            }
+
+            let record = format::FuncRecord {
+                addr_low: (start_address & 0xffff_ffff) as u32,
+                addr_high: ((start_address >> 32) & 0xffff) as u16,
+                len: (end_address - start_address) as u16,
+                symbol_id_low: (symbol_id & 0xffff) as u16,
+                symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
+                parent_offset: !0,
+                line_records,
+                comp_dir,
+                lang,
+            };
+
+            let function_ref = self.push_function(record, parent_ref)?;
+            for inlinee in &function.inlinees {
+                if inlinee.address >= start_address && inlinee.end_address() <= end_address {
+                    self.insert_function(inlinee, function_ref)?;
+                }
+            }
+
+            start_address = end_address;
         }
 
         Ok(())

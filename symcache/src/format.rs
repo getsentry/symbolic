@@ -55,6 +55,7 @@ pub struct Seg<T, L = u32> {
 
 impl<T, L> Seg<T, L> {
     /// Creates a segment with specified offset and length.
+    #[inline]
     pub fn new(offset: u32, len: L) -> Seg<T, L> {
         Seg {
             offset,

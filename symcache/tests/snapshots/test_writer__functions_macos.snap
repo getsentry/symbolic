@@ -1,6 +1,6 @@
 ---
-created: "2019-04-24T15:43:42.709181Z"
-creator: insta@0.7.4
+created: "2019-07-01T13:31:24.492196Z"
+creator: insta@0.8.1
 source: symcache/tests/test_writer.rs
 expression: FunctionsDebug(&symcache)
 ---
@@ -235,7 +235,6 @@ expression: FunctionsDebug(&symcache)
             269e _ZNSt3__1neIPN15google_breakpad15DynamicImageRefEEEbRKNS_11__wrap_iterIT_EES8_
             26a3 _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
             26b0 _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
-            26b4 _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
             26c4 _ZNSt3__1neIPN15google_breakpad15DynamicImageRefEEEbRKNS_11__wrap_iterIT_EES8_
             26c9 _ZNKSt3__110__equal_toIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
             26c9 _ZNK15google_breakpad15DynamicImageRefeqERKS0_
@@ -388,7 +387,6 @@ expression: FunctionsDebug(&symcache)
             2c6e _ZNSt3__1neIPN15google_breakpad15DynamicImageRefEEEbRKNS_11__wrap_iterIT_EES8_
             2c73 _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
             2c80 _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
-            2c84 _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
             2c94 _ZNSt3__1neIPN15google_breakpad15DynamicImageRefEEEbRKNS_11__wrap_iterIT_EES8_
             2c99 _ZNKSt3__110__equal_toIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
             2c99 _ZNK15google_breakpad15DynamicImageRefeqERKS0_
@@ -1757,7 +1755,6 @@ expression: FunctionsDebug(&symcache)
             d2d4 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9__is_longEv
             d2de _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE18__get_long_pointerEv
             d2e5 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE4sizeEv
-            d2e5 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE15__get_long_sizeEv
             d308 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE16__get_short_sizeEv
             d31a _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9__is_longEv
             d338 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE16__get_short_sizeEv
