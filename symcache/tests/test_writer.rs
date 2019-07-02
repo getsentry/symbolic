@@ -41,7 +41,7 @@ fn test_write_header_linux() -> Result<(), Error> {
    ⋮    arch: Amd64,
    ⋮    has_line_info: true,
    ⋮    has_file_info: true,
-   ⋮    functions: 1916,
+   ⋮    functions: 1955,
    ⋮}
     "###);
 
@@ -79,7 +79,7 @@ fn test_write_header_macos() -> Result<(), Error> {
    ⋮    arch: Amd64,
    ⋮    has_line_info: true,
    ⋮    has_file_info: true,
-   ⋮    functions: 1860,
+   ⋮    functions: 1863,
    ⋮}
     "###);
 

@@ -28,8 +28,10 @@ fn is_redundant_line(line: &LineInfo<'_>, line_cache: &mut LineCache) -> bool {
 ///  - Removes all empty functions (see `is_empty_function`)
 ///  - Ensures that the function's address range covers all of its inlinees
 fn clean_function(function: &mut Function<'_>, line_cache: &mut LineCache) {
+    let mut inlinee_lines = LineCache::default();
+
     for inlinee in &mut function.inlinees {
-        clean_function(inlinee, line_cache);
+        clean_function(inlinee, &mut inlinee_lines);
 
         let start_shift = function.address.saturating_sub(inlinee.address);
         function.size += start_shift;
@@ -41,7 +43,11 @@ fn clean_function(function: &mut Function<'_>, line_cache: &mut LineCache) {
     }
 
     function.inlinees.retain(|f| !is_empty_function(f));
-    function.lines.retain(|l| !is_redundant_line(l, line_cache));
+    function
+        .lines
+        .retain(|l| !is_redundant_line(l, &mut inlinee_lines));
+
+    line_cache.extend(inlinee_lines);
 }
 
 /// Low-level helper that writes segments and keeps track of the current offset.

@@ -1,5 +1,5 @@
 ---
-created: "2019-07-01T13:31:24.623765Z"
+created: "2019-07-02T08:47:28.746328Z"
 creator: insta@0.8.1
 source: symcache/tests/test_writer.rs
 expression: FunctionsDebug(&symcache)
@@ -35,6 +35,7 @@ expression: FunctionsDebug(&symcache)
             1cca _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
             1cca _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
             1cdc _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4Ev
+            1cdc _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_
             1ce0 _ZNSt11char_traitsIcE6assignERcRKc
             1ce7 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
             1ce7 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
@@ -83,6 +84,7 @@ expression: FunctionsDebug(&symcache)
             211e _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE3endEv
             211e _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEC4ERKS4_
             2122 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE5beginEv
+            2122 _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEC4ERKS4_
             2126 _ZSt4findIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEES4_ET_SA_SA_RKT0_
             2126 _ZSt9__find_ifIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEENS0_5__ops16_Iter_equals_valIKS4_EEET_SE_SE_T0_
             2126 _ZSt9__find_ifIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEENS0_5__ops16_Iter_equals_valIKS4_EEET_SE_SE_T0_St26random_access_iterator_tag
@@ -128,6 +130,8 @@ expression: FunctionsDebug(&symcache)
             22f3 RestoreAlternateStackLocked
             2307 sys_sigaltstack
             2350 _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
+            2360 _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
+            2370 _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
             2382 _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
             238f _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
             23b2 sys_sigaltstack
@@ -144,6 +148,7 @@ expression: FunctionsDebug(&symcache)
             262a sys_pipe
             26c7 sys_clone
             2738 sys_close
+            275c sys_close
             2788 _ZN15google_breakpad13PageAllocatorD4Ev
             2788 _ZN15google_breakpad13PageAllocator7FreeAllEv
             2788 sys_munmap
@@ -270,6 +275,7 @@ expression: FunctionsDebug(&symcache)
             3798 _ZNSt16allocator_traitsISaIPN15google_breakpad16ExceptionHandlerEEE9constructIS2_JS2_EEEvRS3_PT_DpOT0_
             3798 _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad16ExceptionHandlerEE9constructIS3_JS3_EEEvPT_DpOT0_
             3817 memset
+            3838 memset
             385f sys_sigaltstack
             389b sys_sigaltstack
             392a _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EEC4Ev
@@ -392,6 +398,7 @@ expression: FunctionsDebug(&symcache)
             40cf _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
             40d8 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
             40d8 _ZNSt11char_traitsIcE6assignERcRKc
+            40dc _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
             40e1 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
             40e9 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
             40ec _ZStplIcSt11char_traitsIcESaIcEENSt7__cxx1112basic_stringIT_T0_T1_EEOS8_PKS5_
@@ -471,9 +478,13 @@ expression: FunctionsDebug(&symcache)
             487b DumpOSInformation
             488d LogAppend
             48cc LogAppend
+            48e4 LogAppend
+            48fc LogAppend
+            4914 LogAppend
             492c LogAppend<unsigned char>
             4940 LogAppend
             4940 LogAppend
+            4975 LogAppend
             49a6 LogAppend
             49c5 LogAppend
             49ed LogAppend
@@ -489,7 +500,9 @@ expression: FunctionsDebug(&symcache)
             4ac0 LogAppend<int>
             4ac7 LogAppend
             4ac7 LogAppend
+            4b73 LogAppend
             4b97 LogAppend
+            4bab LogAppend
             4bca LogAppend<long unsigned int>
             4bd1 LogAppend
             4bd1 LogAppend
@@ -527,12 +540,15 @@ expression: FunctionsDebug(&symcache)
             5081 LogAppend<long unsigned int>
             5081 LogAppend
             5081 LogAppend
+            51d6 LogAppend
             51f3 LogAppend<long unsigned int>
             51f3 LogAppend
             51f3 LogAppend
+            5348 LogAppend
             5365 LogAppend<long unsigned int>
             5365 LogAppend
             5365 LogAppend
+            54ba LogAppend
             54d8 LogAppend<unsigned int>
             54df LogAppend
             54df LogAppend
@@ -566,6 +582,8 @@ expression: FunctionsDebug(&symcache)
             586f LogAppend<unsigned char>
             586f LogAppend
             586f LogAppend
+            58b1 LogAppend
+            58c9 LogAppend
             58c9 LogAppend
             58e1 LogCommitLine
             58e8 LogLine
@@ -579,12 +597,15 @@ expression: FunctionsDebug(&symcache)
             59be _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE4sizeEv
             59c5 _ZSt3minImERKT_S2_S2_
             5a20 LogAppend
+            5b99 LogAppend
             5bb6 LogAppend<long unsigned int>
             5bb6 LogAppend
             5bb6 LogAppend
+            5d0b LogAppend
             5d2f LogAppend<long unsigned int>
             5d2f LogAppend
             5d2f LogAppend
+            5e84 LogAppend
             5ea2 LogAppend<unsigned int>
             5ea9 LogAppend
             5ea9 LogAppend
@@ -618,6 +639,8 @@ expression: FunctionsDebug(&symcache)
             6239 LogAppend<unsigned char>
             6239 LogAppend
             6239 LogAppend
+            627b LogAppend
+            6293 LogAppend
             6293 LogAppend
             62a7 LogCommitLine
             62ae LogLine
@@ -639,9 +662,11 @@ expression: FunctionsDebug(&symcache)
             64d0 LogAppend<long unsigned int>
             64d0 LogAppend
             64d0 LogAppend
+            6625 LogAppend
             6644 LogAppend<long unsigned int>
             6644 LogAppend
             6644 LogAppend
+            6799 LogAppend
             67b8 LogAppend<long unsigned int>
             67b8 LogAppend
             67b8 LogAppend
@@ -651,6 +676,7 @@ expression: FunctionsDebug(&symcache)
             695f LogAppend
             695f LogAppend
             6978 LogAppend
+            6af6 LogAppend
             6b18 _ZSt3minImERKT_S2_S2_
             6b2c LogAppend
             6b4e LogAppend<unsigned char>
@@ -660,8 +686,12 @@ expression: FunctionsDebug(&symcache)
             6ba7 LogLine
             6c40 LogAppend
             6c40 LogAppend
+            6c58 LogAppend
+            6c70 LogAppend
             6c70 LogAppend
             6d45 LogLine
+            6d65 LogAppend
+            6d7d LogAppend
             6d95 LogAppend
             6dc6 ~MicrodumpWriter
             6dd6 _ZN15google_breakpad17LinuxPtraceDumperD4Ev
@@ -1251,6 +1281,7 @@ expression: FunctionsDebug(&symcache)
             cbf7 _ZN15google_breakpad10TypedMDRVAI11MDRawHeaderED4Ev
             cc03 _ZN15google_breakpad10TypedMDRVAI11MDRawHeaderE5FlushEv
             cc27 _ZN15google_breakpad10TypedMDRVAI20MDRawExceptionStreamED4Ev
+            cc33 _ZN15google_breakpad10TypedMDRVAI20MDRawExceptionStreamE5FlushEv
             cc66 _ZN15google_breakpad10TypedMDRVAIjED4Ev
             cc76 _ZN15google_breakpad10TypedMDRVAIjE5FlushEv
             ccbb WriteCPUInformation
@@ -1422,6 +1453,7 @@ expression: FunctionsDebug(&symcache)
             f0d7 _ZNSt7__cxx114listIN15google_breakpad9AppMemoryESaIS2_EEC4Ev
             f0d7 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EEC4Ev
             f0d7 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE10_List_implC4Ev
+            f0d7 _ZNSt10_List_nodeImEC4IJEEEDpOT_
             f0df _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE10_List_implC4Ev
             f0df _ZNSt10_List_nodeImEC4IJEEEDpOT_
             f0f6 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE7_M_initEv
@@ -1452,6 +1484,7 @@ expression: FunctionsDebug(&symcache)
             f1f7 _ZNSt7__cxx114listIN15google_breakpad9AppMemoryESaIS2_EEC4Ev
             f1f7 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EEC4Ev
             f1f7 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE10_List_implC4Ev
+            f1f7 _ZNSt10_List_nodeImEC4IJEEEDpOT_
             f1ff _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE10_List_implC4Ev
             f1ff _ZNSt10_List_nodeImEC4IJEEEDpOT_
             f216 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE7_M_initEv
@@ -1597,11 +1630,13 @@ expression: FunctionsDebug(&symcache)
            10b35 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
            10b3e _ZNSt11char_traitsIcE6assignERcRKc
            10b48 _ZN15google_breakpad12scoped_arrayIhED4Ev
+           10b50 _ZN15google_breakpad12scoped_arrayItED4Ev
            10b8f _ZN15google_breakpad12scoped_arrayItEC4EPt
            10bc2 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
            10bc6 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
            10c30 _ZNSt11char_traitsIcE6assignERcRKc
            10cb4 _ZN15google_breakpad12scoped_arrayIhED4Ev
+           10cbf _ZN15google_breakpad12scoped_arrayItED4Ev
            10ce0 _ZN15google_breakpad12UTF32ToUTF16EPKwPSt6vectorItSaItEE
            10d09 _ZNSt6vectorItSaItEE5clearEv
            10d0c _ZNSt6vectorItSaItEE6insertEN9__gnu_cxx17__normal_iteratorIPKtS1_EEmRS4_
@@ -1706,6 +1741,7 @@ expression: FunctionsDebug(&symcache)
            11230 _ZN15google_breakpad14FindElfSectionEPKvPKcjPS1_Pm
            112a6 FindElfClassSection<google_breakpad::ElfClass64>
            112d0 _ZN15google_breakpad9GetOffsetINS_10ElfClass64E10Elf64_ShdrEEPKT0_PKNT_4EhdrENS6_3OffE
+           112d7 _ZN15google_breakpad9GetOffsetINS_10ElfClass64EcEEPKT0_PKNT_4EhdrENS5_3OffE
            112f0 _ZN15google_breakpad20FindElfSectionByNameINS_10ElfClass64EEEPKNT_4ShdrEPKcNS2_4WordES5_S7_S7_i
            113e0 FindElfClassSection<google_breakpad::ElfClass32>
            1140a _ZN15google_breakpad9GetOffsetINS_10ElfClass32E10Elf32_ShdrEEPKT0_PKNT_4EhdrENS6_3OffE
@@ -1810,6 +1846,7 @@ expression: FunctionsDebug(&symcache)
            1206a _ZNSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE5beginEv
            1206a _ZN9__gnu_cxx17__normal_iteratorIPN15google_breakpad10ElfSegmentESt6vectorIS2_NS1_16PageStdAllocatorIS2_EEEEC4ERKS3_
            1206e _ZNSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE3endEv
+           1206e _ZN9__gnu_cxx17__normal_iteratorIPN15google_breakpad10ElfSegmentESt6vectorIS2_NS1_16PageStdAllocatorIS2_EEEEC4ERKS3_
            12083 ElfClassBuildIDNoteIdentifier
            120c3 _ZN9__gnu_cxx17__normal_iteratorIPN15google_breakpad10ElfSegmentESt6vectorIS2_NS1_16PageStdAllocatorIS2_EEEEppEv
            1210b _ZN15google_breakpad13PageAllocatorD4Ev
@@ -1904,12 +1941,14 @@ expression: FunctionsDebug(&symcache)
            13700 _ZNK15google_breakpad10ThreadInfo21GetInstructionPointerEv
            13710 _ZNK15google_breakpad10ThreadInfo14FillCPUContextEP17MDRawContextAMD64
            138e1 memcpy
+           138e8 memcpy
            13a10 _ZN15google_breakpad10ThreadInfo26GetGeneralPurposeRegistersEPPvPm
            13a60 _ZN15google_breakpad10ThreadInfo25GetFloatingPointRegistersEPPvPm
            13ab0 _ZN15google_breakpad14UContextReader15GetStackPointerEPK8ucontext
            13ac0 _ZN15google_breakpad14UContextReader21GetInstructionPointerEPK8ucontext
            13ad0 _ZN15google_breakpad14UContextReader14FillCPUContextEP17MDRawContextAMD64PK8ucontextPK13_libc_fpstate
            13c2b memcpy
+           13ce0 memcpy
            13d30 ConvertUTF32toUTF16
            13eb0 ConvertUTF16toUTF32
            14050 ConvertUTF16toUTF8
