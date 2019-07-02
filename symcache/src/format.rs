@@ -15,7 +15,7 @@ use crate::error::{SymCacheError, SymCacheErrorKind};
 pub const SYMCACHE_MAGIC: [u8; 4] = *b"SYMC";
 
 /// The latest version of the file format.
-pub const SYMCACHE_VERSION: u32 = 3;
+pub const SYMCACHE_VERSION: u32 = 4;
 
 /// Loads binary data from a segment.
 pub(crate) fn get_slice(data: &[u8], offset: usize, len: usize) -> Result<&[u8], io::Error> {
