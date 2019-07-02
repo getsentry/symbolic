@@ -1,6 +1,6 @@
 ---
-created: "2019-04-24T15:43:42.709181Z"
-creator: insta@0.7.4
+created: "2019-07-02T08:47:28.591628Z"
+creator: insta@0.8.1
 source: symcache/tests/test_writer.rs
 expression: FunctionsDebug(&symcache)
 ---

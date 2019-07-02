@@ -467,6 +467,15 @@ pub struct Function<'data> {
     pub inline: bool,
 }
 
+impl Function<'_> {
+    /// End address of the entire function body, including inlined functions.
+    ///
+    /// This address points at the first instruction after the function body.
+    pub fn end_address(&self) -> u64 {
+        self.address + self.size
+    }
+}
+
 impl fmt::Debug for Function<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Function")
