@@ -349,21 +349,25 @@ impl<W: Write> AsciiCfiWriter<W> {
                 // Print only registers that have changed rules to their previous occurrence to
                 // reduce the number of rules per row. Then, cache the new occurrence for the next
                 // row.
+                let mut old_rules = std::mem::replace(&mut rule_cache, HashMap::new());
                 for &(register, ref rule) in row.registers() {
-                    if !rule_cache.get(&register).map_or(false, |c| c == &rule) {
-                        rule_cache.insert(register, rule);
+                    rule_cache.insert(register, rule);
+                    if !old_rules.remove(&register).map_or(false, |c| c == rule) {
                         written |=
                             Self::write_register_rule(&mut line, info.arch, register, rule, ra)?;
                     }
                 }
 
-                // Breakpad STACK CFI records must provide a .ra rule, but DWARF CFI may not
-                // establish any rule for .ra if the return address column is an ordinary register,
-                // and that register holds the return address on entry to the function. So establish
-                // a .ra rule citing the return address register.
-                if !rule_cache.contains_key(&ra) {
-                    let rule = RegisterRule::SameValue::<R>;
-                    written |= Self::write_register_rule(&mut line, info.arch, ra, &rule, ra)?;
+                // Explicitly undefine all registers that are no longer defined in this row. This is
+                // used to indicate that a previously available register value is no longer valid.
+                for register in old_rules.keys() {
+                    written |= Self::write_register_rule(
+                        &mut line,
+                        info.arch,
+                        *register,
+                        &RegisterRule::Undefined::<R>,
+                        ra,
+                    )?;
                 }
 
                 if written {
@@ -405,7 +409,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         ra: Register,
     ) -> Result<bool, CfiError> {
         let formatted = match rule {
-            RegisterRule::Undefined => return Ok(false),
+            RegisterRule::Undefined => "0".to_owned(),
             RegisterRule::SameValue => match arch.register_name(register.0) {
                 Some(reg) => reg.into(),
                 None => return Ok(false),
