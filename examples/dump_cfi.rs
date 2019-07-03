@@ -24,7 +24,7 @@ fn dump_cfi<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     println!(
         "MODULE unknown {} {} {}",
         object.arch(),
-        object.debug_id(),
+        object.debug_id().breakpad(),
         path.file_name()
             .map(|s| s.to_string_lossy())
             .unwrap_or_default(),
