@@ -21,6 +21,15 @@ fn dump_cfi<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     let buffer = ByteView::open(path)?;
     let object = Object::parse(&buffer)?;
 
+    println!(
+        "MODULE unknown {} {} {}",
+        object.arch(),
+        object.debug_id(),
+        path.file_name()
+            .map(|s| s.to_string_lossy())
+            .unwrap_or_default(),
+    );
+
     AsciiCfiWriter::new(std::io::stdout()).process(&object)?;
 
     Ok(())
