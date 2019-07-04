@@ -25,10 +25,10 @@ failure = "0.1.5"
 fallible-iterator = "0.2.0"
 flate2 = { version = "1.0.7", features = ["rust_backend"], default-features = false }
 gimli = { version = "0.18.0", features = ["read", "std"], default-features = false }
-goblin = { git = "https://github.com/jan-auer/goblin", rev = "dd199e4b9027c9ca4389d5b066f5e264ef507e43" }
+goblin = "0.0.23"
 lazycell = "1.2.1"
 lazy_static = "1.3.0"
-pdb =  { git = "https://github.com/jan-auer/pdb", rev = "82ccf299aa5cca4c3f969d80bcd5f4ac4439ff99" }
+pdb =  "0.5.0"
 parking_lot = "0.8.0"
 pest = "2.1.1"
 pest_derive = "2.1.0"
