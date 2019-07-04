@@ -1,4 +1,4 @@
-STACK CFI INIT 1f10 2a .cfa: $rsp 8 + .ra: $rip
+STACK CFI INIT 1f10 2a .cfa: $rsp 8 +
 STACK CFI INIT 1a90 470 .cfa: $rsp 16 + .ra: .cfa -8 + ^
 STACK CFI 1a96 .cfa: $rsp 24 +
 STACK CFI INIT 21d4 3a .cfa: $rsp 8 + .ra: .cfa -8 + ^

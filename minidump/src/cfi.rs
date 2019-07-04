@@ -409,7 +409,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         ra: Register,
     ) -> Result<bool, CfiError> {
         let formatted = match rule {
-            RegisterRule::Undefined => "0".to_owned(),
+            RegisterRule::Undefined => return Ok(false),
             RegisterRule::SameValue => match arch.register_name(register.0) {
                 Some(reg) => reg.into(),
                 None => return Ok(false),
