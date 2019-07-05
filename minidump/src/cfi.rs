@@ -357,15 +357,6 @@ impl<W: Write> AsciiCfiWriter<W> {
                     }
                 }
 
-                // Breakpad STACK CFI records must provide a .ra rule, but DWARF CFI may not
-                // establish any rule for .ra if the return address column is an ordinary register,
-                // and that register holds the return address on entry to the function. So establish
-                // a .ra rule citing the return address register.
-                if !rule_cache.contains_key(&ra) {
-                    let rule = RegisterRule::SameValue::<R>;
-                    written |= Self::write_register_rule(&mut line, info.arch, ra, &rule, ra)?;
-                }
-
                 if written {
                     self.inner
                         .write_all(&line)
