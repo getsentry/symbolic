@@ -39,6 +39,7 @@ type DebugInfoOffset = gimli::DebugInfoOffset<usize>;
 type CompilationUnitHeader<'a> = gimli::read::CompilationUnitHeader<Slice<'a>>;
 type IncompleteLineNumberProgram<'a> = gimli::read::IncompleteLineProgram<Slice<'a>>;
 type LineNumberProgramHeader<'a> = gimli::read::LineProgramHeader<Slice<'a>>;
+type LineProgramFileEntry<'a> = gimli::read::FileEntry<Slice<'a>>;
 
 /// Variants of [`DwarfError`](struct.DwarfError.html).
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
@@ -553,6 +554,21 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         Ok(lines)
     }
 
+    /// Resolves file information from a line program.
+    fn file_info(
+        &self,
+        line_program: &LineNumberProgramHeader<'d>,
+        file: &LineProgramFileEntry<'d>,
+    ) -> FileInfo<'d> {
+        FileInfo {
+            dir: file
+                .directory(line_program)
+                .and_then(|attr| self.inner.slice_value(attr))
+                .unwrap_or_default(),
+            name: self.inner.slice_value(file.path_name()).unwrap_or_default(),
+        }
+    }
+
     /// Resolves a file entry by its index.
     fn resolve_file(&self, file_id: u64) -> Result<Option<FileInfo<'d>>, DwarfError> {
         let line_program = match self.line_program {
@@ -564,13 +580,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             .file(file_id)
             .ok_or_else(|| DwarfErrorKind::InvalidFileRef(file_id))?;
 
-        Ok(Some(FileInfo {
-            dir: file
-                .directory(line_program)
-                .and_then(|attr| self.inner.slice_value(attr))
-                .unwrap_or_default(),
-            name: self.inner.slice_value(file.path_name()).unwrap_or_default(),
-        }))
+        Ok(Some(self.file_info(line_program, file)))
     }
 
     /// Collects all functions within this compilation unit.
@@ -1064,8 +1074,17 @@ impl<'d> DwarfDebugSession<'d> {
         Ok(DwarfDebugSession { cell })
     }
 
+    /// Returns an iterator over all source files in this debug file.
+    pub fn files(&self) -> DwarfFileIterator<'_> {
+        DwarfFileIterator {
+            units: self.cell.get().units(),
+            files: DwarfUnitFileIterator::default(),
+            finished: false,
+        }
+    }
+
     /// Returns an iterator over all functions in this debug file.
-    pub fn functions(&mut self) -> DwarfFunctionIterator<'_> {
+    pub fn functions(&self) -> DwarfFunctionIterator<'_> {
         DwarfFunctionIterator {
             units: self.cell.get().units(),
             functions: Vec::new().into_iter(),
@@ -1073,13 +1092,88 @@ impl<'d> DwarfDebugSession<'d> {
             finished: false,
         }
     }
+
+    /// Looks up a file's source contents by its full canonicalized path.
+    ///
+    /// The given path must be canonicalized.
+    pub fn source_by_path(&self, _path: &str) -> Result<Option<Cow<'_, str>>, DwarfError> {
+        Ok(None)
+    }
 }
 
 impl<'d> DebugSession for DwarfDebugSession<'d> {
     type Error = DwarfError;
 
-    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
+    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(self.functions())
+    }
+
+    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
+        Box::new(self.files())
+    }
+
+    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
+        self.source_by_path(path)
+    }
+}
+
+#[derive(Debug, Default)]
+struct DwarfUnitFileIterator<'s> {
+    unit: Option<DwarfUnit<'s, 's>>,
+    index: usize,
+}
+
+impl<'s> Iterator for DwarfUnitFileIterator<'s> {
+    type Item = FileEntry<'s>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let unit = self.unit.as_ref()?;
+        let line_program = unit.line_program.as_ref().map(|p| &p.header)?;
+        let file = line_program.file_names().get(self.index)?;
+
+        self.index += 1;
+
+        Some(FileEntry {
+            compilation_dir: unit.compilation_dir(),
+            info: unit.file_info(line_program, file),
+        })
+    }
+}
+
+/// An iterator over source files in a DWARF file.
+pub struct DwarfFileIterator<'s> {
+    units: DwarfUnitIterator<'s>,
+    files: DwarfUnitFileIterator<'s>,
+    finished: bool,
+}
+
+impl<'s> Iterator for DwarfFileIterator<'s> {
+    type Item = Result<FileEntry<'s>, DwarfError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
+
+        loop {
+            if let Some(file_entry) = self.files.next() {
+                return Some(Ok(file_entry));
+            }
+
+            let unit = match self.units.next() {
+                Some(Ok(unit)) => unit,
+                Some(Err(error)) => return Some(Err(error)),
+                None => break,
+            };
+
+            self.files = DwarfUnitFileIterator {
+                unit: Some(unit),
+                index: 0,
+            };
+        }
+
+        self.finished = true;
+        None
     }
 }
 

@@ -218,7 +218,7 @@ where
 
         let mut last_address = 0;
         let mut symbols = object.symbol_map().into_iter().peekable();
-        let mut session = object
+        let session = object
             .debug_session()
             .context(SymCacheErrorKind::BadDebugFile)?;
 

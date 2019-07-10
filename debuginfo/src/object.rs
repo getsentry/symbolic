@@ -15,6 +15,7 @@ use crate::macho::*;
 use crate::pdb::*;
 use crate::pe::*;
 use crate::private::{MonoArchive, MonoArchiveObjects};
+use crate::sourcebundle::*;
 
 macro_rules! match_inner {
     ($value:expr, $ty:tt ($pat:pat) => $expr:expr) => {
@@ -24,6 +25,7 @@ macro_rules! match_inner {
             $ty::MachO($pat) => $expr,
             $ty::Pdb($pat) => $expr,
             $ty::Pe($pat) => $expr,
+            $ty::SourceBundle($pat) => $expr,
         }
     };
 }
@@ -36,6 +38,7 @@ macro_rules! map_inner {
             $from::MachO($pat) => $to::MachO($expr),
             $from::Pdb($pat) => $to::Pdb($expr),
             $from::Pe($pat) => $to::Pe($expr),
+            $from::SourceBundle($pat) => $to::SourceBundle($expr),
         }
     };
 }
@@ -48,6 +51,9 @@ macro_rules! map_result {
             $from::MachO($pat) => $expr.map($to::MachO).map_err(ObjectError::MachO),
             $from::Pdb($pat) => $expr.map($to::Pdb).map_err(ObjectError::Pdb),
             $from::Pe($pat) => $expr.map($to::Pe).map_err(ObjectError::Pe),
+            $from::SourceBundle($pat) => $expr
+                .map($to::SourceBundle)
+                .map_err(ObjectError::SourceBundle),
         }
     };
 }
@@ -83,6 +89,10 @@ pub enum ObjectError {
     /// An error in DWARF debugging information.
     #[fail(display = "failed to process dwarf info")]
     Dwarf(#[fail(cause)] DwarfError),
+
+    /// An error in source bundles.
+    #[fail(display = "failed to process source bundle")]
+    SourceBundle(#[fail(cause)] SourceBundleError),
 }
 
 /// Tries to infer the object type from the start of the given buffer.
@@ -105,7 +115,9 @@ pub fn peek(data: &[u8], archive: bool) -> FileFormat {
         _ => (),
     }
 
-    if BreakpadObject::test(data) {
+    if SourceBundle::test(data) {
+        FileFormat::SourceBundle
+    } else if BreakpadObject::test(data) {
         FileFormat::Breakpad
     } else if PdbObject::test(data) {
         FileFormat::Pdb
@@ -128,6 +140,8 @@ pub enum Object<'d> {
     Pdb(PdbObject<'d>),
     /// Portable Executable, an extension of COFF used on Windows.
     Pe(PeObject<'d>),
+    /// A source bundle
+    SourceBundle(SourceBundle<'d>),
 }
 
 impl<'d> Object<'d> {
@@ -155,6 +169,7 @@ impl<'d> Object<'d> {
             FileFormat::MachO => parse_object!(MachO, MachObject, data),
             FileFormat::Pdb => parse_object!(Pdb, PdbObject, data),
             FileFormat::Pe => parse_object!(Pe, PeObject, data),
+            FileFormat::SourceBundle => parse_object!(SourceBundle, SourceBundle, data),
             FileFormat::Unknown => return Err(ObjectError::UnsupportedObject),
         };
 
@@ -169,6 +184,7 @@ impl<'d> Object<'d> {
             Object::MachO(_) => FileFormat::MachO,
             Object::Pdb(_) => FileFormat::Pdb,
             Object::Pe(_) => FileFormat::Pe,
+            Object::SourceBundle(_) => FileFormat::SourceBundle,
         }
     }
 
@@ -187,13 +203,6 @@ impl<'d> Object<'d> {
     /// refers to the debug file, regardless whether this object is a debug file or not.
     pub fn debug_id(&self) -> DebugId {
         match_inner!(self, Object(ref o) => o.debug_id())
-    }
-
-    /// The filename of the debug companion file.
-    ///
-    /// For PE files for instane this will be the name of the PDB file that goes with it.
-    pub fn debug_file_name(&self) -> Option<Cow<'_, str>> {
-        match_inner!(self, Object(ref o) => o.debug_file_name())
     }
 
     /// The CPU architecture of this object.
@@ -266,12 +275,21 @@ impl<'d> Object<'d> {
                 .debug_session()
                 .map(ObjectDebugSession::Pe)
                 .map_err(ObjectError::Pe),
+            Object::SourceBundle(ref o) => o
+                .debug_session()
+                .map(ObjectDebugSession::SourceBundle)
+                .map_err(ObjectError::SourceBundle),
         }
     }
 
     /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
         match_inner!(self, Object(ref o) => o.has_unwind_info())
+    }
+
+    /// Determines whether this object contains embedded source
+    pub fn has_sources(&self) -> bool {
+        match_inner!(self, Object(ref o) => o.has_sources())
     }
 
     /// Returns the raw data of the underlying buffer.
@@ -302,10 +320,6 @@ impl<'d> ObjectLike for Object<'d> {
 
     fn debug_id(&self) -> DebugId {
         self.debug_id()
-    }
-
-    fn debug_file_name(&self) -> Option<Cow<'_, str>> {
-        self.debug_file_name()
     }
 
     fn arch(&self) -> Arch {
@@ -343,6 +357,10 @@ impl<'d> ObjectLike for Object<'d> {
     fn has_unwind_info(&self) -> bool {
         self.has_unwind_info()
     }
+
+    fn has_sources(&self) -> bool {
+        self.has_sources()
+    }
 }
 
 /// A generic debugging session.
@@ -353,17 +371,52 @@ pub enum ObjectDebugSession<'d> {
     Dwarf(DwarfDebugSession<'d>),
     Pdb(PdbDebugSession<'d>),
     Pe(PeDebugSession<'d>),
+    SourceBundle(SourceBundleDebugSession<'d>),
 }
 
 impl<'d> ObjectDebugSession<'d> {
-    fn functions(&mut self) -> ObjectFunctionIterator<'_> {
+    /// Returns an iterator over all functions in this debug file.
+    ///
+    /// The iteration is guaranteed to be sorted by function address and includes all compilation
+    /// units. Note that the iterator holds a mutable borrow on the debug session, which allows it
+    /// to use caches and optimize resources while resolving function and line information.
+    pub fn functions(&self) -> ObjectFunctionIterator<'_> {
         match *self {
-            ObjectDebugSession::Breakpad(ref mut s) => {
-                ObjectFunctionIterator::Breakpad(s.functions())
+            ObjectDebugSession::Breakpad(ref s) => ObjectFunctionIterator::Breakpad(s.functions()),
+            ObjectDebugSession::Dwarf(ref s) => ObjectFunctionIterator::Dwarf(s.functions()),
+            ObjectDebugSession::Pdb(ref s) => ObjectFunctionIterator::Pdb(s.functions()),
+            ObjectDebugSession::Pe(ref s) => ObjectFunctionIterator::Pe(s.functions()),
+            ObjectDebugSession::SourceBundle(ref s) => {
+                ObjectFunctionIterator::SourceBundle(s.functions())
             }
-            ObjectDebugSession::Dwarf(ref mut s) => ObjectFunctionIterator::Dwarf(s.functions()),
-            ObjectDebugSession::Pdb(ref mut s) => ObjectFunctionIterator::Pdb(s.functions()),
-            ObjectDebugSession::Pe(ref mut s) => ObjectFunctionIterator::Pe(s.functions()),
+        }
+    }
+
+    /// Returns an iterator over all source files referenced by this debug file.
+    pub fn files(&self) -> ObjectFileIterator<'_> {
+        match *self {
+            ObjectDebugSession::Breakpad(ref s) => ObjectFileIterator::Breakpad(s.files()),
+            ObjectDebugSession::Dwarf(ref s) => ObjectFileIterator::Dwarf(s.files()),
+            ObjectDebugSession::Pdb(ref s) => ObjectFileIterator::Pdb(s.files()),
+            ObjectDebugSession::Pe(ref s) => ObjectFileIterator::Pe(s.files()),
+            ObjectDebugSession::SourceBundle(ref s) => ObjectFileIterator::SourceBundle(s.files()),
+        }
+    }
+
+    /// Looks up a file's source contents by its full canonicalized path.
+    ///
+    /// The given path must be canonicalized.
+    pub fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, ObjectError> {
+        match *self {
+            ObjectDebugSession::Breakpad(ref s) => {
+                s.source_by_path(path).map_err(ObjectError::Breakpad)
+            }
+            ObjectDebugSession::Dwarf(ref s) => s.source_by_path(path).map_err(ObjectError::Dwarf),
+            ObjectDebugSession::Pdb(ref s) => s.source_by_path(path).map_err(ObjectError::Pdb),
+            ObjectDebugSession::Pe(ref s) => s.source_by_path(path).map_err(ObjectError::Pe),
+            ObjectDebugSession::SourceBundle(ref s) => {
+                s.source_by_path(path).map_err(ObjectError::SourceBundle)
+            }
         }
     }
 }
@@ -371,8 +424,16 @@ impl<'d> ObjectDebugSession<'d> {
 impl DebugSession for ObjectDebugSession<'_> {
     type Error = ObjectError;
 
-    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
+    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(self.functions())
+    }
+
+    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
+        Box::new(self.files())
+    }
+
+    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
+        self.source_by_path(path)
     }
 }
 
@@ -383,6 +444,7 @@ pub enum ObjectFunctionIterator<'s> {
     Dwarf(DwarfFunctionIterator<'s>),
     Pdb(PdbFunctionIterator<'s>),
     Pe(PeFunctionIterator<'s>),
+    SourceBundle(SourceBundleFunctionIterator<'s>),
 }
 
 impl<'s> Iterator for ObjectFunctionIterator<'s> {
@@ -396,6 +458,38 @@ impl<'s> Iterator for ObjectFunctionIterator<'s> {
             ObjectFunctionIterator::Dwarf(ref mut i) => Some(i.next()?.map_err(ObjectError::Dwarf)),
             ObjectFunctionIterator::Pdb(ref mut i) => Some(i.next()?.map_err(ObjectError::Pdb)),
             ObjectFunctionIterator::Pe(ref mut i) => Some(i.next()?.map_err(ObjectError::Pe)),
+            ObjectFunctionIterator::SourceBundle(ref mut i) => {
+                Some(i.next()?.map_err(ObjectError::SourceBundle))
+            }
+        }
+    }
+}
+
+/// An iterator over source files in an [`Object`](enum.Object.html).
+#[allow(missing_docs)]
+#[allow(clippy::large_enum_variant)]
+pub enum ObjectFileIterator<'s> {
+    Breakpad(BreakpadFileIterator<'s>),
+    Dwarf(DwarfFileIterator<'s>),
+    Pdb(PdbFileIterator<'s>),
+    Pe(PeFileIterator<'s>),
+    SourceBundle(SourceBundleFileIterator<'s>),
+}
+
+impl<'s> Iterator for ObjectFileIterator<'s> {
+    type Item = Result<FileEntry<'s>, ObjectError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match *self {
+            ObjectFileIterator::Breakpad(ref mut i) => {
+                Some(i.next()?.map_err(ObjectError::Breakpad))
+            }
+            ObjectFileIterator::Dwarf(ref mut i) => Some(i.next()?.map_err(ObjectError::Dwarf)),
+            ObjectFileIterator::Pdb(ref mut i) => Some(i.next()?.map_err(ObjectError::Pdb)),
+            ObjectFileIterator::Pe(ref mut i) => Some(i.next()?.map_err(ObjectError::Pe)),
+            ObjectFileIterator::SourceBundle(ref mut i) => {
+                Some(i.next()?.map_err(ObjectError::SourceBundle))
+            }
         }
     }
 }
@@ -408,6 +502,7 @@ pub enum SymbolIterator<'d, 'o> {
     MachO(MachOSymbolIterator<'d>),
     Pdb(PdbSymbolIterator<'d, 'o>),
     Pe(PeSymbolIterator<'d, 'o>),
+    SourceBundle(SourceBundleSymbolIterator<'d>),
 }
 
 impl<'d, 'o> Iterator for SymbolIterator<'d, 'o> {
@@ -425,6 +520,7 @@ enum ArchiveInner<'d> {
     MachO(MachArchive<'d>),
     Pdb(MonoArchive<'d, PdbObject<'d>>),
     Pe(MonoArchive<'d, PeObject<'d>>),
+    SourceBundle(MonoArchive<'d, SourceBundle<'d>>),
 }
 
 /// A generic archive that can contain one or more object files.
@@ -459,6 +555,7 @@ impl<'d> Archive<'d> {
             }
             FileFormat::Pdb => Archive(ArchiveInner::Pdb(MonoArchive::new(data))),
             FileFormat::Pe => Archive(ArchiveInner::Pe(MonoArchive::new(data))),
+            FileFormat::SourceBundle => Archive(ArchiveInner::SourceBundle(MonoArchive::new(data))),
             FileFormat::Unknown => return Err(ObjectError::UnsupportedObject),
         };
 
@@ -473,6 +570,7 @@ impl<'d> Archive<'d> {
             ArchiveInner::MachO(_) => FileFormat::MachO,
             ArchiveInner::Pdb(_) => FileFormat::Pdb,
             ArchiveInner::Pe(_) => FileFormat::Pe,
+            ArchiveInner::SourceBundle(_) => FileFormat::SourceBundle,
         }
     }
 
@@ -513,6 +611,10 @@ impl<'d> Archive<'d> {
                 .object_by_index(index)
                 .map(|opt| opt.map(Object::Pe))
                 .map_err(ObjectError::Pe),
+            ArchiveInner::SourceBundle(ref a) => a
+                .object_by_index(index)
+                .map(|opt| opt.map(Object::SourceBundle))
+                .map_err(ObjectError::SourceBundle),
         }
     }
 
@@ -539,6 +641,7 @@ enum ObjectIteratorInner<'d, 'a> {
     MachO(MachObjectIterator<'d, 'a>),
     Pdb(MonoArchiveObjects<'d, PdbObject<'d>>),
     Pe(MonoArchiveObjects<'d, PeObject<'d>>),
+    SourceBundle(MonoArchiveObjects<'d, SourceBundle<'d>>),
 }
 
 /// An iterator over [`Object`](enum.Object.html)s in an [`Archive`](struct.Archive.html).

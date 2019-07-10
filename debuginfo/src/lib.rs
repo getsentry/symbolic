@@ -45,6 +45,7 @@ pub mod elf;
 pub mod macho;
 pub mod pdb;
 pub mod pe;
+pub mod sourcebundle;
 
 pub use crate::base::*;
 pub use crate::object::*;

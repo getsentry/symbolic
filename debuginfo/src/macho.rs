@@ -216,6 +216,11 @@ impl<'d> MachObject<'d> {
         self.has_section("eh_frame") || self.has_section("debug_frame")
     }
 
+    /// Determines whether this object contains embedded source.
+    pub fn has_sources(&self) -> bool {
+        false
+    }
+
     /// Returns the raw data of the ELF file.
     pub fn data(&self) -> &'d [u8] {
         self.data
@@ -326,6 +331,10 @@ impl<'d> ObjectLike for MachObject<'d> {
 
     fn has_unwind_info(&self) -> bool {
         self.has_unwind_info()
+    }
+
+    fn has_sources(&self) -> bool {
+        self.has_sources()
     }
 }
 

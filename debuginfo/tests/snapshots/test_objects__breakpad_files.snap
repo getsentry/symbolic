@@ -1,0 +1,17 @@
+---
+created: "2019-06-28T08:09:53.890090Z"
+creator: insta@0.8.1
+source: debuginfo/tests/test_objects.rs
+expression: "FilesDebug(&files[..10])"
+---
+c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\system_error
+c:\program files (x86)\windows kits\10\include\10.0.16299.0\um\processthreadsapi.h
+c:\projects\breakpad-tools\deps\breakpad\src\common\scoped_ptr.h
+c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\xcall_once.h
+c:\projects\breakpad-tools\deps\breakpad\src\common\windows\string_utils-inl.h
+c:\program files (x86)\windows kits\10\include\10.0.16299.0\shared\stralign.h
+c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\cmath
+c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\xstring
+c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\cstdlib
+c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\xmemory0
+

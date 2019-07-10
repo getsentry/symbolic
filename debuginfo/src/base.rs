@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use failure::Fail;
 
-use symbolic_common::{join_path, Arch, CodeId, DebugId, Name};
+use symbolic_common::{clean_path, join_path, Arch, CodeId, DebugId, Name};
 
 /// An error returned for unknown or invalid `ObjectKinds`.
 #[derive(Debug, Fail, Clone, Copy)]
@@ -47,6 +47,10 @@ pub enum ObjectKind {
     /// for a corresponding binary file.
     Debug,
 
+    /// A container that just stores source code files, but no other debug
+    /// information corresponding to the original object file.
+    Sources,
+
     /// The Other type represents any valid object class that does not fit any
     /// of the other classes. These are mostly CPU or OS dependent, or unique
     /// to a single kind of object.
@@ -63,6 +67,7 @@ impl ObjectKind {
             ObjectKind::Library => "lib",
             ObjectKind::Dump => "dump",
             ObjectKind::Debug => "dbg",
+            ObjectKind::Sources => "src",
             ObjectKind::Other => "other",
         }
     }
@@ -83,6 +88,7 @@ impl ObjectKind {
             ObjectKind::Library => "library",
             ObjectKind::Dump => "memory dump",
             ObjectKind::Debug => "debug companion",
+            ObjectKind::Sources => "sources",
             ObjectKind::Other => "file",
         }
     }
@@ -109,6 +115,7 @@ impl FromStr for ObjectKind {
             "lib" => ObjectKind::Library,
             "dump" => ObjectKind::Dump,
             "dbg" => ObjectKind::Debug,
+            "src" => ObjectKind::Sources,
             "other" => ObjectKind::Other,
             _ => return Err(UnknownObjectKindError),
         })
@@ -135,6 +142,8 @@ pub enum FileFormat {
     Pdb,
     /// Portable Executable, an extension of COFF used on Windows.
     Pe,
+    /// Source code bundle ZIP.
+    SourceBundle,
 }
 
 impl FileFormat {
@@ -147,6 +156,7 @@ impl FileFormat {
             FileFormat::MachO => "macho",
             FileFormat::Pdb => "pdb",
             FileFormat::Pe => "pe",
+            FileFormat::SourceBundle => "sourcebundle",
         }
     }
 }
@@ -167,6 +177,7 @@ impl FromStr for FileFormat {
             "macho" => FileFormat::MachO,
             "pdb" => FileFormat::Pdb,
             "pe" => FileFormat::Pe,
+            "sourcebundle" => FileFormat::SourceBundle,
             _ => return Err(UnknownFileFormatError),
         })
     }
@@ -389,7 +400,7 @@ impl<'d> FromIterator<Symbol<'d>> for SymbolMap<'d> {
     }
 }
 
-/// File information refered by [`LineInfo`](struct.LineInfo.html) comprising a directory and name.
+/// File information referred by [`LineInfo`](struct.LineInfo.html) comprising a directory and name.
 ///
 /// The file path is usually relative to a compilation directory. It might contain parent directory
 /// segments (`../`).
@@ -402,6 +413,16 @@ pub struct FileInfo<'data> {
 }
 
 impl<'data> FileInfo<'data> {
+    /// Creates a `FileInfo` from a joined path by trying to split it.
+    pub(crate) fn from_path(path: &'data [u8]) -> Self {
+        let (dir, name) = symbolic_common::split_path_bytes(path);
+
+        FileInfo {
+            name,
+            dir: dir.unwrap_or_default(),
+        }
+    }
+
     /// The file name as UTF-8 string.
     pub fn name_str(&self) -> Cow<'data, str> {
         String::from_utf8_lossy(self.name)
@@ -414,7 +435,8 @@ impl<'data> FileInfo<'data> {
 
     /// The full path to the file, relative to the compilation directory.
     pub fn path_str(&self) -> String {
-        join_path(&self.dir_str(), &self.name_str())
+        let joined = join_path(&self.dir_str(), &self.name_str());
+        clean_path(&joined).into_owned()
     }
 }
 
@@ -424,6 +446,46 @@ impl fmt::Debug for FileInfo<'_> {
             .field("name", &String::from_utf8_lossy(self.name))
             .field("dir", &String::from_utf8_lossy(self.dir))
             .finish()
+    }
+}
+
+/// File information comprising a compilation directory, relative path and name.
+pub struct FileEntry<'data> {
+    /// Path to the compilation directory. File paths are relative to this.
+    pub compilation_dir: &'data [u8],
+    /// File name and path.
+    pub info: FileInfo<'data>,
+}
+
+impl<'data> FileEntry<'data> {
+    /// Path to the compilation directory.
+    pub fn compilation_dir_str(&self) -> Cow<'data, str> {
+        String::from_utf8_lossy(self.compilation_dir)
+    }
+
+    /// Absolute path to the file, including the compilation directory.
+    pub fn abs_path_str(&self) -> String {
+        let joined_path = join_path(&self.dir_str(), &self.name_str());
+        let joined = join_path(&self.compilation_dir_str(), &joined_path);
+        clean_path(&joined).into_owned()
+    }
+}
+
+impl fmt::Debug for FileEntry<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("FileInfo")
+            .field("compilation_dir", &self.compilation_dir_str())
+            .field("name", &self.name_str())
+            .field("dir", &self.dir_str())
+            .finish()
+    }
+}
+
+impl<'data> Deref for FileEntry<'data> {
+    type Target = FileInfo<'data>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.info
     }
 }
 
@@ -529,7 +591,15 @@ pub trait DebugSession {
     /// The iteration is guaranteed to be sorted by function address and includes all compilation
     /// units. Note that the iterator holds a mutable borrow on the debug session, which allows it
     /// to use caches and optimize resources while resolving function and line information.
-    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>>;
+    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>>;
+
+    /// Returns an iterator over all source files referenced by this debug file.
+    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>>;
+
+    /// Looks up a file's source contents by its full canonicalized path.
+    ///
+    /// The given path must be canonicalized.
+    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error>;
 }
 
 /// An object containing debug information.
@@ -551,11 +621,6 @@ pub trait ObjectLike {
 
     /// The debug information identifier of this object.
     fn debug_id(&self) -> DebugId;
-
-    /// The filename of the debug companion file.
-    fn debug_file_name(&self) -> Option<Cow<'_, str>> {
-        None
-    }
 
     /// The CPU architecture of this object.
     fn arch(&self) -> Arch;
@@ -591,9 +656,11 @@ pub trait ObjectLike {
 
     /// Determines whether this object contains stack unwinding information.
     fn has_unwind_info(&self) -> bool;
+
+    /// Determines whether this object contains embedded sources.
+    fn has_sources(&self) -> bool;
 }
 
-#[cfg(feature = "serde")]
 mod derive_serde {
     /// Helper macro to implement string based serialization and deserialization.
     ///
@@ -626,4 +693,59 @@ mod derive_serde {
 
     impl_str_serde!(super::ObjectKind);
     impl_str_serde!(super::FileFormat);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn file_info<'a>(dir: &'a str, name: &'a str) -> FileInfo<'a> {
+        FileInfo {
+            dir: dir.as_bytes(),
+            name: name.as_bytes(),
+        }
+    }
+
+    fn file_entry<'a>(compilation_dir: &'a str, dir: &'a str, name: &'a str) -> FileEntry<'a> {
+        FileEntry {
+            compilation_dir: compilation_dir.as_bytes(),
+            info: file_info(dir, name),
+        }
+    }
+
+    #[test]
+    fn test_file_info() {
+        assert_eq!(file_info("", "foo.h").path_str(), "foo.h");
+        assert_eq!(
+            file_info("C:\\Windows", "foo.h").path_str(),
+            "C:\\Windows\\foo.h"
+        );
+        assert_eq!(
+            file_info("/usr/local", "foo.h").path_str(),
+            "/usr/local/foo.h"
+        );
+        assert_eq!(file_info("/usr/local", "../foo.h").path_str(), "/usr/foo.h");
+        assert_eq!(file_info("/usr/local", "/foo.h").path_str(), "/foo.h");
+    }
+
+    #[test]
+    fn test_file_entry() {
+        assert_eq!(file_entry("", "", "foo.h").abs_path_str(), "foo.h");
+        assert_eq!(
+            file_entry("C:\\Windows", "src", "foo.h").abs_path_str(),
+            "C:\\Windows\\src\\foo.h"
+        );
+        assert_eq!(
+            file_entry("/usr", "local", "foo.h").abs_path_str(),
+            "/usr/local/foo.h"
+        );
+        assert_eq!(
+            file_entry("/usr/local", "..", "foo.h").abs_path_str(),
+            "/usr/foo.h"
+        );
+        assert_eq!(
+            file_entry("/usr", "/src", "foo.h").abs_path_str(),
+            "/src/foo.h"
+        );
+    }
 }

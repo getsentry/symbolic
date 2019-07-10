@@ -164,6 +164,11 @@ impl<'d> PeObject<'d> {
         false
     }
 
+    /// Determines whether this object contains embedded source.
+    pub fn has_sources(&self) -> bool {
+        false
+    }
+
     /// Constructs a no-op debugging session.
     pub fn debug_session(&self) -> Result<PeDebugSession<'d>, PeError> {
         Ok(PeDebugSession { _ph: PhantomData })
@@ -242,10 +247,6 @@ impl<'d> ObjectLike for PeObject<'d> {
         self.debug_id()
     }
 
-    fn debug_file_name(&self) -> Option<Cow<'_, str>> {
-        self.debug_file_name()
-    }
-
     fn arch(&self) -> Arch {
         self.arch()
     }
@@ -281,6 +282,10 @@ impl<'d> ObjectLike for PeObject<'d> {
     fn has_unwind_info(&self) -> bool {
         self.has_unwind_info()
     }
+
+    fn has_sources(&self) -> bool {
+        self.has_sources()
+    }
 }
 
 /// An iterator over symbols in the PE file.
@@ -313,18 +318,41 @@ pub struct PeDebugSession<'d> {
 
 impl<'d> PeDebugSession<'d> {
     /// Returns an iterator over all functions in this debug file.
-    pub fn functions(&mut self) -> PeFunctionIterator<'_> {
+    pub fn functions(&self) -> PeFunctionIterator<'_> {
         std::iter::empty()
+    }
+
+    /// Returns an iterator over all source files referenced by this debug file.
+    pub fn files(&self) -> PeFileIterator<'_> {
+        std::iter::empty()
+    }
+
+    /// Looks up a file's source contents by its full canonicalized path.
+    ///
+    /// The given path must be canonicalized.
+    pub fn source_by_path(&self, _path: &str) -> Result<Option<Cow<'_, str>>, PeError> {
+        Ok(None)
     }
 }
 
 impl DebugSession for PeDebugSession<'_> {
     type Error = PeError;
 
-    fn functions(&mut self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
+    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
         Box::new(std::iter::empty())
+    }
+
+    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
+        Box::new(std::iter::empty())
+    }
+
+    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
+        self.source_by_path(path)
     }
 }
 
 /// An iterator over functions in a PE file.
 pub type PeFunctionIterator<'s> = std::iter::Empty<Result<Function<'s>, PeError>>;
+
+/// An iterator over source files in a PE file.
+pub type PeFileIterator<'s> = std::iter::Empty<Result<FileEntry<'s>, PeError>>;
