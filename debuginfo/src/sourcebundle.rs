@@ -55,6 +55,7 @@ use crate::base::*;
 use crate::private::Parse;
 use crate::{DebugSession, ObjectKind, ObjectLike};
 
+/// Magic bytes of a source bundle. They are prepended to the ZIP file.
 static BUNDLE_MAGIC: [u8; 4] = *b"SYSB";
 
 /// Version of the bundle and manifest format.
@@ -593,7 +594,7 @@ impl<'d> SourceBundleDebugSession<'d> {
         files_by_path
     }
 
-    /// Get the path of a file in this bundle.
+    /// Get the path of a file in this bundle by its logical path.
     fn zip_path_by_source_path(&self, path: &str) -> Option<&str> {
         self.files_by_path
             .borrow_with(|| self.get_files_by_path())
@@ -601,6 +602,7 @@ impl<'d> SourceBundleDebugSession<'d> {
             .map(|zip_path| zip_path.as_str())
     }
 
+    /// Get source by the path of a file in the bundle.
     fn source_by_zip_path(&self, zip_path: &str) -> Result<Option<String>, SourceBundleError> {
         let mut archive = self.archive.lock();
         let mut file = archive
@@ -683,6 +685,10 @@ impl SourceBundleManifest {
     }
 }
 
+/// Generates a normalized path for a file in the bundle.
+///
+/// This removes all special characters. The path in the bundle will mostly resemble the original
+/// path, except for unsupported components.
 fn sanitize_bundle_path(path: &str) -> String {
     let mut sanitized = SANE_PATH_RE.replace_all(path, "/").into_owned();
     if sanitized.starts_with('/') {

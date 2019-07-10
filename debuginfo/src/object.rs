@@ -90,7 +90,7 @@ pub enum ObjectError {
     #[fail(display = "failed to process dwarf info")]
     Dwarf(#[fail(cause)] DwarfError),
 
-    /// An error in source bundles
+    /// An error in source bundles.
     #[fail(display = "failed to process source bundle")]
     SourceBundle(#[fail(cause)] SourceBundleError),
 }
