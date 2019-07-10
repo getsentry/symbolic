@@ -191,12 +191,12 @@ pub enum SymbolicErrorCode {
     SymCacheErrorTooManyValues = 6012,
 
     // symbolic::unreal
-    Unreal4ErrorUnknownBytesFormat = 7001,
     Unreal4ErrorEmpty = 7002,
-    Unreal4ErrorOutOfBounds = 7003,
     Unreal4ErrorBadCompression = 7004,
     Unreal4ErrorInvalidXml = 7005,
     Unreal4ErrorInvalidLogEntry = 7006,
+    Unreal4ErrorBadData = 7007,
+    Unreal4ErrorTrailingData = 7008,
 
     // apple-crash-report-parser
     AppleCrashReportParseErrorIo = 8001,
@@ -348,14 +348,12 @@ impl SymbolicErrorCode {
             use symbolic::unreal::Unreal4Error;
             if let Some(error) = cause.downcast_ref::<Unreal4Error>() {
                 return match error {
-                    Unreal4Error::UnknownBytesFormat => {
-                        SymbolicErrorCode::Unreal4ErrorUnknownBytesFormat
-                    }
                     Unreal4Error::Empty => SymbolicErrorCode::Unreal4ErrorEmpty,
-                    Unreal4Error::OutOfBounds => SymbolicErrorCode::Unreal4ErrorOutOfBounds,
                     Unreal4Error::BadCompression(_) => {
                         SymbolicErrorCode::Unreal4ErrorBadCompression
                     }
+                    Unreal4Error::BadData(_) => SymbolicErrorCode::Unreal4ErrorBadData,
+                    Unreal4Error::TrailingData => SymbolicErrorCode::Unreal4ErrorTrailingData,
                     Unreal4Error::InvalidXml(_) => SymbolicErrorCode::Unreal4ErrorInvalidXml,
                     Unreal4Error::InvalidLogEntry(_) => {
                         SymbolicErrorCode::Unreal4ErrorInvalidLogEntry
