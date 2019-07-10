@@ -1,14 +1,14 @@
 use std::fs::File;
 use std::io::Read;
 
-use symbolic_unreal::{NativeCrash, Unreal4Crash, Unreal4Error};
+use symbolic_unreal::{Unreal4Crash, Unreal4Error, Unreal4FileType};
 
 fn get_unreal_crash() -> Result<Unreal4Crash, Unreal4Error> {
     let mut file =
         File::open("../testutils/fixtures/unreal/unreal_crash").expect("example file opens");
     let mut file_content = Vec::new();
     file.read_to_end(&mut file_content).expect("fixture file");
-    Unreal4Crash::from_slice(&file_content)
+    Unreal4Crash::parse(&file_content)
 }
 
 fn get_unreal_apple_crash() -> Result<Unreal4Crash, Unreal4Error> {
@@ -16,7 +16,7 @@ fn get_unreal_apple_crash() -> Result<Unreal4Crash, Unreal4Error> {
         File::open("../testutils/fixtures/unreal/unreal_crash_apple").expect("example file opens");
     let mut file_content = Vec::new();
     file.read_to_end(&mut file_content).expect("fixture file");
-    Unreal4Crash::from_slice(&file_content)
+    Unreal4Crash::parse(&file_content)
 }
 
 #[test]
@@ -28,40 +28,40 @@ fn test_load_unreal_crash() {
 fn test_get_minidump_slice() {
     let ue4_crash = get_unreal_crash().expect("test crash file loads");
 
-    let minidump_bytes = ue4_crash
-        .get_minidump_slice()
-        .expect("expected Minidump file read without errors")
-        .expect("expected Minidump file bytes exists");
+    let minidump_file = ue4_crash
+        .file_by_type(Unreal4FileType::Minidump)
+        .expect("expected minidump file exists");
 
-    let native_crash = ue4_crash
-        .get_native_crash()
-        .expect("expected Minidump file read without errors")
-        .expect("expected Minidump file bytes exists");
+    assert_eq!(minidump_file.data().len(), 410_700);
 
-    if let NativeCrash::MiniDump(..) = native_crash {
-    } else {
-        panic!("Expected a minidump as native crash");
-    }
+    let crash_file = ue4_crash
+        .native_crash()
+        .expect("expected native crash exists");
 
-    assert_eq!(minidump_bytes.len(), 410_700);
+    assert_eq!(minidump_file.index(), crash_file.index());
+
+    assert!(ue4_crash
+        .file_by_type(Unreal4FileType::AppleCrashReport)
+        .is_none());
 }
 
 #[test]
 fn test_get_apple_crash_report() {
     let ue4_crash = get_unreal_apple_crash().expect("test crash file loads");
 
-    assert_eq!(ue4_crash.get_minidump_slice().unwrap(), None);
+    let apple_file = ue4_crash
+        .file_by_type(Unreal4FileType::AppleCrashReport)
+        .expect("expected apple crash report file exists");
 
-    let native_crash = ue4_crash
-        .get_native_crash()
-        .expect("expected native file read without errors")
-        .expect("expected native file bytes exists");
+    assert_eq!(apple_file.data().len(), 91_392);
 
-    if let NativeCrash::AppleCrashReport(s) = native_crash {
-        assert!(s.contains("Report Version:"));
-    } else {
-        panic!("Expected an apple crash report as native crash");
-    }
+    let crash_file = ue4_crash
+        .native_crash()
+        .expect("expected native crash exists");
+
+    assert_eq!(apple_file.index(), crash_file.index());
+
+    assert!(ue4_crash.file_by_type(Unreal4FileType::Minidump).is_none());
 }
 
 #[test]
@@ -69,7 +69,7 @@ fn test_contexts_runtime_properties() {
     let ue4_crash = get_unreal_crash().expect("test crash file loads");
 
     let ue4_context = ue4_crash
-        .get_context()
+        .context()
         .expect("no errors parsing the context file")
         .expect("context file exists in sample crash");
 
@@ -88,7 +88,7 @@ fn test_contexts_platform_properties() {
     let ue4_crash = get_unreal_crash().expect("test crash file loads");
 
     let ue4_context = ue4_crash
-        .get_context()
+        .context()
         .expect("no errors parsing the context file")
         .expect("context file exists in sample crash");
 
@@ -116,28 +116,27 @@ fn test_files_api() {
     let ue4_crash = get_unreal_crash().expect("test crash file loads");
 
     assert_eq!(ue4_crash.file_count(), 4);
-    assert_eq!(ue4_crash.files().count(), 4);
+    assert_eq!(ue4_crash.files().size_hint(), (4, Some(4)));
 
     assert_eq!(
-        ue4_crash.file_by_index(0).expect("File exists").file_name,
+        ue4_crash.file_by_index(0).expect("File exists").name(),
         "CrashContext.runtime-xml"
     );
     assert_eq!(
-        ue4_crash.file_by_index(1).expect("File exists").file_name,
+        ue4_crash.file_by_index(1).expect("File exists").name(),
         "CrashReportClient.ini"
     );
     assert_eq!(
-        ue4_crash.file_by_index(2).expect("File exists").file_name,
+        ue4_crash.file_by_index(2).expect("File exists").name(),
         "MyProject.log"
     );
     assert_eq!(
-        ue4_crash.file_by_index(3).expect("File exists").file_name,
+        ue4_crash.file_by_index(3).expect("File exists").name(),
         "UE4Minidump.dmp"
     );
 
-    let xml = ue4_crash
-        .get_file_contents(ue4_crash.file_by_index(0).expect("xml file in pos 0"))
-        .expect("contents of xml file");
+    let context_file = ue4_crash.file_by_index(0).expect("xml file in pos 0");
+    let xml = context_file.data();
 
     assert_eq!(xml[0] as char, '<');
     // there are two line breaks after closing tag:
@@ -148,7 +147,7 @@ fn test_files_api() {
 fn test_get_logs() {
     let ue4_crash = get_unreal_crash().expect("test crash file loads");
     let limit = 100;
-    let logs = ue4_crash.get_logs(limit).expect("log file");
+    let logs = ue4_crash.logs(limit).expect("log file");
 
     assert_eq!(logs.len(), limit);
     assert_eq!(

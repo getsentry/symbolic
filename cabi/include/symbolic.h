@@ -63,12 +63,12 @@ enum SymbolicErrorCode {
   SYMBOLIC_ERROR_CODE_SYM_CACHE_ERROR_VALUE_TOO_LARGE = 6010,
   SYMBOLIC_ERROR_CODE_SYM_CACHE_ERROR_WRITE_FAILED = 6011,
   SYMBOLIC_ERROR_CODE_SYM_CACHE_ERROR_TOO_MANY_VALUES = 6012,
-  SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_UNKNOWN_BYTES_FORMAT = 7001,
   SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_EMPTY = 7002,
-  SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_OUT_OF_BOUNDS = 7003,
   SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_BAD_COMPRESSION = 7004,
   SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_INVALID_XML = 7005,
   SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_INVALID_LOG_ENTRY = 7006,
+  SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_BAD_DATA = 7007,
+  SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_TRAILING_DATA = 7008,
   SYMBOLIC_ERROR_CODE_APPLE_CRASH_REPORT_PARSE_ERROR_IO = 8001,
   SYMBOLIC_ERROR_CODE_APPLE_CRASH_REPORT_PARSE_ERROR_INVALID_INCIDENT_IDENTIFIER = 8002,
   SYMBOLIC_ERROR_CODE_APPLE_CRASH_REPORT_PARSE_ERROR_INVALID_REPORT_VERSION = 8003,
@@ -138,7 +138,7 @@ typedef struct SymbolicUnreal4Crash SymbolicUnreal4Crash;
 /**
  * A file contained in a SymbolicUnreal4Crash.
  */
-typedef struct SymbolicUnreal4CrashFile SymbolicUnreal4CrashFile;
+typedef struct SymbolicUnreal4File SymbolicUnreal4File;
 
 /**
  * CABI wrapper around a Rust string.
@@ -717,30 +717,13 @@ void symbolic_token_match_free(SymbolicTokenMatch *token_match);
 /**
  * Returns file meta data of a file in the Unreal 4 crash.
  */
-const SymbolicUnreal4CrashFile *symbolic_unreal4_crash_file_by_index(const SymbolicUnreal4Crash *unreal,
-                                                                     uintptr_t index);
-
-/**
- * Returns file contents data of a file in the Unreal 4 crash.
- */
-const uint8_t *symbolic_unreal4_crash_file_contents(const SymbolicUnreal4CrashFile *file,
-                                                    const SymbolicUnreal4Crash *unreal,
-                                                    uintptr_t *len);
+SymbolicUnreal4File *symbolic_unreal4_crash_file_by_index(const SymbolicUnreal4Crash *unreal,
+                                                          uintptr_t index);
 
 /**
  * Returns the number of files in the Unreal 4 crash.
  */
 uintptr_t symbolic_unreal4_crash_file_count(const SymbolicUnreal4Crash *unreal);
-
-/**
- * Returns the file name of a file in the Unreal 4 crash.
- */
-SymbolicStr symbolic_unreal4_crash_file_name(const SymbolicUnreal4CrashFile *file);
-
-/**
- * Returns the file type of a file in the Unreal 4 crash.
- */
-SymbolicStr symbolic_unreal4_crash_file_type(const SymbolicUnreal4CrashFile *file);
 
 /**
  * Frees an Unreal Engine 4 crash.
@@ -754,14 +737,25 @@ SymbolicUnreal4Crash *symbolic_unreal4_crash_from_bytes(const char *bytes,
                                                         uintptr_t len);
 
 /**
- * Parses the Apple crash report from an Unreal Engine 4 crash.
+ * Returns the file contents of a file in the Unreal 4 crash.
  */
-SymbolicStr symbolic_unreal4_crash_get_apple_crash_report(const SymbolicUnreal4Crash *unreal);
+const uint8_t *symbolic_unreal4_file_data(const SymbolicUnreal4File *file,
+                                          uintptr_t *len);
 
 /**
- * Processes the minidump process state from an Unreal Engine 4 crash.
+ * Frees an Unreal Engine 4 file.
  */
-SymbolicProcessState *symbolic_unreal4_crash_process_minidump(const SymbolicUnreal4Crash *unreal);
+void symbolic_unreal4_file_free(SymbolicUnreal4File *file);
+
+/**
+ * Returns the file name of a file in the Unreal 4 crash.
+ */
+SymbolicStr symbolic_unreal4_file_name(const SymbolicUnreal4File *file);
+
+/**
+ * Returns the file type of a file in the Unreal 4 crash.
+ */
+SymbolicStr symbolic_unreal4_file_type(const SymbolicUnreal4File *file);
 
 /**
  * Parses the Unreal Engine 4 context from a crash, returns JSON.
