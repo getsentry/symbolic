@@ -97,7 +97,7 @@ fn pop_path(path: &mut String) -> bool {
 ///
 /// This removes redundant `../` or `./` references.  Since this does not resolve symlinks this
 /// is a lossy operation.
-pub fn clean_path(path: &str) -> String {
+pub fn clean_path(path: &str) -> Cow<'_, str> {
     let mut rv = String::with_capacity(path.len());
     let is_windows = path.contains('\\');
     let mut needs_separator = false;
@@ -133,7 +133,9 @@ pub fn clean_path(path: &str) -> String {
         rv.push_str(segment);
     }
 
-    rv
+    // For now, always return an owned string.
+    // This can be optimized later.
+    Cow::Owned(rv)
 }
 
 /// Splits off the last component of a binary path.

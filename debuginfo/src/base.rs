@@ -436,7 +436,7 @@ impl<'data> FileInfo<'data> {
     /// The full path to the file, relative to the compilation directory.
     pub fn path_str(&self) -> String {
         let joined = join_path(&self.dir_str(), &self.name_str());
-        clean_path(&joined)
+        clean_path(&joined).into_owned()
     }
 }
 
@@ -467,7 +467,7 @@ impl<'data> FileEntry<'data> {
     pub fn abs_path_str(&self) -> String {
         let joined_path = join_path(&self.dir_str(), &self.name_str());
         let joined = join_path(&self.compilation_dir_str(), &joined_path);
-        clean_path(&joined)
+        clean_path(&joined).into_owned()
     }
 }
 
