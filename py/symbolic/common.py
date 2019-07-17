@@ -1,8 +1,7 @@
 import os
-import six
 
 from symbolic._lowlevel import lib, ffi
-from symbolic._compat import string_types, int_types
+from symbolic._compat import string_types, int_types, string_types
 from symbolic.utils import rustcall, encode_str, decode_str
 from symbolic import exceptions
 
@@ -20,7 +19,7 @@ ffi.init_once(lib.symbolic_init, 'init')
 
 def arch_is_known(arch):
     """Checks if an architecture is known."""
-    if not isinstance(arch, six.string_types):
+    if not isinstance(arch, string_types):
         return False
     return rustcall(lib.symbolic_arch_is_known, encode_str(arch))
 
@@ -29,7 +28,7 @@ def normalize_arch(arch):
     """Normalizes an architecture name."""
     if arch is None:
         return None
-    if not isinstance(arch, six.string_types):
+    if not isinstance(arch, string_types):
         raise ValueError('Invalid architecture: expected string')
 
     normalized = rustcall(lib.symbolic_normalize_arch, encode_str(arch))
