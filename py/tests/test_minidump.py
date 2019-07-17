@@ -9,7 +9,7 @@ def test_macos_without_cfi(res_path):
     state = ProcessState.from_minidump(path)
     assert state.thread_count == 1
     assert state.requesting_thread == 0
-    assert state.timestamp == 1505305307L
+    assert state.timestamp == 1505305307
     assert state.crashed == True
     assert state.crash_time == datetime(2017, 9, 13, 12, 21, 47)
     assert state.crash_address == 69  # memory address: *(0x45) = 0;
@@ -50,7 +50,7 @@ def test_linux_without_cfi(res_path):
     state = ProcessState.from_minidump(path)
     assert state.thread_count == 1
     assert state.requesting_thread == 0
-    assert state.timestamp == 1505305040L
+    assert state.timestamp == 1505305040
     assert state.crashed == True
     assert state.crash_time == datetime(2017, 9, 13, 12, 17, 20)
     assert state.crash_address == 0  # memory address: *(0x0) = 0;
@@ -97,7 +97,7 @@ def test_macos_with_cfi(res_path):
     state = ProcessState.from_minidump(minidump_path, cfi)
     assert state.thread_count == 1
     assert state.requesting_thread == 0
-    assert state.timestamp == 1505305307L
+    assert state.timestamp == 1505305307
     assert state.crashed == True
     assert state.crash_time == datetime(2017, 9, 13, 12, 21, 47)
     assert state.crash_address == 69  # memory address: *(0x45) = 0;
@@ -149,7 +149,7 @@ def test_linux_with_cfi(res_path):
     state = ProcessState.from_minidump(minidump_path, cfi)
     assert state.thread_count == 1
     assert state.requesting_thread == 0
-    assert state.timestamp == 1505305040L
+    assert state.timestamp == 1505305040
     assert state.crashed == True
     assert state.crash_time == datetime(2017, 9, 13, 12, 17, 20)
     assert state.crash_address == 0  # memory address: *(0x0) = 0;

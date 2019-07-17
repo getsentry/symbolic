@@ -1,7 +1,7 @@
 import bisect
 from weakref import WeakValueDictionary
 
-from symbolic._compat import itervalues, range_type
+from symbolic._compat import itervalues, range_type, text_type
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, decode_str, encode_str, attached_refs
 from symbolic.common import parse_addr, arch_is_known
@@ -25,6 +25,8 @@ class Archive(RustObject):
     @classmethod
     def open(self, path):
         """Opens an archive from a given path."""
+        if isinstance(path, text_type):
+            path = path.encode('utf-8')
         return Archive._from_objptr(
             rustcall(lib.symbolic_archive_open, path))
 
