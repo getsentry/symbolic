@@ -15,7 +15,7 @@ fn test_msvc_demangle_full() {
         "??3@YAXPEAX@Z" => "operator delete",
         "?LoadV8Snapshot@V8Initializer@gin@@SAXXZ" => "gin::V8Initializer::LoadV8Snapshot",
         "??9@YA_NAEBVGURL@@0@Z" => "operator!=",
-        "??_GAtomSandboxedRenderFrameObserver@?A0x77c58568@atom@@UEAAPEAXI@Z" => "atom::`anonymous namespace`::AtomSandboxedRenderFrameObserver::`scalar deleting destructor'",
+        "??_GAtomSandboxedRenderFrameObserver@?A0x77c58568@atom@@UEAAPEAXI@Z" => "atom::`anonymous namespace'::AtomSandboxedRenderFrameObserver::`scalar deleting destructor'",
     })
 }
 
@@ -27,7 +27,7 @@ fn test_msvc_demangle_without_args() {
         "??3@YAXPEAX@Z" => "operator delete(void *)",
         "?LoadV8Snapshot@V8Initializer@gin@@SAXXZ" => "gin::V8Initializer::LoadV8Snapshot(void)",
         "??9@YA_NAEBVGURL@@0@Z" => "operator!=(class GURL const &,class GURL const &)",
-        "??_GAtomSandboxedRenderFrameObserver@?A0x77c58568@atom@@UEAAPEAXI@Z" => "atom::`anonymous namespace`::AtomSandboxedRenderFrameObserver::`scalar deleting destructor'(unsigned int)",
+        "??_GAtomSandboxedRenderFrameObserver@?A0x77c58568@atom@@UEAAPEAXI@Z" => "atom::`anonymous namespace'::AtomSandboxedRenderFrameObserver::`scalar deleting destructor'(unsigned int)",
     })
 }
 
