@@ -28,6 +28,11 @@ fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Error> {
         match object {
             Ok(object) => {
                 println!(" - {}: {}", object.arch(), object.debug_id());
+                if let Some(code_id) = object.code_id() {
+                    println!("   code id:      {}", code_id);
+                } else {
+                    println!("   code id:      -");
+                }
                 println!("   object kind:  {:#}", object.kind());
                 println!("   load address: {:#x}", object.load_address());
                 println!("   symbol table: {}", object.has_symbols());
