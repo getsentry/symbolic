@@ -593,7 +593,7 @@ impl<'s> Unit<'s> {
 
         let end = match lines
             .iter()
-            .map(|line| line.address + line.size.unwrap_or(0))
+            .map(|line| line.address + line.size.unwrap_or(1))
             .max()
         {
             Some(address) => address,
