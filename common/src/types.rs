@@ -8,7 +8,7 @@ use std::str;
 use failure::Fail;
 
 /// Names for x86 CPU registers by register number.
-static I386: &[&'static str] = &[
+static I386: &[&str] = &[
     "$eax", "$ecx", "$edx", "$ebx", "$esp", "$ebp", "$esi", "$edi", "$eip", "$eflags", "$unused1",
     "$st0", "$st1", "$st2", "$st3", "$st4", "$st5", "$st6", "$st7", "$unused2", "$unused3",
     "$xmm0", "$xmm1", "$xmm2", "$xmm3", "$xmm4", "$xmm5", "$xmm6", "$xmm7", "$mm0", "$mm1", "$mm2",
@@ -17,7 +17,7 @@ static I386: &[&'static str] = &[
 ];
 
 /// Names for x86_64 CPU registers by register number.
-static X86_64: &[&'static str] = &[
+static X86_64: &[&str] = &[
     "$rax", "$rdx", "$rcx", "$rbx", "$rsi", "$rdi", "$rbp", "$rsp", "$r8", "$r9", "$r10", "$r11",
     "$r12", "$r13", "$r14", "$r15", "$rip", "$xmm0", "$xmm1", "$xmm2", "$xmm3", "$xmm4", "$xmm5",
     "$xmm6", "$xmm7", "$xmm8", "$xmm9", "$xmm10", "$xmm11", "$xmm12", "$xmm13", "$xmm14", "$xmm15",
@@ -28,7 +28,7 @@ static X86_64: &[&'static str] = &[
 ];
 
 /// Names for 32bit ARM CPU registers by register number.
-static ARM: &[&'static str] = &[
+static ARM: &[&str] = &[
     "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "sp", "lr",
     "pc", "f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7", "fps", "cpsr", "", "", "", "", "", "",
     "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
@@ -39,7 +39,7 @@ static ARM: &[&'static str] = &[
 ];
 
 /// Names for 64bit ARM CPU registers by register number.
-static ARM64: &[&'static str] = &[
+static ARM64: &[&str] = &[
     "x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14",
     "x15", "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27",
     "x28", "x29", "x30", "sp", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
@@ -49,7 +49,7 @@ static ARM64: &[&'static str] = &[
 ];
 
 /// Names for MIPS CPU registers by register number.
-static MIPS: &[&'static str] = &[
+static MIPS: &[&str] = &[
     "$zero", "$at", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3", "$t0", "$t1", "$t2", "$t3", "$t4",
     "$t5", "$t6", "$t7", "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$t8", "$t9",
     "$k0", "$k1", "$gp", "$sp", "$fp", "$ra", "$lo", "$hi", "$pc", "$f0", "$f2", "$f3", "$f4",
