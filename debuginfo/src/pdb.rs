@@ -603,7 +603,7 @@ impl<'s> Unit<'s> {
         Ok(Some(Function {
             address: start,
             size: end - start,
-            name: Name::new(""), // TODO(ja): Get the name from IPI
+            name: Name::new("placeholder"), // TODO(ja): Get the name from IPI
             compilation_dir: &[],
             lines,
             inlinees: Vec::new(),
@@ -637,11 +637,6 @@ impl<'s> Unit<'s> {
                 _ => skipped_depth = None,
             }
 
-            // Flush all functions out that exceed the current iteration depth. Since we
-            // encountered a function at this level, there will be no more inlinees to the
-            // previous function at the same level or any of it's children.
-            stack.flush(depth, &mut functions);
-
             let function = match symbol.parse() {
                 Ok(SymbolData::Procedure(proc)) => {
                     last_offset = Some(proc.offset);
@@ -654,8 +649,13 @@ impl<'s> Unit<'s> {
                 }
                 // We need to ignore errors here since the PDB crate does not yet implement all
                 // symbol types. Instead of erroring too often, it's better to swallow these.
-                _ => None,
+                _ => continue,
             };
+
+            // Flush all functions out that exceed the current iteration depth. Since we
+            // encountered a function at this level, there will be no more inlinees to the
+            // previous function at the same level or any of it's children.
+            stack.flush(depth, &mut functions);
 
             match function {
                 Some(function) => stack.push(depth, function),
