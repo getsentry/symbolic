@@ -8,14 +8,17 @@ use std::sync::Arc;
 use failure::Fail;
 use lazycell::LazyCell;
 use parking_lot::RwLock;
-use pdb::{AddressMap, FallibleIterator, MachineType, Module, ModuleInfo, SymbolData};
+use pdb::{
+    AddressMap, FallibleIterator, InlineSiteSymbol, LineProgram, MachineType, Module, ModuleInfo,
+    PdbInternalSectionOffset, ProcedureSymbol, SymbolData,
+};
 
 use symbolic_common::{
     derive_failure, Arch, AsSelf, CodeId, CpuFamily, DebugId, Name, SelfCell, Uuid,
 };
 
 use crate::base::*;
-use crate::private::Parse;
+use crate::private::{FunctionStack, Parse};
 
 type Pdb<'d> = pdb::PDB<'d, Cursor<&'d [u8]>>;
 
@@ -31,6 +34,10 @@ pub enum PdbErrorKind {
     /// The PDB file is corrupted. See the cause for more information.
     #[fail(display = "invalid pdb file")]
     BadObject,
+
+    /// An inline record was encountered without an inlining parent.
+    #[fail(display = "unexpected inline function without parent")]
+    UnexpectedInline,
 }
 
 derive_failure!(
@@ -320,7 +327,7 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
         let address_map = self.address_map.as_ref()?;
 
         while let Ok(Some(symbol)) = self.symbols.next() {
-            if let Ok(SymbolData::PublicSymbol(public)) = symbol.parse() {
+            if let Ok(SymbolData::Public(public)) = symbol.parse() {
                 if !public.function {
                     continue;
                 }
@@ -330,20 +337,18 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
                     None => continue,
                 };
 
-                let name = symbol.name().ok().map(|name| {
-                    let cow = name.to_string();
-                    // pdb::SymbolIter offers data bound to its own lifetime since it holds the
-                    // buffer containing public symbols. The contract requires that we return
-                    // `Symbol<'d>`, so we cannot return zero-copy symbols here.
-                    Cow::from(String::from(if cow.starts_with('_') {
-                        &cow[1..]
-                    } else {
-                        &cow
-                    }))
-                });
+                let cow = public.name.to_string();
+                // pdb::SymbolIter offers data bound to its own lifetime since it holds the
+                // buffer containing public symbols. The contract requires that we return
+                // `Symbol<'d>`, so we cannot return zero-copy symbols here.
+                let name = Cow::from(String::from(if cow.starts_with('_') {
+                    &cow[1..]
+                } else {
+                    &cow
+                }));
 
                 return Some(Symbol {
-                    name,
+                    name: Some(name),
                     address: u64::from(address.0),
                     size: 0, // Computed in `SymbolMap`
                 });
@@ -504,66 +509,162 @@ struct Unit<'s> {
 }
 
 impl<'s> Unit<'s> {
-    fn functions(&self) -> Result<Vec<Function<'s>>, PdbError> {
+    fn collect_lines<I>(
+        &self,
+        mut line_iter: I,
+        program: &LineProgram<'s>,
+    ) -> Result<Vec<LineInfo<'s>>, PdbError>
+    where
+        I: FallibleIterator<Item = pdb::LineInfo>,
+        PdbError: From<I::Error>,
+    {
         let address_map = &self.debug_info.address_map;
-        let symbol_map = &self.debug_info.symbol_map;
 
-        let program = self.module.line_program()?;
-        let mut symbols = self.module.symbols()?;
-
-        let mut functions = Vec::new();
-        while let Some(symbol) = symbols.next()? {
-            let proc = match symbol.parse() {
-                Ok(SymbolData::Procedure(proc)) => proc,
-                // We need to ignore errors here since the PDB crate does not yet implement all
-                // symbol types. Instead of erroring too often, it's better to swallow these.
-                _ => continue,
-            };
-
-            // Translate the function's address to the PE's address space. If this fails, we're
-            // likely dealing with an invalid function and can skip it.
-            let address = match proc.offset.to_rva(&address_map) {
-                Some(addr) => u64::from(addr.0),
+        let mut lines = Vec::new();
+        while let Some(line_info) = line_iter.next()? {
+            let rva = match line_info.offset.to_rva(&address_map) {
+                Some(rva) => u64::from(rva.0),
                 None => continue,
             };
 
-            // Prefer names from the public symbol table as they are mangled. Otherwise, fall back
-            // to the name of the private symbol which is often times demangled. Also, this might
-            // save us some allocations, since the symbol_map is held by the debug session.
-            let name = match symbol_map.lookup(address) {
-                Some(symbol) => Name::new(symbol.name().unwrap_or_default()),
-                None => Name::new(symbol.name()?.to_string()),
-            };
+            let file_info = program.get_file_info(line_info.file_index)?;
 
-            let mut lines = Vec::new();
-            let mut line_iter = program.lines_at_offset(proc.offset);
-            while let Some(line_info) = line_iter.next()? {
-                let rva = match line_info.offset.to_rva(&address_map) {
-                    Some(rva) => u64::from(rva.0),
-                    None => continue,
-                };
+            lines.push(LineInfo {
+                address: rva,
+                size: line_info.length.map(u64::from),
+                file: self.debug_info.file_info(file_info)?,
+                line: line_info.line_start.into(),
+            });
+        }
 
-                let file_info = program.get_file_info(line_info.file_index)?;
+        Ok(lines)
+    }
 
-                lines.push(LineInfo {
-                    address: rva,
-                    file: self.debug_info.file_info(file_info)?,
-                    line: line_info.line_start.into(),
-                });
+    fn handle_procedure(
+        &self,
+        proc: ProcedureSymbol<'s>,
+        program: &LineProgram<'s>,
+    ) -> Result<Option<Function<'s>>, PdbError> {
+        let address_map = &self.debug_info.address_map;
+        let symbol_map = &self.debug_info.symbol_map;
+
+        // Translate the function's address to the PE's address space. If this fails, we're
+        // likely dealing with an invalid function and can skip it.
+        let address = match proc.offset.to_rva(&address_map) {
+            Some(addr) => u64::from(addr.0),
+            None => return Ok(None),
+        };
+
+        // Prefer names from the public symbol table as they are mangled. Otherwise, fall back
+        // to the name of the private symbol which is often times demangled. Also, this might
+        // save us some allocations, since the symbol_map is held by the debug session.
+        let name = match symbol_map.lookup(address) {
+            Some(symbol) => Name::new(symbol.name().unwrap_or_default()),
+            None => Name::new(proc.name.to_string()),
+        };
+
+        let line_iter = program.lines_at_offset(proc.offset);
+        let lines = self.collect_lines(line_iter, program)?;
+
+        Ok(Some(Function {
+            address,
+            size: proc.len.into(),
+            name,
+            compilation_dir: &[],
+            lines,
+            inlinees: Vec::new(),
+            inline: false,
+        }))
+    }
+
+    fn handle_inlinee(
+        &self,
+        inline_site: InlineSiteSymbol<'s>,
+        parent_offset: PdbInternalSectionOffset,
+        program: &LineProgram<'s>,
+    ) -> Result<Option<Function<'s>>, PdbError> {
+        let line_iter = program.inlinee_lines(parent_offset, &inline_site);
+        let lines = self.collect_lines(line_iter, program)?;
+
+        let start = match lines.iter().map(|line| line.address).min() {
+            Some(address) => address,
+            None => return Ok(None),
+        };
+
+        let end = match lines
+            .iter()
+            .map(|line| line.address + line.size.unwrap_or(0))
+            .max()
+        {
+            Some(address) => address,
+            None => return Ok(None),
+        };
+
+        Ok(Some(Function {
+            address: start,
+            size: end - start,
+            name: Name::new(""), // TODO(ja): Get the name from IPI
+            compilation_dir: &[],
+            lines,
+            inlinees: Vec::new(),
+            inline: true,
+        }))
+    }
+
+    fn functions(&self) -> Result<Vec<Function<'s>>, PdbError> {
+        let program = self.module.line_program()?;
+        let mut symbols = self.module.symbols()?;
+
+        let mut depth = 0;
+        let mut skipped_depth = None;
+
+        let mut functions = Vec::new();
+        let mut stack = FunctionStack::new();
+        let mut last_offset = None;
+
+        while let Some(symbol) = symbols.next()? {
+            if symbol.starts_scope() {
+                depth += 1;
+            } else if symbol.ends_scope() {
+                depth -= 1;
             }
 
-            let func = Function {
-                address,
-                size: proc.len.into(),
-                name,
-                compilation_dir: &[],
-                lines,
-                inlinees: Vec::new(),
-                inline: false,
+            // If we're navigating within a skipped function (see below), we can ignore this
+            // entry completely. Otherwise, we've moved out of any skipped function and can
+            // reset the stored depth.
+            match skipped_depth {
+                Some(skipped) if depth > skipped => continue,
+                _ => skipped_depth = None,
+            }
+
+            // Flush all functions out that exceed the current iteration depth. Since we
+            // encountered a function at this level, there will be no more inlinees to the
+            // previous function at the same level or any of it's children.
+            stack.flush(depth, &mut functions);
+
+            let function = match symbol.parse() {
+                Ok(SymbolData::Procedure(proc)) => {
+                    last_offset = Some(proc.offset);
+                    self.handle_procedure(proc, &program)?
+                }
+                Ok(SymbolData::InlineSite(inline)) => {
+                    let parent_offset = last_offset
+                        .ok_or_else(|| PdbError::from(PdbErrorKind::UnexpectedInline))?;
+                    self.handle_inlinee(inline, parent_offset, &program)?
+                }
+                // We need to ignore errors here since the PDB crate does not yet implement all
+                // symbol types. Instead of erroring too often, it's better to swallow these.
+                _ => None,
             };
 
-            functions.push(func);
+            match function {
+                Some(function) => stack.push(depth, function),
+                None => skipped_depth = Some(depth),
+            }
         }
+
+        // We're done, flush the remaining stack.
+        stack.flush(0, &mut functions);
 
         // Functions are not necessarily in RVA order. So far, it seems that modules are.
         dmsort::sort_by_key(&mut functions, |f| f.address);

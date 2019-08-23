@@ -1132,6 +1132,7 @@ impl<'s> BreakpadFunctionIterator<'s> {
 
             lines.push(LineInfo {
                 address: line.address,
+                size: Some(line.size),
                 file: FileInfo::from_path(filename.as_bytes()),
                 line: line.line,
             });
