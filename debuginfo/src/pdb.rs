@@ -1,6 +1,7 @@
 //! Support for Program Database, the debug companion format on Windows.
 
 use std::borrow::Cow;
+use std::cell::RefCell;
 use std::fmt;
 use std::io::Cursor;
 use std::sync::Arc;
@@ -38,6 +39,10 @@ pub enum PdbErrorKind {
     /// An inline record was encountered without an inlining parent.
     #[fail(display = "unexpected inline function without parent")]
     UnexpectedInline,
+
+    /// Formatting of a type name failed
+    #[fail(display = "failed to format type name")]
+    FormattingFailed,
 }
 
 derive_failure!(
@@ -49,6 +54,12 @@ derive_failure!(
 impl From<pdb::Error> for PdbError {
     fn from(error: pdb::Error) -> Self {
         error.context(PdbErrorKind::BadObject).into()
+    }
+}
+
+impl From<fmt::Error> for PdbError {
+    fn from(error: fmt::Error) -> Self {
+        error.context(PdbErrorKind::FormattingFailed).into()
     }
 }
 
@@ -188,7 +199,7 @@ impl<'d> PdbObject<'d> {
 
     /// Constructs a debugging session.
     pub fn debug_session(&self) -> Result<PdbDebugSession<'d>, PdbError> {
-        PdbDebugSession::build(self, self.debug_info.clone())
+        PdbDebugSession::build(self)
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -359,6 +370,72 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
     }
 }
 
+struct ItemLookup<'s, I: pdb::ItemIndex> {
+    iter: pdb::ItemIter<'s, I>,
+    finder: pdb::ItemFinder<'s, I>,
+}
+
+impl<'s, I> ItemLookup<'s, I>
+where
+    I: pdb::ItemIndex,
+{
+    fn iter_to(&mut self, index: I) -> Result<pdb::Item<'s, I>, PdbError> {
+        while let Some(item) = self.iter.next()? {
+            self.finder.update(&self.iter);
+            if item.index() == index {
+                return Ok(item);
+            } else if item.index() > index {
+                break;
+            };
+        }
+
+        Err(pdb::Error::TypeNotFound(index.into()).into())
+    }
+
+    pub fn lookup(&mut self, index: I) -> Result<pdb::Item<'s, I>, PdbError> {
+        if index > self.finder.max_index() {
+            return self.iter_to(index);
+        }
+
+        Ok(self.finder.find(index)?)
+    }
+}
+
+type TypeLookup<'d> = ItemLookup<'d, pdb::TypeIndex>;
+type IdLookup<'d> = ItemLookup<'d, pdb::IdIndex>;
+
+struct PdbStreams<'d> {
+    debug_info: Arc<pdb::DebugInformation<'d>>,
+    type_info: pdb::TypeInformation<'d>,
+    id_info: pdb::IdInformation<'d>,
+}
+
+impl<'d> PdbStreams<'d> {
+    fn from_pdb(pdb: &PdbObject<'d>) -> Result<Self, PdbError> {
+        let mut p = pdb.pdb.write();
+
+        Ok(Self {
+            debug_info: pdb.debug_info.clone(),
+            type_info: p.type_information()?,
+            id_info: p.id_information()?,
+        })
+    }
+
+    fn type_lookup(&self) -> TypeLookup<'_> {
+        ItemLookup {
+            iter: self.type_info.iter(),
+            finder: self.type_info.finder(),
+        }
+    }
+
+    fn id_lookup(&self) -> IdLookup<'_> {
+        ItemLookup {
+            iter: self.id_info.iter(),
+            finder: self.id_info.finder(),
+        }
+    }
+}
+
 struct PdbDebugInfo<'d> {
     pdb: Arc<RwLock<Pdb<'d>>>,
     modules: Vec<Module<'d>>,
@@ -366,16 +443,17 @@ struct PdbDebugInfo<'d> {
     address_map: pdb::AddressMap<'d>,
     string_table: Option<pdb::StringTable<'d>>,
     symbol_map: SymbolMap<'d>,
+    type_lookup: RefCell<TypeLookup<'d>>,
+    id_lookup: RefCell<IdLookup<'d>>,
 }
 
 impl<'d> PdbDebugInfo<'d> {
-    fn build(
-        pdb: &PdbObject<'d>,
-        debug_info: &'d pdb::DebugInformation<'d>,
-    ) -> Result<Self, PdbError> {
+    fn build(pdb: &PdbObject<'d>, streams: &'d PdbStreams<'d>) -> Result<Self, PdbError> {
         let symbol_map = pdb.symbol_map();
-        let modules = debug_info.modules()?.collect::<Vec<_>>()?;
+        let modules = streams.debug_info.modules()?.collect::<Vec<_>>()?;
         let module_infos = modules.iter().map(|_| LazyCell::new()).collect();
+        let type_lookup = RefCell::new(streams.type_lookup());
+        let id_lookup = RefCell::new(streams.id_lookup());
 
         // Avoid deadlocks by only covering the two access to the address map and string table. For
         // instance, `pdb.symbol_map()` requires a mutable borrow of the PDB as well.
@@ -399,6 +477,8 @@ impl<'d> PdbDebugInfo<'d> {
             address_map,
             string_table,
             symbol_map,
+            type_lookup,
+            id_lookup,
         })
     }
 
@@ -445,16 +525,14 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for PdbDebugInfo<'d> {
 
 /// Debug session for PDB objects.
 pub struct PdbDebugSession<'d> {
-    cell: SelfCell<Arc<pdb::DebugInformation<'d>>, PdbDebugInfo<'d>>,
+    cell: SelfCell<Box<PdbStreams<'d>>, PdbDebugInfo<'d>>,
 }
 
 impl<'d> PdbDebugSession<'d> {
-    fn build(
-        pdb: &PdbObject<'d>,
-        debug_info: Arc<pdb::DebugInformation<'d>>,
-    ) -> Result<Self, PdbError> {
-        let cell = SelfCell::try_new(debug_info, |debug_info| {
-            PdbDebugInfo::build(pdb, unsafe { &*debug_info })
+    fn build(pdb: &PdbObject<'d>) -> Result<Self, PdbError> {
+        let streams = PdbStreams::from_pdb(pdb)?;
+        let cell = SelfCell::try_new(Box::new(streams), |streams| {
+            PdbDebugInfo::build(pdb, unsafe { &*streams })
         })?;
 
         Ok(PdbDebugSession { cell })
@@ -500,6 +578,215 @@ impl DebugSession for PdbDebugSession<'_> {
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
         self.source_by_path(path)
+    }
+}
+
+/// Formatter for function types.
+///
+/// This formatter currently only contains the minimum implementation requried to format inline
+/// function names without parameters.
+struct TypeFormatter<'l, 'd> {
+    type_lookup: &'l mut TypeLookup<'d>,
+    id_lookup: &'l mut IdLookup<'d>,
+}
+
+impl<'l, 'd> TypeFormatter<'l, 'd> {
+    /// Creates a new `TypeFormatter`.
+    pub fn new(type_lookup: &'l mut TypeLookup<'d>, id_lookup: &'l mut IdLookup<'d>) -> Self {
+        Self {
+            type_lookup,
+            id_lookup,
+        }
+    }
+
+    /// Writes the `Id` with the given index.
+    pub fn write_id<W: fmt::Write>(
+        &mut self,
+        target: &mut W,
+        index: pdb::IdIndex,
+    ) -> Result<(), PdbError> {
+        let id = self.id_lookup.lookup(index)?;
+        match id.parse() {
+            Ok(pdb::IdData::Function(data)) => {
+                if let Some(scope) = data.scope {
+                    self.write_id(target, scope)?;
+                    write!(target, "::")?;
+                }
+
+                write!(target, "{}", data.name.to_string())?;
+            }
+            Ok(pdb::IdData::MemberFunction(data)) => {
+                self.write_type(target, data.parent)?;
+                write!(target, "::{}", data.name.to_string())?;
+            }
+            Ok(pdb::IdData::BuildInfo(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::IdData::StringList(data)) => {
+                write!(target, "\"")?;
+                for (i, string_index) in data.substrings.iter().enumerate() {
+                    if i > 0 {
+                        write!(target, "\" \"")?;
+                    }
+                    self.write_type(target, *string_index)?;
+                }
+                write!(target, "\"")?;
+            }
+            Ok(pdb::IdData::String(data)) => {
+                write!(target, "{}", data.name.to_string())?;
+            }
+            Ok(pdb::IdData::UserDefinedTypeSource(_)) => {
+                // nothing to do.
+            }
+            Err(pdb::Error::UnimplementedTypeKind(_)) => {
+                write!(target, "<unknown>")?;
+            }
+            Err(e) => return Err(e.into()),
+        }
+
+        Ok(())
+    }
+
+    /// Writes the `Type` with the given index.
+    pub fn write_type<W: fmt::Write>(
+        &mut self,
+        target: &mut W,
+        index: pdb::TypeIndex,
+    ) -> Result<(), PdbError> {
+        let ty = self.type_lookup.lookup(index)?;
+        match ty.parse() {
+            Ok(pdb::TypeData::Primitive(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::Class(data)) => {
+                write!(target, "{}", data.name.to_string())?;
+            }
+            Ok(pdb::TypeData::Member(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::MemberFunction(data)) => {
+                self.write_type(target, data.return_type)?;
+                write!(target, " ")?;
+                self.write_type(target, data.class_type)?;
+                write!(target, "::")?;
+                self.write_type(target, data.argument_list)?;
+            }
+            Ok(pdb::TypeData::OverloadedMethod(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::Method(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::StaticMember(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::Nested(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::BaseClass(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::VirtualBaseClass(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::VirtualFunctionTablePointer(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::Procedure(data)) => {
+                match data.return_type {
+                    Some(return_type) => self.write_type(target, return_type)?,
+                    None => write!(target, "void")?,
+                }
+
+                write!(target, " ")?;
+                self.write_type(target, data.argument_list)?;
+            }
+            Ok(pdb::TypeData::Pointer(data)) => {
+                self.write_type(target, data.underlying_type)?;
+
+                if let Some(containing_class) = data.containing_class {
+                    write!(target, " ")?;
+                    self.write_type(target, containing_class)?;
+                } else {
+                    match data.attributes.pointer_mode() {
+                        pdb::PointerMode::Pointer => write!(target, "*")?,
+                        pdb::PointerMode::LValueReference => write!(target, "&")?,
+                        pdb::PointerMode::RValueReference => write!(target, "&&")?,
+                        _ => (),
+                    }
+
+                    if data.attributes.is_const() {
+                        write!(target, " const")?;
+                    }
+                    if data.attributes.is_volatile() {
+                        write!(target, " volatile")?;
+                    }
+                    if data.attributes.is_unaligned() {
+                        write!(target, " __unaligned")?;
+                    }
+                    if data.attributes.is_restrict() {
+                        write!(target, " __restrict")?;
+                    }
+                }
+            }
+            Ok(pdb::TypeData::Modifier(data)) => {
+                if data.constant {
+                    write!(target, "const ")?;
+                }
+                if data.volatile {
+                    write!(target, "volatile ")?;
+                }
+                if data.unaligned {
+                    write!(target, "__unaligned ")?;
+                }
+
+                self.write_type(target, data.underlying_type)?;
+            }
+            Ok(pdb::TypeData::Enumeration(data)) => {
+                write!(target, "{}", data.name.to_string())?;
+            }
+            Ok(pdb::TypeData::Enumerate(data)) => {
+                write!(target, "{}", data.name.to_string())?;
+            }
+            Ok(pdb::TypeData::Array(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::Union(data)) => {
+                write!(target, "{}", data.name.to_string())?;
+            }
+            Ok(pdb::TypeData::Bitfield(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::FieldList(_)) => {
+                write!(target, "<field list>")?;
+            }
+            Ok(pdb::TypeData::ArgumentList(data)) => {
+                write!(target, "(")?;
+                for (i, arg_index) in data.arguments.iter().enumerate() {
+                    if i > 0 {
+                        write!(target, ", ")?;
+                    }
+                    self.write_type(target, *arg_index)?;
+                }
+                write!(target, ")")?;
+            }
+            Ok(pdb::TypeData::MethodList(_)) => {
+                // nothing to do
+            }
+            Err(pdb::Error::UnimplementedTypeKind(_)) => {
+                write!(target, "<unknown>")?;
+            }
+            Err(e) => return Err(e.into()),
+        }
+
+        Ok(())
+    }
+
+    /// Formats the `Id` with the given index to a string.
+    pub fn format_id(&mut self, index: pdb::IdIndex) -> Result<String, PdbError> {
+        let mut string = String::new();
+        self.write_id(&mut string, index)?;
+        Ok(string)
     }
 }
 
@@ -600,10 +887,16 @@ impl<'s> Unit<'s> {
             None => return Ok(None),
         };
 
+        let type_lookup = &mut *self.debug_info.type_lookup.borrow_mut();
+        let id_lookup = &mut *self.debug_info.id_lookup.borrow_mut();
+
+        let mut formatter = TypeFormatter::new(type_lookup, id_lookup);
+        let name = Name::new(formatter.format_id(inline_site.inlinee)?);
+
         Ok(Some(Function {
             address: start,
             size: end - start,
-            name: Name::new("placeholder"), // TODO(ja): Get the name from IPI
+            name,
             compilation_dir: &[],
             lines,
             inlinees: Vec::new(),
