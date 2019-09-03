@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::io::Cursor;
 use std::sync::Arc;
@@ -868,11 +869,15 @@ impl<'s> Unit<'s> {
         &self,
         inline_site: InlineSiteSymbol<'s>,
         parent_offset: PdbInternalSectionOffset,
+        inlinee: &pdb::Inlinee<'s>,
         program: &LineProgram<'s>,
     ) -> Result<Option<Function<'s>>, PdbError> {
-        let line_iter = program.inlinee_lines(parent_offset, &inline_site);
+        let line_iter = inlinee.lines(parent_offset, &inline_site);
         let lines = self.collect_lines(line_iter, program)?;
 
+        // If there are no line records, skip this inline function completely. Apparently, it was
+        // eliminated by the compiler, and cannot be hit by the program anymore. For `symbolic`,
+        // such functions do not have any use.
         let start = match lines.iter().map(|line| line.address).min() {
             Some(address) => address,
             None => return Ok(None),
@@ -908,6 +913,11 @@ impl<'s> Unit<'s> {
         let program = self.module.line_program()?;
         let mut symbols = self.module.symbols()?;
 
+        // Depending on the compiler version, the inlinee table might not be sorted. Since constant
+        // search through inlinees is too slow (due to repeated parsing), but Inlinees are rather
+        // small structures, it is relatively cheap to collect them into an in-memory index.
+        let inlinees: BTreeMap<_, _> = program.inlinees().map(|i| (i.index(), i)).collect()?;
+
         let mut depth = 0;
         let mut skipped_depth = None;
 
@@ -935,10 +945,18 @@ impl<'s> Unit<'s> {
                     last_offset = Some(proc.offset);
                     self.handle_procedure(proc, &program)?
                 }
-                Ok(SymbolData::InlineSite(inline)) => {
+                Ok(SymbolData::InlineSite(site)) => {
                     let parent_offset = last_offset
                         .ok_or_else(|| PdbError::from(PdbErrorKind::UnexpectedInline))?;
-                    self.handle_inlinee(inline, parent_offset, &program)?
+
+                    // We can assume that inlinees will be listed in the inlinee table. If missing,
+                    // skip silently instead of erroring out. Missing a single inline function is
+                    // more acceptable in such a case than halting iteration completely.
+                    if let Some(inlinee) = inlinees.get(&site.inlinee) {
+                        self.handle_inlinee(site, parent_offset, inlinee, &program)?
+                    } else {
+                        None
+                    }
                 }
                 // We need to ignore errors here since the PDB crate does not yet implement all
                 // symbol types. Instead of erroring too often, it's better to swallow these.
