@@ -371,16 +371,20 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
     }
 }
 
-struct ItemLookup<'s, I: pdb::ItemIndex> {
+struct ItemMap<'s, I: pdb::ItemIndex> {
     iter: pdb::ItemIter<'s, I>,
     finder: pdb::ItemFinder<'s, I>,
 }
 
-impl<'s, I> ItemLookup<'s, I>
+impl<'s, I> ItemMap<'s, I>
 where
     I: pdb::ItemIndex,
 {
-    fn iter_to(&mut self, index: I) -> Result<pdb::Item<'s, I>, PdbError> {
+    pub fn try_get(&mut self, index: I) -> Result<pdb::Item<'s, I>, PdbError> {
+        if index <= self.finder.max_index() {
+            return Ok(self.finder.find(index)?);
+        }
+
         while let Some(item) = self.iter.next()? {
             self.finder.update(&self.iter);
             if item.index() == index {
@@ -392,18 +396,10 @@ where
 
         Err(pdb::Error::TypeNotFound(index.into()).into())
     }
-
-    pub fn lookup(&mut self, index: I) -> Result<pdb::Item<'s, I>, PdbError> {
-        if index > self.finder.max_index() {
-            return self.iter_to(index);
-        }
-
-        Ok(self.finder.find(index)?)
-    }
 }
 
-type TypeLookup<'d> = ItemLookup<'d, pdb::TypeIndex>;
-type IdLookup<'d> = ItemLookup<'d, pdb::IdIndex>;
+type TypeMap<'d> = ItemMap<'d, pdb::TypeIndex>;
+type IdMap<'d> = ItemMap<'d, pdb::IdIndex>;
 
 struct PdbStreams<'d> {
     debug_info: Arc<pdb::DebugInformation<'d>>,
@@ -422,15 +418,15 @@ impl<'d> PdbStreams<'d> {
         })
     }
 
-    fn type_lookup(&self) -> TypeLookup<'_> {
-        ItemLookup {
+    fn type_map(&self) -> TypeMap<'_> {
+        ItemMap {
             iter: self.type_info.iter(),
             finder: self.type_info.finder(),
         }
     }
 
-    fn id_lookup(&self) -> IdLookup<'_> {
-        ItemLookup {
+    fn id_map(&self) -> IdMap<'_> {
+        ItemMap {
             iter: self.id_info.iter(),
             finder: self.id_info.finder(),
         }
@@ -444,8 +440,8 @@ struct PdbDebugInfo<'d> {
     address_map: pdb::AddressMap<'d>,
     string_table: Option<pdb::StringTable<'d>>,
     symbol_map: SymbolMap<'d>,
-    type_lookup: RefCell<TypeLookup<'d>>,
-    id_lookup: RefCell<IdLookup<'d>>,
+    type_map: RefCell<TypeMap<'d>>,
+    id_map: RefCell<IdMap<'d>>,
 }
 
 impl<'d> PdbDebugInfo<'d> {
@@ -453,8 +449,8 @@ impl<'d> PdbDebugInfo<'d> {
         let symbol_map = pdb.symbol_map();
         let modules = streams.debug_info.modules()?.collect::<Vec<_>>()?;
         let module_infos = modules.iter().map(|_| LazyCell::new()).collect();
-        let type_lookup = RefCell::new(streams.type_lookup());
-        let id_lookup = RefCell::new(streams.id_lookup());
+        let type_map = RefCell::new(streams.type_map());
+        let id_map = RefCell::new(streams.id_map());
 
         // Avoid deadlocks by only covering the two access to the address map and string table. For
         // instance, `pdb.symbol_map()` requires a mutable borrow of the PDB as well.
@@ -478,8 +474,8 @@ impl<'d> PdbDebugInfo<'d> {
             address_map,
             string_table,
             symbol_map,
-            type_lookup,
-            id_lookup,
+            type_map,
+            id_map,
         })
     }
 
@@ -587,17 +583,14 @@ impl DebugSession for PdbDebugSession<'_> {
 /// This formatter currently only contains the minimum implementation requried to format inline
 /// function names without parameters.
 struct TypeFormatter<'l, 'd> {
-    type_lookup: &'l mut TypeLookup<'d>,
-    id_lookup: &'l mut IdLookup<'d>,
+    type_map: &'l mut TypeMap<'d>,
+    id_map: &'l mut IdMap<'d>,
 }
 
 impl<'l, 'd> TypeFormatter<'l, 'd> {
     /// Creates a new `TypeFormatter`.
-    pub fn new(type_lookup: &'l mut TypeLookup<'d>, id_lookup: &'l mut IdLookup<'d>) -> Self {
-        Self {
-            type_lookup,
-            id_lookup,
-        }
+    pub fn new(type_map: &'l mut TypeMap<'d>, id_map: &'l mut IdMap<'d>) -> Self {
+        Self { type_map, id_map }
     }
 
     /// Writes the `Id` with the given index.
@@ -606,7 +599,7 @@ impl<'l, 'd> TypeFormatter<'l, 'd> {
         target: &mut W,
         index: pdb::IdIndex,
     ) -> Result<(), PdbError> {
-        let id = self.id_lookup.lookup(index)?;
+        let id = self.id_map.try_get(index)?;
         match id.parse() {
             Ok(pdb::IdData::Function(data)) => {
                 if let Some(scope) = data.scope {
@@ -654,7 +647,7 @@ impl<'l, 'd> TypeFormatter<'l, 'd> {
         target: &mut W,
         index: pdb::TypeIndex,
     ) -> Result<(), PdbError> {
-        let ty = self.type_lookup.lookup(index)?;
+        let ty = self.type_map.try_get(index)?;
         match ty.parse() {
             Ok(pdb::TypeData::Primitive(_)) => {
                 // nothing to do
@@ -892,10 +885,10 @@ impl<'s> Unit<'s> {
             None => return Ok(None),
         };
 
-        let type_lookup = &mut *self.debug_info.type_lookup.borrow_mut();
-        let id_lookup = &mut *self.debug_info.id_lookup.borrow_mut();
+        let type_map = &mut *self.debug_info.type_map.borrow_mut();
+        let id_map = &mut *self.debug_info.id_map.borrow_mut();
 
-        let mut formatter = TypeFormatter::new(type_lookup, id_lookup);
+        let mut formatter = TypeFormatter::new(type_map, id_map);
         let name = Name::new(formatter.format_id(inline_site.inlinee)?);
 
         Ok(Some(Function {
@@ -916,7 +909,7 @@ impl<'s> Unit<'s> {
         // Depending on the compiler version, the inlinee table might not be sorted. Since constant
         // search through inlinees is too slow (due to repeated parsing), but Inlinees are rather
         // small structures, it is relatively cheap to collect them into an in-memory index.
-        let inlinees: BTreeMap<_, _> = program.inlinees().map(|i| (i.index(), i)).collect()?;
+        let inlinees: BTreeMap<_, _> = self.module.inlinees()?.map(|i| (i.index(), i)).collect()?;
 
         let mut depth = 0;
         let mut skipped_depth = None;
