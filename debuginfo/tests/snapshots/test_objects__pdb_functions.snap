@@ -1,5 +1,5 @@
 ---
-created: "2019-09-09T13:03:44.573787Z"
+created: "2019-09-09T13:32:53.410435Z"
 creator: insta@0.8.2
 source: debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug(&functions[..10], 0)"
@@ -217,15 +217,15 @@ expression: "FunctionsDebug(&functions[..10], 0)"
       0x1334: xstring:2331 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
       0x1344: xstring:2332 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-      > 0x1344: <redacted> (0x351)
+      > 0x1344: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Tidy_init (0x351)
         0x1344: xstring:3891 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x1347: xstring:3892 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x134e: xstring:3895 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-        > 0x134e: <redacted> (0x3)
+        > 0x134e: std::_WChar_traits<wchar_t>::assign (0x3)
           0x134e: iosfwd:341 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-  > 0x12ec: <redacted> (0x36f)
+  > 0x12ec: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Tidy_deallocate (0x36f)
     0x12ec: xstring:3902 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
     0x12f4: xstring:3907 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
     0x1321: xstring:3910 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -234,24 +234,24 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0x1331: xstring:3914 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
     0x1358: xstring:3907 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-    > 0x12ec: <redacted> (0x6)
+    > 0x12ec: std::_String_val<std::_Simple_types<wchar_t> >::_Large_string_engaged (0x6)
       0x12ec: xstring:1802 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-    > 0x1328: <redacted> (0xc)
+    > 0x1328: std::_WChar_traits<wchar_t>::assign (0xc)
       0x1328: iosfwd:341 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
       0x1331: iosfwd:341 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-    > 0x12f4: <redacted> (0x6a)
+    > 0x12f4: std::allocator<wchar_t>::deallocate (0x6a)
       0x12f4: xmemory0:1030 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
       0x1358: xmemory0:1030 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-      > 0x12fd: <redacted> (0x31f)
+      > 0x12fd: std::_Deallocate (0x31f)
         0x12fd: xmemory0:211 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x1305: xmemory0:213 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x1317: xmemory0:217 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x1358: xmemory0:213 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-        > 0x1305: <redacted> (0x31d)
+        > 0x1305: std::_Adjust_manually_vector_aligned (0x31d)
           0x1305: xmemory0:119 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x130b: xmemory0:137 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x130d: xmemory0:138 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -382,33 +382,33 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0x164a: exception_handler.h:223 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
     0x1652: exception_handler.h:224 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
 
-    > 0x164a: <redacted> (0x8)
+    > 0x164a: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::c_str (0x8)
       0x164a: xstring:3219 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-      > 0x164a: <redacted> (0x650)
+      > 0x164a: std::_String_val<std::_Simple_types<wchar_t> >::_Myptr (0x650)
         0x164a: xstring:1792 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x1650: xstring:1794 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-        > 0x164a: <redacted> (0x4)
+        > 0x164a: std::_String_val<std::_Simple_types<wchar_t> >::_Large_string_engaged (0x4)
           0x164a: xstring:1802 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-        > 0x1650: <redacted> (0x2)
+        > 0x1650: std::_Unfancy (0x2)
           0x1650: xstddef:265 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-    > 0x1631: <redacted> (0x635)
+    > 0x1631: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::operator= (0x635)
       0x1631: xstring:2432 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
       0x1635: xstring:2446 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-      > 0x1635: <redacted> (0x643)
+      > 0x1635: std::_String_val<std::_Simple_types<wchar_t> >::_Myptr (0x643)
         0x1635: xstring:1792 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x1639: xstring:1791 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x163b: xstring:1792 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
         0x163d: xstring:1794 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-        > 0x1635: <redacted> (0x4)
+        > 0x1635: std::_String_val<std::_Simple_types<wchar_t> >::_Large_string_engaged (0x4)
           0x1635: xstring:1802 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-        > 0x163d: <redacted> (0x2)
+        > 0x163d: std::_Unfancy (0x2)
           0x163d: xstddef:265 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
   > 0x1700: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::push_back (0xe)

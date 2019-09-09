@@ -528,8 +528,13 @@ impl<'d> PdbDebugInfo<'d> {
             None => return Ok(None),
         };
 
-        let module = match self.modules.iter().position(|m| m.module_name() == name) {
-            Some(pos) => self.get_module(pos)?,
+        let module_index = self
+            .modules
+            .iter()
+            .position(|m| m.module_name().eq_ignore_ascii_case(&name));
+
+        let module = match module_index {
+            Some(index) => self.get_module(index)?,
             None => None,
         };
 
