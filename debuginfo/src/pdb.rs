@@ -1,8 +1,8 @@
 //! Support for Program Database, the debug companion format on Windows.
 
 use std::borrow::Cow;
-use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::cell::{RefCell, RefMut};
+use std::collections::btree_map::{BTreeMap, Entry};
 use std::fmt;
 use std::io::Cursor;
 use std::sync::Arc;
@@ -11,8 +11,8 @@ use failure::Fail;
 use lazycell::LazyCell;
 use parking_lot::RwLock;
 use pdb::{
-    AddressMap, FallibleIterator, InlineSiteSymbol, LineProgram, MachineType, Module, ModuleInfo,
-    PdbInternalSectionOffset, ProcedureSymbol, SymbolData,
+    AddressMap, FallibleIterator, InlineSiteSymbol, ItemIndex, LineProgram, MachineType, Module,
+    ModuleInfo, PdbInternalSectionOffset, ProcedureSymbol, SymbolData,
 };
 
 use symbolic_common::{
@@ -371,14 +371,14 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
     }
 }
 
-struct ItemMap<'s, I: pdb::ItemIndex> {
+struct ItemMap<'s, I: ItemIndex> {
     iter: pdb::ItemIter<'s, I>,
     finder: pdb::ItemFinder<'s, I>,
 }
 
 impl<'s, I> ItemMap<'s, I>
 where
-    I: pdb::ItemIndex,
+    I: ItemIndex,
 {
     pub fn try_get(&mut self, index: I) -> Result<pdb::Item<'s, I>, PdbError> {
         if index <= self.finder.max_index() {
@@ -434,21 +434,29 @@ impl<'d> PdbStreams<'d> {
 }
 
 struct PdbDebugInfo<'d> {
+    /// The original PDB to load module streams on demand.
     pdb: Arc<RwLock<Pdb<'d>>>,
+    /// All module headers for repeated iteration.
     modules: Vec<Module<'d>>,
+    /// Lazy loaded module streams in the same order as headers.
     module_infos: Vec<LazyCell<Option<ModuleInfo<'d>>>>,
+    /// Cache for module by name lookup for cross module imports.
+    module_exports: RefCell<BTreeMap<pdb::ModuleRef, Option<pdb::CrossModuleExports>>>,
+    /// OMAP structure to map reordered sections to RVAs.
     address_map: pdb::AddressMap<'d>,
+    /// String table for name lookups.
     string_table: Option<pdb::StringTable<'d>>,
-    symbol_map: SymbolMap<'d>,
+    /// Lazy loaded map of the TPI stream.
     type_map: RefCell<TypeMap<'d>>,
+    /// Lazy loaded map of the IPI stream.
     id_map: RefCell<IdMap<'d>>,
 }
 
 impl<'d> PdbDebugInfo<'d> {
     fn build(pdb: &PdbObject<'d>, streams: &'d PdbStreams<'d>) -> Result<Self, PdbError> {
-        let symbol_map = pdb.symbol_map();
         let modules = streams.debug_info.modules()?.collect::<Vec<_>>()?;
         let module_infos = modules.iter().map(|_| LazyCell::new()).collect();
+        let module_exports = RefCell::new(BTreeMap::new());
         let type_map = RefCell::new(streams.type_map());
         let id_map = RefCell::new(streams.id_map());
 
@@ -471,9 +479,9 @@ impl<'d> PdbDebugInfo<'d> {
             pdb: pdb.pdb.clone(),
             modules,
             module_infos,
+            module_exports,
             address_map,
             string_table,
-            symbol_map,
             type_map,
             id_map,
         })
@@ -509,6 +517,45 @@ impl<'d> PdbDebugInfo<'d> {
         };
 
         Ok(FileInfo::from_path(file_path.as_bytes()))
+    }
+
+    fn get_exports(
+        &'d self,
+        module_ref: pdb::ModuleRef,
+    ) -> Result<Option<pdb::CrossModuleExports>, PdbError> {
+        let name = match self.string_table {
+            Some(ref string_table) => module_ref.0.to_string_lossy(string_table)?,
+            None => return Ok(None),
+        };
+
+        let module = match self.modules.iter().position(|m| m.module_name() == name) {
+            Some(pos) => self.get_module(pos)?,
+            None => None,
+        };
+
+        Ok(match module {
+            Some(module) => Some(module.exports()?),
+            None => None,
+        })
+    }
+
+    fn resolve_import<I: ItemIndex>(
+        &'d self,
+        cross_ref: pdb::CrossModuleRef<I>,
+    ) -> Result<Option<I>, PdbError> {
+        let pdb::CrossModuleRef(module_ref, local_index) = cross_ref;
+
+        let mut module_exports = self.module_exports.borrow_mut();
+        let exports = match module_exports.entry(module_ref) {
+            Entry::Vacant(vacant) => vacant.insert(self.get_exports(module_ref)?),
+            Entry::Occupied(occupied) => occupied.into_mut(),
+        };
+
+        Ok(if let Some(ref exports) = *exports {
+            exports.resolve_import(local_index)?
+        } else {
+            None
+        })
     }
 }
 
@@ -582,15 +629,20 @@ impl DebugSession for PdbDebugSession<'_> {
 ///
 /// This formatter currently only contains the minimum implementation requried to format inline
 /// function names without parameters.
-struct TypeFormatter<'l, 'd> {
-    type_map: &'l mut TypeMap<'d>,
-    id_map: &'l mut IdMap<'d>,
+struct TypeFormatter<'u, 'd> {
+    unit: &'u Unit<'d>,
+    type_map: RefMut<'u, TypeMap<'d>>,
+    id_map: RefMut<'u, IdMap<'d>>,
 }
 
-impl<'l, 'd> TypeFormatter<'l, 'd> {
+impl<'u, 'd> TypeFormatter<'u, 'd> {
     /// Creates a new `TypeFormatter`.
-    pub fn new(type_map: &'l mut TypeMap<'d>, id_map: &'l mut IdMap<'d>) -> Self {
-        Self { type_map, id_map }
+    pub fn new(unit: &'u Unit<'d>) -> Self {
+        Self {
+            unit,
+            type_map: unit.debug_info.type_map.borrow_mut(),
+            id_map: unit.debug_info.id_map.borrow_mut(),
+        }
     }
 
     /// Writes the `Id` with the given index.
@@ -599,6 +651,11 @@ impl<'l, 'd> TypeFormatter<'l, 'd> {
         target: &mut W,
         index: pdb::IdIndex,
     ) -> Result<(), PdbError> {
+        let index = match self.unit.resolve_index(index)? {
+            Some(index) => index,
+            None => return Ok(write!(target, "<redacted>")?),
+        };
+
         let id = self.id_map.try_get(index)?;
         match id.parse() {
             Ok(pdb::IdData::Function(data)) => {
@@ -647,6 +704,11 @@ impl<'l, 'd> TypeFormatter<'l, 'd> {
         target: &mut W,
         index: pdb::TypeIndex,
     ) -> Result<(), PdbError> {
+        let index = match self.unit.resolve_index(index)? {
+            Some(index) => index,
+            None => return Ok(write!(target, "<redacted>")?),
+        };
+
         let ty = self.type_map.try_get(index)?;
         match ty.parse() {
             Ok(pdb::TypeData::Primitive(_)) => {
@@ -787,9 +849,35 @@ impl<'l, 'd> TypeFormatter<'l, 'd> {
 struct Unit<'s> {
     debug_info: &'s PdbDebugInfo<'s>,
     module: &'s pdb::ModuleInfo<'s>,
+    imports: pdb::CrossModuleImports<'s>,
 }
 
 impl<'s> Unit<'s> {
+    fn load(
+        debug_info: &'s PdbDebugInfo<'s>,
+        module: &'s pdb::ModuleInfo<'s>,
+    ) -> Result<Self, PdbError> {
+        let imports = module.imports()?;
+
+        Ok(Self {
+            debug_info,
+            module,
+            imports,
+        })
+    }
+
+    fn resolve_index<I>(&self, index: I) -> Result<Option<I>, PdbError>
+    where
+        I: ItemIndex,
+    {
+        if index.is_cross_module() {
+            let cross_ref = self.imports.resolve_import(index)?;
+            self.debug_info.resolve_import(cross_ref)
+        } else {
+            Ok(Some(index))
+        }
+    }
+
     fn collect_lines<I>(
         &self,
         mut line_iter: I,
@@ -827,7 +915,6 @@ impl<'s> Unit<'s> {
         program: &LineProgram<'s>,
     ) -> Result<Option<Function<'s>>, PdbError> {
         let address_map = &self.debug_info.address_map;
-        let symbol_map = &self.debug_info.symbol_map;
 
         // Translate the function's address to the PE's address space. If this fails, we're
         // likely dealing with an invalid function and can skip it.
@@ -836,13 +923,10 @@ impl<'s> Unit<'s> {
             None => return Ok(None),
         };
 
-        // Prefer names from the public symbol table as they are mangled. Otherwise, fall back
-        // to the name of the private symbol which is often times demangled. Also, this might
-        // save us some allocations, since the symbol_map is held by the debug session.
-        let name = match symbol_map.lookup(address) {
-            Some(symbol) => Name::new(symbol.name().unwrap_or_default()),
-            None => Name::new(proc.name.to_string()),
-        };
+        // Names from the private symbol table are generally demangled. They contain the path of the
+        // scope and name of the function itself, including type parameters, but do not contain
+        // parameter lists or return types. This is good enough for us at the moment.
+        let name = Name::new(proc.name.to_string());
 
         let line_iter = program.lines_at_offset(proc.offset);
         let lines = self.collect_lines(line_iter, program)?;
@@ -885,10 +969,7 @@ impl<'s> Unit<'s> {
             None => return Ok(None),
         };
 
-        let type_map = &mut *self.debug_info.type_map.borrow_mut();
-        let id_map = &mut *self.debug_info.id_map.borrow_mut();
-
-        let mut formatter = TypeFormatter::new(type_map, id_map);
+        let mut formatter = TypeFormatter::new(self);
         let name = Name::new(formatter.format_id(inline_site.inlinee)?);
 
         Ok(Some(Function {
@@ -997,7 +1078,7 @@ impl<'s> Iterator for PdbUnitIterator<'s> {
                 Err(error) => return Some(Err(error)),
             };
 
-            return Some(Ok(Unit { debug_info, module }));
+            return Some(Unit::load(debug_info, module));
         }
 
         None
