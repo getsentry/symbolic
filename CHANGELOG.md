@@ -1,5 +1,19 @@
 # Changelog
 
+## 7.0.0
+
+**New Features**:
+
+- A new API to parse Unreal Engine 4 Crash reports (#152).
+- Source bundles to resolve source code for stack frames (#154).
+- Inline functions for Microsoft PDBs (#160).
+- Improved demangling of C++ symbols.
+
+**Bug Fixes**:
+
+- Resolved unexpected EOF when parsing certain PDBs.
+- Restored compatibility with Python 3 (#158).
+
 ## 6.1.4
 
 **Common**:
