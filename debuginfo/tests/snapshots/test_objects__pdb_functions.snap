@@ -1,5 +1,5 @@
 ---
-created: "2019-09-09T13:32:53.410435Z"
+created: "2019-09-12T13:41:17.828024Z"
 creator: insta@0.8.2
 source: debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug(&functions[..10], 0)"
@@ -428,3 +428,4 @@ expression: "FunctionsDebug(&functions[..10], 0)"
           0x16ec: vector:437 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x16f2: vector:438 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x16f9: vector:439 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
