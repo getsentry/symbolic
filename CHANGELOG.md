@@ -1,5 +1,27 @@
 # Changelog
 
+## 6.1.4
+
+**Common**:
+
+- Add `ARM64_32` (ILP32 ABI on 64-bit ARM) (#149).
+- Support architecture names from apple crash reports (#151).
+
+**DebugInfo**:
+
+- Fix invalid memory addresses for some ELF files (#148).
+- Prefer a PDB's age from the DBI stream (#150).
+- Do not emit default CFI for the `.ra` register (#157).
+
+**Minidump**:
+
+- Fix a memory leak when processing minidumps (#146).
+
+**SymCache**:
+
+- Add `is_latest()` to symcaches and CFI caches.
+- Support functions with more than 65k line records (#155).
+
 ## 6.1.3
 
 **Common**:
