@@ -494,6 +494,8 @@ impl<'data> Deref for FileEntry<'data> {
 pub struct LineInfo<'data> {
     /// The instruction address relative to the image base (load address).
     pub address: u64,
+    /// Total code size covered by this line record.
+    pub size: Option<u64>,
     /// File name and path.
     pub file: FileInfo<'data>,
     /// Absolute line number starting at 1. Zero means no line number.

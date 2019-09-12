@@ -1,6 +1,8 @@
 //! Support for Program Database, the debug companion format on Windows.
 
 use std::borrow::Cow;
+use std::cell::{RefCell, RefMut};
+use std::collections::btree_map::{BTreeMap, Entry};
 use std::fmt;
 use std::io::Cursor;
 use std::sync::Arc;
@@ -8,14 +10,17 @@ use std::sync::Arc;
 use failure::Fail;
 use lazycell::LazyCell;
 use parking_lot::RwLock;
-use pdb::{AddressMap, FallibleIterator, MachineType, Module, ModuleInfo, SymbolData};
+use pdb::{
+    AddressMap, FallibleIterator, InlineSiteSymbol, ItemIndex, LineProgram, MachineType, Module,
+    ModuleInfo, PdbInternalSectionOffset, ProcedureSymbol, SymbolData,
+};
 
 use symbolic_common::{
     derive_failure, Arch, AsSelf, CodeId, CpuFamily, DebugId, Name, SelfCell, Uuid,
 };
 
 use crate::base::*;
-use crate::private::Parse;
+use crate::private::{FunctionStack, Parse};
 
 type Pdb<'d> = pdb::PDB<'d, Cursor<&'d [u8]>>;
 
@@ -31,6 +36,14 @@ pub enum PdbErrorKind {
     /// The PDB file is corrupted. See the cause for more information.
     #[fail(display = "invalid pdb file")]
     BadObject,
+
+    /// An inline record was encountered without an inlining parent.
+    #[fail(display = "unexpected inline function without parent")]
+    UnexpectedInline,
+
+    /// Formatting of a type name failed
+    #[fail(display = "failed to format type name")]
+    FormattingFailed,
 }
 
 derive_failure!(
@@ -42,6 +55,12 @@ derive_failure!(
 impl From<pdb::Error> for PdbError {
     fn from(error: pdb::Error) -> Self {
         error.context(PdbErrorKind::BadObject).into()
+    }
+}
+
+impl From<fmt::Error> for PdbError {
+    fn from(error: fmt::Error) -> Self {
+        error.context(PdbErrorKind::FormattingFailed).into()
     }
 }
 
@@ -181,7 +200,7 @@ impl<'d> PdbObject<'d> {
 
     /// Constructs a debugging session.
     pub fn debug_session(&self) -> Result<PdbDebugSession<'d>, PdbError> {
-        PdbDebugSession::build(self, self.debug_info.clone())
+        PdbDebugSession::build(self)
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -320,7 +339,7 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
         let address_map = self.address_map.as_ref()?;
 
         while let Ok(Some(symbol)) = self.symbols.next() {
-            if let Ok(SymbolData::PublicSymbol(public)) = symbol.parse() {
+            if let Ok(SymbolData::Public(public)) = symbol.parse() {
                 if !public.function {
                     continue;
                 }
@@ -330,20 +349,18 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
                     None => continue,
                 };
 
-                let name = symbol.name().ok().map(|name| {
-                    let cow = name.to_string();
-                    // pdb::SymbolIter offers data bound to its own lifetime since it holds the
-                    // buffer containing public symbols. The contract requires that we return
-                    // `Symbol<'d>`, so we cannot return zero-copy symbols here.
-                    Cow::from(String::from(if cow.starts_with('_') {
-                        &cow[1..]
-                    } else {
-                        &cow
-                    }))
-                });
+                let cow = public.name.to_string();
+                // pdb::SymbolIter offers data bound to its own lifetime since it holds the
+                // buffer containing public symbols. The contract requires that we return
+                // `Symbol<'d>`, so we cannot return zero-copy symbols here.
+                let name = Cow::from(String::from(if cow.starts_with('_') {
+                    &cow[1..]
+                } else {
+                    &cow
+                }));
 
                 return Some(Symbol {
-                    name,
+                    name: Some(name),
                     address: u64::from(address.0),
                     size: 0, // Computed in `SymbolMap`
                 });
@@ -354,23 +371,94 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
     }
 }
 
+struct ItemMap<'s, I: ItemIndex> {
+    iter: pdb::ItemIter<'s, I>,
+    finder: pdb::ItemFinder<'s, I>,
+}
+
+impl<'s, I> ItemMap<'s, I>
+where
+    I: ItemIndex,
+{
+    pub fn try_get(&mut self, index: I) -> Result<pdb::Item<'s, I>, PdbError> {
+        if index <= self.finder.max_index() {
+            return Ok(self.finder.find(index)?);
+        }
+
+        while let Some(item) = self.iter.next()? {
+            self.finder.update(&self.iter);
+            if item.index() == index {
+                return Ok(item);
+            } else if item.index() > index {
+                break;
+            };
+        }
+
+        Err(pdb::Error::TypeNotFound(index.into()).into())
+    }
+}
+
+type TypeMap<'d> = ItemMap<'d, pdb::TypeIndex>;
+type IdMap<'d> = ItemMap<'d, pdb::IdIndex>;
+
+struct PdbStreams<'d> {
+    debug_info: Arc<pdb::DebugInformation<'d>>,
+    type_info: pdb::TypeInformation<'d>,
+    id_info: pdb::IdInformation<'d>,
+}
+
+impl<'d> PdbStreams<'d> {
+    fn from_pdb(pdb: &PdbObject<'d>) -> Result<Self, PdbError> {
+        let mut p = pdb.pdb.write();
+
+        Ok(Self {
+            debug_info: pdb.debug_info.clone(),
+            type_info: p.type_information()?,
+            id_info: p.id_information()?,
+        })
+    }
+
+    fn type_map(&self) -> TypeMap<'_> {
+        ItemMap {
+            iter: self.type_info.iter(),
+            finder: self.type_info.finder(),
+        }
+    }
+
+    fn id_map(&self) -> IdMap<'_> {
+        ItemMap {
+            iter: self.id_info.iter(),
+            finder: self.id_info.finder(),
+        }
+    }
+}
+
 struct PdbDebugInfo<'d> {
+    /// The original PDB to load module streams on demand.
     pdb: Arc<RwLock<Pdb<'d>>>,
+    /// All module headers for repeated iteration.
     modules: Vec<Module<'d>>,
+    /// Lazy loaded module streams in the same order as headers.
     module_infos: Vec<LazyCell<Option<ModuleInfo<'d>>>>,
+    /// Cache for module by name lookup for cross module imports.
+    module_exports: RefCell<BTreeMap<pdb::ModuleRef, Option<pdb::CrossModuleExports>>>,
+    /// OMAP structure to map reordered sections to RVAs.
     address_map: pdb::AddressMap<'d>,
+    /// String table for name lookups.
     string_table: Option<pdb::StringTable<'d>>,
-    symbol_map: SymbolMap<'d>,
+    /// Lazy loaded map of the TPI stream.
+    type_map: RefCell<TypeMap<'d>>,
+    /// Lazy loaded map of the IPI stream.
+    id_map: RefCell<IdMap<'d>>,
 }
 
 impl<'d> PdbDebugInfo<'d> {
-    fn build(
-        pdb: &PdbObject<'d>,
-        debug_info: &'d pdb::DebugInformation<'d>,
-    ) -> Result<Self, PdbError> {
-        let symbol_map = pdb.symbol_map();
-        let modules = debug_info.modules()?.collect::<Vec<_>>()?;
+    fn build(pdb: &PdbObject<'d>, streams: &'d PdbStreams<'d>) -> Result<Self, PdbError> {
+        let modules = streams.debug_info.modules()?.collect::<Vec<_>>()?;
         let module_infos = modules.iter().map(|_| LazyCell::new()).collect();
+        let module_exports = RefCell::new(BTreeMap::new());
+        let type_map = RefCell::new(streams.type_map());
+        let id_map = RefCell::new(streams.id_map());
 
         // Avoid deadlocks by only covering the two access to the address map and string table. For
         // instance, `pdb.symbol_map()` requires a mutable borrow of the PDB as well.
@@ -391,9 +479,11 @@ impl<'d> PdbDebugInfo<'d> {
             pdb: pdb.pdb.clone(),
             modules,
             module_infos,
+            module_exports,
             address_map,
             string_table,
-            symbol_map,
+            type_map,
+            id_map,
         })
     }
 
@@ -428,6 +518,50 @@ impl<'d> PdbDebugInfo<'d> {
 
         Ok(FileInfo::from_path(file_path.as_bytes()))
     }
+
+    fn get_exports(
+        &'d self,
+        module_ref: pdb::ModuleRef,
+    ) -> Result<Option<pdb::CrossModuleExports>, PdbError> {
+        let name = match self.string_table {
+            Some(ref string_table) => module_ref.0.to_string_lossy(string_table)?,
+            None => return Ok(None),
+        };
+
+        let module_index = self
+            .modules
+            .iter()
+            .position(|m| m.module_name().eq_ignore_ascii_case(&name));
+
+        let module = match module_index {
+            Some(index) => self.get_module(index)?,
+            None => None,
+        };
+
+        Ok(match module {
+            Some(module) => Some(module.exports()?),
+            None => None,
+        })
+    }
+
+    fn resolve_import<I: ItemIndex>(
+        &'d self,
+        cross_ref: pdb::CrossModuleRef<I>,
+    ) -> Result<Option<I>, PdbError> {
+        let pdb::CrossModuleRef(module_ref, local_index) = cross_ref;
+
+        let mut module_exports = self.module_exports.borrow_mut();
+        let exports = match module_exports.entry(module_ref) {
+            Entry::Vacant(vacant) => vacant.insert(self.get_exports(module_ref)?),
+            Entry::Occupied(occupied) => occupied.into_mut(),
+        };
+
+        Ok(if let Some(ref exports) = *exports {
+            exports.resolve_import(local_index)?
+        } else {
+            None
+        })
+    }
 }
 
 impl<'slf, 'd: 'slf> AsSelf<'slf> for PdbDebugInfo<'d> {
@@ -440,16 +574,14 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for PdbDebugInfo<'d> {
 
 /// Debug session for PDB objects.
 pub struct PdbDebugSession<'d> {
-    cell: SelfCell<Arc<pdb::DebugInformation<'d>>, PdbDebugInfo<'d>>,
+    cell: SelfCell<Box<PdbStreams<'d>>, PdbDebugInfo<'d>>,
 }
 
 impl<'d> PdbDebugSession<'d> {
-    fn build(
-        pdb: &PdbObject<'d>,
-        debug_info: Arc<pdb::DebugInformation<'d>>,
-    ) -> Result<Self, PdbError> {
-        let cell = SelfCell::try_new(debug_info, |debug_info| {
-            PdbDebugInfo::build(pdb, unsafe { &*debug_info })
+    fn build(pdb: &PdbObject<'d>) -> Result<Self, PdbError> {
+        let streams = PdbStreams::from_pdb(pdb)?;
+        let cell = SelfCell::try_new(Box::new(streams), |streams| {
+            PdbDebugInfo::build(pdb, unsafe { &*streams })
         })?;
 
         Ok(PdbDebugSession { cell })
@@ -498,72 +630,431 @@ impl DebugSession for PdbDebugSession<'_> {
     }
 }
 
+/// Formatter for function types.
+///
+/// This formatter currently only contains the minimum implementation requried to format inline
+/// function names without parameters.
+struct TypeFormatter<'u, 'd> {
+    unit: &'u Unit<'d>,
+    type_map: RefMut<'u, TypeMap<'d>>,
+    id_map: RefMut<'u, IdMap<'d>>,
+}
+
+impl<'u, 'd> TypeFormatter<'u, 'd> {
+    /// Creates a new `TypeFormatter`.
+    pub fn new(unit: &'u Unit<'d>) -> Self {
+        Self {
+            unit,
+            type_map: unit.debug_info.type_map.borrow_mut(),
+            id_map: unit.debug_info.id_map.borrow_mut(),
+        }
+    }
+
+    /// Writes the `Id` with the given index.
+    pub fn write_id<W: fmt::Write>(
+        &mut self,
+        target: &mut W,
+        index: pdb::IdIndex,
+    ) -> Result<(), PdbError> {
+        let index = match self.unit.resolve_index(index)? {
+            Some(index) => index,
+            None => return Ok(write!(target, "<redacted>")?),
+        };
+
+        let id = self.id_map.try_get(index)?;
+        match id.parse() {
+            Ok(pdb::IdData::Function(data)) => {
+                if let Some(scope) = data.scope {
+                    self.write_id(target, scope)?;
+                    write!(target, "::")?;
+                }
+
+                write!(target, "{}", data.name.to_string())?;
+            }
+            Ok(pdb::IdData::MemberFunction(data)) => {
+                self.write_type(target, data.parent)?;
+                write!(target, "::{}", data.name.to_string())?;
+            }
+            Ok(pdb::IdData::BuildInfo(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::IdData::StringList(data)) => {
+                write!(target, "\"")?;
+                for (i, string_index) in data.substrings.iter().enumerate() {
+                    if i > 0 {
+                        write!(target, "\" \"")?;
+                    }
+                    self.write_type(target, *string_index)?;
+                }
+                write!(target, "\"")?;
+            }
+            Ok(pdb::IdData::String(data)) => {
+                write!(target, "{}", data.name.to_string())?;
+            }
+            Ok(pdb::IdData::UserDefinedTypeSource(_)) => {
+                // nothing to do.
+            }
+            Err(pdb::Error::UnimplementedTypeKind(_)) => {
+                write!(target, "<unknown>")?;
+            }
+            Err(e) => return Err(e.into()),
+        }
+
+        Ok(())
+    }
+
+    /// Writes the `Type` with the given index.
+    pub fn write_type<W: fmt::Write>(
+        &mut self,
+        target: &mut W,
+        index: pdb::TypeIndex,
+    ) -> Result<(), PdbError> {
+        let index = match self.unit.resolve_index(index)? {
+            Some(index) => index,
+            None => return Ok(write!(target, "<redacted>")?),
+        };
+
+        let ty = self.type_map.try_get(index)?;
+        match ty.parse() {
+            Ok(pdb::TypeData::Primitive(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::Class(data)) => {
+                write!(target, "{}", data.name.to_string())?;
+            }
+            Ok(pdb::TypeData::Member(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::MemberFunction(data)) => {
+                self.write_type(target, data.return_type)?;
+                write!(target, " ")?;
+                self.write_type(target, data.class_type)?;
+                write!(target, "::")?;
+                self.write_type(target, data.argument_list)?;
+            }
+            Ok(pdb::TypeData::OverloadedMethod(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::Method(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::StaticMember(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::Nested(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::BaseClass(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::VirtualBaseClass(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::VirtualFunctionTablePointer(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::Procedure(data)) => {
+                match data.return_type {
+                    Some(return_type) => self.write_type(target, return_type)?,
+                    None => write!(target, "void")?,
+                }
+
+                write!(target, " ")?;
+                self.write_type(target, data.argument_list)?;
+            }
+            Ok(pdb::TypeData::Pointer(data)) => {
+                self.write_type(target, data.underlying_type)?;
+
+                if let Some(containing_class) = data.containing_class {
+                    write!(target, " ")?;
+                    self.write_type(target, containing_class)?;
+                } else {
+                    match data.attributes.pointer_mode() {
+                        pdb::PointerMode::Pointer => write!(target, "*")?,
+                        pdb::PointerMode::LValueReference => write!(target, "&")?,
+                        pdb::PointerMode::RValueReference => write!(target, "&&")?,
+                        _ => (),
+                    }
+
+                    if data.attributes.is_const() {
+                        write!(target, " const")?;
+                    }
+                    if data.attributes.is_volatile() {
+                        write!(target, " volatile")?;
+                    }
+                    if data.attributes.is_unaligned() {
+                        write!(target, " __unaligned")?;
+                    }
+                    if data.attributes.is_restrict() {
+                        write!(target, " __restrict")?;
+                    }
+                }
+            }
+            Ok(pdb::TypeData::Modifier(data)) => {
+                if data.constant {
+                    write!(target, "const ")?;
+                }
+                if data.volatile {
+                    write!(target, "volatile ")?;
+                }
+                if data.unaligned {
+                    write!(target, "__unaligned ")?;
+                }
+
+                self.write_type(target, data.underlying_type)?;
+            }
+            Ok(pdb::TypeData::Enumeration(data)) => {
+                write!(target, "{}", data.name.to_string())?;
+            }
+            Ok(pdb::TypeData::Enumerate(data)) => {
+                write!(target, "{}", data.name.to_string())?;
+            }
+            Ok(pdb::TypeData::Array(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::Union(data)) => {
+                write!(target, "{}", data.name.to_string())?;
+            }
+            Ok(pdb::TypeData::Bitfield(_)) => {
+                // nothing to do
+            }
+            Ok(pdb::TypeData::FieldList(_)) => {
+                write!(target, "<field list>")?;
+            }
+            Ok(pdb::TypeData::ArgumentList(data)) => {
+                write!(target, "(")?;
+                for (i, arg_index) in data.arguments.iter().enumerate() {
+                    if i > 0 {
+                        write!(target, ", ")?;
+                    }
+                    self.write_type(target, *arg_index)?;
+                }
+                write!(target, ")")?;
+            }
+            Ok(pdb::TypeData::MethodList(_)) => {
+                // nothing to do
+            }
+            Err(pdb::Error::UnimplementedTypeKind(_)) => {
+                write!(target, "<unknown>")?;
+            }
+            Err(e) => return Err(e.into()),
+        }
+
+        Ok(())
+    }
+
+    /// Formats the `Id` with the given index to a string.
+    pub fn format_id(&mut self, index: pdb::IdIndex) -> Result<String, PdbError> {
+        let mut string = String::new();
+        self.write_id(&mut string, index)?;
+        Ok(string)
+    }
+}
+
 struct Unit<'s> {
     debug_info: &'s PdbDebugInfo<'s>,
     module: &'s pdb::ModuleInfo<'s>,
+    imports: pdb::CrossModuleImports<'s>,
 }
 
 impl<'s> Unit<'s> {
-    fn functions(&self) -> Result<Vec<Function<'s>>, PdbError> {
-        let address_map = &self.debug_info.address_map;
-        let symbol_map = &self.debug_info.symbol_map;
+    fn load(
+        debug_info: &'s PdbDebugInfo<'s>,
+        module: &'s pdb::ModuleInfo<'s>,
+    ) -> Result<Self, PdbError> {
+        let imports = module.imports()?;
 
+        Ok(Self {
+            debug_info,
+            module,
+            imports,
+        })
+    }
+
+    fn resolve_index<I>(&self, index: I) -> Result<Option<I>, PdbError>
+    where
+        I: ItemIndex,
+    {
+        if index.is_cross_module() {
+            let cross_ref = self.imports.resolve_import(index)?;
+            self.debug_info.resolve_import(cross_ref)
+        } else {
+            Ok(Some(index))
+        }
+    }
+
+    fn collect_lines<I>(
+        &self,
+        mut line_iter: I,
+        program: &LineProgram<'s>,
+    ) -> Result<Vec<LineInfo<'s>>, PdbError>
+    where
+        I: FallibleIterator<Item = pdb::LineInfo>,
+        PdbError: From<I::Error>,
+    {
+        let address_map = &self.debug_info.address_map;
+
+        let mut lines = Vec::new();
+        while let Some(line_info) = line_iter.next()? {
+            let rva = match line_info.offset.to_rva(&address_map) {
+                Some(rva) => u64::from(rva.0),
+                None => continue,
+            };
+
+            let file_info = program.get_file_info(line_info.file_index)?;
+
+            lines.push(LineInfo {
+                address: rva,
+                size: line_info.length.map(u64::from),
+                file: self.debug_info.file_info(file_info)?,
+                line: line_info.line_start.into(),
+            });
+        }
+
+        Ok(lines)
+    }
+
+    fn handle_procedure(
+        &self,
+        proc: ProcedureSymbol<'s>,
+        program: &LineProgram<'s>,
+    ) -> Result<Option<Function<'s>>, PdbError> {
+        let address_map = &self.debug_info.address_map;
+
+        // Translate the function's address to the PE's address space. If this fails, we're
+        // likely dealing with an invalid function and can skip it.
+        let address = match proc.offset.to_rva(&address_map) {
+            Some(addr) => u64::from(addr.0),
+            None => return Ok(None),
+        };
+
+        // Names from the private symbol table are generally demangled. They contain the path of the
+        // scope and name of the function itself, including type parameters, but do not contain
+        // parameter lists or return types. This is good enough for us at the moment.
+        let name = Name::new(proc.name.to_string());
+
+        let line_iter = program.lines_at_offset(proc.offset);
+        let lines = self.collect_lines(line_iter, program)?;
+
+        Ok(Some(Function {
+            address,
+            size: proc.len.into(),
+            name,
+            compilation_dir: &[],
+            lines,
+            inlinees: Vec::new(),
+            inline: false,
+        }))
+    }
+
+    fn handle_inlinee(
+        &self,
+        inline_site: InlineSiteSymbol<'s>,
+        parent_offset: PdbInternalSectionOffset,
+        inlinee: &pdb::Inlinee<'s>,
+        program: &LineProgram<'s>,
+    ) -> Result<Option<Function<'s>>, PdbError> {
+        let line_iter = inlinee.lines(parent_offset, &inline_site);
+        let lines = self.collect_lines(line_iter, program)?;
+
+        // If there are no line records, skip this inline function completely. Apparently, it was
+        // eliminated by the compiler, and cannot be hit by the program anymore. For `symbolic`,
+        // such functions do not have any use.
+        let start = match lines.iter().map(|line| line.address).min() {
+            Some(address) => address,
+            None => return Ok(None),
+        };
+
+        let end = match lines
+            .iter()
+            .map(|line| line.address + line.size.unwrap_or(1))
+            .max()
+        {
+            Some(address) => address,
+            None => return Ok(None),
+        };
+
+        let mut formatter = TypeFormatter::new(self);
+        let name = Name::new(formatter.format_id(inline_site.inlinee)?);
+
+        Ok(Some(Function {
+            address: start,
+            size: end - start,
+            name,
+            compilation_dir: &[],
+            lines,
+            inlinees: Vec::new(),
+            inline: true,
+        }))
+    }
+
+    fn functions(&self) -> Result<Vec<Function<'s>>, PdbError> {
         let program = self.module.line_program()?;
         let mut symbols = self.module.symbols()?;
 
+        // Depending on the compiler version, the inlinee table might not be sorted. Since constant
+        // search through inlinees is too slow (due to repeated parsing), but Inlinees are rather
+        // small structures, it is relatively cheap to collect them into an in-memory index.
+        let inlinees: BTreeMap<_, _> = self.module.inlinees()?.map(|i| (i.index(), i)).collect()?;
+
+        let mut depth = 0;
+        let mut skipped_depth = None;
+
         let mut functions = Vec::new();
+        let mut stack = FunctionStack::new();
+        let mut last_offset = None;
+
         while let Some(symbol) = symbols.next()? {
-            let proc = match symbol.parse() {
-                Ok(SymbolData::Procedure(proc)) => proc,
+            if symbol.starts_scope() {
+                depth += 1;
+            } else if symbol.ends_scope() {
+                depth -= 1;
+            }
+
+            // If we're navigating within a skipped function (see below), we can ignore this
+            // entry completely. Otherwise, we've moved out of any skipped function and can
+            // reset the stored depth.
+            match skipped_depth {
+                Some(skipped) if depth > skipped => continue,
+                _ => skipped_depth = None,
+            }
+
+            let function = match symbol.parse() {
+                Ok(SymbolData::Procedure(proc)) => {
+                    last_offset = Some(proc.offset);
+                    self.handle_procedure(proc, &program)?
+                }
+                Ok(SymbolData::InlineSite(site)) => {
+                    let parent_offset = last_offset
+                        .ok_or_else(|| PdbError::from(PdbErrorKind::UnexpectedInline))?;
+
+                    // We can assume that inlinees will be listed in the inlinee table. If missing,
+                    // skip silently instead of erroring out. Missing a single inline function is
+                    // more acceptable in such a case than halting iteration completely.
+                    if let Some(inlinee) = inlinees.get(&site.inlinee) {
+                        self.handle_inlinee(site, parent_offset, inlinee, &program)?
+                    } else {
+                        None
+                    }
+                }
                 // We need to ignore errors here since the PDB crate does not yet implement all
                 // symbol types. Instead of erroring too often, it's better to swallow these.
                 _ => continue,
             };
 
-            // Translate the function's address to the PE's address space. If this fails, we're
-            // likely dealing with an invalid function and can skip it.
-            let address = match proc.offset.to_rva(&address_map) {
-                Some(addr) => u64::from(addr.0),
-                None => continue,
-            };
+            // Flush all functions out that exceed the current iteration depth. Since we
+            // encountered a function at this level, there will be no more inlinees to the
+            // previous function at the same level or any of it's children.
+            stack.flush(depth, &mut functions);
 
-            // Prefer names from the public symbol table as they are mangled. Otherwise, fall back
-            // to the name of the private symbol which is often times demangled. Also, this might
-            // save us some allocations, since the symbol_map is held by the debug session.
-            let name = match symbol_map.lookup(address) {
-                Some(symbol) => Name::new(symbol.name().unwrap_or_default()),
-                None => Name::new(symbol.name()?.to_string()),
-            };
-
-            let mut lines = Vec::new();
-            let mut line_iter = program.lines_at_offset(proc.offset);
-            while let Some(line_info) = line_iter.next()? {
-                let rva = match line_info.offset.to_rva(&address_map) {
-                    Some(rva) => u64::from(rva.0),
-                    None => continue,
-                };
-
-                let file_info = program.get_file_info(line_info.file_index)?;
-
-                lines.push(LineInfo {
-                    address: rva,
-                    file: self.debug_info.file_info(file_info)?,
-                    line: line_info.line_start.into(),
-                });
+            match function {
+                Some(function) => stack.push(depth, function),
+                None => skipped_depth = Some(depth),
             }
-
-            let func = Function {
-                address,
-                size: proc.len.into(),
-                name,
-                compilation_dir: &[],
-                lines,
-                inlinees: Vec::new(),
-                inline: false,
-            };
-
-            functions.push(func);
         }
+
+        // We're done, flush the remaining stack.
+        stack.flush(0, &mut functions);
 
         // Functions are not necessarily in RVA order. So far, it seems that modules are.
         dmsort::sort_by_key(&mut functions, |f| f.address);
@@ -592,7 +1083,7 @@ impl<'s> Iterator for PdbUnitIterator<'s> {
                 Err(error) => return Some(Err(error)),
             };
 
-            return Some(Ok(Unit { debug_info, module }));
+            return Some(Unit::load(debug_info, module));
         }
 
         None
