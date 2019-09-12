@@ -17,6 +17,13 @@ pub const SYMCACHE_MAGIC: [u8; 4] = *b"SYMC";
 /// The latest version of the file format.
 pub const SYMCACHE_VERSION: u32 = 4;
 
+// Version history:
+//
+// 1: Initial implementation
+// 2: PR #58:  Migrate from UUID to Debug ID
+// 3: PR #148: Consider all PT_LOAD segments in ELF
+// 4: PR #155: Functions with more than 65k line records
+
 /// Loads binary data from a segment.
 pub(crate) fn get_slice(data: &[u8], offset: usize, len: usize) -> Result<&[u8], io::Error> {
     let to = offset.wrapping_add(len);
