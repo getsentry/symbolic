@@ -154,6 +154,34 @@ pytest ./py/tests
 make pytest
 ```
 
+## Examples
+
+The repository contains a few examples that show how to use `symbolic` to work with debug files and
+minidumps. Most of these examples can also be used to extract information from such files or verify
+their integrity:
+
+- `dump_cfi`: Writes call frame information from an object file to standard out. The output format
+  is Breakpad's `STACK` records.
+
+- `dump_sources`: Creates a source archive from all files referenced by an object file. This is now
+  integrated into `sentry-cli difutil bundle-sources`.
+
+- `minidump_stackwalk`: Extracts stack traces from a minidump and symbolicates them. A path to a
+  directory containing debug information files can be specified.
+
+- `object_debug`: Prints basic information about the contents of an object file.
+
+- `symcache_debug`: Converts an object file into a symcache and prints its contents. Optionally,
+  this can be used to symbolicate a relative address.
+
+- `unreal_engine_crash`: Lists files contained within an Unreal Engine 4 crash archive.
+
+To run these examples, use the `run` script. For example:
+
+```sh
+./run minidump_stackwalk mini.dmp /path/to/files
+```
+
 ## License
 
 Symbolic is licensed under the MIT license. It uses some Apache2 licensed code

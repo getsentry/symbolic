@@ -1,0 +1,19 @@
+#!/bin/sh
+
+FLAGS=""
+
+if [ "$1" = "--release" ]; then
+    FLAGS="$FLAGS --release"
+    shift
+fi
+
+if [ $# -lt 1 ]; then
+    echo "usage: $0 [--release] <example> [args...]"
+    exit
+fi
+
+EXAMPLE=$1;
+shift
+
+set -x
+cargo run --quiet --all-features --example $EXAMPLE $FLAGS -- $@
