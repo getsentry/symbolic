@@ -28,7 +28,7 @@ gimli = { git = "https://github.com/jan-auer/gimli", rev = "bf8ea0f0079505681c36
 goblin = "0.0.23"
 lazycell = "1.2.1"
 lazy_static = "1.3.0"
-pdb = { git = "https://github.com/jan-auer/pdb", rev = "621d8c159524bffafb2fc427e896628b53784450" }
+pdb = { git = "https://github.com/jan-auer/pdb", rev = "79112ae2fd208fcb5c8e565dd148f4b55c3e58e3" }
 parking_lot = "0.8.0"
 pest = "2.1.1"
 pest_derive = "2.1.0"
