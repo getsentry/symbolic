@@ -8,10 +8,10 @@ use symbolic::debuginfo::Object;
 use symbolic::minidump::cfi::AsciiCfiWriter;
 
 fn print_error(error: &Error) {
-    println!("Error: {}", error);
+    eprintln!("Error: {:#?}", error);
 
     for cause in error.iter_causes() {
-        println!("   caused by {}", cause);
+        eprintln!("   caused by {}", cause);
     }
 }
 
