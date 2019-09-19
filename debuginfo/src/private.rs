@@ -222,7 +222,7 @@ impl<'a> FunctionStack<'a> {
     /// are pushed into the inlinees list of their parents, instead.
     ///
     /// After this operation, the stack is either empty or its top function (see `peek`) will have a
-    /// depth higher than the given depth. This allows to push new functions at this depth onto the
+    /// depth lower than the given depth. This allows to push new functions at this depth onto the
     /// stack.
     pub fn flush(&mut self, depth: isize, destination: &mut Vec<Function<'a>>) {
         let len = self.0.len();

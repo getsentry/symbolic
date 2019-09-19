@@ -14,6 +14,7 @@ use pdb::{
     AddressMap, FallibleIterator, InlineSiteSymbol, ItemIndex, LineProgram, MachineType, Module,
     ModuleInfo, PdbInternalSectionOffset, ProcedureSymbol, SymbolData,
 };
+use smallvec::SmallVec;
 
 use symbolic_common::{
     derive_failure, Arch, AsSelf, CodeId, CpuFamily, DebugId, Name, SelfCell, Uuid,
@@ -1007,17 +1008,25 @@ impl<'s> Unit<'s> {
         let inlinees: BTreeMap<_, _> = self.module.inlinees()?.map(|i| (i.index(), i)).collect()?;
 
         let mut depth = 0;
+        let mut inc_next = false;
         let mut skipped_depth = None;
 
         let mut functions = Vec::new();
         let mut stack = FunctionStack::new();
-        let mut last_offset = None;
+        let mut proc_offsets = SmallVec::<[_; 3]>::new();
 
         while let Some(symbol) = symbols.next()? {
-            if symbol.starts_scope() {
+            if inc_next {
                 depth += 1;
-            } else if symbol.ends_scope() {
+            }
+
+            inc_next = symbol.starts_scope();
+            if symbol.ends_scope() {
                 depth -= 1;
+
+                if proc_offsets.last().map_or(false, |&(d, _)| d >= depth) {
+                    proc_offsets.pop();
+                }
             }
 
             // If we're navigating within a skipped function (see below), we can ignore this
@@ -1030,11 +1039,13 @@ impl<'s> Unit<'s> {
 
             let function = match symbol.parse() {
                 Ok(SymbolData::Procedure(proc)) => {
-                    last_offset = Some(proc.offset);
+                    proc_offsets.push((depth, proc.offset));
                     self.handle_procedure(proc, &program)?
                 }
                 Ok(SymbolData::InlineSite(site)) => {
-                    let parent_offset = last_offset
+                    let parent_offset = proc_offsets
+                        .last()
+                        .map(|&(_, offset)| offset)
                         .ok_or_else(|| PdbError::from(PdbErrorKind::UnexpectedInline))?;
 
                     // We can assume that inlinees will be listed in the inlinee table. If missing,
