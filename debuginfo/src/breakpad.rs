@@ -29,6 +29,9 @@ use self::parser::{BreakpadParser, Rule};
 /// not contain a valid line break.
 const BREAKPAD_HEADER_CAP: usize = 320;
 
+/// Placeholder used for missing function or symbol names.
+const UNKNOWN_NAME: &str = "<unknown>";
+
 /// Variants of `BreakpadError`.
 #[derive(Debug, Fail)]
 pub enum BreakpadErrorKind {
@@ -331,6 +334,10 @@ impl<'d> BreakpadPublicRecord<'d> {
             }
         }
 
+        if record.name.is_empty() {
+            record.name = UNKNOWN_NAME;
+        }
+
         Ok(record)
     }
 }
@@ -418,6 +425,10 @@ impl<'d> BreakpadFuncRecord<'d> {
                 Rule::name => record.name = pair.as_str(),
                 _ => unreachable!(),
             }
+        }
+
+        if record.name.is_empty() {
+            record.name = UNKNOWN_NAME;
         }
 
         record.lines = lines;
@@ -1269,6 +1280,25 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_parse_func_record_no_name() -> Result<(), BreakpadError> {
+        let string = b"FUNC 0 f 0";
+        let record = BreakpadFuncRecord::parse(string, Lines::default())?;
+
+        insta::assert_debug_snapshot_matches!(record, @r###"
+       ⋮BreakpadFuncRecord {
+       ⋮    multiple: false,
+       ⋮    address: 0,
+       ⋮    size: 15,
+       ⋮    parameter_size: 0,
+       ⋮    name: "<unknown>",
+       ⋮}
+        "###);
+
+        Ok(())
+    }
+
     #[test]
     fn test_parse_line_record() -> Result<(), BreakpadError> {
         let string = b"1730 6 93 20";
@@ -1331,6 +1361,23 @@ mod tests {
        ⋮    address: 20864,
        ⋮    parameter_size: 0,
        ⋮    name: "__clang_call_terminate",
+       ⋮}
+        "###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_public_record_no_name() -> Result<(), BreakpadError> {
+        let string = b"PUBLIC 5180 0";
+        let record = BreakpadPublicRecord::parse(string)?;
+
+        insta::assert_debug_snapshot_matches!(record, @r###"
+       ⋮BreakpadPublicRecord {
+       ⋮    multiple: false,
+       ⋮    address: 20864,
+       ⋮    parameter_size: 0,
+       ⋮    name: "<unknown>",
        ⋮}
         "###);
 

@@ -28,7 +28,7 @@ file_id = @{ dec }
 // FUNC record
 // Example: "FUNC m c184 30 0 nsQueryInterfaceWithError::operator()(nsID const&, void**) const"
 // see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#func-records>
-func = { "FUNC" ~ multiple? ~ addr ~ size ~ param_size ~ name }
+func = { "FUNC" ~ multiple? ~ addr ~ size ~ param_size ~ name? }
 param_size = @{ hex }
 
 // LINE record (part of functions)
@@ -40,7 +40,7 @@ line_num = @{ "-"? ~ dec }
 // PUBLIC record
 // Example: "PUBLIC m 2160 0 Public2_1"
 // see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#public-records>
-public = { "PUBLIC" ~ multiple? ~ addr ~ param_size ~ name }
+public = { "PUBLIC" ~ multiple? ~ addr ~ param_size ~ name? }
 
 // STACK WIN record
 // Example: "STACK WIN 4 2170 14 1 0 0 0 0 0 1 $eip 4 + ^ = $esp $ebp 8 + = $ebp $ebp ^ ="
