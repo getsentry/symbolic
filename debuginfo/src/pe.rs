@@ -190,13 +190,13 @@ impl<'d> PeObject<'d> {
     }
 
     /// Returns exception data containing unwind information.
-    pub fn exception_data(&self) -> Option<&ExceptionData> {
+    pub fn exception_data(&self) -> Option<&ExceptionData<'_>> {
         self.pe.exception_data.as_ref()
     }
 }
 
 impl fmt::Debug for PeObject<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PeObject")
             .field("code_id", &self.code_id())
             .field("debug_id", &self.debug_id())

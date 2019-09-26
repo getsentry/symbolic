@@ -489,7 +489,7 @@ impl<'a> LineInfo<'a> {
     /// The name of the function suitable for demangling.
     ///
     /// Use `symbolic::demangle` for demangling this symbol.
-    pub fn function_name(&self) -> Name {
+    pub fn function_name(&self) -> Name<'_> {
         Name::with_language(self.symbol(), self.language())
     }
 }
@@ -594,7 +594,7 @@ impl<'a> Function<'a> {
     /// The name of the function suitable for demangling.
     ///
     /// Use `symbolic::demangle` for demangling this symbol.
-    pub fn name(&self) -> Name {
+    pub fn name(&self) -> Name<'_> {
         Name::with_language(self.symbol(), self.language())
     }
 
@@ -619,7 +619,7 @@ impl<'a> Function<'a> {
 struct LinesDebug<'a>(Lines<'a>);
 
 impl fmt::Debug for LinesDebug<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut list = f.debug_list();
         for line in self.0.clone() {
             match line {

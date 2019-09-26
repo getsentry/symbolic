@@ -229,7 +229,7 @@ impl<'d> PdbObject<'d> {
 }
 
 impl fmt::Debug for PdbObject<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PdbObject")
             .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())

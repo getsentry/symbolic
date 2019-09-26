@@ -10,7 +10,7 @@ use symbolic_symcache::SymCache;
 struct FunctionsDebug<'a>(&'a SymCache<'a>);
 
 impl fmt::Debug for FunctionsDebug<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for result in self.0.functions() {
             match result {
                 Ok(function) => writeln!(f, "{:>16x} {}", &function.address(), &function.name())?,

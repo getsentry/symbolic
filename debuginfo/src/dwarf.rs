@@ -99,7 +99,7 @@ pub struct DwarfSection<'data> {
 }
 
 impl fmt::Debug for DwarfSection<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DwarfSection")
             .field("address", &format_args!("{:#x}", self.address))
             .field("offset", &format_args!("{:#x}", self.offset))
@@ -790,7 +790,7 @@ impl<'d, S> fmt::Debug for DwarfSectionData<'d, S>
 where
     S: gimli::read::Section<Slice<'d>>,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let owned = match self.data {
             Cow::Owned(_) => true,
             Cow::Borrowed(_) => false,
@@ -956,7 +956,7 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for DwarfInfo<'d> {
 }
 
 impl fmt::Debug for DwarfInfo<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DwarfInfo")
             .field("headers", &self.headers)
             .field("symbol_map", &self.symbol_map)

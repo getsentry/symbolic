@@ -286,7 +286,7 @@ where
 
     /// Returns a safe reference to the derived object in this cell.
     #[inline(always)]
-    pub fn get(&'slf self) -> &<T as AsSelf>::Ref {
+    pub fn get(&'slf self) -> &'slf <T as AsSelf<'slf>>::Ref {
         self.derived.as_self()
     }
 }

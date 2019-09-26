@@ -285,7 +285,7 @@ pub struct SourceBundle<'d> {
 }
 
 impl fmt::Debug for SourceBundle<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SourceBundle")
             .field("code_id", &self.code_id())
             .field("debug_id", &self.debug_id())
