@@ -157,7 +157,7 @@ where
     P: Parse<'d> + fmt::Debug,
     P::Error: fmt::Debug,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut tuple = f.debug_tuple("MonoArchive");
         match self.object() {
             Ok(object) => tuple.field(&object),

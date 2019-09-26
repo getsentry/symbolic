@@ -247,7 +247,7 @@ impl<'d> MachObject<'d> {
 }
 
 impl fmt::Debug for MachObject<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MachObject")
             .field("code_id", &self.code_id())
             .field("debug_id", &self.debug_id())
@@ -523,7 +523,7 @@ impl<'d> FatMachO<'d> {
 }
 
 impl fmt::Debug for FatMachO<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FatMachO").field("fat", &self.fat).finish()
     }
 }

@@ -457,7 +457,7 @@ impl PartialEq for BreakpadFuncRecord<'_> {
 impl Eq for BreakpadFuncRecord<'_> {}
 
 impl fmt::Debug for BreakpadFuncRecord<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BreakpadFuncRecord")
             .field("multiple", &self.multiple)
             .field("address", &self.address)
@@ -772,7 +772,7 @@ impl<'d> BreakpadObject<'d> {
                 Ok(_) => &data[..BREAKPAD_HEADER_CAP],
                 Err(e) => match e.error_len() {
                     None => &data[..e.valid_up_to()],
-                    Some(_) => Err(e)?,
+                    Some(_) => return Err(e.into()),
                 },
             }
         } else {
@@ -950,7 +950,7 @@ impl<'d> BreakpadObject<'d> {
 }
 
 impl fmt::Debug for BreakpadObject<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BreakpadObject")
             .field("code_id", &self.code_id())
             .field("debug_id", &self.debug_id())

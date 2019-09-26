@@ -221,7 +221,7 @@ impl<'data> Symbol<'data> {
 }
 
 impl<'d> fmt::Debug for Symbol<'d> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Symbol")
             .field("name", &self.name().unwrap_or("<unknown>"))
             .field("address", &format_args!("{:#x}", self.address))
@@ -441,7 +441,7 @@ impl<'data> FileInfo<'data> {
 }
 
 impl fmt::Debug for FileInfo<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FileInfo")
             .field("name", &String::from_utf8_lossy(self.name))
             .field("dir", &String::from_utf8_lossy(self.dir))
@@ -472,7 +472,7 @@ impl<'data> FileEntry<'data> {
 }
 
 impl fmt::Debug for FileEntry<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FileInfo")
             .field("compilation_dir", &self.compilation_dir_str())
             .field("name", &self.name_str())
@@ -503,7 +503,7 @@ pub struct LineInfo<'data> {
 }
 
 impl fmt::Debug for LineInfo<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("LineInfo")
             .field("address", &format_args!("{:#x}", self.address))
             .field("file", &self.file)
@@ -541,7 +541,7 @@ impl Function<'_> {
 }
 
 impl fmt::Debug for Function<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Function")
             .field("address", &format_args!("{:#x}", self.address))
             .field("size", &format_args!("{:#x}", self.size))
@@ -685,7 +685,7 @@ mod derive_serde {
                 where
                     D: ::serde::de::Deserializer<'de>,
                 {
-                    <::std::borrow::Cow<str>>::deserialize(deserializer)?
+                    <::std::borrow::Cow<'_, str>>::deserialize(deserializer)?
                         .parse()
                         .map_err(::serde::de::Error::custom)
                 }

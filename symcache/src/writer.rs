@@ -421,7 +421,7 @@ where
 
     fn insert_lines(
         &mut self,
-        lines: &mut std::iter::Peekable<std::slice::Iter<LineInfo<'_>>>,
+        lines: &mut std::iter::Peekable<std::slice::Iter<'_, LineInfo<'_>>>,
         start_address: u64,
         end_address: u64,
     ) -> Result<(Vec<format::LineRecord>, u64), SymCacheError> {

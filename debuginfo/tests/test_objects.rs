@@ -10,7 +10,7 @@ use symbolic_debuginfo::{FileEntry, Function, Object, SymbolMap};
 struct SymbolsDebug<'a>(&'a SymbolMap<'a>);
 
 impl fmt::Debug for SymbolsDebug<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for symbol in self.0.iter() {
             writeln!(
                 f,
@@ -28,7 +28,7 @@ impl fmt::Debug for SymbolsDebug<'_> {
 struct FilesDebug<'a>(&'a [FileEntry<'a>]);
 
 impl fmt::Debug for FilesDebug<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for file in self.0 {
             writeln!(f, "{}", file.abs_path_str())?;
         }
@@ -41,7 +41,7 @@ impl fmt::Debug for FilesDebug<'_> {
 struct FunctionsDebug<'a>(&'a [Function<'a>], usize);
 
 impl fmt::Debug for FunctionsDebug<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for function in self.0 {
             writeln!(
                 f,
