@@ -772,7 +772,7 @@ impl<'d> BreakpadObject<'d> {
                 Ok(_) => &data[..BREAKPAD_HEADER_CAP],
                 Err(e) => match e.error_len() {
                     None => &data[..e.valid_up_to()],
-                    Some(_) => Err(e)?,
+                    Some(_) => return Err(e.into()),
                 },
             }
         } else {
