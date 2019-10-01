@@ -14,7 +14,7 @@ fn main() {
             // "vendor/swift/lib/Demangling/Remangler.cpp",
             // "vendor/swift/lib/Demangling/TypeDecoder.cpp",
         ])
-        .flag("-std=c++11")
+        .flag_if_supported("-std=c++11")
         .flag("-DLLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING=1")
         .warnings(false)
         .include("vendor/swift/include")
