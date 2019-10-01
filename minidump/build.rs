@@ -15,7 +15,7 @@ fn main() {
 
     cc::Build::new()
         .warnings(false)
-        .flag("-Wno-tautological-constant-out-of-range-compare")
+        .flag_if_supported("-Wno-tautological-constant-out-of-range-compare")
         .file("third_party/breakpad/src/third_party/libdisasm/ia32_implicit.c")
         .file("third_party/breakpad/src/third_party/libdisasm/ia32_insn.c")
         .file("third_party/breakpad/src/third_party/libdisasm/ia32_invariant.c")
@@ -35,7 +35,7 @@ fn main() {
     cc::Build::new()
         .cpp(true)
         .warnings(false)
-        .flag("-std=c++11")
+        .flag_if_supported("-std=c++11")
         .include(".")
         .include("third_party/breakpad/src")
         .define("BPLOG_MINIMUM_SEVERITY", "SEVERITY_ERROR")
