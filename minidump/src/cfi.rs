@@ -32,11 +32,18 @@ use symbolic_debuginfo::dwarf::gimli::{
 use symbolic_debuginfo::dwarf::Dwarf;
 use symbolic_debuginfo::pdb::pdb::{self, FallibleIterator, FrameData, Rva, StringTable};
 use symbolic_debuginfo::pdb::PdbObject;
-use symbolic_debuginfo::pe::{PeObject, UnwindOperation};
+use symbolic_debuginfo::pe::{PeObject, RuntimeFunction, UnwindOperation};
 use symbolic_debuginfo::{Object, ObjectLike};
 
 /// The latest version of the file format.
 pub const CFICACHE_LATEST_VERSION: u32 = 1;
+
+/// Used to detect empty runtime function entries in PEs.
+const EMPTY_FUNCTION: RuntimeFunction = RuntimeFunction {
+    begin_address: 0,
+    end_address: 0,
+    unwind_info_address: 0,
+};
 
 /// Possible error kinds of `CfiError`.
 #[derive(Debug, Fail, Copy, Clone)]
@@ -585,13 +592,19 @@ impl<W: Write> AsciiCfiWriter<W> {
 
         for function_result in exception_data {
             let function = function_result.context(CfiErrorKind::BadDebugInfo)?;
-            let mut next_function = Some(function);
+
+            // Exception directories can contain zeroed out sections which need to be skipped.
+            // Neither their start/end RVA nor the unwind info RVA is valid.
+            if function == EMPTY_FUNCTION {
+                continue;
+            }
 
             // The minimal stack size is 8 for RIP
             let mut stack_size = 8;
             // Special handling for machine frames
             let mut machine_frame_offset = 0;
 
+            let mut next_function = Some(function);
             while let Some(next) = next_function {
                 let unwind_info = exception_data
                     .get_unwind_info(next, sections)
