@@ -32,7 +32,7 @@ use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 
 use cpp_demangle::{DemangleOptions as CppOptions, Symbol as CppSymbol};
-use msvc_demangler::DemangleFlags as MsvcFlags;
+pub use msvc_demangler::DemangleFlags as MsvcFlags;
 
 use symbolic_common::{Language, Name};
 
@@ -69,6 +69,9 @@ pub struct DemangleOptions {
     /// demangled output, however they are if you convert the symbol
     /// into a string.
     pub with_arguments: bool,
+
+    /// MSVC demangle options
+    pub msvc: Option<MsvcFlags>,
 }
 
 impl Default for DemangleOptions {
@@ -76,6 +79,7 @@ impl Default for DemangleOptions {
         DemangleOptions {
             format: DemangleFormat::Short,
             with_arguments: false,
+            msvc: None,
         }
     }
 }
@@ -99,7 +103,7 @@ fn is_maybe_switf(ident: &str) -> bool {
 }
 
 fn try_demangle_msvc(ident: &str, opts: DemangleOptions) -> Option<String> {
-    let flags = match opts.format {
+    let flags = opts.msvc.unwrap_or_else(|| match opts.format {
         DemangleFormat::Full => MsvcFlags::COMPLETE,
         DemangleFormat::Short => {
             if opts.with_arguments {
@@ -108,7 +112,7 @@ fn try_demangle_msvc(ident: &str, opts: DemangleOptions) -> Option<String> {
                 MsvcFlags::NAME_ONLY
             }
         }
-    };
+    });
 
     msvc_demangler::demangle(ident, flags).ok()
 }

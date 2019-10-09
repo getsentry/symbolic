@@ -6,6 +6,7 @@
 mod utils;
 
 use symbolic_common::Language;
+use symbolic_demangle::{DemangleFormat, DemangleOptions, MsvcFlags};
 
 #[test]
 fn test_msvc_demangle_full() {
@@ -28,6 +29,23 @@ fn test_msvc_demangle_without_args() {
         "?LoadV8Snapshot@V8Initializer@gin@@SAXXZ" => "gin::V8Initializer::LoadV8Snapshot(void)",
         "??9@YA_NAEBVGURL@@0@Z" => "operator!=(class GURL const &,class GURL const &)",
         "??_GAtomSandboxedRenderFrameObserver@?A0x77c58568@atom@@UEAAPEAXI@Z" => "atom::`anonymous namespace'::AtomSandboxedRenderFrameObserver::`scalar deleting destructor'(unsigned int)",
+    })
+}
+
+#[test]
+fn test_msvc_demangle_msvc_args() {
+    let opts = DemangleOptions {
+        format: DemangleFormat::Full,
+        with_arguments: true,
+        msvc: Some(MsvcFlags::NO_FUNCTION_RETURNS | MsvcFlags::SPACE_AFTER_COMMA),
+    };
+
+    assert_demangle!(Language::Cpp, opts, {
+        // These symbols were extracted from electron.exe.pdb
+        // https://github.com/electron/electron/releases/download/v2.0.11/electron-v2.0.11-win32-x64-pdb.zip
+        "?test@@YAXPAH@Z" => "test(int *)",
+        "?test@@YAXPAHIGPBNV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z" => "test(int *, unsigned int, unsigned short, double const *, class std::basic_string<char, struct std::char_traits<char>, class std::allocator<char> >)",
+        "?meth@A@@AAE?AUB@1@PAV1@$$QAU21@@Z" => "A::meth(class A *, struct A::B &&)",
     })
 }
 
