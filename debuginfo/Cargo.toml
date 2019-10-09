@@ -25,7 +25,7 @@ failure = "0.1.5"
 fallible-iterator = "0.2.0"
 flate2 = { version = "1.0.9", features = ["rust_backend"], default-features = false }
 gimli = { git = "https://github.com/jan-auer/gimli", rev = "bf8ea0f0079505681c360d3a55d0ac1e9b498df3", features = ["read", "std"], default-features = false }
-goblin = { git = "https://github.com/jan-auer/goblin", rev = "3781e656eccde1fac4eb0ed87eaf71504eb1010c" }
+goblin = { git = "https://github.com/m4b/goblin", rev = "cfa098a528409847c568216e04f764b792f8425a" }
 lazycell = "1.2.1"
 lazy_static = "1.3.0"
 pdb = { git = "https://github.com/jan-auer/pdb", rev = "6518a17aff69ed26375cf3358632abbd32073931" }
