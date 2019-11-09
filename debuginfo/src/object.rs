@@ -15,8 +15,8 @@ use crate::macho::*;
 use crate::pdb::*;
 use crate::pe::*;
 use crate::private::{MonoArchive, MonoArchiveObjects};
-use crate::wasm::*;
 use crate::sourcebundle::*;
+use crate::wasm::*;
 
 macro_rules! match_inner {
     ($value:expr, $ty:tt ($pat:pat) => $expr:expr) => {
@@ -129,6 +129,8 @@ pub fn peek(data: &[u8], archive: bool) -> FileFormat {
         FileFormat::Breakpad
     } else if PdbObject::test(data) {
         FileFormat::Pdb
+    } else if WasmObject::test(data) {
+        FileFormat::Wasm
     } else {
         FileFormat::Unknown
     }
@@ -519,7 +521,7 @@ pub enum SymbolIterator<'d, 'o> {
     Pdb(PdbSymbolIterator<'d, 'o>),
     Pe(PeSymbolIterator<'d, 'o>),
     SourceBundle(SourceBundleSymbolIterator<'d>),
-    Wasm(WasmSymbolIterator<'d>),
+    Wasm(WasmSymbolIterator<'d, 'o>),
 }
 
 impl<'d, 'o> Iterator for SymbolIterator<'d, 'o> {

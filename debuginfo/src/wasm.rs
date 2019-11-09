@@ -89,8 +89,11 @@ impl<'d> WasmObject<'d> {
     }
 
     /// Returns an iterator over symbols in the public symbol table.
-    pub fn symbols(&self) -> WasmSymbolIterator<'d> {
-        unimplemented!();
+    pub fn symbols<'o>(&'o self) -> WasmSymbolIterator<'d, 'o> {
+        WasmSymbolIterator {
+            section: self.module.function_section(),
+            _marker: std::marker::PhantomData,
+        }
     }
 
     /// Returns an ordered map of symbols in the symbol table.
@@ -258,11 +261,12 @@ impl<'d> Dwarf<'d> for WasmObject<'d> {
 /// An iterator over symbols in the WASM file.
 ///
 /// Returned by [`WasmObject::symbols`](struct.WasmObject.html#method.symbols).
-pub struct WasmSymbolIterator<'d> {
+pub struct WasmSymbolIterator<'d, 'o> {
+    section: Option<&'o elements::FunctionSection>,
     _marker: std::marker::PhantomData<&'d [u8]>,
 }
 
-impl<'d> Iterator for WasmSymbolIterator<'d> {
+impl<'d, 'o> Iterator for WasmSymbolIterator<'d, 'o> {
     type Item = Symbol<'d>;
 
     fn next(&mut self) -> Option<Self::Item> {
