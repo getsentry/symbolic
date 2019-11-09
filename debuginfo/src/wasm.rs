@@ -91,7 +91,9 @@ impl<'d> WasmObject<'d> {
     /// Returns an iterator over symbols in the public symbol table.
     pub fn symbols<'o>(&'o self) -> WasmSymbolIterator<'d, 'o> {
         WasmSymbolIterator {
-            section: self.module.function_section(),
+            funcs: self.module.function_section().map_or(&[], |x| x.entries()),
+            func_names: self.module.names_section().and_then(|x| x.functions()),
+            offset: 0,
             _marker: std::marker::PhantomData,
         }
     }
@@ -262,7 +264,9 @@ impl<'d> Dwarf<'d> for WasmObject<'d> {
 ///
 /// Returned by [`WasmObject::symbols`](struct.WasmObject.html#method.symbols).
 pub struct WasmSymbolIterator<'d, 'o> {
-    section: Option<&'o elements::FunctionSection>,
+    funcs: &'o [elements::Func],
+    func_names: Option<&'o elements::FunctionNameSubsection>,
+    offset: usize,
     _marker: std::marker::PhantomData<&'d [u8]>,
 }
 
@@ -270,6 +274,18 @@ impl<'d, 'o> Iterator for WasmSymbolIterator<'d, 'o> {
     type Item = Symbol<'d>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        unimplemented!();
+        if self.offset >= self.funcs.len() {
+            return None;
+        }
+        let idx = self.offset;
+        self.offset += 1;
+        Some(Symbol {
+            name: self
+                .func_names
+                .and_then(|s| s.names().get(idx as u32))
+                .map(|n| Cow::Owned(n.into())),
+            address: idx as u64,
+            size: 0,
+        })
     }
 }
