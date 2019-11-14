@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use std::fmt;
 
 use failure::Fail;
-use parity_wasm::elements::{self, Deserialize};
+use walrus;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
@@ -14,9 +14,9 @@ use crate::private::Parse;
 /// An error when dealing with [`WasmObject`](struct.WasmObject.html).
 #[derive(Debug, Fail)]
 pub enum WasmError {
-    /// The data in the MachO file could not be parsed.
+    /// The module cannot be parsed.
     #[fail(display = "invalid wasm file")]
-    BadObject(#[fail(cause)] elements::Error),
+    InvalidObject,
 }
 
 /// Wasm object container (.wasm), used for executables and debug
@@ -24,7 +24,7 @@ pub enum WasmError {
 ///
 /// This can only parse binary wasm file and not wast files.
 pub struct WasmObject<'d> {
-    module: elements::Module,
+    wasm_module: walrus::Module,
     data: &'d [u8],
 }
 
@@ -38,9 +38,12 @@ impl<'d> WasmObject<'d> {
     }
 
     /// Tries to parse a WASM from the given slice.
-    pub fn parse(mut data: &'d [u8]) -> Result<Self, WasmError> {
-        let module = elements::Module::deserialize(&mut data).map_err(WasmError::BadObject)?;
-        Ok(WasmObject { module, data })
+    pub fn parse(data: &'d [u8]) -> Result<Self, WasmError> {
+        let wasm_module = match walrus::Module::from_buffer(data) {
+            Ok(module) => module,
+            Err(_) => return Err(WasmError::InvalidObject),
+        };
+        Ok(WasmObject { wasm_module, data })
     }
 
     /// The container file format, which is always `FileFormat::Wasm`.
@@ -69,7 +72,7 @@ impl<'d> WasmObject<'d> {
 
     /// The kind of this object.
     pub fn kind(&self) -> ObjectKind {
-        if self.module.code_section().is_some() {
+        if self.wasm_module.funcs.iter().next().is_some() {
             ObjectKind::Library
         } else {
             ObjectKind::Debug
@@ -91,9 +94,8 @@ impl<'d> WasmObject<'d> {
     /// Returns an iterator over symbols in the public symbol table.
     pub fn symbols<'o>(&'o self) -> WasmSymbolIterator<'d, 'o> {
         WasmSymbolIterator {
-            funcs: self.module.function_section().map_or(&[], |x| x.entries()),
-            func_names: self.module.names_section().and_then(|x| x.functions()),
-            offset: 0,
+            funcs: (Box::new(self.wasm_module.funcs.iter()) as Box<dyn Iterator<Item = _>>)
+                .peekable(),
             _marker: std::marker::PhantomData,
         }
     }
@@ -105,11 +107,9 @@ impl<'d> WasmObject<'d> {
 
     /// Determines whether this object contains debug information.
     pub fn has_debug_info(&self) -> bool {
-        for section in self.module.sections() {
-            if let elements::Section::Custom(ref cs) = section {
-                if cs.name() == ".debug_info" {
-                    return true;
-                }
+        for (_, section) in self.wasm_module.customs.iter() {
+            if section.name() == ".debug_info" {
+                return true;
             }
         }
         false
@@ -123,11 +123,9 @@ impl<'d> WasmObject<'d> {
 
     /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
-        for section in self.module.sections() {
-            if let elements::Section::Custom(ref cs) = section {
-                if cs.name() == ".debug_frame" {
-                    return true;
-                }
+        for (_, section) in self.wasm_module.customs.iter() {
+            if section.name() == ".debug_frame" {
+                return true;
             }
         }
         false
@@ -242,17 +240,15 @@ impl<'d> Dwarf<'d> for WasmObject<'d> {
     }
 
     fn raw_section(&self, section_name: &str) -> Option<DwarfSection<'d>> {
-        for section in self.module.sections() {
-            if let elements::Section::Custom(ref cs) = section {
-                if cs.name().starts_with('.') && &cs.name()[1..] == section_name {
-                    return Some(DwarfSection {
-                        data: Cow::Owned(cs.payload().to_owned()),
-                        // XXX: what are these going to be?
-                        address: 0,
-                        offset: 0,
-                        align: 4,
-                    });
-                }
+        for (_, section) in self.wasm_module.customs.iter() {
+            if section.name().starts_with('.') && &section.name()[1..] == section_name {
+                return Some(DwarfSection {
+                    data: Cow::Owned(section.data(&Default::default()).into_owned()),
+                    // XXX: what are these going to be?
+                    address: 0,
+                    offset: 0,
+                    align: 4,
+                });
             }
         }
 
@@ -264,28 +260,36 @@ impl<'d> Dwarf<'d> for WasmObject<'d> {
 ///
 /// Returned by [`WasmObject::symbols`](struct.WasmObject.html#method.symbols).
 pub struct WasmSymbolIterator<'d, 'o> {
-    funcs: &'o [elements::Func],
-    func_names: Option<&'o elements::FunctionNameSubsection>,
-    offset: usize,
+    funcs: std::iter::Peekable<Box<dyn Iterator<Item = &'o walrus::Function> + 'o>>,
     _marker: std::marker::PhantomData<&'d [u8]>,
+}
+
+fn get_addr_of_function(func: &walrus::Function) -> u64 {
+    if let walrus::FunctionKind::Local(ref loc) = func.kind {
+        let entry_block = loc.entry_block();
+        let seq = loc.block(entry_block);
+        seq.instrs.get(0).map_or(0, |x| x.1.data() as u64)
+    } else {
+        0
+    }
 }
 
 impl<'d, 'o> Iterator for WasmSymbolIterator<'d, 'o> {
     type Item = Symbol<'d>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.offset >= self.funcs.len() {
-            return None;
-        }
-        let idx = self.offset;
-        self.offset += 1;
+        let func = self.funcs.next()?;
+        let address = get_addr_of_function(func);
+        let size = self.funcs.peek().map_or(0, |func| {
+            match get_addr_of_function(func) {
+                0 => 0,
+                x => x - address,
+            }
+        });
         Some(Symbol {
-            name: self
-                .func_names
-                .and_then(|s| s.names().get(idx as u32))
-                .map(|n| Cow::Owned(n.into())),
-            address: idx as u64,
-            size: 0,
+            name: func.name.as_ref().map(|x| Cow::Owned(x.clone())),
+            address,
+            size,
         })
     }
 }
