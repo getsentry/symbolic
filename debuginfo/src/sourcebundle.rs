@@ -874,12 +874,12 @@ where
         mut self,
         object: &O,
         object_name: &str,
-        filter: F,
+        mut filter: F,
     ) -> Result<bool, SourceBundleError>
     where
         O: ObjectLike,
         O::Error: Fail,
-        F: Fn(&FileEntry) -> bool,
+        F: FnMut(&FileEntry) -> bool,
     {
         let mut files_handled = BTreeSet::new();
         let session = object
