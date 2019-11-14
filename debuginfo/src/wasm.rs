@@ -55,6 +55,12 @@ impl<'d> WasmObject<'d> {
     ///
     /// Wasm does not yet provide code IDs.
     pub fn code_id(&self) -> Option<CodeId> {
+        // see `debug_id`
+        for (_, section) in self.wasm_module.customs.iter() {
+            if section.name() == "build_id" {
+                return Some(CodeId::from_binary(&section.data(&Default::default())));
+            }
+        }
         None
     }
 
@@ -62,6 +68,21 @@ impl<'d> WasmObject<'d> {
     ///
     /// Wasm does not yet provide debug IDs.
     pub fn debug_id(&self) -> DebugId {
+        for (_, section) in self.wasm_module.customs.iter() {
+            // this section is not defined yet
+            // see https://github.com/WebAssembly/tool-conventions/issues/133
+            if section.name() == "build_id" {
+                return DebugId::from_guid_age(
+                    section
+                        .data(&Default::default())
+                        .get(..16)
+                        .unwrap_or(&[][..]),
+                    0,
+                )
+                .ok()
+                .unwrap_or_default();
+            }
+        }
         DebugId::nil()
     }
 
@@ -280,12 +301,13 @@ impl<'d, 'o> Iterator for WasmSymbolIterator<'d, 'o> {
     fn next(&mut self) -> Option<Self::Item> {
         let func = self.funcs.next()?;
         let address = get_addr_of_function(func);
-        let size = self.funcs.peek().map_or(0, |func| {
-            match get_addr_of_function(func) {
+        let size = self
+            .funcs
+            .peek()
+            .map_or(0, |func| match get_addr_of_function(func) {
                 0 => 0,
                 x => x - address,
-            }
-        });
+            });
         Some(Symbol {
             name: func.name.as_ref().map(|x| Cow::Owned(x.clone())),
             address,
