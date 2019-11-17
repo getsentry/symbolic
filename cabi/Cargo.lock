@@ -216,7 +216,7 @@ dependencies = [
 
 [[package]]
 name = "cpp_demangle"
-version = "0.2.13"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cfg-if 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1164,7 +1164,7 @@ name = "symbolic-demangle"
 version = "7.0.0"
 dependencies = [
  "cc 1.0.45 (registry+https://github.com/rust-lang/crates.io-index)",
- "cpp_demangle 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cpp_demangle 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "msvc-demangler 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-demangle 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "symbolic-common 7.0.0",
@@ -1423,7 +1423,7 @@ dependencies = [
 "checksum clicolors-control 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "90082ee5dcdd64dc4e9e0d37fbf3ee325419e39c0092191e0393df65518f741e"
 "checksum cloudabi 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
 "checksum console 0.7.7 (registry+https://github.com/rust-lang/crates.io-index)" = "8ca57c2c14b8a2bf3105bc9d15574aad80babf6a9c44b1058034cdf8bd169628"
-"checksum cpp_demangle 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)" = "1d355451c6fb0dd4142db91e8dbd020d0d5466393957e771032bb9bf779504b4"
+"checksum cpp_demangle 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)" = "4115af6f575a7bc82c613e9e0ed7cc36a5e4fc3a8b54920dc0c820823a31a0d6"
 "checksum crc32fast 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ba125de2af0df55319f41944744ad91c71113bf74a4646efff39afe1f6842db1"
 "checksum debugid 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "751dad1347b163aa77262232129c7ac46e2810485c9b095ac9f7caf200e97df4"
 "checksum difference 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
