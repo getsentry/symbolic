@@ -117,6 +117,8 @@ impl<'d> MachObject<'d> {
             goblin::mach::header::MH_DYLIB => ObjectKind::Library,
             goblin::mach::header::MH_CORE => ObjectKind::Dump,
             goblin::mach::header::MH_DSYM => ObjectKind::Debug,
+            goblin::mach::header::MH_BUNDLE => ObjectKind::Library,
+            goblin::mach::header::MH_KEXT_BUNDLE => ObjectKind::Library,
             _ => ObjectKind::Other,
         }
     }
