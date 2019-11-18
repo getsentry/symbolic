@@ -156,10 +156,18 @@ impl<'d> ElfObject<'d> {
         // removed. Since an executable without interpreter does not make any
         // sense, we assume ``Debug`` in this case.
         if kind == ObjectKind::Executable && self.elf.interpreter.is_none() {
-            ObjectKind::Debug
-        } else {
-            kind
+            return ObjectKind::Debug;
         }
+
+        // The same happens for libraries. However, here we can only check for
+        // a missing text section. If this still yields too many false positivies,
+        // we will have to check either the size or offset of that section in
+        // the future.
+        if kind == ObjectKind::Library && self.raw_section("text").is_none() {
+            return ObjectKind::Debug;
+        }
+
+        kind
     }
 
     /// The address at which the image prefers to be loaded into memory.
