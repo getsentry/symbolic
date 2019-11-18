@@ -114,9 +114,14 @@ impl<'d> MachObject<'d> {
         match self.macho.header.filetype {
             goblin::mach::header::MH_OBJECT => ObjectKind::Relocatable,
             goblin::mach::header::MH_EXECUTE => ObjectKind::Executable,
-            goblin::mach::header::MH_DYLIB => ObjectKind::Library,
+            goblin::mach::header::MH_FVMLIB => ObjectKind::Library,
             goblin::mach::header::MH_CORE => ObjectKind::Dump,
+            goblin::mach::header::MH_PRELOAD => ObjectKind::Executable,
+            goblin::mach::header::MH_DYLIB => ObjectKind::Library,
+            goblin::mach::header::MH_DYLINKER => ObjectKind::Executable,
+            goblin::mach::header::MH_BUNDLE => ObjectKind::Library,
             goblin::mach::header::MH_DSYM => ObjectKind::Debug,
+            goblin::mach::header::MH_KEXT_BUNDLE => ObjectKind::Library,
             _ => ObjectKind::Other,
         }
     }
