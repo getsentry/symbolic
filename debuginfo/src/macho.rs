@@ -461,7 +461,11 @@ impl<'d, 'a> Iterator for FatMachObjectIterator<'d, 'a> {
 
         self.remaining -= 1;
         match self.iter.next() {
-            Some(Ok(arch)) => Some(MachObject::parse(arch.slice(self.data))),
+            Some(Ok(arch)) => {
+                let start = (arch.offset as usize).min(self.data.len());
+                let end = ((arch.offset + arch.size) as usize).min(self.data.len());
+                Some(MachObject::parse(&self.data[start..end]))
+            }
             Some(Err(error)) => Some(Err(MachError::BadObject(error))),
             None => None,
         }
@@ -523,7 +527,9 @@ impl<'d> FatMachO<'d> {
             None => return Ok(None),
         };
 
-        MachObject::parse(arch.slice(self.data)).map(Some)
+        let start = (arch.offset as usize).min(self.data.len());
+        let end = ((arch.offset + arch.size) as usize).min(self.data.len());
+        MachObject::parse(&self.data[start..end]).map(Some)
     }
 }
 
