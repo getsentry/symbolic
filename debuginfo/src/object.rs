@@ -110,26 +110,9 @@ pub fn peek(data: &[u8], archive: bool) -> FileFormat {
     match goblin::peek_bytes(&magic) {
         Ok(Hint::Elf(_)) => return FileFormat::Elf,
         Ok(Hint::Mach(_)) => return FileFormat::MachO,
-        Ok(Hint::MachFat(narchs)) if archive => {
-            // so this is kind of stupid but java class files share the same cutsey magic
-            // as a macho fat file (CAFEBABE).  This means that we often claim that a java
-            // class file is actually a macho binary but it's not.  The next 32 bytes encode
-            // the number of embedded architectures in a fat mach.  In case of a JAR file
-            // we have 2 bytes for minor version and 2 bytes for major version of the class
-            // file format.
-            //
-            // The internet suggests the first public version of Java had the class version
-            // 45.  Thus the logic applied here is that if the number is >= 45 we're more
-            // likely to have a java class file than a macho file with 45 architectures
-            // which should be very rare.
-            //
-            // https://docs.oracle.com/javase/specs/jvms/se6/html/ClassFile.doc.html
-            return if narchs >= 45 {
-                FileFormat::Unknown
-            } else {
-                FileFormat::MachO
-            };
-        }
+        // mach fat needs to be tested through `MachArchive::test` because of special
+        // handling that is required due to disambiguation with Java class files.
+        Ok(Hint::MachFat(_)) if archive && MachArchive::test(data) => return FileFormat::MachO,
         Ok(Hint::PE) => return FileFormat::Pe,
         _ => (),
     }

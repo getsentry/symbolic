@@ -603,7 +603,22 @@ impl<'d> MachArchive<'d> {
     pub fn test(data: &[u8]) -> bool {
         match goblin::peek(&mut Cursor::new(data)) {
             Ok(goblin::Hint::Mach(_)) => true,
-            Ok(goblin::Hint::MachFat(_)) => true,
+            Ok(goblin::Hint::MachFat(narchs)) => {
+                // so this is kind of stupid but java class files share the same cutsey magic
+                // as a macho fat file (CAFEBABE).  This means that we often claim that a java
+                // class file is actually a macho binary but it's not.  The next 32 bytes encode
+                // the number of embedded architectures in a fat mach.  In case of a JAR file
+                // we have 2 bytes for minor version and 2 bytes for major version of the class
+                // file format.
+                //
+                // The internet suggests the first public version of Java had the class version
+                // 45.  Thus the logic applied here is that if the number is >= 45 we're more
+                // likely to have a java class file than a macho file with 45 architectures
+                // which should be very rare.
+                //
+                // https://docs.oracle.com/javase/specs/jvms/se6/html/ClassFile.doc.html
+                narchs < 45
+            }
             _ => false,
         }
     }
