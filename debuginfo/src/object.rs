@@ -110,7 +110,9 @@ pub fn peek(data: &[u8], archive: bool) -> FileFormat {
     match goblin::peek_bytes(&magic) {
         Ok(Hint::Elf(_)) => return FileFormat::Elf,
         Ok(Hint::Mach(_)) => return FileFormat::MachO,
-        Ok(Hint::MachFat(_)) if archive => return FileFormat::MachO,
+        // mach fat needs to be tested through `MachArchive::test` because of special
+        // handling that is required due to disambiguation with Java class files.
+        Ok(Hint::MachFat(_)) if archive && MachArchive::test(data) => return FileFormat::MachO,
         Ok(Hint::PE) => return FileFormat::Pe,
         _ => (),
     }
