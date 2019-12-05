@@ -238,17 +238,6 @@ impl<'d> MachObject<'d> {
         self.symbols()
             .any(|s| s.name().map_or(false, |n| n.starts_with("__?hidden#")))
     }
-
-    /// Locates a segment by its name.
-    fn find_segment(&self, name: &str) -> Option<&mach::segment::Segment<'d>> {
-        for segment in &self.macho.segments {
-            if segment.name().map(|seg| seg == name).unwrap_or(false) {
-                return Some(segment);
-            }
-        }
-
-        None
-    }
 }
 
 impl fmt::Debug for MachObject<'_> {
@@ -353,31 +342,26 @@ impl<'d> Dwarf<'d> for MachObject<'d> {
     }
 
     fn raw_section(&self, section_name: &str) -> Option<DwarfSection<'d>> {
-        let segment_name = match section_name {
-            "eh_frame" => "__TEXT",
-            _ => "__DWARF",
-        };
+        for segment in &self.macho.segments {
+            for section in segment {
+                if let Ok((header, data)) = section {
+                    if let Ok(sec) = header.name() {
+                        if sec.len() >= 2 && &sec[2..] == section_name {
+                            // In some cases, dsymutil leaves sections headers but removes their
+                            // data from the file. While the addr and size parameters are still
+                            // set, `header.offset` is 0 in that case. We skip them just like the
+                            // section was missing to avoid loading invalid data.
+                            if header.offset == 0 {
+                                return None;
+                            }
 
-        let segment = self.find_segment(segment_name)?;
-
-        for section in segment {
-            if let Ok((header, data)) = section {
-                if let Ok(sec) = header.name() {
-                    if sec.len() >= 2 && &sec[2..] == section_name {
-                        // In some cases, dsymutil leaves sections headers but removes their data
-                        // from the file. While the addr and size parameters are still set,
-                        // `header.offset` is 0 in that case. We skip them just like the section was
-                        // missing to avoid loading invalid data.
-                        if header.offset == 0 {
-                            return None;
+                            return Some(DwarfSection {
+                                data: Cow::Borrowed(data),
+                                address: header.addr,
+                                offset: u64::from(header.offset),
+                                align: u64::from(header.align),
+                            });
                         }
-
-                        return Some(DwarfSection {
-                            data: Cow::Borrowed(data),
-                            address: header.addr,
-                            offset: u64::from(header.offset),
-                            align: u64::from(header.align),
-                        });
                     }
                 }
             }
