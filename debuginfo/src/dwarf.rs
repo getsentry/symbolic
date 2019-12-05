@@ -399,13 +399,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             None => return Err(gimli::read::Error::MissingUnitDie.into()),
         };
 
-        // Clang's LLD might eliminate an entire compilation unit and simply set the low_pc to zero
-        // and remove all range entries to indicate that it is missing. Skip such a unit, as it does
-        // not contain any code that can be executed.
-        if unit.low_pc == 0 && entry.attr(constants::DW_AT_ranges)?.is_none() {
-            return Ok(None);
-        }
-
         let language = match entry.attr_value(constants::DW_AT_language)? {
             Some(AttributeValue::Language(lang)) => language_from_dwarf(lang),
             _ => Language::Unknown,
@@ -483,11 +476,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             return Ok(tuple);
         }
 
-        // to go by the logic in dwarf2read a low_pc of 0 can indicate an
-        // eliminated duplicate when the GNU linker is used.
-        // TODO: *technically* there could be a relocatable section placed at VA 0
         let low_pc = match low_pc {
-            Some(low_pc) if low_pc != 0 => low_pc,
+            Some(low_pc) => low_pc,
             _ => return Ok(tuple),
         };
 
