@@ -30,7 +30,7 @@ pub struct Unreal4LogEntry {
     pub message: String,
 }
 
-pub(crate) fn parse_logs(
+pub fn parse_logs(
     log_slice: &[u8],
     limit: usize,
 ) -> Result<Vec<Unreal4LogEntry>, Unreal4Error> {
