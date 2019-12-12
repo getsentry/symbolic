@@ -30,10 +30,7 @@ pub struct Unreal4LogEntry {
     pub message: String,
 }
 
-pub fn parse_logs(
-    log_slice: &[u8],
-    limit: usize,
-) -> Result<Vec<Unreal4LogEntry>, Unreal4Error> {
+pub fn parse_logs(log_slice: &[u8], limit: usize) -> Result<Vec<Unreal4LogEntry>, Unreal4Error> {
     let mut fallback_timestamp = None;
     let logs_utf8 = std::str::from_utf8(log_slice).map_err(Unreal4Error::InvalidLogEntry)?;
 
