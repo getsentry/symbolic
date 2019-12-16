@@ -308,6 +308,7 @@ pub struct Unreal4Context {
 }
 
 impl Unreal4Context {
+    /// Parses the unreal context XML file.
     pub fn parse(data: &[u8]) -> Result<Self, Unreal4Error> {
         let root = Element::from_reader(data).map_err(Unreal4Error::InvalidXml)?;
 
