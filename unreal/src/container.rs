@@ -11,7 +11,7 @@ use scroll::{ctx::TryFromCtx, Endian, Pread};
 
 use crate::context::Unreal4Context;
 use crate::error::Unreal4Error;
-use crate::logs::{parse_logs, Unreal4LogEntry};
+use crate::logs::Unreal4LogEntry;
 
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 struct AnsiString(String);
@@ -214,7 +214,7 @@ impl Unreal4Crash {
     /// Get up to `limit` log entries of this crash.
     pub fn logs(&self, limit: usize) -> Result<Vec<Unreal4LogEntry>, Unreal4Error> {
         match self.file_by_type(Unreal4FileType::Log) {
-            Some(file) => parse_logs(file.data(), limit),
+            Some(file) => Unreal4LogEntry::parse(file.data(), limit),
             None => Ok(Vec::new()),
         }
     }
