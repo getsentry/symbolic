@@ -118,6 +118,10 @@ pub struct Unreal4ContextRuntimeProperties {
     /// Misc.CPUBrand
     #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
     pub misc_cpu_brand: Option<String>,
+    #[doc(hidden)]
+    #[deprecated(note = "use misc_primary_gpu_brand instead")]
+    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
+    pub misc_primary_cpu_brand: Option<String>,
     /// Misc.PrimaryGPUBrand
     #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
     pub misc_primary_gpu_brand: Option<String>,
@@ -219,7 +223,15 @@ impl Unreal4ContextRuntimeProperties {
                 }
                 "Misc.CPUVendor" => rv.misc_cpu_vendor = get_text_or_none(&child),
                 "Misc.CPUBrand" => rv.misc_cpu_brand = get_text_or_none(&child),
-                "Misc.PrimaryGPUBrand" => rv.misc_primary_gpu_brand = get_text_or_none(&child),
+                "Misc.PrimaryGPUBrand" => {
+                    rv.misc_primary_gpu_brand = get_text_or_none(&child);
+
+                    #[allow(deprecated)]
+                    {
+                        // Shim a typo. To be removed with the next major release.
+                        rv.misc_primary_cpu_brand = rv.misc_primary_gpu_brand.clone();
+                    }
+                }
                 "Misc.OSVersionMajor" => rv.misc_os_version_major = get_text_or_none(&child),
                 "Misc.OSVersionMinor" => rv.misc_os_version_minor = get_text_or_none(&child),
                 "GameStateName" => rv.game_state_name = get_text_or_none(&child),
