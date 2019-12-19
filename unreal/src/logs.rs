@@ -61,7 +61,7 @@ impl Unreal4LogEntry {
         let mut logs: Vec<_> = logs_utf8
             .lines()
             .rev()
-            .take(limit+1) // read one more that we need, will be dropped at the end
+            .take(limit + 1) // read one more that we need, will be dropped at the end
             .map(|line| {
                 let entry = LogEntry::parse(line.as_bytes());
                 let (component, message) = entry.component_and_message();
