@@ -61,7 +61,7 @@ impl Unreal4LogEntry {
         let mut logs: Vec<_> = logs_utf8
             .lines()
             .rev()
-            .take(limit)
+            .take(limit + 1) // read one more that we need, will be dropped at the end
             .map(|line| {
                 let entry = LogEntry::parse(line.as_bytes());
                 let (component, message) = entry.component_and_message();
@@ -78,6 +78,10 @@ impl Unreal4LogEntry {
             })
             .collect();
 
+        // drops either the first line in the file, which is the file header and therefore
+        // not a valid log, or the (limit+1)-th entry from the bottom which we are not
+        // interested in (since we only want (limit) entries).
+        logs.pop();
         logs.reverse();
         Ok(logs)
     }
@@ -90,11 +94,11 @@ LogWindows: File 'aqProf.dll' does not exist";
 
     let logs = Unreal4LogEntry::parse(log_bytes, 1000).expect("logs");
 
-    assert_eq!(logs.len(), 3);
-    assert_eq!(logs[2].component.as_ref().expect("component"), "LogWindows");
+    assert_eq!(logs.len(), 2);
+    assert_eq!(logs[1].component.as_ref().expect("component"), "LogWindows");
     assert_eq!(
-        logs[2].timestamp.expect("timestamp").to_rfc3339(),
+        logs[1].timestamp.expect("timestamp").to_rfc3339(),
         "2018-12-13T15:54:53+00:00"
     );
-    assert_eq!(logs[2].message, "File 'aqProf.dll' does not exist");
+    assert_eq!(logs[1].message, "File 'aqProf.dll' does not exist");
 }
