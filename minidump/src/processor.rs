@@ -99,13 +99,11 @@ pub type ParseCodeModuleIdError = ParseDebugIdError;
 /// use symbolic_minidump::processor::CodeModuleId;
 /// # use symbolic_minidump::processor::ParseCodeModuleIdError;
 ///
-/// # fn foo() -> Result<(), ParseCodeModuleIdError> {
+/// # fn main() -> Result<(), ParseCodeModuleIdError> {
 /// let id = CodeModuleId::from_str("DFB8E43AF2423D73A453AEB6A777EF75a")?;
 /// assert_eq!("DFB8E43AF2423D73A453AEB6A777EF75a".to_string(), id.to_string());
 /// # Ok(())
 /// # }
-///
-/// # fn main() { foo().unwrap() }
 /// ```
 #[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy)]
 pub struct CodeModuleId {

@@ -245,9 +245,13 @@ where
 
     /// Unsafely creates a new `SelfCell` from a derived object by moving the owner.
     ///
+    /// # Safety
+    ///
     /// This is an inherently unsafe process. The caller must guarantee that the derived object only
     /// borrows from the owner that is moved into this container. This is useful, when cloning the
     /// owner by deriving a sub-object.
+    ///
+    /// # Example
     ///
     /// ```rust
     /// # use std::sync::Arc;

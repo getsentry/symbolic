@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 use std::cell::{RefCell, RefMut};
+use std::cmp::Ordering;
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::fmt;
 use std::io::Cursor;
@@ -392,11 +393,11 @@ where
 
         while let Some(item) = self.iter.next()? {
             self.finder.update(&self.iter);
-            if item.index() == index {
-                return Ok(item);
-            } else if item.index() > index {
-                break;
-            };
+            match item.index().partial_cmp(&index) {
+                Some(Ordering::Equal) => return Ok(item),
+                Some(Ordering::Greater) => break,
+                _ => continue,
+            }
         }
 
         Err(pdb::Error::TypeNotFound(index.into()).into())
