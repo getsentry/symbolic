@@ -527,8 +527,12 @@ test_unreal_runtime_properties!(
     "CrashReportClientVersion",
     "1.0",
 );
-test_unreal_runtime_properties!(modules, "Modules", r#"\\Mac\Home\Desktop\WindowsNoEditor\YetAnother\Binaries\Win64\YetAnother.exe
-\\Mac\Home\Desktop\WindowsNoEditor\Engine\Binaries\ThirdParty\Vorbis\Win64\VS2015\libvorbis_64.dll"#);
+test_unreal_runtime_properties!(
+    modules,
+    "Modules",
+    r#"\\Mac\Home\Desktop\WindowsNoEditor\YetAnother\Binaries\Win64\YetAnother.exe
+\\Mac\Home\Desktop\WindowsNoEditor\Engine\Binaries\ThirdParty\Vorbis\Win64\VS2015\libvorbis_64.dll"#
+);
 
 test_unreal_platform_properties!(is_windows, "PlatformIsRunningWindows", true);
 test_unreal_platform_properties!(callback_result, "PlatformCallbackResult", 123);
