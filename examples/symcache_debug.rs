@@ -5,8 +5,9 @@ use std::u64;
 use clap::{App, Arg, ArgMatches};
 use failure::{err_msg, Error};
 
-use symbolic::common::{Arch, ByteView};
+use symbolic::common::{Arch, ByteView, Language};
 use symbolic::debuginfo::Archive;
+use symbolic::demangle::Demangle;
 use symbolic::symcache::{SymCache, SymCacheWriter};
 
 fn execute(matches: &ArgMatches) -> Result<(), Error> {
@@ -91,7 +92,26 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
             println!("No match :(");
         } else {
             for sym in m {
-                println!("{:#}", sym);
+                print!("{}", sym.function_name().try_demangle(Default::default()));
+
+                let path = sym.path();
+                let line = sym.line();
+                let lang = sym.language();
+
+                if path != "" || line != 0 || lang != Language::Unknown {
+                    print!("\n ");
+                    if path != "" {
+                        print!(" at {}", path);
+                    }
+                    if line != 0 {
+                        print!(" line {}", line);
+                    }
+                    if lang != Language::Unknown {
+                        print!(" ({})", lang);
+                    }
+                }
+
+                println!()
             }
         }
         return Ok(());

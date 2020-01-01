@@ -69,7 +69,7 @@ required-features = ["minidump", "symcache", "demangle"]
 
 [[example]]
 name = "symcache_debug"
-required-features = ["symcache"]
+required-features = ["symcache", "demangle"]
 
 [[example]]
 name = "unreal_engine_crash"
