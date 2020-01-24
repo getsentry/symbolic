@@ -93,15 +93,14 @@ def rustcall(func, *args):
     raise exc
 
 
-def decode_str(s, free=False):
+def decode_str(s):
     """Decodes a SymbolicStr"""
     try:
         if s.len == 0:
             return u''
         return ffi.unpack(s.data, s.len).decode('utf-8', 'replace')
     finally:
-        if free:
-            lib.symbolic_str_free(ffi.addressof(s))
+        lib.symbolic_str_free(ffi.addressof(s))
 
 
 def encode_str(s):
