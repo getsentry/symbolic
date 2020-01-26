@@ -17,7 +17,7 @@
     "rust-client.rlsPath": "rls",
 
     // Python configuration
-    "python.pythonPath": "${workspaceFolder}/virtualenv/bin/python",
+    "python.pythonPath": ".venv/bin/python",
 
     // Created by CPP Extension
     "files.associations": {
