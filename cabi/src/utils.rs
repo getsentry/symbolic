@@ -98,18 +98,18 @@ where
     }
 }
 
-macro_rules! ffi_fn (
+macro_rules! ffi_fn {
     // a function that catches patnics and returns a result (err goes to tls)
     (
         $(#[$attr:meta])*
         unsafe fn $name:ident($($aname:ident: $aty:ty),* $(,)*) -> Result<$rv:ty> $body:block
-    ) => (
+    ) => {
         #[no_mangle]
         $(#[$attr])*
         pub unsafe extern "C" fn $name($($aname: $aty,)*) -> $rv {
             $crate::utils::landingpad(|| $body)
         }
-    );
+    };
 
     // a function that catches patnics and returns nothing (err goes to tls)
     (
@@ -122,5 +122,5 @@ macro_rules! ffi_fn (
             // this silences panics and stuff
             $crate::utils::landingpad(|| { $body; Ok(0 as std::os::raw::c_int) });
         }
-    }
-);
+    };
+};
