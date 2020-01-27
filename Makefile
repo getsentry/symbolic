@@ -94,4 +94,4 @@ format-python: .venv/bin/python
 .venv/bin/python: Makefile
 	@rm -rf .venv
 	@which virtualenv || sudo easy_install virtualenv
-	virtualenv -p python3 .venv
+	virtualenv -p python .venv

@@ -18,10 +18,10 @@ matrix:
   include:
     # Rust test suite
     - os: linux
-      script: make style
+      script: make style-rust
       env: TEST=style-rust
     - os: linux
-      script: make lint
+      script: make lint-rust
       env: TEST=lint-rust CXX=clang
     - os: linux
       script: make test-rust
@@ -31,6 +31,13 @@ matrix:
       env: TEST=mac-rust
 
     # Python test suite
+    - os: linux
+      language: python
+      python: "3.7"
+      script:
+        - make style-python
+        - make lint-python
+      env: TEST=style-python
     - os: linux
       script: make test-python
       env: TEST=linux-python CXX=clang
