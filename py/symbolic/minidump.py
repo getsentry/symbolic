@@ -54,22 +54,22 @@ class CodeModule(RustObject):
     @property
     def code_id(self):
         """Platform native identifier of the loaded module containing the instruction"""
-        return decode_str(self._objptr.code_id) or None
+        return decode_str(self._objptr.code_id, free=False) or None
 
     @property
     def code_file(self):
         """Path to the loaded module"""
-        return decode_str(self._objptr.code_file) or None
+        return decode_str(self._objptr.code_file, free=False) or None
 
     @property
     def debug_id(self):
         """Debug identifier of the loaded module containing the instruction"""
-        return decode_str(self._objptr.debug_id) or None
+        return decode_str(self._objptr.debug_id, free=False) or None
 
     @property
     def debug_file(self):
         """Name of the debug file associated to this module"""
-        return decode_str(self._objptr.debug_file) or None
+        return decode_str(self._objptr.debug_file, free=False) or None
 
     @property
     def addr(self):
@@ -135,8 +135,8 @@ class StackFrame(RustObject):
         self._registers = {}
         for idx in range_type(self._objptr.register_count):
             register = self._objptr.registers[idx]
-            name = decode_str(register.name)
-            value = decode_str(register.value)
+            name = decode_str(register.name, free=False)
+            value = decode_str(register.value, free=False)
             self._registers[name] = value
 
         return self._registers
@@ -184,7 +184,7 @@ class SystemInfo(RustObject):
         its value is unknown, this field will contain a numeric value.  If
         the information is not present in the dump, this field will be empty.
         """
-        return decode_str(self._objptr.os_name)
+        return decode_str(self._objptr.os_name, free=False)
 
     @property
     def os_version(self):
@@ -192,14 +192,14 @@ class SystemInfo(RustObject):
         "5.1.2600" or "10.4.8".  The version will be formatted as three-
         component semantic version.  If the dump does not contain this
         information, this field will contain "0.0.0"."""
-        return decode_str(self._objptr.os_version)
+        return decode_str(self._objptr.os_version, free=False)
 
     @property
     def os_build(self):
         """A string identifying the build of the operating system, such as
         "Service Pack 2" or "8L2127".  If the dump does not contain this
         information, this field will be empty."""
-        return decode_str(self._objptr.os_build)
+        return decode_str(self._objptr.os_build, free=False)
 
     @property
     def cpu_family(self):
@@ -208,7 +208,7 @@ class SystemInfo(RustObject):
         this field will contain a numeric value.  If the information is not
         present in the dump, this field will be empty.  The values stored in
         this field should match those used by MinidumpSystemInfo::GetCPU."""
-        return decode_str(self._objptr.cpu_family)
+        return decode_str(self._objptr.cpu_family, free=False)
 
     @property
     def cpu_info(self):
@@ -216,7 +216,7 @@ class SystemInfo(RustObject):
         "GenuineIntel level 6 model 13 stepping 8".  If the information is not
         present in the dump, or additional identifying information is not
         defined for the CPU family, this field will be empty."""
-        return decode_str(self._objptr.cpu_info)
+        return decode_str(self._objptr.cpu_info, free=False)
 
     @property
     def cpu_count(self):
@@ -295,14 +295,14 @@ class ProcessState(RustObject):
         specific.  For example, "EXCEPTION_ACCESS_VIOLATION" (Windows),
         "EXC_BAD_ACCESS / KERN_INVALID_ADDRESS" (Mac OS X), "SIGSEGV"
         (other Unix)."""
-        return decode_str(self._objptr.crash_reason)
+        return decode_str(self._objptr.crash_reason, free=False)
 
     @property
     def assertion(self):
         """If there was an assertion that was hit, a textual representation
         of that assertion, possibly including the file and line at which
         it occurred."""
-        return decode_str(self._objptr.assertion)
+        return decode_str(self._objptr.assertion, free=False)
 
     @property
     def system_info(self):

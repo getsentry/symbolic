@@ -142,11 +142,26 @@ typedef struct SymbolicUnreal4Crash SymbolicUnreal4Crash;
 typedef struct SymbolicUnreal4File SymbolicUnreal4File;
 
 /**
- * CABI wrapper around a Rust string.
+ * A length-prefixed UTF-8 string.
+ *
+ * As opposed to C strings, this string is not null-terminated. If the string is owned, indicated
+ * by the `owned` flag, the owner must call the `free` function on this string. The convention is:
+ *
+ *  - When obtained as instance through return values, always free the string.
+ *  - When obtained as pointer through field access, never free the string.
  */
 typedef struct {
+  /**
+   * Pointer to the UTF-8 encoded string data.
+   */
   char *data;
+  /**
+   * The length of the string pointed to by `data`.
+   */
   uintptr_t len;
+  /**
+   * Indicates that the string is owned and must be freed.
+   */
   bool owned;
 } SymbolicStr;
 
@@ -283,6 +298,9 @@ typedef struct {
  * CABI wrapper around a UUID.
  */
 typedef struct {
+  /**
+   * UUID bytes in network byte order (big endian).
+   */
   uint8_t data[16];
 } SymbolicUuid;
 
@@ -644,10 +662,6 @@ void symbolic_str_free(SymbolicStr *string);
 
 /**
  * Creates a symbolic string from a raw C string.
- *
- * This sets the string to owned.  In case it's not owned you either have
- * to make sure you are not freeing the memory or you need to set the
- * owned flag to false.
  */
 SymbolicStr symbolic_str_from_cstr(const char *string);
 

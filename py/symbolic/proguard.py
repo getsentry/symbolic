@@ -50,10 +50,10 @@ class ProguardMappingView(RustObject):
         """Given a dotted path and an optional line number this resolves
         to the original dotted path.
         """
-        return decode_str(
-            self._methodcall(
-                lib.symbolic_proguardmappingview_convert_dotted_path,
-                encode_str(dotted_path),
-                lineno or 0,
-            )
+        result = self._methodcall(
+            lib.symbolic_proguardmappingview_convert_dotted_path,
+            encode_str(dotted_path),
+            lineno or 0,
         )
+
+        return decode_str(result, free=True)

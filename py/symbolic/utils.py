@@ -85,8 +85,8 @@ def rustcall(func, *args):
         return rv
     msg = lib.symbolic_err_get_last_message()
     cls = exceptions_by_code.get(err, SymbolicError)
-    exc = cls(decode_str(msg))
-    backtrace = decode_str(lib.symbolic_err_get_backtrace())
+    exc = cls(decode_str(msg, free=True))
+    backtrace = decode_str(lib.symbolic_err_get_backtrace(), free=True)
     if backtrace:
         exc.rust_info = backtrace
     raise exc
@@ -99,7 +99,7 @@ def decode_str(s, free=False):
             return u""
         return ffi.unpack(s.data, s.len).decode("utf-8", "replace")
     finally:
-        if free:
+        if free and s.owned:
             lib.symbolic_str_free(ffi.addressof(s))
 
 

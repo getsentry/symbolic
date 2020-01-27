@@ -29,12 +29,12 @@ class Unreal4Crash(RustObject):
         return rv
 
     def get_context(self):
-        rv = json.loads(decode_str(self._methodcall(lib.symbolic_unreal4_get_context)))
-        return rv
+        context_json = self._methodcall(lib.symbolic_unreal4_get_context)
+        return json.loads(decode_str(context_json, free=True))
 
     def get_logs(self):
-        rv = json.loads(decode_str(self._methodcall(lib.symbolic_unreal4_get_logs)))
-        return rv
+        logs_json = self._methodcall(lib.symbolic_unreal4_get_logs)
+        return json.loads(decode_str(logs_json, free=True))
 
     @property
     def _file_count(self):
@@ -61,12 +61,14 @@ class Unreal4CrashFile(RustObject):
     @property
     def name(self):
         """The file name."""
-        return str(decode_str(self._methodcall(lib.symbolic_unreal4_file_name)))
+        name = self._methodcall(lib.symbolic_unreal4_file_name)
+        return str(decode_str(name, free=True))
 
     @property
     def type(self):
         """The type of the file"""
-        return str(decode_str(self._methodcall(lib.symbolic_unreal4_file_type)))
+        ty = self._methodcall(lib.symbolic_unreal4_file_type)
+        return str(decode_str(ty, free=True))
 
     def open_stream(self):
         """Returns a stream to read files from the internal buffer."""

@@ -108,13 +108,15 @@ class SymCache(RustObject):
     @property
     def arch(self):
         """The architecture of the symcache."""
+        arch = self._methodcall(lib.symbolic_symcache_get_arch)
         # make it an ascii bytestring on 2.x
-        return str(decode_str(self._methodcall(lib.symbolic_symcache_get_arch)))
+        return str(decode_str(arch, free=True))
 
     @property
     def debug_id(self):
         """The debug identifier of the object."""
-        return decode_str(self._methodcall(lib.symbolic_symcache_get_debug_id))
+        id = self._methodcall(lib.symbolic_symcache_get_debug_id)
+        return decode_str(id, free=True)
 
     @property
     def has_line_info(self):
@@ -160,11 +162,11 @@ class SymCache(RustObject):
                         line_addr=sym.line_addr,
                         instr_addr=sym.instr_addr,
                         line=sym.line,
-                        lang=decode_str(sym.lang),
-                        symbol=decode_str(sym.symbol),
-                        filename=decode_str(sym.filename),
-                        base_dir=decode_str(sym.base_dir),
-                        comp_dir=decode_str(sym.comp_dir),
+                        lang=decode_str(sym.lang, free=False),
+                        symbol=decode_str(sym.symbol, free=False),
+                        filename=decode_str(sym.filename, free=False),
+                        base_dir=decode_str(sym.base_dir, free=False),
+                        comp_dir=decode_str(sym.comp_dir, free=False),
                     )
                 )
         finally:

@@ -11,11 +11,20 @@ use uuid::Uuid;
 
 use crate::utils::{set_panic_hook, Panic, LAST_ERROR};
 
-/// CABI wrapper around a Rust string.
+/// A length-prefixed UTF-8 string.
+///
+/// As opposed to C strings, this string is not null-terminated. If the string is owned, indicated
+/// by the `owned` flag, the owner must call the `free` function on this string. The convention is:
+///
+///  - When obtained as instance through return values, always free the string.
+///  - When obtained as pointer through field access, never free the string.
 #[repr(C)]
 pub struct SymbolicStr {
+    /// Pointer to the UTF-8 encoded string data.
     pub data: *mut c_char,
+    /// The length of the string pointed to by `data`.
     pub len: usize,
+    /// Indicates that the string is owned and must be freed.
     pub owned: bool,
 }
 
@@ -62,8 +71,8 @@ impl SymbolicStr {
     }
 
     /// Returns the Rust string managed by a `SymbolicStr`.
-    pub fn as_str(&self) -> &str {
-        unsafe { str::from_utf8_unchecked(slice::from_raw_parts(self.data as *const _, self.len)) }
+    pub unsafe fn as_str(&self) -> &str {
+        str::from_utf8_unchecked(slice::from_raw_parts(self.data as *const _, self.len))
     }
 }
 
@@ -97,6 +106,7 @@ impl<'a> From<Cow<'a, str>> for SymbolicStr {
 /// CABI wrapper around a UUID.
 #[repr(C)]
 pub struct SymbolicUuid {
+    /// UUID bytes in network byte order (big endian).
     pub data: [u8; 16],
 }
 
@@ -107,8 +117,8 @@ impl SymbolicUuid {
     }
 
     /// Returns the Rust UUID managed by a `SymbolicUUID`.
-    pub fn as_uuid(&self) -> &Uuid {
-        unsafe { &*(self as *const Self as *const Uuid) }
+    pub unsafe fn as_uuid(&self) -> &Uuid {
+        &*(self as *const Self as *const Uuid)
     }
 }
 
@@ -452,16 +462,12 @@ pub unsafe extern "C" fn symbolic_err_clear() {
 
 ffi_fn! {
     /// Creates a symbolic string from a raw C string.
-    ///
-    /// This sets the string to owned.  In case it's not owned you either have
-    /// to make sure you are not freeing the memory or you need to set the
-    /// owned flag to false.
     unsafe fn symbolic_str_from_cstr(string: *const c_char) -> Result<SymbolicStr> {
         let s = CStr::from_ptr(string).to_str()?;
         Ok(SymbolicStr {
             data: s.as_ptr() as *mut _,
             len: s.len(),
-            owned: true,
+            owned: false,
         })
     }
 }
