@@ -37,9 +37,9 @@ class SourceMapTokenMatch(object):
         rv.dst_line = tm.dst_line
         rv.dst_col = tm.dst_col
         rv.src_id = tm.src_id
-        rv.name = decode_str(tm.name) or None
-        rv.src = decode_str(tm.src) or None
-        rv.function_name = decode_str(tm.function_name) or None
+        rv.name = decode_str(tm.name, free=False) or None
+        rv.src = decode_str(tm.src, free=False) or None
+        rv.function_name = decode_str(tm.function_name, free=False) or None
         return rv
 
     def __eq__(self, other):
@@ -71,7 +71,8 @@ class SourceView(RustObject):
         return rv
 
     def get_source(self):
-        return decode_str(self._methodcall(lib.symbolic_sourceview_as_str))
+        source = self._methodcall(lib.symbolic_sourceview_as_str)
+        return decode_str(source, free=True)
 
     def __len__(self):
         return self._methodcall(lib.symbolic_sourceview_get_line_count)
@@ -80,7 +81,8 @@ class SourceView(RustObject):
         if not isinstance(idx, slice):
             if idx >= len(self):
                 raise IndexError("No such line")
-            return decode_str(self._methodcall(lib.symbolic_sourceview_get_line, idx))
+            line = self._methodcall(lib.symbolic_sourceview_get_line, idx)
+            return decode_str(line, free=True)
 
         rv = []
         for idx in range_type(*idx.indices(len(self))):
@@ -143,12 +145,8 @@ class SourceMapView(RustObject):
 
     def get_source_name(self, idx):
         """Returns the name of the source at the given index."""
-        return (
-            decode_str(
-                self._methodcall(lib.symbolic_sourcemapview_get_source_name, idx)
-            )
-            or None
-        )
+        name = self._methodcall(lib.symbolic_sourcemapview_get_source_name, idx)
+        return decode_str(name, free=True) or None
 
     def iter_sources(self):
         """Iterates over the sources in the file."""

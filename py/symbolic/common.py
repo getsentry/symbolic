@@ -32,15 +32,14 @@ def normalize_arch(arch):
         raise ValueError("Invalid architecture: expected string")
 
     normalized = rustcall(lib.symbolic_normalize_arch, encode_str(arch))
-    return decode_str(normalized)
+    return decode_str(normalized, free=True)
 
 
 def arch_get_ip_reg_name(arch):
     """Returns the ip register if known for this arch."""
     try:
-        return str(
-            decode_str(rustcall(lib.symbolic_arch_ip_reg_name, encode_str(arch)))
-        )
+        rv = rustcall(lib.symbolic_arch_ip_reg_name, encode_str(arch))
+        return str(decode_str(rv, free=True))
     except ignore_arch_exc:
         pass
 

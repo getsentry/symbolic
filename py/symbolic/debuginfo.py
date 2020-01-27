@@ -73,12 +73,14 @@ class Object(RustObject):
     def arch(self):
         """The architecture of the object."""
         # make it an ascii bytestring on 2.x
-        return str(decode_str(self._methodcall(lib.symbolic_object_get_arch)))
+        arch = self._methodcall(lib.symbolic_object_get_arch)
+        return str(decode_str(arch, free=True))
 
     @property
     def code_id(self):
         """The code identifier of the object. Returns None if there is no code id."""
-        code_id = decode_str(self._methodcall(lib.symbolic_object_get_code_id))
+        code_id = self._methodcall(lib.symbolic_object_get_code_id)
+        code_id = decode_str(code_id, free=True)
         if code_id:
             return code_id
         return None
@@ -86,17 +88,20 @@ class Object(RustObject):
     @property
     def debug_id(self):
         """The debug identifier of the object."""
-        return decode_str(self._methodcall(lib.symbolic_object_get_debug_id))
+        debug_id = self._methodcall(lib.symbolic_object_get_debug_id)
+        return decode_str(debug_id, free=True)
 
     @property
     def kind(self):
         """The kind of the object (e.g. executable, debug file, library, ...)."""
-        return str(decode_str(self._methodcall(lib.symbolic_object_get_kind)))
+        kind = self._methodcall(lib.symbolic_object_get_kind)
+        return str(decode_str(kind, free=True))
 
     @property
     def file_format(self):
         """The file format of the object file (e.g. MachO, ELF, ...)."""
-        return str(decode_str(self._methodcall(lib.symbolic_object_get_file_format)))
+        format = self._methodcall(lib.symbolic_object_get_file_format)
+        return str(decode_str(format, free=True))
 
     @property
     def features(self):
@@ -204,7 +209,7 @@ def id_from_breakpad(breakpad_id):
 
     s = encode_str(breakpad_id)
     id = rustcall(lib.symbolic_id_from_breakpad, s)
-    return decode_str(id)
+    return decode_str(id, free=True)
 
 
 def normalize_code_id(code_id):
@@ -214,7 +219,7 @@ def normalize_code_id(code_id):
 
     s = encode_str(code_id)
     id = rustcall(lib.symbolic_normalize_code_id, s)
-    return decode_str(id)
+    return decode_str(id, free=True)
 
 
 def normalize_debug_id(debug_id):
@@ -224,4 +229,4 @@ def normalize_debug_id(debug_id):
 
     s = encode_str(debug_id)
     id = rustcall(lib.symbolic_normalize_debug_id, s)
-    return decode_str(id)
+    return decode_str(id, free=True)
