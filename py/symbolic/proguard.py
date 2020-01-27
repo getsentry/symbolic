@@ -57,4 +57,3 @@ class ProguardMappingView(RustObject):
         )
 
         return decode_str(result, free=True)
-
