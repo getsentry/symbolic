@@ -1,3 +1,5 @@
+SYMBOLIC_PYTHON := python3
+
 all: check test
 .PHONY: all
 
@@ -94,4 +96,4 @@ format-python: .venv/bin/python
 .venv/bin/python: Makefile
 	@rm -rf .venv
 	@which virtualenv || sudo easy_install virtualenv
-	virtualenv -p python3 .venv
+	virtualenv -p $(SYMBOLIC_PYTHON) .venv

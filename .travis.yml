@@ -40,7 +40,7 @@ matrix:
       env: TEST=style-python
     - os: linux
       script: make test-python
-      env: TEST=linux-python CXX=clang
+      env: TEST=linux-python CXX=clang SYMBOLIC_PYTHON=python2
     - os: osx
       script: make test-python
       env: TEST=mac-python
