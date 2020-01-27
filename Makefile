@@ -56,7 +56,7 @@ style-rust:
 
 style-python: .venv/bin/python
 	.venv/bin/pip install -U black
-	.venv/bin/black --check py
+	.venv/bin/black --check py --exclude 'symbolic/_lowlevel*|dist|build|\.eggs'
 
 # Linting
 
@@ -86,7 +86,7 @@ format-rust:
 
 format-python: .venv/bin/python
 	.venv/bin/pip install -U black
-	.venv/bin/black py
+	.venv/bin/black py --exclude 'symbolic/_lowlevel*|dist|build|\.eggs'
 .PHONY: format-python
 
 # Dependencies
@@ -94,4 +94,4 @@ format-python: .venv/bin/python
 .venv/bin/python: Makefile
 	@rm -rf .venv
 	@which virtualenv || sudo easy_install virtualenv
-	virtualenv -p python .venv
+	virtualenv -p python3 .venv
