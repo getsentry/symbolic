@@ -123,4 +123,4 @@ macro_rules! ffi_fn {
             $crate::utils::landingpad(|| { $body; Ok(0 as std::os::raw::c_int) });
         }
     };
-};
+}
