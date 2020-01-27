@@ -2,7 +2,7 @@ from symbolic._lowlevel import ffi, lib
 from symbolic.utils import encode_str, decode_str, rustcall
 
 
-__all__ = ['demangle_name']
+__all__ = ["demangle_name"]
 
 
 def demangle_name(symbol, lang=None, no_args=False):

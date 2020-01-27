@@ -6,11 +6,25 @@ import warnings
 
 from symbolic._compat import range_type
 from symbolic._lowlevel import lib, ffi
-from symbolic.utils import RustObject, rustcall, attached_refs, encode_path, \
-    encode_str, decode_str, make_buffered_slice_reader
+from symbolic.utils import (
+    RustObject,
+    rustcall,
+    attached_refs,
+    encode_path,
+    encode_str,
+    decode_str,
+    make_buffered_slice_reader,
+)
 
-__all__ = ['CallStack', 'FrameInfoMap', 'FrameTrust', 'ProcessState',
-           'StackFrame', 'CfiCache', 'CFICACHE_LATEST_VERSION']
+__all__ = [
+    "CallStack",
+    "FrameInfoMap",
+    "FrameTrust",
+    "ProcessState",
+    "StackFrame",
+    "CfiCache",
+    "CFICACHE_LATEST_VERSION",
+]
 
 
 def _make_frame_trust():
@@ -18,14 +32,14 @@ def _make_frame_trust():
     by_value = {}
 
     for attr in dir(lib):
-        if attr.startswith('SYMBOLIC_FRAME_TRUST_'):
-            name = attr[21:].lower().replace('_', '-')
+        if attr.startswith("SYMBOLIC_FRAME_TRUST_"):
+            name = attr[21:].lower().replace("_", "-")
             value = getattr(lib, attr)
             enums[name] = value
             by_value[value] = name
 
-    enums['by_value'] = by_value
-    return type('FrameTrust', (), enums)
+    enums["by_value"] = by_value
+    return type("FrameTrust", (), enums)
 
 
 FrameTrust = _make_frame_trust()
@@ -34,6 +48,7 @@ del _make_frame_trust
 
 class CodeModule(RustObject):
     """Carries information about a code module loaded into the crashed process"""
+
     __dealloc_func__ = None
 
     @property
@@ -68,17 +83,23 @@ class CodeModule(RustObject):
 
     @property
     def id(self):
-        warnings.warn('module.id is deprecated, use module.debug_id instead', DeprecationWarning)
+        warnings.warn(
+            "module.id is deprecated, use module.debug_id instead", DeprecationWarning
+        )
         return self.debug_id
 
     @property
     def name(self):
-        warnings.warn('module.name is deprecated, use module.code_file instead', DeprecationWarning)
+        warnings.warn(
+            "module.name is deprecated, use module.code_file instead",
+            DeprecationWarning,
+        )
         return self.code_file
 
 
 class StackFrame(RustObject):
     """A single frame in the call stack of a crashed process"""
+
     __dealloc_func__ = None
 
     @property
@@ -108,7 +129,7 @@ class StackFrame(RustObject):
 
     @property
     def registers(self):
-        if hasattr(self, '_registers'):
+        if hasattr(self, "_registers"):
             return self._registers
 
         self._registers = {}
@@ -123,6 +144,7 @@ class StackFrame(RustObject):
 
 class CallStack(RustObject):
     """A thread of the crashed process"""
+
     __dealloc_func__ = None
 
     @property
@@ -143,17 +165,16 @@ class CallStack(RustObject):
     def get_frame(self, idx):
         """Retrieves the stack frame at the given index (0 is the current frame)"""
         if idx < self.frame_count:
-            frame = StackFrame._from_objptr(
-                self._objptr.frames[idx], shared=True)
+            frame = StackFrame._from_objptr(self._objptr.frames[idx], shared=True)
             attached_refs[frame] = self
             return frame
         else:
-            raise IndexError("index %d out of bounds %d" %
-                             (idx, self.frame_count))
+            raise IndexError("index %d out of bounds %d" % (idx, self.frame_count))
 
 
 class SystemInfo(RustObject):
     """Information about the CPU and OS on which a minidump was generated."""
+
     __dealloc_func__ = None
 
     @property
@@ -206,6 +227,7 @@ class SystemInfo(RustObject):
 
 class ProcessState(RustObject):
     """State of a crashed process"""
+
     __dealloc_func__ = lib.symbolic_process_state_free
 
     @classmethod
@@ -213,18 +235,21 @@ class ProcessState(RustObject):
         """Processes a minidump and get the state of the crashed process"""
         frame_infos_ptr = frame_infos._objptr if frame_infos is not None else ffi.NULL
         return ProcessState._from_objptr(
-            rustcall(lib.symbolic_process_minidump, encode_path(path), frame_infos_ptr))
+            rustcall(lib.symbolic_process_minidump, encode_path(path), frame_infos_ptr)
+        )
 
     @classmethod
     def from_minidump_buffer(cls, buffer, frame_infos=None):
         """Processes a minidump and get the state of the crashed process"""
         frame_infos_ptr = frame_infos._objptr if frame_infos is not None else ffi.NULL
-        return ProcessState._from_objptr(rustcall(
-            lib.symbolic_process_minidump_buffer,
-            ffi.from_buffer(buffer),
-            len(buffer),
-            frame_infos_ptr,
-        ))
+        return ProcessState._from_objptr(
+            rustcall(
+                lib.symbolic_process_minidump_buffer,
+                ffi.from_buffer(buffer),
+                len(buffer),
+                frame_infos_ptr,
+            )
+        )
 
     @property
     def requesting_thread(self):
@@ -299,13 +324,11 @@ class ProcessState(RustObject):
     def get_thread(self, idx):
         """Retrieves the thread with the specified index"""
         if idx < self.thread_count:
-            stack = CallStack._from_objptr(
-                self._objptr.threads[idx], shared=True)
+            stack = CallStack._from_objptr(self._objptr.threads[idx], shared=True)
             attached_refs[stack] = self
             return stack
         else:
-            raise IndexError("index %d out of bounds %d" %
-                             (idx, self.thread_count))
+            raise IndexError("index %d out of bounds %d" % (idx, self.thread_count))
 
     @property
     def module_count(self):
@@ -317,29 +340,28 @@ class ProcessState(RustObject):
 
     def get_module(self, idx):
         if idx < self.module_count:
-            module = CodeModule._from_objptr(
-                self._objptr.modules[idx], shared=True)
+            module = CodeModule._from_objptr(self._objptr.modules[idx], shared=True)
             attached_refs[module] = self
             return module
         else:
-            raise IndexError("index %d out of bounds %d" %
-                             (idx, self.module_count))
+            raise IndexError("index %d out of bounds %d" % (idx, self.module_count))
 
 
 class FrameInfoMap(RustObject):
     """Stack frame information (CFI) for images"""
+
     __dealloc_func__ = lib.symbolic_frame_info_map_free
 
     @classmethod
     def new(cls):
         """Creates a new, empty frame info map"""
-        return FrameInfoMap._from_objptr(
-            rustcall(lib.symbolic_frame_info_map_new))
+        return FrameInfoMap._from_objptr(rustcall(lib.symbolic_frame_info_map_new))
 
     def add(self, id, cficache):
         """Adds CFI for a code module specified by the `id` argument"""
-        self._methodcall(lib.symbolic_frame_info_map_add,
-                         encode_str(id), cficache._move(self))
+        self._methodcall(
+            lib.symbolic_frame_info_map_add, encode_str(id), cficache._move(self)
+        )
 
 
 # The most recent version for the CFI cache file format
@@ -348,19 +370,20 @@ CFICACHE_LATEST_VERSION = rustcall(lib.symbolic_cficache_latest_version)
 
 class CfiCache(RustObject):
     """A cache for call frame information (CFI) to improve native stackwalking"""
+
     __dealloc_func__ = lib.symbolic_cficache_free
 
     @classmethod
     def open(cls, path):
         """Loads a cficache from a file via mmap."""
-        return cls._from_objptr(
-            rustcall(lib.symbolic_cficache_open, encode_path(path)))
+        return cls._from_objptr(rustcall(lib.symbolic_cficache_open, encode_path(path)))
 
     @classmethod
     def from_object(cls, obj):
         """Creates a cficache from the given object."""
         return cls._from_objptr(
-            rustcall(lib.symbolic_cficache_from_object, obj._get_objptr()))
+            rustcall(lib.symbolic_cficache_from_object, obj._get_objptr())
+        )
 
     @property
     def version(self):

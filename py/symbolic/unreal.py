@@ -4,10 +4,16 @@ from symbolic._lowlevel import lib, ffi
 from symbolic._compat import range_type
 
 from symbolic.minidump import ProcessState
-from symbolic.utils import RustObject, rustcall, decode_str, attached_refs, \
-    make_buffered_slice_reader
+from symbolic.utils import (
+    RustObject,
+    rustcall,
+    decode_str,
+    attached_refs,
+    make_buffered_slice_reader,
+)
 
-__all__ = ['Unreal4Crash']
+__all__ = ["Unreal4Crash"]
+
 
 class Unreal4Crash(RustObject):
     __dealloc_func__ = lib.symbolic_unreal4_crash_free
@@ -16,8 +22,9 @@ class Unreal4Crash(RustObject):
     def from_bytes(cls, buffer):
         """Parses an Unreal Engine 4 crash"""
         buffer = ffi.from_buffer(buffer)
-        rv = cls._from_objptr(rustcall(lib.symbolic_unreal4_crash_from_bytes,
-                                buffer, len(buffer)))
+        rv = cls._from_objptr(
+            rustcall(lib.symbolic_unreal4_crash_from_bytes, buffer, len(buffer))
+        )
         attached_refs[rv] = buffer
         return rv
 
@@ -63,7 +70,7 @@ class Unreal4CrashFile(RustObject):
 
     def open_stream(self):
         """Returns a stream to read files from the internal buffer."""
-        len_out = ffi.new('uintptr_t *')
+        len_out = ffi.new("uintptr_t *")
         rv = self._methodcall(lib.symbolic_unreal4_file_data, len_out)
         if rv == ffi.NULL:
             return None
@@ -72,6 +79,6 @@ class Unreal4CrashFile(RustObject):
     @property
     def size(self):
         """Returns the size of the file in bytes."""
-        len_out = ffi.new('uintptr_t *')
+        len_out = ffi.new("uintptr_t *")
         self._methodcall(lib.symbolic_unreal4_file_data, len_out)
         return len_out[0]

@@ -9,11 +9,14 @@ if PY2:
     string_types = (str, unicode)
     range_type = xrange
     itervalues = lambda x: x.itervalues()
-    NUL = '\x00'
+    NUL = "\x00"
+
     def implements_to_string(cls):
         cls.__unicode__ = cls.__str__
-        cls.__str__ = lambda x: x.__unicode__().encode('utf-8')
+        cls.__str__ = lambda x: x.__unicode__().encode("utf-8")
         return cls
+
+
 else:
     text_type = str
     int_types = (int,)

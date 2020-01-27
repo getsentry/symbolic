@@ -8,14 +8,14 @@ from symbolic._compat import text_type, NUL
 from symbolic.exceptions import exceptions_by_code, SymbolicError
 
 
-__all__ = ['common_path_join', 'strip_common_path_prefix']
+__all__ = ["common_path_join", "strip_common_path_prefix"]
 
 
 attached_refs = weakref.WeakKeyDictionary()
 
 
 def _is_win_path(x):
-    return '\\' in x or (ntpath.isabs(x) and not posixpath.isabs(x))
+    return "\\" in x or (ntpath.isabs(x) and not posixpath.isabs(x))
 
 
 def common_path_join(a, b):
@@ -33,8 +33,8 @@ def strip_common_path_prefix(base, prefix):
         path = posixpath
     pieces_a = path.normpath(base).split(path.sep)
     pieces_b = path.normpath(prefix).split(path.sep)
-    if pieces_a[:len(pieces_b)] == pieces_b:
-        return path.sep.join(pieces_a[len(pieces_b):])
+    if pieces_a[: len(pieces_b)] == pieces_b:
+        return path.sep.join(pieces_a[len(pieces_b) :])
     return path.normpath(base)
 
 
@@ -44,8 +44,7 @@ class RustObject(object):
     _shared = False
 
     def __init__(self):
-        raise TypeError('Cannot instanciate %r objects' %
-                        self.__class__.__name__)
+        raise TypeError("Cannot instanciate %r objects" % self.__class__.__name__)
 
     @classmethod
     def _from_objptr(cls, ptr, shared=False):
@@ -59,7 +58,7 @@ class RustObject(object):
 
     def _get_objptr(self):
         if not self._objptr:
-            raise RuntimeError('Object is closed')
+            raise RuntimeError("Object is closed")
         return self._objptr
 
     def _move(self, target):
@@ -97,8 +96,8 @@ def decode_str(s, free=False):
     """Decodes a SymbolicStr"""
     try:
         if s.len == 0:
-            return u''
-        return ffi.unpack(s.data, s.len).decode('utf-8', 'replace')
+            return u""
+        return ffi.unpack(s.data, s.len).decode("utf-8", "replace")
     finally:
         if free:
             lib.symbolic_str_free(ffi.addressof(s))
@@ -106,9 +105,9 @@ def decode_str(s, free=False):
 
 def encode_str(s):
     """Encodes a SymbolicStr"""
-    rv = ffi.new('SymbolicStr *')
+    rv = ffi.new("SymbolicStr *")
     if isinstance(s, text_type):
-        s = s.encode('utf-8')
+        s = s.encode("utf-8")
     rv.data = ffi.from_buffer(s)
     rv.len = len(s)
     # we have to hold a weak reference here to ensure our string does not
@@ -120,9 +119,9 @@ def encode_str(s):
 def encode_path(s):
     """Encodes a path value."""
     if isinstance(s, text_type):
-        s = s.encode('utf-8')
+        s = s.encode("utf-8")
     if NUL in s:
-        raise TypeError('Null bytes are not allowed in paths')
+        raise TypeError("Null bytes are not allowed in paths")
     return s
 
 
@@ -147,6 +146,7 @@ def make_uuid(value):
 
 class SliceReader(io.RawIOBase):
     """A buffered reader that keeps the cache in memory"""
+
     def __init__(self, buf, cache):
         self._buffer = buf
         # Hold the cache so we do not lose the reference and crash on
@@ -167,8 +167,8 @@ class SliceReader(io.RawIOBase):
             end = len(self._buffer)
         else:
             end = min(self.pos + n, len(self._buffer))
-        rv = self._buffer[self.pos:end]
-        buf[:len(rv)] = rv
+        rv = self._buffer[self.pos : end]
+        buf[: len(rv)] = rv
         self.pos = end
         return len(rv)
 

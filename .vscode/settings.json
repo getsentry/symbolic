@@ -18,6 +18,8 @@
 
     // Python configuration
     "python.pythonPath": ".venv/bin/python",
+    "python.linting.enabled": false,
+    "python.formatting.provider": "black",
 
     // Created by CPP Extension
     "files.associations": {

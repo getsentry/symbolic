@@ -10,12 +10,12 @@ from symbolic.minidump import CfiCache
 
 
 __all__ = [
-    'Archive',
-    'Object',
-    'ObjectLookup',
-    'id_from_breakpad',
-    'normalize_code_id',
-    'normalize_debug_id',
+    "Archive",
+    "Object",
+    "ObjectLookup",
+    "id_from_breakpad",
+    "normalize_code_id",
+    "normalize_debug_id",
 ]
 
 
@@ -26,9 +26,8 @@ class Archive(RustObject):
     def open(self, path):
         """Opens an archive from a given path."""
         if isinstance(path, text_type):
-            path = path.encode('utf-8')
-        return Archive._from_objptr(
-            rustcall(lib.symbolic_archive_open, path))
+            path = path.encode("utf-8")
+        return Archive._from_objptr(rustcall(lib.symbolic_archive_open, path))
 
     @property
     def object_count(self):
@@ -50,11 +49,11 @@ class Archive(RustObject):
         for obj in self.iter_objects():
             if obj.debug_id == debug_id or obj.arch == arch:
                 return obj
-        raise LookupError('Object not found')
+        raise LookupError("Object not found")
 
     def _get_object(self, idx):
         """Returns the object at a certain index."""
-        cache = getattr(self, '_objcache', None)
+        cache = getattr(self, "_objcache", None)
         if cache is None:
             cache = self._objcache = WeakValueDictionary()
         rv = cache.get(idx)
@@ -62,7 +61,7 @@ class Archive(RustObject):
             return rv
         ptr = self._methodcall(lib.symbolic_archive_get_object, idx)
         if ptr == ffi.NULL:
-            raise LookupError('No object #%d' % idx)
+            raise LookupError("No object #%d" % idx)
         rv = cache[idx] = Object._from_objptr(ptr)
         return rv
 
@@ -116,37 +115,37 @@ class Object(RustObject):
 
     def make_symcache(self):
         """Creates a symcache from the object."""
-        return SymCache._from_objptr(self._methodcall(
-            lib.symbolic_symcache_from_object))
+        return SymCache._from_objptr(
+            self._methodcall(lib.symbolic_symcache_from_object)
+        )
 
     def make_cficache(self):
         """Creates a cficache from the object."""
-        return CfiCache._from_objptr(self._methodcall(
-            lib.symbolic_cficache_from_object))
+        return CfiCache._from_objptr(
+            self._methodcall(lib.symbolic_cficache_from_object)
+        )
 
     def __repr__(self):
-        return '<Object %s %r>' % (
-            self.debug_id,
-            self.arch,
-        )
+        return "<Object %s %r>" % (self.debug_id, self.arch,)
 
 
 class ObjectRef(object):
     """Holds a reference to an object in a format."""
 
     def __init__(self, data):
-        self.addr = parse_addr(data.get('image_addr'))
+        self.addr = parse_addr(data.get("image_addr"))
         # not a real address but why handle it differently
-        self.size = parse_addr(data.get('image_size'))
-        self.vmaddr = data.get('image_vmaddr')
-        self.code_id = data.get('code_id')
-        self.code_file = data.get('code_file') or data.get('name')
+        self.size = parse_addr(data.get("image_size"))
+        self.vmaddr = data.get("image_vmaddr")
+        self.code_id = data.get("code_id")
+        self.code_file = data.get("code_file") or data.get("name")
         self.debug_id = normalize_debug_id(
-            data.get('debug_id') or data.get('id') or data.get('uuid') or None)
-        self.debug_file = data.get('debug_file')
+            data.get("debug_id") or data.get("id") or data.get("uuid") or None
+        )
+        self.debug_file = data.get("debug_file")
 
-        if data.get('arch') is not None and arch_is_known(data['arch']):
-            self.arch = data['arch']
+        if data.get("arch") is not None and arch_is_known(data["arch"]):
+            self.arch = data["arch"]
         else:
             self.arch = None
 
@@ -154,10 +153,7 @@ class ObjectRef(object):
         self.name = self.code_file
 
     def __repr__(self):
-        return '<ObjectRef %s %r>' % (
-            self.debug_id,
-            self.arch,
-        )
+        return "<ObjectRef %s %r>" % (self.debug_id, self.arch,)
 
 
 class ObjectLookup(object):

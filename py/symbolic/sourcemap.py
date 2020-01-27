@@ -1,17 +1,25 @@
 from symbolic._lowlevel import lib, ffi
 from symbolic._compat import range_type
-from symbolic.utils import RustObject, rustcall, decode_str, encode_str, \
-    attached_refs
+from symbolic.utils import RustObject, rustcall, decode_str, encode_str, attached_refs
 
 
-__all__ = ['SourceView', 'SourceMapView', 'SourceMapTokenMatch']
+__all__ = ["SourceView", "SourceMapView", "SourceMapTokenMatch"]
 
 
 class SourceMapTokenMatch(object):
     """Represents a token matched or looked up from the index."""
 
-    def __init__(self, src_line, src_col, dst_line, dst_col,
-                 src_id=None, name=None, src=None, function_name=None):
+    def __init__(
+        self,
+        src_line,
+        src_col,
+        dst_line,
+        dst_col,
+        src_id=None,
+        name=None,
+        src=None,
+        function_name=None,
+    ):
         self.src_line = src_line
         self.src_col = src_col
         self.dst_line = dst_line
@@ -43,22 +51,21 @@ class SourceMapTokenMatch(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return '<SourceMapTokenMatch %s:%d>' % (
-            self.src,
-            self.src_line,
-        )
+        return "<SourceMapTokenMatch %s:%d>" % (self.src, self.src_line,)
 
 
 class SourceView(RustObject):
     """Gives reasonably efficient access to javascript sourcecode."""
+
     __dealloc_func__ = lib.symbolic_sourceview_free
 
     @classmethod
     def from_bytes(cls, data):
         """Constructs a source view from bytes."""
         data = bytes(data)
-        rv = cls._from_objptr(rustcall(lib.symbolic_sourceview_from_bytes,
-                              data, len(data)))
+        rv = cls._from_objptr(
+            rustcall(lib.symbolic_sourceview_from_bytes, data, len(data))
+        )
         # we need to keep this reference alive or we crash. hard.
         attached_refs[rv] = data
         return rv
@@ -72,9 +79,8 @@ class SourceView(RustObject):
     def __getitem__(self, idx):
         if not isinstance(idx, slice):
             if idx >= len(self):
-                raise IndexError('No such line')
-            return decode_str(self._methodcall(
-                lib.symbolic_sourceview_get_line, idx))
+                raise IndexError("No such line")
+            return decode_str(self._methodcall(lib.symbolic_sourceview_get_line, idx))
 
         rv = []
         for idx in range_type(*idx.indices(len(self))):
@@ -91,30 +97,33 @@ class SourceView(RustObject):
 
 class SourceMapView(RustObject):
     """Gives access to a source map."""
+
     __dealloc_func__ = lib.symbolic_sourcemapview_free
 
     @classmethod
     def from_json_bytes(cls, data):
         """Constructs a sourcemap from bytes of JSON data."""
         data = bytes(data)
-        return cls._from_objptr(rustcall(
-            lib.symbolic_sourcemapview_from_json_slice, data, len(data)))
+        return cls._from_objptr(
+            rustcall(lib.symbolic_sourcemapview_from_json_slice, data, len(data))
+        )
 
-    def lookup(self, line, col, minified_function_name=None,
-               minified_source=None):
+    def lookup(self, line, col, minified_function_name=None, minified_source=None):
         """Looks up a token from the sourcemap and optionally also
         resolves a function name from a stacktrace to the original one.
         """
         if minified_function_name is None or minified_source is None:
-            rv = self._methodcall(
-                lib.symbolic_sourcemapview_lookup_token, line, col)
+            rv = self._methodcall(lib.symbolic_sourcemapview_lookup_token, line, col)
         else:
             if not isinstance(minified_source, SourceView):
-                raise TypeError('source view required')
+                raise TypeError("source view required")
             rv = self._methodcall(
                 lib.symbolic_sourcemapview_lookup_token_with_function_name,
-                line, col, encode_str(minified_function_name),
-                minified_source._objptr)
+                line,
+                col,
+                encode_str(minified_function_name),
+                minified_source._objptr,
+            )
         if rv != ffi.NULL:
             try:
                 return SourceMapTokenMatch._from_objptr(rv)
@@ -134,8 +143,12 @@ class SourceMapView(RustObject):
 
     def get_source_name(self, idx):
         """Returns the name of the source at the given index."""
-        return decode_str(self._methodcall(
-            lib.symbolic_sourcemapview_get_source_name, idx)) or None
+        return (
+            decode_str(
+                self._methodcall(lib.symbolic_sourcemapview_get_source_name, idx)
+            )
+            or None
+        )
 
     def iter_sources(self):
         """Iterates over the sources in the file."""
@@ -148,7 +161,7 @@ class SourceMapView(RustObject):
     def __getitem__(self, idx):
         rv = self._methodcall(lib.symbolic_sourcemapview_get_token, idx)
         if rv == ffi.NULL:
-            raise IndexError('Token out of range')
+            raise IndexError("Token out of range")
         try:
             return SourceMapTokenMatch._from_objptr(rv)
         finally:

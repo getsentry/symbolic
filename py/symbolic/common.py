@@ -6,15 +6,15 @@ from symbolic.utils import rustcall, encode_str, decode_str
 from symbolic import exceptions
 
 
-__all__ = ['arch_is_known', 'arch_get_ip_reg_name', 'normalize_arch', 'parse_addr']
+__all__ = ["arch_is_known", "arch_get_ip_reg_name", "normalize_arch", "parse_addr"]
 
 
 ignore_arch_exc = (exceptions.UnknownArchError,)
 
 
 # Make sure we init the lib and turn on rust backtraces
-os.environ['RUST_BACKTRACE'] = '1'
-ffi.init_once(lib.symbolic_init, 'init')
+os.environ["RUST_BACKTRACE"] = "1"
+ffi.init_once(lib.symbolic_init, "init")
 
 
 def arch_is_known(arch):
@@ -29,7 +29,7 @@ def normalize_arch(arch):
     if arch is None:
         return None
     if not isinstance(arch, string_types):
-        raise ValueError('Invalid architecture: expected string')
+        raise ValueError("Invalid architecture: expected string")
 
     normalized = rustcall(lib.symbolic_normalize_arch, encode_str(arch))
     return decode_str(normalized)
@@ -38,8 +38,9 @@ def normalize_arch(arch):
 def arch_get_ip_reg_name(arch):
     """Returns the ip register if known for this arch."""
     try:
-        return str(decode_str(rustcall(
-            lib.symbolic_arch_ip_reg_name, encode_str(arch))))
+        return str(
+            decode_str(rustcall(lib.symbolic_arch_ip_reg_name, encode_str(arch)))
+        )
     except ignore_arch_exc:
         pass
 
@@ -51,7 +52,7 @@ def parse_addr(x):
     if isinstance(x, int_types):
         return x
     if isinstance(x, string_types):
-        if x[:2] == '0x':
+        if x[:2] == "0x":
             return int(x[2:], 16)
         return int(x)
-    raise ValueError('Unsupported address format %r' % (x,))
+    raise ValueError("Unsupported address format %r" % (x,))
