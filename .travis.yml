@@ -39,8 +39,8 @@ matrix:
         - make lint-python
       env: TEST=style-python
     - os: linux
-      script: make test-python
-      env: TEST=linux-python CXX=clang SYMBOLIC_PYTHON=python2
+      script: make test-python SYMBOLIC_PYTHON=python2
+      env: TEST=linux-python CXX=clang
     - os: osx
       script: make test-python
       env: TEST=mac-python
