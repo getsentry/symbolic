@@ -23,7 +23,7 @@ exclude = [
 with-serde = ["serde", "chrono/serde"]
 
 [dependencies]
-anylog = "0.4.0"
+anylog = "0.5.0"
 bytes = "0.4.12"
 chrono = "0.4.7"
 elementtree = "0.5.0"
