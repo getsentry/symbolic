@@ -46,24 +46,28 @@ matrix:
       env: TEST=mac-python
 
     # Build wheels
-    - os: osx
+    - if: branch ~= /^release\/[\d.]+$/
+      os: osx
       script: make wheel SYMBOLIC_PYTHON=python2
       before_install: HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade node
       env: DEPLOY=mac-wheel
-      osx_image: xcode7.3
-    - os: linux
+      osx_image: xcode9.4
+    - if: branch ~= /^release\/[\d.]+$/
+      os: linux
       script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_x86_64
       env: DEPLOY=linux-x86_64-wheel
       sudo: required
       services:
         - docker
-    - os: linux
+    - if: branch ~= /^release\/[\d.]+$/
+      os: linux
       script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_i686
       env: DEPLOY=linux-x86-wheel
       sudo: required
       services:
         - docker
-    - os: linux
+    - if: branch ~= /^release\/[\d.]+$/
+      os: linux
       script: make sdist
       env: DEPLOY=sdist
 

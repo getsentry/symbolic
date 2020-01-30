@@ -95,5 +95,5 @@ format-python: .venv/bin/python
 
 .venv/bin/python: Makefile
 	@rm -rf .venv
-	@which virtualenv || sudo easy_install virtualenv
+	@which virtualenv || sudo pip install virtualenv
 	virtualenv -p $(SYMBOLIC_PYTHON) .venv

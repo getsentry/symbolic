@@ -1,4 +1,5 @@
 ---
+minVersion: "0.9.0"
 github:
   owner: getsentry
   repo: symbolic
@@ -8,3 +9,8 @@ targets:
   - name: pypi
   - name: github
 changelogPolicy: simple
+requireNames:
+  - /^symbolic-.*-py2.py3-none-macosx_10_13_x86_64.whl$/
+  - /^symbolic-.*-py2.py3-none-manylinux1_i686.whl$/
+  - /^symbolic-.*-py2.py3-none-manylinux1_x86_64.whl$/
+  - /^symbolic-.*.zip$/
