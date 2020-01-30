@@ -23,7 +23,7 @@ exclude = [
 dmsort = "1.0.0"
 failure = "0.1.5"
 fallible-iterator = "0.2.0"
-flate2 = { version = "1.0.9", features = ["rust_backend"], default-features = false }
+flate2 = { version = "1.0.13", features = ["rust_backend"], default-features = false }
 gimli = { git = "https://github.com/jan-auer/gimli", rev = "bf8ea0f0079505681c360d3a55d0ac1e9b498df3", features = ["read", "std"], default-features = false }
 goblin = { git = "https://github.com/jan-auer/goblin", rev = "ee8b997792d37cfb35f8656c028543797425137e" }
 lazycell = "1.2.1"
