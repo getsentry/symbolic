@@ -22,7 +22,7 @@ exclude = [
 [dependencies]
 failure = "0.1.5"
 fnv = "1.0.6"
-num = "0.2.0"
+num = "0.2.1"
 symbolic-common = { version = "7.0.0", path = "../common" }
 symbolic-debuginfo = { version = "7.0.0", path = "../debuginfo" }
 
