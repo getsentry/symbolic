@@ -29,7 +29,7 @@ goblin = { git = "https://github.com/jan-auer/goblin", rev = "ee8b997792d37cfb35
 lazycell = "1.2.1"
 lazy_static = "1.3.0"
 pdb = { git = "https://github.com/jan-auer/pdb", rev = "6518a17aff69ed26375cf3358632abbd32073931" }
-parking_lot = "0.8.0"
+parking_lot = "0.9.0"
 pest = "2.1.1"
 pest_derive = "2.1.0"
 regex = "1.1.9"
