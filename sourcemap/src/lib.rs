@@ -4,6 +4,7 @@
 
 use std::borrow::Cow;
 use std::fmt;
+use std::ops::Deref;
 
 use failure::Fail;
 
@@ -44,9 +45,25 @@ pub struct SourceView<'a> {
     sv: sourcemap::SourceView<'a>,
 }
 
+enum SourceMapType {
+    Regular(sourcemap::SourceMap),
+    Hermes(sourcemap::SourceMapHermes),
+}
+
+impl Deref for SourceMapType {
+    type Target = sourcemap::SourceMap;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            SourceMapType::Regular(sm) => sm,
+            SourceMapType::Hermes(smh) => smh,
+        }
+    }
+}
+
 /// Represents a source map.
 pub struct SourceMapView {
-    dm: sourcemap::DecodedMap,
+    sm: SourceMapType,
 }
 
 /// A matched token.
@@ -115,60 +132,47 @@ impl SourceMapView {
     /// If the sourcemap is an index it is being flattened.  If flattening
     /// is not possible then an error is raised.
     pub fn from_json_slice(buffer: &[u8]) -> Result<Self, ParseSourceMapError> {
-        use sourcemap::DecodedMap::*;
         Ok(SourceMapView {
-            dm: match sourcemap::decode_slice(buffer)? {
-                Regular(sm) => Regular(sm),
-                Index(smi) => Regular(smi.flatten()?),
-                Hermes(smh) => Hermes(smh),
-                _ => panic!("invalid sourcemap type"),
+            sm: match sourcemap::decode_slice(buffer)? {
+                sourcemap::DecodedMap::Regular(sm) => SourceMapType::Regular(sm),
+                sourcemap::DecodedMap::Index(smi) => SourceMapType::Regular(smi.flatten()?),
+                sourcemap::DecodedMap::Hermes(smh) => SourceMapType::Hermes(smh),
             },
         })
     }
 
-    fn as_sm(&self) -> &sourcemap::SourceMap {
-        use sourcemap::DecodedMap::*;
-        match &self.dm {
-            Regular(sm) => sm,
-            Hermes(smh) => smh,
-            _ => unreachable!(),
-        }
-    }
-
     /// Looks up a token and returns it.
     pub fn lookup_token(&self, line: u32, col: u32) -> Option<TokenMatch<'_>> {
-        self.as_sm()
+        self.sm
             .lookup_token(line, col)
             .map(|tok| self.make_token_match(tok))
     }
 
     /// Returns a token for a specific index.
     pub fn get_token(&self, idx: u32) -> Option<TokenMatch<'_>> {
-        self.as_sm()
-            .get_token(idx)
-            .map(|tok| self.make_token_match(tok))
+        self.sm.get_token(idx).map(|tok| self.make_token_match(tok))
     }
 
     /// Returns the number of tokens.
     pub fn get_token_count(&self) -> u32 {
-        self.as_sm().get_token_count()
+        self.sm.get_token_count()
     }
 
     /// Returns a source view for the given source.
     pub fn get_source_view(&self, idx: u32) -> Option<&SourceView<'_>> {
-        self.as_sm()
+        self.sm
             .get_source_view(idx)
             .map(|s| unsafe { &*(s as *const _ as *const SourceView<'_>) })
     }
 
     /// Returns the source name for an index.
     pub fn get_source_name(&self, idx: u32) -> Option<&str> {
-        self.as_sm().get_source(idx)
+        self.sm.get_source(idx)
     }
 
     /// Returns the number of sources.
     pub fn get_source_count(&self) -> u32 {
-        self.as_sm().get_source_count()
+        self.sm.get_source_count()
     }
 
     /// Looks up a token and the original function name.
@@ -184,9 +188,8 @@ impl SourceMapView {
         minified_name: &str,
         source: &SourceView<'b>,
     ) -> Option<TokenMatch<'a>> {
-        use sourcemap::DecodedMap::*;
-        match &self.dm {
-            Regular(sm) => sm.lookup_token(line, col).map(|token| {
+        match &self.sm {
+            SourceMapType::Regular(sm) => sm.lookup_token(line, col).map(|token| {
                 let mut rv = self.make_token_match(token);
                 rv.function_name = source
                     .sv
@@ -194,7 +197,7 @@ impl SourceMapView {
                     .map(str::to_owned);
                 rv
             }),
-            Hermes(smh) => {
+            SourceMapType::Hermes(smh) => {
                 // we use `col + 1` here, since hermes uses bytecode offsets which are 0-based,
                 // and the upstream python code does a `- 1` here:
                 // https://github.com/getsentry/sentry/blob/fdabccac7576c80674c2fed556d4c5407657dc4c/src/sentry/lang/javascript/processor.py#L584-L586
@@ -204,7 +207,6 @@ impl SourceMapView {
                     rv
                 })
             }
-            _ => unreachable!(),
         }
     }
 
