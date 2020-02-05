@@ -1,4 +1,6 @@
 language: rust
+os: linux
+
 cache:
   directories:
     - $HOME/.cargo
@@ -14,56 +16,50 @@ after_success:
   - npm install -g @zeus-ci/cli
   - test "$DEPLOY" && ( zeus upload -t "application/zip+wheel" py/dist/* || exit 1 )
 
-matrix:
+jobs:
   include:
     # Rust test suite
-    - os: linux
-      script: make style-rust
+    - script: make style-rust
       env: TEST=style-rust
-    - os: linux
-      script: make lint-rust
+    - script: make lint-rust
       env: TEST=lint-rust CXX=clang
-    - os: linux
-      script: make test-rust
+    - script: make test-rust
       env: TEST=linux-rust CXX=clang
     - os: osx
       script: make test-rust
       env: TEST=mac-rust
 
     # Python test suite
-    - os: linux
-      language: python
+    - language: python
       python: "3.7"
       script:
         - make style-python
         - make lint-python
       env: TEST=style-python
-    - os: linux
-      script: make test-python
+    - script: make test-python
       env: TEST=linux-python CXX=clang
     - os: osx
       script: make test-python
       env: TEST=mac-python
 
     # Build wheels
-    - os: osx
+    - if: branch ~= /^release\/.+$/
+      os: osx
       script: make wheel SYMBOLIC_PYTHON=python2
       before_install: HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade node
       env: DEPLOY=mac-wheel
-      osx_image: xcode7.3
-    - os: linux
+      osx_image: xcode9.4
+    - if: branch ~= /^release\/.+$/
       script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_x86_64
       env: DEPLOY=linux-x86_64-wheel
-      sudo: required
       services:
         - docker
-    - os: linux
+    - if: branch ~= /^release\/.+$/
       script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_i686
       env: DEPLOY=linux-x86-wheel
-      sudo: required
       services:
         - docker
-    - os: linux
+    - if: branch ~= /^release\/.+$/
       script: make sdist
       env: DEPLOY=sdist
 
