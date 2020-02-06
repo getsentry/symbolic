@@ -1,6 +1,29 @@
 # Changelog
 
+## 7.1.0
+
+_This release is not available on crates.io_
+
+**Features**:
+
+- Support skipping over files when creating source bundles (#167)
+- Support for React Native Hermes source maps (#187)
+
+**Bug Fixes**:
+
+- Resolved an error in processing DWARF CFI
+- Resolved an error reading ELF fiels with stripped `PT_DYNAMIC` header
+- Support for Breakpad functions without names
+- Multiple fixes in PDB and PE file processing
+- Fix compilation with MSVC (#164)
+- Added unmapped MachO object types (#169)
+- Proper detection for ELF stripped debug companion files (#170)
+- Detect Java class files which share the same magic as MachO files (#172)
+- Fix memory leaks in the python binding (#180)
+
 ## 7.0.0
+
+_This release is not available on crates.io_
 
 **New Features**:
 
