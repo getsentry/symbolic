@@ -700,6 +700,7 @@ impl fmt::Debug for SystemInfo {
 /// Usually included in `ProcessError` when the file cannot be processed.
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ProcessResult {
     /// The dump was processed successfully.
     Ok,
@@ -758,6 +759,7 @@ impl fmt::Display for ProcessResult {
 
 /// An error generated when trying to process a minidump.
 #[derive(Debug, Fail, Copy, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[fail(display = "minidump processing failed: {}", _0)]
 pub struct ProcessMinidumpError(ProcessResult);
 
