@@ -189,15 +189,15 @@ impl SourceMapView {
         source: &SourceView<'b>,
     ) -> Option<TokenMatch<'a>> {
         match &self.sm {
-            SourceMapType::Regular(sm) => sm.lookup_token(line, col).map(|token| {
-                let mut rv = self.make_token_match(token);
-                rv.function_name = source
-                    .sv
-                    .get_original_function_name(token, minified_name)
-                    .map(str::to_owned);
-                rv
-            }),
-            SourceMapType::Hermes(smh) => {
+            // Instead of regular line/column pairs, Hermes uses bytecode offsets, which always
+            // have `line == 0`.
+            // However, a `SourceMapHermes` is defined by having `x_facebook_sources` scope
+            // information, which can actually be used without Hermes.
+            // So if our stack frame has `line > 0` (0-based), it is extremely likely we don’t run
+            // on hermes at all, in which case just fall back to regular sourcemap logic.
+            // Luckily, `metro` puts a prelude on line 0,
+            // so regular non-hermes user code should always have `line > 0`.
+            SourceMapType::Hermes(smh) if line == 0 => {
                 // we use `col + 1` here, since hermes uses bytecode offsets which are 0-based,
                 // and the upstream python code does a `- 1` here:
                 // https://github.com/getsentry/sentry/blob/fdabccac7576c80674c2fed556d4c5407657dc4c/src/sentry/lang/javascript/processor.py#L584-L586
@@ -207,6 +207,14 @@ impl SourceMapView {
                     rv
                 })
             }
+            _ => self.sm.lookup_token(line, col).map(|token| {
+                let mut rv = self.make_token_match(token);
+                rv.function_name = source
+                    .sv
+                    .get_original_function_name(token, minified_name)
+                    .map(str::to_owned);
+                rv
+            }),
         }
     }
 
@@ -245,7 +253,7 @@ fn test_react_native_hermes() {
         })
     );
 
-    // at anonymous (address at unknown:1:11857)
+    //    at anonymous (address at unknown:1:11857)
     assert_eq!(
         smv.lookup_token_with_function_name(0, 11857, "", &sv),
         Some(TokenMatch {
@@ -259,4 +267,46 @@ fn test_react_native_hermes() {
             function_name: Some("<global>".into())
         })
     );
+}
+
+#[test]
+fn test_react_native_metro() {
+    let source = include_str!("../tests/fixtures/react-native-metro.js");
+    let bytes = include_bytes!("../tests/fixtures/react-native-metro.js.map");
+    let smv = SourceMapView::from_json_slice(bytes).unwrap();
+    let sv = SourceView::new(source);
+
+    //    e.foo (react-native-metro.js:7:101)
+    assert_eq!(
+        smv.lookup_token_with_function_name(6, 100, "e.foo", &sv),
+        Some(TokenMatch {
+            src_line: 1,
+            src_col: 10,
+            dst_line: 6,
+            dst_col: 100,
+            src_id: 6,
+            name: None,
+            src: Some("module.js"),
+            function_name: None,
+        })
+    );
+
+    //    at react-native-metro.js:6:44
+    assert_eq!(
+        smv.lookup_token_with_function_name(5, 43, "", &sv),
+        Some(TokenMatch {
+            src_line: 2,
+            src_col: 0,
+            dst_line: 5,
+            dst_col: 39,
+            src_id: 5,
+            name: Some("foo"),
+            src: Some("input.js"),
+            function_name: None,
+        })
+    );
+
+    // in case we have a `metro` bundle, but a `hermes` bytecode offset (something out of range),
+    // we can’t resolve this.
+    assert_eq!(smv.lookup_token_with_function_name(0, 11857, "", &sv), None);
 }
