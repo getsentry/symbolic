@@ -37,7 +37,8 @@ jobs:
         - make lint-python
       env: TEST=style-python
     - before_install:
-        - pyenv versions
+        - pyenv install 3.6.7
+        - pyenv global 3.6.7
         - which python
         - python --version
       script: make test-python
