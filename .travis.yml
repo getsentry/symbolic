@@ -36,7 +36,9 @@ jobs:
         - make style-python
         - make lint-python
       env: TEST=style-python
-    - script: make test-python
+    - language: python
+      python: "3.6"
+      script: make test-python
       env: TEST=linux-python CXX=clang
     - os: osx
       script: make test-python
