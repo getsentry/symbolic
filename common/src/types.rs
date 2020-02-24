@@ -573,7 +573,7 @@ mod derive_serde {
     /// implements a serializer/deserializer for that type that dispatches
     /// appropriately.
     macro_rules! impl_str_serde {
-        ($type:ty, $type:unknown_ty) => {
+        ($type:ty, $unknown_type:expr) => {
             impl ::serde_::ser::Serialize for $type {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
@@ -590,7 +590,7 @@ mod derive_serde {
                 {
                     Ok(<::std::borrow::Cow<str>>::deserialize(deserializer)?
                         .parse()
-                        .unwrap_or($unknown_ty))
+                        .unwrap_or($unknown_type))
                 }
             }
         };
