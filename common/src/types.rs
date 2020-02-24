@@ -7,6 +7,9 @@ use std::str;
 
 use failure::Fail;
 
+#[cfg(feature = "serde")]
+use serde_::{Deserialize, Serialize};
+
 /// Names for x86 CPU registers by register number.
 static I386: &[&str] = &[
     "$eax", "$ecx", "$edx", "$ebx", "$esp", "$ebp", "$esi", "$edi", "$eip", "$eflags", "$unused1",
@@ -450,6 +453,11 @@ impl str::FromStr for Language {
 
 /// Represents a potentially mangled symbol.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_")
+)]
 pub struct Name<'a> {
     string: Cow<'a, str>,
     lang: Language,
