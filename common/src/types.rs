@@ -438,6 +438,7 @@ impl str::FromStr for Language {
 
     fn from_str(string: &str) -> Result<Language, UnknownLanguageError> {
         Ok(match string {
+            "unknown" => Language::Unknown,
             "c" => Language::C,
             "cpp" => Language::Cpp,
             "d" => Language::D,
@@ -573,7 +574,7 @@ mod derive_serde {
     /// implements a serializer/deserializer for that type that dispatches
     /// appropriately.
     macro_rules! impl_str_serde {
-        ($type:ty, $unknown_type:expr) => {
+        ($type:ty) => {
             impl ::serde_::ser::Serialize for $type {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
@@ -588,14 +589,14 @@ mod derive_serde {
                 where
                     D: ::serde_::de::Deserializer<'de>,
                 {
-                    Ok(<::std::borrow::Cow<str>>::deserialize(deserializer)?
+                    <::std::borrow::Cow<str>>::deserialize(deserializer)?
                         .parse()
-                        .unwrap_or($unknown_type))
+                        .map_err(::serde_::de::Error::custom)
                 }
             }
         };
     }
 
-    impl_str_serde!(super::Arch, super::Arch::Unknown);
-    impl_str_serde!(super::Language, super::Language::Unknown);
+    impl_str_serde!(super::Arch);
+    impl_str_serde!(super::Language);
 }
