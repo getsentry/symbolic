@@ -254,17 +254,32 @@ impl<'d> ElfObject<'d> {
 
     /// Decompresses the given compressed section data, if supported.
     fn decompress_section(&self, section_data: &[u8]) -> Option<Vec<u8>> {
-        let container = self.elf.header.container().ok()?;
-        let endianness = self.elf.header.endianness().ok()?;
-        let context = Ctx::new(container, endianness);
+        let (size, compressed) = if section_data.starts_with(b"ZLIB") {
+            // The GNU compression header is a 4 byte magic "ZLIB", followed by an 8-byte big-endian
+            // size prefix of the decompressed data. This adds up to 12 bytes of GNU header.
+            if section_data.len() < 12 {
+                return None;
+            }
 
-        let compression = CompressionHeader::parse(&section_data, 0, context).ok()?;
-        if compression.ch_type != ELFCOMPRESS_ZLIB {
-            return None;
-        }
+            let mut size_bytes = [0; 8];
+            size_bytes.copy_from_slice(&section_data[4..12]);
 
-        let compressed = &section_data[CompressionHeader::size(context)..];
-        let mut decompressed = Vec::with_capacity(compression.ch_size as usize);
+            (u64::from_be_bytes(size_bytes), &section_data[12..])
+        } else {
+            let container = self.elf.header.container().ok()?;
+            let endianness = self.elf.header.endianness().ok()?;
+            let context = Ctx::new(container, endianness);
+
+            let compression = CompressionHeader::parse(&section_data, 0, context).ok()?;
+            if compression.ch_type != ELFCOMPRESS_ZLIB {
+                return None;
+            }
+
+            let compressed = &section_data[CompressionHeader::size(context)..];
+            (compression.ch_size, compressed)
+        };
+
+        let mut decompressed = Vec::with_capacity(size as usize);
         Decompress::new(true)
             .decompress_vec(compressed, &mut decompressed, FlushDecompress::Finish)
             .ok()?;
