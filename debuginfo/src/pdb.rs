@@ -39,10 +39,6 @@ pub enum PdbErrorKind {
     #[fail(display = "invalid pdb file")]
     BadObject,
 
-    /// An inline record cannot be resolved due to a missing id stream.
-    #[fail(display = "missing id stream to resolve inline function")]
-    MissingIdStream,
-
     /// An inline record was encountered without an inlining parent.
     #[fail(display = "unexpected inline function without parent")]
     UnexpectedInline,
@@ -410,7 +406,7 @@ type IdMap<'d> = ItemMap<'d, pdb::IdIndex>;
 struct PdbStreams<'d> {
     debug_info: Arc<pdb::DebugInformation<'d>>,
     type_info: pdb::TypeInformation<'d>,
-    id_info: Option<pdb::IdInformation<'d>>,
+    id_info: pdb::IdInformation<'d>,
 }
 
 impl<'d> PdbStreams<'d> {
@@ -431,12 +427,11 @@ impl<'d> PdbStreams<'d> {
         }
     }
 
-    fn id_map(&self) -> Option<IdMap<'_>> {
-        let id_info = self.id_info.as_ref()?;
-        Some(ItemMap {
-            iter: id_info.iter(),
-            finder: id_info.finder(),
-        })
+    fn id_map(&self) -> IdMap<'_> {
+        ItemMap {
+            iter: self.id_info.iter(),
+            finder: self.id_info.finder(),
+        }
     }
 }
 
@@ -456,7 +451,7 @@ struct PdbDebugInfo<'d> {
     /// Lazy loaded map of the TPI stream.
     type_map: RefCell<TypeMap<'d>>,
     /// Lazy loaded map of the IPI stream.
-    id_map: Option<RefCell<IdMap<'d>>>,
+    id_map: RefCell<IdMap<'d>>,
 }
 
 impl<'d> PdbDebugInfo<'d> {
@@ -465,7 +460,7 @@ impl<'d> PdbDebugInfo<'d> {
         let module_infos = modules.iter().map(|_| LazyCell::new()).collect();
         let module_exports = RefCell::new(BTreeMap::new());
         let type_map = RefCell::new(streams.type_map());
-        let id_map = streams.id_map().map(RefCell::new);
+        let id_map = RefCell::new(streams.id_map());
 
         // Avoid deadlocks by only covering the two access to the address map and string table. For
         // instance, `pdb.symbol_map()` requires a mutable borrow of the PDB as well.
@@ -644,7 +639,7 @@ impl DebugSession for PdbDebugSession<'_> {
 struct TypeFormatter<'u, 'd> {
     unit: &'u Unit<'d>,
     type_map: RefMut<'u, TypeMap<'d>>,
-    id_map: Option<RefMut<'u, IdMap<'d>>>,
+    id_map: RefMut<'u, IdMap<'d>>,
 }
 
 impl<'u, 'd> TypeFormatter<'u, 'd> {
@@ -653,7 +648,7 @@ impl<'u, 'd> TypeFormatter<'u, 'd> {
         Self {
             unit,
             type_map: unit.debug_info.type_map.borrow_mut(),
-            id_map: unit.debug_info.id_map.as_ref().map(|r| r.borrow_mut()),
+            id_map: unit.debug_info.id_map.borrow_mut(),
         }
     }
 
@@ -668,11 +663,7 @@ impl<'u, 'd> TypeFormatter<'u, 'd> {
             None => return Ok(write!(target, "<redacted>")?),
         };
 
-        let id = match self.id_map {
-            Some(ref mut id_map) => id_map.try_get(index)?,
-            None => return Err(PdbErrorKind::MissingIdStream.into()),
-        };
-
+        let id = self.id_map.try_get(index)?;
         match id.parse() {
             Ok(pdb::IdData::Function(data)) => {
                 if let Some(scope) = data.scope {
