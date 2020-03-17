@@ -56,8 +56,8 @@ symbolic-unreal = { version = "7.1.0", path = "unreal", optional = true }
 
 [dev-dependencies]
 clap = "2.33.0"
-failure = "0.1.5"
-walkdir = "2.2.8"
+failure = "0.1.7"
+walkdir = "2.3.1"
 
 [[example]]
 name = "dump_cfi"
