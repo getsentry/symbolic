@@ -12,8 +12,8 @@ if [ $# -lt 1 ]; then
     exit
 fi
 
-EXAMPLE=$1;
+EXAMPLE="$1";
 shift
 
 set -x
-cargo run --quiet --all-features --example $EXAMPLE $FLAGS -- $@
+cargo run --quiet --all-features --example $EXAMPLE $FLAGS -- "$@"
