@@ -508,8 +508,8 @@ dependencies = [
 
 [[package]]
 name = "pdb"
-version = "0.5.0"
-source = "git+https://github.com/willglynn/pdb?rev=7f25c053155c979e958bbed44a851003af466485#7f25c053155c979e958bbed44a851003af466485"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "fallible-iterator 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -821,7 +821,7 @@ dependencies = [
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazycell 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "pdb 0.5.0 (git+https://github.com/willglynn/pdb?rev=7f25c053155c979e958bbed44a851003af466485)",
+ "pdb 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "pest_derive 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1093,7 +1093,7 @@ dependencies = [
 "checksum opaque-debug 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
 "checksum parking_lot 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "92e98c49ab0b7ce5b222f2cc9193fc4efe11c6d0bd4f648e374684a6857b1cfc"
 "checksum parking_lot_core 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7582838484df45743c8434fbff785e8edf260c28748353d44bc0da32e0ceabf1"
-"checksum pdb 0.5.0 (git+https://github.com/willglynn/pdb?rev=7f25c053155c979e958bbed44a851003af466485)" = "<none>"
+"checksum pdb 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b66be5fcea88b52962d3d6fcc5194f1d77666f5aca256926688743a8de1152e4"
 "checksum percent-encoding 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "31010dd2e1ac33d5b46a5b413495239882813e0369f8ed8a5e266f173602f831"
 "checksum pest 2.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "10f4872ae94d7b90ae48754df22fd42ad52ce740b8f370b03da4835417403e53"
 "checksum pest_derive 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "833d1ae558dc601e9a60366421196a8d94bc0ac980476d0b67e1d0988d72b2d0"
