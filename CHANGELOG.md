@@ -1,5 +1,20 @@
 # Changelog
 
+## 7.1.1
+
+**Features**:
+
+- Implement `serde::{Deserialize, Serialize}` for `ProcessResult` (#188)
+- Implement `serde::{Deserialize, Serialize}` for `Name` (#191)
+- Update the `gimli`, `goblin` and `pdb` libraries (#196)
+
+**Bug Fixes**:
+
+- Do not skip DWARF units with a `DW_AT_low_pc` of `0` (#173)
+- Search for MachO sections in all segments (#173)
+- Fix processing Hermes source maps with non-hermes stack frames (#189)
+- Fix decompression of GNU compressed debug sections (`.zdebug_info`) (#192)
+
 ## 7.1.0
 
 _This release is not available on crates.io_
