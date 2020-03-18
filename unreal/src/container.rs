@@ -44,9 +44,8 @@ impl fmt::Display for AnsiString {
 
 impl TryFromCtx<'_, Endian> for AnsiString {
     type Error = scroll::Error;
-    type Size = usize;
 
-    fn try_from_ctx(data: &[u8], context: Endian) -> Result<(Self, Self::Size), Self::Error> {
+    fn try_from_ctx(data: &[u8], context: Endian) -> Result<(Self, usize), Self::Error> {
         let mut offset = 0;
 
         // Read the length and data of this string
@@ -85,9 +84,8 @@ struct Unreal4FileMeta {
 
 impl TryFromCtx<'_, usize> for Unreal4FileMeta {
     type Error = scroll::Error;
-    type Size = usize;
 
-    fn try_from_ctx(data: &[u8], file_offset: usize) -> Result<(Self, Self::Size), Self::Error> {
+    fn try_from_ctx(data: &[u8], file_offset: usize) -> Result<(Self, usize), Self::Error> {
         let mut offset = 0;
         let index = data.gread_with::<i32>(&mut offset, scroll::LE)? as usize;
         let file_name = data.gread_with(&mut offset, scroll::LE)?;
