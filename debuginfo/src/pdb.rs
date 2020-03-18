@@ -997,7 +997,11 @@ impl<'s> Unit<'s> {
         // Depending on the compiler version, the inlinee table might not be sorted. Since constant
         // search through inlinees is too slow (due to repeated parsing), but Inlinees are rather
         // small structures, it is relatively cheap to collect them into an in-memory index.
-        let inlinees: BTreeMap<_, _> = self.module.inlinees()?.map(|i| (i.index(), i)).collect()?;
+        let inlinees: BTreeMap<_, _> = self
+            .module
+            .inlinees()?
+            .map(|i| Ok((i.index(), i)))
+            .collect()?;
 
         let mut depth = 0;
         let mut inc_next = false;

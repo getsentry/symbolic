@@ -28,7 +28,7 @@ gimli = { version = "0.20.0", features = ["read", "std"], default-features = fal
 goblin = "0.2.1"
 lazycell = "1.2.1"
 lazy_static = "1.4.0"
-pdb = { git = "https://github.com/willglynn/pdb", rev = "7176d3733a7cefce43e48ad634f387d82f38494a" }
+pdb = { git = "https://github.com/willglynn/pdb", rev = "7f25c053155c979e958bbed44a851003af466485" }
 parking_lot = "0.10.0"
 pest = "2.1.1"
 pest_derive = "2.1.0"
