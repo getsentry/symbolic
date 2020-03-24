@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.2.0
+
+**Features**:
+
+- Upgrade UUID-related dependencies (#199)
+
 ## 7.1.1
 
 **Features**:
