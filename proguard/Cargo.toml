@@ -17,5 +17,5 @@ optimized applications.
 edition = "2018"
 
 [dependencies]
-proguard = "2.0.0"
+proguard = "3.0.0"
 symbolic-common = { version = "7.1.1", path = "../common" }
