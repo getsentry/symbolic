@@ -7,7 +7,7 @@ use std::slice;
 use std::str;
 
 use failure::Error;
-use uuid::Uuid;
+use symbolic::common::Uuid;
 
 use crate::utils::{set_panic_hook, Panic, LAST_ERROR};
 
