@@ -659,7 +659,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 address: function_address,
                 size: function_size,
                 name: Name::with_language(
-                    name.unwrap_or(Cow::from("<name omitted>")),
+                    name.unwrap_or_else(|| Cow::from("<name omitted>")),
                     self.language,
                 ),
                 compilation_dir: self.compilation_dir(),
