@@ -404,7 +404,7 @@ impl<'d> FromIterator<Symbol<'d>> for SymbolMap<'d> {
 ///
 /// The file path is usually relative to a compilation directory. It might contain parent directory
 /// segments (`../`).
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Default, Eq, PartialEq)]
 pub struct FileInfo<'data> {
     /// The file's basename.
     pub name: &'data [u8],
