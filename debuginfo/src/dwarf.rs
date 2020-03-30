@@ -507,7 +507,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Resolves line records of a DIE's range list and puts them into the given buffer.
-    fn resolve_lines(&self, ranges: &[Range]) -> Result<Vec<LineInfo<'d>>, DwarfError> {
+    fn resolve_lines(
+        &self,
+        ranges: &[Range],
+        option: &DwarfFunctionIteratorOption,
+    ) -> Result<Vec<LineInfo<'d>>, DwarfError> {
         // Early exit in case this unit did not declare a line program.
         let line_program = match self.line_program {
             Some(ref program) => program,
@@ -527,13 +531,16 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 let file = self.resolve_file(row.file_index)?.unwrap();
                 let line = row.line.unwrap_or(0);
 
-                if let Some((last_file, last_line)) = last {
-                    if last_file == row.file_index && last_line == line {
-                        continue;
+                if option.collapse_lines {
+                    if let Some((last_file, last_line)) = last {
+                        if last_file == row.file_index && last_line == line {
+                            continue;
+                        }
                     }
+
+                    last = Some((row.file_index, line));
                 }
 
-                last = Some((row.file_index, line));
                 lines.push(LineInfo {
                     address: row.address - self.inner.info.load_address,
                     size: None,
@@ -579,7 +586,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     ///
     /// Since there are some DWARF files where functions appear out of order -- instead of sorted by
     /// their start address -- they have to be collected anyway.
-    fn functions(&self, range_buf: &mut Vec<Range>) -> Result<Vec<Function<'d>>, DwarfError> {
+    fn functions(
+        &self,
+        range_buf: &mut Vec<Range>,
+        option: &DwarfFunctionIteratorOption,
+    ) -> Result<Vec<Function<'d>>, DwarfError> {
         let mut depth = 0;
         let mut skipped_depth = None;
         let mut functions = Vec::new();
@@ -649,7 +660,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             // Avoid constant allocations by collecting repeatedly into the same buffer and
             // draining the results out of it. This keeps the original buffer allocated and
             // allows for a single allocation per call to `resolve_lines`.
-            let lines = self.resolve_lines(&range_buf)?;
+            let lines = self.resolve_lines(&range_buf, option)?;
 
             let function = Function {
                 address: function_address,
@@ -988,6 +999,20 @@ impl<'s> Iterator for DwarfUnitIterator<'s> {
 
 impl std::iter::FusedIterator for DwarfUnitIterator<'_> {}
 
+/// Options to use with functions_option.
+#[derive(Debug)]
+pub struct DwarfFunctionIteratorOption {
+    collapse_lines: bool,
+}
+
+impl Default for DwarfFunctionIteratorOption {
+    fn default() -> Self {
+        Self {
+            collapse_lines: true,
+        }
+    }
+}
+
 /// A debugging session for DWARF debugging information.
 pub struct DwarfDebugSession<'data> {
     cell: SelfCell<Box<DwarfSections<'data>>, DwarfInfo<'data>>,
@@ -1027,6 +1052,21 @@ impl<'d> DwarfDebugSession<'d> {
             functions: Vec::new().into_iter(),
             range_buf: Vec::new(),
             finished: false,
+            option: DwarfFunctionIteratorOption::default(),
+        }
+    }
+
+    /// Returns an iterator over all functions in this debug file.
+    pub fn functions_option(
+        &self,
+        option: DwarfFunctionIteratorOption,
+    ) -> DwarfFunctionIterator<'_> {
+        DwarfFunctionIterator {
+            units: self.cell.get().units(),
+            functions: Vec::new().into_iter(),
+            range_buf: Vec::new(),
+            finished: false,
+            option,
         }
     }
 
@@ -1120,6 +1160,7 @@ pub struct DwarfFunctionIterator<'s> {
     functions: std::vec::IntoIter<Function<'s>>,
     range_buf: Vec<Range>,
     finished: bool,
+    option: DwarfFunctionIteratorOption,
 }
 
 impl<'s> Iterator for DwarfFunctionIterator<'s> {
@@ -1141,7 +1182,7 @@ impl<'s> Iterator for DwarfFunctionIterator<'s> {
                 None => break,
             };
 
-            self.functions = match unit.functions(&mut self.range_buf) {
+            self.functions = match unit.functions(&mut self.range_buf, &self.option) {
                 Ok(functions) => functions.into_iter(),
                 Err(error) => return Some(Err(error)),
             };
