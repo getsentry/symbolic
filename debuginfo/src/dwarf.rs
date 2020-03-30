@@ -1002,7 +1002,7 @@ impl std::iter::FusedIterator for DwarfUnitIterator<'_> {}
 /// Options to use with functions_option.
 #[derive(Debug)]
 pub struct DwarfFunctionIteratorOption {
-    collapse_lines: bool,
+    pub collapse_lines: bool,
 }
 
 impl Default for DwarfFunctionIteratorOption {
