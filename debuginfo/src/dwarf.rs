@@ -524,11 +524,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             lines.reserve(rows.len());
 
             for row in rows {
-                let file = self
-                    .resolve_file(row.file_index)
-                    .ok()
-                    .flatten()
-                    .unwrap_or_default();
+                let file = self.resolve_file(row.file_index).unwrap_or_default();
                 let line = row.line.unwrap_or(0);
 
                 if let Some((last_file, last_line)) = last {
@@ -566,17 +562,15 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Resolves a file entry by its index.
-    fn resolve_file(&self, file_id: u64) -> Result<Option<FileInfo<'d>>, DwarfError> {
+    fn resolve_file(&self, file_id: u64) -> Option<FileInfo<'d>> {
         let line_program = match self.line_program {
             Some(ref program) => &program.header,
-            None => return Ok(None),
+            None => return None,
         };
 
-        let file = line_program
+        line_program
             .file(file_id)
-            .ok_or_else(|| DwarfErrorKind::InvalidFileRef(file_id))?;
-
-        Ok(Some(self.file_info(line_program, file)))
+            .map(|file| self.file_info(line_program, file))
     }
 
     /// Collects all functions within this compilation unit.
@@ -658,10 +652,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let function = Function {
                 address: function_address,
                 size: function_size,
-                name: Name::with_language(
-                    name.unwrap_or_else(|| Cow::from("<name omitted>")),
-                    self.language,
-                ),
+                name: Name::with_language(name.unwrap_or_default(), self.language),
                 compilation_dir: self.compilation_dir(),
                 lines,
                 inlinees: Vec::new(),
@@ -681,11 +672,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 // file for inlined subprograms. If this info is missing, the lookup might
                 // return invalid line numbers.
                 if let (Some(line), Some(file_id)) = (call_line, call_file) {
-                    let file = self
-                        .resolve_file(file_id)
-                        .ok()
-                        .flatten()
-                        .unwrap_or_default();
+                    let file = self.resolve_file(file_id).unwrap_or_default();
                     match parent
                         .lines
                         .binary_search_by_key(&function_address, |line| line.address)
