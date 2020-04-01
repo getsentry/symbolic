@@ -370,7 +370,12 @@ impl<'d, 'a> UnitRef<'d, 'a> {
 
         if let Some(attr) = reference_target {
             let resolved = self.resolve_reference(attr, |ref_unit, ref_entry| {
-                ref_unit.resolve_function_name(ref_entry)
+                if self.unit.offset != ref_unit.unit.offset || entry.offset() != ref_entry.offset()
+                {
+                    ref_unit.resolve_function_name(ref_entry)
+                } else {
+                    Ok(None)
+                }
             })?;
 
             if let Some(name) = resolved {
