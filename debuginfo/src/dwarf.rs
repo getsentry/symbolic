@@ -507,11 +507,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Resolves line records of a DIE's range list and puts them into the given buffer.
-    fn resolve_lines(&self, ranges: &[Range]) -> Result<Vec<LineInfo<'d>>, DwarfError> {
+    fn resolve_lines(&self, ranges: &[Range]) -> Vec<LineInfo<'d>> {
         // Early exit in case this unit did not declare a line program.
         let line_program = match self.line_program {
             Some(ref program) => program,
-            None => return Ok(Vec::new()),
+            None => return Vec::new(),
         };
 
         let mut last = None;
@@ -524,7 +524,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             lines.reserve(rows.len());
 
             for row in rows {
-                let file = self.resolve_file(row.file_index)?.unwrap();
+                let file = self.resolve_file(row.file_index).unwrap_or_default();
                 let line = row.line.unwrap_or(0);
 
                 if let Some((last_file, last_line)) = last {
@@ -543,7 +543,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             }
         }
 
-        Ok(lines)
+        lines
     }
 
     /// Resolves file information from a line program.
@@ -562,17 +562,15 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Resolves a file entry by its index.
-    fn resolve_file(&self, file_id: u64) -> Result<Option<FileInfo<'d>>, DwarfError> {
+    fn resolve_file(&self, file_id: u64) -> Option<FileInfo<'d>> {
         let line_program = match self.line_program {
             Some(ref program) => &program.header,
-            None => return Ok(None),
+            None => return None,
         };
 
-        let file = line_program
+        line_program
             .file(file_id)
-            .ok_or_else(|| DwarfErrorKind::InvalidFileRef(file_id))?;
-
-        Ok(Some(self.file_info(line_program, file)))
+            .map(|file| self.file_info(line_program, file))
     }
 
     /// Collects all functions within this compilation unit.
@@ -643,13 +641,13 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
             let name = match symbol_name {
                 Some(name) => Some(name),
-                None => self.inner.resolve_function_name(entry)?,
+                None => self.inner.resolve_function_name(entry).ok().flatten(),
             };
 
             // Avoid constant allocations by collecting repeatedly into the same buffer and
             // draining the results out of it. This keeps the original buffer allocated and
             // allows for a single allocation per call to `resolve_lines`.
-            let lines = self.resolve_lines(&range_buf)?;
+            let lines = self.resolve_lines(&range_buf);
 
             let function = Function {
                 address: function_address,
@@ -674,36 +672,35 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 // file for inlined subprograms. If this info is missing, the lookup might
                 // return invalid line numbers.
                 if let (Some(line), Some(file_id)) = (call_line, call_file) {
-                    if let Some(file) = self.resolve_file(file_id)? {
-                        match parent
-                            .lines
-                            .binary_search_by_key(&function_address, |line| line.address)
-                        {
-                            Ok(idx) => {
-                                // We found a line record that points to this function. This happens
-                                // especially, if the function range overlaps exactly. Patch the
-                                // call info with the correct location.
-                                parent.lines[idx].file = file;
-                                parent.lines[idx].line = line;
-                            }
-                            Err(idx) => {
-                                let size = parent
-                                    .lines
-                                    .get(idx)
-                                    .map(|next| next.address - function_address);
+                    let file = self.resolve_file(file_id).unwrap_or_default();
+                    match parent
+                        .lines
+                        .binary_search_by_key(&function_address, |line| line.address)
+                    {
+                        Ok(idx) => {
+                            // We found a line record that points to this function. This happens
+                            // especially, if the function range overlaps exactly. Patch the
+                            // call info with the correct location.
+                            parent.lines[idx].file = file;
+                            parent.lines[idx].line = line;
+                        }
+                        Err(idx) => {
+                            let size = parent
+                                .lines
+                                .get(idx)
+                                .map(|next| next.address - function_address);
 
-                                // There is no line record pointing to this function, so add one to
-                                // the correct call location. Note that "base_dir" can be inherited
-                                // safely here.
-                                let line_info = LineInfo {
-                                    address: function_address,
-                                    size,
-                                    file,
-                                    line,
-                                };
+                            // There is no line record pointing to this function, so add one to
+                            // the correct call location. Note that "base_dir" can be inherited
+                            // safely here.
+                            let line_info = LineInfo {
+                                address: function_address,
+                                size,
+                                file,
+                                line,
+                            };
 
-                                parent.lines.insert(idx, line_info);
-                            }
+                            parent.lines.insert(idx, line_info);
                         }
                     }
                 }
