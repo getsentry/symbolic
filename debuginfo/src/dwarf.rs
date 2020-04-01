@@ -64,6 +64,10 @@ pub enum DwarfErrorKind {
     /// The DWARF file is corrupted. See the cause for more information.
     #[fail(display = "corrupted dwarf debug data")]
     CorruptedData,
+
+    /// A DW_AT_abstract_origin which is referring to itself.
+    #[fail(display = "self reference")]
+    SelfReference,
 }
 
 derive_failure!(
@@ -370,7 +374,12 @@ impl<'d, 'a> UnitRef<'d, 'a> {
 
         if let Some(attr) = reference_target {
             let resolved = self.resolve_reference(attr, |ref_unit, ref_entry| {
-                ref_unit.resolve_function_name(ref_entry)
+                if self.unit.offset != ref_unit.unit.offset || entry.offset() != ref_entry.offset()
+                {
+                    ref_unit.resolve_function_name(ref_entry)
+                } else {
+                    Err(DwarfErrorKind::SelfReference.into())
+                }
             })?;
 
             if let Some(name) = resolved {
