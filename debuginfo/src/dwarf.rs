@@ -64,10 +64,6 @@ pub enum DwarfErrorKind {
     /// The DWARF file is corrupted. See the cause for more information.
     #[fail(display = "corrupted dwarf debug data")]
     CorruptedData,
-
-    /// A DW_AT_abstract_origin which is referring to itself.
-    #[fail(display = "self reference")]
-    SelfReference,
 }
 
 derive_failure!(
@@ -378,7 +374,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
                 {
                     ref_unit.resolve_function_name(ref_entry)
                 } else {
-                    Err(DwarfErrorKind::SelfReference.into())
+                    Ok(None)
                 }
             })?;
 
