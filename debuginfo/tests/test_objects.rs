@@ -196,8 +196,7 @@ fn test_elf_debug() -> Result<(), Error> {
 
 #[test]
 fn test_elf_symbols() -> Result<(), Error> {
-    // TODO(ja): Why does crash.debug not retain the symbol table but report has_symbols
-    let view = ByteView::open(fixture("linux/crash"))?;
+    let view = ByteView::open(fixture("linux/crash.debug"))?;
     let object = Object::parse(&view)?;
 
     let symbols = object.symbol_map();

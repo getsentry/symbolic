@@ -550,14 +550,8 @@ impl<'d, 'o> Iterator for ElfSymbolIterator<'d, 'o> {
                 index => self.sections.get(index),
             };
 
-            // We are only interested in symbols pointing into a program code section
-            // (`SHT_PROGBITS`). Since the program might load R/W or R/O data sections via
-            // SHT_PROGBITS, also check for the executable flag.
-            let is_valid_section = section.map_or(false, |header| {
-                header.sh_type == elf::section_header::SHT_PROGBITS && header.is_executable()
-            });
-
-            if !is_valid_section {
+            // We are only interested in symbols pointing into sections with executable flag.
+            if !section.map_or(false, |header| header.is_executable()) {
                 continue;
             }
 
