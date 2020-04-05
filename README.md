@@ -47,7 +47,7 @@ the features:
   information. Currently, this comprises MachO and ELF (with DWARF debugging), PE and PDB, as well
   as Breakpad symbols.
 - **`demangle`**: Demangling for Rust, C++, Swift and Objective C symbols. This feature requires a
-  C++11 compiler on the PATH.
+  C++14 compiler on the PATH.
 - **`minidump`**: Rust bindings for the Breakpad Minidump processor. Additionally, this includes
   facilities to extract stack unwinding information (sometimes called CFI) from object files. This
   feature requires a C++11 compiler on the PATH.
