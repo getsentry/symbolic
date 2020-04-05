@@ -1,50 +1,32 @@
-From e733698d2886b4ebf4ddcdecb0f833cd95d72b23 Mon Sep 17 00:00:00 2001
-From: Jan Michael Auer <jan.auer@sentry.io>
-Date: Thu, 25 Apr 2019 16:38:27 +0200
-Subject: [PATCH] feat(demangle): Add option to skip Swift function parameters
+commit 575a6035e76e73eacc99d43a412d0afa2068dd25
+Author: Jan Michael Auer <mail@jauer.org>
+Date:   Sun Apr 5 16:39:15 2020 +0200
 
----
- demangle/src/swiftdemangle.cpp                            | 2 +-
- demangle/vendor/swift/include/swift/Demangling/Demangle.h | 1 +
- demangle/vendor/swift/lib/Demangling/NodePrinter.cpp      | 5 +++++
- 3 files changed, 7 insertions(+), 1 deletion(-)
-
-diff --git a/demangle/src/swiftdemangle.cpp b/demangle/src/swiftdemangle.cpp
-index c13d8cb8..0cf98ac9 100644
---- a/demangle/src/swiftdemangle.cpp
-+++ b/demangle/src/swiftdemangle.cpp
-@@ -8,7 +8,7 @@ extern "C" int symbolic_demangle_swift(const char *symbol,
-     if (simplified) {
-         opts = swift::Demangle::DemangleOptions::SimplifiedUIDemangleOptions();
-         if (simplified == 2) {
--            // opts.ShowFunctionArguments = false;
-+            opts.ShowFunctionArguments = false;
-         }
-     }
+    feat(demangle): Add option to skip Swift function parameters
 
 diff --git a/demangle/vendor/swift/include/swift/Demangling/Demangle.h b/demangle/vendor/swift/include/swift/Demangling/Demangle.h
-index 7621fae3..934ce16d 100644
+index 2a8fd6c..c377a00 100644
 --- a/demangle/vendor/swift/include/swift/Demangling/Demangle.h
 +++ b/demangle/vendor/swift/include/swift/Demangling/Demangle.h
-@@ -52,6 +52,7 @@ struct DemangleOptions {
+@@ -57,6 +57,7 @@ struct DemangleOptions {
    bool ShortenArchetype = false;
    bool ShowPrivateDiscriminators = true;
    bool ShowFunctionArgumentTypes = true;
 +  bool ShowFunctionArguments = true;
-
-   DemangleOptions() {}
-
+   std::function<std::string(uint64_t, uint64_t)> GenericParameterName =
+       genericParameterName;
+ 
 diff --git a/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp b/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-index 1ce7b3e6..60755e23 100644
+index 097be7f..266506e 100644
 --- a/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
 +++ b/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-@@ -697,6 +697,11 @@ class NodePrinter {
+@@ -728,6 +728,11 @@ private:
        setInvalid();
        return;
      }
 +
 +    if (!Options.ShowFunctionArguments) {
-+        return;
++      return;
 +    }
 +
      unsigned startIndex = 0;

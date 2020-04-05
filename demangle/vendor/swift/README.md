@@ -3,7 +3,7 @@
 This folder contains a vendored subset of the [Swift Programming Language]. The Swift library is
 reduced to the demangler only to reduce the size of this package.
 
-The current version is **Swift 5.0.1**.
+The current version is **Swift 5.2.1**.
 
 ## Sentry Modifications
 
@@ -27,7 +27,7 @@ patch is maintained in `1-arguments.patch`.
       ```
    4. Check out the release banch of the latest release:
       ```
-      $ git checkout swift-5.0.1-RELEASE
+      $ git checkout swift-5.2.1-RELEASE
       ```
    5. Build the complete swift project (be very patient, this may take long):
       ```
@@ -42,12 +42,12 @@ patch is maintained in `1-arguments.patch`.
    2. Check for modifications.
    3. Commit _"feat(demangle): Import libswift demangle x.x.x"_ before proceeding.
 3. **Apply the patch:**
-   1. Apply the [`1-arguments.patch`].
+   1. Apply `1-arguments.patch`.
    2. Build the library and ensure tests work.
    3. Commit the changes.
 4. **Add tests for new mangling schemes:**
    1. Identify new mangling schemes. Skip if there are no known changes.
-   2. Add test cases to [`tests/swift.rs`]
+   2. Add test cases to `tests/swift.rs`
 5. **Update Repository metadata**:
    1. Bump the Swift version number in this README.
    2. Check for changes in the license and update the files.
