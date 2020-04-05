@@ -1,0 +1,320 @@
+From 44e309b01857d947c5fe579bc07a5e6f99757568 Mon Sep 17 00:00:00 2001
+From: Jan Michael Auer <jan.auer@sentry.io>
+Date: Thu, 25 Apr 2019 17:12:44 +0200
+Subject: [PATCH] fix(demangle): Swift compatibility with C++11
+
+---
+ .../vendor/swift/lib/Demangling/Demangler.cpp | 46 +++++++++----------
+ .../swift/lib/Demangling/NodePrinter.cpp      | 12 ++---
+ .../swift/lib/Demangling/OldDemangler.cpp     | 16 +++----
+ .../swift/lib/Demangling/OldRemangler.cpp     |  8 ++--
+ .../vendor/swift/lib/Demangling/Remangler.cpp | 28 +++++------
+ 5 files changed, 55 insertions(+), 55 deletions(-)
+
+diff --git a/demangle/vendor/swift/lib/Demangling/Demangler.cpp b/demangle/vendor/swift/lib/Demangling/Demangler.cpp
+index 522944f6..01b3f186 100644
+--- a/demangle/vendor/swift/lib/Demangling/Demangler.cpp
++++ b/demangle/vendor/swift/lib/Demangling/Demangler.cpp
+@@ -2283,47 +2283,47 @@ NodePointer Demangler::demangleFuncSpecParam(Node::IndexType ParamIdx) {
+     }
+     case 'e': {
+       unsigned Value =
+-          unsigned(FunctionSigSpecializationParamKind::ExistentialToGeneric);
++          (unsigned) FunctionSigSpecializationParamKind::ExistentialToGeneric;
+       if (nextIf('D'))
+-        Value |= unsigned(FunctionSigSpecializationParamKind::Dead);
++        Value |= (unsigned) FunctionSigSpecializationParamKind::Dead;
+       if (nextIf('G'))
+         Value |=
+-            unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed);
++            (unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed;
+       if (nextIf('O'))
+         Value |=
+-            unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned);
++            (unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned;
+       if (nextIf('X'))
+-        Value |= unsigned(FunctionSigSpecializationParamKind::SROA);
++        Value |= (unsigned) FunctionSigSpecializationParamKind::SROA;
+       return addChild(
+           Param,
+           createNode(Node::Kind::FunctionSignatureSpecializationParamKind,
+                      Value));
+     }
+     case 'd': {
+-      unsigned Value = unsigned(FunctionSigSpecializationParamKind::Dead);
++      unsigned Value = (unsigned) FunctionSigSpecializationParamKind::Dead;
+       if (nextIf('G'))
+-        Value |= unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed);
++        Value |= (unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed;
+       if (nextIf('O'))
+         Value |=
+-            unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned);
++            (unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned;
+       if (nextIf('X'))
+-        Value |= unsigned(FunctionSigSpecializationParamKind::SROA);
++        Value |= (unsigned) FunctionSigSpecializationParamKind::SROA;
+       return addChild(Param, createNode(
+                   Node::Kind::FunctionSignatureSpecializationParamKind, Value));
+     }
+     case 'g': {
+-      unsigned Value = unsigned(FunctionSigSpecializationParamKind::
+-                                OwnedToGuaranteed);
++      unsigned Value = (unsigned) FunctionSigSpecializationParamKind::
++                                OwnedToGuaranteed;
+       if (nextIf('X'))
+-        Value |= unsigned(FunctionSigSpecializationParamKind::SROA);
++        Value |= (unsigned) FunctionSigSpecializationParamKind::SROA;
+       return addChild(Param, createNode(
+                   Node::Kind::FunctionSignatureSpecializationParamKind, Value));
+     }
+     case 'o': {
+       unsigned Value =
+-          unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned);
++          (unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned;
+       if (nextIf('X'))
+-        Value |= unsigned(FunctionSigSpecializationParamKind::SROA);
++        Value |= (unsigned) FunctionSigSpecializationParamKind::SROA;
+       return addChild(
+           Param,
+           createNode(Node::Kind::FunctionSignatureSpecializationParamKind,
+@@ -2332,15 +2332,15 @@ NodePointer Demangler::demangleFuncSpecParam(Node::IndexType ParamIdx) {
+     case 'x':
+       return addChild(Param, createNode(
+                 Node::Kind::FunctionSignatureSpecializationParamKind,
+-                unsigned(FunctionSigSpecializationParamKind::SROA)));
++                (unsigned) FunctionSigSpecializationParamKind::SROA));
+     case 'i':
+       return addChild(Param, createNode(
+                 Node::Kind::FunctionSignatureSpecializationParamKind,
+-                unsigned(FunctionSigSpecializationParamKind::BoxToValue)));
++                (unsigned) FunctionSigSpecializationParamKind::BoxToValue));
+     case 's':
+       return addChild(Param, createNode(
+                 Node::Kind::FunctionSignatureSpecializationParamKind,
+-                unsigned(FunctionSigSpecializationParamKind::BoxToStack)));
++                (unsigned) FunctionSigSpecializationParamKind::BoxToStack));
+     default:
+       return nullptr;
+   }
+@@ -2349,7 +2349,7 @@ NodePointer Demangler::demangleFuncSpecParam(Node::IndexType ParamIdx) {
+ NodePointer Demangler::addFuncSpecParamNumber(NodePointer Param,
+                                     FunctionSigSpecializationParamKind Kind) {
+   Param->addChild(createNode(
+-        Node::Kind::FunctionSignatureSpecializationParamKind, unsigned(Kind)),
++        Node::Kind::FunctionSignatureSpecializationParamKind, (unsigned) Kind),
+         *this);
+   CharVector Str;
+   while (isDigit(peekChar())) {
+@@ -2387,14 +2387,14 @@ NodePointer Demangler::demangleWitness() {
+       return createWithChild(Node::Kind::ValueWitnessTable,
+                              popNode(Node::Kind::Type));
+     case 'v': {
+-      unsigned Directness;
++      unsigned directness;
+       switch (nextChar()) {
+-        case 'd': Directness = unsigned(Directness::Direct); break;
+-        case 'i': Directness = unsigned(Directness::Indirect); break;
++        case 'd': directness = (unsigned) Directness::Direct; break;
++        case 'i': directness = (unsigned) Directness::Indirect; break;
+         default: return nullptr;
+       }
+       return createWithChildren(Node::Kind::FieldOffset,
+-                        createNode(Node::Kind::Directness, Directness),
++                        createNode(Node::Kind::Directness, directness),
+                         popNode(isEntity));
+     }
+     case 'S':
+@@ -2966,7 +2966,7 @@ NodePointer Demangler::demangleValueWitness() {
+   int Kind = decodeValueWitnessKind(StringRef(Code, 2));
+   if (Kind < 0)
+     return nullptr;
+-  NodePointer VW = createNode(Node::Kind::ValueWitness, unsigned(Kind));
++  NodePointer VW = createNode(Node::Kind::ValueWitness, (unsigned) Kind);
+   return addChild(VW, popNode(Node::Kind::Type));
+ }
+
+diff --git a/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp b/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
+index 60755e23..7df9f6f0 100644
+--- a/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
++++ b/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
+@@ -873,11 +873,11 @@ unsigned NodePrinter::printFunctionSigSpecializationParam(NodePointer Node,
+   }
+
+   assert(
+-      ((V & unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed)) ||
+-       (V & unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned)) ||
+-       (V & unsigned(FunctionSigSpecializationParamKind::SROA)) ||
+-       (V & unsigned(FunctionSigSpecializationParamKind::Dead))||
+-       (V & unsigned(
++      ((V & ((unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed)) ||
++       (V & ((unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned)) ||
++       (V & ((unsigned) FunctionSigSpecializationParamKind::SROA)) ||
++       (V & ((unsigned) FunctionSigSpecializationParamKind::Dead))||
++       (V & ((unsigned)
+                 FunctionSigSpecializationParamKind::ExistentialToGeneric))) &&
+       "Invalid OptionSet");
+   print(Node->getChild(Idx++));
+@@ -1528,7 +1528,7 @@ NodePointer NodePrinter::print(NodePointer Node, bool asPrefixContext) {
+     if (Node->getKind() == Node::Kind::ReabstractionThunkHelper)
+       Printer << "helper ";
+     auto generics = getFirstChildOfKind(Node, Node::Kind::DependentGenericSignature);
+-    assert(Node->getNumChildren() == 2 + unsigned(generics != nullptr));
++    assert(Node->getNumChildren() == 2 + (unsigned)(generics != nullptr));
+     if (generics) {
+       print(generics);
+       Printer << " ";
+diff --git a/demangle/vendor/swift/lib/Demangling/OldDemangler.cpp b/demangle/vendor/swift/lib/Demangling/OldDemangler.cpp
+index 4ac94dad..3caff7d6 100644
+--- a/demangle/vendor/swift/lib/Demangling/OldDemangler.cpp
++++ b/demangle/vendor/swift/lib/Demangling/OldDemangler.cpp
+@@ -185,7 +185,7 @@ class OldDemangler {
+     auto _kind = demangle##CHILD_KIND();                           \
+     if (!_kind.hasValue()) return nullptr;                         \
+     addChild(PARENT, Factory.createNode(Node::Kind::CHILD_KIND,        \
+-                                           unsigned(*_kind)));     \
++                                           (unsigned)(*_kind)));     \
+   } while (false)
+
+   /// Attempt to demangle the source string.  The root node will
+@@ -378,7 +378,7 @@ class OldDemangler {
+       if (!w.hasValue())
+         return nullptr;
+       auto witness =
+-        Factory.createNode(Node::Kind::ValueWitness, unsigned(w.getValue()));
++        Factory.createNode(Node::Kind::ValueWitness, (unsigned) w.getValue());
+       DEMANGLE_CHILD_OR_RETURN(witness, Type);
+       return witness;
+     }
+@@ -641,21 +641,21 @@ class OldDemangler {
+         unsigned Value = 0;
+         if (Mangled.nextIf('d')) {
+           Value |=
+-            unsigned(FunctionSigSpecializationParamKind::Dead);
++            (unsigned) FunctionSigSpecializationParamKind::Dead;
+         }
+
+         if (Mangled.nextIf('g')) {
+           Value |=
+-              unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed);
++              (unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed;
+         }
+
+         if (Mangled.nextIf('o')) {
+           Value |=
+-              unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned);
++              (unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned;
+         }
+
+         if (Mangled.nextIf('s')) {
+-          Value |= unsigned(FunctionSigSpecializationParamKind::SROA);
++          Value |= (unsigned) FunctionSigSpecializationParamKind::SROA;
+         }
+
+         if (!Mangled.nextIf('_'))
+@@ -696,7 +696,7 @@ class OldDemangler {
+
+       // Create a node for the pass id.
+       spec->addChild(Factory.createNode(Node::Kind::SpecializationPassID,
+-                                      unsigned(Mangled.next() - 48)), Factory);
++                                      (unsigned)(Mangled.next() - 48)), Factory);
+
+       // And then mangle the generic specialization.
+       return demangleGenericSpecialization(spec);
+@@ -713,7 +713,7 @@ class OldDemangler {
+
+       // Add the pass id.
+       spec->addChild(Factory.createNode(Node::Kind::SpecializationPassID,
+-                                      unsigned(Mangled.next() - 48)), Factory);
++                                      (unsigned)(Mangled.next() - 48)), Factory);
+
+       // Then perform the function signature specialization.
+       return demangleFunctionSignatureSpecialization(spec);
+diff --git a/demangle/vendor/swift/lib/Demangling/OldRemangler.cpp b/demangle/vendor/swift/lib/Demangling/OldRemangler.cpp
+index 69e44b23..5c9efa7f 100644
+--- a/demangle/vendor/swift/lib/Demangling/OldRemangler.cpp
++++ b/demangle/vendor/swift/lib/Demangling/OldRemangler.cpp
+@@ -649,15 +649,15 @@ void Remangler::mangleFunctionSignatureSpecializationParam(Node *node) {
+     return;
+   default:
+     if (kindValue &
+-        unsigned(FunctionSigSpecializationParamKind::Dead))
++        (unsigned) FunctionSigSpecializationParamKind::Dead)
+       Out << 'd';
+     if (kindValue &
+-        unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed))
++        (unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed)
+       Out << 'g';
+     if (kindValue &
+-        unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned))
++        (unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned)
+       Out << 'o';
+-    if (kindValue & unsigned(FunctionSigSpecializationParamKind::SROA))
++    if (kindValue & (unsigned) FunctionSigSpecializationParamKind::SROA)
+       Out << 's';
+     Out << '_';
+     return;
+diff --git a/demangle/vendor/swift/lib/Demangling/Remangler.cpp b/demangle/vendor/swift/lib/Demangling/Remangler.cpp
+index 85a1c70e..b2f4ed47 100644
+--- a/demangle/vendor/swift/lib/Demangling/Remangler.cpp
++++ b/demangle/vendor/swift/lib/Demangling/Remangler.cpp
+@@ -903,10 +903,10 @@ void Remangler::mangleDidSet(Node *node) {
+ }
+
+ void Remangler::mangleDirectness(Node *node) {
+-  if (node->getIndex() == unsigned(Directness::Direct)) {
++  if (node->getIndex() == (unsigned) Directness::Direct) {
+     Buffer << 'd';
+   } else {
+-    assert(node->getIndex() == unsigned(Directness::Indirect));
++    assert(node->getIndex() == (unsigned) Directness::Indirect);
+     Buffer << 'i';
+   }
+ }
+@@ -1107,35 +1107,35 @@ void Remangler::mangleFunctionSignatureSpecializationParam(Node *node) {
+       return;
+     default:
+       if (kindValue &
+-          unsigned(
+-              FunctionSigSpecializationParamKind::ExistentialToGeneric)) {
++          (unsigned)
++              FunctionSigSpecializationParamKind::ExistentialToGeneric) {
+         Buffer << 'e';
+-        if (kindValue & unsigned(FunctionSigSpecializationParamKind::Dead))
++        if (kindValue & (unsigned) FunctionSigSpecializationParamKind::Dead)
+           Buffer << 'D';
+         if (kindValue &
+-            unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed))
++            (unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed)
+           Buffer << 'G';
+         if (kindValue &
+-            unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned))
++            (unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned)
+           Buffer << 'O';
+       } else if (kindValue &
+-                 unsigned(FunctionSigSpecializationParamKind::Dead)) {
++                 (unsigned) FunctionSigSpecializationParamKind::Dead) {
+         Buffer << 'd';
+         if (kindValue &
+-            unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed))
++            (unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed)
+           Buffer << 'G';
+         if (kindValue &
+-            unsigned(FunctionSigSpecializationParamKind::GuaranteedToOwned))
++            (unsigned) FunctionSigSpecializationParamKind::GuaranteedToOwned)
+           Buffer << 'O';
+       } else if (kindValue &
+-              unsigned(FunctionSigSpecializationParamKind::OwnedToGuaranteed)) {
++              (unsigned) FunctionSigSpecializationParamKind::OwnedToGuaranteed) {
+         Buffer << 'g';
+       } else if (kindValue &
+-                 unsigned(
+-                     FunctionSigSpecializationParamKind::GuaranteedToOwned)) {
++                 (unsigned)
++                     FunctionSigSpecializationParamKind::GuaranteedToOwned) {
+         Buffer << 'o';
+       }
+-      if (kindValue & unsigned(FunctionSigSpecializationParamKind::SROA))
++      if (kindValue & (unsigned) FunctionSigSpecializationParamKind::SROA)
+         Buffer << 'X';
+       return;
+   }

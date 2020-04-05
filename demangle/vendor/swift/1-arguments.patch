@@ -1,0 +1,52 @@
+From e733698d2886b4ebf4ddcdecb0f833cd95d72b23 Mon Sep 17 00:00:00 2001
+From: Jan Michael Auer <jan.auer@sentry.io>
+Date: Thu, 25 Apr 2019 16:38:27 +0200
+Subject: [PATCH] feat(demangle): Add option to skip Swift function parameters
+
+---
+ demangle/src/swiftdemangle.cpp                            | 2 +-
+ demangle/vendor/swift/include/swift/Demangling/Demangle.h | 1 +
+ demangle/vendor/swift/lib/Demangling/NodePrinter.cpp      | 5 +++++
+ 3 files changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/demangle/src/swiftdemangle.cpp b/demangle/src/swiftdemangle.cpp
+index c13d8cb8..0cf98ac9 100644
+--- a/demangle/src/swiftdemangle.cpp
++++ b/demangle/src/swiftdemangle.cpp
+@@ -8,7 +8,7 @@ extern "C" int symbolic_demangle_swift(const char *symbol,
+     if (simplified) {
+         opts = swift::Demangle::DemangleOptions::SimplifiedUIDemangleOptions();
+         if (simplified == 2) {
+-            // opts.ShowFunctionArguments = false;
++            opts.ShowFunctionArguments = false;
+         }
+     }
+
+diff --git a/demangle/vendor/swift/include/swift/Demangling/Demangle.h b/demangle/vendor/swift/include/swift/Demangling/Demangle.h
+index 7621fae3..934ce16d 100644
+--- a/demangle/vendor/swift/include/swift/Demangling/Demangle.h
++++ b/demangle/vendor/swift/include/swift/Demangling/Demangle.h
+@@ -52,6 +52,7 @@ struct DemangleOptions {
+   bool ShortenArchetype = false;
+   bool ShowPrivateDiscriminators = true;
+   bool ShowFunctionArgumentTypes = true;
++  bool ShowFunctionArguments = true;
+
+   DemangleOptions() {}
+
+diff --git a/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp b/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
+index 1ce7b3e6..60755e23 100644
+--- a/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
++++ b/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
+@@ -697,6 +697,11 @@ class NodePrinter {
+       setInvalid();
+       return;
+     }
++
++    if (!Options.ShowFunctionArguments) {
++        return;
++    }
++
+     unsigned startIndex = 0;
+     if (node->getChild(0)->getKind() == Node::Kind::ThrowsAnnotation)
+       startIndex = 1;
