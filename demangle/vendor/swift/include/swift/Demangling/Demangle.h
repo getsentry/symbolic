@@ -57,6 +57,7 @@ struct DemangleOptions {
   bool ShortenArchetype = false;
   bool ShowPrivateDiscriminators = true;
   bool ShowFunctionArgumentTypes = true;
+  bool ShowFunctionArguments = true;
   std::function<std::string(uint64_t, uint64_t)> GenericParameterName =
       genericParameterName;
 
