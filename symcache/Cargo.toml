@@ -28,6 +28,11 @@ symbolic-debuginfo = { version = "7.2.0", path = "../debuginfo" }
 
 [dev-dependencies]
 insta = "0.15.0"
+criterion = "0.3.1"
 
 [features]
 bench = []
+
+[[bench]]
+name = "bench_writer"
+harness = false
