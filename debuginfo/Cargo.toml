@@ -40,4 +40,4 @@ symbolic-common = { version = "7.2.0", path = "../common" }
 zip = "0.5.2"
 
 [dev-dependencies]
-insta = "0.8.1"
+insta = "0.15.0"

@@ -38,4 +38,4 @@ symbolic-debuginfo = { version = "7.2.0", path = "../debuginfo" }
 cc = { version = "1.0.50", features = ["parallel"] }
 
 [dev-dependencies]
-insta = "0.8.1"
+insta = "0.15.0"

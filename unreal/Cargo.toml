@@ -35,4 +35,4 @@ scroll = { version = "0.10.1", features = ["derive"] }
 serde = { version = "1.0.94", optional = true, features = ["derive"] }
 
 [dev-dependencies]
-insta = "0.8.1"
+insta = "0.15.0"
