@@ -59,12 +59,12 @@ jobs:
       env: DEPLOY=mac-wheel
       osx_image: xcode9.4
     - if: branch ~= /^release\/.+$/
-      script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_x86_64
+      script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux2010_x86_64
       env: DEPLOY=linux-x86_64-wheel
       services:
         - docker
     - if: branch ~= /^release\/.+$/
-      script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_i686
+      script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux2010_i686
       env: DEPLOY=linux-x86-wheel
       services:
         - docker
