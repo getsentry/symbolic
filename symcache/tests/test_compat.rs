@@ -2,10 +2,11 @@ use failure::Error;
 
 use symbolic_common::ByteView;
 use symbolic_symcache::SymCache;
+use symbolic_testutils::fixture;
 
 #[test]
 fn test_v1() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/symcache/compat/v1.symc")?;
+    let buffer = ByteView::open(fixture("symcache/compat/v1.symc"))?;
     let symcache = SymCache::parse(&buffer)?;
 
     // The symcache ID has changed from UUID to DebugId

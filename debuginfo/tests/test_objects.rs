@@ -5,6 +5,7 @@ use insta;
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{FileEntry, Function, Object, SymbolMap};
+use symbolic_testutils::fixture;
 
 /// Helper to create neat snapshots for symbol tables.
 struct SymbolsDebug<'a>(&'a SymbolMap<'a>);
@@ -76,7 +77,7 @@ impl fmt::Debug for FunctionsDebug<'_> {
 #[test]
 fn test_breakpad() -> Result<(), Error> {
     // Using the windows version here since it contains all record kinds
-    let view = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
+    let view = ByteView::open(fixture("windows/crash.sym"))?;
     let object = Object::parse(&view)?;
 
     insta::assert_debug_snapshot!(object, @r###"
@@ -103,7 +104,7 @@ fn test_breakpad() -> Result<(), Error> {
 
 #[test]
 fn test_breakpad_symbols() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
+    let view = ByteView::open(fixture("windows/crash.sym"))?;
     let object = Object::parse(&view)?;
 
     let symbols = object.symbol_map();
@@ -114,7 +115,7 @@ fn test_breakpad_symbols() -> Result<(), Error> {
 
 #[test]
 fn test_breakpad_files() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
+    let view = ByteView::open(fixture("windows/crash.sym"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
@@ -127,7 +128,7 @@ fn test_breakpad_files() -> Result<(), Error> {
 
 #[test]
 fn test_breakpad_functions() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
+    let view = ByteView::open(fixture("windows/crash.sym"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
@@ -139,7 +140,7 @@ fn test_breakpad_functions() -> Result<(), Error> {
 
 #[test]
 fn test_elf_executable() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/linux/crash")?;
+    let view = ByteView::open(fixture("linux/crash"))?;
     let object = Object::parse(&view)?;
 
     insta::assert_debug_snapshot!(object, @r###"
@@ -167,7 +168,7 @@ fn test_elf_executable() -> Result<(), Error> {
 
 #[test]
 fn test_elf_debug() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/linux/crash.debug")?;
+    let view = ByteView::open(fixture("linux/crash.debug"))?;
     let object = Object::parse(&view)?;
 
     insta::assert_debug_snapshot!(object, @r###"
@@ -196,7 +197,7 @@ fn test_elf_debug() -> Result<(), Error> {
 #[test]
 fn test_elf_symbols() -> Result<(), Error> {
     // TODO(ja): Why does crash.debug not retain the symbol table but report has_symbols
-    let view = ByteView::open("../testutils/fixtures/linux/crash")?;
+    let view = ByteView::open(fixture("linux/crash"))?;
     let object = Object::parse(&view)?;
 
     let symbols = object.symbol_map();
@@ -207,7 +208,7 @@ fn test_elf_symbols() -> Result<(), Error> {
 
 #[test]
 fn test_elf_files() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/linux/crash.debug")?;
+    let view = ByteView::open(fixture("linux/crash.debug"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
@@ -220,7 +221,7 @@ fn test_elf_files() -> Result<(), Error> {
 
 #[test]
 fn test_elf_functions() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/linux/crash.debug")?;
+    let view = ByteView::open(fixture("linux/crash.debug"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
@@ -232,7 +233,7 @@ fn test_elf_functions() -> Result<(), Error> {
 
 #[test]
 fn test_mach_executable() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/macos/crash")?;
+    let view = ByteView::open(fixture("macos/crash"))?;
     let object = Object::parse(&view)?;
 
     insta::assert_debug_snapshot!(object, @r###"
@@ -260,8 +261,7 @@ fn test_mach_executable() -> Result<(), Error> {
 
 #[test]
 fn test_mach_dsym() -> Result<(), Error> {
-    let view =
-        ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
+    let view = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;
     let object = Object::parse(&view)?;
 
     insta::assert_debug_snapshot!(object, @r###"
@@ -289,7 +289,7 @@ fn test_mach_dsym() -> Result<(), Error> {
 
 #[test]
 fn test_mach_symbols() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/macos/crash")?;
+    let view = ByteView::open(fixture("macos/crash"))?;
     let object = Object::parse(&view)?;
 
     let symbols = object.symbol_map();
@@ -300,8 +300,7 @@ fn test_mach_symbols() -> Result<(), Error> {
 
 #[test]
 fn test_mach_files() -> Result<(), Error> {
-    let view =
-        ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
+    let view = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
@@ -314,8 +313,7 @@ fn test_mach_files() -> Result<(), Error> {
 
 #[test]
 fn test_mach_functions() -> Result<(), Error> {
-    let view =
-        ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
+    let view = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
@@ -327,7 +325,7 @@ fn test_mach_functions() -> Result<(), Error> {
 
 #[test]
 fn test_pe_32() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.exe")?;
+    let view = ByteView::open(fixture("windows/crash.exe"))?;
     let object = Object::parse(&view)?;
 
     insta::assert_debug_snapshot!(object, @r###"
@@ -358,7 +356,7 @@ fn test_pe_32() -> Result<(), Error> {
 
 #[test]
 fn test_pe_64() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/CrashWithException.exe")?;
+    let view = ByteView::open(fixture("windows/CrashWithException.exe"))?;
     let object = Object::parse(&view)?;
 
     insta::assert_debug_snapshot!(object, @r###"
@@ -392,7 +390,7 @@ fn test_pe_64() -> Result<(), Error> {
 
 #[test]
 fn test_pdb() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
+    let view = ByteView::open(fixture("windows/crash.pdb"))?;
     let object = Object::parse(&view)?;
 
     insta::assert_debug_snapshot!(object, @r###"
@@ -416,7 +414,7 @@ fn test_pdb() -> Result<(), Error> {
 
 #[test]
 fn test_pdb_symbols() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
+    let view = ByteView::open(fixture("windows/crash.pdb"))?;
     let object = Object::parse(&view)?;
 
     let symbols = object.symbol_map();
@@ -427,7 +425,7 @@ fn test_pdb_symbols() -> Result<(), Error> {
 
 #[test]
 fn test_pdb_files() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
+    let view = ByteView::open(fixture("windows/crash.pdb"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
@@ -440,7 +438,7 @@ fn test_pdb_files() -> Result<(), Error> {
 
 #[test]
 fn test_pdb_functions() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
+    let view = ByteView::open(fixture("windows/crash.pdb"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;

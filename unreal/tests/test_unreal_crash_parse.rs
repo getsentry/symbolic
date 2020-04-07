@@ -1,19 +1,18 @@
 use std::fs::File;
 use std::io::Read;
 
+use symbolic_testutils::fixture;
 use symbolic_unreal::{Unreal4Crash, Unreal4Error, Unreal4FileType};
 
 fn get_unreal_crash() -> Result<Unreal4Crash, Unreal4Error> {
-    let mut file =
-        File::open("../testutils/fixtures/unreal/unreal_crash").expect("example file opens");
+    let mut file = File::open(fixture("unreal/unreal_crash")).expect("example file opens");
     let mut file_content = Vec::new();
     file.read_to_end(&mut file_content).expect("fixture file");
     Unreal4Crash::parse(&file_content)
 }
 
 fn get_unreal_apple_crash() -> Result<Unreal4Crash, Unreal4Error> {
-    let mut file =
-        File::open("../testutils/fixtures/unreal/unreal_crash_apple").expect("example file opens");
+    let mut file = File::open(fixture("unreal/unreal_crash_apple")).expect("example file opens");
     let mut file_content = Vec::new();
     file.read_to_end(&mut file_content).expect("fixture file");
     Unreal4Crash::parse(&file_content)

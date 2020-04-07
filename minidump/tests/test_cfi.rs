@@ -6,6 +6,7 @@ use insta;
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
 use symbolic_minidump::cfi::{AsciiCfiWriter, CfiCache};
+use symbolic_testutils::fixture;
 
 #[test]
 fn load_empty_cfi_cache() -> Result<(), Error> {
@@ -17,7 +18,7 @@ fn load_empty_cfi_cache() -> Result<(), Error> {
 
 #[test]
 fn cfi_from_elf() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/linux/crash")?;
+    let buffer = ByteView::open(fixture("linux/crash"))?;
     let object = Object::parse(&buffer)?;
 
     let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
@@ -32,7 +33,7 @@ fn cfi_from_elf() -> Result<(), Error> {
 
 #[test]
 fn cfi_from_macho() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/macos/crash")?;
+    let buffer = ByteView::open(fixture("macos/crash"))?;
     let object = Object::parse(&buffer)?;
 
     let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
@@ -47,7 +48,7 @@ fn cfi_from_macho() -> Result<(), Error> {
 
 #[test]
 fn cfi_from_sym_linux() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/linux/crash.sym")?;
+    let buffer = ByteView::open(fixture("linux/crash.sym"))?;
     let object = Object::parse(&buffer)?;
 
     let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
@@ -59,7 +60,7 @@ fn cfi_from_sym_linux() -> Result<(), Error> {
 
 #[test]
 fn cfi_from_sym_macos() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/macos/crash.sym")?;
+    let buffer = ByteView::open(fixture("macos/crash.sym"))?;
     let object = Object::parse(&buffer)?;
 
     let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
@@ -71,7 +72,7 @@ fn cfi_from_sym_macos() -> Result<(), Error> {
 
 #[test]
 fn cfi_from_sym_windows() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
+    let buffer = ByteView::open(fixture("windows/crash.sym"))?;
     let object = Object::parse(&buffer)?;
 
     let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
@@ -83,7 +84,7 @@ fn cfi_from_sym_windows() -> Result<(), Error> {
 
 #[test]
 fn cfi_from_pdb_windows() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
+    let buffer = ByteView::open(fixture("windows/crash.pdb"))?;
     let object = Object::parse(&buffer)?;
 
     let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
@@ -95,7 +96,7 @@ fn cfi_from_pdb_windows() -> Result<(), Error> {
 
 #[test]
 fn cfi_from_pe_windows() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/windows/CrashWithException.exe")?;
+    let buffer = ByteView::open(fixture("windows/CrashWithException.exe"))?;
     let object = Object::parse(&buffer)?;
 
     let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;

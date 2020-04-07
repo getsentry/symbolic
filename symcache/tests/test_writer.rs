@@ -7,6 +7,7 @@ use insta;
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
 use symbolic_symcache::{SymCache, SymCacheWriter};
+use symbolic_testutils::fixture;
 
 /// Helper to create neat snapshots for symbol tables.
 struct FunctionsDebug<'a>(&'a SymCache<'a>);
@@ -26,7 +27,7 @@ impl fmt::Debug for FunctionsDebug<'_> {
 
 #[test]
 fn test_write_header_linux() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/linux/crash.debug")?;
+    let buffer = ByteView::open(fixture("linux/crash.debug"))?;
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
@@ -50,7 +51,7 @@ fn test_write_header_linux() -> Result<(), Error> {
 
 #[test]
 fn test_write_functions_linux() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/linux/crash.debug")?;
+    let buffer = ByteView::open(fixture("linux/crash.debug"))?;
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
@@ -63,8 +64,7 @@ fn test_write_functions_linux() -> Result<(), Error> {
 
 #[test]
 fn test_write_header_macos() -> Result<(), Error> {
-    let buffer =
-        ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
+    let buffer = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
@@ -88,8 +88,7 @@ fn test_write_header_macos() -> Result<(), Error> {
 
 #[test]
 fn test_write_functions_macos() -> Result<(), Error> {
-    let buffer =
-        ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
+    let buffer = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
@@ -102,7 +101,7 @@ fn test_write_functions_macos() -> Result<(), Error> {
 
 #[test]
 fn test_write_large_symbol_names() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/regression/large_symbol.sym")?;
+    let buffer = ByteView::open(fixture("regression/large_symbol.sym"))?;
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();

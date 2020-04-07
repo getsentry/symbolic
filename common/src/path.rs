@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::path::{Path, PathBuf};
 
 fn is_absolute_windows_path(s: &str) -> bool {
     // UNC
@@ -259,143 +260,275 @@ pub fn shorten_path(path: &str, length: usize) -> Cow<'_, str> {
     Cow::Owned(rv)
 }
 
-#[test]
-fn test_join_path() {
-    assert_eq!(join_path("foo", "C:"), "C:");
-    assert_eq!(join_path("foo", "C:bar"), "foo/C:bar");
-    assert_eq!(join_path("C:\\a", "b"), "C:\\a\\b");
-    assert_eq!(join_path("C:/a", "b"), "C:/a\\b");
-    assert_eq!(join_path("C:\\a", "b\\c"), "C:\\a\\b\\c");
-    assert_eq!(join_path("C:/a", "C:\\b"), "C:\\b");
-    assert_eq!(join_path("a\\b\\c", "d\\e"), "a\\b\\c\\d\\e");
-    assert_eq!(join_path("\\\\UNC\\", "a"), "\\\\UNC\\a");
+/// Extensions to `Path` for handling `dSYM` directories.
+pub trait DSymPathExt {
+    /// Returns `true` if this path points to an existing directory with a `.dSYM` extension.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::path::Path;
+    /// use symbolic_common::DSymPathExt;
+    ///
+    /// assert!(Path::new("Foo.dSYM").is_dsym_dir());
+    /// assert!(!Path::new("Foo").is_dsym_dir());
+    /// ```
+    fn is_dsym_dir(&self) -> bool;
 
-    assert_eq!(join_path("C:\\foo/bar", "\\baz"), "C:\\baz");
-    assert_eq!(join_path("\\foo/bar", "\\baz"), "\\baz");
-    assert_eq!(join_path("/a/b", "\\c"), "\\c");
+    /// Resolves the path of the debug file in a `dSYM` directory structure.
+    ///
+    /// Returns `Some(path)` if this path is a dSYM directory according to [`is_dsym_dir`], and a
+    /// file of the same name is located at `Contents/Resources/DWARF/`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::path::Path;
+    /// use symbolic_common::DSymPathExt;
+    ///
+    /// let path = Path::new("Foo.dSYM");
+    /// let dsym_path = path.resolve_dsym().unwrap();
+    /// assert_eq!(dsym_path, Path::new("Foo.dSYM/Contents/Resources/DWARF/Foo"));
+    /// ```
+    ///
+    /// [`is_dsym_dir`]: trait.DSymPathExt.html#tymethod.is_dsym_dir
+    fn resolve_dsym(&self) -> Option<PathBuf>;
 
-    assert_eq!(join_path("/a/b", "c"), "/a/b/c");
-    assert_eq!(join_path("/a/b", "c/d"), "/a/b/c/d");
-    assert_eq!(join_path("/a/b", "/c/d/e"), "/c/d/e");
-    assert_eq!(join_path("a/b/", "c"), "a/b/c");
-
-    assert_eq!(join_path("a/b/", "<stdin>"), "<stdin>");
-    assert_eq!(
-        join_path("C:\\test", "<::core::macros::assert_eq macros>"),
-        "<::core::macros::assert_eq macros>"
-    );
+    /// Resolves the `dSYM` parent directory if this file is a dSYM.
+    ///
+    /// If this path points to the MachO file in a `dSYM` directory structure, this function returns
+    /// the path to the dSYM directory. Returns `None` if the parent does not exist or the file name
+    /// does not match.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::path::Path;
+    /// use symbolic_common::DSymPathExt;
+    ///
+    /// let path = Path::new("Foo.dSYM/Contents/Resources/DWARF/Foo");
+    /// let parent = path.dsym_parent().unwrap();
+    /// assert_eq!(parent, Path::new("Foo.dSYM"));
+    ///
+    /// let path = Path::new("Foo.dSYM/Contents/Resources/DWARF/Bar");
+    /// assert_eq!(path.dsym_parent(), None);
+    /// ```
+    fn dsym_parent(&self) -> Option<&Path>;
 }
 
-#[test]
-fn test_clean_path() {
-    assert_eq!(clean_path("/foo/bar/baz/./blah"), "/foo/bar/baz/blah");
-    assert_eq!(clean_path("/foo/bar/baz/./blah/"), "/foo/bar/baz/blah");
-    assert_eq!(clean_path("foo/bar/baz/./blah/"), "foo/bar/baz/blah");
-    assert_eq!(clean_path("foo/bar/baz/../blah/"), "foo/bar/blah");
-    assert_eq!(clean_path("../../blah/"), "../../blah");
-    assert_eq!(clean_path("..\\../blah/"), "..\\..\\blah");
-    assert_eq!(clean_path("foo\\bar\\baz/../blah/"), "foo\\bar\\blah");
-    assert_eq!(clean_path("foo\\bar\\baz/../../../../blah/"), "..\\blah");
-    assert_eq!(clean_path("foo/bar/baz/../../../../blah/"), "../blah");
-    assert_eq!(clean_path("..\\foo"), "..\\foo");
-    assert_eq!(clean_path("foo"), "foo");
-    assert_eq!(clean_path("foo\\bar\\baz/../../../blah/"), "blah");
-    assert_eq!(clean_path("foo/bar/baz/../../../blah/"), "blah");
+impl DSymPathExt for Path {
+    fn is_dsym_dir(&self) -> bool {
+        self.extension() == Some("dSYM".as_ref()) && self.is_dir()
+    }
 
-    // XXX currently known broken tests:
-    //assert_eq!(clean_path("/../../blah/"), "/blah");
-    //assert_eq!(clean_path("c:\\..\\foo"), "c:\\foo");
+    fn resolve_dsym(&self) -> Option<PathBuf> {
+        if !self.is_dsym_dir() || !self.is_dir() {
+            return None;
+        }
+
+        let framework = self.file_stem()?;
+        let mut full_path = self.to_path_buf();
+        full_path.push("Contents/Resources/DWARF");
+        full_path.push(framework);
+
+        if full_path.is_file() {
+            Some(full_path)
+        } else {
+            None
+        }
+    }
+
+    fn dsym_parent(&self) -> Option<&Path> {
+        let framework = self.file_name()?;
+
+        let mut parent = self.parent()?;
+        if !parent.ends_with("Contents/Resources/DWARF") {
+            return None;
+        }
+
+        for _ in 0..3 {
+            parent = parent.parent()?;
+        }
+
+        if parent.file_stem() == Some(framework) && parent.is_dsym_dir() {
+            Some(parent)
+        } else {
+            None
+        }
+    }
 }
 
-#[test]
-fn test_shorten_path() {
-    assert_eq!(shorten_path("/foo/bar/baz/blah/blafasel", 6), "/fo...");
-    assert_eq!(shorten_path("/foo/bar/baz/blah/blafasel", 2), "/f");
-    assert_eq!(
-        shorten_path("/foo/bar/baz/blah/blafasel", 21),
-        "/foo/.../blafasel"
-    );
-    assert_eq!(
-        shorten_path("/foo/bar/baz/blah/blafasel", 22),
-        "/foo/.../blah/blafasel"
-    );
-    assert_eq!(
-        shorten_path("C:\\bar\\baz\\blah\\blafasel", 20),
-        "C:\\bar\\...\\blafasel"
-    );
-    assert_eq!(
-        shorten_path("/foo/blar/baz/blah/blafasel", 27),
-        "/foo/blar/baz/blah/blafasel"
-    );
-    assert_eq!(
-        shorten_path("/foo/blar/baz/blah/blafasel", 26),
-        "/foo/.../baz/blah/blafasel"
-    );
-    assert_eq!(
-        shorten_path("/foo/b/baz/blah/blafasel", 23),
-        "/foo/.../blah/blafasel"
-    );
-    assert_eq!(shorten_path("/foobarbaz/blahblah", 16), ".../blahblah");
-    assert_eq!(shorten_path("/foobarbazblahblah", 12), "...lahblah");
-    assert_eq!(shorten_path("", 0), "");
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use symbolic_testutils::fixture;
 
-#[test]
-fn test_split_path() {
-    assert_eq!(split_path("C:\\a\\b"), (Some("C:\\a"), "b"));
-    assert_eq!(split_path("C:/a\\b"), (Some("C:/a"), "b"));
-    assert_eq!(split_path("C:\\a\\b\\c"), (Some("C:\\a\\b"), "c"));
-    assert_eq!(split_path("a\\b\\c\\d\\e"), (Some("a\\b\\c\\d"), "e"));
-    assert_eq!(split_path("\\\\UNC\\a"), (Some("\\\\UNC"), "a"));
+    #[test]
+    fn test_join_path() {
+        assert_eq!(join_path("foo", "C:"), "C:");
+        assert_eq!(join_path("foo", "C:bar"), "foo/C:bar");
+        assert_eq!(join_path("C:\\a", "b"), "C:\\a\\b");
+        assert_eq!(join_path("C:/a", "b"), "C:/a\\b");
+        assert_eq!(join_path("C:\\a", "b\\c"), "C:\\a\\b\\c");
+        assert_eq!(join_path("C:/a", "C:\\b"), "C:\\b");
+        assert_eq!(join_path("a\\b\\c", "d\\e"), "a\\b\\c\\d\\e");
+        assert_eq!(join_path("\\\\UNC\\", "a"), "\\\\UNC\\a");
 
-    assert_eq!(split_path("/a/b/c"), (Some("/a/b"), "c"));
-    assert_eq!(split_path("/a/b/c/d"), (Some("/a/b/c"), "d"));
-    assert_eq!(split_path("a/b/c"), (Some("a/b"), "c"));
+        assert_eq!(join_path("C:\\foo/bar", "\\baz"), "C:\\baz");
+        assert_eq!(join_path("\\foo/bar", "\\baz"), "\\baz");
+        assert_eq!(join_path("/a/b", "\\c"), "\\c");
 
-    assert_eq!(split_path("a"), (None, "a"));
-    assert_eq!(split_path("a/"), (None, "a"));
-    assert_eq!(split_path("/a"), (Some("/"), "a"));
-    assert_eq!(split_path(""), (None, ""));
-}
+        assert_eq!(join_path("/a/b", "c"), "/a/b/c");
+        assert_eq!(join_path("/a/b", "c/d"), "/a/b/c/d");
+        assert_eq!(join_path("/a/b", "/c/d/e"), "/c/d/e");
+        assert_eq!(join_path("a/b/", "c"), "a/b/c");
 
-#[test]
-fn test_split_path_bytes() {
-    assert_eq!(
-        split_path_bytes(&b"C:\\a\\b"[..]),
-        (Some(&b"C:\\a"[..]), &b"b"[..])
-    );
-    assert_eq!(
-        split_path_bytes(&b"C:/a\\b"[..]),
-        (Some(&b"C:/a"[..]), &b"b"[..])
-    );
-    assert_eq!(
-        split_path_bytes(&b"C:\\a\\b\\c"[..]),
-        (Some(&b"C:\\a\\b"[..]), &b"c"[..])
-    );
-    assert_eq!(
-        split_path_bytes(&b"a\\b\\c\\d\\e"[..]),
-        (Some(&b"a\\b\\c\\d"[..]), &b"e"[..])
-    );
-    assert_eq!(
-        split_path_bytes(&b"\\\\UNC\\a"[..]),
-        (Some(&b"\\\\UNC"[..]), &b"a"[..])
-    );
+        assert_eq!(join_path("a/b/", "<stdin>"), "<stdin>");
+        assert_eq!(
+            join_path("C:\\test", "<::core::macros::assert_eq macros>"),
+            "<::core::macros::assert_eq macros>"
+        );
+    }
 
-    assert_eq!(
-        split_path_bytes(&b"/a/b/c"[..]),
-        (Some(&b"/a/b"[..]), &b"c"[..])
-    );
-    assert_eq!(
-        split_path_bytes(&b"/a/b/c/d"[..]),
-        (Some(&b"/a/b/c"[..]), &b"d"[..])
-    );
-    assert_eq!(
-        split_path_bytes(&b"a/b/c"[..]),
-        (Some(&b"a/b"[..]), &b"c"[..])
-    );
+    #[test]
+    fn test_clean_path() {
+        assert_eq!(clean_path("/foo/bar/baz/./blah"), "/foo/bar/baz/blah");
+        assert_eq!(clean_path("/foo/bar/baz/./blah/"), "/foo/bar/baz/blah");
+        assert_eq!(clean_path("foo/bar/baz/./blah/"), "foo/bar/baz/blah");
+        assert_eq!(clean_path("foo/bar/baz/../blah/"), "foo/bar/blah");
+        assert_eq!(clean_path("../../blah/"), "../../blah");
+        assert_eq!(clean_path("..\\../blah/"), "..\\..\\blah");
+        assert_eq!(clean_path("foo\\bar\\baz/../blah/"), "foo\\bar\\blah");
+        assert_eq!(clean_path("foo\\bar\\baz/../../../../blah/"), "..\\blah");
+        assert_eq!(clean_path("foo/bar/baz/../../../../blah/"), "../blah");
+        assert_eq!(clean_path("..\\foo"), "..\\foo");
+        assert_eq!(clean_path("foo"), "foo");
+        assert_eq!(clean_path("foo\\bar\\baz/../../../blah/"), "blah");
+        assert_eq!(clean_path("foo/bar/baz/../../../blah/"), "blah");
 
-    assert_eq!(split_path_bytes(&b"a"[..]), (None, &b"a"[..]));
-    assert_eq!(split_path_bytes(&b"a/"[..]), (None, &b"a"[..]));
-    assert_eq!(split_path_bytes(&b"/a"[..]), (Some(&b"/"[..]), &b"a"[..]));
-    assert_eq!(split_path_bytes(&b""[..]), (None, &b""[..]));
+        // XXX currently known broken tests:
+        //assert_eq!(clean_path("/../../blah/"), "/blah");
+        //assert_eq!(clean_path("c:\\..\\foo"), "c:\\foo");
+    }
+
+    #[test]
+    fn test_shorten_path() {
+        assert_eq!(shorten_path("/foo/bar/baz/blah/blafasel", 6), "/fo...");
+        assert_eq!(shorten_path("/foo/bar/baz/blah/blafasel", 2), "/f");
+        assert_eq!(
+            shorten_path("/foo/bar/baz/blah/blafasel", 21),
+            "/foo/.../blafasel"
+        );
+        assert_eq!(
+            shorten_path("/foo/bar/baz/blah/blafasel", 22),
+            "/foo/.../blah/blafasel"
+        );
+        assert_eq!(
+            shorten_path("C:\\bar\\baz\\blah\\blafasel", 20),
+            "C:\\bar\\...\\blafasel"
+        );
+        assert_eq!(
+            shorten_path("/foo/blar/baz/blah/blafasel", 27),
+            "/foo/blar/baz/blah/blafasel"
+        );
+        assert_eq!(
+            shorten_path("/foo/blar/baz/blah/blafasel", 26),
+            "/foo/.../baz/blah/blafasel"
+        );
+        assert_eq!(
+            shorten_path("/foo/b/baz/blah/blafasel", 23),
+            "/foo/.../blah/blafasel"
+        );
+        assert_eq!(shorten_path("/foobarbaz/blahblah", 16), ".../blahblah");
+        assert_eq!(shorten_path("/foobarbazblahblah", 12), "...lahblah");
+        assert_eq!(shorten_path("", 0), "");
+    }
+
+    #[test]
+    fn test_split_path() {
+        assert_eq!(split_path("C:\\a\\b"), (Some("C:\\a"), "b"));
+        assert_eq!(split_path("C:/a\\b"), (Some("C:/a"), "b"));
+        assert_eq!(split_path("C:\\a\\b\\c"), (Some("C:\\a\\b"), "c"));
+        assert_eq!(split_path("a\\b\\c\\d\\e"), (Some("a\\b\\c\\d"), "e"));
+        assert_eq!(split_path("\\\\UNC\\a"), (Some("\\\\UNC"), "a"));
+
+        assert_eq!(split_path("/a/b/c"), (Some("/a/b"), "c"));
+        assert_eq!(split_path("/a/b/c/d"), (Some("/a/b/c"), "d"));
+        assert_eq!(split_path("a/b/c"), (Some("a/b"), "c"));
+
+        assert_eq!(split_path("a"), (None, "a"));
+        assert_eq!(split_path("a/"), (None, "a"));
+        assert_eq!(split_path("/a"), (Some("/"), "a"));
+        assert_eq!(split_path(""), (None, ""));
+    }
+
+    #[test]
+    fn test_split_path_bytes() {
+        assert_eq!(
+            split_path_bytes(&b"C:\\a\\b"[..]),
+            (Some(&b"C:\\a"[..]), &b"b"[..])
+        );
+        assert_eq!(
+            split_path_bytes(&b"C:/a\\b"[..]),
+            (Some(&b"C:/a"[..]), &b"b"[..])
+        );
+        assert_eq!(
+            split_path_bytes(&b"C:\\a\\b\\c"[..]),
+            (Some(&b"C:\\a\\b"[..]), &b"c"[..])
+        );
+        assert_eq!(
+            split_path_bytes(&b"a\\b\\c\\d\\e"[..]),
+            (Some(&b"a\\b\\c\\d"[..]), &b"e"[..])
+        );
+        assert_eq!(
+            split_path_bytes(&b"\\\\UNC\\a"[..]),
+            (Some(&b"\\\\UNC"[..]), &b"a"[..])
+        );
+
+        assert_eq!(
+            split_path_bytes(&b"/a/b/c"[..]),
+            (Some(&b"/a/b"[..]), &b"c"[..])
+        );
+        assert_eq!(
+            split_path_bytes(&b"/a/b/c/d"[..]),
+            (Some(&b"/a/b/c"[..]), &b"d"[..])
+        );
+        assert_eq!(
+            split_path_bytes(&b"a/b/c"[..]),
+            (Some(&b"a/b"[..]), &b"c"[..])
+        );
+
+        assert_eq!(split_path_bytes(&b"a"[..]), (None, &b"a"[..]));
+        assert_eq!(split_path_bytes(&b"a/"[..]), (None, &b"a"[..]));
+        assert_eq!(split_path_bytes(&b"/a"[..]), (Some(&b"/"[..]), &b"a"[..]));
+        assert_eq!(split_path_bytes(&b""[..]), (None, &b""[..]));
+    }
+
+    #[test]
+    fn test_is_dsym_dir() {
+        assert!(fixture("macos/crash.dSYM").is_dsym_dir());
+        assert!(!fixture("macos/crash").is_dsym_dir());
+    }
+
+    #[test]
+    fn test_resolve_dsym() {
+        let crash_path = fixture("macos/crash.dSYM");
+        let resolved = crash_path.resolve_dsym().unwrap();
+        assert!(resolved.exists());
+        assert!(resolved.ends_with("macos/crash.dSYM/Contents/Resources/DWARF/crash"));
+
+        let other_path = fixture("macos/other.dSYM");
+        assert_eq!(other_path.resolve_dsym(), None);
+    }
+
+    #[test]
+    fn test_dsym_parent() {
+        let crash_path = fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash");
+        let dsym_path = crash_path.dsym_parent().unwrap();
+        assert!(dsym_path.exists());
+        assert!(dsym_path.ends_with("macos/crash.dSYM"));
+
+        let other_path = fixture("macos/crash.dSYM/Contents/Resources/DWARF/invalid");
+        assert_eq!(other_path.dsym_parent(), None);
+    }
 }
