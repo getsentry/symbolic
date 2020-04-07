@@ -1072,9 +1072,6 @@ impl<'s> Unit<'s> {
         // We're done, flush the remaining stack.
         stack.flush(0, &mut functions);
 
-        // Functions are not necessarily in RVA order. So far, it seems that modules are.
-        dmsort::sort_by_key(&mut functions, |f| f.address);
-
         Ok(functions)
     }
 }

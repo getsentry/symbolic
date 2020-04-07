@@ -1,9 +1,84 @@
 ---
-created: "2019-02-20T15:24:26.547680Z"
-creator: insta@0.6.3
 source: debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug(&functions[..10], 0)"
 ---
+
+> 0x1ec0: callback (0x3b)
+  0x1ec0: main.cpp:9 (../linux)
+  0x1ec2: main.cpp:8 (../linux)
+  0x1ec5: main.cpp:9 (../linux)
+  0x1ec7: main.cpp:15 (../linux)
+  0x1eda: main.cpp:19 (../linux)
+  0x1ee0: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
+  0x1ef7: main.cpp:19 (../linux)
+
+  > 0x1ec7: printf (0x13)
+    0x1ec7: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
+    0x1ee0: main.cpp:10 (../linux)
+
+    > 0x1ee0: printf (0x17)
+      0x1ee0: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
+
+> 0x1f00: _ZN15google_breakpad18MinidumpDescriptorD2Ev (0x32)
+  0x1f00: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
+  0x1f08: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
+  0x1f0c: basic_string.h:179 (/usr/include/c++/5/bits)
+  0x1f11: new_allocator.h:110 (/usr/include/c++/5/ext)
+  0x1f1a: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
+  0x1f1e: basic_string.h:179 (/usr/include/c++/5/bits)
+  0x1f23: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
+  0x1f24: new_allocator.h:110 (/usr/include/c++/5/ext)
+  0x1f30: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
+
+  > 0x1f08: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev (0x12)
+    0x1f08: basic_string.h:543 (/usr/include/c++/5/bits)
+    0x1f0c: basic_string.h:179 (/usr/include/c++/5/bits)
+    0x1f11: new_allocator.h:110 (/usr/include/c++/5/ext)
+
+    > 0x1f08: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv (0x12)
+      0x1f08: basic_string.h:179 (/usr/include/c++/5/bits)
+      0x1f0c: basic_string.h:179 (/usr/include/c++/5/bits)
+      0x1f11: basic_string.h:180 (/usr/include/c++/5/bits)
+
+      > 0x1f08: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv (0x4)
+        0x1f08: basic_string.h:170 (/usr/include/c++/5/bits)
+
+        > 0x1f08: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv (0x4)
+          0x1f08: basic_string.h:151 (/usr/include/c++/5/bits)
+
+      > 0x1f11: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm (0x9)
+        0x1f11: basic_string.h:185 (/usr/include/c++/5/bits)
+
+        > 0x1f11: _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm (0x9)
+          0x1f11: alloc_traits.h:517 (/usr/include/c++/5/bits)
+
+          > 0x1f11: _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm (0x9)
+            0x1f11: new_allocator.h:110 (/usr/include/c++/5/ext)
+
+  > 0x1f1a: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev (0x16)
+    0x1f1a: basic_string.h:543 (/usr/include/c++/5/bits)
+    0x1f1e: basic_string.h:179 (/usr/include/c++/5/bits)
+    0x1f24: new_allocator.h:110 (/usr/include/c++/5/ext)
+
+    > 0x1f1a: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv (0x16)
+      0x1f1a: basic_string.h:179 (/usr/include/c++/5/bits)
+      0x1f1e: basic_string.h:179 (/usr/include/c++/5/bits)
+      0x1f24: basic_string.h:180 (/usr/include/c++/5/bits)
+
+      > 0x1f1a: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv (0x4)
+        0x1f1a: basic_string.h:170 (/usr/include/c++/5/bits)
+
+        > 0x1f1a: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv (0x4)
+          0x1f1a: basic_string.h:151 (/usr/include/c++/5/bits)
+
+      > 0x1f24: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm (0xc)
+        0x1f24: basic_string.h:185 (/usr/include/c++/5/bits)
+
+        > 0x1f24: _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm (0xc)
+          0x1f24: alloc_traits.h:517 (/usr/include/c++/5/bits)
+
+          > 0x1f24: _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm (0xc)
+            0x1f24: new_allocator.h:110 (/usr/include/c++/5/ext)
 
 > 0x1c70: main (0x14c)
   0x1c70: main.cpp:32 (../linux)
@@ -123,83 +198,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
     > 0x1d72: crash (0xb)
       0x1d72: main.cpp:23 (../linux)
-
-> 0x1ec0: callback (0x3b)
-  0x1ec0: main.cpp:9 (../linux)
-  0x1ec2: main.cpp:8 (../linux)
-  0x1ec5: main.cpp:9 (../linux)
-  0x1ec7: main.cpp:15 (../linux)
-  0x1eda: main.cpp:19 (../linux)
-  0x1ee0: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
-  0x1ef7: main.cpp:19 (../linux)
-
-  > 0x1ec7: printf (0x13)
-    0x1ec7: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
-    0x1ee0: main.cpp:10 (../linux)
-
-    > 0x1ee0: printf (0x17)
-      0x1ee0: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
-
-> 0x1f00: _ZN15google_breakpad18MinidumpDescriptorD2Ev (0x32)
-  0x1f00: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-  0x1f08: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-  0x1f0c: basic_string.h:179 (/usr/include/c++/5/bits)
-  0x1f11: new_allocator.h:110 (/usr/include/c++/5/ext)
-  0x1f1a: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-  0x1f1e: basic_string.h:179 (/usr/include/c++/5/bits)
-  0x1f23: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-  0x1f24: new_allocator.h:110 (/usr/include/c++/5/ext)
-  0x1f30: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-
-  > 0x1f08: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev (0x12)
-    0x1f08: basic_string.h:543 (/usr/include/c++/5/bits)
-    0x1f0c: basic_string.h:179 (/usr/include/c++/5/bits)
-    0x1f11: new_allocator.h:110 (/usr/include/c++/5/ext)
-
-    > 0x1f08: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv (0x12)
-      0x1f08: basic_string.h:179 (/usr/include/c++/5/bits)
-      0x1f0c: basic_string.h:179 (/usr/include/c++/5/bits)
-      0x1f11: basic_string.h:180 (/usr/include/c++/5/bits)
-
-      > 0x1f08: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv (0x4)
-        0x1f08: basic_string.h:170 (/usr/include/c++/5/bits)
-
-        > 0x1f08: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv (0x4)
-          0x1f08: basic_string.h:151 (/usr/include/c++/5/bits)
-
-      > 0x1f11: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm (0x9)
-        0x1f11: basic_string.h:185 (/usr/include/c++/5/bits)
-
-        > 0x1f11: _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm (0x9)
-          0x1f11: alloc_traits.h:517 (/usr/include/c++/5/bits)
-
-          > 0x1f11: _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm (0x9)
-            0x1f11: new_allocator.h:110 (/usr/include/c++/5/ext)
-
-  > 0x1f1a: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev (0x16)
-    0x1f1a: basic_string.h:543 (/usr/include/c++/5/bits)
-    0x1f1e: basic_string.h:179 (/usr/include/c++/5/bits)
-    0x1f24: new_allocator.h:110 (/usr/include/c++/5/ext)
-
-    > 0x1f1a: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv (0x16)
-      0x1f1a: basic_string.h:179 (/usr/include/c++/5/bits)
-      0x1f1e: basic_string.h:179 (/usr/include/c++/5/bits)
-      0x1f24: basic_string.h:180 (/usr/include/c++/5/bits)
-
-      > 0x1f1a: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv (0x4)
-        0x1f1a: basic_string.h:170 (/usr/include/c++/5/bits)
-
-        > 0x1f1a: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv (0x4)
-          0x1f1a: basic_string.h:151 (/usr/include/c++/5/bits)
-
-      > 0x1f24: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm (0xc)
-        0x1f24: basic_string.h:185 (/usr/include/c++/5/bits)
-
-        > 0x1f24: _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm (0xc)
-          0x1f24: alloc_traits.h:517 (/usr/include/c++/5/bits)
-
-          > 0x1f24: _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm (0xc)
-            0x1f24: new_allocator.h:110 (/usr/include/c++/5/ext)
 
 > 0x1f00: _ZN15google_breakpad18MinidumpDescriptorD2Ev (0x32)
   0x1f00: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)

@@ -20,6 +20,7 @@ exclude = [
 ]
 
 [dependencies]
+dmsort = "1.0.0"
 failure = "0.1.5"
 fnv = "1.0.6"
 num = "0.2.1"
