@@ -24,6 +24,9 @@ stable_deref_trait = "1.1.1"
 serde_ = { package = "serde", version = "1.0.88", optional = true, features = ["derive"] }
 uuid = "0.8.1"
 
+[dev-dependencies]
+symbolic-testutils = { path = "../testutils" }
+
 [features]
 default = []
 serde = ["serde_", "debugid/serde"]
