@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::path::{Path, PathBuf};
 
 fn is_absolute_windows_path(s: &str) -> bool {
     // UNC
@@ -257,6 +258,104 @@ pub fn shorten_path(path: &str, length: usize) -> Cow<'_, str> {
     }
 
     Cow::Owned(rv)
+}
+
+/// Extensions to `Path` for handling `dSYM` directories.
+pub trait DSymPathExt {
+    /// Returns `true` if this path points to an existing directory with a `.dSYM` extension.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::path::Path;
+    /// use symbolic_common::DSymPathExt;
+    ///
+    /// assert!(Path::new("Foo.dSYM").is_dsym_dir());
+    /// assert!(!Path::new("Foo").is_dsym_dir());
+    /// ```
+    fn is_dsym_dir(&self) -> bool;
+
+    /// Resolves the path of the debug file in a `dSYM` directory structure.
+    ///
+    /// Returns `Some(path)` if this path is a dSYM directory according to [`is_dsym_dir`], and a
+    /// file of the same name is located at `Contents/Resources/DWARF/`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::path::Path;
+    /// use symbolic_common::DSymPathExt;
+    ///
+    /// let path = Path::new("Foo.dSYM");
+    /// let dsym_path = path.resolve_dsym().unwrap();
+    /// assert_eq!(dsym_path, Path::new("Foo.dSYM/Contents/Resources/DWARF/Foo"));
+    /// ```
+    ///
+    /// [`is_dsym_dir`]: trait.DSymPathExt.html#tymethod.is_dsym_dir
+    fn resolve_dsym(&self) -> Option<PathBuf>;
+
+    /// Resolves the `dSYM` parent directory if this file is a dSYM.
+    ///
+    /// If this path points to the MachO file in a `dSYM` directory structure, this function returns
+    /// the path to the dSYM directory. Returns `None` if the parent does not exist or the file name
+    /// does not match.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::path::Path;
+    /// use symbolic_common::DSymPathExt;
+    ///
+    /// let path = Path::new("Foo.dSYM/Contents/Resources/DWARF/Foo");
+    /// let parent = path.dsym_parent().unwrap();
+    /// assert_eq!(parent, Path::new("Foo.dSYM"));
+    ///
+    /// let path = Path::new("Foo.dSYM/Contents/Resources/DWARF/Bar");
+    /// assert_eq!(path.dsym_parent(), None);
+    /// ```
+    fn dsym_parent(&self) -> Option<&Path>;
+}
+
+impl DSymPathExt for Path {
+    fn is_dsym_dir(&self) -> bool {
+        self.extension() == Some("dSYM".as_ref()) && self.is_dir()
+    }
+
+    fn resolve_dsym(&self) -> Option<PathBuf> {
+        if !self.is_dsym_dir() || !self.is_dir() {
+            return None;
+        }
+
+        let framework = self.file_stem()?;
+        let mut full_path = self.to_path_buf();
+        full_path.push("Contents/Resources/DWARF");
+        full_path.push(framework);
+
+        if full_path.is_file() {
+            Some(full_path)
+        } else {
+            None
+        }
+    }
+
+    fn dsym_parent(&self) -> Option<&Path> {
+        let framework = self.file_name()?;
+
+        let mut parent = self.parent()?;
+        if !parent.ends_with("/Contents/Resources/DWARF") {
+            return None;
+        }
+
+        for _ in 0..3 {
+            parent = parent.parent()?;
+        }
+
+        if parent.file_stem() == Some(framework) && parent.is_dsym_dir() {
+            Some(parent)
+        } else {
+            None
+        }
+    }
 }
 
 #[test]

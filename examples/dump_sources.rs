@@ -3,7 +3,7 @@ use std::path::Path;
 use clap::{App, Arg, ArgMatches};
 use failure::Error;
 
-use symbolic::common::ByteView;
+use symbolic::common::{ByteView, DSymPathExt};
 use symbolic::debuginfo::sourcebundle::SourceBundleWriter;
 use symbolic::debuginfo::Archive;
 
@@ -18,7 +18,8 @@ fn print_error(error: &Error) {
 fn write_object_sources(path: &Path, output_path: &Path) -> Result<(), Error> {
     println!("Inspecting {}", path.display());
 
-    let buffer = ByteView::open(path)?;
+    let dsym_path = path.resolve_dsym();
+    let buffer = ByteView::open(dsym_path.as_deref().unwrap_or(path))?;
     let archive = Archive::parse(&buffer)?;
 
     println!("File format: {}", archive.file_format());
