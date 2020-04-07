@@ -1,12 +1,6 @@
 language: rust
 os: linux
 
-cache:
-  directories:
-    - $HOME/.cargo
-    - $TRAVIS_BUILD_DIR/target
-    - $TRAVIS_BUILD_DIR/cabi/target
-
 git:
   depth: 1
 
@@ -45,11 +39,11 @@ jobs:
         - pyenv install 3.6.3
         - pyenv global 3.6.3
       script: make test-python
-      env: TEST=linux-python CXX=clang
+      env: TEST=linux-python CXX=clang SYMBOLIC_DEBUG=1
     - name: "Python 3.7 Tests (osx)"
       os: osx
       script: make test-python
-      env: TEST=mac-python
+      env: TEST=mac-python SYMBOLIC_DEBUG=1
 
     # Build wheels
     - if: branch ~= /^release\/.+$/
