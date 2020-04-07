@@ -1009,7 +1009,7 @@ impl<'s> Unit<'s> {
 
         let mut functions = Vec::new();
         let mut stack = FunctionStack::new();
-        let mut proc_offsets = SmallVec::<[_; 3]>::new();
+        let mut proc_offsets = SmallVec::<[_; 10]>::new();
 
         while let Some(symbol) = symbols.next()? {
             if inc_next {
@@ -1071,9 +1071,6 @@ impl<'s> Unit<'s> {
 
         // We're done, flush the remaining stack.
         stack.flush(0, &mut functions);
-
-        // Functions are not necessarily in RVA order. So far, it seems that modules are.
-        dmsort::sort_by_key(&mut functions, |f| f.address);
 
         Ok(functions)
     }

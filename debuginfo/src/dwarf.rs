@@ -717,10 +717,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         // We're done, flush the remaining stack.
         stack.flush(0, &mut functions);
 
-        // Units are sorted by their address range in DWARF, but the functions within may occurr
-        // in any order. Sort the batch that was just written, therefore.
-        dmsort::sort_by_key(&mut functions, |f| f.address);
-
         Ok(functions)
     }
 }

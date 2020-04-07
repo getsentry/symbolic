@@ -132,22 +132,20 @@ where
 #[derive(Copy, Clone, Debug, Eq, Ord, Hash, PartialEq, PartialOrd)]
 struct FuncRef {
     /// The start address of the function.
-    pub address: u64,
+    pub addr: u64,
     /// The original index in the functions array.
     pub index: u32,
 }
 
 impl FuncRef {
-    /// Creates a new
-    pub fn new(address: u64, index: u32) -> Self {
-        FuncRef { address, index }
+    /// Creates a new reference to a function.
+    pub fn new(addr: u64, index: u32) -> Self {
+        FuncRef { addr, index }
     }
 
+    /// Creates an empty reference, equivalent to `None`.
     pub fn none() -> Self {
-        FuncRef {
-            address: 0,
-            index: !0,
-        }
+        FuncRef { addr: 0, index: !0 }
     }
 
     /// Returns the index as `usize`.
@@ -216,35 +214,41 @@ where
         writer.set_arch(object.arch());
         writer.set_debug_id(object.debug_id());
 
-        let mut last_address = 0;
-        let mut symbols = object.symbol_map().into_iter().peekable();
         let session = object
             .debug_session()
             .context(SymCacheErrorKind::BadDebugFile)?;
 
         for function in session.functions() {
             let function = function.context(SymCacheErrorKind::BadDebugFile)?;
-
-            while symbols
-                .peek()
-                .map_or(false, |s| s.address < function.address)
-            {
-                let symbol = symbols.next().unwrap();
-                if symbol.address >= last_address {
-                    writer.add_symbol(symbol)?;
-                }
-            }
-
-            // Ensure that symbols at the function address are skipped even if the function size is
-            // zero. We trust that the function range (address to address + size) spans all lines.
-            last_address = last_address.max(function.address + function.size.max(1));
             writer.add_function(function)?;
         }
 
-        for symbol in symbols {
-            if symbol.address > last_address {
-                writer.add_symbol(symbol)?;
+        // Sort the files to efficiently add symbols from the symbol table in linear time
+        // complexity. When the writer finishes, it will sort again with the added symbols.
+        writer.ensure_sorted();
+
+        let mut symbols = object.symbol_map().into_iter().peekable();
+
+        // Add symbols from the symbol table. Since `add_symbol` mutates the internal `functions`
+        // list, remember the current range to avoid handling a function twice.
+        for index in 0..writer.functions.len() {
+            if let Some(function) = writer.functions.get(index) {
+                let address = function.original.addr;
+                let end = address + function.record.len.max(1) as u64;
+
+                // Consume all functions before and within this function. Only write the symbols
+                // before the function and drop the rest.
+                while symbols.peek().map_or(false, |s| s.address < end) {
+                    let symbol = symbols.next().unwrap();
+                    if symbol.address < address {
+                        writer.add_symbol(symbol)?;
+                    }
+                }
             }
+        }
+
+        for symbol in symbols {
+            writer.add_symbol(symbol)?;
         }
 
         writer.finish()
@@ -544,10 +548,8 @@ where
 
         // For optimization purposes, remember if all functions appear in order. If not, parent
         // offsets need to be fixed up when writing to the file.
-        if let Some(last) = functions.last() {
-            if addr < last.record.addr_start() {
-                self.sorted = false;
-            }
+        if self.sorted && functions.last().map_or(false, |f| addr < f.original.addr) {
+            self.sorted = false;
         }
 
         // Set the original index of this function as the current insert index. If functions need to
@@ -563,20 +565,23 @@ where
         Ok(original)
     }
 
+    fn ensure_sorted(&mut self) {
+        // Only sort if functions do not already appear in order. They are sorted primarily by their
+        // start address, and secondarily by the index in which they appeared originally in the
+        // file.
+        if !self.sorted {
+            dmsort::sort_by_key(&mut self.functions, |handle| handle.original);
+        }
+    }
+
     fn write_functions(&mut self) -> Result<format::Seg<format::FuncRecord>, SymCacheError> {
         if self.functions.is_empty() {
             return Ok(format::Seg::default());
         }
 
-        // Only sort if functions do not already appear in order. They are sorted primarily by their
-        // start address, and secondarily by the index in which they appeared originally in the
-        // file.
         // To compute parent offsets after that, one can simply binary search by the parent_ref
         // handle, allowing for efficient unique lookups.
-        if !self.sorted {
-            self.functions
-                .sort_unstable_by_key(|handle| handle.original);
-        }
+        self.ensure_sorted();
 
         let functions = &self.functions;
         let segment = format::Seg::new(self.writer.position as u32, functions.len() as u32);
