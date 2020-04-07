@@ -34,16 +34,16 @@ fn test_write_header_linux() -> Result<(), Error> {
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!(symcache, @r###"
-   ⋮SymCache {
-   ⋮    debug_id: DebugId {
-   ⋮        uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
-   ⋮        appendix: 0,
-   ⋮    },
-   ⋮    arch: Amd64,
-   ⋮    has_line_info: true,
-   ⋮    has_file_info: true,
-   ⋮    functions: 1955,
-   ⋮}
+    SymCache {
+        debug_id: DebugId {
+            uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
+            appendix: 0,
+        },
+        arch: Amd64,
+        has_line_info: true,
+        has_file_info: true,
+        functions: 1964,
+    }
     "###);
 
     Ok(())

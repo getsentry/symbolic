@@ -3,7 +3,7 @@ source: debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug(&functions[..10], 0)"
 ---
 
-> 0x1ec0: callback (0x3b)
+> 0x1ec0: _ZN12_GLOBAL__N_18callbackERKN15google_breakpad18MinidumpDescriptorEPvb (0x3b)
   0x1ec0: main.cpp:9 (../linux)
   0x1ec2: main.cpp:8 (../linux)
   0x1ec5: main.cpp:9 (../linux)
@@ -19,7 +19,7 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     > 0x1ee0: printf (0x17)
       0x1ee0: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
 
-> 0x1f00: _ZN15google_breakpad18MinidumpDescriptorD2Ev (0x32)
+> 0x1f00: _ZN15google_breakpad18MinidumpDescriptorD1Ev (0x32)
   0x1f00: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
   0x1f08: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
   0x1f0c: basic_string.h:179 (/usr/include/c++/5/bits)
@@ -199,7 +199,7 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     > 0x1d72: crash (0xb)
       0x1d72: main.cpp:23 (../linux)
 
-> 0x1f00: _ZN15google_breakpad18MinidumpDescriptorD2Ev (0x32)
+> 0x1f00: _ZN15google_breakpad18MinidumpDescriptorD1Ev (0x32)
   0x1f00: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
   0x1f08: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
   0x1f0c: basic_string.h:179 (/usr/include/c++/5/bits)
@@ -295,7 +295,7 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   > 0x20e0: InstallDefaultHandler (0xc)
     0x20e0: exception_handler.cc:199 (../deps/breakpad/src/client/linux/handler)
 
-> 0x20f0: _ZN15google_breakpad16ExceptionHandlerD2Ev (0x341)
+> 0x20f0: _ZN15google_breakpad16ExceptionHandlerD1Ev (0x341)
   0x20f0: exception_handler.cc:259 (../deps/breakpad/src/client/linux/handler)
   0x20f7: exception_handler.cc:260 (../deps/breakpad/src/client/linux/handler)
   0x20fe: exception_handler.cc:259 (../deps/breakpad/src/client/linux/handler)

@@ -1,18 +1,17 @@
 ---
-created: "2019-07-02T08:47:28.746328Z"
-creator: insta@0.8.1
 source: symcache/tests/test_writer.rs
 expression: FunctionsDebug(&symcache)
 ---
-            1900 _ZN15google_breakpad13PageAllocator7FreeAllEv
+            1558 _init
+            1900 _ZN15google_breakpad13PageAllocator7FreeAllEv.isra.6
             190d sys_munmap
-            194a _ZN15google_breakpad17ProcCpuInfoReader14GetValueAndLenEPm
-            196a _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE9CopyIndexEjPS1_
-            198a _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE9CopyIndexEjPS1_
-            19a8 _ZN15google_breakpad10TypedMDRVAIjE20CopyIndexAfterObjectEjPKvm
-            19c8 MinidumpWriter
-            19e8 ~MinidumpWriter
-            1a14 WriteFile
+            194a _ZN15google_breakpad17ProcCpuInfoReader14GetValueAndLenEPm.isra.20.part.21
+            196a _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE9CopyIndexEjPS1_.isra.32.part.33
+            198a _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE9CopyIndexEjPS1_.isra.32
+            19a8 _ZN15google_breakpad10TypedMDRVAIjE20CopyIndexAfterObjectEjPKvm.isra.34.part.35
+            19c8 _ZN12_GLOBAL__N_114MinidumpWriterC2EPKciPKN15google_breakpad16ExceptionHandler12CrashContextERKNSt7__cxx114listINS3_12MappingEntryESaISA_EEERKNS9_INS3_9AppMemoryESaISF_EEEbmbPNS3_11LinuxDumperE.part.93
+            19e8 _ZN12_GLOBAL__N_114MinidumpWriterD2Ev.constprop.123
+            1a14 _ZN12_GLOBAL__N_114MinidumpWriter9WriteFileEP20MDLocationDescriptorPKc.constprop.120
             1a24 sys_open
             1a6f Alloc
             1a6f _ZN15google_breakpad11LinuxDumper9allocatorEv
@@ -21,7 +20,7 @@ expression: FunctionsDebug(&symcache)
             1b08 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
             1bc4 Alloc
             1bc4 _ZN15google_breakpad11LinuxDumper9allocatorEv
-            1c00 WriteProcFile
+            1c00 _ZN12_GLOBAL__N_114MinidumpWriter13WriteProcFileEP20MDLocationDescriptoriPKc.constprop.119
             1c70 main
             1c89 _ZN15google_breakpad18MinidumpDescriptorC4ERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE
             1c89 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4ERKS4_
@@ -43,11 +42,16 @@ expression: FunctionsDebug(&symcache)
             1d39 _ZN15google_breakpad18MicrodumpExtraInfoC4Ev
             1d72 start
             1d72 crash
-            1ec0 callback
+            1dc0 _start
+            1df0 deregister_tm_clones
+            1e30 register_tm_clones
+            1e70 __do_global_dtors_aux
+            1e90 frame_dummy
+            1ec0 _ZN12_GLOBAL__N_18callbackERKN15google_breakpad18MinidumpDescriptorEPvb
             1ec7 printf
             1ee0 printf
-            1f00 _ZN15google_breakpad18MinidumpDescriptorD2Ev
-            1f00 _ZN15google_breakpad18MinidumpDescriptorD2Ev
+            1f00 _ZN15google_breakpad18MinidumpDescriptorD1Ev
+            1f00 _ZN15google_breakpad18MinidumpDescriptorD1Ev
             1f08 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev
             1f08 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv
             1f08 _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv
@@ -80,7 +84,7 @@ expression: FunctionsDebug(&symcache)
             1fae memset
             2070 _ZN15google_breakpad16ExceptionHandler21RestoreHandlersLockedEv
             20e0 InstallDefaultHandler
-            20f0 _ZN15google_breakpad16ExceptionHandlerD2Ev
+            20f0 _ZN15google_breakpad16ExceptionHandlerD1Ev
             211e _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE3endEv
             211e _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEC4ERKS4_
             2122 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE5beginEv
@@ -255,7 +259,7 @@ expression: FunctionsDebug(&symcache)
             35d1 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
             3613 _ZNSt11char_traitsIcE6assignERcRKc
             3660 _ZN15google_breakpad30SetFirstChanceExceptionHandlerEPFbiPvS0_E
-            3670 _ZN15google_breakpad16ExceptionHandlerC2ERKNS_18MinidumpDescriptorEPFbPvEPFbS3_S4_bES4_bi
+            3670 _ZN15google_breakpad16ExceptionHandlerC1ERKNS_18MinidumpDescriptorEPFbPvEPFbS3_S4_bES4_bi
             3693 _ZN15google_breakpad10scoped_ptrINS_21CrashGenerationClientEEC4EPS1_
             36b8 _ZNSt7__cxx114listIN15google_breakpad12MappingEntryESaIS2_EEC4Ev
             36b8 _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EEC4Ev
@@ -325,7 +329,7 @@ expression: FunctionsDebug(&symcache)
             3bfd _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
             3c04 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
             3c45 _ZNSt11char_traitsIcE6assignERcRKc
-            3cb0 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE19_M_emplace_back_auxIJS2_EEEvDpOT_
+            3cb0 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE19_M_emplace_back_auxIIS2_EEEvDpOT_
             3cc4 _ZNKSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE12_M_check_lenEmPKc
             3cc4 _ZNKSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE4sizeEv
             3ccf _ZSt3maxImERKT_S2_S2_
@@ -346,7 +350,7 @@ expression: FunctionsDebug(&symcache)
             3d26 _ZNSt12_Vector_baseIPN15google_breakpad16ExceptionHandlerESaIS2_EE13_M_deallocateEPS2_m
             3d30 _ZNSt16allocator_traitsISaIPN15google_breakpad16ExceptionHandlerEEE10deallocateERS3_PS2_m
             3d30 _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad16ExceptionHandlerEE10deallocateEPS3_m
-            3da0 _ZN15google_breakpad18MinidumpDescriptorC2ERKS0_
+            3da0 _ZN15google_breakpad18MinidumpDescriptorC1ERKS0_
             3da9 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4ERKS4_
             3da9 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv
             3dd3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_
@@ -896,7 +900,7 @@ expression: FunctionsDebug(&symcache)
             79ba _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIPNS0_11MappingInfoEEEE9constructIS3_JS3_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS4_PT_DpOS7_
             79ba _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIPNS0_11MappingInfoEEEE12_S_constructIS3_JS3_EEENSt9enable_ifIXsrSt6__and_IJNS5_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS4_PSA_DpOSB_
             79ba _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad11MappingInfoEE9constructIS3_JS3_EEEvPT_DpOT0_
-            7ac0 _ZN15google_breakpad11LinuxDumperC2EiPKc
+            7ac0 _ZN15google_breakpad11LinuxDumperC1EiPKc
             7ac4 _ZN15google_breakpad15wasteful_vectorIiEC4EPNS_13PageAllocatorEj
             7ac4 _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE7reserveEm
             7ac4 _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE20_M_allocate_and_copyISt13move_iteratorIPiEEES6_mT_S8_
@@ -971,10 +975,10 @@ expression: FunctionsDebug(&symcache)
             8370 _ZN15google_breakpad11LinuxDumperD0Ev
             8390 _ZNK15google_breakpad11LinuxDumper20GetCrashSignalStringEv
             8590 _ZNK15google_breakpad11LinuxDumper22GetMappingAbsolutePathERKNS_11MappingInfoEPc
-            85e0 ElfFileSoName
+            85e0 _ZN15google_breakpad12_GLOBAL__N_113ElfFileSoNameERKNS_11LinuxDumperERKNS_11MappingInfoEPcm.constprop.55
             85ea IsMappedFileOpenUnsafe
             8695 ElfFileSoNameFromMappedFile
-            8770 _ZNK15google_breakpad11LinuxDumper26HandleDeletedFileInMappingEPc
+            8770 _ZNK15google_breakpad11LinuxDumper26HandleDeletedFileInMappingEPc.part.12.constprop.56
             87f7 _ZN15google_breakpad12SafeReadLinkILm255EEEbPKcRAT__c
             884a sys_stat
             886f memcpy
@@ -1057,7 +1061,7 @@ expression: FunctionsDebug(&symcache)
             9c86 _ZN15google_breakpad13PageAllocator5AllocEm
             9ce6 _ZN15google_breakpad13PageAllocator9GetNPagesEm
             9ce6 sys_mmap
-            9e50 _ZN15google_breakpad17LinuxPtraceDumperC2Ei
+            9e50 _ZN15google_breakpad17LinuxPtraceDumperC1Ei
             9e80 _ZN15google_breakpad17LinuxPtraceDumper15ReadRegisterSetEPNS_10ThreadInfoEi
             9e93 sys_ptrace
             9f2e sys_ptrace
@@ -1094,7 +1098,7 @@ expression: FunctionsDebug(&symcache)
             a7be _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE6resizeEm
             a7cd _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE15_M_erase_at_endEPi
             a878 memmove
-            a8f0 _ZN15google_breakpad17LinuxPtraceDumperD2Ev
+            a8f0 _ZN15google_breakpad17LinuxPtraceDumperD1Ev
             a910 _ZN15google_breakpad17LinuxPtraceDumperD0Ev
             a910 _ZN15google_breakpad17LinuxPtraceDumperD4Ev
             a930 _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE17_M_default_appendEm
@@ -1119,7 +1123,7 @@ expression: FunctionsDebug(&symcache)
             aa79 _ZN15google_breakpad13PageAllocator5AllocEm
             aabc _ZN15google_breakpad13PageAllocator9GetNPagesEm
             aabc sys_mmap
-            abc0 WriteThreadListStream
+            abc0 _ZN12_GLOBAL__N_114MinidumpWriter21WriteThreadListStreamEP14MDRawDirectory.constprop.105
             abe8 _ZN15google_breakpad10TypedMDRVAIjEC4EPNS_18MinidumpFileWriterE
             abe8 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
             ac0a _ZNKSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE4sizeEv
@@ -1183,7 +1187,7 @@ expression: FunctionsDebug(&symcache)
             baff _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E5FlushEv
             bb23 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64ED4Ev
             bb30 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E5FlushEv
-            bb80 Dump
+            bb80 _ZN12_GLOBAL__N_114MinidumpWriter4DumpEv.constprop.104
             bb81 _ZN15google_breakpad10TypedMDRVAI11MDRawHeaderE8AllocateEv
             bba0 _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryEC4EPNS_18MinidumpFileWriterE
             bba0 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
@@ -1417,7 +1421,7 @@ expression: FunctionsDebug(&symcache)
             e9ec _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE8_M_clearEv
             e9f9 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE11_M_put_nodeEPSt10_List_nodeIS2_E
             e9f9 _ZN9__gnu_cxx13new_allocatorISt10_List_nodeIN15google_breakpad9AppMemoryEEE10deallocateEPS4_m
-            ea30 WriteMinidumpImpl
+            ea30 _ZN12_GLOBAL__N_117WriteMinidumpImplEPKciliPKvmRKNSt7__cxx114listIN15google_breakpad12MappingEntryESaIS7_EEERKNS5_INS6_9AppMemoryESaISC_EEEbmb
             eac3 _ZN15google_breakpad17LinuxPtraceDumperD4Ev
             eb10 _ZN15google_breakpad11LinuxDumper17set_crash_addressEm
             eb14 MinidumpWriter
@@ -1541,7 +1545,7 @@ expression: FunctionsDebug(&symcache)
             f77d _ZN15google_breakpad13PageAllocator5AllocEm
             f7c3 _ZN15google_breakpad13PageAllocator9GetNPagesEm
             f7c3 sys_mmap
-            f8c0 _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE19_M_emplace_back_auxIJRKS0_EEEvDpOT_
+            f8c0 _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE19_M_emplace_back_auxIIRKS0_EEEvDpOT_
             f8dc _ZNKSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE12_M_check_lenEmPKc
             f8dc _ZNKSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE4sizeEv
             f8e9 _ZSt3maxImERKT_S2_S2_
@@ -1560,8 +1564,8 @@ expression: FunctionsDebug(&symcache)
             f9a2 _ZN15google_breakpad13PageAllocator5AllocEm
             f9e4 _ZN15google_breakpad13PageAllocator9GetNPagesEm
             f9e4 sys_mmap
-            fb10 _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm
-            fb40 _ZN15google_breakpad18MinidumpFileWriterC2Ev
+            fb10 _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm.isra.7.part.8
+            fb40 _ZN15google_breakpad18MinidumpFileWriterC1Ev
             fb60 _ZN15google_breakpad18MinidumpFileWriter4OpenEPKc
             fb6e sys_open
             fbe0 _ZN15google_breakpad18MinidumpFileWriter7SetFileEi
@@ -1760,7 +1764,7 @@ expression: FunctionsDebug(&symcache)
            1186b _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorINS0_10ElfSegmentEEEE9constructIS2_JRKS2_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS3_PT_DpOS8_
            1186b _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorINS0_10ElfSegmentEEEE12_S_constructIS2_JRKS2_EEENSt9enable_ifIXsrSt6__and_IJNS4_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS3_PSB_DpOSC_
            1186b _ZN9__gnu_cxx13new_allocatorIN15google_breakpad10ElfSegmentEE9constructIS2_JRKS2_EEEvPT_DpOT0_
-           11990 _ZNSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE19_M_emplace_back_auxIJRKS1_EEEvDpOT_
+           11990 _ZNSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE19_M_emplace_back_auxIIRKS1_EEEvDpOT_
            119ac _ZNKSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE12_M_check_lenEmPKc
            119ac _ZNKSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE4sizeEv
            119b9 _ZSt3maxImERKT_S2_S2_
@@ -1923,19 +1927,19 @@ expression: FunctionsDebug(&symcache)
            133a0 sys_mmap
            133de sys_close
            1340b _ZN15google_breakpad11MemoryRange3SetEPKvm
-           13430 _ZN15google_breakpad16MemoryMappedFileC2EPKcm
+           13430 _ZN15google_breakpad16MemoryMappedFileC1EPKcm
            13430 _ZN15google_breakpad11MemoryRangeC4Ev
            13450 _ZN15google_breakpad12SafeReadLinkEPKcPcm
            13450 sys_readlink
-           13490 ~CrashGenerationClientImpl
-           134a0 RequestDump
+           13490 _ZN15google_breakpad12_GLOBAL__N_125CrashGenerationClientImplD1Ev
+           134a0 _ZN15google_breakpad12_GLOBAL__N_125CrashGenerationClientImpl11RequestDumpEPKvm
            134a4 sys_pipe
            13535 sys_sendmsg
            135b2 sys_close
            135cf sys_read
            13603 sys_close
            13670 sys_close
-           136c0 ~CrashGenerationClientImpl
+           136c0 _ZN15google_breakpad12_GLOBAL__N_125CrashGenerationClientImplD0Ev
            136d0 _ZN15google_breakpad21CrashGenerationClient9TryCreateEi
            136e1 CrashGenerationClientImpl
            13700 _ZNK15google_breakpad10ThreadInfo21GetInstructionPointerEv
@@ -1959,4 +1963,7 @@ expression: FunctionsDebug(&symcache)
            14660 ConvertUTF32toUTF8
            14920 ConvertUTF8toUTF32
            1498c isLegalUTF8
+           14c30 __libc_csu_init
+           14ca0 __libc_csu_fini
+           14ca4 _fini
 
