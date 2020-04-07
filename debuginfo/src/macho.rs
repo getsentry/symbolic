@@ -213,7 +213,8 @@ impl<'d> MachObject<'d> {
     /// [`has_debug_info`](struct.MachObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
         let symbols = self.symbol_map();
-        DwarfDebugSession::parse(self, symbols, self.load_address())
+        let relocatable = self.kind() == ObjectKind::Relocatable;
+        DwarfDebugSession::parse(self, symbols, self.load_address(), relocatable)
     }
 
     /// Determines whether this object contains stack unwinding information.
