@@ -115,7 +115,7 @@ impl fmt::Debug for DwarfSection<'_> {
 /// data. If so, override the provided `section_data` method. Also, if there is a faster way to
 /// check for the existence of a section without loading its data, override `has_section`.
 pub trait Dwarf<'data> {
-    /// Returns whether the file was written on a big-endian or little-endian machine.
+    /// Returns whether the file was compiled for a big-endian or little-endian machine.
     ///
     /// This can usually be determined by inspecting the file's headers. Sometimes, this is also
     /// given by the architecture.
@@ -404,6 +404,17 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             None => return Err(gimli::read::Error::MissingUnitDie.into()),
         };
 
+        // Clang's LLD might eliminate an entire compilation unit and simply set the low_pc to zero
+        // and remove all range entries to indicate that it is missing. Skip such a unit, as it does
+        // not contain any code that can be executed. Special case relocatable objects, as here the
+        // range information has not been written yet and all units look like this.
+        if info.kind != ObjectKind::Relocatable
+            && unit.low_pc == 0
+            && entry.attr(constants::DW_AT_ranges)?.is_none()
+        {
+            return Ok(None);
+        }
+
         let language = match entry.attr_value(constants::DW_AT_language)? {
             Some(AttributeValue::Language(lang)) => language_from_dwarf(lang),
             _ => Language::Unknown,
@@ -481,8 +492,13 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             return Ok(tuple);
         }
 
+        // To go by the logic in dwarf2read, a `low_pc` of 0 can indicate an
+        // eliminated duplicate when the GNU linker is used. In relocatable
+        // objects, all functions are at `0` since they have not been placed
+        // yet, so we want to retain them.
+        let kind = self.inner.info.kind;
         let low_pc = match low_pc {
-            Some(low_pc) => low_pc,
+            Some(low_pc) if low_pc != 0 || kind == ObjectKind::Relocatable => low_pc,
             _ => return Ok(tuple),
         };
 
@@ -579,9 +595,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Collects all functions within this compilation unit.
-    ///
-    /// Since there are some DWARF files where functions appear out of order -- instead of sorted by
-    /// their start address -- they have to be collected anyway.
     fn functions(&self, range_buf: &mut Vec<Range>) -> Result<Vec<Function<'d>>, DwarfError> {
         let mut depth = 0;
         let mut skipped_depth = None;
@@ -830,6 +843,7 @@ struct DwarfInfo<'data> {
     units: Vec<LazyCell<Option<Unit<'data>>>>,
     symbol_map: SymbolMap<'data>,
     load_address: u64,
+    kind: ObjectKind,
 }
 
 impl<'d> Deref for DwarfInfo<'d> {
@@ -846,6 +860,7 @@ impl<'d> DwarfInfo<'d> {
         sections: &'d DwarfSections<'d>,
         symbol_map: SymbolMap<'d>,
         load_address: u64,
+        kind: ObjectKind,
     ) -> Result<Self, DwarfError> {
         let inner = gimli::read::Dwarf {
             debug_abbrev: sections.debug_abbrev.to_gimli(),
@@ -874,6 +889,7 @@ impl<'d> DwarfInfo<'d> {
             units,
             symbol_map,
             load_address,
+            kind,
         })
     }
 
@@ -997,13 +1013,14 @@ impl<'d> DwarfDebugSession<'d> {
         dwarf: &D,
         symbol_map: SymbolMap<'d>,
         load_address: u64,
+        kind: ObjectKind,
     ) -> Result<Self, DwarfError>
     where
         D: Dwarf<'d>,
     {
         let sections = DwarfSections::from_dwarf(dwarf)?;
         let cell = SelfCell::try_new(Box::new(sections), |sections| {
-            DwarfInfo::parse(unsafe { &*sections }, symbol_map, load_address)
+            DwarfInfo::parse(unsafe { &*sections }, symbol_map, load_address, kind)
         })?;
 
         Ok(DwarfDebugSession { cell })
