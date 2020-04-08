@@ -493,7 +493,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         // To go by the logic in dwarf2read, a `low_pc` of 0 can indicate an
         // eliminated duplicate when the GNU linker is used. In relocatable
-        // objects, we want to retain those functions.
+        // objects, all functions are at `0` since they have not been placed
+        // yet, so we want to retain them.
         let kind = self.inner.info.kind;
         let low_pc = match low_pc {
             Some(low_pc) if low_pc != 0 || kind == ObjectKind::Relocatable => low_pc,
