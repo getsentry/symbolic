@@ -234,8 +234,7 @@ impl<'d> ElfObject<'d> {
     /// [`has_debug_info`](struct.ElfObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
         let symbols = self.symbol_map();
-        let relocatable = self.kind() == ObjectKind::Relocatable;
-        DwarfDebugSession::parse(self, symbols, self.load_address(), relocatable)
+        DwarfDebugSession::parse(self, symbols, self.load_address(), self.kind())
     }
 
     /// Determines whether this object contains stack unwinding information.

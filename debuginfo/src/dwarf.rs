@@ -407,7 +407,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         // Clang's LLD might eliminate an entire compilation unit and simply set the low_pc to zero
         // and remove all range entries to indicate that it is missing. Skip such a unit, as it does
         // not contain any code that can be executed.
-        if !info.relocatable && unit.low_pc == 0 && entry.attr(constants::DW_AT_ranges)?.is_none() {
+        if info.kind != ObjectKind::Relocatable
+            && unit.low_pc == 0
+            && entry.attr(constants::DW_AT_ranges)?.is_none()
+        {
             return Ok(None);
         }
 
@@ -491,8 +494,9 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         // To go by the logic in dwarf2read, a `low_pc` of 0 can indicate an
         // eliminated duplicate when the GNU linker is used. In relocatable
         // objects, we want to retain those functions.
+        let kind = self.inner.info.kind;
         let low_pc = match low_pc {
-            Some(low_pc) if low_pc != 0 || self.inner.info.relocatable => low_pc,
+            Some(low_pc) if low_pc != 0 || kind == ObjectKind::Relocatable => low_pc,
             _ => return Ok(tuple),
         };
 
@@ -837,7 +841,7 @@ struct DwarfInfo<'data> {
     units: Vec<LazyCell<Option<Unit<'data>>>>,
     symbol_map: SymbolMap<'data>,
     load_address: u64,
-    relocatable: bool,
+    kind: ObjectKind,
 }
 
 impl<'d> Deref for DwarfInfo<'d> {
@@ -854,7 +858,7 @@ impl<'d> DwarfInfo<'d> {
         sections: &'d DwarfSections<'d>,
         symbol_map: SymbolMap<'d>,
         load_address: u64,
-        relocatable: bool,
+        kind: ObjectKind,
     ) -> Result<Self, DwarfError> {
         let inner = gimli::read::Dwarf {
             debug_abbrev: sections.debug_abbrev.to_gimli(),
@@ -883,7 +887,7 @@ impl<'d> DwarfInfo<'d> {
             units,
             symbol_map,
             load_address,
-            relocatable,
+            kind,
         })
     }
 
@@ -1007,14 +1011,14 @@ impl<'d> DwarfDebugSession<'d> {
         dwarf: &D,
         symbol_map: SymbolMap<'d>,
         load_address: u64,
-        relocatable: bool,
+        kind: ObjectKind,
     ) -> Result<Self, DwarfError>
     where
         D: Dwarf<'d>,
     {
         let sections = DwarfSections::from_dwarf(dwarf)?;
         let cell = SelfCell::try_new(Box::new(sections), |sections| {
-            DwarfInfo::parse(unsafe { &*sections }, symbol_map, load_address, relocatable)
+            DwarfInfo::parse(unsafe { &*sections }, symbol_map, load_address, kind)
         })?;
 
         Ok(DwarfDebugSession { cell })
