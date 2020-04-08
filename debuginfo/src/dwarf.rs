@@ -406,7 +406,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         // Clang's LLD might eliminate an entire compilation unit and simply set the low_pc to zero
         // and remove all range entries to indicate that it is missing. Skip such a unit, as it does
-        // not contain any code that can be executed.
+        // not contain any code that can be executed. Special case relocatable objects, as here the
+        // range information has not been written yet and all units look like this.
         if info.kind != ObjectKind::Relocatable
             && unit.low_pc == 0
             && entry.attr(constants::DW_AT_ranges)?.is_none()
