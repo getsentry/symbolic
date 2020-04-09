@@ -117,7 +117,7 @@ pub fn join_path(base: &str, other: &str) -> String {
         "{}{}{}",
         base.trim_end_matches(is_path_separator),
         if is_windows { '\\' } else { '/' },
-        other.trim_end_matches(is_path_separator)
+        other.trim_start_matches(is_path_separator)
     )
 }
 
