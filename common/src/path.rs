@@ -1,38 +1,83 @@
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
-fn is_absolute_windows_path(s: &str) -> bool {
-    // UNC
-    if s.len() > 2 && (&s[..2] == "\\\\" || &s[..2] == "//") {
-        return true;
+trait ToChar {
+    fn to_char(self) -> char;
+}
+
+impl ToChar for char {
+    fn to_char(self) -> char {
+        self
     }
+}
 
-    // other paths
-    let mut char_iter = s.chars();
-    let (fc, sc, tc) = (char_iter.next(), char_iter.next(), char_iter.next());
+impl ToChar for u8 {
+    fn to_char(self) -> char {
+        char::from(self)
+    }
+}
 
-    match fc.unwrap_or_default() {
-        'A'..='Z' | 'a'..='z' => {
-            if sc == Some(':') && tc.map_or(true, |tc| tc == '\\' || tc == '/') {
-                return true;
-            }
+impl<T: ToChar + Copy> ToChar for &'_ T {
+    fn to_char(self) -> char {
+        (*self).to_char()
+    }
+}
+
+/// Returns `true` if the given character is any valid directory separator.
+#[inline]
+fn is_path_separator<C: ToChar>(c: C) -> bool {
+    matches!(c.to_char(), '\\' | '/')
+}
+
+/// Returns `true` if the given character is a valid Windows directory separator.
+#[inline]
+fn is_windows_separator<C: ToChar>(c: C) -> bool {
+    is_path_separator(c)
+}
+
+/// Returns `true` if the given character is a valid UNIX directory separator.
+#[inline]
+fn is_unix_separator<C: ToChar>(c: C) -> bool {
+    c.to_char() == '/'
+}
+
+/// Returns `true` if this is a Windows Universal Naming Convention path (UNC).
+fn is_windows_unc<P: AsRef<[u8]>>(path: P) -> bool {
+    let path = path.as_ref();
+    path.starts_with(b"\\\\") || path.starts_with(b"//")
+}
+
+/// Returns `true` if this is an absolute Windows path starting with a drive letter.
+fn is_windows_driveletter<P: AsRef<[u8]>>(path: P) -> bool {
+    let path = path.as_ref();
+
+    if let (Some(drive_letter), Some(b':')) = (path.get(0), path.get(1)) {
+        if matches!(drive_letter, b'A'..=b'Z' | b'a'..=b'z') {
+            return path.get(2).map_or(true, is_windows_separator);
         }
-        _ => (),
     }
 
     false
 }
 
-fn is_semi_absolute_windows_path(s: &str) -> bool {
-    s.starts_with(&['/', '\\'][..])
+/// Returns `true` if this is an absolute Windows path.
+fn is_absolute_windows_path<P: AsRef<[u8]>>(path: P) -> bool {
+    let path = path.as_ref();
+    is_windows_unc(path) || is_windows_driveletter(path)
 }
 
-fn is_absolute_unix_path(s: &str) -> bool {
-    s.starts_with('/')
+/// Returns `true`
+fn is_semi_absolute_windows_path<P: AsRef<[u8]>>(path: P) -> bool {
+    path.as_ref().get(0).map_or(false, is_windows_separator)
 }
 
-fn is_windows_path(path: &str) -> bool {
-    path.contains('\\') || is_absolute_windows_path(path)
+fn is_absolute_unix_path<P: AsRef<[u8]>>(path: P) -> bool {
+    path.as_ref().get(0).map_or(false, is_unix_separator)
+}
+
+fn is_windows_path<P: AsRef<[u8]>>(path: P) -> bool {
+    let path = path.as_ref();
+    is_absolute_windows_path(path) || path.contains(&b'\\')
 }
 
 /// Joins paths of various platforms.
@@ -65,25 +110,19 @@ pub fn join_path(base: &str, other: &str) -> String {
         }
     }
 
-    let win_style = is_windows_path(base) || is_windows_path(other);
-
-    if win_style {
-        format!(
-            "{}\\{}",
-            base.trim_end_matches(&['\\', '/'][..]),
-            other.trim_start_matches(&['\\', '/'][..])
-        )
-    } else {
-        format!(
-            "{}/{}",
-            base.trim_end_matches('/'),
-            other.trim_start_matches('/')
-        )
-    }
+    // Always trim by both separators, since as soon as the path is Windows, slashes also count as
+    // valid path separators. However, use the main separator for joining.
+    let is_windows = is_windows_path(base) || is_windows_path(other);
+    format!(
+        "{}{}{}",
+        base.trim_end_matches(is_path_separator),
+        if is_windows { '\\' } else { '/' },
+        other.trim_end_matches(is_path_separator)
+    )
 }
 
 fn pop_path(path: &mut String) -> bool {
-    if let Some(idx) = path.rfind(&['/', '\\'][..]) {
+    if let Some(idx) = path.rfind(is_path_separator) {
         path.truncate(idx);
         true
     } else if !path.is_empty() {
@@ -100,11 +139,12 @@ fn pop_path(path: &mut String) -> bool {
 /// is a lossy operation.
 pub fn clean_path(path: &str) -> Cow<'_, str> {
     let mut rv = String::with_capacity(path.len());
-    let is_windows = path.contains('\\');
+    let main_separator = if is_windows_path(path) { '\\' } else { '/' };
+
     let mut needs_separator = false;
     let mut is_past_root = false;
 
-    for segment in path.split_terminator(&['/', '\\'][..]) {
+    for segment in path.split_terminator(is_path_separator) {
         if segment == "." {
             continue;
         } else if segment == ".." {
@@ -119,7 +159,7 @@ pub fn clean_path(path: &str) -> Cow<'_, str> {
                     is_past_root = true;
                 }
                 if needs_separator {
-                    rv.push(if is_windows { '\\' } else { '/' });
+                    rv.push(main_separator);
                 }
                 rv.push_str("..");
                 needs_separator = true;
@@ -127,7 +167,7 @@ pub fn clean_path(path: &str) -> Cow<'_, str> {
             }
         }
         if needs_separator {
-            rv.push(if is_windows { '\\' } else { '/' });
+            rv.push(main_separator);
         } else {
             needs_separator = true;
         }
@@ -149,19 +189,14 @@ pub fn clean_path(path: &str) -> Cow<'_, str> {
 /// to the desired results.
 pub fn split_path_bytes(path: &[u8]) -> (Option<&[u8]>, &[u8]) {
     // Trim directory separators at the end, if any.
-    let path = match path.iter().rposition(|b| *b != b'\\' && *b != b'/') {
+    let path = match path.iter().rposition(|c| !is_path_separator(c)) {
         Some(cutoff) => &path[..=cutoff],
         None => path,
     };
 
-    // Try to find a backslash which could indicate a Windows path.
-    let split_char = if path.contains(&b'\\') {
-        b'\\' // Probably Windows
-    } else {
-        b'/' // Probably UNIX
-    };
-
-    match path.iter().rposition(|b| *b == split_char) {
+    // Split by all path separators. On Windows, both are valid and a path is considered a
+    // Windows path as soon as it has a backslash inside.
+    match path.iter().rposition(is_path_separator) {
         Some(0) => (Some(&path[..1]), &path[1..]),
         Some(pos) => (Some(&path[..pos]), &path[pos + 1..]),
         None => (None, path),
@@ -186,6 +221,17 @@ pub fn split_path(path: &str) -> (Option<&str>, &str) {
     }
 }
 
+/// Truncates the given string at character boundaries
+fn truncate(path: &str, mut length: usize) -> &str {
+    // Backtrack to the last code point. There is a unicode point at least at the beginning of the
+    // string before the first character, which is why this cannot underflow.
+    while !path.is_char_boundary(length) {
+        length -= 1;
+    }
+
+    path.get(..length).unwrap_or_default()
+}
+
 /// Trims a path to a given length.
 ///
 /// This attempts to not completely destroy the path in the process by trimming off the middle path
@@ -195,16 +241,15 @@ pub fn shorten_path(path: &str, length: usize) -> Cow<'_, str> {
     // trivial cases
     if path.len() <= length {
         return Cow::Borrowed(path);
+    } else if length <= 3 {
+        return Cow::Borrowed(truncate(path, length));
     } else if length <= 10 {
-        if length > 3 {
-            return Cow::Owned(format!("{}...", &path[..length - 3]));
-        }
-        return Cow::Borrowed(&path[..length]);
+        return Cow::Owned(format!("{}...", truncate(path, length - 3)));
     }
 
     let mut rv = String::new();
     let mut last_idx = 0;
-    let mut piece_iter = path.match_indices(&['\\', '/'][..]);
+    let mut piece_iter = path.match_indices(is_path_separator);
     let mut final_sep = "/";
     let max_len = length - 4;
 
@@ -242,7 +287,7 @@ pub fn shorten_path(path: &str, length: usize) -> Cow<'_, str> {
     // if at this point already we're too long we just take the last element
     // of the path and strip it.
     if rv.len() > max_len || rest.is_empty() {
-        let basename = path.rsplit(&['\\', '/'][..]).next().unwrap();
+        let basename = path.rsplit(is_path_separator).next().unwrap();
         if basename.len() > max_len {
             return Cow::Owned(format!("...{}", &basename[basename.len() - max_len + 1..]));
         } else {
@@ -388,6 +433,11 @@ mod tests {
             join_path("C:\\test", "<::core::macros::assert_eq macros>"),
             "<::core::macros::assert_eq macros>"
         );
+
+        assert_eq!(
+            join_path("foo", "아이쿱 조합원 앱카드"),
+            "foo/아이쿱 조합원 앱카드"
+        );
     }
 
     #[test]
@@ -405,8 +455,14 @@ mod tests {
         assert_eq!(clean_path("foo"), "foo");
         assert_eq!(clean_path("foo\\bar\\baz/../../../blah/"), "blah");
         assert_eq!(clean_path("foo/bar/baz/../../../blah/"), "blah");
+        assert_eq!(clean_path("\\\\foo\\..\\bar"), "\\\\bar");
+        assert_eq!(
+            clean_path("foo/bar/../아이쿱 조합원 앱카드"),
+            "foo/아이쿱 조합원 앱카드"
+        );
 
         // XXX currently known broken tests:
+        //assert_eq!(clean_path("\\\\foo\\..\\..\\bar"), "\\\\bar");
         //assert_eq!(clean_path("/../../blah/"), "/blah");
         //assert_eq!(clean_path("c:\\..\\foo"), "c:\\foo");
     }
@@ -442,6 +498,9 @@ mod tests {
         assert_eq!(shorten_path("/foobarbaz/blahblah", 16), ".../blahblah");
         assert_eq!(shorten_path("/foobarbazblahblah", 12), "...lahblah");
         assert_eq!(shorten_path("", 0), "");
+
+        assert_eq!(shorten_path("아이쿱 조합원 앱카드", 9), "아...");
+        assert_eq!(shorten_path("아이쿱 조합원 앱카드", 20), "...ᆸ카드");
     }
 
     #[test]
@@ -460,6 +519,11 @@ mod tests {
         assert_eq!(split_path("a/"), (None, "a"));
         assert_eq!(split_path("/a"), (Some("/"), "a"));
         assert_eq!(split_path(""), (None, ""));
+
+        assert_eq!(
+            split_path("foo/아이쿱 조합원 앱카드"),
+            (Some("foo"), "아이쿱 조합원 앱카드")
+        );
     }
 
     #[test]
