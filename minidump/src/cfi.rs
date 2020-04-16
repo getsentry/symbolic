@@ -303,12 +303,10 @@ impl<W: Write> AsciiCfiWriter<W> {
             match table.next_row() {
                 Ok(None) => break,
                 Ok(Some(row)) => rows.push(row.clone()),
-                Err(Error::UnknownCallFrameInstruction(_)) => {
-                    continue;
-                }
-                Err(e) => {
-                    return Err(e.context(CfiErrorKind::BadDebugInfo).into());
-                }
+                Err(Error::UnknownCallFrameInstruction(_)) => continue,
+                // NOTE: Temporary workaround for https://github.com/gimli-rs/gimli/pull/487
+                Err(Error::TooManyRegisterRules) => continue,
+                Err(e) => return Err(e.context(CfiErrorKind::BadDebugInfo).into()),
             }
         }
 
