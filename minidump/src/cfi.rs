@@ -232,11 +232,14 @@ impl<W: Write> AsciiCfiWriter<W> {
 
         // First load information from the DWARF debug_frame section. It does not contain any
         // references to other DWARF sections.
-        if let Some(section) = object.section("debug_frame") {
+        // Don't return on error because eh_frame can contain some information
+        let debug_frame_result = if let Some(section) = object.section("debug_frame") {
             let frame = DebugFrame::new(&section.data, endian);
             let info = UnwindInfo::new(object, section.address, frame);
-            self.read_cfi(&info)?;
-        }
+            self.read_cfi(&info)
+        } else {
+            Ok(())
+        };
 
         // Indepdendently, Linux C++ exception handling information can also provide unwind info.
         if let Some(section) = object.section("eh_frame") {
@@ -245,8 +248,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             self.read_cfi(&info)?;
         }
 
-        // Ignore if no information was found at all.
-        Ok(())
+        debug_frame_result
     }
 
     fn read_cfi<U, R>(&mut self, info: &UnwindInfo<U>) -> Result<(), CfiError>
@@ -301,12 +303,10 @@ impl<W: Write> AsciiCfiWriter<W> {
             match table.next_row() {
                 Ok(None) => break,
                 Ok(Some(row)) => rows.push(row.clone()),
-                Err(Error::UnknownCallFrameInstruction(_)) => {
-                    continue;
-                }
-                Err(e) => {
-                    return Err(e.context(CfiErrorKind::BadDebugInfo).into());
-                }
+                Err(Error::UnknownCallFrameInstruction(_)) => continue,
+                // NOTE: Temporary workaround for https://github.com/gimli-rs/gimli/pull/487
+                Err(Error::TooManyRegisterRules) => continue,
+                Err(e) => return Err(e.context(CfiErrorKind::BadDebugInfo).into()),
             }
         }
 

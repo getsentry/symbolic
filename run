@@ -2,10 +2,20 @@
 
 FLAGS=""
 
-if [ "$1" = "--release" ]; then
-    FLAGS="$FLAGS --release"
+while : ; do
+    case "$1" in
+    "--release")
+        FLAGS="$FLAGS --release"
+        ;;
+    "--trace")
+        export RUST_BACKTRACE=1
+        ;;
+    *)
+        break
+        ;;
+    esac
     shift
-fi
+done
 
 if [ $# -lt 1 ]; then
     echo "usage: $0 [--release] <example> [args...]"
