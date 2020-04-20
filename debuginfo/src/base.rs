@@ -504,9 +504,15 @@ pub struct LineInfo<'data> {
 
 impl fmt::Debug for LineInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("LineInfo")
-            .field("address", &format_args!("{:#x}", self.address))
-            .field("file", &self.file)
+        let mut s = f.debug_struct("LineInfo");
+        s.field("address", &format_args!("{:#x}", self.address));
+
+        match self.size {
+            Some(size) => s.field("size", &format_args!("{:#x}", size)),
+            None => s.field("size", &self.size),
+        };
+
+        s.field("file", &self.file)
             .field("line", &self.line)
             .finish()
     }

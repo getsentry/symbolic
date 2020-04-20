@@ -176,6 +176,7 @@ struct DwarfRow {
     address: u64,
     file_index: u64,
     line: Option<u64>,
+    size: Option<u64>,
 }
 
 /// A sequence in the DWARF line program.
@@ -202,6 +203,13 @@ impl<'d, 'a> DwarfLineProgram<'d> {
 
         while let Ok(Some((_, &program_row))) = state_machine.next_row() {
             let address = program_row.address();
+
+            if let Some(last_row) = sequence_rows.last_mut() {
+                if address >= last_row.address {
+                    last_row.size = Some(address - last_row.address);
+                }
+            }
+
             if program_row.end_sequence() {
                 // Theoretically, there could be multiple DW_LNE_end_sequence in a row. We're not
                 // interested in empty sequences, so we can skip them completely.
@@ -242,6 +250,7 @@ impl<'d, 'a> DwarfLineProgram<'d> {
                         address,
                         file_index,
                         line,
+                        size: None,
                     });
                 }
                 prev_address = address;
@@ -557,7 +566,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 last = Some((row.file_index, line));
                 lines.push(LineInfo {
                     address: row.address - self.inner.info.load_address,
-                    size: None,
+                    size: row.size,
                     file,
                     line,
                 });
