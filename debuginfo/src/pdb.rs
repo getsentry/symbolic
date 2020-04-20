@@ -1033,6 +1033,13 @@ impl<'s> Unit<'s> {
                 _ => skipped_depth = None,
             }
 
+            // Flush all functions out that exceed the current iteration depth. Since we
+            // encountered a symbol at this level, there will be no more inlinees to the
+            // previous function at the same level or any of it's children.
+            if symbol.ends_scope() {
+                stack.flush(depth, &mut functions);
+            }
+
             let function = match symbol.parse() {
                 Ok(SymbolData::Procedure(proc)) => {
                     proc_offsets.push((depth, proc.offset));
@@ -1057,11 +1064,6 @@ impl<'s> Unit<'s> {
                 // symbol types. Instead of erroring too often, it's better to swallow these.
                 _ => continue,
             };
-
-            // Flush all functions out that exceed the current iteration depth. Since we
-            // encountered a function at this level, there will be no more inlinees to the
-            // previous function at the same level or any of it's children.
-            stack.flush(depth, &mut functions);
 
             match function {
                 Some(function) => stack.push(depth, function),

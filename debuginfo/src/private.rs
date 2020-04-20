@@ -227,6 +227,11 @@ impl<'a> FunctionStack<'a> {
     pub fn flush(&mut self, depth: isize, destination: &mut Vec<Function<'a>>) {
         let len = self.0.len();
 
+        // Fast path if the last item is already a parent of the current depth.
+        if self.0.last().map_or(false, |&(d, _)| d < depth) {
+            return;
+        }
+
         // Search for the first function that lies at or beyond the specified depth.
         let cutoff = self.0.iter().position(|&(d, _)| d >= depth).unwrap_or(len);
 

@@ -613,17 +613,17 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 _ => skipped_depth = None,
             }
 
+            // Flush all functions out that exceed the current iteration depth. Since we
+            // encountered an entry at this level, there will be no more inlinees to the
+            // previous function at the same level or any of it's children.
+            stack.flush(depth, &mut functions);
+
             // Skip anything that is not a function.
             let inline = match entry.tag() {
                 constants::DW_TAG_subprogram => false,
                 constants::DW_TAG_inlined_subroutine => true,
                 _ => continue,
             };
-
-            // Flush all functions out that exceed the current iteration depth. Since we
-            // encountered a function at this level, there will be no more inlinees to the
-            // previous function at the same level or any of it's children.
-            stack.flush(depth, &mut functions);
 
             range_buf.clear();
             let (call_line, call_file) = self.parse_ranges(entry, range_buf)?;
