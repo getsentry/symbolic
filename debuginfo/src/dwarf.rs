@@ -176,6 +176,7 @@ struct DwarfRow {
     address: u64,
     file_index: u64,
     line: Option<u64>,
+    size: Option<u64>,
 }
 
 /// A sequence in the DWARF line program.
@@ -202,6 +203,13 @@ impl<'d, 'a> DwarfLineProgram<'d> {
 
         while let Ok(Some((_, &program_row))) = state_machine.next_row() {
             let address = program_row.address();
+
+            if let Some(last_row) = sequence_rows.last_mut() {
+                if address >= last_row.address {
+                    last_row.size = Some(address - last_row.address);
+                }
+            }
+
             if program_row.end_sequence() {
                 // Theoretically, there could be multiple DW_LNE_end_sequence in a row. We're not
                 // interested in empty sequences, so we can skip them completely.
@@ -242,6 +250,7 @@ impl<'d, 'a> DwarfLineProgram<'d> {
                         address,
                         file_index,
                         line,
+                        size: None,
                     });
                 }
                 prev_address = address;
@@ -557,7 +566,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 last = Some((row.file_index, line));
                 lines.push(LineInfo {
                     address: row.address - self.inner.info.load_address,
-                    size: None,
+                    size: row.size,
                     file,
                     line,
                 });
@@ -613,17 +622,17 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 _ => skipped_depth = None,
             }
 
+            // Flush all functions out that exceed the current iteration depth. Since we
+            // encountered an entry at this level, there will be no more inlinees to the
+            // previous function at the same level or any of it's children.
+            stack.flush(depth, &mut functions);
+
             // Skip anything that is not a function.
             let inline = match entry.tag() {
                 constants::DW_TAG_subprogram => false,
                 constants::DW_TAG_inlined_subroutine => true,
                 _ => continue,
             };
-
-            // Flush all functions out that exceed the current iteration depth. Since we
-            // encountered a function at this level, there will be no more inlinees to the
-            // previous function at the same level or any of it's children.
-            stack.flush(depth, &mut functions);
 
             range_buf.clear();
             let (call_line, call_file) = self.parse_ranges(entry, range_buf)?;

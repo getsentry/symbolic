@@ -9,15 +9,14 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1ec5: main.cpp:9 (../linux)
   0x1ec7: main.cpp:15 (../linux)
   0x1eda: main.cpp:19 (../linux)
-  0x1ee0: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
+  0x1ee0: main.cpp:10 (../linux)
   0x1ef7: main.cpp:19 (../linux)
 
   > 0x1ec7: printf (0x13)
     0x1ec7: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
-    0x1ee0: main.cpp:10 (../linux)
 
-    > 0x1ee0: printf (0x17)
-      0x1ee0: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
+  > 0x1ee0: printf (0x17)
+    0x1ee0: stdio2.h:104 (/usr/include/x86_64-linux-gnu/bits)
 
 > 0x1f00: _ZN15google_breakpad18MinidumpDescriptorD1Ev (0x32)
   0x1f00: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
@@ -558,7 +557,7 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0x23aa: exception_handler.cc:170 (../deps/breakpad/src/client/linux/handler)
     0x23b2: exception_handler.cc:171 (../deps/breakpad/src/client/linux/handler)
     0x23b9: exception_handler.cc:170 (../deps/breakpad/src/client/linux/handler)
-    0x23bb: linux_syscall_support.h:3533 (../deps/third_party/lss)
+    0x23bb: exception_handler.cc:176 (../deps/breakpad/src/client/linux/handler)
     0x2408: exception_handler.cc:176 (../deps/breakpad/src/client/linux/handler)
     0x241d: exception_handler.cc:175 (../deps/breakpad/src/client/linux/handler)
     0x2425: linux_syscall_support.h:3533 (../deps/third_party/lss)
@@ -568,10 +567,9 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
     > 0x23b2: sys_sigaltstack (0x7)
       0x23b2: linux_syscall_support.h:3533 (../deps/third_party/lss)
-      0x23bb: exception_handler.cc:176 (../deps/breakpad/src/client/linux/handler)
 
-      > 0x23bb: sys_sigaltstack (0x71)
-        0x23bb: linux_syscall_support.h:3533 (../deps/third_party/lss)
+    > 0x23bb: sys_sigaltstack (0x71)
+      0x23bb: linux_syscall_support.h:3533 (../deps/third_party/lss)
 
   > 0x220f: _ZNSt7__cxx114listIN15google_breakpad9AppMemoryESaIS2_EED4Ev (0x31)
     0x220f: stl_list.h:507 (/usr/include/c++/5/bits)
@@ -772,7 +770,7 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x282f: exception_handler.cc:550 (../deps/breakpad/src/client/linux/handler)
   0x2832: exception_handler.cc:550 (../deps/breakpad/src/client/linux/handler)
   0x2861: exception_handler.cc:551 (../deps/breakpad/src/client/linux/handler)
-  0x286e: linux_syscall_support.h:3718 (../deps/third_party/lss)
+  0x286e: exception_handler.cc:553 (../deps/breakpad/src/client/linux/handler)
   0x288c: exception_handler.cc:553 (../deps/breakpad/src/client/linux/handler)
   0x2891: linux_syscall_support.h:3718 (../deps/third_party/lss)
   0x28b2: exception_handler.cc:553 (../deps/breakpad/src/client/linux/handler)
@@ -865,13 +863,12 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
   > 0x2832: sys_prctl (0x2f)
     0x2832: linux_syscall_support.h:3479 (../deps/third_party/lss)
-    0x286e: exception_handler.cc:553 (../deps/breakpad/src/client/linux/handler)
 
-    > 0x286e: sys_waitpid (0x49)
-      0x286e: linux_syscall_support.h:4496 (../deps/third_party/lss)
+  > 0x286e: sys_waitpid (0x49)
+    0x286e: linux_syscall_support.h:4496 (../deps/third_party/lss)
 
-      > 0x286e: sys_wait4 (0x49)
-        0x286e: linux_syscall_support.h:3718 (../deps/third_party/lss)
+    > 0x286e: sys_wait4 (0x49)
+      0x286e: linux_syscall_support.h:3718 (../deps/third_party/lss)
 
   > 0x28cd: sys_close (0x2a)
     0x28cd: linux_syscall_support.h:3357 (../deps/third_party/lss)
