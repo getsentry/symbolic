@@ -1,7 +1,9 @@
+use std::borrow::Borrow;
+
 use clap::{clap_app, ArgMatches};
 use failure::{Error, ResultExt};
 
-use symbolic_common::ByteView;
+use symbolic_common::{ByteView, Name};
 use symbolic_debuginfo::{Function, Object};
 use symbolic_demangle::Demangle;
 
@@ -13,7 +15,28 @@ fn print_error(error: &Error) {
     }
 }
 
-fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches<'_>) -> Result<(), Error> {
+fn print_name<'a, N: Borrow<Name<'a>>>(name: Option<N>, matches: &ArgMatches<'_>) {
+    match name.as_ref().map(Borrow::borrow) {
+        None => print!("??"),
+        Some(name) if name.as_str().is_empty() => print!("??"),
+        Some(name) if matches.is_present("demangle") => {
+            print!("{}", name.try_demangle(Default::default()));
+        }
+        Some(name) => print!("{}", name),
+    }
+}
+
+fn print_range(start: u64, len: Option<u64>, matches: &ArgMatches<'_>) {
+    if matches.is_present("ranges") {
+        print!(" ({:#x} - ", start);
+        match len {
+            Some(len) => print!("{:#x})", start + len),
+            None => print!("??)"),
+        }
+    }
+}
+
+fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches<'_>) -> Result<bool, Error> {
     if matches.is_present("inlines") {
         for il in &function.inlinees {
             resolve(il, addr, matches)?;
@@ -26,20 +49,8 @@ fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches<'_>) -> Resu
         }
 
         if matches.is_present("functions") {
-            if matches.is_present("demangle") {
-                print!("{}", function.name.try_demangle(Default::default()));
-            } else {
-                print!("{}", function.name);
-            }
-
-            if matches.is_present("ranges") {
-                print!(
-                    " ({:#x} - {:#x})",
-                    function.address,
-                    function.address + function.size
-                );
-            }
-
+            print_name(Some(&function.name), matches);
+            print_range(function.address, Some(function.size), matches);
             print!("\n  at ");
         }
 
@@ -50,20 +61,13 @@ fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches<'_>) -> Resu
         };
 
         print!("{}:{}", file, line.line);
-
-        if matches.is_present("ranges") {
-            print!(" ({:#x} - ", line.address);
-            match line.size {
-                Some(size) => print!("{:#x})", line.address + size),
-                None => print!("??)"),
-            }
-        }
-
+        print_range(line.address, line.size, matches);
         println!();
-        break;
+
+        return Ok(true);
     }
 
-    Ok(())
+    Ok(false)
 }
 
 fn execute(matches: &ArgMatches<'_>) -> Result<(), Error> {
@@ -71,8 +75,9 @@ fn execute(matches: &ArgMatches<'_>) -> Result<(), Error> {
     let view = ByteView::open(path).context("failed to open file")?;
     let object = Object::parse(&view).context("failed to parse file")?;
     let session = object.debug_session().context("failed to process file")?;
+    let symbol_map = object.symbol_map();
 
-    for addr in matches.values_of("addrs").unwrap_or_default() {
+    'addrs: for addr in matches.values_of("addrs").unwrap_or_default() {
         let addr = if addr.starts_with("0x") {
             u64::from_str_radix(&addr[2..], 16)
         } else {
@@ -82,8 +87,20 @@ fn execute(matches: &ArgMatches<'_>) -> Result<(), Error> {
 
         for function in session.functions() {
             let function = function.context("failed to read function")?;
-            resolve(&function, addr, matches)?;
+            if resolve(&function, addr, matches)? {
+                continue 'addrs;
+            }
         }
+
+        if matches.is_present("functions") {
+            if let Some(symbol) = symbol_map.lookup(addr) {
+                print_name(symbol.name.as_ref().map(|n| Name::new(n.as_ref())), matches);
+                print_range(symbol.address, Some(symbol.size), matches);
+                print!("\n  at ");
+            }
+        }
+
+        println!("??:0");
     }
 
     Ok(())
