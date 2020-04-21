@@ -60,6 +60,10 @@ failure = "0.1.7"
 walkdir = "2.3.1"
 
 [[example]]
+name = "addr2line"
+required-features = ["demangle"]
+
+[[example]]
 name = "dump_cfi"
 required-features = ["minidump"]
 
