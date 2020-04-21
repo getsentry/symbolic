@@ -3,9 +3,9 @@ use std::borrow::Borrow;
 use clap::{clap_app, ArgMatches};
 use failure::{Error, ResultExt};
 
-use symbolic_common::{ByteView, Name};
-use symbolic_debuginfo::{Function, Object};
-use symbolic_demangle::Demangle;
+use symbolic::common::{ByteView, Name};
+use symbolic::debuginfo::{Function, Object};
+use symbolic::demangle::Demangle;
 
 fn print_error(error: &Error) {
     eprintln!("Error: {}", error);
