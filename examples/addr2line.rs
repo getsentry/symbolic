@@ -37,6 +37,10 @@ fn print_range(start: u64, len: Option<u64>, matches: &ArgMatches<'_>) {
 }
 
 fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches<'_>) -> Result<bool, Error> {
+    if function.address > addr || function.address + function.size <= addr {
+        return Ok(false);
+    }
+
     if matches.is_present("inlines") {
         for il in &function.inlinees {
             resolve(il, addr, matches)?;
