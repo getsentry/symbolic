@@ -48,8 +48,10 @@ fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches<'_>) -> Resu
     }
 
     for line in &function.lines {
-        if line.address > addr || line.address + line.size.unwrap_or(1) <= addr {
+        if line.address + line.size.unwrap_or(1) <= addr {
             continue;
+        } else if line.address > addr {
+            break;
         }
 
         if matches.is_present("functions") {
