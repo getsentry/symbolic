@@ -49,7 +49,17 @@ fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches<'_>) -> Resu
             line.file.path_str().into()
         };
 
-        println!("{}:{}", file, line.line);
+        print!("{}:{}", file, line.line);
+
+        if matches.is_present("ranges") {
+            print!(" ({:#x} - ", line.address);
+            match line.size {
+                Some(size) => print!("{:#x})", line.address + size),
+                None => print!("??)"),
+            }
+        }
+
+        println!();
         break;
     }
 
