@@ -26,20 +26,11 @@ fn is_redundant_line(line: &LineInfo<'_>, line_cache: &mut LineCache) -> bool {
 ///
 ///  - Removes all redundant line records (see `is_redundant_line`)
 ///  - Removes all empty functions (see `is_empty_function`)
-///  - Ensures that the function's address range covers all of its inlinees
 fn clean_function(function: &mut Function<'_>, line_cache: &mut LineCache) {
     let mut inlinee_lines = LineCache::default();
 
     for inlinee in &mut function.inlinees {
         clean_function(inlinee, &mut inlinee_lines);
-
-        let start_shift = function.address.saturating_sub(inlinee.address);
-        function.size += start_shift;
-        function.address -= start_shift;
-
-        let end_shift =
-            (inlinee.address + inlinee.size).saturating_sub(function.address + function.size);
-        function.size += end_shift;
     }
 
     function.inlinees.retain(|f| !is_empty_function(f));
