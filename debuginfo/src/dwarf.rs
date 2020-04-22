@@ -557,10 +557,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 let file = self.resolve_file(row.file_index).unwrap_or_default();
                 let line = row.line.unwrap_or(0);
 
-                if let Some((last_file, last_line)) = last {
-                    if last_file == row.file_index && last_line == line {
-                        continue;
-                    }
+                if last == Some((row.file_index, line)) {
+                    continue;
                 }
 
                 last = Some((row.file_index, line));
@@ -649,6 +647,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
             let function_address = range_buf[0].begin - self.inner.info.load_address;
             let function_size = range_buf[range_buf.len() - 1].end - range_buf[0].begin;
+            let function_end = function_address + function_size;
 
             // Resolve functions in the symbol table first. Only if there is no entry, fall back
             // to debug information only if there is no match. Sometimes, debug info contains a
@@ -660,7 +659,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 self.inner
                     .info
                     .symbol_map
-                    .lookup_range(function_address..function_address + function_size)
+                    .lookup_range(function_address..function_end)
                     .and_then(|symbol| symbol.name.clone())
             } else {
                 None
@@ -700,34 +699,71 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 // return invalid line numbers.
                 if let (Some(line), Some(file_id)) = (call_line, call_file) {
                     let file = self.resolve_file(file_id).unwrap_or_default();
-                    match parent
-                        .lines
-                        .binary_search_by_key(&function_address, |line| line.address)
-                    {
-                        Ok(idx) => {
-                            // We found a line record that points to this function. This happens
-                            // especially, if the function range overlaps exactly. Patch the
-                            // call info with the correct location.
-                            parent.lines[idx].file = file;
-                            parent.lines[idx].line = line;
-                        }
-                        Err(idx) => {
-                            let size = parent
-                                .lines
-                                .get(idx)
-                                .map(|next| next.address - function_address);
+                    let lines = &mut parent.lines;
 
-                            // There is no line record pointing to this function, so add one to
-                            // the correct call location. Note that "base_dir" can be inherited
-                            // safely here.
+                    // Obtain the index of the first line record in the parent that fully points
+                    // into this inlinee.
+                    let start = match lines.binary_search_by_key(&function_address, |l| l.address) {
+                        Ok(idx) => idx,
+                        Err(idx) => {
+                            // Fix the length of the previous line record to go up to the start of
+                            // the inline function. This effectively splits the previous record in
+                            // two.
+                            if let Some(prev) = idx.checked_sub(1).and_then(|i| lines.get_mut(i)) {
+                                let max_size = function_address - prev.address;
+                                if prev.size.map_or(true, |prev_size| prev_size > max_size) {
+                                    prev.size = Some(max_size);
+                                }
+                            }
+
+                            // Insert a new record pointing to the correct call location. Note that
+                            // "base_dir" can be inherited safely here.
+                            let size = match lines.get(idx) {
+                                Some(next) => next.address - function_address,
+                                None => function_size,
+                            };
+
                             let line_info = LineInfo {
                                 address: function_address,
-                                size,
-                                file,
+                                size: Some(size),
+                                file: file.clone(),
                                 line,
                             };
 
-                            parent.lines.insert(idx, line_info);
+                            lines.insert(idx, line_info);
+                            idx + 1
+                        }
+                    };
+
+                    // Patch all following line records pointing them to the call location. Stop at
+                    // the boundary of the inlinee.
+                    for index in start..lines.len() {
+                        let record = &mut lines[index];
+                        if record.address >= function_end {
+                            break;
+                        }
+
+                        // Split the parent record if it exceeds the end of this inlinee. We can
+                        // assume that record.size is set here since we passed the previous
+                        // condition.
+                        let mut split = None;
+                        let record_end = record.address + record.size.unwrap_or(0);
+                        if record_end > function_end {
+                            split = Some(LineInfo {
+                                address: function_end,
+                                size: Some(record_end - function_end),
+                                file: record.file.clone(),
+                                line: record.line,
+                            });
+                        }
+
+                        record.file = file.clone();
+                        record.line = line;
+
+                        // Insert the split record after mutating the previous one to avoid
+                        // borrowing issues.
+                        if let Some(split) = split {
+                            lines.insert(index + 1, split);
                         }
                     }
                 }
