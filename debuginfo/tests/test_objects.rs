@@ -1,7 +1,6 @@
 use std::fmt;
 
 use failure::Error;
-use insta;
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{FileEntry, Function, Object, SymbolMap};
