@@ -1,7 +1,6 @@
 use std::str;
 
 use failure::Error;
-use insta;
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;

@@ -2,7 +2,6 @@ use std::fmt;
 use std::io::Cursor;
 
 use failure::Error;
-use insta;
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
