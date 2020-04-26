@@ -1,5 +1,34 @@
 # Changelog
 
+## 7.3.0
+
+**Build Changes**:
+
+To build with the `demangle` feature, a C++14 compiler is now required.
+
+**Features**:
+
+- Support Swift 5.2 mangling (#208)
+- Inline docs from sub-crates (#209)
+- Add Path utilities for dSYM structures (#212)
+- Updated C++ demangler (#215)
+
+**Bug Fixes**:
+
+- Do not error in functions iterator on name errors (#201)
+- Avoid infinite recursion in DWARF because of self references (#202)
+- Do not skip symbols from SHT_NOBIT sections (#207)
+- Do not assume sorted DWARF compilation units (#214)
+- Skip eliminated functions in linked objects (#216)
+- Avoid panics for UTF-8 characters in paths (#217)
+- Get CFI info from eh_frame even if err in debug_frame (#218)
+- Avoid `TooManyRegisterRules` errors in CFI (#219)
+- Calculate correct line record sizes for DWARF (#220)
+- Detect all scopes to fix incorrect inlinee hierarchies (#221)
+- Patch all parent line records of inlinees in DWARF (#223)
+- Fix broken compilation with -Clink-dead-code (#225)
+- Return the same instruction address for inlinees in symcaches (#226)
+
 ## 7.2.0
 
 **Features**:
