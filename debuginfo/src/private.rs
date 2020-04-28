@@ -261,19 +261,6 @@ impl<'a> FunctionStack<'a> {
     }
 }
 
-/// Trims a leading underscore from mangled C++ names.
-///
-/// On macOS, the convention for C++ symbols is to have an additional leading `_`, even if the
-/// symbol itself may not be mangled. The only exception to this is `___Z` (three underscores),
-/// which indicates a special mangling schema for block invokes.
-pub fn trim_cpp_name(name: &str) -> &str {
-    if name.starts_with('_') && !name.starts_with("___Z") {
-        &name[1..]
-    } else {
-        &name
-    }
-}
-
 #[test]
 fn test_lineoffsets_fused() {
     let data = b"";

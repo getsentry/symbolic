@@ -12,7 +12,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::private::{self, MonoArchive, MonoArchiveObjects, Parse};
+use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 
 /// An error when dealing with [`MachObject`](struct.MachObject.html).
 #[derive(Debug, Fail)]
@@ -386,7 +386,7 @@ impl<'d> Iterator for MachOSymbolIterator<'d> {
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(next) = self.symbols.next() {
             // Gracefully recover from corrupt nlists
-            let (name, nlist) = match next {
+            let (mut name, nlist) = match next {
                 Ok(pair) => pair,
                 Err(_) => continue,
             };
@@ -409,8 +409,13 @@ impl<'d> Iterator for MachOSymbolIterator<'d> {
                 continue;
             }
 
+            // Trim leading underscores from mangled C++ names.
+            if name.starts_with('_') {
+                name = &name[1..];
+            }
+
             return Some(Symbol {
-                name: Some(Cow::Borrowed(private::trim_cpp_name(name))),
+                name: Some(Cow::Borrowed(name)),
                 address: nlist.n_value - self.vmaddr,
                 size: 0, // Computed in `SymbolMap`
             });
