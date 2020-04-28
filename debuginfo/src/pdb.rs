@@ -22,7 +22,7 @@ use symbolic_common::{
 };
 
 use crate::base::*;
-use crate::private::{FunctionStack, Parse};
+use crate::private::{self, FunctionStack, Parse};
 
 type Pdb<'d> = pdb::PDB<'d, Cursor<&'d [u8]>>;
 
@@ -352,14 +352,11 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
                 };
 
                 let cow = public.name.to_string();
+
                 // pdb::SymbolIter offers data bound to its own lifetime since it holds the
                 // buffer containing public symbols. The contract requires that we return
                 // `Symbol<'d>`, so we cannot return zero-copy symbols here.
-                let name = Cow::from(String::from(if cow.starts_with('_') {
-                    &cow[1..]
-                } else {
-                    &cow
-                }));
+                let name = Cow::Owned(private::trim_cpp_name(&cow).to_owned());
 
                 return Some(Symbol {
                     name: Some(name),

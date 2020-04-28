@@ -83,14 +83,14 @@ fn is_maybe_objc(ident: &str) -> bool {
 }
 
 fn is_maybe_cpp(ident: &str) -> bool {
-    ident.starts_with("_Z") || ident.starts_with("__Z")
+    ident.starts_with("_Z") || ident.starts_with("__Z") || ident.starts_with("___Z")
 }
 
 fn is_maybe_msvc(ident: &str) -> bool {
     ident.starts_with('?') || ident.starts_with("@?")
 }
 
-fn is_maybe_switf(ident: &str) -> bool {
+fn is_maybe_swift(ident: &str) -> bool {
     CString::new(ident)
         .map(|cstr| unsafe { symbolic_demangle_is_swift_symbol(cstr.as_ptr()) != 0 })
         .unwrap_or(false)
@@ -216,7 +216,7 @@ impl<'a> Demangle for Name<'a> {
             return Language::Cpp;
         }
 
-        if is_maybe_switf(self.as_str()) {
+        if is_maybe_swift(self.as_str()) {
             return Language::Swift;
         }
 
