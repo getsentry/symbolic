@@ -604,6 +604,10 @@ impl<W: Write> AsciiCfiWriter<W> {
             // Special handling for machine frames
             let mut machine_frame_offset = 0;
 
+            if function.end_address < function.begin_address {
+                continue;
+            }
+
             let mut next_function = Some(function);
             while let Some(next) = next_function {
                 let unwind_info = exception_data
