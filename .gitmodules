@@ -4,4 +4,4 @@
 	shallow = true
 [submodule "minidump/third_party/lss"]
 	path = minidump/third_party/lss
-	url = https://chromium.googlesource.com/linux-syscall-support
+	url = https://github.com/getsentry/linux-syscall-support
