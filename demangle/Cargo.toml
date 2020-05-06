@@ -20,7 +20,7 @@ exclude = [
 ]
 
 [dependencies]
-cpp_demangle = "0.2.15"
+cpp_demangle = { git = "https://github.com/jan-auer/cpp_demangle", branch = "block-invoke" }
 msvc-demangler = "0.8.0"
 rustc-demangle = "0.1.16"
 symbolic-common = { version = "7.3.0", path = "../common" }
