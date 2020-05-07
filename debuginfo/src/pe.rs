@@ -24,6 +24,24 @@ pub enum PeError {
     BadObject(#[fail(cause)] GoblinError),
 }
 
+/// Detects if the PE is a packer stub.
+///
+/// Such files usually only contain empty stubs in their `.pdata` and `.text` sections, and unwind
+/// information cannot be retrieved reliably. Usually, the exception table is present, but unwind
+/// info points into a missing section.
+fn is_pe_stub(pe: &pe::PE<'_>) -> bool {
+    let mut has_stub = false;
+    let mut pdata_empty = false;
+
+    for section in &pe.sections {
+        let name = section.name().unwrap_or_default();
+        pdata_empty = pdata_empty || name == ".pdata" && section.size_of_raw_data == 0;
+        has_stub = has_stub || name.starts_with(".stub");
+    }
+
+    pdata_empty && has_stub
+}
+
 /// Portable Executable, an extension of COFF used on Windows.
 ///
 /// This file format is used to carry program code. Debug information is usually moved to a separate
@@ -36,6 +54,7 @@ pub enum PeError {
 pub struct PeObject<'d> {
     pe: pe::PE<'d>,
     data: &'d [u8],
+    is_stub: bool,
 }
 
 impl<'d> PeObject<'d> {
@@ -49,9 +68,9 @@ impl<'d> PeObject<'d> {
 
     /// Tries to parse a PE object from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, PeError> {
-        pe::PE::parse(data)
-            .map(|pe| PeObject { pe, data })
-            .map_err(PeError::BadObject)
+        let pe = pe::PE::parse(data).map_err(PeError::BadObject)?;
+        let is_stub = is_pe_stub(&pe);
+        Ok(PeObject { pe, data, is_stub })
     }
 
     /// The container file format, which is always `FileFormat::Pe`.
@@ -120,6 +139,8 @@ impl<'d> PeObject<'d> {
     pub fn kind(&self) -> ObjectKind {
         if self.pe.is_lib {
             ObjectKind::Library
+        } else if self.is_stub {
+            ObjectKind::Other
         } else {
             ObjectKind::Executable
         }
@@ -176,7 +197,7 @@ impl<'d> PeObject<'d> {
 
     /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
-        self.exception_data().map_or(false, |e| !e.is_empty())
+        !self.is_stub && self.exception_data().map_or(false, |e| !e.is_empty())
     }
 
     /// Returns the raw data of the PE file.
@@ -191,7 +212,11 @@ impl<'d> PeObject<'d> {
 
     /// Returns exception data containing unwind information.
     pub fn exception_data(&self) -> Option<&ExceptionData<'_>> {
-        self.pe.exception_data.as_ref()
+        if self.is_stub {
+            None
+        } else {
+            self.pe.exception_data.as_ref()
+        }
     }
 }
 
