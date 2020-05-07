@@ -24,7 +24,7 @@ dmsort = "1.0.0"
 failure = "0.1.5"
 fallible-iterator = "0.2.0"
 flate2 = { version = "1.0.13", features = ["rust_backend"], default-features = false }
-gimli = { git = "https://github.com/jan-auer/gimli", branch = "fix/eh-frame-cie-3", features = ["read", "std"], default-features = false }
+gimli = { git = "https://github.com/gimli-rs/gimli", rev = "f346d6fe5434ae3fde26f4c1bf3ff31760690667", features = ["read", "std"], default-features = false }
 goblin = { git = "https://github.com/jan-auer/goblin", branch = "fix/exception-invalid-address" }
 lazycell = "1.2.1"
 lazy_static = "1.4.0"
