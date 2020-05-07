@@ -83,7 +83,10 @@ fn is_maybe_objc(ident: &str) -> bool {
 }
 
 fn is_maybe_cpp(ident: &str) -> bool {
-    ident.starts_with("_Z") || ident.starts_with("__Z") || ident.starts_with("___Z")
+    ident.starts_with("_Z")
+        || ident.starts_with("__Z")
+        || ident.starts_with("___Z")
+        || ident.starts_with("____Z")
 }
 
 fn is_maybe_msvc(ident: &str) -> bool {
