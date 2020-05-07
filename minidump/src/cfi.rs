@@ -317,13 +317,10 @@ impl<W: Write> AsciiCfiWriter<W> {
             let length = rows.last().unwrap().end_address() - start;
 
             // Verify that the CFI entry is in range of the mapped module. Zero values are a special
-            // case and seem to indicate that the entry is no longer valid. All other cases are
-            // considered erroneous CFI.
+            // case and seem to indicate that the entry is no longer valid. However, also skip other
+            // entries since the rest of the file may still be valid.
             if start < info.load_address {
-                return match start {
-                    0 => Ok(()),
-                    _ => Err(CfiErrorKind::InvalidAddress.into()),
-                };
+                return Ok(());
             }
 
             // Every register rule in the table will be cached so that it can be compared with
