@@ -49,7 +49,7 @@ def test_id_from_breakpad():
         id_from_breakpad("DFB8E43AF2423D73A453AEB6A777EF75feedface")
         == "dfb8e43a-f242-3d73-a453-aeb6a777ef75-feedface"
     )
-    assert id_from_breakpad(None) == None
+    assert id_from_breakpad(None) is None
 
 
 def test_normalize_code_id():
@@ -65,7 +65,7 @@ def test_normalize_code_id():
     )
     # PE
     assert normalize_code_id("5AB380779000") == "5ab380779000"
-    assert normalize_code_id(None) == None
+    assert normalize_code_id(None) is None
 
 
 def test_normalize_debug_id():
@@ -89,7 +89,7 @@ def test_normalize_debug_id():
         normalize_debug_id("DFB8E43AF2423D73A453AEB6A777EF75a")
         == "dfb8e43a-f242-3d73-a453-aeb6a777ef75-a"
     )
-    assert normalize_debug_id(None) == None
+    assert normalize_debug_id(None) is None
 
 
 def test_object_ref_legacy_apple():

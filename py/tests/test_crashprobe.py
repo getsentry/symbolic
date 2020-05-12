@@ -24,7 +24,6 @@ def basename(x):
 def _load_dsyms_and_symbolize_stacktrace(
     filename, version, build, arch, res_path, make_report_sym
 ):
-    filename_version = version.replace(" ", "")
     path = os.path.join(res_path, "ext", version, build, arch, filename)
     if not os.path.isfile(path):
         pytest.skip("not test file found")
