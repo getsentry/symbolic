@@ -1,6 +1,4 @@
-import os
 import posixpath
-from symbolic import SourceView, SourceMapView
 
 
 def verify_index(index, sources):
@@ -78,7 +76,7 @@ def test_load_index(get_sourceview, get_sourcemapview):
     view = get_sourcemapview("indexed.sourcemap.js")
     f1 = get_sourceview("file1.js")
     f2 = get_sourceview("file2.js")
-    verify_index(view, {"file1.js": f1, "file2.js": f2,})
+    verify_index(view, {"file1.js": f1, "file2.js": f2})
     verify_token_search(view)
 
 

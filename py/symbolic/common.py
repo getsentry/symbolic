@@ -1,7 +1,7 @@
 import os
 
 from symbolic._lowlevel import lib, ffi
-from symbolic._compat import string_types, int_types, string_types
+from symbolic._compat import string_types, int_types
 from symbolic.utils import rustcall, encode_str, decode_str
 from symbolic import exceptions
 
