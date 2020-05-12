@@ -3,7 +3,6 @@ import json
 from symbolic._lowlevel import lib, ffi
 from symbolic._compat import range_type
 
-from symbolic.minidump import ProcessState
 from symbolic.utils import (
     RustObject,
     rustcall,

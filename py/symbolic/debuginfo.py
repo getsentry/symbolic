@@ -3,7 +3,7 @@ from weakref import WeakValueDictionary
 
 from symbolic._compat import itervalues, range_type, text_type
 from symbolic._lowlevel import lib, ffi
-from symbolic.utils import RustObject, rustcall, decode_str, encode_str, attached_refs
+from symbolic.utils import RustObject, rustcall, decode_str, encode_str
 from symbolic.common import parse_addr, arch_is_known
 from symbolic.symcache import SymCache
 from symbolic.minidump import CfiCache

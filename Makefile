@@ -71,8 +71,8 @@ lint-rust:
 .PHONY: lint-rust
 
 lint-python: .venv/bin/python
-	.venv/bin/pip install -U flake8
-	.venv/bin/flake8 tests
+	.venv/bin/pip install -U flake8==3.7.9
+	.venv/bin/flake8 py
 .PHONY: lint-python
 
 # Formatting

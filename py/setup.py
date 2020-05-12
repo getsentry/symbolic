@@ -96,8 +96,8 @@ setup(
     include_package_data=True,
     zip_safe=False,
     platforms="any",
-    install_requires=["milksnake>=0.1.2",],
-    setup_requires=["milksnake>=0.1.2",],
-    milksnake_tasks=[build_native,],
-    cmdclass={"sdist": CustomSDist,},
+    install_requires=["milksnake>=0.1.2"],
+    setup_requires=["milksnake>=0.1.2"],
+    milksnake_tasks=[build_native],
+    cmdclass={"sdist": CustomSDist},
 )
