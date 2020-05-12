@@ -4,10 +4,10 @@ import sys
 PY2 = sys.version_info[0] == 2
 
 if PY2:
-    text_type = unicode
-    int_types = (int, long)
-    string_types = (str, unicode)
-    range_type = xrange
+    text_type = unicode  # noqa
+    int_types = (int, long)  # noqa
+    string_types = (str, unicode)  # noqa
+    range_type = xrange  # noqa
     itervalues = lambda x: x.itervalues()
     NUL = "\x00"
 
