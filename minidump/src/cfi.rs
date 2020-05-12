@@ -612,7 +612,14 @@ impl<W: Write> AsciiCfiWriter<W> {
                     .context(CfiErrorKind::BadDebugInfo)?;
 
                 for code_result in &unwind_info {
-                    let code = code_result.context(CfiErrorKind::BadDebugInfo)?;
+                    // Due to variable length encoding of operator codes, there is little point in
+                    // continuiing after this. Other functions in this object file can be valid, so
+                    // swallow the error and continue with the next function.
+                    let code = match code_result {
+                        Ok(code) => code,
+                        Err(_) => return Ok(()),
+                    };
+
                     match code.operation {
                         UnwindOperation::PushNonVolatile(_) => {
                             stack_size += 8;
