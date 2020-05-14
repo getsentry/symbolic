@@ -1,5 +1,18 @@
 # Changelog
 
+## 7.3.1
+
+**Bug Fixes**:
+
+- Skip invalid PE runtime function entries (#230)
+- Support demangling of block invocation functions (#229)
+- Skip invalid CFI entries instead of erroring out (#232)
+- Detect stub DLLs and skip CFI generation (#233)
+- Skip functions with unknown unwind codes (#234)
+- Update `goblin` to fix panics in PE unwinding (#231)
+- Update `gimli` to to support `eh_frame` CIE version 3 (#231)
+- Update `cpp_demangle` (#231)
+
 ## 7.3.0
 
 **Build Changes**:
