@@ -32,7 +32,7 @@ patch is maintained in `1-arguments.patch`.
    5. Build the complete swift project (be very patient, this may take long):
       ```
       $ cd swift
-      $ ./utils/build-script
+      $ ./utils/build-script --skip-build
       ```
 2. **Copy updated sources and headers from the checkout to this library:**
    1. Run the update script in this directory (requires Python 3):
@@ -43,7 +43,7 @@ patch is maintained in `1-arguments.patch`.
    3. Commit _"feat(demangle): Import libswift demangle x.x.x"_ before proceeding.
 3. **Apply the patch:**
    1. Apply `1-arguments.patch`.
-   2. Build the library and ensure tests work.
+   2. Build the Rust library and ensure tests work.
    3. Commit the changes.
 4. **Add tests for new mangling schemes:**
    1. Identify new mangling schemes. Skip if there are no known changes.
