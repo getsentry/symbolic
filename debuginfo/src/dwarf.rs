@@ -574,6 +574,37 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         lines
     }
 
+    fn get_line_index<'data>(
+        line_info: LineInfo<'data>,
+        is_start: bool,
+        lines: &mut Vec<LineInfo<'data>>,
+    ) -> usize {
+        let mut line_info = line_info;
+        match lines.binary_search_by_key(&line_info.address, |l| l.address) {
+            Ok(idx) => idx,
+            Err(idx) => {
+                if let Some(prev) = idx.checked_sub(1).and_then(|i| lines.get_mut(i)) {
+                    let max_size = line_info.address - prev.address;
+                    if prev.size.map_or(true, |prev_size| prev_size > max_size) {
+                        prev.size = Some(max_size);
+                    }
+                    if !is_start {
+                        line_info.line = prev.line;
+                        line_info.file = prev.file.clone();
+                    }
+                }
+
+                // Insert a new record pointing to the correct call location. Note that
+                // "base_dir" can be inherited safely here.
+                if let Some(next) = lines.get(idx) {
+                    line_info.size = Some(next.address - line_info.address);
+                }
+                lines.insert(idx, line_info);
+                idx
+            }
+        }
+    }
+
     /// Resolves file information from a line program.
     fn file_info(
         &self,
@@ -635,6 +666,16 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             range_buf.clear();
             let (call_line, call_file) = self.parse_ranges(entry, range_buf)?;
 
+            // TODO: fix that
+            // We've a non-inlined function which has two ranges or more
+            // So probably splited because of cold paths
+            // Anyway the function_size & function_end are wrong here
+            // so probably the workaround to generate several functions here:
+            // one for each range
+            if !inline && range_buf.len() != 1 {
+                continue;
+            }
+
             // Ranges can be empty for two reasons: (1) the function is a no-op and does not
             // contain any code, or (2) the function did contain eliminated dead code. In the
             // latter case, a surrogate DIE remains with `DW_AT_low_pc(0)` and empty ranges.
@@ -670,10 +711,79 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 None => self.inner.resolve_function_name(entry).ok().flatten(),
             };
 
-            // Avoid constant allocations by collecting repeatedly into the same buffer and
-            // draining the results out of it. This keeps the original buffer allocated and
-            // allows for a single allocation per call to `resolve_lines`.
-            let lines = self.resolve_lines(&range_buf);
+            let lines = if !inline {
+                // Avoid constant allocations by collecting repeatedly into the same buffer and
+                // draining the results out of it. This keeps the original buffer allocated and
+                // allows for a single allocation per call to `resolve_lines`.
+                self.resolve_lines(&range_buf)
+            } else {
+                // An inlined function must always have a parent. An empty list of funcs
+                // indicates invalid debug information.
+                let parent = match stack.peek_mut() {
+                    Some(parent) => parent,
+                    // TODO: (part of the todo above)
+                    None => continue, // return Err(DwarfErrorKind::UnexpectedInline.into()),
+                };
+
+                let mut lines = Vec::new();
+                let parent_end = parent.address + parent.size;
+
+                // Make sure there is correct line information for the call site of this inlined
+                // function. In general, a compiler should always output the call line and call
+                // file for inlined subprograms. If this info is missing, the lookup might
+                // return invalid line numbers.
+                // All the lines have been collected in the parent so just get the lines from the parent
+                // which belong to each range in the inlinee
+                if let (Some(line), Some(file_id)) = (call_line, call_file) {
+                    let file = self.resolve_file(file_id).unwrap_or_default();
+                    let parent_lines = &mut parent.lines;
+
+                    for range in range_buf.iter() {
+                        if range.begin >= range.end {
+                            continue;
+                        }
+
+                        let begin = parent
+                            .address
+                            .max(range.begin - self.inner.info.load_address);
+                        let end = parent_end.min(range.end - self.inner.info.load_address);
+
+                        let idx_b = Self::get_line_index(
+                            LineInfo {
+                                address: begin,
+                                size: Some(end - begin),
+                                line,
+                                file: file.clone(),
+                            },
+                            true,
+                            parent_lines,
+                        );
+
+                        let idx_e = Self::get_line_index(
+                            LineInfo {
+                                address: end,
+                                size: Some(end - begin),
+                                line,
+                                file: file.clone(),
+                            },
+                            false,
+                            parent_lines,
+                        );
+
+                        lines.reserve(idx_e - idx_b);
+
+                        for idx in idx_b..idx_e {
+                            // since we've index in parent_lines then the check is useless
+                            if let Some(record) = parent_lines.get_mut(idx) {
+                                lines.push(record.clone());
+                                record.line = line;
+                                record.file = file.clone();
+                            }
+                        }
+                    }
+                }
+                lines
+            };
 
             let function = Function {
                 address: function_address,
@@ -684,90 +794,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 inlinees: Vec::new(),
                 inline,
             };
-
-            if inline {
-                // An inlined function must always have a parent. An empty list of funcs
-                // indicates invalid debug information.
-                let parent = match stack.peek_mut() {
-                    Some(parent) => parent,
-                    None => return Err(DwarfErrorKind::UnexpectedInline.into()),
-                };
-
-                // Make sure there is correct line information for the call site of this inlined
-                // function. In general, a compiler should always output the call line and call
-                // file for inlined subprograms. If this info is missing, the lookup might
-                // return invalid line numbers.
-                if let (Some(line), Some(file_id)) = (call_line, call_file) {
-                    let file = self.resolve_file(file_id).unwrap_or_default();
-                    let lines = &mut parent.lines;
-
-                    // Obtain the index of the first line record in the parent that fully points
-                    // into this inlinee.
-                    let start = match lines.binary_search_by_key(&function_address, |l| l.address) {
-                        Ok(idx) => idx,
-                        Err(idx) => {
-                            // Fix the length of the previous line record to go up to the start of
-                            // the inline function. This effectively splits the previous record in
-                            // two.
-                            if let Some(prev) = idx.checked_sub(1).and_then(|i| lines.get_mut(i)) {
-                                let max_size = function_address - prev.address;
-                                if prev.size.map_or(true, |prev_size| prev_size > max_size) {
-                                    prev.size = Some(max_size);
-                                }
-                            }
-
-                            // Insert a new record pointing to the correct call location. Note that
-                            // "base_dir" can be inherited safely here.
-                            let size = match lines.get(idx) {
-                                Some(next) => next.address - function_address,
-                                None => function_size,
-                            };
-
-                            let line_info = LineInfo {
-                                address: function_address,
-                                size: Some(size),
-                                file: file.clone(),
-                                line,
-                            };
-
-                            lines.insert(idx, line_info);
-                            idx + 1
-                        }
-                    };
-
-                    // Patch all following line records pointing them to the call location. Stop at
-                    // the boundary of the inlinee.
-                    for index in start..lines.len() {
-                        let record = &mut lines[index];
-                        if record.address >= function_end {
-                            break;
-                        }
-
-                        // Split the parent record if it exceeds the end of this inlinee. We can
-                        // assume that record.size is set here since we passed the previous
-                        // condition.
-                        let mut split = None;
-                        let record_end = record.address + record.size.unwrap_or(0);
-                        if record_end > function_end {
-                            split = Some(LineInfo {
-                                address: function_end,
-                                size: Some(record_end - function_end),
-                                file: record.file.clone(),
-                                line: record.line,
-                            });
-                        }
-
-                        record.file = file.clone();
-                        record.line = line;
-
-                        // Insert the split record after mutating the previous one to avoid
-                        // borrowing issues.
-                        if let Some(split) = split {
-                            lines.insert(index + 1, split);
-                        }
-                    }
-                }
-            }
 
             stack.push(depth, function)
         }
