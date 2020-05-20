@@ -544,7 +544,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             None => return Vec::new(),
         };
 
-        let mut last = None;
         let mut lines = Vec::new();
         for range in ranges {
             // Most of the rows will result in a line record. Reserve the number of rows in the line
@@ -553,56 +552,52 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let rows = line_program.get_rows(range);
             lines.reserve(rows.len());
 
-            for row in rows {
-                let file = self.resolve_file(row.file_index).unwrap_or_default();
-                let line = row.line.unwrap_or(0);
+            if let Some((first, rows)) = rows.split_first() {
+                let file = self.resolve_file(first.file_index).unwrap_or_default();
+                let line = first.line.unwrap_or(0);
+                let size = first.size.map(|s| s + first.address - range.begin);
 
-                if last == Some((row.file_index, line)) {
-                    continue;
-                }
+                let mut last = (first.file_index, line);
 
-                last = Some((row.file_index, line));
                 lines.push(LineInfo {
-                    address: row.address - self.inner.info.load_address,
-                    size: row.size,
+                    address: range.begin - self.inner.info.load_address,
+                    size,
                     file,
                     line,
                 });
+
+                for row in rows {
+                    let file = self.resolve_file(row.file_index).unwrap_or_default();
+                    let line = row.line.unwrap_or(0);
+
+                    // We're in a range so we can collapse the lines without any side effects
+                    if last == (row.file_index, line) {
+                        continue;
+                    }
+
+                    // We collapse the lines but need to fix the last line size
+                    if let Some(size) = lines.last_mut().unwrap().size.as_mut() {
+                        *size += row.size.unwrap_or(0);
+                    }
+
+                    last = (row.file_index, line);
+                    lines.push(LineInfo {
+                        address: row.address - self.inner.info.load_address,
+                        size: row.size,
+                        file,
+                        line,
+                    });
+                }
+
+                // Fix the size of the last line
+                let last = lines.last_mut().unwrap();
+                if let Some(size) = last.size.as_mut() {
+                    *size = range.end - self.inner.info.load_address - last.address;
+                }
             }
         }
 
         lines
-    }
-
-    fn get_line_index<'data>(
-        line_info: LineInfo<'data>,
-        is_start: bool,
-        lines: &mut Vec<LineInfo<'data>>,
-    ) -> usize {
-        let mut line_info = line_info;
-        match lines.binary_search_by_key(&line_info.address, |l| l.address) {
-            Ok(idx) => idx,
-            Err(idx) => {
-                if let Some(prev) = idx.checked_sub(1).and_then(|i| lines.get_mut(i)) {
-                    let max_size = line_info.address - prev.address;
-                    if prev.size.map_or(true, |prev_size| prev_size > max_size) {
-                        prev.size = Some(max_size);
-                    }
-                    if !is_start {
-                        line_info.line = prev.line;
-                        line_info.file = prev.file.clone();
-                    }
-                }
-
-                // Insert a new record pointing to the correct call location. Note that
-                // "base_dir" can be inherited safely here.
-                if let Some(next) = lines.get(idx) {
-                    line_info.size = Some(next.address - line_info.address);
-                }
-                lines.insert(idx, line_info);
-                idx
-            }
-        }
     }
 
     /// Resolves file information from a line program.
@@ -711,12 +706,12 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 None => self.inner.resolve_function_name(entry).ok().flatten(),
             };
 
-            let lines = if !inline {
-                // Avoid constant allocations by collecting repeatedly into the same buffer and
-                // draining the results out of it. This keeps the original buffer allocated and
-                // allows for a single allocation per call to `resolve_lines`.
-                self.resolve_lines(&range_buf)
-            } else {
+            // Avoid constant allocations by collecting repeatedly into the same buffer and
+            // draining the results out of it. This keeps the original buffer allocated and
+            // allows for a single allocation per call to `resolve_lines`.
+            let lines = self.resolve_lines(&range_buf);
+
+            if inline {
                 // An inlined function must always have a parent. An empty list of funcs
                 // indicates invalid debug information.
                 let parent = match stack.peek_mut() {
@@ -725,7 +720,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     None => continue, // return Err(DwarfErrorKind::UnexpectedInline.into()),
                 };
 
-                let mut lines = Vec::new();
                 let parent_end = parent.address + parent.size;
 
                 // Make sure there is correct line information for the call site of this inlined
@@ -748,42 +742,91 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                             .max(range.begin - self.inner.info.load_address);
                         let end = parent_end.min(range.end - self.inner.info.load_address);
 
-                        let idx_b = Self::get_line_index(
-                            LineInfo {
-                                address: begin,
-                                size: Some(end - begin),
-                                line,
-                                file: file.clone(),
-                            },
-                            true,
-                            parent_lines,
-                        );
+                        let idx_b = match parent_lines.binary_search_by_key(&begin, |l| l.address) {
+                            Ok(idx) => idx,
+                            Err(idx) => {
+                                if let Some(prev) =
+                                    idx.checked_sub(1).and_then(|i| parent_lines.get_mut(i))
+                                {
+                                    let max_size = begin - prev.address;
+                                    if prev.size.map_or(true, |prev_size| prev_size > max_size) {
+                                        prev.size = Some(max_size);
+                                    }
+                                }
 
-                        let idx_e = Self::get_line_index(
-                            LineInfo {
-                                address: end,
-                                size: Some(end - begin),
-                                line,
-                                file: file.clone(),
-                            },
-                            false,
-                            parent_lines,
-                        );
+                                // Insert a new record pointing to the correct call location. Note that
+                                // "base_dir" can be inherited safely here.
+                                let size = Some(
+                                    parent_lines
+                                        .get(idx)
+                                        .map_or_else(|| end - begin, |next| next.address - begin),
+                                );
+                                parent_lines.insert(
+                                    idx,
+                                    LineInfo {
+                                        address: begin,
+                                        size,
+                                        line,
+                                        file: file.clone(),
+                                    },
+                                );
 
-                        lines.reserve(idx_e - idx_b);
+                                // No need to set line/file in the parent since we already
+                                // fix it here and so the +1
+                                idx + 1
+                            }
+                        };
+
+                        let idx_e = match parent_lines.binary_search_by_key(&end, |l| l.address) {
+                            Ok(idx) => idx,
+                            Err(idx) => {
+                                if idx != parent_lines.len() {
+                                    let (prev_line, prev_file, size) = if let Some(prev) =
+                                        idx.checked_sub(1).and_then(|i| parent_lines.get_mut(i))
+                                    {
+                                        let max_size = end - prev.address;
+                                        let size = if prev
+                                            .size
+                                            .map_or(true, |prev_size| prev_size > max_size)
+                                        {
+                                            let s = prev.size.unwrap() - max_size;
+                                            prev.size = Some(max_size);
+                                            s
+                                        } else {
+                                            0
+                                        };
+                                        (prev.line, prev.file.clone(), size)
+                                    } else {
+                                        // We probably never should be here.
+                                        (line, file.clone(), 0)
+                                    };
+
+                                    // Insert a new record pointing to the correct call location. Note that
+                                    // "base_dir" can be inherited safely here.
+                                    parent_lines.insert(
+                                        idx,
+                                        LineInfo {
+                                            address: end,
+                                            size: Some(size),
+                                            line: prev_line,
+                                            file: prev_file,
+                                        },
+                                    );
+                                }
+                                idx
+                            }
+                        };
 
                         for idx in idx_b..idx_e {
                             // since we've index in parent_lines then the check is useless
                             if let Some(record) = parent_lines.get_mut(idx) {
-                                lines.push(record.clone());
                                 record.line = line;
                                 record.file = file.clone();
                             }
                         }
                     }
                 }
-                lines
-            };
+            }
 
             let function = Function {
                 address: function_address,

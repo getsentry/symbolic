@@ -56,7 +56,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0xe04: minidump_file_writer.cc:99 (../deps/breakpad/src/client)
   0xe0a: minidump_file_writer.cc:102 (../deps/breakpad/src/client)
   0xe0c: minidump_file_writer.cc:99 (../deps/breakpad/src/client)
-  0xe14: minidump_file_writer.cc:101 (../deps/breakpad/src/client)
 
   > 0xde4: _ZN15google_breakpad18MinidumpFileWriterD2Ev (0x30)
     0xde4: minidump_file_writer.cc:100 (../deps/breakpad/src/client)
@@ -111,7 +110,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0xf97: minidump_file_writer.cc:179 (../deps/breakpad/src/client)
   0xfa9: minidump_file_writer.cc:174 (../deps/breakpad/src/client)
   0xfc8: minidump_file_writer.cc:174 (../deps/breakpad/src/client)
-  0xfe7: minidump_file_writer.cc:313 (../deps/breakpad/src/client)
 
   > 0xefa: _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm (0xed)
     0xefa: minidump_file_writer-inl.h:83 (../deps/breakpad/src/client)
@@ -127,7 +125,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0xf67: minidump_file_writer.cc:328 (../deps/breakpad/src/client)
     0xfa9: minidump_file_writer-inl.h:83 (../deps/breakpad/src/client)
     0xfc8: minidump_file_writer-inl.h:84 (../deps/breakpad/src/client)
-    0xfe7: minidump_file_writer.cc:313 (../deps/breakpad/src/client)
 
     > 0xf12: _ZN15google_breakpad18MinidumpFileWriter4CopyEjPKvl (0xd5)
       0xf12: minidump_file_writer.cc:313 (../deps/breakpad/src/client)
@@ -160,7 +157,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x10e7: minidump_file_writer.cc:205 (../deps/breakpad/src/client)
   0x10f9: minidump_file_writer.cc:201 (../deps/breakpad/src/client)
   0x1118: minidump_file_writer.cc:201 (../deps/breakpad/src/client)
-  0x1137: minidump_file_writer.cc:313 (../deps/breakpad/src/client)
 
   > 0x1049: _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm (0xee)
     0x1049: minidump_file_writer-inl.h:83 (../deps/breakpad/src/client)
@@ -176,7 +172,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0x10b3: minidump_file_writer.cc:328 (../deps/breakpad/src/client)
     0x10f9: minidump_file_writer-inl.h:83 (../deps/breakpad/src/client)
     0x1118: minidump_file_writer-inl.h:84 (../deps/breakpad/src/client)
-    0x1137: minidump_file_writer.cc:313 (../deps/breakpad/src/client)
 
     > 0x105b: _ZN15google_breakpad18MinidumpFileWriter4CopyEjPKvl (0xdc)
       0x105b: minidump_file_writer.cc:313 (../deps/breakpad/src/client)
