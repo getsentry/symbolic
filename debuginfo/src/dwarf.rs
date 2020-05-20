@@ -781,37 +781,40 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                             Ok(idx) => idx,
                             Err(idx) => {
                                 if idx != parent_lines.len() {
-                                    let (prev_line, prev_file, size) = if let Some(prev) =
+                                    let line_info = if let Some(prev) =
                                         idx.checked_sub(1).and_then(|i| parent_lines.get_mut(i))
                                     {
-                                        let max_size = end - prev.address;
-                                        let size = if prev
-                                            .size
-                                            .map_or(true, |prev_size| prev_size > max_size)
-                                        {
-                                            let s = prev.size.unwrap() - max_size;
-                                            prev.size = Some(max_size);
-                                            s
+                                        if end < prev.address + prev.size.unwrap_or(0) {
+                                            // The range is ending in the middle of a parent line
+                                            // so need to insert a new line which will contain line info
+                                            // from the beginning of the line
+                                            let max_size = end - prev.address;
+                                            let size = if prev
+                                                .size
+                                                .map_or(true, |prev_size| prev_size > max_size)
+                                            {
+                                                let s = prev.size.unwrap() - max_size;
+                                                prev.size = Some(max_size);
+                                                s
+                                            } else {
+                                                0
+                                            };
+                                            Some(LineInfo {
+                                                address: end,
+                                                size: Some(size),
+                                                line: prev.line,
+                                                file: prev.file.clone(),
+                                            })
                                         } else {
-                                            0
-                                        };
-                                        (prev.line, prev.file.clone(), size)
+                                            None
+                                        }
                                     } else {
-                                        // We probably never should be here.
-                                        (line, file.clone(), 0)
+                                        None
                                     };
 
-                                    // Insert a new record pointing to the correct call location. Note that
-                                    // "base_dir" can be inherited safely here.
-                                    parent_lines.insert(
-                                        idx,
-                                        LineInfo {
-                                            address: end,
-                                            size: Some(size),
-                                            line: prev_line,
-                                            file: prev_file,
-                                        },
-                                    );
+                                    if let Some(line_info) = line_info {
+                                        parent_lines.insert(idx, line_info);
+                                    }
                                 }
                                 idx
                             }

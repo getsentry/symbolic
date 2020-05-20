@@ -57,7 +57,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   > 0x1f1a: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev (0x16)
     0x1f1a: basic_string.h:543 (/usr/include/c++/5/bits)
     0x1f1e: basic_string.h:543 (/usr/include/c++/5/bits)
-    0x1f23: basic_string.h:179 (/usr/include/c++/5/bits)
     0x1f24: basic_string.h:543 (/usr/include/c++/5/bits)
 
     > 0x1f1a: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv (0x16)
@@ -113,10 +112,8 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
   > 0x1c89: _ZN15google_breakpad18MinidumpDescriptorC4ERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE (0xdf)
     0x1c89: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
-    0x1c90: basic_string.h:109 (/usr/include/c++/5/bits)
     0x1c97: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
     0x1cba: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
-    0x1cbe: basic_string.h:109 (/usr/include/c++/5/bits)
     0x1cc3: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
     0x1cca: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
     0x1cd5: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
@@ -125,22 +122,17 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0x1ce7: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
     0x1cf2: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
     0x1cf9: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
-    0x1d00: basic_string.h:109 (/usr/include/c++/5/bits)
     0x1d07: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
     0x1d2b: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
     0x1d39: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
-    0x1d4f: microdump_extra_info.h:47 (../deps/breakpad/src/client/linux/handler)
     0x1d52: minidump_descriptor.h:68 (../deps/breakpad/src/client/linux/handler)
 
     > 0x1c89: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4ERKS4_ (0x5e)
       0x1c89: basic_string.h:399 (/usr/include/c++/5/bits)
-      0x1c90: basic_string.h:109 (/usr/include/c++/5/bits)
       0x1cba: basic_string.h:399 (/usr/include/c++/5/bits)
-      0x1cbe: basic_string.h:109 (/usr/include/c++/5/bits)
       0x1cc3: basic_string.h:400 (/usr/include/c++/5/bits)
       0x1cca: basic_string.h:400 (/usr/include/c++/5/bits)
       0x1cd5: basic_string.h:399 (/usr/include/c++/5/bits)
-      0x1cdc: basic_string.h:109 (/usr/include/c++/5/bits)
       0x1ce0: basic_string.h:400 (/usr/include/c++/5/bits)
 
       > 0x1c89: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_ (0x53)
@@ -151,19 +143,16 @@ expression: "FunctionsDebug(&functions[..10], 0)"
       > 0x1cc3: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_M_constructIPcEEvT_S7_ (0x24)
         0x1cc3: basic_string.h:214 (/usr/include/c++/5/bits)
         0x1cca: basic_string.h:214 (/usr/include/c++/5/bits)
-        0x1cd5: basic_string.h:131 (/usr/include/c++/5/bits)
         0x1ce0: basic_string.h:214 (/usr/include/c++/5/bits)
 
         > 0x1cc3: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE16_M_construct_auxIPcEEvT_S7_St12__false_type (0x24)
           0x1cc3: basic_string.h:195 (/usr/include/c++/5/bits)
           0x1cca: basic_string.h:195 (/usr/include/c++/5/bits)
-          0x1cd5: basic_string.h:131 (/usr/include/c++/5/bits)
           0x1ce0: basic_string.h:195 (/usr/include/c++/5/bits)
 
           > 0x1cc3: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_M_constructIPKcEEvT_S8_St20forward_iterator_tag (0x24)
             0x1cc3: basic_string.tcc:229 (/usr/include/c++/5/bits)
             0x1cca: basic_string.tcc:236 (/usr/include/c++/5/bits)
-            0x1cd5: basic_string.h:131 (/usr/include/c++/5/bits)
             0x1ce0: basic_string.tcc:236 (/usr/include/c++/5/bits)
 
             > 0x1cc3: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_S_copy_charsEPcPKcS7_ (0x7)
@@ -177,7 +166,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
             > 0x1cca: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm (0x1d)
               0x1cca: basic_string.h:164 (/usr/include/c++/5/bits)
-              0x1cd5: basic_string.h:131 (/usr/include/c++/5/bits)
               0x1ce0: basic_string.h:165 (/usr/include/c++/5/bits)
 
               > 0x1cca: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm (0xb)
@@ -188,7 +176,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
     > 0x1cdc: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4Ev (0x24)
       0x1cdc: basic_string.h:383 (/usr/include/c++/5/bits)
-      0x1ce0: basic_string.h:109 (/usr/include/c++/5/bits)
       0x1ce7: basic_string.h:384 (/usr/include/c++/5/bits)
       0x1cf2: basic_string.h:384 (/usr/include/c++/5/bits)
       0x1cf9: basic_string.h:383 (/usr/include/c++/5/bits)
@@ -256,7 +243,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   > 0x1f1a: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev (0x16)
     0x1f1a: basic_string.h:543 (/usr/include/c++/5/bits)
     0x1f1e: basic_string.h:543 (/usr/include/c++/5/bits)
-    0x1f23: basic_string.h:179 (/usr/include/c++/5/bits)
     0x1f24: basic_string.h:543 (/usr/include/c++/5/bits)
 
     > 0x1f1a: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv (0x16)
@@ -405,7 +391,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
   > 0x211e: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE3endEv (0xba)
     0x211e: stl_vector.h:566 (/usr/include/c++/5/bits)
-    0x2122: stl_iterator.h:741 (/usr/include/c++/5/bits)
     0x21d0: stl_vector.h:566 (/usr/include/c++/5/bits)
 
     > 0x211e: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEC4ERKS4_ (0xba)
@@ -414,7 +399,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
   > 0x2122: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE5beginEv (0x2cb)
     0x2122: stl_vector.h:548 (/usr/include/c++/5/bits)
-    0x2126: stl_iterator.h:741 (/usr/include/c++/5/bits)
     0x23e5: stl_vector.h:548 (/usr/include/c++/5/bits)
 
     > 0x2122: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEC4ERKS4_ (0x2cb)
@@ -436,16 +420,13 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0x2192: stl_algo.h:3791 (/usr/include/c++/5/bits)
     0x21a3: stl_algo.h:3791 (/usr/include/c++/5/bits)
     0x21b2: stl_algo.h:3791 (/usr/include/c++/5/bits)
-    0x21d0: stl_algo.h:137 (/usr/include/c++/5/bits)
     0x2350: stl_algo.h:3791 (/usr/include/c++/5/bits)
     0x2379: stl_algo.h:3791 (/usr/include/c++/5/bits)
     0x2382: stl_algo.h:3791 (/usr/include/c++/5/bits)
     0x2386: stl_algo.h:3791 (/usr/include/c++/5/bits)
     0x238f: stl_algo.h:3791 (/usr/include/c++/5/bits)
     0x2393: stl_algo.h:3791 (/usr/include/c++/5/bits)
-    0x239f: stl_algo.h:148 (/usr/include/c++/5/bits)
     0x23dd: stl_algo.h:3791 (/usr/include/c++/5/bits)
-    0x23e5: stl_algo.h:120 (/usr/include/c++/5/bits)
     0x23ed: stl_algo.h:3791 (/usr/include/c++/5/bits)
 
     > 0x2126: _ZSt9__find_ifIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEENS0_5__ops16_Iter_equals_valIKS4_EEET_SE_SE_T0_ (0x2e2)
@@ -463,16 +444,13 @@ expression: "FunctionsDebug(&functions[..10], 0)"
       0x2192: stl_algo.h:162 (/usr/include/c++/5/bits)
       0x21a3: stl_algo.h:162 (/usr/include/c++/5/bits)
       0x21b2: stl_algo.h:162 (/usr/include/c++/5/bits)
-      0x21d0: stl_algo.h:137 (/usr/include/c++/5/bits)
       0x2350: stl_algo.h:162 (/usr/include/c++/5/bits)
       0x2379: stl_algo.h:162 (/usr/include/c++/5/bits)
       0x2382: stl_algo.h:162 (/usr/include/c++/5/bits)
       0x2386: stl_algo.h:162 (/usr/include/c++/5/bits)
       0x238f: stl_algo.h:162 (/usr/include/c++/5/bits)
       0x2393: stl_algo.h:162 (/usr/include/c++/5/bits)
-      0x239f: stl_algo.h:148 (/usr/include/c++/5/bits)
       0x23dd: stl_algo.h:162 (/usr/include/c++/5/bits)
-      0x23e5: stl_algo.h:120 (/usr/include/c++/5/bits)
       0x23ed: stl_algo.h:162 (/usr/include/c++/5/bits)
 
       > 0x2126: _ZSt9__find_ifIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEENS0_5__ops16_Iter_equals_valIKS4_EEET_SE_SE_T0_St26random_access_iterator_tag (0x2e2)
@@ -531,12 +509,9 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0x21e1: stl_vector.h:1147 (/usr/include/c++/5/bits)
     0x21e7: stl_vector.h:1147 (/usr/include/c++/5/bits)
     0x21f7: stl_vector.h:1147 (/usr/include/c++/5/bits)
-    0x21fb: vector.tcc:146 (/usr/include/c++/5/bits)
     0x21fe: stl_vector.h:1147 (/usr/include/c++/5/bits)
-    0x2202: vector.tcc:146 (/usr/include/c++/5/bits)
     0x22c0: stl_vector.h:1147 (/usr/include/c++/5/bits)
     0x22d0: stl_vector.h:1147 (/usr/include/c++/5/bits)
-    0x22d4: vector.tcc:146 (/usr/include/c++/5/bits)
     0x22d7: stl_vector.h:1147 (/usr/include/c++/5/bits)
 
     > 0x21d8: _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE8_M_eraseEN9__gnu_cxx17__normal_iteratorIPS2_S4_EE (0x103)
@@ -556,19 +531,16 @@ expression: "FunctionsDebug(&functions[..10], 0)"
       > 0x21e1: _ZSt4moveIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEES9_ET0_T_SB_SA_ (0xef)
         0x21e1: stl_algobase.h:504 (/usr/include/c++/5/bits)
         0x21e7: stl_algobase.h:504 (/usr/include/c++/5/bits)
-        0x21f7: stl_algobase.h:383 (/usr/include/c++/5/bits)
         0x22c0: stl_algobase.h:504 (/usr/include/c++/5/bits)
 
         > 0x21e1: _ZSt14__copy_move_a2ILb1EN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEES9_ET1_T0_SB_SA_ (0xef)
           0x21e1: stl_algobase.h:438 (/usr/include/c++/5/bits)
           0x21e7: stl_algobase.h:438 (/usr/include/c++/5/bits)
-          0x21f7: stl_algobase.h:383 (/usr/include/c++/5/bits)
           0x22c0: stl_algobase.h:438 (/usr/include/c++/5/bits)
 
           > 0x21e1: _ZSt13__copy_move_aILb1EPPN15google_breakpad16ExceptionHandlerES3_ET1_T0_S5_S4_ (0xef)
             0x21e1: stl_algobase.h:402 (/usr/include/c++/5/bits)
             0x21e7: stl_algobase.h:402 (/usr/include/c++/5/bits)
-            0x21f7: stl_algobase.h:383 (/usr/include/c++/5/bits)
             0x22c0: stl_algobase.h:402 (/usr/include/c++/5/bits)
 
             > 0x21e1: _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mIPN15google_breakpad16ExceptionHandlerEEEPT_PKS6_S9_S7_ (0xef)
@@ -607,7 +579,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0x23b2: exception_handler.cc:171 (../deps/breakpad/src/client/linux/handler)
     0x23b9: exception_handler.cc:170 (../deps/breakpad/src/client/linux/handler)
     0x23bb: exception_handler.cc:176 (../deps/breakpad/src/client/linux/handler)
-    0x23dd: linux_syscall_support.h:3533 (../deps/third_party/lss)
     0x2408: exception_handler.cc:176 (../deps/breakpad/src/client/linux/handler)
     0x241d: exception_handler.cc:175 (../deps/breakpad/src/client/linux/handler)
     0x2425: exception_handler.cc:176 (../deps/breakpad/src/client/linux/handler)
@@ -625,7 +596,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
   > 0x220f: _ZNSt7__cxx114listIN15google_breakpad9AppMemoryESaIS2_EED4Ev (0x31)
     0x220f: stl_list.h:507 (/usr/include/c++/5/bits)
-    0x2216: list.tcc:70 (/usr/include/c++/5/bits)
     0x221b: stl_list.h:507 (/usr/include/c++/5/bits)
     0x2222: stl_list.h:507 (/usr/include/c++/5/bits)
     0x2230: stl_list.h:507 (/usr/include/c++/5/bits)
@@ -634,7 +604,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
     > 0x220f: _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EED4Ev (0x31)
       0x220f: stl_list.h:446 (/usr/include/c++/5/bits)
-      0x2216: list.tcc:70 (/usr/include/c++/5/bits)
       0x221b: stl_list.h:446 (/usr/include/c++/5/bits)
       0x2222: stl_list.h:446 (/usr/include/c++/5/bits)
       0x2230: stl_list.h:446 (/usr/include/c++/5/bits)
@@ -858,7 +827,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
   > 0x2584: _ZN15google_breakpad13PageAllocator5AllocEm (0x257)
     0x2584: memory_allocator.h:91 (../deps/breakpad/src/common)
-    0x2591: linux_syscall_support.h:4064 (../deps/third_party/lss)
     0x2599: memory_allocator.h:90 (../deps/breakpad/src/common)
     0x259b: memory_allocator.h:91 (../deps/breakpad/src/common)
     0x25a0: memory_allocator.h:90 (../deps/breakpad/src/common)
@@ -868,21 +836,15 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0x25b6: memory_allocator.h:90 (../deps/breakpad/src/common)
     0x25b9: memory_allocator.h:91 (../deps/breakpad/src/common)
     0x25d9: memory_allocator.h:91 (../deps/breakpad/src/common)
-    0x25e3: memory_allocator.h:121 (../deps/breakpad/src/common)
     0x25e7: memory_allocator.h:91 (../deps/breakpad/src/common)
     0x25ee: memory_allocator.h:91 (../deps/breakpad/src/common)
-    0x25f2: memory_allocator.h:132 (../deps/breakpad/src/common)
     0x27d0: memory_allocator.h:91 (../deps/breakpad/src/common)
 
     > 0x2584: _ZN15google_breakpad13PageAllocator9GetNPagesEm (0x257)
       0x2584: memory_allocator.h:120 (../deps/breakpad/src/common)
-      0x2591: linux_syscall_support.h:4064 (../deps/third_party/lss)
       0x259b: memory_allocator.h:120 (../deps/breakpad/src/common)
-      0x25a0: linux_syscall_support.h:4064 (../deps/third_party/lss)
       0x25a7: memory_allocator.h:120 (../deps/breakpad/src/common)
-      0x25ae: linux_syscall_support.h:4064 (../deps/third_party/lss)
       0x25b1: memory_allocator.h:120 (../deps/breakpad/src/common)
-      0x25b6: linux_syscall_support.h:4064 (../deps/third_party/lss)
       0x25b9: memory_allocator.h:120 (../deps/breakpad/src/common)
       0x25d9: memory_allocator.h:121 (../deps/breakpad/src/common)
       0x25e7: memory_allocator.h:131 (../deps/breakpad/src/common)
@@ -942,9 +904,7 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
   > 0x286e: sys_waitpid (0x49)
     0x286e: linux_syscall_support.h:4496 (../deps/third_party/lss)
-    0x288c: linux_syscall_support.h:3718 (../deps/third_party/lss)
     0x2891: linux_syscall_support.h:4496 (../deps/third_party/lss)
-    0x28b2: linux_syscall_support.h:3718 (../deps/third_party/lss)
     0x28b5: linux_syscall_support.h:4496 (../deps/third_party/lss)
 
     > 0x286e: sys_wait4 (0x49)
@@ -957,7 +917,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
   > 0x2990: _ZN15google_breakpad13PageAllocatorD4Ev (0x56)
     0x2990: memory_allocator.h:71 (../deps/breakpad/src/common)
-    0x2992: memory_allocator.h:143 (../deps/breakpad/src/common)
     0x29a5: memory_allocator.h:71 (../deps/breakpad/src/common)
     0x29ae: memory_allocator.h:71 (../deps/breakpad/src/common)
     0x29b2: memory_allocator.h:71 (../deps/breakpad/src/common)
