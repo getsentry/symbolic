@@ -661,22 +661,21 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             range_buf.clear();
             let (call_line, call_file) = self.parse_ranges(entry, range_buf)?;
 
-            // TODO: fix that
-            // We've a non-inlined function which has two ranges or more
-            // So probably splited because of cold paths
-            // Anyway the function_size & function_end are wrong here
-            // so probably the workaround to generate several functions here:
-            // one for each range
-            if !inline && range_buf.len() != 1 {
-                continue;
-            }
-
             // Ranges can be empty for two reasons: (1) the function is a no-op and does not
             // contain any code, or (2) the function did contain eliminated dead code. In the
             // latter case, a surrogate DIE remains with `DW_AT_low_pc(0)` and empty ranges.
             // That DIE might still contain inlined functions with actual ranges, which must all
             // be skipped.
             if range_buf.is_empty() {
+                skipped_depth = Some(depth);
+                continue;
+            }
+
+            // We have a non-inlined function which has two ranges or more, probably split because
+            // of cold paths.
+            if !inline && range_buf.len() != 1 {
+                // TODO: Emit one function record per range, instead of skipping this function. This
+                // also applies to PDB, where this is more common with LTO enabled.
                 skipped_depth = Some(depth);
                 continue;
             }
@@ -716,8 +715,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 // indicates invalid debug information.
                 let parent = match stack.peek_mut() {
                     Some(parent) => parent,
-                    // TODO: (part of the todo above)
-                    None => continue, // return Err(DwarfErrorKind::UnexpectedInline.into()),
+                    None => return Err(DwarfErrorKind::UnexpectedInline.into()),
                 };
 
                 let parent_end = parent.address + parent.size;
