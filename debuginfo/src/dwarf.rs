@@ -800,7 +800,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                                 };
 
                                 lines.insert(index, line_info);
-                                index += 1;
                                 continue;
                             }
 
@@ -824,10 +823,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                             record.line = line;
 
                             // Insert the split record after mutating the previous one to avoid
-                            // borrowing issues.
+                            // borrowing issues. Do not skip it, since it may have to be split
+                            // further.
                             if let Some(split) = split {
                                 lines.insert(index, split);
-                                index += 1;
                             }
                         }
 
