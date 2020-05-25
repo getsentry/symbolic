@@ -569,42 +569,43 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 let size = first.size.map(|s| s + first.address - range.begin);
 
                 let mut last = (first.file_index, line);
-
-                lines.push(LineInfo {
+                let mut line_info = LineInfo {
                     address: range.begin - self.inner.info.load_address,
                     size,
                     file,
                     line,
-                });
+                };
 
                 for row in rows {
-                    let file = self.resolve_file(row.file_index).unwrap_or_default();
                     let line = row.line.unwrap_or(0);
 
                     // We're in a range so we can collapse the lines without any side effects
                     if last == (row.file_index, line) {
+                        // We collapse the lines but need to fix the last line size
+                        if let Some(size) = line_info.size.as_mut() {
+                            *size += row.size.unwrap_or(0);
+                        }
                         continue;
                     }
 
-                    // We collapse the lines but need to fix the last line size
-                    if let Some(size) = lines.last_mut().unwrap().size.as_mut() {
-                        *size += row.size.unwrap_or(0);
-                    }
+                    // We've a new line/file so push the previous line_info
+                    lines.push(line_info);
 
+                    let file = self.resolve_file(row.file_index).unwrap_or_default();
                     last = (row.file_index, line);
-                    lines.push(LineInfo {
+                    line_info = LineInfo {
                         address: row.address - self.inner.info.load_address,
                         size: row.size,
                         file,
                         line,
-                    });
+                    };
                 }
 
                 // Fix the size of the last line
-                let last = lines.last_mut().unwrap();
-                if let Some(size) = last.size.as_mut() {
-                    *size = range.end - self.inner.info.load_address - last.address;
+                if let Some(size) = line_info.size.as_mut() {
+                    *size = range.end - self.inner.info.load_address - line_info.address;
                 }
+                lines.push(line_info);
             }
         }
 
