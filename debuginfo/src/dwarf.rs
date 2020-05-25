@@ -807,17 +807,18 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                             // Split the parent record if it exceeds the end of this range. We can
                             // assume that record.size is set here since we passed the previous
                             // condition.
-                            let mut split = None;
-                            if record_end > range_end {
+                            let split = if record_end > range_end {
                                 record.size = Some(range_end - record.address);
 
-                                split = Some(LineInfo {
+                                Some(LineInfo {
                                     address: range_end,
                                     size: Some(record_end - range_end),
                                     file: record.file.clone(),
                                     line: record.line,
-                                });
-                            }
+                                })
+                            } else {
+                                None
+                            };
 
                             record.file = file.clone();
                             record.line = line;
