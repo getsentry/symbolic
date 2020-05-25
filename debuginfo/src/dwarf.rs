@@ -544,7 +544,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             None => return Vec::new(),
         };
 
-        let mut last = None;
         let mut lines = Vec::new();
         for range in ranges {
             // Most of the rows will result in a line record. Reserve the number of rows in the line
@@ -553,21 +552,57 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let rows = line_program.get_rows(range);
             lines.reserve(rows.len());
 
-            for row in rows {
-                let file = self.resolve_file(row.file_index).unwrap_or_default();
-                let line = row.line.unwrap_or(0);
+            // Suppose we've a range [0x50; 0x100) and in sequences, we've:
+            //  - [0x25; 0x60) -> l.12, f.34
+            //  - [0x60; 0x80) -> l.13, f.34
+            //  - [0x80; 0x120) -> l.14, f.34
+            // So for this range, we'll get exactly the 3 above rows
+            // and we need:
+            // - to fix the address of the 1st row to 0x50
+            // - to do nothing on the 2nd since it's fully included in the range
+            // - to fix the size of the last row to 0x20 (0x100 - 0x80)
+            // At the end we exactly splited the initial range into 3 contiguous ranges
+            // and each of them maps a different line.
+            if let Some((first, rows)) = rows.split_first() {
+                let mut last_file = first.file_index;
+                let mut last_info = LineInfo {
+                    address: range.begin - self.inner.info.load_address,
+                    size: first.size.map(|s| s + first.address - range.begin),
+                    file: self.resolve_file(first.file_index).unwrap_or_default(),
+                    line: first.line.unwrap_or(0),
+                };
 
-                if last == Some((row.file_index, line)) {
-                    continue;
+                for row in rows {
+                    let line = row.line.unwrap_or(0);
+
+                    // We're in a range so we can collapse the lines without any side effects
+                    if (last_file, last_info.line) == (row.file_index, line) {
+                        // We collapse the lines but need to fix the last line size
+                        if let Some(size) = last_info.size.as_mut() {
+                            *size += row.size.unwrap_or(0);
+                        }
+
+                        continue;
+                    }
+
+                    // We've a new line/file so push the previous line_info
+                    lines.push(last_info);
+
+                    last_file = row.file_index;
+                    last_info = LineInfo {
+                        address: row.address - self.inner.info.load_address,
+                        size: row.size,
+                        file: self.resolve_file(row.file_index).unwrap_or_default(),
+                        line,
+                    };
                 }
 
-                last = Some((row.file_index, line));
-                lines.push(LineInfo {
-                    address: row.address - self.inner.info.load_address,
-                    size: row.size,
-                    file,
-                    line,
-                });
+                // Fix the size of the last line
+                if let Some(size) = last_info.size.as_mut() {
+                    *size = range.end - self.inner.info.load_address - last_info.address;
+                }
+
+                lines.push(last_info);
             }
         }
 
@@ -645,6 +680,15 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 continue;
             }
 
+            // We have a non-inlined function which has two ranges or more, probably split because
+            // of cold paths.
+            if !inline && range_buf.len() != 1 {
+                // TODO: Emit one function record per range, instead of skipping this function. This
+                // also applies to PDB, where this is more common with LTO enabled.
+                skipped_depth = Some(depth);
+                continue;
+            }
+
             let function_address = range_buf[0].begin - self.inner.info.load_address;
             let function_size = range_buf[range_buf.len() - 1].end - range_buf[0].begin;
             let function_end = function_address + function_size;
@@ -675,16 +719,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             // allows for a single allocation per call to `resolve_lines`.
             let lines = self.resolve_lines(&range_buf);
 
-            let function = Function {
-                address: function_address,
-                size: function_size,
-                name: Name::with_language(name.unwrap_or_default(), self.language),
-                compilation_dir: self.compilation_dir(),
-                lines,
-                inlinees: Vec::new(),
-                inline,
-            };
-
             if inline {
                 // An inlined function must always have a parent. An empty list of funcs
                 // indicates invalid debug information.
@@ -694,80 +728,137 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 };
 
                 // Make sure there is correct line information for the call site of this inlined
-                // function. In general, a compiler should always output the call line and call
-                // file for inlined subprograms. If this info is missing, the lookup might
-                // return invalid line numbers.
+                // function. In general, a compiler should always output the call line and call file
+                // for inlined subprograms. If this info is missing, the lookup might return invalid
+                // line numbers.
+                //
+                // All the lines have been collected in the parent so just get the lines from the
+                // parent which belong to each range in the inlinee.
                 if let (Some(line), Some(file_id)) = (call_line, call_file) {
                     let file = self.resolve_file(file_id).unwrap_or_default();
                     let lines = &mut parent.lines;
 
-                    // Obtain the index of the first line record in the parent that fully points
-                    // into this inlinee.
-                    let start = match lines.binary_search_by_key(&function_address, |l| l.address) {
-                        Ok(idx) => idx,
-                        Err(idx) => {
-                            // Fix the length of the previous line record to go up to the start of
-                            // the inline function. This effectively splits the previous record in
-                            // two.
-                            if let Some(prev) = idx.checked_sub(1).and_then(|i| lines.get_mut(i)) {
-                                let max_size = function_address - prev.address;
-                                if prev.size.map_or(true, |prev_size| prev_size > max_size) {
-                                    prev.size = Some(max_size);
-                                }
+                    let mut index = 0;
+                    for range in range_buf.iter() {
+                        let range_begin = range.begin - self.inner.info.load_address;
+                        let range_end = range.end - self.inner.info.load_address;
+
+                        // Check if there is a line record covering the start of this range,
+                        // otherwise insert a new record pointing to the correct call location.
+                        if let Some(next) = lines.get(index) {
+                            if next.address > range_begin {
+                                let line_info = LineInfo {
+                                    address: range_begin,
+                                    size: Some(range_end.min(next.address) - range_begin),
+                                    file: file.clone(),
+                                    line,
+                                };
+
+                                lines.insert(index, line_info);
+                                index += 1;
+                            }
+                        }
+
+                        while index < lines.len() {
+                            let record = &mut lines[index];
+
+                            // Advance to the next range since we're done here.
+                            if record.address >= range_end {
+                                break;
                             }
 
-                            // Insert a new record pointing to the correct call location. Note that
-                            // "base_dir" can be inherited safely here.
-                            let size = match lines.get(idx) {
-                                Some(next) => next.address - function_address,
-                                None => function_size,
+                            index += 1;
+
+                            // Skip forward to the next line record that overlaps with our range.
+                            // Lines before belong to the parent function or another inlinee.
+                            let record_end = record.address + record.size.unwrap_or(0);
+                            if record_end <= range_begin {
+                                continue;
+                            }
+
+                            if record.address < range_begin {
+                                // Fix the length of this line record to go up to the start of the
+                                // inline function. This effectively splits the previous record in
+                                // two.
+                                let max_size = range_begin - record.address;
+                                if record.size.map_or(true, |prev_size| prev_size > max_size) {
+                                    record.size = Some(max_size);
+                                }
+
+                                // Insert a new record pointing to the correct call location. Note that
+                                // "base_dir" can be inherited safely here.
+                                let size = match lines.get(index) {
+                                    Some(next) => range_end.min(next.address) - range_begin,
+                                    None => range_end - range_begin,
+                                };
+
+                                let line_info = LineInfo {
+                                    address: range_begin,
+                                    size: Some(size),
+                                    file: file.clone(),
+                                    line,
+                                };
+
+                                lines.insert(index, line_info);
+                                continue;
+                            }
+
+                            // Split the parent record if it exceeds the end of this range. We can
+                            // assume that record.size is set here since we passed the previous
+                            // condition.
+                            let split = if record_end > range_end {
+                                record.size = Some(range_end - record.address);
+
+                                Some(LineInfo {
+                                    address: range_end,
+                                    size: Some(record_end - range_end),
+                                    file: record.file.clone(),
+                                    line: record.line,
+                                })
+                            } else {
+                                None
                             };
 
-                            let line_info = LineInfo {
-                                address: function_address,
-                                size: Some(size),
-                                file: file.clone(),
-                                line,
-                            };
+                            record.file = file.clone();
+                            record.line = line;
 
-                            lines.insert(idx, line_info);
-                            idx + 1
-                        }
-                    };
-
-                    // Patch all following line records pointing them to the call location. Stop at
-                    // the boundary of the inlinee.
-                    for index in start..lines.len() {
-                        let record = &mut lines[index];
-                        if record.address >= function_end {
-                            break;
+                            // Insert the split record after mutating the previous one to avoid
+                            // borrowing issues. Do not skip it, since it may have to be split
+                            // further.
+                            if let Some(split) = split {
+                                lines.insert(index, split);
+                            }
                         }
 
-                        // Split the parent record if it exceeds the end of this inlinee. We can
-                        // assume that record.size is set here since we passed the previous
-                        // condition.
-                        let mut split = None;
-                        let record_end = record.address + record.size.unwrap_or(0);
-                        if record_end > function_end {
-                            split = Some(LineInfo {
-                                address: function_end,
-                                size: Some(record_end - function_end),
-                                file: record.file.clone(),
-                                line: record.line,
-                            });
-                        }
+                        // The range is not fully covered by the parent. Add a new record that
+                        // covers the remaining part.
+                        if let Some(prev) = index.checked_sub(1).and_then(|i| lines.get(i)) {
+                            let record_end = prev.address + prev.size.unwrap_or(0);
+                            if record_end < range_end {
+                                let line_info = LineInfo {
+                                    address: record_end,
+                                    size: Some(range_end - record_end),
+                                    file: file.clone(),
+                                    line,
+                                };
 
-                        record.file = file.clone();
-                        record.line = line;
-
-                        // Insert the split record after mutating the previous one to avoid
-                        // borrowing issues.
-                        if let Some(split) = split {
-                            lines.insert(index + 1, split);
+                                lines.insert(index, line_info);
+                                index += 1;
+                            }
                         }
                     }
                 }
             }
+
+            let function = Function {
+                address: function_address,
+                size: function_size,
+                name: Name::with_language(name.unwrap_or_default(), self.language),
+                compilation_dir: self.compilation_dir(),
+                lines,
+                inlinees: Vec::new(),
+                inline,
+            };
 
             stack.push(depth, function)
         }
