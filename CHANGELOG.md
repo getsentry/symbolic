@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.3.2
+
+**Bug Fixes**:
+
+- Fix line information of inline parents in DWARF (#237). Many thanks to @calixteman!
+
 ## 7.3.1
 
 **Bug Fixes**:
