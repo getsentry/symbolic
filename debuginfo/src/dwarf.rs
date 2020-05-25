@@ -564,48 +564,45 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             // At the end we exactly splited the initial range into 3 contiguous ranges
             // and each of them maps a different line.
             if let Some((first, rows)) = rows.split_first() {
-                let file = self.resolve_file(first.file_index).unwrap_or_default();
-                let line = first.line.unwrap_or(0);
-                let size = first.size.map(|s| s + first.address - range.begin);
-
-                let mut last = (first.file_index, line);
-                let mut line_info = LineInfo {
+                let mut last_file = first.file_index;
+                let mut last_info = LineInfo {
                     address: range.begin - self.inner.info.load_address,
-                    size,
-                    file,
-                    line,
+                    size: first.size.map(|s| s + first.address - range.begin),
+                    file: self.resolve_file(first.file_index).unwrap_or_default(),
+                    line: first.line.unwrap_or(0),
                 };
 
                 for row in rows {
                     let line = row.line.unwrap_or(0);
 
                     // We're in a range so we can collapse the lines without any side effects
-                    if last == (row.file_index, line) {
+                    if (last_file, last_info.line) == (row.file_index, line) {
                         // We collapse the lines but need to fix the last line size
-                        if let Some(size) = line_info.size.as_mut() {
+                        if let Some(size) = last_info.size.as_mut() {
                             *size += row.size.unwrap_or(0);
                         }
+
                         continue;
                     }
 
                     // We've a new line/file so push the previous line_info
-                    lines.push(line_info);
+                    lines.push(last_info);
 
-                    let file = self.resolve_file(row.file_index).unwrap_or_default();
-                    last = (row.file_index, line);
-                    line_info = LineInfo {
+                    last_file = row.file_index;
+                    last_info = LineInfo {
                         address: row.address - self.inner.info.load_address,
                         size: row.size,
-                        file,
+                        file: self.resolve_file(row.file_index).unwrap_or_default(),
                         line,
                     };
                 }
 
                 // Fix the size of the last line
-                if let Some(size) = line_info.size.as_mut() {
-                    *size = range.end - self.inner.info.load_address - line_info.address;
+                if let Some(size) = last_info.size.as_mut() {
+                    *size = range.end - self.inner.info.load_address - last_info.address;
                 }
-                lines.push(line_info);
+
+                lines.push(last_info);
             }
         }
 
