@@ -552,6 +552,17 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let rows = line_program.get_rows(range);
             lines.reserve(rows.len());
 
+            // Suppose we've a range [0x50; 0x100) and in sequences, we've:
+            //  - [0x25; 0x60) -> l.12, f.34
+            //  - [0x60; 0x80) -> l.13, f.34
+            //  - [0x80; 0x120) -> l.14, f.34
+            // So for this range, we'll get exactly the 3 above rows
+            // and we need:
+            // - to fix the address of the 1st row to 0x50
+            // - to do nothing on the 2nd since it's fully included in the range
+            // - to fix the size of the last row to 0x20 (0x100 - 0x80)
+            // At the end we exactly splited the initial range into 3 contiguous ranges
+            // and each of them maps a different line.
             if let Some((first, rows)) = rows.split_first() {
                 let file = self.resolve_file(first.file_index).unwrap_or_default();
                 let line = first.line.unwrap_or(0);
