@@ -730,111 +730,123 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     None => return Err(DwarfErrorKind::UnexpectedInline.into()),
                 };
 
-                let parent_end = parent.address + parent.size;
-
                 // Make sure there is correct line information for the call site of this inlined
-                // function. In general, a compiler should always output the call line and call
-                // file for inlined subprograms. If this info is missing, the lookup might
-                // return invalid line numbers.
-                // All the lines have been collected in the parent so just get the lines from the parent
-                // which belong to each range in the inlinee
+                // function. In general, a compiler should always output the call line and call file
+                // for inlined subprograms. If this info is missing, the lookup might return invalid
+                // line numbers.
+                //
+                // All the lines have been collected in the parent so just get the lines from the
+                // parent which belong to each range in the inlinee.
                 if let (Some(line), Some(file_id)) = (call_line, call_file) {
                     let file = self.resolve_file(file_id).unwrap_or_default();
-                    let parent_lines = &mut parent.lines;
+                    let lines = &mut parent.lines;
 
+                    let mut index = 0;
                     for range in range_buf.iter() {
-                        if range.begin >= range.end {
-                            continue;
+                        let range_begin = range.begin - self.inner.info.load_address;
+                        let range_end = range.end - self.inner.info.load_address;
+
+                        // Check if there is a line record covering the start of this range,
+                        // otherwise insert a new record pointing to the correct call location.
+                        if let Some(next) = lines.get(index) {
+                            if next.address > range_begin {
+                                let line_info = LineInfo {
+                                    address: range_begin,
+                                    size: Some(range_end.min(next.address) - range_begin),
+                                    file: file.clone(),
+                                    line,
+                                };
+
+                                lines.insert(index, line_info);
+                                index += 1;
+                            }
                         }
 
-                        let begin = parent
-                            .address
-                            .max(range.begin - self.inner.info.load_address);
-                        let end = parent_end.min(range.end - self.inner.info.load_address);
+                        while index < lines.len() {
+                            let record = &mut lines[index];
 
-                        let idx_b = match parent_lines.binary_search_by_key(&begin, |l| l.address) {
-                            Ok(idx) => idx,
-                            Err(idx) => {
-                                if let Some(prev) =
-                                    idx.checked_sub(1).and_then(|i| parent_lines.get_mut(i))
-                                {
-                                    let max_size = begin - prev.address;
-                                    if prev.size.map_or(true, |prev_size| prev_size > max_size) {
-                                        prev.size = Some(max_size);
-                                    }
+                            // Advance to the next range since we're done here.
+                            if record.address >= range_end {
+                                break;
+                            }
+
+                            index += 1;
+
+                            // Skip forward to the next line record that overlaps with our range.
+                            // Lines before belong to the parent function or another inlinee.
+                            let record_end = record.address + record.size.unwrap_or(0);
+                            if record_end <= range_begin {
+                                continue;
+                            }
+
+                            if record.address < range_begin {
+                                // Fix the length of this line record to go up to the start of the
+                                // inline function. This effectively splits the previous record in
+                                // two.
+                                let max_size = range_begin - record.address;
+                                if record.size.map_or(true, |prev_size| prev_size > max_size) {
+                                    record.size = Some(max_size);
                                 }
 
                                 // Insert a new record pointing to the correct call location. Note that
                                 // "base_dir" can be inherited safely here.
-                                let size = Some(
-                                    parent_lines
-                                        .get(idx)
-                                        .map_or_else(|| end - begin, |next| next.address - begin),
-                                );
-                                parent_lines.insert(
-                                    idx,
-                                    LineInfo {
-                                        address: begin,
-                                        size,
-                                        line,
-                                        file: file.clone(),
-                                    },
-                                );
+                                let size = match lines.get(index) {
+                                    Some(next) => range_end.min(next.address) - range_begin,
+                                    None => range_end - range_begin,
+                                };
 
-                                // No need to set line/file in the parent since we already
-                                // fix it here and so the +1
-                                idx + 1
+                                let line_info = LineInfo {
+                                    address: range_begin,
+                                    size: Some(size),
+                                    file: file.clone(),
+                                    line,
+                                };
+
+                                lines.insert(index, line_info);
+                                index += 1;
+                                continue;
                             }
-                        };
 
-                        let idx_e = match parent_lines.binary_search_by_key(&end, |l| l.address) {
-                            Ok(idx) => idx,
-                            Err(idx) => {
-                                if idx != parent_lines.len() {
-                                    let line_info = if let Some(prev) =
-                                        idx.checked_sub(1).and_then(|i| parent_lines.get_mut(i))
-                                    {
-                                        if end < prev.address + prev.size.unwrap_or(0) {
-                                            // The range is ending in the middle of a parent line
-                                            // so need to insert a new line which will contain line info
-                                            // from the beginning of the line
-                                            let max_size = end - prev.address;
-                                            let size = if prev
-                                                .size
-                                                .map_or(true, |prev_size| prev_size > max_size)
-                                            {
-                                                let s = prev.size.unwrap() - max_size;
-                                                prev.size = Some(max_size);
-                                                s
-                                            } else {
-                                                0
-                                            };
-                                            Some(LineInfo {
-                                                address: end,
-                                                size: Some(size),
-                                                line: prev.line,
-                                                file: prev.file.clone(),
-                                            })
-                                        } else {
-                                            None
-                                        }
-                                    } else {
-                                        None
-                                    };
+                            // Split the parent record if it exceeds the end of this range. We can
+                            // assume that record.size is set here since we passed the previous
+                            // condition.
+                            let mut split = None;
+                            if record_end > range_end {
+                                record.size = Some(range_end - record.address);
 
-                                    if let Some(line_info) = line_info {
-                                        parent_lines.insert(idx, line_info);
-                                    }
-                                }
-                                idx
+                                split = Some(LineInfo {
+                                    address: range_end,
+                                    size: Some(record_end - range_end),
+                                    file: record.file.clone(),
+                                    line: record.line,
+                                });
                             }
-                        };
 
-                        for idx in idx_b..idx_e {
-                            // since we've index in parent_lines then the check is useless
-                            if let Some(record) = parent_lines.get_mut(idx) {
-                                record.line = line;
-                                record.file = file.clone();
+                            record.file = file.clone();
+                            record.line = line;
+
+                            // Insert the split record after mutating the previous one to avoid
+                            // borrowing issues.
+                            if let Some(split) = split {
+                                lines.insert(index, split);
+                                index += 1;
+                            }
+                        }
+
+                        // The range is not fully covered by the parent. Add a new record that
+                        // covers the remaining part.
+                        if let Some(prev) = index.checked_sub(1).and_then(|i| lines.get(i)) {
+                            let record_end = prev.address + prev.size.unwrap_or(0);
+                            if record_end < range_end {
+                                let line_info = LineInfo {
+                                    address: record_end,
+                                    size: Some(range_end - record_end),
+                                    file: file.clone(),
+                                    line,
+                                };
+
+                                lines.insert(index, line_info);
+                                index += 1;
                             }
                         }
                     }
