@@ -801,13 +801,12 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                                     record.size = Some(max_size);
                                 }
 
-                                // Insert a new record pointing to the correct call location. Note that
-                                // "base_dir" can be inherited safely here.
-                                let size = match lines.get(index) {
-                                    Some(next) => range_end.min(next.address) - range_begin,
-                                    None => range_end - range_begin,
-                                };
+                                // For example: [0; 100) split around 20 will give [0; 20) and [20;
+                                // 100) so the size of the second is 100 - 20
+                                let size = record_end.min(range_end) - range_begin;
 
+                                // Insert a new record pointing to the correct call location. Note
+                                // that "base_dir" can be inherited safely here.
                                 let line_info = LineInfo {
                                     address: range_begin,
                                     size: Some(size),
