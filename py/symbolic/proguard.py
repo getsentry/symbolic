@@ -10,7 +10,7 @@ from symbolic.utils import (
 )
 
 
-__all__ = ["ProguardMappingView"]
+__all__ = ["ProguardMappingView", "ProguardMapper"]
 
 
 class ProguardMappingView(RustObject):
@@ -57,3 +57,30 @@ class ProguardMappingView(RustObject):
         )
 
         return decode_str(result, free=True)
+
+
+class ProguardMapper(RustObject):
+    """Gives access to proguard mapping files."""
+
+    __dealloc_func__ = lib.symbolic_proguardmapper_free
+
+    @classmethod
+    def open(cls, path):
+        """Constructs a mapping file from a path."""
+        return cls._from_objptr(
+            rustcall(lib.symbolic_proguardmapper_open, encode_path(path))
+        )
+
+    def remap(self, klass, method="", line=0):
+        """Remaps the stackframe, given its class and optional method and line.
+        """
+        result = self._methodcall(
+            lib.symbolic_proguardmapper_remap,
+            encode_str(klass),
+            encode_str(method),
+            line,
+        )
+
+        result = decode_str(result, free=True)
+
+        return json.loads(result)
