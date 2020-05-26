@@ -776,6 +776,22 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                                 continue;
                             }
 
+                            // Split the parent record if it exceeds the end of this range. We can
+                            // assume that record.size is set here since we passed the previous
+                            // condition.
+                            let split = if record_end > range_end {
+                                record.size = Some(range_end - record.address);
+
+                                Some(LineInfo {
+                                    address: range_end,
+                                    size: Some(record_end - range_end),
+                                    file: record.file.clone(),
+                                    line: record.line,
+                                })
+                            } else {
+                                None
+                            };
+
                             if record.address < range_begin {
                                 // Fix the length of this line record to go up to the start of the
                                 // inline function. This effectively splits the previous record in
@@ -800,27 +816,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                                 };
 
                                 lines.insert(index, line_info);
-                                continue;
-                            }
-
-                            // Split the parent record if it exceeds the end of this range. We can
-                            // assume that record.size is set here since we passed the previous
-                            // condition.
-                            let split = if record_end > range_end {
-                                record.size = Some(range_end - record.address);
-
-                                Some(LineInfo {
-                                    address: range_end,
-                                    size: Some(record_end - range_end),
-                                    file: record.file.clone(),
-                                    line: record.line,
-                                })
+                                index += 1;
                             } else {
-                                None
+                                record.file = file.clone();
+                                record.line = line;
                             };
-
-                            record.file = file.clone();
-                            record.line = line;
 
                             // Insert the split record after mutating the previous one to avoid
                             // borrowing issues. Do not skip it, since it may have to be split
