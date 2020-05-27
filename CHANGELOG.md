@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.3.3
+
+**Bug Fixes**:
+
+- Update broken doc comments for `SelfCell` and `debuginfo::dwarf` (#238)
+- Fix holes in line records of inline parents in DWARF (#239)
+
 ## 7.3.2
 
 **Bug Fixes**:
