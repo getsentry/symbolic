@@ -26,6 +26,7 @@ ffi_fn! {
         let demangled = name.try_demangle(DemangleOptions {
             with_arguments: true,
             format: DemangleFormat::Short,
+            None,
         });
 
         Ok(demangled.into_owned().into())
@@ -46,6 +47,7 @@ ffi_fn! {
         let demangled = name.try_demangle(DemangleOptions {
             with_arguments: false,
             format: DemangleFormat::Short,
+            None,
         });
 
         Ok(demangled.into_owned().into())

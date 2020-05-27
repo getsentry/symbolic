@@ -4,12 +4,14 @@ use symbolic_demangle::{DemangleFormat, DemangleOptions};
 pub const WITH_ARGS: DemangleOptions = DemangleOptions {
     format: DemangleFormat::Short,
     with_arguments: true,
+    msvc: None,
 };
 
 #[allow(unused)]
 pub const WITHOUT_ARGS: DemangleOptions = DemangleOptions {
     format: DemangleFormat::Short,
     with_arguments: false,
+    msvc: None,
 };
 
 #[macro_export]
