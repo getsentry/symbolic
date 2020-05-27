@@ -776,33 +776,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                                 continue;
                             }
 
-                            if record.address < range_begin {
-                                // Fix the length of this line record to go up to the start of the
-                                // inline function. This effectively splits the previous record in
-                                // two.
-                                let max_size = range_begin - record.address;
-                                if record.size.map_or(true, |prev_size| prev_size > max_size) {
-                                    record.size = Some(max_size);
-                                }
-
-                                // Insert a new record pointing to the correct call location. Note that
-                                // "base_dir" can be inherited safely here.
-                                let size = match lines.get(index) {
-                                    Some(next) => range_end.min(next.address) - range_begin,
-                                    None => range_end - range_begin,
-                                };
-
-                                let line_info = LineInfo {
-                                    address: range_begin,
-                                    size: Some(size),
-                                    file: file.clone(),
-                                    line,
-                                };
-
-                                lines.insert(index, line_info);
-                                continue;
-                            }
-
                             // Split the parent record if it exceeds the end of this range. We can
                             // assume that record.size is set here since we passed the previous
                             // condition.
@@ -819,8 +792,34 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                                 None
                             };
 
-                            record.file = file.clone();
-                            record.line = line;
+                            if record.address < range_begin {
+                                // Fix the length of this line record to go up to the start of the
+                                // inline function. This effectively splits the previous record in
+                                // two.
+                                let max_size = range_begin - record.address;
+                                if record.size.map_or(true, |prev_size| prev_size > max_size) {
+                                    record.size = Some(max_size);
+                                }
+
+                                // For example: [0; 100) split around 20 will give [0; 20) and [20;
+                                // 100) so the size of the second is 100 - 20
+                                let size = record_end.min(range_end) - range_begin;
+
+                                // Insert a new record pointing to the correct call location. Note
+                                // that "base_dir" can be inherited safely here.
+                                let line_info = LineInfo {
+                                    address: range_begin,
+                                    size: Some(size),
+                                    file: file.clone(),
+                                    line,
+                                };
+
+                                lines.insert(index, line_info);
+                                index += 1;
+                            } else {
+                                record.file = file.clone();
+                                record.line = line;
+                            };
 
                             // Insert the split record after mutating the previous one to avoid
                             // borrowing issues. Do not skip it, since it may have to be split
