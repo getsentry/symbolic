@@ -1,3 +1,5 @@
+import json
+
 from symbolic._lowlevel import lib
 from symbolic.utils import (
     RustObject,
