@@ -9,6 +9,7 @@ authors = [
 documentation = "https://docs.rs/symbolic-demangle"
 homepage = "https://github.com/getsentry/symbolic"
 repository = "https://github.com/getsentry/symbolic"
+readme = "README.md"
 description = """
 A library to demangle symbols from various languages and compilers.
 """
@@ -25,5 +26,11 @@ msvc-demangler = "0.8.0"
 rustc-demangle = "0.1.16"
 symbolic-common = { version = "7.3.3", path = "../common" }
 
+[dev-dependencies]
+symbolic = { path = "..", features = ["demangle"] }
+
 [build-dependencies]
 cc = "1.0.50"
+
+[badges]
+travis-ci = { repository = "getsentry/symbolic", branch = "master" }
