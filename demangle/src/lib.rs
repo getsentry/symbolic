@@ -16,8 +16,8 @@
 //! # Examples
 //!
 //! ```rust
-//! use symbolic::common::{Language, Name};
-//! use symbolic::demangle::{Demangle, DemangleOptions};
+//! use symbolic_common::{Language, Name};
+//! use symbolic_demangle::{Demangle, DemangleOptions};
 //!
 //! let name = Name::new("__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E");
 //! assert_eq!(name.detect_language(), Language::Rust);
@@ -199,8 +199,8 @@ pub trait Demangle {
     /// # Examples
     ///
     /// ```
-    /// use symbolic::common::{Name, Language};
-    /// use symbolic::demangle::{Demangle, DemangleOptions};
+    /// use symbolic_common::{Name, Language};
+    /// use symbolic_demangle::{Demangle, DemangleOptions};
     ///
     /// assert_eq!(Name::new("_ZN3foo3barEv").detect_language(), Language::Cpp);
     /// assert_eq!(Name::new("unknown").detect_language(), Language::Unknown);
@@ -213,14 +213,14 @@ pub trait Demangle {
     ///
     /// Returns `None` in one of the following cases:
     ///  1. The language cannot be detected.
-    ///  2. The language cannot be demangled.
+    ///  2. The language is not supported.
     ///  3. Demangling of the name failed.
     ///
     /// # Examples
     ///
     /// ```
-    /// use symbolic::common::Name;
-    /// use symbolic::demangle::{Demangle, DemangleOptions};
+    /// use symbolic_common::Name;
+    /// use symbolic_demangle::{Demangle, DemangleOptions};
     ///
     /// assert_eq!(Name::new("_ZN3foo3barEv").demangle(DemangleOptions::default()), Some("foo::bar".to_string()));
     /// assert_eq!(Name::new("unknown").demangle(DemangleOptions::default()), None);
@@ -235,8 +235,8 @@ pub trait Demangle {
     /// # Examples
     ///
     /// ```
-    /// use symbolic::common::Name;
-    /// use symbolic::demangle::{Demangle, DemangleOptions};
+    /// use symbolic_common::Name;
+    /// use symbolic_demangle::{Demangle, DemangleOptions};
     ///
     /// assert_eq!(Name::new("_ZN3foo3barEv").try_demangle(DemangleOptions::default()), "foo::bar");
     /// assert_eq!(Name::new("unknown").try_demangle(DemangleOptions::default()), "unknown");
@@ -297,7 +297,7 @@ impl<'a> Demangle for Name<'a> {
 /// # Examples
 ///
 /// ```
-/// assert_eq!(symbolic::demangle::demangle("_ZN3foo3barEv"), "foo::bar");
+/// assert_eq!(symbolic_demangle::demangle("_ZN3foo3barEv"), "foo::bar");
 /// ```
 ///
 /// [`Demangle::try_demangle`]: trait.Demangle.html#tymethod.try_demangle
