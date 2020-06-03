@@ -1,6 +1,6 @@
 import json
 
-from symbolic._lowlevel import lib
+from symbolic._lowlevel import lib, ffi
 from symbolic.utils import (
     RustObject,
     rustcall,
@@ -12,7 +12,7 @@ from symbolic.utils import (
 )
 
 
-__all__ = ["ProguardMappingView", "ProguardMapper"]
+__all__ = ["ProguardMappingView", "ProguardMapper", "JavaStackFrame"]
 
 
 class ProguardMappingView(RustObject):
@@ -61,6 +61,18 @@ class ProguardMappingView(RustObject):
         return decode_str(result, free=True)
 
 
+class JavaStackFrame(object):
+    def __init__(self, klass, method, line, file=None):
+        self.klass = klass
+        self.method = method
+        self.file = file or None
+        self.line = line
+
+    @property
+    def class_name(self):
+        return self.klass
+
+
 class ProguardMapper(RustObject):
     """Gives access to proguard mapping files."""
 
@@ -73,16 +85,45 @@ class ProguardMapper(RustObject):
             rustcall(lib.symbolic_proguardmapper_open, encode_path(path))
         )
 
-    def remap(self, klass, method="", line=0):
-        """Remaps the stackframe, given its class and optional method and line.
-        """
+    @property
+    def uuid(self):
+        """Returns the UUID of the file."""
+        return decode_uuid(self._methodcall(lib.symbolic_proguardmapper_get_uuid))
+
+    @property
+    def has_line_info(self):
+        """True if the file contains line information."""
+        return bool(self._methodcall(lib.symbolic_proguardmapper_has_line_info))
+
+    def remap_class(self, klass):
+        """Remaps the given class name."""
+        klass = self._methodcall(
+            lib.symbolic_proguardmapper_remap_class, encode_str(klass)
+        )
+        return decode_str(klass, free=True) or None
+
+    def remap_frame(self, klass, method, line):
+        """Remaps the stackframe, given its class, method and line."""
         result = self._methodcall(
-            lib.symbolic_proguardmapper_remap,
+            lib.symbolic_proguardmapper_remap_frame,
             encode_str(klass),
             encode_str(method),
             line,
         )
 
-        result = decode_str(result, free=True)
+        frames = []
+        try:
+            for idx in range(result.len):
+                frame = result.frames[idx]
+                frames.append(
+                    JavaStackFrame(
+                        decode_str(frame.klass, free=False),
+                        decode_str(frame.method, free=False),
+                        frame.line,
+                        decode_str(frame.file, free=False),
+                    )
+                )
+        finally:
+            rustcall(lib.symbolic_proguardmapper_result_free, ffi.addressof(result))
 
-        return json.loads(result)
+        return frames

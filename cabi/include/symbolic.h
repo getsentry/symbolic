@@ -310,6 +310,24 @@ typedef struct {
 } SymbolicUuid;
 
 /**
+ * Represents a Java Stack Frame.
+ */
+typedef struct {
+  SymbolicStr klass;
+  SymbolicStr method;
+  SymbolicStr file;
+  uintptr_t line;
+} SymbolicJavaStackFrame;
+
+/**
+ * The result of remapping a Stack Frame.
+ */
+typedef struct {
+  SymbolicJavaStackFrame *frames;
+  uintptr_t len;
+} SymbolicProguardRemapResult;
+
+/**
  * Represents a single token after lookup.
  */
 typedef struct {
@@ -543,17 +561,38 @@ void symbolic_process_state_free(SymbolicProcessState *process_state);
 void symbolic_proguardmapper_free(SymbolicProguardMapper *mapper);
 
 /**
+ * Returns the UUID of a proguard mapping file.
+ */
+SymbolicUuid symbolic_proguardmapper_get_uuid(SymbolicProguardMapper *mapper);
+
+/**
+ * Returns true if the mapping file has line infos.
+ */
+bool symbolic_proguardmapper_has_line_info(const SymbolicProguardMapper *mapper);
+
+/**
  * Creates a proguard mapping view from a path.
  */
 SymbolicProguardMapper *symbolic_proguardmapper_open(const char *path);
 
 /**
- * Creates a proguard mapping view from a path.
+ * Remaps a class name.
  */
-SymbolicStr symbolic_proguardmapper_remap(const SymbolicProguardMapper *mapper,
-                                          const SymbolicStr *class_,
-                                          const SymbolicStr *method,
-                                          uintptr_t line);
+SymbolicStr symbolic_proguardmapper_remap_class(const SymbolicProguardMapper *mapper,
+                                                const SymbolicStr *class_);
+
+/**
+ * Remaps a Stack Frame.
+ */
+SymbolicProguardRemapResult symbolic_proguardmapper_remap_frame(const SymbolicProguardMapper *mapper,
+                                                                const SymbolicStr *class_,
+                                                                const SymbolicStr *method,
+                                                                uintptr_t line);
+
+/**
+ * Frees a remap result.
+ */
+void symbolic_proguardmapper_result_free(SymbolicProguardRemapResult *result);
 
 /**
  * Converts a dotted path at a line number.

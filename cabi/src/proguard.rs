@@ -78,19 +78,36 @@ ffi_fn! {
     }
 }
 
-use proguard::{Mapper as ProguardMapper, StackFrame};
-use serde_json::json;
+use proguard::{ProguardMapper, ProguardMapping, StackFrame};
+use std::mem;
 
-pub struct OwnedMapper {
-    _mapping: String,
-    mapper: ProguardMapper<'static>,
+/// Represents a Java Stack Frame.
+#[repr(C)]
+pub struct SymbolicJavaStackFrame {
+    pub klass: SymbolicStr,
+    pub method: SymbolicStr,
+    pub file: SymbolicStr,
+    pub line: usize,
+}
+
+/// The result of remapping a Stack Frame.
+#[repr(C)]
+pub struct SymbolicProguardRemapResult {
+    pub frames: *mut SymbolicJavaStackFrame,
+    pub len: usize,
+}
+
+pub struct OwnedProguardMapper<'s> {
+    _source: String,
+    mapping: ProguardMapping<'s>,
+    mapper: ProguardMapper<'s>,
 }
 
 /// Represents a proguard mapper.
 pub struct SymbolicProguardMapper;
 
 impl ForeignObject for SymbolicProguardMapper {
-    type RustObject = OwnedMapper;
+    type RustObject = OwnedProguardMapper<'static>;
 }
 
 ffi_fn! {
@@ -99,10 +116,11 @@ ffi_fn! {
         path: *const c_char
     ) -> Result<*mut SymbolicProguardMapper> {
         let path = CStr::from_ptr(path).to_str()?;
-        let mapping = std::fs::read_to_string(path)?;
-        let mapper = ProguardMapper::new(std::mem::transmute(mapping.as_str()));
+        let source = std::fs::read_to_string(path)?;
+        let mapping = ProguardMapping::new(std::mem::transmute(source.as_str()));
+        let mapper = ProguardMapper::new(mapping.clone());
 
-        let proguard = OwnedMapper { _mapping: mapping, mapper };
+        let proguard = OwnedProguardMapper { _source: source, mapping, mapper };
 
         Ok(SymbolicProguardMapper::from_rust(proguard))
     }
@@ -116,25 +134,73 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Creates a proguard mapping view from a path.
-    unsafe fn symbolic_proguardmapper_remap(
+    /// Remaps a Stack Frame.
+    unsafe fn symbolic_proguardmapper_remap_frame(
         mapper: *const SymbolicProguardMapper,
         class: *const SymbolicStr,
         method: *const SymbolicStr,
         line: usize,
-    ) -> Result<SymbolicStr> {
+    ) -> Result<SymbolicProguardRemapResult> {
         let mapper = &SymbolicProguardMapper::as_rust(mapper).mapper;
-        let frame = StackFrame::new((*class).as_str(), (*method).as_str(), "", line);
+        let frame = StackFrame::new((*class).as_str(), (*method).as_str(), line);
 
-        let remapped: Vec<_> = mapper.remap_frame(&frame).map(|frame| {
-            json!({
-                "class": frame.class(),
-                "method": frame.method(),
-                "file": frame.file(),
-                "line": frame.line()
-            })
+        let mut frames: Vec<_> = mapper.remap_frame(&frame).map(|frame| {
+            SymbolicJavaStackFrame {
+                klass: frame.class().into(),
+                method: frame.method().into(),
+                file: frame.file().unwrap_or("").into(),
+                line: frame.line(),
+            }
         }).collect();
 
-        Ok(serde_json::to_string(&remapped)?.into())
+        frames.shrink_to_fit();
+        let rv = SymbolicProguardRemapResult {
+            frames: frames.as_mut_ptr(),
+            len: frames.len(),
+        };
+        mem::forget(frames);
+
+        Ok(rv)
+    }
+}
+
+ffi_fn! {
+    /// Remaps a class name.
+    unsafe fn symbolic_proguardmapper_remap_class(
+        mapper: *const SymbolicProguardMapper,
+        class: *const SymbolicStr,
+    ) -> Result<SymbolicStr> {
+        let mapper = &SymbolicProguardMapper::as_rust(mapper).mapper;
+
+        let class = (*class).as_str();
+        Ok(mapper.remap_class(class).unwrap_or("").into())
+    }
+}
+
+ffi_fn! {
+    /// Returns the UUID of a proguard mapping file.
+    unsafe fn symbolic_proguardmapper_get_uuid(
+        mapper: *mut SymbolicProguardMapper,
+    ) -> Result<SymbolicUuid> {
+        Ok(SymbolicProguardMapper::as_rust(mapper).mapping.uuid().into())
+    }
+}
+
+ffi_fn! {
+    /// Returns true if the mapping file has line infos.
+    unsafe fn symbolic_proguardmapper_has_line_info(
+        mapper: *const SymbolicProguardMapper,
+    ) -> Result<bool> {
+        Ok(SymbolicProguardMapper::as_rust(mapper).mapping.has_line_info())
+    }
+}
+
+ffi_fn! {
+    /// Frees a remap result.
+    unsafe fn symbolic_proguardmapper_result_free(result: *mut SymbolicProguardRemapResult) {
+        if !result.is_null() {
+            let result = &*result;
+            Vec::from_raw_parts(result.frames, result.len, result.len);
+        }
     }
 }
