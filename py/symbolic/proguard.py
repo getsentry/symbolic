@@ -1,5 +1,3 @@
-import json
-
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import (
     RustObject,

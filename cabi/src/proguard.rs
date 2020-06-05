@@ -79,7 +79,6 @@ ffi_fn! {
 }
 
 use proguard::{ProguardMapper, ProguardMapping, StackFrame};
-use std::mem;
 
 /// Represents a Java Stack Frame.
 #[repr(C)]
@@ -158,7 +157,7 @@ ffi_fn! {
             frames: frames.as_mut_ptr(),
             len: frames.len(),
         };
-        mem::forget(frames);
+        std::mem::forget(frames);
 
         Ok(rv)
     }
