@@ -201,8 +201,8 @@ where
 /// assert_eq!(cell.get().0, "hello world");
 /// ```
 ///
-/// [`StableDeref`] trait.StableDeref.html
-/// [`AsSelf`] trait.AsSelf.html
+/// [`StableDeref`]: trait.StableDeref.html
+/// [`AsSelf`]: trait.AsSelf.html
 #[derive(Clone, Debug)]
 pub struct SelfCell<O, D>
 where
