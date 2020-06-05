@@ -1,6 +1,6 @@
 import os
 import uuid
-from symbolic import ProguardMappingView, ProguardMapper, JavaStackFrame
+from symbolic import ProguardMappingView, ProguardMapper
 
 
 def test_basics(res_path):
