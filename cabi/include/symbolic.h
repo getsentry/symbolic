@@ -313,7 +313,7 @@ typedef struct {
  * Represents a Java Stack Frame.
  */
 typedef struct {
-  SymbolicStr klass;
+  SymbolicStr class_name;
   SymbolicStr method;
   SymbolicStr file;
   uintptr_t line;
@@ -596,6 +596,8 @@ void symbolic_proguardmapper_result_free(SymbolicProguardRemapResult *result);
 
 /**
  * Converts a dotted path at a line number.
+ *
+ * @deprecated: use `symbolic_proguardmapper_remap_class` or `symbolic_proguardmapper_remap_frame` instead
  */
 SymbolicStr symbolic_proguardmappingview_convert_dotted_path(const SymbolicProguardMappingView *view,
                                                              const SymbolicStr *path,
@@ -603,6 +605,8 @@ SymbolicStr symbolic_proguardmappingview_convert_dotted_path(const SymbolicProgu
 
 /**
  * Frees a proguard mapping view.
+ *
+ * @deprecated: use `symbolic_proguardmapper_free` instead
  */
 void symbolic_proguardmappingview_free(SymbolicProguardMappingView *view);
 
@@ -610,22 +614,30 @@ void symbolic_proguardmappingview_free(SymbolicProguardMappingView *view);
  * Creates a proguard mapping view from bytes.
  *
  * This shares the underlying memory and does not copy it.
+ *
+ * @deprecated: use `symbolic_proguardmapper_open` instead
  */
 SymbolicProguardMappingView *symbolic_proguardmappingview_from_bytes(const char *bytes,
                                                                      uintptr_t len);
 
 /**
  * Returns the UUID of a proguard mapping file.
+ *
+ * @deprecated: use `symbolic_proguardmapper_get_uuid` instead
  */
 SymbolicUuid symbolic_proguardmappingview_get_uuid(SymbolicProguardMappingView *view);
 
 /**
  * Returns true if the mapping file has line infos.
+ *
+ * @deprecated: use `symbolic_proguardmapper_has_line_info` instead
  */
 bool symbolic_proguardmappingview_has_line_info(const SymbolicProguardMappingView *view);
 
 /**
  * Creates a proguard mapping view from a path.
+ *
+ * @deprecated: use `symbolic_proguardmapper_open` instead
  */
 SymbolicProguardMappingView *symbolic_proguardmappingview_open(const char *path);
 

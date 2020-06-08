@@ -665,18 +665,6 @@ dependencies = [
 
 [[package]]
 name = "proguard"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d451cea38a9b7b2ffe89ff7c443c0a4c55f3eab20114a73c4d8c1b362cf3fb1b"
-dependencies = [
- "lazy_static",
- "memmap",
- "regex",
- "uuid",
-]
-
-[[package]]
-name = "proguard"
 version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9c9ed37179fcff805ec8d649b5e43f0f936d2fe9cfe7ac37fb9c631eb2becd1"
@@ -896,7 +884,7 @@ version = "7.3.3"
 dependencies = [
  "apple-crash-report-parser",
  "failure",
- "proguard 4.0.0",
+ "proguard",
  "serde_json",
  "symbolic",
 ]
@@ -964,7 +952,7 @@ dependencies = [
 name = "symbolic-proguard"
 version = "7.3.3"
 dependencies = [
- "proguard 3.0.0",
+ "proguard",
  "symbolic-common",
 ]
 

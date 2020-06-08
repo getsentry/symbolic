@@ -14,7 +14,10 @@ __all__ = ["ProguardMappingView", "ProguardMapper", "JavaStackFrame"]
 
 
 class ProguardMappingView(RustObject):
-    """Gives access to proguard mapping files."""
+    """Gives access to proguard mapping files.
+
+    DEPRECATED: Use the `ProguardMapper` class instead.
+    """
 
     __dealloc_func__ = lib.symbolic_proguardmappingview_free
 
@@ -60,15 +63,11 @@ class ProguardMappingView(RustObject):
 
 
 class JavaStackFrame(object):
-    def __init__(self, klass, method, line, file=None):
-        self.klass = klass
+    def __init__(self, class_name, method, line, file=None):
+        self.class_name = class_name
         self.method = method
         self.file = file or None
         self.line = line
-
-    @property
-    def class_name(self):
-        return self.klass
 
 
 class ProguardMapper(RustObject):
@@ -115,7 +114,7 @@ class ProguardMapper(RustObject):
                 frame = result.frames[idx]
                 frames.append(
                     JavaStackFrame(
-                        decode_str(frame.klass, free=False),
+                        decode_str(frame.class_name, free=False),
                         decode_str(frame.method, free=False),
                         frame.line,
                         decode_str(frame.file, free=False),

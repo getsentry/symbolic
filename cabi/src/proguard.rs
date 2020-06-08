@@ -1,8 +1,10 @@
+#![allow(deprecated)]
+
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::slice;
 
-use symbolic::common::ByteView;
+use symbolic::common::{AsSelf, ByteView, SelfCell};
 use symbolic::proguard::ProguardMappingView;
 
 use crate::core::{SymbolicStr, SymbolicUuid};
@@ -17,6 +19,8 @@ impl ForeignObject for SymbolicProguardMappingView {
 
 ffi_fn! {
     /// Creates a proguard mapping view from a path.
+    ///
+    /// @deprecated: use `symbolic_proguardmapper_open` instead
     unsafe fn symbolic_proguardmappingview_open(
         path: *const c_char
     ) -> Result<*mut SymbolicProguardMappingView> {
@@ -30,6 +34,8 @@ ffi_fn! {
     /// Creates a proguard mapping view from bytes.
     ///
     /// This shares the underlying memory and does not copy it.
+    ///
+    /// @deprecated: use `symbolic_proguardmapper_open` instead
     unsafe fn symbolic_proguardmappingview_from_bytes(
         bytes: *const c_char,
         len: usize
@@ -43,6 +49,8 @@ ffi_fn! {
 
 ffi_fn! {
     /// Frees a proguard mapping view.
+    ///
+    /// @deprecated: use `symbolic_proguardmapper_free` instead
     unsafe fn symbolic_proguardmappingview_free(view: *mut SymbolicProguardMappingView) {
         SymbolicProguardMappingView::drop(view);
     }
@@ -50,6 +58,8 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns the UUID of a proguard mapping file.
+    ///
+    /// @deprecated: use `symbolic_proguardmapper_get_uuid` instead
     unsafe fn symbolic_proguardmappingview_get_uuid(
         view: *mut SymbolicProguardMappingView,
     ) -> Result<SymbolicUuid> {
@@ -59,6 +69,8 @@ ffi_fn! {
 
 ffi_fn! {
     /// Converts a dotted path at a line number.
+    ///
+    /// @deprecated: use `symbolic_proguardmapper_remap_class` or `symbolic_proguardmapper_remap_frame` instead
     unsafe fn symbolic_proguardmappingview_convert_dotted_path(
         view: *const SymbolicProguardMappingView,
         path: *const SymbolicStr,
@@ -71,6 +83,8 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns true if the mapping file has line infos.
+    ///
+    /// @deprecated: use `symbolic_proguardmapper_has_line_info` instead
     unsafe fn symbolic_proguardmappingview_has_line_info(
         view: *const SymbolicProguardMappingView,
     ) -> Result<bool> {
@@ -83,7 +97,7 @@ use proguard::{ProguardMapper, ProguardMapping, StackFrame};
 /// Represents a Java Stack Frame.
 #[repr(C)]
 pub struct SymbolicJavaStackFrame {
-    pub klass: SymbolicStr,
+    pub class_name: SymbolicStr,
     pub method: SymbolicStr,
     pub file: SymbolicStr,
     pub line: usize,
@@ -96,10 +110,21 @@ pub struct SymbolicProguardRemapResult {
     pub len: usize,
 }
 
-pub struct OwnedProguardMapper<'s> {
-    _source: String,
-    mapping: ProguardMapping<'s>,
-    mapper: ProguardMapper<'s>,
+struct Inner<'a> {
+    mapping: ProguardMapping<'a>,
+    mapper: ProguardMapper<'a>,
+}
+
+impl<'slf, 'a: 'slf> AsSelf<'slf> for Inner<'a> {
+    type Ref = Inner<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        &self
+    }
+}
+
+pub struct OwnedProguardMapper<'a> {
+    inner: SelfCell<ByteView<'a>, Inner<'a>>,
 }
 
 /// Represents a proguard mapper.
@@ -114,13 +139,15 @@ ffi_fn! {
     unsafe fn symbolic_proguardmapper_open(
         path: *const c_char
     ) -> Result<*mut SymbolicProguardMapper> {
-        let path = CStr::from_ptr(path).to_str()?;
-        let source = std::fs::read_to_string(path)?;
-        let mapping = ProguardMapping::new(std::mem::transmute(source.as_str()));
-        let mapper = ProguardMapper::new(mapping.clone());
+        let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
 
-        let proguard = OwnedProguardMapper { _source: source, mapping, mapper };
+        let inner = SelfCell::new(byteview, |data| {
+            let mapping = ProguardMapping::new(&*data);
+            let mapper = ProguardMapper::new(mapping.clone());
+            Inner { mapping, mapper }
+        });
 
+        let proguard = OwnedProguardMapper { inner };
         Ok(SymbolicProguardMapper::from_rust(proguard))
     }
 }
@@ -140,14 +167,14 @@ ffi_fn! {
         method: *const SymbolicStr,
         line: usize,
     ) -> Result<SymbolicProguardRemapResult> {
-        let mapper = &SymbolicProguardMapper::as_rust(mapper).mapper;
+        let mapper = &SymbolicProguardMapper::as_rust(mapper).inner.get().mapper;
         let frame = StackFrame::new((*class).as_str(), (*method).as_str(), line);
 
         let mut frames: Vec<_> = mapper.remap_frame(&frame).map(|frame| {
             SymbolicJavaStackFrame {
-                klass: frame.class().into(),
-                method: frame.method().into(),
-                file: frame.file().unwrap_or("").into(),
+                class_name: frame.class().to_owned().into(),
+                method: frame.method().to_owned().into(),
+                file: frame.file().unwrap_or("").to_owned().into(),
                 line: frame.line(),
             }
         }).collect();
@@ -169,10 +196,10 @@ ffi_fn! {
         mapper: *const SymbolicProguardMapper,
         class: *const SymbolicStr,
     ) -> Result<SymbolicStr> {
-        let mapper = &SymbolicProguardMapper::as_rust(mapper).mapper;
+        let mapper = &SymbolicProguardMapper::as_rust(mapper).inner.get().mapper;
 
         let class = (*class).as_str();
-        Ok(mapper.remap_class(class).unwrap_or("").into())
+        Ok(mapper.remap_class(class).unwrap_or("").to_owned().into())
     }
 }
 
@@ -181,7 +208,7 @@ ffi_fn! {
     unsafe fn symbolic_proguardmapper_get_uuid(
         mapper: *mut SymbolicProguardMapper,
     ) -> Result<SymbolicUuid> {
-        Ok(SymbolicProguardMapper::as_rust(mapper).mapping.uuid().into())
+        Ok(SymbolicProguardMapper::as_rust(mapper).inner.get().mapping.uuid().into())
     }
 }
 
@@ -190,7 +217,7 @@ ffi_fn! {
     unsafe fn symbolic_proguardmapper_has_line_info(
         mapper: *const SymbolicProguardMapper,
     ) -> Result<bool> {
-        Ok(SymbolicProguardMapper::as_rust(mapper).mapping.has_line_info())
+        Ok(SymbolicProguardMapper::as_rust(mapper).inner.get().mapping.has_line_info())
     }
 }
 
