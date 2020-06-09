@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-proguard"
-version = "7.3.4"
+version = "7.3.5"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -18,4 +18,4 @@ edition = "2018"
 
 [dependencies]
 proguard = { version = "4.0.1", features = ["uuid"] }
-symbolic-common = { version = "7.3.4", path = "../common" }
+symbolic-common = { version = "7.3.5", path = "../common" }
