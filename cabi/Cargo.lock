@@ -866,7 +866,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "symbolic-common",
  "symbolic-debuginfo",
@@ -880,7 +880,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-cabi"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "apple-crash-report-parser",
  "failure",
@@ -891,7 +891,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-common"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "debugid",
  "failure",
@@ -903,7 +903,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-debuginfo"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "dmsort",
  "failure",
@@ -927,7 +927,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-demangle"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "cc",
  "cpp_demangle",
@@ -938,7 +938,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-minidump"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "cc",
  "failure",
@@ -950,7 +950,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-proguard"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "proguard",
  "symbolic-common",
@@ -958,7 +958,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-sourcemap"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "failure",
  "sourcemap",
@@ -966,7 +966,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-symcache"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "dmsort",
  "failure",
@@ -978,7 +978,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-unreal"
-version = "7.3.3"
+version = "7.3.4"
 dependencies = [
  "anylog",
  "bytes",
