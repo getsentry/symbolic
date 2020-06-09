@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.3.5
+
+**Bug Fixes**:
+
+- Update the `proguard` dependency to fix line info detection. ([#242](https://github.com/getsentry/symbolic/pull/242))
+
 ## 7.3.4
 
 **Deprecations**:
