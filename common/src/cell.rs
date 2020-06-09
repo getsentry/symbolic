@@ -68,7 +68,7 @@ pub use stable_deref_trait::StableDeref;
 /// }
 /// ```
 ///
-/// [`SelfCell]: struct.SelfCell.html
+/// [`SelfCell`]: struct.SelfCell.html
 /// [`ByteView`]: struct.ByteView.html
 pub trait AsSelf<'slf> {
     /// The `Self` type with `'slf` lifetimes, returned by `as_self`.
