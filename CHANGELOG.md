@@ -1,5 +1,19 @@
 # Changelog
 
+## 7.3.4
+
+**Deprecations**:
+
+- `symbolic-proguard` is now deprecated and will be removed in the next major release. Use the `proguard` crate directly. The C-bindings and Python interface will remain. ([#240](https://github.com/getsentry/symbolic/pull/240))
+
+**Python**:
+
+- Switch the C-ABI and python to `proguard 4.0.0` which supports frame remapping. ([#240](https://github.com/getsentry/symbolic/pull/240))
+
+**Bug Fixes**:
+
+- Fix broken links in docs on `ByteView`, `SelfCell` and `AsSelf`. ([#241](https://github.com/getsentry/symbolic/pull/241))
+
 ## 7.3.3
 
 **Bug Fixes**:
