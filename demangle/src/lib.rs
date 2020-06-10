@@ -129,6 +129,8 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
 
     let opts = CppOptions {
         no_params: !opts.with_arguments,
+        // TODO: Maybe we would like to add return type to `DemangleOptions`?
+        no_return_type: !opts.with_arguments,
     };
 
     match symbol.demangle(&opts) {
