@@ -21,7 +21,7 @@ exclude = [
 ]
 
 [dependencies]
-cpp_demangle = "0.2.16"
+cpp_demangle = "0.2.17"
 msvc-demangler = "0.8.0"
 rustc-demangle = "0.1.16"
 symbolic-common = { version = "7.3.5", path = "../common" }
