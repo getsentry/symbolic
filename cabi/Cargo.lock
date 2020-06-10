@@ -183,9 +183,9 @@ dependencies = [
 
 [[package]]
 name = "cpp_demangle"
-version = "0.2.16"
+version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13c924384107361ca729c7d46b9134151b9a955ce99a773784f2777498e8552d"
+checksum = "6312d9bf18d41e79b6a246d6969c197ed5ea9212e92aa7baf89aefbfe7f84edb"
 dependencies = [
  "cfg-if",
  "glob",
@@ -866,7 +866,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic"
-version = "7.3.5"
+version = "7.3.6"
 dependencies = [
  "symbolic-common",
  "symbolic-debuginfo",
@@ -880,7 +880,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-cabi"
-version = "7.3.5"
+version = "7.3.6"
 dependencies = [
  "apple-crash-report-parser",
  "failure",
@@ -891,7 +891,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-common"
-version = "7.3.5"
+version = "7.3.6"
 dependencies = [
  "debugid",
  "failure",
@@ -903,7 +903,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-debuginfo"
-version = "7.3.5"
+version = "7.3.6"
 dependencies = [
  "dmsort",
  "failure",
@@ -927,7 +927,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-demangle"
-version = "7.3.5"
+version = "7.3.6"
 dependencies = [
  "cc",
  "cpp_demangle",
@@ -938,7 +938,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-minidump"
-version = "7.3.5"
+version = "7.3.6"
 dependencies = [
  "cc",
  "failure",
@@ -950,7 +950,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-proguard"
-version = "7.3.5"
+version = "7.3.6"
 dependencies = [
  "proguard",
  "symbolic-common",
@@ -958,7 +958,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-sourcemap"
-version = "7.3.5"
+version = "7.3.6"
 dependencies = [
  "failure",
  "sourcemap",
@@ -966,7 +966,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-symcache"
-version = "7.3.5"
+version = "7.3.6"
 dependencies = [
  "dmsort",
  "failure",
@@ -978,7 +978,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-unreal"
-version = "7.3.5"
+version = "7.3.6"
 dependencies = [
  "anylog",
  "bytes",
