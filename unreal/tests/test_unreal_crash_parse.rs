@@ -78,8 +78,10 @@ fn test_contexts_runtime_properties() {
 
     assert_eq!(
         "UE4CC-Windows-379993BB42BD8FBED67986857D8844B5_0000",
-        runtime_properties.crash_guid.expect("crash guid")
+        runtime_properties.crash_guid.as_ref().expect("crash guid")
     );
+
+    insta::assert_yaml_snapshot!(&runtime_properties);
 }
 
 #[test]
