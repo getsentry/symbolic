@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.3.6
+
+**Bug Fixes**:
+
+- Update the `cpp_demangle` dependency to fix broken builds after a breaking change. ([#244](https://github.com/getsentry/symbolic/pull/244), thanks @o0Ignition0o)
+
 ## 7.3.5
 
 **Bug Fixes**:
