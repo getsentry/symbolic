@@ -260,7 +260,10 @@ impl Unreal4ContextRuntimeProperties {
                 }
                 "Modules" => rv.modules = get_text_or_none(&child),
                 _ => {
-                    rv.custom.insert(tag.name().to_string(), get_text_or_none(&child).unwrap_or_default());
+                    rv.custom.insert(
+                        tag.name().to_string(),
+                        get_text_or_none(&child).unwrap_or_default(),
+                    );
                 }
             }
         }
