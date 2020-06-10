@@ -9764,3 +9764,8 @@ android.support.v7.widget.ViewUtils -> android.support.v7.widget.ay:
 com.example.mitsuhiko.myapplication.MainActivity -> com.example.mitsuhiko.myapplication.MainActivity:
     6:6:void <init>() -> <init>
     10:12:void onCreate(android.os.Bundle) -> onCreate
+io.sentry.sample.MainActivity -> io.sentry.sample.MainActivity:
+    1:1:void <init>():15:15 -> <init>
+    1:1:void bar():54:54 -> a
+    1:1:void foo():44 -> a
+    1:1:void onClickHandler(android.view.View):40 -> a

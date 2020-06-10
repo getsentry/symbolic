@@ -19,6 +19,7 @@ pub use symbolic_demangle as demangle;
 pub use symbolic_minidump as minidump;
 #[doc(inline)]
 #[cfg(feature = "proguard")]
+#[deprecated = "use the `proguard` crate directly"]
 pub use symbolic_proguard as proguard;
 #[doc(inline)]
 #[cfg(feature = "sourcemap")]

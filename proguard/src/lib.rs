@@ -4,73 +4,68 @@
 
 use std::io;
 
-use proguard::MappingView;
+use proguard::{ProguardMapper, ProguardMapping, StackFrame};
 
 use symbolic_common::{AsSelf, ByteView, SelfCell, Uuid};
 
-struct Inner<'a>(MappingView<'a>);
+struct Inner<'a> {
+    mapping: ProguardMapping<'a>,
+    mapper: ProguardMapper<'a>,
+}
 
 impl<'slf, 'a: 'slf> AsSelf<'slf> for Inner<'a> {
-    type Ref = MappingView<'slf>;
+    type Ref = Inner<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
-        &self.0
+        &self
     }
 }
 
 /// A view over a proguard mapping text file.
+#[deprecated = "use the `proguard` crate directly"]
 pub struct ProguardMappingView<'a> {
     inner: SelfCell<ByteView<'a>, Inner<'a>>,
 }
 
+#[allow(deprecated)]
 impl<'a> ProguardMappingView<'a> {
     /// Creates a new proguard mapping view from a byte slice.
     pub fn parse(byteview: ByteView<'a>) -> Result<Self, io::Error> {
-        // NB: Since ByteView does not expose its inner data structure, we need to use a `SelfCell`
-        // to construct a `proguard::MappingView`. Ideally, we would pass the ByteView's backing to
-        // the MappingView constructor directly, instead.
-        let inner = SelfCell::try_new(byteview, |data| {
-            MappingView::from_slice(unsafe { &*data }).map(Inner)
-        })?;
+        let inner = SelfCell::new(byteview, |data| {
+            let mapping = ProguardMapping::new(unsafe { &*data });
+            let mapper = ProguardMapper::new(mapping.clone());
+            Inner { mapping, mapper }
+        });
 
         Ok(ProguardMappingView { inner })
     }
 
     /// Returns the mapping UUID.
     pub fn uuid(&self) -> Uuid {
-        self.inner.get().uuid()
+        self.inner.get().mapping.uuid()
     }
 
     /// Returns true if this file has line infos.
     pub fn has_line_info(&self) -> bool {
-        self.inner.get().has_line_info()
+        self.inner.get().mapping.has_line_info()
     }
 
     /// Converts a dotted path.
     pub fn convert_dotted_path(&self, path: &str, lineno: u32) -> String {
+        let mapper = &self.inner.get().mapper;
+
         let mut iter = path.splitn(2, ':');
         let cls_name = iter.next().unwrap_or("");
-        let meth_name = iter.next();
-        if let Some(cls) = self.inner.get().find_class(cls_name) {
-            let class_name = cls.class_name();
-            if let Some(meth_name) = meth_name {
-                let lineno = if lineno == 0 {
-                    None
-                } else {
-                    Some(lineno as u32)
-                };
-
-                let methods = cls.get_methods(meth_name, lineno);
-                if !methods.is_empty() {
-                    format!("{}:{}", class_name, methods[0].name())
-                } else {
-                    format!("{}:{}", class_name, meth_name)
+        match iter.next() {
+            Some(meth_name) => {
+                let mut mapped =
+                    mapper.remap_frame(&StackFrame::new(cls_name, meth_name, lineno as usize));
+                match mapped.next() {
+                    Some(frame) => format!("{}:{}", frame.class(), frame.method()),
+                    None => path.to_string(),
                 }
-            } else {
-                class_name.to_string()
             }
-        } else {
-            path.to_string()
+            None => mapper.remap_class(cls_name).unwrap_or(cls_name).to_string(),
         }
     }
 }
