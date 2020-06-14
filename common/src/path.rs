@@ -85,6 +85,26 @@ fn is_windows_path<P: AsRef<[u8]>>(path: P) -> bool {
 /// This attempts to detect Windows or Unix paths and joins with the correct directory separator.
 /// Also, trailing directory separators are detected in the base string and empty paths are handled
 /// correctly.
+///
+/// # Examples
+///
+/// Join a relative UNIX path:
+///
+/// ```
+/// assert_eq!(symbolic_common::join_path("/a/b", "c/d"), "/a/b/c/d");
+/// ```
+///
+/// Join a Windows drive letter path path:
+///
+/// ```
+/// assert_eq!(symbolic_common::join_path("C:\\a", "b\\c"), "C:\\a\\b\\c");
+/// ```
+///
+/// If the right-hand side is an absolute path, it replaces the left-hand side:
+///
+/// ```
+/// assert_eq!(symbolic_common::join_path("/a/b", "/c/d"), "/c/d");
+/// ```
 pub fn join_path(base: &str, other: &str) -> String {
     // special case for things like <stdin> or others.
     if other.starts_with('<') && other.ends_with('>') {
@@ -133,11 +153,36 @@ fn pop_path(path: &mut String) -> bool {
     }
 }
 
-/// Cleans up a path from various platforms.
+/// Simplifies paths by stripping redundant components.
 ///
-/// This removes redundant `../` or `./` references.  Since this does not resolve symlinks this
-/// is a lossy operation.
+/// This removes redundant `../` or `./` path components. However, this function does not operate on
+/// the file system. Since it does not resolve symlinks, this is a potentially lossy operation.
+///
+/// # Examples
+///
+/// Remove `./` components:
+///
+/// ```
+/// assert_eq!(symbolic_common::clean_path("/a/./b"), "/a/b");
+/// ```
+///
+/// Remove path components followed by `../`:
+///
+/// ```
+/// assert_eq!(symbolic_common::clean_path("/a/b/../c"), "/a/c");
+/// ```
+///
+/// Note that when the path is relative, the parent dir components may exceed the top-level:
+///
+/// ```
+/// assert_eq!(symbolic_common::clean_path("/foo/../../b"), "../b");
+/// ```
 pub fn clean_path(path: &str) -> Cow<'_, str> {
+    // TODO: This function has a number of problems (see broken tests):
+    //  - It does not collapse consequtive directory separators
+    //  - Parent-directory directives may leave an absolute path
+    //  - A path is converted to relative when the parent directory hits top-level
+
     let mut rv = String::with_capacity(path.len());
     let main_separator = if is_windows_path(path) { '\\' } else { '/' };
 
@@ -179,14 +224,38 @@ pub fn clean_path(path: &str) -> Cow<'_, str> {
     Cow::Owned(rv)
 }
 
-/// Splits off the last component of a binary path.
+/// Splits off the last component of a path given as bytes.
 ///
-/// The path should be a path to a file, and not a directory. If this path is a directory or the
-/// root path, the result is undefined.
+/// The path should be a path to a file, and not a directory with a trailing directory separator. If
+/// this path is a directory or the root path, the result is undefined.
 ///
 /// This attempts to detect Windows or Unix paths and split off the last component of the path
 /// accordingly. Note that for paths with mixed slash and backslash separators this might not lead
 /// to the desired results.
+///
+/// **Note**: This is the same as [`split_path`], except that it operates on byte slices.
+///
+/// # Examples
+///
+/// Split the last component of a UNIX path:
+///
+/// ```
+/// assert_eq!(
+///     symbolic_common::split_path_bytes("/a/b/c".as_bytes()),
+///     (Some("/a/b".as_bytes()), "c".as_bytes())
+/// );
+/// ```
+///
+/// Split the last component of a Windows path:
+///
+/// ```
+/// assert_eq!(
+///     symbolic_common::split_path_bytes("C:\\a\\b".as_bytes()),
+///     (Some("C:\\a".as_bytes()), "b".as_bytes())
+/// );
+/// ```
+///
+/// [`split_path`]: fn.split_path.html
 pub fn split_path_bytes(path: &[u8]) -> (Option<&[u8]>, &[u8]) {
     // Trim directory separators at the end, if any.
     let path = match path.iter().rposition(|c| !is_path_separator(c)) {
@@ -211,6 +280,24 @@ pub fn split_path_bytes(path: &[u8]) -> (Option<&[u8]>, &[u8]) {
 /// This attempts to detect Windows or Unix paths and split off the last component of the path
 /// accordingly. Note that for paths with mixed slash and backslash separators this might not lead
 /// to the desired results.
+///
+/// **Note**: For a version that operates on byte slices, see [`split_path_bytes`].
+///
+/// # Examples
+///
+/// Split the last component of a UNIX path:
+///
+/// ```
+/// assert_eq!(symbolic_common::split_path("/a/b/c"), (Some("/a/b"), "c"));
+/// ```
+///
+/// Split the last component of a Windows path:
+///
+/// ```
+/// assert_eq!(symbolic_common::split_path("C:\\a\\b"), (Some("C:\\a"), "b"));
+/// ```
+///
+/// [`split_path_bytes`]: fn.split_path_bytes.html
 pub fn split_path(path: &str) -> (Option<&str>, &str) {
     let (dir, name) = split_path_bytes(path.as_bytes());
     unsafe {
@@ -221,7 +308,7 @@ pub fn split_path(path: &str) -> (Option<&str>, &str) {
     }
 }
 
-/// Truncates the given string at character boundaries
+/// Truncates the given string at character boundaries.
 fn truncate(path: &str, mut length: usize) -> &str {
     // Backtrack to the last code point. There is a unicode point at least at the beginning of the
     // string before the first character, which is why this cannot underflow.
@@ -237,6 +324,15 @@ fn truncate(path: &str, mut length: usize) -> &str {
 /// This attempts to not completely destroy the path in the process by trimming off the middle path
 /// segments. In the process, this tries to determine whether the path is a Windows or Unix path and
 /// handle directory separators accordingly.
+///
+/// # Examples
+///
+/// ```
+/// assert_eq!(
+///     symbolic_common::shorten_path("/foo/bar/baz/blah/blafasel", 21),
+///     "/foo/.../blafasel"
+/// );
+/// ```
 pub fn shorten_path(path: &str, length: usize) -> Cow<'_, str> {
     // trivial cases
     if path.len() <= length {
@@ -306,8 +402,27 @@ pub fn shorten_path(path: &str, length: usize) -> Cow<'_, str> {
 }
 
 /// Extensions to `Path` for handling `dSYM` directories.
+///
+/// # dSYM Files
+///
+/// `dSYM` files are actually folder structures that store debugging information on Apple platforms.
+/// They are also referred to as debug companion. At the core of this structure is a `MachO` file
+/// containing the actual debug information.
+///
+/// A full `dSYM` folder structure looks like this:
+///
+/// ```text
+/// MyApp.dSYM
+/// └── Contents
+///     ├── Info.plist
+///     └── Resources
+///         └── DWARF
+///             └── MyApp
+/// ```
 pub trait DSymPathExt {
     /// Returns `true` if this path points to an existing directory with a `.dSYM` extension.
+    ///
+    /// Note that this does not check if a full `dSYM` structure is contained within this folder.
     ///
     /// # Examples
     ///
@@ -462,9 +577,10 @@ mod tests {
         );
 
         // XXX currently known broken tests:
-        //assert_eq!(clean_path("\\\\foo\\..\\..\\bar"), "\\\\bar");
-        //assert_eq!(clean_path("/../../blah/"), "/blah");
-        //assert_eq!(clean_path("c:\\..\\foo"), "c:\\foo");
+        // assert_eq!(clean_path("/foo/../bar"), "/bar");
+        // assert_eq!(clean_path("\\\\foo\\..\\..\\bar"), "\\\\bar");
+        // assert_eq!(clean_path("/../../blah/"), "/blah");
+        // assert_eq!(clean_path("c:\\..\\foo"), "c:\\foo");
     }
 
     #[test]

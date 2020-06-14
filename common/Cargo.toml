@@ -26,7 +26,11 @@ uuid = "0.8.1"
 
 [dev-dependencies]
 symbolic-testutils = { path = "../testutils" }
+tempfile = "3.1.0"
 
 [features]
 default = []
 serde = ["serde_", "debugid/serde"]
+
+[badges]
+travis-ci = { repository = "getsentry/symbolic", branch = "master" }

@@ -66,6 +66,8 @@ static MIPS: &[&str] = &[
 /// This is strongly connected to the [`Arch`] type, but reduces the selection to a range of
 /// families with distinct properties, such as a generally common instruction set and pointer size.
 ///
+/// This enumeration is represented as `u32` for C-bindings and lowlevel APIs.
+///
 /// [`Arch`]: enum.Arch.html
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(u32)]
@@ -92,6 +94,122 @@ pub enum CpuFamily {
     Arm64_32 = 9,
 }
 
+impl CpuFamily {
+    /// Returns the native pointer size.
+    ///
+    /// This commonly defines the size of CPU registers including the instruction pointer, and the
+    /// size of all pointers on the platform.
+    ///
+    /// This function returns `None` if the CPU family is unknown.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_common::CpuFamily;
+    ///
+    /// assert_eq!(CpuFamily::Amd64.pointer_size(), Some(8));
+    /// assert_eq!(CpuFamily::Intel32.pointer_size(), Some(4));
+    /// ```
+    pub fn pointer_size(self) -> Option<usize> {
+        match self {
+            CpuFamily::Unknown => None,
+            CpuFamily::Amd64
+            | CpuFamily::Arm64
+            | CpuFamily::Ppc64
+            | CpuFamily::Mips64
+            | CpuFamily::Arm64_32 => Some(8),
+            CpuFamily::Intel32 | CpuFamily::Arm32 | CpuFamily::Ppc32 | CpuFamily::Mips32 => Some(4),
+        }
+    }
+
+    /// Returns instruction alignment if fixed.
+    ///
+    /// Some instruction sets, such as Intel's x86, use variable length instruction encoding.
+    /// Others, such as ARM, have fixed length instructions. This method returns `Some` for fixed
+    /// size instructions and `None` for variable-length instruction sizes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_common::CpuFamily;
+    ///
+    /// // variable length on x86_64:
+    /// assert_eq!(CpuFamily::Amd64.instruction_alignment(), None);
+    ///
+    /// // 4-byte alignment on all 64-bit ARM variants:
+    /// assert_eq!(CpuFamily::Arm64.instruction_alignment(), Some(4));
+    /// ```
+    pub fn instruction_alignment(self) -> Option<u64> {
+        match self {
+            CpuFamily::Arm32 => Some(2),
+            CpuFamily::Arm64 | CpuFamily::Arm64_32 => Some(4),
+            CpuFamily::Ppc32 | CpuFamily::Mips32 | CpuFamily::Mips64 => Some(4),
+            CpuFamily::Ppc64 => Some(8),
+            CpuFamily::Intel32 | CpuFamily::Amd64 => None,
+            CpuFamily::Unknown => None,
+        }
+    }
+
+    /// Returns the name of the instruction pointer register.
+    ///
+    /// The instruction pointer register holds a pointer to currrent code execution at all times.
+    /// This is a differrent register on each CPU family. The size of the value in this register is
+    /// specified by [`pointer_size`].
+    ///
+    /// Returns `None` if the CPU family is unknown.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_common::CpuFamily;
+    ///
+    /// assert_eq!(CpuFamily::Amd64.ip_register_name(), Some("rip"));
+    /// ```
+    ///
+    /// [`pointer_size`]: enum.CpuFamily.html#method.pointer_size
+    pub fn ip_register_name(self) -> Option<&'static str> {
+        // NOTE: These values do not correspond to the register names defined in this file, but to
+        // the names exposed by breakpad. This mapping is implemented in `data_structures.cpp`.
+        match self {
+            CpuFamily::Intel32 => Some("eip"),
+            CpuFamily::Amd64 => Some("rip"),
+            CpuFamily::Arm32 | CpuFamily::Arm64 | CpuFamily::Arm64_32 => Some("pc"),
+            CpuFamily::Ppc32 | CpuFamily::Ppc64 => Some("srr0"),
+            CpuFamily::Mips32 | CpuFamily::Mips64 => Some("pc"),
+            CpuFamily::Unknown => None,
+        }
+    }
+
+    /// Returns the name of a register in a given architecture.
+    ///
+    /// Each CPU family specifies its own register sets, wherer the registers are numbered. This
+    /// resolves the name of the register for the given family, if defined. Returns `None` if the
+    /// CPU family is unknown, or the register is not defined for the family.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_common::CpuFamily;
+    ///
+    /// // 16 is the instruction pointer register:
+    /// assert_eq!(CpuFamily::Amd64.register_name(16), Some("$rip"));
+    /// ```
+    pub fn register_name(self, register: u16) -> Option<&'static str> {
+        let index = register as usize;
+
+        let opt = match self {
+            CpuFamily::Intel32 => I386.get(index),
+            CpuFamily::Amd64 => X86_64.get(index),
+            CpuFamily::Arm64 | CpuFamily::Arm64_32 => ARM64.get(index),
+            CpuFamily::Arm32 => ARM.get(index),
+            CpuFamily::Mips32 | CpuFamily::Mips64 => MIPS.get(index),
+            _ => None,
+        };
+
+        opt.cloned()
+    }
+}
+
 impl Default for CpuFamily {
     fn default() -> Self {
         CpuFamily::Unknown
@@ -103,7 +221,21 @@ impl Default for CpuFamily {
 #[fail(display = "unknown architecture")]
 pub struct UnknownArchError;
 
-/// An enum of CPU architectures and variants.
+/// An enumeration of CPU architectures and variants.
+///
+/// The architectues are grouped into families, which can be retrieved by [`cpu_family`]. There are
+/// `*Unknown` variants for each architecture to maintain forward-compatibility. This allows to
+/// support architectures where the family is known but the subtype is not.
+///
+/// Each architecture has a canonical name, returned by [`Arch::name`]. Likewise, architectures can
+/// be parsed from their string names. In addition to that, in some cases aliases are supported. For
+/// instance, `"x86"` is aliased as `"i386"`.
+///
+/// This enumeration is represented as `u32` for C-bindings and lowlevel APIs. The values are
+/// grouped by CPU family for forward compatibility.
+///
+/// [`cpu_family`]: enum.Arch.html#method.cpu_family
+/// [`Arch::name`]: enum.Arch.html#method.name
 #[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(u32)]
@@ -139,7 +271,18 @@ pub enum Arch {
 }
 
 impl Arch {
-    /// Creates an arch from the u32 it represents.
+    /// Creates an `Arch` from its `u32` representation.
+    ///
+    /// Returns `Arch::Unknown` for all unknown values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_common::Arch;
+    ///
+    /// // Will print "X86"
+    /// println!("{:?}", Arch::from_u32(101));
+    /// ```
     pub fn from_u32(val: u32) -> Arch {
         match val {
             0 => Arch::Unknown,
@@ -174,7 +317,16 @@ impl Arch {
         }
     }
 
-    /// Returns the CPU family.
+    /// Returns the CPU family of the CPU architecture.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_common::Arch;
+    ///
+    /// // Will print "Intel32"
+    /// println!("{:?}", Arch::X86.cpu_family());
+    /// ```
     pub fn cpu_family(self) -> CpuFamily {
         match self {
             Arch::Unknown => CpuFamily::Unknown,
@@ -200,7 +352,23 @@ impl Arch {
         }
     }
 
-    /// Returns the name of the arch.
+    /// Returns the canonical name of the CPU architecture.
+    ///
+    /// This follows the Apple conventions for naming architectures. For instance, Intel 32-bit
+    /// architectures are canonically named `"x86"`, even though `"i386"` would also be a valid
+    /// name.
+    ///
+    /// For architectures with variants or subtypes, that subtype is encoded into the name. For
+    /// instance the ARM v7-M architecture is named with a full `"armv7m".
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_common::Arch;
+    ///
+    /// // Will print "x86"
+    /// println!("{}", Arch::X86.name());
+    /// ```
     pub fn name(self) -> &'static str {
         match self {
             Arch::Unknown => "unknown",
@@ -234,46 +402,35 @@ impl Arch {
         }
     }
 
-    /// Returns the native pointer size.
+    #[doc(hidden)]
+    #[deprecated = "use CpuFamily::pointer_size instead"]
     pub fn pointer_size(self) -> Option<usize> {
-        match self.cpu_family() {
-            CpuFamily::Unknown => None,
-            CpuFamily::Amd64
-            | CpuFamily::Arm64
-            | CpuFamily::Ppc64
-            | CpuFamily::Mips64
-            | CpuFamily::Arm64_32 => Some(8),
-            CpuFamily::Intel32 | CpuFamily::Arm32 | CpuFamily::Ppc32 | CpuFamily::Mips32 => Some(4),
-        }
+        self.cpu_family().pointer_size()
     }
 
-    /// Returns instruction alignment if fixed.
+    #[doc(hidden)]
+    #[deprecated = "use CpuFamily::instruction_alignment instead"]
     pub fn instruction_alignment(self) -> Option<u64> {
-        match self.cpu_family() {
-            CpuFamily::Arm32 => Some(2),
-            CpuFamily::Arm64 | CpuFamily::Arm64_32 => Some(4),
-            CpuFamily::Ppc32 | CpuFamily::Mips32 | CpuFamily::Mips64 => Some(4),
-            CpuFamily::Ppc64 => Some(8),
-            CpuFamily::Intel32 | CpuFamily::Amd64 => None,
-            CpuFamily::Unknown => None,
-        }
+        self.cpu_family().instruction_alignment()
     }
 
-    /// The name of the IP register if known.
+    #[doc(hidden)]
+    #[deprecated = "use CpuFamily::ip_register_name instead"]
     pub fn ip_register_name(self) -> Option<&'static str> {
-        // NOTE: These values do not correspond to the register names defined in this file, but to
-        // the names exposed by breakpad. This mapping is implemented in `data_structures.cpp`.
-        match self.cpu_family() {
-            CpuFamily::Intel32 => Some("eip"),
-            CpuFamily::Amd64 => Some("rip"),
-            CpuFamily::Arm32 | CpuFamily::Arm64 | CpuFamily::Arm64_32 => Some("pc"),
-            CpuFamily::Ppc32 | CpuFamily::Ppc64 => Some("srr0"),
-            CpuFamily::Mips32 | CpuFamily::Mips64 => Some("pc"),
-            CpuFamily::Unknown => None,
-        }
+        self.cpu_family().ip_register_name()
     }
 
     /// Returns whether this architecture is well-known.
+    ///
+    /// This is trivially `true` for all architectures other than the `*Unknown` variants.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_common::Arch;
+    ///
+    /// assert!(Arch::X86.well_known());
+    /// ```
     pub fn well_known(self) -> bool {
         match self {
             Arch::Unknown
@@ -286,20 +443,10 @@ impl Arch {
         }
     }
 
-    /// Returns the name of a register in a given architecture.
+    #[doc(hidden)]
+    #[deprecated = "use CpuFamily::register_name instead"]
     pub fn register_name(self, register: u16) -> Option<&'static str> {
-        let index = register as usize;
-
-        let opt = match self.cpu_family() {
-            CpuFamily::Intel32 => I386.get(index),
-            CpuFamily::Amd64 => X86_64.get(index),
-            CpuFamily::Arm64 | CpuFamily::Arm64_32 => ARM64.get(index),
-            CpuFamily::Arm32 => ARM.get(index),
-            CpuFamily::Mips32 | CpuFamily::Mips64 => MIPS.get(index),
-            _ => None,
-        };
-
-        opt.cloned()
+        self.cpu_family().register_name(register)
     }
 }
 
@@ -365,7 +512,15 @@ impl str::FromStr for Arch {
 #[fail(display = "unknown language")]
 pub struct UnknownLanguageError;
 
-/// Supported programming languages for demangling.
+/// A programming language declared in debugging information.
+///
+/// In the context of function names or source code, the lanugage can help to determine appropriate
+/// strategies for demangling names or syntax highlighting. See the [`Name`] type, which declares a
+/// function name with an optional language.
+///
+/// This enumeration is represented as `u32` for C-bindings and lowlevel APIs.
+///
+/// [`Name`]: struct.Name.html
 #[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(u32)]
@@ -384,7 +539,18 @@ pub enum Language {
 }
 
 impl Language {
-    /// Creates a language from the u32 it represents.
+    /// Creates an `Language` from its `u32` representation.
+    ///
+    /// Returns `Language::Unknown` for all unknown values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_common::Language;
+    ///
+    /// // Will print "C"
+    /// println!("{:?}", Language::from_u32(1));
+    /// ```
     pub fn from_u32(val: u32) -> Language {
         if val >= (Language::__Max as u32) {
             Language::Unknown
@@ -394,6 +560,22 @@ impl Language {
     }
 
     /// Returns the name of the language.
+    ///
+    /// The name is always given in lower case without special characters or spaces, suitable for
+    /// serialization and parsing. For a human readable name, use the `Display` implementation,
+    /// instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_common::Language;
+    ///
+    /// // Will print "objcpp"
+    /// println!("{}", Language::ObjCpp.name());
+    ///
+    /// // Will print "Objective-C++"
+    /// println!("{}", Language::ObjCpp);
+    /// ```
     pub fn name(self) -> &'static str {
         match self {
             Language::Unknown | Language::__Max => "unknown",
@@ -452,7 +634,42 @@ impl str::FromStr for Language {
     }
 }
 
-/// Represents a potentially mangled symbol.
+/// The name of a potentially mangled symbol.
+///
+/// Debugging information often only contains mangled names in their symbol and debug information
+/// data. The mangling schema depends on the compiler and programming language. `Name` is a wrapper
+/// type for potentially mangled names and an optionally declared language. To demangle the name,
+/// see the `demangle` feature of `symbolic`.
+///
+/// Not all sources declare a programming language. In such a case, the [`language`] will be
+/// `Unknown`. However, it may still be inferred for demangling by inspecting the mangled string.
+///
+/// Names can refer either functions, types, fields, or virtual constructs. Their semantics are
+/// fully defined by the language and the compiler.
+///
+/// # Examples
+///
+/// Create a name and print it:
+///
+/// ```
+/// use symbolic_common::Name;
+///
+/// let name = Name::new("_ZN3foo3barEv");
+/// println!("{}", name); // prints "_ZN3foo3barEv"
+/// # assert_eq!(name.to_string(), "_ZN3foo3barEv");
+/// ```
+///
+/// Create a name with a language. Alternate formatting prints the language:
+///
+/// ```
+/// use symbolic_common::{Language, Name};
+///
+/// let name = Name::with_language("_ZN3foo3barEv", Language::Cpp);
+/// println!("{:#}", name); // prints "_ZN3foo3barEv [C++]"
+/// # assert_eq!(format!("{:#}", name), "_ZN3foo3barEv [C++]");
+/// ```
+///
+/// [`language`]: struct.Name.html#method.language
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 #[cfg_attr(
     feature = "serde",
@@ -465,7 +682,19 @@ pub struct Name<'a> {
 }
 
 impl<'a> Name<'a> {
-    /// Constructs a new mangled symbol.
+    /// Constructs a new mangled name.
+    ///
+    /// The language of this name is `Language::Unknown`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use symbolic_common::Name;
+    ///
+    /// let name = Name::new("_ZN3foo3barEv");
+    /// println!("{}", name); // prints "_ZN3foo3barEv"
+    /// # assert_eq!(name.to_string(), "_ZN3foo3barEv");
+    /// ```
     #[inline]
     pub fn new<S>(string: S) -> Self
     where
@@ -477,7 +706,19 @@ impl<'a> Name<'a> {
         }
     }
 
-    /// Constructs a new mangled symbol with known language.
+    /// Constructs a new mangled name with a known [`Language`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use symbolic_common::{Language, Name};
+    ///
+    /// let name = Name::with_language("_ZN3foo3barEv", Language::Cpp);
+    /// println!("{:#}", name); // prints "_ZN3foo3barEv [C++]"
+    /// # assert_eq!(format!("{:#}", name), "_ZN3foo3barEv [C++]");
+    /// ```
+    ///
+    /// [`Language`]: enum.Language.html
     #[inline]
     pub fn with_language<S>(string: S, lang: Language) -> Self
     where
@@ -494,19 +735,64 @@ impl<'a> Name<'a> {
         }
     }
 
-    /// The raw, mangled string of the symbol.
+    /// Returns the raw, mangled string of the name.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use symbolic_common::Name;
+    ///
+    /// let name = Name::new("_ZN3foo3barEv");
+    /// assert_eq!(name.as_str(), "_ZN3foo3barEv");
+    /// ```
+    ///
+    /// This is also available as an `AsRef<str>` implementation:
+    ///
+    /// ```
+    /// use symbolic_common::Name;
+    ///
+    /// let name = Name::new("_ZN3foo3barEv");
+    /// assert_eq!(name.as_ref(), "_ZN3foo3barEv");
+    /// ```
     pub fn as_str(&self) -> &str {
         &self.string
     }
 
     /// The language of the mangled symbol.
+    ///
+    /// If the language is not declared in the source, this returns `Language::Unknown`. The
+    /// language may still be inferred using `detect_language`, which is declared on the `Demangle`
+    /// extension trait.
     pub fn language(&self) -> Language {
         self.lang
     }
 
-    /// Returns the backing of this name.
+    /// Converts this name into a `Cow`, dropping the language.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use symbolic_common::Name;
+    ///
+    /// let name = Name::new("_ZN3foo3barEv");
+    /// assert_eq!(name.into_cow(), "_ZN3foo3barEv");
+    /// ```
     pub fn into_cow(self) -> Cow<'a, str> {
         self.string
+    }
+
+    /// Converts this name into a string, dropping the language.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use symbolic_common::Name;
+    ///
+    /// let name = Name::new("_ZN3foo3barEv");
+    /// assert_eq!(name.into_string(), "_ZN3foo3barEv");
+    /// ```
+    pub fn into_string(self) -> String {
+        self.string.into_owned()
     }
 }
 
