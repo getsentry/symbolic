@@ -180,11 +180,15 @@ impl CpuFamily {
         }
     }
 
-    /// Returns the name of a register in a given architecture.
+    /// Returns the name of a register in a given architecture used in CFI programs.
     ///
     /// Each CPU family specifies its own register sets, wherer the registers are numbered. This
     /// resolves the name of the register for the given family, if defined. Returns `None` if the
     /// CPU family is unknown, or the register is not defined for the family.
+    ///
+    /// **Note**: The CFI register name differs from [`ip_register_name`]. For instance, on x86-64
+    /// the instruction pointer is returned as `$rip` instead of just `rip`. This differentiation is
+    /// made to be compatible with the Google Breakpad library.
     ///
     /// # Examples
     ///
@@ -192,9 +196,9 @@ impl CpuFamily {
     /// use symbolic_common::CpuFamily;
     ///
     /// // 16 is the instruction pointer register:
-    /// assert_eq!(CpuFamily::Amd64.register_name(16), Some("$rip"));
+    /// assert_eq!(CpuFamily::Amd64.cfi_register_name(16), Some("$rip"));
     /// ```
-    pub fn register_name(self, register: u16) -> Option<&'static str> {
+    pub fn cfi_register_name(self, register: u16) -> Option<&'static str> {
         let index = register as usize;
 
         let opt = match self {
@@ -206,7 +210,7 @@ impl CpuFamily {
             _ => None,
         };
 
-        opt.cloned()
+        opt.copied().filter(|name| !name.is_empty())
     }
 }
 
@@ -444,9 +448,9 @@ impl Arch {
     }
 
     #[doc(hidden)]
-    #[deprecated = "use CpuFamily::register_name instead"]
+    #[deprecated = "use CpuFamily::cfi_register_name instead"]
     pub fn register_name(self, register: u16) -> Option<&'static str> {
-        self.cpu_family().register_name(register)
+        self.cpu_family().cfi_register_name(register)
     }
 }
 
@@ -885,4 +889,14 @@ mod derive_serde {
 
     impl_str_serde!(super::Arch);
     impl_str_serde!(super::Language);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cfi_register_name_none() {
+        assert_eq!(CpuFamily::Arm64.cfi_register_name(33), None);
+    }
 }

@@ -381,7 +381,7 @@ impl<W: Write> AsciiCfiWriter<W> {
     ) -> Result<bool, CfiError> {
         let formatted = match rule {
             CfaRule::RegisterAndOffset { register, offset } => {
-                match arch.cpu_family().register_name(register.0) {
+                match arch.cpu_family().cfi_register_name(register.0) {
                     Some(register) => format!("{} {} +", register, *offset),
                     None => return Ok(false),
                 }
@@ -402,16 +402,18 @@ impl<W: Write> AsciiCfiWriter<W> {
     ) -> Result<bool, CfiError> {
         let formatted = match rule {
             RegisterRule::Undefined => return Ok(false),
-            RegisterRule::SameValue => match arch.cpu_family().register_name(register.0) {
+            RegisterRule::SameValue => match arch.cpu_family().cfi_register_name(register.0) {
                 Some(reg) => reg.into(),
                 None => return Ok(false),
             },
             RegisterRule::Offset(offset) => format!(".cfa {} + ^", offset),
             RegisterRule::ValOffset(offset) => format!(".cfa {} +", offset),
-            RegisterRule::Register(register) => match arch.cpu_family().register_name(register.0) {
-                Some(reg) => reg.into(),
-                None => return Ok(false),
-            },
+            RegisterRule::Register(register) => {
+                match arch.cpu_family().cfi_register_name(register.0) {
+                    Some(reg) => reg.into(),
+                    None => return Ok(false),
+                }
+            }
             RegisterRule::Expression(_) => return Ok(false),
             RegisterRule::ValExpression(_) => return Ok(false),
             RegisterRule::Architectural => return Ok(false),
@@ -422,7 +424,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         let register_name = if register == ra {
             ".ra"
         } else {
-            match arch.cpu_family().register_name(register.0) {
+            match arch.cpu_family().cfi_register_name(register.0) {
                 Some(reg) => reg,
                 None => return Ok(false),
             }
