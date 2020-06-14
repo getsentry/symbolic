@@ -136,17 +136,14 @@ fn symbolize<'a>(
     };
 
     // TODO: Extract and supply signal and IP register
-    let instruction = InstructionInfo {
-        addr: frame.return_address(arch),
-        arch,
-        crashing_frame: crashing,
-        signal: None,
-        ip_reg: None,
-    };
+    let return_address = frame.return_address(arch);
+    let caller_address = InstructionInfo::new(arch, return_address)
+        .is_crashing_frame(crashing)
+        .caller_address();
 
     let lines = symcache
         .get()
-        .lookup(instruction.caller_address() - module.base_address())?
+        .lookup(caller_address - module.base_address())?
         .collect::<Vec<_>>()?;
 
     if lines.is_empty() {

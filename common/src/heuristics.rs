@@ -1,5 +1,9 @@
 //! Heuristics for correcting instruction pointers based on the CPU architecture.
 
+// The fields on `InstructionInfo` are deprecated and will be removed from the public interface in
+// the next major release. They may still be used in this module.
+#![allow(deprecated)]
+
 use crate::types::{Arch, CpuFamily};
 
 const SIGILL: u32 = 4;
@@ -22,16 +26,14 @@ const SIGSEGV: u32 = 11;
 ///
 /// const SIGSEGV: u32 = 11;
 ///
-/// let info = InstructionInfo {
-///     addr: 0x1337,           // The restored instruction pointer of the frame
-///     arch: Arch::Arm64,      // Can be obtained from the object file
-///     crashing_frame: false,  // Set to true for the first frame
-///     signal: Some(SIGSEGV),  // Usually part of the crash report
-///     ip_reg: Some(0x1337),   // The original IP address
-/// };
+/// let caller_address = InstructionInfo::new(Arch::Arm64, 0x1337)
+///     .is_crashing_frame(false)
+///     .signal(SIGSEGV)
+///     .ip_register_value(0x4242)
+///     .caller_address();
 ///
-/// println!("{:#x}", info.caller_address());
-/// # assert_eq!(info.caller_address(), 0x1330);
+/// println!("{:#x}", caller_address);
+/// # assert_eq!(caller_address, 0x1330);
 /// ```
 ///
 /// # Background
@@ -104,21 +106,88 @@ const SIGSEGV: u32 = 11;
 ///
 /// [internet archive]:
 /// https://web.archive.org/web/20161012225323/https://opensource.plausible.coop/wiki/display/PLCR/Automated+Crash+Report+Analysis
-
+///
+/// [`caller_address`]: struct.InstructionInfo.html#method.caller_address
+#[derive(Clone, Debug)]
 pub struct InstructionInfo {
-    /// The address of the instruction we want to use as a base.
+    #[doc(hidden)]
+    #[deprecated = "Use InstructionInfo::new() instead"]
     pub addr: u64,
-    /// The architecture we are dealing with.
+    #[doc(hidden)]
+    #[deprecated = "Use InstructionInfo::new() instead"]
     pub arch: Arch,
-    /// This is true if the frame is the cause of the crash.
+    #[doc(hidden)]
+    #[deprecated = "Use is_crashing_frame() instead"]
     pub crashing_frame: bool,
-    /// If a signal is known that triggers the crash, it can be stored here.
+    #[doc(hidden)]
+    #[deprecated = "Use signal() instead"]
     pub signal: Option<u32>,
-    /// The optional value of the IP register.
+    #[doc(hidden)]
+    #[deprecated = "Use ip_register_value() instead"]
     pub ip_reg: Option<u64>,
 }
 
 impl InstructionInfo {
+    /// Creates a new instruction info instance.
+    ///
+    /// By default, the frame is not marked as *crashing frame*. The signal and instruction pointer
+    /// register value are empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_common::{Arch, InstructionInfo};
+    ///
+    /// let caller_address = InstructionInfo::new(Arch::X86, 0x1337)
+    ///     .caller_address();
+    /// ```
+    pub fn new(arch: Arch, instruction_address: u64) -> Self {
+        Self {
+            arch,
+            addr: instruction_address,
+            crashing_frame: false,
+            signal: None,
+            ip_reg: None,
+        }
+    }
+
+    /// Marks this as the crashing frame.
+    ///
+    /// The crashing frame is the first frame yielded by the stack walker. In such a frame, the
+    /// instruction address is the location of the direct crash. This is used by
+    /// [`should_adjust_caller`] to determine which frames need caller address adjustment.
+    ///
+    /// Defaults to `false`.
+    ///
+    /// [`should_adjust_caller`]: struct.InstructionInfo.html#method.should_adjust_caller
+    pub fn is_crashing_frame(&mut self, flag: bool) -> &mut Self {
+        self.crashing_frame = flag;
+        self
+    }
+
+    /// Sets a POSIX signal number.
+    ///
+    /// The signal number is used by [`should_adjust_caller`] to determine which frames need caller
+    /// address adjustment.
+    ///
+    /// [`should_adjust_caller`]: struct.InstructionInfo.html#method.should_adjust_caller
+    pub fn signal(&mut self, signal: u32) -> &mut Self {
+        self.signal = Some(signal);
+        self
+    }
+
+    /// Sets the value of the instruction pointer register.
+    ///
+    /// This should be the original register value at the time of the crash, and not a restored
+    /// register value. This is used by [`should_adjust_caller`] to determine which frames need
+    /// caller address adjustment.
+    ///
+    /// [`should_adjust_caller`]: struct.InstructionInfo.html#method.should_adjust_caller
+    pub fn ip_register_value(&mut self, value: u64) -> &mut Self {
+        self.ip_reg = Some(value);
+        self
+    }
+
     /// Tries to resolve the start address of the current instruction.
     ///
     /// For architectures without fixed alignment (such as Intel with variable instruction lengths),
@@ -127,20 +196,13 @@ impl InstructionInfo {
     ///
     /// # Examples
     ///
-    /// On 64-bit ARM, addresses are aligned at 4 byte boundaries. This applies to all 64-bit ARM
-    /// variants, even unknown ones:
+    /// For example, on 64-bit ARM, addresses are aligned at 4 byte boundaries. This applies to all
+    /// 64-bit ARM variants, even unknown ones:
     ///
     /// ```
     /// use symbolic_common::{Arch, InstructionInfo};
     ///
-    /// let info = InstructionInfo {
-    ///     addr: 0x1337,
-    ///     arch: Arch::Arm64Unknown,
-    ///     crashing_frame: false,
-    ///     signal: None,
-    ///     ip_reg: None,
-    /// };
-    ///
+    /// let info = InstructionInfo::new(Arch::Arm64, 0x1337);
     /// assert_eq!(info.aligned_address(), 0x1334);
     /// ```
     pub fn aligned_address(&self) -> u64 {
@@ -170,14 +232,7 @@ impl InstructionInfo {
     /// ```
     /// use symbolic_common::{Arch, InstructionInfo};
     ///
-    /// let info = InstructionInfo {
-    ///     addr: 0x1337,
-    ///     arch: Arch::Arm64,
-    ///     crashing_frame: false,
-    ///     signal: None,
-    ///     ip_reg: None,
-    /// };
-    ///
+    /// let info = InstructionInfo::new(Arch::Arm64, 0x1337);
     /// assert_eq!(info.previous_address(), 0x1330);
     /// ```
     ///
@@ -187,14 +242,7 @@ impl InstructionInfo {
     /// ```
     /// use symbolic_common::{Arch, InstructionInfo};
     ///
-    /// let info = InstructionInfo {
-    ///     addr: 0x1337,
-    ///     arch: Arch::X86,
-    ///     crashing_frame: false,
-    ///     signal: None,
-    ///     ip_reg: None,
-    /// };
-    ///
+    /// let info = InstructionInfo::new(Arch::X86, 0x1337);
     /// assert_eq!(info.previous_address(), 0x1336);
     /// ```
     pub fn previous_address(&self) -> u64 {
@@ -222,15 +270,10 @@ impl InstructionInfo {
     ///
     /// const SIGSEGV: u32 = 11;
     ///
-    /// let info = InstructionInfo {
-    ///     addr: 0x1337,
-    ///     arch: Arch::X86,
-    ///     crashing_frame: false,
-    ///     signal: Some(SIGSEGV),
-    ///     ip_reg: None,
-    /// };
-    ///
-    /// assert!(info.is_crash_signal());
+    /// let is_crash = InstructionInfo::new(Arch::X86, 0x1337)
+    ///     .signal(SIGSEGV)
+    ///     .is_crash_signal();
+    /// # assert!(is_crash);
     /// ```
     pub fn is_crash_signal(&self) -> bool {
         match self.signal {
@@ -255,15 +298,10 @@ impl InstructionInfo {
     /// ```
     /// use symbolic_common::{Arch, InstructionInfo};
     ///
-    /// let info = InstructionInfo {
-    ///     addr: 0x1337,
-    ///     arch: Arch::X86,
-    ///     crashing_frame: true,
-    ///     signal: None,
-    ///     ip_reg: None,
-    /// };
-    ///
-    /// assert!(!info.should_adjust_caller());
+    /// let should_adjust = InstructionInfo::new(Arch::X86, 0x1337)
+    ///     .is_crashing_frame(true)
+    ///     .should_adjust_caller();
+    /// # assert!(!should_adjust);
     /// ```
     pub fn should_adjust_caller(&self) -> bool {
         // All frames other than the crashing frame (or suspended frame for
@@ -308,15 +346,11 @@ impl InstructionInfo {
     /// ```
     /// use symbolic_common::{Arch, InstructionInfo};
     ///
-    /// let info = InstructionInfo {
-    ///     addr: 0x1337,
-    ///     arch: Arch::Arm64,
-    ///     crashing_frame: true,
-    ///     signal: None,
-    ///     ip_reg: None,
-    /// };
+    /// let caller_address = InstructionInfo::new(Arch::Arm64, 0x1337)
+    ///     .is_crashing_frame(true)
+    ///     .caller_address();
     ///
-    /// assert_eq!(info.caller_address(), 0x1334);
+    /// assert_eq!(caller_address, 0x1334);
     /// ```
     ///
     /// For all other frames, it returns the previous address:
@@ -324,15 +358,11 @@ impl InstructionInfo {
     /// ```
     /// use symbolic_common::{Arch, InstructionInfo};
     ///
-    /// let info = InstructionInfo {
-    ///     addr: 0x1337,
-    ///     arch: Arch::Arm64,
-    ///     crashing_frame: false,
-    ///     signal: None,
-    ///     ip_reg: None,
-    /// };
+    /// let caller_address = InstructionInfo::new(Arch::Arm64, 0x1337)
+    ///     .is_crashing_frame(false)
+    ///     .caller_address();
     ///
-    /// assert_eq!(info.caller_address(), 0x1330);
+    /// assert_eq!(caller_address, 0x1330);
     /// ```
     pub fn caller_address(&self) -> u64 {
         if self.should_adjust_caller() {
