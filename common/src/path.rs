@@ -241,7 +241,7 @@ pub fn clean_path(path: &str) -> Cow<'_, str> {
 ///
 /// ```
 /// assert_eq!(
-///     symbolic_common::split_path_bytes("/a/b/c".as_bytes()),
+///     symbolic_common::split_path_bytes(b"/a/b/c"),
 ///     (Some("/a/b".as_bytes()), "c".as_bytes())
 /// );
 /// ```
@@ -250,7 +250,7 @@ pub fn clean_path(path: &str) -> Cow<'_, str> {
 ///
 /// ```
 /// assert_eq!(
-///     symbolic_common::split_path_bytes("C:\\a\\b".as_bytes()),
+///     symbolic_common::split_path_bytes(b"C:\\a\\b"),
 ///     (Some("C:\\a".as_bytes()), "b".as_bytes())
 /// );
 /// ```

@@ -50,16 +50,17 @@ impl Deref for ByteViewBacking<'_> {
 /// underlying file handle until the `ByteView` is dropped:
 ///
 /// ```
-/// # fn main() -> Result<(), std::io::Error> {
-/// # use std::io::Write;
+/// use std::io::Write;
 /// use symbolic_common::ByteView;
 ///
-/// # let mut file = tempfile::tempfile()?;
-/// # file.write_all(b"1234");
+/// fn main() -> Result<(), std::io::Error> {
+///     let mut file = tempfile::tempfile()?;
+///     file.write_all(b"1234");
 ///
-/// let view = ByteView::map_file(file)?;
-/// assert_eq!(view.as_slice(), b"1234");
-/// # Ok(()) }
+///     let view = ByteView::map_file(file)?;
+///     assert_eq!(view.as_slice(), b"1234");
+/// Ok(())
+/// }
 /// ```
 #[derive(Clone, Debug)]
 pub struct ByteView<'a> {
@@ -120,13 +121,14 @@ impl<'a> ByteView<'a> {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), std::io::Error> {
-    /// # use std::io::Write;
+    /// use std::io::Write;
     /// use symbolic_common::ByteView;
     ///
-    /// # let mut file = tempfile::tempfile()?;
-    /// let view = ByteView::map_file(file)?;
-    /// # Ok(()) }
+    /// fn main() -> Result<(), std::io::Error> {
+    ///     let mut file = tempfile::tempfile()?;
+    ///     let view = ByteView::map_file(file)?;
+    ///     Ok(())
+    /// }
     /// ```
     pub fn map_file(file: File) -> Result<Self, io::Error> {
         let backing = match unsafe { Mmap::map(&file) } {
@@ -157,13 +159,14 @@ impl<'a> ByteView<'a> {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), std::io::Error> {
     /// use std::io::Cursor;
     /// use symbolic_common::ByteView;
     ///
-    /// let reader = Cursor::new(b"1234");
-    /// let view = ByteView::read(reader)?;
-    /// # Ok(()) }
+    /// fn main() -> Result<(), std::io::Error> {
+    ///     let reader = Cursor::new(b"1234");
+    ///     let view = ByteView::read(reader)?;
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// [`open`]: struct.ByteView.html#method.open
@@ -180,11 +183,12 @@ impl<'a> ByteView<'a> {
     /// # Example
     ///
     /// ```no_run
-    /// # fn main() -> Result<(), std::io::Error> {
     /// use symbolic_common::ByteView;
     ///
-    /// let view = ByteView::open("test.txt")?;
-    /// # Ok(()) }
+    /// fn main() -> Result<(), std::io::Error> {
+    ///     let view = ByteView::open("test.txt")?;
+    ///     Ok(())
+    /// }
     /// ```
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, io::Error> {
         let file = File::open(path)?;

@@ -659,8 +659,7 @@ impl str::FromStr for Language {
 /// use symbolic_common::Name;
 ///
 /// let name = Name::new("_ZN3foo3barEv");
-/// println!("{}", name); // prints "_ZN3foo3barEv"
-/// # assert_eq!(name.to_string(), "_ZN3foo3barEv");
+/// assert_eq!(name.to_string(), "_ZN3foo3barEv");
 /// ```
 ///
 /// Create a name with a language. Alternate formatting prints the language:
@@ -669,8 +668,7 @@ impl str::FromStr for Language {
 /// use symbolic_common::{Language, Name};
 ///
 /// let name = Name::with_language("_ZN3foo3barEv", Language::Cpp);
-/// println!("{:#}", name); // prints "_ZN3foo3barEv [C++]"
-/// # assert_eq!(format!("{:#}", name), "_ZN3foo3barEv [C++]");
+/// assert_eq!(format!("{:#}", name), "_ZN3foo3barEv [C++]");
 /// ```
 ///
 /// [`language`]: struct.Name.html#method.language
@@ -696,8 +694,7 @@ impl<'a> Name<'a> {
     /// use symbolic_common::Name;
     ///
     /// let name = Name::new("_ZN3foo3barEv");
-    /// println!("{}", name); // prints "_ZN3foo3barEv"
-    /// # assert_eq!(name.to_string(), "_ZN3foo3barEv");
+    /// assert_eq!(name.to_string(), "_ZN3foo3barEv");
     /// ```
     #[inline]
     pub fn new<S>(string: S) -> Self
@@ -718,8 +715,7 @@ impl<'a> Name<'a> {
     /// use symbolic_common::{Language, Name};
     ///
     /// let name = Name::with_language("_ZN3foo3barEv", Language::Cpp);
-    /// println!("{:#}", name); // prints "_ZN3foo3barEv [C++]"
-    /// # assert_eq!(format!("{:#}", name), "_ZN3foo3barEv [C++]");
+    /// assert_eq!(format!("{:#}", name), "_ZN3foo3barEv [C++]");
     /// ```
     ///
     /// [`Language`]: enum.Language.html

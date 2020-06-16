@@ -205,7 +205,8 @@ where
 /// assert_eq!(cell.get().0, "hello world");
 /// ```
 ///
-/// [`StableDeref`]: trait.StableDeref.html [`AsSelf`]: trait.AsSelf.html
+/// [`StableDeref`]: trait.StableDeref.html
+/// [`AsSelf`]: trait.AsSelf.html
 #[derive(Clone, Debug)]
 pub struct SelfCell<O, D>
 where
@@ -256,12 +257,13 @@ where
     /// # Example
     ///
     /// ```
-    /// # fn main() -> Result<(), std::str::Utf8Error> {
     /// use symbolic_common::SelfCell;
     ///
-    /// let owner = Vec::from("hello world");
-    /// let cell = SelfCell::try_new(owner, |s| unsafe { std::str::from_utf8(&*s) })?;
-    /// # Ok(()) }
+    /// fn main() -> Result<(), std::str::Utf8Error> {
+    ///     let owner = Vec::from("hello world");
+    ///     let cell = SelfCell::try_new(owner, |s| unsafe { std::str::from_utf8(&*s) })?;
+    ///     Ok(())
+    /// }
     /// ```
     #[inline]
     pub fn try_new<E, F>(owner: O, derive: F) -> Result<Self, E>

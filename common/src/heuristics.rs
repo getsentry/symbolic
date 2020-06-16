@@ -32,8 +32,7 @@ const SIGSEGV: u32 = 11;
 ///     .ip_register_value(0x4242)
 ///     .caller_address();
 ///
-/// println!("{:#x}", caller_address);
-/// # assert_eq!(caller_address, 0x1330);
+/// assert_eq!(caller_address, 0x1330);
 /// ```
 ///
 /// # Background
@@ -104,9 +103,7 @@ const SIGSEGV: u32 = 11;
 /// The above information was taken and slightly updated from the now-gone *PLCrashReporter Wiki*.
 /// An old copy can still be found in the [internet archive].
 ///
-/// [internet archive]:
-/// https://web.archive.org/web/20161012225323/https://opensource.plausible.coop/wiki/display/PLCR/Automated+Crash+Report+Analysis
-///
+/// [internet archive]: https://web.archive.org/web/20161012225323/https://opensource.plausible.coop/wiki/display/PLCR/Automated+Crash+Report+Analysis
 /// [`caller_address`]: struct.InstructionInfo.html#method.caller_address
 #[derive(Clone, Debug)]
 pub struct InstructionInfo {
@@ -273,7 +270,8 @@ impl InstructionInfo {
     /// let is_crash = InstructionInfo::new(Arch::X86, 0x1337)
     ///     .signal(SIGSEGV)
     ///     .is_crash_signal();
-    /// # assert!(is_crash);
+    ///
+    /// assert!(is_crash);
     /// ```
     pub fn is_crash_signal(&self) -> bool {
         match self.signal {
@@ -301,7 +299,8 @@ impl InstructionInfo {
     /// let should_adjust = InstructionInfo::new(Arch::X86, 0x1337)
     ///     .is_crashing_frame(true)
     ///     .should_adjust_caller();
-    /// # assert!(!should_adjust);
+    ///
+    /// assert!(!should_adjust);
     /// ```
     pub fn should_adjust_caller(&self) -> bool {
         // All frames other than the crashing frame (or suspended frame for
