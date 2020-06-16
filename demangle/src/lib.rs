@@ -127,13 +127,12 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
         Err(_) => return None,
     };
 
-    let opts = CppOptions {
-        no_params: !opts.with_arguments,
-        // TODO: Maybe we would like to add return type to `DemangleOptions`?
-        no_return_type: !opts.with_arguments,
-    };
+    let mut cpp_options = CppOptions::new();
+    if !opts.with_arguments {
+        cpp_options = cpp_options.no_params().no_return_type();
+    }
 
-    match symbol.demangle(&opts) {
+    match symbol.demangle(&cpp_options) {
         Ok(demangled) => Some(demangled),
         Err(_) => None,
     }
