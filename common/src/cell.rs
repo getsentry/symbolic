@@ -25,14 +25,15 @@ pub use stable_deref_trait::StableDeref;
 /// This is particularly useful when the type's lifetime is somehow tied to it's own existence, such
 /// as in self-referential structs. See [`SelfCell`] for an implementation that makes use of this.
 ///
-/// ## Implementation
+/// # Implementation
 ///
 /// While this trait may be implemented for any type, it is only useful for types that specify a
 /// lifetime bound, such as `Cow` or [`ByteView`]. To implement, define `Ref` as the type with all
 /// dependent lifetimes set to `'slf`. Then, simply return `self` in `as_self`.
 ///
 /// ```rust
-/// # use symbolic_common::AsSelf;
+/// use symbolic_common::AsSelf;
+///
 /// struct Foo<'a>(&'a str);
 ///
 /// impl<'slf> AsSelf<'slf> for Foo<'_> {
@@ -44,7 +45,7 @@ pub use stable_deref_trait::StableDeref;
 /// }
 /// ```
 ///
-/// ## Interior Mutability
+/// # Interior Mutability
 ///
 /// **Note** that if your type uses interior mutability (essentially any type from `std::sync`, but
 /// specifically everything built on top of `UnsafeCell`), this implicit coercion will not work. The
@@ -55,8 +56,9 @@ pub use stable_deref_trait::StableDeref;
 /// implement the coercion with an unsafe transmute:
 ///
 /// ```rust
-/// # use symbolic_common::AsSelf;
-/// # use std::cell::UnsafeCell;
+/// use std::cell::UnsafeCell;
+/// use symbolic_common::AsSelf;
+///
 /// struct Foo<'a>(UnsafeCell<&'a str>);
 ///
 /// impl<'slf> AsSelf<'slf> for Foo<'_> {
@@ -108,7 +110,7 @@ where
 
 impl<'slf, T> AsSelf<'slf> for &'slf T
 where
-    T: AsSelf<'slf>,
+    T: AsSelf<'slf> + ?Sized,
 {
     type Ref = T::Ref;
 
@@ -119,7 +121,7 @@ where
 
 impl<'slf, T> AsSelf<'slf> for &'slf mut T
 where
-    T: AsSelf<'slf>,
+    T: AsSelf<'slf> + ?Sized,
 {
     type Ref = T::Ref;
 
@@ -172,7 +174,7 @@ where
 /// reference pointed to by the dependent object never moves over the lifetime of this object. This
 /// is already implemented for most heap-allocating types, like `Box`, `Rc`, `Arc` or `ByteView`.
 ///
-/// Additionally, the dependent object must implement `AsSelf`. This guarantees that the borrow's
+/// Additionally, the dependent object must implement [`AsSelf`]. This guarantees that the borrow's
 /// lifetime and its lifetime bounds never exceed the lifetime of the owner. As such, an object
 /// `Foo<'a>` that borrows data from the owner, will be coerced down to `Foo<'self>` when borrowing.
 /// There are two constructor functions, `new` and `try_new`, each of which are passed a pointer to
@@ -186,7 +188,8 @@ where
 /// ## Example
 ///
 /// ```rust
-/// # use symbolic_common::{AsSelf, SelfCell};
+/// use symbolic_common::{AsSelf, SelfCell};
+///
 /// struct Foo<'a>(&'a str);
 ///
 /// impl<'slf> AsSelf<'slf> for Foo<'_> {
@@ -197,7 +200,8 @@ where
 ///     }
 /// }
 ///
-/// let cell = SelfCell::new(String::from("hello world"), |s| Foo(unsafe { &*s }));
+/// let owner = String::from("hello world");
+/// let cell = SelfCell::new(owner, |s| Foo(unsafe { &*s }));
 /// assert_eq!(cell.get().0, "hello world");
 /// ```
 ///
@@ -219,8 +223,20 @@ where
 {
     /// Creates a new `SelfCell`.
     ///
-    /// The callback receives a pointer to the owned data. Note that a borrow to that data can only
-    /// safely be used to derive the object and **must not** leave the callback.
+    /// # Safety
+    ///
+    /// The callback receives a pointer to the owned data. Dereferencing the pointer is unsafe. Note
+    /// that a borrow to that data can only safely be used to derive the object and **must not**
+    /// leave the callback.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use symbolic_common::SelfCell;
+    ///
+    /// let owner = String::from("hello world");
+    /// let cell = SelfCell::new(owner, |s| unsafe { &*s });
+    /// ```
     #[inline]
     pub fn new<F>(owner: O, derive: F) -> Self
     where
@@ -232,8 +248,23 @@ where
 
     /// Creates a new `SelfCell` which may fail to construct.
     ///
-    /// The callback receives a pointer to the owned data. Note that a borrow to that data can only
-    /// safely be used to derive the object and **must not** leave the callback.
+    /// # Safety
+    ///
+    /// The callback receives a pointer to the owned data. Dereferencing the pointer is unsafe. Note
+    /// that a borrow to that data can only safely be used to derive the object and **must not**
+    /// leave the callback.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use symbolic_common::SelfCell;
+    ///
+    /// fn main() -> Result<(), std::str::Utf8Error> {
+    ///     let owner = Vec::from("hello world");
+    ///     let cell = SelfCell::try_new(owner, |s| unsafe { std::str::from_utf8(&*s) })?;
+    ///     Ok(())
+    /// }
+    /// ```
     #[inline]
     pub fn try_new<E, F>(owner: O, derive: F) -> Result<Self, E>
     where
@@ -254,8 +285,9 @@ where
     /// # Example
     ///
     /// ```rust
-    /// # use std::sync::Arc;
-    /// # use symbolic_common::{AsSelf, SelfCell};
+    /// use std::sync::Arc;
+    /// use symbolic_common::{AsSelf, SelfCell};
+    ///
     /// struct Foo<'a>(&'a str);
     ///
     /// impl<'slf> AsSelf<'slf> for Foo<'_> {
@@ -283,12 +315,32 @@ where
     }
 
     /// Returns a reference to the owner of this cell.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use symbolic_common::SelfCell;
+    ///
+    /// let owner = String::from("  hello  ");
+    /// let cell = SelfCell::new(owner, |s| unsafe { (*s).trim() });
+    /// assert_eq!(cell.owner(), "  hello  ");
+    /// ```
     #[inline(always)]
     pub fn owner(&self) -> &O {
         &self.owner
     }
 
     /// Returns a safe reference to the derived object in this cell.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use symbolic_common::SelfCell;
+    ///
+    /// let owner = String::from("  hello  ");
+    /// let cell = SelfCell::new(owner, |s| unsafe { (*s).trim() });
+    /// assert_eq!(cell.get(), "hello");
+    /// ```
     #[inline(always)]
     pub fn get(&'slf self) -> &'slf <T as AsSelf<'slf>>::Ref {
         self.derived.as_self()

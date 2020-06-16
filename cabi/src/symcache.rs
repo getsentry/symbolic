@@ -4,7 +4,7 @@ use std::mem;
 use std::os::raw::c_char;
 use std::slice;
 
-use symbolic::common::{Arch, ByteView, InstructionInfo, SelfCell};
+use symbolic::common::{ByteView, InstructionInfo, SelfCell};
 use symbolic::symcache::{format::SYMCACHE_VERSION, SymCache, SymCacheWriter};
 
 use crate::core::SymbolicStr;
@@ -197,14 +197,18 @@ ffi_fn! {
     /// Return the best instruction for an isntruction info.
     unsafe fn symbolic_find_best_instruction(ii: *const SymbolicInstructionInfo) -> Result<u64> {
         let info = &*ii;
-        let real_ii = InstructionInfo {
-            addr: info.addr,
-            arch: (*info.arch).as_str().parse::<Arch>()?,
-            crashing_frame: info.crashing_frame,
-            signal: if info.signal == 0 { None } else { Some(info.signal) },
-            ip_reg: if info.ip_reg == 0 { None } else { Some(info.ip_reg) },
-        };
-        Ok(real_ii.caller_address())
+
+        let arch = (*info.arch).as_str().parse()?;
+        let mut real_info = InstructionInfo::new(arch, info.addr);
+        real_info.is_crashing_frame(info.crashing_frame);
+        if info.signal != 0 {
+            real_info.signal(info.signal);
+        }
+        if info.ip_reg != 0 {
+            real_info.ip_register_value(info.ip_reg);
+        }
+
+        Ok(real_info.caller_address())
     }
 }
 

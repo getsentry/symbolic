@@ -135,7 +135,7 @@ impl<U> UnwindInfo<U> {
 
         // Based on the architecture, pointers inside eh_frame and debug_frame have different sizes.
         // Configure the section to read them appropriately.
-        if let Some(pointer_size) = arch.pointer_size() {
+        if let Some(pointer_size) = arch.cpu_family().pointer_size() {
             section.set_address_size(pointer_size as u8);
         }
 
@@ -381,7 +381,7 @@ impl<W: Write> AsciiCfiWriter<W> {
     ) -> Result<bool, CfiError> {
         let formatted = match rule {
             CfaRule::RegisterAndOffset { register, offset } => {
-                match arch.register_name(register.0) {
+                match arch.cpu_family().cfi_register_name(register.0) {
                     Some(register) => format!("{} {} +", register, *offset),
                     None => return Ok(false),
                 }
@@ -402,16 +402,18 @@ impl<W: Write> AsciiCfiWriter<W> {
     ) -> Result<bool, CfiError> {
         let formatted = match rule {
             RegisterRule::Undefined => return Ok(false),
-            RegisterRule::SameValue => match arch.register_name(register.0) {
+            RegisterRule::SameValue => match arch.cpu_family().cfi_register_name(register.0) {
                 Some(reg) => reg.into(),
                 None => return Ok(false),
             },
             RegisterRule::Offset(offset) => format!(".cfa {} + ^", offset),
             RegisterRule::ValOffset(offset) => format!(".cfa {} +", offset),
-            RegisterRule::Register(register) => match arch.register_name(register.0) {
-                Some(reg) => reg.into(),
-                None => return Ok(false),
-            },
+            RegisterRule::Register(register) => {
+                match arch.cpu_family().cfi_register_name(register.0) {
+                    Some(reg) => reg.into(),
+                    None => return Ok(false),
+                }
+            }
             RegisterRule::Expression(_) => return Ok(false),
             RegisterRule::ValExpression(_) => return Ok(false),
             RegisterRule::Architectural => return Ok(false),
@@ -422,7 +424,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         let register_name = if register == ra {
             ".ra"
         } else {
-            match arch.register_name(register.0) {
+            match arch.cpu_family().cfi_register_name(register.0) {
                 Some(reg) => reg,
                 None => return Ok(false),
             }

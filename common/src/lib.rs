@@ -5,10 +5,19 @@
 //!  - [`ByteView`]: Gives access to binary data in-memory or on the file system.
 //!  - [`SelfCell`]: Allows to create self-referential types.
 //!  - [`Name`]: A symbol name that can be demangled with the `demangle` feature.
-//!  - ... and some useful functions to deal with paths in different platforms.
+//!  - [`InstructionInfo`]: A utility type for instruction pointer heuristics.
+//!  - Functions and utilities to deal with paths from different platforms.
+//!
+//! # Features
+//!
+//! - `serde` (optional): Implements `serde::Deserialize` and `serde::Serialize` for all data types.
+//!   In the `symbolic` crate, this feature is exposed via `common-serde`.
+//!
+//! This module is part of the `symbolic` crate.
 //!
 //! [`Name`]: struct.Name.html
 //! [`ByteView`]: struct.ByteView.html
+//! [`InstructionInfo`]: struct.InstructionInfo.html
 //! [`SelfCell`]: struct.SelfCell.html
 
 #![warn(missing_docs)]

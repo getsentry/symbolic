@@ -38,18 +38,29 @@ impl Deref for ByteViewBacking<'_> {
 /// A smart pointer for byte data.
 ///
 /// This type can be used to uniformly access bytes that were created either from mmapping in a
-/// path, a vector or a borrowed slice.  A byteview derefs into a `&[u8]` and is used in symbolic in
-/// most situations where binary files are worked with.
+/// path, a vector or a borrowed slice. A `ByteView` dereferences into a `&[u8]` and guarantees
+/// random access to the underlying buffer or file.
 ///
-/// A `ByteView` can be constructed from borrowed slices, vectors or mmaped from the file system
-/// directly.
+/// A `ByteView` can be constructed from borrowed slices, vectors or memory mapped from the file
+/// system directly.
 ///
 /// # Example
 ///
+/// The most common way to use `ByteView` is to construct it from a file handle. This will own the
+/// underlying file handle until the `ByteView` is dropped:
+///
 /// ```
-/// # use symbolic_common::ByteView;
-/// let bv = ByteView::from_slice(b"1234");
-/// assert_eq!(&*bv, b"1234");
+/// use std::io::Write;
+/// use symbolic_common::ByteView;
+///
+/// fn main() -> Result<(), std::io::Error> {
+///     let mut file = tempfile::tempfile()?;
+///     file.write_all(b"1234");
+///
+///     let view = ByteView::map_file(file)?;
+///     assert_eq!(view.as_slice(), b"1234");
+/// Ok(())
+/// }
 /// ```
 #[derive(Clone, Debug)]
 pub struct ByteView<'a> {
@@ -64,28 +75,68 @@ impl<'a> ByteView<'a> {
     }
 
     /// Constructs a `ByteView` from a `Cow`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::borrow::Cow;
+    /// use symbolic_common::ByteView;
+    ///
+    /// let cow = Cow::Borrowed(&b"1234"[..]);
+    /// let view = ByteView::from_cow(cow);
+    /// ```
     pub fn from_cow(cow: Cow<'a, [u8]>) -> Self {
         ByteView::with_backing(ByteViewBacking::Buf(cow))
     }
 
     /// Constructs a `ByteView` from a byte slice.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use symbolic_common::ByteView;
+    ///
+    /// let view = ByteView::from_slice(b"1234");
+    /// ```
     pub fn from_slice(buffer: &'a [u8]) -> Self {
         ByteView::from_cow(Cow::Borrowed(buffer))
     }
 
     /// Constructs a `ByteView` from a vector of bytes.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use symbolic_common::ByteView;
+    ///
+    /// let vec = b"1234".to_vec();
+    /// let view = ByteView::from_vec(vec);
+    /// ```
     pub fn from_vec(buffer: Vec<u8>) -> Self {
         ByteView::from_cow(Cow::Owned(buffer))
     }
 
     /// Constructs a `ByteView` from an open file handle by memory mapping the file.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::io::Write;
+    /// use symbolic_common::ByteView;
+    ///
+    /// fn main() -> Result<(), std::io::Error> {
+    ///     let mut file = tempfile::tempfile()?;
+    ///     let view = ByteView::map_file(file)?;
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn map_file(file: File) -> Result<Self, io::Error> {
         let backing = match unsafe { Mmap::map(&file) } {
             Ok(mmap) => ByteViewBacking::Mmap(mmap),
             Err(err) => {
-                // this is raised on empty mmaps which we want to ignore.  The
-                // 1006 windows error looks like "The volume for a file has been externally
-                // altered so that the opened file is no longer valid."
+                // this is raised on empty mmaps which we want to ignore. The 1006 Windows error
+                // looks like "The volume for a file has been externally altered so that the opened
+                // file is no longer valid."
                 if err.kind() == io::ErrorKind::InvalidInput
                     || (cfg!(windows) && err.raw_os_error() == Some(1006))
                 {
@@ -101,9 +152,26 @@ impl<'a> ByteView<'a> {
 
     /// Constructs a `ByteView` from any `std::io::Reader`.
     ///
-    /// This currently consumes the entire reader and stores its data in an internal buffer. Prefer
-    /// `ByteView::open` when reading from the file system or `ByteView::from_slice` /
-    /// `ByteView::from_vec` for in-memory operations. This behavior might change in the future.
+    /// **Note**: This currently consumes the entire reader and stores its data in an internal
+    /// buffer. Prefer [`open`] when reading from the file system or [`from_slice`] / [`from_vec`]
+    /// for in-memory operations. This behavior might change in the future.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::io::Cursor;
+    /// use symbolic_common::ByteView;
+    ///
+    /// fn main() -> Result<(), std::io::Error> {
+    ///     let reader = Cursor::new(b"1234");
+    ///     let view = ByteView::read(reader)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// [`open`]: struct.ByteView.html#method.open
+    /// [`from_slice`]: struct.ByteView.html#method.from_slice
+    /// [`from_vec`]: struct.ByteView.html#method.from_vec
     pub fn read<R: io::Read>(mut reader: R) -> Result<Self, io::Error> {
         let mut buffer = vec![];
         reader.read_to_end(&mut buffer)?;
@@ -111,12 +179,33 @@ impl<'a> ByteView<'a> {
     }
 
     /// Constructs a `ByteView` from a file path by memory mapping the file.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use symbolic_common::ByteView;
+    ///
+    /// fn main() -> Result<(), std::io::Error> {
+    ///     let view = ByteView::open("test.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, io::Error> {
         let file = File::open(path)?;
         Self::map_file(file)
     }
 
     /// Returns a slice of the underlying data.
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use symbolic_common::ByteView;
+    ///
+    /// let view = ByteView::from_slice(b"1234");
+    /// let data = view.as_slice();
+    /// ```
     #[inline(always)]
     pub fn as_slice(&self) -> &[u8] {
         self.backing.deref()
@@ -142,33 +231,33 @@ impl Deref for ByteView<'_> {
 unsafe impl StableDeref for ByteView<'_> {}
 
 #[cfg(test)]
-use {failure::Error, std::fs, std::io::Write};
+mod tests {
+    use super::*;
 
-#[test]
-fn test_open_empty_file() -> Result<(), Error> {
-    let mut path = std::env::temp_dir();
-    path.push(".c0b41a59-801b-4d18-aaa1-88432736116d.empty");
+    use std::io::Write;
 
-    File::create(&path)?;
-    let bv = ByteView::open(&path)?;
-    assert_eq!(&*bv, b"");
+    use failure::Error;
+    use tempfile::NamedTempFile;
 
-    fs::remove_file(&path)?;
-    Ok(())
-}
+    #[test]
+    fn test_open_empty_file() -> Result<(), Error> {
+        let tmp = NamedTempFile::new()?;
 
-#[test]
-fn test_open_file() -> Result<(), Error> {
-    let mut path = std::env::temp_dir();
-    path.push(".c0b41a59-801b-4d18-aaa1-88432736116d");
+        let view = ByteView::open(&tmp.path())?;
+        assert_eq!(&*view, b"");
 
-    let mut file = File::create(&path)?;
-    file.write_all(b"1234")?;
-    drop(file);
+        Ok(())
+    }
 
-    let bv = ByteView::open(&path)?;
-    assert_eq!(&*bv, b"1234");
+    #[test]
+    fn test_open_file() -> Result<(), Error> {
+        let mut tmp = NamedTempFile::new()?;
 
-    fs::remove_file(&path)?;
-    Ok(())
+        tmp.write_all(b"1234")?;
+
+        let view = ByteView::open(&tmp.path())?;
+        assert_eq!(&*view, b"1234");
+
+        Ok(())
+    }
 }

@@ -13,11 +13,12 @@
 ///  - `From<ErrorKind>`
 ///  - `From<Context<ErrorKind>>`
 ///
-/// ## Example
+/// # Examples
 ///
-/// ```rust
+/// ```
 /// use failure::Fail;
-/// # use symbolic_common::derive_failure;
+/// use symbolic_common::derive_failure;
+///
 /// #[derive(Debug, Fail)]
 /// enum MyErrorKind {
 ///     #[fail(display = "some")] Something,
