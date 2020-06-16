@@ -8,6 +8,11 @@
 //!  - [`InstructionInfo`]: A utility type for instruction pointer heuristics.
 //!  - Functions and utilities to deal with paths from different platforms.
 //!
+//! # Features
+//!
+//! - `serde` (optional): Implements `serde::Deserialize` and `serde::Serialize` for all data types.
+//!   In the `symbolic` crate, this feature is exposed via `common-serde`.
+//!
 //! This module is part of the `symbolic` crate.
 //!
 //! [`Name`]: struct.Name.html
