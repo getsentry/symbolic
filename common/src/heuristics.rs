@@ -242,6 +242,8 @@ impl InstructionInfo {
     /// let info = InstructionInfo::new(Arch::X86, 0x1337);
     /// assert_eq!(info.previous_address(), 0x1336);
     /// ```
+    ///
+    /// [`aligned_address`]: struct.InstructionInfo.html#method.aligned_address
     pub fn previous_address(&self) -> u64 {
         let instruction_size = self.arch.cpu_family().instruction_alignment().unwrap_or(1);
 

@@ -279,8 +279,8 @@ where
     /// # Safety
     ///
     /// This is an inherently unsafe process. The caller must guarantee that the derived object only
-    /// borrows from the owner that is moved into this container. This is useful, when cloning the
-    /// owner by deriving a sub-object.
+    /// borrows from the owner that is moved into this container and the borrowed reference has a
+    /// stable address. This is useful, when cloning the owner by deriving a sub-object.
     ///
     /// # Example
     ///

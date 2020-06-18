@@ -59,7 +59,7 @@ impl Deref for ByteViewBacking<'_> {
 ///
 ///     let view = ByteView::map_file(file)?;
 ///     assert_eq!(view.as_slice(), b"1234");
-/// Ok(())
+///     Ok(())
 /// }
 /// ```
 #[derive(Clone, Debug)]
