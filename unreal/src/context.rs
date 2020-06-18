@@ -3,6 +3,8 @@
 
 use elementtree::{Element, QName};
 
+use std::collections::BTreeMap;
+
 #[cfg(feature = "with-serde")]
 use serde::Serialize;
 
@@ -158,6 +160,8 @@ pub struct Unreal4ContextRuntimeProperties {
     /// Modules
     #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
     pub modules: Option<String>,
+    /// Custom attributes
+    pub custom: BTreeMap<String, String>,
 }
 
 impl Unreal4ContextRuntimeProperties {
@@ -255,7 +259,12 @@ impl Unreal4ContextRuntimeProperties {
                     rv.crash_reporter_client_version = get_text_or_none(&child)
                 }
                 "Modules" => rv.modules = get_text_or_none(&child),
-                _ => {}
+                _ => {
+                    rv.custom.insert(
+                        tag.name().to_string(),
+                        get_text_or_none(&child).unwrap_or_default(),
+                    );
+                }
             }
         }
 
