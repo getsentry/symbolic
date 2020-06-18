@@ -1,5 +1,23 @@
 # Changelog
 
+## 7.4.0
+
+**Deprecations**:
+
+- `pointer_size`, `instruction_alignment` and `ip_register_name` have moved from `Arch` to `CpuFamily`.
+- `Arch::register_name` as been moved to `CpuFamily::cfi_register_name`.
+- Field access on `InstructionInfo` has been deprecated and replaced
+  with a builder.
+
+**Changes**:
+
+- More detailed documentation and examples on all types and functions in `symbolic-common`. ([#246](https://github.com/getsentry/symbolic/pull/247))
+
+**Bug Fixes**:
+
+- `CpuFamily::cfi_register_name` returns `None` instead of `Some("")` for some unknown registers.
+- Update `cpp_demangle` again after the previous release was yanked. ([#247](https://github.com/getsentry/symbolic/pull/247))
+
 ## 7.3.6
 
 **Bug Fixes**:
