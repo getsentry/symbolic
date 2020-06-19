@@ -198,6 +198,8 @@ impl CpuFamily {
     /// // 16 is the instruction pointer register:
     /// assert_eq!(CpuFamily::Amd64.cfi_register_name(16), Some("$rip"));
     /// ```
+    ///
+    /// [`ip_register_name`]: enum.CpuFamily.html#method.ip_register_name
     pub fn cfi_register_name(self, register: u16) -> Option<&'static str> {
         let index = register as usize;
 
@@ -434,6 +436,7 @@ impl Arch {
     /// use symbolic_common::Arch;
     ///
     /// assert!(Arch::X86.well_known());
+    /// assert!(!Arch::X86Unknown.well_known());
     /// ```
     pub fn well_known(self) -> bool {
         match self {
@@ -763,6 +766,15 @@ impl<'a> Name<'a> {
     /// If the language is not declared in the source, this returns `Language::Unknown`. The
     /// language may still be inferred using `detect_language`, which is declared on the `Demangle`
     /// extension trait.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use symbolic_common::{Language, Name};
+    ///
+    /// let name = Name::new("_ZN3foo3barEv");
+    /// assert_eq!(name.language(), Language::Unknown);
+    /// ```
     pub fn language(&self) -> Language {
         self.lang
     }
@@ -781,7 +793,7 @@ impl<'a> Name<'a> {
         self.string
     }
 
-    /// Converts this name into a string, dropping the language.
+    /// Converts this name into a `String`, dropping the language.
     ///
     /// # Example
     ///
