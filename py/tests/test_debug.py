@@ -8,6 +8,14 @@ from symbolic import (
     normalize_debug_id,
 )
 
+def test_create_archive_from_bytes(res_path):
+    binary_path = os.path.join(res_path, "minidump", "crash_macos")
+    with open(binary_path, "rb") as f:
+        buf = f.read()
+
+    archive = Archive.from_bytes(buf)
+    obj = archive.get_object(arch="x86_64")
+    assert obj.features == set(["symtab", "unwind"])
 
 def test_object_features_mac(res_path):
     binary_path = os.path.join(res_path, "minidump", "crash_macos")
@@ -16,12 +24,7 @@ def test_object_features_mac(res_path):
     obj = archive.get_object(arch="x86_64")
     assert obj.features == set(["symtab", "unwind"])
 
-    with open(binary_path, "rb") as f:
-        buf = f.read()
 
-    archive = Archive.from_bytes(buf)
-    obj = archive.get_object(arch="x86_64")
-    assert obj.features == set(["symtab", "unwind"])
 
     binary_path = os.path.join(
         res_path,
