@@ -2,6 +2,7 @@ use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::ptr;
 use std::str::FromStr;
+use std::slice;
 
 use symbolic::common::{ByteView, CodeId, DebugId, SelfCell};
 use symbolic::debuginfo::{Archive, Object};
@@ -36,6 +37,18 @@ ffi_fn! {
     /// Loads an archive from a given path.
     unsafe fn symbolic_archive_open(path: *const c_char) -> Result<*mut SymbolicArchive> {
         let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
+        let cell = SelfCell::try_new(byteview, |p| Archive::parse(&*p))?;
+        Ok(SymbolicArchive::from_rust(cell))
+    }
+}
+
+ffi_fn! {
+    /// Creates an archive from a byte buffer without taking ownership of the pointer.
+    unsafe fn symbolic_archive_from_bytes(
+        bytes: *const u8,
+        len: usize,
+    ) -> Result<*mut SymbolicArchive> {
+        let byteview = ByteView::from_slice(slice::from_raw_parts(bytes, len));
         let cell = SelfCell::try_new(byteview, |p| Archive::parse(&*p))?;
         Ok(SymbolicArchive::from_rust(cell))
     }

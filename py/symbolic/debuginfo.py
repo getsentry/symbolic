@@ -29,6 +29,11 @@ class Archive(RustObject):
             path = path.encode("utf-8")
         return Archive._from_objptr(rustcall(lib.symbolic_archive_open, path))
 
+    @classmethod
+    def from_bytes(self, data):
+        """Loads an archive from a binary buffer."""
+        return Archive._from_objptr(rustcall(lib.symbolic_archive_from_bytes, data, len(data)))
+
     @property
     def object_count(self):
         """The number of objects in this archive."""
