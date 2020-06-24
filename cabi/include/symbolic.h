@@ -28,7 +28,7 @@ enum SymbolicErrorCode {
   SYMBOLIC_ERROR_CODE_OBJECT_ERROR_UNSUPPORTED_OBJECT = 2101,
   SYMBOLIC_ERROR_CODE_OBJECT_ERROR_BAD_BREAKPAD_OBJECT = 2102,
   SYMBOLIC_ERROR_CODE_OBJECT_ERROR_BAD_ELF_OBJECT = 2103,
-  SYMBOLIC_ERROR_CODE_OBJECT_ERROR_BAD_MACH_OOBJECT = 2104,
+  SYMBOLIC_ERROR_CODE_OBJECT_ERROR_BAD_MACH_O_OBJECT = 2104,
   SYMBOLIC_ERROR_CODE_OBJECT_ERROR_BAD_PDB_OBJECT = 2105,
   SYMBOLIC_ERROR_CODE_OBJECT_ERROR_BAD_PE_OBJECT = 2106,
   SYMBOLIC_ERROR_CODE_OBJECT_ERROR_BAD_SOURCE_BUNDLE = 2107,
@@ -357,6 +357,12 @@ bool symbolic_arch_is_known(const SymbolicStr *arch);
 void symbolic_archive_free(SymbolicArchive *archive);
 
 /**
+ * Creates an archive from a byte buffer without taking ownership of the pointer.
+ */
+SymbolicArchive *symbolic_archive_from_bytes(const uint8_t *bytes,
+                                             uintptr_t len);
+
+/**
  * Returns the n-th object, or a null pointer if the object does not exist.
  */
 SymbolicObject *symbolic_archive_get_object(const SymbolicArchive *archive,
@@ -371,12 +377,6 @@ uintptr_t symbolic_archive_object_count(const SymbolicArchive *archive);
  * Loads an archive from a given path.
  */
 SymbolicArchive *symbolic_archive_open(const char *path);
-
-/**
- * Creates an archive from a byte buffer without taking ownership of the pointer.
- */
-SymbolicArchive *symbolic_archive_from_bytes(const uint8_t *bytes,
-                                             uintptr_t len);
 
 /**
  * Releases memory held by an unmanaged `SymbolicCfiCache` instance.
