@@ -373,6 +373,12 @@ uintptr_t symbolic_archive_object_count(const SymbolicArchive *archive);
 SymbolicArchive *symbolic_archive_open(const char *path);
 
 /**
+ * Creates an archive from a byte buffer without taking ownership of the pointer.
+ */
+SymbolicArchive *symbolic_archive_from_bytes(const uint8_t *bytes,
+                                             uintptr_t len);
+
+/**
  * Releases memory held by an unmanaged `SymbolicCfiCache` instance.
  */
 void symbolic_cficache_free(SymbolicCfiCache *cache);

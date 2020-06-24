@@ -11,7 +11,15 @@ from symbolic import (
 
 def test_object_features_mac(res_path):
     binary_path = os.path.join(res_path, "minidump", "crash_macos")
+
     archive = Archive.open(binary_path)
+    obj = archive.get_object(arch="x86_64")
+    assert obj.features == set(["symtab", "unwind"])
+
+    with open(binary_path, "rb") as f:
+        buf = f.read()
+
+    archive = Archive.from_bytes(buf)
     obj = archive.get_object(arch="x86_64")
     assert obj.features == set(["symtab", "unwind"])
 
