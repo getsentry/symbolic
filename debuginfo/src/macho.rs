@@ -59,6 +59,11 @@ impl<'d> MachObject<'d> {
         None
     }
 
+    /// The name of the dylib if any.
+    pub fn name(&self) -> Option<&'d str> {
+        self.macho.name
+    }
+
     /// The code identifier of this object.
     ///
     /// Mach objects use a UUID which is specified in the load commands that are part of the Mach
