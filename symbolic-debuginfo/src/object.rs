@@ -308,7 +308,7 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for Object<'d> {
     }
 }
 
-impl<'d> ObjectLike for Object<'d> {
+impl<'d> ObjectLike<'d> for Object<'d> {
     type Error = ObjectError;
     type Session = ObjectDebugSession<'d>;
 
@@ -340,12 +340,12 @@ impl<'d> ObjectLike for Object<'d> {
         self.has_symbols()
     }
 
-    fn symbol_map(&self) -> SymbolMap<'_> {
+    fn symbol_map(&self) -> SymbolMap<'d> {
         self.symbol_map()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
-        unsafe { std::mem::transmute(Box::new(self.symbols()) as DynIterator<'_, _>) }
+    fn symbols(&self) -> DynIterator<'_, Symbol<'d>> {
+        Box::new(self.symbols())
     }
 
     fn has_debug_info(&self) -> bool {

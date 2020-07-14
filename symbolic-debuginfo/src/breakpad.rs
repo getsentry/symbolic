@@ -966,7 +966,7 @@ impl<'d> Parse<'d> for BreakpadObject<'d> {
     }
 }
 
-impl<'d> ObjectLike for BreakpadObject<'d> {
+impl<'d> ObjectLike<'d> for BreakpadObject<'d> {
     type Error = BreakpadError;
     type Session = BreakpadDebugSession<'d>;
 
@@ -998,11 +998,11 @@ impl<'d> ObjectLike for BreakpadObject<'d> {
         self.has_symbols()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
+    fn symbols(&self) -> DynIterator<'_, Symbol<'d>> {
         Box::new(self.symbols())
     }
 
-    fn symbol_map(&self) -> SymbolMap<'_> {
+    fn symbol_map(&self) -> SymbolMap<'d> {
         self.symbol_map()
     }
 

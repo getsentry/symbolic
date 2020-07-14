@@ -625,7 +625,7 @@ pub trait DebugSession {
 }
 
 /// An object containing debug information.
-pub trait ObjectLike {
+pub trait ObjectLike<'d> {
     /// Errors thrown when reading information from this object.
     type Error;
 
@@ -657,10 +657,10 @@ pub trait ObjectLike {
     fn has_symbols(&self) -> bool;
 
     /// Returns an iterator over symbols in the public symbol table.
-    fn symbols(&self) -> DynIterator<'_, Symbol<'_>>;
+    fn symbols(&self) -> DynIterator<'_, Symbol<'d>>;
 
     /// Returns an ordered map of symbols in the symbol table.
-    fn symbol_map(&self) -> SymbolMap<'_>;
+    fn symbol_map(&self) -> SymbolMap<'d>;
 
     /// Determines whether this object contains debug information.
     fn has_debug_info(&self) -> bool;

@@ -257,7 +257,7 @@ impl<'d> Parse<'d> for PeObject<'d> {
     }
 }
 
-impl<'d> ObjectLike for PeObject<'d> {
+impl<'d> ObjectLike<'d> for PeObject<'d> {
     type Error = PeError;
     type Session = PeDebugSession<'d>;
 
@@ -289,11 +289,11 @@ impl<'d> ObjectLike for PeObject<'d> {
         self.has_symbols()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
+    fn symbols(&self) -> DynIterator<'_, Symbol<'d>> {
         Box::new(self.symbols())
     }
 
-    fn symbol_map(&self) -> SymbolMap<'_> {
+    fn symbol_map(&self) -> SymbolMap<'d> {
         self.symbol_map()
     }
 

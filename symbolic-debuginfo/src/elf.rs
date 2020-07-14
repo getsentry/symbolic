@@ -443,7 +443,7 @@ impl<'d> Parse<'d> for ElfObject<'d> {
     }
 }
 
-impl<'d> ObjectLike for ElfObject<'d> {
+impl<'d> ObjectLike<'d> for ElfObject<'d> {
     type Error = DwarfError;
     type Session = DwarfDebugSession<'d>;
 
@@ -475,11 +475,11 @@ impl<'d> ObjectLike for ElfObject<'d> {
         self.has_symbols()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
+    fn symbols(&self) -> DynIterator<'_, Symbol<'d>> {
         Box::new(self.symbols())
     }
 
-    fn symbol_map(&self) -> SymbolMap<'_> {
+    fn symbol_map(&self) -> SymbolMap<'d> {
         self.symbol_map()
     }
 

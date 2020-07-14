@@ -239,7 +239,7 @@ impl<'d> Parse<'d> for PdbObject<'d> {
     }
 }
 
-impl<'d> ObjectLike for PdbObject<'d> {
+impl<'d> ObjectLike<'d> for PdbObject<'d> {
     type Error = PdbError;
     type Session = PdbDebugSession<'d>;
 
@@ -271,12 +271,11 @@ impl<'d> ObjectLike for PdbObject<'d> {
         self.has_symbols()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
-        // TODO: Avoid this transmute by introducing explicit lifetimes on the trait.
-        unsafe { std::mem::transmute(Box::new(self.symbols()) as DynIterator<'_, _>) }
+    fn symbols(&self) -> DynIterator<'_, Symbol<'d>> {
+        Box::new(self.symbols())
     }
 
-    fn symbol_map(&self) -> SymbolMap<'_> {
+    fn symbol_map(&self) -> SymbolMap<'d> {
         self.symbol_map()
     }
 
