@@ -82,7 +82,7 @@ impl<'d> ElfObject<'d> {
     }
 
     /// The binary's soname, if any.
-    pub fn soname(&self) -> Option<&'d str> {
+    pub fn name(&self) -> Option<&'d str> {
         self.elf.soname
     }
 
