@@ -81,6 +81,11 @@ impl<'d> ElfObject<'d> {
             .map(|slice| CodeId::from_binary(slice))
     }
 
+    /// The binary's soname, if any.
+    pub fn name(&self) -> Option<&'d str> {
+        self.elf.soname
+    }
+
     /// The debug information identifier of an ELF object.
     ///
     /// The debug identifier is a rehash of the first 16 bytes of the `code_id`, if
