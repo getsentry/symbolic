@@ -17,6 +17,9 @@ fn test_demangle_cpp() {
         "_Z3MinIiiEDTqultfp_fp0_cl7forwardIT_Efp_Ecl7forwardIT0_Efp0_EEOS0_OS1_" => "decltype (({parm#1}<{parm#2})?((forward<int>)({parm#1})) : ((forward<int>)({parm#2}))) Min<int, int>(int&&, int&&)",
         "___ZN19URLConnectionClient33_clientInterface_cancelConnectionEP16dispatch_queue_sU13block_pointerFvvE_block_invoke14" => "invocation function for block in URLConnectionClient::_clientInterface_cancelConnection(dispatch_queue_s*, void () block_pointer)",
 
+        "_ZNK8xxxxxxxx14xxxxxxxxxxxxxxINS_14xxxxxxxxxxxxxxINS1_INS1_INS1_INS1_INS1_INS_10xxxxxxxxxxE32xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxEES3_EE22xxxxxxxxxxxxxxxxxxxxxxEES6_EE13xxxxxxxxxxxxxEE17xxxxxxxxxxxxxxxxxEE14xxxxxxxxxxxxxxE8xxxxxxxxE7xxxxxxxRKN4xxxx5xxxxxEb" =>
+            "xxxxxxxx::xxxxxxxxxxxxxx<xxxxxxxx::xxxxxxxxxxxxxx<xxxxxxxx::xxxxxxxxxxxxxx<xxxxxxxx::xxxxxxxxxxxxxx<xxxxxxxx::xxxxxxxxxxxxxx<xxxxxxxx::xxxxxxxxxxxxxx<xxxxxxxx::xxxxxxxxxxxxxx<xxxxxxxx::xxxxxxxxxx, xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>, xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>, xxxxxxxxxxxxxxxxxxxxxx>, xxxxxxxxxxxxxxxxxxxxxx>, xxxxxxxxxxxxx>, xxxxxxxxxxxxxxxxx>, xxxxxxxxxxxxxx>::xxxxxxxx(xxxxxxx, xxxx::xxxxx const&, bool) const",
+
         // Broken in cpp_demangle
         // "_ZN4base8internal13FunctorTraitsIPFvvEvE6InvokeIJEEEvS3_DpOT_" => "void base::internal::FunctorTraits<void (*)(), void>::Invoke<>(void (*)())",
     });

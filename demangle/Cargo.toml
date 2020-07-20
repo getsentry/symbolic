@@ -21,7 +21,7 @@ exclude = [
 ]
 
 [dependencies]
-cpp_demangle = "0.3.0"
+cpp_demangle = { git = "https://github.com/Swatinem/cpp_demangle", branch = "fix/increase-recursions" }
 msvc-demangler = "0.8.0"
 rustc-demangle = "0.1.16"
 symbolic-common = { version = "7.4.0", path = "../common" }
