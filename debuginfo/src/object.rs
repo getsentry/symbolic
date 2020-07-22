@@ -59,6 +59,7 @@ macro_rules! map_result {
 }
 
 /// An error when dealing with any kind of [`Object`](enum.Object.html).
+#[non_exhaustive]
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Fail)]
 pub enum ObjectError {

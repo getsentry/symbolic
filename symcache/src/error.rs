@@ -30,6 +30,7 @@ impl fmt::Display for ValueKind {
 }
 
 /// Variants of `SymCacheError`.
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 pub enum SymCacheErrorKind {
     /// Invalid magic bytes in the symcache header.

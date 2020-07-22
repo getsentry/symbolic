@@ -219,6 +219,7 @@ impl Unreal4Crash {
 }
 
 /// The type of the file within the UE4 crash.
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Unreal4FileType {
     /// Microsoft or Breakpad Minidump.

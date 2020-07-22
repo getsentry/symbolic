@@ -36,6 +36,7 @@ const EF_MIPS_ABI_EABI64: u32 = 0x0000_4000;
 const MIPS_64_FLAGS: u32 = EF_MIPS_ABI_O64 | EF_MIPS_ABI_EABI64;
 
 /// An error when dealing with [`ElfObject`](struct.ElfObject.html).
+#[non_exhaustive]
 #[derive(Debug, Fail)]
 pub enum ElfError {
     /// The data in the ELF file could not be parsed.
