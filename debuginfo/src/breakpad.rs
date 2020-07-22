@@ -33,6 +33,7 @@ const BREAKPAD_HEADER_CAP: usize = 320;
 const UNKNOWN_NAME: &str = "<unknown>";
 
 /// Variants of `BreakpadError`.
+#[non_exhaustive]
 #[derive(Debug, Fail)]
 pub enum BreakpadErrorKind {
     /// The symbol header (`MODULE` record) is missing.

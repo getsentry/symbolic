@@ -15,6 +15,7 @@ use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 
 /// An error when dealing with [`MachObject`](struct.MachObject.html).
+#[non_exhaustive]
 #[derive(Debug, Fail)]
 pub enum MachError {
     /// The data in the MachO file could not be parsed.

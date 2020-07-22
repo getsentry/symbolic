@@ -43,6 +43,7 @@ type LineNumberProgramHeader<'a> = gimli::read::LineProgramHeader<Slice<'a>>;
 type LineProgramFileEntry<'a> = gimli::read::FileEntry<Slice<'a>>;
 
 /// Variants of [`DwarfError`](struct.DwarfError.html).
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 pub enum DwarfErrorKind {
     /// A compilation unit referenced by index does not exist.

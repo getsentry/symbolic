@@ -46,6 +46,7 @@ const EMPTY_FUNCTION: RuntimeFunction = RuntimeFunction {
 };
 
 /// Possible error kinds of `CfiError`.
+#[non_exhaustive]
 #[derive(Debug, Fail, Copy, Clone)]
 pub enum CfiErrorKind {
     /// Required debug sections are missing in the `Object` file.
