@@ -152,6 +152,7 @@ pub enum SymbolicErrorCode {
     // symbolic::debuginfo
     UnknownObjectKindError = 2001,
     UnknownFileFormatError = 2002,
+    ObjectErrorUnknown = 2100,
     ObjectErrorUnsupportedObject = 2101,
     ObjectErrorBadBreakpadObject = 2102,
     ObjectErrorBadElfObject = 2103,
@@ -159,6 +160,7 @@ pub enum SymbolicErrorCode {
     ObjectErrorBadPdbObject = 2105,
     ObjectErrorBadPeObject = 2106,
     ObjectErrorBadSourceBundle = 2107,
+    DwarfErrorUnknown = 2200,
     DwarfErrorInvalidUnitRef = 2201,
     DwarfErrorInvalidFileRef = 2202,
     DwarfErrorUnexpectedInline = 2203,
@@ -166,6 +168,7 @@ pub enum SymbolicErrorCode {
     DwarfErrorCorruptedData = 2205,
 
     // symbolic::minidump::cfi
+    CfiErrorUnknown = 3000,
     CfiErrorMissingDebugInfo = 3001,
     CfiErrorUnsupportedDebugFormat = 3002,
     CfiErrorBadDebugInfo = 3003,
@@ -187,6 +190,7 @@ pub enum SymbolicErrorCode {
     ParseSourceMapError = 5001,
 
     // symbolic::symcache
+    SymCacheErrorUnknown = 6000,
     SymCacheErrorBadFileMagic = 6001,
     SymCacheErrorBadFileHeader = 6002,
     SymCacheErrorBadSegment = 6003,
@@ -201,6 +205,7 @@ pub enum SymbolicErrorCode {
     SymCacheErrorTooManyValues = 6012,
 
     // symbolic::unreal
+    Unreal4ErrorUnknown = 7001,
     Unreal4ErrorEmpty = 7002,
     Unreal4ErrorBadCompression = 7004,
     Unreal4ErrorInvalidXml = 7005,
@@ -269,8 +274,10 @@ impl SymbolicErrorCode {
                             SymbolicErrorCode::DwarfErrorInvertedFunctionRange
                         }
                         DwarfErrorKind::CorruptedData => SymbolicErrorCode::DwarfErrorCorruptedData,
+                        _ => SymbolicErrorCode::DwarfErrorUnknown,
                     },
                     ObjectError::SourceBundle(_) => SymbolicErrorCode::ObjectErrorBadSourceBundle,
+                    _ => SymbolicErrorCode::ObjectErrorUnknown,
                 };
             }
 
@@ -286,6 +293,7 @@ impl SymbolicErrorCode {
                     CfiErrorKind::InvalidAddress => SymbolicErrorCode::CfiErrorInvalidAddress,
                     CfiErrorKind::WriteError => SymbolicErrorCode::CfiErrorWriteError,
                     CfiErrorKind::BadFileMagic => SymbolicErrorCode::CfiErrorBadFileMagic,
+                    _ => SymbolicErrorCode::CfiErrorUnknown,
                 };
             }
 
@@ -352,6 +360,7 @@ impl SymbolicErrorCode {
                     SymCacheErrorKind::TooManyValues(_) => {
                         SymbolicErrorCode::SymCacheErrorTooManyValues
                     }
+                    _ => SymbolicErrorCode::SymCacheErrorUnknown,
                 };
             }
 
@@ -368,6 +377,7 @@ impl SymbolicErrorCode {
                     Unreal4Error::InvalidLogEntry(_) => {
                         SymbolicErrorCode::Unreal4ErrorInvalidLogEntry
                     }
+                    _ => SymbolicErrorCode::Unreal4ErrorUnknown,
                 };
             }
 
