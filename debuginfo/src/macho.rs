@@ -15,6 +15,7 @@ use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 
 /// An error when dealing with [`MachObject`](struct.MachObject.html).
+#[non_exhaustive]
 #[derive(Debug, Fail)]
 pub enum MachError {
     /// The data in the MachO file could not be parsed.
@@ -57,6 +58,11 @@ impl<'d> MachObject<'d> {
         }
 
         None
+    }
+
+    /// The name of the dylib if any.
+    pub fn name(&self) -> Option<&'d str> {
+        self.macho.name
     }
 
     /// The code identifier of this object.
@@ -114,9 +120,14 @@ impl<'d> MachObject<'d> {
         match self.macho.header.filetype {
             goblin::mach::header::MH_OBJECT => ObjectKind::Relocatable,
             goblin::mach::header::MH_EXECUTE => ObjectKind::Executable,
-            goblin::mach::header::MH_DYLIB => ObjectKind::Library,
+            goblin::mach::header::MH_FVMLIB => ObjectKind::Library,
             goblin::mach::header::MH_CORE => ObjectKind::Dump,
+            goblin::mach::header::MH_PRELOAD => ObjectKind::Executable,
+            goblin::mach::header::MH_DYLIB => ObjectKind::Library,
+            goblin::mach::header::MH_DYLINKER => ObjectKind::Executable,
+            goblin::mach::header::MH_BUNDLE => ObjectKind::Library,
             goblin::mach::header::MH_DSYM => ObjectKind::Debug,
+            goblin::mach::header::MH_KEXT_BUNDLE => ObjectKind::Library,
             _ => ObjectKind::Other,
         }
     }
@@ -208,7 +219,7 @@ impl<'d> MachObject<'d> {
     /// [`has_debug_info`](struct.MachObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
         let symbols = self.symbol_map();
-        DwarfDebugSession::parse(self, symbols, self.load_address())
+        DwarfDebugSession::parse(self, symbols, self.load_address(), self.kind())
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -232,17 +243,6 @@ impl<'d> MachObject<'d> {
     pub fn requires_symbolmap(&self) -> bool {
         self.symbols()
             .any(|s| s.name().map_or(false, |n| n.starts_with("__?hidden#")))
-    }
-
-    /// Locates a segment by its name.
-    fn find_segment(&self, name: &str) -> Option<&mach::segment::Segment<'d>> {
-        for segment in &self.macho.segments {
-            if segment.name().map(|seg| seg == name).unwrap_or(false) {
-                return Some(segment);
-            }
-        }
-
-        None
     }
 }
 
@@ -348,31 +348,26 @@ impl<'d> Dwarf<'d> for MachObject<'d> {
     }
 
     fn raw_section(&self, section_name: &str) -> Option<DwarfSection<'d>> {
-        let segment_name = match section_name {
-            "eh_frame" => "__TEXT",
-            _ => "__DWARF",
-        };
+        for segment in &self.macho.segments {
+            for section in segment {
+                if let Ok((header, data)) = section {
+                    if let Ok(sec) = header.name() {
+                        if sec.len() >= 2 && &sec[2..] == section_name {
+                            // In some cases, dsymutil leaves sections headers but removes their
+                            // data from the file. While the addr and size parameters are still
+                            // set, `header.offset` is 0 in that case. We skip them just like the
+                            // section was missing to avoid loading invalid data.
+                            if header.offset == 0 {
+                                return None;
+                            }
 
-        let segment = self.find_segment(segment_name)?;
-
-        for section in segment {
-            if let Ok((header, data)) = section {
-                if let Ok(sec) = header.name() {
-                    if sec.len() >= 2 && &sec[2..] == section_name {
-                        // In some cases, dsymutil leaves sections headers but removes their data
-                        // from the file. While the addr and size parameters are still set,
-                        // `header.offset` is 0 in that case. We skip them just like the section was
-                        // missing to avoid loading invalid data.
-                        if header.offset == 0 {
-                            return None;
+                            return Some(DwarfSection {
+                                data: Cow::Borrowed(data),
+                                address: header.addr,
+                                offset: u64::from(header.offset),
+                                align: u64::from(header.align),
+                            });
                         }
-
-                        return Some(DwarfSection {
-                            data: Cow::Borrowed(data),
-                            address: header.addr,
-                            offset: u64::from(header.offset),
-                            align: u64::from(header.align),
-                        });
                     }
                 }
             }
@@ -456,7 +451,11 @@ impl<'d, 'a> Iterator for FatMachObjectIterator<'d, 'a> {
 
         self.remaining -= 1;
         match self.iter.next() {
-            Some(Ok(arch)) => Some(MachObject::parse(arch.slice(self.data))),
+            Some(Ok(arch)) => {
+                let start = (arch.offset as usize).min(self.data.len());
+                let end = ((arch.offset + arch.size) as usize).min(self.data.len());
+                Some(MachObject::parse(&self.data[start..end]))
+            }
             Some(Err(error)) => Some(Err(MachError::BadObject(error))),
             None => None,
         }
@@ -518,7 +517,9 @@ impl<'d> FatMachO<'d> {
             None => return Ok(None),
         };
 
-        MachObject::parse(arch.slice(self.data)).map(Some)
+        let start = (arch.offset as usize).min(self.data.len());
+        let end = ((arch.offset + arch.size) as usize).min(self.data.len());
+        MachObject::parse(&self.data[start..end]).map(Some)
     }
 }
 
@@ -592,7 +593,22 @@ impl<'d> MachArchive<'d> {
     pub fn test(data: &[u8]) -> bool {
         match goblin::peek(&mut Cursor::new(data)) {
             Ok(goblin::Hint::Mach(_)) => true,
-            Ok(goblin::Hint::MachFat(_)) => true,
+            Ok(goblin::Hint::MachFat(narchs)) => {
+                // so this is kind of stupid but java class files share the same cutsey magic
+                // as a macho fat file (CAFEBABE).  This means that we often claim that a java
+                // class file is actually a macho binary but it's not.  The next 32 bytes encode
+                // the number of embedded architectures in a fat mach.  In case of a JAR file
+                // we have 2 bytes for minor version and 2 bytes for major version of the class
+                // file format.
+                //
+                // The internet suggests the first public version of Java had the class version
+                // 45.  Thus the logic applied here is that if the number is >= 45 we're more
+                // likely to have a java class file than a macho file with 45 architectures
+                // which should be very rare.
+                //
+                // https://docs.oracle.com/javase/specs/jvms/se6/html/ClassFile.doc.html
+                narchs < 45
+            }
             _ => false,
         }
     }

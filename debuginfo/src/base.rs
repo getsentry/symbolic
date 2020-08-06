@@ -408,7 +408,7 @@ impl<'d> FromIterator<Symbol<'d>> for SymbolMap<'d> {
 ///
 /// The file path is usually relative to a compilation directory. It might contain parent directory
 /// segments (`../`).
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Default, Eq, PartialEq)]
 pub struct FileInfo<'data> {
     /// The file's basename.
     pub name: &'data [u8],
@@ -508,9 +508,15 @@ pub struct LineInfo<'data> {
 
 impl fmt::Debug for LineInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("LineInfo")
-            .field("address", &format_args!("{:#x}", self.address))
-            .field("file", &self.file)
+        let mut s = f.debug_struct("LineInfo");
+        s.field("address", &format_args!("{:#x}", self.address));
+
+        match self.size {
+            Some(size) => s.field("size", &format_args!("{:#x}", size)),
+            None => s.field("size", &self.size),
+        };
+
+        s.field("file", &self.file)
             .field("line", &self.line)
             .finish()
     }
@@ -594,9 +600,11 @@ pub trait DebugSession {
 
     /// Returns an iterator over all functions in this debug file.
     ///
-    /// The iteration is guaranteed to be sorted by function address and includes all compilation
-    /// units. Note that the iterator holds a mutable borrow on the debug session, which allows it
-    /// to use caches and optimize resources while resolving function and line information.
+    /// Functions are iterated in the order they are declared in their compilation units. The
+    /// functions yielded by this iterator include all inlinees and line records resolved.
+    ///
+    /// Note that the iterator holds a mutable borrow on the debug session, which allows it to use
+    /// caches and optimize resources while resolving function and line information.
     fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>>;
 
     /// Returns an iterator over all source files referenced by this debug file.

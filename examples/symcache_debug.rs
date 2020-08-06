@@ -1,12 +1,14 @@
 use std::fs::File;
 use std::io::{Cursor, Write};
+use std::path::Path;
 use std::u64;
 
 use clap::{App, Arg, ArgMatches};
 use failure::{err_msg, Error};
 
-use symbolic::common::{Arch, ByteView};
+use symbolic::common::{Arch, ByteView, DSymPathExt, Language};
 use symbolic::debuginfo::Archive;
+use symbolic::demangle::Demangle;
 use symbolic::symcache::{SymCache, SymCacheWriter};
 
 fn execute(matches: &ArgMatches) -> Result<(), Error> {
@@ -19,7 +21,9 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
             Some(arch) => arch.parse()?,
             None => Arch::Unknown,
         };
-        let byteview = ByteView::open(&file_path)?;
+
+        let dsym_path = Path::new(file_path).resolve_dsym();
+        let byteview = ByteView::open(dsym_path.as_deref().unwrap_or_else(|| file_path.as_ref()))?;
         let fat_obj = Archive::parse(&byteview)?;
         let objects_result: Result<Vec<_>, _> = fat_obj.objects().collect();
         let objects = objects_result?;
@@ -91,7 +95,26 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
             println!("No match :(");
         } else {
             for sym in m {
-                println!("{:#}", sym);
+                print!("{}", sym.function_name().try_demangle(Default::default()));
+
+                let path = sym.path();
+                let line = sym.line();
+                let lang = sym.language();
+
+                if path != "" || line != 0 || lang != Language::Unknown {
+                    print!("\n ");
+                    if path != "" {
+                        print!(" at {}", path);
+                    }
+                    if line != 0 {
+                        print!(" line {}", line);
+                    }
+                    if lang != Language::Unknown {
+                        print!(" ({})", lang);
+                    }
+                }
+
+                println!()
             }
         }
         return Ok(());

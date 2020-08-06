@@ -1,3 +1,5 @@
+SYMBOLIC_PYTHON := python3
+
 all: check test
 .PHONY: all
 
@@ -45,16 +47,18 @@ test-python: .venv/bin/python
 
 # Style checking
 
-style: style-rust
+style: style-rust style-python
 .PHONY: style
-
-# TODO: Style rust
 
 style-rust:
 	@rustup component add rustfmt --toolchain stable 2> /dev/null
 	cargo +stable fmt -- --check
 	cd cabi && cargo +stable fmt -- --check
 .PHONY: style-rust
+
+style-python: .venv/bin/python
+	.venv/bin/pip install -U black
+	.venv/bin/black --check py --exclude 'symbolic/_lowlevel*|dist|build|\.eggs'
 
 # Linting
 
@@ -67,8 +71,8 @@ lint-rust:
 .PHONY: lint-rust
 
 lint-python: .venv/bin/python
-	.venv/bin/pip install -U flake8
-	.venv/bin/flake8 tests
+	.venv/bin/pip install -U flake8==3.7.9
+	.venv/bin/flake8 py
 .PHONY: lint-python
 
 # Formatting
@@ -84,12 +88,12 @@ format-rust:
 
 format-python: .venv/bin/python
 	.venv/bin/pip install -U black
-	.venv/bin/black tests
+	.venv/bin/black py --exclude 'symbolic/_lowlevel*|dist|build|\.eggs'
 .PHONY: format-python
 
 # Dependencies
 
 .venv/bin/python: Makefile
 	@rm -rf .venv
-	@which virtualenv || sudo easy_install virtualenv
-	virtualenv -p python2 .venv
+	@which virtualenv || sudo pip install virtualenv
+	virtualenv -p $(SYMBOLIC_PYTHON) .venv

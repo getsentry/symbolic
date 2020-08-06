@@ -72,6 +72,7 @@ lazy_static::lazy_static! {
 }
 
 /// Variants of [`SourceBundleError`](struct.SourceBundleError.html).
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 pub enum SourceBundleErrorKind {
     /// The source bundle container is damanged.
@@ -854,14 +855,32 @@ where
     /// sources could be resolved. Otherwise, an error is returned if writing the bundle fails.
     ///
     /// This finishes the source bundle and flushes the underlying writer.
-    pub fn write_object<O>(
+    pub fn write_object<O>(self, object: &O, object_name: &str) -> Result<bool, SourceBundleError>
+    where
+        O: ObjectLike,
+        O::Error: Fail,
+    {
+        self.write_object_with_filter(object, object_name, |_| true)
+    }
+
+    /// Writes a single object into the bundle.
+    ///
+    /// Returns `Ok(true)` if any source files were added to the bundle, or `Ok(false)` if no
+    /// sources could be resolved. Otherwise, an error is returned if writing the bundle fails.
+    ///
+    /// This finishes the source bundle and flushes the underlying writer.
+    ///
+    /// Before a file is written a callback is invoked which can return `false` to skip a file.
+    pub fn write_object_with_filter<O, F>(
         mut self,
         object: &O,
         object_name: &str,
+        mut filter: F,
     ) -> Result<bool, SourceBundleError>
     where
         O: ObjectLike,
         O::Error: Fail,
+        F: FnMut(&FileEntry) -> bool,
     {
         let mut files_handled = BTreeSet::new();
         let session = object
@@ -883,7 +902,8 @@ where
                 continue;
             }
 
-            let source = if filename.starts_with('<') && filename.ends_with('>') {
+            let source = if (filename.starts_with('<') && filename.ends_with('>')) || !filter(&file)
+            {
                 None
             } else {
                 File::open(&filename).ok().map(BufReader::new)

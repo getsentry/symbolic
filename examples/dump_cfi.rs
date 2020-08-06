@@ -3,7 +3,7 @@ use std::path::Path;
 use clap::{App, Arg, ArgMatches};
 use failure::Error;
 
-use symbolic::common::ByteView;
+use symbolic::common::{ByteView, DSymPathExt};
 use symbolic::debuginfo::Object;
 use symbolic::minidump::cfi::AsciiCfiWriter;
 
@@ -18,7 +18,8 @@ fn print_error(error: &Error) {
 fn dump_cfi<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     let path = path.as_ref();
 
-    let buffer = ByteView::open(path)?;
+    let dsym_path = path.resolve_dsym();
+    let buffer = ByteView::open(dsym_path.as_deref().unwrap_or(path))?;
     let object = Object::parse(&buffer)?;
 
     println!(

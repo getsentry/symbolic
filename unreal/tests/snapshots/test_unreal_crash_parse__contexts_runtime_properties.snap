@@ -1,0 +1,66 @@
+---
+source: unreal/tests/test_unreal_crash_parse.rs
+expression: "&runtime_properties"
+---
+crash_guid: UE4CC-Windows-379993BB42BD8FBED67986857D8844B5_0000
+process_id: 20944
+is_internal_build: false
+is_source_distribution: false
+is_assert: true
+is_ensure: false
+crash_type: Assert
+seconds_since_start: 0
+game_name: UE4-MyProject
+executable_name: MyProject
+build_configuration: Development
+platform_name: WindowsNoEditor
+engine_mode: Game
+engine_version: 4.20.3-4369336+++UE4+Release-4.20
+language_lcid: 1033
+app_default_locate: en-US
+build_version: ++UE4+Release-4.20-CL-4369336
+is_ue4_release: false
+username: bruno
+base_dir: "C:/Users/bruno/OneDrive/Documents/build-windows-64/WindowsNoEditor/MyProject/Binaries/Win64/"
+root_dir: "C:/Users/bruno/OneDrive/Documents/build-windows-64/WindowsNoEditor/"
+machine_id: 6B5EF42F48669C4D7DFE11B7F59BB6AC
+login_id: 6b5ef42f48669c4d7dfe11b7f59bb6ac
+epic_account_id: 2e7d369327054a448be6c8d3601213cb
+legacy_call_stack: "MyProject!FDebug::AssertFailed()\nMyProject!AActor::BeginPlay()\nMyProject!AActor::DispatchBeginPlay()\nMyProject!AWorldSettings::NotifyBeginPlay()\nMyProject!AGameStateBase::HandleBeginPlay()\nMyProject!UWorld::BeginPlay()\nMyProject!UEngine::LoadMap()\nMyProject!UEngine::Browse()\nMyProject!UGameInstance::StartGameInstance()\nMyProject!FEngineLoop::Init()\nMyProject!GuardedMain()\nMyProject!GuardedMainWrapper()\nMyProject!WinMain()\nMyProject!__scrt_common_main_seh() [f:\\dd\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl:288]\nkernel32\nntdll"
+portable_call_stack: "0x00000000ffffffff + ffffffff 0x00000000ffffffff + ffffffff"
+error_message: "Assertion failed: false [File:C:\\Users\\bruno\\OneDrive\\Documents\\Unreal Projects\\MyProject\\Source\\MyProject\\NewActorComponent.cpp] [Line: 21] test"
+misc_number_of_cores: 6
+misc_number_of_cores_inc_hyperthread: 6
+misc_cpu_vendor: GenuineIntel
+misc_cpu_brand: Intel(R) Core(TM) i5-8600K CPU @ 3.60GHz
+misc_primary_cpu_brand: NVIDIA GeForce GTX 1080
+misc_primary_gpu_brand: NVIDIA GeForce GTX 1080
+misc_os_version_major: Windows 10
+memory_stats_total_physical: 17112477696
+memory_stats_total_virtual: 140737488224256
+memory_stats_page_size: 4096
+memory_stats_total_phsysical_gb: 16
+time_of_crash: 636764289988050000
+crash_reporter_client_version: "1.0"
+modules: "C:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\MyProject\\Binaries\\Win64\\MyProject.exe\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\Vorbis\\Win64\\VS2015\\libvorbis_64.dll\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\PhysX3\\Win64\\VS2015\\APEX_LegacyPROFILE_x64.dll\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\PhysX3\\Win64\\VS2015\\PhysX3PROFILE_x64.dll\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\PhysX3\\Win64\\VS2015\\APEX_ClothingPROFILE_x64.dll\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\Oculus\\OVRPlugin\\OVRPlugin\\Win64\\OVRPlugin.dll\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\PhysX3\\Win64\\VS2015\\APEXFrameworkPROFILE_x64.dll\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\PhysX3\\Win64\\VS2015\\PhysX3CommonPROFILE_x64.dll\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\PhysX3\\Win64\\VS2015\\NvClothPROFILE_x64.dll\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\PhysX3\\Win64\\VS2015\\PhysX3CookingPROFILE_x64.dll\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\PhysX3\\Win64\\VS2015\\PxPvdSDKPROFILE_x64.dll\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\Ogg\\Win64\\VS2015\\libogg_64.dll\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\PhysX3\\Win64\\VS2015\\PxFoundationPROFILE_x64.dll\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\OpenVR\\OpenVRv1_0_11\\Win64\\openvr_api.dll\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\NVIDIA\\NVaftermath\\Win64\\GFSDK_Aftermath_Lib.x64.dll\nC:\\Users\\bruno\\OneDrive\\Documents\\build-windows-64\\WindowsNoEditor\\Engine\\Binaries\\ThirdParty\\Vorbis\\Win64\\VS2015\\libvorbisfile_64.dll"
+custom:
+  CommandLine: MyProject
+  CrashDumpMode: "0"
+  CrashVersion: "3"
+  DeploymentName: ""
+  EngineModeEx: Unset
+  GameSessionID: ""
+  IsPerforceBuild: "false"
+  MemoryStats.AvailablePhysical: "10417119232"
+  MemoryStats.AvailableVirtual: "140732265930752"
+  MemoryStats.OOMAllocationAlignment: "0"
+  MemoryStats.OOMAllocationSize: "0"
+  MemoryStats.PeakUsedPhysical: "285224960"
+  MemoryStats.PeakUsedVirtual: "402124800"
+  MemoryStats.UsedPhysical: "244899840"
+  MemoryStats.UsedVirtual: "392978432"
+  MemoryStats.bIsOOM: "0"
+  PlatformFullName: "Win64 [Windows 10  64b]"
+  PlatformNameIni: Windows
+  SourceContext: ""
+  UserActivityHint: ""

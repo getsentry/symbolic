@@ -1,9 +1,5 @@
 language: rust
-cache:
-  directories:
-    - $HOME/.cargo
-    - $TRAVIS_BUILD_DIR/target
-    - $TRAVIS_BUILD_DIR/cabi/target
+os: linux
 
 git:
   depth: 1
@@ -14,49 +10,59 @@ after_success:
   - npm install -g @zeus-ci/cli
   - test "$DEPLOY" && ( zeus upload -t "application/zip+wheel" py/dist/* || exit 1 )
 
-matrix:
+jobs:
   include:
     # Rust test suite
-    - os: linux
-      script: make style
+    - script: make style-rust
       env: TEST=style-rust
-    - os: linux
-      script: make lint
+    - script: make lint-rust
       env: TEST=lint-rust CXX=clang
-    - os: linux
-      script: make test-rust
+    - script: make test-rust
       env: TEST=linux-rust CXX=clang
     - os: osx
       script: make test-rust
       env: TEST=mac-rust
 
     # Python test suite
-    - os: linux
+    - name: "Python 3.7 Style/Linting"
+      language: python
+      python: "3.7"
+      script:
+        - make style-python
+        - make lint-python
+      env: TEST=style-python
+    - name: "Python 3.6 Tests (linux)"
+      before_install:
+        # multi-language jobs not currently possible, pyenv is used here.
+        # if we want later 3.6.x's it isn't possible AFAIK to update travis pyenv,
+        # so would need to install rustup + friends.
+        - pyenv install 3.6.3
+        - pyenv global 3.6.3
       script: make test-python
-      env: TEST=linux-python CXX=clang
-    - os: osx
+      env: TEST=linux-python CXX=clang SYMBOLIC_DEBUG=1
+    - name: "Python 3.7 Tests (osx)"
+      os: osx
       script: make test-python
-      env: TEST=mac-python
+      env: TEST=mac-python SYMBOLIC_DEBUG=1
 
     # Build wheels
-    - os: osx
-      script: make wheel
+    - if: branch ~= /^release\/.+$/
+      os: osx
+      script: make wheel SYMBOLIC_PYTHON=python2
       before_install: HOMEBREW_NO_AUTO_UPDATE=1 brew upgrade node
       env: DEPLOY=mac-wheel
-      osx_image: xcode7.3
-    - os: linux
-      script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_x86_64
+      osx_image: xcode9.4
+    - if: branch ~= /^release\/.+$/
+      script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux2010_x86_64
       env: DEPLOY=linux-x86_64-wheel
-      sudo: required
       services:
         - docker
-    - os: linux
-      script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux1_i686
+    - if: branch ~= /^release\/.+$/
+      script: make wheel-manylinux IMAGE=quay.io/pypa/manylinux2010_i686
       env: DEPLOY=linux-x86-wheel
-      sudo: required
       services:
         - docker
-    - os: linux
+    - if: branch ~= /^release\/.+$/
       script: make sdist
       env: DEPLOY=sdist
 

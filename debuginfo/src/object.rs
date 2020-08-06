@@ -63,6 +63,7 @@ macro_rules! map_result {
 }
 
 /// An error when dealing with any kind of [`Object`](enum.Object.html).
+#[non_exhaustive]
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Fail)]
 pub enum ObjectError {
@@ -118,7 +119,9 @@ pub fn peek(data: &[u8], archive: bool) -> FileFormat {
     match goblin::peek_bytes(&magic) {
         Ok(Hint::Elf(_)) => return FileFormat::Elf,
         Ok(Hint::Mach(_)) => return FileFormat::MachO,
-        Ok(Hint::MachFat(_)) if archive => return FileFormat::MachO,
+        // mach fat needs to be tested through `MachArchive::test` because of special
+        // handling that is required due to disambiguation with Java class files.
+        Ok(Hint::MachFat(_)) if archive && MachArchive::test(data) => return FileFormat::MachO,
         Ok(Hint::PE) => return FileFormat::Pe,
         _ => (),
     }
@@ -395,9 +398,11 @@ pub enum ObjectDebugSession<'d> {
 impl<'d> ObjectDebugSession<'d> {
     /// Returns an iterator over all functions in this debug file.
     ///
-    /// The iteration is guaranteed to be sorted by function address and includes all compilation
-    /// units. Note that the iterator holds a mutable borrow on the debug session, which allows it
-    /// to use caches and optimize resources while resolving function and line information.
+    /// Functions are iterated in the order they are declared in their compilation units. The
+    /// functions yielded by this iterator include all inlinees and line records resolved.
+    ///
+    /// Note that the iterator holds a mutable borrow on the debug session, which allows it to use
+    /// caches and optimize resources while resolving function and line information.
     pub fn functions(&self) -> ObjectFunctionIterator<'_> {
         match *self {
             ObjectDebugSession::Breakpad(ref s) => ObjectFunctionIterator::Breakpad(s.functions()),

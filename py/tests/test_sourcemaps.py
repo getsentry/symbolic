@@ -1,6 +1,4 @@
-import os
 import posixpath
-from symbolic import SourceView, SourceMapView
 
 
 def verify_index(index, sources):
@@ -43,8 +41,8 @@ def verify_token_search(index):
 
 
 def test_basics(get_sourceview, get_sourcemapview):
-    minified_source = get_sourceview('demo.min.js')
-    sourcemap = get_sourcemapview('demo.js.map')
+    minified_source = get_sourceview("demo.min.js")
+    sourcemap = get_sourcemapview("demo.js.map")
 
     locs = [
         (0, 107, "e", "onFailure", 11, 10),
@@ -69,52 +67,41 @@ def test_basics(get_sourceview, get_sourcemapview):
     sv = sourcemap.get_sourceview(0)
     assert sv is not None
     assert sv._shared
-    assert sv[0] == u'var makeAFailure = (function() {'
-    assert sv[1] == u'  function testingStuff() {'
+    assert sv[0] == u"var makeAFailure = (function() {"
+    assert sv[1] == u"  function testingStuff() {"
     assert len(sv) == 32
 
 
 def test_load_index(get_sourceview, get_sourcemapview):
-    view = get_sourcemapview('indexed.sourcemap.js')
-    f1 = get_sourceview('file1.js')
-    f2 = get_sourceview('file2.js')
-    verify_index(view, {
-        'file1.js': f1,
-        'file2.js': f2,
-    })
+    view = get_sourcemapview("indexed.sourcemap.js")
+    f1 = get_sourceview("file1.js")
+    f2 = get_sourceview("file2.js")
+    verify_index(view, {"file1.js": f1, "file2.js": f2})
     verify_token_search(view)
 
 
 def test_jquery(get_sourceview, get_sourcemapview):
-    source = get_sourceview('jquery.js')
-    index = get_sourcemapview('jquery.min.map')
-    verify_index(index, {
-        'jquery.js': source
-    })
+    source = get_sourceview("jquery.js")
+    index = get_sourcemapview("jquery.min.map")
+    verify_index(index, {"jquery.js": source})
 
 
 def test_coolstuff(get_sourceview, get_sourcemapview):
-    source = get_sourceview('coolstuff.js')
-    index = get_sourcemapview('coolstuff.min.map')
-    verify_index(index, {
-        'coolstuff.js': source
-    })
+    source = get_sourceview("coolstuff.js")
+    index = get_sourcemapview("coolstuff.min.map")
+    verify_index(index, {"coolstuff.js": source})
 
 
 def test_unicode_names(get_sourceview, get_sourcemapview):
-    source = get_sourceview('unicode.js')
-    index = get_sourcemapview('unicode.min.map')
-    verify_index(index, {
-        'unicode.js': source
-    })
+    source = get_sourceview("unicode.js")
+    index = get_sourcemapview("unicode.min.map")
+    verify_index(index, {"unicode.js": source})
 
 
 def test_react_dom(get_sourceview, get_sourcemapview):
-    source = get_sourceview('react-dom.js')
-    index = get_sourcemapview('react-dom.min.map')
-    verify_index(index, {
-        'react-dom.js': source
-    })
+    source = get_sourceview("react-dom.js")
+    index = get_sourcemapview("react-dom.min.map")
+    verify_index(index, {"react-dom.js": source})
 
     react_token = index.lookup(0, 319)
     assert react_token.dst_line == 0
@@ -122,19 +109,19 @@ def test_react_dom(get_sourceview, get_sourcemapview):
     assert react_token.src_line == 39
     assert react_token.src_col == 12
     assert react_token.src_id == 0
-    assert react_token.src == 'react-dom.js'
-    assert react_token.name == 'React'
+    assert react_token.src == "react-dom.js"
+    assert react_token.name == "React"
     verify_token_search(index)
 
 
 def test_source_access(get_sourcemapview):
-    index = get_sourcemapview('react-dom-full.min.map')
+    index = get_sourcemapview("react-dom-full.min.map")
     assert index.get_sourceview(0) is not None
     assert index.get_sourceview(1) is None
 
 
 def test_wrong_rn_sourcemaps_android(get_sourceview, get_sourcemapview):
-    index = get_sourcemapview('android-release.bundle.map')
+    index = get_sourcemapview("android-release.bundle.map")
     # Users need to update their jsc version for android
     # https://github.com/react-community/jsc-android-buildscripts
     # then the correct col will be reported.
@@ -147,17 +134,17 @@ def test_wrong_rn_sourcemaps_android(get_sourceview, get_sourcemapview):
 
     # To print source code of file
     # print(str(index.get_sourceview(308).get_source()))
-    assert inline.name == 'invalidFunction'
+    assert inline.name == "invalidFunction"
     assert inline.src_col == 72
-    assert inline.src_line == 40 # + 1
+    assert inline.src_line == 40  # + 1
 
-    assert function.name == 'invalidFunction'
+    assert function.name == "invalidFunction"
     assert function.src_col == 9
-    assert function.src_line == 34 # + 1
+    assert function.src_line == 34  # + 1
 
 
 def test_wrong_rn_sourcemaps_ios(get_sourceview, get_sourcemapview):
-    index = get_sourcemapview('ios-release.bundle.map')
+    index = get_sourcemapview("ios-release.bundle.map")
     inline = index.lookup(311, 765)
     # To print found token
     # import pprint; pprint.pprint(inline.__dict__)
@@ -167,10 +154,10 @@ def test_wrong_rn_sourcemaps_ios(get_sourceview, get_sourcemapview):
 
     # To print source code of file
     # print(str(index.get_sourceview(311).get_source()))
-    assert inline.name == 'invalidFunction'
+    assert inline.name == "invalidFunction"
     assert inline.src_col == 72
-    assert inline.src_line == 40 # + 1
+    assert inline.src_line == 40  # + 1
 
-    assert function.name == 'invalidFunction'
+    assert function.name == "invalidFunction"
     assert function.src_col == 9
-    assert function.src_line == 34 # + 1
+    assert function.src_line == 34  # + 1

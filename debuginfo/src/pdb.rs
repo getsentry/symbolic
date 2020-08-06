@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 use std::cell::{RefCell, RefMut};
+use std::cmp::Ordering;
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::fmt;
 use std::io::Cursor;
@@ -32,15 +33,12 @@ const MAGIC_BIG: &[u8] = b"Microsoft C/C++ MSF 7.00\r\n\x1a\x44\x53\x00\x00\x00"
 pub use pdb;
 
 /// Variants of [`PdbError`](struct.PdbError.html).
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 pub enum PdbErrorKind {
     /// The PDB file is corrupted. See the cause for more information.
     #[fail(display = "invalid pdb file")]
     BadObject,
-
-    /// An inline record cannot be resolved due to a missing id stream.
-    #[fail(display = "missing id stream to resolve inline function")]
-    MissingIdStream,
 
     /// An inline record was encountered without an inlining parent.
     #[fail(display = "unexpected inline function without parent")]
@@ -392,11 +390,11 @@ where
 
         while let Some(item) = self.iter.next()? {
             self.finder.update(&self.iter);
-            if item.index() == index {
-                return Ok(item);
-            } else if item.index() > index {
-                break;
-            };
+            match item.index().partial_cmp(&index) {
+                Some(Ordering::Equal) => return Ok(item),
+                Some(Ordering::Greater) => break,
+                _ => continue,
+            }
         }
 
         Err(pdb::Error::TypeNotFound(index.into()).into())
@@ -409,7 +407,7 @@ type IdMap<'d> = ItemMap<'d, pdb::IdIndex>;
 struct PdbStreams<'d> {
     debug_info: Arc<pdb::DebugInformation<'d>>,
     type_info: pdb::TypeInformation<'d>,
-    id_info: Option<pdb::IdInformation<'d>>,
+    id_info: pdb::IdInformation<'d>,
 }
 
 impl<'d> PdbStreams<'d> {
@@ -430,12 +428,11 @@ impl<'d> PdbStreams<'d> {
         }
     }
 
-    fn id_map(&self) -> Option<IdMap<'_>> {
-        let id_info = self.id_info.as_ref()?;
-        Some(ItemMap {
-            iter: id_info.iter(),
-            finder: id_info.finder(),
-        })
+    fn id_map(&self) -> IdMap<'_> {
+        ItemMap {
+            iter: self.id_info.iter(),
+            finder: self.id_info.finder(),
+        }
     }
 }
 
@@ -455,7 +452,7 @@ struct PdbDebugInfo<'d> {
     /// Lazy loaded map of the TPI stream.
     type_map: RefCell<TypeMap<'d>>,
     /// Lazy loaded map of the IPI stream.
-    id_map: Option<RefCell<IdMap<'d>>>,
+    id_map: RefCell<IdMap<'d>>,
 }
 
 impl<'d> PdbDebugInfo<'d> {
@@ -464,7 +461,7 @@ impl<'d> PdbDebugInfo<'d> {
         let module_infos = modules.iter().map(|_| LazyCell::new()).collect();
         let module_exports = RefCell::new(BTreeMap::new());
         let type_map = RefCell::new(streams.type_map());
-        let id_map = streams.id_map().map(RefCell::new);
+        let id_map = RefCell::new(streams.id_map());
 
         // Avoid deadlocks by only covering the two access to the address map and string table. For
         // instance, `pdb.symbol_map()` requires a mutable borrow of the PDB as well.
@@ -643,7 +640,7 @@ impl DebugSession for PdbDebugSession<'_> {
 struct TypeFormatter<'u, 'd> {
     unit: &'u Unit<'d>,
     type_map: RefMut<'u, TypeMap<'d>>,
-    id_map: Option<RefMut<'u, IdMap<'d>>>,
+    id_map: RefMut<'u, IdMap<'d>>,
 }
 
 impl<'u, 'd> TypeFormatter<'u, 'd> {
@@ -652,7 +649,7 @@ impl<'u, 'd> TypeFormatter<'u, 'd> {
         Self {
             unit,
             type_map: unit.debug_info.type_map.borrow_mut(),
-            id_map: unit.debug_info.id_map.as_ref().map(|r| r.borrow_mut()),
+            id_map: unit.debug_info.id_map.borrow_mut(),
         }
     }
 
@@ -667,11 +664,7 @@ impl<'u, 'd> TypeFormatter<'u, 'd> {
             None => return Ok(write!(target, "<redacted>")?),
         };
 
-        let id = match self.id_map {
-            Some(ref mut id_map) => id_map.try_get(index)?,
-            None => return Err(PdbErrorKind::MissingIdStream.into()),
-        };
-
+        let id = self.id_map.try_get(index)?;
         match id.parse() {
             Ok(pdb::IdData::Function(data)) => {
                 if let Some(scope) = data.scope {
@@ -1005,7 +998,11 @@ impl<'s> Unit<'s> {
         // Depending on the compiler version, the inlinee table might not be sorted. Since constant
         // search through inlinees is too slow (due to repeated parsing), but Inlinees are rather
         // small structures, it is relatively cheap to collect them into an in-memory index.
-        let inlinees: BTreeMap<_, _> = self.module.inlinees()?.map(|i| (i.index(), i)).collect()?;
+        let inlinees: BTreeMap<_, _> = self
+            .module
+            .inlinees()?
+            .map(|i| Ok((i.index(), i)))
+            .collect()?;
 
         let mut depth = 0;
         let mut inc_next = false;
@@ -1037,6 +1034,13 @@ impl<'s> Unit<'s> {
                 _ => skipped_depth = None,
             }
 
+            // Flush all functions out that exceed the current iteration depth. Since we
+            // encountered a symbol at this level, there will be no more inlinees to the
+            // previous function at the same level or any of it's children.
+            if symbol.ends_scope() {
+                stack.flush(depth, &mut functions);
+            }
+
             let function = match symbol.parse() {
                 Ok(SymbolData::Procedure(proc)) => {
                     proc_offsets.push((depth, proc.offset));
@@ -1062,11 +1066,6 @@ impl<'s> Unit<'s> {
                 _ => continue,
             };
 
-            // Flush all functions out that exceed the current iteration depth. Since we
-            // encountered a function at this level, there will be no more inlinees to the
-            // previous function at the same level or any of it's children.
-            stack.flush(depth, &mut functions);
-
             match function {
                 Some(function) => stack.push(depth, function),
                 None => skipped_depth = Some(depth),
@@ -1075,9 +1074,6 @@ impl<'s> Unit<'s> {
 
         // We're done, flush the remaining stack.
         stack.flush(0, &mut functions);
-
-        // Functions are not necessarily in RVA order. So far, it seems that modules are.
-        dmsort::sort_by_key(&mut functions, |f| f.address);
 
         Ok(functions)
     }

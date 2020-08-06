@@ -4,6 +4,7 @@
 
 use std::borrow::Cow;
 use std::fmt;
+use std::ops::Deref;
 
 use failure::Fail;
 
@@ -44,12 +45,29 @@ pub struct SourceView<'a> {
     sv: sourcemap::SourceView<'a>,
 }
 
+enum SourceMapType {
+    Regular(sourcemap::SourceMap),
+    Hermes(sourcemap::SourceMapHermes),
+}
+
+impl Deref for SourceMapType {
+    type Target = sourcemap::SourceMap;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            SourceMapType::Regular(sm) => sm,
+            SourceMapType::Hermes(smh) => smh,
+        }
+    }
+}
+
 /// Represents a source map.
 pub struct SourceMapView {
-    sm: sourcemap::SourceMap,
+    sm: SourceMapType,
 }
 
 /// A matched token.
+#[derive(Debug, Default, PartialEq)]
 pub struct TokenMatch<'a> {
     /// The line number in the original source file.
     pub src_line: u32,
@@ -116,8 +134,9 @@ impl SourceMapView {
     pub fn from_json_slice(buffer: &[u8]) -> Result<Self, ParseSourceMapError> {
         Ok(SourceMapView {
             sm: match sourcemap::decode_slice(buffer)? {
-                sourcemap::DecodedMap::Regular(sm) => sm,
-                sourcemap::DecodedMap::Index(smi) => smi.flatten()?,
+                sourcemap::DecodedMap::Regular(sm) => SourceMapType::Regular(sm),
+                sourcemap::DecodedMap::Index(smi) => SourceMapType::Regular(smi.flatten()?),
+                sourcemap::DecodedMap::Hermes(smh) => SourceMapType::Hermes(smh),
             },
         })
     }
@@ -169,14 +188,34 @@ impl SourceMapView {
         minified_name: &str,
         source: &SourceView<'b>,
     ) -> Option<TokenMatch<'a>> {
-        self.sm.lookup_token(line, col).map(|token| {
-            let mut rv = self.make_token_match(token);
-            rv.function_name = source
-                .sv
-                .get_original_function_name(token, minified_name)
-                .map(str::to_owned);
-            rv
-        })
+        match &self.sm {
+            // Instead of regular line/column pairs, Hermes uses bytecode offsets, which always
+            // have `line == 0`.
+            // However, a `SourceMapHermes` is defined by having `x_facebook_sources` scope
+            // information, which can actually be used without Hermes.
+            // So if our stack frame has `line > 0` (0-based), it is extremely likely we don’t run
+            // on hermes at all, in which case just fall back to regular sourcemap logic.
+            // Luckily, `metro` puts a prelude on line 0,
+            // so regular non-hermes user code should always have `line > 0`.
+            SourceMapType::Hermes(smh) if line == 0 => {
+                // we use `col + 1` here, since hermes uses bytecode offsets which are 0-based,
+                // and the upstream python code does a `- 1` here:
+                // https://github.com/getsentry/sentry/blob/fdabccac7576c80674c2fed556d4c5407657dc4c/src/sentry/lang/javascript/processor.py#L584-L586
+                smh.lookup_token(line, col + 1).map(|token| {
+                    let mut rv = self.make_token_match(token);
+                    rv.function_name = smh.get_original_function_name(col + 1).map(str::to_owned);
+                    rv
+                })
+            }
+            _ => self.sm.lookup_token(line, col).map(|token| {
+                let mut rv = self.make_token_match(token);
+                rv.function_name = source
+                    .sv
+                    .get_original_function_name(token, minified_name)
+                    .map(str::to_owned);
+                rv
+            }),
+        }
     }
 
     fn make_token_match<'a>(&'a self, tok: sourcemap::Token<'a>) -> TokenMatch<'a> {
@@ -191,4 +230,83 @@ impl SourceMapView {
             function_name: None,
         }
     }
+}
+
+#[test]
+fn test_react_native_hermes() {
+    let bytes = include_bytes!("../tests/fixtures/react-native-hermes.map");
+    let smv = SourceMapView::from_json_slice(bytes).unwrap();
+    let sv = SourceView::new("");
+
+    //    at foo (address at unknown:1:11939)
+    assert_eq!(
+        smv.lookup_token_with_function_name(0, 11939, "", &sv),
+        Some(TokenMatch {
+            src_line: 1,
+            src_col: 10,
+            dst_line: 0,
+            dst_col: 11939,
+            src_id: 5,
+            name: None,
+            src: Some("module.js"),
+            function_name: Some("foo".into())
+        })
+    );
+
+    //    at anonymous (address at unknown:1:11857)
+    assert_eq!(
+        smv.lookup_token_with_function_name(0, 11857, "", &sv),
+        Some(TokenMatch {
+            src_line: 2,
+            src_col: 0,
+            dst_line: 0,
+            dst_col: 11857,
+            src_id: 4,
+            name: None,
+            src: Some("input.js"),
+            function_name: Some("<global>".into())
+        })
+    );
+}
+
+#[test]
+fn test_react_native_metro() {
+    let source = include_str!("../tests/fixtures/react-native-metro.js");
+    let bytes = include_bytes!("../tests/fixtures/react-native-metro.js.map");
+    let smv = SourceMapView::from_json_slice(bytes).unwrap();
+    let sv = SourceView::new(source);
+
+    //    e.foo (react-native-metro.js:7:101)
+    assert_eq!(
+        smv.lookup_token_with_function_name(6, 100, "e.foo", &sv),
+        Some(TokenMatch {
+            src_line: 1,
+            src_col: 10,
+            dst_line: 6,
+            dst_col: 100,
+            src_id: 6,
+            name: None,
+            src: Some("module.js"),
+            function_name: None,
+        })
+    );
+
+    //    at react-native-metro.js:6:44
+    assert_eq!(
+        smv.lookup_token_with_function_name(5, 43, "", &sv),
+        Some(TokenMatch {
+            src_line: 2,
+            src_col: 0,
+            dst_line: 5,
+            dst_col: 39,
+            src_id: 5,
+            name: Some("foo"),
+            src: Some("input.js"),
+            function_name: None,
+        })
+    );
+
+    // in case we have a `metro` bundle, but a `hermes` bytecode offset (something out of range),
+    // we can’t resolve this.
+    assert_eq!(smv.lookup_token_with_function_name(0, 11857, "", &sv), None);
 }

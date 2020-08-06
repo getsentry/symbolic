@@ -143,6 +143,9 @@ fn test_demangle_swift_short() {
         "$s8mangling14varargsVsArray3arr1nySid_SStF" => "varargsVsArray(arr:n:)",
         "$s8mangling14varargsVsArray3arr1nySaySiG_SStF" => "varargsVsArray(arr:n:)",
         "$s8mangling14varargsVsArray3arr1nySaySiGd_SStF" => "varargsVsArray(arr:n:)",
+
+        // Swift 5.2
+        "$s7ranking22propertyVersusFunctionyyAA1P_p_xtAaCRzlFyAaC_pcAaC_pcfu_" => "implicit closure #1 in propertyVersusFunction<A>(_:_:)",
     });
 }
 
@@ -281,5 +284,8 @@ fn test_demangle_swift_no_args() {
         "$s8mangling14varargsVsArray3arr1nySid_SStF" => "varargsVsArray",
         "$s8mangling14varargsVsArray3arr1nySaySiG_SStF" => "varargsVsArray",
         "$s8mangling14varargsVsArray3arr1nySaySiGd_SStF" => "varargsVsArray",
+
+        // Swift 5.2
+        "$s7ranking22propertyVersusFunctionyyAA1P_p_xtAaCRzlFyAaC_pcAaC_pcfu_" => "implicit closure #1 in propertyVersusFunction<A>",
     });
 }

@@ -1,10 +1,10 @@
 use std::fmt;
 
 use failure::Error;
-use insta;
 
 use symbolic_common::ByteView;
 use symbolic_symcache::SymCache;
+use symbolic_testutils::fixture;
 
 /// Helper to create neat snapshots for symbol tables.
 struct FunctionsDebug<'a>(&'a SymCache<'a>);
@@ -24,9 +24,9 @@ impl fmt::Debug for FunctionsDebug<'_> {
 
 #[test]
 fn test_load_header_linux() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/symcache/current/linux.symc")?;
+    let buffer = ByteView::open(fixture("symcache/current/linux.symc"))?;
     let symcache = SymCache::parse(&buffer)?;
-    insta::assert_debug_snapshot_matches!(symcache, @r###"
+    insta::assert_debug_snapshot!(symcache, @r###"
    ⋮SymCache {
    ⋮    debug_id: DebugId {
    ⋮        uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
@@ -43,17 +43,17 @@ fn test_load_header_linux() -> Result<(), Error> {
 
 #[test]
 fn test_load_functions_linux() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/symcache/current/linux.symc")?;
+    let buffer = ByteView::open(fixture("symcache/current/linux.symc"))?;
     let symcache = SymCache::parse(&buffer)?;
-    insta::assert_debug_snapshot_matches!("functions_linux", FunctionsDebug(&symcache));
+    insta::assert_debug_snapshot!("functions_linux", FunctionsDebug(&symcache));
     Ok(())
 }
 
 #[test]
 fn test_load_header_macos() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/symcache/current/macos.symc")?;
+    let buffer = ByteView::open(fixture("symcache/current/macos.symc"))?;
     let symcache = SymCache::parse(&buffer)?;
-    insta::assert_debug_snapshot_matches!(symcache, @r###"
+    insta::assert_debug_snapshot!(symcache, @r###"
    ⋮SymCache {
    ⋮    debug_id: DebugId {
    ⋮        uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
@@ -70,18 +70,18 @@ fn test_load_header_macos() -> Result<(), Error> {
 
 #[test]
 fn test_load_functions_macos() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/symcache/current/macos.symc")?;
+    let buffer = ByteView::open(fixture("symcache/current/macos.symc"))?;
     let symcache = SymCache::parse(&buffer)?;
-    insta::assert_debug_snapshot_matches!("functions_macos", FunctionsDebug(&symcache));
+    insta::assert_debug_snapshot!("functions_macos", FunctionsDebug(&symcache));
     Ok(())
 }
 
 #[test]
 fn test_lookup() -> Result<(), Error> {
-    let buffer = ByteView::open("../testutils/fixtures/symcache/current/macos.symc")?;
+    let buffer = ByteView::open(fixture("symcache/current/macos.symc"))?;
     let symcache = SymCache::parse(&buffer)?;
     let line_infos = symcache.lookup(4_458_187_797 - 4_458_131_456)?;
-    insta::assert_debug_snapshot_matches!("lookup", &line_infos);
+    insta::assert_debug_snapshot!("lookup", &line_infos);
 
     Ok(())
 }

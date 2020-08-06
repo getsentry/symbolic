@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-sourcemap"
-version = "7.0.0"
+version = "7.4.0"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -17,4 +17,4 @@ edition = "2018"
 
 [dependencies]
 failure = "0.1.5"
-sourcemap = "4.1.0"
+sourcemap = "5.0.0"

@@ -1,6 +1,4 @@
 ---
-created: "2019-07-02T08:47:28.591628Z"
-creator: insta@0.8.1
 source: symcache/tests/test_writer.rs
 expression: FunctionsDebug(&symcache)
 ---
@@ -565,7 +563,6 @@ expression: FunctionsDebug(&symcache)
             3480 _ZNSt3__16__sortIRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEvT0_S7_T_
             3505 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
             3505 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3517 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
             3517 _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
             3517 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
             3517 _ZNK15google_breakpad15DynamicImageRefltERKS0_
@@ -601,6 +598,7 @@ expression: FunctionsDebug(&symcache)
             362a _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
             362e _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
             362e _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            36dc _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
             36dc _ZNK15google_breakpad15DynamicImageRefltERKS0_
             36e6 _ZN15google_breakpad12DynamicImageltERKS0_
             36e6 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
@@ -977,9 +975,9 @@ expression: FunctionsDebug(&symcache)
             4c8e _ZN15google_breakpad17MinidumpGenerator23SetExceptionInformationEiiij
             4d80 _ZN15google_breakpad16ExceptionHandler14WaitForMessageEPv
             4db7 _ZN15google_breakpad16ExceptionHandler14SuspendThreadsEv
-            4e42 _ZN15google_breakpad16ExceptionHandler13ResumeThreadsEv
             4e42 _ZN15google_breakpad16ExceptionHandler14SuspendThreadsEv
             4ee5 _ZN15google_breakpad19breakpad_exc_serverEP17mach_msg_header_tS1_
+            4fad _ZN15google_breakpad16ExceptionHandler13ResumeThreadsEv
             5060 _ZN15google_breakpad16ExceptionHandler14SuspendThreadsEv
             50d0 _ZN15google_breakpad16ExceptionHandler13ResumeThreadsEv
             5140 _ZN15google_breakpad16ExceptionHandler16UninstallHandlerEb
@@ -1276,10 +1274,10 @@ expression: FunctionsDebug(&symcache)
             7351 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
             7351 _ZNSt3__19allocatorIhE10deallocateEPhm
             7351 _ZNSt3__112__deallocateEPv
-            7379 _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
             7379 _ZN15google_breakpad12UntypedMDRVA4CopyEPKvm
             73a0 _ZN15google_breakpad12UntypedMDRVA4CopyEPKvm
             73ba _ZNK15google_breakpad12UntypedMDRVA8locationEv
+            73e3 _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
             73e3 _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
             73e3 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
             73ed _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE5clearEv
@@ -1496,7 +1494,6 @@ expression: FunctionsDebug(&symcache)
             a620 _ZNSt3__116allocator_traitsINS_9allocatorItEEE8allocateERS2_m
             a620 _ZNSt3__19allocatorItE8allocateEmPKv
             a624 _ZNSt3__110__allocateEm
-            a63d _ZNSt3__16vectorItNS_9allocatorItEEE26__swap_out_circular_bufferERNS_14__split_bufferItRS2_EEPt
             a63d _ZNSt3__16vectorItNS_9allocatorItEEE12__move_rangeEPtS4_S4_
             a652 _ZNSt3__16vectorItNS_9allocatorItEEE18__construct_at_endEmRKt
             a68b _ZNSt3__116allocator_traitsINS_9allocatorItEEE9constructItJRKtEEEvRS2_PT_DpOT0_
@@ -1513,6 +1510,7 @@ expression: FunctionsDebug(&symcache)
             a98c _ZNSt3__116allocator_traitsINS_9allocatorItEEE9constructItJRKtEEEvRS2_PT_DpOT0_
             a98c _ZNSt3__116allocator_traitsINS_9allocatorItEEE11__constructItJRKtEEEvNS_17integral_constantIbLb1EEERS2_PT_DpOT0_
             a98c _ZNSt3__19allocatorItE9constructItJRKtEEEvPT_DpOT0_
+            aa41 _ZNSt3__16vectorItNS_9allocatorItEEE26__swap_out_circular_bufferERNS_14__split_bufferItRS2_EEPt
             aa41 _ZNSt3__116allocator_traitsINS_9allocatorItEEE20__construct_backwardItEENS_9enable_ifIXaaoosr7is_sameIS2_NS1_IT_EEEE5valuentsr15__has_constructIS2_PS6_S6_EE5valuesr31is_trivially_move_constructibleIS6_EE5valueEvE4typeERS2_S8_S8_RS8_
             aa7e _ZNSt3__116allocator_traitsINS_9allocatorItEEE19__construct_forwardItEENS_9enable_ifIXaaoosr7is_sameIS2_NS1_IT_EEEE5valuentsr15__has_constructIS2_PS6_S6_EE5valuesr31is_trivially_move_constructibleIS6_EE5valueEvE4typeERS2_S8_S8_RS8_
             aa99 _ZNSt3__14swapIPtEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS3_EE5valueEvE4typeERS3_S6_

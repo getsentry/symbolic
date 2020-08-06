@@ -46,6 +46,7 @@ const EMPTY_FUNCTION: RuntimeFunction = RuntimeFunction {
 };
 
 /// Possible error kinds of `CfiError`.
+#[non_exhaustive]
 #[derive(Debug, Fail, Copy, Clone)]
 pub enum CfiErrorKind {
     /// Required debug sections are missing in the `Object` file.
@@ -135,7 +136,7 @@ impl<U> UnwindInfo<U> {
 
         // Based on the architecture, pointers inside eh_frame and debug_frame have different sizes.
         // Configure the section to read them appropriately.
-        if let Some(pointer_size) = arch.pointer_size() {
+        if let Some(pointer_size) = arch.cpu_family().pointer_size() {
             section.set_address_size(pointer_size as u8);
         }
 
@@ -233,11 +234,14 @@ impl<W: Write> AsciiCfiWriter<W> {
 
         // First load information from the DWARF debug_frame section. It does not contain any
         // references to other DWARF sections.
-        if let Some(section) = object.section("debug_frame") {
+        // Don't return on error because eh_frame can contain some information
+        let debug_frame_result = if let Some(section) = object.section("debug_frame") {
             let frame = DebugFrame::new(&section.data, endian);
             let info = UnwindInfo::new(object, section.address, frame);
-            self.read_cfi(&info)?;
-        }
+            self.read_cfi(&info)
+        } else {
+            Ok(())
+        };
 
         // Indepdendently, Linux C++ exception handling information can also provide unwind info.
         if let Some(section) = object.section("eh_frame") {
@@ -246,8 +250,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             self.read_cfi(&info)?;
         }
 
-        // Ignore if no information was found at all.
-        Ok(())
+        debug_frame_result
     }
 
     fn read_cfi<U, R>(&mut self, info: &UnwindInfo<U>) -> Result<(), CfiError>
@@ -302,12 +305,10 @@ impl<W: Write> AsciiCfiWriter<W> {
             match table.next_row() {
                 Ok(None) => break,
                 Ok(Some(row)) => rows.push(row.clone()),
-                Err(Error::UnknownCallFrameInstruction(_)) => {
-                    continue;
-                }
-                Err(e) => {
-                    return Err(e.context(CfiErrorKind::BadDebugInfo).into());
-                }
+                Err(Error::UnknownCallFrameInstruction(_)) => continue,
+                // NOTE: Temporary workaround for https://github.com/gimli-rs/gimli/pull/487
+                Err(Error::TooManyRegisterRules) => continue,
+                Err(e) => return Err(e.context(CfiErrorKind::BadDebugInfo).into()),
             }
         }
 
@@ -318,13 +319,10 @@ impl<W: Write> AsciiCfiWriter<W> {
             let length = rows.last().unwrap().end_address() - start;
 
             // Verify that the CFI entry is in range of the mapped module. Zero values are a special
-            // case and seem to indicate that the entry is no longer valid. All other cases are
-            // considered erroneous CFI.
+            // case and seem to indicate that the entry is no longer valid. However, also skip other
+            // entries since the rest of the file may still be valid.
             if start < info.load_address {
-                return match start {
-                    0 => Ok(()),
-                    _ => Err(CfiErrorKind::InvalidAddress.into()),
-                };
+                return Ok(());
             }
 
             // Every register rule in the table will be cached so that it can be compared with
@@ -385,7 +383,7 @@ impl<W: Write> AsciiCfiWriter<W> {
     ) -> Result<bool, CfiError> {
         let formatted = match rule {
             CfaRule::RegisterAndOffset { register, offset } => {
-                match arch.register_name(register.0) {
+                match arch.cpu_family().cfi_register_name(register.0) {
                     Some(register) => format!("{} {} +", register, *offset),
                     None => return Ok(false),
                 }
@@ -406,16 +404,18 @@ impl<W: Write> AsciiCfiWriter<W> {
     ) -> Result<bool, CfiError> {
         let formatted = match rule {
             RegisterRule::Undefined => return Ok(false),
-            RegisterRule::SameValue => match arch.register_name(register.0) {
+            RegisterRule::SameValue => match arch.cpu_family().cfi_register_name(register.0) {
                 Some(reg) => reg.into(),
                 None => return Ok(false),
             },
             RegisterRule::Offset(offset) => format!(".cfa {} + ^", offset),
             RegisterRule::ValOffset(offset) => format!(".cfa {} +", offset),
-            RegisterRule::Register(register) => match arch.register_name(register.0) {
-                Some(reg) => reg.into(),
-                None => return Ok(false),
-            },
+            RegisterRule::Register(register) => {
+                match arch.cpu_family().cfi_register_name(register.0) {
+                    Some(reg) => reg.into(),
+                    None => return Ok(false),
+                }
+            }
             RegisterRule::Expression(_) => return Ok(false),
             RegisterRule::ValExpression(_) => return Ok(false),
             RegisterRule::Architectural => return Ok(false),
@@ -426,7 +426,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         let register_name = if register == ra {
             ".ra"
         } else {
-            match arch.register_name(register.0) {
+            match arch.cpu_family().cfi_register_name(register.0) {
                 Some(reg) => reg,
                 None => return Ok(false),
             }
@@ -605,6 +605,10 @@ impl<W: Write> AsciiCfiWriter<W> {
             // Special handling for machine frames
             let mut machine_frame_offset = 0;
 
+            if function.end_address < function.begin_address {
+                continue;
+            }
+
             let mut next_function = Some(function);
             while let Some(next) = next_function {
                 let unwind_info = exception_data
@@ -612,7 +616,14 @@ impl<W: Write> AsciiCfiWriter<W> {
                     .context(CfiErrorKind::BadDebugInfo)?;
 
                 for code_result in &unwind_info {
-                    let code = code_result.context(CfiErrorKind::BadDebugInfo)?;
+                    // Due to variable length encoding of operator codes, there is little point in
+                    // continuiing after this. Other functions in this object file can be valid, so
+                    // swallow the error and continue with the next function.
+                    let code = match code_result {
+                        Ok(code) => code,
+                        Err(_) => return Ok(()),
+                    };
+
                     match code.operation {
                         UnwindOperation::PushNonVolatile(_) => {
                             stack_size += 8;

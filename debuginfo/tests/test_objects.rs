@@ -1,10 +1,10 @@
 use std::fmt;
 
 use failure::Error;
-use insta;
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{FileEntry, Function, Object, SymbolMap};
+use symbolic_testutils::fixture;
 
 /// Helper to create neat snapshots for symbol tables.
 struct SymbolsDebug<'a>(&'a SymbolMap<'a>);
@@ -76,10 +76,10 @@ impl fmt::Debug for FunctionsDebug<'_> {
 #[test]
 fn test_breakpad() -> Result<(), Error> {
     // Using the windows version here since it contains all record kinds
-    let view = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
+    let view = ByteView::open(fixture("windows/crash.sym"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r###"
    ⋮Breakpad(
    ⋮    BreakpadObject {
    ⋮        code_id: Some(
@@ -103,49 +103,46 @@ fn test_breakpad() -> Result<(), Error> {
 
 #[test]
 fn test_breakpad_symbols() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
+    let view = ByteView::open(fixture("windows/crash.sym"))?;
     let object = Object::parse(&view)?;
 
     let symbols = object.symbol_map();
-    insta::assert_debug_snapshot_matches!("breakpad_symbols", SymbolsDebug(&symbols));
+    insta::assert_debug_snapshot!("breakpad_symbols", SymbolsDebug(&symbols));
 
     Ok(())
 }
 
 #[test]
 fn test_breakpad_files() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
+    let view = ByteView::open(fixture("windows/crash.sym"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
     let files = session.files().collect::<Result<Vec<_>, _>>()?;
     assert_eq!(files.len(), 147);
-    insta::assert_debug_snapshot_matches!("breakpad_files", FilesDebug(&files[..10]));
+    insta::assert_debug_snapshot!("breakpad_files", FilesDebug(&files[..10]));
 
     Ok(())
 }
 
 #[test]
 fn test_breakpad_functions() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.sym")?;
+    let view = ByteView::open(fixture("windows/crash.sym"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
-    insta::assert_debug_snapshot_matches!(
-        "breakpad_functions",
-        FunctionsDebug(&functions[..10], 0)
-    );
+    insta::assert_debug_snapshot!("breakpad_functions", FunctionsDebug(&functions[..10], 0));
 
     Ok(())
 }
 
 #[test]
 fn test_elf_executable() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/linux/crash")?;
+    let view = ByteView::open(fixture("linux/crash"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r###"
    ⋮Elf(
    ⋮    ElfObject {
    ⋮        code_id: Some(
@@ -170,10 +167,10 @@ fn test_elf_executable() -> Result<(), Error> {
 
 #[test]
 fn test_elf_debug() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/linux/crash.debug")?;
+    let view = ByteView::open(fixture("linux/crash.debug"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r###"
    ⋮Elf(
    ⋮    ElfObject {
    ⋮        code_id: Some(
@@ -198,47 +195,46 @@ fn test_elf_debug() -> Result<(), Error> {
 
 #[test]
 fn test_elf_symbols() -> Result<(), Error> {
-    // TODO(ja): Why does crash.debug not retain the symbol table but report has_symbols
-    let view = ByteView::open("../testutils/fixtures/linux/crash")?;
+    let view = ByteView::open(fixture("linux/crash.debug"))?;
     let object = Object::parse(&view)?;
 
     let symbols = object.symbol_map();
-    insta::assert_debug_snapshot_matches!("elf_symbols", SymbolsDebug(&symbols));
+    insta::assert_debug_snapshot!("elf_symbols", SymbolsDebug(&symbols));
 
     Ok(())
 }
 
 #[test]
 fn test_elf_files() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/linux/crash.debug")?;
+    let view = ByteView::open(fixture("linux/crash.debug"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
     let files = session.files().collect::<Result<Vec<_>, _>>()?;
     assert_eq!(files.len(), 1012);
-    insta::assert_debug_snapshot_matches!("elf_files", FilesDebug(&files[..10]));
+    insta::assert_debug_snapshot!("elf_files", FilesDebug(&files[..10]));
 
     Ok(())
 }
 
 #[test]
 fn test_elf_functions() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/linux/crash.debug")?;
+    let view = ByteView::open(fixture("linux/crash.debug"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
-    insta::assert_debug_snapshot_matches!("elf_functions", FunctionsDebug(&functions[..10], 0));
+    insta::assert_debug_snapshot!("elf_functions", FunctionsDebug(&functions[..10], 0));
 
     Ok(())
 }
 
 #[test]
 fn test_mach_executable() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/macos/crash")?;
+    let view = ByteView::open(fixture("macos/crash"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r###"
    ⋮MachO(
    ⋮    MachObject {
    ⋮        code_id: Some(
@@ -263,11 +259,10 @@ fn test_mach_executable() -> Result<(), Error> {
 
 #[test]
 fn test_mach_dsym() -> Result<(), Error> {
-    let view =
-        ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
+    let view = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r###"
    ⋮MachO(
    ⋮    MachObject {
    ⋮        code_id: Some(
@@ -292,48 +287,46 @@ fn test_mach_dsym() -> Result<(), Error> {
 
 #[test]
 fn test_mach_symbols() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/macos/crash")?;
+    let view = ByteView::open(fixture("macos/crash"))?;
     let object = Object::parse(&view)?;
 
     let symbols = object.symbol_map();
-    insta::assert_debug_snapshot_matches!("mach_symbols", SymbolsDebug(&symbols));
+    insta::assert_debug_snapshot!("mach_symbols", SymbolsDebug(&symbols));
 
     Ok(())
 }
 
 #[test]
 fn test_mach_files() -> Result<(), Error> {
-    let view =
-        ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
+    let view = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
     let files = session.files().collect::<Result<Vec<_>, _>>()?;
     assert_eq!(files.len(), 554);
-    insta::assert_debug_snapshot_matches!("mach_files", FilesDebug(&files[..10]));
+    insta::assert_debug_snapshot!("mach_files", FilesDebug(&files[..10]));
 
     Ok(())
 }
 
 #[test]
 fn test_mach_functions() -> Result<(), Error> {
-    let view =
-        ByteView::open("../testutils/fixtures/macos/crash.dSYM/Contents/Resources/DWARF/crash")?;
+    let view = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
-    insta::assert_debug_snapshot_matches!("mach_functions", FunctionsDebug(&functions[..10], 0));
+    insta::assert_debug_snapshot!("mach_functions", FunctionsDebug(&functions[..10], 0));
 
     Ok(())
 }
 
 #[test]
 fn test_pe_32() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.exe")?;
+    let view = ByteView::open(fixture("windows/crash.exe"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r###"
    ⋮Pe(
    ⋮    PeObject {
    ⋮        code_id: Some(
@@ -361,10 +354,10 @@ fn test_pe_32() -> Result<(), Error> {
 
 #[test]
 fn test_pe_64() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/CrashWithException.exe")?;
+    let view = ByteView::open(fixture("windows/CrashWithException.exe"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r###"
    ⋮Pe(
    ⋮    PeObject {
    ⋮        code_id: Some(
@@ -395,10 +388,10 @@ fn test_pe_64() -> Result<(), Error> {
 
 #[test]
 fn test_pdb() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
+    let view = ByteView::open(fixture("windows/crash.pdb"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot_matches!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r###"
    ⋮Pdb(
    ⋮    PdbObject {
    ⋮        debug_id: DebugId {
@@ -419,36 +412,36 @@ fn test_pdb() -> Result<(), Error> {
 
 #[test]
 fn test_pdb_symbols() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
+    let view = ByteView::open(fixture("windows/crash.pdb"))?;
     let object = Object::parse(&view)?;
 
     let symbols = object.symbol_map();
-    insta::assert_debug_snapshot_matches!("pdb_symbols", SymbolsDebug(&symbols));
+    insta::assert_debug_snapshot!("pdb_symbols", SymbolsDebug(&symbols));
 
     Ok(())
 }
 
 #[test]
 fn test_pdb_files() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
+    let view = ByteView::open(fixture("windows/crash.pdb"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
     let files = session.files().collect::<Result<Vec<_>, _>>()?;
     assert_eq!(files.len(), 967);
-    insta::assert_debug_snapshot_matches!("pdb_files", FilesDebug(&files[..10]));
+    insta::assert_debug_snapshot!("pdb_files", FilesDebug(&files[..10]));
 
     Ok(())
 }
 
 #[test]
 fn test_pdb_functions() -> Result<(), Error> {
-    let view = ByteView::open("../testutils/fixtures/windows/crash.pdb")?;
+    let view = ByteView::open(fixture("windows/crash.pdb"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
-    insta::assert_debug_snapshot_matches!("pdb_functions", FunctionsDebug(&functions[..10], 0));
+    insta::assert_debug_snapshot!("pdb_functions", FunctionsDebug(&functions[..10], 0));
 
     Ok(())
 }

@@ -99,13 +99,11 @@ pub type ParseCodeModuleIdError = ParseDebugIdError;
 /// use symbolic_minidump::processor::CodeModuleId;
 /// # use symbolic_minidump::processor::ParseCodeModuleIdError;
 ///
-/// # fn foo() -> Result<(), ParseCodeModuleIdError> {
+/// # fn main() -> Result<(), ParseCodeModuleIdError> {
 /// let id = CodeModuleId::from_str("DFB8E43AF2423D73A453AEB6A777EF75a")?;
 /// assert_eq!("DFB8E43AF2423D73A453AEB6A777EF75a".to_string(), id.to_string());
 /// # Ok(())
 /// # }
-///
-/// # fn main() { foo().unwrap() }
 /// ```
 #[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy)]
 pub struct CodeModuleId {
@@ -702,6 +700,7 @@ impl fmt::Debug for SystemInfo {
 /// Usually included in `ProcessError` when the file cannot be processed.
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ProcessResult {
     /// The dump was processed successfully.
     Ok,
@@ -760,6 +759,7 @@ impl fmt::Display for ProcessResult {
 
 /// An error generated when trying to process a minidump.
 #[derive(Debug, Fail, Copy, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[fail(display = "minidump processing failed: {}", _0)]
 pub struct ProcessMinidumpError(ProcessResult);
 

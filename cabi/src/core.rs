@@ -7,15 +7,24 @@ use std::slice;
 use std::str;
 
 use failure::Error;
-use uuid::Uuid;
+use symbolic::common::Uuid;
 
 use crate::utils::{set_panic_hook, Panic, LAST_ERROR};
 
-/// CABI wrapper around a Rust string.
+/// A length-prefixed UTF-8 string.
+///
+/// As opposed to C strings, this string is not null-terminated. If the string is owned, indicated
+/// by the `owned` flag, the owner must call the `free` function on this string. The convention is:
+///
+///  - When obtained as instance through return values, always free the string.
+///  - When obtained as pointer through field access, never free the string.
 #[repr(C)]
 pub struct SymbolicStr {
+    /// Pointer to the UTF-8 encoded string data.
     pub data: *mut c_char,
+    /// The length of the string pointed to by `data`.
     pub len: usize,
+    /// Indicates that the string is owned and must be freed.
     pub owned: bool,
 }
 
@@ -62,8 +71,8 @@ impl SymbolicStr {
     }
 
     /// Returns the Rust string managed by a `SymbolicStr`.
-    pub fn as_str(&self) -> &str {
-        unsafe { str::from_utf8_unchecked(slice::from_raw_parts(self.data as *const _, self.len)) }
+    pub unsafe fn as_str(&self) -> &str {
+        str::from_utf8_unchecked(slice::from_raw_parts(self.data as *const _, self.len))
     }
 }
 
@@ -97,6 +106,7 @@ impl<'a> From<Cow<'a, str>> for SymbolicStr {
 /// CABI wrapper around a UUID.
 #[repr(C)]
 pub struct SymbolicUuid {
+    /// UUID bytes in network byte order (big endian).
     pub data: [u8; 16],
 }
 
@@ -107,8 +117,8 @@ impl SymbolicUuid {
     }
 
     /// Returns the Rust UUID managed by a `SymbolicUUID`.
-    pub fn as_uuid(&self) -> &Uuid {
-        unsafe { &*(self as *const Self as *const Uuid) }
+    pub unsafe fn as_uuid(&self) -> &Uuid {
+        &*(self as *const Self as *const Uuid)
     }
 }
 
@@ -142,6 +152,7 @@ pub enum SymbolicErrorCode {
     // symbolic::debuginfo
     UnknownObjectKindError = 2001,
     UnknownFileFormatError = 2002,
+    ObjectErrorUnknown = 2100,
     ObjectErrorUnsupportedObject = 2101,
     ObjectErrorBadBreakpadObject = 2102,
     ObjectErrorBadElfObject = 2103,
@@ -150,6 +161,7 @@ pub enum SymbolicErrorCode {
     ObjectErrorBadPeObject = 2106,
     ObjectErrorBadSourceBundle = 2107,
     ObjectErrorBadWasmObject = 2108,
+    DwarfErrorUnknown = 2200,
     DwarfErrorInvalidUnitRef = 2201,
     DwarfErrorInvalidFileRef = 2202,
     DwarfErrorUnexpectedInline = 2203,
@@ -157,6 +169,7 @@ pub enum SymbolicErrorCode {
     DwarfErrorCorruptedData = 2205,
 
     // symbolic::minidump::cfi
+    CfiErrorUnknown = 3000,
     CfiErrorMissingDebugInfo = 3001,
     CfiErrorUnsupportedDebugFormat = 3002,
     CfiErrorBadDebugInfo = 3003,
@@ -178,6 +191,7 @@ pub enum SymbolicErrorCode {
     ParseSourceMapError = 5001,
 
     // symbolic::symcache
+    SymCacheErrorUnknown = 6000,
     SymCacheErrorBadFileMagic = 6001,
     SymCacheErrorBadFileHeader = 6002,
     SymCacheErrorBadSegment = 6003,
@@ -192,6 +206,7 @@ pub enum SymbolicErrorCode {
     SymCacheErrorTooManyValues = 6012,
 
     // symbolic::unreal
+    Unreal4ErrorUnknown = 7001,
     Unreal4ErrorEmpty = 7002,
     Unreal4ErrorBadCompression = 7004,
     Unreal4ErrorInvalidXml = 7005,
@@ -261,8 +276,10 @@ impl SymbolicErrorCode {
                             SymbolicErrorCode::DwarfErrorInvertedFunctionRange
                         }
                         DwarfErrorKind::CorruptedData => SymbolicErrorCode::DwarfErrorCorruptedData,
+                        _ => SymbolicErrorCode::DwarfErrorUnknown,
                     },
                     ObjectError::SourceBundle(_) => SymbolicErrorCode::ObjectErrorBadSourceBundle,
+                    _ => SymbolicErrorCode::ObjectErrorUnknown,
                 };
             }
 
@@ -278,6 +295,7 @@ impl SymbolicErrorCode {
                     CfiErrorKind::InvalidAddress => SymbolicErrorCode::CfiErrorInvalidAddress,
                     CfiErrorKind::WriteError => SymbolicErrorCode::CfiErrorWriteError,
                     CfiErrorKind::BadFileMagic => SymbolicErrorCode::CfiErrorBadFileMagic,
+                    _ => SymbolicErrorCode::CfiErrorUnknown,
                 };
             }
 
@@ -344,6 +362,7 @@ impl SymbolicErrorCode {
                     SymCacheErrorKind::TooManyValues(_) => {
                         SymbolicErrorCode::SymCacheErrorTooManyValues
                     }
+                    _ => SymbolicErrorCode::SymCacheErrorUnknown,
                 };
             }
 
@@ -360,6 +379,7 @@ impl SymbolicErrorCode {
                     Unreal4Error::InvalidLogEntry(_) => {
                         SymbolicErrorCode::Unreal4ErrorInvalidLogEntry
                     }
+                    _ => SymbolicErrorCode::Unreal4ErrorUnknown,
                 };
             }
 
@@ -454,16 +474,12 @@ pub unsafe extern "C" fn symbolic_err_clear() {
 
 ffi_fn! {
     /// Creates a symbolic string from a raw C string.
-    ///
-    /// This sets the string to owned.  In case it's not owned you either have
-    /// to make sure you are not freeing the memory or you need to set the
-    /// owned flag to false.
     unsafe fn symbolic_str_from_cstr(string: *const c_char) -> Result<SymbolicStr> {
         let s = CStr::from_ptr(string).to_str()?;
         Ok(SymbolicStr {
             data: s.as_ptr() as *mut _,
             len: s.len(),
-            owned: true,
+            owned: false,
         })
     }
 }

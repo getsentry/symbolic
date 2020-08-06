@@ -36,6 +36,7 @@ const EF_MIPS_ABI_EABI64: u32 = 0x0000_4000;
 const MIPS_64_FLAGS: u32 = EF_MIPS_ABI_O64 | EF_MIPS_ABI_EABI64;
 
 /// An error when dealing with [`ElfObject`](struct.ElfObject.html).
+#[non_exhaustive]
 #[derive(Debug, Fail)]
 pub enum ElfError {
     /// The data in the ELF file could not be parsed.
@@ -79,6 +80,11 @@ impl<'d> ElfObject<'d> {
         self.find_build_id()
             .filter(|slice| !slice.is_empty())
             .map(|slice| CodeId::from_binary(slice))
+    }
+
+    /// The binary's soname, if any.
+    pub fn name(&self) -> Option<&'d str> {
+        self.elf.soname
     }
 
     /// The debug information identifier of an ELF object.
@@ -156,10 +162,18 @@ impl<'d> ElfObject<'d> {
         // removed. Since an executable without interpreter does not make any
         // sense, we assume ``Debug`` in this case.
         if kind == ObjectKind::Executable && self.elf.interpreter.is_none() {
-            ObjectKind::Debug
-        } else {
-            kind
+            return ObjectKind::Debug;
         }
+
+        // The same happens for libraries. However, here we can only check for
+        // a missing text section. If this still yields too many false positivies,
+        // we will have to check either the size or offset of that section in
+        // the future.
+        if kind == ObjectKind::Library && self.raw_section("text").is_none() {
+            return ObjectKind::Debug;
+        }
+
+        kind
     }
 
     /// The address at which the image prefers to be loaded into memory.
@@ -226,7 +240,7 @@ impl<'d> ElfObject<'d> {
     /// [`has_debug_info`](struct.ElfObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
         let symbols = self.symbol_map();
-        DwarfDebugSession::parse(self, symbols, self.load_address())
+        DwarfDebugSession::parse(self, symbols, self.load_address(), self.kind())
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -246,17 +260,32 @@ impl<'d> ElfObject<'d> {
 
     /// Decompresses the given compressed section data, if supported.
     fn decompress_section(&self, section_data: &[u8]) -> Option<Vec<u8>> {
-        let container = self.elf.header.container().ok()?;
-        let endianness = self.elf.header.endianness().ok()?;
-        let context = Ctx::new(container, endianness);
+        let (size, compressed) = if section_data.starts_with(b"ZLIB") {
+            // The GNU compression header is a 4 byte magic "ZLIB", followed by an 8-byte big-endian
+            // size prefix of the decompressed data. This adds up to 12 bytes of GNU header.
+            if section_data.len() < 12 {
+                return None;
+            }
 
-        let compression = CompressionHeader::parse(&section_data, 0, context).ok()?;
-        if compression.ch_type != ELFCOMPRESS_ZLIB {
-            return None;
-        }
+            let mut size_bytes = [0; 8];
+            size_bytes.copy_from_slice(&section_data[4..12]);
 
-        let compressed = &section_data[CompressionHeader::size(context)..];
-        let mut decompressed = Vec::with_capacity(compression.ch_size as usize);
+            (u64::from_be_bytes(size_bytes), &section_data[12..])
+        } else {
+            let container = self.elf.header.container().ok()?;
+            let endianness = self.elf.header.endianness().ok()?;
+            let context = Ctx::new(container, endianness);
+
+            let compression = CompressionHeader::parse(&section_data, 0, context).ok()?;
+            if compression.ch_type != ELFCOMPRESS_ZLIB {
+                return None;
+            }
+
+            let compressed = &section_data[CompressionHeader::size(context)..];
+            (compression.ch_size, compressed)
+        };
+
+        let mut decompressed = Vec::with_capacity(size as usize);
         Decompress::new(true)
             .decompress_vec(compressed, &mut decompressed, FlushDecompress::Finish)
             .ok()?;
@@ -527,14 +556,8 @@ impl<'d, 'o> Iterator for ElfSymbolIterator<'d, 'o> {
                 index => self.sections.get(index),
             };
 
-            // We are only interested in symbols pointing into a program code section
-            // (`SHT_PROGBITS`). Since the program might load R/W or R/O data sections via
-            // SHT_PROGBITS, also check for the executable flag.
-            let is_valid_section = section.map_or(false, |header| {
-                header.sh_type == elf::section_header::SHT_PROGBITS && header.is_executable()
-            });
-
-            if !is_valid_section {
+            // We are only interested in symbols pointing into sections with executable flag.
+            if !section.map_or(false, |header| header.is_executable()) {
                 continue;
             }
 

@@ -3,27 +3,42 @@ import shutil
 from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib, ffi
 from symbolic.demangle import demangle_name
-from symbolic.utils import RustObject, rustcall, decode_str, encode_str, \
-    common_path_join, strip_common_path_prefix, encode_path, attached_refs, \
-    SliceReader
+from symbolic.utils import (
+    RustObject,
+    rustcall,
+    decode_str,
+    encode_str,
+    common_path_join,
+    strip_common_path_prefix,
+    encode_path,
+    attached_refs,
+    SliceReader,
+)
 from symbolic.common import parse_addr
 from symbolic import exceptions
 
 
-__all__ = ['LineInfo', 'SymCache', 'find_best_instruction',
-           'SYMCACHE_LATEST_VERSION']
+__all__ = ["LineInfo", "SymCache", "find_best_instruction", "SYMCACHE_LATEST_VERSION"]
 
 
 # the most recent version for the symcache file format.
-SYMCACHE_LATEST_VERSION = rustcall(
-    lib.symbolic_symcache_latest_version)
+SYMCACHE_LATEST_VERSION = rustcall(lib.symbolic_symcache_latest_version)
 
 
 @implements_to_string
 class LineInfo(object):
-
-    def __init__(self, sym_addr, instr_addr, line, lang, symbol,
-                 line_addr=None, filename=None, base_dir=None, comp_dir=None):
+    def __init__(
+        self,
+        sym_addr,
+        instr_addr,
+        line,
+        lang,
+        symbol,
+        line_addr=None,
+        filename=None,
+        base_dir=None,
+        comp_dir=None,
+    ):
         self.sym_addr = sym_addr
         self.line_addr = line_addr
         self.instr_addr = instr_addr
@@ -58,15 +73,11 @@ class LineInfo(object):
         return strip_common_path_prefix(self.abs_path, self.comp_dir)
 
     def __str__(self):
-        return '%s:%s (%s)' % (
-            self.function_name,
-            self.line,
-            self.rel_path,
-        )
+        return "%s:%s (%s)" % (self.function_name, self.line, self.rel_path,)
 
     def __repr__(self):
-        return 'LineInfo(%s)' % (
-            ', '.join('%s=%r' % x for x in sorted(self.__dict__.items()))
+        return "LineInfo(%s)" % (
+            ", ".join("%s=%r" % x for x in sorted(self.__dict__.items()))
         )
 
 
@@ -76,33 +87,36 @@ class SymCache(RustObject):
     @classmethod
     def open(cls, path):
         """Loads a symcache from a file via mmap."""
-        return cls._from_objptr(
-            rustcall(lib.symbolic_symcache_open, encode_path(path)))
+        return cls._from_objptr(rustcall(lib.symbolic_symcache_open, encode_path(path)))
 
     @classmethod
     def from_object(cls, obj):
         """Creates a symcache from the given object."""
         return cls._from_objptr(
-            rustcall(lib.symbolic_symcache_from_object, obj._get_objptr()))
+            rustcall(lib.symbolic_symcache_from_object, obj._get_objptr())
+        )
 
     @classmethod
     def from_bytes(cls, data):
         """Loads a symcache from a binary buffer."""
         symcache = cls._from_objptr(
-            rustcall(lib.symbolic_symcache_from_bytes, data, len(data)))
+            rustcall(lib.symbolic_symcache_from_bytes, data, len(data))
+        )
         attached_refs[symcache] = data
         return symcache
 
     @property
     def arch(self):
         """The architecture of the symcache."""
+        arch = self._methodcall(lib.symbolic_symcache_get_arch)
         # make it an ascii bytestring on 2.x
-        return str(decode_str(self._methodcall(lib.symbolic_symcache_get_arch)))
+        return str(decode_str(arch, free=True))
 
     @property
     def debug_id(self):
         """The debug identifier of the object."""
-        return decode_str(self._methodcall(lib.symbolic_symcache_get_debug_id))
+        id = self._methodcall(lib.symbolic_symcache_get_debug_id)
+        return decode_str(id, free=True)
 
     @property
     def has_line_info(self):
@@ -142,24 +156,25 @@ class SymCache(RustObject):
             matches = []
             for idx in range(rv.len):
                 sym = rv.items[idx]
-                matches.append(LineInfo(
-                    sym_addr=sym.sym_addr,
-                    line_addr=sym.line_addr,
-                    instr_addr=sym.instr_addr,
-                    line=sym.line,
-                    lang=decode_str(sym.lang),
-                    symbol=decode_str(sym.symbol),
-                    filename=decode_str(sym.filename),
-                    base_dir=decode_str(sym.base_dir),
-                    comp_dir=decode_str(sym.comp_dir),
-                ))
+                matches.append(
+                    LineInfo(
+                        sym_addr=sym.sym_addr,
+                        line_addr=sym.line_addr,
+                        instr_addr=sym.instr_addr,
+                        line=sym.line,
+                        lang=decode_str(sym.lang, free=False),
+                        symbol=decode_str(sym.symbol, free=False),
+                        filename=decode_str(sym.filename, free=False),
+                        base_dir=decode_str(sym.base_dir, free=False),
+                        comp_dir=decode_str(sym.comp_dir, free=False),
+                    )
+                )
         finally:
             rustcall(lib.symbolic_lookup_result_free, ffi.addressof(rv))
         return matches
 
 
-def find_best_instruction(addr, arch, crashing_frame=False,
-                          signal=None, ip_reg=None):
+def find_best_instruction(addr, arch, crashing_frame=False, signal=None, ip_reg=None):
     """Given an instruction and meta data attempts to find the best one
     by using a heuristic we inherited from symsynd.
     """
@@ -168,7 +183,7 @@ def find_best_instruction(addr, arch, crashing_frame=False,
     encoded_arch = encode_str(arch)
 
     addr = parse_addr(addr)
-    ii = ffi.new('SymbolicInstructionInfo *')
+    ii = ffi.new("SymbolicInstructionInfo *")
     ii[0].addr = addr
     ii[0].arch = encoded_arch
     ii[0].crashing_frame = crashing_frame

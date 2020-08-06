@@ -139,7 +139,7 @@ impl<'d> WasmObject<'d> {
     /// Constructs a debugging session.
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
         let symbols = self.symbol_map();
-        DwarfDebugSession::parse(self, symbols, self.load_address())
+        DwarfDebugSession::parse(self, symbols, self.load_address(), self.kind())
     }
 
     /// Determines whether this object contains stack unwinding information.

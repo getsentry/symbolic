@@ -3,9 +3,9 @@
 //! The central element of this module is the [`Dwarf`] trait, which is implemented by [`ElfObject`]
 //! and [`MachObject`]. The dwarf debug session object can be obtained via getters on those types.
 //!
-//! [`Dwarf`] trait.Dwarf.html
-//! [`ElfObject`] ../elf/struct.ElfObject.html
-//! [`MachObject`] ../macho/struct.MachObject.html
+//! [`Dwarf`]: trait.Dwarf.html
+//! [`ElfObject`]: ../elf/struct.ElfObject.html
+//! [`MachObject`]: ../macho/struct.MachObject.html
 
 use std::borrow::Cow;
 use std::fmt;
@@ -43,6 +43,7 @@ type LineNumberProgramHeader<'a> = gimli::read::LineProgramHeader<Slice<'a>>;
 type LineProgramFileEntry<'a> = gimli::read::FileEntry<Slice<'a>>;
 
 /// Variants of [`DwarfError`](struct.DwarfError.html).
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 pub enum DwarfErrorKind {
     /// A compilation unit referenced by index does not exist.
@@ -115,7 +116,7 @@ impl fmt::Debug for DwarfSection<'_> {
 /// data. If so, override the provided `section_data` method. Also, if there is a faster way to
 /// check for the existence of a section without loading its data, override `has_section`.
 pub trait Dwarf<'data> {
-    /// Returns whether the file was written on a big-endian or little-endian machine.
+    /// Returns whether the file was compiled for a big-endian or little-endian machine.
     ///
     /// This can usually be determined by inspecting the file's headers. Sometimes, this is also
     /// given by the architecture.
@@ -176,6 +177,7 @@ struct DwarfRow {
     address: u64,
     file_index: u64,
     line: Option<u64>,
+    size: Option<u64>,
 }
 
 /// A sequence in the DWARF line program.
@@ -202,6 +204,13 @@ impl<'d, 'a> DwarfLineProgram<'d> {
 
         while let Ok(Some((_, &program_row))) = state_machine.next_row() {
             let address = program_row.address();
+
+            if let Some(last_row) = sequence_rows.last_mut() {
+                if address >= last_row.address {
+                    last_row.size = Some(address - last_row.address);
+                }
+            }
+
             if program_row.end_sequence() {
                 // Theoretically, there could be multiple DW_LNE_end_sequence in a row. We're not
                 // interested in empty sequences, so we can skip them completely.
@@ -242,6 +251,7 @@ impl<'d, 'a> DwarfLineProgram<'d> {
                         address,
                         file_index,
                         line,
+                        size: None,
                     });
                 }
                 prev_address = address;
@@ -370,7 +380,12 @@ impl<'d, 'a> UnitRef<'d, 'a> {
 
         if let Some(attr) = reference_target {
             let resolved = self.resolve_reference(attr, |ref_unit, ref_entry| {
-                ref_unit.resolve_function_name(ref_entry)
+                if self.unit.offset != ref_unit.unit.offset || entry.offset() != ref_entry.offset()
+                {
+                    ref_unit.resolve_function_name(ref_entry)
+                } else {
+                    Ok(None)
+                }
             })?;
 
             if let Some(name) = resolved {
@@ -401,8 +416,12 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         // Clang's LLD might eliminate an entire compilation unit and simply set the low_pc to zero
         // and remove all range entries to indicate that it is missing. Skip such a unit, as it does
-        // not contain any code that can be executed.
-        if unit.low_pc == 0 && entry.attr(constants::DW_AT_ranges)?.is_none() {
+        // not contain any code that can be executed. Special case relocatable objects, as here the
+        // range information has not been written yet and all units look like this.
+        if info.kind != ObjectKind::Relocatable
+            && unit.low_pc == 0
+            && entry.attr(constants::DW_AT_ranges)?.is_none()
+        {
             return Ok(None);
         }
 
@@ -483,11 +502,13 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             return Ok(tuple);
         }
 
-        // to go by the logic in dwarf2read a low_pc of 0 can indicate an
-        // eliminated duplicate when the GNU linker is used.
-        // TODO: *technically* there could be a relocatable section placed at VA 0
+        // To go by the logic in dwarf2read, a `low_pc` of 0 can indicate an
+        // eliminated duplicate when the GNU linker is used. In relocatable
+        // objects, all functions are at `0` since they have not been placed
+        // yet, so we want to retain them.
+        let kind = self.inner.info.kind;
         let low_pc = match low_pc {
-            Some(low_pc) if low_pc != 0 => low_pc,
+            Some(low_pc) if low_pc != 0 || kind == ObjectKind::Relocatable => low_pc,
             _ => return Ok(tuple),
         };
 
@@ -517,14 +538,13 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Resolves line records of a DIE's range list and puts them into the given buffer.
-    fn resolve_lines(&self, ranges: &[Range]) -> Result<Vec<LineInfo<'d>>, DwarfError> {
+    fn resolve_lines(&self, ranges: &[Range]) -> Vec<LineInfo<'d>> {
         // Early exit in case this unit did not declare a line program.
         let line_program = match self.line_program {
             Some(ref program) => program,
-            None => return Ok(Vec::new()),
+            None => return Vec::new(),
         };
 
-        let mut last = None;
         let mut lines = Vec::new();
         for range in ranges {
             // Most of the rows will result in a line record. Reserve the number of rows in the line
@@ -533,27 +553,61 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let rows = line_program.get_rows(range);
             lines.reserve(rows.len());
 
-            for row in rows {
-                let file = self.resolve_file(row.file_index)?.unwrap();
-                let line = row.line.unwrap_or(0);
+            // Suppose we've a range [0x50; 0x100) and in sequences, we've:
+            //  - [0x25; 0x60) -> l.12, f.34
+            //  - [0x60; 0x80) -> l.13, f.34
+            //  - [0x80; 0x120) -> l.14, f.34
+            // So for this range, we'll get exactly the 3 above rows
+            // and we need:
+            // - to fix the address of the 1st row to 0x50
+            // - to do nothing on the 2nd since it's fully included in the range
+            // - to fix the size of the last row to 0x20 (0x100 - 0x80)
+            // At the end we exactly splited the initial range into 3 contiguous ranges
+            // and each of them maps a different line.
+            if let Some((first, rows)) = rows.split_first() {
+                let mut last_file = first.file_index;
+                let mut last_info = LineInfo {
+                    address: range.begin - self.inner.info.load_address,
+                    size: first.size.map(|s| s + first.address - range.begin),
+                    file: self.resolve_file(first.file_index).unwrap_or_default(),
+                    line: first.line.unwrap_or(0),
+                };
 
-                if let Some((last_file, last_line)) = last {
-                    if last_file == row.file_index && last_line == line {
+                for row in rows {
+                    let line = row.line.unwrap_or(0);
+
+                    // We're in a range so we can collapse the lines without any side effects
+                    if (last_file, last_info.line) == (row.file_index, line) {
+                        // We collapse the lines but need to fix the last line size
+                        if let Some(size) = last_info.size.as_mut() {
+                            *size += row.size.unwrap_or(0);
+                        }
+
                         continue;
                     }
+
+                    // We've a new line/file so push the previous line_info
+                    lines.push(last_info);
+
+                    last_file = row.file_index;
+                    last_info = LineInfo {
+                        address: row.address - self.inner.info.load_address,
+                        size: row.size,
+                        file: self.resolve_file(row.file_index).unwrap_or_default(),
+                        line,
+                    };
                 }
 
-                last = Some((row.file_index, line));
-                lines.push(LineInfo {
-                    address: row.address - self.inner.info.load_address,
-                    size: None,
-                    file,
-                    line,
-                });
+                // Fix the size of the last line
+                if let Some(size) = last_info.size.as_mut() {
+                    *size = range.end - self.inner.info.load_address - last_info.address;
+                }
+
+                lines.push(last_info);
             }
         }
 
-        Ok(lines)
+        lines
     }
 
     /// Resolves file information from a line program.
@@ -572,23 +626,18 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Resolves a file entry by its index.
-    fn resolve_file(&self, file_id: u64) -> Result<Option<FileInfo<'d>>, DwarfError> {
+    fn resolve_file(&self, file_id: u64) -> Option<FileInfo<'d>> {
         let line_program = match self.line_program {
             Some(ref program) => &program.header,
-            None => return Ok(None),
+            None => return None,
         };
 
-        let file = line_program
+        line_program
             .file(file_id)
-            .ok_or_else(|| DwarfErrorKind::InvalidFileRef(file_id))?;
-
-        Ok(Some(self.file_info(line_program, file)))
+            .map(|file| self.file_info(line_program, file))
     }
 
     /// Collects all functions within this compilation unit.
-    ///
-    /// Since there are some DWARF files where functions appear out of order -- instead of sorted by
-    /// their start address -- they have to be collected anyway.
     fn functions(&self, range_buf: &mut Vec<Range>) -> Result<Vec<Function<'d>>, DwarfError> {
         let mut depth = 0;
         let mut skipped_depth = None;
@@ -607,17 +656,17 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 _ => skipped_depth = None,
             }
 
+            // Flush all functions out that exceed the current iteration depth. Since we
+            // encountered an entry at this level, there will be no more inlinees to the
+            // previous function at the same level or any of it's children.
+            stack.flush(depth, &mut functions);
+
             // Skip anything that is not a function.
             let inline = match entry.tag() {
                 constants::DW_TAG_subprogram => false,
                 constants::DW_TAG_inlined_subroutine => true,
                 _ => continue,
             };
-
-            // Flush all functions out that exceed the current iteration depth. Since we
-            // encountered a function at this level, there will be no more inlinees to the
-            // previous function at the same level or any of it's children.
-            stack.flush(depth, &mut functions);
 
             range_buf.clear();
             let (call_line, call_file) = self.parse_ranges(entry, range_buf)?;
@@ -632,8 +681,18 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 continue;
             }
 
+            // We have a non-inlined function which has two ranges or more, probably split because
+            // of cold paths.
+            if !inline && range_buf.len() != 1 {
+                // TODO: Emit one function record per range, instead of skipping this function. This
+                // also applies to PDB, where this is more common with LTO enabled.
+                skipped_depth = Some(depth);
+                continue;
+            }
+
             let function_address = range_buf[0].begin - self.inner.info.load_address;
             let function_size = range_buf[range_buf.len() - 1].end - range_buf[0].begin;
+            let function_end = function_address + function_size;
 
             // Resolve functions in the symbol table first. Only if there is no entry, fall back
             // to debug information only if there is no match. Sometimes, debug info contains a
@@ -645,7 +704,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 self.inner
                     .info
                     .symbol_map
-                    .lookup_range(function_address..function_address + function_size)
+                    .lookup_range(function_address..function_end)
                     .and_then(|symbol| symbol.name.clone())
             } else {
                 None
@@ -653,13 +712,143 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
             let name = match symbol_name {
                 Some(name) => Some(name),
-                None => self.inner.resolve_function_name(entry)?,
+                None => self.inner.resolve_function_name(entry).ok().flatten(),
             };
 
             // Avoid constant allocations by collecting repeatedly into the same buffer and
             // draining the results out of it. This keeps the original buffer allocated and
             // allows for a single allocation per call to `resolve_lines`.
-            let lines = self.resolve_lines(&range_buf)?;
+            let lines = self.resolve_lines(&range_buf);
+
+            if inline {
+                // An inlined function must always have a parent. An empty list of funcs
+                // indicates invalid debug information.
+                let parent = match stack.peek_mut() {
+                    Some(parent) => parent,
+                    None => return Err(DwarfErrorKind::UnexpectedInline.into()),
+                };
+
+                // Make sure there is correct line information for the call site of this inlined
+                // function. In general, a compiler should always output the call line and call file
+                // for inlined subprograms. If this info is missing, the lookup might return invalid
+                // line numbers.
+                //
+                // All the lines have been collected in the parent so just get the lines from the
+                // parent which belong to each range in the inlinee.
+                if let (Some(line), Some(file_id)) = (call_line, call_file) {
+                    let file = self.resolve_file(file_id).unwrap_or_default();
+                    let lines = &mut parent.lines;
+
+                    let mut index = 0;
+                    for range in range_buf.iter() {
+                        let range_begin = range.begin - self.inner.info.load_address;
+                        let range_end = range.end - self.inner.info.load_address;
+
+                        // Check if there is a line record covering the start of this range,
+                        // otherwise insert a new record pointing to the correct call location.
+                        if let Some(next) = lines.get(index) {
+                            if next.address > range_begin {
+                                let line_info = LineInfo {
+                                    address: range_begin,
+                                    size: Some(range_end.min(next.address) - range_begin),
+                                    file: file.clone(),
+                                    line,
+                                };
+
+                                lines.insert(index, line_info);
+                                index += 1;
+                            }
+                        }
+
+                        while index < lines.len() {
+                            let record = &mut lines[index];
+
+                            // Advance to the next range since we're done here.
+                            if record.address >= range_end {
+                                break;
+                            }
+
+                            index += 1;
+
+                            // Skip forward to the next line record that overlaps with our range.
+                            // Lines before belong to the parent function or another inlinee.
+                            let record_end = record.address + record.size.unwrap_or(0);
+                            if record_end <= range_begin {
+                                continue;
+                            }
+
+                            // Split the parent record if it exceeds the end of this range. We can
+                            // assume that record.size is set here since we passed the previous
+                            // condition.
+                            let split = if record_end > range_end {
+                                record.size = Some(range_end - record.address);
+
+                                Some(LineInfo {
+                                    address: range_end,
+                                    size: Some(record_end - range_end),
+                                    file: record.file.clone(),
+                                    line: record.line,
+                                })
+                            } else {
+                                None
+                            };
+
+                            if record.address < range_begin {
+                                // Fix the length of this line record to go up to the start of the
+                                // inline function. This effectively splits the previous record in
+                                // two.
+                                let max_size = range_begin - record.address;
+                                if record.size.map_or(true, |prev_size| prev_size > max_size) {
+                                    record.size = Some(max_size);
+                                }
+
+                                // For example: [0; 100) split around 20 will give [0; 20) and [20;
+                                // 100) so the size of the second is 100 - 20
+                                let size = record_end.min(range_end) - range_begin;
+
+                                // Insert a new record pointing to the correct call location. Note
+                                // that "base_dir" can be inherited safely here.
+                                let line_info = LineInfo {
+                                    address: range_begin,
+                                    size: Some(size),
+                                    file: file.clone(),
+                                    line,
+                                };
+
+                                lines.insert(index, line_info);
+                                index += 1;
+                            } else {
+                                record.file = file.clone();
+                                record.line = line;
+                            };
+
+                            // Insert the split record after mutating the previous one to avoid
+                            // borrowing issues. Do not skip it, since it may have to be split
+                            // further.
+                            if let Some(split) = split {
+                                lines.insert(index, split);
+                            }
+                        }
+
+                        // The range is not fully covered by the parent. Add a new record that
+                        // covers the remaining part.
+                        if let Some(prev) = index.checked_sub(1).and_then(|i| lines.get(i)) {
+                            let record_end = prev.address + prev.size.unwrap_or(0);
+                            if record_end < range_end {
+                                let line_info = LineInfo {
+                                    address: record_end,
+                                    size: Some(range_end - record_end),
+                                    file: file.clone(),
+                                    line,
+                                };
+
+                                lines.insert(index, line_info);
+                                index += 1;
+                            }
+                        }
+                    }
+                }
+            }
 
             let function = Function {
                 address: function_address,
@@ -671,63 +860,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 inline,
             };
 
-            if inline {
-                // An inlined function must always have a parent. An empty list of funcs
-                // indicates invalid debug information.
-                let parent = match stack.peek_mut() {
-                    Some(parent) => parent,
-                    None => return Err(DwarfErrorKind::UnexpectedInline.into()),
-                };
-
-                // Make sure there is correct line information for the call site of this inlined
-                // function. In general, a compiler should always output the call line and call
-                // file for inlined subprograms. If this info is missing, the lookup might
-                // return invalid line numbers.
-                if let (Some(line), Some(file_id)) = (call_line, call_file) {
-                    if let Some(file) = self.resolve_file(file_id)? {
-                        match parent
-                            .lines
-                            .binary_search_by_key(&function_address, |line| line.address)
-                        {
-                            Ok(idx) => {
-                                // We found a line record that points to this function. This happens
-                                // especially, if the function range overlaps exactly. Patch the
-                                // call info with the correct location.
-                                parent.lines[idx].file = file;
-                                parent.lines[idx].line = line;
-                            }
-                            Err(idx) => {
-                                let size = parent
-                                    .lines
-                                    .get(idx)
-                                    .map(|next| next.address - function_address);
-
-                                // There is no line record pointing to this function, so add one to
-                                // the correct call location. Note that "base_dir" can be inherited
-                                // safely here.
-                                let line_info = LineInfo {
-                                    address: function_address,
-                                    size,
-                                    file,
-                                    line,
-                                };
-
-                                parent.lines.insert(idx, line_info);
-                            }
-                        }
-                    }
-                }
-            }
-
             stack.push(depth, function)
         }
 
         // We're done, flush the remaining stack.
         stack.flush(0, &mut functions);
-
-        // Units are sorted by their address range in DWARF, but the functions within may occurr
-        // in any order. Sort the batch that was just written, therefore.
-        dmsort::sort_by_key(&mut functions, |f| f.address);
 
         Ok(functions)
     }
@@ -842,6 +979,7 @@ struct DwarfInfo<'data> {
     units: Vec<LazyCell<Option<Unit<'data>>>>,
     symbol_map: SymbolMap<'data>,
     load_address: u64,
+    kind: ObjectKind,
 }
 
 impl<'d> Deref for DwarfInfo<'d> {
@@ -858,6 +996,7 @@ impl<'d> DwarfInfo<'d> {
         sections: &'d DwarfSections<'d>,
         symbol_map: SymbolMap<'d>,
         load_address: u64,
+        kind: ObjectKind,
     ) -> Result<Self, DwarfError> {
         let inner = gimli::read::Dwarf {
             debug_abbrev: sections.debug_abbrev.to_gimli(),
@@ -886,6 +1025,7 @@ impl<'d> DwarfInfo<'d> {
             units,
             symbol_map,
             load_address,
+            kind,
         })
     }
 
@@ -1009,13 +1149,14 @@ impl<'d> DwarfDebugSession<'d> {
         dwarf: &D,
         symbol_map: SymbolMap<'d>,
         load_address: u64,
+        kind: ObjectKind,
     ) -> Result<Self, DwarfError>
     where
         D: Dwarf<'d>,
     {
         let sections = DwarfSections::from_dwarf(dwarf)?;
         let cell = SelfCell::try_new(Box::new(sections), |sections| {
-            DwarfInfo::parse(unsafe { &*sections }, symbol_map, load_address)
+            DwarfInfo::parse(unsafe { &*sections }, symbol_map, load_address, kind)
         })?;
 
         Ok(DwarfDebugSession { cell })

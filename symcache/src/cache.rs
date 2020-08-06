@@ -369,7 +369,7 @@ impl<'a, 'c> Iterator for Lookup<'a, 'c> {
 
         self.current = fun
             .parent(id)
-            .map(|parent_id| (fun.addr_start(), parent_id, &self.funcs[parent_id]));
+            .map(|parent_id| (addr, parent_id, &self.funcs[parent_id]));
 
         if let Ok(ref line_info) = line_result {
             self.inner = Some((
