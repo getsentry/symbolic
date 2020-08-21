@@ -17,6 +17,7 @@ pub use goblin::pe::exception::*;
 pub use goblin::pe::section_table::SectionTable;
 
 /// An error when dealing with [`PeObject`](struct.PeObject.html).
+#[non_exhaustive]
 #[derive(Debug, Fail)]
 pub enum PeError {
     /// The data in the PE file could not be parsed.

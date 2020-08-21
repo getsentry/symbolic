@@ -2,7 +2,6 @@
 
 use std::borrow::Cow;
 use std::fmt;
-use std::mem;
 use std::str;
 
 use failure::Fail;
@@ -69,8 +68,9 @@ static MIPS: &[&str] = &[
 /// This enumeration is represented as `u32` for C-bindings and lowlevel APIs.
 ///
 /// [`Arch`]: enum.Arch.html
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(u32)]
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum CpuFamily {
     /// Any other CPU family that is not explicitly supported.
     Unknown = 0,
@@ -242,9 +242,10 @@ pub struct UnknownArchError;
 ///
 /// [`cpu_family`]: enum.Arch.html#method.cpu_family
 /// [`Arch::name`]: enum.Arch.html#method.name
+#[repr(u32)]
+#[non_exhaustive]
 #[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[repr(u32)]
 pub enum Arch {
     Unknown = 0,
     X86 = 101,
@@ -528,9 +529,10 @@ pub struct UnknownLanguageError;
 /// This enumeration is represented as `u32` for C-bindings and lowlevel APIs.
 ///
 /// [`Name`]: struct.Name.html
+#[repr(u32)]
+#[non_exhaustive]
 #[allow(missing_docs)]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[repr(u32)]
 pub enum Language {
     Unknown = 0,
     C = 1,
@@ -541,8 +543,6 @@ pub enum Language {
     ObjCpp = 6,
     Rust = 7,
     Swift = 8,
-    #[doc(hidden)]
-    __Max = 9,
 }
 
 impl Language {
@@ -559,10 +559,17 @@ impl Language {
     /// println!("{:?}", Language::from_u32(1));
     /// ```
     pub fn from_u32(val: u32) -> Language {
-        if val >= (Language::__Max as u32) {
-            Language::Unknown
-        } else {
-            unsafe { mem::transmute(val) }
+        match val {
+            0 => Self::Unknown,
+            1 => Self::C,
+            2 => Self::Cpp,
+            3 => Self::D,
+            4 => Self::Go,
+            5 => Self::ObjC,
+            6 => Self::ObjCpp,
+            7 => Self::Rust,
+            8 => Self::Swift,
+            _ => Self::Unknown,
         }
     }
 
@@ -585,7 +592,7 @@ impl Language {
     /// ```
     pub fn name(self) -> &'static str {
         match self {
-            Language::Unknown | Language::__Max => "unknown",
+            Language::Unknown => "unknown",
             Language::C => "c",
             Language::Cpp => "cpp",
             Language::D => "d",
@@ -607,7 +614,7 @@ impl Default for Language {
 impl fmt::Display for Language {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let formatted = match *self {
-            Language::Unknown | Language::__Max => "unknown",
+            Language::Unknown => "unknown",
             Language::C => "C",
             Language::Cpp => "C++",
             Language::D => "D",
@@ -727,11 +734,6 @@ impl<'a> Name<'a> {
     where
         S: Into<Cow<'a, str>>,
     {
-        let lang = match lang {
-            Language::__Max => Language::Unknown,
-            _ => lang,
-        };
-
         Name {
             string: string.into(),
             lang,

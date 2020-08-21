@@ -33,6 +33,7 @@ const MAGIC_BIG: &[u8] = b"Microsoft C/C++ MSF 7.00\r\n\x1a\x44\x53\x00\x00\x00"
 pub use pdb;
 
 /// Variants of [`PdbError`](struct.PdbError.html).
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 pub enum PdbErrorKind {
     /// The PDB file is corrupted. See the cause for more information.
@@ -291,7 +292,8 @@ impl<'d> ObjectLike for PdbObject<'d> {
     }
 
     fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
-        Box::new(self.symbols())
+        // TODO: Avoid this transmute by introducing explicit lifetimes on the trait.
+        unsafe { std::mem::transmute(Box::new(self.symbols()) as DynIterator<'_, _>) }
     }
 
     fn symbol_map(&self) -> SymbolMap<'_> {

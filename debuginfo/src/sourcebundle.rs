@@ -72,6 +72,7 @@ lazy_static::lazy_static! {
 }
 
 /// Variants of [`SourceBundleError`](struct.SourceBundleError.html).
+#[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
 pub enum SourceBundleErrorKind {
     /// The source bundle container is damanged.

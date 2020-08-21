@@ -59,6 +59,7 @@ macro_rules! map_result {
 }
 
 /// An error when dealing with any kind of [`Object`](enum.Object.html).
+#[non_exhaustive]
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Fail)]
 pub enum ObjectError {
@@ -345,7 +346,7 @@ impl<'d> ObjectLike for Object<'d> {
     }
 
     fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
-        Box::new(self.symbols())
+        unsafe { std::mem::transmute(Box::new(self.symbols()) as DynIterator<'_, _>) }
     }
 
     fn has_debug_info(&self) -> bool {

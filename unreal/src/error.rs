@@ -1,6 +1,7 @@
 use failure::Fail;
 
 /// Errors related to parsing an UE4 crash file.
+#[non_exhaustive]
 #[derive(Fail, Debug)]
 pub enum Unreal4Error {
     /// Empty data blob received.
