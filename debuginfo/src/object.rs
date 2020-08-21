@@ -346,7 +346,7 @@ impl<'d> ObjectLike for Object<'d> {
     }
 
     fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
-        Box::new(self.symbols())
+        unsafe { std::mem::transmute(Box::new(self.symbols()) as DynIterator<'_, _>) }
     }
 
     fn has_debug_info(&self) -> bool {

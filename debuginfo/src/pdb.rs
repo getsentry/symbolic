@@ -292,7 +292,7 @@ impl<'d> ObjectLike for PdbObject<'d> {
     }
 
     fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
-        Box::new(self.symbols())
+        unsafe { std::mem::transmute(Box::new(self.symbols()) as DynIterator<'_, _>) }
     }
 
     fn symbol_map(&self) -> SymbolMap<'_> {
