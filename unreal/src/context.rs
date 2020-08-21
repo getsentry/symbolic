@@ -326,6 +326,27 @@ pub struct Unreal4Context {
     /// Platform specific properties.
     #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
     pub platform_properties: Option<Unreal4ContextPlatformProperties>,
+
+    /// Engine data.
+    #[cfg_attr(
+        feature = "with-serde",
+        serde(default, skip_serializing_if = "BTreeMap::is_empty")
+    )]
+    pub engine_data: BTreeMap<String, String>,
+
+    /// Game data.
+    #[cfg_attr(
+        feature = "with-serde",
+        serde(default, skip_serializing_if = "BTreeMap::is_empty")
+    )]
+    pub game_data: BTreeMap<String, String>,
+}
+
+fn load_data_bag(element: &Element) -> BTreeMap<String, String> {
+    element
+        .children()
+        .map(|child| (child.tag().name().to_string(), child.text().to_string()))
+        .collect()
 }
 
 impl Unreal4Context {
@@ -336,6 +357,12 @@ impl Unreal4Context {
         Ok(Unreal4Context {
             runtime_properties: Unreal4ContextRuntimeProperties::from_xml(&root),
             platform_properties: Unreal4ContextPlatformProperties::from_xml(&root),
+            engine_data: root
+                .find("EngineData")
+                .map_or_else(Default::default, load_data_bag),
+            game_data: root
+                .find("GameData")
+                .map_or_else(Default::default, load_data_bag),
         })
     }
 }
@@ -356,6 +383,22 @@ const ONLY_ROOT_AND_CHILD_NODES: &str = r#"<?xml version="1.0" encoding="UTF-8"?
 </FGenericCrashContext>
 "#;
 
+#[allow(dead_code)]
+const ROOT_WITH_GAME_AND_ENGINE_DATA: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<FGenericCrashContext>
+    <RuntimeProperties>
+    </RuntimeProperties>
+    <PlatformProperties>
+    </PlatformProperties>
+    <EngineData>
+        <RHI.IsGPUOverclocked>false</RHI.IsGPUOverclocked>
+    </EngineData>
+    <GameData>
+        <sentry>{&quot;release&quot;:"foo.bar.baz@1.0.0"}</sentry>
+    </GameData>
+</FGenericCrashContext>
+"#;
+
 #[test]
 fn test_get_runtime_properties_missing_element() {
     let root = Element::from_reader(ONLY_ROOT_NODE.as_bytes()).unwrap();
@@ -373,6 +416,23 @@ fn test_get_runtime_properties_no_children() {
     let root = Element::from_reader(ONLY_ROOT_AND_CHILD_NODES.as_bytes()).unwrap();
     let actual = Unreal4ContextRuntimeProperties::from_xml(&root).expect("default struct");
     assert_eq!(Unreal4ContextRuntimeProperties::default(), actual)
+}
+
+#[test]
+fn test_get_game_and_engine_data() {
+    let actual =
+        Unreal4Context::parse(&ROOT_WITH_GAME_AND_ENGINE_DATA.as_bytes()).expect("default struct");
+    assert_eq!(
+        actual
+            .engine_data
+            .get("RHI.IsGPUOverclocked")
+            .map(|x| x.as_str()),
+        Some("false")
+    );
+    assert_eq!(
+        actual.game_data.get("sentry").map(|x| x.as_str()),
+        Some(r#"{"release":"foo.bar.baz@1.0.0"}"#)
+    );
 }
 
 #[test]
