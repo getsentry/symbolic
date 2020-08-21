@@ -292,7 +292,8 @@ impl<'d> ObjectLike for PdbObject<'d> {
     }
 
     fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
-        Box::new(self.symbols())
+        // TODO: Avoid this transmute by introducing explicit lifetimes on the trait.
+        unsafe { std::mem::transmute(Box::new(self.symbols()) as DynIterator<'_, _>) }
     }
 
     fn symbol_map(&self) -> SymbolMap<'_> {
