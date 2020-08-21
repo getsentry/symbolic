@@ -4,10 +4,14 @@
 
 **Changes**:
 
-- Add missing unreal data bags (`EngineData` and `GameData`).  ([#257](https://github.com/getsentry/symbolic/pull/257))
+- Add missing unreal data attributes (`EngineData` and `GameData`). ([#257](https://github.com/getsentry/symbolic/pull/257))
 - Expose binary names for ELF and MachO ([#252](https://github.com/getsentry/symbolic/pull/252))
-- Mark enums as `non_exhaustive` ([#256](https://github.com/getsentry/symbolic/pull/256))
-- Add method to create Archive from bytes ([#250](https://github.com/getsentry/symbolic/pull/250))
+- Mark enums as `non_exhaustive`. ([#256](https://github.com/getsentry/symbolic/pull/256))
+- Add method to create Archive from bytes. ([#250](https://github.com/getsentry/symbolic/pull/250))
+
+**Bug Fixes**:
+
+- Fix compilation errors on nightly Rust due to a lifetime mismatch. This is temporarily solved with a statically verified unsafe transmute, which will be replaced in an upcoming breaking change. ([#258](https://github.com/getsentry/symbolic/pull/258))
 
 ## 7.4.0
 
