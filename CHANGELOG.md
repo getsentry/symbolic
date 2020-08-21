@@ -1,5 +1,14 @@
 # Changelog
 
+## 7.5.0
+
+**Changes**:
+
+- Add missing unreal data bags (`EngineData` and `GameData`).  ([#257](https://github.com/getsentry/symbolic/pull/257))
+- Expose binary names for ELF and MachO ([#252](https://github.com/getsentry/symbolic/pull/252))
+- Mark enums as `non_exhaustive` ([#256](https://github.com/getsentry/symbolic/pull/256))
+- Add method to create Archive from bytes ([#250](https://github.com/getsentry/symbolic/pull/250))
+
 ## 7.4.0
 
 **Deprecations**:
