@@ -445,3 +445,29 @@ fn test_pdb_functions() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[test]
+fn test_pdb_anonymous_namespace() -> Result<(), Error> {
+    // Regression test for ?A0x<hash> namespaces
+
+    let view = ByteView::open(fixture("windows/crash.pdb"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session()?;
+    let main_function = session
+        .functions()
+        .filter_map(|f| f.ok())
+        .find(|f| f.address == 0x2910)
+        .expect("main function at 0x2910");
+
+    let start_function = main_function
+        .inlinees
+        .iter()
+        .find(|f| f.address == 0x2a3d)
+        .expect("start function at 0x2a3d");
+
+    // was: "?A0xc3a0617d::start"
+    assert_eq!(start_function.name, "`anonymous namespace'::start");
+
+    Ok(())
+}
