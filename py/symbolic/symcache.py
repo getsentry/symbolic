@@ -73,7 +73,11 @@ class LineInfo(object):
         return strip_common_path_prefix(self.abs_path, self.comp_dir)
 
     def __str__(self):
-        return "%s:%s (%s)" % (self.function_name, self.line, self.rel_path,)
+        return "%s:%s (%s)" % (
+            self.function_name,
+            self.line,
+            self.rel_path,
+        )
 
     def __repr__(self):
         return "LineInfo(%s)" % (
