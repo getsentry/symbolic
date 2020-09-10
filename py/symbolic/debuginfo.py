@@ -138,7 +138,10 @@ class Object(RustObject):
         )
 
     def __repr__(self):
-        return "<Object %s %r>" % (self.debug_id, self.arch,)
+        return "<Object %s %r>" % (
+            self.debug_id,
+            self.arch,
+        )
 
 
 class ObjectRef(object):
@@ -165,7 +168,10 @@ class ObjectRef(object):
         self.name = self.code_file
 
     def __repr__(self):
-        return "<ObjectRef %s %r>" % (self.debug_id, self.arch,)
+        return "<ObjectRef %s %r>" % (
+            self.debug_id,
+            self.arch,
+        )
 
 
 class ObjectLookup(object):

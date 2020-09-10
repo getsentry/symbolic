@@ -634,6 +634,15 @@ impl DebugSession for PdbDebugSession<'_> {
     }
 }
 
+/// Checks whether the given name declares an anonymous namespace.
+///
+/// ID records specify the mangled format for anonymous namespaces: `?A0x<id>`, where `id` is a hex
+/// identifier of the namespace. Demanglers usually resolve this as "anonymous namespace".
+fn is_anonymous_namespace(name: &str) -> bool {
+    name.strip_prefix("?A0x")
+        .map_or(false, |rest| u32::from_str_radix(rest, 16).is_ok())
+}
+
 /// Formatter for function types.
 ///
 /// This formatter currently only contains the minimum implementation requried to format inline
@@ -693,7 +702,13 @@ impl<'u, 'd> TypeFormatter<'u, 'd> {
                 write!(target, "\"")?;
             }
             Ok(pdb::IdData::String(data)) => {
-                write!(target, "{}", data.name.to_string())?;
+                let mut string = data.name.to_string();
+
+                if is_anonymous_namespace(&string) {
+                    string = Cow::Borrowed("`anonymous namespace'");
+                }
+
+                write!(target, "{}", string)?;
             }
             Ok(pdb::IdData::UserDefinedTypeSource(_)) => {
                 // nothing to do.
