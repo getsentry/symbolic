@@ -352,7 +352,7 @@ fn load_data_bag(element: &Element) -> BTreeMap<String, String> {
 impl Unreal4Context {
     /// Parses the unreal context XML file.
     pub fn parse(data: &[u8]) -> Result<Self, Unreal4Error> {
-        let root = Element::from_reader(data).map_err(Unreal4Error::InvalidXml)?;
+        let root = Element::from_reader(data)?;
 
         Ok(Unreal4Context {
             runtime_properties: Unreal4ContextRuntimeProperties::from_xml(&root),
