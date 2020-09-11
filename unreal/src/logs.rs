@@ -35,7 +35,7 @@ impl Unreal4LogEntry {
     /// a vector of Unreal4LogEntry.
     pub fn parse(log_slice: &[u8], limit: usize) -> Result<Vec<Self>, Unreal4Error> {
         let mut fallback_timestamp = None;
-        let logs_utf8 = std::str::from_utf8(log_slice).map_err(Unreal4Error::InvalidLogEntry)?;
+        let logs_utf8 = std::str::from_utf8(log_slice)?;
 
         if let Some(first_line) = logs_utf8.lines().next() {
             // First line includes the timestamp of the following 100 and some lines until
