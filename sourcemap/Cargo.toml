@@ -16,5 +16,4 @@ source code or stack traces.
 edition = "2018"
 
 [dependencies]
-failure = "0.1.5"
 sourcemap = "5.0.0"
