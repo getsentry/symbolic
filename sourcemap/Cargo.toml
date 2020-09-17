@@ -15,6 +15,9 @@ source code or stack traces.
 """
 edition = "2018"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 failure = "0.1.5"
 sourcemap = "5.0.0"

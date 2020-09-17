@@ -36,7 +36,7 @@ test: test-rust test-python
 .PHONY: test
 
 test-rust:
-	cargo test --all --all-features
+	cargo test --workspace --all-features
 .PHONY: test-rust
 
 test-python: .venv/bin/python
@@ -67,7 +67,7 @@ lint: lint-rust lint-python
 
 lint-rust:
 	@rustup component add clippy --toolchain stable 2> /dev/null
-	cargo +stable clippy --all-features --all --tests --examples -- -D clippy::all
+	cargo +stable clippy --all-features --workspace --tests --examples -- -D clippy::all
 .PHONY: lint-rust
 
 lint-python: .venv/bin/python

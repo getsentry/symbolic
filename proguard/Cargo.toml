@@ -16,6 +16,9 @@ optimized applications.
 """
 edition = "2018"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 proguard = { version = "4.0.1", features = ["uuid"] }
 symbolic-common = { version = "7.5.0", path = "../common" }

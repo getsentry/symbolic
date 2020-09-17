@@ -1,0 +1,44 @@
+[package]
+name = "symbolic"
+version = "7.5.0"
+license = "MIT"
+authors = [
+    "Armin Ronacher <armin.ronacher@active-4.com>",
+    "Jan Michael Auer <mail@jauer.org>",
+]
+documentation = "https://docs.rs/symbolic"
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+readme = "README.md"
+description = """
+A library to symbolicate and process stack traces from native applications,
+minidumps, Unreal Engine 4, minified JavaScripts or ProGuard optimized Android apps.
+"""
+edition = "2018"
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = ["debuginfo"]
+common-serde = ["symbolic-common/serde"]
+debuginfo = ["symbolic-debuginfo"]
+debuginfo-serde = ["debuginfo", "common-serde"]
+demangle = ["symbolic-demangle"]
+minidump = ["symbolic-minidump", "debuginfo"]
+minidump-serde = ["minidump", "debuginfo-serde", "symbolic-minidump/serde"]
+proguard = ["symbolic-proguard"]
+sourcemap = ["symbolic-sourcemap"]
+symcache = ["symbolic-symcache", "debuginfo"]
+unreal = ["symbolic-unreal"]
+unreal-serde = ["unreal", "common-serde", "symbolic-unreal/serde"]
+
+[dependencies]
+symbolic-common = { version = "7.5.0", path = "../common" }
+symbolic-debuginfo = { version = "7.5.0", path = "../debuginfo", optional = true }
+symbolic-demangle = { version = "7.5.0", path = "../demangle", optional = true }
+symbolic-minidump = { version = "7.5.0", path = "../minidump", optional = true }
+symbolic-proguard = { version = "7.5.0", path = "../proguard", optional = true }
+symbolic-sourcemap = { version = "7.5.0", path = "../sourcemap", optional = true }
+symbolic-symcache = { version = "7.5.0", path = "../symcache", optional = true }
+symbolic-unreal = { version = "7.5.0", path = "../unreal", optional = true }

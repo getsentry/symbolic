@@ -14,6 +14,7 @@ traces from native applications, minidumps, minified JavaScripts or ProGuard
 optimized Android apps.
 """
 edition = "2018"
+publish = false
 
 [lib]
 name = "symbolic"

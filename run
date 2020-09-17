@@ -26,4 +26,4 @@ EXAMPLE="$1";
 shift
 
 set -x
-cargo run --quiet --all-features --example $EXAMPLE $FLAGS -- "$@"
+cargo run --quiet --all-features --package $EXAMPLE $FLAGS -- "$@"

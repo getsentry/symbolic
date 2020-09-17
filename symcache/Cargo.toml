@@ -19,6 +19,9 @@ exclude = [
     "tests/**/*",
 ]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 dmsort = "1.0.0"
 failure = "0.1.5"

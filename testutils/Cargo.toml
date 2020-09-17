@@ -5,4 +5,7 @@ license = "MIT"
 edition = "2018"
 publish = false
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
