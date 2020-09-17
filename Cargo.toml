@@ -42,7 +42,7 @@ proguard = ["symbolic-proguard"]
 sourcemap = ["symbolic-sourcemap"]
 symcache = ["symbolic-symcache", "debuginfo"]
 unreal = ["symbolic-unreal"]
-unreal-serde = ["unreal", "common-serde", "symbolic-unreal/with-serde"]
+unreal-serde = ["unreal", "common-serde", "symbolic-unreal/serde"]
 
 [dependencies]
 symbolic-common = { version = "7.5.0", path = "common" }
