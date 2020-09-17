@@ -41,7 +41,7 @@ int main() {
 In your application, point to the symbolic include directory and specify the symbolic library:
 
 ```bash
-$(CC) -Isymbolic/crates/symbolic-cabi/include -Lsymbolic/target/release -lsymbolic_cabi -o myprogram main.c
+$(CC) -Isymbolic/symbolic-cabi/include -Lsymbolic/target/release -lsymbolic_cabi -o myprogram main.c
 ```
 
 ## Development
