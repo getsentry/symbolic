@@ -30,12 +30,12 @@ include = [
 all-features = true
 
 [dependencies]
-failure = "0.1.5"
 lazy_static = "1.4.0"
 regex = "1.3.5"
 serde = { version = "1.0.94", optional = true }
 symbolic-common = { version = "7.5.0", path = "../symbolic-common" }
 symbolic-debuginfo = { version = "7.5.0", path = "../symbolic-debuginfo" }
+thiserror = "1.0.20"
 
 [build-dependencies]
 cc = { version = "1.0.50", features = ["parallel"] }
