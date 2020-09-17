@@ -64,6 +64,7 @@ fn test_get_apple_crash_report() {
 }
 
 #[test]
+#[cfg(feature = "serde")]
 fn test_contexts_runtime_properties() {
     let ue4_crash = get_unreal_crash().expect("test crash file loads");
 
