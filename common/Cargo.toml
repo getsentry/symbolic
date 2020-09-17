@@ -19,7 +19,6 @@ edition = "2018"
 
 [dependencies]
 debugid = "0.7.1"
-failure = "0.1.5"
 memmap = "0.7.0"
 stable_deref_trait = "1.1.1"
 serde_ = { package = "serde", version = "1.0.88", optional = true, features = ["derive"] }
@@ -30,7 +29,6 @@ symbolic-testutils = { path = "../testutils" }
 tempfile = "3.1.0"
 
 [features]
-default = []
 serde = ["serde_", "debugid/serde"]
 
 [badges]

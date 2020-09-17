@@ -4,8 +4,6 @@ use std::borrow::Cow;
 use std::fmt;
 use std::str;
 
-use failure::Fail;
-
 #[cfg(feature = "serde")]
 use serde_::{Deserialize, Serialize};
 
@@ -223,9 +221,16 @@ impl Default for CpuFamily {
 }
 
 /// An error returned for an invalid [`Arch`](enum.Arch.html).
-#[derive(Clone, Copy, Debug, Fail)]
-#[fail(display = "unknown architecture")]
+#[derive(Clone, Copy, Debug)]
 pub struct UnknownArchError;
+
+impl fmt::Display for UnknownArchError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "unknown architecture")
+    }
+}
+
+impl std::error::Error for UnknownArchError {}
 
 /// An enumeration of CPU architectures and variants.
 ///
@@ -516,9 +521,16 @@ impl str::FromStr for Arch {
 }
 
 /// An error returned for an invalid [`Language`](enum.Language.html).
-#[derive(Clone, Copy, Debug, Fail)]
-#[fail(display = "unknown language")]
+#[derive(Clone, Copy, Debug)]
 pub struct UnknownLanguageError;
+
+impl fmt::Display for UnknownLanguageError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "unknown language")
+    }
+}
+
+impl std::error::Error for UnknownLanguageError {}
 
 /// A programming language declared in debugging information.
 ///
