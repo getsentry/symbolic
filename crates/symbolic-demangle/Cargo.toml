@@ -27,7 +27,7 @@ all-features = true
 cpp_demangle = "0.3.0"
 msvc-demangler = "0.8.0"
 rustc-demangle = "0.1.16"
-symbolic-common = { version = "7.5.0", path = "../common" }
+symbolic-common = { version = "7.5.0", path = "../symbolic-common" }
 
 [build-dependencies]
 cc = "1.0.50"

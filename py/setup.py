@@ -19,8 +19,8 @@ with open("README") as f:
     readme = f.read()
 
 
-if os.path.isfile("../cabi/Cargo.toml"):
-    with open("../cabi/Cargo.toml") as f:
+if os.path.isfile("../crates/symbolic-cabi/Cargo.toml"):
+    with open("../crates/symbolic-cabi/Cargo.toml") as f:
         version = _version_re.search(f.read()).group(1)
 else:
     with open("version.txt") as f:
@@ -52,7 +52,7 @@ def build_native(spec):
         target = "debug"
 
     # Step 0: find rust sources
-    if not os.path.isfile("../cabi/Cargo.toml"):
+    if not os.path.isfile("../crates/symbolic-cabi/Cargo.toml"):
         scratchpad = tempfile.mkdtemp()
 
         @atexit.register
@@ -79,7 +79,7 @@ def build_native(spec):
     spec.add_cffi_module(
         module_path="symbolic._lowlevel",
         dylib=lambda: build.find_dylib("symbolic_cabi", in_path="target/%s" % target),
-        header_filename=lambda: build.find_header("symbolic.h", in_path="cabi/include"),
+        header_filename=lambda: build.find_header("symbolic.h", in_path="crates/symbolic-cabi/include"),
         rtld_flags=rtld_flags,
     )
 

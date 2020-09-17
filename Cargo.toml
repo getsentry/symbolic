@@ -1,16 +1,6 @@
 [workspace]
 members = [
-    "cabi",
-    "common",
-    "debuginfo",
-    "demangle",
-    "minidump",
-    "proguard",
-    "sourcemap",
-    "symbolic",
-    "symcache",
-    "testutils",
-    "unreal",
+    "crates/*",
     "examples/*",
 ]
 

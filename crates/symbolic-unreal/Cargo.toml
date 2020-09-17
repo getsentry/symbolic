@@ -39,4 +39,4 @@ serde_ = { package = "serde", version = "1.0.94", optional = true, features = ["
 
 [dev-dependencies]
 insta = "0.15.0"
-symbolic-testutils = { path = "../testutils" }
+symbolic-testutils = { path = "../symbolic-testutils" }
