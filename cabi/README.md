@@ -14,7 +14,7 @@ Building the dynamic library has the same requirements as building the `symbolic
 - A checkout of this repository and all its GIT submodules.
 
 To build, run `make release` in this directory. This creates a release build of the dynamic library
-in `cabi/target/release/libsymbolic.*`.
+in `target/release/libsymbolic.*`.
 
 ## Usage
 
@@ -41,7 +41,7 @@ int main() {
 In your application, point to the symbolic include directory and specify the symbolic library:
 
 ```bash
-$(CC) -Isymbolic/cabi/include -Lsymbolic/cabi/target/release -lsymbolic -o myprogram main.c
+$(CC) -Isymbolic/cabi/include -Lsymbolic/target/release -lsymbolic_cabi -o myprogram main.c
 ```
 
 ## Development

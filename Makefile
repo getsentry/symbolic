@@ -8,7 +8,6 @@ check: style lint
 
 clean:
 	cargo clean
-	cargo clean --manifest-path cabi/Cargo.toml
 	rm -rf .venv
 .PHONY: clean
 
@@ -52,8 +51,7 @@ style: style-rust style-python
 
 style-rust:
 	@rustup component add rustfmt --toolchain stable 2> /dev/null
-	cargo +stable fmt -- --check
-	cd cabi && cargo +stable fmt -- --check
+	cargo +stable fmt --all -- --check
 .PHONY: style-rust
 
 style-python: .venv/bin/python

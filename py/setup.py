@@ -44,7 +44,7 @@ class CustomSDist(sdist):
 
 
 def build_native(spec):
-    cmd = ["cargo", "build"]
+    cmd = ["cargo", "build", "-p", "symbolic-cabi"]
     if not DEBUG_BUILD:
         cmd.append("--release")
         target = "release"
@@ -64,9 +64,9 @@ def build_native(spec):
 
         zf = zipfile.ZipFile("rustsrc.zip")
         zf.extractall(scratchpad)
-        rust_path = scratchpad + "/rustsrc/cabi"
+        rust_path = scratchpad + "/rustsrc"
     else:
-        rust_path = "../cabi"
+        rust_path = ".."
         scratchpad = None
 
     # Step 1: build the rust library
@@ -78,8 +78,8 @@ def build_native(spec):
         rtld_flags.append("NODELETE")
     spec.add_cffi_module(
         module_path="symbolic._lowlevel",
-        dylib=lambda: build.find_dylib("symbolic", in_path="target/%s" % target),
-        header_filename=lambda: build.find_header("symbolic.h", in_path="include"),
+        dylib=lambda: build.find_dylib("symbolic_cabi", in_path="target/%s" % target),
+        header_filename=lambda: build.find_header("symbolic.h", in_path="cabi/include"),
         rtld_flags=rtld_flags,
     )
 

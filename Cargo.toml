@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "cabi",
     "common",
     "debuginfo",
     "demangle",
@@ -12,3 +13,7 @@ members = [
     "unreal",
     "examples/*",
 ]
+
+[profile.release]
+debug = true
+lto = true

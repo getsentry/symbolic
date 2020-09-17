@@ -218,11 +218,12 @@ pub enum SymbolicErrorCode {
     AppleCrashReportParseErrorInvalidIncidentIdentifier = 8002,
     AppleCrashReportParseErrorInvalidReportVersion = 8003,
     AppleCrashReportParseErrorInvalidTimestamp = 8004,
+    AppleCrashReportParseErrorInvalidImageIdentifier = 8005,
 }
 
 impl SymbolicErrorCode {
     /// This maps all errors that can possibly happen.
-    #[allow(clippy::cyclomatic_complexity)]
+    // #[allow(clippy::cyclomatic_complexity)]
     pub fn from_error(error: &Error) -> SymbolicErrorCode {
         for cause in error.iter_chain() {
             if cause.downcast_ref::<Panic>().is_some() {
@@ -387,6 +388,9 @@ impl SymbolicErrorCode {
                     ParseError::Io(_) => SymbolicErrorCode::AppleCrashReportParseErrorIo,
                     ParseError::InvalidIncidentIdentifier(_) => {
                         SymbolicErrorCode::AppleCrashReportParseErrorInvalidIncidentIdentifier
+                    }
+                    ParseError::InvalidImageIdentifier(_) => {
+                        SymbolicErrorCode::AppleCrashReportParseErrorInvalidImageIdentifier
                     }
                     ParseError::InvalidReportVersion(_) => {
                         SymbolicErrorCode::AppleCrashReportParseErrorInvalidReportVersion
