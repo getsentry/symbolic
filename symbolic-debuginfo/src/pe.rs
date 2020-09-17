@@ -5,8 +5,8 @@ use std::fmt;
 use std::io::Cursor;
 use std::marker::PhantomData;
 
-use failure::Fail;
 use goblin::{error::Error as GoblinError, pe};
+use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
@@ -18,11 +18,11 @@ pub use goblin::pe::section_table::SectionTable;
 
 /// An error when dealing with [`PeObject`](struct.PeObject.html).
 #[non_exhaustive]
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum PeError {
     /// The data in the PE file could not be parsed.
-    #[fail(display = "invalid PE file")]
-    BadObject(#[fail(cause)] GoblinError),
+    #[error("invalid PE file")]
+    BadObject(#[from] GoblinError),
 }
 
 /// Detects if the PE is a packer stub.

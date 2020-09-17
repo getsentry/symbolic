@@ -12,13 +12,13 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use failure::Fail;
 use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Range};
 use gimli::{constants, UnitSectionOffset};
 use lazycell::LazyCell;
+use thiserror::Error;
 
-use symbolic_common::{derive_failure, AsSelf, Language, Name, SelfCell};
+use symbolic_common::{AsSelf, Language, Name, SelfCell};
 
 use crate::base::*;
 use crate::private::FunctionStack;
@@ -42,41 +42,29 @@ type IncompleteLineNumberProgram<'a> = gimli::read::IncompleteLineProgram<Slice<
 type LineNumberProgramHeader<'a> = gimli::read::LineProgramHeader<Slice<'a>>;
 type LineProgramFileEntry<'a> = gimli::read::FileEntry<Slice<'a>>;
 
-/// Variants of [`DwarfError`](struct.DwarfError.html).
+/// An error handling [`DWARF`](trait.Dwarf.html) debugging information.
 #[non_exhaustive]
-#[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
-pub enum DwarfErrorKind {
+#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
+pub enum DwarfError {
     /// A compilation unit referenced by index does not exist.
-    #[fail(display = "compilation unit for offset {} does not exist", _0)]
+    #[error("compilation unit for offset {0} does not exist")]
     InvalidUnitRef(usize),
 
     /// A file record referenced by index does not exist.
-    #[fail(display = "referenced file {} does not exist", _0)]
+    #[error("referenced file {0} does not exist")]
     InvalidFileRef(u64),
 
     /// An inline record was encountered without an inlining parent.
-    #[fail(display = "unexpected inline function without parent")]
+    #[error("unexpected inline function without parent")]
     UnexpectedInline,
 
     /// The debug_ranges of a function are invalid.
-    #[fail(display = "function with inverted address range")]
+    #[error("function with inverted address range")]
     InvertedFunctionRange,
 
     /// The DWARF file is corrupted. See the cause for more information.
-    #[fail(display = "corrupted dwarf debug data")]
-    CorruptedData,
-}
-
-derive_failure!(
-    DwarfError,
-    DwarfErrorKind,
-    doc = "An error handling [`DWARF`](trait.Dwarf.html) debugging information.",
-);
-
-impl From<gimli::read::Error> for DwarfError {
-    fn from(error: gimli::read::Error) -> Self {
-        error.context(DwarfErrorKind::CorruptedData).into()
-    }
+    #[error("corrupted dwarf debug data")]
+    CorruptedData(#[from] gimli::read::Error),
 }
 
 /// DWARF section information including its data.
@@ -526,7 +514,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         if low_pc > high_pc {
             // TODO: consider swallowing errors here?
-            return Err(DwarfErrorKind::InvertedFunctionRange.into());
+            return Err(DwarfError::InvertedFunctionRange);
         }
 
         range_buf.push(Range {
@@ -725,7 +713,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 // indicates invalid debug information.
                 let parent = match stack.peek_mut() {
                     Some(parent) => parent,
-                    None => return Err(DwarfErrorKind::UnexpectedInline.into()),
+                    None => return Err(DwarfError::UnexpectedInline),
                 };
 
                 // Make sure there is correct line information for the call site of this inlined
@@ -1064,7 +1052,7 @@ impl<'d> DwarfInfo<'d> {
 
         let index = match search_result {
             Ok(index) => index,
-            Err(0) => return Err(DwarfErrorKind::InvalidUnitRef(offset.0).into()),
+            Err(0) => return Err(DwarfError::InvalidUnitRef(offset.0)),
             Err(next_index) => next_index - 1,
         };
 
@@ -1075,7 +1063,7 @@ impl<'d> DwarfInfo<'d> {
             }
         }
 
-        Err(DwarfErrorKind::InvalidUnitRef(offset.0).into())
+        Err(DwarfError::InvalidUnitRef(offset.0))
     }
 
     /// Returns an iterator over all compilation units.

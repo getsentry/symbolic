@@ -2,8 +2,8 @@
 
 use std::borrow::Cow;
 
-use failure::Fail;
 use goblin::Hint;
+use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
@@ -61,39 +61,39 @@ macro_rules! map_result {
 /// An error when dealing with any kind of [`Object`](enum.Object.html).
 #[non_exhaustive]
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum ObjectError {
     /// The object file format is not supported.
-    #[fail(display = "unsupported object file format")]
+    #[error("unsupported object file format")]
     UnsupportedObject,
 
     /// An error in a Breakpad ASCII symbol.
-    #[fail(display = "failed to process breakpad file")]
-    Breakpad(#[fail(cause)] BreakpadError),
+    #[error("failed to process breakpad file")]
+    Breakpad(#[from] BreakpadError),
 
     /// An error in an ELF file.
-    #[fail(display = "failed to process elf file")]
-    Elf(#[fail(cause)] ElfError),
+    #[error("failed to process elf file")]
+    Elf(#[from] ElfError),
 
     /// An error in a Mach object.
-    #[fail(display = "failed to process macho file")]
-    MachO(#[fail(cause)] MachError),
+    #[error("failed to process macho file")]
+    MachO(#[from] MachError),
 
     /// An error in a Program Database.
-    #[fail(display = "failed to process pdb file")]
-    Pdb(#[fail(cause)] PdbError),
+    #[error("failed to process pdb file")]
+    Pdb(#[from] PdbError),
 
     /// An error in a Portable Executable.
-    #[fail(display = "failed to process pe file")]
-    Pe(#[fail(cause)] PeError),
+    #[error("failed to process pe file")]
+    Pe(#[from] PeError),
 
     /// An error in DWARF debugging information.
-    #[fail(display = "failed to process dwarf info")]
-    Dwarf(#[fail(cause)] DwarfError),
+    #[error("failed to process dwarf info")]
+    Dwarf(#[from] DwarfError),
 
     /// An error in source bundles.
-    #[fail(display = "failed to process source bundle")]
-    SourceBundle(#[fail(cause)] SourceBundleError),
+    #[error("failed to process source bundle")]
+    SourceBundle(#[from] SourceBundleError),
 }
 
 /// Tries to infer the object type from the start of the given buffer.

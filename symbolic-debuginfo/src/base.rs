@@ -4,14 +4,19 @@ use std::iter::FromIterator;
 use std::ops::{Bound, Deref, RangeBounds};
 use std::str::FromStr;
 
-use failure::Fail;
-
 use symbolic_common::{clean_path, join_path, Arch, CodeId, DebugId, Name};
 
 /// An error returned for unknown or invalid `ObjectKinds`.
-#[derive(Debug, Fail, Clone, Copy)]
-#[fail(display = "unknown object class")]
+#[derive(Clone, Copy, Debug)]
 pub struct UnknownObjectKindError;
+
+impl fmt::Display for UnknownObjectKindError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "unknown object class")
+    }
+}
+
+impl std::error::Error for UnknownObjectKindError {}
 
 /// Represents the designated use of the object file and hints at its contents.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
@@ -123,9 +128,16 @@ impl FromStr for ObjectKind {
 }
 
 /// An error returned for unknown or invalid [`FileFormats`](enum.FileFormat.html).
-#[derive(Debug, Fail, Clone, Copy)]
-#[fail(display = "unknown file format")]
+#[derive(Clone, Copy, Debug)]
 pub struct UnknownFileFormatError;
+
+impl fmt::Display for UnknownFileFormatError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "unknown file format")
+    }
+}
+
+impl std::error::Error for UnknownFileFormatError {}
 
 /// Represents the physical object file format.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
