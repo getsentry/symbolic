@@ -80,8 +80,7 @@ format: format-rust format-python
 
 format-rust:
 	@rustup component add rustfmt --toolchain stable 2> /dev/null
-	cargo +stable fmt
-	cd cabi && cargo +stable fmt
+	cargo +stable fmt --all
 .PHONY: format-rust
 
 format-python: .venv/bin/python

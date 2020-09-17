@@ -79,7 +79,9 @@ def build_native(spec):
     spec.add_cffi_module(
         module_path="symbolic._lowlevel",
         dylib=lambda: build.find_dylib("symbolic_cabi", in_path="target/%s" % target),
-        header_filename=lambda: build.find_header("symbolic.h", in_path="crates/symbolic-cabi/include"),
+        header_filename=lambda: build.find_header(
+            "symbolic.h", in_path="crates/symbolic-cabi/include"
+        ),
         rtld_flags=rtld_flags,
     )
 
