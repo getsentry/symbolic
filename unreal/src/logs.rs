@@ -3,9 +3,6 @@ use chrono::{DateTime, TimeZone, Utc};
 use lazy_static::lazy_static;
 use regex::Regex;
 
-#[cfg(feature = "with-serde")]
-use serde::Serialize;
-
 use crate::error::Unreal4Error;
 
 lazy_static! {
@@ -16,14 +13,15 @@ lazy_static! {
 }
 
 /// A log entry from an Unreal Engine 4 crash.
-#[cfg_attr(feature = "with-serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(serde_::Serialize))]
+#[cfg_attr(feature = "serde", serde(crate = "serde_"))]
 pub struct Unreal4LogEntry {
     /// The timestamp of the message, when available.
-    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub timestamp: Option<DateTime<Utc>>,
 
     /// The component that issued the log, when available.
-    #[cfg_attr(feature = "with-serde", serde(skip_serializing_if = "Option::is_none"))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub component: Option<String>,
 
     /// The log message.
