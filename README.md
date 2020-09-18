@@ -40,31 +40,7 @@ Symbolic provides the following functionality:
 
 ## Rust Usage
 
-Add `symbolic` as a dependency to your `Cargo.toml`. You will most likely want to activate some of
-the features:
-
-- **`debuginfo`** (default): Contains support for various object file formats and debugging
-  information. Currently, this comprises MachO and ELF (with DWARF debugging), PE and PDB, as well
-  as Breakpad symbols.
-- **`demangle`**: Demangling for Rust, C++, Swift and Objective C symbols. This feature requires a
-  C++14 compiler on the PATH.
-- **`minidump`**: Rust bindings for the Breakpad Minidump processor. Additionally, this includes
-  facilities to extract stack unwinding information (sometimes called CFI) from object files. This
-  feature requires a C++11 compiler on the PATH.
-- **`proguard`**: Processing of Proguard mapping files to look up mangled Java function paths.
-- **`sourcemap`**: Processing and expansion of JavaScript source maps, as well as lookups for
-  minified function names.
-- **`symcache`**: An optimized, platform-independent storage for common debugging information. This
-  allows blazing fast symbolication of instruction addresses to function names and file locations.
-- **`unreal`**: Processing of Unreal Engine 4 crash reports.
-
-There are also alternate versions for some of the above features that additionally add
-implementations for `serde::{Deserialize, Serialize}` on suitable types:
-
-- **`common-serde`**
-- **`debuginfo-serde`**
-- **`minidump-serde`**
-- **`unreal-serde`**
+The Rust crates are published to [Crates.io](https://crates.io/crates/symbolic) and documentation is available on [docs.rs](https://docs.rs/symbolic/latest/symbolic/).
 
 ## Python Usage
 
