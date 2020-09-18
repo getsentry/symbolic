@@ -48,7 +48,6 @@ const EMPTY_FUNCTION: RuntimeFunction = RuntimeFunction {
 /// An error returned by [`AsciiCfiWriter`](struct.AsciiCfiWriter.html).
 #[non_exhaustive]
 #[derive(Debug, Error)]
-#[allow(clippy::large_enum_variant)]
 pub enum CfiError {
     /// Required debug sections are missing in the `Object` file.
     #[error("missing cfi debug sections")]
@@ -60,7 +59,7 @@ pub enum CfiError {
 
     /// The debug information in the `Object` file is invalid.
     #[error("bad debug information")]
-    BadDebugInfo(#[from] ObjectError),
+    BadDebugInfo(#[from] Box<ObjectError>),
 
     /// The `Object`s architecture is not supported by symbolic.
     #[error("unsupported architecture")]
@@ -81,25 +80,25 @@ pub enum CfiError {
 
 impl From<BreakpadError> for CfiError {
     fn from(e: BreakpadError) -> Self {
-        ObjectError::from(e).into()
+        Box::new(ObjectError::from(e)).into()
     }
 }
 
 impl From<pdb::Error> for CfiError {
     fn from(e: pdb::Error) -> Self {
-        ObjectError::from(PdbError::from(e)).into()
+        Box::new(ObjectError::from(PdbError::from(e))).into()
     }
 }
 
 impl From<GoblinError> for CfiError {
     fn from(e: GoblinError) -> Self {
-        ObjectError::from(ElfError::from(e)).into()
+        Box::new(ObjectError::from(ElfError::from(e))).into()
     }
 }
 
 impl From<GimliError> for CfiError {
     fn from(e: GimliError) -> Self {
-        ObjectError::from(DwarfError::from(e)).into()
+        Box::new(ObjectError::from(DwarfError::from(e))).into()
     }
 }
 

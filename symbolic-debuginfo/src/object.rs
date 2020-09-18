@@ -60,7 +60,6 @@ macro_rules! map_result {
 
 /// An error when dealing with any kind of [`Object`](enum.Object.html).
 #[non_exhaustive]
-#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Error)]
 pub enum ObjectError {
     /// The object file format is not supported.
