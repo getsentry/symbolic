@@ -223,34 +223,36 @@ pub enum SymbolicErrorCode {
 impl SymbolicErrorCode {
     /// This maps all errors that can possibly happen.
     // #[allow(clippy::cyclomatic_complexity)]
-    pub fn from_error(mut error: &dyn std::error::Error) -> SymbolicErrorCode {
-        while let Some(cause) = error.source() {
-            if cause.downcast_ref::<Panic>().is_some() {
+    pub fn from_error(error: &(dyn std::error::Error + 'static)) -> SymbolicErrorCode {
+        let mut source = Some(error);
+
+        while let Some(error) = source {
+            if error.downcast_ref::<Panic>().is_some() {
                 return SymbolicErrorCode::Panic;
             }
 
             use std::io::Error as IoError;
-            if cause.downcast_ref::<IoError>().is_some() {
+            if error.downcast_ref::<IoError>().is_some() {
                 return SymbolicErrorCode::IoError;
             }
 
             use symbolic::common::{ParseDebugIdError, UnknownArchError, UnknownLanguageError};
-            if cause.downcast_ref::<UnknownArchError>().is_some() {
+            if error.downcast_ref::<UnknownArchError>().is_some() {
                 return SymbolicErrorCode::UnknownArchError;
-            } else if cause.downcast_ref::<UnknownLanguageError>().is_some() {
+            } else if error.downcast_ref::<UnknownLanguageError>().is_some() {
                 return SymbolicErrorCode::UnknownLanguageError;
-            } else if cause.downcast_ref::<ParseDebugIdError>().is_some() {
+            } else if error.downcast_ref::<ParseDebugIdError>().is_some() {
                 return SymbolicErrorCode::ParseDebugIdError;
             }
 
             use symbolic::debuginfo::{
                 dwarf::DwarfError, ObjectError, UnknownFileFormatError, UnknownObjectKindError,
             };
-            if cause.downcast_ref::<UnknownObjectKindError>().is_some() {
+            if error.downcast_ref::<UnknownObjectKindError>().is_some() {
                 return SymbolicErrorCode::UnknownObjectKindError;
-            } else if cause.downcast_ref::<UnknownFileFormatError>().is_some() {
+            } else if error.downcast_ref::<UnknownFileFormatError>().is_some() {
                 return SymbolicErrorCode::UnknownFileFormatError;
-            } else if let Some(error) = cause.downcast_ref::<ObjectError>() {
+            } else if let Some(error) = error.downcast_ref::<ObjectError>() {
                 return match error {
                     ObjectError::UnsupportedObject => {
                         SymbolicErrorCode::ObjectErrorUnsupportedObject
@@ -282,7 +284,7 @@ impl SymbolicErrorCode {
             }
 
             use symbolic::minidump::cfi::CfiError;
-            if let Some(error) = cause.downcast_ref::<CfiError>() {
+            if let Some(error) = error.downcast_ref::<CfiError>() {
                 return match error {
                     CfiError::MissingDebugInfo => SymbolicErrorCode::CfiErrorMissingDebugInfo,
                     CfiError::UnsupportedDebugFormat => {
@@ -298,7 +300,7 @@ impl SymbolicErrorCode {
             }
 
             use symbolic::minidump::processor::{ProcessMinidumpError, ProcessResult};
-            if let Some(error) = cause.downcast_ref::<ProcessMinidumpError>() {
+            if let Some(error) = error.downcast_ref::<ProcessMinidumpError>() {
                 return match error.kind() {
                     // `Ok` is not used in errors
                     ProcessResult::Ok => SymbolicErrorCode::Unknown,
@@ -327,12 +329,12 @@ impl SymbolicErrorCode {
             }
 
             use symbolic::sourcemap::ParseSourceMapError;
-            if cause.downcast_ref::<ParseSourceMapError>().is_some() {
+            if error.downcast_ref::<ParseSourceMapError>().is_some() {
                 return SymbolicErrorCode::ParseSourceMapError;
             }
 
             use symbolic::symcache::SymCacheError;
-            if let Some(error) = cause.downcast_ref::<SymCacheError>() {
+            if let Some(error) = error.downcast_ref::<SymCacheError>() {
                 return match error {
                     SymCacheError::BadFileMagic => SymbolicErrorCode::SymCacheErrorBadFileMagic,
                     SymCacheError::BadFileHeader(_) => {
@@ -365,7 +367,7 @@ impl SymbolicErrorCode {
             }
 
             use symbolic::unreal::Unreal4Error;
-            if let Some(error) = cause.downcast_ref::<Unreal4Error>() {
+            if let Some(error) = error.downcast_ref::<Unreal4Error>() {
                 return match error {
                     Unreal4Error::Empty => SymbolicErrorCode::Unreal4ErrorEmpty,
                     Unreal4Error::BadCompression(_) => {
@@ -382,7 +384,7 @@ impl SymbolicErrorCode {
             }
 
             use apple_crash_report_parser::ParseError;
-            if let Some(error) = cause.downcast_ref::<ParseError>() {
+            if let Some(error) = error.downcast_ref::<ParseError>() {
                 return match error {
                     ParseError::Io(_) => SymbolicErrorCode::AppleCrashReportParseErrorIo,
                     ParseError::InvalidIncidentIdentifier(_) => {
@@ -399,7 +401,8 @@ impl SymbolicErrorCode {
                     }
                 };
             }
-            error = cause;
+
+            source = error.source();
         }
 
         SymbolicErrorCode::Unknown

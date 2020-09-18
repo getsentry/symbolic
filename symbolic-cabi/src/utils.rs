@@ -3,7 +3,7 @@ use std::mem;
 use std::panic;
 use std::thread;
 
-type Error = Box<dyn std::error::Error>;
+type Error = Box<dyn std::error::Error + 'static>;
 
 thread_local! {
     pub static LAST_ERROR: RefCell<Option<Error>> = RefCell::new(None);
