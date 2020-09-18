@@ -89,7 +89,7 @@ def test_normalize_debug_id():
         == "dfb8e43a-f242-3d73-a453-aeb6a777ef75-a"
     )
     assert (
-        normalize_debug_id("dfb8e43af2423d73a453aeb6a777ef75-a")
+        normalize_debug_id("dfb8e43af2423d73a453aeb6a777ef75a")
         == "dfb8e43a-f242-3d73-a453-aeb6a777ef75-a"
     )
     assert (

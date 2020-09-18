@@ -19,8 +19,8 @@ with open("README") as f:
     readme = f.read()
 
 
-if os.path.isfile("../cabi/Cargo.toml"):
-    with open("../cabi/Cargo.toml") as f:
+if os.path.isfile("../symbolic-cabi/Cargo.toml"):
+    with open("../symbolic-cabi/Cargo.toml") as f:
         version = _version_re.search(f.read()).group(1)
 else:
     with open("version.txt") as f:
@@ -44,7 +44,7 @@ class CustomSDist(sdist):
 
 
 def build_native(spec):
-    cmd = ["cargo", "build"]
+    cmd = ["cargo", "build", "-p", "symbolic-cabi"]
     if not DEBUG_BUILD:
         cmd.append("--release")
         target = "release"
@@ -52,7 +52,7 @@ def build_native(spec):
         target = "debug"
 
     # Step 0: find rust sources
-    if not os.path.isfile("../cabi/Cargo.toml"):
+    if not os.path.isfile("../symbolic-cabi/Cargo.toml"):
         scratchpad = tempfile.mkdtemp()
 
         @atexit.register
@@ -64,9 +64,9 @@ def build_native(spec):
 
         zf = zipfile.ZipFile("rustsrc.zip")
         zf.extractall(scratchpad)
-        rust_path = scratchpad + "/rustsrc/cabi"
+        rust_path = scratchpad + "/rustsrc"
     else:
-        rust_path = "../cabi"
+        rust_path = ".."
         scratchpad = None
 
     # Step 1: build the rust library
@@ -78,8 +78,10 @@ def build_native(spec):
         rtld_flags.append("NODELETE")
     spec.add_cffi_module(
         module_path="symbolic._lowlevel",
-        dylib=lambda: build.find_dylib("symbolic", in_path="target/%s" % target),
-        header_filename=lambda: build.find_header("symbolic.h", in_path="include"),
+        dylib=lambda: build.find_dylib("symbolic_cabi", in_path="target/%s" % target),
+        header_filename=lambda: build.find_header(
+            "symbolic.h", in_path="symbolic-cabi/include"
+        ),
         rtld_flags=rtld_flags,
     )
 
