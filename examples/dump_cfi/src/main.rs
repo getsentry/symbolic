@@ -1,21 +1,13 @@
 use std::path::Path;
 
+use anyhow::Result;
 use clap::{App, Arg, ArgMatches};
-use failure::Error;
 
 use symbolic::common::{ByteView, DSymPathExt};
 use symbolic::debuginfo::Object;
 use symbolic::minidump::cfi::AsciiCfiWriter;
 
-fn print_error(error: &Error) {
-    eprintln!("Error: {:#?}", error);
-
-    for cause in error.iter_causes() {
-        eprintln!("   caused by {}", cause);
-    }
-}
-
-fn dump_cfi<P: AsRef<Path>>(path: P) -> Result<(), Error> {
+fn dump_cfi<P: AsRef<Path>>(path: P) -> Result<()> {
     let path = path.as_ref();
 
     let dsym_path = path.resolve_dsym();
@@ -36,7 +28,7 @@ fn dump_cfi<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     Ok(())
 }
 
-fn execute(matches: &ArgMatches<'_>) -> Result<(), Error> {
+fn execute(matches: &ArgMatches<'_>) -> Result<()> {
     let path = matches.value_of("path").unwrap();
     dump_cfi(path)
 }
@@ -56,6 +48,6 @@ fn main() {
 
     match execute(&matches) {
         Ok(()) => (),
-        Err(e) => print_error(&e),
+        Err(e) => eprintln!("{:?}", e),
     };
 }

@@ -3,7 +3,6 @@ use std::io::Cursor;
 use std::path::Path;
 
 use clap::{App, Arg, ArgMatches};
-use failure::Error;
 use walkdir::WalkDir;
 
 use symbolic::common::{Arch, ByteView, InstructionInfo, SelfCell};
@@ -11,9 +10,10 @@ use symbolic::debuginfo::{Archive, FileFormat, Object};
 use symbolic::demangle::Demangle;
 use symbolic::minidump::cfi::CfiCache;
 use symbolic::minidump::processor::{CodeModuleId, FrameInfoMap, ProcessState, StackFrame};
-use symbolic::symcache::{LineInfo, SymCache, SymCacheWriter};
+use symbolic::symcache::{LineInfo, SymCache, SymCacheError, SymCacheWriter};
 
 type SymCaches<'a> = BTreeMap<CodeModuleId, SelfCell<ByteView<'a>, SymCache<'a>>>;
+type Error = Box<dyn std::error::Error>;
 
 fn collect_referenced_objects<P, F, T>(
     path: P,
@@ -124,7 +124,7 @@ fn symbolize<'a>(
     frame: &StackFrame,
     arch: Arch,
     crashing: bool,
-) -> Result<Option<Vec<LineInfo<'a>>>, Error> {
+) -> Result<Option<Vec<LineInfo<'a>>>, SymCacheError> {
     let module = match frame.module() {
         Some(module) => module,
         None => return Ok(None),
