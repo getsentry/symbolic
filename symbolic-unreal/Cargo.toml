@@ -1,0 +1,42 @@
+[package]
+name = "symbolic-unreal"
+version = "7.5.0"
+license = "MIT"
+authors = [
+    "Armin Ronacher <armin.ronacher@active-4.com>",
+    "Jan Michael Auer <mail@jauer.org>",
+    "Bruno Garcia <bruno@brunogarcia.com>",
+]
+documentation = "https://docs.rs/symbolic-unreal"
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+description = """
+Parsing and processing utilities for Unreal Engine 4 crash files.
+"""
+edition = "2018"
+
+exclude = [
+    "tests/**/*",
+]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+serde = ["serde_", "chrono/serde"]
+
+[dependencies]
+anylog = "0.5.0"
+bytes = "0.4.12"
+chrono = "0.4.7"
+elementtree = "0.5.0"
+lazy_static = "1.4.0"
+flate2 = { version = "1.0.13", features = ["rust_backend"], default-features = false }
+regex = "1.3.5"
+scroll = { version = "0.10.1", features = ["derive"] }
+serde_ = { package = "serde", version = "1.0.94", optional = true, features = ["derive"] }
+thiserror = "1.0.20"
+
+[dev-dependencies]
+insta = "0.15.0"
+symbolic-testutils = { path = "../symbolic-testutils" }

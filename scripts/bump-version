@@ -12,6 +12,3 @@ echo "Bumping version: ${NEW_VERSION}"
 find . -name Cargo.toml -type f -exec sed -i '' -e "s/^version.*/version = \"$NEW_VERSION\"/" {} \;
 find . -name Cargo.toml -type f -exec sed -i '' -e "s/^\(symbolic.*version = \)\"[^\"]*\"/\\1\"$NEW_VERSION\"/" {} \;
 cargo update -p symbolic --precise "${NEW_VERSION}"
-
-cd cabi/
-cargo update -p symbolic --precise "${NEW_VERSION}"
