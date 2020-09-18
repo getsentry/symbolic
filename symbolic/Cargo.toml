@@ -42,3 +42,6 @@ symbolic-proguard = { version = "7.5.0", path = "../symbolic-proguard", optional
 symbolic-sourcemap = { version = "7.5.0", path = "../symbolic-sourcemap", optional = true }
 symbolic-symcache = { version = "7.5.0", path = "../symbolic-symcache", optional = true }
 symbolic-unreal = { version = "7.5.0", path = "../symbolic-unreal", optional = true }
+
+[badges]
+travis-ci = { repository = "getsentry/symbolic", branch = "master" }
