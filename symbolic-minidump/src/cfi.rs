@@ -438,7 +438,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         let string_table = match pdb.string_table() {
             Ok(string_table) => Some(string_table),
             Err(pdb::Error::StreamNameNotFound) => None,
-            Err(e) => Err(CfiError::bad_debug_info(e))?,
+            Err(e) => return Err(CfiError::bad_debug_info(e)),
         };
 
         let mut frames = frame_table.iter();

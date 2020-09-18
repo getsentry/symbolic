@@ -1,11 +1,9 @@
-use failure::Error;
-
 use symbolic_common::ByteView;
 use symbolic_symcache::SymCache;
 use symbolic_testutils::fixture;
 
 #[test]
-fn test_v1() -> Result<(), Error> {
+fn test_v1() -> Result<(), Box<dyn std::error::Error>> {
     let buffer = ByteView::open(fixture("symcache/compat/v1.symc"))?;
     let symcache = SymCache::parse(&buffer)?;
 

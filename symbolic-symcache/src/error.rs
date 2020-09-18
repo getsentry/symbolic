@@ -1,9 +1,7 @@
 use std::fmt;
 
-use failure::Fail;
-
-use symbolic_common::derive_failure;
 use symbolic_debuginfo::ObjectError;
+use thiserror::Error;
 
 #[doc(hidden)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -29,67 +27,56 @@ impl fmt::Display for ValueKind {
     }
 }
 
-/// Variants of `SymCacheError`.
+/// An error returned when handling [`SymCache`](struct.SymCache.html).
 #[non_exhaustive]
-#[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
-pub enum SymCacheErrorKind {
+#[derive(Debug, Error)]
+pub enum SymCacheError {
     /// Invalid magic bytes in the symcache header.
-    #[fail(display = "bad symcache magic")]
+    #[error("bad symcache magic")]
     BadFileMagic,
 
     /// Invalid flags or fields in the symcache header.
-    #[fail(display = "invalid symcache header")]
-    BadFileHeader,
+    #[error("invalid symcache header")]
+    BadFileHeader(#[source] std::io::Error),
 
     /// A segment could not be read, likely due to IO errors.
-    #[fail(display = "cannot read symcache segment")]
-    BadSegment,
+    #[error("cannot read symcache segment")]
+    // TODO: maybe create a more fine grained error enum for this…
+    BadSegment(Box<dyn std::error::Error>),
 
     /// Contents in the symcache file are malformed.
-    #[fail(display = "malformed symcache file")]
+    #[error("malformed symcache file")]
     BadCacheFile,
 
     /// The symcache version is not known.
-    #[fail(display = "unsupported symcache version")]
+    #[error("unsupported symcache version")]
     UnsupportedVersion,
 
     /// The `Object` contains invalid data and cannot be converted.
-    #[fail(display = "malformed debug info file")]
-    BadDebugFile,
+    #[error("malformed debug info file")]
+    BadDebugFile(#[from] ObjectError),
 
     /// A required debug section is missing in the `Object` file.
-    #[fail(display = "missing debug section")]
+    #[error("missing debug section")]
     MissingDebugSection,
 
     /// The `Object` file was stripped of debug information.
-    #[fail(display = "no debug information found in file")]
+    #[error("no debug information found in file")]
     MissingDebugInfo,
 
     /// The debug information in the `Object` file is not supported.
-    #[fail(display = "unsupported debug information")]
+    #[error("unsupported debug information")]
     UnsupportedDebugKind,
 
     /// A value cannot be written to symcache as it overflows the record size.
-    #[fail(display = "{} too large for symcache file format", _0)]
+    #[error("{0} too large for symcache file format")]
     ValueTooLarge(ValueKind),
 
     /// A value cannot be written to symcache as it overflows the segment counter.
-    #[fail(display = "too many {}s for symcache", _0)]
+    #[error("too many {0}s for symcache")]
     TooManyValues(ValueKind),
 
     /// Generic error when writing a symcache, most likely IO.
-    #[fail(display = "failed to write symcache")]
-    WriteFailed,
-}
-
-derive_failure!(
-    SymCacheError,
-    SymCacheErrorKind,
-    doc = "An error returned when handling `SymCaches`.",
-);
-
-impl From<ObjectError> for SymCacheError {
-    fn from(error: ObjectError) -> SymCacheError {
-        error.context(SymCacheErrorKind::BadDebugFile).into()
-    }
+    #[error("failed to write symcache")]
+    WriteFailed(#[source] std::io::Error),
 }

@@ -2,7 +2,7 @@ use std::fmt;
 
 use symbolic_common::{Arch, AsSelf, DebugId, Language, Name};
 
-use crate::error::{SymCacheError, SymCacheErrorKind};
+use crate::error::SymCacheError;
 use crate::format;
 
 /// A platform independent symbolication cache.
@@ -267,7 +267,7 @@ impl<'a> SymCache<'a> {
             if let Some((line_addr, file_id, line)) = self.run_to_line(fun, addr)? {
                 // A missing file record indicates a bad symcache.
                 let file_record = read_file_record(self.data, self.header.files, file_id)?
-                    .ok_or_else(|| SymCacheErrorKind::BadCacheFile)?;
+                    .ok_or_else(|| SymCacheError::BadCacheFile)?;
 
                 // The address was found in the function's line records, so use
                 // it directly. This should is the default case for all valid

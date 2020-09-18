@@ -1,10 +1,10 @@
 use std::fmt;
 
-use failure::Error;
-
 use symbolic_common::ByteView;
 use symbolic_symcache::SymCache;
 use symbolic_testutils::fixture;
+
+type Error = Box<dyn std::error::Error>;
 
 /// Helper to create neat snapshots for symbol tables.
 struct FunctionsDebug<'a>(&'a SymCache<'a>);
