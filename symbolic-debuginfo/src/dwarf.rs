@@ -25,6 +25,7 @@ use crate::private::FunctionStack;
 
 #[doc(hidden)]
 pub use gimli;
+pub use gimli::read::Error as GimliError;
 pub use gimli::RunTimeEndian as Endian;
 
 type Slice<'a> = gimli::read::EndianSlice<'a, Endian>;
@@ -64,7 +65,7 @@ pub enum DwarfError {
 
     /// The DWARF file is corrupted. See the cause for more information.
     #[error("corrupted dwarf debug data")]
-    CorruptedData(#[from] gimli::read::Error),
+    CorruptedData(#[from] GimliError),
 }
 
 /// DWARF section information including its data.

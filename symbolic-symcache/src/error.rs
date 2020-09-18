@@ -41,8 +41,7 @@ pub enum SymCacheError {
 
     /// A segment could not be read, likely due to IO errors.
     #[error("cannot read symcache segment")]
-    // TODO: maybe create a more fine grained error enum for this…
-    BadSegment(Box<dyn std::error::Error>),
+    BadSegment,
 
     /// Contents in the symcache file are malformed.
     #[error("malformed symcache file")]

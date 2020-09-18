@@ -338,7 +338,7 @@ impl SymbolicErrorCode {
                     SymCacheError::BadFileHeader(_) => {
                         SymbolicErrorCode::SymCacheErrorBadFileHeader
                     }
-                    SymCacheError::BadSegment(_) => SymbolicErrorCode::SymCacheErrorBadSegment,
+                    SymCacheError::BadSegment => SymbolicErrorCode::SymCacheErrorBadSegment,
                     SymCacheError::BadCacheFile => SymbolicErrorCode::SymCacheErrorBadCacheFile,
                     SymCacheError::UnsupportedVersion => {
                         SymbolicErrorCode::SymCacheErrorUnsupportedVersion

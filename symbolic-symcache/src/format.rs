@@ -80,8 +80,7 @@ where
         let offset = self.offset as usize;
         let len = self.len.into() as usize;
         let size = std::mem::size_of::<T>() * len;
-        let slice =
-            get_slice(data, offset, size).map_err(|e| SymCacheError::BadSegment(e.into()))?;
+        let slice = get_slice(data, offset, size).map_err(|_| SymCacheError::BadSegment)?;
         Ok(unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const T, len) })
     }
 
@@ -101,7 +100,7 @@ where
     /// Reads an entire binary segment as string.
     pub fn read_str<'a>(&self, data: &'a [u8]) -> Result<&'a str, SymCacheError> {
         let slice = self.read(data)?;
-        Ok(std::str::from_utf8(slice).map_err(|e| SymCacheError::BadSegment(e.into()))?)
+        Ok(std::str::from_utf8(slice).map_err(|_| SymCacheError::BadSegment)?)
     }
 }
 

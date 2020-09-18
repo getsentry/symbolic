@@ -6,7 +6,8 @@ use std::io::Cursor;
 
 use flate2::{Decompress, FlushDecompress};
 use goblin::elf::compression_header::{CompressionHeader, ELFCOMPRESS_ZLIB};
-use goblin::{container::Ctx, elf, error::Error as GoblinError, strtab};
+pub use goblin::error::Error as GoblinError;
+use goblin::{container::Ctx, elf, strtab};
 use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
