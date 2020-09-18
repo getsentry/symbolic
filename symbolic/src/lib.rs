@@ -22,7 +22,7 @@
 //!   - Basic token mapping
 //!   - Heuristics to find original function names based on minified sources
 //!   - Indexed sourcemap to sourcemap merging
-//! - Proguard function mappings
+//! - Proguard function mappings (via `symbolic-cabi` only, use `proguard` crate instead)
 //! - Minidump / Breakpad processing
 //!   - Generate Breakpad symbol files from Mach, ELF and PDBs
 //!   - Process Minidumps to retrieve stack traces
@@ -44,7 +44,6 @@
 //! - **`minidump`**: Rust bindings for the Breakpad Minidump processor. Additionally, this includes
 //!   facilities to extract stack unwinding information (sometimes called CFI) from object files.
 //!   This feature requires a C++11 compiler on the PATH.
-//! - **`proguard`**: Processing of Proguard mapping files to look up mangled Java function paths.
 //! - **`sourcemap`**: Processing and expansion of JavaScript source maps, as well as lookups for
 //!   minified function names.
 //! - **`symcache`**: An optimized, platform-independent storage for common debugging information.
@@ -73,10 +72,6 @@ pub use symbolic_demangle as demangle;
 #[doc(inline)]
 #[cfg(feature = "minidump")]
 pub use symbolic_minidump as minidump;
-#[doc(inline)]
-#[cfg(feature = "proguard")]
-#[deprecated = "use the `proguard` crate directly"]
-pub use symbolic_proguard as proguard;
 #[doc(inline)]
 #[cfg(feature = "sourcemap")]
 pub use symbolic_sourcemap as sourcemap;

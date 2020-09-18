@@ -1,41 +1,6 @@
 import os
 import uuid
-from symbolic import ProguardMappingView, ProguardMapper
-
-
-def test_basics(res_path):
-    with open(os.path.join(res_path, "proguard.txt"), "rb") as f:
-        mapping = f.read()
-
-    view = ProguardMappingView.from_bytes(mapping)
-    assert view.has_line_info
-    assert view.uuid == uuid.UUID("a48ca62b-df26-544e-a8b9-2a5ce210d1d5")
-
-    assert (
-        view.lookup("android.support.constraint.ConstraintLayout$a")
-        == "android.support.constraint.ConstraintLayout$LayoutParams"
-    )
-
-    assert (
-        view.lookup("android.support.constraint.a.b:a", 116)
-        == "android.support.constraint.solver.ArrayRow:createRowDefinition"
-    )
-
-
-def test_mmap(res_path):
-    view = ProguardMappingView.open(os.path.join(res_path, "proguard.txt"))
-    assert view.has_line_info
-    assert view.uuid == uuid.UUID("a48ca62b-df26-544e-a8b9-2a5ce210d1d5")
-
-    assert (
-        view.lookup("android.support.constraint.ConstraintLayout$a")
-        == "android.support.constraint.ConstraintLayout$LayoutParams"
-    )
-
-    assert (
-        view.lookup("android.support.constraint.a.b:a", 116)
-        == "android.support.constraint.solver.ArrayRow:createRowDefinition"
-    )
+from symbolic import ProguardMapper
 
 
 def test_mapper(res_path):
