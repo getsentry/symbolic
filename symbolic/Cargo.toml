@@ -27,7 +27,6 @@ debuginfo-serde = ["debuginfo", "common-serde"]
 demangle = ["symbolic-demangle"]
 minidump = ["symbolic-minidump", "debuginfo"]
 minidump-serde = ["minidump", "debuginfo-serde", "symbolic-minidump/serde"]
-proguard = ["symbolic-proguard"]
 sourcemap = ["symbolic-sourcemap"]
 symcache = ["symbolic-symcache", "debuginfo"]
 unreal = ["symbolic-unreal"]
@@ -38,7 +37,6 @@ symbolic-common = { version = "7.5.0", path = "../symbolic-common" }
 symbolic-debuginfo = { version = "7.5.0", path = "../symbolic-debuginfo", optional = true }
 symbolic-demangle = { version = "7.5.0", path = "../symbolic-demangle", optional = true }
 symbolic-minidump = { version = "7.5.0", path = "../symbolic-minidump", optional = true }
-symbolic-proguard = { version = "7.5.0", path = "../symbolic-proguard", optional = true }
 symbolic-sourcemap = { version = "7.5.0", path = "../symbolic-sourcemap", optional = true }
 symbolic-symcache = { version = "7.5.0", path = "../symbolic-symcache", optional = true }
 symbolic-unreal = { version = "7.5.0", path = "../symbolic-unreal", optional = true }
