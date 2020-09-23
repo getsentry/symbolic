@@ -1046,7 +1046,7 @@ impl<'s> Unit<'s> {
                     let parent_offset = proc_offsets
                         .last()
                         .map(|&(_, offset)| offset)
-                        .ok_or_else(|| PdbError::UnexpectedInline)?;
+                        .ok_or(PdbError::UnexpectedInline)?;
 
                     // We can assume that inlinees will be listed in the inlinee table. If missing,
                     // skip silently instead of erroring out. Missing a single inline function is

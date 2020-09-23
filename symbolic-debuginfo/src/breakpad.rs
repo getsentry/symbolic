@@ -34,7 +34,7 @@ const UNKNOWN_NAME: &str = "<unknown>";
 
 /// An error when dealing with [`BreakpadObject`](struct.BreakpadObject.html).
 #[non_exhaustive]
-#[derive(Clone, Debug, Error, Eq, PartialEq)]
+#[derive(Debug, Error)]
 pub enum BreakpadError {
     /// The symbol header (`MODULE` record) is missing.
     #[error("missing breakpad symbol header")]

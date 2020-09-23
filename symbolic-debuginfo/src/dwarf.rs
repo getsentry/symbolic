@@ -45,7 +45,7 @@ type LineProgramFileEntry<'a> = gimli::read::FileEntry<Slice<'a>>;
 
 /// An error handling [`DWARF`](trait.Dwarf.html) debugging information.
 #[non_exhaustive]
-#[derive(Clone, Copy, Debug, Error, Eq, PartialEq)]
+#[derive(Debug, Error)]
 pub enum DwarfError {
     /// A compilation unit referenced by index does not exist.
     #[error("compilation unit for offset {0} does not exist")]

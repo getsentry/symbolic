@@ -6,7 +6,6 @@ use std::io::Cursor;
 
 use flate2::{Decompress, FlushDecompress};
 use goblin::elf::compression_header::{CompressionHeader, ELFCOMPRESS_ZLIB};
-pub use goblin::error::Error as GoblinError;
 use goblin::{container::Ctx, elf, strtab};
 use thiserror::Error;
 
@@ -15,6 +14,9 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::Parse;
+
+#[doc(inline)]
+pub use goblin::error::Error as GoblinError;
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;

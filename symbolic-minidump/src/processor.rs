@@ -364,8 +364,8 @@ impl fmt::Display for FrameTrust {
     }
 }
 
-/// Error when converting a string to FrameTrust.
-#[derive(Clone, Copy, Debug)]
+/// Error when converting a string to [`FrameTrust`].
+#[derive(Debug)]
 pub struct ParseFrameTrustError;
 
 impl fmt::Display for ParseFrameTrustError {
@@ -390,6 +390,8 @@ impl FromStr for FrameTrust {
         })
     }
 }
+
+impl std::error::Error for ParseFrameTrustError {}
 
 impl Default for FrameTrust {
     fn default() -> FrameTrust {
@@ -757,13 +759,13 @@ impl fmt::Display for ProcessResult {
 }
 
 /// An error generated when trying to process a minidump.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ProcessMinidumpError(ProcessResult);
 
 impl ProcessMinidumpError {
     /// Returns the kind of this error.
-    pub fn kind(self) -> ProcessResult {
+    pub fn kind(&self) -> ProcessResult {
         self.0
     }
 }

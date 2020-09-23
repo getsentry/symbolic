@@ -1,6 +1,5 @@
 use std::fmt;
 
-use symbolic_debuginfo::ObjectError;
 use thiserror::Error;
 
 #[doc(hidden)]
@@ -53,7 +52,7 @@ pub enum SymCacheError {
 
     /// The `Object` contains invalid data and cannot be converted.
     #[error("malformed debug info file")]
-    BadDebugFile(#[from] ObjectError),
+    BadDebugFile(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 
     /// A required debug section is missing in the `Object` file.
     #[error("missing debug section")]

@@ -439,7 +439,7 @@ pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
     LAST_ERROR.with(|e| {
         if let Some(ref err) = *e.borrow() {
             let mut err = err.as_ref();
-            let mut msg = format!("Error: {}", err);
+            let mut msg = err.to_string();
             while let Some(cause) = err.source() {
                 write!(&mut msg, "\n  caused by: {}", cause).ok();
                 err = cause;
@@ -454,7 +454,7 @@ pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
 /// Returns the panic information as string.
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_err_get_backtrace() -> SymbolicStr {
-    LAST_ERROR.with(|_| Default::default())
+    SymbolicStr::default()
 }
 
 /// Clears the last error.

@@ -7,7 +7,7 @@ use std::str::FromStr;
 use symbolic_common::{clean_path, join_path, Arch, CodeId, DebugId, Name};
 
 /// An error returned for unknown or invalid `ObjectKinds`.
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 pub struct UnknownObjectKindError;
 
 impl fmt::Display for UnknownObjectKindError {
@@ -128,7 +128,7 @@ impl FromStr for ObjectKind {
 }
 
 /// An error returned for unknown or invalid [`FileFormats`](enum.FileFormat.html).
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 pub struct UnknownFileFormatError;
 
 impl fmt::Display for UnknownFileFormatError {

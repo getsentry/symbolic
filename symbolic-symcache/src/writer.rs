@@ -6,9 +6,7 @@ use fnv::{FnvHashMap, FnvHashSet};
 use num::FromPrimitive;
 
 use symbolic_common::{Arch, DebugId, Language};
-use symbolic_debuginfo::{
-    DebugSession, FileInfo, Function, LineInfo, ObjectError, ObjectLike, Symbol,
-};
+use symbolic_debuginfo::{DebugSession, FileInfo, Function, LineInfo, ObjectLike, Symbol};
 
 use crate::error::{SymCacheError, ValueKind};
 use crate::format;
@@ -199,7 +197,7 @@ where
     pub fn write_object<O>(object: &O, target: W) -> Result<W, SymCacheError>
     where
         O: ObjectLike,
-        O::Error: Into<ObjectError>,
+        O::Error: std::error::Error + Send + Sync + 'static,
     {
         let mut writer = SymCacheWriter::new(target)?;
 
@@ -208,10 +206,10 @@ where
 
         let session = object
             .debug_session()
-            .map_err(|e| SymCacheError::BadDebugFile(e.into()))?;
+            .map_err(|e| SymCacheError::BadDebugFile(Box::new(e)))?;
 
         for function in session.functions() {
-            let function = function.map_err(|e| SymCacheError::BadDebugFile(e.into()))?;
+            let function = function.map_err(|e| SymCacheError::BadDebugFile(Box::new(e)))?;
             writer.add_function(function)?;
         }
 

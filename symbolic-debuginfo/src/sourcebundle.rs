@@ -53,7 +53,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
 use crate::private::Parse;
-use crate::{DebugSession, ObjectError, ObjectKind, ObjectLike};
+use crate::{DebugSession, ObjectKind, ObjectLike};
 
 /// Magic bytes of a source bundle. They are prepended to the ZIP file.
 static BUNDLE_MAGIC: [u8; 4] = *b"SYSB";
@@ -85,7 +85,7 @@ pub enum SourceBundleError {
 
     /// The `Object` contains invalid data and cannot be converted.
     #[error("malformed debug info file")]
-    BadDebugFile(#[source] Box<ObjectError>),
+    BadDebugFile(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
 
     /// Generic error when writing a source bundle, most likely IO.
     #[error("failed to write source bundle")]
@@ -95,9 +95,9 @@ pub enum SourceBundleError {
 impl SourceBundleError {
     fn bad_debug_file<E>(err: E) -> Self
     where
-        E: Into<ObjectError>,
+        E: std::error::Error + Send + Sync + 'static,
     {
-        SourceBundleError::BadDebugFile(Box::new(err.into()))
+        SourceBundleError::BadDebugFile(Box::new(err))
     }
 }
 
@@ -865,7 +865,7 @@ where
     pub fn write_object<O>(self, object: &O, object_name: &str) -> Result<bool, SourceBundleError>
     where
         O: ObjectLike,
-        O::Error: Into<ObjectError>,
+        O::Error: std::error::Error + Send + Sync + 'static,
     {
         self.write_object_with_filter(object, object_name, |_| true)
     }
@@ -886,7 +886,7 @@ where
     ) -> Result<bool, SourceBundleError>
     where
         O: ObjectLike,
-        O::Error: Into<ObjectError>,
+        O::Error: std::error::Error + Send + Sync + 'static,
         F: FnMut(&FileEntry) -> bool,
     {
         let mut files_handled = BTreeSet::new();

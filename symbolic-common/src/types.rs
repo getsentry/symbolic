@@ -221,7 +221,7 @@ impl Default for CpuFamily {
 }
 
 /// An error returned for an invalid [`Arch`](enum.Arch.html).
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 pub struct UnknownArchError;
 
 impl fmt::Display for UnknownArchError {
@@ -521,7 +521,7 @@ impl str::FromStr for Arch {
 }
 
 /// An error returned for an invalid [`Language`](enum.Language.html).
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 pub struct UnknownLanguageError;
 
 impl fmt::Display for UnknownLanguageError {
