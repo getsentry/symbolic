@@ -199,16 +199,13 @@ ffi_fn! {
         let info = &*ii;
 
         let arch = (*info.arch).as_str().parse()?;
-        let mut real_info = InstructionInfo::new(arch, info.addr);
-        real_info.is_crashing_frame(info.crashing_frame);
-        if info.signal != 0 {
-            real_info.signal(info.signal);
-        }
-        if info.ip_reg != 0 {
-            real_info.ip_register_value(info.ip_reg);
-        }
+        let address = InstructionInfo::new(arch, info.addr)
+            .is_crashing_frame(info.crashing_frame)
+            .signal(Some(info.signal).filter(|&s| s != 0))
+            .ip_register_value(Some(info.ip_reg).filter(|&r| r != 0))
+            .caller_address();
 
-        Ok(real_info.caller_address())
+        Ok(address)
     }
 }
 

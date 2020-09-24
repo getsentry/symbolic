@@ -24,8 +24,8 @@ const SIGSEGV: u32 = 11;
 ///
 /// let caller_address = InstructionInfo::new(Arch::Arm64, 0x1337)
 ///     .is_crashing_frame(false)
-///     .signal(SIGSEGV)
-///     .ip_register_value(0x4242)
+///     .signal(Some(SIGSEGV))
+///     .ip_register_value(Some(0x4242))
 ///     .caller_address();
 ///
 /// assert_eq!(caller_address, 0x1330);
@@ -154,8 +154,8 @@ impl InstructionInfo {
     /// address adjustment.
     ///
     /// [`should_adjust_caller`]: struct.InstructionInfo.html#method.should_adjust_caller
-    pub fn signal(&mut self, signal: u32) -> &mut Self {
-        self.signal = Some(signal);
+    pub fn signal(&mut self, signal: Option<u32>) -> &mut Self {
+        self.signal = signal;
         self
     }
 
@@ -166,8 +166,8 @@ impl InstructionInfo {
     /// caller address adjustment.
     ///
     /// [`should_adjust_caller`]: struct.InstructionInfo.html#method.should_adjust_caller
-    pub fn ip_register_value(&mut self, value: u64) -> &mut Self {
-        self.ip_reg = Some(value);
+    pub fn ip_register_value(&mut self, value: Option<u64>) -> &mut Self {
+        self.ip_reg = value;
         self
     }
 
@@ -256,7 +256,7 @@ impl InstructionInfo {
     /// const SIGSEGV: u32 = 11;
     ///
     /// let is_crash = InstructionInfo::new(Arch::X86, 0x1337)
-    ///     .signal(SIGSEGV)
+    ///     .signal(Some(SIGSEGV))
     ///     .is_crash_signal();
     ///
     /// assert!(is_crash);
