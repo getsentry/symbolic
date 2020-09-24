@@ -2,7 +2,6 @@
 
 import shutil
 from datetime import datetime
-import warnings
 
 from symbolic._compat import range_type
 from symbolic._lowlevel import lib, ffi
