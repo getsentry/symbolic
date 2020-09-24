@@ -154,8 +154,8 @@ impl InstructionInfo {
     /// address adjustment.
     ///
     /// [`should_adjust_caller`]: struct.InstructionInfo.html#method.should_adjust_caller
-    pub fn signal(&mut self, signal: u32) -> &mut Self {
-        self.signal = Some(signal);
+    pub fn signal(&mut self, signal: Option<u32>) -> &mut Self {
+        self.signal = signal;
         self
     }
 
@@ -166,8 +166,8 @@ impl InstructionInfo {
     /// caller address adjustment.
     ///
     /// [`should_adjust_caller`]: struct.InstructionInfo.html#method.should_adjust_caller
-    pub fn ip_register_value(&mut self, value: u64) -> &mut Self {
-        self.ip_reg = Some(value);
+    pub fn ip_register_value(&mut self, value: Option<u64>) -> &mut Self {
+        self.ip_reg = value;
         self
     }
 
