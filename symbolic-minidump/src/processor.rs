@@ -365,6 +365,8 @@ impl fmt::Display for FrameTrust {
 }
 
 /// Error when converting a string to [`FrameTrust`].
+///
+/// [`FrameTrust`]: enum.FrameTrust.html
 #[derive(Debug)]
 pub struct ParseFrameTrustError;
 
