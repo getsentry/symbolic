@@ -1,8 +1,8 @@
-use failure::Error;
-
 use symbolic_common::ByteView;
 use symbolic_minidump::processor::ProcessState;
 use symbolic_testutils::fixture;
+
+type Error = Box<dyn std::error::Error>;
 
 #[test]
 fn process_minidump_linux() -> Result<(), Error> {

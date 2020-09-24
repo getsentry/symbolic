@@ -3,11 +3,10 @@ use std::fs::File;
 use std::io::Read;
 
 use clap::{App, Arg, ArgMatches};
-use failure::Error;
 
 use symbolic::unreal::{Unreal4Crash, Unreal4FileType};
 
-fn execute(matches: &ArgMatches) -> Result<(), Error> {
+fn execute(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let crash_file_path = matches.value_of("crash_file_path").unwrap();
 
     let mut file = File::open(crash_file_path)?;

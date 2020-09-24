@@ -6,8 +6,6 @@ use std::borrow::Cow;
 use std::fmt;
 use std::ops::Deref;
 
-use failure::Fail;
-
 /// An error returned when parsing source maps.
 #[derive(Debug)]
 pub struct ParseSourceMapError(sourcemap::Error);
@@ -23,8 +21,8 @@ impl fmt::Display for ParseSourceMapError {
     }
 }
 
-impl Fail for ParseSourceMapError {
-    fn cause(&self) -> Option<&dyn Fail> {
+impl std::error::Error for ParseSourceMapError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(match self.0 {
             sourcemap::Error::Io(ref err) => err,
             sourcemap::Error::Utf8(ref err) => err,

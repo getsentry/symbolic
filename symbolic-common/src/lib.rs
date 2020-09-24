@@ -24,14 +24,12 @@
 
 mod byteview;
 mod cell;
-mod fail;
 mod heuristics;
 mod path;
 mod types;
 
 pub use crate::byteview::*;
 pub use crate::cell::*;
-pub use crate::fail::*;
 pub use crate::heuristics::*;
 pub use crate::path::*;
 pub use crate::types::*;

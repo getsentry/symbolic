@@ -1,11 +1,11 @@
 use std::str;
 
-use failure::Error;
-
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
 use symbolic_minidump::cfi::{AsciiCfiWriter, CfiCache};
 use symbolic_testutils::fixture;
+
+type Error = Box<dyn std::error::Error>;
 
 #[test]
 fn load_empty_cfi_cache() -> Result<(), Error> {

@@ -3,15 +3,15 @@ use std::io::{Cursor, Write};
 use std::path::Path;
 use std::u64;
 
+use anyhow::{anyhow, Result};
 use clap::{App, Arg, ArgMatches};
-use failure::{err_msg, Error};
 
 use symbolic::common::{Arch, ByteView, DSymPathExt, Language};
 use symbolic::debuginfo::Archive;
 use symbolic::demangle::Demangle;
 use symbolic::symcache::{SymCache, SymCacheWriter};
 
-fn execute(matches: &ArgMatches) -> Result<(), Error> {
+fn execute(matches: &ArgMatches) -> Result<()> {
     let buffer;
     let symcache;
 
@@ -53,7 +53,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
 
         let obj = match obj {
             Some(obj) => obj,
-            None => return Err(err_msg(format!("did not find architecture {}", arch))),
+            None => return Err(anyhow!("did not find architecture {}", arch)),
         };
 
         let writer = SymCacheWriter::write_object(obj, Cursor::new(Vec::new()))?;
@@ -73,7 +73,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
         buffer = ByteView::open(file_path)?;
         symcache = SymCache::parse(&buffer)?;
     } else {
-        return Err(err_msg("No debug file or sym cache provided"));
+        return Err(anyhow!("No debug file or sym cache provided"));
     }
 
     // report

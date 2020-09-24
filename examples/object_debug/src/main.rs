@@ -1,20 +1,20 @@
 use std::path::Path;
 
 use clap::{App, Arg, ArgMatches};
-use failure::Error;
 
 use symbolic::common::{ByteView, DSymPathExt};
 use symbolic::debuginfo::Archive;
 
-fn print_error(error: &Error) {
+fn print_error(mut error: &dyn std::error::Error) {
     println!("Error: {}", error);
 
-    for cause in error.iter_causes() {
-        println!("   caused by {}", cause);
+    while let Some(source) = error.source() {
+        println!("   caused by {}", source);
+        error = source;
     }
 }
 
-fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Error> {
+fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::Error>> {
     let path = path.as_ref();
     println!("Inspecting {}", path.display());
 
@@ -42,7 +42,7 @@ fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Error> {
             }
             Err(e) => {
                 print!(" - ");
-                print_error(&e.into());
+                print_error(&e);
                 continue;
             }
         }
@@ -51,17 +51,14 @@ fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     Ok(())
 }
 
-fn execute(matches: &ArgMatches<'_>) -> Result<(), Error> {
+fn execute(matches: &ArgMatches<'_>) {
     for path in matches.values_of("paths").unwrap_or_default() {
-        match inspect_object(path) {
-            Ok(()) => (),
-            Err(e) => print_error(&e),
+        if let Err(e) = inspect_object(path) {
+            print_error(e.as_ref())
         }
 
         println!();
     }
-
-    Ok(())
 }
 
 fn main() {
@@ -78,8 +75,5 @@ fn main() {
         )
         .get_matches();
 
-    match execute(&matches) {
-        Ok(()) => (),
-        Err(e) => print_error(&e),
-    };
+    execute(&matches);
 }

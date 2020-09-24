@@ -1,21 +1,21 @@
 use std::path::Path;
 
 use clap::{App, Arg, ArgMatches};
-use failure::Error;
 
 use symbolic::common::{ByteView, DSymPathExt};
 use symbolic::debuginfo::sourcebundle::SourceBundleWriter;
 use symbolic::debuginfo::Archive;
 
-fn print_error(error: &Error) {
+fn print_error(mut error: &dyn std::error::Error) {
     println!("Error: {}", error);
 
-    for cause in error.iter_causes() {
-        println!("   caused by {}", cause);
+    while let Some(source) = error.source() {
+        println!("   caused by {}", source);
+        error = source;
     }
 }
 
-fn write_object_sources(path: &Path, output_path: &Path) -> Result<(), Error> {
+fn write_object_sources(path: &Path, output_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     println!("Inspecting {}", path.display());
 
     let dsym_path = path.resolve_dsym();
@@ -34,7 +34,7 @@ fn write_object_sources(path: &Path, output_path: &Path) -> Result<(), Error> {
             }
             Err(e) => {
                 print!(" - ");
-                print_error(&e.into());
+                print_error(&e);
                 continue;
             }
         }
@@ -43,18 +43,15 @@ fn write_object_sources(path: &Path, output_path: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-fn execute(matches: &ArgMatches<'_>) -> Result<(), Error> {
+fn execute(matches: &ArgMatches<'_>) {
     let output_path = Path::new(matches.value_of("output").unwrap());
     for path in matches.values_of("paths").unwrap_or_default() {
-        match write_object_sources(Path::new(&path), &output_path) {
-            Ok(()) => (),
-            Err(e) => print_error(&e),
+        if let Err(e) = write_object_sources(Path::new(&path), &output_path) {
+            print_error(e.as_ref());
         }
 
         println!();
     }
-
-    Ok(())
 }
 
 fn main() {
@@ -79,8 +76,5 @@ fn main() {
         )
         .get_matches();
 
-    match execute(&matches) {
-        Ok(()) => (),
-        Err(e) => print_error(&e),
-    };
+    execute(&matches);
 }

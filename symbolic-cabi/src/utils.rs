@@ -3,7 +3,7 @@ use std::mem;
 use std::panic;
 use std::thread;
 
-use failure::{Error, Fail};
+type Error = Box<dyn std::error::Error + 'static>;
 
 thread_local! {
     pub static LAST_ERROR: RefCell<Option<Error>> = RefCell::new(None);
@@ -46,9 +46,16 @@ pub trait ForeignObject: Sized {
 }
 
 /// An error thrown by `landingpad` in place of panics.
-#[derive(Fail, Debug)]
-#[fail(display = "symbolic panicked: {}", _0)]
+#[derive(Debug)]
 pub struct Panic(String);
+
+impl std::fmt::Display for Panic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "symbolic panicked: {}", self.0)
+    }
+}
+
+impl std::error::Error for Panic {}
 
 fn set_last_error(err: Error) {
     LAST_ERROR.with(|e| {

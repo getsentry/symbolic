@@ -8,7 +8,6 @@ use std::fmt;
 use std::io::Cursor;
 use std::sync::Arc;
 
-use failure::Fail;
 use lazycell::LazyCell;
 use parking_lot::RwLock;
 use pdb::{
@@ -16,10 +15,9 @@ use pdb::{
     ModuleInfo, PdbInternalSectionOffset, ProcedureSymbol, SymbolData,
 };
 use smallvec::SmallVec;
+use thiserror::Error;
 
-use symbolic_common::{
-    derive_failure, Arch, AsSelf, CodeId, CpuFamily, DebugId, Name, SelfCell, Uuid,
-};
+use symbolic_common::{Arch, AsSelf, CodeId, CpuFamily, DebugId, Name, SelfCell, Uuid};
 
 use crate::base::*;
 use crate::private::{FunctionStack, Parse};
@@ -32,39 +30,21 @@ const MAGIC_BIG: &[u8] = b"Microsoft C/C++ MSF 7.00\r\n\x1a\x44\x53\x00\x00\x00"
 #[doc(hidden)]
 pub use pdb;
 
-/// Variants of [`PdbError`](struct.PdbError.html).
+/// An error when dealing with [`PdbObject`](struct.PdbObject.html).
 #[non_exhaustive]
-#[derive(Clone, Copy, Debug, Eq, Fail, PartialEq)]
-pub enum PdbErrorKind {
+#[derive(Debug, Error)]
+pub enum PdbError {
     /// The PDB file is corrupted. See the cause for more information.
-    #[fail(display = "invalid pdb file")]
-    BadObject,
+    #[error("invalid pdb file")]
+    BadObject(#[from] pdb::Error),
 
     /// An inline record was encountered without an inlining parent.
-    #[fail(display = "unexpected inline function without parent")]
+    #[error("unexpected inline function without parent")]
     UnexpectedInline,
 
     /// Formatting of a type name failed
-    #[fail(display = "failed to format type name")]
-    FormattingFailed,
-}
-
-derive_failure!(
-    PdbError,
-    PdbErrorKind,
-    doc = "An error when dealing with [`PdbObject`](struct.PdbObject.html)."
-);
-
-impl From<pdb::Error> for PdbError {
-    fn from(error: pdb::Error) -> Self {
-        error.context(PdbErrorKind::BadObject).into()
-    }
-}
-
-impl From<fmt::Error> for PdbError {
-    fn from(error: fmt::Error) -> Self {
-        error.context(PdbErrorKind::FormattingFailed).into()
-    }
+    #[error("failed to format type name")]
+    FormattingFailed(#[from] fmt::Error),
 }
 
 /// Program Database, the debug companion format on Windows.
@@ -1066,7 +1046,7 @@ impl<'s> Unit<'s> {
                     let parent_offset = proc_offsets
                         .last()
                         .map(|&(_, offset)| offset)
-                        .ok_or_else(|| PdbError::from(PdbErrorKind::UnexpectedInline))?;
+                        .ok_or(PdbError::UnexpectedInline)?;
 
                     // We can assume that inlinees will be listed in the inlinee table. If missing,
                     // skip silently instead of erroring out. Missing a single inline function is

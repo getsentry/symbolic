@@ -1,19 +1,11 @@
 use std::borrow::Borrow;
 
+use anyhow::{Context, Result};
 use clap::{clap_app, ArgMatches};
-use failure::{Error, ResultExt};
 
 use symbolic::common::{ByteView, Name};
 use symbolic::debuginfo::{Function, Object};
 use symbolic::demangle::Demangle;
-
-fn print_error(error: &Error) {
-    eprintln!("Error: {}", error);
-
-    for cause in error.iter_causes() {
-        eprintln!("   caused by {}", cause);
-    }
-}
 
 fn print_name<'a, N: Borrow<Name<'a>>>(name: Option<N>, matches: &ArgMatches<'_>) {
     match name.as_ref().map(Borrow::borrow) {
@@ -36,7 +28,7 @@ fn print_range(start: u64, len: Option<u64>, matches: &ArgMatches<'_>) {
     }
 }
 
-fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches<'_>) -> Result<bool, Error> {
+fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches<'_>) -> Result<bool> {
     if function.address > addr || function.address + function.size <= addr {
         return Ok(false);
     }
@@ -76,7 +68,7 @@ fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches<'_>) -> Resu
     Ok(false)
 }
 
-fn execute(matches: &ArgMatches<'_>) -> Result<(), Error> {
+fn execute(matches: &ArgMatches<'_>) -> Result<()> {
     let path = matches.value_of("path").unwrap_or("a.out");
     let view = ByteView::open(path).context("failed to open file")?;
     let object = Object::parse(&view).context("failed to parse file")?;
@@ -127,6 +119,6 @@ fn main() {
 
     match execute(&matches) {
         Ok(()) => (),
-        Err(e) => print_error(&e),
+        Err(e) => eprintln!("{:?}", e),
     };
 }

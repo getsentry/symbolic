@@ -18,7 +18,6 @@ use std::os::raw::{c_char, c_void};
 use std::str::FromStr;
 use std::{fmt, ptr, slice, str};
 
-use failure::Fail;
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -365,8 +364,10 @@ impl fmt::Display for FrameTrust {
     }
 }
 
-/// Error when converting a string to FrameTrust.
-#[derive(Clone, Copy, Debug)]
+/// Error when converting a string to [`FrameTrust`].
+///
+/// [`FrameTrust`]: enum.FrameTrust.html
+#[derive(Debug)]
 pub struct ParseFrameTrustError;
 
 impl fmt::Display for ParseFrameTrustError {
@@ -391,6 +392,8 @@ impl FromStr for FrameTrust {
         })
     }
 }
+
+impl std::error::Error for ParseFrameTrustError {}
 
 impl Default for FrameTrust {
     fn default() -> FrameTrust {
@@ -758,17 +761,24 @@ impl fmt::Display for ProcessResult {
 }
 
 /// An error generated when trying to process a minidump.
-#[derive(Debug, Fail, Copy, Clone)]
+#[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[fail(display = "minidump processing failed: {}", _0)]
 pub struct ProcessMinidumpError(ProcessResult);
 
 impl ProcessMinidumpError {
     /// Returns the kind of this error.
-    pub fn kind(self) -> ProcessResult {
+    pub fn kind(&self) -> ProcessResult {
         self.0
     }
 }
+
+impl fmt::Display for ProcessMinidumpError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "minidump processing failed: {}", self.0)
+    }
+}
+
+impl std::error::Error for ProcessMinidumpError {}
 
 /// Internal type used to transfer Breakpad symbols over FFI.
 #[repr(C)]

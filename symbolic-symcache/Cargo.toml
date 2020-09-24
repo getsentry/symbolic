@@ -24,11 +24,11 @@ all-features = true
 
 [dependencies]
 dmsort = "1.0.0"
-failure = "0.1.5"
 fnv = "1.0.6"
 num = "0.2.1"
 symbolic-common = { version = "7.5.0", path = "../symbolic-common" }
 symbolic-debuginfo = { version = "7.5.0", path = "../symbolic-debuginfo" }
+thiserror = "1.0.20"
 
 [dev-dependencies]
 insta = "0.15.0"

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+**Breaking Changes**:
+
+- Usage of `failure` was removed, and all Error types were changed to only implement `std::error::Error` and related traits.
+- `symbolic-proguard` was removed in favor of the `proguard` crate. Proguard is still supported via `symbolic-cabi` and the python API however.
+
 ## 7.5.0
 
 **Changes**:

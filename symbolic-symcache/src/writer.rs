@@ -2,14 +2,13 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::{self, Seek, Write};
 
-use failure::{Fail, ResultExt};
 use fnv::{FnvHashMap, FnvHashSet};
 use num::FromPrimitive;
 
 use symbolic_common::{Arch, DebugId, Language};
 use symbolic_debuginfo::{DebugSession, FileInfo, Function, LineInfo, ObjectLike, Symbol};
 
-use crate::error::{SymCacheError, SymCacheErrorKind, ValueKind};
+use crate::error::{SymCacheError, ValueKind};
 use crate::format;
 
 // Performs a shallow check whether this function might contain any lines.
@@ -69,7 +68,7 @@ where
         self.position = position;
         self.writer
             .seek(io::SeekFrom::Start(position))
-            .context(SymCacheErrorKind::WriteFailed)?;
+            .map_err(SymCacheError::WriteFailed)?;
 
         Ok(())
     }
@@ -79,7 +78,7 @@ where
     fn write_bytes(&mut self, data: &[u8]) -> Result<(), SymCacheError> {
         self.writer
             .write_all(data)
-            .context(SymCacheErrorKind::WriteFailed)?;
+            .map_err(SymCacheError::WriteFailed)?;
 
         self.position += data.len() as u64;
         Ok(())
@@ -112,7 +111,7 @@ where
 
         let segment_pos = self.position as u32;
         let segment_len =
-            L::from_usize(data.len()).ok_or_else(|| SymCacheErrorKind::TooManyValues(kind))?;
+            L::from_usize(data.len()).ok_or_else(|| SymCacheError::TooManyValues(kind))?;
 
         self.write_bytes(bytes)?;
         Ok(format::Seg::new(segment_pos, segment_len))
@@ -198,19 +197,19 @@ where
     pub fn write_object<O>(object: &O, target: W) -> Result<W, SymCacheError>
     where
         O: ObjectLike,
-        O::Error: Fail,
+        O::Error: std::error::Error + Send + Sync + 'static,
     {
-        let mut writer = SymCacheWriter::new(target).context(SymCacheErrorKind::WriteFailed)?;
+        let mut writer = SymCacheWriter::new(target)?;
 
         writer.set_arch(object.arch());
         writer.set_debug_id(object.debug_id());
 
         let session = object
             .debug_session()
-            .context(SymCacheErrorKind::BadDebugFile)?;
+            .map_err(|e| SymCacheError::BadDebugFile(Box::new(e)))?;
 
         for function in session.functions() {
-            let function = function.context(SymCacheErrorKind::BadDebugFile)?;
+            let function = function.map_err(|e| SymCacheError::BadDebugFile(Box::new(e)))?;
             writer.add_function(function)?;
         }
 
@@ -374,7 +373,7 @@ where
         }
 
         if self.files.len() >= std::u16::MAX as usize {
-            return Err(SymCacheErrorKind::TooManyValues(ValueKind::File).into());
+            return Err(SymCacheError::TooManyValues(ValueKind::File));
         }
 
         let index = self.files.len() as u16;
@@ -398,7 +397,7 @@ where
 
         // NB: We only use 48 bits to encode symbol offsets in function records.
         if self.symbols.len() >= 0x00ff_ffff {
-            return Err(SymCacheErrorKind::TooManyValues(ValueKind::Symbol).into());
+            return Err(SymCacheError::TooManyValues(ValueKind::Symbol));
         }
 
         // Avoid a potential reallocation by reusing name.
@@ -477,7 +476,7 @@ where
         let symbol_id = self.insert_symbol(function.name.as_str().into())?;
         let comp_dir = self.write_path(function.compilation_dir)?;
         let lang = u8::from_u32(language as u32)
-            .ok_or_else(|| SymCacheErrorKind::ValueTooLarge(ValueKind::Language))?;
+            .ok_or_else(|| SymCacheError::ValueTooLarge(ValueKind::Language))?;
 
         let mut start_address = function.address;
         let mut lines = function.lines.iter().peekable();
@@ -534,7 +533,7 @@ where
         // functions to the file.
         let index = functions.len();
         if index >= std::u32::MAX as usize {
-            return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::Function).into());
+            return Err(SymCacheError::ValueTooLarge(ValueKind::Function));
         }
 
         // For optimization purposes, remember if all functions appear in order. If not, parent
@@ -602,7 +601,7 @@ where
 
                 let parent_offset = index - parent_index;
                 if parent_offset > std::u16::MAX.into() {
-                    return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::ParentOffset).into());
+                    return Err(SymCacheError::ValueTooLarge(ValueKind::ParentOffset));
                 }
 
                 record.parent_offset = parent_offset as u16;

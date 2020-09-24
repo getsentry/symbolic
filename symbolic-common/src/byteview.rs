@@ -236,11 +236,10 @@ mod tests {
 
     use std::io::Write;
 
-    use failure::Error;
     use tempfile::NamedTempFile;
 
     #[test]
-    fn test_open_empty_file() -> Result<(), Error> {
+    fn test_open_empty_file() -> Result<(), std::io::Error> {
         let tmp = NamedTempFile::new()?;
 
         let view = ByteView::open(&tmp.path())?;
@@ -250,7 +249,7 @@ mod tests {
     }
 
     #[test]
-    fn test_open_file() -> Result<(), Error> {
+    fn test_open_file() -> Result<(), std::io::Error> {
         let mut tmp = NamedTempFile::new()?;
 
         tmp.write_all(b"1234")?;

@@ -19,5 +19,4 @@ edition = "2018"
 all-features = true
 
 [dependencies]
-failure = "0.1.5"
 sourcemap = "5.0.0"

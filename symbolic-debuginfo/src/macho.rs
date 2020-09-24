@@ -4,9 +4,9 @@ use std::borrow::Cow;
 use std::fmt;
 use std::io::Cursor;
 
-use failure::Fail;
 use goblin::{error::Error as GoblinError, mach};
 use smallvec::SmallVec;
+use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
@@ -16,11 +16,11 @@ use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 
 /// An error when dealing with [`MachObject`](struct.MachObject.html).
 #[non_exhaustive]
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum MachError {
     /// The data in the MachO file could not be parsed.
-    #[fail(display = "invalid MachO file")]
-    BadObject(#[fail(cause)] GoblinError),
+    #[error("invalid MachO file")]
+    BadObject(#[from] GoblinError),
 }
 
 /// Mach Object containers, used for executables and debug companions on macOS and iOS.
@@ -40,9 +40,7 @@ impl<'d> MachObject<'d> {
 
     /// Tries to parse a MachO from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
-        mach::MachO::parse(data, 0)
-            .map(|macho| MachObject { macho, data })
-            .map_err(MachError::BadObject)
+        Ok(mach::MachO::parse(data, 0).map(|macho| MachObject { macho, data })?)
     }
 
     /// The container file format, which is always `FileFormat::MachO`.
@@ -488,9 +486,7 @@ impl<'d> FatMachO<'d> {
 
     /// Tries to parse a fat MachO container from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
-        mach::MultiArch::new(data)
-            .map(|fat| FatMachO { fat, data })
-            .map_err(MachError::BadObject)
+        Ok(mach::MultiArch::new(data).map(|fat| FatMachO { fat, data })?)
     }
 
     /// Returns an iterator over objects in this container.
@@ -513,7 +509,7 @@ impl<'d> FatMachO<'d> {
     /// be parsed.
     pub fn object_by_index(&self, index: usize) -> Result<Option<MachObject<'d>>, MachError> {
         let arch = match self.fat.iter_arches().nth(index) {
-            Some(arch) => arch.map_err(MachError::BadObject)?,
+            Some(arch) => arch?,
             None => return Ok(None),
         };
 

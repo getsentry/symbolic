@@ -4,16 +4,19 @@ use std::borrow::Cow;
 use std::fmt;
 use std::io::Cursor;
 
-use failure::Fail;
 use flate2::{Decompress, FlushDecompress};
 use goblin::elf::compression_header::{CompressionHeader, ELFCOMPRESS_ZLIB};
-use goblin::{container::Ctx, elf, error::Error as GoblinError, strtab};
+use goblin::{container::Ctx, elf, strtab};
+use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::Parse;
+
+#[doc(inline)]
+pub use goblin::error::Error as GoblinError;
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;
@@ -37,11 +40,11 @@ const MIPS_64_FLAGS: u32 = EF_MIPS_ABI_O64 | EF_MIPS_ABI_EABI64;
 
 /// An error when dealing with [`ElfObject`](struct.ElfObject.html).
 #[non_exhaustive]
-#[derive(Debug, Fail)]
+#[derive(Debug, Error)]
 pub enum ElfError {
     /// The data in the ELF file could not be parsed.
-    #[fail(display = "invalid ELF file")]
-    BadObject(#[fail(cause)] GoblinError),
+    #[error("invalid ELF file")]
+    BadObject(#[from] GoblinError),
 }
 
 /// Executable and Linkable Format, used for executables and libraries on Linux.
@@ -61,9 +64,7 @@ impl<'d> ElfObject<'d> {
 
     /// Tries to parse an ELF object from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, ElfError> {
-        elf::Elf::parse(data)
-            .map(|elf| ElfObject { elf, data })
-            .map_err(ElfError::BadObject)
+        Ok(elf::Elf::parse(data).map(|elf| ElfObject { elf, data })?)
     }
 
     /// The container file format, which is always `FileFormat::Elf`.

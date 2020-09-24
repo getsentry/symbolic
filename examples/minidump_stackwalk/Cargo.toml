@@ -8,6 +8,5 @@ edition = "2018"
 
 [dependencies]
 clap = "2.33.0"
-failure = "0.1.7"
 symbolic = { path = "../../symbolic", features = ["minidump", "symcache", "demangle"] }
 walkdir = "2.3.1"

@@ -6,7 +6,6 @@ use std::ptr;
 use std::slice;
 use std::str;
 
-use failure::Error;
 use symbolic::common::Uuid;
 
 use crate::utils::{set_panic_hook, Panic, LAST_ERROR};
@@ -224,34 +223,36 @@ pub enum SymbolicErrorCode {
 impl SymbolicErrorCode {
     /// This maps all errors that can possibly happen.
     // #[allow(clippy::cyclomatic_complexity)]
-    pub fn from_error(error: &Error) -> SymbolicErrorCode {
-        for cause in error.iter_chain() {
-            if cause.downcast_ref::<Panic>().is_some() {
+    pub fn from_error(error: &(dyn std::error::Error + 'static)) -> SymbolicErrorCode {
+        let mut source = Some(error);
+
+        while let Some(error) = source {
+            if error.downcast_ref::<Panic>().is_some() {
                 return SymbolicErrorCode::Panic;
             }
 
             use std::io::Error as IoError;
-            if cause.downcast_ref::<IoError>().is_some() {
+            if error.downcast_ref::<IoError>().is_some() {
                 return SymbolicErrorCode::IoError;
             }
 
             use symbolic::common::{ParseDebugIdError, UnknownArchError, UnknownLanguageError};
-            if cause.downcast_ref::<UnknownArchError>().is_some() {
+            if error.downcast_ref::<UnknownArchError>().is_some() {
                 return SymbolicErrorCode::UnknownArchError;
-            } else if cause.downcast_ref::<UnknownLanguageError>().is_some() {
+            } else if error.downcast_ref::<UnknownLanguageError>().is_some() {
                 return SymbolicErrorCode::UnknownLanguageError;
-            } else if cause.downcast_ref::<ParseDebugIdError>().is_some() {
+            } else if error.downcast_ref::<ParseDebugIdError>().is_some() {
                 return SymbolicErrorCode::ParseDebugIdError;
             }
 
             use symbolic::debuginfo::{
-                dwarf::DwarfErrorKind, ObjectError, UnknownFileFormatError, UnknownObjectKindError,
+                dwarf::DwarfError, ObjectError, UnknownFileFormatError, UnknownObjectKindError,
             };
-            if cause.downcast_ref::<UnknownObjectKindError>().is_some() {
+            if error.downcast_ref::<UnknownObjectKindError>().is_some() {
                 return SymbolicErrorCode::UnknownObjectKindError;
-            } else if cause.downcast_ref::<UnknownFileFormatError>().is_some() {
+            } else if error.downcast_ref::<UnknownFileFormatError>().is_some() {
                 return SymbolicErrorCode::UnknownFileFormatError;
-            } else if let Some(error) = cause.downcast_ref::<ObjectError>() {
+            } else if let Some(error) = error.downcast_ref::<ObjectError>() {
                 return match error {
                     ObjectError::UnsupportedObject => {
                         SymbolicErrorCode::ObjectErrorUnsupportedObject
@@ -261,20 +262,20 @@ impl SymbolicErrorCode {
                     ObjectError::MachO(_) => SymbolicErrorCode::ObjectErrorBadMachOObject,
                     ObjectError::Pdb(_) => SymbolicErrorCode::ObjectErrorBadPdbObject,
                     ObjectError::Pe(_) => SymbolicErrorCode::ObjectErrorBadPeObject,
-                    ObjectError::Dwarf(ref e) => match e.kind() {
-                        DwarfErrorKind::InvalidUnitRef(_) => {
+                    ObjectError::Dwarf(ref e) => match e {
+                        DwarfError::InvalidUnitRef(_) => {
                             SymbolicErrorCode::DwarfErrorInvalidUnitRef
                         }
-                        DwarfErrorKind::InvalidFileRef(_) => {
+                        DwarfError::InvalidFileRef(_) => {
                             SymbolicErrorCode::DwarfErrorInvalidFileRef
                         }
-                        DwarfErrorKind::UnexpectedInline => {
+                        DwarfError::UnexpectedInline => {
                             SymbolicErrorCode::DwarfErrorUnexpectedInline
                         }
-                        DwarfErrorKind::InvertedFunctionRange => {
+                        DwarfError::InvertedFunctionRange => {
                             SymbolicErrorCode::DwarfErrorInvertedFunctionRange
                         }
-                        DwarfErrorKind::CorruptedData => SymbolicErrorCode::DwarfErrorCorruptedData,
+                        DwarfError::CorruptedData(_) => SymbolicErrorCode::DwarfErrorCorruptedData,
                         _ => SymbolicErrorCode::DwarfErrorUnknown,
                     },
                     ObjectError::SourceBundle(_) => SymbolicErrorCode::ObjectErrorBadSourceBundle,
@@ -282,24 +283,24 @@ impl SymbolicErrorCode {
                 };
             }
 
-            use symbolic::minidump::cfi::{CfiError, CfiErrorKind};
-            if let Some(error) = cause.downcast_ref::<CfiError>() {
-                return match error.kind() {
-                    CfiErrorKind::MissingDebugInfo => SymbolicErrorCode::CfiErrorMissingDebugInfo,
-                    CfiErrorKind::UnsupportedDebugFormat => {
+            use symbolic::minidump::cfi::CfiError;
+            if let Some(error) = error.downcast_ref::<CfiError>() {
+                return match error {
+                    CfiError::MissingDebugInfo => SymbolicErrorCode::CfiErrorMissingDebugInfo,
+                    CfiError::UnsupportedDebugFormat => {
                         SymbolicErrorCode::CfiErrorUnsupportedDebugFormat
                     }
-                    CfiErrorKind::BadDebugInfo => SymbolicErrorCode::CfiErrorBadDebugInfo,
-                    CfiErrorKind::UnsupportedArch => SymbolicErrorCode::CfiErrorUnsupportedArch,
-                    CfiErrorKind::InvalidAddress => SymbolicErrorCode::CfiErrorInvalidAddress,
-                    CfiErrorKind::WriteError => SymbolicErrorCode::CfiErrorWriteError,
-                    CfiErrorKind::BadFileMagic => SymbolicErrorCode::CfiErrorBadFileMagic,
+                    CfiError::BadDebugInfo(_) => SymbolicErrorCode::CfiErrorBadDebugInfo,
+                    CfiError::UnsupportedArch(_) => SymbolicErrorCode::CfiErrorUnsupportedArch,
+                    CfiError::InvalidAddress => SymbolicErrorCode::CfiErrorInvalidAddress,
+                    CfiError::WriteError(_) => SymbolicErrorCode::CfiErrorWriteError,
+                    CfiError::BadFileMagic => SymbolicErrorCode::CfiErrorBadFileMagic,
                     _ => SymbolicErrorCode::CfiErrorUnknown,
                 };
             }
 
             use symbolic::minidump::processor::{ProcessMinidumpError, ProcessResult};
-            if let Some(error) = cause.downcast_ref::<ProcessMinidumpError>() {
+            if let Some(error) = error.downcast_ref::<ProcessMinidumpError>() {
                 return match error.kind() {
                     // `Ok` is not used in errors
                     ProcessResult::Ok => SymbolicErrorCode::Unknown,
@@ -328,37 +329,37 @@ impl SymbolicErrorCode {
             }
 
             use symbolic::sourcemap::ParseSourceMapError;
-            if cause.downcast_ref::<ParseSourceMapError>().is_some() {
+            if error.downcast_ref::<ParseSourceMapError>().is_some() {
                 return SymbolicErrorCode::ParseSourceMapError;
             }
 
-            use symbolic::symcache::{SymCacheError, SymCacheErrorKind};
-            if let Some(error) = cause.downcast_ref::<SymCacheError>() {
-                return match error.kind() {
-                    SymCacheErrorKind::BadFileMagic => SymbolicErrorCode::SymCacheErrorBadFileMagic,
-                    SymCacheErrorKind::BadFileHeader => {
+            use symbolic::symcache::SymCacheError;
+            if let Some(error) = error.downcast_ref::<SymCacheError>() {
+                return match error {
+                    SymCacheError::BadFileMagic => SymbolicErrorCode::SymCacheErrorBadFileMagic,
+                    SymCacheError::BadFileHeader(_) => {
                         SymbolicErrorCode::SymCacheErrorBadFileHeader
                     }
-                    SymCacheErrorKind::BadSegment => SymbolicErrorCode::SymCacheErrorBadSegment,
-                    SymCacheErrorKind::BadCacheFile => SymbolicErrorCode::SymCacheErrorBadCacheFile,
-                    SymCacheErrorKind::UnsupportedVersion => {
+                    SymCacheError::BadSegment => SymbolicErrorCode::SymCacheErrorBadSegment,
+                    SymCacheError::BadCacheFile => SymbolicErrorCode::SymCacheErrorBadCacheFile,
+                    SymCacheError::UnsupportedVersion => {
                         SymbolicErrorCode::SymCacheErrorUnsupportedVersion
                     }
-                    SymCacheErrorKind::BadDebugFile => SymbolicErrorCode::SymCacheErrorBadDebugFile,
-                    SymCacheErrorKind::MissingDebugSection => {
+                    SymCacheError::BadDebugFile(_) => SymbolicErrorCode::SymCacheErrorBadDebugFile,
+                    SymCacheError::MissingDebugSection => {
                         SymbolicErrorCode::SymCacheErrorMissingDebugSection
                     }
-                    SymCacheErrorKind::MissingDebugInfo => {
+                    SymCacheError::MissingDebugInfo => {
                         SymbolicErrorCode::SymCacheErrorMissingDebugInfo
                     }
-                    SymCacheErrorKind::UnsupportedDebugKind => {
+                    SymCacheError::UnsupportedDebugKind => {
                         SymbolicErrorCode::SymCacheErrorUnsupportedDebugKind
                     }
-                    SymCacheErrorKind::ValueTooLarge(_) => {
+                    SymCacheError::ValueTooLarge(_) => {
                         SymbolicErrorCode::SymCacheErrorValueTooLarge
                     }
-                    SymCacheErrorKind::WriteFailed => SymbolicErrorCode::SymCacheErrorWriteFailed,
-                    SymCacheErrorKind::TooManyValues(_) => {
+                    SymCacheError::WriteFailed(_) => SymbolicErrorCode::SymCacheErrorWriteFailed,
+                    SymCacheError::TooManyValues(_) => {
                         SymbolicErrorCode::SymCacheErrorTooManyValues
                     }
                     _ => SymbolicErrorCode::SymCacheErrorUnknown,
@@ -366,7 +367,7 @@ impl SymbolicErrorCode {
             }
 
             use symbolic::unreal::Unreal4Error;
-            if let Some(error) = cause.downcast_ref::<Unreal4Error>() {
+            if let Some(error) = error.downcast_ref::<Unreal4Error>() {
                 return match error {
                     Unreal4Error::Empty => SymbolicErrorCode::Unreal4ErrorEmpty,
                     Unreal4Error::BadCompression(_) => {
@@ -383,7 +384,7 @@ impl SymbolicErrorCode {
             }
 
             use apple_crash_report_parser::ParseError;
-            if let Some(error) = cause.downcast_ref::<ParseError>() {
+            if let Some(error) = error.downcast_ref::<ParseError>() {
                 return match error {
                     ParseError::Io(_) => SymbolicErrorCode::AppleCrashReportParseErrorIo,
                     ParseError::InvalidIncidentIdentifier(_) => {
@@ -400,6 +401,8 @@ impl SymbolicErrorCode {
                     }
                 };
             }
+
+            source = error.source();
         }
 
         SymbolicErrorCode::Unknown
@@ -419,7 +422,7 @@ pub unsafe extern "C" fn symbolic_init() {
 pub unsafe extern "C" fn symbolic_err_get_last_code() -> SymbolicErrorCode {
     LAST_ERROR.with(|e| {
         if let Some(ref err) = *e.borrow() {
-            SymbolicErrorCode::from_error(err)
+            SymbolicErrorCode::from_error(err.as_ref())
         } else {
             SymbolicErrorCode::NoError
         }
@@ -435,9 +438,11 @@ pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
     use std::fmt::Write;
     LAST_ERROR.with(|e| {
         if let Some(ref err) = *e.borrow() {
+            let mut err = err.as_ref();
             let mut msg = err.to_string();
-            for cause in err.iter_causes() {
+            while let Some(cause) = err.source() {
                 write!(&mut msg, "\n  caused by: {}", cause).ok();
+                err = cause;
             }
             SymbolicStr::from_string(msg)
         } else {
@@ -449,21 +454,7 @@ pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
 /// Returns the panic information as string.
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_err_get_backtrace() -> SymbolicStr {
-    LAST_ERROR.with(|e| {
-        if let Some(ref error) = *e.borrow() {
-            let backtrace = error.backtrace().to_string();
-            if !backtrace.is_empty() {
-                use std::fmt::Write;
-                let mut out = String::new();
-                write!(&mut out, "stacktrace: {}", backtrace).ok();
-                SymbolicStr::from_string(out)
-            } else {
-                Default::default()
-            }
-        } else {
-            Default::default()
-        }
-    })
+    SymbolicStr::default()
 }
 
 /// Clears the last error.

@@ -21,19 +21,19 @@ use std::collections::HashMap;
 use std::io::{self, Write};
 use std::ops::Range;
 
-use failure::{Fail, ResultExt};
-
-use symbolic_common::{derive_failure, Arch, ByteView, UnknownArchError};
-use symbolic_debuginfo::breakpad::{BreakpadObject, BreakpadStackRecord};
+use symbolic_common::{Arch, ByteView, UnknownArchError};
+use symbolic_debuginfo::breakpad::{BreakpadError, BreakpadObject, BreakpadStackRecord};
 use symbolic_debuginfo::dwarf::gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error, FrameDescriptionEntry, Reader,
     Register, RegisterRule, UninitializedUnwindContext, UnwindSection,
 };
-use symbolic_debuginfo::dwarf::Dwarf;
+use symbolic_debuginfo::dwarf::{Dwarf, DwarfError, GimliError};
+use symbolic_debuginfo::elf::{ElfError, GoblinError};
 use symbolic_debuginfo::pdb::pdb::{self, FallibleIterator, FrameData, Rva, StringTable};
-use symbolic_debuginfo::pdb::PdbObject;
+use symbolic_debuginfo::pdb::{PdbError, PdbObject};
 use symbolic_debuginfo::pe::{PeObject, RuntimeFunction, UnwindOperation};
-use symbolic_debuginfo::{Object, ObjectLike};
+use symbolic_debuginfo::{Object, ObjectError, ObjectLike};
+use thiserror::Error;
 
 /// The latest version of the file format.
 pub const CFICACHE_LATEST_VERSION: u32 = 1;
@@ -45,48 +45,60 @@ const EMPTY_FUNCTION: RuntimeFunction = RuntimeFunction {
     unwind_info_address: 0,
 };
 
-/// Possible error kinds of `CfiError`.
+/// An error returned by [`AsciiCfiWriter`](struct.AsciiCfiWriter.html).
 #[non_exhaustive]
-#[derive(Debug, Fail, Copy, Clone)]
-pub enum CfiErrorKind {
+#[derive(Debug, Error)]
+pub enum CfiError {
     /// Required debug sections are missing in the `Object` file.
-    #[fail(display = "missing cfi debug sections")]
+    #[error("missing cfi debug sections")]
     MissingDebugInfo,
 
     /// The debug information in the `Object` file is not supported.
-    #[fail(display = "unsupported debug format")]
+    #[error("unsupported debug format")]
     UnsupportedDebugFormat,
 
     /// The debug information in the `Object` file is invalid.
-    #[fail(display = "bad debug information")]
-    BadDebugInfo,
+    #[error("bad debug information")]
+    BadDebugInfo(#[from] Box<ObjectError>),
 
     /// The `Object`s architecture is not supported by symbolic.
-    #[fail(display = "unsupported architecture")]
-    UnsupportedArch,
+    #[error("unsupported architecture")]
+    UnsupportedArch(#[from] UnknownArchError),
 
     /// CFI for an invalid address outside the mapped range was encountered.
-    #[fail(display = "invalid cfi address")]
+    #[error("invalid cfi address")]
     InvalidAddress,
 
     /// Generic error when writing CFI information, likely IO.
-    #[fail(display = "failed to write cfi")]
-    WriteError,
+    #[error("failed to write cfi")]
+    WriteError(#[from] io::Error),
 
     /// Invalid magic bytes in the cfi cache header.
-    #[fail(display = "bad cfi cache magic")]
+    #[error("bad cfi cache magic")]
     BadFileMagic,
 }
 
-derive_failure!(
-    CfiError,
-    CfiErrorKind,
-    doc = "An error returned by [`AsciiCfiWriter`](struct.AsciiCfiWriter.html)."
-);
+impl From<BreakpadError> for CfiError {
+    fn from(e: BreakpadError) -> Self {
+        Box::new(ObjectError::from(e)).into()
+    }
+}
 
-impl From<UnknownArchError> for CfiError {
-    fn from(_: UnknownArchError) -> CfiError {
-        CfiErrorKind::UnsupportedArch.into()
+impl From<pdb::Error> for CfiError {
+    fn from(e: pdb::Error) -> Self {
+        Box::new(ObjectError::from(PdbError::from(e))).into()
+    }
+}
+
+impl From<GoblinError> for CfiError {
+    fn from(e: GoblinError) -> Self {
+        Box::new(ObjectError::from(ElfError::from(e))).into()
+    }
+}
+
+impl From<GimliError> for CfiError {
+    fn from(e: GimliError) -> Self {
+        Box::new(ObjectError::from(DwarfError::from(e))).into()
     }
 }
 
@@ -160,7 +172,7 @@ impl<U> UnwindInfo<U> {
 /// use symbolic_debuginfo::Object;
 /// use symbolic_minidump::cfi::AsciiCfiWriter;
 ///
-/// # fn main() -> Result<(), failure::Error> {
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let view = ByteView::open("/path/to/object")?;
 /// let object = Object::parse(&view)?;
 ///
@@ -178,7 +190,7 @@ impl<U> UnwindInfo<U> {
 /// use symbolic_debuginfo::Object;
 /// use symbolic_minidump::cfi::AsciiCfiWriter;
 ///
-/// # fn main() -> Result<(), failure::Error> {
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let view = ByteView::open("/path/to/object")?;
 /// let object = Object::parse(&view)?;
 ///
@@ -215,11 +227,10 @@ impl<W: Write> AsciiCfiWriter<W> {
 
     fn process_breakpad(&mut self, object: &BreakpadObject<'_>) -> Result<(), CfiError> {
         for record in object.stack_records() {
-            match record.context(CfiErrorKind::BadDebugInfo)? {
+            match record? {
                 BreakpadStackRecord::Cfi(r) => writeln!(self.inner, "STACK CFI {}", r.text),
                 BreakpadStackRecord::Win(r) => writeln!(self.inner, "STACK WIN {}", r.text),
-            }
-            .context(CfiErrorKind::WriteError)?
+            }?
         }
 
         Ok(())
@@ -261,7 +272,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         let mut ctx = UninitializedUnwindContext::new();
 
         let mut entries = info.section.entries(&info.bases);
-        while let Some(entry) = entries.next().context(CfiErrorKind::BadDebugInfo)? {
+        while let Some(entry) = entries.next()? {
             // We skip all Common Information Entries and only process Frame Description Items here.
             // The iterator yields partial FDEs which need their associated CIE passed in via a
             // callback. This function is provided by the UnwindSection (frame), which then parses
@@ -293,9 +304,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         // Interpret all DWARF instructions of this Frame Description Entry. This gives us an unwind
         // table that contains rules for retrieving registers at every instruction address. These
         // rules can directly be transcribed to breakpad STACK CFI records.
-        let mut table = fde
-            .rows(&info.section, &info.bases, ctx)
-            .context(CfiErrorKind::BadDebugInfo)?;
+        let mut table = fde.rows(&info.section, &info.bases, ctx)?;
 
         // Collect all rows first, as we need to know the final end address in order to write the
         // CFI INIT record describing the extent of the whole unwind table.
@@ -307,7 +316,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                 Err(Error::UnknownCallFrameInstruction(_)) => continue,
                 // NOTE: Temporary workaround for https://github.com/gimli-rs/gimli/pull/487
                 Err(Error::TooManyRegisterRules) => continue,
-                Err(e) => return Err(e.context(CfiErrorKind::BadDebugInfo).into()),
+                Err(e) => return Err(e.into()),
             }
         }
 
@@ -338,11 +347,10 @@ impl<W: Write> AsciiCfiWriter<W> {
                 // normal STACK CFI record.
                 if row.start_address() == start {
                     let start_addr = start - info.load_address;
-                    write!(line, "STACK CFI INIT {:x} {:x}", start_addr, length)
-                        .context(CfiErrorKind::WriteError)?;
+                    write!(line, "STACK CFI INIT {:x} {:x}", start_addr, length)?;
                 } else {
                     let start_addr = row.start_address() - info.load_address;
-                    write!(line, "STACK CFI {:x}", start_addr).context(CfiErrorKind::WriteError)?;
+                    write!(line, "STACK CFI {:x}", start_addr)?;
                 }
 
                 // Write the mandatory CFA rule for this row, followed by optional register rules.
@@ -366,8 +374,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                 if written {
                     self.inner
                         .write_all(&line)
-                        .and_then(|_| writeln!(self.inner))
-                        .context(CfiErrorKind::WriteError)?;
+                        .and_then(|_| writeln!(self.inner))?;
                 }
             }
         }
@@ -390,7 +397,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             CfaRule::Expression(_) => return Ok(false),
         };
 
-        write!(target, " .cfa: {}", formatted).context(CfiErrorKind::WriteError)?;
+        write!(target, " .cfa: {}", formatted)?;
         Ok(true)
     }
 
@@ -431,26 +438,26 @@ impl<W: Write> AsciiCfiWriter<W> {
             }
         };
 
-        write!(target, " {}: {}", register_name, formatted).context(CfiErrorKind::WriteError)?;
+        write!(target, " {}: {}", register_name, formatted)?;
         Ok(true)
     }
 
     fn process_pdb(&mut self, pdb: &PdbObject<'_>) -> Result<(), CfiError> {
         let mut pdb = pdb.inner().write();
-        let frame_table = pdb.frame_table().context(CfiErrorKind::BadDebugInfo)?;
-        let address_map = pdb.address_map().context(CfiErrorKind::BadDebugInfo)?;
+        let frame_table = pdb.frame_table()?;
+        let address_map = pdb.address_map()?;
 
         // See `PdbDebugSession::build`.
         let string_table = match pdb.string_table() {
             Ok(string_table) => Some(string_table),
             Err(pdb::Error::StreamNameNotFound) => None,
-            Err(e) => Err(e).context(CfiErrorKind::BadDebugInfo)?,
+            Err(e) => return Err(e.into()),
         };
 
         let mut frames = frame_table.iter();
         let mut last_frame: Option<FrameData> = None;
 
-        while let Some(frame) = frames.next().context(CfiErrorKind::BadDebugInfo)? {
+        while let Some(frame) = frames.next()? {
             // Frame data information sometimes contains code_size values close to the maximum `u32`
             // value, such as `0xffffff6e`. Documentation does not describe the meaning of such
             // values, but clearly they are not actual code sizes. Since these values also always
@@ -557,26 +564,21 @@ impl<W: Write> AsciiCfiWriter<W> {
             frame.locals_size,
             frame.max_stack_size.unwrap_or(0),
             if program_or_bp { 1 } else { 0 },
-        )
-        .context(CfiErrorKind::WriteError)?;
+        )?;
 
         match frame.program {
             Some(ref prog_ref) => {
                 let string_table = match string_table {
                     Some(string_table) => string_table,
-                    None => return Ok(writeln!(self.inner).context(CfiErrorKind::WriteError)?),
+                    None => return Ok(writeln!(self.inner)?),
                 };
 
-                let program_string = prog_ref
-                    .to_string_lossy(&string_table)
-                    .context(CfiErrorKind::BadDebugInfo)?;
+                let program_string = prog_ref.to_string_lossy(&string_table)?;
 
-                writeln!(self.inner, "{}", program_string.trim())
-                    .context(CfiErrorKind::WriteError)?;
+                writeln!(self.inner, "{}", program_string.trim())?;
             }
             None => {
-                writeln!(self.inner, "{}", if program_or_bp { 1 } else { 0 })
-                    .context(CfiErrorKind::WriteError)?;
+                writeln!(self.inner, "{}", if program_or_bp { 1 } else { 0 })?;
             }
         }
 
@@ -591,7 +593,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         };
 
         for function_result in exception_data {
-            let function = function_result.context(CfiErrorKind::BadDebugInfo)?;
+            let function = function_result?;
 
             // Exception directories can contain zeroed out sections which need to be skipped.
             // Neither their start/end RVA nor the unwind info RVA is valid.
@@ -610,9 +612,7 @@ impl<W: Write> AsciiCfiWriter<W> {
 
             let mut next_function = Some(function);
             while let Some(next) = next_function {
-                let unwind_info = exception_data
-                    .get_unwind_info(next, sections)
-                    .context(CfiErrorKind::BadDebugInfo)?;
+                let unwind_info = exception_data.get_unwind_info(next, sections)?;
 
                 for code_result in &unwind_info {
                     // Due to variable length encoding of operator codes, there is little point in
@@ -648,8 +648,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                 "STACK CFI INIT {:x} {:x} .cfa: $rsp 8 + .ra: .cfa 8 - ^",
                 function.begin_address,
                 function.end_address - function.begin_address,
-            )
-            .context(CfiErrorKind::WriteError)?;
+            )?;
 
             if machine_frame_offset > 0 {
                 writeln!(
@@ -659,15 +658,13 @@ impl<W: Write> AsciiCfiWriter<W> {
                     stack_size,
                     stack_size - machine_frame_offset + 24, // old RSP offset
                     stack_size - machine_frame_offset + 48, // entire frame offset
-                )
-                .context(CfiErrorKind::WriteError)?
+                )?
             } else {
                 writeln!(
                     self.inner,
                     "STACK CFI {:x} .cfa: $rsp {} +",
                     function.begin_address, stack_size,
-                )
-                .context(CfiErrorKind::WriteError)?
+                )?
             }
         }
 
@@ -709,7 +706,7 @@ enum CfiCacheInner<'a> {
 /// use symbolic_debuginfo::Object;
 /// use symbolic_minidump::cfi::CfiCache;
 ///
-/// # fn main() -> Result<(), failure::Error> {
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let view = ByteView::open("/path/to/object")?;
 /// let object = Object::parse(&view)?;
 /// let cache = CfiCache::from_object(&object)?;
@@ -722,7 +719,7 @@ enum CfiCacheInner<'a> {
 /// use symbolic_common::ByteView;
 /// use symbolic_minidump::cfi::CfiCache;
 ///
-/// # fn main() -> Result<(), failure::Error> {
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let view = ByteView::open("my.cficache")?;
 /// let cache = CfiCache::from_bytes(view)?;
 /// # Ok(())
@@ -751,7 +748,7 @@ impl<'a> CfiCache<'a> {
             return Ok(CfiCache { inner });
         }
 
-        Err(CfiErrorKind::BadFileMagic.into())
+        Err(CfiError::BadFileMagic)
     }
 
     /// Returns the cache file format version.
