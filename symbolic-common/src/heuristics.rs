@@ -24,8 +24,8 @@ const SIGSEGV: u32 = 11;
 ///
 /// let caller_address = InstructionInfo::new(Arch::Arm64, 0x1337)
 ///     .is_crashing_frame(false)
-///     .signal(SIGSEGV)
-///     .ip_register_value(0x4242)
+///     .signal(Some(SIGSEGV))
+///     .ip_register_value(Some(0x4242))
 ///     .caller_address();
 ///
 /// assert_eq!(caller_address, 0x1330);
@@ -256,7 +256,7 @@ impl InstructionInfo {
     /// const SIGSEGV: u32 = 11;
     ///
     /// let is_crash = InstructionInfo::new(Arch::X86, 0x1337)
-    ///     .signal(SIGSEGV)
+    ///     .signal(Some(SIGSEGV))
     ///     .is_crash_signal();
     ///
     /// assert!(is_crash);
