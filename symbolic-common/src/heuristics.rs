@@ -1,9 +1,5 @@
 //! Heuristics for correcting instruction pointers based on the CPU architecture.
 
-// The fields on `InstructionInfo` are deprecated and will be removed from the public interface in
-// the next major release. They may still be used in this module.
-#![allow(deprecated)]
-
 use crate::types::{Arch, CpuFamily};
 
 const SIGILL: u32 = 4;
@@ -107,21 +103,11 @@ const SIGSEGV: u32 = 11;
 /// [`caller_address`]: struct.InstructionInfo.html#method.caller_address
 #[derive(Clone, Debug)]
 pub struct InstructionInfo {
-    #[doc(hidden)]
-    #[deprecated = "Use InstructionInfo::new() instead"]
-    pub addr: u64,
-    #[doc(hidden)]
-    #[deprecated = "Use InstructionInfo::new() instead"]
-    pub arch: Arch,
-    #[doc(hidden)]
-    #[deprecated = "Use is_crashing_frame() instead"]
-    pub crashing_frame: bool,
-    #[doc(hidden)]
-    #[deprecated = "Use signal() instead"]
-    pub signal: Option<u32>,
-    #[doc(hidden)]
-    #[deprecated = "Use ip_register_value() instead"]
-    pub ip_reg: Option<u64>,
+    addr: u64,
+    arch: Arch,
+    crashing_frame: bool,
+    signal: Option<u32>,
+    ip_reg: Option<u64>,
 }
 
 impl InstructionInfo {

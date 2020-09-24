@@ -111,23 +111,6 @@ pub trait Dwarf<'data> {
     /// given by the architecture.
     fn endianity(&self) -> Endian;
 
-    #[doc(hidden)]
-    #[deprecated(note = "use raw_section instead")]
-    fn raw_data(&self, name: &str) -> Option<(u64, &'data [u8])> {
-        let section = self.raw_section(name)?;
-        match section.data {
-            Cow::Borrowed(data) => Some((section.offset, data)),
-            Cow::Owned(_) => None,
-        }
-    }
-
-    #[doc(hidden)]
-    #[deprecated(note = "use section instead")]
-    fn section_data(&self, name: &str) -> Option<(u64, Cow<'data, [u8]>)> {
-        let section = self.section(name)?;
-        Some((section.offset, section.data))
-    }
-
     /// Returns information and raw data of a section.
     ///
     /// The section name is given without leading punctuation, such dots or underscores. For

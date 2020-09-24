@@ -33,7 +33,6 @@ misc_number_of_cores: 6
 misc_number_of_cores_inc_hyperthread: 6
 misc_cpu_vendor: GenuineIntel
 misc_cpu_brand: Intel(R) Core(TM) i5-8600K CPU @ 3.60GHz
-misc_primary_cpu_brand: NVIDIA GeForce GTX 1080
 misc_primary_gpu_brand: NVIDIA GeForce GTX 1080
 misc_os_version_major: Windows 10
 memory_stats_total_physical: 17112477696

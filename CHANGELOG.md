@@ -6,6 +6,14 @@
 
 - Usage of `failure` was removed, and all Error types were changed to only implement `std::error::Error` and related traits.
 - `symbolic-proguard` was removed in favor of the `proguard` crate. Proguard is still supported via `symbolic-cabi` and the python API however.
+- Deprecated APIs have been removed:
+  - `InstructionInfo`'s fields are no longer public.
+  - `pointer_size`, `instruction_alignment` and `ip_register_name` have moved from `Arch` to `CpuFamily`.
+  - `Arch::register_name` as been moved to `CpuFamily::cfi_register_name`.
+  - `Dwarf::raw_data` and `Dwarf::section_data` have been replaced with the `raw_section` and `section` APIs.
+  - `Unreal4ContextRuntimeProperties::misc_primary_cpu_brand` is has been removed.
+- Deprecated Python APIs have been removed:
+  - `CodeModule.id` and `CodeModule.name` Use `debug_id` and `code_file`, respectively.
 
 ## 7.5.0
 
