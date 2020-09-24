@@ -81,21 +81,6 @@ class CodeModule(RustObject):
         """Size of the loaded module in virtual memory"""
         return self._objptr.size
 
-    @property
-    def id(self):
-        warnings.warn(
-            "module.id is deprecated, use module.debug_id instead", DeprecationWarning
-        )
-        return self.debug_id
-
-    @property
-    def name(self):
-        warnings.warn(
-            "module.name is deprecated, use module.code_file instead",
-            DeprecationWarning,
-        )
-        return self.code_file
-
 
 class StackFrame(RustObject):
     """A single frame in the call stack of a crashed process"""

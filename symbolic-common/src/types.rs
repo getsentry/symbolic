@@ -414,24 +414,6 @@ impl Arch {
         }
     }
 
-    #[doc(hidden)]
-    #[deprecated = "use CpuFamily::pointer_size instead"]
-    pub fn pointer_size(self) -> Option<usize> {
-        self.cpu_family().pointer_size()
-    }
-
-    #[doc(hidden)]
-    #[deprecated = "use CpuFamily::instruction_alignment instead"]
-    pub fn instruction_alignment(self) -> Option<u64> {
-        self.cpu_family().instruction_alignment()
-    }
-
-    #[doc(hidden)]
-    #[deprecated = "use CpuFamily::ip_register_name instead"]
-    pub fn ip_register_name(self) -> Option<&'static str> {
-        self.cpu_family().ip_register_name()
-    }
-
     /// Returns whether this architecture is well-known.
     ///
     /// This is trivially `true` for all architectures other than the `*Unknown` variants.
@@ -454,12 +436,6 @@ impl Arch {
             | Arch::Arm64_32Unknown => false,
             _ => true,
         }
-    }
-
-    #[doc(hidden)]
-    #[deprecated = "use CpuFamily::cfi_register_name instead"]
-    pub fn register_name(self, register: u16) -> Option<&'static str> {
-        self.cpu_family().cfi_register_name(register)
     }
 }
 
