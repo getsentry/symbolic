@@ -35,19 +35,6 @@ fn test_cpp_msvc() {
 }
 
 #[test]
-fn test_rust_legacy() {
-    assert_language(
-        "__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E",
-        Language::Rust,
-    );
-}
-
-#[test]
-fn test_rust_v0() {
-    assert_language("_RNvNtCs1234_7mycrate3foo3bar", Language::Rust);
-}
-
-#[test]
 fn test_objc_static() {
     assert_language("+[Foo bar:blub:]", Language::ObjC);
 }
@@ -55,21 +42,6 @@ fn test_objc_static() {
 #[test]
 fn test_objc_member() {
     assert_language("-[Foo bar:blub:]", Language::ObjC);
-}
-
-#[test]
-fn test_swift_old() {
-    assert_language("_T08mangling3barSiyKF", Language::Swift);
-}
-
-#[test]
-fn test_swift_4() {
-    assert_language("$S8mangling6curry1yyF", Language::Swift);
-}
-
-#[test]
-fn test_swift_5() {
-    assert_language("$s8mangling6curry1yyF", Language::Swift);
 }
 
 #[test]
@@ -82,4 +54,42 @@ fn test_ambiguous_cpp_rust() {
         "_ZN7content11ContentMainERKNS_17ContentMainParamsE",
         Language::Cpp,
     );
+}
+
+#[cfg(feature = "swift")]
+mod swift_tests {
+    use super::*;
+
+    #[test]
+    fn test_swift_old() {
+        assert_language("_T08mangling3barSiyKF", Language::Swift);
+    }
+
+    #[test]
+    fn test_swift_4() {
+        assert_language("$S8mangling6curry1yyF", Language::Swift);
+    }
+
+    #[test]
+    fn test_swift_5() {
+        assert_language("$s8mangling6curry1yyF", Language::Swift);
+    }
+}
+
+#[cfg(feature = "rust")]
+mod rust_tests {
+    use super::*;
+
+    #[test]
+    fn test_rust_legacy() {
+        assert_language(
+            "__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E",
+            Language::Rust,
+        );
+    }
+
+    #[test]
+    fn test_rust_v0() {
+        assert_language("_RNvNtCs1234_7mycrate3foo3bar", Language::Rust);
+    }
 }

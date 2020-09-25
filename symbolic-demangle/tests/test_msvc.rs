@@ -2,6 +2,8 @@
 //! We use msvc_demangler under the hood which runs its own test suite.
 //! Tests here make it easier to detect regressions.
 
+#![cfg(feature = "msvc")]
+
 #[macro_use]
 mod utils;
 
