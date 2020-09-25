@@ -1,5 +1,6 @@
 fn main() {
-    if std::env::var("CARGO_FEATURE_SWIFT").is_ok() {
+    #[cfg(feature = "swift")]
+    {
         cc::Build::new()
             .cpp(true)
             .files(&[
