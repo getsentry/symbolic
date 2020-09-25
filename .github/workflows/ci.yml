@@ -1,0 +1,175 @@
+# Notes on Caching:
+#
+# Caches are keyed by OS, rustc version, job and Cargo.toml hash.
+# We additionally cache the `Cargo.lock` file, as that is not being committed
+# directly to git.
+
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - "release/**"
+  pull_request:
+
+jobs:
+  lint-rust:
+    name: Rust Style/Linting
+    runs-on: ubuntu-latest
+    env:
+      cache-name: lints
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        id: toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+            Cargo.lock
+          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-
+
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: Run cargo clippy
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features --workspace --tests --examples -- -D clippy::all
+
+  test-rust:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    name: Rust Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    env:
+      cache-name: test
+      CXX: clang
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install rust toolchain
+        id: toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      # workaround for: https://github.com/actions/cache/issues/403
+      - name: Install GNU tar (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install gnu-tar
+          echo "::add-path::/usr/local/opt/gnu-tar/libexec/gnubin"
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+            Cargo.lock
+          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --workspace --all-features
+
+  lint-python:
+    name: Python Style/Linting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.7"
+
+      - run: make style-python
+      - run: make lint-python
+
+  test-python:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: 3.6.3
+          - os: macos-latest
+            python: 3.7
+
+    name: Python Test on ${{ matrix.os }} using Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+
+    env:
+      cache-name: test-python-${{ matrix.python }}
+      CXX: clang
+      SYMBOLIC_DEBUG: 1
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install rust toolchain
+        id: toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+
+      # workaround for: https://github.com/actions/cache/issues/403
+      - name: Install GNU tar (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install gnu-tar
+          echo "::add-path::/usr/local/opt/gnu-tar/libexec/gnubin"
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .venv
+            target
+            Cargo.lock
+          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ env.cache-name }}-
+
+      - run: make test-python
