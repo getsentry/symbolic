@@ -23,14 +23,21 @@ exclude = [
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+default = ["cpp", "msvc", "rust", "swift"]
+cpp = ["cpp_demangle"]
+msvc = ["msvc-demangler"]
+rust = ["rustc-demangle"]
+swift = ["cc"]
+
 [dependencies]
-cpp_demangle = "0.3.0"
-msvc-demangler = "0.8.0"
-rustc-demangle = "0.1.16"
+cpp_demangle = { version = "0.3.0", optional = true }
+msvc-demangler = { version = "0.8.0", optional = true }
+rustc-demangle = { version = "0.1.16", optional = true }
 symbolic-common = { version = "7.5.0", path = "../symbolic-common" }
 
 [build-dependencies]
-cc = "1.0.50"
+cc = { version = "1.0.50", optional = true }
 
 [badges]
 travis-ci = { repository = "getsentry/symbolic", branch = "master" }

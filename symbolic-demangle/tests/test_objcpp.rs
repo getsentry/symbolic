@@ -9,6 +9,7 @@ use symbolic_common::{Language, Name};
 use symbolic_demangle::Demangle;
 
 #[test]
+#[cfg(feature = "cpp")]
 fn test_demangle_objcpp() {
     assert_demangle!(Language::ObjCpp, utils::WITH_ARGS, {
         "+[Foo bar:blub:]" => "+[Foo bar:blub:]",
@@ -19,6 +20,7 @@ fn test_demangle_objcpp() {
 }
 
 #[test]
+#[cfg(feature = "cpp")]
 fn test_demangle_objcpp_no_args() {
     assert_demangle!(Language::ObjCpp, utils::WITHOUT_ARGS, {
         "+[Foo bar:blub:]" => "+[Foo bar:blub:]",

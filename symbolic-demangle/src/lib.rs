@@ -2,9 +2,9 @@
 //!
 //! Currently supported languages are:
 //!
-//! - C++ (GCC-style compilers and MSVC)
-//! - Rust (both `legacy` and `v0`)
-//! - Swift (up to Swift 5.2)
+//! - C++ (GCC-style compilers and MSVC) (`features = ["cpp", "msvc"]`)
+//! - Rust (both `legacy` and `v0`) (`features = ["rust"]`)
+//! - Swift (up to Swift 5.2) (`features = ["swift"]`)
 //! - ObjC (only symbol detection)
 //!
 //! As the demangling schemes for the languages are different, the supported demangling features are
@@ -16,25 +16,27 @@
 //! # Examples
 //!
 //! ```rust
+//! # #[cfg(feature = "cpp")] {
 //! use symbolic_common::{Language, Name};
 //! use symbolic_demangle::{Demangle, DemangleOptions};
 //!
 //! let name = Name::new("__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E");
 //! assert_eq!(name.detect_language(), Language::Rust);
 //! assert_eq!(name.try_demangle(DemangleOptions::default()), "std::io::Read::read_to_end");
+//! # }
 //! ```
 
 #![warn(missing_docs)]
 
 use std::borrow::Cow;
+#[cfg(feature = "swift")]
 use std::ffi::{CStr, CString};
+#[cfg(feature = "swift")]
 use std::os::raw::{c_char, c_int};
 
 use symbolic_common::{Language, Name};
 
-use cpp_demangle::{DemangleOptions as CppOptions, Symbol as CppSymbol};
-use msvc_demangler::DemangleFlags as MsvcFlags;
-
+#[cfg(feature = "swift")]
 extern "C" {
     fn symbolic_demangle_swift(
         sym: *const c_char,
@@ -96,13 +98,21 @@ fn is_maybe_msvc(ident: &str) -> bool {
     ident.starts_with('?') || ident.starts_with("@?")
 }
 
+#[cfg(feature = "swift")]
 fn is_maybe_swift(ident: &str) -> bool {
     CString::new(ident)
         .map(|cstr| unsafe { symbolic_demangle_is_swift_symbol(cstr.as_ptr()) != 0 })
         .unwrap_or(false)
 }
 
+#[cfg(not(feature = "swift"))]
+fn is_maybe_swift(_ident: &str) -> bool {
+    false
+}
+
+#[cfg(feature = "msvc")]
 fn try_demangle_msvc(ident: &str, opts: DemangleOptions) -> Option<String> {
+    use msvc_demangler::DemangleFlags as MsvcFlags;
     let flags = match opts.format {
         DemangleFormat::Full => MsvcFlags::COMPLETE,
         DemangleFormat::Short => {
@@ -117,27 +127,42 @@ fn try_demangle_msvc(ident: &str, opts: DemangleOptions) -> Option<String> {
     msvc_demangler::demangle(ident, flags).ok()
 }
 
+#[cfg(not(feature = "msvc"))]
+fn try_demangle_msvc(_ident: &str, _opts: DemangleOptions) -> Option<String> {
+    None
+}
+
 fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
     if is_maybe_msvc(ident) {
         return try_demangle_msvc(ident, opts);
     }
 
-    let symbol = match CppSymbol::new(ident) {
-        Ok(symbol) => symbol,
-        Err(_) => return None,
-    };
+    #[cfg(feature = "cpp")]
+    {
+        use cpp_demangle::{DemangleOptions as CppOptions, Symbol as CppSymbol};
 
-    let mut cpp_options = CppOptions::new();
-    if !opts.with_arguments {
-        cpp_options = cpp_options.no_params().no_return_type();
+        let symbol = match CppSymbol::new(ident) {
+            Ok(symbol) => symbol,
+            Err(_) => return None,
+        };
+
+        let mut cpp_options = CppOptions::new();
+        if !opts.with_arguments {
+            cpp_options = cpp_options.no_params().no_return_type();
+        }
+
+        match symbol.demangle(&cpp_options) {
+            Ok(demangled) => Some(demangled),
+            Err(_) => None,
+        }
     }
-
-    match symbol.demangle(&cpp_options) {
-        Ok(demangled) => Some(demangled),
-        Err(_) => None,
+    #[cfg(not(feature = "cpp"))]
+    {
+        None
     }
 }
 
+#[cfg(feature = "rust")]
 fn try_demangle_rust(ident: &str, _opts: DemangleOptions) -> Option<String> {
     match rustc_demangle::try_demangle(ident) {
         Ok(demangled) => Some(format!("{:#}", demangled)),
@@ -145,6 +170,12 @@ fn try_demangle_rust(ident: &str, _opts: DemangleOptions) -> Option<String> {
     }
 }
 
+#[cfg(not(feature = "rust"))]
+fn try_demangle_rust(_ident: &str, _opts: DemangleOptions) -> Option<String> {
+    None
+}
+
+#[cfg(feature = "swift")]
 fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
     let mut buf = vec![0 as c_char; 4096];
     let sym = match CString::new(ident) {
@@ -169,6 +200,11 @@ fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
             _ => Some(CStr::from_ptr(buf.as_ptr()).to_string_lossy().to_string()),
         }
     }
+}
+
+#[cfg(not(feature = "swift"))]
+fn try_demangle_swift(_ident: &str, _opts: DemangleOptions) -> Option<String> {
+    None
 }
 
 fn try_demangle_objc(ident: &str, _opts: DemangleOptions) -> Option<String> {
@@ -220,11 +256,13 @@ pub trait Demangle {
     /// # Examples
     ///
     /// ```
+    /// # #[cfg(feature = "cpp")] {
     /// use symbolic_common::Name;
     /// use symbolic_demangle::{Demangle, DemangleOptions};
     ///
     /// assert_eq!(Name::new("_ZN3foo3barEv").demangle(DemangleOptions::default()), Some("foo::bar".to_string()));
     /// assert_eq!(Name::new("unknown").demangle(DemangleOptions::default()), None);
+    /// # }
     /// ```
     fn demangle(&self, opts: DemangleOptions) -> Option<String>;
 
@@ -236,11 +274,13 @@ pub trait Demangle {
     /// # Examples
     ///
     /// ```
+    /// # #[cfg(feature = "cpp")] {
     /// use symbolic_common::Name;
     /// use symbolic_demangle::{Demangle, DemangleOptions};
     ///
     /// assert_eq!(Name::new("_ZN3foo3barEv").try_demangle(DemangleOptions::default()), "foo::bar");
     /// assert_eq!(Name::new("unknown").try_demangle(DemangleOptions::default()), "unknown");
+    /// # }
     /// ```
     ///
     /// [`demangle`]: trait.Demangle.html#tymethod.demangle
@@ -257,8 +297,11 @@ impl<'a> Demangle for Name<'a> {
             return Language::ObjC;
         }
 
-        if rustc_demangle::try_demangle(self.as_str()).is_ok() {
-            return Language::Rust;
+        #[cfg(feature = "rust")]
+        {
+            if rustc_demangle::try_demangle(self.as_str()).is_ok() {
+                return Language::Rust;
+            }
         }
 
         if is_maybe_cpp(self.as_str()) || is_maybe_msvc(self.as_str()) {
@@ -298,7 +341,9 @@ impl<'a> Demangle for Name<'a> {
 /// # Examples
 ///
 /// ```
+/// # #[cfg(feature = "cpp")] {
 /// assert_eq!(symbolic_demangle::demangle("_ZN3foo3barEv"), "foo::bar");
+/// # }
 /// ```
 ///
 /// [`Demangle::try_demangle`]: trait.Demangle.html#tymethod.try_demangle

@@ -2,6 +2,8 @@
 //! We use cpp_demangle under the hood which runs the libiberty test suite
 //! Still, we run some basic regression tests here to detect demangling differences.
 
+#![cfg(feature = "cpp")]
+
 #[macro_use]
 mod utils;
 
