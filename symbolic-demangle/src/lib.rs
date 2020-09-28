@@ -2,9 +2,9 @@
 //!
 //! Currently supported languages are:
 //!
-//! - C++ (GCC-style compilers and MSVC) (`feature = "cpp" / "msvc"`)
-//! - Rust (both `legacy` and `v0`) (`feature = "rust"`)
-//! - Swift (up to Swift 5.2) (`feature = "swift"`)
+//! - C++ (GCC-style compilers and MSVC) (`features = ["cpp", "msvc"]`)
+//! - Rust (both `legacy` and `v0`) (`features = ["rust"]`)
+//! - Swift (up to Swift 5.2) (`features = ["swift"]`)
 //! - ObjC (only symbol detection)
 //!
 //! As the demangling schemes for the languages are different, the supported demangling features are
@@ -104,6 +104,7 @@ fn is_maybe_swift(ident: &str) -> bool {
         .map(|cstr| unsafe { symbolic_demangle_is_swift_symbol(cstr.as_ptr()) != 0 })
         .unwrap_or(false)
 }
+
 #[cfg(not(feature = "swift"))]
 fn is_maybe_swift(_ident: &str) -> bool {
     false
@@ -125,6 +126,7 @@ fn try_demangle_msvc(ident: &str, opts: DemangleOptions) -> Option<String> {
 
     msvc_demangler::demangle(ident, flags).ok()
 }
+
 #[cfg(not(feature = "msvc"))]
 fn try_demangle_msvc(_ident: &str, _opts: DemangleOptions) -> Option<String> {
     None
@@ -156,7 +158,7 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
     }
     #[cfg(not(feature = "cpp"))]
     {
-        return None;
+        None
     }
 }
 
@@ -167,6 +169,7 @@ fn try_demangle_rust(ident: &str, _opts: DemangleOptions) -> Option<String> {
         Err(_) => None,
     }
 }
+
 #[cfg(not(feature = "rust"))]
 fn try_demangle_rust(_ident: &str, _opts: DemangleOptions) -> Option<String> {
     None
@@ -198,6 +201,7 @@ fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
         }
     }
 }
+
 #[cfg(not(feature = "swift"))]
 fn try_demangle_swift(_ident: &str, _opts: DemangleOptions) -> Option<String> {
     None
