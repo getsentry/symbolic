@@ -14,6 +14,11 @@
   - `Unreal4ContextRuntimeProperties::misc_primary_cpu_brand` is has been removed.
 - Deprecated Python APIs have been removed:
   - `CodeModule.id` and `CodeModule.name` Use `debug_id` and `code_file`, respectively.
+- `DemangleFormat` and public fields of `DemangleOptions` have been removed in favor of builder methods on `DemangleOptions`.
+
+**Changes**:
+
+- Added support for unmangled names via `Name::unmangled()`
 
 ## 7.5.0
 

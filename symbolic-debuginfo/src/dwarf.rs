@@ -18,7 +18,7 @@ use gimli::{constants, UnitSectionOffset};
 use lazycell::LazyCell;
 use thiserror::Error;
 
-use symbolic_common::{AsSelf, Language, Name, SelfCell};
+use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
 
 use crate::base::*;
 use crate::private::FunctionStack;
@@ -825,7 +825,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let function = Function {
                 address: function_address,
                 size: function_size,
-                name: Name::with_language(name.unwrap_or_default(), self.language),
+                name: Name::new(
+                    name.unwrap_or_default(),
+                    NameMangling::Unknown,
+                    self.language,
+                ),
                 compilation_dir: self.compilation_dir(),
                 lines,
                 inlinees: Vec::new(),

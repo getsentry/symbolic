@@ -1,15 +1,25 @@
 #include "swift/Demangling/Demangle.h"
 
+#define SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE 0x1
+#define SYMBOLIC_SWIFT_FEATURE_ARGUMENT_TYPES 0x2
+#define SYMBOLIC_SWIFT_FEATURE_ARGUMENT_NAMES 0x4
+#define SYMBOLIC_SWIFT_FEATURE_ALL 0x7
+
 extern "C" int symbolic_demangle_swift(const char *symbol,
                                        char *buffer,
                                        size_t buffer_length,
-                                       int simplified) {
+                                       int features) {
     swift::Demangle::DemangleOptions opts;
-    if (simplified) {
+
+    if (features < SYMBOLIC_SWIFT_FEATURE_ALL) {
         opts = swift::Demangle::DemangleOptions::SimplifiedUIDemangleOptions();
-        if (simplified == 2) {
-            opts.ShowFunctionArguments = false;
-        }
+        bool return_type = features & SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE;
+        bool argument_types = features & SYMBOLIC_SWIFT_FEATURE_ARGUMENT_TYPES;
+        bool argument_names = features & SYMBOLIC_SWIFT_FEATURE_ARGUMENT_NAMES;
+
+        // This option toggles both argument *and* return types (and `throws` declarations).
+        opts.ShowFunctionArgumentTypes = return_type || argument_types;
+        opts.ShowFunctionArguments = argument_names;
     }
 
     std::string demangled =

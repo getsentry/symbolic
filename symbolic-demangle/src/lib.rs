@@ -10,19 +10,21 @@
 //! As the demangling schemes for the languages are different, the supported demangling features are
 //! inconsistent. For example, argument types were not encoded in legacy Rust mangling and thus not
 //! available in demangled names.
+//! The demangling results should not be considered stable, and may change over time as more
+//! demangling features are added.
 //!
 //! This module is part of the `symbolic` crate and can be enabled via the `demangle` feature.
 //!
 //! # Examples
 //!
 //! ```rust
-//! # #[cfg(feature = "cpp")] {
+//! # #[cfg(feature = "rust")] {
 //! use symbolic_common::{Language, Name};
 //! use symbolic_demangle::{Demangle, DemangleOptions};
 //!
-//! let name = Name::new("__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E");
+//! let name = Name::from("__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E");
 //! assert_eq!(name.detect_language(), Language::Rust);
-//! assert_eq!(name.try_demangle(DemangleOptions::default()), "std::io::Read::read_to_end");
+//! assert_eq!(name.try_demangle(DemangleOptions::complete()), "std::io::Read::read_to_end");
 //! # }
 //! ```
 
@@ -34,7 +36,14 @@ use std::ffi::{CStr, CString};
 #[cfg(feature = "swift")]
 use std::os::raw::{c_char, c_int};
 
-use symbolic_common::{Language, Name};
+use symbolic_common::{Language, Name, NameMangling};
+
+#[cfg(feature = "swift")]
+const SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE: c_int = 0x1;
+#[cfg(feature = "swift")]
+const SYMBOLIC_SWIFT_FEATURE_ARGUMENT_TYPES: c_int = 0x2;
+#[cfg(feature = "swift")]
+const SYMBOLIC_SWIFT_FEATURE_ARGUMENT_NAMES: c_int = 0x4;
 
 #[cfg(feature = "swift")]
 extern "C" {
@@ -42,44 +51,81 @@ extern "C" {
         sym: *const c_char,
         buf: *mut c_char,
         buf_len: usize,
-        simplified: c_int,
+        features: c_int,
     ) -> c_int;
 
     fn symbolic_demangle_is_swift_symbol(sym: *const c_char) -> c_int;
 }
 
-/// Defines the output format for demangling.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum DemangleFormat {
-    /// Strips parameter names (in Swift) and sometimes packages or namespaces.
-    Short,
-
-    /// Outputs the full demangled name including arguments, return types, generics and packages.
-    Full,
-}
-
 /// Options for [`Demangle::demangle`].
+///
+/// One can chose from complete, or name-only demangling, and toggle specific demangling features
+/// explicitly.
+///
+/// The resulting output depends very much on the language of the mangled [`Name`], and may change
+/// over time as more fine grained demangling options and features are added. Not all options are
+/// fully supported by each language, and not every feature is mutually exclusive on all languages.
+///
+/// # Examples
+///
+/// ```
+/// # #[cfg(feature = "swift")] {
+/// use symbolic_common::{Name, NameMangling, Language};
+/// use symbolic_demangle::{Demangle, DemangleOptions};
+///
+/// let symbol = Name::new("$s8mangling12GenericUnionO3FooyACyxGSicAEmlF", NameMangling::Mangled, Language::Swift);
+///
+/// let simple = symbol.demangle(DemangleOptions::name_only()).unwrap();
+/// assert_eq!(&simple, "GenericUnion.Foo<A>");
+///
+/// let full = symbol.demangle(DemangleOptions::complete()).unwrap();
+/// assert_eq!(&full, "mangling.GenericUnion.Foo<A>(mangling.GenericUnion<A>.Type) -> (Swift.Int) -> mangling.GenericUnion<A>");
+/// # }
+/// ```
 ///
 /// [`Demangle::demangle`]: trait.Demangle.html#tymethod.demangle
 #[derive(Clone, Copy, Debug)]
 pub struct DemangleOptions {
-    /// General format to use for the output.
-    ///
-    /// Defaults to `DemangleFormat::Short`.
-    pub format: DemangleFormat,
-
-    /// Determines whether function arguments should be demangled.
-    ///
-    /// Defaults to `false`.
-    pub with_arguments: bool,
+    return_type: bool,
+    argument_types: bool,
+    argument_names: bool,
 }
 
-impl Default for DemangleOptions {
-    fn default() -> DemangleOptions {
-        DemangleOptions {
-            format: DemangleFormat::Short,
-            with_arguments: false,
+impl DemangleOptions {
+    /// DemangleOptions that output a complete verbose demangling.
+    pub const fn complete() -> Self {
+        Self {
+            return_type: true,
+            argument_types: true,
+            argument_names: true,
         }
+    }
+
+    /// DemangleOptions that output the most simple (likely name-only) demangling.
+    pub const fn name_only() -> Self {
+        Self {
+            return_type: false,
+            argument_types: false,
+            argument_names: false,
+        }
+    }
+
+    /// Determines whether a functions return type should be demangled.
+    pub const fn return_type(mut self, return_type: bool) -> Self {
+        self.return_type = return_type;
+        self
+    }
+
+    /// Determines whether function argument types should be demangled.
+    pub const fn argument_types(mut self, argument_types: bool) -> Self {
+        self.argument_types = argument_types;
+        self
+    }
+
+    /// Determines whether function argument names should be demangled.
+    pub const fn argument_names(mut self, argument_names: bool) -> Self {
+        self.argument_names = argument_names;
+        self
     }
 }
 
@@ -113,16 +159,16 @@ fn is_maybe_swift(_ident: &str) -> bool {
 #[cfg(feature = "msvc")]
 fn try_demangle_msvc(ident: &str, opts: DemangleOptions) -> Option<String> {
     use msvc_demangler::DemangleFlags as MsvcFlags;
-    let flags = match opts.format {
-        DemangleFormat::Full => MsvcFlags::COMPLETE,
-        DemangleFormat::Short => {
-            if opts.with_arguments {
-                MsvcFlags::NO_FUNCTION_RETURNS
-            } else {
-                MsvcFlags::NAME_ONLY
-            }
-        }
-    };
+
+    // the flags are bitflags
+    let mut flags = MsvcFlags::COMPLETE;
+    if !opts.return_type {
+        flags |= MsvcFlags::NO_FUNCTION_RETURNS;
+    }
+    if !opts.argument_types {
+        // a `NO_ARGUMENTS` flag is there in the code, but commented out
+        flags |= MsvcFlags::NAME_ONLY;
+    }
 
     msvc_demangler::demangle(ident, flags).ok()
 }
@@ -147,8 +193,11 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
         };
 
         let mut cpp_options = CppOptions::new();
-        if !opts.with_arguments {
-            cpp_options = cpp_options.no_params().no_return_type();
+        if !opts.argument_types {
+            cpp_options = cpp_options.no_params();
+        }
+        if !opts.return_type {
+            cpp_options = cpp_options.no_return_type();
         }
 
         match symbol.demangle(&cpp_options) {
@@ -183,19 +232,19 @@ fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
         Err(_) => return None,
     };
 
-    let simplified = match opts.format {
-        DemangleFormat::Short => {
-            if opts.with_arguments {
-                1
-            } else {
-                2
-            }
-        }
-        DemangleFormat::Full => 0,
-    };
+    let mut features = 0;
+    if opts.return_type {
+        features |= SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE;
+    }
+    if opts.argument_types {
+        features |= SYMBOLIC_SWIFT_FEATURE_ARGUMENT_TYPES;
+    }
+    if opts.argument_names {
+        features |= SYMBOLIC_SWIFT_FEATURE_ARGUMENT_NAMES;
+    }
 
     unsafe {
-        match symbolic_demangle_swift(sym.as_ptr(), buf.as_mut_ptr(), buf.len(), simplified) {
+        match symbolic_demangle_swift(sym.as_ptr(), buf.as_mut_ptr(), buf.len(), features) {
             0 => None,
             _ => Some(CStr::from_ptr(buf.as_ptr()).to_string_lossy().to_string()),
         }
@@ -239,8 +288,8 @@ pub trait Demangle {
     /// use symbolic_common::{Name, Language};
     /// use symbolic_demangle::{Demangle, DemangleOptions};
     ///
-    /// assert_eq!(Name::new("_ZN3foo3barEv").detect_language(), Language::Cpp);
-    /// assert_eq!(Name::new("unknown").detect_language(), Language::Unknown);
+    /// assert_eq!(Name::from("_ZN3foo3barEv").detect_language(), Language::Cpp);
+    /// assert_eq!(Name::from("unknown").detect_language(), Language::Unknown);
     /// ```
     ///
     /// [module level documentation]: index.html
@@ -260,8 +309,8 @@ pub trait Demangle {
     /// use symbolic_common::Name;
     /// use symbolic_demangle::{Demangle, DemangleOptions};
     ///
-    /// assert_eq!(Name::new("_ZN3foo3barEv").demangle(DemangleOptions::default()), Some("foo::bar".to_string()));
-    /// assert_eq!(Name::new("unknown").demangle(DemangleOptions::default()), None);
+    /// assert_eq!(Name::from("_ZN3foo3barEv").demangle(DemangleOptions::name_only()), Some("foo::bar".to_string()));
+    /// assert_eq!(Name::from("unknown").demangle(DemangleOptions::name_only()), None);
     /// # }
     /// ```
     fn demangle(&self, opts: DemangleOptions) -> Option<String>;
@@ -278,8 +327,8 @@ pub trait Demangle {
     /// use symbolic_common::Name;
     /// use symbolic_demangle::{Demangle, DemangleOptions};
     ///
-    /// assert_eq!(Name::new("_ZN3foo3barEv").try_demangle(DemangleOptions::default()), "foo::bar");
-    /// assert_eq!(Name::new("unknown").try_demangle(DemangleOptions::default()), "unknown");
+    /// assert_eq!(Name::from("_ZN3foo3barEv").try_demangle(DemangleOptions::name_only()), "foo::bar");
+    /// assert_eq!(Name::from("unknown").try_demangle(DemangleOptions::name_only()), "unknown");
     /// # }
     /// ```
     ///
@@ -316,6 +365,9 @@ impl<'a> Demangle for Name<'a> {
     }
 
     fn demangle(&self, opts: DemangleOptions) -> Option<String> {
+        if matches!(self.mangling(), NameMangling::Unmangled) {
+            return Some(self.to_string());
+        }
         match self.detect_language() {
             Language::ObjC => try_demangle_objc(self.as_str(), opts),
             Language::ObjCpp => try_demangle_objcpp(self.as_str(), opts),
@@ -327,6 +379,9 @@ impl<'a> Demangle for Name<'a> {
     }
 
     fn try_demangle(&self, opts: DemangleOptions) -> Cow<'_, str> {
+        if matches!(self.mangling(), NameMangling::Unmangled) {
+            return Cow::Borrowed(self.as_str());
+        }
         match self.demangle(opts) {
             Some(demangled) => Cow::Owned(demangled),
             None => Cow::Borrowed(self.as_str()),
@@ -336,19 +391,19 @@ impl<'a> Demangle for Name<'a> {
 
 /// Demangles an identifier and falls back to the original symbol.
 ///
-/// This is a shortcut for [`Demangle::try_demangle`] with default options.
+/// This is a shortcut for [`Demangle::try_demangle`] with complete demangling.
 ///
 /// # Examples
 ///
 /// ```
 /// # #[cfg(feature = "cpp")] {
-/// assert_eq!(symbolic_demangle::demangle("_ZN3foo3barEv"), "foo::bar");
+/// assert_eq!(symbolic_demangle::demangle("_ZN3foo3barEv"), "foo::bar()");
 /// # }
 /// ```
 ///
 /// [`Demangle::try_demangle`]: trait.Demangle.html#tymethod.try_demangle
 pub fn demangle(ident: &str) -> Cow<'_, str> {
-    match Name::new(ident).demangle(Default::default()) {
+    match Name::from(ident).demangle(DemangleOptions::complete()) {
         Some(demangled) => Cow::Owned(demangled),
         None => Cow::Borrowed(ident),
     }

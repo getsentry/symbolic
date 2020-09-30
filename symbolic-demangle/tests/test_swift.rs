@@ -8,10 +8,12 @@
 mod utils;
 
 use symbolic_common::Language;
+use symbolic_demangle::DemangleOptions;
 
 #[test]
 fn test_demangle_swift_short() {
-    assert_demangle!(Language::Swift, utils::WITH_ARGS, {
+    // all the testcases here include the argument *names*, not the *types*.
+    assert_demangle!(Language::Swift, DemangleOptions::name_only().argument_names(true), {
         // Swift < 4 (old mangling)
         "_T08mangling0022egbpdajGbuEbxfgehfvwxnyyF" => "ليهمابتكلموشعربي؟()",
         "_T08mangling0024ihqwcrbEcvIaIdqgAFGpqjyeyyF" => "他们为什么不说中文()",
@@ -152,7 +154,7 @@ fn test_demangle_swift_short() {
 
 #[test]
 fn test_demangle_swift_no_args() {
-    assert_demangle!(Language::Swift, utils::WITHOUT_ARGS, {
+    assert_demangle!(Language::Swift, DemangleOptions::name_only(), {
         // Swift < 4 (old mangling)
         "_T08mangling0022egbpdajGbuEbxfgehfvwxnyyF" => "ليهمابتكلموشعربي؟",
         "_T08mangling0024ihqwcrbEcvIaIdqgAFGpqjyeyyF" => "他们为什么不说中文",

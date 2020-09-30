@@ -1,17 +1,3 @@
-use symbolic_demangle::{DemangleFormat, DemangleOptions};
-
-#[allow(unused)]
-pub const WITH_ARGS: DemangleOptions = DemangleOptions {
-    format: DemangleFormat::Short,
-    with_arguments: true,
-};
-
-#[allow(unused)]
-pub const WITHOUT_ARGS: DemangleOptions = DemangleOptions {
-    format: DemangleFormat::Short,
-    with_arguments: false,
-};
-
 #[macro_export]
 macro_rules! assert_demangle {
     ($l:expr, $o:expr, { $($m:expr => $d:expr),* }) => {{
@@ -21,7 +7,7 @@ macro_rules! assert_demangle {
             use symbolic_demangle::Demangle;
 
             let __mangled = $m;
-            let __demangled = ::symbolic_common::Name::with_language(__mangled, $l).demangle($o);
+            let __demangled = ::symbolic_common::Name::new(__mangled, ::symbolic_common::NameMangling::Unknown, $l).demangle($o);
             let __demangled = __demangled.as_ref().map(String::as_str).unwrap_or("<demangling failed>");
 
             if __demangled != $d {

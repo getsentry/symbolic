@@ -4,7 +4,7 @@ use symbolic_common::{Language, Name};
 use symbolic_demangle::Demangle;
 
 fn assert_language(input: &str, lang: Language) {
-    let name = Name::new(input);
+    let name = Name::from(input);
     assert_eq!(name.detect_language(), lang);
 }
 

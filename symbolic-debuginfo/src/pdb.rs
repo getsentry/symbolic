@@ -17,7 +17,9 @@ use pdb::{
 use smallvec::SmallVec;
 use thiserror::Error;
 
-use symbolic_common::{Arch, AsSelf, CodeId, CpuFamily, DebugId, Name, SelfCell, Uuid};
+use symbolic_common::{
+    Arch, AsSelf, CodeId, CpuFamily, DebugId, Language, Name, NameMangling, SelfCell, Uuid,
+};
 
 use crate::base::*;
 use crate::private::{FunctionStack, Parse};
@@ -932,7 +934,11 @@ impl<'s> Unit<'s> {
         // Names from the private symbol table are generally demangled. They contain the path of the
         // scope and name of the function itself, including type parameters, but do not contain
         // parameter lists or return types. This is good enough for us at the moment.
-        let name = Name::new(proc.name.to_string());
+        let name = Name::new(
+            proc.name.to_string(),
+            NameMangling::Unmangled,
+            Language::Unknown,
+        );
 
         let line_iter = program.lines_at_offset(proc.offset);
         let lines = self.collect_lines(line_iter, program)?;
@@ -976,7 +982,11 @@ impl<'s> Unit<'s> {
         };
 
         let mut formatter = TypeFormatter::new(self);
-        let name = Name::new(formatter.format_id(inline_site.inlinee)?);
+        let name = Name::new(
+            formatter.format_id(inline_site.inlinee)?,
+            NameMangling::Unmangled,
+            Language::Unknown,
+        );
 
         Ok(Some(Function {
             address: start,

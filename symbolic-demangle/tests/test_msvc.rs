@@ -8,10 +8,11 @@
 mod utils;
 
 use symbolic_common::Language;
+use symbolic_demangle::DemangleOptions;
 
 #[test]
-fn test_msvc_demangle_full() {
-    assert_demangle!(Language::Cpp, utils::WITHOUT_ARGS, {
+fn test_msvc_demangle_without_args() {
+    assert_demangle!(Language::Cpp, DemangleOptions::name_only(), {
         // These symbols were extracted from electron.exe.pdb
         // https://github.com/electron/electron/releases/download/v2.0.11/electron-v2.0.11-win32-x64-pdb.zip
         "??3@YAXPEAX@Z" => "operator delete",
@@ -22,8 +23,8 @@ fn test_msvc_demangle_full() {
 }
 
 #[test]
-fn test_msvc_demangle_without_args() {
-    assert_demangle!(Language::Cpp, utils::WITH_ARGS, {
+fn test_msvc_demangle_full() {
+    assert_demangle!(Language::Cpp, DemangleOptions::name_only().argument_types(true), {
         // These symbols were extracted from electron.exe.pdb
         // https://github.com/electron/electron/releases/download/v2.0.11/electron-v2.0.11-win32-x64-pdb.zip
         "??3@YAXPEAX@Z" => "operator delete(void *)",
