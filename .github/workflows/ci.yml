@@ -8,21 +8,25 @@ on:
   pull_request:
 
 jobs:
-  lint-rust:
-    name: Rust Style/Linting
+  lints:
+    name: Style/Linting
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
 
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
           components: rustfmt, clippy
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
 
       - uses: Swatinem/rust-cache@v1
         with:
@@ -34,11 +38,15 @@ jobs:
           command: fmt
           args: --all -- --check
 
+      - run: make style-python
+
       - name: Run cargo clippy
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features --workspace --tests --examples -- -D clippy::all
+
+      - run: make lint-python
 
   test-rust:
     strategy:
@@ -49,14 +57,12 @@ jobs:
     name: Rust Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
-    env:
-      CXX: clang
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
 
-      - name: Install rust toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
@@ -72,19 +78,6 @@ jobs:
           command: test
           args: --workspace --all-features
 
-  lint-python:
-    name: Python Style/Linting
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Setup Python
-        uses: actions/setup-python@v2
-
-      - run: make style-python
-      - run: make lint-python
-
   test-python:
     strategy:
       fail-fast: false
@@ -95,22 +88,22 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      CXX: clang
       SYMBOLIC_DEBUG: 1
 
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
 
-      - name: Install rust toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
 
-      - name: Setup Python
-        uses: actions/setup-python@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
 
       - uses: Swatinem/rust-cache@v1
         with:
