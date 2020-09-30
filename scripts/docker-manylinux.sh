@@ -6,7 +6,7 @@ BUILD_DIR="/work"
 docker run \
         -w /work/py \
         -v `pwd`:/work \
-        quay.io/pypa/manylinux1_${BUILD_ARCH} \
+        quay.io/pypa/manylinux2010_${BUILD_ARCH} \
         sh manylinux.sh
 
 # Fix permissions for shared directories
