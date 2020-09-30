@@ -1,11 +1,9 @@
-name: Create Python wheels
+name: Release
 
 on:
   push:
     branches:
       - "release/**"
-  # REMOVE BEFORE MERGING to only run on pushes to a release branch:
-  pull_request:
 
 jobs:
   python-wheel-mac:
