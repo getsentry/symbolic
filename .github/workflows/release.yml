@@ -1,0 +1,97 @@
+name: Create Python wheels
+
+on:
+  push:
+    branches:
+      - "release/**"
+  # REMOVE BEFORE MERGING to only run on pushes to a release branch:
+  pull_request:
+
+jobs:
+  python-wheel-mac:
+    name: Create Python wheel for macOS
+    runs-on: macos-10.15
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 2.7
+
+      - run: make wheel SYMBOLIC_PYTHON=python2
+
+      - uses: actions/setup-node@v1
+
+      - name: Upload to Zeus
+        env:
+          ZEUS_HOOK_BASE: ${{ secrets.ZEUS_HOOK_BASE }}
+        run: |
+          npm install -D @zeus-ci/cli
+          npx zeus job update --build ${{ github.run_id }} --job ${{ github.job }} --ref ${{ github.sha }}
+          npx zeus upload --build ${{ github.run_id }} --job ${{ github.job }} --type "application/zip+wheel" py/dist/*
+          npx zeus job update --build ${{ github.run_id }} --job ${{ github.job }} --status passed
+
+  python-wheel-linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        build-arch: [i686, x86_64]
+
+    name: Create Python wheel for Linux ${{ matrix.build-arch }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Build in Docker
+        run: scripts/docker-manylinux.sh
+        env:
+          BUILD_ARCH: ${{ matrix.build-arch }}
+
+      - uses: actions/setup-node@v1
+
+      - name: Upload to Zeus
+        env:
+          ZEUS_HOOK_BASE: ${{ secrets.ZEUS_HOOK_BASE }}
+        run: |
+          npm install -D @zeus-ci/cli
+          npx zeus job update --build ${{ github.run_id }} --job ${{ github.job }} --ref ${{ github.sha }}
+          npx zeus upload --build ${{ github.run_id }} --job ${{ github.job }} --type "application/zip+wheel" py/dist/*
+          npx zeus job update --build ${{ github.run_id }} --job ${{ github.job }} --status passed
+
+  sdist:
+    name: Create Python sdist
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 2.7
+
+      - run: make sdist
+
+      - uses: actions/setup-node@v1
+
+      - name: Upload to Zeus
+        env:
+          ZEUS_HOOK_BASE: ${{ secrets.ZEUS_HOOK_BASE }}
+        run: |
+          npm install -D @zeus-ci/cli
+          npx zeus job update --build ${{ github.run_id }} --job ${{ github.job }} --ref ${{ github.sha }}
+          npx zeus upload --build ${{ github.run_id }} --job ${{ github.job }} --type "application/zip+wheel" py/dist/*
+          npx zeus job update --build ${{ github.run_id }} --job ${{ github.job }} --status passed
