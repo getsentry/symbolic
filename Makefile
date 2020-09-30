@@ -26,7 +26,7 @@ wheel: .venv/bin/python
 .PHONY: wheel
 
 wheel-manylinux:
-	docker run --rm -it -v $(CURDIR):/work -w /work/py $(IMAGE) sh manylinux.sh
+	docker run --rm -v $(CURDIR):/work -w /work/py $(IMAGE) sh manylinux.sh
 .PHONY: wheel-manylinux
 
 # Tests
