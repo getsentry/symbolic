@@ -194,9 +194,9 @@ where
     W: Write + Seek,
 {
     /// Converts an entire object into a SymCache.
-    pub fn write_object<O>(object: &O, target: W) -> Result<W, SymCacheError>
+    pub fn write_object<'d, O>(object: &O, target: W) -> Result<W, SymCacheError>
     where
-        O: ObjectLike,
+        O: ObjectLike<'d>,
         O::Error: std::error::Error + Send + Sync + 'static,
     {
         let mut writer = SymCacheWriter::new(target)?;

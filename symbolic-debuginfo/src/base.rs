@@ -627,7 +627,7 @@ pub trait DebugSession {
 /// An object containing debug information.
 pub trait ObjectLike<'d> {
     /// Errors thrown when reading information from this object.
-    type Error;
+    type Error: 'static;
 
     /// A session that allows optimized access to debugging information.
     type Session: DebugSession<Error = Self::Error>;
