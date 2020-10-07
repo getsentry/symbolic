@@ -492,9 +492,10 @@ impl<'d> Parse<'d> for SourceBundle<'d> {
     }
 }
 
-impl<'d> ObjectLike<'d> for SourceBundle<'d> {
+impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for SourceBundle<'d> {
     type Error = SourceBundleError;
     type Session = SourceBundleDebugSession<'d>;
+    type SymbolIterator = SourceBundleSymbolIterator<'d>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -528,8 +529,8 @@ impl<'d> ObjectLike<'d> for SourceBundle<'d> {
         self.symbol_map()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'d>> {
-        Box::new(self.symbols())
+    fn symbols(&self) -> Self::SymbolIterator {
+        self.symbols()
     }
 
     fn has_debug_info(&self) -> bool {
@@ -862,13 +863,13 @@ where
     /// sources could be resolved. Otherwise, an error is returned if writing the bundle fails.
     ///
     /// This finishes the source bundle and flushes the underlying writer.
-    pub fn write_object<'d, O>(
+    pub fn write_object<'d: 'o, 'o, O>(
         self,
         object: &O,
         object_name: &str,
     ) -> Result<bool, SourceBundleError>
     where
-        O: ObjectLike<'d>,
+        O: ObjectLike<'d, 'o>,
         O::Error: std::error::Error + Send + Sync + 'static,
     {
         self.write_object_with_filter(object, object_name, |_| true)
@@ -882,14 +883,14 @@ where
     /// This finishes the source bundle and flushes the underlying writer.
     ///
     /// Before a file is written a callback is invoked which can return `false` to skip a file.
-    pub fn write_object_with_filter<'d, O, F>(
+    pub fn write_object_with_filter<'d: 'o, 'o, O, F>(
         mut self,
         object: &O,
         object_name: &str,
         mut filter: F,
     ) -> Result<bool, SourceBundleError>
     where
-        O: ObjectLike<'d>,
+        O: ObjectLike<'d, 'o>,
         O::Error: std::error::Error + Send + Sync + 'static,
         F: FnMut(&FileEntry) -> bool,
     {

@@ -239,9 +239,10 @@ impl<'d> Parse<'d> for PdbObject<'d> {
     }
 }
 
-impl<'d> ObjectLike<'d> for PdbObject<'d> {
+impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for PdbObject<'d> {
     type Error = PdbError;
     type Session = PdbDebugSession<'d>;
+    type SymbolIterator = PdbSymbolIterator<'d, 'slf>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -271,8 +272,8 @@ impl<'d> ObjectLike<'d> for PdbObject<'d> {
         self.has_symbols()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'d>> {
-        Box::new(self.symbols())
+    fn symbols(&'slf self) -> Self::SymbolIterator {
+        self.symbols()
     }
 
     fn symbol_map(&self) -> SymbolMap<'d> {

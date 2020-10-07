@@ -625,12 +625,15 @@ pub trait DebugSession {
 }
 
 /// An object containing debug information.
-pub trait ObjectLike<'d> {
+pub trait ObjectLike<'data: 'slf, 'slf> {
     /// Errors thrown when reading information from this object.
     type Error: 'static;
 
     /// A session that allows optimized access to debugging information.
     type Session: DebugSession<Error = Self::Error>;
+
+    /// The iterator over the symbols in the public symbol table.
+    type SymbolIterator: Iterator<Item = Symbol<'data>> + 'slf;
 
     /// The container format of this file.
     fn file_format(&self) -> FileFormat;
@@ -657,10 +660,10 @@ pub trait ObjectLike<'d> {
     fn has_symbols(&self) -> bool;
 
     /// Returns an iterator over symbols in the public symbol table.
-    fn symbols(&self) -> DynIterator<'_, Symbol<'d>>;
+    fn symbols(&'slf self) -> Self::SymbolIterator;
 
     /// Returns an ordered map of symbols in the symbol table.
-    fn symbol_map(&self) -> SymbolMap<'d>;
+    fn symbol_map(&self) -> SymbolMap<'data>;
 
     /// Determines whether this object contains debug information.
     fn has_debug_info(&self) -> bool;

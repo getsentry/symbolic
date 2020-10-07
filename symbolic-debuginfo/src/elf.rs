@@ -443,9 +443,10 @@ impl<'d> Parse<'d> for ElfObject<'d> {
     }
 }
 
-impl<'d> ObjectLike<'d> for ElfObject<'d> {
+impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for ElfObject<'d> {
     type Error = DwarfError;
     type Session = DwarfDebugSession<'d>;
+    type SymbolIterator = ElfSymbolIterator<'d, 'slf>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -475,8 +476,8 @@ impl<'d> ObjectLike<'d> for ElfObject<'d> {
         self.has_symbols()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'d>> {
-        Box::new(self.symbols())
+    fn symbols(&'slf self) -> Self::SymbolIterator {
+        self.symbols()
     }
 
     fn symbol_map(&self) -> SymbolMap<'d> {

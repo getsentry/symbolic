@@ -257,9 +257,10 @@ impl<'d> Parse<'d> for PeObject<'d> {
     }
 }
 
-impl<'d> ObjectLike<'d> for PeObject<'d> {
+impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for PeObject<'d> {
     type Error = PeError;
     type Session = PeDebugSession<'d>;
+    type SymbolIterator = PeSymbolIterator<'d, 'slf>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -289,8 +290,8 @@ impl<'d> ObjectLike<'d> for PeObject<'d> {
         self.has_symbols()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'d>> {
-        Box::new(self.symbols())
+    fn symbols(&'slf self) -> Self::SymbolIterator {
+        self.symbols()
     }
 
     fn symbol_map(&self) -> SymbolMap<'d> {

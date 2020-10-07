@@ -308,9 +308,10 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for Object<'d> {
     }
 }
 
-impl<'d> ObjectLike<'d> for Object<'d> {
+impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for Object<'d> {
     type Error = ObjectError;
     type Session = ObjectDebugSession<'d>;
+    type SymbolIterator = SymbolIterator<'d, 'slf>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -344,8 +345,8 @@ impl<'d> ObjectLike<'d> for Object<'d> {
         self.symbol_map()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'d>> {
-        Box::new(self.symbols())
+    fn symbols(&'slf self) -> Self::SymbolIterator {
+        self.symbols()
     }
 
     fn has_debug_info(&self) -> bool {

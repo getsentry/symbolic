@@ -279,9 +279,10 @@ impl<'d> Parse<'d> for MachObject<'d> {
     }
 }
 
-impl<'d> ObjectLike<'d> for MachObject<'d> {
+impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for MachObject<'d> {
     type Error = DwarfError;
     type Session = DwarfDebugSession<'d>;
+    type SymbolIterator = MachOSymbolIterator<'d>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -311,8 +312,8 @@ impl<'d> ObjectLike<'d> for MachObject<'d> {
         self.has_symbols()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'d>> {
-        Box::new(self.symbols())
+    fn symbols(&self) -> Self::SymbolIterator {
+        self.symbols()
     }
 
     fn symbol_map(&self) -> SymbolMap<'d> {
