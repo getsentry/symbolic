@@ -1057,7 +1057,7 @@ pub struct BreakpadDebugSession<'d> {
 
 impl<'d> BreakpadDebugSession<'d> {
     /// Returns an iterator over all functions in this debug file.
-    pub fn functions(&self) -> BreakpadFunctionIterator<'_> {
+    pub fn functions<'slf>(&'slf self) -> BreakpadFunctionIterator<'d, 'slf> {
         BreakpadFunctionIterator {
             file_map: &self.file_map,
             func_records: self.func_records.clone(),
@@ -1065,7 +1065,7 @@ impl<'d> BreakpadDebugSession<'d> {
     }
 
     /// Returns an iterator over all source files in this debug file.
-    pub fn files(&self) -> BreakpadFileIterator<'_> {
+    pub fn files<'slf>(&'slf self) -> BreakpadFileIterator<'d, 'slf> {
         BreakpadFileIterator {
             files: self.file_map.values(),
         }
@@ -1081,14 +1081,14 @@ impl<'d> BreakpadDebugSession<'d> {
 
 impl<'d: 'slf, 'slf> DebugSession<'d, 'slf> for BreakpadDebugSession<'d> {
     type Error = BreakpadError;
-    type FunctionIterator = BreakpadFunctionIterator<'d>;
-    type FileIterator = BreakpadFileIterator<'d>;
+    type FunctionIterator = BreakpadFunctionIterator<'d, 'slf>;
+    type FileIterator = BreakpadFileIterator<'d, 'slf>;
 
-    fn functions(&self) -> Self::FunctionIterator {
+    fn functions(&'slf self) -> Self::FunctionIterator {
         self.functions()
     }
 
-    fn files(&self) -> Self::FileIterator {
+    fn files(&'slf self) -> Self::FileIterator {
         self.files()
     }
 
@@ -1098,12 +1098,12 @@ impl<'d: 'slf, 'slf> DebugSession<'d, 'slf> for BreakpadDebugSession<'d> {
 }
 
 /// An iterator over source files in a Breakpad object.
-pub struct BreakpadFileIterator<'s> {
-    files: std::collections::btree_map::Values<'s, u64, &'s str>,
+pub struct BreakpadFileIterator<'d, 's> {
+    files: std::collections::btree_map::Values<'s, u64, &'d str>,
 }
 
-impl<'s> Iterator for BreakpadFileIterator<'s> {
-    type Item = Result<FileEntry<'s>, BreakpadError>;
+impl<'d> Iterator for BreakpadFileIterator<'d, '_> {
+    type Item = Result<FileEntry<'d>, BreakpadError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let path = self.files.next()?;
@@ -1115,13 +1115,13 @@ impl<'s> Iterator for BreakpadFileIterator<'s> {
 }
 
 /// An iterator over functions in a Breakpad object.
-pub struct BreakpadFunctionIterator<'s> {
-    file_map: &'s BreakpadFileMap<'s>,
-    func_records: BreakpadFuncRecords<'s>,
+pub struct BreakpadFunctionIterator<'d, 's> {
+    file_map: &'s BreakpadFileMap<'d>,
+    func_records: BreakpadFuncRecords<'d>,
 }
 
-impl<'s> BreakpadFunctionIterator<'s> {
-    fn convert(&self, record: BreakpadFuncRecord<'s>) -> Result<Function<'s>, BreakpadError> {
+impl<'d, 's> BreakpadFunctionIterator<'d, 's> {
+    fn convert(&self, record: BreakpadFuncRecord<'d>) -> Result<Function<'d>, BreakpadError> {
         let mut lines = Vec::new();
         for line in record.lines() {
             let line = line?;
@@ -1147,8 +1147,8 @@ impl<'s> BreakpadFunctionIterator<'s> {
     }
 }
 
-impl<'s> Iterator for BreakpadFunctionIterator<'s> {
-    type Item = Result<Function<'s>, BreakpadError>;
+impl<'d, 's> Iterator for BreakpadFunctionIterator<'d, 's> {
+    type Item = Result<Function<'d>, BreakpadError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.func_records.next() {
@@ -1159,7 +1159,7 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
     }
 }
 
-impl std::iter::FusedIterator for BreakpadFunctionIterator<'_> {}
+impl std::iter::FusedIterator for BreakpadFunctionIterator<'_, '_> {}
 
 #[cfg(test)]
 mod tests {

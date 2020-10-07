@@ -377,7 +377,7 @@ pub enum ObjectDebugSession<'d> {
     SourceBundle(SourceBundleDebugSession<'d>),
 }
 
-impl<'d, 'slf> ObjectDebugSession<'d> {
+impl<'d> ObjectDebugSession<'d> {
     /// Returns an iterator over all functions in this debug file.
     ///
     /// Functions are iterated in the order they are declared in their compilation units. The
@@ -385,7 +385,7 @@ impl<'d, 'slf> ObjectDebugSession<'d> {
     ///
     /// Note that the iterator holds a mutable borrow on the debug session, which allows it to use
     /// caches and optimize resources while resolving function and line information.
-    pub fn functions(&'d self) -> ObjectFunctionIterator<'d> {
+    pub fn functions(&self) -> ObjectFunctionIterator<'d, '_> {
         match *self {
             ObjectDebugSession::Breakpad(ref s) => ObjectFunctionIterator::Breakpad(s.functions()),
             ObjectDebugSession::Dwarf(ref s) => ObjectFunctionIterator::Dwarf(s.functions()),
@@ -398,7 +398,7 @@ impl<'d, 'slf> ObjectDebugSession<'d> {
     }
 
     /// Returns an iterator over all source files referenced by this debug file.
-    pub fn files(&self) -> ObjectFileIterator<'_> {
+    pub fn files(&self) -> ObjectFileIterator<'d, '_> {
         match *self {
             ObjectDebugSession::Breakpad(ref s) => ObjectFileIterator::Breakpad(s.files()),
             ObjectDebugSession::Dwarf(ref s) => ObjectFileIterator::Dwarf(s.files()),
@@ -428,8 +428,8 @@ impl<'d, 'slf> ObjectDebugSession<'d> {
 
 impl<'d: 'slf, 'slf> DebugSession<'d, 'slf> for ObjectDebugSession<'d> {
     type Error = ObjectError;
-    type FunctionIterator = ObjectFunctionIterator<'d>;
-    type FileIterator = ObjectFileIterator<'d>;
+    type FunctionIterator = ObjectFunctionIterator<'d, 'slf>;
+    type FileIterator = ObjectFileIterator<'d, 'slf>;
 
     fn functions(&'slf self) -> Self::FunctionIterator {
         self.functions()
@@ -446,16 +446,16 @@ impl<'d: 'slf, 'slf> DebugSession<'d, 'slf> for ObjectDebugSession<'d> {
 
 /// An iterator over functions in an [`Object`](enum.Object.html).
 #[allow(missing_docs)]
-pub enum ObjectFunctionIterator<'s> {
-    Breakpad(BreakpadFunctionIterator<'s>),
-    Dwarf(DwarfFunctionIterator<'s>),
-    Pdb(PdbFunctionIterator<'s>),
-    Pe(PeFunctionIterator<'s>),
-    SourceBundle(SourceBundleFunctionIterator<'s>),
+pub enum ObjectFunctionIterator<'d, 's> {
+    Breakpad(BreakpadFunctionIterator<'d, 's>),
+    Dwarf(DwarfFunctionIterator<'d, 's>),
+    Pdb(PdbFunctionIterator<'d>),
+    Pe(PeFunctionIterator<'d>),
+    SourceBundle(SourceBundleFunctionIterator<'d>),
 }
 
-impl<'s, 'o> Iterator for ObjectFunctionIterator<'s> {
-    type Item = Result<Function<'s>, ObjectError>;
+impl<'d> Iterator for ObjectFunctionIterator<'d, '_> {
+    type Item = Result<Function<'d>, ObjectError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match *self {
@@ -475,16 +475,16 @@ impl<'s, 'o> Iterator for ObjectFunctionIterator<'s> {
 /// An iterator over source files in an [`Object`](enum.Object.html).
 #[allow(missing_docs)]
 #[allow(clippy::large_enum_variant)]
-pub enum ObjectFileIterator<'s> {
-    Breakpad(BreakpadFileIterator<'s>),
-    Dwarf(DwarfFileIterator<'s>),
-    Pdb(PdbFileIterator<'s>),
-    Pe(PeFileIterator<'s>),
-    SourceBundle(SourceBundleFileIterator<'s>),
+pub enum ObjectFileIterator<'d, 's> {
+    Breakpad(BreakpadFileIterator<'d, 's>),
+    Dwarf(DwarfFileIterator<'d, 's>),
+    Pdb(PdbFileIterator<'d, 's>),
+    Pe(PeFileIterator<'d>),
+    SourceBundle(SourceBundleFileIterator<'d, 's>),
 }
 
-impl<'s> Iterator for ObjectFileIterator<'s> {
-    type Item = Result<FileEntry<'s>, ObjectError>;
+impl<'d> Iterator for ObjectFileIterator<'d, '_> {
+    type Item = Result<FileEntry<'d>, ObjectError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match *self {

@@ -494,7 +494,7 @@ impl<'d> PdbDebugInfo<'d> {
         Ok(module_opt.as_ref())
     }
 
-    fn file_info(&self, file_info: pdb::FileInfo<'d>) -> Result<FileInfo<'_>, PdbError> {
+    fn file_info(&self, file_info: pdb::FileInfo<'d>) -> Result<FileInfo<'d>, PdbError> {
         let file_path = match self.string_table {
             Some(ref string_table) => file_info.name.to_raw_string(string_table)?,
             None => "".into(),
@@ -572,7 +572,7 @@ impl<'d> PdbDebugSession<'d> {
     }
 
     /// Returns an iterator over all source files in this debug file.
-    pub fn files(&self) -> PdbFileIterator<'_> {
+    pub fn files(&self) -> PdbFileIterator<'d, '_> {
         PdbFileIterator {
             debug_info: self.cell.get(),
             units: self.cell.get().units(),
@@ -582,7 +582,7 @@ impl<'d> PdbDebugSession<'d> {
     }
 
     /// Returns an iterator over all functions in this debug file.
-    pub fn functions(&self) -> PdbFunctionIterator<'_> {
+    pub fn functions(&self) -> PdbFunctionIterator<'d> {
         PdbFunctionIterator {
             units: self.cell.get().units(),
             functions: Vec::new().into_iter(),
@@ -601,7 +601,7 @@ impl<'d> PdbDebugSession<'d> {
 impl<'d: 'slf, 'slf> DebugSession<'d, 'slf> for PdbDebugSession<'d> {
     type Error = PdbError;
     type FunctionIterator = PdbFunctionIterator<'d>;
-    type FileIterator = PdbFileIterator<'d>;
+    type FileIterator = PdbFileIterator<'d, 'slf>;
 
     fn functions(&'slf self) -> Self::FunctionIterator {
         self.functions()
@@ -1105,15 +1105,15 @@ impl<'s> Iterator for PdbUnitIterator<'s> {
 }
 
 /// An iterator over source files in a Pdb object.
-pub struct PdbFileIterator<'s> {
-    debug_info: &'s PdbDebugInfo<'s>,
-    units: PdbUnitIterator<'s>,
-    files: pdb::FileIterator<'s>,
+pub struct PdbFileIterator<'d, 's> {
+    debug_info: &'s PdbDebugInfo<'d>,
+    units: PdbUnitIterator<'d>,
+    files: pdb::FileIterator<'d>,
     finished: bool,
 }
 
-impl<'s> Iterator for PdbFileIterator<'s> {
-    type Item = Result<FileEntry<'s>, PdbError>;
+impl<'d> Iterator for PdbFileIterator<'d, '_> {
+    type Item = Result<FileEntry<'d>, PdbError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {

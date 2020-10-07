@@ -345,12 +345,12 @@ pub struct PeDebugSession<'d> {
 
 impl<'d> PeDebugSession<'d> {
     /// Returns an iterator over all functions in this debug file.
-    pub fn functions(&self) -> PeFunctionIterator<'_> {
+    pub fn functions(&self) -> PeFunctionIterator<'d> {
         std::iter::empty()
     }
 
     /// Returns an iterator over all source files referenced by this debug file.
-    pub fn files(&self) -> PeFileIterator<'_> {
+    pub fn files(&self) -> PeFileIterator<'d> {
         std::iter::empty()
     }
 

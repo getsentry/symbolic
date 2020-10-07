@@ -962,7 +962,7 @@ impl<'d> Deref for DwarfInfo<'d> {
     }
 }
 
-impl<'d> DwarfInfo<'d> {
+impl<'d, 'slf> DwarfInfo<'d> {
     /// Parses DWARF information from its raw section data.
     pub fn parse(
         sections: &'d DwarfSections<'d>,
@@ -1051,7 +1051,7 @@ impl<'d> DwarfInfo<'d> {
     }
 
     /// Returns an iterator over all compilation units.
-    fn units(&'d self) -> DwarfUnitIterator<'_> {
+    fn units(&'slf self) -> DwarfUnitIterator<'d, 'slf> {
         DwarfUnitIterator {
             info: self,
             index: 0,
@@ -1078,13 +1078,13 @@ impl fmt::Debug for DwarfInfo<'_> {
 }
 
 /// An iterator over compilation units in a DWARF object.
-struct DwarfUnitIterator<'s> {
-    info: &'s DwarfInfo<'s>,
+struct DwarfUnitIterator<'d, 's> {
+    info: &'s DwarfInfo<'d>,
     index: usize,
 }
 
-impl<'s> Iterator for DwarfUnitIterator<'s> {
-    type Item = Result<DwarfUnit<'s, 's>, DwarfError>;
+impl<'d: 's, 's> Iterator for DwarfUnitIterator<'d, 's> {
+    type Item = Result<DwarfUnit<'d, 'd>, DwarfError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         while self.index < self.info.headers.len() {
@@ -1108,7 +1108,7 @@ impl<'s> Iterator for DwarfUnitIterator<'s> {
     }
 }
 
-impl std::iter::FusedIterator for DwarfUnitIterator<'_> {}
+impl std::iter::FusedIterator for DwarfUnitIterator<'_, '_> {}
 
 /// A debugging session for DWARF debugging information.
 pub struct DwarfDebugSession<'data> {
@@ -1135,7 +1135,7 @@ impl<'d, 'slf> DwarfDebugSession<'d> {
     }
 
     /// Returns an iterator over all source files in this debug file.
-    pub fn files(&self) -> DwarfFileIterator<'_> {
+    pub fn files(&'slf self) -> DwarfFileIterator<'d, 'slf> {
         DwarfFileIterator {
             units: self.cell.get().units(),
             files: DwarfUnitFileIterator::default(),
@@ -1144,7 +1144,7 @@ impl<'d, 'slf> DwarfDebugSession<'d> {
     }
 
     /// Returns an iterator over all functions in this debug file.
-    pub fn functions(&self) -> DwarfFunctionIterator<'_> {
+    pub fn functions(&'slf self) -> DwarfFunctionIterator<'d, 'slf> {
         DwarfFunctionIterator {
             units: self.cell.get().units(),
             functions: Vec::new().into_iter(),
@@ -1163,8 +1163,8 @@ impl<'d, 'slf> DwarfDebugSession<'d> {
 
 impl<'d: 'slf, 'slf> DebugSession<'d, 'slf> for DwarfDebugSession<'d> {
     type Error = DwarfError;
-    type FunctionIterator = DwarfFunctionIterator<'d>;
-    type FileIterator = DwarfFileIterator<'d>;
+    type FunctionIterator = DwarfFunctionIterator<'d, 'slf>;
+    type FileIterator = DwarfFileIterator<'d, 'slf>;
 
     fn functions(&'slf self) -> Self::FunctionIterator {
         self.functions()
@@ -1203,14 +1203,14 @@ impl<'s> Iterator for DwarfUnitFileIterator<'s> {
 }
 
 /// An iterator over source files in a DWARF file.
-pub struct DwarfFileIterator<'s> {
-    units: DwarfUnitIterator<'s>,
-    files: DwarfUnitFileIterator<'s>,
+pub struct DwarfFileIterator<'d, 's> {
+    units: DwarfUnitIterator<'d, 's>,
+    files: DwarfUnitFileIterator<'d>,
     finished: bool,
 }
 
-impl<'s> Iterator for DwarfFileIterator<'s> {
-    type Item = Result<FileEntry<'s>, DwarfError>;
+impl<'d> Iterator for DwarfFileIterator<'d, '_> {
+    type Item = Result<FileEntry<'d>, DwarfError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -1240,15 +1240,15 @@ impl<'s> Iterator for DwarfFileIterator<'s> {
 }
 
 /// An iterator over functions in a DWARF file.
-pub struct DwarfFunctionIterator<'s> {
-    units: DwarfUnitIterator<'s>,
-    functions: std::vec::IntoIter<Function<'s>>,
+pub struct DwarfFunctionIterator<'d, 's> {
+    units: DwarfUnitIterator<'d, 's>,
+    functions: std::vec::IntoIter<Function<'d>>,
     range_buf: Vec<Range>,
     finished: bool,
 }
 
-impl<'s, 'o> Iterator for DwarfFunctionIterator<'s> {
-    type Item = Result<Function<'s>, DwarfError>;
+impl<'d> Iterator for DwarfFunctionIterator<'d, '_> {
+    type Item = Result<Function<'d>, DwarfError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -1277,4 +1277,4 @@ impl<'s, 'o> Iterator for DwarfFunctionIterator<'s> {
     }
 }
 
-impl std::iter::FusedIterator for DwarfFunctionIterator<'_> {}
+impl std::iter::FusedIterator for DwarfFunctionIterator<'_, '_> {}

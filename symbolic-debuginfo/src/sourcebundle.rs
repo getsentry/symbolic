@@ -39,6 +39,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, BufWriter, Read, Seek, Write};
+use std::marker::PhantomData;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -574,16 +575,17 @@ pub struct SourceBundleDebugSession<'d> {
     files_by_path: LazyCell<HashMap<String, String>>,
 }
 
-impl<'d> SourceBundleDebugSession<'d> {
+impl<'d, 'slf> SourceBundleDebugSession<'d> {
     /// Returns an iterator over all source files in this debug file.
-    pub fn files(&self) -> SourceBundleFileIterator<'_> {
+    pub fn files(&'slf self) -> SourceBundleFileIterator<'d, 'slf> {
         SourceBundleFileIterator {
             files: self.manifest.files.values(),
+            _marker: PhantomData,
         }
     }
 
     /// Returns an iterator over all functions in this debug file.
-    pub fn functions(&self) -> SourceBundleFunctionIterator<'_> {
+    pub fn functions(&self) -> SourceBundleFunctionIterator<'d> {
         SourceBundleFunctionIterator {
             _marker: std::marker::PhantomData,
         }
@@ -641,7 +643,7 @@ impl<'d> SourceBundleDebugSession<'d> {
 impl<'d: 'slf, 'slf> DebugSession<'d, 'slf> for SourceBundleDebugSession<'d> {
     type Error = SourceBundleError;
     type FunctionIterator = SourceBundleFunctionIterator<'d>;
-    type FileIterator = SourceBundleFileIterator<'d>;
+    type FileIterator = SourceBundleFileIterator<'d, 'slf>;
 
     fn functions(&'slf self) -> Self::FunctionIterator {
         self.functions()
@@ -657,12 +659,13 @@ impl<'d: 'slf, 'slf> DebugSession<'d, 'slf> for SourceBundleDebugSession<'d> {
 }
 
 /// An iterator over source files in a SourceBundle object.
-pub struct SourceBundleFileIterator<'s> {
+pub struct SourceBundleFileIterator<'d, 's> {
     files: std::collections::hash_map::Values<'s, String, SourceFileInfo>,
+    _marker: PhantomData<&'d [u8]>,
 }
 
-impl<'s> Iterator for SourceBundleFileIterator<'s> {
-    type Item = Result<FileEntry<'s>, SourceBundleError>;
+impl<'d> Iterator for SourceBundleFileIterator<'d, '_> {
+    type Item = Result<FileEntry<'d>, SourceBundleError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let source_file = self.files.next()?;
@@ -865,13 +868,14 @@ where
     /// sources could be resolved. Otherwise, an error is returned if writing the bundle fails.
     ///
     /// This finishes the source bundle and flushes the underlying writer.
-    pub fn write_object<'d, 'o, 's, O, E>(
+    pub fn write_object<'d, 'o: 's, 's, O, S, E>(
         self,
         object: &'o O,
         object_name: &str,
     ) -> Result<bool, SourceBundleError>
     where
-        O: ObjectLike<'d, 'o, 's, Error = E>,
+        O: ObjectLike<'d, 'o, 's, Error = E, Session = S>,
+        S: DebugSession<'d, 's, Error = E> + 's,
         E: std::error::Error + Send + Sync + 'static,
     {
         self.write_object_with_filter(object, object_name, |_| true)
@@ -885,15 +889,16 @@ where
     /// This finishes the source bundle and flushes the underlying writer.
     ///
     /// Before a file is written a callback is invoked which can return `false` to skip a file.
-    pub fn write_object_with_filter<'d, 'o, 's, O, F>(
+    pub fn write_object_with_filter<'d, 'o: 's, 's, O, E, F>(
         mut self,
         object: &'o O,
         object_name: &str,
         mut filter: F,
     ) -> Result<bool, SourceBundleError>
     where
-        O: ObjectLike<'d, 'o, 's>,
-        O::Error: std::error::Error + Send + Sync + 'static,
+        O: ObjectLike<'d, 'o, 's, Error = E>,
+        O::Session: DebugSession<'d, 's, Error = E> + 's,
+        E: std::error::Error + Send + Sync + 'static,
         F: FnMut(&FileEntry) -> bool,
     {
         let mut files_handled = BTreeSet::new();
