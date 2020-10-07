@@ -492,7 +492,7 @@ impl<'d> Parse<'d> for SourceBundle<'d> {
     }
 }
 
-impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for SourceBundle<'d> {
+impl<'d: 'slf, 'slf: 'sess, 'sess> ObjectLike<'d, 'slf, 'sess> for SourceBundle<'d> {
     type Error = SourceBundleError;
     type Session = SourceBundleDebugSession<'d>;
     type SymbolIterator = SourceBundleSymbolIterator<'d>;
@@ -638,15 +638,17 @@ impl<'d> SourceBundleDebugSession<'d> {
     }
 }
 
-impl<'d> DebugSession for SourceBundleDebugSession<'d> {
+impl<'d: 'slf, 'slf> DebugSession<'d, 'slf> for SourceBundleDebugSession<'d> {
     type Error = SourceBundleError;
+    type FunctionIterator = SourceBundleFunctionIterator<'d>;
+    type FileIterator = SourceBundleFileIterator<'d>;
 
-    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
-        Box::new(self.functions())
+    fn functions(&'slf self) -> Self::FunctionIterator {
+        self.functions()
     }
 
-    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
-        Box::new(self.files())
+    fn files(&'slf self) -> Self::FileIterator {
+        self.files()
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
@@ -863,13 +865,13 @@ where
     /// sources could be resolved. Otherwise, an error is returned if writing the bundle fails.
     ///
     /// This finishes the source bundle and flushes the underlying writer.
-    pub fn write_object<'d, 'o, O, E>(
+    pub fn write_object<'d, 'o, 's, O, E>(
         self,
         object: &'o O,
         object_name: &str,
     ) -> Result<bool, SourceBundleError>
     where
-        O: ObjectLike<'d, 'o, Error = E>,
+        O: ObjectLike<'d, 'o, 's, Error = E>,
         E: std::error::Error + Send + Sync + 'static,
     {
         self.write_object_with_filter(object, object_name, |_| true)
@@ -883,14 +885,14 @@ where
     /// This finishes the source bundle and flushes the underlying writer.
     ///
     /// Before a file is written a callback is invoked which can return `false` to skip a file.
-    pub fn write_object_with_filter<'d, 'o, O, F>(
+    pub fn write_object_with_filter<'d, 'o, 's, O, F>(
         mut self,
         object: &'o O,
         object_name: &str,
         mut filter: F,
     ) -> Result<bool, SourceBundleError>
     where
-        O: ObjectLike<'d, 'o>,
+        O: ObjectLike<'d, 'o, 's>,
         O::Error: std::error::Error + Send + Sync + 'static,
         F: FnMut(&FileEntry) -> bool,
     {

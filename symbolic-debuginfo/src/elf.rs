@@ -443,7 +443,7 @@ impl<'d> Parse<'d> for ElfObject<'d> {
     }
 }
 
-impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for ElfObject<'d> {
+impl<'d: 'slf, 'slf: 'sess, 'sess> ObjectLike<'d, 'slf, 'sess> for ElfObject<'d> {
     type Error = DwarfError;
     type Session = DwarfDebugSession<'d>;
     type SymbolIterator = ElfSymbolIterator<'d, 'slf>;

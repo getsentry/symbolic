@@ -279,7 +279,7 @@ impl<'d> Parse<'d> for MachObject<'d> {
     }
 }
 
-impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for MachObject<'d> {
+impl<'d: 'slf, 'slf: 'sess, 'sess> ObjectLike<'d, 'slf, 'sess> for MachObject<'d> {
     type Error = DwarfError;
     type Session = DwarfDebugSession<'d>;
     type SymbolIterator = MachOSymbolIterator<'d>;

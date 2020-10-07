@@ -602,9 +602,15 @@ pub type DynIterator<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 ///  - Read headers of compilation units (compilands) to resolve cross-unit references.
 ///
 /// [`ObjectLike::debug_session`]: trait.ObjectLike.html#tymethod.debug_session
-pub trait DebugSession {
+pub trait DebugSession<'data, 'slf> {
     /// The error returned when reading debug information fails.
     type Error;
+
+    /// The Iterator over all functions in the debug file.
+    type FunctionIterator: Iterator<Item = Result<Function<'data>, Self::Error>>;
+
+    /// The Iterator over all source files referenced by the debug file.
+    type FileIterator: Iterator<Item = Result<FileEntry<'data>, Self::Error>>;
 
     /// Returns an iterator over all functions in this debug file.
     ///
@@ -613,10 +619,10 @@ pub trait DebugSession {
     ///
     /// Note that the iterator holds a mutable borrow on the debug session, which allows it to use
     /// caches and optimize resources while resolving function and line information.
-    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>>;
+    fn functions(&'slf self) -> Self::FunctionIterator;
 
     /// Returns an iterator over all source files referenced by this debug file.
-    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>>;
+    fn files(&'slf self) -> Self::FileIterator;
 
     /// Looks up a file's source contents by its full canonicalized path.
     ///
@@ -625,12 +631,12 @@ pub trait DebugSession {
 }
 
 /// An object containing debug information.
-pub trait ObjectLike<'data, 'slf> {
+pub trait ObjectLike<'data, 'slf, 'sess> {
     /// Errors thrown when reading information from this object.
     type Error;
 
     /// A session that allows optimized access to debugging information.
-    type Session: DebugSession<Error = Self::Error>;
+    type Session: DebugSession<'data, 'sess, Error = Self::Error>;
 
     /// The iterator over the symbols in the public symbol table.
     type SymbolIterator: Iterator<Item = Symbol<'data>>;
@@ -677,7 +683,7 @@ pub trait ObjectLike<'data, 'slf> {
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
     /// [`has_debug_info`](trait.ObjectLike.html#tymethod.has_debug_info).
-    fn debug_session(&'slf self) -> Result<Self::Session, Self::Error>;
+    fn debug_session(&'sess self) -> Result<Self::Session, Self::Error>;
 
     /// Determines whether this object contains stack unwinding information.
     fn has_unwind_info(&self) -> bool;

@@ -966,7 +966,7 @@ impl<'d> Parse<'d> for BreakpadObject<'d> {
     }
 }
 
-impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for BreakpadObject<'d> {
+impl<'d: 'slf, 'slf: 'sess, 'sess> ObjectLike<'d, 'slf, 'sess> for BreakpadObject<'d> {
     type Error = BreakpadError;
     type Session = BreakpadDebugSession<'d>;
     type SymbolIterator = BreakpadSymbolIterator<'d>;
@@ -1079,15 +1079,17 @@ impl<'d> BreakpadDebugSession<'d> {
     }
 }
 
-impl<'d> DebugSession for BreakpadDebugSession<'d> {
+impl<'d: 'slf, 'slf> DebugSession<'d, 'slf> for BreakpadDebugSession<'d> {
     type Error = BreakpadError;
+    type FunctionIterator = BreakpadFunctionIterator<'d>;
+    type FileIterator = BreakpadFileIterator<'d>;
 
-    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
-        Box::new(self.functions())
+    fn functions(&self) -> Self::FunctionIterator {
+        self.functions()
     }
 
-    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
-        Box::new(self.files())
+    fn files(&self) -> Self::FileIterator {
+        self.files()
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {

@@ -257,7 +257,7 @@ impl<'d> Parse<'d> for PeObject<'d> {
     }
 }
 
-impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for PeObject<'d> {
+impl<'d: 'slf, 'slf: 'sess, 'sess> ObjectLike<'d, 'slf, 'sess> for PeObject<'d> {
     type Error = PeError;
     type Session = PeDebugSession<'d>;
     type SymbolIterator = PeSymbolIterator<'d, 'slf>;
@@ -362,15 +362,17 @@ impl<'d> PeDebugSession<'d> {
     }
 }
 
-impl DebugSession for PeDebugSession<'_> {
+impl<'d, 'slf> DebugSession<'d, 'slf> for PeDebugSession<'d> {
     type Error = PeError;
+    type FunctionIterator = PeFunctionIterator<'d>;
+    type FileIterator = PeFileIterator<'d>;
 
-    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
-        Box::new(std::iter::empty())
+    fn functions(&'slf self) -> Self::FunctionIterator {
+        self.functions()
     }
 
-    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
-        Box::new(std::iter::empty())
+    fn files(&'slf self) -> Self::FileIterator {
+        self.files()
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {

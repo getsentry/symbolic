@@ -146,7 +146,7 @@ pub enum Object<'d> {
     SourceBundle(SourceBundle<'d>),
 }
 
-impl<'d> Object<'d> {
+impl<'d, 'slf, 'sess> Object<'d> {
     /// Tests whether the buffer could contain an object.
     pub fn test(data: &[u8]) -> bool {
         Self::peek(data) != FileFormat::Unknown
@@ -255,7 +255,7 @@ impl<'d> Object<'d> {
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
     /// [`has_debug_info`](enum.Object.html#method.has_debug_info).
-    pub fn debug_session(&self) -> Result<ObjectDebugSession<'d>, ObjectError> {
+    pub fn debug_session(&'sess self) -> Result<ObjectDebugSession<'d>, ObjectError> {
         match *self {
             Object::Breakpad(ref o) => o
                 .debug_session()
@@ -308,7 +308,7 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for Object<'d> {
     }
 }
 
-impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for Object<'d> {
+impl<'d: 'slf, 'slf: 'sess, 'sess> ObjectLike<'d, 'slf, 'sess> for Object<'d> {
     type Error = ObjectError;
     type Session = ObjectDebugSession<'d>;
     type SymbolIterator = SymbolIterator<'d, 'slf>;
@@ -353,7 +353,7 @@ impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for Object<'d> {
         self.has_debug_info()
     }
 
-    fn debug_session(&self) -> Result<Self::Session, Self::Error> {
+    fn debug_session(&'sess self) -> Result<Self::Session, Self::Error> {
         self.debug_session()
     }
 
@@ -377,7 +377,7 @@ pub enum ObjectDebugSession<'d> {
     SourceBundle(SourceBundleDebugSession<'d>),
 }
 
-impl<'d> ObjectDebugSession<'d> {
+impl<'d, 'slf> ObjectDebugSession<'d> {
     /// Returns an iterator over all functions in this debug file.
     ///
     /// Functions are iterated in the order they are declared in their compilation units. The
@@ -385,7 +385,7 @@ impl<'d> ObjectDebugSession<'d> {
     ///
     /// Note that the iterator holds a mutable borrow on the debug session, which allows it to use
     /// caches and optimize resources while resolving function and line information.
-    pub fn functions(&self) -> ObjectFunctionIterator<'_> {
+    pub fn functions(&'d self) -> ObjectFunctionIterator<'d> {
         match *self {
             ObjectDebugSession::Breakpad(ref s) => ObjectFunctionIterator::Breakpad(s.functions()),
             ObjectDebugSession::Dwarf(ref s) => ObjectFunctionIterator::Dwarf(s.functions()),
@@ -426,15 +426,17 @@ impl<'d> ObjectDebugSession<'d> {
     }
 }
 
-impl DebugSession for ObjectDebugSession<'_> {
+impl<'d: 'slf, 'slf> DebugSession<'d, 'slf> for ObjectDebugSession<'d> {
     type Error = ObjectError;
+    type FunctionIterator = ObjectFunctionIterator<'d>;
+    type FileIterator = ObjectFileIterator<'d>;
 
-    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
-        Box::new(self.functions())
+    fn functions(&'slf self) -> Self::FunctionIterator {
+        self.functions()
     }
 
-    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
-        Box::new(self.files())
+    fn files(&'slf self) -> Self::FileIterator {
+        self.files()
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
@@ -452,7 +454,7 @@ pub enum ObjectFunctionIterator<'s> {
     SourceBundle(SourceBundleFunctionIterator<'s>),
 }
 
-impl<'s> Iterator for ObjectFunctionIterator<'s> {
+impl<'s, 'o> Iterator for ObjectFunctionIterator<'s> {
     type Item = Result<Function<'s>, ObjectError>;
 
     fn next(&mut self) -> Option<Self::Item> {
