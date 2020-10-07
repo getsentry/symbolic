@@ -863,14 +863,14 @@ where
     /// sources could be resolved. Otherwise, an error is returned if writing the bundle fails.
     ///
     /// This finishes the source bundle and flushes the underlying writer.
-    pub fn write_object<'d: 'o, 'o, O>(
+    pub fn write_object<'d, 'o, O, E>(
         self,
-        object: &O,
+        object: &'o O,
         object_name: &str,
     ) -> Result<bool, SourceBundleError>
     where
-        O: ObjectLike<'d, 'o>,
-        O::Error: std::error::Error + Send + Sync + 'static,
+        O: ObjectLike<'d, 'o, Error = E>,
+        E: std::error::Error + Send + Sync + 'static,
     {
         self.write_object_with_filter(object, object_name, |_| true)
     }
@@ -883,9 +883,9 @@ where
     /// This finishes the source bundle and flushes the underlying writer.
     ///
     /// Before a file is written a callback is invoked which can return `false` to skip a file.
-    pub fn write_object_with_filter<'d: 'o, 'o, O, F>(
+    pub fn write_object_with_filter<'d, 'o, O, F>(
         mut self,
-        object: &O,
+        object: &'o O,
         object_name: &str,
         mut filter: F,
     ) -> Result<bool, SourceBundleError>

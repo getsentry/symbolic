@@ -194,7 +194,7 @@ where
     W: Write + Seek,
 {
     /// Converts an entire object into a SymCache.
-    pub fn write_object<'d: 'o, 'o, O>(object: &O, target: W) -> Result<W, SymCacheError>
+    pub fn write_object<'d, 'o, O>(object: &'o O, target: W) -> Result<W, SymCacheError>
     where
         O: ObjectLike<'d, 'o>,
         O::Error: std::error::Error + Send + Sync + 'static,
