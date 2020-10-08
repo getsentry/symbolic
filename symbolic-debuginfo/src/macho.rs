@@ -279,10 +279,10 @@ impl<'d> Parse<'d> for MachObject<'d> {
     }
 }
 
-impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for MachObject<'d> {
+impl<'data: 'object, 'object> ObjectLike<'data, 'object> for MachObject<'data> {
     type Error = DwarfError;
-    type Session = DwarfDebugSession<'d>;
-    type SymbolIterator = MachOSymbolIterator<'d>;
+    type Session = DwarfDebugSession<'data>;
+    type SymbolIterator = MachOSymbolIterator<'data>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -316,7 +316,7 @@ impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for MachObject<'d> {
         self.symbols()
     }
 
-    fn symbol_map(&self) -> SymbolMap<'d> {
+    fn symbol_map(&self) -> SymbolMap<'data> {
         self.symbol_map()
     }
 
@@ -337,7 +337,7 @@ impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for MachObject<'d> {
     }
 }
 
-impl<'d> Dwarf<'d> for MachObject<'d> {
+impl<'data> Dwarf<'data> for MachObject<'data> {
     fn endianity(&self) -> Endian {
         if self.macho.little_endian {
             Endian::Little
@@ -346,7 +346,7 @@ impl<'d> Dwarf<'d> for MachObject<'d> {
         }
     }
 
-    fn raw_section(&self, section_name: &str) -> Option<DwarfSection<'d>> {
+    fn raw_section(&self, section_name: &str) -> Option<DwarfSection<'data>> {
         for segment in &self.macho.segments {
             for section in segment {
                 if let Ok((header, data)) = section {
@@ -379,14 +379,14 @@ impl<'d> Dwarf<'d> for MachObject<'d> {
 /// An iterator over symbols in the MachO file.
 ///
 /// Returned by [`MachObject::symbols`](struct.MachObject.html#method.symbols).
-pub struct MachOSymbolIterator<'d> {
-    symbols: mach::symbols::SymbolIterator<'d>,
+pub struct MachOSymbolIterator<'data> {
+    symbols: mach::symbols::SymbolIterator<'data>,
     sections: SmallVec<[usize; 2]>,
     vmaddr: u64,
 }
 
-impl<'d> Iterator for MachOSymbolIterator<'d> {
-    type Item = Symbol<'d>;
+impl<'data> Iterator for MachOSymbolIterator<'data> {
+    type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(next) = self.symbols.next() {

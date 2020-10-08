@@ -22,7 +22,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, CpuFamily, DebugId, Name, SelfCell, 
 use crate::base::*;
 use crate::private::{FunctionStack, Parse};
 
-type Pdb<'d> = pdb::PDB<'d, Cursor<&'d [u8]>>;
+type Pdb<'data> = pdb::PDB<'data, Cursor<&'data [u8]>>;
 
 const MAGIC_BIG: &[u8] = b"Microsoft C/C++ MSF 7.00\r\n\x1a\x44\x53\x00\x00\x00";
 
@@ -50,12 +50,12 @@ pub enum PdbError {
 /// Program Database, the debug companion format on Windows.
 ///
 /// This object is a sole debug companion to [`PeObject`](../pdb/struct.PdbObject.html).
-pub struct PdbObject<'d> {
-    pdb: Arc<RwLock<Pdb<'d>>>,
-    debug_info: Arc<pdb::DebugInformation<'d>>,
-    pdb_info: pdb::PDBInformation<'d>,
-    public_syms: pdb::SymbolTable<'d>,
-    data: &'d [u8],
+pub struct PdbObject<'data> {
+    pdb: Arc<RwLock<Pdb<'data>>>,
+    debug_info: Arc<pdb::DebugInformation<'data>>,
+    pdb_info: pdb::PDBInformation<'data>,
+    public_syms: pdb::SymbolTable<'data>,
+    data: &'data [u8],
 }
 
 // NB: The pdb crate simulates mmap behavior on any Read + Seek type. This implementation requires
@@ -65,7 +65,7 @@ pub struct PdbObject<'d> {
 unsafe impl Send for PdbObject<'_> {}
 unsafe impl Sync for PdbObject<'_> {}
 
-impl<'d> PdbObject<'d> {
+impl<'data> PdbObject<'data> {
     /// Tests whether the buffer could contain an PDB object.
     pub fn test(data: &[u8]) -> bool {
         // NB: "Microsoft C/C++ program database 2.00" is not supported by the pdb crate, so there
@@ -74,7 +74,7 @@ impl<'d> PdbObject<'d> {
     }
 
     /// Tries to parse a PDB object from the given slice.
-    pub fn parse(data: &'d [u8]) -> Result<Self, PdbError> {
+    pub fn parse(data: &'data [u8]) -> Result<Self, PdbError> {
         let mut pdb = Pdb::open(Cursor::new(data))?;
         let dbi = pdb.debug_information()?;
         let pdbi = pdb.pdb_information()?;
@@ -155,7 +155,7 @@ impl<'d> PdbObject<'d> {
     }
 
     /// Returns an iterator over symbols in the public symbol table.
-    pub fn symbols(&self) -> PdbSymbolIterator<'d, '_> {
+    pub fn symbols(&self) -> PdbSymbolIterator<'data, '_> {
         PdbSymbolIterator {
             symbols: self.public_syms.iter(),
             address_map: self.pdb.write().address_map().ok(),
@@ -163,7 +163,7 @@ impl<'d> PdbObject<'d> {
     }
 
     /// Returns an ordered map of symbols in the symbol table.
-    pub fn symbol_map(&self) -> SymbolMap<'d> {
+    pub fn symbol_map(&self) -> SymbolMap<'data> {
         self.symbols().collect()
     }
 
@@ -182,7 +182,7 @@ impl<'d> PdbObject<'d> {
     }
 
     /// Constructs a debugging session.
-    pub fn debug_session(&self) -> Result<PdbDebugSession<'d>, PdbError> {
+    pub fn debug_session(&self) -> Result<PdbDebugSession<'data>, PdbError> {
         PdbDebugSession::build(self)
     }
 
@@ -196,12 +196,12 @@ impl<'d> PdbObject<'d> {
     }
 
     /// Returns the raw data of the ELF file.
-    pub fn data(&self) -> &'d [u8] {
+    pub fn data(&self) -> &'data [u8] {
         self.data
     }
 
     #[doc(hidden)]
-    pub fn inner(&self) -> &RwLock<Pdb<'d>> {
+    pub fn inner(&self) -> &RwLock<Pdb<'data>> {
         &self.pdb
     }
 }
@@ -219,7 +219,7 @@ impl fmt::Debug for PdbObject<'_> {
     }
 }
 
-impl<'slf, 'd: 'slf> AsSelf<'slf> for PdbObject<'d> {
+impl<'slf, 'data: 'slf> AsSelf<'slf> for PdbObject<'data> {
     type Ref = PdbObject<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
@@ -227,22 +227,22 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for PdbObject<'d> {
     }
 }
 
-impl<'d> Parse<'d> for PdbObject<'d> {
+impl<'data> Parse<'data> for PdbObject<'data> {
     type Error = PdbError;
 
     fn test(data: &[u8]) -> bool {
         Self::test(data)
     }
 
-    fn parse(data: &'d [u8]) -> Result<Self, PdbError> {
+    fn parse(data: &'data [u8]) -> Result<Self, PdbError> {
         Self::parse(data)
     }
 }
 
-impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for PdbObject<'d> {
+impl<'data: 'object, 'object> ObjectLike<'data, 'object> for PdbObject<'data> {
     type Error = PdbError;
-    type Session = PdbDebugSession<'d>;
-    type SymbolIterator = PdbSymbolIterator<'d, 'slf>;
+    type Session = PdbDebugSession<'data>;
+    type SymbolIterator = PdbSymbolIterator<'data, 'object>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -272,11 +272,11 @@ impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for PdbObject<'d> {
         self.has_symbols()
     }
 
-    fn symbols(&'slf self) -> Self::SymbolIterator {
+    fn symbols(&'object self) -> Self::SymbolIterator {
         self.symbols()
     }
 
-    fn symbol_map(&self) -> SymbolMap<'d> {
+    fn symbol_map(&self) -> SymbolMap<'data> {
         self.symbol_map()
     }
 
@@ -311,13 +311,13 @@ pub(crate) fn arch_from_machine(machine: MachineType) -> Arch {
 /// An iterator over symbols in the PDB file.
 ///
 /// Returned by [`PdbObject::symbols`](struct.PdbObject.html#method.symbols).
-pub struct PdbSymbolIterator<'d, 'o> {
-    symbols: pdb::SymbolIter<'o>,
-    address_map: Option<AddressMap<'d>>,
+pub struct PdbSymbolIterator<'data, 'object> {
+    symbols: pdb::SymbolIter<'object>,
+    address_map: Option<AddressMap<'data>>,
 }
 
-impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
-    type Item = Symbol<'d>;
+impl<'data, 'object> Iterator for PdbSymbolIterator<'data, 'object> {
+    type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let address_map = self.address_map.as_ref()?;
@@ -336,7 +336,7 @@ impl<'d, 'o> Iterator for PdbSymbolIterator<'d, 'o> {
                 let cow = public.name.to_string();
                 // pdb::SymbolIter offers data bound to its own lifetime since it holds the
                 // buffer containing public symbols. The contract requires that we return
-                // `Symbol<'d>`, so we cannot return zero-copy symbols here.
+                // `Symbol<'data>`, so we cannot return zero-copy symbols here.
                 let name = Cow::from(String::from(if cow.starts_with('_') {
                     &cow[1..]
                 } else {

@@ -52,13 +52,13 @@ fn is_pe_stub(pe: &pe::PE<'_>) -> bool {
 /// While in rare instances, PE files might contain debug information, this case is not supported.
 ///
 /// [`PdbObject`]: ../pdb/struct.PdbObject.html
-pub struct PeObject<'d> {
-    pe: pe::PE<'d>,
-    data: &'d [u8],
+pub struct PeObject<'data> {
+    pe: pe::PE<'data>,
+    data: &'data [u8],
     is_stub: bool,
 }
 
-impl<'d> PeObject<'d> {
+impl<'data> PeObject<'data> {
     /// Tests whether the buffer could contain an PE object.
     pub fn test(data: &[u8]) -> bool {
         match goblin::peek(&mut Cursor::new(data)) {
@@ -68,7 +68,7 @@ impl<'d> PeObject<'d> {
     }
 
     /// Tries to parse a PE object from the given slice.
-    pub fn parse(data: &'d [u8]) -> Result<Self, PeError> {
+    pub fn parse(data: &'data [u8]) -> Result<Self, PeError> {
         let pe = pe::PE::parse(data).map_err(PeError::BadObject)?;
         let is_stub = is_pe_stub(&pe);
         Ok(PeObject { pe, data, is_stub })
@@ -168,14 +168,14 @@ impl<'d> PeObject<'d> {
     }
 
     /// Returns an iterator over symbols in the public symbol table.
-    pub fn symbols(&self) -> PeSymbolIterator<'d, '_> {
+    pub fn symbols(&self) -> PeSymbolIterator<'data, '_> {
         PeSymbolIterator {
             exports: self.pe.exports.iter(),
         }
     }
 
     /// Returns an ordered map of symbols in the symbol table.
-    pub fn symbol_map(&self) -> SymbolMap<'d> {
+    pub fn symbol_map(&self) -> SymbolMap<'data> {
         self.symbols().collect()
     }
 
@@ -192,7 +192,7 @@ impl<'d> PeObject<'d> {
     }
 
     /// Constructs a no-op debugging session.
-    pub fn debug_session(&self) -> Result<PeDebugSession<'d>, PeError> {
+    pub fn debug_session(&self) -> Result<PeDebugSession<'data>, PeError> {
         Ok(PeDebugSession { _ph: PhantomData })
     }
 
@@ -202,7 +202,7 @@ impl<'d> PeObject<'d> {
     }
 
     /// Returns the raw data of the PE file.
-    pub fn data(&self) -> &'d [u8] {
+    pub fn data(&self) -> &'data [u8] {
         self.data
     }
 
@@ -237,7 +237,7 @@ impl fmt::Debug for PeObject<'_> {
     }
 }
 
-impl<'slf, 'd: 'slf> AsSelf<'slf> for PeObject<'d> {
+impl<'slf, 'data: 'slf> AsSelf<'slf> for PeObject<'data> {
     type Ref = PeObject<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
@@ -245,22 +245,22 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for PeObject<'d> {
     }
 }
 
-impl<'d> Parse<'d> for PeObject<'d> {
+impl<'data> Parse<'data> for PeObject<'data> {
     type Error = PeError;
 
     fn test(data: &[u8]) -> bool {
         Self::test(data)
     }
 
-    fn parse(data: &'d [u8]) -> Result<Self, PeError> {
+    fn parse(data: &'data [u8]) -> Result<Self, PeError> {
         Self::parse(data)
     }
 }
 
-impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for PeObject<'d> {
+impl<'data: 'object, 'object> ObjectLike<'data, 'object> for PeObject<'data> {
     type Error = PeError;
-    type Session = PeDebugSession<'d>;
-    type SymbolIterator = PeSymbolIterator<'d, 'slf>;
+    type Session = PeDebugSession<'data>;
+    type SymbolIterator = PeSymbolIterator<'data, 'object>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -290,11 +290,11 @@ impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for PeObject<'d> {
         self.has_symbols()
     }
 
-    fn symbols(&'slf self) -> Self::SymbolIterator {
+    fn symbols(&'object self) -> Self::SymbolIterator {
         self.symbols()
     }
 
-    fn symbol_map(&self) -> SymbolMap<'d> {
+    fn symbol_map(&self) -> SymbolMap<'data> {
         self.symbol_map()
     }
 
@@ -318,12 +318,12 @@ impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for PeObject<'d> {
 /// An iterator over symbols in the PE file.
 ///
 /// Returned by [`PeObject::symbols`](struct.PeObject.html#method.symbols).
-pub struct PeSymbolIterator<'d, 'o> {
-    exports: std::slice::Iter<'o, pe::export::Export<'d>>,
+pub struct PeSymbolIterator<'data, 'object> {
+    exports: std::slice::Iter<'object, pe::export::Export<'data>>,
 }
 
-impl<'d, 'o> Iterator for PeSymbolIterator<'d, 'o> {
-    type Item = Symbol<'d>;
+impl<'data, 'object> Iterator for PeSymbolIterator<'data, 'object> {
+    type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.exports.next().map(|export| Symbol {
@@ -339,11 +339,11 @@ impl<'d, 'o> Iterator for PeSymbolIterator<'d, 'o> {
 /// Since debug information in PE containers is not supported, this session consists of NoOps and
 /// always returns empty results.
 #[derive(Debug)]
-pub struct PeDebugSession<'d> {
-    _ph: PhantomData<&'d ()>,
+pub struct PeDebugSession<'data> {
+    _ph: PhantomData<&'data ()>,
 }
 
-impl<'d> PeDebugSession<'d> {
+impl<'data> PeDebugSession<'data> {
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> PeFunctionIterator<'_> {
         std::iter::empty()

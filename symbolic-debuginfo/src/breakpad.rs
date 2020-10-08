@@ -734,21 +734,21 @@ impl<'d> Iterator for BreakpadStackRecords<'d> {
 /// > compactness.
 ///
 /// The full documentation resides [here](https://chromium.googlesource.com/breakpad/breakpad/+/refs/heads/master/docs/symbol_files.md).
-pub struct BreakpadObject<'d> {
+pub struct BreakpadObject<'data> {
     id: DebugId,
     arch: Arch,
-    module: BreakpadModuleRecord<'d>,
-    data: &'d [u8],
+    module: BreakpadModuleRecord<'data>,
+    data: &'data [u8],
 }
 
-impl<'d> BreakpadObject<'d> {
+impl<'data> BreakpadObject<'data> {
     /// Tests whether the buffer could contain a Breakpad object.
     pub fn test(data: &[u8]) -> bool {
         data.starts_with(b"MODULE ")
     }
 
     /// Tries to parse a Breakpad object from the given slice.
-    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'data [u8]) -> Result<Self, BreakpadError> {
         // Ensure that we do not read the entire file at once.
         let header = if data.len() > BREAKPAD_HEADER_CAP {
             match str::from_utf8(&data[..BREAKPAD_HEADER_CAP]) {
@@ -813,7 +813,7 @@ impl<'d> BreakpadObject<'d> {
     /// This is the name of the original debug file that was used to create the Breakpad file. On
     /// Windows, this will have a `.pdb` extension, on other platforms that name is likely
     /// equivalent to the name of the code file (shared library or executable).
-    pub fn name(&self) -> &'d str {
+    pub fn name(&self) -> &'data str {
         self.module.name
     }
 
@@ -836,14 +836,14 @@ impl<'d> BreakpadObject<'d> {
     }
 
     /// Returns an iterator over symbols in the public symbol table.
-    pub fn symbols(&self) -> BreakpadSymbolIterator<'d> {
+    pub fn symbols(&self) -> BreakpadSymbolIterator<'data> {
         BreakpadSymbolIterator {
             records: self.public_records(),
         }
     }
 
     /// Returns an ordered map of symbols in the symbol table.
-    pub fn symbol_map(&self) -> SymbolMap<'d> {
+    pub fn symbol_map(&self) -> SymbolMap<'data> {
         self.symbols().collect()
     }
 
@@ -861,7 +861,7 @@ impl<'d> BreakpadObject<'d> {
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
     /// [`has_debug_info`](struct.BreakpadObject.html#method.has_debug_info).
-    pub fn debug_session(&self) -> Result<BreakpadDebugSession<'d>, BreakpadError> {
+    pub fn debug_session(&self) -> Result<BreakpadDebugSession<'data>, BreakpadError> {
         Ok(BreakpadDebugSession {
             file_map: self.file_map(),
             func_records: self.func_records(),
@@ -879,7 +879,7 @@ impl<'d> BreakpadObject<'d> {
     }
 
     /// Returns an iterator over info records.
-    pub fn info_records(&self) -> BreakpadInfoRecords<'d> {
+    pub fn info_records(&self) -> BreakpadInfoRecords<'data> {
         BreakpadInfoRecords {
             lines: Lines::new(self.data),
             finished: false,
@@ -887,7 +887,7 @@ impl<'d> BreakpadObject<'d> {
     }
 
     /// Returns an iterator over file records.
-    pub fn file_records(&self) -> BreakpadFileRecords<'d> {
+    pub fn file_records(&self) -> BreakpadFileRecords<'data> {
         BreakpadFileRecords {
             lines: Lines::new(self.data),
             finished: false,
@@ -895,7 +895,7 @@ impl<'d> BreakpadObject<'d> {
     }
 
     /// Returns a map for file name lookups by id.
-    pub fn file_map(&self) -> BreakpadFileMap<'d> {
+    pub fn file_map(&self) -> BreakpadFileMap<'data> {
         self.file_records()
             .filter_map(Result::ok)
             .map(|file| (file.id, file.name))
@@ -903,7 +903,7 @@ impl<'d> BreakpadObject<'d> {
     }
 
     /// Returns an iterator over public symbol records.
-    pub fn public_records(&self) -> BreakpadPublicRecords<'d> {
+    pub fn public_records(&self) -> BreakpadPublicRecords<'data> {
         BreakpadPublicRecords {
             lines: Lines::new(self.data),
             finished: false,
@@ -911,7 +911,7 @@ impl<'d> BreakpadObject<'d> {
     }
 
     /// Returns an iterator over function records.
-    pub fn func_records(&self) -> BreakpadFuncRecords<'d> {
+    pub fn func_records(&self) -> BreakpadFuncRecords<'data> {
         BreakpadFuncRecords {
             lines: Lines::new(self.data),
             finished: false,
@@ -919,7 +919,7 @@ impl<'d> BreakpadObject<'d> {
     }
 
     /// Returns an iterator over stack frame records.
-    pub fn stack_records(&self) -> BreakpadStackRecords<'d> {
+    pub fn stack_records(&self) -> BreakpadStackRecords<'data> {
         BreakpadStackRecords {
             lines: Lines::new(self.data),
             finished: false,
@@ -927,7 +927,7 @@ impl<'d> BreakpadObject<'d> {
     }
 
     /// Returns the raw data of the Breakpad file.
-    pub fn data(&self) -> &'d [u8] {
+    pub fn data(&self) -> &'data [u8] {
         self.data
     }
 }
@@ -946,7 +946,7 @@ impl fmt::Debug for BreakpadObject<'_> {
     }
 }
 
-impl<'slf, 'd: 'slf> AsSelf<'slf> for BreakpadObject<'d> {
+impl<'slf, 'data: 'slf> AsSelf<'slf> for BreakpadObject<'data> {
     type Ref = BreakpadObject<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
@@ -954,22 +954,22 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for BreakpadObject<'d> {
     }
 }
 
-impl<'d> Parse<'d> for BreakpadObject<'d> {
+impl<'data> Parse<'data> for BreakpadObject<'data> {
     type Error = BreakpadError;
 
     fn test(data: &[u8]) -> bool {
         Self::test(data)
     }
 
-    fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+    fn parse(data: &'data [u8]) -> Result<Self, BreakpadError> {
         Self::parse(data)
     }
 }
 
-impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for BreakpadObject<'d> {
+impl<'data: 'object, 'object> ObjectLike<'data, 'object> for BreakpadObject<'data> {
     type Error = BreakpadError;
-    type Session = BreakpadDebugSession<'d>;
-    type SymbolIterator = BreakpadSymbolIterator<'d>;
+    type Session = BreakpadDebugSession<'data>;
+    type SymbolIterator = BreakpadSymbolIterator<'data>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -1003,7 +1003,7 @@ impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for BreakpadObject<'d> {
         self.symbols()
     }
 
-    fn symbol_map(&self) -> SymbolMap<'d> {
+    fn symbol_map(&self) -> SymbolMap<'data> {
         self.symbol_map()
     }
 
@@ -1027,12 +1027,12 @@ impl<'d: 'slf, 'slf> ObjectLike<'d, 'slf> for BreakpadObject<'d> {
 /// An iterator over symbols in the Breakpad object.
 ///
 /// Returned by [`BreakpadObject::symbols`](struct.BreakpadObject.html#method.symbols).
-pub struct BreakpadSymbolIterator<'d> {
-    records: BreakpadPublicRecords<'d>,
+pub struct BreakpadSymbolIterator<'data> {
+    records: BreakpadPublicRecords<'data>,
 }
 
-impl<'d> Iterator for BreakpadSymbolIterator<'d> {
-    type Item = Symbol<'d>;
+impl<'data> Iterator for BreakpadSymbolIterator<'data> {
+    type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(result) = self.records.next() {
