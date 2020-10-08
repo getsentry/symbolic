@@ -1050,12 +1050,12 @@ impl<'data> Iterator for BreakpadSymbolIterator<'data> {
 }
 
 /// Debug session for Breakpad objects.
-pub struct BreakpadDebugSession<'d> {
-    file_map: BreakpadFileMap<'d>,
-    func_records: BreakpadFuncRecords<'d>,
+pub struct BreakpadDebugSession<'data> {
+    file_map: BreakpadFileMap<'data>,
+    func_records: BreakpadFuncRecords<'data>,
 }
 
-impl<'d> BreakpadDebugSession<'d> {
+impl<'data> BreakpadDebugSession<'data> {
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> BreakpadFunctionIterator<'_> {
         BreakpadFunctionIterator {
@@ -1079,15 +1079,17 @@ impl<'d> BreakpadDebugSession<'d> {
     }
 }
 
-impl<'d> DebugSession for BreakpadDebugSession<'d> {
+impl<'data, 'session> DebugSession<'session> for BreakpadDebugSession<'data> {
     type Error = BreakpadError;
+    type FunctionIterator = BreakpadFunctionIterator<'session>;
+    type FileIterator = BreakpadFileIterator<'session>;
 
-    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
-        Box::new(self.functions())
+    fn functions(&'session self) -> Self::FunctionIterator {
+        self.functions()
     }
 
-    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
-        Box::new(self.files())
+    fn files(&'session self) -> Self::FileIterator {
+        self.files()
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
