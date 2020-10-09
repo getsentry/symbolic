@@ -61,10 +61,7 @@ pub struct PeObject<'data> {
 impl<'data> PeObject<'data> {
     /// Tests whether the buffer could contain an PE object.
     pub fn test(data: &[u8]) -> bool {
-        match goblin::peek(&mut Cursor::new(data)) {
-            Ok(goblin::Hint::PE) => true,
-            _ => false,
-        }
+        matches!(goblin::peek(&mut Cursor::new(data)), Ok(goblin::Hint::PE))
     }
 
     /// Tries to parse a PE object from the given slice.

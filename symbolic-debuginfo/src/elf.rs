@@ -56,10 +56,10 @@ pub struct ElfObject<'data> {
 impl<'data> ElfObject<'data> {
     /// Tests whether the buffer could contain an ELF object.
     pub fn test(data: &[u8]) -> bool {
-        match goblin::peek(&mut Cursor::new(data)) {
-            Ok(goblin::Hint::Elf(_)) => true,
-            _ => false,
-        }
+        matches!(
+            goblin::peek(&mut Cursor::new(data)),
+            Ok(goblin::Hint::Elf(_))
+        )
     }
 
     /// Tries to parse an ELF object from the given slice.
