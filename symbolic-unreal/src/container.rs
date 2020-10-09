@@ -357,10 +357,10 @@ fn test_parse_empty_buffer() {
 
     let result = Unreal4Crash::parse(crash);
 
-    assert!(match result.expect_err("empty crash") {
-        Unreal4Error::Empty => true,
-        _ => false,
-    })
+    assert!(matches!(
+        result.expect_err("empty crash"),
+        Unreal4Error::Empty
+    ))
 }
 
 #[test]

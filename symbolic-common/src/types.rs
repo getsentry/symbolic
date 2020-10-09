@@ -427,15 +427,15 @@ impl Arch {
     /// assert!(!Arch::X86Unknown.well_known());
     /// ```
     pub fn well_known(self) -> bool {
-        match self {
+        !matches!(
+            self,
             Arch::Unknown
-            | Arch::ArmUnknown
-            | Arch::Arm64Unknown
-            | Arch::X86Unknown
-            | Arch::Amd64Unknown
-            | Arch::Arm64_32Unknown => false,
-            _ => true,
-        }
+                | Arch::ArmUnknown
+                | Arch::Arm64Unknown
+                | Arch::X86Unknown
+                | Arch::Amd64Unknown
+                | Arch::Arm64_32Unknown
+        )
     }
 }
 

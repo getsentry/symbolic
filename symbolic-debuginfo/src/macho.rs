@@ -32,10 +32,10 @@ pub struct MachObject<'d> {
 impl<'d> MachObject<'d> {
     /// Tests whether the buffer could contain a MachO object.
     pub fn test(data: &[u8]) -> bool {
-        match goblin::peek(&mut Cursor::new(data)) {
-            Ok(goblin::Hint::Mach(_)) => true,
-            _ => false,
-        }
+        matches!(
+            goblin::peek(&mut Cursor::new(data)),
+            Ok(goblin::Hint::Mach(_))
+        )
     }
 
     /// Tries to parse a MachO from the given slice.
@@ -478,10 +478,10 @@ pub struct FatMachO<'d> {
 impl<'d> FatMachO<'d> {
     /// Tests whether the buffer could contain an ELF object.
     pub fn test(data: &[u8]) -> bool {
-        match goblin::peek(&mut Cursor::new(data)) {
-            Ok(goblin::Hint::MachFat(_)) => true,
-            _ => false,
-        }
+        matches!(
+            goblin::peek(&mut Cursor::new(data)),
+            Ok(goblin::Hint::MachFat(_))
+        )
     }
 
     /// Tries to parse a fat MachO container from the given slice.
