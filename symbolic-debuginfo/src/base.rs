@@ -625,12 +625,15 @@ pub trait DebugSession {
 }
 
 /// An object containing debug information.
-pub trait ObjectLike {
+pub trait ObjectLike<'data, 'object> {
     /// Errors thrown when reading information from this object.
     type Error;
 
     /// A session that allows optimized access to debugging information.
     type Session: DebugSession<Error = Self::Error>;
+
+    /// The iterator over the symbols in the public symbol table.
+    type SymbolIterator: Iterator<Item = Symbol<'data>>;
 
     /// The container format of this file.
     fn file_format(&self) -> FileFormat;
@@ -657,10 +660,10 @@ pub trait ObjectLike {
     fn has_symbols(&self) -> bool;
 
     /// Returns an iterator over symbols in the public symbol table.
-    fn symbols(&self) -> DynIterator<'_, Symbol<'_>>;
+    fn symbols(&'object self) -> Self::SymbolIterator;
 
     /// Returns an ordered map of symbols in the symbol table.
-    fn symbol_map(&self) -> SymbolMap<'_>;
+    fn symbol_map(&self) -> SymbolMap<'data>;
 
     /// Determines whether this object contains debug information.
     fn has_debug_info(&self) -> bool;
@@ -674,7 +677,7 @@ pub trait ObjectLike {
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
     /// [`has_debug_info`](trait.ObjectLike.html#tymethod.has_debug_info).
-    fn debug_session(&self) -> Result<Self::Session, Self::Error>;
+    fn debug_session(&'object self) -> Result<Self::Session, Self::Error>;
 
     /// Determines whether this object contains stack unwinding information.
     fn has_unwind_info(&self) -> bool;

@@ -1161,7 +1161,7 @@ impl<'d> DwarfDebugSession<'d> {
     }
 }
 
-impl<'d> DebugSession for DwarfDebugSession<'d> {
+impl<'data> DebugSession for DwarfDebugSession<'data> {
     type Error = DwarfError;
 
     fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
