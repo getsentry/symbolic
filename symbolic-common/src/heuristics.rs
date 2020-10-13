@@ -262,10 +262,7 @@ impl InstructionInfo {
     /// assert!(is_crash);
     /// ```
     pub fn is_crash_signal(&self) -> bool {
-        match self.signal {
-            Some(SIGILL) | Some(SIGBUS) | Some(SIGSEGV) => true,
-            _ => false,
-        }
+        matches!(self.signal, Some(SIGILL) | Some(SIGBUS) | Some(SIGSEGV))
     }
 
     /// Determines whether the given address should be adjusted to resolve the call site of a stack
