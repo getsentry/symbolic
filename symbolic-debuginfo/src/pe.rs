@@ -359,15 +359,17 @@ impl<'data> PeDebugSession<'data> {
     }
 }
 
-impl DebugSession for PeDebugSession<'_> {
+impl<'session> DebugSession<'session> for PeDebugSession<'_> {
     type Error = PeError;
+    type FunctionIterator = PeFunctionIterator<'session>;
+    type FileIterator = PeFileIterator<'session>;
 
-    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
-        Box::new(std::iter::empty())
+    fn functions(&'session self) -> Self::FunctionIterator {
+        self.functions()
     }
 
-    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
-        Box::new(std::iter::empty())
+    fn files(&'session self) -> Self::FileIterator {
+        self.files()
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {

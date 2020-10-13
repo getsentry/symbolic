@@ -421,9 +421,7 @@ impl<'data> SourceBundle<'data> {
 
     /// Returns an iterator over symbols in the public symbol table.
     pub fn symbols(&self) -> SourceBundleSymbolIterator<'data> {
-        SourceBundleSymbolIterator {
-            _marker: std::marker::PhantomData,
-        }
+        std::iter::empty()
     }
 
     /// Returns an ordered map of symbols in the symbol table.
@@ -550,22 +548,8 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for SourceBundle<'data>
     }
 }
 
-/// An iterator yielding symbols from a source bundle
-///
-/// This is always yielding no results.
-pub struct SourceBundleSymbolIterator<'data> {
-    _marker: std::marker::PhantomData<&'data [u8]>,
-}
-
-impl<'data> Iterator for SourceBundleSymbolIterator<'data> {
-    type Item = Symbol<'data>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        None
-    }
-}
-
-impl std::iter::FusedIterator for SourceBundleSymbolIterator<'_> {}
+/// An iterator yielding symbols from a source bundle.
+pub type SourceBundleSymbolIterator<'data> = std::iter::Empty<Symbol<'data>>;
 
 /// Debug session for SourceBundle objects.
 pub struct SourceBundleDebugSession<'data> {
@@ -584,9 +568,7 @@ impl<'data> SourceBundleDebugSession<'data> {
 
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> SourceBundleFunctionIterator<'_> {
-        SourceBundleFunctionIterator {
-            _marker: std::marker::PhantomData,
-        }
+        std::iter::empty()
     }
 
     /// Create a reverse mapping of source paths to ZIP paths.
@@ -638,15 +620,17 @@ impl<'data> SourceBundleDebugSession<'data> {
     }
 }
 
-impl<'data> DebugSession for SourceBundleDebugSession<'data> {
+impl<'data, 'session> DebugSession<'session> for SourceBundleDebugSession<'data> {
     type Error = SourceBundleError;
+    type FunctionIterator = SourceBundleFunctionIterator<'session>;
+    type FileIterator = SourceBundleFileIterator<'session>;
 
-    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
-        Box::new(self.functions())
+    fn functions(&'session self) -> Self::FunctionIterator {
+        self.functions()
     }
 
-    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
-        Box::new(self.files())
+    fn files(&'session self) -> Self::FileIterator {
+        self.files()
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
@@ -672,19 +656,8 @@ impl<'s> Iterator for SourceBundleFileIterator<'s> {
 }
 
 /// An iterator over functions in a SourceBundle object.
-pub struct SourceBundleFunctionIterator<'d> {
-    _marker: std::marker::PhantomData<&'d [u8]>,
-}
-
-impl<'s> Iterator for SourceBundleFunctionIterator<'s> {
-    type Item = Result<Function<'s>, SourceBundleError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        None
-    }
-}
-
-impl std::iter::FusedIterator for SourceBundleFunctionIterator<'_> {}
+pub type SourceBundleFunctionIterator<'s> =
+    std::iter::Empty<Result<Function<'s>, SourceBundleError>>;
 
 impl SourceBundleManifest {
     /// Creates a new, empty manifest.
@@ -883,15 +856,15 @@ where
     /// This finishes the source bundle and flushes the underlying writer.
     ///
     /// Before a file is written a callback is invoked which can return `false` to skip a file.
-    pub fn write_object_with_filter<'data, 'object, O, F>(
+    pub fn write_object_with_filter<'data, 'object, O, E, F>(
         mut self,
         object: &'object O,
         object_name: &str,
         mut filter: F,
     ) -> Result<bool, SourceBundleError>
     where
-        O: ObjectLike<'data, 'object>,
-        O::Error: std::error::Error + Send + Sync + 'static,
+        O: ObjectLike<'data, 'object, Error = E>,
+        E: std::error::Error + Send + Sync + 'static,
         F: FnMut(&FileEntry) -> bool,
     {
         let mut files_handled = BTreeSet::new();

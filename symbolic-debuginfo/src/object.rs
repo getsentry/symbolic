@@ -426,15 +426,17 @@ impl<'d> ObjectDebugSession<'d> {
     }
 }
 
-impl DebugSession for ObjectDebugSession<'_> {
+impl<'session> DebugSession<'session> for ObjectDebugSession<'_> {
     type Error = ObjectError;
+    type FunctionIterator = ObjectFunctionIterator<'session>;
+    type FileIterator = ObjectFileIterator<'session>;
 
-    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
-        Box::new(self.functions())
+    fn functions(&'session self) -> Self::FunctionIterator {
+        self.functions()
     }
 
-    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
-        Box::new(self.files())
+    fn files(&'session self) -> Self::FileIterator {
+        self.files()
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {

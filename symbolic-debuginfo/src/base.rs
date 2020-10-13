@@ -602,9 +602,15 @@ pub type DynIterator<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 ///  - Read headers of compilation units (compilands) to resolve cross-unit references.
 ///
 /// [`ObjectLike::debug_session`]: trait.ObjectLike.html#tymethod.debug_session
-pub trait DebugSession {
+pub trait DebugSession<'session> {
     /// The error returned when reading debug information fails.
     type Error;
+
+    /// An iterator over all functions in this debug file.
+    type FunctionIterator: Iterator<Item = Result<Function<'session>, Self::Error>>;
+
+    /// An iterator over all source files referenced by this debug file.
+    type FileIterator: Iterator<Item = Result<FileEntry<'session>, Self::Error>>;
 
     /// Returns an iterator over all functions in this debug file.
     ///
@@ -613,10 +619,10 @@ pub trait DebugSession {
     ///
     /// Note that the iterator holds a mutable borrow on the debug session, which allows it to use
     /// caches and optimize resources while resolving function and line information.
-    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>>;
+    fn functions(&'session self) -> Self::FunctionIterator;
 
     /// Returns an iterator over all source files referenced by this debug file.
-    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>>;
+    fn files(&'session self) -> Self::FileIterator;
 
     /// Looks up a file's source contents by its full canonicalized path.
     ///
@@ -630,7 +636,7 @@ pub trait ObjectLike<'data, 'object> {
     type Error;
 
     /// A session that allows optimized access to debugging information.
-    type Session: DebugSession<Error = Self::Error>;
+    type Session: for<'session> DebugSession<'session, Error = Self::Error>;
 
     /// The iterator over the symbols in the public symbol table.
     type SymbolIterator: Iterator<Item = Symbol<'data>>;
