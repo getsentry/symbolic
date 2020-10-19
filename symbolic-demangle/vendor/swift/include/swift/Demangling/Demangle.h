@@ -57,7 +57,6 @@ struct DemangleOptions {
   bool ShortenArchetype = false;
   bool ShowPrivateDiscriminators = true;
   bool ShowFunctionArgumentTypes = true;
-  bool ShowFunctionArguments = true;
   std::function<std::string(uint64_t, uint64_t)> GenericParameterName =
       genericParameterName;
 
@@ -213,6 +212,9 @@ public:
 
   NodePointer getFirstChild() const {
     return getChild(0);
+  }
+  NodePointer getLastChild() const {
+    return getChild(getNumChildren() - 1);
   }
   NodePointer getChild(size_t index) const {
     assert(getNumChildren() > index);

@@ -8,7 +8,7 @@ extern "C" int symbolic_demangle_swift(const char *symbol,
     if (simplified) {
         opts = swift::Demangle::DemangleOptions::SimplifiedUIDemangleOptions();
         if (simplified == 2) {
-            opts.ShowFunctionArguments = false;
+            // opts.ShowFunctionArguments = false;
         }
     }
 

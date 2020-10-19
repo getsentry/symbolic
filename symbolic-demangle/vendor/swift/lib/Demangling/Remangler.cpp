@@ -1221,6 +1221,26 @@ void Remangler::mangleFunctionType(Node *node) {
   Buffer << 'c';
 }
 
+void Remangler::mangleDifferentiableFunctionType(Node *node) {
+  mangleFunctionSignature(node);
+  Buffer << "XF";
+}
+
+void Remangler::mangleEscapingDifferentiableFunctionType(Node *node) {
+  mangleFunctionSignature(node);
+  Buffer << "XG";
+}
+
+void Remangler::mangleLinearFunctionType(Node *node) {
+  mangleFunctionSignature(node);
+  Buffer << "XH";
+}
+
+void Remangler::mangleEscapingLinearFunctionType(Node *node) {
+  mangleFunctionSignature(node);
+  Buffer << "XI";
+}
+
 void Remangler::mangleGenericProtocolWitnessTable(Node *node) {
   mangleSingleChildNode(node);
   Buffer << "WG";
@@ -1378,6 +1398,14 @@ void Remangler::mangleIVarDestroyer(Node *node) {
   Buffer << "fE";
 }
 
+void Remangler::mangleImplDifferentiable(Node *node) {
+  Buffer << 'd';
+}
+
+void Remangler::mangleImplLinear(Node *node) {
+  Buffer << 'l';
+}
+
 void Remangler::mangleImplEscaping(Node *node) {
   Buffer << 'e';
 }
@@ -1396,32 +1424,75 @@ void Remangler::mangleImplFunctionAttribute(Node *node) {
   unreachable("handled inline");
 }
 
+void Remangler::mangleImplInvocationSubstitutions(Node *node) {
+  unreachable("handled inline");
+}
+
+void Remangler::mangleImplPatternSubstitutions(Node *node) {
+  unreachable("handled inline");
+}
+
 void Remangler::mangleImplFunctionType(Node *node) {
   const char *PseudoGeneric = "";
   Node *GenSig = nullptr;
+  Node *PatternSubs = nullptr;
+  Node *InvocationSubs = nullptr;
   for (NodePointer Child : *node) {
-    switch (Child->getKind()) {
-      case Node::Kind::ImplParameter:
-      case Node::Kind::ImplResult:
-      case Node::Kind::ImplErrorResult:
-        mangleChildNode(Child, 1);
-        break;
-      case Node::Kind::DependentPseudogenericSignature:
-        PseudoGeneric = "P";
-        LLVM_FALLTHROUGH;
-      case Node::Kind::DependentGenericSignature:
-        GenSig = Child;
-        break;
-      default:
-        break;
+    switch (auto kind = Child->getKind()) {
+    case Node::Kind::ImplParameter:
+    case Node::Kind::ImplResult:
+    case Node::Kind::ImplYield:
+    case Node::Kind::ImplErrorResult:
+      mangleChildNode(Child, 1);
+      break;
+    case Node::Kind::DependentPseudogenericSignature:
+      PseudoGeneric = "P";
+      LLVM_FALLTHROUGH;
+    case Node::Kind::DependentGenericSignature:
+      GenSig = Child;
+      break;
+    case Node::Kind::ImplPatternSubstitutions:
+      PatternSubs = Child;
+      break;
+    case Node::Kind::ImplInvocationSubstitutions:
+      InvocationSubs = Child;
+      break;
+    default:
+      break;
     }
   }
   if (GenSig)
     mangle(GenSig);
+  if (InvocationSubs) {
+    Buffer << 'y';
+    mangleChildNodes(InvocationSubs->getChild(0));
+    if (InvocationSubs->getNumChildren() >= 2)
+      mangleRetroactiveConformance(InvocationSubs->getChild(1));
+  }
+  if (PatternSubs) {
+    mangle(PatternSubs->getChild(0));
+    Buffer << 'y';
+    mangleChildNodes(PatternSubs->getChild(1));
+    if (PatternSubs->getNumChildren() >= 3)
+      mangleRetroactiveConformance(PatternSubs->getChild(2));
+  }
 
-  Buffer << 'I' << PseudoGeneric;
+  Buffer << 'I';
+
+  if (PatternSubs)
+    Buffer << 's';
+  if (InvocationSubs)
+    Buffer << 'I';
+
+  Buffer << PseudoGeneric;
   for (NodePointer Child : *node) {
     switch (Child->getKind()) {
+      case Node::Kind::ImplDifferentiable:
+        Buffer << 'd';
+        break;
+      case Node::Kind::ImplLinear:
+        Buffer << 'l';
+        break;
       case Node::Kind::ImplEscaping:
         Buffer << 'e';
         break;
@@ -1444,11 +1515,16 @@ void Remangler::mangleImplFunctionType(Node *node) {
                         .Case("@convention(objc_method)", 'O')
                         .Case("@convention(closure)", 'K')
                         .Case("@convention(witness_method)", 'W')
+                        .Case("@yield_once", 'A')
+                        .Case("@yield_many", 'G')
                         .Default(0);
         assert(FuncAttr && "invalid impl function attribute");
         Buffer << FuncAttr;
         break;
       }
+      case Node::Kind::ImplYield:
+        Buffer << 'Y';
+        LLVM_FALLTHROUGH;
       case Node::Kind::ImplParameter: {
         char ConvCh =
             llvm::StringSwitch<char>(Child->getFirstChild()->getText())
@@ -1500,6 +1576,10 @@ void Remangler::mangleImplParameter(Node *node) {
 }
 
 void Remangler::mangleImplResult(Node *node) {
+  unreachable("handled inline");
+}
+
+void Remangler::mangleImplYield(Node *node) {
   unreachable("handled inline");
 }
 
@@ -2433,6 +2513,11 @@ void Remangler::mangleOpaqueType(Node *node) {
 }
 void Remangler::mangleAccessorFunctionReference(Node *node) {
   unreachable("can't remangle");
+}
+
+void Remangler::mangleMetadataInstantiationCache(Node *node) {
+  mangleSingleChildNode(node);
+  Buffer << "MK";
 }
 
 } // anonymous namespace
