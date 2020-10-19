@@ -325,7 +325,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
     fn resolve_function_name(
         &self,
         entry: &Die<'d, '_>,
-    ) -> Result<Option<Cow<'d, str>>, DwarfError> {
+    ) -> Result<Option<(Cow<'d, str>, NameMangling)>, DwarfError> {
         let mut attrs = entry.attrs();
         let mut fallback_name = None;
         let mut reference_target = None;
@@ -334,7 +334,9 @@ impl<'d, 'a> UnitRef<'d, 'a> {
             match attr.name() {
                 // Prioritize these. If we get them, take them.
                 constants::DW_AT_linkage_name | constants::DW_AT_MIPS_linkage_name => {
-                    return Ok(self.string_value(attr.value()));
+                    return Ok(self
+                        .string_value(attr.value())
+                        .map(|n| (n, NameMangling::Mangled)));
                 }
                 constants::DW_AT_name => {
                     fallback_name = Some(attr);
@@ -347,7 +349,9 @@ impl<'d, 'a> UnitRef<'d, 'a> {
         }
 
         if let Some(attr) = fallback_name {
-            return Ok(self.string_value(attr.value()));
+            return Ok(self
+                .string_value(attr.value())
+                .map(|n| (n, NameMangling::Unmangled)));
         }
 
         if let Some(attr) = reference_target {
@@ -360,8 +364,8 @@ impl<'d, 'a> UnitRef<'d, 'a> {
                 }
             })?;
 
-            if let Some(name) = resolved {
-                return Ok(Some(name));
+            if resolved.is_some() {
+                return Ok(resolved);
             }
         }
 
@@ -677,15 +681,15 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     .info
                     .symbol_map
                     .lookup_range(function_address..function_end)
-                    .and_then(|symbol| symbol.name.clone())
+                    .and_then(|symbol| symbol.name.clone().map(|n| (n, NameMangling::Mangled)))
             } else {
                 None
             };
 
-            let name = match symbol_name {
-                Some(name) => Some(name),
-                None => self.inner.resolve_function_name(entry).ok().flatten(),
-            };
+            let (name, mangling) = symbol_name
+                .or_else(|| self.inner.resolve_function_name(entry).ok().flatten())
+                .unwrap_or_default();
+            let name = Name::new(name, mangling, self.language);
 
             // Avoid constant allocations by collecting repeatedly into the same buffer and
             // draining the results out of it. This keeps the original buffer allocated and
@@ -825,11 +829,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let function = Function {
                 address: function_address,
                 size: function_size,
-                name: Name::new(
-                    name.unwrap_or_default(),
-                    NameMangling::Unknown,
-                    self.language,
-                ),
+                name,
                 compilation_dir: self.compilation_dir(),
                 lines,
                 inlinees: Vec::new(),
