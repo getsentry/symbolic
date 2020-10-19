@@ -275,7 +275,7 @@ impl Unreal4File {
         Unreal4File {
             index: meta.index,
             file_name: meta.file_name.as_str().to_owned(),
-            bytes: bytes.slice(meta.offset, meta.offset + meta.len),
+            bytes: bytes.slice(meta.offset..meta.offset + meta.len),
         }
     }
 
