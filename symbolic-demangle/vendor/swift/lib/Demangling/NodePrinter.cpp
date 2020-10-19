@@ -738,19 +738,15 @@ private:
       setInvalid();
       return;
     }
-
-    if (!Options.ShowFunctionArguments) {
-      return;
-    }
-
     unsigned startIndex = 0;
     if (node->getChild(0)->getKind() == Node::Kind::ThrowsAnnotation)
       startIndex = 1;
 
-    printFunctionParameters(LabelList, node->getChild(startIndex),
-                            Options.ShowFunctionArgumentTypes);
+    if (Options.ShowFunctionArgumentTypes) {
+      printFunctionParameters(LabelList, node->getChild(startIndex), true);
+    }
 
-    if (!Options.ShowFunctionArgumentTypes)
+    if (!Options.ShowFunctionReturnType)
       return;
 
     if (startIndex == 1)

@@ -57,7 +57,7 @@ struct DemangleOptions {
   bool ShortenArchetype = false;
   bool ShowPrivateDiscriminators = true;
   bool ShowFunctionArgumentTypes = true;
-  bool ShowFunctionArguments = true;
+  bool ShowFunctionReturnType = true;
   std::function<std::string(uint64_t, uint64_t)> GenericParameterName =
       genericParameterName;
 
@@ -80,6 +80,7 @@ struct DemangleOptions {
     Opt.ShortenArchetype = true;
     Opt.ShowPrivateDiscriminators = false;
     Opt.ShowFunctionArgumentTypes = false;
+    Opt.ShowFunctionReturnType = false;
     return Opt;
   };
 };
