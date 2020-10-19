@@ -19,4 +19,4 @@ edition = "2018"
 all-features = true
 
 [dependencies]
-sourcemap = "5.0.0"
+sourcemap = "6.0.1"

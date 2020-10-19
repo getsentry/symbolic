@@ -41,5 +41,5 @@ thiserror = "1.0.20"
 cc = { version = "1.0.50", features = ["parallel"] }
 
 [dev-dependencies]
-insta = "0.15.0"
+insta = "1.1.0"
 symbolic-testutils = { path = "../symbolic-testutils" }
