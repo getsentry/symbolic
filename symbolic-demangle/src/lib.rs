@@ -4,7 +4,7 @@
 //!
 //! - C++ (GCC-style compilers and MSVC) (`features = ["cpp", "msvc"]`)
 //! - Rust (both `legacy` and `v0`) (`features = ["rust"]`)
-//! - Swift (up to Swift 5.2) (`features = ["swift"]`)
+//! - Swift (up to Swift 5.3) (`features = ["swift"]`)
 //! - ObjC (only symbol detection)
 //!
 //! As the demangling schemes for the languages are different, the supported demangling features are
@@ -42,8 +42,6 @@ use symbolic_common::{Language, Name, NameMangling};
 const SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE: c_int = 0x1;
 #[cfg(feature = "swift")]
 const SYMBOLIC_SWIFT_FEATURE_ARGUMENT_TYPES: c_int = 0x2;
-#[cfg(feature = "swift")]
-const SYMBOLIC_SWIFT_FEATURE_ARGUMENT_NAMES: c_int = 0x4;
 
 #[cfg(feature = "swift")]
 extern "C" {
@@ -88,7 +86,6 @@ extern "C" {
 pub struct DemangleOptions {
     return_type: bool,
     argument_types: bool,
-    argument_names: bool,
 }
 
 impl DemangleOptions {
@@ -97,7 +94,6 @@ impl DemangleOptions {
         Self {
             return_type: true,
             argument_types: true,
-            argument_names: true,
         }
     }
 
@@ -106,7 +102,6 @@ impl DemangleOptions {
         Self {
             return_type: false,
             argument_types: false,
-            argument_names: false,
         }
     }
 
@@ -119,12 +114,6 @@ impl DemangleOptions {
     /// Determines whether function argument types should be demangled.
     pub const fn argument_types(mut self, argument_types: bool) -> Self {
         self.argument_types = argument_types;
-        self
-    }
-
-    /// Determines whether function argument names should be demangled.
-    pub const fn argument_names(mut self, argument_names: bool) -> Self {
-        self.argument_names = argument_names;
         self
     }
 }
@@ -238,9 +227,6 @@ fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
     }
     if opts.argument_types {
         features |= SYMBOLIC_SWIFT_FEATURE_ARGUMENT_TYPES;
-    }
-    if opts.argument_names {
-        features |= SYMBOLIC_SWIFT_FEATURE_ARGUMENT_NAMES;
     }
 
     unsafe {

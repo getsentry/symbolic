@@ -1,34 +1,53 @@
-commit af26ebbf5f3bb03c92739b19127f5c2c5b402e4a
-Author: Arpad Borsos <arpad.borsos@sentry.io>
-Date:   Mon Oct 19 13:28:23 2020 +0200
+From 0506eeca0be80c052dbd004863363f68d4b0b726 Mon Sep 17 00:00:00 2001
+From: Arpad Borsos <arpad.borsos@googlemail.com>
+Date: Mon, 19 Oct 2020 14:05:45 +0200
+Subject: [PATCH] feat(demangle): Add option to skip Swift function return
+ types
 
-    feat(demangle): Add option to skip Swift function parameters
+---
+ .../vendor/swift/include/swift/Demangling/Demangle.h       | 2 ++
+ .../vendor/swift/lib/Demangling/NodePrinter.cpp            | 7 ++++---
+ 2 files changed, 6 insertions(+), 3 deletions(-)
 
 diff --git a/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h b/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
-index ce3a4b5..df88a9c 100644
+index ce3a4b5..060c673 100644
 --- a/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
 +++ b/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
 @@ -57,6 +57,7 @@ struct DemangleOptions {
    bool ShortenArchetype = false;
    bool ShowPrivateDiscriminators = true;
    bool ShowFunctionArgumentTypes = true;
-+  bool ShowFunctionArguments = true;
++  bool ShowFunctionReturnType = true;
    std::function<std::string(uint64_t, uint64_t)> GenericParameterName =
        genericParameterName;
- 
+
+@@ -79,6 +80,7 @@ struct DemangleOptions {
+     Opt.ShortenArchetype = true;
+     Opt.ShowPrivateDiscriminators = false;
+     Opt.ShowFunctionArgumentTypes = false;
++    Opt.ShowFunctionReturnType = false;
+     return Opt;
+   };
+ };
 diff --git a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-index 1e39291..0784608 100644
+index 1e39291..87ad052 100644
 --- a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
 +++ b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-@@ -738,6 +738,11 @@ private:
-       setInvalid();
-       return;
-     }
-+
-+    if (!Options.ShowFunctionArguments) {
-+      return;
-+    }
-+
-     unsigned startIndex = 0;
+@@ -742,10 +742,11 @@ private:
      if (node->getChild(0)->getKind() == Node::Kind::ThrowsAnnotation)
        startIndex = 1;
+
+-    printFunctionParameters(LabelList, node->getChild(startIndex),
+-                            Options.ShowFunctionArgumentTypes);
++    if (Options.ShowFunctionArgumentTypes) {
++      printFunctionParameters(LabelList, node->getChild(startIndex), true);
++    }
+
+-    if (!Options.ShowFunctionArgumentTypes)
++    if (!Options.ShowFunctionReturnType)
+       return;
+
+     if (startIndex == 1)
+--
+2.22.0.windows.1
+
