@@ -1,7 +1,5 @@
 ---
-created: "2019-05-29T08:44:21.017450Z"
-creator: insta@0.8.1
-source: minidump/tests/test_processor.rs
+source: symbolic-minidump/tests/test_processor.rs
 expression: "&state"
 ---
 ProcessState {
@@ -89,12 +87,6 @@ ProcessState {
                             debug_identifier: "451A38B5067979D2073822A5CEB24C4B0",
                         },
                     ),
-                },
-                StackFrame {
-                    return_address: 4194304,
-                    instruction: 4194303,
-                    trust: Scan,
-                    module: None,
                 },
                 StackFrame {
                     return_address: 139986956368582,
@@ -327,12 +319,6 @@ ProcessState {
                     ),
                 },
                 StackFrame {
-                    return_address: 140734719004672,
-                    instruction: 140734719004671,
-                    trust: Scan,
-                    module: None,
-                },
-                StackFrame {
                     return_address: 4194368,
                     instruction: 4194367,
                     trust: Scan,
@@ -354,12 +340,6 @@ ProcessState {
                             debug_identifier: "C0BCC3F19827FE653058404B2831D9E60",
                         },
                     ),
-                },
-                StackFrame {
-                    return_address: 139986956304384,
-                    instruction: 139986956304383,
-                    trust: Scan,
-                    module: None,
                 },
                 StackFrame {
                     return_address: 4201920,
