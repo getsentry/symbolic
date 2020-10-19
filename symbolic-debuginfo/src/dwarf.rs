@@ -1115,16 +1115,16 @@ pub struct DwarfDebugSession<'data> {
     cell: SelfCell<Box<DwarfSections<'data>>, DwarfInfo<'data>>,
 }
 
-impl<'d> DwarfDebugSession<'d> {
+impl<'data> DwarfDebugSession<'data> {
     /// Parses a dwarf debugging information from the given DWARF file.
     pub fn parse<D>(
         dwarf: &D,
-        symbol_map: SymbolMap<'d>,
+        symbol_map: SymbolMap<'data>,
         load_address: u64,
         kind: ObjectKind,
     ) -> Result<Self, DwarfError>
     where
-        D: Dwarf<'d>,
+        D: Dwarf<'data>,
     {
         let sections = DwarfSections::from_dwarf(dwarf)?;
         let cell = SelfCell::try_new(Box::new(sections), |sections| {
@@ -1161,15 +1161,17 @@ impl<'d> DwarfDebugSession<'d> {
     }
 }
 
-impl<'d> DebugSession for DwarfDebugSession<'d> {
+impl<'data, 'session> DebugSession<'session> for DwarfDebugSession<'data> {
     type Error = DwarfError;
+    type FunctionIterator = DwarfFunctionIterator<'session>;
+    type FileIterator = DwarfFileIterator<'session>;
 
-    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
-        Box::new(self.functions())
+    fn functions(&'session self) -> Self::FunctionIterator {
+        self.functions()
     }
 
-    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
-        Box::new(self.files())
+    fn files(&'session self) -> Self::FileIterator {
+        self.files()
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {

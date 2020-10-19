@@ -736,10 +736,7 @@ impl ProcessResult {
     /// Depending on the result, the process state might only contain partial information. For a
     /// full minidump, check for `ProcessResult::Ok` instead.
     pub fn is_usable(self) -> bool {
-        match self {
-            ProcessResult::Ok | ProcessResult::NoThreadList => true,
-            _ => false,
-        }
+        matches!(self, ProcessResult::Ok | ProcessResult::NoThreadList)
     }
 }
 

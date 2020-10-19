@@ -131,9 +131,9 @@ struct UnwindInfo<U> {
 }
 
 impl<U> UnwindInfo<U> {
-    pub fn new<O, R>(object: &O, addr: u64, mut section: U) -> Self
+    pub fn new<'d: 'o, 'o, O, R>(object: &O, addr: u64, mut section: U) -> Self
     where
-        O: ObjectLike,
+        O: ObjectLike<'d, 'o>,
         R: Reader,
         U: UnwindSectionExt<R>,
     {
@@ -236,9 +236,9 @@ impl<W: Write> AsciiCfiWriter<W> {
         Ok(())
     }
 
-    fn process_dwarf<'o, O>(&mut self, object: &O) -> Result<(), CfiError>
+    fn process_dwarf<'d: 'o, 'o, O>(&mut self, object: &O) -> Result<(), CfiError>
     where
-        O: ObjectLike + Dwarf<'o>,
+        O: ObjectLike<'d, 'o> + Dwarf<'o>,
     {
         let endian = object.endianity();
 

@@ -48,22 +48,22 @@ pub enum ElfError {
 }
 
 /// Executable and Linkable Format, used for executables and libraries on Linux.
-pub struct ElfObject<'d> {
-    elf: elf::Elf<'d>,
-    data: &'d [u8],
+pub struct ElfObject<'data> {
+    elf: elf::Elf<'data>,
+    data: &'data [u8],
 }
 
-impl<'d> ElfObject<'d> {
+impl<'data> ElfObject<'data> {
     /// Tests whether the buffer could contain an ELF object.
     pub fn test(data: &[u8]) -> bool {
-        match goblin::peek(&mut Cursor::new(data)) {
-            Ok(goblin::Hint::Elf(_)) => true,
-            _ => false,
-        }
+        matches!(
+            goblin::peek(&mut Cursor::new(data)),
+            Ok(goblin::Hint::Elf(_))
+        )
     }
 
     /// Tries to parse an ELF object from the given slice.
-    pub fn parse(data: &'d [u8]) -> Result<Self, ElfError> {
+    pub fn parse(data: &'data [u8]) -> Result<Self, ElfError> {
         Ok(elf::Elf::parse(data).map(|elf| ElfObject { elf, data })?)
     }
 
@@ -84,7 +84,7 @@ impl<'d> ElfObject<'d> {
     }
 
     /// The binary's soname, if any.
-    pub fn name(&self) -> Option<&'d str> {
+    pub fn name(&self) -> Option<&'data str> {
         self.elf.soname
     }
 
@@ -208,7 +208,7 @@ impl<'d> ElfObject<'d> {
     }
 
     /// Returns an iterator over symbols in the public symbol table.
-    pub fn symbols(&self) -> ElfSymbolIterator<'d, '_> {
+    pub fn symbols(&self) -> ElfSymbolIterator<'data, '_> {
         ElfSymbolIterator {
             symbols: self.elf.syms.iter(),
             strtab: &self.elf.strtab,
@@ -218,7 +218,7 @@ impl<'d> ElfObject<'d> {
     }
 
     /// Returns an ordered map of symbols in the symbol table.
-    pub fn symbol_map(&self) -> SymbolMap<'d> {
+    pub fn symbol_map(&self) -> SymbolMap<'data> {
         self.symbols().collect()
     }
 
@@ -239,7 +239,7 @@ impl<'d> ElfObject<'d> {
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
     /// [`has_debug_info`](struct.ElfObject.html#method.has_debug_info).
-    pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
+    pub fn debug_session(&self) -> Result<DwarfDebugSession<'data>, DwarfError> {
         let symbols = self.symbol_map();
         DwarfDebugSession::parse(self, symbols, self.load_address(), self.kind())
     }
@@ -255,7 +255,7 @@ impl<'d> ElfObject<'d> {
     }
 
     /// Returns the raw data of the ELF file.
-    pub fn data(&self) -> &'d [u8] {
+    pub fn data(&self) -> &'data [u8] {
         self.data
     }
 
@@ -295,7 +295,7 @@ impl<'d> ElfObject<'d> {
     }
 
     /// Locates and reads a section in an ELF binary.
-    fn find_section(&self, name: &str) -> Option<(bool, DwarfSection<'d>)> {
+    fn find_section(&self, name: &str) -> Option<(bool, DwarfSection<'data>)> {
         for header in &self.elf.section_headers {
             // NB: Symbolic does not support MIPS, but if it did we would also need to check
             // SHT_MIPS_DWARF sections.
@@ -350,7 +350,7 @@ impl<'d> ElfObject<'d> {
     /// Depending on the compiler and linker, the build ID can be declared in a
     /// PT_NOTE program header entry, the ".note.gnu.build-id" section, or even
     /// both.
-    fn find_build_id(&self) -> Option<&'d [u8]> {
+    fn find_build_id(&self) -> Option<&'data [u8]> {
         // First, search the note program headers (PT_NOTE) for a NT_GNU_BUILD_ID.
         // We swallow all errors during this process and simply fall back to the
         // next method below.
@@ -423,7 +423,7 @@ impl fmt::Debug for ElfObject<'_> {
     }
 }
 
-impl<'slf, 'd: 'slf> AsSelf<'slf> for ElfObject<'d> {
+impl<'slf, 'data: 'slf> AsSelf<'slf> for ElfObject<'data> {
     type Ref = ElfObject<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
@@ -431,21 +431,22 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for ElfObject<'d> {
     }
 }
 
-impl<'d> Parse<'d> for ElfObject<'d> {
+impl<'data> Parse<'data> for ElfObject<'data> {
     type Error = ElfError;
 
     fn test(data: &[u8]) -> bool {
         Self::test(data)
     }
 
-    fn parse(data: &'d [u8]) -> Result<Self, ElfError> {
+    fn parse(data: &'data [u8]) -> Result<Self, ElfError> {
         Self::parse(data)
     }
 }
 
-impl<'d> ObjectLike for ElfObject<'d> {
+impl<'data: 'object, 'object> ObjectLike<'data, 'object> for ElfObject<'data> {
     type Error = DwarfError;
-    type Session = DwarfDebugSession<'d>;
+    type Session = DwarfDebugSession<'data>;
+    type SymbolIterator = ElfSymbolIterator<'data, 'object>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -475,11 +476,11 @@ impl<'d> ObjectLike for ElfObject<'d> {
         self.has_symbols()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
-        Box::new(self.symbols())
+    fn symbols(&'object self) -> Self::SymbolIterator {
+        self.symbols()
     }
 
-    fn symbol_map(&self) -> SymbolMap<'_> {
+    fn symbol_map(&self) -> SymbolMap<'data> {
         self.symbol_map()
     }
 
@@ -500,7 +501,7 @@ impl<'d> ObjectLike for ElfObject<'d> {
     }
 }
 
-impl<'d> Dwarf<'d> for ElfObject<'d> {
+impl<'data> Dwarf<'data> for ElfObject<'data> {
     fn endianity(&self) -> Endian {
         if self.elf.little_endian {
             Endian::Little
@@ -509,12 +510,12 @@ impl<'d> Dwarf<'d> for ElfObject<'d> {
         }
     }
 
-    fn raw_section(&self, name: &str) -> Option<DwarfSection<'d>> {
+    fn raw_section(&self, name: &str) -> Option<DwarfSection<'data>> {
         let (_, section) = self.find_section(name)?;
         Some(section)
     }
 
-    fn section(&self, name: &str) -> Option<DwarfSection<'d>> {
+    fn section(&self, name: &str) -> Option<DwarfSection<'data>> {
         let (compressed, mut section) = self.find_section(name)?;
 
         if compressed {
@@ -529,15 +530,15 @@ impl<'d> Dwarf<'d> for ElfObject<'d> {
 /// An iterator over symbols in the ELF file.
 ///
 /// Returned by [`ElfObject::symbols`](struct.ElfObject.html#method.symbols).
-pub struct ElfSymbolIterator<'d, 'o> {
-    symbols: elf::sym::SymIterator<'d>,
-    strtab: &'o strtab::Strtab<'d>,
-    sections: &'o [elf::SectionHeader],
+pub struct ElfSymbolIterator<'data, 'object> {
+    symbols: elf::sym::SymIterator<'data>,
+    strtab: &'object strtab::Strtab<'data>,
+    sections: &'object [elf::SectionHeader],
     load_addr: u64,
 }
 
-impl<'d, 'o> Iterator for ElfSymbolIterator<'d, 'o> {
-    type Item = Symbol<'d>;
+impl<'data, 'object> Iterator for ElfSymbolIterator<'data, 'object> {
+    type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(symbol) = self.symbols.next() {
