@@ -351,6 +351,10 @@ private:
     case Node::Kind::DependentPseudogenericSignature:
     case Node::Kind::Destructor:
     case Node::Kind::DidSet:
+    case Node::Kind::DifferentiableFunctionType:
+    case Node::Kind::EscapingDifferentiableFunctionType:
+    case Node::Kind::LinearFunctionType:
+    case Node::Kind::EscapingLinearFunctionType:
     case Node::Kind::DirectMethodReferenceAttribute:
     case Node::Kind::Directness:
     case Node::Kind::DynamicAttribute:
@@ -386,13 +390,18 @@ private:
     case Node::Kind::Index:
     case Node::Kind::IVarInitializer:
     case Node::Kind::IVarDestroyer:
+    case Node::Kind::ImplDifferentiable:
+    case Node::Kind::ImplLinear:
     case Node::Kind::ImplEscaping:
     case Node::Kind::ImplConvention:
     case Node::Kind::ImplFunctionAttribute:
     case Node::Kind::ImplFunctionType:
+    case Node::Kind::ImplInvocationSubstitutions:
+    case Node::Kind::ImplPatternSubstitutions:
     case Node::Kind::ImplicitClosure:
     case Node::Kind::ImplParameter:
     case Node::Kind::ImplResult:
+    case Node::Kind::ImplYield:
     case Node::Kind::ImplErrorResult:
     case Node::Kind::InOut:
     case Node::Kind::InfixOperator:
@@ -438,6 +447,7 @@ private:
     case Node::Kind::PropertyDescriptor:
     case Node::Kind::ProtocolConformance:
     case Node::Kind::ProtocolConformanceDescriptor:
+    case Node::Kind::MetadataInstantiationCache:
     case Node::Kind::ProtocolDescriptor:
     case Node::Kind::ProtocolRequirementsBaseDescriptor:
     case Node::Kind::ProtocolSelfConformanceDescriptor:
@@ -689,7 +699,7 @@ private:
       auto Label = LabelList->getChild(Index);
       assert(Label && (Label->getKind() == Node::Kind::Identifier ||
                        Label->getKind() == Node::Kind::FirstElementMarker));
-      return Label->getKind() == Node::Kind::Identifier ? Label->getText()
+      return Label->getKind() == Node::Kind::Identifier ? Label->getText().str()
                                                         : "_";
     };
 
@@ -697,29 +707,29 @@ private:
     bool hasLabels = LabelList && LabelList->getNumChildren() > 0;
 
     Printer << '(';
-    interleave(Parameters->begin(), Parameters->end(),
-               [&](NodePointer Param) {
-                 assert(Param->getKind() == Node::Kind::TupleElement);
+    llvm::interleave(
+        Parameters->begin(), Parameters->end(),
+        [&](NodePointer Param) {
+          assert(Param->getKind() == Node::Kind::TupleElement);
 
-                 if (hasLabels) {
-                   Printer << getLabelFor(Param, ParamIndex) << ':';
-                 } else if (!showTypes) {
-                   if (auto Label = getChildIf(Param,
-                                               Node::Kind::TupleElementName))
-                     Printer << Label->getText() << ":";
-                   else
-                     Printer << "_:";
-                 }
+          if (hasLabels) {
+            Printer << getLabelFor(Param, ParamIndex) << ':';
+          } else if (!showTypes) {
+            if (auto Label = getChildIf(Param, Node::Kind::TupleElementName))
+              Printer << Label->getText() << ":";
+            else
+              Printer << "_:";
+          }
 
-                 if (hasLabels && showTypes)
-                   Printer << ' ';
+          if (hasLabels && showTypes)
+            Printer << ' ';
 
-                 ++ParamIndex;
+          ++ParamIndex;
 
-                 if (showTypes)
-                   print(Param);
-               },
-               [&]() { Printer << (showTypes ? ", " : ""); });
+          if (showTypes)
+            print(Param);
+        },
+        [&]() { Printer << (showTypes ? ", " : ""); });
     Printer << ')';
   }
 
@@ -750,12 +760,21 @@ private:
   }
 
   void printImplFunctionType(NodePointer fn) {
+    NodePointer patternSubs = nullptr;
+    NodePointer invocationSubs = nullptr;
     enum State { Attrs, Inputs, Results } curState = Attrs;
     auto transitionTo = [&](State newState) {
       assert(newState >= curState);
       for (; curState != newState; curState = State(curState + 1)) {
         switch (curState) {
-        case Attrs: Printer << '('; continue;
+        case Attrs:
+          if (patternSubs) {
+            Printer << "@substituted ";
+            print(patternSubs->getChild(0));
+            Printer << ' ';
+          }
+          Printer << '(';
+          continue;
         case Inputs: Printer << ") -> ("; continue;
         case Results: printer_unreachable("no state after Results");
         }
@@ -769,10 +788,15 @@ private:
         transitionTo(Inputs);
         print(child);
       } else if (child->getKind() == Node::Kind::ImplResult
+                 || child->getKind() == Node::Kind::ImplYield
                  || child->getKind() == Node::Kind::ImplErrorResult) {
         if (curState == Results) Printer << ", ";
         transitionTo(Results);
         print(child);
+      } else if (child->getKind() == Node::Kind::ImplPatternSubstitutions) {
+        patternSubs = child;
+      } else if (child->getKind() == Node::Kind::ImplInvocationSubstitutions) {
+        invocationSubs = child;
       } else {
         assert(curState == Attrs);
         print(child);
@@ -781,6 +805,17 @@ private:
     }
     transitionTo(Results);
     Printer << ')';
+
+    if (patternSubs) {
+      Printer << " for <";
+      printChildren(patternSubs->getChild(1));
+      Printer << '>';
+    }
+    if (invocationSubs) {
+      Printer << " for <";
+      printChildren(invocationSubs->getChild(0));
+      Printer << '>';
+    }
   }
 
   void printFunctionSigSpecializationParams(NodePointer Node);
@@ -984,7 +1019,7 @@ static bool needSpaceBeforeType(NodePointer Type) {
 }
 
 NodePointer NodePrinter::print(NodePointer Node, bool asPrefixContext) {
-  switch (Node->getKind()) {
+  switch (auto kind = Node->getKind()) {
   case Node::Kind::Static:
     Printer << "static ";
     print(Node->getChild(0));
@@ -1124,7 +1159,8 @@ NodePointer NodePrinter::print(NodePointer Node, bool asPrefixContext) {
     return nullptr;
   case Node::Kind::Suffix:
     if (Options.DisplayUnmangledSuffix) {
-      Printer << " with unmangled suffix " << QuotedString(Node->getText());
+      Printer << " with unmangled suffix "
+              << QuotedString(Node->getText().str());
     }
     return nullptr;
   case Node::Kind::Initializer:
@@ -1208,6 +1244,22 @@ NodePointer NodePrinter::print(NodePointer Node, bool asPrefixContext) {
     return nullptr;
   case Node::Kind::ThinFunctionType:
     Printer << "@convention(thin) ";
+    printFunctionType(nullptr, Node);
+    return nullptr;
+  case Node::Kind::DifferentiableFunctionType:
+    Printer << "@differentiable ";
+    printFunctionType(nullptr, Node);
+    return nullptr;
+  case Node::Kind::EscapingDifferentiableFunctionType:
+    Printer << "@escaping @differentiable ";
+    printFunctionType(nullptr, Node);
+    return nullptr;
+  case Node::Kind::LinearFunctionType:
+    Printer << "@differentiable(linear) ";
+    printFunctionType(nullptr, Node);
+    return nullptr;
+  case Node::Kind::EscapingLinearFunctionType:
+    Printer << "@escaping @differentiable(linear) ";
     printFunctionType(nullptr, Node);
     return nullptr;
   case Node::Kind::FunctionType:
@@ -2002,6 +2054,12 @@ NodePointer NodePrinter::print(NodePointer Node, bool asPrefixContext) {
     return nullptr;
   case Node::Kind::LabelList:
     return nullptr;
+  case Node::Kind::ImplDifferentiable:
+    Printer << "@differentiable";
+    return nullptr;
+  case Node::Kind::ImplLinear:
+    Printer << "@differentiable(linear)";
+    return nullptr;
   case Node::Kind::ImplEscaping:
     Printer << "@escaping";
     return nullptr;
@@ -2013,13 +2071,30 @@ NodePointer NodePrinter::print(NodePointer Node, bool asPrefixContext) {
     return nullptr;
   case Node::Kind::ImplErrorResult:
     Printer << "@error ";
-    LLVM_FALLTHROUGH;
+    printChildren(Node, " ");
+    return nullptr;
+  case Node::Kind::ImplYield:
+    Printer << "@yields ";
+    printChildren(Node, " ");
+    return nullptr;
   case Node::Kind::ImplParameter:
   case Node::Kind::ImplResult:
     printChildren(Node, " ");
     return nullptr;
   case Node::Kind::ImplFunctionType:
     printImplFunctionType(Node);
+    return nullptr;
+  case Node::Kind::ImplInvocationSubstitutions:
+    Printer << "for <";
+    printChildren(Node->getChild(0), ", ");
+    Printer << '>';
+    return nullptr;
+  case Node::Kind::ImplPatternSubstitutions:
+    Printer << "@substituted ";
+    print(Node->getChild(0));
+    Printer << " for <";
+    printChildren(Node->getChild(1), ", ");
+    Printer << '>';
     return nullptr;
   case Node::Kind::ErrorType:
     Printer << "<ERROR TYPE>";
@@ -2331,6 +2406,10 @@ NodePointer NodePrinter::print(NodePointer Node, bool asPrefixContext) {
   case Node::Kind::AccessorFunctionReference:
     Printer << "accessor function at " << Node->getIndex();
     return nullptr;
+  case Node::Kind::MetadataInstantiationCache:
+    Printer << "metadata instantiation cache for ";
+    print(Node->getChild(0));
+    return nullptr;
   }
   printer_unreachable("bad node kind!");
 }
@@ -2486,6 +2565,14 @@ void NodePrinter::printEntityType(NodePointer Entity, NodePointer type,
         Printer << ' ';
       type = dependentType->getFirstChild();
     }
+    if (type->getKind() == Node::Kind::DifferentiableFunctionType)
+      Printer << "@differentiable ";
+    else if (type->getKind() == Node::Kind::EscapingDifferentiableFunctionType)
+      Printer << "@escaping @differentiable ";
+    else if (type->getKind() == Node::Kind::LinearFunctionType)
+      Printer << "@differentiable(linear) ";
+    else if (type->getKind() == Node::Kind::EscapingLinearFunctionType)
+      Printer << "@escaping @differentiable(linear) ";
     printFunctionType(labelList, type);
   } else {
     print(type);

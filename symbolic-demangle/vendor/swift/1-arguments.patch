@@ -1,13 +1,13 @@
-commit 575a6035e76e73eacc99d43a412d0afa2068dd25
-Author: Jan Michael Auer <mail@jauer.org>
-Date:   Sun Apr 5 16:39:15 2020 +0200
+commit af26ebbf5f3bb03c92739b19127f5c2c5b402e4a
+Author: Arpad Borsos <arpad.borsos@sentry.io>
+Date:   Mon Oct 19 13:28:23 2020 +0200
 
     feat(demangle): Add option to skip Swift function parameters
 
-diff --git a/demangle/vendor/swift/include/swift/Demangling/Demangle.h b/demangle/vendor/swift/include/swift/Demangling/Demangle.h
-index 2a8fd6c..c377a00 100644
---- a/demangle/vendor/swift/include/swift/Demangling/Demangle.h
-+++ b/demangle/vendor/swift/include/swift/Demangling/Demangle.h
+diff --git a/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h b/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
+index ce3a4b5..df88a9c 100644
+--- a/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
++++ b/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
 @@ -57,6 +57,7 @@ struct DemangleOptions {
    bool ShortenArchetype = false;
    bool ShowPrivateDiscriminators = true;
@@ -16,11 +16,11 @@ index 2a8fd6c..c377a00 100644
    std::function<std::string(uint64_t, uint64_t)> GenericParameterName =
        genericParameterName;
  
-diff --git a/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp b/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-index 097be7f..266506e 100644
---- a/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-+++ b/demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-@@ -728,6 +728,11 @@ private:
+diff --git a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
+index 1e39291..0784608 100644
+--- a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
++++ b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
+@@ -738,6 +738,11 @@ private:
        setInvalid();
        return;
      }
