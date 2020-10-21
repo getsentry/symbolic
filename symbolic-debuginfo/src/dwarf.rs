@@ -322,10 +322,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
     }
 
     /// Resolves the function name of a debug entry.
-    fn resolve_function_name(
-        &self,
-        entry: &Die<'d, '_>,
-    ) -> Result<Option<(Cow<'d, str>, NameMangling)>, DwarfError> {
+    fn resolve_function_name(&self, entry: &Die<'d, '_>) -> Result<Option<Name<'d>>, DwarfError> {
         let mut attrs = entry.attrs();
         let mut fallback_name = None;
         let mut reference_target = None;
@@ -336,7 +333,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
                 constants::DW_AT_linkage_name | constants::DW_AT_MIPS_linkage_name => {
                     return Ok(self
                         .string_value(attr.value())
-                        .map(|n| (n, NameMangling::Mangled)));
+                        .map(|n| Name::new(n, NameMangling::Mangled, Language::Unknown)));
                 }
                 constants::DW_AT_name => {
                     fallback_name = Some(attr);
@@ -351,22 +348,18 @@ impl<'d, 'a> UnitRef<'d, 'a> {
         if let Some(attr) = fallback_name {
             return Ok(self
                 .string_value(attr.value())
-                .map(|n| (n, NameMangling::Unmangled)));
+                .map(|n| Name::new(n, NameMangling::Unmangled, Language::Unknown)));
         }
 
         if let Some(attr) = reference_target {
-            let resolved = self.resolve_reference(attr, |ref_unit, ref_entry| {
+            return self.resolve_reference(attr, |ref_unit, ref_entry| {
                 if self.unit.offset != ref_unit.unit.offset || entry.offset() != ref_entry.offset()
                 {
                     ref_unit.resolve_function_name(ref_entry)
                 } else {
                     Ok(None)
                 }
-            })?;
-
-            if resolved.is_some() {
-                return Ok(resolved);
-            }
+            });
         }
 
         Ok(None)
@@ -681,15 +674,20 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     .info
                     .symbol_map
                     .lookup_range(function_address..function_end)
-                    .and_then(|symbol| symbol.name.clone().map(|n| (n, NameMangling::Mangled)))
+                    .and_then(|symbol| {
+                        symbol
+                            .name
+                            .clone()
+                            .map(|n| Name::new(n, NameMangling::Mangled, self.language))
+                    })
             } else {
                 None
             };
 
-            let (name, mangling) = symbol_name
+            let mut name = symbol_name
                 .or_else(|| self.inner.resolve_function_name(entry).ok().flatten())
-                .unwrap_or_default();
-            let name = Name::new(name, mangling, self.language);
+                .unwrap_or_else(|| Name::from(""));
+            name.set_language(self.language);
 
             // Avoid constant allocations by collecting repeatedly into the same buffer and
             // draining the results out of it. This keeps the original buffer allocated and

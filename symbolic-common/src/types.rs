@@ -759,6 +759,12 @@ impl<'a> Name<'a> {
         &self.string
     }
 
+    /// Set the `Name`'s language.
+    pub fn set_language(&mut self, language: Language) -> &mut Self {
+        self.lang = language;
+        self
+    }
+
     /// The language of the mangled symbol.
     ///
     /// If the language is not declared in the source, this returns `Language::Unknown`. The
@@ -775,6 +781,12 @@ impl<'a> Name<'a> {
     /// ```
     pub fn language(&self) -> Language {
         self.lang
+    }
+
+    /// Set the `Name`'s mangling state.
+    pub fn set_mangling(&mut self, mangling: NameMangling) -> &mut Self {
+        self.mangling = mangling;
+        self
     }
 
     /// Returns the `Name`'s mangling state.
