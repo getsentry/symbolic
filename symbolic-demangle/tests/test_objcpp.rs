@@ -11,7 +11,7 @@ use symbolic_demangle::{Demangle, DemangleOptions};
 #[test]
 #[cfg(feature = "cpp")]
 fn test_demangle_objcpp() {
-    assert_demangle!(Language::ObjCpp, DemangleOptions::name_only().argument_types(true), {
+    assert_demangle!(Language::ObjCpp, DemangleOptions::name_only().parameters(true), {
         "+[Foo bar:blub:]" => "+[Foo bar:blub:]",
         "_ZN4base24MessagePumpNSApplication5DoRunEPNS_11MessagePump8DelegateE" => "base::MessagePumpNSApplication::DoRun(base::MessagePump::Delegate*)",
         "_ZL29SupportsTextureSampleCountMTLPU19objcproto9MTLDevice11objc_objectm" => "SupportsTextureSampleCountMTL(objc_object objcproto9MTLDevice*, unsigned long)",

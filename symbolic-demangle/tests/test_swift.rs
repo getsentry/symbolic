@@ -12,7 +12,7 @@ use symbolic_demangle::DemangleOptions;
 
 #[test]
 fn test_demangle_swift_short() {
-    assert_demangle!(Language::Swift, DemangleOptions::name_only().argument_types(true), {
+    assert_demangle!(Language::Swift, DemangleOptions::name_only().parameters(true), {
         // Swift < 4 (old mangling)
         "_T08mangling0022egbpdajGbuEbxfgehfvwxnyyF" => "ليهمابتكلموشعربي؟()",
         "_T08mangling0024ihqwcrbEcvIaIdqgAFGpqjyeyyF" => "他们为什么不说中文()",

@@ -41,7 +41,7 @@ use symbolic_common::{Language, Name, NameMangling};
 #[cfg(feature = "swift")]
 const SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE: c_int = 0x1;
 #[cfg(feature = "swift")]
-const SYMBOLIC_SWIFT_FEATURE_ARGUMENT_TYPES: c_int = 0x2;
+const SYMBOLIC_SWIFT_FEATURE_PARAMETERS: c_int = 0x2;
 
 #[cfg(feature = "swift")]
 extern "C" {
@@ -85,7 +85,7 @@ extern "C" {
 #[derive(Clone, Copy, Debug)]
 pub struct DemangleOptions {
     return_type: bool,
-    argument_types: bool,
+    parameters: bool,
 }
 
 impl DemangleOptions {
@@ -93,7 +93,7 @@ impl DemangleOptions {
     pub const fn complete() -> Self {
         Self {
             return_type: true,
-            argument_types: true,
+            parameters: true,
         }
     }
 
@@ -101,7 +101,7 @@ impl DemangleOptions {
     pub const fn name_only() -> Self {
         Self {
             return_type: false,
-            argument_types: false,
+            parameters: false,
         }
     }
 
@@ -112,8 +112,8 @@ impl DemangleOptions {
     }
 
     /// Determines whether function argument types should be demangled.
-    pub const fn argument_types(mut self, argument_types: bool) -> Self {
-        self.argument_types = argument_types;
+    pub const fn parameters(mut self, parameters: bool) -> Self {
+        self.parameters = parameters;
         self
     }
 }
@@ -154,7 +154,7 @@ fn try_demangle_msvc(ident: &str, opts: DemangleOptions) -> Option<String> {
     if !opts.return_type {
         flags |= MsvcFlags::NO_FUNCTION_RETURNS;
     }
-    if !opts.argument_types {
+    if !opts.parameters {
         // a `NO_ARGUMENTS` flag is there in the code, but commented out
         flags |= MsvcFlags::NAME_ONLY;
     }
@@ -182,7 +182,7 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
         };
 
         let mut cpp_options = CppOptions::new();
-        if !opts.argument_types {
+        if !opts.parameters {
             cpp_options = cpp_options.no_params();
         }
         if !opts.return_type {
@@ -225,8 +225,8 @@ fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
     if opts.return_type {
         features |= SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE;
     }
-    if opts.argument_types {
-        features |= SYMBOLIC_SWIFT_FEATURE_ARGUMENT_TYPES;
+    if opts.parameters {
+        features |= SYMBOLIC_SWIFT_FEATURE_PARAMETERS;
     }
 
     unsafe {

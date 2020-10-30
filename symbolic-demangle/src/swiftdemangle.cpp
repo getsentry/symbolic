@@ -1,7 +1,7 @@
 #include "swift/Demangling/Demangle.h"
 
 #define SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE 0x1
-#define SYMBOLIC_SWIFT_FEATURE_ARGUMENT_TYPES 0x2
+#define SYMBOLIC_SWIFT_FEATURE_PARAMETERS 0x2
 #define SYMBOLIC_SWIFT_FEATURE_ALL 0x3
 
 extern "C" int symbolic_demangle_swift(const char *symbol,
@@ -13,7 +13,7 @@ extern "C" int symbolic_demangle_swift(const char *symbol,
     if (features < SYMBOLIC_SWIFT_FEATURE_ALL) {
         opts = swift::Demangle::DemangleOptions::SimplifiedUIDemangleOptions();
         bool return_type = features & SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE;
-        bool argument_types = features & SYMBOLIC_SWIFT_FEATURE_ARGUMENT_TYPES;
+        bool argument_types = features & SYMBOLIC_SWIFT_FEATURE_PARAMETERS;
 
         opts.ShowFunctionReturnType = return_type;
         opts.ShowFunctionArgumentTypes = argument_types;

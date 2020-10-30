@@ -24,7 +24,7 @@ fn test_msvc_demangle_without_args() {
 
 #[test]
 fn test_msvc_demangle_full() {
-    assert_demangle!(Language::Cpp, DemangleOptions::name_only().argument_types(true), {
+    assert_demangle!(Language::Cpp, DemangleOptions::name_only().parameters(true), {
         // These symbols were extracted from electron.exe.pdb
         // https://github.com/electron/electron/releases/download/v2.0.11/electron-v2.0.11-win32-x64-pdb.zip
         "??3@YAXPEAX@Z" => "operator delete(void *)",

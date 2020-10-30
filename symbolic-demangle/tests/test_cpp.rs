@@ -12,7 +12,7 @@ use symbolic_demangle::DemangleOptions;
 
 #[test]
 fn test_demangle_cpp() {
-    assert_demangle!(Language::Cpp, DemangleOptions::name_only().argument_types(true), {
+    assert_demangle!(Language::Cpp, DemangleOptions::name_only().parameters(true), {
         "_Z28JS_GetPropertyDescriptorByIdP9JSContextN2JS6HandleIP8JSObjectEENS2_I4jsidEENS1_13MutableHandleINS1_18PropertyDescriptorEEE" => "JS_GetPropertyDescriptorById(JSContext*, JS::Handle<JSObject*>, JS::Handle<jsid>, JS::MutableHandle<JS::PropertyDescriptor>)",
         "_ZN12_GLOBAL__N_15startEv" => "(anonymous namespace)::start()",
         "__ZN12_GLOBAL__N_15startEv" => "(anonymous namespace)::start()",

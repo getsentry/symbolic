@@ -23,7 +23,7 @@ ffi_fn! {
         lang: *const SymbolicStr,
     ) -> Result<SymbolicStr> {
         let name = get_name(ident, lang);
-        let demangled = name.try_demangle(DemangleOptions::name_only().argument_types(true));
+        let demangled = name.try_demangle(DemangleOptions::name_only().parameters(true));
 
         Ok(demangled.into_owned().into())
     }
