@@ -8,7 +8,7 @@ use std::str;
 use pest::Parser;
 use thiserror::Error;
 
-use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Name};
+use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameMangling};
 
 use crate::base::*;
 use crate::private::{Lines, Parse};
@@ -1138,7 +1138,7 @@ impl<'s> BreakpadFunctionIterator<'s> {
         Ok(Function {
             address: record.address,
             size: record.size,
-            name: Name::from(record.name),
+            name: Name::new(record.name, NameMangling::Unmangled, Language::Unknown),
             compilation_dir: &[],
             lines,
             inlinees: Vec::new(),

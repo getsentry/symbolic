@@ -1,6 +1,6 @@
 use std::fmt;
 
-use symbolic_common::{Arch, AsSelf, DebugId, Language, Name};
+use symbolic_common::{Arch, AsSelf, DebugId, Language, Name, NameMangling};
 
 use crate::error::SymCacheError;
 use crate::format;
@@ -490,7 +490,7 @@ impl<'a> LineInfo<'a> {
     ///
     /// Use `symbolic::demangle` for demangling this symbol.
     pub fn function_name(&self) -> Name<'_> {
-        Name::with_language(self.symbol(), self.language())
+        Name::new(self.symbol(), NameMangling::Unknown, self.language())
     }
 }
 
@@ -595,7 +595,7 @@ impl<'a> Function<'a> {
     ///
     /// Use `symbolic::demangle` for demangling this symbol.
     pub fn name(&self) -> Name<'_> {
-        Name::with_language(self.symbol(), self.language())
+        Name::new(self.symbol(), NameMangling::Unknown, self.language())
     }
 
     /// The compilation dir of the function.

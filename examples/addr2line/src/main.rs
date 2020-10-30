@@ -3,16 +3,16 @@ use std::borrow::Borrow;
 use anyhow::{Context, Result};
 use clap::{clap_app, ArgMatches};
 
-use symbolic::common::{ByteView, Name};
+use symbolic::common::{ByteView, Language, Name, NameMangling};
 use symbolic::debuginfo::{Function, Object};
-use symbolic::demangle::Demangle;
+use symbolic::demangle::{Demangle, DemangleOptions};
 
 fn print_name<'a, N: Borrow<Name<'a>>>(name: Option<N>, matches: &ArgMatches<'_>) {
     match name.as_ref().map(Borrow::borrow) {
         None => print!("??"),
         Some(name) if name.as_str().is_empty() => print!("??"),
         Some(name) if matches.is_present("demangle") => {
-            print!("{}", name.try_demangle(Default::default()));
+            print!("{}", name.try_demangle(DemangleOptions::name_only()));
         }
         Some(name) => print!("{}", name),
     }
@@ -92,7 +92,13 @@ fn execute(matches: &ArgMatches<'_>) -> Result<()> {
 
         if matches.is_present("functions") {
             if let Some(symbol) = symbol_map.lookup(addr) {
-                print_name(symbol.name.as_ref().map(|n| Name::new(n.as_ref())), matches);
+                print_name(
+                    symbol
+                        .name
+                        .as_ref()
+                        .map(|n| Name::new(n.as_ref(), NameMangling::Mangled, Language::Unknown)),
+                    matches,
+                );
                 print_range(symbol.address, Some(symbol.size), matches);
                 print!("\n  at ");
             }
