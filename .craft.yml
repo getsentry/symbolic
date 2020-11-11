@@ -1,14 +1,19 @@
----
-minVersion: "0.9.0"
+minVersion: "0.13.2"
 github:
   owner: getsentry
   repo: symbolic
+changelogPolicy: auto
+
+statusProvider:
+  name: github
+artifactProvider:
+  name: github
+
 preReleaseCommand: bash scripts/bump-version
 targets:
   - name: crates
   - name: pypi
   - name: github
-changelogPolicy: simple
 requireNames:
   - /^symbolic-.*-py2.py3-none-macosx_10_15_x86_64.whl$/
   - /^symbolic-.*-py2.py3-none-manylinux2010_i686.whl$/
