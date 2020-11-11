@@ -27,16 +27,10 @@ jobs:
 
       - run: make wheel SYMBOLIC_PYTHON=python2
 
-      - uses: actions/setup-node@v1
-
-      - name: Upload to Zeus
-        env:
-          ZEUS_HOOK_BASE: ${{ secrets.ZEUS_HOOK_BASE }}
-        run: |
-          npm install -D @zeus-ci/cli
-          npx zeus job update --build ${{ github.run_id }} --job ${{ github.job }} --ref ${{ github.sha }}
-          npx zeus upload --build ${{ github.run_id }} --job ${{ github.job }} --type "application/zip+wheel" py/dist/*
-          npx zeus job update --build ${{ github.run_id }} --job ${{ github.job }} --status passed
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.sha }}
+          path: py/dist/*
 
   python-wheel-linux:
     strategy:
@@ -61,16 +55,10 @@ jobs:
       - name: Build in Docker
         run: make wheel-manylinux IMAGE=quay.io/pypa/manylinux2010_${{ matrix.build-arch }}
 
-      - uses: actions/setup-node@v1
-
-      - name: Upload to Zeus
-        env:
-          ZEUS_HOOK_BASE: ${{ secrets.ZEUS_HOOK_BASE }}
-        run: |
-          npm install -D @zeus-ci/cli
-          npx zeus job update --build ${{ github.run_id }} --job ${{ github.job }} --ref ${{ github.sha }}
-          npx zeus upload --build ${{ github.run_id }} --job ${{ github.job }} --type "application/zip+wheel" py/dist/*
-          npx zeus job update --build ${{ github.run_id }} --job ${{ github.job }} --status passed
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.sha }}
+          path: py/dist/*
 
   sdist:
     name: Python sdist
@@ -85,13 +73,7 @@ jobs:
 
       - run: make sdist
 
-      - uses: actions/setup-node@v1
-
-      - name: Upload to Zeus
-        env:
-          ZEUS_HOOK_BASE: ${{ secrets.ZEUS_HOOK_BASE }}
-        run: |
-          npm install -D @zeus-ci/cli
-          npx zeus job update --build ${{ github.run_id }} --job ${{ github.job }} --ref ${{ github.sha }}
-          npx zeus upload --build ${{ github.run_id }} --job ${{ github.job }} --type "application/zip+wheel" py/dist/*
-          npx zeus job update --build ${{ github.run_id }} --job ${{ github.job }} --status passed
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.sha }}
+          path: py/dist/*
