@@ -1,0 +1,22 @@
+[package]
+name = "symbolic-sourcemap"
+version = "7.5.0"
+license = "MIT"
+authors = [
+    "Armin Ronacher <armin.ronacher@active-4.com>",
+    "Jan Michael Auer <mail@jauer.org>",
+]
+documentation = "https://docs.rs/symbolic-sourcemap"
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+description = """
+A library to process JavaScript sourcemaps and resolve symbols in minified
+source code or stack traces.
+"""
+edition = "2018"
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+sourcemap = "6.0.1"

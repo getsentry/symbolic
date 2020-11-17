@@ -1,0 +1,26 @@
+[package]
+name = "symbolic-cabi"
+version = "7.5.0"
+license = "MIT"
+authors = [
+    "Armin Ronacher <armin.ronacher@active-4.com>",
+    "Jan Michael Auer <mail@jauer.org>",
+]
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+description = """
+C interface wrapper for symbolic, a library to symbolicate and process stack
+traces from native applications, minidumps, minified JavaScripts or ProGuard
+optimized Android apps.
+"""
+edition = "2018"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+serde_json = "1.0.40"
+apple-crash-report-parser = { version = "0.4.0", features = ["with_serde"] }
+symbolic = { version = "7.5.0", path = "../symbolic", features = ["debuginfo", "demangle", "minidump", "sourcemap", "symcache", "unreal-serde"] }
+proguard = { version = "4.0.1", features = ["uuid"] }

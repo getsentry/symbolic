@@ -51,7 +51,10 @@ class SourceMapTokenMatch(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return "<SourceMapTokenMatch %s:%d>" % (self.src, self.src_line,)
+        return "<SourceMapTokenMatch %s:%d>" % (
+            self.src,
+            self.src_line,
+        )
 
 
 class SourceView(RustObject):

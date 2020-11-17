@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased
+
+**Breaking Changes**:
+
+- Usage of `failure` was removed, and all Error types were changed to only implement `std::error::Error` and related traits.
+- `symbolic-proguard` was removed in favor of the `proguard` crate. Proguard is still supported via `symbolic-cabi` and the python API however.
+- Deprecated APIs have been removed:
+  - `InstructionInfo`'s fields are no longer public.
+  - `pointer_size`, `instruction_alignment` and `ip_register_name` have moved from `Arch` to `CpuFamily`.
+  - `Arch::register_name` as been moved to `CpuFamily::cfi_register_name`.
+  - `Dwarf::raw_data` and `Dwarf::section_data` have been replaced with the `raw_section` and `section` APIs.
+  - `Unreal4ContextRuntimeProperties::misc_primary_cpu_brand` is has been removed.
+- Deprecated Python APIs have been removed:
+  - `CodeModule.id` and `CodeModule.name` Use `debug_id` and `code_file`, respectively.
+- `DemangleFormat` and public fields of `DemangleOptions` have been removed in favor of builder methods on `DemangleOptions`.
+- `Name::new` now takes both the `NameMangling` state, and the `Language` explicitly.
+
+## 7.5.0
+
+**Changes**:
+
+- Add missing unreal data attributes (`EngineData` and `GameData`). ([#257](https://github.com/getsentry/symbolic/pull/257))
+- Expose binary names for ELF and MachO ([#252](https://github.com/getsentry/symbolic/pull/252))
+- Mark enums as `non_exhaustive`. ([#256](https://github.com/getsentry/symbolic/pull/256))
+- Add method to create Archive from bytes. ([#250](https://github.com/getsentry/symbolic/pull/250))
+
+**Bug Fixes**:
+
+- Fix compilation errors on nightly Rust due to a lifetime mismatch. This is temporarily solved with a statically verified unsafe transmute, which will be replaced in an upcoming breaking change. ([#258](https://github.com/getsentry/symbolic/pull/258))
+
 ## 7.4.0
 
 **Deprecations**:

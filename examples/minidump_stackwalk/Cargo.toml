@@ -1,0 +1,12 @@
+[package]
+name = "minidump_stackwalk"
+version = "0.1.0"
+authors = ["Jan Michael Auer <mail@jauer.org>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = "2.33.0"
+symbolic = { path = "../../symbolic", features = ["minidump", "symcache", "demangle"] }
+walkdir = "2.3.1"

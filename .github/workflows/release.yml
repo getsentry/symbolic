@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - "release/**"
+
+jobs:
+  python-wheel-mac:
+    name: Python macOS
+    runs-on: macos-10.15
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 2.7
+
+      - run: make wheel SYMBOLIC_PYTHON=python2
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.sha }}
+          path: py/dist/*
+
+  python-wheel-linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        build-arch: [i686, x86_64]
+
+    name: Python Linux ${{ matrix.build-arch }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Build in Docker
+        run: make wheel-manylinux IMAGE=quay.io/pypa/manylinux2010_${{ matrix.build-arch }}
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.sha }}
+          path: py/dist/*
+
+  sdist:
+    name: Python sdist
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 2.7
+
+      - run: make sdist
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ github.sha }}
+          path: py/dist/*

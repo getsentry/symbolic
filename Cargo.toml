@@ -1,80 +1,9 @@
-[package]
-name = "symbolic"
-version = "7.4.0"
-license = "MIT"
-authors = [
-    "Armin Ronacher <armin.ronacher@active-4.com>",
-    "Jan Michael Auer <mail@jauer.org>",
-]
-documentation = "https://docs.rs/symbolic"
-homepage = "https://github.com/getsentry/symbolic"
-repository = "https://github.com/getsentry/symbolic"
-readme = "README.md"
-description = """
-A library to symbolicate and process stack traces from native applications,
-minidumps, Unreal Engine 4, minified JavaScripts or ProGuard optimized Android apps.
-"""
-edition = "2018"
-autoexamples = true
-
-include = [
-    "/src/**/*.rs",
-    "/*.toml",
-    "/.gitmodules",
-    "/LICENSE",
-    "/README.md",
-]
-
-[package.metadata.docs.rs]
-all-features = true
-
 [workspace]
+members = [
+    "symbolic*",
+    "examples/*",
+]
 
-[features]
-default = ["debuginfo"]
-common-serde = ["symbolic-common/serde"]
-debuginfo = ["symbolic-debuginfo"]
-debuginfo-serde = ["debuginfo", "common-serde"]
-demangle = ["symbolic-demangle"]
-minidump = ["symbolic-minidump", "debuginfo"]
-minidump-serde = ["minidump", "debuginfo-serde", "symbolic-minidump/serde"]
-proguard = ["symbolic-proguard"]
-sourcemap = ["symbolic-sourcemap"]
-symcache = ["symbolic-symcache", "debuginfo"]
-unreal = ["symbolic-unreal"]
-unreal-serde = ["unreal", "common-serde", "symbolic-unreal/with-serde"]
-
-[dependencies]
-symbolic-common = { version = "7.4.0", path = "common" }
-symbolic-debuginfo = { version = "7.4.0", path = "debuginfo", optional = true }
-symbolic-demangle = { version = "7.4.0", path = "demangle", optional = true }
-symbolic-minidump = { version = "7.4.0", path = "minidump", optional = true }
-symbolic-proguard = { version = "7.4.0", path = "proguard", optional = true }
-symbolic-sourcemap = { version = "7.4.0", path = "sourcemap", optional = true }
-symbolic-symcache = { version = "7.4.0", path = "symcache", optional = true }
-symbolic-unreal = { version = "7.4.0", path = "unreal", optional = true }
-
-[dev-dependencies]
-clap = "2.33.0"
-failure = "0.1.7"
-walkdir = "2.3.1"
-
-[[example]]
-name = "addr2line"
-required-features = ["demangle"]
-
-[[example]]
-name = "dump_cfi"
-required-features = ["minidump"]
-
-[[example]]
-name = "minidump_stackwalk"
-required-features = ["minidump", "symcache", "demangle"]
-
-[[example]]
-name = "symcache_debug"
-required-features = ["symcache", "demangle"]
-
-[[example]]
-name = "unreal_engine_crash"
-required-features = ["unreal"]
+[profile.release]
+debug = true
+lto = true

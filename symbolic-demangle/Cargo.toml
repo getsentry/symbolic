@@ -1,0 +1,43 @@
+[package]
+name = "symbolic-demangle"
+version = "7.5.0"
+license = "MIT"
+authors = [
+    "Armin Ronacher <armin.ronacher@active-4.com>",
+    "Jan Michael Auer <mail@jauer.org>",
+]
+documentation = "https://docs.rs/symbolic-demangle"
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+readme = "README.md"
+description = """
+A library to demangle symbols from various languages and compilers.
+"""
+build = "build.rs"
+edition = "2018"
+
+exclude = [
+    "tests/**/*",
+]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = ["cpp", "msvc", "rust", "swift"]
+cpp = ["cpp_demangle"]
+msvc = ["msvc-demangler"]
+rust = ["rustc-demangle"]
+swift = ["cc"]
+
+[dependencies]
+cpp_demangle = { version = "0.3.0", optional = true }
+msvc-demangler = { version = "0.8.0", optional = true }
+rustc-demangle = { version = "0.1.16", optional = true }
+symbolic-common = { version = "7.5.0", path = "../symbolic-common" }
+
+[build-dependencies]
+cc = { version = "1.0.50", optional = true }
+
+[badges]
+travis-ci = { repository = "getsentry/symbolic", branch = "master" }

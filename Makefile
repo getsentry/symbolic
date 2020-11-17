@@ -8,7 +8,6 @@ check: style lint
 
 clean:
 	cargo clean
-	cargo clean --manifest-path cabi/Cargo.toml
 	rm -rf .venv
 .PHONY: clean
 
@@ -27,7 +26,7 @@ wheel: .venv/bin/python
 .PHONY: wheel
 
 wheel-manylinux:
-	docker run --rm -it -v $(CURDIR):/work -w /work/py $(IMAGE) sh manylinux.sh
+	docker run --rm -v $(CURDIR):/work -w /work/py $(IMAGE) sh manylinux.sh
 .PHONY: wheel-manylinux
 
 # Tests
@@ -36,7 +35,7 @@ test: test-rust test-python
 .PHONY: test
 
 test-rust:
-	cargo test --all --all-features
+	cargo test --workspace --all-features
 .PHONY: test-rust
 
 test-python: .venv/bin/python
@@ -52,8 +51,7 @@ style: style-rust style-python
 
 style-rust:
 	@rustup component add rustfmt --toolchain stable 2> /dev/null
-	cargo +stable fmt -- --check
-	cd cabi && cargo +stable fmt -- --check
+	cargo +stable fmt --all -- --check
 .PHONY: style-rust
 
 style-python: .venv/bin/python
@@ -67,7 +65,7 @@ lint: lint-rust lint-python
 
 lint-rust:
 	@rustup component add clippy --toolchain stable 2> /dev/null
-	cargo +stable clippy --all-features --all --tests --examples -- -D clippy::all
+	cargo +stable clippy --all-features --workspace --tests --examples -- -D clippy::all
 .PHONY: lint-rust
 
 lint-python: .venv/bin/python
@@ -82,8 +80,7 @@ format: format-rust format-python
 
 format-rust:
 	@rustup component add rustfmt --toolchain stable 2> /dev/null
-	cargo +stable fmt
-	cd cabi && cargo +stable fmt
+	cargo +stable fmt --all
 .PHONY: format-rust
 
 format-python: .venv/bin/python
