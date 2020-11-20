@@ -76,8 +76,8 @@ fn execute(matches: &ArgMatches<'_>) -> Result<()> {
     let symbol_map = object.symbol_map();
 
     'addrs: for addr in matches.values_of("addrs").unwrap_or_default() {
-        let addr = if addr.starts_with("0x") {
-            u64::from_str_radix(&addr[2..], 16)
+        let addr = if let Some(addr) = addr.strip_prefix("0x") {
+            u64::from_str_radix(addr, 16)
         } else {
             addr.parse()
         }

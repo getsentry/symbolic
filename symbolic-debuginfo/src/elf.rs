@@ -319,8 +319,9 @@ impl<'data> ElfObject<'data> {
 
                 // Before SHF_COMPRESSED was a thing, compressed sections were prefixed with `.z`.
                 // Support this as an override to the flag.
-                let (compressed, section_name) = if section_name.starts_with(".z") {
-                    (true, &section_name[2..])
+                let (compressed, section_name) = if let Some(name) = section_name.strip_prefix(".z")
+                {
+                    (true, name)
                 } else {
                     (header.sh_flags & SHF_COMPRESSED != 0, &section_name[1..])
                 };
