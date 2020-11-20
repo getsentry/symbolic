@@ -14,7 +14,7 @@ jobs:
       matrix:
         rust: [nightly, beta]
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2
         with:
           submodules: recursive
 
@@ -23,7 +23,7 @@ jobs:
           toolchain: ${{ matrix.rust }}
           profile: minimal
           override: true
-          components: rustfmt, clippy
+          components: clippy
 
       - name: Run clipppy
         uses: actions-rs/clippy-check@v1
