@@ -1,5 +1,5 @@
 ---
-source: symbolic-unreal/tests/test_unreal_crash_parse.rs
+source: unreal/tests/test_unreal_crash_parse.rs
 expression: "&runtime_properties"
 ---
 crash_guid: UE4CC-Windows-379993BB42BD8FBED67986857D8844B5_0000
@@ -27,7 +27,7 @@ machine_id: 6B5EF42F48669C4D7DFE11B7F59BB6AC
 login_id: 6b5ef42f48669c4d7dfe11b7f59bb6ac
 epic_account_id: 2e7d369327054a448be6c8d3601213cb
 legacy_call_stack: "MyProject!FDebug::AssertFailed()\nMyProject!AActor::BeginPlay()\nMyProject!AActor::DispatchBeginPlay()\nMyProject!AWorldSettings::NotifyBeginPlay()\nMyProject!AGameStateBase::HandleBeginPlay()\nMyProject!UWorld::BeginPlay()\nMyProject!UEngine::LoadMap()\nMyProject!UEngine::Browse()\nMyProject!UGameInstance::StartGameInstance()\nMyProject!FEngineLoop::Init()\nMyProject!GuardedMain()\nMyProject!GuardedMainWrapper()\nMyProject!WinMain()\nMyProject!__scrt_common_main_seh() [f:\\dd\\vctools\\crt\\vcstartup\\src\\startup\\exe_common.inl:288]\nkernel32\nntdll"
-portable_call_stack: 0x00000000ffffffff + ffffffff 0x00000000ffffffff + ffffffff
+portable_call_stack: "0x00000000ffffffff + ffffffff 0x00000000ffffffff + ffffffff"
 error_message: "Assertion failed: false [File:C:\\Users\\bruno\\OneDrive\\Documents\\Unreal Projects\\MyProject\\Source\\MyProject\\NewActorComponent.cpp] [Line: 21] test"
 misc_number_of_cores: 6
 misc_number_of_cores_inc_hyperthread: 6
