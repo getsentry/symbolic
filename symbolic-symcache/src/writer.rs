@@ -110,8 +110,7 @@ where
         let bytes = unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, byte_size) };
 
         let segment_pos = self.position as u32;
-        let segment_len =
-            L::from_usize(data.len()).ok_or_else(|| SymCacheError::TooManyValues(kind))?;
+        let segment_len = L::from_usize(data.len()).ok_or(SymCacheError::TooManyValues(kind))?;
 
         self.write_bytes(bytes)?;
         Ok(format::Seg::new(segment_pos, segment_len))
@@ -476,7 +475,7 @@ where
         let symbol_id = self.insert_symbol(function.name.as_str().into())?;
         let comp_dir = self.write_path(function.compilation_dir)?;
         let lang = u8::from_u32(language as u32)
-            .ok_or_else(|| SymCacheError::ValueTooLarge(ValueKind::Language))?;
+            .ok_or(SymCacheError::ValueTooLarge(ValueKind::Language))?;
 
         let mut start_address = function.address;
         let mut lines = function.lines.iter().peekable();
