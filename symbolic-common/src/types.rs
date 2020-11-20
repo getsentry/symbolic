@@ -427,15 +427,15 @@ impl Arch {
     /// assert!(!Arch::X86Unknown.well_known());
     /// ```
     pub fn well_known(self) -> bool {
-        match self {
+        !matches!(
+            self,
             Arch::Unknown
-            | Arch::ArmUnknown
-            | Arch::Arm64Unknown
-            | Arch::X86Unknown
-            | Arch::Amd64Unknown
-            | Arch::Arm64_32Unknown => false,
-            _ => true,
-        }
+                | Arch::ArmUnknown
+                | Arch::Arm64Unknown
+                | Arch::X86Unknown
+                | Arch::Amd64Unknown
+                | Arch::Arm64_32Unknown
+        )
     }
 }
 
@@ -636,6 +636,31 @@ impl str::FromStr for Language {
     }
 }
 
+/// A [`Name`]s mangling state.
+///
+/// By default, the mangling of a [`Name`] is not known, but an explicit mangling state can be set
+/// for Names that are guaranteed to be unmangled.
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_")
+)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum NameMangling {
+    /// The [`Name`] is definitely mangled.
+    Mangled,
+    /// The [`Name`] is not mangled.
+    Unmangled,
+    /// The mangling of the [`Name`] is not known.
+    Unknown,
+}
+
+impl Default for NameMangling {
+    fn default() -> Self {
+        NameMangling::Unknown
+    }
+}
+
 /// The name of a potentially mangled symbol.
 ///
 /// Debugging information often only contains mangled names in their symbol and debug information
@@ -656,16 +681,17 @@ impl str::FromStr for Language {
 /// ```
 /// use symbolic_common::Name;
 ///
-/// let name = Name::new("_ZN3foo3barEv");
+/// let name = Name::from("_ZN3foo3barEv");
 /// assert_eq!(name.to_string(), "_ZN3foo3barEv");
 /// ```
 ///
-/// Create a name with a language. Alternate formatting prints the language:
+/// Create a name with a language and explicit mangling state.
+/// Alternate formatting prints the language:
 ///
 /// ```
-/// use symbolic_common::{Language, Name};
+/// use symbolic_common::{Language, Name, NameMangling};
 ///
-/// let name = Name::with_language("_ZN3foo3barEv", Language::Cpp);
+/// let name = Name::new("_ZN3foo3barEv", NameMangling::Mangled, Language::Cpp);
 /// assert_eq!(format!("{:#}", name), "_ZN3foo3barEv [C++]");
 /// ```
 ///
@@ -679,52 +705,34 @@ impl str::FromStr for Language {
 pub struct Name<'a> {
     string: Cow<'a, str>,
     lang: Language,
+    #[cfg_attr(feature = "serde", serde(default))]
+    mangling: NameMangling,
 }
 
 impl<'a> Name<'a> {
-    /// Constructs a new mangled name.
+    /// Constructs a new Name with given mangling and language.
     ///
-    /// The language of this name is `Language::Unknown`.
+    /// In case both the mangling state and the language are unknown, a simpler alternative to use
+    /// is [`Name::from`].
     ///
-    /// # Example
-    ///
-    /// ```
-    /// use symbolic_common::Name;
-    ///
-    /// let name = Name::new("_ZN3foo3barEv");
-    /// assert_eq!(name.to_string(), "_ZN3foo3barEv");
-    /// ```
-    #[inline]
-    pub fn new<S>(string: S) -> Self
-    where
-        S: Into<Cow<'a, str>>,
-    {
-        Name {
-            string: string.into(),
-            lang: Language::Unknown,
-        }
-    }
-
-    /// Constructs a new mangled name with a known [`Language`].
     ///
     /// # Example
     ///
     /// ```
-    /// use symbolic_common::{Language, Name};
+    /// use symbolic_common::{Language, Name, NameMangling};
     ///
-    /// let name = Name::with_language("_ZN3foo3barEv", Language::Cpp);
+    /// let name = Name::new("_ZN3foo3barEv", NameMangling::Mangled, Language::Cpp);
     /// assert_eq!(format!("{:#}", name), "_ZN3foo3barEv [C++]");
     /// ```
-    ///
-    /// [`Language`]: enum.Language.html
     #[inline]
-    pub fn with_language<S>(string: S, lang: Language) -> Self
+    pub fn new<S>(string: S, mangling: NameMangling, lang: Language) -> Self
     where
         S: Into<Cow<'a, str>>,
     {
         Name {
             string: string.into(),
             lang,
+            mangling,
         }
     }
 
@@ -733,22 +741,28 @@ impl<'a> Name<'a> {
     /// # Example
     ///
     /// ```
-    /// use symbolic_common::Name;
+    /// use symbolic_common::{Language, Name, NameMangling};
     ///
-    /// let name = Name::new("_ZN3foo3barEv");
+    /// let name = Name::new("_ZN3foo3barEv", NameMangling::Mangled, Language::Cpp);
     /// assert_eq!(name.as_str(), "_ZN3foo3barEv");
     /// ```
     ///
     /// This is also available as an `AsRef<str>` implementation:
     ///
     /// ```
-    /// use symbolic_common::Name;
+    /// use symbolic_common::{Language, Name, NameMangling};
     ///
-    /// let name = Name::new("_ZN3foo3barEv");
+    /// let name = Name::new("_ZN3foo3barEv", NameMangling::Mangled, Language::Cpp);
     /// assert_eq!(name.as_ref(), "_ZN3foo3barEv");
     /// ```
     pub fn as_str(&self) -> &str {
         &self.string
+    }
+
+    /// Set the `Name`'s language.
+    pub fn set_language(&mut self, language: Language) -> &mut Self {
+        self.lang = language;
+        self
     }
 
     /// The language of the mangled symbol.
@@ -760,37 +774,57 @@ impl<'a> Name<'a> {
     /// # Example
     ///
     /// ```
-    /// use symbolic_common::{Language, Name};
+    /// use symbolic_common::{Language, Name, NameMangling};
     ///
-    /// let name = Name::new("_ZN3foo3barEv");
-    /// assert_eq!(name.language(), Language::Unknown);
+    /// let name = Name::new("_ZN3foo3barEv", NameMangling::Mangled, Language::Cpp);
+    /// assert_eq!(name.language(), Language::Cpp);
     /// ```
     pub fn language(&self) -> Language {
         self.lang
     }
 
-    /// Converts this name into a `Cow`, dropping the language.
+    /// Set the `Name`'s mangling state.
+    pub fn set_mangling(&mut self, mangling: NameMangling) -> &mut Self {
+        self.mangling = mangling;
+        self
+    }
+
+    /// Returns the `Name`'s mangling state.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use symbolic_common::{Language, Name, NameMangling};
+    ///
+    /// let unmangled = Name::new("foo::bar", NameMangling::Unmangled, Language::Unknown);
+    /// assert_eq!(unmangled.mangling(), NameMangling::Unmangled);
+    /// ```
+    pub fn mangling(&self) -> NameMangling {
+        self.mangling
+    }
+
+    /// Converts this name into a [`Cow`].
     ///
     /// # Example
     ///
     /// ```
     /// use symbolic_common::Name;
     ///
-    /// let name = Name::new("_ZN3foo3barEv");
+    /// let name = Name::from("_ZN3foo3barEv");
     /// assert_eq!(name.into_cow(), "_ZN3foo3barEv");
     /// ```
     pub fn into_cow(self) -> Cow<'a, str> {
         self.string
     }
 
-    /// Converts this name into a `String`, dropping the language.
+    /// Converts this name into a [`String`].
     ///
     /// # Example
     ///
     /// ```
     /// use symbolic_common::Name;
     ///
-    /// let name = Name::new("_ZN3foo3barEv");
+    /// let name = Name::from("_ZN3foo3barEv");
     /// assert_eq!(name.into_string(), "_ZN3foo3barEv");
     /// ```
     pub fn into_string(self) -> String {
@@ -815,7 +849,7 @@ where
     S: Into<Cow<'a, str>>,
 {
     fn from(string: S) -> Self {
-        Self::new(string)
+        Self::new(string, NameMangling::Unknown, Language::Unknown)
     }
 }
 

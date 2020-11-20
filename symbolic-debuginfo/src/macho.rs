@@ -32,10 +32,10 @@ pub struct MachObject<'d> {
 impl<'d> MachObject<'d> {
     /// Tests whether the buffer could contain a MachO object.
     pub fn test(data: &[u8]) -> bool {
-        match goblin::peek(&mut Cursor::new(data)) {
-            Ok(goblin::Hint::Mach(_)) => true,
-            _ => false,
-        }
+        matches!(
+            goblin::peek(&mut Cursor::new(data)),
+            Ok(goblin::Hint::Mach(_))
+        )
     }
 
     /// Tries to parse a MachO from the given slice.
@@ -279,9 +279,10 @@ impl<'d> Parse<'d> for MachObject<'d> {
     }
 }
 
-impl<'d> ObjectLike for MachObject<'d> {
+impl<'data: 'object, 'object> ObjectLike<'data, 'object> for MachObject<'data> {
     type Error = DwarfError;
-    type Session = DwarfDebugSession<'d>;
+    type Session = DwarfDebugSession<'data>;
+    type SymbolIterator = MachOSymbolIterator<'data>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -311,11 +312,11 @@ impl<'d> ObjectLike for MachObject<'d> {
         self.has_symbols()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
-        Box::new(self.symbols())
+    fn symbols(&self) -> Self::SymbolIterator {
+        self.symbols()
     }
 
-    fn symbol_map(&self) -> SymbolMap<'_> {
+    fn symbol_map(&self) -> SymbolMap<'data> {
         self.symbol_map()
     }
 
@@ -336,7 +337,7 @@ impl<'d> ObjectLike for MachObject<'d> {
     }
 }
 
-impl<'d> Dwarf<'d> for MachObject<'d> {
+impl<'data> Dwarf<'data> for MachObject<'data> {
     fn endianity(&self) -> Endian {
         if self.macho.little_endian {
             Endian::Little
@@ -345,7 +346,7 @@ impl<'d> Dwarf<'d> for MachObject<'d> {
         }
     }
 
-    fn raw_section(&self, section_name: &str) -> Option<DwarfSection<'d>> {
+    fn raw_section(&self, section_name: &str) -> Option<DwarfSection<'data>> {
         for segment in &self.macho.segments {
             for section in segment {
                 if let Ok((header, data)) = section {
@@ -378,14 +379,14 @@ impl<'d> Dwarf<'d> for MachObject<'d> {
 /// An iterator over symbols in the MachO file.
 ///
 /// Returned by [`MachObject::symbols`](struct.MachObject.html#method.symbols).
-pub struct MachOSymbolIterator<'d> {
-    symbols: mach::symbols::SymbolIterator<'d>,
+pub struct MachOSymbolIterator<'data> {
+    symbols: mach::symbols::SymbolIterator<'data>,
     sections: SmallVec<[usize; 2]>,
     vmaddr: u64,
 }
 
-impl<'d> Iterator for MachOSymbolIterator<'d> {
-    type Item = Symbol<'d>;
+impl<'data> Iterator for MachOSymbolIterator<'data> {
+    type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(next) = self.symbols.next() {
@@ -478,10 +479,10 @@ pub struct FatMachO<'d> {
 impl<'d> FatMachO<'d> {
     /// Tests whether the buffer could contain an ELF object.
     pub fn test(data: &[u8]) -> bool {
-        match goblin::peek(&mut Cursor::new(data)) {
-            Ok(goblin::Hint::MachFat(_)) => true,
-            _ => false,
-        }
+        matches!(
+            goblin::peek(&mut Cursor::new(data)),
+            Ok(goblin::Hint::MachFat(_))
+        )
     }
 
     /// Tries to parse a fat MachO container from the given slice.

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use symbolic_common::{Arch, AsSelf, DebugId, Language, Name};
+use symbolic_common::{Arch, AsSelf, DebugId, Language, Name, NameMangling};
 
 use crate::error::SymCacheError;
 use crate::format;
@@ -267,7 +267,7 @@ impl<'a> SymCache<'a> {
             if let Some((line_addr, file_id, line)) = self.run_to_line(fun, addr)? {
                 // A missing file record indicates a bad symcache.
                 let file_record = read_file_record(self.data, self.header.files, file_id)?
-                    .ok_or_else(|| SymCacheError::BadCacheFile)?;
+                    .ok_or(SymCacheError::BadCacheFile)?;
 
                 // The address was found in the function's line records, so use
                 // it directly. This should is the default case for all valid
@@ -490,7 +490,7 @@ impl<'a> LineInfo<'a> {
     ///
     /// Use `symbolic::demangle` for demangling this symbol.
     pub fn function_name(&self) -> Name<'_> {
-        Name::with_language(self.symbol(), self.language())
+        Name::new(self.symbol(), NameMangling::Unknown, self.language())
     }
 }
 
@@ -595,7 +595,7 @@ impl<'a> Function<'a> {
     ///
     /// Use `symbolic::demangle` for demangling this symbol.
     pub fn name(&self) -> Name<'_> {
-        Name::with_language(self.symbol(), self.language())
+        Name::new(self.symbol(), NameMangling::Unknown, self.language())
     }
 
     /// The compilation dir of the function.

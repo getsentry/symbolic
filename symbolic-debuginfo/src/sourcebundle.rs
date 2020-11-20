@@ -286,10 +286,10 @@ struct SourceBundleManifest {
 ///
 /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
 /// [module level documentation]: index.html
-pub struct SourceBundle<'d> {
+pub struct SourceBundle<'data> {
     manifest: Arc<SourceBundleManifest>,
-    archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'d [u8]>>>>,
-    data: &'d [u8],
+    archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>>>,
+    data: &'data [u8],
 }
 
 impl fmt::Debug for SourceBundle<'_> {
@@ -308,14 +308,14 @@ impl fmt::Debug for SourceBundle<'_> {
     }
 }
 
-impl<'d> SourceBundle<'d> {
+impl<'data> SourceBundle<'data> {
     /// Tests whether the buffer could contain a `SourceBundle`.
     pub fn test(bytes: &[u8]) -> bool {
         bytes.starts_with(&BUNDLE_MAGIC)
     }
 
     /// Tries to parse a `SourceBundle` from the given slice.
-    pub fn parse(data: &'d [u8]) -> Result<SourceBundle<'d>, SourceBundleError> {
+    pub fn parse(data: &'data [u8]) -> Result<SourceBundle<'data>, SourceBundleError> {
         let mut archive = zip::read::ZipArchive::new(std::io::Cursor::new(data))
             .map_err(SourceBundleError::BadZip)?;
         let manifest_file = archive
@@ -420,14 +420,12 @@ impl<'d> SourceBundle<'d> {
     }
 
     /// Returns an iterator over symbols in the public symbol table.
-    pub fn symbols(&self) -> SourceBundleSymbolIterator<'d> {
-        SourceBundleSymbolIterator {
-            _marker: std::marker::PhantomData,
-        }
+    pub fn symbols(&self) -> SourceBundleSymbolIterator<'data> {
+        std::iter::empty()
     }
 
     /// Returns an ordered map of symbols in the symbol table.
-    pub fn symbol_map(&self) -> SymbolMap<'d> {
+    pub fn symbol_map(&self) -> SymbolMap<'data> {
         self.symbols().collect()
     }
 
@@ -443,7 +441,7 @@ impl<'d> SourceBundle<'d> {
     /// A debugging session loads certain information from the object file and creates caches for
     /// efficient access to various records in the debug information. Since this can be quite a
     /// costly process, try to reuse the debugging session as long as possible.
-    pub fn debug_session(&self) -> Result<SourceBundleDebugSession<'d>, SourceBundleError> {
+    pub fn debug_session(&self) -> Result<SourceBundleDebugSession<'data>, SourceBundleError> {
         Ok(SourceBundleDebugSession {
             manifest: self.manifest.clone(),
             archive: self.archive.clone(),
@@ -462,7 +460,7 @@ impl<'d> SourceBundle<'d> {
     }
 
     /// Returns the raw data of the source bundle.
-    pub fn data(&self) -> &'d [u8] {
+    pub fn data(&self) -> &'data [u8] {
         self.data
     }
 
@@ -472,7 +470,7 @@ impl<'d> SourceBundle<'d> {
     }
 }
 
-impl<'slf, 'd: 'slf> AsSelf<'slf> for SourceBundle<'d> {
+impl<'slf, 'data: 'slf> AsSelf<'slf> for SourceBundle<'data> {
     type Ref = SourceBundle<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
@@ -480,21 +478,22 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for SourceBundle<'d> {
     }
 }
 
-impl<'d> Parse<'d> for SourceBundle<'d> {
+impl<'data> Parse<'data> for SourceBundle<'data> {
     type Error = SourceBundleError;
 
-    fn parse(data: &'d [u8]) -> Result<Self, Self::Error> {
+    fn parse(data: &'data [u8]) -> Result<Self, Self::Error> {
         SourceBundle::parse(data)
     }
 
-    fn test(data: &'d [u8]) -> bool {
+    fn test(data: &'data [u8]) -> bool {
         SourceBundle::test(data)
     }
 }
 
-impl<'d> ObjectLike for SourceBundle<'d> {
+impl<'data: 'object, 'object> ObjectLike<'data, 'object> for SourceBundle<'data> {
     type Error = SourceBundleError;
-    type Session = SourceBundleDebugSession<'d>;
+    type Session = SourceBundleDebugSession<'data>;
+    type SymbolIterator = SourceBundleSymbolIterator<'data>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -524,12 +523,12 @@ impl<'d> ObjectLike for SourceBundle<'d> {
         self.has_symbols()
     }
 
-    fn symbol_map(&self) -> SymbolMap<'_> {
+    fn symbol_map(&self) -> SymbolMap<'data> {
         self.symbol_map()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
-        Box::new(self.symbols())
+    fn symbols(&self) -> Self::SymbolIterator {
+        self.symbols()
     }
 
     fn has_debug_info(&self) -> bool {
@@ -549,31 +548,17 @@ impl<'d> ObjectLike for SourceBundle<'d> {
     }
 }
 
-/// An iterator yielding symbols from a source bundle
-///
-/// This is always yielding no results.
-pub struct SourceBundleSymbolIterator<'d> {
-    _marker: std::marker::PhantomData<&'d [u8]>,
-}
-
-impl<'d> Iterator for SourceBundleSymbolIterator<'d> {
-    type Item = Symbol<'d>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        None
-    }
-}
-
-impl std::iter::FusedIterator for SourceBundleSymbolIterator<'_> {}
+/// An iterator yielding symbols from a source bundle.
+pub type SourceBundleSymbolIterator<'data> = std::iter::Empty<Symbol<'data>>;
 
 /// Debug session for SourceBundle objects.
-pub struct SourceBundleDebugSession<'d> {
+pub struct SourceBundleDebugSession<'data> {
     manifest: Arc<SourceBundleManifest>,
-    archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'d [u8]>>>>,
+    archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>>>,
     files_by_path: LazyCell<HashMap<String, String>>,
 }
 
-impl<'d> SourceBundleDebugSession<'d> {
+impl<'data> SourceBundleDebugSession<'data> {
     /// Returns an iterator over all source files in this debug file.
     pub fn files(&self) -> SourceBundleFileIterator<'_> {
         SourceBundleFileIterator {
@@ -583,9 +568,7 @@ impl<'d> SourceBundleDebugSession<'d> {
 
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> SourceBundleFunctionIterator<'_> {
-        SourceBundleFunctionIterator {
-            _marker: std::marker::PhantomData,
-        }
+        std::iter::empty()
     }
 
     /// Create a reverse mapping of source paths to ZIP paths.
@@ -637,15 +620,17 @@ impl<'d> SourceBundleDebugSession<'d> {
     }
 }
 
-impl<'d> DebugSession for SourceBundleDebugSession<'d> {
+impl<'data, 'session> DebugSession<'session> for SourceBundleDebugSession<'data> {
     type Error = SourceBundleError;
+    type FunctionIterator = SourceBundleFunctionIterator<'session>;
+    type FileIterator = SourceBundleFileIterator<'session>;
 
-    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
-        Box::new(self.functions())
+    fn functions(&'session self) -> Self::FunctionIterator {
+        self.functions()
     }
 
-    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
-        Box::new(self.files())
+    fn files(&'session self) -> Self::FileIterator {
+        self.files()
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
@@ -671,19 +656,8 @@ impl<'s> Iterator for SourceBundleFileIterator<'s> {
 }
 
 /// An iterator over functions in a SourceBundle object.
-pub struct SourceBundleFunctionIterator<'d> {
-    _marker: std::marker::PhantomData<&'d [u8]>,
-}
-
-impl<'s> Iterator for SourceBundleFunctionIterator<'s> {
-    type Item = Result<Function<'s>, SourceBundleError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        None
-    }
-}
-
-impl std::iter::FusedIterator for SourceBundleFunctionIterator<'_> {}
+pub type SourceBundleFunctionIterator<'s> =
+    std::iter::Empty<Result<Function<'s>, SourceBundleError>>;
 
 impl SourceBundleManifest {
     /// Creates a new, empty manifest.
@@ -862,10 +836,14 @@ where
     /// sources could be resolved. Otherwise, an error is returned if writing the bundle fails.
     ///
     /// This finishes the source bundle and flushes the underlying writer.
-    pub fn write_object<O>(self, object: &O, object_name: &str) -> Result<bool, SourceBundleError>
+    pub fn write_object<'data, 'object, O, E>(
+        self,
+        object: &'object O,
+        object_name: &str,
+    ) -> Result<bool, SourceBundleError>
     where
-        O: ObjectLike,
-        O::Error: std::error::Error + Send + Sync + 'static,
+        O: ObjectLike<'data, 'object, Error = E>,
+        E: std::error::Error + Send + Sync + 'static,
     {
         self.write_object_with_filter(object, object_name, |_| true)
     }
@@ -878,15 +856,15 @@ where
     /// This finishes the source bundle and flushes the underlying writer.
     ///
     /// Before a file is written a callback is invoked which can return `false` to skip a file.
-    pub fn write_object_with_filter<O, F>(
+    pub fn write_object_with_filter<'data, 'object, O, E, F>(
         mut self,
-        object: &O,
+        object: &'object O,
         object_name: &str,
         mut filter: F,
     ) -> Result<bool, SourceBundleError>
     where
-        O: ObjectLike,
-        O::Error: std::error::Error + Send + Sync + 'static,
+        O: ObjectLike<'data, 'object, Error = E>,
+        E: std::error::Error + Send + Sync + 'static,
         F: FnMut(&FileEntry) -> bool,
     {
         let mut files_handled = BTreeSet::new();

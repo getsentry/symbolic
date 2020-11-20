@@ -18,7 +18,7 @@ use gimli::{constants, UnitSectionOffset};
 use lazycell::LazyCell;
 use thiserror::Error;
 
-use symbolic_common::{AsSelf, Language, Name, SelfCell};
+use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
 
 use crate::base::*;
 use crate::private::FunctionStack;
@@ -322,10 +322,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
     }
 
     /// Resolves the function name of a debug entry.
-    fn resolve_function_name(
-        &self,
-        entry: &Die<'d, '_>,
-    ) -> Result<Option<Cow<'d, str>>, DwarfError> {
+    fn resolve_function_name(&self, entry: &Die<'d, '_>) -> Result<Option<Name<'d>>, DwarfError> {
         let mut attrs = entry.attrs();
         let mut fallback_name = None;
         let mut reference_target = None;
@@ -334,7 +331,9 @@ impl<'d, 'a> UnitRef<'d, 'a> {
             match attr.name() {
                 // Prioritize these. If we get them, take them.
                 constants::DW_AT_linkage_name | constants::DW_AT_MIPS_linkage_name => {
-                    return Ok(self.string_value(attr.value()));
+                    return Ok(self
+                        .string_value(attr.value())
+                        .map(|n| Name::new(n, NameMangling::Mangled, Language::Unknown)));
                 }
                 constants::DW_AT_name => {
                     fallback_name = Some(attr);
@@ -347,22 +346,20 @@ impl<'d, 'a> UnitRef<'d, 'a> {
         }
 
         if let Some(attr) = fallback_name {
-            return Ok(self.string_value(attr.value()));
+            return Ok(self
+                .string_value(attr.value())
+                .map(|n| Name::new(n, NameMangling::Unmangled, Language::Unknown)));
         }
 
         if let Some(attr) = reference_target {
-            let resolved = self.resolve_reference(attr, |ref_unit, ref_entry| {
+            return self.resolve_reference(attr, |ref_unit, ref_entry| {
                 if self.unit.offset != ref_unit.unit.offset || entry.offset() != ref_entry.offset()
                 {
                     ref_unit.resolve_function_name(ref_entry)
                 } else {
                     Ok(None)
                 }
-            })?;
-
-            if let Some(name) = resolved {
-                return Ok(Some(name));
-            }
+            });
         }
 
         Ok(None)
@@ -677,15 +674,20 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     .info
                     .symbol_map
                     .lookup_range(function_address..function_end)
-                    .and_then(|symbol| symbol.name.clone())
+                    .and_then(|symbol| {
+                        symbol
+                            .name
+                            .clone()
+                            .map(|n| Name::new(n, NameMangling::Mangled, self.language))
+                    })
             } else {
                 None
             };
 
-            let name = match symbol_name {
-                Some(name) => Some(name),
-                None => self.inner.resolve_function_name(entry).ok().flatten(),
-            };
+            let mut name = symbol_name
+                .or_else(|| self.inner.resolve_function_name(entry).ok().flatten())
+                .unwrap_or_else(|| Name::from(""));
+            name.set_language(self.language);
 
             // Avoid constant allocations by collecting repeatedly into the same buffer and
             // draining the results out of it. This keeps the original buffer allocated and
@@ -825,7 +827,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let function = Function {
                 address: function_address,
                 size: function_size,
-                name: Name::with_language(name.unwrap_or_default(), self.language),
+                name,
                 compilation_dir: self.compilation_dir(),
                 lines,
                 inlinees: Vec::new(),
@@ -1115,16 +1117,16 @@ pub struct DwarfDebugSession<'data> {
     cell: SelfCell<Box<DwarfSections<'data>>, DwarfInfo<'data>>,
 }
 
-impl<'d> DwarfDebugSession<'d> {
+impl<'data> DwarfDebugSession<'data> {
     /// Parses a dwarf debugging information from the given DWARF file.
     pub fn parse<D>(
         dwarf: &D,
-        symbol_map: SymbolMap<'d>,
+        symbol_map: SymbolMap<'data>,
         load_address: u64,
         kind: ObjectKind,
     ) -> Result<Self, DwarfError>
     where
-        D: Dwarf<'d>,
+        D: Dwarf<'data>,
     {
         let sections = DwarfSections::from_dwarf(dwarf)?;
         let cell = SelfCell::try_new(Box::new(sections), |sections| {
@@ -1161,15 +1163,17 @@ impl<'d> DwarfDebugSession<'d> {
     }
 }
 
-impl<'d> DebugSession for DwarfDebugSession<'d> {
+impl<'data, 'session> DebugSession<'session> for DwarfDebugSession<'data> {
     type Error = DwarfError;
+    type FunctionIterator = DwarfFunctionIterator<'session>;
+    type FileIterator = DwarfFileIterator<'session>;
 
-    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
-        Box::new(self.functions())
+    fn functions(&'session self) -> Self::FunctionIterator {
+        self.functions()
     }
 
-    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
-        Box::new(self.files())
+    fn files(&'session self) -> Self::FileIterator {
+        self.files()
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {

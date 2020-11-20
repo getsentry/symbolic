@@ -131,22 +131,22 @@ pub fn peek(data: &[u8], archive: bool) -> FileFormat {
 /// A generic object file providing uniform access to various file formats.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
-pub enum Object<'d> {
+pub enum Object<'data> {
     /// Breakpad ASCII symbol.
-    Breakpad(BreakpadObject<'d>),
+    Breakpad(BreakpadObject<'data>),
     /// Executable and Linkable Format, used on Linux.
-    Elf(ElfObject<'d>),
+    Elf(ElfObject<'data>),
     /// Mach Objects, used on macOS and iOS derivatives.
-    MachO(MachObject<'d>),
+    MachO(MachObject<'data>),
     /// Program Database, the debug companion format on Windows.
-    Pdb(PdbObject<'d>),
+    Pdb(PdbObject<'data>),
     /// Portable Executable, an extension of COFF used on Windows.
-    Pe(PeObject<'d>),
+    Pe(PeObject<'data>),
     /// A source bundle
-    SourceBundle(SourceBundle<'d>),
+    SourceBundle(SourceBundle<'data>),
 }
 
-impl<'d> Object<'d> {
+impl<'data> Object<'data> {
     /// Tests whether the buffer could contain an object.
     pub fn test(data: &[u8]) -> bool {
         Self::peek(data) != FileFormat::Unknown
@@ -158,7 +158,7 @@ impl<'d> Object<'d> {
     }
 
     /// Tries to parse a supported object from the given slice.
-    pub fn parse(data: &'d [u8]) -> Result<Self, ObjectError> {
+    pub fn parse(data: &'data [u8]) -> Result<Self, ObjectError> {
         macro_rules! parse_object {
             ($kind:ident, $file:ident, $data:expr) => {
                 Object::$kind($file::parse(data).map_err(ObjectError::$kind)?)
@@ -228,12 +228,12 @@ impl<'d> Object<'d> {
     }
 
     /// Returns an iterator over symbols in the public symbol table.
-    pub fn symbols(&self) -> SymbolIterator<'d, '_> {
+    pub fn symbols(&self) -> SymbolIterator<'data, '_> {
         map_inner!(self, Object(ref o) => SymbolIterator(o.symbols()))
     }
 
     /// Returns an ordered map of symbols in the symbol table.
-    pub fn symbol_map(&self) -> SymbolMap<'d> {
+    pub fn symbol_map(&self) -> SymbolMap<'data> {
         match_inner!(self, Object(ref o) => o.symbol_map())
     }
 
@@ -255,7 +255,7 @@ impl<'d> Object<'d> {
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
     /// [`has_debug_info`](enum.Object.html#method.has_debug_info).
-    pub fn debug_session(&self) -> Result<ObjectDebugSession<'d>, ObjectError> {
+    pub fn debug_session(&self) -> Result<ObjectDebugSession<'data>, ObjectError> {
         match *self {
             Object::Breakpad(ref o) => o
                 .debug_session()
@@ -295,12 +295,12 @@ impl<'d> Object<'d> {
     }
 
     /// Returns the raw data of the underlying buffer.
-    pub fn data(&self) -> &'d [u8] {
+    pub fn data(&self) -> &'data [u8] {
         match_inner!(self, Object(ref o) => o.data())
     }
 }
 
-impl<'slf, 'd: 'slf> AsSelf<'slf> for Object<'d> {
+impl<'slf, 'data: 'slf> AsSelf<'slf> for Object<'data> {
     type Ref = Object<'slf>;
 
     fn as_self(&'slf self) -> &Self::Ref {
@@ -308,9 +308,10 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for Object<'d> {
     }
 }
 
-impl<'d> ObjectLike for Object<'d> {
+impl<'data: 'object, 'object> ObjectLike<'data, 'object> for Object<'data> {
     type Error = ObjectError;
-    type Session = ObjectDebugSession<'d>;
+    type Session = ObjectDebugSession<'data>;
+    type SymbolIterator = SymbolIterator<'data, 'object>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -340,12 +341,12 @@ impl<'d> ObjectLike for Object<'d> {
         self.has_symbols()
     }
 
-    fn symbol_map(&self) -> SymbolMap<'_> {
+    fn symbol_map(&self) -> SymbolMap<'data> {
         self.symbol_map()
     }
 
-    fn symbols(&self) -> DynIterator<'_, Symbol<'_>> {
-        unsafe { std::mem::transmute(Box::new(self.symbols()) as DynIterator<'_, _>) }
+    fn symbols(&'object self) -> Self::SymbolIterator {
+        self.symbols()
     }
 
     fn has_debug_info(&self) -> bool {
@@ -425,15 +426,17 @@ impl<'d> ObjectDebugSession<'d> {
     }
 }
 
-impl DebugSession for ObjectDebugSession<'_> {
+impl<'session> DebugSession<'session> for ObjectDebugSession<'_> {
     type Error = ObjectError;
+    type FunctionIterator = ObjectFunctionIterator<'session>;
+    type FileIterator = ObjectFileIterator<'session>;
 
-    fn functions(&self) -> DynIterator<'_, Result<Function<'_>, Self::Error>> {
-        Box::new(self.functions())
+    fn functions(&'session self) -> Self::FunctionIterator {
+        self.functions()
     }
 
-    fn files(&self) -> DynIterator<'_, Result<FileEntry<'_>, Self::Error>> {
-        Box::new(self.files())
+    fn files(&'session self) -> Self::FileIterator {
+        self.files()
     }
 
     fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
@@ -500,17 +503,17 @@ impl<'s> Iterator for ObjectFileIterator<'s> {
 
 /// A generic symbol iterator
 #[allow(missing_docs)]
-pub enum SymbolIterator<'d, 'o> {
-    Breakpad(BreakpadSymbolIterator<'d>),
-    Elf(ElfSymbolIterator<'d, 'o>),
-    MachO(MachOSymbolIterator<'d>),
-    Pdb(PdbSymbolIterator<'d, 'o>),
-    Pe(PeSymbolIterator<'d, 'o>),
-    SourceBundle(SourceBundleSymbolIterator<'d>),
+pub enum SymbolIterator<'data, 'object> {
+    Breakpad(BreakpadSymbolIterator<'data>),
+    Elf(ElfSymbolIterator<'data, 'object>),
+    MachO(MachOSymbolIterator<'data>),
+    Pdb(PdbSymbolIterator<'data, 'object>),
+    Pe(PeSymbolIterator<'data, 'object>),
+    SourceBundle(SourceBundleSymbolIterator<'data>),
 }
 
-impl<'d, 'o> Iterator for SymbolIterator<'d, 'o> {
-    type Item = Symbol<'d>;
+impl<'data, 'object> Iterator for SymbolIterator<'data, 'object> {
+    type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match_inner!(self, SymbolIterator(ref mut iter) => iter.next())

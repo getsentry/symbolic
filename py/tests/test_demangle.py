@@ -3,13 +3,13 @@ from symbolic import demangle_name
 
 def test_swift_demangle():
     mangled = "_TFC12Swift_Tester14ViewController11doSomethingfS0_FT_T_"
-    expected = "ViewController.doSomething(_:)"
+    expected = "ViewController.doSomething(ViewController)"
     assert demangle_name(mangled, lang="Swift") == expected
 
 
 def test_swift_demangle_implicit():
     mangled = "_TFC12Swift_Tester14ViewController11doSomethingfS0_FT_T_"
-    expected = "ViewController.doSomething(_:)"
+    expected = "ViewController.doSomething(ViewController)"
     assert demangle_name(mangled) == expected
 
 
@@ -21,7 +21,7 @@ def test_swift_demangle_options():
     )
     simplified_expected = (
         u"protocol witness for static _ObjectiveCBridgeable._"
-        u"unconditionallyBridgeFromObjectiveC(_:) "
+        u"unconditionallyBridgeFromObjectiveC(A._ObjectiveCType?) "
         u"in conformance UIApplicationLaunchOptionsKey"
     )
     assert demangle_name(mangled) == simplified_expected

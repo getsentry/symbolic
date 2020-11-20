@@ -7,7 +7,7 @@ use walkdir::WalkDir;
 
 use symbolic::common::{Arch, ByteView, InstructionInfo, SelfCell};
 use symbolic::debuginfo::{Archive, FileFormat, Object};
-use symbolic::demangle::Demangle;
+use symbolic::demangle::{Demangle, DemangleOptions};
 use symbolic::minidump::cfi::CfiCache;
 use symbolic::minidump::processor::{CodeModuleId, FrameInfoMap, ProcessState, StackFrame};
 use symbolic::symcache::{LineInfo, SymCache, SymCacheError, SymCacheWriter};
@@ -204,7 +204,8 @@ fn print_state(
                             "{:>3}  {}!{} [{} : {} + 0x{:x}]",
                             index,
                             module.debug_file(),
-                            info.function_name().try_demangle(Default::default()),
+                            info.function_name()
+                                .try_demangle(DemangleOptions::name_only()),
                             info.filename(),
                             info.line(),
                             info.instruction_address() - info.line_address(),

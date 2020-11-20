@@ -275,7 +275,7 @@ impl Unreal4File {
         Unreal4File {
             index: meta.index,
             file_name: meta.file_name.as_str().to_owned(),
-            bytes: bytes.slice(meta.offset, meta.offset + meta.len),
+            bytes: bytes.slice(meta.offset..meta.offset + meta.len),
         }
     }
 
@@ -357,10 +357,10 @@ fn test_parse_empty_buffer() {
 
     let result = Unreal4Crash::parse(crash);
 
-    assert!(match result.expect_err("empty crash") {
-        Unreal4Error::Empty => true,
-        _ => false,
-    })
+    assert!(matches!(
+        result.expect_err("empty crash"),
+        Unreal4Error::Empty
+    ))
 }
 
 #[test]
