@@ -174,14 +174,16 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
 
     #[cfg(feature = "cpp")]
     {
-        use cpp_demangle::{DemangleOptions as CppOptions, Symbol as CppSymbol};
+        use cpp_demangle::{DemangleOptions as CppOptions, ParseOptions, Symbol as CppSymbol};
 
-        let symbol = match CppSymbol::new(ident) {
+        let parse_options = ParseOptions::default().recursion_limit(192);
+        let symbol = match CppSymbol::new_with_options(ident, &parse_options) {
             Ok(symbol) => symbol,
             Err(_) => return None,
         };
 
-        let mut cpp_options = CppOptions::new();
+        let mut cpp_options = CppOptions::new().recursion_limit(256);
+
         if !opts.parameters {
             cpp_options = cpp_options.no_params();
         }
