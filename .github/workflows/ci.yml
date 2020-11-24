@@ -7,6 +7,9 @@ on:
       - "release/**"
   pull_request:
 
+env:
+  RUSTFLAGS: -Dwarnings
+
 jobs:
   lints:
     name: Style/Linting
