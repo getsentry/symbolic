@@ -319,19 +319,23 @@ impl<'data, 'object> Iterator for WasmSymbolIterator<'data, 'object> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let func = self.funcs.next()?;
-        let address = get_addr_of_function(func);
-        let size = self
-            .funcs
-            .peek()
-            .map_or(0, |func| match get_addr_of_function(func) {
-                0 => 0,
-                x => x - address,
-            });
-        Some(Symbol {
-            name: func.name.as_ref().map(|x| Cow::Owned(x.clone())),
-            address,
-            size,
-        })
+        loop {
+            let func = self.funcs.next()?;
+            if let walrus::FunctionKind::Local(_) = func.kind {
+                let address = get_addr_of_function(func);
+                let size = self
+                    .funcs
+                    .peek()
+                    .map_or(0, |func| match get_addr_of_function(func) {
+                        0 => 0,
+                        x => x - address,
+                    });
+                return Some(Symbol {
+                    name: func.name.as_ref().map(|x| Cow::Owned(x.clone())),
+                    address,
+                    size,
+                });
+            }
+        }
     }
 }

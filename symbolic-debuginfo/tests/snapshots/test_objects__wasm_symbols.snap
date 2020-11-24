@@ -2,6 +2,5 @@
 source: symbolic-debuginfo/tests/test_objects.rs
 expression: SymbolsDebug(&symbols)
 ---
-               0 external_func
               8c internal_func
 
