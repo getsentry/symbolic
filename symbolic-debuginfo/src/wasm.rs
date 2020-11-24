@@ -93,7 +93,7 @@ impl<'data> WasmObject<'data> {
                 data.get(..16)
                     .and_then(|first_16| Uuid::from_slice(first_16).ok())
             })
-            .map(|uuid| DebugId::from_uuid(uuid))
+            .map(DebugId::from_uuid)
             .unwrap_or_else(DebugId::nil)
     }
 
