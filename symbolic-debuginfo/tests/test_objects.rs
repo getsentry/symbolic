@@ -471,3 +471,31 @@ fn test_pdb_anonymous_namespace() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[test]
+fn test_wasm_symbols() -> Result<(), Error> {
+    let view = ByteView::open(fixture("wasm/simple.wasm"))?;
+    let object = Object::parse(&view)?;
+
+    let symbols = object.symbol_map();
+    insta::assert_debug_snapshot!("wasm_symbols", SymbolsDebug(&symbols));
+
+    Ok(())
+}
+
+#[test]
+fn test_wasm_line_program() -> Result<(), Error> {
+    let view = ByteView::open(fixture("wasm/simple.wasm"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session()?;
+    let main_function = session
+        .functions()
+        .filter_map(|f| f.ok())
+        .find(|f| f.address == 0x8b)
+        .expect("main function at 0x8b");
+
+    assert_eq!(main_function.name, "internal_func");
+
+    Ok(())
+}
