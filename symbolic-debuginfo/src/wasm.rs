@@ -25,6 +25,7 @@ pub enum WasmError {
 /// This can only parse binary wasm file and not wast files.
 pub struct WasmObject<'data> {
     wasm_module: walrus::Module,
+    code_offset: u64,
     data: &'data [u8],
 }
 
@@ -40,7 +41,22 @@ impl<'data> WasmObject<'data> {
             Ok(module) => module,
             Err(_) => return Err(WasmError::BadObject),
         };
-        Ok(WasmObject { wasm_module, data })
+
+        // we need to parse the file a second time to get the offset to the
+        // code section as walrus does not expose that yet.
+        let mut code_offset = 0;
+        for payload in wasmparser::Parser::new(0).parse_all(data) {
+            if let Ok(wasmparser::Payload::CodeSectionStart { range, .. }) = payload {
+                code_offset = range.start as u64;
+                break;
+            }
+        }
+
+        Ok(WasmObject {
+            wasm_module,
+            data,
+            code_offset,
+        })
     }
 
     /// The container file format, which is always `FileFormat::Wasm`.
@@ -136,7 +152,8 @@ impl<'data> WasmObject<'data> {
     /// Constructs a debugging session.
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'data>, DwarfError> {
         let symbols = self.symbol_map();
-        DwarfDebugSession::parse(self, symbols, self.load_address(), self.kind())
+        // WASM is offset by the negative offset to the code section instead of the load address
+        DwarfDebugSession::parse(self, symbols, -(self.code_offset() as i64), self.kind())
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -154,9 +171,14 @@ impl<'data> WasmObject<'data> {
         false
     }
 
-    /// Returns the raw data of the ELF file.
+    /// Returns the raw data of the WASM file.
     pub fn data(&self) -> &'data [u8] {
         self.data
+    }
+
+    /// Returns the offset of the code section.
+    pub fn code_offset(&self) -> u64 {
+        self.code_offset
     }
 }
 
