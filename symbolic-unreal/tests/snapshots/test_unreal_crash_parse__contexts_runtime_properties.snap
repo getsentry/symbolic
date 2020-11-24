@@ -1,5 +1,5 @@
 ---
-source: unreal/tests/test_unreal_crash_parse.rs
+source: symbolic-unreal/tests/test_unreal_crash_parse.rs
 expression: "&runtime_properties"
 ---
 crash_guid: UE4CC-Windows-379993BB42BD8FBED67986857D8844B5_0000

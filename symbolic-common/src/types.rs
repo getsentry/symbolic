@@ -90,6 +90,8 @@ pub enum CpuFamily {
     Mips64 = 8,
     /// ILP32 ABI on 64-bit ARM.
     Arm64_32 = 9,
+    /// Virtual WASM architecture.
+    Wasm = 10,
 }
 
 impl CpuFamily {
@@ -111,6 +113,7 @@ impl CpuFamily {
     pub fn pointer_size(self) -> Option<usize> {
         match self {
             CpuFamily::Unknown => None,
+            CpuFamily::Wasm => Some(4),
             CpuFamily::Amd64
             | CpuFamily::Arm64
             | CpuFamily::Ppc64
@@ -139,6 +142,7 @@ impl CpuFamily {
     /// ```
     pub fn instruction_alignment(self) -> Option<u64> {
         match self {
+            CpuFamily::Wasm => Some(4),
             CpuFamily::Arm32 => Some(2),
             CpuFamily::Arm64 | CpuFamily::Arm64_32 => Some(4),
             CpuFamily::Ppc32 | CpuFamily::Mips32 | CpuFamily::Mips64 => Some(4),
@@ -174,6 +178,7 @@ impl CpuFamily {
             CpuFamily::Arm32 | CpuFamily::Arm64 | CpuFamily::Arm64_32 => Some("pc"),
             CpuFamily::Ppc32 | CpuFamily::Ppc64 => Some("srr0"),
             CpuFamily::Mips32 | CpuFamily::Mips64 => Some("pc"),
+            CpuFamily::Wasm => None,
             CpuFamily::Unknown => None,
         }
     }
@@ -280,6 +285,7 @@ pub enum Arch {
     Arm64_32 = 901,
     Arm64_32V8 = 902,
     Arm64_32Unknown = 999,
+    Wasm = 1001,
 }
 
 impl Arch {
@@ -325,6 +331,7 @@ impl Arch {
             901 => Arch::Arm64_32,
             902 => Arch::Arm64_32V8,
             999 => Arch::Arm64_32Unknown,
+            1001 => Arch::Wasm,
             _ => Arch::Unknown,
         }
     }
@@ -361,6 +368,7 @@ impl Arch {
             Arch::Mips => CpuFamily::Mips32,
             Arch::Mips64 => CpuFamily::Mips64,
             Arch::Arm64_32 | Arch::Arm64_32V8 | Arch::Arm64_32Unknown => CpuFamily::Arm64_32,
+            Arch::Wasm => CpuFamily::Wasm,
         }
     }
 
@@ -384,6 +392,7 @@ impl Arch {
     pub fn name(self) -> &'static str {
         match self {
             Arch::Unknown => "unknown",
+            Arch::Wasm => "wasm",
             Arch::X86 => "x86",
             Arch::X86Unknown => "x86_unknown",
             Arch::Amd64 => "x86_64",
@@ -490,6 +499,9 @@ impl str::FromStr for Arch {
             // apple crash report variants
             "x86-64" => Arch::Amd64,
             "arm-64" => Arch::Arm64,
+
+            // wasm extensions
+            "wasm" => Arch::Wasm,
 
             _ => return Err(UnknownArchError),
         })

@@ -159,6 +159,7 @@ pub enum SymbolicErrorCode {
     ObjectErrorBadPdbObject = 2105,
     ObjectErrorBadPeObject = 2106,
     ObjectErrorBadSourceBundle = 2107,
+    ObjectErrorBadWasmObject = 2108,
     DwarfErrorUnknown = 2200,
     DwarfErrorInvalidUnitRef = 2201,
     DwarfErrorInvalidFileRef = 2202,
@@ -262,6 +263,7 @@ impl SymbolicErrorCode {
                     ObjectError::MachO(_) => SymbolicErrorCode::ObjectErrorBadMachOObject,
                     ObjectError::Pdb(_) => SymbolicErrorCode::ObjectErrorBadPdbObject,
                     ObjectError::Pe(_) => SymbolicErrorCode::ObjectErrorBadPeObject,
+                    ObjectError::Wasm(_) => SymbolicErrorCode::ObjectErrorBadWasmObject,
                     ObjectError::Dwarf(ref e) => match e {
                         DwarfError::InvalidUnitRef(_) => {
                             SymbolicErrorCode::DwarfErrorInvalidUnitRef
