@@ -16,6 +16,7 @@ use crate::pdb::*;
 use crate::pe::*;
 use crate::private::{MonoArchive, MonoArchiveObjects};
 use crate::sourcebundle::*;
+use crate::wasm::*;
 
 macro_rules! match_inner {
     ($value:expr, $ty:tt ($pat:pat) => $expr:expr) => {
@@ -26,6 +27,7 @@ macro_rules! match_inner {
             $ty::Pdb($pat) => $expr,
             $ty::Pe($pat) => $expr,
             $ty::SourceBundle($pat) => $expr,
+            $ty::Wasm($pat) => $expr,
         }
     };
 }
@@ -39,6 +41,7 @@ macro_rules! map_inner {
             $from::Pdb($pat) => $to::Pdb($expr),
             $from::Pe($pat) => $to::Pe($expr),
             $from::SourceBundle($pat) => $to::SourceBundle($expr),
+            $from::Wasm($pat) => $to::Wasm($expr),
         }
     };
 }
@@ -54,6 +57,7 @@ macro_rules! map_result {
             $from::SourceBundle($pat) => $expr
                 .map($to::SourceBundle)
                 .map_err(ObjectError::SourceBundle),
+            $from::Wasm($pat) => $expr.map($to::Wasm).map_err(ObjectError::Wasm),
         }
     };
 }
@@ -93,6 +97,10 @@ pub enum ObjectError {
     /// An error in source bundles.
     #[error("failed to process source bundle")]
     SourceBundle(#[from] SourceBundleError),
+
+    /// An error in a WASM file.
+    #[error("failed to process wasm file")]
+    Wasm(#[from] WasmError),
 }
 
 /// Tries to infer the object type from the start of the given buffer.
@@ -123,6 +131,8 @@ pub fn peek(data: &[u8], archive: bool) -> FileFormat {
         FileFormat::Breakpad
     } else if PdbObject::test(data) {
         FileFormat::Pdb
+    } else if WasmObject::test(data) {
+        FileFormat::Wasm
     } else {
         FileFormat::Unknown
     }
@@ -142,8 +152,10 @@ pub enum Object<'data> {
     Pdb(PdbObject<'data>),
     /// Portable Executable, an extension of COFF used on Windows.
     Pe(PeObject<'data>),
-    /// A source bundle
+    /// A source bundle.
     SourceBundle(SourceBundle<'data>),
+    /// A WASM file.
+    Wasm(WasmObject<'data>),
 }
 
 impl<'data> Object<'data> {
@@ -172,6 +184,7 @@ impl<'data> Object<'data> {
             FileFormat::Pdb => parse_object!(Pdb, PdbObject, data),
             FileFormat::Pe => parse_object!(Pe, PeObject, data),
             FileFormat::SourceBundle => parse_object!(SourceBundle, SourceBundle, data),
+            FileFormat::Wasm => parse_object!(Wasm, WasmObject, data),
             FileFormat::Unknown => return Err(ObjectError::UnsupportedObject),
         };
 
@@ -187,6 +200,7 @@ impl<'data> Object<'data> {
             Object::Pdb(_) => FileFormat::Pdb,
             Object::Pe(_) => FileFormat::Pe,
             Object::SourceBundle(_) => FileFormat::SourceBundle,
+            Object::Wasm(_) => FileFormat::Wasm,
         }
     }
 
@@ -281,6 +295,10 @@ impl<'data> Object<'data> {
                 .debug_session()
                 .map(ObjectDebugSession::SourceBundle)
                 .map_err(ObjectError::SourceBundle),
+            Object::Wasm(ref o) => o
+                .debug_session()
+                .map(ObjectDebugSession::Dwarf)
+                .map_err(ObjectError::Dwarf),
         }
     }
 
@@ -510,6 +528,7 @@ pub enum SymbolIterator<'data, 'object> {
     Pdb(PdbSymbolIterator<'data, 'object>),
     Pe(PeSymbolIterator<'data, 'object>),
     SourceBundle(SourceBundleSymbolIterator<'data>),
+    Wasm(WasmSymbolIterator<'data, 'object>),
 }
 
 impl<'data, 'object> Iterator for SymbolIterator<'data, 'object> {
@@ -528,6 +547,7 @@ enum ArchiveInner<'d> {
     Pdb(MonoArchive<'d, PdbObject<'d>>),
     Pe(MonoArchive<'d, PeObject<'d>>),
     SourceBundle(MonoArchive<'d, SourceBundle<'d>>),
+    Wasm(MonoArchive<'d, WasmObject<'d>>),
 }
 
 /// A generic archive that can contain one or more object files.
@@ -563,6 +583,7 @@ impl<'d> Archive<'d> {
             FileFormat::Pdb => Archive(ArchiveInner::Pdb(MonoArchive::new(data))),
             FileFormat::Pe => Archive(ArchiveInner::Pe(MonoArchive::new(data))),
             FileFormat::SourceBundle => Archive(ArchiveInner::SourceBundle(MonoArchive::new(data))),
+            FileFormat::Wasm => Archive(ArchiveInner::Wasm(MonoArchive::new(data))),
             FileFormat::Unknown => return Err(ObjectError::UnsupportedObject),
         };
 
@@ -577,6 +598,7 @@ impl<'d> Archive<'d> {
             ArchiveInner::MachO(_) => FileFormat::MachO,
             ArchiveInner::Pdb(_) => FileFormat::Pdb,
             ArchiveInner::Pe(_) => FileFormat::Pe,
+            ArchiveInner::Wasm(_) => FileFormat::Wasm,
             ArchiveInner::SourceBundle(_) => FileFormat::SourceBundle,
         }
     }
@@ -622,6 +644,10 @@ impl<'d> Archive<'d> {
                 .object_by_index(index)
                 .map(|opt| opt.map(Object::SourceBundle))
                 .map_err(ObjectError::SourceBundle),
+            ArchiveInner::Wasm(ref a) => a
+                .object_by_index(index)
+                .map(|opt| opt.map(Object::Wasm))
+                .map_err(ObjectError::Wasm),
         }
     }
 
@@ -649,6 +675,7 @@ enum ObjectIteratorInner<'d, 'a> {
     Pdb(MonoArchiveObjects<'d, PdbObject<'d>>),
     Pe(MonoArchiveObjects<'d, PeObject<'d>>),
     SourceBundle(MonoArchiveObjects<'d, SourceBundle<'d>>),
+    Wasm(MonoArchiveObjects<'d, WasmObject<'d>>),
 }
 
 /// An iterator over [`Object`](enum.Object.html)s in an [`Archive`](struct.Archive.html).

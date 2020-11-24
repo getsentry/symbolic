@@ -43,6 +43,14 @@ type IncompleteLineNumberProgram<'a> = gimli::read::IncompleteLineProgram<Slice<
 type LineNumberProgramHeader<'a> = gimli::read::LineProgramHeader<Slice<'a>>;
 type LineProgramFileEntry<'a> = gimli::read::FileEntry<Slice<'a>>;
 
+/// This applies the offset to the address.
+///
+/// This function does not panic but would wrap around if too large or small
+/// numbers are passed.
+fn offset(addr: u64, offset: i64) -> u64 {
+    (addr as i64).wrapping_sub(offset as i64) as u64
+}
+
 /// An error handling [`DWARF`](trait.Dwarf.html) debugging information.
 #[non_exhaustive]
 #[derive(Debug, Error)]
@@ -536,7 +544,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             if let Some((first, rows)) = rows.split_first() {
                 let mut last_file = first.file_index;
                 let mut last_info = LineInfo {
-                    address: range.begin - self.inner.info.load_address,
+                    address: offset(range.begin, self.inner.info.address_offset),
                     size: first.size.map(|s| s + first.address - range.begin),
                     file: self.resolve_file(first.file_index).unwrap_or_default(),
                     line: first.line.unwrap_or(0),
@@ -560,7 +568,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
                     last_file = row.file_index;
                     last_info = LineInfo {
-                        address: row.address - self.inner.info.load_address,
+                        address: offset(row.address, self.inner.info.address_offset),
                         size: row.size,
                         file: self.resolve_file(row.file_index).unwrap_or_default(),
                         line,
@@ -569,7 +577,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
                 // Fix the size of the last line
                 if let Some(size) = last_info.size.as_mut() {
-                    *size = range.end - self.inner.info.load_address - last_info.address;
+                    *size = offset(range.end, self.inner.info.address_offset) - last_info.address;
                 }
 
                 lines.push(last_info);
@@ -659,7 +667,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 continue;
             }
 
-            let function_address = range_buf[0].begin - self.inner.info.load_address;
+            let function_address = offset(range_buf[0].begin, self.inner.info.address_offset);
             let function_size = range_buf[range_buf.len() - 1].end - range_buf[0].begin;
             let function_end = function_address + function_size;
 
@@ -715,8 +723,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
                     let mut index = 0;
                     for range in range_buf.iter() {
-                        let range_begin = range.begin - self.inner.info.load_address;
-                        let range_end = range.end - self.inner.info.load_address;
+                        let range_begin = offset(range.begin, self.inner.info.address_offset);
+                        let range_end = offset(range.end, self.inner.info.address_offset);
 
                         // Check if there is a line record covering the start of this range,
                         // otherwise insert a new record pointing to the correct call location.
@@ -952,7 +960,7 @@ struct DwarfInfo<'data> {
     headers: Vec<CompilationUnitHeader<'data>>,
     units: Vec<LazyCell<Option<Unit<'data>>>>,
     symbol_map: SymbolMap<'data>,
-    load_address: u64,
+    address_offset: i64,
     kind: ObjectKind,
 }
 
@@ -969,7 +977,7 @@ impl<'d> DwarfInfo<'d> {
     pub fn parse(
         sections: &'d DwarfSections<'d>,
         symbol_map: SymbolMap<'d>,
-        load_address: u64,
+        address_offset: i64,
         kind: ObjectKind,
     ) -> Result<Self, DwarfError> {
         let inner = gimli::read::Dwarf {
@@ -998,7 +1006,7 @@ impl<'d> DwarfInfo<'d> {
             headers,
             units,
             symbol_map,
-            load_address,
+            address_offset,
             kind,
         })
     }
@@ -1074,7 +1082,7 @@ impl fmt::Debug for DwarfInfo<'_> {
         f.debug_struct("DwarfInfo")
             .field("headers", &self.headers)
             .field("symbol_map", &self.symbol_map)
-            .field("load_address", &self.load_address)
+            .field("address_offset", &self.address_offset)
             .finish()
     }
 }
@@ -1122,7 +1130,7 @@ impl<'data> DwarfDebugSession<'data> {
     pub fn parse<D>(
         dwarf: &D,
         symbol_map: SymbolMap<'data>,
-        load_address: u64,
+        address_offset: i64,
         kind: ObjectKind,
     ) -> Result<Self, DwarfError>
     where
@@ -1130,7 +1138,7 @@ impl<'data> DwarfDebugSession<'data> {
     {
         let sections = DwarfSections::from_dwarf(dwarf)?;
         let cell = SelfCell::try_new(Box::new(sections), |sections| {
-            DwarfInfo::parse(unsafe { &*sections }, symbol_map, load_address, kind)
+            DwarfInfo::parse(unsafe { &*sections }, symbol_map, address_offset, kind)
         })?;
 
         Ok(DwarfDebugSession { cell })
