@@ -64,39 +64,36 @@ impl<'data> WasmObject<'data> {
         FileFormat::Wasm
     }
 
+    fn get_raw_build_id(&self) -> Option<Cow<'_, [u8]>> {
+        // this section is not defined yet
+        // see https://github.com/WebAssembly/tool-conventions/issues/133
+        for (_, section) in self.wasm_module.customs.iter() {
+            if section.name() == "build_id" {
+                return Some(section.data(&Default::default()));
+            }
+        }
+        None
+    }
+
     /// The code identifier of this object.
     ///
     /// Wasm does not yet provide code IDs.
     pub fn code_id(&self) -> Option<CodeId> {
         // see `debug_id`
-        for (_, section) in self.wasm_module.customs.iter() {
-            if section.name() == "build_id" {
-                return Some(CodeId::from_binary(&section.data(&Default::default())));
-            }
-        }
-        None
+        self.get_raw_build_id()
+            .map(|data| CodeId::from_binary(&data))
     }
 
     /// The debug information identifier of a WASM file.
     ///
     /// Wasm does not yet provide debug IDs.
     pub fn debug_id(&self) -> DebugId {
-        for (_, section) in self.wasm_module.customs.iter() {
-            // this section is not defined yet
-            // see https://github.com/WebAssembly/tool-conventions/issues/133
-            if section.name() == "build_id" {
-                return DebugId::from_guid_age(
-                    section
-                        .data(&Default::default())
-                        .get(..16)
-                        .unwrap_or(&[][..]),
-                    0,
-                )
-                .ok()
-                .unwrap_or_default();
-            }
-        }
-        DebugId::nil()
+        self.get_raw_build_id()
+            .and_then(|data| {
+                data.get(..16)
+                    .and_then(|first_16| DebugId::from_guid_age(first_16, 0).ok())
+            })
+            .unwrap_or_else(DebugId::nil)
     }
 
     /// The CPU architecture of this object.
@@ -282,7 +279,7 @@ impl<'d> Dwarf<'d> for WasmObject<'d> {
 
     fn raw_section(&self, section_name: &str) -> Option<DwarfSection<'d>> {
         for (_, section) in self.wasm_module.customs.iter() {
-            if section.name().starts_with('.') && &section.name()[1..] == section_name {
+            if section.name().strip_prefix('.') == Some(section_name) {
                 return Some(DwarfSection {
                     data: Cow::Owned(section.data(&Default::default()).into_owned()),
                     // XXX: what are these going to be?
