@@ -43,8 +43,12 @@ type IncompleteLineNumberProgram<'a> = gimli::read::IncompleteLineProgram<Slice<
 type LineNumberProgramHeader<'a> = gimli::read::LineProgramHeader<Slice<'a>>;
 type LineProgramFileEntry<'a> = gimli::read::FileEntry<Slice<'a>>;
 
+/// This applies the offset to the address.
+///
+/// This function does not panic but would wrap around if too large or small
+/// numbers are passed.
 fn offset(addr: u64, offset: i64) -> u64 {
-    (addr as i128).saturating_sub(offset as i128) as u64
+    (addr as i64).wrapping_sub(offset as i64) as u64
 }
 
 /// An error handling [`DWARF`](trait.Dwarf.html) debugging information.
