@@ -4,7 +4,7 @@ use std::fmt;
 
 use thiserror::Error;
 
-use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
+use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
@@ -91,8 +91,9 @@ impl<'data> WasmObject<'data> {
         self.get_raw_build_id()
             .and_then(|data| {
                 data.get(..16)
-                    .and_then(|first_16| DebugId::from_guid_age(first_16, 0).ok())
+                    .and_then(|first_16| Uuid::from_slice(first_16).ok())
             })
+            .map(|uuid| DebugId::from_uuid(uuid))
             .unwrap_or_else(DebugId::nil)
     }
 

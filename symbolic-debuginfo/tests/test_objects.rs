@@ -477,6 +477,15 @@ fn test_wasm_symbols() -> Result<(), Error> {
     let view = ByteView::open(fixture("wasm/simple.wasm"))?;
     let object = Object::parse(&view)?;
 
+    assert_eq!(
+        object.debug_id(),
+        "bda18fd8-5d4a-4eb8-9302-2d6bfad846b1".parse().unwrap()
+    );
+    assert_eq!(
+        object.code_id(),
+        Some("bda18fd85d4a4eb893022d6bfad846b1".into())
+    );
+
     let symbols = object.symbol_map();
     insta::assert_debug_snapshot!("wasm_symbols", SymbolsDebug(&symbols));
 
