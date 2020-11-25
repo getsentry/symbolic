@@ -185,6 +185,13 @@ impl<'d, 'a> DwarfLineProgram<'d> {
         while let Ok(Some((_, &program_row))) = state_machine.next_row() {
             let address = program_row.address();
 
+            // we have seen rustc emit for WASM targets a bad sequence that spans from 0 to
+            // the end of the program.  https://github.com/rust-lang/rust/issues/79410
+            // Since DWARF does not permit code to sit at address 0 we can safely skip here.
+            if address == 0 {
+                continue;
+            }
+
             if let Some(last_row) = sequence_rows.last_mut() {
                 if address >= last_row.address {
                     last_row.size = Some(address - last_row.address);
