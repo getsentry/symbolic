@@ -10,7 +10,7 @@
 use std::borrow::Cow;
 use std::fmt;
 use std::marker::PhantomData;
-use std::ops::Deref;
+use std::ops::{Deref, RangeBounds};
 
 use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Range};
@@ -317,7 +317,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
     /// abbrev can only be temporarily accessed in the callback.
     fn resolve_reference<T, F>(&self, attr: Attribute<'d>, f: F) -> Result<Option<T>, DwarfError>
     where
-        F: FnOnce(UnitRef<'d, '_>, &Die<'d, '_>) -> Result<Option<T>, DwarfError>,
+        F: FnOnce(Self, &Die<'d, '_>) -> Result<Option<T>, DwarfError>,
     {
         let (unit, offset) = match attr.value() {
             AttributeValue::UnitRef(offset) => (*self, offset),
@@ -337,7 +337,11 @@ impl<'d, 'a> UnitRef<'d, 'a> {
     }
 
     /// Resolves the function name of a debug entry.
-    fn resolve_function_name(&self, entry: &Die<'d, '_>) -> Result<Option<Name<'d>>, DwarfError> {
+    fn resolve_function_name(
+        &self,
+        entry: &Die<'d, '_>,
+        language: Language,
+    ) -> Result<Option<Name<'d>>, DwarfError> {
         let mut attrs = entry.attrs();
         let mut fallback_name = None;
         let mut reference_target = None;
@@ -348,7 +352,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
                 constants::DW_AT_linkage_name | constants::DW_AT_MIPS_linkage_name => {
                     return Ok(self
                         .string_value(attr.value())
-                        .map(|n| Name::new(n, NameMangling::Mangled, Language::Unknown)));
+                        .map(|n| Name::new(n, NameMangling::Mangled, language)));
                 }
                 constants::DW_AT_name => {
                     fallback_name = Some(attr);
@@ -363,14 +367,14 @@ impl<'d, 'a> UnitRef<'d, 'a> {
         if let Some(attr) = fallback_name {
             return Ok(self
                 .string_value(attr.value())
-                .map(|n| Name::new(n, NameMangling::Unmangled, Language::Unknown)));
+                .map(|n| Name::new(n, NameMangling::Unmangled, language)));
         }
 
         if let Some(attr) = reference_target {
             return self.resolve_reference(attr, |ref_unit, ref_entry| {
                 if self.unit.offset != ref_unit.unit.offset || entry.offset() != ref_entry.offset()
                 {
-                    ref_unit.resolve_function_name(ref_entry)
+                    ref_unit.resolve_function_name(ref_entry, language)
                 } else {
                     Ok(None)
                 }
@@ -387,6 +391,7 @@ struct DwarfUnit<'d, 'a> {
     inner: UnitRef<'d, 'a>,
     language: Language,
     line_program: Option<DwarfLineProgram<'d>>,
+    prefer_dwarf_names: bool,
 }
 
 impl<'d, 'a> DwarfUnit<'d, 'a> {
@@ -419,10 +424,20 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             None => None,
         };
 
+        let producer = match entry.attr_value(constants::DW_AT_producer)? {
+            Some(AttributeValue::String(string)) => Some(string),
+            _ => None,
+        };
+
+        // Trust the symbol table more to contain accurate mangled names. However, since Dart's name
+        // mangling is lossy, we need to load the demangled name instead.
+        let prefer_dwarf_names = producer.as_deref() == Some(b"Dart VM");
+
         Ok(Some(DwarfUnit {
             inner: UnitRef { info, unit },
             language,
             line_program,
+            prefer_dwarf_names,
         }))
     }
 
@@ -621,6 +636,24 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             .map(|file| self.file_info(line_program, file))
     }
 
+    /// Resolves the name of a function from the symbol table.
+    fn resolve_symbol_name<R>(&self, range: R) -> Option<Name<'d>>
+    where
+        R: RangeBounds<u64>,
+    {
+        let symbol = self.inner.info.symbol_map.lookup_range(range)?;
+        let name = symbol.name.clone()?;
+        Some(Name::new(name, NameMangling::Mangled, self.language))
+    }
+
+    /// Resolves the name of a function from DWARF debug information.
+    fn resolve_dwarf_name(&self, entry: &Die<'d, '_>) -> Option<Name<'d>> {
+        self.inner
+            .resolve_function_name(entry, self.language)
+            .ok()
+            .flatten()
+    }
+
     /// Collects all functions within this compilation unit.
     fn functions(&self, range_buf: &mut Vec<Range>) -> Result<Vec<Function<'d>>, DwarfError> {
         let mut depth = 0;
@@ -684,25 +717,15 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             //
             // XXX: Maybe we should actually parse the ranges in the resolve function and always
             // look at the symbol table based on the start of the DIE range.
-            let symbol_name = if !inline {
-                self.inner
-                    .info
-                    .symbol_map
-                    .lookup_range(function_address..function_end)
-                    .and_then(|symbol| {
-                        symbol
-                            .name
-                            .clone()
-                            .map(|n| Name::new(n, NameMangling::Mangled, self.language))
-                    })
-            } else {
+            let symbol_name = if self.prefer_dwarf_names || inline {
                 None
+            } else {
+                self.resolve_symbol_name(function_address..function_end)
             };
 
-            let mut name = symbol_name
-                .or_else(|| self.inner.resolve_function_name(entry).ok().flatten())
-                .unwrap_or_else(|| Name::from(""));
-            name.set_language(self.language);
+            let name = symbol_name
+                .or_else(|| self.resolve_dwarf_name(entry))
+                .unwrap_or_else(|| Name::new("", NameMangling::Unmangled, self.language));
 
             // Avoid constant allocations by collecting repeatedly into the same buffer and
             // draining the results out of it. This keeps the original buffer allocated and
