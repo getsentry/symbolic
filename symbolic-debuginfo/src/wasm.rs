@@ -59,7 +59,7 @@ impl<'data> WasmObject<'data> {
         })
     }
 
-    /// The container file format, which is always `FileFormat::Wasm`.
+    /// The container file format, which currently is always `FileFormat::Wasm`.
     pub fn file_format(&self) -> FileFormat {
         FileFormat::Wasm
     }
@@ -99,7 +99,8 @@ impl<'data> WasmObject<'data> {
 
     /// The CPU architecture of this object.
     pub fn arch(&self) -> Arch {
-        Arch::Wasm
+        // TODO: we do not yet support wasm64 and thus always return wasm32 here.
+        Arch::Wasm32
     }
 
     /// The kind of this object.
