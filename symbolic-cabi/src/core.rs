@@ -335,33 +335,33 @@ impl SymbolicErrorCode {
                 return SymbolicErrorCode::ParseSourceMapError;
             }
 
-            use symbolic::symcache::SymCacheError;
+            use symbolic::symcache::{SymCacheError, SymCacheErrorKind};
             if let Some(error) = error.downcast_ref::<SymCacheError>() {
-                return match error {
-                    SymCacheError::BadFileMagic => SymbolicErrorCode::SymCacheErrorBadFileMagic,
-                    SymCacheError::BadFileHeader(_) => {
+                return match error.kind() {
+                    SymCacheErrorKind::BadFileMagic => SymbolicErrorCode::SymCacheErrorBadFileMagic,
+                    SymCacheErrorKind::BadFileHeader => {
                         SymbolicErrorCode::SymCacheErrorBadFileHeader
                     }
-                    SymCacheError::BadSegment => SymbolicErrorCode::SymCacheErrorBadSegment,
-                    SymCacheError::BadCacheFile => SymbolicErrorCode::SymCacheErrorBadCacheFile,
-                    SymCacheError::UnsupportedVersion => {
+                    SymCacheErrorKind::BadSegment => SymbolicErrorCode::SymCacheErrorBadSegment,
+                    SymCacheErrorKind::BadCacheFile => SymbolicErrorCode::SymCacheErrorBadCacheFile,
+                    SymCacheErrorKind::UnsupportedVersion => {
                         SymbolicErrorCode::SymCacheErrorUnsupportedVersion
                     }
-                    SymCacheError::BadDebugFile(_) => SymbolicErrorCode::SymCacheErrorBadDebugFile,
-                    SymCacheError::MissingDebugSection => {
+                    SymCacheErrorKind::BadDebugFile => SymbolicErrorCode::SymCacheErrorBadDebugFile,
+                    SymCacheErrorKind::MissingDebugSection => {
                         SymbolicErrorCode::SymCacheErrorMissingDebugSection
                     }
-                    SymCacheError::MissingDebugInfo => {
+                    SymCacheErrorKind::MissingDebugInfo => {
                         SymbolicErrorCode::SymCacheErrorMissingDebugInfo
                     }
-                    SymCacheError::UnsupportedDebugKind => {
+                    SymCacheErrorKind::UnsupportedDebugKind => {
                         SymbolicErrorCode::SymCacheErrorUnsupportedDebugKind
                     }
-                    SymCacheError::ValueTooLarge(_) => {
+                    SymCacheErrorKind::ValueTooLarge(_) => {
                         SymbolicErrorCode::SymCacheErrorValueTooLarge
                     }
-                    SymCacheError::WriteFailed(_) => SymbolicErrorCode::SymCacheErrorWriteFailed,
-                    SymCacheError::TooManyValues(_) => {
+                    SymCacheErrorKind::WriteFailed => SymbolicErrorCode::SymCacheErrorWriteFailed,
+                    SymCacheErrorKind::TooManyValues(_) => {
                         SymbolicErrorCode::SymCacheErrorTooManyValues
                     }
                     _ => SymbolicErrorCode::SymCacheErrorUnknown,

@@ -8,6 +8,7 @@ use std::marker::PhantomData;
 use symbolic_common::{DebugId, Uuid};
 
 use crate::error::SymCacheError;
+use crate::SymCacheErrorKind;
 
 /// The magic file preamble to identify symcache files.
 pub const SYMCACHE_MAGIC: [u8; 4] = *b"SYMC";
@@ -80,7 +81,8 @@ where
         let offset = self.offset as usize;
         let len = self.len.into() as usize;
         let size = std::mem::size_of::<T>() * len;
-        let slice = get_slice(data, offset, size).map_err(|_| SymCacheError::BadSegment)?;
+        let slice = get_slice(data, offset, size)
+            .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadSegment, e))?;
         Ok(unsafe { std::slice::from_raw_parts(slice.as_ptr() as *const T, len) })
     }
 
@@ -100,7 +102,9 @@ where
     /// Reads an entire binary segment as string.
     pub fn read_str<'a>(&self, data: &'a [u8]) -> Result<&'a str, SymCacheError> {
         let slice = self.read(data)?;
-        Ok(std::str::from_utf8(slice).map_err(|_| SymCacheError::BadSegment)?)
+        let string = std::str::from_utf8(slice)
+            .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadSegment, e))?;
+        Ok(string)
     }
 }
 
@@ -319,20 +323,21 @@ pub struct Header {
 impl Header {
     /// Parses the correct version of the SymCache [`Header`](struct.Header.html).
     pub fn parse(data: &[u8]) -> Result<Self, SymCacheError> {
-        let preamble = get_record::<Preamble>(data, 0).map_err(SymCacheError::BadFileHeader)?;
+        let preamble = get_record::<Preamble>(data, 0)
+            .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadFileHeader, e))?;
 
         if preamble.magic != SYMCACHE_MAGIC {
-            return Err(SymCacheError::BadFileMagic);
+            return Err(SymCacheErrorKind::BadFileMagic.into());
         }
 
         Ok(match preamble.version {
             1 => get_record::<HeaderV1>(data, 0)
-                .map_err(SymCacheError::BadFileHeader)?
+                .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadFileHeader, e))?
                 .into(),
             2..=SYMCACHE_VERSION => get_record::<HeaderV2>(data, 0)
-                .map_err(SymCacheError::BadFileHeader)?
+                .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadFileHeader, e))?
                 .into(),
-            _ => return Err(SymCacheError::UnsupportedVersion),
+            _ => return Err(SymCacheErrorKind::UnsupportedVersion.into()),
         })
     }
 }

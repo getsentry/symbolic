@@ -9,7 +9,7 @@ use symbolic_common::{Arch, DebugId, Language};
 use symbolic_debuginfo::{DebugSession, FileInfo, Function, LineInfo, ObjectLike, Symbol};
 
 use crate::error::{SymCacheError, ValueKind};
-use crate::format;
+use crate::{format, SymCacheErrorKind};
 
 // Performs a shallow check whether this function might contain any lines.
 fn is_empty_function(function: &Function<'_>) -> bool {
@@ -68,7 +68,7 @@ where
         self.position = position;
         self.writer
             .seek(io::SeekFrom::Start(position))
-            .map_err(SymCacheError::WriteFailed)?;
+            .map_err(|e| SymCacheError::new(SymCacheErrorKind::WriteFailed, e))?;
 
         Ok(())
     }
@@ -78,7 +78,7 @@ where
     fn write_bytes(&mut self, data: &[u8]) -> Result<(), SymCacheError> {
         self.writer
             .write_all(data)
-            .map_err(SymCacheError::WriteFailed)?;
+            .map_err(|e| SymCacheError::new(SymCacheErrorKind::WriteFailed, e))?;
 
         self.position += data.len() as u64;
         Ok(())
@@ -110,7 +110,8 @@ where
         let bytes = unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, byte_size) };
 
         let segment_pos = self.position as u32;
-        let segment_len = L::from_usize(data.len()).ok_or(SymCacheError::TooManyValues(kind))?;
+        let segment_len =
+            L::from_usize(data.len()).ok_or(SymCacheErrorKind::TooManyValues(kind))?;
 
         self.write_bytes(bytes)?;
         Ok(format::Seg::new(segment_pos, segment_len))
@@ -205,10 +206,11 @@ where
 
         let session = object
             .debug_session()
-            .map_err(|e| SymCacheError::BadDebugFile(Box::new(e)))?;
+            .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadDebugFile, e))?;
 
         for function in session.functions() {
-            let function = function.map_err(|e| SymCacheError::BadDebugFile(Box::new(e)))?;
+            let function =
+                function.map_err(|e| SymCacheError::new(SymCacheErrorKind::BadDebugFile, e))?;
             writer.add_function(function)?;
         }
 
@@ -372,7 +374,7 @@ where
         }
 
         if self.files.len() >= std::u16::MAX as usize {
-            return Err(SymCacheError::TooManyValues(ValueKind::File));
+            return Err(SymCacheErrorKind::TooManyValues(ValueKind::File).into());
         }
 
         let index = self.files.len() as u16;
@@ -396,7 +398,7 @@ where
 
         // NB: We only use 48 bits to encode symbol offsets in function records.
         if self.symbols.len() >= 0x00ff_ffff {
-            return Err(SymCacheError::TooManyValues(ValueKind::Symbol));
+            return Err(SymCacheErrorKind::TooManyValues(ValueKind::Symbol).into());
         }
 
         // Avoid a potential reallocation by reusing name.
@@ -475,7 +477,7 @@ where
         let symbol_id = self.insert_symbol(function.name.as_str().into())?;
         let comp_dir = self.write_path(function.compilation_dir)?;
         let lang = u8::from_u32(language as u32)
-            .ok_or(SymCacheError::ValueTooLarge(ValueKind::Language))?;
+            .ok_or(SymCacheErrorKind::ValueTooLarge(ValueKind::Language))?;
 
         let mut start_address = function.address;
         let mut lines = function.lines.iter().peekable();
@@ -532,7 +534,7 @@ where
         // functions to the file.
         let index = functions.len();
         if index >= std::u32::MAX as usize {
-            return Err(SymCacheError::ValueTooLarge(ValueKind::Function));
+            return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::Function).into());
         }
 
         // For optimization purposes, remember if all functions appear in order. If not, parent
@@ -600,7 +602,7 @@ where
 
                 let parent_offset = index - parent_index;
                 if parent_offset > std::u16::MAX.into() {
-                    return Err(SymCacheError::ValueTooLarge(ValueKind::ParentOffset));
+                    return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::ParentOffset).into());
                 }
 
                 record.parent_offset = parent_offset as u16;
