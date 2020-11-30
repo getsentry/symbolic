@@ -1,9 +1,10 @@
 //! Generic wrappers over various object file formats.
 
 use std::borrow::Cow;
+use std::error::Error;
+use std::fmt;
 
 use goblin::Hint;
-use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
@@ -49,58 +50,75 @@ macro_rules! map_inner {
 macro_rules! map_result {
     ($value:expr, $from:tt($pat:pat) => $to:tt($expr:expr)) => {
         match $value {
-            $from::Breakpad($pat) => $expr.map($to::Breakpad).map_err(ObjectError::Breakpad),
-            $from::Elf($pat) => $expr.map($to::Elf).map_err(ObjectError::Elf),
-            $from::MachO($pat) => $expr.map($to::MachO).map_err(ObjectError::MachO),
-            $from::Pdb($pat) => $expr.map($to::Pdb).map_err(ObjectError::Pdb),
-            $from::Pe($pat) => $expr.map($to::Pe).map_err(ObjectError::Pe),
+            $from::Breakpad($pat) => $expr.map($to::Breakpad).map_err(ObjectError::transparent),
+            $from::Elf($pat) => $expr.map($to::Elf).map_err(ObjectError::transparent),
+            $from::MachO($pat) => $expr.map($to::MachO).map_err(ObjectError::transparent),
+            $from::Pdb($pat) => $expr.map($to::Pdb).map_err(ObjectError::transparent),
+            $from::Pe($pat) => $expr.map($to::Pe).map_err(ObjectError::transparent),
             $from::SourceBundle($pat) => $expr
                 .map($to::SourceBundle)
-                .map_err(ObjectError::SourceBundle),
-            $from::Wasm($pat) => $expr.map($to::Wasm).map_err(ObjectError::Wasm),
+                .map_err(ObjectError::transparent),
+            $from::Wasm($pat) => $expr.map($to::Wasm).map_err(ObjectError::transparent),
         }
     };
 }
 
-/// An error when dealing with any kind of [`Object`](enum.Object.html).
-#[non_exhaustive]
-#[derive(Debug, Error)]
-pub enum ObjectError {
+/// Internal representation of the object error type.
+#[derive(Debug)]
+enum ObjectErrorRepr {
     /// The object file format is not supported.
-    #[error("unsupported object file format")]
     UnsupportedObject,
 
-    /// An error in a Breakpad ASCII symbol.
-    #[error("failed to process breakpad file")]
-    Breakpad(#[from] BreakpadError),
+    /// A transparent error from the inner object file type.
+    Transparent(Box<dyn Error + Send + Sync + 'static>),
+}
 
-    /// An error in an ELF file.
-    #[error("failed to process elf file")]
-    Elf(#[from] ElfError),
+/// An error when dealing with any kind of [`Object`](enum.Object.html).
+pub struct ObjectError {
+    repr: ObjectErrorRepr,
+}
 
-    /// An error in a Mach object.
-    #[error("failed to process macho file")]
-    MachO(#[from] MachError),
+impl ObjectError {
+    /// Creates a new object error with the given representation.
+    fn new(repr: ObjectErrorRepr) -> Self {
+        Self { repr }
+    }
 
-    /// An error in a Program Database.
-    #[error("failed to process pdb file")]
-    Pdb(#[from] PdbError),
+    /// Creates a new object error from an arbitrary error payload.
+    fn transparent<E>(source: E) -> Self
+    where
+        E: Into<Box<dyn Error + Send + Sync>>,
+    {
+        let repr = ObjectErrorRepr::Transparent(source.into());
+        Self { repr }
+    }
+}
 
-    /// An error in a Portable Executable.
-    #[error("failed to process pe file")]
-    Pe(#[from] PeError),
+impl fmt::Debug for ObjectError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.repr {
+            ObjectErrorRepr::Transparent(ref inner) => inner.fmt(f),
+            _ => self.repr.fmt(f),
+        }
+    }
+}
 
-    /// An error in DWARF debugging information.
-    #[error("failed to process dwarf info")]
-    Dwarf(#[from] DwarfError),
+impl fmt::Display for ObjectError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.repr {
+            ObjectErrorRepr::UnsupportedObject => write!(f, "unsupported object file format"),
+            ObjectErrorRepr::Transparent(ref inner) => inner.fmt(f),
+        }
+    }
+}
 
-    /// An error in source bundles.
-    #[error("failed to process source bundle")]
-    SourceBundle(#[from] SourceBundleError),
-
-    /// An error in a WASM file.
-    #[error("failed to process wasm file")]
-    Wasm(#[from] WasmError),
+impl Error for ObjectError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self.repr {
+            ObjectErrorRepr::UnsupportedObject => None,
+            ObjectErrorRepr::Transparent(ref inner) => inner.source(),
+        }
+    }
 }
 
 /// Tries to infer the object type from the start of the given buffer.
@@ -173,7 +191,7 @@ impl<'data> Object<'data> {
     pub fn parse(data: &'data [u8]) -> Result<Self, ObjectError> {
         macro_rules! parse_object {
             ($kind:ident, $file:ident, $data:expr) => {
-                Object::$kind($file::parse(data).map_err(ObjectError::$kind)?)
+                Object::$kind($file::parse(data).map_err(ObjectError::transparent)?)
             };
         };
 
@@ -185,7 +203,9 @@ impl<'data> Object<'data> {
             FileFormat::Pe => parse_object!(Pe, PeObject, data),
             FileFormat::SourceBundle => parse_object!(SourceBundle, SourceBundle, data),
             FileFormat::Wasm => parse_object!(Wasm, WasmObject, data),
-            FileFormat::Unknown => return Err(ObjectError::UnsupportedObject),
+            FileFormat::Unknown => {
+                return Err(ObjectError::new(ObjectErrorRepr::UnsupportedObject))
+            }
         };
 
         Ok(object)
@@ -274,31 +294,31 @@ impl<'data> Object<'data> {
             Object::Breakpad(ref o) => o
                 .debug_session()
                 .map(ObjectDebugSession::Breakpad)
-                .map_err(ObjectError::Breakpad),
+                .map_err(ObjectError::transparent),
             Object::Elf(ref o) => o
                 .debug_session()
                 .map(ObjectDebugSession::Dwarf)
-                .map_err(ObjectError::Dwarf),
+                .map_err(ObjectError::transparent),
             Object::MachO(ref o) => o
                 .debug_session()
                 .map(ObjectDebugSession::Dwarf)
-                .map_err(ObjectError::Dwarf),
+                .map_err(ObjectError::transparent),
             Object::Pdb(ref o) => o
                 .debug_session()
                 .map(ObjectDebugSession::Pdb)
-                .map_err(ObjectError::Pdb),
+                .map_err(ObjectError::transparent),
             Object::Pe(ref o) => o
                 .debug_session()
                 .map(ObjectDebugSession::Pe)
-                .map_err(ObjectError::Pe),
+                .map_err(ObjectError::transparent),
             Object::SourceBundle(ref o) => o
                 .debug_session()
                 .map(ObjectDebugSession::SourceBundle)
-                .map_err(ObjectError::SourceBundle),
+                .map_err(ObjectError::transparent),
             Object::Wasm(ref o) => o
                 .debug_session()
                 .map(ObjectDebugSession::Dwarf)
-                .map_err(ObjectError::Dwarf),
+                .map_err(ObjectError::transparent),
         }
     }
 
@@ -432,13 +452,19 @@ impl<'d> ObjectDebugSession<'d> {
     pub fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, ObjectError> {
         match *self {
             ObjectDebugSession::Breakpad(ref s) => {
-                s.source_by_path(path).map_err(ObjectError::Breakpad)
+                s.source_by_path(path).map_err(ObjectError::transparent)
             }
-            ObjectDebugSession::Dwarf(ref s) => s.source_by_path(path).map_err(ObjectError::Dwarf),
-            ObjectDebugSession::Pdb(ref s) => s.source_by_path(path).map_err(ObjectError::Pdb),
-            ObjectDebugSession::Pe(ref s) => s.source_by_path(path).map_err(ObjectError::Pe),
+            ObjectDebugSession::Dwarf(ref s) => {
+                s.source_by_path(path).map_err(ObjectError::transparent)
+            }
+            ObjectDebugSession::Pdb(ref s) => {
+                s.source_by_path(path).map_err(ObjectError::transparent)
+            }
+            ObjectDebugSession::Pe(ref s) => {
+                s.source_by_path(path).map_err(ObjectError::transparent)
+            }
             ObjectDebugSession::SourceBundle(ref s) => {
-                s.source_by_path(path).map_err(ObjectError::SourceBundle)
+                s.source_by_path(path).map_err(ObjectError::transparent)
             }
         }
     }
@@ -478,13 +504,19 @@ impl<'s> Iterator for ObjectFunctionIterator<'s> {
     fn next(&mut self) -> Option<Self::Item> {
         match *self {
             ObjectFunctionIterator::Breakpad(ref mut i) => {
-                Some(i.next()?.map_err(ObjectError::Breakpad))
+                Some(i.next()?.map_err(ObjectError::transparent))
             }
-            ObjectFunctionIterator::Dwarf(ref mut i) => Some(i.next()?.map_err(ObjectError::Dwarf)),
-            ObjectFunctionIterator::Pdb(ref mut i) => Some(i.next()?.map_err(ObjectError::Pdb)),
-            ObjectFunctionIterator::Pe(ref mut i) => Some(i.next()?.map_err(ObjectError::Pe)),
+            ObjectFunctionIterator::Dwarf(ref mut i) => {
+                Some(i.next()?.map_err(ObjectError::transparent))
+            }
+            ObjectFunctionIterator::Pdb(ref mut i) => {
+                Some(i.next()?.map_err(ObjectError::transparent))
+            }
+            ObjectFunctionIterator::Pe(ref mut i) => {
+                Some(i.next()?.map_err(ObjectError::transparent))
+            }
             ObjectFunctionIterator::SourceBundle(ref mut i) => {
-                Some(i.next()?.map_err(ObjectError::SourceBundle))
+                Some(i.next()?.map_err(ObjectError::transparent))
             }
         }
     }
@@ -507,13 +539,15 @@ impl<'s> Iterator for ObjectFileIterator<'s> {
     fn next(&mut self) -> Option<Self::Item> {
         match *self {
             ObjectFileIterator::Breakpad(ref mut i) => {
-                Some(i.next()?.map_err(ObjectError::Breakpad))
+                Some(i.next()?.map_err(ObjectError::transparent))
             }
-            ObjectFileIterator::Dwarf(ref mut i) => Some(i.next()?.map_err(ObjectError::Dwarf)),
-            ObjectFileIterator::Pdb(ref mut i) => Some(i.next()?.map_err(ObjectError::Pdb)),
-            ObjectFileIterator::Pe(ref mut i) => Some(i.next()?.map_err(ObjectError::Pe)),
+            ObjectFileIterator::Dwarf(ref mut i) => {
+                Some(i.next()?.map_err(ObjectError::transparent))
+            }
+            ObjectFileIterator::Pdb(ref mut i) => Some(i.next()?.map_err(ObjectError::transparent)),
+            ObjectFileIterator::Pe(ref mut i) => Some(i.next()?.map_err(ObjectError::transparent)),
             ObjectFileIterator::SourceBundle(ref mut i) => {
-                Some(i.next()?.map_err(ObjectError::SourceBundle))
+                Some(i.next()?.map_err(ObjectError::transparent))
             }
         }
     }
@@ -577,14 +611,16 @@ impl<'d> Archive<'d> {
             FileFormat::MachO => {
                 let inner = MachArchive::parse(data)
                     .map(ArchiveInner::MachO)
-                    .map_err(ObjectError::MachO)?;
+                    .map_err(ObjectError::transparent)?;
                 Archive(inner)
             }
             FileFormat::Pdb => Archive(ArchiveInner::Pdb(MonoArchive::new(data))),
             FileFormat::Pe => Archive(ArchiveInner::Pe(MonoArchive::new(data))),
             FileFormat::SourceBundle => Archive(ArchiveInner::SourceBundle(MonoArchive::new(data))),
             FileFormat::Wasm => Archive(ArchiveInner::Wasm(MonoArchive::new(data))),
-            FileFormat::Unknown => return Err(ObjectError::UnsupportedObject),
+            FileFormat::Unknown => {
+                return Err(ObjectError::new(ObjectErrorRepr::UnsupportedObject))
+            }
         };
 
         Ok(archive)
@@ -623,31 +659,31 @@ impl<'d> Archive<'d> {
             ArchiveInner::Breakpad(ref a) => a
                 .object_by_index(index)
                 .map(|opt| opt.map(Object::Breakpad))
-                .map_err(ObjectError::Breakpad),
+                .map_err(ObjectError::transparent),
             ArchiveInner::Elf(ref a) => a
                 .object_by_index(index)
                 .map(|opt| opt.map(Object::Elf))
-                .map_err(ObjectError::Elf),
+                .map_err(ObjectError::transparent),
             ArchiveInner::MachO(ref a) => a
                 .object_by_index(index)
                 .map(|opt| opt.map(Object::MachO))
-                .map_err(ObjectError::MachO),
+                .map_err(ObjectError::transparent),
             ArchiveInner::Pdb(ref a) => a
                 .object_by_index(index)
                 .map(|opt| opt.map(Object::Pdb))
-                .map_err(ObjectError::Pdb),
+                .map_err(ObjectError::transparent),
             ArchiveInner::Pe(ref a) => a
                 .object_by_index(index)
                 .map(|opt| opt.map(Object::Pe))
-                .map_err(ObjectError::Pe),
+                .map_err(ObjectError::transparent),
             ArchiveInner::SourceBundle(ref a) => a
                 .object_by_index(index)
                 .map(|opt| opt.map(Object::SourceBundle))
-                .map_err(ObjectError::SourceBundle),
+                .map_err(ObjectError::transparent),
             ArchiveInner::Wasm(ref a) => a
                 .object_by_index(index)
                 .map(|opt| opt.map(Object::Wasm))
-                .map_err(ObjectError::Wasm),
+                .map_err(ObjectError::transparent),
         }
     }
 
