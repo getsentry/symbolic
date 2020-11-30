@@ -97,8 +97,8 @@ impl ObjectError {
 impl fmt::Debug for ObjectError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.repr {
-            ObjectErrorRepr::Transparent(ref inner) => inner.fmt(f),
-            _ => self.repr.fmt(f),
+            ObjectErrorRepr::Transparent(ref inner) => fmt::Debug::fmt(inner, f),
+            _ => fmt::Debug::fmt(&self.repr, f),
         }
     }
 }
@@ -107,7 +107,7 @@ impl fmt::Display for ObjectError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.repr {
             ObjectErrorRepr::UnsupportedObject => write!(f, "unsupported object file format"),
-            ObjectErrorRepr::Transparent(ref inner) => inner.fmt(f),
+            ObjectErrorRepr::Transparent(ref inner) => fmt::Display::fmt(inner, f),
         }
     }
 }
