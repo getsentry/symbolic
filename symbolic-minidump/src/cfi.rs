@@ -101,11 +101,7 @@ pub struct CfiError {
 impl CfiError {
     /// Creates a new CFI error from a known kind of error as well as an
     /// arbitrary error payload.
-    ///
-    /// This function is used to generically create CFI errors which do not
-    /// originate from `symbolic` itself. The `source` argument is an arbitrary
-    /// payload which will be contained in this [`CfiError`].
-    pub fn new<E>(kind: CfiErrorKind, source: E) -> Self
+    fn new<E>(kind: CfiErrorKind, source: E) -> Self
     where
         E: Into<Box<dyn Error + Send + Sync>>,
     {
