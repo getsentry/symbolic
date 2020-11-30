@@ -16,9 +16,6 @@ use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::Parse;
 
-#[doc(inline)]
-pub use goblin::error::Error as GoblinError;
-
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;
 

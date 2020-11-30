@@ -33,7 +33,6 @@ use symbolic_debuginfo::dwarf::gimli::{
     UnwindSection,
 };
 use symbolic_debuginfo::dwarf::Dwarf;
-use symbolic_debuginfo::elf::GoblinError;
 use symbolic_debuginfo::pdb::pdb::{self, FallibleIterator, FrameData, Rva, StringTable};
 use symbolic_debuginfo::pdb::PdbObject;
 use symbolic_debuginfo::pe::{PeObject, RuntimeFunction, UnwindOperation};
@@ -148,12 +147,6 @@ impl From<ObjectError> for CfiError {
 
 impl From<pdb::Error> for CfiError {
     fn from(e: pdb::Error) -> Self {
-        Self::new(CfiErrorKind::BadDebugInfo, e)
-    }
-}
-
-impl From<GoblinError> for CfiError {
-    fn from(e: GoblinError) -> Self {
         Self::new(CfiErrorKind::BadDebugInfo, e)
     }
 }
@@ -656,7 +649,8 @@ impl<W: Write> AsciiCfiWriter<W> {
         };
 
         for function_result in exception_data {
-            let function = function_result?;
+            let function =
+                function_result.map_err(|e| CfiError::new(CfiErrorKind::BadDebugInfo, e))?;
 
             // Exception directories can contain zeroed out sections which need to be skipped.
             // Neither their start/end RVA nor the unwind info RVA is valid.
@@ -675,7 +669,9 @@ impl<W: Write> AsciiCfiWriter<W> {
 
             let mut next_function = Some(function);
             while let Some(next) = next_function {
-                let unwind_info = exception_data.get_unwind_info(next, sections)?;
+                let unwind_info = exception_data
+                    .get_unwind_info(next, sections)
+                    .map_err(|e| CfiError::new(CfiErrorKind::BadDebugInfo, e))?;
 
                 for code_result in &unwind_info {
                     // Due to variable length encoding of operator codes, there is little point in
