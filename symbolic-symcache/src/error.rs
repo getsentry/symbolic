@@ -27,7 +27,7 @@ impl fmt::Display for ValueKind {
     }
 }
 
-/// An error returned when handling [`SymCache`](struct.SymCache.html).
+/// The error type for [`SymCacheError`].
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SymCacheErrorKind {
