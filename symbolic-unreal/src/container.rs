@@ -352,25 +352,32 @@ impl FusedIterator for Unreal4FileIterator<'_> {}
 
 impl ExactSizeIterator for Unreal4FileIterator<'_> {}
 
-#[test]
-fn test_parse_empty_buffer() {
-    let crash = &[];
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::error::Error;
 
-    let result = Unreal4Crash::parse(crash);
+    #[test]
+    fn test_parse_empty_buffer() {
+        let crash = &[];
 
-    assert!(matches!(
-        result.expect_err("empty crash").kind(),
-        Unreal4ErrorKind::Empty
-    ));
-}
+        let result = Unreal4Crash::parse(crash);
 
-#[test]
-fn test_parse_invalid_input() {
-    let crash = &[0u8; 1];
+        assert!(matches!(
+            result.expect_err("empty crash").kind(),
+            Unreal4ErrorKind::Empty
+        ));
+    }
 
-    let result = Unreal4Crash::parse(crash);
-    let error = result.expect_err("empty crash");
+    #[test]
+    fn test_parse_invalid_input() {
+        let crash = &[0u8; 1];
 
-    assert_eq!(error.kind(), Unreal4ErrorKind::BadCompression);
-    assert_eq!(error.to_string(), "corrupt deflate stream");
+        let result = Unreal4Crash::parse(crash);
+        let error = result.expect_err("empty crash");
+        assert_eq!(error.kind(), Unreal4ErrorKind::BadCompression);
+
+        let source = error.source().expect("error source");
+        assert_eq!(source.to_string(), "corrupt deflate stream");
+    }
 }
