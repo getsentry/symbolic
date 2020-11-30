@@ -51,11 +51,7 @@ pub struct Unreal4Error {
 impl Unreal4Error {
     /// Creates a new Unreal4 error from a known kind of error as well as an
     /// arbitrary error payload.
-    ///
-    /// This function is used to generically create Unreal4 errors which do not
-    /// originate from `symbolic` itself. The `source` argument is an arbitrary
-    /// payload which will be contained in this [`Unreal4Error`].
-    pub fn new<E>(kind: Unreal4ErrorKind, source: E) -> Self
+    pub(crate) fn new<E>(kind: Unreal4ErrorKind, source: E) -> Self
     where
         E: Into<Box<dyn Error + Send + Sync>>,
     {
