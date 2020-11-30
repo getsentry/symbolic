@@ -285,18 +285,18 @@ impl SymbolicErrorCode {
                 };
             }
 
-            use symbolic::minidump::cfi::CfiError;
+            use symbolic::minidump::cfi::{CfiError, CfiErrorKind};
             if let Some(error) = error.downcast_ref::<CfiError>() {
-                return match error {
-                    CfiError::MissingDebugInfo => SymbolicErrorCode::CfiErrorMissingDebugInfo,
-                    CfiError::UnsupportedDebugFormat => {
+                return match error.kind() {
+                    CfiErrorKind::MissingDebugInfo => SymbolicErrorCode::CfiErrorMissingDebugInfo,
+                    CfiErrorKind::UnsupportedDebugFormat => {
                         SymbolicErrorCode::CfiErrorUnsupportedDebugFormat
                     }
-                    CfiError::BadDebugInfo(_) => SymbolicErrorCode::CfiErrorBadDebugInfo,
-                    CfiError::UnsupportedArch(_) => SymbolicErrorCode::CfiErrorUnsupportedArch,
-                    CfiError::InvalidAddress => SymbolicErrorCode::CfiErrorInvalidAddress,
-                    CfiError::WriteError(_) => SymbolicErrorCode::CfiErrorWriteError,
-                    CfiError::BadFileMagic => SymbolicErrorCode::CfiErrorBadFileMagic,
+                    CfiErrorKind::BadDebugInfo => SymbolicErrorCode::CfiErrorBadDebugInfo,
+                    CfiErrorKind::UnsupportedArch => SymbolicErrorCode::CfiErrorUnsupportedArch,
+                    CfiErrorKind::InvalidAddress => SymbolicErrorCode::CfiErrorInvalidAddress,
+                    CfiErrorKind::WriteFailed => SymbolicErrorCode::CfiErrorWriteError,
+                    CfiErrorKind::BadFileMagic => SymbolicErrorCode::CfiErrorBadFileMagic,
                     _ => SymbolicErrorCode::CfiErrorUnknown,
                 };
             }
