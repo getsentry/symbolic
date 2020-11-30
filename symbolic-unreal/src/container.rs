@@ -10,9 +10,8 @@ use flate2::read::ZlibDecoder;
 use scroll::{ctx::TryFromCtx, Endian, Pread};
 
 use crate::context::Unreal4Context;
-use crate::error::Unreal4Error;
+use crate::error::{Unreal4Error, Unreal4ErrorKind};
 use crate::logs::Unreal4LogEntry;
-use crate::Unreal4ErrorKind;
 
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 struct AnsiString(String);
