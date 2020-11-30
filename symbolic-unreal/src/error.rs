@@ -3,7 +3,7 @@ use std::fmt;
 
 use thiserror::Error;
 
-/// Errors related to parsing an UE4 crash file.
+/// The error type for [`Unreal4Error`].
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Unreal4ErrorKind {
