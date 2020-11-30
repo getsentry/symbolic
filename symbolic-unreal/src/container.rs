@@ -12,6 +12,7 @@ use scroll::{ctx::TryFromCtx, Endian, Pread};
 use crate::context::Unreal4Context;
 use crate::error::Unreal4Error;
 use crate::logs::Unreal4LogEntry;
+use crate::Unreal4ErrorKind;
 
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 struct AnsiString(String);
@@ -133,7 +134,7 @@ impl Unreal4Crash {
 
         let header = bytes.gread_with(&mut offset, scroll::LE)?;
         if offset != bytes.len() {
-            return Err(Unreal4Error::TrailingData);
+            return Err(Unreal4ErrorKind::TrailingData.into());
         }
 
         Ok(Unreal4Crash {
@@ -146,12 +147,12 @@ impl Unreal4Crash {
     /// Parses a UE4 crash dump from the original, compressed data.
     pub fn parse(bytes: &[u8]) -> Result<Self, Unreal4Error> {
         if bytes.is_empty() {
-            return Err(Unreal4Error::Empty);
+            return Err(Unreal4ErrorKind::Empty.into());
         }
 
         let mut decompressed = Vec::new();
         std::io::copy(&mut ZlibDecoder::new(bytes), &mut decompressed)
-            .map_err(Unreal4Error::BadCompression)?;
+            .map_err(|e| Unreal4Error::new(Unreal4ErrorKind::BadCompression, e))?;
 
         Self::from_bytes(decompressed.into())
     }
@@ -358,9 +359,9 @@ fn test_parse_empty_buffer() {
     let result = Unreal4Crash::parse(crash);
 
     assert!(matches!(
-        result.expect_err("empty crash"),
-        Unreal4Error::Empty
-    ))
+        result.expect_err("empty crash").kind(),
+        Unreal4ErrorKind::Empty
+    ));
 }
 
 #[test]
@@ -368,11 +369,8 @@ fn test_parse_invalid_input() {
     let crash = &[0u8; 1];
 
     let result = Unreal4Crash::parse(crash);
+    let error = result.expect_err("empty crash");
 
-    let err = match result.expect_err("empty crash") {
-        Unreal4Error::BadCompression(b) => b.to_string(),
-        _ => panic!(),
-    };
-
-    assert_eq!("corrupt deflate stream", err)
+    assert_eq!(error.kind(), Unreal4ErrorKind::BadCompression);
+    assert_eq!(error.to_string(), "corrupt deflate stream");
 }

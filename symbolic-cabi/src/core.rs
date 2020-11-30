@@ -368,17 +368,17 @@ impl SymbolicErrorCode {
                 };
             }
 
-            use symbolic::unreal::Unreal4Error;
+            use symbolic::unreal::{Unreal4Error, Unreal4ErrorKind};
             if let Some(error) = error.downcast_ref::<Unreal4Error>() {
-                return match error {
-                    Unreal4Error::Empty => SymbolicErrorCode::Unreal4ErrorEmpty,
-                    Unreal4Error::BadCompression(_) => {
+                return match error.kind() {
+                    Unreal4ErrorKind::Empty => SymbolicErrorCode::Unreal4ErrorEmpty,
+                    Unreal4ErrorKind::BadCompression => {
                         SymbolicErrorCode::Unreal4ErrorBadCompression
                     }
-                    Unreal4Error::BadData(_) => SymbolicErrorCode::Unreal4ErrorBadData,
-                    Unreal4Error::TrailingData => SymbolicErrorCode::Unreal4ErrorTrailingData,
-                    Unreal4Error::InvalidXml(_) => SymbolicErrorCode::Unreal4ErrorInvalidXml,
-                    Unreal4Error::InvalidLogEntry(_) => {
+                    Unreal4ErrorKind::BadData => SymbolicErrorCode::Unreal4ErrorBadData,
+                    Unreal4ErrorKind::TrailingData => SymbolicErrorCode::Unreal4ErrorTrailingData,
+                    Unreal4ErrorKind::InvalidXml => SymbolicErrorCode::Unreal4ErrorInvalidXml,
+                    Unreal4ErrorKind::InvalidLogEntry => {
                         SymbolicErrorCode::Unreal4ErrorInvalidLogEntry
                     }
                     _ => SymbolicErrorCode::Unreal4ErrorUnknown,
