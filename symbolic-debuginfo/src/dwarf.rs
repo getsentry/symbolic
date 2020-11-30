@@ -14,7 +14,7 @@ use std::marker::PhantomData;
 use std::ops::{Deref, RangeBounds};
 
 use fallible_iterator::FallibleIterator;
-use gimli::read::{AttributeValue, Range};
+use gimli::read::{AttributeValue, Error as GimliError, Range};
 use gimli::{constants, UnitSectionOffset};
 use lazycell::LazyCell;
 use thiserror::Error;
@@ -26,7 +26,6 @@ use crate::private::FunctionStack;
 
 #[doc(hidden)]
 pub use gimli;
-pub use gimli::read::Error as GimliError;
 pub use gimli::RunTimeEndian as Endian;
 
 type Slice<'a> = gimli::read::EndianSlice<'a, Endian>;
