@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fmt;
 
 use thiserror::Error;
@@ -26,55 +27,94 @@ impl fmt::Display for ValueKind {
     }
 }
 
-/// An error returned when handling [`SymCache`](struct.SymCache.html).
+/// The error type for [`SymCacheError`].
 #[non_exhaustive]
-#[derive(Debug, Error)]
-pub enum SymCacheError {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SymCacheErrorKind {
     /// Invalid magic bytes in the symcache header.
-    #[error("bad symcache magic")]
     BadFileMagic,
 
     /// Invalid flags or fields in the symcache header.
-    #[error("invalid symcache header")]
-    BadFileHeader(#[source] std::io::Error),
+    BadFileHeader,
 
     /// A segment could not be read, likely due to IO errors.
-    #[error("cannot read symcache segment")]
     BadSegment,
 
     /// Contents in the symcache file are malformed.
-    #[error("malformed symcache file")]
     BadCacheFile,
 
     /// The symcache version is not known.
-    #[error("unsupported symcache version")]
     UnsupportedVersion,
 
     /// The `Object` contains invalid data and cannot be converted.
-    #[error("malformed debug info file")]
-    BadDebugFile(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+    BadDebugFile,
 
     /// A required debug section is missing in the `Object` file.
-    #[error("missing debug section")]
     MissingDebugSection,
 
     /// The `Object` file was stripped of debug information.
-    #[error("no debug information found in file")]
     MissingDebugInfo,
 
     /// The debug information in the `Object` file is not supported.
-    #[error("unsupported debug information")]
     UnsupportedDebugKind,
 
     /// A value cannot be written to symcache as it overflows the record size.
-    #[error("{0} too large for symcache file format")]
     ValueTooLarge(ValueKind),
 
     /// A value cannot be written to symcache as it overflows the segment counter.
-    #[error("too many {0}s for symcache")]
     TooManyValues(ValueKind),
 
     /// Generic error when writing a symcache, most likely IO.
-    #[error("failed to write symcache")]
-    WriteFailed(#[source] std::io::Error),
+    WriteFailed,
+}
+
+impl fmt::Display for SymCacheErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::BadFileMagic => write!(f, "bad symcache magic"),
+            Self::BadFileHeader => write!(f, "invalid symcache header"),
+            Self::BadSegment => write!(f, "cannot read symcache segment"),
+            Self::BadCacheFile => write!(f, "malformed symcache file"),
+            Self::UnsupportedVersion => write!(f, "unsupported symcache version"),
+            Self::BadDebugFile => write!(f, "malformed debug info file"),
+            Self::MissingDebugSection => write!(f, "missing debug section"),
+            Self::MissingDebugInfo => write!(f, "no debug information found in file"),
+            Self::UnsupportedDebugKind => write!(f, "unsupported debug information"),
+            Self::ValueTooLarge(kind) => write!(f, "{} too large for symcache file format", kind),
+            Self::TooManyValues(kind) => write!(f, "too many {}s for symcache", kind),
+            Self::WriteFailed => write!(f, "failed to write symcache"),
+        }
+    }
+}
+
+/// An error returned when handling [`SymCache`](struct.SymCache.html).
+#[derive(Debug, Error)]
+#[error("{kind}")]
+pub struct SymCacheError {
+    kind: SymCacheErrorKind,
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+impl SymCacheError {
+    /// Creates a new SymCache error from a known kind of error as well as an
+    /// arbitrary error payload.
+    pub(crate) fn new<E>(kind: SymCacheErrorKind, source: E) -> Self
+    where
+        E: Into<Box<dyn Error + Send + Sync>>,
+    {
+        let source = Some(source.into());
+        Self { kind, source }
+    }
+
+    /// Returns the corresponding [`SymCacheErrorKind`] for this error.
+    pub fn kind(&self) -> SymCacheErrorKind {
+        self.kind
+    }
+}
+
+impl From<SymCacheErrorKind> for SymCacheError {
+    fn from(kind: SymCacheErrorKind) -> Self {
+        Self { kind, source: None }
+    }
 }
