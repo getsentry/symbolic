@@ -8,8 +8,8 @@ use num::FromPrimitive;
 use symbolic_common::{Arch, DebugId, Language};
 use symbolic_debuginfo::{DebugSession, FileInfo, Function, LineInfo, ObjectLike, Symbol};
 
-use crate::error::{SymCacheError, ValueKind};
-use crate::{format, SymCacheErrorKind};
+use crate::error::{SymCacheError, SymCacheErrorKind, ValueKind};
+use crate::format;
 
 // Performs a shallow check whether this function might contain any lines.
 fn is_empty_function(function: &Function<'_>) -> bool {
