@@ -18,22 +18,26 @@
 //! [`CfiCache`]: struct.CfiCache.html
 
 use std::collections::HashMap;
+use std::error::Error;
+use std::fmt;
 use std::io::{self, Write};
 use std::ops::Range;
+
+use thiserror::Error;
 
 use symbolic_common::{Arch, ByteView, UnknownArchError};
 use symbolic_debuginfo::breakpad::{BreakpadError, BreakpadObject, BreakpadStackRecord};
 use symbolic_debuginfo::dwarf::gimli::{
-    BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error, FrameDescriptionEntry, Reader,
-    Register, RegisterRule, UninitializedUnwindContext, UnwindSection,
+    BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error as GimliError,
+    FrameDescriptionEntry, Reader, Register, RegisterRule, UninitializedUnwindContext,
+    UnwindSection,
 };
-use symbolic_debuginfo::dwarf::{Dwarf, DwarfError, GimliError};
-use symbolic_debuginfo::elf::{ElfError, GoblinError};
+use symbolic_debuginfo::dwarf::Dwarf;
+use symbolic_debuginfo::elf::GoblinError;
 use symbolic_debuginfo::pdb::pdb::{self, FallibleIterator, FrameData, Rva, StringTable};
-use symbolic_debuginfo::pdb::{PdbError, PdbObject};
+use symbolic_debuginfo::pdb::PdbObject;
 use symbolic_debuginfo::pe::{PeObject, RuntimeFunction, UnwindOperation};
 use symbolic_debuginfo::{Object, ObjectError, ObjectLike};
-use thiserror::Error;
 
 /// The latest version of the file format.
 pub const CFICACHE_LATEST_VERSION: u32 = 1;
@@ -45,60 +49,118 @@ const EMPTY_FUNCTION: RuntimeFunction = RuntimeFunction {
     unwind_info_address: 0,
 };
 
-/// An error returned by [`AsciiCfiWriter`](struct.AsciiCfiWriter.html).
+/// The error type for [`CfiError`].
 #[non_exhaustive]
-#[derive(Debug, Error)]
-pub enum CfiError {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CfiErrorKind {
     /// Required debug sections are missing in the `Object` file.
-    #[error("missing cfi debug sections")]
     MissingDebugInfo,
 
     /// The debug information in the `Object` file is not supported.
-    #[error("unsupported debug format")]
     UnsupportedDebugFormat,
 
     /// The debug information in the `Object` file is invalid.
-    #[error("bad debug information")]
-    BadDebugInfo(#[from] Box<ObjectError>),
+    BadDebugInfo,
 
     /// The `Object`s architecture is not supported by symbolic.
-    #[error("unsupported architecture")]
-    UnsupportedArch(#[from] UnknownArchError),
+    UnsupportedArch,
 
     /// CFI for an invalid address outside the mapped range was encountered.
-    #[error("invalid cfi address")]
     InvalidAddress,
 
     /// Generic error when writing CFI information, likely IO.
-    #[error("failed to write cfi")]
-    WriteError(#[from] io::Error),
+    WriteFailed,
 
     /// Invalid magic bytes in the cfi cache header.
-    #[error("bad cfi cache magic")]
     BadFileMagic,
+}
+
+impl fmt::Display for CfiErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MissingDebugInfo => write!(f, "missing cfi debug sections"),
+            Self::UnsupportedDebugFormat => write!(f, "unsupported debug format"),
+            Self::BadDebugInfo => write!(f, "bad debug information"),
+            Self::UnsupportedArch => write!(f, "unsupported architecture"),
+            Self::InvalidAddress => write!(f, "invalid cfi address"),
+            Self::WriteFailed => write!(f, "failed to write cfi"),
+            Self::BadFileMagic => write!(f, "bad cfi cache magic"),
+        }
+    }
+}
+
+/// An error returned by [`AsciiCfiWriter`](struct.AsciiCfiWriter.html).
+#[derive(Debug, Error)]
+#[error("{kind}")]
+pub struct CfiError {
+    kind: CfiErrorKind,
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+impl CfiError {
+    /// Creates a new CFI error from a known kind of error as well as an
+    /// arbitrary error payload.
+    fn new<E>(kind: CfiErrorKind, source: E) -> Self
+    where
+        E: Into<Box<dyn Error + Send + Sync>>,
+    {
+        let source = Some(source.into());
+        Self { kind, source }
+    }
+
+    /// Returns the corresponding [`CfiErrorKind`] for this error.
+    pub fn kind(&self) -> CfiErrorKind {
+        self.kind
+    }
+}
+
+impl From<CfiErrorKind> for CfiError {
+    fn from(kind: CfiErrorKind) -> Self {
+        Self { kind, source: None }
+    }
+}
+
+impl From<io::Error> for CfiError {
+    fn from(e: io::Error) -> Self {
+        Self::new(CfiErrorKind::WriteFailed, e)
+    }
+}
+
+impl From<UnknownArchError> for CfiError {
+    fn from(_: UnknownArchError) -> Self {
+        // UnknownArchError does not carry any useful information
+        CfiErrorKind::UnsupportedArch.into()
+    }
 }
 
 impl From<BreakpadError> for CfiError {
     fn from(e: BreakpadError) -> Self {
-        Box::new(ObjectError::from(e)).into()
+        Self::new(CfiErrorKind::BadDebugInfo, e)
+    }
+}
+
+impl From<ObjectError> for CfiError {
+    fn from(e: ObjectError) -> Self {
+        Self::new(CfiErrorKind::BadDebugInfo, e)
     }
 }
 
 impl From<pdb::Error> for CfiError {
     fn from(e: pdb::Error) -> Self {
-        Box::new(ObjectError::from(PdbError::from(e))).into()
+        Self::new(CfiErrorKind::BadDebugInfo, e)
     }
 }
 
 impl From<GoblinError> for CfiError {
     fn from(e: GoblinError) -> Self {
-        Box::new(ObjectError::from(ElfError::from(e))).into()
+        Self::new(CfiErrorKind::BadDebugInfo, e)
     }
 }
 
 impl From<GimliError> for CfiError {
     fn from(e: GimliError) -> Self {
-        Box::new(ObjectError::from(DwarfError::from(e))).into()
+        Self::new(CfiErrorKind::BadDebugInfo, e)
     }
 }
 
@@ -314,9 +376,9 @@ impl<W: Write> AsciiCfiWriter<W> {
             match table.next_row() {
                 Ok(None) => break,
                 Ok(Some(row)) => rows.push(row.clone()),
-                Err(Error::UnknownCallFrameInstruction(_)) => continue,
+                Err(GimliError::UnknownCallFrameInstruction(_)) => continue,
                 // NOTE: Temporary workaround for https://github.com/gimli-rs/gimli/pull/487
-                Err(Error::TooManyRegisterRules) => continue,
+                Err(GimliError::TooManyRegisterRules) => continue,
                 Err(e) => return Err(e.into()),
             }
         }
@@ -749,7 +811,7 @@ impl<'a> CfiCache<'a> {
             return Ok(CfiCache { inner });
         }
 
-        Err(CfiError::BadFileMagic)
+        Err(CfiErrorKind::BadFileMagic.into())
     }
 
     /// Returns the cache file format version.
