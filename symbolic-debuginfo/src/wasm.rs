@@ -1,5 +1,6 @@
 //! Support for WASM Objects (WebAssembly).
 use std::borrow::Cow;
+use std::error::Error;
 use std::fmt;
 
 use thiserror::Error;
@@ -11,12 +12,22 @@ use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::Parse;
 
 /// An error when dealing with [`WasmObject`](struct.WasmObject.html).
-#[non_exhaustive]
 #[derive(Debug, Error)]
-pub enum WasmError {
-    /// The module cannot be parsed.
-    #[error("invalid WASM file")]
-    BadObject,
+#[error("invalid WASM file")]
+pub struct WasmError {
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+impl WasmError {
+    /// Creates a new WASM error from an arbitrary error payload.
+    fn new<E>(source: E) -> Self
+    where
+        E: Into<Box<dyn Error + Send + Sync>>,
+    {
+        let source = Some(source.into());
+        Self { source }
+    }
 }
 
 /// Wasm object container (.wasm), used for executables and debug
@@ -37,10 +48,7 @@ impl<'data> WasmObject<'data> {
 
     /// Tries to parse a WASM from the given slice.
     pub fn parse(data: &'data [u8]) -> Result<Self, WasmError> {
-        let wasm_module = match walrus::Module::from_buffer(data) {
-            Ok(module) => module,
-            Err(_) => return Err(WasmError::BadObject),
-        };
+        let wasm_module = walrus::Module::from_buffer(data).map_err(WasmError::new)?;
 
         // we need to parse the file a second time to get the offset to the
         // code section as walrus does not expose that yet.

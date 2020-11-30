@@ -1,6 +1,7 @@
 //! Support for the Executable and Linkable Format, used on Linux.
 
 use std::borrow::Cow;
+use std::error::Error;
 use std::fmt;
 use std::io::Cursor;
 
@@ -39,12 +40,22 @@ const EF_MIPS_ABI_EABI64: u32 = 0x0000_4000;
 const MIPS_64_FLAGS: u32 = EF_MIPS_ABI_O64 | EF_MIPS_ABI_EABI64;
 
 /// An error when dealing with [`ElfObject`](struct.ElfObject.html).
-#[non_exhaustive]
 #[derive(Debug, Error)]
-pub enum ElfError {
-    /// The data in the ELF file could not be parsed.
-    #[error("invalid ELF file")]
-    BadObject(#[from] GoblinError),
+#[error("invalid ELF file")]
+pub struct ElfError {
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+impl ElfError {
+    /// Creates a new ELF error from an arbitrary error payload.
+    fn new<E>(source: E) -> Self
+    where
+        E: Into<Box<dyn Error + Send + Sync>>,
+    {
+        let source = Some(source.into());
+        Self { source }
+    }
 }
 
 /// Executable and Linkable Format, used for executables and libraries on Linux.
@@ -64,7 +75,9 @@ impl<'data> ElfObject<'data> {
 
     /// Tries to parse an ELF object from the given slice.
     pub fn parse(data: &'data [u8]) -> Result<Self, ElfError> {
-        Ok(elf::Elf::parse(data).map(|elf| ElfObject { elf, data })?)
+        elf::Elf::parse(data)
+            .map(|elf| ElfObject { elf, data })
+            .map_err(ElfError::new)
     }
 
     /// The container file format, which is always `FileFormat::Elf`.
