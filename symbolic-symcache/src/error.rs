@@ -101,7 +101,7 @@ impl SymCacheError {
     /// arbitrary error payload.
     ///
     /// This function is used to generically create symcache errors which do not
-    /// originate from `symbolic` itself. The `sourcce` argument is an arbitrary
+    /// originate from `symbolic` itself. The `source` argument is an arbitrary
     /// payload which will be contained in this [`SymCacheError`].
     pub fn new<E>(kind: SymCacheErrorKind, source: E) -> Self
     where
