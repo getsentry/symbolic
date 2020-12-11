@@ -5,6 +5,9 @@ on:
     branches:
       - "release/**"
 
+  # FIXME: Temporarily build pull requests.
+  pull_request:
+
 jobs:
   python-wheel-mac:
     strategy:
