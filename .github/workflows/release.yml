@@ -13,13 +13,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-10.15
-            python-version: 2.7
-          - os: macos-11.0
-            python-version: 3.8
+          - macos-version: "10.15"
+            python-version: "2.7"
+          - macos-version: "11.0"
+            python-version: "3.8"
 
-    name: Python macOS ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Python macOS ${{ matrix.macos-version }}
+    runs-on: macos-${{ matrix.macos-version }}
 
     steps:
       - uses: actions/checkout@v2
