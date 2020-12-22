@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased
+## 8.0.0
 
 **Breaking Changes**:
 
-- Usage of `failure` was removed, and all Error types were changed to only implement `std::error::Error` and related traits.
+- Usage of `failure` was removed, and all error types were changed to only implement `std::error::Error` and related traits.
 - `symbolic-proguard` was removed in favor of the `proguard` crate. Proguard is still supported via `symbolic-cabi` and the python API however.
 - Deprecated APIs have been removed:
   - `InstructionInfo`'s fields are no longer public.
@@ -14,6 +14,20 @@
   - `Unreal4ContextRuntimeProperties::misc_primary_cpu_brand` is has been removed.
 - Deprecated Python APIs have been removed:
   - `CodeModule.id` and `CodeModule.name` Use `debug_id` and `code_file`, respectively.
+- `DemangleFormat` and public fields of `DemangleOptions` have been removed in favor of builder methods on `DemangleOptions`.
+- `Name::new` now takes both the `NameMangling` state, and the `Language` explicitly.
+
+**Features**:
+
+- Add support for the `wasm32` architecture. ([#166](https://github.com/getsentry/symbolic/pull/166))
+- Support demangling for Swift 5.3. ([#282](https://github.com/getsentry/symbolic/pull/282))
+
+**Bug Fixes**:
+
+- Detect mangled anonymous namespaces in PDB inlinees ([#261](https://github.com/getsentry/symbolic/pull/261))
+- Fix a panic due to undefined behavior. ([#287](https://github.com/getsentry/symbolic/pull/287))
+- Skip line program sequences at 0. ([#291](https://github.com/getsentry/symbolic/pull/291))
+- Prefer DWARF names for Dart functions. ([#293](https://github.com/getsentry/symbolic/pull/293))
 
 ## 7.5.0
 

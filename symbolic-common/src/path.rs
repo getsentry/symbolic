@@ -112,12 +112,12 @@ pub fn join_path(base: &str, other: &str) -> String {
     }
 
     // absolute paths
-    if base == "" || is_absolute_windows_path(other) || is_absolute_unix_path(other) {
+    if base.is_empty() || is_absolute_windows_path(other) || is_absolute_unix_path(other) {
         return other.into();
     }
 
     // other weird cases
-    if other == "" {
+    if other.is_empty() {
         return base.into();
     }
 

@@ -1,10 +1,11 @@
 //! Support for Mach Objects, used on macOS and iOS.
 
 use std::borrow::Cow;
+use std::error::Error;
 use std::fmt;
 use std::io::Cursor;
 
-use goblin::{error::Error as GoblinError, mach};
+use goblin::mach;
 use smallvec::SmallVec;
 use thiserror::Error;
 
@@ -15,12 +16,22 @@ use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 
 /// An error when dealing with [`MachObject`](struct.MachObject.html).
-#[non_exhaustive]
 #[derive(Debug, Error)]
-pub enum MachError {
-    /// The data in the MachO file could not be parsed.
-    #[error("invalid MachO file")]
-    BadObject(#[from] GoblinError),
+#[error("invalid MachO file")]
+pub struct MachError {
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+impl MachError {
+    /// Creates a new MachO error from an arbitrary error payload.
+    fn new<E>(source: E) -> Self
+    where
+        E: Into<Box<dyn Error + Send + Sync>>,
+    {
+        let source = Some(source.into());
+        Self { source }
+    }
 }
 
 /// Mach Object containers, used for executables and debug companions on macOS and iOS.
@@ -40,7 +51,9 @@ impl<'d> MachObject<'d> {
 
     /// Tries to parse a MachO from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
-        Ok(mach::MachO::parse(data, 0).map(|macho| MachObject { macho, data })?)
+        mach::MachO::parse(data, 0)
+            .map(|macho| MachObject { macho, data })
+            .map_err(MachError::new)
     }
 
     /// The container file format, which is always `FileFormat::MachO`.
@@ -217,7 +230,7 @@ impl<'d> MachObject<'d> {
     /// [`has_debug_info`](struct.MachObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
         let symbols = self.symbol_map();
-        DwarfDebugSession::parse(self, symbols, self.load_address(), self.kind())
+        DwarfDebugSession::parse(self, symbols, self.load_address() as i64, self.kind())
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -455,7 +468,7 @@ impl<'d, 'a> Iterator for FatMachObjectIterator<'d, 'a> {
                 let end = ((arch.offset + arch.size) as usize).min(self.data.len());
                 Some(MachObject::parse(&self.data[start..end]))
             }
-            Some(Err(error)) => Some(Err(MachError::BadObject(error))),
+            Some(Err(error)) => Some(Err(MachError::new(error))),
             None => None,
         }
     }
@@ -487,7 +500,9 @@ impl<'d> FatMachO<'d> {
 
     /// Tries to parse a fat MachO container from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
-        Ok(mach::MultiArch::new(data).map(|fat| FatMachO { fat, data })?)
+        mach::MultiArch::new(data)
+            .map(|fat| FatMachO { fat, data })
+            .map_err(MachError::new)
     }
 
     /// Returns an iterator over objects in this container.
@@ -510,7 +525,7 @@ impl<'d> FatMachO<'d> {
     /// be parsed.
     pub fn object_by_index(&self, index: usize) -> Result<Option<MachObject<'d>>, MachError> {
         let arch = match self.fat.iter_arches().nth(index) {
-            Some(arch) => arch?,
+            Some(arch) => arch.map_err(MachError::new)?,
             None => return Ok(None),
         };
 

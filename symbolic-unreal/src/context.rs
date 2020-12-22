@@ -166,7 +166,7 @@ impl Unreal4ContextRuntimeProperties {
 
         fn get_text_or_none(elm: &Element) -> Option<String> {
             let text = elm.text();
-            if text != "" {
+            if !text.is_empty() {
                 Some(text.to_string())
             } else {
                 None

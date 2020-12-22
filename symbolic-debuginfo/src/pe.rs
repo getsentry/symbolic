@@ -1,11 +1,12 @@
 //! Support for Portable Executables, an extension of COFF used on Windows.
 
 use std::borrow::Cow;
+use std::error::Error;
 use std::fmt;
 use std::io::Cursor;
 use std::marker::PhantomData;
 
-use goblin::{error::Error as GoblinError, pe};
+use goblin::pe;
 use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
@@ -16,13 +17,23 @@ use crate::private::Parse;
 pub use goblin::pe::exception::*;
 pub use goblin::pe::section_table::SectionTable;
 
-/// An error when dealing with [`PeObject`](struct.PeObject.html).
-#[non_exhaustive]
+/// An error when dealing with [`PEObject`](struct.PEObject.html).
 #[derive(Debug, Error)]
-pub enum PeError {
-    /// The data in the PE file could not be parsed.
-    #[error("invalid PE file")]
-    BadObject(#[from] GoblinError),
+#[error("invalid PE file")]
+pub struct PeError {
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+impl PeError {
+    /// Creates a new PE error from an arbitrary error payload.
+    fn new<E>(source: E) -> Self
+    where
+        E: Into<Box<dyn Error + Send + Sync>>,
+    {
+        let source = Some(source.into());
+        Self { source }
+    }
 }
 
 /// Detects if the PE is a packer stub.
@@ -66,7 +77,7 @@ impl<'data> PeObject<'data> {
 
     /// Tries to parse a PE object from the given slice.
     pub fn parse(data: &'data [u8]) -> Result<Self, PeError> {
-        let pe = pe::PE::parse(data).map_err(PeError::BadObject)?;
+        let pe = pe::PE::parse(data).map_err(PeError::new)?;
         let is_stub = is_pe_stub(&pe);
         Ok(PeObject { pe, data, is_stub })
     }

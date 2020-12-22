@@ -8,24 +8,24 @@
 //! [`MachObject`]: ../macho/struct.MachObject.html
 
 use std::borrow::Cow;
+use std::error::Error;
 use std::fmt;
 use std::marker::PhantomData;
-use std::ops::Deref;
+use std::ops::{Deref, RangeBounds};
 
 use fallible_iterator::FallibleIterator;
-use gimli::read::{AttributeValue, Range};
+use gimli::read::{AttributeValue, Error as GimliError, Range};
 use gimli::{constants, UnitSectionOffset};
 use lazycell::LazyCell;
 use thiserror::Error;
 
-use symbolic_common::{AsSelf, Language, Name, SelfCell};
+use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
 
 use crate::base::*;
 use crate::private::FunctionStack;
 
 #[doc(hidden)]
 pub use gimli;
-pub use gimli::read::Error as GimliError;
 pub use gimli::RunTimeEndian as Endian;
 
 type Slice<'a> = gimli::read::EndianSlice<'a, Endian>;
@@ -43,29 +43,84 @@ type IncompleteLineNumberProgram<'a> = gimli::read::IncompleteLineProgram<Slice<
 type LineNumberProgramHeader<'a> = gimli::read::LineProgramHeader<Slice<'a>>;
 type LineProgramFileEntry<'a> = gimli::read::FileEntry<Slice<'a>>;
 
-/// An error handling [`DWARF`](trait.Dwarf.html) debugging information.
+/// This applies the offset to the address.
+///
+/// This function does not panic but would wrap around if too large or small
+/// numbers are passed.
+fn offset(addr: u64, offset: i64) -> u64 {
+    (addr as i64).wrapping_sub(offset as i64) as u64
+}
+
+/// The error type for [`DwarfError`].
 #[non_exhaustive]
-#[derive(Debug, Error)]
-pub enum DwarfError {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DwarfErrorKind {
     /// A compilation unit referenced by index does not exist.
-    #[error("compilation unit for offset {0} does not exist")]
     InvalidUnitRef(usize),
 
     /// A file record referenced by index does not exist.
-    #[error("referenced file {0} does not exist")]
     InvalidFileRef(u64),
 
     /// An inline record was encountered without an inlining parent.
-    #[error("unexpected inline function without parent")]
     UnexpectedInline,
 
     /// The debug_ranges of a function are invalid.
-    #[error("function with inverted address range")]
     InvertedFunctionRange,
 
     /// The DWARF file is corrupted. See the cause for more information.
-    #[error("corrupted dwarf debug data")]
-    CorruptedData(#[from] GimliError),
+    CorruptedData,
+}
+
+impl fmt::Display for DwarfErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidUnitRef(offset) => {
+                write!(f, "compilation unit for offset {} does not exist", offset)
+            }
+            Self::InvalidFileRef(id) => write!(f, "referenced file {} does not exist", id),
+            Self::UnexpectedInline => write!(f, "unexpected inline function without parent"),
+            Self::InvertedFunctionRange => write!(f, "function with inverted address range"),
+            Self::CorruptedData => write!(f, "corrupted dwarf debug data"),
+        }
+    }
+}
+
+/// An error handling [`DWARF`](trait.Dwarf.html) debugging information.
+#[derive(Debug, Error)]
+#[error("{kind}")]
+pub struct DwarfError {
+    kind: DwarfErrorKind,
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+impl DwarfError {
+    /// Creates a new DWARF error from a known kind of error as well as an arbitrary error
+    /// payload.
+    fn new<E>(kind: DwarfErrorKind, source: E) -> Self
+    where
+        E: Into<Box<dyn Error + Send + Sync>>,
+    {
+        let source = Some(source.into());
+        Self { kind, source }
+    }
+
+    /// Returns the corresponding [`DwarfErrorKind`] for this error.
+    pub fn kind(&self) -> DwarfErrorKind {
+        self.kind
+    }
+}
+
+impl From<DwarfErrorKind> for DwarfError {
+    fn from(kind: DwarfErrorKind) -> Self {
+        Self { kind, source: None }
+    }
+}
+
+impl From<GimliError> for DwarfError {
+    fn from(e: GimliError) -> Self {
+        Self::new(DwarfErrorKind::CorruptedData, e)
+    }
 }
 
 /// DWARF section information including its data.
@@ -176,6 +231,13 @@ impl<'d, 'a> DwarfLineProgram<'d> {
 
         while let Ok(Some((_, &program_row))) = state_machine.next_row() {
             let address = program_row.address();
+
+            // we have seen rustc emit for WASM targets a bad sequence that spans from 0 to
+            // the end of the program.  https://github.com/rust-lang/rust/issues/79410
+            // Since DWARF does not permit code to sit at address 0 we can safely skip here.
+            if address == 0 {
+                continue;
+            }
 
             if let Some(last_row) = sequence_rows.last_mut() {
                 if address >= last_row.address {
@@ -302,7 +364,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
     /// abbrev can only be temporarily accessed in the callback.
     fn resolve_reference<T, F>(&self, attr: Attribute<'d>, f: F) -> Result<Option<T>, DwarfError>
     where
-        F: FnOnce(UnitRef<'d, '_>, &Die<'d, '_>) -> Result<Option<T>, DwarfError>,
+        F: FnOnce(Self, &Die<'d, '_>) -> Result<Option<T>, DwarfError>,
     {
         let (unit, offset) = match attr.value() {
             AttributeValue::UnitRef(offset) => (*self, offset),
@@ -325,7 +387,8 @@ impl<'d, 'a> UnitRef<'d, 'a> {
     fn resolve_function_name(
         &self,
         entry: &Die<'d, '_>,
-    ) -> Result<Option<Cow<'d, str>>, DwarfError> {
+        language: Language,
+    ) -> Result<Option<Name<'d>>, DwarfError> {
         let mut attrs = entry.attrs();
         let mut fallback_name = None;
         let mut reference_target = None;
@@ -334,7 +397,9 @@ impl<'d, 'a> UnitRef<'d, 'a> {
             match attr.name() {
                 // Prioritize these. If we get them, take them.
                 constants::DW_AT_linkage_name | constants::DW_AT_MIPS_linkage_name => {
-                    return Ok(self.string_value(attr.value()));
+                    return Ok(self
+                        .string_value(attr.value())
+                        .map(|n| Name::new(n, NameMangling::Mangled, language)));
                 }
                 constants::DW_AT_name => {
                     fallback_name = Some(attr);
@@ -347,22 +412,20 @@ impl<'d, 'a> UnitRef<'d, 'a> {
         }
 
         if let Some(attr) = fallback_name {
-            return Ok(self.string_value(attr.value()));
+            return Ok(self
+                .string_value(attr.value())
+                .map(|n| Name::new(n, NameMangling::Unmangled, language)));
         }
 
         if let Some(attr) = reference_target {
-            let resolved = self.resolve_reference(attr, |ref_unit, ref_entry| {
+            return self.resolve_reference(attr, |ref_unit, ref_entry| {
                 if self.unit.offset != ref_unit.unit.offset || entry.offset() != ref_entry.offset()
                 {
-                    ref_unit.resolve_function_name(ref_entry)
+                    ref_unit.resolve_function_name(ref_entry, language)
                 } else {
                     Ok(None)
                 }
-            })?;
-
-            if let Some(name) = resolved {
-                return Ok(Some(name));
-            }
+            });
         }
 
         Ok(None)
@@ -375,6 +438,7 @@ struct DwarfUnit<'d, 'a> {
     inner: UnitRef<'d, 'a>,
     language: Language,
     line_program: Option<DwarfLineProgram<'d>>,
+    prefer_dwarf_names: bool,
 }
 
 impl<'d, 'a> DwarfUnit<'d, 'a> {
@@ -407,10 +471,20 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             None => None,
         };
 
+        let producer = match entry.attr_value(constants::DW_AT_producer)? {
+            Some(AttributeValue::String(string)) => Some(string),
+            _ => None,
+        };
+
+        // Trust the symbol table more to contain accurate mangled names. However, since Dart's name
+        // mangling is lossy, we need to load the demangled name instead.
+        let prefer_dwarf_names = producer.as_deref() == Some(b"Dart VM");
+
         Ok(Some(DwarfUnit {
             inner: UnitRef { info, unit },
             language,
             line_program,
+            prefer_dwarf_names,
         }))
     }
 
@@ -498,7 +572,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         if low_pc > high_pc {
             // TODO: consider swallowing errors here?
-            return Err(DwarfError::InvertedFunctionRange);
+            return Err(DwarfErrorKind::InvertedFunctionRange.into());
         }
 
         range_buf.push(Range {
@@ -539,7 +613,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             if let Some((first, rows)) = rows.split_first() {
                 let mut last_file = first.file_index;
                 let mut last_info = LineInfo {
-                    address: range.begin - self.inner.info.load_address,
+                    address: offset(range.begin, self.inner.info.address_offset),
                     size: first.size.map(|s| s + first.address - range.begin),
                     file: self.resolve_file(first.file_index).unwrap_or_default(),
                     line: first.line.unwrap_or(0),
@@ -563,7 +637,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
                     last_file = row.file_index;
                     last_info = LineInfo {
-                        address: row.address - self.inner.info.load_address,
+                        address: offset(row.address, self.inner.info.address_offset),
                         size: row.size,
                         file: self.resolve_file(row.file_index).unwrap_or_default(),
                         line,
@@ -572,7 +646,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
                 // Fix the size of the last line
                 if let Some(size) = last_info.size.as_mut() {
-                    *size = range.end - self.inner.info.load_address - last_info.address;
+                    *size = offset(range.end, self.inner.info.address_offset) - last_info.address;
                 }
 
                 lines.push(last_info);
@@ -607,6 +681,24 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         line_program
             .file(file_id)
             .map(|file| self.file_info(line_program, file))
+    }
+
+    /// Resolves the name of a function from the symbol table.
+    fn resolve_symbol_name<R>(&self, range: R) -> Option<Name<'d>>
+    where
+        R: RangeBounds<u64>,
+    {
+        let symbol = self.inner.info.symbol_map.lookup_range(range)?;
+        let name = symbol.name.clone()?;
+        Some(Name::new(name, NameMangling::Mangled, self.language))
+    }
+
+    /// Resolves the name of a function from DWARF debug information.
+    fn resolve_dwarf_name(&self, entry: &Die<'d, '_>) -> Option<Name<'d>> {
+        self.inner
+            .resolve_function_name(entry, self.language)
+            .ok()
+            .flatten()
     }
 
     /// Collects all functions within this compilation unit.
@@ -662,7 +754,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 continue;
             }
 
-            let function_address = range_buf[0].begin - self.inner.info.load_address;
+            let function_address = offset(range_buf[0].begin, self.inner.info.address_offset);
             let function_size = range_buf[range_buf.len() - 1].end - range_buf[0].begin;
             let function_end = function_address + function_size;
 
@@ -672,20 +764,15 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             //
             // XXX: Maybe we should actually parse the ranges in the resolve function and always
             // look at the symbol table based on the start of the DIE range.
-            let symbol_name = if !inline {
-                self.inner
-                    .info
-                    .symbol_map
-                    .lookup_range(function_address..function_end)
-                    .and_then(|symbol| symbol.name.clone())
-            } else {
+            let symbol_name = if self.prefer_dwarf_names || inline {
                 None
+            } else {
+                self.resolve_symbol_name(function_address..function_end)
             };
 
-            let name = match symbol_name {
-                Some(name) => Some(name),
-                None => self.inner.resolve_function_name(entry).ok().flatten(),
-            };
+            let name = symbol_name
+                .or_else(|| self.resolve_dwarf_name(entry))
+                .unwrap_or_else(|| Name::new("", NameMangling::Unmangled, self.language));
 
             // Avoid constant allocations by collecting repeatedly into the same buffer and
             // draining the results out of it. This keeps the original buffer allocated and
@@ -697,7 +784,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 // indicates invalid debug information.
                 let parent = match stack.peek_mut() {
                     Some(parent) => parent,
-                    None => return Err(DwarfError::UnexpectedInline),
+                    None => return Err(DwarfErrorKind::UnexpectedInline.into()),
                 };
 
                 // Make sure there is correct line information for the call site of this inlined
@@ -713,8 +800,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
                     let mut index = 0;
                     for range in range_buf.iter() {
-                        let range_begin = range.begin - self.inner.info.load_address;
-                        let range_end = range.end - self.inner.info.load_address;
+                        let range_begin = offset(range.begin, self.inner.info.address_offset);
+                        let range_end = offset(range.end, self.inner.info.address_offset);
 
                         // Check if there is a line record covering the start of this range,
                         // otherwise insert a new record pointing to the correct call location.
@@ -825,7 +912,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let function = Function {
                 address: function_address,
                 size: function_size,
-                name: Name::with_language(name.unwrap_or_default(), self.language),
+                name,
                 compilation_dir: self.compilation_dir(),
                 lines,
                 inlinees: Vec::new(),
@@ -950,7 +1037,7 @@ struct DwarfInfo<'data> {
     headers: Vec<CompilationUnitHeader<'data>>,
     units: Vec<LazyCell<Option<Unit<'data>>>>,
     symbol_map: SymbolMap<'data>,
-    load_address: u64,
+    address_offset: i64,
     kind: ObjectKind,
 }
 
@@ -967,7 +1054,7 @@ impl<'d> DwarfInfo<'d> {
     pub fn parse(
         sections: &'d DwarfSections<'d>,
         symbol_map: SymbolMap<'d>,
-        load_address: u64,
+        address_offset: i64,
         kind: ObjectKind,
     ) -> Result<Self, DwarfError> {
         let inner = gimli::read::Dwarf {
@@ -996,7 +1083,7 @@ impl<'d> DwarfInfo<'d> {
             headers,
             units,
             symbol_map,
-            load_address,
+            address_offset,
             kind,
         })
     }
@@ -1036,7 +1123,7 @@ impl<'d> DwarfInfo<'d> {
 
         let index = match search_result {
             Ok(index) => index,
-            Err(0) => return Err(DwarfError::InvalidUnitRef(offset.0)),
+            Err(0) => return Err(DwarfErrorKind::InvalidUnitRef(offset.0).into()),
             Err(next_index) => next_index - 1,
         };
 
@@ -1047,7 +1134,7 @@ impl<'d> DwarfInfo<'d> {
             }
         }
 
-        Err(DwarfError::InvalidUnitRef(offset.0))
+        Err(DwarfErrorKind::InvalidUnitRef(offset.0).into())
     }
 
     /// Returns an iterator over all compilation units.
@@ -1072,7 +1159,7 @@ impl fmt::Debug for DwarfInfo<'_> {
         f.debug_struct("DwarfInfo")
             .field("headers", &self.headers)
             .field("symbol_map", &self.symbol_map)
-            .field("load_address", &self.load_address)
+            .field("address_offset", &self.address_offset)
             .finish()
     }
 }
@@ -1120,7 +1207,7 @@ impl<'data> DwarfDebugSession<'data> {
     pub fn parse<D>(
         dwarf: &D,
         symbol_map: SymbolMap<'data>,
-        load_address: u64,
+        address_offset: i64,
         kind: ObjectKind,
     ) -> Result<Self, DwarfError>
     where
@@ -1128,7 +1215,7 @@ impl<'data> DwarfDebugSession<'data> {
     {
         let sections = DwarfSections::from_dwarf(dwarf)?;
         let cell = SelfCell::try_new(Box::new(sections), |sections| {
-            DwarfInfo::parse(unsafe { &*sections }, symbol_map, load_address, kind)
+            DwarfInfo::parse(unsafe { &*sections }, symbol_map, address_offset, kind)
         })?;
 
         Ok(DwarfDebugSession { cell })

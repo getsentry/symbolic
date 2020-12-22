@@ -1,6 +1,7 @@
 //! Support for the Executable and Linkable Format, used on Linux.
 
 use std::borrow::Cow;
+use std::error::Error;
 use std::fmt;
 use std::io::Cursor;
 
@@ -14,9 +15,6 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::Parse;
-
-#[doc(inline)]
-pub use goblin::error::Error as GoblinError;
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;
@@ -39,12 +37,22 @@ const EF_MIPS_ABI_EABI64: u32 = 0x0000_4000;
 const MIPS_64_FLAGS: u32 = EF_MIPS_ABI_O64 | EF_MIPS_ABI_EABI64;
 
 /// An error when dealing with [`ElfObject`](struct.ElfObject.html).
-#[non_exhaustive]
 #[derive(Debug, Error)]
-pub enum ElfError {
-    /// The data in the ELF file could not be parsed.
-    #[error("invalid ELF file")]
-    BadObject(#[from] GoblinError),
+#[error("invalid ELF file")]
+pub struct ElfError {
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+impl ElfError {
+    /// Creates a new ELF error from an arbitrary error payload.
+    fn new<E>(source: E) -> Self
+    where
+        E: Into<Box<dyn Error + Send + Sync>>,
+    {
+        let source = Some(source.into());
+        Self { source }
+    }
 }
 
 /// Executable and Linkable Format, used for executables and libraries on Linux.
@@ -64,7 +72,9 @@ impl<'data> ElfObject<'data> {
 
     /// Tries to parse an ELF object from the given slice.
     pub fn parse(data: &'data [u8]) -> Result<Self, ElfError> {
-        Ok(elf::Elf::parse(data).map(|elf| ElfObject { elf, data })?)
+        elf::Elf::parse(data)
+            .map(|elf| ElfObject { elf, data })
+            .map_err(ElfError::new)
     }
 
     /// The container file format, which is always `FileFormat::Elf`.
@@ -241,7 +251,7 @@ impl<'data> ElfObject<'data> {
     /// [`has_debug_info`](struct.ElfObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'data>, DwarfError> {
         let symbols = self.symbol_map();
-        DwarfDebugSession::parse(self, symbols, self.load_address(), self.kind())
+        DwarfDebugSession::parse(self, symbols, self.load_address() as i64, self.kind())
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -319,10 +329,9 @@ impl<'data> ElfObject<'data> {
 
                 // Before SHF_COMPRESSED was a thing, compressed sections were prefixed with `.z`.
                 // Support this as an override to the flag.
-                let (compressed, section_name) = if section_name.starts_with(".z") {
-                    (true, &section_name[2..])
-                } else {
-                    (header.sh_flags & SHF_COMPRESSED != 0, &section_name[1..])
+                let (compressed, section_name) = match section_name.strip_prefix(".z") {
+                    Some(name) => (true, name),
+                    None => (header.sh_flags & SHF_COMPRESSED != 0, &section_name[1..]),
                 };
 
                 if section_name != name {

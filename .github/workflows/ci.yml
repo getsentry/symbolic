@@ -7,6 +7,9 @@ on:
       - "release/**"
   pull_request:
 
+env:
+  RUSTFLAGS: -Dwarnings
+
 jobs:
   lints:
     name: Style/Linting
@@ -29,8 +32,6 @@ jobs:
           python-version: 3.7
 
       - uses: Swatinem/rust-cache@v1
-        with:
-          key: lints
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
@@ -69,8 +70,6 @@ jobs:
           override: true
 
       - uses: Swatinem/rust-cache@v1
-        with:
-          key: test-rust
 
       - name: Run cargo test
         uses: actions-rs/cargo@v1
@@ -106,7 +105,5 @@ jobs:
           python-version: 3.7
 
       - uses: Swatinem/rust-cache@v1
-        with:
-          key: test-python
 
       - run: make test-python

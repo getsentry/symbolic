@@ -104,7 +104,7 @@ def main():
 
     print("> Cleaning up previous import")
     for entry in os.listdir(vendor_dir):
-        if os.path.isdir(entry):
+        if os.path.isdir(entry) and not workspace_dir.startswith(os.path.join(vendor_dir, entry)):
             shutil.rmtree(entry)
 
     print("> Replacing sources in %s" % (DEMANGLING_PATH))

@@ -4,6 +4,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::error::Unreal4Error;
+use crate::Unreal4ErrorKind;
 
 lazy_static! {
     /// https://github.com/EpicGames/UnrealEngine/blob/f509bb2d6c62806882d9a10476f3654cf1ee0634/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L79-L93
@@ -33,7 +34,8 @@ impl Unreal4LogEntry {
     /// a vector of Unreal4LogEntry.
     pub fn parse(log_slice: &[u8], limit: usize) -> Result<Vec<Self>, Unreal4Error> {
         let mut fallback_timestamp = None;
-        let logs_utf8 = std::str::from_utf8(log_slice).map_err(Unreal4Error::InvalidLogEntry)?;
+        let logs_utf8 = std::str::from_utf8(log_slice)
+            .map_err(|e| Unreal4Error::new(Unreal4ErrorKind::InvalidLogEntry, e))?;
 
         if let Some(first_line) = logs_utf8.lines().next() {
             // First line includes the timestamp of the following 100 and some lines until

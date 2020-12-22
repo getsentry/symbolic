@@ -7,9 +7,9 @@ use anyhow::{anyhow, Result};
 use clap::{App, Arg, ArgMatches};
 
 use symbolic::common::{Arch, ByteView, DSymPathExt, Language};
-use symbolic::debuginfo::Archive;
 use symbolic::demangle::Demangle;
 use symbolic::symcache::{SymCache, SymCacheWriter};
+use symbolic::{debuginfo::Archive, demangle::DemangleOptions};
 
 fn execute(matches: &ArgMatches) -> Result<()> {
     let buffer;
@@ -95,7 +95,11 @@ fn execute(matches: &ArgMatches) -> Result<()> {
             println!("No match :(");
         } else {
             for sym in m {
-                print!("{}", sym.function_name().try_demangle(Default::default()));
+                print!(
+                    "{}",
+                    sym.function_name()
+                        .try_demangle(DemangleOptions::name_only())
+                );
 
                 let path = sym.path();
                 let line = sym.line();
