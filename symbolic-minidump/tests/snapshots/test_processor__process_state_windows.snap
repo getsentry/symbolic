@@ -1,7 +1,5 @@
 ---
-created: "2019-05-29T08:44:21.017874Z"
-creator: insta@0.8.1
-source: minidump/tests/test_processor.rs
+source: symbolic-minidump/tests/test_processor.rs
 expression: "&state"
 ---
 ProcessState {
@@ -91,12 +89,6 @@ ProcessState {
                     ),
                 },
                 StackFrame {
-                    return_address: 1887764480,
-                    instruction: 1887764479,
-                    trust: Scan,
-                    module: None,
-                },
-                StackFrame {
                     return_address: 1891085888,
                     instruction: 1891085887,
                     trust: Scan,
@@ -118,12 +110,6 @@ ProcessState {
                             debug_identifier: "AEC7EF2FDF4B4642A4714C3E5FE8760A1",
                         },
                     ),
-                },
-                StackFrame {
-                    return_address: 1971388416,
-                    instruction: 1971388415,
-                    trust: Scan,
-                    module: None,
                 },
                 StackFrame {
                     return_address: 1971644864,

@@ -71,7 +71,7 @@ def test_linux_without_cfi(res_path):
 
     thread = state.get_thread(0)
     assert thread.thread_id == 133
-    assert thread.frame_count == 18
+    assert thread.frame_count == 16
 
     frame = thread.get_frame(1)
     assert frame.trust == "scan"
