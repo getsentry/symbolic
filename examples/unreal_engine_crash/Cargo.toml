@@ -1,8 +1,9 @@
 [package]
 name = "unreal_engine_crash"
-version = "0.1.0"
+version = "8.0.0"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2018"
+publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

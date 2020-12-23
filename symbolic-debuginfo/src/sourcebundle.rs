@@ -36,6 +36,7 @@
 
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::error::Error;
 use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, BufWriter, Read, Seek, Write};
@@ -47,7 +48,7 @@ use parking_lot::Mutex;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use zip::{result::ZipError, write::FileOptions, ZipWriter};
+use zip::{write::FileOptions, ZipWriter};
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
@@ -71,33 +72,67 @@ lazy_static::lazy_static! {
     static ref SANE_PATH_RE: Regex = Regex::new(r#":?[/\\]+"#).unwrap();
 }
 
-/// An error returned when handling [`SourceBundle`](struct.SourceBundle.html).
+/// The error type for [`SourceBundleError`].
 #[non_exhaustive]
-#[derive(Debug, Error)]
-pub enum SourceBundleError {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SourceBundleErrorKind {
     /// The source bundle container is damanged.
-    #[error("malformed zip archive")]
-    BadZip(#[source] ZipError),
+    BadZip,
 
     /// An error when reading/writing the manifest.
-    #[error("failed to read/write source bundle manifest")]
-    BadManifest(#[source] serde_json::Error),
+    BadManifest,
 
     /// The `Object` contains invalid data and cannot be converted.
-    #[error("malformed debug info file")]
-    BadDebugFile(#[source] Box<dyn std::error::Error + Send + Sync + 'static>),
+    BadDebugFile,
 
     /// Generic error when writing a source bundle, most likely IO.
-    #[error("failed to write source bundle")]
-    WriteFailed(#[source] ZipError),
+    WriteFailed,
+}
+
+impl fmt::Display for SourceBundleErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::BadZip => write!(f, "malformed zip archive"),
+            Self::BadManifest => write!(f, "failed to read/write source bundle manifest"),
+            Self::BadDebugFile => write!(f, "malformed debug info file"),
+            Self::WriteFailed => write!(f, "failed to write source bundle"),
+        }
+    }
+}
+
+/// An error returned when handling [`SourceBundle`](struct.SourceBundle.html).
+#[derive(Debug, Error)]
+#[error("{kind}")]
+pub struct SourceBundleError {
+    kind: SourceBundleErrorKind,
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
 impl SourceBundleError {
-    fn bad_debug_file<E>(err: E) -> Self
+    /// Creates a new SourceBundle error from a known kind of error as well as an arbitrary error
+    /// payload.
+    ///
+    /// This function is used to generically create source bundle errors which do not originate from
+    /// `symbolic` itself. The `source` argument is an arbitrary payload which will be contained in
+    /// this [`CfiError`].
+    pub fn new<E>(kind: SourceBundleErrorKind, source: E) -> Self
     where
-        E: std::error::Error + Send + Sync + 'static,
+        E: Into<Box<dyn Error + Send + Sync>>,
     {
-        SourceBundleError::BadDebugFile(Box::new(err))
+        let source = Some(source.into());
+        Self { kind, source }
+    }
+
+    /// Returns the corresponding [`SourceBundleErrorKind`] for this error.
+    pub fn kind(&self) -> SourceBundleErrorKind {
+        self.kind
+    }
+}
+
+impl From<SourceBundleErrorKind> for SourceBundleError {
+    fn from(kind: SourceBundleErrorKind) -> Self {
+        Self { kind, source: None }
     }
 }
 
@@ -317,12 +352,12 @@ impl<'data> SourceBundle<'data> {
     /// Tries to parse a `SourceBundle` from the given slice.
     pub fn parse(data: &'data [u8]) -> Result<SourceBundle<'data>, SourceBundleError> {
         let mut archive = zip::read::ZipArchive::new(std::io::Cursor::new(data))
-            .map_err(SourceBundleError::BadZip)?;
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
         let manifest_file = archive
             .by_name("manifest.json")
-            .map_err(SourceBundleError::BadZip)?;
-        let manifest =
-            serde_json::from_reader(manifest_file).map_err(SourceBundleError::BadManifest)?;
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
+        let manifest = serde_json::from_reader(manifest_file)
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadManifest, e))?;
         Ok(SourceBundle {
             manifest: Arc::new(manifest),
             archive: Arc::new(Mutex::new(archive)),
@@ -598,11 +633,11 @@ impl<'data> SourceBundleDebugSession<'data> {
         let mut archive = self.archive.lock();
         let mut file = archive
             .by_name(zip_path)
-            .map_err(SourceBundleError::BadZip)?;
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
         let mut source_content = String::new();
 
         file.read_to_string(&mut source_content)
-            .map_err(|e| SourceBundleError::BadZip(ZipError::Io(e)))?;
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
         Ok(Some(source_content))
     }
 
@@ -724,7 +759,7 @@ where
         let header = SourceBundleHeader::default();
         writer
             .write_all(header.as_bytes())
-            .map_err(|e| SourceBundleError::WriteFailed(ZipError::Io(e)))?;
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
 
         Ok(SourceBundleWriter {
             manifest: SourceBundleManifest::new(),
@@ -822,9 +857,9 @@ where
 
         self.writer
             .start_file(unique_path.clone(), FileOptions::default())
-            .map_err(SourceBundleError::WriteFailed)?;
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
         std::io::copy(&mut file, &mut self.writer)
-            .map_err(|e| SourceBundleError::WriteFailed(ZipError::Io(e)))?;
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
 
         self.manifest.files.insert(unique_path, info);
         Ok(())
@@ -870,7 +905,7 @@ where
         let mut files_handled = BTreeSet::new();
         let session = object
             .debug_session()
-            .map_err(SourceBundleError::bad_debug_file)?;
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadDebugFile, e))?;
 
         self.set_attribute("arch", object.arch().to_string());
         self.set_attribute("debug_id", object.debug_id().to_string());
@@ -880,7 +915,8 @@ where
         }
 
         for file_result in session.files() {
-            let file = file_result.map_err(SourceBundleError::bad_debug_file)?;
+            let file = file_result
+                .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadDebugFile, e))?;
             let filename = file.abs_path_str();
 
             if files_handled.contains(&filename) {
@@ -917,7 +953,7 @@ where
         self.write_manifest()?;
         self.writer
             .finish()
-            .map_err(SourceBundleError::WriteFailed)?;
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
         self.finished = true;
         Ok(())
     }
@@ -953,10 +989,10 @@ where
     fn write_manifest(&mut self) -> Result<(), SourceBundleError> {
         self.writer
             .start_file(MANIFEST_PATH, FileOptions::default())
-            .map_err(SourceBundleError::WriteFailed)?;
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
 
         serde_json::to_writer(&mut self.writer, &self.manifest)
-            .map_err(SourceBundleError::BadManifest)?;
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadManifest, e))?;
 
         Ok(())
     }
@@ -977,7 +1013,7 @@ impl SourceBundleWriter<BufWriter<File>> {
             .create(true)
             .truncate(true)
             .open(path)
-            .map_err(|e| SourceBundleError::WriteFailed(ZipError::Io(e)))?;
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
 
         Self::start(BufWriter::new(file))
     }

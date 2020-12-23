@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::cell::{RefCell, RefMut};
 use std::cmp::Ordering;
 use std::collections::btree_map::{BTreeMap, Entry};
+use std::error::Error;
 use std::fmt;
 use std::io::Cursor;
 use std::sync::Arc;
@@ -32,21 +33,72 @@ const MAGIC_BIG: &[u8] = b"Microsoft C/C++ MSF 7.00\r\n\x1a\x44\x53\x00\x00\x00"
 #[doc(hidden)]
 pub use pdb;
 
-/// An error when dealing with [`PdbObject`](struct.PdbObject.html).
+/// The error type for [`PdbError`].
 #[non_exhaustive]
-#[derive(Debug, Error)]
-pub enum PdbError {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PdbErrorKind {
     /// The PDB file is corrupted. See the cause for more information.
-    #[error("invalid pdb file")]
-    BadObject(#[from] pdb::Error),
+    BadObject,
 
     /// An inline record was encountered without an inlining parent.
-    #[error("unexpected inline function without parent")]
     UnexpectedInline,
 
-    /// Formatting of a type name failed
-    #[error("failed to format type name")]
-    FormattingFailed(#[from] fmt::Error),
+    /// Formatting of a type name failed.
+    FormattingFailed,
+}
+
+impl fmt::Display for PdbErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::BadObject => write!(f, "invalid pdb file"),
+            Self::UnexpectedInline => write!(f, "unexpected inline function without parent"),
+            Self::FormattingFailed => write!(f, "failed to format type name"),
+        }
+    }
+}
+
+/// An error when dealing with [`PdbObject`](struct.PdbObject.html).
+#[derive(Debug, Error)]
+#[error("{kind}")]
+pub struct PdbError {
+    kind: PdbErrorKind,
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+impl PdbError {
+    /// Creates a new PDB error from a known kind of error as well as an arbitrary error
+    /// payload.
+    fn new<E>(kind: PdbErrorKind, source: E) -> Self
+    where
+        E: Into<Box<dyn Error + Send + Sync>>,
+    {
+        let source = Some(source.into());
+        Self { kind, source }
+    }
+
+    /// Returns the corresponding [`PdbErrorKind`] for this error.
+    pub fn kind(&self) -> PdbErrorKind {
+        self.kind
+    }
+}
+
+impl From<PdbErrorKind> for PdbError {
+    fn from(kind: PdbErrorKind) -> Self {
+        Self { kind, source: None }
+    }
+}
+
+impl From<pdb::Error> for PdbError {
+    fn from(e: pdb::Error) -> Self {
+        Self::new(PdbErrorKind::BadObject, e)
+    }
+}
+
+impl From<fmt::Error> for PdbError {
+    fn from(e: fmt::Error) -> Self {
+        Self::new(PdbErrorKind::FormattingFailed, e)
+    }
 }
 
 /// Program Database, the debug companion format on Windows.
@@ -1058,7 +1110,7 @@ impl<'s> Unit<'s> {
                     let parent_offset = proc_offsets
                         .last()
                         .map(|&(_, offset)| offset)
-                        .ok_or(PdbError::UnexpectedInline)?;
+                        .ok_or(PdbErrorKind::UnexpectedInline)?;
 
                     // We can assume that inlinees will be listed in the inlinee table. If missing,
                     // skip silently instead of erroring out. Missing a single inline function is

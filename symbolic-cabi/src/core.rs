@@ -247,56 +247,28 @@ impl SymbolicErrorCode {
             }
 
             use symbolic::debuginfo::{
-                dwarf::DwarfError, ObjectError, UnknownFileFormatError, UnknownObjectKindError,
+                ObjectError, UnknownFileFormatError, UnknownObjectKindError,
             };
             if error.downcast_ref::<UnknownObjectKindError>().is_some() {
                 return SymbolicErrorCode::UnknownObjectKindError;
             } else if error.downcast_ref::<UnknownFileFormatError>().is_some() {
                 return SymbolicErrorCode::UnknownFileFormatError;
-            } else if let Some(error) = error.downcast_ref::<ObjectError>() {
-                return match error {
-                    ObjectError::UnsupportedObject => {
-                        SymbolicErrorCode::ObjectErrorUnsupportedObject
-                    }
-                    ObjectError::Breakpad(_) => SymbolicErrorCode::ObjectErrorBadBreakpadObject,
-                    ObjectError::Elf(_) => SymbolicErrorCode::ObjectErrorBadElfObject,
-                    ObjectError::MachO(_) => SymbolicErrorCode::ObjectErrorBadMachOObject,
-                    ObjectError::Pdb(_) => SymbolicErrorCode::ObjectErrorBadPdbObject,
-                    ObjectError::Pe(_) => SymbolicErrorCode::ObjectErrorBadPeObject,
-                    ObjectError::Wasm(_) => SymbolicErrorCode::ObjectErrorBadWasmObject,
-                    ObjectError::Dwarf(ref e) => match e {
-                        DwarfError::InvalidUnitRef(_) => {
-                            SymbolicErrorCode::DwarfErrorInvalidUnitRef
-                        }
-                        DwarfError::InvalidFileRef(_) => {
-                            SymbolicErrorCode::DwarfErrorInvalidFileRef
-                        }
-                        DwarfError::UnexpectedInline => {
-                            SymbolicErrorCode::DwarfErrorUnexpectedInline
-                        }
-                        DwarfError::InvertedFunctionRange => {
-                            SymbolicErrorCode::DwarfErrorInvertedFunctionRange
-                        }
-                        DwarfError::CorruptedData(_) => SymbolicErrorCode::DwarfErrorCorruptedData,
-                        _ => SymbolicErrorCode::DwarfErrorUnknown,
-                    },
-                    ObjectError::SourceBundle(_) => SymbolicErrorCode::ObjectErrorBadSourceBundle,
-                    _ => SymbolicErrorCode::ObjectErrorUnknown,
-                };
+            } else if error.downcast_ref::<ObjectError>().is_some() {
+                return SymbolicErrorCode::ObjectErrorUnknown;
             }
 
-            use symbolic::minidump::cfi::CfiError;
+            use symbolic::minidump::cfi::{CfiError, CfiErrorKind};
             if let Some(error) = error.downcast_ref::<CfiError>() {
-                return match error {
-                    CfiError::MissingDebugInfo => SymbolicErrorCode::CfiErrorMissingDebugInfo,
-                    CfiError::UnsupportedDebugFormat => {
+                return match error.kind() {
+                    CfiErrorKind::MissingDebugInfo => SymbolicErrorCode::CfiErrorMissingDebugInfo,
+                    CfiErrorKind::UnsupportedDebugFormat => {
                         SymbolicErrorCode::CfiErrorUnsupportedDebugFormat
                     }
-                    CfiError::BadDebugInfo(_) => SymbolicErrorCode::CfiErrorBadDebugInfo,
-                    CfiError::UnsupportedArch(_) => SymbolicErrorCode::CfiErrorUnsupportedArch,
-                    CfiError::InvalidAddress => SymbolicErrorCode::CfiErrorInvalidAddress,
-                    CfiError::WriteError(_) => SymbolicErrorCode::CfiErrorWriteError,
-                    CfiError::BadFileMagic => SymbolicErrorCode::CfiErrorBadFileMagic,
+                    CfiErrorKind::BadDebugInfo => SymbolicErrorCode::CfiErrorBadDebugInfo,
+                    CfiErrorKind::UnsupportedArch => SymbolicErrorCode::CfiErrorUnsupportedArch,
+                    CfiErrorKind::InvalidAddress => SymbolicErrorCode::CfiErrorInvalidAddress,
+                    CfiErrorKind::WriteFailed => SymbolicErrorCode::CfiErrorWriteError,
+                    CfiErrorKind::BadFileMagic => SymbolicErrorCode::CfiErrorBadFileMagic,
                     _ => SymbolicErrorCode::CfiErrorUnknown,
                 };
             }
@@ -335,50 +307,50 @@ impl SymbolicErrorCode {
                 return SymbolicErrorCode::ParseSourceMapError;
             }
 
-            use symbolic::symcache::SymCacheError;
+            use symbolic::symcache::{SymCacheError, SymCacheErrorKind};
             if let Some(error) = error.downcast_ref::<SymCacheError>() {
-                return match error {
-                    SymCacheError::BadFileMagic => SymbolicErrorCode::SymCacheErrorBadFileMagic,
-                    SymCacheError::BadFileHeader(_) => {
+                return match error.kind() {
+                    SymCacheErrorKind::BadFileMagic => SymbolicErrorCode::SymCacheErrorBadFileMagic,
+                    SymCacheErrorKind::BadFileHeader => {
                         SymbolicErrorCode::SymCacheErrorBadFileHeader
                     }
-                    SymCacheError::BadSegment => SymbolicErrorCode::SymCacheErrorBadSegment,
-                    SymCacheError::BadCacheFile => SymbolicErrorCode::SymCacheErrorBadCacheFile,
-                    SymCacheError::UnsupportedVersion => {
+                    SymCacheErrorKind::BadSegment => SymbolicErrorCode::SymCacheErrorBadSegment,
+                    SymCacheErrorKind::BadCacheFile => SymbolicErrorCode::SymCacheErrorBadCacheFile,
+                    SymCacheErrorKind::UnsupportedVersion => {
                         SymbolicErrorCode::SymCacheErrorUnsupportedVersion
                     }
-                    SymCacheError::BadDebugFile(_) => SymbolicErrorCode::SymCacheErrorBadDebugFile,
-                    SymCacheError::MissingDebugSection => {
+                    SymCacheErrorKind::BadDebugFile => SymbolicErrorCode::SymCacheErrorBadDebugFile,
+                    SymCacheErrorKind::MissingDebugSection => {
                         SymbolicErrorCode::SymCacheErrorMissingDebugSection
                     }
-                    SymCacheError::MissingDebugInfo => {
+                    SymCacheErrorKind::MissingDebugInfo => {
                         SymbolicErrorCode::SymCacheErrorMissingDebugInfo
                     }
-                    SymCacheError::UnsupportedDebugKind => {
+                    SymCacheErrorKind::UnsupportedDebugKind => {
                         SymbolicErrorCode::SymCacheErrorUnsupportedDebugKind
                     }
-                    SymCacheError::ValueTooLarge(_) => {
+                    SymCacheErrorKind::ValueTooLarge(_) => {
                         SymbolicErrorCode::SymCacheErrorValueTooLarge
                     }
-                    SymCacheError::WriteFailed(_) => SymbolicErrorCode::SymCacheErrorWriteFailed,
-                    SymCacheError::TooManyValues(_) => {
+                    SymCacheErrorKind::WriteFailed => SymbolicErrorCode::SymCacheErrorWriteFailed,
+                    SymCacheErrorKind::TooManyValues(_) => {
                         SymbolicErrorCode::SymCacheErrorTooManyValues
                     }
                     _ => SymbolicErrorCode::SymCacheErrorUnknown,
                 };
             }
 
-            use symbolic::unreal::Unreal4Error;
+            use symbolic::unreal::{Unreal4Error, Unreal4ErrorKind};
             if let Some(error) = error.downcast_ref::<Unreal4Error>() {
-                return match error {
-                    Unreal4Error::Empty => SymbolicErrorCode::Unreal4ErrorEmpty,
-                    Unreal4Error::BadCompression(_) => {
+                return match error.kind() {
+                    Unreal4ErrorKind::Empty => SymbolicErrorCode::Unreal4ErrorEmpty,
+                    Unreal4ErrorKind::BadCompression => {
                         SymbolicErrorCode::Unreal4ErrorBadCompression
                     }
-                    Unreal4Error::BadData(_) => SymbolicErrorCode::Unreal4ErrorBadData,
-                    Unreal4Error::TrailingData => SymbolicErrorCode::Unreal4ErrorTrailingData,
-                    Unreal4Error::InvalidXml(_) => SymbolicErrorCode::Unreal4ErrorInvalidXml,
-                    Unreal4Error::InvalidLogEntry(_) => {
+                    Unreal4ErrorKind::BadData => SymbolicErrorCode::Unreal4ErrorBadData,
+                    Unreal4ErrorKind::TrailingData => SymbolicErrorCode::Unreal4ErrorTrailingData,
+                    Unreal4ErrorKind::InvalidXml => SymbolicErrorCode::Unreal4ErrorInvalidXml,
+                    Unreal4ErrorKind::InvalidLogEntry => {
                         SymbolicErrorCode::Unreal4ErrorInvalidLogEntry
                     }
                     _ => SymbolicErrorCode::Unreal4ErrorUnknown,

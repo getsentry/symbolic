@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::error::Error;
 use std::fmt;
 use std::str;
 
@@ -32,25 +33,76 @@ const BREAKPAD_HEADER_CAP: usize = 320;
 /// Placeholder used for missing function or symbol names.
 const UNKNOWN_NAME: &str = "<unknown>";
 
-/// An error when dealing with [`BreakpadObject`](struct.BreakpadObject.html).
+/// The error type for [`BreakpadError`].
 #[non_exhaustive]
-#[derive(Debug, Error)]
-pub enum BreakpadError {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BreakpadErrorKind {
     /// The symbol header (`MODULE` record) is missing.
-    #[error("missing breakpad symbol header")]
     InvalidMagic,
 
     /// A part of the file is not encoded in valid UTF-8.
-    #[error("bad utf-8 sequence")]
-    BadEncoding(#[from] str::Utf8Error),
+    BadEncoding,
 
     /// A record violates the Breakpad symbol syntax.
-    #[error(transparent)]
-    BadSyntax(#[from] pest::error::Error<Rule>),
+    BadSyntax,
 
     /// Parsing of a record failed.
-    #[error("{0}")]
     Parse(&'static str),
+}
+
+impl fmt::Display for BreakpadErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidMagic => write!(f, "missing breakpad symbol header"),
+            Self::BadEncoding => write!(f, "bad utf-8 sequence"),
+            Self::BadSyntax => write!(f, "invalid syntax"),
+            Self::Parse(field) => write!(f, "{}", field),
+        }
+    }
+}
+
+/// An error when dealing with [`BreakpadObject`](struct.BreakpadObject.html).
+#[derive(Debug, Error)]
+#[error("{kind}")]
+pub struct BreakpadError {
+    kind: BreakpadErrorKind,
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+impl BreakpadError {
+    /// Creates a new Breakpad error from a known kind of error as well as an arbitrary error
+    /// payload.
+    fn new<E>(kind: BreakpadErrorKind, source: E) -> Self
+    where
+        E: Into<Box<dyn Error + Send + Sync>>,
+    {
+        let source = Some(source.into());
+        Self { kind, source }
+    }
+
+    /// Returns the corresponding [`BreakpadErrorKind`] for this error.
+    pub fn kind(&self) -> BreakpadErrorKind {
+        self.kind
+    }
+}
+
+impl From<BreakpadErrorKind> for BreakpadError {
+    fn from(kind: BreakpadErrorKind) -> Self {
+        Self { kind, source: None }
+    }
+}
+
+impl From<str::Utf8Error> for BreakpadError {
+    fn from(e: str::Utf8Error) -> Self {
+        Self::new(BreakpadErrorKind::BadEncoding, e)
+    }
+}
+
+impl From<pest::error::Error<Rule>> for BreakpadError {
+    fn from(e: pest::error::Error<Rule>) -> Self {
+        Self::new(BreakpadErrorKind::BadSyntax, e)
+    }
 }
 
 // TODO(ja): Test the parser
@@ -134,7 +186,7 @@ impl<'d> BreakpadInfoRecord<'d> {
             }
         }
 
-        Err(BreakpadError::Parse("unknown INFO record"))
+        Err(BreakpadErrorKind::Parse("unknown INFO record").into())
     }
 
     fn code_info_from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Result<Self, BreakpadError> {
@@ -230,7 +282,7 @@ impl<'d> BreakpadFileRecord<'d> {
             match pair.as_rule() {
                 Rule::file_id => {
                     record.id = u64::from_str_radix(pair.as_str(), 10)
-                        .map_err(|_| BreakpadError::Parse("file identifier"))?;
+                        .map_err(|_| BreakpadErrorKind::Parse("file identifier"))?;
                 }
                 Rule::name => record.name = pair.as_str(),
                 _ => unreachable!(),
@@ -306,11 +358,11 @@ impl<'d> BreakpadPublicRecord<'d> {
                 Rule::multiple => record.multiple = true,
                 Rule::addr => {
                     record.address = u64::from_str_radix(pair.as_str(), 16)
-                        .map_err(|_| BreakpadError::Parse("symbol address"))?;
+                        .map_err(|_| BreakpadErrorKind::Parse("symbol address"))?;
                 }
                 Rule::param_size => {
                     record.parameter_size = u64::from_str_radix(pair.as_str(), 16)
-                        .map_err(|_| BreakpadError::Parse("symbol parameter size"))?;
+                        .map_err(|_| BreakpadErrorKind::Parse("symbol parameter size"))?;
                 }
                 Rule::name => record.name = pair.as_str(),
                 _ => unreachable!(),
@@ -395,15 +447,15 @@ impl<'d> BreakpadFuncRecord<'d> {
                 Rule::multiple => record.multiple = true,
                 Rule::addr => {
                     record.address = u64::from_str_radix(pair.as_str(), 16)
-                        .map_err(|_| BreakpadError::Parse("function address"))?;
+                        .map_err(|_| BreakpadErrorKind::Parse("function address"))?;
                 }
                 Rule::size => {
                     record.size = u64::from_str_radix(pair.as_str(), 16)
-                        .map_err(|_| BreakpadError::Parse("function size"))?;
+                        .map_err(|_| BreakpadErrorKind::Parse("function size"))?;
                 }
                 Rule::param_size => {
                     record.parameter_size = u64::from_str_radix(pair.as_str(), 16)
-                        .map_err(|_| BreakpadError::Parse("function parameter size"))?;
+                        .map_err(|_| BreakpadErrorKind::Parse("function parameter size"))?;
                 }
                 Rule::name => record.name = pair.as_str(),
                 _ => unreachable!(),
@@ -518,11 +570,11 @@ impl BreakpadLineRecord {
             match pair.as_rule() {
                 Rule::addr => {
                     record.address = u64::from_str_radix(pair.as_str(), 16)
-                        .map_err(|_| BreakpadError::Parse("line address"))?;
+                        .map_err(|_| BreakpadErrorKind::Parse("line address"))?;
                 }
                 Rule::size => {
                     record.size = u64::from_str_radix(pair.as_str(), 16)
-                        .map_err(|_| BreakpadError::Parse("line size"))?;
+                        .map_err(|_| BreakpadErrorKind::Parse("line size"))?;
                 }
                 Rule::line_num => {
                     // NB: Breakpad does not allow negative line numbers and even tests that the
@@ -530,11 +582,11 @@ impl BreakpadLineRecord {
                     // been observed at least for ELF files, so handle them gracefully.
                     record.line = i32::from_str_radix(pair.as_str(), 10)
                         .map(|line| u64::from(line as u32))
-                        .map_err(|_| BreakpadError::Parse("line number"))?;
+                        .map_err(|_| BreakpadErrorKind::Parse("line number"))?;
                 }
                 Rule::file_id => {
                     record.file_id = u64::from_str_radix(pair.as_str(), 10)
-                        .map_err(|_| BreakpadError::Parse("file number"))?;
+                        .map_err(|_| BreakpadErrorKind::Parse("file number"))?;
                 }
                 _ => unreachable!(),
             }
@@ -768,11 +820,11 @@ impl<'data> BreakpadObject<'data> {
             id: module
                 .id
                 .parse()
-                .map_err(|_| BreakpadError::Parse("module id"))?,
+                .map_err(|_| BreakpadErrorKind::Parse("module id"))?,
             arch: module
                 .arch
                 .parse()
-                .map_err(|_| BreakpadError::Parse("module architecture"))?,
+                .map_err(|_| BreakpadErrorKind::Parse("module architecture"))?,
             module,
             data,
         })

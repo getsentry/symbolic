@@ -10,7 +10,7 @@ use flate2::read::ZlibDecoder;
 use scroll::{ctx::TryFromCtx, Endian, Pread};
 
 use crate::context::Unreal4Context;
-use crate::error::Unreal4Error;
+use crate::error::{Unreal4Error, Unreal4ErrorKind};
 use crate::logs::Unreal4LogEntry;
 
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -133,7 +133,7 @@ impl Unreal4Crash {
 
         let header = bytes.gread_with(&mut offset, scroll::LE)?;
         if offset != bytes.len() {
-            return Err(Unreal4Error::TrailingData);
+            return Err(Unreal4ErrorKind::TrailingData.into());
         }
 
         Ok(Unreal4Crash {
@@ -146,12 +146,12 @@ impl Unreal4Crash {
     /// Parses a UE4 crash dump from the original, compressed data.
     pub fn parse(bytes: &[u8]) -> Result<Self, Unreal4Error> {
         if bytes.is_empty() {
-            return Err(Unreal4Error::Empty);
+            return Err(Unreal4ErrorKind::Empty.into());
         }
 
         let mut decompressed = Vec::new();
         std::io::copy(&mut ZlibDecoder::new(bytes), &mut decompressed)
-            .map_err(Unreal4Error::BadCompression)?;
+            .map_err(|e| Unreal4Error::new(Unreal4ErrorKind::BadCompression, e))?;
 
         Self::from_bytes(decompressed.into())
     }
@@ -351,28 +351,32 @@ impl FusedIterator for Unreal4FileIterator<'_> {}
 
 impl ExactSizeIterator for Unreal4FileIterator<'_> {}
 
-#[test]
-fn test_parse_empty_buffer() {
-    let crash = &[];
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::error::Error;
 
-    let result = Unreal4Crash::parse(crash);
+    #[test]
+    fn test_parse_empty_buffer() {
+        let crash = &[];
 
-    assert!(matches!(
-        result.expect_err("empty crash"),
-        Unreal4Error::Empty
-    ))
-}
+        let result = Unreal4Crash::parse(crash);
 
-#[test]
-fn test_parse_invalid_input() {
-    let crash = &[0u8; 1];
+        assert!(matches!(
+            result.expect_err("empty crash").kind(),
+            Unreal4ErrorKind::Empty
+        ));
+    }
 
-    let result = Unreal4Crash::parse(crash);
+    #[test]
+    fn test_parse_invalid_input() {
+        let crash = &[0u8; 1];
 
-    let err = match result.expect_err("empty crash") {
-        Unreal4Error::BadCompression(b) => b.to_string(),
-        _ => panic!(),
-    };
+        let result = Unreal4Crash::parse(crash);
+        let error = result.expect_err("empty crash");
+        assert_eq!(error.kind(), Unreal4ErrorKind::BadCompression);
 
-    assert_eq!("corrupt deflate stream", err)
+        let source = error.source().expect("error source");
+        assert_eq!(source.to_string(), "corrupt deflate stream");
+    }
 }
