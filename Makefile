@@ -39,7 +39,7 @@ test-rust:
 .PHONY: test-rust
 
 test-python: .venv/bin/python
-	.venv/bin/pip install -U pytest
+	.venv/bin/pip install -U "pytest>=5.0.0,<6.0.0"
 	.venv/bin/pip install -v --editable py
 	.venv/bin/pytest -v py
 .PHONY: test-python
