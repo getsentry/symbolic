@@ -215,7 +215,7 @@ fn try_demangle_rust(_ident: &str, _opts: DemangleOptions) -> Option<String> {
 
 #[cfg(feature = "swift")]
 fn try_demangle_swift(ident: &str, opts: DemangleOptions) -> Option<String> {
-    let mut buf = vec![0 as c_char; 4096];
+    let mut buf = vec![0; 4096];
     let sym = match CString::new(ident) {
         Ok(sym) => sym,
         Err(_) => return None,

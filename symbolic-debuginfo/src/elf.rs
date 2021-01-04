@@ -398,7 +398,7 @@ impl<'data> ElfObject<'data> {
     /// The `DebugId::appendix` field is always `0` for ELF.
     fn compute_debug_id(&self, identifier: &[u8]) -> DebugId {
         // Make sure that we have exactly UUID_SIZE bytes available
-        let mut data = [0 as u8; UUID_SIZE];
+        let mut data = [0; UUID_SIZE];
         let len = std::cmp::min(identifier.len(), UUID_SIZE);
         data[0..len].copy_from_slice(&identifier[0..len]);
 
