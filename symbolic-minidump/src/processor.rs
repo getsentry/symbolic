@@ -522,7 +522,7 @@ impl StackFrame {
     /// Returns a mapping of registers to their known values, if any.
     pub fn registers(&self, arch: Arch) -> BTreeMap<&'static str, RegVal> {
         unsafe {
-            let mut size = 0 as usize;
+            let mut size = 0;
             let values = stack_frame_registers(self, arch.cpu_family() as u32, &mut size);
             let map = slice::from_raw_parts(values, size)
                 .iter()
@@ -570,7 +570,7 @@ impl CallStack {
     /// Returns the list of `StackFrame`s in the call stack.
     pub fn frames(&self) -> &[&StackFrame] {
         unsafe {
-            let mut size = 0 as usize;
+            let mut size = 0;
             let data = call_stack_frames(self, &mut size);
             slice::from_raw_parts(data as *const &StackFrame, size)
         }
@@ -921,7 +921,7 @@ impl<'a> ProcessState<'a> {
     /// Returns a list of `CallStack`s in the minidump.
     pub fn threads(&self) -> &[&CallStack] {
         unsafe {
-            let mut size = 0 as usize;
+            let mut size = 0;
             let data = process_state_threads(self.internal, &mut size);
             slice::from_raw_parts(data as *const &CallStack, size)
         }
@@ -930,7 +930,7 @@ impl<'a> ProcessState<'a> {
     /// Returns the full list of loaded `CodeModule`s.
     pub fn modules(&self) -> Vec<&CodeModule> {
         unsafe {
-            let mut size = 0 as usize;
+            let mut size = 0;
             let data = process_state_modules(self.internal, &mut size);
             let vec = slice::from_raw_parts(data as *mut &CodeModule, size).to_vec();
             code_modules_delete(data);

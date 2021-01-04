@@ -501,9 +501,9 @@ impl fmt::Display for LineInfo<'_> {
             let path = self.path();
             let line = self.line();
             let lang = self.language();
-            if path != "" || line != 0 || lang != Language::Unknown {
+            if !path.is_empty() || line != 0 || lang != Language::Unknown {
                 write!(f, "\n ")?;
-                if path != "" {
+                if !path.is_empty() {
                     write!(f, " at {}", path)?;
                 }
                 if line != 0 {
