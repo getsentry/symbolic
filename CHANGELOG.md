@@ -1,5 +1,13 @@
 # Changelog
 
+## 8.0.1
+
+**Bug Fixes**:
+
+- Compute correct debug identifiers when proessing a Minidump from a machine with opposite endianness. This particularly allows to process MIPS minidumps on little-endian hosts. ([#281](https://github.com/getsentry/symbolic/pull/281))
+- Update the breakpad processor with better stack scanning heuristics. Some false-positive frames are avoided during stack scanning now. ([#281](https://github.com/getsentry/symbolic/pull/281))
+- Avoid panics when processing UE4 crash logs containing ambiguous local times. ([#307](https://github.com/getsentry/symbolic/pull/307))
+
 ## 8.0.0
 
 **Breaking Changes**:
