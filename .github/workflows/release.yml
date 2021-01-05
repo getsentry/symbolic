@@ -1,19 +1,30 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - "release/**"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release
+        required: true
+      force:
+        description: Force a release even when there are release-blockers (optional)
+        required: false
 
 jobs:
-  python-wheel-mac:
-    name: Python macOS
-    runs-on: macos-10.15
-
+  release:
+    runs-on: ubuntu-latest
+    name: "Release a new version"
     steps:
+      - name: Prepare release
+        uses: getsentry/action-prepare-release@33507ed
+        with:
+          version: ${{ github.event.inputs.version }}
+          force: ${{ github.event.inputs.force }}
+
       - uses: actions/checkout@v2
         with:
-          submodules: recursive
+          token: ${{ secrets.GH_RELEASE_PAT }}
+          fetch-depth: 0
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -21,59 +32,20 @@ jobs:
           profile: minimal
           override: true
 
-      - uses: actions/setup-python@v2
+      - name: Craft Prepare
+        run: npx @sentry/craft prepare --no-input "${{ env.RELEASE_VERSION }}"
+        env:
+          GITHUB_API_TOKEN: ${{ github.token }}
+
+      - name: Request publish
+        if: success()
+        uses: actions/github-script@v3
         with:
-          python-version: 2.7
-
-      - run: make wheel SYMBOLIC_PYTHON=python2
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: ${{ github.sha }}
-          path: py/dist/*
-
-  python-wheel-linux:
-    strategy:
-      fail-fast: false
-      matrix:
-        build-arch: [i686, x86_64]
-
-    name: Python Linux ${{ matrix.build-arch }}
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
-
-      - name: Build in Docker
-        run: make wheel-manylinux IMAGE=quay.io/pypa/manylinux2010_${{ matrix.build-arch }}
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: ${{ github.sha }}
-          path: py/dist/*
-
-  sdist:
-    name: Python sdist
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions/setup-python@v2
-        with:
-          python-version: 2.7
-
-      - run: make sdist
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: ${{ github.sha }}
-          path: py/dist/*
+          github-token: ${{ secrets.GH_RELEASE_PAT }}
+          script: |
+            const repoInfo = context.repo;
+            await github.issues.create({
+              owner: repoInfo.owner,
+              repo: 'publish',
+              title: `publish: ${repoInfo.repo}@${process.env.RELEASE_VERSION}`,
+            });
