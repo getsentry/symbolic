@@ -1,6 +1,6 @@
 [package]
 name = "object_debug"
-version = "8.0.0"
+version = "8.0.1"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2018"
 publish = false
