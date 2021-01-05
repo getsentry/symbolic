@@ -29,6 +29,24 @@ pub struct Unreal4LogEntry {
     pub message: String,
 }
 
+fn parse_log_datetime(text: &str) -> Option<DateTime<Utc>> {
+    let captures = LOG_FIRST_LINE.captures(text)?;
+
+    // Using UTC but this entry is local time. Unfortunately there's no way to find the offset.
+    Utc.ymd_opt(
+        // https://github.com/EpicGames/UnrealEngine/blob/f7626ddd147fe20a6144b521a26739c863546f4a/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L46
+        captures["year"].parse::<i32>().unwrap() + 2000,
+        captures["month"].parse::<u32>().unwrap(),
+        captures["day"].parse::<u32>().unwrap(),
+    )
+    .latest()?
+    .and_hms_opt(
+        captures["hour"].parse::<u32>().unwrap(),
+        captures["minute"].parse::<u32>().unwrap(),
+        captures["second"].parse::<u32>().unwrap(),
+    )
+}
+
 impl Unreal4LogEntry {
     /// Tries to parse a blob normally coming from a logs file inside an Unreal4Crash into
     /// a vector of Unreal4LogEntry.
@@ -40,22 +58,7 @@ impl Unreal4LogEntry {
         if let Some(first_line) = logs_utf8.lines().next() {
             // First line includes the timestamp of the following 100 and some lines until
             // log entries actually include timestamps
-            if let Some(captures) = LOG_FIRST_LINE.captures(&first_line) {
-                fallback_timestamp = Some(
-                    // Using UTC but this entry is local time. Unfortunately there's no way to find the offset.
-                    Utc.ymd(
-                        // https://github.com/EpicGames/UnrealEngine/blob/f7626ddd147fe20a6144b521a26739c863546f4a/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L46
-                        captures["year"].parse::<i32>().unwrap() + 2000,
-                        captures["month"].parse::<u32>().unwrap(),
-                        captures["day"].parse::<u32>().unwrap(),
-                    )
-                    .and_hms(
-                        captures["hour"].parse::<u32>().unwrap(),
-                        captures["minute"].parse::<u32>().unwrap(),
-                        captures["second"].parse::<u32>().unwrap(),
-                    ),
-                );
-            }
+            fallback_timestamp = parse_log_datetime(&first_line);
         }
 
         let mut logs: Vec<_> = logs_utf8
@@ -65,9 +68,9 @@ impl Unreal4LogEntry {
             .map(|line| {
                 let entry = LogEntry::parse(line.as_bytes());
                 let (component, message) = entry.component_and_message();
-                // Reads in reverse where logs include timestamp. If it never reached the point of adding
-                // timestamp to log entries, the first record's timestamp (local time, above) will be used
-                // on all records.
+                // Reads in reverse where logs include timestamp. If it never reached the point of
+                // adding timestamp to log entries, the first record's timestamp (local time, above)
+                // will be used on all records.
                 fallback_timestamp = entry.utc_timestamp().or(fallback_timestamp);
 
                 Unreal4LogEntry {
@@ -101,4 +104,16 @@ LogWindows: File 'aqProf.dll' does not exist";
         "2018-12-13T15:54:53+00:00"
     );
     assert_eq!(logs[1].message, "File 'aqProf.dll' does not exist");
+}
+
+#[test]
+fn test_parse_logs_invalid_time() {
+    let log_bytes = br"Log file open, 12/13/18 99:99:99
+LogWindows: Failed to load 'aqProf.dll' (GetLastError=126)
+LogWindows: File 'aqProf.dll' does not exist";
+
+    let logs = Unreal4LogEntry::parse(log_bytes, 1000).expect("logs");
+
+    assert_eq!(logs.len(), 2);
+    assert_eq!(logs[1].timestamp, None);
 }

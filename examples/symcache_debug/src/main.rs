@@ -105,9 +105,9 @@ fn execute(matches: &ArgMatches) -> Result<()> {
                 let line = sym.line();
                 let lang = sym.language();
 
-                if path != "" || line != 0 || lang != Language::Unknown {
+                if !path.is_empty() || line != 0 || lang != Language::Unknown {
                     print!("\n ");
-                    if path != "" {
+                    if !path.is_empty() {
                         print!(" at {}", path);
                     }
                     if line != 0 {
