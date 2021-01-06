@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Bug Fixes**:
+
+- Include third-party submodules to allow the Python `sdist` to build again. ([#310](https://github.com/getsentry/symbolic/pull/310))
+
 ## 8.0.1
 
 **Bug Fixes**:
