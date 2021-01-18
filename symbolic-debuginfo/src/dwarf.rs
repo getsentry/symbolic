@@ -15,7 +15,7 @@ use std::ops::{Deref, RangeBounds};
 
 use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Error as GimliError, Range};
-use gimli::{constants, UnitSectionOffset};
+use gimli::{constants, DwarfFileType, UnitSectionOffset};
 use lazycell::LazyCell;
 use thiserror::Error;
 
@@ -38,7 +38,7 @@ type Attribute<'a> = gimli::read::Attribute<Slice<'a>>;
 type UnitOffset = gimli::read::UnitOffset<usize>;
 type DebugInfoOffset = gimli::DebugInfoOffset<usize>;
 
-type CompilationUnitHeader<'a> = gimli::read::CompilationUnitHeader<Slice<'a>>;
+type UnitHeader<'a> = gimli::read::UnitHeader<Slice<'a>>;
 type IncompleteLineNumberProgram<'a> = gimli::read::IncompleteLineProgram<Slice<'a>>;
 type LineNumberProgramHeader<'a> = gimli::read::LineProgramHeader<Slice<'a>>;
 type LineProgramFileEntry<'a> = gimli::read::FileEntry<Slice<'a>>;
@@ -383,6 +383,11 @@ impl<'d, 'a> UnitRef<'d, 'a> {
         }
     }
 
+    /// Returns the offset of this unit within its section.
+    fn offset(&self) -> UnitSectionOffset {
+        self.unit.header.offset()
+    }
+
     /// Resolves the function name of a debug entry.
     fn resolve_function_name(
         &self,
@@ -419,8 +424,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
 
         if let Some(attr) = reference_target {
             return self.resolve_reference(attr, |ref_unit, ref_entry| {
-                if self.unit.offset != ref_unit.unit.offset || entry.offset() != ref_entry.offset()
-                {
+                if self.offset() != ref_unit.offset() || entry.offset() != ref_entry.offset() {
                     ref_unit.resolve_function_name(ref_entry, language)
                 } else {
                     Ok(None)
@@ -1034,7 +1038,7 @@ impl<'data> DwarfSections<'data> {
 
 struct DwarfInfo<'data> {
     inner: DwarfInner<'data>,
-    headers: Vec<CompilationUnitHeader<'data>>,
+    headers: Vec<UnitHeader<'data>>,
     units: Vec<LazyCell<Option<Unit<'data>>>>,
     symbol_map: SymbolMap<'data>,
     address_offset: i64,
@@ -1072,6 +1076,7 @@ impl<'d> DwarfInfo<'d> {
                 sections.debug_ranges.to_gimli(),
                 sections.debug_rnglists.to_gimli(),
             ),
+            file_type: DwarfFileType::Main,
         };
 
         // Prepare random access to unit headers.
@@ -1117,9 +1122,10 @@ impl<'d> DwarfInfo<'d> {
         &self,
         offset: DebugInfoOffset,
     ) -> Result<(UnitRef<'d, '_>, UnitOffset), DwarfError> {
+        let section_offset = UnitSectionOffset::DebugInfoOffset(offset);
         let search_result = self
             .headers
-            .binary_search_by_key(&offset, CompilationUnitHeader::offset);
+            .binary_search_by_key(&section_offset, UnitHeader::offset);
 
         let index = match search_result {
             Ok(index) => index,
@@ -1128,8 +1134,7 @@ impl<'d> DwarfInfo<'d> {
         };
 
         if let Some(unit) = self.get_unit(index)? {
-            let offset = UnitSectionOffset::DebugInfoOffset(offset);
-            if let Some(unit_offset) = offset.to_unit_offset(unit) {
+            if let Some(unit_offset) = section_offset.to_unit_offset(unit) {
                 return Ok((UnitRef { unit, info: self }, unit_offset));
             }
         }
