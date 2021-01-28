@@ -252,8 +252,13 @@ impl<'d> MachObject<'d> {
     ///
     /// This is an indication that BCSymbolMaps are needed to symbolicate crash reports correctly.
     pub fn requires_symbolmap(&self) -> bool {
-        self.symbols()
-            .any(|s| s.name().map_or(false, |n| n.starts_with("__?hidden#")))
+        self.symbols().any(|s| {
+            s.name().map_or(false, |n| {
+                n.starts_with("__?hidden#")
+                    || n.starts_with("__hidden#")
+                    || n.starts_with("_hidden#")
+            })
+        })
     }
 }
 
