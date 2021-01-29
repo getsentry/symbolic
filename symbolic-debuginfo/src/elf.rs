@@ -307,9 +307,9 @@ impl<'data> ElfObject<'data> {
     /// Locates and reads a section in an ELF binary.
     fn find_section(&self, name: &str) -> Option<(bool, DwarfSection<'data>)> {
         for header in &self.elf.section_headers {
-            // NB: Symbolic does not support MIPS, but if it did we would also need to check
-            // SHT_MIPS_DWARF sections.
-            if header.sh_type != elf::section_header::SHT_PROGBITS {
+            const SHT_MIPS_DWARF: u32 = 0x7000_001e;
+            const SHT_PROGBITS: u32 = elf::section_header::SHT_PROGBITS;
+            if !matches!(header.sh_type, SHT_PROGBITS | SHT_MIPS_DWARF) {
                 continue;
             }
 
