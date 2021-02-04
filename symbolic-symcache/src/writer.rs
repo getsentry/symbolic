@@ -422,6 +422,8 @@ where
     ) -> Result<(Vec<format::LineRecord>, u64), SymCacheError> {
         let mut line_segment = vec![];
         let mut last_address = start_address;
+        let mut last_file = 0;
+        let mut last_line = 0;
 
         while let Some(line) = lines.peek() {
             let file_id = self.insert_file(&line.file)?;
@@ -430,17 +432,27 @@ where
             // start.  Why this happens is unclear but it happens with highly inlined function
             // calls.  Instead of panicking we want to just assume there is a single record at the
             // address of the function and in case there are more the offsets are just slightly off.
-            let mut diff = (line.address.saturating_sub(last_address)) as i64;
+            let mut remaining_offset = Some(line.address.saturating_sub(last_address));
 
             // Line records store relative offsets to the previous line's address. If that offset
             // exceeds 255 (max u8 value), we write multiple line records to fill the gap.
-            while diff >= 0 {
-                let line_record = format::LineRecord {
-                    addr_off: (diff & 0xff) as u8,
-                    file_id,
-                    line: std::cmp::min(line.line, std::u16::MAX.into()) as u16,
+            while let Some(offset) = remaining_offset {
+                let (current_offset, rest) = if offset > 0xff {
+                    (0xff, Some(offset - 0xff))
+                } else {
+                    (offset, None)
                 };
-                last_address += u64::from(line_record.addr_off);
+
+                remaining_offset = rest;
+                last_address += current_offset;
+
+                // If there is a rest offset, then the current line record is just a filler. This
+                // record still falls into the previous record's range, so we need to use the
+                // previous record's information. Only if there is no rest, use the new information.
+                if rest.is_none() {
+                    last_file = file_id;
+                    last_line = line.line.min(std::u16::MAX.into()) as u16;
+                }
 
                 // Check if we can still add a line record to this function without exceeding limits
                 // of the physical format. Otherwise, do an early exit and let the caller iterate.
@@ -451,8 +463,11 @@ where
                     return Ok((line_segment, last_address));
                 }
 
-                line_segment.push(line_record);
-                diff -= 0xff;
+                line_segment.push(format::LineRecord {
+                    addr_off: current_offset as u8,
+                    file_id: last_file,
+                    line: last_line,
+                });
             }
 
             lines.next();

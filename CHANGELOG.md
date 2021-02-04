@@ -1,5 +1,12 @@
 # Changelog
 
+## 8.0.3
+
+**Bug Fixes**:
+
+- Support DWARF information from MIPS compilers in `SHT_MIPS_DWARF` sections. ([#317](https://github.com/getsentry/symbolic/pull/317))
+- Remove a duplicate dependency to two versions of `walrus` for WASM parsing. ([#312](https://github.com/getsentry/symbolic/pull/312))
+
 ## 8.0.2
 
 **Bug Fixes**:
