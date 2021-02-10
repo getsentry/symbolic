@@ -209,11 +209,18 @@ impl FuncRecord {
     }
 
     /// The instruction address _after_ the end of the function.
+    ///
+    /// TODO(ja): Describe special case.
     pub fn addr_end(&self) -> u64 {
-        self.addr_start() + u64::from(self.len)
+        match self.len {
+            0xffff => u64::MAX,
+            len => self.addr_start() + u64::from(len),
+        }
     }
 
     /// Checks whether the given address is covered by the function.
+    ///
+    /// TODO(ja): Describe special case.
     pub fn addr_in_range(&self, addr: u64) -> bool {
         addr >= self.addr_start() && addr <= self.addr_end()
     }
