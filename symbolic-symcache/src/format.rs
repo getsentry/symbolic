@@ -178,7 +178,7 @@ pub struct FuncRecord {
     pub addr_low: u32,
     /// High bits of the address.
     pub addr_high: u16,
-    /// The length of the function.
+    /// The length of the function. A value of 0xffff indicates that the size is unknown.
     pub len: u16,
     /// The line record of this function.  If it fully overlaps with an inline the record could be
     /// `~0`.
@@ -209,12 +209,24 @@ impl FuncRecord {
     }
 
     /// The instruction address _after_ the end of the function.
+    ///
+    /// If the function's [`len`](FuncRecord::len) is [`u16::MAX`], we assume it extends all the way
+    /// to the end of the file.
     pub fn addr_end(&self) -> u64 {
-        self.addr_start() + u64::from(self.len)
+        match self.len {
+            0xffff => u64::MAX,
+            len => self.addr_start() + u64::from(len),
+        }
     }
 
     /// Checks whether the given address is covered by the function.
+    ///
+    /// If the function's [`len`](FuncRecord::len) is [`u16::MAX`], we assume it extends all the way
+    /// to the end of the file.
     pub fn addr_in_range(&self, addr: u64) -> bool {
+        // Special case: The end address is treated as inclusive. TODO: Check if this is
+        // intentional. We may want to consider empty functions as occupying the start location with
+        // a single byte instruction.
         addr >= self.addr_start() && addr <= self.addr_end()
     }
 
@@ -231,7 +243,7 @@ impl FuncRecord {
     }
 }
 
-/// A mapping between instruction addresses and file / line information.
+/// A mapping between an instruction address and file / line information.
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone, Debug)]
 pub struct LineRecord {
