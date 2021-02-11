@@ -210,8 +210,8 @@ impl FuncRecord {
 
     /// The instruction address _after_ the end of the function.
     ///
-    /// If the function's `len` is 0xffff, we assume it extends all the way to
-    /// the end of the file.
+    /// If the function's [`len`](FuncRecord::len) is [`u16::MAX`], we assume it extends all the way
+    /// to the end of the file.
     pub fn addr_end(&self) -> u64 {
         match self.len {
             0xffff => u64::MAX,
@@ -221,8 +221,12 @@ impl FuncRecord {
 
     /// Checks whether the given address is covered by the function.
     ///
-    /// TODO(ja): Describe special case.
+    /// If the function's [`len`](FuncRecord::len) is [`u16::MAX`], we assume it extends all the way
+    /// to the end of the file.
     pub fn addr_in_range(&self, addr: u64) -> bool {
+        // Special case: The end address is treated as inclusive. TODO: Check if this is
+        // intentional. We may want to consider empty functions as occupying the start location with
+        // a single byte instruction.
         addr >= self.addr_start() && addr <= self.addr_end()
     }
 
