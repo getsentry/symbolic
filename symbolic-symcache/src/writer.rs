@@ -13,7 +13,7 @@ use crate::format;
 
 // Performs a shallow check whether this function might contain any lines.
 fn is_empty_function(function: &Function<'_>) -> bool {
-    function.lines.is_empty() && function.inlinees.is_empty()
+    function.size == 0
 }
 
 /// Performs a check whether this line has already been written in the scope of this function.
