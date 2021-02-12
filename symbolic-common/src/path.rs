@@ -1,44 +1,44 @@
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
-trait ToChar {
-    fn to_char(self) -> char;
+trait IntoChar {
+    fn into_char(self) -> char;
 }
 
-impl ToChar for char {
-    fn to_char(self) -> char {
+impl IntoChar for char {
+    fn into_char(self) -> char {
         self
     }
 }
 
-impl ToChar for u8 {
-    fn to_char(self) -> char {
+impl IntoChar for u8 {
+    fn into_char(self) -> char {
         char::from(self)
     }
 }
 
-impl<T: ToChar + Copy> ToChar for &'_ T {
-    fn to_char(self) -> char {
-        (*self).to_char()
+impl<T: IntoChar + Copy> IntoChar for &'_ T {
+    fn into_char(self) -> char {
+        (*self).into_char()
     }
 }
 
 /// Returns `true` if the given character is any valid directory separator.
 #[inline]
-fn is_path_separator<C: ToChar>(c: C) -> bool {
-    matches!(c.to_char(), '\\' | '/')
+fn is_path_separator<C: IntoChar>(c: C) -> bool {
+    matches!(c.into_char(), '\\' | '/')
 }
 
 /// Returns `true` if the given character is a valid Windows directory separator.
 #[inline]
-fn is_windows_separator<C: ToChar>(c: C) -> bool {
+fn is_windows_separator<C: IntoChar>(c: C) -> bool {
     is_path_separator(c)
 }
 
 /// Returns `true` if the given character is a valid UNIX directory separator.
 #[inline]
-fn is_unix_separator<C: ToChar>(c: C) -> bool {
-    c.to_char() == '/'
+fn is_unix_separator<C: IntoChar>(c: C) -> bool {
+    c.into_char() == '/'
 }
 
 /// Returns `true` if this is a Windows Universal Naming Convention path (UNC).
