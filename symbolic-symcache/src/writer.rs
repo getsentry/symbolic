@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::{self, Seek, Write};
+use std::num::NonZeroU16;
 
 use fnv::{FnvHashMap, FnvHashSet};
 use num::FromPrimitive;
@@ -225,7 +226,7 @@ where
         for index in 0..writer.functions.len() {
             if let Some(function) = writer.functions.get(index) {
                 let address = function.original.addr;
-                let end = address + function.record.len.max(1) as u64;
+                let end = address + function.record.len.get() as u64;
 
                 // Consume all functions before and within this function. Only write the symbols
                 // before the function and drop the rest.
@@ -298,12 +299,13 @@ where
             s => s,
         };
 
+        let len = NonZeroU16::new(std::cmp::min(size, 0xffff) as u16)
+            .expect("Function length must be positive");
+
         let record = format::FuncRecord {
             addr_low: (symbol.address & 0xffff_ffff) as u32,
             addr_high: ((symbol.address >> 32) & 0xffff) as u16,
-            // XXX: we have not seen this yet, but in theory this should be
-            // stored as multiple function records.
-            len: std::cmp::min(size, 0xffff) as u16,
+            len,
             symbol_id_low: (symbol_id & 0xffff) as u16,
             symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
             line_records: format::Seg::default(),
@@ -511,10 +513,13 @@ where
                 self.header.has_line_records = 1;
             }
 
+            let len = NonZeroU16::new((end_address - start_address) as u16)
+                .expect("Function length must be positive");
+
             let record = format::FuncRecord {
                 addr_low: (start_address & 0xffff_ffff) as u32,
                 addr_high: ((start_address >> 32) & 0xffff) as u16,
-                len: (end_address - start_address) as u16,
+                len,
                 symbol_id_low: (symbol_id & 0xffff) as u16,
                 symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
                 parent_offset: !0,
