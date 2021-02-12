@@ -180,8 +180,8 @@ impl<'d> BreakpadInfoRecord<'d> {
 
         for pair in parsed.into_inner() {
             match pair.as_rule() {
-                Rule::info_code_id => return Self::code_info_from_pair(pair),
-                Rule::info_other => return Self::other_from_pair(pair),
+                Rule::info_code_id => return Ok(Self::code_info_from_pair(pair)),
+                Rule::info_other => return Ok(Self::other_from_pair(pair)),
                 _ => unreachable!(),
             }
         }
@@ -189,7 +189,7 @@ impl<'d> BreakpadInfoRecord<'d> {
         Err(BreakpadErrorKind::Parse("unknown INFO record").into())
     }
 
-    fn code_info_from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Result<Self, BreakpadError> {
+    fn code_info_from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Self {
         let mut code_id = "";
         let mut code_file = "";
 
@@ -201,10 +201,10 @@ impl<'d> BreakpadInfoRecord<'d> {
             }
         }
 
-        Ok(BreakpadInfoRecord::CodeId { code_id, code_file })
+        BreakpadInfoRecord::CodeId { code_id, code_file }
     }
 
-    fn other_from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Result<Self, BreakpadError> {
+    fn other_from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Self {
         let mut scope = "";
         let mut info = "";
 
@@ -216,7 +216,7 @@ impl<'d> BreakpadInfoRecord<'d> {
             }
         }
 
-        Ok(BreakpadInfoRecord::Other { scope, info })
+        BreakpadInfoRecord::Other { scope, info }
     }
 }
 
@@ -667,11 +667,11 @@ impl<'d> BreakpadStackCfiRecord<'d> {
             .next()
             .unwrap();
 
-        Self::from_pair(parsed)
+        Ok(Self::from_pair(parsed))
     }
 
     /// Constructs a stack record directly from a Pest parser pair.
-    fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Result<Self, BreakpadError> {
+    fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Self {
         let mut record = BreakpadStackCfiRecord::default();
 
         for pair in pair.into_inner() {
@@ -681,7 +681,7 @@ impl<'d> BreakpadStackCfiRecord<'d> {
             }
         }
 
-        Ok(record)
+        record
     }
 }
 
@@ -704,11 +704,11 @@ impl<'d> BreakpadStackWinRecord<'d> {
             .next()
             .unwrap();
 
-        Self::from_pair(parsed)
+        Ok(Self::from_pair(parsed))
     }
 
     // Constructs a stack record directly from a Pest parser pair.
-    fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Result<Self, BreakpadError> {
+    fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Self {
         let mut record = BreakpadStackWinRecord::default();
 
         for pair in pair.into_inner() {
@@ -718,7 +718,7 @@ impl<'d> BreakpadStackWinRecord<'d> {
             }
         }
 
-        Ok(record)
+        record
     }
 }
 
@@ -739,8 +739,8 @@ impl<'d> BreakpadStackRecord<'d> {
         let pair = parsed.into_inner().next().unwrap();
 
         Ok(match pair.as_rule() {
-            Rule::stack_cfi => BreakpadStackRecord::Cfi(BreakpadStackCfiRecord::from_pair(pair)?),
-            Rule::stack_win => BreakpadStackRecord::Win(BreakpadStackWinRecord::from_pair(pair)?),
+            Rule::stack_cfi => BreakpadStackRecord::Cfi(BreakpadStackCfiRecord::from_pair(pair)),
+            Rule::stack_win => BreakpadStackRecord::Win(BreakpadStackWinRecord::from_pair(pair)),
             _ => unreachable!(),
         })
     }
@@ -838,11 +838,9 @@ impl<'data> BreakpadObject<'data> {
     /// The code identifier of this object.
     pub fn code_id(&self) -> Option<CodeId> {
         for result in self.info_records() {
-            if let Ok(record) = result {
-                if let BreakpadInfoRecord::CodeId { code_id, .. } = record {
-                    if !code_id.is_empty() {
-                        return Some(CodeId::new(code_id.into()));
-                    }
+            if let Ok(BreakpadInfoRecord::CodeId { code_id, .. }) = result {
+                if !code_id.is_empty() {
+                    return Some(CodeId::new(code_id.into()));
                 }
             }
         }
