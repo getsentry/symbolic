@@ -295,12 +295,12 @@ where
         // requires some address range. Since we can't possibly know the actual size, just assume
         // that the symbol is VERY large.
         let size = match symbol.size {
-            0 => !0,
-            s => s,
+            0 => u16::MAX,
+            s => s as u16,
         };
 
-        let len = NonZeroU16::new(std::cmp::min(size, 0xffff) as u16)
-            .expect("Function length must be positive");
+        // This unwrap cannot fail; size is nonzero by definition.
+        let len = NonZeroU16::new(size).unwrap();
 
         let record = format::FuncRecord {
             addr_low: (symbol.address & 0xffff_ffff) as u32,
@@ -513,8 +513,15 @@ where
                 self.header.has_line_records = 1;
             }
 
-            let len = NonZeroU16::new((end_address - start_address) as u16)
-                .expect("Function length must be positive");
+            let len = (end_address - start_address) as u16;
+            debug_assert_ne!(len, 0, "Function length must be positive");
+            if len == 0 {
+                continue;
+            }
+
+            // This unwrap cannot fail; if len is zero we have already panicked
+            // or continued.
+            let len = NonZeroU16::new(len).unwrap();
 
             let record = format::FuncRecord {
                 addr_low: (start_address & 0xffff_ffff) as u32,

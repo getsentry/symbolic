@@ -3,7 +3,6 @@ use std::io::Cursor;
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
-use symbolic_demangle::{Demangle, DemangleOptions};
 use symbolic_symcache::{SymCache, SymCacheWriter};
 use symbolic_testutils::fixture;
 
@@ -127,7 +126,7 @@ fn test_lookup_no_lines() -> Result<(), Error> {
     let name = symbols[0].function_name();
 
     assert_eq!(
-        name.try_demangle(DemangleOptions::name_only()),
+        name,
         "std::_Func_impl_no_alloc<`lambda at \
         /builds/worker/checkouts/gecko/netwerk/\
         protocol/http/HttpChannelChild.cpp:411:7',void>::_Do_call()"
@@ -151,10 +150,7 @@ fn test_lookup_no_size() -> Result<(), Error> {
     assert_eq!(symbols.len(), 1);
     let name = symbols[0].function_name();
 
-    assert_eq!(
-        name.try_demangle(DemangleOptions::name_only()),
-        "nouveau_drm_screen_create"
-    );
+    assert_eq!(name, "nouveau_drm_screen_create");
 
     Ok(())
 }

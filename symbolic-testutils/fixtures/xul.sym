@@ -1,13 +1,3 @@
 MODULE windows x86_64 09F9D7ECF31F60E34C4C44205044422E1 xul.pdb
 INFO CODE_ID 5E8F310E69D0000 xul.dll
-FILE 0 hg:hg.mozilla.org/mozilla-central:vs2017_15.8.4/VC/include/functional:93bdbca5399c12b3eec5f03bbc323e00f7ef3a51
-FUNC c6db60 f 0 std::_Func_impl_no_alloc<`lambda at /builds/worker/checkouts/gecko/netwerk/protocol/http/HttpChannelChild.cpp:411:7',void>::_Move(void*)
-c6db60 f 1219 0
 FUNC c6db70 23e 0 std::_Func_impl_no_alloc<`lambda at /builds/worker/checkouts/gecko/netwerk/protocol/http/HttpChannelChild.cpp:411:7',void>::_Do_call()
-FUNC c6ddb0 8 0 std::_Func_impl_no_alloc<`lambda at /builds/worker/checkouts/gecko/netwerk/protocol/http/HttpChannelChild.cpp:411:7',void>::_Target_type() const
-c6ddb0 8 1227 0
-FUNC c6ddc0 209 0 std::_Func_impl_no_alloc<`lambda at /builds/worker/checkouts/gecko/netwerk/protocol/http/HttpChannelChild.cpp:411:7',void>::_Delete_this(bool)
-c6ddc0 b 1239 0
-c6ddcb 102 1240 0
-c6decd 8 1241 0
-c6ded5 10 1243 0
