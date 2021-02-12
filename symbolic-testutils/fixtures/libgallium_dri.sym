@@ -1,0 +1,20 @@
+MODULE Linux x86_64 5A5F32914295A4FA22B591670A49FBEF0 libgallium_dri.so
+INFO CODE_ID 91325F5A9542FAA422B591670A49FBEF719A143E
+PUBLIC 135380 0 __driDriverGetExtensions_swrast
+PUBLIC 1353a0 0 __driDriverGetExtensions_kms_swrast
+PUBLIC 1353c0 0 __driDriverGetExtensions_iris
+PUBLIC 1353e0 0 __driDriverGetExtensions_nouveau
+PUBLIC 135400 0 __driDriverGetExtensions_r300
+PUBLIC 135420 0 __driDriverGetExtensions_r600
+PUBLIC 135440 0 __driDriverGetExtensions_radeonsi
+PUBLIC 135460 0 __driDriverGetExtensions_vmwgfx
+PUBLIC 135480 0 __driDriverGetExtensions_virtio_gpu
+PUBLIC 1354a0 0 __driDriverGetExtensions_zink
+PUBLIC 6dd790 0 radeon_drm_winsys_create
+PUBLIC 872f20 0 amdgpu_winsys_create
+PUBLIC 87cb40 0 ac_init_shared_llvm_once
+PUBLIC 88e650 0 nouveau_drm_screen_create
+STACK CFI INIT 103020 10 .cfa: $rsp 16 + .ra: .cfa -8 + ^ 
+STACK CFI 103026 .cfa: $rsp 24 +
+STACK CFI INIT 103030 8 .cfa: $rsp 8 + .ra: .cfa -8 + ^ 
+STACK CFI INIT 103040 13 $r12: .cfa -24 + ^ $r13: .cfa -16 + ^ $rbp: .cfa -32 + ^ $rbx: .cfa -40 + ^ .cfa: $rsp 96 + .ra: .cfa -8 + ^ 
