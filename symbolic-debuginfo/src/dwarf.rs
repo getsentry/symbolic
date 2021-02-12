@@ -223,7 +223,7 @@ struct DwarfLineProgram<'d> {
 }
 
 impl<'d, 'a> DwarfLineProgram<'d> {
-    fn prepare(program: IncompleteLineNumberProgram<'d>) -> Result<Self, DwarfError> {
+    fn prepare(program: IncompleteLineNumberProgram<'d>) -> Self {
         let mut sequences = Vec::new();
         let mut sequence_rows = Vec::<DwarfRow>::new();
         let mut prev_address = 0;
@@ -307,10 +307,10 @@ impl<'d, 'a> DwarfLineProgram<'d> {
         // Sequences are not guaranteed to be in order.
         dmsort::sort_by_key(&mut sequences, |x| x.start);
 
-        Ok(DwarfLineProgram {
+        DwarfLineProgram {
             header: state_machine.header().clone(),
             sequences,
-        })
+        }
     }
 
     pub fn get_rows(&self, range: &Range) -> &[DwarfRow] {
@@ -471,7 +471,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         };
 
         let line_program = match unit.line_program {
-            Some(ref program) => Some(DwarfLineProgram::prepare(program.clone())?),
+            Some(ref program) => Some(DwarfLineProgram::prepare(program.clone())),
             None => None,
         };
 
@@ -1019,11 +1019,11 @@ struct DwarfSections<'data> {
 
 impl<'data> DwarfSections<'data> {
     /// Loads all sections from a DWARF object.
-    fn from_dwarf<D>(dwarf: &D) -> Result<Self, DwarfError>
+    fn from_dwarf<D>(dwarf: &D) -> Self
     where
         D: Dwarf<'data>,
     {
-        Ok(DwarfSections {
+        DwarfSections {
             debug_abbrev: DwarfSectionData::load(dwarf),
             debug_info: DwarfSectionData::load(dwarf),
             debug_line: DwarfSectionData::load(dwarf),
@@ -1032,7 +1032,7 @@ impl<'data> DwarfSections<'data> {
             debug_str_offsets: DwarfSectionData::load(dwarf),
             debug_ranges: DwarfSectionData::load(dwarf),
             debug_rnglists: DwarfSectionData::load(dwarf),
-        })
+        }
     }
 }
 
@@ -1218,7 +1218,7 @@ impl<'data> DwarfDebugSession<'data> {
     where
         D: Dwarf<'data>,
     {
-        let sections = DwarfSections::from_dwarf(dwarf)?;
+        let sections = DwarfSections::from_dwarf(dwarf);
         let cell = SelfCell::try_new(Box::new(sections), |sections| {
             DwarfInfo::parse(unsafe { &*sections }, symbol_map, address_offset, kind)
         })?;

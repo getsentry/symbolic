@@ -242,13 +242,13 @@ fn try_demangle_swift(_ident: &str, _opts: DemangleOptions) -> Option<String> {
     None
 }
 
-fn try_demangle_objc(ident: &str, _opts: DemangleOptions) -> Option<String> {
-    Some(ident.to_string())
+fn demangle_objc(ident: &str, _opts: DemangleOptions) -> String {
+    ident.to_string()
 }
 
 fn try_demangle_objcpp(ident: &str, opts: DemangleOptions) -> Option<String> {
     if is_maybe_objc(ident) {
-        try_demangle_objc(ident, opts)
+        Some(demangle_objc(ident, opts))
     } else if is_maybe_cpp(ident) {
         try_demangle_cpp(ident, opts)
     } else {
@@ -355,7 +355,7 @@ impl<'a> Demangle for Name<'a> {
             return Some(self.to_string());
         }
         match self.detect_language() {
-            Language::ObjC => try_demangle_objc(self.as_str(), opts),
+            Language::ObjC => Some(demangle_objc(self.as_str(), opts)),
             Language::ObjCpp => try_demangle_objcpp(self.as_str(), opts),
             Language::Rust => try_demangle_rust(self.as_str(), opts),
             Language::Cpp => try_demangle_cpp(self.as_str(), opts),
