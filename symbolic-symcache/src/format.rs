@@ -4,6 +4,7 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::io;
 use std::marker::PhantomData;
+use std::num::NonZeroU16;
 
 use symbolic_common::{DebugId, Uuid};
 
@@ -172,14 +173,14 @@ pub struct FileRecord {
 
 /// A function or public symbol.
 #[repr(C, packed)]
-#[derive(Default, Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct FuncRecord {
     /// Low bits of the address.
     pub addr_low: u32,
     /// High bits of the address.
     pub addr_high: u16,
     /// The length of the function. A value of 0xffff indicates that the size is unknown.
-    pub len: u16,
+    pub len: NonZeroU16,
     /// The line record of this function.  If it fully overlaps with an inline the record could be
     /// `~0`.
     pub line_records: Seg<LineRecord, u16>,
@@ -213,7 +214,7 @@ impl FuncRecord {
     /// If the function's [`len`](FuncRecord::len) is [`u16::MAX`], we assume it extends all the way
     /// to the end of the file.
     pub fn addr_end(&self) -> u64 {
-        match self.len {
+        match self.len.into() {
             0xffff => u64::MAX,
             len => self.addr_start() + u64::from(len),
         }
