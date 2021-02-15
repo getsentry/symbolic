@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::{self, Seek, Write};
+use std::num::NonZeroU16;
 
 use fnv::{FnvHashMap, FnvHashSet};
 use num::FromPrimitive;
@@ -13,7 +14,7 @@ use crate::format;
 
 // Performs a shallow check whether this function might contain any lines.
 fn is_empty_function(function: &Function<'_>) -> bool {
-    function.lines.is_empty() && function.inlinees.is_empty()
+    function.size == 0
 }
 
 /// Performs a check whether this line has already been written in the scope of this function.
@@ -225,7 +226,7 @@ where
         for index in 0..writer.functions.len() {
             if let Some(function) = writer.functions.get(index) {
                 let address = function.original.addr;
-                let end = address + function.record.len.max(1) as u64;
+                let end = address + function.record.len.get() as u64;
 
                 // Consume all functions before and within this function. Only write the symbols
                 // before the function and drop the rest.
@@ -293,17 +294,18 @@ where
         // there is only one symbol and for the last symbol. `FuncRecord::addr_in_range` always
         // requires some address range. Since we can't possibly know the actual size, just assume
         // that the symbol is VERY large.
-        let size = match symbol.size {
-            0 => !0,
-            s => s,
+        let len = match symbol.size {
+            0 => u16::MAX,
+            s => std::cmp::min(s, 0xffff) as u16,
         };
+
+        // This unwrap cannot fail; size is nonzero by definition.
+        let len = NonZeroU16::new(len).unwrap();
 
         let record = format::FuncRecord {
             addr_low: (symbol.address & 0xffff_ffff) as u32,
             addr_high: ((symbol.address >> 32) & 0xffff) as u16,
-            // XXX: we have not seen this yet, but in theory this should be
-            // stored as multiple function records.
-            len: std::cmp::min(size, 0xffff) as u16,
+            len,
             symbol_id_low: (symbol_id & 0xffff) as u16,
             symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
             line_records: format::Seg::default(),
@@ -511,10 +513,18 @@ where
                 self.header.has_line_records = 1;
             }
 
+            let len = (end_address - start_address) as u16;
+            debug_assert_ne!(len, 0, "Function length must be positive");
+
+            let len = match NonZeroU16::new(len) {
+                Some(len) => len,
+                None => continue,
+            };
+
             let record = format::FuncRecord {
                 addr_low: (start_address & 0xffff_ffff) as u32,
                 addr_high: ((start_address >> 32) & 0xffff) as u16,
-                len: (end_address - start_address) as u16,
+                len,
                 symbol_id_low: (symbol_id & 0xffff) as u16,
                 symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
                 parent_offset: !0,
