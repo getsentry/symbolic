@@ -513,8 +513,12 @@ where
                 self.header.has_line_records = 1;
             }
 
-            let len = (end_address - start_address) as u16;
-            debug_assert_ne!(len, 0, "Function length must be positive");
+            let len = std::cmp::min(end_address - start_address, 0xffff) as u16;
+            debug_assert_ne!(
+                len, 0,
+                "While adding function {}: length must be positive",
+                function.name
+            );
 
             let len = match NonZeroU16::new(len) {
                 Some(len) => len,
