@@ -154,3 +154,23 @@ fn test_lookup_no_size() -> Result<(), Error> {
 
     Ok(())
 }
+
+/// This tests the fix for the bug described in
+/// https://github.com/getsentry/symbolic/issues/285.
+#[test]
+fn test_lookup_modulo_u16() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("xul2.sym"))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut buffer = Vec::new();
+    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let symcache = SymCache::parse(&buffer)?;
+    let symbols = symcache.lookup(0x3c105a1)?.collect::<Vec<_>>()?;
+
+    assert_eq!(symbols.len(), 1);
+    let name = symbols[0].function_name();
+
+    assert_eq!(name, "Interpret(JSContext*, js::RunState&)");
+
+    Ok(())
+}
