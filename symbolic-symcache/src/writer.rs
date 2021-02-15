@@ -522,7 +522,7 @@ where
 
             let len = match NonZeroU16::new(len) {
                 Some(len) => len,
-                None => continue,
+                None => break,
             };
 
             let record = format::FuncRecord {
