@@ -294,13 +294,13 @@ where
         // there is only one symbol and for the last symbol. `FuncRecord::addr_in_range` always
         // requires some address range. Since we can't possibly know the actual size, just assume
         // that the symbol is VERY large.
-        let size = match symbol.size {
+        let len = match symbol.size {
             0 => u16::MAX,
-            s => s as u16,
+            s => std::cmp::min(s, 0xffff) as u16,
         };
 
         // This unwrap cannot fail; size is nonzero by definition.
-        let len = NonZeroU16::new(size).unwrap();
+        let len = NonZeroU16::new(len).unwrap();
 
         let record = format::FuncRecord {
             addr_low: (symbol.address & 0xffff_ffff) as u32,
@@ -515,13 +515,11 @@ where
 
             let len = (end_address - start_address) as u16;
             debug_assert_ne!(len, 0, "Function length must be positive");
-            if len == 0 {
-                continue;
-            }
 
-            // This unwrap cannot fail; if len is zero we have already panicked
-            // or continued.
-            let len = NonZeroU16::new(len).unwrap();
+            let len = match NonZeroU16::new(len) {
+                Some(len) => len,
+                None => continue,
+            };
 
             let record = format::FuncRecord {
                 addr_low: (start_address & 0xffff_ffff) as u32,
