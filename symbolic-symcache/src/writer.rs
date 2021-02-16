@@ -25,17 +25,16 @@ fn is_redundant_line(line: &LineInfo<'_>, line_cache: &mut LineCache) -> bool {
 
 /// Recursively cleans a tree of functions that does not cover any lines.
 ///
-///  - Removes all redundant line records (see `is_redundant_line`)
-///  - Removes all empty functions (see `is_empty_function`)
-///  NOTE: order of operations
+///  - Removes all redundant line records (see [`is_redundant_line`])
+///  - Removes all empty functions (see [`is_empty_function`])
 fn clean_function(function: &mut Function<'_>, line_cache: &mut LineCache) {
+    function.inlinees.retain(|f| !is_empty_function(f));
     let mut inlinee_lines = LineCache::default();
 
     for inlinee in &mut function.inlinees {
         clean_function(inlinee, &mut inlinee_lines);
     }
 
-    function.inlinees.retain(|f| !is_empty_function(f));
     function
         .lines
         .retain(|l| !is_redundant_line(l, &mut inlinee_lines));
