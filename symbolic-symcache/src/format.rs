@@ -185,25 +185,33 @@ pub struct FileRecord {
 pub struct FuncRecord {
     /// Low bits of the address.
     pub addr_low: u32,
+
     /// High bits of the address.
     pub addr_high: u16,
-    /// The length of the function. 
+
+    /// The length of the function.
     ///
     /// A value of `0xffff` indicates that the size is unknown.
     /// We cannot cache any useful information for functions containing no instructions, so
     /// the length is always positive.
     pub len: NonZeroU16,
+
     /// The line record of this function.  If it fully overlaps with an inline the record could be
     /// `~0`.
     pub line_records: Seg<LineRecord, u16>,
+
     /// The comp dir of the file record.
     pub comp_dir: Seg<u8, u8>,
+
     /// The ID offset of the parent funciton.  Will be ~0 if the function has no parent.
     pub parent_offset: u16,
+
     /// The low bits of the ID of the symbol of this function or ~0 if no symbol.
     pub symbol_id_low: u16,
+
     /// The high bits of the ID of the symbol of this function or ~0 if no symbol.
     pub symbol_id_high: u8,
+
     /// The language of the func record.
     pub lang: u8,
 }
@@ -256,8 +264,10 @@ pub struct LineRecord {
     /// Offset to the previous line record in the same function, or to the [function address](FuncRecord::addr_start)
     /// if this is the first line.
     pub addr_off: u8,
+
     /// Index of the file record in the [`files`](Header::files) segment.
     pub file_id: u16,
+
     /// The line number of the line record.
     pub line: u16,
 }
@@ -278,18 +288,25 @@ pub struct Preamble {
 pub struct HeaderV1 {
     /// Version-independent preamble.
     pub preamble: Preamble,
+
     /// Unique identifier of the object file. Does not support PDBs.
     pub uuid: Uuid,
+
     /// CPU architecture of the object file.
     pub arch: u32,
+
     /// Type of debug information that was used to create this SymCache.
     pub data_source: u8,
+
     /// Flag, whether this cache has line records.
     pub has_line_records: u8,
+
     /// Segment containing symbol names.
     pub symbols: Seg<Seg<u8, u16>>,
+
     /// Segment containing [file records](FileRecord).
     pub files: Seg<FileRecord, u16>,
+
     /// Segment containing [function records](FuncRecord).
     pub functions: Seg<FuncRecord>,
 }
@@ -300,18 +317,25 @@ pub struct HeaderV1 {
 pub struct HeaderV2 {
     /// Version-independent preamble.
     pub preamble: Preamble,
+
     /// Debug identifier of the object file.
     pub debug_id: DebugId,
+
     /// CPU architecture of the object file.
     pub arch: u32,
+
     /// DEPRECATED. Type of debug information that was used to create this SymCache.
     pub data_source: u8,
+
     /// Flag, whether this cache has line records.
     pub has_line_records: u8,
+
     /// Segment containing symbol names.
     pub symbols: Seg<Seg<u8, u16>>,
+
     /// Segment containing [file records](FileRecord).
     pub files: Seg<FileRecord, u16>,
+
     /// Segment containing [function records](FuncRecord).
     pub functions: Seg<FuncRecord>,
 }
@@ -321,18 +345,25 @@ pub struct HeaderV2 {
 pub struct Header {
     /// Version-independent preamble.
     pub preamble: Preamble,
+
     /// Debug identifier of the object file.
     pub debug_id: DebugId,
+
     /// CPU architecture of the object file.
     pub arch: u32,
+
     /// DEPRECATED. Type of debug information that was used to create this SymCache.
     pub data_source: u8,
+
     /// Flag, whether this cache has line records.
     pub has_line_records: u8,
+
     /// Segment containing symbol names.
     pub symbols: Seg<Seg<u8, u16>>,
+
     /// Segment containing [file records](FileRecord).
     pub files: Seg<FileRecord, u16>,
+
     /// Segment containing [function records](FuncRecord).
     pub functions: Seg<FuncRecord>,
 }
