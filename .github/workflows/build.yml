@@ -5,6 +5,9 @@ on:
     branches:
       - "release/**"
 
+  # TODO: Revert before merge
+  pull_request:
+
 jobs:
   python-wheel-mac:
     name: Python macOS
