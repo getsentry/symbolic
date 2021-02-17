@@ -1,4 +1,3 @@
-SHELL = /bin/bash
 export SYMBOLIC_PYTHON_VERSION := python3
 
 all: check test
