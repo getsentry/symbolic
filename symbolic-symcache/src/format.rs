@@ -55,7 +55,8 @@ pub(crate) fn as_slice<T>(data: &T) -> &[u8] {
 ///
 /// This is essentially a fat pointer into the cache,
 /// comprising a memory location and a length. The memory region it
-/// points to starts at byte `offset` and spans `len * size_of::<T>()`
+/// points to starts at byte [`offset`](Self::offset) and spans
+/// `[len](Self::len) * size_of::<T>()`
 /// bytes. `Seg` is generic in the
 /// type of `len` so that a smaller counter can be used if it is known
 /// ahead of time that the segment will contain few items.
