@@ -279,7 +279,7 @@ pub struct HeaderV1 {
     pub preamble: Preamble,
     /// Unique identifier of the object file. Does not support PDBs.
     pub uuid: Uuid,
-    /// CPU architecture of the debug file.
+    /// CPU architecture of the object file.
     pub arch: u32,
     /// Type of debug information that was used to create this SymCache.
     pub data_source: u8,
@@ -301,7 +301,7 @@ pub struct HeaderV2 {
     pub preamble: Preamble,
     /// Debug identifier of the object file.
     pub debug_id: DebugId,
-    /// CPU architecture of the debug file. NOTE: debug file or object file?
+    /// CPU architecture of the object file.
     pub arch: u32,
     /// DEPRECATED. Type of debug information that was used to create this SymCache.
     pub data_source: u8,
@@ -322,7 +322,7 @@ pub struct Header {
     pub preamble: Preamble,
     /// Debug identifier of the object file.
     pub debug_id: DebugId,
-    /// CPU architecture of the debug file.
+    /// CPU architecture of the object file.
     pub arch: u32,
     /// DEPRECATED. Type of debug information that was used to create this SymCache.
     pub data_source: u8,
