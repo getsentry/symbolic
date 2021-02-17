@@ -252,7 +252,7 @@ impl FuncRecord {
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone, Debug)]
 pub struct LineRecord {
-    /// Offset to the previous line record in the same function, or the function address
+    /// Offset to the previous line record in the same function, or to the [function address](FuncRecord::addr_start)
     /// if this is the first line.
     pub addr_off: u8,
     /// Index of the file record in the [`files`](Header::files) segment.
