@@ -516,20 +516,26 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             match attr.name() {
                 constants::DW_AT_low_pc => match attr.value() {
                     AttributeValue::Addr(addr) => low_pc = Some(addr),
-                    _ => unreachable!(),
+                    AttributeValue::DebugAddrIndex(index) => {
+                        low_pc = Some(self.inner.info.address(self.inner.unit, index)?)
+                    }
+                    _ => return Err(GimliError::UnsupportedAttributeForm.into()),
                 },
                 constants::DW_AT_high_pc => match attr.value() {
                     AttributeValue::Addr(addr) => high_pc = Some(addr),
+                    AttributeValue::DebugAddrIndex(index) => {
+                        low_pc = Some(self.inner.info.address(self.inner.unit, index)?)
+                    }
                     AttributeValue::Udata(size) => high_pc_rel = Some(size),
-                    _ => unreachable!(),
+                    _ => return Err(GimliError::UnsupportedAttributeForm.into()),
                 },
                 constants::DW_AT_call_line => match attr.value() {
                     AttributeValue::Udata(line) => tuple.0 = Some(line),
-                    _ => unreachable!(),
+                    _ => return Err(GimliError::UnsupportedAttributeForm.into()),
                 },
                 constants::DW_AT_call_file => match attr.value() {
                     AttributeValue::FileIndex(file) => tuple.1 = Some(file),
-                    _ => unreachable!(),
+                    _ => return Err(GimliError::UnsupportedAttributeForm.into()),
                 },
                 constants::DW_AT_ranges
                 | constants::DW_AT_rnglists_base
