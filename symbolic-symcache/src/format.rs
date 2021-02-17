@@ -208,7 +208,7 @@ pub struct FuncRecord {
 }
 
 impl FuncRecord {
-    /// The index of the function/symbol name in the [`symbols`](Header::symbols) segment.
+    /// The index of the function or symbol name in the [`symbols`](Header::symbols) segment.
     pub fn symbol_id(&self) -> u32 {
         (u32::from(self.symbol_id_high) << 16) | u32::from(self.symbol_id_low)
     }
