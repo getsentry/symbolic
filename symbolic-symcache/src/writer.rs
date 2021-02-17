@@ -192,7 +192,7 @@ impl<W> SymCacheWriter<W>
 where
     W: Write + Seek,
 {
-    /// Converts an entire object (an instance of a type that implements [`ObjectLike`](ObjectLike))
+    /// Converts an entire object (an instance of a type that implements [`ObjectLike`])
     /// into a SymCache.
     pub fn write_object<'d, 'o, O>(object: &'o O, target: W) -> Result<W, SymCacheError>
     where
