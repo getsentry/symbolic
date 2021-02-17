@@ -93,4 +93,4 @@ format-python: .venv/bin/python
 
 .venv/bin/python: Makefile
 	@rm -rf .venv
-	$SYMBOLIC_PYTHON_VERSION -m venv .venv
+	$$SYMBOLIC_PYTHON_VERSION -m venv .venv
