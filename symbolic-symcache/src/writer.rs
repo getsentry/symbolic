@@ -86,8 +86,7 @@ where
         Ok(())
     }
 
-    /// Writes a slice as binary data and returns a [`Seg`](format::Seg) (i.e., a fat pointer) containing
-    /// the byte offset and length (in items) of the written memory.
+    /// Writes a slice as binary data and returns a [`Seg`](format::Seg) pointing to the written data.
     ///
     /// This operation may fail if the length of the slice does not fit in the segment's index type.
     ///
@@ -323,10 +322,7 @@ where
     /// Does nothing if the function is empty itself.
     /// Functions **must** be added in ascending order using this method. This emits a function
     /// record for this function and for each inlinee recursively.
-    pub fn add_function(
-        &mut self,
-        mut function: Function<'_>,
-    ) -> Result<(), SymCacheError> {
+    pub fn add_function(&mut self, mut function: Function<'_>) -> Result<(), SymCacheError> {
         // If we encounter a function without any instructions we just skip it.  This saves memory
         // and since we only care about instructions where we can actually crash this is a
         // reasonable optimization.
@@ -353,7 +349,9 @@ where
         Ok(writer.into_inner())
     }
 
-    /// Writes a segment for a path and adds it to the [`path_cache`](Self::path_cache). Paths longer than
+    /// Writes a segment for a path and adds it to the [`path_cache`](Self::path_cache).
+    ///
+    /// Paths longer than
     /// 2^8 bytes will be shortened using [`shorten_path`](symbolic_common::shorten_path).
     fn write_path(&mut self, path: &[u8]) -> Result<format::Seg<u8, u8>, SymCacheError> {
         if let Some(segment) = self.path_cache.get(path) {
