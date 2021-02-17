@@ -7,9 +7,8 @@ use crate::format;
 
 /// A platform independent symbolication cache.
 ///
-/// Use [`SymCacheWriter`] writer to create SymCaches, including the conversion from object files.
-///
-/// [`SymCacheWriter`]: struct.SymCacheWriter.html
+/// Use [`SymCacheWriter`](super::writer::SymCacheWriter) writer to create SymCaches,
+/// including the conversion from object files.
 pub struct SymCache<'a> {
     header: format::Header,
     data: &'a [u8],
@@ -681,7 +680,7 @@ impl<'a> Iterator for Lines<'a> {
     }
 }
 
-/// A line covered by a [`Function`](struct.Function.html).
+/// A line covered by a [`Function`](symbolic_debuginfo::Function).
 pub struct Line<'a> {
     record: &'a format::LineRecord,
     file: Option<&'a format::FileRecord>,

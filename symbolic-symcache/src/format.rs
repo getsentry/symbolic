@@ -285,9 +285,9 @@ pub struct HeaderV1 {
     pub has_line_records: u8,
     /// Segment containing symbol names.
     pub symbols: Seg<Seg<u8, u16>>,
-    /// Segment containing [file records](struct.FileRecord.html).
+    /// Segment containing [file records](FileRecord).
     pub files: Seg<FileRecord, u16>,
-    /// Segment containing [function records](struct.FuncRecord.html).
+    /// Segment containing [function records](FuncRecord).
     pub functions: Seg<FuncRecord>,
 }
 
@@ -307,9 +307,9 @@ pub struct HeaderV2 {
     pub has_line_records: u8,
     /// Segment containing symbol names.
     pub symbols: Seg<Seg<u8, u16>>,
-    /// Segment containing [file records](struct.FileRecord.html).
+    /// Segment containing [file records](FileRecord).
     pub files: Seg<FileRecord, u16>,
-    /// Segment containing [function records](struct.FuncRecord.html).
+    /// Segment containing [function records](FuncRecord).
     pub functions: Seg<FuncRecord>,
 }
 
@@ -328,9 +328,9 @@ pub struct Header {
     pub has_line_records: u8,
     /// Segment containing symbol names.
     pub symbols: Seg<Seg<u8, u16>>,
-    /// Segment containing [file records](struct.FileRecord.html).
+    /// Segment containing [file records](FileRecord).
     pub files: Seg<FileRecord, u16>,
-    /// Segment containing [function records](struct.FuncRecord.html).
+    /// Segment containing [function records](FuncRecord).
     pub functions: Seg<FuncRecord>,
 }
 
