@@ -186,7 +186,9 @@ pub struct FuncRecord {
     pub addr_low: u32,
     /// High bits of the address.
     pub addr_high: u16,
-    /// The length of the function. A value of 0xffff indicates that the size is unknown.
+    /// The length of the function. 
+    ///
+    /// A value of `0xffff` indicates that the size is unknown.
     /// We cannot cache any useful information for functions containing no instructions, so
     /// the length is always positive.
     pub len: NonZeroU16,
