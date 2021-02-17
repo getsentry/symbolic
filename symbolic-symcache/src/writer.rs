@@ -211,7 +211,7 @@ where
         for function in session.functions() {
             let function =
                 function.map_err(|e| SymCacheError::new(SymCacheErrorKind::BadDebugFile, e))?;
-            writer.clean_and_insert_function(function)?;
+            writer.add_function(function)?;
         }
 
         // Sort the files to efficiently add symbols from the symbol table in linear time
@@ -318,11 +318,12 @@ where
     }
 
     /// Cleans up a function by recursively removing all empty inlinees, then inserts it into
-    /// the writer. Does nothing if the function is empty itself.
+    /// the writer.
     ///
+    /// Does nothing if the function is empty itself.
     /// Functions **must** be added in ascending order using this method. This emits a function
     /// record for this function and for each inlinee recursively.
-    pub fn clean_and_insert_function(
+    pub fn add_function(
         &mut self,
         mut function: Function<'_>,
     ) -> Result<(), SymCacheError> {
