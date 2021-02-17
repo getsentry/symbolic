@@ -443,7 +443,7 @@ where
     /// 2^16 bytes after the start address. If either of these limits is exceeded, the function will return
     /// early with the address of the first line that could not be processed; it is then up to
     /// the caller to call it again with that address as the new start address.
-    fn make_line_records(
+    fn take_lines(
         &mut self,
         lines: &mut std::iter::Peekable<std::slice::Iter<'_, LineInfo<'_>>>,
         start_address: u64,
@@ -534,7 +534,7 @@ where
             //   and the loop terminates. Otherwise it is the address of the first line record
             // that couldn't be created, which is where we have to start the next iteration.
             let (line_records, next_start_address) =
-                self.make_line_records(&mut lines, current_start_address, function.end_address())?;
+                self.take_lines(&mut lines, current_start_address, function.end_address())?;
 
             let line_records = self.writer.write_segment(&line_records, ValueKind::Line)?;
             if line_records.len > 0 {
