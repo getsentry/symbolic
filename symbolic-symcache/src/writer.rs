@@ -17,15 +17,9 @@ fn is_empty_function(function: &Function<'_>) -> bool {
     function.size == 0
 }
 
-/// Performs a check whether this line has already been written in the scope of this function.
-/// NOTE: side effect?
-fn is_redundant_line(line: &LineInfo<'_>, line_cache: &mut LineCache) -> bool {
-    !line_cache.insert((line.address, line.line))
-}
-
 /// Recursively cleans a tree of functions that does not cover any lines.
 ///
-///  - Removes all redundant line records (see [`is_redundant_line`])
+///  - Removes all redundant line records
 ///  - Removes all empty functions (see [`is_empty_function`])
 fn clean_function(function: &mut Function<'_>, line_cache: &mut LineCache) {
     function.inlinees.retain(|f| !is_empty_function(f));
@@ -35,9 +29,10 @@ fn clean_function(function: &mut Function<'_>, line_cache: &mut LineCache) {
         clean_function(inlinee, &mut inlinee_lines);
     }
 
+    // Remove duplicate lines
     function
         .lines
-        .retain(|l| !is_redundant_line(l, &mut inlinee_lines));
+        .retain(|l| inlinee_lines.insert((l.address, l.line)));
 
     line_cache.extend(inlinee_lines);
 }
