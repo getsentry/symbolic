@@ -7,9 +7,8 @@ use crate::format;
 
 /// A platform independent symbolication cache.
 ///
-/// Use [`SymCacheWriter`] writer to create SymCaches, including the conversion from object files.
-///
-/// [`SymCacheWriter`]: struct.SymCacheWriter.html
+/// Use [`SymCacheWriter`](super::writer::SymCacheWriter) writer to create SymCaches,
+/// including the conversion from object files.
 pub struct SymCache<'a> {
     header: format::Header,
     data: &'a [u8],
@@ -78,7 +77,7 @@ impl<'a> SymCache<'a> {
 
     /// Given an address this looks up the symbol at that point.
     ///
-    /// Because of inling information this returns a vector of zero or
+    /// Because of inline information this returns a vector of zero or
     /// more symbols.  If nothing is found then the return value will be
     /// an empty vector.
     pub fn lookup(&self, addr: u64) -> Result<Lookup<'a, '_>, SymCacheError> {
@@ -94,7 +93,7 @@ impl<'a> SymCache<'a> {
             Err(next) => next - 1,
         };
 
-        // Seek forward to the deepest inlined function at the same address.
+        // Seek forward to the deepest inlined function at the same start address.
         while let Some(current_fn) = funcs.get(current_id + 1) {
             if current_fn.addr_start() != funcs[current_id].addr_start() {
                 break;
@@ -107,10 +106,10 @@ impl<'a> SymCache<'a> {
         //  a. The current function referred to by `current_id` contains the line record responsible
         //     for the address. However, line records only store the beginning and not the end of
         //     their range, so we need to check for case (d).
-        //  b. The current function is top-level ends before the search address. This can happen due
+        //  b. The current function is top-level and ends before the search address. This can happen due
         //     to incomplete debug information or padding sections in the code. There is no match
         //     for this case.
-        //  c. Same as 2, but for inline functions. Even though the inlinee doesn't match, one of
+        //  c. Same as (b), but for inline functions. Even though the inlinee doesn't match, one of
         //     its ancestors might still cover with its range. They have to be checked until one
         //     covers the range. Still, case (d) can apply additionally.
         //  d. Even though a function covers the search address, it might be interleaved with
@@ -681,7 +680,7 @@ impl<'a> Iterator for Lines<'a> {
     }
 }
 
-/// A line covered by a [`Function`](struct.Function.html).
+/// A line covered by a [`Function`](symbolic_debuginfo::Function).
 pub struct Line<'a> {
     record: &'a format::LineRecord,
     file: Option<&'a format::FileRecord>,
