@@ -1,4 +1,4 @@
-SYMBOLIC_PYTHON := python3
+export SYMBOLIC_PYTHON_VERSION := python3
 
 all: check test
 .PHONY: all
@@ -92,5 +92,4 @@ format-python: .venv/bin/python
 
 .venv/bin/python: Makefile
 	@rm -rf .venv
-	@which virtualenv || sudo pip install virtualenv
-	virtualenv -p $(SYMBOLIC_PYTHON) .venv
+	$$SYMBOLIC_PYTHON_VERSION -m venv .venv
