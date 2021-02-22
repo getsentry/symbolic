@@ -100,7 +100,7 @@ setup(
     platforms="any",
     install_requires=["milksnake>=0.1.2"],
     setup_requires=["milksnake>=0.1.2"],
-    python_requires=">=3.4",
+    python_requires=">=3.6",
     milksnake_tasks=[build_native],
     cmdclass={"sdist": CustomSDist},
 )

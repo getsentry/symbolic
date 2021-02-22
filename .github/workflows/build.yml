@@ -26,9 +26,9 @@ jobs:
 
       - uses: actions/setup-python@v2
         with:
-          python-version: 2.7
+          python-version: 3.6
 
-      - run: make wheel SYMBOLIC_PYTHON=python2
+      - run: make wheel
 
       - uses: actions/upload-artifact@v2
         with:
