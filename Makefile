@@ -1,4 +1,4 @@
-export SYMBOLIC_PYTHON_VERSION := python3
+SYMBOLIC_PYTHON := python3
 
 all: check test
 .PHONY: all
@@ -92,4 +92,4 @@ format-python: .venv/bin/python
 
 .venv/bin/python: Makefile
 	@rm -rf .venv
-	$$SYMBOLIC_PYTHON_VERSION -m venv .venv
+	$(SYMBOLIC_PYTHON) -m venv .venv
