@@ -1,3 +1,3 @@
 //! Stack unwinding functionality for `symbolic`.
 
-mod evaluator;
+pub mod evaluator;
