@@ -78,7 +78,7 @@ impl fmt::Display for Expr {
 }
 
 /// An assignment `v e =` where `v` is a [variable](Variable) and `e` is an [expression](Expr).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Assignment(Variable, Expr);
 
 impl fmt::Display for Assignment {
@@ -97,7 +97,7 @@ pub mod parsing {
     use nom::character::complete::{alphanumeric1, digit1, space0};
     use nom::combinator::{map, map_res, not, opt, recognize, value};
     use nom::error::ParseError;
-    use nom::sequence::{delimited, pair};
+    use nom::sequence::{delimited, pair, preceded};
     use nom::{Err, IResult};
 
     /// The error kind for [`ExpressionError`].
@@ -105,6 +105,10 @@ pub mod parsing {
     pub enum ExpressionErrorKind {
         /// An operator was encountered, but there were not enough operands on the stack.
         NotEnoughOperands,
+
+        /// More than one expression preceded a `=`.
+        MalformedAssignment,
+
         /// An error returned by `nom`.
         Nom(nom::error::ErrorKind),
     }
@@ -244,6 +248,35 @@ pub mod parsing {
         Ok((input, stack))
     }
 
+    /// Parses an [assignment](Assignment).
+    pub fn assignment(input: &str) -> IResult<&str, Assignment, ExpressionError<&str>> {
+        let (input, v) = delimited(space0, variable, space0)(input)?;
+        let (input, mut stack) = expr(input)?;
+
+        // At this point there should be exactly one expression on the stack, otherwise
+        // it's not a well-formed assignment.
+        if stack.len() > 1 {
+            return Err(Err::Error(ExpressionError {
+                input,
+                kind: ExpressionErrorKind::MalformedAssignment,
+            }));
+        }
+
+        let e = match stack.pop() {
+            Some(e) => e,
+            None => {
+                return Err(Err::Error(ExpressionError {
+                    input,
+                    kind: ExpressionErrorKind::NotEnoughOperands,
+                }))
+            }
+        };
+
+        let (rest, _) = preceded(space0, tag("="))(input)?;
+
+        Ok((rest, Assignment(v, e)))
+    }
+
     #[cfg(test)]
     mod test {
         use super::*;
@@ -292,16 +325,42 @@ pub mod parsing {
         }
 
         #[test]
-        fn test_not_well_formed() {
+        fn test_expr_malformed() {
             let input = "3 +";
-            let e = expr(input).finish().unwrap_err();
+            let err = expr(input).finish().unwrap_err();
             assert_eq!(
-                e,
+                err,
                 ExpressionError {
                     input: "+",
-                    kind: ExpressionErrorKind::NotEnoughOperands
+                    kind: ExpressionErrorKind::NotEnoughOperands,
                 }
             );
+        }
+
+        #[test]
+        fn test_assignment() {
+            use Expr::*;
+            let input = "$foo -4 ^ 7 @ =";
+            let v = Variable("$foo".to_string());
+            let e = Op(
+                Box::new(Deref(Box::new(Value(-4)))),
+                Box::new(Value(7)),
+                BinOp::Align,
+            );
+
+            let (rest, a) = assignment(input).unwrap();
+            assert_eq!(rest, "");
+            assert_eq!(a, Assignment(v, e));
+        }
+
+        #[test]
+        fn test_assignment_malformed() {
+            let input = "$foo -4 ^ 7 =";
+            let err = assignment(input).finish().unwrap_err();
+            assert_eq!(err, ExpressionError {
+                input: "=",
+                kind: ExpressionErrorKind::MalformedAssignment,
+            });
         }
     }
 }
