@@ -91,7 +91,8 @@ where
     /// modifying [`variables`](Self::variables) accordingly.
     ///
     /// This may fail if the right-hand side cannot be evaluated, cf.
-    /// [`evaluate`](Self::evaluate).
+    /// [`evaluate`](Self::evaluate). It returns `true` iff the assignment modified
+    /// an existing variable.
     pub fn assign(&mut self, Assignment(v, e): &Assignment<T>) -> Result<bool, EvaluationError> {
         let value = self.evaluate(e)?;
         Ok(self.variables.insert(v.clone(), value).is_some())
@@ -119,11 +120,10 @@ impl<T: std::fmt::Debug, M: MemoryRegion<T>> MemoryEvaluator<M, T> {
             + std::fmt::Debug
     {
         let mut changed_variables = HashSet::new();
-        let assignments = parsing::assignments(input)?;
+        let assignments = parsing::assignments::<T>(input)?;
         for a in assignments {
-            if self.assign(&a)? {
-                changed_variables.insert(a.0);
-            }
+            self.assign(&a)?;
+            changed_variables.insert(a.0);
         }
 
         Ok(changed_variables)
