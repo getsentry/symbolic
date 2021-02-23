@@ -354,13 +354,35 @@ pub mod parsing {
         }
 
         #[test]
+        fn test_assignment_2() {
+            use nom::multi::many1;
+            use Expr::*;
+            let input = "$foo -4 ^ = $bar baz 17 + = -42";
+            let (v1, v2) = (Variable("$foo".to_string()), Variable("$bar".to_string()));
+            let e1 = Deref(Box::new(Value(-4)));
+            let e2 = Op(
+                Box::new(Const(Constant("baz".to_string()))),
+                Box::new(Value(17)),
+                BinOp::Add,
+            );
+
+            let (rest, assigns) = many1(assignment)(input).unwrap();
+            assert_eq!(rest, " -42");
+            assert_eq!(assigns[0], Assignment(v1, e1));
+            assert_eq!(assigns[1], Assignment(v2, e2));
+        }
+
+        #[test]
         fn test_assignment_malformed() {
             let input = "$foo -4 ^ 7 =";
             let err = assignment(input).finish().unwrap_err();
-            assert_eq!(err, ExpressionError {
-                input: "=",
-                kind: ExpressionErrorKind::MalformedAssignment,
-            });
+            assert_eq!(
+                err,
+                ExpressionError {
+                    input: "=",
+                    kind: ExpressionErrorKind::MalformedAssignment,
+                }
+            );
         }
     }
 }
