@@ -1,7 +1,7 @@
 use super::memory::MemoryRegion;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use std::ops::{Add, BitAnd, BitXor, Div, Mul, Neg, Rem, Sub};
+use std::ops::{Add, Div, Mul, Rem, Sub};
 
 /// Structure that encapsulates the information necessary to evaluate Breakpad
 /// RPN expressions:
@@ -32,16 +32,12 @@ pub struct MemoryEvaluator<M, T> {
 impl<T, M: MemoryRegion<T>> MemoryEvaluator<M, T>
 where
     T: Into<u64>
-        + From<i8>
         + Add<Output = T>
         + Mul<Output = T>
         + Div<Output = T>
         + Sub<Output = T>
         + Rem<Output = T>
-        + Neg<Output = T>
-        + BitAnd<Output = T>
-        + BitXor<Output = T>
-        + Copy,
+        + Copy
 {
     /// Evaluates a single expression.
     ///
@@ -70,7 +66,7 @@ where
                     BinOp::Mul => Ok(e1 * e2),
                     BinOp::Div => Ok(e1 / e2),
                     BinOp::Mod => Ok(e1 % e2),
-                    BinOp::Align => Ok(e1 & ((e2 - T::from(1)) ^ T::from(-1))),
+                    BinOp::Align => Ok(e2 * (e1 / e2)),
                 }
             }
             Deref(address) => {
@@ -112,17 +108,13 @@ impl<T, M: MemoryRegion<T>> MemoryEvaluator<M, T> {
     ) -> Result<HashSet<Variable>, ExpressionError<'a>>
     where
         T: Into<u64>
-            + From<i8>
             + Add<Output = T>
             + Mul<Output = T>
             + Div<Output = T>
             + Sub<Output = T>
             + Rem<Output = T>
-            + Neg<Output = T>
-            + BitAnd<Output = T>
-            + BitXor<Output = T>
             + std::str::FromStr
-            + Copy,
+            + Copy
     {
         let mut changed_variables = HashSet::new();
         let assignments = parsing::assignments(input)?;
