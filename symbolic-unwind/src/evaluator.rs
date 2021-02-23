@@ -38,6 +38,7 @@ where
         + Sub<Output = T>
         + Rem<Output = T>
         + Copy
+        + std::fmt::Debug
 {
     /// Evaluates a single expression.
     ///
@@ -96,7 +97,7 @@ where
         Ok(self.variables.insert(v.clone(), value).is_some())
     }
 }
-impl<T, M: MemoryRegion<T>> MemoryEvaluator<M, T> {
+impl<T: std::fmt::Debug, M: MemoryRegion<T>> MemoryEvaluator<M, T> {
     /// Processes a string of assignments, modifying its [`variables`](Self::variables)
     /// field accordingly.
     ///
@@ -115,6 +116,7 @@ impl<T, M: MemoryRegion<T>> MemoryEvaluator<M, T> {
             + Rem<Output = T>
             + std::str::FromStr
             + Copy
+            + std::fmt::Debug
     {
         let mut changed_variables = HashSet::new();
         let assignments = parsing::assignments(input)?;
@@ -129,6 +131,7 @@ impl<T, M: MemoryRegion<T>> MemoryEvaluator<M, T> {
 }
 
 /// An error encountered while evaluating an expression.
+#[derive(Debug)]
 pub enum EvaluationError {
     /// The expression contains an undefined constant.
     UndefinedConstant(Constant),
@@ -141,6 +144,7 @@ pub enum EvaluationError {
 }
 
 /// An error encountered while parsing or evaluating an expression.
+#[derive(Debug)]
 pub enum ExpressionError<'a> {
     /// An error was encountered while parsing an expression.
     Parsing(parsing::ExprParsingError<'a>),
@@ -451,7 +455,9 @@ pub mod parsing {
     /// Parses a list of assignments.
     ///
     /// Will fail if there is any input remaining afterwards.
-    pub fn assignments<T: FromStr>(input: &str) -> Result<Vec<Assignment<T>>, ExprParsingError> {
+    pub fn assignments<T: FromStr + std::fmt::Debug>(
+        input: &str,
+    ) -> Result<Vec<Assignment<T>>, ExprParsingError> {
         let (_, assigns) =
             all_consuming(many0(delimited(space0, assignment, space0)))(input).finish()?;
         Ok(assigns)
