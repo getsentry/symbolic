@@ -577,3 +577,151 @@ pub mod parsing {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    /// A fake [`MemoryRegion`](MemoryRegion) that always returns the requested address + 1.
+    struct FakeMemoryRegion;
+
+    impl MemoryRegion<u64> for FakeMemoryRegion {
+        fn base_addr(&self) -> u64 {
+            0
+        }
+
+        fn size(&self) -> u32 {
+            0
+        }
+
+        fn get(&self, address: u64) -> Option<u64> {
+            Some(address + 1)
+        }
+    }
+
+    #[test]
+    fn test_assignment() {
+        let input = "$rAdd3 2 2 + =$rMul2 9 6 * =";
+
+        let mut eval: MemoryEvaluator<FakeMemoryRegion, u64> = MemoryEvaluator {
+            memory: None,
+            variables: HashMap::new(),
+            constants: HashMap::new(),
+        };
+        let r_add3 = Variable("$rAdd3".to_string());
+        let r_mul2 = Variable("$rMul2".to_string());
+
+        let changed_vars = eval.process(input).unwrap();
+
+        assert_eq!(
+            changed_vars,
+            vec![r_add3.clone(), r_mul2.clone(),].into_iter().collect()
+        );
+
+        assert_eq!(eval.variables[&r_add3], 4);
+        assert_eq!(eval.variables[&r_mul2], 54);
+    }
+
+    #[test]
+    fn test_deref() {
+        let input = "$rDeref 9 ^ =";
+
+        let mut eval = MemoryEvaluator {
+            memory: Some(FakeMemoryRegion),
+            variables: HashMap::new(),
+            constants: HashMap::new(),
+        };
+
+        let r_deref = Variable("$rDeref".to_string());
+
+        let changed_vars = eval.process(input).unwrap();
+
+        assert_eq!(changed_vars, vec![r_deref.clone()].into_iter().collect());
+
+        assert_eq!(eval.variables[&r_deref], 10);
+    }
+
+    #[test]
+    fn test_intermediate() {
+        let ebp = Variable("$ebp".to_string());
+        let eip = Variable("$eip".to_string());
+        let esp = Variable("$esp".to_string());
+        let ebx = Variable("$ebx".to_string());
+        let t0 = Variable("$T0".to_string());
+        let t1 = Variable("$T1".to_string());
+        let t2 = Variable("$T2".to_string());
+        let l = Variable("$L".to_string());
+        let p = Variable("$P".to_string());
+
+        let variables = vec![
+            (ebp.clone(), 0xbfff_0010),
+            (eip.clone(), 0x1000_0000),
+            (esp.clone(), 0xbfff_0000),
+        ]
+        .into_iter()
+        .collect();
+        let cb_saved_regs = Constant(".cbSavedRegs".to_string());
+        let cb_params = Constant(".cbParams".to_string());
+        let ra_search_start = Constant(".raSearchStart".to_string());
+
+        let constants = vec![
+            (cb_saved_regs.clone(), 4),
+            (cb_params.clone(), 4),
+            (ra_search_start.clone(), 0xbfff_0020),
+        ]
+        .into_iter()
+        .collect();
+
+        let mut eval = MemoryEvaluator {
+            memory: Some(FakeMemoryRegion),
+            variables,
+            constants,
+        };
+
+        let mut changed_vars = HashSet::new();
+
+        changed_vars.extend(
+            eval.process(
+                "$T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + = 
+             $L $T0 .cbSavedRegs - = $P $T0 8 + .cbParams + =",
+            )
+            .unwrap()
+            .drain(),
+        );
+
+        changed_vars.extend(
+            eval.process(
+                "$T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + = 
+             $L $T0 .cbSavedRegs - = $P $T0 8 + .cbParams + = $ebx $T0 28 - ^ =",
+            )
+            .unwrap()
+            .drain(),
+        );
+
+        changed_vars.extend(
+            eval.process(
+                "$T0 $ebp = $T2 $esp = $T1 .raSearchStart = $eip $T1 ^ = $ebp $T0 = 
+             $esp $T1 4 + = $L $T0 .cbSavedRegs - = $P $T1 4 + .cbParams + =
+             $ebx $T0 28 - ^ =",
+            )
+            .unwrap()
+            .drain(),
+        );
+
+        for (var, val) in [
+            (ebp, 0xbfff_0012),
+            (ebx, 0xbffe_fff7),
+            (eip, 0xbfff_0021),
+            (esp, 0xbfff_0024),
+            (l, 0xbfff_000e),
+            (p, 0xbfff_0028),
+            (t0, 0xbfff_0012),
+            (t1, 0xbfff_0020),
+            (t2, 0xbfff_0019),
+        ]
+        .iter()
+        {
+            assert_eq!(eval.variables[var], *val);
+        }
+    }
+}
