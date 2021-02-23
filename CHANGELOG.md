@@ -1,5 +1,16 @@
 # Changelog
 
+## 8.0.4
+
+Manylinux2010 has dropped support for Python 2.7. As a result, we're no longer building or testing the Python package with Python 2.7. This and future releases require at least Python 3.6.
+
+**Bug Fixes:**
+
+- Compute correct line offsets in symcaches with large gaps between line records. ([#319](https://github.com/getsentry/symbolic/pull/319))
+- Support symcache lookups for public symbols larger than 65k. ([#320](https://github.com/getsentry/symbolic/pull/320))
+- Fixed bug that caused functions to have a length of `0` in symcaches. ([#324](https://github.com/getsentry/symbolic/pull/324))
+- Support `debug_addr` indexes in DWARF functions. ([#326](https://github.com/getsentry/symbolic/pull/326))
+
 ## 8.0.3
 
 **Bug Fixes**:
