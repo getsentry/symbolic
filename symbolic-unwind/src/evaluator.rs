@@ -262,11 +262,13 @@ pub mod parsing {
     use super::*;
     use nom::branch::alt;
     use nom::bytes::complete::tag;
-    use nom::character::complete::{alphanumeric1, digit1, space0};
+    use nom::character::complete::{
+        alpha1, alphanumeric0, alphanumeric1, char, digit1, multispace0, one_of,
+    };
     use nom::combinator::{all_consuming, map, map_res, not, opt, recognize, value};
     use nom::error::ParseError;
     use nom::multi::many0;
-    use nom::sequence::{delimited, pair, preceded};
+    use nom::sequence::{delimited, pair, preceded, tuple};
     use nom::{Err, Finish, IResult};
     use std::str::FromStr;
 
@@ -313,22 +315,22 @@ pub mod parsing {
     }
 
     /// Parses a [variable](super::Variable).
+    ///
+    /// This accepts identifiers of the form `$[a-zA-Z][a-zA-Z0-9]*`.
     fn variable(input: &str) -> IResult<&str, Variable, ExprParsingError> {
-        let (input, _) = tag("$")(input).map_err(|_: nom::Err<ExprParsingError>| {
-            nom::Err::Error(ExprParsingError {
-                input,
-                kind: ExprParsingErrorKind::IllegalVariableName,
-            })
-        })?;
-        let (rest, var) = alphanumeric1(input)?;
-        Ok((rest, Variable(format!("${}", var))))
+        let (rest, var) = recognize(tuple((char('$'), alpha1, alphanumeric0)))(input)?;
+        Ok((rest, Variable(format!("{}", var))))
     }
 
     /// Parses a [constant](super::Constant).
+    ///
+    /// This accepts identifiers of the form `[a-zA-Z_.][a-zA-Z0-9_.]*`.
     fn constant(input: &str) -> IResult<&str, Constant, ExprParsingError> {
-        let (input, _) = not(tag("$"))(input)?;
-        let (rest, var) = alphanumeric1(input)?;
-        Ok((rest, Constant(var.to_string())))
+        let (rest, con) = recognize(preceded(
+            alt((alpha1, tag("_"), tag("."))),
+            many0(alt((alphanumeric1, tag("_"), tag(".")))),
+        ))(input)?;
+        Ok((rest, Constant(con.to_string())))
     }
 
     /// Parses a [binary operator](super::BinOp).
@@ -376,10 +378,28 @@ pub mod parsing {
         let mut stack = Vec::new();
 
         while !input.is_empty() {
-            if let Ok((rest, e)) = delimited(space0, base_expr, space0)(input) {
+            if let Ok((rest, e)) = delimited(multispace0, base_expr, multispace0)(input) {
                 stack.push(e);
                 input = rest;
-            } else if let Ok((rest, op)) = delimited(space0, bin_op, space0)(input) {
+            } else if let Ok((rest, _)) = delimited::<_, _, _, _, ExprParsingError, _, _, _>(
+                multispace0,
+                tag("^"),
+                multispace0,
+            )(input)
+            {
+                let e = match stack.pop() {
+                    Some(e) => e,
+                    None => {
+                        return Err(Err::Error(ExprParsingError {
+                            input,
+                            kind: ExprParsingErrorKind::NotEnoughOperands,
+                        }))
+                    }
+                };
+
+                stack.push(Expr::Deref(Box::new(e)));
+                input = rest;
+            } else if let Ok((rest, op)) = delimited(multispace0, bin_op, multispace0)(input) {
                 let e2 = match stack.pop() {
                     Some(e) => e,
                     None => {
@@ -401,21 +421,6 @@ pub mod parsing {
                 };
                 stack.push(Expr::Op(Box::new(e1), Box::new(e2), op));
                 input = rest;
-            } else if let Ok((rest, _)) =
-                delimited::<_, _, _, _, ExprParsingError, _, _, _>(space0, tag("^"), space0)(input)
-            {
-                let e = match stack.pop() {
-                    Some(e) => e,
-                    None => {
-                        return Err(Err::Error(ExprParsingError {
-                            input,
-                            kind: ExprParsingErrorKind::NotEnoughOperands,
-                        }))
-                    }
-                };
-
-                stack.push(Expr::Deref(Box::new(e)));
-                input = rest;
             } else {
                 break;
             }
@@ -426,7 +431,7 @@ pub mod parsing {
 
     /// Parses an [assignment](Assignment).
     pub fn assignment<T: FromStr>(input: &str) -> IResult<&str, Assignment<T>, ExprParsingError> {
-        let (input, v) = delimited(space0, variable, space0)(input)?;
+        let (input, v) = delimited(multispace0, variable, multispace0)(input)?;
         let (input, mut stack) = expr(input)?;
 
         // At this point there should be exactly one expression on the stack, otherwise
@@ -448,7 +453,7 @@ pub mod parsing {
             }
         };
 
-        let (rest, _) = preceded(space0, tag("="))(input)?;
+        let (rest, _) = preceded(multispace0, tag("="))(input)?;
         Ok((rest, Assignment(v, e)))
     }
 
@@ -459,7 +464,7 @@ pub mod parsing {
         input: &str,
     ) -> Result<Vec<Assignment<T>>, ExprParsingError> {
         let (_, assigns) =
-            all_consuming(many0(delimited(space0, assignment, space0)))(input).finish()?;
+            all_consuming(many0(delimited(multispace0, assignment, multispace0)))(input).finish()?;
         Ok(assigns)
     }
 
