@@ -578,6 +578,8 @@ pub mod parsing {
     }
 }
 
+/// These tests are inspired by the Breakpad PostfixEvaluator unit tests:
+/// [https://github.com/google/breakpad/blob/main/src/processor/postfix_evaluator_unittest.cc]
 #[cfg(test)]
 mod test {
     use super::*;
