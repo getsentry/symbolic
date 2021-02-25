@@ -20,15 +20,18 @@ pub struct MemorySlice<'a> {
     /// The contents of the memory region.
     ///
     /// This may be at most [`std::u32::MAX`] elements long.
-    contents: &'a[u8],
+    contents: &'a [u8],
 }
 
 impl<'a> MemorySlice<'a> {
     /// Creates a new `MemorySlice` from a base address and a slice.
     ///
     /// This fails if the length of the slice is greater than [`std::u32::MAX`].
-    pub fn new(base_addr: u64, contents: &'a[u8]) -> Option<Self> {
-        (contents.len() <= std::u32::MAX as usize).then(|| Self {base_addr, contents})
+    pub fn new(base_addr: u64, contents: &'a [u8]) -> Option<Self> {
+        (contents.len() <= std::u32::MAX as usize).then(|| Self {
+            base_addr,
+            contents,
+        })
     }
 }
 
@@ -104,7 +107,10 @@ impl<'a> MemoryRegion<i8> for MemorySlice<'a> {
     }
 
     fn get(&self, address: u64) -> Option<i8> {
-        self.contents.get(address as usize).copied().map(|b| b as i8)
+        self.contents
+            .get(address as usize)
+            .copied()
+            .map(|b| b as i8)
     }
 }
 
@@ -155,4 +161,3 @@ impl<'a> MemoryRegion<i64> for MemorySlice<'a> {
         Some((b1234 as i64) << 32 | b5678 as i64)
     }
 }
-

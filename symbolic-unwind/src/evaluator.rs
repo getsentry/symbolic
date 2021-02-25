@@ -38,7 +38,7 @@ where
         + Sub<Output = T>
         + Rem<Output = T>
         + Copy
-        + std::fmt::Debug
+        + std::fmt::Debug,
 {
     /// Evaluates a single expression.
     ///
@@ -117,7 +117,7 @@ impl<T: std::fmt::Debug, M: MemoryRegion<T>> MemoryEvaluator<M, T> {
             + Rem<Output = T>
             + std::str::FromStr
             + Copy
-            + std::fmt::Debug
+            + std::fmt::Debug,
     {
         let mut changed_variables = HashSet::new();
         let assignments = parsing::assignments::<T>(input)?;
@@ -263,9 +263,9 @@ pub mod parsing {
     use nom::branch::alt;
     use nom::bytes::complete::tag;
     use nom::character::complete::{
-        alpha1, alphanumeric0, alphanumeric1, char, digit1, multispace0, one_of,
+        alpha1, alphanumeric0, alphanumeric1, char, digit1, multispace0,
     };
-    use nom::combinator::{all_consuming, map, map_res, not, opt, recognize, value};
+    use nom::combinator::{all_consuming, map, map_res, opt, recognize, value};
     use nom::error::ParseError;
     use nom::multi::many0;
     use nom::sequence::{delimited, pair, preceded, tuple};
@@ -319,7 +319,7 @@ pub mod parsing {
     /// This accepts identifiers of the form `$[a-zA-Z][a-zA-Z0-9]*`.
     fn variable(input: &str) -> IResult<&str, Variable, ExprParsingError> {
         let (rest, var) = recognize(tuple((char('$'), alpha1, alphanumeric0)))(input)?;
-        Ok((rest, Variable(format!("{}", var))))
+        Ok((rest, Variable(var.to_string())))
     }
 
     /// Parses a [constant](super::Constant).
@@ -464,7 +464,8 @@ pub mod parsing {
         input: &str,
     ) -> Result<Vec<Assignment<T>>, ExprParsingError> {
         let (_, assigns) =
-            all_consuming(many0(delimited(multispace0, assignment, multispace0)))(input).finish()?;
+            all_consuming(many0(delimited(multispace0, assignment, multispace0)))(input)
+                .finish()?;
         Ok(assigns)
     }
 
