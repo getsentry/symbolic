@@ -9,6 +9,7 @@ repository = "https://github.com/getsentry/symbolic"
 edition = "2018"
 
 [dependencies]
+byteorder = "1.4.2"
 nom = "6.1.2"
 
 [badges]

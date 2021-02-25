@@ -1,50 +1,77 @@
+//! This module contains functionality for evaluating *Breakpad
+//! [RPN](https://en.wikipedia.org/wiki/Reverse_Polish_notation) expressions*. These
+//! expressions are defined by the following
+//! [BNF](https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form) specification:
+//! ```ignore
+//! <expr>     ::=  <contant> | <variable> | <literal> | <expr> <expr> <binop> | <expr> ^
+//! <constant> ::=  [a-zA-Z_.][a-zA-Z0-9_.]*
+//! <variable> ::=  $[a-zA-Z][a-zA-Z0-9]*
+//! <binop>    ::=  + | - | * | / | % | @
+//! <literal>  ::=  -?[0-9]+
+//! ```
+//! Most of this syntax should be familiar. The symbol `^` denotes a dereference operation,
+//! i.e. assuming that some representation `m` of a region of memory is available,
+//! `x ^` evaluates to `m[x]`. If no memory is available or `m` is not defined at `x`, the
+//! expression's value is undefined. The symbol
+//! `@` denotes an align operation; it truncates its first operand to a multiple of its
+//! second operand.
+//!
+//! Constants and variables are evaluated by referring to dictionaries
+//! (concretely: [`BTreeMap`]s). If an expression contains a constant or variable that is
+//! not in the respective dictionary, the expression's value is undefined.
+//!
+//! In addition to expressions, there are also *assignments*:
+//! ```ignore
+//! <assignment> ::=  <variable> <expr> =
+//! ```
+//! An assignment results in an update of the variable's value in the dictionary, or its
+//! insertion if it was not defined before.
+//!
+use super::base::{Address, ReadBytes};
 use super::memory::MemoryRegion;
+use byteorder::ByteOrder;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
-use std::ops::{Add, Div, Mul, Rem, Sub};
+use std::marker::PhantomData;
+use std::str::FromStr;
 
 /// Structure that encapsulates the information necessary to evaluate Breakpad
-/// RPN expressions:
+/// RPN expressions.
 ///
+/// It is generic over:
 /// - A region of memory
-/// - Values of constants
-/// - Values of variables
-pub struct MemoryEvaluator<M, T> {
+/// - An address type, which is used both for basic expressions and for pointers into `memory`
+/// - An [`Endianness`](byteorder::ByteOrder) that controls how values are read from memory
+pub struct MemoryEvaluator<Memory, A, Endianness> {
     /// A region of memory.
     ///
     /// If this is `None`, evaluation of expressions containing dereference
     /// operations will fail.
-    pub memory: Option<M>,
+    pub memory: Option<Memory>,
 
     /// A map containing the values of constants.
     ///
     /// Trying to use a constant that is not in this map will cause evaluation to fail.
-    pub constants: BTreeMap<Constant, T>,
+    pub constants: BTreeMap<Constant, A>,
 
     /// A map containing the values of variables.
     ///
     /// Trying to use a variable that is not in this map will cause evaluation to fail.
     /// This map can be modified by the [`assign`](Self::assign) and
     ///  [`process`](Self::process) methods.
-    pub variables: BTreeMap<Variable, T>,
+    pub variables: BTreeMap<Variable, A>,
+
+    _endian: PhantomData<Endianness>,
 }
 
-impl<T, M: MemoryRegion<T>> MemoryEvaluator<M, T>
-where
-    T: Into<u64>
-        + Add<Output = T>
-        + Mul<Output = T>
-        + Div<Output = T>
-        + Sub<Output = T>
-        + Rem<Output = T>
-        + Copy
-        + std::fmt::Debug,
+impl<A: Address + ReadBytes, Memory: MemoryRegion, Endianness: ByteOrder>
+    MemoryEvaluator<Memory, A, Endianness>
 {
     /// Evaluates a single expression.
     ///
     /// This may fail if the expression tries to dereference unavailable memory
     /// or uses undefined constants or variables.
-    pub fn evaluate(&self, expr: &Expr<T>) -> Result<T, EvaluationError> {
+    pub fn evaluate(&self, expr: &Expr<A>) -> Result<A, EvaluationError<A>> {
         use Expr::*;
         match expr {
             Value(x) => Ok(*x),
@@ -71,18 +98,17 @@ where
                 }
             }
             Deref(address) => {
-                if let Some(ref memory) = self.memory {
-                    let address = self.evaluate(&*address)?;
-                    memory
-                        .get(address.into())
-                        .ok_or(EvaluationError::MemoryOutOfBounds {
-                            address: address.into(),
-                            base: memory.base_addr(),
-                            size: memory.size(),
-                        })
-                } else {
-                    Err(EvaluationError::MemoryUnavailable)
-                }
+                let address = self.evaluate(&*address)?;
+                let memory = self
+                    .memory
+                    .as_ref()
+                    .ok_or(EvaluationError::MemoryUnavailable)?;
+                memory
+                    .get::<_, Endianness>(address)
+                    .ok_or(EvaluationError::IllegalMemoryAccess {
+                        address,
+                        bytes: A::WIDTH,
+                    })
             }
         }
     }
@@ -93,12 +119,14 @@ where
     /// This may fail if the right-hand side cannot be evaluated, cf.
     /// [`evaluate`](Self::evaluate). It returns `true` iff the assignment modified
     /// an existing variable.
-    pub fn assign(&mut self, Assignment(v, e): &Assignment<T>) -> Result<bool, EvaluationError> {
+    pub fn assign(&mut self, Assignment(v, e): &Assignment<A>) -> Result<bool, EvaluationError<A>> {
         let value = self.evaluate(e)?;
         Ok(self.variables.insert(v.clone(), value).is_some())
     }
 }
-impl<T: std::fmt::Debug, M: MemoryRegion<T>> MemoryEvaluator<M, T> {
+impl<A: Address + ReadBytes + FromStr, Memory: MemoryRegion, Endianness: ByteOrder>
+    MemoryEvaluator<Memory, A, Endianness>
+{
     /// Processes a string of assignments, modifying its [`variables`](Self::variables)
     /// field accordingly.
     ///
@@ -107,20 +135,9 @@ impl<T: std::fmt::Debug, M: MemoryRegion<T>> MemoryEvaluator<M, T> {
     pub fn process<'a>(
         &'a mut self,
         input: &'a str,
-    ) -> Result<BTreeSet<Variable>, ExpressionError<'a>>
-    where
-        T: Into<u64>
-            + Add<Output = T>
-            + Mul<Output = T>
-            + Div<Output = T>
-            + Sub<Output = T>
-            + Rem<Output = T>
-            + std::str::FromStr
-            + Copy
-            + std::fmt::Debug,
-    {
+    ) -> Result<BTreeSet<Variable>, ExpressionError<'a, A>> {
         let mut changed_variables = BTreeSet::new();
-        let assignments = parsing::assignments::<T>(input)?;
+        let assignments = parsing::assignments::<A>(input)?;
         for a in assignments {
             self.assign(&a)?;
             changed_variables.insert(a.0);
@@ -132,38 +149,49 @@ impl<T: std::fmt::Debug, M: MemoryRegion<T>> MemoryEvaluator<M, T> {
 
 /// An error encountered while evaluating an expression.
 #[derive(Debug)]
-pub enum EvaluationError {
+pub enum EvaluationError<T: Address> {
     /// The expression contains an undefined constant.
     UndefinedConstant(Constant),
+
     /// The expression contains an undefined variable.
     UndefinedVariable(Variable),
-    /// The expression contains a dereference, but no memory region is available.
+
+    /// The expression contains a dereference, but the evaluator does not have access
+    /// to any memory.
     MemoryUnavailable,
+
     /// The requested piece of memory would exceed the bounds of the memory region.
-    MemoryOutOfBounds { address: u64, base: u64, size: u32 },
+    IllegalMemoryAccess {
+        /// The number of bytes that were tried to read.
+        bytes: usize,
+        /// The address at which the read was attempted.
+        address: T,
+    },
 }
 
 /// An error encountered while parsing or evaluating an expression.
 #[derive(Debug)]
-pub enum ExpressionError<'a> {
+pub enum ExpressionError<'a, T: Address> {
     /// An error was encountered while parsing an expression.
     Parsing(parsing::ExprParsingError<'a>),
+
     /// An error was encountered while evaluating an expression.
-    Evaluation(EvaluationError),
+    Evaluation(EvaluationError<T>),
 }
 
-impl<'a> From<parsing::ExprParsingError<'a>> for ExpressionError<'a> {
+impl<'a, T: Address> From<parsing::ExprParsingError<'a>> for ExpressionError<'a, T> {
     fn from(other: parsing::ExprParsingError<'a>) -> Self {
         Self::Parsing(other)
     }
 }
 
-impl<'a> From<EvaluationError> for ExpressionError<'a> {
-    fn from(other: EvaluationError) -> Self {
+impl<'a, T: Address> From<EvaluationError<T>> for ExpressionError<'a, T> {
+    fn from(other: EvaluationError<T>) -> Self {
         Self::Evaluation(other)
     }
 }
 
+/// A variable.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Variable(String);
 
@@ -173,6 +201,7 @@ impl fmt::Display for Variable {
     }
 }
 
+/// A constant value.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Constant(String);
 
@@ -257,7 +286,7 @@ pub mod parsing {
     //! Contains functions for parsing [expressions](super::Expr) and
     //! [assignments](super::Assignment).
     //!
-    //! This is brought to you by `nom`.
+    //! This is brought to you by [`nom`].
 
     use super::*;
     use nom::branch::alt;
@@ -459,7 +488,7 @@ pub mod parsing {
 
     /// Parses a list of assignments.
     ///
-    /// Will fail if there is any input remaining afterwards.
+    /// Will fail if there is any non-whitespace input remaining afterwards.
     pub fn assignments<T: FromStr + std::fmt::Debug>(
         input: &str,
     ) -> Result<Vec<Assignment<T>>, ExprParsingError> {
@@ -584,21 +613,26 @@ pub mod parsing {
 #[cfg(test)]
 mod test {
     use super::*;
+    use byteorder::BE;
 
     /// A fake [`MemoryRegion`](MemoryRegion) that always returns the requested address + 1.
     struct FakeMemoryRegion;
 
-    impl MemoryRegion<u64> for FakeMemoryRegion {
+    impl MemoryRegion for FakeMemoryRegion {
         fn base_addr(&self) -> u64 {
             0
         }
 
-        fn size(&self) -> u32 {
+        fn size(&self) -> usize {
             0
         }
 
-        fn get(&self, address: u64) -> Option<u64> {
-            Some(address + 1)
+        fn is_empty(&self) -> bool {
+            true
+        }
+
+        fn get<A: Address, E: ByteOrder>(&self, address: A) -> Option<A> {
+            Some(address + 1.into())
         }
     }
 
@@ -606,10 +640,11 @@ mod test {
     fn test_assignment() {
         let input = "$rAdd3 2 2 + =$rMul2 9 6 * =";
 
-        let mut eval: MemoryEvaluator<FakeMemoryRegion, u64> = MemoryEvaluator {
+        let mut eval: MemoryEvaluator<FakeMemoryRegion, u64, BE> = MemoryEvaluator {
             memory: None,
             variables: BTreeMap::new(),
             constants: BTreeMap::new(),
+            _endian: PhantomData,
         };
         let r_add3 = Variable("$rAdd3".to_string());
         let r_mul2 = Variable("$rMul2".to_string());
@@ -629,10 +664,11 @@ mod test {
     fn test_deref() {
         let input = "$rDeref 9 ^ =";
 
-        let mut eval = MemoryEvaluator {
+        let mut eval: MemoryEvaluator<_, u64, BE> = MemoryEvaluator {
             memory: Some(FakeMemoryRegion),
             variables: BTreeMap::new(),
             constants: BTreeMap::new(),
+            _endian: PhantomData,
         };
 
         let r_deref = Variable("$rDeref".to_string());
@@ -675,34 +711,41 @@ mod test {
         .into_iter()
         .collect();
 
-        let mut eval = MemoryEvaluator {
+        let mut eval: MemoryEvaluator<_, u64, BE> = MemoryEvaluator {
             memory: Some(FakeMemoryRegion),
             variables,
             constants,
+            _endian: PhantomData,
         };
 
         let mut changed_vars = BTreeSet::new();
 
         changed_vars.append(
-            &mut eval.process(
-                "$T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + = 
+            &mut eval
+                .process(
+                    "$T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + = 
              $L $T0 .cbSavedRegs - = $P $T0 8 + .cbParams + =",
-            ).unwrap()
+                )
+                .unwrap(),
         );
 
         changed_vars.append(
-            &mut eval.process(
-                "$T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + = 
+            &mut eval
+                .process(
+                    "$T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + = 
              $L $T0 .cbSavedRegs - = $P $T0 8 + .cbParams + = $ebx $T0 28 - ^ =",
-            ).unwrap()
+                )
+                .unwrap(),
         );
 
         changed_vars.append(
-            &mut eval.process(
-                "$T0 $ebp = $T2 $esp = $T1 .raSearchStart = $eip $T1 ^ = $ebp $T0 = 
+            &mut eval
+                .process(
+                    "$T0 $ebp = $T2 $esp = $T1 .raSearchStart = $eip $T1 ^ = $ebp $T0 = 
              $esp $T1 4 + = $L $T0 .cbSavedRegs - = $P $T1 4 + .cbParams + =
              $ebx $T0 28 - ^ =",
-            ).unwrap()
+                )
+                .unwrap(),
         );
 
         for (var, val) in [
