@@ -668,9 +668,9 @@ mod test {
         let ra_search_start = Constant(".raSearchStart".to_string());
 
         let constants = vec![
-            (cb_saved_regs.clone(), 4),
-            (cb_params.clone(), 4),
-            (ra_search_start.clone(), 0xbfff_0020),
+            (cb_saved_regs, 4),
+            (cb_params, 4),
+            (ra_search_start, 0xbfff_0020),
         ]
         .into_iter()
         .collect();
