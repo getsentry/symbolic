@@ -1,5 +1,5 @@
 use super::memory::MemoryRegion;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
@@ -19,14 +19,14 @@ pub struct MemoryEvaluator<M, T> {
     /// A map containing the values of constants.
     ///
     /// Trying to use a constant that is not in this map will cause evaluation to fail.
-    pub constants: HashMap<Constant, T>,
+    pub constants: BTreeMap<Constant, T>,
 
     /// A map containing the values of variables.
     ///
     /// Trying to use a variable that is not in this map will cause evaluation to fail.
     /// This map can be modified by the [`assign`](Self::assign) and
     ///  [`process`](Self::process) methods.
-    pub variables: HashMap<Variable, T>,
+    pub variables: BTreeMap<Variable, T>,
 }
 
 impl<T, M: MemoryRegion<T>> MemoryEvaluator<M, T>
@@ -107,7 +107,7 @@ impl<T: std::fmt::Debug, M: MemoryRegion<T>> MemoryEvaluator<M, T> {
     pub fn process<'a>(
         &'a mut self,
         input: &'a str,
-    ) -> Result<HashSet<Variable>, ExpressionError<'a>>
+    ) -> Result<BTreeSet<Variable>, ExpressionError<'a>>
     where
         T: Into<u64>
             + Add<Output = T>
@@ -119,7 +119,7 @@ impl<T: std::fmt::Debug, M: MemoryRegion<T>> MemoryEvaluator<M, T> {
             + Copy
             + std::fmt::Debug,
     {
-        let mut changed_variables = HashSet::new();
+        let mut changed_variables = BTreeSet::new();
         let assignments = parsing::assignments::<T>(input)?;
         for a in assignments {
             self.assign(&a)?;
@@ -164,7 +164,7 @@ impl<'a> From<EvaluationError> for ExpressionError<'a> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Variable(String);
 
 impl fmt::Display for Variable {
@@ -173,7 +173,7 @@ impl fmt::Display for Variable {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Constant(String);
 
 impl fmt::Display for Constant {
@@ -608,8 +608,8 @@ mod test {
 
         let mut eval: MemoryEvaluator<FakeMemoryRegion, u64> = MemoryEvaluator {
             memory: None,
-            variables: HashMap::new(),
-            constants: HashMap::new(),
+            variables: BTreeMap::new(),
+            constants: BTreeMap::new(),
         };
         let r_add3 = Variable("$rAdd3".to_string());
         let r_mul2 = Variable("$rMul2".to_string());
@@ -631,8 +631,8 @@ mod test {
 
         let mut eval = MemoryEvaluator {
             memory: Some(FakeMemoryRegion),
-            variables: HashMap::new(),
-            constants: HashMap::new(),
+            variables: BTreeMap::new(),
+            constants: BTreeMap::new(),
         };
 
         let r_deref = Variable("$rDeref".to_string());
@@ -681,34 +681,28 @@ mod test {
             constants,
         };
 
-        let mut changed_vars = HashSet::new();
+        let mut changed_vars = BTreeSet::new();
 
-        changed_vars.extend(
-            eval.process(
+        changed_vars.append(
+            &mut eval.process(
                 "$T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + = 
              $L $T0 .cbSavedRegs - = $P $T0 8 + .cbParams + =",
-            )
-            .unwrap()
-            .drain(),
+            ).unwrap()
         );
 
-        changed_vars.extend(
-            eval.process(
+        changed_vars.append(
+            &mut eval.process(
                 "$T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp $T0 8 + = 
              $L $T0 .cbSavedRegs - = $P $T0 8 + .cbParams + = $ebx $T0 28 - ^ =",
-            )
-            .unwrap()
-            .drain(),
+            ).unwrap()
         );
 
-        changed_vars.extend(
-            eval.process(
+        changed_vars.append(
+            &mut eval.process(
                 "$T0 $ebp = $T2 $esp = $T1 .raSearchStart = $eip $T1 ^ = $ebp $T0 = 
              $esp $T1 4 + = $L $T0 .cbSavedRegs - = $P $T1 4 + .cbParams + =
              $ebx $T0 28 - ^ =",
-            )
-            .unwrap()
-            .drain(),
+            ).unwrap()
         );
 
         for (var, val) in [
