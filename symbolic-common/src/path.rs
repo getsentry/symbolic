@@ -521,6 +521,7 @@ impl DSymPathExt for Path {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use similar_asserts::assert_eq;
     use symbolic_testutils::fixture;
 
     #[test]

@@ -5,6 +5,9 @@ use elementtree::{Element, QName};
 
 use std::collections::BTreeMap;
 
+#[cfg(test)]
+use similar_asserts::assert_eq;
+
 use crate::error::Unreal4Error;
 
 /// RuntimeProperties context element.
@@ -442,7 +445,7 @@ macro_rules! test_unreal_contect {
                 let xml = concat!("<FGenericCrashContext><", $xml_parent, "><", $xml_elm, ">", $expect, "</", $xml_elm, "></", $xml_parent, "></FGenericCrashContext>");
                 let root = Element::from_reader(xml.as_bytes()).unwrap();
                 let runtime_properties = $func_name(&root).expect("RuntimeProperties exists");
-                assert_eq!(
+                similar_asserts::assert_eq!(
                     $expect,
                     runtime_properties.$name.expect("missing property value")
                 );

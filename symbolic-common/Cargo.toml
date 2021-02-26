@@ -30,6 +30,7 @@ uuid = "0.8.1"
 [dev-dependencies]
 symbolic-testutils = { path = "../symbolic-testutils" }
 tempfile = "3.1.0"
+similar-asserts = "1.0.0"
 
 [features]
 serde = ["serde_", "debugid/serde"]

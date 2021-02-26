@@ -2,6 +2,9 @@ use std::fmt;
 use std::iter::FusedIterator;
 use std::marker::PhantomData;
 
+#[cfg(test)]
+use similar_asserts::assert_eq;
+
 use crate::base::Function;
 
 #[derive(Clone, Debug)]

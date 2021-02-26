@@ -41,3 +41,6 @@ cc = { version = "1.0.50", optional = true }
 
 [badges]
 travis-ci = { repository = "getsentry/symbolic", branch = "master" }
+
+[dev-dependencies]
+similar-asserts = "1.0.0"
