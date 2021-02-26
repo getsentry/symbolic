@@ -1,8 +1,9 @@
-//! This module contains functionality for evaluating *Breakpad
-//! [RPN](https://en.wikipedia.org/wiki/Reverse_Polish_notation) expressions*. These
-//! expressions are defined by the following
+//! Functionality for evaluating *Breakpad
+//! [RPN](https://en.wikipedia.org/wiki/Reverse_Polish_notation) expressions*.
+//!
+//! These expressions are defined by the following
 //! [BNF](https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form) specification:
-//! ```ignore
+//! ```text
 //! <expr>     ::=  <contant> | <variable> | <literal> | <expr> <expr> <binop> | <expr> ^
 //! <constant> ::=  [a-zA-Z_.][a-zA-Z0-9_.]*
 //! <variable> ::=  $[a-zA-Z][a-zA-Z0-9]*
@@ -21,7 +22,7 @@
 //! not in the respective dictionary, the expression's value is undefined.
 //!
 //! In addition to expressions, there are also *assignments*:
-//! ```ignore
+//! ```text
 //! <assignment> ::=  <variable> <expr> =
 //! ```
 //! An assignment results in an update of the variable's value in the dictionary, or its
@@ -126,7 +127,31 @@ impl<A: RegisterValue + FromStr, M: MemoryRegion, E: Endianness> Evaluator<M, A,
     /// field accordingly.
     ///
     /// This may fail if parsing goes wrong or a parsed assignment cannot be handled,
-    /// cf. [`assign`](Self::assign).
+    /// cf. [`assign`](Self::assign). It returns the set of variables that were assigned
+    /// a value by some assignment, even if the variable's value did not change.
+    ///
+    /// # Example
+    /// ```
+    /// # use std::collections::{BTreeMap, BTreeSet};
+    /// # use symbolic_unwind::base::{BigEndian, MemorySlice};
+    /// # use symbolic_unwind::evaluator::{Variable, Evaluator};
+    /// let input = "$foo $bar 5 + = $bar 17 =";
+    /// let mut variables = BTreeMap::new();
+    /// let foo: Variable = "$foo".parse().unwrap();
+    /// let bar: Variable = "$bar".parse().unwrap();
+    /// variables.insert(bar.clone(), 17u8);
+    /// let mut evaluator: Evaluator<MemorySlice, _, _> = Evaluator {
+    ///     memory: None,
+    ///     constants: BTreeMap::new(),
+    ///     variables,
+    ///     endian: BigEndian, // does not matter, we don't use memory anyway
+    /// };
+    ///
+    /// let changed_variables = evaluator.process(input).unwrap();
+    ///
+    /// assert_eq!(changed_variables, vec![foo, bar].into_iter().collect());
+    ///
+    /// ```
     pub fn process<'a>(
         &'a mut self,
         input: &'a str,
