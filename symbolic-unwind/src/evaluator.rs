@@ -27,12 +27,10 @@
 //! An assignment results in an update of the variable's value in the dictionary, or its
 //! insertion if it was not defined before.
 //!
-use super::base::{Address, ReadBytes};
+use super::base::{RegisterValue, Endianness};
 use super::memory::MemoryRegion;
-use byteorder::ByteOrder;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
-use std::marker::PhantomData;
 use std::str::FromStr;
 
 /// Structure that encapsulates the information necessary to evaluate Breakpad
@@ -41,8 +39,8 @@ use std::str::FromStr;
 /// It is generic over:
 /// - A region of memory
 /// - An address type, which is used both for basic expressions and for pointers into `memory`
-/// - An [`Endianness`](byteorder::ByteOrder) that controls how values are read from memory
-pub struct MemoryEvaluator<Memory, A, Endianness> {
+/// - An [`Endianness`](super::base::Endianness) that controls how values are read from memory
+pub struct MemoryEvaluator<Memory, A, E> {
     /// A region of memory.
     ///
     /// If this is `None`, evaluation of expressions containing dereference
@@ -61,11 +59,12 @@ pub struct MemoryEvaluator<Memory, A, Endianness> {
     ///  [`process`](Self::process) methods.
     pub variables: BTreeMap<Variable, A>,
 
-    _endian: PhantomData<Endianness>,
+    /// The endianness the evaluator uses to read data from memory.
+    pub endian: E,
 }
 
-impl<A: Address + ReadBytes, Memory: MemoryRegion, Endianness: ByteOrder>
-    MemoryEvaluator<Memory, A, Endianness>
+impl<A: RegisterValue, Memory: MemoryRegion, E: Endianness>
+    MemoryEvaluator<Memory, A, E>
 {
     /// Evaluates a single expression.
     ///
@@ -104,7 +103,7 @@ impl<A: Address + ReadBytes, Memory: MemoryRegion, Endianness: ByteOrder>
                     .as_ref()
                     .ok_or(EvaluationError::MemoryUnavailable)?;
                 memory
-                    .get::<_, Endianness>(address)
+                    .get(address, self.endian)
                     .ok_or(EvaluationError::IllegalMemoryAccess {
                         address,
                         bytes: A::WIDTH,
@@ -124,8 +123,8 @@ impl<A: Address + ReadBytes, Memory: MemoryRegion, Endianness: ByteOrder>
         Ok(self.variables.insert(v.clone(), value).is_some())
     }
 }
-impl<A: Address + ReadBytes + FromStr, Memory: MemoryRegion, Endianness: ByteOrder>
-    MemoryEvaluator<Memory, A, Endianness>
+impl<A: RegisterValue + FromStr, Memory: MemoryRegion, E: Endianness>
+    MemoryEvaluator<Memory, A, E>
 {
     /// Processes a string of assignments, modifying its [`variables`](Self::variables)
     /// field accordingly.
@@ -149,7 +148,7 @@ impl<A: Address + ReadBytes + FromStr, Memory: MemoryRegion, Endianness: ByteOrd
 
 /// An error encountered while evaluating an expression.
 #[derive(Debug)]
-pub enum EvaluationError<T: Address> {
+pub enum EvaluationError<A: RegisterValue> {
     /// The expression contains an undefined constant.
     UndefinedConstant(Constant),
 
@@ -165,28 +164,28 @@ pub enum EvaluationError<T: Address> {
         /// The number of bytes that were tried to read.
         bytes: usize,
         /// The address at which the read was attempted.
-        address: T,
+        address: A,
     },
 }
 
 /// An error encountered while parsing or evaluating an expression.
 #[derive(Debug)]
-pub enum ExpressionError<'a, T: Address> {
+pub enum ExpressionError<'a, A: RegisterValue> {
     /// An error was encountered while parsing an expression.
     Parsing(parsing::ExprParsingError<'a>),
 
     /// An error was encountered while evaluating an expression.
-    Evaluation(EvaluationError<T>),
+    Evaluation(EvaluationError<A>),
 }
 
-impl<'a, T: Address> From<parsing::ExprParsingError<'a>> for ExpressionError<'a, T> {
+impl<'a, A: RegisterValue> From<parsing::ExprParsingError<'a>> for ExpressionError<'a, A> {
     fn from(other: parsing::ExprParsingError<'a>) -> Self {
         Self::Parsing(other)
     }
 }
 
-impl<'a, T: Address> From<EvaluationError<T>> for ExpressionError<'a, T> {
-    fn from(other: EvaluationError<T>) -> Self {
+impl<'a, A: RegisterValue> From<EvaluationError<A>> for ExpressionError<'a, A> {
+    fn from(other: EvaluationError<A>) -> Self {
         Self::Evaluation(other)
     }
 }
@@ -375,6 +374,8 @@ pub mod parsing {
     }
 
     /// Parses an integer.
+    ///
+    /// This accepts expressions of the form `-?[0-9]+`.
     fn number<T: FromStr>(input: &str) -> IResult<&str, T, ExprParsingError> {
         map_res(recognize(pair(opt(tag("-")), digit1)), |s: &str| {
             s.parse::<T>()
@@ -613,7 +614,7 @@ pub mod parsing {
 #[cfg(test)]
 mod test {
     use super::*;
-    use byteorder::BE;
+    use crate::base::BigEndian;
 
     /// A fake [`MemoryRegion`](MemoryRegion) that always returns the requested address + 1.
     struct FakeMemoryRegion;
@@ -631,7 +632,7 @@ mod test {
             true
         }
 
-        fn get<A: Address, E: ByteOrder>(&self, address: A) -> Option<A> {
+        fn get<A: RegisterValue, E: Endianness>(&self, address: A, _e: E) -> Option<A> {
             Some(address + 1.into())
         }
     }
@@ -640,11 +641,11 @@ mod test {
     fn test_assignment() {
         let input = "$rAdd3 2 2 + =$rMul2 9 6 * =";
 
-        let mut eval: MemoryEvaluator<FakeMemoryRegion, u64, BE> = MemoryEvaluator {
+        let mut eval: MemoryEvaluator<FakeMemoryRegion, u64, BigEndian> = MemoryEvaluator {
             memory: None,
             variables: BTreeMap::new(),
             constants: BTreeMap::new(),
-            _endian: PhantomData,
+            endian: BigEndian,
         };
         let r_add3 = Variable("$rAdd3".to_string());
         let r_mul2 = Variable("$rMul2".to_string());
@@ -664,11 +665,11 @@ mod test {
     fn test_deref() {
         let input = "$rDeref 9 ^ =";
 
-        let mut eval: MemoryEvaluator<_, u64, BE> = MemoryEvaluator {
+        let mut eval: MemoryEvaluator<_, u64, BigEndian> = MemoryEvaluator {
             memory: Some(FakeMemoryRegion),
             variables: BTreeMap::new(),
             constants: BTreeMap::new(),
-            _endian: PhantomData,
+            endian: BigEndian,
         };
 
         let r_deref = Variable("$rDeref".to_string());
@@ -711,11 +712,11 @@ mod test {
         .into_iter()
         .collect();
 
-        let mut eval: MemoryEvaluator<_, u64, BE> = MemoryEvaluator {
+        let mut eval: MemoryEvaluator<_, u64, BigEndian> = MemoryEvaluator {
             memory: Some(FakeMemoryRegion),
             variables,
             constants,
-            _endian: PhantomData,
+            endian: BigEndian,
         };
 
         let mut changed_vars = BTreeSet::new();
