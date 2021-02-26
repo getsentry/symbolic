@@ -1,3 +1,4 @@
+//! Basic definitions necessary for stack unwinding.
 use std::convert::TryInto;
 use std::fmt::Debug;
 use std::ops::{Add, Div, Mul, Rem, Sub};
@@ -79,6 +80,7 @@ pub type NativeEndian = LittleEndian;
 
 #[cfg(target_endian = "little")]
 #[allow(non_upper_case_globals)]
+#[allow(dead_code)]
 #[doc(hidden)]
 pub const NativeEndian: NativeEndian = LittleEndian;
 
@@ -150,55 +152,50 @@ impl RegisterValue for u64 {
     }
 }
 
-//impl RegisterValue for i8 {
-//    const WIDTH: usize = 1;
-//    fn read_bytes<E: Endianness>(bytes: &[u8], _endian: E) -> Option<Self> {
-//        bytes.first().map(|b| *b as _)
-//    }
-//}
-//
-//impl RegisterValue for i16 {
-//    const WIDTH: usize = 2;
-//    fn read_bytes<E: Endianness>(bytes: &[u8], endian: E) -> Option<Self> {
-//        let first = u8::read_bytes(bytes[0..1], endian)?;
-//        let second = u8::read_bytes(bytes[1..2], endian)?;
-//
-//        let (top, bot) = if endian.is_big_endian() {
-//            (first, second)
-//        } else {
-//            (second, first)
-//        };
-//        Some((top as i16) << 8 | bot as i16)
-//    }
-//}
-//
-//impl RegisterValue for i32 {
-//    const WIDTH: usize = 4;
-//    fn read_bytes<E: Endianness>(bytes: &[u8], endian: E) -> Option<Self> {
-//        let first = u16::read_bytes(bytes[0..2], endian)?;
-//        let second = u16::read_bytes(bytes[2..4], endian)?;
-//
-//        let (top, bot) = if endian.is_big_endian() {
-//            (first, second)
-//        } else {
-//            (second, first)
-//        };
-//        Some((top as i32) << 16 | bot as i32)
-//    }
-//}
-//
-//impl RegisterValue for i64 {
-//    const WIDTH: usize = 8;
-//    fn read_bytes<E: Endianness>(bytes: &[u8], endian: E) -> Option<Self> {
-//        let first = u32::read_bytes(bytes[0..4], endian)?;
-//        let second = u32::read_bytes(bytes[4..8], endian)?;
-//
-//        let (top, bot) = if endian.is_big_endian() {
-//            (first, second)
-//        } else {
-//            (second, first)
-//        };
-//        Some((top as i64) << 32 | bot as i64)
-//    }
-//}
+/// Provides access to a region of memory.
+pub trait MemoryRegion {
+    /// This memory region's base address.
+    fn base_addr(&self) -> u64;
 
+    /// This memory region's size in bytes.
+    fn size(&self) -> usize;
+
+    /// Returns true if this memory region's size is 0.
+    fn is_empty(&self) -> bool;
+
+    /// Read the value saved at `address` in this memory region as a value of type `A`.
+    ///
+    /// The method is generic over the type of address, which doubles as the return type,
+    /// as well as `Endianness`.
+    /// Fails if no valid value of type `A` can be read at `address`, e.g. if there are
+    /// not enough bytes.
+    fn get<A: RegisterValue, E: Endianness>(&self, address: A, endian: E) -> Option<A>;
+}
+
+/// A view into a region of memory, given by a slice and a base address.
+pub struct MemorySlice<'a> {
+    /// The starting address of the memory region.
+    base_addr: u64,
+
+    /// The contents of the memory region.
+    contents: &'a [u8],
+}
+
+impl<'a> MemoryRegion for MemorySlice<'a> {
+    fn base_addr(&self) -> u64 {
+        self.base_addr
+    }
+
+    fn size(&self) -> usize {
+        self.contents.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.contents.is_empty()
+    }
+
+    fn get<A: RegisterValue, E: Endianness>(&self, address: A, endian: E) -> Option<A> {
+        let index = (address.try_into().ok()?).checked_sub(self.base_addr as usize)?;
+        A::read_bytes(self.contents.get(index..)?, endian)
+    }
+}

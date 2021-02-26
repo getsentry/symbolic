@@ -29,6 +29,7 @@
 //!
 use super::base::{RegisterValue, Endianness};
 use super::memory::MemoryRegion;
+use super::base::{Endianness, MemoryRegion, RegisterValue};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::str::FromStr;
