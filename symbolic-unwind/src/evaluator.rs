@@ -27,8 +27,6 @@
 //! An assignment results in an update of the variable's value in the dictionary, or its
 //! insertion if it was not defined before.
 //!
-use super::base::{RegisterValue, Endianness};
-use super::memory::MemoryRegion;
 use super::base::{Endianness, MemoryRegion, RegisterValue};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -41,12 +39,12 @@ use std::str::FromStr;
 /// - A region of memory
 /// - An address type, which is used both for basic expressions and for pointers into `memory`
 /// - An [`Endianness`](super::base::Endianness) that controls how values are read from memory
-pub struct MemoryEvaluator<Memory, A, E> {
+pub struct Evaluator<M, A, E> {
     /// A region of memory.
     ///
     /// If this is `None`, evaluation of expressions containing dereference
     /// operations will fail.
-    pub memory: Option<Memory>,
+    pub memory: Option<M>,
 
     /// A map containing the values of constants.
     ///
@@ -64,9 +62,7 @@ pub struct MemoryEvaluator<Memory, A, E> {
     pub endian: E,
 }
 
-impl<A: RegisterValue, Memory: MemoryRegion, E: Endianness>
-    MemoryEvaluator<Memory, A, E>
-{
+impl<A: RegisterValue, M: MemoryRegion, E: Endianness> Evaluator<M, A, E> {
     /// Evaluates a single expression.
     ///
     /// This may fail if the expression tries to dereference unavailable memory
@@ -124,9 +120,7 @@ impl<A: RegisterValue, Memory: MemoryRegion, E: Endianness>
         Ok(self.variables.insert(v.clone(), value).is_some())
     }
 }
-impl<A: RegisterValue + FromStr, Memory: MemoryRegion, E: Endianness>
-    MemoryEvaluator<Memory, A, E>
-{
+impl<A: RegisterValue + FromStr, M: MemoryRegion, E: Endianness> Evaluator<M, A, E> {
     /// Processes a string of assignments, modifying its [`variables`](Self::variables)
     /// field accordingly.
     ///
@@ -642,7 +636,7 @@ mod test {
     fn test_assignment() {
         let input = "$rAdd3 2 2 + =$rMul2 9 6 * =";
 
-        let mut eval: MemoryEvaluator<FakeMemoryRegion, u64, BigEndian> = MemoryEvaluator {
+        let mut eval: Evaluator<FakeMemoryRegion, u64, BigEndian> = Evaluator {
             memory: None,
             variables: BTreeMap::new(),
             constants: BTreeMap::new(),
@@ -666,7 +660,7 @@ mod test {
     fn test_deref() {
         let input = "$rDeref 9 ^ =";
 
-        let mut eval: MemoryEvaluator<_, u64, BigEndian> = MemoryEvaluator {
+        let mut eval: Evaluator<_, u64, BigEndian> = Evaluator {
             memory: Some(FakeMemoryRegion),
             variables: BTreeMap::new(),
             constants: BTreeMap::new(),
@@ -713,7 +707,7 @@ mod test {
         .into_iter()
         .collect();
 
-        let mut eval: MemoryEvaluator<_, u64, BigEndian> = MemoryEvaluator {
+        let mut eval: Evaluator<_, u64, BigEndian> = Evaluator {
             memory: Some(FakeMemoryRegion),
             variables,
             constants,
