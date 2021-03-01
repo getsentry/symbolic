@@ -105,6 +105,7 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
                     .ok_or(EvaluationError::IllegalMemoryAccess {
                         address,
                         bytes: A::WIDTH,
+                        address_range: memory.base_addr..memory.base_addr + memory.len() as u64,
                     })
             }
         }
@@ -185,6 +186,8 @@ pub enum EvaluationError<A: RegisterValue> {
         bytes: usize,
         /// The address at which the read was attempted.
         address: A,
+        /// The range of available addresses.
+        address_range: std::ops::Range<u64>,
     },
 }
 
