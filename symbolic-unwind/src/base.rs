@@ -119,7 +119,7 @@ impl RegisterValue for u8 {
 impl RegisterValue for u16 {
     const WIDTH: usize = 2;
     fn read_bytes<E: Endianness>(bytes: &[u8], endian: E) -> Option<Self> {
-        let bytes: &[u8; Self::WIDTH] = bytes[..Self::WIDTH].try_into().ok()?;
+        let bytes: &[u8; Self::WIDTH] = bytes.get(..Self::WIDTH)?.try_into().ok()?;
         if endian.is_big_endian() {
             Some(Self::from_be_bytes(*bytes))
         } else {
@@ -131,7 +131,7 @@ impl RegisterValue for u16 {
 impl RegisterValue for u32 {
     const WIDTH: usize = 4;
     fn read_bytes<E: Endianness>(bytes: &[u8], endian: E) -> Option<Self> {
-        let bytes: &[u8; Self::WIDTH] = bytes[..Self::WIDTH].try_into().ok()?;
+        let bytes: &[u8; Self::WIDTH] = bytes.get(..Self::WIDTH)?.try_into().ok()?;
         if endian.is_big_endian() {
             Some(Self::from_be_bytes(*bytes))
         } else {
@@ -143,7 +143,7 @@ impl RegisterValue for u32 {
 impl RegisterValue for u64 {
     const WIDTH: usize = 8;
     fn read_bytes<E: Endianness>(bytes: &[u8], endian: E) -> Option<Self> {
-        let bytes: &[u8; Self::WIDTH] = bytes[..Self::WIDTH].try_into().ok()?;
+        let bytes: &[u8; Self::WIDTH] = bytes.get(..Self::WIDTH)?.try_into().ok()?;
         if endian.is_big_endian() {
             Some(Self::from_be_bytes(*bytes))
         } else {
