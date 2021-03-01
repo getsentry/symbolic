@@ -65,25 +65,6 @@ impl Endianness for RuntimeEndian {
     }
 }
 
-/// The endianness of the target platform, in this case [`BigEndian`].
-#[cfg(target_endian = "big")]
-pub type NativeEndian = BigEndian;
-
-#[cfg(target_endian = "big")]
-#[allow(non_upper_case_globals)]
-#[doc(hidden)]
-pub const NativeEndian: NativeEndian = BigEndian;
-
-/// The endianness of the target platform, in this case [`LittleEndian`].
-#[cfg(target_endian = "little")]
-pub type NativeEndian = LittleEndian;
-
-#[cfg(target_endian = "little")]
-#[allow(non_upper_case_globals)]
-#[allow(dead_code)]
-#[doc(hidden)]
-pub const NativeEndian: NativeEndian = LittleEndian;
-
 /// A trait for types that can be used as memory addresses.
 ///
 /// This contains no actual functionality, it only bundles other traits.
