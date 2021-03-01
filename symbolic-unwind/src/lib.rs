@@ -1,5 +1,6 @@
 //! Stack unwinding functionality for `symbolic`.
 #![warn(missing_docs)]
+pub use base::*;
 
-pub mod base;
+mod base;
 pub mod evaluator;
