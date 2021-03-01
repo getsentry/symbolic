@@ -9,6 +9,9 @@ use std::ops::{Add, Div, Mul, Rem, Sub};
 /// This trait provides no other functionality than a method for testing whether
 /// an endianness is big or little. In particular it does not provide methods for
 /// reading number types the way that similar traits/types in `byteorder` and `gimli` do.
+///
+/// We use our own trait here so we don't need to depend on crates (`byteorder`/`gimli`)
+/// for a minuscule part of their features.
 pub trait Endianness: Debug + Clone + Copy {
     /// Returns true if this is big-endian (i.e. most significant bytes first).
     fn is_big_endian(self) -> bool;
