@@ -15,6 +15,9 @@ use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 
+/// Prefix for hidden symbols from Apple BCSymbolMap builds.
+const SWIFT_HIDDEN_PREFIX: &str = "__hidden#";
+
 /// An error when dealing with [`MachObject`](struct.MachObject.html).
 #[derive(Debug, Error)]
 #[error("invalid MachO file")]
@@ -253,11 +256,8 @@ impl<'d> MachObject<'d> {
     /// This is an indication that BCSymbolMaps are needed to symbolicate crash reports correctly.
     pub fn requires_symbolmap(&self) -> bool {
         self.symbols().any(|s| {
-            s.name().map_or(false, |n| {
-                n.starts_with("__?hidden#")
-                    || n.starts_with("__hidden#")
-                    || n.starts_with("_hidden#")
-            })
+            s.name()
+                .map_or(false, |n| n.starts_with(SWIFT_HIDDEN_PREFIX))
         })
     }
 }
@@ -433,7 +433,7 @@ impl<'data> Iterator for MachOSymbolIterator<'data> {
             }
 
             // Trim leading underscores from mangled C++ names.
-            if name.starts_with('_') {
+            if name.starts_with('_') && !name.starts_with(SWIFT_HIDDEN_PREFIX) {
                 name = &name[1..];
             }
 
