@@ -733,6 +733,7 @@ mod derive_serde {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use similar_asserts::assert_eq;
 
     fn file_info<'a>(dir: &'a str, name: &'a str) -> FileInfo<'a> {
         FileInfo {

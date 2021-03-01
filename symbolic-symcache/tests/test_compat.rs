@@ -2,6 +2,8 @@ use symbolic_common::ByteView;
 use symbolic_symcache::SymCache;
 use symbolic_testutils::fixture;
 
+use similar_asserts::assert_eq;
+
 #[test]
 fn test_v1() -> Result<(), Box<dyn std::error::Error>> {
     let buffer = ByteView::open(fixture("symcache/compat/v1.symc"))?;

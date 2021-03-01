@@ -22,7 +22,7 @@ sdist: .venv/bin/python
 .PHONY: sdist
 
 wheel: .venv/bin/python
-	cd py && ../.venv/bin/python setup.py bdist_wheel
+	cd py && ../.venv/bin/pip install -U wheel && ../.venv/bin/python setup.py bdist_wheel
 .PHONY: wheel
 
 wheel-manylinux:
@@ -92,5 +92,4 @@ format-python: .venv/bin/python
 
 .venv/bin/python: Makefile
 	@rm -rf .venv
-	@which virtualenv || sudo pip install virtualenv
-	virtualenv -p $(SYMBOLIC_PYTHON) .venv
+	$(SYMBOLIC_PYTHON) -m venv .venv

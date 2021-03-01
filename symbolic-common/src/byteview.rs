@@ -236,6 +236,7 @@ mod tests {
 
     use std::io::Write;
 
+    use similar_asserts::assert_eq;
     use tempfile::NamedTempFile;
 
     #[test]

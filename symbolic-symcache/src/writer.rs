@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::{self, Seek, Write};
+use std::num::NonZeroU16;
 
 use fnv::{FnvHashMap, FnvHashSet};
 use num::FromPrimitive;
@@ -13,29 +14,25 @@ use crate::format;
 
 // Performs a shallow check whether this function might contain any lines.
 fn is_empty_function(function: &Function<'_>) -> bool {
-    function.lines.is_empty() && function.inlinees.is_empty()
-}
-
-/// Performs a check whether this line has already been written in the scope of this function.
-fn is_redundant_line(line: &LineInfo<'_>, line_cache: &mut LineCache) -> bool {
-    !line_cache.insert((line.address, line.line))
+    function.size == 0
 }
 
 /// Recursively cleans a tree of functions that does not cover any lines.
 ///
-///  - Removes all redundant line records (see `is_redundant_line`)
-///  - Removes all empty functions (see `is_empty_function`)
+///  - Removes all redundant line records
+///  - Removes all empty functions (see [`is_empty_function`])
 fn clean_function(function: &mut Function<'_>, line_cache: &mut LineCache) {
+    function.inlinees.retain(|f| !is_empty_function(f));
     let mut inlinee_lines = LineCache::default();
 
     for inlinee in &mut function.inlinees {
         clean_function(inlinee, &mut inlinee_lines);
     }
 
-    function.inlinees.retain(|f| !is_empty_function(f));
+    // Remove duplicate lines
     function
         .lines
-        .retain(|l| !is_redundant_line(l, &mut inlinee_lines));
+        .retain(|l| inlinee_lines.insert((l.address, l.line)));
 
     line_cache.extend(inlinee_lines);
 }
@@ -84,15 +81,12 @@ where
         Ok(())
     }
 
-    /// Writes a segment as binary data to the writer and returns the [`Seg`] reference.
+    /// Writes a slice as binary data and returns a [`Seg`](format::Seg) pointing to the written data.
     ///
-    /// This operation may fail if the data slice is too large to fit the segment. Each segment
-    /// defines a data type for defining its length, which might not fit as many elements.
+    /// This operation may fail if the length of the slice does not fit in the segment's index type.
     ///
     /// The data items are directly transmuted to their binary representation. Thus, they should not
-    /// contain any references and have a stable memory layout (`#[repr(C, packed)]).
-    ///
-    /// [`Seg`]: format/struct.Seg.html
+    /// contain any references and have a stable memory layout (`#[repr(C, packed)]`).
     #[inline]
     fn write_segment<T, L>(
         &mut self,
@@ -172,11 +166,10 @@ type LineCache = FnvHashSet<(u64, u64)>;
 
 /// A high level writer that can construct SymCaches.
 ///
-/// When using this writer directly, ensure to call [`finish`] at the end, so that all segments are
+/// When using this writer directly, make sure to call [`finish`](SymCacheWriter::finish)
+/// at the end, so that all segments are
 /// written to the underlying writer and the header is fixed up with the references. Since segments
 /// are consecutive chunks of memory, this can only be done once at the end of the writing process.
-///
-/// [`finish`]: struct.SymCacheWriter.html#method.finish
 pub struct SymCacheWriter<W> {
     writer: FormatWriter<W>,
     header: format::HeaderV2,
@@ -193,7 +186,8 @@ impl<W> SymCacheWriter<W>
 where
     W: Write + Seek,
 {
-    /// Converts an entire object into a SymCache.
+    /// Converts an entire object (an instance of a type that implements [`ObjectLike`])
+    /// into a SymCache.
     pub fn write_object<'d, 'o, O>(object: &'o O, target: W) -> Result<W, SymCacheError>
     where
         O: ObjectLike<'d, 'o>,
@@ -225,7 +219,7 @@ where
         for index in 0..writer.functions.len() {
             if let Some(function) = writer.functions.get(index) {
                 let address = function.original.addr;
-                let end = address + function.record.len.max(1) as u64;
+                let end = address + function.record.len.get() as u64;
 
                 // Consume all functions before and within this function. Only write the symbols
                 // before the function and drop the rest.
@@ -293,17 +287,18 @@ where
         // there is only one symbol and for the last symbol. `FuncRecord::addr_in_range` always
         // requires some address range. Since we can't possibly know the actual size, just assume
         // that the symbol is VERY large.
-        let size = match symbol.size {
-            0 => !0,
-            s => s,
+        let len = match symbol.size {
+            0 => u16::MAX,
+            s => std::cmp::min(s, 0xffff) as u16,
         };
+
+        // This unwrap cannot fail; size is nonzero by definition.
+        let len = NonZeroU16::new(len).unwrap();
 
         let record = format::FuncRecord {
             addr_low: (symbol.address & 0xffff_ffff) as u32,
             addr_high: ((symbol.address >> 32) & 0xffff) as u16,
-            // XXX: we have not seen this yet, but in theory this should be
-            // stored as multiple function records.
-            len: std::cmp::min(size, 0xffff) as u16,
+            len,
             symbol_id_low: (symbol_id & 0xffff) as u16,
             symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
             line_records: format::Seg::default(),
@@ -316,19 +311,20 @@ where
         Ok(())
     }
 
-    /// Adds a function to this SymCache.
+    /// Cleans up a function by recursively removing all empty inlinees, then inserts it into
+    /// the writer.
     ///
+    /// Does nothing if the function is empty itself.
     /// Functions **must** be added in ascending order using this method. This emits a function
     /// record for this function and for each inlinee recursively.
     pub fn add_function(&mut self, mut function: Function<'_>) -> Result<(), SymCacheError> {
         // If we encounter a function without any instructions we just skip it.  This saves memory
         // and since we only care about instructions where we can actually crash this is a
         // reasonable optimization.
-        clean_function(&mut function, &mut LineCache::default());
         if is_empty_function(&function) {
             return Ok(());
         }
-
+        clean_function(&mut function, &mut LineCache::default());
         self.insert_function(&function, FuncRef::none())
     }
 
@@ -348,6 +344,10 @@ where
         Ok(writer.into_inner())
     }
 
+    /// Writes a segment for a path and adds it to the [`path_cache`](Self::path_cache).
+    ///
+    /// Paths longer than
+    /// 2^8 bytes will be shortened using [`shorten_path`](symbolic_common::shorten_path).
     fn write_path(&mut self, path: &[u8]) -> Result<format::Seg<u8, u8>, SymCacheError> {
         if let Some(segment) = self.path_cache.get(path) {
             return Ok(*segment);
@@ -363,6 +363,11 @@ where
         Ok(segment)
     }
 
+    /// Inserts a file into the writer.
+    ///
+    /// This writes segments containing the file's name and base directory and combines them
+    /// into a [`FileRecord`](format::FileRecord). The returned `index`
+    /// is that `FileRecord`'s index in the [`files`](Self::files) vector.
     fn insert_file(&mut self, file: &FileInfo<'_>) -> Result<u16, SymCacheError> {
         let record = format::FileRecord {
             filename: self.write_path(file.name)?,
@@ -383,6 +388,11 @@ where
         Ok(index)
     }
 
+    /// Inserts a symbol into the writer.
+    ///
+    /// This writes a segment containing the symbol's name. The returned `index`
+    /// is that segment's index in the [`symbols`](Self::symbols) vector. Names longer than 2^16
+    /// bytes will be truncated.
     fn insert_symbol(&mut self, name: Cow<'_, str>) -> Result<u32, SymCacheError> {
         let mut len = std::cmp::min(name.len(), std::u16::MAX.into());
         if len < name.len() {
@@ -396,7 +406,7 @@ where
             return Ok(*index);
         }
 
-        // NB: We only use 48 bits to encode symbol offsets in function records.
+        // NB: We only use 24 bits to encode symbol offsets in function records.
         if self.symbols.len() >= 0x00ff_ffff {
             return Err(SymCacheErrorKind::TooManyValues(ValueKind::Symbol).into());
         }
@@ -414,14 +424,28 @@ where
         Ok(index)
     }
 
-    fn insert_lines(
+    /// Takes an iterator of [`LineInfo`]s and returns a vector containing [`LineRecord`](format::LineRecord)s
+    /// for those lines whose address is between `start_address` and `end_address`.
+    ///
+    /// - If the difference between the addresses of two consecutive
+    /// lines `L1` and `L2` is greater than 255, dummy line records with the same file and line
+    /// information as L1 will be inserted between the two.
+    ///
+    /// - One call of this function will
+    /// produce a maximum of 2^16 line records and will not produce line records with an address more than
+    /// 2^16 bytes after the start address. If either of these limits is exceeded, the function will return
+    /// early with the address of the first line that could not be processed; it is then up to
+    /// the caller to call it again with that address as the new start address.
+    fn take_lines(
         &mut self,
         lines: &mut std::iter::Peekable<std::slice::Iter<'_, LineInfo<'_>>>,
         start_address: u64,
         end_address: u64,
     ) -> Result<(Vec<format::LineRecord>, u64), SymCacheError> {
-        let mut line_segment = vec![];
+        let mut line_records = vec![];
         let mut last_address = start_address;
+        let mut last_file = 0;
+        let mut last_line = 0;
 
         while let Some(line) = lines.peek() {
             let file_id = self.insert_file(&line.file)?;
@@ -430,76 +454,102 @@ where
             // start.  Why this happens is unclear but it happens with highly inlined function
             // calls.  Instead of panicking we want to just assume there is a single record at the
             // address of the function and in case there are more the offsets are just slightly off.
-            let mut diff = (line.address.saturating_sub(last_address)) as i64;
+            let mut remaining_offset = Some(line.address.saturating_sub(last_address));
 
-            // Line records store relative offsets to the previous line's address. If that offset
+            // Line records store offsets relative to the previous line's address. If that offset
             // exceeds 255 (max u8 value), we write multiple line records to fill the gap.
-            while diff >= 0 {
-                let line_record = format::LineRecord {
-                    addr_off: (diff & 0xff) as u8,
-                    file_id,
-                    line: std::cmp::min(line.line, std::u16::MAX.into()) as u16,
+            while let Some(offset) = remaining_offset {
+                let (current_offset, rest) = if offset > 0xff {
+                    (0xff, Some(offset - 0xff))
+                } else {
+                    (offset, None)
                 };
-                last_address += u64::from(line_record.addr_off);
+
+                remaining_offset = rest;
+                last_address += current_offset;
+
+                // If there is a rest offset, then the current line record is just a filler. This
+                // record still falls into the previous record's range, so we need to use the
+                // previous record's information. Only if there is no rest, use the new information.
+                if rest.is_none() {
+                    last_file = file_id;
+                    last_line = line.line.min(std::u16::MAX.into()) as u16;
+                }
 
                 // Check if we can still add a line record to this function without exceeding limits
                 // of the physical format. Otherwise, do an early exit and let the caller iterate.
                 let should_split_function = last_address - start_address > std::u16::MAX.into()
-                    || line_segment.len() >= std::u16::MAX.into();
+                    || line_records.len() >= std::u16::MAX.into();
 
                 if should_split_function {
-                    return Ok((line_segment, last_address));
+                    return Ok((line_records, last_address));
                 }
 
-                line_segment.push(line_record);
-                diff -= 0xff;
+                line_records.push(format::LineRecord {
+                    addr_off: current_offset as u8,
+                    file_id: last_file,
+                    line: last_line,
+                });
             }
 
             lines.next();
         }
 
-        Ok((line_segment, end_address))
+        Ok((line_records, end_address))
     }
 
+    /// Inserts a function into the writer and writes its line records.
+    ///
+    /// This function may produce multiple [`FuncRecord`](format::FuncRecord)s for one [`Function`] under two conditions:
+    ///
+    ///  1. Its address range exceeds 2^16 bytes. This makes it too large for the `len` field in
+    ///     the function record.
+    ///  2. There are more than 2^16 line records. This is larger than the index used for the line
+    ///     segment.
     fn insert_function(
         &mut self,
         function: &Function<'_>,
         parent_ref: FuncRef,
     ) -> Result<(), SymCacheError> {
-        // There are two conditions under which a function record needs to be split. When a function
-        // is split, its inline functions are also assigned to the according part:
-        //  1. Its address range exceeds 65k bytes. This makes it too large for the `len` field in
-        //     the function record.
-        //  2. There are more than 65k line records. This is larger than the index used for the line
-        //     segment.
-
         let language = function.name.language();
         let symbol_id = self.insert_symbol(function.name.as_str().into())?;
         let comp_dir = self.write_path(function.compilation_dir)?;
         let lang = u8::from_u32(language as u32)
             .ok_or(SymCacheErrorKind::ValueTooLarge(ValueKind::Language))?;
 
-        let mut start_address = function.address;
+        let mut current_start_address = function.address;
         let mut lines = function.lines.iter().peekable();
 
-        while start_address < function.end_address() {
-            // Insert lines for a segment of the function. This will return the list of line
-            // records, and the end of the segment that was written.
-            //  - If all line records were written, the segment ends with the function.
-            //  - Otherwise, it is the address of the subsequent line record that could not be
-            //    written anymore. In the next iteration, output will start with this line record.
-            let (line_segment, end_address) =
-                self.insert_lines(&mut lines, start_address, function.end_address())?;
+        while current_start_address < function.end_address() {
+            // Create line records for a part of the function.
+            // - The first return value is the vector of created line records.
+            // - If all line records were created, the second return value is equal to `function.end_address()`
+            //   and the loop terminates. Otherwise it is the address of the first line record
+            // that couldn't be created, which is where we have to start the next iteration.
+            let (line_records, next_start_address) =
+                self.take_lines(&mut lines, current_start_address, function.end_address())?;
 
-            let line_records = self.writer.write_segment(&line_segment, ValueKind::Line)?;
-            if !line_segment.is_empty() {
+            let line_records = self.writer.write_segment(&line_records, ValueKind::Line)?;
+            if line_records.len > 0 {
                 self.header.has_line_records = 1;
             }
 
+            let len = std::cmp::min(next_start_address - current_start_address, 0xffff) as u16;
+            debug_assert_ne!(
+                len, 0,
+                "While adding function {}: length must be positive",
+                function.name
+            );
+
+            let len = match NonZeroU16::new(len) {
+                Some(len) => len,
+                None => break,
+            };
+
             let record = format::FuncRecord {
-                addr_low: (start_address & 0xffff_ffff) as u32,
-                addr_high: ((start_address >> 32) & 0xffff) as u16,
-                len: (end_address - start_address) as u16,
+                addr_low: (current_start_address & 0xffff_ffff) as u32,
+                addr_high: ((current_start_address >> 32) & 0xffff) as u16,
+                len,
                 symbol_id_low: (symbol_id & 0xffff) as u16,
                 symbol_id_high: ((symbol_id >> 16) & 0xff) as u8,
                 parent_offset: !0,
@@ -510,17 +560,20 @@ where
 
             let function_ref = self.push_function(record, parent_ref)?;
             for inlinee in &function.inlinees {
-                if inlinee.address >= start_address && inlinee.end_address() <= end_address {
+                if inlinee.address >= current_start_address
+                    && inlinee.end_address() <= next_start_address
+                {
                     self.insert_function(inlinee, function_ref)?;
                 }
             }
 
-            start_address = end_address;
+            current_start_address = next_start_address;
         }
 
         Ok(())
     }
 
+    /// Adds a [`FuncRecord`](format::FuncRecord) to the writer.
     fn push_function(
         &mut self,
         record: format::FuncRecord,
@@ -556,6 +609,8 @@ where
         Ok(original)
     }
 
+    /// Checks whether the functions in the writer are sorted by their start address and sorts them
+    /// otherwise.
     fn ensure_sorted(&mut self) {
         // Only sort if functions do not already appear in order. They are sorted primarily by their
         // start address, and secondarily by the index in which they appeared originally in the
@@ -565,6 +620,7 @@ where
         }
     }
 
+    /// Writes the functions that have been added to this writer.
     fn write_functions(&mut self) -> Result<format::Seg<format::FuncRecord>, SymCacheError> {
         if self.functions.is_empty() {
             return Ok(format::Seg::default());

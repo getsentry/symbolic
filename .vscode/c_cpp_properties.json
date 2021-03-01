@@ -6,8 +6,8 @@
                 "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include/c++/v1",
                 "/usr/local/include",
                 "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include",
-                "${workspaceRoot}/minidump",
-                "${workspaceRoot}/minidump/third_party/breakpad/src"
+                "${workspaceRoot}/symbolic-minidump",
+                "${workspaceRoot}/symbolic-minidump/third_party/breakpad/src"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
@@ -16,8 +16,8 @@
                     "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include/c++/v1",
                     "/usr/local/include",
                     "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include",
-                    "${workspaceRoot}/minidump",
-                    "${workspaceRoot}/minidump/third_party/breakpad/src"
+                    "${workspaceRoot}/symbolic-minidump",
+                    "${workspaceRoot}/symbolic-minidump/third_party/breakpad/src"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
@@ -35,8 +35,8 @@
             "includePath": [
                 "/usr/include",
                 "/usr/local/include",
-                "${workspaceRoot}/minidump",
-                "${workspaceRoot}/minidump/third_party/breakpad/src"
+                "${workspaceRoot}/symbolic-minidump",
+                "${workspaceRoot}/symbolic-minidump/third_party/breakpad/src"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
@@ -44,8 +44,8 @@
                 "path": [
                     "/usr/include",
                     "/usr/local/include",
-                    "${workspaceRoot}/minidump",
-                    "${workspaceRoot}/minidump/third_party/breakpad/src"
+                    "${workspaceRoot}/symbolic-minidump",
+                    "${workspaceRoot}/symbolic-minidump/third_party/breakpad/src"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
@@ -59,8 +59,8 @@
             "includePath": [
                 "C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include",
                 "${workspaceRoot}",
-                "${workspaceRoot}/minidump",
-                "${workspaceRoot}/minidump/third_party/breakpad/src"
+                "${workspaceRoot}/symbolic-minidump",
+                "${workspaceRoot}/symbolic-minidump/third_party/breakpad/src"
             ],
             "defines": [
                 "_DEBUG",
@@ -70,8 +70,8 @@
             "browse": {
                 "path": [
                     "C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include/*",
-                    "${workspaceRoot}/minidump",
-                    "${workspaceRoot}/minidump/third_party/breakpad/src"
+                    "${workspaceRoot}/symbolic-minidump",
+                    "${workspaceRoot}/symbolic-minidump/third_party/breakpad/src"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""

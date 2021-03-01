@@ -1,0 +1,3 @@
+MODULE windows x86_64 09F9D7ECF31F60E34C4C44205044422E1 xul.pdb
+INFO CODE_ID 5E8F310E69D0000 xul.dll
+FUNC c6db70 23e 0 std::_Func_impl_no_alloc<`lambda at /builds/worker/checkouts/gecko/netwerk/protocol/http/HttpChannelChild.cpp:411:7',void>::_Do_call()

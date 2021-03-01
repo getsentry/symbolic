@@ -3,6 +3,8 @@
 use symbolic_common::{Language, Name};
 use symbolic_demangle::Demangle;
 
+use similar_asserts::assert_eq;
+
 fn assert_language(input: &str, lang: Language) {
     let name = Name::from(input);
     assert_eq!(name.detect_language(), lang);

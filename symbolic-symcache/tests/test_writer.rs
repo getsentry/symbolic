@@ -109,3 +109,68 @@ fn test_write_large_symbol_names() -> Result<(), Error> {
 
     Ok(())
 }
+
+/// This tests the fix for the bug described in
+/// https://github.com/getsentry/symbolic/issues/284#issue-726898083
+#[test]
+fn test_lookup_no_lines() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("xul.sym"))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut buffer = Vec::new();
+    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let symcache = SymCache::parse(&buffer)?;
+    let symbols = symcache.lookup(0xc6dd98)?.collect::<Vec<_>>()?;
+
+    assert_eq!(symbols.len(), 1);
+    let name = symbols[0].function_name();
+
+    assert_eq!(
+        name,
+        "std::_Func_impl_no_alloc<`lambda at \
+        /builds/worker/checkouts/gecko/netwerk/\
+        protocol/http/HttpChannelChild.cpp:411:7',void>::_Do_call()"
+    );
+
+    Ok(())
+}
+
+/// This tests the fix for the bug described in
+/// https://github.com/getsentry/symbolic/issues/284#issuecomment-715587454.
+#[test]
+fn test_lookup_no_size() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("libgallium_dri.sym"))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut buffer = Vec::new();
+    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let symcache = SymCache::parse(&buffer)?;
+    let symbols = symcache.lookup(0x1489adf)?.collect::<Vec<_>>()?;
+
+    assert_eq!(symbols.len(), 1);
+    let name = symbols[0].function_name();
+
+    assert_eq!(name, "nouveau_drm_screen_create");
+
+    Ok(())
+}
+
+/// This tests the fix for the bug described in
+/// https://github.com/getsentry/symbolic/issues/285.
+#[test]
+fn test_lookup_modulo_u16() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("xul2.sym"))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut buffer = Vec::new();
+    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let symcache = SymCache::parse(&buffer)?;
+    let symbols = symcache.lookup(0x3c105a1)?.collect::<Vec<_>>()?;
+
+    assert_eq!(symbols.len(), 1);
+    let name = symbols[0].function_name();
+
+    assert_eq!(name, "Interpret(JSContext*, js::RunState&)");
+
+    Ok(())
+}
