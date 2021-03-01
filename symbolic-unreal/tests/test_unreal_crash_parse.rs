@@ -4,6 +4,9 @@ use std::io::Read;
 use symbolic_testutils::fixture;
 use symbolic_unreal::{Unreal4Crash, Unreal4Error, Unreal4FileType};
 
+#[cfg(test)]
+use similar_asserts::assert_eq;
+
 fn get_unreal_crash() -> Result<Unreal4Crash, Unreal4Error> {
     let mut file = File::open(fixture("unreal/unreal_crash")).expect("example file opens");
     let mut file_content = Vec::new();

@@ -8,6 +8,8 @@ mod utils;
 use symbolic_common::{Language, Name, NameMangling};
 use symbolic_demangle::{Demangle, DemangleOptions};
 
+use similar_asserts::assert_eq;
+
 #[test]
 #[cfg(feature = "cpp")]
 fn test_demangle_objcpp() {
