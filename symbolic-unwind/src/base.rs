@@ -134,7 +134,6 @@ impl RegisterValue for u64 {
             Some(Self::from_le_bytes(*bytes))
         }
     }
-
 }
 
 /// A view into a region of memory, given by a slice and a base address.

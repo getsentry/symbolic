@@ -33,6 +33,7 @@ pub mod parsing;
 use super::base::{Endianness, MemoryRegion, RegisterValue};
 use parsing::ExprParsingError;
 use std::collections::{BTreeMap, BTreeSet};
+use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
@@ -171,7 +172,7 @@ impl<'memory, A: RegisterValue + FromStr, E: Endianness> Evaluator<'memory, A, E
 
 /// An error encountered while evaluating an expression.
 #[derive(Debug)]
-pub enum EvaluationError<A: RegisterValue> {
+pub enum EvaluationError<A> {
     /// The expression contains an undefined constant.
     UndefinedConstant(Constant),
 
@@ -193,9 +194,26 @@ pub enum EvaluationError<A: RegisterValue> {
     },
 }
 
+impl<A: fmt::Display> fmt::Display for EvaluationError<A> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+           Self::UndefinedConstant(c) => write!(f, "Constant {} is not defined", c),
+           Self::UndefinedVariable(v) => write!(f, "Variable {} is not defined", v),
+           Self::MemoryUnavailable => write!(f, "The evaluator does not have access to memory"),
+           Self::IllegalMemoryAccess {bytes, address, address_range } => write!(f, "Tried to read {} bytes at memory address {}. The available address range is [{}, {})", bytes, address, address_range.start, address_range.end),
+        }
+    }
+}
+
+impl<A: fmt::Display + std::fmt::Debug> Error for EvaluationError<A> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        None
+    }
+}
+
 /// An error encountered while parsing or evaluating an expression.
 #[derive(Debug)]
-pub enum ExpressionError<I, A: RegisterValue> {
+pub enum ExpressionError<I, A> {
     /// An error was encountered while parsing an expression.
     Parsing(ExprParsingError<I>),
 
@@ -212,6 +230,26 @@ impl<I, A: RegisterValue> From<ExprParsingError<I>> for ExpressionError<I, A> {
 impl<I, A: RegisterValue> From<EvaluationError<A>> for ExpressionError<I, A> {
     fn from(other: EvaluationError<A>) -> Self {
         Self::Evaluation(other)
+    }
+}
+
+impl<I: fmt::Display, A: fmt::Display> fmt::Display for ExpressionError<I, A> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Parsing(e) => write!(f, "Error while parsing: {}", e),
+            Self::Evaluation(e) => write!(f, "Error while evaluating: {}", e),
+        }
+    }
+}
+
+impl<I: fmt::Display + fmt::Debug + 'static, A: fmt::Display + fmt::Debug + 'static> Error
+    for ExpressionError<I, A>
+{
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            Self::Parsing(e) => Some(e),
+            Self::Evaluation(e) => Some(e),
+        }
     }
 }
 

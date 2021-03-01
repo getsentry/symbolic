@@ -12,6 +12,8 @@ use nom::error::ParseError;
 use nom::multi::many0;
 use nom::sequence::{delimited, pair, preceded, tuple};
 use nom::{Err, Finish, IResult};
+use std::error::Error;
+use std::fmt;
 use std::str::FromStr;
 
 /// The error kind for [`ExprParsingError`].
@@ -19,9 +21,6 @@ use std::str::FromStr;
 pub enum ExprParsingErrorKind {
     /// An operator was encountered, but there were not enough operands on the stack.
     NotEnoughOperands,
-
-    /// A variable was expected, but the identifier did not start with a `$`.
-    IllegalVariableName,
 
     /// More than one expression preceded a `=`.
     MalformedAssignment,
@@ -31,6 +30,17 @@ pub enum ExprParsingErrorKind {
 
     /// An error returned by `nom`.
     Nom(nom::error::ErrorKind),
+}
+
+impl fmt::Display for ExprParsingErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::NotEnoughOperands => write!(f, "Not enough operands on the stack"),
+            Self::MalformedAssignment => write!(f, "Tried to parse an assignment, but there was more than one expression on the stack"),
+            Self::TooManyExpressions => write!(f, "Exactly one expression was expected, but multiple were found. Possibly missing postfix operators?"),
+            Self::Nom(kind) => write!(f, "Error from nom: {}", kind.description()),
+        }
+    }
 }
 
 /// An error encountered while parsing expressions.
@@ -58,6 +68,22 @@ impl<I> ParseError<I> for ExprParsingError<I> {
 impl<I, E> nom::error::FromExternalError<I, E> for ExprParsingError<I> {
     fn from_external_error(input: I, kind: nom::error::ErrorKind, _e: E) -> Self {
         Self::from_error_kind(input, kind)
+    }
+}
+
+impl<I: fmt::Display> fmt::Display for ExprParsingError<I> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Error encountered while trying to parse input {}: {}",
+            self.input, self.kind
+        )
+    }
+}
+
+impl<I: fmt::Display + fmt::Debug> Error for ExprParsingError<I> {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        None
     }
 }
 
@@ -126,7 +152,7 @@ fn base_expr<T: FromStr>(input: &str) -> IResult<&str, Expr<T>, ExprParsingError
     ))(input)
 }
 
-/// Parses a stack of [expressions](super::Expression).
+/// Parses a stack of [expressions](super::Expr).
 ///
 /// # Example
 /// ```rust
