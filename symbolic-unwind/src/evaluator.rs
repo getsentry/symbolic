@@ -38,15 +38,14 @@ use std::str::FromStr;
 /// RPN expressions.
 ///
 /// It is generic over:
-/// - A region of memory
 /// - An address type, which is used both for basic expressions and for pointers into `memory`
 /// - An [`Endianness`](super::base::Endianness) that controls how values are read from memory
-pub struct Evaluator<M, A, E> {
+pub struct Evaluator<'memory, A, E> {
     /// A region of memory.
     ///
     /// If this is `None`, evaluation of expressions containing dereference
     /// operations will fail.
-    pub memory: Option<M>,
+    pub memory: Option<MemoryRegion<'memory>>,
 
     /// A map containing the values of constants.
     ///
@@ -64,7 +63,7 @@ pub struct Evaluator<M, A, E> {
     pub endian: E,
 }
 
-impl<A: RegisterValue, M: MemoryRegion, E: Endianness> Evaluator<M, A, E> {
+impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     /// Evaluates a single expression.
     ///
     /// This may fail if the expression tries to dereference unavailable memory
@@ -122,7 +121,7 @@ impl<A: RegisterValue, M: MemoryRegion, E: Endianness> Evaluator<M, A, E> {
         Ok(self.variables.insert(v.clone(), value).is_some())
     }
 }
-impl<A: RegisterValue + FromStr, M: MemoryRegion, E: Endianness> Evaluator<M, A, E> {
+impl<'memory, A: RegisterValue + FromStr, E: Endianness> Evaluator<'memory, A, E> {
     /// Processes a string of assignments, modifying its [`variables`](Self::variables)
     /// field accordingly.
     ///
@@ -133,14 +132,14 @@ impl<A: RegisterValue + FromStr, M: MemoryRegion, E: Endianness> Evaluator<M, A,
     /// # Example
     /// ```
     /// # use std::collections::{BTreeMap, BTreeSet};
-    /// # use symbolic_unwind::base::{BigEndian, MemorySlice};
+    /// # use symbolic_unwind::BigEndian;
     /// # use symbolic_unwind::evaluator::{Variable, Evaluator};
     /// let input = "$foo $bar 5 + = $bar 17 =";
     /// let mut variables = BTreeMap::new();
     /// let foo: Variable = "$foo".parse().unwrap();
     /// let bar: Variable = "$bar".parse().unwrap();
     /// variables.insert(bar.clone(), 17u8);
-    /// let mut evaluator: Evaluator<MemorySlice, _, _> = Evaluator {
+    /// let mut evaluator = Evaluator {
     ///     memory: None,
     ///     constants: BTreeMap::new(),
     ///     variables,
@@ -729,32 +728,11 @@ mod test {
     use super::*;
     use crate::base::BigEndian;
 
-    /// A fake [`MemoryRegion`](MemoryRegion) that always returns the requested address + 1.
-    struct FakeMemoryRegion;
-
-    impl MemoryRegion for FakeMemoryRegion {
-        fn base_addr(&self) -> u64 {
-            0
-        }
-
-        fn size(&self) -> usize {
-            0
-        }
-
-        fn is_empty(&self) -> bool {
-            true
-        }
-
-        fn get<A: RegisterValue, E: Endianness>(&self, address: A, _e: E) -> Option<A> {
-            Some(address + 1.into())
-        }
-    }
-
     #[test]
     fn test_assignment() {
         let input = "$rAdd3 2 2 + =$rMul2 9 6 * =";
 
-        let mut eval: Evaluator<FakeMemoryRegion, u64, BigEndian> = Evaluator {
+        let mut eval: Evaluator<u64, BigEndian> = Evaluator {
             memory: None,
             variables: BTreeMap::new(),
             constants: BTreeMap::new(),
@@ -778,8 +756,13 @@ mod test {
     fn test_deref() {
         let input = "$rDeref 9 ^ =";
 
-        let mut eval: Evaluator<_, u64, BigEndian> = Evaluator {
-            memory: Some(FakeMemoryRegion),
+        let memory = MemoryRegion {
+            base_addr: 9,
+            contents: &[0, 0, 0, 0, 0, 0, 0, 10],
+        };
+
+        let mut eval: Evaluator<u64, BigEndian> = Evaluator {
+            memory: Some(memory),
             variables: BTreeMap::new(),
             constants: BTreeMap::new(),
             endian: BigEndian,

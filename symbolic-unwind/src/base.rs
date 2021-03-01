@@ -131,18 +131,34 @@ impl RegisterValue for u64 {
             Some(Self::from_le_bytes(*bytes))
         }
     }
+
 }
 
-/// Provides access to a region of memory.
-pub trait MemoryRegion {
-    /// This memory region's base address.
-    fn base_addr(&self) -> u64;
+/// A view into a region of memory, given by a slice and a base address.
+#[derive(Clone, Copy, Debug)]
+pub struct MemoryRegion<'a> {
+    /// The starting address of the memory region.
+    pub base_addr: u64,
 
-    /// This memory region's size in bytes.
-    fn size(&self) -> usize;
+    /// The contents of the memory region.
+    pub contents: &'a [u8],
+}
+
+impl<'a> MemoryRegion<'a> {
+    /// This memory region's base address.
+    pub fn base_addr(&self) -> u64 {
+        self.base_addr
+    }
+
+    /// This memory region's length in bytes.
+    pub fn len(&self) -> usize {
+        self.contents.len()
+    }
 
     /// Returns true if this memory region's size is 0.
-    fn is_empty(&self) -> bool;
+    pub fn is_empty(&self) -> bool {
+        self.contents.is_empty()
+    }
 
     /// Read the value saved at `address` in this memory region as a value of type `A`.
     ///
@@ -150,32 +166,7 @@ pub trait MemoryRegion {
     /// as well as `Endianness`.
     /// Fails if no valid value of type `A` can be read at `address`, e.g. if there are
     /// not enough bytes.
-    fn get<A: RegisterValue, E: Endianness>(&self, address: A, endian: E) -> Option<A>;
-}
-
-/// A view into a region of memory, given by a slice and a base address.
-pub struct MemorySlice<'a> {
-    /// The starting address of the memory region.
-    base_addr: u64,
-
-    /// The contents of the memory region.
-    contents: &'a [u8],
-}
-
-impl<'a> MemoryRegion for MemorySlice<'a> {
-    fn base_addr(&self) -> u64 {
-        self.base_addr
-    }
-
-    fn size(&self) -> usize {
-        self.contents.len()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.contents.is_empty()
-    }
-
-    fn get<A: RegisterValue, E: Endianness>(&self, address: A, endian: E) -> Option<A> {
+    pub fn get<A: RegisterValue, E: Endianness>(&self, address: A, endian: E) -> Option<A> {
         let index = (address.try_into().ok()?).checked_sub(self.base_addr as usize)?;
         A::read_bytes(self.contents.get(index..)?, endian)
     }
