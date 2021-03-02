@@ -73,9 +73,6 @@ impl Endianness for RuntimeEndian {
 /// This contains no actual functionality, it only bundles other traits.
 pub trait RegisterValue:
     TryInto<usize>
-      // Not super happy about this; this is mostly so that we can add 1 to addresses.
-      // An alternative might be to have an associated constant ONE.
-    + From<u8>
     + Add<Output = Self>
     + Mul<Output = Self>
     + Div<Output = Self>
@@ -87,6 +84,7 @@ pub trait RegisterValue:
 {
     /// The number of bytes that need to be read to produce one value of this type.
     const WIDTH: usize;
+
     /// Attempt to read a value of this type from a slice of bytes.
     ///
     /// May fail if an invalid byte is encountered or there are not enough bytes in the slice.
