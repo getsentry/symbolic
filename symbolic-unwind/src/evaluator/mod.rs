@@ -27,15 +27,15 @@
 //! ```
 //! An assignment results in an update of the variable's value in the dictionary, or its
 //! insertion if it was not defined before.
-pub mod parsing;
-
-use super::base::{Endianness, MemoryRegion, RegisterValue};
-use parsing::ExprParsingError;
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
+use super::base::{Endianness, MemoryRegion, RegisterValue};
+use parsing::ExprParsingError;
+
+pub mod parsing;
 /// Structure that encapsulates the information necessary to evaluate Breakpad
 /// RPN expressions.
 ///

@@ -2,8 +2,10 @@
 //! [assignments](super::Assignment).
 //!
 //! This is brought to you by [`nom`].
+use std::error::Error;
+use std::fmt;
+use std::str::FromStr;
 
-use super::*;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, alphanumeric0, alphanumeric1, char, digit1, multispace0};
@@ -12,9 +14,8 @@ use nom::error::ParseError;
 use nom::multi::many0;
 use nom::sequence::{delimited, pair, preceded, tuple};
 use nom::{Err, Finish, IResult};
-use std::error::Error;
-use std::fmt;
-use std::str::FromStr;
+
+use super::*;
 
 /// The error kind for [`ExprParsingError`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -156,8 +157,8 @@ fn base_expr<T: FromStr>(input: &str) -> IResult<&str, Expr<T>, ExprParsingError
 ///
 /// # Example
 /// ```rust
-/// use symbolic_unwind::evaluator::Expr::*;
 /// use symbolic_unwind::evaluator::BinOp::*;
+/// use symbolic_unwind::evaluator::Expr::*;
 /// # use symbolic_unwind::evaluator::parsing::expr_stack;
 ///
 /// let (_, stack) = expr_stack("1 2 + 3").unwrap();
