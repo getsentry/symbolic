@@ -155,9 +155,7 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
         let value = self.evaluate(e)?;
         Ok(self.variables.insert(v.clone(), value).is_some())
     }
-}
 
-impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     /// Processes a string of assignments, modifying its [`variables`](Self::variables)
     /// field accordingly.
     ///
