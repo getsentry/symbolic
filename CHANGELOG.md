@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 8.0.5
 
 **Bug Fixes:**
 
