@@ -127,6 +127,7 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
                     BinOp::Align => Ok(e2 * (e1 / e2)),
                 }
             }
+
             Deref(address) => {
                 let address = self.evaluate(&*address)?;
                 let memory = self
@@ -155,6 +156,7 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
         Ok(self.variables.insert(v.clone(), value).is_some())
     }
 }
+
 impl<'memory, A: RegisterValue + FromStr, E: Endianness> Evaluator<'memory, A, E> {
     /// Processes a string of assignments, modifying its [`variables`](Self::variables)
     /// field accordingly.
@@ -324,14 +326,19 @@ impl FromStr for Constant {
 pub enum BinOp {
     /// Addition.
     Add,
+
     /// Subtraction.
     Sub,
+
     /// Multiplication.
     Mul,
+
     /// Division.
     Div,
+
     /// Remainder.
     Mod,
+
     /// Alignment.
     ///
     /// Truncates the first operand to a multiple of the second operand.
@@ -358,12 +365,16 @@ impl fmt::Display for BinOp {
 pub enum Expr<T> {
     /// A base value.
     Value(T),
+
     /// A named constant.
     Const(Constant),
+
     /// A variable.
     Var(Variable),
+
     /// An expression `a b §`, where `§` is a [binary operator](BinOp).
     Op(Box<Expr<T>>, Box<Expr<T>>, BinOp),
+
     /// A dereferenced subexpression.
     Deref(Box<Expr<T>>),
 }
