@@ -33,7 +33,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use super::base::{Endianness, MemoryRegion, RegisterValue};
-use parsing::ExprParsingError;
+use parsing::ParseExprError;
 
 pub mod parsing;
 /// Structure that encapsulates the information necessary to evaluate Breakpad
@@ -241,14 +241,14 @@ impl<A: fmt::Display + std::fmt::Debug> Error for EvaluationError<A> {
 #[derive(Debug)]
 pub enum ExpressionError<I, A> {
     /// An error was encountered while parsing an expression.
-    Parsing(ExprParsingError<I>),
+    Parsing(ParseExprError<I>),
 
     /// An error was encountered while evaluating an expression.
     Evaluation(EvaluationError<A>),
 }
 
-impl<I, A: RegisterValue> From<ExprParsingError<I>> for ExpressionError<I, A> {
-    fn from(other: ExprParsingError<I>) -> Self {
+impl<I, A: RegisterValue> From<ParseExprError<I>> for ExpressionError<I, A> {
+    fn from(other: ParseExprError<I>) -> Self {
         Self::Parsing(other)
     }
 }
@@ -290,10 +290,10 @@ impl fmt::Display for Variable {
 }
 
 impl FromStr for Variable {
-    type Err = ExprParsingError<String>;
+    type Err = ParseExprError<String>;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        parsing::variable_complete(input).map_err(|e| ExprParsingError {
+        parsing::variable_complete(input).map_err(|e| ParseExprError {
             kind: e.kind,
             input: e.input.to_string(),
         })
@@ -311,10 +311,10 @@ impl fmt::Display for Constant {
 }
 
 impl FromStr for Constant {
-    type Err = ExprParsingError<String>;
+    type Err = ParseExprError<String>;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        parsing::constant_complete(input).map_err(|e| ExprParsingError {
+        parsing::constant_complete(input).map_err(|e| ParseExprError {
             kind: e.kind,
             input: e.input.to_string(),
         })
@@ -392,10 +392,10 @@ impl<T: fmt::Display> fmt::Display for Expr<T> {
 }
 
 impl<T: FromStr> FromStr for Expr<T> {
-    type Err = ExprParsingError<String>;
+    type Err = ParseExprError<String>;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        parsing::expr_complete(input).map_err(|e| ExprParsingError {
+        parsing::expr_complete(input).map_err(|e| ParseExprError {
             kind: e.kind,
             input: e.input.to_string(),
         })
@@ -413,10 +413,10 @@ impl<T: fmt::Display> fmt::Display for Assignment<T> {
 }
 
 impl<T: FromStr> FromStr for Assignment<T> {
-    type Err = ExprParsingError<String>;
+    type Err = ParseExprError<String>;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        parsing::assignment_complete(input).map_err(|e| ExprParsingError {
+        parsing::assignment_complete(input).map_err(|e| ParseExprError {
             kind: e.kind,
             input: e.input.to_string(),
         })
