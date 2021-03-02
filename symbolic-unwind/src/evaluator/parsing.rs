@@ -49,6 +49,7 @@ impl fmt::Display for ExprParsingErrorKind {
 pub struct ExprParsingError<I> {
     /// The kind of error.
     pub kind: ExprParsingErrorKind,
+
     /// The input that caused the error.
     pub input: I,
 }
@@ -157,9 +158,9 @@ fn base_expr<T: FromStr>(input: &str) -> IResult<&str, Expr<T>, ExprParsingError
 ///
 /// # Example
 /// ```rust
+/// use symbolic_unwind::evaluator::parsing::expr_stack;
 /// use symbolic_unwind::evaluator::BinOp::*;
 /// use symbolic_unwind::evaluator::Expr::*;
-/// # use symbolic_unwind::evaluator::parsing::expr_stack;
 ///
 /// let (_, stack) = expr_stack("1 2 + 3").unwrap();
 /// assert_eq!(stack.len(), 2);
