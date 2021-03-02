@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Bug Fixes:**
+
+- Fix detecting hidden Swift symbols in `MachObject::requires_symbolmap`. Additionally, the MachO symbol iterator no longer strips underscores from `__hidden#` symbols. ([#316](https://github.com/getsentry/symbolic/pull/316))
+
 ## 8.0.4
 
 Manylinux2010 has dropped support for Python 2.7. As a result, we're no longer building or testing the Python package with Python 2.7. This and future releases require at least Python 3.6.
