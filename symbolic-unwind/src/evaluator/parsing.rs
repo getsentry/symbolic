@@ -18,7 +18,7 @@ use super::*;
 
 /// The error kind for [`ParseExprError`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ParseExprErrorKind {
+enum ParseExprErrorKind {
     /// An operator was encountered, but there were not enough operands on the stack.
     NotEnoughOperands,
 
@@ -44,35 +44,35 @@ impl fmt::Display for ParseExprErrorKind {
 }
 
 /// An error encountered while parsing expressions.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ParseExprError<I> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ParseExprError {
     /// The kind of error.
-    pub kind: ParseExprErrorKind,
+    kind: ParseExprErrorKind,
 
     /// The input that caused the error.
-    pub input: I,
+    input: String,
 }
 
-impl<I> ParseError<I> for ParseExprError<I> {
-    fn from_error_kind(input: I, kind: nom::error::ErrorKind) -> Self {
+impl<'a> ParseError<&'a str> for ParseExprError {
+    fn from_error_kind(input: &'a str, kind: nom::error::ErrorKind) -> Self {
         Self {
-            input,
+            input: input.to_string(),
             kind: ParseExprErrorKind::Nom(kind),
         }
     }
 
-    fn append(_input: I, _kind: nom::error::ErrorKind, other: Self) -> Self {
+    fn append(_input: &'a str, _kind: nom::error::ErrorKind, other: Self) -> Self {
         other
     }
 }
 
-impl<I, E> nom::error::FromExternalError<I, E> for ParseExprError<I> {
-    fn from_external_error(input: I, kind: nom::error::ErrorKind, _e: E) -> Self {
+impl<'a, E> nom::error::FromExternalError<&'a str, E> for ParseExprError {
+    fn from_external_error(input: &'a str, kind: nom::error::ErrorKind, _e: E) -> Self {
         Self::from_error_kind(input, kind)
     }
 }
 
-impl<I: fmt::Display> fmt::Display for ParseExprError<I> {
+impl fmt::Display for ParseExprError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -82,16 +82,12 @@ impl<I: fmt::Display> fmt::Display for ParseExprError<I> {
     }
 }
 
-impl<I: fmt::Display + fmt::Debug> Error for ParseExprError<I> {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        None
-    }
-}
+impl Error for ParseExprError {}
 
 /// Parses a [variable](super::Variable).
 ///
 /// This accepts identifiers of the form `$[a-zA-Z][a-zA-Z0-9]*`.
-fn variable(input: &str) -> IResult<&str, Variable, ParseExprError<&str>> {
+fn variable(input: &str) -> IResult<&str, Variable, ParseExprError> {
     let (rest, var) = recognize(tuple((char('$'), alpha1, alphanumeric0)))(input)?;
     Ok((rest, Variable(var.to_string())))
 }
@@ -100,14 +96,14 @@ fn variable(input: &str) -> IResult<&str, Variable, ParseExprError<&str>> {
 ///
 /// This accepts identifiers of the form `$[a-zA-Z][a-zA-Z0-9]*`.
 /// It will fail if there is any non-whitespace input remaining afterwards.
-pub fn variable_complete(input: &str) -> Result<Variable, ParseExprError<&str>> {
+pub fn variable_complete(input: &str) -> Result<Variable, ParseExprError> {
     all_consuming(variable)(input).finish().map(|(_, v)| v)
 }
 
 /// Parses a [constant](super::Constant).
 ///
 /// This accepts identifiers of the form `[a-zA-Z_.][a-zA-Z0-9_.]*`.
-fn constant(input: &str) -> IResult<&str, Constant, ParseExprError<&str>> {
+fn constant(input: &str) -> IResult<&str, Constant, ParseExprError> {
     let (rest, con) = recognize(preceded(
         alt((alpha1, tag("_"), tag("."))),
         many0(alt((alphanumeric1, tag("_"), tag(".")))),
@@ -119,12 +115,12 @@ fn constant(input: &str) -> IResult<&str, Constant, ParseExprError<&str>> {
 ///
 /// This accepts identifiers of the form `[a-zA-Z_.][a-zA-Z0-9_.]*`.
 /// It will fail if there is any non-whitespace input remaining afterwards.
-pub fn constant_complete(input: &str) -> Result<Constant, ParseExprError<&str>> {
+pub fn constant_complete(input: &str) -> Result<Constant, ParseExprError> {
     all_consuming(constant)(input).finish().map(|(_, c)| c)
 }
 
 /// Parses a [binary operator](super::BinOp).
-fn bin_op(input: &str) -> IResult<&str, BinOp, ParseExprError<&str>> {
+fn bin_op(input: &str) -> IResult<&str, BinOp, ParseExprError> {
     alt((
         value(BinOp::Add, tag("+")),
         value(BinOp::Sub, tag("-")),
@@ -138,7 +134,7 @@ fn bin_op(input: &str) -> IResult<&str, BinOp, ParseExprError<&str>> {
 /// Parses an integer.
 ///
 /// This accepts expressions of the form `[0-9a-fA-F]+`.
-fn number<T: RegisterValue>(input: &str) -> IResult<&str, T, ParseExprError<&str>> {
+fn number<T: RegisterValue>(input: &str) -> IResult<&str, T, ParseExprError> {
     map_res(
         recognize(take_while(|c: char| !c.is_ascii_whitespace())),
         T::from_str_hex,
@@ -146,7 +142,7 @@ fn number<T: RegisterValue>(input: &str) -> IResult<&str, T, ParseExprError<&str
 }
 
 /// Parses a number, variable, or constant.
-fn base_expr<T: RegisterValue>(input: &str) -> IResult<&str, Expr<T>, ParseExprError<&str>> {
+fn base_expr<T: RegisterValue>(input: &str) -> IResult<&str, Expr<T>, ParseExprError> {
     alt((
         map(number, Expr::Value),
         map(variable, Expr::Var),
@@ -169,24 +165,23 @@ fn base_expr<T: RegisterValue>(input: &str) -> IResult<&str, Expr<T>, ParseExprE
 /// ```
 pub fn expr_stack<T: RegisterValue>(
     mut input: &str,
-) -> IResult<&str, Vec<Expr<T>>, ParseExprError<&str>> {
+) -> IResult<&str, Vec<Expr<T>>, ParseExprError> {
     let mut stack = Vec::new();
 
     while !input.is_empty() {
         if let Ok((rest, e)) = delimited(multispace0, base_expr, multispace0)(input) {
             stack.push(e);
             input = rest;
-        } else if let Ok((rest, _)) = delimited::<_, _, _, _, ParseExprError<&str>, _, _, _>(
-            multispace0,
-            tag("^"),
-            multispace0,
-        )(input)
+        } else if let Ok((rest, _)) =
+            delimited::<_, _, _, _, ParseExprError, _, _, _>(multispace0, tag("^"), multispace0)(
+                input,
+            )
         {
             let e = match stack.pop() {
                 Some(e) => e,
                 None => {
                     return Err(Err::Error(ParseExprError {
-                        input,
+                        input: input.to_owned(),
                         kind: ParseExprErrorKind::NotEnoughOperands,
                     }))
                 }
@@ -199,7 +194,7 @@ pub fn expr_stack<T: RegisterValue>(
                 Some(e) => e,
                 None => {
                     return Err(Err::Error(ParseExprError {
-                        input,
+                        input: input.to_string(),
                         kind: ParseExprErrorKind::NotEnoughOperands,
                     }))
                 }
@@ -209,7 +204,7 @@ pub fn expr_stack<T: RegisterValue>(
                 Some(e) => e,
                 None => {
                     return Err(Err::Error(ParseExprError {
-                        input,
+                        input: input.to_string(),
                         kind: ParseExprErrorKind::NotEnoughOperands,
                     }))
                 }
@@ -227,12 +222,12 @@ pub fn expr_stack<T: RegisterValue>(
 /// Parses an [expression](super::Expr).
 ///
 /// It will fail if there is any non-whitespace input remaining afterwards.
-pub fn expr_complete<T: RegisterValue>(input: &str) -> Result<Expr<T>, ParseExprError<&str>> {
+pub fn expr_complete<T: RegisterValue>(input: &str) -> Result<Expr<T>, ParseExprError> {
     let (_, mut stack) = all_consuming(expr_stack)(input).finish()?;
     if stack.len() > 1 {
         Err(ParseExprError {
             kind: ParseExprErrorKind::TooManyExpressions,
-            input,
+            input: input.to_string(),
         })
     } else {
         // This unwrap cannot fail: if the parser succeded, the stack is nonempty.
@@ -241,7 +236,7 @@ pub fn expr_complete<T: RegisterValue>(input: &str) -> Result<Expr<T>, ParseExpr
 }
 
 /// Parses an [assignment](super::Assignment).
-fn assignment<T: RegisterValue>(input: &str) -> IResult<&str, Assignment<T>, ParseExprError<&str>> {
+fn assignment<T: RegisterValue>(input: &str) -> IResult<&str, Assignment<T>, ParseExprError> {
     let (input, v) = delimited(multispace0, variable, multispace0)(input)?;
     let (input, mut stack) = expr_stack(input)?;
 
@@ -249,7 +244,7 @@ fn assignment<T: RegisterValue>(input: &str) -> IResult<&str, Assignment<T>, Par
     // it's not a well-formed assignment.
     if stack.len() > 1 {
         return Err(Err::Error(ParseExprError {
-            input,
+            input: input.to_string(),
             kind: ParseExprErrorKind::MalformedAssignment,
         }));
     }
@@ -258,7 +253,7 @@ fn assignment<T: RegisterValue>(input: &str) -> IResult<&str, Assignment<T>, Par
         Some(e) => e,
         None => {
             return Err(Err::Error(ParseExprError {
-                input,
+                input: input.to_string(),
                 kind: ParseExprErrorKind::NotEnoughOperands,
             }))
         }
@@ -271,9 +266,7 @@ fn assignment<T: RegisterValue>(input: &str) -> IResult<&str, Assignment<T>, Par
 /// Parses an [assignment](super::Assignment).
 ///
 /// It will fail if there is any non-whitespace input remaining afterwards.
-pub fn assignment_complete<T: RegisterValue>(
-    input: &str,
-) -> Result<Assignment<T>, ParseExprError<&str>> {
+pub fn assignment_complete<T: RegisterValue>(input: &str) -> Result<Assignment<T>, ParseExprError> {
     all_consuming(assignment)(input).finish().map(|(_, a)| a)
 }
 
@@ -282,7 +275,7 @@ pub fn assignment_complete<T: RegisterValue>(
 /// It will fail if there is any non-whitespace input remaining afterwards.
 pub fn assignments_complete<T: RegisterValue + fmt::Debug>(
     input: &str,
-) -> Result<Vec<Assignment<T>>, ParseExprError<&str>> {
+) -> Result<Vec<Assignment<T>>, ParseExprError> {
     let (_, assigns) =
         all_consuming(many0(delimited(multispace0, assignment, multispace0)))(input).finish()?;
     Ok(assigns)
@@ -342,7 +335,7 @@ mod test {
         assert_eq!(
             err,
             ParseExprError {
-                input: "+",
+                input: "+".to_string(),
                 kind: ParseExprErrorKind::NotEnoughOperands,
             }
         );
@@ -390,7 +383,7 @@ mod test {
         assert_eq!(
             err,
             ParseExprError {
-                input: "=",
+                input: "=".to_string(),
                 kind: ParseExprErrorKind::MalformedAssignment,
             }
         );
