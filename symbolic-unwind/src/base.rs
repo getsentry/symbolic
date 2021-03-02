@@ -89,12 +89,20 @@ pub trait RegisterValue:
     ///
     /// May fail if an invalid byte is encountered or there are not enough bytes in the slice.
     fn read_bytes<E: Endianness>(bytes: &[u8], endian: E) -> Option<Self>;
+
+    /// Attempt to read a value of this type from a string of hexadecimal
+    /// digits.
+    fn from_str_hex(input: &str) -> Result<Self, std::num::ParseIntError>;
 }
 
 impl RegisterValue for u8 {
     const WIDTH: usize = 1;
     fn read_bytes<E: Endianness>(bytes: &[u8], _endian: E) -> Option<Self> {
         bytes.first().copied()
+    }
+
+    fn from_str_hex(input: &str) -> Result<Self, std::num::ParseIntError> {
+        Self::from_str_radix(input, 16)
     }
 }
 
@@ -108,6 +116,10 @@ impl RegisterValue for u16 {
             Some(Self::from_le_bytes(*bytes))
         }
     }
+
+    fn from_str_hex(input: &str) -> Result<Self, std::num::ParseIntError> {
+        Self::from_str_radix(input, 16)
+    }
 }
 
 impl RegisterValue for u32 {
@@ -120,6 +132,10 @@ impl RegisterValue for u32 {
             Some(Self::from_le_bytes(*bytes))
         }
     }
+
+    fn from_str_hex(input: &str) -> Result<Self, std::num::ParseIntError> {
+        Self::from_str_radix(input, 16)
+    }
 }
 
 impl RegisterValue for u64 {
@@ -131,6 +147,10 @@ impl RegisterValue for u64 {
         } else {
             Some(Self::from_le_bytes(*bytes))
         }
+    }
+
+    fn from_str_hex(input: &str) -> Result<Self, std::num::ParseIntError> {
+        Self::from_str_radix(input, 16)
     }
 }
 

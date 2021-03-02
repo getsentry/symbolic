@@ -8,7 +8,7 @@
 //! <constant> ::=  [a-zA-Z_.][a-zA-Z0-9_.]*
 //! <variable> ::=  $[a-zA-Z][a-zA-Z0-9]*
 //! <binop>    ::=  + | - | * | / | % | @
-//! <literal>  ::=  -?[0-9]+
+//! <literal>  ::=  [0-9a-fA-F]+
 //! ```
 //! Most of this syntax should be familiar. The symbol `^` denotes a dereference operation,
 //! i.e. assuming that some representation `m` of a region of memory is available,
@@ -391,7 +391,7 @@ impl<T: fmt::Display> fmt::Display for Expr<T> {
     }
 }
 
-impl<T: FromStr> FromStr for Expr<T> {
+impl<T: RegisterValue> FromStr for Expr<T> {
     type Err = ParseExprError<String>;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
@@ -412,7 +412,7 @@ impl<T: fmt::Display> fmt::Display for Assignment<T> {
     }
 }
 
-impl<T: FromStr> FromStr for Assignment<T> {
+impl<T: RegisterValue> FromStr for Assignment<T> {
     type Err = ParseExprError<String>;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
