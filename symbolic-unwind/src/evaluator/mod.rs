@@ -27,7 +27,6 @@
 //! ```
 //! An assignment results in an update of the variable's value in the dictionary, or its
 //! insertion if it was not defined before.
-//!
 pub mod parsing;
 
 use super::base::{Endianness, MemoryRegion, RegisterValue};
@@ -48,22 +47,48 @@ pub struct Evaluator<'memory, A, E> {
     ///
     /// If this is `None`, evaluation of expressions containing dereference
     /// operations will fail.
-    pub memory: Option<MemoryRegion<'memory>>,
+    memory: Option<MemoryRegion<'memory>>,
 
     /// A map containing the values of constants.
     ///
     /// Trying to use a constant that is not in this map will cause evaluation to fail.
-    pub constants: BTreeMap<Constant, A>,
+    constants: BTreeMap<Constant, A>,
 
     /// A map containing the values of variables.
     ///
     /// Trying to use a variable that is not in this map will cause evaluation to fail.
     /// This map can be modified by the [`assign`](Self::assign) and
     ///  [`process`](Self::process) methods.
-    pub variables: BTreeMap<Variable, A>,
+    variables: BTreeMap<Variable, A>,
 
     /// The endianness the evaluator uses to read data from memory.
-    pub endian: E,
+    endian: E,
+}
+
+impl<'memory, A, E> Evaluator<'memory, A, E> {
+    pub fn new(endian: E) -> Self {
+        Self {
+            memory: None,
+            constants: BTreeMap::new(),
+            variables: BTreeMap::new(),
+            endian,
+        }
+    }
+
+    pub fn memory(mut self, memory: MemoryRegion<'memory>) -> Self {
+        self.memory = Some(memory);
+        self
+    }
+
+    pub fn constants(mut self, constants: BTreeMap<Constant, A>) -> Self {
+        self.constants = constants;
+        self
+    }
+
+    pub fn variables(mut self, variables: BTreeMap<Variable, A>) -> Self {
+        self.variables = variables;
+        self
+    }
 }
 
 impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
@@ -135,25 +160,19 @@ impl<'memory, A: RegisterValue + FromStr, E: Endianness> Evaluator<'memory, A, E
     ///
     /// # Example
     /// ```
-    /// # use std::collections::{BTreeMap, BTreeSet};
-    /// # use symbolic_unwind::BigEndian;
-    /// # use symbolic_unwind::evaluator::{Variable, Evaluator};
+    /// use std::collections::{BTreeMap, BTreeSet};
+    /// use symbolic_unwind::evaluator::{Evaluator, Variable};
+    /// use symbolic_unwind::BigEndian;
     /// let input = "$foo $bar 5 + = $bar 17 =";
     /// let mut variables = BTreeMap::new();
-    /// let foo: Variable = "$foo".parse().unwrap();
-    /// let bar: Variable = "$bar".parse().unwrap();
+    /// let foo = "$foo".parse::<Variable>().unwrap();
+    /// let bar = "$bar".parse::<Variable>().unwrap();
     /// variables.insert(bar.clone(), 17u8);
-    /// let mut evaluator = Evaluator {
-    ///     memory: None,
-    ///     constants: BTreeMap::new(),
-    ///     variables,
-    ///     endian: BigEndian, // does not matter, we don't use memory anyway
-    /// };
+    /// let mut evaluator = Evaluator::new(BigEndian).variables(variables);
     ///
     /// let changed_variables = evaluator.process(input).unwrap();
     ///
     /// assert_eq!(changed_variables, vec![foo, bar].into_iter().collect());
-    ///
     /// ```
     pub fn process<'a>(
         &'a mut self,
@@ -399,12 +418,7 @@ mod test {
     fn test_assignment() {
         let input = "$rAdd3 2 2 + =$rMul2 9 6 * =";
 
-        let mut eval: Evaluator<u64, BigEndian> = Evaluator {
-            memory: None,
-            variables: BTreeMap::new(),
-            constants: BTreeMap::new(),
-            endian: BigEndian,
-        };
+        let mut eval = Evaluator::<u64, _>::new(BigEndian);
         let r_add3: Variable = "$rAdd3".parse().unwrap();
         let r_mul2: Variable = "$rMul2".parse().unwrap();
 
@@ -428,12 +442,7 @@ mod test {
             contents: &[0, 0, 0, 0, 0, 0, 0, 10],
         };
 
-        let mut eval: Evaluator<u64, BigEndian> = Evaluator {
-            memory: Some(memory),
-            variables: BTreeMap::new(),
-            constants: BTreeMap::new(),
-            endian: BigEndian,
-        };
+        let mut eval = Evaluator::<u64, _>::new(BigEndian).memory(memory);
 
         let r_deref: Variable = "$rDeref".parse().unwrap();
 
