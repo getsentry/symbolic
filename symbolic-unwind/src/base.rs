@@ -42,6 +42,7 @@ impl Endianness for LittleEndian {
 /// Endianness that can be selected at run time.
 ///
 /// Defaults to the endianness of the target platform.
+#[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuntimeEndian {
     /// Big-endian data representation.
@@ -155,6 +156,7 @@ impl RegisterValue for u64 {
 }
 
 /// A view into a region of memory, given by a slice and a base address.
+#[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct MemoryRegion<'a> {
     /// The starting address of the memory region.
