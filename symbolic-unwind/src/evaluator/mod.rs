@@ -193,6 +193,7 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
 
 /// An error encountered while evaluating an expression.
 #[derive(Debug)]
+#[non_exhaustive]
 enum EvaluationErrorInner {
     /// The expression contains an undefined constant.
     UndefinedConstant(Constant),

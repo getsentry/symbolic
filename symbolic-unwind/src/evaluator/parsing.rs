@@ -18,6 +18,7 @@ use super::*;
 
 /// The error kind for [`ParseExprError`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 enum ParseExprErrorKind {
     /// An operator was encountered, but there were not enough operands on the stack.
     NotEnoughOperands,
