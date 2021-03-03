@@ -749,6 +749,9 @@ impl<'u, 'd> TypeFormatter<'u, 'd> {
             Ok(pdb::IdData::UserDefinedTypeSource(_)) => {
                 // nothing to do.
             }
+            Ok(_) => {
+                // non_exhaustive match
+            }
             Err(pdb::Error::UnimplementedTypeKind(_)) => {
                 write!(target, "<unknown>")?;
             }
@@ -888,6 +891,9 @@ impl<'u, 'd> TypeFormatter<'u, 'd> {
             }
             Ok(pdb::TypeData::MethodList(_)) => {
                 // nothing to do
+            }
+            Ok(_) => {
+                // non_exhaustive match
             }
             Err(pdb::Error::UnimplementedTypeKind(_)) => {
                 write!(target, "<unknown>")?;
