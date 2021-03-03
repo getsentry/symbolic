@@ -4,11 +4,14 @@
 //! These expressions are defined by the following
 //! [BNF](https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form) specification:
 //! ```text
-//! <expr>     ::=  <contant> | <variable> | <literal> | <expr> <expr> <binop> | <expr> ^
-//! <constant> ::=  [a-zA-Z_.][a-zA-Z0-9_.]*
-//! <variable> ::=  $[a-zA-Z][a-zA-Z0-9]*
-//! <binop>    ::=  + | - | * | / | % | @
-//! <literal>  ::=  [0-9a-fA-F]+
+//! <rule>       ::=  <identifier>: <expr>
+//! <assignment> ::=  <variable> <expr> =
+//! <expr>       ::=  <identifier> | <literal> | <expr> <expr> <binop> | <expr> ^
+//! <identifier> ::=  <constant> | <variable>
+//! <constant>   ::=  [a-zA-Z_.][a-zA-Z0-9_.]*
+//! <variable>   ::=  $[a-zA-Z][a-zA-Z0-9]*
+//! <binop>      ::=  + | - | * | / | % | @
+//! <literal>    ::=  [0-9a-fA-F]+
 //! ```
 //! Most of this syntax should be familiar. The symbol `^` denotes a dereference operation,
 //! i.e. assuming that some representation `m` of a region of memory is available,
@@ -21,12 +24,21 @@
 //! (concretely: [`BTreeMap`]s). If an expression contains a constant or variable that is
 //! not in the respective dictionary, evaluating the expression will fail.
 //!
-//! In addition to expressions, there are also *assignments*:
-//! ```text
-//! <assignment> ::=  <variable> <expr> =
-//! ```
-//! An assignment results in an update of the variable's value in the dictionary, or its
-//! insertion if it was not defined before.
+//! # Assignments and rules
+//!
+//! Breakpad `STACK WIN` records (see [here](https://github.com/google/breakpad/blob/main/docs/symbol_files.md#stack-win-records)
+//! can contain `program strings` that describe how to compute the values of registers
+//! in an earlier call frame. These program strings are effectively sequences of the
+//! assignments described above. They can be be parsed with the
+//! [assignment](parsing::assignment), [assignment_complete](parsing::assignment_complete),
+//! [assignments](parsing::assignments),
+//! and [assignments_complete](parsing::assignments_complete) parsers.
+//!
+//! By contrast, Breakpad `STACK CFI` records (see [here](https://github.com/google/breakpad/blob/main/docs/symbol_files.md#stack-cfi-records)
+//! contain sequences of rules for essentially the same purpose. They can be parsed with the
+//! [rule](parsing::rule), [rule_complete](parsing::rule_complete),
+//! [rules](parsing::rules),
+//! and [rules_complete](parsing::rules_complete) parsers.
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::fmt;
@@ -425,6 +437,20 @@ impl<T: RegisterValue> FromStr for Assignment<T> {
         parsing::assignment_complete(input)
     }
 }
+
+/// A variable or constant.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Identifier {
+    /// A variable.
+    Var(Variable),
+
+    /// A constant.
+    Const(Constant),
+}
+
+/// A `STACK CFI` rule `reg: e`, where `reg` is an identifier and `e` is an expression.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Rule<A: RegisterValue>(Identifier, Expr<A>);
 
 /// These tests are inspired by the Breakpad PostfixEvaluator unit tests:
 /// [https://github.com/google/breakpad/blob/main/src/processor/postfix_evaluator_unittest.cc]
