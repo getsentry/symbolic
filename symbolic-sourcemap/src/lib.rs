@@ -6,6 +6,9 @@ use std::borrow::Cow;
 use std::fmt;
 use std::ops::Deref;
 
+#[cfg(test)]
+use similar_asserts::assert_eq;
+
 /// An error returned when parsing source maps.
 #[derive(Debug)]
 pub struct ParseSourceMapError(sourcemap::Error);

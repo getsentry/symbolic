@@ -1,6 +1,6 @@
 [package]
 name = "addr2line"
-version = "8.0.3"
+version = "8.0.5"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2018"
 publish = false

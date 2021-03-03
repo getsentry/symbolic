@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-common"
-version = "8.0.3"
+version = "8.0.5"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -30,6 +30,7 @@ uuid = "0.8.1"
 [dev-dependencies]
 symbolic-testutils = { path = "../symbolic-testutils" }
 tempfile = "3.1.0"
+similar-asserts = "1.0.0"
 
 [features]
 serde = ["serde_", "debugid/serde"]

@@ -5,6 +5,8 @@ use symbolic_debuginfo::Object;
 use symbolic_minidump::cfi::{AsciiCfiWriter, CfiCache};
 use symbolic_testutils::fixture;
 
+use similar_asserts::assert_eq;
+
 type Error = Box<dyn std::error::Error>;
 
 #[test]

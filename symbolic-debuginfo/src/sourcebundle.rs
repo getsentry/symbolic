@@ -1025,6 +1025,8 @@ mod tests {
 
     use std::io::Cursor;
 
+    use similar_asserts::assert_eq;
+
     #[test]
     fn test_has_file() -> Result<(), SourceBundleError> {
         let writer = Cursor::new(Vec::new());

@@ -4,6 +4,7 @@ func_lines = { func ~ (NEWLINE ~ !record ~ line)* }
 stack = { stack_cfi | stack_win }
 
 // MODULE record
+// A MODULE record provides meta-information about the module the symbol file describes.
 // Example: "MODULE Linux x86 D3096ED481217FD4C16B29CD9BC208BA0 firefox-bin"
 // see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#module-records>
 module = { "MODULE" ~ os ~ arch ~ debug_id ~ name }
@@ -20,34 +21,41 @@ info_other = { ident ~ text }
 code_id = @{ hex }
 
 // FILE record
+// A FILE record holds a source file name for other records to refer to.
 // Example: "FILE 2 /home/jimb/mc/in/browser/app/nsBrowserApp.cpp"
 // see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#file-records>
 file = { "FILE" ~ file_id ~ name }
 file_id = @{ dec }
 
 // FUNC record
+// A FUNC record describes a source-language function.
 // Example: "FUNC m c184 30 0 nsQueryInterfaceWithError::operator()(nsID const&, void**) const"
 // see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#func-records>
 func = { "FUNC" ~ multiple? ~ addr ~ size ~ param_size ~ name? }
 param_size = @{ hex }
 
 // LINE record (part of functions)
+// A line record describes the source file and line number to which a given range of machine code should be attributed.
 // Example: "c184 7 59 4"
 // see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#line-records>
 line = { addr ~ size ~ line_num ~ file_id }
 line_num = @{ "-"? ~ dec }
 
 // PUBLIC record
+// A PUBLIC record describes a publicly visible linker symbol, such as that used to identify
+// an assembly language entry point or region of memory.
 // Example: "PUBLIC m 2160 0 Public2_1"
 // see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#public-records>
 public = { "PUBLIC" ~ multiple? ~ addr ~ param_size ~ name? }
 
 // STACK WIN record
+// Given a stack frame, a STACK WIN record indicates how to find the frame that called it.
 // Example: "STACK WIN 4 2170 14 1 0 0 0 0 0 1 $eip 4 + ^ = $esp $ebp 8 + = $ebp $ebp ^ ="
 // see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-win-records>
 stack_win = { "STACK WIN" ~ text }
 
 // STACK CFI record
+// STACK CFI ("Call Frame Information") records describe how to walk the stack when execution is at a given machine instruction.
 // Example: "STACK CFI INIT 804c4b0 40 .cfa: $esp 4 + $eip: .cfa 4 - ^"
 // see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-cfi-records>
 stack_cfi = { "STACK CFI" ~ text }

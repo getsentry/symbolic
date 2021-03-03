@@ -6,6 +6,9 @@ use regex::Regex;
 use crate::error::Unreal4Error;
 use crate::Unreal4ErrorKind;
 
+#[cfg(test)]
+use similar_asserts::assert_eq;
+
 lazy_static! {
     /// https://github.com/EpicGames/UnrealEngine/blob/f509bb2d6c62806882d9a10476f3654cf1ee0634/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L79-L93
     /// Note: Date is always in US format (dd/MM/yyyy) and time is local
@@ -89,6 +92,7 @@ impl Unreal4LogEntry {
         Ok(logs)
     }
 }
+
 #[test]
 fn test_parse_logs_no_entries_with_timestamp() {
     let log_bytes = br"Log file open, 12/13/18 15:54:53
