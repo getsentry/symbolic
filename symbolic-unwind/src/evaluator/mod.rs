@@ -12,14 +12,14 @@
 //! ```
 //! Most of this syntax should be familiar. The symbol `^` denotes a dereference operation,
 //! i.e. assuming that some representation `m` of a region of memory is available,
-//! `x ^` evaluates to `m[x]`. If no memory is available or `m` is not defined at `x`, the
-//! expression's value is undefined. The symbol
+//! `x ^` evaluates to `m[x]`. If no memory is available or `m` is not defined at `x`,
+//! evaluating the expression will fail. The symbol
 //! `@` denotes an align operation; it truncates its first operand to a multiple of its
 //! second operand.
 //!
 //! Constants and variables are evaluated by referring to dictionaries
 //! (concretely: [`BTreeMap`]s). If an expression contains a constant or variable that is
-//! not in the respective dictionary, the expression's value is undefined.
+//! not in the respective dictionary, evaluating the expression will fail.
 //!
 //! In addition to expressions, there are also *assignments*:
 //! ```text
