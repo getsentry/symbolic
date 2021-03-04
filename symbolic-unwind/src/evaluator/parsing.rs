@@ -327,7 +327,6 @@ pub fn rule_complete<T: RegisterValue>(input: &str) -> Result<Rule<T>, ParseExpr
 
 /// Parses a sequence of [rules](super::Rule).
 pub fn rules<T: RegisterValue>(input: &str) -> IResult<&str, Vec<Rule<T>>, ParseExprError> {
-    println!("Parsing rules");
     many0(delimited(multispace0, rule, multispace0))(input)
 }
 
