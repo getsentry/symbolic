@@ -85,54 +85,51 @@ impl fmt::Display for ParseExprError {
 
 impl Error for ParseExprError {}
 
-/// Parses a [variable](super::Variable).
+/// Parses a [variable register](super::Register).
 ///
 /// This accepts identifiers of the form `$[a-zA-Z][a-zA-Z0-9]*`.
-fn variable(input: &str) -> IResult<&str, Variable, ParseExprError> {
+fn variable(input: &str) -> IResult<&str, Register, ParseExprError> {
     let (rest, var) = recognize(tuple((char('$'), alpha1, alphanumeric0)))(input)?;
-    Ok((rest, Variable(var.to_string())))
+    Ok((rest, Register::Var(var.to_string())))
 }
 
-/// Parses a [variable](super::Variable).
+/// Parses a [variable register](super::Register).
 ///
 /// This accepts identifiers of the form `$[a-zA-Z][a-zA-Z0-9]*`.
 /// It will fail if there is any non-whitespace input remaining afterwards.
-pub fn variable_complete(input: &str) -> Result<Variable, ParseExprError> {
+pub fn variable_complete(input: &str) -> Result<Register, ParseExprError> {
     all_consuming(variable)(input).finish().map(|(_, v)| v)
 }
 
-/// Parses a [constant](super::Constant).
+/// Parses a [constant register](super::Register).
 ///
 /// This accepts identifiers of the form `[a-zA-Z_.][a-zA-Z0-9_.]*`.
-fn constant(input: &str) -> IResult<&str, Constant, ParseExprError> {
+fn constant(input: &str) -> IResult<&str, Register, ParseExprError> {
     let (rest, con) = recognize(preceded(
         alt((alpha1, tag("_"), tag("."))),
         many0(alt((alphanumeric1, tag("_"), tag(".")))),
     ))(input)?;
-    Ok((rest, Constant(con.to_string())))
+    Ok((rest, Register::Const(con.to_string())))
 }
 
-/// Parses a [constant](super::Constant).
+/// Parses a [constant register](super::Register).
 ///
 /// This accepts identifiers of the form `[a-zA-Z_.][a-zA-Z0-9_.]*`.
 /// It will fail if there is any non-whitespace input remaining afterwards.
-pub fn constant_complete(input: &str) -> Result<Constant, ParseExprError> {
+pub fn constant_complete(input: &str) -> Result<Register, ParseExprError> {
     all_consuming(constant)(input).finish().map(|(_, c)| c)
 }
 
-/// Parses an [identifier](super::Identifier).
-pub fn identifier(input: &str) -> IResult<&str, Identifier, ParseExprError> {
-    alt((
-        map(variable, Identifier::Var),
-        map(constant, Identifier::Const),
-    ))(input)
+/// Parses an [register](super::Register).
+pub fn register(input: &str) -> IResult<&str, Register, ParseExprError> {
+    alt((variable, constant))(input)
 }
 
-/// Parses an [identifier](super::Identifier).
+/// Parses an [register](super::Register).
 ///
 /// This will fail if there is any non-whitespace input remaining afterwards.
-pub fn identifier_complete(input: &str) -> Result<Identifier, ParseExprError> {
-    all_consuming(identifier)(input).finish().map(|(_, i)| i)
+pub fn register_complete(input: &str) -> Result<Register, ParseExprError> {
+    all_consuming(register)(input).finish().map(|(_, i)| i)
 }
 
 /// Parses a [binary operator](super::BinOp).
@@ -157,15 +154,14 @@ fn number<T: RegisterValue>(input: &str) -> IResult<&str, T, ParseExprError> {
     )(input)
 }
 
-/// Parses a number, variable, or constant.
+/// Parses a number or register.
 ///
-/// Variables or constants followed by ":" don't count; that's the start
+/// Registers followed by ":" don't count; that's the start
 /// of a [rule](super::Rule), not an expression.
 fn base_expr<T: RegisterValue>(input: &str) -> IResult<&str, Expr<T>, ParseExprError> {
     alt((
         map(number, Expr::Value),
-        map(terminated(variable, not(tag(":"))), Expr::Var),
-        map(terminated(constant, not(tag(":"))), Expr::Const),
+        map(terminated(register, not(tag(":"))), Expr::Reg),
     ))(input)
 }
 
@@ -312,10 +308,10 @@ pub fn assignments_complete<T: RegisterValue>(
 
 ///Parses a [rule](super::Rule).
 pub fn rule<T: RegisterValue>(input: &str) -> IResult<&str, Rule<T>, ParseExprError> {
-    let (input, ident) = terminated(identifier, tag(":"))(input)?;
+    let (input, register) = terminated(register, tag(":"))(input)?;
     let (rest, expr) = preceded(multispace0, expr)(input)?;
 
-    Ok((rest, Rule(ident, expr)))
+    Ok((rest, Rule(register, expr)))
 }
 
 ///Parses a [rule](super::Rule).
@@ -359,7 +355,7 @@ mod test {
     #[test]
     fn test_var() {
         let input = "$foo bar";
-        let v = Variable(String::from("$foo"));
+        let v = Register::Var(String::from("$foo"));
         let (rest, parsed) = variable(input).unwrap();
         assert_eq!(rest, " bar");
         assert_eq!(parsed, v);
@@ -376,7 +372,7 @@ mod test {
         );
         let e2 = Op(
             Box::new(Value(3)),
-            Box::new(Var(Variable(String::from("$foo")))),
+            Box::new(Reg(Register::Var(String::from("$foo")))),
             BinOp::Mul,
         );
         let (rest, parsed) = expr_stack(input).unwrap();
@@ -401,7 +397,7 @@ mod test {
     fn test_assignment() {
         use Expr::*;
         let input = "$foo 4 ^ 7 @ =";
-        let v = Variable("$foo".to_string());
+        let v = Register::Var("$foo".to_string());
         let e = Op(
             Box::new(Deref(Box::new(Value(4)))),
             Box::new(Value(7)),
@@ -418,10 +414,13 @@ mod test {
         use nom::multi::many1;
         use Expr::*;
         let input = "$foo 4 ^ = $bar baz a7 + = 42";
-        let (v1, v2) = (Variable("$foo".to_string()), Variable("$bar".to_string()));
+        let (v1, v2) = (
+            Register::Var("$foo".to_string()),
+            Register::Var("$bar".to_string()),
+        );
         let e1 = Deref(Box::new(Value(4u8)));
         let e2 = Op(
-            Box::new(Const(Constant("baz".to_string()))),
+            Box::new(Reg(Register::Const("baz".to_string()))),
             Box::new(Value(0xa7)),
             BinOp::Add,
         );
@@ -456,15 +455,15 @@ mod test {
     fn test_rules() {
         use Expr::*;
 
-        let input = "cfa: 7 $rax + $r0: $r1 ^   ";
-        let cfa = Constant("cfa".to_string());
-        let rax = Variable("$rax".to_string());
-        let r0 = Variable("$r0".to_string());
-        let r1 = Variable("$r1".to_string());
-        let expr0 = Op(Box::new(Value(7u32)), Box::new(Var(rax)), BinOp::Add);
-        let expr1 = Deref(Box::new(Var(r1)));
-        let rule0 = Rule(Identifier::Const(cfa), expr0);
-        let rule1 = Rule(Identifier::Var(r0), expr1);
+        let input = ".cfa: 7 $rax + $r0: $r1 ^   ";
+        let cfa = Register::cfa();
+        let rax = Register::Var("$rax".to_string());
+        let r0 = Register::Var("$r0".to_string());
+        let r1 = Register::Var("$r1".to_string());
+        let expr0 = Op(Box::new(Value(7u32)), Box::new(Reg(rax)), BinOp::Add);
+        let expr1 = Deref(Box::new(Reg(r1)));
+        let rule0 = Rule(cfa, expr0);
+        let rule1 = Rule(r0, expr1);
 
         let rules = rules_complete(input).unwrap();
 
