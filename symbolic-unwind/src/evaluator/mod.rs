@@ -4,10 +4,10 @@
 //! These expressions are defined by the following
 //! [BNF](https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_form) specification:
 //! ```text
-//! <rule>       ::=  <identifier>: <expr>
+//! <rule>       ::=  <register>: <expr>
 //! <assignment> ::=  <variable> <expr> =
-//! <expr>       ::=  <identifier> | <literal> | <expr> <expr> <binop> | <expr> ^
-//! <identifier> ::=  <constant> | <variable>
+//! <expr>       ::=  <register> | <literal> | <expr> <expr> <binop> | <expr> ^
+//! <register>   ::=  <constant> | <variable>
 //! <constant>   ::=  [a-zA-Z_.][a-zA-Z0-9_.]*
 //! <variable>   ::=  $[a-zA-Z][a-zA-Z0-9]*
 //! <binop>      ::=  + | - | * | / | % | @
@@ -20,9 +20,9 @@
 //! `@` denotes an align operation; it truncates its first operand to a multiple of its
 //! second operand.
 //!
-//! Constants and variables are evaluated by referring to dictionaries
-//! (concretely: [`BTreeMap`]s). If an expression contains a constant or variable that is
-//! not in the respective dictionary, evaluating the expression will fail.
+//! Registers are evaluated by referring to a dictionary
+//! (concretely: a [`BTreeMap`]). If an expression contains a register that is
+//! not in the dictionary, evaluating the expression will fail.
 //!
 //! # Assignments and rules
 //!
@@ -48,6 +48,7 @@ use super::base::{Endianness, MemoryRegion, RegisterValue};
 use parsing::ParseExprError;
 
 pub mod parsing;
+
 /// Structure that encapsulates the information necessary to evaluate Breakpad
 /// RPN expressions.
 ///
@@ -61,17 +62,12 @@ pub struct Evaluator<'memory, A, E> {
     /// operations will fail.
     memory: Option<MemoryRegion<'memory>>,
 
-    /// A map containing the values of constants.
+    /// A map containing the values of registers.
     ///
-    /// Trying to use a constant that is not in this map will cause evaluation to fail.
-    constants: BTreeMap<Constant, A>,
-
-    /// A map containing the values of variables.
-    ///
-    /// Trying to use a variable that is not in this map will cause evaluation to fail.
+    /// Trying to use a register that is not in this map will cause evaluation to fail.
     /// This map can be modified by the [`assign`](Self::assign) and
     ///  [`process`](Self::process) methods.
-    variables: BTreeMap<Variable, A>,
+    registers: BTreeMap<Register, A>,
 
     /// The endianness the evaluator uses to read data from memory.
     endian: E,
@@ -83,27 +79,20 @@ impl<'memory, A, E> Evaluator<'memory, A, E> {
     pub fn new(endian: E) -> Self {
         Self {
             memory: None,
-            constants: BTreeMap::new(),
-            variables: BTreeMap::new(),
+            registers: BTreeMap::new(),
             endian,
         }
     }
 
-    /// Sets the evaluator's memory to the given `MemoryRegion`.
+    /// Sets the evaluator's [memory](Self::memory) to the given `MemoryRegion`.
     pub fn memory(mut self, memory: MemoryRegion<'memory>) -> Self {
         self.memory = Some(memory);
         self
     }
 
-    /// Sets the evaluator's constant map to the given map.
-    pub fn constants(mut self, constants: BTreeMap<Constant, A>) -> Self {
-        self.constants = constants;
-        self
-    }
-
-    /// Sets the evaluator's variable map to the given map.
-    pub fn variables(mut self, variables: BTreeMap<Variable, A>) -> Self {
-        self.variables = variables;
+    /// Sets the evaluator's [register map](Self::registers) to the given map.
+    pub fn registers(mut self, registers: BTreeMap<Register, A>) -> Self {
+        self.registers = registers;
         self
     }
 }
@@ -112,19 +101,14 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     /// Evaluates a single expression.
     ///
     /// This may fail if the expression tries to dereference unavailable memory
-    /// or uses undefined constants or variables.
+    /// or uses undefined registers.
     pub fn evaluate(&self, expr: &Expr<A>) -> Result<A, EvaluationError> {
         use Expr::*;
         match expr {
             Value(x) => Ok(*x),
-            Const(c) => {
-                self.constants.get(&c).copied().ok_or_else(|| {
-                    EvaluationError(EvaluationErrorInner::UndefinedConstant(c.clone()))
-                })
-            }
-            Var(v) => {
-                self.variables.get(&v).copied().ok_or_else(|| {
-                    EvaluationError(EvaluationErrorInner::UndefinedVariable(v.clone()))
+            Reg(i) => {
+                self.registers.get(&i).copied().ok_or_else(|| {
+                    EvaluationError(EvaluationErrorInner::UndefinedRegister(i.clone()))
                 })
             }
             Op(e1, e2, op) => {
@@ -158,40 +142,40 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     }
 
     /// Performs an assignment by first evaluating its right-hand side and then
-    /// modifying [`variables`](Self::variables) accordingly.
+    /// modifying [`registers`](Self::registers) accordingly.
     ///
     /// This may fail if the right-hand side cannot be evaluated, cf.
     /// [`evaluate`](Self::evaluate). It returns `true` iff the assignment modified
-    /// an existing variable.
+    /// an existing register.
     pub fn assign(&mut self, Assignment(v, e): &Assignment<A>) -> Result<bool, EvaluationError> {
         let value = self.evaluate(e)?;
-        Ok(self.variables.insert(v.clone(), value).is_some())
+        Ok(self.registers.insert(v.clone(), value).is_some())
     }
 
-    /// Processes a string of assignments, modifying its [`variables`](Self::variables)
+    /// Processes a string of assignments, modifying its [`registers`](Self::registers)
     /// field accordingly.
     ///
     /// This may fail if parsing goes wrong or a parsed assignment cannot be handled,
-    /// cf. [`assign`](Self::assign). It returns the set of variables that were assigned
-    /// a value by some assignment, even if the variable's value did not change.
+    /// cf. [`assign`](Self::assign). It returns the set of registers that were assigned
+    /// a value by some assignment, even if the register's value did not change.
     ///
     /// # Example
     /// ```
     /// use std::collections::{BTreeMap, BTreeSet};
-    /// use symbolic_unwind::evaluator::{Evaluator, Variable};
+    /// use symbolic_unwind::evaluator::{Evaluator, Register};
     /// use symbolic_unwind::BigEndian;
     /// let input = "$foo $bar 5 + = $bar 17 =";
-    /// let mut variables = BTreeMap::new();
-    /// let foo = "$foo".parse::<Variable>().unwrap();
-    /// let bar = "$bar".parse::<Variable>().unwrap();
-    /// variables.insert(bar.clone(), 17u8);
-    /// let mut evaluator = Evaluator::new(BigEndian).variables(variables);
+    /// let mut registers = BTreeMap::new();
+    /// let foo = "$foo".parse::<Register>().unwrap();
+    /// let bar = "$bar".parse::<Register>().unwrap();
+    /// registers.insert(bar.clone(), 17u8);
+    /// let mut evaluator = Evaluator::new(BigEndian).registers(registers);
     ///
-    /// let changed_variables = evaluator.process(input).unwrap();
+    /// let changed_registers = evaluator.process(input).unwrap();
     ///
-    /// assert_eq!(changed_variables, vec![foo, bar].into_iter().collect());
+    /// assert_eq!(changed_registers, vec![foo, bar].into_iter().collect());
     /// ```
-    pub fn process(&mut self, input: &str) -> Result<BTreeSet<Variable>, ExpressionError> {
+    pub fn process(&mut self, input: &str) -> Result<BTreeSet<Register>, ExpressionError> {
         let mut changed_variables = BTreeSet::new();
         let assignments = parsing::assignments_complete::<A>(input)?;
         for a in assignments {
@@ -207,11 +191,8 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
 #[derive(Debug)]
 #[non_exhaustive]
 enum EvaluationErrorInner {
-    /// The expression contains an undefined constant.
-    UndefinedConstant(Constant),
-
-    /// The expression contains an undefined variable.
-    UndefinedVariable(Variable),
+    /// The expression contains an undefined register name.
+    UndefinedRegister(Register),
 
     /// The expression contains a dereference, but the evaluator does not have access
     /// to any memory.
@@ -231,8 +212,7 @@ enum EvaluationErrorInner {
 impl fmt::Display for EvaluationErrorInner {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-           Self::UndefinedConstant(c) => write!(f, "Constant {} is not defined", c),
-           Self::UndefinedVariable(v) => write!(f, "Variable {} is not defined", v),
+           Self::UndefinedRegister(r) => write!(f, "Register {} is not defined", r),
            Self::MemoryUnavailable => write!(f, "The evaluator does not have access to memory"),
            Self::IllegalMemoryAccess {
                bytes, address: Some(address), address_range
@@ -306,39 +286,61 @@ impl Error for ExpressionError {
     }
 }
 
-/// A variable.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Variable(String);
+/// A register.
+///
+/// Registers come in two flavors: "constants" and "variables". They can be told
+/// apart by the fact that the names of variables begin with the symbol `$`.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Register {
+    /// A variable.
+    Var(String),
 
-impl fmt::Display for Variable {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
+    /// A constant.
+    Const(String),
+}
+
+impl Register {
+    /// Returns the `CFA` (Canonical Frame Address) register, usually called `.cfa`.
+    pub fn cfa() -> Self {
+        Self::Const(".cfa".to_string())
+    }
+
+    /// Returns the `RA` (Return Address) register, usually called `.ra`.
+    pub fn ra() -> Self {
+        Self::Const(".ra".to_string())
+    }
+
+    /// Returns true if this is a variable register, that is, if its name begins with "`$`".
+    pub fn is_variable(&self) -> bool {
+        match self {
+            Self::Var(_) => true,
+            Self::Const(_) => false,
+        }
+    }
+
+    /// Returns true if this is a constant register, that is, if its name dooes not begin with "`$`".
+    pub fn is_constant(&self) -> bool {
+        match self {
+            Self::Const(_) => true,
+            Self::Var(_) => false,
+        }
     }
 }
 
-impl FromStr for Variable {
+impl fmt::Display for Register {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Var(v) => v.fmt(f),
+            Self::Const(c) => c.fmt(f),
+        }
+    }
+}
+
+impl FromStr for Register {
     type Err = ParseExprError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        parsing::variable_complete(input)
-    }
-}
-
-/// A constant value.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Constant(String);
-
-impl fmt::Display for Constant {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl FromStr for Constant {
-    type Err = ParseExprError;
-
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        parsing::constant_complete(input)
+        parsing::register_complete(input)
     }
 }
 
@@ -387,11 +389,8 @@ pub enum Expr<T> {
     /// A base value.
     Value(T),
 
-    /// A named constant.
-    Const(Constant),
-
-    /// A variable.
-    Var(Variable),
+    /// A register name.
+    Reg(Register),
 
     /// An expression `a b §`, where `§` is a [binary operator](BinOp).
     Op(Box<Expr<T>>, Box<Expr<T>>, BinOp),
@@ -404,8 +403,7 @@ impl<T: fmt::Display> fmt::Display for Expr<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Value(n) => write!(f, "{}", n),
-            Self::Const(c) => write!(f, "{}", c),
-            Self::Var(v) => write!(f, "{}", v),
+            Self::Reg(i) => write!(f, "{}", i),
             Self::Op(x, y, op) => write!(f, "{} {} {}", x, y, op),
             Self::Deref(x) => write!(f, "{} ^", x),
         }
@@ -420,9 +418,19 @@ impl<T: RegisterValue> FromStr for Expr<T> {
     }
 }
 
-/// An assignment `v e =` where `v` is a [variable](Variable) and `e` is an [expression](Expr).
+/// An assignment `v e =` where `v` is a [variable register](Register) and
+/// `e` is an [expression](Expr).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Assignment<T>(Variable, Expr<T>);
+pub struct Assignment<T>(Register, Expr<T>);
+
+impl<T> Assignment<T> {
+    /// Creates a new assignment.
+    ///
+    /// This will fail if `variable` is not a variable register.
+    pub fn new(variable: Register, expr: Expr<T>) -> Option<Self> {
+        variable.is_variable().then(|| Self(variable, expr))
+    }
+}
 
 impl<T: fmt::Display> fmt::Display for Assignment<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -438,19 +446,15 @@ impl<T: RegisterValue> FromStr for Assignment<T> {
     }
 }
 
-/// A variable or constant.
+/// A `STACK CFI` rule `reg: e`, where `reg` is a [register](Register) and `e` is an expression.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Identifier {
-    /// A variable.
-    Var(Variable),
+pub struct Rule<A: RegisterValue>(pub Register, pub Expr<A>);
 
-    /// A constant.
-    Const(Constant),
+impl<A: RegisterValue + fmt::Display> fmt::Display for Rule<A> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}: {}", self.0, self.1)
+    }
 }
-
-/// A `STACK CFI` rule `reg: e`, where `reg` is an identifier and `e` is an expression.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Rule<A: RegisterValue>(Identifier, Expr<A>);
 
 /// These tests are inspired by the Breakpad PostfixEvaluator unit tests:
 /// [https://github.com/google/breakpad/blob/main/src/processor/postfix_evaluator_unittest.cc]
@@ -464,8 +468,8 @@ mod test {
         let input = "$rAdd3 2 2 + =$rMul2 9 6 * =";
 
         let mut eval = Evaluator::<u64, _>::new(BigEndian);
-        let r_add3: Variable = "$rAdd3".parse().unwrap();
-        let r_mul2: Variable = "$rMul2".parse().unwrap();
+        let r_add3 = "$rAdd3".parse::<Register>().unwrap();
+        let r_mul2 = "$rMul2".parse::<Register>().unwrap();
 
         let changed_vars = eval.process(input).unwrap();
 
@@ -474,8 +478,8 @@ mod test {
             vec![r_add3.clone(), r_mul2.clone(),].into_iter().collect()
         );
 
-        assert_eq!(eval.variables[&r_add3], 4);
-        assert_eq!(eval.variables[&r_mul2], 54);
+        assert_eq!(eval.registers[&r_add3], 4);
+        assert_eq!(eval.registers[&r_mul2], 54);
     }
 
     #[test]
@@ -489,12 +493,12 @@ mod test {
 
         let mut eval = Evaluator::<u64, _>::new(BigEndian).memory(memory);
 
-        let r_deref: Variable = "$rDeref".parse().unwrap();
+        let r_deref = "$rDeref".parse::<Register>().unwrap();
 
         let changed_vars = eval.process(input).unwrap();
 
         assert_eq!(changed_vars, vec![r_deref.clone()].into_iter().collect());
 
-        assert_eq!(eval.variables[&r_deref], 10);
+        assert_eq!(eval.registers[&r_deref], 10);
     }
 }
