@@ -39,7 +39,7 @@
 //! [rule](parsing::rule), [rule_complete](parsing::rule_complete),
 //! [rules](parsing::rules),
 //! and [rules_complete](parsing::rules_complete) parsers.
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
@@ -71,9 +71,11 @@ pub struct Evaluator<'memory, A, E> {
 
     /// The endianness the evaluator uses to read data from memory.
     endian: E,
+
+    cache: BTreeMap<Expr<A>, A>,
 }
 
-impl<'memory, A, E> Evaluator<'memory, A, E> {
+impl<'memory, A: Ord, E> Evaluator<'memory, A, E> {
     /// Creates an Evaluator with the given endianness, no memory, and empty
     /// constant and variable maps.
     pub fn new(endian: E) -> Self {
@@ -81,6 +83,7 @@ impl<'memory, A, E> Evaluator<'memory, A, E> {
             memory: None,
             registers: BTreeMap::new(),
             endian,
+            cache: BTreeMap::new(),
         }
     }
 
@@ -102,25 +105,34 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     ///
     /// This may fail if the expression tries to dereference unavailable memory
     /// or uses undefined registers.
-    pub fn evaluate(&self, expr: &Expr<A>) -> Result<A, EvaluationError> {
+    pub fn evaluate(&mut self, expr: &Expr<A>) -> Result<A, EvaluationError> {
         use Expr::*;
-        match expr {
-            Value(x) => Ok(*x),
+
+        if let Some(val) = self.cache.get(&expr) {
+            return Ok(*val);
+        }
+
+        let val = match expr {
+            Value(x) => *x,
             Reg(i) => {
-                self.registers.get(&i).copied().ok_or_else(|| {
-                    EvaluationError(EvaluationErrorInner::UndefinedRegister(i.clone()))
-                })
+                if let Some(val) = self.registers.get(&i) {
+                    *val
+                } else {
+                    return Err(EvaluationError(EvaluationErrorInner::UndefinedRegister(
+                        i.clone(),
+                    )));
+                }
             }
             Op(e1, e2, op) => {
                 let e1 = self.evaluate(&*e1)?;
                 let e2 = self.evaluate(&*e2)?;
                 match op {
-                    BinOp::Add => Ok(e1 + e2),
-                    BinOp::Sub => Ok(e1 - e2),
-                    BinOp::Mul => Ok(e1 * e2),
-                    BinOp::Div => Ok(e1 / e2),
-                    BinOp::Mod => Ok(e1 % e2),
-                    BinOp::Align => Ok(e2 * (e1 / e2)),
+                    BinOp::Add => e1 + e2,
+                    BinOp::Sub => e1 - e2,
+                    BinOp::Mul => e1 * e2,
+                    BinOp::Div => e1 / e2,
+                    BinOp::Mod => e1 % e2,
+                    BinOp::Align => e2 * (e1 / e2),
                 }
             }
 
@@ -130,60 +142,67 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
                     .memory
                     .as_ref()
                     .ok_or(EvaluationError(EvaluationErrorInner::MemoryUnavailable))?;
-                memory.get(address, self.endian).ok_or_else(|| {
-                    EvaluationError(EvaluationErrorInner::IllegalMemoryAccess {
+                if let Some(val) = memory.get(address, self.endian) {
+                    val
+                } else {
+                    return Err(EvaluationError(EvaluationErrorInner::IllegalMemoryAccess {
                         address: address.try_into().ok(),
                         bytes: A::WIDTH,
                         address_range: memory.base_addr..memory.base_addr + memory.len() as u64,
-                    })
-                })
+                    }));
+                }
             }
-        }
+        };
+
+        self.cache.insert(expr.clone(), val);
+        Ok(val)
     }
 
-    /// Performs an assignment by first evaluating its right-hand side and then
-    /// modifying [`registers`](Self::registers) accordingly.
+    /// Processes a string of rules or assignments and outputs a new map of register values.
     ///
-    /// This may fail if the right-hand side cannot be evaluated, cf.
-    /// [`evaluate`](Self::evaluate). It returns `true` iff the assignment modified
-    /// an existing register.
-    pub fn assign(&mut self, Assignment(v, e): &Assignment<A>) -> Result<bool, EvaluationError> {
-        let value = self.evaluate(e)?;
-        Ok(self.registers.insert(v.clone(), value).is_some())
-    }
-
-    /// Processes a string of assignments, modifying its [`registers`](Self::registers)
-    /// field accordingly.
-    ///
-    /// This may fail if parsing goes wrong or a parsed assignment cannot be handled,
-    /// cf. [`assign`](Self::assign). It returns the set of registers that were assigned
-    /// a value by some assignment, even if the register's value did not change.
+    /// The processing follows Breakpad's rules: if the rule for a register `foo`
+    /// mentions other registers `bar`, `baz`, that means that the new value of `foo`
+    /// will be computed from the *current* value `bar` and `baz`. There is one
+    /// exception, however: rules may refer to the `.cfa` register that itself
+    /// needs to be computed from a rule. As a consequence, it
+    /// doesn't matter in which order rules are evaluated, apart from the fact that
+    /// the rule for `.cfa` must be evaluated first.
     ///
     /// # Example
     /// ```
-    /// use std::collections::{BTreeMap, BTreeSet};
+    /// use std::collections::BTreeMap;
     /// use symbolic_unwind::evaluator::{Evaluator, Register};
     /// use symbolic_unwind::BigEndian;
-    /// let input = "$foo $bar 5 + = $bar 17 =";
+    /// let input = ".cfa: $r0 4 - $r0: 3 $r1: .cfa $r0 +";
     /// let mut registers = BTreeMap::new();
-    /// let foo = "$foo".parse::<Register>().unwrap();
-    /// let bar = "$bar".parse::<Register>().unwrap();
-    /// registers.insert(bar.clone(), 17u8);
+    /// let r0 = "$r0".parse::<Register>().unwrap();
+    /// let r1 = "$r1".parse::<Register>().unwrap();
+    /// registers.insert(r0.clone(), 17u8);
     /// let mut evaluator = Evaluator::new(BigEndian).registers(registers);
     ///
-    /// let changed_registers = evaluator.process(input).unwrap();
+    /// // Currently, evaluator.registers == { $r0: 17 }
+    /// let new_registers = evaluator.process(input).unwrap();
     ///
-    /// assert_eq!(changed_registers, vec![foo, bar].into_iter().collect());
+    /// // The calculation of $r1 used the newly computed value of .cfa, but the old
+    /// // value of r0.
+    /// assert_eq!(
+    ///     new_registers,
+    ///     vec![(Register::cfa(), 13), (r0, 3), (r1, 30)]
+    ///         .into_iter()
+    ///         .collect()
+    /// );
     /// ```
-    pub fn process(&mut self, input: &str) -> Result<BTreeSet<Register>, ExpressionError> {
-        let mut changed_variables = BTreeSet::new();
-        let assignments = parsing::assignments_complete::<A>(input)?;
-        for a in assignments {
-            self.assign(&a)?;
-            changed_variables.insert(a.0);
+    pub fn process(&mut self, input: &str) -> Result<BTreeMap<Register, A>, ExpressionError> {
+        let rules = parsing::rules_or_assignments_complete(input)?;
+        let cfa = Register::cfa();
+        if let Some(cfa_rule) = rules.get(&cfa) {
+            let cfa_val = self.evaluate(cfa_rule)?;
+            self.registers.insert(cfa, cfa_val);
         }
-
-        Ok(changed_variables)
+        rules
+            .iter()
+            .map(|(reg, rule)| Ok((reg.clone(), self.evaluate(rule)?)))
+            .collect()
     }
 }
 
@@ -345,7 +364,7 @@ impl FromStr for Register {
 }
 
 /// A binary operator.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum BinOp {
     /// Addition.
     Add,
@@ -384,7 +403,7 @@ impl fmt::Display for BinOp {
 /// An expression.
 ///
 /// This is generic so that different number types can be used.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub enum Expr<T> {
     /// A base value.
     Value(T),
@@ -471,15 +490,12 @@ mod test {
         let r_add3 = "$rAdd3".parse::<Register>().unwrap();
         let r_mul2 = "$rMul2".parse::<Register>().unwrap();
 
-        let changed_vars = eval.process(input).unwrap();
+        let new_registers = eval.process(input).unwrap();
 
         assert_eq!(
-            changed_vars,
-            vec![r_add3.clone(), r_mul2.clone(),].into_iter().collect()
+            new_registers,
+            vec![(r_add3, 4), (r_mul2, 54)].into_iter().collect()
         );
-
-        assert_eq!(eval.registers[&r_add3], 4);
-        assert_eq!(eval.registers[&r_mul2], 54);
     }
 
     #[test]
@@ -495,10 +511,8 @@ mod test {
 
         let r_deref = "$rDeref".parse::<Register>().unwrap();
 
-        let changed_vars = eval.process(input).unwrap();
+        let new_registers = eval.process(input).unwrap();
 
-        assert_eq!(changed_vars, vec![r_deref.clone()].into_iter().collect());
-
-        assert_eq!(eval.registers[&r_deref], 10);
+        assert_eq!(new_registers, vec![(r_deref, 10)].into_iter().collect());
     }
 }
