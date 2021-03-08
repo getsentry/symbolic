@@ -158,11 +158,11 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
         Ok(val)
     }
 
-    /// Processes a string of rules or assignments and outputs a new map of register values.
+    /// Processes a string of rules and outputs a new map of register values.
     ///
     /// The processing follows Breakpad's rules: if the rule for a register `foo`
     /// mentions other registers `bar`, `baz`, that means that the new value of `foo`
-    /// will be computed from the *current* value `bar` and `baz`. There is one
+    /// will be computed from the *current* values of `bar` and `baz`. There is one
     /// exception, however: rules may refer to the `.cfa` register that itself
     /// needs to be computed from a rule. As a consequence, it
     /// doesn't matter in which order rules are evaluated, apart from the fact that
@@ -181,7 +181,7 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     /// let mut evaluator = Evaluator::new(BigEndian).registers(registers);
     ///
     /// // Currently, evaluator.registers == { $r0: 17 }
-    /// let new_registers = evaluator.process(input).unwrap();
+    /// let new_registers = evaluator.process_rules(input).unwrap();
     ///
     /// // The calculation of $r1 used the newly computed value of .cfa, but the old
     /// // value of r0.
@@ -192,8 +192,11 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     ///         .collect()
     /// );
     /// ```
-    pub fn process(&mut self, input: &str) -> Result<BTreeMap<Register, A>, ExpressionError> {
-        let rules = parsing::rules_or_assignments_complete(input)?;
+    pub fn process_rules(&mut self, input: &str) -> Result<BTreeMap<Register, A>, ExpressionError> {
+        let rules = parsing::rules_complete(input)?
+            .into_iter()
+            .map(|Rule(r, v)| (r, v))
+            .collect::<BTreeMap<Register, Expr<A>>>();
         let cfa = Register::cfa();
         if let Some(cfa_rule) = rules.get(&cfa) {
             let cfa_val = self.evaluate(cfa_rule)?;
@@ -483,14 +486,14 @@ mod test {
     use crate::base::BigEndian;
 
     #[test]
-    fn test_assignment() {
-        let input = "$rAdd3 2 2 + =$rMul2 9 6 * =";
+    fn test_rules() {
+        let input = "$rAdd3: 2 2 + $rMul2: 9 6 *";
 
         let mut eval = Evaluator::<u64, _>::new(BigEndian);
         let r_add3 = "$rAdd3".parse::<Register>().unwrap();
         let r_mul2 = "$rMul2".parse::<Register>().unwrap();
 
-        let new_registers = eval.process(input).unwrap();
+        let new_registers = eval.process_rules(input).unwrap();
 
         assert_eq!(
             new_registers,
@@ -500,7 +503,7 @@ mod test {
 
     #[test]
     fn test_deref() {
-        let input = "$rDeref 9 ^ =";
+        let input = "$rDeref: 9 ^";
 
         let memory = MemoryRegion {
             base_addr: 9,
@@ -511,7 +514,7 @@ mod test {
 
         let r_deref = "$rDeref".parse::<Register>().unwrap();
 
-        let new_registers = eval.process(input).unwrap();
+        let new_registers = eval.process_rules(input).unwrap();
 
         assert_eq!(new_registers, vec![(r_deref, 10)].into_iter().collect());
     }

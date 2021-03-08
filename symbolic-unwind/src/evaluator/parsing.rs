@@ -333,42 +333,6 @@ pub fn rules_complete<T: RegisterValue>(input: &str) -> Result<Vec<Rule<T>>, Par
     all_consuming(rules)(input).finish().map(|(_, a)| a)
 }
 
-/// Parses a sequence of rules or assignments into a map from registers to expressions.
-pub fn rules_or_assignments<T: RegisterValue>(
-    input: &str,
-) -> IResult<&str, BTreeMap<Register, Expr<T>>, ParseExprError> {
-    alt((
-        map(rules, |r| {
-            r.into_iter().map(|Rule(reg, expr)| (reg, expr)).collect()
-        }),
-        map(assignments, |a| {
-            a.into_iter()
-                .map(|Assignment(reg, expr)| (reg, expr))
-                .collect()
-        }),
-    ))(input)
-}
-
-/// Parses a sequence of rules or assignments into a map from registers to expressions.
-///
-/// It will fail if there is any non-whitespace input remaining afterwards.
-pub fn rules_or_assignments_complete<T: RegisterValue>(
-    input: &str,
-) -> Result<BTreeMap<Register, Expr<T>>, ParseExprError> {
-    alt((
-        map(all_consuming(rules), |r| {
-            r.into_iter().map(|Rule(reg, expr)| (reg, expr)).collect()
-        }),
-        map(all_consuming(assignments), |a| {
-            a.into_iter()
-                .map(|Assignment(reg, expr)| (reg, expr))
-                .collect()
-        }),
-    ))(input)
-    .finish()
-    .map(|(_, v)| v)
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
