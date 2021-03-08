@@ -1,7 +1,7 @@
 //! Support for Mach Objects, used on macOS and iOS.
 
 use std::borrow::Cow;
-use std::error::Error;
+use std::error::Error as StdError;
 use std::fmt;
 use std::io::Cursor;
 
@@ -12,6 +12,7 @@ use thiserror::Error;
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
+use crate::bcsymbolmap::BCSymbolMap;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 
@@ -23,14 +24,14 @@ const SWIFT_HIDDEN_PREFIX: &str = "__hidden#";
 #[error("invalid MachO file")]
 pub struct MachError {
     #[source]
-    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+    source: Option<Box<dyn StdError + Send + Sync + 'static>>,
 }
 
 impl MachError {
     /// Creates a new MachO error from an arbitrary error payload.
     fn new<E>(source: E) -> Self
     where
-        E: Into<Box<dyn Error + Send + Sync>>,
+        E: Into<Box<dyn StdError + Send + Sync>>,
     {
         let source = Some(source.into());
         Self { source }
@@ -41,6 +42,7 @@ impl MachError {
 pub struct MachObject<'d> {
     macho: mach::MachO<'d>,
     data: &'d [u8],
+    bcsymbolmap: Option<BCSymbolMap>,
 }
 
 impl<'d> MachObject<'d> {
@@ -55,8 +57,23 @@ impl<'d> MachObject<'d> {
     /// Tries to parse a MachO from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
         mach::MachO::parse(data, 0)
-            .map(|macho| MachObject { macho, data })
+            .map(|macho| MachObject {
+                macho,
+                data,
+                bcsymbolmap: None,
+            })
             .map_err(MachError::new)
+    }
+
+    /// Parses and loads the BCSymbolMap into the object.
+    ///
+    /// The symbolmap must match the object, there is nothing in the symbol map which allows
+    /// this call to verify this.
+    ///
+    /// Once the symbolmap is loaded this object will transparently resolve any hidden
+    /// symbols using the provided symbolmap.
+    pub fn load_symbolmap(&mut self, bcsymbolmap: BCSymbolMap) {
+        self.bcsymbolmap = Some(bcsymbolmap)
     }
 
     /// The container file format, which is always `FileFormat::MachO`.
@@ -206,6 +223,7 @@ impl<'d> MachObject<'d> {
             symbols: self.macho.symbols(),
             sections,
             vmaddr: self.load_address(),
+            symbolmap: self.bcsymbolmap.clone(), // TODO(flub): Don't clone
         }
     }
 
@@ -401,6 +419,31 @@ pub struct MachOSymbolIterator<'data> {
     symbols: mach::symbols::SymbolIterator<'data>,
     sections: SmallVec<[usize; 2]>,
     vmaddr: u64,
+    symbolmap: Option<BCSymbolMap>,
+}
+
+impl<'data> MachOSymbolIterator<'data> {
+    fn map_name<'a>(&self, original_name: &'a str) -> Cow<'a, str> {
+        if let Some(symbolmap) = self.symbolmap.as_ref() {
+            if let Some(tail) = original_name.strip_prefix(SWIFT_HIDDEN_PREFIX) {
+                let index: usize = match tail.parse() {
+                    Ok(index) => index,
+                    Err(_) => {
+                        return Cow::Borrowed(original_name);
+                    }
+                };
+                match symbolmap.get(index) {
+                    Some(name) => {
+                        return Cow::Owned(name.to_string());
+                    }
+                    None => {
+                        return Cow::Borrowed(original_name);
+                    }
+                }
+            }
+        }
+        return Cow::Borrowed(original_name);
+    }
 }
 
 impl<'data> Iterator for MachOSymbolIterator<'data> {
@@ -409,7 +452,7 @@ impl<'data> Iterator for MachOSymbolIterator<'data> {
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(next) = self.symbols.next() {
             // Gracefully recover from corrupt nlists
-            let (mut name, nlist) = match next {
+            let (name, nlist) = match next {
                 Ok(pair) => pair,
                 Err(_) => continue,
             };
@@ -432,13 +475,17 @@ impl<'data> Iterator for MachOSymbolIterator<'data> {
                 continue;
             }
 
+            let mut name = self.map_name(name);
+
             // Trim leading underscores from mangled C++ names.
-            if name.starts_with('_') && !name.starts_with(SWIFT_HIDDEN_PREFIX) {
-                name = &name[1..];
+            if let Some(tail) = name.strip_prefix('_') {
+                if !name.starts_with(SWIFT_HIDDEN_PREFIX) {
+                    name = Cow::Owned(tail.to_string());
+                }
             }
 
             return Some(Symbol {
-                name: Some(Cow::Borrowed(name)),
+                name: Some(name),
                 address: nlist.n_value - self.vmaddr,
                 size: 0, // Computed in `SymbolMap`
             });
@@ -684,5 +731,15 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for MachArchive<'d> {
 
     fn as_self(&'slf self) -> &Self::Ref {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bcsymbolmap() {
+        ()
     }
 }

@@ -39,12 +39,14 @@ mod base;
 mod object;
 mod private;
 
+pub mod bcsymbolmap;
 pub mod breakpad;
 pub mod dwarf;
 pub mod elf;
 pub mod macho;
 pub mod pdb;
 pub mod pe;
+pub mod plist;
 pub mod sourcebundle;
 pub mod wasm;
 
