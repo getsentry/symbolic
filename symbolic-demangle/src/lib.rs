@@ -24,7 +24,10 @@
 //!
 //! let name = Name::from("__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E");
 //! assert_eq!(name.detect_language(), Language::Rust);
-//! assert_eq!(name.try_demangle(DemangleOptions::complete()), "std::io::Read::read_to_end");
+//! assert_eq!(
+//!     name.try_demangle(DemangleOptions::complete()),
+//!     "std::io::Read::read_to_end"
+//! );
 //! # }
 //! ```
 
@@ -275,7 +278,7 @@ pub trait Demangle {
     /// # Examples
     ///
     /// ```
-    /// use symbolic_common::{Name, Language};
+    /// use symbolic_common::{Language, Name};
     /// use symbolic_demangle::{Demangle, DemangleOptions};
     ///
     /// assert_eq!(Name::from("_ZN3foo3barEv").detect_language(), Language::Cpp);
@@ -299,8 +302,14 @@ pub trait Demangle {
     /// use symbolic_common::Name;
     /// use symbolic_demangle::{Demangle, DemangleOptions};
     ///
-    /// assert_eq!(Name::from("_ZN3foo3barEv").demangle(DemangleOptions::name_only()), Some("foo::bar".to_string()));
-    /// assert_eq!(Name::from("unknown").demangle(DemangleOptions::name_only()), None);
+    /// assert_eq!(
+    ///     Name::from("_ZN3foo3barEv").demangle(DemangleOptions::name_only()),
+    ///     Some("foo::bar".to_string())
+    /// );
+    /// assert_eq!(
+    ///     Name::from("unknown").demangle(DemangleOptions::name_only()),
+    ///     None
+    /// );
     /// # }
     /// ```
     fn demangle(&self, opts: DemangleOptions) -> Option<String>;
@@ -317,8 +326,14 @@ pub trait Demangle {
     /// use symbolic_common::Name;
     /// use symbolic_demangle::{Demangle, DemangleOptions};
     ///
-    /// assert_eq!(Name::from("_ZN3foo3barEv").try_demangle(DemangleOptions::name_only()), "foo::bar");
-    /// assert_eq!(Name::from("unknown").try_demangle(DemangleOptions::name_only()), "unknown");
+    /// assert_eq!(
+    ///     Name::from("_ZN3foo3barEv").try_demangle(DemangleOptions::name_only()),
+    ///     "foo::bar"
+    /// );
+    /// assert_eq!(
+    ///     Name::from("unknown").try_demangle(DemangleOptions::name_only()),
+    ///     "unknown"
+    /// );
     /// # }
     /// ```
     ///
