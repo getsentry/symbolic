@@ -79,8 +79,6 @@ pub trait RegisterValue:
     + Div<Output = Self>
     + Sub<Output = Self>
     + Rem<Output = Self>
-    + PartialOrd
-    + Ord
     + Copy
     + Sized
     + Debug

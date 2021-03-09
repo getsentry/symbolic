@@ -72,10 +72,20 @@ pub struct Evaluator<'memory, A, E> {
     /// The endianness the evaluator uses to read data from memory.
     endian: E,
 
-    cache: BTreeMap<Expr<A>, A>,
+    /// A cache for values of registers computed by [`evaluate_register`](Self::evaluate_register)
+    /// and [`evaluate_all_registers`](Self::evaluate_all_registers).
+    register_cache: BTreeMap<Register, A>,
+
+    /// A map from registers to expressions that describes how to compute the "new"
+    /// (in stackwalking terms: the caller's) values of registers from the current ones.
+    cfi_rules: BTreeMap<Register, Expr<A>>,
+
+    /// An expression that describes how to compute the CFA from the current register
+    /// values.
+    cfa_rule: Option<Expr<A>>,
 }
 
-impl<'memory, A: Ord, E> Evaluator<'memory, A, E> {
+impl<'memory, A, E> Evaluator<'memory, A, E> {
     /// Creates an Evaluator with the given endianness, no memory, and empty
     /// constant and variable maps.
     pub fn new(endian: E) -> Self {
@@ -83,7 +93,9 @@ impl<'memory, A: Ord, E> Evaluator<'memory, A, E> {
             memory: None,
             registers: BTreeMap::new(),
             endian,
-            cache: BTreeMap::new(),
+            register_cache: BTreeMap::new(),
+            cfi_rules: BTreeMap::new(),
+            cfa_rule: None,
         }
     }
 
@@ -98,6 +110,17 @@ impl<'memory, A: Ord, E> Evaluator<'memory, A, E> {
         self.registers = registers;
         self
     }
+
+    /// Add a new register rule to the evaluator. These rules are used by
+    /// [`evaluate_register`](Self::evaluate_register)
+    /// and [`evaluate_all_registers`](Self::evaluate_all_registers).
+    pub fn add_cfi_rule(&mut self, register: Register, expr: Expr<A>) {
+        if register == Register::cfa() {
+            self.cfa_rule = Some(expr);
+        } else {
+            self.cfi_rules.insert(register, expr);
+        }
+    }
 }
 
 impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
@@ -108,19 +131,22 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     pub fn evaluate(&mut self, expr: &Expr<A>) -> Result<A, EvaluationError> {
         use Expr::*;
 
-        if let Some(val) = self.cache.get(&expr) {
-            return Ok(*val);
-        }
-
         let val = match expr {
             Value(x) => *x,
             Reg(i) => {
                 if let Some(val) = self.registers.get(&i) {
                     *val
                 } else {
-                    return Err(EvaluationError(EvaluationErrorInner::UndefinedRegister(
-                        i.clone(),
-                    )));
+                    let cfa = Register::cfa();
+                    if *i == cfa {
+                        let val = self.evaluate_register(&cfa)?;
+                        self.registers.insert(cfa, val);
+                        val
+                    } else {
+                        return Err(EvaluationError(EvaluationErrorInner::UndefinedRegister(
+                            i.clone(),
+                        )));
+                    }
                 }
             }
             Op(e1, e2, op) => {
@@ -153,9 +179,76 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
                 }
             }
         };
-
-        self.cache.insert(expr.clone(), val);
         Ok(val)
+    }
+
+    /// Evaluates the given register's rule and returns the value.
+    ///
+    /// This fails if there is no rule for the register or it cannot be evaluated.
+    /// Results are cached.
+    pub fn evaluate_register(&mut self, register: &Register) -> Result<A, EvaluationError> {
+        if let Some(val) = self.register_cache.get(register) {
+            return Ok(*val);
+        }
+
+        if *register == Register::cfa() {
+            let cfa_rule = match self.cfa_rule.take() {
+                Some(e) => e,
+                None => {
+                    return Err(EvaluationError(EvaluationErrorInner::NoRuleForRegister(
+                        register.clone(),
+                    )))
+                }
+            };
+            let result = self.evaluate(&cfa_rule);
+            self.cfa_rule = Some(cfa_rule);
+            if let Ok(val) = result {
+                self.register_cache.insert(Register::cfa(), val);
+            }
+            result
+        } else {
+            let e = match self.cfi_rules.remove(register) {
+                Some(e) => e,
+                None => {
+                    return Err(EvaluationError(EvaluationErrorInner::NoRuleForRegister(
+                        register.clone(),
+                    )))
+                }
+            };
+
+            let result = self.evaluate(&e);
+            self.cfi_rules.insert(register.clone(), e);
+            if let Ok(val) = result {
+                self.register_cache.insert(register.clone(), val);
+            }
+            result
+        }
+    }
+
+    /// Evaluates all register rules and returns the results in a map.
+    ///
+    /// This fails if one of the rules cannot be evaluated. Results are cached.
+    pub fn evaluate_all_registers(&mut self) -> Result<BTreeMap<Register, A>, EvaluationError> {
+        let mut result = BTreeMap::new();
+        let cfa_rule = self.cfa_rule.take();
+        if let Some(ref cfa_rule) = cfa_rule {
+            let cfa = Register::cfa();
+            let val = self.evaluate(&cfa_rule)?;
+            result.insert(cfa, val);
+        }
+
+        self.cfa_rule = cfa_rule;
+
+        let cfi_rules = std::mem::take(&mut self.cfi_rules);
+
+        for (r, e) in cfi_rules.iter() {
+            let val = self.evaluate(e)?;
+            result.insert(r.clone(), val);
+        }
+
+        self.cfi_rules = cfi_rules;
+
+        Ok(result)
     }
 
     /// Processes a string of rules and outputs a new map of register values.
@@ -193,19 +286,11 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     /// );
     /// ```
     pub fn process_rules(&mut self, input: &str) -> Result<BTreeMap<Register, A>, ExpressionError> {
-        let rules = parsing::rules_complete(input)?
+        parsing::rules_complete(input)?
             .into_iter()
-            .map(|Rule(r, v)| (r, v))
-            .collect::<BTreeMap<Register, Expr<A>>>();
-        let cfa = Register::cfa();
-        if let Some(cfa_rule) = rules.get(&cfa) {
-            let cfa_val = self.evaluate(cfa_rule)?;
-            self.registers.insert(cfa, cfa_val);
-        }
-        rules
-            .iter()
-            .map(|(reg, rule)| Ok((reg.clone(), self.evaluate(rule)?)))
-            .collect()
+            .for_each(|Rule(r, v)| self.add_cfi_rule(r, v));
+
+        Ok(self.evaluate_all_registers()?)
     }
 }
 
@@ -215,6 +300,9 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
 enum EvaluationErrorInner {
     /// The expression contains an undefined register name.
     UndefinedRegister(Register),
+
+    /// Tried to evaluate a register for which no rule exists.
+    NoRuleForRegister(Register),
 
     /// The expression contains a dereference, but the evaluator does not have access
     /// to any memory.
@@ -235,6 +323,7 @@ impl fmt::Display for EvaluationErrorInner {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
            Self::UndefinedRegister(r) => write!(f, "Register {} is not defined", r),
+           Self::NoRuleForRegister(r) => write!(f, "There is no rule for evaluating register {}", r),
            Self::MemoryUnavailable => write!(f, "The evaluator does not have access to memory"),
            Self::IllegalMemoryAccess {
                bytes, address: Some(address), address_range
@@ -517,5 +606,45 @@ mod test {
         let new_registers = eval.process_rules(input).unwrap();
 
         assert_eq!(new_registers, vec![(r_deref, 10)].into_iter().collect());
+    }
+
+    #[test]
+    fn single_register() {
+        let sp = ".sp".parse::<Register>().unwrap();
+        let r0 = "$r0".parse::<Register>().unwrap();
+        let cfa = Register::cfa();
+
+        let registers = vec![(sp.clone(), 17), (r0.clone(), 5)]
+            .into_iter()
+            .collect();
+
+        let mut evaluator = Evaluator::<u32, _>::new(BigEndian).registers(registers);
+        evaluator.add_cfi_rule(cfa.clone(), "$r0 8 +".parse().unwrap());
+        evaluator.add_cfi_rule(sp.clone(), ".cfa a %".parse().unwrap());
+
+        assert_eq!(evaluator.evaluate_register(&sp).unwrap(), 3);
+        assert_eq!(evaluator.evaluate_register(&cfa).unwrap(), 0xd);
+        assert!(evaluator.evaluate_register(&r0).is_err());
+    }
+
+    #[test]
+    fn all_registers() {
+        let sp = ".sp".parse::<Register>().unwrap();
+        let r0 = "$r0".parse::<Register>().unwrap();
+        let cfa = Register::cfa();
+
+        let registers = vec![(sp.clone(), 17), (r0.clone(), 5)]
+            .into_iter()
+            .collect();
+
+        let mut evaluator = Evaluator::<u32, _>::new(BigEndian).registers(registers);
+        evaluator.add_cfi_rule(cfa.clone(), "$r0 8 +".parse().unwrap());
+        evaluator.add_cfi_rule(sp.clone(), ".cfa a %".parse().unwrap());
+
+        let result = evaluator.evaluate_all_registers().unwrap();
+
+        assert_eq!(result[&sp], 3);
+        assert_eq!(result[&cfa], 0xd);
+        assert!(!result.contains_key(&r0));
     }
 }
