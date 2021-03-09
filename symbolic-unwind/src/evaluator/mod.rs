@@ -87,13 +87,13 @@ impl<'memory, A: Ord, E> Evaluator<'memory, A, E> {
         }
     }
 
-    /// Sets the evaluator's [memory](Self::memory) to the given `MemoryRegion`.
+    /// Sets the evaluator's memory to the given `MemoryRegion`.
     pub fn memory(mut self, memory: MemoryRegion<'memory>) -> Self {
         self.memory = Some(memory);
         self
     }
 
-    /// Sets the evaluator's [register map](Self::registers) to the given map.
+    /// Sets the evaluator's register map to the given map.
     pub fn registers(mut self, registers: BTreeMap<Register, A>) -> Self {
         self.registers = registers;
         self
