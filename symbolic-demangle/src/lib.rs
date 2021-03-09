@@ -36,12 +36,24 @@ use std::ffi::{CStr, CString};
 #[cfg(feature = "swift")]
 use std::os::raw::{c_char, c_int};
 
+#[cfg(feature = "cpp")]
+use lazy_static::lazy_static;
+#[cfg(feature = "cpp")]
+use regex::bytes::Regex;
+
 use symbolic_common::{Language, Name, NameMangling};
 
 #[cfg(feature = "swift")]
 const SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE: c_int = 0x1;
 #[cfg(feature = "swift")]
 const SYMBOLIC_SWIFT_FEATURE_PARAMETERS: c_int = 0x2;
+
+#[cfg(feature = "cpp")]
+lazy_static! {
+    // This matches the hash suffixes described in
+    // https://github.com/gimli-rs/cpp_demangle/pull/210
+    static ref HASH_SUFFIX: Regex = Regex::new(r"\$[[:xdigit:]]{32}$").unwrap();
+}
 
 #[cfg(feature = "swift")]
 extern "C" {
@@ -175,6 +187,12 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
     #[cfg(feature = "cpp")]
     {
         use cpp_demangle::{DemangleOptions as CppOptions, Symbol as CppSymbol};
+
+        // Strip away the hash suffixes described in
+        // https://github.com/gimli-rs/cpp_demangle/pull/210.
+        // Why the empty string needs a type annotation I have no earthly idea.
+        let empty: &[u8] = b"";
+        let ident = HASH_SUFFIX.replace(ident.as_bytes(), empty);
 
         let symbol = match CppSymbol::new(ident) {
             Ok(symbol) => symbol,
