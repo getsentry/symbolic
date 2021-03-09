@@ -133,6 +133,10 @@ fn is_maybe_msvc(ident: &str) -> bool {
     ident.starts_with('?') || ident.starts_with("@?")
 }
 
+fn is_maybe_md5(ident: &str) -> bool {
+    ident.starts_with("??@") && ident.ends_with("@") && ident.len() == 36
+}
+
 #[cfg(feature = "swift")]
 fn is_maybe_swift(ident: &str) -> bool {
     CString::new(ident)
@@ -351,9 +355,10 @@ impl<'a> Demangle for Name<'a> {
     }
 
     fn demangle(&self, opts: DemangleOptions) -> Option<String> {
-        if matches!(self.mangling(), NameMangling::Unmangled) {
+        if matches!(self.mangling(), NameMangling::Unmangled) || is_maybe_md5(self.as_str()) {
             return Some(self.to_string());
         }
+
         match self.detect_language() {
             Language::ObjC => Some(demangle_objc(self.as_str(), opts)),
             Language::ObjCpp => try_demangle_objcpp(self.as_str(), opts),
@@ -392,5 +397,22 @@ pub fn demangle(ident: &str) -> Cow<'_, str> {
     match Name::from(ident).demangle(DemangleOptions::complete()) {
         Some(demangled) => Cow::Owned(demangled),
         None => Cow::Borrowed(ident),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{Demangle, DemangleOptions};
+    use symbolic_common::Name;
+
+    #[test]
+    fn simple_md5() {
+        let md5_mangled = "??@8ba8d245c9eca390356129098dbe9f73@";
+        assert_eq!(
+            Name::from(md5_mangled)
+                .demangle(DemangleOptions::name_only())
+                .unwrap(),
+            md5_mangled
+        );
     }
 }
