@@ -25,16 +25,14 @@ all-features = true
 
 [features]
 default = ["cpp", "msvc", "rust", "swift"]
-cpp = ["cpp_demangle", "lazy_static", "regex"]
+cpp = ["cpp_demangle"]
 msvc = ["msvc-demangler"]
 rust = ["rustc-demangle"]
 swift = ["cc"]
 
 [dependencies]
 cpp_demangle = { version = "0.3.0", optional = true }
-lazy_static = { version = "1.4.0", optional = true }
 msvc-demangler = { version = "0.8.0", optional = true }
-regex = { version = "1.4.3", optional = true }
 rustc-demangle = { version = "0.1.16", optional = true }
 symbolic-common = { version = "8.0.5", path = "../symbolic-common" }
 
