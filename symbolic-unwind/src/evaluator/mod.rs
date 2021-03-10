@@ -403,6 +403,8 @@ impl Error for ExpressionError {
 /// apart by the fact that the names of variables begin with the symbol `$`.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Register {
+    /// The CFA (Canonical Frame Address) register.
+    Cfa,
     /// A variable.
     Var(String),
 
@@ -413,7 +415,7 @@ pub enum Register {
 impl Register {
     /// Returns the `CFA` (Canonical Frame Address) register, usually called `.cfa`.
     pub fn cfa() -> Self {
-        Self::Const(".cfa".to_string())
+        Self::Cfa
     }
 
     /// Returns the `RA` (Return Address) register, usually called `.ra`.
@@ -424,6 +426,7 @@ impl Register {
     /// Returns true if this is a variable register, that is, if its name begins with "`$`".
     pub fn is_variable(&self) -> bool {
         match self {
+            Self::Cfa => false,
             Self::Var(_) => true,
             Self::Const(_) => false,
         }
@@ -432,6 +435,7 @@ impl Register {
     /// Returns true if this is a constant register, that is, if its name dooes not begin with "`$`".
     pub fn is_constant(&self) -> bool {
         match self {
+            Self::Cfa => true,
             Self::Const(_) => true,
             Self::Var(_) => false,
         }
@@ -439,16 +443,14 @@ impl Register {
 
     /// Returns true if this is the CFA register.
     pub fn is_cfa(&self) -> bool {
-        match self {
-            Self::Var(_) => false,
-            Self::Const(name) => name == ".cfa",
-        }
+        matches!(self, Self::Cfa)
     }
 }
 
 impl fmt::Display for Register {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Self::Cfa => ".cfa".fmt(f),
             Self::Var(v) => v.fmt(f),
             Self::Const(c) => c.fmt(f),
         }
@@ -518,6 +520,18 @@ pub enum Expr<T> {
     Deref(Box<Expr<T>>),
 }
 
+impl<T> Expr<T> {
+    /// Returns true if the expression contains the CFA register.
+    fn contains_cfa(&self) -> bool {
+        match self {
+            Self::Value(_) => false,
+            Self::Reg(r) => r.is_cfa(),
+            Self::Op(e1, e2, _) => e1.contains_cfa() || e2.contains_cfa(),
+            Self::Deref(e) => e.contains_cfa(),
+        }
+    }
+}
+
 impl<T: fmt::Display> fmt::Display for Expr<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -581,6 +595,11 @@ impl<A: RegisterValue + fmt::Display> fmt::Display for Rule<A> {
 mod test {
     use super::*;
     use crate::base::BigEndian;
+
+    #[test]
+    fn test_cfa() {
+        assert!(".cfa".parse::<Register>().unwrap().is_cfa());
+    }
 
     #[test]
     fn test_rules() {

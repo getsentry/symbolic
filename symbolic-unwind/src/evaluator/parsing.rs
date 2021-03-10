@@ -109,7 +109,12 @@ fn constant(input: &str) -> IResult<&str, Register, ParseExprError> {
         alt((alpha1, tag("_"), tag("."))),
         many0(alt((alphanumeric1, tag("_"), tag(".")))),
     ))(input)?;
-    Ok((rest, Register::Const(con.to_string())))
+    let reg = if con == ".cfa" {
+        Register::Cfa
+    } else {
+        Register::Const(con.to_string())
+    };
+    Ok((rest, reg))
 }
 
 /// Parses a [constant register](super::Register).
