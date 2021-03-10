@@ -115,7 +115,7 @@ impl<'memory, A, E> Evaluator<'memory, A, E> {
     /// [`evaluate_register`](Self::evaluate_register)
     /// and [`evaluate_all_registers`](Self::evaluate_all_registers).
     pub fn add_cfi_rule(&mut self, register: Register, expr: Expr<A>) {
-        if register == Register::cfa() {
+        if register.is_cfa() {
             self.cfa_rule = Some(expr);
         } else {
             self.cfi_rules.insert(register, expr);
@@ -191,7 +191,7 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
             return Ok(*val);
         }
 
-        if *register == Register::cfa() {
+        if register.is_cfa() {
             let cfa_rule = match self.cfa_rule.take() {
                 Some(e) => e,
                 None => {
@@ -434,6 +434,14 @@ impl Register {
         match self {
             Self::Const(_) => true,
             Self::Var(_) => false,
+        }
+    }
+
+    /// Returns true if this is the CFA register.
+    pub fn is_cfa(&self) -> bool {
+        match self {
+            Self::Var(_) => false,
+            Self::Const(name) => name == ".cfa",
         }
     }
 }
