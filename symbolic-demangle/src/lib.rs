@@ -136,8 +136,16 @@ fn is_maybe_msvc(ident: &str) -> bool {
     ident.starts_with('?') || ident.starts_with("@?")
 }
 
+/// An MD5 mangled name consists of the prefix "??@", 32 hex digits,
+/// and the suffix "@".
 fn is_maybe_md5(ident: &str) -> bool {
-    ident.starts_with("??@") && ident.ends_with("@") && ident.len() == 36
+    if ident.len() != 36 {
+        return false;
+    }
+
+    ident.starts_with("??@")
+        && ident.ends_with("@")
+        && ident[3..35].chars().all(|c| c.is_ascii_hexdigit())
 }
 
 #[cfg(feature = "swift")]
