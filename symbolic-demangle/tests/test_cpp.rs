@@ -38,3 +38,11 @@ fn test_demangle_cpp_no_args() {
         // "_Z3MinIiiEDTqultfp_fp0_cl7forwardIT_Efp_Ecl7forwardIT0_Efp0_EEOS0_OS1_" => "decltype (({parm#1}<{parm#2})?((forward<int>)({parm#1})) : ((forward<int>)({parm#2}))) Min<int, int>",
     });
 }
+
+#[test]
+fn test_demangle_cpp_hash_suffix() {
+    assert_demangle!(Language::Cpp, DemangleOptions::complete(), {
+    "__ZZN3xxx12xxxxxxxxxxxx9xxxxxxxxxILNS0_16xxxxxxxxxxxxxxxxE0EZNKS_6xxxxxx16xxxxxxxxxxxxxxxxEPjbbE4$_76EEvRKT0_PS3_PNS_7xxxxxxxENS0_13xxxxxxxxxxxxxEbbEN18xxxxxxxxxxxxxxxxxx10xxxxxxxxxxEv$57c34bde3fedbd1a4bf6fbbe5453ff24" =>
+    "void xxx::xxxxxxxxxxxx::xxxxxxxxx<(xxx::xxxxxxxxxxxx::xxxxxxxxxxxxxxxx)0, xxx::xxxxxx::xxxxxxxxxxxxxxxx(unsigned int*, bool, bool) const::$_76>(xxx::xxxxxx::xxxxxxxxxxxxxxxx(unsigned int*, bool, bool) const::$_76 const&, xxx::xxxxxx*, xxx::xxxxxxx*, xxx::xxxxxxxxxxxx::xxxxxxxxxxxxx, bool, bool)::xxxxxxxxxxxxxxxxxx::xxxxxxxxxx()"
+    });
+}

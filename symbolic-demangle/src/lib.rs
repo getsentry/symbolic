@@ -176,6 +176,21 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
     {
         use cpp_demangle::{DemangleOptions as CppOptions, Symbol as CppSymbol};
 
+        // If ident has a suffix of $ followed by 32 hex digits, discard it.
+        let ident = {
+            let n = ident.len();
+            if n < 33 {
+                ident
+            } else {
+                let (front, back) = ident.split_at(n - 33);
+                if back.starts_with('$') && back[1..].chars().all(|c| c.is_ascii_hexdigit()) {
+                    front
+                } else {
+                    ident
+                }
+            }
+        };
+
         let symbol = match CppSymbol::new(ident) {
             Ok(symbol) => symbol,
             Err(_) => return None,
