@@ -170,11 +170,11 @@ fn try_demangle_msvc(_ident: &str, _opts: DemangleOptions) -> Option<String> {
 /// Removes a suffix consisting of $ followed by 32 hex digits, if there is one,
 /// otherwise returns its input.
 fn strip_hash_suffix(ident: &str) -> &str {
-    let n = ident.len();
-    if n < 33 {
+    let len = ident.len();
+    if len < 33 {
         ident
     } else {
-        let (front, back) = ident.split_at(n - 33);
+        let (front, back) = ident.split_at(len - 33);
         if back.starts_with('$') && back[1..].chars().all(|c| c.is_ascii_hexdigit()) {
             front
         } else {
