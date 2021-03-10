@@ -144,7 +144,7 @@ fn is_maybe_md5(ident: &str) -> bool {
     }
 
     ident.starts_with("??@")
-        && ident.ends_with("@")
+        && ident.ends_with('@')
         && ident[3..35].chars().all(|c| c.is_ascii_hexdigit())
 }
 
