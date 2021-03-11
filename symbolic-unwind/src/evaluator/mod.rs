@@ -11,7 +11,7 @@
 //! <constant>   ::=  [a-zA-Z_.][a-zA-Z0-9_.]*
 //! <variable>   ::=  $[a-zA-Z][a-zA-Z0-9]*
 //! <binop>      ::=  + | - | * | / | % | @
-//! <literal>    ::=  [0-9a-fA-F]+
+//! <literal>    ::=  -?[0-9]+
 //! ```
 //! Most of this syntax should be familiar. The symbol `^` denotes a dereference operation,
 //! i.e. assuming that some representation `m` of a region of memory is available,
