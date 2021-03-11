@@ -182,6 +182,22 @@ fn try_demangle_msvc(_ident: &str, _opts: DemangleOptions) -> Option<String> {
     None
 }
 
+/// Removes a suffix consisting of $ followed by 32 hex digits, if there is one,
+/// otherwise returns its input.
+fn strip_hash_suffix(ident: &str) -> &str {
+    let len = ident.len();
+    if len < 33 {
+        ident
+    } else {
+        let (front, back) = ident.split_at(len - 33);
+        if back.starts_with('$') && back[1..].chars().all(|c| c.is_ascii_hexdigit()) {
+            front
+        } else {
+            ident
+        }
+    }
+}
+
 fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
     if is_maybe_msvc(ident) {
         return try_demangle_msvc(ident, opts);
@@ -191,7 +207,9 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
     {
         use cpp_demangle::{DemangleOptions as CppOptions, Symbol as CppSymbol};
 
-        let symbol = match CppSymbol::new(ident) {
+        let stripped = strip_hash_suffix(ident);
+
+        let symbol = match CppSymbol::new(stripped) {
             Ok(symbol) => symbol,
             Err(_) => return None,
         };
