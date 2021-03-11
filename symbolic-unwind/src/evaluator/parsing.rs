@@ -7,7 +7,7 @@ use std::fmt;
 
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while};
-use nom::character::complete::{alpha1, alphanumeric0, alphanumeric1, char, multispace0};
+use nom::character::complete::{alphanumeric1, multispace0};
 use nom::combinator::{all_consuming, map, map_res, not, opt, recognize, value};
 use nom::error::ParseError;
 use nom::multi::many0;
@@ -87,15 +87,15 @@ impl Error for ParseExprError {}
 
 /// Parses a [variable](super::Variable).
 ///
-/// This accepts identifiers of the form `$[a-zA-Z][a-zA-Z0-9]*`.
+/// This accepts identifiers of the form `$[a-zA-Z0-9]+`.
 fn variable(input: &str) -> IResult<&str, Variable, ParseExprError> {
-    let (rest, var) = recognize(tuple((char('$'), alpha1, alphanumeric0)))(input)?;
+    let (rest, var) = recognize(tuple((tag("$"), alphanumeric1)))(input)?;
     Ok((rest, Variable(var.to_string())))
 }
 
 /// Parses a [variable](super::Variable).
 ///
-/// This accepts identifiers of the form `$[a-zA-Z][a-zA-Z0-9]*`.
+/// This accepts identifiers of the form `$[a-zA-Z0-9]+`.
 /// It will fail if there is any non-whitespace input remaining afterwards.
 pub fn variable_complete(input: &str) -> Result<Variable, ParseExprError> {
     all_consuming(variable)(input).finish().map(|(_, v)| v)
@@ -103,18 +103,15 @@ pub fn variable_complete(input: &str) -> Result<Variable, ParseExprError> {
 
 /// Parses a [constant](super::Constant).
 ///
-/// This accepts identifiers of the form `[a-zA-Z_.][a-zA-Z0-9_.]*`.
+/// This accepts identifiers of the form `\.[a-zA-Z0-9]+`.
 fn constant(input: &str) -> IResult<&str, Constant, ParseExprError> {
-    let (rest, con) = recognize(preceded(
-        alt((alpha1, tag("_"), tag("."))),
-        many0(alt((alphanumeric1, tag("_"), tag(".")))),
-    ))(input)?;
+    let (rest, con) = recognize(preceded(tag("."), alphanumeric1))(input)?;
     Ok((rest, Constant(con.to_string())))
 }
 
 /// Parses a [constant](super::Constant).
 ///
-/// This accepts identifiers of the form `[a-zA-Z_.][a-zA-Z0-9_.]*`.
+/// This accepts identifiers of the form `\.[a-zA-Z0-9]+`.
 /// It will fail if there is any non-whitespace input remaining afterwards.
 pub fn constant_complete(input: &str) -> Result<Constant, ParseExprError> {
     all_consuming(constant)(input).finish().map(|(_, c)| c)
