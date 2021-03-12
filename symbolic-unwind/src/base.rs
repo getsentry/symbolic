@@ -137,6 +137,30 @@ impl RegisterValue for u64 {
     }
 }
 
+impl RegisterValue for i32 {
+    const WIDTH: usize = 4;
+    fn read_bytes<E: Endianness>(bytes: &[u8], endian: E) -> Option<Self> {
+        let bytes: &[u8; Self::WIDTH] = bytes.get(..Self::WIDTH)?.try_into().ok()?;
+        if endian.is_big_endian() {
+            Some(Self::from_be_bytes(*bytes))
+        } else {
+            Some(Self::from_le_bytes(*bytes))
+        }
+    }
+}
+
+impl RegisterValue for i64 {
+    const WIDTH: usize = 8;
+    fn read_bytes<E: Endianness>(bytes: &[u8], endian: E) -> Option<Self> {
+        let bytes: &[u8; Self::WIDTH] = bytes.get(..Self::WIDTH)?.try_into().ok()?;
+        if endian.is_big_endian() {
+            Some(Self::from_be_bytes(*bytes))
+        } else {
+            Some(Self::from_le_bytes(*bytes))
+        }
+    }
+}
+
 /// A view into a region of memory, given by a slice and a base address.
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
