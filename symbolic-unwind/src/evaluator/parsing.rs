@@ -8,11 +8,10 @@ use std::fmt;
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while};
 use nom::character::complete::{alphanumeric1, multispace0};
-use nom::combinator::{all_consuming, map, map_res, not, opt, recognize, value};
+use nom::combinator::{all_consuming, map, map_res, not, opt, peek, recognize, value};
 use nom::error::ParseError;
-use nom::multi::many0;
-use nom::sequence::{delimited, preceded, terminated, tuple};
-use nom::{Err, Finish, IResult};
+use nom::sequence::{preceded, terminated, tuple};
+use nom::{Err, Finish, IResult, Parser};
 
 use super::*;
 
@@ -85,6 +84,36 @@ impl fmt::Display for ParseExprError {
 
 impl Error for ParseExprError {}
 
+/// Applies its child parser repeatedly with zero or more spaces in between.
+///
+/// If the child parser doesn't consume any input, you're going to have a bad time.
+fn space_separated<'a, O, P: 'a + Parser<&'a str, O, ParseExprError>>(
+    mut parser: P,
+) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<O>, ParseExprError> {
+    move |mut input| {
+        let mut result = Vec::new();
+        match parser.parse(input) {
+            Ok((rest, item)) => {
+                input = rest;
+                result.push(item);
+            }
+            Err(_) => return Ok((input, result)),
+        }
+
+        loop {
+            let rest = multispace0(input)?.0;
+            if let Ok((rest, item)) = parser.parse(rest) {
+                input = rest;
+                result.push(item);
+            } else {
+                break;
+            }
+        }
+
+        Ok((input, result))
+    }
+}
+
 /// Parses a [variable](super::Variable).
 ///
 /// This accepts identifiers of the form `$[a-zA-Z0-9]+`.
@@ -96,7 +125,7 @@ fn variable(input: &str) -> IResult<&str, Variable, ParseExprError> {
 /// Parses a [variable](super::Variable).
 ///
 /// This accepts identifiers of the form `$[a-zA-Z0-9]+`.
-/// It will fail if there is any non-whitespace input remaining afterwards.
+/// It will fail if there is any input remaining afterwards.
 pub fn variable_complete(input: &str) -> Result<Variable, ParseExprError> {
     all_consuming(variable)(input).finish().map(|(_, v)| v)
 }
@@ -112,7 +141,7 @@ fn constant(input: &str) -> IResult<&str, Constant, ParseExprError> {
 /// Parses a [constant](super::Constant).
 ///
 /// This accepts identifiers of the form `\.[a-zA-Z0-9]+`.
-/// It will fail if there is any non-whitespace input remaining afterwards.
+/// It will fail if there is any input remaining afterwards.
 pub fn constant_complete(input: &str) -> Result<Constant, ParseExprError> {
     all_consuming(constant)(input).finish().map(|(_, c)| c)
 }
@@ -127,7 +156,7 @@ pub fn identifier(input: &str) -> IResult<&str, Identifier, ParseExprError> {
 
 /// Parses an [identifier](super::Identifier).
 ///
-/// This will fail if there is any non-whitespace input remaining afterwards.
+/// This will fail if there is any input remaining afterwards.
 pub fn identifier_complete(input: &str) -> Result<Identifier, ParseExprError> {
     all_consuming(identifier)(input).finish().map(|(_, i)| i)
 }
@@ -164,8 +193,8 @@ fn number<T: RegisterValue>(input: &str) -> IResult<&str, T, ParseExprError> {
 fn base_expr<T: RegisterValue>(input: &str) -> IResult<&str, Expr<T>, ParseExprError> {
     alt((
         map(number, Expr::Value),
-        map(terminated(variable, not(tag(":"))), Expr::Var),
-        map(terminated(constant, not(tag(":"))), Expr::Const),
+        map(terminated(variable, peek(not(tag(":")))), Expr::Var),
+        map(terminated(constant, peek(not(tag(":")))), Expr::Const),
     ))(input)
 }
 
@@ -188,13 +217,11 @@ pub fn expr_stack<T: RegisterValue>(
     let mut stack = Vec::new();
 
     while !input.is_empty() {
-        if let Ok((rest, e)) = delimited(multispace0, base_expr, multispace0)(input) {
+        if let Ok((rest, e)) = preceded(multispace0, base_expr)(input) {
             stack.push(e);
             input = rest;
         } else if let Ok((rest, _)) =
-            delimited::<_, _, _, _, ParseExprError, _, _, _>(multispace0, tag("^"), multispace0)(
-                input,
-            )
+            preceded::<_, _, _, ParseExprError, _, _>(multispace0, tag("^"))(input)
         {
             let e = match stack.pop() {
                 Some(e) => e,
@@ -208,7 +235,7 @@ pub fn expr_stack<T: RegisterValue>(
 
             stack.push(Expr::Deref(Box::new(e)));
             input = rest;
-        } else if let Ok((rest, op)) = delimited(multispace0, bin_op, multispace0)(input) {
+        } else if let Ok((rest, op)) = preceded(multispace0, bin_op)(input) {
             let e2 = match stack.pop() {
                 Some(e) => e,
                 None => {
@@ -254,14 +281,14 @@ pub fn expr<T: RegisterValue>(input: &str) -> IResult<&str, Expr<T>, ParseExprEr
 
 /// Parses an [expression](super::Expr).
 ///
-/// It will fail if there is any non-whitespace input remaining afterwards.
+/// It will fail if there is any input remaining afterwards.
 pub fn expr_complete<T: RegisterValue>(input: &str) -> Result<Expr<T>, ParseExprError> {
     all_consuming(expr)(input).finish().map(|(_, expr)| expr)
 }
 
 /// Parses an [assignment](super::Assignment).
 pub fn assignment<T: RegisterValue>(input: &str) -> IResult<&str, Assignment<T>, ParseExprError> {
-    let (input, v) = delimited(multispace0, variable, multispace0)(input)?;
+    let (input, v) = terminated(variable, multispace0)(input)?;
     let (input, mut stack) = expr_stack(input)?;
 
     // At this point there should be exactly one expression on the stack, otherwise
@@ -289,21 +316,21 @@ pub fn assignment<T: RegisterValue>(input: &str) -> IResult<&str, Assignment<T>,
 
 /// Parses an [assignment](super::Assignment).
 ///
-/// It will fail if there is any non-whitespace input remaining afterwards.
+/// It will fail if there is any input remaining afterwards.
 pub fn assignment_complete<T: RegisterValue>(input: &str) -> Result<Assignment<T>, ParseExprError> {
     all_consuming(assignment)(input).finish().map(|(_, a)| a)
 }
 
 /// Parses a sequence of [assignments](super::Assignment).
-pub fn assignments<T: RegisterValue>(
-    input: &str,
-) -> IResult<&str, Vec<Assignment<T>>, ParseExprError> {
-    many0(delimited(multispace0, assignment, multispace0))(input)
+pub fn assignments<'a, T: 'a + RegisterValue>(
+    input: &'a str,
+) -> IResult<&'a str, Vec<Assignment<T>>, ParseExprError> {
+    space_separated(assignment)(input)
 }
 
 /// Parses a sequence of [assignments](super::Assignment).
 ///
-/// It will fail if there is any non-whitespace input remaining afterwards.
+/// It will fail if there is any input remaining afterwards.
 pub fn assignments_complete<T: RegisterValue>(
     input: &str,
 ) -> Result<Vec<Assignment<T>>, ParseExprError> {
@@ -320,19 +347,21 @@ pub fn rule<T: RegisterValue>(input: &str) -> IResult<&str, Rule<T>, ParseExprEr
 
 ///Parses a [rule](super::Rule).
 ///
-/// It will fail if there is any non-whitespace input remaining afterwards.
+/// It will fail if there is any input remaining afterwards.
 pub fn rule_complete<T: RegisterValue>(input: &str) -> Result<Rule<T>, ParseExprError> {
     all_consuming(rule)(input).finish().map(|(_, r)| r)
 }
 
 /// Parses a sequence of [rules](super::Rule).
-pub fn rules<T: RegisterValue>(input: &str) -> IResult<&str, Vec<Rule<T>>, ParseExprError> {
-    many0(delimited(multispace0, rule, multispace0))(input)
+pub fn rules<'a, T: 'a + RegisterValue>(
+    input: &'a str,
+) -> IResult<&'a str, Vec<Rule<T>>, ParseExprError> {
+    space_separated(rule)(input)
 }
 
 /// Parses a sequence of [rules](super::Rule).
 ///
-/// It will fail if there is any non-whitespace input remaining afterwards.
+/// It will fail if there is any input remaining afterwards.
 pub fn rules_complete<T: RegisterValue>(input: &str) -> Result<Vec<Rule<T>>, ParseExprError> {
     all_consuming(rules)(input).finish().map(|(_, a)| a)
 }
@@ -391,7 +420,7 @@ mod test {
         assert_eq!(
             err,
             ParseExprError {
-                input: "+".to_string(),
+                input: " +".to_string(),
                 kind: ParseExprErrorKind::NotEnoughOperands,
             }
         );
@@ -415,7 +444,6 @@ mod test {
 
     #[test]
     fn test_assignment_2() {
-        use nom::multi::many1;
         use Expr::*;
         let input = "$foo 4 ^ = $bar .baz 17 + = 42";
         let (v1, v2) = (Variable("$foo".to_string()), Variable("$bar".to_string()));
@@ -426,7 +454,7 @@ mod test {
             BinOp::Add,
         );
 
-        let (rest, assigns) = many1(preceded(multispace0, assignment))(input).unwrap();
+        let (rest, assigns) = assignments(input).unwrap();
         assert_eq!(rest, " 42");
         assert_eq!(assigns[0], Assignment(v1, e1));
         assert_eq!(assigns[1], Assignment(v2, e2));
@@ -439,7 +467,7 @@ mod test {
         assert_eq!(
             err,
             ParseExprError {
-                input: "=".to_string(),
+                input: " =".to_string(),
                 kind: ParseExprErrorKind::MalformedAssignment,
             }
         );
@@ -466,8 +494,9 @@ mod test {
         let rule0 = Rule(Identifier::Const(cfa), expr0);
         let rule1 = Rule(Identifier::Var(r0), expr1);
 
-        let rules = rules_complete(input).unwrap();
+        let (rest, rules) = rules(input).unwrap();
 
+        assert_eq!(rest, "   ");
         assert_eq!(rules[0], rule0);
         assert_eq!(rules[1], rule1);
     }
