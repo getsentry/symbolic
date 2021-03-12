@@ -203,13 +203,19 @@ fn base_expr<T: RegisterValue>(input: &str) -> IResult<&str, Expr<T>, ParseExprE
 /// # Example
 /// ```rust
 /// use symbolic_unwind::evaluator::parsing::expr_stack;
-/// use symbolic_unwind::evaluator::BinOp::*;
-/// use symbolic_unwind::evaluator::Expr::*;
+/// use symbolic_unwind::evaluator::{BinOp, Expr};
 ///
 /// let (_, stack) = expr_stack::<u8>("1 2 + 3").unwrap();
 /// assert_eq!(stack.len(), 2);
-/// assert_eq!(stack[0], Op(Box::new(Value(1)), Box::new(Value(2)), Add));
-/// assert_eq!(stack[1], Value(3));
+/// assert_eq!(
+///     stack[0],
+///     Expr::Op(
+///         Box::new(Expr::Value(1)),
+///         Box::new(Expr::Value(2)),
+///         BinOp::Add
+///     )
+/// );
+/// assert_eq!(stack[1], Expr::Value(3));
 /// ```
 pub fn expr_stack<T: RegisterValue>(
     mut input: &str,
@@ -373,11 +379,14 @@ mod test {
 
     #[test]
     fn test_expr_1() {
-        use Expr::*;
         let input = "1 2 + 3 *";
-        let e = Op(
-            Box::new(Op(Box::new(Value(1u8)), Box::new(Value(2)), BinOp::Add)),
-            Box::new(Value(3)),
+        let e = Expr::Op(
+            Box::new(Expr::Op(
+                Box::new(Expr::Value(1u8)),
+                Box::new(Expr::Value(2)),
+                BinOp::Add,
+            )),
+            Box::new(Expr::Value(3)),
             BinOp::Mul,
         );
         let (rest, parsed) = expr_stack(input).unwrap();
@@ -396,16 +405,15 @@ mod test {
 
     #[test]
     fn test_expr_2() {
-        use Expr::*;
         let input = "1 2 ^ + 3 $foo *";
-        let e1 = Op(
-            Box::new(Value(1u8)),
-            Box::new(Deref(Box::new(Value(2)))),
+        let e1 = Expr::Op(
+            Box::new(Expr::Value(1u8)),
+            Box::new(Expr::Deref(Box::new(Expr::Value(2)))),
             BinOp::Add,
         );
-        let e2 = Op(
-            Box::new(Value(3)),
-            Box::new(Var(Variable(String::from("$foo")))),
+        let e2 = Expr::Op(
+            Box::new(Expr::Value(3)),
+            Box::new(Expr::Var(Variable(String::from("$foo")))),
             BinOp::Mul,
         );
         let (rest, parsed) = expr_stack(input).unwrap();
@@ -428,12 +436,11 @@ mod test {
 
     #[test]
     fn test_assignment() {
-        use Expr::*;
         let input = "$foo 4 ^ 7 @ =";
         let v = Variable("$foo".to_string());
-        let e = Op(
-            Box::new(Deref(Box::new(Value(4)))),
-            Box::new(Value(7)),
+        let e = Expr::Op(
+            Box::new(Expr::Deref(Box::new(Expr::Value(4)))),
+            Box::new(Expr::Value(7)),
             BinOp::Align,
         );
 
@@ -444,13 +451,12 @@ mod test {
 
     #[test]
     fn test_assignment_2() {
-        use Expr::*;
         let input = "$foo 4 ^ = $bar .baz 17 + = 42";
         let (v1, v2) = (Variable("$foo".to_string()), Variable("$bar".to_string()));
-        let e1 = Deref(Box::new(Value(4u8)));
-        let e2 = Op(
-            Box::new(Const(Constant(".baz".to_string()))),
-            Box::new(Value(17)),
+        let e1 = Expr::Deref(Box::new(Expr::Value(4u8)));
+        let e2 = Expr::Op(
+            Box::new(Expr::Const(Constant(".baz".to_string()))),
+            Box::new(Expr::Value(17)),
             BinOp::Add,
         );
 
@@ -482,15 +488,17 @@ mod test {
 
     #[test]
     fn test_rules() {
-        use Expr::*;
-
         let input = ".cfa: 7 $rax + $r0: $r1 ^   ";
         let cfa = Constant(".cfa".to_string());
         let rax = Variable("$rax".to_string());
         let r0 = Variable("$r0".to_string());
         let r1 = Variable("$r1".to_string());
-        let expr0 = Op(Box::new(Value(7u32)), Box::new(Var(rax)), BinOp::Add);
-        let expr1 = Deref(Box::new(Var(r1)));
+        let expr0 = Expr::Op(
+            Box::new(Expr::Value(7u32)),
+            Box::new(Expr::Var(rax)),
+            BinOp::Add,
+        );
+        let expr1 = Expr::Deref(Box::new(Expr::Var(r1)));
         let rule0 = Rule(Identifier::Const(cfa), expr0);
         let rule1 = Rule(Identifier::Var(r0), expr1);
 
