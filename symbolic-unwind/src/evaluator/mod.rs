@@ -79,6 +79,17 @@ pub struct Evaluator<'memory, A, E> {
 
     /// The endianness the evaluator uses to read data from memory.
     endian: E,
+
+    /// A map of CFI rules, i.e., rules for computing the value of a register in the
+    /// caller's stack frame.
+    cfi_rules: BTreeMap<Identifier, Expr<A>>,
+
+    /// The rule for the CFA pseudoregister. It has its own field because it needs to
+    /// be evaluated before any other rules.
+    cfa_rule: Option<Expr<A>>,
+
+    /// A cache for saving already computed values of caller registers.
+    register_cache: BTreeMap<Identifier, A>,
 }
 
 impl<'memory, A, E> Evaluator<'memory, A, E> {
@@ -90,6 +101,9 @@ impl<'memory, A, E> Evaluator<'memory, A, E> {
             constants: BTreeMap::new(),
             variables: BTreeMap::new(),
             endian,
+            cfi_rules: BTreeMap::new(),
+            register_cache: BTreeMap::new(),
+            cfa_rule: None,
         }
     }
 
@@ -109,6 +123,17 @@ impl<'memory, A, E> Evaluator<'memory, A, E> {
     pub fn variables(mut self, variables: BTreeMap<Variable, A>) -> Self {
         self.variables = variables;
         self
+    }
+
+    /// Adds a rule for computing a register's value in the caller's frame
+    /// to the evaluator.
+    pub fn add_cfi_rule(&mut self, ident: Identifier, expr: Expr<A>) {
+        match ident {
+            Identifier::Const(c) if c.is_cfa() => self.cfa_rule = Some(expr),
+            _ => {
+                self.cfi_rules.insert(ident, expr);
+            }
+        }
     }
 }
 
@@ -160,6 +185,42 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
         }
     }
 
+    /// Evaluates all cfi rules that have been added with
+    /// [`add_cfi_rule`](Self::add_cfi_rule) and returns the results in a map.
+    ///
+    /// Results are cached. This may fail if a rule cannot be evaluated.
+    pub fn evaluate_cfi_rules(&mut self) -> Result<BTreeMap<Identifier, A>, EvaluationError> {
+        if let Some(ref expr) = self.cfa_rule {
+            let cfa_val = self.evaluate(expr)?;
+            self.constants.insert(Constant::cfa(), cfa_val);
+            self.register_cache
+                .insert(Identifier::Const(Constant::cfa()), cfa_val);
+        }
+
+        let cfi_rules = std::mem::take(&mut self.cfi_rules);
+        for (ident, expr) in cfi_rules.iter() {
+            if !self.register_cache.contains_key(ident) {
+                self.register_cache
+                    .insert(ident.clone(), self.evaluate(expr)?);
+            }
+        }
+        self.cfi_rules = cfi_rules;
+        Ok(self.register_cache.clone())
+    }
+
+    /// Reads a string of cfi rules, adds them to the evaluator, and evaluates them.
+    pub fn evaluate_cfi_string(
+        &mut self,
+        rules: &str,
+    ) -> Result<BTreeMap<Identifier, A>, ExpressionError> {
+        let rules = parsing::rules_complete(rules.trim())?;
+
+        for Rule(ident, expr) in rules.into_iter() {
+            self.add_cfi_rule(ident, expr);
+        }
+
+        Ok(self.evaluate_cfi_rules()?)
+    }
     /// Performs an assignment by first evaluating its right-hand side and then
     /// modifying [`variables`](Self::variables) accordingly.
     ///
@@ -331,6 +392,18 @@ impl FromStr for Variable {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Constant(String);
 
+impl Constant {
+    /// Returns true if this is the CFA (Canonical Frame Address) pseudoregister.
+    pub fn is_cfa(&self) -> bool {
+        self.0 == ".cfa"
+    }
+
+    /// Returns the CFA (Canonical Frame Address) pseudoregister.
+    pub fn cfa() -> Self {
+        Self(".cfa".to_string())
+    }
+}
+
 impl fmt::Display for Constant {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
@@ -442,7 +515,7 @@ impl<T: RegisterValue> FromStr for Assignment<T> {
 }
 
 /// A variable or constant.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Identifier {
     /// A variable.
     Var(Variable),
