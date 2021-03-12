@@ -114,20 +114,19 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     /// This may fail if the expression tries to dereference unavailable memory
     /// or uses undefined constants or variables.
     pub fn evaluate(&self, expr: &Expr<A>) -> Result<A, EvaluationError> {
-        use Expr::*;
         match expr {
-            Value(x) => Ok(*x),
-            Const(c) => {
+            Expr::Value(x) => Ok(*x),
+            Expr::Const(c) => {
                 self.constants.get(&c).copied().ok_or_else(|| {
                     EvaluationError(EvaluationErrorInner::UndefinedConstant(c.clone()))
                 })
             }
-            Var(v) => {
+            Expr::Var(v) => {
                 self.variables.get(&v).copied().ok_or_else(|| {
                     EvaluationError(EvaluationErrorInner::UndefinedVariable(v.clone()))
                 })
             }
-            Op(e1, e2, op) => {
+            Expr::Op(e1, e2, op) => {
                 let e1 = self.evaluate(&*e1)?;
                 let e2 = self.evaluate(&*e2)?;
                 match op {
@@ -140,7 +139,7 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
                 }
             }
 
-            Deref(address) => {
+            Expr::Deref(address) => {
                 let address = self.evaluate(&*address)?;
                 let memory = self
                     .memory
