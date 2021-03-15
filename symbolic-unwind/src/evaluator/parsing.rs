@@ -10,7 +10,7 @@ use nom::bytes::complete::{tag, take_while};
 use nom::character::complete::{alphanumeric1, multispace0};
 use nom::combinator::{all_consuming, map, map_res, not, opt, peek, recognize, value};
 use nom::error::ParseError;
-use nom::sequence::{preceded, terminated, tuple};
+use nom::sequence::{pair, preceded, terminated, tuple};
 use nom::{Err, Finish, IResult, Parser};
 
 use super::*;
@@ -22,11 +22,8 @@ enum ParseExprErrorKind {
     /// An operator was encountered, but there were not enough operands on the stack.
     NotEnoughOperands,
 
-    /// More than one expression preceded a `=`.
-    MalformedAssignment,
-
-    /// Only one expression was expected, but multiple were parsed.
-    TooManyExpressions,
+    /// A negative number was encountered in an illegal context (i.e. not in an addition).
+    UnexpectedNegativeNumber,
 
     /// An error returned by `nom`.
     Nom(nom::error::ErrorKind),
@@ -36,8 +33,7 @@ impl fmt::Display for ParseExprErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::NotEnoughOperands => write!(f, "Not enough operands on the stack"),
-            Self::MalformedAssignment => write!(f, "Tried to parse an assignment, but there was more than one expression on the stack"),
-            Self::TooManyExpressions => write!(f, "Exactly one expression was expected, but multiple were found. Possibly missing postfix operators?"),
+            Self::UnexpectedNegativeNumber => write!(f, "Encountered unexpected negative number"),
             Self::Nom(kind) => write!(f, "Error from nom: {}", kind.description()),
         }
     }
@@ -177,13 +173,7 @@ fn bin_op(input: &str) -> IResult<&str, BinOp, ParseExprError> {
 ///
 /// This accepts expressions of the form `-?[0-9]+`.
 fn number<T: RegisterValue>(input: &str) -> IResult<&str, T, ParseExprError> {
-    map_res(
-        recognize(preceded(
-            opt(tag("-")),
-            take_while(|c: char| c.is_ascii_digit()),
-        )),
-        T::from_str,
-    )(input)
+    map_res(take_while(|c: char| c.is_ascii_digit()), T::from_str)(input)
 }
 
 /// Parses a number, variable, or constant.
@@ -198,39 +188,28 @@ fn base_expr<T: RegisterValue>(input: &str) -> IResult<&str, Expr<T>, ParseExprE
     ))(input)
 }
 
-/// Parses a stack of [expressions](super::Expr).
-///
-/// # Example
-/// ```rust
-/// use symbolic_unwind::evaluator::parsing::expr_stack;
-/// use symbolic_unwind::evaluator::{BinOp, Expr};
-///
-/// let (_, stack) = expr_stack::<u8>("1 2 + 3").unwrap();
-/// assert_eq!(stack.len(), 2);
-/// assert_eq!(
-///     stack[0],
-///     Expr::Op(
-///         Box::new(Expr::Value(1)),
-///         Box::new(Expr::Value(2)),
-///         BinOp::Add
-///     )
-/// );
-/// assert_eq!(stack[1], Expr::Value(3));
-/// ```
-pub fn expr_stack<T: RegisterValue>(
-    mut input: &str,
-) -> IResult<&str, Vec<Expr<T>>, ParseExprError> {
+/// Parses an [expression](super::Expr).
+pub fn expr<T: RegisterValue>(mut input: &str) -> IResult<&str, Expr<T>, ParseExprError> {
     let mut stack = Vec::new();
 
+    let (rest, (sign, e)) = pair(opt(tag("-")), base_expr)(input)?;
+    stack.push((e.clone(), sign.is_some()));
+    let (mut saved_input, mut saved_expr, mut saved_sign) = (rest, e, sign.is_some());
+    input = saved_input;
+
     while !input.is_empty() {
-        if let Ok((rest, e)) = preceded(multispace0, base_expr)(input) {
-            stack.push(e);
+        input = multispace0(input)?.0;
+        if let Ok((rest, (sign, e))) = pair(opt(tag("-")), base_expr)(input) {
+            stack.push((e, sign.is_some()));
             input = rest;
-        } else if let Ok((rest, _)) =
-            preceded::<_, _, _, ParseExprError, _, _>(multispace0, tag("^"))(input)
-        {
-            let e = match stack.pop() {
-                Some(e) => e,
+            if stack.len() == 1 {
+                saved_input = input;
+                saved_expr = stack[0].0.clone();
+                saved_sign = stack[0].1;
+            }
+        } else if let Ok((rest, _)) = tag::<_, _, ParseExprError>("^")(input) {
+            let (e, neg) = match stack.pop() {
+                Some(p) => p,
                 None => {
                     return Err(Err::Error(ParseExprError {
                         input: input.to_owned(),
@@ -239,11 +218,23 @@ pub fn expr_stack<T: RegisterValue>(
                 }
             };
 
-            stack.push(Expr::Deref(Box::new(e)));
+            if neg {
+                return Err(Err::Error(ParseExprError {
+                    input: input.to_owned(),
+                    kind: ParseExprErrorKind::UnexpectedNegativeNumber,
+                }));
+            }
+
+            stack.push((Expr::Deref(Box::new(e)), false));
             input = rest;
-        } else if let Ok((rest, op)) = preceded(multispace0, bin_op)(input) {
-            let e2 = match stack.pop() {
-                Some(e) => e,
+            if stack.len() == 1 {
+                saved_input = input;
+                saved_expr = stack[0].0.clone();
+                saved_sign = stack[0].1;
+            }
+        } else if let Ok((rest, op)) = bin_op(input) {
+            let (e2, neg2) = match stack.pop() {
+                Some(p) => p,
                 None => {
                     return Err(Err::Error(ParseExprError {
                         input: input.to_string(),
@@ -252,8 +243,8 @@ pub fn expr_stack<T: RegisterValue>(
                 }
             };
 
-            let e1 = match stack.pop() {
-                Some(e) => e,
+            let (e1, neg1) = match stack.pop() {
+                Some(p) => p,
                 None => {
                     return Err(Err::Error(ParseExprError {
                         input: input.to_string(),
@@ -261,27 +252,39 @@ pub fn expr_stack<T: RegisterValue>(
                     }))
                 }
             };
-            stack.push(Expr::Op(Box::new(e1), Box::new(e2), op));
+
+            if neg1 || (neg2 && op != BinOp::Add) {
+                return Err(Err::Error(ParseExprError {
+                    input: input.to_owned(),
+                    kind: ParseExprErrorKind::UnexpectedNegativeNumber,
+                }));
+            }
+
+            let op = match op {
+                BinOp::Add if neg2 => BinOp::Sub,
+                BinOp::Sub if neg2 => BinOp::Add,
+                _ => op,
+            };
+
+            stack.push((Expr::Op(Box::new(e1), Box::new(e2), op), false));
             input = rest;
+            if stack.len() == 1 {
+                saved_input = input;
+                saved_expr = stack[0].0.clone();
+                saved_sign = stack[0].1;
+            }
         } else {
             break;
         }
     }
 
-    Ok((input, stack))
-}
-
-/// Parses an [expression](super::Expr).
-pub fn expr<T: RegisterValue>(input: &str) -> IResult<&str, Expr<T>, ParseExprError> {
-    let (rest, mut stack) = expr_stack(input)?;
-    if stack.len() > 1 {
+    if saved_sign {
         Err(Err::Error(ParseExprError {
-            kind: ParseExprErrorKind::TooManyExpressions,
-            input: input.to_string(),
+            input: input.to_owned(),
+            kind: ParseExprErrorKind::UnexpectedNegativeNumber,
         }))
     } else {
-        // This unwrap cannot fail: if the parser succeded, the stack is nonempty.
-        Ok((rest, stack.pop().unwrap()))
+        Ok((saved_input, saved_expr))
     }
 }
 
@@ -294,29 +297,8 @@ pub fn expr_complete<T: RegisterValue>(input: &str) -> Result<Expr<T>, ParseExpr
 
 /// Parses an [assignment](super::Assignment).
 pub fn assignment<T: RegisterValue>(input: &str) -> IResult<&str, Assignment<T>, ParseExprError> {
-    let (input, v) = terminated(variable, multispace0)(input)?;
-    let (input, mut stack) = expr_stack(input)?;
-
-    // At this point there should be exactly one expression on the stack, otherwise
-    // it's not a well-formed assignment.
-    if stack.len() > 1 {
-        return Err(Err::Error(ParseExprError {
-            input: input.to_string(),
-            kind: ParseExprErrorKind::MalformedAssignment,
-        }));
-    }
-
-    let e = match stack.pop() {
-        Some(e) => e,
-        None => {
-            return Err(Err::Error(ParseExprError {
-                input: input.to_string(),
-                kind: ParseExprErrorKind::NotEnoughOperands,
-            }))
-        }
-    };
-
-    let (rest, _) = preceded(multispace0, tag("="))(input)?;
+    let (rest, (v, _, e, _, _)) =
+        tuple((variable, multispace0, expr, multispace0, tag("=")))(input)?;
     Ok((rest, Assignment(v, e)))
 }
 
@@ -389,9 +371,9 @@ mod test {
             Box::new(Expr::Value(3)),
             BinOp::Mul,
         );
-        let (rest, parsed) = expr_stack(input).unwrap();
+        let (rest, parsed) = expr(input).unwrap();
         assert_eq!(rest, "");
-        assert_eq!(parsed, vec![e]);
+        assert_eq!(parsed, e);
     }
 
     #[test]
@@ -406,32 +388,39 @@ mod test {
     #[test]
     fn test_expr_2() {
         let input = "1 2 ^ + 3 $foo *";
-        let e1 = Expr::Op(
+        let e = Expr::Op(
             Box::new(Expr::Value(1u8)),
             Box::new(Expr::Deref(Box::new(Expr::Value(2)))),
             BinOp::Add,
         );
-        let e2 = Expr::Op(
-            Box::new(Expr::Value(3)),
-            Box::new(Expr::Var(Variable(String::from("$foo")))),
-            BinOp::Mul,
-        );
-        let (rest, parsed) = expr_stack(input).unwrap();
-        assert_eq!(rest, "");
-        assert_eq!(parsed, vec![e1, e2]);
+        let (rest, parsed) = expr(input).unwrap();
+        assert_eq!(rest, " 3 $foo *");
+        assert_eq!(parsed, e);
     }
 
     #[test]
-    fn test_expr_malformed() {
-        let input = "3 +";
-        let err = expr_stack::<u8>(input).finish().unwrap_err();
-        assert_eq!(
-            err,
-            ParseExprError {
-                input: " +".to_string(),
-                kind: ParseExprErrorKind::NotEnoughOperands,
-            }
+    fn test_negative() {
+        let input = "13 -2 + .cfa";
+        let e = Expr::Op(
+            Box::new(Expr::Value(13u8)),
+            Box::new(Expr::Value(2)),
+            BinOp::Sub,
         );
+        let (rest, parsed) = expr(input).unwrap();
+        assert_eq!(rest, " .cfa");
+        assert_eq!(parsed, e);
+    }
+
+    #[test]
+    fn test_negative_bad_1() {
+        let input = "-13 2 + .cfa";
+        expr::<u8>(input).finish().unwrap_err();
+    }
+
+    #[test]
+    fn test_negative_bad_2() {
+        let input = "13 -2 * .cfa";
+        expr::<u8>(input).finish().unwrap_err();
     }
 
     #[test]
@@ -469,14 +458,7 @@ mod test {
     #[test]
     fn test_assignment_malformed() {
         let input = "$foo 4 ^ 7 =";
-        let err = assignment::<u8>(input).finish().unwrap_err();
-        assert_eq!(
-            err,
-            ParseExprError {
-                input: " =".to_string(),
-                kind: ParseExprErrorKind::MalformedAssignment,
-            }
-        );
+        assignment::<u8>(input).finish().unwrap_err();
     }
 
     #[test]
