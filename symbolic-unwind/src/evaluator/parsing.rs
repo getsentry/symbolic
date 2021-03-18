@@ -189,25 +189,53 @@ fn base_expr<T: RegisterValue>(input: &str) -> IResult<&str, Expr<T>, ParseExprE
 }
 
 /// Parses an [expression](super::Expr).
+///
+/// This returns the largest single expression that can be parsed starting from the
+/// beginning. Due to this and having to handle the special case of negative numbers,
+/// it is internally somewhat complicated.
+///
+/// # Example
+/// ```
+/// use symbolic_unwind::evaluator::parsing::expr;
+/// use symbolic_unwind::evaluator::{BinOp, Expr};
+///
+/// let e1 = Expr::Value(1u8);
+/// let e2 = Expr::Op(Box::new(e1.clone()), Box::new(Expr::Value(2)), BinOp::Sub);
+///
+/// assert_eq!(expr("1 -2").unwrap(), (" -2", e1));
+/// assert_eq!(expr("1 -2 + 3").unwrap(), (" 3", e2));
+/// ```
 pub fn expr<T: RegisterValue>(mut input: &str) -> IResult<&str, Expr<T>, ParseExprError> {
     let mut stack = Vec::new();
 
+    // Parse an initial expression. If this fails, we are done.
     let (rest, (sign, e)) = pair(opt(tag("-")), base_expr)(input)?;
     stack.push((e.clone(), sign.is_some()));
+
+    // Invariant: saved_expr is the largest whole expressions we parsed so far, saved_sign
+    // is true if that expression was a negative number, and saved_input is the input
+    // after parsing saved_expr.
     let (mut saved_input, mut saved_expr, mut saved_sign) = (rest, e, sign.is_some());
     input = saved_input;
 
+    // Parse until we run out of input or nothing matches.
     while !input.is_empty() {
         input = multispace0(input)?.0;
+
+        // Try to parse a constant, variable, or number.
         if let Ok((rest, (sign, e))) = pair(opt(tag("-")), base_expr)(input) {
             stack.push((e, sign.is_some()));
             input = rest;
             if stack.len() == 1 {
+                // If there is exactly one expression on the stack, we've just parsed
+                // a new whole expression. Save it to maintain invariant.
                 saved_input = input;
                 saved_expr = stack[0].0.clone();
                 saved_sign = stack[0].1;
             }
-        } else if let Ok((rest, _)) = tag::<_, _, ParseExprError>("^")(input) {
+        }
+        // Try to parse a dereference.
+        else if let Ok((rest, _)) = tag::<_, _, ParseExprError>("^")(input) {
             let (e, neg) = match stack.pop() {
                 Some(p) => p,
                 None => {
@@ -218,6 +246,7 @@ pub fn expr<T: RegisterValue>(mut input: &str) -> IResult<&str, Expr<T>, ParseEx
                 }
             };
 
+            // If the operand is negative, that's an error.
             if neg {
                 return Err(Err::Error(ParseExprError {
                     input: input.to_owned(),
@@ -232,7 +261,9 @@ pub fn expr<T: RegisterValue>(mut input: &str) -> IResult<&str, Expr<T>, ParseEx
                 saved_expr = stack[0].0.clone();
                 saved_sign = stack[0].1;
             }
-        } else if let Ok((rest, op)) = bin_op(input) {
+        }
+        // Try to parse a binary expression.
+        else if let Ok((rest, op)) = bin_op(input) {
             let (e2, neg2) = match stack.pop() {
                 Some(p) => p,
                 None => {
@@ -253,6 +284,8 @@ pub fn expr<T: RegisterValue>(mut input: &str) -> IResult<&str, Expr<T>, ParseEx
                 }
             };
 
+            // If either the first operand is negative or the second operand is negative
+            // and it's not an addition, that's an error.
             if neg1 || (neg2 && op != BinOp::Add) {
                 return Err(Err::Error(ParseExprError {
                     input: input.to_owned(),
@@ -260,9 +293,9 @@ pub fn expr<T: RegisterValue>(mut input: &str) -> IResult<&str, Expr<T>, ParseEx
                 }));
             }
 
+            // Replace `e -n +` by `e n -`.
             let op = match op {
                 BinOp::Add if neg2 => BinOp::Sub,
-                BinOp::Sub if neg2 => BinOp::Add,
                 _ => op,
             };
 
@@ -278,6 +311,7 @@ pub fn expr<T: RegisterValue>(mut input: &str) -> IResult<&str, Expr<T>, ParseEx
         }
     }
 
+    // If the last whole expression we parsed was negative, that's an error.
     if saved_sign {
         Err(Err::Error(ParseExprError {
             input: input.to_owned(),
