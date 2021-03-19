@@ -286,14 +286,17 @@ impl<W: Write> AsciiCfiWriter<W> {
     fn process_breakpad(&mut self, object: &BreakpadObject<'_>) -> Result<(), CfiError> {
         for record in object.stack_records() {
             match record? {
-                BreakpadStackRecord::Cfi(r) => match r {
-                    BreakpadStackCfiRecord::Init { start, size, text } => {
-                        writeln!(self.inner, "STACK CFI INIT {:x} {:x} {}", start, size, text)
+                BreakpadStackRecord::Cfi(r) => {
+                    writeln!(
+                        self.inner,
+                        "STACK CFI INIT {:x} {:x} {}",
+                        r.start, r.size, r.init_rules
+                    );
+
+                    for d in r.deltas {
+                        writeln!(self.inner, "STACK CFI {:x} {}", d.address, d.rules);
                     }
-                    BreakpadStackCfiRecord::Delta { address, text } => {
-                        writeln!(self.inner, "STACK CFI {:x} {}", address, text)
-                    }
-                },
+                }
                 BreakpadStackRecord::Win(r) => writeln!(self.inner, "STACK WIN {}", r.text),
             }?
         }

@@ -648,35 +648,64 @@ impl<'d> Iterator for BreakpadLineRecords<'d> {
     }
 }
 
+/// A `STACK CFI` record. Usually associated with a [BreakpadStackCfiRecord].
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct BreakpadStackCfiDeltaRecord<'d> {
+    /// The address covered by the record.
+    pub address: u64,
+
+    /// The unwind program rules.
+    pub rules: &'d str,
+}
+
+impl<'d> BreakpadStackCfiDeltaRecord<'d> {
+    /// Constructs a delta record directly from a Pest parser pair.
+    fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Self {
+        let mut pair = pair.into_inner();
+        let address = u64::from_str_radix(pair.next().unwrap().as_str(), 16).unwrap();
+        let rules = pair.next().unwrap().as_str();
+
+        Self { address, rules }
+    }
+}
+
 /// A [call frame information record](https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-cfi-records)
 /// for platforms other than Windows x86.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum BreakpadStackCfiRecord<'d> {
-    /// A `STACK CFI INIT` record.
-    ///
-    /// Example: `STACK CFI INIT 804c4b0 40 .cfa: $esp 4 + $eip: .cfa 4 - ^`
-    Init {
-        /// The starting address covered by this record.
-        start: u64,
-        /// The number of bytes covered by this record.
-        size: u64,
-        /// The unwind program rules.
-        text: &'d str,
-    },
+///
+/// This bundles together a `STACK CFI INIT` record and its associated `STACK CFI` records.
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
+pub struct BreakpadStackCfiRecord<'d> {
+    /// The starting address covered by this record.
+    pub start: u64,
 
-    /// A `STACK CFI` record.
-    ///
-    /// Example: `STACK CFI 804c4b1 .cfa: $esp 8 + $ebp: .cfa 8 - ^`
-    Delta {
-        /// The address covered by this record.
-        address: u64,
-        /// The unwind program rules.
-        text: &'d str,
-    },
+    /// The number of bytes covered by this record.
+    pub size: u64,
+
+    /// The unwind program rules in the `STACK CFI INIT` record.
+    pub init_rules: &'d str,
+
+    /// The `STACK CFI` records belonging to a single `STACK CFI INIT record.
+    pub deltas: Vec<BreakpadStackCfiDeltaRecord<'d>>,
 }
 
 impl<'d> BreakpadStackCfiRecord<'d> {
-    /// Parses a CFI stack record from a single line.
+    /// Parses a `STACK CFI INIT` record  and its associated `STACK CFI` records.
+    ///
+    /// # Example
+    /// ```
+    /// use symbolic_debuginfo::breakpad::BreakpadStackCfiRecord;
+    ///
+    /// let input = b"STACK CFI INIT 1880 2d .cfa: $rsp 8 + .ra: .cfa -8 + ^
+    ///               STACK CFI 1882 .cfa $rsp 12 + $rbp .cfa -16
+    ///               STACK CFI 1883 .cfa $rsp 8 +";
+    ///
+    /// let record = BreakpadStackCfiRecord::parse(input).unwrap();
+    ///
+    /// assert_eq!(record.start, 0x1880);
+    /// assert_eq!(record.size, 0x2d);
+    /// assert_eq!(record.init_rules, ".cfa: $rsp 8 + .ra: .cfa -8 + ^");
+    /// assert_eq!(record.deltas.len(), 2);
+    /// ```
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::stack_cfi, string)?
@@ -686,31 +715,27 @@ impl<'d> BreakpadStackCfiRecord<'d> {
         Ok(Self::from_pair(parsed))
     }
 
-    /// Constructs a stack record directly from a Pest parser pair.
+    /// Constructs a stack cfi record directly from a Pest parser pair.
     fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Self {
-        let rule = pair.into_inner().next().unwrap();
+        let mut records = pair.into_inner();
+        let mut init = records.next().unwrap().into_inner();
+        let start = u64::from_str_radix(init.next().unwrap().as_str(), 16).unwrap();
+        let size = u64::from_str_radix(init.next().unwrap().as_str(), 16).unwrap();
+        let init_rules = init.next().unwrap().as_str();
 
-        match rule.as_rule() {
-            Rule::stack_cfi_init => {
-                let mut inner_rules = rule.into_inner();
-                let start = u64::from_str_radix(inner_rules.next().unwrap().as_str(), 16).unwrap();
-                let size = u64::from_str_radix(inner_rules.next().unwrap().as_str(), 16).unwrap();
-                let text = inner_rules.next().unwrap().as_str();
+        let mut record = Self {
+            start,
+            size,
+            init_rules,
+            deltas: Vec::new(),
+        };
 
-                Self::Init { start, size, text }
-            }
-
-            Rule::stack_cfi_delta => {
-                let mut inner_rules = rule.into_inner();
-                let address =
-                    u64::from_str_radix(inner_rules.next().unwrap().as_str(), 16).unwrap();
-                let text = inner_rules.next().unwrap().as_str();
-
-                Self::Delta { address, text }
-            }
-
-            _ => unreachable!(),
+        for delta in records {
+            record
+                .deltas
+                .push(BreakpadStackCfiDeltaRecord::from_pair(delta));
         }
+        record
     }
 }
 
@@ -1451,32 +1476,22 @@ mod tests {
 
     #[test]
     fn test_parse_stack_cfi_init_record() -> Result<(), BreakpadError> {
-        let string = b"STACK CFI INIT 1880 2d .cfa: $rsp 8 + .ra: .cfa -8 + ^";
+        let string = b"STACK CFI INIT 1880 2d .cfa: $rsp 8 + .ra: .cfa -8 + ^
+            STACK CFI 1880 .cfa: $rsp 8 + .ra: .cfa -8 + ^";
         let record = BreakpadStackRecord::parse(string)?;
 
         insta::assert_debug_snapshot!(record, @r###"
         Cfi(
-            Init {
+            BreakpadStackCfiRecord {
                 start: 6272,
                 size: 45,
-                text: ".cfa: $rsp 8 + .ra: .cfa -8 + ^",
-            },
-        )
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_stack_cfi_delta_record() -> Result<(), BreakpadError> {
-        let string = b"STACK CFI 1880 .cfa: $rsp 8 + .ra: .cfa -8 + ^";
-        let record = BreakpadStackRecord::parse(string)?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-        Cfi(
-            Delta {
-                address: 6272,
-                text: ".cfa: $rsp 8 + .ra: .cfa -8 + ^",
+                init_rules: ".cfa: $rsp 8 + .ra: .cfa -8 + ^",
+                deltas: [
+                    BreakpadStackCfiDeltaRecord {
+                        address: 6272,
+                        rules: ".cfa: $rsp 8 + .ra: .cfa -8 + ^",
+                    },
+                ],
             },
         )
         "###);

@@ -58,13 +58,14 @@ stack_win = { "STACK WIN" ~ text }
 // STACK CFI ("Call Frame Information") records describe how to walk the stack when execution is at a given machine instruction.
 // Example: "STACK CFI INIT 804c4b0 40 .cfa: $esp 4 + $eip: .cfa 4 - ^"
 // see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-cfi-records>
-stack_cfi = { stack_cfi_init | stack_cfi_delta }
-stack_cfi_init = { "STACK CFI INIT" ~ addr ~ size ~ text }
-stack_cfi_delta = { "STACK CFI" ~ addr ~ text }
+stack_cfi = { stack_cfi_init ~ ( NEWLINE ~ stack_cfi_delta)* }
+stack_cfi_init = { "STACK CFI INIT" ~ addr ~ size ~ rules}
+stack_cfi_delta = { "STACK CFI" ~ addr ~ rules }
 
 // helpers
 ident = @{ XID_START ~ XID_CONTINUE{,31} }
 name = @{ text }
+rules = @{ text }
 text = @{ char+ }
 addr = @{ hex }
 size = @{ hex }
