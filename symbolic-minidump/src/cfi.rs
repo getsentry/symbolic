@@ -26,7 +26,9 @@ use std::ops::Range;
 use thiserror::Error;
 
 use symbolic_common::{Arch, ByteView, UnknownArchError};
-use symbolic_debuginfo::breakpad::{BreakpadError, BreakpadObject, BreakpadStackRecord};
+use symbolic_debuginfo::breakpad::{
+    BreakpadError, BreakpadObject, BreakpadStackCfiRecord, BreakpadStackRecord,
+};
 use symbolic_debuginfo::dwarf::gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error as GimliError,
     FrameDescriptionEntry, Reader, Register, RegisterRule, UninitializedUnwindContext,
@@ -284,7 +286,14 @@ impl<W: Write> AsciiCfiWriter<W> {
     fn process_breakpad(&mut self, object: &BreakpadObject<'_>) -> Result<(), CfiError> {
         for record in object.stack_records() {
             match record? {
-                BreakpadStackRecord::Cfi(r) => writeln!(self.inner, "STACK CFI {}", r.text),
+                BreakpadStackRecord::Cfi(r) => match r {
+                    BreakpadStackCfiRecord::Init { start, size, text } => {
+                        writeln!(self.inner, "STACK CFI INIT {:x} {:x} {}", start, size, text)
+                    }
+                    BreakpadStackCfiRecord::Delta { address, text } => {
+                        writeln!(self.inner, "STACK CFI {:x} {}", address, text)
+                    }
+                },
                 BreakpadStackRecord::Win(r) => writeln!(self.inner, "STACK WIN {}", r.text),
             }?
         }
