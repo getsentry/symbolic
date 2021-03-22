@@ -659,6 +659,16 @@ pub struct BreakpadStackCfiDeltaRecord<'d> {
 }
 
 impl<'d> BreakpadStackCfiDeltaRecord<'d> {
+    /// Parses a single `STACK CFI` record.
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+        let string = str::from_utf8(data)?;
+        let parsed = BreakpadParser::parse(Rule::stack_cfi_delta, string)?
+            .next()
+            .unwrap();
+
+        Ok(Self::from_pair(parsed))
+    }
+
     /// Constructs a delta record directly from a Pest parser pair.
     fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Self {
         let mut pair = pair.into_inner();
