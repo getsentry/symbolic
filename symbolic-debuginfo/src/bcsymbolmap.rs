@@ -42,15 +42,6 @@ impl fmt::Display for BCSymbolMapErrorKind {
     }
 }
 
-impl From<BCSymbolMapErrorKind> for BCSymbolMapError {
-    fn from(source: BCSymbolMapErrorKind) -> Self {
-        Self {
-            kind: source,
-            source: None,
-        }
-    }
-}
-
 /// An in-memory representation of the BCSymbolMap.
 ///
 /// This is an auxiliary file, not an object file.
@@ -62,6 +53,15 @@ impl From<BCSymbolMapErrorKind> for BCSymbolMapError {
 pub struct BCSymbolMap {
     id: DebugId,
     names: Vec<String>,
+}
+
+impl From<BCSymbolMapErrorKind> for BCSymbolMapError {
+    fn from(source: BCSymbolMapErrorKind) -> Self {
+        Self {
+            kind: source,
+            source: None,
+        }
+    }
 }
 
 impl BCSymbolMap {
