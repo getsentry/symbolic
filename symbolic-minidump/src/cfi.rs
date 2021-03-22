@@ -26,9 +26,7 @@ use std::ops::Range;
 use thiserror::Error;
 
 use symbolic_common::{Arch, ByteView, UnknownArchError};
-use symbolic_debuginfo::breakpad::{
-    BreakpadError, BreakpadObject, BreakpadStackCfiRecord, BreakpadStackRecord,
-};
+use symbolic_debuginfo::breakpad::{BreakpadError, BreakpadObject, BreakpadStackRecord};
 use symbolic_debuginfo::dwarf::gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error as GimliError,
     FrameDescriptionEntry, Reader, Register, RegisterRule, UninitializedUnwindContext,
@@ -291,11 +289,13 @@ impl<W: Write> AsciiCfiWriter<W> {
                         self.inner,
                         "STACK CFI INIT {:x} {:x} {}",
                         r.start, r.size, r.init_rules
-                    );
+                    )?;
 
                     for d in r.deltas {
-                        writeln!(self.inner, "STACK CFI {:x} {}", d.address, d.rules);
+                        writeln!(self.inner, "STACK CFI {:x} {}", d.address, d.rules)?;
                     }
+
+                    Ok(())
                 }
                 BreakpadStackRecord::Win(r) => writeln!(self.inner, "STACK WIN {}", r.text),
             }?
@@ -796,7 +796,6 @@ enum CfiCacheInner<'a> {
 /// # Ok(())
 /// # }
 /// ```
-///
 pub struct CfiCache<'a> {
     inner: CfiCacheInner<'a>,
 }
