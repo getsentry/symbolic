@@ -139,10 +139,6 @@ impl fmt::Display for UnknownFileFormatError {
 
 impl std::error::Error for UnknownFileFormatError {}
 
-/// Represents the physical file format.
-///
-/// The files itself can be either object file formats or some of the auxiliary files
-/// supported.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub enum FileFormat {
     /// An unknown file format.
@@ -165,7 +161,7 @@ pub enum FileFormat {
 
 impl FileFormat {
     /// Returns the name of the file format.
-    pub fn name(&self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             FileFormat::Unknown => "unknown",
             FileFormat::Breakpad => "breakpad",
@@ -175,23 +171,6 @@ impl FileFormat {
             FileFormat::Pe => "pe",
             FileFormat::SourceBundle => "sourcebundle",
             FileFormat::Wasm => "wasm",
-        }
-    }
-
-    /// Returns `true` if the file format is [`ObjectLike`].
-    ///
-    /// All [`ObjectLike`] objects can be parsed into an [`Object`] or [`Archive`], others
-    /// can not.
-    pub fn is_object(&self) -> bool {
-        match self {
-            FileFormat::Breakpad
-            | FileFormat::Elf
-            | FileFormat::MachO
-            | FileFormat::Pdb
-            | FileFormat::Pe
-            | FileFormat::SourceBundle
-            | FileFormat::Wasm => true,
-            FileFormat::Unknown => false,
         }
     }
 }
