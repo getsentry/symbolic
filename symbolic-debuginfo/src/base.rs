@@ -161,15 +161,6 @@ pub enum FileFormat {
     SourceBundle,
     /// WASM container.
     Wasm,
-    /// An Apple PList
-    ///
-    /// This is used to map the UUID of a dSYM to the UUID of the original BCSymbolMap.
-    PList,
-    /// A BCSymbolMap.
-    ///
-    /// This contains symbol names which can be used to de-obfuscate symbol names from
-    /// obfuscated Apple bitcode builds.
-    BCSymbolMap,
 }
 
 impl FileFormat {
@@ -184,8 +175,6 @@ impl FileFormat {
             FileFormat::Pe => "pe",
             FileFormat::SourceBundle => "sourcebundle",
             FileFormat::Wasm => "wasm",
-            FileFormat::PList => "plist",
-            FileFormat::BCSymbolMap => "bcsymbolmap",
         }
     }
 
@@ -202,7 +191,7 @@ impl FileFormat {
             | FileFormat::Pe
             | FileFormat::SourceBundle
             | FileFormat::Wasm => true,
-            FileFormat::PList | FileFormat::BCSymbolMap | FileFormat::Unknown => false,
+            FileFormat::Unknown => false,
         }
     }
 }
@@ -225,8 +214,6 @@ impl FromStr for FileFormat {
             "pe" => FileFormat::Pe,
             "sourcebundle" => FileFormat::SourceBundle,
             "wasm" => FileFormat::Wasm,
-            "plist" => FileFormat::PList,
-            "bcsymbolmap" => FileFormat::BCSymbolMap,
             _ => return Err(UnknownFileFormatError),
         })
     }

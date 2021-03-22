@@ -9,14 +9,12 @@ use goblin::Hint;
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
-use crate::bcsymbolmap::BCSymbolMap;
 use crate::breakpad::*;
 use crate::dwarf::*;
 use crate::elf::*;
 use crate::macho::*;
 use crate::pdb::*;
 use crate::pe::*;
-use crate::plist::PList;
 use crate::private::{MonoArchive, MonoArchiveObjects};
 use crate::sourcebundle::*;
 use crate::wasm::*;
@@ -153,10 +151,6 @@ pub fn peek(data: &[u8], archive: bool) -> FileFormat {
         FileFormat::Pdb
     } else if WasmObject::test(data) {
         FileFormat::Wasm
-    } else if BCSymbolMap::test(data) {
-        FileFormat::BCSymbolMap
-    } else if PList::test(data) {
-        FileFormat::PList
     } else {
         FileFormat::Unknown
     }
@@ -209,7 +203,7 @@ impl<'data> Object<'data> {
             FileFormat::Pe => parse_object!(Pe, PeObject, data),
             FileFormat::SourceBundle => parse_object!(SourceBundle, SourceBundle, data),
             FileFormat::Wasm => parse_object!(Wasm, WasmObject, data),
-            FileFormat::Unknown | FileFormat::BCSymbolMap | FileFormat::PList => {
+            FileFormat::Unknown => {
                 return Err(ObjectError::new(ObjectErrorRepr::UnsupportedObject))
             }
         };
@@ -624,7 +618,7 @@ impl<'d> Archive<'d> {
             FileFormat::Pe => Archive(ArchiveInner::Pe(MonoArchive::new(data))),
             FileFormat::SourceBundle => Archive(ArchiveInner::SourceBundle(MonoArchive::new(data))),
             FileFormat::Wasm => Archive(ArchiveInner::Wasm(MonoArchive::new(data))),
-            FileFormat::Unknown | FileFormat::BCSymbolMap | FileFormat::PList => {
+            FileFormat::Unknown => {
                 return Err(ObjectError::new(ObjectErrorRepr::UnsupportedObject))
             }
         };
