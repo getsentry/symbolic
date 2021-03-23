@@ -152,7 +152,7 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
                 memory.get(address, self.endian).ok_or_else(|| {
                     EvaluationError(EvaluationErrorInner::IllegalMemoryAccess {
                         address: address.try_into().ok(),
-                        bytes: A::WIDTH,
+                        bytes: A::WIDTH as usize,
                         address_range: memory.base_addr..memory.base_addr + memory.len() as u64,
                     })
                 })
