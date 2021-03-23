@@ -39,7 +39,7 @@
 //! [rule](parsing::rule), [rule_complete](parsing::rule_complete),
 //! [rules](parsing::rules),
 //! and [rules_complete](parsing::rules_complete) parsers.
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
@@ -169,40 +169,6 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     pub fn assign(&mut self, Assignment(v, e): &Assignment<A>) -> Result<bool, EvaluationError> {
         let value = self.evaluate(e)?;
         Ok(self.variables.insert(v.clone(), value).is_some())
-    }
-
-    /// Processes a string of assignments, modifying its [`variables`](Self::variables)
-    /// field accordingly.
-    ///
-    /// This may fail if parsing goes wrong or a parsed assignment cannot be handled,
-    /// cf. [`assign`](Self::assign). It returns the set of variables that were assigned
-    /// a value by some assignment, even if the variable's value did not change.
-    ///
-    /// # Example
-    /// ```
-    /// use std::collections::{BTreeMap, BTreeSet};
-    /// use symbolic_unwind::evaluator::{Evaluator, Variable};
-    /// use symbolic_unwind::BigEndian;
-    /// let input = "$foo $bar 5 + = $bar 17 =";
-    /// let mut variables = BTreeMap::new();
-    /// let foo = "$foo".parse::<Variable>().unwrap();
-    /// let bar = "$bar".parse::<Variable>().unwrap();
-    /// variables.insert(bar.clone(), 17u8);
-    /// let mut evaluator = Evaluator::new(BigEndian).variables(variables);
-    ///
-    /// let changed_variables = evaluator.process(input).unwrap();
-    ///
-    /// assert_eq!(changed_variables, vec![foo, bar].into_iter().collect());
-    /// ```
-    pub fn process(&mut self, input: &str) -> Result<BTreeSet<Variable>, ExpressionError> {
-        let mut changed_variables = BTreeSet::new();
-        let assignments = parsing::assignments_complete::<A>(input)?;
-        for a in assignments {
-            self.assign(&a)?;
-            changed_variables.insert(a.0);
-        }
-
-        Ok(changed_variables)
     }
 }
 
@@ -470,44 +436,17 @@ impl<T: fmt::Display> fmt::Display for Rule<T> {
     }
 }
 
-/// These tests are inspired by the Breakpad PostfixEvaluator unit tests:
-/// [https://github.com/google/breakpad/blob/main/src/processor/postfix_evaluator_unittest.cc]
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::base::BigEndian;
 
-    #[test]
-    fn test_assignment() {
-        let input = "$rAdd3 2 2 + =$rMul2 9 6 * =";
 
-        let mut eval = Evaluator::<u64, _>::new(BigEndian);
-        let r_add3: Variable = "$rAdd3".parse().unwrap();
-        let r_mul2: Variable = "$rMul2".parse().unwrap();
 
-        let changed_vars = eval.process(input).unwrap();
 
-        assert_eq!(
-            changed_vars,
-            vec![r_add3.clone(), r_mul2.clone(),].into_iter().collect()
-        );
 
-        assert_eq!(eval.variables[&r_add3], 4);
-        assert_eq!(eval.variables[&r_mul2], 54);
     }
 
-    #[test]
-    fn test_deref() {
-        let input = "$rDeref 9 ^ =";
 
-        let memory = MemoryRegion {
-            base_addr: 9,
-            contents: &[0, 0, 0, 0, 0, 0, 0, 10],
         };
 
-        let mut eval = Evaluator::<u64, _>::new(BigEndian).memory(memory);
 
-        let r_deref: Variable = "$rDeref".parse().unwrap();
 
         let changed_vars = eval.process(input).unwrap();
 
