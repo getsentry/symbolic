@@ -96,14 +96,14 @@ impl PList {
         {
             let version = plist
                 .get_attr("version")
-                .ok_or(PListError::from(PListErrorKind::Schema))?;
+                .ok_or_else(|| PListError::from(PListErrorKind::Schema))?;
             if version != "1.0" {
                 return Err(PListError::from(PListErrorKind::Schema));
             }
         }
         let dict = plist
             .find("dict")
-            .ok_or(PListError::from(PListErrorKind::Schema))?;
+            .ok_or_else(|| PListError::from(PListErrorKind::Schema))?;
 
         let mut last_key = None;
         for element in dict.children() {

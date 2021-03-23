@@ -438,7 +438,7 @@ impl<'data> MachOSymbolIterator<'data> {
                 }
             }
         }
-        return Cow::Borrowed(original_name);
+        Cow::Borrowed(original_name)
     }
 }
 

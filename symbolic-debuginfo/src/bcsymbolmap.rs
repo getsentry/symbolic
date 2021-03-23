@@ -103,7 +103,7 @@ impl<'d> BCSymbolMap<'d> {
 
     /// Returns the name of a symbol if it exists in this mapping.
     pub fn get(&self, index: usize) -> Option<&str> {
-        self.names.get(index).map(|s| *s)
+        self.names.get(index).copied()
     }
 }
 
