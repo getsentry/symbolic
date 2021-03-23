@@ -513,22 +513,217 @@ impl<T: fmt::Display> fmt::Display for Rule<T> {
     }
 }
 
+/// A half-open range `[start, end)` with some `contents` attached.
+#[derive(Clone, Debug)]
+pub struct Range<A, E> {
+    /// The left endpoint of the range.
+    pub start: A,
 
+    /// The right endpoint of teh range.
+    pub end: A,
 
+    /// The contents associated with the range.
+    pub contents: E,
+}
 
-
-
+impl<A: Eq, E> PartialEq for Range<A, E> {
+    fn eq(&self, other: &Self) -> bool {
+        self.end == other.end && self.start == other.start
     }
+}
 
+impl<A: Eq, E> Eq for Range<A, E> {}
 
+impl<A: Ord, E> core::cmp::Ord for Range<A, E> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.end.cmp(&other.end).then(self.start.cmp(&other.start))
+    }
+}
+
+impl<A: Ord, E> PartialOrd for Range<A, E> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// A structure containing a set of disjoint half-open ranges `[a, b)` with attached contents.
+#[derive(Clone, Debug)]
+pub struct RangeMap<A, E> {
+    inner: Vec<Range<A, E>>,
+}
+
+impl<A: Ord + Copy, E> RangeMap<A, E> {
+    /// Insert a range into the map.
+    ///
+    /// The range must be disjoint from all ranges that are already present.
+    /// Returns true if the insertion was successful.
+    pub fn insert(&mut self, start: A, end: A, contents: E) -> bool {
+        let range = Range {
+            start,
+            end,
+            contents,
+        };
+        let index = match self.inner.binary_search(&range) {
+            Ok(_) => return false,
+            Err(index) => index,
         };
 
+        if index > 0 {
+            let before = &self.inner[index - 1];
+            if before.end > start {
+                return false;
+            }
+        }
 
+        match self.inner.get(index) {
+            Some(after) if after.start < end => return false,
+            _ => self.inner.insert(index, range),
+        }
 
-        let changed_vars = eval.process(input).unwrap();
+        true
+    }
 
-        assert_eq!(changed_vars, vec![r_deref.clone()].into_iter().collect());
+    /// Retrieves the contents associated with the given address.
+    pub fn get(&self, address: A) -> Option<&E> {
+        self.get_range(address).map(|r| &r.contents)
+    }
 
-        assert_eq!(eval.variables[&r_deref], 10);
+    /// Retrieves the range covering the given address.
+    pub fn get_range(&self, address: A) -> Option<&Range<A, E>> {
+        let range = match self.inner.binary_search_by_key(&address, |range| range.end) {
+            // This means inner(index).end == address => address might be covered by the next one
+            Ok(index) => self.inner.get(index + 1)?,
+            // This means that inner(index).end > address => this could be the one
+            Err(index) => self.inner.get(index)?,
+        };
+
+        (range.start <= address).then(|| range)
+    }
+
+    /// Retrieves the range covering the given address, or else the last range before the
+    /// address.
+    ///
+    /// # Example
+    /// ```
+    /// use symbolic_unwind::evaluator::{Range, RangeMap};
+    /// let mut map = RangeMap::default();
+    /// map.insert(0u8, 2, "First");
+    /// map.insert(2, 4, "Second");
+    /// map.insert(5, 7, "Third");
+    ///
+    /// // map now looks like this:
+    /// // |0     1|2      3|   4   |5     6|7 …
+    /// // |"First"|"Second"|<empty>|"Third"|
+    ///
+    /// let range =map.get_nearest_range(4).unwrap();
+    /// assert_eq!(range.start, 2);
+    /// assert_eq!(range.end, 4);
+    /// assert_eq!(range.contents, "Second");
+    pub fn get_nearest_range(&self, address: A) -> Option<&Range<A, E>> {
+        match self
+            .inner
+            .binary_search_by_key(&address, |range| range.start)
+        {
+            Ok(index) => self.inner.get(index),
+            Err(index) if index > 0 => self.inner.get(index - 1),
+            _ => None,
+        }
+    }
+}
+
+impl<A, E> Default for RangeMap<A, E> {
+    fn default() -> Self {
+        Self { inner: Vec::new() }
+    }
+}
+
+/// A structure containing
+///  - "init rules" that each cover a half-open range of addresses and
+///  - "delta rules" that each cover a single address.
+///
+/// It is generic, but the intended use case are Breakpad's
+/// `STACK CFI INIT` and `STACK CFI` records.
+#[derive(Clone, Debug)]
+pub struct CfiRules<A: Ord, E> {
+    init_rules: RangeMap<A, E>,
+    delta_rules: BTreeMap<A, E>,
+}
+
+impl<A: Ord + Copy, E: Clone> CfiRules<A, E> {
+    /// Insert an "init rule", comprising a half-open range `[start, end)`
+    /// and some attached `contents`, into the structure.
+    ///
+    /// The range must be disjoint from all ranges that are already present.
+    /// Returns true if the insertion was successful.
+    pub fn insert_init(&mut self, start: A, end: A, contents: E) -> bool {
+        self.init_rules.insert(start, end, contents)
+    }
+
+    /// Insert a "delta rule", comprising an `address` and some attached
+    /// `contents`, into the structure.
+    ///
+    /// This fails if there is already a rule for the given address. Returns true if
+    /// the insertion was successful.
+    pub fn insert_delta(&mut self, address: A, contents: E) -> bool {
+        if self.delta_rules.contains_key(&address) {
+            false
+        } else {
+            self.delta_rules.insert(address, contents);
+            true
+        }
+    }
+
+    /// Returns all rules applicable to the given address.
+    ///
+    /// If the given address is not covered by any init rule, this returns `None`.
+    /// Otherwise it returns the covering init rule and all delta rules with addresses in
+    /// `[init_rule.start, address]`.
+    pub fn get_rules(&self, address: A) -> Option<Vec<&E>> {
+        let init = self.init_rules.get_range(address)?;
+        let mut result = Vec::new();
+        result.push(&init.contents);
+        result.extend(
+            self.delta_rules
+                .iter()
+                .skip_while(|(a, _)| a < &&init.start)
+                .take_while(|(a, _)| a <= &&address)
+                .map(|(_, c)| c),
+        );
+        Some(result)
+    }
+}
+
+impl<A: Ord, E> Default for CfiRules<A, E> {
+    fn default() -> Self {
+        Self {
+            init_rules: RangeMap::default(),
+            delta_rules: BTreeMap::new(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_init_rules() {
+        let mut map = CfiRules::default();
+
+        assert!(map.insert_init(50usize, 100, "First"));
+        assert!(map.insert_init(130, 140, "Second"));
+        assert!(map.insert_init(100, 130, "Third"));
+        assert!(!map.insert_init(0, 60, "Uh oh"));
+
+        assert!(map.insert_delta(50, "First delta"));
+        assert!(map.insert_delta(51, "Second delta"));
+        assert!(map.insert_delta(52, "Third delta"));
+        assert!(!map.insert_delta(50, "Uh oh"));
+
+        assert_eq!(
+            map.get_rules(51).unwrap(),
+            vec![&"First", &"First delta", &"Second delta"]
+        );
+        assert!(map.get_rules(145).is_none());
     }
 }
