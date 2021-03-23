@@ -408,7 +408,7 @@ impl<T: RegisterValue> FromStr for Assignment<T> {
 }
 
 /// A variable or constant.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Identifier {
     /// A variable.
     Var(Variable),
