@@ -22,9 +22,14 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 use symbolic_common::{Arch, ByteView, CpuFamily, DebugId, ParseDebugIdError, Uuid};
+use symbolic_debuginfo::breakpad::{BreakpadStackCfiDeltaRecord, BreakpadStackCfiRecord};
+use symbolic_unwind::{MemoryRegion, RuntimeEndian};
 
 use crate::cfi::CfiCache;
 use crate::utils;
+
+type CfiRules<'a> = symbolic_unwind::evaluator::CfiRules<u64, &'a str>;
+type Evaluator<'a> = symbolic_unwind::evaluator::Evaluator<'a, u64, RuntimeEndian>;
 
 lazy_static! {
     static ref LINUX_BUILD_RE: Regex =
@@ -86,6 +91,167 @@ extern "C" {
     ) -> *mut *const CodeModule;
 }
 
+#[no_mangle]
+unsafe extern "C" fn cfi_rules_new() -> *mut c_void {
+    Box::into_raw(Box::new(CfiRules::default())) as *mut c_void
+}
+
+#[no_mangle]
+unsafe extern "C" fn cfi_rules_free(cfi_rules: *mut c_void) {
+    if !cfi_rules.is_null() {
+        Box::from_raw(cfi_rules as *mut CfiRules<'_>);
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn cfi_rules_insert(
+    cfi_rules: *mut c_void,
+    record_string: *const c_char,
+) -> bool {
+    if record_string.is_null() {
+        return false;
+    }
+
+    let record_string = CStr::from_ptr(record_string).to_bytes();
+    let cfi_rules = &mut *(cfi_rules as *mut CfiRules<'_>);
+
+    if let Ok(BreakpadStackCfiRecord {
+        start,
+        size,
+        init_rules,
+        ..
+    }) = BreakpadStackCfiRecord::parse(record_string)
+    {
+        cfi_rules.insert_init(start, start + size, init_rules.trim())
+    } else if let Ok(BreakpadStackCfiDeltaRecord { address, rules }) =
+        BreakpadStackCfiDeltaRecord::parse(record_string)
+    {
+        cfi_rules.insert_delta(address, rules.trim())
+    } else {
+        false
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn evaluator_new(
+    is_big_endian: bool,
+    cfi_rules: *const c_void,
+    address: u64,
+) -> *mut c_void {
+    let endian = if is_big_endian {
+        RuntimeEndian::Big
+    } else {
+        RuntimeEndian::Little
+    };
+
+    let mut evaluator = Box::new(Evaluator::new(endian));
+
+    let cfi_rules = &*(cfi_rules as *const CfiRules<'_>);
+    for rules_string in cfi_rules.get_rules(address).unwrap_or_default() {
+        evaluator.add_cfi_rules_string(rules_string).ok();
+    }
+
+    Box::into_raw(evaluator) as *mut c_void
+}
+
+#[no_mangle]
+unsafe extern "C" fn evaluator_free(evaluator: *mut c_void) {
+    if !evaluator.is_null() {
+        Box::from_raw(evaluator as *mut Evaluator<'_>);
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn evaluator_set_memory_region(
+    evaluator: *mut c_void,
+    memory_base: u64,
+    memory_len: usize,
+    memory_bytes: *const u8,
+) {
+    assert!(!evaluator.is_null());
+    assert!(!memory_bytes.is_null());
+
+    let mut eval = Box::from_raw(evaluator as *mut Evaluator<'_>);
+    let memory = MemoryRegion {
+        base_addr: memory_base,
+        contents: std::slice::from_raw_parts(memory_bytes, memory_len),
+    };
+    *eval = eval.memory(memory);
+    std::mem::forget(eval);
+}
+
+#[no_mangle]
+unsafe extern "C" fn evaluator_set_registers(
+    evaluator: *mut c_void,
+    registers: *const IRegVal,
+    registers_len: usize,
+) {
+    assert!(!evaluator.is_null());
+    assert!(!registers.is_null());
+
+    let mut eval = Box::from_raw(evaluator as *mut Evaluator<'_>);
+    let mut variables = BTreeMap::new();
+    let mut constants = BTreeMap::new();
+
+    let registers = std::slice::from_raw_parts(registers, registers_len);
+    for IRegVal { name, value, size } in registers {
+        let value = match size {
+            8 => *value as u64,
+            _ => continue,
+        };
+
+        let name = CStr::from_ptr(*name).to_str().unwrap();
+        if let Ok(r) = name.parse() {
+            variables.insert(r, value);
+        } else if let Ok(r) = name.parse() {
+            constants.insert(r, value);
+        }
+    }
+
+    *eval = eval.variables(variables).constants(constants);
+    std::mem::forget(eval);
+}
+
+#[no_mangle]
+unsafe extern "C" fn evaluator_find_caller_regs_cfi(
+    evaluator: *mut c_void,
+    size_out: *mut usize,
+) -> *mut IRegVal {
+    assert!(!evaluator.is_null());
+
+    let eval = &mut *(evaluator as *mut Evaluator<'_>);
+    let caller_registers = eval.evaluate_cfi_rules().unwrap();
+
+    let mut result = Vec::new();
+    for (register, value) in caller_registers.into_iter() {
+        result.push(IRegVal {
+            name: CString::new(register.to_string()).unwrap().into_raw() as *const c_char,
+            value,
+            size: 8,
+        });
+    }
+
+    result.shrink_to_fit();
+    let len = result.len();
+    let ptr = result.as_mut_ptr();
+
+    if !size_out.is_null() {
+        *size_out = len;
+    }
+
+    std::mem::forget(result);
+
+    ptr
+}
+
+#[no_mangle]
+unsafe extern "C" fn regvals_free(reg_vals: *mut IRegVal, size: usize) {
+    let values = Vec::from_raw_parts(reg_vals, size, size);
+    for value in values {
+        std::mem::drop(CString::from_raw(value.name as *mut c_char));
+    }
+}
+
 /// An error returned when parsing an invalid [`CodeModuleId`](struct.CodeModuleId.html).
 pub type ParseCodeModuleIdError = ParseDebugIdError;
 
@@ -100,7 +266,10 @@ pub type ParseCodeModuleIdError = ParseDebugIdError;
 ///
 /// # fn main() -> Result<(), ParseCodeModuleIdError> {
 /// let id = CodeModuleId::from_str("DFB8E43AF2423D73A453AEB6A777EF75a")?;
-/// assert_eq!("DFB8E43AF2423D73A453AEB6A777EF75a".to_string(), id.to_string());
+/// assert_eq!(
+///     "DFB8E43AF2423D73A453AEB6A777EF75a".to_string(),
+///     id.to_string()
+/// );
 /// # Ok(())
 /// # }
 /// ```
