@@ -272,7 +272,7 @@ impl<'d> MachObject<'d> {
     /// Checks whether this mach object contains hidden symbols.
     ///
     /// This is an indication that BCSymbolMaps are needed to symbolicate crash reports correctly.
-    pub fn requires_symbolmap(&self) -> bool {
+    pub fn requires_bc_symbol_map(&self) -> bool {
         self.symbols().any(|s| {
             s.name()
                 .map_or(false, |n| n.starts_with(SWIFT_HIDDEN_PREFIX))
