@@ -297,6 +297,18 @@ impl FromStr for Variable {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Constant(String);
 
+impl Constant {
+    /// Returns true if this is the CFA (Canonical Frame Address) pseudoregister.
+    pub fn is_cfa(&self) -> bool {
+        self.0 == ".cfa"
+    }
+
+    /// Returns the CFA (Canonical Frame Address) pseudoregister.
+    pub fn cfa() -> Self {
+        Self(".cfa".to_string())
+    }
+}
+
 impl fmt::Display for Constant {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
