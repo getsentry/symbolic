@@ -122,9 +122,9 @@ mod tests {
 
     #[test]
     fn test_basic() {
-        let uuid: DebugId = "c8374b6d-6e96-34d8-ae38-efaa5fec424F".parse().unwrap();
+        let uuid: DebugId = "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap();
         let data = std::fs::read_to_string(
-            "tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424F.bcsymbolmap",
+            "tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap",
         )
         .unwrap();
 
