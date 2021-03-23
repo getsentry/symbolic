@@ -7,7 +7,6 @@
 
 use std::error::Error as StdError;
 use std::fmt;
-use std::io::{BufRead, BufReader, Cursor};
 
 use thiserror::Error;
 
@@ -32,12 +31,15 @@ pub enum BCSymbolMapErrorKind {
     ///
     /// It could be entirely missing, or only be an unknown version or otherwise corrupted.
     InvalidHeader,
+    /// The bitcode symbol map did contain invalid UTF-8.
+    InvalidUtf8,
 }
 
 impl fmt::Display for BCSymbolMapErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::InvalidHeader => write!(f, "no valid BCSymbolMap header was found"),
+            Self::InvalidUtf8 => write!(f, "BCSymbolmap is not valid UTF-8"),
         }
     }
 }
@@ -79,33 +81,23 @@ impl BCSymbolMap {
     /// A symbol map does not contain the UUID of its symbols, instead this is normally
     /// encoded in the filename.
     pub fn parse(id: DebugId, data: &[u8]) -> Result<Self, BCSymbolMapError> {
-        let reader = BufReader::new(Cursor::new(data));
-        let mut lines_iter = reader.lines();
+        let content = std::str::from_utf8(data).map_err(|err| BCSymbolMapError {
+            kind: BCSymbolMapErrorKind::InvalidUtf8,
+            source: Some(Box::new(err)),
+        })?;
+
+        let mut lines_iter = content.lines();
 
         let header = lines_iter
             .next()
             .ok_or(BCSymbolMapErrorKind::InvalidHeader)?;
-        let header = header.map_err(|err| {
-            // Unreachable since we read from a slice.
-            BCSymbolMapError {
-                kind: BCSymbolMapErrorKind::InvalidHeader,
-                source: Some(Box::new(err)),
-            }
-        })?;
         if header != BC_SYMBOL_MAP_HEADER {
             return Err(BCSymbolMapErrorKind::InvalidHeader.into());
         }
 
         let mut names = Vec::new();
         for line in lines_iter {
-            let line = line.map_err(|err| {
-                // Unreachable since we read from a slice.
-                BCSymbolMapError {
-                    kind: BCSymbolMapErrorKind::InvalidHeader,
-                    source: Some(Box::new(err)),
-                }
-            })?;
-            names.push(line);
+            names.push(line.to_string());
         }
 
         Ok(Self { id, names })
