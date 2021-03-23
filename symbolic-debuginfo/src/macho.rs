@@ -42,7 +42,7 @@ impl MachError {
 pub struct MachObject<'d> {
     macho: mach::MachO<'d>,
     data: &'d [u8],
-    bcsymbolmap: Option<BCSymbolMap>,
+    bcsymbolmap: Option<BCSymbolMap<'d>>,
 }
 
 impl<'d> MachObject<'d> {
@@ -72,8 +72,8 @@ impl<'d> MachObject<'d> {
     ///
     /// Once the symbolmap is loaded this object will transparently resolve any hidden
     /// symbols using the provided symbolmap.
-    pub fn load_bc_symbol_map(&mut self, bc_symbol_map: BCSymbolMap) {
-        self.bcsymbolmap = Some(bc_symbol_map)
+    pub fn load_bc_symbol_map(&mut self, bc_symbol_map: BCSymbolMap<'d>) {
+        self.bcsymbolmap = Some(bc_symbol_map);
     }
 
     /// The container file format, which is always `FileFormat::MachO`.
@@ -419,7 +419,7 @@ pub struct MachOSymbolIterator<'data> {
     symbols: mach::symbols::SymbolIterator<'data>,
     sections: SmallVec<[usize; 2]>,
     vmaddr: u64,
-    symbolmap: Option<BCSymbolMap>,
+    symbolmap: Option<BCSymbolMap<'data>>,
 }
 
 impl<'data> MachOSymbolIterator<'data> {

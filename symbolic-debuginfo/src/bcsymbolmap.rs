@@ -49,12 +49,10 @@ impl fmt::Display for BCSymbolMapErrorKind {
 /// This is an auxiliary file, not an object file.
 ///
 /// This can be used to provide symbols to a [`MachO`](crate::macho::MachO) object.
-///
-/// TODO(flub): Make this not own the data.
 #[derive(Clone, Debug)]
-pub struct BCSymbolMap {
+pub struct BCSymbolMap<'d> {
     id: DebugId,
-    names: Vec<String>,
+    names: Vec<&'d str>,
 }
 
 impl From<BCSymbolMapErrorKind> for BCSymbolMapError {
@@ -66,7 +64,7 @@ impl From<BCSymbolMapErrorKind> for BCSymbolMapError {
     }
 }
 
-impl BCSymbolMap {
+impl<'d> BCSymbolMap<'d> {
     /// Tests whether the buffer could contain a [`BCSymbolMap`].
     pub fn test(bytes: &[u8]) -> bool {
         let mut pattern = BC_SYMBOL_MAP_HEADER.as_bytes();
@@ -80,7 +78,7 @@ impl BCSymbolMap {
     ///
     /// A symbol map does not contain the UUID of its symbols, instead this is normally
     /// encoded in the filename.
-    pub fn parse(id: DebugId, data: &[u8]) -> Result<Self, BCSymbolMapError> {
+    pub fn parse(id: DebugId, data: &'d [u8]) -> Result<Self, BCSymbolMapError> {
         let content = std::str::from_utf8(data).map_err(|err| BCSymbolMapError {
             kind: BCSymbolMapErrorKind::InvalidUtf8,
             source: Some(Box::new(err)),
@@ -97,7 +95,7 @@ impl BCSymbolMap {
 
         let mut names = Vec::new();
         for line in lines_iter {
-            names.push(line.to_string());
+            names.push(line);
         }
 
         Ok(Self { id, names })
@@ -105,7 +103,7 @@ impl BCSymbolMap {
 
     /// Returns the name of a symbol if it exists in this mapping.
     pub fn get(&self, index: usize) -> Option<&str> {
-        self.names.get(index).map(|s| s.as_str())
+        self.names.get(index).map(|s| *s)
     }
 }
 
