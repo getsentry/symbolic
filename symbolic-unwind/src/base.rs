@@ -75,11 +75,13 @@ impl Endianness for RuntimeEndian {
 /// This contains no actual functionality, it only bundles other traits.
 pub trait RegisterValue:
     TryInto<usize>
+    + Into<u64>
     + Add<Output = Self>
     + Mul<Output = Self>
     + Div<Output = Self>
     + Sub<Output = Self>
     + Rem<Output = Self>
+    + Ord
     + FromStr
     + Copy
     + Sized
