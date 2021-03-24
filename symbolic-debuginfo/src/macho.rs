@@ -17,7 +17,7 @@ use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 
 /// Prefix for hidden symbols from Apple BCSymbolMap builds.
-const SWIFT_HIDDEN_PREFIX: &str = "__hidden#";
+pub(crate) const SWIFT_HIDDEN_PREFIX: &str = "__hidden#";
 
 /// An error when dealing with [`MachObject`](struct.MachObject.html).
 #[derive(Debug, Error)]
@@ -456,33 +456,13 @@ pub struct MachOSymbolIterator<'data> {
     symbolmap: Option<BCSymbolMap<'data>>,
 }
 
-impl<'data> MachOSymbolIterator<'data> {
-    fn map_name(&self, original_name: &'data str) -> &'data str {
-        if let Some(symbolmap) = self.symbolmap.as_ref() {
-            if let Some(tail) = original_name.strip_prefix(SWIFT_HIDDEN_PREFIX) {
-                if let Some(index_as_string) = tail.strip_suffix('_') {
-                    let index: usize = match index_as_string.parse() {
-                        Ok(index) => index,
-                        Err(_) => return original_name,
-                    };
-                    match symbolmap.get(index) {
-                        Some(name) => return name,
-                        None => return original_name,
-                    }
-                }
-            }
-        }
-        original_name
-    }
-}
-
 impl<'data> Iterator for MachOSymbolIterator<'data> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(next) = self.symbols.next() {
             // Gracefully recover from corrupt nlists
-            let (name, nlist) = match next {
+            let (mut name, nlist) = match next {
                 Ok(pair) => pair,
                 Err(_) => continue,
             };
@@ -505,7 +485,9 @@ impl<'data> Iterator for MachOSymbolIterator<'data> {
                 continue;
             }
 
-            let mut name = self.map_name(name);
+            if let Some(symbolmap) = self.symbolmap.as_ref() {
+                name = symbolmap.resolve(name);
+            }
 
             // Trim leading underscores from mangled C++ names.
             if let Some(tail) = name.strip_prefix('_') {

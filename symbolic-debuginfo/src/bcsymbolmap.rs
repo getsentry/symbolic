@@ -16,6 +16,8 @@ use thiserror::Error;
 
 use symbolic_common::DebugId;
 
+use crate::macho::SWIFT_HIDDEN_PREFIX;
+
 const BC_SYMBOL_MAP_HEADER: &str = "BCSymbolMap Version: 2.0";
 
 /// The error type for handling a [`BCSymbolMap`].
@@ -119,6 +121,24 @@ impl<'d> BCSymbolMap<'d> {
         self.names.get(index).copied()
     }
 
+    /// Resolves a name using this mapping.
+    ///
+    /// If the name matches the `__hidden#NNN_` pattern that indicates a [`BCSymbolMap`]
+    /// lookup it will be looked up the resolved name will be returned.  Otherwise the name
+    /// is returned unchanged.
+    pub fn resolve(&self, mut name: &'d str) -> &'d str {
+        if let Some(tail) = name.strip_prefix(SWIFT_HIDDEN_PREFIX) {
+            if let Some(index_as_string) = tail.strip_suffix('_') {
+                name = index_as_string
+                    .parse::<usize>()
+                    .ok()
+                    .and_then(|index| self.get(index))
+                    .unwrap_or(name);
+            }
+        }
+        name
+    }
+
     /// Returns an iterator over all the names in this bitcode symbol map.
     pub fn iter(&self) -> BCSymbolMapIterator<'_, 'd> {
         BCSymbolMapIterator {
@@ -211,5 +231,18 @@ mod tests {
         };
 
         assert_eq!(name, "-[SentryMessage initWithFormatted:]");
+    }
+
+    #[test]
+    fn test_resolve() {
+        let uuid: DebugId = "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap();
+        let data = std::fs::read_to_string(
+            "tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap",
+        )
+        .unwrap();
+        let map = BCSymbolMap::parse(uuid, data.as_bytes()).unwrap();
+
+        assert_eq!(map.resolve("normal_name"), "normal_name");
+        assert_eq!(map.resolve("__hidden#2_"), "-[SentryMessage serialize]");
     }
 }
