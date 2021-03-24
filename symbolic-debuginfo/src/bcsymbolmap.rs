@@ -5,7 +5,7 @@
 //! dSYMs.  These can then be looked up in the BCSymbolMap to get the original symbol name
 //! back.
 
-use std::error::Error as StdError;
+use std::error::Error;
 use std::fmt;
 
 use thiserror::Error;
@@ -20,7 +20,7 @@ const BC_SYMBOL_MAP_HEADER: &str = "BCSymbolMap Version: 2.0";
 pub struct BCSymbolMapError {
     kind: BCSymbolMapErrorKind,
     #[source]
-    source: Option<Box<dyn StdError + Send + Sync + 'static>>,
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
 /// Error kind for [`BCSymbolMapError`].
