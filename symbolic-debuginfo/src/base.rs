@@ -139,7 +139,7 @@ impl fmt::Display for UnknownFileFormatError {
 
 impl std::error::Error for UnknownFileFormatError {}
 
-/// Represents the physical file format.
+/// Represents the physical object file format.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Clone)]
 pub enum FileFormat {
     /// An unknown file format.
