@@ -46,7 +46,6 @@ pub mod elf;
 pub mod macho;
 pub mod pdb;
 pub mod pe;
-pub mod plist;
 pub mod sourcebundle;
 pub mod wasm;
 
