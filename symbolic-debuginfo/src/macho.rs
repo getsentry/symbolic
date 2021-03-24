@@ -65,15 +65,49 @@ impl<'d> MachObject<'d> {
             .map_err(MachError::new)
     }
 
-    /// Parses and loads the BCSymbolMap into the object.
+    /// Parses and loads the [`BCSymbolMap`] into the object.
     ///
-    /// The symbolmap must match the object, there is nothing in the symbol map which allows
-    /// this call to verify this.
+    /// The bitcode symbol map must match the object, there is nothing in the symbol map
+    /// which allows this call to verify this.
     ///
     /// Once the symbolmap is loaded this object will transparently resolve any hidden
     /// symbols using the provided symbolmap.
-    pub fn load_bc_symbol_map(&mut self, bc_symbol_map: BCSymbolMap<'d>) {
-        self.bcsymbolmap = Some(bc_symbol_map);
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_debuginfo::bcsymbolmap::BCSymbolMap;
+    /// use symbolic_debuginfo::macho::MachObject;
+    ///
+    /// let object_data =
+    ///     std::fs::read("tests/fixtures/2d10c42f-591d-3265-b147-78ba0868073f.dwarf-hidden")
+    ///         .unwrap();
+    /// let mut object = MachObject::parse(&object_data).unwrap();
+    ///
+    /// let map = object.symbol_map();
+    /// let symbol = map.lookup(0x5a74).unwrap();
+    /// assert_eq!(symbol.name.as_ref().map(|n| n.to_owned()).unwrap(), "__hidden#0_");
+    ///
+    /// let bc_symbol_map_data =
+    ///     std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
+    ///         .unwrap();
+    /// let bc_symbol_map = BCSymbolMap::parse(
+    ///     "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap(),
+    ///     &bc_symbol_map_data,
+    /// )
+    /// .unwrap();
+    /// object.load_symbolmap(bc_symbol_map);
+    ///
+    ///
+    /// let map = object.symbol_map();
+    /// let symbol = map.lookup(0x5a74).unwrap();
+    /// assert_eq!(
+    ///     symbol.name.as_ref().map(|n| n.to_owned()).unwrap(),
+    ///     "-[SentryMessage initWithFormatted:]",
+    /// );
+    /// ```
+    pub fn load_symbolmap(&mut self, symbolmap: BCSymbolMap<'d>) {
+        self.bcsymbolmap = Some(symbolmap);
     }
 
     /// The container file format, which is always `FileFormat::MachO`.
@@ -272,7 +306,7 @@ impl<'d> MachObject<'d> {
     /// Checks whether this mach object contains hidden symbols.
     ///
     /// This is an indication that BCSymbolMaps are needed to symbolicate crash reports correctly.
-    pub fn requires_bc_symbol_map(&self) -> bool {
+    pub fn requires_symbolmap(&self) -> bool {
         self.symbols().any(|s| {
             s.name()
                 .map_or(false, |n| n.starts_with(SWIFT_HIDDEN_PREFIX))
@@ -749,7 +783,7 @@ mod tests {
             &bc_symbol_map_data,
         )
         .unwrap();
-        object.load_bc_symbol_map(bc_symbol_map);
+        object.load_symbolmap(bc_symbol_map);
 
         let mut symbols = object.symbols();
         let symbol = symbols.next().unwrap();

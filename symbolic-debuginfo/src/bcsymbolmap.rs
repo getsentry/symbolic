@@ -1,9 +1,12 @@
-//! The Apple BCSymbolMap file format.
+//! The Apple [`BCSymbolMap`] file format.
 //!
-//! The BCSymbolMap is used in Apple bitcode builds when symbols are obfuscated.  In this
-//! case the actual symbol names are replaced with `__hidden#[0-9]+` in the binary and
+//! The [`BCSymbolMap`] is used in Apple bitcode builds when symbols are obfuscated.  In
+//! this case the actual symbol names are replaced with `__hidden#[0-9]+_` in the binary and
 //! dSYMs.  These can then be looked up in the BCSymbolMap to get the original symbol name
 //! back.
+//!
+//! See [`MachObject::load_symbolmap`](crate::macho::MachObject::load_symbolmap) for an
+//! example of how to use this.
 
 use std::error::Error;
 use std::fmt;
@@ -45,14 +48,23 @@ impl fmt::Display for BCSymbolMapErrorKind {
     }
 }
 
-/// An in-memory representation of the BCSymbolMap.
+/// An in-memory representation of the Apple bitcode symbol map.
 ///
-/// This is an auxiliary file, not an object file.
+/// This is an auxiliary file, not an object file.  It can be used to provide de-obfuscated
+/// symbol names to a [`MachObject`] object using its
+/// [`load_symbolmap`](crate::macho::MachObject::load_symbolmap) method.
 ///
-/// This can be used to provide symbols to a [`MachObject`](crate::macho::MachObject) object.
+/// It is common for bitcode builds to obfuscate the names in the object file's symbol table
+/// so that even the DWARF files do not have the actual symbol names.  In this case the
+/// build process will create a `.bcsymbolmap` file which maps the obfuscated symbol names
+/// back to the original ones.  This structure can parse these files and allows providing
+/// this information to the [`MachObject`] so that it has the original symbol names instead
+/// of `__hidden#NNN_` ones.
+///
+/// [`MachObject`]: crate::macho::MachObject
 #[derive(Clone, Debug)]
 pub struct BCSymbolMap<'d> {
-    id: DebugId,
+    id: DebugId, // TODO
     names: Vec<&'d str>,
 }
 
