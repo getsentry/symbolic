@@ -121,7 +121,7 @@ impl Error for ObjectError {
     }
 }
 
-/// Tries to infer the file format from the start of the given buffer.
+/// Tries to infer the object type from the start of the given buffer.
 ///
 /// If `archive` is set to `true`, multi architecture objects will be allowed. Otherwise, only
 /// single-arch objects are checked.
