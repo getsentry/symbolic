@@ -115,7 +115,7 @@ impl<'d> BCSymbolMap<'d> {
     }
 
     /// Returns the name of a symbol if it exists in this mapping.
-    pub fn get(&self, index: usize) -> Option<&str> {
+    pub fn get(&self, index: usize) -> Option<&'d str> {
         self.names.get(index).copied()
     }
 
@@ -195,5 +195,21 @@ mod tests {
 
         let name = map_iter.next();
         assert_eq!(name.unwrap(), "-[SentryMessage setMessage:]");
+    }
+
+    #[test]
+    fn test_data_lifetime() {
+        let uuid: DebugId = "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap();
+        let data = std::fs::read_to_string(
+            "tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap",
+        )
+        .unwrap();
+
+        let name = {
+            let map = BCSymbolMap::parse(uuid, data.as_bytes()).unwrap();
+            map.get(0).unwrap()
+        };
+
+        assert_eq!(name, "-[SentryMessage initWithFormatted:]");
     }
 }

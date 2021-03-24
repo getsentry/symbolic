@@ -457,22 +457,22 @@ pub struct MachOSymbolIterator<'data> {
 }
 
 impl<'data> MachOSymbolIterator<'data> {
-    fn map_name<'a>(&self, original_name: &'a str) -> Cow<'a, str> {
+    fn map_name(&self, original_name: &'data str) -> &'data str {
         if let Some(symbolmap) = self.symbolmap.as_ref() {
             if let Some(tail) = original_name.strip_prefix(SWIFT_HIDDEN_PREFIX) {
                 if let Some(index_as_string) = tail.strip_suffix('_') {
                     let index: usize = match index_as_string.parse() {
                         Ok(index) => index,
-                        Err(_) => return Cow::Borrowed(original_name),
+                        Err(_) => return original_name,
                     };
                     match symbolmap.get(index) {
-                        Some(name) => return Cow::Owned(name.to_string()),
-                        None => return Cow::Borrowed(original_name),
+                        Some(name) => return name,
+                        None => return original_name,
                     }
                 }
             }
         }
-        Cow::Borrowed(original_name)
+        original_name
     }
 }
 
@@ -510,12 +510,12 @@ impl<'data> Iterator for MachOSymbolIterator<'data> {
             // Trim leading underscores from mangled C++ names.
             if let Some(tail) = name.strip_prefix('_') {
                 if !name.starts_with(SWIFT_HIDDEN_PREFIX) {
-                    name = Cow::Owned(tail.to_string());
+                    name = tail;
                 }
             }
 
             return Some(Symbol {
-                name: Some(name),
+                name: Some(Cow::Borrowed(name)),
                 address: nlist.n_value - self.vmaddr,
                 size: 0, // Computed in `SymbolMap`
             });
