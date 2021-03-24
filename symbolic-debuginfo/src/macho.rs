@@ -257,7 +257,7 @@ impl<'d> MachObject<'d> {
             symbols: self.macho.symbols(),
             sections,
             vmaddr: self.load_address(),
-            symbolmap: self.bcsymbolmap.clone(), // TODO(flub): Don't clone
+            symbolmap: self.bcsymbolmap.clone(),
         }
     }
 
