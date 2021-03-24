@@ -23,12 +23,17 @@ use regex::Regex;
 
 use symbolic_common::{Arch, ByteView, CpuFamily, DebugId, ParseDebugIdError, Uuid};
 use symbolic_debuginfo::breakpad::{BreakpadStackCfiDeltaRecord, BreakpadStackCfiRecord};
+use symbolic_debuginfo::breakpad::{
+    BreakpadDebugSession, BreakpadObject, BreakpadStackCfiDeltaRecord, BreakpadStackCfiRecord,
+    BreakpadStackRecord,
+};
 use symbolic_unwind::{MemoryRegion, RuntimeEndian};
 
 use crate::cfi::CfiCache;
 use crate::utils;
 
 type CfiRules<'a> = symbolic_unwind::evaluator::CfiRules<u64, &'a str>;
+type ModuleMap<'data> = BTreeMap<&'data CodeModuleId, BreakpadDebugSession<'data>>;
 type Evaluator<'a> = symbolic_unwind::evaluator::Evaluator<'a, u64, RuntimeEndian>;
 
 lazy_static! {
@@ -89,6 +94,148 @@ extern "C" {
         state: *const IProcessState,
         size_out: *mut usize,
     ) -> *mut *const CodeModule;
+}
+
+#[derive(Clone, Debug)]
+struct SourceLineInfo {
+    function_name: CString,
+    function_base: u64,
+    source_file_name: CString,
+    source_line: u64,
+}
+
+struct SymbolicSourceLineResolver<'a> {
+    endian: RuntimeEndian,
+    modules: ModuleMap<'a>,
+}
+
+impl<'a> SymbolicSourceLineResolver<'a> {
+    fn new(frame_infos: Option<&'a FrameInfoMap<'a>>) -> Self {
+        let modules = if let Some(frame_infos) = frame_infos {
+            frame_infos
+                .into_iter()
+                .map(|(id, cache)| {
+                    let session = BreakpadObject::parse(cache.as_slice())
+                        .unwrap()
+                        .debug_session()
+                        .unwrap();
+                    (id, session)
+                })
+                .collect()
+        } else {
+            ModuleMap::default()
+        };
+        Self {
+            endian: RuntimeEndian::Little,
+            modules,
+        }
+    }
+
+    fn has_module(&self, debug_id: &CodeModuleId) -> bool {
+        self.modules.contains_key(debug_id)
+    }
+
+    fn get_source_line_info(&self, module: &CodeModuleId, address: u64) -> Option<SourceLineInfo> {
+        let session = self.modules.get(module)?;
+        let function = session
+            .functions()
+            .filter_map(|r| r.ok())
+            .find(|f| f.address <= address && address < f.end_address())?;
+        let line = function.lines.iter().find(|line_info| {
+            line_info.address <= address
+                && line_info
+                    .size
+                    .map(|sz| address < line_info.address + sz)
+                    .unwrap_or(true)
+        })?;
+
+        Some(SourceLineInfo {
+            function_name: CString::new(function.name.as_str().to_string()).ok()?,
+            function_base: function.address,
+            source_file_name: CString::new(line.file.name_str().to_string()).ok()?,
+            source_line: line.line,
+        })
+    }
+
+    fn find_cfi_frame_info(&self, module: &CodeModuleId, address: u64) -> Option<Evaluator> {
+        let mut evaluator = Evaluator::new(self.endian);
+        let session = self.modules.get(module)?;
+        let record = session
+            .stack_records()
+            .filter_map(|r| r.ok())
+            .filter_map(|r| match r {
+                BreakpadStackRecord::Cfi(r) => Some(r),
+                BreakpadStackRecord::Win(_) => None,
+            })
+            .find(|r| r.start <= address && address < r.start + r.size)?;
+        evaluator
+            .add_cfi_rules_string(record.init_rules.trim())
+            .ok()?;
+        for delta in record.deltas().filter_map(|r| r.ok()) {
+            evaluator.add_cfi_rules_string(delta.rules.trim()).ok()?;
+        }
+
+        Some(evaluator)
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn resolver_set_endian(resolver: *mut c_void, is_big_endian: bool) {
+    let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
+    resolver.endian = if is_big_endian {
+        RuntimeEndian::Big
+    } else {
+        RuntimeEndian::Little
+    };
+}
+
+#[no_mangle]
+unsafe extern "C" fn resolver_has_module(resolver: *mut c_void, name: *const c_char) -> bool {
+    if name.is_null() {
+        return false;
+    }
+
+    let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
+    let name = CStr::from_ptr(name).to_str().unwrap().parse().unwrap();
+
+    resolver.has_module(&name)
+}
+
+#[no_mangle]
+unsafe extern "C" fn resolver_get_source_line_info(
+    resolver: *mut c_void,
+    module: *const c_char,
+    address: u64,
+    function_name_out: *mut *const c_char,
+    function_base_out: *mut u64,
+    source_file_name_out: *mut *const c_char,
+    source_line_out: *mut u64,
+) {
+    let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
+    let module = CStr::from_ptr(module).to_str().unwrap().parse().unwrap();
+
+    if let Some(source_line_info) = resolver.get_source_line_info(&module, address) {
+        *function_name_out = source_line_info.function_name.into_raw();
+        *source_file_name_out = source_line_info.source_file_name.into_raw();
+        *function_base_out = source_line_info.function_base;
+        *source_line_out = source_line_info.source_line;
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn resolver_find_cfi_frame_info(
+    resolver: *mut c_void,
+    module: *const c_char,
+    address: u64,
+) -> *mut c_void {
+    let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
+    let module = CStr::from_ptr(module).to_str().unwrap().parse().unwrap();
+
+    if let Some(eval) = resolver.find_cfi_frame_info(&module, address) {
+        Box::into_raw(Box::new(eval)) as *mut c_void
+    } else {
+        std::ptr::null_mut()
+    }
 }
 
 #[no_mangle]
