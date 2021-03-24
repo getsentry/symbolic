@@ -104,9 +104,10 @@ impl<'data> PeObject<'data> {
 
     /// The debug information identifier of this PE.
     ///
-    /// Since debug information is stored in an external [`PdbObject`], this identifier actually
-    /// refers to the PDB. While strictly the filename of the PDB would also be necessary fully
-    /// resolve it, in most instances the GUID and age contained in this identifier are sufficient.
+    /// Since debug information is stored in an external
+    /// [`PdbObject`](crate::pdb::PdbObject), this identifier actually refers to the
+    /// PDB. While strictly the filename of the PDB would also be necessary fully resolve
+    /// it, in most instances the GUID and age contained in this identifier are sufficient.
     pub fn debug_id(&self) -> DebugId {
         self.pe
             .debug_data
