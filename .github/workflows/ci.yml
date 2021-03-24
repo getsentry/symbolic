@@ -9,7 +9,6 @@ on:
 
 env:
   RUSTFLAGS: -Dwarnings
-  RUSTDOCFLAGS: -Dwarnings
 
 jobs:
   lints:
@@ -53,6 +52,8 @@ jobs:
   doc-comments:
     name: Rust doc comments
     runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -Dwarnings
     steps:
       - uses: actions/checkout@v2
         with:
