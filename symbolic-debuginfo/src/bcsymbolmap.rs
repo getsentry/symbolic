@@ -48,7 +48,7 @@ impl fmt::Display for BCSymbolMapErrorKind {
 ///
 /// This is an auxiliary file, not an object file.
 ///
-/// This can be used to provide symbols to a [`MachO`](crate::macho::MachO) object.
+/// This can be used to provide symbols to a [`MachObject`](crate::macho::MachObject) object.
 #[derive(Clone, Debug)]
 pub struct BCSymbolMap<'d> {
     id: DebugId,
