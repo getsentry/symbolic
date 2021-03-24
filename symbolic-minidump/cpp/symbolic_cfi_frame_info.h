@@ -5,7 +5,7 @@
 
 class SymbolicCFIFrameInfo : public google_breakpad::CFIFrameInfo {
    public:
-    SymbolicCFIFrameInfo(bool is_big_endian, void *cfi_rules, uint64_t address);
+    SymbolicCFIFrameInfo(void *evaluator);
     ~SymbolicCFIFrameInfo();
 
    private:

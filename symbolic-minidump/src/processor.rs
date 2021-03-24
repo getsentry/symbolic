@@ -22,7 +22,6 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 use symbolic_common::{Arch, ByteView, CpuFamily, DebugId, ParseDebugIdError, Uuid};
-use symbolic_debuginfo::breakpad::{BreakpadStackCfiDeltaRecord, BreakpadStackCfiRecord};
 use symbolic_debuginfo::breakpad::{
     BreakpadDebugSession, BreakpadObject, BreakpadStackCfiDeltaRecord, BreakpadStackCfiRecord,
     BreakpadStackRecord,
@@ -74,8 +73,7 @@ extern "C" {
     fn process_minidump(
         buffer: *const c_char,
         buffer_size: usize,
-        symbols: *const SymbolEntry,
-        symbol_count: usize,
+        resolver: *mut c_void,
         result: *mut ProcessResult,
     ) -> *mut IProcessState;
     fn process_state_delete(state: *mut IProcessState);
@@ -1094,14 +1092,6 @@ impl fmt::Display for ProcessMinidumpError {
 
 impl std::error::Error for ProcessMinidumpError {}
 
-/// Internal type used to transfer Breakpad symbols over FFI.
-#[repr(C)]
-struct SymbolEntry {
-    debug_identifier: *const c_char,
-    symbol_size: usize,
-    symbol_data: *const u8,
-}
-
 /// Container for call frame information (CFI) of [`CodeModule`]s.
 ///
 /// This information is required by the stackwalker in case framepointers are
@@ -1131,38 +1121,14 @@ impl<'a> ProcessState<'a> {
         buffer: &ByteView<'a>,
         frame_infos: Option<&FrameInfoMap<'_>>,
     ) -> Result<ProcessState<'a>, ProcessMinidumpError> {
-        let cfi_count = frame_infos.map_or(0, BTreeMap::len);
         let mut result: ProcessResult = ProcessResult::Ok;
 
-        // Keep a reference to all CStrings to extend their lifetime.
-        let cfi_vec: Vec<_> = frame_infos.map_or(Vec::new(), |s| {
-            s.iter()
-                .map(|(k, v)| {
-                    (
-                        CString::new(k.to_string()),
-                        v.as_slice().len(),
-                        v.as_slice().as_ptr(),
-                    )
-                })
-                .collect()
-        });
-
-        // Keep a reference to all symbol entries to extend their lifetime.
-        let cfi_entries: Vec<_> = cfi_vec
-            .iter()
-            .map(|&(ref id, size, data)| SymbolEntry {
-                debug_identifier: id.as_ref().map(|i| i.as_ptr()).unwrap_or(ptr::null()),
-                symbol_size: size,
-                symbol_data: data,
-            })
-            .collect();
-
+        let resolver = Box::new(SymbolicSourceLineResolver::new(frame_infos));
         let internal = unsafe {
             process_minidump(
                 buffer.as_ptr() as *const c_char,
                 buffer.len(),
-                cfi_entries.as_ptr(),
-                cfi_count,
+                Box::into_raw(resolver) as *mut c_void,
                 &mut result,
             )
         };

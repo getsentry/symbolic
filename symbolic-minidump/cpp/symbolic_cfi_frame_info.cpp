@@ -4,7 +4,6 @@
 #include "google_breakpad/processor/minidump.h"
 
 extern "C" {
-void *evaluator_new(bool is_big_endian, void *cfi_rules, uint64_t address);
 void evaluator_free(void *evaluator);
 void evaluator_set_memory_region(void *evaluator,
                                  uint64_t memory_base,
@@ -18,10 +17,8 @@ regval_t *evaluator_find_caller_regs_cfi(void *evaluator,
 void regvals_free(regval_t *reg_vals, size_t len);
 }
 
-SymbolicCFIFrameInfo::SymbolicCFIFrameInfo(bool is_big_endian,
-                                           void *cfi_rules,
-                                           uint64_t address) {
-    evaluator_ = evaluator_new(is_big_endian, cfi_rules, address);
+SymbolicCFIFrameInfo::SymbolicCFIFrameInfo(void *evaluator) {
+    evaluator_ = evaluator;
 }
 
 SymbolicCFIFrameInfo::~SymbolicCFIFrameInfo() {
