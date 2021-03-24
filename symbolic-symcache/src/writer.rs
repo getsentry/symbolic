@@ -188,9 +188,9 @@ where
 {
     /// Converts an entire object into a SymCache.
     ///
-    /// Any object which implements [`ObjectLike`] can be written into a [`SymCache`] by
-    /// this function.  This already implicictly calls [`SymCacheWriter::finish`], thus
-    /// consuming the writer.
+    /// Any object which implements [`ObjectLike`] can be written into a
+    /// [`SymCache`](crate::SymCache) by this function.  This already implicictly
+    /// calls [`SymCacheWriter::finish`], thus consuming the writer.
     pub fn write_object<'d, 'o, O>(object: &'o O, target: W) -> Result<W, SymCacheError>
     where
         O: ObjectLike<'d, 'o>,
