@@ -1,13 +1,12 @@
 //! Support for Mach Objects, used on macOS and iOS.
 
 use std::borrow::Cow;
-use std::error::Error as StdError;
+use std::error::Error;
 use std::fmt;
 use std::io::Cursor;
 
 use goblin::mach;
 use smallvec::SmallVec;
-use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
@@ -20,18 +19,18 @@ use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 const SWIFT_HIDDEN_PREFIX: &str = "__hidden#";
 
 /// An error when dealing with [`MachObject`](struct.MachObject.html).
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 #[error("invalid MachO file")]
 pub struct MachError {
     #[source]
-    source: Option<Box<dyn StdError + Send + Sync + 'static>>,
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
 impl MachError {
     /// Creates a new MachO error from an arbitrary error payload.
     fn new<E>(source: E) -> Self
     where
-        E: Into<Box<dyn StdError + Send + Sync>>,
+        E: Into<Box<dyn Error + Send + Sync>>,
     {
         let source = Some(source.into());
         Self { source }
