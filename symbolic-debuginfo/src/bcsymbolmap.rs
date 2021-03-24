@@ -7,6 +7,7 @@
 
 use std::error::Error;
 use std::fmt;
+use std::iter::FusedIterator;
 
 use thiserror::Error;
 
@@ -105,7 +106,35 @@ impl<'d> BCSymbolMap<'d> {
     pub fn get(&self, index: usize) -> Option<&str> {
         self.names.get(index).copied()
     }
+
+    /// Returns an iterator over all the names in this bitcode symbol map.
+    pub fn iter(&self) -> BCSymbolMapIterator<'_, 'd> {
+        BCSymbolMapIterator {
+            iter: self.names.iter(),
+        }
+    }
 }
+
+/// Iterator over the names in a [`BCSymbolMap`].
+///
+/// This struct is created by [`BCSymbolMap::iter`].
+pub struct BCSymbolMapIterator<'a, 'd> {
+    iter: std::slice::Iter<'a, &'d str>,
+}
+
+impl<'a, 'd> Iterator for BCSymbolMapIterator<'a, 'd> {
+    type Item = &'d str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next().copied()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl FusedIterator for BCSymbolMapIterator<'_, '_> {}
 
 #[cfg(test)]
 mod tests {
@@ -132,5 +161,27 @@ mod tests {
 
         let map = BCSymbolMap::parse(uuid, data.as_bytes()).unwrap();
         assert_eq!(map.get(2), Some("-[SentryMessage serialize]"))
+    }
+
+    #[test]
+    fn test_iter() {
+        let uuid: DebugId = "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap();
+        let data = std::fs::read_to_string(
+            "tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap",
+        )
+        .unwrap();
+        let map = BCSymbolMap::parse(uuid, data.as_bytes()).unwrap();
+
+        let mut map_iter = map.iter();
+
+        let (lower_bound, upper_bound) = map_iter.size_hint();
+        assert!(lower_bound > 0);
+        assert!(upper_bound.is_some());
+
+        let name = map_iter.next();
+        assert_eq!(name.unwrap(), "-[SentryMessage initWithFormatted:]");
+
+        let name = map_iter.next();
+        assert_eq!(name.unwrap(), "-[SentryMessage setMessage:]");
     }
 }
