@@ -15,6 +15,7 @@ use crate::base::*;
 use crate::private::{Lines, Parse};
 
 mod parser {
+    #![allow(clippy::upper_case_acronyms)]
     use pest_derive::Parser;
 
     #[derive(Debug, Parser)]

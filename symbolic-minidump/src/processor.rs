@@ -323,6 +323,7 @@ impl fmt::Debug for CodeModule {
 /// stack scanning, it can wind up with dubious frames.
 ///
 /// In rough order of "trust metric".
+#[allow(clippy::upper_case_acronyms)]
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum FrameTrust {
