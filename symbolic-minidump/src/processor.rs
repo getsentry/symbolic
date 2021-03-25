@@ -397,6 +397,11 @@ unsafe extern "C" fn regvals_free(reg_vals: *mut IRegVal, size: usize) {
     }
 }
 
+#[no_mangle]
+unsafe extern "C" fn string_free(string: *mut c_char) {
+    std::mem::drop(CString::from_raw(string));
+}
+
 /// An error returned when parsing an invalid [`CodeModuleId`](struct.CodeModuleId.html).
 pub type ParseCodeModuleIdError = ParseDebugIdError;
 

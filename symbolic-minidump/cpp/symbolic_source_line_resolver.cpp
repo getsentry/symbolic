@@ -39,6 +39,7 @@ void resolver_fill_source_line_info(void *resolver,
 void *resolver_find_cfi_frame_info(void *resolver,
                                    const char *module,
                                    uint64_t address);
+void string_free(char *string);
 }
 
 bool SymbolicSourceLineResolver::HasModule(const CodeModule *module) {
@@ -64,6 +65,9 @@ void SymbolicSourceLineResolver::FillSourceLineInfo(StackFrame *frame) {
     // frame->source_file_name = new std::string(source_file_name);
     frame->function_base = function_base;
     frame->source_line = source_line;
+
+    string_free(function_name);
+    string_free(source_file_name);
 }
 
 CFIFrameInfo *SymbolicSourceLineResolver::FindCFIFrameInfo(
