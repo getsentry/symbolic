@@ -142,9 +142,9 @@ impl From<DebugId> for CodeModuleId {
     }
 }
 
-impl Into<DebugId> for CodeModuleId {
-    fn into(self) -> DebugId {
-        self.inner
+impl From<CodeModuleId> for DebugId {
+    fn from(source: CodeModuleId) -> Self {
+        source.inner
     }
 }
 
