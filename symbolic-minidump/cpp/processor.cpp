@@ -43,7 +43,7 @@ process_state_t *process_minidump(const char *buffer,
     SymbolicSourceLineResolver *resolver =
         static_cast<SymbolicSourceLineResolver *>(resolver_);
 
-    MinidumpProcessor processor(NULL, &resolver);
+    MinidumpProcessor processor(NULL, resolver);
 
     *result_out = processor.Process(&minidump, state);
     return process_state_t::cast(state);
