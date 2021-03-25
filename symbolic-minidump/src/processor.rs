@@ -16,7 +16,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::os::raw::{c_char, c_void};
 use std::str::FromStr;
-use std::{fmt, ptr, slice, str};
+use std::{fmt, slice, str};
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -233,47 +233,6 @@ unsafe extern "C" fn resolver_find_cfi_frame_info(
         Box::into_raw(Box::new(eval)) as *mut c_void
     } else {
         std::ptr::null_mut()
-    }
-}
-
-#[no_mangle]
-unsafe extern "C" fn cfi_rules_new() -> *mut c_void {
-    Box::into_raw(Box::new(CfiRules::default())) as *mut c_void
-}
-
-#[no_mangle]
-unsafe extern "C" fn cfi_rules_free(cfi_rules: *mut c_void) {
-    if !cfi_rules.is_null() {
-        Box::from_raw(cfi_rules as *mut CfiRules<'_>);
-    }
-}
-
-#[no_mangle]
-unsafe extern "C" fn cfi_rules_insert(
-    cfi_rules: *mut c_void,
-    record_string: *const c_char,
-) -> bool {
-    if record_string.is_null() {
-        return false;
-    }
-
-    let record_string = CStr::from_ptr(record_string).to_bytes();
-    let cfi_rules = &mut *(cfi_rules as *mut CfiRules<'_>);
-
-    if let Ok(BreakpadStackCfiRecord {
-        start,
-        size,
-        init_rules,
-        ..
-    }) = BreakpadStackCfiRecord::parse(record_string)
-    {
-        cfi_rules.insert_init(start, start + size, init_rules.trim())
-    } else if let Ok(BreakpadStackCfiDeltaRecord { address, rules }) =
-        BreakpadStackCfiDeltaRecord::parse(record_string)
-    {
-        cfi_rules.insert_delta(address, rules.trim())
-    } else {
-        false
     }
 }
 
