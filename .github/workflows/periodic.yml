@@ -1,4 +1,4 @@
-name: Nightly CI
+name: Periodic CI
 
 on:
   schedule:
