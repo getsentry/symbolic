@@ -3,6 +3,7 @@ name: Nightly CI
 on:
   schedule:
     - cron: "11 7 * * 1,4"
+  workflow_dispatch:
 
 env:
   RUSTFLAGS: -Dwarnings
@@ -10,6 +11,7 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    fail-fast: false
     strategy:
       matrix:
         rust: [nightly, beta]
@@ -25,7 +27,7 @@ jobs:
           override: true
           components: clippy
 
-      - name: Run clippy
+      - name: Run clippy ${{ matrix.rust }}
         uses: actions-rs/cargo@v1
         with:
           command: clippy
