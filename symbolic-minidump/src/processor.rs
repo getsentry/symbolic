@@ -22,17 +22,14 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 use symbolic_common::{Arch, ByteView, CpuFamily, DebugId, ParseDebugIdError, Uuid};
-use symbolic_debuginfo::breakpad::{
-    BreakpadDebugSession, BreakpadObject, BreakpadStackCfiDeltaRecord, BreakpadStackCfiRecord,
-    BreakpadStackRecord,
-};
+use symbolic_debuginfo::breakpad::{BreakpadStackRecord, BreakpadStackRecords};
 use symbolic_unwind::{MemoryRegion, RuntimeEndian};
 
 use crate::cfi::CfiCache;
 use crate::utils;
 
 type CfiRules<'a> = symbolic_unwind::evaluator::CfiRules<u64, &'a str>;
-type ModuleMap<'data> = BTreeMap<&'data CodeModuleId, BreakpadDebugSession<'data>>;
+type ModuleMap<'data> = BTreeMap<&'data CodeModuleId, CfiRules<'data>>;
 type Evaluator<'a> = symbolic_unwind::evaluator::Evaluator<'a, u64, RuntimeEndian>;
 
 lazy_static! {
@@ -105,11 +102,27 @@ impl<'a> SymbolicSourceLineResolver<'a> {
             frame_infos
                 .into_iter()
                 .map(|(id, cache)| {
-                    let session = BreakpadObject::parse(cache.as_slice())
-                        .unwrap()
-                        .debug_session()
-                        .unwrap();
-                    (id, session)
+                    let mut cfi_rules = CfiRules::default();
+                    for cfi_record in
+                        BreakpadStackRecords::new(cache.as_slice()).filter_map(|r| match r {
+                            Ok(BreakpadStackRecord::Cfi(r)) => Some(r),
+                            _ => None,
+                        })
+                    {
+                        cfi_rules.insert_init(
+                            cfi_record.start,
+                            cfi_record.start + cfi_record.size,
+                            cfi_record.init_rules,
+                        );
+
+                        for delta in cfi_record.deltas() {
+                            if let Ok(delta) = delta {
+                                cfi_rules.insert_delta(delta.address, delta.rules);
+                            }
+                        }
+                    }
+
+                    (id, cfi_rules)
                 })
                 .collect()
         } else {
@@ -127,20 +140,10 @@ impl<'a> SymbolicSourceLineResolver<'a> {
 
     fn find_cfi_frame_info(&self, module: &CodeModuleId, address: u64) -> Option<Evaluator> {
         let mut evaluator = Evaluator::new(self.endian);
-        let session = self.modules.get(module)?;
-        let record = session
-            .stack_records()
-            .filter_map(|r| r.ok())
-            .filter_map(|r| match r {
-                BreakpadStackRecord::Cfi(r) => Some(r),
-                BreakpadStackRecord::Win(_) => None,
-            })
-            .find(|r| r.start <= address && address < r.start + r.size)?;
-        evaluator
-            .add_cfi_rules_string(record.init_rules.trim())
-            .ok()?;
-        for delta in record.deltas().filter_map(|r| r.ok()) {
-            evaluator.add_cfi_rules_string(delta.rules.trim()).ok()?;
+        let cfi_rules = self.modules.get(module)?;
+
+        for rules in cfi_rules.get_rules(address).unwrap_or_default() {
+            evaluator.add_cfi_rules_string(rules).ok()?;
         }
 
         Some(evaluator)
@@ -1036,12 +1039,12 @@ impl<'a> ProcessState<'a> {
     ) -> Result<ProcessState<'a>, ProcessMinidumpError> {
         let mut result: ProcessResult = ProcessResult::Ok;
 
-        let resolver = Box::new(SymbolicSourceLineResolver::new(frame_infos));
+        let mut resolver = SymbolicSourceLineResolver::new(frame_infos);
         let internal = unsafe {
             process_minidump(
                 buffer.as_ptr() as *const c_char,
                 buffer.len(),
-                Box::into_raw(resolver) as *mut c_void,
+                (&mut resolver) as *mut _ as *mut c_void,
                 &mut result,
             )
         };

@@ -1,8 +1,8 @@
 #ifndef symbolic_source_line_resolver_h_INCLUDED
 #define symbolic_source_line_resolver_h_INCLUDED
 
-#include "google_breakpad/processor/stack_frame.h"
 #include "google_breakpad/processor/source_line_resolver_interface.h"
+#include "google_breakpad/processor/stack_frame.h"
 #include "processor/cfi_frame_info.h"
 #include "processor/windows_frame_info.h"
 
