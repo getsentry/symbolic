@@ -138,15 +138,14 @@ impl<'a> SymbolicSourceLineResolver<'a> {
         self.modules.contains_key(debug_id)
     }
 
-    fn find_cfi_frame_info(&self, module: &CodeModuleId, address: u64) -> Option<Evaluator> {
+    fn find_cfi_frame_info(&self, module: &CodeModuleId, address: u64) -> Evaluator {
         let mut evaluator = Evaluator::new(self.endian);
-        let cfi_rules = self.modules.get(module)?;
-
-        for rules in cfi_rules.get_rules(address).unwrap_or_default() {
-            evaluator.add_cfi_rules_string(rules).ok()?;
+        if let Some(cfi_rules) = self.modules.get(module) {
+            for rules in cfi_rules.get_rules(address).unwrap_or_default() {
+                evaluator.add_cfi_rules_string(rules).unwrap();
+            }
         }
-
-        Some(evaluator)
+        evaluator
     }
 }
 
@@ -181,11 +180,8 @@ unsafe extern "C" fn resolver_find_cfi_frame_info(
     let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
     let module = CStr::from_ptr(module).to_str().unwrap().parse().unwrap();
 
-    if let Some(eval) = resolver.find_cfi_frame_info(&module, address) {
-        Box::into_raw(Box::new(eval)) as *mut c_void
-    } else {
-        std::ptr::null_mut()
-    }
+    let eval = resolver.find_cfi_frame_info(&module, address);
+    Box::into_raw(Box::new(eval)) as *mut c_void
 }
 
 #[no_mangle]
