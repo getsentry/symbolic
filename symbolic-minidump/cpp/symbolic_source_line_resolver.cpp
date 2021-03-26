@@ -49,11 +49,15 @@ bool SymbolicSourceLineResolver::HasModule(const CodeModule *module) {
 
 CFIFrameInfo *SymbolicSourceLineResolver::FindCFIFrameInfo(
     const StackFrame *frame) {
-    string debug_identifier = frame->module->debug_identifier();
-    const char *module_name = debug_identifier.c_str();
-    uint64_t address = frame->instruction - frame->module->base_address();
+    if (frame->module) {
+        string debug_identifier = frame->module->debug_identifier();
+        const char *module_name = debug_identifier.c_str();
+        uint64_t address = frame->instruction - frame->module->base_address();
 
-    void *evaluator =
-        resolver_find_cfi_frame_info((void *)this, module_name, address);
-    return new SymbolicCFIFrameInfo(evaluator);
+        void *evaluator =
+            resolver_find_cfi_frame_info(resolver_, module_name, address);
+        return new SymbolicCFIFrameInfo(evaluator);
+    } else {
+        return NULL;
+    }
 }
