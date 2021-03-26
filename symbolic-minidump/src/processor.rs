@@ -91,17 +91,27 @@ extern "C" {
     ) -> *mut *const CodeModule;
 }
 
+/// A Rust implementation of Breakpad's [`SourceLineResolverInterface`](https://github.com/google/breakpad/blob/main/src/google_breakpad/processor/source_line_resolver_interface.h).
+/// The only methods we really need are `HasModule`, `FindCFIFrameInfo`, and
+/// `FindWindowsFrameInfo`; the latter is still to-do.
 struct SymbolicSourceLineResolver<'a> {
+    /// The endianness to use when evaluating memory contents.
     endian: RuntimeEndian,
+
+    /// A map containing CFI information (in the form of a [`CFICache`]) for modules.
+    ///
+    /// Keys are [`CodeModuleId`s], i.e., the modules' debug identifiers.
     modules: ModuleMap<'a>,
 }
 
 impl<'a> SymbolicSourceLineResolver<'a> {
+    /// Create a new SourceLineResolver from the given frame information.
     fn new(frame_infos: Option<&'a FrameInfoMap<'a>>) -> Self {
         let modules = if let Some(frame_infos) = frame_infos {
             frame_infos
-                .into_iter()
+                .iter()
                 .map(|(id, cache)| {
+                    // TODO: Don't do this so eagerly
                     let mut cfi_rules = CfiRules::default();
                     for cfi_record in
                         BreakpadStackRecords::new(cache.as_slice()).filter_map(|r| match r {
@@ -134,10 +144,15 @@ impl<'a> SymbolicSourceLineResolver<'a> {
         }
     }
 
+    /// Returns true if the module with the given debug identifier has been loaded.
     fn has_module(&self, debug_id: &CodeModuleId) -> bool {
         self.modules.contains_key(debug_id)
     }
 
+    /// Finds the CFI information for a given module and address.
+    ///
+    /// "CFI information" here means an [`Evaluator`](symbolic_unwind::evaluator::Evaluator)
+    ///  that can be used to recover the values of the caller's registers.
     fn find_cfi_frame_info(&self, module: &CodeModuleId, address: u64) -> Evaluator {
         let mut evaluator = Evaluator::new(self.endian);
         if let Some(cfi_rules) = self.modules.get(module) {
@@ -302,11 +317,6 @@ unsafe extern "C" fn regvals_free(reg_vals: *mut IRegVal, size: usize) {
     for value in values {
         std::mem::drop(CString::from_raw(value.name as *mut c_char));
     }
-}
-
-#[no_mangle]
-unsafe extern "C" fn string_free(string: *mut c_char) {
-    std::mem::drop(CString::from_raw(string));
 }
 
 /// An error returned when parsing an invalid [`CodeModuleId`](struct.CodeModuleId.html).
