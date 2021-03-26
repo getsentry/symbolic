@@ -20,6 +20,39 @@ class SymbolicSourceLineResolver
     bool HasModule(const CodeModule *module);
     CFIFrameInfo *FindCFIFrameInfo(const StackFrame *frame);
 
+    bool LoadModule(const CodeModule *module, const string &map_file) {
+        return false;
+    }
+
+    bool LoadModuleUsingMapBuffer(const CodeModule *module,
+                                  const string &map_buffer) {
+        return false;
+    }
+
+    bool LoadModuleUsingMemoryBuffer(const CodeModule *module,
+                                     char *memory_buffer,
+                                     size_t memory_buffer_size) {
+        return false;
+    }
+
+    bool ShouldDeleteMemoryBufferAfterLoadModule() {
+        return false;
+    }
+
+    void UnloadModule(const CodeModule *module) {
+    }
+
+    bool IsModuleCorrupt(const CodeModule *module) {
+        return false;
+    }
+
+    void FillSourceLineInfo(StackFrame *frame) {
+    }
+
+    WindowsFrameInfo *FindWindowsFrameInfo(const StackFrame *frame) {
+        return NULL;
+    }
+
    private:
     void *resolver_;
     // Disallow unwanted copy ctor and assignment operator
