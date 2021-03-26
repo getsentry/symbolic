@@ -34,11 +34,17 @@ void *resolver_find_cfi_frame_info(void *resolver,
                                    uint64_t address);
 }
 
+SymbolicSourceLineResolver::SymbolicSourceLineResolver(void *resolver,
+                                                       bool is_big_endian) {
+    resolver_ = resolver;
+    resolver_set_endian(resolver_, is_big_endian);
+}
+
 bool SymbolicSourceLineResolver::HasModule(const CodeModule *module) {
     string debug_identifier = module->debug_identifier();
     const char *module_name = debug_identifier.c_str();
 
-    return resolver_has_module((void *)this, module_name);
+    return resolver_has_module(resolver_, module_name);
 }
 
 CFIFrameInfo *SymbolicSourceLineResolver::FindCFIFrameInfo(

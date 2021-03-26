@@ -38,13 +38,10 @@ process_state_t *process_minidump(const char *buffer,
         delete state;
         return nullptr;
     }
-
-    resolver_set_endian(resolver_, minidump.is_big_endian());
     SymbolicSourceLineResolver *resolver =
-        static_cast<SymbolicSourceLineResolver *>(resolver_);
+        new SymbolicSourceLineResolver(resolver_, minidump.is_big_endian());
 
     MinidumpProcessor processor(NULL, resolver);
-
     *result_out = processor.Process(&minidump, state);
     return process_state_t::cast(state);
 }

@@ -13,7 +13,7 @@ struct Evaluator {};
 class SymbolicSourceLineResolver
     : public google_breakpad::SourceLineResolverInterface {
    public:
-    SymbolicSourceLineResolver(){};
+    SymbolicSourceLineResolver(void *resolver, bool is_big_endian);
     virtual ~SymbolicSourceLineResolver() {
     }
 
@@ -21,6 +21,7 @@ class SymbolicSourceLineResolver
     CFIFrameInfo *FindCFIFrameInfo(const StackFrame *frame);
 
    private:
+    void *resolver_;
     // Disallow unwanted copy ctor and assignment operator
     SymbolicSourceLineResolver(const SymbolicSourceLineResolver &);
     void operator=(const SymbolicSourceLineResolver &);
