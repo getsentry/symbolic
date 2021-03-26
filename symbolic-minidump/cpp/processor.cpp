@@ -12,10 +12,6 @@ using google_breakpad::Minidump;
 using google_breakpad::MinidumpProcessor;
 using google_breakpad::ProcessState;
 
-extern "C" {
-void resolver_set_endian(void *resolver, bool is_big_endian);
-}
-
 process_state_t *process_minidump(const char *buffer,
                                   size_t buffer_size,
                                   void *resolver_,
