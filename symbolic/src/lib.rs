@@ -58,6 +58,10 @@
 //! - **`debuginfo-serde`**
 //! - **`minidump-serde`**
 //! - **`unreal-serde`**
+//!
+//! ## Minimal Rust Version
+//!
+//! This crate is known to require at least Rust 1.41.
 
 #![warn(missing_docs)]
 
