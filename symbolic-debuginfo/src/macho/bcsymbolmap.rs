@@ -1,4 +1,4 @@
-//! The Apple [`BCSymbolMap`] file format.
+//! The Apple [`BcSymbolMap`] file format.
 
 use std::error::Error;
 use std::fmt;
@@ -10,11 +10,11 @@ use super::SWIFT_HIDDEN_PREFIX;
 
 const BC_SYMBOL_MAP_HEADER: &str = "BCSymbolMap Version: 2.0";
 
-/// The error type for handling a [`BCSymbolMap`].
+/// The error type for handling a [`BcSymbolMap`].
 #[derive(Debug, Error)]
 #[error("{kind}")]
-pub struct BCSymbolMapError {
-    kind: BCSymbolMapErrorKind,
+pub struct BcSymbolMapError {
+    kind: BcSymbolMapErrorKind,
     #[source]
     source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
@@ -22,7 +22,7 @@ pub struct BCSymbolMapError {
 /// Error kind for [`BCSymbolMapError`].
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BCSymbolMapErrorKind {
+pub enum BcSymbolMapErrorKind {
     /// The BCSymbolMap header does not match a supported version.
     ///
     /// It could be entirely missing, or only be an unknown version or otherwise corrupted.
@@ -31,7 +31,7 @@ pub enum BCSymbolMapErrorKind {
     InvalidUtf8,
 }
 
-impl fmt::Display for BCSymbolMapErrorKind {
+impl fmt::Display for BcSymbolMapErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::InvalidHeader => write!(f, "no valid BCSymbolMap header was found"),
@@ -58,12 +58,12 @@ impl fmt::Display for BCSymbolMapErrorKind {
 ///
 /// [`MachObject`]: crate::macho::MachObject
 #[derive(Clone, Debug)]
-pub struct BCSymbolMap<'d> {
+pub struct BcSymbolMap<'d> {
     names: Vec<&'d str>,
 }
 
-impl From<BCSymbolMapErrorKind> for BCSymbolMapError {
-    fn from(source: BCSymbolMapErrorKind) -> Self {
+impl From<BcSymbolMapErrorKind> for BcSymbolMapError {
+    fn from(source: BcSymbolMapErrorKind) -> Self {
         Self {
             kind: source,
             source: None,
@@ -71,8 +71,8 @@ impl From<BCSymbolMapErrorKind> for BCSymbolMapError {
     }
 }
 
-impl<'d> BCSymbolMap<'d> {
-    /// Tests whether the buffer could contain a [`BCSymbolMap`].
+impl<'d> BcSymbolMap<'d> {
+    /// Tests whether the buffer could contain a [`BcSymbolMap`].
     pub fn test(bytes: &[u8]) -> bool {
         let mut pattern = BC_SYMBOL_MAP_HEADER.as_bytes();
         if pattern.len() > bytes.len() {
@@ -85,9 +85,9 @@ impl<'d> BCSymbolMap<'d> {
     ///
     /// A symbol map does not contain the UUID of its symbols, instead this is normally
     /// encoded in the filename.
-    pub fn parse(data: &'d [u8]) -> Result<Self, BCSymbolMapError> {
-        let content = std::str::from_utf8(data).map_err(|err| BCSymbolMapError {
-            kind: BCSymbolMapErrorKind::InvalidUtf8,
+    pub fn parse(data: &'d [u8]) -> Result<Self, BcSymbolMapError> {
+        let content = std::str::from_utf8(data).map_err(|err| BcSymbolMapError {
+            kind: BcSymbolMapErrorKind::InvalidUtf8,
             source: Some(Box::new(err)),
         })?;
 
@@ -95,9 +95,9 @@ impl<'d> BCSymbolMap<'d> {
 
         let header = lines_iter
             .next()
-            .ok_or(BCSymbolMapErrorKind::InvalidHeader)?;
+            .ok_or(BcSymbolMapErrorKind::InvalidHeader)?;
         if header != BC_SYMBOL_MAP_HEADER {
-            return Err(BCSymbolMapErrorKind::InvalidHeader.into());
+            return Err(BcSymbolMapErrorKind::InvalidHeader.into());
         }
 
         let names = lines_iter.collect();
@@ -110,13 +110,13 @@ impl<'d> BCSymbolMap<'d> {
     /// # Examples
     ///
     /// ```
-    /// use symbolic_debuginfo::macho::BCSymbolMap;
+    /// use symbolic_debuginfo::macho::BcSymbolMap;
     ///
     /// // let data = std::fs::read("c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap").unwrap();
     /// # let data =
     /// #     std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
     /// #         .unwrap();
-    /// let map = BCSymbolMap::parse(&data).unwrap();
+    /// let map = BcSymbolMap::parse(&data).unwrap();
     ///
     /// assert_eq!(map.get(43), Some("Sources/Sentry/Public/SentryMessage.h"));
     /// assert_eq!(map.get(usize::MAX), None);  // We do not have this many entries
@@ -127,20 +127,20 @@ impl<'d> BCSymbolMap<'d> {
 
     /// Resolves a name using this mapping.
     ///
-    /// If the name matches the `__hidden#NNN_` pattern that indicates a [`BCSymbolMap`]
+    /// If the name matches the `__hidden#NNN_` pattern that indicates a [`BcSymbolMap`]
     /// lookup it will be looked up the resolved name will be returned.  Otherwise the name
     /// is returned unchanged.
     ///
     /// # Examples
     ///
     /// ```
-    /// use symbolic_debuginfo::macho::BCSymbolMap;
+    /// use symbolic_debuginfo::macho::BcSymbolMap;
     ///
     /// // let data = std::fs::read("c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap").unwrap();
     /// # let data =
     /// #     std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
     /// #         .unwrap();
-    /// let map = BCSymbolMap::parse(&data).unwrap();
+    /// let map = BcSymbolMap::parse(&data).unwrap();
     ///
     /// assert_eq!(map.resolve("__hidden#43_"), "Sources/Sentry/Public/SentryMessage.h");
     /// assert_eq!(map.resolve("_addJSONData"), "_addJSONData");  // #64
@@ -159,8 +159,8 @@ impl<'d> BCSymbolMap<'d> {
     }
 
     /// Returns an iterator over all the names in this bitcode symbol map.
-    pub fn iter(&self) -> BCSymbolMapIterator<'_, 'd> {
-        BCSymbolMapIterator {
+    pub fn iter(&self) -> BcSymbolMapIterator<'_, 'd> {
+        BcSymbolMapIterator {
             iter: self.names.iter(),
         }
     }
@@ -169,11 +169,11 @@ impl<'d> BCSymbolMap<'d> {
 /// Iterator over the names in a [`BCSymbolMap`].
 ///
 /// This struct is created by [`BCSymbolMap::iter`].
-pub struct BCSymbolMapIterator<'a, 'd> {
+pub struct BcSymbolMapIterator<'a, 'd> {
     iter: std::slice::Iter<'a, &'d str>,
 }
 
-impl<'a, 'd> Iterator for BCSymbolMapIterator<'a, 'd> {
+impl<'a, 'd> Iterator for BcSymbolMapIterator<'a, 'd> {
     type Item = &'d str;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -185,7 +185,7 @@ impl<'a, 'd> Iterator for BCSymbolMapIterator<'a, 'd> {
     }
 }
 
-impl FusedIterator for BCSymbolMapIterator<'_, '_> {}
+impl FusedIterator for BcSymbolMapIterator<'_, '_> {}
 
 #[cfg(test)]
 mod tests {
@@ -194,10 +194,10 @@ mod tests {
     #[test]
     fn test_bcsymbolmap_test() {
         let buf = b"BCSymbolMap Vers";
-        assert!(BCSymbolMap::test(&buf[..]));
+        assert!(BcSymbolMap::test(&buf[..]));
 
         let buf = b"oops";
-        assert!(!BCSymbolMap::test(&buf[..]));
+        assert!(!BcSymbolMap::test(&buf[..]));
     }
 
     #[test]
@@ -207,9 +207,9 @@ mod tests {
         )
         .unwrap();
 
-        assert!(BCSymbolMap::test(&data.as_bytes()[..20]));
+        assert!(BcSymbolMap::test(&data.as_bytes()[..20]));
 
-        let map = BCSymbolMap::parse(data.as_bytes()).unwrap();
+        let map = BcSymbolMap::parse(data.as_bytes()).unwrap();
         assert_eq!(map.get(2), Some("-[SentryMessage serialize]"))
     }
 
@@ -219,7 +219,7 @@ mod tests {
             "tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap",
         )
         .unwrap();
-        let map = BCSymbolMap::parse(data.as_bytes()).unwrap();
+        let map = BcSymbolMap::parse(data.as_bytes()).unwrap();
 
         let mut map_iter = map.iter();
 
@@ -242,7 +242,7 @@ mod tests {
         .unwrap();
 
         let name = {
-            let map = BCSymbolMap::parse(data.as_bytes()).unwrap();
+            let map = BcSymbolMap::parse(data.as_bytes()).unwrap();
             map.get(0).unwrap()
         };
 
@@ -255,7 +255,7 @@ mod tests {
             "tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap",
         )
         .unwrap();
-        let map = BCSymbolMap::parse(data.as_bytes()).unwrap();
+        let map = BcSymbolMap::parse(data.as_bytes()).unwrap();
 
         assert_eq!(map.resolve("normal_name"), "normal_name");
         assert_eq!(map.resolve("__hidden#2_"), "-[SentryMessage serialize]");

@@ -17,7 +17,7 @@ use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 
 mod bcsymbolmap;
 
-pub use bcsymbolmap::{BCSymbolMap, BCSymbolMapError};
+pub use bcsymbolmap::{BcSymbolMap, BcSymbolMapError};
 
 /// Prefix for hidden symbols from Apple BCSymbolMap builds.
 const SWIFT_HIDDEN_PREFIX: &str = "__hidden#";
@@ -45,7 +45,7 @@ impl MachError {
 pub struct MachObject<'d> {
     macho: mach::MachO<'d>,
     data: &'d [u8],
-    bcsymbolmap: Option<BCSymbolMap<'d>>,
+    bcsymbolmap: Option<BcSymbolMap<'d>>,
 }
 
 impl<'d> MachObject<'d> {
@@ -68,7 +68,7 @@ impl<'d> MachObject<'d> {
             .map_err(MachError::new)
     }
 
-    /// Parses and loads the [`BCSymbolMap`] into the object.
+    /// Parses and loads the [`BcSymbolMap`] into the object.
     ///
     /// The bitcode symbol map must match the object, there is nothing in the symbol map
     /// which allows this call to verify this.
@@ -79,7 +79,7 @@ impl<'d> MachObject<'d> {
     /// # Examples
     ///
     /// ```
-    /// use symbolic_debuginfo::macho::{BCSymbolMap, MachObject};
+    /// use symbolic_debuginfo::macho::{BcSymbolMap, MachObject};
     ///
     /// // let object_data = std::fs::read("dSYMs/.../Resources/DWARF/object").unwrap();
     /// # let object_data =
@@ -97,7 +97,7 @@ impl<'d> MachObject<'d> {
     /// # let bc_symbol_map_data =
     /// #     std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
     /// #         .unwrap();
-    /// let bc_symbol_map = BCSymbolMap::parse(&bc_symbol_map_data).unwrap();
+    /// let bc_symbol_map = BcSymbolMap::parse(&bc_symbol_map_data).unwrap();
     /// object.load_symbolmap(bc_symbol_map);
     ///
     ///
@@ -108,7 +108,7 @@ impl<'d> MachObject<'d> {
     ///     "-[SentryMessage initWithFormatted:]",
     /// );
     /// ```
-    pub fn load_symbolmap(&mut self, symbolmap: BCSymbolMap<'d>) {
+    pub fn load_symbolmap(&mut self, symbolmap: BcSymbolMap<'d>) {
         self.bcsymbolmap = Some(symbolmap);
     }
 
@@ -455,7 +455,7 @@ pub struct MachOSymbolIterator<'data> {
     symbols: mach::symbols::SymbolIterator<'data>,
     sections: SmallVec<[usize; 2]>,
     vmaddr: u64,
-    symbolmap: Option<BCSymbolMap<'data>>,
+    symbolmap: Option<BcSymbolMap<'data>>,
 }
 
 impl<'data> Iterator for MachOSymbolIterator<'data> {
@@ -762,7 +762,7 @@ mod tests {
         let bc_symbol_map_data =
             std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
                 .unwrap();
-        let bc_symbol_map = BCSymbolMap::parse(&bc_symbol_map_data).unwrap();
+        let bc_symbol_map = BcSymbolMap::parse(&bc_symbol_map_data).unwrap();
         object.load_symbolmap(bc_symbol_map);
 
         let mut symbols = object.symbols();
