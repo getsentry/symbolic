@@ -1,12 +1,4 @@
 //! The Apple [`BCSymbolMap`] file format.
-//!
-//! The [`BCSymbolMap`] is used in Apple bitcode builds when symbols are obfuscated.  In
-//! this case the actual symbol names are replaced with `__hidden#[0-9]+_` in the binary and
-//! dSYMs.  These can then be looked up in the BCSymbolMap to get the original symbol name
-//! back.
-//!
-//! See [`MachObject::load_symbolmap`](crate::macho::MachObject::load_symbolmap) for an
-//! example of how to use this.
 
 use std::error::Error;
 use std::fmt;
@@ -14,7 +6,7 @@ use std::iter::FusedIterator;
 
 use thiserror::Error;
 
-use crate::macho::SWIFT_HIDDEN_PREFIX;
+use super::SWIFT_HIDDEN_PREFIX;
 
 const BC_SYMBOL_MAP_HEADER: &str = "BCSymbolMap Version: 2.0";
 
@@ -60,6 +52,9 @@ impl fmt::Display for BCSymbolMapErrorKind {
 /// back to the original ones.  This structure can parse these files and allows providing
 /// this information to the [`MachObject`] so that it has the original symbol names instead
 /// of `__hidden#NNN_` ones.
+///
+/// See [`MachObject::load_symbolmap`](crate::macho::MachObject::load_symbolmap) for an
+/// example of how to use this.
 ///
 /// [`MachObject`]: crate::macho::MachObject
 #[derive(Clone, Debug)]
@@ -115,7 +110,7 @@ impl<'d> BCSymbolMap<'d> {
     /// # Examples
     ///
     /// ```
-    /// use symbolic_debuginfo::bcsymbolmap::BCSymbolMap;
+    /// use symbolic_debuginfo::macho::BCSymbolMap;
     ///
     /// // let data = std::fs::read("c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap").unwrap();
     /// # let data =
@@ -139,7 +134,7 @@ impl<'d> BCSymbolMap<'d> {
     /// # Examples
     ///
     /// ```
-    /// use symbolic_debuginfo::bcsymbolmap::BCSymbolMap;
+    /// use symbolic_debuginfo::macho::BCSymbolMap;
     ///
     /// // let data = std::fs::read("c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap").unwrap();
     /// # let data =

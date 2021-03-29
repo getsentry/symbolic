@@ -39,7 +39,6 @@ mod base;
 mod object;
 mod private;
 
-pub mod bcsymbolmap;
 pub mod breakpad;
 pub mod dwarf;
 pub mod elf;

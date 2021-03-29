@@ -12,12 +12,15 @@ use thiserror::Error;
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
-use crate::bcsymbolmap::BCSymbolMap;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 
+mod bcsymbolmap;
+
+pub use bcsymbolmap::{BCSymbolMap, BCSymbolMapError};
+
 /// Prefix for hidden symbols from Apple BCSymbolMap builds.
-pub(crate) const SWIFT_HIDDEN_PREFIX: &str = "__hidden#";
+const SWIFT_HIDDEN_PREFIX: &str = "__hidden#";
 
 /// An error when dealing with [`MachObject`](struct.MachObject.html).
 #[derive(Debug, Error)]
@@ -76,8 +79,7 @@ impl<'d> MachObject<'d> {
     /// # Examples
     ///
     /// ```
-    /// use symbolic_debuginfo::bcsymbolmap::BCSymbolMap;
-    /// use symbolic_debuginfo::macho::MachObject;
+    /// use symbolic_debuginfo::macho::{BCSymbolMap, MachObject};
     ///
     /// // let object_data = std::fs::read("dSYMs/.../Resources/DWARF/object").unwrap();
     /// # let object_data =
