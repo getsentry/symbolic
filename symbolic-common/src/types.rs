@@ -850,9 +850,9 @@ impl AsRef<str> for Name<'_> {
     }
 }
 
-impl Into<String> for Name<'_> {
-    fn into(self) -> String {
-        self.string.into()
+impl From<Name<'_>> for String {
+    fn from(name: Name) -> Self {
+        name.string.into()
     }
 }
 

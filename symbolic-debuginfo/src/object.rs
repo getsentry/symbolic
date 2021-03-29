@@ -193,7 +193,7 @@ impl<'data> Object<'data> {
             ($kind:ident, $file:ident, $data:expr) => {
                 Object::$kind($file::parse(data).map_err(ObjectError::transparent)?)
             };
-        };
+        }
 
         let object = match Self::peek(data) {
             FileFormat::Breakpad => parse_object!(Breakpad, BreakpadObject, data),

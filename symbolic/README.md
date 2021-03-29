@@ -64,4 +64,8 @@ implementations for `serde::{Deserialize, Serialize}` on suitable types:
 - **`minidump-serde`**
 - **`unreal-serde`**
 
+## Minimal Rust Version
+
+This crate is known to require at least Rust 1.41.
+
 License: MIT
