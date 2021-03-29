@@ -105,10 +105,7 @@ impl<'d> BCSymbolMap<'d> {
             return Err(BCSymbolMapErrorKind::InvalidHeader.into());
         }
 
-        let mut names = Vec::new();
-        for line in lines_iter {
-            names.push(line);
-        }
+        let names = lines_iter.collect();
 
         Ok(Self { names })
     }
