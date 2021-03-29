@@ -79,18 +79,22 @@ impl<'d> MachObject<'d> {
     /// use symbolic_debuginfo::bcsymbolmap::BCSymbolMap;
     /// use symbolic_debuginfo::macho::MachObject;
     ///
-    /// let object_data =
-    ///     std::fs::read("tests/fixtures/2d10c42f-591d-3265-b147-78ba0868073f.dwarf-hidden")
-    ///         .unwrap();
+    /// // let object_data = std::fs::read("dSYMs/.../Resources/DWARF/object").unwrap();
+    /// # let object_data =
+    /// #     std::fs::read("tests/fixtures/2d10c42f-591d-3265-b147-78ba0868073f.dwarf-hidden")
+    /// #         .unwrap();
     /// let mut object = MachObject::parse(&object_data).unwrap();
     ///
     /// let map = object.symbol_map();
     /// let symbol = map.lookup(0x5a74).unwrap();
     /// assert_eq!(symbol.name.as_ref().map(|n| n.to_owned()).unwrap(), "__hidden#0_");
     ///
-    /// let bc_symbol_map_data =
-    ///     std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
-    ///         .unwrap();
+    /// // let bc_symbol_map_data =
+    /// //     std::fs::read("BCSymbolMaps/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
+    /// //     .unwrap();
+    /// # let bc_symbol_map_data =
+    /// #     std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
+    /// #         .unwrap();
     /// let bc_symbol_map = BCSymbolMap::parse(&bc_symbol_map_data).unwrap();
     /// object.load_symbolmap(bc_symbol_map);
     ///
