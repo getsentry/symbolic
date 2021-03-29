@@ -14,8 +14,6 @@ use std::iter::FusedIterator;
 
 use thiserror::Error;
 
-use symbolic_common::DebugId;
-
 use crate::macho::SWIFT_HIDDEN_PREFIX;
 
 const BC_SYMBOL_MAP_HEADER: &str = "BCSymbolMap Version: 2.0";
@@ -66,7 +64,6 @@ impl fmt::Display for BCSymbolMapErrorKind {
 /// [`MachObject`]: crate::macho::MachObject
 #[derive(Clone, Debug)]
 pub struct BCSymbolMap<'d> {
-    id: DebugId, // TODO
     names: Vec<&'d str>,
 }
 
@@ -93,7 +90,7 @@ impl<'d> BCSymbolMap<'d> {
     ///
     /// A symbol map does not contain the UUID of its symbols, instead this is normally
     /// encoded in the filename.
-    pub fn parse(id: DebugId, data: &'d [u8]) -> Result<Self, BCSymbolMapError> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, BCSymbolMapError> {
         let content = std::str::from_utf8(data).map_err(|err| BCSymbolMapError {
             kind: BCSymbolMapErrorKind::InvalidUtf8,
             source: Some(Box::new(err)),
@@ -113,7 +110,7 @@ impl<'d> BCSymbolMap<'d> {
             names.push(line);
         }
 
-        Ok(Self { id, names })
+        Ok(Self { names })
     }
 
     /// Returns the name of a symbol if it exists in this mapping.
@@ -183,7 +180,6 @@ mod tests {
 
     #[test]
     fn test_basic() {
-        let uuid: DebugId = "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap();
         let data = std::fs::read_to_string(
             "tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap",
         )
@@ -191,18 +187,17 @@ mod tests {
 
         assert!(BCSymbolMap::test(&data.as_bytes()[..20]));
 
-        let map = BCSymbolMap::parse(uuid, data.as_bytes()).unwrap();
+        let map = BCSymbolMap::parse(data.as_bytes()).unwrap();
         assert_eq!(map.get(2), Some("-[SentryMessage serialize]"))
     }
 
     #[test]
     fn test_iter() {
-        let uuid: DebugId = "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap();
         let data = std::fs::read_to_string(
             "tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap",
         )
         .unwrap();
-        let map = BCSymbolMap::parse(uuid, data.as_bytes()).unwrap();
+        let map = BCSymbolMap::parse(data.as_bytes()).unwrap();
 
         let mut map_iter = map.iter();
 
@@ -219,14 +214,13 @@ mod tests {
 
     #[test]
     fn test_data_lifetime() {
-        let uuid: DebugId = "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap();
         let data = std::fs::read_to_string(
             "tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap",
         )
         .unwrap();
 
         let name = {
-            let map = BCSymbolMap::parse(uuid, data.as_bytes()).unwrap();
+            let map = BCSymbolMap::parse(data.as_bytes()).unwrap();
             map.get(0).unwrap()
         };
 
@@ -235,12 +229,11 @@ mod tests {
 
     #[test]
     fn test_resolve() {
-        let uuid: DebugId = "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap();
         let data = std::fs::read_to_string(
             "tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap",
         )
         .unwrap();
-        let map = BCSymbolMap::parse(uuid, data.as_bytes()).unwrap();
+        let map = BCSymbolMap::parse(data.as_bytes()).unwrap();
 
         assert_eq!(map.resolve("normal_name"), "normal_name");
         assert_eq!(map.resolve("__hidden#2_"), "-[SentryMessage serialize]");

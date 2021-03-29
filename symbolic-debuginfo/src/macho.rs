@@ -91,11 +91,7 @@ impl<'d> MachObject<'d> {
     /// let bc_symbol_map_data =
     ///     std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
     ///         .unwrap();
-    /// let bc_symbol_map = BCSymbolMap::parse(
-    ///     "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap(),
-    ///     &bc_symbol_map_data,
-    /// )
-    /// .unwrap();
+    /// let bc_symbol_map = BCSymbolMap::parse(&bc_symbol_map_data).unwrap();
     /// object.load_symbolmap(bc_symbol_map);
     ///
     ///
@@ -760,11 +756,7 @@ mod tests {
         let bc_symbol_map_data =
             std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
                 .unwrap();
-        let bc_symbol_map = BCSymbolMap::parse(
-            "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap(),
-            &bc_symbol_map_data,
-        )
-        .unwrap();
+        let bc_symbol_map = BCSymbolMap::parse(&bc_symbol_map_data).unwrap();
         object.load_symbolmap(bc_symbol_map);
 
         let mut symbols = object.symbols();
