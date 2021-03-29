@@ -111,6 +111,21 @@ impl<'d> BCSymbolMap<'d> {
     }
 
     /// Returns the name of a symbol if it exists in this mapping.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_debuginfo::bcsymbolmap::BCSymbolMap;
+    ///
+    /// // let data = std::fs::read("c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap").unwrap();
+    /// # let data =
+    /// #     std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
+    /// #         .unwrap();
+    /// let map = BCSymbolMap::parse(&data).unwrap();
+    ///
+    /// assert_eq!(map.get(43), Some("Sources/Sentry/Public/SentryMessage.h"));
+    /// assert_eq!(map.get(usize::MAX), None);  // We do not have this many entries
+    /// ```
     pub fn get(&self, index: usize) -> Option<&'d str> {
         self.names.get(index).copied()
     }
@@ -120,6 +135,21 @@ impl<'d> BCSymbolMap<'d> {
     /// If the name matches the `__hidden#NNN_` pattern that indicates a [`BCSymbolMap`]
     /// lookup it will be looked up the resolved name will be returned.  Otherwise the name
     /// is returned unchanged.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_debuginfo::bcsymbolmap::BCSymbolMap;
+    ///
+    /// // let data = std::fs::read("c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap").unwrap();
+    /// # let data =
+    /// #     std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
+    /// #         .unwrap();
+    /// let map = BCSymbolMap::parse(&data).unwrap();
+    ///
+    /// assert_eq!(map.resolve("__hidden#43_"), "Sources/Sentry/Public/SentryMessage.h");
+    /// assert_eq!(map.resolve("_addJSONData"), "_addJSONData");  // #64
+    /// ```
     pub fn resolve(&self, mut name: &'d str) -> &'d str {
         if let Some(tail) = name.strip_prefix(SWIFT_HIDDEN_PREFIX) {
             if let Some(index_as_string) = tail.strip_suffix('_') {
