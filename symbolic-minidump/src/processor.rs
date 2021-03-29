@@ -29,7 +29,7 @@ use crate::cfi::CfiCache;
 use crate::utils;
 
 type CfiRules<'a> = symbolic_unwind::evaluator::CfiRules<u64, &'a str>;
-type ModuleMap<'data> = BTreeMap<&'data CodeModuleId, CfiRules<'data>>;
+type ModuleMap<'a> = BTreeMap<&'a CodeModuleId, (CfiRules<'a>, BreakpadStackRecords<'a>)>;
 type Evaluator<'a> = symbolic_unwind::evaluator::Evaluator<'a, u64, RuntimeEndian>;
 
 lazy_static! {
@@ -98,49 +98,41 @@ struct SymbolicSourceLineResolver<'a> {
     /// The endianness to use when evaluating memory contents.
     endian: RuntimeEndian,
 
-    /// A map containing CFI information (in the form of a [`CFICache`]) for modules.
+    /// A map containing CFI information for modules.
     ///
-    /// Keys are [`CodeModuleId`s], i.e., the modules' debug identifiers.
+    /// Keys are [`CodeModuleId`s], i.e., the modules' debug identifiers. Values are
+    /// pairs of a [`CfiRules`] struct and a [`BreakpadStackRecords`] iterator.
+    /// Initially the `CfiRules` is empty and the iterator at the beginning. As we encounter
+    /// addresses for which we haven't parsed the rules yet, we consume the iterator until
+    /// we find the right entry and insert everything we passed on the way into the
+    /// `CfiRules`.
     modules: ModuleMap<'a>,
 }
 
 impl<'a> SymbolicSourceLineResolver<'a> {
     /// Create a new SourceLineResolver from the given frame information.
     fn new(frame_infos: Option<&'a FrameInfoMap<'a>>) -> Self {
-        let modules = if let Some(frame_infos) = frame_infos {
-            frame_infos
-                .iter()
-                .map(|(id, cache)| {
-                    // TODO: Don't do this so eagerly
-                    let mut cfi_rules = CfiRules::default();
-                    for cfi_record in
-                        BreakpadStackRecords::new(cache.as_slice()).filter_map(|r| match r {
-                            Ok(BreakpadStackRecord::Cfi(r)) => Some(r),
-                            _ => None,
-                        })
-                    {
-                        cfi_rules.insert_init(
-                            cfi_record.start,
-                            cfi_record.start + cfi_record.size,
-                            cfi_record.init_rules,
-                        );
+        if let Some(frame_infos) = frame_infos {
+            let mut modules = ModuleMap::default();
+            for (id, cache) in frame_infos.iter() {
+                modules.insert(
+                    id,
+                    (
+                        CfiRules::default(),
+                        BreakpadStackRecords::new(cache.as_slice()),
+                    ),
+                );
+            }
 
-                        for delta in cfi_record.deltas() {
-                            if let Ok(delta) = delta {
-                                cfi_rules.insert_delta(delta.address, delta.rules);
-                            }
-                        }
-                    }
-
-                    (id, cfi_rules)
-                })
-                .collect()
+            Self {
+                modules,
+                endian: RuntimeEndian::Little,
+            }
         } else {
-            ModuleMap::default()
-        };
-        Self {
-            endian: RuntimeEndian::Little,
-            modules,
+            Self {
+                modules: ModuleMap::new(),
+                endian: RuntimeEndian::Little,
+            }
         }
     }
 
@@ -153,11 +145,44 @@ impl<'a> SymbolicSourceLineResolver<'a> {
     ///
     /// "CFI information" here means an [`Evaluator`](symbolic_unwind::evaluator::Evaluator)
     ///  that can be used to recover the values of the caller's registers.
-    fn find_cfi_frame_info(&self, module: &CodeModuleId, address: u64) -> Evaluator {
+    fn find_cfi_frame_info(&mut self, module: &CodeModuleId, address: u64) -> Evaluator {
         let mut evaluator = Evaluator::new(self.endian);
-        if let Some(cfi_rules) = self.modules.get(module) {
-            for rules in cfi_rules.get_rules(address).unwrap_or_default() {
-                evaluator.add_cfi_rules_string(rules).unwrap();
+        if let Some((ref mut cfi_rules, records)) = self.modules.get_mut(module) {
+            // If we don't have cfi rules cached for the given address, we go through
+            // the records iterator until we find the rules we're looking for. All rules
+            // we find on the way are added to cfi_rules.
+            if cfi_rules.get_rules(address).is_none() {
+                while let Some(cfi_record) = records
+                    .filter_map(|r| match r {
+                        Ok(BreakpadStackRecord::Cfi(r)) => Some(r),
+                        _ => None,
+                    })
+                    .next()
+                {
+                    cfi_rules.insert_init(
+                        cfi_record.start,
+                        cfi_record.start + cfi_record.size,
+                        cfi_record.init_rules,
+                    );
+
+                    for delta in cfi_record.deltas() {
+                        if let Ok(delta) = delta {
+                            cfi_rules.insert_delta(delta.address, delta.rules);
+                        }
+                    }
+
+                    if cfi_record.start <= address && cfi_record.start + cfi_record.size > address {
+                        break;
+                    }
+                }
+            }
+
+            // The rules for the address might still not be there. In this case there
+            // is nothing to be done other than return an empty evaluator.
+            if let Some(rules_vec) = cfi_rules.get_rules(address) {
+                for rules in rules_vec.iter() {
+                    evaluator.add_cfi_rules_string(rules).unwrap();
+                }
             }
         }
         evaluator
