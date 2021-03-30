@@ -763,15 +763,64 @@ impl<'d> Iterator for BreakpadStackCfiDeltaRecords<'d> {
     }
 }
 
+/// Possible types of data held by a [`BreakpadStackWinRecord`], as listed in
+/// [http://msdn.microsoft.com/en-us/library/bc5207xw%28VS.100%29.aspx]. Breakpad only deals with
+/// types 0 (`FPO`) and 4 (`FrameData`).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BreakpadStackWinRecordType {
+    /// Frame pointer omitted; FPO info available.
+    Fpo = 0,
+
+    /// Frame pointer omitted; Frame data info available.
+    FrameData = 4,
+}
+
 /// A [Windows stack frame record], used on x86.
 ///
 /// Example: `STACK WIN 4 2170 14 1 0 0 0 0 0 1 $eip 4 + ^ = $esp $ebp 8 + = $ebp $ebp ^ =`
 ///
 /// [Windows stack frame record]: https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-win-records
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BreakpadStackWinRecord<'d> {
-    /// Variables and the program string.
-    pub text: &'d str,
+    /// The type of frame data this record holds.
+    pub frame_type: BreakpadStackWinRecordType,
+
+    /// The starting address covered by this record, relative to the module's load address.
+    pub rva: u64,
+
+    /// The number of bytes covered by this record.
+    pub code_size: u64,
+
+    /// The size of the prologue machine code within the record's range in bytes.
+    pub prologue_size: u64,
+
+    /// The size of the epilogue machine code within the record's range in bytes.
+    pub epilogue_size: u64,
+
+    /// The number of bytes this function expects to be passed as arguments.
+    pub parameter_size: u64,
+
+    /// The number of bytes used by this function to save callee-saves registers.
+    pub saved_register_size: u64,
+
+    /// The number of bytes used to save this function's local variables.
+    pub local_size: u64,
+
+    /// The maximum number of bytes pushed on the stack in the frame.
+    pub max_stack_size: u64,
+
+    /// Whether this record contains a program string.
+    pub has_program_string: bool,
+
+    /// Whether this function uses the base pointer register as a general-purpose register.
+    ///
+    /// This is only relevant for records of type 0 (`FPO`).
+    pub allocates_base_pointer: bool,
+
+    /// A string describing a program for recovering the caller's register values.
+    ///
+    /// This is only relevant for records of type 4 (`FrameData`).
+    pub program_string: &'d str,
 }
 
 impl<'d> BreakpadStackWinRecord<'d> {
@@ -787,16 +836,41 @@ impl<'d> BreakpadStackWinRecord<'d> {
 
     // Constructs a stack record directly from a Pest parser pair.
     fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Self {
-        let mut record = BreakpadStackWinRecord::default();
+        let mut pairs = pair.into_inner();
+        let frame_type = if pairs.next().unwrap().as_str() == "4" {
+            BreakpadStackWinRecordType::FrameData
+        } else {
+            BreakpadStackWinRecordType::Fpo
+        };
+        let rva = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let code_size = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let prologue_size = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let epilogue_size = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let parameter_size = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let saved_register_size = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let local_size = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let max_stack_size = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let has_program_string = pairs.next().unwrap().as_str() != "0";
+        let (allocates_base_pointer, program_string) = if has_program_string {
+            (false, pairs.next().unwrap().as_str())
+        } else {
+            (pairs.next().unwrap().as_str() != "0", "")
+        };
 
-        for pair in pair.into_inner() {
-            match pair.as_rule() {
-                Rule::text => record.text = pair.as_str(),
-                _ => unreachable!(),
-            }
+        Self {
+            frame_type,
+            rva,
+            code_size,
+            prologue_size,
+            epilogue_size,
+            parameter_size,
+            saved_register_size,
+            local_size,
+            max_stack_size,
+            has_program_string,
+            allocates_base_pointer,
+            program_string,
         }
-
-        record
     }
 }
 
@@ -1549,11 +1623,22 @@ mod tests {
         let record = BreakpadStackRecord::parse(string)?;
 
         insta::assert_debug_snapshot!(record, @r###"
-       ⋮Win(
-       ⋮    BreakpadStackWinRecord {
-       ⋮        text: "4 371a c 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =",
-       ⋮    },
-       ⋮)
+        Win(
+            BreakpadStackWinRecord {
+                frame_type: FrameData,
+                rva: 14106,
+                code_size: 12,
+                prologue_size: 0,
+                epilogue_size: 0,
+                parameter_size: 0,
+                saved_register_size: 0,
+                local_size: 0,
+                max_stack_size: 0,
+                has_program_string: true,
+                allocates_base_pointer: false,
+                program_string: "$T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =",
+            },
+        )
         "###);
 
         Ok(())

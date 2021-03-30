@@ -52,7 +52,20 @@ public = { "PUBLIC" ~ multiple? ~ addr ~ param_size ~ name? }
 // Given a stack frame, a STACK WIN record indicates how to find the frame that called it.
 // Example: "STACK WIN 4 2170 14 1 0 0 0 0 0 1 $eip 4 + ^ = $esp $ebp 8 + = $ebp $ebp ^ ="
 // see <https://github.com/google/breakpad/blob/master/docs/symbol_files.md#stack-win-records>
-stack_win = { "STACK WIN" ~ text }
+stack_win = { "STACK WIN"
+                ~ frame_type // type
+                ~ hex // rva
+                ~ hex // code_size
+                ~ hex // prologue_size
+                ~ hex // epilogue_size
+                ~ hex // parameter_size
+                ~ hex // saved_register_size
+                ~ hex // local_size
+                ~ hex // max_stack_size
+                ~ hex // has_program_string
+                ~ text // program_string_OR_allocates_base_pointer
+            }
+frame_type = { "0" | "4" }
 
 // STACK CFI record
 // STACK CFI ("Call Frame Information") records describe how to walk the stack when execution is at a given machine instruction.
