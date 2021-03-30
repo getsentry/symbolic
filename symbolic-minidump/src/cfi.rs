@@ -304,22 +304,22 @@ impl<W: Write> AsciiCfiWriter<W> {
                 BreakpadStackRecord::Win(r) => writeln!(
                     self.inner,
                     "STACK WIN {} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {} {}",
-                    match r.frame_type {
+                    match r.ty {
                         BreakpadStackWinRecordType::Fpo => "0",
                         BreakpadStackWinRecordType::FrameData => "4",
                     },
-                    r.rva,
+                    r.code_start,
                     r.code_size,
-                    r.prologue_size,
-                    r.epilogue_size,
-                    r.parameter_size,
-                    r.saved_register_size,
-                    r.local_size,
+                    r.prolog_size,
+                    r.epilog_size,
+                    r.params_size,
+                    r.saved_regs_size,
+                    r.locals_size,
                     r.max_stack_size,
                     if r.program_string.is_some() { "1" } else { "0" },
                     if let Some(ps) = r.program_string {
                         ps
-                    } else if r.allocates_base_pointer {
+                    } else if r.uses_base_pointer {
                         "1"
                     } else {
                         "0"
