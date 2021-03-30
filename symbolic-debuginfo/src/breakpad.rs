@@ -833,6 +833,16 @@ pub struct BreakpadStackRecords<'d> {
     finished: bool,
 }
 
+impl<'d> BreakpadStackRecords<'d> {
+    /// Creates an iterator over [`BreakpadStackRecord`]s contained in a slice of data.
+    pub fn new(data: &'d [u8]) -> Self {
+        Self {
+            lines: Lines::new(data),
+            finished: false,
+        }
+    }
+}
+
 impl<'d> Iterator for BreakpadStackRecords<'d> {
     type Item = Result<BreakpadStackRecord<'d>, BreakpadError>;
 
