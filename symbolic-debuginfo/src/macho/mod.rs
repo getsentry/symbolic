@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
 use std::io::Cursor;
+use std::sync::Arc;
 
 use goblin::mach;
 use smallvec::SmallVec;
@@ -14,6 +15,10 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
+
+mod bcsymbolmap;
+
+pub use bcsymbolmap::{BcSymbolMap, BcSymbolMapError};
 
 /// Prefix for hidden symbols from Apple BCSymbolMap builds.
 const SWIFT_HIDDEN_PREFIX: &str = "__hidden#";
@@ -41,6 +46,7 @@ impl MachError {
 pub struct MachObject<'d> {
     macho: mach::MachO<'d>,
     data: &'d [u8],
+    bcsymbolmap: Option<Arc<BcSymbolMap<'d>>>,
 }
 
 impl<'d> MachObject<'d> {
@@ -55,8 +61,56 @@ impl<'d> MachObject<'d> {
     /// Tries to parse a MachO from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
         mach::MachO::parse(data, 0)
-            .map(|macho| MachObject { macho, data })
+            .map(|macho| MachObject {
+                macho,
+                data,
+                bcsymbolmap: None,
+            })
             .map_err(MachError::new)
+    }
+
+    /// Parses and loads the [`BcSymbolMap`] into the object.
+    ///
+    /// The bitcode symbol map must match the object, there is nothing in the symbol map
+    /// which allows this call to verify this.
+    ///
+    /// Once the symbolmap is loaded this object will transparently resolve any hidden
+    /// symbols using the provided symbolmap.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use symbolic_debuginfo::macho::{BcSymbolMap, MachObject};
+    ///
+    /// // let object_data = std::fs::read("dSYMs/.../Resources/DWARF/object").unwrap();
+    /// # let object_data =
+    /// #     std::fs::read("tests/fixtures/2d10c42f-591d-3265-b147-78ba0868073f.dwarf-hidden")
+    /// #         .unwrap();
+    /// let mut object = MachObject::parse(&object_data).unwrap();
+    ///
+    /// let map = object.symbol_map();
+    /// let symbol = map.lookup(0x5a74).unwrap();
+    /// assert_eq!(symbol.name.as_ref().map(|n| n.to_owned()).unwrap(), "__hidden#0_");
+    ///
+    /// // let bc_symbol_map_data =
+    /// //     std::fs::read("BCSymbolMaps/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
+    /// //     .unwrap();
+    /// # let bc_symbol_map_data =
+    /// #     std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
+    /// #         .unwrap();
+    /// let bc_symbol_map = BcSymbolMap::parse(&bc_symbol_map_data).unwrap();
+    /// object.load_symbolmap(bc_symbol_map);
+    ///
+    ///
+    /// let map = object.symbol_map();
+    /// let symbol = map.lookup(0x5a74).unwrap();
+    /// assert_eq!(
+    ///     symbol.name.as_ref().map(|n| n.to_owned()).unwrap(),
+    ///     "-[SentryMessage initWithFormatted:]",
+    /// );
+    /// ```
+    pub fn load_symbolmap(&mut self, symbolmap: BcSymbolMap<'d>) {
+        self.bcsymbolmap = Some(Arc::new(symbolmap));
     }
 
     /// The container file format, which is always `FileFormat::MachO`.
@@ -206,6 +260,7 @@ impl<'d> MachObject<'d> {
             symbols: self.macho.symbols(),
             sections,
             vmaddr: self.load_address(),
+            symbolmap: self.bcsymbolmap.clone(),
         }
     }
 
@@ -401,6 +456,7 @@ pub struct MachOSymbolIterator<'data> {
     symbols: mach::symbols::SymbolIterator<'data>,
     sections: SmallVec<[usize; 2]>,
     vmaddr: u64,
+    symbolmap: Option<Arc<BcSymbolMap<'data>>>,
 }
 
 impl<'data> Iterator for MachOSymbolIterator<'data> {
@@ -432,9 +488,15 @@ impl<'data> Iterator for MachOSymbolIterator<'data> {
                 continue;
             }
 
+            if let Some(symbolmap) = self.symbolmap.as_ref() {
+                name = symbolmap.resolve(name);
+            }
+
             // Trim leading underscores from mangled C++ names.
-            if name.starts_with('_') && !name.starts_with(SWIFT_HIDDEN_PREFIX) {
-                name = &name[1..];
+            if let Some(tail) = name.strip_prefix('_') {
+                if !name.starts_with(SWIFT_HIDDEN_PREFIX) {
+                    name = tail;
+                }
             }
 
             return Some(Symbol {
@@ -684,5 +746,31 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for MachArchive<'d> {
 
     fn as_self(&'slf self) -> &Self::Ref {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bcsymbolmap() {
+        let object_data =
+            std::fs::read("tests/fixtures/2d10c42f-591d-3265-b147-78ba0868073f.dwarf-hidden")
+                .unwrap();
+        let mut object = MachObject::parse(&object_data).unwrap();
+
+        let bc_symbol_map_data =
+            std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
+                .unwrap();
+        let bc_symbol_map = BcSymbolMap::parse(&bc_symbol_map_data).unwrap();
+        object.load_symbolmap(bc_symbol_map);
+
+        let mut symbols = object.symbols();
+        let symbol = symbols.next().unwrap();
+        assert_eq!(symbol.name.unwrap(), "-[SentryMessage initWithFormatted:]");
+
+        let symbol = symbols.next().unwrap();
+        assert_eq!(symbol.name.unwrap(), "-[SentryMessage setMessage:]");
     }
 }
