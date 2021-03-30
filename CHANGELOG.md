@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Add support for loading BCSymbolMaps into MachObjects to un-obfuscate symbol names in bitcode builds. ([#336](https://github.com/getsentry/symbolic/pull/336))
+
 ## 8.0.5
 
 **Bug Fixes:**
