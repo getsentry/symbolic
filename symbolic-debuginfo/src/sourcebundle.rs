@@ -115,7 +115,7 @@ impl SourceBundleError {
     ///
     /// This function is used to generically create source bundle errors which do not originate from
     /// `symbolic` itself. The `source` argument is an arbitrary payload which will be contained in
-    /// this [`CfiError`].
+    /// this [`SourceBundleError`].
     pub fn new<E>(kind: SourceBundleErrorKind, source: E) -> Self
     where
         E: Into<Box<dyn Error + Send + Sync>>,

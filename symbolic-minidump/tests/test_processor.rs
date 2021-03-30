@@ -1,5 +1,9 @@
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+
 use symbolic_common::ByteView;
-use symbolic_minidump::processor::ProcessState;
+use symbolic_minidump::cfi::CfiCache;
+use symbolic_minidump::processor::{FrameInfoMap, ProcessState};
 use symbolic_testutils::fixture;
 
 type Error = Box<dyn std::error::Error>;
@@ -9,6 +13,32 @@ fn process_minidump_linux() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("linux/mini.dmp"))?;
     let state = ProcessState::from_minidump(&buffer, None)?;
     insta::assert_debug_snapshot!("process_state_linux", &state);
+    Ok(())
+}
+
+#[test]
+fn process_minidump_linux_cfi() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("linux/mini.dmp"))?;
+    let mut frame_info = FrameInfoMap::new();
+
+    let cfi_records = {
+        let file = BufReader::new(File::open(fixture("linux/crash.sym"))?);
+
+        // Read STACK CFI records starting at line 170
+        file.lines()
+            .skip(169)
+            .map(|l| l.unwrap())
+            .collect::<Vec<String>>()
+            .join("\n")
+    };
+    let view = ByteView::from_slice(&cfi_records.as_bytes());
+
+    frame_info.insert(
+        "C0BCC3F19827FE653058404B2831D9E60".parse().unwrap(),
+        CfiCache::from_bytes(view).unwrap(),
+    );
+    let state = ProcessState::from_minidump(&buffer, Some(&frame_info))?;
+    insta::assert_debug_snapshot!("process_state_linux_cfi", &state);
     Ok(())
 }
 

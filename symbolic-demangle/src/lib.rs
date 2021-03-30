@@ -24,7 +24,10 @@
 //!
 //! let name = Name::from("__ZN3std2io4Read11read_to_end17hb85a0f6802e14499E");
 //! assert_eq!(name.detect_language(), Language::Rust);
-//! assert_eq!(name.try_demangle(DemangleOptions::complete()), "std::io::Read::read_to_end");
+//! assert_eq!(
+//!     name.try_demangle(DemangleOptions::complete()),
+//!     "std::io::Read::read_to_end"
+//! );
 //! # }
 //! ```
 
@@ -131,6 +134,18 @@ fn is_maybe_cpp(ident: &str) -> bool {
 
 fn is_maybe_msvc(ident: &str) -> bool {
     ident.starts_with('?') || ident.starts_with("@?")
+}
+
+/// An MD5 mangled name consists of the prefix "??@", 32 hex digits,
+/// and the suffix "@".
+fn is_maybe_md5(ident: &str) -> bool {
+    if ident.len() != 36 {
+        return false;
+    }
+
+    ident.starts_with("??@")
+        && ident.ends_with('@')
+        && ident[3..35].chars().all(|c| c.is_ascii_hexdigit())
 }
 
 #[cfg(feature = "swift")]
@@ -273,7 +288,7 @@ pub trait Demangle {
     /// # Examples
     ///
     /// ```
-    /// use symbolic_common::{Name, Language};
+    /// use symbolic_common::{Language, Name};
     /// use symbolic_demangle::{Demangle, DemangleOptions};
     ///
     /// assert_eq!(Name::from("_ZN3foo3barEv").detect_language(), Language::Cpp);
@@ -297,8 +312,14 @@ pub trait Demangle {
     /// use symbolic_common::Name;
     /// use symbolic_demangle::{Demangle, DemangleOptions};
     ///
-    /// assert_eq!(Name::from("_ZN3foo3barEv").demangle(DemangleOptions::name_only()), Some("foo::bar".to_string()));
-    /// assert_eq!(Name::from("unknown").demangle(DemangleOptions::name_only()), None);
+    /// assert_eq!(
+    ///     Name::from("_ZN3foo3barEv").demangle(DemangleOptions::name_only()),
+    ///     Some("foo::bar".to_string())
+    /// );
+    /// assert_eq!(
+    ///     Name::from("unknown").demangle(DemangleOptions::name_only()),
+    ///     None
+    /// );
     /// # }
     /// ```
     fn demangle(&self, opts: DemangleOptions) -> Option<String>;
@@ -315,8 +336,14 @@ pub trait Demangle {
     /// use symbolic_common::Name;
     /// use symbolic_demangle::{Demangle, DemangleOptions};
     ///
-    /// assert_eq!(Name::from("_ZN3foo3barEv").try_demangle(DemangleOptions::name_only()), "foo::bar");
-    /// assert_eq!(Name::from("unknown").try_demangle(DemangleOptions::name_only()), "unknown");
+    /// assert_eq!(
+    ///     Name::from("_ZN3foo3barEv").try_demangle(DemangleOptions::name_only()),
+    ///     "foo::bar"
+    /// );
+    /// assert_eq!(
+    ///     Name::from("unknown").try_demangle(DemangleOptions::name_only()),
+    ///     "unknown"
+    /// );
     /// # }
     /// ```
     ///
@@ -353,9 +380,10 @@ impl<'a> Demangle for Name<'a> {
     }
 
     fn demangle(&self, opts: DemangleOptions) -> Option<String> {
-        if matches!(self.mangling(), NameMangling::Unmangled) {
+        if matches!(self.mangling(), NameMangling::Unmangled) || is_maybe_md5(self.as_str()) {
             return Some(self.to_string());
         }
+
         match self.detect_language() {
             Language::ObjC => Some(demangle_objc(self.as_str(), opts)),
             Language::ObjCpp => try_demangle_objcpp(self.as_str(), opts),
@@ -394,5 +422,22 @@ pub fn demangle(ident: &str) -> Cow<'_, str> {
     match Name::from(ident).demangle(DemangleOptions::complete()) {
         Some(demangled) => Cow::Owned(demangled),
         None => Cow::Borrowed(ident),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{Demangle, DemangleOptions};
+    use symbolic_common::Name;
+
+    #[test]
+    fn simple_md5() {
+        let md5_mangled = "??@8ba8d245c9eca390356129098dbe9f73@";
+        assert_eq!(
+            Name::from(md5_mangled)
+                .demangle(DemangleOptions::name_only())
+                .unwrap(),
+            md5_mangled
+        );
     }
 }
