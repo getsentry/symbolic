@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
 use std::io::Cursor;
+use std::sync::Arc;
 
 use goblin::mach;
 use smallvec::SmallVec;
@@ -45,7 +46,7 @@ impl MachError {
 pub struct MachObject<'d> {
     macho: mach::MachO<'d>,
     data: &'d [u8],
-    bcsymbolmap: Option<BcSymbolMap<'d>>,
+    bcsymbolmap: Option<Arc<BcSymbolMap<'d>>>,
 }
 
 impl<'d> MachObject<'d> {
@@ -109,7 +110,7 @@ impl<'d> MachObject<'d> {
     /// );
     /// ```
     pub fn load_symbolmap(&mut self, symbolmap: BcSymbolMap<'d>) {
-        self.bcsymbolmap = Some(symbolmap);
+        self.bcsymbolmap = Some(Arc::new(symbolmap));
     }
 
     /// The container file format, which is always `FileFormat::MachO`.
@@ -455,7 +456,7 @@ pub struct MachOSymbolIterator<'data> {
     symbols: mach::symbols::SymbolIterator<'data>,
     sections: SmallVec<[usize; 2]>,
     vmaddr: u64,
-    symbolmap: Option<BcSymbolMap<'data>>,
+    symbolmap: Option<Arc<BcSymbolMap<'data>>>,
 }
 
 impl<'data> Iterator for MachOSymbolIterator<'data> {
