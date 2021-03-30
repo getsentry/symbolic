@@ -26,7 +26,9 @@ use std::ops::Range;
 use thiserror::Error;
 
 use symbolic_common::{Arch, ByteView, UnknownArchError};
-use symbolic_debuginfo::breakpad::{BreakpadError, BreakpadObject, BreakpadStackRecord, BreakpadStackWinRecordType};
+use symbolic_debuginfo::breakpad::{
+    BreakpadError, BreakpadObject, BreakpadStackRecord, BreakpadStackWinRecordType,
+};
 use symbolic_debuginfo::dwarf::gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error as GimliError,
     FrameDescriptionEntry, Reader, Register, RegisterRule, UninitializedUnwindContext,
