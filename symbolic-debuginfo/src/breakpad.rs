@@ -701,19 +701,17 @@ pub struct BreakpadStackCfiRecord<'d> {
 
 impl<'d> BreakpadStackCfiRecord<'d> {
     /// Parses a `STACK CFI INIT` record from a single line.
-    pub fn parse(data: &'d [u8], deltas: Lines<'d>) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::stack_cfi_init, string)?
             .next()
             .unwrap();
-        let mut record = Self::from_pair(parsed);
-        record.deltas = deltas;
-        Ok(record)
+        Ok(Self::from_pair(parsed))
     }
 
     /// Constructs a stack cfi record directly from a Pest parser pair.
     fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Self {
-        let mut init = pair.into_inner().next().unwrap().into_inner();
+        let mut init = pair.into_inner();
         let start = u64::from_str_radix(init.next().unwrap().as_str(), 16).unwrap();
         let size = u64::from_str_radix(init.next().unwrap().as_str(), 16).unwrap();
         let init_rules = init.next().unwrap().as_str();
@@ -813,16 +811,14 @@ pub enum BreakpadStackRecord<'d> {
 
 impl<'d> BreakpadStackRecord<'d> {
     /// Parses a stack frame information record from a single line.
-    pub fn parse(data: &'d [u8], lines: Lines<'d>) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::stack, string)?.next().unwrap();
         let pair = parsed.into_inner().next().unwrap();
 
         Ok(match pair.as_rule() {
-            Rule::stack_cfi => {
-                let mut record = BreakpadStackCfiRecord::from_pair(pair);
-                record.deltas = lines;
-                BreakpadStackRecord::Cfi(record)
+            Rule::stack_cfi_init => {
+                BreakpadStackRecord::Cfi(BreakpadStackCfiRecord::from_pair(pair))
             }
             Rule::stack_win => BreakpadStackRecord::Win(BreakpadStackWinRecord::from_pair(pair)),
             _ => unreachable!(),
@@ -846,8 +842,15 @@ impl<'d> Iterator for BreakpadStackRecords<'d> {
         }
 
         while let Some(line) = self.lines.next() {
-            if line.starts_with(b"STACK WIN") || line.starts_with(b"STACK CFI INIT") {
-                return Some(BreakpadStackRecord::parse(line, self.lines.clone()));
+            if line.starts_with(b"STACK WIN") {
+                return Some(BreakpadStackRecord::parse(line));
+            }
+
+            if line.starts_with(b"STACK CFI INIT") {
+                return Some(BreakpadStackCfiRecord::parse(line).map(|mut r| {
+                    r.deltas = self.lines.clone();
+                    BreakpadStackRecord::Cfi(r)
+                }));
             }
         }
 
@@ -1507,7 +1510,7 @@ mod tests {
     #[test]
     fn test_parse_stack_cfi_init_record() -> Result<(), BreakpadError> {
         let string = b"STACK CFI INIT 1880 2d .cfa: $rsp 8 + .ra: .cfa -8 + ^";
-        let record = BreakpadStackRecord::parse(string, Lines::default())?;
+        let record = BreakpadStackRecord::parse(string)?;
 
         insta::assert_debug_snapshot!(record, @r###"
         Cfi(
@@ -1533,7 +1536,7 @@ mod tests {
     fn test_parse_stack_win_record() -> Result<(), BreakpadError> {
         let string =
             b"STACK WIN 4 371a c 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =";
-        let record = BreakpadStackRecord::parse(string, Lines::default())?;
+        let record = BreakpadStackRecord::parse(string)?;
 
         insta::assert_debug_snapshot!(record, @r###"
        ⋮Win(
