@@ -786,28 +786,28 @@ pub struct BreakpadStackWinRecord<'d> {
     pub frame_type: BreakpadStackWinRecordType,
 
     /// The starting address covered by this record, relative to the module's load address.
-    pub rva: u64,
+    pub rva: u32,
 
     /// The number of bytes covered by this record.
-    pub code_size: u64,
+    pub code_size: u32,
 
     /// The size of the prologue machine code within the record's range in bytes.
-    pub prologue_size: u64,
+    pub prologue_size: u16,
 
     /// The size of the epilogue machine code within the record's range in bytes.
-    pub epilogue_size: u64,
+    pub epilogue_size: u16,
 
     /// The number of bytes this function expects to be passed as arguments.
-    pub parameter_size: u64,
+    pub parameter_size: u32,
 
     /// The number of bytes used by this function to save callee-saves registers.
-    pub saved_register_size: u64,
+    pub saved_register_size: u16,
 
     /// The number of bytes used to save this function's local variables.
-    pub local_size: u64,
+    pub local_size: u32,
 
     /// The maximum number of bytes pushed on the stack in the frame.
-    pub max_stack_size: u64,
+    pub max_stack_size: u32,
 
     /// Whether this record contains a program string.
     pub has_program_string: bool,
@@ -842,14 +842,14 @@ impl<'d> BreakpadStackWinRecord<'d> {
         } else {
             BreakpadStackWinRecordType::Fpo
         };
-        let rva = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let code_size = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let prologue_size = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let epilogue_size = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let parameter_size = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let saved_register_size = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let local_size = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let max_stack_size = u64::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let rva = u32::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let code_size = u32::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let prologue_size = u16::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let epilogue_size = u16::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let parameter_size = u32::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let saved_register_size = u16::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let local_size = u32::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
+        let max_stack_size = u32::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
         let has_program_string = pairs.next().unwrap().as_str() != "0";
         let (allocates_base_pointer, program_string) = if has_program_string {
             (false, pairs.next().unwrap().as_str())
