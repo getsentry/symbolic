@@ -809,9 +809,6 @@ pub struct BreakpadStackWinRecord<'d> {
     /// The maximum number of bytes pushed on the stack in the frame.
     pub max_stack_size: u32,
 
-    /// Whether this record contains a program string.
-    pub has_program_string: bool,
-
     /// Whether this function uses the base pointer register as a general-purpose register.
     ///
     /// This is only relevant for records of type 0 (`FPO`).
@@ -819,8 +816,8 @@ pub struct BreakpadStackWinRecord<'d> {
 
     /// A string describing a program for recovering the caller's register values.
     ///
-    /// This is only relevant for records of type 4 (`FrameData`).
-    pub program_string: &'d str,
+    /// This is only expected to be present for records of type 4 (`FrameData`).
+    pub program_string: Option<&'d str>,
 }
 
 impl<'d> BreakpadStackWinRecord<'d> {
@@ -852,9 +849,9 @@ impl<'d> BreakpadStackWinRecord<'d> {
         let max_stack_size = u32::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
         let has_program_string = pairs.next().unwrap().as_str() != "0";
         let (allocates_base_pointer, program_string) = if has_program_string {
-            (false, pairs.next().unwrap().as_str())
+            (false, Some(pairs.next().unwrap().as_str()))
         } else {
-            (pairs.next().unwrap().as_str() != "0", "")
+            (pairs.next().unwrap().as_str() != "0", None)
         };
 
         Self {
@@ -867,7 +864,6 @@ impl<'d> BreakpadStackWinRecord<'d> {
             saved_register_size,
             local_size,
             max_stack_size,
-            has_program_string,
             allocates_base_pointer,
             program_string,
         }
@@ -1634,9 +1630,10 @@ mod tests {
                 saved_register_size: 0,
                 local_size: 0,
                 max_stack_size: 0,
-                has_program_string: true,
                 allocates_base_pointer: false,
-                program_string: "$T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =",
+                program_string: Some(
+                    "$T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =",
+                ),
             },
         )
         "###);

@@ -316,9 +316,9 @@ impl<W: Write> AsciiCfiWriter<W> {
                     r.saved_register_size,
                     r.local_size,
                     r.max_stack_size,
-                    if r.has_program_string { "1" } else { "0" },
-                    if r.has_program_string {
-                        r.program_string
+                    if r.program_string.is_some() { "1" } else { "0" },
+                    if let Some(ps) = r.program_string {
+                        ps
                     } else if r.allocates_base_pointer {
                         "1"
                     } else {
