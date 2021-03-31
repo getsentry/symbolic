@@ -367,7 +367,7 @@ fn uuid_from_plist(data: &[u8]) -> Result<DebugId, PListError> {
     for element in dict.children() {
         if element.tag().name() == "key" && element.text() == "DBGOriginalUUID" {
             found_key = true;
-        } else if found_key == true {
+        } else if found_key {
             raw_original = Some(element.text().to_string());
             break;
         }
