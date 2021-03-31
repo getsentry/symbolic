@@ -28,8 +28,7 @@ void string_free(char *string);
 }
 
 SymbolicSourceLineResolver::SymbolicSourceLineResolver(void *resolver,
-                                                       bool is_big_endian)
-    : windows_frame_infos_() {
+                                                       bool is_big_endian) {
     resolver_ = resolver;
     resolver_set_endian(resolver_, is_big_endian);
 }
@@ -80,16 +79,12 @@ WindowsFrameInfo *SymbolicSourceLineResolver::FindWindowsFrameInfo(
             string program_string(ps);
             string_free(ps);
 
-            const WindowsFrameInfo *wfi = new WindowsFrameInfo(
+            return new WindowsFrameInfo(
                 static_cast<google_breakpad::WindowsFrameInfo::StackInfoTypes>(
                     type_),
                 prolog_size, epilog_size, parameter_size, saved_register_size,
                 local_size, max_stack_size, allocates_base_pointer,
                 program_string);
-
-            windows_frame_infos_.push_back(*wfi);
-
-            return &(windows_frame_infos_.back());
         } else {
             return NULL;
         }

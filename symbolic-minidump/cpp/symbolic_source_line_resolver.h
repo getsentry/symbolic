@@ -52,7 +52,6 @@ class SymbolicSourceLineResolver
 
    private:
     void *resolver_;
-    std::vector<WindowsFrameInfo> windows_frame_infos_;
     // Disallow unwanted copy ctor and assignment operator
     SymbolicSourceLineResolver(const SymbolicSourceLineResolver &);
     void operator=(const SymbolicSourceLineResolver &);
