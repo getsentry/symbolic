@@ -19,6 +19,7 @@ class SymbolicSourceLineResolver
 
     bool HasModule(const CodeModule *module);
     CFIFrameInfo *FindCFIFrameInfo(const StackFrame *frame);
+    WindowsFrameInfo *FindWindowsFrameInfo(const StackFrame *frame);
 
     bool LoadModule(const CodeModule *module, const string &map_file) {
         return false;
@@ -49,12 +50,9 @@ class SymbolicSourceLineResolver
     void FillSourceLineInfo(StackFrame *frame) {
     }
 
-    WindowsFrameInfo *FindWindowsFrameInfo(const StackFrame *frame) {
-        return NULL;
-    }
-
    private:
     void *resolver_;
+    std::vector<WindowsFrameInfo> windows_frame_infos_;
     // Disallow unwanted copy ctor and assignment operator
     SymbolicSourceLineResolver(const SymbolicSourceLineResolver &);
     void operator=(const SymbolicSourceLineResolver &);

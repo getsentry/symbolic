@@ -22,14 +22,17 @@ use lazy_static::lazy_static;
 use regex::Regex;
 
 use symbolic_common::{Arch, ByteView, CpuFamily, DebugId, ParseDebugIdError, Uuid};
-use symbolic_debuginfo::breakpad::{BreakpadStackRecord, BreakpadStackRecords};
-use symbolic_unwind::{MemoryRegion, RuntimeEndian};
+use symbolic_debuginfo::breakpad::{
+    BreakpadStackRecord, BreakpadStackRecords, BreakpadStackWinRecord, BreakpadStackWinRecordType,
+};
+use symbolic_unwind::{evaluator::RangeMap, MemoryRegion, RuntimeEndian};
 
 use crate::cfi::CfiCache;
 use crate::utils;
 
 type CfiRules<'a> = symbolic_unwind::evaluator::CfiRules<u64, &'a str>;
 type CfiModuleMap<'a> = BTreeMap<&'a CodeModuleId, CfiModuleData<'a>>;
+type WinModuleMap<'a> = BTreeMap<&'a CodeModuleId, WinModuleData<'a>>;
 type Evaluator<'a> = symbolic_unwind::evaluator::Evaluator<'a, u64, RuntimeEndian>;
 
 lazy_static! {
@@ -147,15 +150,84 @@ impl<'a> CfiModuleData<'a> {
     }
 }
 
+/// Struct containing windows stack information for a module.
+///
+/// This maintains two separate caches for `STACK WIN` records
+/// of types `FPO` and `FrameData`. If both exist for a given address,
+/// the `FrameData` record is preferred.
+struct WinModuleData<'a> {
+    /// `FPO` records that have already been read and sorted.
+    cache_fpo: RangeMap<u32, BreakpadStackWinRecord<'a>>,
+
+    /// `FrameData` recorsd that have already been read and sorted.
+    cache_frame_data: RangeMap<u32, BreakpadStackWinRecord<'a>>,
+
+    /// An iterator over Breakpad stack records that have not yet been read.
+    records_iter: BreakpadStackRecords<'a>,
+}
+
+impl<'a> WinModuleData<'a> {
+    /// Creates a new `WinModuleData` from the given records iterator.
+    fn new(records_iter: BreakpadStackRecords<'a>) -> Self {
+        Self {
+            cache_fpo: RangeMap::default(),
+            cache_frame_data: RangeMap::default(),
+            records_iter,
+        }
+    }
+
+    /// Retrieves the STACK WIN record associated with the given address.
+    ///
+    /// If there are no records for the address in either cache,
+    /// the inner iterator is consumed until a record is found.
+    /// All records consumed on the way are added to the respective cache.
+    fn get(&mut self, address: u32) -> Option<&BreakpadStackWinRecord<'a>> {
+        let WinModuleData {
+            ref mut cache_fpo,
+            ref mut cache_frame_data,
+            records_iter,
+        } = self;
+        if cache_frame_data.get(address).is_none() && cache_fpo.get(address).is_none() {
+            while let Some(win_record) = records_iter
+                .filter_map(|r| match r {
+                    Ok(BreakpadStackRecord::Win(r)) => Some(r),
+                    _ => None,
+                })
+                .next()
+            {
+                let start = win_record.code_start;
+                let end = start + win_record.code_size;
+                match win_record.ty {
+                    BreakpadStackWinRecordType::Fpo => {
+                        cache_fpo.insert(start, end, win_record);
+                    }
+                    BreakpadStackWinRecordType::FrameData => {
+                        cache_frame_data.insert(start, end, win_record);
+                    }
+                }
+
+                if start <= address && end > address {
+                    break;
+                }
+            }
+        }
+
+        cache_frame_data.get(address).or(cache_fpo.get(address))
+    }
+}
+
 /// A Rust implementation of Breakpad's [`SourceLineResolverInterface`](https://github.com/google/breakpad/blob/main/src/google_breakpad/processor/source_line_resolver_interface.h).
 /// The only methods we really need are `HasModule`, `FindCFIFrameInfo`, and
-/// `FindWindowsFrameInfo`; the latter is still to-do.
+/// `FindWindowsFrameInfo`.
 struct SymbolicSourceLineResolver<'a> {
     /// The endianness to use when evaluating memory contents.
     endian: RuntimeEndian,
 
     /// A map containing Dwarf CFI information for modules.
     modules_cfi: CfiModuleMap<'a>,
+
+    /// A map containing Windows CFI information for modules.
+    modules_win: WinModuleMap<'a>,
 }
 
 impl<'a> SymbolicSourceLineResolver<'a> {
@@ -163,21 +235,29 @@ impl<'a> SymbolicSourceLineResolver<'a> {
     fn new(frame_infos: Option<&'a FrameInfoMap<'a>>) -> Self {
         if let Some(frame_infos) = frame_infos {
             let mut modules_cfi = CfiModuleMap::default();
+            let mut modules_win = WinModuleMap::default();
             for (id, cache) in frame_infos.iter() {
                 modules_cfi.insert(
                     id,
                     CfiModuleData::new(BreakpadStackRecords::new(cache.as_slice())),
+                );
+
+                modules_win.insert(
+                    id,
+                    WinModuleData::new(BreakpadStackRecords::new(cache.as_slice())),
                 );
             }
 
             Self {
                 endian: RuntimeEndian::Little,
                 modules_cfi,
+                modules_win,
             }
         } else {
             Self {
                 endian: RuntimeEndian::Little,
                 modules_cfi: CfiModuleMap::new(),
+                modules_win: WinModuleMap::new(),
             }
         }
     }
@@ -204,6 +284,19 @@ impl<'a> SymbolicSourceLineResolver<'a> {
             }
         }
         evaluator
+    }
+
+    /// Finds CFI information for a given module and address.
+    ///
+    /// "CFI information" here means a [`STACK WIN` record](symbolic_debuginfo::breakpad::BreakpadStackWinRecord).
+    fn find_windows_frame_info(
+        &mut self,
+        module: &CodeModuleId,
+        address: u32,
+    ) -> Option<&BreakpadStackWinRecord> {
+        self.modules_win
+            .get_mut(module)
+            .and_then(|win_records| win_records.get(address))
     }
 }
 
@@ -240,6 +333,49 @@ unsafe extern "C" fn resolver_find_cfi_frame_info(
 
     let eval = resolver.find_cfi_frame_info(&module, address);
     Box::into_raw(Box::new(eval)) as *mut c_void
+}
+
+#[no_mangle]
+unsafe extern "C" fn resolver_find_windows_frame_info(
+    resolver: *mut c_void,
+    module: *const c_char,
+    address: u32,
+    type_out: &mut i64,
+    prolog_size_out: &mut u32,
+    epilog_size_out: &mut u32,
+    parameter_size_out: &mut u32,
+    saved_register_size_out: &mut u32,
+    local_size_out: &mut u32,
+    max_stack_size_out: &mut u32,
+    allocates_base_pointer_out: &mut bool,
+    program_string_out: *mut *const c_char,
+) -> bool {
+    let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
+    let module = CStr::from_ptr(module).to_str().unwrap().parse().unwrap();
+
+    if let Some(record) = resolver.find_windows_frame_info(&module, address) {
+        *type_out = match record.ty {
+            BreakpadStackWinRecordType::Fpo => 0,
+            BreakpadStackWinRecordType::FrameData => 4,
+        };
+
+        *prolog_size_out = record.prolog_size as u32;
+        *epilog_size_out = record.epilog_size as u32;
+        *parameter_size_out = record.params_size;
+        *saved_register_size_out = record.saved_regs_size as u32;
+        *local_size_out = record.locals_size;
+        *max_stack_size_out = record.max_stack_size;
+        *allocates_base_pointer_out = record.uses_base_pointer;
+
+        if let Some(ps) = record.program_string {
+            let ps = CString::new(ps).unwrap();
+            *program_string_out = ps.into_raw();
+        }
+
+        true
+    } else {
+        false
+    }
 }
 
 #[no_mangle]
@@ -358,8 +494,13 @@ unsafe extern "C" fn evaluator_find_caller_regs_cfi(
 unsafe extern "C" fn regvals_free(reg_vals: *mut IRegVal, size: usize) {
     let values = Vec::from_raw_parts(reg_vals, size, size);
     for value in values {
-        std::mem::drop(CString::from_raw(value.name as *mut c_char));
+        string_free(value.name as *mut c_char);
     }
+}
+
+#[no_mangle]
+unsafe extern "C" fn string_free(string: *mut c_char) {
+    std::mem::drop(CString::from_raw(string));
 }
 
 /// An error returned when parsing an invalid [`CodeModuleId`](struct.CodeModuleId.html).
