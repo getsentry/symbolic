@@ -22,9 +22,8 @@ bool resolver_find_windows_frame_info(void *resolver,
                                       uint32_t *local_size_out,
                                       uint32_t *max_stack_size_out,
                                       bool *allocates_base_pointer_out,
-                                      char **program_string_out);
-
-void string_free(char *string);
+                                      char **program_string_out,
+                                      size_t *programs_string_len_out);
 }
 
 SymbolicSourceLineResolver::SymbolicSourceLineResolver(void *resolver,
@@ -71,13 +70,13 @@ WindowsFrameInfo *SymbolicSourceLineResolver::FindWindowsFrameInfo(
         uint32_t max_stack_size = 0;
         bool allocates_base_pointer = false;
         char *ps;
+        size_t ps_len;
 
         if (resolver_find_windows_frame_info(
                 resolver_, module_name, address, &type_, &prolog_size,
                 &epilog_size, &parameter_size, &saved_register_size,
-                &local_size, &max_stack_size, &allocates_base_pointer, &ps)) {
-            string program_string(ps);
-            string_free(ps);
+                &local_size, &max_stack_size, &allocates_base_pointer, &ps, &ps_len)) {
+            string program_string(ps, ps_len);
 
             return new WindowsFrameInfo(
                 static_cast<google_breakpad::WindowsFrameInfo::StackInfoTypes>(

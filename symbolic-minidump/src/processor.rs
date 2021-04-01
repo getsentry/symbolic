@@ -348,7 +348,8 @@ unsafe extern "C" fn resolver_find_windows_frame_info(
     local_size_out: &mut u32,
     max_stack_size_out: &mut u32,
     allocates_base_pointer_out: &mut bool,
-    program_string_out: *mut *const c_char,
+    program_string_out: &mut *const c_char,
+    program_string_len_out: &mut usize,
 ) -> bool {
     let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
     let module = CStr::from_ptr(module).to_str().unwrap().parse().unwrap();
@@ -368,8 +369,8 @@ unsafe extern "C" fn resolver_find_windows_frame_info(
         *allocates_base_pointer_out = record.uses_base_pointer;
 
         if let Some(ps) = record.program_string {
-            let ps = CString::new(ps).unwrap();
-            *program_string_out = ps.into_raw();
+            *program_string_out = ps.as_ptr() as *const i8;
+            *program_string_len_out = ps.len();
         }
 
         true
@@ -494,13 +495,8 @@ unsafe extern "C" fn evaluator_find_caller_regs_cfi(
 unsafe extern "C" fn regvals_free(reg_vals: *mut IRegVal, size: usize) {
     let values = Vec::from_raw_parts(reg_vals, size, size);
     for value in values {
-        string_free(value.name as *mut c_char);
+        std::mem::drop(CString::from_raw(value.name as *mut c_char));
     }
-}
-
-#[no_mangle]
-unsafe extern "C" fn string_free(string: *mut c_char) {
-    std::mem::drop(CString::from_raw(string));
 }
 
 /// An error returned when parsing an invalid [`CodeModuleId`](struct.CodeModuleId.html).
