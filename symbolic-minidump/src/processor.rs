@@ -119,17 +119,14 @@ impl<'a> CfiModuleData<'a> {
     /// All rules consumed on the way are added to the cache.
     fn get(&mut self, address: u64) -> Option<Vec<&&'a str>> {
         let CfiModuleData {
-            ref mut cache,
-            ref mut records_iter,
+            cache,
+            records_iter,
         } = self;
         if cache.get_rules(address).is_none() {
-            while let Some(cfi_record) = records_iter
-                .filter_map(|r| match r {
-                    Ok(BreakpadStackRecord::Cfi(r)) => Some(r),
-                    _ => None,
-                })
-                .next()
-            {
+            for cfi_record in records_iter.filter_map(|r| match r {
+                Ok(BreakpadStackRecord::Cfi(r)) => Some(r),
+                _ => None,
+            }) {
                 let start = cfi_record.start;
                 let end = start + cfi_record.size;
                 cache.insert_init(start, end, cfi_record.init_rules);
@@ -183,18 +180,15 @@ impl<'a> WinModuleData<'a> {
     /// All records consumed on the way are added to the respective cache.
     fn get(&mut self, address: u32) -> Option<&BreakpadStackWinRecord<'a>> {
         let WinModuleData {
-            ref mut cache_fpo,
-            ref mut cache_frame_data,
+            cache_fpo,
+            cache_frame_data,
             records_iter,
         } = self;
         if cache_frame_data.get(address).is_none() && cache_fpo.get(address).is_none() {
-            while let Some(win_record) = records_iter
-                .filter_map(|r| match r {
-                    Ok(BreakpadStackRecord::Win(r)) => Some(r),
-                    _ => None,
-                })
-                .next()
-            {
+            for win_record in records_iter.filter_map(|r| match r {
+                Ok(BreakpadStackRecord::Win(r)) => Some(r),
+                _ => None,
+            }) {
                 let start = win_record.code_start;
                 let end = start + win_record.code_size;
                 match win_record.ty {
