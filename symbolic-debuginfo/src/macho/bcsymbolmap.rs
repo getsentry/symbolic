@@ -360,15 +360,17 @@ impl BitcodeUuidMapping {
 fn uuid_from_plist(data: &[u8]) -> Result<DebugId, PListError> {
     let plist = Element::from_reader(Cursor::new(data))?;
 
-    let version = plist
-        .get_attr("version")
-        .ok_or_else(|| PListError::from(PListErrorKind::Schema))?;
+    let raw = uuid_from_xml_plist(plist).ok_or_else(|| PListError::from(PListErrorKind::Schema))?;
+
+    raw.parse().map_err(Into::into)
+}
+
+fn uuid_from_xml_plist(plist: Element) -> Option<String> {
+    let version = plist.get_attr("version")?;
     if version != "1.0" {
-        return Err(PListError::from(PListErrorKind::Schema));
+        return None;
     }
-    let dict = plist
-        .find("dict")
-        .ok_or_else(|| PListError::from(PListErrorKind::Schema))?;
+    let dict = plist.find("dict")?;
 
     let mut found_key = false;
     let mut raw_original = None;
@@ -381,10 +383,7 @@ fn uuid_from_plist(data: &[u8]) -> Result<DebugId, PListError> {
         }
     }
 
-    match raw_original {
-        Some(raw) => raw.parse().map_err(Into::into),
-        None => Err(PListError::from(PListErrorKind::Schema)),
-    }
+    raw_original
 }
 
 #[cfg(test)]
