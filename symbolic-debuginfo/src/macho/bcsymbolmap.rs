@@ -191,6 +191,7 @@ impl<'a, 'd> Iterator for BcSymbolMapIterator<'a, 'd> {
 
 impl FusedIterator for BcSymbolMapIterator<'_, '_> {}
 
+/// Error type when parsing an Apple PropertyList into [`BitcodeUuidMapping`].
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct PListError {
@@ -199,10 +200,17 @@ pub struct PListError {
     source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
+impl PListError {
+    /// The kind of error, giving a little more detail.
+    pub fn kind(&self) -> PListErrorKind {
+        self.kind
+    }
+}
+
 impl From<elementtree::Error> for PListError {
     fn from(source: elementtree::Error) -> Self {
         Self {
-            kind: PListErrorKind::Xml,
+            kind: PListErrorKind::Parse,
             source: Some(Box::new(source)),
         }
     }
@@ -227,11 +235,11 @@ impl From<ParseDebugIdError> for PListError {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PListErrorKind {
-    /// The plist did not have the expected XML schema.
+    /// The plist did not have the expected (XML) schema.
     Schema,
-    /// There was an XML parsing error.
-    Xml,
-    /// Failed to parse a PList value.
+    /// There was an (XML) parsing error parsing the plist.
+    Parse,
+    /// Failed to parse a required PList value.
     ParseValue,
     /// Failed to parse UUID from filename.
     ParseFilename,
@@ -241,7 +249,7 @@ impl fmt::Display for PListErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Schema => write!(f, "XML structure did not match expected schema"),
-            Self::Xml => write!(f, "Invalid XML"),
+            Self::Parse => write!(f, "Invalid XML"),
             Self::ParseValue => write!(f, "Failed to parse a value into the right type"),
             Self::ParseFilename => write!(f, "Failed to parse UUID from filename"),
         }
