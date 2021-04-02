@@ -23,17 +23,10 @@ pub struct BcSymbolMapError {
     source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
-impl BcSymbolMapError {
-    /// Returns more details about the cause of this error.
-    pub fn kind(&self) -> BcSymbolMapErrorKind {
-        self.kind
-    }
-}
-
 /// Error kind for [`BcSymbolMapError`].
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BcSymbolMapErrorKind {
+enum BcSymbolMapErrorKind {
     /// The BCSymbolMap header does not match a supported version.
     ///
     /// It could be entirely missing, or only be an unknown version or otherwise corrupted.
@@ -198,41 +191,34 @@ impl<'a, 'd> Iterator for BcSymbolMapIterator<'a, 'd> {
 
 impl FusedIterator for BcSymbolMapIterator<'_, '_> {}
 
-/// Error type when parsing an Apple PropertyList into [`BitcodeUuidMapping`].
+/// Error type when parsing an Apple PropertyList into [`UuidMapping`].
 #[derive(Debug, Error)]
 #[error("{kind}")]
-pub struct PListError {
-    kind: PListErrorKind,
+pub struct UuidMappingError {
+    kind: UuidMappingErrorKind,
     #[source]
     source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
-impl PListError {
-    /// The kind of error, giving a little more detail.
-    pub fn kind(&self) -> PListErrorKind {
-        self.kind
-    }
-}
-
-impl From<elementtree::Error> for PListError {
+impl From<elementtree::Error> for UuidMappingError {
     fn from(source: elementtree::Error) -> Self {
         Self {
-            kind: PListErrorKind::Parse,
+            kind: UuidMappingErrorKind::PListParse,
             source: Some(Box::new(source)),
         }
     }
 }
 
-impl From<PListErrorKind> for PListError {
-    fn from(kind: PListErrorKind) -> Self {
+impl From<UuidMappingErrorKind> for UuidMappingError {
+    fn from(kind: UuidMappingErrorKind) -> Self {
         Self { kind, source: None }
     }
 }
 
-impl From<ParseDebugIdError> for PListError {
+impl From<ParseDebugIdError> for UuidMappingError {
     fn from(source: ParseDebugIdError) -> Self {
         Self {
-            kind: PListErrorKind::ParseValue,
+            kind: UuidMappingErrorKind::PListParseValue,
             source: Some(Box::new(source)),
         }
     }
@@ -241,42 +227,50 @@ impl From<ParseDebugIdError> for PListError {
 /// Error kind for [`PListError`].
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum PListErrorKind {
+enum UuidMappingErrorKind {
     /// The plist did not have the expected (XML) schema.
-    Schema,
+    PListSchema,
     /// There was an (XML) parsing error parsing the plist.
-    Parse,
+    PListParse,
     /// Failed to parse a required PList value.
-    ParseValue,
+    PListParseValue,
     /// Failed to parse UUID from filename.
     ParseFilename,
 }
 
-impl fmt::Display for PListErrorKind {
+impl fmt::Display for UuidMappingErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Schema => write!(f, "XML structure did not match expected schema"),
-            Self::Parse => write!(f, "Invalid XML"),
-            Self::ParseValue => write!(f, "Failed to parse a value into the right type"),
+            Self::PListSchema => write!(f, "XML structure did not match expected schema"),
+            Self::PListParse => write!(f, "Invalid XML"),
+            Self::PListParseValue => write!(f, "Failed to parse a value into the right type"),
             Self::ParseFilename => write!(f, "Failed to parse UUID from filename"),
         }
     }
 }
 
-/// A mapping from the `dSYM` UUID to the `BCSymbolMap` UUID.
+/// A mapping from the `dSYM` UUID to an original UUID.
 ///
-/// When Apple compiles objects from bitcode these objects will have new UUIDs as debug
-/// identifiers.  This mapping can be found in the
-/// `dSYMs/<object-id>/Contents/Resources/<object-id>.plist` file of downloaded debugging
-/// symbols.  This struct allows you to keep track of such a mapping and provides support
-/// for parsing it from the ProperyList file format.
+/// This is used e.g. when dealing with bitcode builds, when Apple compiles objects from
+/// bitcode these objects will have new UUIDs as debug identifiers.  This mapping can be
+/// found in the `dSYMs/<object-id>/Contents/Resources/<object-id>.plist` file of downloaded
+/// debugging symbols.  This struct allows you to keep track of such a mapping and provides
+/// support for parsing it from the ProperyList file format.
 #[derive(Clone, Copy, Debug)]
-pub struct BitcodeUuidMapping {
-    bitcode_uuid: DebugId,
+pub struct UuidMapping {
     dsym_uuid: DebugId,
+    original_uuid: DebugId,
 }
 
-impl BitcodeUuidMapping {
+impl UuidMapping {
+    /// Creates a new UUID mapping from two [`DebugId`]s.
+    pub fn new(dsym_uuid: DebugId, original_uuid: DebugId) -> Self {
+        Self {
+            dsym_uuid,
+            original_uuid,
+        }
+    }
+
     /// Parses a PropertyList containing a `DBGOriginalUUID` mapping.
     ///
     /// The `filename` may contain multiple path segments, the stem of the filename segment
@@ -287,7 +281,7 @@ impl BitcodeUuidMapping {
     /// ```
     /// use std::path::Path;
     /// use symbolic_common::DebugId;
-    /// use symbolic_debuginfo::macho::BitcodeUuidMapping;
+    /// use symbolic_debuginfo::macho::UuidMapping;
     ///
     /// let filename = Path::new("2d10c42f-591d-3265-b147-78ba0868073f.plist");
     /// # let filename = Path::new("tests/fixtures/2d10c42f-591d-3265-b147-78ba0868073f.plist");
@@ -297,24 +291,24 @@ impl BitcodeUuidMapping {
     ///     .parse().unwrap();
     /// let data = std::fs::read(filename).unwrap();
     ///
-    /// let uuid_map = BitcodeUuidMapping::parse_plist(dsym_uuid, &data).unwrap();
+    /// let uuid_map = UuidMapping::parse_plist(dsym_uuid, &data).unwrap();
     ///
     /// assert_eq!(uuid_map.dsym_uuid(), dsym_uuid);
     /// assert_eq!(
-    ///     uuid_map.bitcode_uuid(),
+    ///     uuid_map.original_uuid(),
     ///     "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap(),
     /// )
     /// ```
-    pub fn parse_plist(dsym_uuid: DebugId, data: &[u8]) -> Result<Self, PListError> {
+    pub fn parse_plist(dsym_uuid: DebugId, data: &[u8]) -> Result<Self, UuidMappingError> {
         Ok(Self {
-            bitcode_uuid: uuid_from_plist(data)?,
             dsym_uuid,
+            original_uuid: uuid_from_plist(data)?,
         })
     }
 
     /// Parses a PropertyList containing a `DBGOriginalUUID` mapping.
     ///
-    /// This is a convenience version of [`BitcodeUuidMapping::parse_plist`] which extracts
+    /// This is a convenience version of [`UuidMapping::parse_plist`] which extracts
     /// the UUID from the `filename`.
     ///
     /// The `filename` may contain multiple path segments, the stem of the filename segment
@@ -326,36 +320,39 @@ impl BitcodeUuidMapping {
     /// ```
     /// use std::path::Path;
     /// use symbolic_common::DebugId;
-    /// use symbolic_debuginfo::macho::BitcodeUuidMapping;
+    /// use symbolic_debuginfo::macho::UuidMapping;
     ///
     /// let filename = Path::new("Contents/Resources/2D10C42F-591D-3265-B147-78BA0868073F.plist");
     /// # let filename = Path::new("tests/fixtures/2d10c42f-591d-3265-b147-78ba0868073f.plist");
     /// let data = std::fs::read(filename).unwrap();
     ///
-    /// let uuid_map = BitcodeUuidMapping::parse_plist_with_filename(filename, &data).unwrap();
+    /// let uuid_map = UuidMapping::parse_plist_with_filename(filename, &data).unwrap();
     ///
     /// assert_eq!(
     ///     uuid_map.dsym_uuid(),
     ///     "2d10c42f-591d-3265-b147-78ba0868073f".parse().unwrap(),
     /// );
     /// assert_eq!(
-    ///     uuid_map.bitcode_uuid(),
+    ///     uuid_map.original_uuid(),
     ///     "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap(),
     /// )
     /// ```
-    pub fn parse_plist_with_filename(filename: &Path, data: &[u8]) -> Result<Self, PListError> {
+    pub fn parse_plist_with_filename(
+        filename: &Path,
+        data: &[u8],
+    ) -> Result<Self, UuidMappingError> {
         let dsym_uuid = filename
             .file_stem()
-            .ok_or_else(|| PListError::from(PListErrorKind::ParseFilename))?
+            .ok_or_else(|| UuidMappingError::from(UuidMappingErrorKind::ParseFilename))?
             .to_str()
-            .ok_or_else(|| PListError::from(PListErrorKind::ParseFilename))?
+            .ok_or_else(|| UuidMappingError::from(UuidMappingErrorKind::ParseFilename))?
             .parse()?;
         Self::parse_plist(dsym_uuid, data)
     }
 
-    /// Returns the UUID of the original bitcode.
-    pub fn bitcode_uuid(&self) -> DebugId {
-        self.bitcode_uuid
+    /// Returns the UUID of the original object file.
+    pub fn original_uuid(&self) -> DebugId {
+        self.original_uuid
     }
 
     /// Returns the UUID of the compiled binary and associated `dSYM`.
@@ -364,10 +361,11 @@ impl BitcodeUuidMapping {
     }
 }
 
-fn uuid_from_plist(data: &[u8]) -> Result<DebugId, PListError> {
+fn uuid_from_plist(data: &[u8]) -> Result<DebugId, UuidMappingError> {
     let plist = Element::from_reader(Cursor::new(data))?;
 
-    let raw = uuid_from_xml_plist(plist).ok_or_else(|| PListError::from(PListErrorKind::Schema))?;
+    let raw = uuid_from_xml_plist(plist)
+        .ok_or_else(|| UuidMappingError::from(UuidMappingErrorKind::PListSchema))?;
 
     raw.parse().map_err(Into::into)
 }
@@ -472,11 +470,11 @@ mod tests {
         let uuid: DebugId = "2d10c42f-591d-3265-b147-78ba0868073f".parse().unwrap();
         let data =
             std::fs::read("tests/fixtures/2d10c42f-591d-3265-b147-78ba0868073f.plist").unwrap();
-        let map = BitcodeUuidMapping::parse_plist(uuid, &data).unwrap();
+        let map = UuidMapping::parse_plist(uuid, &data).unwrap();
 
         assert_eq!(map.dsym_uuid(), uuid);
         assert_eq!(
-            map.bitcode_uuid(),
+            map.original_uuid(),
             "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap()
         );
     }
