@@ -19,7 +19,14 @@ pub struct BcSymbolMapError {
     source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
-/// Error kind for [`BCSymbolMapError`].
+impl BcSymbolMapError {
+    /// Returns more details about the cause of this error.
+    pub fn kind(&self) -> BcSymbolMapErrorKind {
+        self.kind
+    }
+}
+
+/// Error kind for [`BcSymbolMapError`].
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BcSymbolMapErrorKind {
@@ -166,9 +173,9 @@ impl<'d> BcSymbolMap<'d> {
     }
 }
 
-/// Iterator over the names in a [`BCSymbolMap`].
+/// Iterator over the names in a [`BcSymbolMap`].
 ///
-/// This struct is created by [`BCSymbolMap::iter`].
+/// This struct is created by [`BcSymbolMap::iter`].
 pub struct BcSymbolMapIterator<'a, 'd> {
     iter: std::slice::Iter<'a, &'d str>,
 }
