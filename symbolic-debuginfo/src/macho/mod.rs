@@ -18,7 +18,7 @@ use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 
 mod bcsymbolmap;
 
-pub use bcsymbolmap::{BcSymbolMap, BcSymbolMapError};
+pub use bcsymbolmap::*;
 
 /// Prefix for hidden symbols from Apple BCSymbolMap builds.
 const SWIFT_HIDDEN_PREFIX: &str = "__hidden#";

@@ -26,7 +26,9 @@ use std::ops::Range;
 use thiserror::Error;
 
 use symbolic_common::{Arch, ByteView, UnknownArchError};
-use symbolic_debuginfo::breakpad::{BreakpadError, BreakpadObject, BreakpadStackRecord};
+use symbolic_debuginfo::breakpad::{
+    BreakpadError, BreakpadObject, BreakpadStackRecord, BreakpadStackWinRecordType,
+};
 use symbolic_debuginfo::dwarf::gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error as GimliError,
     FrameDescriptionEntry, Reader, Register, RegisterRule, UninitializedUnwindContext,
@@ -299,7 +301,30 @@ impl<W: Write> AsciiCfiWriter<W> {
 
                     Ok(())
                 }
-                BreakpadStackRecord::Win(r) => writeln!(self.inner, "STACK WIN {}", r.text),
+                BreakpadStackRecord::Win(r) => writeln!(
+                    self.inner,
+                    "STACK WIN {} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {} {}",
+                    match r.ty {
+                        BreakpadStackWinRecordType::Fpo => "0",
+                        BreakpadStackWinRecordType::FrameData => "4",
+                    },
+                    r.code_start,
+                    r.code_size,
+                    r.prolog_size,
+                    r.epilog_size,
+                    r.params_size,
+                    r.saved_regs_size,
+                    r.locals_size,
+                    r.max_stack_size,
+                    if r.program_string.is_some() { "1" } else { "0" },
+                    if let Some(ps) = r.program_string {
+                        ps
+                    } else if r.uses_base_pointer {
+                        "1"
+                    } else {
+                        "0"
+                    }
+                ),
             }?
         }
 
