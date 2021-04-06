@@ -2,8 +2,12 @@
 
 use std::error::Error;
 use std::fmt;
+use std::io::Cursor;
 use std::iter::FusedIterator;
+use std::path::Path;
 
+use elementtree::Element;
+use symbolic_common::{DebugId, ParseDebugIdError};
 use thiserror::Error;
 
 use super::SWIFT_HIDDEN_PREFIX;
@@ -19,17 +23,10 @@ pub struct BcSymbolMapError {
     source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
-impl BcSymbolMapError {
-    /// Returns more details about the cause of this error.
-    pub fn kind(&self) -> BcSymbolMapErrorKind {
-        self.kind
-    }
-}
-
 /// Error kind for [`BcSymbolMapError`].
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BcSymbolMapErrorKind {
+enum BcSymbolMapErrorKind {
     /// The BCSymbolMap header does not match a supported version.
     ///
     /// It could be entirely missing, or only be an unknown version or otherwise corrupted.
@@ -194,6 +191,208 @@ impl<'a, 'd> Iterator for BcSymbolMapIterator<'a, 'd> {
 
 impl FusedIterator for BcSymbolMapIterator<'_, '_> {}
 
+/// Error for handling or creating a [`UuidMapping`].
+#[derive(Debug, Error)]
+#[error("{kind}")]
+pub struct UuidMappingError {
+    kind: UuidMappingErrorKind,
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+impl From<elementtree::Error> for UuidMappingError {
+    fn from(source: elementtree::Error) -> Self {
+        Self {
+            kind: UuidMappingErrorKind::PListParse,
+            source: Some(Box::new(source)),
+        }
+    }
+}
+
+impl From<UuidMappingErrorKind> for UuidMappingError {
+    fn from(kind: UuidMappingErrorKind) -> Self {
+        Self { kind, source: None }
+    }
+}
+
+impl From<ParseDebugIdError> for UuidMappingError {
+    fn from(source: ParseDebugIdError) -> Self {
+        Self {
+            kind: UuidMappingErrorKind::PListParseValue,
+            source: Some(Box::new(source)),
+        }
+    }
+}
+
+/// Error kind for [`UuidMappingError`].
+#[non_exhaustive]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum UuidMappingErrorKind {
+    /// The plist did not have the expected (XML) schema.
+    PListSchema,
+    /// There was an (XML) parsing error parsing the plist.
+    PListParse,
+    /// Failed to parse a required PList value.
+    PListParseValue,
+    /// Failed to parse UUID from filename.
+    ParseFilename,
+}
+
+impl fmt::Display for UuidMappingErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::PListSchema => write!(f, "XML structure did not match expected schema"),
+            Self::PListParse => write!(f, "Invalid XML"),
+            Self::PListParseValue => write!(f, "Failed to parse a value into the right type"),
+            Self::ParseFilename => write!(f, "Failed to parse UUID from filename"),
+        }
+    }
+}
+
+/// A mapping from the `dSYM` UUID to an original UUID.
+///
+/// This is used e.g. when dealing with bitcode builds, when Apple compiles objects from
+/// bitcode these objects will have new UUIDs as debug identifiers.  This mapping can be
+/// found in the `dSYMs/<object-id>/Contents/Resources/<object-id>.plist` file of downloaded
+/// debugging symbols.
+///
+/// This struct allows you to keep track of such a mapping and provides support for parsing
+/// it from the ProperyList file format.
+#[derive(Clone, Copy, Debug)]
+pub struct UuidMapping {
+    dsym_uuid: DebugId,
+    original_uuid: DebugId,
+}
+
+impl UuidMapping {
+    /// Creates a new UUID mapping from two [`DebugId`]s.
+    pub fn new(dsym_uuid: DebugId, original_uuid: DebugId) -> Self {
+        Self {
+            dsym_uuid,
+            original_uuid,
+        }
+    }
+
+    /// Parses a PropertyList containing a `DBGOriginalUUID` mapping.
+    ///
+    /// The `filename` may contain multiple path segments, the stem of the filename segment
+    /// should contain the UUID of the `dSYM`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    /// use symbolic_common::DebugId;
+    /// use symbolic_debuginfo::macho::UuidMapping;
+    ///
+    /// let filename = Path::new("2d10c42f-591d-3265-b147-78ba0868073f.plist");
+    /// # let filename = Path::new("tests/fixtures/2d10c42f-591d-3265-b147-78ba0868073f.plist");
+    /// let dsym_uuid: DebugId = filename
+    ///     .file_stem().unwrap()
+    ///     .to_str().unwrap()
+    ///     .parse().unwrap();
+    /// let data = std::fs::read(filename).unwrap();
+    ///
+    /// let uuid_map = UuidMapping::parse_plist(dsym_uuid, &data).unwrap();
+    ///
+    /// assert_eq!(uuid_map.dsym_uuid(), dsym_uuid);
+    /// assert_eq!(
+    ///     uuid_map.original_uuid(),
+    ///     "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap(),
+    /// )
+    /// ```
+    pub fn parse_plist(dsym_uuid: DebugId, data: &[u8]) -> Result<Self, UuidMappingError> {
+        Ok(Self {
+            dsym_uuid,
+            original_uuid: uuid_from_plist(data)?,
+        })
+    }
+
+    /// Parses a PropertyList containing a `DBGOriginalUUID` mapping.
+    ///
+    /// This is a convenience version of [`UuidMapping::parse_plist`] which extracts
+    /// the UUID from the `filename`.
+    ///
+    /// The `filename` may contain multiple path segments, the stem of the filename segment
+    /// should contain the UUID of the `dSYM`.  This is the format the PList is normally
+    /// found in a `dSYM` directory structure.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    /// use symbolic_common::DebugId;
+    /// use symbolic_debuginfo::macho::UuidMapping;
+    ///
+    /// let filename = Path::new("Contents/Resources/2D10C42F-591D-3265-B147-78BA0868073F.plist");
+    /// # let filename = Path::new("tests/fixtures/2d10c42f-591d-3265-b147-78ba0868073f.plist");
+    /// let data = std::fs::read(filename).unwrap();
+    ///
+    /// let uuid_map = UuidMapping::parse_plist_with_filename(filename, &data).unwrap();
+    ///
+    /// assert_eq!(
+    ///     uuid_map.dsym_uuid(),
+    ///     "2d10c42f-591d-3265-b147-78ba0868073f".parse().unwrap(),
+    /// );
+    /// assert_eq!(
+    ///     uuid_map.original_uuid(),
+    ///     "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap(),
+    /// )
+    /// ```
+    pub fn parse_plist_with_filename(
+        filename: &Path,
+        data: &[u8],
+    ) -> Result<Self, UuidMappingError> {
+        let dsym_uuid = filename
+            .file_stem()
+            .ok_or_else(|| UuidMappingError::from(UuidMappingErrorKind::ParseFilename))?
+            .to_str()
+            .ok_or_else(|| UuidMappingError::from(UuidMappingErrorKind::ParseFilename))?
+            .parse()?;
+        Self::parse_plist(dsym_uuid, data)
+    }
+
+    /// Returns the UUID of the original object file.
+    pub fn original_uuid(&self) -> DebugId {
+        self.original_uuid
+    }
+
+    /// Returns the UUID of the compiled binary and associated `dSYM`.
+    pub fn dsym_uuid(&self) -> DebugId {
+        self.dsym_uuid
+    }
+}
+
+fn uuid_from_plist(data: &[u8]) -> Result<DebugId, UuidMappingError> {
+    let plist = Element::from_reader(Cursor::new(data))?;
+
+    let raw = uuid_from_xml_plist(plist)
+        .ok_or_else(|| UuidMappingError::from(UuidMappingErrorKind::PListSchema))?;
+
+    raw.parse().map_err(Into::into)
+}
+
+fn uuid_from_xml_plist(plist: Element) -> Option<String> {
+    let version = plist.get_attr("version")?;
+    if version != "1.0" {
+        return None;
+    }
+    let dict = plist.find("dict")?;
+
+    let mut found_key = false;
+    let mut raw_original = None;
+    for element in dict.children() {
+        if element.tag().name() == "key" && element.text() == "DBGOriginalUUID" {
+            found_key = true;
+        } else if found_key {
+            raw_original = Some(element.text().to_string());
+            break;
+        }
+    }
+
+    raw_original
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -266,5 +465,19 @@ mod tests {
 
         assert_eq!(map.resolve("normal_name"), "normal_name");
         assert_eq!(map.resolve("__hidden#2_"), "-[SentryMessage serialize]");
+    }
+
+    #[test]
+    fn test_plist() {
+        let uuid: DebugId = "2d10c42f-591d-3265-b147-78ba0868073f".parse().unwrap();
+        let data =
+            std::fs::read("tests/fixtures/2d10c42f-591d-3265-b147-78ba0868073f.plist").unwrap();
+        let map = UuidMapping::parse_plist(uuid, &data).unwrap();
+
+        assert_eq!(map.dsym_uuid(), uuid);
+        assert_eq!(
+            map.original_uuid(),
+            "c8374b6d-6e96-34d8-ae38-efaa5fec424f".parse().unwrap()
+        );
     }
 }
