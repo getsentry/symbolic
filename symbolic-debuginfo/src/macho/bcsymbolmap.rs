@@ -191,7 +191,7 @@ impl<'a, 'd> Iterator for BcSymbolMapIterator<'a, 'd> {
 
 impl FusedIterator for BcSymbolMapIterator<'_, '_> {}
 
-/// Error type when parsing an Apple PropertyList into [`UuidMapping`].
+/// Error for handling or creating a [`UuidMapping`].
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct UuidMappingError {
@@ -224,7 +224,7 @@ impl From<ParseDebugIdError> for UuidMappingError {
     }
 }
 
-/// Error kind for [`PListError`].
+/// Error kind for [`UuidMappingError`].
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum UuidMappingErrorKind {
@@ -254,8 +254,10 @@ impl fmt::Display for UuidMappingErrorKind {
 /// This is used e.g. when dealing with bitcode builds, when Apple compiles objects from
 /// bitcode these objects will have new UUIDs as debug identifiers.  This mapping can be
 /// found in the `dSYMs/<object-id>/Contents/Resources/<object-id>.plist` file of downloaded
-/// debugging symbols.  This struct allows you to keep track of such a mapping and provides
-/// support for parsing it from the ProperyList file format.
+/// debugging symbols.
+///
+/// This struct allows you to keep track of such a mapping and provides support for parsing
+/// it from the ProperyList file format.
 #[derive(Clone, Copy, Debug)]
 pub struct UuidMapping {
     dsym_uuid: DebugId,
