@@ -5,11 +5,11 @@
 
 class SymbolicCFIFrameInfo : public google_breakpad::CFIFrameInfo {
    public:
-    SymbolicCFIFrameInfo(void *evaluator);
+    SymbolicCFIFrameInfo(void *cfi_frame_info);
     ~SymbolicCFIFrameInfo();
 
    private:
-    void *evaluator_;
+    void *cfi_frame_info_;
 
     friend class google_breakpad::CFIFrameInfo;
 };

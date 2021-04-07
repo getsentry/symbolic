@@ -46,9 +46,9 @@ CFIFrameInfo *SymbolicSourceLineResolver::FindCFIFrameInfo(
         const char *module_name = debug_identifier.c_str();
         uint64_t address = frame->instruction - frame->module->base_address();
 
-        void *evaluator =
+        void *cfi_frame_info =
             resolver_find_cfi_frame_info(resolver_, module_name, address);
-        return new SymbolicCFIFrameInfo(evaluator);
+        return new SymbolicCFIFrameInfo(cfi_frame_info);
     } else {
         return NULL;
     }
@@ -75,7 +75,8 @@ WindowsFrameInfo *SymbolicSourceLineResolver::FindWindowsFrameInfo(
         if (resolver_find_windows_frame_info(
                 resolver_, module_name, address, &type_, &prolog_size,
                 &epilog_size, &parameter_size, &saved_register_size,
-                &local_size, &max_stack_size, &allocates_base_pointer, &ps, &ps_len)) {
+                &local_size, &max_stack_size, &allocates_base_pointer, &ps,
+                &ps_len)) {
             string program_string(ps, ps_len);
 
             return new WindowsFrameInfo(

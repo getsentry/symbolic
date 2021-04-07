@@ -33,7 +33,7 @@ use crate::utils;
 type CfiRules<'a> = symbolic_unwind::evaluator::CfiRules<u64, &'a str>;
 type CfiModuleMap<'a> = BTreeMap<&'a CodeModuleId, CfiModuleData<'a>>;
 type WinModuleMap<'a> = BTreeMap<&'a CodeModuleId, WinModuleData<'a>>;
-type Evaluator<'a> = symbolic_unwind::evaluator::Evaluator<'a, u64, RuntimeEndian>;
+type Evaluator<'a, A> = symbolic_unwind::evaluator::Evaluator<'a, A, RuntimeEndian>;
 
 lazy_static! {
     static ref LINUX_BUILD_RE: Regex =
@@ -173,7 +173,8 @@ impl<'a> WinModuleData<'a> {
         }
     }
 
-    /// Retrieves the STACK WIN record associated with the given address.
+    /// Retrieves the STACK WIN record associated with the given address, preferring `FrameData` records over
+    /// `FPO` records.
     ///
     /// If there are no records for the address in either cache,
     /// the inner iterator is consumed until a record is found.
@@ -208,6 +209,14 @@ impl<'a> WinModuleData<'a> {
 
         cache_frame_data.get(address).or(cache_fpo.get(address))
     }
+}
+
+/// Struct that bundles the information an evaluator needs to compute caller registers from callee registers,
+/// i.e., a vector of rules and the endianness with which to interpret memory.
+#[derive(Debug)]
+struct CfiFrameInfo<'a> {
+    endian: RuntimeEndian,
+    rules: Vec<&'a str>,
 }
 
 /// A Rust implementation of Breakpad's [`SourceLineResolverInterface`](https://github.com/google/breakpad/blob/main/src/google_breakpad/processor/source_line_resolver_interface.h).
@@ -263,21 +272,24 @@ impl<'a> SymbolicSourceLineResolver<'a> {
 
     /// Finds CFI information for a given module and address.
     ///
-    /// "CFI information" here means an [`Evaluator`](symbolic_unwind::evaluator::Evaluator)
-    ///  that can be used to recover the values of the caller's registers. If no information is
-    ///  available for the given module and address, the returned evaluator will be trivial.
-    fn find_cfi_frame_info(&mut self, module: &CodeModuleId, address: u64) -> Evaluator {
-        let mut evaluator = Evaluator::new(self.endian);
+    /// "CFI information" here means a [`CfiFrameInfo`] object containing the rules that allow
+    /// recovery of the caller's registers givent the callee's registers.
+    fn find_cfi_frame_info(&mut self, module: &CodeModuleId, address: u64) -> CfiFrameInfo {
+        let mut rules = Vec::new();
         if let Some(rules_vec) = self
             .modules_cfi
             .get_mut(module)
             .and_then(|module_data| module_data.get(address))
         {
-            for rules in rules_vec.iter() {
-                evaluator.add_cfi_rules_string(rules).unwrap();
+            for rules_str in rules_vec.iter() {
+                rules.push(**rules_str);
             }
         }
-        evaluator
+
+        CfiFrameInfo {
+            endian: self.endian,
+            rules,
+        }
     }
 
     /// Finds CFI information for a given module and address.
@@ -325,8 +337,8 @@ unsafe extern "C" fn resolver_find_cfi_frame_info(
     let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
     let module = CStr::from_ptr(module).to_str().unwrap().parse().unwrap();
 
-    let eval = resolver.find_cfi_frame_info(&module, address);
-    Box::into_raw(Box::new(eval)) as *mut c_void
+    let cfi_frame_info = resolver.find_cfi_frame_info(&module, address);
+    Box::into_raw(Box::new(cfi_frame_info)) as *mut c_void
 }
 
 #[no_mangle]
@@ -374,70 +386,36 @@ unsafe extern "C" fn resolver_find_windows_frame_info(
 }
 
 #[no_mangle]
-unsafe extern "C" fn evaluator_new(
-    is_big_endian: bool,
-    cfi_rules: *const c_void,
-    address: u64,
-) -> *mut c_void {
-    let endian = if is_big_endian {
-        RuntimeEndian::Big
-    } else {
-        RuntimeEndian::Little
-    };
-
-    let mut evaluator = Box::new(Evaluator::new(endian));
-
-    let cfi_rules = &*(cfi_rules as *const CfiRules<'_>);
-    for rules_string in cfi_rules.get_rules(address).unwrap_or_default() {
-        evaluator.add_cfi_rules_string(rules_string).ok();
-    }
-
-    Box::into_raw(evaluator) as *mut c_void
-}
-
-#[no_mangle]
-unsafe extern "C" fn evaluator_free(evaluator: *mut c_void) {
-    if !evaluator.is_null() {
-        Box::from_raw(evaluator as *mut Evaluator<'_>);
-    }
-}
-
-#[no_mangle]
-unsafe extern "C" fn evaluator_set_memory_region(
-    evaluator: *mut c_void,
+unsafe extern "C" fn find_caller_regs_32(
+    cfi_frame_info: *const c_void,
     memory_base: u64,
     memory_len: usize,
     memory_bytes: *const u8,
-) {
-    assert!(!evaluator.is_null());
-    assert!(!memory_bytes.is_null());
+    registers: *const IRegVal,
+    registers_len: usize,
+    size_out: *mut usize,
+) -> *mut IRegVal {
+    let cfi_frame_info = &*(cfi_frame_info as *const CfiFrameInfo<'_>);
+    let mut evaluator = Box::new(Evaluator::new(cfi_frame_info.endian));
 
-    let mut eval = Box::from_raw(evaluator as *mut Evaluator<'_>);
+    for rules_string in cfi_frame_info.rules.iter() {
+        evaluator.add_cfi_rules_string(rules_string).ok();
+    }
+
     let memory = MemoryRegion {
         base_addr: memory_base,
         contents: std::slice::from_raw_parts(memory_bytes, memory_len),
     };
-    *eval = eval.memory(memory);
-    std::mem::forget(eval);
-}
 
-#[no_mangle]
-unsafe extern "C" fn evaluator_set_registers(
-    evaluator: *mut c_void,
-    registers: *const IRegVal,
-    registers_len: usize,
-) {
-    assert!(!evaluator.is_null());
-    assert!(!registers.is_null());
+    *evaluator = evaluator.memory(memory);
 
-    let mut eval = Box::from_raw(evaluator as *mut Evaluator<'_>);
     let mut variables = BTreeMap::new();
     let mut constants = BTreeMap::new();
 
     let registers = std::slice::from_raw_parts(registers, registers_len);
     for IRegVal { name, value, size } in registers {
         let value = match size {
-            8 => *value as u64,
+            4 => *value as u32,
             _ => continue,
         };
 
@@ -449,19 +427,77 @@ unsafe extern "C" fn evaluator_set_registers(
         }
     }
 
-    *eval = eval.variables(variables).constants(constants);
-    std::mem::forget(eval);
+    *evaluator = evaluator.constants(constants).variables(variables);
+
+    let caller_registers = evaluator.evaluate_cfi_rules().unwrap();
+
+    let mut result = Vec::new();
+    for (register, value) in caller_registers.into_iter() {
+        result.push(IRegVal {
+            name: CString::new(register.to_string()).unwrap().into_raw() as *const c_char,
+            value: value.into(),
+            size: 4,
+        });
+    }
+
+    result.shrink_to_fit();
+    let len = result.len();
+    let ptr = result.as_mut_ptr();
+
+    if !size_out.is_null() {
+        *size_out = len;
+    }
+
+    std::mem::forget(result);
+
+    ptr
 }
 
 #[no_mangle]
-unsafe extern "C" fn evaluator_find_caller_regs_cfi(
-    evaluator: *mut c_void,
+unsafe extern "C" fn find_caller_regs_64(
+    cfi_frame_info: *const c_void,
+    memory_base: u64,
+    memory_len: usize,
+    memory_bytes: *const u8,
+    registers: *const IRegVal,
+    registers_len: usize,
     size_out: *mut usize,
 ) -> *mut IRegVal {
-    assert!(!evaluator.is_null());
+    let cfi_frame_info = &*(cfi_frame_info as *const CfiFrameInfo<'_>);
+    let mut evaluator = Box::new(Evaluator::new(cfi_frame_info.endian));
 
-    let eval = &mut *(evaluator as *mut Evaluator<'_>);
-    let caller_registers = eval.evaluate_cfi_rules().unwrap();
+    for rules_string in cfi_frame_info.rules.iter() {
+        evaluator.add_cfi_rules_string(rules_string).ok();
+    }
+
+    let memory = MemoryRegion {
+        base_addr: memory_base,
+        contents: std::slice::from_raw_parts(memory_bytes, memory_len),
+    };
+
+    *evaluator = evaluator.memory(memory);
+
+    let mut variables = BTreeMap::new();
+    let mut constants = BTreeMap::new();
+
+    let registers = std::slice::from_raw_parts(registers, registers_len);
+    for IRegVal { name, value, size } in registers {
+        let value = match size {
+            8 => *value,
+            _ => continue,
+        };
+
+        let name = CStr::from_ptr(*name).to_str().unwrap();
+        if let Ok(r) = name.parse() {
+            variables.insert(r, value);
+        } else if let Ok(r) = name.parse() {
+            constants.insert(r, value);
+        }
+    }
+
+    *evaluator = evaluator.constants(constants).variables(variables);
+
+    let caller_registers = evaluator.evaluate_cfi_rules().unwrap();
 
     let mut result = Vec::new();
     for (register, value) in caller_registers.into_iter() {
@@ -483,6 +519,11 @@ unsafe extern "C" fn evaluator_find_caller_regs_cfi(
     std::mem::forget(result);
 
     ptr
+}
+
+#[no_mangle]
+unsafe extern "C" fn cfi_frame_info_free(cfi_frame_info: *mut c_void) {
+    std::mem::drop(Box::from_raw(cfi_frame_info as *mut CfiFrameInfo));
 }
 
 #[no_mangle]
