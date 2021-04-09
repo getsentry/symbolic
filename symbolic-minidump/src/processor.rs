@@ -399,7 +399,9 @@ unsafe extern "C" fn find_caller_regs_32(
     let mut evaluator = Box::new(Evaluator::new(cfi_frame_info.endian));
 
     for rules_string in cfi_frame_info.rules.iter() {
-        evaluator.add_cfi_rules_string(rules_string).ok();
+        if evaluator.add_cfi_rules_string(rules_string).is_err() {
+            return std::ptr::null_mut();
+        }
     }
 
     let memory = MemoryRegion {
@@ -467,7 +469,9 @@ unsafe extern "C" fn find_caller_regs_64(
     let mut evaluator = Box::new(Evaluator::new(cfi_frame_info.endian));
 
     for rules_string in cfi_frame_info.rules.iter() {
-        evaluator.add_cfi_rules_string(rules_string).ok();
+        if evaluator.add_cfi_rules_string(rules_string).is_err() {
+            return std::ptr::null_mut();
+        }
     }
 
     let memory = MemoryRegion {
