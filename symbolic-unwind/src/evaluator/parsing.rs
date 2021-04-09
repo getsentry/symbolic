@@ -83,9 +83,12 @@ impl Error for ParseExprError {}
 /// Applies its child parser repeatedly with zero or more spaces in between.
 ///
 /// If the child parser doesn't consume any input, you're going to have a bad time.
-fn space_separated<'a, O, P: 'a + Parser<&'a str, O, ParseExprError>>(
+fn space_separated<'a, O, P>(
     mut parser: P,
-) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<O>, ParseExprError> {
+) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<O>, ParseExprError>
+where
+    P: 'a + Parser<&'a str, O, ParseExprError>,
+{
     move |mut input| {
         let mut result = Vec::new();
         match parser.parse(input) {
@@ -128,9 +131,9 @@ pub fn variable_complete(input: &str) -> Result<Variable, ParseExprError> {
 
 /// Parses a [constant](super::Constant).
 ///
-/// This accepts identifiers of the form `\.[a-zA-Z0-9]+`.
+/// This accepts identifiers of the form `\.?[a-zA-Z0-9]+`.
 fn constant(input: &str) -> IResult<&str, Constant, ParseExprError> {
-    let (rest, con) = recognize(preceded(tag("."), alphanumeric1))(input)?;
+    let (rest, con) = recognize(preceded(opt(tag(".")), alphanumeric1))(input)?;
     Ok((rest, Constant(con.to_string())))
 }
 
@@ -523,5 +526,11 @@ mod test {
         assert_eq!(rest, "   ");
         assert_eq!(rules[0], rule0);
         assert_eq!(rules[1], rule1);
+    }
+
+    #[test]
+    fn test_rules_complete() {
+        let input = ".cfa: sp 80 + x29: .cfa -80 + ^ .ra: .cfa -72 + ^";
+        rules_complete::<u64>(input).unwrap();
     }
 }
