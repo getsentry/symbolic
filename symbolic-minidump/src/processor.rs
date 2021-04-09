@@ -25,7 +25,8 @@ use symbolic_common::{Arch, ByteView, CpuFamily, DebugId, ParseDebugIdError, Uui
 use symbolic_debuginfo::breakpad::{
     BreakpadStackRecord, BreakpadStackRecords, BreakpadStackWinRecord, BreakpadStackWinRecordType,
 };
-use symbolic_unwind::{evaluator::RangeMap, MemoryRegion, RuntimeEndian};
+use symbolic_unwind::evaluator::{Constant, Identifier, RangeMap};
+use symbolic_unwind::{MemoryRegion, RuntimeEndian};
 
 use crate::cfi::CfiCache;
 use crate::utils;
@@ -431,28 +432,33 @@ unsafe extern "C" fn find_caller_regs_32(
 
     *evaluator = evaluator.constants(constants).variables(variables);
 
-    let caller_registers = evaluator.evaluate_cfi_rules().unwrap();
+    let caller_registers = evaluator.evaluate_cfi_rules().unwrap_or_default();
+    if caller_registers.contains_key(&Identifier::Const(Constant::cfa()))
+        && caller_registers.contains_key(&Identifier::Const(Constant::ra()))
+    {
+        let mut result = Vec::new();
+        for (register, value) in caller_registers.into_iter() {
+            result.push(IRegVal {
+                name: CString::new(register.to_string()).unwrap().into_raw() as *const c_char,
+                value: value as u64,
+                size: 4,
+            });
+        }
 
-    let mut result = Vec::new();
-    for (register, value) in caller_registers.into_iter() {
-        result.push(IRegVal {
-            name: CString::new(register.to_string()).unwrap().into_raw() as *const c_char,
-            value: value.into(),
-            size: 4,
-        });
+        result.shrink_to_fit();
+        let len = result.len();
+        let ptr = result.as_mut_ptr();
+
+        if !size_out.is_null() {
+            *size_out = len;
+        }
+
+        std::mem::forget(result);
+
+        ptr
+    } else {
+        std::ptr::null_mut() as *mut _
     }
-
-    result.shrink_to_fit();
-    let len = result.len();
-    let ptr = result.as_mut_ptr();
-
-    if !size_out.is_null() {
-        *size_out = len;
-    }
-
-    std::mem::forget(result);
-
-    ptr
 }
 
 #[no_mangle]
@@ -501,28 +507,33 @@ unsafe extern "C" fn find_caller_regs_64(
 
     *evaluator = evaluator.constants(constants).variables(variables);
 
-    let caller_registers = evaluator.evaluate_cfi_rules().unwrap();
+    let caller_registers = evaluator.evaluate_cfi_rules().unwrap_or_default();
+    if caller_registers.contains_key(&Identifier::Const(Constant::cfa()))
+        && caller_registers.contains_key(&Identifier::Const(Constant::ra()))
+    {
+        let mut result = Vec::new();
+        for (register, value) in caller_registers.into_iter() {
+            result.push(IRegVal {
+                name: CString::new(register.to_string()).unwrap().into_raw() as *const c_char,
+                value,
+                size: 8,
+            });
+        }
 
-    let mut result = Vec::new();
-    for (register, value) in caller_registers.into_iter() {
-        result.push(IRegVal {
-            name: CString::new(register.to_string()).unwrap().into_raw() as *const c_char,
-            value,
-            size: 8,
-        });
+        result.shrink_to_fit();
+        let len = result.len();
+        let ptr = result.as_mut_ptr();
+
+        if !size_out.is_null() {
+            *size_out = len;
+        }
+
+        std::mem::forget(result);
+
+        ptr
+    } else {
+        std::ptr::null_mut() as *mut _
     }
-
-    result.shrink_to_fit();
-    let len = result.len();
-    let ptr = result.as_mut_ptr();
-
-    if !size_out.is_null() {
-        *size_out = len;
-    }
-
-    std::mem::forget(result);
-
-    ptr
 }
 
 #[no_mangle]

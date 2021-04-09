@@ -372,6 +372,16 @@ impl Constant {
     pub fn cfa() -> Self {
         Self(".cfa".to_string())
     }
+
+    /// Returns true if this is the RA (Return Address) pseudoregister.
+    pub fn is_ra(&self) -> bool {
+        self.0 == ".ra"
+    }
+
+    /// Returns the RA (Return Address) pseudoregister.
+    pub fn ra() -> Self {
+        Self(".ra".to_string())
+    }
 }
 
 impl fmt::Display for Constant {
