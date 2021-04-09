@@ -8,7 +8,7 @@
 //! <assignment> ::=  <variable> <expr> =
 //! <expr>       ::=  <identifier> | <literal> | <expr> <expr> <binop> | <expr> ^
 //! <identifier> ::=  <constant> | <variable>
-//! <constant>   ::=  \.[a-zA-Z0-9]+
+//! <constant>   ::=  \.?[a-zA-Z0-9]+
 //! <variable>   ::=  \$[a-zA-Z0-9]+
 //! <binop>      ::=  + | - | * | / | % | @
 //! <literal>    ::=  -?[0-9]+
