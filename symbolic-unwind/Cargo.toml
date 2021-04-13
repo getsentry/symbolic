@@ -10,6 +10,7 @@ edition = "2018"
 publish = false
 
 [dependencies]
+insta = "1.7.1"
 nom = "6.1.2"
 
 [badges]
