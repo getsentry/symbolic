@@ -4,11 +4,11 @@ use super::*;
 use proptest::prelude::*;
 
 fn arb_variable() -> impl Strategy<Value = Variable> {
-    r"\$[a-zA-Z0-9]+".prop_map(|name| Variable(name.to_string()))
+    r"\$[a-zA-Z0-9]+".prop_map(|name| Variable(name))
 }
 
 pub fn arb_constant() -> impl Strategy<Value = Constant> {
-    r"\.?[a-zA-Z][a-zA-Z0-9]*".prop_map(|name| Constant(name.to_string()))
+    r"\.?[a-zA-Z][a-zA-Z0-9]*".prop_map(|name| Constant(name))
 }
 
 fn arb_ident() -> impl Strategy<Value = Identifier> {
