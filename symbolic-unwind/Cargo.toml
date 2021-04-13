@@ -13,5 +13,8 @@ publish = false
 insta = "1.7.1"
 nom = "6.1.2"
 
+[dev-dependencies]
+proptest = "1.0.0"
+
 [badges]
 travis-ci = { repository = "getsentry/symbolic", branch = "master" }
