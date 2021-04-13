@@ -13,9 +13,8 @@ pub fn minidump_benchmark(c: &mut Criterion) {
     let cfi_records = {
         let file = BufReader::new(File::open(fixture("linux/crash.sym")).unwrap());
 
-        // Read STACK CFI records starting at line 170
         file.lines()
-            .skip(169)
+            .skip(169) // STACK CFI records start at line 170
             .map(|l| l.unwrap())
             .collect::<Vec<String>>()
             .join("\n")
