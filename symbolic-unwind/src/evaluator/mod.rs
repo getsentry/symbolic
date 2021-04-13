@@ -610,6 +610,18 @@ impl<A: Ord + Copy, E> RangeMap<A, E> {
         (range.start <= address).then(|| range)
     }
 
+    /// Retrieves the range covering the given address, allowing mutation.
+    pub fn get_range_mut(&mut self, address: A) -> Option<&mut Range<A, E>> {
+        let range = match self.inner.binary_search_by_key(&address, |range| range.end) {
+            // This means inner(index).end == address => address might be covered by the next one
+            Ok(index) => self.inner.get_mut(index + 1)?,
+            // This means that inner(index).end > address => this could be the one
+            Err(index) => self.inner.get_mut(index)?,
+        };
+
+        (range.start <= address).then(|| range)
+    }
+
     /// Retrieves the range covering the given address, or else the last range before the
     /// address.
     ///
@@ -625,7 +637,7 @@ impl<A: Ord + Copy, E> RangeMap<A, E> {
     /// // |0     1|2      3|   4   |5     6|7 …
     /// // |"First"|"Second"|<empty>|"Third"|
     ///
-    /// let range =map.get_nearest_range(4).unwrap();
+    /// let range = map.get_nearest_range(4).unwrap();
     /// assert_eq!(range.start, 2);
     /// assert_eq!(range.end, 4);
     /// assert_eq!(range.contents, "Second");
@@ -655,8 +667,7 @@ impl<A, E> Default for RangeMap<A, E> {
 /// `STACK CFI INIT` and `STACK CFI` records.
 #[derive(Clone, Debug)]
 pub struct CfiRules<A: Ord, E> {
-    init_rules: RangeMap<A, E>,
-    delta_rules: BTreeMap<A, E>,
+    inner: RangeMap<A, Vec<(A, E)>>,
 }
 
 impl<A: Ord + Copy, E: Clone> CfiRules<A, E> {
@@ -666,7 +677,7 @@ impl<A: Ord + Copy, E: Clone> CfiRules<A, E> {
     /// The range must be disjoint from all ranges that are already present.
     /// Returns true if the insertion was successful.
     pub fn insert_init(&mut self, start: A, end: A, contents: E) -> bool {
-        self.init_rules.insert(start, end, contents)
+        self.inner.insert(start, end, vec![(start, contents)])
     }
 
     /// Insert a "delta rule", comprising an `address` and some attached
@@ -675,11 +686,17 @@ impl<A: Ord + Copy, E: Clone> CfiRules<A, E> {
     /// This fails if there is already a rule for the given address. Returns true if
     /// the insertion was successful.
     pub fn insert_delta(&mut self, address: A, contents: E) -> bool {
-        if self.delta_rules.contains_key(&address) {
-            false
+        if let Some(range) = self.inner.get_range_mut(address) {
+            let rules = &mut range.contents;
+            match rules.binary_search_by_key(&address, |p| p.0) {
+                Ok(_) => false,
+                Err(i) => {
+                    rules.insert(i, (address, contents));
+                    true
+                }
+            }
         } else {
-            self.delta_rules.insert(address, contents);
-            true
+            false
         }
     }
 
@@ -689,25 +706,22 @@ impl<A: Ord + Copy, E: Clone> CfiRules<A, E> {
     /// Otherwise it returns the covering init rule and all delta rules with addresses in
     /// `[init_rule.start, address]`.
     pub fn get_rules(&self, address: A) -> Option<Vec<&E>> {
-        let init = self.init_rules.get_range(address)?;
-        let mut result = Vec::new();
-        result.push(&init.contents);
-        result.extend(
-            self.delta_rules
+        let range = self.inner.get_range(address)?;
+        Some(
+            range
+                .contents
                 .iter()
-                .skip_while(|(a, _)| a < &&init.start)
-                .take_while(|(a, _)| a <= &&address)
-                .map(|(_, c)| c),
-        );
-        Some(result)
+                .take_while(|(a, _)| a <= &address)
+                .map(|(_, e)| e)
+                .collect(),
+        )
     }
 }
 
 impl<A: Ord, E> Default for CfiRules<A, E> {
     fn default() -> Self {
         Self {
-            init_rules: RangeMap::default(),
-            delta_rules: BTreeMap::new(),
+            inner: RangeMap::default(),
         }
     }
 }
