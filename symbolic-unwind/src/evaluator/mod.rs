@@ -8,7 +8,7 @@
 //! <assignment> ::=  <variable> <expr> =
 //! <expr>       ::=  <identifier> | <literal> | <expr> <expr> <binop> | <expr> ^
 //! <identifier> ::=  <constant> | <variable>
-//! <constant>   ::=  \.?[a-zA-Z0-9]+
+//! <constant>   ::=  \.?[a-zA-Z][a-zA-Z0-9]*
 //! <variable>   ::=  \$[a-zA-Z0-9]+
 //! <binop>      ::=  + | - | * | / | % | @
 //! <literal>    ::=  -?[0-9]+
@@ -48,6 +48,10 @@ use super::base::{Endianness, MemoryRegion, RegisterValue};
 use parsing::ParseExprError;
 
 pub mod parsing;
+
+#[cfg(test)]
+mod strategies;
+
 /// Structure that encapsulates the information necessary to evaluate Breakpad
 /// RPN expressions.
 ///
@@ -447,9 +451,24 @@ pub enum Identifier {
     Const(Constant),
 }
 
+impl fmt::Display for Identifier {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Var(v) => v.fmt(f),
+            Self::Const(c) => c.fmt(f),
+        }
+    }
+}
+
 /// A `STACK CFI` rule `reg: e`, where `reg` is an identifier and `e` is an expression.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Rule<A: RegisterValue>(Identifier, Expr<A>);
+pub struct Rule<A>(Identifier, Expr<A>);
+
+impl<T: fmt::Display> fmt::Display for Rule<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}: {}", self.0, self.1)
+    }
+}
 
 /// These tests are inspired by the Breakpad PostfixEvaluator unit tests:
 /// [https://github.com/google/breakpad/blob/main/src/processor/postfix_evaluator_unittest.cc]

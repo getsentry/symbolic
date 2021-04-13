@@ -7,7 +7,7 @@ use std::fmt;
 
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while};
-use nom::character::complete::{alphanumeric1, multispace0};
+use nom::character::complete::{alpha1, alphanumeric0, alphanumeric1, multispace0};
 use nom::combinator::{all_consuming, map, map_res, not, opt, peek, recognize, value};
 use nom::error::ParseError;
 use nom::sequence::{pair, preceded, terminated, tuple};
@@ -131,9 +131,9 @@ pub fn variable_complete(input: &str) -> Result<Variable, ParseExprError> {
 
 /// Parses a [constant](super::Constant).
 ///
-/// This accepts identifiers of the form `\.?[a-zA-Z0-9]+`.
+/// This accepts identifiers of the form `\.?[a-zA-Z][a-zA-Z0-9]*`.
 fn constant(input: &str) -> IResult<&str, Constant, ParseExprError> {
-    let (rest, con) = recognize(preceded(opt(tag(".")), alphanumeric1))(input)?;
+    let (rest, con) = recognize(tuple((opt(tag(".")), alpha1, alphanumeric0)))(input)?;
     Ok((rest, Constant(con.to_string())))
 }
 
@@ -395,6 +395,7 @@ pub fn rules_complete<T: RegisterValue>(input: &str) -> Result<Vec<Rule<T>>, Par
 mod test {
     use super::*;
     use nom::Finish;
+    use proptest::prelude::*;
 
     #[test]
     fn test_expr_1() {
@@ -605,5 +606,24 @@ mod test {
     fn test_rules_complete() {
         let input = ".cfa: sp 80 + x29: .cfa -80 + ^ .ra: .cfa -72 + ^";
         rules_complete::<u64>(input).unwrap();
+    }
+
+    proptest! {
+        #[test]
+        fn proptest_constant(c in strategies::arb_constant()) {
+            assert_eq!(
+                constant_complete(&c.to_string()).unwrap(), c);
+        }
+
+        #[test]
+        fn proptest_rule(rule in strategies::arb_rule::<u8>()) {
+            assert_eq!(rule_complete(&rule.to_string()).unwrap(), rule);
+        }
+
+        #[test]
+        fn proptest_rules(rules in prop::collection::vec(strategies::arb_rule::<u8>(), 0..10)) {
+            let rules_string = rules.iter().map(|r| r.to_string()).collect::<Vec<_>>().join(" ");
+            assert_eq!(rules_complete(&rules_string).unwrap(), rules);
+        }
     }
 }
