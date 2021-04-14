@@ -23,6 +23,8 @@ mod parser {
     pub struct BreakpadParser;
 }
 
+mod parsing;
+
 use self::parser::{BreakpadParser, Rule};
 
 /// Length at which the breakpad header will be capped.
