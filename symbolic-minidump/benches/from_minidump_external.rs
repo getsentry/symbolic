@@ -1,14 +1,53 @@
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
 use std::time::Duration;
+
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use walkdir::WalkDir;
+
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{Archive, FileFormat, Object};
 use symbolic_minidump::cfi::CfiCache;
 use symbolic_minidump::processor::{CodeModuleId, FrameInfoMap, ProcessState};
-use walkdir::WalkDir;
 
 type Error = Box<dyn std::error::Error>;
+
+/// Benchmark the minidump stackwalker on a third-party minidump file.
+///
+/// This benchmark works similarly to the `minidump_stackwalk` binary. It is designed to
+/// be used with third-party minidumps that cannot be added as benchmarks. To run it,
+/// first replace `minidump_path` with the path to a minidump file and `symbols_path`
+/// with the path to a symbol file (or a directory containing symbol files) and then
+/// do `cargo bench from_minidump_external`.
+///
+/// Note: The benchmark only measures the `from_minidump` call; CFI and symbol information
+/// is collected beforehand.
+pub fn minidump_external_benchmark(c: &mut Criterion) {
+    let minidump_path = "/path/to/minidump";
+    let symbols_path = "/path/to/symbol/files";
+
+    // Initially process without CFI
+    let buffer = ByteView::open(&minidump_path).unwrap();
+    let state = ProcessState::from_minidump(&buffer, None).unwrap();
+
+    // Reprocess with Call Frame Information
+    let frame_info = prepare_cfi(&symbols_path, &state).unwrap();
+
+    let mut group = c.benchmark_group("External Minidump");
+    group.measurement_time(Duration::from_secs(12));
+
+    group.bench_with_input(
+        BenchmarkId::new("from_minidump_external", "external files"),
+        &(buffer, Some(frame_info)),
+        |b, (buffer, frame_info)| {
+            b.iter(|| ProcessState::from_minidump(buffer, frame_info.as_ref()))
+        },
+    );
+    group.finish();
+}
+
+criterion_group!(benches, minidump_external_benchmark);
+criterion_main!(benches);
 
 fn collect_referenced_objects<P, F, T>(
     path: P,
@@ -88,30 +127,3 @@ where
         })
     })
 }
-
-pub fn minidump_external_benchmark(c: &mut Criterion) {
-    let minidump_path = "/path/to/minidump";
-    let symbols_path = "/path/to/symbol/files";
-
-    // Initially process without CFI
-    let buffer = ByteView::open(&minidump_path).unwrap();
-    let state = ProcessState::from_minidump(&buffer, None).unwrap();
-
-    // Reprocess with Call Frame Information
-    let frame_info = prepare_cfi(&symbols_path, &state).unwrap();
-
-    let mut group = c.benchmark_group("External Minidump");
-    group.measurement_time(Duration::from_secs(12));
-
-    group.bench_with_input(
-        BenchmarkId::new("from_minidump_external", "external files"),
-        &(buffer, Some(frame_info)),
-        |b, (buffer, frame_info)| {
-            b.iter(|| ProcessState::from_minidump(buffer, frame_info.as_ref()))
-        },
-    );
-    group.finish();
-}
-
-criterion_group!(benches, minidump_external_benchmark);
-criterion_main!(benches);
