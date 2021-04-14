@@ -1,6 +1,8 @@
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+
 use symbolic_common::ByteView;
 use symbolic_minidump::cfi::CfiCache;
 use symbolic_minidump::processor::{FrameInfoMap, ProcessState};
