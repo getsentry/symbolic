@@ -6,15 +6,14 @@ type Result<'a, A> = std::result::Result<A, ParseBreakpadError<'a>>;
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug)]
 enum ParseBreakpadErrorKind {
-    Address,
     Arch,
     FileRecord,
     FuncRecord,
     Id,
     ModuleRecord,
-    Name,
+    NumDec,
+    NumHex,
     Os,
-    Size,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -26,15 +25,14 @@ struct ParseBreakpadError<'a> {
 impl<'a> fmt::Display for ParseBreakpadError<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.kind {
-            ParseBreakpadErrorKind::Address => write!(f, "Invalid address: ")?,
             ParseBreakpadErrorKind::Arch => write!(f, "Invalid architecture: ")?,
             ParseBreakpadErrorKind::FileRecord => write!(f, "Invalid file record: ")?,
             ParseBreakpadErrorKind::FuncRecord => write!(f, "Invalid func record: ")?,
             ParseBreakpadErrorKind::Id => write!(f, "Invalid id: ")?,
             ParseBreakpadErrorKind::ModuleRecord => write!(f, "Invalid module record: ")?,
-            ParseBreakpadErrorKind::Name => write!(f, "Invalid name: ")?,
+            ParseBreakpadErrorKind::NumDec => write!(f, "Expected decimal number: ")?,
+            ParseBreakpadErrorKind::NumHex => write!(f, "Expected hex number: ")?,
             ParseBreakpadErrorKind::Os => write!(f, "Invalid OS: ")?,
-            ParseBreakpadErrorKind::Size => write!(f, "Invalid size: ")?,
         }
 
         write!(f, "{}", self.input)
@@ -43,128 +41,139 @@ impl<'a> fmt::Display for ParseBreakpadError<'a> {
 
 impl<'a> std::error::Error for ParseBreakpadError<'a> {}
 
-fn module_record(mut input: &str) -> Result<BreakpadModuleRecord> {
-    input = input
+fn num_hex(input: &str) -> Result<u64> {
+    u64::from_str_radix(input, 16).map_err(|_| ParseBreakpadError {
+        kind: ParseBreakpadErrorKind::NumHex,
+        input,
+    })
+}
+
+fn num_dec(input: &str) -> Result<u64> {
+    input.parse().map_err(|_| ParseBreakpadError {
+        kind: ParseBreakpadErrorKind::NumDec,
+        input,
+    })
+}
+
+fn os(input: &str) -> Result<&str> {
+    match input {
+        "Linux" | "mac" | "windows" => Ok(input),
+        _ => Err(ParseBreakpadError {
+            kind: ParseBreakpadErrorKind::Os,
+            input,
+        }),
+    }
+}
+
+fn arch(input: &str) -> Result<&str> {
+    match input {
+        "x86" | "x86_64" | "ppc" | "ppc_64" | "unknown" => Ok(input),
+        _ => Err(ParseBreakpadError {
+            kind: ParseBreakpadErrorKind::Arch,
+            input,
+        }),
+    }
+}
+
+fn id(input: &str) -> Result<&str> {
+    if input.chars().all(|c| c.is_ascii_hexdigit()) && input.len() >= 32 && input.len() <= 40 {
+        Ok(input)
+    } else {
+        Err(ParseBreakpadError {
+            kind: ParseBreakpadErrorKind::Id,
+            input,
+        })
+    }
+}
+fn module_record(input: &str) -> Result<BreakpadModuleRecord> {
+    let mut current = input
         .strip_prefix("MODULE")
         .ok_or_else(|| ParseBreakpadError {
             kind: ParseBreakpadErrorKind::ModuleRecord,
             input,
         })?
         .trim_start();
-    let mut parts = input.splitn(4, char::is_whitespace);
+    let mut parts = current.splitn(4, char::is_whitespace);
 
-    let mut os = parts.next().ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::Os,
+    current = parts.next().ok_or_else(|| ParseBreakpadError {
+        kind: ParseBreakpadErrorKind::ModuleRecord,
         input,
     })?;
-    os = match os {
-        "Linux" | "mac" | "windows" => os,
-        _ => {
-            return Err(ParseBreakpadError {
-                kind: ParseBreakpadErrorKind::Os,
-                input: os,
-            })
-        }
-    };
+    let os = os(current)?;
 
-    let mut arch = parts.next().ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::Arch,
+    current = parts.next().ok_or_else(|| ParseBreakpadError {
+        kind: ParseBreakpadErrorKind::ModuleRecord,
         input,
     })?;
-    arch = match arch {
-        "x86" | "x86_64" | "ppc" | "ppc_64" | "unknown" => arch,
-        _ => {
-            return Err(ParseBreakpadError {
-                kind: ParseBreakpadErrorKind::Arch,
-                input: arch,
-            })
-        }
-    };
+    let arch = arch(current)?;
 
-    let mut id = parts.next().ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::Id,
+    current = parts.next().ok_or_else(|| ParseBreakpadError {
+        kind: ParseBreakpadErrorKind::ModuleRecord,
         input,
     })?;
-    id = (id.chars().all(|c| c.is_ascii_hexdigit()) && id.len() >= 32 && id.len() <= 40)
-        .then(|| id)
-        .ok_or_else(|| ParseBreakpadError {
-            kind: ParseBreakpadErrorKind::Id,
-            input: id,
-        })?;
+    let id = id(current)?;
 
     let name = parts.next().unwrap_or("<unknown>");
 
     Ok(BreakpadModuleRecord { os, arch, id, name })
 }
 
-fn file_record(mut input: &str) -> Result<BreakpadFileRecord> {
-    input = input
+fn file_record(input: &str) -> Result<BreakpadFileRecord> {
+    let mut current = input
         .strip_prefix("FILE")
         .ok_or_else(|| ParseBreakpadError {
             kind: ParseBreakpadErrorKind::FileRecord,
             input,
         })?
         .trim_start();
-    let mut parts = input.splitn(2, char::is_whitespace);
+    let mut parts = current.splitn(2, char::is_whitespace);
 
-    let id = parts.next().ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::Id,
+    current = parts.next().ok_or_else(|| ParseBreakpadError {
+        kind: ParseBreakpadErrorKind::FileRecord,
         input,
     })?;
-    let id = id.parse::<u64>().map_err(|_| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::Id,
-        input: id,
-    })?;
+    let id = num_dec(current)?;
 
     let name = parts.next().unwrap_or("<unknown>");
 
     Ok(BreakpadFileRecord { id, name })
 }
 
-fn func_record(mut input: &str) -> Result<BreakpadFuncRecord> {
-    input = input
+fn func_record(input: &str) -> Result<BreakpadFuncRecord> {
+    let mut current = input
         .strip_prefix("FUNC")
         .ok_or_else(|| ParseBreakpadError {
-            kind: ParseBreakpadErrorKind::FileRecord,
+            kind: ParseBreakpadErrorKind::FuncRecord,
             input,
         })?
         .trim_start();
 
-    let (input, multiple) = if let Some(rest) = input.strip_prefix("m") {
-        (rest.trim_start(), true)
+    let multiple = if let Some(rest) = current.strip_prefix("m") {
+        current = rest.trim_start();
+        true
     } else {
-        (input, false)
+        false
     };
 
-    let mut parts = input.splitn(4, char::is_whitespace);
+    let mut parts = current.splitn(4, char::is_whitespace);
 
-    let address = parts.next().ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::Address,
+    current = parts.next().ok_or_else(|| ParseBreakpadError {
+        kind: ParseBreakpadErrorKind::FuncRecord,
         input,
     })?;
-    let address = u64::from_str_radix(address, 16).map_err(|_| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::Address,
-        input: address,
-    })?;
+    let address = num_hex(current)?;
 
-    let size = parts.next().ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::Size,
+    current = parts.next().ok_or_else(|| ParseBreakpadError {
+        kind: ParseBreakpadErrorKind::FuncRecord,
         input,
     })?;
-    let size = u64::from_str_radix(size, 16).map_err(|_| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::Size,
-        input: size,
-    })?;
+    let size = num_hex(current)?;
 
-    let parameter_size = parts.next().ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::Size,
+    current = parts.next().ok_or_else(|| ParseBreakpadError {
+        kind: ParseBreakpadErrorKind::FuncRecord,
         input,
     })?;
-    let parameter_size =
-        u64::from_str_radix(parameter_size, 16).map_err(|_| ParseBreakpadError {
-            kind: ParseBreakpadErrorKind::Size,
-            input: parameter_size,
-        })?;
+    let parameter_size = num_hex(current)?;
 
     let name = parts.next().unwrap_or("<unknown>");
 
