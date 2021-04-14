@@ -25,6 +25,9 @@ mod parser {
 
 mod parsing;
 
+#[cfg(test)]
+mod strategies;
+
 use self::parser::{BreakpadParser, Rule};
 
 /// Length at which the breakpad header will be capped.
