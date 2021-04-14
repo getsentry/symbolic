@@ -6,15 +6,15 @@ type Result<'a, A> = std::result::Result<A, ParseBreakpadError<'a>>;
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug)]
 enum ParseBreakpadErrorKind {
-    InvalidAddress,
-    InvalidArch,
-    InvalidFileRecord,
-    InvalidFuncRecord,
-    InvalidId,
-    InvalidModuleRecord,
-    InvalidName,
-    InvalidOs,
-    InvalidSize,
+    Address,
+    Arch,
+    FileRecord,
+    FuncRecord,
+    Id,
+    ModuleRecord,
+    Name,
+    Os,
+    Size,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -26,15 +26,15 @@ struct ParseBreakpadError<'a> {
 impl<'a> fmt::Display for ParseBreakpadError<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.kind {
-            ParseBreakpadErrorKind::InvalidAddress => write!(f, "Invalid address: ")?,
-            ParseBreakpadErrorKind::InvalidArch => write!(f, "Invalid architecture: ")?,
-            ParseBreakpadErrorKind::InvalidFileRecord => write!(f, "Invalid file record: ")?,
-            ParseBreakpadErrorKind::InvalidFuncRecord => write!(f, "Invalid func record: ")?,
-            ParseBreakpadErrorKind::InvalidId => write!(f, "Invalid id: ")?,
-            ParseBreakpadErrorKind::InvalidModuleRecord => write!(f, "Invalid module record: ")?,
-            ParseBreakpadErrorKind::InvalidName => write!(f, "Invalid name: ")?,
-            ParseBreakpadErrorKind::InvalidOs => write!(f, "Invalid OS: ")?,
-            ParseBreakpadErrorKind::InvalidSize => write!(f, "Invalid size: ")?,
+            ParseBreakpadErrorKind::Address => write!(f, "Invalid address: ")?,
+            ParseBreakpadErrorKind::Arch => write!(f, "Invalid architecture: ")?,
+            ParseBreakpadErrorKind::FileRecord => write!(f, "Invalid file record: ")?,
+            ParseBreakpadErrorKind::FuncRecord => write!(f, "Invalid func record: ")?,
+            ParseBreakpadErrorKind::Id => write!(f, "Invalid id: ")?,
+            ParseBreakpadErrorKind::ModuleRecord => write!(f, "Invalid module record: ")?,
+            ParseBreakpadErrorKind::Name => write!(f, "Invalid name: ")?,
+            ParseBreakpadErrorKind::Os => write!(f, "Invalid OS: ")?,
+            ParseBreakpadErrorKind::Size => write!(f, "Invalid size: ")?,
         }
 
         write!(f, "{}", self.input)
@@ -43,111 +43,52 @@ impl<'a> fmt::Display for ParseBreakpadError<'a> {
 
 impl<'a> std::error::Error for ParseBreakpadError<'a> {}
 
-//macro_rules! parse_record {
-//    (@single $($x:tt)*) => (());
-//    (@count $($rest:ident),*) => (<[()]>::len(&[$(parse_record!(@single $rest)),*]));
-//
-//    (
-//        $vis:vis $name:ident,
-//        $record:ident [
-//            prefix : ($prefix:expr, $prefix_error:expr),
-//            $($field:ident : ($parser:expr, $error:expr) ),*
-//        ]
-//    ) => {
-//        $vis fn $name(input: &str) -> Result<$record> {
-//            let input = input
-//                .strip_prefix($prefix)
-//                .ok_or_else(|| ParseBreakpadError {
-//                    kind: $prefix_error,
-//                    input,
-//                })?
-//                .trim_start();
-//            let mut parts = input.splitn(parse_record!(@count $($field),*), char::is_whitespace);
-//
-//            $(
-//                let $field = parts.next().ok_or_else(|| ParseBreakpadError {
-//                    kind: $error,
-//                    input,
-//                })?;
-//                let $field = $parser($field).ok_or_else(|| ParseBreakpadError {
-//                    kind: $error,
-//                    input: $field,
-//                })?;
-//            )*
-//
-//                let record = $record {
-//                    $(
-//                        $field,
-//                    )*
-//                };
-//                Ok(record)
-//        }
-//    };
-//}
-
-fn one_of<'a>(input: &'a str, values: &'static [&'static str]) -> Option<&'a str> {
-    for value in values {
-        if input == *value {
-            return Some(input);
-        }
-    }
-    None
-}
-
-//fn parse_id(input: &str) -> Option<&str> {
-//    (input.chars().all(|c| c.is_ascii_hexdigit()) && input.len() >= 32 && input.len() <= 40)
-//        .then(|| input)
-//}
-
-//parse_record! {
-//    pub module_record,
-//    BreakpadModuleRecord [
-//        prefix: ("MODULE", ParseBreakpadErrorKind::InvalidModuleRecord),
-//        os: (|os| one_of(os, &["Linux", "mac", "Windows"]), ParseBreakpadErrorKind::InvalidOs),
-//        arch: (|arch| one_of(arch, &["x86", "x86_64", "ppc", "ppc_64", "unknown"]), ParseBreakpadErrorKind::InvalidArch),
-//        id: (parse_id, ParseBreakpadErrorKind::InvalidId),
-//        name: (Option::Some, ParseBreakpadErrorKind::InvalidName)
-//    ]
-//}
-
 fn module_record(mut input: &str) -> Result<BreakpadModuleRecord> {
     input = input
         .strip_prefix("MODULE")
         .ok_or_else(|| ParseBreakpadError {
-            kind: ParseBreakpadErrorKind::InvalidModuleRecord,
+            kind: ParseBreakpadErrorKind::ModuleRecord,
             input,
         })?
         .trim_start();
     let mut parts = input.splitn(4, char::is_whitespace);
 
     let mut os = parts.next().ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::InvalidOs,
+        kind: ParseBreakpadErrorKind::Os,
         input,
     })?;
-    os = one_of(os, &["Linux", "mac", "Windows"]).ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::InvalidOs,
-        input: os,
-    })?;
+    os = match os {
+        "Linux" | "mac" | "windows" => os,
+        _ => {
+            return Err(ParseBreakpadError {
+                kind: ParseBreakpadErrorKind::Os,
+                input: os,
+            })
+        }
+    };
 
     let mut arch = parts.next().ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::InvalidArch,
+        kind: ParseBreakpadErrorKind::Arch,
         input,
     })?;
-    arch = one_of(arch, &["x86", "x86_64", "ppc", "ppc_64", "unknown"]).ok_or_else(|| {
-        ParseBreakpadError {
-            kind: ParseBreakpadErrorKind::InvalidArch,
-            input: arch,
+    arch = match arch {
+        "x86" | "x86_64" | "ppc" | "ppc_64" | "unknown" => arch,
+        _ => {
+            return Err(ParseBreakpadError {
+                kind: ParseBreakpadErrorKind::Arch,
+                input: arch,
+            })
         }
-    })?;
+    };
 
     let mut id = parts.next().ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::InvalidId,
+        kind: ParseBreakpadErrorKind::Id,
         input,
     })?;
     id = (id.chars().all(|c| c.is_ascii_hexdigit()) && id.len() >= 32 && id.len() <= 40)
         .then(|| id)
         .ok_or_else(|| ParseBreakpadError {
-            kind: ParseBreakpadErrorKind::InvalidId,
+            kind: ParseBreakpadErrorKind::Id,
             input: id,
         })?;
 
@@ -160,18 +101,18 @@ fn file_record(mut input: &str) -> Result<BreakpadFileRecord> {
     input = input
         .strip_prefix("FILE")
         .ok_or_else(|| ParseBreakpadError {
-            kind: ParseBreakpadErrorKind::InvalidFileRecord,
+            kind: ParseBreakpadErrorKind::FileRecord,
             input,
         })?
         .trim_start();
     let mut parts = input.splitn(2, char::is_whitespace);
 
     let id = parts.next().ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::InvalidId,
+        kind: ParseBreakpadErrorKind::Id,
         input,
     })?;
     let id = id.parse::<u64>().map_err(|_| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::InvalidId,
+        kind: ParseBreakpadErrorKind::Id,
         input: id,
     })?;
 
@@ -184,7 +125,7 @@ fn func_record(mut input: &str) -> Result<BreakpadFuncRecord> {
     input = input
         .strip_prefix("FUNC")
         .ok_or_else(|| ParseBreakpadError {
-            kind: ParseBreakpadErrorKind::InvalidFileRecord,
+            kind: ParseBreakpadErrorKind::FileRecord,
             input,
         })?
         .trim_start();
@@ -198,30 +139,30 @@ fn func_record(mut input: &str) -> Result<BreakpadFuncRecord> {
     let mut parts = input.splitn(4, char::is_whitespace);
 
     let address = parts.next().ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::InvalidAddress,
+        kind: ParseBreakpadErrorKind::Address,
         input,
     })?;
     let address = u64::from_str_radix(address, 16).map_err(|_| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::InvalidAddress,
+        kind: ParseBreakpadErrorKind::Address,
         input: address,
     })?;
 
     let size = parts.next().ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::InvalidSize,
+        kind: ParseBreakpadErrorKind::Size,
         input,
     })?;
     let size = u64::from_str_radix(size, 16).map_err(|_| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::InvalidSize,
+        kind: ParseBreakpadErrorKind::Size,
         input: size,
     })?;
 
     let parameter_size = parts.next().ok_or_else(|| ParseBreakpadError {
-        kind: ParseBreakpadErrorKind::InvalidSize,
+        kind: ParseBreakpadErrorKind::Size,
         input,
     })?;
     let parameter_size =
         u64::from_str_radix(parameter_size, 16).map_err(|_| ParseBreakpadError {
-            kind: ParseBreakpadErrorKind::InvalidSize,
+            kind: ParseBreakpadErrorKind::Size,
             input: parameter_size,
         })?;
 
@@ -244,7 +185,7 @@ mod tests {
     #[test]
     fn parse_module_record() {
         let string = "MODULE Linux x86_64 492E2DD23CC306CA9C494EEF1533A3810 crash";
-        let record = module_record(&*string).unwrap();
+        let record = module_record(string).unwrap();
 
         insta::assert_debug_snapshot!(record, @r###"
        ⋮BreakpadModuleRecord {
