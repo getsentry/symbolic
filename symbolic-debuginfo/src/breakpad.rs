@@ -6,29 +6,19 @@ use std::error::Error;
 use std::fmt;
 use std::str;
 
-use pest::Parser;
 use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameMangling};
 
 use crate::base::*;
 use crate::private::{Lines, Parse};
-
-mod parser {
-    #![allow(clippy::upper_case_acronyms)]
-    use pest_derive::Parser;
-
-    #[derive(Debug, Parser)]
-    #[grammar = "breakpad.pest"]
-    pub struct BreakpadParser;
-}
+use parsing::ParseBreakpadErrorKind;
 
 mod parsing;
 
 #[cfg(test)]
 mod strategies;
 
-use self::parser::{BreakpadParser, Rule};
 type Result<A> = std::result::Result<A, BreakpadError>;
 
 /// Length at which the breakpad header will be capped.
@@ -47,11 +37,8 @@ pub enum BreakpadErrorKind {
     /// A part of the file is not encoded in valid UTF-8.
     BadEncoding,
 
-    /// A record violates the Breakpad symbol syntax.
-    BadSyntax,
-
     /// Parsing of a record failed.
-    Parse(&'static str),
+    Parse(ParseBreakpadErrorKind),
 }
 
 impl fmt::Display for BreakpadErrorKind {
@@ -59,8 +46,7 @@ impl fmt::Display for BreakpadErrorKind {
         match self {
             Self::InvalidMagic => write!(f, "missing breakpad symbol header"),
             Self::BadEncoding => write!(f, "bad utf-8 sequence"),
-            Self::BadSyntax => write!(f, "invalid syntax"),
-            Self::Parse(field) => write!(f, "{}", field),
+            Self::Parse(kind) => write!(f, "parse error: {}", kind),
         }
     }
 }
@@ -103,9 +89,12 @@ impl From<str::Utf8Error> for BreakpadError {
     }
 }
 
-impl From<pest::error::Error<Rule>> for BreakpadError {
-    fn from(e: pest::error::Error<Rule>) -> Self {
-        Self::new(BreakpadErrorKind::BadSyntax, e)
+impl From<ParseBreakpadErrorKind> for BreakpadError {
+    fn from(k: ParseBreakpadErrorKind) -> Self {
+        Self {
+            kind: BreakpadErrorKind::Parse(k),
+            source: None,
+        }
     }
 }
 
@@ -136,20 +125,7 @@ impl<'d> BreakpadModuleRecord<'d> {
     /// Parses a module record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
-        let parsed = BreakpadParser::parse(Rule::module, string)?.next().unwrap();
-        let mut record = BreakpadModuleRecord::default();
-
-        for pair in parsed.into_inner() {
-            match pair.as_rule() {
-                Rule::os => record.os = pair.as_str(),
-                Rule::arch => record.arch = pair.as_str(),
-                Rule::debug_id => record.id = pair.as_str(),
-                Rule::name => record.name = pair.as_str(),
-                _ => unreachable!(),
-            }
-        }
-
-        Ok(record)
+        parsing::module_record(string)
     }
 }
 
@@ -180,47 +156,7 @@ impl<'d> BreakpadInfoRecord<'d> {
     /// Parses an info record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
-        let parsed = BreakpadParser::parse(Rule::info, string)?.next().unwrap();
-
-        for pair in parsed.into_inner() {
-            match pair.as_rule() {
-                Rule::info_code_id => return Ok(Self::code_info_from_pair(pair)),
-                Rule::info_other => return Ok(Self::other_from_pair(pair)),
-                _ => unreachable!(),
-            }
-        }
-
-        Err(BreakpadErrorKind::Parse("unknown INFO record").into())
-    }
-
-    fn code_info_from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Self {
-        let mut code_id = "";
-        let mut code_file = "";
-
-        for pair in pair.into_inner() {
-            match pair.as_rule() {
-                Rule::code_id => code_id = pair.as_str(),
-                Rule::name => code_file = pair.as_str(),
-                _ => unreachable!(),
-            }
-        }
-
-        BreakpadInfoRecord::CodeId { code_id, code_file }
-    }
-
-    fn other_from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Self {
-        let mut scope = "";
-        let mut info = "";
-
-        for pair in pair.into_inner() {
-            match pair.as_rule() {
-                Rule::ident => scope = pair.as_str(),
-                Rule::text => info = pair.as_str(),
-                _ => unreachable!(),
-            }
-        }
-
-        BreakpadInfoRecord::Other { scope, info }
+        parsing::info_record(string)
     }
 }
 
@@ -279,21 +215,7 @@ impl<'d> BreakpadFileRecord<'d> {
     /// Parses a file record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
-        let parsed = BreakpadParser::parse(Rule::file, string)?.next().unwrap();
-        let mut record = BreakpadFileRecord::default();
-
-        for pair in parsed.into_inner() {
-            match pair.as_rule() {
-                Rule::file_id => {
-                    record.id = u64::from_str_radix(pair.as_str(), 10)
-                        .map_err(|_| BreakpadErrorKind::Parse("file identifier"))?;
-                }
-                Rule::name => record.name = pair.as_str(),
-                _ => unreachable!(),
-            }
-        }
-
-        Ok(record)
+        parsing::file_record(string)
     }
 }
 
@@ -354,30 +276,7 @@ impl<'d> BreakpadPublicRecord<'d> {
     /// Parses a public record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
-        let parsed = BreakpadParser::parse(Rule::public, string)?.next().unwrap();
-        let mut record = BreakpadPublicRecord::default();
-
-        for pair in parsed.into_inner() {
-            match pair.as_rule() {
-                Rule::multiple => record.multiple = true,
-                Rule::addr => {
-                    record.address = u64::from_str_radix(pair.as_str(), 16)
-                        .map_err(|_| BreakpadErrorKind::Parse("symbol address"))?;
-                }
-                Rule::param_size => {
-                    record.parameter_size = u64::from_str_radix(pair.as_str(), 16)
-                        .map_err(|_| BreakpadErrorKind::Parse("symbol parameter size"))?;
-                }
-                Rule::name => record.name = pair.as_str(),
-                _ => unreachable!(),
-            }
-        }
-
-        if record.name.is_empty() {
-            record.name = UNKNOWN_NAME;
-        }
-
-        Ok(record)
+        parsing::public_record(string)
     }
 }
 
@@ -443,35 +342,7 @@ impl<'d> BreakpadFuncRecord<'d> {
     /// ends.
     pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
-        let parsed = BreakpadParser::parse(Rule::func, string)?.next().unwrap();
-        let mut record = BreakpadFuncRecord::default();
-
-        for pair in parsed.into_inner() {
-            match pair.as_rule() {
-                Rule::multiple => record.multiple = true,
-                Rule::addr => {
-                    record.address = u64::from_str_radix(pair.as_str(), 16)
-                        .map_err(|_| BreakpadErrorKind::Parse("function address"))?;
-                }
-                Rule::size => {
-                    record.size = u64::from_str_radix(pair.as_str(), 16)
-                        .map_err(|_| BreakpadErrorKind::Parse("function size"))?;
-                }
-                Rule::param_size => {
-                    record.parameter_size = u64::from_str_radix(pair.as_str(), 16)
-                        .map_err(|_| BreakpadErrorKind::Parse("function parameter size"))?;
-                }
-                Rule::name => record.name = pair.as_str(),
-                _ => unreachable!(),
-            }
-        }
-
-        if record.name.is_empty() {
-            record.name = UNKNOWN_NAME;
-        }
-
-        record.lines = lines;
-        Ok(record)
+        parsing::func_record(string)
     }
 
     /// Returns an iterator over line records associated to this function.
@@ -533,7 +404,11 @@ impl<'d> Iterator for BreakpadFuncRecords<'d> {
                 continue;
             }
 
-            return Some(BreakpadFuncRecord::parse(line, self.lines.clone()));
+            let mut record = BreakpadFuncRecord::parse(line);
+            if let Ok(ref mut record) = record {
+                record.lines = self.lines.clone();
+            }
+            return Some(record);
         }
 
         self.finished = true;
@@ -567,36 +442,7 @@ impl BreakpadLineRecord {
     /// Parses a line record from a single line.
     pub fn parse(data: &[u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
-        let parsed = BreakpadParser::parse(Rule::line, string)?.next().unwrap();
-        let mut record = BreakpadLineRecord::default();
-
-        for pair in parsed.into_inner() {
-            match pair.as_rule() {
-                Rule::addr => {
-                    record.address = u64::from_str_radix(pair.as_str(), 16)
-                        .map_err(|_| BreakpadErrorKind::Parse("line address"))?;
-                }
-                Rule::size => {
-                    record.size = u64::from_str_radix(pair.as_str(), 16)
-                        .map_err(|_| BreakpadErrorKind::Parse("line size"))?;
-                }
-                Rule::line_num => {
-                    // NB: Breakpad does not allow negative line numbers and even tests that the
-                    // symbol parser rejects such line records. However, negative line numbers have
-                    // been observed at least for ELF files, so handle them gracefully.
-                    record.line = i32::from_str_radix(pair.as_str(), 10)
-                        .map(|line| u64::from(line as u32))
-                        .map_err(|_| BreakpadErrorKind::Parse("line number"))?;
-                }
-                Rule::file_id => {
-                    record.file_id = u64::from_str_radix(pair.as_str(), 10)
-                        .map_err(|_| BreakpadErrorKind::Parse("file number"))?;
-                }
-                _ => unreachable!(),
-            }
-        }
-
-        Ok(record)
+        parsing::line_record(string)
     }
 
     /// Resolves the filename for this record in the file map.
@@ -666,20 +512,7 @@ impl<'d> BreakpadStackCfiDeltaRecord<'d> {
     /// Parses a single `STACK CFI` record.
     pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
-        let parsed = BreakpadParser::parse(Rule::stack_cfi_delta, string)?
-            .next()
-            .unwrap();
-
-        Ok(Self::from_pair(parsed))
-    }
-
-    /// Constructs a delta record directly from a Pest parser pair.
-    fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Self {
-        let mut pair = pair.into_inner();
-        let address = u64::from_str_radix(pair.next().unwrap().as_str(), 16).unwrap();
-        let rules = pair.next().unwrap().as_str();
-
-        Self { address, rules }
+        parsing::stack_cfi_delta_record(string)
     }
 }
 
@@ -706,25 +539,7 @@ impl<'d> BreakpadStackCfiRecord<'d> {
     /// Parses a `STACK CFI INIT` record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
-        let parsed = BreakpadParser::parse(Rule::stack_cfi_init, string)?
-            .next()
-            .unwrap();
-        Ok(Self::from_pair(parsed))
-    }
-
-    /// Constructs a stack cfi record directly from a Pest parser pair.
-    fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Self {
-        let mut init = pair.into_inner();
-        let start = u64::from_str_radix(init.next().unwrap().as_str(), 16).unwrap();
-        let size = u64::from_str_radix(init.next().unwrap().as_str(), 16).unwrap();
-        let init_rules = init.next().unwrap().as_str();
-
-        Self {
-            start,
-            size,
-            init_rules,
-            deltas: Lines::default(),
-        }
+        parsing::stack_cfi_init_record(string)
     }
 
     /// Returns an iterator over this record's delta records.
@@ -827,49 +642,7 @@ impl<'d> BreakpadStackWinRecord<'d> {
     /// Parses a Windows stack record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
-        let parsed = BreakpadParser::parse(Rule::stack_win, string)?
-            .next()
-            .unwrap();
-
-        Ok(Self::from_pair(parsed))
-    }
-
-    // Constructs a stack record directly from a Pest parser pair.
-    fn from_pair(pair: pest::iterators::Pair<'d, Rule>) -> Self {
-        let mut pairs = pair.into_inner();
-        let ty = if pairs.next().unwrap().as_str() == "4" {
-            BreakpadStackWinRecordType::FrameData
-        } else {
-            BreakpadStackWinRecordType::Fpo
-        };
-        let code_start = u32::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let code_size = u32::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let prolog_size = u16::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let epilog_size = u16::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let params_size = u32::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let saved_regs_size = u16::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let locals_size = u32::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let max_stack_size = u32::from_str_radix(pairs.next().unwrap().as_str(), 16).unwrap();
-        let has_program_string = pairs.next().unwrap().as_str() != "0";
-        let (uses_base_pointer, program_string) = if has_program_string {
-            (false, Some(pairs.next().unwrap().as_str()))
-        } else {
-            (pairs.next().unwrap().as_str() != "0", None)
-        };
-
-        Self {
-            ty,
-            code_start,
-            code_size,
-            prolog_size,
-            epilog_size,
-            params_size,
-            saved_regs_size,
-            locals_size,
-            max_stack_size,
-            uses_base_pointer,
-            program_string,
-        }
+        parsing::stack_win_record(string)
     }
 }
 
@@ -886,16 +659,10 @@ impl<'d> BreakpadStackRecord<'d> {
     /// Parses a stack frame information record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
-        let parsed = BreakpadParser::parse(Rule::stack, string)?.next().unwrap();
-        let pair = parsed.into_inner().next().unwrap();
-
-        Ok(match pair.as_rule() {
-            Rule::stack_cfi_init => {
-                BreakpadStackRecord::Cfi(BreakpadStackCfiRecord::from_pair(pair))
-            }
-            Rule::stack_win => BreakpadStackRecord::Win(BreakpadStackWinRecord::from_pair(pair)),
-            _ => unreachable!(),
-        })
+        Ok(parsing::stack_cfi_init_record(string)
+            .map(Self::Cfi)
+            .or_else(|_| parsing::stack_win_record(string).map(Self::Win))
+            .map_err(|_| ParseBreakpadErrorKind::StackRecord)?)
     }
 }
 
@@ -987,14 +754,11 @@ impl<'data> BreakpadObject<'data> {
         let module = BreakpadModuleRecord::parse(header)?;
 
         Ok(BreakpadObject {
-            id: module
-                .id
-                .parse()
-                .map_err(|_| BreakpadErrorKind::Parse("module id"))?,
+            id: module.id.parse().map_err(|_| ParseBreakpadErrorKind::Id)?,
             arch: module
                 .arch
                 .parse()
-                .map_err(|_| BreakpadErrorKind::Parse("module architecture"))?,
+                .map_err(|_| ParseBreakpadErrorKind::Arch)?,
             module,
             data,
         })
@@ -1380,267 +1144,3 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
 }
 
 impl std::iter::FusedIterator for BreakpadFunctionIterator<'_> {}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_module_record() -> Result<(), BreakpadError> {
-        let string = b"MODULE Linux x86_64 492E2DD23CC306CA9C494EEF1533A3810 crash";
-        let record = BreakpadModuleRecord::parse(&*string)?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-       ⋮BreakpadModuleRecord {
-       ⋮    os: "Linux",
-       ⋮    arch: "x86_64",
-       ⋮    id: "492E2DD23CC306CA9C494EEF1533A3810",
-       ⋮    name: "crash",
-       ⋮}
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_module_record_short_id() -> Result<(), BreakpadError> {
-        // NB: This id is one character short, missing the age. DebugId can handle this, however.
-        let string = b"MODULE Linux x86_64 6216C672A8D33EC9CF4A1BAB8B29D00E libdispatch.so";
-        let record = BreakpadModuleRecord::parse(string)?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-       ⋮BreakpadModuleRecord {
-       ⋮    os: "Linux",
-       ⋮    arch: "x86_64",
-       ⋮    id: "6216C672A8D33EC9CF4A1BAB8B29D00E",
-       ⋮    name: "libdispatch.so",
-       ⋮}
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_file_record() -> Result<(), BreakpadError> {
-        let string = b"FILE 37 /usr/include/libkern/i386/_OSByteOrder.h";
-        let record = BreakpadFileRecord::parse(string)?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-       ⋮BreakpadFileRecord {
-       ⋮    id: 37,
-       ⋮    name: "/usr/include/libkern/i386/_OSByteOrder.h",
-       ⋮}
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_file_record_space() -> Result<(), BreakpadError> {
-        let string = b"FILE 38 /usr/local/src/filename with spaces.c";
-        let record = BreakpadFileRecord::parse(string)?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-       ⋮BreakpadFileRecord {
-       ⋮    id: 38,
-       ⋮    name: "/usr/local/src/filename with spaces.c",
-       ⋮}
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_func_record() -> Result<(), BreakpadError> {
-        // Lines will be tested separately
-        let string = b"FUNC 1730 1a 0 <name omitted>";
-        let record = BreakpadFuncRecord::parse(string, Lines::default())?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-       ⋮BreakpadFuncRecord {
-       ⋮    multiple: false,
-       ⋮    address: 5936,
-       ⋮    size: 26,
-       ⋮    parameter_size: 0,
-       ⋮    name: "<name omitted>",
-       ⋮}
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_func_record_multiple() -> Result<(), BreakpadError> {
-        let string = b"FUNC m 1730 1a 0 <name omitted>";
-        let record = BreakpadFuncRecord::parse(string, Lines::default())?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-       ⋮BreakpadFuncRecord {
-       ⋮    multiple: true,
-       ⋮    address: 5936,
-       ⋮    size: 26,
-       ⋮    parameter_size: 0,
-       ⋮    name: "<name omitted>",
-       ⋮}
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_func_record_no_name() -> Result<(), BreakpadError> {
-        let string = b"FUNC 0 f 0";
-        let record = BreakpadFuncRecord::parse(string, Lines::default())?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-       ⋮BreakpadFuncRecord {
-       ⋮    multiple: false,
-       ⋮    address: 0,
-       ⋮    size: 15,
-       ⋮    parameter_size: 0,
-       ⋮    name: "<unknown>",
-       ⋮}
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_line_record() -> Result<(), BreakpadError> {
-        let string = b"1730 6 93 20";
-        let record = BreakpadLineRecord::parse(string)?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-       ⋮BreakpadLineRecord {
-       ⋮    address: 5936,
-       ⋮    size: 6,
-       ⋮    line: 93,
-       ⋮    file_id: 20,
-       ⋮}
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_line_record_negative_line() -> Result<(), BreakpadError> {
-        let string = b"e0fd10 5 -376 2225";
-        let record = BreakpadLineRecord::parse(string)?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-       ⋮BreakpadLineRecord {
-       ⋮    address: 14744848,
-       ⋮    size: 5,
-       ⋮    line: 4294966920,
-       ⋮    file_id: 2225,
-       ⋮}
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_public_record() -> Result<(), BreakpadError> {
-        let string = b"PUBLIC 5180 0 __clang_call_terminate";
-        let record = BreakpadPublicRecord::parse(string)?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-       ⋮BreakpadPublicRecord {
-       ⋮    multiple: false,
-       ⋮    address: 20864,
-       ⋮    parameter_size: 0,
-       ⋮    name: "__clang_call_terminate",
-       ⋮}
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_public_record_multiple() -> Result<(), BreakpadError> {
-        let string = b"PUBLIC m 5180 0 __clang_call_terminate";
-        let record = BreakpadPublicRecord::parse(string)?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-       ⋮BreakpadPublicRecord {
-       ⋮    multiple: true,
-       ⋮    address: 20864,
-       ⋮    parameter_size: 0,
-       ⋮    name: "__clang_call_terminate",
-       ⋮}
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_public_record_no_name() -> Result<(), BreakpadError> {
-        let string = b"PUBLIC 5180 0";
-        let record = BreakpadPublicRecord::parse(string)?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-       ⋮BreakpadPublicRecord {
-       ⋮    multiple: false,
-       ⋮    address: 20864,
-       ⋮    parameter_size: 0,
-       ⋮    name: "<unknown>",
-       ⋮}
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_stack_cfi_init_record() -> Result<(), BreakpadError> {
-        let string = b"STACK CFI INIT 1880 2d .cfa: $rsp 8 + .ra: .cfa -8 + ^";
-        let record = BreakpadStackRecord::parse(string)?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-        Cfi(
-            BreakpadStackCfiRecord {
-                start: 6272,
-                size: 45,
-                init_rules: ".cfa: $rsp 8 + .ra: .cfa -8 + ^",
-                deltas: Lines(
-                    LineOffsets {
-                        data: [],
-                        finished: true,
-                        index: 0,
-                    },
-                ),
-            },
-        )
-        "###);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_parse_stack_win_record() -> Result<(), BreakpadError> {
-        let string =
-            b"STACK WIN 4 371a c 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =";
-        let record = BreakpadStackRecord::parse(string)?;
-
-        insta::assert_debug_snapshot!(record, @r###"
-        Win(
-            BreakpadStackWinRecord {
-                ty: FrameData,
-                code_start: 14106,
-                code_size: 12,
-                prolog_size: 0,
-                epilog_size: 0,
-                params_size: 0,
-                saved_regs_size: 0,
-                locals_size: 0,
-                max_stack_size: 0,
-                uses_base_pointer: false,
-                program_string: Some(
-                    "$T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =",
-                ),
-            },
-        )
-        "###);
-
-        Ok(())
-    }
-}
