@@ -6,8 +6,8 @@ prop_compose! {
         arch in "x86(_64)?|ppc(_64)?|unknown",
         id in "[a-fA-F0-9]{32,40}",
         name in "[^\n]{30,40}",
-    ) -> String {
-        format!("MODULE {} {} {} {}", os, arch, id, name)
+    ) -> Vec<u8> {
+        format!("MODULE {} {} {} {}", os, arch, id, name).into_bytes()
     }
 }
 
@@ -15,8 +15,8 @@ prop_compose! {
     pub(crate) fn arb_file_record()(
         id in any::<u64>(),
         name in "[^\n]{0,10}",
-    ) -> String {
-        format!("FILE {} {}", id, name)
+    ) -> Vec<u8> {
+        format!("FILE {} {}", id, name).into_bytes()
     }
 }
 
@@ -27,8 +27,8 @@ prop_compose! {
         size in any::<u64>(),
         parameter_size in any::<u64>(),
         name in "[^\n]{30,40}",
-    ) -> String {
-        format!("FUNC {}{:x} {:x} {:x} {}", multiple, address, size, parameter_size, name)
+    ) -> Vec<u8> {
+        format!("FUNC {}{:x} {:x} {:x} {}", multiple, address, size, parameter_size, name).into_bytes()
     }
 }
 
@@ -38,8 +38,8 @@ prop_compose! {
         size in any::<u64>(),
         line in any::<u64>(),
         file_id in any::<u64>(),
-    ) -> String {
-        format!("{:x} {:x} {} {}", address, size, line, file_id)
+    ) -> Vec<u8> {
+        format!("{:x} {:x} {} {}", address, size, line, file_id).into_bytes()
     }
 }
 
@@ -49,8 +49,8 @@ prop_compose! {
         address in any::<u64>(),
         parameter_size in any::<u64>(),
         name in "[^\n]{30,40}",
-    ) -> String {
-        format!("PUBLIC {}{:x} {:x} {}", multiple, address, parameter_size, name)
+    ) -> Vec<u8> {
+        format!("PUBLIC {}{:x} {:x} {}", multiple, address, parameter_size, name).into_bytes()
     }
 }
 
@@ -66,7 +66,7 @@ prop_compose! {
     locals_size in any::<u32>(),
     max_stack_size in any::<u32>(),
     program_string in "[^\n]{30,40}",
-    ) -> String {
+    ) -> Vec<u8> {
         format!(
             "STACK WIN {} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} 0 1 {}",
             ty,
@@ -79,7 +79,7 @@ prop_compose! {
             locals_size,
             max_stack_size,
             program_string
-        )
+        ).into_bytes()
     }
 }
 
@@ -88,8 +88,8 @@ prop_compose! {
         address in any::<u64>(),
         size in any::<u64>(),
         init_rules in "[^\n]{30,40}",
-    ) -> String {
-        format!("STACK CFI INIT {:x} {:x} {}", address, size, init_rules)
+    ) -> Vec<u8> {
+        format!("STACK CFI INIT {:x} {:x} {}", address, size, init_rules).into_bytes()
     }
 }
 
@@ -97,7 +97,7 @@ prop_compose! {
     pub(crate) fn arb_stack_cfi_delta_record()(
         address in any::<u64>(),
         rules in "[^\n]{30,40}",
-    ) -> String {
-        format!("STACK CFI {:x} {}", address, rules)
+    ) -> Vec<u8> {
+        format!("STACK CFI {:x} {}", address, rules).into_bytes()
     }
 }
