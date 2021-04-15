@@ -627,7 +627,7 @@ impl BreakpadLineRecord {
         let size = num_hex_64(current)?;
 
         current = parts.next().ok_or(ParseBreakpadErrorKind::LineRecord)?;
-        let line = num_dec_64(current)?;
+        let line = line(current)?;
 
         current = parts.next().ok_or(ParseBreakpadErrorKind::LineRecord)?;
         let file_id = num_dec_64(current)?;
@@ -1465,6 +1465,13 @@ fn num_hex_16(input: &str) -> Result<u16> {
     u16::from_str_radix(input, 16).map_err(|_| ParseBreakpadErrorKind::NumHex.into())
 }
 
+fn line(input: &str) -> Result<u64> {
+    input
+        .parse::<i64>()
+        .map_err(|_| ParseBreakpadErrorKind::NumDec.into())
+        .map(|line| line.max(0) as u64)
+}
+
 fn os(input: &str) -> Result<&str> {
     match input {
         "Linux" | "mac" | "windows" => Ok(input),
@@ -1628,20 +1635,20 @@ mod tests {
         "###);
     }
 
-    //#[test]
-    //fn parse_line_record_negative_line() {
-    //    let string = b"e0fd10 5 -376 2225";
-    //    let record = BreakpadLineRecord::parse(string).unwrap();
+    #[test]
+    fn parse_line_record_negative_line() {
+        let string = b"e0fd10 5 -376 2225";
+        let record = BreakpadLineRecord::parse(string).unwrap();
 
-    //    insta::assert_debug_snapshot!(record, @r###"
-    //   ⋮BreakpadLineRecord {
-    //   ⋮    address: 14744848,
-    //   ⋮    size: 5,
-    //   ⋮    line: 4294966920,
-    //   ⋮    file_id: 2225,
-    //   ⋮}
-    //    "###);
-    //}
+        insta::assert_debug_snapshot!(record, @r###"
+        BreakpadLineRecord {
+            address: 14744848,
+            size: 5,
+            line: 0,
+            file_id: 2225,
+        }
+        "###);
+    }
 
     #[test]
     fn parse_public_record() {

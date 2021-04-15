@@ -593,7 +593,7 @@ prop_compose! {
     fn arb_breakpad_line_record()(
         address in any::<u64>(),
         size in any::<u64>(),
-        line in any::<u64>(),
+        line in any::<i64>(),
         file_id in any::<u64>(),
     ) -> Vec<u8> {
         format!("{:x} {:x} {} {}", address, size, line, file_id).into_bytes()
