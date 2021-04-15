@@ -1,9 +1,15 @@
 use std::fmt;
 
 use symbolic_common::ByteView;
+use symbolic_debuginfo::breakpad::{
+    BreakpadFileRecord, BreakpadFuncRecord, BreakpadLineRecord, BreakpadModuleRecord,
+    BreakpadPublicRecord, BreakpadStackCfiDeltaRecord, BreakpadStackCfiRecord,
+    BreakpadStackWinRecord,
+};
 use symbolic_debuginfo::{FileEntry, Function, Object, SymbolMap};
 use symbolic_testutils::fixture;
 
+use proptest::prelude::*;
 use similar_asserts::assert_eq;
 
 type Error = Box<dyn std::error::Error>;
@@ -137,6 +143,46 @@ fn test_breakpad_functions() -> Result<(), Error> {
     insta::assert_debug_snapshot!("breakpad_functions", FunctionsDebug(&functions[..10], 0));
 
     Ok(())
+}
+
+proptest! {
+    #[test]
+    fn proptest_breakpad_module_record(record in arb_breakpad_module_record()) {
+        BreakpadModuleRecord::parse(&record).unwrap();
+    }
+
+    #[test]
+    fn proptest_breakpad_file_record(record in arb_breakpad_file_record()) {
+        BreakpadFileRecord::parse(&record).unwrap();
+    }
+
+    #[test]
+    fn proptest_breakpad_func_record(record in arb_breakpad_func_record()) {
+        BreakpadFuncRecord::parse(&record).unwrap();
+    }
+
+    #[test]
+    fn proptest_breakpad_line_record(record in arb_breakpad_line_record()) {
+        BreakpadLineRecord::parse(&record).unwrap();
+    }
+
+    #[test]
+    fn proptest_breakpad_public_record(record in arb_breakpad_public_record()) {
+        BreakpadPublicRecord::parse(&record).unwrap();
+    }
+    #[test]
+    fn proptest_breakpad_stack_win_record(record in arb_breakpad_stack_win_record()) {
+        BreakpadStackWinRecord::parse(&record).unwrap();
+    }
+    #[test]
+    fn proptest_breakpad_stack_cfi_init_record(record in arb_breakpad_stack_cfi_init_record()) {
+        BreakpadStackCfiRecord::parse(&record).unwrap();
+    }
+
+    #[test]
+    fn proptest_breakpad_stack_cfi_delta_record(record in arb_breakpad_stack_cfi_delta_record()) {
+        BreakpadStackCfiDeltaRecord::parse(&record).unwrap();
+    }
 }
 
 #[test]
@@ -509,4 +555,106 @@ fn test_wasm_line_program() -> Result<(), Error> {
     assert_eq!(main_function.name, "internal_func");
 
     Ok(())
+}
+
+prop_compose! {
+    fn arb_breakpad_module_record()(
+        os in "Linux|mac|windows",
+        arch in "x86(_64)?|ppc(_64)?|unknown",
+        id in "[a-fA-F0-9]{32,40}",
+        name in "[^\n]{30,40}",
+    ) -> Vec<u8> {
+        format!("MODULE {} {} {} {}", os, arch, id, name).into_bytes()
+    }
+}
+
+prop_compose! {
+    fn arb_breakpad_file_record()(
+        id in any::<u64>(),
+        name in "[^\n]{0,10}",
+    ) -> Vec<u8> {
+        format!("FILE {} {}", id, name).into_bytes()
+    }
+}
+
+prop_compose! {
+    fn arb_breakpad_func_record()(
+        multiple in "(m )?",
+        address in any::<u64>(),
+        size in any::<u64>(),
+        parameter_size in any::<u64>(),
+        name in "[^\n]{30,40}",
+    ) -> Vec<u8> {
+        format!("FUNC {}{:x} {:x} {:x} {}", multiple, address, size, parameter_size, name).into_bytes()
+    }
+}
+
+prop_compose! {
+    fn arb_breakpad_line_record()(
+        address in any::<u64>(),
+        size in any::<u64>(),
+        line in any::<u64>(),
+        file_id in any::<u64>(),
+    ) -> Vec<u8> {
+        format!("{:x} {:x} {} {}", address, size, line, file_id).into_bytes()
+    }
+}
+
+prop_compose! {
+    fn arb_breakpad_public_record()(
+        multiple in "(m )?",
+        address in any::<u64>(),
+        parameter_size in any::<u64>(),
+        name in "[^\n]{30,40}",
+    ) -> Vec<u8> {
+        format!("PUBLIC {}{:x} {:x} {}", multiple, address, parameter_size, name).into_bytes()
+    }
+}
+
+prop_compose! {
+    fn arb_breakpad_stack_win_record()(
+    ty in "0|4",
+    code_start in any::<u32>(),
+    code_size in any::<u32>(),
+    prolog_size in any::<u16>(),
+    epilog_size in any::<u16>(),
+    param_size in any::<u32>(),
+    saved_regs_size in any::<u16>(),
+    locals_size in any::<u32>(),
+    max_stack_size in any::<u32>(),
+    program_string in "[^\n]{30,40}",
+    ) -> Vec<u8> {
+        format!(
+            "STACK WIN {} {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} 0 1 {}",
+            ty,
+            code_start,
+            code_size,
+            prolog_size,
+            epilog_size,
+            param_size,
+            saved_regs_size,
+            locals_size,
+            max_stack_size,
+            program_string
+        ).into_bytes()
+    }
+}
+
+prop_compose! {
+    fn arb_breakpad_stack_cfi_init_record()(
+        address in any::<u64>(),
+        size in any::<u64>(),
+        init_rules in "[^\n]{30,40}",
+    ) -> Vec<u8> {
+        format!("STACK CFI INIT {:x} {:x} {}", address, size, init_rules).into_bytes()
+    }
+}
+
+prop_compose! {
+    fn arb_breakpad_stack_cfi_delta_record()(
+        address in any::<u64>(),
+        rules in "[^\n]{30,40}",
+    ) -> Vec<u8> {
+        format!("STACK CFI {:x} {}", address, rules).into_bytes()
+    }
 }

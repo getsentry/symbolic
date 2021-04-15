@@ -13,9 +13,6 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameManglin
 use crate::base::*;
 use crate::private::{Lines, Parse};
 
-#[cfg(test)]
-mod strategies;
-
 type Result<A> = std::result::Result<A, BreakpadError>;
 
 /// Length at which the breakpad header will be capped.
@@ -1508,9 +1505,6 @@ fn stack_win_record_type(input: &str) -> Result<BreakpadStackWinRecordType> {
 
 #[cfg(test)]
 mod tests {
-    use proptest::prelude::*;
-
-    use super::strategies::*;
     use super::*;
 
     #[test]
@@ -1751,47 +1745,5 @@ mod tests {
             rules: ".cfa: $esp 8 + $ebp: .cfa 8 - ^",
         }
         "###);
-    }
-
-    proptest! {
-        #[test]
-        fn proptest_module_record(record in arb_module_record()) {
-            BreakpadModuleRecord::parse(&record).unwrap();
-        }
-
-        #[test]
-        fn proptest_file_record(record in arb_file_record()) {
-            BreakpadFileRecord::parse(&record).unwrap();
-        }
-
-        #[test]
-        fn proptest_func_record(record in arb_func_record()) {
-            BreakpadFuncRecord::parse(&record).unwrap();
-        }
-
-        #[test]
-        fn proptest_line_record(record in arb_line_record()) {
-            BreakpadLineRecord::parse(&record).unwrap();
-        }
-
-        #[test]
-        fn proptest_public_record(record in arb_public_record()) {
-            BreakpadPublicRecord::parse(&record).unwrap();
-        }
-
-        #[test]
-        fn proptest_stack_win_record(record in arb_stack_win_record()) {
-            BreakpadStackWinRecord::parse(&record).unwrap();
-        }
-
-        #[test]
-        fn proptest_stack_cfi_init_record(record in arb_stack_cfi_init_record()) {
-            BreakpadStackCfiRecord::parse(&record).unwrap();
-        }
-
-        #[test]
-        fn proptest_stack_cfi_delta_record(record in arb_stack_cfi_delta_record()) {
-            BreakpadStackCfiDeltaRecord::parse(&record).unwrap();
-        }
     }
 }
