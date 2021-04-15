@@ -29,15 +29,13 @@ mod parsing;
 mod strategies;
 
 use self::parser::{BreakpadParser, Rule};
+type Result<A> = std::result::Result<A, BreakpadError>;
 
 /// Length at which the breakpad header will be capped.
 ///
 /// This is a protection against reading an entire breakpad file at once if the first characters do
 /// not contain a valid line break.
 const BREAKPAD_HEADER_CAP: usize = 320;
-
-/// Placeholder used for missing function or symbol names.
-const UNKNOWN_NAME: &str = "<unknown>";
 
 /// The error type for [`BreakpadError`].
 #[non_exhaustive]
@@ -136,7 +134,7 @@ pub struct BreakpadModuleRecord<'d> {
 
 impl<'d> BreakpadModuleRecord<'d> {
     /// Parses a module record from a single line.
-    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::module, string)?.next().unwrap();
         let mut record = BreakpadModuleRecord::default();
@@ -180,7 +178,7 @@ pub enum BreakpadInfoRecord<'d> {
 
 impl<'d> BreakpadInfoRecord<'d> {
     /// Parses an info record from a single line.
-    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::info, string)?.next().unwrap();
 
@@ -234,7 +232,7 @@ pub struct BreakpadInfoRecords<'d> {
 }
 
 impl<'d> Iterator for BreakpadInfoRecords<'d> {
-    type Item = Result<BreakpadInfoRecord<'d>, BreakpadError>;
+    type Item = Result<BreakpadInfoRecord<'d>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -279,7 +277,7 @@ pub struct BreakpadFileRecord<'d> {
 
 impl<'d> BreakpadFileRecord<'d> {
     /// Parses a file record from a single line.
-    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::file, string)?.next().unwrap();
         let mut record = BreakpadFileRecord::default();
@@ -307,7 +305,7 @@ pub struct BreakpadFileRecords<'d> {
 }
 
 impl<'d> Iterator for BreakpadFileRecords<'d> {
-    type Item = Result<BreakpadFileRecord<'d>, BreakpadError>;
+    type Item = Result<BreakpadFileRecord<'d>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -354,7 +352,7 @@ pub struct BreakpadPublicRecord<'d> {
 
 impl<'d> BreakpadPublicRecord<'d> {
     /// Parses a public record from a single line.
-    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::public, string)?.next().unwrap();
         let mut record = BreakpadPublicRecord::default();
@@ -391,7 +389,7 @@ pub struct BreakpadPublicRecords<'d> {
 }
 
 impl<'d> Iterator for BreakpadPublicRecords<'d> {
-    type Item = Result<BreakpadPublicRecord<'d>, BreakpadError>;
+    type Item = Result<BreakpadPublicRecord<'d>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -443,7 +441,7 @@ impl<'d> BreakpadFuncRecord<'d> {
     /// The first line must contain the function record itself. The lines iterator may contain line
     /// records for this function, which are read until another record isencountered or the file
     /// ends.
-    pub fn parse(data: &'d [u8], lines: Lines<'d>) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::func, string)?.next().unwrap();
         let mut record = BreakpadFuncRecord::default();
@@ -517,7 +515,7 @@ pub struct BreakpadFuncRecords<'d> {
 }
 
 impl<'d> Iterator for BreakpadFuncRecords<'d> {
-    type Item = Result<BreakpadFuncRecord<'d>, BreakpadError>;
+    type Item = Result<BreakpadFuncRecord<'d>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -567,7 +565,7 @@ pub struct BreakpadLineRecord {
 
 impl BreakpadLineRecord {
     /// Parses a line record from a single line.
-    pub fn parse(data: &[u8]) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &[u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::line, string)?.next().unwrap();
         let mut record = BreakpadLineRecord::default();
@@ -615,7 +613,7 @@ pub struct BreakpadLineRecords<'d> {
 }
 
 impl<'d> Iterator for BreakpadLineRecords<'d> {
-    type Item = Result<BreakpadLineRecord, BreakpadError>;
+    type Item = Result<BreakpadLineRecord>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -666,7 +664,7 @@ pub struct BreakpadStackCfiDeltaRecord<'d> {
 
 impl<'d> BreakpadStackCfiDeltaRecord<'d> {
     /// Parses a single `STACK CFI` record.
-    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::stack_cfi_delta, string)?
             .next()
@@ -706,7 +704,7 @@ pub struct BreakpadStackCfiRecord<'d> {
 
 impl<'d> BreakpadStackCfiRecord<'d> {
     /// Parses a `STACK CFI INIT` record from a single line.
-    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::stack_cfi_init, string)?
             .next()
@@ -753,7 +751,7 @@ pub struct BreakpadStackCfiDeltaRecords<'d> {
 }
 
 impl<'d> Iterator for BreakpadStackCfiDeltaRecords<'d> {
-    type Item = Result<BreakpadStackCfiDeltaRecord<'d>, BreakpadError>;
+    type Item = Result<BreakpadStackCfiDeltaRecord<'d>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(line) = self.lines.next() {
@@ -827,7 +825,7 @@ pub struct BreakpadStackWinRecord<'d> {
 
 impl<'d> BreakpadStackWinRecord<'d> {
     /// Parses a Windows stack record from a single line.
-    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::stack_win, string)?
             .next()
@@ -886,7 +884,7 @@ pub enum BreakpadStackRecord<'d> {
 
 impl<'d> BreakpadStackRecord<'d> {
     /// Parses a stack frame information record from a single line.
-    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'d [u8]) -> Result<Self> {
         let string = str::from_utf8(data)?;
         let parsed = BreakpadParser::parse(Rule::stack, string)?.next().unwrap();
         let pair = parsed.into_inner().next().unwrap();
@@ -919,7 +917,7 @@ impl<'d> BreakpadStackRecords<'d> {
 }
 
 impl<'d> Iterator for BreakpadStackRecords<'d> {
-    type Item = Result<BreakpadStackRecord<'d>, BreakpadError>;
+    type Item = Result<BreakpadStackRecord<'d>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -972,7 +970,7 @@ impl<'data> BreakpadObject<'data> {
     }
 
     /// Tries to parse a Breakpad object from the given slice.
-    pub fn parse(data: &'data [u8]) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'data [u8]) -> Result<Self> {
         // Ensure that we do not read the entire file at once.
         let header = if data.len() > BREAKPAD_HEADER_CAP {
             match str::from_utf8(&data[..BREAKPAD_HEADER_CAP]) {
@@ -1083,7 +1081,7 @@ impl<'data> BreakpadObject<'data> {
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
     /// [`has_debug_info`](struct.BreakpadObject.html#method.has_debug_info).
-    pub fn debug_session(&self) -> Result<BreakpadDebugSession<'data>, BreakpadError> {
+    pub fn debug_session(&self) -> Result<BreakpadDebugSession<'data>> {
         Ok(BreakpadDebugSession {
             file_map: self.file_map(),
             func_records: self.func_records(),
@@ -1183,7 +1181,7 @@ impl<'data> Parse<'data> for BreakpadObject<'data> {
         Self::test(data)
     }
 
-    fn parse(data: &'data [u8]) -> Result<Self, BreakpadError> {
+    fn parse(data: &'data [u8]) -> Result<Self> {
         Self::parse(data)
     }
 }
@@ -1233,7 +1231,7 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for BreakpadObject<'dat
         self.has_debug_info()
     }
 
-    fn debug_session(&self) -> Result<Self::Session, Self::Error> {
+    fn debug_session(&self) -> Result<Self::Session> {
         self.debug_session()
     }
 
@@ -1296,7 +1294,7 @@ impl<'data> BreakpadDebugSession<'data> {
     /// Looks up a file's source contents by its full canonicalized path.
     ///
     /// The given path must be canonicalized.
-    pub fn source_by_path(&self, _path: &str) -> Result<Option<Cow<'_, str>>, BreakpadError> {
+    pub fn source_by_path(&self, _path: &str) -> Result<Option<Cow<'_, str>>> {
         Ok(None)
     }
 }
@@ -1314,7 +1312,7 @@ impl<'data, 'session> DebugSession<'session> for BreakpadDebugSession<'data> {
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
+    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>> {
         self.source_by_path(path)
     }
 }
@@ -1325,7 +1323,7 @@ pub struct BreakpadFileIterator<'s> {
 }
 
 impl<'s> Iterator for BreakpadFileIterator<'s> {
-    type Item = Result<FileEntry<'s>, BreakpadError>;
+    type Item = Result<FileEntry<'s>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let path = self.files.next()?;
@@ -1343,7 +1341,7 @@ pub struct BreakpadFunctionIterator<'s> {
 }
 
 impl<'s> BreakpadFunctionIterator<'s> {
-    fn convert(&self, record: BreakpadFuncRecord<'s>) -> Result<Function<'s>, BreakpadError> {
+    fn convert(&self, record: BreakpadFuncRecord<'s>) -> Result<Function<'s>> {
         let mut lines = Vec::new();
         for line in record.lines() {
             let line = line?;
@@ -1370,7 +1368,7 @@ impl<'s> BreakpadFunctionIterator<'s> {
 }
 
 impl<'s> Iterator for BreakpadFunctionIterator<'s> {
-    type Item = Result<Function<'s>, BreakpadError>;
+    type Item = Result<Function<'s>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.func_records.next() {

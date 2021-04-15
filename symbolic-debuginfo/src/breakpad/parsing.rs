@@ -1,7 +1,8 @@
 use super::*;
 use std::fmt;
 
-type Result<'a, A> = std::result::Result<A, ParseBreakpadError<'a>>;
+/// Placeholder used for missing function or symbol names.
+const UNKNOWN_NAME: &str = "<unknown>";
 
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug)]
