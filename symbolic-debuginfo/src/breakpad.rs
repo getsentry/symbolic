@@ -75,24 +75,6 @@ impl ParseBreakpadError {
 
 impl fmt::Display for ParseBreakpadError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "While trying to parse ")?;
-        match self.context_record {
-            Some(BreakpadRecordType::File) => write!(f, "a FILE")?,
-            Some(BreakpadRecordType::Func) => write!(f, "a FUNC")?,
-            Some(BreakpadRecordType::Inof) => write!(f, "an INFO")?,
-            Some(BreakpadRecordType::Line) => write!(f, "a LINE")?,
-            Some(BreakpadRecordType::Module) => write!(f, "a MODULE")?,
-            Some(BreakpadRecordType::Public) => write!(f, "a PUBLIC")?,
-            Some(BreakpadRecordType::StackCfiDelta) => write!(f, "a STACK CFI")?,
-            Some(BreakpadRecordType::StackCfiInit) => write!(f, "a STACK CFI INIT")?,
-            Some(BreakpadRecordType::StackWin) => write!(f, "a STACK WIN")?,
-            None => write!(f, "an unknown")?,
-        }
-        writeln!(f, " record:")?;
-        if let Some(ref context_input) = self.context_input {
-            writeln!(f, "{}", context_input)?;
-        }
-
         match self.kind {
             ParseBreakpadErrorKind::Arch => write!(f, "Invalid architecture: ")?,
             ParseBreakpadErrorKind::Id => write!(f, "Invalid id: ")?,
@@ -106,7 +88,28 @@ impl fmt::Display for ParseBreakpadError {
             }
         }
 
-        writeln!(f, "{}", self.input)
+        writeln!(f, "{}", self.input)?;
+
+        write!(f, "While trying to parse ")?;
+        match self.context_record {
+            Some(BreakpadRecordType::File) => write!(f, "a FILE")?,
+            Some(BreakpadRecordType::Func) => write!(f, "a FUNC")?,
+            Some(BreakpadRecordType::Inof) => write!(f, "an INFO")?,
+            Some(BreakpadRecordType::Line) => write!(f, "a LINE")?,
+            Some(BreakpadRecordType::Module) => write!(f, "a MODULE")?,
+            Some(BreakpadRecordType::Public) => write!(f, "a PUBLIC")?,
+            Some(BreakpadRecordType::StackCfiDelta) => write!(f, "a STACK CFI")?,
+            Some(BreakpadRecordType::StackCfiInit) => write!(f, "a STACK CFI INIT")?,
+            Some(BreakpadRecordType::StackWin) => write!(f, "a STACK WIN")?,
+            None => write!(f, "an unknown")?,
+        }
+
+        writeln!(f, " record:")?;
+        if let Some(ref context_input) = self.context_input {
+            writeln!(f, "{}", context_input)
+        } else {
+            Ok(())
+        }
     }
 }
 
