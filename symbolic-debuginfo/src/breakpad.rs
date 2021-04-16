@@ -15,7 +15,7 @@ use symbolic_common::{
 use crate::base::*;
 use crate::private::{Lines, Parse};
 
-type Result<A> = std::result::Result<A, BreakpadError>;
+// type Result<A> = std::result::Result<A, BreakpadError>;
 type ParseResult<A> = std::result::Result<A, ParseBreakpadError>;
 
 /// Length at which the breakpad header will be capped.
@@ -44,13 +44,71 @@ enum ParseBreakpadErrorKind {
 enum BreakpadRecordType {
     File,
     Func,
-    Inof,
+    Info,
     Line,
     Module,
     Public,
     StackCfiDelta,
     StackCfiInit,
     StackWin,
+}
+
+impl fmt::Display for BreakpadRecordType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BreakpadRecordType::File => write!(f, "FILE"),
+            BreakpadRecordType::Func => write!(f, "FUNC"),
+            BreakpadRecordType::Info => write!(f, "INFO"),
+            BreakpadRecordType::Line => write!(f, "LINE"),
+            BreakpadRecordType::Module => write!(f, "MODULE"),
+            BreakpadRecordType::Public => write!(f, "PUBLIC"),
+            BreakpadRecordType::StackCfiDelta => write!(f, "STACK CFI"),
+            BreakpadRecordType::StackCfiInit => write!(f, "STACK CFI INIT"),
+            BreakpadRecordType::StackWin => write!(f, "STACK WIN"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Error)]
+pub struct ParseBreakpadError2 {
+    message: &'static str,
+    input: String,
+    position: usize,
+}
+
+impl fmt::Display for ParseBreakpadError2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)?;
+
+        if f.alternate() {
+            writeln!(f, "\n\n{}", self.input)?;
+            write!(f, "{:width$}^", "", width = self.position)?;
+        }
+
+        Ok(())
+    }
+}
+
+trait ParseRecord: Sized {
+    const RECORD_TYPE: BreakpadRecordType;
+
+    fn parse_str(input: &str) -> Result<Self, &'static str>;
+
+    fn parse(data: &[u8]) -> Result<Self, BreakpadError> {
+        let string = str::from_utf8(data)?;
+        debug_assert!(!string.contains('\n'), "Illegal input: {}", string);
+
+        Self::parse_str(string).map_err(|message| {
+            let source = ParseBreakpadError2 {
+                message,
+                input: string.to_owned(),
+                position: 0,
+            };
+
+            let kind = BreakpadErrorKind::Parse(Self::RECORD_TYPE);
+            BreakpadError::new(kind, source)
+        })
+    }
 }
 
 #[derive(Clone, Debug, Error, PartialEq, Eq)]
@@ -94,7 +152,7 @@ impl fmt::Display for ParseBreakpadError {
         match self.context_record {
             Some(BreakpadRecordType::File) => write!(f, "a FILE")?,
             Some(BreakpadRecordType::Func) => write!(f, "a FUNC")?,
-            Some(BreakpadRecordType::Inof) => write!(f, "an INFO")?,
+            Some(BreakpadRecordType::Info) => write!(f, "an INFO")?,
             Some(BreakpadRecordType::Line) => write!(f, "a LINE")?,
             Some(BreakpadRecordType::Module) => write!(f, "a MODULE")?,
             Some(BreakpadRecordType::Public) => write!(f, "a PUBLIC")?,
@@ -124,7 +182,7 @@ pub enum BreakpadErrorKind {
     BadEncoding,
 
     /// Parsing of a record failed.
-    Parse,
+    Parse(BreakpadRecordType),
 
     /// The debug id is not valid.
     InvalidDebugId,
@@ -135,7 +193,7 @@ impl fmt::Display for BreakpadErrorKind {
         match self {
             Self::InvalidMagic => write!(f, "missing breakpad symbol header"),
             Self::BadEncoding => write!(f, "bad utf-8 sequence"),
-            Self::Parse => write!(f, "parse error"),
+            Self::Parse(ty) => write!(f, "failed to parse {} record", ty),
             Self::InvalidDebugId => write!(f, "invalid debug id"),
         }
     }
@@ -193,6 +251,118 @@ impl From<ParseDebugIdError> for BreakpadError {
 
 // TODO(ja): Test the parser
 
+fn next(input: &str) -> Result<(&str, &str), &'static str> {
+    if input.is_empty() {
+        return Err("unexpected end of input");
+    }
+
+    Ok(match input.find(char::is_whitespace) {
+        Some(split) => (&input[..split], input[split..].trim_start()),
+        None => (&input, ""),
+    })
+}
+
+fn expect<'a>(input: &'a str, prefix: &str) -> Option<&'a str> {
+    let (a, rest) = next(input)?;
+    (a == prefix).then(|| rest)
+}
+
+fn next_and<T, F>(input: &str, mut parser: F) -> Result<(T, &str), &'static str>
+where
+    F: FnMut(&str) -> Result<T, &'static str>,
+{
+    next(input).and_then(|(part, rest)| Ok((parser(part)?, rest)))
+}
+
+fn parse_hex64(input: &str) -> Result<u64, &'static str> {
+    u64::from_str_radix(input, 16).or(Err("expected hex number"))
+}
+
+fn parse_u64(input: &str) -> Result<u64, &'static str> {
+    input.parse().or(Err("expected number"))
+}
+
+fn done(input: &str) -> Result<(), &'static str> {
+    match input {
+        "" => Ok(()),
+        _ => Err("unexpected trailing data"),
+    }
+}
+
+fn num_hex_64(input: &str) -> ParseResult<u64> {
+    u64::from_str_radix(input, 16).map_err(|_| ParseBreakpadError {
+        input: input.to_string(),
+        kind: ParseBreakpadErrorKind::NumHex,
+        context_input: None,
+        context_record: None,
+    })
+}
+
+fn num_dec_64(input: &str) -> ParseResult<u64> {
+    u64::from_str_radix(input, 10).map_err(|_| ParseBreakpadError {
+        input: input.to_string(),
+        kind: ParseBreakpadErrorKind::NumDec,
+        context_input: None,
+        context_record: None,
+    })
+}
+
+fn num_hex_32(input: &str) -> ParseResult<u32> {
+    u32::from_str_radix(input, 16).map_err(|_| ParseBreakpadError {
+        input: input.to_string(),
+        kind: ParseBreakpadErrorKind::NumHex,
+        context_input: None,
+        context_record: None,
+    })
+}
+
+fn num_hex_16(input: &str) -> ParseResult<u16> {
+    u16::from_str_radix(input, 16).map_err(|_| ParseBreakpadError {
+        input: input.to_string(),
+        kind: ParseBreakpadErrorKind::NumHex,
+        context_input: None,
+        context_record: None,
+    })
+}
+
+fn line(input: &str) -> ParseResult<u64> {
+    input
+        .parse::<i64>()
+        .map(|line| line.max(0) as u64)
+        .map_err(|_| ParseBreakpadError {
+            input: input.to_string(),
+            kind: ParseBreakpadErrorKind::Line,
+            context_input: None,
+            context_record: None,
+        })
+}
+
+fn hex_str(input: &str) -> ParseResult<&str> {
+    if input.chars().all(|c| c.is_ascii_hexdigit()) {
+        Ok(input)
+    } else {
+        Err(ParseBreakpadError {
+            input: input.to_string(),
+            kind: ParseBreakpadErrorKind::Id,
+            context_input: None,
+            context_record: None,
+        })
+    }
+}
+
+fn stack_win_record_type(input: &str) -> ParseResult<BreakpadStackWinRecordType> {
+    match input {
+        "0" => Ok(BreakpadStackWinRecordType::Fpo),
+        "4" => Ok(BreakpadStackWinRecordType::FrameData),
+        _ => Err(ParseBreakpadError {
+            input: input.to_string(),
+            kind: ParseBreakpadErrorKind::StackWinRecordType,
+            context_input: None,
+            context_record: None,
+        }),
+    }
+}
+
 /// A [module record], constituting the header of a Breakpad file.
 ///
 /// Example: `MODULE Linux x86 D3096ED481217FD4C16B29CD9BC208BA0 firefox-bin`
@@ -214,38 +384,41 @@ pub struct BreakpadModuleRecord<'d> {
     pub name: &'d str,
 }
 
-macro_rules! expect_input {
-    ($name:expr, $input:expr  $(,)?) => {{
-        $input.ok_or_else(|| ParseBreakpadError {
-            context_input: None,
-            context_record: None,
-            input: $name.to_string(),
-            kind: ParseBreakpadErrorKind::MissingInput,
-        })?
-    }};
+// macro_rules! expect_input {
+//     ($name:expr, $input:expr  $(,)?) => {{
+//         $input.ok_or_else(|| ParseBreakpadError {
+//             context_input: None,
+//             context_record: None,
+//             input: $name.to_string(),
+//             kind: ParseBreakpadErrorKind::MissingInput,
+//         })?
+//     }};
+// }
+
+fn expect_input<'a>(name: &'static str, input: Option<&'a str>) -> ParseResult<&'a str> {
+    input.ok_or_else(|| ParseBreakpadError {
+        context_input: None,
+        context_record: None,
+        input: name.to_owned(),
+        kind: ParseBreakpadErrorKind::MissingInput,
+    })
 }
 
 impl<'d> BreakpadModuleRecord<'d> {
     /// Parses a module record from a single line.
-    pub fn parse(data: &'d [u8]) -> Result<Self> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let input = str::from_utf8(data)?;
 
         let go = |input: &'d str| {
             // Split off first line; the input might be an entire breakpad object file
-            let input = expect_input!("module record", input.lines().next());
-            let mut current =
-                expect_input!("MODULE prefix", input.strip_prefix("MODULE"),).trim_start();
+            let input = expect_input("module record", input.lines().next())?;
+            let current = expect_input("MODULE prefix", input.strip_prefix("MODULE"))?.trim_start();
+
             let mut parts = current.splitn(4, char::is_whitespace);
 
-            current = expect_input!("os", parts.next());
-            let os = os(current)?;
-
-            current = expect_input!("arch", parts.next());
-            let arch = arch(current)?;
-
-            current = expect_input!("id", parts.next());
-            let id = module_id(current)?;
-
+            let os = expect_input("os", parts.next())?;
+            let arch = expect_input("arch", parts.next())?;
+            let id = hex_str(expect_input("id", parts.next())?)?;
             let name = parts.next().unwrap_or(UNKNOWN_NAME);
 
             Ok(BreakpadModuleRecord { os, arch, id, name })
@@ -284,34 +457,33 @@ pub enum BreakpadInfoRecord<'d> {
 
 impl<'d> BreakpadInfoRecord<'d> {
     /// Parses an info record from a single line.
-    pub fn parse(data: &'d [u8]) -> Result<Self> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let input = str::from_utf8(data)?;
         debug_assert!(!input.contains('\n'), "Illegal input: {}", input);
 
         let go = |input: &'d str| {
-            let mut current = expect_input!("INFO prefix", input.strip_prefix("INFO")).trim_start();
+            let mut current =
+                expect_input("INFO prefix", input.strip_prefix("INFO "))?.trim_start();
 
             if let Some(rest) = current.strip_prefix("CODE_ID") {
                 current = rest.trim_start();
                 let mut parts = current.splitn(2, char::is_whitespace);
-                current = expect_input!("code_id", parts.next());
-                let code_id = info_id(current)?;
+                let code_id = hex_str(expect_input("code_id", parts.next())?)?;
 
                 let code_file = parts.next().unwrap_or("");
                 Ok(BreakpadInfoRecord::CodeId { code_id, code_file })
             } else {
                 let mut parts = current.splitn(2, char::is_whitespace);
-                current = expect_input!("scope", parts.next());
-                let scope = info_id(current)?;
+                let scope = hex_str(expect_input("scope", parts.next())?)?;
 
-                let info = expect_input!("code_id", parts.next());
+                let info = expect_input("code_id", parts.next())?;
                 Ok(BreakpadInfoRecord::Other { scope, info })
             }
         };
 
         go(input).map_err(|e: ParseBreakpadError| {
             e.context_input(input)
-                .context_record(BreakpadRecordType::Inof)
+                .context_record(BreakpadRecordType::Info)
                 .into()
         })
     }
@@ -325,7 +497,7 @@ pub struct BreakpadInfoRecords<'d> {
 }
 
 impl<'d> Iterator for BreakpadInfoRecords<'d> {
-    type Item = Result<BreakpadInfoRecord<'d>>;
+    type Item = Result<BreakpadInfoRecord<'d>, BreakpadError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -370,15 +542,15 @@ pub struct BreakpadFileRecord<'d> {
 
 impl<'d> BreakpadFileRecord<'d> {
     /// Parses a file record from a single line.
-    pub fn parse(data: &'d [u8]) -> Result<Self> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let input = str::from_utf8(data)?;
         debug_assert!(!input.contains('\n'), "Illegal input: {}", input);
 
         let go = |input: &'d str| {
-            let mut current = expect_input!("FILE prefix", input.strip_prefix("FILE")).trim_start();
+            let mut current = expect_input("FILE prefix", input.strip_prefix("FILE"))?.trim_start();
             let mut parts = current.splitn(2, char::is_whitespace);
 
-            current = expect_input!("id", parts.next());
+            current = expect_input("id", parts.next())?;
             let id = num_dec_64(current)?;
 
             let name = parts.next().unwrap_or(UNKNOWN_NAME);
@@ -402,7 +574,7 @@ pub struct BreakpadFileRecords<'d> {
 }
 
 impl<'d> Iterator for BreakpadFileRecords<'d> {
-    type Item = Result<BreakpadFileRecord<'d>>;
+    type Item = Result<BreakpadFileRecord<'d>, BreakpadError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -449,13 +621,13 @@ pub struct BreakpadPublicRecord<'d> {
 
 impl<'d> BreakpadPublicRecord<'d> {
     /// Parses a public record from a single line.
-    pub fn parse(data: &'d [u8]) -> Result<Self> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let input = str::from_utf8(data)?;
         debug_assert!(!input.contains('\n'), "Illegal input: {}", input);
 
         let go = |input: &'d str| {
             let mut current =
-                expect_input!("PUBLIC prefix", input.strip_prefix("PUBLIC")).trim_start();
+                expect_input("PUBLIC prefix", input.strip_prefix("PUBLIC"))?.trim_start();
 
             let multiple = if let Some(rest) = current.strip_prefix("m") {
                 current = rest.trim_start();
@@ -466,10 +638,10 @@ impl<'d> BreakpadPublicRecord<'d> {
 
             let mut parts = current.splitn(3, char::is_whitespace);
 
-            current = expect_input!("address", parts.next());
+            current = expect_input("address", parts.next())?;
             let address = num_hex_64(current)?;
 
-            current = expect_input!("parameter_size", parts.next());
+            current = expect_input("parameter_size", parts.next())?;
             let parameter_size = num_hex_64(current)?;
 
             let name = parts.next().unwrap_or(UNKNOWN_NAME);
@@ -498,7 +670,7 @@ pub struct BreakpadPublicRecords<'d> {
 }
 
 impl<'d> Iterator for BreakpadPublicRecords<'d> {
-    type Item = Result<BreakpadPublicRecord<'d>>;
+    type Item = Result<BreakpadPublicRecord<'d>, BreakpadError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -550,32 +722,25 @@ impl<'d> BreakpadFuncRecord<'d> {
     /// The first line must contain the function record itself. The lines iterator may contain line
     /// records for this function, which are read until another record isencountered or the file
     /// ends.
-    pub fn parse(data: &'d [u8]) -> Result<Self> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let input = str::from_utf8(data)?;
         debug_assert!(!input.contains('\n'));
 
         let go = |input: &'d str| {
-            let mut current = expect_input!("FUNC prefix", input.strip_prefix("FUNC")).trim_start();
+            let rest = expect(input, "FUNC").unwrap();
 
-            let multiple = if let Some(rest) = current.strip_prefix("m") {
-                current = rest.trim_start();
-                true
-            } else {
-                false
+            let (multiple, rest) = match expect(rest, "m") {
+                Some(new_rest) => (true, new_rest),
+                None => (false, rest),
             };
 
-            let mut parts = current.splitn(4, char::is_whitespace);
+            let (address, rest) = next_and(rest, parse_hex64).unwrap();
+            let (size, rest) = next_and(rest, parse_hex64).unwrap();
+            let (parameter_size, mut name) = next_and(rest, parse_hex64).unwrap();
 
-            current = expect_input!("address", parts.next());
-            let address = num_hex_64(current)?;
-
-            current = expect_input!("size", parts.next());
-            let size = num_hex_64(current)?;
-
-            current = expect_input!("parameter_size", parts.next());
-            let parameter_size = num_hex_64(current)?;
-
-            let name = parts.next().unwrap_or(UNKNOWN_NAME);
+            if name.is_empty() {
+                name = UNKNOWN_NAME;
+            }
 
             Ok(BreakpadFuncRecord {
                 multiple,
@@ -635,7 +800,7 @@ pub struct BreakpadFuncRecords<'d> {
 }
 
 impl<'d> Iterator for BreakpadFuncRecords<'d> {
-    type Item = Result<BreakpadFuncRecord<'d>>;
+    type Item = Result<BreakpadFuncRecord<'d>, BreakpadError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -689,44 +854,35 @@ pub struct BreakpadLineRecord {
 
 impl BreakpadLineRecord {
     /// Parses a line record from a single line.
-    pub fn parse(data: &[u8]) -> Result<Self> {
-        let input = str::from_utf8(data)?;
-        debug_assert!(!input.contains('\n'), "Illegal input: {}", input);
-
-        let go = |input: &str| {
-            let mut current = input;
-            let mut parts = current.splitn(4, char::is_whitespace);
-
-            current = expect_input!("address", parts.next());
-            let address = num_hex_64(current)?;
-
-            current = expect_input!("size", parts.next());
-            let size = num_hex_64(current)?;
-
-            current = expect_input!("line", parts.next());
-            let line = line(current)?;
-
-            current = expect_input!("file_id", parts.next());
-            let file_id = num_dec_64(current)?;
-
-            Ok(BreakpadLineRecord {
-                address,
-                size,
-                line,
-                file_id,
-            })
-        };
-
-        go(input).map_err(|e: ParseBreakpadError| {
-            e.context_input(input)
-                .context_record(BreakpadRecordType::Line)
-                .into()
-        })
+    pub fn parse(data: &[u8]) -> Result<Self, BreakpadError> {
+        ParseRecord::parse(data)
     }
 
     /// Resolves the filename for this record in the file map.
     pub fn filename<'d>(&self, file_map: &BreakpadFileMap<'d>) -> Option<&'d str> {
         file_map.get(&self.file_id).cloned()
+    }
+}
+
+impl ParseRecord for BreakpadLineRecord {
+    const RECORD_TYPE: BreakpadRecordType = BreakpadRecordType::Line;
+
+    fn parse_str(input: &str) -> Result<Self, &'static str> {
+        let (address, rest) = next_and(input, parse_hex64)?;
+        let (size, rest) = next_and(rest, parse_hex64)?;
+        let (line, rest) = next_and(rest, |input| {
+            let line = input.parse::<i64>().or(Err("expected number"))?;
+            Ok(line.max(0) as u64)
+        })?;
+        let (file_id, rest) = next_and(rest, parse_u64)?;
+        done(rest)?;
+
+        Ok(BreakpadLineRecord {
+            address,
+            size,
+            line,
+            file_id,
+        })
     }
 }
 
@@ -738,7 +894,7 @@ pub struct BreakpadLineRecords<'d> {
 }
 
 impl<'d> Iterator for BreakpadLineRecords<'d> {
-    type Item = Result<BreakpadLineRecord>;
+    type Item = Result<BreakpadLineRecord, BreakpadError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -789,20 +945,20 @@ pub struct BreakpadStackCfiDeltaRecord<'d> {
 
 impl<'d> BreakpadStackCfiDeltaRecord<'d> {
     /// Parses a single `STACK CFI` record.
-    pub fn parse(data: &'d [u8]) -> Result<Self> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let input = str::from_utf8(data)?;
         debug_assert!(!input.contains('\n'), "Illegal input: {}", input);
 
         let go = |input: &'d str| {
             let mut current =
-                expect_input!("STACK CFI prefix", input.strip_prefix("STACK CFI")).trim_start();
+                expect_input("STACK CFI prefix", input.strip_prefix("STACK CFI"))?.trim_start();
 
             let mut parts = current.splitn(2, char::is_whitespace);
 
-            current = expect_input!("address", parts.next());
+            current = expect_input("address", parts.next())?;
             let address = num_hex_64(current)?;
 
-            let rules = expect_input!("rules", parts.next());
+            let rules = expect_input("rules", parts.next())?;
             Ok(BreakpadStackCfiDeltaRecord { address, rules })
         };
 
@@ -835,26 +991,26 @@ pub struct BreakpadStackCfiRecord<'d> {
 
 impl<'d> BreakpadStackCfiRecord<'d> {
     /// Parses a `STACK CFI INIT` record from a single line.
-    pub fn parse(data: &'d [u8]) -> Result<Self> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let input = str::from_utf8(data)?;
         debug_assert!(!input.contains('\n'), "Illegal input: {}", input);
 
         let go = |input: &'d str| {
-            let mut current = expect_input!(
+            let mut current = expect_input(
                 "STACK CFI INIT prefix",
                 input.strip_prefix("STACK CFI INIT"),
-            )
+            )?
             .trim_start();
 
             let mut parts = current.splitn(3, char::is_whitespace);
 
-            current = expect_input!("start", parts.next());
+            current = expect_input("start", parts.next())?;
             let start = num_hex_64(current)?;
 
-            current = expect_input!("size", parts.next());
+            current = expect_input("size", parts.next())?;
             let size = num_hex_64(current)?;
 
-            let init_rules = expect_input!("init_rules", parts.next());
+            let init_rules = expect_input("init_rules", parts.next())?;
 
             Ok(BreakpadStackCfiRecord {
                 start,
@@ -895,7 +1051,7 @@ pub struct BreakpadStackCfiDeltaRecords<'d> {
 }
 
 impl<'d> Iterator for BreakpadStackCfiDeltaRecords<'d> {
-    type Item = Result<BreakpadStackCfiDeltaRecord<'d>>;
+    type Item = Result<BreakpadStackCfiDeltaRecord<'d>, BreakpadError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(line) = self.lines.next() {
@@ -969,47 +1125,47 @@ pub struct BreakpadStackWinRecord<'d> {
 
 impl<'d> BreakpadStackWinRecord<'d> {
     /// Parses a Windows stack record from a single line.
-    pub fn parse(data: &'d [u8]) -> Result<Self> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let input = str::from_utf8(data)?;
         debug_assert!(!input.contains('\n'), "Illegal input: {}", input);
 
         let go = |input: &'d str| {
             let mut current =
-                expect_input!("STACK WIN prefix", input.strip_prefix("STACK WIN")).trim_start();
+                expect_input("STACK WIN prefix", input.strip_prefix("STACK WIN"))?.trim_start();
 
             let mut parts = current.splitn(11, char::is_whitespace);
 
-            current = expect_input!("ty", parts.next());
+            current = expect_input("ty", parts.next())?;
             let ty = stack_win_record_type(current)?;
 
-            current = expect_input!("code_start", parts.next());
+            current = expect_input("code_start", parts.next())?;
             let code_start = num_hex_32(current)?;
 
-            current = expect_input!("code_size", parts.next());
+            current = expect_input("code_size", parts.next())?;
             let code_size = num_hex_32(current)?;
 
-            current = expect_input!("prolog_size", parts.next());
+            current = expect_input("prolog_size", parts.next())?;
             let prolog_size = num_hex_16(current)?;
 
-            current = expect_input!("epilog_size", parts.next());
+            current = expect_input("epilog_size", parts.next())?;
             let epilog_size = num_hex_16(current)?;
 
-            current = expect_input!("params_size", parts.next());
+            current = expect_input("params_size", parts.next())?;
             let params_size = num_hex_32(current)?;
 
-            current = expect_input!("saved_regs_size", parts.next());
+            current = expect_input("saved_regs_size", parts.next())?;
             let saved_regs_size = num_hex_16(current)?;
 
-            current = expect_input!("locals_size", parts.next());
+            current = expect_input("locals_size", parts.next())?;
             let locals_size = num_hex_32(current)?;
 
-            current = expect_input!("max_stack_size", parts.next());
+            current = expect_input("max_stack_size", parts.next())?;
             let max_stack_size = num_hex_32(current)?;
 
-            current = expect_input!("has_program_string", parts.next());
+            current = expect_input("has_program_string", parts.next())?;
             let has_program_string = current != "0";
 
-            current = expect_input!("program_string or uses_base_pointer", parts.next());
+            current = expect_input("program_string or uses_base_pointer", parts.next())?;
 
             let (uses_base_pointer, program_string) = if has_program_string {
                 (false, Some(current))
@@ -1051,10 +1207,10 @@ pub enum BreakpadStackRecord<'d> {
 
 impl<'d> BreakpadStackRecord<'d> {
     /// Parses a stack frame information record from a single line.
-    pub fn parse(data: &'d [u8]) -> Result<Self> {
-        Ok(BreakpadStackCfiRecord::parse(data)
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+        BreakpadStackCfiRecord::parse(data)
             .map(Self::Cfi)
-            .or_else(|_| BreakpadStackWinRecord::parse(data).map(Self::Win))?)
+            .or_else(|_| BreakpadStackWinRecord::parse(data).map(Self::Win))
     }
 }
 
@@ -1076,7 +1232,7 @@ impl<'d> BreakpadStackRecords<'d> {
 }
 
 impl<'d> Iterator for BreakpadStackRecords<'d> {
-    type Item = Result<BreakpadStackRecord<'d>>;
+    type Item = Result<BreakpadStackRecord<'d>, BreakpadError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -1129,7 +1285,7 @@ impl<'data> BreakpadObject<'data> {
     }
 
     /// Tries to parse a Breakpad object from the given slice.
-    pub fn parse(data: &'data [u8]) -> Result<Self> {
+    pub fn parse(data: &'data [u8]) -> Result<Self, BreakpadError> {
         // Ensure that we do not read the entire file at once.
         let header = if data.len() > BREAKPAD_HEADER_CAP {
             match str::from_utf8(&data[..BREAKPAD_HEADER_CAP]) {
@@ -1238,7 +1394,7 @@ impl<'data> BreakpadObject<'data> {
     /// Constructing this session will also work if the object does not contain debugging
     /// information, in which case the session will be a no-op. This can be checked via
     /// [`has_debug_info`](struct.BreakpadObject.html#method.has_debug_info).
-    pub fn debug_session(&self) -> Result<BreakpadDebugSession<'data>> {
+    pub fn debug_session(&self) -> Result<BreakpadDebugSession<'data>, BreakpadError> {
         Ok(BreakpadDebugSession {
             file_map: self.file_map(),
             func_records: self.func_records(),
@@ -1338,7 +1494,7 @@ impl<'data> Parse<'data> for BreakpadObject<'data> {
         Self::test(data)
     }
 
-    fn parse(data: &'data [u8]) -> Result<Self> {
+    fn parse(data: &'data [u8]) -> Result<Self, BreakpadError> {
         Self::parse(data)
     }
 }
@@ -1388,7 +1544,7 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for BreakpadObject<'dat
         self.has_debug_info()
     }
 
-    fn debug_session(&self) -> Result<Self::Session> {
+    fn debug_session(&self) -> Result<Self::Session, BreakpadError> {
         self.debug_session()
     }
 
@@ -1451,7 +1607,7 @@ impl<'data> BreakpadDebugSession<'data> {
     /// Looks up a file's source contents by its full canonicalized path.
     ///
     /// The given path must be canonicalized.
-    pub fn source_by_path(&self, _path: &str) -> Result<Option<Cow<'_, str>>> {
+    pub fn source_by_path(&self, _path: &str) -> Result<Option<Cow<'_, str>>, BreakpadError> {
         Ok(None)
     }
 }
@@ -1469,7 +1625,7 @@ impl<'data, 'session> DebugSession<'session> for BreakpadDebugSession<'data> {
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>> {
+    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, BreakpadError> {
         self.source_by_path(path)
     }
 }
@@ -1480,7 +1636,7 @@ pub struct BreakpadFileIterator<'s> {
 }
 
 impl<'s> Iterator for BreakpadFileIterator<'s> {
-    type Item = Result<FileEntry<'s>>;
+    type Item = Result<FileEntry<'s>, BreakpadError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let path = self.files.next()?;
@@ -1498,7 +1654,7 @@ pub struct BreakpadFunctionIterator<'s> {
 }
 
 impl<'s> BreakpadFunctionIterator<'s> {
-    fn convert(&self, record: BreakpadFuncRecord<'s>) -> Result<Function<'s>> {
+    fn convert(&self, record: BreakpadFuncRecord<'s>) -> Result<Function<'s>, BreakpadError> {
         let mut lines = Vec::new();
         for line in record.lines() {
             let line = line?;
@@ -1525,7 +1681,7 @@ impl<'s> BreakpadFunctionIterator<'s> {
 }
 
 impl<'s> Iterator for BreakpadFunctionIterator<'s> {
-    type Item = Result<Function<'s>>;
+    type Item = Result<Function<'s>, BreakpadError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.func_records.next() {
@@ -1537,117 +1693,6 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
 }
 
 impl std::iter::FusedIterator for BreakpadFunctionIterator<'_> {}
-
-fn num_hex_64(input: &str) -> ParseResult<u64> {
-    u64::from_str_radix(input, 16).map_err(|_| ParseBreakpadError {
-        input: input.to_string(),
-        kind: ParseBreakpadErrorKind::NumHex,
-        context_input: None,
-        context_record: None,
-    })
-}
-
-fn num_dec_64(input: &str) -> ParseResult<u64> {
-    u64::from_str_radix(input, 10).map_err(|_| ParseBreakpadError {
-        input: input.to_string(),
-        kind: ParseBreakpadErrorKind::NumDec,
-        context_input: None,
-        context_record: None,
-    })
-}
-
-fn num_hex_32(input: &str) -> ParseResult<u32> {
-    u32::from_str_radix(input, 16).map_err(|_| ParseBreakpadError {
-        input: input.to_string(),
-        kind: ParseBreakpadErrorKind::NumHex,
-        context_input: None,
-        context_record: None,
-    })
-}
-
-fn num_hex_16(input: &str) -> ParseResult<u16> {
-    u16::from_str_radix(input, 16).map_err(|_| ParseBreakpadError {
-        input: input.to_string(),
-        kind: ParseBreakpadErrorKind::NumHex,
-        context_input: None,
-        context_record: None,
-    })
-}
-
-fn line(input: &str) -> ParseResult<u64> {
-    input
-        .parse::<i64>()
-        .map(|line| line.max(0) as u64)
-        .map_err(|_| ParseBreakpadError {
-            input: input.to_string(),
-            kind: ParseBreakpadErrorKind::Line,
-            context_input: None,
-            context_record: None,
-        })
-}
-
-fn os<'a>(input: &'a str) -> ParseResult<&'a str> {
-    match input {
-        "Linux" | "mac" | "windows" => Ok(input),
-        _ => Err(ParseBreakpadError {
-            input: input.to_string(),
-            kind: ParseBreakpadErrorKind::Os,
-            context_input: None,
-            context_record: None,
-        }),
-    }
-}
-
-fn arch<'a>(input: &'a str) -> ParseResult<&'a str> {
-    match input {
-        "x86" | "x86_64" | "ppc" | "ppc_64" | "unknown" => Ok(input),
-        _ => Err(ParseBreakpadError {
-            input: input.to_string(),
-            kind: ParseBreakpadErrorKind::Arch,
-            context_input: None,
-            context_record: None,
-        }),
-    }
-}
-
-fn module_id<'a>(input: &'a str) -> ParseResult<&'a str> {
-    if input.chars().all(|c| c.is_ascii_hexdigit()) && input.len() >= 32 && input.len() <= 40 {
-        Ok(input)
-    } else {
-        Err(ParseBreakpadError {
-            input: input.to_string(),
-            kind: ParseBreakpadErrorKind::Id,
-            context_input: None,
-            context_record: None,
-        })
-    }
-}
-
-fn info_id<'a>(input: &'a str) -> ParseResult<&'a str> {
-    if input.chars().all(|c| c.is_ascii_hexdigit()) {
-        Ok(input)
-    } else {
-        Err(ParseBreakpadError {
-            input: input.to_string(),
-            kind: ParseBreakpadErrorKind::Id,
-            context_input: None,
-            context_record: None,
-        })
-    }
-}
-
-fn stack_win_record_type(input: &str) -> ParseResult<BreakpadStackWinRecordType> {
-    match input {
-        "0" => Ok(BreakpadStackWinRecordType::Fpo),
-        "4" => Ok(BreakpadStackWinRecordType::FrameData),
-        _ => Err(ParseBreakpadError {
-            input: input.to_string(),
-            kind: ParseBreakpadErrorKind::StackWinRecordType,
-            context_input: None,
-            context_record: None,
-        }),
-    }
-}
 
 #[cfg(test)]
 mod tests {
