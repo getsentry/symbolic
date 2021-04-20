@@ -33,7 +33,9 @@ pub enum BreakpadErrorKind {
     BadEncoding,
 
     /// Parsing of a record failed.
-    Parse,
+    ///
+    /// The field exists only for API compatibility reasons.
+    Parse(&'static str),
 
     /// The module ID is invalid.
     InvalidModuleId,
@@ -47,7 +49,7 @@ impl fmt::Display for BreakpadErrorKind {
         match self {
             Self::InvalidMagic => write!(f, "missing breakpad symbol header"),
             Self::BadEncoding => write!(f, "bad utf-8 sequence"),
-            Self::Parse => write!(f, "parsing error"),
+            Self::Parse(_) => write!(f, "parsing error"),
             Self::InvalidModuleId => write!(f, "invalid module id"),
             Self::InvalidArchitecture => write!(f, "invalid architecture"),
         }
@@ -94,7 +96,7 @@ impl From<str::Utf8Error> for BreakpadError {
 
 impl From<parsing::ParseBreakpadError> for BreakpadError {
     fn from(e: parsing::ParseBreakpadError) -> Self {
-        Self::new(BreakpadErrorKind::Parse, e)
+        Self::new(BreakpadErrorKind::Parse(""), e)
     }
 }
 
