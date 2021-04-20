@@ -35,7 +35,10 @@ pub enum BreakpadErrorKind {
     /// Parsing of a record failed.
     Parse,
 
+    /// The module ID is invalid.
     InvalidModuleId,
+
+    /// The architecture is invalid.
     InvalidArchitecture,
 }
 
@@ -1159,10 +1162,35 @@ mod parsing {
     type ParseResult<'a, T> = IResult<&'a str, T, ErrorTree<&'a str>>;
     pub type ParseBreakpadError = ErrorTree<ErrorLine>;
 
-    #[derive(Debug, PartialEq, Eq)]
+    /// A line with a 1-based column position, used for displaying errors.
+    ///
+    /// With the default formatter, this prints the line followed by the column number.
+    /// With the alternate formatter (using `:#`), it prints the line and a caret
+    /// pointing at the column position.
+    ///
+    /// # Example
+    /// ```ignore
+    /// use symbolic_debuginfo::breakpad::parsing::ErrorLine;
+    ///
+    /// let error_line = ErrorLine {
+    ///     line: "This line cnotains a typo.".to_string(),
+    ///     column: 12,
+    /// };
+    ///
+    /// // "This line cnotains a typo.", column 12
+    /// println!("{}", error_line);
+    ///
+    /// // "This line cnotains a typo."
+    /// //             ^
+    /// println!("{:#}", error_line);
+    /// ```
+    #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct ErrorLine {
-        line: String,
-        column: usize,
+        /// A line of text containing an error.
+        pub line: String,
+
+        /// The position of the error, 1-based.
+        pub column: usize,
     }
 
     impl<'a> RecreateContext<&'a str> for ErrorLine {
@@ -1178,13 +1206,13 @@ mod parsing {
     impl fmt::Display for ErrorLine {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             if f.alternate() {
-                write!(f, "\n")?;
+                writeln!(f)?;
             }
 
-            write!(f, "{}", self.line)?;
+            write!(f, "\"{}\"", self.line)?;
 
             if f.alternate() {
-                write!(f, "\n{:>width$}\n", "^", width = self.column)?;
+                writeln!(f, "\n{:>width$}", "^", width = self.column + 1)?;
             } else {
                 write!(f, ", column {}", self.column)?;
             }
@@ -1193,41 +1221,53 @@ mod parsing {
         }
     }
 
+    /// Parse a sequence of decimal digits as a number of the given type.
     macro_rules! num_dec {
         ($ty:ty) => {
             nom::character::complete::digit1.map_res(|s| <$ty>::from_str_radix(s, 10))
         };
     }
 
+    /// Parse a sequence of hexadecimal digits as a number of the given type.
     macro_rules! num_hex {
         ($ty:ty) => {
             nom::character::complete::hex_digit1.map_res(|n| <$ty>::from_str_radix(n, 16))
         };
     }
 
+    /// Parse a sequence of non-whitespace characters.
     fn non_whitespace(input: &str) -> ParseResult<&str> {
         take_while(|c: char| !c.is_whitespace())(input)
     }
 
+    /// Parse to the end of input and return the resulting string.
+    ///
+    /// If there is no input, return [`UNKNOWN_NAME`] instead.
     fn name(input: &str) -> ParseResult<&str> {
         rest.map(|name: &str| if name.is_empty() { UNKNOWN_NAME } else { name })
             .parse(input)
     }
 
+    /// Attempt to parse the character `m` followed by one or more spaces.
+    ///
+    /// Returns true if the parse was successful.
     fn multiple(input: &str) -> ParseResult<bool> {
-        char('m')
-            .terminated(multispace1)
-            .opt()
-            .map(|m| m.is_some())
-            .parse(input)
+        let (mut input, multiple) = char('m').opt().parse(input)?;
+        let multiple = multiple.is_some();
+        if multiple {
+            input = multispace1(input)?.0;
+        }
+        Ok((input, multiple))
     }
 
+    /// Parse a line number as a signed decimal number and return `max(0, n)`.
     fn line_num(input: &str) -> ParseResult<u64> {
         pair(char('-').opt(), num_dec!(u64))
             .map(|(sign, num)| if sign.is_some() { 0 } else { num })
             .parse(input)
     }
 
+    /// Parse a [`BreakpadStackWinRecordType`].
     fn stack_win_record_type(input: &str) -> ParseResult<BreakpadStackWinRecordType> {
         alt((
             char('0').value(BreakpadStackWinRecordType::Fpo),
@@ -1235,6 +1275,9 @@ mod parsing {
         ))(input)
     }
 
+    /// Parse a [`BreakpadModuleRecord`].
+    ///
+    /// A module record has the form `MODULE <os> <arch> <id>( <name>)?`.
     fn module_record(input: &str) -> ParseResult<BreakpadModuleRecord> {
         let (input, _) = tag("MODULE")
             .terminated(multispace1)
@@ -1255,10 +1298,17 @@ mod parsing {
         Ok((input, BreakpadModuleRecord { os, arch, id, name }))
     }
 
+    /// Parse a [`BreakpadModuleRecord`].
+    ///
+    /// A module record has the form `MODULE <os> <arch> <id>( <name>)?`.
+    /// This will fail if there is any input left over after the record.
     pub fn module_record_final(input: &str) -> Result<BreakpadModuleRecord, ErrorTree<ErrorLine>> {
         nom_supreme::final_parser::final_parser(module_record)(input)
     }
 
+    /// Parse the `CodeId` variant of a [`BreakpadInfoRecord`].
+    ///
+    /// A `CodeId` record has the form `CODE_ID <code_id>( <code_file>)?`.
     fn info_code_id_record(input: &str) -> ParseResult<BreakpadInfoRecord> {
         let (input, _) = tag("CODE_ID")
             .terminated(multispace1)
@@ -1268,8 +1318,8 @@ mod parsing {
         let (input, (code_id, code_file)) = pair(
             hex_digit1
                 .terminated(multispace1.or(eof))
-                .context("file name"),
-            name.context("module name"),
+                .context("code id"),
+            name.context("file name"),
         )
         .cut()
         .context("info code_id record body")
@@ -1278,6 +1328,9 @@ mod parsing {
         Ok((input, BreakpadInfoRecord::CodeId { code_id, code_file }))
     }
 
+    /// Parse the `Other` variant of a [`BreakpadInfoRecord`].
+    ///
+    /// An `Other` record has the form `<scope>( <info>)?`.
     fn info_other_record(input: &str) -> ParseResult<BreakpadInfoRecord> {
         let (input, (scope, info)) = pair(
             non_whitespace
@@ -1292,6 +1345,9 @@ mod parsing {
         Ok((input, BreakpadInfoRecord::Other { scope, info }))
     }
 
+    /// Parse a [`BreakpadInfoRecord`].
+    ///
+    /// An INFO record has the form `INFO (<code_id_record> | <other_record>)`.
     fn info_record(input: &str) -> ParseResult<BreakpadInfoRecord> {
         let (input, _) = tag("INFO")
             .terminated(multispace1)
@@ -1305,10 +1361,17 @@ mod parsing {
             .parse(input)
     }
 
+    /// Parse a [`BreakpadInfoRecord`].
+    ///
+    /// An INFO record has the form `INFO (<code_id_record> | <other_record>)`.
+    /// This will fail if there is any input left over after the record.
     pub fn info_record_final(input: &str) -> Result<BreakpadInfoRecord, ErrorTree<ErrorLine>> {
         nom_supreme::final_parser::final_parser(info_record)(input)
     }
 
+    /// Parse a [`BreakpadFileRecord`].
+    ///
+    /// A FILE record has the form `FILE <id>( <name>)?`.
     fn file_record(input: &str) -> ParseResult<BreakpadFileRecord> {
         let (input, _) = tag("FILE")
             .terminated(multispace1)
@@ -1328,10 +1391,17 @@ mod parsing {
         Ok((input, BreakpadFileRecord { id, name }))
     }
 
+    /// Parse a [`BreakpadFileRecord`].
+    ///
+    /// A FILE record has the form `FILE <id>( <name>)?`.
+    /// This will fail if there is any input left over after the record.
     pub fn file_record_final(input: &str) -> Result<BreakpadFileRecord, ErrorTree<ErrorLine>> {
         nom_supreme::final_parser::final_parser(file_record)(input)
     }
 
+    /// Parse a [`BreakpadPublicRecord`].
+    ///
+    /// A PUBLIC record has the form `PUBLIC (m )? <address> <parameter_size> ( <name>)?`.
     fn public_record(input: &str) -> ParseResult<BreakpadPublicRecord> {
         let (input, _) = tag("PUBLIC")
             .terminated(multispace1)
@@ -1361,10 +1431,17 @@ mod parsing {
         ))
     }
 
+    /// Parse a [`BreakpadPublicRecord`].
+    ///
+    /// A PUBLIC record has the form `PUBLIC (m )? <address> <parameter_size> ( <name>)?`.
+    /// This will fail if there is any input left over after the record.
     pub fn public_record_final(input: &str) -> Result<BreakpadPublicRecord, ErrorTree<ErrorLine>> {
         nom_supreme::final_parser::final_parser(public_record)(input)
     }
 
+    /// Parse a [`BreakpadFuncRecord`].
+    ///
+    /// A FUNC record has the form `FUNC (m )? <address> <size> <parameter_size> ( <name>)?`.
     fn func_record(input: &str) -> ParseResult<BreakpadFuncRecord> {
         let (input, _) = tag("FUNC")
             .terminated(multispace1)
@@ -1397,10 +1474,17 @@ mod parsing {
         ))
     }
 
+    /// Parse a [`BreakpadFuncRecord`].
+    ///
+    /// A FUNC record has the form `FUNC (m )? <address> <size> <parameter_size> ( <name>)?`.
+    /// This will fail if there is any input left over after the record.
     pub fn func_record_final(input: &str) -> Result<BreakpadFuncRecord, ErrorTree<ErrorLine>> {
         nom_supreme::final_parser::final_parser(func_record)(input)
     }
 
+    /// Parse a [`BreakpadLineRecord`].
+    ///
+    /// A LINE record has the form `<address> <size> <line> <file_id>`.
     fn line_record(input: &str) -> ParseResult<BreakpadLineRecord> {
         let (input, (address, size, line, file_id)) = tuple((
             num_hex!(u64).terminated(multispace1).context("address"),
@@ -1422,10 +1506,17 @@ mod parsing {
         ))
     }
 
+    /// Parse a [`BreakpadLineRecord`].
+    ///
+    /// A LINE record has the form `<address> <size> <line> <file_id>`.
+    /// This will fail if there is any input left over after the record.
     pub fn line_record_final(input: &str) -> Result<BreakpadLineRecord, ErrorTree<ErrorLine>> {
         nom_supreme::final_parser::final_parser(line_record)(input)
     }
 
+    /// Parse a [`BreakpadStackCfiDeltaRecord`].
+    ///
+    /// A STACK CFI Delta record has the form `STACK CFI <address> <rules>`.
     fn stack_cfi_delta_record(input: &str) -> ParseResult<BreakpadStackCfiDeltaRecord> {
         let (input, _) = tag("STACK CFI")
             .terminated(multispace1)
@@ -1443,12 +1534,19 @@ mod parsing {
         Ok((input, BreakpadStackCfiDeltaRecord { address, rules }))
     }
 
+    /// Parse a [`BreakpadStackCfiDeltaRecord`].
+    ///
+    /// A STACK CFI Delta record has the form `STACK CFI <address> <rules>`.
+    /// This will fail if there is any input left over after the record.
     pub fn stack_cfi_delta_record_final(
         input: &str,
     ) -> Result<BreakpadStackCfiDeltaRecord, ErrorTree<ErrorLine>> {
         nom_supreme::final_parser::final_parser(stack_cfi_delta_record)(input)
     }
 
+    /// Parse a [`BreakpadStackCfiRecord`].
+    ///
+    /// A STACK CFI INIT record has the form `STACK CFI INIT <address> <size> <init_rules>`.
     fn stack_cfi_record(input: &str) -> ParseResult<BreakpadStackCfiRecord> {
         let (input, _) = tag("STACK CFI INIT")
             .terminated(multispace1)
@@ -1475,12 +1573,20 @@ mod parsing {
         ))
     }
 
+    /// Parse a [`BreakpadStackCfiRecord`].
+    ///
+    /// A STACK CFI INIT record has the form `STACK CFI INIT <address> <size> <init_rules>`.
+    /// This will fail if there is any input left over after the record.
     pub fn stack_cfi_record_final(
         input: &str,
     ) -> Result<BreakpadStackCfiRecord, ErrorTree<ErrorLine>> {
         nom_supreme::final_parser::final_parser(stack_cfi_record)(input)
     }
 
+    /// Parse a [`BreakpadStackWinRecord`].
+    ///
+    /// A STACK WIN record has the form
+    /// `STACK WIN <ty> <code_start> <code_size> <prolog_size> <epilog_size> <params_size> <saved_regs_size> <locals_size> <max_stack_size> <has_program_string> (<program_string> | <uses_base_pointer>)`.
     fn stack_win_record(input: &str) -> ParseResult<BreakpadStackWinRecord> {
         let (input, _) = tag("STACK WIN")
             .terminated(multispace1)
@@ -1551,12 +1657,21 @@ mod parsing {
         ))
     }
 
+    /// Parse a [`BreakpadStackWinRecord`].
+    ///
+    /// A STACK WIN record has the form
+    /// `STACK WIN <ty> <code_start> <code_size> <prolog_size> <epilog_size> <params_size> <saved_regs_size> <locals_size> <max_stack_size> <has_program_string> (<program_string> | <uses_base_pointer>)`.
+    /// This will fail if there is any input left over after the record.
     pub fn stack_win_record_final(
         input: &str,
     ) -> Result<BreakpadStackWinRecord, ErrorTree<ErrorLine>> {
         nom_supreme::final_parser::final_parser(stack_win_record)(input)
     }
 
+    /// Parse a [`BreakpadStackRecord`], containing either a [`BreakpadStackCfiRecord`] or a
+    /// [`BreakpadStackWinRecord`].
+    ///
+    /// This will fail if there is any input left over after the record.
     pub fn stack_record_final(input: &str) -> Result<BreakpadStackRecord, ParseBreakpadError> {
         nom_supreme::final_parser::final_parser(alt((
             stack_cfi_record.map(BreakpadStackRecord::Cfi),
