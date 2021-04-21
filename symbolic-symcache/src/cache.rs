@@ -443,17 +443,17 @@ impl<'a> LineInfo<'a> {
     }
 
     /// The compilation directory of the function.
-    pub fn compilation_dir(&self) -> &'a str {
+    pub fn compilation_dir<'b>(&'b self) -> &'a str {
         self.comp_dir
     }
 
     /// The base dir of the current line.
-    pub fn base_dir(&self) -> &str {
+    pub fn base_dir<'b>(&'b self) -> &'a str {
         self.base_dir
     }
 
     /// The filename of the current line.
-    pub fn filename(&self) -> &'a str {
+    pub fn filename<'b>(&'b self) -> &'a str {
         self.filename
     }
 
@@ -481,14 +481,14 @@ impl<'a> LineInfo<'a> {
     }
 
     /// The string value of the symbol (mangled).
-    pub fn symbol(&self) -> &'a str {
+    pub fn symbol<'b>(&'b self) -> &'a str {
         self.symbol.unwrap_or("?")
     }
 
     /// The name of the function suitable for demangling.
     ///
     /// Use `symbolic::demangle` for demangling this symbol.
-    pub fn function_name(&self) -> Name<'_> {
+    pub fn function_name<'b>(&'b self) -> Name<'a> {
         Name::new(self.symbol(), NameMangling::Unknown, self.language())
     }
 }
