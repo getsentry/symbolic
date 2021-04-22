@@ -18,7 +18,7 @@ class SymbolicSourceLineResolver
     }
 
     bool HasModule(const CodeModule *module);
-    void FillSourceLineInfo(StackFrame *frame);
+    void FillSourceLineInfo(StackFrame *frame) {}
     CFIFrameInfo *FindCFIFrameInfo(const StackFrame *frame);
     WindowsFrameInfo *FindWindowsFrameInfo(const StackFrame *frame);
 

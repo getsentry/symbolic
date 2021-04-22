@@ -536,24 +536,32 @@ impl<A: Ord + Copy, E> RangeMap<A, E> {
     /// The range must be disjoint from all ranges that are already present.
     /// Returns true if the insertion was successful.
     pub fn insert(&mut self, range: Range<A>, contents: E) -> bool {
+        if let Some(i) = self.free_slot(&range) {
+            self.inner.insert(i, (range, contents));
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Returns the position in the inner vector where the given range could be inserted, if that is possible.
+    fn free_slot(&self, range: &Range<A>) -> Option<usize> {
         let index = match self.inner.binary_search_by_key(&range.end, |r| r.0.end) {
-            Ok(_) => return false,
+            Ok(_) => return None,
             Err(index) => index,
         };
 
         if index > 0 {
             let before = &self.inner[index - 1];
             if before.0.end > range.start {
-                return false;
+                return None;
             }
         }
 
         match self.inner.get(index) {
-            Some(after) if after.0.start < range.end => return false,
-            _ => self.inner.insert(index, (range, contents)),
+            Some(after) if after.0.start < range.end => None,
+            _ => Some(index),
         }
-
-        true
     }
 
     /// Retrieves the range covering the given address and the associated contents.
@@ -640,38 +648,24 @@ impl<A, E> Default for RangeMap<A, E> {
 /// It is generic, but the intended use case are Breakpad's
 /// `STACK CFI INIT` and `STACK CFI` records.
 #[derive(Clone, Debug)]
-pub struct CfiRules<A: Ord, E> {
-    inner: RangeMap<A, Vec<(A, E)>>,
+pub struct CfiRules<A: Ord, E, I> {
+    inner: RangeMap<A, (E, Vec<(A, E)>, I)>,
 }
 
-impl<A: Ord + Copy, E: Clone> CfiRules<A, E> {
-    /// Insert an "init rule", comprising a half-open range `[start, end)`
-    /// and some attached `contents`, into the structure.
+impl<A, E: Clone, I> CfiRules<A, E, I>
+where
+    A: Ord + Copy,
+    I: Iterator<Item = (A, E)>,
+{
+    /// Insert init and delta rules into the structure.
     ///
     /// The range must be disjoint from all ranges that are already present.
-    /// Returns true if the insertion was successful.
-    pub fn insert_init(&mut self, range: Range<A>, contents: E) -> bool {
-        let start = range.start;
-        self.inner.insert(range, vec![(start, contents)])
-    }
-
-    /// Insert a "delta rule", comprising an `address` and some attached
-    /// `contents`, into the structure.
+    /// The init rule is a single piece of data, while the delta rules are
+    /// given in the form of an iterator that yields `(A, E)`.
     ///
-    /// This fails if there is already a rule for the given address. Returns true if
-    /// the insertion was successful.
-    pub fn insert_delta(&mut self, address: A, contents: E) -> bool {
-        if let Some(rules) = self.inner.get_contents_mut(address) {
-            match rules.binary_search_by_key(&address, |p| p.0) {
-                Ok(_) => false,
-                Err(i) => {
-                    rules.insert(i, (address, contents));
-                    true
-                }
-            }
-        } else {
-            false
-        }
+    /// Returns true if the insertion was successful.
+    pub fn insert(&mut self, range: Range<A>, init: E, deltas: I) -> bool {
+        self.inner.insert(range, (init, Vec::new(), deltas))
     }
 
     /// Returns all rules applicable to the given address.
@@ -679,19 +673,23 @@ impl<A: Ord + Copy, E: Clone> CfiRules<A, E> {
     /// If the given address is not covered by any init rule, this returns `None`.
     /// Otherwise it returns the covering init rule and all delta rules with addresses in
     /// `[init_rule.start, address]`.
-    pub fn get_rules(&self, address: A) -> Option<Vec<&E>> {
-        let rules = self.inner.get_contents(address)?;
-        Some(
-            rules
+    pub fn get_rules<'a>(&'a mut self, address: A) -> Option<Vec<&'a E>> {
+        let (init, cache, deltas) = self.inner.get_contents_mut(address)?;
+        cache.extend(deltas.take_while(|(a, _)| *a <= address));
+        cache.sort_unstable_by_key(|p| p.0);
+
+        let mut result = vec![&*init];
+        result.extend(
+            cache
                 .iter()
-                .take_while(|(a, _)| a <= &address)
-                .map(|(_, e)| e)
-                .collect(),
-        )
+                .take_while(|(a, _)| *a <= address)
+                .map(|pair| &pair.1),
+        );
+        Some(result)
     }
 }
 
-impl<A: Ord, E> Default for CfiRules<A, E> {
+impl<A: Ord, E, I> Default for CfiRules<A, E, I> {
     fn default() -> Self {
         Self {
             inner: RangeMap::default(),
@@ -707,15 +705,16 @@ mod test {
     fn test_init_rules() {
         let mut map = CfiRules::default();
 
-        assert!(map.insert_init(50usize..100, "First"));
-        assert!(map.insert_init(130..140, "Second"));
-        assert!(map.insert_init(100..130, "Third"));
-        assert!(!map.insert_init(0..60, "Uh oh"));
+        let deltas = vec![
+            (51, "First delta"),
+            (52, "Second delta"),
+            (53, "Third delta"),
+        ];
 
-        assert!(map.insert_delta(51, "First delta"));
-        assert!(map.insert_delta(52, "Second delta"));
-        assert!(map.insert_delta(53, "Third delta"));
-        assert!(!map.insert_delta(50, "Uh oh"));
+        assert!(map.insert(50usize..100, "First", deltas.into_iter()));
+        assert!(map.insert(130..140, "Second", Vec::new().into_iter()));
+        assert!(map.insert(100..130, "Third", Vec::new().into_iter()));
+        assert!(!map.insert(0..60, "Uh oh", Vec::new().into_iter()));
 
         assert_eq!(
             map.get_rules(52).unwrap(),

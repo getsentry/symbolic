@@ -50,37 +50,37 @@ bool SymbolicSourceLineResolver::HasModule(const CodeModule *module) {
     return resolver_has_module(resolver_, module_name);
 }
 
-void SymbolicSourceLineResolver::FillSourceLineInfo(StackFrame *frame) {
-    string debug_identifier = frame->module->debug_identifier();
-    const char *module_name = debug_identifier.c_str();
-    uint64_t address = frame->instruction - frame->module->base_address();
+//void SymbolicSourceLineResolver::FillSourceLineInfo(StackFrame *frame) {
+    //string debug_identifier = frame->module->debug_identifier();
+    //const char *module_name = debug_identifier.c_str();
+    //uint64_t address = frame->instruction - frame->module->base_address();
 
-    char *function_name = NULL, *source_file_name = NULL;
-    uint64_t function_base = 0, source_line = 0;
-    size_t function_name_size = 0, source_file_name_size = 0;
+    //char *function_name = NULL, *source_file_name = NULL;
+    //uint64_t function_base = 0, source_line = 0;
+    //size_t function_name_size = 0, source_file_name_size = 0;
 
-    resolver_fill_source_line_info(resolver_, module_name, address,
-                                   &function_name, &function_name_size,
-                                   &function_base, &source_file_name,
-                                   &source_file_name_size, &source_line);
+    //resolver_fill_source_line_info(resolver_, module_name, address,
+    //                               &function_name, &function_name_size,
+    //                               &function_base, &source_file_name,
+    //                               &source_file_name_size, &source_line);
 
-    if (function_name != NULL) {
-        frame->function_name = std::string(function_name, function_name_size);
-    }
+    //if (function_name != NULL) {
+    //    frame->function_name = std::string(function_name, function_name_size);
+    //}
 
-    if (source_file_name != NULL) {
-        frame->source_file_name =
-            std::string(source_file_name, source_file_name_size);
-    }
+    //if (source_file_name != NULL) {
+    //    frame->source_file_name =
+    //        std::string(source_file_name, source_file_name_size);
+    //}
 
-    if (function_base != 0) {
-        frame->function_base = function_base;
-    }
+    //if (function_base != 0) {
+    //    frame->function_base = function_base;
+    //}
 
-    if (source_line != 0) {
-        frame->source_line = source_line;
-    }
-}
+    //if (source_line != 0) {
+    //    frame->source_line = source_line;
+    //}
+//}
 
 CFIFrameInfo *SymbolicSourceLineResolver::FindCFIFrameInfo(
     const StackFrame *frame) {

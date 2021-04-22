@@ -23,7 +23,8 @@ use regex::Regex;
 
 use symbolic_common::{Arch, ByteView, CpuFamily, DebugId, ParseDebugIdError, Uuid};
 use symbolic_debuginfo::breakpad::{
-    BreakpadStackRecord, BreakpadStackRecords, BreakpadStackWinRecord, BreakpadStackWinRecordType,
+    BreakpadStackCfiDeltaRecords, BreakpadStackRecord, BreakpadStackRecords,
+    BreakpadStackWinRecord, BreakpadStackWinRecordType,
 };
 use symbolic_symcache::SymCache;
 use symbolic_unwind::evaluator::{Constant, Identifier, RangeMap};
@@ -32,7 +33,7 @@ use symbolic_unwind::{MemoryRegion, RuntimeEndian};
 use crate::cfi::CfiCache;
 use crate::utils;
 
-type CfiRules<'a> = symbolic_unwind::evaluator::CfiRules<u64, &'a str>;
+type CfiRules<'a> = symbolic_unwind::evaluator::CfiRules<u64, &'a str, DeltaRules<'a>>;
 type CfiModuleMap<'a> = BTreeMap<&'a CodeModuleId, CfiModuleData<'a>>;
 type WinModuleMap<'a> = BTreeMap<&'a CodeModuleId, WinModuleData<'a>>;
 type SymCacheMap<'a> = BTreeMap<&'a CodeModuleId, SymCache<'a>>;
@@ -97,6 +98,23 @@ extern "C" {
     ) -> *mut *const CodeModule;
 }
 
+/// Auxiliary iterator that yields pairs of addresses and rule strings
+/// of [`BreakpadStackCfiDeltaRecord`]s.
+#[derive(Clone, Debug)]
+struct DeltaRules<'a> {
+    inner: BreakpadStackCfiDeltaRecords<'a>,
+}
+
+impl<'a> Iterator for DeltaRules<'a> {
+    type Item = (u64, &'a str);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner
+            .find_map(Result::ok)
+            .map(|record| (record.address, record.rules))
+    }
+}
+
 /// Struct containing CFI information for a module.
 struct CfiModuleData<'a> {
     /// CFI rules that have already been read and sorted.
@@ -132,14 +150,10 @@ impl<'a> CfiModuleData<'a> {
             }) {
                 let start = cfi_record.start;
                 let end = start + cfi_record.size;
-                cache.insert_init(start..end, cfi_record.init_rules);
-
-                for delta in cfi_record.deltas() {
-                    if let Ok(delta) = delta {
-                        cache.insert_delta(delta.address, delta.rules);
-                    }
-                }
-
+                let deltas = DeltaRules {
+                    inner: cfi_record.deltas().clone(),
+                };
+                cache.insert(start..end, cfi_record.init_rules, deltas);
                 if start <= address && end > address {
                     break;
                 }
