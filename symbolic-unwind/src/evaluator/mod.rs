@@ -739,13 +739,13 @@ mod test {
         assert!(map.insert_init(100, 130, "Third"));
         assert!(!map.insert_init(0, 60, "Uh oh"));
 
-        assert!(map.insert_delta(50, "First delta"));
-        assert!(map.insert_delta(51, "Second delta"));
-        assert!(map.insert_delta(52, "Third delta"));
+        assert!(map.insert_delta(51, "First delta"));
+        assert!(map.insert_delta(52, "Second delta"));
+        assert!(map.insert_delta(53, "Third delta"));
         assert!(!map.insert_delta(50, "Uh oh"));
 
         assert_eq!(
-            map.get_rules(51).unwrap(),
+            map.get_rules(52).unwrap(),
             vec![&"First", &"First delta", &"Second delta"]
         );
         assert!(map.get_rules(145).is_none());
