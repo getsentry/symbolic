@@ -42,6 +42,7 @@
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
+use std::ops::Range;
 use std::str::FromStr;
 
 use super::base::{Endianness, MemoryRegion, RegisterValue};
@@ -258,7 +259,7 @@ enum EvaluationErrorInner {
         /// The address at which the read was attempted.
         address: Option<usize>,
         /// The range of available addresses.
-        address_range: std::ops::Range<u64>,
+        address_range: Range<u64>,
     },
 }
 
@@ -523,43 +524,10 @@ impl<T: fmt::Display> fmt::Display for Rule<T> {
     }
 }
 
-/// A half-open range `[start, end)` with some `contents` attached.
-#[derive(Clone, Debug)]
-pub struct Range<A, E> {
-    /// The left endpoint of the range.
-    pub start: A,
-
-    /// The right endpoint of teh range.
-    pub end: A,
-
-    /// The contents associated with the range.
-    pub contents: E,
-}
-
-impl<A: Eq, E> PartialEq for Range<A, E> {
-    fn eq(&self, other: &Self) -> bool {
-        self.end == other.end && self.start == other.start
-    }
-}
-
-impl<A: Eq, E> Eq for Range<A, E> {}
-
-impl<A: Ord, E> core::cmp::Ord for Range<A, E> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.end.cmp(&other.end).then(self.start.cmp(&other.start))
-    }
-}
-
-impl<A: Ord, E> PartialOrd for Range<A, E> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-/// A structure containing a set of disjoint half-open ranges `[a, b)` with attached contents.
+/// A structure containing a set of disjoint ranges with attached contents.
 #[derive(Clone, Debug)]
 pub struct RangeMap<A, E> {
-    inner: Vec<Range<A, E>>,
+    inner: Vec<(Range<A>, E)>,
 }
 
 impl<A: Ord + Copy, E> RangeMap<A, E> {
@@ -567,84 +535,90 @@ impl<A: Ord + Copy, E> RangeMap<A, E> {
     ///
     /// The range must be disjoint from all ranges that are already present.
     /// Returns true if the insertion was successful.
-    pub fn insert(&mut self, start: A, end: A, contents: E) -> bool {
-        let range = Range {
-            start,
-            end,
-            contents,
-        };
-        let index = match self.inner.binary_search(&range) {
+    pub fn insert(&mut self, range: Range<A>, contents: E) -> bool {
+        let index = match self.inner.binary_search_by_key(&range.end, |r| r.0.end) {
             Ok(_) => return false,
             Err(index) => index,
         };
 
         if index > 0 {
             let before = &self.inner[index - 1];
-            if before.end > start {
+            if before.0.end > range.start {
                 return false;
             }
         }
 
         match self.inner.get(index) {
-            Some(after) if after.start < end => return false,
-            _ => self.inner.insert(index, range),
+            Some(after) if after.0.start < range.end => return false,
+            _ => self.inner.insert(index, (range, contents)),
         }
 
         true
     }
 
-    /// Retrieves the contents associated with the given address.
-    pub fn get(&self, address: A) -> Option<&E> {
-        self.get_range(address).map(|r| &r.contents)
-    }
-
-    /// Retrieves the range covering the given address.
-    pub fn get_range(&self, address: A) -> Option<&Range<A, E>> {
-        let range = match self.inner.binary_search_by_key(&address, |range| range.end) {
+    /// Retrieves the range covering the given address and the associated contents.
+    pub fn get(&self, address: A) -> Option<&(Range<A>, E)> {
+        let entry = match self
+            .inner
+            .binary_search_by_key(&address, |range| range.0.end)
+        {
             // This means inner(index).end == address => address might be covered by the next one
             Ok(index) => self.inner.get(index + 1)?,
             // This means that inner(index).end > address => this could be the one
             Err(index) => self.inner.get(index)?,
         };
 
-        (range.start <= address).then(|| range)
+        (entry.0.start <= address).then(|| entry)
     }
 
     /// Retrieves the range covering the given address, allowing mutation.
-    pub fn get_range_mut(&mut self, address: A) -> Option<&mut Range<A, E>> {
-        let range = match self.inner.binary_search_by_key(&address, |range| range.end) {
+    pub fn get_mut(&mut self, address: A) -> Option<&mut (Range<A>, E)> {
+        let entry = match self
+            .inner
+            .binary_search_by_key(&address, |range| range.0.end)
+        {
             // This means inner(index).end == address => address might be covered by the next one
             Ok(index) => self.inner.get_mut(index + 1)?,
             // This means that inner(index).end > address => this could be the one
             Err(index) => self.inner.get_mut(index)?,
         };
 
-        (range.start <= address).then(|| range)
+        (entry.0.start <= address).then(|| entry)
+    }
+
+    /// Retrieves the contents associated with the given address.
+    pub fn get_contents(&self, address: A) -> Option<&E> {
+        self.get(address).map(|(_, contents)| contents)
+    }
+
+    /// Retrieves the contents associated with the given address, allowing mutation.
+    pub fn get_contents_mut(&mut self, address: A) -> Option<&mut E> {
+        self.get_mut(address).map(|(_, contents)| contents)
     }
 
     /// Retrieves the range covering the given address, or else the last range before the
-    /// address.
+    /// address, and the associated contents.
     ///
     /// # Example
     /// ```
-    /// use symbolic_unwind::evaluator::{Range, RangeMap};
+    /// use symbolic_unwind::evaluator::RangeMap;
     /// let mut map = RangeMap::default();
-    /// map.insert(0u8, 2, "First");
-    /// map.insert(2, 4, "Second");
-    /// map.insert(5, 7, "Third");
+    /// map.insert(0u8..2, "First");
+    /// map.insert(2..4, "Second");
+    /// map.insert(5..7, "Third");
     ///
     /// // map now looks like this:
     /// // |0     1|2      3|   4   |5     6|7 …
     /// // |"First"|"Second"|<empty>|"Third"|
     ///
-    /// let range = map.get_nearest_range(4).unwrap();
+    /// let (range, contents) = map.get_nearest(4).unwrap();
     /// assert_eq!(range.start, 2);
     /// assert_eq!(range.end, 4);
-    /// assert_eq!(range.contents, "Second");
-    pub fn get_nearest_range(&self, address: A) -> Option<&Range<A, E>> {
+    /// assert_eq!(*contents, "Second");
+    pub fn get_nearest(&self, address: A) -> Option<&(Range<A>, E)> {
         match self
             .inner
-            .binary_search_by_key(&address, |range| range.start)
+            .binary_search_by_key(&address, |range| range.0.start)
         {
             Ok(index) => self.inner.get(index),
             Err(index) if index > 0 => self.inner.get(index - 1),
@@ -676,8 +650,9 @@ impl<A: Ord + Copy, E: Clone> CfiRules<A, E> {
     ///
     /// The range must be disjoint from all ranges that are already present.
     /// Returns true if the insertion was successful.
-    pub fn insert_init(&mut self, start: A, end: A, contents: E) -> bool {
-        self.inner.insert(start, end, vec![(start, contents)])
+    pub fn insert_init(&mut self, range: Range<A>, contents: E) -> bool {
+        let start = range.start;
+        self.inner.insert(range, vec![(start, contents)])
     }
 
     /// Insert a "delta rule", comprising an `address` and some attached
@@ -686,8 +661,7 @@ impl<A: Ord + Copy, E: Clone> CfiRules<A, E> {
     /// This fails if there is already a rule for the given address. Returns true if
     /// the insertion was successful.
     pub fn insert_delta(&mut self, address: A, contents: E) -> bool {
-        if let Some(range) = self.inner.get_range_mut(address) {
-            let rules = &mut range.contents;
+        if let Some(rules) = self.inner.get_contents_mut(address) {
             match rules.binary_search_by_key(&address, |p| p.0) {
                 Ok(_) => false,
                 Err(i) => {
@@ -706,10 +680,9 @@ impl<A: Ord + Copy, E: Clone> CfiRules<A, E> {
     /// Otherwise it returns the covering init rule and all delta rules with addresses in
     /// `[init_rule.start, address]`.
     pub fn get_rules(&self, address: A) -> Option<Vec<&E>> {
-        let range = self.inner.get_range(address)?;
+        let rules = self.inner.get_contents(address)?;
         Some(
-            range
-                .contents
+            rules
                 .iter()
                 .take_while(|(a, _)| a <= &address)
                 .map(|(_, e)| e)
@@ -734,10 +707,10 @@ mod test {
     fn test_init_rules() {
         let mut map = CfiRules::default();
 
-        assert!(map.insert_init(50usize, 100, "First"));
-        assert!(map.insert_init(130, 140, "Second"));
-        assert!(map.insert_init(100, 130, "Third"));
-        assert!(!map.insert_init(0, 60, "Uh oh"));
+        assert!(map.insert_init(50usize..100, "First"));
+        assert!(map.insert_init(130..140, "Second"));
+        assert!(map.insert_init(100..130, "Third"));
+        assert!(!map.insert_init(0..60, "Uh oh"));
 
         assert!(map.insert_delta(51, "First delta"));
         assert!(map.insert_delta(52, "Second delta"));

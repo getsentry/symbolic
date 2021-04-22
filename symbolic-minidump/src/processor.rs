@@ -132,7 +132,7 @@ impl<'a> CfiModuleData<'a> {
             }) {
                 let start = cfi_record.start;
                 let end = start + cfi_record.size;
-                cache.insert_init(start, end, cfi_record.init_rules);
+                cache.insert_init(start..end, cfi_record.init_rules);
 
                 for delta in cfi_record.deltas() {
                     if let Ok(delta) = delta {
@@ -197,10 +197,10 @@ impl<'a> WinModuleData<'a> {
                 let end = start + win_record.code_size;
                 match win_record.ty {
                     BreakpadStackWinRecordType::Fpo => {
-                        cache_fpo.insert(start, end, win_record);
+                        cache_fpo.insert(start..end, win_record);
                     }
                     BreakpadStackWinRecordType::FrameData => {
-                        cache_frame_data.insert(start, end, win_record);
+                        cache_frame_data.insert(start..end, win_record);
                     }
                 }
 
@@ -210,7 +210,9 @@ impl<'a> WinModuleData<'a> {
             }
         }
 
-        cache_frame_data.get(address).or(cache_fpo.get(address))
+        cache_frame_data
+            .get_contents(address)
+            .or(cache_fpo.get_contents(address))
     }
 }
 
