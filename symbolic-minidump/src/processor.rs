@@ -25,6 +25,7 @@ use symbolic_common::{Arch, ByteView, CpuFamily, DebugId, ParseDebugIdError, Uui
 use symbolic_debuginfo::breakpad::{
     BreakpadStackRecord, BreakpadStackRecords, BreakpadStackWinRecord, BreakpadStackWinRecordType,
 };
+use symbolic_symcache::SymCache;
 use symbolic_unwind::evaluator::{Constant, Identifier, RangeMap};
 use symbolic_unwind::{MemoryRegion, RuntimeEndian};
 
@@ -34,6 +35,7 @@ use crate::utils;
 type CfiRules<'a> = symbolic_unwind::evaluator::CfiRules<u64, &'a str>;
 type CfiModuleMap<'a> = BTreeMap<&'a CodeModuleId, CfiModuleData<'a>>;
 type WinModuleMap<'a> = BTreeMap<&'a CodeModuleId, WinModuleData<'a>>;
+type SymCacheMap<'a> = BTreeMap<&'a CodeModuleId, SymCache<'a>>;
 type Evaluator<'a, A> = symbolic_unwind::evaluator::Evaluator<'a, A, RuntimeEndian>;
 
 lazy_static! {
@@ -220,17 +222,28 @@ struct CfiFrameInfo<'a> {
     rules: Vec<&'a str>,
 }
 
-/// A Rust implementation of Breakpad's [`SourceLineResolverInterface`](https://github.com/google/breakpad/blob/main/src/google_breakpad/processor/source_line_resolver_interface.h).
-/// The only methods we really need are `HasModule`, `FindCFIFrameInfo`, and
-/// `FindWindowsFrameInfo`.
-#[derive(Clone, Debug)]
-struct SourceLineInfo {
-    function_name: CString,
+/// Struct that bundles the information retrieved by the `FillSourceLineInfo` method
+/// on a Breakpad `SourceLineResolver` for a given stack frame, i.e., "this is line
+/// `source_line` in file `source_file`, belonging to function `function_name` with
+/// base address `function_base`".
+#[derive(Clone, Copy, Debug)]
+struct SourceLineInfo<'a> {
+    /// The name of the function the line belongs to.
+    function_name: &'a str,
+
+    /// The base address of the function the line belongs to.
     function_base: u64,
-    source_file_name: CString,
+
+    /// The name of the source file containing the line.
+    source_file_name: &'a str,
+
+    /// The line's number in its source file.
     source_line: u64,
 }
 
+/// A Rust implementation of Breakpad's [`SourceLineResolverInterface`](https://github.com/google/breakpad/blob/main/src/google_breakpad/processor/source_line_resolver_interface.h).
+/// The only methods we really need are `HasModule`, `FindCFIFrameInfo`,
+/// `FindWindowsFrameInfo`, and `FillSourceLineInfo`.
 struct SymbolicSourceLineResolver<'a> {
     /// The endianness to use when evaluating memory contents.
     endian: RuntimeEndian,
@@ -240,6 +253,8 @@ struct SymbolicSourceLineResolver<'a> {
 
     /// A map containing Windows CFI information for modules.
     modules_win: WinModuleMap<'a>,
+
+    symcaches: SymCacheMap<'a>,
 }
 
 impl<'a> SymbolicSourceLineResolver<'a> {
@@ -264,12 +279,14 @@ impl<'a> SymbolicSourceLineResolver<'a> {
                 endian: RuntimeEndian::Little,
                 modules_cfi,
                 modules_win,
+                symcaches: SymCacheMap::default(),
             }
         } else {
             Self {
                 endian: RuntimeEndian::Little,
                 modules_cfi: CfiModuleMap::new(),
                 modules_win: WinModuleMap::new(),
+                symcaches: SymCacheMap::default(),
             }
         }
     }
@@ -293,47 +310,6 @@ impl<'a> SymbolicSourceLineResolver<'a> {
             for rules_str in rules_vec.iter() {
                 rules.push(**rules_str);
             }
-        self.modules.contains_key(debug_id)
-    }
-
-    fn get_source_line_info(&self, module: &CodeModuleId, address: u64) -> Option<SourceLineInfo> {
-        let session = self.modules.get(module)?;
-        let function = session
-            .functions()
-            .filter_map(|r| r.ok())
-            .find(|f| f.address <= address && address < f.end_address())?;
-        let line = function.lines.iter().find(|line_info| {
-            line_info.address <= address
-                && line_info
-                    .size
-                    .map(|sz| address < line_info.address + sz)
-                    .unwrap_or(true)
-        })?;
-
-        Some(SourceLineInfo {
-            function_name: CString::new(function.name.as_str().to_string()).ok()?,
-            function_base: function.address,
-            source_file_name: CString::new(line.file.name_str().to_string()).ok()?,
-            source_line: line.line,
-        })
-    }
-
-    fn find_cfi_frame_info(&self, module: &CodeModuleId, address: u64) -> Option<Evaluator> {
-        let mut evaluator = Evaluator::new(self.endian);
-        let session = self.modules.get(module)?;
-        let record = session
-            .stack_records()
-            .filter_map(|r| r.ok())
-            .filter_map(|r| match r {
-                BreakpadStackRecord::Cfi(r) => Some(r),
-                BreakpadStackRecord::Win(_) => None,
-            })
-            .find(|r| r.start <= address && address < r.start + r.size)?;
-        evaluator
-            .add_cfi_rules_string(record.init_rules.trim())
-            .ok()?;
-        for delta in record.deltas().filter_map(|r| r.ok()) {
-            evaluator.add_cfi_rules_string(delta.rules.trim()).ok()?;
         }
 
         CfiFrameInfo {
@@ -341,7 +317,6 @@ impl<'a> SymbolicSourceLineResolver<'a> {
             rules,
         }
     }
-
     /// Finds CFI information for a given module and address.
     ///
     /// "CFI information" here means a [`STACK WIN` record](symbolic_debuginfo::breakpad::BreakpadStackWinRecord).
@@ -353,6 +328,26 @@ impl<'a> SymbolicSourceLineResolver<'a> {
         self.modules_win
             .get_mut(module)
             .and_then(|win_records| win_records.get(address))
+    }
+
+    /// Retrieves information for the line at the given address in the given module.
+    fn fill_source_line_info<'b>(
+        &'b self,
+        module: &'b CodeModuleId,
+        address: u64,
+    ) -> Option<SourceLineInfo<'a>> {
+        self.symcaches.get(module).and_then(|cache| {
+            let line_info = cache.lookup(address).ok()?.find_map(Result::ok)?;
+            let function_name = line_info.symbol();
+            let source_file_name = line_info.filename();
+
+            Some(SourceLineInfo {
+                function_name,
+                function_base: line_info.function_address(),
+                source_file_name,
+                source_line: line_info.line() as u64,
+            })
+        })
     }
 }
 
@@ -379,21 +374,25 @@ unsafe extern "C" fn resolver_has_module(resolver: *mut c_void, name: *const c_c
 }
 
 #[no_mangle]
-unsafe extern "C" fn resolver_get_source_line_info(
+unsafe extern "C" fn resolver_fill_source_line_info(
     resolver: *mut c_void,
     module: *const c_char,
     address: u64,
     function_name_out: *mut *const c_char,
+    function_name_len_out: *mut usize,
     function_base_out: *mut u64,
     source_file_name_out: *mut *const c_char,
+    source_file_name_len_out: *mut usize,
     source_line_out: *mut u64,
 ) {
     let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
     let module = CStr::from_ptr(module).to_str().unwrap().parse().unwrap();
 
-    if let Some(source_line_info) = resolver.get_source_line_info(&module, address) {
-        *function_name_out = source_line_info.function_name.into_raw();
-        *source_file_name_out = source_line_info.source_file_name.into_raw();
+    if let Some(source_line_info) = resolver.fill_source_line_info(&module, address) {
+        *function_name_out = source_line_info.function_name.as_ptr() as *const i8;
+        *function_name_len_out = source_line_info.function_name.len();
+        *source_file_name_out = source_line_info.source_file_name.as_ptr() as *const i8;
+        *source_file_name_len_out = source_line_info.source_file_name.len();
         *function_base_out = source_line_info.function_base;
         *source_line_out = source_line_info.source_line;
     }

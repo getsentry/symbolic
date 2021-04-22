@@ -48,9 +48,6 @@ class SymbolicSourceLineResolver
         return false;
     }
 
-    void FillSourceLineInfo(StackFrame *frame) {
-    }
-
    private:
     void *resolver_;
     // Disallow unwanted copy ctor and assignment operator
