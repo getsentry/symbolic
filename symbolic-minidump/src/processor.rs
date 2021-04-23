@@ -24,8 +24,8 @@ use regex::Regex;
 
 use symbolic_common::{Arch, ByteView, CpuFamily, DebugId, ParseDebugIdError, Uuid};
 use symbolic_debuginfo::breakpad::{
-    BreakpadStackCfiDeltaRecords, BreakpadStackRecord, BreakpadStackRecords,
-    BreakpadStackWinRecord, BreakpadStackWinRecordType,
+    BreakpadStackCfiDeltaRecords, BreakpadStackCfiRecords, BreakpadStackWinRecord,
+    BreakpadStackWinRecordType, BreakpadStackWinRecords,
 };
 use symbolic_symcache::SymCache;
 use symbolic_unwind::evaluator::{Constant, Identifier};
@@ -208,12 +208,12 @@ struct DwarfUnwindRules<'a> {
     cache: RangeMap<u64, (&'a str, DeltaRules<'a>)>,
 
     /// An iterator over Breakpad stack records that have not yet been read.
-    records_iter: BreakpadStackRecords<'a>,
+    records_iter: BreakpadStackCfiRecords<'a>,
 }
 
 impl<'a> DwarfUnwindRules<'a> {
     /// Creates a new `DwarfUnwindRules` from the given records iterator.
-    fn new(records_iter: BreakpadStackRecords<'a>) -> Self {
+    fn new(records_iter: BreakpadStackCfiRecords<'a>) -> Self {
         Self {
             cache: RangeMap::default(),
             records_iter,
@@ -231,17 +231,14 @@ impl<'a> DwarfUnwindRules<'a> {
             records_iter,
         } = self;
         if cache.get_contents(address).is_none() {
-            for cfi_record in records_iter.filter_map(|r| match r {
-                Ok(BreakpadStackRecord::Cfi(r)) => Some(r),
-                _ => None,
-            }) {
+            for cfi_record in records_iter.filter_map(Result::ok) {
                 let start = cfi_record.start;
                 let end = start + cfi_record.size;
                 let deltas = DeltaRules {
                     inner: cfi_record.deltas().clone(),
                 };
                 cache.insert(start..end, (cfi_record.init_rules, deltas));
-                if start <= address && end > address {
+                if start <= address && address < end {
                     break;
                 }
             }
@@ -273,12 +270,12 @@ struct WinUnwindRules<'a> {
     cache_frame_data: RangeMap<u32, BreakpadStackWinRecord<'a>>,
 
     /// An iterator over Breakpad stack records that have not yet been read.
-    records_iter: BreakpadStackRecords<'a>,
+    records_iter: BreakpadStackWinRecords<'a>,
 }
 
 impl<'a> WinUnwindRules<'a> {
     /// Creates a new `WinUnwindRules` from the given records iterator.
-    fn new(records_iter: BreakpadStackRecords<'a>) -> Self {
+    fn new(records_iter: BreakpadStackWinRecords<'a>) -> Self {
         Self {
             cache_fpo: RangeMap::default(),
             cache_frame_data: RangeMap::default(),
@@ -299,10 +296,7 @@ impl<'a> WinUnwindRules<'a> {
             records_iter,
         } = self;
         if cache_frame_data.get(address).is_none() && cache_fpo.get(address).is_none() {
-            for win_record in records_iter.filter_map(|r| match r {
-                Ok(BreakpadStackRecord::Win(r)) => Some(r),
-                _ => None,
-            }) {
+            for win_record in records_iter.filter_map(Result::ok) {
                 let start = win_record.code_start;
                 let end = start + win_record.code_size;
                 match win_record.ty {
@@ -378,12 +372,12 @@ impl<'a> SymbolicSourceLineResolver<'a> {
             for (id, cache) in frame_infos.iter() {
                 modules_cfi.insert(
                     id,
-                    DwarfUnwindRules::new(BreakpadStackRecords::new(cache.as_slice())),
+                    DwarfUnwindRules::new(BreakpadStackCfiRecords::new(cache.as_slice())),
                 );
 
                 modules_win.insert(
                     id,
-                    WinUnwindRules::new(BreakpadStackRecords::new(cache.as_slice())),
+                    WinUnwindRules::new(BreakpadStackWinRecords::new(cache.as_slice())),
                 );
             }
 
