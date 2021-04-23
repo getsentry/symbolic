@@ -194,37 +194,6 @@ impl<A: Ord + Copy, E> RangeMap<A, E> {
     pub fn get_contents_mut(&mut self, address: A) -> Option<&mut E> {
         self.get_mut(address).map(|(_, contents)| contents)
     }
-
-    /// Retrieves the range covering the given address, or else the last range before the
-    /// address, and the associated contents.
-    ///
-    /// # Example
-    /// ```
-    /// use symbolic_minidump::processor::RangeMap;
-    /// let mut map = RangeMap::default();
-    /// map.insert(0u8..2, "First");
-    /// map.insert(2..4, "Second");
-    /// map.insert(5..7, "Third");
-    ///
-    /// // map now looks like this:
-    /// // |0     1|2      3|   4   |5     6|7 …
-    /// // |"First"|"Second"|<empty>|"Third"|
-    ///
-    /// let (range, contents) = map.get_nearest(4).unwrap();
-    /// assert_eq!(range.start, 2);
-    /// assert_eq!(range.end, 4);
-    /// assert_eq!(*contents, "Second");
-    /// ```
-    pub fn get_nearest(&self, address: A) -> Option<&(Range<A>, E)> {
-        match self
-            .inner
-            .binary_search_by_key(&address, |range| range.0.start)
-        {
-            Ok(index) => self.inner.get(index),
-            Err(index) if index > 0 => self.inner.get(index - 1),
-            _ => None,
-        }
-    }
 }
 
 impl<A, E> Default for RangeMap<A, E> {
