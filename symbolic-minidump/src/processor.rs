@@ -14,6 +14,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::{CStr, CString};
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
+use std::ops::Range;
 use std::os::raw::{c_char, c_void};
 use std::str::FromStr;
 use std::{fmt, slice, str};
@@ -27,15 +28,14 @@ use symbolic_debuginfo::breakpad::{
     BreakpadStackWinRecord, BreakpadStackWinRecordType,
 };
 use symbolic_symcache::SymCache;
-use symbolic_unwind::evaluator::{Constant, Identifier, RangeMap};
+use symbolic_unwind::evaluator::{Constant, Identifier};
 use symbolic_unwind::{MemoryRegion, RuntimeEndian};
 
 use crate::cfi::CfiCache;
 use crate::utils;
 
-type CfiRules<'a> = symbolic_unwind::evaluator::CfiRules<u64, &'a str, DeltaRules<'a>>;
-type CfiModuleMap<'a> = BTreeMap<&'a CodeModuleId, CfiModuleData<'a>>;
-type WinModuleMap<'a> = BTreeMap<&'a CodeModuleId, WinModuleData<'a>>;
+type DwarfUnwindRulesMap<'a> = BTreeMap<&'a CodeModuleId, DwarfUnwindRules<'a>>;
+type WinUnwindRulesMap<'a> = BTreeMap<&'a CodeModuleId, WinUnwindRules<'a>>;
 type SymCacheMap<'a> = BTreeMap<&'a CodeModuleId, SymCache<'a>>;
 type Evaluator<'a, A> = symbolic_unwind::evaluator::Evaluator<'a, A, RuntimeEndian>;
 
@@ -115,35 +115,153 @@ impl<'a> Iterator for DeltaRules<'a> {
     }
 }
 
-/// Struct containing CFI information for a module.
-struct CfiModuleData<'a> {
-    /// CFI rules that have already been read and sorted.
-    cache: CfiRules<'a>,
+/// A structure containing a set of disjoint ranges with attached contents.
+#[derive(Clone, Debug)]
+pub struct RangeMap<A, E> {
+    inner: Vec<(Range<A>, E)>,
+}
+
+impl<A: Ord + Copy, E> RangeMap<A, E> {
+    /// Insert a range into the map.
+    ///
+    /// The range must be disjoint from all ranges that are already present.
+    /// Returns true if the insertion was successful.
+    pub fn insert(&mut self, range: Range<A>, contents: E) -> bool {
+        if let Some(i) = self.free_slot(&range) {
+            self.inner.insert(i, (range, contents));
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Returns the position in the inner vector where the given range could be inserted, if that is possible.
+    fn free_slot(&self, range: &Range<A>) -> Option<usize> {
+        let index = match self.inner.binary_search_by_key(&range.end, |r| r.0.end) {
+            Ok(_) => return None,
+            Err(index) => index,
+        };
+
+        if index > 0 {
+            let before = &self.inner[index - 1];
+            if before.0.end > range.start {
+                return None;
+            }
+        }
+
+        match self.inner.get(index) {
+            Some(after) if after.0.start < range.end => None,
+            _ => Some(index),
+        }
+    }
+
+    /// Retrieves the range covering the given address and the associated contents.
+    pub fn get(&self, address: A) -> Option<&(Range<A>, E)> {
+        let entry = match self
+            .inner
+            .binary_search_by_key(&address, |range| range.0.end)
+        {
+            // This means inner(index).end == address => address might be covered by the next one
+            Ok(index) => self.inner.get(index + 1)?,
+            // This means that inner(index).end > address => this could be the one
+            Err(index) => self.inner.get(index)?,
+        };
+
+        (entry.0.start <= address).then(|| entry)
+    }
+
+    /// Retrieves the range covering the given address, allowing mutation.
+    pub fn get_mut(&mut self, address: A) -> Option<&mut (Range<A>, E)> {
+        let entry = match self
+            .inner
+            .binary_search_by_key(&address, |range| range.0.end)
+        {
+            // This means inner(index).end == address => address might be covered by the next one
+            Ok(index) => self.inner.get_mut(index + 1)?,
+            // This means that inner(index).end > address => this could be the one
+            Err(index) => self.inner.get_mut(index)?,
+        };
+
+        (entry.0.start <= address).then(|| entry)
+    }
+
+    /// Retrieves the contents associated with the given address.
+    pub fn get_contents(&self, address: A) -> Option<&E> {
+        self.get(address).map(|(_, contents)| contents)
+    }
+
+    /// Retrieves the contents associated with the given address, allowing mutation.
+    pub fn get_contents_mut(&mut self, address: A) -> Option<&mut E> {
+        self.get_mut(address).map(|(_, contents)| contents)
+    }
+
+    /// Retrieves the range covering the given address, or else the last range before the
+    /// address, and the associated contents.
+    ///
+    /// # Example
+    /// ```
+    /// use symbolic_minidump::processor::RangeMap;
+    /// let mut map = RangeMap::default();
+    /// map.insert(0u8..2, "First");
+    /// map.insert(2..4, "Second");
+    /// map.insert(5..7, "Third");
+    ///
+    /// // map now looks like this:
+    /// // |0     1|2      3|   4   |5     6|7 …
+    /// // |"First"|"Second"|<empty>|"Third"|
+    ///
+    /// let (range, contents) = map.get_nearest(4).unwrap();
+    /// assert_eq!(range.start, 2);
+    /// assert_eq!(range.end, 4);
+    /// assert_eq!(*contents, "Second");
+    /// ```
+    pub fn get_nearest(&self, address: A) -> Option<&(Range<A>, E)> {
+        match self
+            .inner
+            .binary_search_by_key(&address, |range| range.0.start)
+        {
+            Ok(index) => self.inner.get(index),
+            Err(index) if index > 0 => self.inner.get(index - 1),
+            _ => None,
+        }
+    }
+}
+
+impl<A, E> Default for RangeMap<A, E> {
+    fn default() -> Self {
+        Self { inner: Vec::new() }
+    }
+}
+
+/// Struct containing Dwarf unwind information for a module.
+struct DwarfUnwindRules<'a> {
+    /// Unwind rules that have already been read and sorted.
+    cache: RangeMap<u64, (&'a str, DeltaRules<'a>)>,
 
     /// An iterator over Breakpad stack records that have not yet been read.
     records_iter: BreakpadStackRecords<'a>,
 }
 
-impl<'a> CfiModuleData<'a> {
-    /// Creates a new `CfiModuleData` from the given records iterator.
+impl<'a> DwarfUnwindRules<'a> {
+    /// Creates a new `DwarfUnwindRules` from the given records iterator.
     fn new(records_iter: BreakpadStackRecords<'a>) -> Self {
         Self {
-            cache: CfiRules::default(),
+            cache: RangeMap::default(),
             records_iter,
         }
     }
 
-    /// Retrieves the CFI rules associated with the given address.
+    /// Retrieves the unwind rules associated with the given address.
     ///
     /// If there are no rules for the address in the cache,
     /// the inner iterator is consumed until the rules are found.
     /// All rules consumed on the way are added to the cache.
-    fn get(&mut self, address: u64) -> Option<Vec<&&'a str>> {
-        let CfiModuleData {
+    fn get(&mut self, address: u64) -> Option<Vec<&'a str>> {
+        let DwarfUnwindRules {
             cache,
             records_iter,
         } = self;
-        if cache.get_rules(address).is_none() {
+        if cache.get_contents(address).is_none() {
             for cfi_record in records_iter.filter_map(|r| match r {
                 Ok(BreakpadStackRecord::Cfi(r)) => Some(r),
                 _ => None,
@@ -153,35 +271,39 @@ impl<'a> CfiModuleData<'a> {
                 let deltas = DeltaRules {
                     inner: cfi_record.deltas().clone(),
                 };
-                cache.insert(start..end, cfi_record.init_rules, deltas);
+                cache.insert(start..end, (cfi_record.init_rules, deltas));
                 if start <= address && end > address {
                     break;
                 }
             }
         }
 
-        cache.get_rules(address)
+        let (init, deltas) = cache.get_contents_mut(address)?;
+        let mut result = vec![*init];
+        result.extend(deltas.take_while(|(a, _)| *a <= address).map(|pair| pair.1));
+
+        Some(result)
     }
 }
 
-/// Struct containing windows stack information for a module.
+/// Struct containing windows unwind information for a module.
 ///
 /// This maintains two separate caches for `STACK WIN` records
 /// of types `FPO` and `FrameData`. If both exist for a given address,
 /// the `FrameData` record is preferred.
-struct WinModuleData<'a> {
+struct WinUnwindRules<'a> {
     /// `FPO` records that have already been read and sorted.
     cache_fpo: RangeMap<u32, BreakpadStackWinRecord<'a>>,
 
-    /// `FrameData` recorsd that have already been read and sorted.
+    /// `FrameData` records that have already been read and sorted.
     cache_frame_data: RangeMap<u32, BreakpadStackWinRecord<'a>>,
 
     /// An iterator over Breakpad stack records that have not yet been read.
     records_iter: BreakpadStackRecords<'a>,
 }
 
-impl<'a> WinModuleData<'a> {
-    /// Creates a new `WinModuleData` from the given records iterator.
+impl<'a> WinUnwindRules<'a> {
+    /// Creates a new `WinUnwindRules` from the given records iterator.
     fn new(records_iter: BreakpadStackRecords<'a>) -> Self {
         Self {
             cache_fpo: RangeMap::default(),
@@ -197,7 +319,7 @@ impl<'a> WinModuleData<'a> {
     /// the inner iterator is consumed until a record is found.
     /// All records consumed on the way are added to the respective cache.
     fn get(&mut self, address: u32) -> Option<&BreakpadStackWinRecord<'a>> {
-        let WinModuleData {
+        let WinUnwindRules {
             cache_fpo,
             cache_frame_data,
             records_iter,
@@ -265,10 +387,10 @@ struct SymbolicSourceLineResolver<'a> {
     endian: RuntimeEndian,
 
     /// A map containing Dwarf CFI information for modules.
-    modules_cfi: CfiModuleMap<'a>,
+    unwind_dwarf: DwarfUnwindRulesMap<'a>,
 
     /// A map containing Windows CFI information for modules.
-    modules_win: WinModuleMap<'a>,
+    unwind_win: WinUnwindRulesMap<'a>,
 
     symcaches: SymCacheMap<'a>,
 }
@@ -277,31 +399,31 @@ impl<'a> SymbolicSourceLineResolver<'a> {
     /// Create a new SourceLineResolver from the given frame information.
     fn new(frame_infos: Option<&'a FrameInfoMap<'a>>) -> Self {
         if let Some(frame_infos) = frame_infos {
-            let mut modules_cfi = CfiModuleMap::default();
-            let mut modules_win = WinModuleMap::default();
+            let mut modules_cfi = DwarfUnwindRulesMap::default();
+            let mut modules_win = WinUnwindRulesMap::default();
             for (id, cache) in frame_infos.iter() {
                 modules_cfi.insert(
                     id,
-                    CfiModuleData::new(BreakpadStackRecords::new(cache.as_slice())),
+                    DwarfUnwindRules::new(BreakpadStackRecords::new(cache.as_slice())),
                 );
 
                 modules_win.insert(
                     id,
-                    WinModuleData::new(BreakpadStackRecords::new(cache.as_slice())),
+                    WinUnwindRules::new(BreakpadStackRecords::new(cache.as_slice())),
                 );
             }
 
             Self {
                 endian: RuntimeEndian::Little,
-                modules_cfi,
-                modules_win,
+                unwind_dwarf: modules_cfi,
+                unwind_win: modules_win,
                 symcaches: SymCacheMap::default(),
             }
         } else {
             Self {
                 endian: RuntimeEndian::Little,
-                modules_cfi: CfiModuleMap::new(),
-                modules_win: WinModuleMap::new(),
+                unwind_dwarf: DwarfUnwindRulesMap::new(),
+                unwind_win: WinUnwindRulesMap::new(),
                 symcaches: SymCacheMap::default(),
             }
         }
@@ -309,7 +431,7 @@ impl<'a> SymbolicSourceLineResolver<'a> {
 
     /// Returns true if the module with the given debug identifier has been loaded.
     fn has_module(&self, debug_id: &CodeModuleId) -> bool {
-        self.modules_cfi.contains_key(debug_id)
+        self.unwind_dwarf.contains_key(debug_id)
     }
 
     /// Finds CFI information for a given module and address.
@@ -317,16 +439,11 @@ impl<'a> SymbolicSourceLineResolver<'a> {
     /// "CFI information" here means a [`CfiFrameInfo`] object containing the rules that allow
     /// recovery of the caller's registers givent the callee's registers.
     fn find_cfi_frame_info(&mut self, module: &CodeModuleId, address: u64) -> CfiFrameInfo {
-        let mut rules = Vec::new();
-        if let Some(rules_vec) = self
-            .modules_cfi
+        let rules = self
+            .unwind_dwarf
             .get_mut(module)
-            .and_then(|module_data| module_data.get(address))
-        {
-            for rules_str in rules_vec.iter() {
-                rules.push(**rules_str);
-            }
-        }
+            .and_then(|unwind_rules| unwind_rules.get(address))
+            .unwrap_or_default();
 
         CfiFrameInfo {
             endian: self.endian,
@@ -341,7 +458,7 @@ impl<'a> SymbolicSourceLineResolver<'a> {
         module: &CodeModuleId,
         address: u32,
     ) -> Option<&BreakpadStackWinRecord> {
-        self.modules_win
+        self.unwind_win
             .get_mut(module)
             .and_then(|win_records| win_records.get(address))
     }
