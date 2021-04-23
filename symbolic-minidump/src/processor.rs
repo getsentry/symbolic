@@ -249,7 +249,12 @@ impl<'a> DwarfUnwindRules<'a> {
 
         let (init, deltas) = cache.get_contents_mut(address)?;
         let mut result = vec![*init];
-        result.extend(deltas.take_while(|(a, _)| *a <= address).map(|pair| pair.1));
+        result.extend(
+            deltas
+                .clone()
+                .take_while(|(a, _)| *a <= address)
+                .map(|pair| pair.1),
+        );
 
         Some(result)
     }
