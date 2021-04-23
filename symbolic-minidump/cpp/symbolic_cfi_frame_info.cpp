@@ -3,6 +3,10 @@
 #include "cpp/data_structures.h"
 #include "google_breakpad/processor/minidump.h"
 
+#include "processor/cfi_frame_info.h"
+using google_breakpad::MemoryRegion;
+using google_breakpad::MinidumpMemoryRegion;
+
 extern "C" {
 void cfi_frame_info_free(void *cfi_frame_info);
 regval_t *find_caller_regs_32(void *cfi_frame_info,
@@ -30,21 +34,7 @@ SymbolicCFIFrameInfo::~SymbolicCFIFrameInfo() {
     cfi_frame_info_free(cfi_frame_info_);
 }
 
-// Provide implementations for CFIFrameInfo to change FindCallerRegs, which
-// cannot be declared virtual.
-namespace google_breakpad {
-
-// Dummy generic implementation
-template <typename V>
-bool CFIFrameInfo::FindCallerRegs(const RegisterValueMap<V> &registers,
-                                  const MemoryRegion &memory,
-                                  RegisterValueMap<V> *caller_registers) const {
-    return false;
-};
-
-// Explicit specializations for 32-bit and 64-bit architectures.
-template <>
-bool CFIFrameInfo::FindCallerRegs<uint32_t>(
+bool SymbolicCFIFrameInfo::FindCallerRegs(
     const RegisterValueMap<uint32_t> &registers,
     const MemoryRegion &memory,
     RegisterValueMap<uint32_t> *caller_registers) const {
@@ -79,8 +69,7 @@ bool CFIFrameInfo::FindCallerRegs<uint32_t>(
     return true;
 }
 
-template <>
-bool CFIFrameInfo::FindCallerRegs<uint64_t>(
+bool SymbolicCFIFrameInfo::FindCallerRegs(
     const RegisterValueMap<uint64_t> &registers,
     const MemoryRegion &memory,
     RegisterValueMap<uint64_t> *caller_registers) const {
@@ -114,18 +103,3 @@ bool CFIFrameInfo::FindCallerRegs<uint64_t>(
     regvals_free(caller_registers_vec, caller_registers_size);
     return true;
 }
-
-// noop implementations for unused functions
-
-bool CFIRuleParser::Parse(const string &rule_set) {
-    return false;
-}
-void CFIFrameInfoParseHandler::CFARule(const string &expression) {
-}
-void CFIFrameInfoParseHandler::RARule(const string &expression) {
-}
-void CFIFrameInfoParseHandler::RegisterRule(const string &name,
-                                            const string &expression) {
-}
-
-}  // namespace google_breakpad
