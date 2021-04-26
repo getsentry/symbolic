@@ -448,7 +448,7 @@ impl<'a> LineInfo<'a> {
     }
 
     /// The base dir of the current line.
-    pub fn base_dir(&self) -> &str {
+    pub fn base_dir(&self) -> &'a str {
         self.base_dir
     }
 
@@ -488,7 +488,7 @@ impl<'a> LineInfo<'a> {
     /// The name of the function suitable for demangling.
     ///
     /// Use `symbolic::demangle` for demangling this symbol.
-    pub fn function_name(&self) -> Name<'_> {
+    pub fn function_name(&self) -> Name<'a> {
         Name::new(self.symbol(), NameMangling::Unknown, self.language())
     }
 }
