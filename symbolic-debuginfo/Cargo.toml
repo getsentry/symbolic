@@ -36,6 +36,7 @@ pdb = "0.7.0"
 pest = "2.1.1"
 pest_derive = "2.1.0"
 regex = "1.3.5"
+scroll = "0.10"
 serde = { version = "1.0.94", features = ["derive"] }
 serde_json = "1.0.40"
 smallvec = "1.2.0"
