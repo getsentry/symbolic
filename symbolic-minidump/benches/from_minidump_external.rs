@@ -30,19 +30,25 @@ pub fn minidump_external_benchmark(c: &mut Criterion) {
     let buffer = ByteView::open(&minidump_path).unwrap();
     let state = ProcessState::from_minidump(&buffer, None).unwrap();
 
-    // Reprocess with Call Frame Information
+    // Obtain Call Frame Information
     let frame_info = prepare_cfi(&symbols_path, &state).unwrap();
 
     let mut group = c.benchmark_group("External Minidump");
-    group.measurement_time(Duration::from_secs(12));
 
     group.bench_with_input(
-        BenchmarkId::new("from_minidump_external", "external files"),
-        &(buffer, Some(frame_info)),
+        BenchmarkId::new("from_minidump_breakpad", "external files"),
+        &(&buffer, &frame_info),
         |b, (buffer, frame_info)| {
-            b.iter(|| ProcessState::from_minidump(buffer, frame_info.as_ref()))
+            b.iter(|| ProcessState::from_minidump_breakpad(buffer, Some(frame_info)))
         },
     );
+
+    group.bench_with_input(
+        BenchmarkId::new("from_minidump", "external files"),
+        &(&buffer, &frame_info),
+        |b, (buffer, frame_info)| b.iter(|| ProcessState::from_minidump(buffer, Some(frame_info))),
+    );
+
     group.finish();
 }
 

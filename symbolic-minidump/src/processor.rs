@@ -17,7 +17,7 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use std::os::raw::{c_char, c_void};
 use std::str::FromStr;
-use std::{fmt, slice, str};
+use std::{fmt, ptr, slice, str};
 
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -74,7 +74,14 @@ extern "C" {
     fn system_info_cpu_info(info: *const SystemInfo) -> *mut c_char;
     fn system_info_cpu_count(info: *const SystemInfo) -> u32;
 
-    fn process_minidump(
+    fn process_minidump_breakpad(
+        buffer: *const c_char,
+        buffer_size: usize,
+        symbols: *const SymbolEntry,
+        symbol_count: usize,
+        result: *mut ProcessResult,
+    ) -> *mut IProcessState;
+    fn process_minidump_symbolic(
         buffer: *const c_char,
         buffer_size: usize,
         resolver: *mut c_void,
@@ -1414,6 +1421,14 @@ impl fmt::Display for ProcessMinidumpError {
 
 impl std::error::Error for ProcessMinidumpError {}
 
+/// Internal type used to transfer Breakpad symbols over FFI.
+#[repr(C)]
+struct SymbolEntry {
+    debug_identifier: *const c_char,
+    symbol_size: usize,
+    symbol_data: *const u8,
+}
+
 /// Container for call frame information (CFI) of [`CodeModule`]s.
 ///
 /// This information is required by the stackwalker in case framepointers are
@@ -1439,6 +1454,63 @@ impl<'a> ProcessState<'a> {
     /// process. The parameter `frame_infos` expects a map of Breakpad symbols
     /// containing STACK CFI and STACK WIN records to allow stackwalking with
     /// omitted frame pointers.
+    pub fn from_minidump_breakpad(
+        buffer: &ByteView<'a>,
+        frame_infos: Option<&FrameInfoMap<'_>>,
+    ) -> Result<ProcessState<'a>, ProcessMinidumpError> {
+        let cfi_count = frame_infos.map_or(0, BTreeMap::len);
+        let mut result: ProcessResult = ProcessResult::Ok;
+
+        // Keep a reference to all CStrings to extend their lifetime.
+        let cfi_vec: Vec<_> = frame_infos.map_or(Vec::new(), |s| {
+            s.iter()
+                .map(|(k, v)| {
+                    (
+                        CString::new(k.to_string()),
+                        v.as_slice().len(),
+                        v.as_slice().as_ptr(),
+                    )
+                })
+                .collect()
+        });
+
+        // Keep a reference to all symbol entries to extend their lifetime.
+        let cfi_entries: Vec<_> = cfi_vec
+            .iter()
+            .map(|&(ref id, size, data)| SymbolEntry {
+                debug_identifier: id.as_ref().map(|i| i.as_ptr()).unwrap_or(ptr::null()),
+                symbol_size: size,
+                symbol_data: data,
+            })
+            .collect();
+
+        let internal = unsafe {
+            process_minidump_breakpad(
+                buffer.as_ptr() as *const c_char,
+                buffer.len(),
+                cfi_entries.as_ptr(),
+                cfi_count,
+                &mut result,
+            )
+        };
+
+        if result.is_usable() && !internal.is_null() {
+            Ok(ProcessState {
+                internal,
+                _ty: PhantomData,
+            })
+        } else {
+            unsafe { process_state_delete(internal) };
+            Err(ProcessMinidumpError(result))
+        }
+    }
+
+    /// Processes a minidump supplied via raw binary data.
+    ///
+    /// Returns a `ProcessState` that contains information about the crashed
+    /// process. The parameter `frame_infos` expects a map of Breakpad symbols
+    /// containing STACK CFI and STACK WIN records to allow stackwalking with
+    /// omitted frame pointers.
     pub fn from_minidump(
         buffer: &ByteView<'a>,
         frame_infos: Option<&FrameInfoMap<'_>>,
@@ -1447,7 +1519,7 @@ impl<'a> ProcessState<'a> {
 
         let mut resolver = SymbolicSourceLineResolver::new(frame_infos);
         let internal = unsafe {
-            process_minidump(
+            process_minidump_symbolic(
                 buffer.as_ptr() as *const c_char,
                 buffer.len(),
                 (&mut resolver) as *mut _ as *mut c_void,

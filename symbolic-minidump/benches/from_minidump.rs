@@ -9,6 +9,7 @@ use symbolic_minidump::processor::{FrameInfoMap, ProcessState};
 use symbolic_testutils::fixture;
 
 pub fn minidump_benchmark(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Internal Minidump");
     let buffer = ByteView::open(fixture("linux/mini.dmp")).unwrap();
     let mut frame_info = FrameInfoMap::new();
 
@@ -28,13 +29,21 @@ pub fn minidump_benchmark(c: &mut Criterion) {
         CfiCache::from_bytes(view).unwrap(),
     );
 
-    c.bench_with_input(
-        BenchmarkId::new("from_minidump", "linux/mini.dmp & linux/crash.sym"),
-        &(buffer, Some(frame_info)),
+    group.bench_with_input(
+        BenchmarkId::new("from_minidump_breakpad", "linux/mini.dmp & linux/crash.sym"),
+        &(&buffer, &frame_info),
         |b, (buffer, frame_info)| {
-            b.iter(|| ProcessState::from_minidump(buffer, frame_info.as_ref()))
+            b.iter(|| ProcessState::from_minidump_breakpad(buffer, Some(frame_info)))
         },
     );
+
+    group.bench_with_input(
+        BenchmarkId::new("from_minidump", "linux/mini.dmp & linux/crash.sym"),
+        &(&buffer, &frame_info),
+        |b, (buffer, frame_info)| b.iter(|| ProcessState::from_minidump(buffer, Some(frame_info))),
+    );
+
+    group.finish()
 }
 
 criterion_group!(benches, minidump_benchmark);

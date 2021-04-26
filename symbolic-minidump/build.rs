@@ -46,6 +46,7 @@ fn main() {
         )
         // Processor
         .file("third_party/breakpad/src/processor/basic_code_modules.cc")
+        .file("third_party/breakpad/src/processor/basic_source_line_resolver.cc")
         .file("third_party/breakpad/src/processor/call_stack.cc")
         .file("third_party/breakpad/src/processor/cfi_frame_info.cc")
         .file("third_party/breakpad/src/processor/convert_old_arm64_context.cc")
