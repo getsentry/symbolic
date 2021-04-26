@@ -136,7 +136,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        # Should also run on ubuntu-latest but CI doesn't like this yet.
+        os: [macos-latest]
 
     name: CABI tests on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
