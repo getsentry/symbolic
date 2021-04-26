@@ -131,3 +131,32 @@ jobs:
       - uses: Swatinem/rust-cache@v1
 
       - run: make test-python
+
+  test-cabi:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    name: CABI tests on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - uses: Swatinem/rust-cache@v1
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cbindgen
+
+      - run: cd symbolic-cabi && make test
