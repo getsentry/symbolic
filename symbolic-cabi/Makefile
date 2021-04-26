@@ -31,4 +31,4 @@ include/symbolic.h: *.toml src/*.rs
 
 target/debug/c-tests/%: c-tests/%.c include/symbolic.h
 	@mkdir -p target/debug/c-tests
-	LD_LIBRARY_PATH=../target/debug $(CC) -Iinclude -L../target/debug -lsymbolic_cabi $< -o $@
+	$(CC) -Iinclude -L../target/debug -Ltarget/debug -lsymbolic_cabi $< -o $@
