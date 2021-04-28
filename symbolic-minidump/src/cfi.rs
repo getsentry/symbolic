@@ -31,12 +31,12 @@ use symbolic_debuginfo::breakpad::{
 };
 use symbolic_debuginfo::dwarf::gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error as GimliError,
-    FrameDescriptionEntry, Reader, Register, RegisterRule, UninitializedUnwindContext,
-    UnwindSection,
+    FrameDescriptionEntry, Reader, ReaderOffset, Register, RegisterRule,
+    UninitializedUnwindContext, UnwindSection,
 };
 use symbolic_debuginfo::dwarf::Dwarf;
 use symbolic_debuginfo::macho::{
-    CompactCfiOp, CompactCfiRegister, CompactUnwindInfoIter, MachError, MachObject,
+    CompactCfiOp, CompactCfiRegister, CompactUnwindInfoIter, CompactUnwindOp, MachError, MachObject,
 };
 use symbolic_debuginfo::pdb::pdb::{self, FallibleIterator, FrameData, Rva, StringTable};
 use symbolic_debuginfo::pdb::PdbObject;
@@ -341,11 +341,22 @@ impl<W: Write> AsciiCfiWriter<W> {
     }
 
     fn process_macho<'d>(&mut self, object: &MachObject<'d>) -> Result<(), CfiError> {
-        let has_compact_info = object.has_section("unwind_info");
+        let compact_unwind_info = object.compact_unwind_info()?;
 
-        let result = self.process_dwarf(object, has_compact_info);
-        if has_compact_info {
-            self.read_compact_unwind_info(object.compact_unwind_info()?.unwrap())?;
+        // If we have compact_unwind_info, then any important entries in
+        // the eh_frame section will be explicitly requested by the
+        // Compact Unwinding Info. So skip processing that section for now.
+        let should_skip_eh_frame = compact_unwind_info.is_some();
+        let result = self.process_dwarf(object, should_skip_eh_frame);
+
+        if let Some(compact_unwind_info) = compact_unwind_info {
+            let eh_section = object.section("eh_frame");
+            let eh_frame_info = eh_section.as_ref().map(|section| {
+                let endian = object.endianity();
+                let frame = EhFrame::new(&section.data, endian);
+                UnwindInfo::new(object, section.address, frame)
+            });
+            self.read_compact_unwind_info(compact_unwind_info, eh_frame_info.as_ref())?;
         }
         result
     }
@@ -383,10 +394,15 @@ impl<W: Write> AsciiCfiWriter<W> {
         debug_frame_result
     }
 
-    fn read_compact_unwind_info<'d>(
+    fn read_compact_unwind_info<'d, U, R>(
         &mut self,
         mut iter: CompactUnwindInfoIter<'d>,
-    ) -> Result<(), CfiError> {
+        eh_frame_info: Option<&UnwindInfo<U>>,
+    ) -> Result<(), CfiError>
+    where
+        R: Reader + Eq,
+        U: UnwindSection<R>,
+    {
         fn write_reg_name<W: Write>(
             writer: &mut W,
             register: CompactCfiRegister,
@@ -402,42 +418,61 @@ impl<W: Write> AsciiCfiWriter<W> {
             Ok(())
         }
 
+        // Initialize an unwind context once and reuse it for the entire section.
+        let mut ctx = UninitializedUnwindContext::new();
+
         while let Some(entry) = iter.next()? {
-            if let Some(instructions) = entry.cfi_instructions(&iter) {
-                let mut line = Vec::new();
-                let start_addr = entry.instruction_address;
-                let length = entry.len;
-                write!(line, "STACK CFI INIT {:x} {:x} ", start_addr, length)?;
-
-                for instruction in instructions {
-                    // These two operations differ only in whether there should
-                    // be a deref (^) at the end, so we can flatten away their
-                    // differences and merge paths.
-                    let (dest_reg, src_reg, offset, should_deref) = match instruction {
-                        CompactCfiOp::RegisterAt {
-                            dest_reg,
-                            src_reg,
-                            offset_from_src,
-                        } => (dest_reg, src_reg, offset_from_src, true),
-                        CompactCfiOp::RegisterIs {
-                            dest_reg,
-                            src_reg,
-                            offset_from_src,
-                        } => (dest_reg, src_reg, offset_from_src, false),
-                    };
-
-                    write_reg_name(&mut line, dest_reg, &iter)?;
-                    write!(line, ": ")?;
-                    write_reg_name(&mut line, src_reg, &iter)?;
-                    write!(line, " {} + ", offset)?;
-                    if should_deref {
-                        write!(line, "^ ")?;
+            match entry.instructions(&iter) {
+                CompactUnwindOp::None => { /* do nothing */ }
+                CompactUnwindOp::UseDwarfFde { offset_in_eh_frame } => {
+                    // We need to grab the CFI info from the eh_frame section
+                    if let Some(info) = eh_frame_info {
+                        let offset = U::Offset::from(R::Offset::from_u32(offset_in_eh_frame));
+                        if let Ok(fde) =
+                            info.section
+                                .fde_from_offset(&info.bases, offset, U::cie_from_offset)
+                        {
+                            self.process_fde(info, &mut ctx, &fde)?
+                        }
                     }
                 }
+                CompactUnwindOp::CfiOps(ops) => {
+                    // We just need to output a bunch of CFI expressions in a single CFI INIT
+                    let mut line = Vec::new();
+                    let start_addr = entry.instruction_address;
+                    let length = entry.len;
+                    write!(line, "STACK CFI INIT {:x} {:x} ", start_addr, length)?;
 
-                self.inner
-                    .write_all(&line)
-                    .and_then(|_| writeln!(self.inner))?;
+                    for instruction in ops {
+                        // These two operations differ only in whether there should
+                        // be a deref (^) at the end, so we can flatten away their
+                        // differences and merge paths.
+                        let (dest_reg, src_reg, offset, should_deref) = match instruction {
+                            CompactCfiOp::RegisterAt {
+                                dest_reg,
+                                src_reg,
+                                offset_from_src,
+                            } => (dest_reg, src_reg, offset_from_src, true),
+                            CompactCfiOp::RegisterIs {
+                                dest_reg,
+                                src_reg,
+                                offset_from_src,
+                            } => (dest_reg, src_reg, offset_from_src, false),
+                        };
+
+                        write_reg_name(&mut line, dest_reg, &iter)?;
+                        write!(line, ": ")?;
+                        write_reg_name(&mut line, src_reg, &iter)?;
+                        write!(line, " {} + ", offset)?;
+                        if should_deref {
+                            write!(line, "^ ")?;
+                        }
+                    }
+
+                    self.inner
+                        .write_all(&line)
+                        .and_then(|_| writeln!(self.inner))?;
+                }
             }
         }
         Ok(())

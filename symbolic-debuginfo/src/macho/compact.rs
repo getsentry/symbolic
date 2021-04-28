@@ -41,7 +41,6 @@
 //! * Personality/LSDA lookup (for runtime unwinders)
 //! * Entry lookup by address (for runtime unwinders)
 //! * x86/x64 Stackless-Indirect mode decoding (for stack frames > 2KB)
-//! * x86/x64 DWARF mode decoding (for when compact unwinding defers to the DWARF in eh_frame)
 //!
 //!
 //! # The Compact Unwinding Format
@@ -697,6 +696,20 @@ enum X86UnwindingMode {
     Dwarf,
 }
 
+/// A Compact Unwinding Operation
+pub enum CompactUnwindOp {
+    /// The instructions can be described with simple CFI operations.
+    CfiOps(std::vec::IntoIter<CompactCfiOp>),
+    /// Instructions can't be encoded by Compact Unwinding, but an FDE
+    /// with real DWARF CFI instructions are stored in the eh_frame section.
+    UseDwarfFde {
+        /// The offset in the eh_frame section where the FDE is.
+        offset_in_eh_frame: u32,
+    },
+    /// Nothing to do (may be unimplemented features or an unknown encoding)
+    None,
+}
+
 /// Minimal set of CFI ops needed to express Compact Unwinding semantics:
 #[derive(Debug, Clone)]
 pub enum CompactCfiOp {
@@ -1124,24 +1137,18 @@ impl SecondLevelPage {
 
 impl CompactUnwindInfoEntry {
     /// Gets cfi instructions associated with this entry.
-    pub fn cfi_instructions(
-        &self,
-        iter: &CompactUnwindInfoIter,
-    ) -> Option<impl Iterator<Item = CompactCfiOp>> {
-        self.opcode.cfi_instructions(iter)
+    pub fn instructions(&self, iter: &CompactUnwindInfoIter) -> CompactUnwindOp {
+        self.opcode.instructions(iter)
     }
 }
 
 // Arch-generic stuff
 impl Opcode {
-    fn cfi_instructions(
-        &self,
-        iter: &CompactUnwindInfoIter,
-    ) -> Option<impl Iterator<Item = CompactCfiOp>> {
+    fn instructions(&self, iter: &CompactUnwindInfoIter) -> CompactUnwindOp {
         match iter.arch {
-            Arch::X86 | Arch::X64 => self.x86_cfi_instructions(iter),
-            Arch::Arm64 => self.arm64_cfi_instructions(iter),
-            _ => None,
+            Arch::X86 | Arch::X64 => self.x86_instructions(iter),
+            Arch::Arm64 => self.arm64_instructions(iter),
+            _ => CompactUnwindOp::None,
         }
     }
 
@@ -1174,10 +1181,7 @@ impl Opcode {
 
 // x86/x64 implementation
 impl Opcode {
-    fn x86_cfi_instructions(
-        &self,
-        iter: &CompactUnwindInfoIter,
-    ) -> Option<std::vec::IntoIter<CompactCfiOp>> {
+    fn x86_instructions(&self, iter: &CompactUnwindInfoIter) -> CompactUnwindOp {
         let pointer_size = self.pointer_size(iter) as i32;
         // TODO: don't allocate for this (use ArrayVec..?)
         match self.x86_mode() {
@@ -1218,7 +1222,7 @@ impl Opcode {
                         });
                     }
                 }
-                Some(ops.into_iter())
+                CompactUnwindOp::CfiOps(ops.into_iter())
             }
             Some(X86UnwindingMode::StackImmediate) => {
                 // This function doesn't have the standard rbp-based prelude,
@@ -1253,7 +1257,7 @@ impl Opcode {
                         offset += 1;
                     }
                 }
-                Some(ops.into_iter())
+                CompactUnwindOp::CfiOps(ops.into_iter())
             }
             Some(X86UnwindingMode::StackIndirect) => {
                 // TODO: implement this? Perhaps there is no reasonable implementation
@@ -1263,10 +1267,15 @@ impl Opcode {
                 //
                 // Either way it's not urgent, since this mode is only needed for
                 // stack frames that are bigger than ~2KB.
-                None
+                CompactUnwindOp::None
             }
-            Some(X86UnwindingMode::Dwarf) => None,
-            None => None,
+            Some(X86UnwindingMode::Dwarf) => {
+                // Oops! It was in the eh_frame all along.
+
+                let offset_in_eh_frame = self.x86_dwarf_fde();
+                CompactUnwindOp::UseDwarfFde { offset_in_eh_frame }
+            }
+            None => CompactUnwindOp::None,
         }
     }
 
@@ -1403,6 +1412,10 @@ impl Opcode {
             CompactCfiRegister::from_encoded(registers[5]),
         ]
     }
+
+    fn x86_dwarf_fde(&self) -> u32 {
+        self.0 & 0x00FF_FFFF
+    }
     /*
     // potentially needed for future work:
 
@@ -1410,20 +1423,14 @@ impl Opcode {
         let offset = 32 - 8 - 8 - 3;
         (self.0 >> offset) & 0b111
     }
-    fn x86_dwarf_fde(&self) -> u32 {
-        self.0 & 0x00FF_FFFF
-    }
     */
 }
 
 // ARM64 implementation
 impl Opcode {
-    fn arm64_cfi_instructions(
-        &self,
-        _iter: &CompactUnwindInfoIter,
-    ) -> Option<std::vec::IntoIter<CompactCfiOp>> {
+    fn arm64_instructions(&self, _iter: &CompactUnwindInfoIter) -> CompactUnwindOp {
         // TODO: implement ARM64 decoding
-        None
+        CompactUnwindOp::None
     }
 }
 
