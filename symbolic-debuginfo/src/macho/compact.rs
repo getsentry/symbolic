@@ -7,33 +7,134 @@
 //!
 //! The CompactUnwindInfoIter lets you iterate through all of the mappings
 //! from instruction addresses to unwinding instructions, or lookup a specific
-//! mapping by instruction address.
+//! mapping by instruction address (unimplemented).
 //!
-//! Example:
 //!
-//! ```rust,ignore
-//! fn process_dwarf<'d: 'o, 'o, O>(&mut self, object: &O) -> error::Result<(), CfiError>
-//!     where
-//!         O: ObjectLike<'d, 'o> + Dwarf<'o>,
+//!
+//! # Examples
+//!
+//! If you want to process all the Compact Unwind Info at once, do something like this:
+//!
+//! ```
+//! use symbolic_debuginfo::macho::{
+//!     CompactCfiOp, CompactCfiRegister, CompactUnwindOp,
+//!     CompactUnwindInfoIter, MachError, MachObject,
+//! };
+//!
+//! fn read_compact_unwind_info<'d>(mut iter: CompactUnwindInfoIter<'d>)
+//!     -> Result<(), MachError>
 //! {
-//!     let endian = object.endianity();
-//!     if let Some(section) = object.section("unwind_info") {
-//!         let frame = UnwindInfoFrame::new(&section.data, endian);
-//!         let info = CompactUnwindInfo::new(object, section.address, frame);
+//!     // Iterate through the entries
+//!     while let Some(entry) = iter.next()? {
+//!         match entry.instructions(&iter) {
+//!             CompactUnwindOp::None => {
+//!                 // No instructions for this region, will need to use
+//!                 // stack scanning or frame-pointer techniques to unwind.
+//!             }
+//!             CompactUnwindOp::UseDwarfFde { offset_in_eh_frame } => {
+//!                 // Need to grab the CFI info from the eh_frame section
 //!
-//!         let mut iter = info.iter()?;
-//!         while let Some(entry) = iter.next()? {
-//!             let base_address = entry.instruction_address;
-//!             let len = entry.len;
-//!             if let Some(instructions) = entry.cfi_instructions(&iter) {
-//!                 for instruction in instructions {
-//!                     // Interpret the CFI instructions
+//!                 // process_eh_frame_fde_at(offset_in_eh_frame)
+//!             }
+//!             CompactUnwindOp::CfiOps(ops) => {
+//!                 // Emit a new entry with the following operations
+//!                 let start_addr = entry.instruction_address;
+//!                 let length = entry.len;
+//!
+//!                 for instruction in ops {
+//!                     match instruction {
+//!                         CompactCfiOp::RegisterAt {
+//!                             dest_reg,
+//!                             src_reg,
+//!                             offset_from_src,
+//!                         } => {
+//!                             let dest_reg_name = dest_reg.name(&iter);
+//!                             let src_reg_name = src_reg.name(&iter);
+//!
+//!                             // Emit something to the effect of
+//!                             // $dest_reg_name = *($src_reg_name + offset_from_src);
+//!                         }
+//!                         CompactCfiOp::RegisterIs {
+//!                             dest_reg,
+//!                             src_reg,
+//!                             offset_from_src,
+//!                         } => {
+//!                             let dest_reg_name = dest_reg.name(&iter);
+//!                             let src_reg_name = src_reg.name(&iter);
+//!
+//!                             // Emit something to the effect of
+//!                             // $dest_reg_name = $src_reg_name + offset_from_src;
+//!                         }
+//!                     };
 //!                 }
 //!             }
 //!         }
 //!     }
+//!     Ok(())
 //! }
 //! ```
+//!
+//! If you want to unwind from a specific location, do something like this
+//! (API not yet implemented!):
+//!
+//! ```
+//! use symbolic_debuginfo::macho::{
+//!     CompactCfiOp, CompactCfiRegister, CompactUnwindOp,
+//!     CompactUnwindInfoIter, MachError, MachObject,
+//! };
+//!
+//! fn unwind_one_frame<'d>(mut iter: CompactUnwindInfoIter<'d>, current_address_in_module: u32)
+//!     -> Result<(), MachError>
+//! {
+//!     if let Some(entry) = iter.entry_for_address(current_address_in_module)? {
+//!         match entry.instructions(&iter) {
+//!             CompactUnwindOp::None => {
+//!                 // No instructions for this region, will need to use
+//!                 // stack scanning or frame-pointer techniques to unwind.
+//!             }
+//!             CompactUnwindOp::UseDwarfFde { offset_in_eh_frame } => {
+//!                 // Need to grab the CFI info from the eh_frame section
+//!
+//!                 // process_eh_frame_fde_at(offset_in_eh_frame)
+//!             }
+//!             CompactUnwindOp::CfiOps(ops) => {
+//!                 // Emit a new entry with the following operations
+//!                 let start_addr = entry.instruction_address;
+//!                 let length = entry.len;
+//!
+//!                 for instruction in ops {
+//!                     match instruction {
+//!                         CompactCfiOp::RegisterAt {
+//!                             dest_reg,
+//!                             src_reg,
+//!                             offset_from_src,
+//!                         } => {
+//!                             let dest_reg_name = dest_reg.name(&iter);
+//!                             let src_reg_name = src_reg.name(&iter);
+//!
+//!                             // Emit something to the effect of
+//!                             // $dest_reg_name = *($src_reg_name + offset_from_src);
+//!                         }
+//!                         CompactCfiOp::RegisterIs {
+//!                             dest_reg,
+//!                             src_reg,
+//!                             offset_from_src,
+//!                         } => {
+//!                             let dest_reg_name = dest_reg.name(&iter);
+//!                             let src_reg_name = src_reg.name(&iter);
+//!
+//!                             // Emit something to the effect of
+//!                             // $dest_reg_name = $src_reg_name + offset_from_src;
+//!                         }
+//!                     };
+//!                 }
+//!             }
+//!         }
+//!     }
+//!     Ok(())
+//! }
+//! ```
+//!
 //!
 //! # Unimplemented Features (TODO)
 //!
@@ -137,7 +238,7 @@
 //! address, and any entries that would have the same opcode as the
 //! previous one are elided. So for instance the following:
 //!
-//! ```
+//! ```text
 //! address: 1, opcode: 1
 //! address: 2, opcode: 1
 //! address: 3, opcode: 2
@@ -145,7 +246,7 @@
 //!
 //! Is just encoded like this:
 //!
-//! ```
+//! ```text
 //! address: 1, opcode: 1
 //! address: 3, opcode: 2
 //! ```
@@ -173,10 +274,10 @@
 //! page, allowing for more efficient binary search for a particular function
 //! offset entry. (This is the base address the compressed pages use.)
 //!
-//! The root page also seems to always have a sentinel entry which has a null
-//! pointer to its second-level page, but does specify a first address, which
+//! The root page always has a final sentinel entry which has a null pointer
+//! to its second-level page while still specifying a first address. This
 //! makes it easy to lookup the maximum mapped address (the sentinel will store
-//! that value +1).
+//! that value +1), and just generally makes everything Work Nicer.
 //!
 //!
 //!
@@ -305,6 +406,11 @@
 //!
 //! There are 3 architecture-specific opcode formats: x86, x64, and ARM64.
 //!
+//! All 3 formats have a "null opcode" (0x0000_0000) which indicates that
+//! there is no unwinding information for this range of addresses. This happens
+//! with things like hand-written assembly subroutines. This implementation
+//! will yield it as a valid opcode that converts into CompactUnwindOp::None.
+//!
 //! All 3 formats share a common header in the top 8 bits (from high to low):
 //!
 //! ```rust,ignore
@@ -353,8 +459,9 @@
 //!
 //! There are 4 kinds of x86/x64 opcodes (specified by opcode_kind):
 //!
-//! (One of the llvm headers refers to "0=old", but nothing else seems to
-//! produce it or refer to it, so let's assume that's a typo for now.)
+//! (One of the llvm headers refers to a 5th "0=old" opcode, but nothing else
+//! refers to it or handles it. It does incidentally match the "null opcode",
+//! but it's fine to regard that as an unknown opcode and do nothing.)
 //!
 //!
 //! ### x86 Opcode Mode 1: BP-Based
@@ -888,7 +995,7 @@ impl<'a> CompactUnwindInfoIter<'a> {
     }
 
     /// Gets the entry associated with a particular address.
-    pub fn entry_for_address(&mut self, _address: u32) -> Option<CompactUnwindInfoEntry> {
+    pub fn entry_for_address(&mut self, _address: u32) -> Result<Option<CompactUnwindInfoEntry>> {
         // TODO: this would be nice for an actual unwinding implementation, but
         // dumping all of the entries doesn't need this.
         unimplemented!()
