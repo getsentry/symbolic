@@ -5,6 +5,7 @@ use std::slice;
 use std::str::FromStr;
 
 use symbolic::common::{ByteView, CodeId, DebugId, SelfCell};
+use symbolic::debuginfo::macho::{BcSymbolMap, UuidMapping};
 use symbolic::debuginfo::{Archive, Object};
 
 use crate::core::SymbolicStr;
@@ -31,6 +32,20 @@ pub struct SymbolicObjectFeatures {
     debug: bool,
     unwind: bool,
     sources: bool,
+}
+
+/// A `BCSymbolMap`.
+pub struct SymbolicBcSymbolMap;
+
+impl ForeignObject for SymbolicBcSymbolMap {
+    type RustObject = SelfCell<ByteView<'static>, BcSymbolMap<'static>>;
+}
+
+/// A UUID mapping.
+pub struct SymbolicUuidMapping;
+
+impl ForeignObject for SymbolicUuidMapping {
+    type RustObject = UuidMapping;
 }
 
 ffi_fn! {
@@ -140,6 +155,42 @@ ffi_fn! {
     /// Frees an object returned from an archive.
     unsafe fn symbolic_object_free(object: *mut SymbolicObject) {
         SymbolicObject::drop(object);
+    }
+}
+
+ffi_fn! {
+    /// Loads a BCSymbolmap from a given path
+    unsafe fn symbolic_bcsymbolmap_open(path: *const c_char,) -> Result<*mut SymbolicBcSymbolMap> {
+        let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
+        let cell = SelfCell::try_new(byteview, |ptr| BcSymbolMap::parse(&*ptr))?;
+        Ok(SymbolicBcSymbolMap::from_rust(cell))
+    }
+}
+
+ffi_fn! {
+    /// Frees the given BcSymbolMap.
+    unsafe fn symbolic_bcsymbolmap_free(bcsymbolmap: *mut SymbolicBcSymbolMap) {
+        SymbolicBcSymbolMap::drop(bcsymbolmap)
+    }
+}
+
+ffi_fn! {
+    /// Loads a UuidMapping by parsing the PList at `path`.
+    unsafe fn symbolic_uuidmapping_from_plist(
+        debug_id: *const SymbolicStr,
+        path: *const c_char,
+    ) -> Result<*mut SymbolicUuidMapping> {
+        let debug_id = DebugId::from_str((*debug_id).as_str())?;
+        let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
+        let mapping = UuidMapping::parse_plist(debug_id, &byteview)?;
+        Ok(SymbolicUuidMapping::from_rust(mapping))
+    }
+}
+
+ffi_fn! {
+    /// Frees the given UuidMapping.
+    unsafe fn symbolic_uuidmapping_free(mapping: *mut SymbolicUuidMapping) {
+        SymbolicUuidMapping::drop(mapping)
     }
 }
 
