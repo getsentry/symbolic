@@ -219,6 +219,7 @@ class ObjectLookup(object):
 
 class BcSymbolMap(RustObject):
     """Object representing an Apple ``.bcsymbolmap`` file."""
+
     __dealloc_func__ = lib.symbolic_bcsymbolmap_free
 
     @classmethod
@@ -226,13 +227,12 @@ class BcSymbolMap(RustObject):
         """Parses a BCSymbolMap file."""
         if isinstance(path, text_type):
             path = path.encode("utf-8")
-        return cls._from_objptr(
-            rustcall(lib.symbolic_bcsymbolmap_open, path)
-        )
+        return cls._from_objptr(rustcall(lib.symbolic_bcsymbolmap_open, path))
 
 
 class UuidMapping(RustObject):
     """Object represenging a mapping from one DebugID to another."""
+
     __dealloc_func__ = lib.symbolic_uuidmapping_free
 
     @classmethod
