@@ -231,7 +231,7 @@ class BcSymbolMap(RustObject):
 
 
 class UuidMapping(RustObject):
-    """Object represenging a mapping from one DebugID to another."""
+    """Object representing a mapping from one DebugID to another."""
 
     __dealloc_func__ = lib.symbolic_uuidmapping_free
 
