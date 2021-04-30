@@ -432,7 +432,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                             info.section
                                 .fde_from_offset(&info.bases, offset, U::cie_from_offset)
                         {
-                            self.process_fde(info, &mut ctx, &fde)?
+                            self.process_fde(info, &mut ctx, &fde)?;
                         }
                     }
                 }

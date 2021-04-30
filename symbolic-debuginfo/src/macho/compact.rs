@@ -818,7 +818,7 @@ pub enum CompactUnwindOp {
 }
 
 /// Minimal set of CFI ops needed to express Compact Unwinding semantics:
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompactCfiOp {
     /// The value of `dest_reg` is *stored at* `src_reg + offset_from_src`.
     RegisterAt {
@@ -1627,5 +1627,1151 @@ fn name_of_other_reg(reg: u8, iter: &CompactUnwindInfoIter) -> Option<&'static s
             */
         }
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::{CompactCfiOp, CompactCfiRegister, CompactUnwindInfoIter, CompactUnwindOp, Opcode};
+    use crate::macho::MachError;
+    use scroll::Pwrite;
+    use symbolic_common::Arch;
+
+    // All Second-level pages have this much memory to work with, let's stick to that
+    const PAGE_SIZE: usize = 4096;
+    const REGULAR_PAGE_HEADER_LEN: usize = 8;
+    const COMPRESSED_PAGE_HEADER_LEN: usize = 12;
+    const MAX_REGULAR_SECOND_LEVEL_ENTRIES: usize = (PAGE_SIZE - REGULAR_PAGE_HEADER_LEN) / 8;
+    const MAX_COMPRESSED_SECOND_LEVEL_ENTRIES: usize = (PAGE_SIZE - COMPRESSED_PAGE_HEADER_LEN) / 4;
+    const MAX_COMPRESSED_SECOND_LEVEL_ENTRIES_WITH_MAX_LOCALS: usize =
+        (PAGE_SIZE - COMPRESSED_PAGE_HEADER_LEN - MAX_LOCAL_OPCODES_LEN as usize * 4) / 4;
+
+    // Mentioned by headers, but seems to have no real significance
+    const MAX_GLOBAL_OPCODES_LEN: u32 = 127;
+    const MAX_LOCAL_OPCODES_LEN: u32 = 128;
+
+    // Only 2 bits are allocated to this index
+    const MAX_PERSONALITIES_LEN: u32 = 4;
+
+    const X86_MODE_RBP_FRAME: u32 = 0x0100_0000;
+    const X86_MODE_STACK_IMMD: u32 = 0x0200_0000;
+    const X86_MODE_STACK_IND: u32 = 0x0300_0000;
+    const X86_MODE_DWARF: u32 = 0x0400_0000;
+
+    const REGULAR_PAGE_KIND: u32 = 2;
+    const COMPRESSED_PAGE_KIND: u32 = 3;
+
+    fn align(offset: u32, align: u32) -> u32 {
+        // Adding `align - 1` to a value push unaligned values to the next multiple,
+        // and integer division + multiplication can then remove the remainder.
+        ((offset + align - 1) / align) * align
+    }
+    fn pack_x86_rbp_registers(regs: [u8; 5]) -> u32 {
+        let mut result: u32 = 0;
+        let base_offset = 24 - 3;
+        for (idx, &reg) in regs.iter().enumerate() {
+            assert!(reg <= 6);
+            result |= (reg as u32 & 0b111) << (base_offset - idx * 3);
+        }
+
+        result
+    }
+    fn pack_x86_stackless_registers(num_regs: u32, registers: [u8; 6]) -> u32 {
+        for &reg in &registers {
+            assert!(reg <= 6);
+        }
+
+        // Also copied from llvm implementation
+        let mut renumregs = [0u32; 6];
+        for i in 6 - num_regs..6 {
+            let mut countless = 0;
+            for j in 6 - num_regs..i {
+                if registers[j as usize] < registers[i as usize] {
+                    countless += 1;
+                }
+            }
+            renumregs[i as usize] = registers[i as usize] as u32 - countless - 1;
+        }
+        let mut permutation_encoding: u32 = 0;
+        match num_regs {
+            6 => {
+                permutation_encoding |= 120 * renumregs[0]
+                    + 24 * renumregs[1]
+                    + 6 * renumregs[2]
+                    + 2 * renumregs[3]
+                    + renumregs[4];
+            }
+            5 => {
+                permutation_encoding |= 120 * renumregs[1]
+                    + 24 * renumregs[2]
+                    + 6 * renumregs[3]
+                    + 2 * renumregs[4]
+                    + renumregs[5];
+            }
+            4 => {
+                permutation_encoding |=
+                    60 * renumregs[2] + 12 * renumregs[3] + 3 * renumregs[4] + renumregs[5];
+            }
+            3 => {
+                permutation_encoding |= 20 * renumregs[3] + 4 * renumregs[4] + renumregs[5];
+            }
+            2 => {
+                permutation_encoding |= 5 * renumregs[4] + renumregs[5];
+            }
+            1 => {
+                permutation_encoding |= renumregs[5];
+            }
+            0 => {
+                // do nothing
+            }
+            _ => unreachable!(),
+        }
+        permutation_encoding
+    }
+    fn assert_opcodes_match<A, B>(mut a: A, mut b: B)
+    where
+        A: Iterator<Item = CompactCfiOp>,
+        B: Iterator<Item = CompactCfiOp>,
+    {
+        while let (Some(a_op), Some(b_op)) = (a.next(), b.next()) {
+            assert_eq!(a_op, b_op);
+        }
+        assert!(b.next().is_none());
+        assert!(a.next().is_none());
+    }
+
+    #[test]
+    // Make sure we error out for an unknown version of this section
+    fn test_compact_unknown_version() -> Result<(), MachError> {
+        {
+            let offset = &mut 0;
+            let mut section = vec![0u8; 1024];
+
+            // Version 0 doesn't exist
+            section.gwrite(0u32, offset)?;
+
+            assert!(CompactUnwindInfoIter::new(&section, true, Arch::Amd64).is_err());
+        }
+
+        {
+            let offset = &mut 0;
+            let mut section = vec![0; 1024];
+
+            // Version 2 doesn't exist
+            section.gwrite(2u32, offset)?;
+            assert!(CompactUnwindInfoIter::new(&section, true, Arch::X86).is_err());
+        }
+        Ok(())
+    }
+
+    #[test]
+    // Make sure we handle a section with no entries reasonably
+    fn test_compact_empty() -> Result<(), MachError> {
+        let offset = &mut 0;
+        let mut section = vec![0u8; 1024];
+
+        // Just set the version, everything else is 0
+        section.gwrite(1u32, offset)?;
+
+        let mut iter = CompactUnwindInfoIter::new(&section, true, Arch::Amd64)?;
+        assert!(iter.next()?.is_none());
+        assert!(iter.next()?.is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    // Create a reasonable structure that has both kinds of second-level pages
+    // and poke at some corner cases. opcode values are handled opaquely, just
+    // checking that they roundtrip correctly.
+    fn test_compact_structure() -> Result<(), MachError> {
+        let global_opcodes: Vec<u32> = vec![0, 2, 4, 7];
+        assert!(global_opcodes.len() <= MAX_GLOBAL_OPCODES_LEN as usize);
+        let personalities: Vec<u32> = vec![7, 12, 3];
+        assert!(personalities.len() <= MAX_PERSONALITIES_LEN as usize);
+
+        // instruction_address, lsda_address
+        let lsdas: Vec<(u32, u32)> = vec![(0, 1), (7, 3), (18, 5)];
+
+        // first_instruction_address, second_page_offset, lsda_offset
+        let mut first_entries: Vec<(u32, u32, u32)> = vec![];
+
+        // Values we will be testing
+
+        // page entries are instruction_address, opcode
+        let mut regular_entries: Vec<Vec<(u32, u32)>> = vec![
+            // Some data
+            vec![(1, 7), (3, 8), (6, 10), (10, 4)],
+            vec![(20, 5), (21, 2), (24, 7), (25, 0)],
+            // Page len 1
+            vec![(29, 8)],
+        ];
+        let mut compressed_entries: Vec<Vec<(u32, u32)>> = vec![
+            // Some data
+            vec![(10001, 7), (10003, 8), (10006, 10), (10010, 4)],
+            vec![(10020, 5), (10021, 2), (10024, 7), (10025, 0)],
+            // Page len 1
+            vec![(10029, 8)],
+        ];
+
+        // max-len regular page
+        let mut temp = vec![];
+        let base_instruction = 100;
+        for i in 0..MAX_REGULAR_SECOND_LEVEL_ENTRIES {
+            temp.push((base_instruction + i as u32, i as u32))
+        }
+        regular_entries.push(temp);
+
+        // max-len compact page (only global entries)
+        let mut temp = vec![];
+        let base_instruction = 10100;
+        for i in 0..MAX_COMPRESSED_SECOND_LEVEL_ENTRIES {
+            temp.push((base_instruction + i as u32, 2))
+        }
+        compressed_entries.push(temp);
+
+        // max-len compact page (max local entries)
+        let mut temp = vec![];
+        let base_instruction = 14100;
+        for i in 0..MAX_COMPRESSED_SECOND_LEVEL_ENTRIES_WITH_MAX_LOCALS {
+            temp.push((
+                base_instruction + i as u32,
+                100 + (i as u32 % MAX_LOCAL_OPCODES_LEN),
+            ))
+        }
+        compressed_entries.push(temp);
+
+        // Compute the format
+
+        // First temporarily write the second level pages into other buffers
+        let mut second_level_pages: Vec<[u8; PAGE_SIZE]> = vec![];
+        for page in &regular_entries {
+            second_level_pages.push([0; PAGE_SIZE]);
+            let buf = second_level_pages.last_mut().unwrap();
+            let buf_offset = &mut 0;
+
+            // kind
+            buf.gwrite(REGULAR_PAGE_KIND, buf_offset)?;
+
+            // entry array offset + len
+            buf.gwrite(REGULAR_PAGE_HEADER_LEN as u16, buf_offset)?;
+            buf.gwrite(page.len() as u16, buf_offset)?;
+
+            for &(insruction_address, opcode) in page {
+                buf.gwrite(insruction_address, buf_offset)?;
+                buf.gwrite(opcode, buf_offset)?;
+            }
+        }
+
+        for page in &compressed_entries {
+            second_level_pages.push([0; PAGE_SIZE]);
+            let buf = second_level_pages.last_mut().unwrap();
+            let buf_offset = &mut 0;
+
+            // Compute a palete for local opcodes
+            // (this is semi-quadratic in that it can do 255 * 1000 iterations, it's fine)
+            let mut local_opcodes = vec![];
+            let mut indices = vec![];
+            for &(_, opcode) in page {
+                if let Some((idx, _)) = global_opcodes
+                    .iter()
+                    .enumerate()
+                    .find(|&(_, &global_opcode)| global_opcode == opcode)
+                {
+                    indices.push(idx);
+                } else if let Some((idx, _)) = local_opcodes
+                    .iter()
+                    .enumerate()
+                    .find(|&(_, &global_opcode)| global_opcode == opcode)
+                {
+                    indices.push(global_opcodes.len() + idx);
+                } else {
+                    local_opcodes.push(opcode);
+                    indices.push(global_opcodes.len() + local_opcodes.len() - 1);
+                }
+            }
+            assert!(local_opcodes.len() <= MAX_LOCAL_OPCODES_LEN as usize);
+
+            let entries_offset = COMPRESSED_PAGE_HEADER_LEN + local_opcodes.len() * 4;
+            let first_address = page.first().unwrap().0;
+            // kind
+            buf.gwrite(COMPRESSED_PAGE_KIND, buf_offset)?;
+
+            // entry array offset + len
+            buf.gwrite(entries_offset as u16, buf_offset)?;
+            buf.gwrite(page.len() as u16, buf_offset)?;
+
+            // local opcodes array + len
+            buf.gwrite(COMPRESSED_PAGE_HEADER_LEN as u16, buf_offset)?;
+            buf.gwrite(local_opcodes.len() as u16, buf_offset)?;
+
+            for opcode in local_opcodes {
+                buf.gwrite(opcode, buf_offset)?;
+            }
+            for (&(instruction_address, _opcode), idx) in page.iter().zip(indices) {
+                let compressed_address = (instruction_address - first_address) & 0x00FF_FFFF;
+                let compressed_idx = (idx as u32) << 24;
+                assert_eq!(compressed_address + first_address, instruction_address);
+                assert_eq!(idx & 0xFFFF_FF00, 0);
+
+                let compressed_opcode: u32 = compressed_address | compressed_idx;
+                buf.gwrite(compressed_opcode, buf_offset)?;
+            }
+        }
+
+        let header_size: u32 = 4 * 7;
+        let global_opcodes_offset: u32 = header_size;
+        let personalities_offset: u32 = global_opcodes_offset + global_opcodes.len() as u32 * 4;
+        let first_entries_offset: u32 = personalities_offset + personalities.len() as u32 * 4;
+        let lsdas_offset: u32 = first_entries_offset + (second_level_pages.len() + 1) as u32 * 12;
+        let second_level_pages_offset: u32 =
+            align(lsdas_offset + lsdas.len() as u32 * 8, PAGE_SIZE as u32);
+        let final_size: u32 =
+            second_level_pages_offset + second_level_pages.len() as u32 * PAGE_SIZE as u32;
+
+        // Validate that we have strictly monotonically increasing addresses,
+        // and build the first-level entries.
+        let mut cur_address = 0;
+        for (idx, page) in regular_entries
+            .iter()
+            .chain(compressed_entries.iter())
+            .enumerate()
+        {
+            let first_address = page.first().unwrap().0;
+            let page_offset = second_level_pages_offset + PAGE_SIZE as u32 * idx as u32;
+            first_entries.push((first_address, page_offset, lsdas_offset));
+
+            for &(address, _) in page {
+                assert!(address > cur_address);
+                cur_address = address;
+            }
+        }
+        assert_eq!(second_level_pages.len(), first_entries.len());
+        // Push the null page into our first_entries
+        first_entries.push((cur_address, 0, 0));
+
+        // Now actually emit the binary
+
+        let offset = &mut 0;
+        let mut section = vec![0u8; final_size as usize];
+
+        // Write the header
+        section.gwrite(1u32, offset)?;
+
+        section.gwrite(global_opcodes_offset, offset)?;
+        section.gwrite(global_opcodes.len() as u32, offset)?;
+
+        section.gwrite(personalities_offset, offset)?;
+        section.gwrite(personalities.len() as u32, offset)?;
+
+        section.gwrite(first_entries_offset, offset)?;
+        section.gwrite(first_entries.len() as u32, offset)?;
+
+        // Write the arrays
+        assert_eq!(*offset as u32, global_opcodes_offset);
+        for &opcode in &global_opcodes {
+            section.gwrite(opcode, offset)?;
+        }
+        assert_eq!(*offset as u32, personalities_offset);
+        for &personality in &personalities {
+            section.gwrite(personality, offset)?;
+        }
+        assert_eq!(*offset as u32, first_entries_offset);
+        for &entry in &first_entries {
+            section.gwrite(entry.0, offset)?;
+            section.gwrite(entry.1, offset)?;
+            section.gwrite(entry.2, offset)?;
+        }
+        assert_eq!(*offset as u32, lsdas_offset);
+        for &lsda in &lsdas {
+            section.gwrite(lsda.0, offset)?;
+            section.gwrite(lsda.1, offset)?;
+        }
+
+        // Write the pages
+        *offset = second_level_pages_offset as usize;
+        for second_level_page in &second_level_pages {
+            for byte in second_level_page {
+                section.gwrite(byte, offset)?;
+            }
+        }
+
+        // Now test that all the data roundtrips correctly:
+
+        let mut iter = CompactUnwindInfoIter::new(&section, true, Arch::Amd64)?;
+        let mut orig_entries = regular_entries
+            .iter()
+            .chain(compressed_entries.iter())
+            .flatten();
+
+        while let (Some(entry), Some((orig_address, orig_opcode))) =
+            (iter.next()?, orig_entries.next())
+        {
+            assert_eq!(entry.instruction_address, *orig_address);
+            assert_eq!(entry.opcode.0, *orig_opcode);
+        }
+
+        // Confirm both were completely exhausted at the same time
+        assert!(iter.next()?.is_none());
+        assert_eq!(orig_entries.next(), None);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_compact_opcodes_x86() -> Result<(), MachError> {
+        // Make an empty but valid section to initialize the CompactUnwindInfoIter
+        let pointer_size = 4;
+        let frameless_reg_count_offset = 32 - 8 - 8 - 3 - 3;
+        let frameless_stack_size_offset = 32 - 8 - 8;
+        let offset = &mut 0;
+        let mut section = vec![0u8; 1024];
+        // Just set the version, everything else is 0
+        section.gwrite(1u32, offset)?;
+
+        let iter = CompactUnwindInfoIter::new(&section, true, Arch::X86)?;
+
+        // Check that the null opcode is handled reasonably
+        {
+            let opcode = Opcode(0);
+            assert!(matches!(opcode.instructions(&iter), CompactUnwindOp::None));
+        }
+
+        // Check that dwarf opcodes work
+        {
+            let opcode = Opcode(X86_MODE_DWARF | 0x00123456);
+            assert!(matches!(
+                opcode.instructions(&iter),
+                CompactUnwindOp::UseDwarfFde {
+                    offset_in_eh_frame: 0x00123456
+                }
+            ));
+        }
+
+        // Check that rbp opcodes work
+        {
+            // Simple, no general registers to restore
+            let stack_size: i32 = 0xa1;
+            let registers = [0, 0, 0, 0, 0];
+            let opcode =
+                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::frame_pointer(),
+                    offset_from_src: 2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::frame_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+        {
+            // One general register to restore
+            let stack_size: i32 = 0x13;
+            let registers = [1, 0, 0, 0, 0];
+            let opcode =
+                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::frame_pointer(),
+                    offset_from_src: 2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::frame_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(1).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 0) * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+        {
+            // All general register slots used
+            let stack_size: i32 = 0xc2;
+            let registers = [2, 3, 4, 5, 6];
+            let opcode =
+                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::frame_pointer(),
+                    offset_from_src: 2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::frame_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(2).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 0) * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(3).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 1) * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(4).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 2) * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(5).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 3) * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(6).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 4) * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+        {
+            // Holes in the general registers
+            let stack_size: i32 = 0xa7;
+            let registers = [2, 0, 4, 0, 6];
+            let opcode =
+                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::frame_pointer(),
+                    offset_from_src: 2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::frame_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(2).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 0) * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(4).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 2) * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(6).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 4) * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+
+        // Check that stack-immediate opcodes work
+        {
+            // Simple, no general registers to restore
+            let stack_size: i32 = 0xa1;
+            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let num_regs = 0;
+            let packed_num_regs = num_regs << frameless_reg_count_offset;
+            let registers = [0, 0, 0, 0, 0, 0];
+            let opcode = Opcode(
+                X86_MODE_STACK_IMMD
+                    | pack_x86_stackless_registers(num_regs, registers)
+                    | packed_num_regs
+                    | packed_stack_size,
+            );
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::stack_pointer(),
+                    offset_from_src: stack_size * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+        {
+            // One general register to restore
+            let stack_size: i32 = 0x13;
+            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let num_regs = 1;
+            let packed_num_regs = num_regs << frameless_reg_count_offset;
+            let registers = [0, 0, 0, 0, 0, 1];
+            let opcode = Opcode(
+                X86_MODE_STACK_IMMD
+                    | pack_x86_stackless_registers(num_regs, registers)
+                    | packed_num_regs
+                    | packed_stack_size,
+            );
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::stack_pointer(),
+                    offset_from_src: stack_size * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(1).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+        {
+            // All general register slots used
+            let stack_size: i32 = 0xc1;
+            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let num_regs = 6;
+            let packed_num_regs = num_regs << frameless_reg_count_offset;
+            let registers = [1, 2, 3, 4, 5, 6];
+            let opcode = Opcode(
+                X86_MODE_STACK_IMMD
+                    | pack_x86_stackless_registers(num_regs, registers)
+                    | packed_num_regs
+                    | packed_stack_size,
+            );
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::stack_pointer(),
+                    offset_from_src: stack_size * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(6).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(5).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -3 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(4).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -4 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(3).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -5 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(2).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -6 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(1).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -7 * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+        {
+            // Some general registers
+            let stack_size: i32 = 0xf1;
+            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let num_regs = 3;
+            let packed_num_regs = num_regs << frameless_reg_count_offset;
+            let registers = [0, 0, 0, 2, 4, 6];
+            let opcode = Opcode(
+                X86_MODE_STACK_IMMD
+                    | pack_x86_stackless_registers(num_regs, registers)
+                    | packed_num_regs
+                    | packed_stack_size,
+            );
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::stack_pointer(),
+                    offset_from_src: stack_size * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(6).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(4).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -3 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(2).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -4 * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+
+        // Check that stack-indirect opcodes work (feature unimplemented)
+        {
+            let _opcode = Opcode(X86_MODE_STACK_IND);
+            // ... tests
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_compact_opcodes_x64() -> Result<(), MachError> {
+        // Make an empty but valid section to initialize the CompactUnwindInfoIter
+        let pointer_size = 8;
+        let frameless_reg_count_offset = 32 - 8 - 8 - 3 - 3;
+        let frameless_stack_size_offset = 32 - 8 - 8;
+        let offset = &mut 0;
+        let mut section = vec![0u8; 1024];
+        // Just set the version, everything else is 0
+        section.gwrite(1u32, offset)?;
+
+        let iter = CompactUnwindInfoIter::new(&section, true, Arch::Amd64)?;
+
+        // Check that the null opcode is handled reasonably
+        {
+            let opcode = Opcode(0);
+            assert!(matches!(opcode.instructions(&iter), CompactUnwindOp::None));
+        }
+
+        // Check that dwarf opcodes work
+        {
+            let opcode = Opcode(X86_MODE_DWARF | 0x00123456);
+            assert!(matches!(
+                opcode.instructions(&iter),
+                CompactUnwindOp::UseDwarfFde {
+                    offset_in_eh_frame: 0x00123456
+                }
+            ));
+        }
+
+        // Check that rbp opcodes work
+        {
+            // Simple, no general registers to restore
+            let stack_size: i32 = 0xa1;
+            let registers = [0, 0, 0, 0, 0];
+            let opcode =
+                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::frame_pointer(),
+                    offset_from_src: 2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::frame_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+        {
+            // One general register to restore
+            let stack_size: i32 = 0x13;
+            let registers = [1, 0, 0, 0, 0];
+            let opcode =
+                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::frame_pointer(),
+                    offset_from_src: 2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::frame_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(1).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 0) * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+        {
+            // All general register slots used
+            let stack_size: i32 = 0xc2;
+            let registers = [2, 3, 4, 5, 6];
+            let opcode =
+                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::frame_pointer(),
+                    offset_from_src: 2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::frame_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(2).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 0) * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(3).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 1) * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(4).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 2) * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(5).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 3) * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(6).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 4) * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+        {
+            // Holes in the general registers
+            let stack_size: i32 = 0xa7;
+            let registers = [2, 0, 4, 0, 6];
+            let opcode =
+                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::frame_pointer(),
+                    offset_from_src: 2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::frame_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(2).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 0) * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(4).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 2) * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(6).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: (stack_size + 2 - 4) * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+
+        // Check that stack-immediate opcodes work
+        {
+            // Simple, no general registers to restore
+            let stack_size: i32 = 0xa1;
+            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let num_regs = 0;
+            let packed_num_regs = num_regs << frameless_reg_count_offset;
+            let registers = [0, 0, 0, 0, 0, 0];
+            let opcode = Opcode(
+                X86_MODE_STACK_IMMD
+                    | pack_x86_stackless_registers(num_regs, registers)
+                    | packed_num_regs
+                    | packed_stack_size,
+            );
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::stack_pointer(),
+                    offset_from_src: stack_size * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+        {
+            // One general register to restore
+            let stack_size: i32 = 0x13;
+            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let num_regs = 1;
+            let packed_num_regs = num_regs << frameless_reg_count_offset;
+            let registers = [0, 0, 0, 0, 0, 1];
+            let opcode = Opcode(
+                X86_MODE_STACK_IMMD
+                    | pack_x86_stackless_registers(num_regs, registers)
+                    | packed_num_regs
+                    | packed_stack_size,
+            );
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::stack_pointer(),
+                    offset_from_src: stack_size * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(1).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+        {
+            // All general register slots used
+            let stack_size: i32 = 0xc1;
+            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let num_regs = 6;
+            let packed_num_regs = num_regs << frameless_reg_count_offset;
+            let registers = [1, 2, 3, 4, 5, 6];
+            let opcode = Opcode(
+                X86_MODE_STACK_IMMD
+                    | pack_x86_stackless_registers(num_regs, registers)
+                    | packed_num_regs
+                    | packed_stack_size,
+            );
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::stack_pointer(),
+                    offset_from_src: stack_size * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(6).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(5).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -3 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(4).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -4 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(3).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -5 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(2).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -6 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(1).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -7 * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+        {
+            // Some general registers
+            let stack_size: i32 = 0xf1;
+            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let num_regs = 3;
+            let packed_num_regs = num_regs << frameless_reg_count_offset;
+            let registers = [0, 0, 0, 2, 4, 6];
+            let opcode = Opcode(
+                X86_MODE_STACK_IMMD
+                    | pack_x86_stackless_registers(num_regs, registers)
+                    | packed_num_regs
+                    | packed_stack_size,
+            );
+            let expected = vec![
+                CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::stack_pointer(),
+                    offset_from_src: stack_size * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(6).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(4).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -3 * pointer_size,
+                },
+                CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::from_encoded(2).unwrap(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -4 * pointer_size,
+                },
+            ];
+
+            match opcode.instructions(&iter) {
+                CompactUnwindOp::CfiOps(ops) => assert_opcodes_match(ops, expected.into_iter()),
+                _ => unreachable!(),
+            }
+        }
+
+        // Check that stack-indirect opcodes work (feature unimplemented)
+        {
+            let _opcode = Opcode(X86_MODE_STACK_IND);
+            // ... tests
+        }
+
+        Ok(())
     }
 }
