@@ -459,9 +459,12 @@
 //!
 //! There are 4 kinds of x86/x64 opcodes (specified by opcode_kind):
 //!
-//! (One of the llvm headers refers to a 5th "0=old" opcode, but nothing else
-//! refers to it or handles it. It does incidentally match the "null opcode",
-//! but it's fine to regard that as an unknown opcode and do nothing.)
+//! (One of the llvm headers refers to a 5th "0=old" opcode. Apparently this
+//! was used for initial development of the format, and is basically just
+//! reserved to prevent the testing data from ever getting mixed with real
+//! data. Mothing should produce or handle it. It does incidentally match
+//! the "null opcode", but it's fine to regard that as an unknown opcode
+//! and do nothing.)
 //!
 //!
 //! ### x86 Opcode Mode 1: BP-Based
@@ -617,8 +620,108 @@
 //!        5-bits X reg pairs saved
 //!  DWARF:
 //!        24-bits offset of DWARF FDE in __eh_frame section
-//!
 //! ```
+//!
+//!
+//! # Notable Corners
+//!
+//! Here's some notable corner cases and esoterica of the format. Behaviour in
+//! these situations is not strictly guaranteed (as in we may decide to
+//! make the implemenation more strict or liberal if it is deemed necessary
+//! or desirable). But current behaviour *is* documented here for the sake of
+//! maintenance/debugging. Hopefully it also helps highlight all the ways things
+//! can go wrong for anyone using this documentation to write their own tooling.
+//!
+//! For all these cases, if an Error is reported during iteration/search, the
+//! CompactUnwindInfoIter will be in an unspecified state for future queries.
+//! It will never violate memory safety but it may start yielding chaotic
+//! values.
+//!
+//! If this implementation ever panics, that should be regarded as an
+//! an implementation bug.
+//!
+//!
+//! Things we allow:
+//!
+//! * The personalities array has a 32-bit length, but all indices into
+//!   it are only 2 bits. As such, it is theoretically possible for there
+//!   to be unindexable personalities. In practice that Shouldn't Happen,
+//!   and this implementation won't report an error if it does, because it
+//!   can be benign (although we have no way to tell if indices were truncated).
+//!
+//! * The llvm headers say that at most there should be 127 global opcodes
+//!   and 128 local opcodes, but since local index translation is based on
+//!   the actual number of global opcodes and *not* 127/128, there's no
+//!   reason why each palette should be individually limited like this.
+//!   This implementation doesn't report an error if this happens, and should
+//!   work fine if it does.
+//!
+//! * The llvm headers say that second-level pages are *actual* pages at
+//!   a fixed size of 4096 bytes. It's unclear what advantage this provides,
+//!   perhaps there's a situation where you're mapping in the pages on demand?
+//!   This puts a practical limit on the number of entries each second-level
+//!   page can hold -- regular pages can fit 511 entries, while compressed
+//!   pages can hold 1021 entries+local_opcodes (they have to share). This
+//!   implementation does not report an error if a second-level page has more
+//!   values than that, and should work fine if it does.
+//!
+//! * If a CompactUnwindInfoIter is created for an architecture it wasn't
+//!   designed for, it is assumed that the layout of the page tables will
+//!   remain the same, and entry iteration/lookup should still work and
+//!   produce results. However Opcode::instructions will always return
+//!   CompactUnwindingOp::None.
+//!
+//! * If an opcode kind is encountered that this implementation wasn't
+//!   designed for, Opcode::instructions will return CompactUnwindingOp::None.
+//!
+//! * Only 7 register mappings are provided for x86/x64 opcodes, but the
+//!   3-bit encoding allows for 8. This implementation will just map the
+//!   8th encoding to "no register" as well.
+//!
+//! * Only 6 registers can be restored by the x86/x64 stackless modes, but
+//!   the 3-bit encoding of the register count allows for 7. This implementation
+//!   clamps the value to 6.
+//!
+//!
+//! Things we produce errors for:
+//!
+//! * If the root page has a version this implementation wasn't designed for,
+//!   CompactUnwindInfoIter::new will return an Error.
+//!
+//! * A corrupt unwind_info section may have its entries out of order. Since
+//!   the next entry's instruction_address is always needed to compute the
+//!   number of bytes the current entry cover, the implementation will report
+//!   an error if it encounters this. However it does not attempt to fully
+//!   validate the ordering during an entry_for_address query, as this would
+//!   significantly slow down the binary search. In this situation
+//!   you may get chaotic results (same guarantees as BTreeMap with an
+//!   inconsistent Ord implementation).
+//!
+//! * A corrupt unwind_info section may attempt to index out of bounds either
+//!   with out-of-bounds offset values (e.g. personalities_offset) or with out
+//!   of bounds indices (e.g. a local opcode index). When an array length is
+//!   provided, this implementation will return an error if an index is out
+//!   out of bounds. Offsets are only restricted to the unwind_info
+//!   section itself, as this implementation does not assume arrays are
+//!   placed in any particular place, and does not try to prevent aliasing.
+//!   Trying to access outside the unwind_info section will return an error.
+//!
+//! * If an unknown second-level page type is encountered, iteration/lookup will
+//!   return an error.
+//!
+//!
+//! Things that cause chaos:
+//!
+//! * If the null page was missing, there would be no way to identify the
+//!   number of instruction bytes the last entry in the table covers. As such,
+//!   this implementation assumes that it exists, and currently does not validate
+//!   it ahead of time. If the null page *is* missing, the last entry or page
+//!   may be treated as the null page, and won't be emitted. (Perhaps we should
+//!   provide more reliable behaviour here?)
+//!
+//! * If there are multiple null pages, or if there is a page with a defined
+//!   second-level page but no entries of its own, behaviour is unspecified.
+//!
 
 use crate::macho::MachError;
 use goblin::error::Error;
@@ -1078,6 +1181,12 @@ impl<'a> CompactUnwindInfoIter<'a> {
         first_level_entry: &FirstLevelPageEntry,
         second_level_page: &SecondLevelPage,
     ) -> Result<CompactUnwindInfoEntry> {
+        if entry.instruction_address >= next_entry_instruction_address {
+            return Err(MachError::from(Error::Malformed(format!(
+                "Entry addresses are not strictly monotonic! ({} >= {})",
+                entry.instruction_address, next_entry_instruction_address
+            ))));
+        }
         let opcode = match entry.opcode_or_index {
             OpcodeOrIndex::Opcode(opcode) => opcode,
             OpcodeOrIndex::Index(opcode_idx) => {
@@ -1431,7 +1540,12 @@ impl Opcode {
 
     fn x86_frameless_register_count(&self) -> u32 {
         let offset = 32 - 8 - 8 - 3 - 3;
-        (self.0 >> offset) & 0b111
+        let register_count = (self.0 >> offset) & 0b111;
+        if register_count > 6 {
+            6
+        } else {
+            register_count
+        }
     }
 
     fn x86_frameless_registers(&self) -> [Option<CompactCfiRegister>; 6] {
@@ -1797,7 +1911,9 @@ mod test {
         // first_instruction_address, second_page_offset, lsda_offset
         let mut first_entries: Vec<(u32, u32, u32)> = vec![];
 
-        // Values we will be testing
+        /////////////////////////////////////////////////
+        //          Values we will be testing          //
+        /////////////////////////////////////////////////
 
         // page entries are instruction_address, opcode
         let mut regular_entries: Vec<Vec<(u32, u32)>> = vec![
@@ -1842,7 +1958,9 @@ mod test {
         }
         compressed_entries.push(temp);
 
-        // Compute the format
+        ///////////////////////////////////////////////////////
+        //               Compute the format                  //
+        ///////////////////////////////////////////////////////
 
         // First temporarily write the second level pages into other buffers
         let mut second_level_pages: Vec<[u8; PAGE_SIZE]> = vec![];
@@ -1949,9 +2067,11 @@ mod test {
         }
         assert_eq!(second_level_pages.len(), first_entries.len());
         // Push the null page into our first_entries
-        first_entries.push((cur_address, 0, 0));
+        first_entries.push((cur_address + 1, 0, 0));
 
-        // Now actually emit the binary
+        ///////////////////////////////////////////////////////
+        //                  Emit the binary                  //
+        ///////////////////////////////////////////////////////
 
         let offset = &mut 0;
         let mut section = vec![0u8; final_size as usize];
@@ -1997,7 +2117,9 @@ mod test {
             }
         }
 
-        // Now test that all the data roundtrips correctly:
+        ///////////////////////////////////////////////////////
+        //         Test that everything roundtrips           //
+        ///////////////////////////////////////////////////////
 
         let mut iter = CompactUnwindInfoIter::new(&section, true, Arch::Amd64)?;
         let mut orig_entries = regular_entries
