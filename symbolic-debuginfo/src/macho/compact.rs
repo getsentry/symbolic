@@ -909,7 +909,7 @@ enum X86UnwindingMode {
 /// A Compact Unwinding Operation
 pub enum CompactUnwindOp {
     /// The instructions can be described with simple CFI operations.
-    CfiOps(std::vec::IntoIter<CompactCfiOp>),
+    CfiOps(CompactCfiOpIter),
     /// Instructions can't be encoded by Compact Unwinding, but an FDE
     /// with real DWARF CFI instructions are stored in the eh_frame section.
     UseDwarfFde {
@@ -952,6 +952,16 @@ pub enum CompactCfiRegister {
     Cfa,
     /// Any other register, restricted to those referenced by Compact Unwinding.
     Other(u8),
+}
+
+/// An iterator over the `CompactCfiOp`s yielded by `CompactUnwindOp::CfiOps`.
+#[derive(Debug, Clone)]
+pub struct CompactCfiOpIter {
+    // This is just a hacky impl of an ArrayVec to avoid depending on it, and
+    // avoid allocating. This ends up storing 8 u64's if enum optimizations
+    // work the way I expect.
+    items: [Option<CompactCfiOp>; 8],
+    cur_idx: usize,
 }
 
 impl<'a> CompactUnwindInfoIter<'a> {
@@ -1399,30 +1409,29 @@ impl Opcode {
 impl Opcode {
     fn x86_instructions(&self, iter: &CompactUnwindInfoIter) -> CompactUnwindOp {
         let pointer_size = self.pointer_size(iter) as i32;
-        // TODO: don't allocate for this (use ArrayVec..?)
         match self.x86_mode() {
             Some(X86UnwindingMode::RbpFrame) => {
                 // This function has the standard function prelude and rbp
                 // has been preserved. Additionally, any callee-saved registers
                 // that haven't been preserved (x86_rbp_registers) are saved on
                 // the stack at x86_rbp_stack_offset.
-                let mut ops = vec![
-                    CompactCfiOp::RegisterIs {
-                        dest_reg: CompactCfiRegister::Cfa,
-                        src_reg: CompactCfiRegister::frame_pointer(),
-                        offset_from_src: 2 * pointer_size,
-                    },
-                    CompactCfiOp::RegisterAt {
-                        dest_reg: CompactCfiRegister::frame_pointer(),
-                        src_reg: CompactCfiRegister::Cfa,
-                        offset_from_src: -2 * pointer_size,
-                    },
-                    CompactCfiOp::RegisterAt {
-                        dest_reg: CompactCfiRegister::instruction_pointer(),
-                        src_reg: CompactCfiRegister::Cfa,
-                        offset_from_src: -1 * pointer_size,
-                    },
-                ];
+                let mut ops = CompactCfiOpIter::new();
+
+                ops.push(CompactCfiOp::RegisterIs {
+                    dest_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::frame_pointer(),
+                    offset_from_src: 2 * pointer_size,
+                });
+                ops.push(CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::frame_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -2 * pointer_size,
+                });
+                ops.push(CompactCfiOp::RegisterAt {
+                    dest_reg: CompactCfiRegister::instruction_pointer(),
+                    src_reg: CompactCfiRegister::Cfa,
+                    offset_from_src: -1 * pointer_size,
+                });
 
                 // These offsets are relative to the frame pointer, but
                 // cfi prefers things to be relative to the cfa, so apply
@@ -1446,7 +1455,7 @@ impl Opcode {
                 // and any callee-saved registers that haven't been preserved are
                 // saved *immediately* after the location at rip.
 
-                let mut ops = vec![];
+                let mut ops = CompactCfiOpIter::new();
 
                 let stack_size = self.x86_frameless_stack_size();
                 ops.push(CompactCfiOp::RegisterIs {
@@ -1741,6 +1750,42 @@ fn name_of_other_reg(reg: u8, iter: &CompactUnwindInfoIter) -> Option<&'static s
             */
         }
         _ => None,
+    }
+}
+
+impl CompactCfiOpIter {
+    fn new() -> Self {
+        Self {
+            items: [None, None, None, None, None, None, None, None],
+            cur_idx: 0,
+        }
+    }
+
+    fn push(&mut self, item: CompactCfiOp) {
+        // Will panic if we overflow, but that's fine, the buffer should be
+        // sized to fit any payload we need, since that's bounded.
+        self.items[self.cur_idx] = Some(item);
+        self.cur_idx += 1;
+    }
+
+    /// Resets cur_idx for this to be used as an iterator,
+    /// because I'm too lazy to make *another* type for this.
+    fn into_iter(mut self) -> Self {
+        self.cur_idx = 0;
+        self
+    }
+}
+
+impl Iterator for CompactCfiOpIter {
+    type Item = CompactCfiOp;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.cur_idx < self.items.len() {
+            let old_idx = self.cur_idx;
+            self.cur_idx += 1;
+            self.items[old_idx].take()
+        } else {
+            None
+        }
     }
 }
 
