@@ -2,7 +2,7 @@ use std::fmt;
 
 use symbolic_common::{Arch, AsSelf, DebugId, Language, Name, NameMangling};
 
-use crate::error::{SymCacheError, SymCacheErrorKind};
+use crate::error::SymCacheError;
 use crate::format;
 
 /// A platform independent symbolication cache.
@@ -262,12 +262,12 @@ impl<'a> SymCache<'a> {
         addr: u64,
         inner_sym: Option<(u32, u64, &'a str, &'a str)>,
     ) -> Result<LineInfo<'a>, SymCacheError> {
-        let (line, line_addr, filename, base_dir) =
-            if let Some((line_addr, file_id, line)) = self.run_to_line(fun, addr)? {
-                // A missing file record indicates a bad symcache.
-                let file_record = read_file_record(self.data, self.header.files, file_id)?
-                    .ok_or(SymCacheErrorKind::BadCacheFile)?;
-
+        let (line, line_addr, filename, base_dir) = if let Some((line_addr, file_id, line)) =
+            self.run_to_line(fun, addr)?
+        {
+            // A missing file record indicates a bad symcache or too many files, which we handle
+            // gracefully here.
+            if let Some(file_record) = read_file_record(self.data, self.header.files, file_id)? {
                 // The address was found in the function's line records, so use
                 // it directly. This should is the default case for all valid
                 // debugging information and the majority of all frames.
@@ -277,23 +277,26 @@ impl<'a> SymCache<'a> {
                     file_record.filename.read_str(self.data)?,
                     file_record.base_dir.read_str(self.data)?,
                 )
-            } else if let Some(inner_sym) = inner_sym {
-                // The source line was not declared in this function. This
-                // happens, if the function body consists of a single inlined
-                // function call. Usually, the `SymCacheWriter` should emit a
-                // synthetic line record in this case; but if debug symbols did
-                // not provide sufficient information, we will still hit this
-                // case. Use the inlined frame's source location as a
-                // replacement to point somewhere useful.
-                inner_sym
             } else {
-                // We were unable to find any source code. This can happen for
-                // synthetic functions, such as Swift method thunks. In that
-                // case, we can only return empty line information. Also top-
-                // level functions without line records pulled from the symbol
-                // table will hit this branch.
-                (0, 0, "", "")
-            };
+                (line, line_addr, "", "")
+            }
+        } else if let Some(inner_sym) = inner_sym {
+            // The source line was not declared in this function. This
+            // happens, if the function body consists of a single inlined
+            // function call. Usually, the `SymCacheWriter` should emit a
+            // synthetic line record in this case; but if debug symbols did
+            // not provide sufficient information, we will still hit this
+            // case. Use the inlined frame's source location as a
+            // replacement to point somewhere useful.
+            inner_sym
+        } else {
+            // We were unable to find any source code. This can happen for
+            // synthetic functions, such as Swift method thunks. In that
+            // case, we can only return empty line information. Also top-
+            // level functions without line records pulled from the symbol
+            // table will hit this branch.
+            (0, 0, "", "")
+        };
 
         Ok(LineInfo {
             arch: self.arch(),
@@ -733,7 +736,7 @@ fn read_symbol(
     symbols: format::Seg<format::Seg<u8, u16>>,
     index: u32,
 ) -> Result<Option<&str>, SymCacheError> {
-    if index == !0 {
+    if index == u32::MAX {
         Ok(None)
     } else if let Some(symbol) = symbols.get(data, index)? {
         symbol.read_str(data).map(Some)
@@ -748,7 +751,7 @@ fn read_file_record(
     files: format::Seg<format::FileRecord, u16>,
     index: u16,
 ) -> Result<Option<&format::FileRecord>, SymCacheError> {
-    if index == !0 {
+    if index == u16::MAX {
         Ok(None)
     } else {
         files.get(data, index)

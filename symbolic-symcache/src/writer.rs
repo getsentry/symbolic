@@ -381,8 +381,10 @@ where
             return Ok(*index);
         }
 
-        if self.files.len() >= std::u16::MAX as usize {
-            return Err(SymCacheErrorKind::TooManyValues(ValueKind::File).into());
+        // TODO: Instead of failing hard when exceeding the maximum allowed number of files, we rather
+        // emit `u16::MAX` which is already treated as a sentinel value for unknown file entries.
+        if self.files.len() >= u16::MAX as usize {
+            return Ok(u16::MAX);
         }
 
         let index = self.files.len() as u16;
