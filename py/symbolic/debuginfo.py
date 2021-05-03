@@ -13,6 +13,8 @@ __all__ = [
     "Archive",
     "Object",
     "ObjectLookup",
+    "BcSymbolMap",
+    "UuidMapping",
     "id_from_breakpad",
     "normalize_code_id",
     "normalize_debug_id",
@@ -213,6 +215,35 @@ class ObjectLookup(object):
     def get_object(self, debug_id):
         """Finds an object by the given debug id."""
         return self.objects.get(debug_id)
+
+
+class BcSymbolMap(RustObject):
+    """Object representing an Apple ``.bcsymbolmap`` file."""
+
+    __dealloc_func__ = lib.symbolic_bcsymbolmap_free
+
+    @classmethod
+    def open(cls, path):
+        """Parses a BCSymbolMap file."""
+        if isinstance(path, text_type):
+            path = path.encode("utf-8")
+        return cls._from_objptr(rustcall(lib.symbolic_bcsymbolmap_open, path))
+
+
+class UuidMapping(RustObject):
+    """Object representing a mapping from one DebugID to another."""
+
+    __dealloc_func__ = lib.symbolic_uuidmapping_free
+
+    @classmethod
+    def from_plist(cls, debug_id, path):
+        """Parses a PList."""
+        debug_id = encode_str(debug_id)
+        if isinstance(path, text_type):
+            path = path.encode("utf-8")
+        return cls._from_objptr(
+            rustcall(lib.symbolic_uuidmapping_from_plist, debug_id, path)
+        )
 
 
 def id_from_breakpad(breakpad_id):

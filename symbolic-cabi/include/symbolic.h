@@ -104,6 +104,11 @@ typedef uint32_t SymbolicFrameTrust;
 typedef struct SymbolicArchive SymbolicArchive;
 
 /**
+ * A `BCSymbolMap`.
+ */
+typedef struct SymbolicBcSymbolMap SymbolicBcSymbolMap;
+
+/**
  * Contains stack frame information (CFI) for an image.
  */
 typedef struct SymbolicCfiCache SymbolicCfiCache;
@@ -147,6 +152,11 @@ typedef struct SymbolicUnreal4Crash SymbolicUnreal4Crash;
  * A file contained in a SymbolicUnreal4Crash.
  */
 typedef struct SymbolicUnreal4File SymbolicUnreal4File;
+
+/**
+ * A UUID mapping.
+ */
+typedef struct SymbolicUuidMapping SymbolicUuidMapping;
 
 /**
  * A length-prefixed UTF-8 string.
@@ -472,6 +482,27 @@ struct SymbolicObjectFeatures symbolic_object_get_features(const struct Symbolic
  * Frees an object returned from an archive.
  */
 void symbolic_object_free(struct SymbolicObject *object);
+
+/**
+ * Loads a BCSymbolmap from a given path
+ */
+struct SymbolicBcSymbolMap *symbolic_bcsymbolmap_open(const char *path);
+
+/**
+ * Frees the given BcSymbolMap.
+ */
+void symbolic_bcsymbolmap_free(struct SymbolicBcSymbolMap *bcsymbolmap);
+
+/**
+ * Loads a UuidMapping by parsing the PList at `path`.
+ */
+struct SymbolicUuidMapping *symbolic_uuidmapping_from_plist(const struct SymbolicStr *debug_id,
+                                                            const char *path);
+
+/**
+ * Frees the given UuidMapping.
+ */
+void symbolic_uuidmapping_free(struct SymbolicUuidMapping *mapping);
 
 /**
  * Converts a Breakpad CodeModuleId to DebugId.
