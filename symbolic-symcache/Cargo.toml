@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-symcache"
-version = "8.0.5"
+version = "8.1.0"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -26,8 +26,8 @@ all-features = true
 dmsort = "1.0.1"
 fnv = "1.0.6"
 num = "0.3.0"
-symbolic-common = { version = "8.0.5", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "8.0.5", path = "../symbolic-debuginfo" }
+symbolic-common = { version = "8.1.0", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "8.1.0", path = "../symbolic-debuginfo" }
 thiserror = "1.0.20"
 
 [dev-dependencies]
