@@ -10,7 +10,7 @@ test: build header $(TESTS:%=test-%)
 .PHONY: test
 
 test-%: target/debug/c-tests/%
-	./$<
+	LD_LIBRARY_PATH=../target/debug ./$<
 
 build:
 	cargo build

@@ -7,7 +7,7 @@ use std::iter::FusedIterator;
 use std::path::Path;
 
 use elementtree::Element;
-use symbolic_common::{DebugId, ParseDebugIdError};
+use symbolic_common::{AsSelf, DebugId, ParseDebugIdError};
 use thiserror::Error;
 
 use super::SWIFT_HIDDEN_PREFIX;
@@ -72,6 +72,14 @@ impl From<BcSymbolMapErrorKind> for BcSymbolMapError {
             kind: source,
             source: None,
         }
+    }
+}
+
+impl<'slf> AsSelf<'slf> for BcSymbolMap<'_> {
+    type Ref = BcSymbolMap<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
     }
 }
 

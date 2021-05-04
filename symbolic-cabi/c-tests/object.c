@@ -8,7 +8,7 @@ void test_object_open(void) {
     printf("[TEST] open archive from path:\n");
 
     SymbolicArchive *archive =
-        symbolic_archive_open("../testutils/fixtures/windows/crash.exe");
+        symbolic_archive_open("../symbolic-testutils/fixtures/windows/crash.exe");
     assert(archive != 0);
 
     SymbolicObject *object = symbolic_archive_get_object(archive, 0);

@@ -1,14 +1,19 @@
 # Changelog
 
-## Unreleased
+## 8.1.0
 
 **Features**:
 
 - Add support for loading BCSymbolMaps into MachObjects to un-obfuscate symbol names in bitcode builds. ([#336](https://github.com/getsentry/symbolic/pull/336))
 
+**Bug Fixes**:
+
+- Handle too many files more gracefully. ([#374](https://github.com/getsentry/symbolic/pull/374))
+- Parse .pdb files containing modules without symbols. ([pdb#102](https://github.com/willglynn/pdb/pull/102))
+
 ## 8.0.5
 
-**Bug Fixes:**
+**Bug Fixes**:
 
 - Fix detecting hidden Swift symbols in `MachObject::requires_symbolmap`. Additionally, the MachO symbol iterator no longer strips underscores from `__hidden#` symbols. ([#316](https://github.com/getsentry/symbolic/pull/316))
 
@@ -16,7 +21,7 @@
 
 Manylinux2010 has dropped support for Python 2.7. As a result, we're no longer building or testing the Python package with Python 2.7. This and future releases require at least Python 3.6.
 
-**Bug Fixes:**
+**Bug Fixes**:
 
 - Compute correct line offsets in symcaches with large gaps between line records. ([#319](https://github.com/getsentry/symbolic/pull/319))
 - Support symcache lookups for public symbols larger than 65k. ([#320](https://github.com/getsentry/symbolic/pull/320))
