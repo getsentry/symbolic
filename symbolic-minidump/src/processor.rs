@@ -106,7 +106,7 @@ extern "C" {
 }
 
 /// Auxiliary iterator that yields pairs of addresses and rule strings
-/// of [`BreakpadStackCfiDeltaRecord`]s.
+/// of [`BreakpadStackCfiDeltaRecord`](symbolic_debuginfo::breakpad::BreakpadStackCfiDeltaRecord)s.
 #[derive(Clone, Debug)]
 struct DeltaRules<'a> {
     inner: BreakpadStackCfiDeltaRecords<'a>,
@@ -323,7 +323,7 @@ impl<'a> WinUnwindRules<'a> {
 
         cache_frame_data
             .get_contents(address)
-            .or(cache_fpo.get_contents(address))
+            .or_else(move || cache_fpo.get_contents(address))
     }
 }
 

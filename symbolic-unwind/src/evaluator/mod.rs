@@ -74,8 +74,6 @@ pub struct Evaluator<'memory, A, E> {
     /// A map containing the values of variables.
     ///
     /// Trying to use a variable that is not in this map will cause evaluation to fail.
-    /// This map can be modified by the [`assign`](Self::assign) and
-    ///  [`process`](Self::process) methods.
     variables: BTreeMap<Variable, A>,
 
     /// The endianness the evaluator uses to read data from memory.
