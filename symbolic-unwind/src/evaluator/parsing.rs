@@ -7,7 +7,7 @@ use std::fmt;
 
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while};
-use nom::character::complete::{alphanumeric1, multispace0};
+use nom::character::complete::{alpha1, alphanumeric0, alphanumeric1, multispace0};
 use nom::combinator::{all_consuming, map, map_res, not, opt, peek, recognize, value};
 use nom::error::ParseError;
 use nom::sequence::{pair, preceded, terminated, tuple};
@@ -83,9 +83,12 @@ impl Error for ParseExprError {}
 /// Applies its child parser repeatedly with zero or more spaces in between.
 ///
 /// If the child parser doesn't consume any input, you're going to have a bad time.
-fn space_separated<'a, O, P: 'a + Parser<&'a str, O, ParseExprError>>(
+fn space_separated<'a, O, P>(
     mut parser: P,
-) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<O>, ParseExprError> {
+) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<O>, ParseExprError>
+where
+    P: 'a + Parser<&'a str, O, ParseExprError>,
+{
     move |mut input| {
         let mut result = Vec::new();
         match parser.parse(input) {
@@ -128,9 +131,9 @@ pub fn variable_complete(input: &str) -> Result<Variable, ParseExprError> {
 
 /// Parses a [constant](super::Constant).
 ///
-/// This accepts identifiers of the form `\.[a-zA-Z0-9]+`.
+/// This accepts identifiers of the form `\.?[a-zA-Z][a-zA-Z0-9]*`.
 fn constant(input: &str) -> IResult<&str, Constant, ParseExprError> {
-    let (rest, con) = recognize(preceded(tag("."), alphanumeric1))(input)?;
+    let (rest, con) = recognize(tuple((opt(tag(".")), alpha1, alphanumeric0)))(input)?;
     Ok((rest, Constant(con.to_string())))
 }
 
@@ -392,22 +395,33 @@ pub fn rules_complete<T: RegisterValue>(input: &str) -> Result<Vec<Rule<T>>, Par
 mod test {
     use super::*;
     use nom::Finish;
+    use proptest::prelude::*;
 
     #[test]
     fn test_expr_1() {
         let input = "1 2 + 3 *";
-        let e = Expr::Op(
-            Box::new(Expr::Op(
-                Box::new(Expr::Value(1u8)),
-                Box::new(Expr::Value(2)),
-                BinOp::Add,
-            )),
-            Box::new(Expr::Value(3)),
-            BinOp::Mul,
-        );
-        let (rest, parsed) = expr(input).unwrap();
+        let (rest, parsed) = expr::<u8>(input).unwrap();
         assert_eq!(rest, "");
-        assert_eq!(parsed, e);
+        insta::assert_debug_snapshot!(
+            parsed,
+            @r###"
+        Op(
+            Op(
+                Value(
+                    1,
+                ),
+                Value(
+                    2,
+                ),
+                Add,
+            ),
+            Value(
+                3,
+            ),
+            Mul,
+        )
+        "###
+        );
     }
 
     #[test]
@@ -422,27 +436,39 @@ mod test {
     #[test]
     fn test_expr_2() {
         let input = "1 2 ^ + 3 $foo *";
-        let e = Expr::Op(
-            Box::new(Expr::Value(1u8)),
-            Box::new(Expr::Deref(Box::new(Expr::Value(2)))),
-            BinOp::Add,
-        );
-        let (rest, parsed) = expr(input).unwrap();
+        let (rest, parsed) = expr::<u8>(input).unwrap();
         assert_eq!(rest, " 3 $foo *");
-        assert_eq!(parsed, e);
+        insta::assert_debug_snapshot!(parsed, @r###"
+        Op(
+            Value(
+                1,
+            ),
+            Deref(
+                Value(
+                    2,
+                ),
+            ),
+            Add,
+        )
+        "###);
     }
 
     #[test]
     fn test_negative() {
         let input = "13 -2 + .cfa";
-        let e = Expr::Op(
-            Box::new(Expr::Value(13u8)),
-            Box::new(Expr::Value(2)),
-            BinOp::Sub,
-        );
-        let (rest, parsed) = expr(input).unwrap();
+        let (rest, parsed) = expr::<u8>(input).unwrap();
         assert_eq!(rest, " .cfa");
-        assert_eq!(parsed, e);
+        insta::assert_debug_snapshot!(parsed, @r###"
+        Op(
+            Value(
+                13,
+            ),
+            Value(
+                2,
+            ),
+            Sub,
+        )
+        "###);
     }
 
     #[test]
@@ -460,33 +486,63 @@ mod test {
     #[test]
     fn test_assignment() {
         let input = "$foo 4 ^ 7 @ =";
-        let v = Variable("$foo".to_string());
-        let e = Expr::Op(
-            Box::new(Expr::Deref(Box::new(Expr::Value(4)))),
-            Box::new(Expr::Value(7)),
-            BinOp::Align,
-        );
-
-        let (rest, a) = assignment::<u32>(input).unwrap();
+        let (rest, a) = assignment::<u8>(input).unwrap();
         assert_eq!(rest, "");
-        assert_eq!(a, Assignment(v, e));
+        insta::assert_debug_snapshot!(a, @r###"
+        Assignment(
+            Variable(
+                "$foo",
+            ),
+            Op(
+                Deref(
+                    Value(
+                        4,
+                    ),
+                ),
+                Value(
+                    7,
+                ),
+                Align,
+            ),
+        )
+        "###);
     }
 
     #[test]
     fn test_assignment_2() {
         let input = "$foo 4 ^ = $bar .baz 17 + = 42";
-        let (v1, v2) = (Variable("$foo".to_string()), Variable("$bar".to_string()));
-        let e1 = Expr::Deref(Box::new(Expr::Value(4u8)));
-        let e2 = Expr::Op(
-            Box::new(Expr::Const(Constant(".baz".to_string()))),
-            Box::new(Expr::Value(17)),
-            BinOp::Add,
-        );
-
-        let (rest, assigns) = assignments(input).unwrap();
+        let (rest, assigns) = assignments::<u8>(input).unwrap();
         assert_eq!(rest, " 42");
-        assert_eq!(assigns[0], Assignment(v1, e1));
-        assert_eq!(assigns[1], Assignment(v2, e2));
+        insta::assert_debug_snapshot!(assigns[0], @r###"
+        Assignment(
+            Variable(
+                "$foo",
+            ),
+            Deref(
+                Value(
+                    4,
+                ),
+            ),
+        )
+        "###);
+        insta::assert_debug_snapshot!(assigns[1], @r###"
+        Assignment(
+            Variable(
+                "$bar",
+            ),
+            Op(
+                Const(
+                    Constant(
+                        ".baz",
+                    ),
+                ),
+                Value(
+                    17,
+                ),
+                Add,
+            ),
+        )
+        "###);
     }
 
     #[test]
@@ -505,23 +561,69 @@ mod test {
     #[test]
     fn test_rules() {
         let input = ".cfa: 7 $rax + $r0: $r1 ^   ";
-        let cfa = Constant(".cfa".to_string());
-        let rax = Variable("$rax".to_string());
-        let r0 = Variable("$r0".to_string());
-        let r1 = Variable("$r1".to_string());
-        let expr0 = Expr::Op(
-            Box::new(Expr::Value(7u32)),
-            Box::new(Expr::Var(rax)),
-            BinOp::Add,
-        );
-        let expr1 = Expr::Deref(Box::new(Expr::Var(r1)));
-        let rule0 = Rule(Identifier::Const(cfa), expr0);
-        let rule1 = Rule(Identifier::Var(r0), expr1);
-
-        let (rest, rules) = rules(input).unwrap();
+        let (rest, rules) = rules::<u8>(input).unwrap();
 
         assert_eq!(rest, "   ");
-        assert_eq!(rules[0], rule0);
-        assert_eq!(rules[1], rule1);
+        insta::assert_debug_snapshot!(rules[0], @r###"
+        Rule(
+            Const(
+                Constant(
+                    ".cfa",
+                ),
+            ),
+            Op(
+                Value(
+                    7,
+                ),
+                Var(
+                    Variable(
+                        "$rax",
+                    ),
+                ),
+                Add,
+            ),
+        )
+        "###);
+        insta::assert_debug_snapshot!(rules[1], @r###"
+        Rule(
+            Var(
+                Variable(
+                    "$r0",
+                ),
+            ),
+            Deref(
+                Var(
+                    Variable(
+                        "$r1",
+                    ),
+                ),
+            ),
+        )
+        "###);
+    }
+
+    #[test]
+    fn test_rules_complete() {
+        let input = ".cfa: sp 80 + x29: .cfa -80 + ^ .ra: .cfa -72 + ^";
+        rules_complete::<u64>(input).unwrap();
+    }
+
+    proptest! {
+        #[test]
+        fn proptest_constant(c in strategies::arb_constant()) {
+            assert_eq!(
+                constant_complete(&c.to_string()).unwrap(), c);
+        }
+
+        #[test]
+        fn proptest_rule(rule in strategies::arb_rule::<u8>()) {
+            assert_eq!(rule_complete(&rule.to_string()).unwrap(), rule);
+        }
+
+        #[test]
+        fn proptest_rules(rules in prop::collection::vec(strategies::arb_rule::<u8>(), 0..10)) {
+            let rules_string = rules.iter().map(|r| r.to_string()).collect::<Vec<_>>().join(" ");
+            assert_eq!(rules_complete(&rules_string).unwrap(), rules);
+        }
     }
 }

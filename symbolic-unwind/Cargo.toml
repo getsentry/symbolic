@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-unwind"
-version = "8.0.5"
+version = "8.1.0"
 license = "MIT"
 authors = ["Sebastian Zivota <loewenheim@mailbox.org>"]
 documentation = "https://docs.rs/symbolic-symcache"
@@ -10,7 +10,11 @@ edition = "2018"
 publish = false
 
 [dependencies]
+insta = "1.7.1"
 nom = "6.1.2"
+
+[dev-dependencies]
+proptest = "1.0.0"
 
 [badges]
 travis-ci = { repository = "getsentry/symbolic", branch = "master" }

@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-minidump"
-version = "8.0.5"
+version = "8.1.0"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -33,14 +33,24 @@ all-features = true
 lazy_static = "1.4.0"
 regex = "1.3.5"
 serde = { version = "1.0.94", optional = true }
-symbolic-common = { version = "8.0.5", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "8.0.5", path = "../symbolic-debuginfo" }
+symbolic-common = { version = "8.1.0", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "8.1.0", path = "../symbolic-debuginfo" }
 thiserror = "1.0.20"
 
 [build-dependencies]
 cc = { version = "1.0.50", features = ["parallel"] }
 
 [dev-dependencies]
+criterion = { version = "0.3.4", features = [ "html_reports" ] }
 insta = "1.3.0"
 symbolic-testutils = { path = "../symbolic-testutils" }
 similar-asserts = "1.0.0"
+walkdir = "2.3.1"
+
+[[bench]]
+name = "from_minidump"
+harness = false
+
+[[bench]]
+name = "from_minidump_external"
+harness = false

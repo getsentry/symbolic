@@ -61,7 +61,7 @@ print 'object debug id: {}' % obj.debug_id
 ## C Bindings
 
 Symbolic also offers C bindings, which allow for FFI into arbitrary languages. Have a look at the
-the [Symbolic C-ABI readme](cabi/README.md) for more information.
+the [Symbolic C-ABI readme](symbolic-cabi/README.md) for more information.
 
 ## Source Crates
 
