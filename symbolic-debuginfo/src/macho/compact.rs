@@ -207,7 +207,7 @@
 //!
 //! Similarly, the way ranges of instructions are mapped means that Compact
 //! Unwinding will generally incorrectly map the padding bytes between functions
-//! (attributing them to the previous function), while DWARF CFI tends to more
+//! (attributing them to the previous function), while DWARF CFI tends to
 //! more carefully exclude those addresses. Presumably also not a big deal.
 //!
 //! Both of these things mean that if DWARF CFI and Compact Unwinding are
@@ -229,7 +229,7 @@
 //! There are two high-level concepts in this format that enable significant
 //! compression of the tables:
 //!
-//! 1. Eliding duplicate function offsets
+//! 1. Eliding duplicate instruction addresses
 //! 2. Palettizing the opcodes
 //!
 //! Trick 1 is standard for unwinders: the table of mappings is sorted by
@@ -251,7 +251,7 @@
 //!
 //! Trick 2 is more novel: At the first level a global palette of up to 127 opcodes
 //! is defined. Each second-level "compressed" (leaf) page can also define up to 128 local
-//! opcodes. Then the entries mapping function offsets to opcodes can use 8-bit
+//! opcodes. Then the entries mapping instruction addresses to opcodes can use 8-bit
 //! indices into those palettes instead of entire 32-bit opcodes. If an index is
 //! smaller than the number of global opcodes, it's global, otherwise it's local
 //! (subtract the global count to get the local index).
@@ -551,7 +551,7 @@
 //!
 //! (Currently Unimplemented)
 //!
-//! Stack-Indirect is exactly the same situation as Stack-Immediate, but the
+//! Stack-Indirect is exactly the same situation as Stack-Immediate, but
 //! the stack-frame size is too large for Stack-Immediate to encode. However,
 //! the function prereserved the size of the frame in its prologue, so we can
 //! extract the the size of the frame from a `sub` instruction at a known
@@ -690,7 +690,7 @@
 //! values.
 //!
 //! If this implementation ever panics, that should be regarded as an
-//! an implementation bug.
+//! implementation bug.
 //!
 //!
 //! Things we allow:
@@ -742,7 +742,7 @@
 //!
 //! * A corrupt unwind_info section may have its entries out of order. Since
 //!   the next entry's instruction_address is always needed to compute the
-//!   number of bytes the current entry cover, the implementation will report
+//!   number of bytes the current entry covers, the implementation will report
 //!   an error if it encounters this. However it does not attempt to fully
 //!   validate the ordering during an entry_for_address query, as this would
 //!   significantly slow down the binary search. In this situation
@@ -921,7 +921,7 @@ struct CompressedSecondLevelPage {
     /// * 8 bits: opcode index
     ///   * 0..global_opcodes_len => index into global palette
     ///   * global_opcodes_len..255 => index into local palette (subtract global_opcodes_len)
-    /// * 24 bits: function address
+    /// * 24 bits: instruction address
     ///   * address is relative to this page's first_address!
     entries_offset: u16,
     entries_len: u16,
@@ -970,7 +970,7 @@ pub enum CompactUnwindOp {
     /// The instructions can be described with simple CFI operations.
     CfiOps(CompactCfiOpIter),
     /// Instructions can't be encoded by Compact Unwinding, but an FDE
-    /// with real DWARF CFI instructions are stored in the eh_frame section.
+    /// with real DWARF CFI instructions is stored in the eh_frame section.
     UseDwarfFde {
         /// The offset in the eh_frame section where the FDE is.
         offset_in_eh_frame: u32,
@@ -2457,7 +2457,7 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
             ];
 
@@ -2486,12 +2486,12 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(1).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 0) * pointer_size,
+                    offset_from_src: (stack_size + 2) * pointer_size,
                 },
             ];
 
@@ -2520,12 +2520,12 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 0) * pointer_size,
+                    offset_from_src: (stack_size + 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(3).unwrap(),
@@ -2574,12 +2574,12 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 0) * pointer_size,
+                    offset_from_src: (stack_size + 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(4).unwrap(),
@@ -2622,7 +2622,7 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
             ];
 
@@ -2653,7 +2653,7 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(1).unwrap(),
@@ -2689,7 +2689,7 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
@@ -2750,7 +2750,7 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
@@ -2835,7 +2835,7 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
             ];
 
@@ -2864,12 +2864,12 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(1).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 0) * pointer_size,
+                    offset_from_src: (stack_size + 2) * pointer_size,
                 },
             ];
 
@@ -2898,12 +2898,12 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 0) * pointer_size,
+                    offset_from_src: (stack_size + 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(3).unwrap(),
@@ -2952,12 +2952,12 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 0) * pointer_size,
+                    offset_from_src: (stack_size + 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(4).unwrap(),
@@ -3000,7 +3000,7 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
             ];
 
@@ -3031,7 +3031,7 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(1).unwrap(),
@@ -3067,7 +3067,7 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
@@ -3128,7 +3128,7 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
@@ -3210,7 +3210,7 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
             ];
 
@@ -3237,7 +3237,7 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 12),
@@ -3274,10 +3274,10 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
-                    dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 0),
+                    dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE),
                     src_reg: CompactCfiRegister::Cfa,
                     offset_from_src: -3 * pointer_size,
                 },
@@ -3391,10 +3391,10 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
-                    dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 0),
+                    dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE),
                     src_reg: CompactCfiRegister::Cfa,
                     offset_from_src: -3 * pointer_size,
                 },
