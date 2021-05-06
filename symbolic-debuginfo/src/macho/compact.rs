@@ -1,11 +1,10 @@
 //! Support for the "compact unwinding format" used by Apple platforms,
 //! which can be found in __unwind_info sections of binaries.
 //!
-//! The primary type of interest is CompactUnwindInfoIter, which can be
-//! constructed from a CompactUnwindInfo, which can be constructed from
-//! a UnwindInfoFrame.
+//! The primary type of interest is [`CompactUnwindInfoIter`], which can be
+//! constructed directly from a section of memory.
 //!
-//! The CompactUnwindInfoIter lets you iterate through all of the mappings
+//! The [`CompactUnwindInfoIter]` lets you iterate through all of the mappings
 //! from instruction addresses to unwinding instructions, or lookup a specific
 //! mapping by instruction address (unimplemented).
 //!
@@ -339,7 +338,7 @@
 //!
 //!   /// Offset to the second-level page (offset relative to start of root page).
 //!   ///
-//!   /// This may point to a RegularSecondLevelPage or a CompactSecondLevelPage.
+//!   /// This may point to a RegularSecondLevelPage or a CompressedSecondLevelPage.
 //!   /// Which it is can be determined by the 32-bit "kind" value that is at
 //!   /// the start of both layouts.
 //!   second_level_page_offset: u32,
@@ -718,14 +717,14 @@
 //!   implementation does not report an error if a second-level page has more
 //!   values than that, and should work fine if it does.
 //!
-//! * If a CompactUnwindInfoIter is created for an architecture it wasn't
+//! * If a [`CompactUnwindInfoIter`] is created for an architecture it wasn't
 //!   designed for, it is assumed that the layout of the page tables will
 //!   remain the same, and entry iteration/lookup should still work and
-//!   produce results. However Opcode::instructions will always return
-//!   CompactUnwindingOp::None.
+//!   produce results. However [`CompactUnwindInfoEntry::instructions`]
+//!   will always return [`CompactUnwindOp::None`].
 //!
 //! * If an opcode kind is encountered that this implementation wasn't
-//!   designed for, Opcode::instructions will return CompactUnwindingOp::None.
+//!   designed for, Opcode::instructions will return [`CompactUnwindOp::None`].
 //!
 //! * Only 7 register mappings are provided for x86/x64 opcodes, but the
 //!   3-bit encoding allows for 8. This implementation will just map the
@@ -739,7 +738,7 @@
 //! Things we produce errors for:
 //!
 //! * If the root page has a version this implementation wasn't designed for,
-//!   CompactUnwindInfoIter::new will return an Error.
+//!   [`CompactUnwindInfoIter::new`] will return an Error.
 //!
 //! * A corrupt unwind_info section may have its entries out of order. Since
 //!   the next entry's instruction_address is always needed to compute the
@@ -792,7 +791,7 @@ enum Arch {
     Other,
 }
 
-/// An iterator over the CompactUnwindInfoEntry's of a `.unwind_info` section.
+/// An iterator over the [`CompactUnwindInfoEntry`]'s of a `.unwind_info` section.
 #[derive(Debug, Clone)]
 pub struct CompactUnwindInfoIter<'a> {
     /// Parent .unwind_info metadata.
@@ -833,7 +832,7 @@ struct FirstLevelPage {
     personalities_offset: u32,
     personalities_len: u32,
 
-    /// The array of FirstLevelPageEntry's describing the second-level pages
+    /// The array of [`FirstLevelPageEntry`]'s describing the second-level pages
     /// (offset relative to start of root page).
     pages_offset: u32,
     pages_len: u32,
@@ -885,7 +884,7 @@ struct FirstLevelPageEntry {
 
     /// Offset to the second-level page (offset relative to start of root page).
     ///
-    /// This may point to either a RegularSecondLevelPage or a CompactSecondLevelPage.
+    /// This may point to either a [`RegularSecondLevelPage`] or a [`CompressedSecondLevelPage`].
     /// Which it is can be determined by the 32-bit "kind" value that is at
     /// the start of both layouts.
     second_level_page_offset: u32,
@@ -906,7 +905,7 @@ enum SecondLevelPage {
 struct RegularSecondLevelPage {
     // Always 2 (use to distinguish from CompressedSecondLevelPage).
     // kind: u32 = 2,
-    /// The Array of RegularEntry's (offset relative to **start of this page**).
+    /// The Array of [`RegularEntry`]'s (offset relative to **start of this page**).
     entries_offset: u16,
     entries_len: u16,
 }
@@ -1003,7 +1002,7 @@ pub enum CompactCfiOp {
     },
 }
 
-/// A register for a CompactCfiOp, as used by Compact Unwinding.
+/// A register for a [`CompactCfiOp`], as used by Compact Unwinding.
 ///
 /// You should just treat this opaquely and use its methods to make sense of it.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -1014,7 +1013,7 @@ pub enum CompactCfiRegister {
     Other(u8),
 }
 
-/// An iterator over the `CompactCfiOp`s yielded by `CompactUnwindOp::CfiOps`.
+/// An iterator over the [`CompactCfiOp`]s yielded by [`CompactUnwindOp::CfiOps`].
 #[derive(Debug, Clone)]
 pub struct CompactCfiOpIter {
     // This is just a hacky impl of an ArrayVec to avoid depending on it, and
@@ -1025,7 +1024,7 @@ pub struct CompactCfiOpIter {
 }
 
 impl<'a> CompactUnwindInfoIter<'a> {
-    /// Creates a new CompactUnwindInfoIter for the given section.
+    /// Creates a new [`CompactUnwindInfoIter`] for the given section.
     pub fn new(
         section: SectionData<'a>,
         little_endian: bool,
@@ -1076,6 +1075,7 @@ impl<'a> CompactUnwindInfoIter<'a> {
         Ok(iter)
     }
     /// Gets the next entry in the iterator.
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Result<Option<CompactUnwindInfoEntry>> {
         // Iteration is slightly more complex here because we want to be able to
         // report how many instructions an entry covers, and knowing this requires us
@@ -1491,7 +1491,7 @@ impl Opcode {
                 ops.push(CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 });
 
                 // These offsets are relative to the frame pointer, but
@@ -1527,7 +1527,7 @@ impl Opcode {
                 ops.push(CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 });
 
                 let mut offset = 2;
@@ -1784,7 +1784,7 @@ impl Opcode {
                 ops.push(CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: -1 * pointer_size,
+                    offset_from_src: -pointer_size,
                 });
 
                 // Then the X19-X28 registers that need to be restored
@@ -1850,7 +1850,7 @@ const REG_STACK: u8 = 255;
 
 impl CompactCfiRegister {
     fn from_x86_encoded(val: u32) -> Option<Self> {
-        if 1 <= val && val <= 6 {
+        if (1..=6).contains(&val) {
             Some(CompactCfiRegister::Other(val as u8))
         } else {
             None
@@ -1860,7 +1860,7 @@ impl CompactCfiRegister {
     fn from_arm64_encoded(val: u32) -> Self {
         // Assert shouldn't happen as we're processing trusted input here, but
         // good to validate this in tests.
-        debug_assert!(ARM64_REG_BASE <= val && val < ARM64_REG_BASE + 18);
+        debug_assert!((ARM64_REG_BASE..ARM64_REG_BASE + 18).contains(&val));
         CompactCfiRegister::Other(val as u8)
     }
 
