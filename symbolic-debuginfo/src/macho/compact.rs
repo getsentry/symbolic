@@ -781,6 +781,8 @@ use goblin::mach::segment::SectionData;
 use scroll::{Endian, Pread};
 use std::mem;
 
+// Hacky glue types to keep exposure of the containing library minimal.
+// This will help with transplanting this code into goblin.
 type Result<T> = std::result::Result<T, MachError>;
 
 #[derive(Debug, Clone)]
@@ -791,28 +793,10 @@ enum Arch {
     Other,
 }
 
-/// An iterator over the [`CompactUnwindInfoEntry`]'s of a `.unwind_info` section.
-#[derive(Debug, Clone)]
-pub struct CompactUnwindInfoIter<'a> {
-    /// Parent .unwind_info metadata.
-    arch: Arch,
-    endian: Endian,
-    section: SectionData<'a>,
-    /// Parsed root page.
-    root: FirstLevelPage,
-
-    // Iterator state
-    /// Current index in the root node.
-    first_idx: u32,
-    /// Current index in the second-level node.
-    second_idx: u32,
-    /// Parsed version of the current pages.
-    page_of_next_entry: Option<(FirstLevelPageEntry, SecondLevelPage)>,
-    /// Minimally parsed version of the next entry, which we need to have
-    /// already loaded to know how many instructions the previous entry covered.
-    next_entry: Option<RawCompactUnwindInfoEntry>,
-    done_page: bool,
-}
+// Types marked with repr(C) indicate their layout precisely matches the
+// layout of the format. In theory we could point directly into the binary
+// of the unwind_info section with these types, but we avoid doing so for
+// endianness/safety.
 
 #[repr(C)]
 #[derive(Debug, Clone, Pread)]
@@ -846,32 +830,6 @@ struct FirstLevelPage {
     // lsdas: [LsdaEntry; unknown_len],
 }
 
-/// A Compact Unwind Info entry.
-#[derive(Debug, Clone)]
-pub struct CompactUnwindInfoEntry {
-    /// The first instruction this entry covers.
-    pub instruction_address: u32,
-    /// How many addresses this entry covers.
-    pub len: u32,
-    /// The opcode for this entry.
-    opcode: Opcode,
-}
-
-#[derive(Debug, Clone)]
-struct RawCompactUnwindInfoEntry {
-    /// The address of the first instruction this entry applies to
-    /// (may apply to later instructions as well).
-    instruction_address: u32,
-    /// Either an opcode or the index into an opcode palette
-    opcode_or_index: OpcodeOrIndex,
-}
-
-#[derive(Debug, Clone)]
-enum OpcodeOrIndex {
-    Opcode(u32),
-    Index(u32),
-}
-
 #[repr(C)]
 #[derive(Debug, Clone, Pread)]
 struct FirstLevelPageEntry {
@@ -892,12 +850,6 @@ struct FirstLevelPageEntry {
     /// Base offset into the lsdas array that entries in this page will be relative
     /// to (offset relative to start of root page).
     lsda_index_offset: u32,
-}
-
-#[derive(Debug, Clone)]
-enum SecondLevelPage {
-    Compressed(CompressedSecondLevelPage),
-    Regular(RegularSecondLevelPage),
 }
 
 #[repr(C)]
@@ -948,79 +900,41 @@ struct LsdaEntry {
 }
 
 #[derive(Debug, Clone)]
-struct Opcode(u32);
-
-#[derive(Debug, Clone)]
-enum X86UnwindingMode {
-    RbpFrame,
-    StackImmediate,
-    StackIndirect,
-    Dwarf,
+enum OpcodeOrIndex {
+    Opcode(u32),
+    Index(u32),
 }
 
 #[derive(Debug, Clone)]
-enum Arm64UnwindingMode {
-    Frameless,
-    Dwarf,
-    Frame,
+struct RawCompactUnwindInfoEntry {
+    /// The address of the first instruction this entry applies to
+    /// (may apply to later instructions as well).
+    instruction_address: u32,
+    /// Either an opcode or the index into an opcode palette
+    opcode_or_index: OpcodeOrIndex,
 }
 
-/// A Compact Unwinding Operation
-pub enum CompactUnwindOp {
-    /// The instructions can be described with simple CFI operations.
-    CfiOps(CompactCfiOpIter),
-    /// Instructions can't be encoded by Compact Unwinding, but an FDE
-    /// with real DWARF CFI instructions is stored in the eh_frame section.
-    UseDwarfFde {
-        /// The offset in the eh_frame section where the FDE is.
-        offset_in_eh_frame: u32,
-    },
-    /// Nothing to do (may be unimplemented features or an unknown encoding)
-    None,
-}
-
-/// Minimal set of CFI ops needed to express Compact Unwinding semantics:
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CompactCfiOp {
-    /// The value of `dest_reg` is *stored at* `src_reg + offset_from_src`.
-    RegisterAt {
-        /// Destination
-        dest_reg: CompactCfiRegister,
-        /// Source
-        src_reg: CompactCfiRegister,
-        /// Offset
-        offset_from_src: i32,
-    },
-    /// The value of `dest_reg` *is* `src_reg + offset_from_src`.
-    RegisterIs {
-        /// Destination
-        dest_reg: CompactCfiRegister,
-        /// Source
-        src_reg: CompactCfiRegister,
-        /// Offset
-        offset_from_src: i32,
-    },
-}
-
-/// A register for a [`CompactCfiOp`], as used by Compact Unwinding.
-///
-/// You should just treat this opaquely and use its methods to make sense of it.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum CompactCfiRegister {
-    /// The CFA register (Canonical Frame Address) -- the frame pointer (e.g. rbp)
-    Cfa,
-    /// Any other register, restricted to those referenced by Compact Unwinding.
-    Other(u8),
-}
-
-/// An iterator over the [`CompactCfiOp`]s yielded by [`CompactUnwindOp::CfiOps`].
+/// An iterator over the [`CompactUnwindInfoEntry`]'s of a `.unwind_info` section.
 #[derive(Debug, Clone)]
-pub struct CompactCfiOpIter {
-    // This is just a hacky impl of an ArrayVec to avoid depending on it, and
-    // avoid allocating. This ends up storing 20 u64's if enum optimizations
-    // work the way I expect.
-    items: [Option<CompactCfiOp>; 21],
-    cur_idx: usize,
+pub struct CompactUnwindInfoIter<'a> {
+    /// Parent .unwind_info metadata.
+    arch: Arch,
+    endian: Endian,
+    section: SectionData<'a>,
+    /// Parsed root page.
+    root: FirstLevelPage,
+
+    // Iterator state
+    /// Current index in the root node.
+    first_idx: u32,
+    /// Current index in the second-level node.
+    second_idx: u32,
+    /// Parsed version of the current pages.
+    page_of_next_entry: Option<(FirstLevelPageEntry, SecondLevelPage)>,
+    /// Minimally parsed version of the next entry, which we need to have
+    /// already loaded to know how many instructions the previous entry covered.
+    next_entry: Option<RawCompactUnwindInfoEntry>,
+    done_page: bool,
 }
 
 impl<'a> CompactUnwindInfoIter<'a> {
@@ -1413,6 +1327,12 @@ impl<'a> CompactUnwindInfoIter<'a> {
     }
 }
 
+#[derive(Debug, Clone)]
+enum SecondLevelPage {
+    Compressed(CompressedSecondLevelPage),
+    Regular(RegularSecondLevelPage),
+}
+
 impl SecondLevelPage {
     fn len(&self) -> u32 {
         match *self {
@@ -1422,12 +1342,78 @@ impl SecondLevelPage {
     }
 }
 
+/// A Compact Unwind Info entry.
+#[derive(Debug, Clone)]
+pub struct CompactUnwindInfoEntry {
+    /// The first instruction this entry covers.
+    pub instruction_address: u32,
+    /// How many addresses this entry covers.
+    pub len: u32,
+    /// The opcode for this entry.
+    opcode: Opcode,
+}
+
 impl CompactUnwindInfoEntry {
     /// Gets cfi instructions associated with this entry.
     pub fn instructions(&self, iter: &CompactUnwindInfoIter) -> CompactUnwindOp {
         self.opcode.instructions(iter)
     }
 }
+
+/// A Compact Unwinding Operation
+pub enum CompactUnwindOp {
+    /// The instructions can be described with simple CFI operations.
+    CfiOps(CompactCfiOpIter),
+    /// Instructions can't be encoded by Compact Unwinding, but an FDE
+    /// with real DWARF CFI instructions is stored in the eh_frame section.
+    UseDwarfFde {
+        /// The offset in the eh_frame section where the FDE is.
+        offset_in_eh_frame: u32,
+    },
+    /// Nothing to do (may be unimplemented features or an unknown encoding)
+    None,
+}
+
+/// Minimal set of CFI ops needed to express Compact Unwinding semantics:
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CompactCfiOp {
+    /// The value of `dest_reg` is *stored at* `src_reg + offset_from_src`.
+    RegisterAt {
+        /// Destination
+        dest_reg: CompactCfiRegister,
+        /// Source
+        src_reg: CompactCfiRegister,
+        /// Offset
+        offset_from_src: i32,
+    },
+    /// The value of `dest_reg` *is* `src_reg + offset_from_src`.
+    RegisterIs {
+        /// Destination
+        dest_reg: CompactCfiRegister,
+        /// Source
+        src_reg: CompactCfiRegister,
+        /// Offset
+        offset_from_src: i32,
+    },
+}
+
+#[derive(Debug, Clone)]
+enum X86UnwindingMode {
+    RbpFrame,
+    StackImmediate,
+    StackIndirect,
+    Dwarf,
+}
+
+#[derive(Debug, Clone)]
+enum Arm64UnwindingMode {
+    Frameless,
+    Dwarf,
+    Frame,
+}
+
+#[derive(Debug, Clone)]
+struct Opcode(u32);
 
 // Arch-generic stuff
 impl Opcode {
@@ -1848,6 +1834,17 @@ const REG_LINK: u8 = 253;
 const REG_INSTRUCTION: u8 = 254;
 const REG_STACK: u8 = 255;
 
+/// A register for a [`CompactCfiOp`], as used by Compact Unwinding.
+///
+/// You should just treat this opaquely and use its methods to make sense of it.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum CompactCfiRegister {
+    /// The CFA register (Canonical Frame Address) -- the frame pointer (e.g. rbp)
+    Cfa,
+    /// Any other register, restricted to those referenced by Compact Unwinding.
+    Other(u8),
+}
+
 impl CompactCfiRegister {
     fn from_x86_encoded(val: u32) -> Option<Self> {
         if (1..=6).contains(&val) {
@@ -1961,6 +1958,16 @@ fn name_of_other_reg(reg: u8, iter: &CompactUnwindInfoIter) -> Option<&'static s
         }
         _ => None,
     }
+}
+
+/// An iterator over the [`CompactCfiOp`]s yielded by [`CompactUnwindOp::CfiOps`].
+#[derive(Debug, Clone)]
+pub struct CompactCfiOpIter {
+    // This is just a hacky impl of an ArrayVec to avoid depending on it, and
+    // avoid allocating. This ends up storing 20 u64's if enum optimizations
+    // work the way I expect.
+    items: [Option<CompactCfiOp>; 21],
+    cur_idx: usize,
 }
 
 impl CompactCfiOpIter {
