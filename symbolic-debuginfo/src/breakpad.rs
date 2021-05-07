@@ -839,8 +839,8 @@ impl<'data> BreakpadObject<'data> {
 
     /// The code identifier of this object.
     pub fn code_id(&self) -> Option<CodeId> {
-        for result in self.info_records() {
-            if let Ok(BreakpadInfoRecord::CodeId { code_id, .. }) = result {
+        for result in self.info_records().flatten() {
+            if let BreakpadInfoRecord::CodeId { code_id, .. } = result {
                 if !code_id.is_empty() {
                     return Some(CodeId::new(code_id.into()));
                 }

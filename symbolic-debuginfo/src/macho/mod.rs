@@ -421,25 +421,23 @@ impl<'data> Dwarf<'data> for MachObject<'data> {
 
     fn raw_section(&self, section_name: &str) -> Option<DwarfSection<'data>> {
         for segment in &self.macho.segments {
-            for section in segment {
-                if let Ok((header, data)) = section {
-                    if let Ok(sec) = header.name() {
-                        if sec.len() >= 2 && &sec[2..] == section_name {
-                            // In some cases, dsymutil leaves sections headers but removes their
-                            // data from the file. While the addr and size parameters are still
-                            // set, `header.offset` is 0 in that case. We skip them just like the
-                            // section was missing to avoid loading invalid data.
-                            if header.offset == 0 {
-                                return None;
-                            }
-
-                            return Some(DwarfSection {
-                                data: Cow::Borrowed(data),
-                                address: header.addr,
-                                offset: u64::from(header.offset),
-                                align: u64::from(header.align),
-                            });
+            for (header, data) in segment.into_iter().flatten() {
+                if let Ok(sec) = header.name() {
+                    if sec.len() >= 2 && &sec[2..] == section_name {
+                        // In some cases, dsymutil leaves sections headers but removes their
+                        // data from the file. While the addr and size parameters are still
+                        // set, `header.offset` is 0 in that case. We skip them just like the
+                        // section was missing to avoid loading invalid data.
+                        if header.offset == 0 {
+                            return None;
                         }
+
+                        return Some(DwarfSection {
+                            data: Cow::Borrowed(data),
+                            address: header.addr,
+                            offset: u64::from(header.offset),
+                            align: u64::from(header.align),
+                        });
                     }
                 }
             }
@@ -616,7 +614,6 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for FatMachO<'d> {
     }
 }
 
-#[allow(clippy::large_enum_variant)]
 enum MachObjectIteratorInner<'d, 'a> {
     Single(MonoArchiveObjects<'d, MachObject<'d>>),
     Archive(FatMachObjectIterator<'d, 'a>),
