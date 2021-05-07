@@ -53,9 +53,8 @@ impl<'data> WasmObject<'data> {
         // we need to parse the file a second time to get the offset to the
         // code section as walrus does not expose that yet.
         let mut code_offset = 0;
-        #[allow(clippy::manual_flatten)]
-        for payload in wasmparser::Parser::new(0).parse_all(data) {
-            if let Ok(wasmparser::Payload::CodeSectionStart { range, .. }) = payload {
+        for payload in wasmparser::Parser::new(0).parse_all(data).flatten() {
+            if let wasmparser::Payload::CodeSectionStart { range, .. } = payload {
                 code_offset = range.start as u64;
                 break;
             }

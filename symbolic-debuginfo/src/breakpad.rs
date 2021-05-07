@@ -1,5 +1,4 @@
 //! Support for Breakpad ASCII symbols, used by the Breakpad and Crashpad libraries.
-#![allow(clippy::from_str_radix_10)]
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -283,7 +282,9 @@ impl<'d> BreakpadFileRecord<'d> {
         for pair in parsed.into_inner() {
             match pair.as_rule() {
                 Rule::file_id => {
-                    record.id = u64::from_str_radix(pair.as_str(), 10)
+                    record.id = pair
+                        .as_str()
+                        .parse()
                         .map_err(|_| BreakpadErrorKind::Parse("file identifier"))?;
                 }
                 Rule::name => record.name = pair.as_str(),
@@ -582,12 +583,16 @@ impl BreakpadLineRecord {
                     // NB: Breakpad does not allow negative line numbers and even tests that the
                     // symbol parser rejects such line records. However, negative line numbers have
                     // been observed at least for ELF files, so handle them gracefully.
-                    record.line = i32::from_str_radix(pair.as_str(), 10)
+                    record.line = pair
+                        .as_str()
+                        .parse::<i32>()
                         .map(|line| u64::from(line as u32))
                         .map_err(|_| BreakpadErrorKind::Parse("line number"))?;
                 }
                 Rule::file_id => {
-                    record.file_id = u64::from_str_radix(pair.as_str(), 10)
+                    record.file_id = pair
+                        .as_str()
+                        .parse()
                         .map_err(|_| BreakpadErrorKind::Parse("file number"))?;
                 }
                 _ => unreachable!(),
@@ -1005,9 +1010,8 @@ impl<'data> BreakpadObject<'data> {
 
     /// The code identifier of this object.
     pub fn code_id(&self) -> Option<CodeId> {
-        #[allow(clippy::manual_flatten)]
-        for result in self.info_records() {
-            if let Ok(BreakpadInfoRecord::CodeId { code_id, .. }) = result {
+        for result in self.info_records().flatten() {
+            if let BreakpadInfoRecord::CodeId { code_id, .. } = result {
                 if !code_id.is_empty() {
                     return Some(CodeId::new(code_id.into()));
                 }

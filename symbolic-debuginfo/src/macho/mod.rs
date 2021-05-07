@@ -614,7 +614,6 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for FatMachO<'d> {
     }
 }
 
-#[allow(clippy::large_enum_variant)]
 enum MachObjectIteratorInner<'d, 'a> {
     Single(MonoArchiveObjects<'d, MachObject<'d>>),
     Archive(FatMachObjectIterator<'d, 'a>),

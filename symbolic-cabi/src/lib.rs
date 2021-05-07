@@ -1,6 +1,6 @@
 //! Exposes a C-ABI for symbolic.
 
-#![allow(clippy::cast_ptr_alignment, clippy::missing_safety_doc)]
+#![allow(clippy::missing_safety_doc)]
 
 #[macro_use]
 mod utils;
