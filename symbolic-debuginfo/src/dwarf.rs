@@ -470,7 +470,10 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             _ => Language::Unknown,
         };
 
-        let line_program = unit.line_program.as_ref().map(|program| DwarfLineProgram::prepare(program.clone()));
+        let line_program = unit
+            .line_program
+            .as_ref()
+            .map(|program| DwarfLineProgram::prepare(program.clone()));
 
         let producer = match entry.attr_value(constants::DW_AT_producer)? {
             Some(AttributeValue::String(string)) => Some(string),
