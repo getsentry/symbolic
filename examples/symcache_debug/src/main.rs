@@ -37,16 +37,13 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 
         let mut obj = None;
 
-        #[allow(clippy::useless_let_if_seq)]
-        {
-            if arch == Arch::Unknown && objects.len() == 1 {
-                obj = Some(&objects[0]);
-            } else {
-                for o in &objects {
-                    if o.arch() == arch {
-                        obj = Some(o);
-                        break;
-                    }
+        if arch == Arch::Unknown && objects.len() == 1 {
+            obj = Some(&objects[0]);
+        } else {
+            for o in &objects {
+                if o.arch() == arch {
+                    obj = Some(o);
+                    break;
                 }
             }
         }

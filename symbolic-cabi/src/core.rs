@@ -223,7 +223,6 @@ pub enum SymbolicErrorCode {
 
 impl SymbolicErrorCode {
     /// This maps all errors that can possibly happen.
-    // #[allow(clippy::cyclomatic_complexity)]
     pub fn from_error(error: &(dyn std::error::Error + 'static)) -> SymbolicErrorCode {
         let mut source = Some(error);
 

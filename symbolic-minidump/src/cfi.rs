@@ -293,10 +293,8 @@ impl<W: Write> AsciiCfiWriter<W> {
                         r.start, r.size, r.init_rules
                     )?;
 
-                    for d in r.deltas() {
-                        if let Ok(d) = d {
-                            writeln!(self.inner, "STACK CFI {:x} {}", d.address, d.rules)?;
-                        }
+                    for d in r.deltas().flatten() {
+                        writeln!(self.inner, "STACK CFI {:x} {}", d.address, d.rules)?;
                     }
 
                     Ok(())
