@@ -1231,7 +1231,7 @@ mod parsing {
     /// Parse a sequence of decimal digits as a number of the given type.
     macro_rules! num_dec {
         ($ty:ty) => {
-            nom::character::complete::digit1.map_res(|s| <$ty>::from_str_radix(s, 10))
+            nom::character::complete::digit1.map_res(|s: &str| s.parse::<$ty>())
         };
     }
 
@@ -1658,8 +1658,8 @@ mod parsing {
                 saved_regs_size,
                 locals_size,
                 max_stack_size,
-                program_string,
                 uses_base_pointer,
+                program_string,
             },
         ))
     }
