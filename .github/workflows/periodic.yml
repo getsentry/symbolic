@@ -11,8 +11,8 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    fail-fast: false
     strategy:
+      fail-fast: false
       matrix:
         rust: [nightly, beta]
     steps:
