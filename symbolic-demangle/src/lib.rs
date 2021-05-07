@@ -182,6 +182,22 @@ fn try_demangle_msvc(_ident: &str, _opts: DemangleOptions) -> Option<String> {
     None
 }
 
+/// Removes a suffix consisting of $ followed by 32 hex digits, if there is one,
+/// otherwise returns its input.
+fn strip_hash_suffix(ident: &str) -> &str {
+    let len = ident.len();
+    if len < 33 {
+        ident
+    } else {
+        let (front, back) = ident.split_at(len - 33);
+        if back.starts_with('$') && back[1..].chars().all(|c| c.is_ascii_hexdigit()) {
+            front
+        } else {
+            ident
+        }
+    }
+}
+
 fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
     if is_maybe_msvc(ident) {
         return try_demangle_msvc(ident, opts);
@@ -191,14 +207,15 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
     {
         use cpp_demangle::{DemangleOptions as CppOptions, ParseOptions, Symbol as CppSymbol};
 
-        let parse_options = ParseOptions::default().recursion_limit(192);
-        let symbol = match CppSymbol::new_with_options(ident, &parse_options) {
+        let stripped = strip_hash_suffix(ident);
+
+        let parse_options = ParseOptions::default().recursion_limit(192); // default is 96
+        let symbol = match CppSymbol::new_with_options(stripped, &parse_options) {
             Ok(symbol) => symbol,
             Err(_) => return None,
         };
 
-        let mut cpp_options = CppOptions::new().recursion_limit(256);
-
+        let mut cpp_options = CppOptions::new().recursion_limit(256); // default is 128
         if !opts.parameters {
             cpp_options = cpp_options.no_params();
         }
