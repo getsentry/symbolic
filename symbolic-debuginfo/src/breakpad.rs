@@ -1,4 +1,5 @@
 //! Support for Breakpad ASCII symbols, used by the Breakpad and Crashpad libraries.
+#![allow(clippy::from_str_radix_10)]
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -1004,6 +1005,7 @@ impl<'data> BreakpadObject<'data> {
 
     /// The code identifier of this object.
     pub fn code_id(&self) -> Option<CodeId> {
+        #[allow(clippy::manual_flatten)]
         for result in self.info_records() {
             if let Ok(BreakpadInfoRecord::CodeId { code_id, .. }) = result {
                 if !code_id.is_empty() {
