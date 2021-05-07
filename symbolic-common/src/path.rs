@@ -197,7 +197,6 @@ pub fn clean_path(path: &str) -> Cow<'_, str> {
                 if rv.is_empty() {
                     needs_separator = false;
                 }
-                continue;
             } else {
                 if !is_past_root {
                     needs_separator = false;
@@ -208,8 +207,8 @@ pub fn clean_path(path: &str) -> Cow<'_, str> {
                 }
                 rv.push_str("..");
                 needs_separator = true;
-                continue;
             }
+            continue;
         }
         if needs_separator {
             rv.push(main_separator);
