@@ -1290,7 +1290,11 @@ mod parsing {
     fn stack_win_record_type(input: &str) -> ParseResult<BreakpadStackWinRecordType> {
         alt((
             char('0').value(BreakpadStackWinRecordType::Fpo),
+            char('1').value(BreakpadStackWinRecordType::Trap),
+            char('2').value(BreakpadStackWinRecordType::Tss),
+            char('3').value(BreakpadStackWinRecordType::Standard),
             char('4').value(BreakpadStackWinRecordType::FrameData),
+            non_whitespace.value(BreakpadStackWinRecordType::Unknown),
         ))(input)
     }
 
