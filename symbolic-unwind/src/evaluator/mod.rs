@@ -39,9 +39,10 @@
 //! [rule](parsing::rule), [rule_complete](parsing::rule_complete),
 //! [rules](parsing::rules),
 //! and [rules_complete](parsing::rules_complete) parsers.
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
+use std::ops::Range;
 use std::str::FromStr;
 
 use super::base::{Endianness, MemoryRegion, RegisterValue};
@@ -73,8 +74,6 @@ pub struct Evaluator<'memory, A, E> {
     /// A map containing the values of variables.
     ///
     /// Trying to use a variable that is not in this map will cause evaluation to fail.
-    /// This map can be modified by the [`assign`](Self::assign) and
-    ///  [`process`](Self::process) methods.
     variables: BTreeMap<Variable, A>,
 
     /// The endianness the evaluator uses to read data from memory.
@@ -87,9 +86,6 @@ pub struct Evaluator<'memory, A, E> {
     /// The rule for the CFA pseudoregister. It has its own field because it needs to
     /// be evaluated before any other rules.
     cfa_rule: Option<Expr<A>>,
-
-    /// A cache for saving already computed values of caller registers.
-    register_cache: BTreeMap<Identifier, A>,
 }
 
 impl<'memory, A, E> Evaluator<'memory, A, E> {
@@ -102,7 +98,6 @@ impl<'memory, A, E> Evaluator<'memory, A, E> {
             variables: BTreeMap::new(),
             endian,
             cfi_rules: BTreeMap::new(),
-            register_cache: BTreeMap::new(),
             cfa_rule: None,
         }
     }
@@ -190,80 +185,30 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     ///
     /// Results are cached. This may fail if a rule cannot be evaluated.
     pub fn evaluate_cfi_rules(&mut self) -> Result<BTreeMap<Identifier, A>, EvaluationError> {
+        let mut computed_registers = BTreeMap::new();
         if let Some(ref expr) = self.cfa_rule {
             let cfa_val = self.evaluate(expr)?;
             self.constants.insert(Constant::cfa(), cfa_val);
-            self.register_cache
-                .insert(Identifier::Const(Constant::cfa()), cfa_val);
+            computed_registers.insert(Identifier::Const(Constant::cfa()), cfa_val);
         }
 
         let cfi_rules = std::mem::take(&mut self.cfi_rules);
         for (ident, expr) in cfi_rules.iter() {
-            if !self.register_cache.contains_key(ident) {
-                self.register_cache
-                    .insert(ident.clone(), self.evaluate(expr)?);
+            if !computed_registers.contains_key(ident) {
+                computed_registers.insert(ident.clone(), self.evaluate(expr)?);
             }
         }
         self.cfi_rules = cfi_rules;
-        Ok(self.register_cache.clone())
+        Ok(computed_registers)
     }
 
-    /// Reads a string of cfi rules, adds them to the evaluator, and evaluates them.
-    pub fn evaluate_cfi_string(
-        &mut self,
-        rules: &str,
-    ) -> Result<BTreeMap<Identifier, A>, ExpressionError> {
-        let rules = parsing::rules_complete(rules.trim())?;
-
-        for Rule(ident, expr) in rules.into_iter() {
-            self.add_cfi_rule(ident, expr);
+    /// Reads a string of CFI rules and adds them to the evaluator.
+    pub fn add_cfi_rules_string(&mut self, rules_string: &str) -> Result<(), ParseExprError> {
+        for Rule(lhs, rhs) in parsing::rules_complete(rules_string.trim())?.into_iter() {
+            self.add_cfi_rule(lhs, rhs);
         }
 
-        Ok(self.evaluate_cfi_rules()?)
-    }
-    /// Performs an assignment by first evaluating its right-hand side and then
-    /// modifying [`variables`](Self::variables) accordingly.
-    ///
-    /// This may fail if the right-hand side cannot be evaluated, cf.
-    /// [`evaluate`](Self::evaluate). It returns `true` iff the assignment modified
-    /// an existing variable.
-    pub fn assign(&mut self, Assignment(v, e): &Assignment<A>) -> Result<bool, EvaluationError> {
-        let value = self.evaluate(e)?;
-        Ok(self.variables.insert(v.clone(), value).is_some())
-    }
-
-    /// Processes a string of assignments, modifying its [`variables`](Self::variables)
-    /// field accordingly.
-    ///
-    /// This may fail if parsing goes wrong or a parsed assignment cannot be handled,
-    /// cf. [`assign`](Self::assign). It returns the set of variables that were assigned
-    /// a value by some assignment, even if the variable's value did not change.
-    ///
-    /// # Example
-    /// ```
-    /// use std::collections::{BTreeMap, BTreeSet};
-    /// use symbolic_unwind::evaluator::{Evaluator, Variable};
-    /// use symbolic_unwind::BigEndian;
-    /// let input = "$foo $bar 5 + = $bar 17 =";
-    /// let mut variables = BTreeMap::new();
-    /// let foo = "$foo".parse::<Variable>().unwrap();
-    /// let bar = "$bar".parse::<Variable>().unwrap();
-    /// variables.insert(bar.clone(), 17u8);
-    /// let mut evaluator = Evaluator::new(BigEndian).variables(variables);
-    ///
-    /// let changed_variables = evaluator.process(input).unwrap();
-    ///
-    /// assert_eq!(changed_variables, vec![foo, bar].into_iter().collect());
-    /// ```
-    pub fn process(&mut self, input: &str) -> Result<BTreeSet<Variable>, ExpressionError> {
-        let mut changed_variables = BTreeSet::new();
-        let assignments = parsing::assignments_complete::<A>(input)?;
-        for a in assignments {
-            self.assign(&a)?;
-            changed_variables.insert(a.0);
-        }
-
-        Ok(changed_variables)
+        Ok(())
     }
 }
 
@@ -288,7 +233,7 @@ enum EvaluationErrorInner {
         /// The address at which the read was attempted.
         address: Option<usize>,
         /// The range of available addresses.
-        address_range: std::ops::Range<u64>,
+        address_range: Range<u64>,
     },
 }
 
@@ -401,6 +346,16 @@ impl Constant {
     /// Returns the CFA (Canonical Frame Address) pseudoregister.
     pub fn cfa() -> Self {
         Self(".cfa".to_string())
+    }
+
+    /// Returns true if this is the RA (Return Address) pseudoregister.
+    pub fn is_ra(&self) -> bool {
+        self.0 == ".ra"
+    }
+
+    /// Returns the RA (Return Address) pseudoregister.
+    pub fn ra() -> Self {
+        Self(".ra".to_string())
     }
 }
 
@@ -540,52 +495,5 @@ pub struct Rule<A>(Identifier, Expr<A>);
 impl<T: fmt::Display> fmt::Display for Rule<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}: {}", self.0, self.1)
-    }
-}
-
-/// These tests are inspired by the Breakpad PostfixEvaluator unit tests:
-/// [https://github.com/google/breakpad/blob/main/src/processor/postfix_evaluator_unittest.cc]
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::base::BigEndian;
-
-    #[test]
-    fn test_assignment() {
-        let input = "$rAdd3 2 2 + =$rMul2 9 6 * =";
-
-        let mut eval = Evaluator::<u64, _>::new(BigEndian);
-        let r_add3: Variable = "$rAdd3".parse().unwrap();
-        let r_mul2: Variable = "$rMul2".parse().unwrap();
-
-        let changed_vars = eval.process(input).unwrap();
-
-        assert_eq!(
-            changed_vars,
-            vec![r_add3.clone(), r_mul2.clone(),].into_iter().collect()
-        );
-
-        assert_eq!(eval.variables[&r_add3], 4);
-        assert_eq!(eval.variables[&r_mul2], 54);
-    }
-
-    #[test]
-    fn test_deref() {
-        let input = "$rDeref 9 ^ =";
-
-        let memory = MemoryRegion {
-            base_addr: 9,
-            contents: &[0, 0, 0, 0, 0, 0, 0, 10],
-        };
-
-        let mut eval = Evaluator::<u64, _>::new(BigEndian).memory(memory);
-
-        let r_deref: Variable = "$rDeref".parse().unwrap();
-
-        let changed_vars = eval.process(input).unwrap();
-
-        assert_eq!(changed_vars, vec![r_deref.clone()].into_iter().collect());
-
-        assert_eq!(eval.variables[&r_deref], 10);
     }
 }
