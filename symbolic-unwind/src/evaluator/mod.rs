@@ -199,7 +199,7 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
             }
         }
         self.cfi_rules = cfi_rules;
-        Ok(computed_registers.clone())
+        Ok(computed_registers)
     }
 
     /// Reads a string of CFI rules and adds them to the evaluator.
