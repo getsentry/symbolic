@@ -86,9 +86,6 @@ pub struct Evaluator<'memory, A, E> {
     /// The rule for the CFA pseudoregister. It has its own field because it needs to
     /// be evaluated before any other rules.
     cfa_rule: Option<Expr<A>>,
-
-    /// A cache for saving already computed values of caller registers.
-    register_cache: BTreeMap<Identifier, A>,
 }
 
 impl<'memory, A, E> Evaluator<'memory, A, E> {
@@ -101,7 +98,6 @@ impl<'memory, A, E> Evaluator<'memory, A, E> {
             variables: BTreeMap::new(),
             endian,
             cfi_rules: BTreeMap::new(),
-            register_cache: BTreeMap::new(),
             cfa_rule: None,
         }
     }
@@ -189,22 +185,21 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     ///
     /// Results are cached. This may fail if a rule cannot be evaluated.
     pub fn evaluate_cfi_rules(&mut self) -> Result<BTreeMap<Identifier, A>, EvaluationError> {
+        let mut computed_registers = BTreeMap::new();
         if let Some(ref expr) = self.cfa_rule {
             let cfa_val = self.evaluate(expr)?;
             self.constants.insert(Constant::cfa(), cfa_val);
-            self.register_cache
-                .insert(Identifier::Const(Constant::cfa()), cfa_val);
+            computed_registers.insert(Identifier::Const(Constant::cfa()), cfa_val);
         }
 
         let cfi_rules = std::mem::take(&mut self.cfi_rules);
         for (ident, expr) in cfi_rules.iter() {
-            if !self.register_cache.contains_key(ident) {
-                self.register_cache
-                    .insert(ident.clone(), self.evaluate(expr)?);
+            if !computed_registers.contains_key(ident) {
+                computed_registers.insert(ident.clone(), self.evaluate(expr)?);
             }
         }
         self.cfi_rules = cfi_rules;
-        Ok(self.register_cache.clone())
+        Ok(computed_registers.clone())
     }
 
     /// Reads a string of CFI rules and adds them to the evaluator.
