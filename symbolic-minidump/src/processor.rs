@@ -270,11 +270,11 @@ impl<'a> DwarfUnwindRules<'a> {
 /// of types `FPO` and `FrameData`. If both exist for a given address,
 /// the `FrameData` record is preferred.
 struct WinUnwindRules<'a> {
-    /// `FPO` records that have already been read and sorted.
-    cache_fpo: RangeMap<u32, BreakpadStackWinRecord<'a>>,
-
     /// `FrameData` records that have already been read and sorted.
     cache_frame_data: RangeMap<u32, BreakpadStackWinRecord<'a>>,
+
+    /// Other stack win records that have already been read and sorted.
+    cache_other: RangeMap<u32, BreakpadStackWinRecord<'a>>,
 
     /// An iterator over Breakpad stack records that have not yet been read.
     records_iter: BreakpadStackWinRecords<'a>,
@@ -284,8 +284,8 @@ impl<'a> WinUnwindRules<'a> {
     /// Creates a new `WinUnwindRules` from the given records iterator.
     fn new(records_iter: BreakpadStackWinRecords<'a>) -> Self {
         Self {
-            cache_fpo: RangeMap::default(),
             cache_frame_data: RangeMap::default(),
+            cache_other: RangeMap::default(),
             records_iter,
         }
     }
@@ -298,20 +298,20 @@ impl<'a> WinUnwindRules<'a> {
     /// All records consumed on the way are added to the respective cache.
     fn get(&mut self, address: u32) -> Option<&BreakpadStackWinRecord<'a>> {
         let WinUnwindRules {
-            cache_fpo,
             cache_frame_data,
+            cache_other,
             records_iter,
         } = self;
-        if cache_frame_data.get(address).is_none() && cache_fpo.get(address).is_none() {
+        if cache_frame_data.get(address).is_none() && cache_other.get(address).is_none() {
             for win_record in records_iter.filter_map(Result::ok) {
                 let start = win_record.code_start;
                 let end = start + win_record.code_size;
                 match win_record.ty {
-                    BreakpadStackWinRecordType::Fpo => {
-                        cache_fpo.insert(start..end, win_record);
-                    }
                     BreakpadStackWinRecordType::FrameData => {
                         cache_frame_data.insert(start..end, win_record);
+                    }
+                    _ => {
+                        cache_other.insert(start..end, win_record);
                     }
                 }
 
@@ -323,7 +323,7 @@ impl<'a> WinUnwindRules<'a> {
 
         cache_frame_data
             .get_contents(address)
-            .or_else(move || cache_fpo.get_contents(address))
+            .or_else(move || cache_other.get_contents(address))
     }
 }
 
@@ -571,10 +571,7 @@ unsafe extern "C" fn resolver_find_windows_frame_info(
     };
 
     if let Some(record) = resolver.find_windows_frame_info(&module, address) {
-        *type_out = match record.ty {
-            BreakpadStackWinRecordType::Fpo => 0,
-            BreakpadStackWinRecordType::FrameData => 4,
-        };
+        *type_out = record.ty as i64;
 
         *prolog_size_out = record.prolog_size as u32;
         *epilog_size_out = record.epilog_size as u32;
