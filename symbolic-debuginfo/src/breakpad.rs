@@ -595,8 +595,20 @@ pub enum BreakpadStackWinRecordType {
     /// Frame pointer omitted; FPO info available.
     Fpo = 0,
 
+    /// Kernel Trap frame.
+    Trap = 1,
+
+    /// Kernel Trap frame.
+    Tss = 2,
+
+    /// Standard EBP stack frame.
+    Standard = 3,
+
     /// Frame pointer omitted; Frame data info available.
     FrameData = 4,
+
+    /// Frame that does not have any debug info.
+    Unknown = -1,
 }
 
 /// A [Windows stack frame record], used on x86.
@@ -1944,6 +1956,30 @@ mod tests {
                 ),
             },
         )
+        "###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_stack_win_record_type_3() -> Result<(), BreakpadError> {
+        let string = b"STACK WIN 3 8a10b ec b 0 c c 4 0 0 1";
+        let record = BreakpadStackWinRecord::parse(string)?;
+
+        insta::assert_debug_snapshot!(record, @r###"
+        BreakpadStackWinRecord {
+            ty: Standard,
+            code_start: 565515,
+            code_size: 236,
+            prolog_size: 11,
+            epilog_size: 0,
+            params_size: 12,
+            saved_regs_size: 12,
+            locals_size: 4,
+            max_stack_size: 0,
+            uses_base_pointer: true,
+            program_string: None,
+        }
         "###);
 
         Ok(())
