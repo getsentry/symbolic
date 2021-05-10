@@ -215,25 +215,6 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
 
         Ok(())
     }
-
-    /// Reads a string of cfi rules, adds them to the evaluator, and evaluates them.
-    pub fn evaluate_cfi_string(
-        &mut self,
-        rules_string: &str,
-    ) -> Result<BTreeMap<Identifier, A>, ExpressionError> {
-        self.add_cfi_rules_string(rules_string)?;
-        Ok(self.evaluate_cfi_rules()?)
-    }
-    /// Performs an assignment by first evaluating its right-hand side and then
-    /// modifying [`variables`](Self::variables) accordingly.
-    ///
-    /// This may fail if the right-hand side cannot be evaluated, cf.
-    /// [`evaluate`](Self::evaluate). It returns `true` iff the assignment modified
-    /// an existing variable.
-    pub fn assign(&mut self, Assignment(v, e): &Assignment<A>) -> Result<bool, EvaluationError> {
-        let value = self.evaluate(e)?;
-        Ok(self.variables.insert(v.clone(), value).is_some())
-    }
 }
 
 /// An error encountered while evaluating an expression.
