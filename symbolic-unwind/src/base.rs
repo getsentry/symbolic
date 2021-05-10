@@ -75,6 +75,7 @@ impl Endianness for RuntimeEndian {
 /// This contains no actual functionality, it only bundles other traits.
 pub trait RegisterValue:
     TryInto<usize>
+    + Into<u64>
     + Add<Output = Self>
     + Mul<Output = Self>
     + Div<Output = Self>
@@ -86,7 +87,7 @@ pub trait RegisterValue:
     + Debug
 {
     /// The number of bytes that need to be read to produce one value of this type.
-    const WIDTH: usize;
+    const WIDTH: u8;
 
     /// Attempt to read a value of this type from a slice of bytes.
     ///
@@ -95,16 +96,17 @@ pub trait RegisterValue:
 }
 
 impl RegisterValue for u8 {
-    const WIDTH: usize = 1;
+    const WIDTH: u8 = 1;
     fn read_bytes<E: Endianness>(bytes: &[u8], _endian: E) -> Option<Self> {
         bytes.first().copied()
     }
 }
 
 impl RegisterValue for u16 {
-    const WIDTH: usize = 2;
+    const WIDTH: u8 = 2;
     fn read_bytes<E: Endianness>(bytes: &[u8], endian: E) -> Option<Self> {
-        let bytes: &[u8; Self::WIDTH] = bytes.get(..Self::WIDTH)?.try_into().ok()?;
+        let bytes: &[u8; Self::WIDTH as usize] =
+            bytes.get(..Self::WIDTH as usize)?.try_into().ok()?;
         if endian.is_big_endian() {
             Some(Self::from_be_bytes(*bytes))
         } else {
@@ -114,9 +116,10 @@ impl RegisterValue for u16 {
 }
 
 impl RegisterValue for u32 {
-    const WIDTH: usize = 4;
+    const WIDTH: u8 = 4;
     fn read_bytes<E: Endianness>(bytes: &[u8], endian: E) -> Option<Self> {
-        let bytes: &[u8; Self::WIDTH] = bytes.get(..Self::WIDTH)?.try_into().ok()?;
+        let bytes: &[u8; Self::WIDTH as usize] =
+            bytes.get(..Self::WIDTH as usize)?.try_into().ok()?;
         if endian.is_big_endian() {
             Some(Self::from_be_bytes(*bytes))
         } else {
@@ -126,9 +129,10 @@ impl RegisterValue for u32 {
 }
 
 impl RegisterValue for u64 {
-    const WIDTH: usize = 8;
+    const WIDTH: u8 = 8;
     fn read_bytes<E: Endianness>(bytes: &[u8], endian: E) -> Option<Self> {
-        let bytes: &[u8; Self::WIDTH] = bytes.get(..Self::WIDTH)?.try_into().ok()?;
+        let bytes: &[u8; Self::WIDTH as usize] =
+            bytes.get(..Self::WIDTH as usize)?.try_into().ok()?;
         if endian.is_big_endian() {
             Some(Self::from_be_bytes(*bytes))
         } else {
