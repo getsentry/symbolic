@@ -65,7 +65,7 @@ stack_win = { "STACK WIN"
                 ~ hex // has_program_string
                 ~ text // program_string_OR_allocates_base_pointer
             }
-frame_type = { "0" | "4" }
+frame_type = { "0" | "1" | "2" | "3" | "4" | "-1" }
 
 // STACK CFI record
 // STACK CFI ("Call Frame Information") records describe how to walk the stack when execution is at a given machine instruction.
