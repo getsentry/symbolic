@@ -470,15 +470,23 @@ unsafe extern "C" fn resolver_set_endian(resolver: *mut c_void, is_big_endian: b
 }
 
 #[no_mangle]
-unsafe extern "C" fn resolver_has_module(resolver: *mut c_void, name: *const c_char) -> bool {
-    if name.is_null() {
+unsafe extern "C" fn resolver_has_module(resolver: *mut c_void, module: *const c_char) -> bool {
+    if module.is_null() {
         return false;
     }
 
     let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
-    let name = CStr::from_ptr(name).to_str().unwrap().parse().unwrap();
+    let module = match CStr::from_ptr(module).to_str() {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
 
-    resolver.has_module(&name)
+    let module: CodeModuleId = match module.parse() {
+        Ok(id) => id,
+        Err(_) => return false,
+    };
+
+    resolver.has_module(&module)
 }
 
 #[no_mangle]
@@ -494,7 +502,15 @@ unsafe extern "C" fn resolver_fill_source_line_info(
     source_line_out: *mut u64,
 ) {
     let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
-    let module = CStr::from_ptr(module).to_str().unwrap().parse().unwrap();
+    let module = match CStr::from_ptr(module).to_str() {
+        Ok(s) => s,
+        Err(_) => return,
+    };
+
+    let module: CodeModuleId = match module.parse() {
+        Ok(id) => id,
+        Err(_) => return,
+    };
 
     if let Some(source_line_info) = resolver.fill_source_line_info(&module, address) {
         *function_name_out = source_line_info.function_name.as_ptr() as *const i8;
@@ -513,7 +529,15 @@ unsafe extern "C" fn resolver_find_cfi_frame_info(
     address: u64,
 ) -> *mut c_void {
     let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
-    let module = CStr::from_ptr(module).to_str().unwrap().parse().unwrap();
+    let module = match CStr::from_ptr(module).to_str() {
+        Ok(s) => s,
+        Err(_) => return ptr::null_mut(),
+    };
+
+    let module: CodeModuleId = match module.parse() {
+        Ok(id) => id,
+        Err(_) => return ptr::null_mut(),
+    };
 
     let cfi_frame_info = resolver.find_cfi_frame_info(&module, address);
     Box::into_raw(Box::new(cfi_frame_info)) as *mut c_void
@@ -536,7 +560,15 @@ unsafe extern "C" fn resolver_find_windows_frame_info(
     program_string_len_out: &mut usize,
 ) -> bool {
     let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
-    let module = CStr::from_ptr(module).to_str().unwrap().parse().unwrap();
+    let module = match CStr::from_ptr(module).to_str() {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+
+    let module: CodeModuleId = match module.parse() {
+        Ok(id) => id,
+        Err(_) => return false,
+    };
 
     if let Some(record) = resolver.find_windows_frame_info(&module, address) {
         *type_out = match record.ty {
@@ -599,7 +631,11 @@ unsafe extern "C" fn find_caller_regs_32(
             _ => continue,
         };
 
-        let name = CStr::from_ptr(*name).to_str().unwrap();
+        let name = match CStr::from_ptr(*name).to_str() {
+            Ok(name) => name,
+            Err(_) => continue,
+        };
+
         if let Ok(r) = name.parse() {
             variables.insert(r, value);
         } else if let Ok(r) = name.parse() {
@@ -615,8 +651,13 @@ unsafe extern "C" fn find_caller_regs_32(
     {
         let mut result = Vec::new();
         for (register, value) in caller_registers.into_iter() {
+            let name = match CString::new(register.to_string()) {
+                Ok(name) => name,
+                Err(_) => continue,
+            };
+
             result.push(IRegVal {
-                name: CString::new(register.to_string()).unwrap().into_raw() as *const c_char,
+                name: name.into_raw() as *const c_char,
                 value: value as u64,
                 size: 4,
             });
@@ -674,7 +715,11 @@ unsafe extern "C" fn find_caller_regs_64(
             _ => continue,
         };
 
-        let name = CStr::from_ptr(*name).to_str().unwrap();
+        let name = match CStr::from_ptr(*name).to_str() {
+            Ok(name) => name,
+            Err(_) => continue,
+        };
+
         if let Ok(r) = name.parse() {
             variables.insert(r, value);
         } else if let Ok(r) = name.parse() {
@@ -690,8 +735,13 @@ unsafe extern "C" fn find_caller_regs_64(
     {
         let mut result = Vec::new();
         for (register, value) in caller_registers.into_iter() {
+            let name = match CString::new(register.to_string()) {
+                Ok(name) => name,
+                Err(_) => continue,
+            };
+
             result.push(IRegVal {
-                name: CString::new(register.to_string()).unwrap().into_raw() as *const c_char,
+                name: name.into_raw() as *const c_char,
                 value,
                 size: 8,
             });
