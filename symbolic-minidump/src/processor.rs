@@ -1501,7 +1501,7 @@ impl<'a> ProcessState<'a> {
     /// process. The parameter `frame_infos` expects a map of Breakpad symbols
     /// containing STACK CFI and STACK WIN records to allow stackwalking with
     /// omitted frame pointers.
-    pub fn from_minidump_breakpad(
+    pub fn from_minidump(
         buffer: &ByteView<'a>,
         frame_infos: Option<&FrameInfoMap<'_>>,
     ) -> Result<ProcessState<'a>, ProcessMinidumpError> {
@@ -1558,7 +1558,7 @@ impl<'a> ProcessState<'a> {
     /// process. The parameter `frame_infos` expects a map of Breakpad symbols
     /// containing STACK CFI and STACK WIN records to allow stackwalking with
     /// omitted frame pointers.
-    pub fn from_minidump(
+    pub fn from_minidump_new(
         buffer: &ByteView<'a>,
         frame_infos: Option<&FrameInfoMap<'_>>,
     ) -> Result<ProcessState<'a>, ProcessMinidumpError> {

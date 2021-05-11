@@ -305,7 +305,7 @@ ffi_fn! {
             Some(SymbolicFrameInfoMap::as_rust(frame_info_map))
         };
 
-        let state = ProcessState::from_minidump(&byteview, map)?;
+        let state = ProcessState::from_minidump_new(&byteview, map)?;
         let sstate = SymbolicProcessState::from_process_state(&state);
         Ok(Box::into_raw(Box::new(sstate)))
     }
@@ -327,7 +327,7 @@ ffi_fn! {
             Some(SymbolicFrameInfoMap::as_rust(frame_info_map))
         };
 
-        let state = ProcessState::from_minidump(&byteview, map)?;
+        let state = ProcessState::from_minidump_new(&byteview, map)?;
         let sstate = map_process_state(&state);
         Ok(Box::into_raw(Box::new(sstate)))
     }

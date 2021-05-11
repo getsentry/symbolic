@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
-use std::time::Duration;
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use walkdir::WalkDir;
@@ -28,7 +27,7 @@ pub fn minidump_external_benchmark(c: &mut Criterion) {
 
     // Initially process without CFI
     let buffer = ByteView::open(&minidump_path).unwrap();
-    let state = ProcessState::from_minidump(&buffer, None).unwrap();
+    let state = ProcessState::from_minidump_new(&buffer, None).unwrap();
 
     // Obtain Call Frame Information
     let frame_info = prepare_cfi(&symbols_path, &state).unwrap();
@@ -36,17 +35,17 @@ pub fn minidump_external_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("External Minidump");
 
     group.bench_with_input(
-        BenchmarkId::new("from_minidump_breakpad", "external files"),
-        &(&buffer, &frame_info),
-        |b, (buffer, frame_info)| {
-            b.iter(|| ProcessState::from_minidump_breakpad(buffer, Some(frame_info)))
-        },
-    );
-
-    group.bench_with_input(
         BenchmarkId::new("from_minidump", "external files"),
         &(&buffer, &frame_info),
         |b, (buffer, frame_info)| b.iter(|| ProcessState::from_minidump(buffer, Some(frame_info))),
+    );
+
+    group.bench_with_input(
+        BenchmarkId::new("from_minidump_new", "external files"),
+        &(&buffer, &frame_info),
+        |b, (buffer, frame_info)| {
+            b.iter(|| ProcessState::from_minidump_new(buffer, Some(frame_info)))
+        },
     );
 
     group.finish();

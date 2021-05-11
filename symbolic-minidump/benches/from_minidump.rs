@@ -30,17 +30,17 @@ pub fn minidump_benchmark(c: &mut Criterion) {
     );
 
     group.bench_with_input(
-        BenchmarkId::new("from_minidump_breakpad", "linux/mini.dmp & linux/crash.sym"),
-        &(&buffer, &frame_info),
-        |b, (buffer, frame_info)| {
-            b.iter(|| ProcessState::from_minidump_breakpad(buffer, Some(frame_info)))
-        },
-    );
-
-    group.bench_with_input(
         BenchmarkId::new("from_minidump", "linux/mini.dmp & linux/crash.sym"),
         &(&buffer, &frame_info),
         |b, (buffer, frame_info)| b.iter(|| ProcessState::from_minidump(buffer, Some(frame_info))),
+    );
+
+    group.bench_with_input(
+        BenchmarkId::new("from_minidump_new", "linux/mini.dmp & linux/crash.sym"),
+        &(&buffer, &frame_info),
+        |b, (buffer, frame_info)| {
+            b.iter(|| ProcessState::from_minidump_new(buffer, Some(frame_info)))
+        },
     );
 
     group.finish()

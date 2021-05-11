@@ -283,12 +283,12 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
 
     // Initially process without CFI
     let byteview = ByteView::open(&minidump_path)?;
-    let mut state = ProcessState::from_minidump(&byteview, None)?;
+    let mut state = ProcessState::from_minidump_new(&byteview, None)?;
 
     let cfi = if matches.is_present("cfi") {
         // Reprocess with Call Frame Information
         let frame_info = prepare_cfi(&symbols_path, &state)?;
-        state = ProcessState::from_minidump(&byteview, Some(&frame_info))?;
+        state = ProcessState::from_minidump_new(&byteview, Some(&frame_info))?;
         frame_info
     } else {
         Default::default()
