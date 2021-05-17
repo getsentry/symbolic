@@ -469,8 +469,10 @@ impl<W: Write> AsciiCfiWriter<W> {
                         }
                     }
 
+                    let line = line.strip_suffix(b" ").unwrap_or(&line);
+
                     self.inner
-                        .write_all(&line)
+                        .write_all(line)
                         .and_then(|_| writeln!(self.inner))?;
                 }
             }

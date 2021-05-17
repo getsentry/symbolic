@@ -1361,6 +1361,7 @@ impl CompactUnwindInfoEntry {
 }
 
 /// A Compact Unwinding Operation
+#[derive(Debug)]
 pub enum CompactUnwindOp {
     /// The instructions can be described with simple CFI operations.
     CfiOps(CompactCfiOpIter),
