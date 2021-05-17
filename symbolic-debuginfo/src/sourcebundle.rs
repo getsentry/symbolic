@@ -747,7 +747,6 @@ where
 {
     manifest: SourceBundleManifest,
     writer: ZipWriter<W>,
-    finished: bool,
 }
 
 impl<W> SourceBundleWriter<W>
@@ -764,7 +763,6 @@ where
         Ok(SourceBundleWriter {
             manifest: SourceBundleManifest::new(),
             writer: ZipWriter::new(writer),
-            finished: false,
         })
     }
 
@@ -954,7 +952,6 @@ where
         self.writer
             .finish()
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
-        self.finished = true;
         Ok(())
     }
 
