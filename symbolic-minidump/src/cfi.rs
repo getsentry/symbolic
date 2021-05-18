@@ -29,10 +29,13 @@ use symbolic_common::{Arch, ByteView, UnknownArchError};
 use symbolic_debuginfo::breakpad::{BreakpadError, BreakpadObject, BreakpadStackRecord};
 use symbolic_debuginfo::dwarf::gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error as GimliError,
-    FrameDescriptionEntry, Reader, Register, RegisterRule, UninitializedUnwindContext,
-    UnwindSection,
+    FrameDescriptionEntry, Reader, ReaderOffset, Register, RegisterRule,
+    UninitializedUnwindContext, UnwindSection,
 };
 use symbolic_debuginfo::dwarf::Dwarf;
+use symbolic_debuginfo::macho::{
+    CompactCfiOp, CompactCfiRegister, CompactUnwindInfoIter, CompactUnwindOp, MachError, MachObject,
+};
 use symbolic_debuginfo::pdb::pdb::{self, FallibleIterator, FrameData, Rva, StringTable};
 use symbolic_debuginfo::pdb::PdbObject;
 use symbolic_debuginfo::pe::{PeObject, RuntimeFunction, UnwindOperation};
@@ -157,6 +160,12 @@ impl From<GimliError> for CfiError {
     }
 }
 
+impl From<MachError> for CfiError {
+    fn from(e: MachError) -> Self {
+        Self::new(CfiErrorKind::BadDebugInfo, e)
+    }
+}
+
 /// Temporary helper trait to set the address size on any unwind section.
 trait UnwindSectionExt<R>: UnwindSection<R>
 where
@@ -267,11 +276,11 @@ impl<W: Write> AsciiCfiWriter<W> {
     pub fn process(&mut self, object: &Object<'_>) -> Result<(), CfiError> {
         match object {
             Object::Breakpad(o) => self.process_breakpad(o),
-            Object::MachO(o) => self.process_dwarf(o),
-            Object::Elf(o) => self.process_dwarf(o),
+            Object::MachO(o) => self.process_macho(o),
+            Object::Elf(o) => self.process_dwarf(o, false),
             Object::Pdb(o) => self.process_pdb(o),
             Object::Pe(o) => self.process_pe(o),
-            Object::Wasm(o) => self.process_dwarf(o),
+            Object::Wasm(o) => self.process_dwarf(o, false),
             Object::SourceBundle(_) => Ok(()),
         }
     }
@@ -324,7 +333,32 @@ impl<W: Write> AsciiCfiWriter<W> {
         Ok(())
     }
 
-    fn process_dwarf<'d: 'o, 'o, O>(&mut self, object: &O) -> Result<(), CfiError>
+    fn process_macho<'d>(&mut self, object: &MachObject<'d>) -> Result<(), CfiError> {
+        let compact_unwind_info = object.compact_unwind_info()?;
+
+        // If we have compact_unwind_info, then any important entries in
+        // the eh_frame section will be explicitly requested by the
+        // Compact Unwinding Info. So skip processing that section for now.
+        let should_skip_eh_frame = compact_unwind_info.is_some();
+        let result = self.process_dwarf(object, should_skip_eh_frame);
+
+        if let Some(compact_unwind_info) = compact_unwind_info {
+            let eh_section = object.section("eh_frame");
+            let eh_frame_info = eh_section.as_ref().map(|section| {
+                let endian = object.endianity();
+                let frame = EhFrame::new(&section.data, endian);
+                UnwindInfo::new(object, section.address, frame)
+            });
+            self.read_compact_unwind_info(compact_unwind_info, eh_frame_info.as_ref())?;
+        }
+        result
+    }
+
+    fn process_dwarf<'d: 'o, 'o, O>(
+        &mut self,
+        object: &O,
+        skip_eh_frame: bool,
+    ) -> Result<(), CfiError>
     where
         O: ObjectLike<'d, 'o> + Dwarf<'o>,
     {
@@ -341,14 +375,102 @@ impl<W: Write> AsciiCfiWriter<W> {
             Ok(())
         };
 
-        // Indepdendently, Linux C++ exception handling information can also provide unwind info.
-        if let Some(section) = object.section("eh_frame") {
-            let frame = EhFrame::new(&section.data, endian);
-            let info = UnwindInfo::new(object, section.address, frame);
-            self.read_cfi(&info)?;
+        if !skip_eh_frame {
+            if let Some(section) = object.section("eh_frame") {
+                // Independently, Linux C++ exception handling information can also provide unwind info.
+                let frame = EhFrame::new(&section.data, endian);
+                let info = UnwindInfo::new(object, section.address, frame);
+                self.read_cfi(&info)?;
+            }
         }
 
         debug_frame_result
+    }
+
+    fn read_compact_unwind_info<'d, U, R>(
+        &mut self,
+        mut iter: CompactUnwindInfoIter<'d>,
+        eh_frame_info: Option<&UnwindInfo<U>>,
+    ) -> Result<(), CfiError>
+    where
+        R: Reader + Eq,
+        U: UnwindSection<R>,
+    {
+        fn write_reg_name<W: Write>(
+            writer: &mut W,
+            register: CompactCfiRegister,
+            iter: &CompactUnwindInfoIter,
+        ) -> Result<(), CfiError> {
+            if register.is_cfa() {
+                write!(writer, ".cfa")?;
+            } else if register == CompactCfiRegister::instruction_pointer() {
+                write!(writer, ".ra")?;
+            } else {
+                write!(writer, "${}", register.name(iter).unwrap())?;
+            }
+            Ok(())
+        }
+
+        // Initialize an unwind context once and reuse it for the entire section.
+        let mut ctx = UninitializedUnwindContext::new();
+
+        while let Some(entry) = iter.next()? {
+            match entry.instructions(&iter) {
+                CompactUnwindOp::None => { /* do nothing */ }
+                CompactUnwindOp::UseDwarfFde { offset_in_eh_frame } => {
+                    // We need to grab the CFI info from the eh_frame section
+                    if let Some(info) = eh_frame_info {
+                        let offset = U::Offset::from(R::Offset::from_u32(offset_in_eh_frame));
+                        if let Ok(fde) =
+                            info.section
+                                .fde_from_offset(&info.bases, offset, U::cie_from_offset)
+                        {
+                            self.process_fde(info, &mut ctx, &fde)?;
+                        }
+                    }
+                }
+                CompactUnwindOp::CfiOps(ops) => {
+                    // We just need to output a bunch of CFI expressions in a single CFI INIT
+                    let mut line = Vec::new();
+                    let start_addr = entry.instruction_address;
+                    let length = entry.len;
+                    write!(line, "STACK CFI INIT {:x} {:x} ", start_addr, length)?;
+
+                    for instruction in ops {
+                        // These two operations differ only in whether there should
+                        // be a deref (^) at the end, so we can flatten away their
+                        // differences and merge paths.
+                        let (dest_reg, src_reg, offset, should_deref) = match instruction {
+                            CompactCfiOp::RegisterAt {
+                                dest_reg,
+                                src_reg,
+                                offset_from_src,
+                            } => (dest_reg, src_reg, offset_from_src, true),
+                            CompactCfiOp::RegisterIs {
+                                dest_reg,
+                                src_reg,
+                                offset_from_src,
+                            } => (dest_reg, src_reg, offset_from_src, false),
+                        };
+
+                        write_reg_name(&mut line, dest_reg, &iter)?;
+                        write!(line, ": ")?;
+                        write_reg_name(&mut line, src_reg, &iter)?;
+                        write!(line, " {} + ", offset)?;
+                        if should_deref {
+                            write!(line, "^ ")?;
+                        }
+                    }
+
+                    let line = line.strip_suffix(b" ").unwrap_or(&line);
+
+                    self.inner
+                        .write_all(line)
+                        .and_then(|_| writeln!(self.inner))?;
+                }
+            }
+        }
+        Ok(())
     }
 
     fn read_cfi<U, R>(&mut self, info: &UnwindInfo<U>) -> Result<(), CfiError>
