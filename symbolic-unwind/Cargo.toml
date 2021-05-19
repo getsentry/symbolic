@@ -12,6 +12,7 @@ publish = false
 [dependencies]
 insta = "1.7.1"
 nom = "6.1.2"
+num-traits = "0.2.14"
 
 [dev-dependencies]
 proptest = "1.0.0"
