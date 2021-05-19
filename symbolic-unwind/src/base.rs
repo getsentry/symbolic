@@ -1,8 +1,9 @@
 //! Basic definitions necessary for stack unwinding.
 use std::convert::TryInto;
 use std::fmt::Debug;
-use std::ops::{Add, Div, Mul, Rem, Sub};
 use std::str::FromStr;
+
+use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedRem, CheckedSub, Unsigned};
 
 /// Trait that abstracts over the [endianness](https://en.wikipedia.org/wiki/Endianness)
 /// of data representation.
@@ -71,20 +72,18 @@ impl Endianness for RuntimeEndian {
 }
 
 /// A trait for types that can be used as memory addresses.
-///
-/// This contains no actual functionality, it only bundles other traits.
 pub trait RegisterValue:
-    TryInto<usize>
+    Unsigned
+    + CheckedAdd
+    + CheckedSub
+    + CheckedMul
+    + CheckedDiv
+    + CheckedRem
+    + TryInto<usize>
     + Into<u64>
-    + Add<Output = Self>
-    + Mul<Output = Self>
-    + Div<Output = Self>
-    + Sub<Output = Self>
-    + Rem<Output = Self>
-    + FromStr
+    + Clone
     + Copy
-    + Sized
-    + Debug
+    + FromStr
 {
     /// The number of bytes that need to be read to produce one value of this type.
     const WIDTH: u8;

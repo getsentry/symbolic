@@ -137,7 +137,7 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     ///
     /// This may fail if the expression tries to dereference unavailable memory
     /// or uses undefined constants or variables.
-    pub fn evaluate(&self, expr: &Expr<A>) -> Result<A, EvaluationError> {
+    pub fn evaluate(&self, expr: &Expr<A>) -> Result<A, EvaluationError<A>> {
         match expr {
             Expr::Value(x) => Ok(*x),
             Expr::Const(c) => {
@@ -153,14 +153,22 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
             Expr::Op(e1, e2, op) => {
                 let e1 = self.evaluate(&*e1)?;
                 let e2 = self.evaluate(&*e2)?;
-                match op {
-                    BinOp::Add => Ok(e1 + e2),
-                    BinOp::Sub => Ok(e1 - e2),
-                    BinOp::Mul => Ok(e1 * e2),
-                    BinOp::Div => Ok(e1 / e2),
-                    BinOp::Mod => Ok(e1 % e2),
-                    BinOp::Align => Ok(e2 * (e1 / e2)),
-                }
+                let result = match op {
+                    BinOp::Add => e1.checked_add(&e2),
+                    BinOp::Sub => e1.checked_sub(&e2),
+                    BinOp::Mul => e1.checked_mul(&e2),
+                    BinOp::Div => e1.checked_div(&e2),
+                    BinOp::Mod => e1.checked_rem(&e2),
+                    BinOp::Align => e1.checked_div(&e2).and_then(|n| n.checked_mul(&e2)),
+                };
+
+                result.ok_or_else(|| {
+                    EvaluationError(EvaluationErrorInner::IllegalOperation {
+                        left: e1,
+                        right: e2,
+                        op: *op,
+                    })
+                })
             }
 
             Expr::Deref(address) => {
@@ -184,7 +192,7 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
     /// [`add_cfi_rule`](Self::add_cfi_rule) and returns the results in a map.
     ///
     /// Results are cached. This may fail if a rule cannot be evaluated.
-    pub fn evaluate_cfi_rules(&mut self) -> Result<BTreeMap<Identifier, A>, EvaluationError> {
+    pub fn evaluate_cfi_rules(&mut self) -> Result<BTreeMap<Identifier, A>, EvaluationError<A>> {
         let mut computed_registers = BTreeMap::new();
         if let Some(ref expr) = self.cfa_rule {
             let cfa_val = self.evaluate(expr)?;
@@ -215,7 +223,7 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
 /// An error encountered while evaluating an expression.
 #[derive(Debug)]
 #[non_exhaustive]
-enum EvaluationErrorInner {
+enum EvaluationErrorInner<A> {
     /// The expression contains an undefined constant.
     UndefinedConstant(Constant),
 
@@ -235,59 +243,59 @@ enum EvaluationErrorInner {
         /// The range of available addresses.
         address_range: Range<u64>,
     },
+
+    /// An illegal arithmetical operation was attempted.
+    IllegalOperation {
+        /// The left operand.
+        left: A,
+        /// The right operand.
+        right: A,
+        /// The binary operator.
+        op: BinOp,
+    },
 }
 
-impl fmt::Display for EvaluationErrorInner {
+impl<A: fmt::Display> fmt::Display for EvaluationErrorInner<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-           Self::UndefinedConstant(c) => write!(f, "Constant {} is not defined", c),
-           Self::UndefinedVariable(v) => write!(f, "Variable {} is not defined", v),
-           Self::MemoryUnavailable => write!(f, "The evaluator does not have access to memory"),
-           Self::IllegalMemoryAccess {
-               bytes, address: Some(address), address_range
-           } => write!(f, "Tried to read {} bytes at memory address {}. The available address range is [{}, {})", bytes, address, address_range.start, address_range.end),
-        Self::IllegalMemoryAccess {
-            bytes, address: None, ..
-        } => write!(f, "Tried to read {} bytes at address that exceeds the maximum usize value", bytes),
+            Self::UndefinedConstant(c) => write!(f, "Constant {} is not defined", c),
+            Self::UndefinedVariable(v) => write!(f, "Variable {} is not defined", v),
+            Self::MemoryUnavailable => write!(f, "The evaluator does not have access to memory"),
+            Self::IllegalMemoryAccess {
+                bytes, address: Some(address), address_range
+            } => write!(f, "Tried to read {} bytes at memory address {}. The available address range is [{}, {})", bytes, address, address_range.start, address_range.end),
+            Self::IllegalMemoryAccess {
+                bytes, address: None, ..
+            } => write!(f, "Tried to read {} bytes at address that exceeds the maximum usize value", bytes),
+            Self::IllegalOperation {
+                left, right, op } => write!(f, "Illegal operation {} {} {}", left, op, right),
         }
     }
 }
 
 /// An error encountered while evaluating an expression.
 #[derive(Debug)]
-pub struct EvaluationError(EvaluationErrorInner);
+pub struct EvaluationError<A>(EvaluationErrorInner<A>);
 
-impl fmt::Display for EvaluationError {
+impl<A: fmt::Display> fmt::Display for EvaluationError<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl Error for EvaluationError {}
+impl<A: fmt::Debug + fmt::Display> Error for EvaluationError<A> {}
 
 /// An error encountered while parsing or evaluating an expression.
 #[derive(Debug)]
-enum ExpressionErrorInner {
+enum ExpressionErrorInner<A> {
     /// An error was encountered while parsing an expression.
     Parsing(ParseExprError),
 
     /// An error was encountered while evaluating an expression.
-    Evaluation(EvaluationError),
+    Evaluation(EvaluationError<A>),
 }
 
-impl From<ParseExprError> for ExpressionError {
-    fn from(other: ParseExprError) -> Self {
-        Self(ExpressionErrorInner::Parsing(other))
-    }
-}
-
-impl From<EvaluationError> for ExpressionError {
-    fn from(other: EvaluationError) -> Self {
-        Self(ExpressionErrorInner::Evaluation(other))
-    }
-}
-
-impl fmt::Display for ExpressionErrorInner {
+impl<A: fmt::Display> fmt::Display for ExpressionErrorInner<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Parsing(e) => write!(f, "Error while parsing: {}", e),
@@ -298,15 +306,27 @@ impl fmt::Display for ExpressionErrorInner {
 
 /// An error encountered while parsing or evaluating an expression.
 #[derive(Debug)]
-pub struct ExpressionError(ExpressionErrorInner);
+pub struct ExpressionError<A>(ExpressionErrorInner<A>);
 
-impl fmt::Display for ExpressionError {
+impl<A> From<ParseExprError> for ExpressionError<A> {
+    fn from(other: ParseExprError) -> Self {
+        Self(ExpressionErrorInner::Parsing(other))
+    }
+}
+
+impl<A> From<EvaluationError<A>> for ExpressionError<A> {
+    fn from(other: EvaluationError<A>) -> Self {
+        Self(ExpressionErrorInner::Evaluation(other))
+    }
+}
+
+impl<A: fmt::Display> fmt::Display for ExpressionError<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl Error for ExpressionError {
+impl<A: fmt::Debug + fmt::Display + 'static> Error for ExpressionError<A> {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self.0 {
             ExpressionErrorInner::Parsing(ref e) => Some(e),
@@ -495,5 +515,22 @@ pub struct Rule<A>(Identifier, Expr<A>);
 impl<T: fmt::Display> fmt::Display for Rule<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}: {}", self.0, self.1)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::base::LittleEndian;
+
+    #[test]
+    fn division_by_zero() {
+        let expr = Expr::Op(
+            Box::new(Expr::Value(23u32)),
+            Box::new(Expr::Value(0)),
+            BinOp::Div,
+        );
+        let eval = Evaluator::new(LittleEndian);
+        assert!(eval.evaluate(&expr).is_err());
     }
 }
