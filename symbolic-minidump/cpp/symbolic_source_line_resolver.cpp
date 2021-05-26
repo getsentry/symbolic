@@ -112,16 +112,21 @@ WindowsFrameInfo *SymbolicSourceLineResolver::FindWindowsFrameInfo(
         uint32_t local_size = 0;
         uint32_t max_stack_size = 0;
         bool allocates_base_pointer = false;
-        char *ps;
-        size_t ps_len;
+        char *ps = NULL;
+        size_t ps_len = 0;
+        string program_string;
 
         if (resolver_find_windows_frame_info(
                 resolver_, module_name, address, &type_, &prolog_size,
                 &epilog_size, &parameter_size, &saved_register_size,
                 &local_size, &max_stack_size, &allocates_base_pointer, &ps,
                 &ps_len)) {
-            string program_string(ps, ps_len);
 
+            if (ps != NULL) {
+                program_string = string(ps, ps_len);
+            } else {
+                program_string = string();
+            }
             return new WindowsFrameInfo(
                 static_cast<google_breakpad::WindowsFrameInfo::StackInfoTypes>(
                     type_),
