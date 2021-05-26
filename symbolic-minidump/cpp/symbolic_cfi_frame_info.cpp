@@ -31,7 +31,9 @@ SymbolicCFIFrameInfo::SymbolicCFIFrameInfo(void *cfi_frame_info) {
 }
 
 SymbolicCFIFrameInfo::~SymbolicCFIFrameInfo() {
-    cfi_frame_info_free(cfi_frame_info_);
+    if (cfi_frame_info_ != NULL) {
+        cfi_frame_info_free(cfi_frame_info_);
+    }
 }
 
 bool SymbolicCFIFrameInfo::FindCallerRegs(
@@ -42,6 +44,11 @@ bool SymbolicCFIFrameInfo::FindCallerRegs(
 
     void *cfi_frame_info =
         dynamic_cast<const SymbolicCFIFrameInfo *>(this)->cfi_frame_info_;
+
+    if (cfi_frame_info == NULL) {
+        return false;
+    }
+
     const MinidumpMemoryRegion *minidump_memory =
         static_cast<const MinidumpMemoryRegion *>(&memory);
     std::vector<regval_t> register_vec;
@@ -77,6 +84,11 @@ bool SymbolicCFIFrameInfo::FindCallerRegs(
 
     void *cfi_frame_info =
         dynamic_cast<const SymbolicCFIFrameInfo *>(this)->cfi_frame_info_;
+
+    if (cfi_frame_info == NULL) {
+        return false;
+    }
+
     const MinidumpMemoryRegion *minidump_memory =
         static_cast<const MinidumpMemoryRegion *>(&memory);
     std::vector<regval_t> register_vec;
