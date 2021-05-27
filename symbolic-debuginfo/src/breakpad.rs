@@ -236,7 +236,7 @@ impl<'d> Iterator for BreakpadInfoRecords<'d> {
             return None;
         }
 
-        while let Some(line) = self.lines.next() {
+        for line in &mut self.lines {
             if line.starts_with(b"MODULE ") {
                 continue;
             }
@@ -311,7 +311,7 @@ impl<'d> Iterator for BreakpadFileRecords<'d> {
             return None;
         }
 
-        while let Some(line) = self.lines.next() {
+        for line in &mut self.lines {
             if line.starts_with(b"MODULE ") || line.starts_with(b"INFO ") {
                 continue;
             }
@@ -395,7 +395,7 @@ impl<'d> Iterator for BreakpadPublicRecords<'d> {
             return None;
         }
 
-        while let Some(line) = self.lines.next() {
+        for line in &mut self.lines {
             // Fast path: PUBLIC records are always before stack records. Once we encounter the
             // first stack record, we can therefore exit.
             if line.starts_with(b"STACK ") {
@@ -521,7 +521,7 @@ impl<'d> Iterator for BreakpadFuncRecords<'d> {
             return None;
         }
 
-        while let Some(line) = self.lines.next() {
+        for line in &mut self.lines {
             // Fast path: FUNC records are always before stack records. Once we encounter the
             // first stack record, we can therefore exit.
             if line.starts_with(b"STACK ") {
@@ -623,7 +623,7 @@ impl<'d> Iterator for BreakpadLineRecords<'d> {
             return None;
         }
 
-        while let Some(line) = self.lines.next() {
+        for line in &mut self.lines {
             // Stop parsing LINE records once other expected records are encountered.
             if line.starts_with(b"FUNC ")
                 || line.starts_with(b"PUBLIC ")
@@ -1273,17 +1273,11 @@ impl<'data> Iterator for BreakpadSymbolIterator<'data> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(result) = self.records.next() {
-            if let Ok(record) = result {
-                return Some(Symbol {
-                    name: Some(Cow::Borrowed(record.name)),
-                    address: record.address,
-                    size: 0,
-                });
-            }
-        }
-
-        None
+        self.records.find_map(Result::ok).map(|record| Symbol {
+            name: Some(Cow::Borrowed(record.name)),
+            address: record.address,
+            size: 0,
+        })
     }
 }
 
