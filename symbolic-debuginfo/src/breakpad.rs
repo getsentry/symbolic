@@ -1273,14 +1273,11 @@ impl<'data> Iterator for BreakpadSymbolIterator<'data> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.records
-            .next()
-            .and_then(|result| result.ok())
-            .map(|record| Symbol {
-                name: Some(Cow::Borrowed(record.name)),
-                address: record.address,
-                size: 0,
-            })
+        self.records.find_map(Result::ok).map(|record| Symbol {
+            name: Some(Cow::Borrowed(record.name)),
+            address: record.address,
+            size: 0,
+        })
     }
 }
 
