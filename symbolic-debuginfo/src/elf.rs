@@ -550,7 +550,7 @@ impl<'data, 'object> Iterator for ElfSymbolIterator<'data, 'object> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(symbol) = self.symbols.next() {
+        for symbol in &mut self.symbols {
             // Only check for function symbols.
             if symbol.st_type() != elf::sym::STT_FUNC {
                 continue;
