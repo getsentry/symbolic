@@ -288,7 +288,11 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
     let cfi = if matches.is_present("cfi") {
         // Reprocess with Call Frame Information
         let frame_info = prepare_cfi(&symbols_path, &state)?;
-        state = ProcessState::from_minidump_new(&byteview, Some(&frame_info))?;
+        state = if matches.is_present("new-method") {
+            ProcessState::from_minidump_new(&byteview, Some(&frame_info))?
+        } else {
+            ProcessState::from_minidump(&byteview, Some(&frame_info))?
+        };
         frame_info
     } else {
         Default::default()
@@ -346,6 +350,11 @@ fn main() {
                 .short("n")
                 .long("no-modules")
                 .help("Do not output loaded modules"),
+        )
+        .arg(
+            Arg::with_name("new_method")
+                .long("new-method")
+                .help("Use the new stackwalking method"),
         )
         .get_matches();
 
