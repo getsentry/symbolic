@@ -349,7 +349,7 @@ pub fn shorten_path(path: &str, length: usize) -> Cow<'_, str> {
     let max_len = length - 4;
 
     // make sure we get two segments at the start.
-    while let Some((idx, sep)) = piece_iter.next() {
+    for (idx, sep) in &mut piece_iter {
         let slice = &path[last_idx..idx + sep.len()];
         rv.push_str(slice);
         let done = last_idx > 0;

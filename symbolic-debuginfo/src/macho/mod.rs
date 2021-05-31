@@ -493,7 +493,7 @@ impl<'data> Iterator for MachOSymbolIterator<'data> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(next) = self.symbols.next() {
+        for next in &mut self.symbols {
             // Gracefully recover from corrupt nlists
             let (mut name, nlist) = match next {
                 Ok(pair) => pair,
