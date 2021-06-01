@@ -349,7 +349,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                 let frame = EhFrame::new(&section.data, endian);
                 UnwindInfo::new(object, section.address, frame)
             });
-            self.read_compact_unwind_info(compact_unwind_info, eh_frame_info.as_ref())?;
+            self.read_compact_unwind_info(compact_unwind_info, eh_frame_info.as_ref(), object)?;
         }
         result
     }
@@ -391,6 +391,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         &mut self,
         mut iter: CompactUnwindInfoIter<'d>,
         eh_frame_info: Option<&UnwindInfo<U>>,
+        object: &MachObject<'d>,
     ) -> Result<(), CfiError>
     where
         R: Reader + Eq,
@@ -416,7 +417,32 @@ impl<W: Write> AsciiCfiWriter<W> {
 
         while let Some(entry) = iter.next()? {
             match entry.instructions(&iter) {
-                CompactUnwindOp::None => { /* do nothing */ }
+                CompactUnwindOp::None => {
+                    // We have seen some of these `CompactUnwindOp::None` correspond to some tiny
+                    // stackless functions, such as `__kill` from `libsystem_kernel.dylib` or similar.
+                    //
+                    // Because they don't have a normal CFI record, we would fall back to frame pointers
+                    // or stack scanning when unwinding, which will cause us to skip the caller
+                    // frame, or fail unwinding completely.
+                    //
+                    // To overcome this problem we will emit a CFI record that basically says that
+                    // the function has no stack space of its own. Since these compact unwind records
+                    // can be the result of merging multiple of these adjacent functions, they can
+                    // span more instructions/bytes than one single symbol.
+                    //
+                    // This can potentially lead to false positives. However in that case, the unwinding
+                    // code will detect the bogus return address and fall back to frame pointers or
+                    // scanning either way.
+
+                    let start_addr = entry.instruction_address;
+                    if let Some(ptr_size) = object.arch().cpu_family().pointer_size() {
+                        writeln!(
+                            self.inner,
+                            "STACK CFI INIT {:x} {:x} .cfa: $rsp {} + .ra: .cfa -{} + ^",
+                            start_addr, entry.len, ptr_size, ptr_size
+                        )?;
+                    }
+                }
                 CompactUnwindOp::UseDwarfFde { offset_in_eh_frame } => {
                     // We need to grab the CFI info from the eh_frame section
                     if let Some(info) = eh_frame_info {
