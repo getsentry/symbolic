@@ -451,7 +451,45 @@ impl<W: Write> AsciiCfiWriter<W> {
                             info.section
                                 .fde_from_offset(&info.bases, offset, U::cie_from_offset)
                         {
-                            self.process_fde(info, &mut ctx, &fde)?;
+                            let start_addr = entry.instruction_address.into();
+                            let symbols = object.symbol_map();
+                            let sym_name = symbols.lookup(start_addr).and_then(|sym| sym.name());
+                            let ptr_size = object.arch().cpu_family().pointer_size();
+
+                            if sym_name == Some("_sigtramp") && ptr_size == Some(8) {
+                                // This specific function has some hand crafted dwarf expressions
+                                // that we currently can't process. They encode how to restore the
+                                // registers from a machine context accessible via `$rbx`
+                                // See: https://github.com/apple/darwin-libplatform/blob/215b09856ab5765b7462a91be7076183076600df/src/setjmp/x86_64/_sigtramp.s#L198-L258
+
+                                let mc_offset = 48;
+                                let rbp_offset = 64;
+                                let rsp_offset = 72;
+                                let rip_offset = 144;
+
+                                write!(
+                                    self.inner,
+                                    "STACK CFI INIT {:x} {:x} ",
+                                    start_addr, entry.len
+                                )?;
+                                write!(
+                                    self.inner,
+                                    "$rbp: $rbx {} + ^ {} + ^ ",
+                                    mc_offset, rbp_offset
+                                )?;
+                                write!(
+                                    self.inner,
+                                    ".cfa: $rbx {} + ^ {} + ^ ",
+                                    mc_offset, rsp_offset,
+                                )?;
+                                writeln!(
+                                    self.inner,
+                                    ".ra: $rbx {} + ^ {} + ^",
+                                    mc_offset, rip_offset
+                                )?;
+                            } else {
+                                self.process_fde(info, &mut ctx, &fde)?;
+                            }
                         }
                     }
                 }
