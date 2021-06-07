@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::io::{self, Seek, Write};
 use std::num::NonZeroU16;
 
 use fnv::{FnvHashMap, FnvHashSet};
-use num::FromPrimitive;
 
 use symbolic_common::{Arch, DebugId, Language};
 use symbolic_debuginfo::{DebugSession, FileInfo, Function, LineInfo, ObjectLike, Symbol};
@@ -94,7 +94,7 @@ where
         kind: ValueKind,
     ) -> Result<format::Seg<T, L>, SymCacheError>
     where
-        L: Default + Copy + num::FromPrimitive,
+        L: Default + Copy + std::convert::TryFrom<usize>,
     {
         if data.is_empty() {
             return Ok(format::Seg::default());
@@ -105,7 +105,7 @@ where
 
         let segment_pos = self.position as u32;
         let segment_len =
-            L::from_usize(data.len()).ok_or(SymCacheErrorKind::TooManyValues(kind))?;
+            L::try_from(data.len()).map_err(|_| SymCacheErrorKind::TooManyValues(kind))?;
 
         self.write_bytes(bytes)?;
         Ok(format::Seg::new(segment_pos, segment_len))
@@ -519,8 +519,8 @@ where
         let language = function.name.language();
         let symbol_id = self.insert_symbol(function.name.as_str().into())?;
         let comp_dir = self.write_path(function.compilation_dir)?;
-        let lang = u8::from_u32(language as u32)
-            .ok_or(SymCacheErrorKind::ValueTooLarge(ValueKind::Language))?;
+        let lang = u8::try_from(language as u32)
+            .map_err(|_| SymCacheErrorKind::ValueTooLarge(ValueKind::Language))?;
 
         let mut current_start_address = function.address;
         let mut lines = function.lines.iter().peekable();

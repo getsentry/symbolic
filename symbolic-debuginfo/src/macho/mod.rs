@@ -17,8 +17,10 @@ use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
 use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
 
 mod bcsymbolmap;
+pub mod compact;
 
 pub use bcsymbolmap::*;
+pub use compact::*;
 
 /// Prefix for hidden symbols from Apple BCSymbolMap builds.
 const SWIFT_HIDDEN_PREFIX: &str = "__hidden#";
@@ -39,6 +41,18 @@ impl MachError {
     {
         let source = Some(source.into());
         Self { source }
+    }
+}
+
+impl From<goblin::error::Error> for MachError {
+    fn from(e: goblin::error::Error) -> Self {
+        Self::new(e)
+    }
+}
+
+impl From<scroll::Error> for MachError {
+    fn from(e: scroll::Error) -> Self {
+        Self::new(e)
     }
 }
 
@@ -111,6 +125,22 @@ impl<'d> MachObject<'d> {
     /// ```
     pub fn load_symbolmap(&mut self, symbolmap: BcSymbolMap<'d>) {
         self.bcsymbolmap = Some(Arc::new(symbolmap));
+    }
+
+    /// Gets the Compact Unwind Info of this object, if any exists.
+    pub fn compact_unwind_info(&self) -> Result<Option<CompactUnwindInfoIter<'d>>, MachError> {
+        if let Some(section) = self.section("unwind_info") {
+            if let Cow::Borrowed(section) = section.data {
+                let arch = self.arch();
+                let is_little_endian = self.endianity() == Endian::Little;
+                return Ok(Some(CompactUnwindInfoIter::new(
+                    section,
+                    is_little_endian,
+                    arch,
+                )?));
+            }
+        }
+        Ok(None)
     }
 
     /// The container file format, which is always `FileFormat::MachO`.
@@ -293,7 +323,9 @@ impl<'d> MachObject<'d> {
 
     /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
-        self.has_section("eh_frame") || self.has_section("debug_frame")
+        self.has_section("eh_frame")
+            || self.has_section("debug_frame")
+            || self.has_section("unwind_info")
     }
 
     /// Determines whether this object contains embedded source.
@@ -461,7 +493,7 @@ impl<'data> Iterator for MachOSymbolIterator<'data> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(next) = self.symbols.next() {
+        for next in &mut self.symbols {
             // Gracefully recover from corrupt nlists
             let (mut name, nlist) = match next {
                 Ok(pair) => pair,
