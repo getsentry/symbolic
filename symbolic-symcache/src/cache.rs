@@ -705,7 +705,7 @@ impl<'a> Line<'a> {
     /// The base_dir of the line.
     pub fn base_dir(&self) -> &str {
         match self.file {
-            Some(ref record) => record.base_dir.read_str(self.data).unwrap_or(""),
+            Some(record) => record.base_dir.read_str(self.data).unwrap_or(""),
             None => "",
         }
     }
@@ -713,7 +713,7 @@ impl<'a> Line<'a> {
     /// The filename of the line.
     pub fn filename(&self) -> &'a str {
         match self.file {
-            Some(ref record) => record.filename.read_str(self.data).unwrap_or(""),
+            Some(record) => record.filename.read_str(self.data).unwrap_or(""),
             None => "",
         }
     }

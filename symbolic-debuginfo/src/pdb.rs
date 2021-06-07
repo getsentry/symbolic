@@ -957,7 +957,7 @@ impl<'s> Unit<'s> {
 
         let mut lines = Vec::new();
         while let Some(line_info) = line_iter.next()? {
-            let rva = match line_info.offset.to_rva(&address_map) {
+            let rva = match line_info.offset.to_rva(address_map) {
                 Some(rva) => u64::from(rva.0),
                 None => continue,
             };
@@ -984,7 +984,7 @@ impl<'s> Unit<'s> {
 
         // Translate the function's address to the PE's address space. If this fails, we're
         // likely dealing with an invalid function and can skip it.
-        let address = match proc.offset.to_rva(&address_map) {
+        let address = match proc.offset.to_rva(address_map) {
             Some(addr) => u64::from(addr.0),
             None => return Ok(None),
         };

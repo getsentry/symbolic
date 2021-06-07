@@ -287,7 +287,7 @@ impl<'data> ElfObject<'data> {
             let endianness = self.elf.header.endianness().ok()?;
             let context = Ctx::new(container, endianness);
 
-            let compression = CompressionHeader::parse(&section_data, 0, context).ok()?;
+            let compression = CompressionHeader::parse(section_data, 0, context).ok()?;
             if compression.ch_type != ELFCOMPRESS_ZLIB {
                 return None;
             }

@@ -787,7 +787,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             // Avoid constant allocations by collecting repeatedly into the same buffer and
             // draining the results out of it. This keeps the original buffer allocated and
             // allows for a single allocation per call to `resolve_lines`.
-            let lines = self.resolve_lines(&range_buf);
+            let lines = self.resolve_lines(range_buf);
 
             if inline {
                 // An inlined function must always have a parent. An empty list of funcs

@@ -847,7 +847,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                     None => return Ok(writeln!(self.inner)?),
                 };
 
-                let program_string = prog_ref.to_string_lossy(&string_table)?;
+                let program_string = prog_ref.to_string_lossy(string_table)?;
 
                 writeln!(self.inner, "{}", program_string.trim())?;
             }

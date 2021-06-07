@@ -1357,7 +1357,7 @@ impl<'s> BreakpadFunctionIterator<'s> {
         let mut lines = Vec::new();
         for line in record.lines() {
             let line = line?;
-            let filename = line.filename(&self.file_map).unwrap_or_default();
+            let filename = line.filename(self.file_map).unwrap_or_default();
 
             lines.push(LineInfo {
                 address: line.address,

@@ -394,7 +394,7 @@ pub fn shorten_path(path: &str, length: usize) -> Cow<'_, str> {
     rv.push_str("...");
     rv.push_str(final_sep);
     for item in rest {
-        rv.push_str(&item);
+        rv.push_str(item);
     }
 
     Cow::Owned(rv)
