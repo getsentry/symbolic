@@ -208,131 +208,190 @@ impl<A: Ord + Copy, E> RangeMap<A, E> {
     }
 }
 
-/// Where to insert in a [`NestedRangeMap`].
-enum InsertWhere {
-    /// Insert at the current level at the given index.
-    Here(usize),
-
-    /// Insert into the inner map at the given index.
-    Into(usize),
-
-    /// Insertion is not possible.
-    Impossible,
-}
-
 impl<A, E> Default for RangeMap<A, E> {
     fn default() -> Self {
         Self { inner: Vec::new() }
     }
 }
 
+type NestedRangeMapEntry<A, E> = (Range<A>, E, Box<NestedRangeMap<A, E>>);
+
 /// A structure representing a tree of disjoint ranges with associated contents.
 #[derive(Debug)]
 pub struct NestedRangeMap<A, E> {
-    inner: RangeMap<A, (Box<NestedRangeMap<A, E>>, E)>,
+    inner: Vec<NestedRangeMapEntry<A, E>>,
 }
 
-impl<A: Ord + Copy, E> NestedRangeMap<A, E> {
+impl<A: Ord + Copy + fmt::Debug, E> NestedRangeMap<A, E> {
+    fn from_vec_unchecked(inner: Vec<NestedRangeMapEntry<A, E>>) -> Self {
+        Self { inner }
+    }
+
     /// Insert a range into the map.
-    ///
-    /// If the given range is disjoint from all ranges in the map,
-    /// it will be inserted at the top level. If it is strictly contained
-    /// in one of the ranges in the map, insertion recursively continues with
-    /// that range, and so forth. If the range overlaps with some range in the
-    /// map, insertion fails.
+
+    /// The insertion is valid if the new range does not
+    /// overlap nontrivially with any existing ranges
+    /// and is not equal to an existing range.
     /// Returns true if the insertion was successful.
     pub fn insert(&mut self, range: Range<A>, contents: E) -> bool {
-        match self.find_insertion_index(&range) {
-            InsertWhere::Here(i) => {
-                self.inner
-                    .inner
-                    .insert(i, (range, (Box::new(NestedRangeMap::default()), contents)));
-                true
+        if self.inner.is_empty() {
+            self.inner
+                .push((range, contents, Box::new(NestedRangeMap::default())));
+            return true;
+        }
+
+        let start_idx = self
+            .inner
+            .binary_search_by_key(&range.start, |entry| entry.0.start);
+
+        let end_idx = self
+            .inner
+            .binary_search_by_key(&range.end, |entry| entry.0.end);
+
+        match (start_idx, end_idx) {
+            (Ok(i), Ok(j)) => {
+                // Both the start and end of `range` line up with existing ranges
+                match i.cmp(&j) {
+                    Ordering::Equal => {
+                        // [ range i)
+                        // [ range  )
+                        false
+                    }
+                    Ordering::Less => {
+                        // [ range i ) … [range j )
+                        // [        range         )
+                        let inner_new = self.inner.drain(i..=j).collect();
+                        let map_new = NestedRangeMap::from_vec_unchecked(inner_new);
+                        self.inner.insert(i, (range, contents, Box::new(map_new)));
+                        true
+                    }
+                    Ordering::Greater => {
+                        // i > j should never happen.
+                        false
+                    }
+                }
+            }
+            (Err(i), Err(j)) => {
+                // Neither start nor end of `range` line up with existing ranges.
+                if i <= j {
+                    if let Some(before) = i.checked_sub(1).and_then(|k| self.inner.get(k)) {
+                        if before.0.end > range.start {
+                            // [ before )
+                            //     [ range )
+                            return false;
+                        }
+                    }
+
+                    if let Some(after) = self.inner.get(j) {
+                        if after.0.start < range.end {
+                            //       [ after )
+                            //  [ range )
+                            return false;
+                        }
+                    }
+
+                    //   [ range i ) … [ range j-1 )
+                    // [           range             )
+                    let inner_new = self.inner.drain(i..j).collect();
+                    let map_new = NestedRangeMap::from_vec_unchecked(inner_new);
+                    self.inner.insert(i, (range, contents, Box::new(map_new)));
+                    true
+                } else if i == j + 1 {
+                    // [  range j  )
+                    //   [ range )
+                    self.inner[j].2.insert(range, contents)
+                } else {
+                    // i > j + 1, this should never happen.
+                    false
+                }
             }
 
-            InsertWhere::Into(i) => {
-                let (_, (sub_map, _)) = &mut self.inner.inner[i];
-                sub_map.insert(range, contents)
+            (Ok(i), Err(j)) => {
+                // The start of `range` lines up with an existing range
+                match i.cmp(&j) {
+                    Ordering::Equal => {
+                        // [  range i )
+                        // [ range )
+                        self.inner[i].2.insert(range, contents)
+                    }
+                    Ordering::Less => {
+                        if let Some(after) = self.inner.get(j) {
+                            if after.0.start < range.end {
+                                //  [ range i )  …  [ after )
+                                //  [        range       )
+                                return false;
+                            }
+                        }
+
+                        // [ range i ) … [ range j-1)
+                        // [           range            )
+                        let inner_new = self.inner.drain(i..j).collect();
+                        let map_new = NestedRangeMap::from_vec_unchecked(inner_new);
+                        self.inner.insert(i, (range, contents, Box::new(map_new)));
+                        true
+                    }
+                    Ordering::Greater => {
+                        // i > j, this should never happen.
+                        false
+                    }
+                }
             }
 
-            InsertWhere::Impossible => false,
+            (Err(i), Ok(j)) => {
+                // The end of `range` lines up with an existing range
+                if i == j + 1 {
+                    // [  range j  )
+                    //   [  range  )
+                    self.inner[j].2.insert(range, contents)
+                } else if i <= j {
+                    if let Some(before) = i.checked_sub(1).and_then(|k| self.inner.get(k)) {
+                        if before.0.end > range.start {
+                            // [ before ) … [ range j)
+                            //     [      range      )
+                            return false;
+                        }
+                    }
+
+                    //   [ range i ) … [ range j )
+                    // [          range          )
+                    let inner_new = self.inner.drain(i..=j).collect();
+                    let map_new = NestedRangeMap::from_vec_unchecked(inner_new);
+                    self.inner.insert(i, (range, contents, Box::new(map_new)));
+                    true
+                } else {
+                    // i > j + 1, this should never happen
+                    false
+                }
+            }
         }
     }
 
     /// Retrieves the *most specific* contents associated with the given address, that is,
     /// those associated with the smallest range that covers the address.
     pub fn get_contents(&self, address: A) -> Option<&E> {
-        let (sub_map, entry) = self.inner.get_contents(address)?;
-        sub_map.get_contents(address).or(Some(entry))
+        let (range, entry, sub_map) = match self
+            .inner
+            .binary_search_by_key(&address, |range| range.0.end)
+        {
+            // This means inner(index).end == address => address might be covered by the next one
+            Ok(index) => self.inner.get(index + 1)?,
+            // This means that inner(index).end > address => this could be the one
+            Err(index) => self.inner.get(index)?,
+        };
+
+        (range.start <= address).then(|| sub_map.get_contents(address).unwrap_or(entry))
     }
 
     /// Returns true if the given address is covered by some range in the map.
     pub fn contains(&self, address: A) -> bool {
-        self.inner.contains(address)
-    }
-
-    /// Determines where a new range should be inserted, if possible.
-    fn find_insertion_index(&self, range: &Range<A>) -> InsertWhere {
-        match self
-            .inner
-            .inner
-            .binary_search_by_key(&range.end, |entry| entry.0.end)
-        {
-            Ok(i) => {
-                let existing_range = &self.inner.inner[i].0;
-                if existing_range.start < range.start {
-                    // [ existing_rangei )
-                    //       [ new range )
-                    InsertWhere::Into(i)
-                } else {
-                    // [ existing_range ) or   [ existing range )
-                    // [     range      )    [       range      )
-                    InsertWhere::Impossible
-                }
-            }
-
-            Err(i) => {
-                if i > 0 {
-                    let before = &self.inner.inner[i - 1].0;
-                    if before.end > range.start {
-                        // [ before )
-                        //     [ range )
-                        return InsertWhere::Impossible;
-                    }
-                }
-
-                match self.inner.inner.get(i) {
-                    Some(e) => {
-                        let existing_range = &e.0;
-                        if range.end <= existing_range.start {
-                            // ----------[ existing_range )
-                            // [ range )
-                            InsertWhere::Here(i)
-                        } else if range.start >= existing_range.start {
-                            // [ existing_range )
-                            //     [ range )
-                            InsertWhere::Into(i)
-                        } else {
-                            // -----[ existing_range )
-                            //  [ range )
-                            InsertWhere::Impossible
-                        }
-                    }
-
-                    None => {
-                        // insert at the end
-                        InsertWhere::Here(i)
-                    }
-                }
-            }
-        }
+        self.get_contents(address).is_some()
     }
 }
 
 impl<A, E> Default for NestedRangeMap<A, E> {
     fn default() -> Self {
         Self {
-            inner: RangeMap::default(),
+            inner: Vec::default(),
         }
     }
 }
@@ -441,10 +500,6 @@ impl<'a> WinUnwindRules<'a> {
                     _ => {
                         cache_other.insert(start..end, win_record);
                     }
-                }
-
-                if address < start {
-                    break;
                 }
             }
         }
@@ -1831,17 +1886,19 @@ mod tests {
 
         assert!(map.insert(0u8..10, "Outer"));
         assert!(!map.insert(5..15, "Overlapping"));
-        assert!(map.insert(0..5, "Middle 1"));
+        assert!(map.insert(1..5, "Middle 1"));
         assert!(map.insert(2..4, "Inner 1"));
         assert!(map.insert(5..8, "Middle 2"));
         assert!(!map.insert(3..8, "Overlapping"));
         assert!(map.insert(6..8, "Inner 2"));
+        assert!(map.insert(0..9, "Middle 3"));
 
         //  0    1    2    3    4    5    6    7    8    9    10
         //          [Inner 1 ]          [Inner 2 ]
-        // [       Middle 1       ][   Middle 2  ]
+        //     [   Middle 1       ][   Middle 2  ]
+        // [                  Middle 3                ]
         // [                    Outer                      ]
-        assert_eq!(map.get_contents(0).unwrap(), &"Middle 1");
+        assert_eq!(map.get_contents(0).unwrap(), &"Middle 3");
         assert_eq!(map.get_contents(1).unwrap(), &"Middle 1");
         assert_eq!(map.get_contents(2).unwrap(), &"Inner 1");
         assert_eq!(map.get_contents(3).unwrap(), &"Inner 1");
@@ -1849,7 +1906,7 @@ mod tests {
         assert_eq!(map.get_contents(5).unwrap(), &"Middle 2");
         assert_eq!(map.get_contents(6).unwrap(), &"Inner 2");
         assert_eq!(map.get_contents(7).unwrap(), &"Inner 2");
-        assert_eq!(map.get_contents(8).unwrap(), &"Outer");
+        assert_eq!(map.get_contents(8).unwrap(), &"Middle 3");
         assert_eq!(map.get_contents(9).unwrap(), &"Outer");
         assert_eq!(map.get_contents(10), None);
     }
