@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
+use std::ops::Range;
 use std::str;
 
 use pest::Parser;
@@ -480,6 +481,11 @@ impl<'d> BreakpadFuncRecord<'d> {
             finished: false,
         }
     }
+
+    /// Returns the range of addresses covered by this record.
+    pub fn range(&self) -> Range<u64> {
+        self.address..self.address + self.size
+    }
 }
 
 impl PartialEq for BreakpadFuncRecord<'_> {
@@ -605,6 +611,11 @@ impl BreakpadLineRecord {
     /// Resolves the filename for this record in the file map.
     pub fn filename<'d>(&self, file_map: &BreakpadFileMap<'d>) -> Option<&'d str> {
         file_map.get(&self.file_id).cloned()
+    }
+
+    /// Returns the range of addresses covered by this record.
+    pub fn range(&self) -> Range<u64> {
+        self.address..self.address + self.size
     }
 }
 
@@ -735,6 +746,11 @@ impl<'d> BreakpadStackCfiRecord<'d> {
         BreakpadStackCfiDeltaRecords {
             lines: self.deltas.clone(),
         }
+    }
+
+    /// Returns the range of addresses covered by this record.
+    pub fn range(&self) -> Range<u64> {
+        self.start..self.start + self.size
     }
 }
 
@@ -888,6 +904,11 @@ impl<'d> BreakpadStackWinRecord<'d> {
             uses_base_pointer,
             program_string,
         }
+    }
+
+    /// Returns the range of addresses covered by this record.
+    pub fn code_range(&self) -> Range<u32> {
+        self.code_start..self.code_start + self.code_size
     }
 }
 
