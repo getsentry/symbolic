@@ -198,7 +198,7 @@ fn print_state(
         let mut index = 0;
         for (fi, frame) in thread.frames().iter().enumerate() {
             if let Some(module) = frame.module() {
-                if let Some(line_infos) = symbolize(&symcaches, frame, arch, fi == 0)? {
+                if let Some(line_infos) = symbolize(symcaches, frame, arch, fi == 0)? {
                     for (i, info) in line_infos.iter().enumerate() {
                         println!(
                             "{:>3}  {}!{} [{} : {} + 0x{:x}]",

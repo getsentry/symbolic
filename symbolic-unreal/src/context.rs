@@ -184,7 +184,7 @@ impl Unreal4ContextRuntimeProperties {
                 continue;
             }
             match tag.name() {
-                "CrashGUID" => rv.crash_guid = get_text_or_none(&child),
+                "CrashGUID" => rv.crash_guid = get_text_or_none(child),
                 "ProcessId" => rv.process_id = child.text().parse::<u32>().ok(),
                 "IsInternalBuild" => rv.is_internal_build = child.text().parse::<bool>().ok(),
                 "IsSourceDistribution" => {
@@ -192,29 +192,29 @@ impl Unreal4ContextRuntimeProperties {
                 }
                 "IsAssert" => rv.is_assert = child.text().parse::<bool>().ok(),
                 "IsEnsure" => rv.is_ensure = child.text().parse::<bool>().ok(),
-                "CrashType" => rv.crash_type = get_text_or_none(&child),
+                "CrashType" => rv.crash_type = get_text_or_none(child),
                 "SecondsSinceStart" => rv.seconds_since_start = child.text().parse::<u32>().ok(),
-                "GameName" => rv.game_name = get_text_or_none(&child),
-                "ExecutableName" => rv.executable_name = get_text_or_none(&child),
-                "BuildConfiguration" => rv.build_configuration = get_text_or_none(&child),
-                "PlatformName" => rv.platform_name = get_text_or_none(&child),
-                "EngineMode" => rv.engine_mode = get_text_or_none(&child),
-                "EngineVersion" => rv.engine_version = get_text_or_none(&child),
+                "GameName" => rv.game_name = get_text_or_none(child),
+                "ExecutableName" => rv.executable_name = get_text_or_none(child),
+                "BuildConfiguration" => rv.build_configuration = get_text_or_none(child),
+                "PlatformName" => rv.platform_name = get_text_or_none(child),
+                "EngineMode" => rv.engine_mode = get_text_or_none(child),
+                "EngineVersion" => rv.engine_version = get_text_or_none(child),
                 "LanguageLCID" => rv.language_lcid = child.text().parse::<i32>().ok(),
-                "AppDefaultLocale" => rv.app_default_locate = get_text_or_none(&child),
-                "BuildVersion" => rv.build_version = get_text_or_none(&child),
+                "AppDefaultLocale" => rv.app_default_locate = get_text_or_none(child),
+                "BuildVersion" => rv.build_version = get_text_or_none(child),
                 "IsUE4Release" => rv.is_ue4_release = child.text().parse::<bool>().ok(),
-                "UserName" => rv.username = get_text_or_none(&child),
-                "BaseDir" => rv.base_dir = get_text_or_none(&child),
-                "RootDir" => rv.root_dir = get_text_or_none(&child),
-                "MachineId" => rv.machine_id = get_text_or_none(&child),
-                "LoginId" => rv.login_id = get_text_or_none(&child),
-                "EpicAccountId" => rv.epic_account_id = get_text_or_none(&child),
-                "CallStack" => rv.legacy_call_stack = get_text_or_none(&child),
-                "PCallStack" => rv.portable_call_stack = get_text_or_none(&child),
-                "UserDescription" => rv.user_description = get_text_or_none(&child),
-                "ErrorMessage" => rv.error_message = get_text_or_none(&child),
-                "CrashReporterMessage" => rv.crash_reporter_message = get_text_or_none(&child),
+                "UserName" => rv.username = get_text_or_none(child),
+                "BaseDir" => rv.base_dir = get_text_or_none(child),
+                "RootDir" => rv.root_dir = get_text_or_none(child),
+                "MachineId" => rv.machine_id = get_text_or_none(child),
+                "LoginId" => rv.login_id = get_text_or_none(child),
+                "EpicAccountId" => rv.epic_account_id = get_text_or_none(child),
+                "CallStack" => rv.legacy_call_stack = get_text_or_none(child),
+                "PCallStack" => rv.portable_call_stack = get_text_or_none(child),
+                "UserDescription" => rv.user_description = get_text_or_none(child),
+                "ErrorMessage" => rv.error_message = get_text_or_none(child),
+                "CrashReporterMessage" => rv.crash_reporter_message = get_text_or_none(child),
                 "Misc.NumberOfCores" => rv.misc_number_of_cores = child.text().parse::<u32>().ok(),
                 "Misc.NumberOfCoresIncludingHyperthreads" => {
                     rv.misc_number_of_cores_inc_hyperthread = child.text().parse::<u32>().ok()
@@ -222,12 +222,12 @@ impl Unreal4ContextRuntimeProperties {
                 "Misc.Is64bitOperatingSystem" => {
                     rv.misc_is_64bit = child.text().parse::<bool>().ok()
                 }
-                "Misc.CPUVendor" => rv.misc_cpu_vendor = get_text_or_none(&child),
-                "Misc.CPUBrand" => rv.misc_cpu_brand = get_text_or_none(&child),
-                "Misc.PrimaryGPUBrand" => rv.misc_primary_gpu_brand = get_text_or_none(&child),
-                "Misc.OSVersionMajor" => rv.misc_os_version_major = get_text_or_none(&child),
-                "Misc.OSVersionMinor" => rv.misc_os_version_minor = get_text_or_none(&child),
-                "GameStateName" => rv.game_state_name = get_text_or_none(&child),
+                "Misc.CPUVendor" => rv.misc_cpu_vendor = get_text_or_none(child),
+                "Misc.CPUBrand" => rv.misc_cpu_brand = get_text_or_none(child),
+                "Misc.PrimaryGPUBrand" => rv.misc_primary_gpu_brand = get_text_or_none(child),
+                "Misc.OSVersionMajor" => rv.misc_os_version_major = get_text_or_none(child),
+                "Misc.OSVersionMinor" => rv.misc_os_version_minor = get_text_or_none(child),
+                "GameStateName" => rv.game_state_name = get_text_or_none(child),
                 "MemoryStats.TotalPhysical" => {
                     rv.memory_stats_total_physical = child.text().parse::<u64>().ok()
                 }
@@ -245,13 +245,13 @@ impl Unreal4ContextRuntimeProperties {
                     rv.allowed_to_be_contacted = child.text().parse::<bool>().ok()
                 }
                 "CrashReportClientVersion" => {
-                    rv.crash_reporter_client_version = get_text_or_none(&child)
+                    rv.crash_reporter_client_version = get_text_or_none(child)
                 }
-                "Modules" => rv.modules = get_text_or_none(&child),
+                "Modules" => rv.modules = get_text_or_none(child),
                 _ => {
                     rv.custom.insert(
                         tag.name().to_string(),
-                        get_text_or_none(&child).unwrap_or_default(),
+                        get_text_or_none(child).unwrap_or_default(),
                     );
                 }
             }
@@ -412,7 +412,7 @@ fn test_get_runtime_properties_no_children() {
 #[test]
 fn test_get_game_and_engine_data() {
     let actual =
-        Unreal4Context::parse(&ROOT_WITH_GAME_AND_ENGINE_DATA.as_bytes()).expect("default struct");
+        Unreal4Context::parse(ROOT_WITH_GAME_AND_ENGINE_DATA.as_bytes()).expect("default struct");
     assert_eq!(
         actual
             .engine_data

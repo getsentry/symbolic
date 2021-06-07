@@ -61,7 +61,7 @@ impl Unreal4LogEntry {
         if let Some(first_line) = logs_utf8.lines().next() {
             // First line includes the timestamp of the following 100 and some lines until
             // log entries actually include timestamps
-            fallback_timestamp = parse_log_datetime(&first_line);
+            fallback_timestamp = parse_log_datetime(first_line);
         }
 
         let mut logs: Vec<_> = logs_utf8
