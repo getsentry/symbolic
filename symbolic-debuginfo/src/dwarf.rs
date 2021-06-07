@@ -271,7 +271,7 @@ impl<'d, 'a> DwarfLineProgram<'d> {
                 // here, but let's wait until that is needed.
             } else {
                 let file_index = program_row.file_index();
-                let line = program_row.line();
+                let line = program_row.line().map(|v| v.get());
                 let mut duplicate = false;
                 if let Some(last_row) = sequence_rows.last_mut() {
                     if last_row.address == address {
@@ -1070,12 +1070,12 @@ impl<'d> DwarfInfo<'d> {
         let inner = gimli::read::Dwarf {
             debug_abbrev: sections.debug_abbrev.to_gimli(),
             debug_addr: Default::default(),
+            debug_aranges: Default::default(),
             debug_info: sections.debug_info.to_gimli(),
             debug_line: sections.debug_line.to_gimli(),
             debug_line_str: sections.debug_line_str.to_gimli(),
             debug_str: sections.debug_str.to_gimli(),
             debug_str_offsets: sections.debug_str_offsets.to_gimli(),
-            debug_str_sup: Default::default(),
             debug_types: Default::default(),
             locations: Default::default(),
             ranges: RangeLists::new(
@@ -1083,6 +1083,7 @@ impl<'d> DwarfInfo<'d> {
                 sections.debug_rnglists.to_gimli(),
             ),
             file_type: DwarfFileType::Main,
+            sup: Default::default(),
         };
 
         // Prepare random access to unit headers.

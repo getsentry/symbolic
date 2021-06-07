@@ -27,7 +27,7 @@ dmsort = "1.0.1"
 elementtree = "0.5.0"
 fallible-iterator = "0.2.0"
 flate2 = { version = "1.0.13", features = ["rust_backend"], default-features = false }
-gimli = { version = "0.23.0", features = ["read", "std"], default-features = false }
+gimli = { version = "0.24.0", features = ["read", "std"], default-features = false }
 goblin = "0.4.1"
 lazy_static = "1.4.0"
 lazycell = "1.2.1"
