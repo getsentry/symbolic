@@ -1439,7 +1439,7 @@ impl SystemInfo {
             // Try to parse the Linux build string. Breakpad and Crashpad run
             // `uname -srvmo` to generate it. This roughtly resembles:
             // "Linux [version] [build...] [arch] Linux/GNU"
-            if let Some(captures) = LINUX_BUILD_RE.captures(&build) {
+            if let Some(captures) = LINUX_BUILD_RE.captures(build) {
                 let version = captures.get(1).unwrap(); // uname -r portion
                 let build = captures.get(2).unwrap(); // uname -v portion
                 return (version.as_str().into(), build.as_str().into());

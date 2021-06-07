@@ -1068,7 +1068,7 @@ impl<'a> CompactUnwindInfoIter<'a> {
         // If we get here, we must have loaded a page
         let (first_level_entry, second_level_page) = self.page_of_next_entry.as_ref().unwrap();
         let entry =
-            self.second_level_entry(&first_level_entry, &second_level_page, self.second_idx)?;
+            self.second_level_entry(first_level_entry, second_level_page, self.second_idx)?;
 
         // Advance to the next entry
         self.second_idx += 1;
