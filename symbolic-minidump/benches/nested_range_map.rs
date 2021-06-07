@@ -1,22 +1,45 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use std::ops::Range;
+
+use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
+use rand::{seq::SliceRandom, Rng};
 
 use symbolic_minidump::processor::NestedRangeMap;
 
+fn create_ranges(range: Range<u32>) -> Vec<Range<u32>> {
+    let mut rng = rand::thread_rng();
+    let mut ranges = Vec::new();
+    go(range, &mut ranges);
+    ranges.shuffle(&mut rng);
+
+    ranges
+}
+
+fn go(range: Range<u32>, acc: &mut Vec<Range<u32>>) {
+    let mid = (range.end - range.start) / 2;
+    if mid > range.start + 1 {
+        go(range.start..mid, acc);
+    }
+    if range.start > mid + 1 {
+        go(mid..range.end, acc);
+    }
+
+    acc.push(range);
+}
+
 pub fn nested_range_map_benchmark(c: &mut Criterion) {
+    let ranges = create_ranges(0..10_000);
     c.bench_function("NestedRangeMap insertions", |b| {
-        b.iter(|| {
-            let mut map = NestedRangeMap::default();
-
-            for i in 0..1_000 {
-                let left = i * 1_000;
-                let right = (i + 1) * 1_000;
-                map.insert(left..right, 0);
-
-                for j in 0..1_000 {
-                    map.insert(left + j..right, j);
+        b.iter_batched(
+            || ranges.clone(),
+            |ranges| {
+                let mut map = NestedRangeMap::default();
+                for range in ranges.into_iter() {
+                    let contents = format!("[{},{})", range.start, range.end);
+                    map.insert(range, contents);
                 }
-            }
-        })
+            },
+            BatchSize::SmallInput,
+        )
     });
 }
 
