@@ -50,6 +50,10 @@ similar-asserts = "1.0.0"
 walkdir = "2.3.1"
 
 [[bench]]
+name = "nested_range_map"
+harness = false
+
+[[bench]]
 name = "from_minidump"
 harness = false
 

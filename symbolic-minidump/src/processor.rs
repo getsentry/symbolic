@@ -228,7 +228,7 @@ impl<A, E> Default for RangeMap<A, E> {
 
 /// A structure representing a tree of disjoint ranges with associated contents.
 #[derive(Debug)]
-struct NestedRangeMap<A, E> {
+pub struct NestedRangeMap<A, E> {
     inner: RangeMap<A, (Box<NestedRangeMap<A, E>>, E)>,
 }
 
