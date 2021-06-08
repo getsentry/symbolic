@@ -56,7 +56,7 @@ impl fmt::Display for BreakpadErrorKind {
             Self::Parse(_) => write!(f, "parsing error"),
             Self::InvalidModuleId => write!(f, "invalid module id"),
             Self::InvalidArchitecture => write!(f, "invalid architecture"),
-            Self::BadSyntax => Ok(()),
+            _ => Ok(()),
         }
     }
 }
