@@ -260,9 +260,7 @@ impl<A: Ord + Copy + fmt::Debug, E> NestedRangeMap<A, E> {
                     Ordering::Less => {
                         // [ range i ) … [range j )
                         // [        range         )
-                        let inner_new = self.inner.drain(i..=j).collect();
-                        let map_new = NestedRangeMap::from_vec_unchecked(inner_new);
-                        self.inner.insert(i, (range, contents, Box::new(map_new)));
+                        self.insert_new(i..j + 1, range, contents);
                         true
                     }
                     Ordering::Greater => {
@@ -292,9 +290,7 @@ impl<A: Ord + Copy + fmt::Debug, E> NestedRangeMap<A, E> {
 
                     //   [ range i ) … [ range j-1 )
                     // [           range             )
-                    let inner_new = self.inner.drain(i..j).collect();
-                    let map_new = NestedRangeMap::from_vec_unchecked(inner_new);
-                    self.inner.insert(i, (range, contents, Box::new(map_new)));
+                    self.insert_new(i..j, range, contents);
                     true
                 } else if i == j + 1 {
                     // [  range j  )
@@ -325,9 +321,7 @@ impl<A: Ord + Copy + fmt::Debug, E> NestedRangeMap<A, E> {
 
                         // [ range i ) … [ range j-1)
                         // [           range            )
-                        let inner_new = self.inner.drain(i..j).collect();
-                        let map_new = NestedRangeMap::from_vec_unchecked(inner_new);
-                        self.inner.insert(i, (range, contents, Box::new(map_new)));
+                        self.insert_new(i..j, range, contents);
                         true
                     }
                     Ordering::Greater => {
@@ -354,9 +348,7 @@ impl<A: Ord + Copy + fmt::Debug, E> NestedRangeMap<A, E> {
 
                     //   [ range i ) … [ range j )
                     // [          range          )
-                    let inner_new = self.inner.drain(i..=j).collect();
-                    let map_new = NestedRangeMap::from_vec_unchecked(inner_new);
-                    self.inner.insert(i, (range, contents, Box::new(map_new)));
+                    self.insert_new(i..j + 1, range, contents);
                     true
                 } else {
                     // i > j + 1, this should never happen
@@ -385,6 +377,24 @@ impl<A: Ord + Copy + fmt::Debug, E> NestedRangeMap<A, E> {
     /// Returns true if the given address is covered by some range in the map.
     pub fn contains(&self, address: A) -> bool {
         self.get_contents(address).is_some()
+    }
+
+    /// Inserts a new range that contains the ranges at `indices` as children.
+    fn insert_new(&mut self, indices: Range<usize>, range: Range<A>, contents: E) {
+        if indices.len() >= 1 {
+            let head = indices.start;
+            let tail = indices.start + 1..indices.end;
+            let prev_entry = std::mem::replace(
+                &mut self.inner[head],
+                (range, contents, Box::new(Self::default())),
+            );
+            let mut sub_vec = vec![prev_entry];
+            sub_vec.extend(self.inner.drain(tail));
+            self.inner[head].2 = Box::new(Self::from_vec_unchecked(sub_vec));
+        } else {
+            self.inner
+                .insert(indices.start, (range, contents, Box::new(Self::default())));
+        }
     }
 }
 

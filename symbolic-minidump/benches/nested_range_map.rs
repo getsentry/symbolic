@@ -33,9 +33,8 @@ pub fn nested_range_map_benchmark(c: &mut Criterion) {
             || ranges.clone(),
             |ranges| {
                 let mut map = NestedRangeMap::default();
-                for range in ranges.into_iter() {
-                    let contents = format!("[{},{})", range.start, range.end);
-                    map.insert(range, contents);
+                for (i, range) in ranges.into_iter().enumerate() {
+                    map.insert(range, i);
                 }
             },
             BatchSize::SmallInput,
