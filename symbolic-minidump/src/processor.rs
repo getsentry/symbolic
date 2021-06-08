@@ -1879,9 +1879,41 @@ impl<'a> fmt::Debug for ProcessState<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
+
+    /// Creates a vector of nested subranges of `range` by recursively halving `range`
+    /// and shuffling the end result.
+    fn arb_nested_ranges(range: Range<u32>) -> impl Strategy<Value = Vec<Range<u32>>> {
+        fn go(range: Range<u32>, acc: &mut Vec<Range<u32>>) {
+            let mid = (range.end - range.start) / 2;
+            if mid > range.start + 1 {
+                go(range.start..mid, acc);
+            }
+            if range.start > mid + 1 {
+                go(mid..range.end, acc);
+            }
+
+            acc.push(range);
+        }
+
+        let mut ranges = Vec::new();
+        go(range, &mut ranges);
+
+        Just(ranges).prop_shuffle()
+    }
+
+    /// Checks that a `NestedRangeMap` is actually properly nested.
+    fn check<A: Ord, E>(map: NestedRangeMap<A, E>, range: Option<Range<A>>) {
+        for (r, _, sub_map) in map.inner {
+            if let Some(ref range) = range {
+                assert!(range.contains(&r.start) && range.contains(&r.end));
+            }
+            check(*sub_map, Some(r));
+        }
+    }
 
     #[test]
-    fn nested_range_map() {
+    fn nested_range_map_simple() {
         let mut map = NestedRangeMap::default();
 
         assert!(map.insert(0u8..10, "Outer"));
@@ -1909,5 +1941,18 @@ mod tests {
         assert_eq!(map.get_contents(8).unwrap(), &"Middle 3");
         assert_eq!(map.get_contents(9).unwrap(), &"Outer");
         assert_eq!(map.get_contents(10), None);
+    }
+
+    proptest! {
+        #[test]
+        fn proptest_nested_range_map(ranges in arb_nested_ranges(0..100)) {
+            let mut map = NestedRangeMap::default();
+
+            for range in ranges.into_iter() {
+                assert!(map.insert(range, ()));
+            }
+
+            check(map, None);
+        }
     }
 }
