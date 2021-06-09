@@ -468,10 +468,10 @@ impl<'a> DwarfUnwindRules<'a> {
 /// the `FrameData` record is preferred.
 struct WinUnwindRules<'a> {
     /// `FrameData` records that have already been read and sorted.
-    cache_frame_data: NestedRangeMap<u32, BreakpadStackWinRecord<'a>>,
+    cache_frame_data: NestedRangeMap<u32, Box<BreakpadStackWinRecord<'a>>>,
 
     /// Other stack win records that have already been read and sorted.
-    cache_other: NestedRangeMap<u32, BreakpadStackWinRecord<'a>>,
+    cache_other: NestedRangeMap<u32, Box<BreakpadStackWinRecord<'a>>>,
 
     /// An iterator over Breakpad stack records that have not yet been read.
     records_iter: BreakpadStackWinRecords<'a>,
@@ -505,10 +505,10 @@ impl<'a> WinUnwindRules<'a> {
                 let end = start + win_record.code_size;
                 match win_record.ty {
                     BreakpadStackWinRecordType::FrameData => {
-                        cache_frame_data.insert(start..end, win_record);
+                        cache_frame_data.insert(start..end, Box::new(win_record));
                     }
                     _ => {
-                        cache_other.insert(start..end, win_record);
+                        cache_other.insert(start..end, Box::new(win_record));
                     }
                 }
             }
@@ -517,6 +517,7 @@ impl<'a> WinUnwindRules<'a> {
         cache_frame_data
             .get_contents(address)
             .or_else(move || cache_other.get_contents(address))
+            .map(|b| b.as_ref())
     }
 }
 
