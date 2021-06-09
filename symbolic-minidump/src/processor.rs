@@ -14,6 +14,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::{CStr, CString};
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
+use std::ops::Range;
 use std::os::raw::{c_char, c_void};
 use std::str::FromStr;
 use std::{fmt, ptr, slice, str};
@@ -84,6 +85,290 @@ extern "C" {
         state: *const IProcessState,
         size_out: *mut usize,
     ) -> *mut *const CodeModule;
+}
+
+/// A structure containing a set of disjoint ranges with attached contents.
+#[derive(Clone, Debug)]
+pub struct RangeMap<A, E> {
+    inner: Vec<(Range<A>, E)>,
+}
+
+impl<A: Ord + Copy, E> RangeMap<A, E> {
+    /// Insert a range into the map.
+    ///
+    /// The range must be disjoint from all ranges that are already present.
+    /// Returns true if the insertion was successful.
+    pub fn insert(&mut self, range: Range<A>, contents: E) -> bool {
+        if let Some(i) = self.free_slot(&range) {
+            self.inner.insert(i, (range, contents));
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Returns the position in the inner vector where the given range could be inserted, if that is possible.
+    fn free_slot(&self, range: &Range<A>) -> Option<usize> {
+        let index = match self.inner.binary_search_by_key(&range.end, |r| r.0.end) {
+            Ok(_) => return None,
+            Err(index) => index,
+        };
+
+        if index > 0 {
+            let before = &self.inner[index - 1];
+            if before.0.end > range.start {
+                return None;
+            }
+        }
+
+        match self.inner.get(index) {
+            Some(after) if after.0.start < range.end => None,
+            _ => Some(index),
+        }
+    }
+
+    /// Retrieves the range covering the given address and the associated contents.
+    pub fn get(&self, address: A) -> Option<&(Range<A>, E)> {
+        let entry = match self
+            .inner
+            .binary_search_by_key(&address, |range| range.0.end)
+        {
+            // This means inner(index).end == address => address might be covered by the next one
+            Ok(index) => self.inner.get(index + 1)?,
+            // This means that inner(index).end > address => this could be the one
+            Err(index) => self.inner.get(index)?,
+        };
+
+        (entry.0.start <= address).then(|| entry)
+    }
+
+    /// Retrieves the range covering the given address, allowing mutation.
+    pub fn get_mut(&mut self, address: A) -> Option<&mut (Range<A>, E)> {
+        let entry = match self
+            .inner
+            .binary_search_by_key(&address, |range| range.0.end)
+        {
+            // This means inner(index).end == address => address might be covered by the next one
+            Ok(index) => self.inner.get_mut(index + 1)?,
+            // This means that inner(index).end > address => this could be the one
+            Err(index) => self.inner.get_mut(index)?,
+        };
+
+        (entry.0.start <= address).then(|| entry)
+    }
+
+    /// Retrieves the contents associated with the given address.
+    pub fn get_contents(&self, address: A) -> Option<&E> {
+        self.get(address).map(|(_, contents)| contents)
+    }
+
+    /// Retrieves the contents associated with the given address, allowing mutation.
+    pub fn get_contents_mut(&mut self, address: A) -> Option<&mut E> {
+        self.get_mut(address).map(|(_, contents)| contents)
+    }
+
+    /// Returns true if the given address is covered by some range in the map.
+    pub fn contains(&self, address: A) -> bool {
+        self.get(address).is_some()
+    }
+}
+
+impl<A, E> Default for RangeMap<A, E> {
+    fn default() -> Self {
+        Self { inner: Vec::new() }
+    }
+}
+
+type NestedRangeMapEntry<A, E> = (Range<A>, E, Box<NestedRangeMap<A, E>>);
+
+/// A structure representing a tree of disjoint ranges with associated contents.
+#[derive(Debug)]
+pub struct NestedRangeMap<A, E> {
+    inner: Vec<NestedRangeMapEntry<A, E>>,
+}
+
+impl<A: Ord + Copy + fmt::Debug, E> NestedRangeMap<A, E> {
+    fn from_vec_unchecked(inner: Vec<NestedRangeMapEntry<A, E>>) -> Self {
+        Self { inner }
+    }
+
+    /// Insert a range into the map.
+
+    /// The insertion is valid if the new range does not
+    /// overlap nontrivially with any existing ranges
+    /// and is not equal to an existing range.
+    /// Returns true if the insertion was successful.
+    pub fn insert(&mut self, range: Range<A>, contents: E) -> bool {
+        if self.inner.is_empty() {
+            self.inner
+                .push((range, contents, Box::new(NestedRangeMap::default())));
+            return true;
+        }
+
+        let start_idx = self
+            .inner
+            .binary_search_by_key(&range.start, |entry| entry.0.start);
+
+        let end_idx = self
+            .inner
+            .binary_search_by_key(&range.end, |entry| entry.0.end);
+
+        match (start_idx, end_idx) {
+            (Ok(i), Ok(j)) => {
+                // Both the start and end of `range` line up with existing ranges
+                match i.cmp(&j) {
+                    Ordering::Equal => {
+                        // [ range i)
+                        // [ range  )
+                        false
+                    }
+                    Ordering::Less => {
+                        // [ range i ) … [range j )
+                        // [        range         )
+                        self.insert_new(i..j + 1, range, contents);
+                        true
+                    }
+                    Ordering::Greater => {
+                        // i > j should never happen.
+                        false
+                    }
+                }
+            }
+            (Err(i), Err(j)) => {
+                // Neither start nor end of `range` line up with existing ranges.
+                if i <= j {
+                    if let Some(before) = i.checked_sub(1).and_then(|k| self.inner.get(k)) {
+                        if before.0.end > range.start {
+                            // [ before )
+                            //     [ range )
+                            return false;
+                        }
+                    }
+
+                    if let Some(after) = self.inner.get(j) {
+                        if after.0.start < range.end {
+                            //       [ after )
+                            //  [ range )
+                            return false;
+                        }
+                    }
+
+                    //   [ range i ) … [ range j-1 )
+                    // [           range             )
+                    self.insert_new(i..j, range, contents);
+                    true
+                } else if i == j + 1 {
+                    // [  range j  )
+                    //   [ range )
+                    self.inner[j].2.insert(range, contents)
+                } else {
+                    // i > j + 1, this should never happen.
+                    false
+                }
+            }
+
+            (Ok(i), Err(j)) => {
+                // The start of `range` lines up with an existing range
+                match i.cmp(&j) {
+                    Ordering::Equal => {
+                        // [  range i )
+                        // [ range )
+                        self.inner[i].2.insert(range, contents)
+                    }
+                    Ordering::Less => {
+                        if let Some(after) = self.inner.get(j) {
+                            if after.0.start < range.end {
+                                //  [ range i )  …  [ after )
+                                //  [        range       )
+                                return false;
+                            }
+                        }
+
+                        // [ range i ) … [ range j-1)
+                        // [           range            )
+                        self.insert_new(i..j, range, contents);
+                        true
+                    }
+                    Ordering::Greater => {
+                        // i > j, this should never happen.
+                        false
+                    }
+                }
+            }
+
+            (Err(i), Ok(j)) => {
+                // The end of `range` lines up with an existing range
+                if i == j + 1 {
+                    // [  range j  )
+                    //   [  range  )
+                    self.inner[j].2.insert(range, contents)
+                } else if i <= j {
+                    if let Some(before) = i.checked_sub(1).and_then(|k| self.inner.get(k)) {
+                        if before.0.end > range.start {
+                            // [ before ) … [ range j)
+                            //     [      range      )
+                            return false;
+                        }
+                    }
+
+                    //   [ range i ) … [ range j )
+                    // [          range          )
+                    self.insert_new(i..j + 1, range, contents);
+                    true
+                } else {
+                    // i > j + 1, this should never happen
+                    false
+                }
+            }
+        }
+    }
+
+    /// Retrieves the *most specific* contents associated with the given address, that is,
+    /// those associated with the smallest range that covers the address.
+    pub fn get_contents(&self, address: A) -> Option<&E> {
+        let (range, entry, sub_map) = match self
+            .inner
+            .binary_search_by_key(&address, |range| range.0.end)
+        {
+            // This means inner(index).end == address => address might be covered by the next one
+            Ok(index) => self.inner.get(index + 1)?,
+            // This means that inner(index).end > address => this could be the one
+            Err(index) => self.inner.get(index)?,
+        };
+
+        (range.start <= address).then(|| sub_map.get_contents(address).unwrap_or(entry))
+    }
+
+    /// Returns true if the given address is covered by some range in the map.
+    pub fn contains(&self, address: A) -> bool {
+        self.get_contents(address).is_some()
+    }
+
+    /// Inserts a new range that contains the ranges at `indices` as children.
+    fn insert_new(&mut self, indices: Range<usize>, range: Range<A>, contents: E) {
+        if !indices.is_empty() {
+            let head = indices.start;
+            let tail = indices.start + 1..indices.end;
+            let prev_entry = std::mem::replace(
+                &mut self.inner[head],
+                (range, contents, Box::new(Self::default())),
+            );
+            let mut sub_vec = vec![prev_entry];
+            sub_vec.extend(self.inner.drain(tail));
+            self.inner[head].2 = Box::new(Self::from_vec_unchecked(sub_vec));
+        } else {
+            self.inner
+                .insert(indices.start, (range, contents, Box::new(Self::default())));
+        }
+    }
+}
+
+impl<A, E> Default for NestedRangeMap<A, E> {
+    fn default() -> Self {
+        Self {
+            inner: Vec::default(),
+        }
+    }
 }
 
 /// An error returned when parsing an invalid [`CodeModuleId`](struct.CodeModuleId.html).
@@ -967,5 +1252,86 @@ impl<'a> fmt::Debug for ProcessState<'a> {
             .field("threads", &self.threads())
             .field("modules", &self.modules())
             .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    /// Creates a vector of nested subranges of `range` by recursively halving `range`
+    /// and shuffling the end result.
+    fn arb_nested_ranges(range: Range<u32>) -> impl Strategy<Value = Vec<Range<u32>>> {
+        fn go(range: Range<u32>, acc: &mut Vec<Range<u32>>) {
+            let mid = (range.end - range.start) / 2;
+            if mid > range.start + 1 {
+                go(range.start..mid, acc);
+            }
+            if range.start > mid + 1 {
+                go(mid..range.end, acc);
+            }
+
+            acc.push(range);
+        }
+
+        let mut ranges = Vec::new();
+        go(range, &mut ranges);
+
+        Just(ranges).prop_shuffle()
+    }
+
+    /// Checks that a `NestedRangeMap` is actually properly nested.
+    fn check<A: Ord, E>(map: NestedRangeMap<A, E>, range: Option<Range<A>>) {
+        for (r, _, sub_map) in map.inner {
+            if let Some(ref range) = range {
+                assert!(range.contains(&r.start) && range.contains(&r.end));
+            }
+            check(*sub_map, Some(r));
+        }
+    }
+
+    #[test]
+    fn nested_range_map_simple() {
+        let mut map = NestedRangeMap::default();
+
+        assert!(map.insert(0u8..10, "Outer"));
+        assert!(!map.insert(5..15, "Overlapping"));
+        assert!(map.insert(1..5, "Middle 1"));
+        assert!(map.insert(2..4, "Inner 1"));
+        assert!(map.insert(5..8, "Middle 2"));
+        assert!(!map.insert(3..8, "Overlapping"));
+        assert!(map.insert(6..8, "Inner 2"));
+        assert!(map.insert(0..9, "Middle 3"));
+
+        //  0    1    2    3    4    5    6    7    8    9    10
+        //          [Inner 1 ]          [Inner 2 ]
+        //     [   Middle 1       ][   Middle 2  ]
+        // [                  Middle 3                ]
+        // [                    Outer                      ]
+        assert_eq!(map.get_contents(0).unwrap(), &"Middle 3");
+        assert_eq!(map.get_contents(1).unwrap(), &"Middle 1");
+        assert_eq!(map.get_contents(2).unwrap(), &"Inner 1");
+        assert_eq!(map.get_contents(3).unwrap(), &"Inner 1");
+        assert_eq!(map.get_contents(4).unwrap(), &"Middle 1");
+        assert_eq!(map.get_contents(5).unwrap(), &"Middle 2");
+        assert_eq!(map.get_contents(6).unwrap(), &"Inner 2");
+        assert_eq!(map.get_contents(7).unwrap(), &"Inner 2");
+        assert_eq!(map.get_contents(8).unwrap(), &"Middle 3");
+        assert_eq!(map.get_contents(9).unwrap(), &"Outer");
+        assert_eq!(map.get_contents(10), None);
+    }
+
+    proptest! {
+        #[test]
+        fn proptest_nested_range_map(ranges in arb_nested_ranges(0..100)) {
+            let mut map = NestedRangeMap::default();
+
+            for range in ranges.into_iter() {
+                assert!(map.insert(range, ()));
+            }
+
+            check(map, None);
+        }
     }
 }
