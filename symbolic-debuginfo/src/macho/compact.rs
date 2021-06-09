@@ -1166,9 +1166,9 @@ impl<'a> CompactUnwindInfoIter<'a> {
         first_level_entry: &FirstLevelPageEntry,
         second_level_page: &SecondLevelPage,
     ) -> Result<CompactUnwindInfoEntry> {
-        if entry.instruction_address >= next_entry_instruction_address {
+        if entry.instruction_address > next_entry_instruction_address {
             return Err(MachError::from(Error::Malformed(format!(
-                "Entry addresses are not strictly monotonic! ({} >= {})",
+                "Entry addresses are not monotonic! ({} > {})",
                 entry.instruction_address, next_entry_instruction_address
             ))));
         }
