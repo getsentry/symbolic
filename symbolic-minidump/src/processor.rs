@@ -381,7 +381,7 @@ impl<A: Ord + Copy + fmt::Debug, E> NestedRangeMap<A, E> {
 
     /// Inserts a new range that contains the ranges at `indices` as children.
     fn insert_new(&mut self, indices: Range<usize>, range: Range<A>, contents: E) {
-        if indices.len() >= 1 {
+        if !indices.is_empty() {
             let head = indices.start;
             let tail = indices.start + 1..indices.end;
             let prev_entry = std::mem::replace(
