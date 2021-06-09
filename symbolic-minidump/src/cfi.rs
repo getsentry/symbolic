@@ -41,8 +41,22 @@ use symbolic_debuginfo::pdb::PdbObject;
 use symbolic_debuginfo::pe::{PeObject, RuntimeFunction, UnwindOperation};
 use symbolic_debuginfo::{Object, ObjectError, ObjectLike};
 
+/// The magic file preamble to identify cficache files.
+/// Files with version < 2 do not have a magic file preamble.
+pub const CFICACHE_MAGIC: [u8; 4] = *b"CFIC";
+
 /// The latest version of the file format.
-pub const CFICACHE_LATEST_VERSION: u32 = 1;
+pub const CFICACHE_LATEST_VERSION: u32 = 2;
+
+// The preamble are 8 bytes, all ASCII.
+// This should be forward-compatible with a binary format:
+// `CFICxxx\n`
+//      ^^^ <- 3 ASCII digits denoting the version, `002` for now.
+
+// Version history:
+//
+// 1: Initial ASCII-only implementation
+// 2: Implementation with a versioned preamble
 
 /// Used to detect empty runtime function entries in PEs.
 const EMPTY_FUNCTION: RuntimeFunction = RuntimeFunction {
@@ -974,7 +988,8 @@ impl<'a> CfiCacheV1<'a> {
 }
 
 enum CfiCacheInner<'a> {
-    V1(CfiCacheV1<'a>),
+    Unversioned(CfiCacheV1<'a>),
+    Versioned(u32, CfiCacheV1<'a>),
 }
 
 /// A cache file for call frame information (CFI).
@@ -1014,9 +1029,11 @@ pub struct CfiCache<'a> {
 impl CfiCache<'static> {
     /// Construct a CFI cache from an `Object`.
     pub fn from_object(object: &Object<'_>) -> Result<Self, CfiError> {
-        let buffer = AsciiCfiWriter::transform(object)?;
+        let mut buffer = vec![];
+        writeln!(buffer, "CFIC{:03}", CFICACHE_LATEST_VERSION)?;
+        AsciiCfiWriter::new(&mut buffer).process(object)?;
         let byteview = ByteView::from_vec(buffer);
-        let inner = CfiCacheInner::V1(CfiCacheV1 { byteview });
+        let inner = CfiCacheInner::Versioned(CFICACHE_LATEST_VERSION, CfiCacheV1 { byteview });
         Ok(CfiCache { inner })
     }
 }
@@ -1025,8 +1042,17 @@ impl<'a> CfiCache<'a> {
     /// Load a symcache from a `ByteView`.
     pub fn from_bytes(byteview: ByteView<'a>) -> Result<Self, CfiError> {
         if byteview.len() == 0 || byteview.starts_with(b"STACK") {
-            let inner = CfiCacheInner::V1(CfiCacheV1 { byteview });
+            let inner = CfiCacheInner::Unversioned(CfiCacheV1 { byteview });
             return Ok(CfiCache { inner });
+        } else if byteview.starts_with(&CFICACHE_MAGIC) && byteview.get(7).cloned() == Some(b'\n') {
+            if let Some(version) = byteview
+                .get(4..7)
+                .and_then(|buf| std::str::from_utf8(buf).ok())
+                .and_then(|s| s.parse().ok())
+            {
+                let inner = CfiCacheInner::Versioned(version, CfiCacheV1 { byteview });
+                return Ok(CfiCache { inner });
+            }
         }
 
         Err(CfiErrorKind::BadFileMagic.into())
@@ -1035,7 +1061,8 @@ impl<'a> CfiCache<'a> {
     /// Returns the cache file format version.
     pub fn version(&self) -> u32 {
         match self.inner {
-            CfiCacheInner::V1(_) => 1,
+            CfiCacheInner::Unversioned(_) => 1,
+            CfiCacheInner::Versioned(version, _) => version,
         }
     }
 
@@ -1047,12 +1074,16 @@ impl<'a> CfiCache<'a> {
     /// Returns the raw buffer of the cache file.
     pub fn as_slice(&self) -> &[u8] {
         match self.inner {
-            CfiCacheInner::V1(ref v1) => v1.raw(),
+            CfiCacheInner::Unversioned(ref v1) => v1.raw(),
+            CfiCacheInner::Versioned(_, ref v1) => &v1.raw()[8..],
         }
     }
 
     /// Writes the cache to the given writer.
     pub fn write_to<W: Write>(&self, mut writer: W) -> Result<(), io::Error> {
+        if let CfiCacheInner::Versioned(version, _) = self.inner {
+            writeln!(writer, "CFIC{:03}", version)?;
+        }
         io::copy(&mut self.as_slice(), &mut writer)?;
         Ok(())
     }
