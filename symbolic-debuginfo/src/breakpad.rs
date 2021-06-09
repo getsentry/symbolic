@@ -132,7 +132,7 @@ impl<'d> BreakpadModuleRecord<'d> {
     /// Parses a module record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
-        Ok(parsing::module_record_final(&string.trim())?)
+        Ok(parsing::module_record_final(string.trim())?)
     }
 }
 
@@ -163,7 +163,7 @@ impl<'d> BreakpadInfoRecord<'d> {
     /// Parses an info record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
-        Ok(parsing::info_record_final(&string.trim())?)
+        Ok(parsing::info_record_final(string.trim())?)
     }
 }
 
@@ -222,7 +222,7 @@ impl<'d> BreakpadFileRecord<'d> {
     /// Parses a file record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
-        Ok(parsing::file_record_final(&string.trim())?)
+        Ok(parsing::file_record_final(string.trim())?)
     }
 }
 
@@ -283,7 +283,7 @@ impl<'d> BreakpadPublicRecord<'d> {
     /// Parses a public record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
-        Ok(parsing::public_record_final(&string.trim())?)
+        Ok(parsing::public_record_final(string.trim())?)
     }
 }
 
@@ -349,7 +349,7 @@ impl<'d> BreakpadFuncRecord<'d> {
     /// ends.
     pub fn parse(data: &'d [u8], lines: Lines<'d>) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
-        let mut record = parsing::func_record_final(&string.trim())?;
+        let mut record = parsing::func_record_final(string.trim())?;
 
         record.lines = lines;
         Ok(record)
@@ -448,7 +448,7 @@ impl BreakpadLineRecord {
     /// Parses a line record from a single line.
     pub fn parse(data: &[u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
-        Ok(parsing::line_record_final(&string.trim())?)
+        Ok(parsing::line_record_final(string.trim())?)
     }
 
     /// Resolves the filename for this record in the file map.
@@ -518,7 +518,7 @@ impl<'d> BreakpadStackCfiDeltaRecord<'d> {
     /// Parses a single `STACK CFI` record.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
-        Ok(parsing::stack_cfi_delta_record_final(&string.trim())?)
+        Ok(parsing::stack_cfi_delta_record_final(string.trim())?)
     }
 }
 
@@ -545,7 +545,7 @@ impl<'d> BreakpadStackCfiRecord<'d> {
     /// Parses a `STACK CFI INIT` record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
-        Ok(parsing::stack_cfi_record_final(&string.trim())?)
+        Ok(parsing::stack_cfi_record_final(string.trim())?)
     }
 
     /// Returns an iterator over this record's delta records.
@@ -660,7 +660,7 @@ impl<'d> BreakpadStackWinRecord<'d> {
     /// Parses a Windows stack record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
-        Ok(parsing::stack_win_record_final(&string.trim())?)
+        Ok(parsing::stack_win_record_final(string.trim())?)
     }
 }
 
@@ -677,7 +677,7 @@ impl<'d> BreakpadStackRecord<'d> {
     /// Parses a stack frame information record from a single line.
     pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
         let string = str::from_utf8(data)?;
-        Ok(parsing::stack_record_final(&string.trim())?)
+        Ok(parsing::stack_record_final(string.trim())?)
     }
 }
 
