@@ -197,13 +197,14 @@
 //! One consequence of only having one opcode for a whole function is that
 //! functions will generally have incorrect instructions for the function's
 //! prologue (where callee-saved registers are individually PUSHed onto the
-//! stack before the rest of the stack space is allocated).
+//! stack before the rest of the stack space is allocated), and epilogue
+//! (where callee-saved registers are individually POPed back into registers).
 //!
 //! Presumably this isn't a very big deal, since there's very few situations
-//! where unwinding would involve a function still executing its prologue.
+//! where unwinding would involve a function still executing its prologue/epilogue.
 //! This might matter when handling a stack overflow that occurred while
 //! saving the registers, or when processing a non-crashing thread in a minidump
-//! that happened to be in its prologue.
+//! that happened to be in its prologue/epilogue.
 //!
 //! Similarly, the way ranges of instructions are mapped means that Compact
 //! Unwinding will generally incorrectly map the padding bytes between functions
@@ -232,6 +233,8 @@
 //! 1. Eliding duplicate instruction addresses
 //! 2. Palettizing the opcodes
 //!
+//!
+//!
 //! Trick 1 is standard for unwinders: the table of mappings is sorted by
 //! address, and any entries that would have the same opcode as the
 //! previous one are elided. So for instance the following:
@@ -248,6 +251,18 @@
 //! address: 1, opcode: 1
 //! address: 3, opcode: 2
 //! ```
+//!
+//! We have found a few places with "zero-length" entries, where the same
+//! address gets repeated, such as the following in `libsystem_kernel.dylib`:
+//!
+//! ```text
+//! address: 0x000121c3, opcode: 0x00000000
+//! address: 0x000121c3, opcode: 0x04000680
+//! ```
+//!
+//! In this case you can just discard the zero-length one (the first one).
+//!
+//!
 //!
 //! Trick 2 is more novel: At the first level a global palette of up to 127 opcodes
 //! is defined. Each second-level "compressed" (leaf) page can also define up to 128 local
@@ -725,6 +740,9 @@
 //!
 //! * If an opcode kind is encountered that this implementation wasn't
 //!   designed for, Opcode::instructions will return [`CompactUnwindOp::None`].
+//!
+//! * If two entries have the same address (making the first have zero-length),
+//!   we silently discard the first one in favour of the second.
 //!
 //! * Only 7 register mappings are provided for x86/x64 opcodes, but the
 //!   3-bit encoding allows for 8. This implementation will just map the
