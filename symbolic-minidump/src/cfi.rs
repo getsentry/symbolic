@@ -416,6 +416,11 @@ impl<W: Write> AsciiCfiWriter<W> {
         let mut ctx = UninitializedUnwindContext::new();
 
         while let Some(entry) = iter.next()? {
+            if entry.len == 0 {
+                // We saw some duplicate entries (which yield entries with `len == 0`) for example
+                // in `libsystem_kernel.dylib`. In this case just skip the zero-length entry.
+                continue;
+            }
             match entry.instructions(&iter) {
                 CompactUnwindOp::None => {
                     // We have seen some of these `CompactUnwindOp::None` correspond to some tiny

@@ -203,7 +203,7 @@ pub struct FuncRecord {
     /// The comp dir of the file record.
     pub comp_dir: Seg<u8, u8>,
 
-    /// The ID offset of the parent funciton.  Will be ~0 if the function has no parent.
+    /// The ID offset of the parent function.  Will be ~0 if the function has no parent.
     pub parent_offset: u16,
 
     /// The low bits of the ID of the symbol of this function or ~0 if no symbol.

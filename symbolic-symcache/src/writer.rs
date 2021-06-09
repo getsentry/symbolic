@@ -662,7 +662,7 @@ where
                 debug_assert!(parent_index < index);
 
                 let parent_offset = index - parent_index;
-                if parent_offset > std::u16::MAX.into() {
+                if parent_offset >= std::u16::MAX.into() {
                     return Err(SymCacheErrorKind::ValueTooLarge(ValueKind::ParentOffset).into());
                 }
 
