@@ -187,11 +187,7 @@ pub struct NestedRangeMap<A, E> {
     inner: Vec<NestedRangeMapEntry<A, E>>,
 }
 
-impl<A: Ord + Copy + fmt::Debug, E> NestedRangeMap<A, E> {
-    fn from_vec_unchecked(inner: Vec<NestedRangeMapEntry<A, E>>) -> Self {
-        Self { inner }
-    }
-
+impl<A: Ord + Copy, E> NestedRangeMap<A, E> {
     /// Insert a range into the map.
 
     /// The insertion is valid if the new range does not
@@ -355,7 +351,7 @@ impl<A: Ord + Copy + fmt::Debug, E> NestedRangeMap<A, E> {
             );
             let mut sub_vec = vec![prev_entry];
             sub_vec.extend(self.inner.drain(tail));
-            self.inner[head].2 = Box::new(Self::from_vec_unchecked(sub_vec));
+            self.inner[head].2 = Box::new(Self { inner: sub_vec });
         } else {
             self.inner
                 .insert(indices.start, (range, contents, Box::new(Self::default())));
