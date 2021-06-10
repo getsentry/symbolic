@@ -189,7 +189,7 @@ pub struct NestedRangeMap<A, E> {
 
 impl<A: Ord + Copy, E> NestedRangeMap<A, E> {
     /// Insert a range into the map.
-
+    ///
     /// The insertion is valid if the new range does not
     /// overlap nontrivially with any existing ranges
     /// and is not equal to an existing range.
