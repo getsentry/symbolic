@@ -1,6 +1,7 @@
 ---
-source: symcache/tests/test_writer.rs
+source: symbolic-symcache/tests/test_writer.rs
 expression: FunctionsDebug(&symcache)
+
 ---
             1558 _init
             1900 _ZN15google_breakpad13PageAllocator7FreeAllEv.isra.6
@@ -51,11 +52,6 @@ expression: FunctionsDebug(&symcache)
             1ec7 printf
             1ee0 printf
             1f00 _ZN15google_breakpad18MinidumpDescriptorD1Ev
-            1f00 _ZN15google_breakpad18MinidumpDescriptorD1Ev
-            1f08 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev
-            1f08 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv
-            1f08 _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv
-            1f08 _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv
             1f08 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev
             1f08 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv
             1f08 _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv
@@ -63,20 +59,10 @@ expression: FunctionsDebug(&symcache)
             1f11 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm
             1f11 _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm
             1f11 _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm
-            1f11 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm
-            1f11 _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm
-            1f11 _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm
             1f1a _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev
             1f1a _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv
             1f1a _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv
             1f1a _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv
-            1f1a _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev
-            1f1a _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv
-            1f1a _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv
-            1f1a _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv
-            1f24 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm
-            1f24 _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm
-            1f24 _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm
             1f24 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm
             1f24 _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm
             1f24 _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm
@@ -700,40 +686,14 @@ expression: FunctionsDebug(&symcache)
             6dc6 ~MicrodumpWriter
             6dd6 _ZN15google_breakpad17LinuxPtraceDumperD4Ev
             6e10 _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE15_M_range_insertIPKhEEvN9__gnu_cxx17__normal_iteratorIPhS3_EET_SB_St20forward_iterator_tag
-            6e10 _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE15_M_range_insertIPKhEEvN9__gnu_cxx17__normal_iteratorIPhS3_EET_SB_St20forward_iterator_tag
-            6e10 _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE15_M_range_insertIPKhEEvN9__gnu_cxx17__normal_iteratorIPhS3_EET_SB_St20forward_iterator_tag
-            6e24 _ZSt8distanceIPKhENSt15iterator_traitsIT_E15difference_typeES3_S3_
-            6e24 _ZSt10__distanceIPKhENSt15iterator_traitsIT_E15difference_typeES3_S3_St26random_access_iterator_tag
-            6e24 _ZSt8distanceIPKhENSt15iterator_traitsIT_E15difference_typeES3_S3_
-            6e24 _ZSt10__distanceIPKhENSt15iterator_traitsIT_E15difference_typeES3_S3_St26random_access_iterator_tag
             6e24 _ZSt8distanceIPKhENSt15iterator_traitsIT_E15difference_typeES3_S3_
             6e24 _ZSt10__distanceIPKhENSt15iterator_traitsIT_E15difference_typeES3_S3_St26random_access_iterator_tag
             6e4d _ZN9__gnu_cxxmiIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEENS_17__normal_iteratorIT_T0_E15difference_typeERKSA_SD_
-            6e4d _ZN9__gnu_cxxmiIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEENS_17__normal_iteratorIT_T0_E15difference_typeERKSA_SD_
-            6e4d _ZN9__gnu_cxxmiIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEENS_17__normal_iteratorIT_T0_E15difference_typeERKSA_SD_
-            6e5e _ZSt22__uninitialized_move_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
-            6e5e _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6e5e _ZSt22__uninitialized_move_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
-            6e5e _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
             6e5e _ZSt22__uninitialized_move_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
             6e5e _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
             6e70 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
             6e70 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
             6e70 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
-            6e70 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            6e70 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            6e70 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
-            6e70 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            6e70 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            6e70 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
-            6e8f _ZSt13move_backwardIPhS0_ET0_T_S2_S1_
-            6e8f _ZSt23__copy_move_backward_a2ILb1EPhS0_ET1_T0_S2_S1_
-            6e8f _ZSt22__copy_move_backward_aILb1EPhS0_ET1_T0_S2_S1_
-            6e8f _ZNSt20__copy_move_backwardILb1ELb1ESt26random_access_iterator_tagE13__copy_move_bIhEEPT_PKS3_S6_S4_
-            6e8f _ZSt13move_backwardIPhS0_ET0_T_S2_S1_
-            6e8f _ZSt23__copy_move_backward_a2ILb1EPhS0_ET1_T0_S2_S1_
-            6e8f _ZSt22__copy_move_backward_aILb1EPhS0_ET1_T0_S2_S1_
-            6e8f _ZNSt20__copy_move_backwardILb1ELb1ESt26random_access_iterator_tagE13__copy_move_bIhEEPT_PKS3_S6_S4_
             6e8f _ZSt13move_backwardIPhS0_ET0_T_S2_S1_
             6e8f _ZSt23__copy_move_backward_a2ILb1EPhS0_ET1_T0_S2_S1_
             6e8f _ZSt22__copy_move_backward_aILb1EPhS0_ET1_T0_S2_S1_
@@ -742,44 +702,14 @@ expression: FunctionsDebug(&symcache)
             6e9c _ZSt14__copy_move_a2ILb0EPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET1_T0_SC_SB_
             6e9c _ZSt13__copy_move_aILb0EPKhPhET1_T0_S4_S3_
             6e9c _ZNSt11__copy_moveILb0ELb1ESt26random_access_iterator_tagE8__copy_mIhEEPT_PKS3_S6_S4_
-            6e9c _ZSt4copyIPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET0_T_SC_SB_
-            6e9c _ZSt14__copy_move_a2ILb0EPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET1_T0_SC_SB_
-            6e9c _ZSt13__copy_move_aILb0EPKhPhET1_T0_S4_S3_
-            6e9c _ZNSt11__copy_moveILb0ELb1ESt26random_access_iterator_tagE8__copy_mIhEEPT_PKS3_S6_S4_
-            6e9c _ZSt4copyIPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET0_T_SC_SB_
-            6e9c _ZSt14__copy_move_a2ILb0EPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET1_T0_SC_SB_
-            6e9c _ZSt13__copy_move_aILb0EPKhPhET1_T0_S4_S3_
-            6e9c _ZNSt11__copy_moveILb0ELb1ESt26random_access_iterator_tagE8__copy_mIhEEPT_PKS3_S6_S4_
-            6ec0 _ZSt7advanceIPKhmEvRT_T0_
-            6ec0 _ZSt9__advanceIPKhlEvRT_T0_St26random_access_iterator_tag
-            6ec0 _ZSt7advanceIPKhmEvRT_T0_
-            6ec0 _ZSt9__advanceIPKhlEvRT_T0_St26random_access_iterator_tag
             6ec0 _ZSt7advanceIPKhmEvRT_T0_
             6ec0 _ZSt9__advanceIPKhlEvRT_T0_St26random_access_iterator_tag
             6ec4 _ZSt22__uninitialized_copy_aIPKhPhN15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6ec4 _ZSt22__uninitialized_copy_aIPKhPhN15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6ec4 _ZSt22__uninitialized_copy_aIPKhPhN15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6ed0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJRKhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS7_
-            6ed0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJRKhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PSA_DpOSB_
-            6ed0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJRKhEEEvPT_DpOT0_
-            6ed0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJRKhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS7_
-            6ed0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJRKhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PSA_DpOSB_
-            6ed0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJRKhEEEvPT_DpOT0_
             6ed0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJRKhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS7_
             6ed0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJRKhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PSA_DpOSB_
             6ed0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJRKhEEEvPT_DpOT0_
             6ef2 _ZSt22__uninitialized_move_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
             6ef2 _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6ef2 _ZSt22__uninitialized_move_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
-            6ef2 _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6ef2 _ZSt22__uninitialized_move_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
-            6ef2 _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6f00 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            6f00 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            6f00 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
-            6f00 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            6f00 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            6f00 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
             6f00 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
             6f00 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
             6f00 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
@@ -787,41 +717,13 @@ expression: FunctionsDebug(&symcache)
             6f1f _ZSt14__copy_move_a2ILb0EPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET1_T0_SC_SB_
             6f1f _ZSt13__copy_move_aILb0EPKhPhET1_T0_S4_S3_
             6f1f _ZNSt11__copy_moveILb0ELb1ESt26random_access_iterator_tagE8__copy_mIhEEPT_PKS3_S6_S4_
-            6f1f _ZSt4copyIPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET0_T_SC_SB_
-            6f1f _ZSt14__copy_move_a2ILb0EPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET1_T0_SC_SB_
-            6f1f _ZSt13__copy_move_aILb0EPKhPhET1_T0_S4_S3_
-            6f1f _ZNSt11__copy_moveILb0ELb1ESt26random_access_iterator_tagE8__copy_mIhEEPT_PKS3_S6_S4_
-            6f1f _ZSt4copyIPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET0_T_SC_SB_
-            6f1f _ZSt14__copy_move_a2ILb0EPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET1_T0_SC_SB_
-            6f1f _ZSt13__copy_move_aILb0EPKhPhET1_T0_S4_S3_
-            6f1f _ZNSt11__copy_moveILb0ELb1ESt26random_access_iterator_tagE8__copy_mIhEEPT_PKS3_S6_S4_
-            6f4c _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE12_M_check_lenEmPKc
-            6f4c _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE4sizeEv
-            6f4c _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE12_M_check_lenEmPKc
-            6f4c _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE4sizeEv
             6f4c _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE12_M_check_lenEmPKc
             6f4c _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE4sizeEv
             6f76 _ZNSt12_Vector_baseIhN15google_breakpad16PageStdAllocatorIhEEE11_M_allocateEm
             6f76 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE8allocateERS2_m
             6f76 _ZN15google_breakpad16PageStdAllocatorIhE8allocateEmPKv
-            6f76 _ZNSt12_Vector_baseIhN15google_breakpad16PageStdAllocatorIhEEE11_M_allocateEm
-            6f76 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE8allocateERS2_m
-            6f76 _ZN15google_breakpad16PageStdAllocatorIhE8allocateEmPKv
-            6f76 _ZNSt12_Vector_baseIhN15google_breakpad16PageStdAllocatorIhEEE11_M_allocateEm
-            6f76 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE8allocateERS2_m
-            6f76 _ZN15google_breakpad16PageStdAllocatorIhE8allocateEmPKv
             6f8b _ZSt34__uninitialized_move_if_noexcept_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
             6f8b _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6f8b _ZSt34__uninitialized_move_if_noexcept_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
-            6f8b _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6f8b _ZSt34__uninitialized_move_if_noexcept_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
-            6f8b _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6fa0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            6fa0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            6fa0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
-            6fa0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            6fa0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            6fa0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
             6fa0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
             6fa0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
             6fa0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
@@ -829,36 +731,12 @@ expression: FunctionsDebug(&symcache)
             6fd0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJRKhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS7_
             6fd0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJRKhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PSA_DpOSB_
             6fd0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJRKhEEEvPT_DpOT0_
-            6fd0 _ZSt22__uninitialized_copy_aIPKhPhN15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6fd0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJRKhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS7_
-            6fd0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJRKhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PSA_DpOSB_
-            6fd0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJRKhEEEvPT_DpOT0_
-            6fd0 _ZSt22__uninitialized_copy_aIPKhPhN15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6fd0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJRKhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS7_
-            6fd0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJRKhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PSA_DpOSB_
-            6fd0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJRKhEEEvPT_DpOT0_
-            6ff1 _ZSt34__uninitialized_move_if_noexcept_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
-            6ff1 _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6ff1 _ZSt34__uninitialized_move_if_noexcept_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
-            6ff1 _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
             6ff1 _ZSt34__uninitialized_move_if_noexcept_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
             6ff1 _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
             7000 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
             7000 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
             7000 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
-            7000 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            7000 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            7000 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
-            7000 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            7000 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            7000 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
             7074 _ZN15google_breakpad13PageAllocator5AllocEm
-            7074 _ZN15google_breakpad13PageAllocator5AllocEm
-            7074 _ZN15google_breakpad13PageAllocator5AllocEm
-            70d3 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            70d3 sys_mmap
-            70d3 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            70d3 sys_mmap
             70d3 _ZN15google_breakpad13PageAllocator9GetNPagesEm
             70d3 sys_mmap
             71f0 _ZN15google_breakpad11LinuxDumper8LateInitEv
@@ -1008,9 +886,6 @@ expression: FunctionsDebug(&symcache)
             91f6 _ZN15google_breakpad13PageAllocator9GetNPagesEm
             91f6 sys_mmap
             9350 _ZN15google_breakpad13PageAllocator5AllocEm
-            9350 _ZN15google_breakpad13PageAllocator5AllocEm
-            93b7 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            93b7 sys_mmap
             93b7 _ZN15google_breakpad13PageAllocator9GetNPagesEm
             93b7 sys_mmap
             94a0 _ZNK15google_breakpad17LinuxPtraceDumper12IsPostMortemEv

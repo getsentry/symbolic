@@ -327,8 +327,28 @@ where
         if is_empty_function(&function) {
             return Ok(());
         }
+        if self.has_function(&function) {
+            return Ok(());
+        }
         clean_function(&mut function, &mut LineCache::default());
         self.insert_function(&function, FuncRef::none())
+    }
+
+    /// Checks if the given function range was already registered
+    fn has_function(&self, function: &Function<'_>) -> bool {
+        if !self.sorted {
+            return self.functions.iter().any(|f| {
+                f.record.addr_start() == function.address
+                    && f.record.addr_end() == function.end_address()
+            });
+        }
+        match self
+            .functions
+            .binary_search_by_key(&function.address, |f| f.record.addr_start())
+        {
+            Ok(idx) => self.functions[idx].record.addr_end() == function.end_address(),
+            _ => false,
+        }
     }
 
     /// Persists all open segments to the writer and fixes up the header.
