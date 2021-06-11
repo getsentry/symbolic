@@ -16,6 +16,6 @@ targets:
   - name: github
 requireNames:
   - /^symbolic-.*-py2.py3-none-macosx_10_15_x86_64.whl$/
-  - /^symbolic-.*-py2.py3-none-manylinux2010_i686.whl$/
-  - /^symbolic-.*-py2.py3-none-manylinux2010_x86_64.whl$/
+  - /^symbolic-.*-py2\.py3-none-.*manylinux2010_i686.*\.whl$/
+  - /^symbolic-.*-py2\.py3-none-.*manylinux2010_x86_64\.whl$/
   - /^symbolic-.*.zip$/
