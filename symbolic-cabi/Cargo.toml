@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-cabi"
-version = "8.1.0"
+version = "8.2.0"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -22,5 +22,5 @@ crate-type = ["cdylib"]
 [dependencies]
 serde_json = "1.0.40"
 apple-crash-report-parser = { version = "0.4.0", features = ["with_serde"] }
-symbolic = { version = "8.1.0", path = "../symbolic", features = ["debuginfo", "demangle", "minidump", "sourcemap", "symcache", "unreal-serde"] }
+symbolic = { version = "8.2.0", path = "../symbolic", features = ["debuginfo", "demangle", "minidump", "sourcemap", "symcache", "unreal-serde"] }
 proguard = { version = "4.0.1", features = ["uuid"] }
