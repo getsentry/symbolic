@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::io::{self, Seek, Write};
@@ -205,10 +206,15 @@ where
             .debug_session()
             .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadDebugFile, e))?;
 
+        let mut seen_ranges = BTreeSet::new();
         for function in session.functions() {
             let function =
                 function.map_err(|e| SymCacheError::new(SymCacheErrorKind::BadDebugFile, e))?;
-            writer.add_function(function)?;
+            let fn_range = (function.address, function.size);
+            if !seen_ranges.contains(&fn_range) {
+                writer.add_function(function)?;
+                seen_ranges.insert(fn_range);
+            }
         }
 
         // Sort the files to efficiently add symbols from the symbol table in linear time
@@ -327,28 +333,8 @@ where
         if is_empty_function(&function) {
             return Ok(());
         }
-        if self.has_function(&function) {
-            return Ok(());
-        }
         clean_function(&mut function, &mut LineCache::default());
         self.insert_function(&function, FuncRef::none())
-    }
-
-    /// Checks if the given function range was already registered
-    fn has_function(&self, function: &Function<'_>) -> bool {
-        if !self.sorted {
-            return self.functions.iter().any(|f| {
-                f.record.addr_start() == function.address
-                    && f.record.addr_end() == function.end_address()
-            });
-        }
-        match self
-            .functions
-            .binary_search_by_key(&function.address, |f| f.record.addr_start())
-        {
-            Ok(idx) => self.functions[idx].record.addr_end() == function.end_address(),
-            _ => false,
-        }
     }
 
     /// Persists all open segments to the writer and fixes up the header.
