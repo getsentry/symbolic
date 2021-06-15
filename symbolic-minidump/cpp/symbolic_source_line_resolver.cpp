@@ -91,7 +91,11 @@ CFIFrameInfo *SymbolicSourceLineResolver::FindCFIFrameInfo(
 
         void *cfi_frame_info =
             resolver_find_cfi_frame_info(resolver_, module_name, address);
-        return new SymbolicCFIFrameInfo(cfi_frame_info);
+        if (cfi_frame_info != NULL) {
+            return new SymbolicCFIFrameInfo(cfi_frame_info);
+        } else {
+            return NULL;
+        }
     } else {
         return NULL;
     }

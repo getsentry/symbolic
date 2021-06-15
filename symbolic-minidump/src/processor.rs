@@ -603,17 +603,16 @@ impl<'a> SymbolicSourceLineResolver<'a> {
     ///
     /// "CFI information" here means a [`CfiFrameInfo`] object containing the rules that allow
     /// recovery of the caller's registers givent the callee's registers.
-    fn find_cfi_frame_info(&mut self, module: &CodeModuleId, address: u64) -> CfiFrameInfo {
+    fn find_cfi_frame_info(&mut self, module: &CodeModuleId, address: u64) -> Option<CfiFrameInfo> {
         let rules = self
             .unwind_dwarf
             .get_mut(module)
-            .and_then(|unwind_rules| unwind_rules.get(address))
-            .unwrap_or_default();
+            .and_then(|unwind_rules| unwind_rules.get(address));
 
-        CfiFrameInfo {
+        rules.map(|rules| CfiFrameInfo {
             endian: self.endian,
             rules,
-        }
+        })
     }
     /// Finds CFI information for a given module and address.
     ///
@@ -729,8 +728,11 @@ unsafe extern "C" fn resolver_find_cfi_frame_info(
         Err(_) => return ptr::null_mut(),
     };
 
-    let cfi_frame_info = resolver.find_cfi_frame_info(&module, address);
-    Box::into_raw(Box::new(cfi_frame_info)) as *mut c_void
+    if let Some(cfi_frame_info) = resolver.find_cfi_frame_info(&module, address) {
+        Box::into_raw(Box::new(cfi_frame_info)) as *mut c_void
+    } else {
+        std::ptr::null_mut()
+    }
 }
 
 #[no_mangle]
