@@ -52,9 +52,7 @@ use symbolic_debuginfo::{Object, ObjectError, ObjectLike};
 pub const CFICACHE_MAGIC: u32 = u32::from_be_bytes(*b"CFIC");
 
 /// The latest version of the file format.
-// TODO: this is `1` for now to support downgrading to a symbolic version that supports parsing but
-// not yet *write* the new versioned format
-pub const CFICACHE_LATEST_VERSION: u32 = 1;
+pub const CFICACHE_LATEST_VERSION: u32 = 2;
 
 // The preamble are 8 bytes, a 4-byte magic and 4 bytes for the version.
 // The 4-byte magic should be read as little endian to check for endian mismatch.
@@ -1037,15 +1035,11 @@ impl CfiCache<'static> {
     /// Construct a CFI cache from an `Object`.
     pub fn from_object(object: &Object<'_>) -> Result<Self, CfiError> {
         let mut buffer = vec![];
-        // TODO: for now when converting an object, we do *not* write a preamble, and output an
-        // `Unversioned` format. That way we never *write* a new versioned format yet, but support
-        // reading it
-        //write_preamble(&mut buffer, CFICACHE_LATEST_VERSION)?;
+        write_preamble(&mut buffer, CFICACHE_LATEST_VERSION)?;
         AsciiCfiWriter::new(&mut buffer).process(object)?;
 
         let byteview = ByteView::from_vec(buffer);
-        //let inner = CfiCacheInner::Versioned(CFICACHE_LATEST_VERSION, CfiCacheV1 { byteview });
-        let inner = CfiCacheInner::Unversioned(CfiCacheV1 { byteview });
+        let inner = CfiCacheInner::Versioned(CFICACHE_LATEST_VERSION, CfiCacheV1 { byteview });
         Ok(CfiCache { inner })
     }
 }
