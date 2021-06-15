@@ -8,6 +8,7 @@
 //! [`MachObject`]: ../macho/struct.MachObject.html
 
 use std::borrow::Cow;
+use std::collections::BTreeSet;
 use std::error::Error;
 use std::fmt;
 use std::marker::PhantomData;
@@ -1249,6 +1250,7 @@ impl<'data> DwarfDebugSession<'data> {
             functions: Vec::new().into_iter(),
             range_buf: Vec::new(),
             finished: false,
+            seen_ranges: BTreeSet::new(),
         }
     }
 
@@ -1342,6 +1344,7 @@ impl<'s> Iterator for DwarfFileIterator<'s> {
 pub struct DwarfFunctionIterator<'s> {
     units: DwarfUnitIterator<'s>,
     functions: std::vec::IntoIter<Function<'s>>,
+    seen_ranges: BTreeSet<(u64, u64)>,
     range_buf: Vec<Range>,
     finished: bool,
 }
@@ -1356,6 +1359,18 @@ impl<'s> Iterator for DwarfFunctionIterator<'s> {
 
         loop {
             if let Some(func) = self.functions.next() {
+                // We have seen this iterator yield duplicate top-level function entries, which combined
+                // with recursively walking its inlinees can blow past symcache limits.
+                // We suspect the reason is that the iterator does not internally deduplicate top level
+                // functions defined in different compile units. We suspect this might be caused by link-time
+                // deduplication which merges templated code that is being generated multiple times in each
+                // compilation unit.
+                let fn_range = (func.address, func.size);
+                if self.seen_ranges.contains(&fn_range) {
+                    continue;
+                }
+                self.seen_ranges.insert(fn_range);
+
                 return Some(Ok(func));
             }
 

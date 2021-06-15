@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::io::{self, Seek, Write};
@@ -206,15 +205,10 @@ where
             .debug_session()
             .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadDebugFile, e))?;
 
-        let mut seen_ranges = BTreeSet::new();
         for function in session.functions() {
             let function =
                 function.map_err(|e| SymCacheError::new(SymCacheErrorKind::BadDebugFile, e))?;
-            let fn_range = (function.address, function.size);
-            if !seen_ranges.contains(&fn_range) {
-                writer.add_function(function)?;
-                seen_ranges.insert(fn_range);
-            }
+            writer.add_function(function)?;
         }
 
         // Sort the files to efficiently add symbols from the symbol table in linear time
