@@ -18,6 +18,7 @@
 //! [`CfiCache`]: struct.CfiCache.html
 
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::error::Error;
 use std::fmt;
 use std::io::{self, Write};
@@ -43,15 +44,15 @@ use symbolic_debuginfo::{Object, ObjectError, ObjectLike};
 
 /// The magic file preamble to identify cficache files.
 /// Files with version < 2 do not have a magic file preamble.
-pub const CFICACHE_MAGIC: [u8; 4] = *b"CFIC";
+pub const CFICACHE_MAGIC: u32 = u32::from_be_bytes(*b"CFIC");
 
 /// The latest version of the file format.
-pub const CFICACHE_LATEST_VERSION: u32 = 2;
+// TODO: this is `1` for now to support downgrading to a symbolic version that supports parsing but
+// not yet *write* the new versioned format
+pub const CFICACHE_LATEST_VERSION: u32 = 1;
 
-// The preamble are 8 bytes, all ASCII.
-// This should be forward-compatible with a binary format:
-// `CFICxxx\n`
-//      ^^^ <- 3 ASCII digits denoting the version, `002` for now.
+// The preamble are 8 bytes, a 4-byte magic and 4 bytes for the version.
+// The 4-byte magic should be read as little endian to check for endian mismatch.
 
 // Version history:
 //
@@ -1030,12 +1031,22 @@ impl CfiCache<'static> {
     /// Construct a CFI cache from an `Object`.
     pub fn from_object(object: &Object<'_>) -> Result<Self, CfiError> {
         let mut buffer = vec![];
-        writeln!(buffer, "CFIC{:03}", CFICACHE_LATEST_VERSION)?;
+        // TODO: for now when converting an object, we do *not* write a preamble, and output an
+        // `Unversioned` format. That way we never *write* a new versioned format yet, but support
+        // reading it
+        //write_preamble(&mut buffer, CFICACHE_LATEST_VERSION)?;
         AsciiCfiWriter::new(&mut buffer).process(object)?;
+
         let byteview = ByteView::from_vec(buffer);
-        let inner = CfiCacheInner::Versioned(CFICACHE_LATEST_VERSION, CfiCacheV1 { byteview });
+        //let inner = CfiCacheInner::Versioned(CFICACHE_LATEST_VERSION, CfiCacheV1 { byteview });
+        let inner = CfiCacheInner::Unversioned(CfiCacheV1 { byteview });
         Ok(CfiCache { inner })
     }
+}
+
+fn write_preamble<W: Write>(mut writer: W, version: u32) -> Result<(), io::Error> {
+    writer.write_all(&CFICACHE_MAGIC.to_ne_bytes())?;
+    writer.write_all(&version.to_ne_bytes())
 }
 
 impl<'a> CfiCache<'a> {
@@ -1044,12 +1055,12 @@ impl<'a> CfiCache<'a> {
         if byteview.len() == 0 || byteview.starts_with(b"STACK") {
             let inner = CfiCacheInner::Unversioned(CfiCacheV1 { byteview });
             return Ok(CfiCache { inner });
-        } else if byteview.starts_with(&CFICACHE_MAGIC) && byteview.get(7).cloned() == Some(b'\n') {
-            if let Some(version) = byteview
-                .get(4..7)
-                .and_then(|buf| std::str::from_utf8(buf).ok())
-                .and_then(|s| s.parse().ok())
-            {
+        }
+
+        if let Some(preamble) = byteview.get(0..8) {
+            let magic = u32::from_ne_bytes(preamble[0..4].try_into().unwrap());
+            if magic == CFICACHE_MAGIC {
+                let version = u32::from_ne_bytes(preamble[4..8].try_into().unwrap());
                 let inner = CfiCacheInner::Versioned(version, CfiCacheV1 { byteview });
                 return Ok(CfiCache { inner });
             }
@@ -1082,7 +1093,7 @@ impl<'a> CfiCache<'a> {
     /// Writes the cache to the given writer.
     pub fn write_to<W: Write>(&self, mut writer: W) -> Result<(), io::Error> {
         if let CfiCacheInner::Versioned(version, _) = self.inner {
-            writeln!(writer, "CFIC{:03}", version)?;
+            write_preamble(&mut writer, version)?;
         }
         io::copy(&mut self.as_slice(), &mut writer)?;
         Ok(())
