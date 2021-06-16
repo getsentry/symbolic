@@ -323,7 +323,7 @@ impl Iterator for Unreal4FileIterator<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let meta = self.inner.next()?;
-        Some(Unreal4File::from_meta(meta, &self.bytes))
+        Some(Unreal4File::from_meta(meta, self.bytes))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -336,14 +336,14 @@ impl Iterator for Unreal4FileIterator<'_> {
 
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let meta = self.inner.nth(n)?;
-        Some(Unreal4File::from_meta(meta, &self.bytes))
+        Some(Unreal4File::from_meta(meta, self.bytes))
     }
 }
 
 impl DoubleEndedIterator for Unreal4FileIterator<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         let meta = self.inner.next_back()?;
-        Some(Unreal4File::from_meta(meta, &self.bytes))
+        Some(Unreal4File::from_meta(meta, self.bytes))
     }
 }
 

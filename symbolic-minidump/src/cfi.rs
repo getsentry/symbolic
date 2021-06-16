@@ -18,6 +18,7 @@
 //! [`CfiCache`]: struct.CfiCache.html
 
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::error::Error;
 use std::fmt;
 use std::io::{self, Write};
@@ -41,8 +42,27 @@ use symbolic_debuginfo::pdb::PdbObject;
 use symbolic_debuginfo::pe::{PeObject, RuntimeFunction, UnwindOperation};
 use symbolic_debuginfo::{Object, ObjectError, ObjectLike};
 
+/// The magic file preamble to identify cficache files.
+///
+/// Files with version < 2 do not have the full preamble with magic+version, but rather start
+/// straight away with a `STACK` record.
+/// The magic here is a `u32` corresponding to the big-endian `CFIC`.
+/// It will be written and read using native endianness, so mismatches between writer/reader will
+/// result in a [`CfiErrorKind::BadFileMagic`] error.
+pub const CFICACHE_MAGIC: u32 = u32::from_be_bytes(*b"CFIC");
+
 /// The latest version of the file format.
+// TODO: this is `1` for now to support downgrading to a symbolic version that supports parsing but
+// not yet *write* the new versioned format
 pub const CFICACHE_LATEST_VERSION: u32 = 1;
+
+// The preamble are 8 bytes, a 4-byte magic and 4 bytes for the version.
+// The 4-byte magic should be read as little endian to check for endian mismatch.
+
+// Version history:
+//
+// 1: Initial ASCII-only implementation
+// 2: Implementation with a versioned preamble
 
 /// Used to detect empty runtime function entries in PEs.
 const EMPTY_FUNCTION: RuntimeFunction = RuntimeFunction {
@@ -411,11 +431,18 @@ impl<W: Write> AsciiCfiWriter<W> {
             }
             Ok(())
         }
+        // Preload the symbols as this is expensive to do in the loop.
+        let symbols = object.symbol_map();
 
         // Initialize an unwind context once and reuse it for the entire section.
         let mut ctx = UninitializedUnwindContext::new();
 
         while let Some(entry) = iter.next()? {
+            if entry.len == 0 {
+                // We saw some duplicate entries (which yield entries with `len == 0`) for example
+                // in `libsystem_kernel.dylib`. In this case just skip the zero-length entry.
+                continue;
+            }
             match entry.instructions(&iter) {
                 CompactUnwindOp::None => {
                     // We have seen some of these `CompactUnwindOp::None` correspond to some tiny
@@ -452,7 +479,6 @@ impl<W: Write> AsciiCfiWriter<W> {
                                 .fde_from_offset(&info.bases, offset, U::cie_from_offset)
                         {
                             let start_addr = entry.instruction_address.into();
-                            let symbols = object.symbol_map();
                             let sym_name = symbols.lookup(start_addr).and_then(|sym| sym.name());
                             let ptr_size = object.arch().cpu_family().pointer_size();
 
@@ -847,7 +873,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                     None => return Ok(writeln!(self.inner)?),
                 };
 
-                let program_string = prog_ref.to_string_lossy(&string_table)?;
+                let program_string = prog_ref.to_string_lossy(string_table)?;
 
                 writeln!(self.inner, "{}", program_string.trim())?;
             }
@@ -969,7 +995,8 @@ impl<'a> CfiCacheV1<'a> {
 }
 
 enum CfiCacheInner<'a> {
-    V1(CfiCacheV1<'a>),
+    Unversioned(CfiCacheV1<'a>),
+    Versioned(u32, CfiCacheV1<'a>),
 }
 
 /// A cache file for call frame information (CFI).
@@ -1009,19 +1036,40 @@ pub struct CfiCache<'a> {
 impl CfiCache<'static> {
     /// Construct a CFI cache from an `Object`.
     pub fn from_object(object: &Object<'_>) -> Result<Self, CfiError> {
-        let buffer = AsciiCfiWriter::transform(object)?;
+        let mut buffer = vec![];
+        // TODO: for now when converting an object, we do *not* write a preamble, and output an
+        // `Unversioned` format. That way we never *write* a new versioned format yet, but support
+        // reading it
+        //write_preamble(&mut buffer, CFICACHE_LATEST_VERSION)?;
+        AsciiCfiWriter::new(&mut buffer).process(object)?;
+
         let byteview = ByteView::from_vec(buffer);
-        let inner = CfiCacheInner::V1(CfiCacheV1 { byteview });
+        //let inner = CfiCacheInner::Versioned(CFICACHE_LATEST_VERSION, CfiCacheV1 { byteview });
+        let inner = CfiCacheInner::Unversioned(CfiCacheV1 { byteview });
         Ok(CfiCache { inner })
     }
+}
+
+fn write_preamble<W: Write>(mut writer: W, version: u32) -> Result<(), io::Error> {
+    writer.write_all(&CFICACHE_MAGIC.to_ne_bytes())?;
+    writer.write_all(&version.to_ne_bytes())
 }
 
 impl<'a> CfiCache<'a> {
     /// Load a symcache from a `ByteView`.
     pub fn from_bytes(byteview: ByteView<'a>) -> Result<Self, CfiError> {
         if byteview.len() == 0 || byteview.starts_with(b"STACK") {
-            let inner = CfiCacheInner::V1(CfiCacheV1 { byteview });
+            let inner = CfiCacheInner::Unversioned(CfiCacheV1 { byteview });
             return Ok(CfiCache { inner });
+        }
+
+        if let Some(preamble) = byteview.get(0..8) {
+            let magic = u32::from_ne_bytes(preamble[0..4].try_into().unwrap());
+            if magic == CFICACHE_MAGIC {
+                let version = u32::from_ne_bytes(preamble[4..8].try_into().unwrap());
+                let inner = CfiCacheInner::Versioned(version, CfiCacheV1 { byteview });
+                return Ok(CfiCache { inner });
+            }
         }
 
         Err(CfiErrorKind::BadFileMagic.into())
@@ -1030,7 +1078,8 @@ impl<'a> CfiCache<'a> {
     /// Returns the cache file format version.
     pub fn version(&self) -> u32 {
         match self.inner {
-            CfiCacheInner::V1(_) => 1,
+            CfiCacheInner::Unversioned(_) => 1,
+            CfiCacheInner::Versioned(version, _) => version,
         }
     }
 
@@ -1042,12 +1091,16 @@ impl<'a> CfiCache<'a> {
     /// Returns the raw buffer of the cache file.
     pub fn as_slice(&self) -> &[u8] {
         match self.inner {
-            CfiCacheInner::V1(ref v1) => v1.raw(),
+            CfiCacheInner::Unversioned(ref v1) => v1.raw(),
+            CfiCacheInner::Versioned(_, ref v1) => &v1.raw()[8..],
         }
     }
 
     /// Writes the cache to the given writer.
     pub fn write_to<W: Write>(&self, mut writer: W) -> Result<(), io::Error> {
+        if let CfiCacheInner::Versioned(version, _) = self.inner {
+            write_preamble(&mut writer, version)?;
+        }
         io::copy(&mut self.as_slice(), &mut writer)?;
         Ok(())
     }

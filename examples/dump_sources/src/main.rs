@@ -46,7 +46,7 @@ fn write_object_sources(path: &Path, output_path: &Path) -> Result<(), Box<dyn s
 fn execute(matches: &ArgMatches<'_>) {
     let output_path = Path::new(matches.value_of("output").unwrap());
     for path in matches.values_of("paths").unwrap_or_default() {
-        if let Err(e) = write_object_sources(Path::new(&path), &output_path) {
+        if let Err(e) = write_object_sources(Path::new(&path), output_path) {
             print_error(e.as_ref());
         }
 

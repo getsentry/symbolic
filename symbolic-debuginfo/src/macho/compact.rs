@@ -197,13 +197,14 @@
 //! One consequence of only having one opcode for a whole function is that
 //! functions will generally have incorrect instructions for the function's
 //! prologue (where callee-saved registers are individually PUSHed onto the
-//! stack before the rest of the stack space is allocated).
+//! stack before the rest of the stack space is allocated), and epilogue
+//! (where callee-saved registers are individually POPed back into registers).
 //!
 //! Presumably this isn't a very big deal, since there's very few situations
-//! where unwinding would involve a function still executing its prologue.
+//! where unwinding would involve a function still executing its prologue/epilogue.
 //! This might matter when handling a stack overflow that occurred while
 //! saving the registers, or when processing a non-crashing thread in a minidump
-//! that happened to be in its prologue.
+//! that happened to be in its prologue/epilogue.
 //!
 //! Similarly, the way ranges of instructions are mapped means that Compact
 //! Unwinding will generally incorrectly map the padding bytes between functions
@@ -219,7 +220,7 @@
 //! backtraces.
 //!
 //!
-//! ## Page Tables
+//! # Page Tables
 //!
 //! This section describes the architecture-agnostic layout of the compact
 //! unwinding format. The layout of the format is a two-level page-table
@@ -231,6 +232,8 @@
 //!
 //! 1. Eliding duplicate instruction addresses
 //! 2. Palettizing the opcodes
+//!
+//!
 //!
 //! Trick 1 is standard for unwinders: the table of mappings is sorted by
 //! address, and any entries that would have the same opcode as the
@@ -248,6 +251,18 @@
 //! address: 1, opcode: 1
 //! address: 3, opcode: 2
 //! ```
+//!
+//! We have found a few places with "zero-length" entries, where the same
+//! address gets repeated, such as the following in `libsystem_kernel.dylib`:
+//!
+//! ```text
+//! address: 0x000121c3, opcode: 0x00000000
+//! address: 0x000121c3, opcode: 0x04000680
+//! ```
+//!
+//! In this case you can just discard the zero-length one (the first one).
+//!
+//!
 //!
 //! Trick 2 is more novel: At the first level a global palette of up to 127 opcodes
 //! is defined. Each second-level "compressed" (leaf) page can also define up to 128 local
@@ -279,9 +294,9 @@
 //!
 //!
 //!
-//! # Layout of the Page Table
+//! ## Layout of the Page Table
 //!
-//! The page table starts at the very beginning of the __unwind_info section
+//! The page table starts at the very beginning of the `__unwind_info` section
 //! with the root page:
 //!
 //! ```rust,ignore
@@ -366,6 +381,7 @@
 //!   opcode: u32,
 //! }
 //!
+//!
 //! struct CompressedSecondLevelPage {
 //!   /// Always 3 (use to distinguish from RegularSecondLevelPage).
 //!   kind: u32 = 3,
@@ -404,10 +420,10 @@
 //!
 //! There are 3 architecture-specific opcode formats: x86, x64, and ARM64.
 //!
-//! All 3 formats have a "null opcode" (0x0000_0000) which indicates that
+//! All 3 formats have a "null opcode" (`0x0000_0000`) which indicates that
 //! there is no unwinding information for this range of addresses. This happens
 //! with things like hand-written assembly subroutines. This implementation
-//! will yield it as a valid opcode that converts into CompactUnwindOp::None.
+//! will yield it as a valid opcode that converts into [`CompactUnwindOp::None`].
 //!
 //! All 3 formats share a common header in the top 8 bits (from high to low):
 //!
@@ -428,28 +444,29 @@
 //! ```
 //!
 //!
+//!
 //! ## x86 and x64 Opcodes
 //!
 //! x86 and x64 use the same opcode layout, differing only in the registers
 //! being restored. Registers are numbered 0-6, with the following mappings:
 //!
 //! x86:
-//! * 0 => no register (like Option::None)
-//! * 1 => ebx
-//! * 2 => ecx
-//! * 3 => edx
-//! * 4 => edi
-//! * 5 => esi
-//! * 6 => ebp
+//! * 0 => no register (like `Option::None`)
+//! * 1 => `ebx`
+//! * 2 => `ecx`
+//! * 3 => `edx`
+//! * 4 => `edi`
+//! * 5 => `esi`
+//! * 6 => `ebp`
 //!
 //! x64:
-//! * 0 => no register (like Option::None)
-//! * 1 => rbx
-//! * 2 => r12
-//! * 3 => r13
-//! * 4 => r14
-//! * 5 => r15
-//! * 6 => rbp
+//! * 0 => no register (like `Option::None`)
+//! * 1 => `rbx`
+//! * 2 => `r12`
+//! * 3 => `r13`
+//! * 4 => `r14`
+//! * 5 => `r15`
+//! * 6 => `rbp`
 //!
 //! Note also that encoded sizes/offsets are generally divided by the pointer size
 //! (since all values we are interested in are pointer-aligned), which of course differs
@@ -460,26 +477,34 @@
 //! (One of the llvm headers refers to a 5th "0=old" opcode. Apparently this
 //! was used for initial development of the format, and is basically just
 //! reserved to prevent the testing data from ever getting mixed with real
-//! data. Mothing should produce or handle it. It does incidentally match
+//! data. Nothing should produce or handle it. It does incidentally match
 //! the "null opcode", but it's fine to regard that as an unknown opcode
 //! and do nothing.)
 //!
 //!
-//! ### x86 Opcode Mode 1: BP-Based
+//! ### x86/x64 Opcode 1: Frame-Based
 //!
-//! The function has the standard bp-based prelude which:
+//! The function has the standard frame pointer (`bp`) prelude which:
 //!
-//! * Pushes the caller's bp (frame pointer) to the stack
-//! * Sets bp = sp (new frame pointer is the current top of the stack)
+//! * Pushes the caller's `bp` to the stack
+//! * Sets `bp := sp` (new frame pointer is the current top of the stack)
 //!
-//! bp has been preserved, and any callee-saved registers that need to be restored
-//! are saved on the stack at a known offset from bp.
+//! `bp` has been preserved, and any callee-saved registers that need to be restored
+//! are saved on the stack at a known offset from `bp`. The return address is
+//! stored just before the caller's `bp`. The caller's stack pointer should
+//! point before where the return address is saved.
 //!
-//! The return address is stored just before the caller's bp. The caller's stack
-//! pointer should point before where the return address is saved.
+//! So to unwind you just need to do:
+//!
+//! ```text
+//! %sp := %bp + 2*POINTER_SIZE
+//! %ip := *(%bp + POINTER_SIZE)
+//! %bp := *(%bp)
+//!
+//! (and restore all the other callee-saved registers as described below)
+//! ```
 //!
 //! Registers are stored in increasing order (so `reg1` comes before `reg2`).
-//!
 //! If a register has the "no register" value, continue iterating the offset
 //! forward. This lets the registers be stored slightly-non-contiguously on the
 //! stack.
@@ -487,12 +512,13 @@
 //! The remaining 24 bits of the opcode are interpreted as follows (from high to low):
 //!
 //! ```rust,ignore
-//! /// Registers to restore (see register mapping above)
+//! /// Registers to restore (see register mapping in previous section)
 //! reg1: u3,
 //! reg2: u3,
 //! reg3: u3,
 //! reg4: u3,
 //! reg5: u3,
+//!
 //! _unused: u1,
 //!
 //! /// The offset from bp that the registers to restore are saved at,
@@ -502,15 +528,22 @@
 //!
 //!
 //!
-//! ### x86 Opcode Mode 2: Frameless (Stack-Immediate)
+//! ### x86/x64 Opcode 2: Frameless (Stack-Immediate)
+//!
 //!
 //! The callee's stack frame has a known size, so we can find the start
-//! of the frame by offsetting from sp (the stack pointer). Any callee-saved
-//! registers that need to be restored are saved at the start of the stack
-//! frame.
+//! of the frame by offsetting from sp (the stack pointer). The return
+//! address is saved immediately after that location. Any callee-saved
+//! registers that need to be restored are saved immediately after that.
 //!
-//! The return address is saved immediately before the start of this frame. The
-//! caller's stack pointer should point before where the return address is saved.
+//! So to unwind you just need to do:
+//!
+//! ```text
+//! %sp := %sp + stack_size * POINTER_SIZE
+//! %ip := *(%sp - 8)
+//!
+//! (and restore all the other callee-saved registers as described below)
+//! ```
 //!
 //! Registers are stored in *reverse* order on the stack from the order the
 //! decoding algorithm outputs (so `reg[1]` comes before `reg[0]`).
@@ -519,7 +552,6 @@
 //! offset forward -- registers are strictly contiguous (it's possible
 //! "no register" can only be trailing due to the encoding, but I haven't
 //! verified this).
-//!
 //!
 //! The remaining 24 bits of the opcode are interpreted as follows (from high to low):
 //!
@@ -547,7 +579,7 @@
 //!
 //!
 //!
-//! ### x86 Opcode Mode 3: Frameless (Stack-Indirect)
+//! ### x86/x64 Opcode 3: Frameless (Stack-Indirect)
 //!
 //! (Currently Unimplemented)
 //!
@@ -590,11 +622,11 @@
 //!
 //!
 //!
-//! ### x86 Opcode Mode 4: Dwarf
+//! ### x86/x64 Opcode 4: Dwarf
 //!
 //! There is no compact unwind info here, and you should instead use the
-//! DWARF CFI in .eh_frame for this line. The remaining 24 bits of the opcode
-//! are an offset into the .eh_frame section that should hold the DWARF FDE
+//! DWARF CFI in `.eh_frame` for this line. The remaining 24 bits of the opcode
+//! are an offset into the `.eh_frame` section that should hold the DWARF FDE
 //! for this instruction address.
 //!
 //!
@@ -604,15 +636,24 @@
 //! ARM64 (AKA AArch64) is a lot more strict about the ABI of functions, and
 //! as such it has fairly simple opcodes. There are 3 kinds of ARM64 opcode:
 //!
+//! (Yes there's no Opcode 1, I don't know why.)
 //!
 //!
-//! # ARM64 Opcode 2: Frameless
+//! ### ARM64 Opcode 2: Frameless
 //!
 //! This is a "frameless" leaf function. The caller is responsible for
 //! saving/restoring all of its general purpose registers. The frame pointer
 //! is still the caller's frame pointer and doesn't need to be touched. The
-//! return address is stored in the link register (x30). All we need to do is
-//! pop the frame and move the return address back to the program counter (pc).
+//! return address is stored in the link register (`x30`).
+//!
+//! So to unwind you just need to do:
+//!
+//! ```text
+//! %sp := %sp + stack_size * 16
+//! %pc := %x30
+//!
+//! (no other registers to restore)
+//! ```
 //!
 //! The remaining 24 bits of the opcode are interpreted as follows (from high to low):
 //!
@@ -625,35 +666,45 @@
 //!
 //!
 //!
-//! # ARM64 Opcode 3: Dwarf
+//! ### ARM64 Opcode 3: Dwarf
 //!
 //! There is no compact unwind info here, and you should instead use the
-//! DWARF CFI in .eh_frame for this line. The remaining 24 bits of the opcode
-//! are an offset into the .eh_frame section that should hold the DWARF FDE
+//! DWARF CFI in `.eh_frame` for this line. The remaining 24 bits of the opcode
+//! are an offset into the `.eh_frame` section that should hold the DWARF FDE
 //! for this instruction address.
 //!
 //!
 //!
-//! # ARM64 Opcode 4: Frame-Based
+//! ### ARM64 Opcode 4: Frame-Based
 //!
-//! This is a function with the standard prologue. The frame pointer (x29) and
-//! return address (pc) were pushed onto the stack in a pair (ARM64 registers
-//! are saved/restored in pairs), and then the frame pointer was updated
+//! This is a function with the standard prologue. The return address (`pc`) and the
+//! frame pointer (`x29`) were pushed onto the stack in a pair and in that order
+//! (ARM64 registers are saved/restored in pairs), and then the frame pointer was updated
 //! to the current stack pointer.
+//!
+//! So to unwind you just need to do:
+//!
+//! ```text
+//! %sp := %x29 + 16
+//! %pc := *(%x29 + 8)
+//! %x29 := *(%x29)
+//!
+//! (and restore all the other callee-saved registers as described below)
+//! ```
 //!
 //! Any callee-saved registers that need to be restored were then pushed
 //! onto the stack in pairs in the following order (if they were pushed at
 //! all, see below):
 //!
-//! 1. x19, x20
-//! 2. x21, x22
-//! 3. x23, x24
-//! 4. x25, x26
-//! 5. x27, x28
-//! 6. d8, d9
-//! 7. d10, d11
-//! 8. d12, d13
-//! 9. d14, d15
+//! 1. `x19`, `x20`
+//! 2. `x21`, `x22`
+//! 3. `x23`, `x24`
+//! 4. `x25`, `x26`
+//! 5. `x27`, `x28`
+//! 6. `d8`, `d9`
+//! 7. `d10`, `d11`
+//! 8. `d12`, `d13`
+//! 9. `d14`, `d15`
 //!
 //! The remaining 24 bits of the opcode are interpreted as follows (from high to low):
 //!
@@ -685,7 +736,7 @@
 //! can go wrong for anyone using this documentation to write their own tooling.
 //!
 //! For all these cases, if an Error is reported during iteration/search, the
-//! CompactUnwindInfoIter will be in an unspecified state for future queries.
+//! [`CompactUnwindInfoIter`] will be in an unspecified state for future queries.
 //! It will never violate memory safety but it may start yielding chaotic
 //! values.
 //!
@@ -724,7 +775,10 @@
 //!   will always return [`CompactUnwindOp::None`].
 //!
 //! * If an opcode kind is encountered that this implementation wasn't
-//!   designed for, Opcode::instructions will return [`CompactUnwindOp::None`].
+//!   designed for, `Opcode::instructions` will return [`CompactUnwindOp::None`].
+//!
+//! * If two entries have the same address (making the first have zero-length),
+//!   we silently discard the first one in favour of the second.
 //!
 //! * Only 7 register mappings are provided for x86/x64 opcodes, but the
 //!   3-bit encoding allows for 8. This implementation will just map the
@@ -744,10 +798,10 @@
 //!   the next entry's instruction_address is always needed to compute the
 //!   number of bytes the current entry covers, the implementation will report
 //!   an error if it encounters this. However it does not attempt to fully
-//!   validate the ordering during an entry_for_address query, as this would
+//!   validate the ordering during an `entry_for_address` query, as this would
 //!   significantly slow down the binary search. In this situation
-//!   you may get chaotic results (same guarantees as BTreeMap with an
-//!   inconsistent Ord implementation).
+//!   you may get chaotic results (same guarantees as `BTreeMap` with an
+//!   inconsistent `Ord` implementation).
 //!
 //! * A corrupt unwind_info section may attempt to index out of bounds either
 //!   with out-of-bounds offset values (e.g. personalities_offset) or with out
@@ -756,7 +810,7 @@
 //!   out of bounds. Offsets are only restricted to the unwind_info
 //!   section itself, as this implementation does not assume arrays are
 //!   placed in any particular place, and does not try to prevent aliasing.
-//!   Trying to access outside the unwind_info section will return an error.
+//!   Trying to access outside the `.unwind_info` section will return an error.
 //!
 //! * If an unknown second-level page type is encountered, iteration/lookup will
 //!   return an error.
@@ -1068,7 +1122,7 @@ impl<'a> CompactUnwindInfoIter<'a> {
         // If we get here, we must have loaded a page
         let (first_level_entry, second_level_page) = self.page_of_next_entry.as_ref().unwrap();
         let entry =
-            self.second_level_entry(&first_level_entry, &second_level_page, self.second_idx)?;
+            self.second_level_entry(first_level_entry, second_level_page, self.second_idx)?;
 
         // Advance to the next entry
         self.second_idx += 1;
@@ -1166,9 +1220,9 @@ impl<'a> CompactUnwindInfoIter<'a> {
         first_level_entry: &FirstLevelPageEntry,
         second_level_page: &SecondLevelPage,
     ) -> Result<CompactUnwindInfoEntry> {
-        if entry.instruction_address >= next_entry_instruction_address {
+        if entry.instruction_address > next_entry_instruction_address {
             return Err(MachError::from(Error::Malformed(format!(
-                "Entry addresses are not strictly monotonic! ({} >= {})",
+                "Entry addresses are not monotonic! ({} > {})",
                 entry.instruction_address, next_entry_instruction_address
             ))));
         }

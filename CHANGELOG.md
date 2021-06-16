@@ -1,5 +1,26 @@
 # Changelog
 
+## 8.2.0
+
+**Caution**:
+
+- Relevant dependencies such as `gimli`, `goblim`, and `wasm`-related libraries were updated.
+
+**Features**:
+
+- Support for compact unwind info in MachO files was added, along with special casing of some well known macOS system functions.
+- The parser of the Breakpad Format was rewritten.
+
+**Bug Fixes**:
+
+- All valid `STACK WIN` record types are being parsed correctly. This did add new variants to the `BreakpadStackWinRecordType` enum. Technically a _breaking change_, but we do not consider the Breakpad Parser types as adhering to strict SemVer rules.
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@Gankra](https://github.com/Gankra)
+
 ## 8.1.0
 
 **Features**:

@@ -141,12 +141,12 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
         match expr {
             Expr::Value(x) => Ok(*x),
             Expr::Const(c) => {
-                self.constants.get(&c).copied().ok_or_else(|| {
+                self.constants.get(c).copied().ok_or_else(|| {
                     EvaluationError(EvaluationErrorInner::UndefinedConstant(c.clone()))
                 })
             }
             Expr::Var(v) => {
-                self.variables.get(&v).copied().ok_or_else(|| {
+                self.variables.get(v).copied().ok_or_else(|| {
                     EvaluationError(EvaluationErrorInner::UndefinedVariable(v.clone()))
                 })
             }
