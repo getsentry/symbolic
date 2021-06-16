@@ -411,6 +411,8 @@ impl<W: Write> AsciiCfiWriter<W> {
             }
             Ok(())
         }
+        // Preload the symbols as this is expensive to do in the loop.
+        let symbols = object.symbol_map();
 
         // Initialize an unwind context once and reuse it for the entire section.
         let mut ctx = UninitializedUnwindContext::new();
@@ -457,7 +459,6 @@ impl<W: Write> AsciiCfiWriter<W> {
                                 .fde_from_offset(&info.bases, offset, U::cie_from_offset)
                         {
                             let start_addr = entry.instruction_address.into();
-                            let symbols = object.symbol_map();
                             let sym_name = symbols.lookup(start_addr).and_then(|sym| sym.name());
                             let ptr_size = object.arch().cpu_family().pointer_size();
 
