@@ -781,7 +781,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             // which merges templated code that is being generated multiple times in each
             // compilation unit. We make sure to detect this here, so we can avoid creating these
             // duplicates as early as possible.
-            if !seen_ranges.insert((function_address, function_size)) {
+            if !inline && !seen_ranges.insert((function_address, function_size)) {
+                skipped_depth = Some(depth);
                 continue;
             }
 
