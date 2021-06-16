@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Add support for reading versioned CFI Cache files.
+
+**Fixes**:
+
+- Avoid quadratic slowdown when using compact unwind info on macOS.
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@Gankra](https://github.com/Gankra)
+
 ## 8.2.0
 
 **Caution**:
