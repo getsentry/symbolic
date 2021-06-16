@@ -43,7 +43,12 @@ use symbolic_debuginfo::pe::{PeObject, RuntimeFunction, UnwindOperation};
 use symbolic_debuginfo::{Object, ObjectError, ObjectLike};
 
 /// The magic file preamble to identify cficache files.
-/// Files with version < 2 do not have a magic file preamble.
+///
+/// Files with version < 2 do not have the full preamble with magic+version, but rather start
+/// straight away with a `STACK` record.
+/// The magic here is a `u32` corresponding to the big-endian `CFIC`.
+/// It will be written and read using native endianness, so mismatches between writer/reader will
+/// result in a [`CfiErrorKind::BadFileMagic`] error.
 pub const CFICACHE_MAGIC: u32 = u32::from_be_bytes(*b"CFIC");
 
 /// The latest version of the file format.
