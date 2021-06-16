@@ -1266,8 +1266,8 @@ impl<'data> DwarfDebugSession<'data> {
             units: self.cell.get().units(),
             functions: Vec::new().into_iter(),
             range_buf: Vec::new(),
-            finished: false,
             seen_ranges: BTreeSet::new(),
+            finished: false,
         }
     }
 
@@ -1361,8 +1361,8 @@ impl<'s> Iterator for DwarfFileIterator<'s> {
 pub struct DwarfFunctionIterator<'s> {
     units: DwarfUnitIterator<'s>,
     functions: std::vec::IntoIter<Function<'s>>,
-    seen_ranges: BTreeSet<(u64, u64)>,
     range_buf: Vec<Range>,
+    seen_ranges: BTreeSet<(u64, u64)>,
     finished: bool,
 }
 
