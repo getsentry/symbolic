@@ -8,6 +8,7 @@
 //! [`MachObject`]: ../macho/struct.MachObject.html
 
 use std::borrow::Cow;
+use std::collections::BTreeSet;
 use std::error::Error;
 use std::fmt;
 use std::marker::PhantomData;
@@ -712,7 +713,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Collects all functions within this compilation unit.
-    fn functions(&self, range_buf: &mut Vec<Range>) -> Result<Vec<Function<'d>>, DwarfError> {
+    fn functions(
+        &self,
+        range_buf: &mut Vec<Range>,
+        seen_ranges: &mut BTreeSet<(u64, u64)>,
+    ) -> Result<Vec<Function<'d>>, DwarfError> {
         let mut depth = 0;
         let mut skipped_depth = None;
         let mut functions = Vec::new();
@@ -767,6 +772,19 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let function_address = offset(range_buf[0].begin, self.inner.info.address_offset);
             let function_size = range_buf[range_buf.len() - 1].end - range_buf[0].begin;
             let function_end = function_address + function_size;
+
+            // We have seen duplicate top-level function entries being yielded from the
+            // [`DwarfFunctionIterator`], which combined with recursively walking its inlinees can
+            // blow past symcache limits.
+            // We suspect the reason is that the the same top-level functions might be defined in
+            // different compile units. We suspect this might be caused by link-time deduplication
+            // which merges templated code that is being generated multiple times in each
+            // compilation unit. We make sure to detect this here, so we can avoid creating these
+            // duplicates as early as possible.
+            if !inline && !seen_ranges.insert((function_address, function_size)) {
+                skipped_depth = Some(depth);
+                continue;
+            }
 
             // Resolve functions in the symbol table first. Only if there is no entry, fall back
             // to debug information only if there is no match. Sometimes, debug info contains a
@@ -1248,6 +1266,7 @@ impl<'data> DwarfDebugSession<'data> {
             units: self.cell.get().units(),
             functions: Vec::new().into_iter(),
             range_buf: Vec::new(),
+            seen_ranges: BTreeSet::new(),
             finished: false,
         }
     }
@@ -1343,6 +1362,7 @@ pub struct DwarfFunctionIterator<'s> {
     units: DwarfUnitIterator<'s>,
     functions: std::vec::IntoIter<Function<'s>>,
     range_buf: Vec<Range>,
+    seen_ranges: BTreeSet<(u64, u64)>,
     finished: bool,
 }
 
@@ -1365,7 +1385,7 @@ impl<'s> Iterator for DwarfFunctionIterator<'s> {
                 None => break,
             };
 
-            self.functions = match unit.functions(&mut self.range_buf) {
+            self.functions = match unit.functions(&mut self.range_buf, &mut self.seen_ranges) {
                 Ok(functions) => functions.into_iter(),
                 Err(error) => return Some(Err(error)),
             };

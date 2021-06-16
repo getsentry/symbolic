@@ -41,7 +41,7 @@ fn test_write_header_linux() -> Result<(), Error> {
         arch: Amd64,
         has_line_info: true,
         has_file_info: true,
-        functions: 1964,
+        functions: 1838,
     }
     "###);
 
