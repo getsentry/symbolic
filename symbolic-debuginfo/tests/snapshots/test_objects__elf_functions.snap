@@ -1,6 +1,7 @@
 ---
-source: debuginfo/tests/test_objects.rs
+source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug(&functions[..10], 0)"
+
 ---
 
 > 0x1ec0: _ZN12_GLOBAL__N_18callbackERKN15google_breakpad18MinidumpDescriptorEPvb (0x3b)
@@ -203,67 +204,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
     > 0x1d72: crash (0xb)
       0x1d72: main.cpp:23 (../linux)
-
-> 0x1f00: _ZN15google_breakpad18MinidumpDescriptorD1Ev (0x32)
-  0x1f00: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-  0x1f08: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-  0x1f0c: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-  0x1f11: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-  0x1f1a: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-  0x1f1e: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-  0x1f23: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-  0x1f24: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-  0x1f30: minidump_descriptor.h:48 (../deps/breakpad/src/client/linux/handler)
-
-  > 0x1f08: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev (0x12)
-    0x1f08: basic_string.h:543 (/usr/include/c++/5/bits)
-    0x1f0c: basic_string.h:543 (/usr/include/c++/5/bits)
-    0x1f11: basic_string.h:543 (/usr/include/c++/5/bits)
-
-    > 0x1f08: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv (0x12)
-      0x1f08: basic_string.h:179 (/usr/include/c++/5/bits)
-      0x1f0c: basic_string.h:179 (/usr/include/c++/5/bits)
-      0x1f11: basic_string.h:180 (/usr/include/c++/5/bits)
-
-      > 0x1f08: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv (0x4)
-        0x1f08: basic_string.h:170 (/usr/include/c++/5/bits)
-
-        > 0x1f08: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv (0x4)
-          0x1f08: basic_string.h:151 (/usr/include/c++/5/bits)
-
-      > 0x1f11: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm (0x9)
-        0x1f11: basic_string.h:185 (/usr/include/c++/5/bits)
-
-        > 0x1f11: _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm (0x9)
-          0x1f11: alloc_traits.h:517 (/usr/include/c++/5/bits)
-
-          > 0x1f11: _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm (0x9)
-            0x1f11: new_allocator.h:110 (/usr/include/c++/5/ext)
-
-  > 0x1f1a: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev (0x16)
-    0x1f1a: basic_string.h:543 (/usr/include/c++/5/bits)
-    0x1f1e: basic_string.h:543 (/usr/include/c++/5/bits)
-    0x1f24: basic_string.h:543 (/usr/include/c++/5/bits)
-
-    > 0x1f1a: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv (0x16)
-      0x1f1a: basic_string.h:179 (/usr/include/c++/5/bits)
-      0x1f1e: basic_string.h:179 (/usr/include/c++/5/bits)
-      0x1f24: basic_string.h:180 (/usr/include/c++/5/bits)
-
-      > 0x1f1a: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_is_localEv (0x4)
-        0x1f1a: basic_string.h:170 (/usr/include/c++/5/bits)
-
-        > 0x1f1a: _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv (0x4)
-          0x1f1a: basic_string.h:151 (/usr/include/c++/5/bits)
-
-      > 0x1f24: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm (0xc)
-        0x1f24: basic_string.h:185 (/usr/include/c++/5/bits)
-
-        > 0x1f24: _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm (0xc)
-          0x1f24: alloc_traits.h:517 (/usr/include/c++/5/bits)
-
-          > 0x1f24: _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm (0xc)
-            0x1f24: new_allocator.h:110 (/usr/include/c++/5/ext)
 
 > 0x1f40: _ZN15google_breakpad16ExceptionHandler21InstallHandlersLockedEv (0x122)
   0x1f40: exception_handler.cc:275 (../deps/breakpad/src/client/linux/handler)
@@ -964,4 +904,56 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
   > 0x2b42: memcpy (0x8)
     0x2b42: string3.h:53 (/usr/include/x86_64-linux-gnu/bits)
+
+> 0x2bd0: _ZN15google_breakpad16ExceptionHandler13SignalHandlerEiP9siginfo_tPv (0x1ef)
+  0x2bd0: exception_handler.cc:328 (../deps/breakpad/src/client/linux/handler)
+  0x2bfb: exception_handler.cc:336 (../deps/breakpad/src/client/linux/handler)
+  0x2c07: exception_handler.cc:337 (../deps/breakpad/src/client/linux/handler)
+  0x2c09: exception_handler.cc:336 (../deps/breakpad/src/client/linux/handler)
+  0x2c0d: exception_handler.cc:409 (../deps/breakpad/src/client/linux/handler)
+  0x2c38: exception_handler.cc:342 (../deps/breakpad/src/client/linux/handler)
+  0x2c3f: exception_handler.cc:355 (../deps/breakpad/src/client/linux/handler)
+  0x2c42: exception_handler.cc:342 (../deps/breakpad/src/client/linux/handler)
+  0x2c47: exception_handler.cc:355 (../deps/breakpad/src/client/linux/handler)
+  0x2c54: exception_handler.cc:356 (../deps/breakpad/src/client/linux/handler)
+  0x2c5c: exception_handler.cc:375 (../deps/breakpad/src/client/linux/handler)
+  0x2c63: exception_handler.cc:375 (../deps/breakpad/src/client/linux/handler)
+  0x2c66: exception_handler.cc:375 (../deps/breakpad/src/client/linux/handler)
+  0x2c92: exception_handler.cc:376 (../deps/breakpad/src/client/linux/handler)
+  0x2ca8: exception_handler.cc:375 (../deps/breakpad/src/client/linux/handler)
+  0x2cad: exception_handler.cc:384 (../deps/breakpad/src/client/linux/handler)
+  0x2cb5: exception_handler.cc:387 (../deps/breakpad/src/client/linux/handler)
+  0x2cba: exception_handler.cc:390 (../deps/breakpad/src/client/linux/handler)
+  0x2cc6: exception_handler.cc:393 (../deps/breakpad/src/client/linux/handler)
+  0x2cd8: exception_handler.cc:398 (../deps/breakpad/src/client/linux/handler)
+  0x2cec: exception_handler.cc:398 (../deps/breakpad/src/client/linux/handler)
+  0x2d0d: exception_handler.cc:398 (../deps/breakpad/src/client/linux/handler)
+  0x2d15: exception_handler.cc:402 (../deps/breakpad/src/client/linux/handler)
+  0x2d20: exception_handler.cc:355 (../deps/breakpad/src/client/linux/handler)
+  0x2d31: exception_handler.cc:356 (../deps/breakpad/src/client/linux/handler)
+  0x2d3f: exception_handler.cc:359 (../deps/breakpad/src/client/linux/handler)
+  0x2d4b: exception_handler.cc:360 (../deps/breakpad/src/client/linux/handler)
+  0x2d56: exception_handler.cc:365 (../deps/breakpad/src/client/linux/handler)
+  0x2d5e: exception_handler.cc:362 (../deps/breakpad/src/client/linux/handler)
+  0x2d62: exception_handler.cc:363 (../deps/breakpad/src/client/linux/handler)
+  0x2d6d: exception_handler.cc:365 (../deps/breakpad/src/client/linux/handler)
+  0x2d77: exception_handler.cc:370 (../deps/breakpad/src/client/linux/handler)
+  0x2d83: exception_handler.cc:371 (../deps/breakpad/src/client/linux/handler)
+  0x2d90: exception_handler.cc:385 (../deps/breakpad/src/client/linux/handler)
+  0x2da0: exception_handler.cc:398 (../deps/breakpad/src/client/linux/handler)
+  0x2dae: exception_handler.cc:368 (../deps/breakpad/src/client/linux/handler)
+  0x2dba: exception_handler.cc:409 (../deps/breakpad/src/client/linux/handler)
+
+  > 0x2c63: _ZNKSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE4sizeEv (0x3)
+    0x2c63: stl_vector.h:655 (/usr/include/c++/5/bits)
+
+  > 0x2cec: sys_tgkill (0xc2)
+    0x2cec: linux_syscall_support.h:3545 (../deps/third_party/lss)
+    0x2da0: linux_syscall_support.h:3545 (../deps/third_party/lss)
+
+  > 0x2d90: InstallDefaultHandler (0x10)
+    0x2d90: exception_handler.cc:199 (../deps/breakpad/src/client/linux/handler)
+
+  > 0x2dae: InstallDefaultHandler (0xc)
+    0x2dae: exception_handler.cc:199 (../deps/breakpad/src/client/linux/handler)
 
