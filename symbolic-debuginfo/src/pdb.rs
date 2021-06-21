@@ -1122,7 +1122,14 @@ impl<'s> Unit<'s> {
                     // skip silently instead of erroring out. Missing a single inline function is
                     // more acceptable in such a case than halting iteration completely.
                     if let Some(inlinee) = inlinees.get(&site.inlinee) {
-                        self.handle_inlinee(site, parent_offset, inlinee, &program)?
+                        // We have seen some PDB files in the wild that can lead to `UnimplementedFileChecksumKind`
+                        // errors, possibly due to some broken file index annotations (see the comment
+                        // in `InlineeLineIterator`). Similarly to all the other cases here, we rather
+                        // silently skip these than to fail processing the whole file.
+                        // TODO: Make sure to log these kinds of errors somehow.
+                        self.handle_inlinee(site, parent_offset, inlinee, &program)
+                            .ok()
+                            .flatten()
                     } else {
                         None
                     }
