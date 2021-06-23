@@ -3,6 +3,7 @@ use std::io::Cursor;
 use std::path::Path;
 
 use clap::{App, Arg, ArgMatches};
+use tracing_subscriber;
 use walkdir::WalkDir;
 
 use symbolic::common::{Arch, ByteView, InstructionInfo, SelfCell};
@@ -278,7 +279,6 @@ fn print_state(
 }
 
 fn execute(matches: &ArgMatches) -> Result<(), Error> {
-    pretty_env_logger::init();
     let minidump_path = matches.value_of("minidump_file_path").unwrap();
     let symbols_path = matches.value_of("debug_symbols_path").unwrap_or("invalid");
     let use_new_method = matches.is_present("new_method");
@@ -319,6 +319,10 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
 }
 
 fn main() {
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .pretty()
+        .init();
     let matches = App::new("symbolic-minidump")
         .about("Symbolicates a minidump")
         .arg(
