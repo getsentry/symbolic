@@ -278,6 +278,7 @@ fn print_state(
 }
 
 fn execute(matches: &ArgMatches) -> Result<(), Error> {
+    pretty_env_logger::init();
     let minidump_path = matches.value_of("minidump_file_path").unwrap();
     let symbols_path = matches.value_of("debug_symbols_path").unwrap_or("invalid");
     let use_new_method = matches.is_present("new_method");

@@ -9,5 +9,6 @@ publish = false
 
 [dependencies]
 clap = "2.33.0"
+pretty_env_logger = "0.4.0"
 symbolic = { path = "../../symbolic", features = ["minidump", "symcache", "demangle"] }
 walkdir = "2.3.1"

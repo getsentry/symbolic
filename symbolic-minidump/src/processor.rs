@@ -718,14 +718,21 @@ unsafe extern "C" fn resolver_find_cfi_frame_info(
     address: u64,
 ) -> *mut c_void {
     let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
-    let module = match CStr::from_ptr(module).to_str() {
+    let module_cstr = CStr::from_ptr(module);
+    let module = match module_cstr.to_str() {
         Ok(s) => s,
-        Err(_) => return ptr::null_mut(),
+        Err(e) => {
+            log::error!("{}: {:?}", e, module_cstr);
+            return ptr::null_mut();
+        }
     };
 
     let module: CodeModuleId = match module.parse() {
         Ok(id) => id,
-        Err(_) => return ptr::null_mut(),
+        Err(e) => {
+            log::error!("{}: {}", e, module);
+            return ptr::null_mut();
+        }
     };
 
     if let Some(cfi_frame_info) = resolver.find_cfi_frame_info(&module, address) {
@@ -798,7 +805,8 @@ unsafe extern "C" fn find_caller_regs_32(
     let mut evaluator = Box::new(Evaluator::new(cfi_frame_info.endian));
 
     for rules_string in cfi_frame_info.rules.iter() {
-        if evaluator.add_cfi_rules_string(rules_string).is_err() {
+        if let Err(e) = evaluator.add_cfi_rules_string(rules_string) {
+            log::error!("{}", e);
             return std::ptr::null_mut();
         }
     }
@@ -864,6 +872,7 @@ unsafe extern "C" fn find_caller_regs_32(
 
         ptr
     } else {
+        log::error!("CFA and RA rules not found");
         std::ptr::null_mut() as *mut _
     }
 }
@@ -882,7 +891,8 @@ unsafe extern "C" fn find_caller_regs_64(
     let mut evaluator = Box::new(Evaluator::new(cfi_frame_info.endian));
 
     for rules_string in cfi_frame_info.rules.iter() {
-        if evaluator.add_cfi_rules_string(rules_string).is_err() {
+        if let Err(e) = evaluator.add_cfi_rules_string(rules_string) {
+            log::error!("{}", e);
             return std::ptr::null_mut();
         }
     }
@@ -948,6 +958,7 @@ unsafe extern "C" fn find_caller_regs_64(
 
         ptr
     } else {
+        log::error!("CFA and RA rules not found");
         std::ptr::null_mut() as *mut _
     }
 }
