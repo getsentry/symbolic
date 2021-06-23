@@ -734,7 +734,7 @@ unsafe extern "C" fn resolver_find_cfi_frame_info(
                 .find_cfi_frame_info(&module, address)
                 .map(|cfi_frame_info| Box::into_raw(Box::new(cfi_frame_info)) as *mut c_void)
         })
-        .unwrap_or_else(|| std::ptr::null_mut())
+        .unwrap_or_else(std::ptr::null_mut)
 }
 
 #[no_mangle]

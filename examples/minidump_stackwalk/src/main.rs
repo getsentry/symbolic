@@ -3,7 +3,6 @@ use std::io::Cursor;
 use std::path::Path;
 
 use clap::{App, Arg, ArgMatches};
-use tracing_subscriber;
 use walkdir::WalkDir;
 
 use symbolic::common::{Arch, ByteView, InstructionInfo, SelfCell};
