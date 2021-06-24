@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Write versioned CFI Cache files. Reading those files is only supported with symbolic versions `>= 8.2.1`, so trying to use a CFI Cache file with an older version of symbolic will fail with a `CfiErrorKind::BadFileMagic` error.
+
+## 8.2.1
+
+**Features**:
+
+- Add support for reading versioned CFI Cache files.
+
+**Fixes**:
+
+- Avoid quadratic slowdown when using compact unwind info on macOS.
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@Gankra](https://github.com/Gankra)
+
 ## 8.2.0
 
 **Caution**:

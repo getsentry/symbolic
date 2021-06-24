@@ -636,7 +636,7 @@ impl<'d> Iterator for BreakpadStackCfiRecords<'d> {
 }
 
 /// Possible types of data held by a [`BreakpadStackWinRecord`], as listed in
-/// [http://msdn.microsoft.com/en-us/library/bc5207xw%28VS.100%29.aspx]. Breakpad only deals with
+/// <http://msdn.microsoft.com/en-us/library/bc5207xw%28VS.100%29.aspx>. Breakpad only deals with
 /// types 0 (`FPO`) and 4 (`FrameData`).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BreakpadStackWinRecordType {
