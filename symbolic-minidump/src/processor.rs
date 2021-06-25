@@ -797,7 +797,7 @@ unsafe extern "C" fn find_caller_regs_32(
 
     for rules_string in cfi_frame_info.rules.iter() {
         if let Err(e) = evaluator.add_cfi_rules_string(rules_string) {
-            tracing::error!(error = ?e, rules_string);
+            tracing::debug!(error = ?e, rules_string);
             return std::ptr::null_mut();
         }
     }
@@ -817,7 +817,7 @@ unsafe extern "C" fn find_caller_regs_32(
         let value = match size {
             4 => *value as u32,
             _ => {
-                tracing::warn!(value, size, "Encountered non-u32 value");
+                tracing::debug!(value, size, "Encountered non-u32 value");
                 continue;
             }
         };
@@ -825,7 +825,7 @@ unsafe extern "C" fn find_caller_regs_32(
         let name = match CStr::from_ptr(*name).to_str() {
             Ok(name) => name,
             Err(e) => {
-                tracing::warn!(error = ?e);
+                tracing::debug!(error = ?e);
                 continue;
             }
         };
@@ -842,7 +842,7 @@ unsafe extern "C" fn find_caller_regs_32(
     let caller_registers = evaluator
         .evaluate_cfi_rules()
         .map_err(|e| {
-            tracing::warn!(error = ?e);
+            tracing::debug!(error = ?e);
         })
         .unwrap_or_default();
     if caller_registers.contains_key(&Identifier::Const(Constant::cfa()))
@@ -853,7 +853,7 @@ unsafe extern "C" fn find_caller_regs_32(
             let name = match CString::new(register.to_string()) {
                 Ok(name) => name,
                 Err(e) => {
-                    tracing::warn!(error = ?e);
+                    tracing::debug!(error = ?e);
                     continue;
                 }
             };
@@ -877,7 +877,7 @@ unsafe extern "C" fn find_caller_regs_32(
 
         ptr
     } else {
-        tracing::warn!("CFA and RA rules not found");
+        tracing::debug!("CFA and RA rules not found");
         std::ptr::null_mut() as *mut _
     }
 }
@@ -898,7 +898,7 @@ unsafe extern "C" fn find_caller_regs_64(
 
     for rules_string in cfi_frame_info.rules.iter() {
         if let Err(e) = evaluator.add_cfi_rules_string(rules_string) {
-            tracing::error!(error = ?e, rules_string);
+            tracing::debug!(error = ?e, rules_string);
             return std::ptr::null_mut();
         }
     }
@@ -918,7 +918,7 @@ unsafe extern "C" fn find_caller_regs_64(
         let value = match size {
             8 => *value as u64,
             _ => {
-                tracing::warn!(value, size, "Encountered non-u64 value");
+                tracing::debug!(value, size, "Encountered non-u64 value");
                 continue;
             }
         };
@@ -940,7 +940,7 @@ unsafe extern "C" fn find_caller_regs_64(
     let caller_registers = evaluator
         .evaluate_cfi_rules()
         .map_err(|e| {
-            tracing::warn!(error = ?e);
+            tracing::debug!(error = ?e);
         })
         .unwrap_or_default();
     if caller_registers.contains_key(&Identifier::Const(Constant::cfa()))
@@ -951,7 +951,7 @@ unsafe extern "C" fn find_caller_regs_64(
             let name = match CString::new(register.to_string()) {
                 Ok(name) => name,
                 Err(e) => {
-                    tracing::warn!(error = ?e);
+                    tracing::debug!(error = ?e);
                     continue;
                 }
             };
@@ -975,7 +975,7 @@ unsafe extern "C" fn find_caller_regs_64(
 
         ptr
     } else {
-        tracing::warn!("CFA and RA rules not found");
+        tracing::debug!("CFA and RA rules not found");
         std::ptr::null_mut() as *mut _
     }
 }
