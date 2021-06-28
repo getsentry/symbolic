@@ -21,6 +21,7 @@ use std::{fmt, ptr, slice, str};
 
 use lazy_static::lazy_static;
 use regex::Regex;
+use tracing::instrument;
 
 use symbolic_common::{Arch, ByteView, CpuFamily, DebugId, ParseDebugIdError, Uuid};
 use symbolic_debuginfo::breakpad::{
@@ -648,6 +649,30 @@ impl<'a> SymbolicSourceLineResolver<'a> {
     }
 }
 
+unsafe fn read_module_name(module: *const c_char) -> Option<CodeModuleId> {
+    if module.is_null() {
+        return None;
+    }
+
+    let module = match CStr::from_ptr(module).to_str() {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::debug!(error = ?e);
+            return None;
+        }
+    };
+
+    let module: CodeModuleId = match module.parse() {
+        Ok(id) => id,
+        Err(e) => {
+            tracing::debug!(error = ?e, module.name = ?module);
+            return None;
+        }
+    };
+
+    Some(module)
+}
+
 #[no_mangle]
 unsafe extern "C" fn resolver_set_endian(resolver: *mut c_void, is_big_endian: bool) {
     let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
@@ -659,26 +684,16 @@ unsafe extern "C" fn resolver_set_endian(resolver: *mut c_void, is_big_endian: b
 }
 
 #[no_mangle]
+#[instrument]
 unsafe extern "C" fn resolver_has_module(resolver: *mut c_void, module: *const c_char) -> bool {
-    if module.is_null() {
-        return false;
-    }
-
     let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
-    let module = match CStr::from_ptr(module).to_str() {
-        Ok(s) => s,
-        Err(_) => return false,
-    };
-
-    let module: CodeModuleId = match module.parse() {
-        Ok(id) => id,
-        Err(_) => return false,
-    };
-
-    resolver.has_module(&module)
+    read_module_name(module)
+        .map(|module| resolver.has_module(&module))
+        .unwrap_or(false)
 }
 
 #[no_mangle]
+#[instrument]
 unsafe extern "C" fn resolver_fill_source_line_info(
     resolver: *mut c_void,
     module: *const c_char,
@@ -691,51 +706,39 @@ unsafe extern "C" fn resolver_fill_source_line_info(
     source_line_out: *mut u64,
 ) {
     let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
-    let module = match CStr::from_ptr(module).to_str() {
-        Ok(s) => s,
-        Err(_) => return,
-    };
 
-    let module: CodeModuleId = match module.parse() {
-        Ok(id) => id,
-        Err(_) => return,
-    };
-
-    if let Some(source_line_info) = resolver.fill_source_line_info(&module, address) {
-        *function_name_out = source_line_info.function_name.as_ptr() as *const i8;
-        *function_name_len_out = source_line_info.function_name.len();
-        *source_file_name_out = source_line_info.source_file_name.as_ptr() as *const i8;
-        *source_file_name_len_out = source_line_info.source_file_name.len();
-        *function_base_out = source_line_info.function_base;
-        *source_line_out = source_line_info.source_line;
+    if let Some(module) = read_module_name(module) {
+        if let Some(source_line_info) = resolver.fill_source_line_info(&module, address) {
+            *function_name_out = source_line_info.function_name.as_ptr() as *const i8;
+            *function_name_len_out = source_line_info.function_name.len();
+            *source_file_name_out = source_line_info.source_file_name.as_ptr() as *const i8;
+            *source_file_name_len_out = source_line_info.source_file_name.len();
+            *function_base_out = source_line_info.function_base;
+            *source_line_out = source_line_info.source_line;
+        }
     }
 }
 
 #[no_mangle]
+#[instrument]
 unsafe extern "C" fn resolver_find_cfi_frame_info(
     resolver: *mut c_void,
     module: *const c_char,
     address: u64,
 ) -> *mut c_void {
     let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
-    let module = match CStr::from_ptr(module).to_str() {
-        Ok(s) => s,
-        Err(_) => return ptr::null_mut(),
-    };
 
-    let module: CodeModuleId = match module.parse() {
-        Ok(id) => id,
-        Err(_) => return ptr::null_mut(),
-    };
-
-    if let Some(cfi_frame_info) = resolver.find_cfi_frame_info(&module, address) {
-        Box::into_raw(Box::new(cfi_frame_info)) as *mut c_void
-    } else {
-        std::ptr::null_mut()
-    }
+    read_module_name(module)
+        .and_then(|module| {
+            resolver
+                .find_cfi_frame_info(&module, address)
+                .map(|cfi_frame_info| Box::into_raw(Box::new(cfi_frame_info)) as *mut c_void)
+        })
+        .unwrap_or_else(std::ptr::null_mut)
 }
 
 #[no_mangle]
+#[instrument]
 unsafe extern "C" fn resolver_find_windows_frame_info(
     resolver: *mut c_void,
     module: *const c_char,
@@ -752,39 +755,34 @@ unsafe extern "C" fn resolver_find_windows_frame_info(
     program_string_len_out: &mut usize,
 ) -> bool {
     let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
-    let module = match CStr::from_ptr(module).to_str() {
-        Ok(s) => s,
-        Err(_) => return false,
-    };
+    read_module_name(module)
+        .and_then(|module| {
+            resolver
+                .find_windows_frame_info(&module, address)
+                .map(|record| {
+                    *type_out = record.ty as i64;
 
-    let module: CodeModuleId = match module.parse() {
-        Ok(id) => id,
-        Err(_) => return false,
-    };
+                    *prolog_size_out = record.prolog_size as u32;
+                    *epilog_size_out = record.epilog_size as u32;
+                    *parameter_size_out = record.params_size;
+                    *saved_register_size_out = record.saved_regs_size as u32;
+                    *local_size_out = record.locals_size;
+                    *max_stack_size_out = record.max_stack_size;
+                    *allocates_base_pointer_out = record.uses_base_pointer;
 
-    if let Some(record) = resolver.find_windows_frame_info(&module, address) {
-        *type_out = record.ty as i64;
+                    if let Some(ps) = record.program_string {
+                        *program_string_out = ps.as_ptr() as *const i8;
+                        *program_string_len_out = ps.len();
+                    }
 
-        *prolog_size_out = record.prolog_size as u32;
-        *epilog_size_out = record.epilog_size as u32;
-        *parameter_size_out = record.params_size;
-        *saved_register_size_out = record.saved_regs_size as u32;
-        *local_size_out = record.locals_size;
-        *max_stack_size_out = record.max_stack_size;
-        *allocates_base_pointer_out = record.uses_base_pointer;
-
-        if let Some(ps) = record.program_string {
-            *program_string_out = ps.as_ptr() as *const i8;
-            *program_string_len_out = ps.len();
-        }
-
-        true
-    } else {
-        false
-    }
+                    true
+                })
+        })
+        .unwrap_or(false)
 }
 
 #[no_mangle]
+#[instrument]
 unsafe extern "C" fn find_caller_regs_32(
     cfi_frame_info: *const c_void,
     memory_base: u64,
@@ -798,7 +796,8 @@ unsafe extern "C" fn find_caller_regs_32(
     let mut evaluator = Box::new(Evaluator::new(cfi_frame_info.endian));
 
     for rules_string in cfi_frame_info.rules.iter() {
-        if evaluator.add_cfi_rules_string(rules_string).is_err() {
+        if let Err(e) = evaluator.add_cfi_rules_string(rules_string) {
+            tracing::debug!(error = ?e, rules_string);
             return std::ptr::null_mut();
         }
     }
@@ -817,12 +816,18 @@ unsafe extern "C" fn find_caller_regs_32(
     for IRegVal { name, value, size } in registers {
         let value = match size {
             4 => *value as u32,
-            _ => continue,
+            _ => {
+                tracing::debug!(value, size, "Encountered non-u32 value");
+                continue;
+            }
         };
 
         let name = match CStr::from_ptr(*name).to_str() {
             Ok(name) => name,
-            Err(_) => continue,
+            Err(e) => {
+                tracing::debug!(error = ?e);
+                continue;
+            }
         };
 
         if let Ok(r) = name.parse() {
@@ -834,7 +839,12 @@ unsafe extern "C" fn find_caller_regs_32(
 
     *evaluator = evaluator.constants(constants).variables(variables);
 
-    let caller_registers = evaluator.evaluate_cfi_rules().unwrap_or_default();
+    let caller_registers = evaluator
+        .evaluate_cfi_rules()
+        .map_err(|e| {
+            tracing::debug!(error = ?e);
+        })
+        .unwrap_or_default();
     if caller_registers.contains_key(&Identifier::Const(Constant::cfa()))
         && caller_registers.contains_key(&Identifier::Const(Constant::ra()))
     {
@@ -842,7 +852,10 @@ unsafe extern "C" fn find_caller_regs_32(
         for (register, value) in caller_registers.into_iter() {
             let name = match CString::new(register.to_string()) {
                 Ok(name) => name,
-                Err(_) => continue,
+                Err(e) => {
+                    tracing::debug!(error = ?e);
+                    continue;
+                }
             };
 
             result.push(IRegVal {
@@ -864,11 +877,13 @@ unsafe extern "C" fn find_caller_regs_32(
 
         ptr
     } else {
+        tracing::debug!("CFA and RA rules not found");
         std::ptr::null_mut() as *mut _
     }
 }
 
 #[no_mangle]
+#[instrument]
 unsafe extern "C" fn find_caller_regs_64(
     cfi_frame_info: *const c_void,
     memory_base: u64,
@@ -882,7 +897,8 @@ unsafe extern "C" fn find_caller_regs_64(
     let mut evaluator = Box::new(Evaluator::new(cfi_frame_info.endian));
 
     for rules_string in cfi_frame_info.rules.iter() {
-        if evaluator.add_cfi_rules_string(rules_string).is_err() {
+        if let Err(e) = evaluator.add_cfi_rules_string(rules_string) {
+            tracing::debug!(error = ?e, rules_string);
             return std::ptr::null_mut();
         }
     }
@@ -900,8 +916,11 @@ unsafe extern "C" fn find_caller_regs_64(
     let registers = std::slice::from_raw_parts(registers, registers_len);
     for IRegVal { name, value, size } in registers {
         let value = match size {
-            8 => *value,
-            _ => continue,
+            8 => *value as u64,
+            _ => {
+                tracing::debug!(value, size, "Encountered non-u64 value");
+                continue;
+            }
         };
 
         let name = match CStr::from_ptr(*name).to_str() {
@@ -918,7 +937,12 @@ unsafe extern "C" fn find_caller_regs_64(
 
     *evaluator = evaluator.constants(constants).variables(variables);
 
-    let caller_registers = evaluator.evaluate_cfi_rules().unwrap_or_default();
+    let caller_registers = evaluator
+        .evaluate_cfi_rules()
+        .map_err(|e| {
+            tracing::debug!(error = ?e);
+        })
+        .unwrap_or_default();
     if caller_registers.contains_key(&Identifier::Const(Constant::cfa()))
         && caller_registers.contains_key(&Identifier::Const(Constant::ra()))
     {
@@ -926,7 +950,10 @@ unsafe extern "C" fn find_caller_regs_64(
         for (register, value) in caller_registers.into_iter() {
             let name = match CString::new(register.to_string()) {
                 Ok(name) => name,
-                Err(_) => continue,
+                Err(e) => {
+                    tracing::debug!(error = ?e);
+                    continue;
+                }
             };
 
             result.push(IRegVal {
@@ -948,6 +975,7 @@ unsafe extern "C" fn find_caller_regs_64(
 
         ptr
     } else {
+        tracing::debug!("CFA and RA rules not found");
         std::ptr::null_mut() as *mut _
     }
 }

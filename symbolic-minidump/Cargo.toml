@@ -38,6 +38,7 @@ symbolic-debuginfo = { version = "8.2.1", path = "../symbolic-debuginfo" }
 symbolic-symcache = { version = "8.2.1", path = "../symbolic-symcache" }
 symbolic-unwind = { version = "8.2.1", path = "../symbolic-unwind" }
 thiserror = "1.0.20"
+tracing = "0.1.26"
 
 [build-dependencies]
 cc = { version = "1.0.50", features = ["parallel"] }

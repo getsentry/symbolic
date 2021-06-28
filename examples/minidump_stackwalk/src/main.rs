@@ -318,6 +318,10 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
 }
 
 fn main() {
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .pretty()
+        .init();
     let matches = App::new("symbolic-minidump")
         .about("Symbolicates a minidump")
         .arg(
