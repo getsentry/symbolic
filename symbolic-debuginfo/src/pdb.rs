@@ -1128,8 +1128,8 @@ impl<'s> Unit<'s> {
                         // Investigation showed that this can happen for inlined `{ctor}` functions,
                         // but there are no clear leads to why that might have happened, and how to
                         // recover from these broken annotations.
-                        // For that reason, we skip these inlinees completely as to not fail processing
-                        // the complete pdb file.
+                        // For that reason, we skip these inlinees completely so we do not fail
+                        // processing the complete pdb file.
                         self.handle_inlinee(site, parent_offset, inlinee, &program)
                             .ok()
                             .flatten()
