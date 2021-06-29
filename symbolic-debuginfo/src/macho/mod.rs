@@ -318,7 +318,10 @@ impl<'d> MachObject<'d> {
     /// [`has_debug_info`](struct.MachObject.html#method.has_debug_info).
     pub fn debug_session(&self) -> Result<DwarfDebugSession<'d>, DwarfError> {
         let symbols = self.symbol_map();
-        DwarfDebugSession::parse(self, symbols, self.load_address() as i64, self.kind())
+        let mut session =
+            DwarfDebugSession::parse(self, symbols, self.load_address() as i64, self.kind())?;
+        session.set_bcsymbolmap(self.bcsymbolmap.clone());
+        Ok(session)
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -789,17 +792,68 @@ mod tests {
                 .unwrap();
         let mut object = MachObject::parse(&object_data).unwrap();
 
+        // make sure that we get hidden symbols/filenames before loading the symbolmap
+        let mut symbols = object.symbols();
+        let symbol = symbols.next().unwrap();
+        assert_eq!(symbol.name.unwrap(), "__hidden#0_");
+
+        let session = object.debug_session().unwrap();
+        let mut files = session.files();
+        let file = files.next().unwrap().unwrap();
+        assert_eq!(&file.path_str(), "__hidden#41_/__hidden#42_");
+        assert_eq!(
+            &file.abs_path_str(),
+            // XXX: the path joining logic usually detects absolute paths (see below), but that does
+            // not work for these hidden paths.
+            "__hidden#41_/__hidden#41_/__hidden#42_"
+        );
+
+        let mut functions = session.functions();
+        let function = functions.next().unwrap().unwrap();
+        assert_eq!(&function.name, "__hidden#0_");
+        assert_eq!(&function.compilation_dir, b"__hidden#41_");
+        assert_eq!(
+            &function.lines[0].file.path_str(),
+            "__hidden#41_/__hidden#42_"
+        );
+
+        // loads the symbolmap
         let bc_symbol_map_data =
             std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
                 .unwrap();
         let bc_symbol_map = BcSymbolMap::parse(&bc_symbol_map_data).unwrap();
         object.load_symbolmap(bc_symbol_map);
 
+        // make sure we get resolved symbols/filenames now
         let mut symbols = object.symbols();
         let symbol = symbols.next().unwrap();
         assert_eq!(symbol.name.unwrap(), "-[SentryMessage initWithFormatted:]");
 
         let symbol = symbols.next().unwrap();
         assert_eq!(symbol.name.unwrap(), "-[SentryMessage setMessage:]");
+
+        let session = object.debug_session().unwrap();
+        let mut files = session.files();
+        let file = files.next().unwrap().unwrap();
+        assert_eq!(
+            &file.path_str(),
+            "/Users/philipphofmann/git-repos/sentry-cocoa/Sources/Sentry/SentryMessage.m"
+        );
+        assert_eq!(
+            &file.abs_path_str(),
+            "/Users/philipphofmann/git-repos/sentry-cocoa/Sources/Sentry/SentryMessage.m"
+        );
+
+        let mut functions = session.functions();
+        let function = functions.next().unwrap().unwrap();
+        assert_eq!(&function.name, "-[SentryMessage initWithFormatted:]");
+        assert_eq!(
+            &function.compilation_dir,
+            b"/Users/philipphofmann/git-repos/sentry-cocoa"
+        );
+        assert_eq!(
+            &function.lines[0].file.path_str(),
+            "/Users/philipphofmann/git-repos/sentry-cocoa/Sources/Sentry/SentryMessage.m"
+        );
     }
 }
