@@ -14,7 +14,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::{CStr, CString};
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
-use std::ops::Range;
+use std::ops::{Bound, Range, RangeBounds};
 use std::os::raw::{c_char, c_void};
 use std::str::FromStr;
 use std::{fmt, ptr, slice, str};
@@ -126,7 +126,7 @@ impl<'a> Iterator for DeltaRules<'a> {
 /// A structure containing a set of disjoint ranges with attached contents.
 #[derive(Clone, Debug)]
 pub struct RangeMap<A, E> {
-    inner: Vec<(Range<A>, E)>,
+    inner: BTreeMap<A, (A, E)>,
 }
 
 impl<A: Ord + Copy, E> RangeMap<A, E> {
@@ -135,95 +135,75 @@ impl<A: Ord + Copy, E> RangeMap<A, E> {
     /// The range must be disjoint from all ranges that are already present.
     /// Returns true if the insertion was successful.
     pub fn insert(&mut self, range: Range<A>, contents: E) -> bool {
-        if let Some(i) = self.free_slot(&range) {
-            self.inner.insert(i, (range, contents));
-            true
-        } else {
-            false
-        }
-    }
+        let low = self
+            .inner
+            .range(greater_than(range.start))
+            .next()
+            .map(|(key, _)| *key);
+        let high = self.inner.range(range.end..).next().map(|(key, _)| *key);
 
-    /// Returns the position in the inner vector where the given range could be inserted, if that is possible.
-    fn free_slot(&self, range: &Range<A>) -> Option<usize> {
-        let index = match self.inner.binary_search_by_key(&range.end, |r| r.0.end) {
-            Ok(_) => return None,
-            Err(index) => index,
-        };
-
-        if index > 0 {
-            let before = &self.inner[index - 1];
-            if before.0.end > range.start {
-                return None;
+        match (low, high) {
+            (None, _) => {
+                // all existing ranges end before the start of `range` => just insert range
+                self.inner.insert(range.end, (range.start, contents));
+                true
             }
+
+            (Some(low_end), Some(high_end)) if low_end == high_end => {
+                let low_start = self.inner[&low_end].0;
+                if range.end <= low_start {
+                    self.inner.insert(range.end, (range.start, contents));
+                    true
+                } else {
+                    false
+                }
+            }
+
+            _ => false,
         }
-
-        match self.inner.get(index) {
-            Some(after) if after.0.start < range.end => None,
-            _ => Some(index),
-        }
-    }
-
-    /// Retrieves the range covering the given address and the associated contents.
-    pub fn get(&self, address: A) -> Option<&(Range<A>, E)> {
-        let entry = match self
-            .inner
-            .binary_search_by_key(&address, |range| range.0.end)
-        {
-            // This means inner(index).end == address => address might be covered by the next one
-            Ok(index) => self.inner.get(index + 1)?,
-            // This means that inner(index).end > address => this could be the one
-            Err(index) => self.inner.get(index)?,
-        };
-
-        (entry.0.start <= address).then(|| entry)
-    }
-
-    /// Retrieves the range covering the given address, allowing mutation.
-    pub fn get_mut(&mut self, address: A) -> Option<&mut (Range<A>, E)> {
-        let entry = match self
-            .inner
-            .binary_search_by_key(&address, |range| range.0.end)
-        {
-            // This means inner(index).end == address => address might be covered by the next one
-            Ok(index) => self.inner.get_mut(index + 1)?,
-            // This means that inner(index).end > address => this could be the one
-            Err(index) => self.inner.get_mut(index)?,
-        };
-
-        (entry.0.start <= address).then(|| entry)
     }
 
     /// Retrieves the contents associated with the given address.
     pub fn get_contents(&self, address: A) -> Option<&E> {
-        self.get(address).map(|(_, contents)| contents)
+        let (_, (lower_bound, entry)) = self.inner.range(greater_than(address)).next()?;
+
+        (*lower_bound <= address).then(move || entry)
     }
 
     /// Retrieves the contents associated with the given address, allowing mutation.
     pub fn get_contents_mut(&mut self, address: A) -> Option<&mut E> {
-        self.get_mut(address).map(|(_, contents)| contents)
+        let (_, (lower_bound, entry)) = self.inner.range_mut(greater_than(address)).next()?;
+
+        (*lower_bound <= address).then(move || entry)
     }
 
     /// Returns true if the given address is covered by some range in the map.
     pub fn contains(&self, address: A) -> bool {
-        self.get(address).is_some()
+        self.get_contents(address).is_some()
     }
 }
 
-impl<A, E> Default for RangeMap<A, E> {
+impl<A: Ord, E> Default for RangeMap<A, E> {
     fn default() -> Self {
-        Self { inner: Vec::new() }
+        Self {
+            inner: BTreeMap::new(),
+        }
     }
 }
-
-type NestedRangeMapEntry<A, E> = (Range<A>, E, Box<NestedRangeMap<A, E>>);
 
 /// A structure representing a tree of disjoint ranges with associated contents.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NestedRangeMap<A, E> {
-    inner: Vec<NestedRangeMapEntry<A, E>>,
+    lower_bound: Option<A>,
+    contents: Option<E>,
+    sub_ranges: BTreeMap<A, Box<NestedRangeMap<A, E>>>,
 }
 
-impl<A: Ord + Copy, E> NestedRangeMap<A, E> {
+impl<A, E> NestedRangeMap<A, E>
+where
+    A: Ord + Copy + fmt::Debug,
+    E: Clone + fmt::Debug,
+{
     /// Insert a range into the map.
     ///
     /// The insertion is valid if the new range does not
@@ -231,124 +211,75 @@ impl<A: Ord + Copy, E> NestedRangeMap<A, E> {
     /// and is not equal to an existing range.
     /// Returns true if the insertion was successful.
     pub fn insert(&mut self, range: Range<A>, contents: E) -> bool {
-        if self.inner.is_empty() {
-            self.inner
-                .push((range, contents, Box::new(NestedRangeMap::default())));
-            return true;
-        }
+        let low = self
+            .sub_ranges
+            .range(greater_than(range.start))
+            .next()
+            .map(|(key, _)| *key);
+        let high = self
+            .sub_ranges
+            .range(range.end..)
+            .next()
+            .map(|(key, _)| *key);
 
-        let start_idx = self
-            .inner
-            .binary_search_by_key(&range.start, |entry| entry.0.start);
-
-        let end_idx = self
-            .inner
-            .binary_search_by_key(&range.end, |entry| entry.0.end);
-
-        match (start_idx, end_idx) {
-            (Ok(i), Ok(j)) => {
-                // Both the start and end of `range` line up with existing ranges
-                match i.cmp(&j) {
-                    Ordering::Equal => {
-                        // [ range i)
-                        // [ range  )
-                        false
-                    }
-                    Ordering::Less => {
-                        // [ range i ) … [range j )
-                        // [        range         )
-                        self.insert_new(i..j + 1, range, contents);
-                        true
-                    }
-                    Ordering::Greater => {
-                        // i > j should never happen.
-                        false
-                    }
-                }
+        match (low, high) {
+            (None, _) => {
+                // all existing ranges end before the start of `range` => just insert range
+                self.sub_ranges.insert(
+                    range.end,
+                    Box::new(NestedRangeMap::leaf(range.start, contents)),
+                );
+                true
             }
-            (Err(i), Err(j)) => {
-                // Neither start nor end of `range` line up with existing ranges.
-                if i <= j {
-                    if let Some(before) = i.checked_sub(1).and_then(|k| self.inner.get(k)) {
-                        if before.0.end > range.start {
-                            // [ before )
-                            //     [ range )
-                            return false;
-                        }
-                    }
 
-                    if let Some(after) = self.inner.get(j) {
-                        if after.0.start < range.end {
-                            //       [ after )
-                            //  [ range )
-                            return false;
-                        }
-                    }
+            (Some(low_end), None) => {
+                let low_start = self.sub_ranges[&low_end].lower_bound.unwrap();
+                if low_start < range.start {
+                    return false;
+                }
+                Self::insert_branch(&mut self.sub_ranges, range, contents, low_end..);
+                true
+            }
+            (Some(low_end), Some(high_end)) if low_end == high_end => {
+                let low_start = self.sub_ranges[&low_end].lower_bound.unwrap();
+                if range.start == low_start && range.end == low_end {
+                    return false;
+                }
 
-                    //   [ range i ) … [ range j-1 )
-                    // [           range             )
-                    self.insert_new(i..j, range, contents);
+                if range.start >= low_start {
+                    self.sub_ranges
+                        .get_mut(&low_end)
+                        .unwrap()
+                        .insert(range, contents)
+                } else if range.end <= low_start {
+                    self.sub_ranges.insert(
+                        range.end,
+                        Box::new(NestedRangeMap::leaf(range.start, contents)),
+                    );
                     true
-                } else if i == j + 1 {
-                    // [  range j  )
-                    //   [ range )
-                    self.inner[j].2.insert(range, contents)
+                } else if range.start < low_start && range.end == low_end {
+                    Self::insert_branch(&mut self.sub_ranges, range, contents, low_end..=low_end);
+                    true
                 } else {
-                    // i > j + 1, this should never happen.
                     false
                 }
             }
 
-            (Ok(i), Err(j)) => {
-                // The start of `range` lines up with an existing range
-                match i.cmp(&j) {
-                    Ordering::Equal => {
-                        // [  range i )
-                        // [ range )
-                        self.inner[i].2.insert(range, contents)
-                    }
-                    Ordering::Less => {
-                        if let Some(after) = self.inner.get(j) {
-                            if after.0.start < range.end {
-                                //  [ range i )  …  [ after )
-                                //  [        range       )
-                                return false;
-                            }
-                        }
+            (Some(low_end), Some(high_end)) => {
+                let low_start = self.sub_ranges[&low_end].lower_bound.unwrap();
+                let high_start = self.sub_ranges[&high_end].lower_bound.unwrap();
 
-                        // [ range i ) … [ range j-1)
-                        // [           range            )
-                        self.insert_new(i..j, range, contents);
-                        true
-                    }
-                    Ordering::Greater => {
-                        // i > j, this should never happen.
-                        false
-                    }
+                if range.start > low_start {
+                    return false;
                 }
-            }
 
-            (Err(i), Ok(j)) => {
-                // The end of `range` lines up with an existing range
-                if i == j + 1 {
-                    // [  range j  )
-                    //   [  range  )
-                    self.inner[j].2.insert(range, contents)
-                } else if i <= j {
-                    if let Some(before) = i.checked_sub(1).and_then(|k| self.inner.get(k)) {
-                        if before.0.end > range.start {
-                            // [ before ) … [ range j)
-                            //     [      range      )
-                            return false;
-                        }
-                    }
-
-                    //   [ range i ) … [ range j )
-                    // [          range          )
-                    self.insert_new(i..j + 1, range, contents);
+                if range.end <= high_start {
+                    Self::insert_branch(&mut self.sub_ranges, range, contents, low_end..high_end);
+                    true
+                } else if range.end >= high_end {
+                    Self::insert_branch(&mut self.sub_ranges, range, contents, low_end..=high_end);
                     true
                 } else {
-                    // i > j + 1, this should never happen
                     false
                 }
             }
@@ -358,17 +289,17 @@ impl<A: Ord + Copy, E> NestedRangeMap<A, E> {
     /// Retrieves the *most specific* contents associated with the given address, that is,
     /// those associated with the smallest range that covers the address.
     pub fn get_contents(&self, address: A) -> Option<&E> {
-        let (range, entry, sub_map) = match self
-            .inner
-            .binary_search_by_key(&address, |range| range.0.end)
-        {
-            // This means inner(index).end == address => address might be covered by the next one
-            Ok(index) => self.inner.get(index + 1)?,
-            // This means that inner(index).end > address => this could be the one
-            Err(index) => self.inner.get(index)?,
-        };
-
-        (range.start <= address).then(|| sub_map.get_contents(address).unwrap_or(entry))
+        // Find the first subrange whose end is greater than `address. If `address` is in the map,
+        // it must be in this range.
+        let (_, sub_range) = self.sub_ranges.range(greater_than(address)).next()?;
+        let lb = sub_range.lower_bound.unwrap();
+        if lb <= address {
+            let contents = sub_range.contents.as_ref().unwrap();
+            let sub_contents = sub_range.get_contents(address);
+            Some(sub_contents.unwrap_or(contents))
+        } else {
+            None
+        }
     }
 
     /// Returns true if the given address is covered by some range in the map.
@@ -376,31 +307,55 @@ impl<A: Ord + Copy, E> NestedRangeMap<A, E> {
         self.get_contents(address).is_some()
     }
 
-    /// Inserts a new range that contains the ranges at `indices` as children.
-    fn insert_new(&mut self, indices: Range<usize>, range: Range<A>, contents: E) {
-        if !indices.is_empty() {
-            let head = indices.start;
-            let tail = indices.start + 1..indices.end;
-            let prev_entry = std::mem::replace(
-                &mut self.inner[head],
-                (range, contents, Box::new(Self::default())),
-            );
-            let mut sub_vec = vec![prev_entry];
-            sub_vec.extend(self.inner.drain(tail));
-            self.inner[head].2 = Box::new(Self { inner: sub_vec });
-        } else {
-            self.inner
-                .insert(indices.start, (range, contents, Box::new(Self::default())));
+    fn leaf(lower_bound: A, contents: E) -> Self {
+        Self {
+            lower_bound: Some(lower_bound),
+            contents: Some(contents),
+            sub_ranges: BTreeMap::default(),
+        }
+    }
+
+    /// Inserts the new entry(`range`, `contents`) into the map and moves
+    /// all entries with keys in `children` into the new entry.
+    fn insert_branch<R: RangeBounds<A>>(
+        sub_ranges: &mut BTreeMap<A, Box<NestedRangeMap<A, E>>>,
+        range: Range<A>,
+        contents: E,
+        children: R,
+    ) {
+        let mut sub_ranges_new = BTreeMap::new();
+        for (key, val) in sub_ranges.range(children) {
+            sub_ranges_new.insert(*key, val.clone());
+        }
+
+        for key in sub_ranges_new.keys() {
+            sub_ranges.remove(key);
+        }
+
+        sub_ranges.insert(
+            range.end,
+            Box::new(NestedRangeMap {
+                lower_bound: Some(range.start),
+                contents: Some(contents),
+                sub_ranges: sub_ranges_new,
+            }),
+        );
+    }
+}
+
+impl<A: Ord + Copy, E> Default for NestedRangeMap<A, E> {
+    fn default() -> Self {
+        Self {
+            lower_bound: None,
+            contents: None,
+            sub_ranges: BTreeMap::default(),
         }
     }
 }
 
-impl<A, E> Default for NestedRangeMap<A, E> {
-    fn default() -> Self {
-        Self {
-            inner: Vec::default(),
-        }
-    }
+/// Creates the range (`lower_bound`, ∞).
+fn greater_than<A>(lower_bound: A) -> (Bound<A>, Bound<A>) {
+    (Bound::Excluded(lower_bound), Bound::Unbounded)
 }
 
 /// Struct containing Dwarf unwind information for a module.
@@ -1918,15 +1873,30 @@ mod tests {
     use super::*;
     use proptest::prelude::*;
 
+    fn arb_disjoint_ranges(range: Range<u64>) -> impl Strategy<Value = Vec<Range<u64>>> {
+        fn go(range: Range<u64>, acc: &mut Vec<Range<u64>>) {
+            let mid = (range.end + range.start) / 2;
+            if range.start < mid && mid < range.end {
+                go(range.start..mid, acc);
+                go(mid..range.end, acc);
+            } else {
+                acc.push(range);
+            }
+        }
+
+        let mut ranges = Vec::new();
+        go(range, &mut ranges);
+
+        Just(ranges).prop_shuffle()
+    }
+
     /// Creates a vector of nested subranges of `range` by recursively halving `range`
     /// and shuffling the end result.
     fn arb_nested_ranges(range: Range<u32>) -> impl Strategy<Value = Vec<Range<u32>>> {
         fn go(range: Range<u32>, acc: &mut Vec<Range<u32>>) {
-            let mid = (range.end - range.start) / 2;
-            if mid > range.start + 1 {
+            let mid = (range.end + range.start) / 2;
+            if range.start < mid && mid < range.end {
                 go(range.start..mid, acc);
-            }
-            if range.start > mid + 1 {
                 go(mid..range.end, acc);
             }
 
@@ -1940,12 +1910,14 @@ mod tests {
     }
 
     /// Checks that a `NestedRangeMap` is actually properly nested.
-    fn check<A: Ord, E>(map: NestedRangeMap<A, E>, range: Option<Range<A>>) {
-        for (r, _, sub_map) in map.inner {
+    fn check<A: Ord + Copy + fmt::Debug, E>(map: NestedRangeMap<A, E>, range: Option<Range<A>>) {
+        for (upper, sub_map) in map.sub_ranges {
+            let lower = sub_map.lower_bound.unwrap();
             if let Some(ref range) = range {
-                assert!(range.contains(&r.start) && range.contains(&r.end));
+                assert!(lower >= range.start, "{:?}, {:?}", range, lower..upper);
+                assert!(upper <= range.end, "{:?}, {:?}", range, lower..upper);
             }
-            check(*sub_map, Some(r));
+            check(*sub_map, Some(lower..upper));
         }
     }
 
@@ -1980,16 +1952,61 @@ mod tests {
         assert_eq!(map.get_contents(10), None);
     }
 
+    #[test]
+    fn nested_range_map_complex() {
+        let ranges = vec![
+            0..1,
+            1..2,
+            5..6,
+            3..4,
+            6..7,
+            3..5,
+            0..3,
+            5..7,
+            1..3,
+            4..5,
+            3..7,
+            0..7,
+            2..3,
+        ];
+
+        let mut map = NestedRangeMap::default();
+        for range in ranges {
+            assert!(map.insert(range, ()));
+        }
+
+        check(map, None);
+    }
+
     proptest! {
         #[test]
-        fn proptest_nested_range_map(ranges in arb_nested_ranges(0..100)) {
+        fn proptest_range_map(ranges in arb_disjoint_ranges(0..2^20)) {
+            let mut map = RangeMap::default();
+
+            for range in ranges.into_iter() {
+                assert!(
+                    map.insert(range, ()));
+            }
+
+            for i in 0..2^20 {
+                assert!(map.contains(i))
+            }
+        }
+
+        #[test]
+        fn proptest_nested_range_map(ranges in arb_nested_ranges(0..2^20)) {
             let mut map = NestedRangeMap::default();
 
             for range in ranges.into_iter() {
                 assert!(map.insert(range, ()));
             }
 
+            for i in 0..2^20 {
+                assert!(map.contains(i))
+            }
+
             check(map, None);
+
         }
     }
 }

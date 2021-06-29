@@ -1122,11 +1122,14 @@ impl<'s> Unit<'s> {
                     // skip silently instead of erroring out. Missing a single inline function is
                     // more acceptable in such a case than halting iteration completely.
                     if let Some(inlinee) = inlinees.get(&site.inlinee) {
-                        // We have seen some PDB files in the wild that can lead to `UnimplementedFileChecksumKind`
-                        // errors, possibly due to some broken file index annotations (see the comment
-                        // in `InlineeLineIterator`). Similarly to all the other cases here, we rather
-                        // silently skip these than to fail processing the whole file.
-                        // TODO: Make sure to log these kinds of errors somehow.
+                        // We have seen that the MSVC Compiler `19.16` (VS 2017) can output
+                        // `ChangeFile` annotations which are not properly aligned to the beginning
+                        // of a file checksum, leading to `UnimplementedFileChecksumKind` errors.
+                        // Investigation showed that this can happen for inlined `{ctor}` functions,
+                        // but there are no clear leads to why that might have happened, and how to
+                        // recover from these broken annotations.
+                        // For that reason, we skip these inlinees completely so we do not fail
+                        // processing the complete pdb file.
                         self.handle_inlinee(site, parent_offset, inlinee, &program)
                             .ok()
                             .flatten()
