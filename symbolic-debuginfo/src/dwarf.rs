@@ -13,6 +13,7 @@ use std::error::Error;
 use std::fmt;
 use std::marker::PhantomData;
 use std::ops::{Deref, RangeBounds};
+use std::sync::Arc;
 
 use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Error as GimliError, Range};
@@ -23,6 +24,7 @@ use thiserror::Error;
 use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
 
 use crate::base::*;
+use crate::macho::BcSymbolMap;
 use crate::private::FunctionStack;
 
 #[doc(hidden)]
@@ -394,6 +396,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
         &self,
         entry: &Die<'d, '_>,
         language: Language,
+        bcsymbolmap: Option<&BcSymbolMap<'d>>,
     ) -> Result<Option<Name<'d>>, DwarfError> {
         let mut attrs = entry.attrs();
         let mut fallback_name = None;
@@ -426,7 +429,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
         if let Some(attr) = reference_target {
             return self.resolve_reference(attr, |ref_unit, ref_entry| {
                 if self.offset() != ref_unit.offset() || entry.offset() != ref_entry.offset() {
-                    ref_unit.resolve_function_name(ref_entry, language)
+                    ref_unit.resolve_function_name(ref_entry, language, bcsymbolmap)
                 } else {
                     Ok(None)
                 }
@@ -441,6 +444,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
 #[derive(Debug)]
 struct DwarfUnit<'d, 'a> {
     inner: UnitRef<'d, 'a>,
+    bcsymbolmap: Option<&'d BcSymbolMap<'d>>,
     language: Language,
     line_program: Option<DwarfLineProgram<'d>>,
     prefer_dwarf_names: bool,
@@ -448,7 +452,11 @@ struct DwarfUnit<'d, 'a> {
 
 impl<'d, 'a> DwarfUnit<'d, 'a> {
     /// Creates a DWARF unit from the gimli `Unit` type.
-    fn from_unit(unit: &'a Unit<'d>, info: &'a DwarfInfo<'d>) -> Result<Option<Self>, DwarfError> {
+    fn from_unit(
+        unit: &'a Unit<'d>,
+        info: &'a DwarfInfo<'d>,
+        bcsymbolmap: Option<&'d BcSymbolMap<'d>>,
+    ) -> Result<Option<Self>, DwarfError> {
         let mut entries = unit.entries();
         let entry = match entries.next_dfs()? {
             Some((_, entry)) => entry,
@@ -487,6 +495,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
         Ok(Some(DwarfUnit {
             inner: UnitRef { info, unit },
+            bcsymbolmap,
             language,
             line_program,
             prefer_dwarf_names,
@@ -496,7 +505,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     /// The path of the compilation directory. File names are usually relative to this path.
     fn compilation_dir(&self) -> &'d [u8] {
         match self.inner.unit.comp_dir {
-            Some(ref dir) => dir.slice(),
+            Some(ref dir) => resolve_byte_name(self.bcsymbolmap, dir.slice()),
             None => &[],
         }
     }
@@ -674,11 +683,16 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         file: &LineProgramFileEntry<'d>,
     ) -> FileInfo<'d> {
         FileInfo {
-            dir: file
-                .directory(line_program)
-                .and_then(|attr| self.inner.slice_value(attr))
-                .unwrap_or_default(),
-            name: self.inner.slice_value(file.path_name()).unwrap_or_default(),
+            dir: resolve_byte_name(
+                self.bcsymbolmap,
+                file.directory(line_program)
+                    .and_then(|attr| self.inner.slice_value(attr))
+                    .unwrap_or_default(),
+            ),
+            name: resolve_byte_name(
+                self.bcsymbolmap,
+                self.inner.slice_value(file.path_name()).unwrap_or_default(),
+            ),
         }
     }
 
@@ -700,14 +714,14 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         R: RangeBounds<u64>,
     {
         let symbol = self.inner.info.symbol_map.lookup_range(range)?;
-        let name = symbol.name.clone()?;
+        let name = resolve_cow_name(self.bcsymbolmap, symbol.name.clone()?);
         Some(Name::new(name, NameMangling::Mangled, self.language))
     }
 
     /// Resolves the name of a function from DWARF debug information.
     fn resolve_dwarf_name(&self, entry: &Die<'d, '_>) -> Option<Name<'d>> {
         self.inner
-            .resolve_function_name(entry, self.language)
+            .resolve_function_name(entry, self.language, self.bcsymbolmap)
             .ok()
             .flatten()
     }
@@ -1168,9 +1182,10 @@ impl<'d> DwarfInfo<'d> {
     }
 
     /// Returns an iterator over all compilation units.
-    fn units(&'d self) -> DwarfUnitIterator<'_> {
+    fn units(&'d self, bcsymbolmap: Option<&'d BcSymbolMap<'d>>) -> DwarfUnitIterator<'_> {
         DwarfUnitIterator {
             info: self,
+            bcsymbolmap,
             index: 0,
         }
     }
@@ -1197,6 +1212,7 @@ impl fmt::Debug for DwarfInfo<'_> {
 /// An iterator over compilation units in a DWARF object.
 struct DwarfUnitIterator<'s> {
     info: &'s DwarfInfo<'s>,
+    bcsymbolmap: Option<&'s BcSymbolMap<'s>>,
     index: usize,
 }
 
@@ -1214,7 +1230,7 @@ impl<'s> Iterator for DwarfUnitIterator<'s> {
                 Err(error) => return Some(Err(error)),
             };
 
-            match DwarfUnit::from_unit(unit, self.info) {
+            match DwarfUnit::from_unit(unit, self.info, self.bcsymbolmap) {
                 Ok(Some(unit)) => return Some(Ok(unit)),
                 Ok(None) => continue,
                 Err(error) => return Some(Err(error)),
@@ -1230,6 +1246,7 @@ impl std::iter::FusedIterator for DwarfUnitIterator<'_> {}
 /// A debugging session for DWARF debugging information.
 pub struct DwarfDebugSession<'data> {
     cell: SelfCell<Box<DwarfSections<'data>>, DwarfInfo<'data>>,
+    bcsymbolmap: Option<Arc<BcSymbolMap<'data>>>,
 }
 
 impl<'data> DwarfDebugSession<'data> {
@@ -1248,13 +1265,24 @@ impl<'data> DwarfDebugSession<'data> {
             DwarfInfo::parse(unsafe { &*sections }, symbol_map, address_offset, kind)
         })?;
 
-        Ok(DwarfDebugSession { cell })
+        Ok(DwarfDebugSession {
+            cell,
+            bcsymbolmap: None,
+        })
+    }
+
+    /// Loads the [`BcSymbolMap`] into this debug session.
+    ///
+    /// All the file and function names yielded by this debug session will be resolved using
+    /// the provided symbol map.
+    pub(crate) fn load_symbolmap(&mut self, symbolmap: Option<Arc<BcSymbolMap<'data>>>) {
+        self.bcsymbolmap = symbolmap;
     }
 
     /// Returns an iterator over all source files in this debug file.
     pub fn files(&self) -> DwarfFileIterator<'_> {
         DwarfFileIterator {
-            units: self.cell.get().units(),
+            units: self.cell.get().units(self.bcsymbolmap.as_deref()),
             files: DwarfUnitFileIterator::default(),
             finished: false,
         }
@@ -1263,7 +1291,7 @@ impl<'data> DwarfDebugSession<'data> {
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> DwarfFunctionIterator<'_> {
         DwarfFunctionIterator {
-            units: self.cell.get().units(),
+            units: self.cell.get().units(self.bcsymbolmap.as_deref()),
             functions: Vec::new().into_iter(),
             range_buf: Vec::new(),
             seen_ranges: BTreeSet::new(),
@@ -1318,6 +1346,20 @@ impl<'s> Iterator for DwarfUnitFileIterator<'s> {
             info: unit.file_info(line_program, file),
         })
     }
+}
+
+fn resolve_byte_name<'s>(bcsymbolmap: Option<&'s BcSymbolMap<'s>>, s: &'s [u8]) -> &'s [u8] {
+    bcsymbolmap
+        .and_then(|b| b.resolve_opt(s))
+        .map(AsRef::as_ref)
+        .unwrap_or(s)
+}
+
+fn resolve_cow_name<'s>(bcsymbolmap: Option<&'s BcSymbolMap<'s>>, s: Cow<'s, str>) -> Cow<'s, str> {
+    bcsymbolmap
+        .and_then(|b| b.resolve_opt(s.as_bytes()))
+        .map(Cow::Borrowed)
+        .unwrap_or(s)
 }
 
 /// An iterator over source files in a DWARF file.
