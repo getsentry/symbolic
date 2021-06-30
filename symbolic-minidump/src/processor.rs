@@ -11,21 +11,30 @@
 
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
+use std::error::Error;
 use std::ffi::{CStr, CString};
 use std::hash::{Hash, Hasher};
+use std::io::Cursor;
 use std::marker::PhantomData;
 use std::ops::{Bound, Range, RangeBounds};
 use std::os::raw::{c_char, c_void};
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::{fmt, ptr, slice, str};
 
 use lazy_static::lazy_static;
 use regex::Regex;
+use thiserror::Error;
+use walkdir::WalkDir;
 
-use symbolic_common::{Arch, ByteView, CpuFamily, DebugId, ParseDebugIdError, Uuid};
+use symbolic_common::{Arch, ByteView, CpuFamily, DebugId, ParseDebugIdError, SelfCell, Uuid};
+use symbolic_debuginfo::{Archive, FileFormat};
+use symbolic_symcache::{SymCache, SymCacheWriter};
 
 use crate::cfi::CfiCache;
 use crate::utils;
+
+type SymCaches<'a> = BTreeMap<CodeModuleId, SelfCell<ByteView<'a>, SymCache<'a>>>;
 
 lazy_static! {
     static ref LINUX_BUILD_RE: Regex =
@@ -320,6 +329,150 @@ impl<A: Ord + Copy, E> Default for NestedRangeMap<A, E> {
 /// Creates the range (`lower_bound`, ∞).
 fn greater_than<A>(lower_bound: A) -> (Bound<A>, Bound<A>) {
     (Bound::Excluded(lower_bound), Bound::Unbounded)
+}
+
+/// The error type for [`SymbolSupplierError`]
+#[derive(Copy, Clone, Debug)]
+enum SymbolSupplierErrorKind {
+    NotFound,
+    NoDebugInfo,
+    SymCache,
+}
+
+impl fmt::Display for SymbolSupplierErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::NotFound => write!(f, "No symbol file found"),
+            Self::NoDebugInfo => write!(f, "File does not contain debug information"),
+            Self::SymCache => write!(f, "SymCache errror"),
+        }
+    }
+}
+
+/// An error encountered by a [`FileSystemSupplier`].
+#[derive(Debug, Error)]
+#[error("{kind}: {id}")]
+pub struct SymbolSupplierError {
+    id: CodeModuleId,
+    kind: SymbolSupplierErrorKind,
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+/// A struct for creating, caching, and retrieving [`SymCaches`](symbolic_symcache::SymCache).
+pub struct FileSystemSupplier<'a> {
+    paths: Vec<PathBuf>,
+    symcaches: SymCaches<'a>,
+}
+
+impl<'a> FileSystemSupplier<'a> {
+    /// Creates a new `FileSystemSupplier` from a list of paths.
+    pub fn new(paths: Vec<PathBuf>) -> Self {
+        Self {
+            paths,
+            symcaches: SymCaches::new(),
+        }
+    }
+
+    /// Retrieves debug information for the given module in the form of
+    /// a [`SymCache`](symbolic_symcache::SymCache). If the debug information is not
+    /// cached yet, the supplier will look for the information in its paths and
+    /// attempt to create the cache.
+    pub fn locate_symbols<'b: 'a>(
+        &'b mut self,
+        search_id: CodeModuleId,
+    ) -> Result<&'b SymCache<'a>, SymbolSupplierError> {
+        let Self { paths, symcaches } = self;
+
+        if symcaches.contains_key(&search_id) {
+            'outer: for path in paths.iter() {
+                for entry in WalkDir::new(path).into_iter().filter_map(Result::ok) {
+                    // Folders will be recursed into automatically
+                    match entry.metadata() {
+                        Ok(md) if md.is_file() => (),
+                        _ => continue,
+                    }
+
+                    // Try to parse a potential object file. If this is not possible, then
+                    // we're not dealing with an object file, thus silently skipping it
+                    let buffer = match ByteView::open(entry.path()) {
+                        Ok(buffer) => buffer,
+                        Err(_) => continue,
+                    };
+                    let archive = match Archive::parse(&buffer) {
+                        Ok(archive) => archive,
+                        Err(_) => continue,
+                    };
+
+                    for object in archive.objects() {
+                        // Fail for invalid matching objects but silently skip objects
+                        // without a UUID
+                        let object = match object {
+                            Ok(object) => object,
+                            Err(_) => continue,
+                        };
+                        let id = CodeModuleId::from(object.debug_id());
+
+                        // Make sure we haven't converted this object already
+                        if id != search_id {
+                            continue;
+                        }
+
+                        let format = object.file_format();
+                        // Silently skip all incompatible debug symbols
+                        if !object.has_debug_info() {
+                            return Err(SymbolSupplierError {
+                                kind: SymbolSupplierErrorKind::NoDebugInfo,
+                                id: search_id,
+                                source: None,
+                            });
+                        }
+
+                        let mut buffer = Vec::new();
+                        if let Err(e) =
+                            SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))
+                        {
+                            return Err(SymbolSupplierError {
+                                kind: SymbolSupplierErrorKind::SymCache,
+                                id: search_id,
+                                source: Some(Box::new(e)),
+                            });
+                        }
+
+                        match SelfCell::try_new(ByteView::from_vec(buffer), |ptr| {
+                            SymCache::parse(unsafe { &*ptr })
+                        }) {
+                            Ok(result) => {
+                                symcaches.insert(id, result);
+                            }
+                            Err(e) => {
+                                return Err(SymbolSupplierError {
+                                    kind: SymbolSupplierErrorKind::SymCache,
+                                    id: search_id,
+                                    source: Some(Box::new(e)),
+                                })
+                            }
+                        }
+
+                        // Keep looking if we "only" found a breakpad symbols.
+                        // We should prefer native symbols if we can get them.
+                        if format != FileFormat::Breakpad {
+                            break 'outer;
+                        }
+                    }
+                }
+            }
+        }
+
+        symcaches
+            .get(&search_id)
+            .map(SelfCell::get)
+            .ok_or(SymbolSupplierError {
+                id: search_id,
+                kind: SymbolSupplierErrorKind::NotFound,
+                source: None,
+            })
+    }
 }
 
 /// An error returned when parsing an invalid [`CodeModuleId`](struct.CodeModuleId.html).
