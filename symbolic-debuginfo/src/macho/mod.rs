@@ -320,7 +320,7 @@ impl<'d> MachObject<'d> {
         let symbols = self.symbol_map();
         let mut session =
             DwarfDebugSession::parse(self, symbols, self.load_address() as i64, self.kind())?;
-        session.set_bcsymbolmap(self.bcsymbolmap.clone());
+        session.load_symbolmap(self.bcsymbolmap.clone());
         Ok(session)
     }
 

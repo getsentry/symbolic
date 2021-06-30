@@ -1271,7 +1271,11 @@ impl<'data> DwarfDebugSession<'data> {
         })
     }
 
-    pub(crate) fn set_bcsymbolmap(&mut self, symbolmap: Option<Arc<BcSymbolMap<'data>>>) {
+    /// Loads the [`BcSymbolMap`] into this debug session.
+    ///
+    /// All the file and function names yielded by this debug session will be resolved using
+    /// the provided symbol map.
+    pub(crate) fn load_symbolmap(&mut self, symbolmap: Option<Arc<BcSymbolMap<'data>>>) {
         self.bcsymbolmap = symbolmap;
     }
 
@@ -1344,29 +1348,18 @@ impl<'s> Iterator for DwarfUnitFileIterator<'s> {
     }
 }
 
-fn resolve_byte_name<'s>(bcsymbolmap: Option<&BcSymbolMap<'s>>, s: &'s [u8]) -> &'s [u8] {
-    if let Some(bcsymbolmap) = bcsymbolmap {
-        std::str::from_utf8(s)
-            .map(|s| bcsymbolmap.resolve(s))
-            .ok()
-            .map(|s| s.as_bytes())
-            .unwrap_or(s)
-    } else {
-        s
-    }
+fn resolve_byte_name<'s>(bcsymbolmap: Option<&'s BcSymbolMap<'s>>, s: &'s [u8]) -> &'s [u8] {
+    bcsymbolmap
+        .and_then(|b| b.resolve_opt(s))
+        .map(AsRef::as_ref)
+        .unwrap_or(s)
 }
 
-fn resolve_cow_name<'s>(bcsymbolmap: Option<&BcSymbolMap<'s>>, s: Cow<'s, str>) -> Cow<'s, str> {
-    if let Some(bcsymbolmap) = bcsymbolmap {
-        match s {
-            Cow::Borrowed(s) => bcsymbolmap.resolve(s).into(),
-            // we make an unconditional copy here, since the borrow checker has no idea
-            // if the returned `str` is owned by the `bcsymbolmap`, or by `s`.
-            Cow::Owned(s) => bcsymbolmap.resolve(&s).to_owned().into(),
-        }
-    } else {
-        s
-    }
+fn resolve_cow_name<'s>(bcsymbolmap: Option<&'s BcSymbolMap<'s>>, s: Cow<'s, str>) -> Cow<'s, str> {
+    bcsymbolmap
+        .and_then(|b| b.resolve_opt(s.as_bytes()))
+        .map(Cow::Borrowed)
+        .unwrap_or(s)
 }
 
 /// An iterator over source files in a DWARF file.
