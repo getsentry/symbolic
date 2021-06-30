@@ -170,6 +170,18 @@ impl<'d> BcSymbolMap<'d> {
         name
     }
 
+    /// Resolves a name given in raw bytes using this mapping.
+    ///
+    /// Contrary to [`BcSymbolMap::resolve`], this works with any byte-like type, and returns an
+    /// [`Option`].
+    pub(crate) fn resolve_opt(&self, name: impl AsRef<[u8]>) -> Option<&str> {
+        let name = std::str::from_utf8(name.as_ref()).ok()?;
+        let tail = name.strip_prefix(SWIFT_HIDDEN_PREFIX)?;
+        let index_as_string = tail.strip_suffix('_')?;
+        let index = index_as_string.parse::<usize>().ok()?;
+        self.get(index)
+    }
+
     /// Returns an iterator over all the names in this bitcode symbol map.
     pub fn iter(&self) -> BcSymbolMapIterator<'_, 'd> {
         BcSymbolMapIterator {
