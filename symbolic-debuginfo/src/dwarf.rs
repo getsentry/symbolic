@@ -396,7 +396,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
         &self,
         entry: &Die<'d, '_>,
         language: Language,
-        bcsymbolmap: Option<&BcSymbolMap<'d>>,
+        bcsymbolmap: Option<&'d BcSymbolMap<'d>>,
     ) -> Result<Option<Name<'d>>, DwarfError> {
         let mut attrs = entry.attrs();
         let mut fallback_name = None;
@@ -408,6 +408,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
                 constants::DW_AT_linkage_name | constants::DW_AT_MIPS_linkage_name => {
                     return Ok(self
                         .string_value(attr.value())
+                        .map(|n| resolve_cow_name(bcsymbolmap, n))
                         .map(|n| Name::new(n, NameMangling::Mangled, language)));
                 }
                 constants::DW_AT_name => {
@@ -423,6 +424,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
         if let Some(attr) = fallback_name {
             return Ok(self
                 .string_value(attr.value())
+                .map(|n| resolve_cow_name(bcsymbolmap, n))
                 .map(|n| Name::new(n, NameMangling::Unmangled, language)));
         }
 

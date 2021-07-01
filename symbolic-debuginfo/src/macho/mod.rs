@@ -817,6 +817,13 @@ mod tests {
             "__hidden#41_/__hidden#42_"
         );
 
+        let fn_with_inlinees = functions
+            .filter_map(|f| f.ok())
+            .find(|f| !f.inlinees.is_empty())
+            .unwrap();
+        let inlinee = fn_with_inlinees.inlinees.first().unwrap();
+        assert_eq!(&inlinee.name, "__hidden#146_");
+
         // loads the symbolmap
         let bc_symbol_map_data =
             std::fs::read("tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap")
@@ -855,5 +862,12 @@ mod tests {
             &function.lines[0].file.path_str(),
             "/Users/philipphofmann/git-repos/sentry-cocoa/Sources/Sentry/SentryMessage.m"
         );
+
+        let fn_with_inlinees = functions
+            .filter_map(|f| f.ok())
+            .find(|f| !f.inlinees.is_empty())
+            .unwrap();
+        let inlinee = fn_with_inlinees.inlinees.first().unwrap();
+        assert_eq!(&inlinee.name, "prepareReportWriter");
     }
 }
