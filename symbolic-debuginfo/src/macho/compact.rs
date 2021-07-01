@@ -512,18 +512,18 @@
 //! The remaining 24 bits of the opcode are interpreted as follows (from high to low):
 //!
 //! ```rust,ignore
+//! /// The offset from bp that the registers to restore are saved at,
+//! /// divided by pointer size.
+//! stack_offset: u8,
+//!
+//! _unused: u1,
+//!
 //! /// Registers to restore (see register mapping in previous section)
 //! reg1: u3,
 //! reg2: u3,
 //! reg3: u3,
 //! reg4: u3,
 //! reg5: u3,
-//!
-//! _unused: u1,
-//!
-//! /// The offset from bp that the registers to restore are saved at,
-//! /// divided by pointer size.
-//! stack_offset: u8,
 //! ```
 //!
 //!
@@ -1535,6 +1535,9 @@ impl Opcode {
                     offset_from_src: -pointer_size,
                 });
 
+                // This implementation here is in line with whatever llvm does here:
+                // https://github.com/llvm/llvm-project/blob/d21a35ac0a958fd4cff0b8f424a2706b8785b89d/lldb/source/Symbol/CompactUnwindInfo.cpp#L766-L788
+
                 // These offsets are relative to the frame pointer, but
                 // cfi prefers things to be relative to the cfa, so apply
                 // the same offset here too.
@@ -1545,7 +1548,7 @@ impl Opcode {
                         ops.push(CompactCfiOp::RegisterAt {
                             dest_reg: reg,
                             src_reg: CompactCfiRegister::Cfa,
-                            offset_from_src: (offset - i as i32) * pointer_size,
+                            offset_from_src: -(offset - i as i32) * pointer_size,
                         });
                     }
                 }
@@ -1626,22 +1629,18 @@ impl Opcode {
 
     fn x86_rbp_registers(&self) -> [Option<CompactCfiRegister>; 5] {
         let mask = 0b111;
-        let offset1 = 32 - 8 - 3;
-        let offset2 = offset1 - 3;
-        let offset3 = offset2 - 3;
-        let offset4 = offset3 - 3;
-        let offset5 = offset4 - 3;
         [
-            CompactCfiRegister::from_x86_encoded((self.0 >> offset1) & mask),
-            CompactCfiRegister::from_x86_encoded((self.0 >> offset2) & mask),
-            CompactCfiRegister::from_x86_encoded((self.0 >> offset3) & mask),
-            CompactCfiRegister::from_x86_encoded((self.0 >> offset4) & mask),
-            CompactCfiRegister::from_x86_encoded((self.0 >> offset5) & mask),
+            CompactCfiRegister::from_x86_encoded(self.0 & mask),
+            CompactCfiRegister::from_x86_encoded((self.0 >> 3) & mask),
+            CompactCfiRegister::from_x86_encoded((self.0 >> 6) & mask),
+            CompactCfiRegister::from_x86_encoded((self.0 >> 9) & mask),
+            CompactCfiRegister::from_x86_encoded((self.0 >> 12) & mask),
         ]
     }
 
     fn x86_rbp_stack_offset(&self) -> u32 {
-        self.0 & 0b1111_1111
+        let offset = 32 - 8 - 8;
+        (self.0 >> offset) & 0b1111_1111
     }
 
     fn x86_frameless_stack_size(&self) -> u32 {
@@ -2110,10 +2109,10 @@ mod test {
     }
     fn pack_x86_rbp_registers(regs: [u8; 5]) -> u32 {
         let mut result: u32 = 0;
-        let base_offset = 24 - 3;
+        let base_offset = 0;
         for (idx, &reg) in regs.iter().enumerate() {
             assert!(reg <= 6);
-            result |= (reg as u32 & 0b111) << (base_offset - idx * 3);
+            result |= (reg as u32 & 0b111) << (base_offset + idx * 3);
         }
 
         result
@@ -2473,7 +2472,7 @@ mod test {
         // Make an empty but valid section to initialize the CompactUnwindInfoIter
         let pointer_size = 4;
         let frameless_reg_count_offset = 32 - 8 - 8 - 3 - 3;
-        let frameless_stack_size_offset = 32 - 8 - 8;
+        let stack_size_offset = 32 - 8 - 8;
         let offset = &mut 0;
         let mut section = vec![0u8; 1024];
         // Just set the version, everything else is 0
@@ -2503,8 +2502,11 @@ mod test {
             // Simple, no general registers to restore
             let stack_size: i32 = 0xa1;
             let registers = [0, 0, 0, 0, 0];
-            let opcode =
-                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let opcode = Opcode(
+                X86_MODE_RBP_FRAME
+                    | pack_x86_rbp_registers(registers)
+                    | (stack_size as u32) << stack_size_offset,
+            );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
                     dest_reg: CompactCfiRegister::Cfa,
@@ -2532,8 +2534,11 @@ mod test {
             // One general register to restore
             let stack_size: i32 = 0x13;
             let registers = [1, 0, 0, 0, 0];
-            let opcode =
-                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let opcode = Opcode(
+                X86_MODE_RBP_FRAME
+                    | pack_x86_rbp_registers(registers)
+                    | (stack_size as u32) << stack_size_offset,
+            );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
                     dest_reg: CompactCfiRegister::Cfa,
@@ -2553,7 +2558,7 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(1).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2) * pointer_size,
+                    offset_from_src: -(stack_size + 2) * pointer_size,
                 },
             ];
 
@@ -2566,8 +2571,11 @@ mod test {
             // All general register slots used
             let stack_size: i32 = 0xc2;
             let registers = [2, 3, 4, 5, 6];
-            let opcode =
-                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let opcode = Opcode(
+                X86_MODE_RBP_FRAME
+                    | pack_x86_rbp_registers(registers)
+                    | (stack_size as u32) << stack_size_offset,
+            );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
                     dest_reg: CompactCfiRegister::Cfa,
@@ -2587,27 +2595,27 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2) * pointer_size,
+                    offset_from_src: -(stack_size + 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(3).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 1) * pointer_size,
+                    offset_from_src: -(stack_size + 2 - 1) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(4).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 2) * pointer_size,
+                    offset_from_src: -(stack_size + 2 - 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(5).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 3) * pointer_size,
+                    offset_from_src: -(stack_size + 2 - 3) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 4) * pointer_size,
+                    offset_from_src: -(stack_size + 2 - 4) * pointer_size,
                 },
             ];
 
@@ -2620,8 +2628,11 @@ mod test {
             // Holes in the general registers
             let stack_size: i32 = 0xa7;
             let registers = [2, 0, 4, 0, 6];
-            let opcode =
-                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let opcode = Opcode(
+                X86_MODE_RBP_FRAME
+                    | pack_x86_rbp_registers(registers)
+                    | (stack_size as u32) << stack_size_offset,
+            );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
                     dest_reg: CompactCfiRegister::Cfa,
@@ -2641,17 +2652,17 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2) * pointer_size,
+                    offset_from_src: -(stack_size + 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(4).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 2) * pointer_size,
+                    offset_from_src: -(stack_size + 2 - 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 4) * pointer_size,
+                    offset_from_src: -(stack_size + 2 - 4) * pointer_size,
                 },
             ];
 
@@ -2665,7 +2676,7 @@ mod test {
         {
             // Simple, no general registers to restore
             let stack_size: i32 = 0xa1;
-            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let packed_stack_size = (stack_size as u32) << stack_size_offset;
             let num_regs = 0;
             let packed_num_regs = num_regs << frameless_reg_count_offset;
             let registers = [0, 0, 0, 0, 0, 0];
@@ -2696,7 +2707,7 @@ mod test {
         {
             // One general register to restore
             let stack_size: i32 = 0x13;
-            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let packed_stack_size = (stack_size as u32) << stack_size_offset;
             let num_regs = 1;
             let packed_num_regs = num_regs << frameless_reg_count_offset;
             let registers = [0, 0, 0, 0, 0, 1];
@@ -2732,7 +2743,7 @@ mod test {
         {
             // All general register slots used
             let stack_size: i32 = 0xc1;
-            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let packed_stack_size = (stack_size as u32) << stack_size_offset;
             let num_regs = 6;
             let packed_num_regs = num_regs << frameless_reg_count_offset;
             let registers = [1, 2, 3, 4, 5, 6];
@@ -2793,7 +2804,7 @@ mod test {
         {
             // Some general registers
             let stack_size: i32 = 0xf1;
-            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let packed_stack_size = (stack_size as u32) << stack_size_offset;
             let num_regs = 3;
             let packed_num_regs = num_regs << frameless_reg_count_offset;
             let registers = [0, 0, 0, 2, 4, 6];
@@ -2851,7 +2862,7 @@ mod test {
         // Make an empty but valid section to initialize the CompactUnwindInfoIter
         let pointer_size = 8;
         let frameless_reg_count_offset = 32 - 8 - 8 - 3 - 3;
-        let frameless_stack_size_offset = 32 - 8 - 8;
+        let stack_size_offset = 32 - 8 - 8;
         let offset = &mut 0;
         let mut section = vec![0u8; 1024];
         // Just set the version, everything else is 0
@@ -2881,8 +2892,11 @@ mod test {
             // Simple, no general registers to restore
             let stack_size: i32 = 0xa1;
             let registers = [0, 0, 0, 0, 0];
-            let opcode =
-                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let opcode = Opcode(
+                X86_MODE_RBP_FRAME
+                    | pack_x86_rbp_registers(registers)
+                    | (stack_size as u32) << stack_size_offset,
+            );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
                     dest_reg: CompactCfiRegister::Cfa,
@@ -2910,8 +2924,11 @@ mod test {
             // One general register to restore
             let stack_size: i32 = 0x13;
             let registers = [1, 0, 0, 0, 0];
-            let opcode =
-                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let opcode = Opcode(
+                X86_MODE_RBP_FRAME
+                    | pack_x86_rbp_registers(registers)
+                    | (stack_size as u32) << stack_size_offset,
+            );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
                     dest_reg: CompactCfiRegister::Cfa,
@@ -2931,7 +2948,7 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(1).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2) * pointer_size,
+                    offset_from_src: -(stack_size + 2) * pointer_size,
                 },
             ];
 
@@ -2944,8 +2961,11 @@ mod test {
             // All general register slots used
             let stack_size: i32 = 0xc2;
             let registers = [2, 3, 4, 5, 6];
-            let opcode =
-                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let opcode = Opcode(
+                X86_MODE_RBP_FRAME
+                    | pack_x86_rbp_registers(registers)
+                    | (stack_size as u32) << stack_size_offset,
+            );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
                     dest_reg: CompactCfiRegister::Cfa,
@@ -2965,27 +2985,27 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2) * pointer_size,
+                    offset_from_src: -(stack_size + 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(3).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 1) * pointer_size,
+                    offset_from_src: -(stack_size + 2 - 1) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(4).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 2) * pointer_size,
+                    offset_from_src: -(stack_size + 2 - 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(5).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 3) * pointer_size,
+                    offset_from_src: -(stack_size + 2 - 3) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 4) * pointer_size,
+                    offset_from_src: -(stack_size + 2 - 4) * pointer_size,
                 },
             ];
 
@@ -2998,8 +3018,11 @@ mod test {
             // Holes in the general registers
             let stack_size: i32 = 0xa7;
             let registers = [2, 0, 4, 0, 6];
-            let opcode =
-                Opcode(X86_MODE_RBP_FRAME | pack_x86_rbp_registers(registers) | stack_size as u32);
+            let opcode = Opcode(
+                X86_MODE_RBP_FRAME
+                    | pack_x86_rbp_registers(registers)
+                    | (stack_size as u32) << stack_size_offset,
+            );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
                     dest_reg: CompactCfiRegister::Cfa,
@@ -3019,17 +3042,17 @@ mod test {
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2) * pointer_size,
+                    offset_from_src: -(stack_size + 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(4).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 2) * pointer_size,
+                    offset_from_src: -(stack_size + 2 - 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
                     src_reg: CompactCfiRegister::Cfa,
-                    offset_from_src: (stack_size + 2 - 4) * pointer_size,
+                    offset_from_src: -(stack_size + 2 - 4) * pointer_size,
                 },
             ];
 
@@ -3043,7 +3066,7 @@ mod test {
         {
             // Simple, no general registers to restore
             let stack_size: i32 = 0xa1;
-            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let packed_stack_size = (stack_size as u32) << stack_size_offset;
             let num_regs = 0;
             let packed_num_regs = num_regs << frameless_reg_count_offset;
             let registers = [0, 0, 0, 0, 0, 0];
@@ -3074,7 +3097,7 @@ mod test {
         {
             // One general register to restore
             let stack_size: i32 = 0x13;
-            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let packed_stack_size = (stack_size as u32) << stack_size_offset;
             let num_regs = 1;
             let packed_num_regs = num_regs << frameless_reg_count_offset;
             let registers = [0, 0, 0, 0, 0, 1];
@@ -3110,7 +3133,7 @@ mod test {
         {
             // All general register slots used
             let stack_size: i32 = 0xc1;
-            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let packed_stack_size = (stack_size as u32) << stack_size_offset;
             let num_regs = 6;
             let packed_num_regs = num_regs << frameless_reg_count_offset;
             let registers = [1, 2, 3, 4, 5, 6];
@@ -3171,7 +3194,7 @@ mod test {
         {
             // Some general registers
             let stack_size: i32 = 0xf1;
-            let packed_stack_size = (stack_size as u32) << frameless_stack_size_offset;
+            let packed_stack_size = (stack_size as u32) << stack_size_offset;
             let num_regs = 3;
             let packed_num_regs = num_regs << frameless_reg_count_offset;
             let registers = [0, 0, 0, 2, 4, 6];
