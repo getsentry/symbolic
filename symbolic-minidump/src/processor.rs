@@ -382,14 +382,14 @@ pub trait SymbolSupplier<'a> {
 
 /// A [`SymbolSupplier`] that uses an internal [`SymCacheCreator`] to
 /// create symcaches and caches them in a map.
-pub struct SymCacheSupplier<'a, S> {
-    inner: S,
+pub struct SymCacheSupplier<'a> {
+    inner: Box<dyn SymCacheCreator<'a>>,
     symcaches: SymCaches<'a>,
 }
 
-impl<'a, S> SymCacheSupplier<'a, S> {
+impl<'a> SymCacheSupplier<'a> {
     /// Creates a new `SymCacheSupplier` from a given [`SymCacheCreator`].
-    pub fn new(inner: S) -> Self {
+    pub fn new(inner: Box<dyn SymCacheCreator<'a>>) -> Self {
         Self {
             inner,
             symcaches: SymCaches::new(),
@@ -397,7 +397,7 @@ impl<'a, S> SymCacheSupplier<'a, S> {
     }
 }
 
-impl<'a, S: SymCacheCreator<'a>> SymbolSupplier<'a> for SymCacheSupplier<'a, S> {
+impl<'a> SymbolSupplier<'a> for SymCacheSupplier<'a> {
     fn locate_symbols<'b: 'a>(
         &'b mut self,
         search_id: CodeModuleId,
