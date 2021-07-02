@@ -34,7 +34,8 @@ use symbolic_symcache::{SymCache, SymCacheWriter};
 use crate::cfi::CfiCache;
 use crate::utils;
 
-type SymCaches<'a> = BTreeMap<CodeModuleId, SelfCell<ByteView<'a>, SymCache<'a>>>;
+type SymCaches<'a> =
+    BTreeMap<CodeModuleId, Result<SelfCell<ByteView<'a>, SymCache<'a>>, SymbolSupplierError>>;
 
 lazy_static! {
     static ref LINUX_BUILD_RE: Regex =
@@ -376,7 +377,7 @@ pub trait SymbolSupplier<'a> {
     fn locate_symbols<'b: 'a>(
         &'b mut self,
         search_id: CodeModuleId,
-    ) -> Result<&'b SymCache<'a>, SymbolSupplierError>;
+    ) -> Result<&'b SymCache<'a>, &'b SymbolSupplierError>;
 }
 
 /// A [`SymbolSupplier`] that uses an internal [`SymCacheCreator`] to
@@ -400,19 +401,13 @@ impl<'a, S: SymCacheCreator<'a>> SymbolSupplier<'a> for SymCacheSupplier<'a, S> 
     fn locate_symbols<'b: 'a>(
         &'b mut self,
         search_id: CodeModuleId,
-    ) -> Result<&'b SymCache<'a>, SymbolSupplierError> {
-        if let std::collections::btree_map::Entry::Vacant(e) = self.symcaches.entry(search_id) {
-            let symcache = self.inner.create_symcache(search_id)?;
-            e.insert(symcache);
-        }
-        self.symcaches
-            .get(&search_id)
+    ) -> Result<&'b SymCache<'a>, &'b SymbolSupplierError> {
+        let Self { inner, symcaches } = self;
+        symcaches
+            .entry(search_id)
+            .or_insert_with(|| inner.create_symcache(search_id))
+            .as_ref()
             .map(SelfCell::get)
-            .ok_or(SymbolSupplierError {
-                id: search_id,
-                kind: SymbolSupplierErrorKind::NotFound,
-                source: None,
-            })
     }
 }
 
