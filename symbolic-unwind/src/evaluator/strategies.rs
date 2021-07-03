@@ -8,7 +8,7 @@ fn arb_variable() -> impl Strategy<Value = Variable> {
 }
 
 pub fn arb_constant() -> impl Strategy<Value = Constant> {
-    r"\.?[a-zA-Z][a-zA-Z0-9]*".prop_map(Constant)
+    r"\.?[a-zA-Z][a-zA-Z0-9_]*".prop_map(Constant)
 }
 
 fn arb_ident() -> impl Strategy<Value = Identifier> {

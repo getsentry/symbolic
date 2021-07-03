@@ -7,9 +7,10 @@ use std::fmt;
 
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_while};
-use nom::character::complete::{alpha1, alphanumeric0, alphanumeric1, multispace0};
+use nom::character::complete::{alpha1, alphanumeric1, multispace0};
 use nom::combinator::{all_consuming, map, map_res, not, opt, peek, recognize, value};
 use nom::error::ParseError;
+use nom::multi::many0;
 use nom::sequence::{pair, preceded, terminated, tuple};
 use nom::{Err, Finish, IResult, Parser};
 
@@ -131,15 +132,19 @@ pub fn variable_complete(input: &str) -> Result<Variable, ParseExprError> {
 
 /// Parses a [constant](super::Constant).
 ///
-/// This accepts identifiers of the form `\.?[a-zA-Z][a-zA-Z0-9]*`.
+/// This accepts identifiers of the form `\.?[a-zA-Z][a-zA-Z0-9_]*`.
 fn constant(input: &str) -> IResult<&str, Constant, ParseExprError> {
-    let (rest, con) = recognize(tuple((opt(tag(".")), alpha1, alphanumeric0)))(input)?;
+    let (rest, con) = recognize(tuple((
+        opt(tag(".")),
+        alpha1,
+        many0(alt((tag("_"), alphanumeric1))),
+    )))(input)?;
     Ok((rest, Constant(con.to_string())))
 }
 
 /// Parses a [constant](super::Constant).
 ///
-/// This accepts identifiers of the form `\.[a-zA-Z0-9]+`.
+/// This accepts identifiers of the form `\.?[a-zA-Z][a-zA-Z0-9_]*`.
 /// It will fail if there is any input remaining afterwards.
 pub fn constant_complete(input: &str) -> Result<Constant, ParseExprError> {
     all_consuming(constant)(input).finish().map(|(_, c)| c)
@@ -606,6 +611,12 @@ mod test {
     fn test_rules_complete() {
         let input = ".cfa: sp 80 + x29: .cfa -80 + ^ .ra: .cfa -72 + ^";
         rules_complete::<u64>(input).unwrap();
+    }
+
+    #[test]
+    fn test_unnamed_register() {
+        let input = "unnamed_register264";
+        identifier_complete(input).unwrap();
     }
 
     proptest! {

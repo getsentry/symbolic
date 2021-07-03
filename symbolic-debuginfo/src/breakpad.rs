@@ -603,6 +603,38 @@ impl<'d> Iterator for BreakpadStackCfiDeltaRecords<'d> {
     }
 }
 
+/// An iterator over dwarf stack frame records in a Breakpad object.
+#[derive(Clone, Debug, Default)]
+pub struct BreakpadStackCfiRecords<'d> {
+    lines: Lines<'d>,
+}
+
+impl<'d> BreakpadStackCfiRecords<'d> {
+    /// Creates an iterator over [`BreakpadStackCfiRecord`]s contained in a slice of data.
+    pub fn new(data: &'d [u8]) -> Self {
+        Self {
+            lines: Lines::new(data),
+        }
+    }
+}
+
+impl<'d> Iterator for BreakpadStackCfiRecords<'d> {
+    type Item = Result<BreakpadStackCfiRecord<'d>, BreakpadError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(line) = self.lines.next() {
+            if line.starts_with(b"STACK CFI INIT") {
+                return Some(BreakpadStackCfiRecord::parse(line).map(|mut r| {
+                    r.deltas = self.lines.clone();
+                    r
+                }));
+            }
+        }
+
+        None
+    }
+}
+
 /// Possible types of data held by a [`BreakpadStackWinRecord`], as listed in
 /// <http://msdn.microsoft.com/en-us/library/bc5207xw%28VS.100%29.aspx>. Breakpad only deals with
 /// types 0 (`FPO`) and 4 (`FrameData`).
@@ -682,6 +714,35 @@ impl<'d> BreakpadStackWinRecord<'d> {
     /// Returns the range of addresses covered by this record.
     pub fn code_range(&self) -> Range<u32> {
         self.code_start..self.code_start + self.code_size
+    }
+}
+
+/// An iterator over windows stack frame records in a Breakpad object.
+#[derive(Clone, Debug, Default)]
+pub struct BreakpadStackWinRecords<'d> {
+    lines: Lines<'d>,
+}
+
+impl<'d> BreakpadStackWinRecords<'d> {
+    /// Creates an iterator over [`BreakpadStackWinRecord`]s contained in a slice of data.
+    pub fn new(data: &'d [u8]) -> Self {
+        Self {
+            lines: Lines::new(data),
+        }
+    }
+}
+
+impl<'d> Iterator for BreakpadStackWinRecords<'d> {
+    type Item = Result<BreakpadStackWinRecord<'d>, BreakpadError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        for line in &mut self.lines {
+            if line.starts_with(b"STACK WIN") {
+                return Some(BreakpadStackWinRecord::parse(line));
+            }
+        }
+
+        None
     }
 }
 

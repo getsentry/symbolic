@@ -11,7 +11,7 @@ type Error = Box<dyn std::error::Error>;
 #[test]
 fn process_minidump_linux() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("linux/mini.dmp"))?;
-    let state = ProcessState::from_minidump(&buffer, None)?;
+    let state = ProcessState::from_minidump_new(&buffer, None)?;
     insta::assert_debug_snapshot!("process_state_linux", &state);
     Ok(())
 }
@@ -36,7 +36,7 @@ fn process_minidump_linux_cfi() -> Result<(), Error> {
         "C0BCC3F19827FE653058404B2831D9E60".parse().unwrap(),
         CfiCache::from_bytes(view).unwrap(),
     );
-    let state = ProcessState::from_minidump(&buffer, Some(&frame_info))?;
+    let state = ProcessState::from_minidump_new(&buffer, Some(&frame_info))?;
     insta::assert_debug_snapshot!("process_state_linux_cfi", &state);
     Ok(())
 }
@@ -44,7 +44,7 @@ fn process_minidump_linux_cfi() -> Result<(), Error> {
 #[test]
 fn process_minidump_macos() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("macos/mini.dmp"))?;
-    let state = ProcessState::from_minidump(&buffer, None)?;
+    let state = ProcessState::from_minidump_new(&buffer, None)?;
     insta::assert_debug_snapshot!("process_state_macos", &state);
     Ok(())
 }
@@ -52,7 +52,7 @@ fn process_minidump_macos() -> Result<(), Error> {
 #[test]
 fn process_minidump_windows() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("windows/mini.dmp"))?;
-    let state = ProcessState::from_minidump(&buffer, None)?;
+    let state = ProcessState::from_minidump_new(&buffer, None)?;
     insta::assert_debug_snapshot!("process_state_windows", &state);
     Ok(())
 }
@@ -60,7 +60,7 @@ fn process_minidump_windows() -> Result<(), Error> {
 #[test]
 fn get_referenced_modules_linux() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("linux/mini.dmp"))?;
-    let state = ProcessState::from_minidump(&buffer, None)?;
+    let state = ProcessState::from_minidump_new(&buffer, None)?;
     insta::assert_debug_snapshot!("referenced_modules_linux", &state.referenced_modules());
     Ok(())
 }
@@ -68,7 +68,7 @@ fn get_referenced_modules_linux() -> Result<(), Error> {
 #[test]
 fn get_referenced_modules_macos() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("macos/mini.dmp"))?;
-    let state = ProcessState::from_minidump(&buffer, None)?;
+    let state = ProcessState::from_minidump_new(&buffer, None)?;
     insta::assert_debug_snapshot!("referenced_modules_macos", &state.referenced_modules());
     Ok(())
 }
@@ -76,7 +76,7 @@ fn get_referenced_modules_macos() -> Result<(), Error> {
 #[test]
 fn get_referenced_modules_windows() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("windows/mini.dmp"))?;
-    let state = ProcessState::from_minidump(&buffer, None)?;
+    let state = ProcessState::from_minidump_new(&buffer, None)?;
     insta::assert_debug_snapshot!("referenced_modules_windows", &state.referenced_modules());
     Ok(())
 }

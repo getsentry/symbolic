@@ -10,4 +10,6 @@ publish = false
 [dependencies]
 clap = "2.33.0"
 symbolic = { path = "../../symbolic", features = ["minidump", "symcache", "demangle"] }
+tracing = "0.1.26"
+tracing-subscriber = { version = "0.2.18", features = [ "env-filter" ] }
 walkdir = "2.3.1"

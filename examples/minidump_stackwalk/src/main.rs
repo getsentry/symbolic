@@ -280,15 +280,23 @@ fn print_state(
 fn execute(matches: &ArgMatches) -> Result<(), Error> {
     let minidump_path = matches.value_of("minidump_file_path").unwrap();
     let symbols_path = matches.value_of("debug_symbols_path").unwrap_or("invalid");
-
+    let use_new_method = matches.is_present("new_method");
     // Initially process without CFI
     let byteview = ByteView::open(&minidump_path)?;
-    let mut state = ProcessState::from_minidump(&byteview, None)?;
+    let mut state = if use_new_method {
+        ProcessState::from_minidump_new(&byteview, None)?
+    } else {
+        ProcessState::from_minidump(&byteview, None)?
+    };
 
     let cfi = if matches.is_present("cfi") {
         // Reprocess with Call Frame Information
         let frame_info = prepare_cfi(&symbols_path, &state)?;
-        state = ProcessState::from_minidump(&byteview, Some(&frame_info))?;
+        state = if use_new_method {
+            ProcessState::from_minidump_new(&byteview, Some(&frame_info))?
+        } else {
+            ProcessState::from_minidump(&byteview, Some(&frame_info))?
+        };
         frame_info
     } else {
         Default::default()
@@ -310,6 +318,10 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
 }
 
 fn main() {
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .pretty()
+        .init();
     let matches = App::new("symbolic-minidump")
         .about("Symbolicates a minidump")
         .arg(
@@ -346,6 +358,11 @@ fn main() {
                 .short("n")
                 .long("no-modules")
                 .help("Do not output loaded modules"),
+        )
+        .arg(
+            Arg::with_name("new_method")
+                .long("new-method")
+                .help("Use the new stackwalking method"),
         )
         .get_matches();
 

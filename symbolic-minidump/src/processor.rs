@@ -21,11 +21,24 @@ use std::{fmt, ptr, slice, str};
 
 use lazy_static::lazy_static;
 use regex::Regex;
+use tracing::instrument;
 
 use symbolic_common::{Arch, ByteView, CpuFamily, DebugId, ParseDebugIdError, Uuid};
+use symbolic_debuginfo::breakpad::{
+    BreakpadStackCfiDeltaRecords, BreakpadStackCfiRecords, BreakpadStackWinRecord,
+    BreakpadStackWinRecordType, BreakpadStackWinRecords,
+};
+use symbolic_symcache::SymCache;
+use symbolic_unwind::evaluator::{Constant, Identifier};
+use symbolic_unwind::{MemoryRegion, RuntimeEndian};
 
 use crate::cfi::CfiCache;
 use crate::utils;
+
+type DwarfUnwindRulesMap<'a> = BTreeMap<&'a CodeModuleId, DwarfUnwindRules<'a>>;
+type WinUnwindRulesMap<'a> = BTreeMap<&'a CodeModuleId, WinUnwindRules<'a>>;
+type SymCacheMap<'a> = BTreeMap<&'a CodeModuleId, SymCache<'a>>;
+type Evaluator<'a, A> = symbolic_unwind::evaluator::Evaluator<'a, A, RuntimeEndian>;
 
 lazy_static! {
     static ref LINUX_BUILD_RE: Regex =
@@ -62,11 +75,17 @@ extern "C" {
     fn system_info_cpu_info(info: *const SystemInfo) -> *mut c_char;
     fn system_info_cpu_count(info: *const SystemInfo) -> u32;
 
-    fn process_minidump(
+    fn process_minidump_breakpad(
         buffer: *const c_char,
         buffer_size: usize,
         symbols: *const SymbolEntry,
         symbol_count: usize,
+        result: *mut ProcessResult,
+    ) -> *mut IProcessState;
+    fn process_minidump_symbolic(
+        buffer: *const c_char,
+        buffer_size: usize,
+        resolver: *mut c_void,
         result: *mut ProcessResult,
     ) -> *mut IProcessState;
     fn process_state_delete(state: *mut IProcessState);
@@ -85,6 +104,23 @@ extern "C" {
         state: *const IProcessState,
         size_out: *mut usize,
     ) -> *mut *const CodeModule;
+}
+
+/// Auxiliary iterator that yields pairs of addresses and rule strings
+/// of [`BreakpadStackCfiDeltaRecord`](symbolic_debuginfo::breakpad::BreakpadStackCfiDeltaRecord)s.
+#[derive(Clone, Debug)]
+struct DeltaRules<'a> {
+    inner: BreakpadStackCfiDeltaRecords<'a>,
+}
+
+impl<'a> Iterator for DeltaRules<'a> {
+    type Item = (u64, &'a str);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner
+            .find_map(Result::ok)
+            .map(|record| (record.address, record.rules))
+    }
 }
 
 /// A structure containing a set of disjoint ranges with attached contents.
@@ -322,6 +358,596 @@ fn greater_than<A>(lower_bound: A) -> (Bound<A>, Bound<A>) {
     (Bound::Excluded(lower_bound), Bound::Unbounded)
 }
 
+/// Struct containing Dwarf unwind information for a module.
+struct DwarfUnwindRules<'a> {
+    /// Unwind rules that have already been read and sorted.
+    cache: RangeMap<u64, (&'a str, DeltaRules<'a>)>,
+
+    /// An iterator over Breakpad stack records that have not yet been read.
+    records_iter: BreakpadStackCfiRecords<'a>,
+}
+
+impl<'a> DwarfUnwindRules<'a> {
+    /// Creates a new `DwarfUnwindRules` from the given records iterator.
+    fn new(records_iter: BreakpadStackCfiRecords<'a>) -> Self {
+        Self {
+            cache: RangeMap::default(),
+            records_iter,
+        }
+    }
+
+    /// Retrieves the unwind rules associated with the given address.
+    ///
+    /// If there are no rules for the address in the cache,
+    /// the inner iterator is consumed until the rules are found.
+    /// All rules consumed on the way are added to the cache.
+    fn get(&mut self, address: u64) -> Option<Vec<&'a str>> {
+        let DwarfUnwindRules {
+            cache,
+            records_iter,
+        } = self;
+        if !cache.contains(address) {
+            for cfi_record in records_iter.filter_map(Result::ok) {
+                let start = cfi_record.start;
+                let end = start + cfi_record.size;
+                let deltas = DeltaRules {
+                    inner: cfi_record.deltas().clone(),
+                };
+                cache.insert(start..end, (cfi_record.init_rules, deltas));
+                if start <= address && address < end {
+                    break;
+                }
+            }
+        }
+
+        let (init, deltas) = cache.get_contents_mut(address)?;
+        let mut result = vec![*init];
+        result.extend(
+            deltas
+                .clone()
+                .take_while(|(a, _)| *a <= address)
+                .map(|pair| pair.1),
+        );
+
+        Some(result)
+    }
+}
+
+/// Struct containing windows unwind information for a module.
+///
+/// This maintains two separate caches for `STACK WIN` records
+/// of types `FPO` and `FrameData`. If both exist for a given address,
+/// the `FrameData` record is preferred.
+struct WinUnwindRules<'a> {
+    /// `FrameData` records that have already been read and sorted.
+    cache_frame_data: NestedRangeMap<u32, Box<BreakpadStackWinRecord<'a>>>,
+
+    /// Other stack win records that have already been read and sorted.
+    cache_other: NestedRangeMap<u32, Box<BreakpadStackWinRecord<'a>>>,
+
+    /// An iterator over Breakpad stack records that have not yet been read.
+    records_iter: BreakpadStackWinRecords<'a>,
+}
+
+impl<'a> WinUnwindRules<'a> {
+    /// Creates a new `WinUnwindRules` from the given records iterator.
+    fn new(records_iter: BreakpadStackWinRecords<'a>) -> Self {
+        Self {
+            cache_frame_data: NestedRangeMap::default(),
+            cache_other: NestedRangeMap::default(),
+            records_iter,
+        }
+    }
+
+    /// Retrieves the STACK WIN record associated with the given address, preferring `FrameData` records over
+    /// `FPO` records.
+    ///
+    /// If there are no records for the address in either cache,
+    /// the inner iterator is consumed until a record is found.
+    /// All records consumed on the way are added to the respective cache.
+    fn get(&mut self, address: u32) -> Option<&BreakpadStackWinRecord<'a>> {
+        let WinUnwindRules {
+            cache_frame_data,
+            cache_other,
+            records_iter,
+        } = self;
+        if !cache_frame_data.contains(address) && !cache_other.contains(address) {
+            for win_record in records_iter.filter_map(Result::ok) {
+                let start = win_record.code_start;
+                let end = start + win_record.code_size;
+                match win_record.ty {
+                    BreakpadStackWinRecordType::FrameData => {
+                        cache_frame_data.insert(start..end, Box::new(win_record));
+                    }
+                    _ => {
+                        cache_other.insert(start..end, Box::new(win_record));
+                    }
+                }
+            }
+        }
+
+        cache_frame_data
+            .get_contents(address)
+            .or_else(move || cache_other.get_contents(address))
+            .map(|b| b.as_ref())
+    }
+}
+
+/// Struct that bundles the information an evaluator needs to compute caller registers from callee registers,
+/// i.e., a vector of rules and the endianness with which to interpret memory.
+#[derive(Debug)]
+struct CfiFrameInfo<'a> {
+    endian: RuntimeEndian,
+    rules: Vec<&'a str>,
+}
+
+/// Struct that bundles the information retrieved by the `FillSourceLineInfo` method
+/// on a Breakpad `SourceLineResolver` for a given stack frame, i.e., "this is line
+/// `source_line` in file `source_file`, belonging to function `function_name` with
+/// base address `function_base`".
+#[derive(Clone, Copy, Debug)]
+struct SourceLineInfo<'a> {
+    /// The name of the function the line belongs to.
+    function_name: &'a str,
+
+    /// The base address of the function the line belongs to.
+    function_base: u64,
+
+    /// The name of the source file containing the line.
+    source_file_name: &'a str,
+
+    /// The line's number in its source file.
+    source_line: u64,
+}
+
+/// A Rust implementation of Breakpad's [`SourceLineResolverInterface`](https://github.com/google/breakpad/blob/main/src/google_breakpad/processor/source_line_resolver_interface.h).
+/// The only methods we really need are `HasModule`, `FindCFIFrameInfo`,
+/// `FindWindowsFrameInfo`, and `FillSourceLineInfo`.
+struct SymbolicSourceLineResolver<'a> {
+    /// The endianness to use when evaluating memory contents.
+    endian: RuntimeEndian,
+
+    /// A map containing Dwarf CFI information for modules.
+    unwind_dwarf: DwarfUnwindRulesMap<'a>,
+
+    /// A map containing Windows CFI information for modules.
+    unwind_win: WinUnwindRulesMap<'a>,
+
+    symcaches: SymCacheMap<'a>,
+}
+
+impl<'a> SymbolicSourceLineResolver<'a> {
+    /// Create a new SourceLineResolver from the given frame information.
+    fn new(frame_infos: Option<&'a FrameInfoMap<'a>>) -> Self {
+        if let Some(frame_infos) = frame_infos {
+            let mut modules_cfi = DwarfUnwindRulesMap::default();
+            let mut modules_win = WinUnwindRulesMap::default();
+            for (id, cache) in frame_infos.iter() {
+                modules_cfi.insert(
+                    id,
+                    DwarfUnwindRules::new(BreakpadStackCfiRecords::new(cache.as_slice())),
+                );
+
+                modules_win.insert(
+                    id,
+                    WinUnwindRules::new(BreakpadStackWinRecords::new(cache.as_slice())),
+                );
+            }
+
+            Self {
+                endian: RuntimeEndian::Little,
+                unwind_dwarf: modules_cfi,
+                unwind_win: modules_win,
+                symcaches: SymCacheMap::default(),
+            }
+        } else {
+            Self {
+                endian: RuntimeEndian::Little,
+                unwind_dwarf: DwarfUnwindRulesMap::new(),
+                unwind_win: WinUnwindRulesMap::new(),
+                symcaches: SymCacheMap::default(),
+            }
+        }
+    }
+
+    /// Returns true if the module with the given debug identifier has been loaded.
+    fn has_module(&self, debug_id: &CodeModuleId) -> bool {
+        self.unwind_dwarf.contains_key(debug_id)
+    }
+
+    /// Finds CFI information for a given module and address.
+    ///
+    /// "CFI information" here means a [`CfiFrameInfo`] object containing the rules that allow
+    /// recovery of the caller's registers givent the callee's registers.
+    fn find_cfi_frame_info(&mut self, module: &CodeModuleId, address: u64) -> Option<CfiFrameInfo> {
+        let rules = self
+            .unwind_dwarf
+            .get_mut(module)
+            .and_then(|unwind_rules| unwind_rules.get(address));
+
+        rules.map(|rules| CfiFrameInfo {
+            endian: self.endian,
+            rules,
+        })
+    }
+    /// Finds CFI information for a given module and address.
+    ///
+    /// "CFI information" here means a [`STACK WIN` record](symbolic_debuginfo::breakpad::BreakpadStackWinRecord).
+    fn find_windows_frame_info(
+        &mut self,
+        module: &CodeModuleId,
+        address: u32,
+    ) -> Option<&BreakpadStackWinRecord> {
+        self.unwind_win
+            .get_mut(module)
+            .and_then(|win_records| win_records.get(address))
+    }
+
+    /// Retrieves information for the line at the given address in the given module.
+    fn fill_source_line_info<'b>(
+        &'b self,
+        module: &'b CodeModuleId,
+        address: u64,
+    ) -> Option<SourceLineInfo<'a>> {
+        self.symcaches.get(module).and_then(|cache| {
+            let line_info = cache.lookup(address).ok()?.find_map(Result::ok)?;
+            let function_name = line_info.symbol();
+            let source_file_name = line_info.filename();
+
+            Some(SourceLineInfo {
+                function_name,
+                function_base: line_info.function_address(),
+                source_file_name,
+                source_line: line_info.line() as u64,
+            })
+        })
+    }
+}
+
+unsafe fn read_module_name(module: *const c_char) -> Option<CodeModuleId> {
+    if module.is_null() {
+        return None;
+    }
+
+    let module = match CStr::from_ptr(module).to_str() {
+        Ok(s) => s,
+        Err(e) => {
+            tracing::debug!(error = ?e);
+            return None;
+        }
+    };
+
+    let module: CodeModuleId = match module.parse() {
+        Ok(id) => id,
+        Err(e) => {
+            tracing::debug!(error = ?e, module.name = ?module);
+            return None;
+        }
+    };
+
+    Some(module)
+}
+
+#[no_mangle]
+unsafe extern "C" fn resolver_set_endian(resolver: *mut c_void, is_big_endian: bool) {
+    let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
+    resolver.endian = if is_big_endian {
+        RuntimeEndian::Big
+    } else {
+        RuntimeEndian::Little
+    };
+}
+
+#[no_mangle]
+#[instrument]
+unsafe extern "C" fn resolver_has_module(resolver: *mut c_void, module: *const c_char) -> bool {
+    let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
+    read_module_name(module)
+        .map(|module| resolver.has_module(&module))
+        .unwrap_or(false)
+}
+
+#[no_mangle]
+#[instrument]
+unsafe extern "C" fn resolver_fill_source_line_info(
+    resolver: *mut c_void,
+    module: *const c_char,
+    address: u64,
+    function_name_out: *mut *const c_char,
+    function_name_len_out: *mut usize,
+    function_base_out: *mut u64,
+    source_file_name_out: *mut *const c_char,
+    source_file_name_len_out: *mut usize,
+    source_line_out: *mut u64,
+) {
+    let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
+
+    if let Some(module) = read_module_name(module) {
+        if let Some(source_line_info) = resolver.fill_source_line_info(&module, address) {
+            *function_name_out = source_line_info.function_name.as_ptr() as *const i8;
+            *function_name_len_out = source_line_info.function_name.len();
+            *source_file_name_out = source_line_info.source_file_name.as_ptr() as *const i8;
+            *source_file_name_len_out = source_line_info.source_file_name.len();
+            *function_base_out = source_line_info.function_base;
+            *source_line_out = source_line_info.source_line;
+        }
+    }
+}
+
+#[no_mangle]
+#[instrument]
+unsafe extern "C" fn resolver_find_cfi_frame_info(
+    resolver: *mut c_void,
+    module: *const c_char,
+    address: u64,
+) -> *mut c_void {
+    let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
+
+    read_module_name(module)
+        .and_then(|module| {
+            resolver
+                .find_cfi_frame_info(&module, address)
+                .map(|cfi_frame_info| Box::into_raw(Box::new(cfi_frame_info)) as *mut c_void)
+        })
+        .unwrap_or_else(std::ptr::null_mut)
+}
+
+#[no_mangle]
+#[instrument]
+unsafe extern "C" fn resolver_find_windows_frame_info(
+    resolver: *mut c_void,
+    module: *const c_char,
+    address: u32,
+    type_out: &mut i64,
+    prolog_size_out: &mut u32,
+    epilog_size_out: &mut u32,
+    parameter_size_out: &mut u32,
+    saved_register_size_out: &mut u32,
+    local_size_out: &mut u32,
+    max_stack_size_out: &mut u32,
+    allocates_base_pointer_out: &mut bool,
+    program_string_out: &mut *const c_char,
+    program_string_len_out: &mut usize,
+) -> bool {
+    let resolver = &mut *(resolver as *mut SymbolicSourceLineResolver);
+    read_module_name(module)
+        .and_then(|module| {
+            resolver
+                .find_windows_frame_info(&module, address)
+                .map(|record| {
+                    *type_out = record.ty as i64;
+
+                    *prolog_size_out = record.prolog_size as u32;
+                    *epilog_size_out = record.epilog_size as u32;
+                    *parameter_size_out = record.params_size;
+                    *saved_register_size_out = record.saved_regs_size as u32;
+                    *local_size_out = record.locals_size;
+                    *max_stack_size_out = record.max_stack_size;
+                    *allocates_base_pointer_out = record.uses_base_pointer;
+
+                    if let Some(ps) = record.program_string {
+                        *program_string_out = ps.as_ptr() as *const i8;
+                        *program_string_len_out = ps.len();
+                    }
+
+                    true
+                })
+        })
+        .unwrap_or(false)
+}
+
+#[no_mangle]
+#[instrument]
+unsafe extern "C" fn find_caller_regs_32(
+    cfi_frame_info: *const c_void,
+    memory_base: u64,
+    memory_len: usize,
+    memory_bytes: *const u8,
+    registers: *const IRegVal,
+    registers_len: usize,
+    size_out: *mut usize,
+) -> *mut IRegVal {
+    let cfi_frame_info = &*(cfi_frame_info as *const CfiFrameInfo<'_>);
+    let mut evaluator = Box::new(Evaluator::new(cfi_frame_info.endian));
+
+    for rules_string in cfi_frame_info.rules.iter() {
+        if let Err(e) = evaluator.add_cfi_rules_string(rules_string) {
+            tracing::debug!(error = ?e, rules_string);
+            return std::ptr::null_mut();
+        }
+    }
+
+    let memory = MemoryRegion {
+        base_addr: memory_base,
+        contents: std::slice::from_raw_parts(memory_bytes, memory_len),
+    };
+
+    *evaluator = evaluator.memory(memory);
+
+    let mut variables = BTreeMap::new();
+    let mut constants = BTreeMap::new();
+
+    let registers = std::slice::from_raw_parts(registers, registers_len);
+    for IRegVal { name, value, size } in registers {
+        let value = match size {
+            4 => *value as u32,
+            _ => {
+                tracing::debug!(value, size, "Encountered non-u32 value");
+                continue;
+            }
+        };
+
+        let name = match CStr::from_ptr(*name).to_str() {
+            Ok(name) => name,
+            Err(e) => {
+                tracing::debug!(error = ?e);
+                continue;
+            }
+        };
+
+        if let Ok(r) = name.parse() {
+            variables.insert(r, value);
+        } else if let Ok(r) = name.parse() {
+            constants.insert(r, value);
+        }
+    }
+
+    *evaluator = evaluator.constants(constants).variables(variables);
+
+    let caller_registers = evaluator
+        .evaluate_cfi_rules()
+        .map_err(|e| {
+            tracing::debug!(error = ?e);
+        })
+        .unwrap_or_default();
+    if caller_registers.contains_key(&Identifier::Const(Constant::cfa()))
+        && caller_registers.contains_key(&Identifier::Const(Constant::ra()))
+    {
+        let mut result = Vec::new();
+        for (register, value) in caller_registers.into_iter() {
+            let name = match CString::new(register.to_string()) {
+                Ok(name) => name,
+                Err(e) => {
+                    tracing::debug!(error = ?e);
+                    continue;
+                }
+            };
+
+            result.push(IRegVal {
+                name: name.into_raw() as *const c_char,
+                value: value as u64,
+                size: 4,
+            });
+        }
+
+        result.shrink_to_fit();
+        let len = result.len();
+        let ptr = result.as_mut_ptr();
+
+        if !size_out.is_null() {
+            *size_out = len;
+        }
+
+        std::mem::forget(result);
+
+        ptr
+    } else {
+        tracing::debug!("CFA and RA rules not found");
+        std::ptr::null_mut() as *mut _
+    }
+}
+
+#[no_mangle]
+#[instrument]
+unsafe extern "C" fn find_caller_regs_64(
+    cfi_frame_info: *const c_void,
+    memory_base: u64,
+    memory_len: usize,
+    memory_bytes: *const u8,
+    registers: *const IRegVal,
+    registers_len: usize,
+    size_out: *mut usize,
+) -> *mut IRegVal {
+    let cfi_frame_info = &*(cfi_frame_info as *const CfiFrameInfo<'_>);
+    let mut evaluator = Box::new(Evaluator::new(cfi_frame_info.endian));
+
+    for rules_string in cfi_frame_info.rules.iter() {
+        if let Err(e) = evaluator.add_cfi_rules_string(rules_string) {
+            tracing::debug!(error = ?e, rules_string);
+            return std::ptr::null_mut();
+        }
+    }
+
+    let memory = MemoryRegion {
+        base_addr: memory_base,
+        contents: std::slice::from_raw_parts(memory_bytes, memory_len),
+    };
+
+    *evaluator = evaluator.memory(memory);
+
+    let mut variables = BTreeMap::new();
+    let mut constants = BTreeMap::new();
+
+    let registers = std::slice::from_raw_parts(registers, registers_len);
+    for IRegVal { name, value, size } in registers {
+        let value = match size {
+            8 => *value as u64,
+            _ => {
+                tracing::debug!(value, size, "Encountered non-u64 value");
+                continue;
+            }
+        };
+
+        let name = match CStr::from_ptr(*name).to_str() {
+            Ok(name) => name,
+            Err(_) => continue,
+        };
+
+        if let Ok(r) = name.parse() {
+            variables.insert(r, value);
+        } else if let Ok(r) = name.parse() {
+            constants.insert(r, value);
+        }
+    }
+
+    *evaluator = evaluator.constants(constants).variables(variables);
+
+    let caller_registers = evaluator
+        .evaluate_cfi_rules()
+        .map_err(|e| {
+            tracing::debug!(error = ?e);
+        })
+        .unwrap_or_default();
+    if caller_registers.contains_key(&Identifier::Const(Constant::cfa()))
+        && caller_registers.contains_key(&Identifier::Const(Constant::ra()))
+    {
+        let mut result = Vec::new();
+        for (register, value) in caller_registers.into_iter() {
+            let name = match CString::new(register.to_string()) {
+                Ok(name) => name,
+                Err(e) => {
+                    tracing::debug!(error = ?e);
+                    continue;
+                }
+            };
+
+            result.push(IRegVal {
+                name: name.into_raw() as *const c_char,
+                value,
+                size: 8,
+            });
+        }
+
+        result.shrink_to_fit();
+        let len = result.len();
+        let ptr = result.as_mut_ptr();
+
+        if !size_out.is_null() {
+            *size_out = len;
+        }
+
+        std::mem::forget(result);
+
+        ptr
+    } else {
+        tracing::debug!("CFA and RA rules not found");
+        std::ptr::null_mut() as *mut _
+    }
+}
+
+#[no_mangle]
+unsafe extern "C" fn cfi_frame_info_free(cfi_frame_info: *mut c_void) {
+    std::mem::drop(Box::from_raw(cfi_frame_info as *mut CfiFrameInfo));
+}
+
+#[no_mangle]
+unsafe extern "C" fn regvals_free(reg_vals: *mut IRegVal, size: usize) {
+    let values = Vec::from_raw_parts(reg_vals, size, size);
+    for value in values {
+        std::mem::drop(CString::from_raw(value.name as *mut c_char));
+    }
+}
+
 /// An error returned when parsing an invalid [`CodeModuleId`](struct.CodeModuleId.html).
 pub type ParseCodeModuleIdError = ParseDebugIdError;
 
@@ -336,7 +962,10 @@ pub type ParseCodeModuleIdError = ParseDebugIdError;
 ///
 /// # fn main() -> Result<(), ParseCodeModuleIdError> {
 /// let id = CodeModuleId::from_str("DFB8E43AF2423D73A453AEB6A777EF75a")?;
-/// assert_eq!("DFB8E43AF2423D73A453AEB6A777EF75a".to_string(), id.to_string());
+/// assert_eq!(
+///     "DFB8E43AF2423D73A453AEB6A777EF75a".to_string(),
+///     id.to_string()
+/// );
 /// # Ok(())
 /// # }
 /// ```
@@ -1078,11 +1707,44 @@ impl<'a> ProcessState<'a> {
             .collect();
 
         let internal = unsafe {
-            process_minidump(
+            process_minidump_breakpad(
                 buffer.as_ptr() as *const c_char,
                 buffer.len(),
                 cfi_entries.as_ptr(),
                 cfi_count,
+                &mut result,
+            )
+        };
+
+        if result.is_usable() && !internal.is_null() {
+            Ok(ProcessState {
+                internal,
+                _ty: PhantomData,
+            })
+        } else {
+            unsafe { process_state_delete(internal) };
+            Err(ProcessMinidumpError(result))
+        }
+    }
+
+    /// Processes a minidump supplied via raw binary data.
+    ///
+    /// Returns a `ProcessState` that contains information about the crashed
+    /// process. The parameter `frame_infos` expects a map of Breakpad symbols
+    /// containing STACK CFI and STACK WIN records to allow stackwalking with
+    /// omitted frame pointers.
+    pub fn from_minidump_new(
+        buffer: &ByteView<'a>,
+        frame_infos: Option<&FrameInfoMap<'_>>,
+    ) -> Result<ProcessState<'a>, ProcessMinidumpError> {
+        let mut result: ProcessResult = ProcessResult::Ok;
+
+        let mut resolver = SymbolicSourceLineResolver::new(frame_infos);
+        let internal = unsafe {
+            process_minidump_symbolic(
+                buffer.as_ptr() as *const c_char,
+                buffer.len(),
+                (&mut resolver) as *mut _ as *mut c_void,
                 &mut result,
             )
         };

@@ -2,6 +2,7 @@
 #define SENTRY_PROCESSOR_H
 
 #include <cstddef>
+
 #include "cpp/data_structures.h"
 
 #ifdef __cplusplus
@@ -28,10 +29,15 @@ struct symbol_entry_t {
 /// exit. The function will return NULL and an error code in result_out.
 ///
 /// Release memory of the process state with process_state_delete.
-process_state_t *process_minidump(const char *buffer,
+process_state_t *process_minidump_breakpad(const char *buffer,
                                   size_t buffer_size,
                                   symbol_entry_t *symbols,
                                   size_t symbol_count,
+                                  int *result_out);
+
+process_state_t *process_minidump_symbolic(const char *buffer,
+                                  size_t buffer_size,
+                                  void *resolver_,
                                   int *result_out);
 
 #ifdef __cplusplus
