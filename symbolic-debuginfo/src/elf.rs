@@ -313,7 +313,7 @@ impl<'data> ElfObject<'data> {
                 continue;
             }
 
-            if let Some(Ok(section_name)) = self.elf.shdr_strtab.get(header.sh_name) {
+            if let Some(section_name) = self.elf.shdr_strtab.get_at(header.sh_name) {
                 let offset = header.sh_offset as usize;
                 if offset == 0 {
                     // We're defensive here. On darwin, dsymutil leaves phantom section headers
@@ -572,11 +572,7 @@ impl<'data, 'object> Iterator for ElfSymbolIterator<'data, 'object> {
                 continue;
             }
 
-            let name = self
-                .strtab
-                .get(symbol.st_name)
-                .and_then(Result::ok)
-                .map(Cow::Borrowed);
+            let name = self.strtab.get_at(symbol.st_name).map(Cow::Borrowed);
 
             return Some(Symbol {
                 name,
