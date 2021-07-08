@@ -1,10 +1,17 @@
 # Changelog
 
-## Unreleased
+## 8.3.0
 
 **Features**:
 
 - Write versioned CFI Cache files. Reading those files is only supported with symbolic versions `>= 8.2.1`, so trying to use a CFI Cache file with an older version of symbolic will fail with a `CfiErrorKind::BadFileMagic` error.
+
+**Fixes**:
+
+- Correctly restore callee saves registers when using compact unwind info.
+- Correctly map all DWARF information when using BcSymbolMaps.
+- Allow processing of PDB files that have broken inlinee file references.
+- Skip duplicated DWARF functions which can lead to `inline parent offset` overflows.
 
 ## 8.2.1
 
