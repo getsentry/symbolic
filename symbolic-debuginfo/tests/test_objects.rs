@@ -547,7 +547,7 @@ fn test_pdb_anonymous_namespace() -> Result<(), Error> {
         .expect("start function at 0x2a3d");
 
     // was: "?A0xc3a0617d::start"
-    assert_eq!(start_function.name, "`anonymous namespace'::start");
+    assert_eq!(start_function.name, "`anonymous namespace'::start()");
 
     Ok(())
 }
