@@ -1,6 +1,3 @@
-use std::fs::File;
-use std::io::{BufReader, Read};
-
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 
 use symbolic_common::ByteView;
@@ -11,10 +8,7 @@ pub fn breakpad_parser(c: &mut Criterion) {
     let mut group = c.benchmark_group("Breakpad parser benchmarks");
 
     for file in ["linux/crash.sym", "macos/crash.sym", "windows/crash.sym"].iter() {
-        let mut buf_reader = BufReader::new(File::open(fixture(file)).unwrap());
-        let mut buffer = String::new();
-        buf_reader.read_to_string(&mut buffer).unwrap();
-        let view = ByteView::from_slice(&buffer.as_bytes());
+        let view = ByteView::open(fixture(file)).unwrap();
         let object: BreakpadObject = BreakpadObject::parse(&view).unwrap();
 
         group.bench_with_input(

@@ -21,7 +21,7 @@ pub fn minidump_benchmark(c: &mut Criterion) {
             .collect::<Vec<String>>()
             .join("\n")
     };
-    let view = ByteView::from_slice(&cfi_records.as_bytes());
+    let view = ByteView::from_slice(cfi_records.as_bytes());
 
     frame_info.insert(
         "C0BCC3F19827FE653058404B2831D9E60".parse().unwrap(),
