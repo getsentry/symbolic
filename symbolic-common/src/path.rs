@@ -509,7 +509,19 @@ impl DSymPathExt for Path {
             parent = parent.parent()?;
         }
 
-        if parent.file_stem() == Some(framework) && parent.is_dsym_dir() {
+        // Accept both Filename.dSYM and Filename.framework.dSYM as
+        // the bundle directory name.
+        let stem_matches = parent.file_name()
+            .and_then(|name| Path::new(name).file_stem())
+            .map(|stem| {
+                if stem == framework {
+                    return true;
+                }
+                let mut alt = framework.to_owned();
+                alt.push(".framework");
+                stem == alt
+            }).unwrap_or(false);
+        if parent.is_dsym_dir() && stem_matches {
             Some(parent)
         } else {
             None
@@ -710,5 +722,13 @@ mod tests {
 
         let other_path = fixture("macos/crash.dSYM/Contents/Resources/DWARF/invalid");
         assert_eq!(other_path.dsym_parent(), None);
+    }
+
+    #[test]
+    fn test_dsym_parent_framework() {
+        let dwarf_path = fixture("macos/Example.framework.dSYM/Contents/Resources/DWARF/Example");
+        let dsym_path = dwarf_path.dsym_parent().unwrap();
+        assert!(dsym_path.exists());
+        assert!(dsym_path.ends_with("macos/Example.framework.dSYM"));
     }
 }
