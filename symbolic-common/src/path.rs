@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 trait IntoChar {
@@ -511,16 +512,18 @@ impl DSymPathExt for Path {
 
         // Accept both Filename.dSYM and Filename.framework.dSYM as
         // the bundle directory name.
-        let stem_matches = parent.file_name()
+        let stem_matches = parent
+            .file_name()
             .and_then(|name| Path::new(name).file_stem())
             .map(|stem| {
                 if stem == framework {
                     return true;
                 }
-                let mut alt = framework.to_owned();
-                alt.push(".framework");
-                stem == alt
-            }).unwrap_or(false);
+                let alt = Path::new(stem);
+                alt.file_stem() == Some(framework)
+                    && alt.extension() == Some(OsStr::new("framework"))
+            })
+            .unwrap_or(false);
         if parent.is_dsym_dir() && stem_matches {
             Some(parent)
         } else {
