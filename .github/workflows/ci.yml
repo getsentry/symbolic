@@ -11,6 +11,25 @@ on:
 #   RUSTFLAGS: -Dwarnings
 
 jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    name: cargo check  ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+    - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+    - run: cargo build --release --all-features
+
   lints:
     name: Style/Linting
     runs-on: ubuntu-latest
