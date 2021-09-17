@@ -7,8 +7,8 @@ on:
       - "release/**"
   pull_request:
 
-env:
-  RUSTFLAGS: -Dwarnings
+# env:
+#   RUSTFLAGS: -Dwarnings
 
 jobs:
   lints:
