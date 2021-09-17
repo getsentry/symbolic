@@ -43,11 +43,7 @@ jobs:
 
       - run: make style-python
 
-      - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --workspace --tests --examples -- -D clippy::all
+      - run: cargo clippy --all-features --workspace --tests --examples -- -D clippy::all
 
       - run: make lint-python
 
