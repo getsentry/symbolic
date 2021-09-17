@@ -189,12 +189,22 @@ fn strip_hash_suffix(ident: &str) -> &str {
     if len < 33 {
         ident
     } else {
-        let (front, back) = ident.split_at(len - 33);
-        if back.starts_with('$') && back[1..].chars().all(|c| c.is_ascii_hexdigit()) {
-            front
-        } else {
-            ident
+        let mut char_iter = ident.char_indices();
+        while let Some((pos, c)) = char_iter.next_back() {
+            if (len - pos) == 33 && c == '$' {
+                // If we have not yet returned we have a valid suffix to strip.  This is
+                // safe because we know the current pos is on the start of the '$' char
+                // boundary.
+                return &ident[..pos];
+            } else if (len - pos) > 33 {
+                // A multibyte char made us skip pos 32, multibyte chars are not hexdigit or
+                // $ so nothing to strip.
+                return ident;
+            } else if !c.is_ascii_hexdigit() {
+                return ident;
+            }
         }
+        ident
     }
 }
 
@@ -446,7 +456,8 @@ pub fn demangle(ident: &str) -> Cow<'_, str> {
 
 #[cfg(test)]
 mod test {
-    use crate::{Demangle, DemangleOptions};
+    use super::*;
+
     use symbolic_common::Name;
 
     #[test]
@@ -457,6 +468,26 @@ mod test {
                 .demangle(DemangleOptions::name_only())
                 .unwrap(),
             md5_mangled
+        );
+    }
+
+    #[test]
+    fn test_strip_hash_suffix() {
+        assert_eq!(
+            strip_hash_suffix("hello$0123456789abcdef0123456789abcdef"),
+            "hello"
+        );
+        assert_eq!(
+            strip_hash_suffix("hello_0123456789abcdef0123456789abcdef"),
+            "hello_0123456789abcdef0123456789abcdef",
+        );
+        assert_eq!(
+            strip_hash_suffix("hello\u{1000}0123456789abcdef0123456789abcdef"),
+            "hello\u{1000}0123456789abcdef0123456789abcdef"
+        );
+        assert_eq!(
+            strip_hash_suffix("hello$0123456789abcdef0123456789abcdxx"),
+            "hello$0123456789abcdef0123456789abcdxx"
         );
     }
 }
