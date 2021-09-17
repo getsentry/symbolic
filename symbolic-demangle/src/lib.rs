@@ -186,9 +186,7 @@ fn try_demangle_msvc(_ident: &str, _opts: DemangleOptions) -> Option<String> {
 /// otherwise returns its input.
 fn strip_hash_suffix(ident: &str) -> &str {
     let len = ident.len();
-    if len < 33 {
-        ident
-    } else {
+    if len >= 33 {
         let mut char_iter = ident.char_indices();
         while let Some((pos, c)) = char_iter.next_back() {
             if (len - pos) == 33 && c == '$' {
@@ -196,16 +194,14 @@ fn strip_hash_suffix(ident: &str) -> &str {
                 // safe because we know the current pos is on the start of the '$' char
                 // boundary.
                 return &ident[..pos];
-            } else if (len - pos) > 33 {
-                // A multibyte char made us skip pos 32, multibyte chars are not hexdigit or
-                // $ so nothing to strip.
-                return ident;
-            } else if !c.is_ascii_hexdigit() {
+            } else if (len - pos) > 33 || !c.is_ascii_hexdigit() {
+                // if pos is more than 33 bytes from the end a multibyte char made us skip
+                // pos 32, multibyte chars are not hexdigit or $ so nothing to strip.
                 return ident;
             }
         }
-        ident
     }
+    ident
 }
 
 fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
