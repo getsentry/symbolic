@@ -195,8 +195,8 @@ fn strip_hash_suffix(ident: &str) -> &str {
                 // boundary.
                 return &ident[..pos];
             } else if (len - pos) > 33 || !c.is_ascii_hexdigit() {
-                // if pos is more than 33 bytes from the end a multibyte char made us skip
-                // pos 32, multibyte chars are not hexdigit or $ so nothing to strip.
+                // If pos is more than 33 bytes from the end a multibyte char made us skip
+                // pos 33, multibyte chars are not hexdigit or $ so nothing to strip.
                 return ident;
             }
         }
