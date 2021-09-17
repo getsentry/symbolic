@@ -20,15 +20,20 @@ jobs:
     name: cargo check  ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
-    - uses: actions/checkout@v2
+    steps:
+      - uses: actions/checkout@v2
         with:
           submodules: recursive
-    - uses: actions-rs/toolchain@v1
+          # avoid merging for now since i'm trying to test an old snapshot
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
           override: true
-    - run: cargo build --release --all-features
+
+      - run: cargo build --release --all-features
 
   lints:
     name: Style/Linting
