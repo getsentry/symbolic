@@ -485,5 +485,9 @@ mod test {
             strip_hash_suffix("hello$0123456789abcdef0123456789abcdxx"),
             "hello$0123456789abcdef0123456789abcdxx"
         );
+        assert_eq!(
+            strip_hash_suffix("hello$\u{1000}0123456789abcdef0123456789abcde"),
+            "hello$\u{1000}0123456789abcdef0123456789abcde"
+        );
     }
 }
