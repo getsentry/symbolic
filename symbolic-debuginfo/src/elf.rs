@@ -7,6 +7,9 @@ use std::io::Cursor;
 
 use flate2::{Decompress, FlushDecompress};
 use goblin::elf::compression_header::{CompressionHeader, ELFCOMPRESS_ZLIB};
+use goblin::elf::SectionHeader;
+use goblin::elf64::sym::SymIterator;
+use goblin::strtab::Strtab;
 use goblin::{container::Ctx, elf, strtab};
 use thiserror::Error;
 
@@ -214,7 +217,7 @@ impl<'data> ElfObject<'data> {
 
     /// Determines whether this object exposes a public symbol table.
     pub fn has_symbols(&self) -> bool {
-        !self.elf.syms.is_empty()
+        !self.elf.syms.is_empty() || !self.elf.dynsyms.is_empty()
     }
 
     /// Returns an iterator over symbols in the public symbol table.
@@ -222,6 +225,8 @@ impl<'data> ElfObject<'data> {
         ElfSymbolIterator {
             symbols: self.elf.syms.iter(),
             strtab: &self.elf.strtab,
+            dynamic_symbols: self.elf.dynsyms.iter(),
+            dynamic_strtab: &self.elf.dynstrtab,
             sections: &self.elf.section_headers,
             load_addr: self.load_address(),
         }
@@ -542,6 +547,8 @@ impl<'data> Dwarf<'data> for ElfObject<'data> {
 pub struct ElfSymbolIterator<'data, 'object> {
     symbols: elf::sym::SymIterator<'data>,
     strtab: &'object strtab::Strtab<'data>,
+    dynamic_symbols: elf::sym::SymIterator<'data>,
+    dynamic_strtab: &'object strtab::Strtab<'data>,
     sections: &'object [elf::SectionHeader],
     load_addr: u64,
 }
@@ -550,37 +557,59 @@ impl<'data, 'object> Iterator for ElfSymbolIterator<'data, 'object> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        for symbol in &mut self.symbols {
-            // Only check for function symbols.
-            if symbol.st_type() != elf::sym::STT_FUNC {
-                continue;
+        fn get_symbols<'data>(
+            symbols: &mut SymIterator,
+            strtab: &Strtab<'data>,
+            load_addr: u64,
+            sections: &[SectionHeader],
+        ) -> Option<Symbol<'data>> {
+            for symbol in symbols {
+                // Only check for function symbols.
+                if symbol.st_type() != elf::sym::STT_FUNC {
+                    continue;
+                }
+
+                // Sanity check of the symbol address. Since we only intend to iterate over function
+                // symbols, they need to be mapped after the image's load address.
+                if symbol.st_value < load_addr {
+                    continue;
+                }
+
+                let section = match symbol.st_shndx {
+                    self::SHN_UNDEF => None,
+                    index => sections.get(index),
+                };
+
+                // We are only interested in symbols pointing into sections with executable flag.
+                if !section.map_or(false, |header| header.is_executable()) {
+                    continue;
+                }
+
+                let name = strtab.get_at(symbol.st_name).map(Cow::Borrowed);
+
+                return Some(Symbol {
+                    name,
+                    address: symbol.st_value - load_addr,
+                    size: symbol.st_size,
+                });
             }
 
-            // Sanity check of the symbol address. Since we only intend to iterate over function
-            // symbols, they need to be mapped after the image's load address.
-            if symbol.st_value < self.load_addr {
-                continue;
-            }
-
-            let section = match symbol.st_shndx {
-                self::SHN_UNDEF => None,
-                index => self.sections.get(index),
-            };
-
-            // We are only interested in symbols pointing into sections with executable flag.
-            if !section.map_or(false, |header| header.is_executable()) {
-                continue;
-            }
-
-            let name = self.strtab.get_at(symbol.st_name).map(Cow::Borrowed);
-
-            return Some(Symbol {
-                name,
-                address: symbol.st_value - self.load_addr,
-                size: symbol.st_size,
-            });
+            None
         }
 
-        None
+        get_symbols(
+            &mut self.symbols,
+            self.strtab,
+            self.load_addr,
+            self.sections,
+        )
+        .or_else(|| {
+            get_symbols(
+                &mut self.dynamic_symbols,
+                self.dynamic_strtab,
+                self.load_addr,
+                self.sections,
+            )
+        })
     }
 }

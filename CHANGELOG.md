@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Avoid panic when looking for hex suffixes in multibyte character strings in the demanger ([#430](https://github.com/getsentry/symbolic/pull/430)).
+
 ## 8.3.0
 
 **Features**:

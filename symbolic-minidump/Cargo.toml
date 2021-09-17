@@ -21,7 +21,7 @@ include = [
     "/third_party/breakpad/src/**/*.h",
     "/third_party/breakpad/src/**/*.c",
     "/third_party/breakpad/src/**/*.cc",
-    "/third_party/lss/**/*",
+    "/third_party/lss/*.h",
     "/build.rs",
     "/Cargo.toml",
 ]

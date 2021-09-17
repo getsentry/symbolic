@@ -61,6 +61,7 @@ impl TryFromCtx<'_, Endian> for AnsiString {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Debug, Pread)]
 struct Unreal4Header {
     pub directory_name: AnsiString,
