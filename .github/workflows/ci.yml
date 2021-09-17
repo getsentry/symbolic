@@ -19,6 +19,8 @@ jobs:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
+          # avoid merging for now since i'm trying to test an old snapshot
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -31,7 +33,7 @@ jobs:
         with:
           python-version: 3.7
 
-      - uses: Swatinem/rust-cache@v1
+      # - uses: Swatinem/rust-cache@v1
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
