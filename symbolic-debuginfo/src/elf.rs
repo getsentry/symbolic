@@ -135,7 +135,8 @@ impl<'data> ElfObject<'data> {
         Ok(nchain)
     }
 
-    /// Tries to parse an ELF object from the given slice.
+    /// Tries to parse an ELF object from the given slice. Will return a partially parsed ELF object
+    /// if at least the program and section headers can be parsed.
     pub fn parse(data: &'data [u8]) -> Result<Self, ElfError> {
         let header =
             elf::Elf::parse_header(data).map_err(|_| ElfError::new("ELF header unreadable"))?;
@@ -171,10 +172,8 @@ impl<'data> ElfObject<'data> {
             };
         }
 
-        // parse and assemble the program headers
         obj.program_headers =
             elf::ProgramHeader::parse(data, header.e_phoff as usize, header.e_phnum as usize, ctx)
-                // TODO: return just the empty elf
                 .map_err(|_| ElfError::new("unable to parse program headers"))?;
 
         for ph in &obj.program_headers {
@@ -187,12 +186,9 @@ impl<'data> ElfObject<'data> {
             }
         }
 
-        obj.section_headers = return_partial_on_err!(|| SectionHeader::parse(
-            data,
-            header.e_shoff as usize,
-            header.e_shnum as usize,
-            ctx
-        ));
+        obj.section_headers =
+            SectionHeader::parse(data, header.e_shoff as usize, header.e_shnum as usize, ctx)
+                .map_err(|_| ElfError::new("unable to parse section headers"))?;
 
         let get_strtab = |section_headers: &[SectionHeader], section_idx: usize| {
             if section_idx >= section_headers.len() {
