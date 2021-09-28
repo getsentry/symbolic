@@ -5,12 +5,17 @@ use std::error::Error;
 use std::fmt;
 use std::io::Cursor;
 
+use core::cmp;
 use flate2::{Decompress, FlushDecompress};
 use goblin::elf::compression_header::{CompressionHeader, ELFCOMPRESS_ZLIB};
 use goblin::elf::SectionHeader;
 use goblin::elf64::sym::SymIterator;
 use goblin::strtab::Strtab;
-use goblin::{container::Ctx, elf, strtab};
+use goblin::{
+    container::{Container, Ctx},
+    elf, strtab,
+};
+use scroll::Pread;
 use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
@@ -73,11 +78,265 @@ impl<'data> ElfObject<'data> {
         )
     }
 
+    // ripped from goblin because these aren't public and we're "lazily parsing"
+    fn gnu_hash_len(bytes: &[u8], offset: usize, ctx: Ctx) -> goblin::error::Result<usize> {
+        let buckets_num = bytes.pread_with::<u32>(offset, ctx.le)? as usize;
+        let min_chain = bytes.pread_with::<u32>(offset + 4, ctx.le)? as usize;
+        let bloom_size = bytes.pread_with::<u32>(offset + 8, ctx.le)? as usize;
+        // We could handle min_chain==0 if we really had to, but it shouldn't happen.
+        if buckets_num == 0 || min_chain == 0 || bloom_size == 0 {
+            return Err(goblin::error::Error::Malformed(format!(
+                "Invalid DT_GNU_HASH: buckets_num={} min_chain={} bloom_size={}",
+                buckets_num, min_chain, bloom_size
+            )));
+        }
+        // Find the last bucket.
+        let buckets_offset = offset + 16 + bloom_size * if ctx.container.is_big() { 8 } else { 4 };
+        let mut max_chain = 0;
+        for bucket in 0..buckets_num {
+            let chain = bytes.pread_with::<u32>(buckets_offset + bucket * 4, ctx.le)? as usize;
+            if max_chain < chain {
+                max_chain = chain;
+            }
+        }
+        if max_chain < min_chain {
+            return Ok(0);
+        }
+        // Find the last chain within the bucket.
+        let mut chain_offset = buckets_offset + buckets_num * 4 + (max_chain - min_chain) * 4;
+        loop {
+            let hash = bytes.pread_with::<u32>(chain_offset, ctx.le)?;
+            max_chain += 1;
+            chain_offset += 4;
+            if hash & 1 != 0 {
+                return Ok(max_chain);
+            }
+        }
+    }
+
+    // ripped from goblin because these aren't public and we're "lazily parsing"
+    fn hash_len(
+        bytes: &[u8],
+        offset: usize,
+        machine: u16,
+        ctx: Ctx,
+    ) -> goblin::error::Result<usize> {
+        // Based on readelf code.
+        let nchain = if (machine == elf::header::EM_FAKE_ALPHA || machine == elf::header::EM_S390)
+            && ctx.container.is_big()
+        {
+            bytes.pread_with::<u64>(offset.saturating_add(4), ctx.le)? as usize
+        } else {
+            bytes.pread_with::<u32>(offset.saturating_add(4), ctx.le)? as usize
+        };
+        Ok(nchain)
+    }
+
     /// Tries to parse an ELF object from the given slice.
     pub fn parse(data: &'data [u8]) -> Result<Self, ElfError> {
-        elf::Elf::parse(data)
-            .map(|elf| ElfObject { elf, data })
-            .map_err(ElfError::new)
+        let header =
+            elf::Elf::parse_header(data).map_err(|_| ElfError::new("ELF header unreadable"))?;
+        // dummy Elf with only header
+        let mut obj =
+            elf::Elf::lazy_parse(header).map_err(|_| ElfError::new("cannot parse ELF header"))?;
+
+        let ctx = Ctx {
+            container: if obj.is_64 {
+                Container::Big
+            } else {
+                Container::Little
+            },
+            le: if obj.little_endian {
+                scroll::Endian::Little
+            } else {
+                scroll::Endian::Big
+            },
+        };
+
+        macro_rules! return_partial_on_err {
+            ($parse_func:expr) => {
+                if let Ok(expected) = $parse_func() {
+                    expected
+                } else {
+                    // does this snapshot?
+                    return Ok(ElfObject {
+                        elf: obj,
+                        data,
+                    });
+                }
+            };
+        }
+
+        // parse and assemble the program headers
+        obj.program_headers =
+            elf::ProgramHeader::parse(data, header.e_phoff as usize, header.e_phnum as usize, ctx)
+                // TODO: return just the empty elf
+                .map_err(|_| ElfError::new("unable to parse program headers"))?;
+
+        // todo: is the interpreter needed for debug info? since it's used for dynamic linking it seems like this might be yes
+        // let mut interpreter = None;
+        // for ph in &obj.program_headers {
+        //     if ph.p_type == elf::program_header::PT_INTERP && ph.p_filesz != 0 {
+        //         let count = (ph.p_filesz - 1) as usize;
+        //         let offset = ph.p_offset as usize;
+        //         interpreter = data
+        //             .pread_with::<&str>(offset, ::scroll::ctx::StrCtx::Length(count))
+        //             .ok();
+        //     }
+        // }
+
+        obj.section_headers = return_partial_on_err!(|| SectionHeader::parse(
+            data,
+            header.e_shoff as usize,
+            header.e_shnum as usize,
+            ctx
+        ));
+
+        let get_strtab = |section_headers: &[SectionHeader], section_idx: usize| {
+            if section_idx >= section_headers.len() {
+                // FIXME: warn! here
+                Ok(Strtab::default())
+            } else {
+                let shdr = &section_headers[section_idx];
+                shdr.check_size(data.len())?;
+                Strtab::parse(data, shdr.sh_offset as usize, shdr.sh_size as usize, 0x0)
+            }
+        };
+
+        let strtab_idx = header.e_shstrndx as usize;
+        obj.shdr_strtab = return_partial_on_err!(|| get_strtab(&obj.section_headers, strtab_idx));
+
+        obj.syms = elf::Symtab::default();
+        obj.strtab = Strtab::default();
+        for shdr in &obj.section_headers {
+            if shdr.sh_type as u32 == elf::section_header::SHT_SYMTAB {
+                let size = shdr.sh_entsize;
+                let count = if size == 0 { 0 } else { shdr.sh_size / size };
+                obj.syms = return_partial_on_err!(|| elf::Symtab::parse(
+                    data,
+                    shdr.sh_offset as usize,
+                    count as usize,
+                    ctx
+                ));
+
+                obj.strtab = return_partial_on_err!(|| get_strtab(
+                    &obj.section_headers,
+                    shdr.sh_link as usize
+                ));
+            }
+        }
+
+        obj.soname = None;
+        obj.libraries = vec![];
+        obj.dynsyms = elf::Symtab::default();
+        obj.dynrelas = elf::RelocSection::default();
+        obj.dynrels = elf::RelocSection::default();
+        obj.pltrelocs = elf::RelocSection::default();
+        obj.dynstrtab = Strtab::default();
+        let dynamic =
+            return_partial_on_err!(|| elf::Dynamic::parse(data, &obj.program_headers, ctx));
+        if let Some(ref dynamic) = dynamic {
+            let dyn_info = &dynamic.info;
+            obj.dynstrtab = return_partial_on_err!(|| Strtab::parse(
+                data,
+                dyn_info.strtab,
+                dyn_info.strsz,
+                0x0
+            ));
+
+            if dyn_info.soname != 0 {
+                // FIXME: warn! here
+                obj.soname = obj.dynstrtab.get_at(dyn_info.soname);
+            }
+            if dyn_info.needed_count > 0 {
+                obj.libraries = dynamic.get_libraries(&obj.dynstrtab);
+            }
+            // parse the dynamic relocations
+            obj.dynrelas = return_partial_on_err!(|| elf::RelocSection::parse(
+                data,
+                dyn_info.rela,
+                dyn_info.relasz,
+                true,
+                ctx
+            ));
+            obj.dynrels = return_partial_on_err!(|| elf::RelocSection::parse(
+                data,
+                dyn_info.rel,
+                dyn_info.relsz,
+                false,
+                ctx
+            ));
+            let is_rela = dyn_info.pltrel as u64 == elf::dynamic::DT_RELA;
+            obj.pltrelocs = return_partial_on_err!(|| elf::RelocSection::parse(
+                data,
+                dyn_info.jmprel,
+                dyn_info.pltrelsz,
+                is_rela,
+                ctx
+            ));
+
+            let mut num_syms = if let Some(gnu_hash) = dyn_info.gnu_hash {
+                return_partial_on_err!(|| ElfObject::gnu_hash_len(data, gnu_hash as usize, ctx))
+            } else if let Some(hash) = dyn_info.hash {
+                return_partial_on_err!(|| ElfObject::hash_len(
+                    data,
+                    hash as usize,
+                    header.e_machine,
+                    ctx
+                ))
+            } else {
+                0
+            };
+            let max_reloc_sym = obj
+                .dynrelas
+                .iter()
+                .chain(obj.dynrels.iter())
+                .chain(obj.pltrelocs.iter())
+                .fold(0, |num, reloc| cmp::max(num, reloc.r_sym));
+            if max_reloc_sym != 0 {
+                num_syms = cmp::max(num_syms, max_reloc_sym + 1);
+            }
+
+            obj.dynsyms =
+                return_partial_on_err!(|| elf::Symtab::parse(data, dyn_info.symtab, num_syms, ctx));
+        }
+
+        obj.shdr_relocs = vec![];
+        for (idx, section) in obj.section_headers.iter().enumerate() {
+            let is_rela = section.sh_type == elf::section_header::SHT_RELA;
+            if is_rela || section.sh_type == elf::section_header::SHT_REL {
+                return_partial_on_err!(|| section.check_size(data.len()));
+                let sh_relocs = return_partial_on_err!(|| elf::RelocSection::parse(
+                    data,
+                    section.sh_offset as usize,
+                    section.sh_size as usize,
+                    is_rela,
+                    ctx,
+                ));
+                obj.shdr_relocs.push((idx, sh_relocs));
+            }
+        }
+
+        obj.versym = return_partial_on_err!(|| elf::symver::VersymSection::parse(
+            data,
+            &obj.section_headers,
+            ctx
+        ));
+        obj.verdef = return_partial_on_err!(|| elf::symver::VerdefSection::parse(
+            data,
+            &obj.section_headers,
+            ctx
+        ));
+        obj.verneed = return_partial_on_err!(|| elf::symver::VerneedSection::parse(
+            data,
+            &obj.section_headers,
+            ctx
+        ));
+
+        Ok(ElfObject {
+            elf: obj,
+            data,
+        })
     }
 
     /// The container file format, which is always `FileFormat::Elf`.
