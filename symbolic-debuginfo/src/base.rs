@@ -694,6 +694,9 @@ pub trait ObjectLike<'data, 'object> {
 
     /// Determines whether this object contains embedded sources.
     fn has_sources(&self) -> bool;
+
+    /// Determines whether this object is malformed and was only partially parsed
+    fn is_malformed(&self) -> bool;
 }
 
 mod derive_serde {
