@@ -79,7 +79,8 @@ impl<'data> ElfObject<'data> {
         )
     }
 
-    // ripped from goblin because these aren't public and we're "lazily parsing"
+    // Pulled from https://github.com/m4b/goblin/blob/master/src/elf/mod.rs#L393-L424 as it
+    // currently isn't public, but we need this to parse an ELF.
     fn gnu_hash_len(bytes: &[u8], offset: usize, ctx: Ctx) -> goblin::error::Result<usize> {
         let buckets_num = bytes.pread_with::<u32>(offset, ctx.le)? as usize;
         let min_chain = bytes.pread_with::<u32>(offset + 4, ctx.le)? as usize;
@@ -115,7 +116,8 @@ impl<'data> ElfObject<'data> {
         }
     }
 
-    // ripped from goblin because these aren't public and we're "lazily parsing"
+    // Pulled from https://github.com/m4b/goblin/blob/master/src/elf/mod.rs#L426-L434 as it
+    // currently isn't public, but we need this to parse an ELF.
     fn hash_len(
         bytes: &[u8],
         offset: usize,
