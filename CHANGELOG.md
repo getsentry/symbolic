@@ -4,7 +4,8 @@
 
 **Fixes**:
 
-- Avoid panic when looking for hex suffixes in multibyte character strings in the demanger ([#430](https://github.com/getsentry/symbolic/pull/430)).
+- Avoid panic when looking for hex suffixes in multibyte character strings in the demangler ([#430](https://github.com/getsentry/symbolic/pull/430)).
+- Allow processing of ELF files as long as they have valid program and section headers. ([#434](https://github.com/getsentry/symbolic/pull/434))
 
 ## 8.3.0
 
