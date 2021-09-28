@@ -67,6 +67,7 @@ impl ElfError {
 pub struct ElfObject<'data> {
     elf: elf::Elf<'data>,
     data: &'data [u8],
+    is_malformed: bool,
 }
 
 impl<'data> ElfObject<'data> {
@@ -162,6 +163,7 @@ impl<'data> ElfObject<'data> {
                     return Ok(ElfObject {
                         elf: obj,
                         data,
+                        is_malformed: true,
                     });
                 }
             };
@@ -336,6 +338,7 @@ impl<'data> ElfObject<'data> {
         Ok(ElfObject {
             elf: obj,
             data,
+            is_malformed: false,
         })
     }
 
@@ -528,6 +531,11 @@ impl<'data> ElfObject<'data> {
         false
     }
 
+    /// Determines whether this object is malformed and was only partially parsed
+    pub fn is_malformed(&self) -> bool {
+        self.is_malformed
+    }
+
     /// Returns the raw data of the ELF file.
     pub fn data(&self) -> &'data [u8] {
         self.data
@@ -692,6 +700,7 @@ impl fmt::Debug for ElfObject<'_> {
             .field("has_symbols", &self.has_symbols())
             .field("has_debug_info", &self.has_debug_info())
             .field("has_unwind_info", &self.has_unwind_info())
+            .field("is_malformed", &self.is_malformed())
             .finish()
     }
 }
@@ -771,6 +780,10 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for ElfObject<'data> {
 
     fn has_sources(&self) -> bool {
         self.has_sources()
+    }
+
+    fn is_malformed(&self) -> bool {
+        self.is_malformed()
     }
 }
 
