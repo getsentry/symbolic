@@ -175,17 +175,15 @@ impl<'data> ElfObject<'data> {
                 // TODO: return just the empty elf
                 .map_err(|_| ElfError::new("unable to parse program headers"))?;
 
-        // todo: is the interpreter needed for debug info? since it's used for dynamic linking it seems like this might be yes
-        // let mut interpreter = None;
-        // for ph in &obj.program_headers {
-        //     if ph.p_type == elf::program_header::PT_INTERP && ph.p_filesz != 0 {
-        //         let count = (ph.p_filesz - 1) as usize;
-        //         let offset = ph.p_offset as usize;
-        //         interpreter = data
-        //             .pread_with::<&str>(offset, ::scroll::ctx::StrCtx::Length(count))
-        //             .ok();
-        //     }
-        // }
+        for ph in &obj.program_headers {
+            if ph.p_type == elf::program_header::PT_INTERP && ph.p_filesz != 0 {
+                let count = (ph.p_filesz - 1) as usize;
+                let offset = ph.p_offset as usize;
+                obj.interpreter = data
+                    .pread_with::<&str>(offset, ::scroll::ctx::StrCtx::Length(count))
+                    .ok();
+            }
+        }
 
         obj.section_headers = return_partial_on_err!(|| SectionHeader::parse(
             data,
