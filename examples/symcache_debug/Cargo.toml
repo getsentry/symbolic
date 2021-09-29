@@ -1,6 +1,6 @@
 [package]
 name = "symcache_debug"
-version = "8.3.0"
+version = "8.3.1"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2018"
 publish = false
