@@ -39,6 +39,7 @@ fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::Err
                 println!("   symbol table: {}", object.has_symbols());
                 println!("   debug info:   {}", object.has_debug_info());
                 println!("   unwind info:  {}", object.has_unwind_info());
+                println!("   is malformed: {}", object.is_malformed());
             }
             Err(e) => {
                 print!(" - ");

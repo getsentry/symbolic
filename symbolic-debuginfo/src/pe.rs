@@ -200,6 +200,11 @@ impl<'data> PeObject<'data> {
         false
     }
 
+    /// Determines whether this object is malformed and was only partially parsed
+    pub fn is_malformed(&self) -> bool {
+        false
+    }
+
     /// Constructs a no-op debugging session.
     pub fn debug_session(&self) -> Result<PeDebugSession<'data>, PeError> {
         Ok(PeDebugSession { _ph: PhantomData })
@@ -242,6 +247,7 @@ impl fmt::Debug for PeObject<'_> {
             .field("has_symbols", &self.has_symbols())
             .field("has_debug_info", &self.has_debug_info())
             .field("has_unwind_info", &self.has_unwind_info())
+            .field("is_malformed", &self.is_malformed())
             .finish()
     }
 }
@@ -321,6 +327,10 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for PeObject<'data> {
 
     fn has_sources(&self) -> bool {
         self.has_sources()
+    }
+
+    fn is_malformed(&self) -> bool {
+        self.is_malformed()
     }
 }
 

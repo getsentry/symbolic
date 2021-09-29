@@ -96,6 +96,7 @@ fn test_breakpad() -> Result<(), Error> {
    ⋮        has_symbols: true,
    ⋮        has_debug_info: true,
    ⋮        has_unwind_info: true,
+   ⋮        is_malformed: false,
    ⋮    },
    ⋮)
     "###);
@@ -160,6 +161,7 @@ fn test_elf_executable() -> Result<(), Error> {
    ⋮        has_symbols: true,
    ⋮        has_debug_info: false,
    ⋮        has_unwind_info: true,
+   ⋮        is_malformed: false,
    ⋮    },
    ⋮)
     "###);
@@ -188,6 +190,7 @@ fn test_elf_debug() -> Result<(), Error> {
    ⋮        has_symbols: true,
    ⋮        has_debug_info: true,
    ⋮        has_unwind_info: false,
+   ⋮        is_malformed: false,
    ⋮    },
    ⋮)
     "###);
@@ -252,6 +255,7 @@ fn test_mach_executable() -> Result<(), Error> {
    ⋮        has_symbols: true,
    ⋮        has_debug_info: false,
    ⋮        has_unwind_info: true,
+   ⋮        is_malformed: false,
    ⋮    },
    ⋮)
     "###);
@@ -280,6 +284,7 @@ fn test_mach_dsym() -> Result<(), Error> {
    ⋮        has_symbols: true,
    ⋮        has_debug_info: true,
    ⋮        has_unwind_info: false,
+   ⋮        is_malformed: false,
    ⋮    },
    ⋮)
     "###);
@@ -347,6 +352,7 @@ fn test_pe_32() -> Result<(), Error> {
    ⋮        has_symbols: false,
    ⋮        has_debug_info: false,
    ⋮        has_unwind_info: false,
+   ⋮        is_malformed: false,
    ⋮    },
    ⋮)
     "###);
@@ -378,6 +384,7 @@ fn test_pe_64() -> Result<(), Error> {
    ⋮        has_symbols: false,
    ⋮        has_debug_info: false,
    ⋮        has_unwind_info: true,
+   ⋮        is_malformed: false,
    ⋮    },
    ⋮)
     "###);
@@ -405,6 +412,7 @@ fn test_pdb() -> Result<(), Error> {
    ⋮        has_symbols: true,
    ⋮        has_debug_info: true,
    ⋮        has_unwind_info: true,
+   ⋮        is_malformed: false,
    ⋮    },
    ⋮)
     "###);

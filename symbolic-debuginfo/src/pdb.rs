@@ -235,6 +235,11 @@ impl<'data> PdbObject<'data> {
         false
     }
 
+    /// Determines whether this object is malformed and was only partially parsed
+    pub fn is_malformed(&self) -> bool {
+        false
+    }
+
     /// Constructs a debugging session.
     pub fn debug_session(&self) -> Result<PdbDebugSession<'data>, PdbError> {
         PdbDebugSession::build(self)
@@ -269,6 +274,7 @@ impl fmt::Debug for PdbObject<'_> {
             .field("has_symbols", &self.has_symbols())
             .field("has_debug_info", &self.has_debug_info())
             .field("has_unwind_info", &self.has_unwind_info())
+            .field("is_malformed", &self.is_malformed())
             .finish()
     }
 }
@@ -348,6 +354,10 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for PdbObject<'data> {
 
     fn has_sources(&self) -> bool {
         self.has_sources()
+    }
+
+    fn is_malformed(&self) -> bool {
+        self.is_malformed()
     }
 }
 

@@ -4,7 +4,19 @@
 
 **Fixes**:
 
-- Avoid panic when looking for hex suffixes in multibyte character strings in the demanger ([#430](https://github.com/getsentry/symbolic/pull/430)).
+- Avoid panic when looking for hex suffixes in multibyte character strings in the demangler. ([#430](https://github.com/getsentry/symbolic/pull/430))
+- Allow processing of ELF files as long as they have valid program and section headers. ([#434](https://github.com/getsentry/symbolic/pull/434))
+- Expose dynamic symbols in ELF files. ([#421](https://github.com/getsentry/symbolic/pull/421))
+- Make dsym_parent accept `.framework.dSYM`. ([#425](https://github.com/getsentry/symbolic/pull/425))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@goffrie](https://github.com/goffrie)
+- [@gabrielesvelto](https://github.com/gabrielesvelto)
+- [@luser](https://github.com/luser)
+- [@mstange](https://github.com/mstange)
 
 ## 8.3.0
 

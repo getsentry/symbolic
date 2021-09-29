@@ -336,6 +336,11 @@ impl<'d> MachObject<'d> {
         false
     }
 
+    /// Determines whether this object is malformed and was only partially parsed
+    pub fn is_malformed(&self) -> bool {
+        false
+    }
+
     /// Returns the raw data of the ELF file.
     pub fn data(&self) -> &'d [u8] {
         self.data
@@ -363,6 +368,7 @@ impl fmt::Debug for MachObject<'_> {
             .field("has_symbols", &self.has_symbols())
             .field("has_debug_info", &self.has_debug_info())
             .field("has_unwind_info", &self.has_unwind_info())
+            .field("is_malformed", &self.is_malformed())
             .finish()
     }
 }
@@ -442,6 +448,10 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for MachObject<'data> {
 
     fn has_sources(&self) -> bool {
         self.has_sources()
+    }
+
+    fn is_malformed(&self) -> bool {
+        self.is_malformed()
     }
 }
 

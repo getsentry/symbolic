@@ -332,6 +332,11 @@ impl<'data> Object<'data> {
         match_inner!(self, Object(ref o) => o.has_sources())
     }
 
+    /// Determines whether this object is malformed and was only partially parsed
+    pub fn is_malformed(&self) -> bool {
+        match_inner!(self, Object(ref o) => o.is_malformed())
+    }
+
     /// Returns the raw data of the underlying buffer.
     pub fn data(&self) -> &'data [u8] {
         match_inner!(self, Object(ref o) => o.data())
@@ -401,6 +406,10 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for Object<'data> {
 
     fn has_sources(&self) -> bool {
         self.has_sources()
+    }
+
+    fn is_malformed(&self) -> bool {
+        self.is_malformed()
     }
 }
 
