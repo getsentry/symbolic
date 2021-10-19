@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "release/**"
+      - build/** # TODO: Remove. Temporary to test library builds
 
 jobs:
   python-wheel-mac:
