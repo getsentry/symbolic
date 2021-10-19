@@ -4,7 +4,7 @@
 
 **Features**:
 
-- Build and publish binary wheels for `arm64` / `aarch64` on macOS and Linux. ([#XYZ](https://github.com/getsentry/relay/pull/XYZ))
+- Build and publish binary wheels for `arm64` / `aarch64` on macOS and Linux. ([#442](https://github.com/getsentry/symbolic/pull/442))
 
 ## 8.3.1
 
