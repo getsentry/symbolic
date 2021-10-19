@@ -26,7 +26,7 @@ use std::ops::Range;
 
 use thiserror::Error;
 
-use symbolic_common::{Arch, ByteView, UnknownArchError};
+use symbolic_common::{Arch, ByteView, CpuFamily, UnknownArchError};
 use symbolic_debuginfo::breakpad::{BreakpadError, BreakpadObject, BreakpadStackRecord};
 use symbolic_debuginfo::dwarf::gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error as GimliError,
@@ -419,18 +419,29 @@ impl<W: Write> AsciiCfiWriter<W> {
             writer: &mut W,
             register: CompactCfiRegister,
             iter: &CompactUnwindInfoIter,
+            cpu_family: CpuFamily,
         ) -> Result<(), CfiError> {
             if register.is_cfa() {
                 write!(writer, ".cfa")?;
             } else if register == CompactCfiRegister::instruction_pointer() {
                 write!(writer, ".ra")?;
             } else {
-                write!(writer, "${}", register.name(iter).unwrap())?;
+                // For whatever reason breakpad doesn't prefix registers with $ on ARM.
+                match cpu_family {
+                    CpuFamily::Arm32 | CpuFamily::Arm64 | CpuFamily::Arm64_32 => {
+                        write!(writer, "{}", register.name(iter).unwrap())?;
+                    }
+                    _ => {
+                        write!(writer, "${}", register.name(iter).unwrap())?;
+                    }
+                }
             }
             Ok(())
         }
         // Preload the symbols as this is expensive to do in the loop.
         let symbols = object.symbol_map();
+        let cpu_family = object.arch().cpu_family();
+        let ptr_size = cpu_family.pointer_size();
 
         // Initialize an unwind context once and reuse it for the entire section.
         let mut ctx = UninitializedUnwindContext::new();
@@ -478,7 +489,6 @@ impl<W: Write> AsciiCfiWriter<W> {
                         {
                             let start_addr = entry.instruction_address.into();
                             let sym_name = symbols.lookup(start_addr).and_then(|sym| sym.name());
-                            let ptr_size = object.arch().cpu_family().pointer_size();
 
                             if sym_name == Some("_sigtramp") && ptr_size == Some(8) {
                                 // This specific function has some hand crafted dwarf expressions
@@ -541,9 +551,9 @@ impl<W: Write> AsciiCfiWriter<W> {
                             } => (dest_reg, src_reg, offset_from_src, false),
                         };
 
-                        write_reg_name(&mut line, dest_reg, &iter)?;
+                        write_reg_name(&mut line, dest_reg, &iter, cpu_family)?;
                         write!(line, ": ")?;
-                        write_reg_name(&mut line, src_reg, &iter)?;
+                        write_reg_name(&mut line, src_reg, &iter, cpu_family)?;
                         write!(line, " {} + ", offset)?;
                         if should_deref {
                             write!(line, "^ ")?;
