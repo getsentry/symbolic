@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Build and publish binary wheels for `arm64` / `aarch64` on macOS and Linux. ([#XYZ](https://github.com/getsentry/relay/pull/XYZ))
+
 ## 8.3.1
 
 **Fixes**:

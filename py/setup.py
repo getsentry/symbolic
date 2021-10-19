@@ -73,12 +73,20 @@ def build_native(spec):
     print("running `%s` (%s target)" % (" ".join(cmd), target))
     build = spec.add_external_build(cmd=cmd, path=rust_path)
 
+    def find_dylib():
+        cargo_target = os.environ.get("CARGO_BUILD_TARGET")
+        if cargo_target:
+            in_path = "target/%s/%s" % (cargo_target, target)
+        else:
+            in_path = "target/%s" % target
+        return build.find_dylib("relay_cabi", in_path=in_path)
+
     rtld_flags = ["NOW"]
     if sys.platform == "darwin":
         rtld_flags.append("NODELETE")
     spec.add_cffi_module(
         module_path="symbolic._lowlevel",
-        dylib=lambda: build.find_dylib("symbolic_cabi", in_path="target/%s" % target),
+        dylib=find_dylib,
         header_filename=lambda: build.find_header(
             "symbolic.h", in_path="symbolic-cabi/include"
         ),
