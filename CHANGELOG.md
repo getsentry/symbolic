@@ -6,6 +6,16 @@
 
 - Build and publish binary wheels for `arm64` / `aarch64` on macOS and Linux. ([#442](https://github.com/getsentry/symbolic/pull/442))
 
+**Fixes**:
+
+- Don’t prefix ARM registers with `$` for CFI files. ([#443](https://github.com/getsentry/symbolic/pull/443))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@Gankra](https://github.com/Gankra)
+
 ## 8.3.1
 
 **Fixes**:
