@@ -22,7 +22,7 @@ sdist: .venv/bin/python
 .PHONY: sdist
 
 wheel: .venv/bin/python
-	cd py && ../.venv/bin/pip install -U wheel && ../.venv/bin/python setup.py bdist_wheel -p=$(PLATFORM)
+	cd py && ../.venv/bin/pip install -U wheel && ../.venv/bin/python setup.py bdist_wheel $(PLATFORM:%=-p %)
 .PHONY: wheel
 
 wheel-manylinux:
