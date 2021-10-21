@@ -471,11 +471,11 @@ impl<W: Write> AsciiCfiWriter<W> {
                     // scanning either way.
 
                     let start_addr = entry.instruction_address;
-                    if let Some(ptr_size) = object.arch().cpu_family().pointer_size() {
+                    if let CpuFamily::Amd64 = object.arch().cpu_family() {
                         writeln!(
                             self.inner,
-                            "STACK CFI INIT {:x} {:x} .cfa: $rsp {} + .ra: .cfa -{} + ^",
-                            start_addr, entry.len, ptr_size, ptr_size
+                            "STACK CFI INIT {:x} {:x} .cfa: $rsp 8 + .ra: .cfa -8 + ^",
+                            start_addr, entry.len
                         )?;
                     }
                 }
