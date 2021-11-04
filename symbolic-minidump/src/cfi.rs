@@ -30,8 +30,8 @@ use symbolic_common::{Arch, ByteView, CpuFamily, UnknownArchError};
 use symbolic_debuginfo::breakpad::{BreakpadError, BreakpadObject, BreakpadStackRecord};
 use symbolic_debuginfo::dwarf::gimli::{
     BaseAddresses, CfaRule, CieOrFde, DebugFrame, EhFrame, Error as GimliError,
-    FrameDescriptionEntry, Reader, ReaderOffset, Register, RegisterRule,
-    UninitializedUnwindContext, UnwindSection,
+    FrameDescriptionEntry, Reader, ReaderOffset, Register, RegisterRule, UnwindContext,
+    UnwindSection,
 };
 use symbolic_debuginfo::dwarf::Dwarf;
 use symbolic_debuginfo::macho::{
@@ -444,7 +444,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         let ptr_size = cpu_family.pointer_size();
 
         // Initialize an unwind context once and reuse it for the entire section.
-        let mut ctx = UninitializedUnwindContext::new();
+        let mut ctx = UnwindContext::new();
 
         while let Some(entry) = iter.next()? {
             if entry.len == 0 {
@@ -577,7 +577,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         U: UnwindSection<R>,
     {
         // Initialize an unwind context once and reuse it for the entire section.
-        let mut ctx = UninitializedUnwindContext::new();
+        let mut ctx = UnwindContext::new();
 
         let mut entries = info.section.entries(&info.bases);
         while let Some(entry) = entries.next()? {
@@ -598,7 +598,7 @@ impl<W: Write> AsciiCfiWriter<W> {
     fn process_fde<R, U>(
         &mut self,
         info: &UnwindInfo<U>,
-        ctx: &mut UninitializedUnwindContext<R>,
+        ctx: &mut UnwindContext<R>,
         fde: &FrameDescriptionEntry<R>,
     ) -> Result<(), CfiError>
     where
