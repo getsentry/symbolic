@@ -2,11 +2,12 @@
 #![warn(missing_docs)]
 
 use std::fmt;
+use std::io::Read;
 use std::iter::FusedIterator;
 use std::ops::Deref;
 
 use bytes::Bytes;
-use flate2::read::ZlibDecoder;
+use flate2::bufread::ZlibDecoder;
 use scroll::{ctx::TryFromCtx, Endian, Pread};
 
 use crate::context::Unreal4Context;
@@ -145,14 +146,28 @@ impl Unreal4Crash {
     }
 
     /// Parses a UE4 crash dump from the original, compressed data.
-    pub fn parse(bytes: &[u8]) -> Result<Self, Unreal4Error> {
-        if bytes.is_empty() {
+    pub fn parse(slice: &[u8]) -> Result<Self, Unreal4Error> {
+        // Subtract because this is incremented again in `parse_with_limit`.
+        Self::parse_with_limit(slice, usize::MAX - 1)
+    }
+
+    /// Parses a UE4 crash dump from the original, compressed data.
+    ///
+    /// If files contained within the UE4 crash exceed the given size `limit`, `Err(X)` is returned.
+    pub fn parse_with_limit(slice: &[u8], limit: usize) -> Result<Self, Unreal4Error> {
+        if slice.is_empty() {
             return Err(Unreal4ErrorKind::Empty.into());
         }
 
         let mut decompressed = Vec::new();
-        std::io::copy(&mut ZlibDecoder::new(bytes), &mut decompressed)
+        ZlibDecoder::new(slice)
+            .take(limit as u64 + 1)
+            .read_to_end(&mut decompressed)
             .map_err(|e| Unreal4Error::new(Unreal4ErrorKind::BadCompression, e))?;
+
+        if decompressed.len() > limit {
+            return Err(Unreal4ErrorKind::TooLarge.into());
+        }
 
         Self::from_bytes(decompressed.into())
     }
