@@ -1,5 +1,15 @@
 # Changelog
 
+## 8.4.0
+
+**Features**:
+
+- Add `Unreal4Crash::parse_with_limit` which allows specifying a maximum allocation size when extracting compressed UE4 crash archives. ([#447](https://github.com/getsentry/symbolic/pull/447))
+
+**Fixes**:
+
+- Apply speculative handling of stackless functions only on `amd64` when creating CFI caches. ([#445](https://github.com/getsentry/symbolic/pull/445))
+
 ## 8.3.2
 
 **Features**:
