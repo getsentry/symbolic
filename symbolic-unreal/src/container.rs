@@ -150,8 +150,7 @@ impl Unreal4Crash {
     /// To prevent unbounded decompression, consider using
     /// [`parse_with_limit`](Self::parse_with_limit) with an explicit limit, instead.
     pub fn parse(slice: &[u8]) -> Result<Self, Unreal4Error> {
-        // Subtract because this is incremented again in `parse_with_limit`.
-        Self::parse_with_limit(slice, usize::MAX - 1)
+        Self::parse_with_limit(slice, usize::MAX)
     }
 
     /// Parses a UE4 crash dump from the original, compressed data up to a maximum size limit.
@@ -406,14 +405,27 @@ mod tests {
         assert_eq!(source.to_string(), "corrupt deflate stream");
     }
 
+    // The size of the unreal_crash fixture when decompressed.
+    const DECOMPRESSED_SIZE: usize = 440752;
+
     #[test]
     fn test_parse_too_large() {
         let mut file = File::open(fixture("unreal/unreal_crash")).expect("example file opens");
         let mut file_content = Vec::new();
         file.read_to_end(&mut file_content).expect("fixture file");
 
-        let result = Unreal4Crash::parse_with_limit(&file_content, 100);
+        let result = Unreal4Crash::parse_with_limit(&file_content, DECOMPRESSED_SIZE - 1);
         let error = result.expect_err("too large");
         assert_eq!(error.kind(), Unreal4ErrorKind::TooLarge);
+    }
+
+    #[test]
+    fn test_parse_fits_exact() {
+        let mut file = File::open(fixture("unreal/unreal_crash")).expect("example file opens");
+        let mut file_content = Vec::new();
+        file.read_to_end(&mut file_content).expect("fixture file");
+
+        Unreal4Crash::parse_with_limit(&file_content, DECOMPRESSED_SIZE)
+            .expect("file fits decompression buffer");
     }
 }
