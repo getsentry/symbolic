@@ -301,6 +301,7 @@ mod tests {
         file.rewind()?;
         file.read_to_end(&mut buf)?;
         assert_eq!(buf, b"1234");
+        drop(file);
 
         // Ensure the byteview can still read the file as well.
         assert_eq!(&*view, b"1234");
