@@ -118,7 +118,7 @@ impl<'a> ByteView<'a> {
 
     /// Constructs a `ByteView` from an open file handle by memory mapping the file.
     ///
-    /// See [`ByteView::mmap_file`] for a non-consuming version of this constructor.
+    /// See [`ByteView::map_file_ref`] for a non-consuming version of this constructor.
     ///
     /// # Example
     ///
@@ -133,7 +133,7 @@ impl<'a> ByteView<'a> {
     /// }
     /// ```
     pub fn map_file(file: File) -> Result<Self, io::Error> {
-        Self::mmap_file(&file)
+        Self::map_file_ref(&file)
     }
 
     /// Constructs a `ByteView` from an open file handle by memory mapping the file.
@@ -149,11 +149,11 @@ impl<'a> ByteView<'a> {
     ///
     /// fn main() -> Result<(), std::io::Error> {
     ///     let mut file = tempfile::tempfile()?;
-    ///     let view = ByteView::mmap_file(&file)?;
+    ///     let view = ByteView::map_file_ref(&file)?;
     ///     Ok(())
     /// }
     /// ```
-    pub fn mmap_file(file: &File) -> Result<Self, io::Error> {
+    pub fn map_file_ref(file: &File) -> Result<Self, io::Error> {
         let backing = match unsafe { Mmap::map(file) } {
             Ok(mmap) => ByteViewBacking::Mmap(mmap),
             Err(err) => {
@@ -289,7 +289,7 @@ mod tests {
         let mut tmp = NamedTempFile::new()?;
         tmp.write_all(b"1234")?;
 
-        let view = ByteView::mmap_file(tmp.as_file())?;
+        let view = ByteView::map_file_ref(tmp.as_file())?;
 
         // This deletes the file on disk.
         let path = tmp.path().to_path_buf();
