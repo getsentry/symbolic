@@ -89,6 +89,7 @@ impl TryFromCtx<'_, usize> for Unreal4FileMeta {
 
     fn try_from_ctx(data: &[u8], file_offset: usize) -> Result<(Self, usize), Self::Error> {
         let mut offset = 0;
+
         let index = data.gread_with::<i32>(&mut offset, scroll::LE)? as usize;
         let file_name = data.gread_with(&mut offset, scroll::LE)?;
         let len = data.gread_with::<i32>(&mut offset, scroll::LE)? as usize;
@@ -107,6 +108,19 @@ impl TryFromCtx<'_, usize> for Unreal4FileMeta {
     }
 }
 
+fn gread_files(
+    bytes: &[u8],
+    count: usize,
+    offset: &mut usize,
+) -> Result<Vec<Unreal4FileMeta>, Unreal4Error> {
+    let mut files = Vec::with_capacity(count);
+    for _ in 0..count {
+        let file_offset = *offset;
+        files.push(bytes.gread_with(offset, file_offset)?);
+    }
+    Ok(files)
+}
+
 /// Unreal Engine 4 crash file.
 #[derive(Debug)]
 pub struct Unreal4Crash {
@@ -119,21 +133,32 @@ impl Unreal4Crash {
     fn from_bytes(bytes: Bytes) -> Result<Self, Unreal4Error> {
         let mut offset = 0;
 
-        // The header is repeated at the beginning and the end of the file. The first one is merely
-        // a placeholder, the second contains actual information. However, it's not possible to
-        // parse it right away, so we only read the file count and parse the rest progressively.
-        let file_count = bytes.pread_with::<i32>(bytes.len() - 4, scroll::LE)? as usize;
+        let (header, files) = if bytes.starts_with(b"CR1") {
+            // https://github.com/EpicGames/UnrealEngine/commit/a0471b76577a64e5c4dad89a38dfe7d9611a65ef
+            // The 'CR1' marker marks a new version of the file format. There is a single correct
+            // header at the start of the file. Start parsing after the 3 byte marker.
+            offset = 3;
 
-        // Ignore the initial header and use the one at the end of the file instead.
-        bytes.gread_with::<Unreal4Header>(&mut offset, scroll::LE)?;
+            let header = bytes.gread_with::<Unreal4Header>(&mut offset, scroll::LE)?;
+            let files = gread_files(&bytes, header.file_count as usize, &mut offset)?;
 
-        let mut files = Vec::with_capacity(file_count);
-        for _ in 0..file_count {
-            let file_offset = offset;
-            files.push(bytes.gread_with(&mut offset, file_offset)?);
-        }
+            (header, files)
+        } else {
+            // The header is repeated at the beginning and the end of the file. The first one is
+            // merely a placeholder, the second contains actual information. However, it's not
+            // possible to parse it right away, so we only read the file count and parse the rest
+            // progressively.
+            let file_count = bytes.pread_with::<i32>(bytes.len() - 4, scroll::LE)? as usize;
 
-        let header = bytes.gread_with(&mut offset, scroll::LE)?;
+            // Ignore the initial header and use the one at the end of the file instead.
+            bytes.gread_with::<Unreal4Header>(&mut offset, scroll::LE)?;
+
+            let files = gread_files(&bytes, file_count, &mut offset)?;
+            let header = bytes.gread_with(&mut offset, scroll::LE)?;
+
+            (header, files)
+        };
+
         if offset != bytes.len() {
             return Err(Unreal4ErrorKind::TrailingData.into());
         }
