@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Add `ByteView::map_file_ref` constructor which does not consume the `File` passed to it. ([#448](https://github.com/getsentry/symbolic/pull/448))
+
+**Fixes**:
+
+- Support Unreal Engine 5 crash reporter. ([#449](https://github.com/getsentry/symbolic/pull/449))
+
 ## 8.4.0
 
 **Features**:
