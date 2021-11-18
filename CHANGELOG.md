@@ -1,6 +1,42 @@
 # Changelog
 
-## Unreleased
+## 8.5.0
+
+**Features**:
+
+- Add `ByteView::map_file_ref` constructor which does not consume the `File` passed to it. ([#448](https://github.com/getsentry/symbolic/pull/448))
+
+**Fixes**:
+
+- Support Unreal Engine 5 crash reporter. ([#449](https://github.com/getsentry/symbolic/pull/449))
+
+## 8.4.0
+
+**Features**:
+
+- Add `Unreal4Crash::parse_with_limit` which allows specifying a maximum allocation size when extracting compressed UE4 crash archives. ([#447](https://github.com/getsentry/symbolic/pull/447))
+
+**Fixes**:
+
+- Apply speculative handling of stackless functions only on `amd64` when creating CFI caches. ([#445](https://github.com/getsentry/symbolic/pull/445))
+
+## 8.3.2
+
+**Features**:
+
+- Build and publish binary wheels for `arm64` / `aarch64` on macOS and Linux. ([#442](https://github.com/getsentry/symbolic/pull/442))
+
+**Fixes**:
+
+- Don’t prefix ARM registers with `$` for CFI files. ([#443](https://github.com/getsentry/symbolic/pull/443))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@Gankra](https://github.com/Gankra)
+
+## 8.3.1
 
 **Fixes**:
 

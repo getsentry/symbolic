@@ -20,9 +20,7 @@ macro_rules! assert_demangle {
             }
         })*
 
-        if !__failures.is_empty() {
-            panic!("demangling failed: \n\n{}\n", __failures.join("\n\n"));
-        }
+        assert!(__failures.is_empty(), "demangling failed: \n\n{}\n", __failures.join("\n\n"));
     }};
     ($l:expr, $o:expr, { $($m:expr => $d:expr,)* }) => {
         assert_demangle!($l, $o, { $($m => $d),* })

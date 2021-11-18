@@ -8,9 +8,7 @@ fn main() {
             .status()
             .expect("Failed to install git submodules");
 
-        if !status.success() {
-            panic!("Failed to install git submodules");
-        }
+        assert!(status.success(), "Failed to install git submodules");
     }
 
     cc::Build::new()

@@ -2,11 +2,12 @@
 #![warn(missing_docs)]
 
 use std::fmt;
+use std::io::Read;
 use std::iter::FusedIterator;
 use std::ops::Deref;
 
 use bytes::Bytes;
-use flate2::read::ZlibDecoder;
+use flate2::bufread::ZlibDecoder;
 use scroll::{ctx::TryFromCtx, Endian, Pread};
 
 use crate::context::Unreal4Context;
@@ -88,6 +89,7 @@ impl TryFromCtx<'_, usize> for Unreal4FileMeta {
 
     fn try_from_ctx(data: &[u8], file_offset: usize) -> Result<(Self, usize), Self::Error> {
         let mut offset = 0;
+
         let index = data.gread_with::<i32>(&mut offset, scroll::LE)? as usize;
         let file_name = data.gread_with(&mut offset, scroll::LE)?;
         let len = data.gread_with::<i32>(&mut offset, scroll::LE)? as usize;
@@ -106,6 +108,19 @@ impl TryFromCtx<'_, usize> for Unreal4FileMeta {
     }
 }
 
+fn gread_files(
+    bytes: &[u8],
+    count: usize,
+    offset: &mut usize,
+) -> Result<Vec<Unreal4FileMeta>, Unreal4Error> {
+    let mut files = Vec::with_capacity(count);
+    for _ in 0..count {
+        let file_offset = *offset;
+        files.push(bytes.gread_with(offset, file_offset)?);
+    }
+    Ok(files)
+}
+
 /// Unreal Engine 4 crash file.
 #[derive(Debug)]
 pub struct Unreal4Crash {
@@ -118,21 +133,32 @@ impl Unreal4Crash {
     fn from_bytes(bytes: Bytes) -> Result<Self, Unreal4Error> {
         let mut offset = 0;
 
-        // The header is repeated at the beginning and the end of the file. The first one is merely
-        // a placeholder, the second contains actual information. However, it's not possible to
-        // parse it right away, so we only read the file count and parse the rest progressively.
-        let file_count = bytes.pread_with::<i32>(bytes.len() - 4, scroll::LE)? as usize;
+        let (header, files) = if bytes.starts_with(b"CR1") {
+            // https://github.com/EpicGames/UnrealEngine/commit/a0471b76577a64e5c4dad89a38dfe7d9611a65ef
+            // The 'CR1' marker marks a new version of the file format. There is a single correct
+            // header at the start of the file. Start parsing after the 3 byte marker.
+            offset = 3;
 
-        // Ignore the initial header and use the one at the end of the file instead.
-        bytes.gread_with::<Unreal4Header>(&mut offset, scroll::LE)?;
+            let header = bytes.gread_with::<Unreal4Header>(&mut offset, scroll::LE)?;
+            let files = gread_files(&bytes, header.file_count as usize, &mut offset)?;
 
-        let mut files = Vec::with_capacity(file_count);
-        for _ in 0..file_count {
-            let file_offset = offset;
-            files.push(bytes.gread_with(&mut offset, file_offset)?);
-        }
+            (header, files)
+        } else {
+            // The header is repeated at the beginning and the end of the file. The first one is
+            // merely a placeholder, the second contains actual information. However, it's not
+            // possible to parse it right away, so we only read the file count and parse the rest
+            // progressively.
+            let file_count = bytes.pread_with::<i32>(bytes.len() - 4, scroll::LE)? as usize;
 
-        let header = bytes.gread_with(&mut offset, scroll::LE)?;
+            // Ignore the initial header and use the one at the end of the file instead.
+            bytes.gread_with::<Unreal4Header>(&mut offset, scroll::LE)?;
+
+            let files = gread_files(&bytes, file_count, &mut offset)?;
+            let header = bytes.gread_with(&mut offset, scroll::LE)?;
+
+            (header, files)
+        };
+
         if offset != bytes.len() {
             return Err(Unreal4ErrorKind::TrailingData.into());
         }
@@ -145,14 +171,35 @@ impl Unreal4Crash {
     }
 
     /// Parses a UE4 crash dump from the original, compressed data.
-    pub fn parse(bytes: &[u8]) -> Result<Self, Unreal4Error> {
-        if bytes.is_empty() {
+    ///
+    /// To prevent unbounded decompression, consider using
+    /// [`parse_with_limit`](Self::parse_with_limit) with an explicit limit, instead.
+    pub fn parse(slice: &[u8]) -> Result<Self, Unreal4Error> {
+        Self::parse_with_limit(slice, usize::MAX)
+    }
+
+    /// Parses a UE4 crash dump from the original, compressed data up to a maximum size limit.
+    ///
+    /// If files contained within the UE4 crash exceed the given size `limit`, this function returns
+    /// `Err` with [`Unreal4ErrorKind::TooLarge`].
+    pub fn parse_with_limit(slice: &[u8], limit: usize) -> Result<Self, Unreal4Error> {
+        if slice.is_empty() {
             return Err(Unreal4ErrorKind::Empty.into());
         }
 
         let mut decompressed = Vec::new();
-        std::io::copy(&mut ZlibDecoder::new(bytes), &mut decompressed)
+        let decoder = &mut ZlibDecoder::new(slice);
+
+        decoder
+            .take(limit as u64)
+            .read_to_end(&mut decompressed)
             .map_err(|e| Unreal4Error::new(Unreal4ErrorKind::BadCompression, e))?;
+
+        // The decoder was not exhausted if there's still a byte to read. Given that we're decoding
+        // from a slice, it should be safe to ignore `ErrorKind::Interrupted` and the likes.
+        if !matches!(decoder.read(&mut [0; 1]), Ok(0)) {
+            return Err(Unreal4ErrorKind::TooLarge.into());
+        }
 
         Self::from_bytes(decompressed.into())
     }
@@ -354,8 +401,10 @@ impl ExactSizeIterator for Unreal4FileIterator<'_> {}
 
 #[cfg(test)]
 mod tests {
+    use std::{error::Error, fs::File};
+    use symbolic_testutils::fixture;
+
     use super::*;
-    use std::error::Error;
 
     #[test]
     fn test_parse_empty_buffer() {
@@ -379,5 +428,29 @@ mod tests {
 
         let source = error.source().expect("error source");
         assert_eq!(source.to_string(), "corrupt deflate stream");
+    }
+
+    // The size of the unreal_crash fixture when decompressed.
+    const DECOMPRESSED_SIZE: usize = 440752;
+
+    #[test]
+    fn test_parse_too_large() {
+        let mut file = File::open(fixture("unreal/unreal_crash")).expect("example file opens");
+        let mut file_content = Vec::new();
+        file.read_to_end(&mut file_content).expect("fixture file");
+
+        let result = Unreal4Crash::parse_with_limit(&file_content, DECOMPRESSED_SIZE - 1);
+        let error = result.expect_err("too large");
+        assert_eq!(error.kind(), Unreal4ErrorKind::TooLarge);
+    }
+
+    #[test]
+    fn test_parse_fits_exact() {
+        let mut file = File::open(fixture("unreal/unreal_crash")).expect("example file opens");
+        let mut file_content = Vec::new();
+        file.read_to_end(&mut file_content).expect("fixture file");
+
+        Unreal4Crash::parse_with_limit(&file_content, DECOMPRESSED_SIZE)
+            .expect("file fits decompression buffer");
     }
 }

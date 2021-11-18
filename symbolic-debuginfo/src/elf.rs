@@ -351,7 +351,7 @@ impl<'data> ElfObject<'data> {
     pub fn code_id(&self) -> Option<CodeId> {
         self.find_build_id()
             .filter(|slice| !slice.is_empty())
-            .map(|slice| CodeId::from_binary(slice))
+            .map(CodeId::from_binary)
     }
 
     /// The binary's soname, if any.

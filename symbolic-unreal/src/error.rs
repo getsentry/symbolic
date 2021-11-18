@@ -19,6 +19,9 @@ pub enum Unreal4ErrorKind {
     /// The crash file contains unexpected trailing data after the footer.
     TrailingData,
 
+    /// The crash file contents are too large during decompression.
+    TooLarge,
+
     /// Can't process a log entry.
     InvalidLogEntry,
 
@@ -33,6 +36,7 @@ impl fmt::Display for Unreal4ErrorKind {
             Self::BadCompression => write!(f, "bad compression"),
             Self::BadData => write!(f, "invalid crash file contents"),
             Self::TrailingData => write!(f, "unexpected trailing data"),
+            Self::TooLarge => write!(f, "crash file contents are too large"),
             Self::InvalidLogEntry => write!(f, "invalid log entry"),
             Self::InvalidXml => write!(f, "invalid xml"),
         }

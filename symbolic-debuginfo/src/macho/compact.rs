@@ -1520,18 +1520,18 @@ impl Opcode {
                 let mut ops = CompactCfiOpIter::new();
 
                 ops.push(CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::frame_pointer(),
                     offset_from_src: 2 * pointer_size,
                 });
                 ops.push(CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::frame_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 });
                 ops.push(CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 });
 
@@ -1547,7 +1547,7 @@ impl Opcode {
                     if let Some(reg) = *reg {
                         ops.push(CompactCfiOp::RegisterAt {
                             dest_reg: reg,
-                            src_reg: CompactCfiRegister::Cfa,
+                            src_reg: CompactCfiRegister::cfa(),
                             offset_from_src: -(offset - i as i32) * pointer_size,
                         });
                     }
@@ -1564,13 +1564,13 @@ impl Opcode {
 
                 let stack_size = self.x86_frameless_stack_size();
                 ops.push(CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::stack_pointer(),
                     offset_from_src: stack_size as i32 * pointer_size,
                 });
                 ops.push(CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 });
 
@@ -1581,7 +1581,7 @@ impl Opcode {
                     if let Some(reg) = *reg {
                         ops.push(CompactCfiOp::RegisterAt {
                             dest_reg: reg,
-                            src_reg: CompactCfiRegister::Cfa,
+                            src_reg: CompactCfiRegister::cfa(),
                             offset_from_src: -offset * pointer_size,
                         });
                         offset += 1;
@@ -1788,7 +1788,7 @@ impl Opcode {
                 let mut ops = CompactCfiOpIter::new();
 
                 ops.push(CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::stack_pointer(),
                     offset_from_src: stack_size as i32,
                 });
@@ -1812,18 +1812,18 @@ impl Opcode {
                 // pushed as a pair onto the stack, and then the frame
                 // pointer is updated to be the current stack pointer.
                 ops.push(CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::frame_pointer(),
                     offset_from_src: 2 * pointer_size,
                 });
                 ops.push(CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::frame_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 });
                 ops.push(CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 });
 
@@ -1846,12 +1846,12 @@ impl Opcode {
 
                         ops.push(CompactCfiOp::RegisterAt {
                             dest_reg: CompactCfiRegister::from_arm64_encoded(first_reg),
-                            src_reg: CompactCfiRegister::Cfa,
+                            src_reg: CompactCfiRegister::cfa(),
                             offset_from_src: (-2 * pairs_saved - 3) * pointer_size,
                         });
                         ops.push(CompactCfiOp::RegisterAt {
                             dest_reg: CompactCfiRegister::from_arm64_encoded(second_reg),
-                            src_reg: CompactCfiRegister::Cfa,
+                            src_reg: CompactCfiRegister::cfa(),
                             offset_from_src: (-2 * pairs_saved - 4) * pointer_size,
                         });
                         pairs_saved += 1;
@@ -1884,25 +1884,21 @@ const REG_FRAME: u8 = 6;
 const ARM64_REG_BASE: u32 = REG_FRAME as u32 + 1;
 // These registers aren't ever encoded explicitly, so we make
 // up some arbitrary values for reporting them in our outputs.
-const REG_LINK: u8 = 253;
-const REG_INSTRUCTION: u8 = 254;
-const REG_STACK: u8 = 255;
+const REG_LINK: u8 = 252;
+const REG_INSTRUCTION: u8 = 253;
+const REG_STACK: u8 = 254;
+const REG_CFA: u8 = 255;
 
 /// A register for a [`CompactCfiOp`], as used by Compact Unwinding.
 ///
 /// You should just treat this opaquely and use its methods to make sense of it.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum CompactCfiRegister {
-    /// The CFA register (Canonical Frame Address) -- the frame pointer (e.g. rbp)
-    Cfa,
-    /// Any other register, restricted to those referenced by Compact Unwinding.
-    Other(u8),
-}
+pub struct CompactCfiRegister(u8);
 
 impl CompactCfiRegister {
     fn from_x86_encoded(val: u32) -> Option<Self> {
         if (1..=6).contains(&val) {
-            Some(CompactCfiRegister::Other(val as u8))
+            Some(CompactCfiRegister(val as u8))
         } else {
             None
         }
@@ -1912,40 +1908,45 @@ impl CompactCfiRegister {
         // Assert shouldn't happen as we're processing trusted input here, but
         // good to validate this in tests.
         debug_assert!((ARM64_REG_BASE..ARM64_REG_BASE + 18).contains(&val));
-        CompactCfiRegister::Other(val as u8)
+        CompactCfiRegister(val as u8)
     }
 
     /// Whether this register is the cfa register.
     pub fn is_cfa(&self) -> bool {
-        matches!(*self, CompactCfiRegister::Cfa)
+        self.0 == REG_CFA
     }
 
     /// The name of this register that cfi wants.
     pub fn name(&self, iter: &CompactUnwindInfoIter) -> Option<&'static str> {
-        match self {
-            CompactCfiRegister::Cfa => Some("cfa"),
-            CompactCfiRegister::Other(other) => name_of_other_reg(*other, iter),
+        match self.0 {
+            REG_CFA => Some("cfa"),
+            other => name_of_other_reg(other, iter),
         }
+    }
+
+    /// Gets the CFA register (Canonical Frame Address) -- the frame pointer (e.g. rbp)
+    pub fn cfa() -> Self {
+        Self(REG_CFA)
     }
 
     /// Gets the register for the frame pointer (e.g. rbp).
     pub fn frame_pointer() -> Self {
-        CompactCfiRegister::Other(REG_FRAME)
+        CompactCfiRegister(REG_FRAME)
     }
 
     /// Gets the register for the instruction pointer (e.g. rip).
     pub fn instruction_pointer() -> Self {
-        CompactCfiRegister::Other(REG_INSTRUCTION)
+        CompactCfiRegister(REG_INSTRUCTION)
     }
 
     /// Gets the register for the stack pointer (e.g. rsp).
     pub fn stack_pointer() -> Self {
-        CompactCfiRegister::Other(REG_STACK)
+        CompactCfiRegister(REG_STACK)
     }
 
     /// Get the ARM64 link register (x30).
     pub fn link_register() -> Self {
-        CompactCfiRegister::Other(REG_LINK)
+        CompactCfiRegister(REG_LINK)
     }
 }
 
@@ -2509,18 +2510,18 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::frame_pointer(),
                     offset_from_src: 2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::frame_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
             ];
@@ -2541,23 +2542,23 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::frame_pointer(),
                     offset_from_src: 2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::frame_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(1).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2) * pointer_size,
                 },
             ];
@@ -2578,43 +2579,43 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::frame_pointer(),
                     offset_from_src: 2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::frame_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(3).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2 - 1) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(4).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2 - 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(5).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2 - 3) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2 - 4) * pointer_size,
                 },
             ];
@@ -2635,33 +2636,33 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::frame_pointer(),
                     offset_from_src: 2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::frame_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(4).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2 - 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2 - 4) * pointer_size,
                 },
             ];
@@ -2688,13 +2689,13 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::stack_pointer(),
                     offset_from_src: stack_size * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
             ];
@@ -2719,18 +2720,18 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::stack_pointer(),
                     offset_from_src: stack_size * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(1).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
             ];
@@ -2755,43 +2756,43 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::stack_pointer(),
                     offset_from_src: stack_size * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(5).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -3 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(4).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -4 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(3).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -5 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -6 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(1).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -7 * pointer_size,
                 },
             ];
@@ -2816,28 +2817,28 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::stack_pointer(),
                     offset_from_src: stack_size * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(4).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -3 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -4 * pointer_size,
                 },
             ];
@@ -2899,18 +2900,18 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::frame_pointer(),
                     offset_from_src: 2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::frame_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
             ];
@@ -2931,23 +2932,23 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::frame_pointer(),
                     offset_from_src: 2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::frame_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(1).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2) * pointer_size,
                 },
             ];
@@ -2968,43 +2969,43 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::frame_pointer(),
                     offset_from_src: 2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::frame_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(3).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2 - 1) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(4).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2 - 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(5).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2 - 3) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2 - 4) * pointer_size,
                 },
             ];
@@ -3025,33 +3026,33 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::frame_pointer(),
                     offset_from_src: 2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::frame_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(4).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2 - 2) * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -(stack_size + 2 - 4) * pointer_size,
                 },
             ];
@@ -3078,13 +3079,13 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::stack_pointer(),
                     offset_from_src: stack_size * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
             ];
@@ -3109,18 +3110,18 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::stack_pointer(),
                     offset_from_src: stack_size * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(1).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
             ];
@@ -3145,43 +3146,43 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::stack_pointer(),
                     offset_from_src: stack_size * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(5).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -3 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(4).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -4 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(3).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -5 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -6 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(1).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -7 * pointer_size,
                 },
             ];
@@ -3206,28 +3207,28 @@ mod test {
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::stack_pointer(),
                     offset_from_src: stack_size * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(6).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(4).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -3 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_x86_encoded(2).unwrap(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -4 * pointer_size,
                 },
             ];
@@ -3283,18 +3284,18 @@ mod test {
             let opcode = Opcode(ARM64_MODE_FRAME | registers);
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::frame_pointer(),
                     offset_from_src: 2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::frame_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
             ];
@@ -3310,28 +3311,28 @@ mod test {
             let opcode = Opcode(ARM64_MODE_FRAME | registers);
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::frame_pointer(),
                     offset_from_src: 2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::frame_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 12),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -3 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 13),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -4 * pointer_size,
                 },
             ];
@@ -3347,108 +3348,108 @@ mod test {
             let opcode = Opcode(ARM64_MODE_FRAME | registers);
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::frame_pointer(),
                     offset_from_src: 2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::frame_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -3 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 1),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -4 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 2),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -5 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 3),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -6 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 4),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -7 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 5),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -8 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 6),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -9 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 7),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -10 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 8),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -11 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 9),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -12 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 10),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -13 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 11),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -14 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 12),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -15 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 13),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -16 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 14),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -17 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 15),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -18 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 16),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -19 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 17),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -20 * pointer_size,
                 },
             ];
@@ -3464,68 +3465,68 @@ mod test {
             let opcode = Opcode(ARM64_MODE_FRAME | registers);
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::frame_pointer(),
                     offset_from_src: 2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::frame_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -2 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::instruction_pointer(),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -3 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 1),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -4 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 4),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -5 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 5),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -6 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 8),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -7 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 9),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -8 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 12),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -9 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 13),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -10 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 16),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -11 * pointer_size,
                 },
                 CompactCfiOp::RegisterAt {
                     dest_reg: CompactCfiRegister::from_arm64_encoded(ARM64_REG_BASE + 17),
-                    src_reg: CompactCfiRegister::Cfa,
+                    src_reg: CompactCfiRegister::cfa(),
                     offset_from_src: -12 * pointer_size,
                 },
             ];
@@ -3543,7 +3544,7 @@ mod test {
             let opcode = Opcode(ARM64_MODE_FRAMELESS | packed_stack_size);
             let expected = vec![
                 CompactCfiOp::RegisterIs {
-                    dest_reg: CompactCfiRegister::Cfa,
+                    dest_reg: CompactCfiRegister::cfa(),
                     src_reg: CompactCfiRegister::stack_pointer(),
                     offset_from_src: stack_size as i32 * 16,
                 },
@@ -3576,7 +3577,7 @@ mod test {
             // ARM64 register names
             let iter = CompactUnwindInfoIter::new(&section, true, Arch::Arm64)?;
 
-            assert_eq!(CompactCfiRegister::Cfa.name(&iter), Some("cfa"));
+            assert_eq!(CompactCfiRegister::cfa().name(&iter), Some("cfa"));
             assert_eq!(CompactCfiRegister::stack_pointer().name(&iter), Some("sp"));
             assert_eq!(
                 CompactCfiRegister::instruction_pointer().name(&iter),
@@ -3590,7 +3591,7 @@ mod test {
             // x86 register names
             let iter = CompactUnwindInfoIter::new(&section, true, Arch::X86)?;
 
-            assert_eq!(CompactCfiRegister::Cfa.name(&iter), Some("cfa"));
+            assert_eq!(CompactCfiRegister::cfa().name(&iter), Some("cfa"));
             assert_eq!(CompactCfiRegister::stack_pointer().name(&iter), Some("esp"));
             assert_eq!(
                 CompactCfiRegister::instruction_pointer().name(&iter),
@@ -3603,7 +3604,7 @@ mod test {
             // x64 register names
             let iter = CompactUnwindInfoIter::new(&section, true, Arch::Amd64)?;
 
-            assert_eq!(CompactCfiRegister::Cfa.name(&iter), Some("cfa"));
+            assert_eq!(CompactCfiRegister::cfa().name(&iter), Some("cfa"));
             assert_eq!(CompactCfiRegister::stack_pointer().name(&iter), Some("rsp"));
             assert_eq!(
                 CompactCfiRegister::instruction_pointer().name(&iter),

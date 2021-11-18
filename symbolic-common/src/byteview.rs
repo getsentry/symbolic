@@ -118,6 +118,8 @@ impl<'a> ByteView<'a> {
 
     /// Constructs a `ByteView` from an open file handle by memory mapping the file.
     ///
+    /// See [`ByteView::map_file_ref`] for a non-consuming version of this constructor.
+    ///
     /// # Example
     ///
     /// ```
@@ -131,7 +133,28 @@ impl<'a> ByteView<'a> {
     /// }
     /// ```
     pub fn map_file(file: File) -> Result<Self, io::Error> {
-        let backing = match unsafe { Mmap::map(&file) } {
+        Self::map_file_ref(&file)
+    }
+
+    /// Constructs a `ByteView` from an open file handle by memory mapping the file.
+    ///
+    /// The main difference with [`ByteView::map_file`] is that this takes the [`File`] by
+    /// reference rather than consuming it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::io::Write;
+    /// use symbolic_common::ByteView;
+    ///
+    /// fn main() -> Result<(), std::io::Error> {
+    ///     let mut file = tempfile::tempfile()?;
+    ///     let view = ByteView::map_file_ref(&file)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn map_file_ref(file: &File) -> Result<Self, io::Error> {
+        let backing = match unsafe { Mmap::map(file) } {
             Ok(mmap) => ByteViewBacking::Mmap(mmap),
             Err(err) => {
                 // this is raised on empty mmaps which we want to ignore. The 1006 Windows error
@@ -234,7 +257,7 @@ unsafe impl StableDeref for ByteView<'_> {}
 mod tests {
     use super::*;
 
-    use std::io::Write;
+    use std::io::{Read, Seek, Write};
 
     use similar_asserts::assert_eq;
     use tempfile::NamedTempFile;
@@ -256,6 +279,31 @@ mod tests {
         tmp.write_all(b"1234")?;
 
         let view = ByteView::open(&tmp.path())?;
+        assert_eq!(&*view, b"1234");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_mmap_fd_reuse() -> Result<(), std::io::Error> {
+        let mut tmp = NamedTempFile::new()?;
+        tmp.write_all(b"1234")?;
+
+        let view = ByteView::map_file_ref(tmp.as_file())?;
+
+        // This deletes the file on disk.
+        let path = tmp.path().to_path_buf();
+        let mut file = tmp.into_file();
+        assert!(!path.exists());
+
+        // Ensure we can still read from the the file after mmapping and deleting it on disk.
+        let mut buf = Vec::new();
+        file.rewind()?;
+        file.read_to_end(&mut buf)?;
+        assert_eq!(buf, b"1234");
+        drop(file);
+
+        // Ensure the byteview can still read the file as well.
         assert_eq!(&*view, b"1234");
 
         Ok(())
