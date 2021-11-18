@@ -1,7 +1,10 @@
 //! Support for the Executable and Linkable Format, used on Linux.
 
 use std::borrow::Cow;
+use std::cell::Cell;
+use std::convert::TryInto;
 use std::error::Error;
+use std::ffi::CStr;
 use std::fmt;
 use std::io::Cursor;
 
@@ -15,6 +18,7 @@ use goblin::{
     container::{Container, Ctx},
     elf, strtab,
 };
+use nom::InputTakeAtPosition;
 use scroll::Pread;
 use thiserror::Error;
 
@@ -352,6 +356,22 @@ impl<'data> ElfObject<'data> {
         self.find_build_id()
             .filter(|slice| !slice.is_empty())
             .map(CodeId::from_binary)
+    }
+
+    /// The debug link of this object.
+    ///
+    /// The debug link is an alternative to the build id for specifying the location
+    /// of an ELF's debugging information. It refers to a filename that can be used
+    /// to build various debug paths where debuggers can look for the debug files.
+    ///
+    /// # Errors
+    ///
+    /// - None if there is no gnu_debuglink section
+    /// - DebugLinkError if this section exists, but is malformed
+    pub fn debug_link(&self) -> Result<Option<DebugLink>, DebugLinkError> {
+        self.section("gnu_debuglink")
+            .map(|section| DebugLink::from_data(section.data, self.endianity()))
+            .transpose()
     }
 
     /// The binary's soname, if any.
@@ -880,4 +900,135 @@ impl<'data, 'object> Iterator for ElfSymbolIterator<'data, 'object> {
             )
         })
     }
+}
+
+/// Parsed debug link section.
+#[derive(Debug)]
+pub struct DebugLink<'data> {
+    filename: Cow<'data, CStr>,
+    crc: u32,
+}
+
+impl<'data> DebugLink<'data> {
+    /// Attempts to parse a debug link section from its data.
+    ///
+    /// The expected format for the section is:
+    ///
+    /// - A filename, with any leading directory components removed, followed by a zero byte,
+    /// - zero to three bytes of padding, as needed to reach the next four-byte boundary within the section, and
+    /// - a four-byte CRC checksum, stored in the same endianness used for the executable file itself.
+    /// (from <https://sourceware.org/gdb/current/onlinedocs/gdb/Separate-Debug-Files.html#index-_002egnu_005fdebuglink-sections>)
+    ///
+    /// # Errors
+    ///
+    /// If the section data is malformed, in particular:
+    /// - No NUL byte delimiting the filename from the CRC
+    /// - Not enough space for the CRC checksum
+    pub fn from_data(
+        data: Cow<'data, [u8]>,
+        endianity: Endian,
+    ) -> Result<Self, DebugLinkError<'data>> {
+        match data {
+            Cow::Owned(data) => {
+                let (filename, crc) = Self::from_borrowed_data(&data, endianity)
+                    .map(|(filename, crc)| (filename.to_owned(), crc))
+                    .map_err(|kind| DebugLinkError {
+                        kind,
+                        data: Cow::Owned(data),
+                    })?;
+                Ok(Self {
+                    filename: Cow::Owned(filename),
+                    crc,
+                })
+            }
+            Cow::Borrowed(data) => {
+                let (filename, crc) =
+                    Self::from_borrowed_data(data, endianity).map_err(|kind| DebugLinkError {
+                        kind,
+                        data: Cow::Borrowed(data),
+                    })?;
+                Ok(Self {
+                    filename: Cow::Borrowed(filename),
+                    crc,
+                })
+            }
+        }
+    }
+
+    fn from_borrowed_data(
+        data: &[u8],
+        endianity: Endian,
+    ) -> Result<(&CStr, u32), DebugLinkErrorKind> {
+        // split_at_position is not inclusive, so does not contain the NUL:
+        // use a cell to remember the last character that was seen, then exit only on the next character (the NUL).
+        // This is OK because we have another character after the NUL (CRC or padding).
+        let last_seen: Cell<Option<u8>> = Cell::new(None);
+        let (crc, filename) = data
+            .split_at_position(|c| {
+                let c = last_seen.replace(Some(c));
+                if let Some(c) = c {
+                    c == b'\0'
+                } else {
+                    false
+                }
+            })
+            .map_err(|_: nom::Err<()>| DebugLinkErrorKind::MissingNul)?;
+
+        // let's be liberal and assume that the padding is correct and all 0s,
+        // and just check that we have enough remaining length for the CRC.
+        let crc = crc
+            .get(crc.len() - 4..)
+            .ok_or_else(|| DebugLinkErrorKind::MissingCrc {
+                filename_len_with_nul: filename.len(),
+            })?;
+
+        let crc: [u8; 4] = crc.try_into().map_err(|_| DebugLinkErrorKind::MissingCrc {
+            filename_len_with_nul: filename.len(),
+        })?;
+
+        let crc = match endianity {
+            Endian::Little => u32::from_le_bytes(crc),
+            Endian::Big => u32::from_be_bytes(crc),
+        };
+
+        let filename =
+            CStr::from_bytes_with_nul(filename).map_err(|_| DebugLinkErrorKind::MissingNul)?;
+
+        Ok((filename, crc))
+    }
+
+    /// The debug link filename
+    pub fn filename(&self) -> &CStr {
+        &self.filename
+    }
+
+    /// The CRC checksum associated with the debug link file
+    pub fn crc(&self) -> u32 {
+        self.crc
+    }
+}
+
+/// Kind of errors that can occur while parsing a debug link section.
+#[derive(Debug, Error)]
+pub enum DebugLinkErrorKind {
+    /// No NUL byte delimiting the filename from the CRC
+    #[error("missing NUL character")]
+    MissingNul,
+    /// Not enough space in the section data for the CRC checksum
+    #[error("missing CRC")]
+    MissingCrc {
+        /// Size of the filename part of the section including the NUL character
+        filename_len_with_nul: usize,
+    },
+}
+
+/// Errors that can occur while parsing a debug link section.
+#[derive(Debug, Error)]
+#[error("could not parse debug link section")]
+pub struct DebugLinkError<'data> {
+    #[source]
+    /// The kind of error that occurred.
+    pub kind: DebugLinkErrorKind,
+    /// The original data of the debug section.
+    pub data: Cow<'data, [u8]>,
 }
