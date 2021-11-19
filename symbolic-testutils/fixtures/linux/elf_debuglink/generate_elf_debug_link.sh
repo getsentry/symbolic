@@ -5,7 +5,7 @@
 
 # Pre-requisites:
 #
-# - a C compiler
+# - gcc
 # - eu-elfcompress (elfutils)
 # - objcopy (GNU Binary Utilities)
 # - crc32 (perl-archive-zip)
@@ -18,7 +18,7 @@ mkdir -p $OUTPUT
 cd $OUTPUT
 
 # 1. compile our C example. To keep size low, let's compile the simplest program we can write.
-cc -x c -Os -o elf_without_debuglink - << EOF
+gcc -x c -Os -o elf_without_debuglink - << EOF
 int main() {
     return 0;
 }
@@ -45,4 +45,5 @@ cp debug_info{,123}.txt && objcopy --add-gnu-debuglink=debug_info123.txt elf_{wi
 # 6. To test the "Owned" case, let's make a copy of the ELF with a compressed section
 eu-elfcompress -v --force --name ".gnu_debuglink" -t zlib -o elf_with{_compressed,}_debuglink
 
-# 7. All done!
+# 7. Remove debug info files that aren't actually needed by the tests
+rm *.txt
