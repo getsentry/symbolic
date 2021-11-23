@@ -491,6 +491,12 @@ impl DSymPathExt for Path {
         full_path.push("Contents/Resources/DWARF");
         full_path.push(framework);
 
+        // XCode produces [appName].app.dSYM files where the debug file's name is just [appName],
+        // so strip .app if it's present.
+        if matches!(full_path.extension(), Some(extension) if extension == "app") {
+            full_path = full_path.with_extension("")
+        }
+
         if full_path.is_file() {
             Some(full_path)
         } else {
@@ -713,6 +719,19 @@ mod tests {
         assert!(resolved.ends_with("macos/crash.dSYM/Contents/Resources/DWARF/crash"));
 
         let other_path = fixture("macos/other.dSYM");
+        assert_eq!(other_path.resolve_dsym(), None);
+    }
+
+    // XCode and other tools (e.g. dwarfdump) produce a dSYM that includes the .app
+    // suffix, which needs to be stripped.
+    #[test]
+    fn test_resolve_dsym_double_extension() {
+        let crash_path = fixture("macos/crash.app.dSYM");
+        let resolved = crash_path.resolve_dsym().unwrap();
+        assert!(resolved.exists());
+        assert!(resolved.ends_with("macos/crash.app.dSYM/Contents/Resources/DWARF/crash"));
+
+        let other_path = fixture("macos/other.dmp.dSYM");
         assert_eq!(other_path.resolve_dsym(), None);
     }
 
