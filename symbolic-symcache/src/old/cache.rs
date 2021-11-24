@@ -2,8 +2,8 @@ use std::fmt;
 
 use symbolic_common::{Arch, AsSelf, DebugId, Language, Name, NameMangling};
 
-use crate::error::SymCacheError;
 use crate::format;
+use crate::SymCacheError;
 
 /// A platform independent symbolication cache.
 ///
