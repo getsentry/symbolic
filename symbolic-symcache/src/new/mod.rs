@@ -1,14 +1,19 @@
 //! The SymCache binary format.
 //!
 //!
+
 use std::{mem, ptr};
 
+use symbolic_common::{Arch, DebugId};
+
+mod compat;
 mod error;
-//mod lookup;
+mod lookup;
 pub(crate) mod raw;
 
+pub use compat::*;
 pub use error::Error;
-//pub use lookup::*;
+pub use lookup::*;
 use raw::align_to_eight;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -150,5 +155,15 @@ impl<'data> SymCache<'data> {
     /// The version of the SymCache file format.
     pub fn version(&self) -> u32 {
         self.header.version
+    }
+
+    /// The architecture of the symbol file.
+    pub fn arch(&self) -> Arch {
+        self.header.arch
+    }
+
+    /// The debug identifier of the cache file.
+    pub fn debug_id(&self) -> DebugId {
+        self.header.debug_id
     }
 }

@@ -56,7 +56,7 @@ pub struct Function {
     /// The first address covered by this function.
     pub entry_pc: u32,
     /// The language of the function.
-    pub lang: u8,
+    pub lang: u32,
 }
 
 /// Serialized File in the SymCache.

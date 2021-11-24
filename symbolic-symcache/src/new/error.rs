@@ -21,7 +21,7 @@ pub enum Error {
     #[error("wrong format magic")]
     WrongFormat,
     /// The format version in the header is wrong/unknown.
-    #[error("unknown symcache version")]
+    #[error("unknown SymCache version")]
     WrongVersion,
     /// The self-advertised size of the buffer is not correct.
     #[error("incorrect buffer length")]
