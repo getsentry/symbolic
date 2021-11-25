@@ -44,14 +44,13 @@ impl<'data> SymCache<'data> {
     }
 
     pub(crate) fn get_function(&self, function_idx: u32) -> Option<Function<'data>> {
-        self.functions
-            .get(function_idx as usize)
-            .map(|function| Function {
-                name: self.get_string(function.name_idx),
-                comp_dir: self.get_string(function.comp_dir_idx),
-                entry_pc: function.entry_pc,
-                language: Language::from_u32(function.lang),
-            })
+        let raw_function = self.functions.get(function_idx as usize)?;
+        Some(Function {
+            name: self.get_string(raw_function.name_idx),
+            comp_dir: self.get_string(raw_function.comp_dir_idx),
+            entry_pc: raw_function.entry_pc,
+            language: Language::from_u32(raw_function.lang),
+        })
     }
 }
 
