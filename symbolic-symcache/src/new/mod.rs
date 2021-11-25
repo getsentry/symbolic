@@ -9,6 +9,7 @@ mod compat;
 mod error;
 mod lookup;
 pub(crate) mod raw;
+mod writer;
 
 pub use compat::*;
 pub use error::Error;
