@@ -54,7 +54,7 @@ pub struct FunctionIter<'data, 'cache> {
 }
 
 impl<'data, 'cache> Iterator for FunctionIter<'data, 'cache> {
-    type Item = Function<'data, 'cache>;
+    type Item = Function<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.cache.get_function(self.function_idx).map(|file| {
