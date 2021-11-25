@@ -28,6 +28,7 @@ fnv = "1.0.6"
 symbolic-common = { version = "8.5.0", path = "../symbolic-common" }
 symbolic-debuginfo = { version = "8.5.0", path = "../symbolic-debuginfo" }
 thiserror = "1.0.20"
+indexmap = "1.7.0"
 
 [dev-dependencies]
 insta = "1.3.0"
