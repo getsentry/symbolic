@@ -53,6 +53,8 @@ pub struct Header {
 pub struct Function {
     /// The functions name (reference to a [`String`]).
     pub name_idx: u32,
+    /// The compilation directory (reference to a [`String`]).
+    pub comp_dir_idx: u32,
     /// The first address covered by this function.
     pub entry_pc: u32,
     /// The language of the function.
@@ -132,7 +134,7 @@ mod tests {
         assert_eq!(mem::size_of::<Header>(), 80);
         assert_eq!(mem::align_of::<Header>(), 8);
 
-        assert_eq!(mem::size_of::<Function>(), 12);
+        assert_eq!(mem::size_of::<Function>(), 16);
         assert_eq!(mem::align_of::<Function>(), 4);
 
         assert_eq!(mem::size_of::<File>(), 12);

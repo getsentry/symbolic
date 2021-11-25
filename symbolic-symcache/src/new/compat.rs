@@ -37,19 +37,13 @@ pub struct FileIter<'data, 'cache> {
 }
 
 impl<'data, 'cache> Iterator for FileIter<'data, 'cache> {
-    type Item = File<'data, 'cache>;
+    type Item = File<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.cache
-            .files
-            .get(self.file_idx as usize)
-            .map(|raw_file| {
-                self.file_idx += 1;
-                File {
-                    cache: self.cache,
-                    file: raw_file,
-                }
-            })
+        self.cache.get_file(self.file_idx).map(|file| {
+            self.file_idx += 1;
+            file
+        })
     }
 }
 
@@ -60,18 +54,12 @@ pub struct FunctionIter<'data, 'cache> {
 }
 
 impl<'data, 'cache> Iterator for FunctionIter<'data, 'cache> {
-    type Item = Function<'data, 'cache>;
+    type Item = Function<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.cache
-            .functions
-            .get(self.function_idx as usize)
-            .map(|raw_function| {
-                self.function_idx += 1;
-                Function {
-                    cache: self.cache,
-                    function: raw_function,
-                }
-            })
+        self.cache.get_function(self.function_idx).map(|file| {
+            self.function_idx += 1;
+            file
+        })
     }
 }

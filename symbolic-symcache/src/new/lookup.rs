@@ -34,13 +34,23 @@ impl<'data> SymCache<'data> {
         }
     }
 
-    fn get_file(&self, file_idx: u32) -> Option<File<'data, '_>> {
-        if file_idx == u32::MAX {
-            return None;
-        }
-        self.files
-            .get(file_idx as usize)
-            .map(|file| File { cache: self, file })
+    pub(crate) fn get_file(&self, file_idx: u32) -> Option<File<'data>> {
+        let raw_file = self.files.get(file_idx as usize)?;
+        Some(File {
+            comp_dir: self.get_string(raw_file.comp_dir_idx),
+            directory: self.get_string(raw_file.directory_idx),
+            path_name: self.get_string(raw_file.path_name_idx).unwrap(),
+        })
+    }
+
+    pub(crate) fn get_function(&self, function_idx: u32) -> Option<Function<'data>> {
+        let raw_function = self.functions.get(function_idx as usize)?;
+        Some(Function {
+            name: self.get_string(raw_function.name_idx),
+            comp_dir: self.get_string(raw_function.comp_dir_idx),
+            entry_pc: raw_function.entry_pc,
+            language: Language::from_u32(raw_function.lang),
+        })
     }
 }
 
@@ -64,25 +74,29 @@ impl<'data> SymCache<'data> {
 ///   - directory: /usr/include/
 ///   - path_name: pthread.h
 #[derive(Debug, Clone)]
-pub struct File<'data, 'cache> {
-    pub(crate) cache: &'cache SymCache<'data>,
-    pub(crate) file: &'data raw::File,
+pub struct File<'data> {
+    /// The optional compilation directory prefix.
+    pub comp_dir: Option<&'data str>,
+    /// The optional directory prefix.
+    pub directory: Option<&'data str>,
+    /// The file path.
+    pub path_name: &'data str,
 }
 
-impl<'data, 'cache> File<'data, 'cache> {
+impl<'data> File<'data> {
     /// Resolves the compilation directory of this source file.
     pub fn comp_dir(&self) -> Option<&'data str> {
-        self.cache.get_string(self.file.comp_dir_idx)
+        self.comp_dir
     }
 
     /// Resolves the parent directory of this source file.
     pub fn directory(&self) -> Option<&'data str> {
-        self.cache.get_string(self.file.directory_idx)
+        self.directory
     }
 
     /// Resolves the final path name fragment of this source file.
     pub fn path_name(&self) -> &'data str {
-        self.cache.get_string(self.file.path_name_idx).unwrap()
+        self.path_name
     }
 
     /// Resolves and concatenates the full path based on its individual fragments.
@@ -101,25 +115,32 @@ impl<'data, 'cache> File<'data, 'cache> {
 
 /// A Function definition as included in the SymCache.
 #[derive(Clone, Debug)]
-pub struct Function<'data, 'cache> {
-    pub(crate) cache: &'cache SymCache<'data>,
-    pub(crate) function: &'data raw::Function,
+pub struct Function<'data> {
+    name: Option<&'data str>,
+    comp_dir: Option<&'data str>,
+    entry_pc: u32,
+    language: Language,
 }
 
-impl<'data, 'cache> Function<'data, 'cache> {
+impl<'data> Function<'data> {
     /// The possibly mangled name/symbol of this function.
     pub fn name(&self) -> Option<&'data str> {
-        self.cache.get_string(self.function.name_idx)
+        self.name
+    }
+
+    /// The compilation directory of this function.
+    pub fn comp_dir(&self) -> Option<&'data str> {
+        self.comp_dir
     }
 
     /// The entry pc of the function.
     pub fn entry_pc(&self) -> u32 {
-        self.function.entry_pc
+        self.entry_pc
     }
 
     /// The language the function is written in.
     pub fn language(&self) -> Language {
-        Language::from_u32(self.function.lang as u32)
+        self.language
     }
 }
 
@@ -142,23 +163,13 @@ impl<'data, 'cache> SourceLocation<'data, 'cache> {
     }
 
     /// The source file corresponding to the instruction.
-    pub fn file(&self) -> Option<File<'data, 'cache>> {
+    pub fn file(&self) -> Option<File<'data>> {
         self.cache.get_file(self.source_location.file_idx)
     }
 
     /// The function corresponding to the instruction.
-    pub fn function(&self) -> Option<Function<'data, 'cache>> {
-        let function_idx = self.source_location.function_idx;
-        if function_idx == u32::MAX {
-            return None;
-        }
-        self.cache
-            .functions
-            .get(function_idx as usize)
-            .map(|function| Function {
-                cache: self.cache,
-                function,
-            })
+    pub fn function(&self) -> Option<Function<'data>> {
+        self.cache.get_function(self.source_location.function_idx)
     }
 
     // TODO: maybe forward some of the `File` and `Function` accessors, such as:
