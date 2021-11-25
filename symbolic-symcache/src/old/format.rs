@@ -10,8 +10,7 @@ use symbolic_common::{DebugId, Uuid};
 
 use crate::{SymCacheError, SymCacheErrorKind};
 
-/// The magic file preamble to identify symcache files.
-pub const SYMCACHE_MAGIC: [u8; 4] = *b"SYMC";
+pub use crate::preamble::*;
 
 /// The latest version of the file format.
 pub const SYMCACHE_VERSION: u32 = 6;
@@ -270,16 +269,6 @@ pub struct LineRecord {
 
     /// The line number of the line record.
     pub line: u16,
-}
-
-/// The start of a SymCache file.
-#[repr(C, packed)]
-#[derive(Default, Copy, Clone, Debug)]
-pub struct Preamble {
-    /// Magic bytes, see `SYMCACHE_MAGIC`.
-    pub magic: [u8; 4],
-    /// Version of the SymCache file format.
-    pub version: u32,
 }
 
 /// DEPRECATED. Header used by V1 SymCaches.

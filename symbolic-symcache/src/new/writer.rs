@@ -65,15 +65,6 @@ impl SymCacheConverter {
         self.debug_id = debug_id;
     }
 
-    /// Tries to convert the given `addr`, compressing it into 32-bits and applying the
-    /// `range_threshold` (TODO: find better name for that), rejecting any addr that is below the
-    /// threshold or exceeds 32-bits.
-    fn offset_addr(&self, addr: u64) -> Option<u32> {
-        use std::convert::TryFrom;
-        addr.checked_sub(self.range_threshold)
-            .and_then(|r| u32::try_from(r).ok())
-    }
-
     /// Insert a string into this converter.
     ///
     /// If the string was already present, it is not added again. The returned `u32`
@@ -93,14 +84,6 @@ impl SymCacheConverter {
             },
         );
         string_idx as u32
-    }
-
-    /// Insert a [`raw::SourceLocation`] into this converter.
-    ///
-    /// If the `SourceLocation` was already present, it is not added again. The returned `u32`
-    /// is the `SourceLocation`'s index in insertion order.
-    fn insert_source_location(&mut self, source_location: raw::SourceLocation) -> u32 {
-        self.source_locations.insert_full(source_location).0 as u32
     }
 
     /// Insert a file into this converter.

@@ -2,9 +2,11 @@
 
 #![warn(missing_docs)]
 
-// TODO: temporarily, since usage will be added later on.
-#[allow(dead_code)]
+mod compat;
 mod new;
 mod old;
+pub(crate) mod preamble;
 
-pub use old::*;
+pub use compat::*;
+pub use new::SymCacheWriter;
+pub use old::{format, SymCacheError, SymCacheErrorKind, ValueKind};

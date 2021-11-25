@@ -23,7 +23,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 ///
 /// This can be parsed from a binary buffer via [`Format::parse`], and lookups on it can be performed
 /// via the [`Format::lookup`] method.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SymCache<'data> {
     header: &'data raw::Header,
     strings: &'data [raw::String],

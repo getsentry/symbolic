@@ -21,46 +21,21 @@ impl<'data> SymCache<'data> {
     }
 
     /// An iterator over the functions in this SymCache.
-    pub fn functions(&self) -> FunctionIter<'data, '_> {
-        FunctionIter {
-            cache: self,
+    pub fn functions(&self) -> Functions<'data> {
+        Functions {
+            cache: self.clone(),
             function_idx: 0,
         }
     }
-
-    /// An iterator over the files in this SymCache.
-    pub fn files(&self) -> FileIter<'data, '_> {
-        FileIter {
-            cache: self,
-            file_idx: 0,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
-pub struct FileIter<'data, 'cache> {
-    cache: &'cache SymCache<'data>,
-    file_idx: u32,
-}
-
-impl<'data, 'cache> Iterator for FileIter<'data, 'cache> {
-    type Item = File<'data>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.cache.get_file(self.file_idx).map(|file| {
-            self.file_idx += 1;
-            file
-        })
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct FunctionIter<'data, 'cache> {
-    cache: &'cache SymCache<'data>,
+pub struct Functions<'data> {
+    cache: SymCache<'data>,
     function_idx: u32,
 }
 
-impl<'data, 'cache> Iterator for FunctionIter<'data, 'cache> {
+impl<'data> Iterator for Functions<'data> {
     type Item = Function<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {

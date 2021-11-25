@@ -4,10 +4,10 @@
 
 mod cache;
 mod error;
+#[allow(dead_code)]
 mod writer;
 
 pub mod format;
 
 pub use cache::*;
 pub use error::*;
-pub use writer::*;
