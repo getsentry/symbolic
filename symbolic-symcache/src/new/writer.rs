@@ -1,4 +1,4 @@
-//! Defines the SymCache [`Converter`].
+//! Defines the [SymCache Converter](`SymCacheConverter`).
 
 use std::collections::btree_map;
 use std::collections::BTreeMap;
@@ -130,11 +130,21 @@ impl SymCacheConverter {
     ///
     /// If the function was already present, it is not added again. The returned `u32`
     /// is the function's index in insertion order.
-    fn insert_function(&mut self, name: &str, entry_pc: u32, lang: Language) -> u32 {
+    fn insert_function(
+        &mut self,
+        name: &str,
+        comp_dir: Option<&str>,
+        entry_pc: u32,
+        lang: Language,
+    ) -> u32 {
         let name_idx = self.insert_string(name);
+        let comp_dir_idx = comp_dir
+            .map(|comp_dir| self.insert_string(comp_dir))
+            .unwrap_or(u32::MAX);
         let lang = lang as u32;
         let (fun_idx, _) = self.functions.insert_full(raw::Function {
             name_idx,
+            comp_dir_idx,
             entry_pc,
             lang,
         });
@@ -177,8 +187,12 @@ impl SymCacheConverter {
         } else {
             function.address as u32
         };
-        let function_idx =
-            self.insert_function(function.name.as_str(), entry_pc, function.name.language());
+        let function_idx = self.insert_function(
+            function.name.as_str(),
+            comp_dir,
+            entry_pc,
+            function.name.language(),
+        );
 
         for line in &function.lines {
             let path_name = line.file.name_str();
@@ -237,6 +251,7 @@ impl SymCacheConverter {
             btree_map::Entry::Vacant(entry) => {
                 let function = raw::Function {
                     name_idx,
+                    comp_dir_idx: u32::MAX,
                     entry_pc: symbol.address as u32,
                     lang: u32::MAX,
                 };
