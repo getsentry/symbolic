@@ -91,7 +91,9 @@ impl<'data> SymCache<'data> {
     /// Returns an iterator over all functions.
     pub fn functions(&self) -> Functions<'data> {
         match &self.0 {
-            SymCacheInner::New(symc) => Functions(FunctionsInner::New(symc.functions())),
+            SymCacheInner::New(symc) => {
+                Functions(FunctionsInner::New(symc.functions().enumerate()))
+            }
             SymCacheInner::Old(symc) => Functions(FunctionsInner::Old(symc.functions())),
         }
     }
@@ -126,7 +128,7 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
 #[derive(Clone, Debug)]
 enum FunctionInner<'data> {
     Old(old::Function<'data>),
-    New(new::Function<'data>),
+    New((usize, new::Function<'data>)),
 }
 
 /// A function in a `SymCache`.
@@ -140,7 +142,7 @@ impl<'data> Function<'data> {
             FunctionInner::Old(function) => function.id(),
             // TODO: Is there something better we can return here?
             // I doubt anyone actually cares about this.
-            FunctionInner::New(_) => usize::MAX,
+            FunctionInner::New((i, _)) => *i,
         }
     }
 
@@ -156,7 +158,7 @@ impl<'data> Function<'data> {
     pub fn address(&self) -> u64 {
         match &self.0 {
             FunctionInner::Old(function) => function.address(),
-            FunctionInner::New(function) => function.entry_pc() as u64,
+            FunctionInner::New((_, function)) => function.entry_pc() as u64,
         }
     }
 
@@ -164,7 +166,7 @@ impl<'data> Function<'data> {
     pub fn symbol(&self) -> &'data str {
         match &self.0 {
             FunctionInner::Old(function) => function.symbol(),
-            FunctionInner::New(function) => function.name().unwrap_or("?"),
+            FunctionInner::New((_, function)) => function.name().unwrap_or("?"),
         }
     }
 
@@ -172,7 +174,7 @@ impl<'data> Function<'data> {
     pub fn language(&self) -> Language {
         match &self.0 {
             FunctionInner::Old(function) => function.language(),
-            FunctionInner::New(function) => function.language(),
+            FunctionInner::New((_, function)) => function.language(),
         }
     }
 
@@ -182,7 +184,7 @@ impl<'data> Function<'data> {
     pub fn name(&self) -> Name<'_> {
         match &self.0 {
             FunctionInner::Old(function) => function.name(),
-            FunctionInner::New(function) => Name::new(
+            FunctionInner::New((_, function)) => Name::new(
                 function.name().unwrap_or("?"),
                 NameMangling::Unknown,
                 function.language(),
@@ -194,7 +196,7 @@ impl<'data> Function<'data> {
     pub fn compilation_dir(&self) -> &str {
         match &self.0 {
             FunctionInner::Old(function) => function.compilation_dir(),
-            FunctionInner::New(function) => function.comp_dir().unwrap_or_default(),
+            FunctionInner::New((_, function)) => function.comp_dir().unwrap_or_default(),
         }
     }
 
@@ -210,7 +212,7 @@ impl<'data> Function<'data> {
 #[derive(Clone, Debug)]
 enum FunctionsInner<'data> {
     Old(old::Functions<'data>),
-    New(new::Functions<'data>),
+    New(std::iter::Enumerate<new::Functions<'data>>),
 }
 
 /// An iterator over all functions in a `SymCache`.
