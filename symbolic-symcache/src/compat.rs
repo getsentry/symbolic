@@ -199,10 +199,10 @@ impl<'data> Function<'data> {
     }
 
     /// An iterator over all lines in the function.
-    pub fn lines(&self) -> old::Lines<'data> {
+    pub fn lines(&self) -> Lines<'data> {
         match &self.0 {
-            FunctionInner::Old(function) => function.lines(),
-            FunctionInner::New(_) => unimplemented!(),
+            FunctionInner::Old(function) => Lines(LinesInner::Old(function.lines())),
+            FunctionInner::New(_) => Lines(LinesInner::New),
         }
     }
 }
@@ -283,6 +283,27 @@ impl<'data, 'cache> Iterator for Lookup<'data, 'cache> {
                     comp_dir: sl.file().and_then(|f| f.comp_dir()).unwrap_or_default(),
                 }))
             }
+        }
+    }
+}
+
+#[derive(Clone)]
+enum LinesInner<'data> {
+    Old(old::Lines<'data>),
+    New,
+}
+
+/// An iterator over lines of a SymCache function.
+#[derive(Clone)]
+pub struct Lines<'data>(LinesInner<'data>);
+
+impl<'a> Iterator for Lines<'a> {
+    type Item = Result<old::Line<'a>, SymCacheError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.0 {
+            LinesInner::Old(ref mut lines) => lines.next(),
+            LinesInner::New => None,
         }
     }
 }

@@ -640,7 +640,7 @@ impl fmt::Debug for Function<'_> {
 
 /// An iterator over lines of a SymCache function.
 #[derive(Clone)]
-pub struct Lines<'a> {
+pub(crate) struct Lines<'a> {
     lines: format::Seg<format::LineRecord, u16>,
     files: format::Seg<format::FileRecord, u16>,
     data: &'a [u8],
