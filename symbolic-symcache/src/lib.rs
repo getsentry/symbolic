@@ -9,4 +9,4 @@ pub(crate) mod preamble;
 
 pub use compat::*;
 pub use new::SymCacheWriter;
-pub use old::{format, SymCacheError, SymCacheErrorKind, ValueKind};
+pub use old::{format, LineInfo, SymCacheError, SymCacheErrorKind, ValueKind};
