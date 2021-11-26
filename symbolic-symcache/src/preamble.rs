@@ -22,7 +22,7 @@ impl Preamble {
         if buf.len() < preamble_size {
             return Err(SymCacheErrorKind::BadFileHeader.into());
         }
-        // SAFETY: we checked that the buffer is well aligned and large enough to fit a `Preamble`.
+        // SAFETY: we checked that the buffer is large enough to fit a `Preamble`.
         let preamble = unsafe { &*(buf.as_ptr() as *const Self) };
         if preamble.magic != SYMCACHE_MAGIC {
             return Err(SymCacheErrorKind::BadFileMagic.into());
