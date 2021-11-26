@@ -96,18 +96,19 @@ impl<'data> File<'data> {
         self.path_name
     }
 
-    ///// Resolves and concatenates the full path based on its individual fragments.
-    //pub fn full_path(&self) -> String {
-    //    let comp_dir = self.comp_dir().unwrap_or_default();
-    //    let directory = self.directory().unwrap_or_default();
-    //    let path_name = self.path_name();
+    /// Resolves and concatenates the full path based on its individual fragments.
+    #[allow(dead_code)]
+    pub fn full_path(&self) -> String {
+        let comp_dir = self.comp_dir().unwrap_or_default();
+        let directory = self.directory().unwrap_or_default();
+        let path_name = self.path_name();
 
-    //    let prefix = symbolic_common::join_path(comp_dir, directory);
-    //    let full_path = symbolic_common::join_path(&prefix, path_name);
-    //    let full_path = symbolic_common::clean_path(&full_path).into_owned();
+        let prefix = symbolic_common::join_path(comp_dir, directory);
+        let full_path = symbolic_common::join_path(&prefix, path_name);
+        let full_path = symbolic_common::clean_path(&full_path).into_owned();
 
-    //    full_path
-    //}
+        full_path
+    }
 }
 
 /// A Function definition as included in the SymCache.
