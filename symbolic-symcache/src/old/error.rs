@@ -87,7 +87,7 @@ impl fmt::Display for SymCacheErrorKind {
     }
 }
 
-/// An error returned when handling a [`SymCache`](super::cache::SymCache).
+/// An error returned when handling a [`SymCache`](crate::SymCache).
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct SymCacheError {

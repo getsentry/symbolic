@@ -28,7 +28,7 @@ enum SymCacheInner<'data> {
 
 /// A platform independent symbolication cache.
 ///
-/// Use [`SymCacheWriter`](super::writer::SymCacheWriter) writer to create SymCaches,
+/// Use [`SymCacheWriter`](crate::SymCacheWriter) writer to create SymCaches,
 /// including the conversion from object files.
 #[derive(Debug)]
 pub struct SymCache<'data>(SymCacheInner<'data>);
@@ -90,6 +90,14 @@ impl<'data> SymCache<'data> {
 
     /// Returns an iterator over all functions.
     pub fn functions(&self) -> Functions<'data> {
+        match &self.0 {
+            SymCacheInner::New(symc) => Functions(FunctionsInner::New(symc.functions())),
+            SymCacheInner::Old(symc) => Functions(FunctionsInner::Old(symc.functions())),
+        }
+    }
+
+    /// Returns an iterator over all files.
+    pub fn files(&self) -> Functions<'data> {
         match &self.0 {
             SymCacheInner::New(symc) => Functions(FunctionsInner::New(symc.functions())),
             SymCacheInner::Old(symc) => Functions(FunctionsInner::Old(symc.functions())),
