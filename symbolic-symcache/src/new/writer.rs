@@ -156,6 +156,11 @@ impl SymCacheConverter {
     }
 
     pub fn process_symbolic_function(&mut self, function: &Function<'_>) {
+        // skip over empty functions
+        if function.size == 0 {
+            return;
+        }
+
         let comp_dir = std::str::from_utf8(function.compilation_dir).ok();
 
         // It is not entirely clear that the entry pc is meaningful for inlined functions.
