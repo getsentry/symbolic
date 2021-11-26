@@ -40,6 +40,7 @@ fn test_write_header_linux() -> Result<(), Error> {
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    assert!(buffer.starts_with(b"SYMC"));
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!(symcache, @r###"
     SymCache(
@@ -68,6 +69,7 @@ fn test_write_functions_linux() -> Result<(), Error> {
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    assert!(buffer.starts_with(b"SYMC"));
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!("functions_linux", FunctionsDebug(&symcache));
 
@@ -81,6 +83,7 @@ fn test_write_header_macos() -> Result<(), Error> {
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    assert!(buffer.starts_with(b"SYMC"));
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!(symcache, @r###"
     SymCache(
@@ -109,6 +112,7 @@ fn test_write_functions_macos() -> Result<(), Error> {
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    assert!(buffer.starts_with(b"SYMC"));
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!("functions_macos", FunctionsDebug(&symcache));
 
@@ -122,6 +126,7 @@ fn test_write_large_symbol_names() -> Result<(), Error> {
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    assert!(buffer.starts_with(b"SYMC"));
     SymCache::parse(&buffer)?;
 
     Ok(())
@@ -136,6 +141,7 @@ fn test_lookup_no_lines() -> Result<(), Error> {
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    assert!(buffer.starts_with(b"SYMC"));
     let symcache = SymCache::parse(&buffer)?;
     let symbols = symcache.lookup(0xc6dd98)?.collect::<Vec<_>>()?;
 
@@ -161,6 +167,7 @@ fn test_lookup_no_size() -> Result<(), Error> {
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    assert!(buffer.starts_with(b"SYMC"));
     let symcache = SymCache::parse(&buffer)?;
     let symbols = symcache.lookup(0x1489adf)?.collect::<Vec<_>>()?;
 
@@ -181,6 +188,7 @@ fn test_lookup_modulo_u16() -> Result<(), Error> {
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    assert!(buffer.starts_with(b"SYMC"));
     let symcache = SymCache::parse(&buffer)?;
     let symbols = symcache.lookup(0x3c105a1)?.collect::<Vec<_>>()?;
 
