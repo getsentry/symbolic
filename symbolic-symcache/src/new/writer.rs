@@ -158,7 +158,8 @@ impl SymCacheConverter {
     pub fn process_symbolic_function(&mut self, function: &Function<'_>) {
         let comp_dir = std::str::from_utf8(function.compilation_dir).ok();
 
-        // Is this correct for inlined functions?
+        // It is not entirely clear that the entry pc is meaningful for inlined functions.
+        // We're leaving it like this for now to minimize differences between this and the old implementation.
         let entry_pc = function.address as u32;
         let function_idx = self.insert_function(
             function.name.as_str(),
