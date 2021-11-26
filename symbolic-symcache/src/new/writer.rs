@@ -22,14 +22,6 @@ pub struct SymCacheConverter {
     /// CPU architecture of the object file.
     arch: Arch,
 
-    /// The minimum addr for all the ranges in the debug file.
-    /// This is used to ignore ranges that are below this threshold, as linkers leave range data
-    /// intact, but rather set removed ranges to 0 (or below this threshold).
-    /// Also, this is used as an offset for the saved ranges, to decrease the likelihood they
-    /// overflow `u32`.
-    // TODO: figure out a better name. is this the *load bias*? where do we get this from?
-    range_threshold: u64,
-
     /// The concatenation of all strings that have been added to this `Converter`.
     string_bytes: Vec<u8>,
     /// A map from [`String`]s that have been added to this `Converter` to [`StringRef`]s, i.e.,
@@ -70,6 +62,9 @@ impl SymCacheConverter {
     /// If the string was already present, it is not added again. The returned `u32`
     /// is the string's index in insertion order.
     fn insert_string(&mut self, s: &str) -> u32 {
+        if s.is_empty() {
+            return u32::MAX;
+        }
         if let Some(existing_idx) = self.strings.get_index_of(s) {
             return existing_idx as u32;
         }
@@ -121,9 +116,7 @@ impl SymCacheConverter {
         lang: Language,
     ) -> u32 {
         let name_idx = self.insert_string(name);
-        let comp_dir_idx = comp_dir
-            .map(|comp_dir| self.insert_string(comp_dir))
-            .unwrap_or(u32::MAX);
+        let comp_dir_idx = comp_dir.map_or(u32::MAX, |comp_dir| self.insert_string(comp_dir));
         let lang = lang as u32;
         let (fun_idx, _) = self.functions.insert_full(raw::Function {
             name_idx,
@@ -165,11 +158,8 @@ impl SymCacheConverter {
     pub fn process_symbolic_function(&mut self, function: &Function<'_>) {
         let comp_dir = std::str::from_utf8(function.compilation_dir).ok();
 
-        let entry_pc = if function.inline {
-            u32::MAX
-        } else {
-            function.address as u32
-        };
+        // Is this correct for inlined functions?
+        let entry_pc = function.address as u32;
         let function_idx = self.insert_function(
             function.name.as_str(),
             comp_dir,
@@ -215,6 +205,19 @@ impl SymCacheConverter {
                     }
                 }
             }
+        }
+
+        // add the bare minimum of information for the function if there isn't any.
+        if !self.ranges.contains_key(&entry_pc) {
+            self.ranges.insert(
+                entry_pc,
+                raw::SourceLocation {
+                    file_idx: u32::MAX,
+                    line: 0,
+                    function_idx,
+                    inlined_into_idx: u32::MAX,
+                },
+            );
         }
 
         for inlinee in &function.inlinees {
@@ -280,8 +283,6 @@ impl SymCacheConverter {
 
             debug_id: self.debug_id,
             arch: self.arch,
-
-            range_offset: self.range_threshold,
 
             num_strings,
             num_files,

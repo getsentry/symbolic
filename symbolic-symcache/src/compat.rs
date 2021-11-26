@@ -96,14 +96,6 @@ impl<'data> SymCache<'data> {
         }
     }
 
-    /// Returns an iterator over all files.
-    pub fn files(&self) -> Functions<'data> {
-        match &self.0 {
-            SymCacheInner::New(symc) => Functions(FunctionsInner::New(symc.functions())),
-            SymCacheInner::Old(symc) => Functions(FunctionsInner::Old(symc.functions())),
-        }
-    }
-
     /// Given an address this looks up the symbol at that point.
     ///
     /// Because of inline information this returns a vector of zero or

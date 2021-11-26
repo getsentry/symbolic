@@ -9,12 +9,9 @@ impl<'data> SymCache<'data> {
     /// was found for the given `addr`.
     pub fn lookup(&self, addr: u64) -> SourceLocationIter<'data, '_> {
         use std::convert::TryFrom;
-        let addr = match addr
-            .checked_sub(self.header.range_offset)
-            .and_then(|r| u32::try_from(r).ok())
-        {
-            Some(addr) => addr,
-            None => {
+        let addr = match u32::try_from(addr) {
+            Ok(addr) => addr,
+            Err(_) => {
                 return SourceLocationIter {
                     cache: self,
                     source_location_idx: u32::MAX,

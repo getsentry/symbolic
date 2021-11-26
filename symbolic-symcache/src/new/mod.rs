@@ -23,7 +23,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 ///
 /// This can be parsed from a binary buffer via [`Format::parse`], and lookups on it can be performed
 /// via the [`Format::lookup`] method.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct SymCache<'data> {
     header: &'data raw::Header,
     strings: &'data [raw::String],
@@ -32,6 +32,18 @@ pub struct SymCache<'data> {
     source_locations: &'data [raw::SourceLocation],
     ranges: &'data [raw::Range],
     string_bytes: &'data [u8],
+}
+
+impl<'data> std::fmt::Debug for SymCache<'data> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SymCache")
+            .field("version", &self.header.version)
+            .field("debug_id", &self.header.debug_id)
+            .field("arch", &self.header.arch)
+            .field("files", &self.header.num_files)
+            .field("functions", &self.header.num_functions)
+            .finish()
+    }
 }
 
 impl<'data> SymCache<'data> {

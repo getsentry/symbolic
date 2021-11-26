@@ -10,7 +10,7 @@ const SYMCACHE_MAGIC_BYTES: [u8; 4] = *b"SYMC";
 /// The magic file preamble to identify SymCache files.
 ///
 /// Serialized as ASCII "SYMC" on little-endian (x64) systems.
-pub const SYMCACHE_MAGIC: u32 = u32::from_be_bytes(SYMCACHE_MAGIC_BYTES);
+pub const SYMCACHE_MAGIC: u32 = u32::from_le_bytes(SYMCACHE_MAGIC_BYTES);
 /// The byte-flipped magic, which indicates an endianness mismatch.
 pub const SYMCACHE_MAGIC_FLIPPED: u32 = SYMCACHE_MAGIC.swap_bytes();
 
@@ -29,9 +29,6 @@ pub struct Header {
     pub debug_id: DebugId,
     /// CPU architecture of the object file.
     pub arch: Arch,
-
-    /// The offset with which all ranges have been offset in the SymCache.
-    pub range_offset: u64,
 
     /// Number of included [`String`]s.
     pub num_strings: u32,
@@ -131,8 +128,8 @@ mod tests {
 
     #[test]
     fn test_sizeof() {
-        assert_eq!(mem::size_of::<Header>(), 80);
-        assert_eq!(mem::align_of::<Header>(), 8);
+        assert_eq!(mem::size_of::<Header>(), 68);
+        assert_eq!(mem::align_of::<Header>(), 4);
 
         assert_eq!(mem::size_of::<Function>(), 16);
         assert_eq!(mem::align_of::<Function>(), 4);
