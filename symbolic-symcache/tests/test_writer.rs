@@ -13,8 +13,17 @@ struct FunctionsDebug<'a>(&'a SymCache<'a>);
 
 impl fmt::Debug for FunctionsDebug<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for result in self.0.functions() {
-            match result {
+        let mut vec: Vec<_> = self.0.functions().collect();
+
+        vec.sort_by(|f1, f2| match (f1, f2) {
+            (Ok(f1), Ok(f2)) => f1.address().cmp(&f2.address()),
+            (Ok(_), Err(_)) => std::cmp::Ordering::Less,
+            (Err(_), Ok(_)) => std::cmp::Ordering::Greater,
+            (Err(e1), Err(e2)) => e1.to_string().cmp(&e2.to_string()),
+        });
+
+        for line in vec {
+            match line {
                 Ok(function) => writeln!(f, "{:>16x} {}", &function.address(), &function.name())?,
                 Err(error) => writeln!(f, "{:?}", error)?,
             }

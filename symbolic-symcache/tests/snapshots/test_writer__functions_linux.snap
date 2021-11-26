@@ -3,6 +3,51 @@ source: symbolic-symcache/tests/test_writer.rs
 expression: FunctionsDebug(&symcache)
 
 ---
+            1558 _init
+            1900 _ZN15google_breakpad13PageAllocator7FreeAllEv.isra.6
+            190d sys_munmap
+            194a _ZN15google_breakpad17ProcCpuInfoReader14GetValueAndLenEPm.isra.20.part.21
+            196a _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE9CopyIndexEjPS1_.isra.32.part.33
+            198a _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE9CopyIndexEjPS1_.isra.32
+            19a8 _ZN15google_breakpad10TypedMDRVAIjE20CopyIndexAfterObjectEjPKvm.isra.34.part.35
+            19c8 _ZN12_GLOBAL__N_114MinidumpWriterC2EPKciPKN15google_breakpad16ExceptionHandler12CrashContextERKNSt7__cxx114listINS3_12MappingEntryESaISA_EEERKNS9_INS3_9AppMemoryESaISF_EEEbmbPNS3_11LinuxDumperE.part.93
+            19e8 _ZN12_GLOBAL__N_114MinidumpWriterD2Ev.constprop.123
+            1a14 _ZN12_GLOBAL__N_114MinidumpWriter9WriteFileEP20MDLocationDescriptorPKc.constprop.120
+            1a24 sys_open
+            1a6f Alloc
+            1a6f _ZN15google_breakpad11LinuxDumper9allocatorEv
+            1a9d sys_read
+            1ad7 sys_close
+            1b08 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
+            1bc4 Alloc
+            1bc4 _ZN15google_breakpad11LinuxDumper9allocatorEv
+            1c00 _ZN12_GLOBAL__N_114MinidumpWriter13WriteProcFileEP20MDLocationDescriptoriPKc.constprop.119
+            1c70 main
+            1c89 _ZN15google_breakpad18MinidumpDescriptorC4ERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE
+            1c89 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4ERKS4_
+            1c89 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_
+            1cc3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_M_constructIPcEEvT_S7_
+            1cc3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE16_M_construct_auxIPcEEvT_S7_St12__false_type
+            1cc3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_M_constructIPKcEEvT_S8_St20forward_iterator_tag
+            1cc3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_S_copy_charsEPcPKcS7_
+            1cc3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_S_copyEPcPKcm
+            1cc3 _ZNSt11char_traitsIcE6assignERcRKc
+            1cca _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
+            1cca _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
+            1cdc _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4Ev
+            1cdc _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_
+            1ce0 _ZNSt11char_traitsIcE6assignERcRKc
+            1ce7 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
+            1ce7 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
+            1cf2 _ZNSt11char_traitsIcE6assignERcRKc
+            1d39 _ZN15google_breakpad18MicrodumpExtraInfoC4Ev
+            1d72 start
+            1d72 crash
+            1dc0 _start
+            1df0 deregister_tm_clones
+            1e30 register_tm_clones
+            1e70 __do_global_dtors_aux
+            1e90 frame_dummy
             1ec0 _ZN12_GLOBAL__N_18callbackERKN15google_breakpad18MinidumpDescriptorEPvb
             1ec7 printf
             1ee0 printf
@@ -21,27 +66,6 @@ expression: FunctionsDebug(&symcache)
             1f24 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm
             1f24 _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm
             1f24 _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm
-            1c70 main
-            1c89 _ZN15google_breakpad18MinidumpDescriptorC4ERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE
-            1c89 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4ERKS4_
-            1c89 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_
-            1cc3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_M_constructIPcEEvT_S7_
-            1cc3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE16_M_construct_auxIPcEEvT_S7_St12__false_type
-            1cc3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_M_constructIPKcEEvT_S8_St20forward_iterator_tag
-            1cc3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_S_copy_charsEPcPKcS7_
-            1cc3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_S_copyEPcPKcm
-            1cc3 _ZNSt11char_traitsIcE6assignERcRKc
-            1cca _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
-            1cca _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
-            1ce0 _ZNSt11char_traitsIcE6assignERcRKc
-            1cdc _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4Ev
-            1cdc _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_
-            1ce7 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
-            1ce7 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
-            1cf2 _ZNSt11char_traitsIcE6assignERcRKc
-            1d39 _ZN15google_breakpad18MicrodumpExtraInfoC4Ev
-            1d72 start
-            1d72 crash
             1f40 _ZN15google_breakpad16ExceptionHandler21InstallHandlersLockedEv
             1fae memset
             2070 _ZN15google_breakpad16ExceptionHandler21RestoreHandlersLockedEv
@@ -55,11 +79,6 @@ expression: FunctionsDebug(&symcache)
             2126 _ZSt9__find_ifIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEENS0_5__ops16_Iter_equals_valIKS4_EEET_SE_SE_T0_
             2126 _ZSt9__find_ifIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEENS0_5__ops16_Iter_equals_valIKS4_EEET_SE_SE_T0_St26random_access_iterator_tag
             2126 _ZN9__gnu_cxxmiIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEENS_17__normal_iteratorIT_T0_E15difference_typeERKSB_SE_
-            2350 _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
-            2360 _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
-            2370 _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
-            2382 _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
-            238f _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
             21d8 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE5eraseEN9__gnu_cxx17__normal_iteratorIPKS2_S4_EE
             21d8 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE8_M_eraseEN9__gnu_cxx17__normal_iteratorIPS2_S4_EE
             21d8 _ZNK9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEplEl
@@ -67,15 +86,6 @@ expression: FunctionsDebug(&symcache)
             21e1 _ZSt14__copy_move_a2ILb1EN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEES9_ET1_T0_SB_SA_
             21e1 _ZSt13__copy_move_aILb1EPPN15google_breakpad16ExceptionHandlerES3_ET1_T0_S5_S4_
             21e1 _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mIPN15google_breakpad16ExceptionHandlerEEEPT_PKS6_S9_S7_
-            22e1 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EED4Ev
-            22e1 _ZNSt12_Vector_baseIPN15google_breakpad16ExceptionHandlerESaIS2_EED4Ev
-            22e1 _ZNSt12_Vector_baseIPN15google_breakpad16ExceptionHandlerESaIS2_EE13_M_deallocateEPS2_m
-            22e6 _ZNSt16allocator_traitsISaIPN15google_breakpad16ExceptionHandlerEEE10deallocateERS3_PS2_m
-            22e6 _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad16ExceptionHandlerEE10deallocateEPS3_m
-            22f3 RestoreAlternateStackLocked
-            2307 sys_sigaltstack
-            23b2 sys_sigaltstack
-            23bb sys_sigaltstack
             220f _ZNSt7__cxx114listIN15google_breakpad9AppMemoryESaIS2_EED4Ev
             220f _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EED4Ev
             220f _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE8_M_clearEv
@@ -102,6 +112,20 @@ expression: FunctionsDebug(&symcache)
             2287 _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm
             2287 _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm
             228c _ZN15google_breakpad10scoped_ptrINS_21CrashGenerationClientEED4Ev
+            22e1 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EED4Ev
+            22e1 _ZNSt12_Vector_baseIPN15google_breakpad16ExceptionHandlerESaIS2_EED4Ev
+            22e1 _ZNSt12_Vector_baseIPN15google_breakpad16ExceptionHandlerESaIS2_EE13_M_deallocateEPS2_m
+            22e6 _ZNSt16allocator_traitsISaIPN15google_breakpad16ExceptionHandlerEEE10deallocateERS3_PS2_m
+            22e6 _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad16ExceptionHandlerEE10deallocateEPS3_m
+            22f3 RestoreAlternateStackLocked
+            2307 sys_sigaltstack
+            2350 _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
+            2360 _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
+            2370 _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
+            2382 _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
+            238f _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv
+            23b2 sys_sigaltstack
+            23bb sys_sigaltstack
             2440 _ZN15google_breakpad16ExceptionHandler25SendContinueSignalToChildEv
             2454 sys_write
             2520 _ZN15google_breakpad16ExceptionHandler12GenerateDumpEPNS0_12CrashContextE
@@ -160,8 +184,8 @@ expression: FunctionsDebug(&symcache)
             3279 _ZN9__gnu_cxx13new_allocatorISt10_List_nodeIN15google_breakpad12MappingEntryEEE8allocateEmPKv
             3283 _ZN9__gnu_cxx13new_allocatorISt10_List_nodeIN15google_breakpad12MappingEntryEEE9constructIS4_JRKS3_EEEvPT_DpOT0_
             3283 _ZNSt10_List_nodeIN15google_breakpad12MappingEntryEEC4IJRKS1_EEEDpOT_
-            32c5 _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE11_M_inc_sizeEm
             32b6 _ZNSt7__cxx114listIN15google_breakpad12MappingEntryESaIS2_EE3endEv
+            32c5 _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE11_M_inc_sizeEm
             3300 _ZN15google_breakpad16ExceptionHandler17RegisterAppMemoryEPvm
             3306 _ZNSt7__cxx114listIN15google_breakpad9AppMemoryESaIS2_EE3endEv
             3318 _ZSt4findISt14_List_iteratorIN15google_breakpad9AppMemoryEEPvET_S5_S5_RKT0_
@@ -197,12 +221,9 @@ expression: FunctionsDebug(&symcache)
             3487 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_S_copy_charsEPcS5_S5_
             3487 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_S_copyEPcPKcm
             3491 _ZNSt11char_traitsIcE4copyEPcPKcm
-            3613 _ZNSt11char_traitsIcE6assignERcRKc
             349e _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
             349e _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
             34a3 _ZNSt11char_traitsIcE6assignERcRKc
-            35cc _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
-            35d1 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
             34a7 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4Ev
             34a7 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_
             34b0 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
@@ -220,51 +241,33 @@ expression: FunctionsDebug(&symcache)
             3578 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm
             3578 _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm
             3578 _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm
+            35cc _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
+            35d1 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
+            3613 _ZNSt11char_traitsIcE6assignERcRKc
             3660 _ZN15google_breakpad30SetFirstChanceExceptionHandlerEPFbiPvS0_E
-            3cb0 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE19_M_emplace_back_auxIIS2_EEEvDpOT_
-            3cc4 _ZNKSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE12_M_check_lenEmPKc
-            3cc4 _ZNKSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE4sizeEv
-            3ccf _ZSt3maxImERKT_S2_S2_
-            3cf6 _ZNSt12_Vector_baseIPN15google_breakpad16ExceptionHandlerESaIS2_EE11_M_allocateEm
-            3cf6 _ZNSt16allocator_traitsISaIPN15google_breakpad16ExceptionHandlerEEE8allocateERS3_m
-            3cf6 _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad16ExceptionHandlerEE8allocateEmPKv
-            3d01 _ZNKSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE4sizeEv
-            3d08 _ZNSt16allocator_traitsISaIPN15google_breakpad16ExceptionHandlerEEE9constructIS2_JS2_EEEvRS3_PT_DpOT0_
-            3d08 _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad16ExceptionHandlerEE9constructIS3_JS3_EEEvPT_DpOT0_
-            3d1a _ZSt34__uninitialized_move_if_noexcept_aIPPN15google_breakpad16ExceptionHandlerES3_SaIS2_EET0_T_S6_S5_RT1_
-            3d1a _ZSt22__uninitialized_copy_aISt13move_iteratorIPPN15google_breakpad16ExceptionHandlerEES4_S3_ET0_T_S7_S6_RSaIT1_E
-            3d1a _ZSt18uninitialized_copyISt13move_iteratorIPPN15google_breakpad16ExceptionHandlerEES4_ET0_T_S7_S6_
-            3d1a _ZNSt20__uninitialized_copyILb1EE13__uninit_copyISt13move_iteratorIPPN15google_breakpad16ExceptionHandlerEES6_EET0_T_S9_S8_
-            3d1a _ZSt4copyISt13move_iteratorIPPN15google_breakpad16ExceptionHandlerEES4_ET0_T_S7_S6_
-            3d1a _ZSt14__copy_move_a2ILb1EPPN15google_breakpad16ExceptionHandlerES3_ET1_T0_S5_S4_
-            3d1a _ZSt13__copy_move_aILb1EPPN15google_breakpad16ExceptionHandlerES3_ET1_T0_S5_S4_
-            3d1a _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mIPN15google_breakpad16ExceptionHandlerEEEPT_PKS6_S9_S7_
-            3d26 _ZNSt12_Vector_baseIPN15google_breakpad16ExceptionHandlerESaIS2_EE13_M_deallocateEPS2_m
-            3d30 _ZNSt16allocator_traitsISaIPN15google_breakpad16ExceptionHandlerEEE10deallocateERS3_PS2_m
-            3d30 _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad16ExceptionHandlerEE10deallocateEPS3_m
             3670 _ZN15google_breakpad16ExceptionHandlerC1ERKNS_18MinidumpDescriptorEPFbPvEPFbS3_S4_bES4_bi
             3693 _ZN15google_breakpad10scoped_ptrINS_21CrashGenerationClientEEC4EPS1_
             36b8 _ZNSt7__cxx114listIN15google_breakpad12MappingEntryESaIS2_EEC4Ev
             36b8 _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EEC4Ev
             36b8 _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE7_M_initEv
-            36d4 _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE10_List_implC4Ev
-            36d4 _ZNSt10_List_nodeImEC4IJEEEDpOT_
             36bf _ZNSt7__cxx114listIN15google_breakpad9AppMemoryESaIS2_EEC4Ev
             36bf _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EEC4Ev
             36bf _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE7_M_initEv
+            36d4 _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE10_List_implC4Ev
+            36d4 _ZNSt10_List_nodeImEC4IJEEEDpOT_
             36ed _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE10_List_implC4Ev
             36ed _ZNSt10_List_nodeImEC4IJEEEDpOT_
             3714 _ZN15google_breakpad10scoped_ptrINS_21CrashGenerationClientEE5resetEPS1_
             3744 memset
             376d InstallAlternateStackLocked
-            3817 memset
-            3838 memset
-            385f sys_sigaltstack
-            389b sys_sigaltstack
             3786 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE9push_backEOS2_
             3786 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE12emplace_backIJS2_EEEvDpOT_
             3798 _ZNSt16allocator_traitsISaIPN15google_breakpad16ExceptionHandlerEEE9constructIS2_JS2_EEEvRS3_PT_DpOT0_
             3798 _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad16ExceptionHandlerEE9constructIS3_JS3_EEEvPT_DpOT0_
+            3817 memset
+            3838 memset
+            385f sys_sigaltstack
+            389b sys_sigaltstack
             392a _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EEC4Ev
             392a _ZNSt12_Vector_baseIPN15google_breakpad16ExceptionHandlerESaIS2_EEC4Ev
             392a _ZNSt12_Vector_baseIPN15google_breakpad16ExceptionHandlerESaIS2_EE12_Vector_implC4Ev
@@ -289,12 +292,9 @@ expression: FunctionsDebug(&symcache)
             3aa8 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_S_copy_charsEPcS5_S5_
             3aa8 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_S_copyEPcPKcm
             3ab6 _ZNSt11char_traitsIcE4copyEPcPKcm
-            3c45 _ZNSt11char_traitsIcE6assignERcRKc
             3ac8 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
             3ac8 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
             3acf _ZNSt11char_traitsIcE6assignERcRKc
-            3bfd _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
-            3c04 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
             3ad3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4Ev
             3ad3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_
             3add _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
@@ -312,6 +312,30 @@ expression: FunctionsDebug(&symcache)
             3bb7 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm
             3bb7 _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm
             3bb7 _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm
+            3bfd _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
+            3c04 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
+            3c45 _ZNSt11char_traitsIcE6assignERcRKc
+            3cb0 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE19_M_emplace_back_auxIIS2_EEEvDpOT_
+            3cc4 _ZNKSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE12_M_check_lenEmPKc
+            3cc4 _ZNKSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE4sizeEv
+            3ccf _ZSt3maxImERKT_S2_S2_
+            3cf6 _ZNSt12_Vector_baseIPN15google_breakpad16ExceptionHandlerESaIS2_EE11_M_allocateEm
+            3cf6 _ZNSt16allocator_traitsISaIPN15google_breakpad16ExceptionHandlerEEE8allocateERS3_m
+            3cf6 _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad16ExceptionHandlerEE8allocateEmPKv
+            3d01 _ZNKSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE4sizeEv
+            3d08 _ZNSt16allocator_traitsISaIPN15google_breakpad16ExceptionHandlerEEE9constructIS2_JS2_EEEvRS3_PT_DpOT0_
+            3d08 _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad16ExceptionHandlerEE9constructIS3_JS3_EEEvPT_DpOT0_
+            3d1a _ZSt34__uninitialized_move_if_noexcept_aIPPN15google_breakpad16ExceptionHandlerES3_SaIS2_EET0_T_S6_S5_RT1_
+            3d1a _ZSt22__uninitialized_copy_aISt13move_iteratorIPPN15google_breakpad16ExceptionHandlerEES4_S3_ET0_T_S7_S6_RSaIT1_E
+            3d1a _ZSt18uninitialized_copyISt13move_iteratorIPPN15google_breakpad16ExceptionHandlerEES4_ET0_T_S7_S6_
+            3d1a _ZNSt20__uninitialized_copyILb1EE13__uninit_copyISt13move_iteratorIPPN15google_breakpad16ExceptionHandlerEES6_EET0_T_S9_S8_
+            3d1a _ZSt4copyISt13move_iteratorIPPN15google_breakpad16ExceptionHandlerEES4_ET0_T_S7_S6_
+            3d1a _ZSt14__copy_move_a2ILb1EPPN15google_breakpad16ExceptionHandlerES3_ET1_T0_S5_S4_
+            3d1a _ZSt13__copy_move_aILb1EPPN15google_breakpad16ExceptionHandlerES3_ET1_T0_S5_S4_
+            3d1a _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mIPN15google_breakpad16ExceptionHandlerEEEPT_PKS6_S9_S7_
+            3d26 _ZNSt12_Vector_baseIPN15google_breakpad16ExceptionHandlerESaIS2_EE13_M_deallocateEPS2_m
+            3d30 _ZNSt16allocator_traitsISaIPN15google_breakpad16ExceptionHandlerEEE10deallocateERS3_PS2_m
+            3d30 _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad16ExceptionHandlerEE10deallocateEPS3_m
             3da0 _ZN15google_breakpad18MinidumpDescriptorC1ERKS0_
             3da9 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4ERKS4_
             3da9 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv
@@ -322,39 +346,36 @@ expression: FunctionsDebug(&symcache)
             3e06 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_S_copy_charsEPcS5_S5_
             3e06 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_S_copyEPcPKcm
             3e10 _ZNSt11char_traitsIcE4copyEPcPKcm
-            3eed _ZNSt11char_traitsIcE6assignERcRKc
             3e1c _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
             3e1c _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
             3e20 _ZNSt11char_traitsIcE6assignERcRKc
-            3ec1 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
-            3ec5 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
             3e25 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4Ev
             3e25 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv
             3e29 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
             3e29 _ZNSt11char_traitsIcE6assignERcRKc
             3e2d _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
+            3ec1 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
+            3ec5 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
+            3eed _ZNSt11char_traitsIcE6assignERcRKc
             3f20 _ZN15google_breakpad18MinidumpDescriptor10UpdatePathEv
             3fb0 _ZStplIcSt11char_traitsIcESaIcEENSt7__cxx1112basic_stringIT_T0_T1_EERKS8_PKS5_
             3fb0 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4ERKS4_
             3fb0 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_
+            3fb5 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE5clearEv
+            3fb5 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
+            3fb5 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
+            3fbd _ZNSt11char_traitsIcE6assignERcRKc
             3fd1 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_M_constructIPcEEvT_S7_
             3fd1 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE16_M_construct_auxIPcEEvT_S7_St12__false_type
             3fd1 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_M_constructIPcEEvT_S7_St20forward_iterator_tag
             3fff _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_S_copy_charsEPcS5_S5_
             3fff _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_S_copyEPcPKcm
             4009 _ZNSt11char_traitsIcE4copyEPcPKcm
-            421c _ZNSt11char_traitsIcE6assignERcRKc
             4016 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
             4016 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
-            4025 _ZNSt11char_traitsIcE6assignERcRKc
-            41ea _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
-            41ef _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
             401b _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE6appendEPKc
             401b _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE15_M_check_lengthEmmPKc
-            3fb5 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE5clearEv
-            3fb5 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
-            3fb5 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
-            3fbd _ZNSt11char_traitsIcE6assignERcRKc
+            4025 _ZNSt11char_traitsIcE6assignERcRKc
             4049 _ZStplIcSt11char_traitsIcESaIcEENSt7__cxx1112basic_stringIT_T0_T1_EEOS8_PKS5_
             4049 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE6appendEPKc
             4049 _ZNSt11char_traitsIcE6lengthEPKc
@@ -367,8 +388,8 @@ expression: FunctionsDebug(&symcache)
             40cf _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
             40d8 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
             40d8 _ZNSt11char_traitsIcE6assignERcRKc
-            40e1 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
             40dc _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
+            40e1 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
             40e9 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
             40ec _ZStplIcSt11char_traitsIcESaIcEENSt7__cxx1112basic_stringIT_T0_T1_EEOS8_PKS5_
             40ec _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE6appendEPKc
@@ -379,14 +400,14 @@ expression: FunctionsDebug(&symcache)
             412a _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv
             4137 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
             4140 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
+            414d _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEaSEOS4_
             4150 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
             4150 _ZNSt11char_traitsIcE6assignERcRKc
-            4160 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
-            4158 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
-            415d _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
-            414d _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEaSEOS4_
             4154 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev
             4154 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv
+            4158 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
+            415d _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
+            4160 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
             4177 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm
             4177 _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm
             4177 _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm
@@ -400,6 +421,9 @@ expression: FunctionsDebug(&symcache)
             419d _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm
             419d _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm
             419d _ZN9__gnu_cxx13new_allocatorIcE10deallocateEPcm
+            41ea _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
+            41ef _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
+            421c _ZNSt11char_traitsIcE6assignERcRKc
             429a _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED4Ev
             429a _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv
             42a3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm
@@ -419,60 +443,6 @@ expression: FunctionsDebug(&symcache)
             432b _ZNSt11char_traitsIcE6assignERcRKc
             43c0 _ZN6logger5writeEPKcm
             43c3 sys_write
-            6e10 _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE15_M_range_insertIPKhEEvN9__gnu_cxx17__normal_iteratorIPhS3_EET_SB_St20forward_iterator_tag
-            6e24 _ZSt8distanceIPKhENSt15iterator_traitsIT_E15difference_typeES3_S3_
-            6e24 _ZSt10__distanceIPKhENSt15iterator_traitsIT_E15difference_typeES3_S3_St26random_access_iterator_tag
-            6e4d _ZN9__gnu_cxxmiIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEENS_17__normal_iteratorIT_T0_E15difference_typeERKSA_SD_
-            6e5e _ZSt22__uninitialized_move_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
-            6e5e _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6e70 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            6e70 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            6e70 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
-            6e8f _ZSt13move_backwardIPhS0_ET0_T_S2_S1_
-            6e8f _ZSt23__copy_move_backward_a2ILb1EPhS0_ET1_T0_S2_S1_
-            6e8f _ZSt22__copy_move_backward_aILb1EPhS0_ET1_T0_S2_S1_
-            6e8f _ZNSt20__copy_move_backwardILb1ELb1ESt26random_access_iterator_tagE13__copy_move_bIhEEPT_PKS3_S6_S4_
-            6e9c _ZSt4copyIPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET0_T_SC_SB_
-            6e9c _ZSt14__copy_move_a2ILb0EPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET1_T0_SC_SB_
-            6e9c _ZSt13__copy_move_aILb0EPKhPhET1_T0_S4_S3_
-            6e9c _ZNSt11__copy_moveILb0ELb1ESt26random_access_iterator_tagE8__copy_mIhEEPT_PKS3_S6_S4_
-            6ec0 _ZSt7advanceIPKhmEvRT_T0_
-            6ec0 _ZSt9__advanceIPKhlEvRT_T0_St26random_access_iterator_tag
-            6ec4 _ZSt22__uninitialized_copy_aIPKhPhN15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6ed0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJRKhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS7_
-            6ed0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJRKhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PSA_DpOSB_
-            6ed0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJRKhEEEvPT_DpOT0_
-            6ef2 _ZSt22__uninitialized_move_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
-            6ef2 _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6f00 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            6f00 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            6f00 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
-            6f1f _ZSt4copyIPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET0_T_SC_SB_
-            6f1f _ZSt14__copy_move_a2ILb0EPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET1_T0_SC_SB_
-            6f1f _ZSt13__copy_move_aILb0EPKhPhET1_T0_S4_S3_
-            6f1f _ZNSt11__copy_moveILb0ELb1ESt26random_access_iterator_tagE8__copy_mIhEEPT_PKS3_S6_S4_
-            6f4c _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE12_M_check_lenEmPKc
-            6f4c _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE4sizeEv
-            6f76 _ZNSt12_Vector_baseIhN15google_breakpad16PageStdAllocatorIhEEE11_M_allocateEm
-            6f76 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE8allocateERS2_m
-            6f76 _ZN15google_breakpad16PageStdAllocatorIhE8allocateEmPKv
-            7074 _ZN15google_breakpad13PageAllocator5AllocEm
-            70d3 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            70d3 sys_mmap
-            6f8b _ZSt34__uninitialized_move_if_noexcept_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
-            6f8b _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6fa0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            6fa0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            6fa0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
-            6fd0 _ZSt22__uninitialized_copy_aIPKhPhN15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            6fd0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJRKhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS7_
-            6fd0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJRKhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PSA_DpOSB_
-            6fd0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJRKhEEEvPT_DpOT0_
-            6ff1 _ZSt34__uninitialized_move_if_noexcept_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
-            6ff1 _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
-            7000 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            7000 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            7000 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
             4400 _ZN15google_breakpad14WriteMicrodumpEiPKvmRKNSt7__cxx114listINS_12MappingEntryESaIS4_EEEbmbRKNS_18MicrodumpExtraInfoE
             447a _ZN15google_breakpad17LinuxPtraceDumperD4Ev
             44c8 _ZN15google_breakpad11LinuxDumper17set_crash_addressEm
@@ -481,23 +451,20 @@ expression: FunctionsDebug(&symcache)
             44e9 MicrodumpWriter
             4566 Alloc
             4566 _ZN15google_breakpad13PageAllocator5AllocEm
-            4649 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            4649 sys_mmap
             45ee Init
             4625 ~MicrodumpWriter
+            4649 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            4649 sys_mmap
             472b Dump
             472b CaptureCrashingThreadStack
             4771 Alloc
             4771 _ZN15google_breakpad13PageAllocator5AllocEm
-            63dc _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            63dc sys_mmap
             47e4 LogLine
             4810 DumpProductInformation
             4810 LogAppend
             482f LogAppend
             4849 LogCommitLine
             4850 LogLine
-            6d95 LogAppend
             487b DumpOSInformation
             488d LogAppend
             48cc LogAppend
@@ -512,16 +479,11 @@ expression: FunctionsDebug(&symcache)
             49ed LogAppend
             49fe LogCommitLine
             4a05 LogLine
-            63a2 LogAppend
-            6c40 LogAppend
-            6c58 LogAppend
-            6c70 LogAppend
             4a30 DumpProcessType
             4a30 LogAppend
             4a52 LogAppend
             4a6c LogCommitLine
             4a73 LogLine
-            6d7d LogAppend
             4a9e DumpCrashReason
             4a9e LogAppend
             4ac0 LogAppend<int>
@@ -538,7 +500,6 @@ expression: FunctionsDebug(&symcache)
             4d7e LogAppend
             4d98 LogCommitLine
             4d9f LogLine
-            6d65 LogAppend
             4dd6 DumpCPUState
             4e05 LogAppend
             4e24 LogAppend
@@ -554,8 +515,10 @@ expression: FunctionsDebug(&symcache)
             4ee7 _ZNSt12_Vector_baseIhN15google_breakpad16PageStdAllocatorIhEEEC4ERKS2_
             4ee7 _ZNSt12_Vector_baseIhN15google_breakpad16PageStdAllocatorIhEEE12_Vector_implC4ERKS2_
             4ee7 _ZN15google_breakpad16PageStdAllocatorIhEC4ERKS1_
-            4f9d _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE7reserveEm
             4f04 memcpy
+            4f44 HaveMappingInfo
+            4f58 _ZNSt20_List_const_iteratorIN15google_breakpad12MappingEntryEEppEv
+            4f9d _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE7reserveEm
             4fab _ZN15google_breakpad11LinuxDumper9allocatorEv
             4ff8 _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE4sizeEv
             4fff _ZSt3minImERKT_S2_S2_
@@ -595,8 +558,6 @@ expression: FunctionsDebug(&symcache)
             58c9 LogAppend
             58e1 LogCommitLine
             58e8 LogLine
-            4f44 HaveMappingInfo
-            4f58 _ZNSt20_List_const_iteratorIN15google_breakpad12MappingEntryEEppEv
             5954 DumpModule
             5954 memcpy
             5985 LogAppend<long unsigned int>
@@ -639,6 +600,7 @@ expression: FunctionsDebug(&symcache)
             6293 LogAppend
             62a7 LogCommitLine
             62ae LogLine
+            62dc _ZNSt20_List_const_iteratorIN15google_breakpad12MappingEntryEEppEv
             6300 _ZN15google_breakpad11LinuxDumper9allocatorEv
             6304 _ZN15google_breakpad20auto_wasteful_vectorIhLj20EEC4EPNS_13PageAllocatorE
             6304 _ZN15google_breakpad15wasteful_vectorIhEC4ENS_16PageStdAllocatorIhEE
@@ -647,8 +609,10 @@ expression: FunctionsDebug(&symcache)
             6304 _ZNSt12_Vector_baseIhN15google_breakpad16PageStdAllocatorIhEEE12_Vector_implC4ERKS2_
             6304 _ZN15google_breakpad16PageStdAllocatorIhEC4ERKS1_
             631e _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE7reserveEm
-            62dc _ZNSt20_List_const_iteratorIN15google_breakpad12MappingEntryEEppEv
             6368 LogLine
+            63a2 LogAppend
+            63dc _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            63dc sys_mmap
             64a4 DumpThreadStack
             64b1 LogAppend
             64d0 LogAppend<long unsigned int>
@@ -671,30 +635,93 @@ expression: FunctionsDebug(&symcache)
             6b4e LogAppend
             6ba0 LogCommitLine
             6ba7 LogLine
+            6c40 LogAppend
+            6c58 LogAppend
+            6c70 LogAppend
             6d45 LogLine
+            6d65 LogAppend
+            6d7d LogAppend
+            6d95 LogAppend
             6dc6 ~MicrodumpWriter
             6dd6 _ZN15google_breakpad17LinuxPtraceDumperD4Ev
+            6e10 _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE15_M_range_insertIPKhEEvN9__gnu_cxx17__normal_iteratorIPhS3_EET_SB_St20forward_iterator_tag
+            6e24 _ZSt8distanceIPKhENSt15iterator_traitsIT_E15difference_typeES3_S3_
+            6e24 _ZSt10__distanceIPKhENSt15iterator_traitsIT_E15difference_typeES3_S3_St26random_access_iterator_tag
+            6e4d _ZN9__gnu_cxxmiIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEENS_17__normal_iteratorIT_T0_E15difference_typeERKSA_SD_
+            6e5e _ZSt22__uninitialized_move_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
+            6e5e _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
+            6e70 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
+            6e70 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
+            6e70 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
+            6e8f _ZSt13move_backwardIPhS0_ET0_T_S2_S1_
+            6e8f _ZSt23__copy_move_backward_a2ILb1EPhS0_ET1_T0_S2_S1_
+            6e8f _ZSt22__copy_move_backward_aILb1EPhS0_ET1_T0_S2_S1_
+            6e8f _ZNSt20__copy_move_backwardILb1ELb1ESt26random_access_iterator_tagE13__copy_move_bIhEEPT_PKS3_S6_S4_
+            6e9c _ZSt4copyIPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET0_T_SC_SB_
+            6e9c _ZSt14__copy_move_a2ILb0EPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET1_T0_SC_SB_
+            6e9c _ZSt13__copy_move_aILb0EPKhPhET1_T0_S4_S3_
+            6e9c _ZNSt11__copy_moveILb0ELb1ESt26random_access_iterator_tagE8__copy_mIhEEPT_PKS3_S6_S4_
+            6ec0 _ZSt7advanceIPKhmEvRT_T0_
+            6ec0 _ZSt9__advanceIPKhlEvRT_T0_St26random_access_iterator_tag
+            6ec4 _ZSt22__uninitialized_copy_aIPKhPhN15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
+            6ed0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJRKhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS7_
+            6ed0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJRKhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PSA_DpOSB_
+            6ed0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJRKhEEEvPT_DpOT0_
+            6ef2 _ZSt22__uninitialized_move_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
+            6ef2 _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
+            6f00 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
+            6f00 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
+            6f00 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
+            6f1f _ZSt4copyIPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET0_T_SC_SB_
+            6f1f _ZSt14__copy_move_a2ILb0EPKhN9__gnu_cxx17__normal_iteratorIPhSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEEEEET1_T0_SC_SB_
+            6f1f _ZSt13__copy_move_aILb0EPKhPhET1_T0_S4_S3_
+            6f1f _ZNSt11__copy_moveILb0ELb1ESt26random_access_iterator_tagE8__copy_mIhEEPT_PKS3_S6_S4_
+            6f4c _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE12_M_check_lenEmPKc
+            6f4c _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE4sizeEv
+            6f76 _ZNSt12_Vector_baseIhN15google_breakpad16PageStdAllocatorIhEEE11_M_allocateEm
+            6f76 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE8allocateERS2_m
+            6f76 _ZN15google_breakpad16PageStdAllocatorIhE8allocateEmPKv
+            6f8b _ZSt34__uninitialized_move_if_noexcept_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
+            6f8b _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
+            6fa0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
+            6fa0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
+            6fa0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
+            6fd0 _ZSt22__uninitialized_copy_aIPKhPhN15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
+            6fd0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJRKhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS7_
+            6fd0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJRKhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PSA_DpOSB_
+            6fd0 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJRKhEEEvPT_DpOT0_
+            6ff1 _ZSt34__uninitialized_move_if_noexcept_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
+            6ff1 _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
+            7000 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
+            7000 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
+            7000 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
+            7074 _ZN15google_breakpad13PageAllocator5AllocEm
+            70d3 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            70d3 sys_mmap
             71f0 _ZN15google_breakpad11LinuxDumper8LateInitEv
-            9350 _ZN15google_breakpad13PageAllocator5AllocEm
-            93b7 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            93b7 sys_mmap
             7200 _ZN15google_breakpad11LinuxDumper17EnumerateMappingsEv
             724e sys_open
             728f _ZnwmRN15google_breakpad13PageAllocatorE
             728f _ZN15google_breakpad13PageAllocator5AllocEm
-            7426 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            7426 sys_mmap
             72d0 _ZN15google_breakpad10LineReaderC4Ei
             72d4 _ZN15google_breakpad10LineReader11GetNextLineEPPKcPj
             731d sys_read
+            736b _ZNKSt6vectorIPN15google_breakpad11MappingInfoENS0_16PageStdAllocatorIS2_EEE4sizeEv
+            73b2 sys_close
+            7426 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            7426 sys_mmap
+            7552 _ZN15google_breakpad10LineReader7PopLineEj
+            7565 memmove
             7648 _ZnwmRN15google_breakpad13PageAllocatorE
             7648 _ZN15google_breakpad13PageAllocator5AllocEm
-            77a6 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            77a6 sys_mmap
             7688 _ZNSt6vectorIPN15google_breakpad11MappingInfoENS0_16PageStdAllocatorIS2_EEE9push_backERKS2_
             769c _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIPNS0_11MappingInfoEEEE9constructIS3_JRKS3_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS4_PT_DpOS9_
             769c _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIPNS0_11MappingInfoEEEE12_S_constructIS3_JRKS3_EEENSt9enable_ifIXsrSt6__and_IJNS5_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS4_PSC_DpOSD_
             769c _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad11MappingInfoEE9constructIS3_JRKS3_EEEvPT_DpOT0_
+            7718 memcpy
+            77a6 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            77a6 sys_mmap
+            78ad _ZN15google_breakpad10LineReader7PopLineEj
             7952 _ZNSt6vectorIPN15google_breakpad11MappingInfoENS0_16PageStdAllocatorIS2_EEE19_M_emplace_back_auxIJRKS2_EEEvDpOT_
             7952 _ZNKSt6vectorIPN15google_breakpad11MappingInfoENS0_16PageStdAllocatorIS2_EEE12_M_check_lenEmPKc
             7952 _ZNKSt6vectorIPN15google_breakpad11MappingInfoENS0_16PageStdAllocatorIS2_EEE4sizeEv
@@ -710,12 +737,6 @@ expression: FunctionsDebug(&symcache)
             79ba _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIPNS0_11MappingInfoEEEE9constructIS3_JS3_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS4_PT_DpOS7_
             79ba _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIPNS0_11MappingInfoEEEE12_S_constructIS3_JS3_EEENSt9enable_ifIXsrSt6__and_IJNS5_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS4_PSA_DpOSB_
             79ba _ZN9__gnu_cxx13new_allocatorIPN15google_breakpad11MappingInfoEE9constructIS3_JS3_EEEvPT_DpOT0_
-            7718 memcpy
-            78ad _ZN15google_breakpad10LineReader7PopLineEj
-            7552 _ZN15google_breakpad10LineReader7PopLineEj
-            7565 memmove
-            736b _ZNKSt6vectorIPN15google_breakpad11MappingInfoENS0_16PageStdAllocatorIS2_EEE4sizeEv
-            73b2 sys_close
             7ac0 _ZN15google_breakpad11LinuxDumperC1EiPKc
             7ac4 _ZN15google_breakpad15wasteful_vectorIiEC4EPNS_13PageAllocatorEj
             7ac4 _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE7reserveEm
@@ -726,35 +747,15 @@ expression: FunctionsDebug(&symcache)
             7ac4 _ZN15google_breakpad13PageAllocator5AllocEm
             7ac4 _ZN15google_breakpad13PageAllocator9GetNPagesEm
             7ac4 sys_mmap
+            7b09 _ZN15google_breakpad13PageAllocatorC4Ev
             7b45 _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEEC4ERKS2_
             7b45 _ZNSt12_Vector_baseIiN15google_breakpad16PageStdAllocatorIiEEEC4ERKS2_
             7b45 _ZNSt12_Vector_baseIiN15google_breakpad16PageStdAllocatorIiEEE12_Vector_implC4ERKS2_
             7b45 _ZN15google_breakpad16PageStdAllocatorIiEC4ERKS1_
-            7b09 _ZN15google_breakpad13PageAllocatorC4Ev
             7bb0 _ZNSt6vectorImN15google_breakpad16PageStdAllocatorImEEE6resizeEm
             7bb0 _ZNSt6vectorImN15google_breakpad16PageStdAllocatorImEEE17_M_default_appendEm
             7bb0 _ZSt34__uninitialized_move_if_noexcept_aIPmS0_N15google_breakpad16PageStdAllocatorImEEET0_T_S5_S4_RT1_
             7bb0 _ZSt22__uninitialized_copy_aISt13move_iteratorIPmES1_N15google_breakpad16PageStdAllocatorImEEET0_T_S7_S6_RT1_
-            7f80 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE9constructImJmEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            7f80 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE12_S_constructImJmEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            7f80 _ZN9__gnu_cxx13new_allocatorImE9constructImJmEEEvPT_DpOT0_
-            7f30 _ZNKSt6vectorImN15google_breakpad16PageStdAllocatorImEEE12_M_check_lenEmPKc
-            7f59 _ZNSt12_Vector_baseImN15google_breakpad16PageStdAllocatorImEEE11_M_allocateEm
-            8117 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE8allocateERS2_m
-            8117 _ZN15google_breakpad16PageStdAllocatorImE8allocateEmPKv
-            8153 _ZN15google_breakpad13PageAllocator5AllocEm
-            8199 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            8199 sys_mmap
-            7fb0 _ZSt27__uninitialized_default_n_aIPmmN15google_breakpad16PageStdAllocatorImEEET_S4_T0_RT1_
-            7fb0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE9constructImJEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            7fb0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE12_S_constructImJEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            7fb0 _ZN9__gnu_cxx13new_allocatorImE9constructImJEEEvPT_DpOT0_
-            7d68 _ZSt27__uninitialized_default_n_aIPmmN15google_breakpad16PageStdAllocatorImEEET_S4_T0_RT1_
-            7d68 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE9constructImJEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            7d68 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE12_S_constructImJEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            7d68 _ZN9__gnu_cxx13new_allocatorImE9constructImJEEEvPT_DpOT0_
-            7d0d _ZNKSt6vectorImN15google_breakpad16PageStdAllocatorImEEE4sizeEv
-            7d23 _ZNSt6vectorImN15google_breakpad16PageStdAllocatorImEEE15_M_erase_at_endEPm
             7bc0 _ZN15google_breakpad15wasteful_vectorIPNS_11MappingInfoEEC4EPNS_13PageAllocatorEj
             7bc0 _ZNSt6vectorIPN15google_breakpad11MappingInfoENS0_16PageStdAllocatorIS2_EEE7reserveEm
             7bc0 _ZNSt6vectorIPN15google_breakpad11MappingInfoENS0_16PageStdAllocatorIS2_EEE20_M_allocate_and_copyISt13move_iteratorIPS2_EEES8_mT_SA_
@@ -762,8 +763,6 @@ expression: FunctionsDebug(&symcache)
             7bc0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIPNS0_11MappingInfoEEEE8allocateERS4_m
             7bc0 _ZN15google_breakpad16PageStdAllocatorIPNS_11MappingInfoEE8allocateEmPKv
             7bc0 _ZN15google_breakpad13PageAllocator5AllocEm
-            7e69 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            7e69 sys_mmap
             7bcf _ZNSt6vectorIPN15google_breakpad11MappingInfoENS0_16PageStdAllocatorIS2_EEEC4ERKS4_
             7bcf _ZNSt12_Vector_baseIPN15google_breakpad11MappingInfoENS0_16PageStdAllocatorIS2_EEEC4ERKS4_
             7bcf _ZNSt12_Vector_baseIPN15google_breakpad11MappingInfoENS0_16PageStdAllocatorIS2_EEE12_Vector_implC4ERKS4_
@@ -779,8 +778,30 @@ expression: FunctionsDebug(&symcache)
             7c98 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE8allocateERS2_m
             7c98 _ZN15google_breakpad16PageStdAllocatorImE8allocateEmPKv
             7c98 _ZN15google_breakpad13PageAllocator5AllocEm
+            7d0d _ZNKSt6vectorImN15google_breakpad16PageStdAllocatorImEEE4sizeEv
+            7d23 _ZNSt6vectorImN15google_breakpad16PageStdAllocatorImEEE15_M_erase_at_endEPm
+            7d68 _ZSt27__uninitialized_default_n_aIPmmN15google_breakpad16PageStdAllocatorImEEET_S4_T0_RT1_
+            7d68 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE9constructImJEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
+            7d68 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE12_S_constructImJEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
+            7d68 _ZN9__gnu_cxx13new_allocatorImE9constructImJEEEvPT_DpOT0_
             7e09 _ZN15google_breakpad13PageAllocator9GetNPagesEm
             7e09 sys_mmap
+            7e69 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            7e69 sys_mmap
+            7f30 _ZNKSt6vectorImN15google_breakpad16PageStdAllocatorImEEE12_M_check_lenEmPKc
+            7f59 _ZNSt12_Vector_baseImN15google_breakpad16PageStdAllocatorImEEE11_M_allocateEm
+            7f80 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE9constructImJmEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
+            7f80 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE12_S_constructImJmEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
+            7f80 _ZN9__gnu_cxx13new_allocatorImE9constructImJmEEEvPT_DpOT0_
+            7fb0 _ZSt27__uninitialized_default_n_aIPmmN15google_breakpad16PageStdAllocatorImEEET_S4_T0_RT1_
+            7fb0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE9constructImJEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
+            7fb0 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE12_S_constructImJEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
+            7fb0 _ZN9__gnu_cxx13new_allocatorImE9constructImJEEEvPT_DpOT0_
+            8117 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorImEEE8allocateERS2_m
+            8117 _ZN15google_breakpad16PageStdAllocatorImE8allocateEmPKv
+            8153 _ZN15google_breakpad13PageAllocator5AllocEm
+            8199 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            8199 sys_mmap
             82af _ZN15google_breakpad13PageAllocatorD4Ev
             82af _ZN15google_breakpad13PageAllocator7FreeAllEv
             82af sys_munmap
@@ -823,13 +844,13 @@ expression: FunctionsDebug(&symcache)
             90e7 _ZN15google_breakpad13PageAllocator5AllocEm
             91f6 _ZN15google_breakpad13PageAllocator9GetNPagesEm
             91f6 sys_mmap
+            9350 _ZN15google_breakpad13PageAllocator5AllocEm
+            93b7 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            93b7 sys_mmap
             94a0 _ZNK15google_breakpad17LinuxPtraceDumper12IsPostMortemEv
             94b0 _ZN15google_breakpad17LinuxPtraceDumper15CopyFromProcessEPviPKvm
             94eb sys_ptrace
             9555 memcpy
-            a8f0 _ZN15google_breakpad17LinuxPtraceDumperD1Ev
-            a910 _ZN15google_breakpad17LinuxPtraceDumperD0Ev
-            a910 _ZN15google_breakpad17LinuxPtraceDumperD4Ev
             9640 _ZN15google_breakpad17LinuxPtraceDumper13ThreadsResumeEv
             9666 _ZNKSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE4sizeEv
             967c ResumeThread
@@ -839,24 +860,30 @@ expression: FunctionsDebug(&symcache)
             979a memcpy
             97c0 _ZN15google_breakpad17LinuxPtraceDumper16EnumerateThreadsEv
             97fe _ZNK15google_breakpad17LinuxPtraceDumper13BuildProcPathEPciPKc
-            9a27 memcpy
-            9a51 memcpy
             9837 sys_open
             9894 _ZnwmRN15google_breakpad13PageAllocatorE
             9894 _ZN15google_breakpad13PageAllocator5AllocEm
-            9969 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            9969 sys_mmap
+            98db _ZN15google_breakpad15DirectoryReader12GetNextEntryEPPKc
+            98df _ZN15google_breakpad15DirectoryReaderC4Ei
             98f8 _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE9push_backERKi
             98f8 _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE19_M_emplace_back_auxIJRKiEEEvDpOT_
             98f8 _ZNKSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE12_M_check_lenEmPKc
+            9905 sys_getdents
+            992f sys_close
+            9969 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            9969 sys_mmap
+            9a27 memcpy
+            9a51 memcpy
+            9aab _ZN15google_breakpad15DirectoryReader8PopEntryEv
+            9aba memmove
+            9b25 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIiEEE9constructIiJRKiEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS7_
+            9b25 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIiEEE12_S_constructIiJRKiEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PSA_DpOSB_
+            9b25 _ZN9__gnu_cxx13new_allocatorIiE9constructIiJRKiEEEvPT_DpOT0_
             9bb9 _ZNKSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE4sizeEv
             9bc6 _ZSt3maxImERKT_S2_S2_
             9be5 _ZNSt12_Vector_baseIiN15google_breakpad16PageStdAllocatorIiEEE11_M_allocateEm
             9be5 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIiEEE8allocateERS2_m
             9be5 _ZN15google_breakpad16PageStdAllocatorIiE8allocateEmPKv
-            9c86 _ZN15google_breakpad13PageAllocator5AllocEm
-            9ce6 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            9ce6 sys_mmap
             9c01 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIiEEE9constructIiJRKiEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS7_
             9c01 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIiEEE12_S_constructIiJRKiEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PSA_DpOSB_
             9c01 _ZN9__gnu_cxx13new_allocatorIiE9constructIiJRKiEEEvPT_DpOT0_
@@ -865,15 +892,9 @@ expression: FunctionsDebug(&symcache)
             9c20 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIiEEE9constructIiJiEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
             9c20 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIiEEE12_S_constructIiJiEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
             9c20 _ZN9__gnu_cxx13new_allocatorIiE9constructIiJiEEEvPT_DpOT0_
-            9b25 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIiEEE9constructIiJRKiEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS7_
-            9b25 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIiEEE12_S_constructIiJRKiEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PSA_DpOSB_
-            9b25 _ZN9__gnu_cxx13new_allocatorIiE9constructIiJRKiEEEvPT_DpOT0_
-            98db _ZN15google_breakpad15DirectoryReader12GetNextEntryEPPKc
-            9905 sys_getdents
-            98df _ZN15google_breakpad15DirectoryReaderC4Ei
-            992f sys_close
-            9aab _ZN15google_breakpad15DirectoryReader8PopEntryEv
-            9aba memmove
+            9c86 _ZN15google_breakpad13PageAllocator5AllocEm
+            9ce6 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            9ce6 sys_mmap
             9e50 _ZN15google_breakpad17LinuxPtraceDumperC1Ei
             9e80 _ZN15google_breakpad17LinuxPtraceDumper15ReadRegisterSetEPNS_10ThreadInfoEi
             9e93 sys_ptrace
@@ -884,20 +905,36 @@ expression: FunctionsDebug(&symcache)
             a050 _ZN15google_breakpad17LinuxPtraceDumper20GetThreadInfoByIndexEmPNS_10ThreadInfoE
             a064 _ZNKSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE4sizeEv
             a0b1 _ZNK15google_breakpad17LinuxPtraceDumper13BuildProcPathEPciPKc
-            a5c4 memcpy
-            a5eb memcpy
-            a27c sys_ptrace
             a144 sys_open
             a171 _ZnwmRN15google_breakpad13PageAllocatorE
             a171 _ZN15google_breakpad13PageAllocator5AllocEm
-            a512 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            a512 sys_mmap
             a1b7 _ZN15google_breakpad10LineReaderC4Ei
             a1bb _ZN15google_breakpad10LineReader11GetNextLineEPPKcPj
             a201 sys_read
             a22d sys_close
+            a27c sys_ptrace
             a45c _ZN15google_breakpad10LineReader7PopLineEj
             a46b memmove
+            a512 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            a512 sys_mmap
+            a5c4 memcpy
+            a5eb memcpy
+            a690 _ZN15google_breakpad17LinuxPtraceDumper14ThreadsSuspendEv
+            a6c6 _ZNKSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE4sizeEv
+            a6e8 SuspendThread
+            a6e8 sys_ptrace
+            a6fc sys_ptrace
+            a70c _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEEixEm
+            a741 sys_waitpid
+            a741 sys_wait4
+            a780 sys_ptrace
+            a7a2 _ZNKSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE4sizeEv
+            a7be _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE6resizeEm
+            a7cd _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE15_M_erase_at_endEPi
+            a878 memmove
+            a8f0 _ZN15google_breakpad17LinuxPtraceDumperD1Ev
+            a910 _ZN15google_breakpad17LinuxPtraceDumperD0Ev
+            a910 _ZN15google_breakpad17LinuxPtraceDumperD4Ev
             a930 _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE17_M_default_appendEm
             a958 _ZSt27__uninitialized_default_n_aIPimN15google_breakpad16PageStdAllocatorIiEEET_S4_T0_RT1_
             a958 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIiEEE9constructIiJEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
@@ -908,9 +945,6 @@ expression: FunctionsDebug(&symcache)
             a9d2 _ZNSt12_Vector_baseIiN15google_breakpad16PageStdAllocatorIiEEE11_M_allocateEm
             a9ef _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIiEEE8allocateERS2_m
             a9ef _ZN15google_breakpad16PageStdAllocatorIiE8allocateEmPKv
-            aa79 _ZN15google_breakpad13PageAllocator5AllocEm
-            aabc _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            aabc sys_mmap
             aa00 _ZSt34__uninitialized_move_if_noexcept_aIPiS0_N15google_breakpad16PageStdAllocatorIiEEET0_T_S5_S4_RT1_
             aa00 _ZSt22__uninitialized_copy_aISt13move_iteratorIPiES1_N15google_breakpad16PageStdAllocatorIiEEET0_T_S7_S6_RT1_
             aa10 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIiEEE9constructIiJiEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
@@ -920,117 +954,35 @@ expression: FunctionsDebug(&symcache)
             aa40 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIiEEE9constructIiJEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
             aa40 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIiEEE12_S_constructIiJEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
             aa40 _ZN9__gnu_cxx13new_allocatorIiE9constructIiJEEEvPT_DpOT0_
-            a690 _ZN15google_breakpad17LinuxPtraceDumper14ThreadsSuspendEv
-            a6c6 _ZNKSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE4sizeEv
-            a6e8 SuspendThread
-            a6e8 sys_ptrace
-            a6fc sys_ptrace
-            a741 sys_waitpid
-            a741 sys_wait4
-            a780 sys_ptrace
-            a70c _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEEixEm
-            a7a2 _ZNKSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE4sizeEv
-            a7be _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE6resizeEm
-            a7cd _ZNSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE15_M_erase_at_endEPi
-            a878 memmove
-            1900 _ZN15google_breakpad13PageAllocator7FreeAllEv.isra.6
-            190d sys_munmap
-            194a _ZN15google_breakpad17ProcCpuInfoReader14GetValueAndLenEPm.isra.20.part.21
-            196a _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE9CopyIndexEjPS1_.isra.32.part.33
-            198a _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE9CopyIndexEjPS1_.isra.32
-            19a8 _ZN15google_breakpad10TypedMDRVAIjE20CopyIndexAfterObjectEjPKvm.isra.34.part.35
-            19c8 _ZN12_GLOBAL__N_114MinidumpWriterC2EPKciPKN15google_breakpad16ExceptionHandler12CrashContextERKNSt7__cxx114listINS3_12MappingEntryESaISA_EEERKNS9_INS3_9AppMemoryESaISF_EEEbmbPNS3_11LinuxDumperE.part.93
-            19e8 _ZN12_GLOBAL__N_114MinidumpWriterD2Ev.constprop.123
-            1a14 _ZN12_GLOBAL__N_114MinidumpWriter9WriteFileEP20MDLocationDescriptorPKc.constprop.120
-            1a24 sys_open
-            1a6f Alloc
-            1a6f _ZN15google_breakpad11LinuxDumper9allocatorEv
-            1a9d sys_read
-            1bc4 Alloc
-            1bc4 _ZN15google_breakpad11LinuxDumper9allocatorEv
-            1ad7 sys_close
-            1b08 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
-            1c00 _ZN12_GLOBAL__N_114MinidumpWriter13WriteProcFileEP20MDLocationDescriptoriPKc.constprop.119
-            f400 _ZN15google_breakpad17ProcCpuInfoReader12GetNextFieldEPPKc
-            f404 _ZN15google_breakpad10LineReader7PopLineEj
-            f5cc memmove
-            f434 _ZN15google_breakpad10LineReader11GetNextLineEPPKcPj
-            f434 sys_read
-            f660 _ZNSt6vectorIcN15google_breakpad16PageStdAllocatorIcEEE6resizeEm
-            f668 _ZNKSt6vectorIcN15google_breakpad16PageStdAllocatorIcEEE4sizeEv
-            f675 _ZNSt6vectorIcN15google_breakpad16PageStdAllocatorIcEEE15_M_erase_at_endEPc
-            f68a _ZNSt6vectorIcN15google_breakpad16PageStdAllocatorIcEEE17_M_default_appendEm
-            f6a8 _ZSt27__uninitialized_default_n_aIPcmN15google_breakpad16PageStdAllocatorIcEEET_S4_T0_RT1_
-            f6a8 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIcEEE9constructIcJEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            f6a8 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIcEEE12_S_constructIcJEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            f6a8 _ZN9__gnu_cxx13new_allocatorIcE9constructIcJEEEvPT_DpOT0_
-            f6d0 _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE12_M_check_lenEmPKc
-            f6f8 _ZNSt12_Vector_baseIcN15google_breakpad16PageStdAllocatorIcEEE11_M_allocateEm
-            f6f8 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIcEEE8allocateERS2_m
-            f6f8 _ZN15google_breakpad16PageStdAllocatorIcE8allocateEmPKv
-            f77d _ZN15google_breakpad13PageAllocator5AllocEm
-            f7c3 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            f7c3 sys_mmap
-            f705 _ZSt34__uninitialized_move_if_noexcept_aIPcS0_N15google_breakpad16PageStdAllocatorIcEEET0_T_S5_S4_RT1_
-            f705 _ZSt22__uninitialized_copy_aISt13move_iteratorIPcES1_N15google_breakpad16PageStdAllocatorIcEEET0_T_S7_S6_RT1_
-            f718 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIcEEE9constructIcJcEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            f718 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIcEEE12_S_constructIcJcEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            f718 _ZN9__gnu_cxx13new_allocatorIcE9constructIcJcEEEvPT_DpOT0_
-            f740 _ZSt27__uninitialized_default_n_aIPcmN15google_breakpad16PageStdAllocatorIcEEET_S4_T0_RT1_
-            f740 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIcEEE9constructIcJEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
-            f740 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIcEEE12_S_constructIcJEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
-            f740 _ZN9__gnu_cxx13new_allocatorIcE9constructIcJEEEvPT_DpOT0_
-            f8c0 _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE19_M_emplace_back_auxIIRKS0_EEEvDpOT_
-            f8dc _ZNKSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE12_M_check_lenEmPKc
-            f8dc _ZNKSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE4sizeEv
-            f8e9 _ZSt3maxImERKT_S2_S2_
-            f906 _ZNSt12_Vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE11_M_allocateEm
-            f906 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE8allocateERS3_m
-            f906 _ZN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorE8allocateEmPKv
-            f9a2 _ZN15google_breakpad13PageAllocator5AllocEm
-            f9e4 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            f9e4 sys_mmap
-            f91b _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE9constructIS2_JRKS2_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS3_PT_DpOS8_
-            f91b _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE12_S_constructIS2_JRKS2_EEENSt9enable_ifIXsrSt6__and_IJNS4_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS3_PSB_DpOSC_
-            f91b _ZN9__gnu_cxx13new_allocatorI18MDMemoryDescriptorE9constructIS1_JRKS1_EEEvPT_DpOT0_
-            f930 _ZSt34__uninitialized_move_if_noexcept_aIP18MDMemoryDescriptorS1_N15google_breakpad16PageStdAllocatorIS0_EEET0_T_S6_S5_RT1_
-            f930 _ZSt22__uninitialized_copy_aISt13move_iteratorIP18MDMemoryDescriptorES2_N15google_breakpad16PageStdAllocatorIS1_EEET0_T_S8_S7_RT1_
-            f940 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE9constructIS2_JS2_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS3_PT_DpOS6_
-            f940 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE12_S_constructIS2_JS2_EEENSt9enable_ifIXsrSt6__and_IJNS4_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS3_PS9_DpOSA_
-            f940 _ZN9__gnu_cxx13new_allocatorI18MDMemoryDescriptorE9constructIS1_JS1_EEEvPT_DpOT0_
-            f953 _ZNSt13move_iteratorIP18MDMemoryDescriptorEppEv
+            aa79 _ZN15google_breakpad13PageAllocator5AllocEm
+            aabc _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            aabc sys_mmap
             abc0 _ZN12_GLOBAL__N_114MinidumpWriter21WriteThreadListStreamEP14MDRawDirectory.constprop.105
             abe8 _ZN15google_breakpad10TypedMDRVAIjEC4EPNS_18MinidumpFileWriterE
             abe8 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
             ac0a _ZNKSt6vectorIiN15google_breakpad16PageStdAllocatorIiEEE4sizeEv
             ac33 _ZN15google_breakpad10TypedMDRVAIjE22AllocateObjectAndArrayEmm
             ad04 FillThreadStack
+            ad11 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E8AllocateEv
             ae26 Alloc
             ae26 _ZN15google_breakpad13PageAllocator5AllocEm
-            b60f _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            b60f sys_mmap
             aee2 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
+            af2c _ZN15google_breakpad10TypedMDRVAIjED4Ev
+            af36 _ZN15google_breakpad10TypedMDRVAIjE5FlushEv
             af86 _ZN15google_breakpad12UntypedMDRVA4CopyEPKvm
             afcf _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE9push_backERKS0_
             afdd _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE9constructIS2_JRKS2_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS3_PT_DpOS8_
             afdd _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE12_S_constructIS2_JRKS2_EEENSt9enable_ifIXsrSt6__and_IJNS4_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS3_PSB_DpOSC_
             afdd _ZN9__gnu_cxx13new_allocatorI18MDMemoryDescriptorE9constructIS1_JRKS1_EEEvPT_DpOT0_
-            ad11 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E8AllocateEv
             b008 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64EC4EPNS_18MinidumpFileWriterE
             b008 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
             b08c _ZNK15google_breakpad12UntypedMDRVA8locationEv
             b0b7 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64ED4Ev
             b0c1 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E5FlushEv
-            b86d _ZN15google_breakpad11LinuxDumper17set_crash_addressEm
-            ba3d _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64ED4Ev
-            ba4b _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E5FlushEv
-            baf2 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64ED4Ev
-            baff _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E5FlushEv
+            b0df _ZN15google_breakpad10TypedMDRVAIjE20CopyIndexAfterObjectEjPKvm
             b16c FillThreadStack
             b1bf Alloc
             b1bf _ZN15google_breakpad13PageAllocator5AllocEm
-            b59c _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            b59c sys_mmap
             b268 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
             b2ac _ZN15google_breakpad12UntypedMDRVA4CopyEPKvm
             b2f3 _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE9push_backERKS0_
@@ -1042,42 +994,46 @@ expression: FunctionsDebug(&symcache)
             b37f _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
             b39d _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E8AllocateEv
             b3fb _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64ED4Ev
-            b42e _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E5FlushEv
             b40a _ZNK15google_breakpad12UntypedMDRVA8locationEv
+            b42e _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E5FlushEv
             b454 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
             b4ba Alloc
             b4c6 _ZN15google_breakpad13PageAllocator5AllocEm
-            b686 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            b686 sys_mmap
             b522 _ZN15google_breakpad12UntypedMDRVA4CopyEPKvm
             b55a _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE9push_backERKS0_
             b568 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE9constructIS2_JRKS2_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS3_PT_DpOS8_
             b568 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE12_S_constructIS2_JRKS2_EEENSt9enable_ifIXsrSt6__and_IJNS4_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS3_PSB_DpOSC_
             b568 _ZN9__gnu_cxx13new_allocatorI18MDMemoryDescriptorE9constructIS1_JRKS1_EEEvPT_DpOT0_
+            b59c _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            b59c sys_mmap
+            b60f _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            b60f sys_mmap
+            b686 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            b686 sys_mmap
+            b86d _ZN15google_breakpad11LinuxDumper17set_crash_addressEm
             ba08 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64ED4Ev
             ba16 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E5FlushEv
-            bb23 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64ED4Ev
-            bb30 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E5FlushEv
-            b0df _ZN15google_breakpad10TypedMDRVAIjE20CopyIndexAfterObjectEjPKvm
-            af2c _ZN15google_breakpad10TypedMDRVAIjED4Ev
-            af36 _ZN15google_breakpad10TypedMDRVAIjE5FlushEv
+            ba3d _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64ED4Ev
+            ba4b _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E5FlushEv
             babe _ZN15google_breakpad10TypedMDRVAIjED4Ev
             bac8 _ZN15google_breakpad10TypedMDRVAIjE5FlushEv
+            baf2 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64ED4Ev
+            baff _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E5FlushEv
+            bb23 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64ED4Ev
+            bb30 _ZN15google_breakpad10TypedMDRVAI17MDRawContextAMD64E5FlushEv
             bb80 _ZN12_GLOBAL__N_114MinidumpWriter4DumpEv.constprop.104
             bb81 _ZN15google_breakpad10TypedMDRVAI11MDRawHeaderE8AllocateEv
+            bba0 _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryEC4EPNS_18MinidumpFileWriterE
+            bba0 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
             bbec _ZN15google_breakpad10TypedMDRVAI11MDRawHeaderEC4EPNS_18MinidumpFileWriterE
             bbec _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
             bc5e _ZN15google_breakpad10TypedMDRVAI11MDRawHeaderED4Ev
             bc67 _ZN15google_breakpad10TypedMDRVAI11MDRawHeaderE5FlushEv
+            bc90 _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryED4Ev
+            bc99 _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE5FlushEv
             bce0 _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE13AllocateArrayEm
             bd35 _ZN15google_breakpad10TypedMDRVAI11MDRawHeaderED4Ev
             bd5a _ZN15google_breakpad10TypedMDRVAI11MDRawHeaderE5FlushEv
-            cbf7 _ZN15google_breakpad10TypedMDRVAI11MDRawHeaderED4Ev
-            cc03 _ZN15google_breakpad10TypedMDRVAI11MDRawHeaderE5FlushEv
-            bba0 _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryEC4EPNS_18MinidumpFileWriterE
-            bba0 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
-            bc90 _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryED4Ev
-            bc99 _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE5FlushEv
             bd9c _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE9CopyIndexEjPS1_
             bdc7 WriteMappings
             bdd9 _ZNKSt6vectorIPN15google_breakpad11MappingInfoENS0_16PageStdAllocatorIS2_EEE4sizeEv
@@ -1094,14 +1050,9 @@ expression: FunctionsDebug(&symcache)
             bf4e _ZNSt12_Vector_baseIhN15google_breakpad16PageStdAllocatorIhEEEC4ERKS2_
             bf4e _ZNSt12_Vector_baseIhN15google_breakpad16PageStdAllocatorIhEEE12_Vector_implC4ERKS2_
             bf4e _ZN15google_breakpad16PageStdAllocatorIhEC4ERKS1_
-            c1df _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE7reserveEm
-            c20a _ZN15google_breakpad11LinuxDumper9allocatorEv
-            c25e _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
-            c297 _ZN15google_breakpad12UntypedMDRVA4CopyEPKvm
             bf8f ShouldIncludeMapping
             bfb6 HaveMappingInfo
             bfe0 _ZNSt20_List_const_iteratorIN15google_breakpad12MappingEntryEEppEv
-            c365 _ZN15google_breakpad10TypedMDRVAIjE20CopyIndexAfterObjectEjPKvm
             c047 FillRawModule
             c047 _ZN15google_breakpad20auto_wasteful_vectorIhLj20EEC4EPNS_13PageAllocatorE
             c047 _ZN15google_breakpad15wasteful_vectorIhEC4ENS_16PageStdAllocatorIhEE
@@ -1109,31 +1060,34 @@ expression: FunctionsDebug(&symcache)
             c047 _ZNSt12_Vector_baseIhN15google_breakpad16PageStdAllocatorIhEEEC4ERKS2_
             c047 _ZNSt12_Vector_baseIhN15google_breakpad16PageStdAllocatorIhEEE12_Vector_implC4ERKS2_
             c047 _ZN15google_breakpad16PageStdAllocatorIhEC4ERKS1_
-            c0a5 _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE7reserveEm
             c067 _ZN15google_breakpad12UntypedMDRVA4CopyEPKvm
-            c133 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
+            c0a5 _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE7reserveEm
             c0dd _ZN15google_breakpad11LinuxDumper9allocatorEv
             c0ff _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE6insertIPKhvEEN9__gnu_cxx17__normal_iteratorIPhS3_EENS8_IS6_S3_EET_SC_
             c0ff _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE18_M_insert_dispatchIPKhEEvN9__gnu_cxx17__normal_iteratorIPhS3_EET_SB_St12__false_type
-            c466 _ZN15google_breakpad10TypedMDRVAIjE20CopyIndexAfterObjectEjPKvm
-            c4ac _ZNSt20_List_const_iteratorIN15google_breakpad12MappingEntryEEppEv
+            c133 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
             c169 _ZN15google_breakpad10TypedMDRVAIjED4Ev
             c176 _ZN15google_breakpad10TypedMDRVAIjE5FlushEv
-            c7c2 _ZN15google_breakpad10TypedMDRVAIjE8AllocateEv
-            cc66 _ZN15google_breakpad10TypedMDRVAIjED4Ev
-            cc76 _ZN15google_breakpad10TypedMDRVAIjE5FlushEv
+            c1df _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE7reserveEm
+            c20a _ZN15google_breakpad11LinuxDumper9allocatorEv
+            c25e _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
+            c297 _ZN15google_breakpad12UntypedMDRVA4CopyEPKvm
+            c365 _ZN15google_breakpad10TypedMDRVAIjE20CopyIndexAfterObjectEjPKvm
+            c466 _ZN15google_breakpad10TypedMDRVAIjE20CopyIndexAfterObjectEjPKvm
+            c4ac _ZNSt20_List_const_iteratorIN15google_breakpad12MappingEntryEEppEv
             c4f3 _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE9CopyIndexEjPS1_
             c521 WriteAppMemory
             c534 _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE9push_backERKS0_
+            c558 _ZN15google_breakpad13PageAllocator5AllocEm
+            c589 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
+            c5be _ZN15google_breakpad12UntypedMDRVA4CopyEPKvm
             c605 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE9constructIS2_JRKS2_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS3_PT_DpOS8_
             c605 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE12_S_constructIS2_JRKS2_EEENSt9enable_ifIXsrSt6__and_IJNS4_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS3_PSB_DpOSC_
             c605 _ZN9__gnu_cxx13new_allocatorI18MDMemoryDescriptorE9constructIS1_JRKS1_EEEvPT_DpOT0_
-            c558 _ZN15google_breakpad13PageAllocator5AllocEm
+            c627 _ZNSt20_List_const_iteratorIN15google_breakpad9AppMemoryEEppEv
             c67c _ZN15google_breakpad13PageAllocator9GetNPagesEm
             c67c sys_mmap
-            c589 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
-            c5be _ZN15google_breakpad12UntypedMDRVA4CopyEPKvm
-            c627 _ZNSt20_List_const_iteratorIN15google_breakpad9AppMemoryEEppEv
+            c7c2 _ZN15google_breakpad10TypedMDRVAIjE8AllocateEv
             c80d WriteMemoryListStream
             c80d _ZN15google_breakpad10TypedMDRVAIjEC4EPNS_18MinidumpFileWriterE
             c80d _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
@@ -1145,25 +1099,40 @@ expression: FunctionsDebug(&symcache)
             c909 _ZNKSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE4sizeEv
             c927 _ZN15google_breakpad10TypedMDRVAIjED4Ev
             c930 _ZN15google_breakpad10TypedMDRVAIjE5FlushEv
-            ca28 _ZN15google_breakpad10TypedMDRVAIjE8AllocateEv
-            cba1 _ZN15google_breakpad10TypedMDRVAIjED4Ev
-            cbad _ZN15google_breakpad10TypedMDRVAIjE5FlushEv
             c96f WriteExceptionStream
             c96f _ZN15google_breakpad10TypedMDRVAI20MDRawExceptionStreamEC4EPNS_18MinidumpFileWriterE
             c96f _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
             c979 _ZN15google_breakpad10TypedMDRVAI20MDRawExceptionStreamE8AllocateEv
             c9c6 _ZN15google_breakpad10TypedMDRVAI20MDRawExceptionStreamED4Ev
             c9d3 _ZN15google_breakpad10TypedMDRVAI20MDRawExceptionStreamE5FlushEv
-            cc27 _ZN15google_breakpad10TypedMDRVAI20MDRawExceptionStreamED4Ev
-            cc33 _ZN15google_breakpad10TypedMDRVAI20MDRawExceptionStreamE5FlushEv
+            ca28 _ZN15google_breakpad10TypedMDRVAIjE8AllocateEv
             caf3 WriteSystemInfoStream
             caf3 _ZN15google_breakpad10TypedMDRVAI15MDRawSystemInfoEC4EPNS_18MinidumpFileWriterE
             caf3 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
             cb02 _ZN15google_breakpad10TypedMDRVAI15MDRawSystemInfoE8AllocateEv
             cb51 _ZN15google_breakpad10TypedMDRVAI15MDRawSystemInfoED4Ev
             cb5e _ZN15google_breakpad10TypedMDRVAI15MDRawSystemInfoE5FlushEv
+            cba1 _ZN15google_breakpad10TypedMDRVAIjED4Ev
+            cbad _ZN15google_breakpad10TypedMDRVAIjE5FlushEv
+            cbc8 _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryED4Ev
+            cbd1 _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE5FlushEv
+            cbf7 _ZN15google_breakpad10TypedMDRVAI11MDRawHeaderED4Ev
+            cc03 _ZN15google_breakpad10TypedMDRVAI11MDRawHeaderE5FlushEv
+            cc27 _ZN15google_breakpad10TypedMDRVAI20MDRawExceptionStreamED4Ev
+            cc33 _ZN15google_breakpad10TypedMDRVAI20MDRawExceptionStreamE5FlushEv
+            cc66 _ZN15google_breakpad10TypedMDRVAIjED4Ev
+            cc76 _ZN15google_breakpad10TypedMDRVAIjE5FlushEv
             ccbb WriteCPUInformation
             cd46 sys_open
+            cdb2 WriteOSInformation
+            cf4e NullifyDirectoryEntry
+            cfbc NullifyDirectoryEntry
+            d023 NullifyDirectoryEntry
+            d091 NullifyDirectoryEntry
+            d0ff NullifyDirectoryEntry
+            d16d NullifyDirectoryEntry
+            d1db NullifyDirectoryEntry
+            d232 WriteDSODebugStream
             d349 _ZN15google_breakpad13PageAllocatorC4Ev
             d351 _ZnwmRN15google_breakpad13PageAllocatorE
             d351 _ZN15google_breakpad13PageAllocator5AllocEm
@@ -1176,35 +1145,23 @@ expression: FunctionsDebug(&symcache)
             d6d6 sys_close
             d6fc _ZN15google_breakpad13PageAllocatorD4Ev
             d74a _ZN15google_breakpad13PageAllocatorD4Ev
-            d7e6 memcpy
-            cdb2 WriteOSInformation
             d760 _ZN15google_breakpad10TypedMDRVAI15MDRawSystemInfoED4Ev
             d76d _ZN15google_breakpad10TypedMDRVAI15MDRawSystemInfoE5FlushEv
-            cbc8 _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryED4Ev
-            cbd1 _ZN15google_breakpad10TypedMDRVAI14MDRawDirectoryE5FlushEv
-            cf4e NullifyDirectoryEntry
-            cfbc NullifyDirectoryEntry
-            d023 NullifyDirectoryEntry
-            d091 NullifyDirectoryEntry
-            d0ff NullifyDirectoryEntry
-            d16d NullifyDirectoryEntry
-            d1db NullifyDirectoryEntry
-            d232 WriteDSODebugStream
+            d7e6 memcpy
             d809 _ZN15google_breakpad10TypedMDRVAI14MDRawLinkMap64ED4Ev
             d812 _ZN15google_breakpad10TypedMDRVAI14MDRawLinkMap64E5FlushEv
+            d82e _ZN15google_breakpad10TypedMDRVAI12MDRawDebug64EC4EPNS_18MinidumpFileWriterE
+            d82e _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
+            d83b _ZN15google_breakpad10TypedMDRVAI12MDRawDebug64E22AllocateObjectAndArrayEmm
+            d8c1 _ZN15google_breakpad10TypedMDRVAI12MDRawDebug64ED4Ev
+            d8ca _ZN15google_breakpad10TypedMDRVAI12MDRawDebug64E5FlushEv
+            d8ec NullifyDirectoryEntry
             d9c3 _ZN15google_breakpad10TypedMDRVAI14MDRawLinkMap64E13AllocateArrayEm
             d9c6 _ZN15google_breakpad10TypedMDRVAI14MDRawLinkMap64EC4EPNS_18MinidumpFileWriterE
             d9c6 _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
             da66 _ZN15google_breakpad10TypedMDRVAI14MDRawLinkMap64E9CopyIndexEjPS1_
             db71 _ZN15google_breakpad10TypedMDRVAI14MDRawLinkMap64ED4Ev
             db81 _ZN15google_breakpad10TypedMDRVAI14MDRawLinkMap64E5FlushEv
-            dd14 _ZN15google_breakpad10TypedMDRVAI14MDRawLinkMap64ED4Ev
-            dd21 _ZN15google_breakpad10TypedMDRVAI14MDRawLinkMap64E5FlushEv
-            d82e _ZN15google_breakpad10TypedMDRVAI12MDRawDebug64EC4EPNS_18MinidumpFileWriterE
-            d82e _ZN15google_breakpad12UntypedMDRVAC4EPNS_18MinidumpFileWriterE
-            d83b _ZN15google_breakpad10TypedMDRVAI12MDRawDebug64E22AllocateObjectAndArrayEmm
-            d8c1 _ZN15google_breakpad10TypedMDRVAI12MDRawDebug64ED4Ev
-            d8ca _ZN15google_breakpad10TypedMDRVAI12MDRawDebug64E5FlushEv
             dbc7 _ZN15google_breakpad15wasteful_vectorIcEC4EPNS_13PageAllocatorEj
             dbc7 _ZNSt6vectorIcN15google_breakpad16PageStdAllocatorIcEEE7reserveEm
             dbc7 _ZNSt6vectorIcN15google_breakpad16PageStdAllocatorIcEEE20_M_allocate_and_copyISt13move_iteratorIPcEEES6_mT_S8_
@@ -1217,9 +1174,10 @@ expression: FunctionsDebug(&symcache)
             dbdb _ZN15google_breakpad16PageStdAllocatorIcEC4ERKS1_
             dc5f _ZN15google_breakpad11LinuxDumper9allocatorEv
             dcb4 _ZN15google_breakpad10TypedMDRVAI12MDRawDebug64E20CopyIndexAfterObjectEjPKvm
+            dd14 _ZN15google_breakpad10TypedMDRVAI14MDRawLinkMap64ED4Ev
+            dd21 _ZN15google_breakpad10TypedMDRVAI14MDRawLinkMap64E5FlushEv
             dda9 _ZN15google_breakpad10TypedMDRVAI12MDRawDebug64ED4Ev
             ddb9 _ZN15google_breakpad10TypedMDRVAI12MDRawDebug64E5FlushEv
-            d8ec NullifyDirectoryEntry
             de00 _ZN15google_breakpad13WriteMinidumpEPKcRKNSt7__cxx114listINS_12MappingEntryESaIS4_EEERKNS3_INS_9AppMemoryESaIS9_EEEPNS_11LinuxDumperE
             de17 MinidumpWriter
             de6e _ZN15google_breakpad15wasteful_vectorI18MDMemoryDescriptorEC4EPNS_13PageAllocatorEj
@@ -1227,50 +1185,48 @@ expression: FunctionsDebug(&symcache)
             de6e _ZNSt12_Vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEEC4ERKS3_
             de6e _ZNSt12_Vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE12_Vector_implC4ERKS3_
             de6e _ZN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEC4ERKS2_
+            de9b _ZN15google_breakpad11LinuxDumper9allocatorEv
             deab _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE7reserveEm
             deab _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE20_M_allocate_and_copyISt13move_iteratorIPS0_EEES7_mT_S9_
             deab _ZNSt12_Vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE11_M_allocateEm
             deab _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE8allocateERS3_m
             deab _ZN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorE8allocateEmPKv
             deab _ZN15google_breakpad13PageAllocator5AllocEm
+            df5e Init
+            df73 ~MinidumpWriter
             dfc9 _ZN15google_breakpad13PageAllocator9GetNPagesEm
             dfc9 sys_mmap
-            de9b _ZN15google_breakpad11LinuxDumper9allocatorEv
-            df5e Init
             e13a CrashingThreadReferencesPrincipalMapping
             e1ad Alloc
             e1ad _ZN15google_breakpad13PageAllocator5AllocEm
             e250 _ZN15google_breakpad13PageAllocator9GetNPagesEm
             e250 sys_mmap
-            df73 ~MinidumpWriter
             e370 _ZN15google_breakpad13WriteMinidumpEPKcii
             e393 _ZNSt7__cxx114listIN15google_breakpad9AppMemoryESaIS2_EEC4Ev
             e393 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EEC4Ev
             e393 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE7_M_initEv
+            e3b3 MinidumpWriter
+            e3bd _ZN15google_breakpad11LinuxDumper16set_crash_threadEi
+            e3c4 _ZNSt7__cxx114listIN15google_breakpad12MappingEntryESaIS2_EEC4Ev
+            e3c4 _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EEC4Ev
+            e3c4 _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE7_M_initEv
+            e3c9 _ZN15google_breakpad11LinuxDumper16set_crash_signalEi
             e3d4 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE10_List_implC4Ev
             e3d4 _ZNSt10_List_nodeImEC4IJEEEDpOT_
-            e3b3 MinidumpWriter
+            e3eb _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE10_List_implC4Ev
+            e3eb _ZNSt10_List_nodeImEC4IJEEEDpOT_
             e439 _ZN15google_breakpad15wasteful_vectorI18MDMemoryDescriptorEC4EPNS_13PageAllocatorEj
             e439 _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEEC4ERKS3_
             e439 _ZNSt12_Vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEEC4ERKS3_
             e439 _ZNSt12_Vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE12_Vector_implC4ERKS3_
             e439 _ZN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEC4ERKS2_
+            e471 _ZN15google_breakpad11LinuxDumper9allocatorEv
             e475 _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE7reserveEm
             e475 _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE20_M_allocate_and_copyISt13move_iteratorIPS0_EEES7_mT_S9_
             e475 _ZNSt12_Vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE11_M_allocateEm
             e475 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE8allocateERS3_m
             e475 _ZN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorE8allocateEmPKv
             e475 _ZN15google_breakpad13PageAllocator5AllocEm
-            e605 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            e605 sys_mmap
-            e471 _ZN15google_breakpad11LinuxDumper9allocatorEv
-            e3bd _ZN15google_breakpad11LinuxDumper16set_crash_threadEi
-            e3c4 _ZNSt7__cxx114listIN15google_breakpad12MappingEntryESaIS2_EEC4Ev
-            e3c4 _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EEC4Ev
-            e3c4 _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE7_M_initEv
-            e3eb _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE10_List_implC4Ev
-            e3eb _ZNSt10_List_nodeImEC4IJEEEDpOT_
-            e3c9 _ZN15google_breakpad11LinuxDumper16set_crash_signalEi
             e53a _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EED4Ev
             e53a _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE8_M_clearEv
             e54b _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE11_M_put_nodeEPSt10_List_nodeIS2_E
@@ -1281,13 +1237,15 @@ expression: FunctionsDebug(&symcache)
             e56b _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE11_M_put_nodeEPSt10_List_nodeIS2_E
             e56b _ZN9__gnu_cxx13new_allocatorISt10_List_nodeIN15google_breakpad9AppMemoryEEE10deallocateEPS4_m
             e578 Init
+            e590 ~MinidumpWriter
+            e5b2 _ZN15google_breakpad17LinuxPtraceDumperD4Ev
+            e605 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            e605 sys_mmap
             e790 CrashingThreadReferencesPrincipalMapping
             e809 Alloc
             e809 _ZN15google_breakpad13PageAllocator5AllocEm
             e8b5 _ZN15google_breakpad13PageAllocator9GetNPagesEm
             e8b5 sys_mmap
-            e590 ~MinidumpWriter
-            e5b2 _ZN15google_breakpad17LinuxPtraceDumperD4Ev
             e9ac _ZN15google_breakpad17LinuxPtraceDumperD4Ev
             e9cf _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EED4Ev
             e9cf _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE8_M_clearEv
@@ -1301,41 +1259,41 @@ expression: FunctionsDebug(&symcache)
             eac3 _ZN15google_breakpad17LinuxPtraceDumperD4Ev
             eb10 _ZN15google_breakpad11LinuxDumper17set_crash_addressEm
             eb14 MinidumpWriter
+            eb26 _ZN15google_breakpad11LinuxDumper16set_crash_signalEi
+            eb30 _ZN15google_breakpad11LinuxDumper16set_crash_threadEi
             eb7a _ZN15google_breakpad15wasteful_vectorI18MDMemoryDescriptorEC4EPNS_13PageAllocatorEj
             eb7a _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEEC4ERKS3_
             eb7a _ZNSt12_Vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEEC4ERKS3_
             eb7a _ZNSt12_Vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE12_Vector_implC4ERKS3_
             eb7a _ZN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEC4ERKS2_
+            ebaa _ZN15google_breakpad11LinuxDumper9allocatorEv
             ebbb _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE7reserveEm
             ebbb _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE20_M_allocate_and_copyISt13move_iteratorIPS0_EEES7_mT_S9_
             ebbb _ZNSt12_Vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE11_M_allocateEm
             ebbb _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE8allocateERS3_m
             ebbb _ZN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorE8allocateEmPKv
             ebbb _ZN15google_breakpad13PageAllocator5AllocEm
-            ecf9 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            ecf9 sys_mmap
-            ebaa _ZN15google_breakpad11LinuxDumper9allocatorEv
-            eb26 _ZN15google_breakpad11LinuxDumper16set_crash_signalEi
-            eb30 _ZN15google_breakpad11LinuxDumper16set_crash_threadEi
             ec86 set_minidump_size_limit
             ec8b Init
+            eca9 ~MinidumpWriter
+            ecf9 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            ecf9 sys_mmap
             edfa CrashingThreadReferencesPrincipalMapping
             ee6d Alloc
             ee6d _ZN15google_breakpad13PageAllocator5AllocEm
             ef7c _ZN15google_breakpad13PageAllocator9GetNPagesEm
             ef7c sys_mmap
-            eca9 ~MinidumpWriter
             f090 _ZN15google_breakpad17LinuxPtraceDumperD4Ev
             f0c0 _ZN15google_breakpad13WriteMinidumpEPKciPKvmbmb
             f0cf _ZNSt7__cxx114listIN15google_breakpad12MappingEntryESaIS2_EEC4Ev
             f0cf _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EEC4Ev
             f0cf _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE7_M_initEv
-            f0df _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE10_List_implC4Ev
-            f0df _ZNSt10_List_nodeImEC4IJEEEDpOT_
             f0d7 _ZNSt7__cxx114listIN15google_breakpad9AppMemoryESaIS2_EEC4Ev
             f0d7 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EEC4Ev
             f0d7 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE10_List_implC4Ev
             f0d7 _ZNSt10_List_nodeImEC4IJEEEDpOT_
+            f0df _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE10_List_implC4Ev
+            f0df _ZNSt10_List_nodeImEC4IJEEEDpOT_
             f0f6 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE7_M_initEv
             f135 _ZNSt7__cxx114listIN15google_breakpad12MappingEntryESaIS2_EED4Ev
             f135 _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EED4Ev
@@ -1361,12 +1319,12 @@ expression: FunctionsDebug(&symcache)
             f1ef _ZNSt7__cxx114listIN15google_breakpad12MappingEntryESaIS2_EEC4Ev
             f1ef _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EEC4Ev
             f1ef _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE7_M_initEv
-            f1ff _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE10_List_implC4Ev
-            f1ff _ZNSt10_List_nodeImEC4IJEEEDpOT_
             f1f7 _ZNSt7__cxx114listIN15google_breakpad9AppMemoryESaIS2_EEC4Ev
             f1f7 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EEC4Ev
             f1f7 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE10_List_implC4Ev
             f1f7 _ZNSt10_List_nodeImEC4IJEEEDpOT_
+            f1ff _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EE10_List_implC4Ev
+            f1ff _ZNSt10_List_nodeImEC4IJEEEDpOT_
             f216 _ZNSt7__cxx1110_List_baseIN15google_breakpad9AppMemoryESaIS2_EE7_M_initEv
             f254 _ZNSt7__cxx114listIN15google_breakpad12MappingEntryESaIS2_EED4Ev
             f254 _ZNSt7__cxx1110_List_baseIN15google_breakpad12MappingEntryESaIS2_EED4Ev
@@ -1392,6 +1350,54 @@ expression: FunctionsDebug(&symcache)
             f340 _ZN15google_breakpad13WriteMinidumpEiiPKvmRKNSt7__cxx114listINS_12MappingEntryESaIS4_EEERKNS3_INS_9AppMemoryESaIS9_EEEbmb
             f380 _ZN15google_breakpad13WriteMinidumpEPKcliPKvmRKNSt7__cxx114listINS_12MappingEntryESaIS6_EEERKNS5_INS_9AppMemoryESaISB_EEEbmb
             f3c0 _ZN15google_breakpad13WriteMinidumpEiliPKvmRKNSt7__cxx114listINS_12MappingEntryESaIS4_EEERKNS3_INS_9AppMemoryESaIS9_EEEbmb
+            f400 _ZN15google_breakpad17ProcCpuInfoReader12GetNextFieldEPPKc
+            f404 _ZN15google_breakpad10LineReader7PopLineEj
+            f434 _ZN15google_breakpad10LineReader11GetNextLineEPPKcPj
+            f434 sys_read
+            f5cc memmove
+            f660 _ZNSt6vectorIcN15google_breakpad16PageStdAllocatorIcEEE6resizeEm
+            f668 _ZNKSt6vectorIcN15google_breakpad16PageStdAllocatorIcEEE4sizeEv
+            f675 _ZNSt6vectorIcN15google_breakpad16PageStdAllocatorIcEEE15_M_erase_at_endEPc
+            f68a _ZNSt6vectorIcN15google_breakpad16PageStdAllocatorIcEEE17_M_default_appendEm
+            f6a8 _ZSt27__uninitialized_default_n_aIPcmN15google_breakpad16PageStdAllocatorIcEEET_S4_T0_RT1_
+            f6a8 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIcEEE9constructIcJEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
+            f6a8 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIcEEE12_S_constructIcJEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
+            f6a8 _ZN9__gnu_cxx13new_allocatorIcE9constructIcJEEEvPT_DpOT0_
+            f6d0 _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE12_M_check_lenEmPKc
+            f6f8 _ZNSt12_Vector_baseIcN15google_breakpad16PageStdAllocatorIcEEE11_M_allocateEm
+            f6f8 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIcEEE8allocateERS2_m
+            f6f8 _ZN15google_breakpad16PageStdAllocatorIcE8allocateEmPKv
+            f705 _ZSt34__uninitialized_move_if_noexcept_aIPcS0_N15google_breakpad16PageStdAllocatorIcEEET0_T_S5_S4_RT1_
+            f705 _ZSt22__uninitialized_copy_aISt13move_iteratorIPcES1_N15google_breakpad16PageStdAllocatorIcEEET0_T_S7_S6_RT1_
+            f718 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIcEEE9constructIcJcEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
+            f718 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIcEEE12_S_constructIcJcEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
+            f718 _ZN9__gnu_cxx13new_allocatorIcE9constructIcJcEEEvPT_DpOT0_
+            f740 _ZSt27__uninitialized_default_n_aIPcmN15google_breakpad16PageStdAllocatorIcEEET_S4_T0_RT1_
+            f740 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIcEEE9constructIcJEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
+            f740 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIcEEE12_S_constructIcJEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
+            f740 _ZN9__gnu_cxx13new_allocatorIcE9constructIcJEEEvPT_DpOT0_
+            f77d _ZN15google_breakpad13PageAllocator5AllocEm
+            f7c3 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            f7c3 sys_mmap
+            f8c0 _ZNSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE19_M_emplace_back_auxIIRKS0_EEEvDpOT_
+            f8dc _ZNKSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE12_M_check_lenEmPKc
+            f8dc _ZNKSt6vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE4sizeEv
+            f8e9 _ZSt3maxImERKT_S2_S2_
+            f906 _ZNSt12_Vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS0_EEE11_M_allocateEm
+            f906 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE8allocateERS3_m
+            f906 _ZN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorE8allocateEmPKv
+            f91b _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE9constructIS2_JRKS2_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS3_PT_DpOS8_
+            f91b _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE12_S_constructIS2_JRKS2_EEENSt9enable_ifIXsrSt6__and_IJNS4_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS3_PSB_DpOSC_
+            f91b _ZN9__gnu_cxx13new_allocatorI18MDMemoryDescriptorE9constructIS1_JRKS1_EEEvPT_DpOT0_
+            f930 _ZSt34__uninitialized_move_if_noexcept_aIP18MDMemoryDescriptorS1_N15google_breakpad16PageStdAllocatorIS0_EEET0_T_S6_S5_RT1_
+            f930 _ZSt22__uninitialized_copy_aISt13move_iteratorIP18MDMemoryDescriptorES2_N15google_breakpad16PageStdAllocatorIS1_EEET0_T_S8_S7_RT1_
+            f940 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE9constructIS2_JS2_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS3_PT_DpOS6_
+            f940 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE12_S_constructIS2_JS2_EEENSt9enable_ifIXsrSt6__and_IJNS4_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS3_PS9_DpOSA_
+            f940 _ZN9__gnu_cxx13new_allocatorI18MDMemoryDescriptorE9constructIS1_JS1_EEEvPT_DpOT0_
+            f953 _ZNSt13move_iteratorIP18MDMemoryDescriptorEppEv
+            f9a2 _ZN15google_breakpad13PageAllocator5AllocEm
+            f9e4 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            f9e4 sys_mmap
             fb10 _ZN15google_breakpad10TypedMDRVAI8MDStringE20CopyIndexAfterObjectEjPKvm.isra.7.part.8
             fb40 _ZN15google_breakpad18MinidumpFileWriterC1Ev
             fb60 _ZN15google_breakpad18MinidumpFileWriter4OpenEPKc
@@ -1450,12 +1456,9 @@ expression: FunctionsDebug(&symcache)
            10b0c _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_S_copy_charsEPcPKcS7_
            10b0c _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_S_copyEPcPKcm
            10b16 _ZNSt11char_traitsIcE4copyEPcPKcm
-           10c30 _ZNSt11char_traitsIcE6assignERcRKc
            10b22 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
            10b22 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
            10b27 _ZNSt11char_traitsIcE6assignERcRKc
-           10bc2 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
-           10bc6 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
            10b30 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4EPKcRKS3_
            10b30 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv
            10b35 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_M_constructIPKcEEvT_S8_
@@ -1467,8 +1470,83 @@ expression: FunctionsDebug(&symcache)
            10b48 _ZN15google_breakpad12scoped_arrayIhED4Ev
            10b50 _ZN15google_breakpad12scoped_arrayItED4Ev
            10b8f _ZN15google_breakpad12scoped_arrayItEC4EPt
+           10bc2 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
+           10bc6 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
+           10c30 _ZNSt11char_traitsIcE6assignERcRKc
            10cb4 _ZN15google_breakpad12scoped_arrayIhED4Ev
            10cbf _ZN15google_breakpad12scoped_arrayItED4Ev
+           10ce0 _ZN15google_breakpad12UTF32ToUTF16EPKwPSt6vectorItSaItEE
+           10d09 _ZNSt6vectorItSaItEE5clearEv
+           10d0c _ZNSt6vectorItSaItEE6insertEN9__gnu_cxx17__normal_iteratorIPKtS1_EEmRS4_
+           10d0c _ZNSt6vectorItSaItEE14_M_fill_insertEN9__gnu_cxx17__normal_iteratorIPtS1_EEmRKt
+           10d1f _ZNSt6vectorItSaItEE15_M_erase_at_endEPt
+           10d34 _ZSt24__uninitialized_fill_n_aIPtmttET_S1_T0_RKT1_RSaIT2_E
+           10d34 _ZSt20uninitialized_fill_nIPtmtET_S1_T0_RKT1_
+           10d34 _ZNSt22__uninitialized_fill_nILb1EE15__uninit_fill_nIPtmtEET_S3_T0_RKT1_
+           10d34 _ZSt6fill_nIPtmtET_S1_T0_RKT1_
+           10d34 _ZSt10__fill_n_aIPtmtEN9__gnu_cxx11__enable_ifIXsrSt11__is_scalarIT1_E7__valueET_E6__typeES6_T0_RKS4_
+           10d79 _ZNSt6vectorItSaItEE6resizeEm
+           10d79 _ZNKSt6vectorItSaItEE4sizeEv
+           10d9a _ZNSt6vectorItSaItEE15_M_erase_at_endEPt
+           10df0 _ZNKSt6vectorItSaItEE12_M_check_lenEmPKc
+           10df9 _ZNSt12_Vector_baseItSaItEE11_M_allocateEm
+           10df9 _ZNSt16allocator_traitsISaItEE8allocateERS0_m
+           10df9 _ZN9__gnu_cxx13new_allocatorItE8allocateEmPKv
+           10dfd _ZSt34__uninitialized_move_if_noexcept_aIPtS0_SaItEET0_T_S3_S2_RT1_
+           10dfd _ZSt22__uninitialized_copy_aISt13move_iteratorIPtES1_tET0_T_S4_S3_RSaIT1_E
+           10dfd _ZSt18uninitialized_copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
+           10dfd _ZNSt20__uninitialized_copyILb1EE13__uninit_copyISt13move_iteratorIPtES3_EET0_T_S6_S5_
+           10dfd _ZSt4copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
+           10dfd _ZSt14__copy_move_a2ILb1EPtS0_ET1_T0_S2_S1_
+           10dfd _ZSt13__copy_move_aILb1EPtS0_ET1_T0_S2_S1_
+           10dfd _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mItEEPT_PKS3_S6_S4_
+           10e26 _ZSt34__uninitialized_move_if_noexcept_aIPtS0_SaItEET0_T_S3_S2_RT1_
+           10e26 _ZSt22__uninitialized_copy_aISt13move_iteratorIPtES1_tET0_T_S4_S3_RSaIT1_E
+           10e26 _ZSt18uninitialized_copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
+           10e26 _ZNSt20__uninitialized_copyILb1EE13__uninit_copyISt13move_iteratorIPtES3_EET0_T_S6_S5_
+           10e26 _ZSt4copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
+           10e26 _ZSt14__copy_move_a2ILb1EPtS0_ET1_T0_S2_S1_
+           10e26 _ZSt13__copy_move_aILb1EPtS0_ET1_T0_S2_S1_
+           10e26 _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mItEEPT_PKS3_S6_S4_
+           10e3e _ZNSt12_Vector_baseItSaItEE13_M_deallocateEPtm
+           10e43 _ZNSt16allocator_traitsISaItEE10deallocateERS0_Ptm
+           10e43 _ZN9__gnu_cxx13new_allocatorItE10deallocateEPtm
+           10ec0 _ZN15google_breakpad11UTF8ToUTF16EPKcPSt6vectorItSaItEE
+           10ee9 _ZNSt6vectorItSaItEE5clearEv
+           10eec _ZNSt6vectorItSaItEE6insertEN9__gnu_cxx17__normal_iteratorIPKtS1_EEmRS4_
+           10eec _ZNSt6vectorItSaItEE14_M_fill_insertEN9__gnu_cxx17__normal_iteratorIPtS1_EEmRKt
+           10efe _ZNSt6vectorItSaItEE15_M_erase_at_endEPt
+           10f13 _ZSt24__uninitialized_fill_n_aIPtmttET_S1_T0_RKT1_RSaIT2_E
+           10f13 _ZSt20uninitialized_fill_nIPtmtET_S1_T0_RKT1_
+           10f13 _ZNSt22__uninitialized_fill_nILb1EE15__uninit_fill_nIPtmtEET_S3_T0_RKT1_
+           10f13 _ZSt6fill_nIPtmtET_S1_T0_RKT1_
+           10f13 _ZSt10__fill_n_aIPtmtEN9__gnu_cxx11__enable_ifIXsrSt11__is_scalarIT1_E7__valueET_E6__typeES6_T0_RKS4_
+           10f58 _ZNSt6vectorItSaItEE6resizeEm
+           10f58 _ZNKSt6vectorItSaItEE4sizeEv
+           10f79 _ZNSt6vectorItSaItEE15_M_erase_at_endEPt
+           10fd0 _ZNKSt6vectorItSaItEE12_M_check_lenEmPKc
+           10fd9 _ZNSt12_Vector_baseItSaItEE11_M_allocateEm
+           10fd9 _ZNSt16allocator_traitsISaItEE8allocateERS0_m
+           10fd9 _ZN9__gnu_cxx13new_allocatorItE8allocateEmPKv
+           10fdd _ZSt34__uninitialized_move_if_noexcept_aIPtS0_SaItEET0_T_S3_S2_RT1_
+           10fdd _ZSt22__uninitialized_copy_aISt13move_iteratorIPtES1_tET0_T_S4_S3_RSaIT1_E
+           10fdd _ZSt18uninitialized_copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
+           10fdd _ZNSt20__uninitialized_copyILb1EE13__uninit_copyISt13move_iteratorIPtES3_EET0_T_S6_S5_
+           10fdd _ZSt4copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
+           10fdd _ZSt14__copy_move_a2ILb1EPtS0_ET1_T0_S2_S1_
+           10fdd _ZSt13__copy_move_aILb1EPtS0_ET1_T0_S2_S1_
+           10fdd _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mItEEPT_PKS3_S6_S4_
+           11006 _ZSt34__uninitialized_move_if_noexcept_aIPtS0_SaItEET0_T_S3_S2_RT1_
+           11006 _ZSt22__uninitialized_copy_aISt13move_iteratorIPtES1_tET0_T_S4_S3_RSaIT1_E
+           11006 _ZSt18uninitialized_copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
+           11006 _ZNSt20__uninitialized_copyILb1EE13__uninit_copyISt13move_iteratorIPtES3_EET0_T_S6_S5_
+           11006 _ZSt4copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
+           11006 _ZSt14__copy_move_a2ILb1EPtS0_ET1_T0_S2_S1_
+           11006 _ZSt13__copy_move_aILb1EPtS0_ET1_T0_S2_S1_
+           11006 _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mItEEPT_PKS3_S6_S4_
+           1101e _ZNSt12_Vector_baseItSaItEE13_M_deallocateEPtm
+           11023 _ZNSt16allocator_traitsISaItEE10deallocateERS0_Ptm
+           11023 _ZN9__gnu_cxx13new_allocatorItE10deallocateEPtm
            110a0 _ZNSt6vectorItSaItEE17_M_default_appendEm
            110cc _ZSt27__uninitialized_default_n_aIPtmtET_S1_T0_RSaIT1_E
            110cc _ZSt25__uninitialized_default_nIPtmET_S1_T0_
@@ -1496,78 +1574,6 @@ expression: FunctionsDebug(&symcache)
            11192 _ZNSt12_Vector_baseItSaItEE13_M_deallocateEPtm
            11197 _ZNSt16allocator_traitsISaItEE10deallocateERS0_Ptm
            11197 _ZN9__gnu_cxx13new_allocatorItE10deallocateEPtm
-           10ce0 _ZN15google_breakpad12UTF32ToUTF16EPKwPSt6vectorItSaItEE
-           10d09 _ZNSt6vectorItSaItEE5clearEv
-           10d1f _ZNSt6vectorItSaItEE15_M_erase_at_endEPt
-           10d0c _ZNSt6vectorItSaItEE6insertEN9__gnu_cxx17__normal_iteratorIPKtS1_EEmRS4_
-           10d0c _ZNSt6vectorItSaItEE14_M_fill_insertEN9__gnu_cxx17__normal_iteratorIPtS1_EEmRKt
-           10d34 _ZSt24__uninitialized_fill_n_aIPtmttET_S1_T0_RKT1_RSaIT2_E
-           10d34 _ZSt20uninitialized_fill_nIPtmtET_S1_T0_RKT1_
-           10d34 _ZNSt22__uninitialized_fill_nILb1EE15__uninit_fill_nIPtmtEET_S3_T0_RKT1_
-           10d34 _ZSt6fill_nIPtmtET_S1_T0_RKT1_
-           10d34 _ZSt10__fill_n_aIPtmtEN9__gnu_cxx11__enable_ifIXsrSt11__is_scalarIT1_E7__valueET_E6__typeES6_T0_RKS4_
-           10df0 _ZNKSt6vectorItSaItEE12_M_check_lenEmPKc
-           10df9 _ZNSt12_Vector_baseItSaItEE11_M_allocateEm
-           10df9 _ZNSt16allocator_traitsISaItEE8allocateERS0_m
-           10df9 _ZN9__gnu_cxx13new_allocatorItE8allocateEmPKv
-           10dfd _ZSt34__uninitialized_move_if_noexcept_aIPtS0_SaItEET0_T_S3_S2_RT1_
-           10dfd _ZSt22__uninitialized_copy_aISt13move_iteratorIPtES1_tET0_T_S4_S3_RSaIT1_E
-           10dfd _ZSt18uninitialized_copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
-           10dfd _ZNSt20__uninitialized_copyILb1EE13__uninit_copyISt13move_iteratorIPtES3_EET0_T_S6_S5_
-           10dfd _ZSt4copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
-           10dfd _ZSt14__copy_move_a2ILb1EPtS0_ET1_T0_S2_S1_
-           10dfd _ZSt13__copy_move_aILb1EPtS0_ET1_T0_S2_S1_
-           10dfd _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mItEEPT_PKS3_S6_S4_
-           10e26 _ZSt34__uninitialized_move_if_noexcept_aIPtS0_SaItEET0_T_S3_S2_RT1_
-           10e26 _ZSt22__uninitialized_copy_aISt13move_iteratorIPtES1_tET0_T_S4_S3_RSaIT1_E
-           10e26 _ZSt18uninitialized_copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
-           10e26 _ZNSt20__uninitialized_copyILb1EE13__uninit_copyISt13move_iteratorIPtES3_EET0_T_S6_S5_
-           10e26 _ZSt4copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
-           10e26 _ZSt14__copy_move_a2ILb1EPtS0_ET1_T0_S2_S1_
-           10e26 _ZSt13__copy_move_aILb1EPtS0_ET1_T0_S2_S1_
-           10e26 _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mItEEPT_PKS3_S6_S4_
-           10e3e _ZNSt12_Vector_baseItSaItEE13_M_deallocateEPtm
-           10e43 _ZNSt16allocator_traitsISaItEE10deallocateERS0_Ptm
-           10e43 _ZN9__gnu_cxx13new_allocatorItE10deallocateEPtm
-           10d79 _ZNSt6vectorItSaItEE6resizeEm
-           10d79 _ZNKSt6vectorItSaItEE4sizeEv
-           10d9a _ZNSt6vectorItSaItEE15_M_erase_at_endEPt
-           10ec0 _ZN15google_breakpad11UTF8ToUTF16EPKcPSt6vectorItSaItEE
-           10ee9 _ZNSt6vectorItSaItEE5clearEv
-           10efe _ZNSt6vectorItSaItEE15_M_erase_at_endEPt
-           10eec _ZNSt6vectorItSaItEE6insertEN9__gnu_cxx17__normal_iteratorIPKtS1_EEmRS4_
-           10eec _ZNSt6vectorItSaItEE14_M_fill_insertEN9__gnu_cxx17__normal_iteratorIPtS1_EEmRKt
-           10f13 _ZSt24__uninitialized_fill_n_aIPtmttET_S1_T0_RKT1_RSaIT2_E
-           10f13 _ZSt20uninitialized_fill_nIPtmtET_S1_T0_RKT1_
-           10f13 _ZNSt22__uninitialized_fill_nILb1EE15__uninit_fill_nIPtmtEET_S3_T0_RKT1_
-           10f13 _ZSt6fill_nIPtmtET_S1_T0_RKT1_
-           10f13 _ZSt10__fill_n_aIPtmtEN9__gnu_cxx11__enable_ifIXsrSt11__is_scalarIT1_E7__valueET_E6__typeES6_T0_RKS4_
-           10fd0 _ZNKSt6vectorItSaItEE12_M_check_lenEmPKc
-           10fd9 _ZNSt12_Vector_baseItSaItEE11_M_allocateEm
-           10fd9 _ZNSt16allocator_traitsISaItEE8allocateERS0_m
-           10fd9 _ZN9__gnu_cxx13new_allocatorItE8allocateEmPKv
-           10fdd _ZSt34__uninitialized_move_if_noexcept_aIPtS0_SaItEET0_T_S3_S2_RT1_
-           10fdd _ZSt22__uninitialized_copy_aISt13move_iteratorIPtES1_tET0_T_S4_S3_RSaIT1_E
-           10fdd _ZSt18uninitialized_copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
-           10fdd _ZNSt20__uninitialized_copyILb1EE13__uninit_copyISt13move_iteratorIPtES3_EET0_T_S6_S5_
-           10fdd _ZSt4copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
-           10fdd _ZSt14__copy_move_a2ILb1EPtS0_ET1_T0_S2_S1_
-           10fdd _ZSt13__copy_move_aILb1EPtS0_ET1_T0_S2_S1_
-           10fdd _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mItEEPT_PKS3_S6_S4_
-           11006 _ZSt34__uninitialized_move_if_noexcept_aIPtS0_SaItEET0_T_S3_S2_RT1_
-           11006 _ZSt22__uninitialized_copy_aISt13move_iteratorIPtES1_tET0_T_S4_S3_RSaIT1_E
-           11006 _ZSt18uninitialized_copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
-           11006 _ZNSt20__uninitialized_copyILb1EE13__uninit_copyISt13move_iteratorIPtES3_EET0_T_S6_S5_
-           11006 _ZSt4copyISt13move_iteratorIPtES1_ET0_T_S4_S3_
-           11006 _ZSt14__copy_move_a2ILb1EPtS0_ET1_T0_S2_S1_
-           11006 _ZSt13__copy_move_aILb1EPtS0_ET1_T0_S2_S1_
-           11006 _ZNSt11__copy_moveILb1ELb1ESt26random_access_iterator_tagE8__copy_mItEEPT_PKS3_S6_S4_
-           1101e _ZNSt12_Vector_baseItSaItEE13_M_deallocateEPtm
-           11023 _ZNSt16allocator_traitsISaItEE10deallocateERS0_Ptm
-           11023 _ZN9__gnu_cxx13new_allocatorItE10deallocateEPtm
-           10f58 _ZNSt6vectorItSaItEE6resizeEm
-           10f58 _ZNKSt6vectorItSaItEE4sizeEv
-           10f79 _ZNSt6vectorItSaItEE15_M_erase_at_endEPt
            11200 _ZN15google_breakpad10IsValidElfEPKv
            11220 _ZN15google_breakpad8ElfClassEPKv
            11230 _ZN15google_breakpad14FindElfSectionEPKvPKcjPS1_Pm
@@ -1579,6 +1585,19 @@ expression: FunctionsDebug(&symcache)
            1140a _ZN15google_breakpad9GetOffsetINS_10ElfClass32E10Elf32_ShdrEEPKT0_PKNT_4EhdrENS6_3OffE
            11418 _ZN15google_breakpad9GetOffsetINS_10ElfClass32EcEEPKT0_PKNT_4EhdrENS5_3OffE
            11425 _ZN15google_breakpad20FindElfSectionByNameINS_10ElfClass32EEEPKNT_4ShdrEPKcNS2_4WordES5_S7_S7_i
+           116a0 _ZN15google_breakpad15FindElfSegmentsEPKvjPNS_15wasteful_vectorINS_10ElfSegmentEEE
+           11726 FindElfClassSegment<google_breakpad::ElfClass64>
+           11750 _ZN15google_breakpad9GetOffsetINS_10ElfClass64E10Elf64_PhdrEEPKT0_PKNT_4EhdrENS6_3OffE
+           1175f _ZNSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE9push_backERKS1_
+           117c1 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorINS0_10ElfSegmentEEEE9constructIS2_JRKS2_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS3_PT_DpOS8_
+           117c1 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorINS0_10ElfSegmentEEEE12_S_constructIS2_JRKS2_EEENSt9enable_ifIXsrSt6__and_IJNS4_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS3_PSB_DpOSC_
+           117c1 _ZN9__gnu_cxx13new_allocatorIN15google_breakpad10ElfSegmentEE9constructIS2_JRKS2_EEEvPT_DpOT0_
+           117e8 FindElfClassSegment<google_breakpad::ElfClass32>
+           11812 _ZN15google_breakpad9GetOffsetINS_10ElfClass32E10Elf32_PhdrEEPKT0_PKNT_4EhdrENS6_3OffE
+           11818 _ZNSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE9push_backERKS1_
+           1186b _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorINS0_10ElfSegmentEEEE9constructIS2_JRKS2_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS3_PT_DpOS8_
+           1186b _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorINS0_10ElfSegmentEEEE12_S_constructIS2_JRKS2_EEENSt9enable_ifIXsrSt6__and_IJNS4_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS3_PSB_DpOSC_
+           1186b _ZN9__gnu_cxx13new_allocatorIN15google_breakpad10ElfSegmentEE9constructIS2_JRKS2_EEEvPT_DpOT0_
            11990 _ZNSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE19_M_emplace_back_auxIIRKS1_EEEvDpOT_
            119ac _ZNKSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE12_M_check_lenEmPKc
            119ac _ZNKSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE4sizeEv
@@ -1586,9 +1605,6 @@ expression: FunctionsDebug(&symcache)
            119d6 _ZNSt12_Vector_baseIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE11_M_allocateEm
            119d6 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorINS0_10ElfSegmentEEEE8allocateERS3_m
            119d6 _ZN15google_breakpad16PageStdAllocatorINS_10ElfSegmentEE8allocateEmPKv
-           11a72 _ZN15google_breakpad13PageAllocator5AllocEm
-           11ab4 _ZN15google_breakpad13PageAllocator9GetNPagesEm
-           11ab4 sys_mmap
            119eb _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorINS0_10ElfSegmentEEEE9constructIS2_JRKS2_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS3_PT_DpOS8_
            119eb _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorINS0_10ElfSegmentEEEE12_S_constructIS2_JRKS2_EEENSt9enable_ifIXsrSt6__and_IJNS4_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS3_PSB_DpOSC_
            119eb _ZN9__gnu_cxx13new_allocatorIN15google_breakpad10ElfSegmentEE9constructIS2_JRKS2_EEEvPT_DpOT0_
@@ -1598,19 +1614,9 @@ expression: FunctionsDebug(&symcache)
            11a10 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorINS0_10ElfSegmentEEEE12_S_constructIS2_JS2_EEENSt9enable_ifIXsrSt6__and_IJNS4_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS3_PS9_DpOSA_
            11a10 _ZN9__gnu_cxx13new_allocatorIN15google_breakpad10ElfSegmentEE9constructIS2_JS2_EEEvPT_DpOT0_
            11a23 _ZNSt13move_iteratorIPN15google_breakpad10ElfSegmentEEppEv
-           116a0 _ZN15google_breakpad15FindElfSegmentsEPKvjPNS_15wasteful_vectorINS_10ElfSegmentEEE
-           11726 FindElfClassSegment<google_breakpad::ElfClass64>
-           1175f _ZNSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE9push_backERKS1_
-           117c1 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorINS0_10ElfSegmentEEEE9constructIS2_JRKS2_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS3_PT_DpOS8_
-           117c1 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorINS0_10ElfSegmentEEEE12_S_constructIS2_JRKS2_EEENSt9enable_ifIXsrSt6__and_IJNS4_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS3_PSB_DpOSC_
-           117c1 _ZN9__gnu_cxx13new_allocatorIN15google_breakpad10ElfSegmentEE9constructIS2_JRKS2_EEEvPT_DpOT0_
-           11750 _ZN15google_breakpad9GetOffsetINS_10ElfClass64E10Elf64_PhdrEEPKT0_PKNT_4EhdrENS6_3OffE
-           117e8 FindElfClassSegment<google_breakpad::ElfClass32>
-           11818 _ZNSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE9push_backERKS1_
-           1186b _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorINS0_10ElfSegmentEEEE9constructIS2_JRKS2_EEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS3_PT_DpOS8_
-           1186b _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorINS0_10ElfSegmentEEEE12_S_constructIS2_JRKS2_EEENSt9enable_ifIXsrSt6__and_IJNS4_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS3_PSB_DpOSC_
-           1186b _ZN9__gnu_cxx13new_allocatorIN15google_breakpad10ElfSegmentEE9constructIS2_JRKS2_EEEvPT_DpOT0_
-           11812 _ZN15google_breakpad9GetOffsetINS_10ElfClass32E10Elf32_PhdrEEPKT0_PKNT_4EhdrENS6_3OffE
+           11a72 _ZN15google_breakpad13PageAllocator5AllocEm
+           11ab4 _ZN15google_breakpad13PageAllocator9GetNPagesEm
+           11ab4 sys_mmap
            11be0 _ZN15google_breakpad6FileIDC2EPKc
            11be4 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4EPKcRKS3_
            11be4 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv
@@ -1622,12 +1628,12 @@ expression: FunctionsDebug(&symcache)
            11c28 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_S_copy_charsEPcPKcS7_
            11c28 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_S_copyEPcPKcm
            11c2e _ZNSt11char_traitsIcE4copyEPcPKcm
-           11c95 _ZNSt11char_traitsIcE6assignERcRKc
            11c36 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
            11c36 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
            11c3a _ZNSt11char_traitsIcE6assignERcRKc
            11c70 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7_M_dataEPc
            11c73 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE11_M_capacityEm
+           11c95 _ZNSt11char_traitsIcE6assignERcRKc
            11cc0 _ZN15google_breakpad6FileID29ConvertIdentifierToUUIDStringB5cxx11ERKNS_15wasteful_vectorIhEE
            11cd1 _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE4sizeEv
            11cfe _ZSt3minImERKT_S2_S2_
@@ -1638,12 +1644,12 @@ expression: FunctionsDebug(&symcache)
            11d2b _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_local_dataEv
            11d34 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE13_M_set_lengthEm
            11d34 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE9_M_lengthEm
-           11d52 _ZNSt11char_traitsIcE6assignERcRKc
            11d41 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_
+           11d52 _ZNSt11char_traitsIcE6assignERcRKc
            11d58 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE6appendEPKc
            11d58 _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE15_M_check_lengthEmmPKc
-           11d94 _ZNSt11char_traitsIcE6lengthEPKc
            11d70 snprintf
+           11d94 _ZNSt11char_traitsIcE6lengthEPKc
            11e54 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv
            11e59 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm
            11e59 _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm
@@ -1659,8 +1665,8 @@ expression: FunctionsDebug(&symcache)
            11eb1 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_
            11ec3 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE6appendEPKc
            11ec3 _ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE15_M_check_lengthEmmPKc
-           11ef5 _ZNSt11char_traitsIcE6lengthEPKc
            11ed0 snprintf
+           11ef5 _ZNSt11char_traitsIcE6lengthEPKc
            11f89 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv
            11f93 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_destroyEm
            11f93 _ZNSt16allocator_traitsISaIcEE10deallocateERS0_Pcm
@@ -1680,16 +1686,13 @@ expression: FunctionsDebug(&symcache)
            1206e _ZNSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE3endEv
            1206e _ZN9__gnu_cxx17__normal_iteratorIPN15google_breakpad10ElfSegmentESt6vectorIS2_NS1_16PageStdAllocatorIS2_EEEEC4ERKS3_
            12083 ElfClassBuildIDNoteIdentifier
-           1212d _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE6insertIPKhvEEN9__gnu_cxx17__normal_iteratorIPhS3_EENS8_IS6_S3_EET_SC_
-           1212d _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE18_M_insert_dispatchIPKhEEvN9__gnu_cxx17__normal_iteratorIPhS3_EET_SB_St12__false_type
            120c3 _ZN9__gnu_cxx17__normal_iteratorIPN15google_breakpad10ElfSegmentESt6vectorIS2_NS1_16PageStdAllocatorIS2_EEEEppEv
            1210b _ZN15google_breakpad13PageAllocatorD4Ev
            1210b _ZN15google_breakpad13PageAllocator7FreeAllEv
+           1212d _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE6insertIPKhvEEN9__gnu_cxx17__normal_iteratorIPhS3_EENS8_IS6_S3_EET_SC_
+           1212d _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE18_M_insert_dispatchIPKhEEvN9__gnu_cxx17__normal_iteratorIPhS3_EET_SB_St12__false_type
            1215d sys_munmap
            121d6 ElfClassBuildIDNoteIdentifier
-           129ef _ZN15google_breakpad13PageAllocatorD4Ev
-           129ef _ZN15google_breakpad13PageAllocator7FreeAllEv
-           129ef sys_munmap
            1223c HashElfTextSection
            1223c _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE6resizeEm
            1223c _ZNKSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE4sizeEv
@@ -1703,11 +1706,9 @@ expression: FunctionsDebug(&symcache)
            126a9 _ZNSt12_Vector_baseIhN15google_breakpad16PageStdAllocatorIhEEE11_M_allocateEm
            126a9 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE8allocateERS2_m
            126a9 _ZN15google_breakpad16PageStdAllocatorIhE8allocateEmPKv
-           126c7 _ZN15google_breakpad13PageAllocator5AllocEm
-           128cd _ZN15google_breakpad13PageAllocator9GetNPagesEm
-           128cd sys_mmap
            126be _ZSt34__uninitialized_move_if_noexcept_aIPhS0_N15google_breakpad16PageStdAllocatorIhEEET0_T_S5_S4_RT1_
            126be _ZSt22__uninitialized_copy_aISt13move_iteratorIPhES1_N15google_breakpad16PageStdAllocatorIhEEET0_T_S7_S6_RT1_
+           126c7 _ZN15google_breakpad13PageAllocator5AllocEm
            126d4 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJhEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
            126d4 _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJhEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
            126d4 _ZN9__gnu_cxx13new_allocatorIhE9constructIhJhEEEvPT_DpOT0_
@@ -1715,8 +1716,12 @@ expression: FunctionsDebug(&symcache)
            126fd _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE9constructIhJEEEDTcl12_S_constructfp_fp0_spcl7forwardIT0_Efp1_EEERS2_PT_DpOS5_
            126fd _ZNSt16allocator_traitsIN15google_breakpad16PageStdAllocatorIhEEE12_S_constructIhJEEENSt9enable_ifIXsrSt6__and_IJNS3_18__construct_helperIT_JDpT0_EE4typeEEE5valueEvE4typeERS2_PS8_DpOS9_
            126fd _ZN9__gnu_cxx13new_allocatorIhE9constructIhJEEEvPT_DpOT0_
+           128cd _ZN15google_breakpad13PageAllocator9GetNPagesEm
+           128cd sys_mmap
+           129ef _ZN15google_breakpad13PageAllocatorD4Ev
+           129ef _ZN15google_breakpad13PageAllocator7FreeAllEv
+           129ef sys_munmap
            12bc0 _ZN15google_breakpad6FileID17ElfFileIdentifierERNS_15wasteful_vectorIhEE
-           12d80 _ZN13GUIDGenerator12InitOnceImplEv
            12c40 _Z10CreateGUIDP6MDGUID
            12c47 _ZN13GUIDGenerator10CreateGUIDEP6MDGUID
            12c47 _ZN13GUIDGenerator24CreateGUIDFromDevUrandomEP6MDGUID
@@ -1726,6 +1731,7 @@ expression: FunctionsDebug(&symcache)
            12cc8 _ZN13GUIDGenerator8InitOnceEv
            12d00 _Z12GUIDToStringPK6MDGUIDPci
            12d06 snprintf
+           12d80 _ZN13GUIDGenerator12InitOnceImplEv
            12db0 my_strlen
            12dd0 my_strcmp
            12e20 my_strncmp
@@ -1791,13 +1797,7 @@ expression: FunctionsDebug(&symcache)
            14660 ConvertUTF32toUTF8
            14920 ConvertUTF8toUTF32
            1498c isLegalUTF8
-            1df0 deregister_tm_clones
-            1e30 register_tm_clones
-            1e70 __do_global_dtors_aux
-            1e90 frame_dummy
-           14ca0 __libc_csu_fini
-            1dc0 _start
-           14ca4 _fini
            14c30 __libc_csu_init
-            1558 _init
+           14ca0 __libc_csu_fini
+           14ca4 _fini
 

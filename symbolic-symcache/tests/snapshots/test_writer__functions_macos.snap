@@ -3,6 +3,7 @@ source: symbolic-symcache/tests/test_writer.rs
 expression: FunctionsDebug(&symcache)
 
 ---
+               0 _mh_execute_header
              d20 _ZN15google_breakpad18MinidumpFileWriterC2Ev
              d40 _ZN15google_breakpad18MinidumpFileWriterC1Ev
              d40 _ZN15google_breakpad18MinidumpFileWriterC2Ev
@@ -81,299 +82,44 @@ expression: FunctionsDebug(&symcache)
             1caa _ZN15google_breakpad18MachReceiveMessageC1Ev
             1caa _ZN15google_breakpad18MachReceiveMessageC2Ev
             1caa _ZN15google_breakpad11MachMessageC2Ev
-            3480 _ZNSt3__16__sortIRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEvT0_S7_T_
-            3505 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3505 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            36fc _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3564 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3564 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3567 _ZN15google_breakpad12DynamicImageltERKS0_
-            357a _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3581 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            36e6 _ZN15google_breakpad12DynamicImageltERKS0_
-            36e6 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            360b _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3620 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3627 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3627 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            362a _ZN15google_breakpad12DynamicImageltERKS0_
-            362a _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            362e _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            362e _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            36dc _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            36dc _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            36ea _ZN15google_breakpad12DynamicImageltERKS0_
-            36ea _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3517 _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
-            3517 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3517 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3528 _ZN15google_breakpad12DynamicImageltERKS0_
-            3528 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            35b5 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            35bc _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            35bc _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            35c4 _ZN15google_breakpad12DynamicImageltERKS0_
-            35c4 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            35ce _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            352c _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            352c _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            352c _ZN15google_breakpad12DynamicImageltERKS0_
-            352c _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            35e9 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3533 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3533 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3536 _ZN15google_breakpad12DynamicImageltERKS0_
-            3536 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3545 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            35d8 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3719 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            372f _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            372f _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3733 _ZN15google_breakpad12DynamicImageltERKS0_
-            3733 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            373e _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            373e _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3748 _ZN15google_breakpad12DynamicImageltERKS0_
-            377b _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            377b _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3783 _ZN15google_breakpad12DynamicImageltERKS0_
-            3783 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            378d _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3814 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3814 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            381b _ZN15google_breakpad12DynamicImageltERKS0_
-            381b _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3829 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            390e _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
-            390e _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            390e _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3916 _ZN15google_breakpad12DynamicImageltERKS0_
-            3916 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3999 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            39a0 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            39a0 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            39a8 _ZN15google_breakpad12DynamicImageltERKS0_
-            39a8 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            39b6 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            391a _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            391a _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            391a _ZN15google_breakpad12DynamicImageltERKS0_
-            391a _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            39f7 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3921 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3921 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3924 _ZN15google_breakpad12DynamicImageltERKS0_
-            3924 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3933 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            39e2 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3965 _ZNSt3__17__sort4IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_S7_T_
-            3965 _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
-            3965 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3965 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3971 _ZN15google_breakpad12DynamicImageltERKS0_
-            3971 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            39d5 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            39c8 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3969 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3969 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            396d _ZN15google_breakpad12DynamicImageltERKS0_
-            396d _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3978 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3978 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            397c _ZN15google_breakpad12DynamicImageltERKS0_
-            397c _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3a10 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3987 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3a03 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            39dd _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            39dd _ZN15google_breakpad15DynamicImageRefC1ERKS0_
-            39dd _ZN15google_breakpad15DynamicImageRefC2ERKS0_
-            3a40 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3a40 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3a48 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3a48 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3a48 _ZN15google_breakpad12DynamicImageltERKS0_
-            3a48 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3a6c _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3a56 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3a1b _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3a1b _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3a2b _ZN15google_breakpad12DynamicImageltERKS0_
-            3a2b _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3835 _ZNSt3__118__insertion_sort_3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEvT0_S7_T_
-            3835 _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
-            3835 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3835 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3841 _ZN15google_breakpad12DynamicImageltERKS0_
-            3841 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            386f _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3862 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3839 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3839 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            383d _ZN15google_breakpad12DynamicImageltERKS0_
-            383d _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3848 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3848 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            384c _ZN15google_breakpad12DynamicImageltERKS0_
-            384c _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3886 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3857 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3879 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            38a6 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            38a6 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            38bd _ZN15google_breakpad12DynamicImageltERKS0_
-            38bd _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            38e2 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            38e2 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            38eb _ZN15google_breakpad12DynamicImageltERKS0_
-            3aa0 _ZNSt3__17__sort5IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_S7_S7_T_
-            3aa0 _ZNSt3__17__sort4IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_S7_T_
-            3aa0 _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
-            3aa0 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3aa0 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3aa9 _ZN15google_breakpad12DynamicImageltERKS0_
-            3aa9 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3ad4 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3ada _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3ada _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3ae0 _ZN15google_breakpad12DynamicImageltERKS0_
-            3ae0 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3aea _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3aad _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3aad _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3aad _ZN15google_breakpad12DynamicImageltERKS0_
-            3aad _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3b0e _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3ab4 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3ab4 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3ab7 _ZN15google_breakpad12DynamicImageltERKS0_
-            3ab7 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3ac2 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3afa _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3af0 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3af0 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3b2d _ZN15google_breakpad12DynamicImageltERKS0_
-            3b2d _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3b19 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3b19 _ZN15google_breakpad15DynamicImageRefC1ERKS0_
-            3b19 _ZN15google_breakpad15DynamicImageRefC2ERKS0_
-            3b3d _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3b3d _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3b43 _ZN15google_breakpad12DynamicImageltERKS0_
-            3b43 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3b4d _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3b53 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3b53 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3b59 _ZN15google_breakpad12DynamicImageltERKS0_
-            3b59 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3b63 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3b75 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3b75 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3b7b _ZN15google_breakpad12DynamicImageltERKS0_
-            3b7b _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3b85 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3b8b _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3b8b _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3b91 _ZN15google_breakpad12DynamicImageltERKS0_
-            3b91 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3b9b _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3ba1 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3ba1 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3ba7 _ZN15google_breakpad12DynamicImageltERKS0_
-            3ba7 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3bb1 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3bb7 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3bb7 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3bbd _ZN15google_breakpad12DynamicImageltERKS0_
-            3bbd _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3bc7 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3bf0 _ZNSt3__127__insertion_sort_incompleteIRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEbT0_S7_T_
-            3c1c _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3c1c _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3c23 _ZN15google_breakpad12DynamicImageltERKS0_
-            3c23 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3c31 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3c6e _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
-            3c6e _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3c6e _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3c75 _ZN15google_breakpad12DynamicImageltERKS0_
-            3c75 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3d19 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3d21 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3d21 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3d28 _ZN15google_breakpad12DynamicImageltERKS0_
-            3d28 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3d36 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3c79 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3c79 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3c79 _ZN15google_breakpad12DynamicImageltERKS0_
-            3c79 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3e23 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3c80 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3c80 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3c84 _ZN15google_breakpad12DynamicImageltERKS0_
-            3c84 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3c97 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3e12 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3cc0 _ZNSt3__17__sort4IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_S7_T_
-            3cc0 _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
-            3cc0 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3cc0 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3ccb _ZN15google_breakpad12DynamicImageltERKS0_
-            3ccb _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3d5c _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3d4b _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3cc3 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3cc3 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3cc7 _ZN15google_breakpad12DynamicImageltERKS0_
-            3cc7 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3cd2 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3cd2 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3cd6 _ZN15google_breakpad12DynamicImageltERKS0_
-            3cd6 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3e39 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3ce5 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3e2d _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3d63 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3d63 _ZN15google_breakpad15DynamicImageRefC1ERKS0_
-            3d63 _ZN15google_breakpad15DynamicImageRefC2ERKS0_
-            3e6f _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3e6f _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3e77 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3e77 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3e77 _ZN15google_breakpad12DynamicImageltERKS0_
-            3e77 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3e92 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3e81 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3e44 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3e44 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3e5d _ZN15google_breakpad12DynamicImageltERKS0_
-            3e5d _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3c3d _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
-            3c3d _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3c3d _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3c48 _ZN15google_breakpad12DynamicImageltERKS0_
-            3c48 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3d07 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3cf6 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3c40 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3c40 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3c44 _ZN15google_breakpad12DynamicImageltERKS0_
-            3c44 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3c4f _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3c4f _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3c53 _ZN15google_breakpad12DynamicImageltERKS0_
-            3c53 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3d77 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3c66 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3d6b _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            3da2 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3da2 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3dbd _ZN15google_breakpad12DynamicImageltERKS0_
-            3dbd _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            3de1 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
-            3de1 _ZNK15google_breakpad15DynamicImageRefltERKS0_
-            3dea _ZN15google_breakpad12DynamicImageltERKS0_
+            1d30 _ZN15google_breakpad14ReadTaskMemoryEjymRNSt3__16vectorIhNS0_9allocatorIhEEEE
+            1d7e _ZNSt3__16vectorIhNS_9allocatorIhEEE6resizeEm
+            1d7e _ZNKSt3__16vectorIhNS_9allocatorIhEEE4sizeEv
+            1d9e _ZNSt3__16vectorIhNS_9allocatorIhEEEixEm
+            1da9 _ZNSt3__16vectorIhNS_9allocatorIhEEE17__destruct_at_endEPh
+            1da9 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE17__destruct_at_endEPh
+            1df0 _ZN15google_breakpad12DynamicImage29CalculateMemoryAndVersionInfoEv
+            1e1e _ZN15google_breakpad12DynamicImage7Is64BitEv
+            1e23 _ZN15google_breakpad15FindTextSectionINS_7MachO64EEEbRNS_12DynamicImageE
+            1e23 _ZNKSt3__16vectorIhNS_9allocatorIhEEEixEm
+            1e2e _ZN15google_breakpad15FindTextSectionINS_7MachO32EEEbRNS_12DynamicImageE
+            1e9f _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            1f5c _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            1fb0 _ZN15google_breakpad12DynamicImage11GetFileTypeEv
+            1fb0 _ZN15google_breakpad21GetFileTypeFromHeaderINS_7MachO64EEEjRNS_12DynamicImageE
+            1fb0 _ZNKSt3__16vectorIhNS_9allocatorIhEEEixEm
+            1fc0 _ZN15google_breakpad13DynamicImagesC2Ej
+            1fdc _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEEC1Ev
+            1fdc _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEEC2Ev
+            1fdc _ZNSt3__113__vector_baseIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEEC2Ev
+            1ff4 _ZN15google_breakpad13DynamicImages20ReadImageInfoForTaskEv
+            1ff4 _ZN15google_breakpad13DynamicImages27GetDyldAllImageInfosPointerEv
+            2020 _ZN15google_breakpad13DynamicImages7Is64BitEv
+            2045 _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEED1Ev
+            2045 _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEED2Ev
+            2045 _ZNSt3__113__vector_baseIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEED2Ev
+            204d _ZNSt3__113__vector_baseIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE5clearEv
+            204d _ZNSt3__113__vector_baseIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE17__destruct_at_endEPS2_
+            2056 _ZNSt3__113__vector_baseIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE7__allocEv
+            206b _ZNSt3__116allocator_traitsINS_9allocatorIN15google_breakpad15DynamicImageRefEEEE10deallocateERS4_PS3_m
+            206b _ZNSt3__19allocatorIN15google_breakpad15DynamicImageRefEE10deallocateEPS2_m
+            206b _ZNSt3__112__deallocateEPv
+            2080 _ZN15google_breakpad13DynamicImages20DetermineTaskCPUTypeEj
+            2160 _ZN15google_breakpad13DynamicImages20ReadImageInfoForTaskEv
+            2168 _ZN15google_breakpad13DynamicImages27GetDyldAllImageInfosPointerEv
+            2194 _ZN15google_breakpad13DynamicImages7Is64BitEv
+            21c0 _ZN15google_breakpad13DynamicImagesC1Ej
+            21d0 _ZN15google_breakpad13DynamicImages27GetDyldAllImageInfosPointerEv
             2210 _ZN15google_breakpad13ReadImageInfoINS_7MachO64EEEvRNS_13DynamicImagesEy
             2224 _ZNSt3__16vectorIhNS_9allocatorIhEEEC1Ev
             2224 _ZNSt3__16vectorIhNS_9allocatorIhEEEC2Ev
@@ -424,24 +170,6 @@ expression: FunctionsDebug(&symcache)
             23e9 _ZNSt3__19allocatorIN15google_breakpad15DynamicImageRefEE10deallocateEPS2_m
             23e9 _ZNSt3__112__deallocateEPv
             23fa _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE9push_backEOS2_
-            25ad _ZNSt3__116allocator_traitsINS_9allocatorIN15google_breakpad15DynamicImageRefEEEE9constructIS3_JS3_EEEvRS4_PT_DpOT0_
-            25ad _ZNSt3__116allocator_traitsINS_9allocatorIN15google_breakpad15DynamicImageRefEEEE11__constructIS3_JS3_EEEvNS_17integral_constantIbLb1EEERS4_PT_DpOT0_
-            25ad _ZNSt3__19allocatorIN15google_breakpad15DynamicImageRefEE9constructIS2_JS2_EEEvPT_DpOT0_
-            25ad _ZN15google_breakpad15DynamicImageRefC1ERKS0_
-            25ad _ZN15google_breakpad15DynamicImageRefC2ERKS0_
-            2594 _ZN15google_breakpad15DynamicImageRefC1EPNS_12DynamicImageE
-            2594 _ZN15google_breakpad15DynamicImageRefC2EPNS_12DynamicImageE
-            2585 _ZN15google_breakpad12DynamicImage7IsValidEv
-            25c1 _ZN15google_breakpad12DynamicImageD1Ev
-            25c1 _ZN15google_breakpad12DynamicImageD2Ev
-            25cd _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
-            25cd _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
-            25cd _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
-            25db _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE5clearEv
-            25db _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE17__destruct_at_endEPh
-            25e5 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
-            25e5 _ZNSt3__19allocatorIhE10deallocateEPhm
-            25e5 _ZNSt3__112__deallocateEPv
             241f _ZNSt3__16vectorIhNS_9allocatorIhEEEC1Ev
             241f _ZNSt3__16vectorIhNS_9allocatorIhEEEC2Ev
             241f _ZNSt3__113__vector_baseIhNS_9allocatorIhEEEC2Ev
@@ -461,6 +189,24 @@ expression: FunctionsDebug(&symcache)
             24f9 _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6__zeroEv
             252a _ZNSt3__16vectorIhNS_9allocatorIhEEEixEm
             255a _ZN15google_breakpad12DynamicImageC1EPhmyNSt3__112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEEmji
+            2585 _ZN15google_breakpad12DynamicImage7IsValidEv
+            2594 _ZN15google_breakpad15DynamicImageRefC1EPNS_12DynamicImageE
+            2594 _ZN15google_breakpad15DynamicImageRefC2EPNS_12DynamicImageE
+            25ad _ZNSt3__116allocator_traitsINS_9allocatorIN15google_breakpad15DynamicImageRefEEEE9constructIS3_JS3_EEEvRS4_PT_DpOT0_
+            25ad _ZNSt3__116allocator_traitsINS_9allocatorIN15google_breakpad15DynamicImageRefEEEE11__constructIS3_JS3_EEEvNS_17integral_constantIbLb1EEERS4_PT_DpOT0_
+            25ad _ZNSt3__19allocatorIN15google_breakpad15DynamicImageRefEE9constructIS2_JS2_EEEvPT_DpOT0_
+            25ad _ZN15google_breakpad15DynamicImageRefC1ERKS0_
+            25ad _ZN15google_breakpad15DynamicImageRefC2ERKS0_
+            25c1 _ZN15google_breakpad12DynamicImageD1Ev
+            25c1 _ZN15google_breakpad12DynamicImageD2Ev
+            25cd _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
+            25cd _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
+            25cd _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
+            25db _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE5clearEv
+            25db _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE17__destruct_at_endEPh
+            25e5 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
+            25e5 _ZNSt3__19allocatorIhE10deallocateEPhm
+            25e5 _ZNSt3__112__deallocateEPv
             261a _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
             261a _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
             261a _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
@@ -469,14 +215,6 @@ expression: FunctionsDebug(&symcache)
             2636 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
             2636 _ZNSt3__19allocatorIhE10deallocateEPhm
             2636 _ZNSt3__112__deallocateEPv
-            277e _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
-            277e _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
-            277e _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
-            2788 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE5clearEv
-            2788 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE17__destruct_at_endEPh
-            2794 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
-            2794 _ZNSt3__19allocatorIhE10deallocateEPhm
-            2794 _ZNSt3__112__deallocateEPv
             2655 _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE3endEv
             265e _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE5beginEv
             266a _ZNSt3__14sortIN15google_breakpad15DynamicImageRefEEEvNS_11__wrap_iterIPT_EES6_
@@ -496,12 +234,12 @@ expression: FunctionsDebug(&symcache)
             269e _ZNSt3__1neIPN15google_breakpad15DynamicImageRefEEEbRKNS_11__wrap_iterIT_EES8_
             26a3 _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
             26b0 _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
+            26b4 _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
+            26c4 _ZNSt3__1neIPN15google_breakpad15DynamicImageRefEEEbRKNS_11__wrap_iterIT_EES8_
             26c9 _ZNKSt3__110__equal_toIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
             26c9 _ZNK15google_breakpad15DynamicImageRefeqERKS0_
             26cc _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
             26d0 _ZN15google_breakpad15DynamicImageRefcvPNS_12DynamicImageEEv
-            26b4 _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
-            26c4 _ZNSt3__1neIPN15google_breakpad15DynamicImageRefEEEbRKNS_11__wrap_iterIT_EES8_
             26db _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
             26df _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE3endEv
             26e8 _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE5eraseENS_11__wrap_iterIPKS2_EES9_
@@ -511,6 +249,14 @@ expression: FunctionsDebug(&symcache)
             2708 _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE17__destruct_at_endEPS2_
             2708 _ZNSt3__113__vector_baseIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE17__destruct_at_endEPS2_
             2719 _ZNSt3__113__vector_baseIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE7__allocEv
+            277e _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
+            277e _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
+            277e _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
+            2788 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE5clearEv
+            2788 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE17__destruct_at_endEPh
+            2794 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
+            2794 _ZNSt3__19allocatorIhE10deallocateEPhm
+            2794 _ZNSt3__112__deallocateEPv
             2799 _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
             2799 _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
             2799 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
@@ -577,24 +323,6 @@ expression: FunctionsDebug(&symcache)
             29b9 _ZNSt3__19allocatorIN15google_breakpad15DynamicImageRefEE10deallocateEPS2_m
             29b9 _ZNSt3__112__deallocateEPv
             29ca _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE9push_backEOS2_
-            2b7d _ZNSt3__116allocator_traitsINS_9allocatorIN15google_breakpad15DynamicImageRefEEEE9constructIS3_JS3_EEEvRS4_PT_DpOT0_
-            2b7d _ZNSt3__116allocator_traitsINS_9allocatorIN15google_breakpad15DynamicImageRefEEEE11__constructIS3_JS3_EEEvNS_17integral_constantIbLb1EEERS4_PT_DpOT0_
-            2b7d _ZNSt3__19allocatorIN15google_breakpad15DynamicImageRefEE9constructIS2_JS2_EEEvPT_DpOT0_
-            2b7d _ZN15google_breakpad15DynamicImageRefC1ERKS0_
-            2b7d _ZN15google_breakpad15DynamicImageRefC2ERKS0_
-            2b64 _ZN15google_breakpad15DynamicImageRefC1EPNS_12DynamicImageE
-            2b64 _ZN15google_breakpad15DynamicImageRefC2EPNS_12DynamicImageE
-            2b55 _ZN15google_breakpad12DynamicImage7IsValidEv
-            2b91 _ZN15google_breakpad12DynamicImageD1Ev
-            2b91 _ZN15google_breakpad12DynamicImageD2Ev
-            2b9d _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
-            2b9d _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
-            2b9d _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
-            2bab _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE5clearEv
-            2bab _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE17__destruct_at_endEPh
-            2bb5 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
-            2bb5 _ZNSt3__19allocatorIhE10deallocateEPhm
-            2bb5 _ZNSt3__112__deallocateEPv
             29ef _ZNSt3__16vectorIhNS_9allocatorIhEEEC1Ev
             29ef _ZNSt3__16vectorIhNS_9allocatorIhEEEC2Ev
             29ef _ZNSt3__113__vector_baseIhNS_9allocatorIhEEEC2Ev
@@ -614,6 +342,24 @@ expression: FunctionsDebug(&symcache)
             2ac9 _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6__zeroEv
             2afa _ZNSt3__16vectorIhNS_9allocatorIhEEEixEm
             2b2a _ZN15google_breakpad12DynamicImageC1EPhmyNSt3__112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEEmji
+            2b55 _ZN15google_breakpad12DynamicImage7IsValidEv
+            2b64 _ZN15google_breakpad15DynamicImageRefC1EPNS_12DynamicImageE
+            2b64 _ZN15google_breakpad15DynamicImageRefC2EPNS_12DynamicImageE
+            2b7d _ZNSt3__116allocator_traitsINS_9allocatorIN15google_breakpad15DynamicImageRefEEEE9constructIS3_JS3_EEEvRS4_PT_DpOT0_
+            2b7d _ZNSt3__116allocator_traitsINS_9allocatorIN15google_breakpad15DynamicImageRefEEEE11__constructIS3_JS3_EEEvNS_17integral_constantIbLb1EEERS4_PT_DpOT0_
+            2b7d _ZNSt3__19allocatorIN15google_breakpad15DynamicImageRefEE9constructIS2_JS2_EEEvPT_DpOT0_
+            2b7d _ZN15google_breakpad15DynamicImageRefC1ERKS0_
+            2b7d _ZN15google_breakpad15DynamicImageRefC2ERKS0_
+            2b91 _ZN15google_breakpad12DynamicImageD1Ev
+            2b91 _ZN15google_breakpad12DynamicImageD2Ev
+            2b9d _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
+            2b9d _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
+            2b9d _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
+            2bab _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE5clearEv
+            2bab _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE17__destruct_at_endEPh
+            2bb5 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
+            2bb5 _ZNSt3__19allocatorIhE10deallocateEPhm
+            2bb5 _ZNSt3__112__deallocateEPv
             2bea _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
             2bea _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
             2bea _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
@@ -622,14 +368,6 @@ expression: FunctionsDebug(&symcache)
             2c06 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
             2c06 _ZNSt3__19allocatorIhE10deallocateEPhm
             2c06 _ZNSt3__112__deallocateEPv
-            2d4e _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
-            2d4e _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
-            2d4e _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
-            2d58 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE5clearEv
-            2d58 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE17__destruct_at_endEPh
-            2d64 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
-            2d64 _ZNSt3__19allocatorIhE10deallocateEPhm
-            2d64 _ZNSt3__112__deallocateEPv
             2c25 _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE3endEv
             2c2e _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE5beginEv
             2c3a _ZNSt3__14sortIN15google_breakpad15DynamicImageRefEEEvNS_11__wrap_iterIPT_EES6_
@@ -649,12 +387,12 @@ expression: FunctionsDebug(&symcache)
             2c6e _ZNSt3__1neIPN15google_breakpad15DynamicImageRefEEEbRKNS_11__wrap_iterIT_EES8_
             2c73 _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
             2c80 _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
+            2c84 _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
+            2c94 _ZNSt3__1neIPN15google_breakpad15DynamicImageRefEEEbRKNS_11__wrap_iterIT_EES8_
             2c99 _ZNKSt3__110__equal_toIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
             2c99 _ZNK15google_breakpad15DynamicImageRefeqERKS0_
             2c9c _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
             2ca0 _ZN15google_breakpad15DynamicImageRefcvPNS_12DynamicImageEEv
-            2c84 _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
-            2c94 _ZNSt3__1neIPN15google_breakpad15DynamicImageRefEEEbRKNS_11__wrap_iterIT_EES8_
             2cab _ZNSt3__111__wrap_iterIPN15google_breakpad15DynamicImageRefEEppEv
             2caf _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE3endEv
             2cb8 _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE5eraseENS_11__wrap_iterIPKS2_EES9_
@@ -664,6 +402,14 @@ expression: FunctionsDebug(&symcache)
             2cd8 _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE17__destruct_at_endEPS2_
             2cd8 _ZNSt3__113__vector_baseIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE17__destruct_at_endEPS2_
             2ce9 _ZNSt3__113__vector_baseIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE7__allocEv
+            2d4e _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
+            2d4e _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
+            2d4e _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
+            2d58 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE5clearEv
+            2d58 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE17__destruct_at_endEPh
+            2d64 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
+            2d64 _ZNSt3__19allocatorIhE10deallocateEPhm
+            2d64 _ZNSt3__112__deallocateEPv
             2d69 _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
             2d69 _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
             2d69 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
@@ -680,12 +426,58 @@ expression: FunctionsDebug(&symcache)
             2da3 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
             2da3 _ZNSt3__19allocatorIhE10deallocateEPhm
             2da3 _ZNSt3__112__deallocateEPv
-            1d30 _ZN15google_breakpad14ReadTaskMemoryEjymRNSt3__16vectorIhNS0_9allocatorIhEEEE
-            1d7e _ZNSt3__16vectorIhNS_9allocatorIhEEE6resizeEm
-            1d7e _ZNKSt3__16vectorIhNS_9allocatorIhEEE4sizeEv
-            1da9 _ZNSt3__16vectorIhNS_9allocatorIhEEE17__destruct_at_endEPh
-            1da9 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEE17__destruct_at_endEPh
-            1d9e _ZNSt3__16vectorIhNS_9allocatorIhEEEixEm
+            2db0 _ZN15google_breakpad13DynamicImages18GetExecutableImageEv
+            2db0 _ZN15google_breakpad13DynamicImages8GetImageEi
+            2db0 _ZNKSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE4sizeEv
+            2db8 _ZN15google_breakpad13DynamicImages23GetExecutableImageIndexEv
+            2db8 _ZNK15google_breakpad13DynamicImages13GetImageCountEv
+            2db8 _ZNKSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE4sizeEv
+            2dcb _ZN15google_breakpad13DynamicImages8GetImageEi
+            2dcb _ZN15google_breakpad15DynamicImageRefcvPNS_12DynamicImageEEv
+            2dd4 _ZN15google_breakpad12DynamicImage11GetFileTypeEv
+            2dd4 _ZN15google_breakpad21GetFileTypeFromHeaderINS_7MachO64EEEjRNS_12DynamicImageE
+            2dd4 _ZNKSt3__16vectorIhNS_9allocatorIhEEEixEm
+            2df5 _ZN15google_breakpad15DynamicImageRefcvPNS_12DynamicImageEEv
+            2e00 _ZN15google_breakpad13DynamicImages23GetExecutableImageIndexEv
+            2e00 _ZNK15google_breakpad13DynamicImages13GetImageCountEv
+            2e00 _ZNKSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE4sizeEv
+            2e1d _ZN15google_breakpad13DynamicImages8GetImageEi
+            2e1d _ZN15google_breakpad15DynamicImageRefcvPNS_12DynamicImageEEv
+            2e24 _ZN15google_breakpad12DynamicImage11GetFileTypeEv
+            2e24 _ZN15google_breakpad21GetFileTypeFromHeaderINS_7MachO64EEEjRNS_12DynamicImageE
+            2e24 _ZNKSt3__16vectorIhNS_9allocatorIhEEEixEm
+            2e40 _ZNSt3__16vectorIhNS_9allocatorIhEEE8__appendEm
+            2e64 _ZNKSt3__16vectorIhNS_9allocatorIhEEE4sizeEv
+            2e6a _ZNKSt3__16vectorIhNS_9allocatorIhEEE11__recommendEm
+            2e77 _ZNKSt3__16vectorIhNS_9allocatorIhEEE8capacityEv
+            2e77 _ZNKSt3__113__vector_baseIhNS_9allocatorIhEEE8capacityEv
+            2e97 _ZNSt3__13maxImEERKT_S3_S3_
+            2e97 _ZNSt3__13maxImNS_6__lessImmEEEERKT_S5_S5_T0_
+            2e97 _ZNKSt3__16__lessImmEclERKmS3_
+            2e9e _ZNKSt3__16vectorIhNS_9allocatorIhEEE4sizeEv
+            2ea7 _ZNSt3__114__split_bufferIhRNS_9allocatorIhEEEC1EmmS3_
+            2ea7 _ZNSt3__114__split_bufferIhRNS_9allocatorIhEEEC2EmmS3_
+            2ebb _ZNSt3__16vectorIhNS_9allocatorIhEEE18__construct_at_endEm
+            2ecb _ZNSt3__116allocator_traitsINS_9allocatorIhEEE9constructIhJEEEvRS2_PT_DpOT0_
+            2ecb _ZNSt3__116allocator_traitsINS_9allocatorIhEEE11__constructIhJEEEvNS_17integral_constantIbLb1EEERS2_PT_DpOT0_
+            2ecb _ZNSt3__19allocatorIhE9constructIhJEEEvPT_DpOT0_
+            2f4a _ZNSt3__116allocator_traitsINS_9allocatorIhEEE8allocateERS2_m
+            2f4a _ZNSt3__19allocatorIhE8allocateEmPKv
+            2f4a _ZNSt3__110__allocateEm
+            2f5b _ZNSt3__114__split_bufferIhRNS_9allocatorIhEEE18__construct_at_endEm
+            2f6e _ZNSt3__116allocator_traitsINS_9allocatorIhEEE9constructIhJEEEvRS2_PT_DpOT0_
+            2f6e _ZNSt3__116allocator_traitsINS_9allocatorIhEEE11__constructIhJEEEvNS_17integral_constantIbLb1EEERS2_PT_DpOT0_
+            2f6e _ZNSt3__19allocatorIhE9constructIhJEEEvPT_DpOT0_
+            2fb1 _ZNSt3__16vectorIhNS_9allocatorIhEEE26__swap_out_circular_bufferERNS_14__split_bufferIhRS2_EE
+            2fb1 _ZNSt3__14swapIPhEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS3_EE5valueEvE4typeERS3_S6_
+            2fb8 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE20__construct_backwardIhEENS_9enable_ifIXaaoosr7is_sameIS2_NS1_IT_EEEE5valuentsr15__has_constructIS2_PS6_S6_EE5valuesr31is_trivially_move_constructibleIS6_EE5valueEvE4typeERS2_S8_S8_RS8_
+            2fd1 _ZNSt3__14swapIPhEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS3_EE5valueEvE4typeERS3_S6_
+            2fd5 _ZNSt3__14swapIPhEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS3_EE5valueEvE4typeERS3_S6_
+            2fd9 _ZNSt3__114__split_bufferIhRNS_9allocatorIhEEED1Ev
+            2fd9 _ZNSt3__114__split_bufferIhRNS_9allocatorIhEEED2Ev
+            2fde _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
+            2fde _ZNSt3__19allocatorIhE10deallocateEPhm
+            2fde _ZNSt3__112__deallocateEPv
             3010 _ZN15google_breakpadL14ReadTaskStringEjy
             3023 _ZN15google_breakpadL19GetMemoryRegionSizeEjyPy
             30f6 _ZNSt3__16vectorIhNS_9allocatorIhEEEC1Ev
@@ -694,6 +486,9 @@ expression: FunctionsDebug(&symcache)
             311a _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1Ev
             311a _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC2Ev
             311a _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6__zeroEv
+            3133 _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1Ev
+            3133 _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC2Ev
+            3133 _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6__zeroEv
             314c _ZNSt3__16vectorIhNS_9allocatorIhEEEixEm
             3151 _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1EPKc
             3151 _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC2EPKc
@@ -717,93 +512,6 @@ expression: FunctionsDebug(&symcache)
             31be _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
             31be _ZNSt3__19allocatorIhE10deallocateEPhm
             31be _ZNSt3__112__deallocateEPv
-            3133 _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1Ev
-            3133 _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC2Ev
-            3133 _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE6__zeroEv
-            1df0 _ZN15google_breakpad12DynamicImage29CalculateMemoryAndVersionInfoEv
-            1e1e _ZN15google_breakpad12DynamicImage7Is64BitEv
-            1e23 _ZN15google_breakpad15FindTextSectionINS_7MachO64EEEbRNS_12DynamicImageE
-            1e23 _ZNKSt3__16vectorIhNS_9allocatorIhEEEixEm
-            1f5c _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            1e2e _ZN15google_breakpad15FindTextSectionINS_7MachO32EEEbRNS_12DynamicImageE
-            1e9f _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
-            1fb0 _ZN15google_breakpad12DynamicImage11GetFileTypeEv
-            1fb0 _ZN15google_breakpad21GetFileTypeFromHeaderINS_7MachO64EEEjRNS_12DynamicImageE
-            1fb0 _ZNKSt3__16vectorIhNS_9allocatorIhEEEixEm
-            1fc0 _ZN15google_breakpad13DynamicImagesC2Ej
-            1fdc _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEEC1Ev
-            1fdc _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEEC2Ev
-            1fdc _ZNSt3__113__vector_baseIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEEC2Ev
-            1ff4 _ZN15google_breakpad13DynamicImages20ReadImageInfoForTaskEv
-            1ff4 _ZN15google_breakpad13DynamicImages27GetDyldAllImageInfosPointerEv
-            2020 _ZN15google_breakpad13DynamicImages7Is64BitEv
-            2045 _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEED1Ev
-            2045 _ZNSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEED2Ev
-            2045 _ZNSt3__113__vector_baseIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEED2Ev
-            204d _ZNSt3__113__vector_baseIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE5clearEv
-            204d _ZNSt3__113__vector_baseIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE17__destruct_at_endEPS2_
-            2056 _ZNSt3__113__vector_baseIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE7__allocEv
-            206b _ZNSt3__116allocator_traitsINS_9allocatorIN15google_breakpad15DynamicImageRefEEEE10deallocateERS4_PS3_m
-            206b _ZNSt3__19allocatorIN15google_breakpad15DynamicImageRefEE10deallocateEPS2_m
-            206b _ZNSt3__112__deallocateEPv
-            2080 _ZN15google_breakpad13DynamicImages20DetermineTaskCPUTypeEj
-            2160 _ZN15google_breakpad13DynamicImages20ReadImageInfoForTaskEv
-            2168 _ZN15google_breakpad13DynamicImages27GetDyldAllImageInfosPointerEv
-            2194 _ZN15google_breakpad13DynamicImages7Is64BitEv
-            21c0 _ZN15google_breakpad13DynamicImagesC1Ej
-            21d0 _ZN15google_breakpad13DynamicImages27GetDyldAllImageInfosPointerEv
-            2db0 _ZN15google_breakpad13DynamicImages18GetExecutableImageEv
-            2db0 _ZN15google_breakpad13DynamicImages8GetImageEi
-            2db0 _ZNKSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE4sizeEv
-            2df5 _ZN15google_breakpad15DynamicImageRefcvPNS_12DynamicImageEEv
-            2db8 _ZN15google_breakpad13DynamicImages23GetExecutableImageIndexEv
-            2db8 _ZNK15google_breakpad13DynamicImages13GetImageCountEv
-            2db8 _ZNKSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE4sizeEv
-            2dcb _ZN15google_breakpad13DynamicImages8GetImageEi
-            2dcb _ZN15google_breakpad15DynamicImageRefcvPNS_12DynamicImageEEv
-            2dd4 _ZN15google_breakpad12DynamicImage11GetFileTypeEv
-            2dd4 _ZN15google_breakpad21GetFileTypeFromHeaderINS_7MachO64EEEjRNS_12DynamicImageE
-            2dd4 _ZNKSt3__16vectorIhNS_9allocatorIhEEEixEm
-            2e00 _ZN15google_breakpad13DynamicImages23GetExecutableImageIndexEv
-            2e00 _ZNK15google_breakpad13DynamicImages13GetImageCountEv
-            2e00 _ZNKSt3__16vectorIN15google_breakpad15DynamicImageRefENS_9allocatorIS2_EEE4sizeEv
-            2e1d _ZN15google_breakpad13DynamicImages8GetImageEi
-            2e1d _ZN15google_breakpad15DynamicImageRefcvPNS_12DynamicImageEEv
-            2e24 _ZN15google_breakpad12DynamicImage11GetFileTypeEv
-            2e24 _ZN15google_breakpad21GetFileTypeFromHeaderINS_7MachO64EEEjRNS_12DynamicImageE
-            2e24 _ZNKSt3__16vectorIhNS_9allocatorIhEEEixEm
-            2e40 _ZNSt3__16vectorIhNS_9allocatorIhEEE8__appendEm
-            2e64 _ZNKSt3__16vectorIhNS_9allocatorIhEEE4sizeEv
-            2e6a _ZNKSt3__16vectorIhNS_9allocatorIhEEE11__recommendEm
-            2e77 _ZNKSt3__16vectorIhNS_9allocatorIhEEE8capacityEv
-            2e77 _ZNKSt3__113__vector_baseIhNS_9allocatorIhEEE8capacityEv
-            2e97 _ZNSt3__13maxImEERKT_S3_S3_
-            2e97 _ZNSt3__13maxImNS_6__lessImmEEEERKT_S5_S5_T0_
-            2e97 _ZNKSt3__16__lessImmEclERKmS3_
-            2e9e _ZNKSt3__16vectorIhNS_9allocatorIhEEE4sizeEv
-            2ea7 _ZNSt3__114__split_bufferIhRNS_9allocatorIhEEEC1EmmS3_
-            2ea7 _ZNSt3__114__split_bufferIhRNS_9allocatorIhEEEC2EmmS3_
-            2f4a _ZNSt3__116allocator_traitsINS_9allocatorIhEEE8allocateERS2_m
-            2f4a _ZNSt3__19allocatorIhE8allocateEmPKv
-            2f4a _ZNSt3__110__allocateEm
-            2f5b _ZNSt3__114__split_bufferIhRNS_9allocatorIhEEE18__construct_at_endEm
-            2f6e _ZNSt3__116allocator_traitsINS_9allocatorIhEEE9constructIhJEEEvRS2_PT_DpOT0_
-            2f6e _ZNSt3__116allocator_traitsINS_9allocatorIhEEE11__constructIhJEEEvNS_17integral_constantIbLb1EEERS2_PT_DpOT0_
-            2f6e _ZNSt3__19allocatorIhE9constructIhJEEEvPT_DpOT0_
-            2fb1 _ZNSt3__16vectorIhNS_9allocatorIhEEE26__swap_out_circular_bufferERNS_14__split_bufferIhRS2_EE
-            2fb1 _ZNSt3__14swapIPhEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS3_EE5valueEvE4typeERS3_S6_
-            2fb8 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE20__construct_backwardIhEENS_9enable_ifIXaaoosr7is_sameIS2_NS1_IT_EEEE5valuentsr15__has_constructIS2_PS6_S6_EE5valuesr31is_trivially_move_constructibleIS6_EE5valueEvE4typeERS2_S8_S8_RS8_
-            2fd1 _ZNSt3__14swapIPhEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS3_EE5valueEvE4typeERS3_S6_
-            2fd5 _ZNSt3__14swapIPhEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS3_EE5valueEvE4typeERS3_S6_
-            2ebb _ZNSt3__16vectorIhNS_9allocatorIhEEE18__construct_at_endEm
-            2ecb _ZNSt3__116allocator_traitsINS_9allocatorIhEEE9constructIhJEEEvRS2_PT_DpOT0_
-            2ecb _ZNSt3__116allocator_traitsINS_9allocatorIhEEE11__constructIhJEEEvNS_17integral_constantIbLb1EEERS2_PT_DpOT0_
-            2ecb _ZNSt3__19allocatorIhE9constructIhJEEEvPT_DpOT0_
-            2fd9 _ZNSt3__114__split_bufferIhRNS_9allocatorIhEEED1Ev
-            2fd9 _ZNSt3__114__split_bufferIhRNS_9allocatorIhEEED2Ev
-            2fde _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
-            2fde _ZNSt3__19allocatorIhE10deallocateEPhm
-            2fde _ZNSt3__112__deallocateEPv
             31d0 _ZN15google_breakpad12DynamicImageC2EPhmyNSt3__112basic_stringIcNS2_11char_traitsIcEENS2_9allocatorIcEEEEmji
             31fc _ZNSt3__16vectorIhNS_9allocatorIhEEEC1IPhEET_NS_9enable_ifIXaasr21__is_forward_iteratorIS6_EE5valuesr16is_constructibleIhNS_15iterator_traitsIS6_E9referenceEEE5valueES6_E4typeE
             31fc _ZNSt3__16vectorIhNS_9allocatorIhEEEC2IPhEET_NS_9enable_ifIXaasr21__is_forward_iteratorIS6_EE5valuesr16is_constructibleIhNS_15iterator_traitsIS6_E9referenceEEE5valueES6_E4typeE
@@ -853,6 +561,299 @@ expression: FunctionsDebug(&symcache)
             3450 _ZNSt3__116allocator_traitsINS_9allocatorIN15google_breakpad15DynamicImageRefEEEE10deallocateERS4_PS3_m
             3450 _ZNSt3__19allocatorIN15google_breakpad15DynamicImageRefEE10deallocateEPS2_m
             3450 _ZNSt3__112__deallocateEPv
+            3480 _ZNSt3__16__sortIRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEvT0_S7_T_
+            3505 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3505 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3517 _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
+            3517 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3517 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3528 _ZN15google_breakpad12DynamicImageltERKS0_
+            3528 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            352c _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            352c _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            352c _ZN15google_breakpad12DynamicImageltERKS0_
+            352c _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3533 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3533 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3536 _ZN15google_breakpad12DynamicImageltERKS0_
+            3536 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3545 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3564 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3564 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3567 _ZN15google_breakpad12DynamicImageltERKS0_
+            357a _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3581 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            35b5 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            35bc _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            35bc _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            35c4 _ZN15google_breakpad12DynamicImageltERKS0_
+            35c4 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            35ce _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            35d8 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            35e9 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            360b _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3620 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3627 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3627 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            362a _ZN15google_breakpad12DynamicImageltERKS0_
+            362a _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            362e _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            362e _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            36dc _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            36dc _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            36e6 _ZN15google_breakpad12DynamicImageltERKS0_
+            36e6 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            36ea _ZN15google_breakpad12DynamicImageltERKS0_
+            36ea _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            36fc _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3719 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            372f _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            372f _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3733 _ZN15google_breakpad12DynamicImageltERKS0_
+            3733 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            373e _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            373e _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3748 _ZN15google_breakpad12DynamicImageltERKS0_
+            377b _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            377b _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3783 _ZN15google_breakpad12DynamicImageltERKS0_
+            3783 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            378d _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3814 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3814 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            381b _ZN15google_breakpad12DynamicImageltERKS0_
+            381b _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3829 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3835 _ZNSt3__118__insertion_sort_3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEvT0_S7_T_
+            3835 _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
+            3835 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3835 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3839 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3839 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            383d _ZN15google_breakpad12DynamicImageltERKS0_
+            383d _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3841 _ZN15google_breakpad12DynamicImageltERKS0_
+            3841 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3848 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3848 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            384c _ZN15google_breakpad12DynamicImageltERKS0_
+            384c _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3857 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3862 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            386f _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3879 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3886 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            38a6 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            38a6 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            38bd _ZN15google_breakpad12DynamicImageltERKS0_
+            38bd _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            38e2 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            38e2 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            38eb _ZN15google_breakpad12DynamicImageltERKS0_
+            390e _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
+            390e _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            390e _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3916 _ZN15google_breakpad12DynamicImageltERKS0_
+            3916 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            391a _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            391a _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            391a _ZN15google_breakpad12DynamicImageltERKS0_
+            391a _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3921 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3921 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3924 _ZN15google_breakpad12DynamicImageltERKS0_
+            3924 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3933 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3965 _ZNSt3__17__sort4IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_S7_T_
+            3965 _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
+            3965 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3965 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3969 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3969 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            396d _ZN15google_breakpad12DynamicImageltERKS0_
+            396d _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3971 _ZN15google_breakpad12DynamicImageltERKS0_
+            3971 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3978 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3978 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            397c _ZN15google_breakpad12DynamicImageltERKS0_
+            397c _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3987 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3999 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            39a0 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            39a0 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            39a8 _ZN15google_breakpad12DynamicImageltERKS0_
+            39a8 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            39b6 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            39c8 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            39d5 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            39dd _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            39dd _ZN15google_breakpad15DynamicImageRefC1ERKS0_
+            39dd _ZN15google_breakpad15DynamicImageRefC2ERKS0_
+            39e2 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            39f7 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3a03 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3a10 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3a1b _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3a1b _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3a2b _ZN15google_breakpad12DynamicImageltERKS0_
+            3a2b _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3a40 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3a40 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3a48 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3a48 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3a48 _ZN15google_breakpad12DynamicImageltERKS0_
+            3a48 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3a56 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3a6c _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3aa0 _ZNSt3__17__sort5IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_S7_S7_T_
+            3aa0 _ZNSt3__17__sort4IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_S7_T_
+            3aa0 _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
+            3aa0 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3aa0 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3aa9 _ZN15google_breakpad12DynamicImageltERKS0_
+            3aa9 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3aad _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3aad _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3aad _ZN15google_breakpad12DynamicImageltERKS0_
+            3aad _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3ab4 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3ab4 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3ab7 _ZN15google_breakpad12DynamicImageltERKS0_
+            3ab7 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3ac2 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3ad4 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3ada _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3ada _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3ae0 _ZN15google_breakpad12DynamicImageltERKS0_
+            3ae0 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3aea _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3af0 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3af0 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3afa _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3b0e _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3b19 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3b19 _ZN15google_breakpad15DynamicImageRefC1ERKS0_
+            3b19 _ZN15google_breakpad15DynamicImageRefC2ERKS0_
+            3b2d _ZN15google_breakpad12DynamicImageltERKS0_
+            3b2d _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3b3d _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3b3d _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3b43 _ZN15google_breakpad12DynamicImageltERKS0_
+            3b43 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3b4d _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3b53 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3b53 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3b59 _ZN15google_breakpad12DynamicImageltERKS0_
+            3b59 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3b63 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3b75 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3b75 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3b7b _ZN15google_breakpad12DynamicImageltERKS0_
+            3b7b _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3b85 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3b8b _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3b8b _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3b91 _ZN15google_breakpad12DynamicImageltERKS0_
+            3b91 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3b9b _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3ba1 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3ba1 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3ba7 _ZN15google_breakpad12DynamicImageltERKS0_
+            3ba7 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3bb1 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3bb7 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3bb7 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3bbd _ZN15google_breakpad12DynamicImageltERKS0_
+            3bbd _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3bc7 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3bf0 _ZNSt3__127__insertion_sort_incompleteIRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEbT0_S7_T_
+            3c1c _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3c1c _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3c23 _ZN15google_breakpad12DynamicImageltERKS0_
+            3c23 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3c31 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3c3d _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
+            3c3d _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3c3d _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3c40 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3c40 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3c44 _ZN15google_breakpad12DynamicImageltERKS0_
+            3c44 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3c48 _ZN15google_breakpad12DynamicImageltERKS0_
+            3c48 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3c4f _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3c4f _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3c53 _ZN15google_breakpad12DynamicImageltERKS0_
+            3c53 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3c66 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3c6e _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
+            3c6e _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3c6e _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3c75 _ZN15google_breakpad12DynamicImageltERKS0_
+            3c75 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3c79 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3c79 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3c79 _ZN15google_breakpad12DynamicImageltERKS0_
+            3c79 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3c80 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3c80 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3c84 _ZN15google_breakpad12DynamicImageltERKS0_
+            3c84 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3c97 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3cc0 _ZNSt3__17__sort4IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_S7_T_
+            3cc0 _ZNSt3__17__sort3IRNS_6__lessIN15google_breakpad15DynamicImageRefES3_EEPS3_EEjT0_S7_S7_T_
+            3cc0 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3cc0 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3cc3 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3cc3 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3cc7 _ZN15google_breakpad12DynamicImageltERKS0_
+            3cc7 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3ccb _ZN15google_breakpad12DynamicImageltERKS0_
+            3ccb _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3cd2 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3cd2 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3cd6 _ZN15google_breakpad12DynamicImageltERKS0_
+            3cd6 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3ce5 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3cf6 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3d07 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3d19 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3d21 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3d21 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3d28 _ZN15google_breakpad12DynamicImageltERKS0_
+            3d28 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3d36 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3d4b _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3d5c _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3d63 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3d63 _ZN15google_breakpad15DynamicImageRefC1ERKS0_
+            3d63 _ZN15google_breakpad15DynamicImageRefC2ERKS0_
+            3d6b _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3d77 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3da2 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3da2 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3dbd _ZN15google_breakpad12DynamicImageltERKS0_
+            3dbd _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3de1 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3de1 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3dea _ZN15google_breakpad12DynamicImageltERKS0_
+            3e12 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3e23 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3e2d _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3e39 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3e44 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3e44 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3e5d _ZN15google_breakpad12DynamicImageltERKS0_
+            3e5d _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3e6f _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3e6f _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3e77 _ZNKSt3__16__lessIN15google_breakpad15DynamicImageRefES2_EclERKS2_S5_
+            3e77 _ZNK15google_breakpad15DynamicImageRefltERKS0_
+            3e77 _ZN15google_breakpad12DynamicImageltERKS0_
+            3e77 _ZNK15google_breakpad12DynamicImage14GetLoadAddressEv
+            3e81 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            3e92 _ZNSt3__14swapIN15google_breakpad15DynamicImageRefEEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
             3ec0 _ZN15google_breakpad19breakpad_exc_serverEP17mach_msg_header_tS1_
             3ed0 catch_exception_raise
             3ef0 _ZN15google_breakpad16ForwardExceptionEjjiPij
@@ -902,6 +903,7 @@ expression: FunctionsDebug(&symcache)
             44e7 _ZN15google_breakpad10scoped_ptrI9sigactionED2Ev
             4580 _ZN15google_breakpad16ExceptionHandler8TeardownEv
             45bb _ZN15google_breakpad16ExceptionHandler26SendMessageToHandlerThreadENS_20HandlerThreadMessageE
+            4680 __clang_call_terminate
             4690 _ZN15google_breakpad16ExceptionHandlerD1Ev
             46a0 _ZN15google_breakpad16ExceptionHandler13WriteMinidumpEb
             4736 _ZN15google_breakpad16ExceptionHandler26SendMessageToHandlerThreadENS_20HandlerThreadMessageE
@@ -974,9 +976,9 @@ expression: FunctionsDebug(&symcache)
             4c8e _ZN15google_breakpad17MinidumpGenerator23SetExceptionInformationEiiij
             4d80 _ZN15google_breakpad16ExceptionHandler14WaitForMessageEPv
             4db7 _ZN15google_breakpad16ExceptionHandler14SuspendThreadsEv
-            4fad _ZN15google_breakpad16ExceptionHandler13ResumeThreadsEv
             4e42 _ZN15google_breakpad16ExceptionHandler14SuspendThreadsEv
             4ee5 _ZN15google_breakpad19breakpad_exc_serverEP17mach_msg_header_tS1_
+            4fad _ZN15google_breakpad16ExceptionHandler13ResumeThreadsEv
             5060 _ZN15google_breakpad16ExceptionHandler14SuspendThreadsEv
             50d0 _ZN15google_breakpad16ExceptionHandler13ResumeThreadsEv
             5140 _ZN15google_breakpad16ExceptionHandler16UninstallHandlerEb
@@ -1001,23 +1003,23 @@ expression: FunctionsDebug(&symcache)
             5441 _ZNSt3__114__split_bufferI18MDMemoryDescriptorRN15google_breakpad16PageStdAllocatorIS1_EEEC2EmmS5_
             5441 _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE8allocateERS4_m
             5441 _ZN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorE8allocateEmPKv
+            5445 _ZN15google_breakpad13PageAllocatorC1Ev
+            5445 _ZN15google_breakpad13PageAllocatorC2Ev
             544a _ZN15google_breakpad13PageAllocator5AllocEm
-            54cb _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            554a _ZNSt3__16vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEE26__swap_out_circular_bufferERNS_14__split_bufferIS1_RS4_EE
-            555c _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE20__construct_backwardIPS3_EEvRS4_T_S9_RS9_
-            5583 _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE9constructIS3_JS3_EEEvRS4_PT_DpOT0_
-            5583 _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE11__constructIS3_JS3_EEEvNS_17integral_constantIbLb1EEERS4_PT_DpOT0_
-            5583 _ZNSt3__19allocatorI18MDMemoryDescriptorE9constructIS1_JS1_EEEvPT_DpOT0_
-            555f _ZNSt3__14swapIP18MDMemoryDescriptorEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            566a _ZNSt3__14swapIP18MDMemoryDescriptorEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            5671 _ZNSt3__14swapIP18MDMemoryDescriptorEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
             5461 _ZNSt3__16vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEEC2ERKS4_
             5461 _ZNSt3__113__vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEEC2ERKS4_
             5461 _ZNSt3__117__compressed_pairIP18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEEC1ES2_S5_
             5461 _ZNSt3__117__compressed_pairIP18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEEC2ES2_S5_
             5461 _ZNSt3__128__libcpp_compressed_pair_impIP18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EELj0EEC2ES2_S5_
-            5445 _ZN15google_breakpad13PageAllocatorC1Ev
-            5445 _ZN15google_breakpad13PageAllocatorC2Ev
+            54cb _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            554a _ZNSt3__16vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEE26__swap_out_circular_bufferERNS_14__split_bufferIS1_RS4_EE
+            555c _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE20__construct_backwardIPS3_EEvRS4_T_S9_RS9_
+            555f _ZNSt3__14swapIP18MDMemoryDescriptorEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            5583 _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE9constructIS3_JS3_EEEvRS4_PT_DpOT0_
+            5583 _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE11__constructIS3_JS3_EEEvNS_17integral_constantIbLb1EEERS4_PT_DpOT0_
+            5583 _ZNSt3__19allocatorI18MDMemoryDescriptorE9constructIS1_JS1_EEEvPT_DpOT0_
+            566a _ZNSt3__14swapIP18MDMemoryDescriptorEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            5671 _ZNSt3__14swapIP18MDMemoryDescriptorEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
             568c _ZN15google_breakpad15wasteful_vectorI18MDMemoryDescriptorED1Ev
             568c _ZN15google_breakpad15wasteful_vectorI18MDMemoryDescriptorED2Ev
             568c _ZNSt3__16vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEED2Ev
@@ -1043,23 +1045,23 @@ expression: FunctionsDebug(&symcache)
             59c4 _ZNSt3__114__split_bufferI18MDMemoryDescriptorRN15google_breakpad16PageStdAllocatorIS1_EEEC2EmmS5_
             59c4 _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE8allocateERS4_m
             59c4 _ZN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorE8allocateEmPKv
+            59c8 _ZN15google_breakpad13PageAllocatorC1Ev
+            59c8 _ZN15google_breakpad13PageAllocatorC2Ev
             59cd _ZN15google_breakpad13PageAllocator5AllocEm
-            5a4e _ZN15google_breakpad13PageAllocator9GetNPagesEm
-            5acd _ZNSt3__16vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEE26__swap_out_circular_bufferERNS_14__split_bufferIS1_RS4_EE
-            5adf _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE20__construct_backwardIPS3_EEvRS4_T_S9_RS9_
-            5b06 _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE9constructIS3_JS3_EEEvRS4_PT_DpOT0_
-            5b06 _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE11__constructIS3_JS3_EEEvNS_17integral_constantIbLb1EEERS4_PT_DpOT0_
-            5b06 _ZNSt3__19allocatorI18MDMemoryDescriptorE9constructIS1_JS1_EEEvPT_DpOT0_
-            5ae2 _ZNSt3__14swapIP18MDMemoryDescriptorEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            5bea _ZNSt3__14swapIP18MDMemoryDescriptorEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
-            5bf1 _ZNSt3__14swapIP18MDMemoryDescriptorEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
             59e4 _ZNSt3__16vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEEC2ERKS4_
             59e4 _ZNSt3__113__vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEEC2ERKS4_
             59e4 _ZNSt3__117__compressed_pairIP18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEEC1ES2_S5_
             59e4 _ZNSt3__117__compressed_pairIP18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEEC2ES2_S5_
             59e4 _ZNSt3__128__libcpp_compressed_pair_impIP18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EELj0EEC2ES2_S5_
-            59c8 _ZN15google_breakpad13PageAllocatorC1Ev
-            59c8 _ZN15google_breakpad13PageAllocatorC2Ev
+            5a4e _ZN15google_breakpad13PageAllocator9GetNPagesEm
+            5acd _ZNSt3__16vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEE26__swap_out_circular_bufferERNS_14__split_bufferIS1_RS4_EE
+            5adf _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE20__construct_backwardIPS3_EEvRS4_T_S9_RS9_
+            5ae2 _ZNSt3__14swapIP18MDMemoryDescriptorEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            5b06 _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE9constructIS3_JS3_EEEvRS4_PT_DpOT0_
+            5b06 _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE11__constructIS3_JS3_EEEvNS_17integral_constantIbLb1EEERS4_PT_DpOT0_
+            5b06 _ZNSt3__19allocatorI18MDMemoryDescriptorE9constructIS1_JS1_EEEvPT_DpOT0_
+            5bea _ZNSt3__14swapIP18MDMemoryDescriptorEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
+            5bf1 _ZNSt3__14swapIP18MDMemoryDescriptorEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS4_EE5valueEvE4typeERS4_S7_
             5c2f _ZN15google_breakpad13DynamicImages10GetCPUTypeEv
             5c55 _ZN15google_breakpad15wasteful_vectorI18MDMemoryDescriptorED1Ev
             5c55 _ZN15google_breakpad15wasteful_vectorI18MDMemoryDescriptorED2Ev
@@ -1131,10 +1133,10 @@ expression: FunctionsDebug(&symcache)
             61c0 _ZNK15google_breakpad18MinidumpFileWriter8positionEv
             622d _ZN15google_breakpad10TypedMDRVAI15MDRawThreadListED1Ev
             622d _ZN15google_breakpad10TypedMDRVAI15MDRawThreadListED2Ev
-            633d _ZN15google_breakpad10TypedMDRVAI15MDRawThreadListE5FlushEv
             6244 _ZN15google_breakpad10TypedMDRVAI15MDRawThreadListE22AllocateObjectAndArrayEmm
             6281 _ZNK15google_breakpad12UntypedMDRVA8locationEv
             62f5 _ZN15google_breakpad10TypedMDRVAI15MDRawThreadListE20CopyIndexAfterObjectEjPKvm
+            633d _ZN15google_breakpad10TypedMDRVAI15MDRawThreadListE5FlushEv
             63b7 _ZN15google_breakpad10TypedMDRVAI15MDRawThreadListED1Ev
             63b7 _ZN15google_breakpad10TypedMDRVAI15MDRawThreadListED2Ev
             63be _ZN15google_breakpad10TypedMDRVAI15MDRawThreadListE5FlushEv
@@ -1181,7 +1183,12 @@ expression: FunctionsDebug(&symcache)
             6770 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
             6770 _ZNSt3__19allocatorIhE10deallocateEPhm
             6770 _ZNSt3__112__deallocateEPv
+            677c _ZN15google_breakpad10TypedMDRVAI15MDRawMemoryListED1Ev
+            677c _ZN15google_breakpad10TypedMDRVAI15MDRawMemoryListED2Ev
+            6783 _ZN15google_breakpad10TypedMDRVAI15MDRawMemoryListE5FlushEv
             67d0 _ZN15google_breakpad12UntypedMDRVA4CopyEPKvm
+            67e4 _ZNK15google_breakpad12UntypedMDRVA8locationEv
+            67fe _ZN15google_breakpad10TypedMDRVAI15MDRawMemoryListE20CopyIndexAfterObjectEjPKvm
             68b0 _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
             68b0 _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
             68b0 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
@@ -1190,11 +1197,6 @@ expression: FunctionsDebug(&symcache)
             68c6 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
             68c6 _ZNSt3__19allocatorIhE10deallocateEPhm
             68c6 _ZNSt3__112__deallocateEPv
-            67e4 _ZNK15google_breakpad12UntypedMDRVA8locationEv
-            67fe _ZN15google_breakpad10TypedMDRVAI15MDRawMemoryListE20CopyIndexAfterObjectEjPKvm
-            677c _ZN15google_breakpad10TypedMDRVAI15MDRawMemoryListED1Ev
-            677c _ZN15google_breakpad10TypedMDRVAI15MDRawMemoryListED2Ev
-            6783 _ZN15google_breakpad10TypedMDRVAI15MDRawMemoryListE5FlushEv
             68e0 _ZN15google_breakpad10TypedMDRVAI15MDRawMemoryListED1Ev
             68e0 _ZN15google_breakpad10TypedMDRVAI15MDRawMemoryListED2Ev
             68e7 _ZN15google_breakpad10TypedMDRVAI15MDRawMemoryListE5FlushEv
@@ -1273,7 +1275,9 @@ expression: FunctionsDebug(&symcache)
             7351 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
             7351 _ZNSt3__19allocatorIhE10deallocateEPhm
             7351 _ZNSt3__112__deallocateEPv
+            7379 _ZN15google_breakpad12UntypedMDRVA4CopyEPKvm
             73a0 _ZN15google_breakpad12UntypedMDRVA4CopyEPKvm
+            73ba _ZNK15google_breakpad12UntypedMDRVA8locationEv
             73e3 _ZNSt3__16vectorIhNS_9allocatorIhEEED1Ev
             73e3 _ZNSt3__16vectorIhNS_9allocatorIhEEED2Ev
             73e3 _ZNSt3__113__vector_baseIhNS_9allocatorIhEEED2Ev
@@ -1282,8 +1286,6 @@ expression: FunctionsDebug(&symcache)
             73f9 _ZNSt3__116allocator_traitsINS_9allocatorIhEEE10deallocateERS2_Phm
             73f9 _ZNSt3__19allocatorIhE10deallocateEPhm
             73f9 _ZNSt3__112__deallocateEPv
-            7379 _ZN15google_breakpad12UntypedMDRVA4CopyEPKvm
-            73ba _ZNK15google_breakpad12UntypedMDRVA8locationEv
             7410 _ZN15google_breakpad17MinidumpGenerator10WriteStackEPjP18MDMemoryDescriptor
             7420 _ZN15google_breakpad17MinidumpGenerator13WriteStackX86EPjP18MDMemoryDescriptor
             7425 _ZN15google_breakpad17MinidumpGenerator16WriteStackX86_64EPjP18MDMemoryDescriptor
@@ -1426,12 +1428,12 @@ expression: FunctionsDebug(&symcache)
             8730 _ZNKSt3__16vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEE11__recommendEm
             8741 _ZNKSt3__16vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEE8capacityEv
             8741 _ZNKSt3__113__vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEE8capacityEv
-            8769 _ZNSt3__13maxImEERKT_S3_S3_
-            8769 _ZNSt3__13maxImNS_6__lessImmEEEERKT_S5_S5_T0_
-            8769 _ZNKSt3__16__lessImmEclERKmS3_
             8744 _ZNSt3__113__vector_baseI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEE7__allocEv
             8744 _ZNSt3__117__compressed_pairIP18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEE6secondEv
             8744 _ZNSt3__128__libcpp_compressed_pair_impIP18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EELj0EE6secondEv
+            8769 _ZNSt3__13maxImEERKT_S3_S3_
+            8769 _ZNSt3__13maxImNS_6__lessImmEEEERKT_S5_S5_T0_
+            8769 _ZNKSt3__16__lessImmEclERKmS3_
             877c _ZNKSt3__16vectorI18MDMemoryDescriptorN15google_breakpad16PageStdAllocatorIS1_EEE4sizeEv
             878c _ZNSt3__114__split_bufferI18MDMemoryDescriptorRN15google_breakpad16PageStdAllocatorIS1_EEEC1EmmS5_
             8796 _ZNSt3__116allocator_traitsIN15google_breakpad16PageStdAllocatorI18MDMemoryDescriptorEEE9constructIS3_JRKS3_EEEvRS4_PT_DpOT0_
@@ -1476,48 +1478,10 @@ expression: FunctionsDebug(&symcache)
             a4da _ZNKSt3__113__vector_baseItNS_9allocatorItEEE8capacityEv
             a4fe _ZNSt3__16vectorItNS_9allocatorItEEE6resizeEm
             a4fe _ZNKSt3__16vectorItNS_9allocatorItEEE4sizeEv
+            a517 _ZNSt3__16vectorItNS_9allocatorItEEEixEm
             a54b _ZNSt3__16vectorItNS_9allocatorItEEE17__destruct_at_endEPt
             a54b _ZNSt3__113__vector_baseItNS_9allocatorItEEE17__destruct_at_endEPt
             a550 _ZNSt3__113__vector_baseItNS_9allocatorItEEE7__allocEv
-            a517 _ZNSt3__16vectorItNS_9allocatorItEEEixEm
-            ac00 _ZN15google_breakpad15UTF8ToUTF16CharEPKciPt
-            ac80 _ZN15google_breakpad12UTF32ToUTF16EPKwPNSt3__16vectorItNS2_9allocatorItEEEE
-            ac9d _ZNSt3__16vectorItNS_9allocatorItEEE5beginEv
-            aca0 _ZNSt3__16vectorItNS_9allocatorItEEE5clearEv
-            aca0 _ZNSt3__113__vector_baseItNS_9allocatorItEEE5clearEv
-            aca0 _ZNSt3__113__vector_baseItNS_9allocatorItEEE17__destruct_at_endEPt
-            aca9 _ZNSt3__113__vector_baseItNS_9allocatorItEEE7__allocEv
-            acd3 _ZNSt3__16vectorItNS_9allocatorItEEEixEm
-            acda _ZNKSt3__16vectorItNS_9allocatorItEEE8capacityEv
-            acda _ZNKSt3__113__vector_baseItNS_9allocatorItEEE8capacityEv
-            acfd _ZNSt3__16vectorItNS_9allocatorItEEE6resizeEm
-            acfd _ZNKSt3__16vectorItNS_9allocatorItEEE4sizeEv
-            ad49 _ZNSt3__16vectorItNS_9allocatorItEEE17__destruct_at_endEPt
-            ad49 _ZNSt3__113__vector_baseItNS_9allocatorItEEE17__destruct_at_endEPt
-            ad4e _ZNSt3__113__vector_baseItNS_9allocatorItEEE7__allocEv
-            ad15 _ZNSt3__16vectorItNS_9allocatorItEEEixEm
-            ad70 _ZN15google_breakpad16UTF32ToUTF16CharEwPt
-            adc0 _ZN15google_breakpad11UTF16ToUTF8ERKNSt3__16vectorItNS0_9allocatorItEEEEb
-            add1 _ZNKSt3__16vectorItNS_9allocatorItEEE4sizeEv
-            add9 _ZNKSt3__16vectorItNS_9allocatorItEEE4sizeEv
-            ae0a _ZNSt3__1neIPKtEEbRKNS_11__wrap_iterIT_EES7_
-            ae7c _ZNSt3__111__wrap_iterIPKtEppEv
-            af23 _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1EPKc
-            af23 _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC2EPKc
-            af23 _ZNSt3__117__compressed_pairINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE5__repES5_EC1Ev
-            af23 _ZNSt3__117__compressed_pairINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE5__repES5_EC2Ev
-            af23 _ZNSt3__128__libcpp_compressed_pair_impINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE5__repES5_Lj2EEC2Ev
-            af52 _ZNSt3__111char_traitsIcE6lengthEPKc
-            af3f _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1EPKc
-            af3f _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC2EPKc
-            af68 _ZN15google_breakpad12scoped_arrayIhED1Ev
-            af68 _ZN15google_breakpad12scoped_arrayIhED2Ev
-            af70 _ZN15google_breakpad12scoped_arrayItED1Ev
-            af70 _ZN15google_breakpad12scoped_arrayItED2Ev
-            b05c _ZN15google_breakpad12scoped_arrayIhED1Ev
-            b05c _ZN15google_breakpad12scoped_arrayIhED2Ev
-            b069 _ZN15google_breakpad12scoped_arrayItED1Ev
-            b069 _ZN15google_breakpad12scoped_arrayItED2Ev
             a570 _ZNSt3__16vectorItNS_9allocatorItEEE6insertENS_11__wrap_iterIPKtEEmRS5_
             a5ad _ZNKSt3__16vectorItNS_9allocatorItEEE4sizeEv
             a5b7 _ZNKSt3__16vectorItNS_9allocatorItEEE11__recommendEm
@@ -1531,6 +1495,18 @@ expression: FunctionsDebug(&symcache)
             a620 _ZNSt3__116allocator_traitsINS_9allocatorItEEE8allocateERS2_m
             a620 _ZNSt3__19allocatorItE8allocateEmPKv
             a624 _ZNSt3__110__allocateEm
+            a63d _ZNSt3__16vectorItNS_9allocatorItEEE12__move_rangeEPtS4_S4_
+            a652 _ZNSt3__16vectorItNS_9allocatorItEEE18__construct_at_endEmRKt
+            a68b _ZNSt3__116allocator_traitsINS_9allocatorItEEE9constructItJRKtEEEvRS2_PT_DpOT0_
+            a68b _ZNSt3__116allocator_traitsINS_9allocatorItEEE11__constructItJRKtEEEvNS_17integral_constantIbLb1EEERS2_PT_DpOT0_
+            a68b _ZNSt3__19allocatorItE9constructItJRKtEEEvPT_DpOT0_
+            a7cd _ZNSt3__116allocator_traitsINS_9allocatorItEEE9constructItJtEEEvRS2_PT_DpOT0_
+            a7f1 _ZNSt3__116allocator_traitsINS_9allocatorItEEE11__constructItJtEEEvNS_17integral_constantIbLb1EEERS2_PT_DpOT0_
+            a7f1 _ZNSt3__19allocatorItE9constructItJtEEEvPT_DpOT0_
+            a879 _ZNSt3__113move_backwardIPtS1_EET0_T_S3_S2_
+            a879 _ZNSt3__115__move_backwardIttEENS_9enable_ifIXaasr7is_sameINS_12remove_constIT_E4typeET0_EE5valuesr28is_trivially_copy_assignableIS6_EE5valueEPS6_E4typeEPS3_SA_S7_
+            a89d _ZNSt3__16fill_nIPtmtEET_S2_T0_RKT1_
+            a89d _ZNSt3__18__fill_nIPtmtEET_S2_T0_RKT1_
             a94d _ZNSt3__114__split_bufferItRNS_9allocatorItEEE18__construct_at_endEmRKt
             a98c _ZNSt3__116allocator_traitsINS_9allocatorItEEE9constructItJRKtEEEvRS2_PT_DpOT0_
             a98c _ZNSt3__116allocator_traitsINS_9allocatorItEEE11__constructItJRKtEEEvNS_17integral_constantIbLb1EEERS2_PT_DpOT0_
@@ -1541,37 +1517,67 @@ expression: FunctionsDebug(&symcache)
             aa99 _ZNSt3__14swapIPtEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS3_EE5valueEvE4typeERS3_S6_
             aa9c _ZNSt3__14swapIPtEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS3_EE5valueEvE4typeERS3_S6_
             aaa0 _ZNSt3__14swapIPtEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS3_EE5valueEvE4typeERS3_S6_
-            a652 _ZNSt3__16vectorItNS_9allocatorItEEE18__construct_at_endEmRKt
-            a68b _ZNSt3__116allocator_traitsINS_9allocatorItEEE9constructItJRKtEEEvRS2_PT_DpOT0_
-            a68b _ZNSt3__116allocator_traitsINS_9allocatorItEEE11__constructItJRKtEEEvNS_17integral_constantIbLb1EEERS2_PT_DpOT0_
-            a68b _ZNSt3__19allocatorItE9constructItJRKtEEEvPT_DpOT0_
-            a63d _ZNSt3__16vectorItNS_9allocatorItEEE12__move_rangeEPtS4_S4_
-            a7cd _ZNSt3__116allocator_traitsINS_9allocatorItEEE9constructItJtEEEvRS2_PT_DpOT0_
-            a7f1 _ZNSt3__116allocator_traitsINS_9allocatorItEEE11__constructItJtEEEvNS_17integral_constantIbLb1EEERS2_PT_DpOT0_
-            a7f1 _ZNSt3__19allocatorItE9constructItJtEEEvPT_DpOT0_
-            a879 _ZNSt3__113move_backwardIPtS1_EET0_T_S3_S2_
-            a879 _ZNSt3__115__move_backwardIttEENS_9enable_ifIXaasr7is_sameINS_12remove_constIT_E4typeET0_EE5valuesr28is_trivially_copy_assignableIS6_EE5valueEPS6_E4typeEPS3_SA_S7_
-            a89d _ZNSt3__16fill_nIPtmtEET_S2_T0_RKT1_
-            a89d _ZNSt3__18__fill_nIPtmtEET_S2_T0_RKT1_
             aaa9 _ZNSt3__114__split_bufferItRNS_9allocatorItEEED1Ev
             aaa9 _ZNSt3__114__split_bufferItRNS_9allocatorItEEED2Ev
             aaae _ZNSt3__116allocator_traitsINS_9allocatorItEEE10deallocateERS2_Ptm
             aaae _ZNSt3__19allocatorItE10deallocateEPtm
             aaae _ZNSt3__112__deallocateEPv
+            ac00 _ZN15google_breakpad15UTF8ToUTF16CharEPKciPt
+            ac80 _ZN15google_breakpad12UTF32ToUTF16EPKwPNSt3__16vectorItNS2_9allocatorItEEEE
+            ac9d _ZNSt3__16vectorItNS_9allocatorItEEE5beginEv
+            aca0 _ZNSt3__16vectorItNS_9allocatorItEEE5clearEv
+            aca0 _ZNSt3__113__vector_baseItNS_9allocatorItEEE5clearEv
+            aca0 _ZNSt3__113__vector_baseItNS_9allocatorItEEE17__destruct_at_endEPt
+            aca9 _ZNSt3__113__vector_baseItNS_9allocatorItEEE7__allocEv
+            acd3 _ZNSt3__16vectorItNS_9allocatorItEEEixEm
+            acda _ZNKSt3__16vectorItNS_9allocatorItEEE8capacityEv
+            acda _ZNKSt3__113__vector_baseItNS_9allocatorItEEE8capacityEv
+            acfd _ZNSt3__16vectorItNS_9allocatorItEEE6resizeEm
+            acfd _ZNKSt3__16vectorItNS_9allocatorItEEE4sizeEv
+            ad15 _ZNSt3__16vectorItNS_9allocatorItEEEixEm
+            ad49 _ZNSt3__16vectorItNS_9allocatorItEEE17__destruct_at_endEPt
+            ad49 _ZNSt3__113__vector_baseItNS_9allocatorItEEE17__destruct_at_endEPt
+            ad4e _ZNSt3__113__vector_baseItNS_9allocatorItEEE7__allocEv
+            ad70 _ZN15google_breakpad16UTF32ToUTF16CharEwPt
+            adc0 _ZN15google_breakpad11UTF16ToUTF8ERKNSt3__16vectorItNS0_9allocatorItEEEEb
+            add1 _ZNKSt3__16vectorItNS_9allocatorItEEE4sizeEv
+            add9 _ZNKSt3__16vectorItNS_9allocatorItEEE4sizeEv
+            ae0a _ZNSt3__1neIPKtEEbRKNS_11__wrap_iterIT_EES7_
+            ae7c _ZNSt3__111__wrap_iterIPKtEppEv
+            af23 _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1EPKc
+            af23 _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC2EPKc
+            af23 _ZNSt3__117__compressed_pairINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE5__repES5_EC1Ev
+            af23 _ZNSt3__117__compressed_pairINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE5__repES5_EC2Ev
+            af23 _ZNSt3__128__libcpp_compressed_pair_impINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE5__repES5_Lj2EEC2Ev
+            af3f _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1EPKc
+            af3f _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC2EPKc
+            af52 _ZNSt3__111char_traitsIcE6lengthEPKc
+            af68 _ZN15google_breakpad12scoped_arrayIhED1Ev
+            af68 _ZN15google_breakpad12scoped_arrayIhED2Ev
+            af70 _ZN15google_breakpad12scoped_arrayItED1Ev
+            af70 _ZN15google_breakpad12scoped_arrayItED2Ev
+            b05c _ZN15google_breakpad12scoped_arrayIhED1Ev
+            b05c _ZN15google_breakpad12scoped_arrayIhED2Ev
+            b069 _ZN15google_breakpad12scoped_arrayItED1Ev
+            b069 _ZN15google_breakpad12scoped_arrayItED2Ev
             b080 _ZNSt3__16vectorItNS_9allocatorItEEE8__appendEm
             b0a7 _ZNKSt3__16vectorItNS_9allocatorItEEE4sizeEv
             b0b3 _ZNKSt3__16vectorItNS_9allocatorItEEE11__recommendEm
             b0c0 _ZNKSt3__16vectorItNS_9allocatorItEEE8capacityEv
             b0c0 _ZNKSt3__113__vector_baseItNS_9allocatorItEEE8capacityEv
+            b0c7 _ZNKSt3__16vectorItNS_9allocatorItEEE4sizeEv
             b0d4 _ZNSt3__13maxImEERKT_S3_S3_
             b0d4 _ZNSt3__13maxImNS_6__lessImmEEEERKT_S5_S5_T0_
             b0d4 _ZNKSt3__16__lessImmEclERKmS3_
-            b0c7 _ZNKSt3__16vectorItNS_9allocatorItEEE4sizeEv
             b0ff _ZNSt3__114__split_bufferItRNS_9allocatorItEEEC1EmmS3_
             b0ff _ZNSt3__114__split_bufferItRNS_9allocatorItEEEC2EmmS3_
             b104 _ZNSt3__116allocator_traitsINS_9allocatorItEEE8allocateERS2_m
             b104 _ZNSt3__19allocatorItE8allocateEmPKv
             b109 _ZNSt3__110__allocateEm
+            b110 _ZNSt3__16vectorItNS_9allocatorItEEE18__construct_at_endEm
+            b114 _ZNSt3__116allocator_traitsINS_9allocatorItEEE9constructItJEEEvRS2_PT_DpOT0_
+            b114 _ZNSt3__116allocator_traitsINS_9allocatorItEEE11__constructItJEEEvNS_17integral_constantIbLb1EEERS2_PT_DpOT0_
+            b114 _ZNSt3__19allocatorItE9constructItJEEEvPT_DpOT0_
             b131 _ZNSt3__114__split_bufferItRNS_9allocatorItEEE18__construct_at_endEm
             b139 _ZNSt3__116allocator_traitsINS_9allocatorItEEE9constructItJEEEvRS2_PT_DpOT0_
             b139 _ZNSt3__116allocator_traitsINS_9allocatorItEEE11__constructItJEEEvNS_17integral_constantIbLb1EEERS2_PT_DpOT0_
@@ -1581,10 +1587,6 @@ expression: FunctionsDebug(&symcache)
             b15b _ZNSt3__14swapIPtEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS3_EE5valueEvE4typeERS3_S6_
             b15e _ZNSt3__14swapIPtEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS3_EE5valueEvE4typeERS3_S6_
             b162 _ZNSt3__14swapIPtEENS_9enable_ifIXaasr21is_move_constructibleIT_EE5valuesr18is_move_assignableIS3_EE5valueEvE4typeERS3_S6_
-            b110 _ZNSt3__16vectorItNS_9allocatorItEEE18__construct_at_endEm
-            b114 _ZNSt3__116allocator_traitsINS_9allocatorItEEE9constructItJEEEvRS2_PT_DpOT0_
-            b114 _ZNSt3__116allocator_traitsINS_9allocatorItEEE11__constructItJEEEvNS_17integral_constantIbLb1EEERS2_PT_DpOT0_
-            b114 _ZNSt3__19allocatorItE9constructItJEEEvPT_DpOT0_
             b16a _ZNSt3__114__split_bufferItRNS_9allocatorItEEED1Ev
             b16a _ZNSt3__114__split_bufferItRNS_9allocatorItEEED2Ev
             b16f _ZNSt3__116allocator_traitsINS_9allocatorItEEE10deallocateERS2_Ptm
@@ -1744,19 +1746,19 @@ expression: FunctionsDebug(&symcache)
             d2c0 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE4dataEv
             d2c0 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE13__get_pointerEv
             d2c0 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE19__get_short_pointerEv
-            d2cc _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE18__get_long_pointerEv
-            d31a _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9__is_longEv
             d2c4 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE4dataEv
             d2c4 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE13__get_pointerEv
             d2c4 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE19__get_short_pointerEv
-            d2d4 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9__is_longEv
-            d2de _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE18__get_long_pointerEv
             d2c9 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE4sizeEv
             d2c9 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9__is_longEv
+            d2cc _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE18__get_long_pointerEv
             d2d0 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE15__get_long_sizeEv
-            d308 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE16__get_short_sizeEv
+            d2d4 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9__is_longEv
+            d2de _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE18__get_long_pointerEv
             d2e5 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE4sizeEv
             d2e5 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE15__get_long_sizeEv
+            d308 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE16__get_short_sizeEv
+            d31a _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9__is_longEv
             d338 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE16__get_short_sizeEv
             d353 _ZNSt3__123__str_find_first_not_ofIcmNS_11char_traitsIcEELm18446744073709551615EEET0_PKT_S3_S6_S3_S3_
             d361 _ZNSt3__111char_traitsIcE4findEPKcmRS2_
@@ -1780,17 +1782,17 @@ expression: FunctionsDebug(&symcache)
             d46a _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE13find_first_ofERKS5_m
             d46a _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE4sizeEv
             d46a _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE16__get_short_sizeEv
-            d479 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE15__get_long_sizeEv
             d474 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE4dataEv
             d474 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE13__get_pointerEv
             d474 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9__is_longEv
+            d479 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE15__get_long_sizeEv
             d47d _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE18__get_long_pointerEv
             d495 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE4sizeEv
             d495 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE16__get_short_sizeEv
-            d4a0 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE15__get_long_sizeEv
             d49b _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE4dataEv
             d49b _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE13__get_pointerEv
             d49b _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE9__is_longEv
+            d4a0 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE15__get_long_sizeEv
             d4a5 _ZNKSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE18__get_long_pointerEv
             d4c2 _ZNSt3__119__str_find_first_ofIcmNS_11char_traitsIcEELm18446744073709551615EEET0_PKT_S3_S6_S3_S3_
             d4d4 _ZNSt3__118__find_first_of_ceIPKcS2_PFbccEEET_S5_S5_T0_S6_T1_
@@ -1855,7 +1857,6 @@ expression: FunctionsDebug(&symcache)
             db40 _ZN15google_breakpad14MachPortSenderC1Ej
             db40 _ZN15google_breakpad14MachPortSenderC2Ej
             db50 _ZN15google_breakpad14MachPortSender11SendMessageERNS_15MachSendMessageEj
-            dc70 _ZN12_GLOBAL__N_18callbackEPKcS1_Pvb
             dba0 main
             dbba _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC1EPKc
             dbba _ZNSt3__112basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEC2EPKc
@@ -1864,6 +1865,5 @@ expression: FunctionsDebug(&symcache)
             dbba _ZNSt3__128__libcpp_compressed_pair_impINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEE5__repES5_Lj2EEC2Ev
             dc15 _ZN12_GLOBAL__N_15startEv
             dc15 _ZN12_GLOBAL__N_15crashEv
-            4680 __clang_call_terminate
-               0 _mh_execute_header
+            dc70 _ZN12_GLOBAL__N_18callbackEPKcS1_Pvb
 
