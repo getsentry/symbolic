@@ -208,17 +208,12 @@ impl SymCacheConverter {
         }
 
         // add the bare minimum of information for the function if there isn't any.
-        if !self.ranges.contains_key(&entry_pc) {
-            self.ranges.insert(
-                entry_pc,
-                raw::SourceLocation {
-                    file_idx: u32::MAX,
-                    line: 0,
-                    function_idx,
-                    inlined_into_idx: u32::MAX,
-                },
-            );
-        }
+        self.ranges.entry(entry_pc).or_insert(raw::SourceLocation {
+            file_idx: u32::MAX,
+            line: 0,
+            function_idx,
+            inlined_into_idx: u32::MAX,
+        });
 
         for inlinee in &function.inlinees {
             self.process_symbolic_function(inlinee);
