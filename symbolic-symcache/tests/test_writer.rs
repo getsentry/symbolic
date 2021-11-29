@@ -53,7 +53,7 @@ fn test_write_header_linux() -> Result<(), Error> {
                 },
                 arch: Amd64,
                 files: 55,
-                functions: 1797,
+                functions: 697,
             },
         ),
     )
@@ -96,7 +96,7 @@ fn test_write_header_macos() -> Result<(), Error> {
                 },
                 arch: Amd64,
                 files: 36,
-                functions: 1863,
+                functions: 639,
             },
         ),
     )

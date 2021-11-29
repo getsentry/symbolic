@@ -163,9 +163,11 @@ impl SymCacheConverter {
 
         let comp_dir = std::str::from_utf8(function.compilation_dir).ok();
 
-        // It is not entirely clear that the entry pc is meaningful for inlined functions.
-        // We're leaving it like this for now to minimize differences between this and the old implementation.
-        let entry_pc = function.address as u32;
+        let entry_pc = if function.inline {
+            u32::MAX
+        } else {
+            function.address as u32
+        };
         let function_idx = self.insert_function(
             function.name.as_str(),
             comp_dir,
