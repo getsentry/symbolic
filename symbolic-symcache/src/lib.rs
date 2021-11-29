@@ -1,13 +1,10 @@
-//! Provides symcache support.
+//! Provides SymCache support.
 
 #![warn(missing_docs)]
 
-mod cache;
-mod error;
-mod writer;
+// TODO: temporarily, since usage will be added later on.
+#[allow(dead_code)]
+mod new;
+mod old;
 
-pub mod format;
-
-pub use cache::*;
-pub use error::*;
-pub use writer::*;
+pub use old::*;

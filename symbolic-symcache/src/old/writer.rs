@@ -9,8 +9,8 @@ use fnv::{FnvHashMap, FnvHashSet};
 use symbolic_common::{Arch, DebugId, Language};
 use symbolic_debuginfo::{DebugSession, FileInfo, Function, LineInfo, ObjectLike, Symbol};
 
-use crate::error::{SymCacheError, SymCacheErrorKind, ValueKind};
 use crate::format;
+use crate::{SymCacheError, SymCacheErrorKind, ValueKind};
 
 // Performs a shallow check whether this function might contain any lines.
 fn is_empty_function(function: &Function<'_>) -> bool {

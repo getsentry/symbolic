@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Add `ElfObject::debug_link` that allows recovering the [debug link](https://sourceware.org/gdb/onlinedocs/gdb/Separate-Debug-Files.html) from an Elf if present. ([#450](https://github.com/getsentry/symbolic/pull/450))
+
 ## 8.5.0
 
 **Features**:

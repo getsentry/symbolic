@@ -1,7 +1,7 @@
-use std::fmt;
+use std::{ffi::CString, fmt};
 
 use symbolic_common::ByteView;
-use symbolic_debuginfo::{FileEntry, Function, Object, SymbolMap};
+use symbolic_debuginfo::{elf::ElfObject, FileEntry, Function, Object, SymbolMap};
 use symbolic_testutils::fixture;
 
 use similar_asserts::assert_eq;
@@ -232,6 +232,61 @@ fn test_elf_functions() -> Result<(), Error> {
     insta::assert_debug_snapshot!("elf_functions", FunctionsDebug(&functions[..10], 0));
 
     Ok(())
+}
+
+fn elf_debug_crc() -> Result<u32, Error> {
+    Ok(u32::from_str_radix(
+        std::fs::read_to_string(fixture("linux/elf_debuglink/gen/debug_info.txt.crc"))?.trim(),
+        16,
+    )?)
+}
+
+fn check_debug_info(filename: &'static str, debug_info: &'static str) -> Result<(), Error> {
+    let view = ByteView::open(fixture("linux/elf_debuglink/gen/".to_owned() + filename))?;
+
+    let object = ElfObject::parse(&view)?;
+
+    let debug_link = object
+        .debug_link()
+        .map_err(|err| err.kind)?
+        .expect("debug link not found");
+
+    assert_eq!(debug_link.filename(), CString::new(debug_info)?.as_c_str(),);
+    assert_eq!(debug_link.crc(), elf_debug_crc()?);
+
+    Ok(())
+}
+
+#[test]
+fn test_elf_debug_link() -> Result<(), Error> {
+    check_debug_info("elf_with_debuglink", "debug_info.txt")
+}
+
+#[test]
+fn test_elf_debug_link_none() -> Result<(), Error> {
+    let view = ByteView::open(fixture("linux/elf_debuglink/gen/elf_without_debuglink"))?;
+
+    let object = ElfObject::parse(&view)?;
+
+    let debug_link = object.debug_link().map_err(|err| err.kind)?;
+    assert!(debug_link.is_none(), "debug link unexpectedly found");
+
+    Ok(())
+}
+
+#[test]
+// Test that the size of the debug_info filename doesn't influence the result.
+fn test_elf_debug_link_padding() -> Result<(), Error> {
+    check_debug_info("elf_with1_debuglink", "debug_info1.txt")?;
+    check_debug_info("elf_with12_debuglink", "debug_info12.txt")?;
+    check_debug_info("elf_with123_debuglink", "debug_info123.txt")
+}
+
+#[test]
+// Test with a compressed gnu_debuglink section. This exerts the "Owned" path of the code,
+// while without compression the "Borrowed" is exerted.
+fn test_elf_debug_link_compressed() -> Result<(), Error> {
+    check_debug_info("elf_with_compressed_debuglink", "debug_info.txt")
 }
 
 #[test]

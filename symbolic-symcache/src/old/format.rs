@@ -8,7 +8,7 @@ use std::num::NonZeroU16;
 
 use symbolic_common::{DebugId, Uuid};
 
-use crate::error::{SymCacheError, SymCacheErrorKind};
+use crate::{SymCacheError, SymCacheErrorKind};
 
 /// The magic file preamble to identify symcache files.
 pub const SYMCACHE_MAGIC: [u8; 4] = *b"SYMC";
