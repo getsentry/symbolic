@@ -1,10 +1,10 @@
 //! Defines the [SymCache Converter](`SymCacheConverter`).
 
 use std::collections::btree_map;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
 
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
 use symbolic_common::{Arch, DebugId, Language};
 use symbolic_debuginfo::{DebugSession, Function, ObjectLike, Symbol};
 
@@ -24,9 +24,8 @@ pub struct SymCacheConverter {
 
     /// The concatenation of all strings that have been added to this `Converter`.
     string_bytes: Vec<u8>,
-    /// A map from [`String`]s that have been added to this `Converter` to [`StringRef`]s, i.e.,
-    /// indices into the `string_bytes` vector.
-    strings: IndexMap<String, raw::String>,
+    /// A map from [`String`]s that have been added to this `Converter` to their offsets in the `string_bytes` field.
+    strings: HashMap<String, u32>,
     /// The set of all [`raw::File`]s that have been added to this `Converter`.
     files: IndexSet<raw::File>,
     /// The set of all [`raw::Function`]s that have been added to this `Converter`.
@@ -59,26 +58,27 @@ impl SymCacheConverter {
 
     /// Insert a string into this converter.
     ///
-    /// If the string was already present, it is not added again. The returned `u32`
-    /// is the string's index in insertion order.
+    /// If the string was already present, it is not added again. A newly added string
+    /// is prefixed by its length as a `u32`. The returned `u32`
+    /// is the offset into the `string_bytes` field where the string is saved.
     fn insert_string(&mut self, s: &str) -> u32 {
         if s.is_empty() {
             return u32::MAX;
         }
-        if let Some(existing_idx) = self.strings.get_index_of(s) {
-            return existing_idx as u32;
+        if let Some(&offset) = self.strings.get(s) {
+            return offset;
         }
         let string_offset = self.string_bytes.len() as u32;
         let string_len = s.len() as u32;
+        self.string_bytes.extend(string_len.to_ne_bytes());
         self.string_bytes.extend(s.bytes());
-        let (string_idx, _) = self.strings.insert_full(
-            s.to_owned(),
-            raw::String {
-                string_offset,
-                string_len,
-            },
+        // we should have written exactly `string_len + 4` bytes
+        debug_assert_eq!(
+            self.string_bytes.len(),
+            string_offset as usize + string_len as usize + std::mem::size_of::<u32>(),
         );
-        string_idx as u32
+        self.strings.insert(s.to_owned(), string_offset);
+        string_offset
     }
 
     /// Insert a file into this converter.
@@ -91,14 +91,14 @@ impl SymCacheConverter {
         directory: Option<&str>,
         comp_dir: Option<&str>,
     ) -> u32 {
-        let path_name_idx = self.insert_string(path_name);
-        let directory_idx = directory.map_or(u32::MAX, |d| self.insert_string(d));
-        let comp_dir_idx = comp_dir.map_or(u32::MAX, |cd| self.insert_string(cd));
+        let path_name_offset = self.insert_string(path_name);
+        let directory_offset = directory.map_or(u32::MAX, |d| self.insert_string(d));
+        let comp_dir_offset = comp_dir.map_or(u32::MAX, |cd| self.insert_string(cd));
 
         let (file_idx, _) = self.files.insert_full(raw::File {
-            path_name_idx,
-            directory_idx,
-            comp_dir_idx,
+            path_name_offset,
+            directory_offset,
+            comp_dir_offset,
         });
 
         file_idx as u32
@@ -115,12 +115,12 @@ impl SymCacheConverter {
         entry_pc: u32,
         lang: Language,
     ) -> u32 {
-        let name_idx = self.insert_string(name);
-        let comp_dir_idx = comp_dir.map_or(u32::MAX, |comp_dir| self.insert_string(comp_dir));
+        let name_offset = self.insert_string(name);
+        let comp_dir_offset = comp_dir.map_or(u32::MAX, |comp_dir| self.insert_string(comp_dir));
         let lang = lang as u32;
         let (fun_idx, _) = self.functions.insert_full(raw::Function {
-            name_idx,
-            comp_dir_idx,
+            name_offset,
+            comp_dir_offset,
             entry_pc,
             lang,
         });
@@ -239,8 +239,8 @@ impl SymCacheConverter {
         match self.ranges.entry(symbol.address as u32) {
             btree_map::Entry::Vacant(entry) => {
                 let function = raw::Function {
-                    name_idx,
-                    comp_dir_idx: u32::MAX,
+                    name_offset: name_idx,
+                    comp_dir_offset: u32::MAX,
                     entry_pc: symbol.address as u32,
                     lang: u32::MAX,
                 };
@@ -273,7 +273,6 @@ impl SymCacheConverter {
     pub fn serialize<W: Write>(self, writer: &mut W) -> std::io::Result<()> {
         let mut writer = WriteWrapper::new(writer);
 
-        let num_strings = self.strings.len() as u32;
         let num_files = self.files.len() as u32;
         let num_functions = self.functions.len() as u32;
         let num_source_locations = (self.source_locations.len() + self.ranges.len()) as u32;
@@ -287,7 +286,6 @@ impl SymCacheConverter {
             debug_id: self.debug_id,
             arch: self.arch,
 
-            num_strings,
             num_files,
             num_functions,
             num_source_locations,
@@ -296,11 +294,6 @@ impl SymCacheConverter {
         };
 
         writer.write(&[header])?;
-        writer.align()?;
-
-        for (_, s) in self.strings {
-            writer.write(&[s])?;
-        }
         writer.align()?;
 
         for f in self.files {

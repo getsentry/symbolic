@@ -30,8 +30,6 @@ pub struct Header {
     /// CPU architecture of the object file.
     pub arch: Arch,
 
-    /// Number of included [`String`]s.
-    pub num_strings: u32,
     /// Number of included [`File`]s.
     pub num_files: u32,
     /// Number of included [`Function`]s.
@@ -49,9 +47,9 @@ pub struct Header {
 #[repr(C)]
 pub struct Function {
     /// The functions name (reference to a [`String`]).
-    pub name_idx: u32,
+    pub name_offset: u32,
     /// The compilation directory (reference to a [`String`]).
-    pub comp_dir_idx: u32,
+    pub comp_dir_offset: u32,
     /// The first address covered by this function.
     pub entry_pc: u32,
     /// The language of the function.
@@ -63,11 +61,11 @@ pub struct Function {
 #[repr(C)]
 pub struct File {
     /// The optional compilation directory prefix (reference to a [`String`]).
-    pub comp_dir_idx: u32,
+    pub comp_dir_offset: u32,
     /// The optional directory prefix (reference to a [`String`]).
-    pub directory_idx: u32,
+    pub directory_offset: u32,
     /// The file path (reference to a [`String`]).
-    pub path_name_idx: u32,
+    pub path_name_offset: u32,
 }
 
 /// A location in a source file, comprising a file, a line, a function, and
@@ -89,16 +87,6 @@ pub struct SourceLocation {
     /// The caller source location in case this location was inlined
     /// (reference to another [`SourceLocation`]).
     pub inlined_into_idx: u32,
-}
-
-/// Serialized String in the SymCache.
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-#[repr(C)]
-pub struct String {
-    /// The offset into the `string_bytes`.
-    pub string_offset: u32,
-    /// Length of the string.
-    pub string_len: u32,
 }
 
 /// A representation of a code range in the SymCache.
@@ -128,7 +116,7 @@ mod tests {
 
     #[test]
     fn test_sizeof() {
-        assert_eq!(mem::size_of::<Header>(), 68);
+        assert_eq!(mem::size_of::<Header>(), 64);
         assert_eq!(mem::align_of::<Header>(), 4);
 
         assert_eq!(mem::size_of::<Function>(), 16);
@@ -139,9 +127,6 @@ mod tests {
 
         assert_eq!(mem::size_of::<SourceLocation>(), 16);
         assert_eq!(mem::align_of::<SourceLocation>(), 4);
-
-        assert_eq!(mem::size_of::<String>(), 8);
-        assert_eq!(mem::align_of::<String>(), 4);
 
         assert_eq!(mem::size_of::<Range>(), 4);
         assert_eq!(mem::align_of::<Range>(), 4);
