@@ -13,20 +13,24 @@ struct FunctionsDebug<'a>(&'a SymCache<'a>);
 
 impl fmt::Debug for FunctionsDebug<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut vec: Vec<_> = self.0.functions().collect();
+        let mut vec: Vec<_> = self
+            .0
+            .functions()
+            .filter_map(|f| match f {
+                Ok(f) => {
+                    if f.address() != u32::MAX as u64 {
+                        Some(f)
+                    } else {
+                        None
+                    }
+                }
+                Err(_) => None,
+            })
+            .collect();
 
-        vec.sort_by(|f1, f2| match (f1, f2) {
-            (Ok(f1), Ok(f2)) => f1.address().cmp(&f2.address()),
-            (Ok(_), Err(_)) => std::cmp::Ordering::Less,
-            (Err(_), Ok(_)) => std::cmp::Ordering::Greater,
-            (Err(e1), Err(e2)) => e1.to_string().cmp(&e2.to_string()),
-        });
-
-        for line in vec {
-            match line {
-                Ok(function) => writeln!(f, "{:>16x} {}", &function.address(), &function.name())?,
-                Err(error) => writeln!(f, "{:?}", error)?,
-            }
+        vec.sort_by_key(|f| f.address());
+        for function in vec {
+            writeln!(f, "{:>16x} {}", &function.address(), &function.name())?;
         }
 
         Ok(())
