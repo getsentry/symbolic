@@ -1,7 +1,7 @@
 //! Defines the [SymCache Converter](`SymCacheConverter`).
 
 use std::collections::btree_map;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
 
 use indexmap::IndexSet;
@@ -24,9 +24,8 @@ pub struct SymCacheConverter {
 
     /// The concatenation of all strings that have been added to this `Converter`.
     string_bytes: Vec<u8>,
-    /// A map from [`String`]s that have been added to this `Converter` to [`StringRef`]s, i.e.,
-    /// indices into the `string_bytes` vector.
-    strings: BTreeMap<String, u32>,
+    /// A map from [`String`]s that have been added to this `Converter` to their offsets in the `string_bytes` field.
+    strings: HashMap<String, u32>,
     /// The set of all [`raw::File`]s that have been added to this `Converter`.
     files: IndexSet<raw::File>,
     /// The set of all [`raw::Function`]s that have been added to this `Converter`.
@@ -71,7 +70,7 @@ impl SymCacheConverter {
         }
         let string_offset = self.string_bytes.len() as u32;
         let string_len = s.len() as u32;
-        self.string_bytes.extend(string_len.to_le_bytes());
+        self.string_bytes.extend(string_len.to_ne_bytes());
         self.string_bytes.extend(s.bytes());
         // we should have written exactly `string_len + 4` bytes
         debug_assert_eq!(
@@ -295,8 +294,6 @@ impl SymCacheConverter {
         };
 
         writer.write(&[header])?;
-        writer.align()?;
-
         writer.align()?;
 
         for f in self.files {

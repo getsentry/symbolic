@@ -148,7 +148,7 @@ impl<'data> SymCache<'data> {
         }
         let len_offset = offset as usize;
         let len_size = std::mem::size_of::<u32>();
-        let len = u32::from_le_bytes(
+        let len = u32::from_ne_bytes(
             self.string_bytes
                 .get(len_offset..len_offset + len_size)?
                 .try_into()
