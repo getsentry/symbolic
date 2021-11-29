@@ -1,6 +1,7 @@
 //! The SymCache binary format.
 //!
 //!
+use std::convert::TryInto;
 use std::{mem, ptr};
 
 use symbolic_common::{Arch, DebugId};
@@ -26,7 +27,6 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 #[derive(Clone, PartialEq, Eq)]
 pub struct SymCache<'data> {
     header: &'data raw::Header,
-    strings: &'data [raw::String],
     files: &'data [raw::File],
     functions: &'data [raw::Function],
     source_locations: &'data [raw::SourceLocation],
@@ -74,9 +74,6 @@ impl<'data> SymCache<'data> {
             return Err(Error::WrongVersion);
         }
 
-        let mut strings_size = mem::size_of::<raw::String>() * header.num_strings as usize;
-        strings_size += align_to_eight(strings_size);
-
         let mut files_size = mem::size_of::<raw::File>() * header.num_files as usize;
         files_size += align_to_eight(files_size);
 
@@ -91,7 +88,6 @@ impl<'data> SymCache<'data> {
         ranges_size += align_to_eight(ranges_size);
 
         let expected_buf_size = header_size
-            + strings_size
             + files_size
             + functions_size
             + source_locations_size
@@ -104,8 +100,7 @@ impl<'data> SymCache<'data> {
 
         // SAFETY: we just made sure that all the pointers we are constructing via pointer
         // arithmetic are within `buf`
-        let strings_start = unsafe { buf.as_ptr().add(header_size) };
-        let files_start = unsafe { strings_start.add(strings_size) };
+        let files_start = unsafe { buf.as_ptr().add(header_size) };
         let functions_start = unsafe { files_start.add(files_size) };
         let source_locations_start = unsafe { functions_start.add(functions_size) };
         let ranges_start = unsafe { source_locations_start.add(source_locations_size) };
@@ -113,10 +108,6 @@ impl<'data> SymCache<'data> {
 
         // SAFETY: the above buffer size check also made sure we are not going out of bounds
         // here
-        let strings = unsafe {
-            &*(ptr::slice_from_raw_parts(strings_start, header.num_strings as usize)
-                as *const [raw::String])
-        };
         let files = unsafe {
             &*(ptr::slice_from_raw_parts(files_start, header.num_files as usize)
                 as *const [raw::File])
@@ -142,7 +133,6 @@ impl<'data> SymCache<'data> {
 
         Ok(SymCache {
             header,
-            strings,
             files,
             functions,
             source_locations,
@@ -152,14 +142,21 @@ impl<'data> SymCache<'data> {
     }
 
     /// Resolves a string reference to the pointed-to `&str` data.
-    fn get_string(&self, string_idx: u32) -> Option<&'data str> {
-        if string_idx == u32::MAX {
+    fn get_string(&self, offset: u32) -> Option<&'data str> {
+        if offset == u32::MAX {
             return None;
         }
-        let string = self.strings.get(string_idx as usize)?;
+        let len_offset = offset as usize;
+        let len_size = std::mem::size_of::<u32>();
+        let len = u32::from_le_bytes(
+            self.string_bytes
+                .get(len_offset..len_offset + len_size)?
+                .try_into()
+                .unwrap(),
+        ) as usize;
 
-        let start_offset = string.string_offset as usize;
-        let end_offset = start_offset + string.string_len as usize;
+        let start_offset = len_offset + len_size;
+        let end_offset = start_offset + len;
         let bytes = self.string_bytes.get(start_offset..end_offset)?;
 
         std::str::from_utf8(bytes).ok()
