@@ -159,6 +159,7 @@ struct PrintOptions {
     show_modules: bool,
 }
 
+#[allow(deprecated)]
 fn print_state(
     state: &ProcessState,
     symcaches: &SymCaches,
