@@ -87,7 +87,6 @@
 //!    found in step 2 and proceeds up the inlining hierarchy.
 //!
 //! The returned source locations contain accessor methods for the function, file, and line number.
-use std::convert::TryInto;
 use std::{mem, ptr};
 
 use symbolic_common::{Arch, DebugId};
