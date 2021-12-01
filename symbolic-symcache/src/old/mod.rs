@@ -1,11 +1,7 @@
-//! Provides symcache support.
-
-#![warn(missing_docs)]
+//! Provides support to read the old SymCache format.
 
 mod cache;
 mod error;
-#[allow(dead_code)]
-mod writer;
 
 pub mod format;
 

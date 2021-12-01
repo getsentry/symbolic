@@ -1,7 +1,7 @@
 //! The SymCache binary format.
 //! # Structure of the format
 //!
-//! A symcache contains the following primary kinds of data:
+//! A SymCache contains the following primary kinds of data:
 //!
 //! 1. address ranges
 //! 2. source locations
@@ -28,8 +28,8 @@
 //!
 //! ## Functions
 //!
-//! A function contains string offsets for its name and compilation directory, the entry address, and a u32
-//! representing the source languge.
+//! A function contains string offsets for its name and compilation directory,
+//! an u32 for its entry address, and a u32 representing the source language.
 //!
 //! ## Files
 //!
@@ -37,9 +37,9 @@
 //!
 //! ## Mapping from ranges to source locations
 //!
-//! Every range in the symcache is associated with at most one source location. As mentioned above, each source
+//! Every range in the SymCache is associated with at least one source location. As mentioned above, each source
 //! location may in turn have a reference to a source location into which it is inlined. Conceptually, each
-//! adrress range points to a sequence of source locations, representing a a hierarchy of inlined function calls.
+//! address range points to a sequence of source locations, representing a hierarchy of inlined function calls.
 //!
 //! ### Example
 //!
@@ -52,7 +52,7 @@
 //!   - `trigger_crash` in file b.c line 13
 //!   - inlined into `main` in file a.c line 10
 //!
-//! is represented like this in the symcache (function/file names inlined for simplicity):
+//! is represented like this in the SymCache (function/file names inlined for simplicity):
 //! ```text
 //! ranges: [
 //!     0x0001 -> 1
@@ -79,10 +79,10 @@
 //!
 //! # Lookups
 //!
-//! Looking up an address `addr` in the symcache proceeds as follows:
+//! Looking up an address `addr` in the SymCache proceeds as follows:
 //!
 //! 1. Find the range into which `addr` falls by binary search.
-//! 2. Find the source location belonging to this range, if any.
+//! 2. Find the source location belonging to this range.
 //! 3. Return an iterator over [`lookup::SourceLocation`]s that starts at the source location
 //!    found in step 2 and proceeds up the inlining hierarchy.
 //!

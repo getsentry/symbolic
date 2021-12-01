@@ -2,6 +2,8 @@
 //!
 use symbolic_common::{Arch, DebugId};
 
+pub use crate::SYMCACHE_VERSION;
+
 /// The magic file preamble as individual bytes.
 const SYMCACHE_MAGIC_BYTES: [u8; 4] = *b"SYMC";
 
@@ -11,9 +13,6 @@ const SYMCACHE_MAGIC_BYTES: [u8; 4] = *b"SYMC";
 pub const SYMCACHE_MAGIC: u32 = u32::from_le_bytes(SYMCACHE_MAGIC_BYTES);
 /// The byte-flipped magic, which indicates an endianness mismatch.
 pub const SYMCACHE_MAGIC_FLIPPED: u32 = SYMCACHE_MAGIC.swap_bytes();
-
-/// The latest version of the file format.
-pub const SYMCACHE_VERSION: u32 = 7;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[repr(C)]

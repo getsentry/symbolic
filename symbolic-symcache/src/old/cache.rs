@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::fmt;
 
 use symbolic_common::{Arch, AsSelf, DebugId, Language, Name, NameMangling};

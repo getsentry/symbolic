@@ -5,7 +5,7 @@ use std::os::raw::c_char;
 use std::slice;
 
 use symbolic::common::{ByteView, InstructionInfo, SelfCell};
-use symbolic::symcache::{format::SYMCACHE_VERSION, SymCache, SymCacheWriter};
+use symbolic::symcache::{SymCache, SymCacheWriter, SYMCACHE_VERSION};
 
 use crate::core::SymbolicStr;
 use crate::debuginfo::SymbolicObject;

@@ -1,5 +1,7 @@
 //! Definition of the binary format for SymCaches.
 
+#![deprecated(since = "8.6.0", note = "this will be removed in a future version")]
+
 use std::cmp::Ordering;
 use std::fmt;
 use std::io;
@@ -13,7 +15,12 @@ use crate::{SymCacheError, SymCacheErrorKind};
 pub use crate::preamble::*;
 
 /// The latest version of the file format.
-pub const SYMCACHE_VERSION: u32 = 6;
+
+#[deprecated(
+    since = "8.6.0",
+    note = "Use symbolic_symcache::SYMCACHE_VERSION instead"
+)]
+pub const SYMCACHE_VERSION: u32 = 7;
 
 // Version history:
 //
@@ -39,15 +46,6 @@ pub(crate) fn get_slice(data: &[u8], offset: usize, len: usize) -> Result<&[u8],
 pub(crate) fn get_record<T>(data: &[u8], offset: usize) -> Result<&T, io::Error> {
     let record = get_slice(data, offset, std::mem::size_of::<T>())?;
     Ok(unsafe { &*(record.as_ptr() as *const T) })
-}
-
-/// Loads a slice of typed objects from a binary slice.
-#[inline(always)]
-pub(crate) fn as_slice<T>(data: &T) -> &[u8] {
-    unsafe {
-        let pointer = data as *const T as *const u8;
-        std::slice::from_raw_parts(pointer, std::mem::size_of::<T>())
-    }
 }
 
 /// A reference to a segment in the SymCache.
@@ -371,7 +369,7 @@ impl Header {
             1 => get_record::<HeaderV1>(data, 0)
                 .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadFileHeader, e))?
                 .into(),
-            2..=SYMCACHE_VERSION => get_record::<HeaderV2>(data, 0)
+            2..=crate::SYMCACHE_VERSION_CUTOFF => get_record::<HeaderV2>(data, 0)
                 .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadFileHeader, e))?
                 .into(),
             _ => return Err(SymCacheErrorKind::UnsupportedVersion.into()),

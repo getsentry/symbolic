@@ -4,8 +4,9 @@ use symbolic_common::{Arch, AsSelf, DebugId, Language, Name, NameMangling};
 
 use crate::{new, old, preamble, SymCacheError};
 
-/// The cutoff version between the old and new symcache formats.
-const SYMCACHE_VERSION_CUTOFF: u32 = 7;
+/// The cutoff version between the old and new SymCache formats.
+/// Versions *greater than* this one will use the new binary format.
+pub(crate) const SYMCACHE_VERSION_CUTOFF: u32 = 6;
 
 impl From<new::Error> for SymCacheError {
     fn from(new_error: new::Error) -> Self {
@@ -38,7 +39,7 @@ impl<'data> SymCache<'data> {
     /// Parses a SymCache from a binary buffer.
     pub fn parse(data: &'data [u8]) -> Result<Self, SymCacheError> {
         let preamble = preamble::Preamble::parse(data)?;
-        if preamble.version >= SYMCACHE_VERSION_CUTOFF {
+        if preamble.version > SYMCACHE_VERSION_CUTOFF {
             Ok(Self(SymCacheInner::New(new::SymCache::parse(data)?)))
         } else {
             Ok(Self(SymCacheInner::Old(old::SymCache::parse(data)?)))
@@ -54,7 +55,7 @@ impl<'data> SymCache<'data> {
     }
     /// Returns whether this cache is up-to-date.
     pub fn is_latest(&self) -> bool {
-        self.version() == new::raw::SYMCACHE_VERSION
+        self.version() == crate::SYMCACHE_VERSION
     }
 
     /// The architecture of the symbol file.
