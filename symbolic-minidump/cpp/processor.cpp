@@ -7,6 +7,7 @@
 #include "cpp/memstream.h"
 #include "cpp/mmap_symbol_supplier.h"
 #include "cpp/processor.h"
+#include <limits>
 
 using google_breakpad::BasicSourceLineResolver;
 using google_breakpad::Minidump;
