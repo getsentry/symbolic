@@ -363,7 +363,7 @@ impl<'a, 'c> Iterator for Lookup<'a, 'c> {
         if let Ok(ref line_info) = line_result {
             self.inner = Some((
                 line_info.line(),
-                line_info.line_address(),
+                line_info.line_addr,
                 line_info.filename(),
                 line_info.compilation_dir(),
             ));

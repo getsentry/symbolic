@@ -11,6 +11,7 @@ type Error = Box<dyn std::error::Error>;
 /// Helper to create neat snapshots for symbol tables.
 struct FunctionsDebug<'a>(&'a SymCache<'a>);
 
+#[allow(deprecated)]
 impl fmt::Debug for FunctionsDebug<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut vec: Vec<_> = self

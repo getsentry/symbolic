@@ -76,6 +76,7 @@ impl<'data> SymCache<'data> {
     #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
     pub fn has_line_info(&self) -> bool {
         match &self.0 {
+            #[allow(deprecated)]
             SymCacheInner::New(symc) => symc.has_line_info(),
             SymCacheInner::Old(symc) => symc.has_line_info(),
         }
@@ -85,6 +86,7 @@ impl<'data> SymCache<'data> {
     #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
     pub fn has_file_info(&self) -> bool {
         match &self.0 {
+            #[allow(deprecated)]
             SymCacheInner::New(symc) => symc.has_file_info(),
             SymCacheInner::Old(symc) => symc.has_file_info(),
         }
@@ -92,8 +94,10 @@ impl<'data> SymCache<'data> {
 
     /// Returns an iterator over all functions.
     #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
+    #[allow(deprecated)]
     pub fn functions(&self) -> Functions<'data> {
         match &self.0 {
+            #[allow(deprecated)]
             SymCacheInner::New(symc) => {
                 Functions(FunctionsInner::New(symc.functions().enumerate()))
             }
@@ -136,8 +140,10 @@ enum FunctionInner<'data> {
 
 /// A function in a `SymCache`.
 #[derive(Clone, Debug)]
+#[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
 pub struct Function<'data>(FunctionInner<'data>);
 
+#[allow(deprecated)]
 impl<'data> Function<'data> {
     /// The ID of the function.
     pub fn id(&self) -> usize {
@@ -220,8 +226,10 @@ enum FunctionsInner<'data> {
 
 /// An iterator over all functions in a `SymCache`.
 #[derive(Clone, Debug)]
+#[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
 pub struct Functions<'data>(FunctionsInner<'data>);
 
+#[allow(deprecated)]
 impl<'data> Iterator for Functions<'data> {
     type Item = Result<Function<'data>, SymCacheError>;
 
