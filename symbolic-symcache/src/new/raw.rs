@@ -37,6 +37,10 @@ pub struct Header {
     pub num_ranges: u32,
     /// Total number of bytes used for string data.
     pub string_bytes: u32,
+
+    /// Some reserved space in the header for future extensions that would not require a
+    /// completely new parsing method.
+    pub _reserved: [u8; 16],
 }
 
 /// Serialized Function metadata in the SymCache.
@@ -113,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_sizeof() {
-        assert_eq!(mem::size_of::<Header>(), 64);
+        assert_eq!(mem::size_of::<Header>(), 80);
         assert_eq!(mem::align_of::<Header>(), 4);
 
         assert_eq!(mem::size_of::<Function>(), 16);

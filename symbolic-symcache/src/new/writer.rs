@@ -291,6 +291,7 @@ impl SymCacheConverter {
             num_source_locations,
             num_ranges,
             string_bytes,
+            _reserved: [0; 16],
         };
 
         writer.write(&[header])?;

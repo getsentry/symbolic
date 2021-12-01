@@ -29,6 +29,7 @@ fn test_load_header_linux() -> Result<(), Error> {
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!(symcache, @r###"
     SymCache {
+        version: 2,
         debug_id: DebugId {
             uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
             appendix: 0,
@@ -56,6 +57,7 @@ fn test_load_header_macos() -> Result<(), Error> {
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!(symcache, @r###"
     SymCache {
+        version: 2,
         debug_id: DebugId {
             uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
             appendix: 0,

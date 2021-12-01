@@ -128,6 +128,9 @@ impl<'data> std::fmt::Debug for SymCache<'data> {
             .field("arch", &self.header.arch)
             .field("files", &self.header.num_files)
             .field("functions", &self.header.num_functions)
+            .field("source_locations", &self.header.num_source_locations)
+            .field("ranges", &self.header.num_ranges)
+            .field("string_bytes", &self.header.string_bytes)
             .finish()
     }
 }

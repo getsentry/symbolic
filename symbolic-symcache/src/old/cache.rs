@@ -322,6 +322,7 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
 impl fmt::Debug for SymCache<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SymCache")
+            .field("version", &self.version())
             .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())
             .field("has_line_info", &self.has_line_info())
