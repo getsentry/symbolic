@@ -408,13 +408,13 @@ pub struct LineInfo<'a> {
 
 impl<'a> LineInfo<'a> {
     /// Architecture of the image referenced by this line.
-    #[deprecated(since = "0.8.6", note = "this will be removed in a future version")]
+    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
     pub fn arch(&self) -> Arch {
         self.arch
     }
 
     /// Debug identifier of the image referenced by this line.
-    #[deprecated(since = "0.8.6", note = "this will be removed in a future version")]
+    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
     pub fn debug_id(&self) -> DebugId {
         self.debug_id
     }
@@ -425,13 +425,13 @@ impl<'a> LineInfo<'a> {
     }
 
     /// The instruction address where the line starts.
-    #[deprecated(since = "0.8.6", note = "this will be removed in a future version")]
+    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
     pub fn line_address(&self) -> u64 {
         self.line_addr
     }
 
     /// The actual instruction address.
-    #[deprecated(since = "0.8.6", note = "this will be removed in a future version")]
+    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
     pub fn instruction_address(&self) -> u64 {
         self.instr_addr
     }
