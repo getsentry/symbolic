@@ -21,9 +21,9 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// The serialized SymCache binary format.
 ///
-/// This can be parsed from a binary buffer via [`Format::parse`], and lookups on it can be performed
-/// via the [`Format::lookup`] method.
-#[derive(Debug, PartialEq, Eq)]
+/// This can be parsed from a binary buffer via [`SymCache::parse`], and lookups on it can be performed
+/// via the [`SymCache::lookup`] method.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SymCache<'data> {
     header: &'data raw::Header,
     strings: &'data [raw::String],
