@@ -15,7 +15,7 @@ pub const SYMCACHE_MAGIC: u32 = u32::from_le_bytes(SYMCACHE_MAGIC_BYTES);
 pub const SYMCACHE_MAGIC_FLIPPED: u32 = SYMCACHE_MAGIC.swap_bytes();
 
 /// The latest version of the file format.
-pub const SYMCACHE_VERSION: u32 = 1_000;
+pub const SYMCACHE_VERSION: u32 = 7;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[repr(C)]

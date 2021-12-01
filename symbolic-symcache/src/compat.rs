@@ -3,7 +3,7 @@ use symbolic_common::{Arch, AsSelf, DebugId, Language, Name, NameMangling};
 use crate::{new, old, preamble, SymCacheError};
 
 /// The cutoff version between the old and new symcache formats.
-const SYMCACHE_VERSION_CUTOFF: u32 = 1_000;
+const SYMCACHE_VERSION_CUTOFF: u32 = 7;
 
 impl From<new::Error> for SymCacheError {
     fn from(new_error: new::Error) -> Self {
