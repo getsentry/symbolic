@@ -1,3 +1,5 @@
+use std::fmt;
+
 use symbolic_common::{Arch, AsSelf, DebugId, Language, Name, NameMangling};
 
 use crate::{new, old, preamble, SymCacheError};
@@ -30,7 +32,6 @@ enum SymCacheInner<'data> {
 ///
 /// Use [`SymCacheWriter`](crate::SymCacheWriter) writer to create SymCaches,
 /// including the conversion from object files.
-#[derive(Debug)]
 pub struct SymCache<'data>(SymCacheInner<'data>);
 
 impl<'data> SymCache<'data> {
@@ -124,6 +125,15 @@ impl<'data> SymCache<'data> {
     }
 }
 
+impl<'data> fmt::Debug for SymCache<'data> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0 {
+            SymCacheInner::Old(symcache) => symcache.fmt(f),
+            SymCacheInner::New(symcache) => symcache.fmt(f),
+        }
+    }
+}
+
 impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
     type Ref = SymCache<'slf>;
 
@@ -139,7 +149,7 @@ enum FunctionInner<'data> {
 }
 
 /// A function in a `SymCache`.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
 pub struct Function<'data>(FunctionInner<'data>);
 
@@ -218,6 +228,16 @@ impl<'data> Function<'data> {
     }
 }
 
+#[allow(deprecated)]
+impl<'data> fmt::Debug for Function<'data> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0 {
+            FunctionInner::Old(function) => function.fmt(f),
+            FunctionInner::New(function) => function.fmt(f),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 enum FunctionsInner<'data> {
     Old(old::Functions<'data>),
@@ -225,7 +245,7 @@ enum FunctionsInner<'data> {
 }
 
 /// An iterator over all functions in a `SymCache`.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
 pub struct Functions<'data>(FunctionsInner<'data>);
 
@@ -247,6 +267,16 @@ impl<'data> Iterator for Functions<'data> {
     }
 }
 
+#[allow(deprecated)]
+impl<'data> fmt::Debug for Functions<'data> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0 {
+            FunctionsInner::Old(functions) => functions.fmt(f),
+            FunctionsInner::New(functions) => functions.fmt(f),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 enum LookupInner<'data, 'cache> {
     Old(old::Lookup<'data, 'cache>),
@@ -257,7 +287,7 @@ enum LookupInner<'data, 'cache> {
 }
 
 /// An iterator over line matches for an address lookup.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Lookup<'data, 'cache>(LookupInner<'data, 'cache>);
 
 impl<'data, 'cache> Lookup<'data, 'cache> {
@@ -296,6 +326,15 @@ impl<'data, 'cache> Iterator for Lookup<'data, 'cache> {
                     comp_dir: sl.file().and_then(|f| f.comp_dir()).unwrap_or_default(),
                 }))
             }
+        }
+    }
+}
+
+impl<'data, 'cache> fmt::Debug for Lookup<'data, 'cache> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0 {
+            LookupInner::Old(lookup) => lookup.fmt(f),
+            LookupInner::New { iter, .. } => iter.fmt(f),
         }
     }
 }
