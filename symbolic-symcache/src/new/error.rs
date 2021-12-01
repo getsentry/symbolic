@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// Errors returned while loading/parsing a serialized SymCache.
 ///
-/// After a SymCache was successfully parsed via [`Format::parse`], an Error that occurs during
+/// After a SymCache was successfully parsed via [`SymCache::parse`](crate::new::SymCache::parse), an Error that occurs during
 /// access of any data indicates either corruption of the serialized file, or a bug in the
 /// converter/serializer.
 #[derive(Debug, Error)]

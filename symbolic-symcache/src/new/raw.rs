@@ -1,7 +1,5 @@
 //! The raw SymCache binary file format internals.
 //!
-//! TODO: actually write some docs ;-)
-
 use symbolic_common::{Arch, DebugId};
 
 /// The magic file preamble as individual bytes.

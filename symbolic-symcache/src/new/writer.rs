@@ -14,7 +14,7 @@ use crate::{SymCacheError, SymCacheErrorKind};
 /// The SymCache Converter.
 ///
 /// This can convert data in various source formats to an intermediate representation, which can
-/// then be serialized to disk via its [`Converter::serialize`] method.
+/// then be serialized to disk via its [`serialize`](SymCacheConverter::serialize) method.
 #[derive(Debug, Default)]
 pub struct SymCacheConverter {
     /// Debug identifier of the object file.
