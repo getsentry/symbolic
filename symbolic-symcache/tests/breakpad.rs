@@ -13,7 +13,6 @@ fn test_macos() {
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
-    assert!(buffer.starts_with(b"SYMC"));
     let symcache = SymCache::parse(&buffer).unwrap();
 
     let lookup_result: Vec<_> = symcache
@@ -36,7 +35,6 @@ fn test_macos_all() {
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
-    assert!(buffer.starts_with(b"SYMC"));
     let symcache = SymCache::parse(&buffer).unwrap();
 
     let files: BTreeMap<_, _> = breakpad
@@ -79,7 +77,6 @@ fn test_windows() {
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
-    assert!(buffer.starts_with(b"SYMC"));
     let symcache = SymCache::parse(&buffer).unwrap();
 
     let lookup_result: Vec<_> = symcache
@@ -93,4 +90,53 @@ fn test_windows() {
     );
     assert_eq!(lookup_result[0].path(), "c:\\projects\\breakpad-tools\\deps\\breakpad\\src\\client\\windows\\handler\\exception_handler.cc");
     assert_eq!(lookup_result[0].line(), 846);
+}
+
+#[test]
+fn test_func_end() {
+    // The last addr belongs to a function record which has an explicit end
+    let buffer = br#"MODULE mac x86_64 67E9247C814E392BA027DBDE6748FCBF0 crash
+FILE 0 some_file
+FUNC d20 20 0 func_record_with_end
+PUBLIC d00 0 public_record"#;
+    let breakpad = BreakpadObject::parse(buffer).unwrap();
+
+    let mut buffer = Vec::new();
+    SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
+    let symcache = SymCache::parse(&buffer).unwrap();
+
+    let lookup_result: Vec<_> = symcache
+        .lookup(0xd04)
+        .unwrap()
+        .filter_map(Result::ok)
+        .collect();
+    assert_eq!(lookup_result[0].symbol(), "public_record");
+
+    let lookup_result: Vec<_> = symcache
+        .lookup(0xd24)
+        .unwrap()
+        .filter_map(Result::ok)
+        .collect();
+    assert_eq!(lookup_result[0].symbol(), "func_record_with_end");
+
+    let mut lookup_result = symcache.lookup(0xd99).unwrap().filter_map(Result::ok);
+    assert!(lookup_result.next().is_none());
+
+    // The last addr belongs to a public record which implicitly extends to infinity
+    let buffer = br#"MODULE mac x86_64 67E9247C814E392BA027DBDE6748FCBF0 crash
+FILE 0 some_file
+FUNC d20 20 0 func_record_with_end
+PUBLIC d80 0 public_record"#;
+    let breakpad = BreakpadObject::parse(buffer).unwrap();
+
+    let mut buffer = Vec::new();
+    SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
+    let symcache = SymCache::parse(&buffer).unwrap();
+
+    let lookup_result: Vec<_> = symcache
+        .lookup(0xfffffa0)
+        .unwrap()
+        .filter_map(Result::ok)
+        .collect();
+    assert_eq!(lookup_result[0].symbol(), "public_record");
 }

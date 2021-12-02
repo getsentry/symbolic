@@ -14,6 +14,16 @@ pub const SYMCACHE_MAGIC: u32 = u32::from_le_bytes(SYMCACHE_MAGIC_BYTES);
 /// The byte-flipped magic, which indicates an endianness mismatch.
 pub const SYMCACHE_MAGIC_FLIPPED: u32 = SYMCACHE_MAGIC.swap_bytes();
 
+/// This [`SourceLocation`] is a sentinel value that says that no source location is present here.
+/// This is used to push an "end" range that does not resolve to a valid source location.
+/// Otherwise, the ranges would implicitly extend to infinity.
+pub const NO_SOURCE_LOCATION: SourceLocation = SourceLocation {
+    file_idx: u32::MAX,
+    line: u32::MAX,
+    function_idx: u32::MAX,
+    inlined_into_idx: u32::MAX,
+};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[repr(C)]
 pub struct Header {
