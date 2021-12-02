@@ -20,6 +20,7 @@
 #define SWIFT_DEMANGLING_DEMANGLER_H
 
 #include "swift/Demangling/Demangle.h"
+#include "swift/Demangling/NamespaceMacros.h"
 
 //#define NODE_FACTORY_DEBUGGING
 
@@ -28,6 +29,7 @@ using llvm::StringRef;
 
 namespace swift {
 namespace Demangle {
+SWIFT_BEGIN_INLINE_NAMESPACE
 
 class CharVector;
   
@@ -138,7 +140,7 @@ public:
 #endif
 
     // Do we have enough space in the current slab?
-    if (CurPtr + ObjectSize > End) {
+    if (!CurPtr || CurPtr + ObjectSize > End) {
       // No. We have to malloc a new slab.
       // We double the slab size for each allocated slab.
       SlabSize = std::max(SlabSize * 2, ObjectSize + alignof(T));
@@ -492,7 +494,7 @@ protected:
   NodePointer pushMultiSubstitutions(int RepeatCount, size_t SubstIdx);
   NodePointer createSwiftType(Node::Kind typeKind, const char *name);
   NodePointer demangleStandardSubstitution();
-  NodePointer createStandardSubstitution(char Subst);
+  NodePointer createStandardSubstitution(char Subst, bool SecondLevel);
   NodePointer demangleLocalIdentifier();
 
   NodePointer popModule();
@@ -503,7 +505,7 @@ protected:
   NodePointer demangleAnyGenericType(Node::Kind kind);
   NodePointer demangleExtensionContext();
   NodePointer demanglePlainFunction();
-  NodePointer popFunctionType(Node::Kind kind);
+  NodePointer popFunctionType(Node::Kind kind, bool hasClangType = false);
   NodePointer popFunctionParams(Node::Kind kind);
   NodePointer popFunctionParamLabels(NodePointer FuncType);
   NodePointer popTuple();
@@ -518,7 +520,9 @@ protected:
   NodePointer demangleInitializer();
   NodePointer demangleImplParamConvention(Node::Kind ConvKind);
   NodePointer demangleImplResultConvention(Node::Kind ConvKind);
+  NodePointer demangleImplParameterResultDifferentiability();
   NodePointer demangleImplFunctionType();
+  NodePointer demangleClangType();
   NodePointer demangleMetatype();
   NodePointer demanglePrivateContextDescriptor();
   NodePointer createArchetypeRef(int depth, int i);
@@ -565,6 +569,15 @@ protected:
 
   NodePointer demangleTypeMangling();
   NodePointer demangleSymbolicReference(unsigned char rawKind);
+  NodePointer demangleTypeAnnotation();
+
+  NodePointer demangleAutoDiffFunctionOrSimpleThunk(Node::Kind nodeKind);
+  NodePointer demangleAutoDiffFunctionKind();
+  NodePointer demangleAutoDiffSubsetParametersThunk();
+  NodePointer demangleAutoDiffSelfReorderingReabstractionThunk();
+  NodePointer demangleDifferentiabilityWitness();
+  NodePointer demangleIndexSubset();
+  NodePointer demangleDifferentiableFunctionType();
 
   bool demangleBoundGenerics(Vector<NodePointer> &TypeListList,
                              NodePointer &RetroactiveConformances);
@@ -621,6 +634,7 @@ public:
 
 NodePointer demangleOldSymbolAsNode(StringRef MangledName,
                                     NodeFactory &Factory);
+SWIFT_END_INLINE_NAMESPACE
 } // end namespace Demangle
 } // end namespace swift
 

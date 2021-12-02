@@ -29,9 +29,6 @@
 using namespace swift;
 using namespace Demangle;
 
-using llvm::Optional;
-using llvm::None;
-
 namespace {
   struct FindPtr {
     FindPtr(Node *v) : Target(v) {}
@@ -251,12 +248,12 @@ private:
     Parent->addChild(Child, Factory);
   }
   
-  Optional<Directness> demangleDirectness() {
+  llvm::Optional<Directness> demangleDirectness() {
     if (Mangled.nextIf('d'))
       return Directness::Direct;
     if (Mangled.nextIf('i'))
       return Directness::Indirect;
-    return None;
+    return llvm::None;
   }
 
   bool demangleNatural(Node::IndexType &num) {
@@ -288,13 +285,13 @@ private:
     return false;
   }
 
-  Optional<ValueWitnessKind> demangleValueWitnessKind() {
+  llvm::Optional<ValueWitnessKind> demangleValueWitnessKind() {
     char Code[2];
     if (!Mangled)
-      return None;
+      return llvm::None;
     Code[0] = Mangled.next();
     if (!Mangled)
-      return None;
+      return llvm::None;
     Code[1] = Mangled.next();
 
     StringRef CodeStr(Code, 2);
@@ -302,7 +299,7 @@ private:
   if (CodeStr == #MANGLING) return ValueWitnessKind::NAME;
 #include "swift/Demangling/ValueWitnessMangling.def"
 
-    return None;
+    return llvm::None;
   }
 
   NodePointer demangleGlobal() {
@@ -374,7 +371,7 @@ private:
 
     // Value witnesses.
     if (Mangled.nextIf('w')) {
-      Optional<ValueWitnessKind> w = demangleValueWitnessKind();
+      llvm::Optional<ValueWitnessKind> w = demangleValueWitnessKind();
       if (!w.hasValue())
         return nullptr;
       auto witness =
@@ -754,7 +751,7 @@ private:
     return demangleIdentifier();
   }
 
-  NodePointer demangleIdentifier(Optional<Node::Kind> kind = None) {
+  NodePointer demangleIdentifier(llvm::Optional<Node::Kind> kind = llvm::None) {
     if (!Mangled)
       return nullptr;
     
@@ -842,7 +839,7 @@ private:
     if (demangleNatural(natural)) {
       if (!Mangled.nextIf('_'))
         return false;
-      natural++;
+      ++natural;
       return true;
     }
     return false;
@@ -1768,10 +1765,30 @@ private:
   }
   
   NodePointer demangleFunctionType(Node::Kind kind) {
-    bool throws = false;
-    if (Mangled &&
-        Mangled.nextIf('z')) {
-      throws = true;
+    bool throws = false, concurrent = false, async = false;
+    auto diffKind = MangledDifferentiabilityKind::NonDifferentiable;
+    NodePointer globalActorType = nullptr;
+    if (Mangled) {
+      throws = Mangled.nextIf('z');
+      concurrent = Mangled.nextIf('y');
+      async = Mangled.nextIf('Z');
+      if (Mangled.nextIf('D')) {
+        switch (auto kind = (MangledDifferentiabilityKind)Mangled.next()) {
+        case MangledDifferentiabilityKind::Forward:
+        case MangledDifferentiabilityKind::Reverse:
+        case MangledDifferentiabilityKind::Normal:
+        case MangledDifferentiabilityKind::Linear:
+          diffKind = kind;
+          break;
+        case MangledDifferentiabilityKind::NonDifferentiable:
+          assert(false && "Impossible case 'NonDifferentiable'");
+        }
+      }
+      if (Mangled.nextIf('Y')) {
+        globalActorType = demangleType();
+        if (!globalActorType)
+          return nullptr;
+      }
     }
     NodePointer in_args = demangleType();
     if (!in_args)
@@ -1784,7 +1801,25 @@ private:
     if (throws) {
       block->addChild(Factory.createNode(Node::Kind::ThrowsAnnotation), Factory);
     }
-    
+    if (async) {
+      block->addChild(Factory.createNode(Node::Kind::AsyncAnnotation), Factory);
+    }
+    if (concurrent) {
+      block->addChild(
+          Factory.createNode(Node::Kind::ConcurrentFunctionType), Factory);
+    }
+    if (diffKind != MangledDifferentiabilityKind::NonDifferentiable) {
+      block->addChild(
+          Factory.createNode(
+              Node::Kind::DifferentiableFunctionType, (char)diffKind), Factory);
+    }
+    if (globalActorType) {
+      auto globalActorNode =
+          Factory.createNode(Node::Kind::GlobalActorFunctionType);
+      globalActorNode->addChild(globalActorType, Factory);
+      block->addChild(globalActorNode, Factory);
+    }
+
     NodePointer in_node = Factory.createNode(Node::Kind::ArgumentTuple);
     block->addChild(in_node, Factory);
     in_node->addChild(in_args, Factory);
@@ -2013,6 +2048,10 @@ private:
       }
     }
     if (c == 'Q') {
+      if (Mangled.nextIf('u')) {
+        // Special mangling for opaque return type.
+        return Factory.createNode(Node::Kind::OpaqueReturnType);
+      }
       return demangleArchetypeType();
     }
     if (c == 'q') {
@@ -2035,6 +2074,14 @@ private:
         return nullptr;
       inout->addChild(type, Factory);
       return inout;
+    }
+    if (c == 'k') {
+      auto noDerivative = Factory.createNode(Node::Kind::NoDerivative);
+      auto type = demangleTypeImpl();
+      if (!type)
+        return nullptr;
+      noDerivative->addChild(type, Factory);
+      return noDerivative;
     }
     if (c == 'S') {
       return demangleSubstitutionIndex();
@@ -2131,18 +2178,24 @@ private:
 
     if (Mangled.nextIf('C')) {
       if (Mangled.nextIf('b'))
-        addImplFunctionAttribute(type, "@convention(block)");
+        addImplFunctionConvention(type, "block");
       else if (Mangled.nextIf('c'))
-        addImplFunctionAttribute(type, "@convention(c)");
+        addImplFunctionConvention(type, "c");
       else if (Mangled.nextIf('m'))
-        addImplFunctionAttribute(type, "@convention(method)");
+        addImplFunctionConvention(type, "method");
       else if (Mangled.nextIf('O'))
-        addImplFunctionAttribute(type, "@convention(objc_method)");
+        addImplFunctionConvention(type, "objc_method");
       else if (Mangled.nextIf('w'))
-        addImplFunctionAttribute(type, "@convention(witness_method)");
+        addImplFunctionConvention(type, "witness_method");
       else
         return nullptr;
     }
+
+    if (Mangled.nextIf('h'))
+      addImplFunctionAttribute(type, "@Sendable");
+
+    if (Mangled.nextIf('H'))
+      addImplFunctionAttribute(type, "@async");
 
     // Enter a new generic context if this type is generic.
     // FIXME: replace with std::optional, when we have it.
@@ -2225,6 +2278,14 @@ private:
   void addImplFunctionAttribute(NodePointer parent, StringRef attr,
                          Node::Kind kind = Node::Kind::ImplFunctionAttribute) {
     parent->addChild(Factory.createNode(kind, attr), Factory);
+  }
+
+  void addImplFunctionConvention(NodePointer parent, StringRef attr) {
+    auto attrNode = Factory.createNode(Node::Kind::ImplFunctionConvention);
+    attrNode->addChild(
+        Factory.createNode(Node::Kind::ImplFunctionConventionName, attr),
+        Factory);
+    parent->addChild(attrNode, Factory);
   }
 
   // impl-parameter ::= impl-convention type
