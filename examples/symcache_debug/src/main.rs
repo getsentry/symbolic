@@ -11,6 +11,7 @@ use symbolic::demangle::Demangle;
 use symbolic::symcache::{SymCache, SymCacheWriter};
 use symbolic::{debuginfo::Archive, demangle::DemangleOptions};
 
+#[allow(deprecated)]
 fn execute(matches: &ArgMatches) -> Result<()> {
     let buffer;
     let symcache;

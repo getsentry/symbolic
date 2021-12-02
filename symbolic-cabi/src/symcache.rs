@@ -5,7 +5,7 @@ use std::os::raw::c_char;
 use std::slice;
 
 use symbolic::common::{ByteView, InstructionInfo, SelfCell};
-use symbolic::symcache::{format::SYMCACHE_VERSION, SymCache, SymCacheWriter};
+use symbolic::symcache::{SymCache, SymCacheWriter, SYMCACHE_VERSION};
 
 use crate::core::SymbolicStr;
 use crate::debuginfo::SymbolicObject;
@@ -130,6 +130,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns true if the symcache has line infos.
+    #[allow(deprecated)]
     unsafe fn symbolic_symcache_has_line_info(symcache: *const SymbolicSymCache) -> Result<bool> {
         Ok(SymbolicSymCache::as_rust(symcache).get().has_line_info())
     }
@@ -137,6 +138,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Returns true if the symcache has file infos.
+    #[allow(deprecated)]
     unsafe fn symbolic_symcache_has_file_info(symcache: *const SymbolicSymCache) -> Result<bool> {
         Ok(SymbolicSymCache::as_rust(symcache).get().has_file_info())
     }
@@ -151,6 +153,7 @@ ffi_fn! {
 
 ffi_fn! {
     /// Looks up a single symbol.
+    #[allow(deprecated)]
     unsafe fn symbolic_symcache_lookup(
         symcache: *const SymbolicSymCache,
         addr: u64,

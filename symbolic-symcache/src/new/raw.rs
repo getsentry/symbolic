@@ -1,8 +1,8 @@
 //! The raw SymCache binary file format internals.
 //!
-//! TODO: actually write some docs ;-)
-
 use symbolic_common::{Arch, DebugId};
+
+pub use crate::SYMCACHE_VERSION;
 
 /// The magic file preamble as individual bytes.
 const SYMCACHE_MAGIC_BYTES: [u8; 4] = *b"SYMC";
@@ -10,12 +10,9 @@ const SYMCACHE_MAGIC_BYTES: [u8; 4] = *b"SYMC";
 /// The magic file preamble to identify SymCache files.
 ///
 /// Serialized as ASCII "SYMC" on little-endian (x64) systems.
-pub const SYMCACHE_MAGIC: u32 = u32::from_be_bytes(SYMCACHE_MAGIC_BYTES);
+pub const SYMCACHE_MAGIC: u32 = u32::from_le_bytes(SYMCACHE_MAGIC_BYTES);
 /// The byte-flipped magic, which indicates an endianness mismatch.
 pub const SYMCACHE_MAGIC_FLIPPED: u32 = SYMCACHE_MAGIC.swap_bytes();
-
-/// The latest version of the file format.
-pub const SYMCACHE_VERSION: u32 = 1_000;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[repr(C)]
@@ -30,11 +27,6 @@ pub struct Header {
     /// CPU architecture of the object file.
     pub arch: Arch,
 
-    /// The offset with which all ranges have been offset in the SymCache.
-    pub range_offset: u64,
-
-    /// Number of included [`String`]s.
-    pub num_strings: u32,
     /// Number of included [`File`]s.
     pub num_files: u32,
     /// Number of included [`Function`]s.
@@ -45,6 +37,10 @@ pub struct Header {
     pub num_ranges: u32,
     /// Total number of bytes used for string data.
     pub string_bytes: u32,
+
+    /// Some reserved space in the header for future extensions that would not require a
+    /// completely new parsing method.
+    pub _reserved: [u8; 16],
 }
 
 /// Serialized Function metadata in the SymCache.
@@ -52,9 +48,9 @@ pub struct Header {
 #[repr(C)]
 pub struct Function {
     /// The functions name (reference to a [`String`]).
-    pub name_idx: u32,
+    pub name_offset: u32,
     /// The compilation directory (reference to a [`String`]).
-    pub comp_dir_idx: u32,
+    pub comp_dir_offset: u32,
     /// The first address covered by this function.
     pub entry_pc: u32,
     /// The language of the function.
@@ -66,11 +62,11 @@ pub struct Function {
 #[repr(C)]
 pub struct File {
     /// The optional compilation directory prefix (reference to a [`String`]).
-    pub comp_dir_idx: u32,
+    pub comp_dir_offset: u32,
     /// The optional directory prefix (reference to a [`String`]).
-    pub directory_idx: u32,
+    pub directory_offset: u32,
     /// The file path (reference to a [`String`]).
-    pub path_name_idx: u32,
+    pub path_name_offset: u32,
 }
 
 /// A location in a source file, comprising a file, a line, a function, and
@@ -92,16 +88,6 @@ pub struct SourceLocation {
     /// The caller source location in case this location was inlined
     /// (reference to another [`SourceLocation`]).
     pub inlined_into_idx: u32,
-}
-
-/// Serialized String in the SymCache.
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-#[repr(C)]
-pub struct String {
-    /// The offset into the `string_bytes`.
-    pub string_offset: u32,
-    /// Length of the string.
-    pub string_len: u32,
 }
 
 /// A representation of a code range in the SymCache.
@@ -132,7 +118,7 @@ mod tests {
     #[test]
     fn test_sizeof() {
         assert_eq!(mem::size_of::<Header>(), 80);
-        assert_eq!(mem::align_of::<Header>(), 8);
+        assert_eq!(mem::align_of::<Header>(), 4);
 
         assert_eq!(mem::size_of::<Function>(), 16);
         assert_eq!(mem::align_of::<Function>(), 4);
@@ -142,9 +128,6 @@ mod tests {
 
         assert_eq!(mem::size_of::<SourceLocation>(), 16);
         assert_eq!(mem::align_of::<SourceLocation>(), 4);
-
-        assert_eq!(mem::size_of::<String>(), 8);
-        assert_eq!(mem::align_of::<String>(), 4);
 
         assert_eq!(mem::size_of::<Range>(), 4);
         assert_eq!(mem::align_of::<Range>(), 4);

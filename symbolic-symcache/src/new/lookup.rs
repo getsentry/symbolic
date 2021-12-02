@@ -9,12 +9,9 @@ impl<'data> SymCache<'data> {
     /// was found for the given `addr`.
     pub fn lookup(&self, addr: u64) -> SourceLocationIter<'data, '_> {
         use std::convert::TryFrom;
-        let addr = match addr
-            .checked_sub(self.header.range_offset)
-            .and_then(|r| u32::try_from(r).ok())
-        {
-            Some(addr) => addr,
-            None => {
+        let addr = match u32::try_from(addr) {
+            Ok(addr) => addr,
+            Err(_) => {
                 return SourceLocationIter {
                     cache: self,
                     source_location_idx: u32::MAX,
@@ -37,17 +34,17 @@ impl<'data> SymCache<'data> {
     pub(crate) fn get_file(&self, file_idx: u32) -> Option<File<'data>> {
         let raw_file = self.files.get(file_idx as usize)?;
         Some(File {
-            comp_dir: self.get_string(raw_file.comp_dir_idx),
-            directory: self.get_string(raw_file.directory_idx),
-            path_name: self.get_string(raw_file.path_name_idx).unwrap(),
+            comp_dir: self.get_string(raw_file.comp_dir_offset),
+            directory: self.get_string(raw_file.directory_offset),
+            path_name: self.get_string(raw_file.path_name_offset).unwrap(),
         })
     }
 
     pub(crate) fn get_function(&self, function_idx: u32) -> Option<Function<'data>> {
         let raw_function = self.functions.get(function_idx as usize)?;
         Some(Function {
-            name: self.get_string(raw_function.name_idx),
-            comp_dir: self.get_string(raw_function.comp_dir_idx),
+            name: self.get_string(raw_function.name_offset),
+            comp_dir: self.get_string(raw_function.comp_dir_offset),
             entry_pc: raw_function.entry_pc,
             language: Language::from_u32(raw_function.lang),
         })
@@ -100,6 +97,7 @@ impl<'data> File<'data> {
     }
 
     /// Resolves and concatenates the full path based on its individual fragments.
+    #[allow(dead_code)]
     pub fn full_path(&self) -> String {
         let comp_dir = self.comp_dir().unwrap_or_default();
         let directory = self.directory().unwrap_or_default();

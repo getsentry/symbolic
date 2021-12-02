@@ -1,8 +1,7 @@
 ---
-created: "2019-05-29T08:46:28.054829Z"
-creator: insta@0.8.1
-source: symcache/tests/test_cache.rs
+source: symbolic-symcache/tests/test_cache.rs
 expression: "&line_infos"
+
 ---
 [
     LineInfo {

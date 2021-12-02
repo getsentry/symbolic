@@ -1,6 +1,93 @@
 //! The SymCache binary format.
+//! # Structure of the format
 //!
+//! A SymCache contains the following primary kinds of data:
 //!
+//! 1. address ranges
+//! 2. source locations
+//! 3. functions
+//! 4. files
+//!
+//! Additionally, the format uses `u32`s to represent line numbers, addresses, references, and string offsets.
+//! For line numbers, `0` represents an unknown or invalid value, while for addresses, references, and string offsets
+//! we use `u32::MAX`.
+//!
+//! Strings are saved in one contiguous section with each individual string prefixed by 4 bytes denoting its length.
+//! Functions and files refer to strings by an offset into this string section.
+//!
+//! ## Address ranges
+//!
+//! Ranges are saved as a contiguous list of `u32`s, representing their starting addresses.
+//!
+//! ## Source locations
+//!
+//! A source location in the format represents a possibly inlined copy
+//! of a line in a source file. It contains a line number, a reference to a file (see below),
+//! a reference to a function (ditto), and a reference to the source location into which this
+//! source location was inlined. All of these data are optional.
+//!
+//! ## Functions
+//!
+//! A function contains string offsets for its name and compilation directory,
+//! an u32 for its entry address, and a u32 representing the source language.
+//!
+//! ## Files
+//!
+//! A file contains string offsets for its file name, parent directory, and compilation directory.
+//!
+//! ## Mapping from ranges to source locations
+//!
+//! Every range in the SymCache is associated with at least one source location. As mentioned above, each source
+//! location may in turn have a reference to a source location into which it is inlined. Conceptually, each
+//! address range points to a sequence of source locations, representing a hierarchy of inlined function calls.
+//!
+//! ### Example
+//!
+//! The mapping
+//!
+//! - 0x0001 - 0x002f
+//!   - `trigger_crash` in file b.c line 12
+//!   - inlined into `main` in file a.c line 10
+//! - 0x002f - 0x004a
+//!   - `trigger_crash` in file b.c line 13
+//!   - inlined into `main` in file a.c line 10
+//!
+//! is represented like this in the SymCache (function/file names inlined for simplicity):
+//! ```text
+//! ranges: [
+//!     0x0001 -> 1
+//!     0x002f -> 2
+//! ]
+//!
+//! source_locations: [{
+//!     file: "a.c"
+//!     line: 10
+//!     function: "main"
+//!     inlined_into: u32::MAX (not inlined)
+//! }, {
+//!     file: "b.c"
+//!     line: 12
+//!     function: "trigger_crash"
+//!     inlined_into: 0 <- reference to "main"
+//! }, {
+//!     file: "b.c"
+//!     line: 13
+//!     function: "trigger_crash"
+//!     inlined_into: 0 <- reference to "main"
+//! }]
+//! ```
+//!
+//! # Lookups
+//!
+//! Looking up an address `addr` in the SymCache proceeds as follows:
+//!
+//! 1. Find the range into which `addr` falls by binary search.
+//! 2. Find the source location belonging to this range.
+//! 3. Return an iterator over [`lookup::SourceLocation`]s that starts at the source location
+//!    found in step 2 and proceeds up the inlining hierarchy.
+//!
+//! The returned source locations contain accessor methods for the function, file, and line number.
+use std::convert::TryInto;
 use std::{mem, ptr};
 
 use symbolic_common::{Arch, DebugId};
@@ -21,17 +108,31 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// The serialized SymCache binary format.
 ///
-/// This can be parsed from a binary buffer via [`Format::parse`], and lookups on it can be performed
-/// via the [`Format::lookup`] method.
-#[derive(Debug, PartialEq, Eq)]
+/// This can be parsed from a binary buffer via [`SymCache::parse`], and lookups on it can be performed
+/// via the [`SymCache::lookup`] method.
+#[derive(Clone, PartialEq, Eq)]
 pub struct SymCache<'data> {
     header: &'data raw::Header,
-    strings: &'data [raw::String],
     files: &'data [raw::File],
     functions: &'data [raw::Function],
     source_locations: &'data [raw::SourceLocation],
     ranges: &'data [raw::Range],
     string_bytes: &'data [u8],
+}
+
+impl<'data> std::fmt::Debug for SymCache<'data> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SymCache")
+            .field("version", &self.header.version)
+            .field("debug_id", &self.header.debug_id)
+            .field("arch", &self.header.arch)
+            .field("files", &self.header.num_files)
+            .field("functions", &self.header.num_functions)
+            .field("source_locations", &self.header.num_source_locations)
+            .field("ranges", &self.header.num_ranges)
+            .field("string_bytes", &self.header.string_bytes)
+            .finish()
+    }
 }
 
 impl<'data> SymCache<'data> {
@@ -62,9 +163,6 @@ impl<'data> SymCache<'data> {
             return Err(Error::WrongVersion);
         }
 
-        let mut strings_size = mem::size_of::<raw::String>() * header.num_strings as usize;
-        strings_size += align_to_eight(strings_size);
-
         let mut files_size = mem::size_of::<raw::File>() * header.num_files as usize;
         files_size += align_to_eight(files_size);
 
@@ -79,7 +177,6 @@ impl<'data> SymCache<'data> {
         ranges_size += align_to_eight(ranges_size);
 
         let expected_buf_size = header_size
-            + strings_size
             + files_size
             + functions_size
             + source_locations_size
@@ -92,8 +189,7 @@ impl<'data> SymCache<'data> {
 
         // SAFETY: we just made sure that all the pointers we are constructing via pointer
         // arithmetic are within `buf`
-        let strings_start = unsafe { buf.as_ptr().add(header_size) };
-        let files_start = unsafe { strings_start.add(strings_size) };
+        let files_start = unsafe { buf.as_ptr().add(header_size) };
         let functions_start = unsafe { files_start.add(files_size) };
         let source_locations_start = unsafe { functions_start.add(functions_size) };
         let ranges_start = unsafe { source_locations_start.add(source_locations_size) };
@@ -101,10 +197,6 @@ impl<'data> SymCache<'data> {
 
         // SAFETY: the above buffer size check also made sure we are not going out of bounds
         // here
-        let strings = unsafe {
-            &*(ptr::slice_from_raw_parts(strings_start, header.num_strings as usize)
-                as *const [raw::String])
-        };
         let files = unsafe {
             &*(ptr::slice_from_raw_parts(files_start, header.num_files as usize)
                 as *const [raw::File])
@@ -130,7 +222,6 @@ impl<'data> SymCache<'data> {
 
         Ok(SymCache {
             header,
-            strings,
             files,
             functions,
             source_locations,
@@ -140,14 +231,21 @@ impl<'data> SymCache<'data> {
     }
 
     /// Resolves a string reference to the pointed-to `&str` data.
-    fn get_string(&self, string_idx: u32) -> Option<&'data str> {
-        if string_idx == u32::MAX {
+    fn get_string(&self, offset: u32) -> Option<&'data str> {
+        if offset == u32::MAX {
             return None;
         }
-        let string = self.strings.get(string_idx as usize)?;
+        let len_offset = offset as usize;
+        let len_size = std::mem::size_of::<u32>();
+        let len = u32::from_ne_bytes(
+            self.string_bytes
+                .get(len_offset..len_offset + len_size)?
+                .try_into()
+                .unwrap(),
+        ) as usize;
 
-        let start_offset = string.string_offset as usize;
-        let end_offset = start_offset + string.string_len as usize;
+        let start_offset = len_offset + len_size;
+        let end_offset = start_offset + len;
         let bytes = self.string_bytes.get(start_offset..end_offset)?;
 
         std::str::from_utf8(bytes).ok()
