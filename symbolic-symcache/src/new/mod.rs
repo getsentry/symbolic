@@ -183,7 +183,7 @@ impl<'data> SymCache<'data> {
             + ranges_size
             + header.string_bytes as usize;
 
-        if buf.len() != expected_buf_size || source_locations_size < ranges_size {
+        if buf.len() < expected_buf_size || source_locations_size < ranges_size {
             return Err(Error::BadFormatLength);
         }
 

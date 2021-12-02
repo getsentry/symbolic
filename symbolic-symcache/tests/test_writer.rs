@@ -200,3 +200,18 @@ fn test_lookup_modulo_u16() -> Result<(), Error> {
 
     Ok(())
 }
+
+/// Tests that the cache is lenient toward adding additional flags at the end.
+#[test]
+fn test_trailing_marker() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut buffer = Vec::new();
+    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    buffer.extend(b"WITH_SYMBOLMAP");
+
+    SymCache::parse(&buffer)?;
+
+    Ok(())
+}
