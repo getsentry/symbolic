@@ -102,8 +102,8 @@ fn test_write_header_macos() -> Result<(), Error> {
         arch: Amd64,
         files: 36,
         functions: 639,
-        source_locations: 6032,
-        ranges: 4590,
+        source_locations: 6033,
+        ranges: 4591,
         string_bytes: 42829,
     }
     "###);
