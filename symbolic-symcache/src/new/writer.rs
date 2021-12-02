@@ -39,6 +39,10 @@ pub struct SymCacheConverter {
     /// by the start address of the next range.
     ranges: BTreeMap<u32, raw::SourceLocation>,
 
+    /// This is highest addr that we know is outside of a valid function.
+    /// Functions have an explicit end, while Symbols implicitly extend to infinity.
+    /// In case the highest addr belongs to a Symbol, this will be `None` and the SymCache
+    /// also extends to infinite, otherwise this is the end of the highest function.
     last_addr: Option<u32>,
 }
 
@@ -230,9 +234,9 @@ impl SymCacheConverter {
         }
 
         let function_end = function.end_address() as u32;
-        let last_end = self.last_addr.get_or_insert(0);
-        if function_end > *last_end {
-            *last_end = function_end;
+        let last_addr = self.last_addr.get_or_insert(0);
+        if function_end > *last_addr {
+            *last_addr = function_end;
         }
     }
 
@@ -272,7 +276,7 @@ impl SymCacheConverter {
         }
 
         let last_addr = self.last_addr.get_or_insert(0);
-        if symbol.address as u32 > *last_addr {
+        if symbol.address as u32 >= *last_addr {
             self.last_addr = None;
         }
     }
@@ -288,7 +292,17 @@ impl SymCacheConverter {
 
         // Insert a trailing sentinel source location in case we have a definite end addr
         if let Some(last_addr) = self.last_addr {
-            self.ranges.insert(last_addr, raw::NO_SOURCE_LOCATION);
+            // TODO: to be extra safe, we might check that `last_addr` is indeed larger than
+            // the largest range at some point.
+            match self.ranges.entry(last_addr) {
+                btree_map::Entry::Vacant(entry) => {
+                    entry.insert(raw::NO_SOURCE_LOCATION);
+                }
+                btree_map::Entry::Occupied(_entry) => {
+                    // BUG:
+                    // the last addr should not map to an already defined range
+                }
+            }
         }
 
         let num_files = self.files.len() as u32;
