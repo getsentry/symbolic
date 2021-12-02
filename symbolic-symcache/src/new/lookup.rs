@@ -20,11 +20,18 @@ impl<'data> SymCache<'data> {
         };
 
         let source_location_start = (self.source_locations.len() - self.ranges.len()) as u32;
-        let source_location_idx = match self.ranges.binary_search_by_key(&addr, |r| r.0) {
+        let mut source_location_idx = match self.ranges.binary_search_by_key(&addr, |r| r.0) {
             Ok(idx) => source_location_start + idx as u32,
             Err(idx) if idx == 0 => u32::MAX,
             Err(idx) => source_location_start + idx as u32 - 1,
         };
+
+        if let Some(source_location) = self.source_locations.get(source_location_idx as usize) {
+            if *source_location == raw::NO_SOURCE_LOCATION {
+                source_location_idx = u32::MAX;
+            }
+        }
+
         SourceLocationIter {
             cache: self,
             source_location_idx,
