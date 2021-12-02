@@ -863,10 +863,11 @@ private:
     if (isSendable)
       Printer << "@Sendable ";
 
-    printFunctionParameters(LabelList, node->getChild(startIndex),
-                            Options.ShowFunctionArgumentTypes);
+    if (Options.ShowFunctionArgumentTypes) {
+      printFunctionParameters(LabelList, node->getChild(startIndex), true);
+    }
 
-    if (!Options.ShowFunctionArgumentTypes)
+    if (!Options.ShowFunctionReturnType)
       return;
 
     if (isAsync)
