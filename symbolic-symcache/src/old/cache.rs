@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use std::fmt;
 
 use symbolic_common::{Arch, AsSelf, DebugId, Language, Name, NameMangling};
@@ -9,7 +11,7 @@ use crate::SymCacheError;
 ///
 /// Use [`SymCacheWriter`](super::writer::SymCacheWriter) writer to create SymCaches,
 /// including the conversion from object files.
-pub struct SymCache<'a> {
+pub(crate) struct SymCache<'a> {
     header: format::Header,
     data: &'a [u8],
 }
@@ -36,11 +38,6 @@ impl<'a> SymCache<'a> {
     /// The version of the SymCache file format.
     pub fn version(&self) -> u32 {
         self.header.preamble.version
-    }
-
-    /// Returns whether this cache is up-to-date.
-    pub fn is_latest(&self) -> bool {
-        self.version() == format::SYMCACHE_VERSION
     }
 
     /// The architecture of the symbol file.
@@ -325,6 +322,7 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
 impl fmt::Debug for SymCache<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SymCache")
+            .field("version", &self.version())
             .field("debug_id", &self.debug_id())
             .field("arch", &self.arch())
             .field("has_line_info", &self.has_line_info())
@@ -336,7 +334,7 @@ impl fmt::Debug for SymCache<'_> {
 
 /// An iterator over line matches for an address lookup.
 #[derive(Clone)]
-pub struct Lookup<'a, 'c> {
+pub(crate) struct Lookup<'a, 'c> {
     cache: &'c SymCache<'a>,
     funcs: &'a [format::FuncRecord],
     current: Option<(u64, usize, &'a format::FuncRecord)>,
@@ -351,14 +349,6 @@ impl<'a, 'c> Lookup<'a, 'c> {
             current: None,
             inner: None,
         }
-    }
-
-    /// Collects all line matches into a collection.
-    pub fn collect<B>(self) -> Result<B, SymCacheError>
-    where
-        B: std::iter::FromIterator<LineInfo<'a>>,
-    {
-        Iterator::collect(self)
     }
 }
 
@@ -376,7 +366,7 @@ impl<'a, 'c> Iterator for Lookup<'a, 'c> {
         if let Ok(ref line_info) = line_result {
             self.inner = Some((
                 line_info.line(),
-                line_info.line_address(),
+                line_info.line_addr,
                 line_info.filename(),
                 line_info.compilation_dir(),
             ));
@@ -406,26 +396,28 @@ impl fmt::Debug for Lookup<'_, '_> {
 /// Information on a matched source line.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LineInfo<'a> {
-    arch: Arch,
-    debug_id: DebugId,
-    sym_addr: u64,
-    line_addr: u64,
-    instr_addr: u64,
-    line: u32,
-    lang: Language,
-    symbol: Option<&'a str>,
-    filename: &'a str,
-    base_dir: &'a str,
-    comp_dir: &'a str,
+    pub(crate) arch: Arch,
+    pub(crate) debug_id: DebugId,
+    pub(crate) sym_addr: u64,
+    pub(crate) line_addr: u64,
+    pub(crate) instr_addr: u64,
+    pub(crate) line: u32,
+    pub(crate) lang: Language,
+    pub(crate) symbol: Option<&'a str>,
+    pub(crate) filename: &'a str,
+    pub(crate) base_dir: &'a str,
+    pub(crate) comp_dir: &'a str,
 }
 
 impl<'a> LineInfo<'a> {
     /// Architecture of the image referenced by this line.
+    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
     pub fn arch(&self) -> Arch {
         self.arch
     }
 
     /// Debug identifier of the image referenced by this line.
+    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
     pub fn debug_id(&self) -> DebugId {
         self.debug_id
     }
@@ -436,11 +428,13 @@ impl<'a> LineInfo<'a> {
     }
 
     /// The instruction address where the line starts.
+    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
     pub fn line_address(&self) -> u64 {
         self.line_addr
     }
 
     /// The actual instruction address.
+    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
     pub fn instruction_address(&self) -> u64 {
         self.instr_addr
     }
@@ -522,7 +516,7 @@ impl fmt::Display for LineInfo<'_> {
 
 /// An iterator over all functions in a `SymCache`.
 #[derive(Clone, Debug)]
-pub struct Functions<'a> {
+pub(crate) struct Functions<'a> {
     functions: format::Seg<format::FuncRecord>,
     symbols: format::Seg<format::Seg<u8, u16>>,
     files: format::Seg<format::FileRecord, u16>,
@@ -557,7 +551,7 @@ impl<'a> Iterator for Functions<'a> {
 ///
 /// This can be an actual function, an inlined function, or a public symbol.
 #[derive(Clone)]
-pub struct Function<'a> {
+pub(crate) struct Function<'a> {
     record: &'a format::FuncRecord,
     symbols: format::Seg<format::Seg<u8, u16>>,
     files: format::Seg<format::FileRecord, u16>,
@@ -653,7 +647,7 @@ impl fmt::Debug for Function<'_> {
 
 /// An iterator over lines of a SymCache function.
 #[derive(Clone)]
-pub struct Lines<'a> {
+pub(crate) struct Lines<'a> {
     lines: format::Seg<format::LineRecord, u16>,
     files: format::Seg<format::FileRecord, u16>,
     data: &'a [u8],

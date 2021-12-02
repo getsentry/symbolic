@@ -11,13 +11,27 @@ type Error = Box<dyn std::error::Error>;
 /// Helper to create neat snapshots for symbol tables.
 struct FunctionsDebug<'a>(&'a SymCache<'a>);
 
+#[allow(deprecated)]
 impl fmt::Debug for FunctionsDebug<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for result in self.0.functions() {
-            match result {
-                Ok(function) => writeln!(f, "{:>16x} {}", &function.address(), &function.name())?,
-                Err(error) => writeln!(f, "{:?}", error)?,
-            }
+        let mut vec: Vec<_> = self
+            .0
+            .functions()
+            .filter_map(|f| match f {
+                Ok(f) => {
+                    if f.address() != u32::MAX as u64 {
+                        Some(f)
+                    } else {
+                        None
+                    }
+                }
+                Err(_) => None,
+            })
+            .collect();
+
+        vec.sort_by_key(|f| f.address());
+        for function in vec {
+            writeln!(f, "{:>16x} {}", &function.address(), &function.name())?;
         }
 
         Ok(())
@@ -31,17 +45,26 @@ fn test_write_header_linux() -> Result<(), Error> {
 
     let mut buffer = Vec::new();
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+
+    #[cfg(target_endian = "little")]
+    {
+        assert!(buffer.starts_with(b"SYMC"));
+    }
+
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!(symcache, @r###"
     SymCache {
+        version: 7,
         debug_id: DebugId {
             uuid: "c0bcc3f1-9827-fe65-3058-404b2831d9e6",
             appendix: 0,
         },
         arch: Amd64,
-        has_line_info: true,
-        has_file_info: true,
-        functions: 1838,
+        files: 55,
+        functions: 697,
+        source_locations: 8236,
+        ranges: 6762,
+        string_bytes: 52180,
     }
     "###);
 
@@ -70,16 +93,19 @@ fn test_write_header_macos() -> Result<(), Error> {
     SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!(symcache, @r###"
-   ⋮SymCache {
-   ⋮    debug_id: DebugId {
-   ⋮        uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
-   ⋮        appendix: 0,
-   ⋮    },
-   ⋮    arch: Amd64,
-   ⋮    has_line_info: true,
-   ⋮    has_file_info: true,
-   ⋮    functions: 1863,
-   ⋮}
+    SymCache {
+        version: 7,
+        debug_id: DebugId {
+            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
+            appendix: 0,
+        },
+        arch: Amd64,
+        files: 36,
+        functions: 639,
+        source_locations: 6032,
+        ranges: 4590,
+        string_bytes: 42829,
+    }
     "###);
 
     Ok(())
