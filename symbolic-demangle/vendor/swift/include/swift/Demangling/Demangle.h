@@ -23,7 +23,6 @@
 #include <string>
 #include <cassert>
 #include <cstdint>
-#include <climits>
 #include "llvm/ADT/StringRef.h"
 #include "swift/Runtime/Config.h"
 #include "swift/Demangling/NamespaceMacros.h"
