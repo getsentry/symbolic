@@ -1,27 +1,22 @@
-From 0506eeca0be80c052dbd004863363f68d4b0b726 Mon Sep 17 00:00:00 2001
-From: Arpad Borsos <arpad.borsos@googlemail.com>
-Date: Mon, 19 Oct 2020 14:05:45 +0200
-Subject: [PATCH] feat(demangle): Add option to skip Swift function return
- types
+commit 43fca7dd2617ac93f338b5257a2e57c43dcb8154
+Author: Sebastian Zivota <loewenheim@mailbox.org>
+Date:   Thu Dec 2 16:15:35 2021 +0100
 
----
- .../vendor/swift/include/swift/Demangling/Demangle.h       | 2 ++
- .../vendor/swift/lib/Demangling/NodePrinter.cpp            | 7 ++++---
- 2 files changed, 6 insertions(+), 3 deletions(-)
+    Apply patch
 
 diff --git a/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h b/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
-index ce3a4b5..060c673 100644
+index db32dbd..f48e1c2 100644
 --- a/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
 +++ b/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
-@@ -57,6 +57,7 @@ struct DemangleOptions {
+@@ -59,6 +59,7 @@ struct DemangleOptions {
    bool ShortenArchetype = false;
    bool ShowPrivateDiscriminators = true;
    bool ShowFunctionArgumentTypes = true;
 +  bool ShowFunctionReturnType = true;
-   std::function<std::string(uint64_t, uint64_t)> GenericParameterName =
-       genericParameterName;
-
-@@ -79,6 +80,7 @@ struct DemangleOptions {
+   bool DisplayDebuggerGeneratedModule = true;
+   bool DisplayStdlibModule = true;
+   bool DisplayObjCModule = true;
+@@ -90,6 +91,7 @@ struct DemangleOptions {
      Opt.ShortenArchetype = true;
      Opt.ShowPrivateDiscriminators = false;
      Opt.ShowFunctionArgumentTypes = false;
@@ -30,24 +25,21 @@ index ce3a4b5..060c673 100644
    };
  };
 diff --git a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-index 1e39291..87ad052 100644
+index 2a9c0dc..34fa785 100644
 --- a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
 +++ b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-@@ -742,10 +742,11 @@ private:
-     if (node->getChild(0)->getKind() == Node::Kind::ThrowsAnnotation)
-       startIndex = 1;
-
+@@ -863,10 +863,11 @@ private:
+     if (isSendable)
+       Printer << "@Sendable ";
+ 
 -    printFunctionParameters(LabelList, node->getChild(startIndex),
 -                            Options.ShowFunctionArgumentTypes);
 +    if (Options.ShowFunctionArgumentTypes) {
 +      printFunctionParameters(LabelList, node->getChild(startIndex), true);
 +    }
-
+ 
 -    if (!Options.ShowFunctionArgumentTypes)
 +    if (!Options.ShowFunctionReturnType)
        return;
-
-     if (startIndex == 1)
---
-2.22.0.windows.1
-
+ 
+     if (isAsync)
