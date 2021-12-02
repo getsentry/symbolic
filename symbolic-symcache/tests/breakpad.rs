@@ -119,12 +119,8 @@ PUBLIC d00 0 public_record"#;
         .collect();
     assert_eq!(lookup_result[0].symbol(), "func_record_with_end");
 
-    let lookup_result: Vec<_> = symcache
-        .lookup(0xd99)
-        .unwrap()
-        .filter_map(Result::ok)
-        .collect();
-    assert!(lookup_result.is_empty());
+    let mut lookup_result = symcache.lookup(0xd99).unwrap().filter_map(Result::ok);
+    assert!(lookup_result.next().is_none());
 
     // The last addr belongs to a public record which implicitly extends to infinity
     let buffer = br#"MODULE mac x86_64 67E9247C814E392BA027DBDE6748FCBF0 crash
