@@ -3,7 +3,7 @@
 This folder contains a vendored subset of the [Swift Programming Language]. The Swift library is
 reduced to the demangler only to reduce the size of this package.
 
-The current version is **Swift 5.3**.
+The current version is **Swift 5.5.1**.
 
 ## Sentry Modifications
 
@@ -27,11 +27,11 @@ patch is maintained in `1-arguments.patch`.
       ```
    4. Check out the release branch of the latest release:
       ```
-      $ git checkout swift-5.3-RELEASE
+      $ cd swift
+      $ git checkout swift-5.5.1-RELEASE
       ```
    5. Build the complete swift project (be very patient, this may take long):
       ```
-      $ cd swift
       $ ./utils/build-script --skip-build
       ```
 2. **Copy updated sources and headers from the checkout to this library:**

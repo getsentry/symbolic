@@ -30,6 +30,10 @@
 #define __has_builtin(builtin) 0
 #endif
 
+#if !defined(__has_cpp_attribute)
+#define __has_cpp_attribute(attribute) 0
+#endif
+
 #if __has_feature(nullability)
 // Provide macros to temporarily suppress warning about the use of
 // _Nullable and _Nonnull.
@@ -47,6 +51,12 @@
 # define SWIFT_BEGIN_NULLABILITY_ANNOTATIONS
 # define SWIFT_END_NULLABILITY_ANNOTATIONS
 #endif
+
+#define SWIFT_MACRO_CONCAT(A, B) A ## B
+#define SWIFT_MACRO_IF_0(IF_TRUE, IF_FALSE) IF_FALSE
+#define SWIFT_MACRO_IF_1(IF_TRUE, IF_FALSE) IF_TRUE
+#define SWIFT_MACRO_IF(COND, IF_TRUE, IF_FALSE) \
+  SWIFT_MACRO_CONCAT(SWIFT_MACRO_IF_, COND)(IF_TRUE, IF_FALSE)
 
 #if __has_attribute(pure)
 #define SWIFT_READONLY __attribute__((__pure__))
@@ -66,68 +76,152 @@
 #define SWIFT_ALWAYS_INLINE
 #endif
 
+#if __has_attribute(noinline)
+#define SWIFT_NOINLINE __attribute__((__noinline__))
+#else
+#define SWIFT_NOINLINE
+#endif
+
+#if __has_attribute(noreturn)
+#define SWIFT_NORETURN __attribute__((__noreturn__))
+#else
+#define SWIFT_NORETURN
+#endif
+
+#if __has_attribute(used)
+#define SWIFT_USED __attribute__((__used__))
+#else
+#define SWIFT_USED
+#endif
+
 #if __has_attribute(unavailable)
 #define SWIFT_ATTRIBUTE_UNAVAILABLE __attribute__((__unavailable__))
 #else
 #define SWIFT_ATTRIBUTE_UNAVAILABLE
 #endif
 
-// TODO: support using shims headers in overlays by parameterizing
-// SWIFT_RUNTIME_EXPORT on the library it's exported from.
-
-/// Attribute used to export symbols from the runtime.
+// Define the appropriate attributes for sharing symbols across
+// image (executable / shared-library) boundaries.
+//
+// SWIFT_ATTRIBUTE_FOR_EXPORTS will be placed on declarations that
+// are known to be exported from the current image.  Typically, they
+// are placed on header declarations and then inherited by the actual
+// definitions.
+//
+// SWIFT_ATTRIBUTE_FOR_IMPORTS will be placed on declarations that
+// are known to be exported from a different image.  This never
+// includes a definition.
+//
+// Getting the right attribute on a declaratioon can be pretty awkward,
+// but it's necessary under the C translation model.  All of this
+// ceremony is familiar to Windows programmers; C/C++ programmers
+// everywhere else usually don't bother, but since we have to get it
+// right for Windows, we have everything set up to get it right on
+// other targets as well, and doing so lets the compiler use more
+// efficient symbol access patterns.
 #if defined(__MACH__) || defined(__wasi__)
 
-# define SWIFT_EXPORT_ATTRIBUTE __attribute__((__visibility__("default")))
+// On Mach-O and WebAssembly, we use non-hidden visibility.  We just use
+// default visibility on both imports and exports, both because these
+// targets don't support protected visibility but because they don't
+// need it: symbols are not interposable outside the current image
+// by default.
+# define SWIFT_ATTRIBUTE_FOR_EXPORTS __attribute__((__visibility__("default")))
+# define SWIFT_ATTRIBUTE_FOR_IMPORTS __attribute__((__visibility__("default")))
 
 #elif defined(__ELF__)
 
-// We make assumptions that the runtime and standard library can refer to each
-// other's symbols as DSO-local, which means we can't allow the dynamic linker
-// to relocate these symbols. We must give them protected visibility while
-// building the standard library and runtime.
-# if defined(swiftCore_EXPORTS)
-#  define SWIFT_EXPORT_ATTRIBUTE __attribute__((__visibility__("protected")))
-# else
-#  define SWIFT_EXPORT_ATTRIBUTE __attribute__((__visibility__("default")))
-# endif
+// On ELF, we use non-hidden visibility.  For exports, we must use
+// protected visibility to tell the compiler and linker that the symbols
+// can't be interposed outside the current image.  For imports, we must
+// use default visibility because protected visibility guarantees that
+// the symbol is defined in the current library, which isn't true for
+// an import.
+//
+// The compiler does assume that the runtime and standard library can
+// refer to each other's symbols as DSO-local, so it's important that
+// we get this right or we can get linker errors.
+# define SWIFT_ATTRIBUTE_FOR_EXPORTS __attribute__((__visibility__("protected")))
+# define SWIFT_ATTRIBUTE_FOR_IMPORTS __attribute__((__visibility__("default")))
+
+#elif defined(__CYGWIN__)
+
+// For now, we ignore all this on Cygwin.
+# define SWIFT_ATTRIBUTE_FOR_EXPORTS
+# define SWIFT_ATTRIBUTE_FOR_IMPORTS
 
 // FIXME: this #else should be some sort of #elif Windows
 #else // !__MACH__ && !__ELF__
 
-# if defined(__CYGWIN__)
-#  define SWIFT_EXPORT_ATTRIBUTE
-# else
-
-#  if defined(swiftCore_EXPORTS)
-#   define SWIFT_EXPORT_ATTRIBUTE __declspec(dllexport)
-#  else
-#   define SWIFT_EXPORT_ATTRIBUTE __declspec(dllimport)
-#  endif
-
-# endif
+// On PE/COFF, we use dllimport and dllexport.
+# define SWIFT_ATTRIBUTE_FOR_EXPORTS __declspec(dllexport)
+# define SWIFT_ATTRIBUTE_FOR_IMPORTS __declspec(dllimport)
 
 #endif
 
-#if defined(__cplusplus)
-#define SWIFT_RUNTIME_EXPORT extern "C" SWIFT_EXPORT_ATTRIBUTE
+// CMake conventionally passes -DlibraryName_EXPORTS when building
+// code that goes into libraryName.  This isn't the best macro name,
+// but it's conventional.  We do have to pass it explicitly in a few
+// places in the build system for a variety of reasons.
+//
+// Unfortunately, defined(D) is a special function you can use in
+// preprocessor conditions, not a macro you can use anywhere, so we
+// need to manually check for all the libraries we know about so that
+// we can use them in our condition below.s
+#if defined(swiftCore_EXPORTS)
+#define SWIFT_IMAGE_EXPORTS_swiftCore 1
 #else
-#define SWIFT_RUNTIME_EXPORT SWIFT_EXPORT_ATTRIBUTE
+#define SWIFT_IMAGE_EXPORTS_swiftCore 0
+#endif
+#if defined(swift_Concurrency_EXPORTS)
+#define SWIFT_IMAGE_EXPORTS_swift_Concurrency 1
+#else
+#define SWIFT_IMAGE_EXPORTS_swift_Concurrency 0
+#endif
+#if defined(swift_Differentiation_EXPORTS)
+#define SWIFT_IMAGE_EXPORTS_swift_Differentiation 1
+#else
+#define SWIFT_IMAGE_EXPORTS_swift_Differentiation 0
 #endif
 
+#define SWIFT_EXPORT_FROM_ATTRIBUTE(LIBRARY)                          \
+  SWIFT_MACRO_IF(SWIFT_IMAGE_EXPORTS_##LIBRARY,                       \
+                 SWIFT_ATTRIBUTE_FOR_EXPORTS,                         \
+                 SWIFT_ATTRIBUTE_FOR_IMPORTS)
 
-#ifndef SWIFT_GNUC_PREREQ
-# if defined(__GNUC__) && defined(__GNUC_MINOR__) && defined(__GNUC_PATCHLEVEL__)
-#  define SWIFT_GNUC_PREREQ(maj, min, patch) \
-    ((__GNUC__ << 20) + (__GNUC_MINOR__ << 10) + __GNUC_PATCHLEVEL__ >= \
-     ((maj) << 20) + ((min) << 10) + (patch))
-# elif defined(__GNUC__) && defined(__GNUC_MINOR__)
-#  define SWIFT_GNUC_PREREQ(maj, min, patch) \
-    ((__GNUC__ << 20) + (__GNUC_MINOR__ << 10) >= ((maj) << 20) + ((min) << 10))
-# else
-#  define SWIFT_GNUC_PREREQ(maj, min, patch) 0
-# endif
+// SWIFT_EXPORT_FROM(LIBRARY) declares something to be a C-linkage
+// entity exported by the given library.
+//
+// SWIFT_RUNTIME_EXPORT is just SWIFT_EXPORT_FROM(swiftCore).
+//
+// TODO: use this in shims headers in overlays.
+#if defined(__cplusplus)
+#define SWIFT_EXPORT_FROM(LIBRARY) extern "C" SWIFT_EXPORT_FROM_ATTRIBUTE(LIBRARY)
+#else
+#define SWIFT_EXPORT_FROM(LIBRARY) SWIFT_EXPORT_FROM_ATTRIBUTE(LIBRARY)
 #endif
+#define SWIFT_RUNTIME_EXPORT SWIFT_EXPORT_FROM(swiftCore)
+
+#if __cplusplus > 201402l && __has_cpp_attribute(fallthrough)
+#define SWIFT_FALLTHROUGH [[fallthrough]]
+#elif __has_cpp_attribute(gnu::fallthrough)
+#define SWIFT_FALLTHROUGH [[gnu::fallthrough]]
+#elif __has_cpp_attribute(clang::fallthrough)
+#define SWIFT_FALLTHROUGH [[clang::fallthrough]]
+#elif __has_attribute(fallthrough)
+#define SWIFT_FALLTHROUGH __attribute__((__fallthrough__))
+#else
+#define SWIFT_FALLTHROUGH
+#endif
+
+#if __cplusplus >= 201402l && __has_cpp_attribute(nodiscard)
+#define SWIFT_NODISCARD [[nodiscard]]
+#elif __has_cpp_attribute(clang::warn_unused_result)
+#define SWIFT_NODISCARD [[clang::warn_unused_result]]
+#else
+#define SWIFT_NODISCARD
+#endif
+
 
 /// Attributes for runtime-stdlib interfaces.
 /// Use these for C implementations that are imported into Swift via SwiftShims
@@ -151,9 +245,8 @@
 
 // Match the definition of LLVM_LIBRARY_VISIBILITY from LLVM's
 // Compiler.h. That header requires C++ and this needs to work in C.
-#if (__has_attribute(visibility) || SWIFT_GNUC_PREREQ(4, 0, 0)) &&              \
-    !defined(__MINGW32__) && !defined(__CYGWIN__) && !defined(_WIN32)
-#define SWIFT_LIBRARY_VISIBILITY __attribute__ ((visibility("hidden")))
+#if __has_attribute(visibility) && (defined(__ELF__) || defined(__MACH__))
+#define SWIFT_LIBRARY_VISIBILITY __attribute__ ((__visibility__("hidden")))
 #else
 #define SWIFT_LIBRARY_VISIBILITY
 #endif

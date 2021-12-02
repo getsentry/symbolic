@@ -14,10 +14,12 @@
 #define SWIFT_DEMANGLING_MANGLINGUTILS_H
 
 #include "llvm/ADT/StringRef.h"
+#include "swift/Demangling/NamespaceMacros.h"
 #include "swift/Demangling/Punycode.h"
 
 namespace swift {
 namespace Mangle {
+SWIFT_BEGIN_INLINE_NAMESPACE
 
 using llvm::StringRef;
 
@@ -97,7 +99,7 @@ char translateOperatorChar(char op);
 std::string translateOperator(StringRef Op);
 
 /// Returns the standard type kind for an 'S' substitution, e.g. 'i' for "Int".
-char getStandardTypeSubst(StringRef TypeName);
+llvm::Optional<StringRef> getStandardTypeSubst(StringRef TypeName);
 
 /// Mangles an identifier using a generic Mangler class.
 ///
@@ -190,9 +192,8 @@ void mangleIdentifier(Mangler &M, StringRef ident) {
       // Mangle the sub-string up to the next word substitution (or to the end
       // of the identifier - that's why we added the dummy-word).
       // The first thing: we add the encoded sub-string length.
+      bool first = true;
       M.Buffer << (Repl.StringPos - Pos);
-      assert(!isDigit(ident[Pos]) &&
-             "first char of sub-string may not be a digit");
       do {
         // Update the start position of new added words, so that they refer to
         // the begin of the whole mangled Buffer.
@@ -201,9 +202,16 @@ void mangleIdentifier(Mangler &M, StringRef ident) {
           M.Words[WordsInBuffer].start = M.getBufferStr().size();
           WordsInBuffer++;
         }
+        // Error recovery. We sometimes need to mangle identifiers coming
+        // from invalid code.
+        if (first && isDigit(ident[Pos]))
+          M.Buffer << 'X';
         // Add a literal character of the sub-string.
-        M.Buffer << ident[Pos];
+        else
+          M.Buffer << ident[Pos];
+
         Pos++;
+        first = false;
       } while (Pos < Repl.StringPos);
     }
     // Is it a "real" word substitution (and not the dummy-word)?
@@ -266,8 +274,9 @@ public:
   /// *) getBufferStr(): Returns a StringRef of the current content of Buffer.
   /// *) resetBuffer(size_t): Resets the buffer to an old position.
   template <typename Mangler>
-  bool tryMergeSubst(Mangler &M, char Subst, bool isStandardSubst) {
-    assert(isUpperLetter(Subst) || (isStandardSubst && isLowerLetter(Subst)));
+  bool tryMergeSubst(Mangler &M, StringRef Subst, bool isStandardSubst) {
+    assert(isUpperLetter(Subst.back()) ||
+           (isStandardSubst && isLowerLetter(Subst.back())));
     StringRef BufferStr = M.getBufferStr();
     if (lastNumSubsts > 0 && lastNumSubsts < MaxRepeatCount
         && BufferStr.size() == lastSubstPosition + lastSubstSize
@@ -276,17 +285,20 @@ public:
       // The last mangled thing is a substitution.
       assert(lastSubstPosition > 0 && lastSubstPosition < BufferStr.size());
       assert(lastSubstSize > 0);
-      char lastSubst = BufferStr.back();
-      assert(isUpperLetter(lastSubst)
-             || (isStandardSubst && isLowerLetter(lastSubst)));
+      StringRef lastSubst = BufferStr.take_back(lastSubstSize)
+            .drop_while([](char c) {
+        return isDigit(c);
+      });
+      assert(isUpperLetter(lastSubst.back())
+             || (isStandardSubst && isLowerLetter(lastSubst.back())));
       if (lastSubst != Subst && !isStandardSubst) {
         // We can merge with a different 'A' substitution,
         // e.g. 'AB' -> 'AbC'.
         lastSubstPosition = BufferStr.size();
         lastNumSubsts = 1;
         M.resetBuffer(BufferStr.size() - 1);
-        assert(isUpperLetter(lastSubst));
-        M.Buffer << (char)(lastSubst - 'A' + 'a') << Subst;
+        assert(isUpperLetter(lastSubst.back()));
+        M.Buffer << (char)(lastSubst.back() - 'A' + 'a') << Subst;
         lastSubstSize = 1;
         return true;
       }
@@ -304,13 +316,14 @@ public:
     // We can't merge with the previous substitution, but let's remember this
     // substitution which will be mangled by the caller.
     lastSubstPosition = BufferStr.size() + 1;
-    lastSubstSize = 1;
+    lastSubstSize = Subst.size();
     lastNumSubsts = 1;
     lastSubstIsStandardSubst = isStandardSubst;
     return false;
   }
 };
 
+SWIFT_END_INLINE_NAMESPACE
 } // end namespace Mangle
 } // end namespace swift
 

@@ -25,6 +25,7 @@
 #include <cstdint>
 #include "llvm/ADT/StringRef.h"
 #include "swift/Runtime/Config.h"
+#include "swift/Demangling/NamespaceMacros.h"
 
 namespace llvm {
   class raw_ostream;
@@ -32,6 +33,7 @@ namespace llvm {
 
 namespace swift {
 namespace Demangle {
+SWIFT_BEGIN_INLINE_NAMESPACE
 
 enum class SymbolicReferenceKind : uint8_t;
 
@@ -42,7 +44,6 @@ std::string genericParameterName(uint64_t depth, uint64_t index);
 /// Display style options for the demangler.
 struct DemangleOptions {
   bool SynthesizeSugarOnTypes = false;
-  bool DisplayDebuggerGeneratedModule = true;
   bool QualifyEntities = true;
   bool DisplayExtensionContexts = true;
   bool DisplayUnmangledSuffix = true;
@@ -51,6 +52,7 @@ struct DemangleOptions {
   bool DisplayProtocolConformances = true;
   bool DisplayWhereClauses = true;
   bool DisplayEntityTypes = true;
+  bool DisplayLocalNameContexts = true;
   bool ShortenPartialApply = false;
   bool ShortenThunk = false;
   bool ShortenValueWitness = false;
@@ -58,6 +60,15 @@ struct DemangleOptions {
   bool ShowPrivateDiscriminators = true;
   bool ShowFunctionArgumentTypes = true;
   bool ShowFunctionReturnType = true;
+  bool DisplayDebuggerGeneratedModule = true;
+  bool DisplayStdlibModule = true;
+  bool DisplayObjCModule = true;
+  bool PrintForTypeName = false;
+  bool ShowAsyncResumePartial = true;
+
+  /// If this is nonempty, entities in this module name will not be qualified.
+  llvm::StringRef HidingCurrentModule;
+  /// A function to render generic parameter names.
   std::function<std::string(uint64_t, uint64_t)> GenericParameterName =
       genericParameterName;
 
@@ -107,6 +118,21 @@ enum class FunctionSigSpecializationParamKind : unsigned {
   SROA = 1 << 8,
   GuaranteedToOwned = 1 << 9,
   ExistentialToGeneric = 1 << 10,
+};
+
+enum class AutoDiffFunctionKind : char {
+  JVP = 'f',
+  VJP = 'r',
+  Differential = 'd',
+  Pullback = 'p',
+};
+
+enum class MangledDifferentiabilityKind : char {
+  NonDifferentiable = 0,
+  Forward = 'f',
+  Reverse = 'r',
+  Normal = 'd',
+  Linear = 'l',
 };
 
 /// The pass that caused the specialization to occur. We use this to make sure
@@ -617,6 +643,7 @@ bool isFunctionAttr(Node::Kind kind);
 /// contain symbolic references.
 llvm::StringRef makeSymbolicMangledNameStringRef(const char *base);
 
+SWIFT_END_INLINE_NAMESPACE
 } // end namespace Demangle
 } // end namespace swift
 
