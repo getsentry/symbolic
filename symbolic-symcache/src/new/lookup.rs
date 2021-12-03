@@ -43,7 +43,9 @@ impl<'data> SymCache<'data> {
         Some(File {
             comp_dir: self.get_string(raw_file.comp_dir_offset),
             directory: self.get_string(raw_file.directory_offset),
-            path_name: self.get_string(raw_file.path_name_offset).unwrap(),
+            path_name: self
+                .get_string(raw_file.path_name_offset)
+                .unwrap_or_default(),
         })
     }
 
