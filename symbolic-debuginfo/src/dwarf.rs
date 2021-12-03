@@ -792,14 +792,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 continue;
             }
 
-            // We have a non-inlined function which has two ranges or more, probably split because
-            // of cold paths.
-            if !inline && range_buf.len() != 1 {
-                // TODO: Emit one function record per range, instead of skipping this function. This
-                // also applies to PDB, where this is more common with LTO enabled.
-                skipped_depth = Some(depth);
-                continue;
-            }
+            // In WASM files emitted by emscripted, we have observed a variety of broken ranges.
+            // One of these cases also involves ranges which are not being sorted, resulting in
+            // arithmetic underflow calculating `function_size` (in debug builds). Sorting the ranges
+            // should avoid this problem.
+            range_buf.sort_by_key(|r| r.begin);
 
             // In WASM files emitted by emscripted, we have observed a variety of broken ranges.
             // One of these cases also involves ranges which are not being sorted, resulting in

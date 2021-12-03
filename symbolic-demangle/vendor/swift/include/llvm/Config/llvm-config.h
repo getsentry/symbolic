@@ -72,7 +72,7 @@
 #define LLVM_VERSION_PATCH 0
 
 /* LLVM version string */
-#define LLVM_VERSION_STRING "10.0.0"
+#define LLVM_VERSION_STRING "10.0.0git"
 
 /* Whether LLVM records statistics for use with GetStatistics(),
  * PrintStatistics() or PrintStatisticsJSON()
@@ -84,5 +84,17 @@
 
 /* Define if LLVM was built with a dependency to the libtensorflow dynamic library */
 /* #undef LLVM_HAVE_TF_API */
+
+/* Define if LLVM was built with a dependency to the tensorflow compiler */
+/* #undef LLVM_HAVE_TF_AOT */
+
+/* Define to 1 if you have the <sysexits.h> header file. */
+#define HAVE_SYSEXITS_H 1
+
+/* Define to 1 to enable the experimental new pass manager by default */
+#define LLVM_ENABLE_NEW_PASS_MANAGER 1
+
+/* Define if the xar_open() function is supported on this platform. */
+#define LLVM_HAVE_LIBXAR 1
 
 #endif

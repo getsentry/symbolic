@@ -19,6 +19,7 @@
 #ifndef SWIFT_OWNERSHIP_H
 #define SWIFT_OWNERSHIP_H
 
+#include "limits.h"
 #include "swift/Basic/InlineBitfield.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Compiler.h"
