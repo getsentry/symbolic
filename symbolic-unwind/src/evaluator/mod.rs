@@ -162,13 +162,11 @@ impl<'memory, A: RegisterValue, E: Endianness> Evaluator<'memory, A, E> {
                     BinOp::Align => e1.checked_div(&e2).and_then(|n| n.checked_mul(&e2)),
                 };
 
-                result.ok_or_else(|| {
-                    EvaluationError(EvaluationErrorInner::IllegalOperation {
-                        left: e1,
-                        right: e2,
-                        op: *op,
-                    })
-                })
+                result.ok_or(EvaluationError(EvaluationErrorInner::IllegalOperation {
+                    left: e1,
+                    right: e2,
+                    op: *op,
+                }))
             }
 
             Expr::Deref(address) => {
