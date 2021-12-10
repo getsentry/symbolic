@@ -12,6 +12,7 @@
 using google_breakpad::BasicSourceLineResolver;
 using google_breakpad::Minidump;
 using google_breakpad::MinidumpMemoryList;
+using google_breakpad::MinidumpModuleList;
 using google_breakpad::MinidumpThreadList;
 using google_breakpad::MinidumpProcessor;
 using google_breakpad::ProcessState;
@@ -29,6 +30,7 @@ process_state_t *process_minidump(const char *buffer,
     // Increase the maximum number of threads and regions.
     MinidumpThreadList::set_max_threads(std::numeric_limits<uint32_t>::max());
     MinidumpMemoryList::set_max_regions(std::numeric_limits<uint32_t>::max());
+    MinidumpModuleList::set_max_modules(std::numeric_limits<uint32_t>::max());
     ProcessState *state = new ProcessState();
     if (state == nullptr) {
         *result_out = -1;  // Memory allocation issue
