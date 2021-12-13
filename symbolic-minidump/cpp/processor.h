@@ -28,7 +28,7 @@ struct symbol_entry_t {
 /// exit. The function will return NULL and an error code in result_out.
 ///
 /// Release memory of the process state with process_state_delete.
-process_state_t *process_minidump_internal(const char *buffer,
+process_state_t *process_minidump(const char *buffer,
                                   size_t buffer_size,
                                   symbol_entry_t *symbols,
                                   size_t symbol_count,

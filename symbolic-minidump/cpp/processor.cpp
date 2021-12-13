@@ -17,7 +17,7 @@ using google_breakpad::MinidumpThreadList;
 using google_breakpad::MinidumpProcessor;
 using google_breakpad::ProcessState;
 
-process_state_t *process_minidump_internal(const char *buffer,
+process_state_t *process_minidump(const char *buffer,
                                   size_t buffer_size,
                                   symbol_entry_t *symbols,
                                   size_t symbol_count,
