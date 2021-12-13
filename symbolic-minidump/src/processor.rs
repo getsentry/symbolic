@@ -62,11 +62,14 @@ extern "C" {
     fn system_info_cpu_info(info: *const SystemInfo) -> *mut c_char;
     fn system_info_cpu_count(info: *const SystemInfo) -> u32;
 
-    fn process_minidump(
+    fn process_minidump_internal(
         buffer: *const c_char,
         buffer_size: usize,
         symbols: *const SymbolEntry,
         symbol_count: usize,
+        max_threads: u32,
+        max_memory_regions: u32,
+        max_modules: u32,
         result: *mut ProcessResult,
     ) -> *mut IProcessState;
     fn process_state_delete(state: *mut IProcessState);
@@ -1031,6 +1034,27 @@ struct SymbolEntry {
 /// [`CodeModule`]: struct.CodeModule.html
 pub type FrameInfoMap<'a> = BTreeMap<CodeModuleId, CfiCache<'a>>;
 
+/// Options passed to breakpad when processing a minidump.
+#[derive(Clone, Debug)]
+pub struct ProcessMinidumpOptions {
+    /// The maximum number of threads the minidump may contain.
+    pub max_threads: u32,
+    /// The maximum number of memory regions the minidump may contain.
+    pub max_memory_regions: u32,
+    /// The maximum number of modules the minidump may contain.
+    pub max_modules: u32,
+}
+
+impl Default for ProcessMinidumpOptions {
+    fn default() -> Self {
+        Self {
+            max_threads: 4096,
+            max_memory_regions: 4096,
+            max_modules: 2048,
+        }
+    }
+}
+
 type IProcessState = c_void;
 
 /// Snapshot of the state of a processes during its crash. The object can be
@@ -1051,51 +1075,7 @@ impl<'a> ProcessState<'a> {
         buffer: &ByteView<'a>,
         frame_infos: Option<&FrameInfoMap<'_>>,
     ) -> Result<ProcessState<'a>, ProcessMinidumpError> {
-        let cfi_count = frame_infos.map_or(0, BTreeMap::len);
-        let mut result: ProcessResult = ProcessResult::Ok;
-
-        // Keep a reference to all CStrings to extend their lifetime.
-        let cfi_vec: Vec<_> = frame_infos.map_or(Vec::new(), |s| {
-            s.iter()
-                .map(|(k, v)| {
-                    (
-                        CString::new(k.to_string()),
-                        v.as_slice().len(),
-                        v.as_slice().as_ptr(),
-                    )
-                })
-                .collect()
-        });
-
-        // Keep a reference to all symbol entries to extend their lifetime.
-        let cfi_entries: Vec<_> = cfi_vec
-            .iter()
-            .map(|&(ref id, size, data)| SymbolEntry {
-                debug_identifier: id.as_ref().map(|i| i.as_ptr()).unwrap_or(ptr::null()),
-                symbol_size: size,
-                symbol_data: data,
-            })
-            .collect();
-
-        let internal = unsafe {
-            process_minidump(
-                buffer.as_ptr() as *const c_char,
-                buffer.len(),
-                cfi_entries.as_ptr(),
-                cfi_count,
-                &mut result,
-            )
-        };
-
-        if result.is_usable() && !internal.is_null() {
-            Ok(ProcessState {
-                internal,
-                _ty: PhantomData,
-            })
-        } else {
-            unsafe { process_state_delete(internal) };
-            Err(ProcessMinidumpError(result))
-        }
+        process_minidump(buffer, frame_infos, ProcessMinidumpOptions::default())
     }
 
     /// The index of the thread that requested a dump be written in the threads vector.
@@ -1206,6 +1186,65 @@ impl<'a> fmt::Debug for ProcessState<'a> {
     }
 }
 
+/// Processes a minidump supplied via raw binary data.
+////// Returns a `ProcessState` that contains information about the crashed
+/// process. The parameter `frame_infos` expects a map of Breakpad symbols
+/// containing STACK CFI and STACK WIN records to allow stackwalking with
+/// omitted frame pointers.
+pub fn process_minidump<'a>(
+    buffer: &ByteView<'a>,
+    frame_infos: Option<&FrameInfoMap<'_>>,
+    options: ProcessMinidumpOptions,
+) -> Result<ProcessState<'a>, ProcessMinidumpError> {
+    let cfi_count = frame_infos.map_or(0, BTreeMap::len);
+    let mut result: ProcessResult = ProcessResult::Ok;
+
+    // Keep a reference to all CStrings to extend their lifetime.
+    let cfi_vec: Vec<_> = frame_infos.map_or(Vec::new(), |s| {
+        s.iter()
+            .map(|(k, v)| {
+                (
+                    CString::new(k.to_string()),
+                    v.as_slice().len(),
+                    v.as_slice().as_ptr(),
+                )
+            })
+            .collect()
+    });
+
+    // Keep a reference to all symbol entries to extend their lifetime.
+    let cfi_entries: Vec<_> = cfi_vec
+        .iter()
+        .map(|&(ref id, size, data)| SymbolEntry {
+            debug_identifier: id.as_ref().map(|i| i.as_ptr()).unwrap_or(ptr::null()),
+            symbol_size: size,
+            symbol_data: data,
+        })
+        .collect();
+
+    let internal = unsafe {
+        process_minidump_internal(
+            buffer.as_ptr() as *const c_char,
+            buffer.len(),
+            cfi_entries.as_ptr(),
+            cfi_count,
+            options.max_threads,
+            options.max_memory_regions,
+            options.max_modules,
+            &mut result,
+        )
+    };
+
+    if result.is_usable() && !internal.is_null() {
+        Ok(ProcessState {
+            internal,
+            _ty: PhantomData,
+        })
+    } else {
+        unsafe { process_state_delete(internal) };
+        Err(ProcessMinidumpError(result))
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;

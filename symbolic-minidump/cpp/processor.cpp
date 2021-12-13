@@ -17,10 +17,13 @@ using google_breakpad::MinidumpThreadList;
 using google_breakpad::MinidumpProcessor;
 using google_breakpad::ProcessState;
 
-process_state_t *process_minidump(const char *buffer,
+process_state_t *process_minidump_internal(const char *buffer,
                                   size_t buffer_size,
                                   symbol_entry_t *symbols,
                                   size_t symbol_count,
+                                  uint32_t max_threads,
+                                  uint32_t max_memory_regions,
+                                  uint32_t max_modules,
                                   int *result_out) {
     if (buffer == nullptr) {
         *result_out = google_breakpad::PROCESS_ERROR_MINIDUMP_NOT_FOUND;
@@ -28,9 +31,9 @@ process_state_t *process_minidump(const char *buffer,
     }
 
     // Increase the maximum number of threads and regions.
-    MinidumpThreadList::set_max_threads(std::numeric_limits<uint32_t>::max());
-    MinidumpMemoryList::set_max_regions(std::numeric_limits<uint32_t>::max());
-    MinidumpModuleList::set_max_modules(std::numeric_limits<uint32_t>::max());
+    MinidumpThreadList::set_max_threads(max_threads);
+    MinidumpMemoryList::set_max_regions(max_memory_regions);
+    MinidumpModuleList::set_max_modules(max_modules);
     ProcessState *state = new ProcessState();
     if (state == nullptr) {
         *result_out = -1;  // Memory allocation issue
