@@ -6,7 +6,6 @@ use std::convert::TryInto;
 use std::error::Error;
 use std::ffi::CStr;
 use std::fmt;
-use std::io::Cursor;
 
 use core::cmp;
 use flate2::{Decompress, FlushDecompress};
@@ -26,7 +25,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::private::Parse;
+use crate::shared::Parse;
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;
@@ -77,10 +76,7 @@ pub struct ElfObject<'data> {
 impl<'data> ElfObject<'data> {
     /// Tests whether the buffer could contain an ELF object.
     pub fn test(data: &[u8]) -> bool {
-        matches!(
-            goblin::peek(&mut Cursor::new(data)),
-            Ok(goblin::Hint::Elf(_))
-        )
+        &data[0..elf::header::SELFMAG] == elf::header::ELFMAG
     }
 
     // Pulled from https://github.com/m4b/goblin/blob/master/src/elf/mod.rs#L393-L424 as it

@@ -3,7 +3,6 @@
 use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
-use std::io::Cursor;
 use std::marker::PhantomData;
 
 use goblin::pe;
@@ -12,7 +11,7 @@ use thiserror::Error;
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
-use crate::private::Parse;
+use crate::shared::Parse;
 
 pub use goblin::pe::exception::*;
 pub use goblin::pe::section_table::SectionTable;
@@ -72,7 +71,11 @@ pub struct PeObject<'data> {
 impl<'data> PeObject<'data> {
     /// Tests whether the buffer could contain an PE object.
     pub fn test(data: &[u8]) -> bool {
-        matches!(goblin::peek(&mut Cursor::new(data)), Ok(goblin::Hint::PE))
+        use scroll::{Pread, LE};
+        matches!(
+            (&data[0..2]).pread_with::<u16>(0, LE),
+            Ok(pe::header::DOS_MAGIC)
+        )
     }
 
     /// Tries to parse a PE object from the given slice.

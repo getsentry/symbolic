@@ -53,7 +53,7 @@ use zip::{write::FileOptions, ZipWriter};
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
-use crate::private::Parse;
+use crate::shared::Parse;
 use crate::{DebugSession, ObjectKind, ObjectLike};
 
 /// Magic bytes of a source bundle. They are prepended to the ZIP file.

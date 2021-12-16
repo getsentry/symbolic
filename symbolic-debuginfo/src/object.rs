@@ -4,8 +4,6 @@ use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
 
-use goblin::Hint;
-
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
@@ -15,7 +13,7 @@ use crate::elf::*;
 use crate::macho::*;
 use crate::pdb::*;
 use crate::pe::*;
-use crate::private::{MonoArchive, MonoArchiveObjects};
+use crate::shared::{MonoArchive, MonoArchiveObjects};
 use crate::sourcebundle::*;
 use crate::wasm::*;
 
@@ -125,35 +123,73 @@ impl Error for ObjectError {
 ///
 /// If `archive` is set to `true`, multi architecture objects will be allowed. Otherwise, only
 /// single-arch objects are checked.
-pub fn peek(data: &[u8], archive: bool) -> FileFormat {
+pub fn peek(data: &[u8], _archive: bool) -> FileFormat {
     if data.len() < 16 {
         return FileFormat::Unknown;
     }
 
-    let mut magic = [0; 16];
-    magic.copy_from_slice(&data[..16]);
-
-    match goblin::peek_bytes(&magic) {
-        Ok(Hint::Elf(_)) => return FileFormat::Elf,
-        Ok(Hint::Mach(_)) => return FileFormat::MachO,
-        // mach fat needs to be tested through `MachArchive::test` because of special
-        // handling that is required due to disambiguation with Java class files.
-        Ok(Hint::MachFat(_)) if archive && MachArchive::test(data) => return FileFormat::MachO,
-        Ok(Hint::PE) => return FileFormat::Pe,
-        _ => (),
+    #[cfg(feature = "elf")]
+    {
+        if ElfObject::test(data) {
+            return FileFormat::Elf;
+        }
     }
 
-    if SourceBundle::test(data) {
-        FileFormat::SourceBundle
-    } else if BreakpadObject::test(data) {
-        FileFormat::Breakpad
-    } else if PdbObject::test(data) {
-        FileFormat::Pdb
-    } else if WasmObject::test(data) {
-        FileFormat::Wasm
-    } else {
-        FileFormat::Unknown
+    #[cfg(feature = "ms")]
+    {
+        if PeObject::test(data) {
+            return FileFormat::Pe;
+        } else if PdbObject::test(data) {
+            return FileFormat::Pdb;
+        }
     }
+
+    #[cfg(feature = "macho")]
+    {
+        if let Ok((magic, _maybe_ctx)) = goblin::mach::parse_magic_and_ctx(data, 0) {
+            match magic {
+                goblin::mach::fat::FAT_MAGIC => {
+                    use scroll::Pread;
+                    if data.pread_with::<u32>(4, scroll::BE).is_ok()
+                        && _archive
+                        && MachArchive::test(data)
+                    {
+                        return FileFormat::MachO;
+                    }
+                }
+                goblin::mach::header::MH_CIGAM_64
+                | goblin::mach::header::MH_CIGAM
+                | goblin::mach::header::MH_MAGIC_64
+                | goblin::mach::header::MH_MAGIC => {
+                    return FileFormat::MachO;
+                }
+                _ => {}
+            }
+        }
+    }
+
+    #[cfg(feature = "sourcebundle")]
+    {
+        if SourceBundle::test(data) {
+            return FileFormat::SourceBundle;
+        }
+    }
+
+    #[cfg(feature = "breakpad")]
+    {
+        if BreakpadObject::test(data) {
+            return FileFormat::Breakpad;
+        }
+    }
+
+    #[cfg(feature = "wasm")]
+    {
+        if WasmObject::test(data) {
+            return FileFormat::Wasm;
+        }
+    }
+
+    FileFormat::Unknown
 }
 
 /// A generic object file providing uniform access to various file formats.

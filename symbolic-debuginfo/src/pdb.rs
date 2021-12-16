@@ -23,7 +23,7 @@ use symbolic_common::{
 };
 
 use crate::base::*;
-use crate::private::{FunctionStack, Parse};
+use crate::shared::{FunctionStack, Parse};
 
 type Pdb<'data> = pdb::PDB<'data, Cursor<&'data [u8]>>;
 

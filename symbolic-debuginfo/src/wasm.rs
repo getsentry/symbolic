@@ -9,7 +9,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::private::Parse;
+use crate::shared::Parse;
 
 /// An error when dealing with [`WasmObject`](struct.WasmObject.html).
 #[derive(Debug, Error)]
