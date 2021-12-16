@@ -123,73 +123,47 @@ impl Error for ObjectError {
 ///
 /// If `archive` is set to `true`, multi architecture objects will be allowed. Otherwise, only
 /// single-arch objects are checked.
-pub fn peek(data: &[u8], _archive: bool) -> FileFormat {
+pub fn peek(data: &[u8], archive: bool) -> FileFormat {
     if data.len() < 16 {
         return FileFormat::Unknown;
     }
 
-    #[cfg(feature = "elf")]
-    {
-        if ElfObject::test(data) {
-            return FileFormat::Elf;
-        }
-    }
+    if ElfObject::test(data) {
+        FileFormat::Elf
+    } else if PeObject::test(data) {
+        FileFormat::Pe
+    } else if PdbObject::test(data) {
+        FileFormat::Pdb
+    } else if SourceBundle::test(data) {
+        FileFormat::SourceBundle
+    } else if BreakpadObject::test(data) {
+        FileFormat::Breakpad
+    } else if WasmObject::test(data) {
+        FileFormat::Wasm
+    } else {
+        let magic = goblin::mach::parse_magic_and_ctx(data, 0).map(|(magic, _)| magic);
 
-    #[cfg(feature = "ms")]
-    {
-        if PeObject::test(data) {
-            return FileFormat::Pe;
-        } else if PdbObject::test(data) {
-            return FileFormat::Pdb;
-        }
-    }
-
-    #[cfg(feature = "macho")]
-    {
-        if let Ok((magic, _maybe_ctx)) = goblin::mach::parse_magic_and_ctx(data, 0) {
-            match magic {
-                goblin::mach::fat::FAT_MAGIC => {
-                    use scroll::Pread;
-                    if data.pread_with::<u32>(4, scroll::BE).is_ok()
-                        && _archive
-                        && MachArchive::test(data)
-                    {
-                        return FileFormat::MachO;
-                    }
+        match magic {
+            Ok(goblin::mach::fat::FAT_MAGIC) => {
+                use scroll::Pread;
+                if data.pread_with::<u32>(4, scroll::BE).is_ok()
+                    && archive
+                    && MachArchive::test(data)
+                {
+                    FileFormat::MachO
+                } else {
+                    FileFormat::Unknown
                 }
+            }
+            Ok(
                 goblin::mach::header::MH_CIGAM_64
                 | goblin::mach::header::MH_CIGAM
                 | goblin::mach::header::MH_MAGIC_64
-                | goblin::mach::header::MH_MAGIC => {
-                    return FileFormat::MachO;
-                }
-                _ => {}
-            }
+                | goblin::mach::header::MH_MAGIC,
+            ) => FileFormat::MachO,
+            _ => FileFormat::Unknown,
         }
     }
-
-    #[cfg(feature = "sourcebundle")]
-    {
-        if SourceBundle::test(data) {
-            return FileFormat::SourceBundle;
-        }
-    }
-
-    #[cfg(feature = "breakpad")]
-    {
-        if BreakpadObject::test(data) {
-            return FileFormat::Breakpad;
-        }
-    }
-
-    #[cfg(feature = "wasm")]
-    {
-        if WasmObject::test(data) {
-            return FileFormat::Wasm;
-        }
-    }
-
-    FileFormat::Unknown
 }
 
 /// A generic object file providing uniform access to various file formats.
