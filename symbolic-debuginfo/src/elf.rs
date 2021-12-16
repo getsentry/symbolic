@@ -1,7 +1,6 @@
 //! Support for the Executable and Linkable Format, used on Linux.
 
 use std::borrow::Cow;
-use std::cell::Cell;
 use std::convert::TryInto;
 use std::error::Error;
 use std::ffi::CStr;
@@ -17,7 +16,6 @@ use goblin::{
     container::{Container, Ctx},
     elf, strtab,
 };
-use nom::InputTakeAtPosition;
 use scroll::Pread;
 use thiserror::Error;
 
@@ -955,20 +953,13 @@ impl<'data> DebugLink<'data> {
         data: &[u8],
         endianity: Endian,
     ) -> Result<(&CStr, u32), DebugLinkErrorKind> {
-        // split_at_position is not inclusive, so does not contain the NUL:
-        // use a cell to remember the last character that was seen, then exit only on the next character (the NUL).
-        // This is OK because we have another character after the NUL (CRC or padding).
-        let last_seen: Cell<Option<u8>> = Cell::new(None);
-        let (crc, filename) = data
-            .split_at_position(|c| {
-                let c = last_seen.replace(Some(c));
-                if let Some(c) = c {
-                    c == b'\0'
-                } else {
-                    false
-                }
-            })
-            .map_err(|_: nom::Err<()>| DebugLinkErrorKind::MissingNul)?;
+        let nul_pos = data
+            .iter()
+            .position(|byte| *byte == 0)
+            .ok_or(DebugLinkErrorKind::MissingNul)?;
+
+        let filename = &data[..nul_pos + 1];
+        let crc = &data[nul_pos + 1..];
 
         // let's be liberal and assume that the padding is correct and all 0s,
         // and just check that we have enough remaining length for the CRC.
