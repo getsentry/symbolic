@@ -74,7 +74,8 @@ pub struct ElfObject<'data> {
 impl<'data> ElfObject<'data> {
     /// Tests whether the buffer could contain an ELF object.
     pub fn test(data: &[u8]) -> bool {
-        &data[0..elf::header::SELFMAG] == elf::header::ELFMAG
+        data.get(0..elf::header::SELFMAG)
+            .map_or(false, |data| data == elf::header::ELFMAG)
     }
 
     // Pulled from https://github.com/m4b/goblin/blob/master/src/elf/mod.rs#L393-L424 as it
@@ -958,13 +959,19 @@ impl<'data> DebugLink<'data> {
             .position(|byte| *byte == 0)
             .ok_or(DebugLinkErrorKind::MissingNul)?;
 
+        if nul_pos + 1 == data.len() {
+            return Err(DebugLinkErrorKind::MissingCrc {
+                filename_len_with_nul: nul_pos + 1,
+            });
+        }
+
         let filename = &data[..nul_pos + 1];
-        let crc = &data[nul_pos + 1..];
 
         // let's be liberal and assume that the padding is correct and all 0s,
         // and just check that we have enough remaining length for the CRC.
-        let crc = crc
-            .get(crc.len() - 4..)
+        let crc = data
+            .get(nul_pos + 1..)
+            .and_then(|crc| crc.get(crc.len() - 4..))
             .ok_or_else(|| DebugLinkErrorKind::MissingCrc {
                 filename_len_with_nul: filename.len(),
             })?;
