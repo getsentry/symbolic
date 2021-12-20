@@ -66,9 +66,10 @@ sourcebundle = [
     "zip",
 ]
 # WASM processing
-wasm = ["dwarf", "walrus", "wasmparser"]
+wasm = ["bitvec", "dwarf", "wasmparser"]
 
 [dependencies]
+bitvec = { version = "0.22", optional = true, features = ["alloc"] }
 dmsort = "1.0.1"
 elementtree = "0.5.0"
 fallible-iterator = "0.2.0"
@@ -93,9 +94,7 @@ serde_json = { version = "1.0.40", optional = true }
 smallvec = { version = "1.2.0", optional = true }
 symbolic-common = { version = "8.5.0", path = "../symbolic-common" }
 thiserror = "1.0.20"
-walrus = { version = "0.19.0", optional = true }
-# must match spec in walrus
-wasmparser = { version = "0.77.0", optional = true }
+wasmparser = { version = "0.81", optional = true }
 zip = { version = "0.5.2", optional = true, default-features = false, features = [
     "deflate",
 ] }
