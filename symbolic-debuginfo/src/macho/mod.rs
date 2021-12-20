@@ -3,7 +3,6 @@
 use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
-use std::io::Cursor;
 use std::sync::Arc;
 
 use goblin::mach;
@@ -14,7 +13,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::private::{MonoArchive, MonoArchiveObjects, Parse};
+use crate::shared::{MonoArchive, MonoArchiveObjects, Parse};
 
 mod bcsymbolmap;
 pub mod compact;
@@ -66,10 +65,7 @@ pub struct MachObject<'d> {
 impl<'d> MachObject<'d> {
     /// Tests whether the buffer could contain a MachO object.
     pub fn test(data: &[u8]) -> bool {
-        matches!(
-            goblin::peek(&mut Cursor::new(data)),
-            Ok(goblin::Hint::Mach(_))
-        )
+        matches!(MachArchive::is_fat(data), Some(false))
     }
 
     /// Tries to parse a MachO from the given slice.
@@ -602,10 +598,7 @@ pub struct FatMachO<'d> {
 impl<'d> FatMachO<'d> {
     /// Tests whether the buffer could contain an ELF object.
     pub fn test(data: &[u8]) -> bool {
-        matches!(
-            goblin::peek(&mut Cursor::new(data)),
-            Ok(goblin::Hint::MachFat(_))
-        )
+        matches!(MachArchive::is_fat(data), Some(true))
     }
 
     /// Tries to parse a fat MachO container from the given slice.
@@ -713,10 +706,16 @@ pub struct MachArchive<'d>(MachArchiveInner<'d>);
 impl<'d> MachArchive<'d> {
     /// Tests whether the buffer contains either a Mach Object or a Fat Mach Object.
     pub fn test(data: &[u8]) -> bool {
-        match goblin::peek(&mut Cursor::new(data)) {
-            Ok(goblin::Hint::Mach(_)) => true,
-            Ok(goblin::Hint::MachFat(narchs)) => {
-                // so this is kind of stupid but java class files share the same cutsey magic
+        Self::is_fat(data).is_some()
+    }
+
+    /// Determines if the binary content is a macho object, and whether or not it is fat
+    fn is_fat(data: &[u8]) -> Option<bool> {
+        let (magic, _maybe_ctx) = goblin::mach::parse_magic_and_ctx(data, 0).ok()?;
+        match magic {
+            goblin::mach::fat::FAT_MAGIC => {
+                use scroll::Pread;
+                // so this is kind of stupid but java class files share the same cutesy magic
                 // as a macho fat file (CAFEBABE).  This means that we often claim that a java
                 // class file is actually a macho binary but it's not.  The next 32 bytes encode
                 // the number of embedded architectures in a fat mach.  In case of a JAR file
@@ -729,16 +728,26 @@ impl<'d> MachArchive<'d> {
                 // which should be very rare.
                 //
                 // https://docs.oracle.com/javase/specs/jvms/se6/html/ClassFile.doc.html
-                narchs < 45
+                let narches = data.pread_with::<u32>(4, scroll::BE).ok()?;
+
+                if narches < 45 {
+                    Some(true)
+                } else {
+                    None
+                }
             }
-            _ => false,
+            goblin::mach::header::MH_CIGAM_64
+            | goblin::mach::header::MH_CIGAM
+            | goblin::mach::header::MH_MAGIC_64
+            | goblin::mach::header::MH_MAGIC => Some(false),
+            _ => None,
         }
     }
 
     /// Tries to parse a Mach archive from the given slice.
     pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
-        Ok(MachArchive(match goblin::peek(&mut Cursor::new(data)) {
-            Ok(goblin::Hint::MachFat(_)) => MachArchiveInner::Archive(FatMachO::parse(data)?),
+        Ok(Self(match Self::is_fat(data) {
+            Some(true) => MachArchiveInner::Archive(FatMachO::parse(data)?),
             // Fall back to mach parsing to receive a meaningful error message from goblin
             _ => MachArchiveInner::Single(MonoArchive::new(data)),
         }))

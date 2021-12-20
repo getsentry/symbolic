@@ -4,8 +4,6 @@ use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
 
-use goblin::Hint;
-
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
@@ -15,7 +13,7 @@ use crate::elf::*;
 use crate::macho::*;
 use crate::pdb::*;
 use crate::pe::*;
-use crate::private::{MonoArchive, MonoArchiveObjects};
+use crate::shared::{MonoArchive, MonoArchiveObjects};
 use crate::sourcebundle::*;
 use crate::wasm::*;
 
@@ -130,29 +128,41 @@ pub fn peek(data: &[u8], archive: bool) -> FileFormat {
         return FileFormat::Unknown;
     }
 
-    let mut magic = [0; 16];
-    magic.copy_from_slice(&data[..16]);
-
-    match goblin::peek_bytes(&magic) {
-        Ok(Hint::Elf(_)) => return FileFormat::Elf,
-        Ok(Hint::Mach(_)) => return FileFormat::MachO,
-        // mach fat needs to be tested through `MachArchive::test` because of special
-        // handling that is required due to disambiguation with Java class files.
-        Ok(Hint::MachFat(_)) if archive && MachArchive::test(data) => return FileFormat::MachO,
-        Ok(Hint::PE) => return FileFormat::Pe,
-        _ => (),
-    }
-
-    if SourceBundle::test(data) {
+    if ElfObject::test(data) {
+        FileFormat::Elf
+    } else if PeObject::test(data) {
+        FileFormat::Pe
+    } else if PdbObject::test(data) {
+        FileFormat::Pdb
+    } else if SourceBundle::test(data) {
         FileFormat::SourceBundle
     } else if BreakpadObject::test(data) {
         FileFormat::Breakpad
-    } else if PdbObject::test(data) {
-        FileFormat::Pdb
     } else if WasmObject::test(data) {
         FileFormat::Wasm
     } else {
-        FileFormat::Unknown
+        let magic = goblin::mach::parse_magic_and_ctx(data, 0).map(|(magic, _)| magic);
+
+        match magic {
+            Ok(goblin::mach::fat::FAT_MAGIC) => {
+                use scroll::Pread;
+                if data.pread_with::<u32>(4, scroll::BE).is_ok()
+                    && archive
+                    && MachArchive::test(data)
+                {
+                    FileFormat::MachO
+                } else {
+                    FileFormat::Unknown
+                }
+            }
+            Ok(
+                goblin::mach::header::MH_CIGAM_64
+                | goblin::mach::header::MH_CIGAM
+                | goblin::mach::header::MH_MAGIC_64
+                | goblin::mach::header::MH_MAGIC,
+            ) => FileFormat::MachO,
+            _ => FileFormat::Unknown,
+        }
     }
 }
 
