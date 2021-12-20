@@ -16,9 +16,8 @@ pub(crate) fn parse<'data>(data: &'data [u8]) -> Result<WasmObject<'data>, WasmE
     // signatures to verify that
     let mut func_sigs = bitvec::vec::BitVec::<bitvec::order::Lsb0, usize>::new();
     let mut validator = Validator::new();
-    let mut funcs = Vec::new();
+    let mut funcs = Vec::<Symbol>::new();
     let mut num_imported_funcs = 0u32;
-    let mut body_index = 0;
 
     // Parse the wasm file to pull out the function and their starting address, size, and name
     // Note that the order of the payloads here are the order that they will appear in (valid)
@@ -74,14 +73,7 @@ pub(crate) fn parse<'data>(data: &'data [u8]) -> Result<WasmObject<'data>, WasmE
                     kind = ObjectKind::Library;
                 }
 
-                funcs.resize(
-                    fsr.get_count() as usize,
-                    Symbol {
-                        name: None,
-                        address: 0,
-                        size: 0,
-                    },
-                );
+                funcs.reserve(fsr.get_count() as usize);
 
                 // We actually don't care about the type signature of the function, other than that
                 // they exist
@@ -109,17 +101,18 @@ pub(crate) fn parse<'data>(data: &'data [u8]) -> Result<WasmObject<'data>, WasmE
 
                 let (address, size) = get_function_info(body, validator)?;
 
-                funcs[body_index].address = address;
-                funcs[body_index].size = size;
-
                 // Though we have an accurate? size of the function body, the old method of symbol
                 // iterating with walrus extends the size of each body to be contiguous with the
                 // next function, so we do the same, other than the final function
-                if body_index > 0 {
-                    funcs[body_index - 1].size = address - funcs[body_index - 1].address;
+                if let Some(prev) = funcs.last_mut() {
+                    prev.size = address - prev.address;
                 }
 
-                body_index += 1;
+                funcs.push(Symbol {
+                    name: None,
+                    address,
+                    size,
+                });
             }
             Payload::ModuleSectionStart { count, range, .. } => {
                 validator.module_section_start(count, &range)?;
@@ -162,7 +155,7 @@ pub(crate) fn parse<'data>(data: &'data [u8]) -> Result<WasmObject<'data>, WasmE
                                             .get_mut((fname.index - num_imported_funcs) as usize)
                                         {
                                             func.name =
-                                                dbg!(Some(std::borrow::Cow::Borrowed(fname.name)));
+                                                Some(std::borrow::Cow::Borrowed(fname.name));
                                         }
                                     }
                                 }

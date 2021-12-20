@@ -14,6 +14,7 @@ mod parser;
 
 /// An error when dealing with [`WasmObject`](struct.WasmObject.html).
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum WasmError {
     /// Failed to read data from a WASM binary
     #[error("invalid wasm file")]
