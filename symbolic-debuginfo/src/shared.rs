@@ -1,29 +1,7 @@
-#[cfg(any(
-    feature = "macho",
-    all(
-        feature = "breakpad",
-        feature = "dwarf",
-        feature = "elf",
-        feature = "macho",
-        feature = "ms",
-        feature = "sourcebundle",
-        feature = "wasm"
-    )
-))]
+#[cfg(feature = "macho")]
 mod mono_archive;
 
-#[cfg(any(
-    feature = "macho",
-    all(
-        feature = "breakpad",
-        feature = "dwarf",
-        feature = "elf",
-        feature = "macho",
-        feature = "ms",
-        feature = "sourcebundle",
-        feature = "wasm"
-    )
-))]
+#[cfg(feature = "macho")]
 pub use mono_archive::{MonoArchive, MonoArchiveObjects};
 
 pub trait Parse<'data>: Sized {
