@@ -97,7 +97,8 @@ impl<'data> WasmObject<'data> {
     /// Returns an iterator over symbols in the public symbol table.
     pub fn symbols(&self) -> WasmSymbolIterator<'data, '_> {
         WasmSymbolIterator {
-            funcs: Box::new(self.funcs.clone().into_iter()),
+            funcs: self.funcs.clone().into_iter(),
+            _marker: std::marker::PhantomData,
         }
     }
 
@@ -274,7 +275,8 @@ impl<'data> Dwarf<'data> for WasmObject<'data> {
 ///
 /// Returned by [`WasmObject::symbols`](struct.WasmObject.html#method.symbols).
 pub struct WasmSymbolIterator<'data, 'object> {
-    funcs: Box<dyn Iterator<Item = Symbol<'data>> + 'object>,
+    funcs: std::vec::IntoIter<Symbol<'data>>,
+    _marker: std::marker::PhantomData<&'object u8>,
 }
 
 impl<'data, 'object> Iterator for WasmSymbolIterator<'data, 'object> {
