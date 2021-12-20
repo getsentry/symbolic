@@ -43,17 +43,6 @@ impl<'data> WasmObject<'data> {
         data.starts_with(b"\x00asm")
     }
 
-    /// Tries to parse a WASM from the given slice.
-    pub fn parse(data: &'data [u8]) -> Result<Self, WasmError> {
-        let mut obj = parser::parse(data)?;
-
-        // The actual iterator just wraps the vec, so we reverse it and just pop off
-        // the end
-        obj.funcs.reverse();
-
-        Ok(obj)
-    }
-
     /// The container file format, which currently is always `FileFormat::Wasm`.
     pub fn file_format(&self) -> FileFormat {
         FileFormat::Wasm
