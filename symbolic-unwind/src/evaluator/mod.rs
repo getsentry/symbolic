@@ -103,18 +103,21 @@ impl<'memory, A, E> Evaluator<'memory, A, E> {
     }
 
     /// Sets the evaluator's memory to the given `MemoryRegion`.
+    #[must_use]
     pub fn memory(mut self, memory: MemoryRegion<'memory>) -> Self {
         self.memory = Some(memory);
         self
     }
 
     /// Sets the evaluator's constant map to the given map.
+    #[must_use]
     pub fn constants(mut self, constants: BTreeMap<Constant, A>) -> Self {
         self.constants = constants;
         self
     }
 
     /// Sets the evaluator's variable map to the given map.
+    #[must_use]
     pub fn variables(mut self, variables: BTreeMap<Variable, A>) -> Self {
         self.variables = variables;
         self
