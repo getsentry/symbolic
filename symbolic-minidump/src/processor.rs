@@ -1036,6 +1036,7 @@ pub type FrameInfoMap<'a> = BTreeMap<CodeModuleId, CfiCache<'a>>;
 
 /// Options passed to breakpad when processing a minidump.
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct ProcessMinidumpOptions {
     /// The maximum number of threads the minidump may contain.
     ///
