@@ -95,9 +95,9 @@ impl<'data> WasmObject<'data> {
     }
 
     /// Returns an iterator over symbols in the public symbol table.
-    pub fn symbols(&self) -> WasmSymbolIterator<'data> {
+    pub fn symbols(&self) -> WasmSymbolIterator<'data, '_> {
         WasmSymbolIterator {
-            funcs: self.funcs.clone(),
+            funcs: Box::new(self.funcs.clone().into_iter()),
         }
     }
 
@@ -189,7 +189,7 @@ impl<'d> Parse<'d> for WasmObject<'d> {
 impl<'data: 'object, 'object> ObjectLike<'data, 'object> for WasmObject<'data> {
     type Error = DwarfError;
     type Session = DwarfDebugSession<'data>;
-    type SymbolIterator = WasmSymbolIterator<'data>;
+    type SymbolIterator = WasmSymbolIterator<'data, 'object>;
 
     fn file_format(&self) -> FileFormat {
         self.file_format()
@@ -273,14 +273,14 @@ impl<'data> Dwarf<'data> for WasmObject<'data> {
 /// An iterator over symbols in the WASM file.
 ///
 /// Returned by [`WasmObject::symbols`](struct.WasmObject.html#method.symbols).
-pub struct WasmSymbolIterator<'data> {
-    funcs: Vec<Symbol<'data>>,
+pub struct WasmSymbolIterator<'data, 'object> {
+    funcs: Box<dyn Iterator<Item = Symbol<'data>> + 'object>,
 }
 
-impl<'data> Iterator for WasmSymbolIterator<'data> {
+impl<'data, 'object> Iterator for WasmSymbolIterator<'data, 'object> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.funcs.pop()
+        self.funcs.next()
     }
 }
