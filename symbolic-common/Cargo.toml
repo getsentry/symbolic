@@ -22,7 +22,7 @@ all-features = true
 
 [dependencies]
 debugid = "0.7.1"
-memmap = "0.7.0"
+memmap2 = "0.5.0"
 stable_deref_trait = "1.1.1"
 serde_ = { package = "serde", version = "1.0.88", optional = true, features = ["derive"] }
 uuid = "0.8.1"

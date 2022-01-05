@@ -11,7 +11,7 @@ use std::ops::Deref;
 use std::path::Path;
 use std::sync::Arc;
 
-use memmap::Mmap;
+use memmap2::Mmap;
 
 use crate::cell::StableDeref;
 
