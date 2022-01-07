@@ -1,9 +1,10 @@
 # Symbolic
 
-<a href="https://travis-ci.com/getsentry/symbolic"><img src="https://travis-ci.com/getsentry/symbolic.svg?branch=master" alt=""></a>
+[![Build Status](https://github.com/getsentry/symbolic/workflows/CI/badge.svg)](https://github.com/getsentry/symbolic/actions?workflow=CI)
 <a href="https://crates.io/crates/symbolic"><img src="https://img.shields.io/crates/v/symbolic.svg" alt=""></a>
 <a href="https://pypi.python.org/pypi/Symbolic"><img src="https://img.shields.io/pypi/v/symbolic.svg" alt=""></a>
 <a href="https://github.com/getsentry/symbolic/blob/master/LICENSE"><img src="https://img.shields.io/pypi/l/Symbolic.svg" alt=""></a>
+[![codecov](https://codecov.io/gh/getsentry/symbolic/branch/master/graph/badge.svg?token=suNHZfbjKW)](https://codecov.io/gh/getsentry/symbolic)
 
 [Symbolic](https://docs.rs/symbolic) is a library written in Rust which is used at
 [Sentry](https://sentry.io/) to implement symbolication of native stack traces, sourcemap handling
