@@ -972,7 +972,7 @@ impl<'data> DebugLink<'data> {
         let crc = data
             .get(nul_pos + 1..)
             .and_then(|crc| crc.get(crc.len() - 4..))
-            .ok_or_else(|| DebugLinkErrorKind::MissingCrc {
+            .ok_or(DebugLinkErrorKind::MissingCrc {
                 filename_len_with_nul: filename.len(),
             })?;
 
