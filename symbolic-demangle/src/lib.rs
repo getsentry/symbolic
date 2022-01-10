@@ -32,7 +32,6 @@
 //! ```
 
 #![warn(missing_docs)]
-#![allow(clippy::return_self_not_must_use)]
 
 use std::borrow::Cow;
 #[cfg(feature = "swift")]
