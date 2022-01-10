@@ -292,9 +292,12 @@ mod tests {
         let view = ByteView::map_file_ref(tmp.as_file())?;
 
         // This deletes the file on disk.
-        let path = tmp.path().to_path_buf();
+        let _path = tmp.path().to_path_buf();
         let mut file = tmp.into_file();
-        assert!(!path.exists());
+        #[cfg(not(windows))]
+        {
+            assert!(!_path.exists());
+        }
 
         // Ensure we can still read from the the file after mmapping and deleting it on disk.
         let mut buf = Vec::new();
