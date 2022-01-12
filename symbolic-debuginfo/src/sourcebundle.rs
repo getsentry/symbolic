@@ -307,7 +307,7 @@ impl Default for SourceBundleHeader {
 struct SourceBundleManifest {
     /// Descriptors for all files in this bundle.
     #[serde(default)]
-    pub files: HashMap<String, SourceFileInfo>,
+    pub files: BTreeMap<String, SourceFileInfo>,
 
     /// Arbitrary attributes to include in the bundle.
     #[serde(flatten)]
@@ -685,7 +685,7 @@ impl<'data, 'session> DebugSession<'session> for SourceBundleDebugSession<'data>
 
 /// An iterator over source files in a SourceBundle object.
 pub struct SourceBundleFileIterator<'s> {
-    files: std::collections::hash_map::Values<'s, String, SourceFileInfo>,
+    files: std::collections::btree_map::Values<'s, String, SourceFileInfo>,
 }
 
 impl<'s> Iterator for SourceBundleFileIterator<'s> {
