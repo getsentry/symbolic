@@ -16,7 +16,7 @@ impl<'data> super::WasmObject<'data> {
         // could contain types used for module linking, but we don't actually care about the types,
         // just that the function references a valid signature, so we just keep a bitset of the function
         // signatures to verify that
-        let mut func_sigs = bitvec::vec::BitVec::<bitvec::order::Lsb0, usize>::new();
+        let mut func_sigs = bitvec::vec::BitVec::<usize, bitvec::order::Lsb0>::new();
         let mut validator = Validator::new();
         let mut funcs = Vec::<Symbol>::new();
         let mut num_imported_funcs = 0u32;

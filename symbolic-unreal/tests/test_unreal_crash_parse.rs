@@ -3,6 +3,7 @@ use std::io::Read;
 
 use symbolic_testutils::fixture;
 use symbolic_unreal::{Unreal4Crash, Unreal4Error, Unreal4FileType};
+use time::format_description::well_known::Rfc3339;
 
 #[cfg(test)]
 use similar_asserts::assert_eq;
@@ -156,8 +157,12 @@ fn test_get_logs() {
 
     assert_eq!(logs.len(), limit);
     assert_eq!(
-        logs[1].timestamp.expect("timestamp").to_rfc3339(),
-        "2018-10-29T16:56:37+00:00"
+        logs[1]
+            .timestamp
+            .expect("timestamp")
+            .format(&Rfc3339)
+            .unwrap(),
+        "2018-10-29T16:56:37Z"
     );
     assert_eq!(
         logs[0].component.as_ref().expect("component"),
@@ -166,8 +171,12 @@ fn test_get_logs() {
     assert_eq!(logs[0].message, "Chosen D3D11 Adapter: 0");
 
     assert_eq!(
-        logs[99].timestamp.expect("timestamp").to_rfc3339(),
-        "2018-10-29T16:56:38+00:00"
+        logs[99]
+            .timestamp
+            .expect("timestamp")
+            .format(&Rfc3339)
+            .unwrap(),
+        "2018-10-29T16:56:38Z"
     );
     assert_eq!(
         logs[99].component.as_ref().expect("component"),

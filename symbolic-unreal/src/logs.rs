@@ -1,7 +1,11 @@
+use std::convert::TryFrom;
+
 use anylog::LogEntry;
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use regex::Regex;
+#[cfg(any(test, feature = "serde"))]
+use time::format_description::well_known::Rfc3339;
 
 use crate::error::Unreal4Error;
 use crate::Unreal4ErrorKind;
@@ -16,13 +20,34 @@ lazy_static! {
     static ref LOG_FIRST_LINE: Regex = Regex::new(r"Log file open, (?P<month>\d\d)/(?P<day>\d\d)/(?P<year>\d\d) (?P<hour>\d\d):(?P<minute>\d\d):(?P<second>\d\d)$").unwrap();
 }
 
+#[cfg(feature = "serde")]
+fn serialize_timestamp<S: serde_::Serializer>(
+    timestamp: &Option<time::OffsetDateTime>,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    use serde_::ser::Error;
+    match timestamp {
+        Some(timestamp) => serializer.serialize_str(&match timestamp.format(&Rfc3339) {
+            Ok(s) => s,
+            Err(_) => return Err(S::Error::custom("failed formatting `OffsetDateTime`")),
+        }),
+        None => serializer.serialize_none(),
+    }
+}
+
 /// A log entry from an Unreal Engine 4 crash.
 #[cfg_attr(feature = "serde", derive(serde_::Serialize))]
 #[cfg_attr(feature = "serde", serde(crate = "serde_"))]
 pub struct Unreal4LogEntry {
     /// The timestamp of the message, when available.
-    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
-    pub timestamp: Option<DateTime<Utc>>,
+    #[cfg_attr(
+        feature = "serde",
+        serde(
+            skip_serializing_if = "Option::is_none",
+            serialize_with = "serialize_timestamp"
+        )
+    )]
+    pub timestamp: Option<time::OffsetDateTime>,
 
     /// The component that issued the log, when available.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
@@ -32,22 +57,32 @@ pub struct Unreal4LogEntry {
     pub message: String,
 }
 
-fn parse_log_datetime(text: &str) -> Option<DateTime<Utc>> {
+fn parse_log_datetime(text: &str) -> Option<time::OffsetDateTime> {
     let captures = LOG_FIRST_LINE.captures(text)?;
 
+    // https://github.com/EpicGames/UnrealEngine/blob/f7626ddd147fe20a6144b521a26739c863546f4a/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L46
+    let month = time::Month::try_from(captures["month"].parse::<u8>().ok()?).ok()?;
+    let date = time::Date::from_calendar_date(
+        captures["year"].parse::<i32>().ok()? + 2000,
+        month,
+        captures["day"].parse::<u8>().ok()?,
+    )
+    .ok()?;
+
+    let datetime = date
+        .with_hms(
+            captures["hour"].parse::<u8>().ok()?,
+            captures["minute"].parse::<u8>().ok()?,
+            captures["second"].parse::<u8>().ok()?,
+        )
+        .ok()?;
+
     // Using UTC but this entry is local time. Unfortunately there's no way to find the offset.
-    Utc.ymd_opt(
-        // https://github.com/EpicGames/UnrealEngine/blob/f7626ddd147fe20a6144b521a26739c863546f4a/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L46
-        captures["year"].parse::<i32>().unwrap() + 2000,
-        captures["month"].parse::<u32>().unwrap(),
-        captures["day"].parse::<u32>().unwrap(),
-    )
-    .latest()?
-    .and_hms_opt(
-        captures["hour"].parse::<u32>().unwrap(),
-        captures["minute"].parse::<u32>().unwrap(),
-        captures["second"].parse::<u32>().unwrap(),
-    )
+    Some(datetime.assume_utc())
+}
+
+fn convert_chrono(dt: DateTime<Utc>) -> Option<time::OffsetDateTime> {
+    time::OffsetDateTime::from_unix_timestamp(dt.timestamp()).ok()
 }
 
 impl Unreal4LogEntry {
@@ -74,7 +109,10 @@ impl Unreal4LogEntry {
                 // Reads in reverse where logs include timestamp. If it never reached the point of
                 // adding timestamp to log entries, the first record's timestamp (local time, above)
                 // will be used on all records.
-                fallback_timestamp = entry.utc_timestamp().or(fallback_timestamp);
+                fallback_timestamp = entry
+                    .utc_timestamp()
+                    .and_then(convert_chrono)
+                    .or(fallback_timestamp);
 
                 Unreal4LogEntry {
                     timestamp: fallback_timestamp,
@@ -104,8 +142,12 @@ LogWindows: File 'aqProf.dll' does not exist";
     assert_eq!(logs.len(), 2);
     assert_eq!(logs[1].component.as_ref().expect("component"), "LogWindows");
     assert_eq!(
-        logs[1].timestamp.expect("timestamp").to_rfc3339(),
-        "2018-12-13T15:54:53+00:00"
+        logs[1]
+            .timestamp
+            .expect("timestamp")
+            .format(&Rfc3339)
+            .unwrap(),
+        "2018-12-13T15:54:53Z"
     );
     assert_eq!(logs[1].message, "File 'aqProf.dll' does not exist");
 }
