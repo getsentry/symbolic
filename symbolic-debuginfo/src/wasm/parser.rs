@@ -221,6 +221,8 @@ fn get_function_info(
 ) -> Result<(u64, u64), WasmError> {
     let mut body = body.get_binary_reader();
 
+    let function_address = body.original_position() as u64;
+
     // locals, we _can_ just skip this, but might as well validate while we're here
     {
         for _ in 0..body.read_var_u32()? {
@@ -230,8 +232,6 @@ fn get_function_info(
             validator.define_locals(pos, count, ty)?;
         }
     }
-
-    let function_address = body.original_position() as u64;
 
     while !body.eof() {
         let pos = body.original_position();

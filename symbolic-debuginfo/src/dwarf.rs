@@ -814,12 +814,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             // should avoid this problem.
             range_buf.sort_by_key(|r| r.begin);
 
-            // In WASM files emitted by emscripted, we have observed a variety of broken ranges.
-            // One of these cases also involves ranges which are not being sorted, resulting in
-            // arithmetic underflow calculating `function_size` (in debug builds). Sorting the ranges
-            // should avoid this problem.
-            range_buf.sort_by_key(|r| r.begin);
-
             let function_address = offset(range_buf[0].begin, self.inner.info.address_offset);
             let function_size = range_buf[range_buf.len() - 1].end - range_buf[0].begin;
             let function_end = function_address + function_size;
