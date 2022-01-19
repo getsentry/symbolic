@@ -15,39 +15,94 @@ as Mach-O or ELF.
 """
 edition = "2018"
 
-exclude = [
-    "tests/**/*",
-]
+exclude = ["tests/**/*"]
 
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+default = ["breakpad", "elf", "macho", "ms", "sourcebundle", "wasm"]
+# Breakpad text format parsing and processing
+breakpad = ["nom", "nom-supreme", "regex"]
+# DWARF processing.
+dwarf = ["gimli", "lazycell"]
+# ELF reading
+elf = [
+    "dwarf",
+    "flate2",
+    "goblin/endian_fd",
+    "goblin/elf32",
+    "goblin/elf64",
+    "goblin/std",
+    "scroll",
+]
+# Mach-o processing
+macho = [
+    "dwarf",
+    "elementtree",
+    "goblin/mach32",
+    "goblin/mach64",
+    "goblin/std",
+    "scroll",
+    "smallvec",
+]
+# PDB/PE processing
+ms = [
+    "goblin/pe32",
+    "goblin/pe64",
+    "goblin/std",
+    "lazycell",
+    "parking_lot",
+    "pdb",
+    "scroll",
+    "smallvec",
+]
+# Source bundle creation
+sourcebundle = [
+    "lazy_static",
+    "lazycell",
+    "parking_lot",
+    "regex",
+    "serde_json",
+    "zip",
+]
+# WASM processing
+wasm = ["bitvec", "dwarf", "wasmparser"]
+
 [dependencies]
+bitvec = { version = "0.22", optional = true, features = ["alloc"] }
 dmsort = "1.0.1"
-elementtree = "0.5.0"
+elementtree = { version = "0.6.0", optional = true }
 fallible-iterator = "0.2.0"
-flate2 = { version = "1.0.13", features = ["rust_backend"], default-features = false }
-gimli = { version = "0.26.1", features = ["read", "std"], default-features = false }
-goblin = "0.4.2"
-lazy_static = "1.4.0"
-lazycell = "1.2.1"
-nom = "7.0.0"
-nom-supreme = "0.6.0"
-parking_lot = "0.11.0"
-pdb = "0.7.0"
-regex = "1.3.5"
-scroll = "0.10"
+flate2 = { version = "1.0.13", optional = true, default-features = false, features = [
+    "rust_backend",
+] }
+gimli = { version = "0.26.1", optional = true, default-features = false, features = [
+    "read",
+    "std",
+] }
+goblin = { version = "0.4.2", optional = true, default-features = false }
+lazy_static = { version = "1.4.0", optional = true }
+lazycell = { version = "1.2.1", optional = true }
+nom = { version = "7.0.0", optional = true }
+nom-supreme = { version = "0.6.0", optional = true }
+parking_lot = { version = "0.11.0", optional = true }
+pdb = { version = "0.7.0", optional = true }
+regex = { version = "1.3.5", optional = true }
+# keep this in sync with whatever version `goblin` uses
+scroll = { version = "0.10", optional = true }
 serde = { version = "1.0.94", features = ["derive"] }
-serde_json = "1.0.40"
-smallvec = "1.2.0"
+serde_json = { version = "1.0.40", optional = true }
+smallvec = { version = "1.2.0", optional = true }
 symbolic-common = { version = "8.5.0", path = "../symbolic-common" }
 thiserror = "1.0.20"
-walrus = "0.19.0"
-wasmparser = "0.77.0"  # must match spec in walrus
-zip = "0.5.2"
+wasmparser = { version = "0.82", optional = true }
+zip = { version = "0.5.2", optional = true, default-features = false, features = [
+    "deflate",
+] }
 
 [dev-dependencies]
-criterion = { version = "0.3.4", features = [ "html_reports" ] }
+criterion = { version = "0.3.4", features = ["html_reports"] }
 insta = "1.3.0"
 similar-asserts = "1.0.0"
 symbolic-testutils = { path = "../symbolic-testutils" }
@@ -55,3 +110,4 @@ symbolic-testutils = { path = "../symbolic-testutils" }
 [[bench]]
 name = "breakpad_parser"
 harness = false
+required-features = ["breakpad"]

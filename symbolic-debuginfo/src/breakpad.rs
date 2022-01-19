@@ -12,7 +12,106 @@ use thiserror::Error;
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameMangling};
 
 use crate::base::*;
-use crate::private::{Lines, Parse};
+use crate::shared::Parse;
+
+#[derive(Clone, Debug)]
+struct LineOffsets<'data> {
+    data: &'data [u8],
+    finished: bool,
+    index: usize,
+}
+
+impl<'data> LineOffsets<'data> {
+    #[inline]
+    fn new(data: &'data [u8]) -> Self {
+        Self {
+            data,
+            finished: false,
+            index: 0,
+        }
+    }
+}
+
+impl Default for LineOffsets<'_> {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            data: &[],
+            finished: true,
+            index: 0,
+        }
+    }
+}
+
+impl<'data> Iterator for LineOffsets<'data> {
+    type Item = (usize, &'data [u8]);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.finished {
+            return None;
+        }
+
+        match self.data.iter().position(|b| *b == b'\n') {
+            None => {
+                if self.finished {
+                    None
+                } else {
+                    self.finished = true;
+                    Some((self.index, self.data))
+                }
+            }
+            Some(index) => {
+                let mut data = &self.data[..index];
+                if index > 0 && data[index - 1] == b'\r' {
+                    data = &data[..index - 1];
+                }
+
+                let item = Some((self.index, data));
+                self.index += index + 1;
+                self.data = &self.data[index + 1..];
+                item
+            }
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.finished {
+            (0, Some(0))
+        } else {
+            (1, Some(self.data.len() + 1))
+        }
+    }
+}
+
+impl std::iter::FusedIterator for LineOffsets<'_> {}
+
+#[allow(missing_docs)]
+#[derive(Clone, Debug, Default)]
+pub struct Lines<'data>(LineOffsets<'data>);
+
+impl<'data> Lines<'data> {
+    #[inline]
+    #[allow(missing_docs)]
+    pub fn new(data: &'data [u8]) -> Self {
+        Self(LineOffsets::new(data))
+    }
+}
+
+impl<'data> Iterator for Lines<'data> {
+    type Item = &'data [u8];
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|tup| tup.1)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl std::iter::FusedIterator for Lines<'_> {}
 
 /// Length at which the breakpad header will be capped.
 ///
@@ -2061,4 +2160,67 @@ mod tests {
         "###);
         Ok(())
     }
+
+    use similar_asserts::assert_eq;
+
+    #[test]
+    fn test_lineoffsets_fused() {
+        let data = b"";
+        let mut offsets = LineOffsets::new(data);
+
+        offsets.next();
+        assert_eq!(None, offsets.next());
+        assert_eq!(None, offsets.next());
+        assert_eq!(None, offsets.next());
+    }
+
+    macro_rules! test_lineoffsets {
+        ($name:ident, $data:literal, $( ($index:literal, $line:literal) ),*) => {
+            #[test]
+            fn $name() {
+                let mut offsets = LineOffsets::new($data);
+
+                $(
+                    assert_eq!(Some(($index, &$line[..])), offsets.next());
+                )*
+                assert_eq!(None, offsets.next());
+            }
+        };
+    }
+
+    test_lineoffsets!(test_lineoffsets_empty, b"", (0, b""));
+    test_lineoffsets!(test_lineoffsets_oneline, b"hello", (0, b"hello"));
+    test_lineoffsets!(
+        test_lineoffsets_trailing_n,
+        b"hello\n",
+        (0, b"hello"),
+        (6, b"")
+    );
+    test_lineoffsets!(
+        test_lineoffsets_trailing_rn,
+        b"hello\r\n",
+        (0, b"hello"),
+        (7, b"")
+    );
+    test_lineoffsets!(
+        test_lineoffsets_n,
+        b"hello\nworld\nyo",
+        (0, b"hello"),
+        (6, b"world"),
+        (12, b"yo")
+    );
+    test_lineoffsets!(
+        test_lineoffsets_rn,
+        b"hello\r\nworld\r\nyo",
+        (0, b"hello"),
+        (7, b"world"),
+        (14, b"yo")
+    );
+    test_lineoffsets!(
+        test_lineoffsets_mixed,
+        b"hello\r\nworld\nyo",
+        (0, b"hello"),
+        (7, b"world"),
+        (13, b"yo")
+    );
 }

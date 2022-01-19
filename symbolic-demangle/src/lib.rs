@@ -204,6 +204,33 @@ fn strip_hash_suffix(ident: &str) -> &str {
     ident
 }
 
+struct BoundedString {
+    str: String,
+    bound: usize,
+}
+
+impl BoundedString {
+    fn new(bound: usize) -> Self {
+        Self {
+            str: String::new(),
+            bound,
+        }
+    }
+
+    pub fn into_inner(self) -> String {
+        self.str
+    }
+}
+
+impl std::fmt::Write for BoundedString {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        if self.str.len().saturating_add(s.len()) > self.bound {
+            return Err(std::fmt::Error);
+        }
+        self.str.write_str(s)
+    }
+}
+
 fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
     if is_maybe_msvc(ident) {
         return try_demangle_msvc(ident, opts);
@@ -229,10 +256,14 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
             cpp_options = cpp_options.no_return_type();
         }
 
-        match symbol.demangle(&cpp_options) {
-            Ok(demangled) => Some(demangled),
-            Err(_) => None,
-        }
+        // Bound the maximum output string, as a huge number of substitutions could potentially
+        // lead to a "Billion laughs attack".
+        let mut buf = BoundedString::new(4096);
+
+        symbol
+            .structured_demangle(&mut buf, &cpp_options)
+            .ok()
+            .map(|_| buf.into_inner())
     }
     #[cfg(not(feature = "cpp"))]
     {

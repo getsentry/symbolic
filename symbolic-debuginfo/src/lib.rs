@@ -36,17 +36,43 @@
 #![warn(missing_docs)]
 
 mod base;
+#[cfg(all(
+    feature = "breakpad",
+    feature = "dwarf",
+    feature = "elf",
+    feature = "macho",
+    feature = "ms",
+    feature = "sourcebundle",
+    feature = "wasm"
+))]
 mod object;
-mod private;
+mod shared;
 
+#[cfg(feature = "breakpad")]
 pub mod breakpad;
+#[cfg(feature = "dwarf")]
 pub mod dwarf;
+#[cfg(feature = "elf")]
 pub mod elf;
+#[cfg(feature = "macho")]
 pub mod macho;
+#[cfg(feature = "ms")]
 pub mod pdb;
+#[cfg(feature = "ms")]
 pub mod pe;
+#[cfg(feature = "sourcebundle")]
 pub mod sourcebundle;
+#[cfg(feature = "wasm")]
 pub mod wasm;
 
 pub use crate::base::*;
+#[cfg(all(
+    feature = "breakpad",
+    feature = "dwarf",
+    feature = "elf",
+    feature = "macho",
+    feature = "ms",
+    feature = "sourcebundle",
+    feature = "wasm"
+))]
 pub use crate::object::*;

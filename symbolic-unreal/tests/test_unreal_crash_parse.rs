@@ -178,3 +178,22 @@ fn test_get_logs() {
         "Windows GetLastError: The operation completed successfully. (0)"
     );
 }
+
+// See https://github.com/getsentry/symbolic/issues/476
+#[test]
+fn test_invalid_file_count() {
+    use std::io::Write;
+
+    let mut bytes = Vec::new();
+    bytes.extend_from_slice(b"\x00\x00\x00\x00"); // Directory Name (AnsiString)
+    bytes.extend_from_slice(b"\x00\x00\x00\x00"); // File Name (AnsiString)
+    bytes.extend_from_slice(b"\x00\x00\x00\x00"); // Uncompressed Size (i32 LE)
+    bytes.extend_from_slice(b"\xff\xff\xff\x40"); // File Count (i32 LE)
+
+    // File Count is what we're targeting, but we need the bits at the front.
+
+    let mut enc = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::default());
+    enc.write_all(&bytes).unwrap();
+    let compressed = enc.finish().unwrap();
+    assert!(Unreal4Crash::parse_with_limit(&compressed, 1024 * 1024).is_err());
+}

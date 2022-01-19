@@ -1,12 +1,10 @@
 //! Support for the Executable and Linkable Format, used on Linux.
 
 use std::borrow::Cow;
-use std::cell::Cell;
 use std::convert::TryInto;
 use std::error::Error;
 use std::ffi::CStr;
 use std::fmt;
-use std::io::Cursor;
 
 use core::cmp;
 use flate2::{Decompress, FlushDecompress};
@@ -18,7 +16,6 @@ use goblin::{
     container::{Container, Ctx},
     elf, strtab,
 };
-use nom::InputTakeAtPosition;
 use scroll::Pread;
 use thiserror::Error;
 
@@ -26,7 +23,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::private::Parse;
+use crate::shared::Parse;
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;
@@ -77,10 +74,8 @@ pub struct ElfObject<'data> {
 impl<'data> ElfObject<'data> {
     /// Tests whether the buffer could contain an ELF object.
     pub fn test(data: &[u8]) -> bool {
-        matches!(
-            goblin::peek(&mut Cursor::new(data)),
-            Ok(goblin::Hint::Elf(_))
-        )
+        data.get(0..elf::header::SELFMAG)
+            .map_or(false, |data| data == elf::header::ELFMAG)
     }
 
     // Pulled from https://github.com/m4b/goblin/blob/master/src/elf/mod.rs#L393-L424 as it
@@ -959,26 +954,25 @@ impl<'data> DebugLink<'data> {
         data: &[u8],
         endianity: Endian,
     ) -> Result<(&CStr, u32), DebugLinkErrorKind> {
-        // split_at_position is not inclusive, so does not contain the NUL:
-        // use a cell to remember the last character that was seen, then exit only on the next character (the NUL).
-        // This is OK because we have another character after the NUL (CRC or padding).
-        let last_seen: Cell<Option<u8>> = Cell::new(None);
-        let (crc, filename) = data
-            .split_at_position(|c| {
-                let c = last_seen.replace(Some(c));
-                if let Some(c) = c {
-                    c == b'\0'
-                } else {
-                    false
-                }
-            })
-            .map_err(|_: nom::Err<()>| DebugLinkErrorKind::MissingNul)?;
+        let nul_pos = data
+            .iter()
+            .position(|byte| *byte == 0)
+            .ok_or(DebugLinkErrorKind::MissingNul)?;
+
+        if nul_pos + 1 == data.len() {
+            return Err(DebugLinkErrorKind::MissingCrc {
+                filename_len_with_nul: nul_pos + 1,
+            });
+        }
+
+        let filename = &data[..nul_pos + 1];
 
         // let's be liberal and assume that the padding is correct and all 0s,
         // and just check that we have enough remaining length for the CRC.
-        let crc = crc
-            .get(crc.len() - 4..)
-            .ok_or_else(|| DebugLinkErrorKind::MissingCrc {
+        let crc = data
+            .get(nul_pos + 1..)
+            .and_then(|crc| crc.get(crc.len() - 4..))
+            .ok_or(DebugLinkErrorKind::MissingCrc {
                 filename_len_with_nul: filename.len(),
             })?;
 

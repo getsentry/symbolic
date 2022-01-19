@@ -16,7 +16,6 @@ if PY2:
         cls.__str__ = lambda x: x.__unicode__().encode("utf-8")
         return cls
 
-
 else:
     text_type = str
     int_types = (int,)

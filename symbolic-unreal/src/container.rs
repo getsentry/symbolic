@@ -113,6 +113,10 @@ fn gread_files(
     count: usize,
     offset: &mut usize,
 ) -> Result<Vec<Unreal4FileMeta>, Unreal4Error> {
+    // a `Unreal4FileMeta` is at least 3 * 4 bytes
+    if count > bytes.len() / 12 {
+        return Err(Unreal4ErrorKind::BadData.into());
+    }
     let mut files = Vec::with_capacity(count);
     for _ in 0..count {
         let file_offset = *offset;

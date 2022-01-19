@@ -162,8 +162,8 @@ impl SymCacheConverter {
     }
 
     pub fn process_symbolic_function(&mut self, function: &Function<'_>) {
-        // skip over empty functions
-        if function.size == 0 {
+        // skip over empty functions or functions whose address is too large to fit in a u32
+        if function.size == 0 || function.address > u32::MAX as u64 {
             return;
         }
 

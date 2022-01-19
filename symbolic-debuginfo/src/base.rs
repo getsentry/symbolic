@@ -430,6 +430,7 @@ pub struct FileInfo<'data> {
 
 impl<'data> FileInfo<'data> {
     /// Creates a `FileInfo` from a joined path by trying to split it.
+    #[cfg(any(feature = "breakpad", feature = "ms", feature = "sourcebundle"))]
     pub(crate) fn from_path(path: &'data [u8]) -> Self {
         let (dir, name) = symbolic_common::split_path_bytes(path);
 

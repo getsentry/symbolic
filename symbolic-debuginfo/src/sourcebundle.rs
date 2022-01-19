@@ -53,7 +53,7 @@ use zip::{write::FileOptions, ZipWriter};
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
-use crate::private::Parse;
+use crate::shared::Parse;
 use crate::{DebugSession, ObjectKind, ObjectLike};
 
 /// Magic bytes of a source bundle. They are prepended to the ZIP file.
@@ -307,7 +307,7 @@ impl Default for SourceBundleHeader {
 struct SourceBundleManifest {
     /// Descriptors for all files in this bundle.
     #[serde(default)]
-    pub files: HashMap<String, SourceFileInfo>,
+    pub files: BTreeMap<String, SourceFileInfo>,
 
     /// Arbitrary attributes to include in the bundle.
     #[serde(flatten)]
@@ -685,7 +685,7 @@ impl<'data, 'session> DebugSession<'session> for SourceBundleDebugSession<'data>
 
 /// An iterator over source files in a SourceBundle object.
 pub struct SourceBundleFileIterator<'s> {
-    files: std::collections::hash_map::Values<'s, String, SourceFileInfo>,
+    files: std::collections::btree_map::Values<'s, String, SourceFileInfo>,
 }
 
 impl<'s> Iterator for SourceBundleFileIterator<'s> {

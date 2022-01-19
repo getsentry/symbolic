@@ -24,8 +24,24 @@ use thiserror::Error;
 use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
 
 use crate::base::*;
+#[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
-use crate::private::FunctionStack;
+use crate::shared::FunctionStack;
+
+/// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
+/// part of the dwarf interface
+#[cfg(not(feature = "macho"))]
+#[derive(Debug)]
+pub struct BcSymbolMap<'d> {
+    _marker: std::marker::PhantomData<&'d str>,
+}
+
+#[cfg(not(feature = "macho"))]
+impl<'d> BcSymbolMap<'d> {
+    pub(crate) fn resolve_opt(&self, _name: impl AsRef<[u8]>) -> Option<&str> {
+        None
+    }
+}
 
 #[doc(hidden)]
 pub use gimli;
@@ -798,12 +814,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             // should avoid this problem.
             range_buf.sort_by_key(|r| r.begin);
 
-            // In WASM files emitted by emscripted, we have observed a variety of broken ranges.
-            // One of these cases also involves ranges which are not being sorted, resulting in
-            // arithmetic underflow calculating `function_size` (in debug builds). Sorting the ranges
-            // should avoid this problem.
-            range_buf.sort_by_key(|r| r.begin);
-
             let function_address = offset(range_buf[0].begin, self.inner.info.address_offset);
             let function_size = range_buf[range_buf.len() - 1].end - range_buf[0].begin;
             let function_end = function_address + function_size;
@@ -1296,6 +1306,7 @@ impl<'data> DwarfDebugSession<'data> {
     ///
     /// All the file and function names yielded by this debug session will be resolved using
     /// the provided symbol map.
+    #[cfg(feature = "macho")]
     pub(crate) fn load_symbolmap(&mut self, symbolmap: Option<Arc<BcSymbolMap<'data>>>) {
         self.bcsymbolmap = symbolmap;
     }

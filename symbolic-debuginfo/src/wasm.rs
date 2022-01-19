@@ -1,6 +1,5 @@
 //! Support for WASM Objects (WebAssembly).
 use std::borrow::Cow;
-use std::error::Error;
 use std::fmt;
 
 use thiserror::Error;
@@ -9,25 +8,20 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::private::Parse;
+use crate::shared::Parse;
+
+mod parser;
 
 /// An error when dealing with [`WasmObject`](struct.WasmObject.html).
 #[derive(Debug, Error)]
-#[error("invalid WASM file")]
-pub struct WasmError {
-    #[source]
-    source: Option<Box<dyn Error + Send + Sync + 'static>>,
-}
-
-impl WasmError {
-    /// Creates a new WASM error from an arbitrary error payload.
-    fn new<E>(source: E) -> Self
-    where
-        E: Into<Box<dyn Error + Send + Sync>>,
-    {
-        let source = Some(source.into());
-        Self { source }
-    }
+#[non_exhaustive]
+pub enum WasmError {
+    /// Failed to read data from a WASM binary
+    #[error("invalid wasm file")]
+    Read(#[from] wasmparser::BinaryReaderError),
+    /// A function in the WASM binary referenced an unknown type
+    #[error("function references unknown type")]
+    UnknownFunctionType,
 }
 
 /// Wasm object container (.wasm), used for executables and debug
@@ -35,9 +29,12 @@ impl WasmError {
 ///
 /// This can only parse binary wasm file and not wast files.
 pub struct WasmObject<'data> {
-    wasm_module: walrus::Module,
-    code_offset: u64,
+    dwarf_sections: Vec<(&'data str, &'data [u8])>,
+    funcs: Vec<Symbol<'data>>,
+    build_id: Option<&'data [u8]>,
     data: &'data [u8],
+    code_offset: u64,
+    kind: ObjectKind,
 }
 
 impl<'data> WasmObject<'data> {
@@ -46,57 +43,25 @@ impl<'data> WasmObject<'data> {
         data.starts_with(b"\x00asm")
     }
 
-    /// Tries to parse a WASM from the given slice.
-    pub fn parse(data: &'data [u8]) -> Result<Self, WasmError> {
-        let wasm_module = walrus::Module::from_buffer(data).map_err(WasmError::new)?;
-
-        // we need to parse the file a second time to get the offset to the
-        // code section as walrus does not expose that yet.
-        let mut code_offset = 0;
-        for payload in wasmparser::Parser::new(0).parse_all(data).flatten() {
-            if let wasmparser::Payload::CodeSectionStart { range, .. } = payload {
-                code_offset = range.start as u64;
-                break;
-            }
-        }
-
-        Ok(WasmObject {
-            wasm_module,
-            code_offset,
-            data,
-        })
-    }
-
     /// The container file format, which currently is always `FileFormat::Wasm`.
     pub fn file_format(&self) -> FileFormat {
         FileFormat::Wasm
     }
 
-    fn get_raw_build_id(&self) -> Option<Cow<'_, [u8]>> {
-        // this section is not defined yet
-        // see https://github.com/WebAssembly/tool-conventions/issues/133
-        for (_, section) in self.wasm_module.customs.iter() {
-            if section.name() == "build_id" {
-                return Some(section.data(&Default::default()));
-            }
-        }
-        None
-    }
-
     /// The code identifier of this object.
     ///
     /// Wasm does not yet provide code IDs.
+    #[inline]
     pub fn code_id(&self) -> Option<CodeId> {
-        // see `debug_id`
-        self.get_raw_build_id()
-            .map(|data| CodeId::from_binary(&data))
+        self.build_id.map(CodeId::from_binary)
     }
 
     /// The debug information identifier of a WASM file.
     ///
     /// Wasm does not yet provide debug IDs.
+    #[inline]
     pub fn debug_id(&self) -> DebugId {
-        self.get_raw_build_id()
+        self.build_id
             .and_then(|data| {
                 data.get(..16)
                     .and_then(|first_16| Uuid::from_slice(first_16).ok())
@@ -112,12 +77,9 @@ impl<'data> WasmObject<'data> {
     }
 
     /// The kind of this object.
+    #[inline]
     pub fn kind(&self) -> ObjectKind {
-        if self.wasm_module.funcs.iter().next().is_some() {
-            ObjectKind::Library
-        } else {
-            ObjectKind::Debug
-        }
+        self.kind
     }
 
     /// The address at which the image prefers to be loaded into memory.
@@ -134,9 +96,8 @@ impl<'data> WasmObject<'data> {
 
     /// Returns an iterator over symbols in the public symbol table.
     pub fn symbols(&self) -> WasmSymbolIterator<'data, '_> {
-        let iterator = Box::new(self.wasm_module.funcs.iter()) as Box<dyn Iterator<Item = _>>;
         WasmSymbolIterator {
-            funcs: iterator.peekable(),
+            funcs: self.funcs.clone().into_iter(),
             _marker: std::marker::PhantomData,
         }
     }
@@ -147,13 +108,11 @@ impl<'data> WasmObject<'data> {
     }
 
     /// Determines whether this object contains debug information.
+    #[inline]
     pub fn has_debug_info(&self) -> bool {
-        for (_, section) in self.wasm_module.customs.iter() {
-            if section.name() == ".debug_info" {
-                return true;
-            }
-        }
-        false
+        self.dwarf_sections
+            .iter()
+            .any(|(name, _)| *name == ".debug_info")
     }
 
     /// Constructs a debugging session.
@@ -164,13 +123,11 @@ impl<'data> WasmObject<'data> {
     }
 
     /// Determines whether this object contains stack unwinding information.
+    #[inline]
     pub fn has_unwind_info(&self) -> bool {
-        for (_, section) in self.wasm_module.customs.iter() {
-            if section.name() == ".debug_frame" {
-                return true;
-            }
-        }
-        false
+        self.dwarf_sections
+            .iter()
+            .any(|(name, _)| *name == ".debug_frame")
     }
 
     /// Determines whether this object contains embedded source.
@@ -292,25 +249,25 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for WasmObject<'data> {
     }
 }
 
-impl<'d> Dwarf<'d> for WasmObject<'d> {
+impl<'data> Dwarf<'data> for WasmObject<'data> {
     fn endianity(&self) -> Endian {
         Endian::Little
     }
 
-    fn raw_section(&self, section_name: &str) -> Option<DwarfSection<'d>> {
-        for (_, section) in self.wasm_module.customs.iter() {
-            if section.name().strip_prefix('.') == Some(section_name) {
-                return Some(DwarfSection {
-                    data: Cow::Owned(section.data(&Default::default()).into_owned()),
+    fn raw_section(&self, section_name: &str) -> Option<DwarfSection<'data>> {
+        self.dwarf_sections.iter().find_map(|(name, data)| {
+            if name.strip_prefix('.') == Some(section_name) {
+                Some(DwarfSection {
+                    data: Cow::Borrowed(data),
                     // XXX: what are these going to be?
                     address: 0,
                     offset: 0,
                     align: 4,
-                });
+                })
+            } else {
+                None
             }
-        }
-
-        None
+        })
     }
 }
 
@@ -318,41 +275,14 @@ impl<'d> Dwarf<'d> for WasmObject<'d> {
 ///
 /// Returned by [`WasmObject::symbols`](struct.WasmObject.html#method.symbols).
 pub struct WasmSymbolIterator<'data, 'object> {
-    funcs: std::iter::Peekable<Box<dyn Iterator<Item = &'object walrus::Function> + 'object>>,
-    _marker: std::marker::PhantomData<&'data [u8]>,
-}
-
-fn get_addr_of_function(func: &walrus::Function) -> u64 {
-    if let walrus::FunctionKind::Local(ref loc) = func.kind {
-        let entry_block = loc.entry_block();
-        let seq = loc.block(entry_block);
-        seq.instrs.get(0).map_or(0, |x| x.1.data() as u64)
-    } else {
-        0
-    }
+    funcs: std::vec::IntoIter<Symbol<'data>>,
+    _marker: std::marker::PhantomData<&'object u8>,
 }
 
 impl<'data, 'object> Iterator for WasmSymbolIterator<'data, 'object> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            let func = self.funcs.next()?;
-            if let walrus::FunctionKind::Local(_) = func.kind {
-                let address = get_addr_of_function(func);
-                let size = self
-                    .funcs
-                    .peek()
-                    .map_or(0, |func| match get_addr_of_function(func) {
-                        0 => 0,
-                        x => x - address,
-                    });
-                return Some(Symbol {
-                    name: func.name.as_ref().map(|x| Cow::Owned(x.clone())),
-                    address,
-                    size,
-                });
-            }
-        }
+        self.funcs.next()
     }
 }
