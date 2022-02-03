@@ -14,6 +14,7 @@ const PDB_MAGIC: &[u8] = b"Microsoft C/C++ MSF 7.00\r\n\x1a\x44\x53\x00\x00\x00"
 const PE_MAGIC: &[u8] = &0x5a4d_u16.to_le_bytes();
 const ELF_MAGIC: &[u8] = b"\x7FELF";
 
+// cargo +nightly fuzz run fuzz_objects -j 12 -- -max_len=16777216 # 16M
 fuzz_target!(|data: Vec<u8>| {
     // symbolic rejects everything < 16 bytes anyway
     if data.len() < 16 {
