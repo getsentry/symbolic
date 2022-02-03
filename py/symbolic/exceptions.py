@@ -18,7 +18,7 @@ class SymbolicError(Exception):
     def __str__(self):
         rv = self.message
         if self.rust_info is not None:
-            return u"%s\n\n%s" % (rv, self.rust_info)
+            return "%s\n\n%s" % (rv, self.rust_info)
         return rv
 
 
