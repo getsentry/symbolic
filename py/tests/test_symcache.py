@@ -79,5 +79,5 @@ def test_symbolicate_electron_darwin_sym(res_path):
 
 
 def test_unicode_ignore_decode():
-    sv = SourceView.from_bytes(u"fööbar".encode("latin1"))
-    assert sv[0] == u"f\ufffd\ufffdbar"
+    sv = SourceView.from_bytes("fööbar".encode("latin1"))
+    assert sv[0] == "f\ufffd\ufffdbar"

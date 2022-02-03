@@ -67,8 +67,8 @@ def test_basics(get_sourceview, get_sourcemapview):
     sv = sourcemap.get_sourceview(0)
     assert sv is not None
     assert sv._shared
-    assert sv[0] == u"var makeAFailure = (function() {"
-    assert sv[1] == u"  function testingStuff() {"
+    assert sv[0] == "var makeAFailure = (function() {"
+    assert sv[1] == "  function testingStuff() {"
     assert len(sv) == 32
 
 
