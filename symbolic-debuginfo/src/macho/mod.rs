@@ -571,7 +571,7 @@ impl<'d, 'a> Iterator for FatMachObjectIterator<'d, 'a> {
         match self.iter.next() {
             Some(Ok(arch)) => {
                 let start = (arch.offset as usize).min(self.data.len());
-                let end = ((arch.offset + arch.size) as usize).min(self.data.len());
+                let end = (arch.offset as usize + arch.size as usize).min(self.data.len());
                 Some(MachObject::parse(&self.data[start..end]))
             }
             Some(Err(error)) => Some(Err(MachError::new(error))),
@@ -633,7 +633,7 @@ impl<'d> FatMachO<'d> {
         };
 
         let start = (arch.offset as usize).min(self.data.len());
-        let end = ((arch.offset + arch.size) as usize).min(self.data.len());
+        let end = (arch.offset as usize + arch.size as usize).min(self.data.len());
         MachObject::parse(&self.data[start..end]).map(Some)
     }
 }
@@ -717,7 +717,7 @@ impl<'d> MachArchive<'d> {
                 use scroll::Pread;
                 // so this is kind of stupid but java class files share the same cutesy magic
                 // as a macho fat file (CAFEBABE).  This means that we often claim that a java
-                // class file is actually a macho binary but it's not.  The next 32 bytes encode
+                // class file is actually a macho binary but it's not.  The next 32 bits encode
                 // the number of embedded architectures in a fat mach.  In case of a JAR file
                 // we have 2 bytes for minor version and 2 bytes for major version of the class
                 // file format.
@@ -889,5 +889,26 @@ mod tests {
             .unwrap();
         let inlinee = fn_with_inlinees.inlinees.first().unwrap();
         assert_eq!(&inlinee.name, "prepareReportWriter");
+    }
+
+    #[test]
+    fn test_overflow_multiarch() {
+        let data = [
+            0xbe, 0xba, 0xfe, 0xca, // magic cafebabe
+            1, 0, 0, 0, // num arches = 1
+            0, 0, 0, 0, // cpu type
+            0, 0, 0, 0, // cpu subtype
+            0xff, 0xff, 0xff, 0, // offset
+            0xff, 0xff, 0, 0, // size,
+            0, 0, 0, 0, // align
+        ];
+
+        let fat = FatMachO::parse(&data).unwrap();
+
+        let obj = fat.object_by_index(0);
+        assert!(obj.is_err());
+
+        let mut iter = fat.objects();
+        assert!(iter.next().unwrap().is_err());
     }
 }
