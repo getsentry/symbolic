@@ -465,7 +465,7 @@ impl<'data> Dwarf<'data> for MachObject<'data> {
             for section in segment.into_iter() {
                 let (header, data) = section.ok()?;
                 if let Ok(sec) = header.name() {
-                    if sec.len() >= 2 && &sec[2..] == section_name {
+                    if sec.starts_with("__") && &sec[2..] == section_name {
                         // In some cases, dsymutil leaves sections headers but removes their
                         // data from the file. While the addr and size parameters are still
                         // set, `header.offset` is 0 in that case. We skip them just like the
