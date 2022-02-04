@@ -504,11 +504,7 @@ impl<'data> Iterator for MachOSymbolIterator<'data> {
 
     fn next(&mut self) -> Option<Self::Item> {
         for next in &mut self.symbols {
-            // Gracefully recover from corrupt nlists
-            let (mut name, nlist) = match next {
-                Ok(pair) => pair,
-                Err(_) => continue,
-            };
+            let (mut name, nlist) = next.ok()?;
 
             // Sanity check of the symbol address. Since we only intend to iterate over function
             // symbols, they need to be mapped after the image's vmaddr.
@@ -929,5 +925,14 @@ mod tests {
         let obj = MachObject::parse(&data).unwrap();
 
         assert!(!obj.has_debug_info());
+    }
+
+    #[test]
+    fn test_invalid_symbols() {
+        let data = std::fs::read("tests/fixtures/invalid-symbols.fuzzed").unwrap();
+
+        let obj = MachObject::parse(&data).unwrap();
+
+        let _ = obj.symbol_map();
     }
 }
