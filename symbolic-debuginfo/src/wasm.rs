@@ -286,3 +286,15 @@ impl<'data, 'object> Iterator for WasmSymbolIterator<'data, 'object> {
         self.funcs.next()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_invalid_header() {
+        let data = b"\x00asm    ";
+
+        assert!(WasmObject::parse(data).is_err());
+    }
+}

@@ -25,7 +25,8 @@ impl<'data> super::WasmObject<'data> {
         // Note that the order of the payloads here are the order that they will appear in (valid)
         // wasm binaries, other than the sections that we need to parse to validate the module, which
         // are at the end
-        for payload in wasmparser::Parser::new(0).parse_all(data).flatten() {
+        for payload in wasmparser::Parser::new(0).parse_all(data) {
+            let payload = payload?;
             match payload {
                 // This should always be first, and is necessary to prepare the validator since the
                 // version determines which parts of the spec can be used
