@@ -4,7 +4,25 @@
 
 **Features**:
 
+- Added a new SymCache binary format which is fundamentally based around instruction addr ranges.
 - Add `ElfObject::debug_link` that allows recovering the [debug link](https://sourceware.org/gdb/onlinedocs/gdb/Separate-Debug-Files.html) from an Elf if present. ([#450](https://github.com/getsentry/symbolic/pull/450))
+- Updated Swift demangler to 5.5.1. ([#465](https://github.com/getsentry/symbolic/pull/465))
+- Support split functions. ([#441](https://github.com/getsentry/symbolic/pull/441))
+- Refactor `symbolic-debuginfo` feature flags. ([#470](https://github.com/getsentry/symbolic/pull/470))
+- Rewrite wasm parser. ([#474](https://github.com/getsentry/symbolic/pull/474))
+
+**Fixes**:
+
+- Make SourceBundle ordering deterministic. ([#489](https://github.com/getsentry/symbolic/pull/489))
+- Replace unmaintained dependencies.
+- Better guard against invalid input that could lead to unreasonable memory allocations, panics or infinite loops.
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@dureuill](https://github.com/dureuill)
+- [@Jake-Shadle](https://github.com/Jake-Shadle)
 
 ## 8.5.0
 
