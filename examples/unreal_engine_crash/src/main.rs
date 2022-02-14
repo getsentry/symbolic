@@ -44,7 +44,7 @@ fn main() {
     let matches = App::new("unreal-engine-crash")
         .about("Unpack an Unreal Engine crash report")
         .arg(
-            Arg::with_name("crash_file_path")
+            Arg::new("crash_file_path")
                 .required(true)
                 .value_name("crash_file_path")
                 .help("Path to the crash file"),

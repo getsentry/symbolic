@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Update `goblin` which received fixes to avoid panics and unreasonable memory allocations based on invalid input.
+
 ## 8.6.0
 
 **Features**:

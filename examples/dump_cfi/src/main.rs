@@ -28,7 +28,7 @@ fn dump_cfi<P: AsRef<Path>>(path: P) -> Result<()> {
     Ok(())
 }
 
-fn execute(matches: &ArgMatches<'_>) -> Result<()> {
+fn execute(matches: &ArgMatches) -> Result<()> {
     let path = matches.value_of("path").unwrap();
     dump_cfi(path)
 }
@@ -37,7 +37,7 @@ fn main() {
     let matches = App::new("dump_cfi")
         .about("Prints CFI in Breakpad format")
         .arg(
-            Arg::with_name("path")
+            Arg::new("path")
                 .required(true)
                 .value_name("PATH")
                 .help("Path to the debug file")

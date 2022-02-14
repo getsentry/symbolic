@@ -9,5 +9,5 @@ publish = false
 
 [dependencies]
 anyhow = "1.0.32"
-clap = "2.33.0"
+clap = "3.0.14"
 symbolic = { path = "../../symbolic", features = ["demangle"] }
