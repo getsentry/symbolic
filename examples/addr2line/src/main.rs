@@ -151,7 +151,7 @@ In the second, addr2line reads hexadecimal addresses from standard input, and pr
                 .help("Display only the base of each file name."),
         )
         .arg(
-            Arg::new("inlines")
+            Arg::new("inlinees")
                 .short('i')
                 .long("inlinees")
                 .help("If the address belongs to a function that was inlined, the source information for all enclosing scopes back to the first non-inlined function will also be printed. For example, if \"main\" inlines \"callee1\" which inlines \"callee2\", and address is from \"callee2\", the source information for \"callee1\" and \"main\" will also be printed.")
