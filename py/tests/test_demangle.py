@@ -20,9 +20,9 @@ def test_swift_demangle_options():
         "ObjectiveCType_x"
     )
     simplified_expected = (
-        u"protocol witness for static _ObjectiveCBridgeable._"
-        u"unconditionallyBridgeFromObjectiveC(A._ObjectiveCType?) "
-        u"in conformance UIApplicationLaunchOptionsKey"
+        "protocol witness for static _ObjectiveCBridgeable._"
+        "unconditionallyBridgeFromObjectiveC(A._ObjectiveCType?) "
+        "in conformance UIApplicationLaunchOptionsKey"
     )
     assert demangle_name(mangled) == simplified_expected
 

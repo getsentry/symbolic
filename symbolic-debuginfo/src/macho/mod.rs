@@ -462,9 +462,10 @@ impl<'data> Dwarf<'data> for MachObject<'data> {
 
     fn raw_section(&self, section_name: &str) -> Option<DwarfSection<'data>> {
         for segment in &self.macho.segments {
-            for (header, data) in segment.into_iter().flatten() {
+            for section in segment.into_iter() {
+                let (header, data) = section.ok()?;
                 if let Ok(sec) = header.name() {
-                    if sec.len() >= 2 && &sec[2..] == section_name {
+                    if sec.starts_with("__") && &sec[2..] == section_name {
                         // In some cases, dsymutil leaves sections headers but removes their
                         // data from the file. While the addr and size parameters are still
                         // set, `header.offset` is 0 in that case. We skip them just like the
@@ -503,11 +504,7 @@ impl<'data> Iterator for MachOSymbolIterator<'data> {
 
     fn next(&mut self) -> Option<Self::Item> {
         for next in &mut self.symbols {
-            // Gracefully recover from corrupt nlists
-            let (mut name, nlist) = match next {
-                Ok(pair) => pair,
-                Err(_) => continue,
-            };
+            let (mut name, nlist) = next.ok()?;
 
             // Sanity check of the symbol address. Since we only intend to iterate over function
             // symbols, they need to be mapped after the image's vmaddr.
@@ -571,7 +568,7 @@ impl<'d, 'a> Iterator for FatMachObjectIterator<'d, 'a> {
         match self.iter.next() {
             Some(Ok(arch)) => {
                 let start = (arch.offset as usize).min(self.data.len());
-                let end = ((arch.offset + arch.size) as usize).min(self.data.len());
+                let end = (arch.offset as usize + arch.size as usize).min(self.data.len());
                 Some(MachObject::parse(&self.data[start..end]))
             }
             Some(Err(error)) => Some(Err(MachError::new(error))),
@@ -633,7 +630,7 @@ impl<'d> FatMachO<'d> {
         };
 
         let start = (arch.offset as usize).min(self.data.len());
-        let end = ((arch.offset + arch.size) as usize).min(self.data.len());
+        let end = (arch.offset as usize + arch.size as usize).min(self.data.len());
         MachObject::parse(&self.data[start..end]).map(Some)
     }
 }
@@ -717,7 +714,7 @@ impl<'d> MachArchive<'d> {
                 use scroll::Pread;
                 // so this is kind of stupid but java class files share the same cutesy magic
                 // as a macho fat file (CAFEBABE).  This means that we often claim that a java
-                // class file is actually a macho binary but it's not.  The next 32 bytes encode
+                // class file is actually a macho binary but it's not.  The next 32 bits encode
                 // the number of embedded architectures in a fat mach.  In case of a JAR file
                 // we have 2 bytes for minor version and 2 bytes for major version of the class
                 // file format.
@@ -889,5 +886,53 @@ mod tests {
             .unwrap();
         let inlinee = fn_with_inlinees.inlinees.first().unwrap();
         assert_eq!(&inlinee.name, "prepareReportWriter");
+    }
+
+    #[test]
+    fn test_overflow_multiarch() {
+        let data = [
+            0xbe, 0xba, 0xfe, 0xca, // magic
+            0x00, 0x00, 0x00, 0x01, // num arches = 1
+            0x00, 0x00, 0x00, 0x00, // cpu type
+            0x00, 0x00, 0x00, 0x00, // cpu subtype
+            0x00, 0xff, 0xff, 0xff, // offset
+            0x00, 0x00, 0xff, 0xff, // size
+            0x00, 0x00, 0x00, 0x00, // align
+        ];
+
+        let fat = FatMachO::parse(&data).unwrap();
+
+        let obj = fat.object_by_index(0);
+        assert!(obj.is_err());
+
+        let mut iter = fat.objects();
+        assert!(iter.next().unwrap().is_err());
+    }
+
+    #[test]
+    fn test_section_access() {
+        let data = [
+            0xfe, 0xed, 0xfa, 0xcf, 0x1, 0x0, 0x0, 0x0, 0x0, 0x2, 0xed, 0xfa, 0xce, 0x6f, 0x73,
+            0x6f, 0x0, 0x0, 0x0, 0x7, 0x0, 0x0, 0x0, 0x4d, 0x4f, 0x44, 0x55, 0x4c, 0x40, 0x20, 0x0,
+            0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0, 0x3, 0x4d, 0xc2, 0xc2, 0xc2, 0xc2,
+            0xc2, 0xc2, 0xc2, 0xc2, 0xc2, 0xc2, 0xca, 0x7a, 0xfe, 0xba, 0xbe, 0x0, 0x0, 0x0, 0x20,
+            0x43, 0x2f, 0x0, 0x32, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x7, 0x0, 0x0, 0x0, 0x4d, 0x4f,
+            0x44, 0x55, 0x4c, 0x40, 0x20, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x0, 0x0, 0x0, 0x0,
+            0x0, 0x0, 0x2a, 0x78, 0x6e, 0xc2, 0xc2, 0xc2, 0xc2, 0xc2, 0xc2, 0xc2, 0xc2, 0xc2, 0xc2,
+            0xc2, 0xc2, 0xc2, 0xc2, 0xc6, 0xd5, 0xc2, 0xc2, 0x1f, 0x1f,
+        ];
+
+        let obj = MachObject::parse(&data).unwrap();
+
+        assert!(!obj.has_debug_info());
+    }
+
+    #[test]
+    fn test_invalid_symbols() {
+        let data = std::fs::read("tests/fixtures/invalid-symbols.fuzzed").unwrap();
+
+        let obj = MachObject::parse(&data).unwrap();
+
+        let _ = obj.symbol_map();
     }
 }
