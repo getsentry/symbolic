@@ -43,7 +43,7 @@ fn write_object_sources(path: &Path, output_path: &Path) -> Result<(), Box<dyn s
     Ok(())
 }
 
-fn execute(matches: &ArgMatches<'_>) {
+fn execute(matches: &ArgMatches) {
     let output_path = Path::new(matches.value_of("output").unwrap());
     for path in matches.values_of("paths").unwrap_or_default() {
         if let Err(e) = write_object_sources(Path::new(&path), output_path) {
@@ -58,17 +58,17 @@ fn main() {
     let matches = App::new("object-debug")
         .about("Shows some information on object files")
         .arg(
-            Arg::with_name("paths")
+            Arg::new("paths")
                 .required(true)
-                .multiple(true)
+                .multiple_occurrences(true)
                 .value_name("PATH")
                 .help("Path to the debug file")
                 .number_of_values(1)
                 .index(1),
         )
         .arg(
-            Arg::with_name("output")
-                .short("o")
+            Arg::new("output")
+                .short('o')
                 .long("output")
                 .required(true)
                 .value_name("PATH")

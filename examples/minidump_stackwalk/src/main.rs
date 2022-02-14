@@ -314,37 +314,37 @@ fn main() {
     let matches = App::new("symbolic-minidump")
         .about("Symbolicates a minidump")
         .arg(
-            Arg::with_name("minidump_file_path")
+            Arg::new("minidump_file_path")
                 .required(true)
                 .value_name("minidump")
                 .help("Path to the minidump file"),
         )
         .arg(
-            Arg::with_name("debug_symbols_path")
+            Arg::new("debug_symbols_path")
                 .value_name("symbols")
                 .help("Path to a folder containing debug symbols"),
         )
         .arg(
-            Arg::with_name("cfi")
-                .short("c")
+            Arg::new("cfi")
+                .short('c')
                 .long("cfi")
                 .help("Use CFI while stackwalking"),
         )
         .arg(
-            Arg::with_name("symbolize")
-                .short("s")
+            Arg::new("symbolize")
+                .short('s')
                 .long("symbolize")
                 .help("Symbolize frames (file, function and line number)"),
         )
         .arg(
-            Arg::with_name("only_crash")
-                .short("o")
+            Arg::new("only_crash")
+                .short('o')
                 .long("only-crash")
                 .help("Only output the crashed thread"),
         )
         .arg(
-            Arg::with_name("no_modules")
-                .short("n")
+            Arg::new("no_modules")
+                .short('n')
                 .long("no-modules")
                 .help("Do not output loaded modules"),
         )
