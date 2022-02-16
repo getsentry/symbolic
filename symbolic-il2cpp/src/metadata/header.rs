@@ -37,7 +37,9 @@ impl<'d> scroll::ctx::TryFromCtx<'d, MetadataCtx> for Header<'d> {
         // * properties
         *offset += 2 * 2 * std::mem::size_of::<u32>();
 
-        let methods_buf = get_slice(from, from.gread::<u32>(offset)?, from.gread::<u32>(offset)?)?;
+        let methods_offset = from.gread::<u32>(offset)?;
+        dbg!(methods_offset);
+        let methods_buf = get_slice(from, methods_offset, from.gread::<u32>(offset)?)?;
 
         // skip: (offset + size)
         // * parameter default values

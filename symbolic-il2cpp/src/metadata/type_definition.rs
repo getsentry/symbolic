@@ -8,6 +8,8 @@ pub struct TypeDefinition {
     pub namespace_idx: u32,
     pub declaring_type_idx: u32,
     pub parent_idx: u32,
+    pub first_method_idx: u32,
+    pub method_count: u16,
 }
 
 impl scroll::ctx::TryFromCtx<'_, MetadataCtx> for TypeDefinition {
@@ -21,7 +23,7 @@ impl scroll::ctx::TryFromCtx<'_, MetadataCtx> for TypeDefinition {
 
         // skip:
         // * byval type idx
-        *offset += 1 * std::mem::size_of::<u32>();
+        *offset += std::mem::size_of::<u32>();
 
         let declaring_type_idx = from.gread(offset)?;
         let parent_idx = from.gread(offset)?;
@@ -31,17 +33,22 @@ impl scroll::ctx::TryFromCtx<'_, MetadataCtx> for TypeDefinition {
         // * generic container idx
         // * flags
         // * first field idx
-        // * first method idx
+        *offset += 4 * std::mem::size_of::<u32>();
+
+        let first_method_idx = from.gread(offset)?;
+
+        // skip:
         // * first event id
         // * first property id
         // * nested types start
         // * interfaces start
         // * vtable start
         // * interface offsets start
-        *offset += 11 * std::mem::size_of::<u32>();
+        *offset += 6 * std::mem::size_of::<u32>();
+
+        let method_count = from.gread(offset)?;
 
         // skip:
-        // * method count
         // * property count
         // * field count
         // * event count
@@ -49,7 +56,7 @@ impl scroll::ctx::TryFromCtx<'_, MetadataCtx> for TypeDefinition {
         // * vtable count
         // * interfaces count
         // * interface offsets count
-        *offset += 8 * std::mem::size_of::<u16>();
+        *offset += 7 * std::mem::size_of::<u16>();
 
         // skip:
         // * bitfield
@@ -62,6 +69,8 @@ impl scroll::ctx::TryFromCtx<'_, MetadataCtx> for TypeDefinition {
                 namespace_idx,
                 declaring_type_idx,
                 parent_idx,
+                first_method_idx,
+                method_count,
             },
             *offset,
         ))
@@ -70,6 +79,6 @@ impl scroll::ctx::TryFromCtx<'_, MetadataCtx> for TypeDefinition {
 
 impl scroll::ctx::SizeWith<MetadataCtx> for TypeDefinition {
     fn size_with(_ctx: &MetadataCtx) -> usize {
-        20 * std::mem::size_of::<u32>() + 8 * std::mem::size_of::<u16>()
+        18 * std::mem::size_of::<u32>() + 8 * std::mem::size_of::<u16>()
     }
 }
