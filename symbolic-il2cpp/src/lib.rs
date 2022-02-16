@@ -5,9 +5,12 @@ use object::{Object, ObjectSection};
 use scroll::Pread;
 
 const IL2CPP_METADATA_MAGIC: u32 = 0xFAB11BAF; // TODO: use from_bytes_be
+const CStrCtx: scroll::ctx::StrCtx = scroll::ctx::StrCtx::Delimiter(scroll::ctx::NULL);
 
 #[derive(Debug)]
-pub struct Il2CppMetadata {}
+pub struct Il2CppMetadata {
+    version: u32,
+}
 
 impl Il2CppMetadata {
     pub fn parse(buf: &[u8]) -> anyhow::Result<Self> {
@@ -23,8 +26,116 @@ impl Il2CppMetadata {
             anyhow::bail!("wrong version: expected 29, got {}", version);
         }
 
-        Ok(Self {})
+        // now follow offset + size pairs (each u32):
+        let _str_literal_offset: u32 = buf.gread(offset)?;
+        let _str_literal_size: u32 = buf.gread(offset)?;
+
+        let _str_literal_data_offset: u32 = buf.gread(offset)?;
+        let _str_literal_data_size: u32 = buf.gread(offset)?;
+
+        let str_data_offset = buf.gread::<u32>(offset)? as usize;
+        let str_data_size = buf.gread::<u32>(offset)? as usize;
+        let str_data = &buf[str_data_offset..(str_data_offset + str_data_size)];
+        let str_at = |idx: u32| -> Result<&str, _> { str_data.pread_with(idx as usize, CStrCtx) };
+
+        let _events_offset: u32 = buf.gread(offset)?;
+        let _events_size: u32 = buf.gread(offset)?;
+
+        let _properties_offset: u32 = buf.gread(offset)?;
+        let _properties_size: u32 = buf.gread(offset)?;
+
+        let _methods_offset: u32 = buf.gread(offset)?;
+        let _methods_size: u32 = buf.gread(offset)?;
+
+        let _param_default_values_offset: u32 = buf.gread(offset)?;
+        let _param_default_values_size: u32 = buf.gread(offset)?;
+
+        let _field_default_values_offset: u32 = buf.gread(offset)?;
+        let _field_default_values_size: u32 = buf.gread(offset)?;
+
+        let _field_and_param_default_values_offset: u32 = buf.gread(offset)?;
+        let _field_and_param_default_values_size: u32 = buf.gread(offset)?;
+
+        let _field_marshaled_sizes_offset: u32 = buf.gread(offset)?;
+        let _field_marshaled_sizes_size: u32 = buf.gread(offset)?;
+
+        let _parameters_offset: u32 = buf.gread(offset)?;
+        let _parameters_size: u32 = buf.gread(offset)?;
+
+        let _fields_offset: u32 = buf.gread(offset)?;
+        let _fields_size: u32 = buf.gread(offset)?;
+
+        let _generic_parameters_offset: u32 = buf.gread(offset)?;
+        let _generic_parameters_size: u32 = buf.gread(offset)?;
+
+        let _generic_parameter_constraints_offset: u32 = buf.gread(offset)?;
+        let _generic_parameter_constraints_size: u32 = buf.gread(offset)?;
+
+        let _generic_containers_offset: u32 = buf.gread(offset)?;
+        let _generic_containers_size: u32 = buf.gread(offset)?;
+
+        let _nested_types_offset: u32 = buf.gread(offset)?;
+        let _nested_types_size: u32 = buf.gread(offset)?;
+
+        let _interfaces_offset: u32 = buf.gread(offset)?;
+        let _interfaces_size: u32 = buf.gread(offset)?;
+
+        let _vtable_methods_offset: u32 = buf.gread(offset)?;
+        let _vtable_methods_size: u32 = buf.gread(offset)?;
+
+        let _interface_offsets_offset: u32 = buf.gread(offset)?;
+        let _interface_offsets_size: u32 = buf.gread(offset)?;
+
+        let _type_definitions_offset: u32 = buf.gread(offset)?;
+        let _type_definitions_size: u32 = buf.gread(offset)?;
+
+        let _images_offset: u32 = buf.gread(offset)?;
+        let _images_size: u32 = buf.gread(offset)?;
+
+        let _assemblies_offset: u32 = buf.gread(offset)?;
+        let _assemblies_size: u32 = buf.gread(offset)?;
+
+        // also:
+        // * field refs
+        // * referenced assemblies
+        // * attribute data
+        // * attribute data range
+        // * unresolved virtual call parameter types
+        // * unresolved virtual call parameter ranges
+        // * windows runtime type names
+        // * windows runtime strings
+        // * exported type definitions
+
+        dbg!(
+            _methods_offset,
+            _methods_size,
+            _images_offset,
+            _images_size,
+            _assemblies_offset,
+            _assemblies_size
+        );
+
+        let sizeof_image = 10 * 4;
+
+        for idx in 0..(_images_size as usize / sizeof_image) {
+            let image_offset = _images_offset as usize + idx * sizeof_image;
+
+            dbg!(image_offset, str_at(buf.pread(image_offset)?));
+        }
+
+        Ok(Self { version })
     }
+}
+
+#[derive(Debug)]
+pub struct Il2CppMethodDefinition {
+    name_idx: u32,
+    declaring_type_idx: u32,
+    return_type_idx: u32,
+}
+
+impl Il2CppMethodDefinition {
+    // pub fn parse()
 }
 
 #[derive(Debug)]
@@ -131,8 +242,7 @@ impl<'d> Il2CppCodeGenModule<'d> {
         let offset = &mut offset;
 
         let name_ptr = buf.gread::<u64>(offset)? as usize;
-        let name =
-            buf.pread_with::<&str>(name_ptr, scroll::ctx::StrCtx::Delimiter(scroll::ctx::NULL))?;
+        let name = buf.pread_with::<&str>(name_ptr, CStrCtx)?;
 
         let num_methods = buf.gread::<u64>(offset)? as usize;
         let methods_ptr = buf.gread::<u64>(offset)? as usize;
@@ -254,110 +364,5 @@ mod tests {
         for fn_ptr in module.method_pointers {
             dbg!(fn_ptr, dwarf_data.functions.get(fn_ptr));
         }
-    }
-
-    /// Finds the binary offset of the `g_CodeGenModules` symbol
-    fn find_symbol_addr(object: &object::File, symbol: &[u8]) -> Result<Option<u64>, gimli::Error> {
-        // TODO: would be nice to find this in the symbol table, but since its a private symbol,
-        // we gotta look at the DWARF to find it.
-
-        // for sym in dsym.symbols() {
-        //     if sym.name() == Ok("g_CodeGenModules") {
-        //         dbg!(sym);
-        //     }
-        // }
-
-        let endian = if object.is_little_endian() {
-            gimli::RunTimeEndian::Little
-        } else {
-            gimli::RunTimeEndian::Big
-        };
-
-        // Load a section and return as `Cow<[u8]>`.
-        let load_section = |id: gimli::SectionId| -> Result<borrow::Cow<[u8]>, gimli::Error> {
-            match object.section_by_name(id.name()) {
-                Some(ref section) => Ok(section
-                    .uncompressed_data()
-                    .unwrap_or(borrow::Cow::Borrowed(&[][..]))),
-                None => Ok(borrow::Cow::Borrowed(&[][..])),
-            }
-        };
-
-        // Load all of the sections.
-        let dwarf_cow = gimli::Dwarf::load(&load_section)?;
-
-        // Borrow a `Cow<[u8]>` to create an `EndianSlice`.
-        let borrow_section: &dyn for<'a> Fn(
-            &'a borrow::Cow<[u8]>,
-        )
-            -> gimli::EndianSlice<'a, gimli::RunTimeEndian> =
-            &|section| gimli::EndianSlice::new(&*section, endian);
-
-        // Create `EndianSlice`s for all of the sections.
-        let dwarf = dwarf_cow.borrow(&borrow_section);
-
-        // Iterate over the compilation units.
-        let mut iter = dwarf.units();
-        while let Some(header) = iter.next()? {
-            // println!(
-            //     "Unit at <.debug_info+0x{:x}>",
-            //     header.offset().as_debug_info_offset().unwrap().0
-            // );
-            let unit = dwarf.unit(header)?;
-
-            // Iterate over the Debugging Information Entries (DIEs) in the unit.
-            let mut depth = 0;
-            let mut entries = unit.entries();
-            while let Some((delta_depth, entry)) = entries.next_dfs()? {
-                depth += delta_depth;
-                // println!("<{}><{:x}> {}", depth, entry.offset().0, entry.tag());
-
-                // Iterate over the attributes in the DIE.
-                // let mut attrs = entry.attrs();
-                // while let Some(attr) = attrs.next()? {
-                //     println!("   {}: {:?}", attr.name(), attr.value());
-                // }
-
-                if let Some(attr) = entry.attr_value(gimli::constants::DW_AT_name)? {
-                    let name = dwarf.attr_string(&unit, attr)?;
-
-                    if name.starts_with(b"NewBehaviourScript") {
-                        println!("{:?}:", std::str::from_utf8(&name));
-                        println!("<{}><{:x}> {}", depth, entry.offset().0, entry.tag());
-
-                        // Iterate over the attributes in the DIE.
-                        let mut attrs = entry.attrs();
-                        while let Some(attr) = attrs.next()? {
-                            println!("   {}: {:?}", attr.name(), attr.value());
-                        }
-                    }
-
-                    if name.as_ref() == symbol {
-                        // parse the location
-                        if let Some(gimli::AttributeValue::Exprloc(expr)) =
-                            entry.attr_value(gimli::constants::DW_AT_location)?
-                        {
-                            let mut eval = expr.evaluation(unit.encoding());
-                            let mut result = eval.evaluate().unwrap();
-                            while result != gimli::EvaluationResult::Complete {
-                                match result {
-                                    gimli::EvaluationResult::RequiresRelocatedAddress(addr) => {
-                                        result = eval.resume_with_relocated_address(addr).unwrap();
-                                    }
-
-                                    _ => unimplemented!(),
-                                };
-                            }
-
-                            let result = eval.result();
-                            if let gimli::Location::Address { address } = result[0].location {
-                                return Ok(Some(address));
-                            };
-                        }
-                    }
-                }
-            }
-        }
-        Ok(None)
     }
 }
