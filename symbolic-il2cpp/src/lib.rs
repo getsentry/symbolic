@@ -30,7 +30,7 @@ mod tests {
     }
 
     #[test]
-    fn test_fn_name() {
+    fn test_metadata() {
         let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds");
 
         let metadata_path = fixtures_dir
@@ -39,7 +39,12 @@ mod tests {
         let metadata_buf = unsafe { memmap2::Mmap::map(&metadata_file) }.unwrap();
 
         let metadata = Il2CppMetadata::parse(&metadata_buf).unwrap();
-        dbg!(metadata);
+        dbg!(metadata.build_method_map());
+    }
+
+    #[test]
+    fn test_binary() {
+        let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds");
 
         let dylib_path = fixtures_dir.join("IL2CPP.app/Contents/Frameworks/GameAssembly.dylib");
         let dylib_file = File::open(dylib_path).unwrap();

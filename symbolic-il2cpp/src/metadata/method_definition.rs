@@ -4,16 +4,16 @@ use super::MetadataCtx;
 
 #[derive(Debug)]
 pub struct MethodDefinition {
-    name_idx: u32,
-    declaring_type_idx: u32,
-    return_type_idx: u32,
-    parameter_start: u32,
-    generic_container_idx: u32,
-    token: u32,
-    flags: u16,
-    iflags: u16,
-    slot: u16,
-    parameter_count: u16,
+    pub name_idx: u32,
+    pub declaring_type_idx: u32,
+    pub return_type_idx: u32,
+    pub parameter_start: u32,
+    pub generic_container_idx: u32,
+    pub token: u32,
+    pub flags: u16,
+    pub iflags: u16,
+    pub slot: u16,
+    pub parameter_count: u16,
 }
 
 impl scroll::ctx::TryFromCtx<'_, MetadataCtx> for MethodDefinition {
