@@ -1,6 +1,6 @@
-pub const CStrCtx: scroll::ctx::StrCtx = scroll::ctx::StrCtx::Delimiter(scroll::ctx::NULL);
+pub const CSTR_CTX: scroll::ctx::StrCtx = scroll::ctx::StrCtx::Delimiter(scroll::ctx::NULL);
 
-pub fn get_slice<'d>(from: &'d [u8], offset: u32, size: u32) -> Result<&'d [u8], scroll::Error> {
+pub fn get_slice(from: &[u8], offset: u32, size: u32) -> Result<&[u8], scroll::Error> {
     let offset = offset as usize;
     let size = size as usize;
     let end = offset

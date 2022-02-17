@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct DwarfData {
     /// A map from function pointer (DW_AT_low_pc) to function name (DW_AT_name).
-    pub functions: BTreeMap<u64, String>,
+    pub functions: HashMap<u64, String>,
     /// The offset of `g_CodeGenModules` (DW_TAG_variable) in the corresponding executable file.
     pub codegenmodules_offset: Option<u64>,
 }
@@ -13,7 +13,7 @@ impl DwarfData {
     where
         R: gimli::Reader + std::ops::Deref<Target = [u8]> + PartialEq,
     {
-        let mut functions = BTreeMap::new();
+        let mut functions = HashMap::new();
         let mut codegenmodules_offset = None;
 
         // Iterate over the compilation units.

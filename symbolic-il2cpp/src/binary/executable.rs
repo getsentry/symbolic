@@ -1,6 +1,6 @@
 use scroll::Pread;
 
-use crate::utils::CStrCtx;
+use crate::utils::CSTR_CTX;
 
 #[derive(Debug)]
 pub struct Il2CppCodeGenModule<'d> {
@@ -13,7 +13,7 @@ impl<'d> Il2CppCodeGenModule<'d> {
         let offset = &mut offset;
 
         let name_ptr = buf.gread::<u64>(offset)? as usize;
-        let name = buf.pread_with::<&str>(name_ptr, CStrCtx)?;
+        let name = buf.pread_with::<&str>(name_ptr, CSTR_CTX)?;
 
         let num_methods = buf.gread::<u64>(offset)? as usize;
         let methods_ptr = buf.gread::<u64>(offset)? as usize;
