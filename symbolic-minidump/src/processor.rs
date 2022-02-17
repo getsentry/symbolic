@@ -734,14 +734,16 @@ impl StackFrame {
     pub fn return_address(&self, arch: Arch) -> u64 {
         let address = unsafe { stack_frame_return_address(self) };
 
-        // The return address reported for ARM* frames is actually the
+        // For frames other than the first,
+        // the return address reported for ARM* frames is actually the
         // instruction with heuristics from Breakpad applied already.
         // To resolve the original return address value, compensate
         // by adding the offsets applied in `StackwalkerARM::GetCallerFrame`
         // and `StackwalkerARM64::GetCallerFrame`.
-        match arch.cpu_family() {
-            CpuFamily::Arm32 => address + 2,
-            CpuFamily::Arm64 => address + 4,
+        match (self.trust(), arch.cpu_family()) {
+            (FrameTrust::Context, _) => address,
+            (_, CpuFamily::Arm32) => address + 2,
+            (_, CpuFamily::Arm64) => address + 4,
             _ => address,
         }
     }
