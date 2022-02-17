@@ -15,10 +15,9 @@ pub fn build_native_method_map(
     let mut method_map = HashMap::new();
 
     // TODO: for each codegen module
-    let codegenmodules_offset = dwarf_data.codegenmodules_offset.unwrap() as usize;
-    {
+    if let Some(codegenmodules_offset) = dwarf_data.codegenmodules_offset {
         // TODO: make this ptr-size / endian aware!
-        let assembly_in_modules = binary_buf.pread::<u64>(codegenmodules_offset)? as usize;
+        let assembly_in_modules = binary_buf.pread::<u64>(codegenmodules_offset as usize)? as usize;
         let module = Il2CppCodeGenModule::parse(binary_buf, assembly_in_modules)?;
 
         let mut indexed_functions = HashMap::new();

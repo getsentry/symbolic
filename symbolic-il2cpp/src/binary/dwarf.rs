@@ -6,6 +6,8 @@ pub struct DwarfData {
     pub functions: HashMap<u64, String>,
     /// The offset of `g_CodeGenModules` (DW_TAG_variable) in the corresponding executable file.
     pub codegenmodules_offset: Option<u64>,
+    // TODO: instead of the `g_CodeGenModules`, we should really get `g_CodeRegistration` which
+    // most importantly has the size of the `g_CodeGenModules` plus a ton of other stuff.
 }
 
 impl DwarfData {

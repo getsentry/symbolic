@@ -56,7 +56,7 @@ pub fn build_function_map(
     let metadata = Il2CppMetadata::parse(metadata_buf)?;
     let metadata_map = metadata.build_method_map()?;
 
-    dbg!(metadata_map.get("Assembly-CSharp.dll"), &native_map);
+    // dbg!(metadata_map.get("Assembly-CSharp.dll"), &native_map);
 
     // correlate the two maps:
     let mut mapping = HashMap::new();
