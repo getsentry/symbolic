@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn test_mapping_creation() {
-        let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds");
+        let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds/macOS");
 
         let metadata_path = fixtures_dir
             .join("IL2CPP.app/Contents/Resources/Data/il2cpp_data/Metadata/global-metadata.dat");
@@ -124,7 +124,7 @@ mod tests {
 
     #[test]
     fn test_metadata() {
-        let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds");
+        let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds/macOS");
 
         let metadata_path = fixtures_dir
             .join("IL2CPP.app/Contents/Resources/Data/il2cpp_data/Metadata/global-metadata.dat");
@@ -137,7 +137,7 @@ mod tests {
 
     #[test]
     fn test_binary() {
-        let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds");
+        let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds/macOS");
 
         let dylib_path = fixtures_dir.join("IL2CPP.app/Contents/Frameworks/GameAssembly.dylib");
         let dylib_file = File::open(dylib_path).unwrap();
