@@ -592,7 +592,12 @@ impl<'data> ElfObject<'data> {
         for header in &self.elf.section_headers {
             const SHT_MIPS_DWARF: u32 = 0x7000_001e;
             const SHT_PROGBITS: u32 = elf::section_header::SHT_PROGBITS;
-            if !matches!(header.sh_type, SHT_PROGBITS | SHT_MIPS_DWARF) {
+            const SHT_X86_64_UNWIND: u32 = elf::section_header::SHT_X86_64_UNWIND;
+
+            if !matches!(
+                header.sh_type,
+                SHT_PROGBITS | SHT_MIPS_DWARF | SHT_X86_64_UNWIND
+            ) {
                 continue;
             }
 
