@@ -6,6 +6,7 @@ use metadata::Il2CppMetadata;
 use object::{Object, ObjectSection};
 
 mod binary;
+mod line_mapping;
 mod metadata;
 pub(crate) mod utils;
 
@@ -85,6 +86,7 @@ mod tests {
     use scroll::Pread;
 
     use crate::binary::{DwarfData, Il2CppCodeGenModule};
+    use crate::line_mapping::LineMapping;
     use crate::metadata::Il2CppMetadata;
 
     use super::*;
@@ -191,5 +193,27 @@ mod tests {
         for fn_ptr in module.method_pointers {
             dbg!(fn_ptr, dwarf_data.functions.get(fn_ptr));
         }
+    }
+
+    #[test]
+    fn test_line_mapping() {
+        let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds");
+
+        let json_path = fixtures_dir.join("macOS/IL2CPP_BackUpThisFolder_ButDontShipItWithYourGame/il2cppOutput/Symbols/LineNumberMappings.json");
+        let json_file = File::open(json_path).unwrap();
+        let json_buf = unsafe { memmap2::Mmap::map(&json_file) }.unwrap();
+
+        let line_mapping = LineMapping::parse(&json_buf).unwrap();
+        let cpp_file_name ="/Users/bitfox/_Workspace/IL2CPP/Library/Bee/artifacts/MacStandalonePlayerBuildProgram/il2cppOutput/cpp/Assembly-CSharp.cpp";
+        let cs_file_name = "/Users/bitfox/_Workspace/IL2CPP/Assets/NewBehaviourScript.cs";
+        assert_eq!(line_mapping.lookup(cpp_file_name, 7), None);
+        assert_eq!(
+            line_mapping.lookup(cpp_file_name, 149),
+            Some((cs_file_name, 10))
+        );
+        assert_eq!(
+            line_mapping.lookup(cpp_file_name, 177),
+            Some((cs_file_name, 17))
+        );
     }
 }
