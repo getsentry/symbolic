@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use clap::{App, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 
 use symbolic::common::{ByteView, DSymPathExt};
 use symbolic::debuginfo::Archive;
@@ -63,7 +63,7 @@ fn execute(matches: &ArgMatches) {
 }
 
 fn main() {
-    let matches = App::new("object-debug")
+    let matches = Command::new("object-debug")
         .about("Shows some information on object files")
         .arg(
             Arg::new("paths")

@@ -4,7 +4,7 @@ use std::path::Path;
 use std::u64;
 
 use anyhow::{anyhow, Result};
-use clap::{App, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 
 use symbolic::common::{Arch, ByteView, DSymPathExt, Language};
 use symbolic::demangle::Demangle;
@@ -134,7 +134,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 }
 
 fn main() {
-    let matches = App::new("symcache-debug")
+    let matches = Command::new("symcache-debug")
         .about("Works with symbol files with the symcache interface")
         .arg(
             Arg::new("debug_file_path")
