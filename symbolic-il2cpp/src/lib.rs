@@ -183,7 +183,7 @@ mod tests {
 
         let dwarf_data = DwarfData::parse(&dwarf).unwrap();
 
-        let codegenmodules_offset = dwarf_data.codegenmodules_offset.unwrap() as usize;
+        let codegenmodules_offset = dwarf_data.code_registration_offset.unwrap() as usize;
         let assembly_in_modules =
             dylib_arch_buf.pread::<u64>(codegenmodules_offset).unwrap() as usize;
 
@@ -197,9 +197,9 @@ mod tests {
 
     #[test]
     fn test_line_mapping() {
-        let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds");
+        let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds/macOS");
 
-        let json_path = fixtures_dir.join("macOS/IL2CPP_BackUpThisFolder_ButDontShipItWithYourGame/il2cppOutput/Symbols/LineNumberMappings.json");
+        let json_path = fixtures_dir.join("IL2CPP_BackUpThisFolder_ButDontShipItWithYourGame/il2cppOutput/Symbols/LineNumberMappings.json");
         let json_file = File::open(json_path).unwrap();
         let json_buf = unsafe { memmap2::Mmap::map(&json_file) }.unwrap();
 

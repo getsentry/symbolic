@@ -4,10 +4,8 @@ use std::collections::HashMap;
 pub struct DwarfData {
     /// A map from function pointer (DW_AT_low_pc) to function name (DW_AT_name).
     pub functions: HashMap<u64, String>,
-    /// The offset of `g_CodeGenModules` (DW_TAG_variable) in the corresponding executable file.
-    pub codegenmodules_offset: Option<u64>,
-    // TODO: instead of the `g_CodeGenModules`, we should really get `g_CodeRegistration` which
-    // most importantly has the size of the `g_CodeGenModules` plus a ton of other stuff.
+    /// The offset of `g_CodeRegistration` (DW_TAG_variable) in the corresponding executable file.
+    pub code_registration_offset: Option<u64>,
 }
 
 impl DwarfData {
@@ -16,7 +14,7 @@ impl DwarfData {
         R: gimli::Reader + std::ops::Deref<Target = [u8]> + PartialEq,
     {
         let mut functions = HashMap::new();
-        let mut codegenmodules_offset = None;
+        let mut code_registration_offset = None;
 
         // Iterate over the compilation units.
         let mut iter = dwarf.units();
@@ -56,7 +54,7 @@ impl DwarfData {
                 }
 
                 if let Some(name) = name {
-                    if name == "g_CodeGenModules" {
+                    if name == "g_CodeRegistration" {
                         if let Some(expr) = location {
                             let mut eval = expr.evaluation(unit.encoding());
                             let mut result = eval.evaluate().unwrap();
@@ -73,7 +71,7 @@ impl DwarfData {
                             if result == gimli::EvaluationResult::Complete {
                                 for res in eval.as_result() {
                                     if let gimli::Location::Address { address } = res.location {
-                                        codegenmodules_offset = Some(address);
+                                        code_registration_offset = Some(address);
                                     }
                                 }
                             }
@@ -90,7 +88,7 @@ impl DwarfData {
 
         Ok(Self {
             functions,
-            codegenmodules_offset,
+            code_registration_offset,
         })
     }
 }
