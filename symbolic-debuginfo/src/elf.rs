@@ -604,7 +604,7 @@ impl<'data> ElfObject<'data> {
                     // while stripping their data from the file by setting their offset to 0. We
                     // know that no section can start at an absolute file offset of zero, so we can
                     // safely skip them in case similar things happen on linux.
-                    return None;
+                    continue;
                 }
 
                 if section_name.is_empty() {
