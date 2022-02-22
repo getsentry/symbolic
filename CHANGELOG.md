@@ -6,6 +6,7 @@
 
 - Update `goblin` which received fixes to avoid panics and unreasonable memory allocations based on invalid input.
 - Correctly skip ELF sections with an offset of `0` instead of ignoring all following sections. This bug may have lead to missing unwind or debug information. ([#505](https://github.com/getsentry/symbolic/pull/505))
+- Detect unwind information when linking with `gold`. ([#505](https://github.com/getsentry/symbolic/pull/505))
 
 ## 8.6.0
 
