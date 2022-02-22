@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::Result;
-use clap::{App, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 
 use symbolic::common::{ByteView, DSymPathExt};
 use symbolic::debuginfo::Object;
@@ -34,7 +34,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 }
 
 fn main() {
-    let matches = App::new("dump_cfi")
+    let matches = Command::new("dump_cfi")
         .about("Prints CFI in Breakpad format")
         .arg(
             Arg::new("path")
