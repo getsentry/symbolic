@@ -590,14 +590,10 @@ impl<'data> ElfObject<'data> {
     /// Locates and reads a section in an ELF binary.
     fn find_section(&self, name: &str) -> Option<(bool, DwarfSection<'data>)> {
         for header in &self.elf.section_headers {
-            const SHT_MIPS_DWARF: u32 = 0x7000_001e;
-            const SHT_PROGBITS: u32 = elf::section_header::SHT_PROGBITS;
-            const SHT_X86_64_UNWIND: u32 = elf::section_header::SHT_X86_64_UNWIND;
-
-            if !matches!(
-                header.sh_type,
-                SHT_PROGBITS | SHT_MIPS_DWARF | SHT_X86_64_UNWIND
-            ) {
+            // The section type is usually SHT_PROGBITS, but some compilers also use
+            // SHT_X86_64_UNWIND and SHT_MIPS_DWARF. We apply the same approach as elfutils,
+            // matching against SHT_NOBITS, instead.
+            if header.sh_type == elf::section_header::SHT_NOBITS {
                 continue;
             }
 
