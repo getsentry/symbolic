@@ -6,12 +6,29 @@ use std::u64;
 use anyhow::{anyhow, Result};
 use clap::{Arg, ArgMatches, Command};
 
-use symbolic::common::{Arch, ByteView, DSymPathExt, Language};
-use symbolic::demangle::Demangle;
+use symbolic::common::{Arch, ByteView, DSymPathExt, Language, SelfCell};
+use symbolic::debuginfo::macho::BcSymbolMap;
+use symbolic::debuginfo::Archive;
+use symbolic::demangle::{Demangle, DemangleOptions};
+use symbolic::symcache::transform::{self, Transformer};
 use symbolic::symcache::{SymCache, SymCacheWriter};
-use symbolic::{debuginfo::Archive, demangle::DemangleOptions};
 
-#[allow(deprecated)]
+// FIXME: This is a huge pain, can't this be simpler somehow?
+struct OwnedBcSymbolMap(SelfCell<ByteView<'static>, BcSymbolMap<'static>>);
+
+impl Transformer for OwnedBcSymbolMap {
+    fn transform_function<'f>(&'f self, f: transform::Function<'f>) -> transform::Function<'f> {
+        self.0.get().transform_function(f)
+    }
+
+    fn transform_source_location<'f>(
+        &'f self,
+        sl: transform::SourceLocation<'f>,
+    ) -> transform::SourceLocation<'f> {
+        self.0.get().transform_source_location(sl)
+    }
+}
+
 fn execute(matches: &ArgMatches) -> Result<()> {
     let buffer;
     let symcache;
@@ -54,8 +71,21 @@ fn execute(matches: &ArgMatches) -> Result<()> {
             None => return Err(anyhow!("did not find architecture {}", arch)),
         };
 
-        let writer = SymCacheWriter::write_object(obj, Cursor::new(Vec::new()))?;
-        buffer = ByteView::from_vec(writer.into_inner());
+        let mut writer = SymCacheWriter::new(Cursor::new(Vec::new()))?;
+
+        if let Some(bcsymbolmap_file) = matches.value_of("bcsymbolmap_file") {
+            let bcsymbolmap_path = Path::new(bcsymbolmap_file);
+            let bcsymbolmap_buffer = ByteView::open(bcsymbolmap_path)?;
+            let bcsymbolmap =
+                OwnedBcSymbolMap(SelfCell::try_new(bcsymbolmap_buffer, |s| unsafe {
+                    BcSymbolMap::parse(&*s)
+                })?);
+            writer.add_transformer(bcsymbolmap);
+        }
+
+        writer.process_object(obj)?;
+
+        buffer = ByteView::from_vec(writer.finish()?.into_inner());
         symcache = SymCache::parse(&buffer)?;
 
         // write mode
@@ -124,6 +154,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 
     // print mode
     if matches.is_present("print_symbols") {
+        #[allow(deprecated)]
         for func in symcache.functions() {
             let func = func?;
             println!("{:>16x} {:#}", func.address(), func.name());
@@ -142,6 +173,15 @@ fn main() {
                 .long("debug-file")
                 .value_name("PATH")
                 .help("Path to the debug info file"),
+        )
+        .arg(
+            Arg::new("bcsymbolmap_file")
+                .short('b')
+                .long("bcsymbolmap-file")
+                .value_name("PATH")
+                .help(
+                    "Path to a bcsymbolmap file that should be applied to transform the debug file",
+                ),
         )
         .arg(
             Arg::new("write_cache_file")
