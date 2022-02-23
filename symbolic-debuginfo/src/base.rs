@@ -312,7 +312,7 @@ impl<'data> SymbolMap<'data> {
             .symbols
             .binary_search_by_key(&address, Self::key)
             .ok()?;
-        Some(&self.symbols[idx])
+        self.symbols.get(idx)
     }
 
     /// Looks up a symbol covering an entire range.
