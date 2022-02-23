@@ -803,6 +803,7 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for MachArchive<'d> {
 mod tests {
     use super::*;
 
+    #[allow(deprecated)]
     #[test]
     fn test_bcsymbolmap() {
         let object_data =
