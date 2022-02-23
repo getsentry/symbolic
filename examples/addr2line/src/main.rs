@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 
 use anyhow::{Context, Result};
-use clap::{App, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 
 use symbolic::common::{ByteView, Language, Name, NameMangling};
 use symbolic::debuginfo::{Function, Object};
@@ -117,7 +117,7 @@ addr2line has two modes of operation.
 In the first, hexadecimal addresses are specified on the command line, and addr2line displays the file name and line number for each address.
 
 In the second, addr2line reads hexadecimal addresses from standard input, and prints the file name and line number for each address on standard output. In this mode, addr2line may be used in a pipe to convert dynamically chosen addresses."#;
-    let matches = App::new("addr2line")
+    let matches = Command::new("addr2line")
         .about(about)
         .arg(
             Arg::new("demangle")

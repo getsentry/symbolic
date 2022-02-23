@@ -2,7 +2,7 @@ use std::cmp;
 use std::fs::File;
 use std::io::Read;
 
-use clap::{App, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 
 use symbolic::unreal::{Unreal4Crash, Unreal4FileType};
 
@@ -41,7 +41,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn main() {
-    let matches = App::new("unreal-engine-crash")
+    let matches = Command::new("unreal-engine-crash")
         .about("Unpack an Unreal Engine crash report")
         .arg(
             Arg::new("crash_file_path")

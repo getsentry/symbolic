@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::io::Cursor;
 use std::path::Path;
 
-use clap::{App, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 use walkdir::WalkDir;
 
 use symbolic::common::{Arch, ByteView, InstructionInfo, SelfCell};
@@ -311,7 +311,7 @@ fn execute(matches: &ArgMatches) -> Result<(), Error> {
 }
 
 fn main() {
-    let matches = App::new("symbolic-minidump")
+    let matches = Command::new("symbolic-minidump")
         .about("Symbolicates a minidump")
         .arg(
             Arg::new("minidump_file_path")
