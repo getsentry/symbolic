@@ -12,7 +12,7 @@ use std::collections::BTreeSet;
 use std::error::Error;
 use std::fmt;
 use std::marker::PhantomData;
-use std::ops::{Deref, RangeBounds};
+use std::ops::Deref;
 use std::sync::Arc;
 
 use fallible_iterator::FallibleIterator;
@@ -743,11 +743,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Resolves the name of a function from the symbol table.
-    fn resolve_symbol_name<R>(&self, range: R) -> Option<Name<'d>>
-    where
-        R: RangeBounds<u64>,
-    {
-        let symbol = self.inner.info.symbol_map.lookup_range(range)?;
+    fn resolve_symbol_name(&self, address: u64) -> Option<Name<'d>> {
+        let symbol = self.inner.info.symbol_map.lookup_exact(address)?;
         let name = resolve_cow_name(self.bcsymbolmap, symbol.name.clone()?);
         Some(Name::new(name, NameMangling::Mangled, self.language))
     }
@@ -816,7 +813,6 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
 
             let function_address = offset(range_buf[0].begin, self.inner.info.address_offset);
             let function_size = range_buf[range_buf.len() - 1].end - range_buf[0].begin;
-            let function_end = function_address + function_size;
 
             // We have seen duplicate top-level function entries being yielded from the
             // [`DwarfFunctionIterator`], which combined with recursively walking its inlinees can
@@ -840,7 +836,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             let symbol_name = if self.prefer_dwarf_names || inline {
                 None
             } else {
-                self.resolve_symbol_name(function_address..function_end)
+                self.resolve_symbol_name(function_address)
             };
 
             let name = symbol_name
