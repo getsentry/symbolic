@@ -153,7 +153,7 @@ impl SymCacheConverter {
                 name: function.name.as_str().into(),
                 comp_dir: comp_dir.map(Into::into),
             };
-            for transformer in &self.transformers.0 {
+            for transformer in &mut self.transformers.0 {
                 function = transformer.transform_function(function);
             }
 
@@ -183,7 +183,7 @@ impl SymCacheConverter {
                 },
                 line: line.line as u32,
             };
-            for transformer in &self.transformers.0 {
+            for transformer in &mut self.transformers.0 {
                 location = transformer.transform_source_location(location);
             }
 
@@ -268,7 +268,7 @@ impl SymCacheConverter {
                 },
                 comp_dir: None,
             };
-            for transformer in &self.transformers.0 {
+            for transformer in &mut self.transformers.0 {
                 function = transformer.transform_function(function);
             }
 

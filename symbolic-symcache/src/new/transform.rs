@@ -38,7 +38,7 @@ pub trait Transformer {
     /// Transforms a [`Function`] record.
     ///
     /// This can be used for example to de-obfuscate a functions name.
-    fn transform_function<'f>(&'f self, f: Function<'f>) -> Function<'f> {
+    fn transform_function<'f>(&'f mut self, f: Function<'f>) -> Function<'f> {
         f
     }
 
@@ -46,7 +46,7 @@ pub trait Transformer {
     ///
     /// This can be used for example to apply a Source Mapping in case an intermediate compilation
     /// step might have introduced an indirection, or to de-obfuscate the [`File`] information.
-    fn transform_source_location<'f>(&'f self, sl: SourceLocation<'f>) -> SourceLocation<'f> {
+    fn transform_source_location<'f>(&'f mut self, sl: SourceLocation<'f>) -> SourceLocation<'f> {
         sl
     }
 }
@@ -75,14 +75,14 @@ macro_rules! map_cow {
 }
 
 impl Transformer for BcSymbolMap<'_> {
-    fn transform_function<'f>(&'f self, f: Function<'f>) -> Function<'f> {
+    fn transform_function<'f>(&'f mut self, f: Function<'f>) -> Function<'f> {
         Function {
             name: map_cow!(f.name, |s| self.resolve(s)),
             comp_dir: f.comp_dir.map(|dir| map_cow!(dir, |s| self.resolve(s))),
         }
     }
 
-    fn transform_source_location<'f>(&'f self, sl: SourceLocation<'f>) -> SourceLocation<'f> {
+    fn transform_source_location<'f>(&'f mut self, sl: SourceLocation<'f>) -> SourceLocation<'f> {
         SourceLocation {
             file: File {
                 name: map_cow!(sl.file.name, |s| self.resolve(s)),

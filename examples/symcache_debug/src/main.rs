@@ -17,12 +17,12 @@ use symbolic::symcache::{SymCache, SymCacheWriter};
 struct OwnedBcSymbolMap(SelfCell<ByteView<'static>, BcSymbolMap<'static>>);
 
 impl Transformer for OwnedBcSymbolMap {
-    fn transform_function<'f>(&'f self, f: transform::Function<'f>) -> transform::Function<'f> {
+    fn transform_function<'f>(&'f mut self, f: transform::Function<'f>) -> transform::Function<'f> {
         self.0.get().transform_function(f)
     }
 
     fn transform_source_location<'f>(
-        &'f self,
+        &'f mut self,
         sl: transform::SourceLocation<'f>,
     ) -> transform::SourceLocation<'f> {
         self.0.get().transform_source_location(sl)
