@@ -10,6 +10,8 @@ mod line_mapping;
 mod metadata;
 pub(crate) mod utils;
 
+pub use line_mapping::LineMapping;
+
 pub fn build_function_map(
     binary_buf: &[u8],
     dif_buf: &[u8],
@@ -86,7 +88,6 @@ mod tests {
     use scroll::Pread;
 
     use crate::binary::{DwarfData, Il2CppCodeGenModule};
-    use crate::line_mapping::LineMapping;
     use crate::metadata::Il2CppMetadata;
 
     use super::*;
