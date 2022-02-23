@@ -8,6 +8,7 @@ mod old;
 pub(crate) mod preamble;
 
 pub use compat::*;
+pub use new::transform;
 pub use new::SymCacheWriter;
 #[allow(deprecated)]
 pub use old::format;

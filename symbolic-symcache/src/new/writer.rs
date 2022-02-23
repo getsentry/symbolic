@@ -5,10 +5,10 @@ use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
 
 use indexmap::IndexSet;
-use symbolic_common::{Arch, DebugId, Language};
+use symbolic_common::{Arch, DebugId};
 use symbolic_debuginfo::{DebugSession, Function, ObjectLike, Symbol};
 
-use super::raw;
+use super::{raw, transform};
 use crate::{SymCacheError, SymCacheErrorKind};
 
 /// The SymCache Converter.
@@ -21,6 +21,9 @@ pub struct SymCacheConverter {
     debug_id: DebugId,
     /// CPU architecture of the object file.
     arch: Arch,
+
+    /// A list of transformers that are used to transform each function / source location.
+    transformers: transform::Transformers,
 
     /// The concatenation of all strings that have been added to this `Converter`.
     string_bytes: Vec<u8>,
@@ -52,6 +55,17 @@ impl SymCacheConverter {
         Self::default()
     }
 
+    /// Adds a new [`transform::Transformer`] to this [`SymCacheConverter`].
+    ///
+    /// Every [`transform::Function`] and [`transform::SourceLocation`] will be passed through
+    /// this transformer before it is being written to the SymCache.
+    pub fn add_transformer<T>(&mut self, t: T)
+    where
+        T: transform::Transformer + 'static,
+    {
+        self.transformers.0.push(Box::new(t));
+    }
+
     /// Sets the CPU architecture of this SymCache.
     pub fn set_arch(&mut self, arch: Arch) {
         self.arch = arch;
@@ -67,70 +81,28 @@ impl SymCacheConverter {
     /// If the string was already present, it is not added again. A newly added string
     /// is prefixed by its length as a `u32`. The returned `u32`
     /// is the offset into the `string_bytes` field where the string is saved.
-    fn insert_string(&mut self, s: &str) -> u32 {
+    fn insert_string(
+        string_bytes: &mut Vec<u8>,
+        strings: &mut HashMap<String, u32>,
+        s: &str,
+    ) -> u32 {
         if s.is_empty() {
             return u32::MAX;
         }
-        if let Some(&offset) = self.strings.get(s) {
+        if let Some(&offset) = strings.get(s) {
             return offset;
         }
-        let string_offset = self.string_bytes.len() as u32;
+        let string_offset = string_bytes.len() as u32;
         let string_len = s.len() as u32;
-        self.string_bytes.extend(string_len.to_ne_bytes());
-        self.string_bytes.extend(s.bytes());
+        string_bytes.extend(string_len.to_ne_bytes());
+        string_bytes.extend(s.bytes());
         // we should have written exactly `string_len + 4` bytes
         debug_assert_eq!(
-            self.string_bytes.len(),
+            string_bytes.len(),
             string_offset as usize + string_len as usize + std::mem::size_of::<u32>(),
         );
-        self.strings.insert(s.to_owned(), string_offset);
+        strings.insert(s.to_owned(), string_offset);
         string_offset
-    }
-
-    /// Insert a file into this converter.
-    ///
-    /// If the file was already present, it is not added again. The returned `u32`
-    /// is the file's index in insertion order.
-    fn insert_file(
-        &mut self,
-        path_name: &str,
-        directory: Option<&str>,
-        comp_dir: Option<&str>,
-    ) -> u32 {
-        let path_name_offset = self.insert_string(path_name);
-        let directory_offset = directory.map_or(u32::MAX, |d| self.insert_string(d));
-        let comp_dir_offset = comp_dir.map_or(u32::MAX, |cd| self.insert_string(cd));
-
-        let (file_idx, _) = self.files.insert_full(raw::File {
-            path_name_offset,
-            directory_offset,
-            comp_dir_offset,
-        });
-
-        file_idx as u32
-    }
-
-    /// Insert a function into this converter.
-    ///
-    /// If the function was already present, it is not added again. The returned `u32`
-    /// is the function's index in insertion order.
-    fn insert_function(
-        &mut self,
-        name: &str,
-        comp_dir: Option<&str>,
-        entry_pc: u32,
-        lang: Language,
-    ) -> u32 {
-        let name_offset = self.insert_string(name);
-        let comp_dir_offset = comp_dir.map_or(u32::MAX, |comp_dir| self.insert_string(comp_dir));
-        let lang = lang as u32;
-        let (fun_idx, _) = self.functions.insert_full(raw::Function {
-            name_offset,
-            comp_dir_offset,
-            entry_pc,
-            lang,
-        });
-        fun_idx as u32
     }
 
     // Methods processing symbolic-debuginfo [`ObjectLike`] below:
@@ -174,20 +146,67 @@ impl SymCacheConverter {
         } else {
             function.address as u32
         };
-        let function_idx = self.insert_function(
-            function.name.as_str(),
-            comp_dir,
-            entry_pc,
-            function.name.language(),
-        );
+
+        let function_idx = {
+            let language = function.name.language();
+            let mut function = transform::Function {
+                name: function.name.as_str().into(),
+                comp_dir: comp_dir.map(Into::into),
+            };
+            for transformer in &self.transformers.0 {
+                function = transformer.transform_function(function);
+            }
+
+            let string_bytes = &mut self.string_bytes;
+            let strings = &mut self.strings;
+            let name_offset = Self::insert_string(string_bytes, strings, &function.name);
+
+            let comp_dir_offset = function.comp_dir.map_or(u32::MAX, |comp_dir| {
+                Self::insert_string(string_bytes, strings, &comp_dir)
+            });
+            let lang = language as u32;
+            let (fun_idx, _) = self.functions.insert_full(raw::Function {
+                name_offset,
+                comp_dir_offset,
+                entry_pc,
+                lang,
+            });
+            fun_idx as u32
+        };
 
         for line in &function.lines {
-            let path_name = line.file.name_str();
-            let file_idx = self.insert_file(&path_name, Some(&line.file.dir_str()), comp_dir);
+            let mut location = transform::SourceLocation {
+                file: transform::File {
+                    name: line.file.name_str(),
+                    directory: Some(line.file.dir_str()),
+                    comp_dir: comp_dir.map(Into::into),
+                },
+                line: line.line as u32,
+            };
+            for transformer in &self.transformers.0 {
+                location = transformer.transform_source_location(location);
+            }
+
+            let string_bytes = &mut self.string_bytes;
+            let strings = &mut self.strings;
+            let path_name_offset = Self::insert_string(string_bytes, strings, &location.file.name);
+            let directory_offset = location
+                .file
+                .directory
+                .map_or(u32::MAX, |d| Self::insert_string(string_bytes, strings, &d));
+            let comp_dir_offset = location.file.comp_dir.map_or(u32::MAX, |cd| {
+                Self::insert_string(string_bytes, strings, &cd)
+            });
+
+            let (file_idx, _) = self.files.insert_full(raw::File {
+                path_name_offset,
+                directory_offset,
+                comp_dir_offset,
+            });
 
             let source_location = raw::SourceLocation {
-                file_idx,
-                line: line.line as u32,
+                file_idx: file_idx as u32,
+                line: location.line,
                 function_idx,
                 inlined_into_idx: u32::MAX,
             };
@@ -241,12 +260,20 @@ impl SymCacheConverter {
     }
 
     pub fn process_symbolic_symbol(&mut self, symbol: &Symbol<'_>) {
-        let name = match symbol.name {
-            Some(ref name) => name.as_ref(),
-            None => return,
-        };
+        let name_idx = {
+            let mut function = transform::Function {
+                name: match symbol.name {
+                    Some(ref name) => name.clone(),
+                    None => return,
+                },
+                comp_dir: None,
+            };
+            for transformer in &self.transformers.0 {
+                function = transformer.transform_function(function);
+            }
 
-        let name_idx = self.insert_string(name);
+            Self::insert_string(&mut self.string_bytes, &mut self.strings, &function.name)
+        };
 
         match self.ranges.entry(symbol.address as u32) {
             btree_map::Entry::Vacant(entry) => {
