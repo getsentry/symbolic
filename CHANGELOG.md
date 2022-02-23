@@ -1,5 +1,14 @@
 # Changelog
 
+## 8.6.1
+
+**Fixes**:
+
+- Update `goblin` which received fixes to avoid panics and unreasonable memory allocations based on invalid input. ([#503](https://github.com/getsentry/symbolic/pull/503))
+- Fix wrong instruction addresses of the first frame in ARM and ARM64 minidumps. The addresses were incorrectly incremented by one instruction size. ([#504](https://github.com/getsentry/symbolic/pull/504))
+- Correctly skip ELF sections with an offset of `0` instead of ignoring all following sections. This bug may have lead to missing unwind or debug information. ([#505](https://github.com/getsentry/symbolic/pull/505))
+- Detect unwind information when linking with `gold`. ([#505](https://github.com/getsentry/symbolic/pull/505))
+
 ## 8.6.0
 
 **Features**:

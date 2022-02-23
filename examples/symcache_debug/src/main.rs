@@ -4,7 +4,7 @@ use std::path::Path;
 use std::u64;
 
 use anyhow::{anyhow, Result};
-use clap::{App, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 
 use symbolic::common::{Arch, ByteView, DSymPathExt, Language};
 use symbolic::demangle::Demangle;
@@ -134,18 +134,18 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 }
 
 fn main() {
-    let matches = App::new("symcache-debug")
+    let matches = Command::new("symcache-debug")
         .about("Works with symbol files with the symcache interface")
         .arg(
-            Arg::with_name("debug_file_path")
-                .short("d")
+            Arg::new("debug_file_path")
+                .short('d')
                 .long("debug-file")
                 .value_name("PATH")
                 .help("Path to the debug info file"),
         )
         .arg(
-            Arg::with_name("write_cache_file")
-                .short("w")
+            Arg::new("write_cache_file")
+                .short('w')
                 .long("write-cache-file")
                 .help(
                     "Write the cache file from the debug info file.  If no file name is \
@@ -154,32 +154,32 @@ fn main() {
                 ),
         )
         .arg(
-            Arg::with_name("arch")
-                .short("a")
+            Arg::new("arch")
+                .short('a')
                 .long("arch")
                 .value_name("ARCH")
                 .help("The architecture of the object to work with."),
         )
         .arg(
-            Arg::with_name("report")
+            Arg::new("report")
                 .long("report")
                 .help("Spit out some debug information"),
         )
         .arg(
-            Arg::with_name("symcache_file_path")
-                .short("c")
+            Arg::new("symcache_file_path")
+                .short('c')
                 .long("symcache-file")
                 .value_name("PATH")
                 .help("Path to the symcache file"),
         )
         .arg(
-            Arg::with_name("lookup_addr")
+            Arg::new("lookup_addr")
                 .long("lookup")
                 .value_name("ADDR")
                 .help("Looks up an address in the debug file"),
         )
         .arg(
-            Arg::with_name("print_symbols")
+            Arg::new("print_symbols")
                 .long("symbols")
                 .help("Print all symbols"),
         )

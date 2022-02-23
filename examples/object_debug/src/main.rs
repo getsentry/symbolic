@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use clap::{App, Arg, ArgMatches};
+use clap::{Arg, ArgMatches, Command};
 
 use symbolic::common::{ByteView, DSymPathExt};
 use symbolic::debuginfo::Archive;
@@ -52,7 +52,7 @@ fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::Err
     Ok(())
 }
 
-fn execute(matches: &ArgMatches<'_>) {
+fn execute(matches: &ArgMatches) {
     for path in matches.values_of("paths").unwrap_or_default() {
         if let Err(e) = inspect_object(path) {
             print_error(e.as_ref())
@@ -63,12 +63,12 @@ fn execute(matches: &ArgMatches<'_>) {
 }
 
 fn main() {
-    let matches = App::new("object-debug")
+    let matches = Command::new("object-debug")
         .about("Shows some information on object files")
         .arg(
-            Arg::with_name("paths")
+            Arg::new("paths")
                 .required(true)
-                .multiple(true)
+                .multiple_occurrences(true)
                 .value_name("PATH")
                 .help("Path to the debug file")
                 .number_of_values(1)

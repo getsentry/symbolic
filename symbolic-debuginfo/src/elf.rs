@@ -590,9 +590,10 @@ impl<'data> ElfObject<'data> {
     /// Locates and reads a section in an ELF binary.
     fn find_section(&self, name: &str) -> Option<(bool, DwarfSection<'data>)> {
         for header in &self.elf.section_headers {
-            const SHT_MIPS_DWARF: u32 = 0x7000_001e;
-            const SHT_PROGBITS: u32 = elf::section_header::SHT_PROGBITS;
-            if !matches!(header.sh_type, SHT_PROGBITS | SHT_MIPS_DWARF) {
+            // The section type is usually SHT_PROGBITS, but some compilers also use
+            // SHT_X86_64_UNWIND and SHT_MIPS_DWARF. We apply the same approach as elfutils,
+            // matching against SHT_NOBITS, instead.
+            if header.sh_type == elf::section_header::SHT_NOBITS {
                 continue;
             }
 
@@ -603,7 +604,7 @@ impl<'data> ElfObject<'data> {
                     // while stripping their data from the file by setting their offset to 0. We
                     // know that no section can start at an absolute file offset of zero, so we can
                     // safely skip them in case similar things happen on linux.
-                    return None;
+                    continue;
                 }
 
                 if section_name.is_empty() {
