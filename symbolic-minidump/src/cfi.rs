@@ -856,8 +856,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         prolog_size: u32,
     ) -> Result<(), CfiError> {
         let code_size = end - start;
-        let program_or_bp =
-            frame.program.is_some() && string_table.is_some() || frame.uses_base_pointer;
+        let has_program = frame.program.is_some() && string_table.is_some();
 
         write!(
             self.inner,
@@ -871,7 +870,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             frame.saved_regs_size,
             frame.locals_size,
             frame.max_stack_size.unwrap_or(0),
-            if program_or_bp { 1 } else { 0 },
+            if has_program { 1 } else { 0 },
         )?;
 
         match frame.program {
@@ -886,7 +885,11 @@ impl<W: Write> AsciiCfiWriter<W> {
                 writeln!(self.inner, "{}", program_string.trim())?;
             }
             None => {
-                writeln!(self.inner, "{}", if program_or_bp { 1 } else { 0 })?;
+                writeln!(
+                    self.inner,
+                    "{}",
+                    if frame.uses_base_pointer { 1 } else { 0 }
+                )?;
             }
         }
 
