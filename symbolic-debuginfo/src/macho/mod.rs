@@ -119,6 +119,7 @@ impl<'d> MachObject<'d> {
     ///     "-[SentryMessage initWithFormatted:]",
     /// );
     /// ```
+    #[deprecated = "use the symbolic-symcache `Transformer` functionality instead"]
     pub fn load_symbolmap(&mut self, symbolmap: BcSymbolMap<'d>) {
         self.bcsymbolmap = Some(Arc::new(symbolmap));
     }
@@ -802,6 +803,7 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for MachArchive<'d> {
 mod tests {
     use super::*;
 
+    #[allow(deprecated)]
     #[test]
     fn test_bcsymbolmap() {
         let object_data =

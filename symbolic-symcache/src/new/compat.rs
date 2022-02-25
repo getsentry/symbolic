@@ -63,9 +63,7 @@ where
 {
     /// Converts an entire object into a SymCache.
     ///
-    /// Any object which implements [`ObjectLike`] can be written into a
-    /// [`SymCache`](crate::SymCache) by this function.  This already implicitly
-    /// calls [`SymCacheWriter::finish`], thus consuming the writer.
+    /// This is a shortcut for [`SymCacheWriter::process_object`] followed by [`SymCacheWriter::finish`].
     pub fn write_object<'d, 'o, O>(object: &'o O, target: W) -> Result<W, SymCacheError>
     where
         O: ObjectLike<'d, 'o>,
@@ -91,6 +89,32 @@ where
             converter: SymCacheConverter::new(),
             writer,
         })
+    }
+
+    /// Adds a new [`transform::Transformer`] to this [`SymCacheWriter`].
+    ///
+    /// Every [`transform::Function`] and [`transform::SourceLocation`] will be passed through
+    /// this transformer before it is being written to the SymCache.
+    pub fn add_transformer<T>(&mut self, t: T)
+    where
+        T: transform::Transformer + 'static,
+    {
+        self.converter.add_transformer(t)
+    }
+
+    /// Processes the [`ObjectLike`], writing its functions, line information and symbols into the
+    /// SymCache.
+    pub fn process_object<'d, 'o, O>(&mut self, object: &'o O) -> Result<(), SymCacheError>
+    where
+        O: ObjectLike<'d, 'o>,
+        O::Error: std::error::Error + Send + Sync + 'static,
+    {
+        self.converter.set_arch(object.arch());
+        self.converter.set_debug_id(object.debug_id());
+
+        self.converter.process_object(object)?;
+
+        Ok(())
     }
 
     /// Sets the CPU architecture of this SymCache.
