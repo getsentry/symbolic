@@ -1,0 +1,19 @@
+[package]
+name = "symbolic-il2cpp"
+version = "8.6.1"
+license = "MIT"
+authors = ["Sentry <hello@sentry.io>"]
+documentation = "https://docs.rs/symbolic-il2cpp"
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+description = """
+A library for parsing il2cpp metadata.
+"""
+edition = "2021"
+
+[dependencies]
+indexmap = "1.8.0"
+serde_json = "1.0.79"
+symbolic-common = { version = "8.6.1", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "8.6.1", path = "../symbolic-debuginfo" }
+symbolic-symcache = { version = "8.6.1", path = "../symbolic-symcache" }
