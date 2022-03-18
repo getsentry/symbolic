@@ -1,7 +1,13 @@
-use std::path::Path;
-use std::process::Command;
-
+#[cfg(not(feature = "processor"))]
 fn main() {
+    // NOOP
+}
+
+#[cfg(feature = "processor")]
+fn main() {
+    use std::path::Path;
+    use std::process::Command;
+
     if !Path::new("third_party/breakpad/src").exists() {
         let status = Command::new("git")
             .args(&["submodule", "update", "--init"])
