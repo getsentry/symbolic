@@ -815,7 +815,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             range_buf.sort_by_key(|r| r.begin);
 
             let function_address = offset(range_buf[0].begin, self.inner.info.address_offset);
-            let function_size = range_buf[range_buf.len() - 1].end - range_buf[0].begin;
+            let function_size = if inline {
+                range_buf.iter().fold(0, |accu, r| accu + (r.end - r.begin))
+            } else {
+                range_buf[range_buf.len() - 1].end - range_buf[0].begin
+            };
             let function_end = function_address + function_size;
 
             // We have seen duplicate top-level function entries being yielded from the
