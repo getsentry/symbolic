@@ -815,7 +815,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             range_buf.sort_by_key(|r| r.begin);
 
             let function_address = offset(range_buf[0].begin, self.inner.info.address_offset);
-            // The ranges already sorted, so use last range.end as function_end. Though it
+            // The ranges are already sorted, so use last range.end as function_end, although it
             // is not accurate for ranges with holes.
             let function_end = offset(
                 range_buf[range_buf.len() - 1].end,
