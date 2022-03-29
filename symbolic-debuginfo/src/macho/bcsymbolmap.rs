@@ -86,10 +86,7 @@ impl<'slf> AsSelf<'slf> for BcSymbolMap<'_> {
 impl<'d> BcSymbolMap<'d> {
     /// Tests whether the buffer could contain a [`BcSymbolMap`].
     pub fn test(bytes: &[u8]) -> bool {
-        let mut pattern = BC_SYMBOL_MAP_HEADER.as_bytes();
-        if pattern.len() > bytes.len() {
-            pattern = &pattern[..bytes.len()];
-        }
+        let pattern = BC_SYMBOL_MAP_HEADER.as_bytes();
         bytes.starts_with(pattern)
     }
 
@@ -419,11 +416,9 @@ mod tests {
 
     #[test]
     fn test_bcsymbolmap_test() {
-        let buf = b"BCSymbolMap Vers";
-        assert!(BcSymbolMap::test(&buf[..]));
-
-        let buf = b"oops";
-        assert!(!BcSymbolMap::test(&buf[..]));
+        assert!(BcSymbolMap::test(b"BCSymbolMap Version: 2.0"));
+        assert!(!BcSymbolMap::test(b"BCSymbolMap Vers"));
+        assert!(!BcSymbolMap::test(b"oops"));
     }
 
     #[test]
@@ -433,7 +428,7 @@ mod tests {
         )
         .unwrap();
 
-        assert!(BcSymbolMap::test(&data.as_bytes()[..20]));
+        assert!(BcSymbolMap::test(data.as_bytes()));
 
         let map = BcSymbolMap::parse(data.as_bytes()).unwrap();
         assert_eq!(map.get(2), Some("-[SentryMessage serialize]"))
