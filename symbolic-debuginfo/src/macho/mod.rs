@@ -119,7 +119,8 @@ impl<'d> MachObject<'d> {
     ///     "-[SentryMessage initWithFormatted:]",
     /// );
     /// ```
-    #[deprecated = "use the symbolic-symcache `Transformer` functionality instead"]
+    // TODO: re-enable this deprecation once we have a convenient way of creating an owned SymCache Transformer.
+    // #[deprecated = "use the symbolic-symcache `Transformer` functionality instead"]
     pub fn load_symbolmap(&mut self, symbolmap: BcSymbolMap<'d>) {
         self.bcsymbolmap = Some(Arc::new(symbolmap));
     }
