@@ -107,6 +107,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_mapping_creation() {
         let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds/macOS");
 
@@ -130,6 +131,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_metadata() {
         let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds/macOS");
 
@@ -143,6 +145,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_binary() {
         let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds/macOS");
 
@@ -203,6 +206,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_line_mapping() {
         let fixtures_dir = PathBuf::from("../../sentry-unity-il2cpp-line-numbers/Builds/macOS");
 
