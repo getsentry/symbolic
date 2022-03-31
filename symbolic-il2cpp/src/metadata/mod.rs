@@ -29,7 +29,7 @@ const IL2CPP_METADATA_MAGIC: u32 = 0xFAB1_1BAF; // TODO: use from_bytes_be
 #[derive(Debug)]
 pub struct Il2CppMetadata<'d> {
     // TODO: I guess the header sub-slicing type-specific buffers, we don’t use `data` here at all
-    data: &'d [u8],
+    // data: &'d [u8],
     ctx: MetadataCtx,
     header: header::Header<'d>,
 }
@@ -53,7 +53,7 @@ impl<'d> Il2CppMetadata<'d> {
         let ctx = MetadataCtx { version };
 
         let header = data.gread_with(offset, ctx)?;
-        Ok(Self { data, ctx, header })
+        Ok(Self { ctx, header })
     }
 
     fn get_str_at_idx(&self, idx: u32) -> Result<&str, scroll::Error> {

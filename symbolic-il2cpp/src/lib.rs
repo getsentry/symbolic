@@ -194,12 +194,12 @@ mod tests {
         let assembly_in_modules =
             dylib_arch_buf.pread::<u64>(codegenmodules_offset).unwrap() as usize;
 
-        let module = Il2CppCodeGenModule::parse(dylib_arch_buf, assembly_in_modules).unwrap();
+        let module = Il2CppCodeGenModule::parse(dylib_arch_buf, assembly_in_modules);
         dbg!(&module);
 
-        for fn_ptr in module.method_pointers {
-            dbg!(fn_ptr, dwarf_data.functions.get(fn_ptr));
-        }
+        // for fn_ptr in module.method_pointers {
+        //     dbg!(fn_ptr, dwarf_data.functions.get(fn_ptr));
+        // }
     }
 
     #[test]
