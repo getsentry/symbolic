@@ -1,6 +1,6 @@
 //! Experimental IL2CPP code.
 //!
-//! This create **is not supported**, it may beak its API, it may completely disappear
+//! This create **is not supported**, it may break its API, it may completely disappear
 //! again.  Do not consider this part of symbolic releases.  It is experimental code to
 //! explore Unity IL2CPP debugging.
 
