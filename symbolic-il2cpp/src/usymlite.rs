@@ -2,7 +2,7 @@
 //!
 //! This format can map il2cpp instruction addresses to managed file names and line numbers.
 //!
-//! Current state: This can parse the UsymLite format, a method to get the source location
+//! Current state: This can parse the UsymLite format, but a method to get the source location
 //! based on the native instruction pointer does not yet exist.
 
 use std::borrow::Cow;
