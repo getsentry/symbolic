@@ -14,6 +14,8 @@ use object::{Object, ObjectSection};
 mod binary;
 mod line_mapping;
 mod metadata;
+pub mod usym;
+pub mod usymlite;
 pub(crate) mod utils;
 
 pub use line_mapping::LineMapping;

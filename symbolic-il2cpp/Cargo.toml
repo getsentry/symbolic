@@ -23,3 +23,4 @@ symbolic-symcache = { version = "8.6.1", path = "../symbolic-symcache" }
 
 [dev-dependencies]
 memmap2 = "0.5.0"
+symbolic-testutils = { path = "../symbolic-testutils" }

@@ -26,7 +26,7 @@ pub fn fixture<P: AsRef<Path>>(path: P) -> PathBuf {
     assert!(
         full_path.exists(),
         "Fixture does not exist: {}",
-        path.display()
+        full_path.display()
     );
 
     full_path
