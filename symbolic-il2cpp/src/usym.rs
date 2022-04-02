@@ -3,10 +3,104 @@
 //! This format can map il2cpp instruction addresses to managed file names and line numbers.
 
 use std::borrow::Cow;
+use std::error::Error;
+use std::fmt;
 use std::mem;
 use std::ptr;
 
-use anyhow::{Error, Result};
+use thiserror::Error;
+
+/// The error type for [`UsymError`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum UsymErrorKind {
+    /// Buffer to usym file is misaligned.
+    MisalignedBuffer,
+    /// The header to the usym file is missing or undersized.
+    BadHeader,
+    /// The magic string in the header is missing or malformed.
+    BadMagic,
+    /// The version string in the usym file's header is missing or malformed.
+    InvalidVersion,
+    /// The record count in the header can't be read.
+    BadRecordCount,
+    /// The size of the usym file is smaller than the amount of data it is supposed to hold
+    /// according to its header.
+    BufferSmallerThanAdvertised,
+    /// The string table is missing.
+    MissingStringTable,
+    /// A valid slice to the usym's source records could not be created.
+    BadRecords,
+    /// The assembly ID is missing or can't be read.
+    BadId,
+    /// The assembly name is missing or can't be read.
+    BadName,
+    /// The architecture is missing or can't be read.
+    BadOperatingSystem,
+    /// The architecture is missing or can't be read.
+    BadArchitecture,
+    /// A part of the file is not encoded in valid UTF-8.
+    BadEncoding,
+}
+
+impl fmt::Display for UsymErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            UsymErrorKind::MisalignedBuffer => write!(f, "misaligned pointer to buffer"),
+            UsymErrorKind::BadHeader => write!(f, "missing or undersized header"),
+            UsymErrorKind::BadMagic => write!(f, "missing breakpad symbol header"),
+            UsymErrorKind::InvalidVersion => write!(f, "invalid version number"),
+            UsymErrorKind::BadRecordCount => write!(f, "unreadable record count"),
+            UsymErrorKind::BufferSmallerThanAdvertised => {
+                write!(f, "buffer does not contain all data header claims it has")
+            }
+            UsymErrorKind::MissingStringTable => write!(f, "string table is missing"),
+            UsymErrorKind::BadRecords => write!(f, "could not construct list of source records"),
+            UsymErrorKind::BadId => write!(f, "assembly ID is missing or unreadable"),
+            UsymErrorKind::BadName => write!(f, "assembly name is missing or unreadable"),
+            UsymErrorKind::BadOperatingSystem => {
+                write!(f, "operating system is missing or unreadable")
+            }
+            UsymErrorKind::BadArchitecture => write!(f, "architecture is missing or unreadable"),
+            UsymErrorKind::BadEncoding => {
+                write!(f, "part of the file is not encoded in valid UTF-8")
+            }
+        }
+    }
+}
+
+/// An error when dealing with [`BreakpadObject`](struct.BreakpadObject.html).
+#[derive(Debug, Error)]
+#[error("{kind}")]
+pub struct UsymError {
+    kind: UsymErrorKind,
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+impl UsymError {
+    /// Creates a new Breakpad error from a known kind of error as well as an arbitrary error
+    /// payload.
+    fn new<E>(kind: UsymErrorKind, source: E) -> Self
+    where
+        E: Into<Box<dyn Error + Send + Sync>>,
+    {
+        let source = Some(source.into());
+        Self { kind, source }
+    }
+
+    /// Returns the corresponding [`UsymErrorKind`] for this error.
+    pub fn kind(&self) -> UsymErrorKind {
+        self.kind
+    }
+}
+
+impl From<UsymErrorKind> for UsymError {
+    fn from(kind: UsymErrorKind) -> Self {
+        Self { kind, source: None }
+    }
+}
+
+// TODO: consider introducing newtype for string table offsets and the string table itself
 
 /// The raw C structures.
 mod raw {
@@ -26,16 +120,16 @@ mod raw {
         /// These follow right after the header, and after them is the string table.
         pub(super) record_count: u32,
 
-        /// UUID of the assembly, offset into string table.
+        /// UUID of the assembly, as an offset into string table.
         pub(super) id: u32,
 
-        /// Name of the "assembly", offset into string table.
+        /// Name of the "assembly", as an offset into string table.
         pub(super) name: u32,
 
-        /// Name of OS, offset into string table.
+        /// Name of OS, as an offset into string table.
         pub(super) os: u32,
 
-        /// Name of architecture, offset into string table.
+        /// Name of architecture, as an offset into string table.
         pub(super) arch: u32,
     }
 
@@ -48,9 +142,9 @@ mod raw {
     pub(super) struct SourceRecord {
         /// Instruction pointer address, relative to base address of assembly.
         pub(super) address: u64,
-        /// Managed symbol name as offset in string table.
+        /// Managed symbol name, as an offset into the string table.
         pub(super) symbol: u32,
-        /// Reference to the managed source file name in the string table.
+        /// Managed source file, as an offset into the string table.
         pub(super) file: u32,
         /// Managed line number.
         pub(super) line: u32,
@@ -106,71 +200,85 @@ impl<'a> UsymSymbols<'a> {
     ///
     /// If `std::mem::size_of::<usize>()` is smaller than `std::mem::size_of::<u32>()` on
     /// the machine being run on.
-    pub fn parse(buf: &'a [u8]) -> Result<UsymSymbols<'a>> {
+    pub fn parse(buf: &'a [u8]) -> Result<UsymSymbols<'a>, UsymError> {
         if buf.as_ptr().align_offset(8) != 0 {
-            return Err(Error::msg("Data buffer not aligned to 8 bytes"));
+            return Err(UsymError::from(UsymErrorKind::MisalignedBuffer));
         }
         if buf.len() < mem::size_of::<raw::Header>() {
-            return Err(Error::msg("Data smaller than UsymHeader"));
+            return Err(UsymError::from(UsymErrorKind::BadHeader));
         }
-        if buf.get(..4) != Some(Self::MAGIC) {
-            return Err(Error::msg("Wrong magic number"));
+        if buf.get(..Self::MAGIC.len()) != Some(Self::MAGIC) {
+            return Err(UsymError::from(UsymErrorKind::BadMagic));
         }
 
         // SAFETY: We checked the buffer is large enough above.
         let header = unsafe { &*(buf.as_ptr() as *const raw::Header) };
         if header.version != 2 {
-            return Err(Error::msg("Unknown version"));
+            return Err(UsymError::from(UsymErrorKind::InvalidVersion));
         }
 
-        let record_count: usize = header.record_count.try_into()?;
+        let record_count: usize = header
+            .record_count
+            .try_into()
+            .map_err(|e| UsymError::new(UsymErrorKind::BadRecordCount, e))?;
+        // TODO: consider trying to just grab the records and give up on their strings if something
+        // is wrong with the string table
         let strings_offset =
             mem::size_of::<raw::Header>() + record_count * mem::size_of::<raw::SourceRecord>();
         if buf.len() < strings_offset {
-            return Err(Error::msg("Data smaller than number of records"));
+            return Err(UsymError::from(UsymErrorKind::BufferSmallerThanAdvertised));
         }
 
         // SAFETY: We checked the buffer is at least the size_of::<UsymHeader>() above.
         let first_record_ptr = unsafe { buf.as_ptr().add(mem::size_of::<raw::Header>()) };
 
-        // SAFETY: We checked the buffer has enough space for all the line records above.
+        // SAFETY: We checked the buffer has enough space for all the source records above.
         let records = unsafe {
             let first_record_ptr: *const raw::SourceRecord = first_record_ptr.cast();
             let records_ptr = ptr::slice_from_raw_parts(first_record_ptr, record_count);
             records_ptr
                 .as_ref()
-                .ok_or_else(|| Error::msg("lines_offset was null pointer!"))
+                .ok_or_else(|| UsymError::from(UsymErrorKind::BadRecords))
         }?;
 
         let strings = buf
             .get(strings_offset..)
-            .ok_or_else(|| Error::msg("No strings data found"))?;
+            .ok_or_else(|| UsymError::from(UsymErrorKind::MissingStringTable))?;
 
-        let id = match Self::get_string_from_offset(strings, header.id.try_into().unwrap())
-            .ok_or_else(|| Error::msg("No assembly ID found"))?
+        let id_offset = header.id.try_into().unwrap();
+        let id = match Self::get_string_from_offset(strings, id_offset)
+            .ok_or_else(|| UsymError::from(UsymErrorKind::BadId))?
         {
             Cow::Borrowed(id) => id,
-            Cow::Owned(_) => return Err(Error::msg("Assembly ID not UTF-8")),
+            Cow::Owned(_) => return Err(UsymError::from(UsymErrorKind::BadEncoding)),
         };
-        let name = match Self::get_string_from_offset(strings, header.name.try_into().unwrap())
-            .ok_or_else(|| Error::msg("No assembly name found"))?
+        let name_offset = header.name.try_into().unwrap();
+        let name = match Self::get_string_from_offset(strings, name_offset)
+            .ok_or_else(|| UsymError::from(UsymErrorKind::BadName))?
         {
             Cow::Borrowed(name) => name,
-            Cow::Owned(_) => return Err(Error::msg("Assembly name not UTF-8")),
-        };
-        let os = match Self::get_string_from_offset(strings, header.os.try_into().unwrap())
-            .ok_or_else(|| Error::msg("No OS name found"))?
-        {
-            Cow::Borrowed(name) => name,
-            Cow::Owned(_) => return Err(Error::msg("OS name not UTF-8")),
-        };
-        let arch = match Self::get_string_from_offset(strings, header.arch.try_into().unwrap())
-            .ok_or_else(|| Error::msg("No arch name found"))?
-        {
-            Cow::Borrowed(name) => name,
-            Cow::Owned(_) => return Err(Error::msg("Arch name not UTF-8")),
+            Cow::Owned(_) => return Err(UsymError::from(UsymErrorKind::BadEncoding)),
         };
 
+        let os_offset = header.os.try_into().unwrap();
+        let os = match Self::get_string_from_offset(strings, os_offset)
+            .ok_or_else(|| UsymError::from(UsymErrorKind::BadOperatingSystem))?
+        {
+            Cow::Borrowed(name) => name,
+            Cow::Owned(_) => return Err(UsymError::from(UsymErrorKind::BadEncoding)),
+        };
+
+        let arch_offset = header.arch.try_into().unwrap();
+        let arch = match Self::get_string_from_offset(strings, arch_offset)
+            .ok_or_else(|| UsymError::from(UsymErrorKind::BadArchitecture))?
+        {
+            Cow::Borrowed(name) => name,
+            Cow::Owned(_) => return Err(UsymError::from(UsymErrorKind::BadEncoding)),
+        };
+
+        // accumulate and store all of the errors that don't completely block parsing
+        // - bad encoding
+        // - missing sys info fields
         Ok(Self {
             header,
             records,
