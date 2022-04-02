@@ -244,6 +244,7 @@ impl<'a> UsymSymbols<'a> {
         let strings = buf
             .get(strings_offset..)
             .ok_or_else(|| UsymError::from(UsymErrorKind::MissingStringTable))?;
+        // TODO: null byte checking at the end of the string table?
 
         let id_offset = header.id.try_into().unwrap();
         let id = match Self::get_string_from_offset(strings, id_offset)
