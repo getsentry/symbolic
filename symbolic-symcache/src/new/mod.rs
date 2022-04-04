@@ -33,7 +33,7 @@
 //! ## Source locations
 //!
 //! A source location in a symcache represents a possibly-inlined copy of a line in a source file.
-//! It contains a line number, a reference to a file (see below), a reference to a function (ditto),
+//! It contains a line number, a reference to a file (see above), a reference to a function (ditto),
 //! and a reference to the source location into which this source location was inlined. All of these
 //! data are optional.
 //!
@@ -87,8 +87,8 @@
 //! 1. Find the range covering `addr` via binary search.
 //! 2. Find the source location belonging to this range.
 //! 3. Return an iterator over a series of [`lookup::SourceLocation`]s that starts at the source
-//!    location found in step 2, which climbs up through the inlining hierarchy to the root
-//!    [`lookup::SourceLocation`].
+//!    location found in step 2. The iterator climbs up through the inlining hierarchy, ending at
+//!    the root [`lookup::SourceLocation`].
 //!
 //! The returned source locations contain accessor methods for their function, file, and line number.
 use std::convert::TryInto;
