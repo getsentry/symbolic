@@ -3,11 +3,11 @@
 //!
 //! A SymCache contains the following primary kinds of data, written in the following order:
 //!
-//! 1. files
-//! 2. functions
-//! 3. source locations
-//! 4. address ranges
-//! (5. string data)
+//! 1. Files
+//! 2. Functions
+//! 3. Source Locations
+//! 4. Address Ranges
+//! 5. String Data
 //!
 //! The format uses `u32`s to represent line numbers, addresses, references, and string offsets.
 //! Line numbers use `0` to represent an unknown or invalid value. Addresses, references, and string
@@ -26,18 +26,18 @@
 //! A function contains string offsets for its name and compilation directory, a u32 for its entry
 //! address, and a u32 representing the source language.
 //!
-//! ## Address ranges
+//! ## Address Ranges
 //!
 //! Ranges are saved as a contiguous list of `u32`s, representing their starting addresses.
 //!
-//! ## Source locations
+//! ## Source Locations
 //!
 //! A source location in a symcache represents a possibly-inlined copy of a line in a source file.
 //! It contains a line number, a reference to a file (see above), a reference to a function (ditto),
 //! and a reference to the source location into which this source location was inlined. All of these
 //! data are optional.
 //!
-//! ## Mapping from ranges to source locations
+//! ## Mapping From Ranges To Source Locations
 //!
 //! Every range in the SymCache is associated with at least one source location. As mentioned above,
 //! each source location may in turn have a reference to a source location into which it is inlined.
