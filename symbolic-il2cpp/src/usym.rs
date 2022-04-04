@@ -47,7 +47,7 @@ impl fmt::Display for UsymErrorKind {
         match self {
             UsymErrorKind::MisalignedBuffer => write!(f, "misaligned pointer to buffer"),
             UsymErrorKind::BadHeader => write!(f, "missing or undersized header"),
-            UsymErrorKind::BadMagic => write!(f, "missing breakpad symbol header"),
+            UsymErrorKind::BadMagic => write!(f, "missing or wrong usym magic bytes"),
             UsymErrorKind::BadVersion => write!(f, "missing or wrong version number"),
             UsymErrorKind::BadRecordCount => write!(f, "unreadable record count"),
             UsymErrorKind::BufferSmallerThanAdvertised => {
@@ -68,7 +68,7 @@ impl fmt::Display for UsymErrorKind {
     }
 }
 
-/// An error when dealing with [`BreakpadObject`](struct.BreakpadObject.html).
+/// An error when dealing with [`UsymSymbols`].
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct UsymError {
@@ -78,8 +78,7 @@ pub struct UsymError {
 }
 
 impl UsymError {
-    /// Creates a new Breakpad error from a known kind of error as well as an arbitrary error
-    /// payload.
+    /// Creates a new [`UsymError`] from a [`UsymErrorKind`] and an arbitrary source error payload.
     fn new<E>(kind: UsymErrorKind, source: E) -> Self
     where
         E: Into<Box<dyn Error + Send + Sync>>,

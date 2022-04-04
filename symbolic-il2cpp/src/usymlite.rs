@@ -54,7 +54,7 @@ impl fmt::Display for UsymLiteErrorKind {
         match self {
             UsymLiteErrorKind::MisalignedBuffer => write!(f, "misaligned pointer to buffer"),
             UsymLiteErrorKind::BadHeader => write!(f, "missing or undersized header"),
-            UsymLiteErrorKind::BadMagic => write!(f, "missing breakpad symbol header"),
+            UsymLiteErrorKind::BadMagic => write!(f, "missing or wrong usymlite magic bytes"),
             UsymLiteErrorKind::BadVersion => write!(f, "missing or wrong version number"),
             UsymLiteErrorKind::BadLineCount => write!(f, "unreadable record count"),
             UsymLiteErrorKind::BufferSmallerThanAdvertised => {
@@ -82,7 +82,7 @@ impl fmt::Display for UsymLiteErrorKind {
     }
 }
 
-/// An error when dealing with [`BreakpadObject`](struct.BreakpadObject.html).
+/// An error when dealing with [`UsymLiteSymbols`].
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct UsymLiteError {
@@ -92,7 +92,7 @@ pub struct UsymLiteError {
 }
 
 impl UsymLiteError {
-    /// Creates a new Breakpad error from a known kind of error as well as an arbitrary error
+    /// Creates a new [`UsymLiteError`] error from a [`UsymLiteErrorKind`] and an arbitrary error
     /// payload.
     fn new<E>(kind: UsymLiteErrorKind, source: E) -> Self
     where
