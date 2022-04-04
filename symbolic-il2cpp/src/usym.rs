@@ -20,7 +20,7 @@ pub enum UsymErrorKind {
     /// The magic string in the header is missing or malformed.
     BadMagic,
     /// The version string in the usym file's header is missing or malformed.
-    InvalidVersion,
+    BadVersion,
     /// The record count in the header can't be read.
     BadRecordCount,
     /// The size of the usym file is smaller than the amount of data it is supposed to hold
@@ -48,7 +48,7 @@ impl fmt::Display for UsymErrorKind {
             UsymErrorKind::MisalignedBuffer => write!(f, "misaligned pointer to buffer"),
             UsymErrorKind::BadHeader => write!(f, "missing or undersized header"),
             UsymErrorKind::BadMagic => write!(f, "missing breakpad symbol header"),
-            UsymErrorKind::InvalidVersion => write!(f, "invalid version number"),
+            UsymErrorKind::BadVersion => write!(f, "missing or wrong version number"),
             UsymErrorKind::BadRecordCount => write!(f, "unreadable record count"),
             UsymErrorKind::BufferSmallerThanAdvertised => {
                 write!(f, "buffer does not contain all data header claims it has")
@@ -214,7 +214,7 @@ impl<'a> UsymSymbols<'a> {
         // SAFETY: We checked the buffer is large enough above.
         let header = unsafe { &*(buf.as_ptr() as *const raw::Header) };
         if header.version != 2 {
-            return Err(UsymError::from(UsymErrorKind::InvalidVersion));
+            return Err(UsymError::from(UsymErrorKind::BadVersion));
         }
 
         let record_count: usize = header
