@@ -26,8 +26,8 @@ pub enum UsymErrorKind {
     /// The size of the usym file is smaller than the amount of data it is supposed to hold
     /// according to its header.
     BufferSmallerThanAdvertised,
-    /// The string table is missing.
-    MissingStringTable,
+    /// The strings section is missing.
+    MissingStrings,
     /// A valid slice to the usym's source records could not be created.
     BadRecords,
     /// The assembly ID is missing or can't be read.
@@ -53,7 +53,7 @@ impl fmt::Display for UsymErrorKind {
             UsymErrorKind::BufferSmallerThanAdvertised => {
                 write!(f, "buffer does not contain all data header claims it has")
             }
-            UsymErrorKind::MissingStringTable => write!(f, "string table is missing"),
+            UsymErrorKind::MissingStrings => write!(f, "strings section is missing"),
             UsymErrorKind::BadRecords => write!(f, "could not construct list of source records"),
             UsymErrorKind::BadId => write!(f, "assembly ID is missing or unreadable"),
             UsymErrorKind::BadName => write!(f, "assembly name is missing or unreadable"),
@@ -99,7 +99,7 @@ impl From<UsymErrorKind> for UsymError {
     }
 }
 
-// TODO: consider introducing newtype for string table offsets and the string table itself
+// TODO: consider introducing newtype for strings section offsets and the strings section itself
 
 /// The raw C structures.
 mod raw {
@@ -116,23 +116,23 @@ mod raw {
 
         /// Number of [`UsymRecord`] entries.
         ///
-        /// These follow right after the header, and after them is the string table.
+        /// These follow right after the header, and after them is the strings section.
         pub(super) record_count: u32,
 
-        /// UUID of the assembly, as an offset into string table.
+        /// UUID of the assembly, as an offset into the strings section.
         pub(super) id: u32,
 
-        /// Name of the "assembly", as an offset into string table.
+        /// Name of the "assembly", as an offset into the strings section.
         pub(super) name: u32,
 
-        /// Name of OS, as an offset into string table.
+        /// Name of OS, as an offset into the strings section.
         pub(super) os: u32,
 
-        /// Name of architecture, as an offset into string table.
+        /// Name of architecture, as an offset into the strings section.
         pub(super) arch: u32,
     }
 
-    /// A record mapping an IL2CPP instruction address to managed code location.
+    /// A record mapping an IL2CPP instruction address to a managed code location.
     ///
     /// This is the raw record as it appears in the file, see [`UsymRecord`] for a record with
     /// the names resolved.
@@ -141,9 +141,9 @@ mod raw {
     pub(super) struct SourceRecord {
         /// Instruction pointer address, relative to base address of assembly.
         pub(super) address: u64,
-        /// Managed symbol name, as an offset into the string table.
+        /// Managed symbol name, as an offset into the strings section.
         pub(super) symbol: u32,
-        /// Managed source file, as an offset into the string table.
+        /// Managed source file, as an offset into the strings section.
         pub(super) file: u32,
         /// Managed line number.
         pub(super) line: u32,
@@ -175,8 +175,8 @@ pub struct UsymSymbols<'a> {
     records: &'a [raw::SourceRecord],
     /// All the strings.
     ///
-    /// This is not a traditional string table but rather a large slice of bytes with
-    /// length-prefixed strings, the length is a little-endian u16.  The header and records
+    /// This is not a traditional strings section but rather a large slice of bytes with
+    /// length-prefixed strings, where the length is a little-endian u16.  The header and records
     /// refer to strings by byte offsets into this slice of bytes, which must fall on the
     /// the length prefixed part of the string.
     strings: &'a [u8],
@@ -221,7 +221,7 @@ impl<'a> UsymSymbols<'a> {
             .try_into()
             .map_err(|e| UsymError::new(UsymErrorKind::BadRecordCount, e))?;
         // TODO: consider trying to just grab the records and give up on their strings if something
-        // is wrong with the string table
+        // is wrong with the strings section
         let strings_offset =
             mem::size_of::<raw::Header>() + record_count * mem::size_of::<raw::SourceRecord>();
         if buf.len() < strings_offset {
@@ -242,8 +242,7 @@ impl<'a> UsymSymbols<'a> {
 
         let strings = buf
             .get(strings_offset..)
-            .ok_or_else(|| UsymError::from(UsymErrorKind::MissingStringTable))?;
-        // TODO: null byte checking at the end of the string table?
+            .ok_or_else(|| UsymError::from(UsymErrorKind::MissingStrings))?;
 
         let id_offset = header.id.try_into().unwrap();
         let id = match Self::get_string_from_offset(strings, id_offset)
@@ -306,7 +305,7 @@ impl<'a> UsymSymbols<'a> {
         Some(String::from_utf8_lossy(string_bytes))
     }
 
-    /// Returns a string from the string table at given offset.
+    /// Returns a string from the strings section at the given offset.
     ///
     /// Offsets are as provided by some [`UsymLiteHeader`] and [`UsymLiteLine`] fields.
     fn get_string(&self, offset: usize) -> Option<Cow<'a, str>> {
