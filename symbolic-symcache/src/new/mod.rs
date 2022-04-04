@@ -1,45 +1,48 @@
 //! The SymCache binary format.
 //! # Structure of the format
 //!
-//! A SymCache contains the following primary kinds of data:
+//! A SymCache contains the following primary kinds of data, written in the following order:
 //!
-//! 1. address ranges
-//! 2. source locations
-//! 3. functions
-//! 4. files
+//! 1. Files
+//! 2. Functions
+//! 3. Source Locations
+//! 4. Address Ranges
+//! 5. String Data
 //!
-//! Additionally, the format uses `u32`s to represent line numbers, addresses, references, and string offsets.
-//! For line numbers, `0` represents an unknown or invalid value, while for addresses, references, and string offsets
-//! we use `u32::MAX`.
+//! The format uses `u32`s to represent line numbers, addresses, references, and string offsets.
+//! Line numbers use `0` to represent an unknown or invalid value. Addresses, references, and string
+//! offsets instead use `u32::MAX`.
 //!
-//! Strings are saved in one contiguous section with each individual string prefixed by 4 bytes denoting its length.
-//! Functions and files refer to strings by an offset into this string section.
-//!
-//! ## Address ranges
-//!
-//! Ranges are saved as a contiguous list of `u32`s, representing their starting addresses.
-//!
-//! ## Source locations
-//!
-//! A source location in the format represents a possibly inlined copy
-//! of a line in a source file. It contains a line number, a reference to a file (see below),
-//! a reference to a function (ditto), and a reference to the source location into which this
-//! source location was inlined. All of these data are optional.
-//!
-//! ## Functions
-//!
-//! A function contains string offsets for its name and compilation directory,
-//! an u32 for its entry address, and a u32 representing the source language.
+//! Strings are saved in one contiguous section with each individual string prefixed by 4 bytes
+//! denoting its length. Functions and files refer to strings by an offset into this string section,
+//! hence "string offset".
 //!
 //! ## Files
 //!
 //! A file contains string offsets for its file name, parent directory, and compilation directory.
 //!
-//! ## Mapping from ranges to source locations
+//! ## Functions
 //!
-//! Every range in the SymCache is associated with at least one source location. As mentioned above, each source
-//! location may in turn have a reference to a source location into which it is inlined. Conceptually, each
-//! address range points to a sequence of source locations, representing a hierarchy of inlined function calls.
+//! A function contains string offsets for its name and compilation directory, a u32 for its entry
+//! address, and a u32 representing the source language.
+//!
+//! ## Address Ranges
+//!
+//! Ranges are saved as a contiguous list of `u32`s, representing their starting addresses.
+//!
+//! ## Source Locations
+//!
+//! A source location in a symcache represents a possibly-inlined copy of a line in a source file.
+//! It contains a line number, a reference to a file (see above), a reference to a function (ditto),
+//! and a reference to the source location into which this source location was inlined. All of these
+//! data are optional.
+//!
+//! ## Mapping From Ranges To Source Locations
+//!
+//! Every range in the SymCache is associated with at least one source location. As mentioned above,
+//! each source location may in turn have a reference to a source location into which it is inlined.
+//! Conceptually, each address range points to a sequence of source locations, representing a
+//! hierarchy of inlined function calls.
 //!
 //! ### Example
 //!
@@ -79,14 +82,15 @@
 //!
 //! # Lookups
 //!
-//! Looking up an address `addr` in the SymCache proceeds as follows:
+//! To look up an address `addr` in the SymCache:
 //!
-//! 1. Find the range into which `addr` falls by binary search.
+//! 1. Find the range covering `addr` via binary search.
 //! 2. Find the source location belonging to this range.
-//! 3. Return an iterator over [`lookup::SourceLocation`]s that starts at the source location
-//!    found in step 2 and proceeds up the inlining hierarchy.
+//! 3. Return an iterator over a series of [`lookup::SourceLocation`]s that starts at the source
+//!    location found in step 2. The iterator climbs up through the inlining hierarchy, ending at
+//!    the root [`lookup::SourceLocation`].
 //!
-//! The returned source locations contain accessor methods for the function, file, and line number.
+//! The returned source locations contain accessor methods for their function, file, and line number.
 use std::convert::TryInto;
 use std::{mem, ptr};
 
