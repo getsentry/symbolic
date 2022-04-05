@@ -3,10 +3,103 @@
 //! This format can map il2cpp instruction addresses to managed file names and line numbers.
 
 use std::borrow::Cow;
+use std::error::Error;
+use std::fmt;
 use std::mem;
 use std::ptr;
 
-use anyhow::{Error, Result};
+use thiserror::Error;
+
+/// The error type for [`UsymError`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum UsymErrorKind {
+    /// Buffer to usym file is misaligned.
+    MisalignedBuffer,
+    /// The header to the usym file is missing or undersized.
+    BadHeader,
+    /// The magic string in the header is missing or malformed.
+    BadMagic,
+    /// The version string in the usym file's header is missing or malformed.
+    BadVersion,
+    /// The record count in the header can't be read.
+    BadRecordCount,
+    /// The size of the usym file is smaller than the amount of data it is supposed to hold
+    /// according to its header.
+    BufferSmallerThanAdvertised,
+    /// The strings section is missing.
+    MissingStrings,
+    /// A valid slice to the usym's source records could not be created.
+    BadRecords,
+    /// The assembly ID is missing or can't be read.
+    BadId,
+    /// The assembly name is missing or can't be read.
+    BadName,
+    /// The architecture is missing or can't be read.
+    BadOperatingSystem,
+    /// The architecture is missing or can't be read.
+    BadArchitecture,
+    /// A part of the file is not encoded in valid UTF-8.
+    BadEncoding,
+}
+
+impl fmt::Display for UsymErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            UsymErrorKind::MisalignedBuffer => write!(f, "misaligned pointer to buffer"),
+            UsymErrorKind::BadHeader => write!(f, "missing or undersized header"),
+            UsymErrorKind::BadMagic => write!(f, "missing or wrong usym magic bytes"),
+            UsymErrorKind::BadVersion => write!(f, "missing or wrong version number"),
+            UsymErrorKind::BadRecordCount => write!(f, "unreadable record count"),
+            UsymErrorKind::BufferSmallerThanAdvertised => {
+                write!(f, "buffer does not contain all data header claims it has")
+            }
+            UsymErrorKind::MissingStrings => write!(f, "strings section is missing"),
+            UsymErrorKind::BadRecords => write!(f, "could not construct list of source records"),
+            UsymErrorKind::BadId => write!(f, "assembly ID is missing or unreadable"),
+            UsymErrorKind::BadName => write!(f, "assembly name is missing or unreadable"),
+            UsymErrorKind::BadOperatingSystem => {
+                write!(f, "operating system is missing or unreadable")
+            }
+            UsymErrorKind::BadArchitecture => write!(f, "architecture is missing or unreadable"),
+            UsymErrorKind::BadEncoding => {
+                write!(f, "part of the file is not encoded in valid UTF-8")
+            }
+        }
+    }
+}
+
+/// An error when dealing with [`UsymSymbols`].
+#[derive(Debug, Error)]
+#[error("{kind}")]
+pub struct UsymError {
+    kind: UsymErrorKind,
+    #[source]
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+}
+
+impl UsymError {
+    /// Creates a new [`UsymError`] from a [`UsymErrorKind`] and an arbitrary source error payload.
+    fn new<E>(kind: UsymErrorKind, source: E) -> Self
+    where
+        E: Into<Box<dyn Error + Send + Sync>>,
+    {
+        let source = Some(source.into());
+        Self { kind, source }
+    }
+
+    /// Returns the corresponding [`UsymErrorKind`] for this error.
+    pub fn kind(&self) -> UsymErrorKind {
+        self.kind
+    }
+}
+
+impl From<UsymErrorKind> for UsymError {
+    fn from(kind: UsymErrorKind) -> Self {
+        Self { kind, source: None }
+    }
+}
+
+// TODO: consider introducing newtype for strings section offsets and the strings section itself
 
 /// The raw C structures.
 mod raw {
@@ -23,23 +116,23 @@ mod raw {
 
         /// Number of [`UsymRecord`] entries.
         ///
-        /// These follow right after the header, and after them is the string table.
+        /// These follow right after the header, and after them is the strings section.
         pub(super) record_count: u32,
 
-        /// UUID of the assembly, offset into string table.
+        /// UUID of the assembly, as an offset into the strings section.
         pub(super) id: u32,
 
-        /// Name of the "assembly", offset into string table.
+        /// Name of the "assembly", as an offset into the strings section.
         pub(super) name: u32,
 
-        /// Name of OS, offset into string table.
+        /// Name of OS, as an offset into the strings section.
         pub(super) os: u32,
 
-        /// Name of architecture, offset into string table.
+        /// Name of architecture, as an offset into the strings section.
         pub(super) arch: u32,
     }
 
-    /// A record mapping an IL2CPP instruction address to managed code location.
+    /// A record mapping an IL2CPP instruction address to a managed code location.
     ///
     /// This is the raw record as it appears in the file, see [`UsymRecord`] for a record with
     /// the names resolved.
@@ -48,9 +141,9 @@ mod raw {
     pub(super) struct SourceRecord {
         /// Instruction pointer address, relative to base address of assembly.
         pub(super) address: u64,
-        /// Managed symbol name as offset in string table.
+        /// Managed symbol name, as an offset into the strings section.
         pub(super) symbol: u32,
-        /// Reference to the managed source file name in the string table.
+        /// Managed source file, as an offset into the strings section.
         pub(super) file: u32,
         /// Managed line number.
         pub(super) line: u32,
@@ -82,8 +175,8 @@ pub struct UsymSymbols<'a> {
     records: &'a [raw::SourceRecord],
     /// All the strings.
     ///
-    /// This is not a traditional string table but rather a large slice of bytes with
-    /// length-prefixed strings, the length is a little-endian u16.  The header and records
+    /// This is not a traditional strings table, but rather a large slice of bytes with
+    /// length-prefixed strings where the length is a little-endian u16.  The header and records
     /// refer to strings by byte offsets into this slice of bytes, which must fall on the
     /// the length prefixed part of the string.
     strings: &'a [u8],
@@ -106,71 +199,85 @@ impl<'a> UsymSymbols<'a> {
     ///
     /// If `std::mem::size_of::<usize>()` is smaller than `std::mem::size_of::<u32>()` on
     /// the machine being run on.
-    pub fn parse(buf: &'a [u8]) -> Result<UsymSymbols<'a>> {
+    pub fn parse(buf: &'a [u8]) -> Result<UsymSymbols<'a>, UsymError> {
         if buf.as_ptr().align_offset(8) != 0 {
-            return Err(Error::msg("Data buffer not aligned to 8 bytes"));
+            return Err(UsymErrorKind::MisalignedBuffer.into());
         }
         if buf.len() < mem::size_of::<raw::Header>() {
-            return Err(Error::msg("Data smaller than UsymHeader"));
+            return Err(UsymErrorKind::BadHeader.into());
         }
-        if buf.get(..4) != Some(Self::MAGIC) {
-            return Err(Error::msg("Wrong magic number"));
+        if buf.get(..Self::MAGIC.len()) != Some(Self::MAGIC) {
+            return Err(UsymErrorKind::BadMagic.into());
         }
 
         // SAFETY: We checked the buffer is large enough above.
         let header = unsafe { &*(buf.as_ptr() as *const raw::Header) };
         if header.version != 2 {
-            return Err(Error::msg("Unknown version"));
+            return Err(UsymErrorKind::BadVersion.into());
         }
 
-        let record_count: usize = header.record_count.try_into()?;
+        let record_count: usize = header
+            .record_count
+            .try_into()
+            .map_err(|e| UsymError::new(UsymErrorKind::BadRecordCount, e))?;
+        // TODO: consider trying to just grab the records and give up on their strings if something
+        // is wrong with the strings section
         let strings_offset =
             mem::size_of::<raw::Header>() + record_count * mem::size_of::<raw::SourceRecord>();
         if buf.len() < strings_offset {
-            return Err(Error::msg("Data smaller than number of records"));
+            return Err(UsymErrorKind::BufferSmallerThanAdvertised.into());
         }
 
         // SAFETY: We checked the buffer is at least the size_of::<UsymHeader>() above.
         let first_record_ptr = unsafe { buf.as_ptr().add(mem::size_of::<raw::Header>()) };
 
-        // SAFETY: We checked the buffer has enough space for all the line records above.
+        // SAFETY: We checked the buffer has enough space for all the source records above.
         let records = unsafe {
             let first_record_ptr: *const raw::SourceRecord = first_record_ptr.cast();
             let records_ptr = ptr::slice_from_raw_parts(first_record_ptr, record_count);
             records_ptr
                 .as_ref()
-                .ok_or_else(|| Error::msg("lines_offset was null pointer!"))
+                .ok_or_else(|| UsymError::from(UsymErrorKind::BadRecords))
         }?;
 
         let strings = buf
             .get(strings_offset..)
-            .ok_or_else(|| Error::msg("No strings data found"))?;
+            .ok_or_else(|| UsymError::from(UsymErrorKind::MissingStrings))?;
 
-        let id = match Self::get_string_from_offset(strings, header.id.try_into().unwrap())
-            .ok_or_else(|| Error::msg("No assembly ID found"))?
+        let id_offset = header.id.try_into().unwrap();
+        let id = match Self::get_string_from_offset(strings, id_offset)
+            .ok_or_else(|| UsymError::from(UsymErrorKind::BadId))?
         {
             Cow::Borrowed(id) => id,
-            Cow::Owned(_) => return Err(Error::msg("Assembly ID not UTF-8")),
+            Cow::Owned(_) => return Err(UsymErrorKind::BadEncoding.into()),
         };
-        let name = match Self::get_string_from_offset(strings, header.name.try_into().unwrap())
-            .ok_or_else(|| Error::msg("No assembly name found"))?
+        let name_offset = header.name.try_into().unwrap();
+        let name = match Self::get_string_from_offset(strings, name_offset)
+            .ok_or_else(|| UsymError::from(UsymErrorKind::BadName))?
         {
             Cow::Borrowed(name) => name,
-            Cow::Owned(_) => return Err(Error::msg("Assembly name not UTF-8")),
-        };
-        let os = match Self::get_string_from_offset(strings, header.os.try_into().unwrap())
-            .ok_or_else(|| Error::msg("No OS name found"))?
-        {
-            Cow::Borrowed(name) => name,
-            Cow::Owned(_) => return Err(Error::msg("OS name not UTF-8")),
-        };
-        let arch = match Self::get_string_from_offset(strings, header.arch.try_into().unwrap())
-            .ok_or_else(|| Error::msg("No arch name found"))?
-        {
-            Cow::Borrowed(name) => name,
-            Cow::Owned(_) => return Err(Error::msg("Arch name not UTF-8")),
+            Cow::Owned(_) => return Err(UsymErrorKind::BadEncoding.into()),
         };
 
+        let os_offset = header.os.try_into().unwrap();
+        let os = match Self::get_string_from_offset(strings, os_offset)
+            .ok_or_else(|| UsymError::from(UsymErrorKind::BadOperatingSystem))?
+        {
+            Cow::Borrowed(name) => name,
+            Cow::Owned(_) => return Err(UsymErrorKind::BadEncoding.into()),
+        };
+
+        let arch_offset = header.arch.try_into().unwrap();
+        let arch = match Self::get_string_from_offset(strings, arch_offset)
+            .ok_or_else(|| UsymError::from(UsymErrorKind::BadArchitecture))?
+        {
+            Cow::Borrowed(name) => name,
+            Cow::Owned(_) => return Err(UsymErrorKind::BadEncoding.into()),
+        };
+
+        // accumulate and store all of the errors that don't completely block parsing
+        // - bad encoding
+        // - missing sys info fields
         Ok(Self {
             header,
             records,
@@ -198,7 +305,7 @@ impl<'a> UsymSymbols<'a> {
         Some(String::from_utf8_lossy(string_bytes))
     }
 
-    /// Returns a string from the string table at given offset.
+    /// Returns a string from the strings section at the given offset.
     ///
     /// Offsets are as provided by some [`UsymLiteHeader`] and [`UsymLiteLine`] fields.
     fn get_string(&self, offset: usize) -> Option<Cow<'a, str>> {
