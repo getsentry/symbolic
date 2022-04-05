@@ -175,8 +175,8 @@ pub struct UsymSymbols<'a> {
     records: &'a [raw::SourceRecord],
     /// All the strings.
     ///
-    /// This is not a traditional strings section but rather a large slice of bytes with
-    /// length-prefixed strings, where the length is a little-endian u16.  The header and records
+    /// This is not a traditional strings table, but rather a large slice of bytes with
+    /// length-prefixed strings where the length is a little-endian u16.  The header and records
     /// refer to strings by byte offsets into this slice of bytes, which must fall on the
     /// the length prefixed part of the string.
     strings: &'a [u8],
