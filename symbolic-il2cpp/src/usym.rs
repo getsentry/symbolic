@@ -7,7 +7,10 @@ use std::error::Error;
 use std::fmt;
 use std::mem;
 use std::ptr;
+use std::str::FromStr;
 
+use symbolic_common::Arch;
+use symbolic_common::DebugId;
 use thiserror::Error;
 
 /// The error type for [`UsymError`].
@@ -315,9 +318,8 @@ impl<'a> UsymSymbols<'a> {
     /// The ID of the assembly.
     ///
     /// This should match the ID of the debug symbols.
-    // TODO: Consider making this return debugid::DebugId
-    pub fn id(&self) -> &str {
-        self.id
+    pub fn id(&self) -> Result<DebugId, UsymError> {
+        DebugId::from_str(self.id).map_err(|e| UsymError::new(UsymErrorKind::BadId, e))
     }
 
     /// The name of the assembly.
@@ -330,9 +332,9 @@ impl<'a> UsymSymbols<'a> {
         self.os
     }
 
-    /// The architecture name.
-    pub fn arch(&self) -> &str {
-        self.arch
+    /// The architecture.
+    pub fn arch(&self) -> Result<Arch, UsymError> {
+        Arch::from_str(self.arch).map_err(|e| UsymError::new(UsymErrorKind::BadArchitecture, e))
     }
 
     /// Returns a [`UsymSourceRecord`] at the given index it was stored.
@@ -455,10 +457,13 @@ mod tests {
         let usyms = UsymSymbols::parse(&data).unwrap();
 
         assert_eq!(usyms.version(), 2);
-        assert_eq!(usyms.id(), "153d10d10db033d6aacda4e1948da97b");
+        assert_eq!(
+            usyms.id().unwrap(),
+            DebugId::from_str("153d10d10db033d6aacda4e1948da97b").unwrap()
+        );
         assert_eq!(usyms.name(), "UnityFramework");
         assert_eq!(usyms.os(), "mac");
-        assert_eq!(usyms.arch(), "arm64");
+        assert_eq!(usyms.arch().unwrap(), Arch::Arm64);
     }
 
     #[test]
