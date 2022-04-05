@@ -201,19 +201,19 @@ impl<'a> UsymSymbols<'a> {
     /// the machine being run on.
     pub fn parse(buf: &'a [u8]) -> Result<UsymSymbols<'a>, UsymError> {
         if buf.as_ptr().align_offset(8) != 0 {
-            return Err(UsymError::from(UsymErrorKind::MisalignedBuffer));
+            return Err(UsymErrorKind::MisalignedBuffer.into());
         }
         if buf.len() < mem::size_of::<raw::Header>() {
-            return Err(UsymError::from(UsymErrorKind::BadHeader));
+            return Err(UsymErrorKind::BadHeader.into());
         }
         if buf.get(..Self::MAGIC.len()) != Some(Self::MAGIC) {
-            return Err(UsymError::from(UsymErrorKind::BadMagic));
+            return Err(UsymErrorKind::BadMagic.into());
         }
 
         // SAFETY: We checked the buffer is large enough above.
         let header = unsafe { &*(buf.as_ptr() as *const raw::Header) };
         if header.version != 2 {
-            return Err(UsymError::from(UsymErrorKind::BadVersion));
+            return Err(UsymErrorKind::BadVersion.into());
         }
 
         let record_count: usize = header
@@ -225,7 +225,7 @@ impl<'a> UsymSymbols<'a> {
         let strings_offset =
             mem::size_of::<raw::Header>() + record_count * mem::size_of::<raw::SourceRecord>();
         if buf.len() < strings_offset {
-            return Err(UsymError::from(UsymErrorKind::BufferSmallerThanAdvertised));
+            return Err(UsymErrorKind::BufferSmallerThanAdvertised.into());
         }
 
         // SAFETY: We checked the buffer is at least the size_of::<UsymHeader>() above.
@@ -249,14 +249,14 @@ impl<'a> UsymSymbols<'a> {
             .ok_or_else(|| UsymError::from(UsymErrorKind::BadId))?
         {
             Cow::Borrowed(id) => id,
-            Cow::Owned(_) => return Err(UsymError::from(UsymErrorKind::BadEncoding)),
+            Cow::Owned(_) => return Err(UsymErrorKind::BadEncoding.into()),
         };
         let name_offset = header.name.try_into().unwrap();
         let name = match Self::get_string_from_offset(strings, name_offset)
             .ok_or_else(|| UsymError::from(UsymErrorKind::BadName))?
         {
             Cow::Borrowed(name) => name,
-            Cow::Owned(_) => return Err(UsymError::from(UsymErrorKind::BadEncoding)),
+            Cow::Owned(_) => return Err(UsymErrorKind::BadEncoding.into()),
         };
 
         let os_offset = header.os.try_into().unwrap();
@@ -264,7 +264,7 @@ impl<'a> UsymSymbols<'a> {
             .ok_or_else(|| UsymError::from(UsymErrorKind::BadOperatingSystem))?
         {
             Cow::Borrowed(name) => name,
-            Cow::Owned(_) => return Err(UsymError::from(UsymErrorKind::BadEncoding)),
+            Cow::Owned(_) => return Err(UsymErrorKind::BadEncoding.into()),
         };
 
         let arch_offset = header.arch.try_into().unwrap();
@@ -272,7 +272,7 @@ impl<'a> UsymSymbols<'a> {
             .ok_or_else(|| UsymError::from(UsymErrorKind::BadArchitecture))?
         {
             Cow::Borrowed(name) => name,
-            Cow::Owned(_) => return Err(UsymError::from(UsymErrorKind::BadEncoding)),
+            Cow::Owned(_) => return Err(UsymErrorKind::BadEncoding.into()),
         };
 
         // accumulate and store all of the errors that don't completely block parsing
