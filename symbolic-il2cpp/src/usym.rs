@@ -318,8 +318,8 @@ impl<'a> UsymSymbols<'a> {
     /// The ID of the assembly.
     ///
     /// This should match the ID of the debug symbols.
-    pub fn id(&self) -> Option<DebugId> {
-        DebugId::from_str(self.id).ok()
+    pub fn id(&self) -> Result<DebugId, UsymError> {
+        DebugId::from_str(self.id).map_err(|e| UsymError::new(UsymErrorKind::BadId, e))
     }
 
     /// The name of the assembly.
@@ -332,9 +332,9 @@ impl<'a> UsymSymbols<'a> {
         self.os
     }
 
-    /// The architecture name.
-    pub fn arch(&self) -> Option<Arch> {
-        Arch::from_str(self.arch).ok()
+    /// The architecture.
+    pub fn arch(&self) -> Result<Arch, UsymError> {
+        Arch::from_str(self.arch).map_err(|e| UsymError::new(UsymErrorKind::BadArchitecture, e))
     }
 
     /// Returns a [`UsymSourceRecord`] at the given index it was stored.
@@ -458,12 +458,12 @@ mod tests {
 
         assert_eq!(usyms.version(), 2);
         assert_eq!(
-            usyms.id(),
-            Some(DebugId::from_str("153d10d10db033d6aacda4e1948da97b").unwrap())
+            usyms.id().unwrap(),
+            DebugId::from_str("153d10d10db033d6aacda4e1948da97b").unwrap()
         );
         assert_eq!(usyms.name(), "UnityFramework");
         assert_eq!(usyms.os(), "mac");
-        assert_eq!(usyms.arch(), Some(Arch::Arm64));
+        assert_eq!(usyms.arch().unwrap(), Arch::Arm64);
     }
 
     #[test]
