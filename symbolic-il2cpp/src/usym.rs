@@ -166,8 +166,8 @@ mod raw {
 
 /// A record mapping an IL2CPP instruction address to managed code location.
 ///
-/// Not all native code maps back to managed code, for those record the managed info will be
-/// `None`.
+/// Not all native code maps back to managed code, for those records the managed info will
+/// be `None`.
 #[derive(Debug, Clone)]
 pub struct UsymSourceRecord<'a> {
     /// Instruction pointer address, relative to the base of the assembly.
@@ -459,6 +459,10 @@ mod tests {
                 push_string(usyms.get_string(record.native_symbol as usize).unwrap()) as u32;
             record.native_file =
                 push_string(usyms.get_string(record.native_file as usize).unwrap()) as u32;
+            record.managed_symbol =
+                push_string(usyms.get_string(record.managed_symbol as usize).unwrap()) as u32;
+            record.managed_file =
+                push_string(usyms.get_string(record.managed_file as usize).unwrap()) as u32;
             records.push(record);
         }
 
