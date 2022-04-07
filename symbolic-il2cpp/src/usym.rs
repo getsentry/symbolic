@@ -160,7 +160,7 @@ mod raw {
         pub(super) managed_file: u32,
         /// Managed code line number, 0 if code does not map to managed code.
         pub(super) managed_line: u32,
-        pub(super) _unknown3: u32,
+        pub(super) _unknown: u32,
     }
 }
 
