@@ -505,6 +505,59 @@ mod tests {
         assert_eq!(usyms.name(), "UnityFramework");
         assert_eq!(usyms.os(), "mac");
         assert_eq!(usyms.arch().unwrap(), Arch::Arm64);
+
+        for i in 0..5 {
+            assert!(usyms.get_record(i).is_some());
+        }
+    }
+
+    #[test]
+    fn test_with_managed() {
+        let file = File::open(fixture("il2cpp/managed.usym")).unwrap();
+        let data = ByteView::map_file_ref(&file).unwrap();
+        let usyms = UsymSymbols::parse(&data).unwrap();
+
+        assert_eq!(usyms.version(), 2);
+        assert_eq!(
+            usyms.id().unwrap(),
+            DebugId::from_str("153d10d10db033d6aacda4e1948da97b").unwrap()
+        );
+        assert_eq!(usyms.name(), "UnityFramework");
+        assert_eq!(usyms.os(), "mac");
+        assert_eq!(usyms.arch().unwrap(), Arch::Arm64);
+
+        let first_mapping = usyms.lookup_source_record(8253832).unwrap();
+        assert_eq!(
+            first_mapping.managed_symbol.unwrap(),
+            "NewBehaviourScript.Start()"
+        );
+        assert_eq!(
+            first_mapping.managed_file.unwrap(),
+            "/Users/bitfox/_Workspace/IL2CPP/Assets/NewBehaviourScript.cs"
+        );
+        assert_eq!(first_mapping.managed_line.unwrap(), 10);
+
+        let second_mapping = usyms.lookup_source_record(8253836).unwrap();
+        assert_eq!(
+            second_mapping.managed_symbol.unwrap(),
+            "NewBehaviourScript.Start()"
+        );
+        assert_eq!(
+            second_mapping.managed_file.unwrap(),
+            "/Users/bitfox/_Workspace/IL2CPP/Assets/NewBehaviourScript.cs"
+        );
+        assert_eq!(second_mapping.managed_line.unwrap(), 10,);
+
+        let third_mapping = usyms.lookup_source_record(8253840).unwrap();
+        assert_eq!(
+            third_mapping.managed_symbol.unwrap(),
+            "NewBehaviourScript.Update()"
+        );
+        assert_eq!(
+            third_mapping.managed_file.unwrap(),
+            "/Users/bitfox/_Workspace/IL2CPP/Assets/NewBehaviourScript.cs"
+        );
+        assert_eq!(third_mapping.managed_line.unwrap(), 17);
     }
 
     #[test]
