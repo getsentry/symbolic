@@ -417,7 +417,7 @@ mod tests {
         //     "/Users/flub/code/sentry-unity-il2cpp-line-numbers/Builds/iOS/UnityFramework.usym",
         // )
         // .unwrap();
-        let file = File::open(fixture("il2cpp/artificial.usym")).unwrap();
+        let file = File::open(fixture("il2cpp/managed.usym")).unwrap();
 
         let orig_data = ByteView::map_file_ref(&file).unwrap();
         let usyms = UsymSymbols::parse(&orig_data).unwrap();
@@ -451,10 +451,13 @@ mod tests {
         header.os = push_string(usyms.get_string(header.os as usize).unwrap()) as u32;
         header.arch = push_string(usyms.get_string(header.arch as usize).unwrap()) as u32;
 
-        // Construct new records.
-        header.record_count = 5;
+        // Construct new records. Skims the top 5 records, then grabs the 3 records that have
+        // mappings to managed symbols.
+        header.record_count = 5 + 3;
+        let first_five = usyms.records.iter().take(5);
+        let actual_mappings = usyms.records.iter().filter(|r| r.managed_symbol != 0);
         let mut records = Vec::new();
-        for mut record in usyms.records.iter().cloned().take(5) {
+        for mut record in first_five.chain(actual_mappings).cloned() {
             record.native_symbol =
                 push_string(usyms.get_string(record.native_symbol as usize).unwrap()) as u32;
             record.native_file =
@@ -466,10 +469,7 @@ mod tests {
             records.push(record);
         }
 
-        // let mut dest = File::create(
-        //     "/Users/flub/code/symbolic/symbolic-testutils/fixtures/il2cpp/artificial.usym",
-        // )
-        // .unwrap();
+        // let mut dest = File::create(fixture("il2cpp/artificial-ish.usym")).unwrap();
         let mut dest = Vec::new();
 
         // Write the header.
