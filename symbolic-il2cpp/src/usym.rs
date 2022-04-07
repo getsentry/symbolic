@@ -568,7 +568,8 @@ mod tests {
 
         let mut last_address = usyms.records[0].address;
         for i in 1..usyms.header.record_count as usize {
-            assert!(usyms.records[i].address > last_address);
+            // The addresses should be weakly monotonic
+            assert!(usyms.records[i].address >= last_address);
             last_address = usyms.records[i].address;
         }
     }
