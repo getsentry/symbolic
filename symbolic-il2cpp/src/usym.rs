@@ -152,11 +152,11 @@ mod raw {
         pub(super) native_line: u32,
         /// Managed code symbol name, an offset into the strings section.
         ///
-        /// Empty string if code does not map to managed code.
+        /// 0 if code does not map to managed code.
         pub(super) managed_symbol: u32,
         /// Managed code file name, an offset into the strings section.
         ///
-        /// Empty string if code does not map to managed code.
+        /// 0 if code does not map to managed code.
         pub(super) managed_file: u32,
         /// Managed code line number, 0 if code does not map to managed code.
         pub(super) managed_line: u32,
