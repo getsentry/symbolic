@@ -150,15 +150,19 @@ mod raw {
         pub(super) native_file: u32,
         /// Native line number.
         pub(super) native_line: u32,
-        /// Managed code symbol name, an offset into the strings section.
+        /// Managed code symbol name, as an offset into the strings section.
         ///
-        /// 0 if code does not map to managed code.
+        /// Most of the time, this is 0 if the record does not map to managed code. We haven't seen
+        /// this happen yet, but it's possible that a nonzero offset may lead to an empty string,
+        /// meaning that there is no managed symbol for this record.
         pub(super) managed_symbol: u32,
-        /// Managed code file name, an offset into the strings section.
+        /// Managed code file name, as an offset into the strings section.
         ///
-        /// 0 if code does not map to managed code.
+        /// Most of the time, this is 0 if code does not map to managed code. We haven't seen this
+        /// happen yet, but it's possible that a nonzero offset may lead to an empty string,
+        /// meaning that there is no managed file for this record.
         pub(super) managed_file: u32,
-        /// Managed code line number, 0 if code does not map to managed code.
+        /// Managed code line number. This is 0 if the record does not map to any managed code.
         pub(super) managed_line: u32,
         pub(super) _unknown: u32,
     }
@@ -359,16 +363,29 @@ impl<'a> UsymSymbols<'a> {
     /// Not that useful, you have no idea what index you want.
     pub fn get_record(&self, index: usize) -> Option<UsymSourceRecord> {
         let raw = self.records.get(index)?;
+
+        let native_symbol = self.get_string(raw.native_symbol.try_into().unwrap())?;
+        let native_file = self.get_string(raw.native_file.try_into().unwrap())?;
+
         let managed_symbol = self.get_string(raw.managed_symbol.try_into().unwrap())?;
         let managed_symbol = match managed_symbol.is_empty() {
             true => None,
             false => Some(managed_symbol),
         };
+        if managed_symbol.is_none() && raw.managed_symbol > 0 {
+            println!("A managed symbol with a >0 offset into the string table points to an empty string. We normally expect empty strings to have an offset of 0.");
+            println!("Native entry: {}::{}", native_file, native_symbol);
+        }
+
         let managed_file = self.get_string(raw.managed_file.try_into().unwrap())?;
         let managed_file = match managed_file.is_empty() {
             true => None,
             false => Some(managed_file),
         };
+        if managed_file.is_none() && raw.managed_file > 0 {
+            println!("A managed file with a >0 offset into the string table points to an empty string. We normally expect empty strings to have an offset of 0.");
+            println!("Native entry: {}::{}", native_file, native_symbol);
+        }
         let managed_line = match raw.managed_line {
             0 => None,
             n => Some(n),
@@ -376,8 +393,8 @@ impl<'a> UsymSymbols<'a> {
 
         Some(UsymSourceRecord {
             address: raw.address,
-            native_symbol: self.get_string(raw.native_symbol.try_into().unwrap())?,
-            native_file: self.get_string(raw.native_file.try_into().unwrap())?,
+            native_symbol,
+            native_file,
             native_line: raw.native_line,
             managed_symbol,
             managed_file,
@@ -444,6 +461,9 @@ mod tests {
             }
         };
 
+        // The string table always starts with an entry for the empty string.
+        push_string(Cow::Borrowed(""));
+
         // Construct new header.
         let mut header = usyms.header.clone();
         header.id = push_string(usyms.get_string(header.id as usize).unwrap()) as u32;
@@ -458,18 +478,26 @@ mod tests {
         let actual_mappings = usyms.records.iter().filter(|r| r.managed_symbol != 0);
         let mut records = Vec::new();
         for mut record in first_five.chain(actual_mappings).cloned() {
-            record.native_symbol =
-                push_string(usyms.get_string(record.native_symbol as usize).unwrap()) as u32;
-            record.native_file =
-                push_string(usyms.get_string(record.native_file as usize).unwrap()) as u32;
-            record.managed_symbol =
-                push_string(usyms.get_string(record.managed_symbol as usize).unwrap()) as u32;
-            record.managed_file =
-                push_string(usyms.get_string(record.managed_file as usize).unwrap()) as u32;
+            if record.native_symbol > 0 {
+                record.native_symbol =
+                    push_string(usyms.get_string(record.native_symbol as usize).unwrap()) as u32;
+            }
+            if record.native_file > 0 {
+                record.native_file =
+                    push_string(usyms.get_string(record.native_file as usize).unwrap()) as u32;
+            }
+            if record.managed_symbol > 0 {
+                record.managed_symbol =
+                    push_string(usyms.get_string(record.managed_symbol as usize).unwrap()) as u32;
+            }
+            if record.managed_file > 0 {
+                record.managed_file =
+                    push_string(usyms.get_string(record.managed_file as usize).unwrap()) as u32;
+            }
             records.push(record);
         }
 
-        // let mut dest = File::create(fixture("il2cpp/artificial-ish.usym")).unwrap();
+        // let mut dest = File::create(fixture("il2cpp/artificial.usym")).unwrap();
         let mut dest = Vec::new();
 
         // Write the header.
