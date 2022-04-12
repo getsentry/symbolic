@@ -2,7 +2,7 @@
 
 use super::WasmError;
 use crate::base::{ObjectKind, Symbol};
-use wasmparser::{ImportSectionEntryType, Payload, Validator};
+use wasmparser::{ImportSectionEntryType, Payload, Validator, WasmFeatures};
 
 impl<'data> super::WasmObject<'data> {
     /// Tries to parse a WASM from the given slice.
@@ -18,6 +18,19 @@ impl<'data> super::WasmObject<'data> {
         // signatures to verify that
         let mut func_sigs = bitvec::vec::BitVec::<usize, bitvec::order::Lsb0>::new();
         let mut validator = Validator::new();
+        // NOTE: make sure to update these when bumping the `wasmparser` depedency.
+        let features = WasmFeatures {
+            module_linking: true,
+            relaxed_simd: true,
+            threads: true,
+            tail_call: true,
+            multi_memory: true,
+            exceptions: true,
+            memory64: true,
+            extended_const: true,
+            ..Default::default()
+        };
+        validator.wasm_features(features);
         let mut funcs = Vec::<Symbol>::new();
         let mut num_imported_funcs = 0u32;
 
