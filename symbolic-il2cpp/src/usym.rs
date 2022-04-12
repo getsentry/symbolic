@@ -164,7 +164,9 @@ mod raw {
         pub(super) managed_file: u32,
         /// Managed code line number. This is 0 if the record does not map to any managed code.
         pub(super) managed_line: u32,
-        pub(super) _unknown: u32,
+        /// Unknown field. Normally set to FFFFFFFF, but investigations suggest that if this record
+        /// is for an inlinee function, this is set to the index of its parent record.
+        pub(super) maybe_parent_record_idx: u32,
     }
 }
 
