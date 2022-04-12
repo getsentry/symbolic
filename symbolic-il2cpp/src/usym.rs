@@ -423,9 +423,13 @@ impl<'a> UsymSymbols<'a> {
     }
 
     /// Returns a [`UsymSourceRecord`] at the given index.
-    pub fn resolve_record(&self, index: usize) -> Option<UsymSourceRecord> {
+    pub fn get_record(&self, index: usize) -> Option<UsymSourceRecord> {
         let raw = self.records.get(index)?;
+        self.resolve_record(raw)
+    }
 
+    /// Fills in a [`raw::SourceRecord`] with its referenced strings taken from the strings section.
+    fn resolve_record(&self, raw: &raw::SourceRecord) -> Option<UsymSourceRecord> {
         // TODO: add some resilience to this so if we some strings can't be fetched from the strings
         // section, just return none, an empty string, or a placeholder.
         let nsymbol_offset = raw.native_symbol.try_into().unwrap();
@@ -505,12 +509,14 @@ impl<'a> UsymSymbols<'a> {
     pub fn lookup_source_record(&self, ip: u64) -> Option<UsymSourceRecord> {
         // TODO: need to subtract the image base to get relative address
         match self.records.binary_search_by_key(&ip, |r| r.address) {
-            Ok(index) => self.resolve_record(index),
-            Err(index) => self.resolve_record(index - 1),
+            Ok(index) => self.get_record(index),
+            Err(index) => self.get_record(index - 1),
         }
     }
 
-    // TODO: Add iterator over records?
+    pub fn records(&'a self) -> impl Iterator<Item = UsymSourceRecord<'a>> {
+        self.records.iter().filter_map(|r| self.resolve_record(r))
+    }
 }
 
 #[cfg(test)]
@@ -634,7 +640,7 @@ mod tests {
         assert_eq!(usyms.arch().unwrap(), Arch::Arm64);
 
         for i in 0..5 {
-            assert!(usyms.resolve_record(i).is_some());
+            assert!(usyms.get_record(i).is_some());
         }
     }
 
