@@ -812,7 +812,9 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             range_buf.sort_by_key(|r| r.begin);
 
             let function_address = offset(range_buf[0].begin, self.inner.info.address_offset);
-            let function_size = range_buf[range_buf.len() - 1].end - range_buf[0].begin;
+
+            // For multi-range functions, calculate the function_size by summing all range sizes.
+            let function_size = range_buf.iter().map(|r| r.end - r.begin).sum();
 
             // We have seen duplicate top-level function entries being yielded from the
             // [`DwarfFunctionIterator`], which combined with recursively walking its inlinees can
