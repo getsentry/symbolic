@@ -401,11 +401,9 @@ impl<'a> UsymSymbols<'a> {
         // TODO: add some resilience to this so if we some strings can't be fetched from the strings
         // section, just return none, an empty string, or a placeholder.
         let nsymbol_offset = raw.native_symbol.try_into().unwrap();
-        let native_symbol = self.get_string(nsymbol_offset)?;
         let native_symbol_bytes = self.get_string_bytes(nsymbol_offset)?;
 
         let nfilename_offset = raw.native_file.try_into().unwrap();
-        let native_file = self.get_string(nfilename_offset)?;
         let native_file_info = {
             let file_bytes = self.get_string_bytes(nfilename_offset)?;
             // implementation blatantly stolen from FileInfo::from_path because it's only visible to
