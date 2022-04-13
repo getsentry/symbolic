@@ -424,10 +424,11 @@ impl<'a> UsymSymbols<'a> {
         } else {
             Some(managed_symbol)
         };
-        if managed_symbol.is_none() && raw.managed_symbol > 0 {
-            println!("A managed symbol with a >0 offset into the string table points to an empty string. We normally expect empty strings to have an offset of 0.");
-            println!("Native entry: {}::{}", native_file, native_symbol);
-        }
+        // TODO: Log these as a warning
+        // if managed_symbol.is_none() && raw.managed_symbol > 0 {
+        //     println!("A managed symbol with a >0 offset into the string table points to an empty string. We normally expect empty strings to have an offset of 0.");
+        //     println!("Native entry: {}::{}", native_file, native_symbol);
+        // }
         let mfilename_offset = raw.managed_file.try_into().unwrap();
         let managed_file = self.get_string(mfilename_offset)?;
         let managed_file_info = match managed_file.is_empty() {
@@ -443,10 +444,11 @@ impl<'a> UsymSymbols<'a> {
                 })
             }
         };
-        if managed_file.is_empty() && raw.managed_file > 0 {
-            println!("A managed file name with a >0 offset into the string table points to an empty string. We normally expect empty strings to have an offset of 0.");
-            println!("Native entry: {}::{}", native_file, native_symbol);
-        }
+        // TODO: Log these as a warning
+        // if managed_file.is_empty() && raw.managed_file > 0 {
+        //     println!("A managed file name with a >0 offset into the string table points to an empty string. We normally expect empty strings to have an offset of 0.");
+        //     println!("Native entry: {}::{}", native_file, native_symbol);
+        // }
         let managed_line = match raw.managed_line {
             0 => None,
             n => Some(n),
