@@ -344,7 +344,7 @@ impl<'a> UsymSymbols<'a> {
 
     /// Returns a string from the strings section at the given offset.
     ///
-    /// Offsets are as provided by some [`UsymLiteHeader`] and [`UsymLiteLine`] fields.
+    /// Offsets can be found in [`raw::Header`], [`raw::SourceRecord`], and [`UsymSymbols`] fields.
     fn get_string_bytes_from_offset(data: &'a [u8], offset: usize) -> Option<&'a [u8]> {
         let size_bytes = data.get(offset..offset + 2)?;
         let size: usize = u16::from_le_bytes([size_bytes[0], size_bytes[1]]).into();
@@ -367,7 +367,7 @@ impl<'a> UsymSymbols<'a> {
 
     /// Returns a string from the strings section at the given offset.
     ///
-    /// Offsets are as provided by some [`UsymLiteHeader`] and [`UsymLiteLine`] fields.
+    /// Offsets can be found in [`raw::Header`], [`raw::SourceRecord`], and [`UsymSymbols`] fields.
     fn get_string(&'a self, offset: usize) -> Option<Cow<'a, str>> {
         Self::get_string_from_offset(self.strings, offset)
     }
@@ -651,7 +651,7 @@ mod tests {
             UsymSourceRecord::Mapped(mapping) => mapping,
             UsymSourceRecord::Unmapped(_) => panic!("could not find mapping at addr 8253840"),
         };
-        assert_eq!(mapping.managed_symbol, "NewBehaviourScript.Start()");
+        assert_eq!(mapping.managed_symbol, "NewBehaviourScript.Update()");
         assert_eq!(
             mapping.managed_file_info.path_str(),
             "/Users/bitfox/_Workspace/IL2CPP/Assets/NewBehaviourScript.cs"
