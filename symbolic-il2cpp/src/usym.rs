@@ -611,6 +611,21 @@ mod tests {
     }
 
     #[test]
+    fn test_header_with_errors() {
+        let file = File::open(fixture("il2cpp/artificial-bad-meta.usym")).unwrap();
+        let data = ByteView::map_file_ref(&file).unwrap();
+        // TODO: We could probably just accept non-UTF8 strings because Rust handles them well
+        // enough and inserts placeholders
+        assert!(UsymSymbols::parse(&data).is_err());
+
+        // assert_eq!(usyms.version(), 2);
+        // assert!(usyms.id().is_err());
+        // assert_eq!(usyms.name(), "��ityFramework");
+        // assert_eq!(usyms.os(), "mac");
+        // assert_eq!(usyms.arch().unwrap(), Arch::Arm64);
+    }
+
+    #[test]
     fn test_with_managed() {
         let file = File::open(fixture("il2cpp/managed.usym")).unwrap();
         let data = ByteView::map_file_ref(&file).unwrap();
