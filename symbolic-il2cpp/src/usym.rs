@@ -172,10 +172,10 @@ mod raw {
 pub struct UnmappedRecord<'a> {
     /// Instruction pointer address, relative to the base of the assembly.
     pub address: u64,
-    /// Symbol name of the native code. Kept as bytes for lossless comparison.
-    pub native_symbol_bytes: &'a [u8],
-    /// File name of the native code.
-    pub native_file_info: FileInfo<'a>,
+    /// Symbol name of the native code.
+    pub native_symbol: Cow<'a, str>,
+    /// File name and path of the native code.
+    pub native_file: Cow<'a, str>,
     /// Line number of the native code.
     pub native_line: u32,
 }
@@ -184,10 +184,10 @@ pub struct UnmappedRecord<'a> {
 pub struct MappedRecord<'a> {
     /// Instruction pointer address, relative to the base of the assembly.
     pub address: u64,
-    /// Symbol name of the native code. Kept as bytes for lossless comparison.
-    pub native_symbol_bytes: &'a [u8],
-    /// File name of the native code.
-    pub native_file_info: FileInfo<'a>,
+    /// Symbol name of the native code.
+    pub native_symbol: Cow<'a, str>,
+    /// File name and path of the native code.
+    pub native_file: Cow<'a, str>,
     /// Line number of the native code.
     pub native_line: u32,
     /// Symbol name of the managed code.
@@ -429,23 +429,13 @@ impl<'a> UsymSymbols<'a> {
     }
 
     /// Fills in a [`raw::SourceRecord`] with its referenced strings taken from the strings section.
+    ///
+    /// Assumes that all of the string fields are in valid UTF-8.
     fn resolve_record(&self, raw: &raw::SourceRecord) -> Option<UsymSourceRecord> {
         // TODO: add some resilience to this so if we some strings can't be fetched from the strings
         // section, just return none, an empty string, or a placeholder.
-        let nsymbol_offset = raw.native_symbol.try_into().unwrap();
-        let native_symbol_bytes = self.get_string_bytes(nsymbol_offset)?;
-
-        let nfilename_offset = raw.native_file.try_into().unwrap();
-        let native_file_info = {
-            let file_bytes = self.get_string_bytes(nfilename_offset)?;
-            // implementation blatantly stolen from FileInfo::from_path because it's only visible to
-            // the debuginfo crate
-            let (dir, name) = symbolic_common::split_path_bytes(file_bytes);
-            FileInfo {
-                name,
-                dir: dir.unwrap_or_default(),
-            }
-        };
+        let native_symbol = self.get_string(raw.native_symbol.try_into().unwrap())?;
+        let native_file = self.get_string(raw.native_file.try_into().unwrap())?;
 
         let msymbol_offset = raw.managed_symbol.try_into().unwrap();
         let managed_symbol = self.get_string(msymbol_offset)?;
@@ -488,8 +478,8 @@ impl<'a> UsymSymbols<'a> {
             (Some(managed_symbol), Some(managed_file_info), Some(managed_line)) => {
                 Some(UsymSourceRecord::Mapped(MappedRecord {
                     address: raw.address,
-                    native_symbol_bytes,
-                    native_file_info,
+                    native_symbol,
+                    native_file,
                     native_line: raw.native_line,
                     managed_symbol,
                     managed_file_info,
@@ -498,8 +488,8 @@ impl<'a> UsymSymbols<'a> {
             }
             _ => Some(UsymSourceRecord::Unmapped(UnmappedRecord {
                 address: raw.address,
-                native_symbol_bytes,
-                native_file_info,
+                native_symbol,
+                native_file,
                 native_line: raw.native_line,
             })),
         }
