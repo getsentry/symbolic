@@ -1,6 +1,7 @@
-//! Provides SymCache support. This includes a reader and writer for the binary format, as well as
-//! helper traits and functions to apply transformations to debugging symbols before they are
-//! written to the SymCache.
+//! Provides SymCache support.
+//!
+//! This includes a reader and writer for the binary format, as well as helper traits and functions
+//! to apply transformations to debugging symbols before they are written to the SymCache.
 //!
 //! # Structure of a SymCache
 //!
