@@ -322,7 +322,7 @@ impl SymCacheConverter {
             UsymSourceRecord::Mapped(r) => Some(r),
         });
 
-        let mut curr_id: String = String::default();
+        let mut curr_id = String::default();
         let mut function_idx = 0;
         for record in mapped_records {
             // like process_symbolic_function, skip functions whose address is too large to fit in a
