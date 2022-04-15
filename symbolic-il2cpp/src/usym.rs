@@ -612,8 +612,7 @@ mod tests {
 
     #[test]
     fn test_header_with_errors() {
-        let file = File::open(fixture("il2cpp/artificial-bad-meta.usym")).unwrap();
-        let data = ByteView::map_file_ref(&file).unwrap();
+        let data = ByteView::open(fixture("il2cpp/artificial-bad-meta.usym")).unwrap();
         // TODO: We could probably just accept non-UTF8 strings because Rust handles them well
         // enough and inserts placeholders
         assert!(UsymSymbols::parse(&data).is_err());
