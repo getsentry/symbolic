@@ -360,10 +360,7 @@ impl SymCacheConverter {
                 };
             }
 
-            let managed_dir = match record.managed_file_info.dir_str() {
-                "" => None,
-                dir => Some(dir),
-            };
+            let managed_dir = Some(record.managed_file_info.dir_str()).filter(|d| !d.is_empty());
             let mut location = transform::SourceLocation {
                 file: transform::File {
                     name: record.managed_file_info.name_str(),
