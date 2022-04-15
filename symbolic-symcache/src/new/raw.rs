@@ -54,7 +54,7 @@ pub struct Header {
 }
 
 /// Serialized Function metadata in the SymCache.
-#[derive(Debug, Clone, Eq, Hash, PartialEq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[repr(C)]
 pub struct Function {
     /// The functions name (reference to a [`String`]).
