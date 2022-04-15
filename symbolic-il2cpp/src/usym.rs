@@ -220,19 +220,13 @@ impl<'data> std::fmt::Debug for UsymSourceRecord<'data> {
         match &self {
             UsymSourceRecord::Unmapped(record) => formatter
                 .field("address", &record.address)
-                .field(
-                    "symbol",
-                    &String::from_utf8_lossy(record.native_symbol_bytes),
-                )
-                .field("file", &record.native_file_info.path_str())
+                .field("symbol", &record.native_symbol)
+                .field("file", &record.native_file)
                 .field("line", &record.native_line),
             UsymSourceRecord::Mapped(record) => formatter
                 .field("address", &record.address)
-                .field(
-                    "native_symbol",
-                    &String::from_utf8_lossy(record.native_symbol_bytes),
-                )
-                .field("native_file", &record.native_file_info.path_str())
+                .field("native_symbol", &record.native_symbol)
+                .field("native_file", &record.native_file)
                 .field("native_line", &record.native_line)
                 .field("managed_symbol", &record.managed_symbol)
                 .field("managed_file", &record.managed_file_info.path_str())
