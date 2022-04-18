@@ -1,5 +1,7 @@
 //! Defines the [SymCache Converter](`SymCacheConverter`).
 
+#[cfg(feature = "il2cpp")]
+use std::borrow::Cow;
 use std::collections::btree_map;
 use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
@@ -317,12 +319,14 @@ impl SymCacheConverter {
     /// Processes a set of [`UsymSymbols`], passing all mapped symbols into the converter.
     pub fn process_usym(&mut self, usym: &UsymSymbols) -> Result<(), SymCacheError> {
         // Assume records they are sorted by address; There's a test that guarantees this
+
         let mapped_records = usym.records().filter_map(|r| match r {
             UsymSourceRecord::Unmapped(_) => None,
             UsymSourceRecord::Mapped(r) => Some(r),
         });
 
-        let mut curr_id = String::default();
+        let mut curr_id: Vec<Cow<'_, str>> = Vec::default();
+        // : Vec<Cow<'_, str>> = Vec::default();
         let mut function_idx = 0;
         for record in mapped_records {
             // like process_symbolic_function, skip functions whose address is too large to fit in a
@@ -335,7 +339,7 @@ impl SymCacheConverter {
             // Records that belong to the same function will have the same identifier.
             // Symbols have GUID-like sections to them that might ensure they're unique across
             // files, but we'll just include the file name and paths to be very safe.
-            let identifier = format!("{}::{}", record.native_file, record.native_symbol);
+            let identifier = [record.native_file, record.native_symbol].into();
             if identifier != curr_id {
                 function_idx = {
                     let mut function = transform::Function {
