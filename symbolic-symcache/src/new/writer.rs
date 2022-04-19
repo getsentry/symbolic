@@ -325,8 +325,7 @@ impl SymCacheConverter {
             UsymSourceRecord::Mapped(r) => Some(r),
         });
 
-        let mut curr_id: Vec<Cow<'_, str>> = Vec::default();
-        // : Vec<Cow<'_, str>> = Vec::default();
+        let mut curr_id: (Cow<'_, str>, Cow<'_, str>) = (Cow::default(), Cow::default());
         let mut function_idx = 0;
         for record in mapped_records {
             // like process_symbolic_function, skip functions whose address is too large to fit in a
@@ -339,7 +338,7 @@ impl SymCacheConverter {
             // Records that belong to the same function will have the same identifier.
             // Symbols have GUID-like sections to them that might ensure they're unique across
             // files, but we'll just include the file name and paths to be very safe.
-            let identifier = [record.native_file, record.native_symbol].into();
+            let identifier = (record.native_file, record.native_symbol);
             if identifier != curr_id {
                 function_idx = {
                     let mut function = transform::Function {
