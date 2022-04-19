@@ -476,6 +476,8 @@ impl<'a> UsymSymbols<'a> {
         }
     }
 
+    // TODO: Fixup the return type, maybe use the strategy employed by
+    // BreakpadDebugSession/DwarfDebugSession/PdbDebugSession/etc's methods
     pub fn records(&'a self) -> impl Iterator<Item = UsymSourceRecord<'a>> {
         self.records.iter().filter_map(|r| self.resolve_record(r))
     }
