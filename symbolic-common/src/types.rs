@@ -543,6 +543,7 @@ pub enum Language {
     ObjCpp = 6,
     Rust = 7,
     Swift = 8,
+    CSharp = 9,
 }
 
 impl Language {
@@ -569,6 +570,7 @@ impl Language {
             6 => Self::ObjCpp,
             7 => Self::Rust,
             8 => Self::Swift,
+            9 => Self::CSharp,
             _ => Self::Unknown,
         }
     }
@@ -601,6 +603,7 @@ impl Language {
             Language::ObjCpp => "objcpp",
             Language::Rust => "rust",
             Language::Swift => "swift",
+            Language::CSharp => "csharp",
         }
     }
 }
@@ -623,6 +626,7 @@ impl fmt::Display for Language {
             Language::ObjCpp => "Objective-C++",
             Language::Rust => "Rust",
             Language::Swift => "Swift",
+            Language::CSharp => "C#",
         };
 
         write!(f, "{}", formatted)

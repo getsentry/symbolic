@@ -4,13 +4,11 @@
 
 use std::borrow::Cow;
 use std::error::Error;
-use std::fmt;
-use std::mem;
-use std::ptr;
 use std::str::FromStr;
+use std::{fmt, mem, ptr};
 
-use symbolic_common::Arch;
-use symbolic_common::DebugId;
+use symbolic_common::{Arch, DebugId};
+use symbolic_debuginfo::FileInfo;
 use thiserror::Error;
 
 /// The error type for [`UsymError`].
@@ -144,29 +142,104 @@ mod raw {
     pub(super) struct SourceRecord {
         /// Instruction pointer address, relative to base address of assembly.
         pub(super) address: u64,
-        /// Managed symbol name, as an offset into the strings section.
-        pub(super) symbol: u32,
-        /// Managed source file, as an offset into the strings section.
-        pub(super) file: u32,
-        /// Managed line number.
-        pub(super) line: u32,
-        // These might not even be u64, it's just 128 bits we don't know.
-        _unknown0: u64,
-        _unknown1: u64,
+        /// Native symbol name, as an offset into the strings section.
+        pub(super) native_symbol: u32,
+        /// Native source file, as an offset into the strings section.
+        pub(super) native_file: u32,
+        /// Native line number.
+        pub(super) native_line: u32,
+        /// Managed code symbol name, as an offset into the strings section.
+        ///
+        /// Most of the time, this is 0 if the record does not map to managed code. We haven't seen
+        /// this happen yet, but it's possible that a nonzero offset may lead to an empty string,
+        /// meaning that there is no managed symbol for this record.
+        pub(super) managed_symbol: u32,
+        /// Managed code file name, as an offset into the strings section.
+        ///
+        /// Most of the time, this is 0 if code does not map to managed code. We haven't seen this
+        /// happen yet, but it's possible that a nonzero offset may lead to an empty string,
+        /// meaning that there is no managed file for this record.
+        pub(super) managed_file: u32,
+        /// Managed code line number. This is 0 if the record does not map to any managed code.
+        pub(super) managed_line: u32,
+        /// Unknown field. Normally set to FFFFFFFF, but investigations suggest that if this record
+        /// is for an inlinee function, this is set to the index of its parent record.
+        pub(super) maybe_parent_record_idx: u32,
     }
 }
 
-/// A record mapping an IL2CPP instruction address to managed code location.
-#[derive(Debug, Clone)]
-pub struct UsymSourceRecord<'a> {
+#[derive(Clone)]
+pub struct UnmappedRecord<'a> {
     /// Instruction pointer address, relative to the base of the assembly.
     pub address: u64,
+    /// Symbol name of the native code. Kept as bytes for lossless comparison.
+    pub native_symbol_bytes: &'a [u8],
+    /// File name of the native code.
+    pub native_file_info: FileInfo<'a>,
+    /// Line number of the native code.
+    pub native_line: u32,
+}
+
+#[derive(Clone)]
+pub struct MappedRecord<'a> {
+    /// Instruction pointer address, relative to the base of the assembly.
+    pub address: u64,
+    /// Symbol name of the native code. Kept as bytes for lossless comparison.
+    pub native_symbol_bytes: &'a [u8],
+    /// File name of the native code.
+    pub native_file_info: FileInfo<'a>,
+    /// Line number of the native code.
+    pub native_line: u32,
     /// Symbol name of the managed code.
-    pub symbol: Cow<'a, str>,
+    pub managed_symbol: Cow<'a, str>,
     /// File name of the managed code.
-    pub file: Cow<'a, str>,
+    pub managed_file_info: FileInfo<'a>,
     /// Line number of the managed code.
-    pub line: u32,
+    pub managed_line: u32,
+}
+
+/// A record mapping an IL2CPP instruction address to managed code location.
+///
+/// Records may exist that do not map directly to any managed code. There are two known cases of
+/// this:
+/// 1. The record describes native-only code, such as code for the Unity engine.
+/// 2. The record describes native-only code that runs under the hood for managed code, such as
+///    code that registers functions/methods to the runtime.
+#[derive(Clone)]
+pub enum UsymSourceRecord<'a> {
+    /// An unmapped record. This could be code for the Unity engine, or under-the-hood native code
+    /// that doesn't directly map to any specific managed line.
+    Unmapped(UnmappedRecord<'a>),
+    /// A mapped record. This directly maps IL2CPP-compiled native code to managed code.
+    Mapped(MappedRecord<'a>),
+}
+
+impl<'data> std::fmt::Debug for UsymSourceRecord<'data> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut formatter = f.debug_struct("UsymSourceRecord");
+        match &self {
+            UsymSourceRecord::Unmapped(record) => formatter
+                .field("address", &record.address)
+                .field(
+                    "symbol",
+                    &String::from_utf8_lossy(record.native_symbol_bytes),
+                )
+                .field("file", &record.native_file_info.path_str())
+                .field("line", &record.native_line),
+            UsymSourceRecord::Mapped(record) => formatter
+                .field("address", &record.address)
+                .field(
+                    "native_symbol",
+                    &String::from_utf8_lossy(record.native_symbol_bytes),
+                )
+                .field("native_file", &record.native_file_info.path_str())
+                .field("native_line", &record.native_line)
+                .field("managed_symbol", &record.managed_symbol)
+                .field("managed_file", &record.managed_file_info.path_str())
+                .field("managed_line", &record.managed_line),
+        };
+        formatter.finish()
+    }
 }
 
 /// A usym file containing data on how to map native code generated by Unity's IL2CPP back to their
@@ -297,21 +370,33 @@ impl<'a> UsymSymbols<'a> {
         self.header.version
     }
 
-    fn get_string_from_offset(data: &[u8], offset: usize) -> Option<Cow<str>> {
+    /// Returns a string from the strings section at the given offset.
+    ///
+    /// Offsets can be found in [`raw::Header`], [`raw::SourceRecord`], and [`UsymSymbols`] fields.
+    fn get_string_bytes_from_offset(data: &'a [u8], offset: usize) -> Option<&'a [u8]> {
         let size_bytes = data.get(offset..offset + 2)?;
         let size: usize = u16::from_le_bytes([size_bytes[0], size_bytes[1]]).into();
 
         let start_offset = offset + 2;
         let end_offset = start_offset + size;
 
-        let string_bytes = data.get(start_offset..end_offset)?;
+        data.get(start_offset..end_offset)
+    }
+
+    /// Returns the bytes for a string from the strings section at the given offset.
+    fn get_string_bytes(&'a self, offset: usize) -> Option<&'a [u8]> {
+        Self::get_string_bytes_from_offset(self.strings, offset)
+    }
+
+    fn get_string_from_offset(data: &'a [u8], offset: usize) -> Option<Cow<str>> {
+        let string_bytes = Self::get_string_bytes_from_offset(data, offset)?;
         Some(String::from_utf8_lossy(string_bytes))
     }
 
     /// Returns a string from the strings section at the given offset.
     ///
-    /// Offsets are as provided by some [`UsymLiteHeader`] and [`UsymLiteLine`] fields.
-    fn get_string(&self, offset: usize) -> Option<Cow<'a, str>> {
+    /// Offsets can be found in [`raw::Header`], [`raw::SourceRecord`], and [`UsymSymbols`] fields.
+    fn get_string(&'a self, offset: usize) -> Option<Cow<'a, str>> {
         Self::get_string_from_offset(self.strings, offset)
     }
 
@@ -337,25 +422,91 @@ impl<'a> UsymSymbols<'a> {
         Arch::from_str(self.arch).map_err(|e| UsymError::new(UsymErrorKind::BadArchitecture, e))
     }
 
-    /// Returns a [`UsymSourceRecord`] at the given index it was stored.
-    ///
-    /// Not that useful, you have no idea what index you want.
-    pub fn get_record(&self, index: usize) -> Option<UsymSourceRecord> {
+    /// Returns a [`UsymSourceRecord`] at the given index.
+    pub fn resolve_record(&self, index: usize) -> Option<UsymSourceRecord> {
         let raw = self.records.get(index)?;
-        Some(UsymSourceRecord {
-            address: raw.address,
-            symbol: self.get_string(raw.symbol.try_into().unwrap())?,
-            file: self.get_string(raw.file.try_into().unwrap())?,
-            line: raw.line,
-        })
+
+        // TODO: add some resilience to this so if we some strings can't be fetched from the strings
+        // section, just return none, an empty string, or a placeholder.
+        let nsymbol_offset = raw.native_symbol.try_into().unwrap();
+        let native_symbol_bytes = self.get_string_bytes(nsymbol_offset)?;
+
+        let nfilename_offset = raw.native_file.try_into().unwrap();
+        let native_file_info = {
+            let file_bytes = self.get_string_bytes(nfilename_offset)?;
+            // implementation blatantly stolen from FileInfo::from_path because it's only visible to
+            // the debuginfo crate
+            let (dir, name) = symbolic_common::split_path_bytes(file_bytes);
+            FileInfo {
+                name,
+                dir: dir.unwrap_or_default(),
+            }
+        };
+
+        let msymbol_offset = raw.managed_symbol.try_into().unwrap();
+        let managed_symbol = self.get_string(msymbol_offset)?;
+        let managed_symbol = if managed_symbol.is_empty() {
+            None
+        } else {
+            Some(managed_symbol)
+        };
+        // TODO: Log these as a warning
+        // if managed_symbol.is_none() && raw.managed_symbol > 0 {
+        //     println!("A managed symbol with a >0 offset into the string table points to an empty string. We normally expect empty strings to have an offset of 0.");
+        //     println!("Native entry: {}::{}", native_file, native_symbol);
+        // }
+        let mfilename_offset = raw.managed_file.try_into().unwrap();
+        let managed_file = self.get_string(mfilename_offset)?;
+        let managed_file_info = match managed_file.is_empty() {
+            true => None,
+            false => {
+                let file_bytes = self.get_string_bytes(mfilename_offset)?;
+                // implementation blatantly stolen from FileInfo::from_path because it's only visible to
+                // the debuginfo crate
+                let (dir, name) = symbolic_common::split_path_bytes(file_bytes);
+                Some(FileInfo {
+                    name,
+                    dir: dir.unwrap_or_default(),
+                })
+            }
+        };
+        // TODO: Log these as a warning
+        // if managed_file.is_empty() && raw.managed_file > 0 {
+        //     println!("A managed file name with a >0 offset into the string table points to an empty string. We normally expect empty strings to have an offset of 0.");
+        //     println!("Native entry: {}::{}", native_file, native_symbol);
+        // }
+        let managed_line = match raw.managed_line {
+            0 => None,
+            n => Some(n),
+        };
+
+        match (managed_symbol, managed_file_info, managed_line) {
+            (Some(managed_symbol), Some(managed_file_info), Some(managed_line)) => {
+                Some(UsymSourceRecord::Mapped(MappedRecord {
+                    address: raw.address,
+                    native_symbol_bytes,
+                    native_file_info,
+                    native_line: raw.native_line,
+                    managed_symbol,
+                    managed_file_info,
+                    managed_line,
+                }))
+            }
+            _ => Some(UsymSourceRecord::Unmapped(UnmappedRecord {
+                address: raw.address,
+                native_symbol_bytes,
+                native_file_info,
+                native_line: raw.native_line,
+            })),
+        }
     }
 
     /// Lookup the managed code source location for an IL2CPP instruction pointer.
     pub fn lookup_source_record(&self, ip: u64) -> Option<UsymSourceRecord> {
         // TODO: need to subtract the image base to get relative address
         match self.records.binary_search_by_key(&ip, |r| r.address) {
-            Ok(index) => self.get_record(index),
-            Err(index) => self.get_record(index - 1),
+            Ok(index) => self.resolve_record(index),
+            Err(index) => self.resolve_record(index - 1),
         }
     }
 
@@ -382,7 +533,7 @@ mod tests {
         //     "/Users/flub/code/sentry-unity-il2cpp-line-numbers/Builds/iOS/UnityFramework.usym",
         // )
         // .unwrap();
-        let file = File::open(fixture("il2cpp/artificial.usym")).unwrap();
+        let file = File::open(fixture("il2cpp/managed.usym")).unwrap();
 
         let orig_data = ByteView::map_file_ref(&file).unwrap();
         let usyms = UsymSymbols::parse(&orig_data).unwrap();
@@ -409,6 +560,9 @@ mod tests {
             }
         };
 
+        // The string table always starts with an entry for the empty string.
+        push_string(Cow::Borrowed(""));
+
         // Construct new header.
         let mut header = usyms.header.clone();
         header.id = push_string(usyms.get_string(header.id as usize).unwrap()) as u32;
@@ -416,19 +570,33 @@ mod tests {
         header.os = push_string(usyms.get_string(header.os as usize).unwrap()) as u32;
         header.arch = push_string(usyms.get_string(header.arch as usize).unwrap()) as u32;
 
-        // Construct new records.
-        header.record_count = 5;
+        // Construct new records. Skims the top 5 records, then grabs the 3 records that have
+        // mappings to managed symbols.
+        header.record_count = 5 + 3;
+        let first_five = usyms.records.iter().take(5);
+        let actual_mappings = usyms.records.iter().filter(|r| r.managed_symbol != 0);
         let mut records = Vec::new();
-        for mut record in usyms.records.iter().cloned().take(5) {
-            record.symbol = push_string(usyms.get_string(record.symbol as usize).unwrap()) as u32;
-            record.file = push_string(usyms.get_string(record.file as usize).unwrap()) as u32;
+        for mut record in first_five.chain(actual_mappings).cloned() {
+            if record.native_symbol > 0 {
+                record.native_symbol =
+                    push_string(usyms.get_string(record.native_symbol as usize).unwrap()) as u32;
+            }
+            if record.native_file > 0 {
+                record.native_file =
+                    push_string(usyms.get_string(record.native_file as usize).unwrap()) as u32;
+            }
+            if record.managed_symbol > 0 {
+                record.managed_symbol =
+                    push_string(usyms.get_string(record.managed_symbol as usize).unwrap()) as u32;
+            }
+            if record.managed_file > 0 {
+                record.managed_file =
+                    push_string(usyms.get_string(record.managed_file as usize).unwrap()) as u32;
+            }
             records.push(record);
         }
 
-        // let mut dest = File::create(
-        //     "/Users/flub/code/symbolic/symbolic-testutils/fixtures/il2cpp/artificial.usym",
-        // )
-        // .unwrap();
+        // let mut dest = File::create(fixture("il2cpp/artificial.usym")).unwrap();
         let mut dest = Vec::new();
 
         // Write the header.
@@ -464,6 +632,73 @@ mod tests {
         assert_eq!(usyms.name(), "UnityFramework");
         assert_eq!(usyms.os(), "mac");
         assert_eq!(usyms.arch().unwrap(), Arch::Arm64);
+
+        for i in 0..5 {
+            assert!(usyms.resolve_record(i).is_some());
+        }
+    }
+
+    #[test]
+    fn test_header_with_errors() {
+        let data = ByteView::open(fixture("il2cpp/artificial-bad-meta.usym")).unwrap();
+        // TODO: We could probably just accept non-UTF8 strings because Rust handles them well
+        // enough and inserts placeholders
+        assert!(UsymSymbols::parse(&data).is_err());
+
+        // assert_eq!(usyms.version(), 2);
+        // assert!(usyms.id().is_err());
+        // assert_eq!(usyms.name(), "��ityFramework");
+        // assert_eq!(usyms.os(), "mac");
+        // assert_eq!(usyms.arch().unwrap(), Arch::Arm64);
+    }
+
+    #[test]
+    fn test_with_managed() {
+        let file = File::open(fixture("il2cpp/managed.usym")).unwrap();
+        let data = ByteView::map_file_ref(&file).unwrap();
+        let usyms = UsymSymbols::parse(&data).unwrap();
+
+        assert_eq!(usyms.version(), 2);
+        assert_eq!(
+            usyms.id().unwrap(),
+            DebugId::from_str("153d10d10db033d6aacda4e1948da97b").unwrap()
+        );
+        assert_eq!(usyms.name(), "UnityFramework");
+        assert_eq!(usyms.os(), "mac");
+        assert_eq!(usyms.arch().unwrap(), Arch::Arm64);
+
+        let mut mapping = match usyms.lookup_source_record(8253832).unwrap() {
+            UsymSourceRecord::Mapped(mapping) => mapping,
+            UsymSourceRecord::Unmapped(_) => panic!("could not find mapping at addr 8253832"),
+        };
+        assert_eq!(mapping.managed_symbol, "NewBehaviourScript.Start()");
+        assert_eq!(
+            mapping.managed_file_info.path_str(),
+            "/Users/bitfox/_Workspace/IL2CPP/Assets/NewBehaviourScript.cs"
+        );
+        assert_eq!(mapping.managed_line, 10);
+
+        mapping = match usyms.lookup_source_record(8253836).unwrap() {
+            UsymSourceRecord::Mapped(mapping) => mapping,
+            UsymSourceRecord::Unmapped(_) => panic!("could not find mapping at addr 8253836"),
+        };
+        assert_eq!(mapping.managed_symbol, "NewBehaviourScript.Start()");
+        assert_eq!(
+            mapping.managed_file_info.path_str(),
+            "/Users/bitfox/_Workspace/IL2CPP/Assets/NewBehaviourScript.cs"
+        );
+        assert_eq!(mapping.managed_line, 10);
+
+        mapping = match usyms.lookup_source_record(8253840).unwrap() {
+            UsymSourceRecord::Mapped(mapping) => mapping,
+            UsymSourceRecord::Unmapped(_) => panic!("could not find mapping at addr 8253840"),
+        };
+        assert_eq!(mapping.managed_symbol, "NewBehaviourScript.Update()");
+        assert_eq!(
+            mapping.managed_file_info.path_str(),
+            "/Users/bitfox/_Workspace/IL2CPP/Assets/NewBehaviourScript.cs"
+        );
+        assert_eq!(mapping.managed_line, 17);
     }
 
     #[test]
@@ -474,7 +709,8 @@ mod tests {
 
         let mut last_address = usyms.records[0].address;
         for i in 1..usyms.header.record_count as usize {
-            assert!(usyms.records[i].address > last_address);
+            // The addresses should be weakly monotonic
+            assert!(usyms.records[i].address >= last_address);
             last_address = usyms.records[i].address;
         }
     }

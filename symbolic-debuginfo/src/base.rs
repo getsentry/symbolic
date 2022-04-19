@@ -290,7 +290,7 @@ impl<'data> SymbolMap<'data> {
         }
     }
 
-    /// Looks up a symbol in the symbol map.
+    /// Looks up the symbol covering the given address.
     pub fn lookup(&self, address: u64) -> Option<&Symbol<'data>> {
         match self.symbols.binary_search_by_key(&address, Self::key) {
             Ok(index) => Some(&self.symbols[index]),
@@ -304,6 +304,15 @@ impl<'data> SymbolMap<'data> {
                 }
             }
         }
+    }
+
+    /// Looks up a symbol by its start address.
+    pub fn lookup_exact(&self, address: u64) -> Option<&Symbol<'data>> {
+        let idx = self
+            .symbols
+            .binary_search_by_key(&address, Self::key)
+            .ok()?;
+        self.symbols.get(idx)
     }
 
     /// Looks up a symbol covering an entire range.
