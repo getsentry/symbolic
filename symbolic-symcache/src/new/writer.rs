@@ -194,9 +194,7 @@ impl SymCacheConverter {
                     // Return values follow the same logic as those returned in the None branch
                     (existing_idx, replaced_value.is_some())
                 }
-                None => {
-                    self.functions.insert_full(func)
-                }
+                None => self.functions.insert_full(func),
             };
             fun_idx as u32
         };
