@@ -468,10 +468,44 @@ impl<'a> UsymSymbols<'a> {
     }
 
     /// Lookup the managed code source location for an IL2CPP instruction pointer.
-    pub fn lookup_source_record(&self, ip: u64) -> Option<UsymSourceRecord> {
+    // TODO: is this just an address?
+    pub fn lookup_by_address(&self, instruction_pointer: u64) -> Option<UsymSourceRecord> {
         // TODO: need to subtract the image base to get relative address
-        match self.records.binary_search_by_key(&ip, |r| r.address) {
+        match self
+            .records
+            .binary_search_by_key(&instruction_pointer, |r| r.address)
+        {
             Ok(index) => self.get_record(index),
+            Err(0) => None,
+            Err(index) => self.get_record(index - 1),
+        }
+    }
+
+    /// Look up the managed code source location for some filename and line.
+    pub fn lookup_by_srcloc(&self, file: String, line: u32) -> Option<UsymSourceRecord> {
+        match self
+            .records
+            .binary_search_by_key(&(file, line), |candidate| {
+                let filename = self
+                    .get_string(candidate.native_file.try_into().unwrap())
+                    .unwrap_or_default();
+                (filename.into_owned(), candidate.native_line)
+            }) {
+            Ok(index) => self.get_record(index),
+            Err(0) => None,
+            Err(index) => self.get_record(index - 1),
+        }
+    }
+
+    /// Look up the managed code source location for some given native symbol.
+    pub fn lookup_by_symbol(&self, symbol: String) -> Option<UsymSourceRecord> {
+        match self.records.binary_search_by_key(&symbol, |candidate| {
+            self.get_string(candidate.native_symbol.try_into().unwrap())
+                .unwrap_or_default()
+                .into_owned()
+        }) {
+            Ok(index) => self.get_record(index),
+            Err(0) => None,
             Err(index) => self.get_record(index - 1),
         }
     }
@@ -637,7 +671,7 @@ mod tests {
         assert_eq!(usyms.os(), "mac");
         assert_eq!(usyms.arch().unwrap(), Arch::Arm64);
 
-        let mut mapping = match usyms.lookup_source_record(8253832).unwrap() {
+        let mut mapping = match usyms.lookup_by_address(8253832).unwrap() {
             UsymSourceRecord::Mapped(mapping) => mapping,
             UsymSourceRecord::Unmapped(_) => panic!("could not find mapping at addr 8253832"),
         };
@@ -648,7 +682,7 @@ mod tests {
         );
         assert_eq!(mapping.managed_line, 10);
 
-        mapping = match usyms.lookup_source_record(8253836).unwrap() {
+        mapping = match usyms.lookup_by_address(8253836).unwrap() {
             UsymSourceRecord::Mapped(mapping) => mapping,
             UsymSourceRecord::Unmapped(_) => panic!("could not find mapping at addr 8253836"),
         };
@@ -659,7 +693,7 @@ mod tests {
         );
         assert_eq!(mapping.managed_line, 10);
 
-        mapping = match usyms.lookup_source_record(8253840).unwrap() {
+        mapping = match usyms.lookup_by_address(8253840).unwrap() {
             UsymSourceRecord::Mapped(mapping) => mapping,
             UsymSourceRecord::Unmapped(_) => panic!("could not find mapping at addr 8253840"),
         };

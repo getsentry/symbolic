@@ -4,7 +4,9 @@ mod bcsymbolmap;
 pub use bcsymbolmap::*;
 
 #[cfg(feature = "il2cpp")]
-pub mod il2cpp;
+pub mod il2cpp_linemapping;
+#[cfg(feature = "il2cpp")]
+pub mod il2cpp_usym;
 
 use std::borrow::Cow;
 
