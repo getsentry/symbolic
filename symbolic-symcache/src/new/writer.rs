@@ -28,10 +28,8 @@ pub struct SymCacheConverter {
     debug_id: DebugId,
     /// CPU architecture of the object file.
     arch: Arch,
-
     /// A list of transformers that are used to transform each function / source location.
     transformers: transform::Transformers,
-
     /// The concatenation of all strings that have been added to this `Converter`.
     string_bytes: Vec<u8>,
     /// A map from [`String`]s that have been added to this `Converter` to their offsets in the `string_bytes` field.
