@@ -337,3 +337,21 @@ fn test_usym() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[cfg(feature = "il2cpp")]
+#[test]
+fn test_write_functions_usym() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("il2cpp/managed.usym"))?;
+    let usym = UsymSymbols::parse(&buffer)?;
+
+    let mut buffer = Vec::new();
+    let mut writer = SymCacheWriter::new(Cursor::new(&mut buffer))?;
+
+    writer.process_usym(&usym)?;
+
+    let _ = writer.finish()?;
+    let cache = SymCache::parse(&buffer)?;
+    insta::assert_debug_snapshot!("functions_usym", FunctionsDebug(&cache));
+
+    Ok(())
+}
