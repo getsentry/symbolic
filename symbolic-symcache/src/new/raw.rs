@@ -1,5 +1,6 @@
 //! The raw SymCache binary file format internals.
 //!
+use std::hash::{Hash, Hasher};
 use symbolic_common::{Arch, DebugId};
 
 pub use crate::SYMCACHE_VERSION;
@@ -54,7 +55,7 @@ pub struct Header {
 }
 
 /// Serialized Function metadata in the SymCache.
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq)]
 #[repr(C)]
 pub struct Function {
     /// The functions name (reference to a [`String`]).
@@ -65,6 +66,19 @@ pub struct Function {
     pub entry_pc: u32,
     /// The language of the function.
     pub lang: u32,
+}
+
+impl PartialEq for Function {
+    fn eq(&self, other: &Self) -> bool {
+        self.name_offset == other.name_offset && self.comp_dir_offset == other.comp_dir_offset
+    }
+}
+
+impl Hash for Function {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name_offset.hash(state);
+        self.comp_dir_offset.hash(state);
+    }
 }
 
 /// Serialized File in the SymCache.

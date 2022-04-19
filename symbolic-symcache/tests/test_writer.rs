@@ -19,22 +19,8 @@ struct FunctionsDebug<'a>(&'a SymCache<'a>);
 #[allow(deprecated)]
 impl fmt::Debug for FunctionsDebug<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut vec: Vec<_> = self
-            .0
-            .functions()
-            .filter_map(|f| match f {
-                Ok(f) => {
-                    if f.address() != u32::MAX as u64 {
-                        Some(f)
-                    } else {
-                        None
-                    }
-                }
-                Err(_) => None,
-            })
-            .collect();
-
-        vec.sort_by_key(|f| f.address());
+        let mut vec: Vec<_> = self.0.functions().filter_map(|f| f.ok()).collect();
+        vec.sort_by_cached_key(|f| (f.address(), f.name().to_string()));
         for function in vec {
             writeln!(f, "{:>16x} {}", &function.address(), &function.name())?;
         }
@@ -66,7 +52,7 @@ fn test_write_header_linux() -> Result<(), Error> {
         },
         arch: Amd64,
         files: 55,
-        functions: 697,
+        functions: 695,
         source_locations: 8236,
         ranges: 6762,
         string_bytes: 52180,
@@ -106,7 +92,7 @@ fn test_write_header_macos() -> Result<(), Error> {
         },
         arch: Amd64,
         files: 36,
-        functions: 639,
+        functions: 587,
         source_locations: 6033,
         ranges: 4591,
         string_bytes: 42829,
@@ -328,7 +314,7 @@ fn test_usym() -> Result<(), Error> {
         },
         arch: Arm64,
         files: 1,
-        functions: 3,
+        functions: 2,
         source_locations: 3,
         ranges: 3,
         string_bytes: 128,

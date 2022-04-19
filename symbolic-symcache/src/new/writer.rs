@@ -141,15 +141,21 @@ impl SymCacheConverter {
     }
 
     pub fn process_symbolic_function(&mut self, function: &Function<'_>) {
+        const INLINED_ADDR: u32 = u32::MAX;
+
         // skip over empty functions or functions whose address is too large to fit in a u32
+        // TODO: What if the function.end_address() is above or equal to u32::MAX? This would set
+        // last_addr to u32::MAX, which is a range occupied by "orphaned" inline functions whose
+        // original fn and address cannot be found.
         if function.size == 0 || function.address > u32::MAX as u64 {
             return;
         }
 
         let comp_dir = std::str::from_utf8(function.compilation_dir).ok();
 
+        // TODO: Investigate whether non-inline functions could have an address of u32::MAX
         let entry_pc = if function.inline {
-            u32::MAX
+            INLINED_ADDR
         } else {
             function.address as u32
         };
@@ -172,12 +178,28 @@ impl SymCacheConverter {
                 Self::insert_string(string_bytes, strings, &comp_dir)
             });
             let lang = language as u32;
-            let (fun_idx, _) = self.functions.insert_full(raw::Function {
+
+            let func = raw::Function {
                 name_offset,
                 comp_dir_offset,
                 entry_pc,
                 lang,
-            });
+            };
+
+            let (fun_idx, _) = match self.functions.get_full(&func) {
+                Some((existing_idx, existing_fn)) => {
+                    let mut replaced_value = None;
+                    // Only replace the existing function if that was inlined
+                    if existing_fn.entry_pc == INLINED_ADDR {
+                        replaced_value = self.functions.replace(func);
+                    }
+                    // Return values follow the same logic as those returned in the None branch
+                    (existing_idx, replaced_value.is_some())
+                }
+                None => {
+                    self.functions.insert_full(func)
+                }
+            };
             fun_idx as u32
         };
 
