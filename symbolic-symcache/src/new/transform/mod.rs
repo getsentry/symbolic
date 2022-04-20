@@ -57,9 +57,9 @@ pub trait Transformer {
 
 // This is essentially just a newtype in order to implement `Debug`.
 #[derive(Default)]
-pub(crate) struct Transformers(pub Vec<Box<dyn Transformer>>);
+pub(crate) struct Transformers<'a>(pub Vec<Box<dyn Transformer + 'a>>);
 
-impl std::fmt::Debug for Transformers {
+impl<'a> std::fmt::Debug for Transformers<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let len = self.0.len();
         f.debug_tuple("Transformers").field(&len).finish()

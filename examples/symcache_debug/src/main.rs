@@ -75,24 +75,14 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 
         let mut writer = SymCacheWriter::new(Cursor::new(Vec::new()))?;
 
-        if let Some(bcsymbolmap_file) = matches.value_of("bcsymbolmap_file") {
-            let bcsymbolmap_path = Path::new(bcsymbolmap_file);
-            let bcsymbolmap_buffer = ByteView::open(bcsymbolmap_path)?;
-            let bcsymbolmap =
-                OwnedBcSymbolMap(SelfCell::try_new(bcsymbolmap_buffer, |s| unsafe {
-                    BcSymbolMap::parse(&*s)
-                })?);
-            writer.add_transformer(bcsymbolmap);
+        if let Some(transformer) = bcsymbolmap_transformer {
+            writer.add_transformer(transformer);
         }
 
         #[cfg(feature = "il2cpp")]
         {
-            if let Some(linemapping_file) = matches.value_of("linemapping_file") {
-                let linemapping_path = Path::new(linemapping_file);
-                let linemapping_buffer = ByteView::open(linemapping_path)?;
-                if let Some(linemapping) = LineMapping::parse(&linemapping_buffer) {
-                    writer.add_transformer(linemapping);
-                }
+            if let Some(transformer) = linemapping_transformer {
+                writer.add_transformer(transformer);
             }
         }
 

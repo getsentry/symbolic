@@ -55,12 +55,12 @@ impl<'data> Iterator for Functions<'data> {
 /// at the end, so that all segments are
 /// written to the underlying writer and the header is fixed up with the references. Since segments
 /// are consecutive chunks of memory, this can only be done once at the end of the writing process.
-pub struct SymCacheWriter<W> {
-    converter: SymCacheConverter,
+pub struct SymCacheWriter<'a, W> {
+    converter: SymCacheConverter<'a>,
     writer: W,
 }
 
-impl<W> SymCacheWriter<W>
+impl<'a, W> SymCacheWriter<'a, W>
 where
     W: Write + Seek,
 {
@@ -100,9 +100,9 @@ where
     /// this transformer before it is being written to the SymCache.
     pub fn add_transformer<T>(&mut self, t: T)
     where
-        T: transform::Transformer + 'static,
+        T: transform::Transformer + 'a,
     {
-        self.converter.add_transformer(t)
+        self.converter.add_transformer(t);
     }
 
     /// Processes the [`ObjectLike`], writing its functions, line information and symbols into the
