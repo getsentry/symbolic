@@ -6,30 +6,13 @@ use std::u64;
 use anyhow::{anyhow, Result};
 use clap::{Arg, ArgMatches, Command};
 
-use symbolic::common::{Arch, ByteView, DSymPathExt, Language, SelfCell};
+use symbolic::common::{Arch, ByteView, DSymPathExt, Language};
 use symbolic::debuginfo::macho::BcSymbolMap;
 use symbolic::debuginfo::Archive;
 use symbolic::demangle::{Demangle, DemangleOptions};
 #[cfg(feature = "il2cpp")]
 use symbolic::il2cpp::LineMapping;
-use symbolic::symcache::transform::{self, Transformer};
 use symbolic::symcache::{SymCache, SymCacheWriter};
-
-// FIXME: This is a huge pain, can't this be simpler somehow?
-struct OwnedBcSymbolMap(SelfCell<ByteView<'static>, BcSymbolMap<'static>>);
-
-impl Transformer for OwnedBcSymbolMap {
-    fn transform_function<'f>(&'f self, f: transform::Function<'f>) -> transform::Function<'f> {
-        self.0.get().transform_function(f)
-    }
-
-    fn transform_source_location<'f>(
-        &'f self,
-        sl: transform::SourceLocation<'f>,
-    ) -> transform::SourceLocation<'f> {
-        self.0.get().transform_source_location(sl)
-    }
-}
 
 fn execute(matches: &ArgMatches) -> Result<()> {
     let buffer;
@@ -72,6 +55,27 @@ fn execute(matches: &ArgMatches) -> Result<()> {
             Some(obj) => obj,
             None => return Err(anyhow!("did not find architecture {}", arch)),
         };
+
+        let bcsymbolmap_buffer = matches
+            .value_of("bcsymbolmap_file")
+            .map(|path_str| ByteView::open(Path::new(path_str)))
+            .transpose()?;
+        let bcsymbolmap_transformer = bcsymbolmap_buffer
+            .as_ref()
+            .map(|buf| BcSymbolMap::parse(buf))
+            .transpose()?;
+
+        #[cfg(feature = "il2cpp")]
+        {
+            let linemapping_buffer = matches
+                .value_of("linemapping_file")
+                .map(|path_str| ByteView::open(Path::new(path_str)))
+                .transpose()?;
+            let linemapping_transformer = linemapping_buffer
+                .as_ref()
+                .map(|buf| LineMapping::parse(buf))
+                .transpose()?;
+        }
 
         let mut writer = SymCacheWriter::new(Cursor::new(Vec::new()))?;
 

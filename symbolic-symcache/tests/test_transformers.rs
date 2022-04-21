@@ -46,17 +46,16 @@ fn test_transformer_symbolmap() -> Result<(), Error> {
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    let writer = SymCacheWriter::new(Cursor::new(&mut buffer))?;
 
     let map_buffer = ByteView::open(
         "../symbolic-debuginfo/tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap",
     )?;
     let bc_symbol_map = BcSymbolMap::parse(&map_buffer)?;
 
-    writer
-        .add_transformer(bc_symbol_map)
-        .process_object(&object)?
-        .finish()?;
+    let mut writer = SymCacheWriter::new(Cursor::new(&mut buffer))?;
+    writer.add_transformer(bc_symbol_map);
+    writer.process_object(&object)?;
+    let _ = writer.finish()?;
 
     let cache = SymCache::parse(&buffer)?;
 
