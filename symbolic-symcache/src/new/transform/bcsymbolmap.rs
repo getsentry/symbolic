@@ -23,6 +23,7 @@ impl Transformer for BcSymbolMap<'_> {
         Function {
             name: map_cow!(f.name, |s| self.resolve(s)),
             comp_dir: f.comp_dir.map(|dir| map_cow!(dir, |s| self.resolve(s))),
+            ..f
         }
     }
 
@@ -40,6 +41,7 @@ impl Transformer for BcSymbolMap<'_> {
                     .map(|dir| map_cow!(dir, |s| self.resolve(s))),
             },
             line: sl.line,
+            ..sl
         }
     }
 }

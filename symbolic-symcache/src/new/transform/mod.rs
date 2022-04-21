@@ -17,6 +17,8 @@ pub struct Function<'s> {
     pub name: Cow<'s, str>,
     /// The compilation directory of the function.
     pub comp_dir: Option<Cow<'s, str>>,
+    /// The address where the function starts.
+    pub entry_pc: u64,
 }
 
 /// A File to be written to the SymCache.
@@ -33,6 +35,8 @@ pub struct File<'s> {
 /// A Source Location (File + Line) to be written to the SymCache.
 #[non_exhaustive]
 pub struct SourceLocation<'s> {
+    /// The [`SourceLocation`]'s address.
+    pub address: u64,
     /// The [`File`] part of this [`SourceLocation`].
     pub file: File<'s>,
     /// The line number.

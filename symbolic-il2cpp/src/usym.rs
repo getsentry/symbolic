@@ -468,42 +468,12 @@ impl<'a> UsymSymbols<'a> {
     }
 
     /// Lookup the managed code source location for an IL2CPP instruction pointer.
-    // TODO: is this just an address?
     pub fn lookup_by_address(&self, instruction_pointer: u64) -> Option<UsymSourceRecord> {
         // TODO: need to subtract the image base to get relative address
         match self
             .records
             .binary_search_by_key(&instruction_pointer, |r| r.address)
         {
-            Ok(index) => self.get_record(index),
-            Err(0) => None,
-            Err(index) => self.get_record(index - 1),
-        }
-    }
-
-    /// Look up the managed code source location for some filename and line.
-    pub fn lookup_by_srcloc(&self, file: String, line: u32) -> Option<UsymSourceRecord> {
-        match self
-            .records
-            .binary_search_by_key(&(file, line), |candidate| {
-                let filename = self
-                    .get_string(candidate.native_file.try_into().unwrap())
-                    .unwrap_or_default();
-                (filename.into_owned(), candidate.native_line)
-            }) {
-            Ok(index) => self.get_record(index),
-            Err(0) => None,
-            Err(index) => self.get_record(index - 1),
-        }
-    }
-
-    /// Look up the managed code source location for some given native symbol.
-    pub fn lookup_by_symbol(&self, symbol: String) -> Option<UsymSourceRecord> {
-        match self.records.binary_search_by_key(&symbol, |candidate| {
-            self.get_string(candidate.native_symbol.try_into().unwrap())
-                .unwrap_or_default()
-                .into_owned()
-        }) {
             Ok(index) => self.get_record(index),
             Err(0) => None,
             Err(index) => self.get_record(index - 1),

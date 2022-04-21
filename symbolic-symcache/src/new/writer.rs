@@ -159,6 +159,7 @@ impl SymCacheConverter {
             let mut function = transform::Function {
                 name: function.name.as_str().into(),
                 comp_dir: comp_dir.map(Into::into),
+                entry_pc: function.address,
             };
             for transformer in &self.transformers.0 {
                 function = transformer.transform_function(function);
@@ -183,6 +184,7 @@ impl SymCacheConverter {
 
         for line in &function.lines {
             let mut location = transform::SourceLocation {
+                address: line.address,
                 file: transform::File {
                     name: line.file.name_str(),
                     directory: Some(line.file.dir_str()),
@@ -274,6 +276,7 @@ impl SymCacheConverter {
                     None => return,
                 },
                 comp_dir: None,
+                entry_pc: symbol.address,
             };
             for transformer in &self.transformers.0 {
                 function = transformer.transform_function(function);
@@ -344,6 +347,7 @@ impl SymCacheConverter {
                     let mut function = transform::Function {
                         name: record.managed_symbol.clone(),
                         comp_dir: None,
+                        entry_pc: record.address,
                     };
                     for transformer in &self.transformers.0 {
                         function = transformer.transform_function(function);
@@ -365,6 +369,7 @@ impl SymCacheConverter {
 
             let managed_dir = Some(record.managed_file_info.dir_str()).filter(|d| !d.is_empty());
             let mut location = transform::SourceLocation {
+                address: record.address,
                 file: transform::File {
                     name: record.managed_file_info.name_str(),
                     directory: managed_dir,
