@@ -127,6 +127,25 @@ fn test_write_functions_macos() -> Result<(), Error> {
     Ok(())
 }
 
+// Tests that functions with identical names, compilation directories, and languages but different
+// entry_pcs have separate, distinct entries in the symcache. The specific use case generating this
+// is two identically-named static C functions nestled in two different files sharing a common
+// compilation directory.
+#[test]
+fn test_write_functions_overlapping_funcs() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture(
+        "macos/overlapping_funcs.dSYM/Contents/Resources/DWARF/overlapping_funcs",
+    ))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut buffer = Vec::new();
+    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let symcache = SymCache::parse(&buffer)?;
+    insta::assert_debug_snapshot!("overlapping_funcs", FunctionsDebug(&symcache));
+
+    Ok(())
+}
+
 #[test]
 fn test_write_large_symbol_names() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("regression/large_symbol.sym"))?;
