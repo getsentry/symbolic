@@ -130,7 +130,7 @@ fn test_write_functions_macos() -> Result<(), Error> {
 // Tests that functions with identical names, compilation directories, and languages but different
 // entry_pcs have separate, distinct entries in the symcache. The specific use case generating this
 // is two identically-named static C functions nestled in two different files sharing a common
-// compilation directory.
+// compilation directory. See the overlapping_funcs directory in sentry-testutils for related files.
 #[test]
 fn test_write_functions_overlapping_funcs() -> Result<(), Error> {
     let buffer = ByteView::open(fixture(
