@@ -307,16 +307,10 @@ impl<'data, 'cache> Iterator for Lookup<'data, 'cache> {
             LookupInner::Old(lookup) => lookup.next(),
             LookupInner::New { iter, lookup_addr } => {
                 let sl = iter.next()?;
-
-                let entry_pc = sl.function().entry_pc();
                 Some(Ok(old::LineInfo {
                     arch: sl.cache.arch(),
                     debug_id: sl.cache.debug_id(),
-                    sym_addr: if entry_pc == u32::MAX {
-                        u64::MAX
-                    } else {
-                        entry_pc as u64
-                    },
+                    sym_addr: sl.function().entry_pc() as u64,
                     line_addr: *lookup_addr,
                     instr_addr: *lookup_addr,
                     line: sl.line(),
