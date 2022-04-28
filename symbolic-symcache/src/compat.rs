@@ -1,6 +1,8 @@
 use std::fmt;
 
-use symbolic_common::{Arch, AsSelf, DebugId, Language, Name, NameMangling};
+use symbolic_common::{Arch, AsSelf, DebugId};
+#[cfg(feature = "_internal-debug")]
+use symbolic_common::{Language, Name, NameMangling};
 
 use crate::{new, old, preamble, SymCacheError};
 
@@ -95,8 +97,7 @@ impl<'data> SymCache<'data> {
     }
 
     /// Returns an iterator over all functions.
-    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
-    #[allow(deprecated)]
+    #[cfg(feature = "_internal-debug")]
     pub fn functions(&self) -> Functions<'data> {
         match &self.0 {
             #[allow(deprecated)]
@@ -144,6 +145,7 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
 }
 
 #[derive(Clone, Debug)]
+#[cfg(feature = "_internal-debug")]
 enum FunctionInner<'data> {
     Old(old::Function<'data>),
     New((usize, new::Function<'data>)),
@@ -151,10 +153,10 @@ enum FunctionInner<'data> {
 
 /// A function in a `SymCache`.
 #[derive(Clone)]
-#[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
+#[cfg(feature = "_internal-debug")]
 pub struct Function<'data>(FunctionInner<'data>);
 
-#[allow(deprecated)]
+#[cfg(feature = "_internal-debug")]
 impl<'data> Function<'data> {
     /// The ID of the function.
     pub fn id(&self) -> usize {
@@ -227,7 +229,7 @@ impl<'data> Function<'data> {
     }
 }
 
-#[allow(deprecated)]
+#[cfg(feature = "_internal-debug")]
 impl<'data> fmt::Debug for Function<'data> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
@@ -238,6 +240,7 @@ impl<'data> fmt::Debug for Function<'data> {
 }
 
 #[derive(Clone, Debug)]
+#[cfg(feature = "_internal-debug")]
 enum FunctionsInner<'data> {
     Old(old::Functions<'data>),
     New(std::iter::Enumerate<new::Functions<'data>>),
@@ -245,10 +248,10 @@ enum FunctionsInner<'data> {
 
 /// An iterator over all functions in a `SymCache`.
 #[derive(Clone)]
-#[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
+#[cfg(feature = "_internal-debug")]
 pub struct Functions<'data>(FunctionsInner<'data>);
 
-#[allow(deprecated)]
+#[cfg(feature = "_internal-debug")]
 impl<'data> Iterator for Functions<'data> {
     type Item = Result<Function<'data>, SymCacheError>;
 
@@ -266,7 +269,7 @@ impl<'data> Iterator for Functions<'data> {
     }
 }
 
-#[allow(deprecated)]
+#[cfg(feature = "_internal-debug")]
 impl<'data> fmt::Debug for Functions<'data> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
@@ -334,6 +337,7 @@ impl<'data, 'cache> fmt::Debug for Lookup<'data, 'cache> {
     }
 }
 
+#[cfg(feature = "_internal-debug")]
 #[derive(Clone)]
 enum LinesInner<'data> {
     Old(old::Lines<'data>),
@@ -341,9 +345,11 @@ enum LinesInner<'data> {
 }
 
 /// An iterator over lines of a SymCache function.
+#[cfg(feature = "_internal-debug")]
 #[derive(Clone)]
 pub struct Lines<'data>(LinesInner<'data>);
 
+#[cfg(feature = "_internal-debug")]
 impl<'a> Iterator for Lines<'a> {
     type Item = Result<old::Line<'a>, SymCacheError>;
 

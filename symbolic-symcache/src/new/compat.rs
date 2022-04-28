@@ -24,6 +24,7 @@ impl<'data> SymCache<'data> {
     }
 
     /// An iterator over the functions in this SymCache.
+    #[cfg(feature = "_internal-debug")]
     pub fn functions(&self) -> Functions<'data> {
         Functions {
             cache: self.clone(),
@@ -32,12 +33,14 @@ impl<'data> SymCache<'data> {
     }
 }
 
+#[cfg(feature = "_internal-debug")]
 #[derive(Debug, Clone)]
 pub struct Functions<'data> {
     cache: SymCache<'data>,
     function_idx: u32,
 }
 
+#[cfg(feature = "_internal-debug")]
 impl<'data> Iterator for Functions<'data> {
     type Item = Function<'data>;
 

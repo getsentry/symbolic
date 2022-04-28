@@ -20,7 +20,10 @@ exclude = [
 ]
 
 [package.metadata.docs.rs]
-all-features = true
+features = [
+    "bench",
+    "il2cpp",
+]
 
 [dependencies]
 dmsort = "1.0.1"
@@ -40,6 +43,7 @@ similar-asserts = "1.0.0"
 [features]
 bench = []
 il2cpp = ["symbolic-il2cpp"]
+_internal-debug = []
 
 [[bench]]
 name = "bench_writer"
