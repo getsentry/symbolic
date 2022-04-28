@@ -29,7 +29,8 @@
 //! ## Functions
 //!
 //! A function contains string offsets for its name and compilation directory, a u32 for its entry
-//! address, and a u32 representing the source language.
+//! address, and a u32 representing the source language. The name is non-optional, i.e., the name
+//! index should always point to a valid string.
 //!
 //! ## Address Ranges
 //!
@@ -40,7 +41,7 @@
 //! A source location in a symcache represents a possibly-inlined copy of a line in a source file.
 //! It contains a line number, a reference to a file (see above), a reference to a function (ditto),
 //! and a reference to the source location into which this source location was inlined. All of these
-//! data are optional.
+//! data except for the function are optional.
 //!
 //! ## Mapping From Ranges To Source Locations
 //!
