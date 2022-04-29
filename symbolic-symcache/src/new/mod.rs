@@ -11,7 +11,7 @@ pub mod transform;
 mod writer;
 
 pub use compat::*;
-pub use error::Error;
+pub use error::{Error, ErrorKind};
 pub use lookup::*;
 
 use raw::align_to_eight;
@@ -54,25 +54,25 @@ impl<'data> SymCache<'data> {
     /// See the [raw module](raw) for an explanation of the binary format.
     pub fn parse(buf: &'data [u8]) -> Result<Self> {
         if align_to_eight(buf.as_ptr() as usize) != 0 {
-            return Err(Error::BufferNotAligned);
+            return Err(ErrorKind::BufferNotAligned.into());
         }
 
         let mut header_size = mem::size_of::<raw::Header>();
         header_size += align_to_eight(header_size);
 
         if buf.len() < header_size {
-            return Err(Error::HeaderTooSmall);
+            return Err(ErrorKind::HeaderTooSmall.into());
         }
         // SAFETY: we checked that the buffer is well aligned and large enough to fit a `raw::Header`.
         let header = unsafe { &*(buf.as_ptr() as *const raw::Header) };
         if header.magic == raw::SYMCACHE_MAGIC_FLIPPED {
-            return Err(Error::WrongEndianness);
+            return Err(ErrorKind::WrongEndianness.into());
         }
         if header.magic != raw::SYMCACHE_MAGIC {
-            return Err(Error::WrongFormat);
+            return Err(ErrorKind::WrongFormat.into());
         }
         if header.version != raw::SYMCACHE_VERSION {
-            return Err(Error::WrongVersion);
+            return Err(ErrorKind::WrongVersion.into());
         }
 
         let mut files_size = mem::size_of::<raw::File>() * header.num_files as usize;
@@ -96,7 +96,7 @@ impl<'data> SymCache<'data> {
             + header.string_bytes as usize;
 
         if buf.len() < expected_buf_size || source_locations_size < ranges_size {
-            return Err(Error::BadFormatLength);
+            return Err(ErrorKind::BadFormatLength.into());
         }
 
         // SAFETY: we just made sure that all the pointers we are constructing via pointer
