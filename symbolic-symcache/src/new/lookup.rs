@@ -52,7 +52,7 @@ impl<'data> SymCache<'data> {
     pub(crate) fn get_function(&self, function_idx: u32) -> Option<Function<'data>> {
         let raw_function = self.functions.get(function_idx as usize)?;
         Some(Function {
-            name: self.get_string(raw_function.name_offset).unwrap(),
+            name: self.get_string(raw_function.name_offset).unwrap_or("?"),
             comp_dir: self.get_string(raw_function.comp_dir_offset),
             entry_pc: raw_function.entry_pc,
             language: Language::from_u32(raw_function.lang),
@@ -151,6 +151,17 @@ impl<'data> Function<'data> {
     }
 }
 
+impl<'data> Default for Function<'data> {
+    fn default() -> Self {
+        Self {
+            name: "?",
+            comp_dir: None,
+            entry_pc: u32::MAX,
+            language: Language::Unknown,
+        }
+    }
+}
+
 /// A Source Location as included in the SymCache.
 ///
 /// The source location represents a `(function, file, line, inlined_into)` tuple corresponding to
@@ -178,7 +189,7 @@ impl<'data, 'cache> SourceLocation<'data, 'cache> {
     pub fn function(&self) -> Function<'data> {
         self.cache
             .get_function(self.source_location.function_idx)
-            .unwrap()
+            .unwrap_or_default()
     }
 
     // TODO: maybe forward some of the `File` and `Function` accessors, such as:
