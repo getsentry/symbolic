@@ -186,7 +186,7 @@ impl<'data> Function<'data> {
     pub fn symbol(&self) -> &'data str {
         match &self.0 {
             FunctionInner::Old(function) => function.symbol(),
-            FunctionInner::New((_, function)) => function.name().unwrap_or("?"),
+            FunctionInner::New((_, function)) => function.name(),
         }
     }
 
@@ -204,11 +204,9 @@ impl<'data> Function<'data> {
     pub fn name(&self) -> Name<'_> {
         match &self.0 {
             FunctionInner::Old(function) => function.name(),
-            FunctionInner::New((_, function)) => Name::new(
-                function.name().unwrap_or("?"),
-                NameMangling::Unknown,
-                function.language(),
-            ),
+            FunctionInner::New((_, function)) => {
+                Name::new(function.name(), NameMangling::Unknown, function.language())
+            }
         }
     }
 
@@ -309,19 +307,15 @@ impl<'data, 'cache> Iterator for Lookup<'data, 'cache> {
             LookupInner::Old(lookup) => lookup.next(),
             LookupInner::New { iter, lookup_addr } => {
                 let sl = iter.next()?;
-
                 Some(Ok(old::LineInfo {
                     arch: sl.cache.arch(),
                     debug_id: sl.cache.debug_id(),
-                    sym_addr: sl
-                        .function()
-                        .map(|f| f.entry_pc() as u64)
-                        .unwrap_or(u64::MAX),
+                    sym_addr: sl.function().entry_pc() as u64,
                     line_addr: *lookup_addr,
                     instr_addr: *lookup_addr,
                     line: sl.line(),
-                    lang: sl.function().map(|f| f.language()).unwrap_or_default(),
-                    symbol: sl.function().and_then(|f| f.name()),
+                    lang: sl.function().language(),
+                    symbol: Some(sl.function().name()),
                     filename: sl.file().map(|f| f.path_name()).unwrap_or_default(),
                     base_dir: sl.file().and_then(|f| f.directory()).unwrap_or_default(),
                     comp_dir: sl.file().and_then(|f| f.comp_dir()).unwrap_or_default(),

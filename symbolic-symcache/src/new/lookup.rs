@@ -52,7 +52,7 @@ impl<'data> SymCache<'data> {
     pub(crate) fn get_function(&self, function_idx: u32) -> Option<Function<'data>> {
         let raw_function = self.functions.get(function_idx as usize)?;
         Some(Function {
-            name: self.get_string(raw_function.name_offset),
+            name: self.get_string(raw_function.name_offset).unwrap_or("?"),
             comp_dir: self.get_string(raw_function.comp_dir_offset),
             entry_pc: raw_function.entry_pc,
             language: Language::from_u32(raw_function.lang),
@@ -123,7 +123,7 @@ impl<'data> File<'data> {
 /// A Function definition as included in the SymCache.
 #[derive(Clone, Debug)]
 pub struct Function<'data> {
-    name: Option<&'data str>,
+    name: &'data str,
     comp_dir: Option<&'data str>,
     entry_pc: u32,
     language: Language,
@@ -131,7 +131,7 @@ pub struct Function<'data> {
 
 impl<'data> Function<'data> {
     /// The possibly mangled name/symbol of this function.
-    pub fn name(&self) -> Option<&'data str> {
+    pub fn name(&self) -> &'data str {
         self.name
     }
 
@@ -148,6 +148,17 @@ impl<'data> Function<'data> {
     /// The language the function is written in.
     pub fn language(&self) -> Language {
         self.language
+    }
+}
+
+impl<'data> Default for Function<'data> {
+    fn default() -> Self {
+        Self {
+            name: "?",
+            comp_dir: None,
+            entry_pc: u32::MAX,
+            language: Language::Unknown,
+        }
     }
 }
 
@@ -175,8 +186,10 @@ impl<'data, 'cache> SourceLocation<'data, 'cache> {
     }
 
     /// The function corresponding to the instruction.
-    pub fn function(&self) -> Option<Function<'data>> {
-        self.cache.get_function(self.source_location.function_idx)
+    pub fn function(&self) -> Function<'data> {
+        self.cache
+            .get_function(self.source_location.function_idx)
+            .unwrap_or_default()
     }
 
     // TODO: maybe forward some of the `File` and `Function` accessors, such as:
