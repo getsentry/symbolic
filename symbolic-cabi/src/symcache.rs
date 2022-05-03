@@ -129,22 +129,6 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Returns true if the symcache has line infos.
-    #[allow(deprecated)]
-    unsafe fn symbolic_symcache_has_line_info(symcache: *const SymbolicSymCache) -> Result<bool> {
-        Ok(SymbolicSymCache::as_rust(symcache).get().has_line_info())
-    }
-}
-
-ffi_fn! {
-    /// Returns true if the symcache has file infos.
-    #[allow(deprecated)]
-    unsafe fn symbolic_symcache_has_file_info(symcache: *const SymbolicSymCache) -> Result<bool> {
-        Ok(SymbolicSymCache::as_rust(symcache).get().has_file_info())
-    }
-}
-
-ffi_fn! {
     /// Returns the version of the cache file.
     unsafe fn symbolic_symcache_get_version(symcache: *const SymbolicSymCache) -> Result<u32> {
         Ok(SymbolicSymCache::as_rust(symcache).get().version())
