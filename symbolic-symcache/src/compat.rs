@@ -10,16 +10,18 @@ pub(crate) const SYMCACHE_VERSION_CUTOFF: u32 = 6;
 
 impl From<new::Error> for SymCacheError {
     fn from(new_error: new::Error) -> Self {
-        let kind = match new_error {
-            new::Error::BufferNotAligned
-            | new::Error::BadFormatLength
-            | new::Error::WrongEndianness => old::SymCacheErrorKind::BadCacheFile,
-            new::Error::HeaderTooSmall => old::SymCacheErrorKind::BadFileHeader,
-            new::Error::WrongFormat => old::SymCacheErrorKind::BadFileMagic,
-            new::Error::WrongVersion => old::SymCacheErrorKind::UnsupportedVersion,
+        let new::Error { kind, source } = new_error;
+        let kind = match kind {
+            new::ErrorKind::BufferNotAligned
+            | new::ErrorKind::BadFormatLength
+            | new::ErrorKind::WrongEndianness => old::SymCacheErrorKind::BadCacheFile,
+            new::ErrorKind::HeaderTooSmall => old::SymCacheErrorKind::BadFileHeader,
+            new::ErrorKind::WrongFormat => old::SymCacheErrorKind::BadFileMagic,
+            new::ErrorKind::WrongVersion => old::SymCacheErrorKind::UnsupportedVersion,
+            new::ErrorKind::BadDebugFile => old::SymCacheErrorKind::BadDebugFile,
         };
 
-        Self::from(kind)
+        Self { kind, source }
     }
 }
 

@@ -5,9 +5,9 @@ use thiserror::Error;
 /// After a SymCache was successfully parsed via [`SymCache::parse`](crate::new::SymCache::parse), an Error that occurs during
 /// access of any data indicates either corruption of the serialized file, or a bug in the
 /// converter/serializer.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone, Copy)]
 #[non_exhaustive]
-pub enum Error {
+pub enum ErrorKind {
     /// The buffer is not correctly aligned.
     #[error("source buffer is not correctly aligned")]
     BufferNotAligned,
@@ -26,4 +26,29 @@ pub enum Error {
     /// The self-advertised size of the buffer is not correct.
     #[error("incorrect buffer length")]
     BadFormatLength,
+    /// The debug file could not be converted to a symcache.
+    #[error("bad debug file")]
+    BadDebugFile,
+}
+
+/// An error returned when handling a [`SymCache`](crate::SymCache).
+#[derive(Debug, Error)]
+#[error("{kind}")]
+pub struct Error {
+    pub(crate) kind: ErrorKind,
+    #[source]
+    pub(crate) source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
+}
+
+impl Error {
+    /// Returns the corresponding [`SymCacheErrorKind`] for this error.
+    pub fn kind(&self) -> ErrorKind {
+        self.kind
+    }
+}
+
+impl From<ErrorKind> for Error {
+    fn from(kind: ErrorKind) -> Self {
+        Self { kind, source: None }
+    }
 }
