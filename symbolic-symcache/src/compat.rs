@@ -76,26 +76,6 @@ impl<'data> SymCache<'data> {
         }
     }
 
-    /// Returns true if line information is included.
-    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
-    pub fn has_line_info(&self) -> bool {
-        match &self.0 {
-            #[allow(deprecated)]
-            SymCacheInner::New(symc) => symc.has_line_info(),
-            SymCacheInner::Old(symc) => symc.has_line_info(),
-        }
-    }
-
-    /// Returns true if file information is included.
-    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
-    pub fn has_file_info(&self) -> bool {
-        match &self.0 {
-            #[allow(deprecated)]
-            SymCacheInner::New(symc) => symc.has_file_info(),
-            SymCacheInner::Old(symc) => symc.has_file_info(),
-        }
-    }
-
     /// Returns an iterator over all functions.
     #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
     #[allow(deprecated)]

@@ -13,16 +13,6 @@ use super::*;
 use crate::{SymCacheError, SymCacheErrorKind};
 
 impl<'data> SymCache<'data> {
-    /// Returns true if line information is included.
-    pub fn has_line_info(&self) -> bool {
-        self.has_file_info() && self.source_locations.iter().any(|sl| sl.line > 0)
-    }
-
-    /// Returns true if file information is included.
-    pub fn has_file_info(&self) -> bool {
-        !self.files.is_empty()
-    }
-
     /// An iterator over the functions in this SymCache.
     pub fn functions(&self) -> Functions<'data> {
         Functions {
