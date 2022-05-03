@@ -5,7 +5,7 @@ use symbolic_common::{ByteView, SelfCell};
 use symbolic_debuginfo::macho::BcSymbolMap;
 use symbolic_debuginfo::Object;
 use symbolic_symcache::transform::{self, Transformer};
-use symbolic_symcache::{SymCache, SymCacheWriter};
+use symbolic_symcache::{SymCache, SymCacheConverter};
 
 type Error = Box<dyn std::error::Error>;
 
@@ -63,7 +63,7 @@ fn test_transformer_symbolmap() -> Result<(), Error> {
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    let mut writer = SymCacheWriter::new(Cursor::new(&mut buffer))?;
+    let mut converter = SymCacheConverter::new();
 
     let map_buffer = ByteView::open(
         "../symbolic-debuginfo/tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap",
@@ -72,11 +72,11 @@ fn test_transformer_symbolmap() -> Result<(), Error> {
         BcSymbolMap::parse(&*s)
     })?);
 
-    writer.add_transformer(bc_symbol_map);
+    converter.add_transformer(bc_symbol_map);
 
-    writer.process_object(&object)?;
+    converter.process_object(&object)?;
 
-    let _ = writer.finish()?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
     let cache = SymCache::parse(&buffer)?;
 
     let sl = cache.lookup(0x5a74)?.next().unwrap()?;

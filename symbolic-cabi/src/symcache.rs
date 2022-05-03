@@ -5,7 +5,7 @@ use std::os::raw::c_char;
 use std::slice;
 
 use symbolic::common::{ByteView, InstructionInfo, SelfCell};
-use symbolic::symcache::{SymCache, SymCacheWriter, SYMCACHE_VERSION};
+use symbolic::symcache::{SymCache, SymCacheConverter, SYMCACHE_VERSION};
 
 use crate::core::SymbolicStr;
 use crate::debuginfo::SymbolicObject;
@@ -83,7 +83,9 @@ ffi_fn! {
         let object = SymbolicObject::as_rust(object).get();
 
         let mut buffer = Vec::new();
-        SymCacheWriter::write_object(object, Cursor::new(&mut buffer))?;
+        let mut converter = SymCacheConverter::new();
+        converter.process_object(object)?;
+        converter.serialize(&mut Cursor::new(&mut buffer))?;
 
         let byteview = ByteView::from_vec(buffer);
         let cell = SelfCell::try_new(byteview, |p| SymCache::parse(&*p))?;

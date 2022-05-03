@@ -3,7 +3,7 @@ use std::io::Cursor;
 
 use symbolic_common::{clean_path, ByteView};
 use symbolic_debuginfo::breakpad::BreakpadObject;
-use symbolic_symcache::{SymCache, SymCacheWriter};
+use symbolic_symcache::{SymCache, SymCacheConverter};
 use symbolic_testutils::fixture;
 
 #[test]
@@ -12,7 +12,9 @@ fn test_macos() {
     let breakpad = BreakpadObject::parse(&buffer).unwrap();
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&breakpad).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
     let symcache = SymCache::parse(&buffer).unwrap();
 
     let lookup_result: Vec<_> = symcache
@@ -34,7 +36,9 @@ fn test_macos_all() {
     let breakpad = BreakpadObject::parse(&buffer).unwrap();
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&breakpad).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
     let symcache = SymCache::parse(&buffer).unwrap();
 
     let files: BTreeMap<_, _> = breakpad
@@ -76,7 +80,9 @@ fn test_windows() {
     let breakpad = BreakpadObject::parse(&buffer).unwrap();
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&breakpad).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
     let symcache = SymCache::parse(&buffer).unwrap();
 
     let lookup_result: Vec<_> = symcache
@@ -102,7 +108,9 @@ PUBLIC d00 0 public_record"#;
     let breakpad = BreakpadObject::parse(buffer).unwrap();
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&breakpad).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
     let symcache = SymCache::parse(&buffer).unwrap();
 
     let lookup_result: Vec<_> = symcache
@@ -130,7 +138,9 @@ PUBLIC d80 0 public_record"#;
     let breakpad = BreakpadObject::parse(buffer).unwrap();
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&breakpad).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
     let symcache = SymCache::parse(&buffer).unwrap();
 
     let lookup_result: Vec<_> = symcache

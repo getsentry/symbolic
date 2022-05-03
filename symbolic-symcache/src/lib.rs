@@ -108,7 +108,7 @@ pub(crate) mod preamble;
 
 pub use compat::*;
 pub use new::transform;
-pub use new::SymCacheWriter;
+pub use new::SymCacheConverter;
 #[allow(deprecated)]
 pub use old::format;
 pub use old::{Line, LineInfo, SymCacheError, SymCacheErrorKind, ValueKind};

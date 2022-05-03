@@ -10,7 +10,7 @@ use symbolic::debuginfo::{Archive, FileFormat, Object};
 use symbolic::demangle::{Demangle, DemangleOptions};
 use symbolic::minidump::cfi::CfiCache;
 use symbolic::minidump::processor::{CodeModuleId, FrameInfoMap, ProcessState, StackFrame};
-use symbolic::symcache::{LineInfo, SymCache, SymCacheError, SymCacheWriter};
+use symbolic::symcache::{LineInfo, SymCache, SymCacheConverter, SymCacheError};
 
 type SymCaches<'a> = BTreeMap<CodeModuleId, SelfCell<ByteView<'a>, SymCache<'a>>>;
 type Error = Box<dyn std::error::Error>;
@@ -105,7 +105,13 @@ where
         }
 
         let mut buffer = Vec::new();
-        if let Err(e) = SymCacheWriter::write_object(&object, Cursor::new(&mut buffer)) {
+        let mut converter = SymCacheConverter::new();
+        if let Err(e) = converter.process_object(&object) {
+            eprintln!("[sym] {}: {}", path.display(), e);
+            return Ok(None);
+        }
+
+        if let Err(e) = converter.serialize(&mut Cursor::new(&mut buffer)) {
             eprintln!("[sym] {}: {}", path.display(), e);
             return Ok(None);
         }

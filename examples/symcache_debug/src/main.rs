@@ -13,7 +13,7 @@ use symbolic::demangle::{Demangle, DemangleOptions};
 #[cfg(feature = "il2cpp")]
 use symbolic::il2cpp::LineMapping;
 use symbolic::symcache::transform::{self, Transformer};
-use symbolic::symcache::{SymCache, SymCacheWriter};
+use symbolic::symcache::{SymCache, SymCacheConverter};
 
 // FIXME: This is a huge pain, can't this be simpler somehow?
 struct OwnedBcSymbolMap(SelfCell<ByteView<'static>, BcSymbolMap<'static>>);
@@ -73,7 +73,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
             None => return Err(anyhow!("did not find architecture {}", arch)),
         };
 
-        let mut writer = SymCacheWriter::new(Cursor::new(Vec::new()))?;
+        let mut converter = SymCacheConverter::new();
 
         if let Some(bcsymbolmap_file) = matches.value_of("bcsymbolmap_file") {
             let bcsymbolmap_path = Path::new(bcsymbolmap_file);
@@ -82,7 +82,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
                 OwnedBcSymbolMap(SelfCell::try_new(bcsymbolmap_buffer, |s| unsafe {
                     BcSymbolMap::parse(&*s)
                 })?);
-            writer.add_transformer(bcsymbolmap);
+            converter.add_transformer(bcsymbolmap);
         }
 
         #[cfg(feature = "il2cpp")]
@@ -91,14 +91,16 @@ fn execute(matches: &ArgMatches) -> Result<()> {
                 let linemapping_path = Path::new(linemapping_file);
                 let linemapping_buffer = ByteView::open(linemapping_path)?;
                 if let Some(linemapping) = LineMapping::parse(&linemapping_buffer) {
-                    writer.add_transformer(linemapping);
+                    converter.add_transformer(linemapping);
                 }
             }
         }
 
-        writer.process_object(obj)?;
+        converter.process_object(obj)?;
 
-        buffer = ByteView::from_vec(writer.finish()?.into_inner());
+        let mut result = Vec::new();
+        converter.serialize(&mut Cursor::new(&mut result))?;
+        buffer = ByteView::from_vec(result);
         symcache = SymCache::parse(&buffer)?;
 
         // write mode
