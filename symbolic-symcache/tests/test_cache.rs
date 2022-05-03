@@ -1,27 +1,8 @@
-use std::fmt;
-
 use symbolic_common::ByteView;
-use symbolic_symcache::SymCache;
+use symbolic_symcache::{FunctionsDebug, SymCache};
 use symbolic_testutils::fixture;
 
 type Error = Box<dyn std::error::Error>;
-
-/// Helper to create neat snapshots for symbol tables.
-struct FunctionsDebug<'a>(&'a SymCache<'a>);
-
-#[allow(deprecated)]
-impl fmt::Debug for FunctionsDebug<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for result in self.0.functions() {
-            match result {
-                Ok(function) => writeln!(f, "{:>16x} {}", &function.address(), &function.name())?,
-                Err(error) => writeln!(f, "{:?}", error)?,
-            }
-        }
-
-        Ok(())
-    }
-}
 
 #[test]
 fn test_load_header_linux() -> Result<(), Error> {
