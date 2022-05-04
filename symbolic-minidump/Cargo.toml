@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-minidump"
-version = "8.7.0"
+version = "8.7.1"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -37,8 +37,8 @@ processor = ["lazy_static", "regex"]
 lazy_static = { version = "1.4.0", optional = true }
 regex = { version = "1.3.5", optional = true }
 serde = { version = "1.0.94", optional = true }
-symbolic-common = { version = "8.7.0", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "8.7.0", path = "../symbolic-debuginfo" }
+symbolic-common = { version = "8.7.1", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "8.7.1", path = "../symbolic-debuginfo" }
 thiserror = "1.0.20"
 
 [build-dependencies]
