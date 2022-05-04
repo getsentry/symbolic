@@ -33,7 +33,7 @@ enum SymCacheInner<'data> {
 
 /// A platform independent symbolication cache.
 ///
-/// Use [`SymCacheWriter`](crate::SymCacheWriter) writer to create SymCaches,
+/// Use [`SymCacheConverter`](crate::SymCacheConverter) to create SymCaches,
 /// including the conversion from object files.
 pub struct SymCache<'data>(SymCacheInner<'data>);
 
@@ -333,20 +333,7 @@ pub struct FunctionsDebug<'a>(pub &'a SymCache<'a>);
 
 impl fmt::Debug for FunctionsDebug<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut vec: Vec<_> = self
-            .0
-            .functions()
-            .filter_map(|f| match f {
-                Ok(f) => {
-                    if f.address() != u32::MAX as u64 {
-                        Some(f)
-                    } else {
-                        None
-                    }
-                }
-                Err(_) => None,
-            })
-            .collect();
+        let mut vec: Vec<_> = self.0.functions().filter_map(Result::ok).collect();
 
         vec.sort_by_key(|f| (f.address(), f.symbol()));
         for function in vec {

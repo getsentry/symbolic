@@ -61,6 +61,8 @@ impl<'data> SymCache<'data> {
 
     /// An iterator over the functions in this SymCache.
     ///
+    /// Only functions with a valid entry pc, i.e., one not equal to `u32::MAX`,
+    /// will be returned.
     /// Note that functions are *not* returned ordered by name or entry pc,
     /// but in insertion order, which is essentially random.
     pub fn functions(&self) -> Functions<'data> {
@@ -245,9 +247,20 @@ impl<'data> Iterator for Functions<'data> {
     type Item = Function<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.cache.get_function(self.function_idx).map(|file| {
+        let mut function = self.cache.get_function(self.function_idx);
+
+        while let Some(ref f) = function {
+            if f.entry_pc == u32::MAX {
+                self.function_idx += 1;
+                function = self.cache.get_function(self.function_idx);
+            } else {
+                break;
+            }
+        }
+
+        function.map(|f| {
             self.function_idx += 1;
-            file
+            f
         })
     }
 }
