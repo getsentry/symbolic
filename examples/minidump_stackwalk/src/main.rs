@@ -1,3 +1,4 @@
+use core::fmt;
 use std::collections::{BTreeMap, HashMap};
 use std::io::Cursor;
 use std::path::PathBuf;
@@ -5,134 +6,115 @@ use std::time::UNIX_EPOCH;
 
 use async_trait::async_trait;
 use clap::{Arg, ArgMatches, Command};
+use minidump::system_info::PointerWidth;
 use minidump::{Minidump, Module};
 use minidump_processor::{
     FillSymbolError, FrameSymbolizer, FrameTrust, FrameWalker, ProcessState, StackFrame,
-    SymbolFile, SymbolProvider, SymbolStats,
+    SymbolFile, SymbolStats,
 };
 use parking_lot::RwLock;
+use thiserror::Error;
 use walkdir::WalkDir;
 
 use symbolic::common::{Arch, ByteView, DebugId, InstructionInfo, SelfCell};
-use symbolic::debuginfo::{Archive, FileFormat};
+use symbolic::debuginfo::{Archive, FileFormat, Object};
 use symbolic::demangle::{Demangle, DemangleOptions};
 use symbolic::minidump::cfi::CfiCache;
 use symbolic::symcache::{Error as SymCacheError, SourceLocation, SymCache, SymCacheConverter};
 
+type CfiFiles = BTreeMap<DebugId, Result<SymbolFile, SymbolError>>;
 type SymCaches<'a> = BTreeMap<DebugId, Result<SelfCell<ByteView<'a>, SymCache<'a>>, SymbolError>>;
 type Error = Box<dyn std::error::Error>;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Error)]
 enum SymbolError {
+    #[error("not found")]
     NotFound,
+    #[error("corrupt debug file")]
     Corrupt,
+    #[error("unknown error")]
     Other,
 }
 
+/// A SymbolProvider that recursively searches a given path for symbol files.
 struct LocalSymbolProvider<'a> {
     symbols_path: PathBuf,
-    cfi: RwLock<BTreeMap<DebugId, Result<SymbolFile, SymbolError>>>,
+    cfi_files: RwLock<CfiFiles>,
     symcaches: RwLock<SymCaches<'a>>,
     use_cfi: bool,
-    symbolize: bool,
+    symbolicate: bool,
 }
 
 impl<'a> LocalSymbolProvider<'a> {
-    /// Load the CFI information from the cache.
-    ///
-    /// This reads the CFI caches from disk and returns them in a format suitable for the
-    /// processor to stackwalk.
-    #[tracing::instrument]
-    pub fn new(path: PathBuf, use_cfi: bool, symbolize: bool) -> Self {
+    /// Constructs a `LocalSymbolProvider` that will look for symbol files under the given path.
+    fn new(path: PathBuf, use_cfi: bool, symbolicate: bool) -> Self {
         Self {
             symbols_path: path,
-            cfi: RwLock::new(BTreeMap::default()),
+            cfi_files: RwLock::new(BTreeMap::default()),
             symcaches: RwLock::new(SymCaches::default()),
             use_cfi,
-            symbolize,
+            symbolicate,
         }
     }
 
+    /// Consumes this `LocalSymbolProvider` and returns its collections of cfi and debug files.
+    fn into_inner(self) -> (CfiFiles, SymCaches<'a>) {
+        (self.cfi_files.into_inner(), self.symcaches.into_inner())
+    }
+
+    /// Attempt to load CFI for the given debug id.
     #[tracing::instrument(skip(self))]
     fn load_cfi(&self, id: DebugId) -> Result<SymbolFile, SymbolError> {
-        if !self.use_cfi {
-            return Err(SymbolError::Other);
-        }
-
-        let mut found = None;
-
-        for entry in WalkDir::new(&self.symbols_path)
-            .into_iter()
-            .filter_map(Result::ok)
-        {
-            tracing::trace!(path = ?entry.path());
-            // Folders will be recursed into automatically
-            if !entry.metadata().map_err(|_| SymbolError::Other)?.is_file() {
-                continue;
+        self.find_object(id, |object| {
+            if !object.has_unwind_info() {
+                return Err(SymbolError::NotFound);
             }
 
-            // Try to parse a potential object file. If this is not possible, then
-            // we're not dealing with an object file, thus silently skipping it
-            let buffer = ByteView::open(entry.path()).map_err(|_| SymbolError::Other)?;
-            let archive = match Archive::parse(&buffer) {
-                Ok(archive) => archive,
-                Err(_) => continue,
+            let cfi_cache = match CfiCache::from_object(object) {
+                Ok(cficache) => cficache,
+                Err(e) => {
+                    tracing::error!(error = %e);
+                    return Err(SymbolError::NotFound);
+                }
             };
 
-            for object in archive.objects() {
-                // Fail for invalid matching objects but silently skip objects
-                // without a UUID
-                let object = object.map_err(|_| SymbolError::Corrupt)?;
-
-                if object.debug_id() != id {
-                    continue;
-                }
-
-                if !object.has_unwind_info() {
-                    continue;
-                }
-
-                let cfi_cache = match CfiCache::from_object(&object) {
-                    Ok(cficache) => cficache,
-                    Err(e) => {
-                        eprintln!("[cfi] {}: {}", self.symbols_path.display(), e);
-                        continue;
-                    }
-                };
-
-                if cfi_cache.as_slice().is_empty() {
-                    continue;
-                }
-
-                let symbol_file = match SymbolFile::from_bytes(cfi_cache.as_slice()) {
-                    Ok(symbol_file) => symbol_file,
-                    Err(_e) => {
-                        //let stderr: &dyn std::error::Error = &e;
-                        //tracing::error!(stderr, "Error while processing cficache");
-                        continue;
-                    }
-                };
-
-                found = Some(symbol_file);
-
-                // Keep looking if we "only" found a breakpad symbols.
-                // We should prefer native symbols if we can get them.
-                if object.file_format() != FileFormat::Breakpad {
-                    break;
-                }
+            if cfi_cache.as_slice().is_empty() {
+                return Err(SymbolError::NotFound);
             }
-        }
-        found.ok_or(SymbolError::NotFound)
+
+            SymbolFile::from_bytes(cfi_cache.as_slice()).map_err(|_| SymbolError::Corrupt)
+        })
     }
 
-    fn load_symcache(
+    /// Attempt to load symbol information for the given debug id.
+    fn load_symbol_info(
         &self,
         id: DebugId,
     ) -> Result<SelfCell<ByteView<'a>, SymCache<'a>>, SymbolError> {
-        if !self.symbolize {
-            return Err(SymbolError::Other);
-        }
+        self.find_object(id, |object| {
+            // Silently skip all incompatible debug symbols
+            if !object.has_debug_info() {
+                return Err(SymbolError::NotFound);
+            }
 
+            let mut buffer = Vec::new();
+            if let Err(e) = SymCacheWriter::write_object(object, Cursor::new(&mut buffer)) {
+                tracing::error!(error = %e);
+                return Err(SymbolError::Corrupt);
+            }
+
+            SelfCell::try_new(ByteView::from_vec(buffer), |ptr| {
+                SymCache::parse(unsafe { &*ptr })
+            })
+            .map_err(|_| SymbolError::Corrupt)
+        })
+    }
+
+    /// Search for an object file belonging to the given debug id and process it with the given function.
+    fn find_object<T, F>(&self, id: DebugId, func: F) -> Result<T, SymbolError>
+    where
+        F: Fn(&Object) -> Result<T, SymbolError>,
+    {
         let mut found = None;
 
         for entry in WalkDir::new(&self.symbols_path)
@@ -161,26 +143,11 @@ impl<'a> LocalSymbolProvider<'a> {
                     continue;
                 }
 
-                // Silently skip all incompatible debug symbols
-                if !object.has_debug_info() {
-                    continue;
+                match func(&object) {
+                    Ok(thing) => found = Some(thing),
+                    Err(SymbolError::NotFound) => continue,
+                    Err(e) => return Err(e),
                 }
-
-                let mut buffer = Vec::new();
-                if let Err(e) = SymCacheWriter::write_object(&object, Cursor::new(&mut buffer)) {
-                    eprintln!("[sym] {}: {}", self.symbols_path.display(), e);
-                    continue;
-                }
-
-                // Silently skip conversion errors
-                let symcache = match SelfCell::try_new(ByteView::from_vec(buffer), |ptr| {
-                    SymCache::parse(unsafe { &*ptr })
-                }) {
-                    Ok(symcache) => symcache,
-                    Err(_) => continue,
-                };
-
-                found = Some(symcache);
 
                 // Keep looking if we "only" found a breakpad symbols.
                 // We should prefer native symbols if we can get them.
@@ -201,19 +168,23 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
         module: &(dyn Module + Sync),
         frame: &mut (dyn FrameSymbolizer + Send),
     ) -> Result<(), FillSymbolError> {
+        if !self.symbolicate {
+            return Err(FillSymbolError {});
+        }
+
         let id = module.debug_identifier().ok_or(FillSymbolError {})?;
 
         let mut symcaches = self.symcaches.write();
 
         let symcache = symcaches.entry(id).or_insert_with(|| {
             tracing::debug!("symcache needs to be loaded");
-            self.load_symcache(id)
+            self.load_symbol_info(id)
         });
 
         let symcache = match symcache {
             Ok(symcache) => symcache,
             Err(e) => {
-                tracing::debug!(?e, "symcache could not be loaded");
+                tracing::debug!(%e, "symcache could not be loaded");
                 return Err(FillSymbolError {});
             }
         };
@@ -246,9 +217,13 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
         module: &(dyn Module + Sync),
         walker: &mut (dyn FrameWalker + Send),
     ) -> Option<()> {
+        if !self.use_cfi {
+            return None;
+        }
+
         let id = module.debug_identifier()?;
 
-        let mut cfi = self.cfi.write();
+        let mut cfi = self.cfi_files.write();
 
         let symbol_file = cfi.entry(id).or_insert_with(|| {
             tracing::debug!("cfi needs to be loaded");
@@ -261,14 +236,14 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
                 file.walk_frame(module, walker)
             }
             Err(e) => {
-                tracing::debug!(?e, "cfi could not be loaded");
+                tracing::debug!(%e, "cfi could not be loaded");
                 None
             }
         }
     }
 
     fn stats(&self) -> HashMap<String, SymbolStats> {
-        self.cfi
+        self.cfi_files
             .read()
             .iter()
             .map(|(debug_id, sym)| {
@@ -289,15 +264,15 @@ fn symbolize<'a>(
     frame: &StackFrame,
     arch: Arch,
     crashing: bool,
-) -> Result<Option<Vec<SourceLocation<'a, 'a>>>, SymCacheError> {
-    let module = match frame.module() {
+) -> Option<Vec<SourceLocation<'a, 'a>>> {
+    let module = match &frame.module {
         Some(module) => module,
-        None => return Ok(None),
+        None => return None,
     };
 
     let symcache = match module.debug_identifier().and_then(|id| symcaches.get(&id)) {
         Some(Ok(symcache)) => symcache,
-        _ => return Ok(None),
+        _ => return None,
     };
 
     // TODO: Extract and supply signal and IP register
@@ -311,9 +286,9 @@ fn symbolize<'a>(
         .collect::<Vec<_>>();
 
     if lines.is_empty() {
-        Ok(None)
+        None
     } else {
-        Ok(Some(lines))
+        Some(lines)
     }
 }
 
@@ -321,174 +296,185 @@ fn symbolize<'a>(
 struct PrintOptions {
     crashed_only: bool,
     show_modules: bool,
-    show_symbol_stats: bool,
 }
 
-#[allow(deprecated)]
-fn print_state(
-    state: &ProcessState,
-    symbol_provider: &LocalSymbolProvider,
+struct Report<'a> {
+    process_state: ProcessState,
+    cfi_files: CfiFiles,
+    symcaches: SymCaches<'a>,
     options: PrintOptions,
-) -> Result<(), Error> {
-    let sys = &state.system_info;
-    println!("Operating system: {}", sys.os);
-    println!(
-        "                  {} {}",
-        sys.os_version.as_deref().unwrap_or("unknown version"),
-        sys.os_build.as_deref().unwrap_or("unknown_build")
-    );
-    println!();
+}
 
-    println!("CPU: {}", sys.cpu);
-    if let Some(ref cpu_info) = sys.cpu_info {
-        println!("     {}", cpu_info);
-    }
-    println!("     {} CPUs", sys.cpu_count);
-    println!();
+impl fmt::Display for Report<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let sys = &self.process_state.system_info;
+        writeln!(f, "Operating system: {}", sys.os)?;
+        writeln!(
+            f,
+            "                  {} {}",
+            sys.os_version.as_deref().unwrap_or("unknown version"),
+            sys.os_build.as_deref().unwrap_or("unknown_build")
+        )?;
+        writeln!(f,)?;
 
-    if let Some(ref assertion) = state.assertion {
-        println!("Assertion:     {}", assertion);
-    }
-    if let Some(crash_reason) = state.crash_reason {
-        println!("Crash reason:  {}", crash_reason);
-    }
-    if let Some(crash_address) = state.crash_address {
-        println!("Crash address: 0x{:x}", crash_address);
-    }
-    if let Ok(duration) = state.time.duration_since(UNIX_EPOCH) {
-        println!("Crash time:    {}", duration.as_secs());
-    }
+        writeln!(f, "CPU: {}", sys.cpu)?;
+        if let Some(ref cpu_info) = sys.cpu_info {
+            writeln!(f, "     {}", cpu_info)?;
+        }
+        writeln!(f, "     {} CPUs", sys.cpu_count)?;
+        writeln!(f,)?;
 
-    let arch = match state.system_info.cpu {
-        minidump::system_info::Cpu::X86 => Arch::X86,
-        minidump::system_info::Cpu::X86_64 => Arch::Amd64,
-        minidump::system_info::Cpu::Ppc => Arch::Ppc,
-        minidump::system_info::Cpu::Ppc64 => Arch::Ppc64,
-        minidump::system_info::Cpu::Arm => Arch::Arm,
-        minidump::system_info::Cpu::Arm64 => Arch::Arm64,
-        minidump::system_info::Cpu::Mips => Arch::Mips,
-        minidump::system_info::Cpu::Mips64 => Arch::Mips64,
-        _ => Arch::Unknown,
-    };
-
-    for (ti, thread) in state.threads.iter().enumerate() {
-        let crashed = state.requesting_thread.map_or(false, |i| ti == i);
-
-        if options.crashed_only && !crashed {
-            continue;
+        if let Some(ref assertion) = self.process_state.assertion {
+            writeln!(f, "Assertion:     {}", assertion)?;
+        }
+        if let Some(crash_reason) = self.process_state.crash_reason {
+            writeln!(f, "Crash reason:  {}", crash_reason)?;
+        }
+        if let Some(crash_address) = self.process_state.crash_address {
+            writeln!(f, "Crash address: 0x{:x}", crash_address)?;
+        }
+        if let Ok(duration) = self.process_state.time.duration_since(UNIX_EPOCH) {
+            writeln!(f, "Crash time:    {}", duration.as_secs())?;
         }
 
-        if crashed {
-            println!("\nThread {} (crashed)", ti);
+        let arch = match sys.cpu {
+            minidump::system_info::Cpu::X86 => Arch::X86,
+            minidump::system_info::Cpu::X86_64 => Arch::Amd64,
+            minidump::system_info::Cpu::Ppc => Arch::Ppc,
+            minidump::system_info::Cpu::Ppc64 => Arch::Ppc64,
+            minidump::system_info::Cpu::Arm => Arch::Arm,
+            minidump::system_info::Cpu::Arm64 => Arch::Arm64,
+            minidump::system_info::Cpu::Mips => Arch::Mips,
+            minidump::system_info::Cpu::Mips64 => Arch::Mips64,
+            _ => Arch::Unknown,
+        };
+
+        // for writeing: 8 digits + 0x prefix for 32bit, 16 digits + prefix otherwise
+        let address_width = if sys.cpu.pointer_width() == PointerWidth::Bits32 {
+            10
         } else {
-            println!("\nThread {}", ti);
-        }
+            18
+        };
 
-        let mut index = 0;
-        for (fi, frame) in thread.frames.iter().enumerate() {
-            if let Some(ref module) = frame.module {
-                if let Some(line_infos) =
-                    symbolize(&symbol_provider.symcaches.read(), frame, arch, fi == 0)?
-                {
-                    for (i, info) in line_infos.iter().enumerate() {
-                        println!(
-                            "{:>3}  {}!{} [{} : {}]",
-                            index,
-                            module.debug_file(),
-                            info.function()
-                                .name_for_demangling()
-                                .try_demangle(DemangleOptions::name_only()),
-                            info.file()
-                                .map(|file| file.path_name())
-                                .unwrap_or("<unknown file>"),
-                            info.line(),
-                        );
+        for (ti, thread) in self.process_state.threads.iter().enumerate() {
+            let crashed = self
+                .process_state
+                .requesting_thread
+                .map_or(false, |i| ti == i);
 
-                        if i + 1 < line_infos.len() {
-                            println!("     Found by: inlined into next frame");
-                            index += 1;
+            if self.options.crashed_only && !crashed {
+                continue;
+            }
+
+            if crashed {
+                writeln!(f, "\nThread {} (crashed)", ti)?;
+            } else {
+                writeln!(f, "\nThread {}", ti)?;
+            }
+
+            let mut index = 0;
+            for (fi, frame) in thread.frames.iter().enumerate() {
+                if let Some(ref module) = frame.module {
+                    if let Some(line_infos) = symbolize(&self.symcaches, frame, arch, fi == 0) {
+                        for (i, info) in line_infos.iter().enumerate() {
+                            writeln!(
+                                f,
+                                "{:>3}  {}!{} [{} : {}]",
+                                index,
+                                module
+                                    .debug_file()
+                                    .as_deref()
+                                    .unwrap_or("<unknown debug file>"),
+                                info.function_name()
+                                    .try_demangle(DemangleOptions::name_only()),
+                                info.filename(),
+                                info.line(),
+                            )?;
+
+                            if i + 1 < line_infos.len() {
+                                writeln!(f, "     Found by: inlined into next frame")?;
+                                index += 1;
+                            }
                         }
+                    } else {
+                        writeln!(
+                            f,
+                            "{:>3}  {} + {:#x}",
+                            index,
+                            module
+                                .debug_file()
+                                .as_deref()
+                                .unwrap_or("<unknown debug file>"),
+                            frame.instruction - module.base_address()
+                        )?;
                     }
                 } else {
-                    println!(
-                        "{:>3}  {} + 0x{:x}",
-                        index,
-                        module
-                            .debug_file()
-                            .as_deref()
-                            .unwrap_or("unknown debug file"),
-                        frame.instruction - module.base_address()
-                    );
+                    writeln!(f, "{:>3}  {:#x}", index, frame.instruction)?;
                 }
-            } else {
-                println!("{:>3}  {:#x}", index, frame.instruction);
-            }
 
-            let mut newline = true;
-            for (name, value) in frame.context.valid_registers() {
-                newline = !newline;
-                print!("     {:>4} = {:#x}", name, value);
-                if newline {
-                    println!();
+                let mut newline = true;
+                for (name, value) in frame.context.valid_registers() {
+                    newline = !newline;
+                    write!(f, "     {:>4} = {:#02$x}", name, value, address_width)?;
+                    if newline {
+                        writeln!(f,)?;
+                    }
                 }
+
+                if !newline {
+                    writeln!(f,)?;
+                }
+
+                let trust = match frame.trust {
+                    FrameTrust::None => "none",
+                    FrameTrust::Scan => "stack scanning",
+                    FrameTrust::CfiScan => "call frame info with scanning",
+                    FrameTrust::FramePointer => "previous frame's frame pointer",
+                    FrameTrust::CallFrameInfo => "call frame info",
+                    FrameTrust::PreWalked => "recovered by external stack walker",
+                    FrameTrust::Context => "given as instruction pointer in context",
+                };
+
+                writeln!(f, "     Found by: {}", trust)?;
+                index += 1;
             }
-
-            if !newline {
-                println!();
-            }
-
-            let trust = match frame.trust {
-                FrameTrust::None => "none",
-                FrameTrust::Scan => "stack scanning",
-                FrameTrust::CfiScan => "call frame info with scanning",
-                FrameTrust::FramePointer => "previous frame's frame pointer",
-                FrameTrust::CallFrameInfo => "call frame info",
-                FrameTrust::PreWalked => "recovered by external stack walker",
-                FrameTrust::Context => "given as instruction pointer in context",
-            };
-
-            println!("     Found by: {}", trust);
-            index += 1;
         }
-    }
 
-    if options.show_modules {
-        println!();
-        println!("Loaded modules:");
-        for module in state.modules.iter() {
-            print!(
-                "0x{:x} - 0x{:x}  {}  (",
-                module.base_address(),
-                module.base_address() + module.size() - 1,
-                module.code_file().rsplit('/').next().unwrap(),
-            );
+        if self.options.show_modules {
+            writeln!(f,)?;
+            writeln!(f, "Loaded modules:")?;
+            for module in self.process_state.modules.iter() {
+                write!(
+                    f,
+                    "{:#x} - {:#x}  {}  (",
+                    module.base_address(),
+                    module.base_address() + module.size() - 1,
+                    module.code_file().rsplit('/').next().unwrap(),
+                )?;
 
-            let id = module.debug_identifier();
+                let id = module.debug_identifier();
 
-            match id {
-                Some(id) => print!("{}", id),
-                None => print!("<missing debug identifier>"),
-            };
+                match id {
+                    Some(id) => write!(f, "{}", id)?,
+                    None => write!(f, "<missing debug identifier>")?,
+                };
 
-            if !id.map_or(false, |id| {
-                symbol_provider.symcaches.read().contains_key(&id)
-            }) {
-                print!("; no symbols");
+                match id.and_then(|id| self.symcaches.get(&id)) {
+                    Some(Ok(_)) => {}
+                    _ => write!(f, "; no symbols")?,
+                }
+
+                match id.and_then(|id| self.cfi_files.get(&id)) {
+                    Some(Ok(_)) => {}
+                    _ => write!(f, "; no CFI")?,
+                }
+
+                writeln!(f, ")")?;
             }
-
-            if !id.map_or(false, |id| symbol_provider.cfi.read().contains_key(&id)) {
-                print!("; no CFI");
-            }
-
-            println!(")");
         }
-    }
 
-    if options.show_symbol_stats {
-        println!("{:#?}", symbol_provider.stats());
+        Ok(())
     }
-
-    Ok(())
 }
 
 async fn execute(matches: &ArgMatches) -> Result<(), Error> {
@@ -507,10 +493,18 @@ async fn execute(matches: &ArgMatches) -> Result<(), Error> {
     let options = PrintOptions {
         crashed_only: matches.is_present("only_crash"),
         show_modules: !matches.is_present("no_modules"),
-        show_symbol_stats: matches.is_present("symbol_stats"),
     };
 
-    print_state(&process_state, &symbol_provider, options)?;
+    let (cfi_files, symcaches) = symbol_provider.into_inner();
+    print!(
+        "{}",
+        Report {
+            process_state,
+            cfi_files,
+            symcaches,
+            options
+        }
+    );
 
     Ok(())
 }
@@ -555,11 +549,6 @@ async fn main() {
                 .short('n')
                 .long("no-modules")
                 .help("Do not output loaded modules"),
-        )
-        .arg(
-            Arg::new("symbol_stats")
-                .long("symbol-stats")
-                .help("Print symbol stats"),
         )
         .get_matches();
 
