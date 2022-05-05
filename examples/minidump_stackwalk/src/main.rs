@@ -1,7 +1,7 @@
 use core::fmt;
 use std::collections::{BTreeMap, HashMap};
 use std::io::Cursor;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 use async_trait::async_trait;
@@ -17,13 +17,14 @@ use thiserror::Error;
 use walkdir::WalkDir;
 
 use symbolic::common::{Arch, ByteView, DebugId, InstructionInfo, SelfCell};
-use symbolic::debuginfo::{Archive, FileFormat, Object};
+use symbolic::debuginfo::{Archive, FileFormat};
 use symbolic::demangle::{Demangle, DemangleOptions};
 use symbolic::minidump::cfi::CfiCache;
 use symbolic::symcache::{Error as SymCacheError, SourceLocation, SymCache, SymCacheConverter};
 
 type CfiFiles = BTreeMap<DebugId, Result<SymbolFile, SymbolError>>;
 type SymCaches<'a> = BTreeMap<DebugId, Result<SelfCell<ByteView<'a>, SymCache<'a>>, SymbolError>>;
+type ObjectDatabase = BTreeMap<DebugId, Vec<ObjectMetadata>>;
 type Error = Box<dyn std::error::Error>;
 
 #[derive(Debug, Clone, Copy, Error)]
@@ -32,13 +33,24 @@ enum SymbolError {
     NotFound,
     #[error("corrupt debug file")]
     Corrupt,
-    #[error("unknown error")]
-    Other,
+}
+
+/// Metadata about an object in the filesystem.
+#[derive(Debug, Clone)]
+struct ObjectMetadata {
+    /// The object's path.
+    path: PathBuf,
+    /// The object's index in its archive.
+    index_in_archive: usize,
+    /// Whether the object has unwind info.
+    has_unwind_info: bool,
+    /// Whether the object has symbol info.
+    has_symbol_info: bool,
 }
 
 /// A SymbolProvider that recursively searches a given path for symbol files.
 struct LocalSymbolProvider<'a> {
-    symbols_path: PathBuf,
+    object_files: ObjectDatabase,
     cfi_files: RwLock<CfiFiles>,
     symcaches: RwLock<SymCaches<'a>>,
     use_cfi: bool,
@@ -47,9 +59,9 @@ struct LocalSymbolProvider<'a> {
 
 impl<'a> LocalSymbolProvider<'a> {
     /// Constructs a `LocalSymbolProvider` that will look for symbol files under the given path.
-    fn new(path: PathBuf, use_cfi: bool, symbolicate: bool) -> Self {
+    fn new(path: impl AsRef<Path>, use_cfi: bool, symbolicate: bool) -> Self {
         Self {
-            symbols_path: path,
+            object_files: Self::create_object_database(path),
             cfi_files: RwLock::new(BTreeMap::default()),
             symcaches: RwLock::new(SymCaches::default()),
             use_cfi,
@@ -57,109 +69,140 @@ impl<'a> LocalSymbolProvider<'a> {
         }
     }
 
+    /// Accumulates a database of objects found under the given path.
+    ///
+    /// The objects are saved in a map from `DebugId`s to vectors of
+    /// `[ObjectMetadata]`. The latter contains the following information:
+    /// * the object's path
+    /// * the object's index in its archive
+    /// * whether the object has unwind info
+    /// * whether the object has symbol info
+    #[tracing::instrument(skip_all, fields(path = ?path.as_ref()))]
+    fn create_object_database(path: impl AsRef<Path>) -> ObjectDatabase {
+        let mut object_db = ObjectDatabase::new();
+        for entry in WalkDir::new(path).into_iter().filter_map(Result::ok) {
+            // Folders will be recursed into automatically
+            if !entry.metadata().map_or(false, |md| md.is_file()) {
+                continue;
+            }
+
+            // Try to parse a potential object file. If this is not possible, then
+            // we're not dealing with an object file, thus silently skipping it
+            let buffer = match ByteView::open(entry.path()) {
+                Ok(buffer) => buffer,
+                Err(_e) => continue,
+            };
+
+            let archive = match Archive::parse(&buffer) {
+                Ok(archive) => archive,
+                Err(_e) => continue,
+            };
+
+            for (idx, object) in archive.objects().enumerate() {
+                // Fail for invalid matching objects but silently skip objects
+                // without a UUID
+                let object = match object {
+                    Ok(object) => object,
+                    Err(_e) => continue,
+                };
+
+                let id = object.debug_id();
+
+                let object_list = object_db.entry(id).or_insert_with(Vec::new);
+                object_list.push(ObjectMetadata {
+                    path: entry.path().into(),
+                    index_in_archive: idx,
+                    has_unwind_info: object.has_unwind_info(),
+                    has_symbol_info: object.has_debug_info(),
+                })
+            }
+        }
+
+        object_db
+    }
     /// Consumes this `LocalSymbolProvider` and returns its collections of cfi and debug files.
     fn into_inner(self) -> (CfiFiles, SymCaches<'a>) {
         (self.cfi_files.into_inner(), self.symcaches.into_inner())
     }
 
     /// Attempt to load CFI for the given debug id.
+    ///
+    /// The id is looked up in the symbol provider's `object_files` database.
+    /// Objects which have unwind information are then tried in order.
     #[tracing::instrument(level = "trace", skip_all, fields(id = %id))]
     fn load_cfi(&self, id: DebugId) -> Result<SymbolFile, SymbolError> {
-        self.find_object(id, |object| {
-            if !object.has_unwind_info() {
-                return Err(SymbolError::NotFound);
-            }
+        let object_list = self.object_files.get(&id).ok_or(SymbolError::NotFound)?;
+        let mut found = None;
+        for object_meta in object_list.iter().filter(|object| object.has_unwind_info) {
+            let buffer = ByteView::open(&object_meta.path).unwrap();
+            let archive = Archive::parse(&buffer).unwrap();
 
-            let cfi_cache = match CfiCache::from_object(object) {
+            let object = archive
+                .objects()
+                .nth(object_meta.index_in_archive)
+                .unwrap()
+                .unwrap();
+            let cfi_cache = match CfiCache::from_object(&object) {
                 Ok(cficache) => cficache,
-                Err(e) => {
-                    tracing::error!(error = %e);
-                    return Err(SymbolError::NotFound);
-                }
+                Err(_e) => continue,
             };
 
             if cfi_cache.as_slice().is_empty() {
-                return Err(SymbolError::NotFound);
+                continue;
             }
 
-            SymbolFile::from_bytes(cfi_cache.as_slice()).map_err(|_| SymbolError::Corrupt)
-        })
+            match SymbolFile::from_bytes(cfi_cache.as_slice()) {
+                Ok(symbol_file) => found = Some(symbol_file),
+                Err(_e) => continue,
+            }
+
+            if object.file_format() != FileFormat::Breakpad {
+                break;
+            }
+        }
+
+        found.ok_or(SymbolError::NotFound)
     }
 
-    /// Attempt to load symbol information for the given debug id.
+    /// Attempt to load CFI for the given debug id.
+    ///
+    /// The id is looked up in the symbol provider's `object_files` database.
+    /// Objects which have symbol information are then tried in order.
     #[tracing::instrument(level = "trace", skip_all, fields(id = %id))]
     fn load_symbol_info(
         &self,
         id: DebugId,
     ) -> Result<SelfCell<ByteView<'a>, SymCache<'a>>, SymbolError> {
-        self.find_object(id, |object| {
-            // Silently skip all incompatible debug symbols
-            if !object.has_debug_info() {
-                return Err(SymbolError::NotFound);
-            }
+        let object_list = self.object_files.get(&id).ok_or(SymbolError::NotFound)?;
+        let mut found = None;
+        for object_meta in object_list.iter().filter(|object| object.has_symbol_info) {
+            let buffer = ByteView::open(&object_meta.path).unwrap();
+            let archive = Archive::parse(&buffer).unwrap();
+
+            let object = archive
+                .objects()
+                .nth(object_meta.index_in_archive)
+                .unwrap()
+                .unwrap();
 
             let mut buffer = Vec::new();
-            if let Err(e) = SymCacheWriter::write_object(object, Cursor::new(&mut buffer)) {
+            if let Err(e) = SymCacheWriter::write_object(&object, Cursor::new(&mut buffer)) {
                 tracing::error!(error = %e);
                 return Err(SymbolError::Corrupt);
             }
 
-            SelfCell::try_new(ByteView::from_vec(buffer), |ptr| {
+            match SelfCell::try_new(ByteView::from_vec(buffer), |ptr| {
                 SymCache::parse(unsafe { &*ptr })
-            })
-            .map_err(|_| SymbolError::Corrupt)
-        })
-    }
-
-    /// Search for an object file belonging to the given debug id and process it with the given function.
-    fn find_object<T, F>(&self, id: DebugId, func: F) -> Result<T, SymbolError>
-    where
-        F: Fn(&Object) -> Result<T, SymbolError>,
-    {
-        let mut found = None;
-
-        'outer: for entry in WalkDir::new(&self.symbols_path)
-            .into_iter()
-            .filter_map(Result::ok)
-        {
-            // Folders will be recursed into automatically
-            if !entry.metadata().map_err(|_| SymbolError::Other)?.is_file() {
-                continue;
+            }) {
+                Ok(symcache) => found = Some(symcache),
+                Err(_e) => continue,
             }
 
-            // Try to parse a potential object file. If this is not possible, then
-            // we're not dealing with an object file, thus silently skipping it
-            let buffer = ByteView::open(entry.path()).map_err(|_| SymbolError::Other)?;
-            let archive = match Archive::parse(&buffer) {
-                Ok(archive) => archive,
-                Err(_) => continue,
-            };
-
-            for object in archive.objects() {
-                // Fail for invalid matching objects but silently skip objects
-                // without a UUID
-                let object = object.map_err(|_| SymbolError::Corrupt)?;
-
-                if object.debug_id() != id {
-                    continue;
-                }
-
-                tracing::trace!(object.format = %object.file_format());
-
-                match func(&object) {
-                    Ok(thing) => found = Some(thing),
-                    Err(SymbolError::NotFound) => continue,
-                    Err(e) => return Err(e),
-                }
-
-                // Keep looking if we "only" found a breakpad symbols.
-                // We should prefer native symbols if we can get them.
-                if object.file_format() != FileFormat::Breakpad {
-                    tracing::trace!("non-breakpad object found, stopping");
-                    break 'outer;
-                }
+            if object.file_format() != FileFormat::Breakpad {
+                break;
             }
         }
+
         found.ok_or(SymbolError::NotFound)
     }
 }
@@ -496,7 +539,7 @@ async fn execute(matches: &ArgMatches) -> Result<(), Error> {
     let symbols_path = matches.value_of("debug_symbols_path").unwrap_or("invalid");
 
     let symbol_provider = LocalSymbolProvider::new(
-        symbols_path.into(),
+        symbols_path,
         matches.is_present("cfi"),
         matches.is_present("symbolize"),
     );
