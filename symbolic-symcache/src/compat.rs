@@ -33,7 +33,7 @@ enum SymCacheInner<'data> {
 
 /// A platform independent symbolication cache.
 ///
-/// Use [`SymCacheWriter`](crate::SymCacheWriter) writer to create SymCaches,
+/// Use [`SymCacheConverter`](crate::SymCacheConverter) to create SymCaches,
 /// including the conversion from object files.
 pub struct SymCache<'data>(SymCacheInner<'data>);
 

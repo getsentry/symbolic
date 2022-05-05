@@ -13,6 +13,7 @@ mod writer;
 pub use compat::*;
 pub use error::{Error, ErrorKind};
 pub use lookup::*;
+pub use writer::SymCacheConverter;
 
 use raw::align_to_eight;
 
