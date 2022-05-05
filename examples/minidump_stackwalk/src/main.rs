@@ -63,7 +63,7 @@ impl<'a> LocalSymbolProvider<'a> {
     }
 
     /// Attempt to load CFI for the given debug id.
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(level = "trace", skip_all, fields(id = %id))]
     fn load_cfi(&self, id: DebugId) -> Result<SymbolFile, SymbolError> {
         self.find_object(id, |object| {
             if !object.has_unwind_info() {
@@ -87,6 +87,7 @@ impl<'a> LocalSymbolProvider<'a> {
     }
 
     /// Attempt to load symbol information for the given debug id.
+    #[tracing::instrument(level = "trace", skip_all, fields(id = %id))]
     fn load_symbol_info(
         &self,
         id: DebugId,
@@ -165,7 +166,11 @@ impl<'a> LocalSymbolProvider<'a> {
 
 #[async_trait]
 impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
-    #[tracing::instrument(skip(self, module, frame), fields(module.id = ?module.debug_identifier(), frame.instruction = frame.get_instruction()))]
+    #[tracing::instrument(
+        level = "trace",
+        skip(self, module, frame),
+        fields(module.id, frame.instruction = frame.get_instruction())
+    )]
     async fn fill_symbol(
         &self,
         module: &(dyn Module + Sync),
@@ -176,23 +181,24 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
         }
 
         let id = module.debug_identifier().ok_or(FillSymbolError {})?;
+        tracing::Span::current().record("module.id", &tracing::field::display(id));
 
         let mut symcaches = self.symcaches.write();
 
         let symcache = symcaches.entry(id).or_insert_with(|| {
-            tracing::debug!("symcache needs to be loaded");
+            tracing::trace!("symcache needs to be loaded");
             self.load_symbol_info(id)
         });
 
         let symcache = match symcache {
             Ok(symcache) => symcache,
             Err(e) => {
-                tracing::debug!(%e, "symcache could not be loaded");
+                tracing::trace!(%e, "symcache could not be loaded");
                 return Err(FillSymbolError {});
             }
         };
 
-        tracing::debug!("symcache successfully loaded");
+        tracing::trace!("symcache successfully loaded");
 
         let instruction = frame.get_instruction();
         let line_info = symcache
@@ -214,7 +220,11 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, module, walker), fields(module.id = ?module.debug_identifier()))]
+    #[tracing::instrument(
+        level = "trace",
+        skip(self, module, walker),
+        fields(module.id, frame.instruction = walker.get_instruction())
+    )]
     async fn walk_frame(
         &self,
         module: &(dyn Module + Sync),
@@ -225,21 +235,22 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
         }
 
         let id = module.debug_identifier()?;
+        tracing::Span::current().record("module.id", &tracing::field::display(id));
 
         let mut cfi = self.cfi_files.write();
 
         let symbol_file = cfi.entry(id).or_insert_with(|| {
-            tracing::debug!("cfi needs to be loaded");
+            tracing::trace!("cfi needs to be loaded");
             self.load_cfi(id)
         });
 
         match symbol_file {
             Ok(file) => {
-                tracing::debug!("cfi successfully loaded");
+                tracing::trace!("cfi successfully loaded");
                 file.walk_frame(module, walker)
             }
             Err(e) => {
-                tracing::debug!(%e, "cfi could not be loaded");
+                tracing::trace!(%e, "cfi could not be loaded");
                 None
             }
         }
