@@ -117,7 +117,7 @@ impl<'a> LocalSymbolProvider<'a> {
     {
         let mut found = None;
 
-        for entry in WalkDir::new(&self.symbols_path)
+        'outer: for entry in WalkDir::new(&self.symbols_path)
             .into_iter()
             .filter_map(Result::ok)
         {
@@ -143,6 +143,8 @@ impl<'a> LocalSymbolProvider<'a> {
                     continue;
                 }
 
+                tracing::trace!(object.format = %object.file_format());
+
                 match func(&object) {
                     Ok(thing) => found = Some(thing),
                     Err(SymbolError::NotFound) => continue,
@@ -152,7 +154,8 @@ impl<'a> LocalSymbolProvider<'a> {
                 // Keep looking if we "only" found a breakpad symbols.
                 // We should prefer native symbols if we can get them.
                 if object.file_format() != FileFormat::Breakpad {
-                    break;
+                    tracing::trace!("non-breakpad object found, stopping");
+                    break 'outer;
                 }
             }
         }
@@ -443,10 +446,10 @@ impl fmt::Display for Report<'_> {
         if self.options.show_modules {
             writeln!(f,)?;
             writeln!(f, "Loaded modules:")?;
-            for module in self.process_state.modules.iter() {
+            for module in self.process_state.modules.by_addr() {
                 write!(
                     f,
-                    "{:#x} - {:#x}  {}  (",
+                    "{:#018x} - {:#018x}  {}  (",
                     module.base_address(),
                     module.base_address() + module.size() - 1,
                     module.code_file().rsplit('/').next().unwrap(),
@@ -455,7 +458,7 @@ impl fmt::Display for Report<'_> {
                 let id = module.debug_identifier();
 
                 match id {
-                    Some(id) => write!(f, "{}", id)?,
+                    Some(id) => write!(f, "{}", id.breakpad())?,
                     None => write!(f, "<missing debug identifier>")?,
                 };
 
