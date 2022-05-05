@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Updated wasmparser dependency to `0.83.0` ([#557](https://github.com/getsentry/symbolic/pull/557))
+- Updated rust-sourcemap dependency to hopefully speed up sourcemap parsing ([#559](https://github.com/getsentry/symbolic/pull/559))
+- Match symbol names by exact addresses from symbol table ([#510](https://github.com/getsentry/symbolic/pull/510))
+- Return a more correct `function_size` when dealing with split functions ([#522](https://github.com/getsentry/symbolic/pull/522))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@shuoli84](https://github.com/shuoli84)
+- [@bnjbvr](https://github.com/bnjbvr)
+
 ## 8.7.0
 
 **Features**:
