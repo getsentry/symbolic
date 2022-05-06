@@ -58,6 +58,19 @@ impl<'data> SymCache<'data> {
             language: Language::from_u32(raw_function.lang),
         })
     }
+
+    /// An iterator over the functions in this SymCache.
+    ///
+    /// Only functions with a valid entry pc, i.e., one not equal to `u32::MAX`,
+    /// will be returned.
+    /// Note that functions are *not* returned ordered by name or entry pc,
+    /// but in insertion order, which is essentially random.
+    pub fn functions(&self) -> Functions<'data> {
+        Functions {
+            cache: self.clone(),
+            function_idx: 0,
+        }
+    }
 }
 
 /// A source File included in the SymCache.
@@ -220,5 +233,34 @@ impl<'data, 'cache> Iterator for SourceLocationIter<'data, 'cache> {
                     source_location,
                 }
             })
+    }
+}
+
+/// Iterator returned by [`SymCache::functions`]; see documentation there.
+#[derive(Debug, Clone)]
+pub struct Functions<'data> {
+    cache: SymCache<'data>,
+    function_idx: u32,
+}
+
+impl<'data> Iterator for Functions<'data> {
+    type Item = Function<'data>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut function = self.cache.get_function(self.function_idx);
+
+        while let Some(ref f) = function {
+            if f.entry_pc == u32::MAX {
+                self.function_idx += 1;
+                function = self.cache.get_function(self.function_idx);
+            } else {
+                break;
+            }
+        }
+
+        function.map(|f| {
+            self.function_idx += 1;
+            f
+        })
     }
 }

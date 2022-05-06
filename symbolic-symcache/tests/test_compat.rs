@@ -5,7 +5,6 @@ use symbolic_testutils::fixture;
 use similar_asserts::assert_eq;
 
 #[test]
-#[allow(deprecated)]
 fn test_v1() -> Result<(), Box<dyn std::error::Error>> {
     let buffer = ByteView::open(fixture("symcache/compat/v1.symc"))?;
     let symcache = SymCache::parse(&buffer)?;

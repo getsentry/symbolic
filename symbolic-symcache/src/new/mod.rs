@@ -3,14 +3,12 @@ use std::{mem, ptr};
 
 use symbolic_common::{Arch, AsSelf, DebugId};
 
-mod compat;
 mod error;
 mod lookup;
 pub(crate) mod raw;
 pub mod transform;
 mod writer;
 
-pub use compat::*;
 pub use error::{Error, ErrorKind};
 pub use lookup::*;
 pub use writer::SymCacheConverter;

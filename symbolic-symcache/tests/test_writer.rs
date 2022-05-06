@@ -1,45 +1,14 @@
-use std::fmt;
 use std::io::Cursor;
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
-use symbolic_symcache::{SymCache, SymCacheConverter};
+use symbolic_symcache::{FunctionsDebug, SymCache, SymCacheConverter};
 use symbolic_testutils::fixture;
 
 #[cfg(feature = "il2cpp")]
 use symbolic_il2cpp::usym::UsymSymbols;
 
 type Error = Box<dyn std::error::Error>;
-
-/// Helper to create neat snapshots for symbol tables.
-struct FunctionsDebug<'a>(&'a SymCache<'a>);
-
-#[allow(deprecated)]
-impl fmt::Debug for FunctionsDebug<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut vec: Vec<_> = self
-            .0
-            .functions()
-            .filter_map(|f| match f {
-                Ok(f) => {
-                    if f.address() != u32::MAX as u64 {
-                        Some(f)
-                    } else {
-                        None
-                    }
-                }
-                Err(_) => None,
-            })
-            .collect();
-
-        vec.sort_by_key(|f| f.address());
-        for function in vec {
-            writeln!(f, "{:>16x} {}", &function.address(), &function.name())?;
-        }
-
-        Ok(())
-    }
-}
 
 #[test]
 fn test_write_header_linux() -> Result<(), Error> {

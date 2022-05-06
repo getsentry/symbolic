@@ -77,11 +77,8 @@ impl<'data> SymCache<'data> {
     }
 
     /// Returns an iterator over all functions.
-    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
-    #[allow(deprecated)]
     pub fn functions(&self) -> Functions<'data> {
         match &self.0 {
-            #[allow(deprecated)]
             SymCacheInner::New(symc) => {
                 Functions(FunctionsInner::New(symc.functions().enumerate()))
             }
@@ -133,10 +130,8 @@ enum FunctionInner<'data> {
 
 /// A function in a `SymCache`.
 #[derive(Clone)]
-#[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
 pub struct Function<'data>(FunctionInner<'data>);
 
-#[allow(deprecated)]
 impl<'data> Function<'data> {
     /// The ID of the function.
     pub fn id(&self) -> usize {
@@ -209,7 +204,6 @@ impl<'data> Function<'data> {
     }
 }
 
-#[allow(deprecated)]
 impl<'data> fmt::Debug for Function<'data> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
@@ -227,10 +221,8 @@ enum FunctionsInner<'data> {
 
 /// An iterator over all functions in a `SymCache`.
 #[derive(Clone)]
-#[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
 pub struct Functions<'data>(FunctionsInner<'data>);
 
-#[allow(deprecated)]
 impl<'data> Iterator for Functions<'data> {
     type Item = Result<Function<'data>, SymCacheError>;
 
@@ -248,7 +240,6 @@ impl<'data> Iterator for Functions<'data> {
     }
 }
 
-#[allow(deprecated)]
 impl<'data> fmt::Debug for Functions<'data> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
@@ -334,5 +325,21 @@ impl<'a> Iterator for Lines<'a> {
             LinesInner::Old(ref mut lines) => lines.next(),
             LinesInner::New => None,
         }
+    }
+}
+
+/// Helper to create neat snapshots for symbol tables.
+pub struct FunctionsDebug<'a>(pub &'a SymCache<'a>);
+
+impl fmt::Debug for FunctionsDebug<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut vec: Vec<_> = self.0.functions().filter_map(Result::ok).collect();
+
+        vec.sort_by_key(|f| (f.address(), f.symbol()));
+        for function in vec {
+            writeln!(f, "{:>16x} {}", &function.address(), &function.name())?;
+        }
+
+        Ok(())
     }
 }
