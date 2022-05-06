@@ -2,7 +2,7 @@ use std::io::Cursor;
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
-use symbolic_symcache::{FunctionsDebug, SymCache, SymCacheWriter};
+use symbolic_symcache::{FunctionsDebug, SymCache, SymCacheConverter};
 use symbolic_testutils::fixture;
 
 #[cfg(feature = "il2cpp")]
@@ -16,7 +16,9 @@ fn test_write_header_linux() -> Result<(), Error> {
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&object)?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
 
     #[cfg(target_endian = "little")]
     {
@@ -49,7 +51,9 @@ fn test_write_functions_linux() -> Result<(), Error> {
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&object)?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!("functions_linux", FunctionsDebug(&symcache));
 
@@ -62,7 +66,9 @@ fn test_write_header_macos() -> Result<(), Error> {
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&object)?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!(symcache, @r###"
     SymCache {
@@ -89,7 +95,9 @@ fn test_write_functions_macos() -> Result<(), Error> {
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&object)?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!("functions_macos", FunctionsDebug(&symcache));
 
@@ -108,7 +116,9 @@ fn test_write_functions_overlapping_funcs() -> Result<(), Error> {
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&object)?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!("overlapping_funcs", FunctionsDebug(&symcache));
 
@@ -121,7 +131,9 @@ fn test_write_large_symbol_names() -> Result<(), Error> {
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&object)?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
     SymCache::parse(&buffer)?;
 
     Ok(())
@@ -135,7 +147,9 @@ fn test_lookup_no_lines() -> Result<(), Error> {
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&object)?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
     let symbols = symcache.lookup(0xc6dd98)?.collect::<Vec<_>>()?;
 
@@ -160,7 +174,9 @@ fn test_lookup_no_size() -> Result<(), Error> {
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&object)?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
     let symbols = symcache.lookup(0x1489adf)?.collect::<Vec<_>>()?;
 
@@ -180,7 +196,9 @@ fn test_lookup_modulo_u16() -> Result<(), Error> {
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&object)?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
     let symbols = symcache.lookup(0x3c105a1)?.collect::<Vec<_>>()?;
 
@@ -199,7 +217,9 @@ fn test_trailing_marker() -> Result<(), Error> {
     let object = Object::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&object)?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
     buffer.extend(b"WITH_SYMBOLMAP");
 
     SymCache::parse(&buffer)?;
@@ -214,11 +234,10 @@ fn test_mapless_usym() -> Result<(), Error> {
     let usym = UsymSymbols::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    let mut writer = SymCacheWriter::new(Cursor::new(&mut buffer))?;
+    let mut converter = SymCacheConverter::new();
+    converter.process_usym(&usym)?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
 
-    writer.process_usym(&usym)?;
-
-    let _ = writer.finish()?;
     let cache = SymCache::parse(&buffer)?;
 
     insta::assert_debug_snapshot!(cache, @r###"
@@ -247,11 +266,9 @@ fn test_usym() -> Result<(), Error> {
     let usym = UsymSymbols::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    let mut writer = SymCacheWriter::new(Cursor::new(&mut buffer))?;
-
-    writer.process_usym(&usym)?;
-
-    let _ = writer.finish()?;
+    let mut converter = SymCacheConverter::new();
+    converter.process_usym(&usym)?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
     let cache = SymCache::parse(&buffer)?;
 
     insta::assert_debug_snapshot!(cache, @r###"
@@ -280,11 +297,9 @@ fn test_write_functions_usym() -> Result<(), Error> {
     let usym = UsymSymbols::parse(&buffer)?;
 
     let mut buffer = Vec::new();
-    let mut writer = SymCacheWriter::new(Cursor::new(&mut buffer))?;
-
-    writer.process_usym(&usym)?;
-
-    let _ = writer.finish()?;
+    let mut converter = SymCacheConverter::new();
+    converter.process_usym(&usym)?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
     let cache = SymCache::parse(&buffer)?;
     insta::assert_debug_snapshot!("functions_usym", FunctionsDebug(&cache));
 

@@ -1,18 +1,17 @@
 use std::convert::TryInto;
 use std::{mem, ptr};
 
-use symbolic_common::{Arch, DebugId};
+use symbolic_common::{Arch, AsSelf, DebugId};
 
-mod compat;
 mod error;
 mod lookup;
 pub(crate) mod raw;
 pub mod transform;
 mod writer;
 
-pub use compat::*;
 pub use error::{Error, ErrorKind};
 pub use lookup::*;
+pub use writer::SymCacheConverter;
 
 use raw::align_to_eight;
 
@@ -176,5 +175,13 @@ impl<'data> SymCache<'data> {
     /// The debug identifier of the cache file.
     pub fn debug_id(&self) -> DebugId {
         self.header.debug_id
+    }
+}
+
+impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
+    type Ref = SymCache<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
     }
 }

@@ -126,6 +126,9 @@ impl SymCacheConverter {
             .debug_session()
             .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadDebugFile, e))?;
 
+        self.set_arch(object.arch());
+        self.set_debug_id(object.debug_id());
+
         for function in session.functions() {
             let function =
                 function.map_err(|e| SymCacheError::new(SymCacheErrorKind::BadDebugFile, e))?;
@@ -140,6 +143,7 @@ impl SymCacheConverter {
         Ok(())
     }
 
+    /// Processes an individual [`Function`], adding its line information to the converter.
     pub fn process_symbolic_function(&mut self, function: &Function<'_>) {
         // skip over empty functions or functions whose address is too large to fit in a u32
         if function.size == 0 || function.address > u32::MAX as u64 {
@@ -266,6 +270,7 @@ impl SymCacheConverter {
         }
     }
 
+    /// Processes an individual [`Symbol`].
     pub fn process_symbolic_symbol(&mut self, symbol: &Symbol<'_>) {
         let name_idx = {
             let mut function = transform::Function {
@@ -319,6 +324,14 @@ impl SymCacheConverter {
     /// Processes a set of [`UsymSymbols`], passing all mapped symbols into the converter.
     pub fn process_usym(&mut self, usym: &UsymSymbols) -> Result<(), SymCacheError> {
         // Assume records they are sorted by address; There's a test that guarantees this
+
+        let debug_id = usym
+            .id()
+            .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadFileHeader, e))?;
+        self.set_debug_id(debug_id);
+
+        let arch = usym.arch().unwrap_or_default();
+        self.set_arch(arch);
 
         let mapped_records = usym.records().filter_map(|r| match r {
             UsymSourceRecord::Unmapped(_) => None,
