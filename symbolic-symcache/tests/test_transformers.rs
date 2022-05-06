@@ -48,11 +48,11 @@ fn test_transformer_symbolmap() -> Result<(), Error> {
     converter.serialize(&mut Cursor::new(&mut buffer))?;
     let cache = SymCache::parse(&buffer)?;
 
-    let sl = cache.lookup(0x5a74)?.next().unwrap()?;
+    let sl = cache.lookup(0x5a74).next().unwrap();
 
-    assert_eq!(sl.function_name(), "-[SentryMessage initWithFormatted:]");
+    assert_eq!(sl.function().name(), "-[SentryMessage initWithFormatted:]");
     assert_eq!(
-        sl.abs_path(),
+        sl.file().unwrap().full_path(),
         "/Users/philipphofmann/git-repos/sentry-cocoa/Sources/Sentry/SentryMessage.m"
     );
 

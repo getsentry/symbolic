@@ -3,59 +3,19 @@ source: symbolic-symcache/tests/test_cache.rs
 expression: "&line_infos"
 
 ---
-[
-    LineInfo {
-        arch: Amd64,
+SourceLocationIter {
+    cache: SymCache {
+        version: 7,
         debug_id: DebugId {
             uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
             appendix: 0,
         },
-        sym_addr: 56341,
-        line_addr: 56341,
-        instr_addr: 56341,
-        line: 21,
-        lang: Cpp,
-        symbol: Some(
-            "_ZN12_GLOBAL__N_15crashEv",
-        ),
-        filename: "main.cpp",
-        base_dir: "../macos",
-        comp_dir: "/Users/travis/build/getsentry/breakpad-tools/macos",
-    },
-    LineInfo {
         arch: Amd64,
-        debug_id: DebugId {
-            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
-            appendix: 0,
-        },
-        sym_addr: 56341,
-        line_addr: 56341,
-        instr_addr: 56341,
-        line: 25,
-        lang: Cpp,
-        symbol: Some(
-            "_ZN12_GLOBAL__N_15startEv",
-        ),
-        filename: "main.cpp",
-        base_dir: "../macos",
-        comp_dir: "/Users/travis/build/getsentry/breakpad-tools/macos",
+        files: 36,
+        functions: 639,
+        source_locations: 6033,
+        ranges: 4591,
+        string_bytes: 42829,
     },
-    LineInfo {
-        arch: Amd64,
-        debug_id: DebugId {
-            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
-            appendix: 0,
-        },
-        sym_addr: 56224,
-        line_addr: 56341,
-        instr_addr: 56341,
-        line: 32,
-        lang: Cpp,
-        symbol: Some(
-            "main",
-        ),
-        filename: "main.cpp",
-        base_dir: "../macos",
-        comp_dir: "/Users/travis/build/getsentry/breakpad-tools/macos",
-    },
-]
+    source_location_idx: 6023,
+}

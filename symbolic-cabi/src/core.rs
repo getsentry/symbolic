@@ -306,35 +306,13 @@ impl SymbolicErrorCode {
                 return SymbolicErrorCode::ParseSourceMapError;
             }
 
-            use symbolic::symcache::{SymCacheError, SymCacheErrorKind};
-            if let Some(error) = error.downcast_ref::<SymCacheError>() {
+            use symbolic::symcache::{Error, ErrorKind};
+            if let Some(error) = error.downcast_ref::<Error>() {
                 return match error.kind() {
-                    SymCacheErrorKind::BadFileMagic => SymbolicErrorCode::SymCacheErrorBadFileMagic,
-                    SymCacheErrorKind::BadFileHeader => {
-                        SymbolicErrorCode::SymCacheErrorBadFileHeader
-                    }
-                    SymCacheErrorKind::BadSegment => SymbolicErrorCode::SymCacheErrorBadSegment,
-                    SymCacheErrorKind::BadCacheFile => SymbolicErrorCode::SymCacheErrorBadCacheFile,
-                    SymCacheErrorKind::UnsupportedVersion => {
-                        SymbolicErrorCode::SymCacheErrorUnsupportedVersion
-                    }
-                    SymCacheErrorKind::BadDebugFile => SymbolicErrorCode::SymCacheErrorBadDebugFile,
-                    SymCacheErrorKind::MissingDebugSection => {
-                        SymbolicErrorCode::SymCacheErrorMissingDebugSection
-                    }
-                    SymCacheErrorKind::MissingDebugInfo => {
-                        SymbolicErrorCode::SymCacheErrorMissingDebugInfo
-                    }
-                    SymCacheErrorKind::UnsupportedDebugKind => {
-                        SymbolicErrorCode::SymCacheErrorUnsupportedDebugKind
-                    }
-                    SymCacheErrorKind::ValueTooLarge(_) => {
-                        SymbolicErrorCode::SymCacheErrorValueTooLarge
-                    }
-                    SymCacheErrorKind::WriteFailed => SymbolicErrorCode::SymCacheErrorWriteFailed,
-                    SymCacheErrorKind::TooManyValues(_) => {
-                        SymbolicErrorCode::SymCacheErrorTooManyValues
-                    }
+                    ErrorKind::WrongFormat => SymbolicErrorCode::SymCacheErrorBadFileMagic,
+                    ErrorKind::HeaderTooSmall => SymbolicErrorCode::SymCacheErrorBadFileHeader,
+                    ErrorKind::WrongVersion => SymbolicErrorCode::SymCacheErrorUnsupportedVersion,
+                    ErrorKind::BadDebugFile => SymbolicErrorCode::SymCacheErrorBadDebugFile,
                     _ => SymbolicErrorCode::SymCacheErrorUnknown,
                 };
             }

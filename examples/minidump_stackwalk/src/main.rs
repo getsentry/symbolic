@@ -10,7 +10,7 @@ use symbolic::debuginfo::{Archive, FileFormat, Object};
 use symbolic::demangle::{Demangle, DemangleOptions};
 use symbolic::minidump::cfi::CfiCache;
 use symbolic::minidump::processor::{CodeModuleId, FrameInfoMap, ProcessState, StackFrame};
-use symbolic::symcache::{LineInfo, SymCache, SymCacheConverter, SymCacheError};
+use symbolic::symcache::{Error as SymCacheError, SourceLocation, SymCache, SymCacheConverter};
 
 type SymCaches<'a> = BTreeMap<CodeModuleId, SelfCell<ByteView<'a>, SymCache<'a>>>;
 type Error = Box<dyn std::error::Error>;
@@ -130,7 +130,7 @@ fn symbolize<'a>(
     frame: &StackFrame,
     arch: Arch,
     crashing: bool,
-) -> Result<Option<Vec<LineInfo<'a>>>, SymCacheError> {
+) -> Result<Option<Vec<SourceLocation<'a, 'a>>>, SymCacheError> {
     let module = match frame.module() {
         Some(module) => module,
         None => return Ok(None),
@@ -146,11 +146,10 @@ fn symbolize<'a>(
     let caller_address = InstructionInfo::new(arch, return_address)
         .is_crashing_frame(crashing)
         .caller_address();
-
     let lines = symcache
         .get()
-        .lookup(caller_address - module.base_address())?
-        .collect::<Vec<_>>()?;
+        .lookup(caller_address - module.base_address())
+        .collect::<Vec<_>>();
 
     if lines.is_empty() {
         Ok(None)
@@ -208,14 +207,16 @@ fn print_state(
                 if let Some(line_infos) = symbolize(symcaches, frame, arch, fi == 0)? {
                     for (i, info) in line_infos.iter().enumerate() {
                         println!(
-                            "{:>3}  {}!{} [{} : {} + 0x{:x}]",
+                            "{:>3}  {}!{} [{} : {}]",
                             index,
                             module.debug_file(),
-                            info.function_name()
+                            info.function()
+                                .name_for_demangling()
                                 .try_demangle(DemangleOptions::name_only()),
-                            info.filename(),
+                            info.file()
+                                .map(|file| file.path_name())
+                                .unwrap_or("<unknown file>"),
                             info.line(),
-                            info.instruction_address() - info.line_address(),
                         );
 
                         if i + 1 < line_infos.len() {
