@@ -13,7 +13,7 @@ use symbolic::demangle::{Demangle, DemangleOptions};
 #[cfg(feature = "il2cpp")]
 use symbolic::il2cpp::LineMapping;
 use symbolic::symcache::transform::{self, Transformer};
-use symbolic::symcache::{SymCache, SymCacheConverter};
+use symbolic::symcache::{FunctionsDebug, SymCache, SymCacheConverter};
 
 // FIXME: This is a huge pain, can't this be simpler somehow?
 struct OwnedBcSymbolMap(SelfCell<ByteView<'static>, BcSymbolMap<'static>>);
@@ -173,9 +173,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 
     // print mode
     if matches.is_present("print_symbols") {
-        for func in symcache.functions() {
-            println!("{:>16x} {:#}", func.entry_pc(), func.name());
-        }
+        println!("{:?}", FunctionsDebug(&symcache));
     }
 
     Ok(())
