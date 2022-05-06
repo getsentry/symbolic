@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-sourcemap"
-version = "8.7.0"
+version = "8.7.1"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
