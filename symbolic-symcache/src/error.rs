@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// Errors returned while loading/parsing a serialized SymCache.
 ///
-/// After a SymCache was successfully parsed via [`SymCache::parse`](crate::new::SymCache::parse), an Error that occurs during
+/// After a SymCache was successfully parsed via [`SymCache::parse`](crate::SymCache::parse), an Error that occurs during
 /// access of any data indicates either corruption of the serialized file, or a bug in the
 /// converter/serializer.
 #[derive(Debug, Error, Clone, Copy, PartialEq, Eq)]
@@ -51,7 +51,7 @@ impl Error {
         Self { kind, source }
     }
 
-    /// Returns the corresponding [`SymCacheErrorKind`] for this error.
+    /// Returns the corresponding [`ErrorKind`] for this error.
     pub fn kind(&self) -> ErrorKind {
         self.kind
     }
