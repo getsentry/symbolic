@@ -68,8 +68,17 @@ fn test_load_functions_macos() -> Result<(), Error> {
 fn test_lookup() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("symcache/current/macos.symc"))?;
     let symcache = SymCache::parse(&buffer)?;
-    let line_infos = symcache.lookup(4_458_187_797 - 4_458_131_456);
-    insta::assert_debug_snapshot!("lookup", &line_infos);
+    let source_locations = symcache.lookup(4_458_187_797 - 4_458_131_456);
+    let result: Vec<_> = source_locations
+        .map(|sl| {
+            (
+                sl.file().map(|file| file.full_path()).unwrap(),
+                sl.line(),
+                sl.function(),
+            )
+        })
+        .collect();
+    insta::assert_debug_snapshot!("lookup", result);
 
     Ok(())
 }

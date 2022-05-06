@@ -1,21 +1,43 @@
 ---
 source: symbolic-symcache/tests/test_cache.rs
-expression: "&line_infos"
+expression: result
 
 ---
-SourceLocationIter {
-    cache: SymCache {
-        version: 7,
-        debug_id: DebugId {
-            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
-            appendix: 0,
+[
+    (
+        "/Users/travis/build/getsentry/breakpad-tools/macos/main.cpp",
+        21,
+        Function {
+            name: "_ZN12_GLOBAL__N_15crashEv",
+            comp_dir: Some(
+                "/Users/travis/build/getsentry/breakpad-tools/macos",
+            ),
+            entry_pc: 4294967295,
+            language: Cpp,
         },
-        arch: Amd64,
-        files: 36,
-        functions: 639,
-        source_locations: 6033,
-        ranges: 4591,
-        string_bytes: 42829,
-    },
-    source_location_idx: 6023,
-}
+    ),
+    (
+        "/Users/travis/build/getsentry/breakpad-tools/macos/main.cpp",
+        25,
+        Function {
+            name: "_ZN12_GLOBAL__N_15startEv",
+            comp_dir: Some(
+                "/Users/travis/build/getsentry/breakpad-tools/macos",
+            ),
+            entry_pc: 4294967295,
+            language: Cpp,
+        },
+    ),
+    (
+        "/Users/travis/build/getsentry/breakpad-tools/macos/main.cpp",
+        32,
+        Function {
+            name: "main",
+            comp_dir: Some(
+                "/Users/travis/build/getsentry/breakpad-tools/macos",
+            ),
+            entry_pc: 56224,
+            language: Cpp,
+        },
+    ),
+]
