@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Make sure to correctly parse Unreal crash reports with zero-length files ([#565](https://github.com/getsentry/symbolic/pull/565))
+
 ## 8.7.1
 
 **Fixes**:
