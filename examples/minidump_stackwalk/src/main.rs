@@ -2,6 +2,7 @@ use core::fmt;
 use std::collections::{BTreeMap, HashMap};
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::time::UNIX_EPOCH;
 
 use async_trait::async_trait;
@@ -12,7 +13,6 @@ use minidump_processor::{
     FillSymbolError, FrameSymbolizer, FrameTrust, FrameWalker, ProcessState, StackFrame,
     SymbolFile, SymbolStats,
 };
-use parking_lot::RwLock;
 use thiserror::Error;
 use walkdir::WalkDir;
 
@@ -51,8 +51,8 @@ struct ObjectMetadata {
 /// A SymbolProvider that recursively searches a given path for symbol files.
 struct LocalSymbolProvider<'a> {
     object_files: ObjectDatabase,
-    cfi_files: RwLock<CfiFiles>,
-    symcaches: RwLock<SymCaches<'a>>,
+    cfi_files: Mutex<CfiFiles>,
+    symcaches: Mutex<SymCaches<'a>>,
     use_cfi: bool,
     symbolicate: bool,
 }
@@ -62,8 +62,8 @@ impl<'a> LocalSymbolProvider<'a> {
     fn new(path: impl AsRef<Path>, use_cfi: bool, symbolicate: bool) -> Self {
         Self {
             object_files: Self::create_object_database(path),
-            cfi_files: RwLock::new(BTreeMap::default()),
-            symcaches: RwLock::new(SymCaches::default()),
+            cfi_files: Mutex::new(BTreeMap::default()),
+            symcaches: Mutex::new(SymCaches::default()),
             use_cfi,
             symbolicate,
         }
@@ -122,7 +122,10 @@ impl<'a> LocalSymbolProvider<'a> {
     }
     /// Consumes this `LocalSymbolProvider` and returns its collections of cfi and debug files.
     fn into_inner(self) -> (CfiFiles, SymCaches<'a>) {
-        (self.cfi_files.into_inner(), self.symcaches.into_inner())
+        (
+            self.cfi_files.into_inner().unwrap(),
+            self.symcaches.into_inner().unwrap(),
+        )
     }
 
     /// Attempt to load CFI for the given debug id.
@@ -231,7 +234,7 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
         let id = module.debug_identifier().ok_or(FillSymbolError {})?;
         tracing::Span::current().record("module.id", &tracing::field::display(id));
 
-        let mut symcaches = self.symcaches.write();
+        let mut symcaches = self.symcaches.lock().unwrap();
 
         let symcache = symcaches.entry(id).or_insert_with(|| {
             tracing::trace!("symcache needs to be loaded");
@@ -285,7 +288,7 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
         let id = module.debug_identifier()?;
         tracing::Span::current().record("module.id", &tracing::field::display(id));
 
-        let mut cfi = self.cfi_files.write();
+        let mut cfi = self.cfi_files.lock().unwrap();
 
         let symbol_file = cfi.entry(id).or_insert_with(|| {
             tracing::trace!("cfi needs to be loaded");
@@ -306,7 +309,8 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
 
     fn stats(&self) -> HashMap<String, SymbolStats> {
         self.cfi_files
-            .read()
+            .lock()
+            .unwrap()
             .iter()
             .map(|(debug_id, sym)| {
                 let stats = SymbolStats {
