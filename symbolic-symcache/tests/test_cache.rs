@@ -20,7 +20,7 @@ fn test_load_header_linux() -> Result<(), Error> {
         functions: 697,
         source_locations: 8236,
         ranges: 6762,
-        string_bytes: 52180,
+        string_bytes: 52198,
     }
     "###);
     Ok(())
@@ -50,7 +50,7 @@ fn test_load_header_macos() -> Result<(), Error> {
         functions: 639,
         source_locations: 6033,
         ranges: 4591,
-        string_bytes: 42829,
+        string_bytes: 43020,
     }
     "###);
     Ok(())

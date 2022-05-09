@@ -7,7 +7,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
 
 use indexmap::IndexSet;
-use symbolic_common::{Arch, DebugId};
+use symbolic_common::{clean_path, join_path, split_path, Arch, DebugId};
 use symbolic_debuginfo::{DebugSession, Function, ObjectLike, Symbol};
 
 #[cfg(feature = "il2cpp")]
@@ -81,6 +81,23 @@ impl SymCacheConverter {
     /// Sets the debug identifier of this SymCache.
     pub fn set_debug_id(&mut self, debug_id: DebugId) {
         self.debug_id = debug_id;
+    }
+
+    /// Concatenates a triple of compilation directory, directory, and base name, normalizes it
+    /// (removing redundant `.` and `..` components), and returns the resulting directory and base name.
+    fn normalize_path(
+        comp_dir: Option<&str>,
+        dir: Option<&str>,
+        name: &str,
+    ) -> (Option<String>, String) {
+        let mut path = comp_dir.unwrap_or_default().to_string();
+        if let Some(dir) = dir {
+            path = symbolic_common::join_path(&path, dir);
+        }
+        path = join_path(&path, name);
+        let cleaned = clean_path(&path);
+        let (dir, name) = split_path(&cleaned);
+        (dir.map(|d| d.to_string()), name.to_string())
     }
 
     /// Insert a string into this converter.
@@ -171,13 +188,10 @@ impl SymCacheConverter {
             let strings = &mut self.strings;
             let name_offset = Self::insert_string(string_bytes, strings, &function.name);
 
-            let comp_dir_offset = function.comp_dir.map_or(u32::MAX, |comp_dir| {
-                Self::insert_string(string_bytes, strings, &comp_dir)
-            });
             let lang = language as u32;
             let (fun_idx, _) = self.functions.insert_full(raw::Function {
                 name_offset,
-                comp_dir_offset,
+                _comp_dir_offset: u32::MAX,
                 entry_pc,
                 lang,
             });
@@ -199,19 +213,18 @@ impl SymCacheConverter {
 
             let string_bytes = &mut self.string_bytes;
             let strings = &mut self.strings;
-            let path_name_offset = Self::insert_string(string_bytes, strings, &location.file.name);
-            let directory_offset = location
-                .file
-                .directory
-                .map_or(u32::MAX, |d| Self::insert_string(string_bytes, strings, &d));
-            let comp_dir_offset = location.file.comp_dir.map_or(u32::MAX, |cd| {
-                Self::insert_string(string_bytes, strings, &cd)
-            });
-
+            let (dir, name) = Self::normalize_path(
+                comp_dir,
+                location.file.directory.as_deref(),
+                &location.file.name,
+            );
+            let name_offset = Self::insert_string(string_bytes, strings, &name);
+            let directory_offset =
+                dir.map_or(u32::MAX, |d| Self::insert_string(string_bytes, strings, &d));
             let (file_idx, _) = self.files.insert_full(raw::File {
-                path_name_offset,
+                name_offset,
                 directory_offset,
-                comp_dir_offset,
+                _comp_dir_offset: u32::MAX,
             });
 
             let source_location = raw::SourceLocation {
@@ -290,7 +303,7 @@ impl SymCacheConverter {
             btree_map::Entry::Vacant(entry) => {
                 let function = raw::Function {
                     name_offset: name_idx,
-                    comp_dir_offset: u32::MAX,
+                    _comp_dir_offset: u32::MAX,
                     entry_pc: symbol.address as u32,
                     lang: u32::MAX,
                 };
@@ -367,7 +380,7 @@ impl SymCacheConverter {
 
                     let (fun_idx, _) = self.functions.insert_full(raw::Function {
                         name_offset,
-                        comp_dir_offset: u32::MAX,
+                        _comp_dir_offset: u32::MAX,
                         entry_pc: address,
                         lang: Language::CSharp as u32,
                     });
@@ -390,16 +403,18 @@ impl SymCacheConverter {
 
             let string_bytes = &mut self.string_bytes;
             let strings = &mut self.strings;
-            let path_name_offset = Self::insert_string(string_bytes, strings, &location.file.name);
-            let directory_offset = location
-                .file
-                .directory
-                .map_or(u32::MAX, |d| Self::insert_string(string_bytes, strings, &d));
-
+            let (dir, name) = Self::normalize_path(
+                None,
+                location.file.directory.as_deref(),
+                &location.file.name,
+            );
+            let name_offset = Self::insert_string(string_bytes, strings, &name);
+            let directory_offset =
+                dir.map_or(u32::MAX, |d| Self::insert_string(string_bytes, strings, &d));
             let (file_idx, _) = self.files.insert_full(raw::File {
-                path_name_offset,
+                name_offset,
                 directory_offset,
-                comp_dir_offset: u32::MAX,
+                _comp_dir_offset: u32::MAX,
             });
 
             let source_location = raw::SourceLocation {

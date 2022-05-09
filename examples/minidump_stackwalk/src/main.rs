@@ -214,7 +214,7 @@ fn print_state(
                                 .name_for_demangling()
                                 .try_demangle(DemangleOptions::name_only()),
                             info.file()
-                                .map(|file| file.path_name())
+                                .map(|file| file.name())
                                 .unwrap_or("<unknown file>"),
                             info.line(),
                         );

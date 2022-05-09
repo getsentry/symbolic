@@ -29,7 +29,6 @@ pub struct SymbolicLineInfo {
     pub symbol: SymbolicStr,
     pub filename: SymbolicStr,
     pub base_dir: SymbolicStr,
-    pub comp_dir: SymbolicStr,
 }
 
 /// Represents a lookup result of one or more items.
@@ -155,9 +154,8 @@ ffi_fn! {
                 line: line_info.line(),
                 lang: SymbolicStr::new(line_info.function().language().name()),
                 symbol: SymbolicStr::new(line_info.function().name()),
-                filename: SymbolicStr::new(line_info.file().map(|file| file.path_name()).unwrap_or_default()),
+                filename: SymbolicStr::new(line_info.file().map(|file| file.name()).unwrap_or_default()),
                 base_dir: SymbolicStr::new(line_info.file().and_then(|file|file.directory()).unwrap_or_default()),
-                comp_dir: SymbolicStr::new(line_info.file().and_then(|file|file.comp_dir()).unwrap_or_default()),
             });
         }
 

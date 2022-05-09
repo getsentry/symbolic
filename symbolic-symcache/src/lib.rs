@@ -24,11 +24,11 @@
 //!
 //! ## Files
 //!
-//! A file contains string offsets for its file name, parent directory, and compilation directory.
+//! A file contains string offsets for its file name and parent directory.
 //!
 //! ## Functions
 //!
-//! A function contains string offsets for its name and compilation directory, a u32 for its entry
+//! A function contains a string offset for its name, a u32 for its entry
 //! address, and a u32 representing the source language. The name is non-optional, i.e., the name
 //! index should always point to a valid string.
 //!

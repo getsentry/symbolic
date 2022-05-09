@@ -61,7 +61,10 @@ pub struct Function {
     /// The functions name (reference to a [`String`]).
     pub name_offset: u32,
     /// The compilation directory (reference to a [`String`]).
-    pub comp_dir_offset: u32,
+    ///
+    /// This is retained for binary compatibility; all path information
+    /// is contained in [`File`].
+    pub _comp_dir_offset: u32,
     /// The first address covered by this function.
     pub entry_pc: u32,
     /// The language of the function.
@@ -73,11 +76,14 @@ pub struct Function {
 #[repr(C)]
 pub struct File {
     /// The optional compilation directory prefix (reference to a [`String`]).
-    pub comp_dir_offset: u32,
+    ///
+    /// This is retained for binary compatibility; `directory_offset` covers
+    /// everything apart from the file name.
+    pub _comp_dir_offset: u32,
     /// The optional directory prefix (reference to a [`String`]).
     pub directory_offset: u32,
-    /// The file path (reference to a [`String`]).
-    pub path_name_offset: u32,
+    /// The non-optional file name (reference to a [`String`]).
+    pub name_offset: u32,
 }
 
 /// A location in a source file, comprising a file, a line, a function, and
