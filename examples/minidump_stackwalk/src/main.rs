@@ -137,6 +137,7 @@ impl<'a> LocalSymbolProvider<'a> {
         let object_list = self.object_files.get(&id).ok_or(SymbolError::NotFound)?;
         let mut found = None;
         for object_meta in object_list.iter().filter(|object| object.has_unwind_info) {
+            tracing::trace!(path = ?object_meta.path, "trying object file");
             let buffer = ByteView::open(&object_meta.path).unwrap();
             let archive = Archive::parse(&buffer).unwrap();
 
@@ -155,7 +156,10 @@ impl<'a> LocalSymbolProvider<'a> {
             }
 
             match SymbolFile::from_bytes(cfi_cache.as_slice()) {
-                Ok(symbol_file) => found = Some(symbol_file),
+                Ok(symbol_file) => {
+                    tracing::trace!("successfully parsed cficache");
+                    found = Some(symbol_file);
+                }
                 Err(_e) => continue,
             }
 
@@ -179,6 +183,7 @@ impl<'a> LocalSymbolProvider<'a> {
         let object_list = self.object_files.get(&id).ok_or(SymbolError::NotFound)?;
         let mut found = None;
         for object_meta in object_list.iter().filter(|object| object.has_symbol_info) {
+            tracing::trace!(path = ?object_meta.path, "trying object file");
             let buffer = ByteView::open(&object_meta.path).unwrap();
             let archive = Archive::parse(&buffer).unwrap();
 
@@ -202,7 +207,10 @@ impl<'a> LocalSymbolProvider<'a> {
             match SelfCell::try_new(ByteView::from_vec(buffer), |ptr| {
                 SymCache::parse(unsafe { &*ptr })
             }) {
-                Ok(symcache) => found = Some(symcache),
+                Ok(symcache) => {
+                    tracing::trace!("successfully parsed symcache");
+                    found = Some(symcache);
+                }
                 Err(_e) => continue,
             }
 
@@ -237,14 +245,14 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
         let mut symcaches = self.symcaches.lock().unwrap();
 
         let symcache = symcaches.entry(id).or_insert_with(|| {
-            tracing::trace!("symcache needs to be loaded");
+            tracing::trace!("loading symcache for the first time");
             self.load_symbol_info(id)
         });
 
         let symcache = match symcache {
             Ok(symcache) => symcache,
             Err(e) => {
-                tracing::trace!(%e, "symcache could not be loaded");
+                tracing::trace!(error = %e, "symcache could not be loaded");
                 return Err(FillSymbolError {});
             }
         };
@@ -291,7 +299,7 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
         let mut cfi = self.cfi_files.lock().unwrap();
 
         let symbol_file = cfi.entry(id).or_insert_with(|| {
-            tracing::trace!("cfi needs to be loaded");
+            tracing::trace!("loading cficache for the first time");
             self.load_cfi(id)
         });
 
@@ -301,7 +309,7 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
                 file.walk_frame(module, walker)
             }
             Err(e) => {
-                tracing::trace!(%e, "cfi could not be loaded");
+                tracing::trace!(error = %e, "cfi could not be loaded");
                 None
             }
         }
