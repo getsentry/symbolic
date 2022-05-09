@@ -20,7 +20,7 @@ use symbolic::common::{Arch, ByteView, DebugId, InstructionInfo, SelfCell};
 use symbolic::debuginfo::{Archive, FileFormat};
 use symbolic::demangle::{Demangle, DemangleOptions};
 use symbolic::minidump::cfi::CfiCache;
-use symbolic::symcache::{Error as SymCacheError, SourceLocation, SymCache, SymCacheConverter};
+use symbolic::symcache::{SourceLocation, SymCache, SymCacheConverter};
 
 type CfiFiles = BTreeMap<DebugId, Result<SymbolFile, SymbolError>>;
 type SymCaches<'a> = BTreeMap<DebugId, Result<SelfCell<ByteView<'a>, SymCache<'a>>, SymbolError>>;
@@ -186,7 +186,12 @@ impl<'a> LocalSymbolProvider<'a> {
                 .unwrap();
 
             let mut buffer = Vec::new();
-            if let Err(e) = SymCacheWriter::write_object(&object, Cursor::new(&mut buffer)) {
+            let mut converter = SymCacheConverter::new();
+            if let Err(e) = converter.process_object(&object) {
+                tracing::error!(error = %e);
+                return Err(SymbolError::Corrupt);
+            }
+            if let Err(e) = converter.serialize(&mut Cursor::new(&mut buffer)) {
                 tracing::error!(error = %e);
                 return Err(SymbolError::Corrupt);
             }
@@ -244,21 +249,21 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
         tracing::trace!("symcache successfully loaded");
 
         let instruction = frame.get_instruction();
-        let line_info = symcache
+        let source_location = symcache
             .get()
             .lookup(instruction - module.base_address())
-            .map_err(|_| FillSymbolError {})?
             .next()
-            .ok_or(FillSymbolError {})?
-            .map_err(|_| FillSymbolError {})?;
+            .ok_or(FillSymbolError {})?;
 
         frame.set_function(
-            line_info.function_name().as_str(),
-            line_info.function_address(),
+            source_location.function().name(),
+            source_location.function().entry_pc() as u64,
             0,
         );
 
-        frame.set_source_file(line_info.filename(), line_info.line(), 0);
+        if let Some(file) = source_location.file() {
+            frame.set_source_file(&file.full_path(), source_location.line(), 0);
+        }
 
         Ok(())
     }
@@ -442,9 +447,12 @@ impl fmt::Display for Report<'_> {
                                     .debug_file()
                                     .as_deref()
                                     .unwrap_or("<unknown debug file>"),
-                                info.function_name()
+                                info.function()
+                                    .name_for_demangling()
                                     .try_demangle(DemangleOptions::name_only()),
-                                info.filename(),
+                                info.file()
+                                    .map(|file| file.full_path())
+                                    .unwrap_or_else(|| "<unknown source file>".into()),
                                 info.line(),
                             )?;
 

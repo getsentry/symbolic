@@ -111,14 +111,14 @@ use std::convert::TryInto;
 use std::mem;
 use std::ptr;
 
-pub use error::{Error, ErrorKind};
-pub use lookup::*;
 use symbolic_common::Arch;
 use symbolic_common::AsSelf;
 use symbolic_common::DebugId;
-pub use writer::SymCacheConverter;
 
+pub use error::{Error, ErrorKind};
+pub use lookup::*;
 use raw::align_to_eight;
+pub use writer::SymCacheConverter;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
