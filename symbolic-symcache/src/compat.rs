@@ -327,19 +327,3 @@ impl<'a> Iterator for Lines<'a> {
         }
     }
 }
-
-/// Helper to create neat snapshots for symbol tables.
-pub struct FunctionsDebug<'a>(pub &'a SymCache<'a>);
-
-impl fmt::Debug for FunctionsDebug<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut vec: Vec<_> = self.0.functions().filter_map(Result::ok).collect();
-
-        vec.sort_by_key(|f| (f.address(), f.symbol()));
-        for function in vec {
-            writeln!(f, "{:>16x} {}", &function.address(), &function.name())?;
-        }
-
-        Ok(())
-    }
-}

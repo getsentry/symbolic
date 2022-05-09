@@ -1,4 +1,6 @@
-use symbolic_common::Language;
+use std::fmt;
+
+use symbolic_common::{Language, Name, NameMangling};
 
 use super::{raw, SymCache};
 
@@ -119,7 +121,6 @@ impl<'data> File<'data> {
     }
 
     /// Resolves and concatenates the full path based on its individual fragments.
-    #[allow(dead_code)]
     pub fn full_path(&self) -> String {
         let comp_dir = self.comp_dir().unwrap_or_default();
         let directory = self.directory().unwrap_or_default();
@@ -146,6 +147,11 @@ impl<'data> Function<'data> {
     /// The possibly mangled name/symbol of this function.
     pub fn name(&self) -> &'data str {
         self.name
+    }
+
+    /// The possibly mangled name/symbol of this function, suitable for demangling.
+    pub fn name_for_demangling(&self) -> Name<'data> {
+        Name::new(self.name, NameMangling::Unknown, self.language)
     }
 
     /// The compilation directory of this function.
@@ -262,5 +268,21 @@ impl<'data> Iterator for Functions<'data> {
             self.function_idx += 1;
             f
         })
+    }
+}
+
+/// Helper to create neat snapshots for symbol tables.
+pub struct FunctionsDebug<'a>(pub &'a SymCache<'a>);
+
+impl fmt::Debug for FunctionsDebug<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut vec: Vec<_> = self.0.functions().collect();
+
+        vec.sort_by_key(|f| (f.entry_pc, f.name));
+        for function in vec {
+            writeln!(f, "{:>16x} {}", &function.entry_pc, &function.name)?;
+        }
+
+        Ok(())
     }
 }

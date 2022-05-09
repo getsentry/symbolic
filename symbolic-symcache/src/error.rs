@@ -2,10 +2,10 @@ use thiserror::Error;
 
 /// Errors returned while loading/parsing a serialized SymCache.
 ///
-/// After a SymCache was successfully parsed via [`SymCache::parse`](crate::new::SymCache::parse), an Error that occurs during
+/// After a SymCache was successfully parsed via [`SymCache::parse`](crate::SymCache::parse), an Error that occurs during
 /// access of any data indicates either corruption of the serialized file, or a bug in the
 /// converter/serializer.
-#[derive(Debug, Error, Clone, Copy)]
+#[derive(Debug, Error, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ErrorKind {
     /// The buffer is not correctly aligned.
@@ -41,7 +41,17 @@ pub struct Error {
 }
 
 impl Error {
-    /// Returns the corresponding [`SymCacheErrorKind`] for this error.
+    /// Creates a new SymCache error from a known kind of error as well as an
+    /// arbitrary error payload.
+    pub(crate) fn new<E>(kind: ErrorKind, source: E) -> Self
+    where
+        E: Into<Box<dyn std::error::Error + Send + Sync>>,
+    {
+        let source = Some(source.into());
+        Self { kind, source }
+    }
+
+    /// Returns the corresponding [`ErrorKind`] for this error.
     pub fn kind(&self) -> ErrorKind {
         self.kind
     }

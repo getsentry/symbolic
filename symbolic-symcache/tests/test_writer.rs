@@ -151,10 +151,10 @@ fn test_lookup_no_lines() -> Result<(), Error> {
     converter.process_object(&object)?;
     converter.serialize(&mut Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
-    let symbols = symcache.lookup(0xc6dd98)?.collect::<Vec<_>>()?;
+    let symbols = symcache.lookup(0xc6dd98).collect::<Vec<_>>();
 
     assert_eq!(symbols.len(), 1);
-    let name = symbols[0].function_name();
+    let name = symbols[0].function().name();
 
     assert_eq!(
         name,
@@ -178,10 +178,10 @@ fn test_lookup_no_size() -> Result<(), Error> {
     converter.process_object(&object)?;
     converter.serialize(&mut Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
-    let symbols = symcache.lookup(0x1489adf)?.collect::<Vec<_>>()?;
+    let symbols = symcache.lookup(0x1489adf).collect::<Vec<_>>();
 
     assert_eq!(symbols.len(), 1);
-    let name = symbols[0].function_name();
+    let name = symbols[0].function().name();
 
     assert_eq!(name, "nouveau_drm_screen_create");
 
@@ -200,10 +200,10 @@ fn test_lookup_modulo_u16() -> Result<(), Error> {
     converter.process_object(&object)?;
     converter.serialize(&mut Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
-    let symbols = symcache.lookup(0x3c105a1)?.collect::<Vec<_>>()?;
+    let symbols = symcache.lookup(0x3c105a1).collect::<Vec<_>>();
 
     assert_eq!(symbols.len(), 1);
-    let name = symbols[0].function_name();
+    let name = symbols[0].function().name();
 
     assert_eq!(name, "Interpret(JSContext*, js::RunState&)");
 

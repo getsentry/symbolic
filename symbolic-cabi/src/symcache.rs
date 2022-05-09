@@ -147,18 +147,17 @@ ffi_fn! {
         let cache = SymbolicSymCache::as_rust(symcache).get();
 
         let mut items = vec![];
-        for line_info in cache.lookup(addr)? {
-            let line_info = line_info?;
+        for line_info in cache.lookup(addr) {
             items.push(SymbolicLineInfo {
-                sym_addr: line_info.function_address(),
-                line_addr: line_info.line_address(),
-                instr_addr: line_info.instruction_address(),
+                sym_addr: line_info.function().entry_pc() as u64,
+                line_addr: addr,
+                instr_addr: addr,
                 line: line_info.line(),
-                lang: SymbolicStr::new(line_info.language().name()),
-                symbol: SymbolicStr::new(line_info.symbol()),
-                filename: SymbolicStr::new(line_info.filename()),
-                base_dir: SymbolicStr::new(line_info.base_dir()),
-                comp_dir: SymbolicStr::new(line_info.compilation_dir()),
+                lang: SymbolicStr::new(line_info.function().language().name()),
+                symbol: SymbolicStr::new(line_info.function().name()),
+                filename: SymbolicStr::new(line_info.file().map(|file| file.path_name()).unwrap_or_default()),
+                base_dir: SymbolicStr::new(line_info.file().and_then(|file|file.directory()).unwrap_or_default()),
+                comp_dir: SymbolicStr::new(line_info.file().and_then(|file|file.comp_dir()).unwrap_or_default()),
             });
         }
 

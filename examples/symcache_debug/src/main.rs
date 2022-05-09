@@ -13,7 +13,7 @@ use symbolic::demangle::{Demangle, DemangleOptions};
 #[cfg(feature = "il2cpp")]
 use symbolic::il2cpp::LineMapping;
 use symbolic::symcache::transform::{self, Transformer};
-use symbolic::symcache::{SymCache, SymCacheConverter};
+use symbolic::symcache::{FunctionsDebug, SymCache, SymCacheConverter};
 
 // FIXME: This is a huge pain, can't this be simpler somehow?
 struct OwnedBcSymbolMap(SelfCell<ByteView<'static>, BcSymbolMap<'static>>);
@@ -133,20 +133,24 @@ fn execute(matches: &ArgMatches) -> Result<()> {
             addr.parse()?
         };
 
-        let m = symcache.lookup(addr)?.collect::<Vec<_>>()?;
+        let m = symcache.lookup(addr).collect::<Vec<_>>();
         if m.is_empty() {
             println!("No match :(");
         } else {
             for sym in m {
                 print!(
                     "{}",
-                    sym.function_name()
+                    sym.function()
+                        .name_for_demangling()
                         .try_demangle(DemangleOptions::name_only())
                 );
 
-                let path = sym.path();
+                let path = sym
+                    .file()
+                    .map(|file| file.full_path())
+                    .unwrap_or_else(|| "<unknown file >".into());
                 let line = sym.line();
-                let lang = sym.language();
+                let lang = sym.function().language();
 
                 if !path.is_empty() || line != 0 || lang != Language::Unknown {
                     print!("\n ");
@@ -169,11 +173,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 
     // print mode
     if matches.is_present("print_symbols") {
-        #[allow(deprecated)]
-        for func in symcache.functions() {
-            let func = func?;
-            println!("{:>16x} {:#}", func.address(), func.name());
-        }
+        println!("{:?}", FunctionsDebug(&symcache));
     }
 
     Ok(())
