@@ -552,3 +552,37 @@ impl<W: Write> WriteWrapper<W> {
         self.write(&buf[0..len])
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SymCacheConverter;
+
+    #[test]
+    fn normalize_path_no_comp_dir() {
+        let (dir, name) = SymCacheConverter::normalize_path(None, Some("a/b"), "c/d.rs");
+        assert_eq!(dir.as_deref(), Some("a/b/c"));
+        assert_eq!(name, "d.rs");
+    }
+
+    #[test]
+    fn normalize_path_no_dir() {
+        let (dir, name) = SymCacheConverter::normalize_path(Some("a/b"), None, "c/d.rs");
+        assert_eq!(dir.as_deref(), Some("a/b/c"));
+        assert_eq!(name, "d.rs");
+    }
+
+    #[test]
+    fn normalize_path_absolute() {
+        let (dir, name) = SymCacheConverter::normalize_path(Some("a/b"), Some("/c/d"), "e.rs");
+        assert_eq!(dir.as_deref(), Some("/c/d"));
+        assert_eq!(name, "e.rs");
+    }
+
+    #[test]
+    fn normalize_path_full() {
+        let (dir, name) =
+            SymCacheConverter::normalize_path(Some("a/b/./c"), Some("../d/../e"), "f.rs");
+        assert_eq!(dir.as_deref(), Some("a/b/e"));
+        assert_eq!(name, "f.rs");
+    }
+}
