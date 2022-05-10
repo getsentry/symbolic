@@ -1,13 +1,13 @@
 //! Defines the [SymCache Converter](`SymCacheConverter`).
 
-#[cfg(feature = "il2cpp")]
 use std::borrow::Cow;
 use std::collections::btree_map;
 use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
 
+use camino::{Utf8Path, Utf8PathBuf};
 use indexmap::IndexSet;
-use symbolic_common::{clean_path, join_path, split_path, Arch, DebugId};
+use symbolic_common::{Arch, DebugId};
 use symbolic_debuginfo::{DebugSession, Function, ObjectLike, Symbol};
 
 #[cfg(feature = "il2cpp")]
@@ -16,7 +16,14 @@ use symbolic_common::Language;
 use symbolic_il2cpp::usym::{UsymSourceRecord, UsymSymbols};
 
 use super::{raw, transform};
-use crate::{Error, ErrorKind};
+use crate::{normalize_path, Error, ErrorKind};
+
+fn utf8_path_cow(s: Cow<'_, str>) -> Cow<'_, Utf8Path> {
+    match s {
+        Cow::Borrowed(s) => Cow::Borrowed(s.into()),
+        Cow::Owned(s) => Cow::Owned(s.into()),
+    }
+}
 
 /// The SymCache Converter.
 ///
@@ -54,6 +61,8 @@ pub struct SymCacheConverter {
     /// In case the highest addr belongs to a Symbol, this will be `None` and the SymCache
     /// also extends to infinite, otherwise this is the end of the highest function.
     last_addr: Option<u32>,
+
+    path_buffer: Utf8PathBuf,
 }
 
 impl SymCacheConverter {
@@ -81,23 +90,6 @@ impl SymCacheConverter {
     /// Sets the debug identifier of this SymCache.
     pub fn set_debug_id(&mut self, debug_id: DebugId) {
         self.debug_id = debug_id;
-    }
-
-    /// Concatenates a triple of compilation directory, directory, and base name, normalizes it
-    /// (removing redundant `.` and `..` components), and returns the resulting directory and base name.
-    fn normalize_path(
-        comp_dir: Option<&str>,
-        dir: Option<&str>,
-        name: &str,
-    ) -> (Option<String>, String) {
-        let mut path = comp_dir.unwrap_or_default().to_string();
-        if let Some(dir) = dir {
-            path = symbolic_common::join_path(&path, dir);
-        }
-        path = join_path(&path, name);
-        let cleaned = clean_path(&path);
-        let (dir, name) = split_path(&cleaned);
-        (dir.map(|d| d.to_string()), name.to_string())
     }
 
     /// Insert a string into this converter.
@@ -166,7 +158,9 @@ impl SymCacheConverter {
             return;
         }
 
-        let comp_dir = std::str::from_utf8(function.compilation_dir).ok();
+        let comp_dir = std::str::from_utf8(function.compilation_dir)
+            .ok()
+            .map(<&Utf8Path>::from);
 
         let entry_pc = if function.inline {
             u32::MAX
@@ -201,8 +195,8 @@ impl SymCacheConverter {
         for line in &function.lines {
             let mut location = transform::SourceLocation {
                 file: transform::File {
-                    name: line.file.name_str(),
-                    directory: Some(line.file.dir_str()),
+                    name: utf8_path_cow(line.file.name_str()),
+                    directory: Some(utf8_path_cow(line.file.dir_str())),
                     comp_dir: comp_dir.map(Into::into),
                 },
                 line: line.line as u32,
@@ -211,16 +205,26 @@ impl SymCacheConverter {
                 location = transformer.transform_source_location(location);
             }
 
+            self.path_buffer.clear();
+            if let Some(comp_dir) = comp_dir {
+                normalize_path(&mut self.path_buffer, comp_dir);
+            }
+
+            if let Some(dir) = location.file.directory {
+                normalize_path(&mut self.path_buffer, &dir);
+            }
+            normalize_path(&mut self.path_buffer, &location.file.name);
+
+            let name = self.path_buffer.file_name();
+            let dir = self.path_buffer.parent();
             let string_bytes = &mut self.string_bytes;
             let strings = &mut self.strings;
-            let (dir, name) = Self::normalize_path(
-                comp_dir,
-                location.file.directory.as_deref(),
-                &location.file.name,
-            );
-            let name_offset = Self::insert_string(string_bytes, strings, &name);
-            let directory_offset =
-                dir.map_or(u32::MAX, |d| Self::insert_string(string_bytes, strings, &d));
+            let name_offset = name.map_or(u32::MAX, |name| {
+                Self::insert_string(string_bytes, strings, name)
+            });
+            let directory_offset = dir.map_or(u32::MAX, |d| {
+                Self::insert_string(string_bytes, strings, d.as_str())
+            });
             let (file_idx, _) = self.files.insert_full(raw::File {
                 name_offset,
                 directory_offset,
@@ -388,10 +392,12 @@ impl SymCacheConverter {
                 };
             }
 
-            let managed_dir = Some(record.managed_file_info.dir_str()).filter(|d| !d.is_empty());
+            let managed_dir = Some(record.managed_file_info.dir_str())
+                .filter(|d| !d.is_empty())
+                .map(utf8_path_cow);
             let mut location = transform::SourceLocation {
                 file: transform::File {
-                    name: record.managed_file_info.name_str(),
+                    name: utf8_path_cow(record.managed_file_info.name_str()),
                     directory: managed_dir,
                     comp_dir: None,
                 },
@@ -401,16 +407,21 @@ impl SymCacheConverter {
                 location = transformer.transform_source_location(location);
             }
 
+            self.path_buffer.clear();
+            if let Some(dir) = location.file.directory {
+                normalize_path(&mut self.path_buffer, &dir);
+            }
+            normalize_path(&mut self.path_buffer, &location.file.name);
+            let name = self.path_buffer.file_name();
+            let dir = self.path_buffer.parent();
             let string_bytes = &mut self.string_bytes;
             let strings = &mut self.strings;
-            let (dir, name) = Self::normalize_path(
-                None,
-                location.file.directory.as_deref(),
-                &location.file.name,
-            );
-            let name_offset = Self::insert_string(string_bytes, strings, &name);
-            let directory_offset =
-                dir.map_or(u32::MAX, |d| Self::insert_string(string_bytes, strings, &d));
+            let name_offset = name.map_or(u32::MAX, |name| {
+                Self::insert_string(string_bytes, strings, name)
+            });
+            let directory_offset = dir.map_or(u32::MAX, |d| {
+                Self::insert_string(string_bytes, strings, d.as_str())
+            });
             let (file_idx, _) = self.files.insert_full(raw::File {
                 name_offset,
                 directory_offset,
@@ -550,39 +561,5 @@ impl<W: Write> WriteWrapper<W> {
         let buf = &[0u8; 7];
         let len = raw::align_to_eight(self.position);
         self.write(&buf[0..len])
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::SymCacheConverter;
-
-    #[test]
-    fn normalize_path_no_comp_dir() {
-        let (dir, name) = SymCacheConverter::normalize_path(None, Some("a/b"), "c/d.rs");
-        assert_eq!(dir.as_deref(), Some("a/b/c"));
-        assert_eq!(name, "d.rs");
-    }
-
-    #[test]
-    fn normalize_path_no_dir() {
-        let (dir, name) = SymCacheConverter::normalize_path(Some("a/b"), None, "c/d.rs");
-        assert_eq!(dir.as_deref(), Some("a/b/c"));
-        assert_eq!(name, "d.rs");
-    }
-
-    #[test]
-    fn normalize_path_absolute() {
-        let (dir, name) = SymCacheConverter::normalize_path(Some("a/b"), Some("/c/d"), "e.rs");
-        assert_eq!(dir.as_deref(), Some("/c/d"));
-        assert_eq!(name, "e.rs");
-    }
-
-    #[test]
-    fn normalize_path_full() {
-        let (dir, name) =
-            SymCacheConverter::normalize_path(Some("a/b/./c"), Some("../d/../e"), "f.rs");
-        assert_eq!(dir.as_deref(), Some("a/b/e"));
-        assert_eq!(name, "f.rs");
     }
 }

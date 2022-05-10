@@ -111,6 +111,9 @@ use std::convert::TryInto;
 use std::mem;
 use std::ptr;
 
+use camino::Utf8Component;
+use camino::Utf8Path;
+use camino::Utf8PathBuf;
 pub use error::{Error, ErrorKind};
 pub use lookup::*;
 use symbolic_common::Arch;
@@ -301,5 +304,69 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
 
     fn as_self(&'slf self) -> &Self::Ref {
         self
+    }
+}
+
+/// Appends the provided path to the provided buffer, normalizing it in the process.
+///
+/// "Normalizing" in this context means:
+/// * if the path is absolute, the buffer will be cleared prior to appending.
+/// * `.` components in the path will be skipped.
+/// * `..` components in the path will delete the previous component from the buffer.
+pub(crate) fn normalize_path(buffer: &mut Utf8PathBuf, path: &Utf8Path) {
+    if path.is_absolute() {
+        buffer.clear();
+    }
+    for component in path.components() {
+        match component {
+            Utf8Component::Prefix(prefix) => {
+                buffer.push(prefix.as_str());
+            }
+            Utf8Component::RootDir => {
+                buffer.push(Utf8Component::RootDir);
+            }
+            Utf8Component::CurDir => {}
+            Utf8Component::ParentDir => {
+                buffer.pop();
+            }
+            Utf8Component::Normal(component) => {
+                buffer.push(component);
+            }
+        }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use camino::Utf8PathBuf;
+
+    use crate::normalize_path;
+
+    #[test]
+    fn normalize_path_no_dir() {
+        let mut buffer = Utf8PathBuf::new();
+        normalize_path(&mut buffer, "a/b".into());
+        normalize_path(&mut buffer, "c/d.rs".into());
+        assert_eq!(buffer.parent(), Some("a/b/c".into()));
+        assert_eq!(buffer.file_name(), Some("d.rs"));
+    }
+
+    #[test]
+    fn normalize_path_absolute() {
+        let mut buffer = Utf8PathBuf::new();
+        normalize_path(&mut buffer, "a/b".into());
+        normalize_path(&mut buffer, "/c/d".into());
+        normalize_path(&mut buffer, "e.rs".into());
+        assert_eq!(buffer.parent(), Some("/c/d".into()));
+        assert_eq!(buffer.file_name(), Some("e.rs"));
+    }
+
+    #[test]
+    fn normalize_path_full() {
+        let mut buffer = Utf8PathBuf::new();
+        normalize_path(&mut buffer, "a/b/./c".into());
+        normalize_path(&mut buffer, "../d/../e".into());
+        normalize_path(&mut buffer, "f.rs".into());
+        assert_eq!(buffer.parent(), Some("a/b/e".into()));
+        assert_eq!(buffer.file_name(), Some("f.rs"));
     }
 }

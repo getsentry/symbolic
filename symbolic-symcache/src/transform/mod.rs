@@ -2,11 +2,14 @@
 
 mod bcsymbolmap;
 pub use bcsymbolmap::*;
+use camino::{Utf8Path, Utf8PathBuf};
 
 #[cfg(feature = "il2cpp")]
 pub mod il2cpp;
 
 use std::borrow::Cow;
+
+use crate::normalize_path;
 
 /// A Function record to be written to the SymCache.
 #[non_exhaustive]
@@ -14,18 +17,32 @@ pub struct Function<'s> {
     /// The functions name.
     pub name: Cow<'s, str>,
     /// The compilation directory of the function.
-    pub comp_dir: Option<Cow<'s, str>>,
+    pub comp_dir: Option<Cow<'s, Utf8Path>>,
 }
 
 /// A File to be written to the SymCache.
 #[non_exhaustive]
 pub struct File<'s> {
     /// The file name.
-    pub name: Cow<'s, str>,
+    pub name: Cow<'s, Utf8Path>,
     /// The optional directory prefix.
-    pub directory: Option<Cow<'s, str>>,
+    pub directory: Option<Cow<'s, Utf8Path>>,
     /// The optional compilation directory prefix.
-    pub comp_dir: Option<Cow<'s, str>>,
+    pub comp_dir: Option<Cow<'s, Utf8Path>>,
+}
+
+impl File<'_> {
+    fn full_path(&self) -> Utf8PathBuf {
+        let mut path = Utf8PathBuf::new();
+        if let Some(ref comp_dir) = self.comp_dir {
+            normalize_path(&mut path, comp_dir);
+        }
+        if let Some(ref dir) = self.directory {
+            normalize_path(&mut path, dir);
+        }
+        normalize_path(&mut path, self.name.as_ref());
+        path
+    }
 }
 
 /// A Source Location (File + Line) to be written to the SymCache.
