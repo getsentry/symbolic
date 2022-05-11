@@ -1005,7 +1005,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                             let rip_offset = stack_size + 40;
                             write!(
                                 &mut saved_regs,
-                                " $rsp: .cfa {} - ^ .ra: cfa {} - ^",
+                                " $rsp: .cfa {} - ^ .ra: .cfa {} - ^",
                                 rsp_offset, rip_offset,
                             )?;
                             stack_size += 40;
