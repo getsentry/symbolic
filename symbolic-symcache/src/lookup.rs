@@ -73,6 +73,17 @@ impl<'data> SymCache<'data> {
             function_idx: 0,
         }
     }
+
+    /// An iterator over the files in this SymCache.
+    ///
+    /// Note that files are *not* returned ordered by name or full path,
+    /// but in insertion order, which is essentially random.
+    pub fn files(&self) -> Files<'data> {
+        Files {
+            cache: self.clone(),
+            file_idx: 0,
+        }
+    }
 }
 
 /// A source File included in the SymCache.
@@ -271,7 +282,11 @@ impl<'data> Iterator for Functions<'data> {
     }
 }
 
-/// Helper to create neat snapshots for symbol tables.
+/// A helper struct for printing the functions contained in a symcache.
+///
+/// This struct's `Debug` impl prints the entry pcs and names of the
+/// functions returned by [`SymCache::functions`], sorted first by entry pc
+/// and then by name.
 pub struct FunctionsDebug<'a>(pub &'a SymCache<'a>);
 
 impl fmt::Debug for FunctionsDebug<'_> {
@@ -281,6 +296,43 @@ impl fmt::Debug for FunctionsDebug<'_> {
         vec.sort_by_key(|f| (f.entry_pc, f.name));
         for function in vec {
             writeln!(f, "{:>16x} {}", &function.entry_pc, &function.name)?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Iterator returned by [`SymCache::files`]; see documentation there.
+#[derive(Debug, Clone)]
+pub struct Files<'data> {
+    cache: SymCache<'data>,
+    file_idx: u32,
+}
+
+impl<'data> Iterator for Files<'data> {
+    type Item = File<'data>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.cache.get_file(self.file_idx).map(|f| {
+            self.file_idx += 1;
+            f
+        })
+    }
+}
+
+/// A helper struct for printing the files contained in a symcache.
+///
+/// This struct's `Debug` impl prints the full paths of the
+/// files returned by [`SymCache::files`] in sorted order.
+pub struct FilesDebug<'a>(pub &'a SymCache<'a>);
+
+impl fmt::Debug for FilesDebug<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut vec: Vec<_> = self.0.files().map(|f| f.full_path()).collect();
+
+        vec.sort();
+        for file in vec {
+            writeln!(f, "{}", file)?;
         }
 
         Ok(())
