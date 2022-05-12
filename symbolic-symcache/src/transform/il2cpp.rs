@@ -16,11 +16,14 @@ fn full_path(file: &File<'_>) -> String {
 }
 
 impl Transformer for LineMapping {
-    fn transform_function<'f>(&'f self, f: Function<'f>) -> Function<'f> {
+    fn transform_function<'f>(&'f mut self, f: Function<'f>) -> Function<'f> {
         f
     }
 
-    fn transform_source_location<'f>(&'f self, mut sl: SourceLocation<'f>) -> SourceLocation<'f> {
+    fn transform_source_location<'f>(
+        &'f mut self,
+        mut sl: SourceLocation<'f>,
+    ) -> SourceLocation<'f> {
         // TODO: this allocates, which is especially expensive since we run this transformer for
         // every single source location (without dedupe-ing files). It might be worth caching this
         let full_path = full_path(&sl.file);

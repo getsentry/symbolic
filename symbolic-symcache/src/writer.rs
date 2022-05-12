@@ -163,7 +163,7 @@ impl<'a> SymCacheConverter<'a> {
                 name: function.name.as_str().into(),
                 comp_dir: comp_dir.map(Into::into),
             };
-            for transformer in &self.transformers.0 {
+            for transformer in &mut self.transformers.0 {
                 function = transformer.transform_function(function);
             }
 
@@ -193,7 +193,7 @@ impl<'a> SymCacheConverter<'a> {
                 },
                 line: line.line as u32,
             };
-            for transformer in &self.transformers.0 {
+            for transformer in &mut self.transformers.0 {
                 location = transformer.transform_source_location(location);
             }
 
@@ -279,7 +279,7 @@ impl<'a> SymCacheConverter<'a> {
                 },
                 comp_dir: None,
             };
-            for transformer in &self.transformers.0 {
+            for transformer in &mut self.transformers.0 {
                 function = transformer.transform_function(function);
             }
 
@@ -357,7 +357,7 @@ impl<'a> SymCacheConverter<'a> {
                         name: record.managed_symbol.clone(),
                         comp_dir: None,
                     };
-                    for transformer in &self.transformers.0 {
+                    for transformer in &mut self.transformers.0 {
                         function = transformer.transform_function(function);
                     }
 
@@ -384,7 +384,7 @@ impl<'a> SymCacheConverter<'a> {
                 },
                 line: record.managed_line,
             };
-            for transformer in &self.transformers.0 {
+            for transformer in &mut self.transformers.0 {
                 location = transformer.transform_source_location(location);
             }
 

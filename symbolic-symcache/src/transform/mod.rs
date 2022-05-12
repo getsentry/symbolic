@@ -42,7 +42,7 @@ pub trait Transformer {
     /// Transforms a [`Function`] record.
     ///
     /// This can be used for example to de-obfuscate a functions name.
-    fn transform_function<'f>(&'f self, f: Function<'f>) -> Function<'f> {
+    fn transform_function<'f>(&'f mut self, f: Function<'f>) -> Function<'f> {
         f
     }
 
@@ -50,7 +50,7 @@ pub trait Transformer {
     ///
     /// This can be used for example to apply a Source Mapping in case an intermediate compilation
     /// step might have introduced an indirection, or to de-obfuscate the [`File`] information.
-    fn transform_source_location<'f>(&'f self, sl: SourceLocation<'f>) -> SourceLocation<'f> {
+    fn transform_source_location<'f>(&'f mut self, sl: SourceLocation<'f>) -> SourceLocation<'f> {
         sl
     }
 }
