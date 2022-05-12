@@ -6,30 +6,13 @@ use std::u64;
 use anyhow::{anyhow, Result};
 use clap::{Arg, ArgMatches, Command};
 
-use symbolic::common::{Arch, ByteView, DSymPathExt, Language, SelfCell};
+use symbolic::common::{Arch, ByteView, DSymPathExt, Language};
 use symbolic::debuginfo::macho::BcSymbolMap;
 use symbolic::debuginfo::Archive;
 use symbolic::demangle::{Demangle, DemangleOptions};
 #[cfg(feature = "il2cpp")]
 use symbolic::il2cpp::LineMapping;
-use symbolic::symcache::transform::{self, Transformer};
 use symbolic::symcache::{FilesDebug, FunctionsDebug, SymCache, SymCacheConverter};
-
-// FIXME: This is a huge pain, can't this be simpler somehow?
-struct OwnedBcSymbolMap(SelfCell<ByteView<'static>, BcSymbolMap<'static>>);
-
-impl Transformer for OwnedBcSymbolMap {
-    fn transform_function<'f>(&'f self, f: transform::Function<'f>) -> transform::Function<'f> {
-        self.0.get().transform_function(f)
-    }
-
-    fn transform_source_location<'f>(
-        &'f self,
-        sl: transform::SourceLocation<'f>,
-    ) -> transform::SourceLocation<'f> {
-        self.0.get().transform_source_location(sl)
-    }
-}
 
 fn execute(matches: &ArgMatches) -> Result<()> {
     let buffer;
@@ -73,26 +56,37 @@ fn execute(matches: &ArgMatches) -> Result<()> {
             None => return Err(anyhow!("did not find architecture {}", arch)),
         };
 
+        let bcsymbolmap_buffer = matches
+            .value_of("bcsymbolmap_file")
+            .map(|path_str| ByteView::open(Path::new(path_str)))
+            .transpose()?;
+        let bcsymbolmap_transformer = bcsymbolmap_buffer
+            .as_ref()
+            .map(|buf| BcSymbolMap::parse(buf))
+            .transpose()?;
+
+        #[cfg(feature = "il2cpp")]
+        {
+            let linemapping_buffer = matches
+                .value_of("linemapping_file")
+                .map(|path_str| ByteView::open(Path::new(path_str)))
+                .transpose()?;
+            let linemapping_transformer = linemapping_buffer
+                .as_ref()
+                .map(|buf| LineMapping::parse(buf))
+                .transpose()?;
+        }
+
         let mut converter = SymCacheConverter::new();
 
-        if let Some(bcsymbolmap_file) = matches.value_of("bcsymbolmap_file") {
-            let bcsymbolmap_path = Path::new(bcsymbolmap_file);
-            let bcsymbolmap_buffer = ByteView::open(bcsymbolmap_path)?;
-            let bcsymbolmap =
-                OwnedBcSymbolMap(SelfCell::try_new(bcsymbolmap_buffer, |s| unsafe {
-                    BcSymbolMap::parse(&*s)
-                })?);
-            converter.add_transformer(bcsymbolmap);
+        if let Some(transformer) = bcsymbolmap_transformer {
+            converter.add_transformer(transformer);
         }
 
         #[cfg(feature = "il2cpp")]
         {
-            if let Some(linemapping_file) = matches.value_of("linemapping_file") {
-                let linemapping_path = Path::new(linemapping_file);
-                let linemapping_buffer = ByteView::open(linemapping_path)?;
-                if let Some(linemapping) = LineMapping::parse(&linemapping_buffer) {
-                    converter.add_transformer(linemapping);
-                }
+            if let Some(transformer) = linemapping_transformer {
+                converter.add_transformer(transformer);
             }
         }
 

@@ -23,14 +23,14 @@ use crate::{Error, ErrorKind};
 /// This can convert data in various source formats to an intermediate representation, which can
 /// then be serialized to disk via its [`serialize`](SymCacheConverter::serialize) method.
 #[derive(Debug, Default)]
-pub struct SymCacheConverter {
+pub struct SymCacheConverter<'a> {
     /// Debug identifier of the object file.
     debug_id: DebugId,
     /// CPU architecture of the object file.
     arch: Arch,
 
     /// A list of transformers that are used to transform each function / source location.
-    transformers: transform::Transformers,
+    transformers: transform::Transformers<'a>,
 
     /// The concatenation of all strings that have been added to this `Converter`.
     string_bytes: Vec<u8>,
@@ -56,7 +56,7 @@ pub struct SymCacheConverter {
     last_addr: Option<u32>,
 }
 
-impl SymCacheConverter {
+impl<'a> SymCacheConverter<'a> {
     /// Creates a new Converter.
     pub fn new() -> Self {
         Self::default()
@@ -68,7 +68,7 @@ impl SymCacheConverter {
     /// this transformer before it is being written to the SymCache.
     pub fn add_transformer<T>(&mut self, t: T)
     where
-        T: transform::Transformer + 'static,
+        T: transform::Transformer + 'a,
     {
         self.transformers.0.push(Box::new(t));
     }
