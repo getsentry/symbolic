@@ -1,5 +1,40 @@
 # Changelog
 
+## 8.7.1
+
+**Fixes**:
+
+- Updated wasmparser dependency to `0.83.0` ([#557](https://github.com/getsentry/symbolic/pull/557))
+- Updated rust-sourcemap dependency to hopefully speed up sourcemap parsing ([#559](https://github.com/getsentry/symbolic/pull/559))
+- Match symbol names by exact addresses from symbol table ([#510](https://github.com/getsentry/symbolic/pull/510))
+- Return a more correct `function_size` when dealing with split functions ([#522](https://github.com/getsentry/symbolic/pull/522))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@shuoli84](https://github.com/shuoli84)
+- [@bnjbvr](https://github.com/bnjbvr)
+
+## 8.7.0
+
+**Features**:
+
+- Added a new SymCache `Transformer`, which can be used to apply Function or SourceLocation transformations. ([#496](https://github.com/getsentry/symbolic/pull/496))
+- Turn the breakpad-based minidump processor into an optional feature flag. ([#519](https://github.com/getsentry/symbolic/pull/519))
+
+**Fixes**:
+
+- Fixed CFI `STACK WIN` records being written correctly. ([#513](https://github.com/getsentry/symbolic/pull/513))
+- Do not consider empty files as valid BcSymbolMaps anymore. ([#523](https://github.com/getsentry/symbolic/pull/523))
+- Fix wasm parsing rejecting valid wasm files with non-default features. ([#520](https://github.com/getsentry/symbolic/pull/520))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@bnjbvr](https://github.com/bnjbvr)
+
 ## 8.6.1
 
 **Fixes**:

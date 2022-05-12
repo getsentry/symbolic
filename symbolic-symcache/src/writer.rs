@@ -1,5 +1,7 @@
 //! Defines the [SymCache Converter](`SymCacheConverter`).
 
+#[cfg(feature = "il2cpp")]
+use std::borrow::Cow;
 use std::collections::btree_map;
 use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
@@ -8,22 +10,27 @@ use indexmap::IndexSet;
 use symbolic_common::{Arch, DebugId};
 use symbolic_debuginfo::{DebugSession, Function, ObjectLike, Symbol};
 
+#[cfg(feature = "il2cpp")]
+use symbolic_common::Language;
+#[cfg(feature = "il2cpp")]
+use symbolic_il2cpp::usym::{UsymSourceRecord, UsymSymbols};
+
 use super::{raw, transform};
-use crate::{SymCacheError, SymCacheErrorKind};
+use crate::{Error, ErrorKind};
 
 /// The SymCache Converter.
 ///
 /// This can convert data in various source formats to an intermediate representation, which can
 /// then be serialized to disk via its [`serialize`](SymCacheConverter::serialize) method.
 #[derive(Debug, Default)]
-pub struct SymCacheConverter {
+pub struct SymCacheConverter<'a> {
     /// Debug identifier of the object file.
     debug_id: DebugId,
     /// CPU architecture of the object file.
     arch: Arch,
 
     /// A list of transformers that are used to transform each function / source location.
-    transformers: transform::Transformers,
+    transformers: transform::Transformers<'a>,
 
     /// The concatenation of all strings that have been added to this `Converter`.
     string_bytes: Vec<u8>,
@@ -49,7 +56,7 @@ pub struct SymCacheConverter {
     last_addr: Option<u32>,
 }
 
-impl SymCacheConverter {
+impl<'a> SymCacheConverter<'a> {
     /// Creates a new Converter.
     pub fn new() -> Self {
         Self::default()
@@ -61,7 +68,7 @@ impl SymCacheConverter {
     /// this transformer before it is being written to the SymCache.
     pub fn add_transformer<T>(&mut self, t: T)
     where
-        T: transform::Transformer + 'static,
+        T: transform::Transformer + 'a,
     {
         self.transformers.0.push(Box::new(t));
     }
@@ -110,18 +117,20 @@ impl SymCacheConverter {
 
     /// This processes the given [`ObjectLike`] object, collecting all its functions and line
     /// information into the converter.
-    pub fn process_object<'d, 'o, O>(&mut self, object: &'o O) -> Result<(), SymCacheError>
+    pub fn process_object<'d, 'o, O>(&mut self, object: &'o O) -> Result<(), Error>
     where
         O: ObjectLike<'d, 'o>,
         O::Error: std::error::Error + Send + Sync + 'static,
     {
         let session = object
             .debug_session()
-            .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadDebugFile, e))?;
+            .map_err(|e| Error::new(ErrorKind::BadDebugFile, e))?;
+
+        self.set_arch(object.arch());
+        self.set_debug_id(object.debug_id());
 
         for function in session.functions() {
-            let function =
-                function.map_err(|e| SymCacheError::new(SymCacheErrorKind::BadDebugFile, e))?;
+            let function = function.map_err(|e| Error::new(ErrorKind::BadDebugFile, e))?;
 
             self.process_symbolic_function(&function);
         }
@@ -133,6 +142,7 @@ impl SymCacheConverter {
         Ok(())
     }
 
+    /// Processes an individual [`Function`], adding its line information to the converter.
     pub fn process_symbolic_function(&mut self, function: &Function<'_>) {
         // skip over empty functions or functions whose address is too large to fit in a u32
         if function.size == 0 || function.address > u32::MAX as u64 {
@@ -259,6 +269,7 @@ impl SymCacheConverter {
         }
     }
 
+    /// Processes an individual [`Symbol`].
     pub fn process_symbolic_symbol(&mut self, symbol: &Symbol<'_>) {
         let name_idx = {
             let mut function = transform::Function {
@@ -306,6 +317,118 @@ impl SymCacheConverter {
         if symbol.address as u32 >= *last_addr {
             self.last_addr = None;
         }
+    }
+
+    #[cfg(feature = "il2cpp")]
+    /// Processes a set of [`UsymSymbols`], passing all mapped symbols into the converter.
+    pub fn process_usym(&mut self, usym: &UsymSymbols) -> Result<(), Error> {
+        // Assume records they are sorted by address; There's a test that guarantees this
+
+        let debug_id = usym
+            .id()
+            .map_err(|e| Error::new(ErrorKind::HeaderTooSmall, e))?;
+        self.set_debug_id(debug_id);
+
+        let arch = usym.arch().unwrap_or_default();
+        self.set_arch(arch);
+
+        let mapped_records = usym.records().filter_map(|r| match r {
+            UsymSourceRecord::Unmapped(_) => None,
+            UsymSourceRecord::Mapped(r) => Some(r),
+        });
+
+        let mut curr_id: Option<(Cow<'_, str>, Cow<'_, str>)> = None;
+        let mut function_idx = 0;
+        for record in mapped_records {
+            // like process_symbolic_function, skip functions whose address is too large to fit in a
+            // u32
+            if record.address > u32::MAX as u64 {
+                continue;
+            }
+            let address = record.address as u32;
+
+            // Records that belong to the same function will have the same identifier.
+            // Symbols have GUID-like sections to them that might ensure they're unique across
+            // files, but we'll just include the file name and paths to be very safe.
+            let identifier = Some((record.native_file, record.native_symbol));
+            if identifier != curr_id {
+                function_idx = {
+                    let mut function = transform::Function {
+                        name: record.managed_symbol.clone(),
+                        comp_dir: None,
+                    };
+                    for transformer in &mut self.transformers.0 {
+                        function = transformer.transform_function(function);
+                    }
+
+                    let string_bytes = &mut self.string_bytes;
+                    let strings = &mut self.strings;
+                    let name_offset = Self::insert_string(string_bytes, strings, &function.name);
+
+                    let (fun_idx, _) = self.functions.insert_full(raw::Function {
+                        name_offset,
+                        comp_dir_offset: u32::MAX,
+                        entry_pc: address,
+                        lang: Language::CSharp as u32,
+                    });
+                    fun_idx
+                };
+            }
+
+            let managed_dir = Some(record.managed_file_info.dir_str()).filter(|d| !d.is_empty());
+            let mut location = transform::SourceLocation {
+                file: transform::File {
+                    name: record.managed_file_info.name_str(),
+                    directory: managed_dir,
+                    comp_dir: None,
+                },
+                line: record.managed_line,
+            };
+            for transformer in &mut self.transformers.0 {
+                location = transformer.transform_source_location(location);
+            }
+
+            let string_bytes = &mut self.string_bytes;
+            let strings = &mut self.strings;
+            let path_name_offset = Self::insert_string(string_bytes, strings, &location.file.name);
+            let directory_offset = location
+                .file
+                .directory
+                .map_or(u32::MAX, |d| Self::insert_string(string_bytes, strings, &d));
+
+            let (file_idx, _) = self.files.insert_full(raw::File {
+                path_name_offset,
+                directory_offset,
+                comp_dir_offset: u32::MAX,
+            });
+
+            let source_location = raw::SourceLocation {
+                file_idx: file_idx as u32,
+                line: location.line,
+                function_idx: function_idx as u32,
+                inlined_into_idx: u32::MAX,
+            };
+
+            match self.ranges.entry(address) {
+                btree_map::Entry::Vacant(entry) => {
+                    entry.insert(source_location);
+                }
+                btree_map::Entry::Occupied(mut entry) => {
+                    // TODO: This exists in native-only mappings, but we don't know yet if it's
+                    // possible to generate these types of records in managed code.
+                    // println!(
+                    //     "Found what's probably an inlined source {}::{}:L{}",
+                    //     record.managed_file_info.path_str(),
+                    //     record.managed_symbol,
+                    //     record.managed_line,
+                    // );
+                    entry.insert(source_location);
+                }
+            }
+            curr_id = identifier;
+        }
+
+        Ok(())
     }
 
     // Methods for serializing to a [`Write`] below:

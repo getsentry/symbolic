@@ -91,9 +91,9 @@ impl fmt::Display for SymCacheErrorKind {
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct SymCacheError {
-    kind: SymCacheErrorKind,
+    pub(crate) kind: SymCacheErrorKind,
     #[source]
-    source: Option<Box<dyn Error + Send + Sync + 'static>>,
+    pub(crate) source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
 impl SymCacheError {

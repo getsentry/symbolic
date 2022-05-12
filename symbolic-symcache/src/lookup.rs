@@ -1,4 +1,6 @@
-use symbolic_common::Language;
+use std::fmt;
+
+use symbolic_common::{Language, Name, NameMangling};
 
 use super::{raw, SymCache};
 
@@ -52,11 +54,35 @@ impl<'data> SymCache<'data> {
     pub(crate) fn get_function(&self, function_idx: u32) -> Option<Function<'data>> {
         let raw_function = self.functions.get(function_idx as usize)?;
         Some(Function {
-            name: self.get_string(raw_function.name_offset),
+            name: self.get_string(raw_function.name_offset).unwrap_or("?"),
             comp_dir: self.get_string(raw_function.comp_dir_offset),
             entry_pc: raw_function.entry_pc,
             language: Language::from_u32(raw_function.lang),
         })
+    }
+
+    /// An iterator over the functions in this SymCache.
+    ///
+    /// Only functions with a valid entry pc, i.e., one not equal to `u32::MAX`,
+    /// will be returned.
+    /// Note that functions are *not* returned ordered by name or entry pc,
+    /// but in insertion order, which is essentially random.
+    pub fn functions(&self) -> Functions<'data> {
+        Functions {
+            cache: self.clone(),
+            function_idx: 0,
+        }
+    }
+
+    /// An iterator over the files in this SymCache.
+    ///
+    /// Note that files are *not* returned ordered by name or full path,
+    /// but in insertion order, which is essentially random.
+    pub fn files(&self) -> Files<'data> {
+        Files {
+            cache: self.clone(),
+            file_idx: 0,
+        }
     }
 }
 
@@ -106,7 +132,6 @@ impl<'data> File<'data> {
     }
 
     /// Resolves and concatenates the full path based on its individual fragments.
-    #[allow(dead_code)]
     pub fn full_path(&self) -> String {
         let comp_dir = self.comp_dir().unwrap_or_default();
         let directory = self.directory().unwrap_or_default();
@@ -123,7 +148,7 @@ impl<'data> File<'data> {
 /// A Function definition as included in the SymCache.
 #[derive(Clone, Debug)]
 pub struct Function<'data> {
-    name: Option<&'data str>,
+    name: &'data str,
     comp_dir: Option<&'data str>,
     entry_pc: u32,
     language: Language,
@@ -131,8 +156,13 @@ pub struct Function<'data> {
 
 impl<'data> Function<'data> {
     /// The possibly mangled name/symbol of this function.
-    pub fn name(&self) -> Option<&'data str> {
+    pub fn name(&self) -> &'data str {
         self.name
+    }
+
+    /// The possibly mangled name/symbol of this function, suitable for demangling.
+    pub fn name_for_demangling(&self) -> Name<'data> {
+        Name::new(self.name, NameMangling::Unknown, self.language)
     }
 
     /// The compilation directory of this function.
@@ -148,6 +178,17 @@ impl<'data> Function<'data> {
     /// The language the function is written in.
     pub fn language(&self) -> Language {
         self.language
+    }
+}
+
+impl<'data> Default for Function<'data> {
+    fn default() -> Self {
+        Self {
+            name: "?",
+            comp_dir: None,
+            entry_pc: u32::MAX,
+            language: Language::Unknown,
+        }
     }
 }
 
@@ -175,8 +216,10 @@ impl<'data, 'cache> SourceLocation<'data, 'cache> {
     }
 
     /// The function corresponding to the instruction.
-    pub fn function(&self) -> Option<Function<'data>> {
-        self.cache.get_function(self.source_location.function_idx)
+    pub fn function(&self) -> Function<'data> {
+        self.cache
+            .get_function(self.source_location.function_idx)
+            .unwrap_or_default()
     }
 
     // TODO: maybe forward some of the `File` and `Function` accessors, such as:
@@ -207,5 +250,91 @@ impl<'data, 'cache> Iterator for SourceLocationIter<'data, 'cache> {
                     source_location,
                 }
             })
+    }
+}
+
+/// Iterator returned by [`SymCache::functions`]; see documentation there.
+#[derive(Debug, Clone)]
+pub struct Functions<'data> {
+    cache: SymCache<'data>,
+    function_idx: u32,
+}
+
+impl<'data> Iterator for Functions<'data> {
+    type Item = Function<'data>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut function = self.cache.get_function(self.function_idx);
+
+        while let Some(ref f) = function {
+            if f.entry_pc == u32::MAX {
+                self.function_idx += 1;
+                function = self.cache.get_function(self.function_idx);
+            } else {
+                break;
+            }
+        }
+
+        function.map(|f| {
+            self.function_idx += 1;
+            f
+        })
+    }
+}
+
+/// A helper struct for printing the functions contained in a symcache.
+///
+/// This struct's `Debug` impl prints the entry pcs and names of the
+/// functions returned by [`SymCache::functions`], sorted first by entry pc
+/// and then by name.
+pub struct FunctionsDebug<'a>(pub &'a SymCache<'a>);
+
+impl fmt::Debug for FunctionsDebug<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut vec: Vec<_> = self.0.functions().collect();
+
+        vec.sort_by_key(|f| (f.entry_pc, f.name));
+        for function in vec {
+            writeln!(f, "{:>16x} {}", &function.entry_pc, &function.name)?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Iterator returned by [`SymCache::files`]; see documentation there.
+#[derive(Debug, Clone)]
+pub struct Files<'data> {
+    cache: SymCache<'data>,
+    file_idx: u32,
+}
+
+impl<'data> Iterator for Files<'data> {
+    type Item = File<'data>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.cache.get_file(self.file_idx).map(|f| {
+            self.file_idx += 1;
+            f
+        })
+    }
+}
+
+/// A helper struct for printing the files contained in a symcache.
+///
+/// This struct's `Debug` impl prints the full paths of the
+/// files returned by [`SymCache::files`] in sorted order.
+pub struct FilesDebug<'a>(pub &'a SymCache<'a>);
+
+impl fmt::Debug for FilesDebug<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut vec: Vec<_> = self.0.files().map(|f| f.full_path()).collect();
+
+        vec.sort();
+        for file in vec {
+            writeln!(f, "{}", file)?;
+        }
+
+        Ok(())
     }
 }

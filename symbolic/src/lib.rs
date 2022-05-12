@@ -73,6 +73,9 @@ pub use symbolic_debuginfo as debuginfo;
 #[doc(inline)]
 #[cfg(feature = "demangle")]
 pub use symbolic_demangle as demangle;
+#[doc(inline, hidden)]
+#[cfg(feature = "il2cpp")]
+pub use symbolic_il2cpp as il2cpp;
 #[doc(inline)]
 #[cfg(feature = "minidump")]
 pub use symbolic_minidump as minidump;

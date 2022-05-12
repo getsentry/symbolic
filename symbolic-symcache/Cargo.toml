@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-symcache"
-version = "8.6.1"
+version = "8.7.1"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -25,8 +25,9 @@ all-features = true
 [dependencies]
 dmsort = "1.0.1"
 fnv = "1.0.6"
-symbolic-common = { version = "8.6.1", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "8.6.1", path = "../symbolic-debuginfo" }
+symbolic-common = { version = "8.7.1", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "8.7.1", path = "../symbolic-debuginfo" }
+symbolic-il2cpp = { version = "8.7.1", path = "../symbolic-il2cpp", optional = true }
 thiserror = "1.0.20"
 indexmap = "1.7.0"
 
@@ -38,6 +39,7 @@ similar-asserts = "1.0.0"
 
 [features]
 bench = []
+il2cpp = ["symbolic-il2cpp"]
 
 [[bench]]
 name = "bench_writer"

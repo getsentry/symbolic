@@ -5,7 +5,7 @@ use std::os::raw::c_char;
 use std::slice;
 
 use symbolic::common::{ByteView, InstructionInfo, SelfCell};
-use symbolic::symcache::{SymCache, SymCacheWriter, SYMCACHE_VERSION};
+use symbolic::symcache::{SymCache, SymCacheConverter, SYMCACHE_VERSION};
 
 use crate::core::SymbolicStr;
 use crate::debuginfo::SymbolicObject;
@@ -83,7 +83,9 @@ ffi_fn! {
         let object = SymbolicObject::as_rust(object).get();
 
         let mut buffer = Vec::new();
-        SymCacheWriter::write_object(object, Cursor::new(&mut buffer))?;
+        let mut converter = SymCacheConverter::new();
+        converter.process_object(object)?;
+        converter.serialize(&mut Cursor::new(&mut buffer))?;
 
         let byteview = ByteView::from_vec(buffer);
         let cell = SelfCell::try_new(byteview, |p| SymCache::parse(&*p))?;
@@ -129,22 +131,6 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Returns true if the symcache has line infos.
-    #[allow(deprecated)]
-    unsafe fn symbolic_symcache_has_line_info(symcache: *const SymbolicSymCache) -> Result<bool> {
-        Ok(SymbolicSymCache::as_rust(symcache).get().has_line_info())
-    }
-}
-
-ffi_fn! {
-    /// Returns true if the symcache has file infos.
-    #[allow(deprecated)]
-    unsafe fn symbolic_symcache_has_file_info(symcache: *const SymbolicSymCache) -> Result<bool> {
-        Ok(SymbolicSymCache::as_rust(symcache).get().has_file_info())
-    }
-}
-
-ffi_fn! {
     /// Returns the version of the cache file.
     unsafe fn symbolic_symcache_get_version(symcache: *const SymbolicSymCache) -> Result<u32> {
         Ok(SymbolicSymCache::as_rust(symcache).get().version())
@@ -161,18 +147,17 @@ ffi_fn! {
         let cache = SymbolicSymCache::as_rust(symcache).get();
 
         let mut items = vec![];
-        for line_info in cache.lookup(addr)? {
-            let line_info = line_info?;
+        for line_info in cache.lookup(addr) {
             items.push(SymbolicLineInfo {
-                sym_addr: line_info.function_address(),
-                line_addr: line_info.line_address(),
-                instr_addr: line_info.instruction_address(),
+                sym_addr: line_info.function().entry_pc() as u64,
+                line_addr: addr,
+                instr_addr: addr,
                 line: line_info.line(),
-                lang: SymbolicStr::new(line_info.language().name()),
-                symbol: SymbolicStr::new(line_info.symbol()),
-                filename: SymbolicStr::new(line_info.filename()),
-                base_dir: SymbolicStr::new(line_info.base_dir()),
-                comp_dir: SymbolicStr::new(line_info.compilation_dir()),
+                lang: SymbolicStr::new(line_info.function().language().name()),
+                symbol: SymbolicStr::new(line_info.function().name()),
+                filename: SymbolicStr::new(line_info.file().map(|file| file.path_name()).unwrap_or_default()),
+                base_dir: SymbolicStr::new(line_info.file().and_then(|file|file.directory()).unwrap_or_default()),
+                comp_dir: SymbolicStr::new(line_info.file().and_then(|file|file.comp_dir()).unwrap_or_default()),
             });
         }
 
