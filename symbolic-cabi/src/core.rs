@@ -177,15 +177,6 @@ pub enum SymbolicErrorCode {
     CfiErrorBadFileMagic = 3006,
     CfiErrorInvalidAddress = 3007,
 
-    // symbolic::minidump::processor
-    ProcessMinidumpErrorMinidumpNotFound = 4001,
-    ProcessMinidumpErrorNoMinidumpHeader = 4002,
-    ProcessMinidumpErrorNoThreadList = 4003,
-    ProcessMinidumpErrorInvalidThreadIndex = 4004,
-    ProcessMinidumpErrorInvalidThreadId = 4005,
-    ProcessMinidumpErrorDuplicateRequestingThreads = 4006,
-    ProcessMinidumpErrorSymbolSupplierInterrupted = 4007,
-
     // symbolic::sourcemap
     ParseSourceMapError = 5001,
 
@@ -269,35 +260,6 @@ impl SymbolicErrorCode {
                     CfiErrorKind::WriteFailed => SymbolicErrorCode::CfiErrorWriteError,
                     CfiErrorKind::BadFileMagic => SymbolicErrorCode::CfiErrorBadFileMagic,
                     _ => SymbolicErrorCode::CfiErrorUnknown,
-                };
-            }
-
-            use symbolic::minidump::processor::{ProcessMinidumpError, ProcessResult};
-            if let Some(error) = error.downcast_ref::<ProcessMinidumpError>() {
-                return match error.kind() {
-                    // `Ok` is not used in errors
-                    ProcessResult::Ok => SymbolicErrorCode::Unknown,
-                    ProcessResult::MinidumpNotFound => {
-                        SymbolicErrorCode::ProcessMinidumpErrorMinidumpNotFound
-                    }
-                    ProcessResult::NoMinidumpHeader => {
-                        SymbolicErrorCode::ProcessMinidumpErrorNoMinidumpHeader
-                    }
-                    ProcessResult::NoThreadList => {
-                        SymbolicErrorCode::ProcessMinidumpErrorNoThreadList
-                    }
-                    ProcessResult::InvalidThreadIndex => {
-                        SymbolicErrorCode::ProcessMinidumpErrorInvalidThreadIndex
-                    }
-                    ProcessResult::InvalidThreadId => {
-                        SymbolicErrorCode::ProcessMinidumpErrorInvalidThreadId
-                    }
-                    ProcessResult::DuplicateRequestingThreads => {
-                        SymbolicErrorCode::ProcessMinidumpErrorDuplicateRequestingThreads
-                    }
-                    ProcessResult::SymbolSupplierInterrupted => {
-                        SymbolicErrorCode::ProcessMinidumpErrorSymbolSupplierInterrupted
-                    }
                 };
             }
 
