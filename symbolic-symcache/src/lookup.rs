@@ -45,9 +45,7 @@ impl<'data> SymCache<'data> {
         Some(File {
             comp_dir: self.get_string(raw_file.comp_dir_offset),
             directory: self.get_string(raw_file.directory_offset),
-            path_name: self
-                .get_string(raw_file.path_name_offset)
-                .unwrap_or_default(),
+            name: self.get_string(raw_file.name_offset).unwrap_or_default(),
         })
     }
 
@@ -55,7 +53,6 @@ impl<'data> SymCache<'data> {
         let raw_function = self.functions.get(function_idx as usize)?;
         Some(Function {
             name: self.get_string(raw_function.name_offset).unwrap_or("?"),
-            comp_dir: self.get_string(raw_function.comp_dir_offset),
             entry_pc: raw_function.entry_pc,
             language: Language::from_u32(raw_function.lang),
         })
@@ -112,33 +109,17 @@ pub struct File<'data> {
     /// The optional directory prefix.
     directory: Option<&'data str>,
     /// The file path.
-    path_name: &'data str,
+    name: &'data str,
 }
 
 impl<'data> File<'data> {
-    /// Resolves the compilation directory of this source file.
-    pub fn comp_dir(&self) -> Option<&'data str> {
-        self.comp_dir
-    }
-
-    /// Resolves the parent directory of this source file.
-    pub fn directory(&self) -> Option<&'data str> {
-        self.directory
-    }
-
-    /// Resolves the final path name fragment of this source file.
-    pub fn path_name(&self) -> &'data str {
-        self.path_name
-    }
-
-    /// Resolves and concatenates the full path based on its individual fragments.
+    /// Returns this file's full path.
     pub fn full_path(&self) -> String {
-        let comp_dir = self.comp_dir().unwrap_or_default();
-        let directory = self.directory().unwrap_or_default();
-        let path_name = self.path_name();
+        let comp_dir = self.comp_dir.unwrap_or_default();
+        let directory = self.directory.unwrap_or_default();
 
         let prefix = symbolic_common::join_path(comp_dir, directory);
-        let full_path = symbolic_common::join_path(&prefix, path_name);
+        let full_path = symbolic_common::join_path(&prefix, self.name);
         let full_path = symbolic_common::clean_path(&full_path).into_owned();
 
         full_path
@@ -149,7 +130,6 @@ impl<'data> File<'data> {
 #[derive(Clone, Debug)]
 pub struct Function<'data> {
     name: &'data str,
-    comp_dir: Option<&'data str>,
     entry_pc: u32,
     language: Language,
 }
@@ -163,11 +143,6 @@ impl<'data> Function<'data> {
     /// The possibly mangled name/symbol of this function, suitable for demangling.
     pub fn name_for_demangling(&self) -> Name<'data> {
         Name::new(self.name, NameMangling::Unknown, self.language)
-    }
-
-    /// The compilation directory of this function.
-    pub fn comp_dir(&self) -> Option<&'data str> {
-        self.comp_dir
     }
 
     /// The entry pc of the function.
@@ -185,7 +160,6 @@ impl<'data> Default for Function<'data> {
     fn default() -> Self {
         Self {
             name: "?",
-            comp_dir: None,
             entry_pc: u32::MAX,
             language: Language::Unknown,
         }

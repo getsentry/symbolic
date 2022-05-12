@@ -4,7 +4,7 @@ use std::mem;
 use std::os::raw::c_char;
 use std::slice;
 
-use symbolic::common::{ByteView, InstructionInfo, SelfCell};
+use symbolic::common::{split_path, ByteView, InstructionInfo, SelfCell};
 use symbolic::symcache::{SymCache, SymCacheConverter, SYMCACHE_VERSION};
 
 use crate::core::SymbolicStr;
@@ -29,7 +29,6 @@ pub struct SymbolicLineInfo {
     pub symbol: SymbolicStr,
     pub filename: SymbolicStr,
     pub base_dir: SymbolicStr,
-    pub comp_dir: SymbolicStr,
 }
 
 /// Represents a lookup result of one or more items.
@@ -147,17 +146,18 @@ ffi_fn! {
         let cache = SymbolicSymCache::as_rust(symcache).get();
 
         let mut items = vec![];
-        for line_info in cache.lookup(addr) {
+        for source_location in cache.lookup(addr) {
+            let full_path = source_location.file().map(|file| file.full_path()).unwrap_or_default();
+            let (base_dir, filename) = split_path(&full_path);
             items.push(SymbolicLineInfo {
-                sym_addr: line_info.function().entry_pc() as u64,
+                sym_addr: source_location.function().entry_pc() as u64,
                 line_addr: addr,
                 instr_addr: addr,
-                line: line_info.line(),
-                lang: SymbolicStr::new(line_info.function().language().name()),
-                symbol: SymbolicStr::new(line_info.function().name()),
-                filename: SymbolicStr::new(line_info.file().map(|file| file.path_name()).unwrap_or_default()),
-                base_dir: SymbolicStr::new(line_info.file().and_then(|file|file.directory()).unwrap_or_default()),
-                comp_dir: SymbolicStr::new(line_info.file().and_then(|file|file.comp_dir()).unwrap_or_default()),
+                line: source_location.line(),
+                lang: SymbolicStr::new(source_location.function().language().name()),
+                symbol: SymbolicStr::new(source_location.function().name()),
+                filename: SymbolicStr::new(filename),
+                base_dir: SymbolicStr::new(base_dir.unwrap_or_default()),
             });
         }
 

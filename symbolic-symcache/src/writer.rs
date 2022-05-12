@@ -171,13 +171,10 @@ impl<'a> SymCacheConverter<'a> {
             let strings = &mut self.strings;
             let name_offset = Self::insert_string(string_bytes, strings, &function.name);
 
-            let comp_dir_offset = function.comp_dir.map_or(u32::MAX, |comp_dir| {
-                Self::insert_string(string_bytes, strings, &comp_dir)
-            });
             let lang = language as u32;
             let (fun_idx, _) = self.functions.insert_full(raw::Function {
                 name_offset,
-                comp_dir_offset,
+                _comp_dir_offset: u32::MAX,
                 entry_pc,
                 lang,
             });
@@ -199,7 +196,7 @@ impl<'a> SymCacheConverter<'a> {
 
             let string_bytes = &mut self.string_bytes;
             let strings = &mut self.strings;
-            let path_name_offset = Self::insert_string(string_bytes, strings, &location.file.name);
+            let name_offset = Self::insert_string(string_bytes, strings, &location.file.name);
             let directory_offset = location
                 .file
                 .directory
@@ -209,7 +206,7 @@ impl<'a> SymCacheConverter<'a> {
             });
 
             let (file_idx, _) = self.files.insert_full(raw::File {
-                path_name_offset,
+                name_offset,
                 directory_offset,
                 comp_dir_offset,
             });
@@ -290,7 +287,7 @@ impl<'a> SymCacheConverter<'a> {
             btree_map::Entry::Vacant(entry) => {
                 let function = raw::Function {
                     name_offset: name_idx,
-                    comp_dir_offset: u32::MAX,
+                    _comp_dir_offset: u32::MAX,
                     entry_pc: symbol.address as u32,
                     lang: u32::MAX,
                 };
@@ -367,7 +364,7 @@ impl<'a> SymCacheConverter<'a> {
 
                     let (fun_idx, _) = self.functions.insert_full(raw::Function {
                         name_offset,
-                        comp_dir_offset: u32::MAX,
+                        _comp_dir_offset: u32::MAX,
                         entry_pc: address,
                         lang: Language::CSharp as u32,
                     });
@@ -390,14 +387,14 @@ impl<'a> SymCacheConverter<'a> {
 
             let string_bytes = &mut self.string_bytes;
             let strings = &mut self.strings;
-            let path_name_offset = Self::insert_string(string_bytes, strings, &location.file.name);
+            let name_offset = Self::insert_string(string_bytes, strings, &location.file.name);
             let directory_offset = location
                 .file
                 .directory
                 .map_or(u32::MAX, |d| Self::insert_string(string_bytes, strings, &d));
 
             let (file_idx, _) = self.files.insert_full(raw::File {
-                path_name_offset,
+                name_offset,
                 directory_offset,
                 comp_dir_offset: u32::MAX,
             });

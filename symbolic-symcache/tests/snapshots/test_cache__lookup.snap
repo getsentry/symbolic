@@ -9,9 +9,6 @@ expression: result
         21,
         Function {
             name: "_ZN12_GLOBAL__N_15crashEv",
-            comp_dir: Some(
-                "/Users/travis/build/getsentry/breakpad-tools/macos",
-            ),
             entry_pc: 4294967295,
             language: Cpp,
         },
@@ -21,9 +18,6 @@ expression: result
         25,
         Function {
             name: "_ZN12_GLOBAL__N_15startEv",
-            comp_dir: Some(
-                "/Users/travis/build/getsentry/breakpad-tools/macos",
-            ),
             entry_pc: 4294967295,
             language: Cpp,
         },
@@ -33,9 +27,6 @@ expression: result
         32,
         Function {
             name: "main",
-            comp_dir: Some(
-                "/Users/travis/build/getsentry/breakpad-tools/macos",
-            ),
             entry_pc: 56224,
             language: Cpp,
         },
