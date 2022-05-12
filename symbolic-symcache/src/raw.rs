@@ -24,6 +24,7 @@ pub const NO_SOURCE_LOCATION: SourceLocation = SourceLocation {
     inlined_into_idx: u32::MAX,
 };
 
+/// The header of a symcache file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[repr(C)]
 pub struct Header {

@@ -16,7 +16,7 @@ use symbolic_common::Language;
 use symbolic_il2cpp::usym::{UsymSourceRecord, UsymSymbols};
 
 use super::{raw, transform};
-use crate::{SymCacheError, SymCacheErrorKind};
+use crate::{Error, ErrorKind};
 
 /// The SymCache Converter.
 ///
@@ -117,18 +117,20 @@ impl<'a> SymCacheConverter<'a> {
 
     /// This processes the given [`ObjectLike`] object, collecting all its functions and line
     /// information into the converter.
-    pub fn process_object<'d, 'o, O>(&mut self, object: &'o O) -> Result<(), SymCacheError>
+    pub fn process_object<'d, 'o, O>(&mut self, object: &'o O) -> Result<(), Error>
     where
         O: ObjectLike<'d, 'o>,
         O::Error: std::error::Error + Send + Sync + 'static,
     {
         let session = object
             .debug_session()
-            .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadDebugFile, e))?;
+            .map_err(|e| Error::new(ErrorKind::BadDebugFile, e))?;
+
+        self.set_arch(object.arch());
+        self.set_debug_id(object.debug_id());
 
         for function in session.functions() {
-            let function =
-                function.map_err(|e| SymCacheError::new(SymCacheErrorKind::BadDebugFile, e))?;
+            let function = function.map_err(|e| Error::new(ErrorKind::BadDebugFile, e))?;
 
             self.process_symbolic_function(&function);
         }
@@ -140,6 +142,7 @@ impl<'a> SymCacheConverter<'a> {
         Ok(())
     }
 
+    /// Processes an individual [`Function`], adding its line information to the converter.
     pub fn process_symbolic_function(&mut self, function: &Function<'_>) {
         // skip over empty functions or functions whose address is too large to fit in a u32
         if function.size == 0 || function.address > u32::MAX as u64 {
@@ -266,6 +269,7 @@ impl<'a> SymCacheConverter<'a> {
         }
     }
 
+    /// Processes an individual [`Symbol`].
     pub fn process_symbolic_symbol(&mut self, symbol: &Symbol<'_>) {
         let name_idx = {
             let mut function = transform::Function {
@@ -317,8 +321,16 @@ impl<'a> SymCacheConverter<'a> {
 
     #[cfg(feature = "il2cpp")]
     /// Processes a set of [`UsymSymbols`], passing all mapped symbols into the converter.
-    pub fn process_usym(&mut self, usym: &UsymSymbols) -> Result<(), SymCacheError> {
+    pub fn process_usym(&mut self, usym: &UsymSymbols) -> Result<(), Error> {
         // Assume records they are sorted by address; There's a test that guarantees this
+
+        let debug_id = usym
+            .id()
+            .map_err(|e| Error::new(ErrorKind::HeaderTooSmall, e))?;
+        self.set_debug_id(debug_id);
+
+        let arch = usym.arch().unwrap_or_default();
+        self.set_arch(arch);
 
         let mapped_records = usym.records().filter_map(|r| match r {
             UsymSourceRecord::Unmapped(_) => None,

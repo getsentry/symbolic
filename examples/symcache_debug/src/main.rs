@@ -12,7 +12,7 @@ use symbolic::debuginfo::Archive;
 use symbolic::demangle::{Demangle, DemangleOptions};
 #[cfg(feature = "il2cpp")]
 use symbolic::il2cpp::LineMapping;
-use symbolic::symcache::{SymCache, SymCacheWriter};
+use symbolic::symcache::{FilesDebug, FunctionsDebug, SymCache, SymCacheConverter};
 
 fn execute(matches: &ArgMatches) -> Result<()> {
     let buffer;
@@ -77,22 +77,24 @@ fn execute(matches: &ArgMatches) -> Result<()> {
                 .transpose()?;
         }
 
-        let mut writer = SymCacheWriter::new(Cursor::new(Vec::new()))?;
+        let mut converter = SymCacheConverter::new();
 
         if let Some(transformer) = bcsymbolmap_transformer {
-            writer.add_transformer(transformer);
+            converter.add_transformer(transformer);
         }
 
         #[cfg(feature = "il2cpp")]
         {
             if let Some(transformer) = linemapping_transformer {
-                writer.add_transformer(transformer);
+                converter.add_transformer(transformer);
             }
         }
 
-        writer.process_object(obj)?;
+        converter.process_object(obj)?;
 
-        buffer = ByteView::from_vec(writer.finish()?.into_inner());
+        let mut result = Vec::new();
+        converter.serialize(&mut Cursor::new(&mut result))?;
+        buffer = ByteView::from_vec(result);
         symcache = SymCache::parse(&buffer)?;
 
         // write mode
@@ -125,20 +127,24 @@ fn execute(matches: &ArgMatches) -> Result<()> {
             addr.parse()?
         };
 
-        let m = symcache.lookup(addr)?.collect::<Vec<_>>()?;
+        let m = symcache.lookup(addr).collect::<Vec<_>>();
         if m.is_empty() {
             println!("No match :(");
         } else {
             for sym in m {
                 print!(
                     "{}",
-                    sym.function_name()
+                    sym.function()
+                        .name_for_demangling()
                         .try_demangle(DemangleOptions::name_only())
                 );
 
-                let path = sym.path();
+                let path = sym
+                    .file()
+                    .map(|file| file.full_path())
+                    .unwrap_or_else(|| "<unknown file >".into());
                 let line = sym.line();
-                let lang = sym.language();
+                let lang = sym.function().language();
 
                 if !path.is_empty() || line != 0 || lang != Language::Unknown {
                     print!("\n ");
@@ -161,11 +167,12 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 
     // print mode
     if matches.is_present("print_symbols") {
-        #[allow(deprecated)]
-        for func in symcache.functions() {
-            let func = func?;
-            println!("{:>16x} {:#}", func.address(), func.name());
-        }
+        println!("{:?}", FunctionsDebug(&symcache));
+    }
+
+    // print mode
+    if matches.is_present("print_files") {
+        println!("{:?}", FilesDebug(&symcache));
     }
 
     Ok(())
@@ -238,6 +245,11 @@ fn main() {
             Arg::new("print_symbols")
                 .long("symbols")
                 .help("Print all symbols"),
+        )
+        .arg(
+            Arg::new("print_files")
+                .long("files")
+                .help("Print all files"),
         )
         .get_matches();
 
