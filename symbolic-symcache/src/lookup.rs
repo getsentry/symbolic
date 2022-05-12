@@ -108,11 +108,11 @@ impl<'data> SymCache<'data> {
 #[derive(Debug, Clone)]
 pub struct File<'data> {
     /// The optional compilation directory prefix.
-    pub comp_dir: Option<&'data str>,
+    comp_dir: Option<&'data str>,
     /// The optional directory prefix.
-    pub directory: Option<&'data str>,
+    directory: Option<&'data str>,
     /// The file path.
-    pub path_name: &'data str,
+    path_name: &'data str,
 }
 
 impl<'data> File<'data> {

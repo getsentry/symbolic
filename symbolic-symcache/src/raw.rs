@@ -10,14 +10,14 @@ const SYMCACHE_MAGIC_BYTES: [u8; 4] = *b"SYMC";
 /// The magic file preamble to identify SymCache files.
 ///
 /// Serialized as ASCII "SYMC" on little-endian (x64) systems.
-pub const SYMCACHE_MAGIC: u32 = u32::from_le_bytes(SYMCACHE_MAGIC_BYTES);
+pub(crate) const SYMCACHE_MAGIC: u32 = u32::from_le_bytes(SYMCACHE_MAGIC_BYTES);
 /// The byte-flipped magic, which indicates an endianness mismatch.
-pub const SYMCACHE_MAGIC_FLIPPED: u32 = SYMCACHE_MAGIC.swap_bytes();
+pub(crate) const SYMCACHE_MAGIC_FLIPPED: u32 = SYMCACHE_MAGIC.swap_bytes();
 
 /// This [`SourceLocation`] is a sentinel value that says that no source location is present here.
 /// This is used to push an "end" range that does not resolve to a valid source location.
 /// Otherwise, the ranges would implicitly extend to infinity.
-pub const NO_SOURCE_LOCATION: SourceLocation = SourceLocation {
+pub(crate) const NO_SOURCE_LOCATION: SourceLocation = SourceLocation {
     file_idx: u32::MAX,
     line: u32::MAX,
     function_idx: u32::MAX,
@@ -27,57 +27,57 @@ pub const NO_SOURCE_LOCATION: SourceLocation = SourceLocation {
 /// The header of a symcache file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[repr(C)]
-pub struct Header {
+pub(crate) struct Header {
     /// The file magic representing the file format and endianness.
-    pub magic: u32,
+    pub(crate) magic: u32,
     /// The SymCache Format Version.
-    pub version: u32,
+    pub(crate) version: u32,
 
     /// Debug identifier of the object file.
-    pub debug_id: DebugId,
+    pub(crate) debug_id: DebugId,
     /// CPU architecture of the object file.
-    pub arch: Arch,
+    pub(crate) arch: Arch,
 
     /// Number of included [`File`]s.
-    pub num_files: u32,
+    pub(crate) num_files: u32,
     /// Number of included [`Function`]s.
-    pub num_functions: u32,
+    pub(crate) num_functions: u32,
     /// Number of included [`SourceLocation`]s.
-    pub num_source_locations: u32,
+    pub(crate) num_source_locations: u32,
     /// Number of included [`Range`]s.
-    pub num_ranges: u32,
+    pub(crate) num_ranges: u32,
     /// Total number of bytes used for string data.
-    pub string_bytes: u32,
+    pub(crate) string_bytes: u32,
 
     /// Some reserved space in the header for future extensions that would not require a
     /// completely new parsing method.
-    pub _reserved: [u8; 16],
+    pub(crate) _reserved: [u8; 16],
 }
 
 /// Serialized Function metadata in the SymCache.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[repr(C)]
-pub struct Function {
+pub(crate) struct Function {
     /// The functions name (reference to a [`String`]).
-    pub name_offset: u32,
+    pub(crate) name_offset: u32,
     /// The compilation directory (reference to a [`String`]).
-    pub comp_dir_offset: u32,
+    pub(crate) comp_dir_offset: u32,
     /// The first address covered by this function.
-    pub entry_pc: u32,
+    pub(crate) entry_pc: u32,
     /// The language of the function.
-    pub lang: u32,
+    pub(crate) lang: u32,
 }
 
 /// Serialized File in the SymCache.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[repr(C)]
-pub struct File {
+pub(crate) struct File {
     /// The optional compilation directory prefix (reference to a [`String`]).
-    pub comp_dir_offset: u32,
+    pub(crate) comp_dir_offset: u32,
     /// The optional directory prefix (reference to a [`String`]).
-    pub directory_offset: u32,
+    pub(crate) directory_offset: u32,
     /// The file path (reference to a [`String`]).
-    pub path_name_offset: u32,
+    pub(crate) path_name_offset: u32,
 }
 
 /// A location in a source file, comprising a file, a line, a function, and
@@ -89,16 +89,16 @@ pub struct File {
 /// but have different inline information.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 #[repr(C)]
-pub struct SourceLocation {
+pub(crate) struct SourceLocation {
     /// The optional source file (reference to a [`File`]).
-    pub file_idx: u32,
+    pub(crate) file_idx: u32,
     /// The line number.
-    pub line: u32,
+    pub(crate) line: u32,
     /// The function (reference to a [`Function`]).
-    pub function_idx: u32,
+    pub(crate) function_idx: u32,
     /// The caller source location in case this location was inlined
     /// (reference to another [`SourceLocation`]).
-    pub inlined_into_idx: u32,
+    pub(crate) inlined_into_idx: u32,
 }
 
 /// A representation of a code range in the SymCache.
@@ -107,11 +107,11 @@ pub struct SourceLocation {
 /// by the next range's start.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[repr(C)]
-pub struct Range(pub u32);
+pub(crate) struct Range(pub(crate) u32);
 
 /// Returns the amount left to add to the remainder to get 8 if
 /// `to_align` isn't a multiple of 8.
-pub fn align_to_eight(to_align: usize) -> usize {
+pub(crate) fn align_to_eight(to_align: usize) -> usize {
     let remainder = to_align % 8;
     if remainder == 0 {
         remainder

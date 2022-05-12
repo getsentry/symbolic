@@ -103,7 +103,7 @@
 
 mod error;
 mod lookup;
-pub mod raw;
+mod raw;
 pub mod transform;
 mod writer;
 
