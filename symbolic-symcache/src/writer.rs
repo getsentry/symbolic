@@ -463,7 +463,7 @@ impl<'a> SymCacheConverter<'a> {
 
         let header = raw::Header {
             magic: raw::SYMCACHE_MAGIC,
-            version: raw::SYMCACHE_VERSION,
+            version: crate::SYMCACHE_VERSION,
 
             debug_id: self.debug_id,
             arch: self.arch,

@@ -167,8 +167,6 @@ impl<'data> std::fmt::Debug for SymCache<'data> {
 impl<'data> SymCache<'data> {
     /// Parse the SymCache binary format into a convenient type that allows safe access and allows
     /// fast lookups.
-    ///
-    /// See the [raw module](raw) for an explanation of the binary format.
     pub fn parse(buf: &'data [u8]) -> Result<Self> {
         if align_to_eight(buf.as_ptr() as usize) != 0 {
             return Err(ErrorKind::BufferNotAligned.into());
@@ -188,7 +186,7 @@ impl<'data> SymCache<'data> {
         if header.magic != raw::SYMCACHE_MAGIC {
             return Err(ErrorKind::WrongFormat.into());
         }
-        if header.version != raw::SYMCACHE_VERSION {
+        if header.version != SYMCACHE_VERSION {
             return Err(ErrorKind::WrongVersion.into());
         }
 

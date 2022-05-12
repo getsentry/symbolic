@@ -2,8 +2,6 @@
 //!
 use symbolic_common::{Arch, DebugId};
 
-pub use crate::SYMCACHE_VERSION;
-
 /// The magic file preamble as individual bytes.
 const SYMCACHE_MAGIC_BYTES: [u8; 4] = *b"SYMC";
 
