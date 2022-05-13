@@ -59,7 +59,10 @@ pub(crate) struct Function {
     /// The functions name (reference to a [`String`]).
     pub(crate) name_offset: u32,
     /// The compilation directory (reference to a [`String`]).
-    pub(crate) comp_dir_offset: u32,
+    ///
+    /// This is retained for binary compatibility; all path information
+    /// is contained in [`File`].
+    pub(crate) _comp_dir_offset: u32,
     /// The first address covered by this function.
     pub(crate) entry_pc: u32,
     /// The language of the function.
@@ -75,7 +78,7 @@ pub(crate) struct File {
     /// The optional directory prefix (reference to a [`String`]).
     pub(crate) directory_offset: u32,
     /// The file path (reference to a [`String`]).
-    pub(crate) path_name_offset: u32,
+    pub(crate) name_offset: u32,
 }
 
 /// A location in a source file, comprising a file, a line, a function, and
