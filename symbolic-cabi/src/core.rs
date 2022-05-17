@@ -167,7 +167,7 @@ pub enum SymbolicErrorCode {
     DwarfErrorInvertedFunctionRange = 2204,
     DwarfErrorCorruptedData = 2205,
 
-    // symbolic::minidump::cfi
+    // symbolic::cfi
     CfiErrorUnknown = 3000,
     CfiErrorMissingDebugInfo = 3001,
     CfiErrorUnsupportedDebugFormat = 3002,
@@ -247,7 +247,7 @@ impl SymbolicErrorCode {
                 return SymbolicErrorCode::ObjectErrorUnknown;
             }
 
-            use symbolic::minidump::cfi::{CfiError, CfiErrorKind};
+            use symbolic::cfi::{CfiError, CfiErrorKind};
             if let Some(error) = error.downcast_ref::<CfiError>() {
                 return match error.kind() {
                     CfiErrorKind::MissingDebugInfo => SymbolicErrorCode::CfiErrorMissingDebugInfo,

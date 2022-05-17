@@ -252,7 +252,7 @@ impl<U> UnwindInfo<U> {
 /// ```rust,no_run
 /// use symbolic_common::ByteView;
 /// use symbolic_debuginfo::Object;
-/// use symbolic_minidump::cfi::AsciiCfiWriter;
+/// use symbolic_cfi::AsciiCfiWriter;
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let view = ByteView::open("/path/to/object")?;
@@ -270,7 +270,7 @@ impl<U> UnwindInfo<U> {
 /// ```rust,no_run
 /// use symbolic_common::ByteView;
 /// use symbolic_debuginfo::Object;
-/// use symbolic_minidump::cfi::AsciiCfiWriter;
+/// use symbolic_cfi::AsciiCfiWriter;
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let view = ByteView::open("/path/to/object")?;
@@ -1019,7 +1019,7 @@ enum CfiCacheInner<'a> {
 /// use std::fs::File;
 /// use symbolic_common::ByteView;
 /// use symbolic_debuginfo::Object;
-/// use symbolic_minidump::cfi::CfiCache;
+/// use symbolic_cfi::CfiCache;
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let view = ByteView::open("/path/to/object")?;
@@ -1032,7 +1032,7 @@ enum CfiCacheInner<'a> {
 ///
 /// ```rust,no_run
 /// use symbolic_common::ByteView;
-/// use symbolic_minidump::cfi::CfiCache;
+/// use symbolic_cfi::CfiCache;
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let view = ByteView::open("my.cficache")?;

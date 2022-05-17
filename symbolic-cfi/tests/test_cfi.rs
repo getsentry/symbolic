@@ -1,8 +1,8 @@
 use std::str;
 
+use symbolic_cfi::{AsciiCfiWriter, CfiCache};
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
-use symbolic_minidump::cfi::{AsciiCfiWriter, CfiCache};
 use symbolic_testutils::fixture;
 
 use similar_asserts::assert_eq;

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+**Breaking changes**:
+
+- The `symbolic-minidump` crate has been dropped. The CFI functionality that was contained in
+  `symbolic-minidump` now resides in its own crate, `symbolic-cfi`.
+
 ## 8.7.1
 
 **Fixes**:
