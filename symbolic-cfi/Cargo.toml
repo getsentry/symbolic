@@ -1,16 +1,16 @@
 [package]
-name = "symbolic-minidump"
+name = "symbolic-cfi"
 version = "8.7.1"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
     "Jan Michael Auer <mail@jauer.org>",
 ]
-documentation = "https://docs.rs/symbolic-minidump"
+documentation = "https://docs.rs/symbolic-cfi"
 homepage = "https://github.com/getsentry/symbolic"
 repository = "https://github.com/getsentry/symbolic"
 description = """
-A library to process and inspect Minidump crash reports
+A library to process call frame information
 """
 edition = "2018"
 

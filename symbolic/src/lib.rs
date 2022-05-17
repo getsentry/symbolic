@@ -23,9 +23,8 @@
 //!   - Heuristics to find original function names based on minified sources
 //!   - Indexed sourcemap to sourcemap merging
 //! - Proguard function mappings (via `symbolic-cabi` only, use `proguard` crate instead)
-//! - Minidump / Breakpad processing
+//! - Breakpad processing
 //!   - Generate Breakpad symbol files from Mach, ELF and PDBs
-//!   - Process Minidumps to retrieve stack traces
 //! - Convenient C and Python library
 //! - Processing of Unreal Engine 4 native crash reports
 //!   - Extract and process minidumps
@@ -36,14 +35,12 @@
 //! Add `symbolic` as a dependency to your `Cargo.toml`. You will most likely want to activate some
 //! of the features:
 //!
+//! - **`cfi`**: Facilities to extract stack unwinding information (sometimes called CFI) from object files.
 //! - **`debuginfo`** (default): Contains support for various object file formats and debugging
 //!   information. Currently, this comprises MachO and ELF (with DWARF debugging), PE and PDB, as
 //!   well as Breakpad symbols.
 //! - **`demangle`**: Demangling for Rust, C++, Swift and Objective C symbols. This feature requires
 //!   a C++14 compiler on the PATH.
-//! - **`minidump`**: Rust bindings for the Breakpad Minidump processor. Additionally, this includes
-//!   facilities to extract stack unwinding information (sometimes called CFI) from object files.
-//!   This feature requires a C++11 compiler on the PATH.
 //! - **`sourcemap`**: Processing and expansion of JavaScript source maps, as well as lookups for
 //!   minified function names.
 //! - **`symcache`**: An optimized, platform-independent storage for common debugging information.
@@ -56,7 +53,6 @@
 //!
 //! - **`common-serde`**
 //! - **`debuginfo-serde`**
-//! - **`minidump-serde`**
 //! - **`unreal-serde`**
 //!
 //! ## Minimal Rust Version
@@ -65,6 +61,9 @@
 
 #![warn(missing_docs)]
 
+#[doc(inline)]
+#[cfg(feature = "cfi")]
+pub use symbolic_cfi as cfi;
 #[doc(inline)]
 pub use symbolic_common as common;
 #[doc(inline)]
@@ -76,9 +75,6 @@ pub use symbolic_demangle as demangle;
 #[doc(inline, hidden)]
 #[cfg(feature = "il2cpp")]
 pub use symbolic_il2cpp as il2cpp;
-#[doc(inline)]
-#[cfg(feature = "minidump")]
-pub use symbolic_minidump as minidump;
 #[doc(inline)]
 #[cfg(feature = "sourcemap")]
 pub use symbolic_sourcemap as sourcemap;
