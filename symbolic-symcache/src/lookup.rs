@@ -5,11 +5,9 @@ use symbolic_common::{Language, Name, NameMangling};
 use super::{raw, SymCache};
 
 impl<'data> SymCache<'data> {
-    /// Looks up an instruction address in the SymCache, yielding an iterator of [`SourceLocation`]s.
-    ///
-    /// This always returns an iterator, however that iterator might be empty in case no [`SourceLocation`]
-    /// was found for the given `addr`.
-    pub fn lookup(&self, addr: u64) -> SourceLocationIter<'data, '_> {
+    /// Looks up an instruction address in the SymCache, yielding an iterator of [`SourceLocation`]s
+    /// representing a hierarchy of inlined function calls.
+    pub fn lookup(&self, addr: u64) -> SourceLocations<'data, '_> {
         use std::convert::TryFrom;
         let addr = match u32::try_from(addr) {
             Ok(addr) => addr,
@@ -84,24 +82,6 @@ impl<'data> SymCache<'data> {
 }
 
 /// A source File included in the SymCache.
-///
-/// Source files can have up to three path prefixes/fragments.
-/// They are in the order of `comp_dir`, `directory`, `path_name`.
-/// If a later fragment is an absolute path, it overrides the previous fragment.
-///
-/// The [`File::full_path`] method yields the final concatenated and resolved path.
-///
-/// # Examples
-///
-/// Considering that a C project is being compiled inside the `/home/XXX/sentry-native/` directory,
-/// - The `/home/XXX/sentry-native/src/sentry_core.c` may have the following fragments:
-///   - comp_dir: /home/XXX/sentry-native/
-///   - directory: -
-///   - path_name: src/sentry_core.c
-/// - The included file `/usr/include/pthread.h` may have the following fragments:
-///   - comp_dir: /home/XXX/sentry-native/ <- The comp_dir is defined, but overrided by the dir below
-///   - directory: /usr/include/
-///   - path_name: pthread.h
 #[derive(Debug, Clone)]
 pub struct File<'data> {
     /// The optional compilation directory prefix.
@@ -166,10 +146,10 @@ impl<'data> Default for Function<'data> {
     }
 }
 
-/// A Source Location as included in the SymCache.
+/// A source location as included in the SymCache.
 ///
-/// The source location represents a `(function, file, line, inlined_into)` tuple corresponding to
-/// an instruction in the executable.
+/// A `SourceLocation` represents source information about a particular instruction.
+/// It always has a `[Function]` associated with it and may also have a `[File]` and a line number.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceLocation<'data, 'cache> {
     pub(crate) cache: &'cache SymCache<'data>,
@@ -179,7 +159,7 @@ pub struct SourceLocation<'data, 'cache> {
 impl<'data, 'cache> SourceLocation<'data, 'cache> {
     /// The source line corresponding to the instruction.
     ///
-    /// This might return `0` when no line information can be found.
+    /// 0 denotes an unknown line number.
     pub fn line(&self) -> u32 {
         self.source_location.line
     }

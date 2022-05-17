@@ -65,7 +65,7 @@ impl<'a> SymCacheConverter<'a> {
     /// Adds a new [`transform::Transformer`] to this [`SymCacheConverter`].
     ///
     /// Every [`transform::Function`] and [`transform::SourceLocation`] will be passed through
-    /// this transformer before it is being written to the SymCache.
+    /// this transformer before it is written to the SymCache.
     pub fn add_transformer<T>(&mut self, t: T)
     where
         T: transform::Transformer + 'a,

@@ -1,5 +1,46 @@
 # Changelog
 
+## 9.0.0
+
+**Breaking Changes**:
+- We have dropped support for symcache versions before v7. This entails a number of changes in
+  the public API of `symbolic-symcache`:
+  - Removed support for symcache binary formats prior to v7.
+  - Removed `SymCacheWriter`.
+  - Removed `SymCacheError`.
+  - Removed `SymCacheErrorKind`.
+  - Removed `Line`.
+  - Removed `Lines`.
+  - Removed `LineInfo`.
+  - Removed `Lookup`.
+  - Removed `Function::id`.
+  - Removed `Function::parent_id`.
+  - Removed `Function::address`.
+  - Removed `Function::symbol`.
+  - Removed `Function::compilation_dir`.
+  - Removed `Function::lines`.
+  - Removed `SymCache::has_line_info`.
+  - Removed `SymCache::has_file_info`.
+  - Changed return type of `Function::name` to string slice.
+  - Changed return type of `SymCache::lookup` to `SourceLocations`.
+  - Added `Function::name_for_demangling` with the previous signature and behavior of `Function::name`.
+  - Added `Function::entry_pc`.
+  - Added `SymCacheConverter`.
+  - Added `Error`.
+  - Added `ErrorKind`.
+  - Added `File`.
+  - Added `Files`.
+  - Added `FilesDebug`.
+  - Added `FunctionsDebug`.
+  - Added `SourceLocation`.
+  - Added `SourceLocations`.
+  - Added `SymCache::files`.
+  - Undeprecated `Function` and `Functions`.
+  - Undeprecated `SymCache::functions`.
+
+- The `symbolic-unwind` crate has been dropped.
+
+- The `symbolic-minidump` crate has been dropped.
 ## 8.7.1
 
 **Fixes**:
