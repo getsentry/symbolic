@@ -44,6 +44,8 @@
   - Undeprecated `Function` and `Functions`.
   - Undeprecated `SymCache::functions`.
 
+- TODO describe changes to `symbolic-cabi`
+
 ## 8.7.1
 
 **Fixes**:
