@@ -1,9 +1,15 @@
 # Changelog
 
-## 9.0.0
+## Unreleased
 
-**Breaking Changes**:
-- We have dropped support for symcache versions before v7. This entails a number of changes in
+**Breaking changes**:
+
+- The `symbolic-minidump` crate has been dropped. The CFI functionality that was contained in
+  `symbolic-minidump` now resides in its own crate, `symbolic-cfi`.
+
+- The `symbolic-unwind` crate has been dropped.
+
+- Support for symcache versions before v7 has been dropped. This entails a number of changes in
   the public API of `symbolic-symcache`:
   - Removed support for symcache binary formats prior to v7.
   - Removed `SymCacheWriter`.
@@ -38,9 +44,6 @@
   - Undeprecated `Function` and `Functions`.
   - Undeprecated `SymCache::functions`.
 
-- The `symbolic-unwind` crate has been dropped.
-
-- The `symbolic-minidump` crate has been dropped.
 ## 8.7.1
 
 **Fixes**:

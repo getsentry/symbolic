@@ -16,10 +16,10 @@ use minidump_processor::{
 use thiserror::Error;
 use walkdir::WalkDir;
 
+use symbolic::cfi::CfiCache;
 use symbolic::common::{Arch, ByteView, DebugId, InstructionInfo, SelfCell};
 use symbolic::debuginfo::{Archive, FileFormat};
 use symbolic::demangle::{Demangle, DemangleOptions};
-use symbolic::minidump::cfi::CfiCache;
 use symbolic::symcache::{SourceLocation, SymCache, SymCacheConverter};
 
 type CfiFiles = BTreeMap<DebugId, Result<SymbolFile, SymbolError>>;
