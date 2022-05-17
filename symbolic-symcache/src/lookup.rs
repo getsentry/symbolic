@@ -9,12 +9,12 @@ impl<'data> SymCache<'data> {
     ///
     /// This always returns an iterator, however that iterator might be empty in case no [`SourceLocation`]
     /// was found for the given `addr`.
-    pub fn lookup(&self, addr: u64) -> SourceLocationIter<'data, '_> {
+    pub fn lookup(&self, addr: u64) -> SourceLocations<'data, '_> {
         use std::convert::TryFrom;
         let addr = match u32::try_from(addr) {
             Ok(addr) => addr,
             Err(_) => {
-                return SourceLocationIter {
+                return SourceLocations {
                     cache: self,
                     source_location_idx: u32::MAX,
                 }
@@ -34,7 +34,7 @@ impl<'data> SymCache<'data> {
             }
         }
 
-        SourceLocationIter {
+        SourceLocations {
             cache: self,
             source_location_idx,
         }
@@ -202,12 +202,12 @@ impl<'data, 'cache> SourceLocation<'data, 'cache> {
 
 /// An Iterator that yields [`SourceLocation`]s, representing an inlining hierarchy.
 #[derive(Debug, Clone)]
-pub struct SourceLocationIter<'data, 'cache> {
+pub struct SourceLocations<'data, 'cache> {
     pub(crate) cache: &'cache SymCache<'data>,
     pub(crate) source_location_idx: u32,
 }
 
-impl<'data, 'cache> Iterator for SourceLocationIter<'data, 'cache> {
+impl<'data, 'cache> Iterator for SourceLocations<'data, 'cache> {
     type Item = SourceLocation<'data, 'cache>;
 
     fn next(&mut self) -> Option<Self::Item> {
