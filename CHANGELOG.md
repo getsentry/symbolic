@@ -7,6 +7,17 @@
 - The `symbolic-minidump` crate has been dropped. The CFI functionality that was contained in
   `symbolic-minidump` now resides in its own crate, `symbolic-cfi`.
 
+- Some C and Python bindings have been dropped or adjusted. Concretely:
+  - `symbolic-cabi::minidump` and the corresponding Python functionality has been removed. The
+    CFI functionality that was contained therein now resides in `symbolic-cabi::cfi` and `symbolic.cfi`,
+    respectively.
+  - `symbolic-cabi::unreal` and the corresponding Python functionality has been removed.
+  - `symbolic-cabi::symcache::SymbolicLineInfo` has been replaced with `SymbolicSourceLocation`,
+    which has a different interface. Likewise, `symbolic.symcache.LineInfo` has been replaced with
+    `SourceLocation`.
+  - `symbolic-cabi::symcache::symbolic_symcache_has_file_info` and `symbolic_symcache_has_line_info`
+    have been removed, likewise for `symbolic.symcache.SymCache.has_line_info` and `has_file_info`.
+
 ## 8.7.1
 
 **Fixes**:
