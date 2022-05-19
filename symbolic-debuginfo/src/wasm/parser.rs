@@ -2,7 +2,7 @@
 
 use super::WasmError;
 use crate::base::{ObjectKind, Symbol};
-use wasmparser::{ImportSectionEntryType, Payload, Validator, WasmFeatures};
+use wasmparser::{Payload, TypeRef, Validator, WasmFeatures};
 
 impl<'data> super::WasmObject<'data> {
     /// Tries to parse a WASM from the given slice.
@@ -17,10 +17,8 @@ impl<'data> super::WasmObject<'data> {
         // just that the function references a valid signature, so we just keep a bitset of the function
         // signatures to verify that
         let mut func_sigs = bitvec::vec::BitVec::<usize, bitvec::order::Lsb0>::new();
-        let mut validator = Validator::new();
         // NOTE: make sure to update these when bumping the `wasmparser` depedency.
         let features = WasmFeatures {
-            module_linking: true,
             relaxed_simd: true,
             threads: true,
             tail_call: true,
@@ -28,9 +26,10 @@ impl<'data> super::WasmObject<'data> {
             exceptions: true,
             memory64: true,
             extended_const: true,
+            component_model: true,
             ..Default::default()
         };
-        validator.wasm_features(features);
+        let mut validator = Validator::new_with_features(features);
         let mut funcs = Vec::<Symbol>::new();
         let mut num_imported_funcs = 0u32;
 
@@ -41,11 +40,6 @@ impl<'data> super::WasmObject<'data> {
         for payload in wasmparser::Parser::new(0).parse_all(data) {
             let payload = payload?;
             match payload {
-                // This should always be first, and is necessary to prepare the validator since the
-                // version determines which parts of the spec can be used
-                Payload::Version { num, range } => {
-                    validator.version(num, &range)?;
-                }
                 // The type section contains, well, types, specifically, function signatures that are
                 // later referenced by the function section.
                 Payload::TypeSection(tsr) => {
@@ -54,7 +48,7 @@ impl<'data> super::WasmObject<'data> {
                     let fs = func_sigs.as_mut_bitslice();
 
                     for (i, ty) in tsr.into_iter().enumerate() {
-                        if let wasmparser::TypeDef::Func(_) = ty? {
+                        if matches!(ty?, wasmparser::TypeDef::Func(_)) {
                             fs.set(i, true);
                         }
                     }
@@ -67,7 +61,7 @@ impl<'data> super::WasmObject<'data> {
 
                     for import in isr {
                         let import = import?;
-                        if let ImportSectionEntryType::Function(id) = import.ty {
+                        if let TypeRef::Func(id) = import.ty {
                             if !func_sigs
                                 .as_bitslice()
                                 .get(id as usize)
@@ -104,6 +98,7 @@ impl<'data> super::WasmObject<'data> {
                         }
                     }
                 }
+
                 // The code section contains the actual function bodies, this payload is emitted at
                 // the beginning of the section. This one is important as the code section offset is
                 // used to calculate relative addresses in a `DwarfDebugSession`
@@ -113,7 +108,7 @@ impl<'data> super::WasmObject<'data> {
                 }
                 // We get one of these for each local function body
                 Payload::CodeSectionEntry(body) => {
-                    let validator = validator.code_section_entry()?;
+                    let validator = validator.code_section_entry(&body)?;
 
                     let (address, size) = get_function_info(body, validator)?;
 
@@ -130,11 +125,9 @@ impl<'data> super::WasmObject<'data> {
                         size,
                     });
                 }
-                Payload::ModuleSectionStart { count, range, .. } => {
-                    validator.module_section_start(count, &range)?;
-                }
-                Payload::DataSection(dsr) => {
-                    validator.data_section(&dsr)?;
+
+                Payload::ModuleSection { range, .. } => {
+                    validator.module_section(&range)?;
                 }
                 // There are several custom sections that we need
                 Payload::CustomSection {
@@ -181,40 +174,13 @@ impl<'data> super::WasmObject<'data> {
                         _ => {}
                     }
                 }
-                // Final
-                Payload::End => validator.end()?,
 
-                // The following sections are not used by this crate, but some (eg table/memory/global)
+                // All other sections are not used by this crate, but some (eg table/memory/global)
                 // are needed to validate the sections that we do care about, so we just validate all
-                // of the sections we don't use to be sure
-                Payload::TableSection(tsr) => {
-                    validator.table_section(&tsr)?;
+                // of the payloads we don't use to be sure
+                payload => {
+                    validator.payload(&payload)?;
                 }
-                Payload::MemorySection(msr) => {
-                    validator.memory_section(&msr)?;
-                }
-                Payload::TagSection(tsr) => {
-                    validator.tag_section(&tsr)?;
-                }
-                Payload::GlobalSection(gsr) => {
-                    validator.global_section(&gsr)?;
-                }
-                Payload::ExportSection(esr) => {
-                    validator.export_section(&esr)?;
-                }
-                Payload::StartSection { func, range } => {
-                    validator.start_section(func, &range)?;
-                }
-                Payload::ElementSection(esr) => {
-                    validator.element_section(&esr)?;
-                }
-                Payload::DataCountSection { count, range } => {
-                    validator.data_count_section(count, &range)?;
-                }
-                Payload::UnknownSection { id, range, .. } => {
-                    validator.unknown_section(id, &range)?;
-                }
-                _ => {}
             }
         }
 
