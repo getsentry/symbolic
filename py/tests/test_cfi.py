@@ -1,7 +1,6 @@
 import os
 
-from datetime import datetime
-from symbolic import CfiCache, Archive
+from symbolic import Archive
 
 
 def test_macos_cficache(res_path):

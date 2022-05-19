@@ -1,17 +1,12 @@
 """Minidump processing"""
 
 import shutil
-from datetime import datetime
 
-from symbolic._compat import range_type
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import (
     RustObject,
     rustcall,
-    attached_refs,
     encode_path,
-    encode_str,
-    decode_str,
     make_buffered_slice_reader,
 )
 

@@ -8,8 +8,6 @@ from symbolic.utils import (
     rustcall,
     decode_str,
     encode_str,
-    common_path_join,
-    strip_common_path_prefix,
     encode_path,
     attached_refs,
     SliceReader,
