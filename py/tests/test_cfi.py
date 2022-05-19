@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 from symbolic import CfiCache, Archive
 
+
 def test_macos_cficache(res_path):
     binary_path = os.path.join(res_path, "minidump", "crash_macos")
     archive = Archive.open(binary_path)

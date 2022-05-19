@@ -43,7 +43,10 @@ def test_symbolicate_electron_darwin_dsym(res_path):
     assert symbol.symbol == "main"
     assert symbol.lang == "cpp"
     assert symbol.line == 186
-    assert symbol.full_path == "/Users/electron/workspace/electron-osx-x64/atom/app/atom_main.cc"
+    assert (
+        symbol.full_path
+        == "/Users/electron/workspace/electron-osx-x64/atom/app/atom_main.cc"
+    )
 
 
 def test_symbolicate_electron_darwin_sym(res_path):

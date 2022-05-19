@@ -18,7 +18,12 @@ from symbolic.common import parse_addr
 from symbolic import exceptions
 
 
-__all__ = ["SourceLocation", "SymCache", "find_best_instruction", "SYMCACHE_LATEST_VERSION"]
+__all__ = [
+    "SourceLocation",
+    "SymCache",
+    "find_best_instruction",
+    "SYMCACHE_LATEST_VERSION",
+]
 
 
 # the most recent version for the symcache file format.
@@ -27,15 +32,7 @@ SYMCACHE_LATEST_VERSION = rustcall(lib.symbolic_symcache_latest_version)
 
 @implements_to_string
 class SourceLocation(object):
-    def __init__(
-        self,
-        sym_addr,
-        instr_addr,
-        line,
-        lang,
-        symbol,
-        full_path=None
-    ):
+    def __init__(self, sym_addr, instr_addr, line, lang, symbol, full_path=None):
         self.sym_addr = sym_addr
         self.instr_addr = instr_addr
         self.line = line
@@ -126,9 +123,9 @@ class SymCache(RustObject):
             matches = []
             for idx in range(rv.len):
                 sym = rv.items[idx]
-                lang=decode_str(sym.lang, free=False)
-                symbol=decode_str(sym.symbol, free=False)
-                full_path=decode_str(sym.full_path, free=True)
+                lang = decode_str(sym.lang, free=False)
+                symbol = decode_str(sym.symbol, free=False)
+                full_path = decode_str(sym.full_path, free=True)
                 matches.append(
                     SourceLocation(
                         sym_addr=sym.sym_addr,
@@ -136,7 +133,7 @@ class SymCache(RustObject):
                         line=sym.line,
                         lang=lang,
                         symbol=symbol,
-                        full_path=full_path
+                        full_path=full_path,
                     )
                 )
         finally:
