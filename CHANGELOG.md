@@ -40,6 +40,7 @@
   - Added `SourceLocation`.
   - Added `SourceLocations`.
   - Added `SymCache::files`.
+  - Added lifetime parameter to `Transformers`.
   - Undeprecated `Function` and `Functions`.
   - Undeprecated `SymCache::functions`.
 - Some C and Python bindings have been dropped or adjusted. Concretely:
