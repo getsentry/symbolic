@@ -226,6 +226,14 @@ def get_sourceview(res_path):
 
 
 @pytest.fixture(scope="function")
+def get_empty_sourceview():
+    def getter():
+        return SourceView.from_bytes([])
+
+    return getter
+
+
+@pytest.fixture(scope="function")
 def get_sourcemapview(res_path):
     def getter(path):
         with open(os.path.join(res_path, "sourcemaps", path), "rb") as f:

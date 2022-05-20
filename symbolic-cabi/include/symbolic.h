@@ -69,11 +69,6 @@ enum SymbolicErrorCode {
   SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_INVALID_LOG_ENTRY = 7006,
   SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_BAD_DATA = 7007,
   SYMBOLIC_ERROR_CODE_UNREAL4_ERROR_TRAILING_DATA = 7008,
-  SYMBOLIC_ERROR_CODE_APPLE_CRASH_REPORT_PARSE_ERROR_IO = 8001,
-  SYMBOLIC_ERROR_CODE_APPLE_CRASH_REPORT_PARSE_ERROR_INVALID_INCIDENT_IDENTIFIER = 8002,
-  SYMBOLIC_ERROR_CODE_APPLE_CRASH_REPORT_PARSE_ERROR_INVALID_REPORT_VERSION = 8003,
-  SYMBOLIC_ERROR_CODE_APPLE_CRASH_REPORT_PARSE_ERROR_INVALID_TIMESTAMP = 8004,
-  SYMBOLIC_ERROR_CODE_APPLE_CRASH_REPORT_PARSE_ERROR_INVALID_IMAGE_IDENTIFIER = 8005,
 };
 typedef uint32_t SymbolicErrorCode;
 
@@ -188,13 +183,37 @@ typedef struct SymbolicProguardRemapResult {
  * Represents a single token after lookup.
  */
 typedef struct SymbolicTokenMatch {
+  /**
+   * The line number in the original source file.
+   */
   uint32_t src_line;
+  /**
+   * The column number in the original source file.
+   */
   uint32_t src_col;
+  /**
+   * The line number in the minifid source file.
+   */
   uint32_t dst_line;
+  /**
+   * The column number in the minified source file.
+   */
   uint32_t dst_col;
+  /**
+   * The source ID of the token.
+   */
   uint32_t src_id;
+  /**
+   * The token name, if present.
+   */
   struct SymbolicStr name;
+  /**
+   * The source.
+   */
   struct SymbolicStr src;
+  /**
+   * The name of the function containing the token.
+   */
   struct SymbolicStr function_name;
 } SymbolicTokenMatch;
 
@@ -552,13 +571,18 @@ struct SymbolicTokenMatch *symbolic_sourcemapview_lookup_token(const struct Symb
                                                                uint32_t col);
 
 /**
- * Looks up a token.
+ * Looks up a token and the original function name.
+ *
+ * This is similar to `lookup_token` but if a minified function name and
+ * the sourceview to the minified source is available this function will
+ * also resolve the original function name.  This is used to fully
+ * resolve tracebacks.
  */
 struct SymbolicTokenMatch *symbolic_sourcemapview_lookup_token_with_function_name(const struct SymbolicSourceMapView *source_map,
                                                                                   uint32_t line,
                                                                                   uint32_t col,
                                                                                   const struct SymbolicStr *minified_name,
-                                                                                  const struct SymbolicSourceView *view);
+                                                                                  const struct SymbolicSourceView *source_view);
 
 /**
  * Return the sourceview for a given source.

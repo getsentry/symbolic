@@ -256,11 +256,6 @@ impl SymbolicErrorCode {
                 };
             }
 
-            use symbolic::sourcemap::ParseSourceMapError;
-            if error.downcast_ref::<ParseSourceMapError>().is_some() {
-                return SymbolicErrorCode::ParseSourceMapError;
-            }
-
             use symbolic::symcache::{Error, ErrorKind};
             if let Some(error) = error.downcast_ref::<Error>() {
                 return match error.kind() {
