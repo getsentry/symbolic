@@ -16,6 +16,11 @@ if [ "$AUDITWHEEL_ARCH" == "i686" ]; then
   LINUX32=linux32
 fi
 
+cat > ~/.cargo/config <<EOF
+[net]
+git-fetch-with-cli = true
+EOF
+
 $LINUX32 /opt/python/cp36-cp36m/bin/python setup.py bdist_wheel
 
 # Audit wheels
