@@ -39,7 +39,7 @@ use symbolic_debuginfo::macho::{
 };
 use symbolic_debuginfo::pdb::pdb::{self, FallibleIterator, FrameData, Rva, StringTable};
 use symbolic_debuginfo::pdb::PdbObject;
-use symbolic_debuginfo::pe::{PeObject, RuntimeFunction, UnwindOperation};
+use symbolic_debuginfo::pe::{PeObject, RuntimeFunction, StackFrameOffset, UnwindOperation};
 use symbolic_debuginfo::{Object, ObjectError, ObjectLike};
 
 /// The magic file preamble to identify cficache files.
@@ -903,6 +903,10 @@ impl<W: Write> AsciiCfiWriter<W> {
             None => return Ok(()),
         };
 
+        let mut cfa_reg = Vec::new();
+        let mut saved_regs = Vec::new();
+        let mut unwind_codes = Vec::new();
+
         for function_result in exception_data {
             let function =
                 function_result.map_err(|e| CfiError::new(CfiErrorKind::BadDebugInfo, e))?;
@@ -914,7 +918,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             }
 
             // The minimal stack size is 8 for RIP
-            let mut stack_size = 8;
+            let mut stack_size: u32 = 8;
             // Special handling for machine frames
             let mut machine_frame_offset = 0;
 
@@ -922,12 +926,16 @@ impl<W: Write> AsciiCfiWriter<W> {
                 continue;
             }
 
+            cfa_reg.clear();
+            saved_regs.clear();
+
             let mut next_function = Some(function);
             while let Some(next) = next_function {
                 let unwind_info = exception_data
                     .get_unwind_info(next, sections)
                     .map_err(|e| CfiError::new(CfiErrorKind::BadDebugInfo, e))?;
 
+                unwind_codes.clear();
                 for code_result in &unwind_info {
                     // Due to variable length encoding of operator codes, there is little point in
                     // continuiing after this. Other functions in this object file can be valid, so
@@ -936,17 +944,73 @@ impl<W: Write> AsciiCfiWriter<W> {
                         Ok(code) => code,
                         Err(_) => return Ok(()),
                     };
+                    unwind_codes.push(code);
+                }
 
+                // The unwind codes are saved in reverse order.
+                for code in unwind_codes.iter().rev() {
                     match code.operation {
-                        UnwindOperation::PushNonVolatile(_) => {
+                        UnwindOperation::SaveNonVolatile(reg, offset) => {
+                            match offset {
+                                // If the Frame Register field in the UNWIND_INFO is zero,
+                                // this offset is from RSP.
+                                StackFrameOffset::RSP(offset) => {
+                                    write!(
+                                        &mut saved_regs,
+                                        " {}: .cfa {} - ^",
+                                        reg.name(),
+                                        stack_size.saturating_sub(offset)
+                                    )?;
+                                }
+                                // If the Frame Register field is nonzero, this offset is from where
+                                // RSP was located when the FP register was established.
+                                // It equals the FP register minus the FP register offset
+                                // (16 * the scaled frame register offset in the UNWIND_INFO).
+                                StackFrameOffset::FP(offset) => {
+                                    write!(
+                                        &mut saved_regs,
+                                        " {}: {} {} + ^",
+                                        reg.name(),
+                                        unwind_info.frame_register.name(),
+                                        offset.saturating_sub(unwind_info.frame_register_offset)
+                                    )?;
+                                }
+                            };
+                        }
+                        UnwindOperation::PushNonVolatile(reg) => {
+                            // $reg = .cfa - current_offset
                             stack_size += 8;
+                            write!(&mut saved_regs, " {}: .cfa {} - ^", reg.name(), stack_size)?;
                         }
                         UnwindOperation::Alloc(size) => {
                             stack_size += size;
                         }
+                        UnwindOperation::SetFPRegister => {
+                            // Establish the frame pointer register by setting the register to some
+                            // offset of the current RSP. The offset is equal to the Frame Register
+                            // offset field in the UNWIND_INFO.
+                            let offset =
+                                stack_size.saturating_sub(unwind_info.frame_register_offset);
+                            // Set the `.cfa = $fp + offset`
+                            write!(
+                                &mut cfa_reg,
+                                ".cfa: {} {} +",
+                                unwind_info.frame_register.name(),
+                                offset
+                            )?;
+                        }
+
                         UnwindOperation::PushMachineFrame(is_error) => {
-                            stack_size += if is_error { 48 } else { 40 };
+                            let rsp_offset = stack_size + 16;
+                            let rip_offset = stack_size + 40;
+                            write!(
+                                &mut saved_regs,
+                                " $rsp: .cfa {} - ^ .ra: .cfa {} - ^",
+                                rsp_offset, rip_offset,
+                            )?;
+                            stack_size += 40;
                             machine_frame_offset = stack_size;
+                            stack_size += if is_error { 8 } else { 0 };
                         }
                         _ => {
                             // All other codes do not modify RSP
@@ -957,29 +1021,22 @@ impl<W: Write> AsciiCfiWriter<W> {
                 next_function = unwind_info.chained_info;
             }
 
-            writeln!(
+            if cfa_reg.is_empty() {
+                write!(&mut cfa_reg, ".cfa: $rsp {} +", stack_size)?;
+            }
+            if machine_frame_offset == 0 {
+                write!(&mut saved_regs, " .ra: .cfa 8 - ^")?;
+            }
+
+            write!(
                 self.inner,
-                "STACK CFI INIT {:x} {:x} .cfa: $rsp 8 + .ra: .cfa 8 - ^",
+                "STACK CFI INIT {:x} {:x} ",
                 function.begin_address,
                 function.end_address - function.begin_address,
             )?;
-
-            if machine_frame_offset > 0 {
-                writeln!(
-                    self.inner,
-                    "STACK CFI {:x} .cfa: $rsp {} + $rsp: .cfa {} - ^ .ra: .cfa {} - ^",
-                    function.begin_address,
-                    stack_size,
-                    stack_size - machine_frame_offset + 24, // old RSP offset
-                    stack_size - machine_frame_offset + 48, // entire frame offset
-                )?
-            } else {
-                writeln!(
-                    self.inner,
-                    "STACK CFI {:x} .cfa: $rsp {} +",
-                    function.begin_address, stack_size,
-                )?
-            }
+            self.inner.write_all(&cfa_reg)?;
+            self.inner.write_all(&saved_regs)?;
+            writeln!(self.inner)?;
         }
 
         Ok(())

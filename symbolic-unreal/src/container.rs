@@ -53,7 +53,7 @@ impl TryFromCtx<'_, Endian> for AnsiString {
         let len = data.gread_with::<u32>(&mut offset, context)?;
         let bytes = data.gread_with::<&[u8]>(&mut offset, len as usize)?;
 
-        // Convert into UTF-8 and trucate the trailing zeros
+        // Convert into UTF-8 and truncate the trailing zeros
         let mut string = String::from_utf8_lossy(bytes).into_owned();
         let actual_len = string.trim_end_matches('\0').len();
         string.truncate(actual_len);
@@ -102,7 +102,9 @@ impl TryFromCtx<'_, usize> for Unreal4FileMeta {
         };
 
         // Ensure that the buffer contains enough data
-        data.gread_with::<&[u8]>(&mut offset, len)?;
+        if len > 0 {
+            data.gread_with::<&[u8]>(&mut offset, len)?;
+        }
 
         Ok((file_meta, offset))
     }

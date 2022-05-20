@@ -18,6 +18,16 @@
     `SourceLocation`.
   - `symbolic-cabi::symcache::symbolic_symcache_has_file_info` and `symbolic_symcache_has_line_info`
     have been removed, likewise for `symbolic.symcache.SymCache.has_line_info` and `has_file_info`.
+    
+**Fixes**:
+
+- Make CFI generation for Windows x64 more accurate, restoring all possible registers and supporting frame pointer unwinding. ([#549](https://github.com/getsentry/symbolic/pull/549))
+
+## 8.7.2
+
+**Fixes**:
+
+- Make sure to correctly parse Unreal crash reports with zero-length files ([#565](https://github.com/getsentry/symbolic/pull/565))
 
 ## 8.7.1
 
