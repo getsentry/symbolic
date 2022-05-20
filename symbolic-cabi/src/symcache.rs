@@ -4,7 +4,7 @@ use std::mem;
 use std::os::raw::c_char;
 use std::slice;
 
-use symbolic::common::{split_path, ByteView, InstructionInfo, SelfCell};
+use symbolic::common::{ByteView, InstructionInfo, SelfCell};
 use symbolic::symcache::{SymCache, SymCacheConverter, SYMCACHE_VERSION};
 
 use crate::core::SymbolicStr;
@@ -20,21 +20,19 @@ impl ForeignObject for SymbolicSymCache {
 
 /// Represents a single symbol after lookup.
 #[repr(C)]
-pub struct SymbolicLineInfo {
+pub struct SymbolicSourceLocation {
     pub sym_addr: u64,
-    pub line_addr: u64,
     pub instr_addr: u64,
     pub line: u32,
     pub lang: SymbolicStr,
     pub symbol: SymbolicStr,
-    pub filename: SymbolicStr,
-    pub base_dir: SymbolicStr,
+    pub full_path: SymbolicStr,
 }
 
 /// Represents a lookup result of one or more items.
 #[repr(C)]
 pub struct SymbolicLookupResult {
-    pub items: *mut SymbolicLineInfo,
+    pub items: *mut SymbolicSourceLocation,
     pub len: usize,
 }
 
@@ -148,16 +146,13 @@ ffi_fn! {
         let mut items = vec![];
         for source_location in cache.lookup(addr) {
             let full_path = source_location.file().map(|file| file.full_path()).unwrap_or_default();
-            let (base_dir, filename) = split_path(&full_path);
-            items.push(SymbolicLineInfo {
+            items.push(SymbolicSourceLocation {
                 sym_addr: source_location.function().entry_pc() as u64,
-                line_addr: addr,
                 instr_addr: addr,
                 line: source_location.line(),
                 lang: SymbolicStr::new(source_location.function().language().name()),
                 symbol: SymbolicStr::new(source_location.function().name()),
-                filename: SymbolicStr::new(filename),
-                base_dir: SymbolicStr::new(base_dir.unwrap_or_default()),
+                full_path: SymbolicStr::from_string(full_path),
             });
         }
 

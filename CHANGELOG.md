@@ -4,11 +4,10 @@
 
 **Breaking changes**:
 
+- Updated the `debugid` and `uuid` dependencies to `0.8` and `1.0` respectively.
 - The `symbolic-minidump` crate has been dropped. The CFI functionality that was contained in
   `symbolic-minidump` now resides in its own crate, `symbolic-cfi`.
-
 - The `symbolic-unwind` crate has been dropped.
-
 - Support for symcache versions before v7 has been dropped. This entails a number of changes in
   the public API of `symbolic-symcache`:
   - Removed support for symcache binary formats prior to v7.
@@ -43,8 +42,26 @@
   - Added `SymCache::files`.
   - Undeprecated `Function` and `Functions`.
   - Undeprecated `SymCache::functions`.
+- Some C and Python bindings have been dropped or adjusted. Concretely:
+  - `symbolic-cabi::minidump` and the corresponding Python functionality has been removed. The
+    CFI functionality that was contained therein now resides in `symbolic-cabi::cfi` and `symbolic.cfi`,
+    respectively.
+  - `symbolic-cabi::unreal` and the corresponding Python functionality has been removed.
+  - `symbolic-cabi::symcache::SymbolicLineInfo` has been replaced with `SymbolicSourceLocation`,
+    which has a different interface. Likewise, `symbolic.symcache.LineInfo` has been replaced with
+    `SourceLocation`.
+  - `symbolic-cabi::symcache::symbolic_symcache_has_file_info` and `symbolic_symcache_has_line_info`
+    have been removed, likewise for `symbolic.symcache.SymCache.has_line_info` and `has_file_info`.
+    
+**Fixes**:
 
-- TODO describe changes to `symbolic-cabi`
+- Make CFI generation for Windows x64 more accurate, restoring all possible registers and supporting frame pointer unwinding. ([#549](https://github.com/getsentry/symbolic/pull/549))
+
+## 8.7.2
+
+**Fixes**:
+
+- Make sure to correctly parse Unreal crash reports with zero-length files ([#565](https://github.com/getsentry/symbolic/pull/565))
 
 ## 8.7.1
 
