@@ -4,6 +4,9 @@ set -e
 # Install dependencies needed by our wheel
 yum -y -q -e 0 install gcc libffi-devel
 
+# upgrade wheel
+pip install --upgrade wheel
+
 # Install Rust
 curl https://sh.rustup.rs -sSf | sh -s -- -y
 export PATH=~/.cargo/bin:$PATH
