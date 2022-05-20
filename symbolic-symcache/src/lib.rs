@@ -137,7 +137,7 @@ pub const SYMCACHE_VERSION: u32 = 7;
 
 /// The serialized SymCache binary format.
 ///
-/// This can be parsed from a binary buffer via [`SymCache::parse`], and lookups on it can be performed
+/// This can be parsed from a binary buffer via [`SymCache::parse`] and lookups on it can be performed
 /// via the [`SymCache::lookup`] method.
 #[derive(Clone, PartialEq, Eq)]
 pub struct SymCache<'data> {
@@ -165,7 +165,7 @@ impl<'data> std::fmt::Debug for SymCache<'data> {
 }
 
 impl<'data> SymCache<'data> {
-    /// Parse the SymCache binary format into a convenient type that allows safe access and allows
+    /// Parse the SymCache binary format into a convenient type that allows safe access and
     /// fast lookups.
     pub fn parse(buf: &'data [u8]) -> Result<Self> {
         if align_to_eight(buf.as_ptr() as usize) != 0 {
@@ -283,6 +283,11 @@ impl<'data> SymCache<'data> {
     /// The version of the SymCache file format.
     pub fn version(&self) -> u32 {
         self.header.version
+    }
+
+    /// Returns true if this symcache's version is the current version of the format.
+    pub fn is_latest(&self) -> bool {
+        self.header.version == SYMCACHE_VERSION
     }
 
     /// The architecture of the symbol file.
