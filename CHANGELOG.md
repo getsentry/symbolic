@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Make CFI generation for Windows x64 more accurate, restoring all possible registers and supporting frame pointer unwinding. ([#549](https://github.com/getsentry/symbolic/pull/549))
+
 ## 8.7.2
 
 **Fixes**:
