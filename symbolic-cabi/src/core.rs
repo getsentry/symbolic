@@ -476,5 +476,5 @@ pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: *const SymbolicUuid) -> bool
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_uuid_to_str(uuid: *const SymbolicUuid) -> SymbolicStr {
     let uuid = Uuid::from_slice(&(*uuid).data[..]).unwrap_or_default();
-    SymbolicStr::from_string(uuid.to_hyphenated_ref().to_string())
+    SymbolicStr::from_string(uuid.as_hyphenated().to_string())
 }
