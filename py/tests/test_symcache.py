@@ -43,9 +43,10 @@ def test_symbolicate_electron_darwin_dsym(res_path):
     assert symbol.symbol == "main"
     assert symbol.lang == "cpp"
     assert symbol.line == 186
-    assert symbol.comp_dir == "/Users/electron/workspace/electron-osx-x64/out/R"
-    assert symbol.base_dir == "../../atom/app"
-    assert symbol.filename == "atom_main.cc"
+    assert (
+        symbol.full_path
+        == "/Users/electron/workspace/electron-osx-x64/atom/app/atom_main.cc"
+    )
 
 
 def test_symbolicate_electron_darwin_sym(res_path):
@@ -71,11 +72,9 @@ def test_symbolicate_electron_darwin_sym(res_path):
     assert symbol.lang == "unknown"
     assert symbol.line == 186
     assert (
-        symbol.base_dir
-        == "/Users/electron/workspace/electron-osx-x64/out/R/../../atom/app"
+        symbol.full_path
+        == "/Users/electron/workspace/electron-osx-x64/atom/app/atom_main.cc"
     )
-    assert symbol.filename == "atom_main.cc"
-    # "lang" and "comp_dir" are not available in .sym files
 
 
 def test_unicode_ignore_decode():
