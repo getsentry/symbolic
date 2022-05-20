@@ -203,13 +203,6 @@ pub enum SymbolicErrorCode {
     Unreal4ErrorInvalidLogEntry = 7006,
     Unreal4ErrorBadData = 7007,
     Unreal4ErrorTrailingData = 7008,
-
-    // apple-crash-report-parser
-    AppleCrashReportParseErrorIo = 8001,
-    AppleCrashReportParseErrorInvalidIncidentIdentifier = 8002,
-    AppleCrashReportParseErrorInvalidReportVersion = 8003,
-    AppleCrashReportParseErrorInvalidTimestamp = 8004,
-    AppleCrashReportParseErrorInvalidImageIdentifier = 8005,
 }
 
 impl SymbolicErrorCode {
@@ -293,25 +286,6 @@ impl SymbolicErrorCode {
                         SymbolicErrorCode::Unreal4ErrorInvalidLogEntry
                     }
                     _ => SymbolicErrorCode::Unreal4ErrorUnknown,
-                };
-            }
-
-            use apple_crash_report_parser::ParseError;
-            if let Some(error) = error.downcast_ref::<ParseError>() {
-                return match error {
-                    ParseError::Io(_) => SymbolicErrorCode::AppleCrashReportParseErrorIo,
-                    ParseError::InvalidIncidentIdentifier(_) => {
-                        SymbolicErrorCode::AppleCrashReportParseErrorInvalidIncidentIdentifier
-                    }
-                    ParseError::InvalidImageIdentifier(_) => {
-                        SymbolicErrorCode::AppleCrashReportParseErrorInvalidImageIdentifier
-                    }
-                    ParseError::InvalidReportVersion(_) => {
-                        SymbolicErrorCode::AppleCrashReportParseErrorInvalidReportVersion
-                    }
-                    ParseError::InvalidTimestamp(_) => {
-                        SymbolicErrorCode::AppleCrashReportParseErrorInvalidTimestamp
-                    }
                 };
             }
 
