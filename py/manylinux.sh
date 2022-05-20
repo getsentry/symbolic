@@ -5,7 +5,7 @@ set -e
 yum -y -q -e 0 install gcc libffi-devel
 
 # upgrade wheel
-pip install --upgrade wheel
+$LINUX32 /opt/python/cp36-cp36m/bin/pip install --upgrade wheel
 
 # Install Rust
 curl https://sh.rustup.rs -sSf | sh -s -- -y
