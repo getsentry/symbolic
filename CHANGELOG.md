@@ -4,6 +4,7 @@
 
 **Breaking changes**:
 
+- Updated the `debugid` and `uuid` dependencies to `0.8` and `1.0` respectively.
 - The `symbolic-minidump` crate has been dropped. The CFI functionality that was contained in
   `symbolic-minidump` now resides in its own crate, `symbolic-cfi`.
 
