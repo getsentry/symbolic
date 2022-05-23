@@ -197,7 +197,6 @@ ffi_fn! {
                 smh.lookup_token(line, col + 1).map(|token| {
                     let mut rv = make_token_match(token);
                     if let Some(name) = smh.get_original_function_name(col + 1).map(str::to_owned) {
-                        println!("function name: {}", name);
                         (*rv).function_name = SymbolicStr::from_string(name);
                     }
                     rv
@@ -208,7 +207,6 @@ ffi_fn! {
                 if let Some(name) = source_view
                     .get_original_function_name(token, (*minified_name).as_str())
                     .map(str::to_owned) {
-                        println!("function name: {}", name);
                         (*rv).function_name = SymbolicStr::from_string(name);
                 }
                 rv
