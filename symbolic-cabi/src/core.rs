@@ -194,15 +194,6 @@ pub enum SymbolicErrorCode {
     SymCacheErrorValueTooLarge = 6010,
     SymCacheErrorWriteFailed = 6011,
     SymCacheErrorTooManyValues = 6012,
-
-    // symbolic::unreal
-    Unreal4ErrorUnknown = 7001,
-    Unreal4ErrorEmpty = 7002,
-    Unreal4ErrorBadCompression = 7004,
-    Unreal4ErrorInvalidXml = 7005,
-    Unreal4ErrorInvalidLogEntry = 7006,
-    Unreal4ErrorBadData = 7007,
-    Unreal4ErrorTrailingData = 7008,
 }
 
 impl SymbolicErrorCode {
@@ -268,23 +259,6 @@ impl SymbolicErrorCode {
                     ErrorKind::WrongVersion => SymbolicErrorCode::SymCacheErrorUnsupportedVersion,
                     ErrorKind::BadDebugFile => SymbolicErrorCode::SymCacheErrorBadDebugFile,
                     _ => SymbolicErrorCode::SymCacheErrorUnknown,
-                };
-            }
-
-            use symbolic::unreal::{Unreal4Error, Unreal4ErrorKind};
-            if let Some(error) = error.downcast_ref::<Unreal4Error>() {
-                return match error.kind() {
-                    Unreal4ErrorKind::Empty => SymbolicErrorCode::Unreal4ErrorEmpty,
-                    Unreal4ErrorKind::BadCompression => {
-                        SymbolicErrorCode::Unreal4ErrorBadCompression
-                    }
-                    Unreal4ErrorKind::BadData => SymbolicErrorCode::Unreal4ErrorBadData,
-                    Unreal4ErrorKind::TrailingData => SymbolicErrorCode::Unreal4ErrorTrailingData,
-                    Unreal4ErrorKind::InvalidXml => SymbolicErrorCode::Unreal4ErrorInvalidXml,
-                    Unreal4ErrorKind::InvalidLogEntry => {
-                        SymbolicErrorCode::Unreal4ErrorInvalidLogEntry
-                    }
-                    _ => SymbolicErrorCode::Unreal4ErrorUnknown,
                 };
             }
 
