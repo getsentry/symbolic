@@ -27,7 +27,6 @@ debuginfo = ["symbolic-debuginfo"]
 debuginfo-serde = ["debuginfo", "common-serde"]
 demangle = ["symbolic-demangle"]
 il2cpp = ["symbolic-il2cpp"]
-sourcemap = ["symbolic-sourcemap"]
 symcache = ["symbolic-symcache", "debuginfo"]
 unreal = ["symbolic-unreal"]
 unreal-serde = ["unreal", "common-serde", "symbolic-unreal/serde"]
@@ -38,7 +37,6 @@ symbolic-common = { version = "8.7.2", path = "../symbolic-common" }
 symbolic-debuginfo = { version = "8.7.2", path = "../symbolic-debuginfo", optional = true }
 symbolic-demangle = { version = "8.7.2", path = "../symbolic-demangle", optional = true }
 symbolic-il2cpp = { version = "8.7.2", path = "../symbolic-il2cpp", optional = true }
-symbolic-sourcemap = { version = "8.7.2", path = "../symbolic-sourcemap", optional = true }
 symbolic-symcache = { version = "8.7.2", path = "../symbolic-symcache", optional = true }
 symbolic-unreal = { version = "8.7.2", path = "../symbolic-unreal", optional = true }
 

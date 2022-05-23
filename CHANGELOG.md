@@ -8,6 +8,8 @@
 - The `symbolic-minidump` crate has been dropped. The CFI functionality that was contained in
   `symbolic-minidump` now resides in its own crate, `symbolic-cfi`.
 - The `symbolic-unwind` crate has been dropped.
+- The `symbolic-sourcemap` crate has been dropped. Since it was only used in `symbolic-cabi`, its
+  functionality has been incorporated into `symbolic-cabi`.
 - Support for symcache versions before v7 has been dropped. This entails a number of changes in
   the public API of `symbolic-symcache`:
   - Removed support for symcache binary formats prior to v7.

@@ -20,6 +20,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-serde_json = "1.0.40"
-symbolic = { version = "8.7.2", path = "../symbolic", features = ["debuginfo", "demangle", "cfi", "sourcemap", "symcache", "unreal-serde"] }
 proguard = { version = "5.0.0", features = ["uuid"] }
+serde_json = "1.0.40"
+sourcemap = "6.0.2"
+symbolic = { version = "8.7.2", path = "../symbolic", features = ["cfi", "debuginfo", "demangle", "symcache"] }
