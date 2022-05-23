@@ -1,6 +1,6 @@
 //! [Symbolic](https://docs.rs/symbolic) is a library written in Rust which is used at
 //! [Sentry](https://sentry.io/) to implement symbolication of native stack traces and more.
-//!It consists of multiple largely independent crates
+//! It consists of multiple largely independent crates
 //! which are bundled together into a C and Python library so it can be used independently of Rust.
 //!
 //! # What's in the package

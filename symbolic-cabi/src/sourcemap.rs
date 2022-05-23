@@ -120,7 +120,7 @@ ffi_fn! {
         len: usize
     ) -> Result<*mut SymbolicSourceMapView> {
         let slice = slice::from_raw_parts(data as *const _, len);
-        let inner= match sourcemap::decode_slice(slice)? {
+        let inner = match sourcemap::decode_slice(slice)? {
                 sourcemap::DecodedMap::Regular(sm) => SourceMapType::Regular(sm),
                 sourcemap::DecodedMap::Index(smi) => SourceMapType::Regular(smi.flatten()?),
                 sourcemap::DecodedMap::Hermes(smh) => SourceMapType::Hermes(smh),
