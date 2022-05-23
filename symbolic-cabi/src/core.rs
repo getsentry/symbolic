@@ -177,7 +177,7 @@ pub enum SymbolicErrorCode {
     CfiErrorBadFileMagic = 3006,
     CfiErrorInvalidAddress = 3007,
 
-    // symbolic::sourcemap
+    // sourcemap
     ParseSourceMapError = 5001,
 
     // symbolic::symcache
@@ -254,6 +254,10 @@ impl SymbolicErrorCode {
                     CfiErrorKind::BadFileMagic => SymbolicErrorCode::CfiErrorBadFileMagic,
                     _ => SymbolicErrorCode::CfiErrorUnknown,
                 };
+            }
+
+            if error.downcast_ref::<sourcemap::Error>().is_some() {
+                return SymbolicErrorCode::ParseSourceMapError;
             }
 
             use symbolic::symcache::{Error, ErrorKind};
