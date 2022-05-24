@@ -1,6 +1,6 @@
 [package]
 name = "symbolic"
-version = "8.7.2"
+version = "8.7.3"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -34,14 +34,14 @@ unreal = ["symbolic-unreal"]
 unreal-serde = ["unreal", "common-serde", "symbolic-unreal/serde"]
 
 [dependencies]
-symbolic-common = { version = "8.7.2", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "8.7.2", path = "../symbolic-debuginfo", optional = true }
-symbolic-demangle = { version = "8.7.2", path = "../symbolic-demangle", optional = true }
-symbolic-il2cpp = { version = "8.7.2", path = "../symbolic-il2cpp", optional = true }
-symbolic-minidump = { version = "8.7.2", path = "../symbolic-minidump", optional = true }
-symbolic-sourcemap = { version = "8.7.2", path = "../symbolic-sourcemap", optional = true }
-symbolic-symcache = { version = "8.7.2", path = "../symbolic-symcache", optional = true }
-symbolic-unreal = { version = "8.7.2", path = "../symbolic-unreal", optional = true }
+symbolic-common = { version = "8.7.3", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "8.7.3", path = "../symbolic-debuginfo", optional = true }
+symbolic-demangle = { version = "8.7.3", path = "../symbolic-demangle", optional = true }
+symbolic-il2cpp = { version = "8.7.3", path = "../symbolic-il2cpp", optional = true }
+symbolic-minidump = { version = "8.7.3", path = "../symbolic-minidump", optional = true }
+symbolic-sourcemap = { version = "8.7.3", path = "../symbolic-sourcemap", optional = true }
+symbolic-symcache = { version = "8.7.3", path = "../symbolic-symcache", optional = true }
+symbolic-unreal = { version = "8.7.3", path = "../symbolic-unreal", optional = true }
 
 [badges]
 travis-ci = { repository = "getsentry/symbolic", branch = "master" }
