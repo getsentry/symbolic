@@ -5,6 +5,7 @@
 **Breaking changes**:
 
 - Updated the `debugid` and `uuid` dependencies to `0.8` and `1.0` respectively.
+- Removed the public method `symbolic_common::CpuFamily::cfi_register_name`.
 - The `symbolic-minidump` crate has been dropped. The CFI functionality that was contained in
   `symbolic-minidump` now resides in its own crate, `symbolic-cfi`.
 - The `symbolic-unwind` crate has been dropped.
