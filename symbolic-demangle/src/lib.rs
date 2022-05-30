@@ -242,13 +242,13 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
 
         let stripped = strip_hash_suffix(ident);
 
-        let parse_options = ParseOptions::default().recursion_limit(192); // default is 96
+        let parse_options = ParseOptions::default().recursion_limit(160); // default is 96
         let symbol = match CppSymbol::new_with_options(stripped, &parse_options) {
             Ok(symbol) => symbol,
             Err(_) => return None,
         };
 
-        let mut cpp_options = CppOptions::new().recursion_limit(256); // default is 128
+        let mut cpp_options = CppOptions::new().recursion_limit(192); // default is 128
         if !opts.parameters {
             cpp_options = cpp_options.no_params();
         }
