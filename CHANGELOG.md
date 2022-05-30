@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Only skip one function when encountering unknown Unwind Codes on Windows x64. ([#588](https://github.com/getsentry/symbolic/pull/588))
+
 ## 8.7.3
 
 **Fixes**:
