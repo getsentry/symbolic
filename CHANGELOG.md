@@ -1,5 +1,39 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Only skip one function when encountering unknown Unwind Codes on Windows x64. ([#588](https://github.com/getsentry/symbolic/pull/588))
+
+## 8.7.3
+
+**Fixes**:
+
+- Make CFI generation for Windows x64 more accurate, restoring all possible registers and supporting frame pointer unwinding. ([#549](https://github.com/getsentry/symbolic/pull/549))
+
+## 8.7.2
+
+**Fixes**:
+
+- Make sure to correctly parse Unreal crash reports with zero-length files ([#565](https://github.com/getsentry/symbolic/pull/565))
+
+## 8.7.1
+
+**Fixes**:
+
+- Updated wasmparser dependency to `0.83.0` ([#557](https://github.com/getsentry/symbolic/pull/557))
+- Updated rust-sourcemap dependency to hopefully speed up sourcemap parsing ([#559](https://github.com/getsentry/symbolic/pull/559))
+- Match symbol names by exact addresses from symbol table ([#510](https://github.com/getsentry/symbolic/pull/510))
+- Return a more correct `function_size` when dealing with split functions ([#522](https://github.com/getsentry/symbolic/pull/522))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@shuoli84](https://github.com/shuoli84)
+- [@bnjbvr](https://github.com/bnjbvr)
+
 ## 8.7.0
 
 **Features**:

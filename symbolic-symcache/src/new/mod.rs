@@ -110,26 +110,28 @@ impl<'data> SymCache<'data> {
         // SAFETY: the above buffer size check also made sure we are not going out of bounds
         // here
         let files = unsafe {
-            &*(ptr::slice_from_raw_parts(files_start, header.num_files as usize)
-                as *const [raw::File])
+            &*ptr::slice_from_raw_parts(files_start as *const raw::File, header.num_files as usize)
         };
         let functions = unsafe {
-            &*(ptr::slice_from_raw_parts(functions_start, header.num_functions as usize)
-                as *const [raw::Function])
+            &*ptr::slice_from_raw_parts(
+                functions_start as *const raw::Function,
+                header.num_functions as usize,
+            )
         };
         let source_locations = unsafe {
-            &*(ptr::slice_from_raw_parts(
-                source_locations_start,
+            &*ptr::slice_from_raw_parts(
+                source_locations_start as *const raw::SourceLocation,
                 header.num_source_locations as usize,
-            ) as *const [raw::SourceLocation])
+            )
         };
         let ranges = unsafe {
-            &*(ptr::slice_from_raw_parts(ranges_start, header.num_ranges as usize)
-                as *const [raw::Range])
+            &*ptr::slice_from_raw_parts(
+                ranges_start as *const raw::Range,
+                header.num_ranges as usize,
+            )
         };
         let string_bytes = unsafe {
-            &*(ptr::slice_from_raw_parts(string_bytes_start, header.string_bytes as usize)
-                as *const [u8])
+            &*ptr::slice_from_raw_parts(string_bytes_start, header.string_bytes as usize)
         };
 
         Ok(SymCache {

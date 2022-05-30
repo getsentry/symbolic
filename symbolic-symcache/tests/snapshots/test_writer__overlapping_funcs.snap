@@ -1,0 +1,12 @@
+---
+source: symbolic-symcache/tests/test_writer.rs
+expression: FunctionsDebug(&symcache)
+
+---
+               0 _mh_execute_header
+            3f50 main
+            3f80 shell
+            3f90 unique_i_swear
+            3fa0 spin
+            3fb0 unique_i_swear
+

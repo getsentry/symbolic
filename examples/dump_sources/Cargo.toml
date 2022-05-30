@@ -1,6 +1,6 @@
 [package]
 name = "dump_sources"
-version = "8.7.0"
+version = "8.7.3"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2018"
 publish = false
