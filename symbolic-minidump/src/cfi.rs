@@ -907,7 +907,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         let mut saved_regs = Vec::new();
         let mut unwind_codes = Vec::new();
 
-        for function_result in exception_data {
+        'functions: for function_result in exception_data.functions() {
             let function =
                 function_result.map_err(|e| CfiError::new(CfiErrorKind::BadDebugInfo, e))?;
 
@@ -936,13 +936,15 @@ impl<W: Write> AsciiCfiWriter<W> {
                     .map_err(|e| CfiError::new(CfiErrorKind::BadDebugInfo, e))?;
 
                 unwind_codes.clear();
-                for code_result in &unwind_info {
+                for code_result in unwind_info.unwind_codes() {
                     // Due to variable length encoding of operator codes, there is little point in
-                    // continuiing after this. Other functions in this object file can be valid, so
+                    // continuing after this. Other functions in this object file can be valid, so
                     // swallow the error and continue with the next function.
                     let code = match code_result {
                         Ok(code) => code,
-                        Err(_) => return Ok(()),
+                        Err(_) => {
+                            continue 'functions;
+                        }
                     };
                     unwind_codes.push(code);
                 }
