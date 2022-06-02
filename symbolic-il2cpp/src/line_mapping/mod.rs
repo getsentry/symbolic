@@ -3,7 +3,7 @@ mod from_object;
 use indexmap::IndexSet;
 use std::collections::HashMap;
 
-pub use from_object::{create_line_mapping_from_object, RawLineMapping};
+pub use from_object::RawLineMapping;
 
 #[derive(Debug)]
 struct LineEntry {

@@ -1,6 +1,6 @@
-use std::collections::BTreeMap;
 use std::iter::Enumerate;
 use std::str::Lines;
+use std::{collections::BTreeMap, io::Write};
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{DebugSession, ObjectLike};
@@ -8,9 +8,61 @@ use symbolic_debuginfo::{DebugSession, ObjectLike};
 /// A line mapping extracted from an object.
 ///
 /// This is only intended as an intermediate structure for serialization,
-/// not for lookups. It is represented as a series of nested maps like this:
-/// C++ file => C# file => C++ line => C# line
-pub type RawLineMapping = BTreeMap<String, BTreeMap<String, BTreeMap<u32, u32>>>;
+/// not for lookups.
+pub struct RawLineMapping(BTreeMap<String, BTreeMap<String, BTreeMap<u32, u32>>>);
+
+impl RawLineMapping {
+    /// Create a line mapping from the given `object`.
+    ///
+    /// The mapping is constructed by iterating over all the source files referenced by `object` and
+    /// parsing Il2cpp `source_info` records from each.
+    pub fn from_object<'data, 'object, O, E>(object: &'object O) -> Result<Self, E>
+    where
+        O: ObjectLike<'data, 'object, Error = E>,
+    {
+        let session = object.debug_session()?;
+
+        let mut mapping = BTreeMap::new();
+
+        for cpp_file in session.files() {
+            let cpp_file_path = cpp_file?.abs_path_str();
+            if mapping.contains_key(&cpp_file_path) {
+                continue;
+            }
+
+            if let Ok(cpp_source) = ByteView::open(&cpp_file_path) {
+                let mut cpp_mapping = BTreeMap::new();
+
+                for SourceInfo {
+                    cpp_line,
+                    cs_file,
+                    cs_line,
+                } in SourceInfos::new(&cpp_source)
+                {
+                    let cs_mapping = cpp_mapping
+                        .entry(cs_file.to_string())
+                        .or_insert_with(BTreeMap::new);
+                    cs_mapping.insert(cpp_line, cs_line);
+                }
+
+                if !cpp_mapping.is_empty() {
+                    mapping.insert(cpp_file_path, cpp_mapping);
+                }
+            }
+        }
+
+        Ok(Self(mapping))
+    }
+
+    /// Serializes the line mapping to the given writer as JSON.
+    ///
+    /// The mapping is serialized in the form of nested objects:
+    /// C++ file => C# file => C++ line => C# line
+    pub fn to_writer<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        serde_json::to_writer(writer, &self.0)?;
+        Ok(())
+    }
+}
 
 /// An Il2cpp `source_info` record.
 struct SourceInfo<'data> {
@@ -69,48 +121,4 @@ fn parse_line(line: &str) -> Option<(&str, u32)> {
     let (file, line) = source_ref.rsplit_once(':')?;
     let line = line.parse().ok()?;
     Some((file, line))
-}
-
-/// Create a line mapping from the given `object`.
-///
-/// The mapping is constructed by iterating over all the source files referenced by `object` and
-/// parsing Il2cpp `source_info` records from each.
-pub fn create_line_mapping_from_object<'data, 'object, O, E>(
-    object: &'object O,
-) -> Result<RawLineMapping, E>
-where
-    O: ObjectLike<'data, 'object, Error = E>,
-{
-    let session = object.debug_session()?;
-
-    let mut mapping = BTreeMap::new();
-
-    for cpp_file in session.files() {
-        let cpp_file_path = cpp_file?.abs_path_str();
-        if mapping.contains_key(&cpp_file_path) {
-            continue;
-        }
-
-        if let Ok(cpp_source) = ByteView::open(&cpp_file_path) {
-            let mut cpp_mapping = BTreeMap::new();
-
-            for SourceInfo {
-                cpp_line,
-                cs_file,
-                cs_line,
-            } in SourceInfos::new(&cpp_source)
-            {
-                let cs_mapping = cpp_mapping
-                    .entry(cs_file.to_string())
-                    .or_insert_with(BTreeMap::new);
-                cs_mapping.insert(cpp_line, cs_line);
-            }
-
-            if !cpp_mapping.is_empty() {
-                mapping.insert(cpp_file_path, cpp_mapping);
-            }
-        }
-    }
-
-    Ok(mapping)
 }
