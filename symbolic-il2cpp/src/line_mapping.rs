@@ -5,13 +5,16 @@ use std::str::Lines;
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{DebugSession, ObjectLike};
 
-/// The Line Mapping is represented as nested maps like this:
+/// A line mapping extracted from an object.
+///
+/// This is only intended as an intermediate structure for serialization,
+/// not for lookups. It is represented as a series of nested maps like this:
 /// C++ file => C# file => C++ line => C# line
-pub type LineMapping = BTreeMap<String, BTreeMap<String, BTreeMap<u32, u32>>>;
+pub type RawLineMapping = BTreeMap<String, BTreeMap<String, BTreeMap<u32, u32>>>;
 
 /// An Il2cpp `source_info` record.
 #[non_exhaustive]
-pub struct SourceInfo<'data> {
+struct SourceInfo<'data> {
     /// The C++ source line the `source_info` was parsed from.
     pub cpp_line: u32,
     /// The corresponding C# source file.
@@ -23,7 +26,7 @@ pub struct SourceInfo<'data> {
 /// An iterator over Il2cpp `source_info` markers.
 ///
 /// The Iterator yields `(file, line)` pairs.
-pub struct SourceInfos<'data> {
+struct SourceInfos<'data> {
     lines: Enumerate<Lines<'data>>,
 }
 
@@ -69,13 +72,13 @@ fn parse_line(line: &str) -> Option<(&str, u32)> {
     Some((file, line))
 }
 
-/// Create a Line Mapping from the given `object`.
+/// Create a line mapping from the given `object`.
 ///
 /// The mapping is constructed by iterating over all the source files referenced by `object` and
 /// parsing Il2cpp `source_info` records from each.
 pub fn create_line_mapping_from_object<'data, 'object, O, E>(
     object: &'object O,
-) -> Result<LineMapping, E>
+) -> Result<RawLineMapping, E>
 where
     O: ObjectLike<'data, 'object, Error = E>,
 {
