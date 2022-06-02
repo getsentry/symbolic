@@ -5,6 +5,9 @@ use std::io::{Seek, Write};
 use symbolic_common::{Arch, DebugId};
 use symbolic_debuginfo::{Function as SymbolicFunction, ObjectLike, Symbol};
 
+#[cfg(feature = "il2cpp")]
+use symbolic_il2cpp::usym::UsymSymbols;
+
 use super::writer::SymCacheConverter;
 use super::*;
 use crate::{SymCacheError, SymCacheErrorKind};
@@ -113,6 +116,22 @@ where
         self.converter.set_debug_id(object.debug_id());
 
         self.converter.process_object(object)?;
+
+        Ok(())
+    }
+
+    #[cfg(feature = "il2cpp")]
+    /// Processes a set of [`UsymSymbols`], passing all mapped symbols into the converter.
+    pub fn process_usym(&mut self, usym: &UsymSymbols) -> Result<(), SymCacheError> {
+        let debug_id = usym
+            .id()
+            .map_err(|e| SymCacheError::new(SymCacheErrorKind::BadFileHeader, e))?;
+        self.converter.set_debug_id(debug_id);
+
+        let arch = usym.arch().unwrap_or_default();
+        self.converter.set_arch(arch);
+
+        self.converter.process_usym(usym)?;
 
         Ok(())
     }

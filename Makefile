@@ -55,7 +55,7 @@ style-rust:
 .PHONY: style-rust
 
 style-python: .venv/bin/python
-	.venv/bin/pip install -U black==22.1.0
+	.venv/bin/pip install -U black==22.3.0
 	.venv/bin/black --check py --exclude 'symbolic/_lowlevel*|dist|build|\.eggs'
 
 # Linting
@@ -84,7 +84,7 @@ format-rust:
 .PHONY: format-rust
 
 format-python: .venv/bin/python
-	.venv/bin/pip install -U black==22.1.0
+	.venv/bin/pip install -U black==22.3.0
 	.venv/bin/black py --exclude 'symbolic/_lowlevel*|dist|build|\.eggs'
 .PHONY: format-python
 

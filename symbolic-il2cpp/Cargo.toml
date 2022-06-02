@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-il2cpp"
-version = "8.6.1"
+version = "8.7.3"
 license = "MIT"
 authors = ["Sentry <hello@sentry.io>"]
 documentation = "https://docs.rs/symbolic-il2cpp"
@@ -12,8 +12,16 @@ A library for parsing il2cpp metadata.
 edition = "2021"
 
 [dependencies]
+anyhow = "1"
+gimli = "0.26"
 indexmap = "1.8.0"
+object = "0.28"
+scroll = "0.11"
 serde_json = "1.0.79"
-symbolic-common = { version = "8.6.1", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "8.6.1", path = "../symbolic-debuginfo" }
-symbolic-symcache = { version = "8.6.1", path = "../symbolic-symcache" }
+symbolic-common = { version = "8.7.3", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "8.7.3", path = "../symbolic-debuginfo" }
+thiserror = "1.0.20"
+
+[dev-dependencies]
+memmap2 = "0.5.0"
+symbolic-testutils = { path = "../symbolic-testutils" }

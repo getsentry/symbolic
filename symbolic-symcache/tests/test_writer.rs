@@ -1,12 +1,13 @@
 use std::fmt;
 use std::io::Cursor;
 
-use symbolic_common::{ByteView, SelfCell};
-use symbolic_debuginfo::macho::BcSymbolMap;
+use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
-use symbolic_symcache::transform::{self, Transformer};
 use symbolic_symcache::{SymCache, SymCacheWriter};
 use symbolic_testutils::fixture;
+
+#[cfg(feature = "il2cpp")]
+use symbolic_il2cpp::usym::UsymSymbols;
 
 type Error = Box<dyn std::error::Error>;
 
@@ -126,6 +127,25 @@ fn test_write_functions_macos() -> Result<(), Error> {
     Ok(())
 }
 
+// Tests that functions with identical names, compilation directories, and languages but different
+// entry_pcs have separate, distinct entries in the symcache. The specific use case generating this
+// is two identically-named static C functions nestled in two different files sharing a common
+// compilation directory. See the overlapping_funcs directory in sentry-testutils for related files.
+#[test]
+fn test_write_functions_overlapping_funcs() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture(
+        "macos/overlapping_funcs.dSYM/Contents/Resources/DWARF/overlapping_funcs",
+    ))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut buffer = Vec::new();
+    SymCacheWriter::write_object(&object, Cursor::new(&mut buffer))?;
+    let symcache = SymCache::parse(&buffer)?;
+    insta::assert_debug_snapshot!("overlapping_funcs", FunctionsDebug(&symcache));
+
+    Ok(())
+}
+
 #[test]
 fn test_write_large_symbol_names() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("regression/large_symbol.sym"))?;
@@ -218,53 +238,86 @@ fn test_trailing_marker() -> Result<(), Error> {
     Ok(())
 }
 
-// FIXME: This is a huge pain, can't this be simpler somehow?
-struct OwnedBcSymbolMap(SelfCell<ByteView<'static>, BcSymbolMap<'static>>);
-
-impl Transformer for OwnedBcSymbolMap {
-    fn transform_function<'f>(&'f self, f: transform::Function<'f>) -> transform::Function<'f> {
-        self.0.get().transform_function(f)
-    }
-
-    fn transform_source_location<'f>(
-        &'f self,
-        sl: transform::SourceLocation<'f>,
-    ) -> transform::SourceLocation<'f> {
-        self.0.get().transform_source_location(sl)
-    }
-}
-
+#[cfg(feature = "il2cpp")]
 #[test]
-fn test_transformer_symbolmap() -> Result<(), Error> {
-    let buffer = ByteView::open(
-        "../symbolic-debuginfo/tests/fixtures/2d10c42f-591d-3265-b147-78ba0868073f.dwarf-hidden",
-    )?;
-    let object = Object::parse(&buffer)?;
+fn test_mapless_usym() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("il2cpp/artificial.usym"))?;
+    let usym = UsymSymbols::parse(&buffer)?;
 
     let mut buffer = Vec::new();
     let mut writer = SymCacheWriter::new(Cursor::new(&mut buffer))?;
 
-    let map_buffer = ByteView::open(
-        "../symbolic-debuginfo/tests/fixtures/c8374b6d-6e96-34d8-ae38-efaa5fec424f.bcsymbolmap",
-    )?;
-    let bc_symbol_map = OwnedBcSymbolMap(SelfCell::try_new(map_buffer, |s| unsafe {
-        BcSymbolMap::parse(&*s)
-    })?);
-
-    writer.add_transformer(bc_symbol_map);
-
-    writer.process_object(&object)?;
+    writer.process_usym(&usym)?;
 
     let _ = writer.finish()?;
     let cache = SymCache::parse(&buffer)?;
 
-    let sl = cache.lookup(0x5a74)?.next().unwrap()?;
+    insta::assert_debug_snapshot!(cache, @r###"
+    SymCache {
+        version: 7,
+        debug_id: DebugId {
+            uuid: "153d10d1-0db0-33d6-aacd-a4e1948da97b",
+            appendix: 0,
+        },
+        arch: Arm64,
+        files: 0,
+        functions: 0,
+        source_locations: 0,
+        ranges: 0,
+        string_bytes: 0,
+    }
+    "###);
 
-    assert_eq!(sl.function_name(), "-[SentryMessage initWithFormatted:]");
-    assert_eq!(
-        sl.abs_path(),
-        "/Users/philipphofmann/git-repos/sentry-cocoa/Sources/Sentry/SentryMessage.m"
-    );
+    Ok(())
+}
+
+#[cfg(feature = "il2cpp")]
+#[test]
+fn test_usym() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("il2cpp/managed.usym"))?;
+    let usym = UsymSymbols::parse(&buffer)?;
+
+    let mut buffer = Vec::new();
+    let mut writer = SymCacheWriter::new(Cursor::new(&mut buffer))?;
+
+    writer.process_usym(&usym)?;
+
+    let _ = writer.finish()?;
+    let cache = SymCache::parse(&buffer)?;
+
+    insta::assert_debug_snapshot!(cache, @r###"
+    SymCache {
+        version: 7,
+        debug_id: DebugId {
+            uuid: "153d10d1-0db0-33d6-aacd-a4e1948da97b",
+            appendix: 0,
+        },
+        arch: Arm64,
+        files: 1,
+        functions: 3,
+        source_locations: 3,
+        ranges: 3,
+        string_bytes: 128,
+    }
+    "###);
+
+    Ok(())
+}
+
+#[cfg(feature = "il2cpp")]
+#[test]
+fn test_write_functions_usym() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("il2cpp/managed.usym"))?;
+    let usym = UsymSymbols::parse(&buffer)?;
+
+    let mut buffer = Vec::new();
+    let mut writer = SymCacheWriter::new(Cursor::new(&mut buffer))?;
+
+    writer.process_usym(&usym)?;
+
+    let _ = writer.finish()?;
+    let cache = SymCache::parse(&buffer)?;
+    insta::assert_debug_snapshot!("functions_usym", FunctionsDebug(&cache));
 
     Ok(())
 }

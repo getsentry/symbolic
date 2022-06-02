@@ -1,0 +1,9 @@
+---
+source: symbolic-symcache/tests/test_writer.rs
+expression: FunctionsDebug(&cache)
+
+---
+          7df188 NewBehaviourScript.Start()
+          7df18c NewBehaviourScript.Start()
+          7df190 NewBehaviourScript.Update()
+

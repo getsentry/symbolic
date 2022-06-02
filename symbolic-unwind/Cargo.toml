@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-unwind"
-version = "8.6.1"
+version = "8.7.3"
 license = "MIT"
 authors = ["Sebastian Zivota <loewenheim@mailbox.org>"]
 documentation = "https://docs.rs/symbolic-symcache"

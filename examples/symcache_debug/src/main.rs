@@ -10,6 +10,8 @@ use symbolic::common::{Arch, ByteView, DSymPathExt, Language, SelfCell};
 use symbolic::debuginfo::macho::BcSymbolMap;
 use symbolic::debuginfo::Archive;
 use symbolic::demangle::{Demangle, DemangleOptions};
+#[cfg(feature = "il2cpp")]
+use symbolic::il2cpp::LineMapping;
 use symbolic::symcache::transform::{self, Transformer};
 use symbolic::symcache::{SymCache, SymCacheWriter};
 
@@ -81,6 +83,17 @@ fn execute(matches: &ArgMatches) -> Result<()> {
                     BcSymbolMap::parse(&*s)
                 })?);
             writer.add_transformer(bcsymbolmap);
+        }
+
+        #[cfg(feature = "il2cpp")]
+        {
+            if let Some(linemapping_file) = matches.value_of("linemapping_file") {
+                let linemapping_path = Path::new(linemapping_file);
+                let linemapping_buffer = ByteView::open(linemapping_path)?;
+                if let Some(linemapping) = LineMapping::parse(&linemapping_buffer) {
+                    writer.add_transformer(linemapping);
+                }
+            }
         }
 
         writer.process_object(obj)?;
@@ -181,6 +194,15 @@ fn main() {
                 .value_name("PATH")
                 .help(
                     "Path to a bcsymbolmap file that should be applied to transform the debug file",
+                ),
+        )
+        .arg(
+            Arg::new("linemapping_file")
+                .short('l')
+                .long("linemapping-file")
+                .value_name("PATH")
+                .help(
+                    "Path to a il2cpp `LineNumberMappings.json` file that should be applied to transform the debug file",
                 ),
         )
         .arg(
