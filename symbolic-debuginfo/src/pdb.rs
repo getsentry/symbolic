@@ -1008,7 +1008,7 @@ impl<'s> Unit<'s> {
             Language::Unknown,
         );
 
-        let line_iter = program.lines_at_offset(proc.offset);
+        let line_iter = program.lines_for_symbol(proc.offset);
         let lines = self.collect_lines(line_iter, program)?;
 
         Ok(Some(Function {
