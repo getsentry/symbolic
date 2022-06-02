@@ -13,14 +13,13 @@ use symbolic_debuginfo::{DebugSession, ObjectLike};
 pub type RawLineMapping = BTreeMap<String, BTreeMap<String, BTreeMap<u32, u32>>>;
 
 /// An Il2cpp `source_info` record.
-#[non_exhaustive]
 struct SourceInfo<'data> {
     /// The C++ source line the `source_info` was parsed from.
-    pub cpp_line: u32,
+    cpp_line: u32,
     /// The corresponding C# source file.
-    pub cs_file: &'data str,
+    cs_file: &'data str,
     /// The corresponding C# source line.
-    pub cs_line: u32,
+    cs_line: u32,
 }
 
 /// An iterator over Il2cpp `source_info` markers.
@@ -32,7 +31,7 @@ struct SourceInfos<'data> {
 
 impl<'data> SourceInfos<'data> {
     /// Parses the `source` leniently, yielding an empty Iterator for non-utf8 data.
-    pub fn new(source: &'data [u8]) -> Self {
+    fn new(source: &'data [u8]) -> Self {
         let lines = std::str::from_utf8(source)
             .ok()
             .unwrap_or_default()
