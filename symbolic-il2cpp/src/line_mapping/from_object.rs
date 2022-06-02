@@ -9,9 +9,9 @@ use symbolic_debuginfo::{DebugSession, ObjectLike};
 ///
 /// This is only intended as an intermediate structure for serialization,
 /// not for lookups.
-pub struct RawLineMapping(BTreeMap<String, BTreeMap<String, BTreeMap<u32, u32>>>);
+pub struct ObjectLineMapping(BTreeMap<String, BTreeMap<String, BTreeMap<u32, u32>>>);
 
-impl RawLineMapping {
+impl ObjectLineMapping {
     /// Create a line mapping from the given `object`.
     ///
     /// The mapping is constructed by iterating over all the source files referenced by `object` and

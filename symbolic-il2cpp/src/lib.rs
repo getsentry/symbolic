@@ -17,7 +17,7 @@ pub mod usym;
 pub mod usymlite;
 pub(crate) mod utils;
 
-pub use line_mapping::{LineMapping, RawLineMapping};
+pub use line_mapping::{LineMapping, ObjectLineMapping};
 
 pub fn build_function_map(
     binary_buf: &[u8],
