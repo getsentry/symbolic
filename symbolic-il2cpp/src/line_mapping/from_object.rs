@@ -114,6 +114,9 @@ impl<'data> Iterator for SourceInfos<'data> {
 }
 
 /// Extracts the `(file, line)` information
+///
+/// For example, `//<source_info:main.cs:17>`
+/// would be parsed as `("main.cs", 17)`.
 fn parse_line(line: &str) -> Option<(&str, u32)> {
     let line = line.trim();
     let source_ref = line.strip_prefix("//<source_info:")?;
