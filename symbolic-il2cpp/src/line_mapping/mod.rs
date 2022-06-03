@@ -1,5 +1,9 @@
+mod from_object;
+
 use indexmap::IndexSet;
 use std::collections::HashMap;
+
+pub use from_object::ObjectLineMapping;
 
 #[derive(Debug)]
 struct LineEntry {
