@@ -84,7 +84,6 @@ pub enum DwarfErrorKind {
     UnexpectedInline,
 
     /// The debug_ranges of a function are invalid.
-    // TODO: remove this error, as the only place it was used was removed
     InvertedFunctionRange,
 
     /// The DWARF file is corrupted. See the cause for more information.
@@ -625,12 +624,14 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             return Ok(tuple);
         }
 
-        if low_pc > high_pc {
-            // Similarly, u64::MAX/u64::MAX-1 may be used to indicate deleted code, which manifests
-            // itself as an inverted range here.
+        if low_pc == u64::MAX || low_pc == u64::MAX - 1 {
+            // Similarly, u64::MAX/u64::MAX-1 may be used to indicate deleted code.
             // See https://reviews.llvm.org/D59553
-            // In this case, we will just ignore this DIE and its children, instead of failing the whole file.
             return Ok(tuple);
+        }
+
+        if low_pc > high_pc {
+            return Err(DwarfErrorKind::InvertedFunctionRange.into());
         }
 
         range_buf.push(Range {
