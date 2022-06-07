@@ -84,6 +84,7 @@ pub enum DwarfErrorKind {
     UnexpectedInline,
 
     /// The debug_ranges of a function are invalid.
+    // TODO: remove this error, as the only place it was used was removed
     InvertedFunctionRange,
 
     /// The DWARF file is corrupted. See the cause for more information.
@@ -619,14 +620,17 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         };
 
         if low_pc == high_pc {
-            // most likely low_pc == high_pc means the DIE should be ignored.
+            // Most likely low_pc == high_pc means the DIE should be ignored.
             // https://sourceware.org/ml/gdb-patches/2011-03/msg00739.html
             return Ok(tuple);
         }
 
         if low_pc > high_pc {
-            // TODO: consider swallowing errors here?
-            return Err(DwarfErrorKind::InvertedFunctionRange.into());
+            // Similarly, u64::MAX/u64::MAX-1 may be used to indicate deleted code, which manifests
+            // itself as an inverted range here.
+            // See https://reviews.llvm.org/D59553
+            // In this case, we will just ignore this DIE and its children, instead of failing the whole file.
+            return Ok(tuple);
         }
 
         range_buf.push(Range {
@@ -805,7 +809,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 continue;
             }
 
-            // In WASM files emitted by emscripted, we have observed a variety of broken ranges.
+            // In WASM files emitted by emscripten, we have observed a variety of broken ranges.
             // One of these cases also involves ranges which are not being sorted, resulting in
             // arithmetic underflow calculating `function_size` (in debug builds). Sorting the ranges
             // should avoid this problem.
