@@ -1,15 +1,19 @@
+use std::collections::BTreeMap;
+use std::io::Write;
 use std::iter::Enumerate;
 use std::str::Lines;
-use std::{collections::BTreeMap, io::Write};
 
-use symbolic_common::ByteView;
+use symbolic_common::{ByteView, DebugId};
 use symbolic_debuginfo::{DebugSession, ObjectLike};
 
 /// A line mapping extracted from an object.
 ///
 /// This is only intended as an intermediate structure for serialization,
 /// not for lookups.
-pub struct ObjectLineMapping(BTreeMap<String, BTreeMap<String, BTreeMap<u32, u32>>>);
+pub struct ObjectLineMapping {
+    mapping: BTreeMap<String, BTreeMap<String, BTreeMap<u32, u32>>>,
+    debug_id: DebugId,
+}
 
 impl ObjectLineMapping {
     /// Create a line mapping from the given `object`.
@@ -21,6 +25,7 @@ impl ObjectLineMapping {
         O: ObjectLike<'data, 'object, Error = E>,
     {
         let session = object.debug_session()?;
+        let debug_id = object.debug_id();
 
         let mut mapping = BTreeMap::new();
 
@@ -51,16 +56,29 @@ impl ObjectLineMapping {
             }
         }
 
-        Ok(Self(mapping))
+        Ok(Self { mapping, debug_id })
     }
 
     /// Serializes the line mapping to the given writer as JSON.
     ///
     /// The mapping is serialized in the form of nested objects:
     /// C++ file => C# file => C++ line => C# line
-    pub fn to_writer<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        serde_json::to_writer(writer, &self.0)?;
-        Ok(())
+    ///
+    /// Returns `false` if the resulting JSON did not contain any mappings.
+    pub fn to_writer<W: Write>(mut self, writer: &mut W) -> std::io::Result<bool> {
+        let is_empty = self.mapping.is_empty();
+
+        // This is a big hack: We need the files for different architectures to be different.
+        // To achieve this, we put the debug-id of the file (which is different between architectures)
+        // into the same structure as the normal map, like so:
+        // `"__debug-id__": {"00000000-0000-0000-0000-000000000000": {}}`
+        // When parsing via `LineMapping::parse`, this *looks like* a valid entry, but we will
+        // most likely never have a C++ file named `__debug-id__` ;-)
+        let value = BTreeMap::from([(self.debug_id.to_string(), Default::default())]);
+        self.mapping.insert("__debug-id__".to_owned(), value);
+
+        serde_json::to_writer(writer, &self.mapping)?;
+        Ok(!is_empty)
     }
 }
 
