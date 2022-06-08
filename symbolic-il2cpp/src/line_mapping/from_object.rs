@@ -58,9 +58,11 @@ impl ObjectLineMapping {
     ///
     /// The mapping is serialized in the form of nested objects:
     /// C++ file => C# file => C++ line => C# line
-    pub fn to_writer<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
+    ///
+    /// Returns `false` if the resulting JSON did not contain any mappings.
+    pub fn to_writer<W: Write>(&self, writer: &mut W) -> std::io::Result<bool> {
         serde_json::to_writer(writer, &self.0)?;
-        Ok(())
+        Ok(!self.0.is_empty())
     }
 }
 
