@@ -3,7 +3,6 @@
 //! This create **is not supported**, it may break its API, it may completely disappear
 //! again.  Do not consider this part of symbolic releases.  It is experimental code to
 //! explore Unity IL2CPP debugging.
-
 use std::borrow;
 use std::collections::HashMap;
 
@@ -18,7 +17,7 @@ pub mod usym;
 pub mod usymlite;
 pub(crate) mod utils;
 
-pub use line_mapping::LineMapping;
+pub use line_mapping::{LineMapping, ObjectLineMapping};
 
 pub fn build_function_map(
     binary_buf: &[u8],

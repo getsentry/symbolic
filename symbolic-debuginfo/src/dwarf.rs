@@ -619,13 +619,18 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         };
 
         if low_pc == high_pc {
-            // most likely low_pc == high_pc means the DIE should be ignored.
+            // Most likely low_pc == high_pc means the DIE should be ignored.
             // https://sourceware.org/ml/gdb-patches/2011-03/msg00739.html
             return Ok(tuple);
         }
 
+        if low_pc == u64::MAX || low_pc == u64::MAX - 1 {
+            // Similarly, u64::MAX/u64::MAX-1 may be used to indicate deleted code.
+            // See https://reviews.llvm.org/D59553
+            return Ok(tuple);
+        }
+
         if low_pc > high_pc {
-            // TODO: consider swallowing errors here?
             return Err(DwarfErrorKind::InvertedFunctionRange.into());
         }
 
@@ -805,7 +810,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 continue;
             }
 
-            // In WASM files emitted by emscripted, we have observed a variety of broken ranges.
+            // In WASM files emitted by emscripten, we have observed a variety of broken ranges.
             // One of these cases also involves ranges which are not being sorted, resulting in
             // arithmetic underflow calculating `function_size` (in debug builds). Sorting the ranges
             // should avoid this problem.

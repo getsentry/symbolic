@@ -1,5 +1,9 @@
+mod from_object;
+
 use indexmap::IndexSet;
 use std::collections::HashMap;
+
+pub use from_object::ObjectLineMapping;
 
 #[derive(Debug)]
 struct LineEntry {
@@ -21,6 +25,12 @@ impl LineMapping {
 
         if let serde_json::Value::Object(object) = json {
             for (cpp_file, file_map) in object {
+                // This is a sentinel value for the originating debug file, which
+                // `ObjectLineMapping::to_writer` writes to the file to make it unique
+                // (and dependent on the originating debug-id).
+                if cpp_file == "__debug-id__" {
+                    continue;
+                }
                 let mut lines = Vec::new();
                 if let serde_json::Value::Object(file_map) = file_map {
                     for (cs_file, line_map) in file_map {
