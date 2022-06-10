@@ -757,6 +757,7 @@ where
 {
     manifest: SourceBundleManifest,
     writer: ZipWriter<W>,
+    collect_il2cpp: bool,
 }
 
 impl<W> SourceBundleWriter<W>
@@ -773,12 +774,19 @@ where
         Ok(SourceBundleWriter {
             manifest: SourceBundleManifest::new(),
             writer: ZipWriter::new(writer),
+            collect_il2cpp: false,
         })
     }
 
     /// Returns whether the bundle contains any files.
     pub fn is_empty(&self) -> bool {
         self.manifest.files.is_empty()
+    }
+
+    /// This controls if source files should be scanned for Il2cpp-specific source annotations,
+    /// and the referenced C# files should be bundled ups as well.
+    pub fn collect_il2cpp_sources(&mut self, collect_il2cpp: bool) {
+        self.collect_il2cpp = collect_il2cpp;
     }
 
     /// Sets a meta data attribute of the bundle.
@@ -911,6 +919,8 @@ where
         F: FnMut(&FileEntry) -> bool,
     {
         let mut files_handled = BTreeSet::new();
+        let mut referenced_files = BTreeSet::new();
+
         let session = object
             .debug_session()
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadDebugFile, e))?;
@@ -935,7 +945,7 @@ where
             {
                 None
             } else {
-                File::open(&filename).ok().map(BufReader::new)
+                std::fs::read(&filename).ok()
             };
 
             if let Some(source) = source {
@@ -944,10 +954,29 @@ where
                 info.set_ty(SourceFileType::Source);
                 info.set_path(filename.clone());
 
-                self.add_file(bundle_path, source, info)?;
+                if self.collect_il2cpp {
+                    collect_il2cpp_sources(&source, &mut referenced_files);
+                }
+
+                self.add_file(bundle_path, source.as_slice(), info)?;
             }
 
             files_handled.insert(filename);
+        }
+
+        for filename in referenced_files {
+            if files_handled.contains(&filename) {
+                continue;
+            }
+
+            if let Some(source) = File::open(&filename).ok().map(BufReader::new) {
+                let bundle_path = sanitize_bundle_path(&filename);
+                let mut info = SourceFileInfo::new();
+                info.set_ty(SourceFileType::Source);
+                info.set_path(filename.clone());
+
+                self.add_file(bundle_path, source, info)?;
+            }
         }
 
         let is_empty = self.is_empty();
@@ -1005,6 +1034,25 @@ where
     }
 }
 
+/// Processes the `source`, looking for `il2cpp` specific reference comments.
+///
+/// The files referenced by those comments are added to the `referenced_files` Set.
+fn collect_il2cpp_sources(source: &[u8], referenced_files: &mut BTreeSet<String>) {
+    if let Ok(source) = std::str::from_utf8(source) {
+        for line in source.lines() {
+            let line = line.trim();
+
+            if let Some(source_ref) = line.strip_prefix("//<source_info:") {
+                if let Some((file, _line)) = source_ref.rsplit_once(':') {
+                    if !referenced_files.contains(file) {
+                        referenced_files.insert(file.to_string());
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl SourceBundleWriter<BufWriter<File>> {
     /// Create a bundle writer that writes its output to the given path.
     ///
@@ -1033,6 +1081,7 @@ mod tests {
     use std::io::Cursor;
 
     use similar_asserts::assert_eq;
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_has_file() -> Result<(), SourceBundleError> {
@@ -1057,6 +1106,70 @@ mod tests {
         assert!(bundle.has_file("bar.txt.1"));
 
         bundle.finish()?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_il2cpp_reference() -> Result<(), Box<dyn std::error::Error>> {
+        let mut cpp_file = NamedTempFile::new()?;
+        let mut cs_file = NamedTempFile::new()?;
+
+        let cpp_contents = format!("foo\n//<source_info:{}:111>\nbar", cs_file.path().display());
+
+        // well, a source bundle itself is an `ObjectLike` :-)
+        let object_buf = {
+            let mut writer = Cursor::new(Vec::new());
+            let mut bundle = SourceBundleWriter::start(&mut writer)?;
+
+            let path = cpp_file.path().to_string_lossy();
+            let mut info = SourceFileInfo::new();
+            info.set_ty(SourceFileType::Source);
+            info.set_path(path.to_string());
+            bundle.add_file(path, cpp_contents.as_bytes(), info)?;
+
+            bundle.finish()?;
+            writer.into_inner()
+        };
+        let object = SourceBundle::parse(&object_buf)?;
+
+        // write file contents to temp files
+        cpp_file.write_all(cpp_contents.as_bytes())?;
+        cs_file.write_all(b"some C# source")?;
+
+        // write the actual source bundle based on the `object`
+        let mut output_buf = Cursor::new(Vec::new());
+        let mut writer = SourceBundleWriter::start(&mut output_buf)?;
+        writer.collect_il2cpp_sources(true);
+
+        let written = writer.write_object(&object, "whatever")?;
+        assert!(written);
+        let output_buf = output_buf.into_inner();
+
+        // and collect all the included files
+        let source_bundle = SourceBundle::parse(&output_buf)?;
+        let session = source_bundle.debug_session()?;
+        let actual_files: BTreeMap<_, _> = session
+            .files()
+            .flatten()
+            .flat_map(|f| {
+                let path = f.abs_path_str();
+                session
+                    .source_by_path(&path)
+                    .ok()
+                    .flatten()
+                    .map(|c| (path, c.into_owned()))
+            })
+            .collect();
+
+        let mut expected_files = BTreeMap::new();
+        expected_files.insert(cpp_file.path().to_string_lossy().into_owned(), cpp_contents);
+        expected_files.insert(
+            cs_file.path().to_string_lossy().into_owned(),
+            String::from("some C# source"),
+        );
+
+        assert_eq!(actual_files, expected_files);
+
         Ok(())
     }
 
