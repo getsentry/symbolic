@@ -10,7 +10,6 @@ use symbolic::common::{Arch, ByteView, DSymPathExt, Language};
 use symbolic::debuginfo::macho::BcSymbolMap;
 use symbolic::debuginfo::Archive;
 use symbolic::demangle::{Demangle, DemangleOptions};
-#[cfg(feature = "il2cpp")]
 use symbolic::il2cpp::LineMapping;
 use symbolic::symcache::{FilesDebug, FunctionsDebug, SymCache, SymCacheConverter};
 
@@ -65,17 +64,14 @@ fn execute(matches: &ArgMatches) -> Result<()> {
             .map(|buf| BcSymbolMap::parse(buf))
             .transpose()?;
 
-        #[cfg(feature = "il2cpp")]
-        {
-            let linemapping_buffer = matches
-                .value_of("linemapping_file")
-                .map(|path_str| ByteView::open(Path::new(path_str)))
-                .transpose()?;
-            let linemapping_transformer = linemapping_buffer
-                .as_ref()
-                .map(|buf| LineMapping::parse(buf))
-                .transpose()?;
-        }
+        let linemapping_buffer = matches
+            .value_of("linemapping_file")
+            .map(|path_str| ByteView::open(Path::new(path_str)))
+            .transpose()?;
+        let linemapping_transformer = linemapping_buffer
+            .as_ref()
+            .map(|buf| LineMapping::parse(buf))
+            .ok_or_else(|| anyhow::anyhow!("failed to read line mapping file"))?;
 
         let mut converter = SymCacheConverter::new();
 
@@ -83,11 +79,8 @@ fn execute(matches: &ArgMatches) -> Result<()> {
             converter.add_transformer(transformer);
         }
 
-        #[cfg(feature = "il2cpp")]
-        {
-            if let Some(transformer) = linemapping_transformer {
-                converter.add_transformer(transformer);
-            }
+        if let Some(transformer) = linemapping_transformer {
+            converter.add_transformer(transformer);
         }
 
         converter.process_object(obj)?;
@@ -138,13 +131,16 @@ fn execute(matches: &ArgMatches) -> Result<()> {
                         .name_for_demangling()
                         .try_demangle(DemangleOptions::name_only())
                 );
+                let lang = sym.function().language();
+                if lang != Language::Unknown {
+                    print!(" ({})", lang);
+                }
 
                 let path = sym
                     .file()
                     .map(|file| file.full_path())
                     .unwrap_or_else(|| "<unknown file >".into());
                 let line = sym.line();
-                let lang = sym.function().language();
 
                 if !path.is_empty() || line != 0 || lang != Language::Unknown {
                     print!("\n ");
@@ -153,9 +149,6 @@ fn execute(matches: &ArgMatches) -> Result<()> {
                     }
                     if line != 0 {
                         print!(" line {}", line);
-                    }
-                    if lang != Language::Unknown {
-                        print!(" ({})", lang);
                     }
                 }
 
