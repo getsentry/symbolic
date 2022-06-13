@@ -83,6 +83,7 @@ impl ObjectLineMapping {
 }
 
 /// An Il2cpp `source_info` record.
+#[derive(Debug, PartialEq, Eq)]
 struct SourceInfo<'data> {
     /// The C++ source line the `source_info` was parsed from.
     cpp_line: u32,
@@ -115,16 +116,19 @@ impl<'data> Iterator for SourceInfos<'data> {
     type Item = SourceInfo<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        for (cpp_line, cpp_src_line) in &mut self.lines {
+        while let Some((_, cpp_src_line)) = self.lines.next() {
             match parse_line(cpp_src_line) {
+                None => continue,
                 Some((cs_file, cs_line)) => {
+                    let next_non_comment_line_nr = self.lines.find_map(|(nr, src_line)| {
+                        (!src_line.trim_start().starts_with("//")).then(|| nr)
+                    })?;
                     return Some(SourceInfo {
-                        cpp_line: (cpp_line + 1) as u32,
+                        cpp_line: (next_non_comment_line_nr + 1) as u32,
                         cs_file,
                         cs_line,
-                    })
+                    });
                 }
-                None => continue,
             }
         }
         None
@@ -142,4 +146,45 @@ fn parse_line(line: &str) -> Option<(&str, u32)> {
     let (file, line) = source_ref.rsplit_once(':')?;
     let line = line.parse().ok()?;
     Some((file, line))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SourceInfo, SourceInfos};
+
+    #[test]
+    fn simple() {
+        let cpp_source = b"
+            Lorem ipsum dolor sit amet
+            //<source_info:main.cs:17>
+            // some
+            // more
+            // comments
+            actual source code";
+
+        let source_infos: Vec<_> = SourceInfos::new(cpp_source).collect();
+
+        assert_eq!(
+            source_infos,
+            vec![SourceInfo {
+                cpp_line: 7,
+                cs_file: "main.cs",
+                cs_line: 17
+            }]
+        )
+    }
+
+    #[test]
+    fn broken() {
+        let cpp_source = b"
+            Lorem ipsum dolor sit amet
+            //<source_info:main.cs:17>
+            // some
+            // more
+            // comments";
+
+        // Since there is no non-comment line for the source info to attach to,
+        // no source infos should be returned.
+        assert_eq!(SourceInfos::new(cpp_source).count(), 0);
+    }
 }
