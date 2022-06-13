@@ -153,7 +153,7 @@ mod tests {
     use super::{SourceInfo, SourceInfos};
 
     #[test]
-    fn simple() {
+    fn one_mapping() {
         let cpp_source = b"
             Lorem ipsum dolor sit amet
             //<source_info:main.cs:17>
@@ -169,8 +169,50 @@ mod tests {
             vec![SourceInfo {
                 cpp_line: 7,
                 cs_file: "main.cs",
-                cs_line: 17
+                cs_line: 17,
             }]
+        )
+    }
+
+    #[test]
+    fn several_mappings() {
+        let cpp_source = b"
+            Lorem ipsum dolor sit amet
+            //<source_info:main.cs:17>
+            // some
+            // comments
+            actual source code 1
+            actual source code 2
+
+            //<source_info:main.cs:29>
+            actual source code 3
+
+            //<source_info:main.cs:46>
+            // more
+            // comments
+            actual source code 4";
+
+        let source_infos: Vec<_> = SourceInfos::new(cpp_source).collect();
+
+        assert_eq!(
+            source_infos,
+            vec![
+                SourceInfo {
+                    cpp_line: 6,
+                    cs_file: "main.cs",
+                    cs_line: 17,
+                },
+                SourceInfo {
+                    cpp_line: 10,
+                    cs_file: "main.cs",
+                    cs_line: 29,
+                },
+                SourceInfo {
+                    cpp_line: 15,
+                    cs_file: "main.cs",
+                    cs_line: 46,
+                }
+            ]
         )
     }
 
