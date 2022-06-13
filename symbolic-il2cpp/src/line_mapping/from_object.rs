@@ -122,7 +122,7 @@ impl<'data> Iterator for SourceInfos<'data> {
     fn next(&mut self) -> Option<Self::Item> {
         for (cpp_line_nr, cpp_src_line) in &mut self.lines {
             match parse_line(cpp_src_line) {
-                // A new line info mapping. Emit the previously found one, if there is one.
+                // A new source info record. Emit the previously found one, if there is one.
                 Some((cs_file, cs_line)) => {
                     if let Some((cs_file, cs_line)) = self.current.replace((cs_file, cs_line)) {
                         return Some(SourceInfo {
@@ -135,7 +135,7 @@ impl<'data> Iterator for SourceInfos<'data> {
 
                 // A comment. Just continue.
                 None if cpp_src_line.trim_start().starts_with("//") => continue,
-                // A source line. Emit the previously found source line mapping, if there is one.
+                // A source line. Emit the previously found source info record, if there is one.
                 None => {
                     if let Some((cs_file, cs_line)) = self.current.take() {
                         return Some(SourceInfo {
@@ -244,7 +244,7 @@ mod tests {
 
         let source_infos: Vec<_> = SourceInfos::new(cpp_source).collect();
 
-        // The first source_info has no source line to attach to, so it should use the line
+        // The first source info has no source line to attach to, so it should use the line
         // immediately before the second source_info.
         assert_eq!(
             source_infos,
