@@ -2,9 +2,14 @@
 
 ## Unreleased
 
+**Features**:
+
+- Optionally collect referenced C# file sources when creating a source bundle. ([#516](https://github.com/getsentry/symbolic/pull/516))
+
 **Fixes**:
 
 - Only skip one function when encountering unknown Unwind Codes on Windows x64. ([#588](https://github.com/getsentry/symbolic/pull/588))
+- Skip over low_pc sentinels instead of erroring. ([#590](https://github.com/getsentry/symbolic/pull/590))
 
 ## 8.7.3
 
