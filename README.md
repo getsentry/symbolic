@@ -31,9 +31,7 @@ Symbolic provides the following functionality:
   - Heuristics to find original function names based on minified sources
   - Indexed sourcemap to sourcemap merging
 - Proguard function mappings
-- Minidump / Breakpad processing
-  - Generate Breakpad symbol files from Mach, ELF and PDBs
-  - Process Minidumps to retrieve stack traces
+- Generate Breakpad symbol files from Mach, ELF and PDBs
 - Convenient C and Python library
 - Processing of Unreal Engine 4 native crash reports
   - Extract and process minidumps
@@ -74,10 +72,6 @@ for better use:
 - [gimli](https://github.com/gimli-rs/gimli)
 - [goblin](https://github.com/m4b/goblin)
 - [pdb](https://github.com/willglynn/pdb)
-
-Additionally we use the following C++ libraries to fill in gaps:
-
-- [breakpad](https://chromium.googlesource.com/breakpad/breakpad/)
 
 ## Building and Development
 
