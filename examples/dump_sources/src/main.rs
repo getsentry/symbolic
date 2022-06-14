@@ -1,6 +1,6 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use clap::{Arg, ArgMatches, Command};
+use clap::{value_parser, Arg, ArgAction, ArgMatches, Command};
 
 use symbolic::common::{ByteView, DSymPathExt};
 use symbolic::debuginfo::sourcebundle::SourceBundleWriter;
@@ -44,8 +44,8 @@ fn write_object_sources(path: &Path, output_path: &Path) -> Result<(), Box<dyn s
 }
 
 fn execute(matches: &ArgMatches) {
-    let output_path = Path::new(matches.value_of("output").unwrap());
-    for path in matches.values_of("paths").unwrap_or_default() {
+    let output_path = matches.get_one::<PathBuf>("output").unwrap();
+    for path in matches.get_many::<PathBuf>("paths").unwrap_or_default() {
         if let Err(e) = write_object_sources(Path::new(&path), output_path) {
             print_error(e.as_ref());
         }
@@ -60,8 +60,9 @@ fn main() {
         .arg(
             Arg::new("paths")
                 .required(true)
-                .multiple_occurrences(true)
+                .action(ArgAction::Append)
                 .value_name("PATH")
+                .value_parser(value_parser!(PathBuf))
                 .help("Path to the debug file")
                 .number_of_values(1)
                 .index(1),
@@ -72,6 +73,7 @@ fn main() {
                 .long("output")
                 .required(true)
                 .value_name("PATH")
+                .value_parser(value_parser!(PathBuf))
                 .help("Path to the source output folder"),
         )
         .get_matches();

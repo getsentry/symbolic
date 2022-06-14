@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, HashSet};
 use std::io::Cursor;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use clap::{Arg, ArgMatches, Command};
+use clap::{Arg, ArgAction, ArgMatches, Command};
 use walkdir::WalkDir;
 
 use symbolic::common::{Arch, ByteView, InstructionInfo, SelfCell};
@@ -279,31 +279,39 @@ fn print_state(
 }
 
 fn execute(matches: &ArgMatches) -> Result<(), Error> {
-    let minidump_path = matches.value_of("minidump_file_path").unwrap();
-    let symbols_path = matches.value_of("debug_symbols_path").unwrap_or("invalid");
+    let minidump_path = matches.get_one::<PathBuf>("minidump_file_path").unwrap();
+    let symbols_path = matches.get_one::<PathBuf>("debug_symbols_path");
 
     // Initially process without CFI
     let byteview = ByteView::open(&minidump_path)?;
     let mut state = ProcessState::from_minidump(&byteview, None)?;
 
-    let cfi = if matches.is_present("cfi") {
-        // Reprocess with Call Frame Information
-        let frame_info = prepare_cfi(&symbols_path, &state)?;
-        state = ProcessState::from_minidump(&byteview, Some(&frame_info))?;
-        frame_info
+    let cfi = if *matches.get_one("cfi").unwrap() {
+        match symbols_path {
+            // Reprocess with Call Frame Information
+            Some(symbols_path) => {
+                let frame_info = prepare_cfi(&symbols_path, &state)?;
+                state = ProcessState::from_minidump(&byteview, Some(&frame_info))?;
+                frame_info
+            }
+            None => Default::default(),
+        }
     } else {
         Default::default()
     };
 
-    let symcaches = if matches.is_present("symbolize") {
-        prepare_symcaches(&symbols_path, &state)?
+    let symcaches = if *matches.get_one("symbolize").unwrap() {
+        match symbols_path {
+            Some(symbols_path) => prepare_symcaches(&symbols_path, &state)?,
+            None => Default::default(),
+        }
     } else {
         Default::default()
     };
 
     let options = PrintOptions {
-        crashed_only: matches.is_present("only_crash"),
-        show_modules: !matches.is_present("no_modules"),
+        crashed_only: *matches.get_one("only_crash").unwrap(),
+        show_modules: *matches.get_one("show_modules").unwrap(),
     };
     print_state(&state, &symcaches, &cfi, options)?;
 
@@ -317,35 +325,41 @@ fn main() {
             Arg::new("minidump_file_path")
                 .required(true)
                 .value_name("minidump")
+                .value_parser(clap::value_parser!(PathBuf))
                 .help("Path to the minidump file"),
         )
         .arg(
             Arg::new("debug_symbols_path")
                 .value_name("symbols")
+                .value_parser(clap::value_parser!(PathBuf))
                 .help("Path to a folder containing debug symbols"),
         )
         .arg(
             Arg::new("cfi")
                 .short('c')
                 .long("cfi")
+                .action(ArgAction::SetTrue)
                 .help("Use CFI while stackwalking"),
         )
         .arg(
             Arg::new("symbolize")
                 .short('s')
                 .long("symbolize")
+                .action(ArgAction::SetTrue)
                 .help("Symbolize frames (file, function and line number)"),
         )
         .arg(
             Arg::new("only_crash")
                 .short('o')
                 .long("only-crash")
+                .action(ArgAction::SetTrue)
                 .help("Only output the crashed thread"),
         )
         .arg(
-            Arg::new("no_modules")
+            Arg::new("show_modules")
                 .short('n')
                 .long("no-modules")
+                .action(ArgAction::SetFalse)
                 .help("Do not output loaded modules"),
         )
         .get_matches();
