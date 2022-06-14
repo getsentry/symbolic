@@ -1,13 +1,13 @@
-use std::cmp;
 use std::fs::File;
 use std::io::Read;
+use std::{cmp, path::PathBuf};
 
-use clap::{Arg, ArgMatches, Command};
+use clap::{value_parser, Arg, ArgMatches, Command};
 
 use symbolic::unreal::{Unreal4Crash, Unreal4FileType};
 
 fn execute(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
-    let crash_file_path = matches.value_of("crash_file_path").unwrap();
+    let crash_file_path = matches.get_one::<PathBuf>("crash_file_path").unwrap();
 
     let mut file = File::open(crash_file_path)?;
     let mut file_content = Vec::new();
@@ -47,6 +47,7 @@ fn main() {
             Arg::new("crash_file_path")
                 .required(true)
                 .value_name("crash_file_path")
+                .value_parser(value_parser!(PathBuf))
                 .help("Path to the crash file"),
         )
         .get_matches();
