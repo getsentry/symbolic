@@ -56,6 +56,9 @@ pub enum ObjectKind {
     /// information corresponding to the original object file.
     Sources,
 
+    /// An Il2Cpp LineMapping json file.
+    Il2Cpp,
+
     /// The Other type represents any valid object class that does not fit any
     /// of the other classes. These are mostly CPU or OS dependent, or unique
     /// to a single kind of object.
@@ -73,6 +76,7 @@ impl ObjectKind {
             ObjectKind::Dump => "dump",
             ObjectKind::Debug => "dbg",
             ObjectKind::Sources => "src",
+            ObjectKind::Il2Cpp => "il2cpp",
             ObjectKind::Other => "other",
         }
     }
@@ -94,6 +98,7 @@ impl ObjectKind {
             ObjectKind::Dump => "memory dump",
             ObjectKind::Debug => "debug companion",
             ObjectKind::Sources => "sources",
+            ObjectKind::Il2Cpp => "il2cpp",
             ObjectKind::Other => "file",
         }
     }
@@ -121,6 +126,7 @@ impl FromStr for ObjectKind {
             "dump" => ObjectKind::Dump,
             "dbg" => ObjectKind::Debug,
             "src" => ObjectKind::Sources,
+            "il2cpp" => ObjectKind::Il2Cpp,
             "other" => ObjectKind::Other,
             _ => return Err(UnknownObjectKindError),
         })
