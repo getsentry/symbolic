@@ -6,7 +6,7 @@ from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, decode_str, encode_str
 from symbolic.common import parse_addr, arch_is_known
 from symbolic.symcache import SymCache
-from symbolic.minidump import CfiCache
+from symbolic.cfi import CfiCache
 
 
 __all__ = [

@@ -8,29 +8,12 @@ use anyhow::{anyhow, Context, Result};
 use clap::builder::ValueParser;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 
-use symbolic::common::{Arch, ByteView, DSymPathExt, Language, SelfCell};
+use symbolic::common::{Arch, ByteView, DSymPathExt, Language};
 use symbolic::debuginfo::macho::BcSymbolMap;
 use symbolic::debuginfo::Archive;
 use symbolic::demangle::{Demangle, DemangleOptions};
 use symbolic::il2cpp::LineMapping;
-use symbolic::symcache::transform::{self, Transformer};
-use symbolic::symcache::{SymCache, SymCacheWriter};
-
-// FIXME: This is a huge pain, can't this be simpler somehow?
-struct OwnedBcSymbolMap(SelfCell<ByteView<'static>, BcSymbolMap<'static>>);
-
-impl Transformer for OwnedBcSymbolMap {
-    fn transform_function<'f>(&'f self, f: transform::Function<'f>) -> transform::Function<'f> {
-        self.0.get().transform_function(f)
-    }
-
-    fn transform_source_location<'f>(
-        &'f self,
-        sl: transform::SourceLocation<'f>,
-    ) -> transform::SourceLocation<'f> {
-        self.0.get().transform_source_location(sl)
-    }
-}
+use symbolic::symcache::{FilesDebug, FunctionsDebug, SymCache, SymCacheConverter};
 
 fn execute(matches: &ArgMatches) -> Result<()> {
     let buffer;
@@ -71,27 +54,42 @@ fn execute(matches: &ArgMatches) -> Result<()> {
             None => return Err(anyhow!("did not find architecture {}", arch)),
         };
 
-        let mut writer = SymCacheWriter::new(Cursor::new(Vec::new()))?;
+        let bcsymbolmap_buffer = matches
+            .get_one::<PathBuf>("bcsymbolmap_file")
+            .map(|path| ByteView::open(&path))
+            .transpose()?;
+        let bcsymbolmap_transformer = bcsymbolmap_buffer
+            .as_ref()
+            .map(|buf| BcSymbolMap::parse(buf))
+            .transpose()?;
 
-        if let Some(bcsymbolmap_path) = matches.get_one::<PathBuf>("bcsymbolmap_file") {
-            let bcsymbolmap_buffer = ByteView::open(bcsymbolmap_path)?;
-            let bcsymbolmap =
-                OwnedBcSymbolMap(SelfCell::try_new(bcsymbolmap_buffer, |s| unsafe {
-                    BcSymbolMap::parse(&*s)
-                })?);
-            writer.add_transformer(bcsymbolmap);
+        let linemapping_buffer = matches
+            .get_one::<PathBuf>("linemapping_file")
+            .map(|path| ByteView::open(&path))
+            .transpose()?;
+        let linemapping_transformer = linemapping_buffer
+            .as_ref()
+            .map(|buf| {
+                LineMapping::parse(buf)
+                    .ok_or_else(|| anyhow::anyhow!("Could not parse line mapping file"))
+            })
+            .transpose()?;
+
+        let mut converter = SymCacheConverter::new();
+
+        if let Some(bcsymbolmap) = bcsymbolmap_transformer {
+            converter.add_transformer(bcsymbolmap);
         }
 
-        if let Some(linemapping_path) = matches.get_one::<PathBuf>("linemapping_file") {
-            let linemapping_buffer = ByteView::open(linemapping_path)?;
-            if let Some(linemapping) = LineMapping::parse(&linemapping_buffer) {
-                writer.add_transformer(linemapping);
-            }
+        if let Some(linemapping) = linemapping_transformer {
+            converter.add_transformer(linemapping);
         }
 
-        writer.process_object(obj)?;
+        converter.process_object(obj)?;
 
-        buffer = ByteView::from_vec(writer.finish()?.into_inner());
+        let mut result = Vec::new();
+        converter.serialize(&mut Cursor::new(&mut result))?;
+        buffer = ByteView::from_vec(result);
         symcache = SymCache::parse(&buffer)?;
 
         // write mode
@@ -122,20 +120,27 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 
     // lookup mode
     if let Some(addr) = matches.get_one::<u64>("lookup_addr").copied() {
-        let m = symcache.lookup(addr)?.collect::<Vec<_>>()?;
+        let m = symcache.lookup(addr).collect::<Vec<_>>();
         if m.is_empty() {
             println!("No match :(");
         } else {
             for sym in m {
                 print!(
                     "{}",
-                    sym.function_name()
+                    sym.function()
+                        .name_for_demangling()
                         .try_demangle(DemangleOptions::name_only())
                 );
+                let lang = sym.function().language();
+                if lang != Language::Unknown {
+                    print!(" ({})", lang);
+                }
 
-                let path = sym.path();
+                let path = sym
+                    .file()
+                    .map(|file| file.full_path())
+                    .unwrap_or_else(|| "<unknown file >".into());
                 let line = sym.line();
-                let lang = sym.language();
 
                 if !path.is_empty() || line != 0 || lang != Language::Unknown {
                     print!("\n ");
@@ -144,9 +149,6 @@ fn execute(matches: &ArgMatches) -> Result<()> {
                     }
                     if line != 0 {
                         print!(" line {}", line);
-                    }
-                    if lang != Language::Unknown {
-                        print!(" ({})", lang);
                     }
                 }
 
@@ -158,11 +160,12 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 
     // print mode
     if *matches.get_one("print_symbols").unwrap() {
-        #[allow(deprecated)]
-        for func in symcache.functions() {
-            let func = func?;
-            println!("{:>16x} {:#}", func.address(), func.name());
-        }
+        println!("{:?}", FunctionsDebug(&symcache));
+    }
+
+    // print mode
+    if *matches.get_one("print_files").unwrap() {
+        println!("{:?}", FilesDebug(&symcache));
     }
 
     Ok(())
@@ -252,6 +255,11 @@ fn main() {
                 .long("symbols")
                 .action(ArgAction::SetTrue)
                 .help("Print all symbols"),
+        )
+        .arg(
+            Arg::new("print_files")
+                .long("files")
+                .help("Print all files"),
         )
         .get_matches();
 

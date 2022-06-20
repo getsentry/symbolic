@@ -20,7 +20,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
+proguard = { version = "5.0.0", features = ["uuid"] }
 serde_json = "1.0.40"
-apple-crash-report-parser = { version = "0.4.0", features = ["with_serde"] }
-symbolic = { version = "8.8.0", path = "../symbolic", features = ["debuginfo", "demangle", "minidump", "sourcemap", "symcache", "unreal-serde"] }
-proguard = { version = "4.0.1", features = ["uuid"] }
+sourcemap = "6.0.2"
+symbolic = { version = "8.8.0", path = "../symbolic", features = ["cfi", "debuginfo", "demangle", "symcache"] }

@@ -3,9 +3,9 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 use clap::{value_parser, Arg, ArgMatches, Command};
 
+use symbolic::cfi::AsciiCfiWriter;
 use symbolic::common::{ByteView, DSymPathExt};
 use symbolic::debuginfo::Object;
-use symbolic::minidump::cfi::AsciiCfiWriter;
 
 fn dump_cfi<P: AsRef<Path>>(path: P) -> Result<()> {
     let path = path.as_ref();

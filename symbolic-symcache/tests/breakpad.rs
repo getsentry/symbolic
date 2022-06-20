@@ -3,7 +3,7 @@ use std::io::Cursor;
 
 use symbolic_common::{clean_path, ByteView};
 use symbolic_debuginfo::breakpad::BreakpadObject;
-use symbolic_symcache::{SymCache, SymCacheWriter};
+use symbolic_symcache::{SymCache, SymCacheConverter};
 use symbolic_testutils::fixture;
 
 #[test]
@@ -12,19 +12,17 @@ fn test_macos() {
     let breakpad = BreakpadObject::parse(&buffer).unwrap();
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&breakpad).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
     let symcache = SymCache::parse(&buffer).unwrap();
 
-    let lookup_result: Vec<_> = symcache
-        .lookup(0x1a2a)
-        .unwrap()
-        .filter_map(Result::ok)
-        .collect();
+    let lookup_result: Vec<_> = symcache.lookup(0x1a2a).collect();
     assert_eq!(
-        lookup_result[0].symbol(),
+        lookup_result[0].function().name(),
         "google_breakpad::MinidumpFileWriter::Copy(unsigned int, void const*, long)"
     );
-    assert_eq!(lookup_result[0].path(), "/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client/minidump_file_writer.cc");
+    assert_eq!(lookup_result[0].file().unwrap().full_path(), "/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client/minidump_file_writer.cc");
     assert_eq!(lookup_result[0].line(), 312);
 }
 
@@ -34,7 +32,9 @@ fn test_macos_all() {
     let breakpad = BreakpadObject::parse(&buffer).unwrap();
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&breakpad).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
     let symcache = SymCache::parse(&buffer).unwrap();
 
     let files: BTreeMap<_, _> = breakpad
@@ -53,15 +53,11 @@ fn test_macos_all() {
             let line_rec = line_rec.unwrap();
 
             for addr in line_rec.range() {
-                let lookup_result: Vec<_> = symcache
-                    .lookup(addr)
-                    .unwrap()
-                    .filter_map(Result::ok)
-                    .collect();
+                let lookup_result: Vec<_> = symcache.lookup(addr).collect();
                 assert_eq!(lookup_result.len(), 1);
-                assert_eq!(lookup_result[0].symbol(), func.name);
+                assert_eq!(lookup_result[0].function().name(), func.name);
                 assert_eq!(
-                    lookup_result[0].path(),
+                    lookup_result[0].file().unwrap().full_path(),
                     clean_path(files[&line_rec.file_id])
                 );
                 assert_eq!(lookup_result[0].line(), line_rec.line as u32);
@@ -76,19 +72,17 @@ fn test_windows() {
     let breakpad = BreakpadObject::parse(&buffer).unwrap();
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&breakpad).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
     let symcache = SymCache::parse(&buffer).unwrap();
 
-    let lookup_result: Vec<_> = symcache
-        .lookup(0x2112)
-        .unwrap()
-        .filter_map(Result::ok)
-        .collect();
+    let lookup_result: Vec<_> = symcache.lookup(0x2112).collect();
     assert_eq!(
-        lookup_result[0].symbol(),
+        lookup_result[0].function().name(),
         "google_breakpad::ExceptionHandler::WriteMinidumpWithException(unsigned long,_EXCEPTION_POINTERS *,MDRawAssertionInfo *)"
     );
-    assert_eq!(lookup_result[0].path(), "c:\\projects\\breakpad-tools\\deps\\breakpad\\src\\client\\windows\\handler\\exception_handler.cc");
+    assert_eq!(lookup_result[0].file().unwrap().full_path(), "c:\\projects\\breakpad-tools\\deps\\breakpad\\src\\client\\windows\\handler\\exception_handler.cc");
     assert_eq!(lookup_result[0].line(), 846);
 }
 
@@ -102,24 +96,18 @@ PUBLIC d00 0 public_record"#;
     let breakpad = BreakpadObject::parse(buffer).unwrap();
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&breakpad).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
     let symcache = SymCache::parse(&buffer).unwrap();
 
-    let lookup_result: Vec<_> = symcache
-        .lookup(0xd04)
-        .unwrap()
-        .filter_map(Result::ok)
-        .collect();
-    assert_eq!(lookup_result[0].symbol(), "public_record");
+    let lookup_result: Vec<_> = symcache.lookup(0xd04).collect();
+    assert_eq!(lookup_result[0].function().name(), "public_record");
 
-    let lookup_result: Vec<_> = symcache
-        .lookup(0xd24)
-        .unwrap()
-        .filter_map(Result::ok)
-        .collect();
-    assert_eq!(lookup_result[0].symbol(), "func_record_with_end");
+    let lookup_result: Vec<_> = symcache.lookup(0xd24).collect();
+    assert_eq!(lookup_result[0].function().name(), "func_record_with_end");
 
-    let mut lookup_result = symcache.lookup(0xd99).unwrap().filter_map(Result::ok);
+    let mut lookup_result = symcache.lookup(0xd99);
     assert!(lookup_result.next().is_none());
 
     // The last addr belongs to a public record which implicitly extends to infinity
@@ -130,13 +118,11 @@ PUBLIC d80 0 public_record"#;
     let breakpad = BreakpadObject::parse(buffer).unwrap();
 
     let mut buffer = Vec::new();
-    SymCacheWriter::write_object(&breakpad, Cursor::new(&mut buffer)).unwrap();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&breakpad).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
     let symcache = SymCache::parse(&buffer).unwrap();
 
-    let lookup_result: Vec<_> = symcache
-        .lookup(0xfffffa0)
-        .unwrap()
-        .filter_map(Result::ok)
-        .collect();
-    assert_eq!(lookup_result[0].symbol(), "public_record");
+    let lookup_result: Vec<_> = symcache.lookup(0xfffffa0).collect();
+    assert_eq!(lookup_result[0].function().name(), "public_record");
 }

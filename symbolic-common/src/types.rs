@@ -7,57 +7,6 @@ use std::str;
 #[cfg(feature = "serde")]
 use serde_::{Deserialize, Serialize};
 
-/// Names for x86 CPU registers by register number.
-static I386: &[&str] = &[
-    "$eax", "$ecx", "$edx", "$ebx", "$esp", "$ebp", "$esi", "$edi", "$eip", "$eflags", "$unused1",
-    "$st0", "$st1", "$st2", "$st3", "$st4", "$st5", "$st6", "$st7", "$unused2", "$unused3",
-    "$xmm0", "$xmm1", "$xmm2", "$xmm3", "$xmm4", "$xmm5", "$xmm6", "$xmm7", "$mm0", "$mm1", "$mm2",
-    "$mm3", "$mm4", "$mm5", "$mm6", "$mm7", "$fcw", "$fsw", "$mxcsr", "$es", "$cs", "$ss", "$ds",
-    "$fs", "$gs", "$unused4", "$unused5", "$tr", "$ldtr",
-];
-
-/// Names for x86_64 CPU registers by register number.
-static X86_64: &[&str] = &[
-    "$rax", "$rdx", "$rcx", "$rbx", "$rsi", "$rdi", "$rbp", "$rsp", "$r8", "$r9", "$r10", "$r11",
-    "$r12", "$r13", "$r14", "$r15", "$rip", "$xmm0", "$xmm1", "$xmm2", "$xmm3", "$xmm4", "$xmm5",
-    "$xmm6", "$xmm7", "$xmm8", "$xmm9", "$xmm10", "$xmm11", "$xmm12", "$xmm13", "$xmm14", "$xmm15",
-    "$st0", "$st1", "$st2", "$st3", "$st4", "$st5", "$st6", "$st7", "$mm0", "$mm1", "$mm2", "$mm3",
-    "$mm4", "$mm5", "$mm6", "$mm7", "$rflags", "$es", "$cs", "$ss", "$ds", "$fs", "$gs",
-    "$unused1", "$unused2", "$fs.base", "$gs.base", "$unused3", "$unused4", "$tr", "$ldtr",
-    "$mxcsr", "$fcw", "$fsw",
-];
-
-/// Names for 32bit ARM CPU registers by register number.
-static ARM: &[&str] = &[
-    "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "sp", "lr",
-    "pc", "f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7", "fps", "cpsr", "", "", "", "", "", "",
-    "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
-    "", "", "", "", "", "", "", "", "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9",
-    "s10", "s11", "s12", "s13", "s14", "s15", "s16", "s17", "s18", "s19", "s20", "s21", "s22",
-    "s23", "s24", "s25", "s26", "s27", "s28", "s29", "s30", "s31", "f0", "f1", "f2", "f3", "f4",
-    "f5", "f6", "f7",
-];
-
-/// Names for 64bit ARM CPU registers by register number.
-static ARM64: &[&str] = &[
-    "x0", "x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10", "x11", "x12", "x13", "x14",
-    "x15", "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23", "x24", "x25", "x26", "x27",
-    "x28", "x29", "x30", "sp", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
-    "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "v0", "v1", "v2", "v3", "v4", "v5",
-    "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18", "v19",
-    "v20", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31",
-];
-
-/// Names for MIPS CPU registers by register number.
-static MIPS: &[&str] = &[
-    "$zero", "$at", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3", "$t0", "$t1", "$t2", "$t3", "$t4",
-    "$t5", "$t6", "$t7", "$s0", "$s1", "$s2", "$s3", "$s4", "$s5", "$s6", "$s7", "$t8", "$t9",
-    "$k0", "$k1", "$gp", "$sp", "$fp", "$ra", "$lo", "$hi", "$pc", "$f0", "$f2", "$f3", "$f4",
-    "$f5", "$f6", "$f7", "$f8", "$f9", "$f10", "$f11", "$f12", "$f13", "$f14", "$f15", "$f16",
-    "$f17", "$f18", "$f19", "$f20", "$f21", "$f22", "$f23", "$f24", "$f25", "$f26", "$f27", "$f28",
-    "$f29", "$f30", "$f31", "$fcsr", "$fir",
-];
-
 /// Represents a family of CPUs.
 ///
 /// This is strongly connected to the [`Arch`] type, but reduces the selection to a range of
@@ -181,41 +130,6 @@ impl CpuFamily {
             CpuFamily::Wasm32 => None,
             CpuFamily::Unknown => None,
         }
-    }
-
-    /// Returns the name of a register in a given architecture used in CFI programs.
-    ///
-    /// Each CPU family specifies its own register sets, wherer the registers are numbered. This
-    /// resolves the name of the register for the given family, if defined. Returns `None` if the
-    /// CPU family is unknown, or the register is not defined for the family.
-    ///
-    /// **Note**: The CFI register name differs from [`ip_register_name`]. For instance, on x86-64
-    /// the instruction pointer is returned as `$rip` instead of just `rip`. This differentiation is
-    /// made to be compatible with the Google Breakpad library.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use symbolic_common::CpuFamily;
-    ///
-    /// // 16 is the instruction pointer register:
-    /// assert_eq!(CpuFamily::Amd64.cfi_register_name(16), Some("$rip"));
-    /// ```
-    ///
-    /// [`ip_register_name`]: enum.CpuFamily.html#method.ip_register_name
-    pub fn cfi_register_name(self, register: u16) -> Option<&'static str> {
-        let index = register as usize;
-
-        let opt = match self {
-            CpuFamily::Intel32 => I386.get(index),
-            CpuFamily::Amd64 => X86_64.get(index),
-            CpuFamily::Arm64 | CpuFamily::Arm64_32 => ARM64.get(index),
-            CpuFamily::Arm32 => ARM.get(index),
-            CpuFamily::Mips32 | CpuFamily::Mips64 => MIPS.get(index),
-            _ => None,
-        };
-
-        opt.copied().filter(|name| !name.is_empty())
     }
 }
 
@@ -937,14 +851,4 @@ mod derive_serde {
 
     impl_str_serde!(super::Arch);
     impl_str_serde!(super::Language);
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_cfi_register_name_none() {
-        assert_eq!(CpuFamily::Arm64.cfi_register_name(33), None);
-    }
 }
