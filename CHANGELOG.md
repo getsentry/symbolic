@@ -1,6 +1,6 @@
 # Changelog
 
-## 8.8.0
+## Unreleased
 
 **Breaking changes**:
 
@@ -59,6 +59,8 @@
   - `symbolic-cabi::symcache::symbolic_symcache_has_file_info` and `symbolic_symcache_has_line_info`
     have been removed, likewise for `symbolic.symcache.SymCache.has_line_info` and `has_file_info`.
     
+## 8.8.0
+
 **Features**:
 
 - Optionally collect referenced C# file sources when creating a source bundle. ([#516](https://github.com/getsentry/symbolic/pull/516))
