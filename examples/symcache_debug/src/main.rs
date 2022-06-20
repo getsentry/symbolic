@@ -55,26 +55,34 @@ fn execute(matches: &ArgMatches) -> Result<()> {
         };
 
         let bcsymbolmap_buffer = matches
-            .value_of("bcsymbolmap_file")
-            .map(|path_str| ByteView::open(Path::new(path_str)))
+            .get_one::<PathBuf>("bcsymbolmap_file")
+            .map(|path| ByteView::open(&path))
             .transpose()?;
         let bcsymbolmap_transformer = bcsymbolmap_buffer
             .as_ref()
             .map(|buf| BcSymbolMap::parse(buf))
             .transpose()?;
 
-        if let Some(bcsymbolmap_path) = matches.get_one::<PathBuf>("bcsymbolmap_file") {
-            let bcsymbolmap_buffer = ByteView::open(bcsymbolmap_path)?;
-            if let Some(bcsymbolmap) = BcSymbolMap::parse(&*bcsymbolmap_buffer) {
-                writer.add_transformer(bcsymbolmap);
-            }
+        let linemapping_buffer = matches
+            .get_one::<PathBuf>("linemapping_file")
+            .map(|path| ByteView::open(&path))
+            .transpose()?;
+        let linemapping_transformer = linemapping_buffer
+            .as_ref()
+            .map(|buf| {
+                LineMapping::parse(buf)
+                    .ok_or_else(|| anyhow::anyhow!("Could not parse line mapping file"))
+            })
+            .transpose()?;
+
+        let mut converter = SymCacheConverter::new();
+
+        if let Some(bcsymbolmap) = bcsymbolmap_transformer {
+            converter.add_transformer(bcsymbolmap);
         }
 
-        if let Some(linemapping_path) = matches.get_one::<PathBuf>("linemapping_file") {
-            let linemapping_buffer = ByteView::open(linemapping_path)?;
-            if let Some(linemapping) = LineMapping::parse(&linemapping_buffer) {
-                writer.add_transformer(linemapping);
-            }
+        if let Some(linemapping) = linemapping_transformer {
+            converter.add_transformer(linemapping);
         }
 
         converter.process_object(obj)?;
