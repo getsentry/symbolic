@@ -167,7 +167,7 @@ pub enum SymbolicErrorCode {
     DwarfErrorInvertedFunctionRange = 2204,
     DwarfErrorCorruptedData = 2205,
 
-    // symbolic::minidump::cfi
+    // symbolic::cfi
     CfiErrorUnknown = 3000,
     CfiErrorMissingDebugInfo = 3001,
     CfiErrorUnsupportedDebugFormat = 3002,
@@ -177,16 +177,7 @@ pub enum SymbolicErrorCode {
     CfiErrorBadFileMagic = 3006,
     CfiErrorInvalidAddress = 3007,
 
-    // symbolic::minidump::processor
-    ProcessMinidumpErrorMinidumpNotFound = 4001,
-    ProcessMinidumpErrorNoMinidumpHeader = 4002,
-    ProcessMinidumpErrorNoThreadList = 4003,
-    ProcessMinidumpErrorInvalidThreadIndex = 4004,
-    ProcessMinidumpErrorInvalidThreadId = 4005,
-    ProcessMinidumpErrorDuplicateRequestingThreads = 4006,
-    ProcessMinidumpErrorSymbolSupplierInterrupted = 4007,
-
-    // symbolic::sourcemap
+    // sourcemap
     ParseSourceMapError = 5001,
 
     // symbolic::symcache
@@ -203,22 +194,6 @@ pub enum SymbolicErrorCode {
     SymCacheErrorValueTooLarge = 6010,
     SymCacheErrorWriteFailed = 6011,
     SymCacheErrorTooManyValues = 6012,
-
-    // symbolic::unreal
-    Unreal4ErrorUnknown = 7001,
-    Unreal4ErrorEmpty = 7002,
-    Unreal4ErrorBadCompression = 7004,
-    Unreal4ErrorInvalidXml = 7005,
-    Unreal4ErrorInvalidLogEntry = 7006,
-    Unreal4ErrorBadData = 7007,
-    Unreal4ErrorTrailingData = 7008,
-
-    // apple-crash-report-parser
-    AppleCrashReportParseErrorIo = 8001,
-    AppleCrashReportParseErrorInvalidIncidentIdentifier = 8002,
-    AppleCrashReportParseErrorInvalidReportVersion = 8003,
-    AppleCrashReportParseErrorInvalidTimestamp = 8004,
-    AppleCrashReportParseErrorInvalidImageIdentifier = 8005,
 }
 
 impl SymbolicErrorCode {
@@ -256,7 +231,7 @@ impl SymbolicErrorCode {
                 return SymbolicErrorCode::ObjectErrorUnknown;
             }
 
-            use symbolic::minidump::cfi::{CfiError, CfiErrorKind};
+            use symbolic::cfi::{CfiError, CfiErrorKind};
             if let Some(error) = error.downcast_ref::<CfiError>() {
                 return match error.kind() {
                     CfiErrorKind::MissingDebugInfo => SymbolicErrorCode::CfiErrorMissingDebugInfo,
@@ -272,106 +247,18 @@ impl SymbolicErrorCode {
                 };
             }
 
-            use symbolic::minidump::processor::{ProcessMinidumpError, ProcessResult};
-            if let Some(error) = error.downcast_ref::<ProcessMinidumpError>() {
-                return match error.kind() {
-                    // `Ok` is not used in errors
-                    ProcessResult::Ok => SymbolicErrorCode::Unknown,
-                    ProcessResult::MinidumpNotFound => {
-                        SymbolicErrorCode::ProcessMinidumpErrorMinidumpNotFound
-                    }
-                    ProcessResult::NoMinidumpHeader => {
-                        SymbolicErrorCode::ProcessMinidumpErrorNoMinidumpHeader
-                    }
-                    ProcessResult::NoThreadList => {
-                        SymbolicErrorCode::ProcessMinidumpErrorNoThreadList
-                    }
-                    ProcessResult::InvalidThreadIndex => {
-                        SymbolicErrorCode::ProcessMinidumpErrorInvalidThreadIndex
-                    }
-                    ProcessResult::InvalidThreadId => {
-                        SymbolicErrorCode::ProcessMinidumpErrorInvalidThreadId
-                    }
-                    ProcessResult::DuplicateRequestingThreads => {
-                        SymbolicErrorCode::ProcessMinidumpErrorDuplicateRequestingThreads
-                    }
-                    ProcessResult::SymbolSupplierInterrupted => {
-                        SymbolicErrorCode::ProcessMinidumpErrorSymbolSupplierInterrupted
-                    }
-                };
-            }
-
-            use symbolic::sourcemap::ParseSourceMapError;
-            if error.downcast_ref::<ParseSourceMapError>().is_some() {
+            if error.downcast_ref::<sourcemap::Error>().is_some() {
                 return SymbolicErrorCode::ParseSourceMapError;
             }
 
-            use symbolic::symcache::{SymCacheError, SymCacheErrorKind};
-            if let Some(error) = error.downcast_ref::<SymCacheError>() {
+            use symbolic::symcache::{Error, ErrorKind};
+            if let Some(error) = error.downcast_ref::<Error>() {
                 return match error.kind() {
-                    SymCacheErrorKind::BadFileMagic => SymbolicErrorCode::SymCacheErrorBadFileMagic,
-                    SymCacheErrorKind::BadFileHeader => {
-                        SymbolicErrorCode::SymCacheErrorBadFileHeader
-                    }
-                    SymCacheErrorKind::BadSegment => SymbolicErrorCode::SymCacheErrorBadSegment,
-                    SymCacheErrorKind::BadCacheFile => SymbolicErrorCode::SymCacheErrorBadCacheFile,
-                    SymCacheErrorKind::UnsupportedVersion => {
-                        SymbolicErrorCode::SymCacheErrorUnsupportedVersion
-                    }
-                    SymCacheErrorKind::BadDebugFile => SymbolicErrorCode::SymCacheErrorBadDebugFile,
-                    SymCacheErrorKind::MissingDebugSection => {
-                        SymbolicErrorCode::SymCacheErrorMissingDebugSection
-                    }
-                    SymCacheErrorKind::MissingDebugInfo => {
-                        SymbolicErrorCode::SymCacheErrorMissingDebugInfo
-                    }
-                    SymCacheErrorKind::UnsupportedDebugKind => {
-                        SymbolicErrorCode::SymCacheErrorUnsupportedDebugKind
-                    }
-                    SymCacheErrorKind::ValueTooLarge(_) => {
-                        SymbolicErrorCode::SymCacheErrorValueTooLarge
-                    }
-                    SymCacheErrorKind::WriteFailed => SymbolicErrorCode::SymCacheErrorWriteFailed,
-                    SymCacheErrorKind::TooManyValues(_) => {
-                        SymbolicErrorCode::SymCacheErrorTooManyValues
-                    }
+                    ErrorKind::WrongFormat => SymbolicErrorCode::SymCacheErrorBadFileMagic,
+                    ErrorKind::HeaderTooSmall => SymbolicErrorCode::SymCacheErrorBadFileHeader,
+                    ErrorKind::WrongVersion => SymbolicErrorCode::SymCacheErrorUnsupportedVersion,
+                    ErrorKind::BadDebugFile => SymbolicErrorCode::SymCacheErrorBadDebugFile,
                     _ => SymbolicErrorCode::SymCacheErrorUnknown,
-                };
-            }
-
-            use symbolic::unreal::{Unreal4Error, Unreal4ErrorKind};
-            if let Some(error) = error.downcast_ref::<Unreal4Error>() {
-                return match error.kind() {
-                    Unreal4ErrorKind::Empty => SymbolicErrorCode::Unreal4ErrorEmpty,
-                    Unreal4ErrorKind::BadCompression => {
-                        SymbolicErrorCode::Unreal4ErrorBadCompression
-                    }
-                    Unreal4ErrorKind::BadData => SymbolicErrorCode::Unreal4ErrorBadData,
-                    Unreal4ErrorKind::TrailingData => SymbolicErrorCode::Unreal4ErrorTrailingData,
-                    Unreal4ErrorKind::InvalidXml => SymbolicErrorCode::Unreal4ErrorInvalidXml,
-                    Unreal4ErrorKind::InvalidLogEntry => {
-                        SymbolicErrorCode::Unreal4ErrorInvalidLogEntry
-                    }
-                    _ => SymbolicErrorCode::Unreal4ErrorUnknown,
-                };
-            }
-
-            use apple_crash_report_parser::ParseError;
-            if let Some(error) = error.downcast_ref::<ParseError>() {
-                return match error {
-                    ParseError::Io(_) => SymbolicErrorCode::AppleCrashReportParseErrorIo,
-                    ParseError::InvalidIncidentIdentifier(_) => {
-                        SymbolicErrorCode::AppleCrashReportParseErrorInvalidIncidentIdentifier
-                    }
-                    ParseError::InvalidImageIdentifier(_) => {
-                        SymbolicErrorCode::AppleCrashReportParseErrorInvalidImageIdentifier
-                    }
-                    ParseError::InvalidReportVersion(_) => {
-                        SymbolicErrorCode::AppleCrashReportParseErrorInvalidReportVersion
-                    }
-                    ParseError::InvalidTimestamp(_) => {
-                        SymbolicErrorCode::AppleCrashReportParseErrorInvalidTimestamp
-                    }
                 };
             }
 
@@ -476,5 +363,5 @@ pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: *const SymbolicUuid) -> bool
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_uuid_to_str(uuid: *const SymbolicUuid) -> SymbolicStr {
     let uuid = Uuid::from_slice(&(*uuid).data[..]).unwrap_or_default();
-    SymbolicStr::from_string(uuid.to_hyphenated_ref().to_string())
+    SymbolicStr::from_string(uuid.hyphenated().to_string())
 }

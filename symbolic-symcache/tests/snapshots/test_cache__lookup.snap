@@ -1,61 +1,34 @@
 ---
 source: symbolic-symcache/tests/test_cache.rs
-expression: "&line_infos"
+expression: result
 
 ---
 [
-    LineInfo {
-        arch: Amd64,
-        debug_id: DebugId {
-            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
-            appendix: 0,
+    (
+        "/Users/travis/build/getsentry/breakpad-tools/macos/main.cpp",
+        21,
+        Function {
+            name: "_ZN12_GLOBAL__N_15crashEv",
+            entry_pc: 4294967295,
+            language: Cpp,
         },
-        sym_addr: 56341,
-        line_addr: 56341,
-        instr_addr: 56341,
-        line: 21,
-        lang: Cpp,
-        symbol: Some(
-            "_ZN12_GLOBAL__N_15crashEv",
-        ),
-        filename: "main.cpp",
-        base_dir: "../macos",
-        comp_dir: "/Users/travis/build/getsentry/breakpad-tools/macos",
-    },
-    LineInfo {
-        arch: Amd64,
-        debug_id: DebugId {
-            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
-            appendix: 0,
+    ),
+    (
+        "/Users/travis/build/getsentry/breakpad-tools/macos/main.cpp",
+        25,
+        Function {
+            name: "_ZN12_GLOBAL__N_15startEv",
+            entry_pc: 4294967295,
+            language: Cpp,
         },
-        sym_addr: 56341,
-        line_addr: 56341,
-        instr_addr: 56341,
-        line: 25,
-        lang: Cpp,
-        symbol: Some(
-            "_ZN12_GLOBAL__N_15startEv",
-        ),
-        filename: "main.cpp",
-        base_dir: "../macos",
-        comp_dir: "/Users/travis/build/getsentry/breakpad-tools/macos",
-    },
-    LineInfo {
-        arch: Amd64,
-        debug_id: DebugId {
-            uuid: "67e9247c-814e-392b-a027-dbde6748fcbf",
-            appendix: 0,
+    ),
+    (
+        "/Users/travis/build/getsentry/breakpad-tools/macos/main.cpp",
+        32,
+        Function {
+            name: "main",
+            entry_pc: 56224,
+            language: Cpp,
         },
-        sym_addr: 56224,
-        line_addr: 56341,
-        instr_addr: 56341,
-        line: 32,
-        lang: Cpp,
-        symbol: Some(
-            "main",
-        ),
-        filename: "main.cpp",
-        base_dir: "../macos",
-        comp_dir: "/Users/travis/build/getsentry/breakpad-tools/macos",
-    },
+    ),
 ]

@@ -1,11 +1,11 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use clap::{Arg, ArgMatches, Command};
+use clap::{value_parser, Arg, ArgMatches, Command};
 
+use symbolic::cfi::AsciiCfiWriter;
 use symbolic::common::{ByteView, DSymPathExt};
 use symbolic::debuginfo::Object;
-use symbolic::minidump::cfi::AsciiCfiWriter;
 
 fn dump_cfi<P: AsRef<Path>>(path: P) -> Result<()> {
     let path = path.as_ref();
@@ -29,7 +29,7 @@ fn dump_cfi<P: AsRef<Path>>(path: P) -> Result<()> {
 }
 
 fn execute(matches: &ArgMatches) -> Result<()> {
-    let path = matches.value_of("path").unwrap();
+    let path = matches.get_one::<PathBuf>("path").unwrap();
     dump_cfi(path)
 }
 
@@ -42,6 +42,7 @@ fn main() {
                 .value_name("PATH")
                 .help("Path to the debug file")
                 .number_of_values(1)
+                .value_parser(value_parser!(PathBuf))
                 .index(1),
         )
         .get_matches();

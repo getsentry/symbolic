@@ -2,9 +2,73 @@
 
 ## Unreleased
 
+**Breaking changes**:
+
+- Updated the `debugid` dependency to 0.8.
+- Updated the `uuid` dependency to 1.0.
+- Updated the `pdb` dependency to 0.8.
+- Removed the public method `symbolic_common::CpuFamily::cfi_register_name`.
+- The `symbolic-minidump` crate has been dropped. The CFI functionality that was contained in
+  `symbolic-minidump` now resides in its own crate, `symbolic-cfi`.
+- The `symbolic-unwind` crate has been dropped.
+- The `symbolic-sourcemap` crate has been dropped. Since it was only used in `symbolic-cabi`, its
+  functionality has been incorporated into `symbolic-cabi`.
+- Support for symcache versions before v7 has been dropped. This entails a number of changes in
+  the public API of `symbolic-symcache`:
+  - Removed support for symcache binary formats prior to v7.
+  - Removed `SymCacheWriter`.
+  - Removed `SymCacheError`.
+  - Removed `SymCacheErrorKind`.
+  - Removed `Line`.
+  - Removed `Lines`.
+  - Removed `LineInfo`.
+  - Removed `Lookup`.
+  - Removed `Function::id`.
+  - Removed `Function::parent_id`.
+  - Removed `Function::address`.
+  - Removed `Function::symbol`.
+  - Removed `Function::compilation_dir`.
+  - Removed `Function::lines`.
+  - Removed `SymCache::has_line_info`.
+  - Removed `SymCache::has_file_info`.
+  - Changed return type of `Function::name` to string slice.
+  - Changed return type of `SymCache::lookup` to `SourceLocations`.
+  - Added `Function::name_for_demangling` with the previous signature and behavior of `Function::name`.
+  - Added `Function::entry_pc`.
+  - Added `SymCacheConverter`.
+  - Added `Error`.
+  - Added `ErrorKind`.
+  - Added `File`.
+  - Added `Files`.
+  - Added `FilesDebug`.
+  - Added `FunctionsDebug`.
+  - Added `SourceLocation`.
+  - Added `SourceLocations`.
+  - Added `SymCache::files`.
+  - Added lifetime parameter to `Transformers`.
+  - Undeprecated `Function` and `Functions`.
+  - Undeprecated `SymCache::functions`.
+- Some C and Python bindings have been dropped or adjusted. Concretely:
+  - `symbolic-cabi::minidump` and the corresponding Python functionality has been removed. The
+    CFI functionality that was contained therein now resides in `symbolic-cabi::cfi` and `symbolic.cfi`,
+    respectively.
+  - `symbolic-cabi::unreal` and the corresponding Python functionality has been removed.
+  - `symbolic-cabi::symcache::SymbolicLineInfo` has been replaced with `SymbolicSourceLocation`,
+    which has a different interface. Likewise, `symbolic.symcache.LineInfo` has been replaced with
+    `SourceLocation`.
+  - `symbolic-cabi::symcache::symbolic_symcache_has_file_info` and `symbolic_symcache_has_line_info`
+    have been removed, likewise for `symbolic.symcache.SymCache.has_line_info` and `has_file_info`.
+    
+## 8.8.0
+
+**Features**:
+
+- Optionally collect referenced C# file sources when creating a source bundle. ([#516](https://github.com/getsentry/symbolic/pull/516))
+
 **Fixes**:
 
 - Only skip one function when encountering unknown Unwind Codes on Windows x64. ([#588](https://github.com/getsentry/symbolic/pull/588))
+- Skip over low_pc sentinels instead of erroring. ([#590](https://github.com/getsentry/symbolic/pull/590))
 
 ## 8.7.3
 

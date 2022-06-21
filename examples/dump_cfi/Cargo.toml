@@ -1,6 +1,6 @@
 [package]
 name = "dump_cfi"
-version = "8.7.3"
+version = "8.8.0"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2018"
 publish = false
@@ -10,4 +10,4 @@ publish = false
 [dependencies]
 anyhow = "1.0.32"
 clap = "3.1.0"
-symbolic = { path = "../../symbolic", features = ["minidump"] }
+symbolic = { path = "../../symbolic", features = ["cfi"] }

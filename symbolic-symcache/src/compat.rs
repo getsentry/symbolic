@@ -10,16 +10,18 @@ pub(crate) const SYMCACHE_VERSION_CUTOFF: u32 = 6;
 
 impl From<new::Error> for SymCacheError {
     fn from(new_error: new::Error) -> Self {
-        let kind = match new_error {
-            new::Error::BufferNotAligned
-            | new::Error::BadFormatLength
-            | new::Error::WrongEndianness => old::SymCacheErrorKind::BadCacheFile,
-            new::Error::HeaderTooSmall => old::SymCacheErrorKind::BadFileHeader,
-            new::Error::WrongFormat => old::SymCacheErrorKind::BadFileMagic,
-            new::Error::WrongVersion => old::SymCacheErrorKind::UnsupportedVersion,
+        let new::Error { kind, source } = new_error;
+        let kind = match kind {
+            new::ErrorKind::BufferNotAligned
+            | new::ErrorKind::BadFormatLength
+            | new::ErrorKind::WrongEndianness => old::SymCacheErrorKind::BadCacheFile,
+            new::ErrorKind::HeaderTooSmall => old::SymCacheErrorKind::BadFileHeader,
+            new::ErrorKind::WrongFormat => old::SymCacheErrorKind::BadFileMagic,
+            new::ErrorKind::WrongVersion => old::SymCacheErrorKind::UnsupportedVersion,
+            new::ErrorKind::BadDebugFile => old::SymCacheErrorKind::BadDebugFile,
         };
 
-        Self::from(kind)
+        Self { kind, source }
     }
 }
 
@@ -31,7 +33,7 @@ enum SymCacheInner<'data> {
 
 /// A platform independent symbolication cache.
 ///
-/// Use [`SymCacheWriter`](crate::SymCacheWriter) writer to create SymCaches,
+/// Use [`SymCacheConverter`](crate::SymCacheConverter) to create SymCaches,
 /// including the conversion from object files.
 pub struct SymCache<'data>(SymCacheInner<'data>);
 
@@ -74,32 +76,9 @@ impl<'data> SymCache<'data> {
         }
     }
 
-    /// Returns true if line information is included.
-    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
-    pub fn has_line_info(&self) -> bool {
-        match &self.0 {
-            #[allow(deprecated)]
-            SymCacheInner::New(symc) => symc.has_line_info(),
-            SymCacheInner::Old(symc) => symc.has_line_info(),
-        }
-    }
-
-    /// Returns true if file information is included.
-    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
-    pub fn has_file_info(&self) -> bool {
-        match &self.0 {
-            #[allow(deprecated)]
-            SymCacheInner::New(symc) => symc.has_file_info(),
-            SymCacheInner::Old(symc) => symc.has_file_info(),
-        }
-    }
-
     /// Returns an iterator over all functions.
-    #[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
-    #[allow(deprecated)]
     pub fn functions(&self) -> Functions<'data> {
         match &self.0 {
-            #[allow(deprecated)]
             SymCacheInner::New(symc) => {
                 Functions(FunctionsInner::New(symc.functions().enumerate()))
             }
@@ -151,10 +130,8 @@ enum FunctionInner<'data> {
 
 /// A function in a `SymCache`.
 #[derive(Clone)]
-#[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
 pub struct Function<'data>(FunctionInner<'data>);
 
-#[allow(deprecated)]
 impl<'data> Function<'data> {
     /// The ID of the function.
     pub fn id(&self) -> usize {
@@ -186,7 +163,7 @@ impl<'data> Function<'data> {
     pub fn symbol(&self) -> &'data str {
         match &self.0 {
             FunctionInner::Old(function) => function.symbol(),
-            FunctionInner::New((_, function)) => function.name().unwrap_or("?"),
+            FunctionInner::New((_, function)) => function.name(),
         }
     }
 
@@ -204,11 +181,9 @@ impl<'data> Function<'data> {
     pub fn name(&self) -> Name<'_> {
         match &self.0 {
             FunctionInner::Old(function) => function.name(),
-            FunctionInner::New((_, function)) => Name::new(
-                function.name().unwrap_or("?"),
-                NameMangling::Unknown,
-                function.language(),
-            ),
+            FunctionInner::New((_, function)) => {
+                Name::new(function.name(), NameMangling::Unknown, function.language())
+            }
         }
     }
 
@@ -229,7 +204,6 @@ impl<'data> Function<'data> {
     }
 }
 
-#[allow(deprecated)]
 impl<'data> fmt::Debug for Function<'data> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
@@ -247,10 +221,8 @@ enum FunctionsInner<'data> {
 
 /// An iterator over all functions in a `SymCache`.
 #[derive(Clone)]
-#[deprecated(since = "8.6.0", note = "this will be removed in a future version")]
 pub struct Functions<'data>(FunctionsInner<'data>);
 
-#[allow(deprecated)]
 impl<'data> Iterator for Functions<'data> {
     type Item = Result<Function<'data>, SymCacheError>;
 
@@ -268,7 +240,6 @@ impl<'data> Iterator for Functions<'data> {
     }
 }
 
-#[allow(deprecated)]
 impl<'data> fmt::Debug for Functions<'data> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.0 {
@@ -309,19 +280,15 @@ impl<'data, 'cache> Iterator for Lookup<'data, 'cache> {
             LookupInner::Old(lookup) => lookup.next(),
             LookupInner::New { iter, lookup_addr } => {
                 let sl = iter.next()?;
-
                 Some(Ok(old::LineInfo {
                     arch: sl.cache.arch(),
                     debug_id: sl.cache.debug_id(),
-                    sym_addr: sl
-                        .function()
-                        .map(|f| f.entry_pc() as u64)
-                        .unwrap_or(u64::MAX),
+                    sym_addr: sl.function().entry_pc() as u64,
                     line_addr: *lookup_addr,
                     instr_addr: *lookup_addr,
                     line: sl.line(),
-                    lang: sl.function().map(|f| f.language()).unwrap_or_default(),
-                    symbol: sl.function().and_then(|f| f.name()),
+                    lang: sl.function().language(),
+                    symbol: Some(sl.function().name()),
                     filename: sl.file().map(|f| f.path_name()).unwrap_or_default(),
                     base_dir: sl.file().and_then(|f| f.directory()).unwrap_or_default(),
                     comp_dir: sl.file().and_then(|f| f.comp_dir()).unwrap_or_default(),

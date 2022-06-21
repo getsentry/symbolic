@@ -61,8 +61,7 @@ class ReportSymbolizer(object):
                 frame = dict(frame)
                 frame["symbol_name"] = sym.symbol
                 frame["function"] = sym.function_name
-                frame["abs_path"] = sym.abs_path
-                frame["filename"] = sym.filename
+                frame["full_path"] = sym.full_path
                 frame["line"] = sym.line
                 result.append(frame)
             return result
@@ -73,7 +72,7 @@ class ReportSymbolizer(object):
 
         for frame in rv:
             frame.setdefault("function", frame.get("symbol_name"))
-            frame.setdefault("filename")
+            frame.setdefault("fullpath")
             frame.setdefault("line")
 
         return rv
@@ -222,6 +221,14 @@ def get_sourceview(res_path):
     def getter(path):
         with open(os.path.join(res_path, "sourcemaps", path), "rb") as f:
             return SourceView.from_bytes(f.read())
+
+    return getter
+
+
+@pytest.fixture(scope="function")
+def get_empty_sourceview():
+    def getter():
+        return SourceView.from_bytes([])
 
     return getter
 

@@ -8,8 +8,6 @@ from symbolic.utils import (
     rustcall,
     decode_str,
     encode_str,
-    common_path_join,
-    strip_common_path_prefix,
     encode_path,
     attached_refs,
     SliceReader,
@@ -18,7 +16,12 @@ from symbolic.common import parse_addr
 from symbolic import exceptions
 
 
-__all__ = ["LineInfo", "SymCache", "find_best_instruction", "SYMCACHE_LATEST_VERSION"]
+__all__ = [
+    "SourceLocation",
+    "SymCache",
+    "find_best_instruction",
+    "SYMCACHE_LATEST_VERSION",
+]
 
 
 # the most recent version for the symcache file format.
@@ -26,61 +29,29 @@ SYMCACHE_LATEST_VERSION = rustcall(lib.symbolic_symcache_latest_version)
 
 
 @implements_to_string
-class LineInfo(object):
-    def __init__(
-        self,
-        sym_addr,
-        instr_addr,
-        line,
-        lang,
-        symbol,
-        line_addr=None,
-        filename=None,
-        base_dir=None,
-        comp_dir=None,
-    ):
+class SourceLocation(object):
+    def __init__(self, sym_addr, instr_addr, line, lang, symbol, full_path=None):
         self.sym_addr = sym_addr
-        self.line_addr = line_addr
         self.instr_addr = instr_addr
         self.line = line
         self.lang = lang
         self.symbol = symbol
-        self.filename = filename or None
-        self.base_dir = base_dir or None
-        self.comp_dir = comp_dir or None
+        self.full_path = full_path or None
 
     @property
     def function_name(self):
         """The demangled function name."""
         return demangle_name(self.symbol, lang=self.lang)
 
-    @property
-    def abs_path(self):
-        """Returns the absolute path."""
-        if self.filename is None:
-            return None
-        if self.base_dir is None:
-            return self.filename
-        return common_path_join(self.base_dir, self.filename)
-
-    @property
-    def rel_path(self):
-        """Returns the relative path to the comp dir."""
-        if self.filename is None:
-            return None
-        if self.comp_dir is None:
-            return self.filename
-        return strip_common_path_prefix(self.abs_path, self.comp_dir)
-
     def __str__(self):
         return "%s:%s (%s)" % (
             self.function_name,
             self.line,
-            self.rel_path,
+            self.full_path,
         )
 
     def __repr__(self):
-        return "LineInfo(%s)" % (
+        return "SourceLocation(%s)" % (
             ", ".join("%s=%r" % x for x in sorted(self.__dict__.items()))
         )
 
@@ -123,16 +94,6 @@ class SymCache(RustObject):
         return decode_str(id, free=True)
 
     @property
-    def has_line_info(self):
-        """Does this file have line information?"""
-        return self._methodcall(lib.symbolic_symcache_has_line_info)
-
-    @property
-    def has_file_info(self):
-        """Does this file have file information?"""
-        return self._methodcall(lib.symbolic_symcache_has_file_info)
-
-    @property
     def version(self):
         """Version of the file format."""
         return self._methodcall(lib.symbolic_symcache_get_version)
@@ -160,17 +121,17 @@ class SymCache(RustObject):
             matches = []
             for idx in range(rv.len):
                 sym = rv.items[idx]
+                lang = decode_str(sym.lang, free=False)
+                symbol = decode_str(sym.symbol, free=False)
+                full_path = decode_str(sym.full_path, free=True)
                 matches.append(
-                    LineInfo(
+                    SourceLocation(
                         sym_addr=sym.sym_addr,
-                        line_addr=sym.line_addr,
                         instr_addr=sym.instr_addr,
                         line=sym.line,
-                        lang=decode_str(sym.lang, free=False),
-                        symbol=decode_str(sym.symbol, free=False),
-                        filename=decode_str(sym.filename, free=False),
-                        base_dir=decode_str(sym.base_dir, free=False),
-                        comp_dir=decode_str(sym.comp_dir, free=False),
+                        lang=lang,
+                        symbol=symbol,
+                        full_path=full_path,
                     )
                 )
         finally:

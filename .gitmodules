@@ -1,7 +1,0 @@
-[submodule "minidump/third_party/breakpad"]
-	path = symbolic-minidump/third_party/breakpad
-	url = https://github.com/getsentry/breakpad
-	shallow = true
-[submodule "minidump/third_party/lss"]
-	path = symbolic-minidump/third_party/lss
-	url = https://github.com/getsentry/linux-syscall-support
