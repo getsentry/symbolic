@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 9.0.0
 
 **Breaking changes**:
 
@@ -58,7 +58,7 @@
     `SourceLocation`.
   - `symbolic-cabi::symcache::symbolic_symcache_has_file_info` and `symbolic_symcache_has_line_info`
     have been removed, likewise for `symbolic.symcache.SymCache.has_line_info` and `has_file_info`.
-    
+
 ## 8.8.0
 
 **Features**:
