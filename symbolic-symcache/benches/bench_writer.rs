@@ -4,7 +4,7 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::Object;
-use symbolic_symcache::SymCacheWriter;
+use symbolic_symcache::SymCacheConverter;
 use symbolic_testutils::fixture;
 
 fn bench_write_linux(c: &mut Criterion) {
@@ -12,9 +12,11 @@ fn bench_write_linux(c: &mut Criterion) {
         let buffer = ByteView::open(fixture("linux/crash.debug")).expect("open");
         b.iter(|| {
             let object = Object::parse(&buffer).expect("parse");
-            SymCacheWriter::write_object(&object, Cursor::new(Vec::new()))
+            let mut converter = SymCacheConverter::new();
+            converter.process_object(&object).expect("process_object");
+            converter
+                .serialize(&mut Cursor::new(Vec::new()))
                 .expect("write_object")
-                .into_inner()
         });
     });
 }
@@ -26,9 +28,11 @@ fn bench_write_macos(c: &mut Criterion) {
 
         b.iter(|| {
             let object = Object::parse(&buffer).expect("parse");
-            SymCacheWriter::write_object(&object, Cursor::new(Vec::new()))
+            let mut converter = SymCacheConverter::new();
+            converter.process_object(&object).expect("process_object");
+            converter
+                .serialize(&mut Cursor::new(Vec::new()))
                 .expect("write_object")
-                .into_inner()
         });
     });
 }
@@ -38,9 +42,11 @@ fn bench_write_breakpad(c: &mut Criterion) {
         let buffer = ByteView::open(fixture("windows/crash.sym")).expect("open");
         b.iter(|| {
             let object = Object::parse(&buffer).expect("parse");
-            SymCacheWriter::write_object(&object, Cursor::new(Vec::new()))
+            let mut converter = SymCacheConverter::new();
+            converter.process_object(&object).expect("process_object");
+            converter
+                .serialize(&mut Cursor::new(Vec::new()))
                 .expect("write_object")
-                .into_inner()
         });
     });
 }
