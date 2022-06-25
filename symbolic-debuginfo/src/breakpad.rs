@@ -362,6 +362,36 @@ impl<'d> Iterator for BreakpadFileRecords<'d> {
 /// A map of file paths by their file ID.
 pub type BreakpadFileMap<'d> = BTreeMap<u64, &'d str>;
 
+/// An [inline origin record], specifying the function name of a function for which at least one
+/// call to this function has been inlined.
+///
+/// The ID of this record is referenced by [`BreakpadInlineRecord`]. Inline origin records are not
+/// necessarily consecutive or sorted by their identifier, and they don't have to be present in a
+/// contiguous block in the file; they can be interspersed with FUNC records or other records.
+///
+/// Example: `INLINE_ORIGIN 1305 SharedLibraryInfo::Initialize()`
+///
+/// [inline origin record]: https://github.com/google/breakpad/blob/main/docs/symbol_files.md#inline_origin-records
+/// [`BreakpadInlineRecord`]: struct.BreakpadInlineRecord.html
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct BreakpadInlineOriginRecord<'d> {
+    /// Breakpad-internal identifier of the function.
+    pub id: u64,
+    /// The function name.
+    pub name: &'d str,
+}
+
+impl<'d> BreakpadInlineOriginRecord<'d> {
+    /// Parses an inline origin record from a single line.
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+        let string = str::from_utf8(data)?;
+        Ok(parsing::inline_origin_record_final(string.trim())?)
+    }
+}
+
+/// A map of function names by their inline origin ID.
+pub type BreakpadInlineOriginMap<'d> = BTreeMap<u64, &'d str>;
+
 /// A [public function symbol record].
 ///
 /// Example: `PUBLIC m 2160 0 Public2_1`
@@ -1592,6 +1622,38 @@ mod parsing {
         nom_supreme::final_parser::final_parser(file_record)(input)
     }
 
+    /// Parse a [`BreakpadInlineOriginRecord`].
+    ///
+    /// An INLINE_ORIGIN record has the form `INLINE_ORIGIN <id> <name>`.
+    fn inline_origin_record(input: &str) -> ParseResult<BreakpadInlineOriginRecord> {
+        let (input, _) = tag("INLINE_ORIGIN")
+            .terminated(multispace1)
+            .context("inline origin record prefix")
+            .parse(input)?;
+
+        let (input, (id, name)) = pair(
+            num_dec!(u64)
+                .terminated(multispace1)
+                .context("inline origin id"),
+            rest.context("inline origin name"),
+        )
+        .cut()
+        .context("inline origin record body")
+        .parse(input)?;
+
+        Ok((input, BreakpadInlineOriginRecord { id, name }))
+    }
+
+    /// Parse a [`BreakpadInlineOriginRecord`].
+    ///
+    /// An INLINE_ORIGIN record has the form `INLINE_ORIGIN <id> <name>`.
+    /// This will fail if there is any input left over after the record.
+    pub fn inline_origin_record_final(
+        input: &str,
+    ) -> Result<BreakpadInlineOriginRecord, ErrorTree<ErrorLine>> {
+        nom_supreme::final_parser::final_parser(inline_origin_record)(input)
+    }
+
     /// Parse a [`BreakpadPublicRecord`].
     ///
     /// A PUBLIC record has the form `PUBLIC (m )? <address> <parameter_size> ( <name>)?`.
@@ -1936,6 +1998,37 @@ mod tests {
        ⋮    id: 38,
        ⋮    name: "/usr/local/src/filename with spaces.c",
        ⋮}
+        "###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_inline_origin_record() -> Result<(), BreakpadError> {
+        let string = b"INLINE_ORIGIN 3529 LZ4F_initStream";
+        let record = BreakpadInlineOriginRecord::parse(string)?;
+
+        insta::assert_debug_snapshot!(record, @r###"
+        BreakpadInlineOriginRecord {
+            id: 3529,
+            name: "LZ4F_initStream",
+        }
+        "###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_inline_origin_record_space() -> Result<(), BreakpadError> {
+        let string =
+            b"INLINE_ORIGIN 3576 unsigned int mozilla::AddToHash<char, 0>(unsigned int, char)";
+        let record = BreakpadInlineOriginRecord::parse(string)?;
+
+        insta::assert_debug_snapshot!(record, @r###"
+        BreakpadInlineOriginRecord {
+            id: 3576,
+            name: "unsigned int mozilla::AddToHash<char, 0>(unsigned int, char)",
+        }
         "###);
 
         Ok(())
