@@ -12,6 +12,7 @@ use thiserror::Error;
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameMangling};
 
 use crate::base::*;
+use crate::function_builder::FunctionBuilder;
 use crate::shared::Parse;
 
 #[derive(Clone, Debug)]
@@ -675,19 +676,6 @@ impl BreakpadInlineRecord {
         let string = str::from_utf8(data)?;
         Ok(parsing::inline_record_final(string.trim())?)
     }
-
-    /// Resolves the filename for this record in the file map.
-    pub fn call_site_filename<'d>(&self, file_map: &BreakpadFileMap<'d>) -> Option<&'d str> {
-        file_map.get(&self.call_site_file_id).cloned()
-    }
-
-    /// Resolves the function name for this record in the inline origin map.
-    pub fn function_name<'d>(
-        &self,
-        inline_origin_map: &BreakpadInlineOriginMap<'d>,
-    ) -> Option<&'d str> {
-        inline_origin_map.get(&self.origin_id).cloned()
-    }
 }
 
 /// Identifies one contiguous slice of bytes / instruction addresses which is covered by a
@@ -1335,6 +1323,7 @@ impl<'s> Iterator for BreakpadFileIterator<'s> {
 pub struct BreakpadFunctionIterator<'s> {
     file_map: &'s BreakpadFileMap<'s>,
     next_line: Option<&'s [u8]>,
+    inline_origin_map: BreakpadInlineOriginMap<'s>,
     lines: Lines<'s>,
 }
 
@@ -1344,6 +1333,7 @@ impl<'s> BreakpadFunctionIterator<'s> {
         Self {
             file_map,
             next_line,
+            inline_origin_map: Default::default(),
             lines,
         }
     }
@@ -1366,6 +1356,15 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
                 return None;
             }
 
+            if line.starts_with(b"INLINE_ORIGIN ") {
+                let inline_origin_record = match BreakpadInlineOriginRecord::parse(line) {
+                    Ok(record) => record,
+                    Err(e) => return Some(Err(e)),
+                };
+                self.inline_origin_map
+                    .insert(inline_origin_record.id, inline_origin_record.name);
+            }
+
             self.next_line = self.lines.next();
         };
 
@@ -1374,7 +1373,11 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             Err(e) => return Some(Err(e)),
         };
 
-        let mut fun_lines = Vec::new();
+        let mut builder = FunctionBuilder::new(
+            Name::new(fun_record.name, NameMangling::Unmangled, Language::Unknown),
+            fun_record.address,
+            fun_record.size,
+        );
 
         for line in self.lines.by_ref() {
             // Stop parsing LINE records once other expected records are encountered.
@@ -1384,6 +1387,47 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             {
                 self.next_line = Some(line);
                 break;
+            }
+
+            if line.starts_with(b"INLINE_ORIGIN ") {
+                let inline_origin_record = match BreakpadInlineOriginRecord::parse(line) {
+                    Ok(record) => record,
+                    Err(e) => return Some(Err(e)),
+                };
+                self.inline_origin_map
+                    .insert(inline_origin_record.id, inline_origin_record.name);
+                continue;
+            }
+
+            if line.starts_with(b"INLINE ") {
+                let inline_record = match BreakpadInlineRecord::parse(line) {
+                    Ok(record) => record,
+                    Err(e) => return Some(Err(e)),
+                };
+
+                let name = self
+                    .inline_origin_map
+                    .get(&inline_record.origin_id)
+                    .cloned()
+                    .unwrap_or_default();
+
+                for address_range in &inline_record.address_ranges {
+                    builder.add_inlinee(
+                        inline_record.inline_depth as u32,
+                        Name::new(name, NameMangling::Unmangled, Language::Unknown),
+                        address_range.address,
+                        address_range.size,
+                        FileInfo::from_path(
+                            self.file_map
+                                .get(&inline_record.call_site_file_id)
+                                .cloned()
+                                .unwrap_or_default()
+                                .as_bytes(),
+                        ),
+                        inline_record.call_site_line,
+                    );
+                }
+                continue;
             }
 
             // There might be empty lines throughout the file (or at the end). This is the only
@@ -1405,23 +1449,15 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
 
             let filename = line_record.filename(self.file_map).unwrap_or_default();
 
-            fun_lines.push(LineInfo {
-                address: line_record.address,
-                size: Some(line_record.size),
-                file: FileInfo::from_path(filename.as_bytes()),
-                line: line_record.line,
-            });
+            builder.add_leaf_line(
+                line_record.address,
+                line_record.size,
+                FileInfo::from_path(filename.as_bytes()),
+                line_record.line,
+            );
         }
 
-        Some(Ok(Function {
-            address: fun_record.address,
-            size: fun_record.size,
-            name: Name::new(fun_record.name, NameMangling::Unmangled, Language::Unknown),
-            compilation_dir: &[],
-            lines: fun_lines,
-            inlinees: Vec::new(),
-            inline: false,
-        }))
+        Some(Ok(builder.finish()))
     }
 }
 
