@@ -18,10 +18,10 @@ pub trait Parse<'data>: Sized {
 use crate::base::Function;
 
 /// A stack for assembling function trees from lists of nested functions.
-#[cfg(any(feature = "dwarf", feature = "ms"))]
+#[cfg(feature = "ms")]
 pub struct FunctionStack<'a>(Vec<(isize, Function<'a>)>);
 
-#[cfg(any(feature = "dwarf", feature = "ms"))]
+#[cfg(feature = "ms")]
 impl<'a> FunctionStack<'a> {
     /// Creates a new function stack.
     pub fn new() -> Self {

@@ -11,6 +11,8 @@ use symbolic_common::Name;
 pub struct FunctionBuilder<'s> {
     /// The name of the outer function.
     name: Name<'s>,
+    /// The compilation dir of the function.
+    compilation_dir: &'s [u8],
     /// The address of the outer function.
     address: u64,
     /// The size of the outer function.
@@ -24,9 +26,10 @@ pub struct FunctionBuilder<'s> {
 
 impl<'s> FunctionBuilder<'s> {
     /// Create a new builder for a given outer function.
-    pub fn new(name: Name<'s>, address: u64, size: u64) -> Self {
+    pub fn new(name: Name<'s>, compilation_dir: &'s [u8], address: u64, size: u64) -> Self {
         Self {
             name,
+            compilation_dir,
             address,
             size,
             inlinees: Vec::new(),
@@ -56,10 +59,16 @@ impl<'s> FunctionBuilder<'s> {
 
     /// Add a line record, specifying the line at this address inside the innermost inlinee that
     /// covers that address. This method can be called in any order.
-    pub fn add_leaf_line(&mut self, address: u64, size: u64, file: FileInfo<'s>, line: u64) {
+    pub fn add_leaf_line(
+        &mut self,
+        address: u64,
+        size: Option<u64>,
+        file: FileInfo<'s>,
+        line: u64,
+    ) {
         self.lines.push(LineInfo {
             address,
-            size: Some(size),
+            size,
             file,
             line,
         });
@@ -76,6 +85,7 @@ impl<'s> FunctionBuilder<'s> {
         //    level.
         let FunctionBuilder {
             name,
+            compilation_dir,
             address,
             size,
             mut inlinees,
@@ -91,7 +101,7 @@ impl<'s> FunctionBuilder<'s> {
             address,
             size,
             name,
-            compilation_dir: &[],
+            compilation_dir,
             lines: Vec::new(),
             inlinees: Vec::new(),
             inline: false,
@@ -126,7 +136,7 @@ impl<'s> FunctionBuilder<'s> {
                     address: inlinee.address,
                     size: inlinee.size,
                     name: inlinee.name,
-                    compilation_dir: &[],
+                    compilation_dir,
                     lines: Vec::new(),
                     inlinees: Vec::new(),
                     inline: true,
@@ -178,7 +188,7 @@ struct FunctionBuilderStack<'s> {
 impl<'s> FunctionBuilderStack<'s> {
     /// Creates a new stack, initialized with the outer function.
     pub fn new(outer_function: Function<'s>) -> Self {
-        let end_address = outer_function.end_address();
+        let end_address = outer_function.address.saturating_add(outer_function.size);
         let stack = vec![(end_address, outer_function)];
         Self { stack }
     }
@@ -214,7 +224,7 @@ impl<'s> FunctionBuilderStack<'s> {
 
     /// Push an inlinee to the stack.
     pub fn push(&mut self, inlinee: Function<'s>) {
-        let end_address = inlinee.end_address();
+        let end_address = inlinee.address.saturating_add(inlinee.size);
         self.stack.push((end_address, inlinee));
     }
 
