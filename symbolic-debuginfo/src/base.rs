@@ -568,7 +568,7 @@ impl Function<'_> {
     ///
     /// This address points at the first instruction after the function body.
     pub fn end_address(&self) -> u64 {
-        self.address + self.size
+        self.address.saturating_add(self.size)
     }
 }
 
