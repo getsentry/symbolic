@@ -554,7 +554,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 constants::DW_AT_high_pc => match attr.value() {
                     AttributeValue::Addr(addr) => high_pc = Some(addr),
                     AttributeValue::DebugAddrIndex(index) => {
-                        low_pc = Some(self.inner.info.address(self.inner.unit, index)?)
+                        high_pc = Some(self.inner.info.address(self.inner.unit, index)?)
                     }
                     AttributeValue::Udata(size) => high_pc_rel = Some(size),
                     _ => return Err(GimliError::UnsupportedAttributeForm.into()),
