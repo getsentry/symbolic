@@ -259,6 +259,7 @@ fn main() {
         .arg(
             Arg::new("print_files")
                 .long("files")
+                .action(ArgAction::SetTrue)
                 .help("Print all files"),
         )
         .get_matches();
