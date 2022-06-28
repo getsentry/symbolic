@@ -295,6 +295,7 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
         module: &(dyn Module + Sync),
         walker: &mut (dyn FrameWalker + Send),
     ) -> Option<()> {
+        tracing::info!("walk_frame called");
         if !self.use_cfi {
             return None;
         }
@@ -575,7 +576,7 @@ async fn execute(matches: &ArgMatches) -> Result<(), Error> {
 
     let options = PrintOptions {
         crashed_only: *matches.get_one("only_crash").unwrap(),
-        show_modules: *matches.get_one("no_modules").unwrap(),
+        show_modules: *matches.get_one("show_modules").unwrap(),
     };
 
     let (cfi_files, symcaches) = symbol_provider.into_inner();
