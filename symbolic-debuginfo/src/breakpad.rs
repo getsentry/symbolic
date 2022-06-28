@@ -12,6 +12,7 @@ use thiserror::Error;
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameMangling};
 
 use crate::base::*;
+use crate::function_builder::FunctionBuilder;
 use crate::shared::Parse;
 
 #[derive(Clone, Debug)]
@@ -362,6 +363,36 @@ impl<'d> Iterator for BreakpadFileRecords<'d> {
 /// A map of file paths by their file ID.
 pub type BreakpadFileMap<'d> = BTreeMap<u64, &'d str>;
 
+/// An [inline origin record], specifying the function name of a function for which at least one
+/// call to this function has been inlined.
+///
+/// The ID of this record is referenced by [`BreakpadInlineRecord`]. Inline origin records are not
+/// necessarily consecutive or sorted by their identifier, and they don't have to be present in a
+/// contiguous block in the file; they can be interspersed with FUNC records or other records.
+///
+/// Example: `INLINE_ORIGIN 1305 SharedLibraryInfo::Initialize()`
+///
+/// [inline origin record]: https://github.com/google/breakpad/blob/main/docs/symbol_files.md#inline_origin-records
+/// [`BreakpadInlineRecord`]: struct.BreakpadInlineRecord.html
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct BreakpadInlineOriginRecord<'d> {
+    /// Breakpad-internal identifier of the function.
+    pub id: u64,
+    /// The function name.
+    pub name: &'d str,
+}
+
+impl<'d> BreakpadInlineOriginRecord<'d> {
+    /// Parses an inline origin record from a single line.
+    pub fn parse(data: &'d [u8]) -> Result<Self, BreakpadError> {
+        let string = str::from_utf8(data)?;
+        Ok(parsing::inline_origin_record_final(string.trim())?)
+    }
+}
+
+/// A map of function names by their inline origin ID.
+pub type BreakpadInlineOriginMap<'d> = BTreeMap<u64, &'d str>;
+
 /// A [public function symbol record].
 ///
 /// Example: `PUBLIC m 2160 0 Public2_1`
@@ -611,6 +642,56 @@ impl<'d> Iterator for BreakpadLineRecords<'d> {
 
         self.finished = true;
         None
+    }
+}
+
+/// An [inline record] associated with a `BreakpadFunctionRecord`.
+///
+/// Inline records are so frequent in a Breakpad symbol file that they do not have a record
+/// identifier. They immediately follow the [`BreakpadFuncRecord`] that they belong to. Thus, an
+/// iterator over inline records can be obtained from the function record.
+///
+/// Example: `INLINE 1 61 1 2 7b60 3b4`
+///
+/// [inline record]: https://github.com/google/breakpad/blob/main/docs/symbol_files.md#inline-records
+/// [`BreakpadFuncRecord`]: struct.BreakpadFuncRecord.html
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct BreakpadInlineRecord {
+    /// The depth of nested inline calls.
+    pub inline_depth: u64,
+    /// The line number of the call, in the parent function. Zero means no line number.
+    pub call_site_line: u64,
+    /// Identifier of the [`BreakpadFileRecord`] specifying the file name of the line of the call.
+    pub call_site_file_id: u64,
+    /// Identifier of the [`BreakpadInlineOriginRecord`] specifying the function name.
+    pub origin_id: u64,
+    /// A list of address ranges which contain the instructions for this inline call. Contains at
+    /// least one element.
+    pub address_ranges: Vec<BreakpadInlineAddressRange>,
+}
+
+impl BreakpadInlineRecord {
+    /// Parses a line record from a single line.
+    pub fn parse(data: &[u8]) -> Result<Self, BreakpadError> {
+        let string = str::from_utf8(data)?;
+        Ok(parsing::inline_record_final(string.trim())?)
+    }
+}
+
+/// Identifies one contiguous slice of bytes / instruction addresses which is covered by a
+/// [`BreakpadInlineRecord`].
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct BreakpadInlineAddressRange {
+    /// The start address for this address range relative to the image base (load address).
+    pub address: u64,
+    /// The length of the range, in bytes.
+    pub size: u64,
+}
+
+impl BreakpadInlineAddressRange {
+    /// Returns the range of addresses covered by this record.
+    pub fn range(&self) -> Range<u64> {
+        self.address..self.address + self.size
     }
 }
 
@@ -1242,6 +1323,7 @@ impl<'s> Iterator for BreakpadFileIterator<'s> {
 pub struct BreakpadFunctionIterator<'s> {
     file_map: &'s BreakpadFileMap<'s>,
     next_line: Option<&'s [u8]>,
+    inline_origin_map: BreakpadInlineOriginMap<'s>,
     lines: Lines<'s>,
 }
 
@@ -1251,6 +1333,7 @@ impl<'s> BreakpadFunctionIterator<'s> {
         Self {
             file_map,
             next_line,
+            inline_origin_map: Default::default(),
             lines,
         }
     }
@@ -1273,6 +1356,15 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
                 return None;
             }
 
+            if line.starts_with(b"INLINE_ORIGIN ") {
+                let inline_origin_record = match BreakpadInlineOriginRecord::parse(line) {
+                    Ok(record) => record,
+                    Err(e) => return Some(Err(e)),
+                };
+                self.inline_origin_map
+                    .insert(inline_origin_record.id, inline_origin_record.name);
+            }
+
             self.next_line = self.lines.next();
         };
 
@@ -1281,7 +1373,11 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             Err(e) => return Some(Err(e)),
         };
 
-        let mut fun_lines = Vec::new();
+        let mut builder = FunctionBuilder::new(
+            Name::new(fun_record.name, NameMangling::Unmangled, Language::Unknown),
+            fun_record.address,
+            fun_record.size,
+        );
 
         for line in self.lines.by_ref() {
             // Stop parsing LINE records once other expected records are encountered.
@@ -1291,6 +1387,47 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
             {
                 self.next_line = Some(line);
                 break;
+            }
+
+            if line.starts_with(b"INLINE_ORIGIN ") {
+                let inline_origin_record = match BreakpadInlineOriginRecord::parse(line) {
+                    Ok(record) => record,
+                    Err(e) => return Some(Err(e)),
+                };
+                self.inline_origin_map
+                    .insert(inline_origin_record.id, inline_origin_record.name);
+                continue;
+            }
+
+            if line.starts_with(b"INLINE ") {
+                let inline_record = match BreakpadInlineRecord::parse(line) {
+                    Ok(record) => record,
+                    Err(e) => return Some(Err(e)),
+                };
+
+                let name = self
+                    .inline_origin_map
+                    .get(&inline_record.origin_id)
+                    .cloned()
+                    .unwrap_or_default();
+
+                for address_range in &inline_record.address_ranges {
+                    builder.add_inlinee(
+                        inline_record.inline_depth as u32,
+                        Name::new(name, NameMangling::Unmangled, Language::Unknown),
+                        address_range.address,
+                        address_range.size,
+                        FileInfo::from_path(
+                            self.file_map
+                                .get(&inline_record.call_site_file_id)
+                                .cloned()
+                                .unwrap_or_default()
+                                .as_bytes(),
+                        ),
+                        inline_record.call_site_line,
+                    );
+                }
+                continue;
             }
 
             // There might be empty lines throughout the file (or at the end). This is the only
@@ -1312,23 +1449,15 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
 
             let filename = line_record.filename(self.file_map).unwrap_or_default();
 
-            fun_lines.push(LineInfo {
-                address: line_record.address,
-                size: Some(line_record.size),
-                file: FileInfo::from_path(filename.as_bytes()),
-                line: line_record.line,
-            });
+            builder.add_leaf_line(
+                line_record.address,
+                line_record.size,
+                FileInfo::from_path(filename.as_bytes()),
+                line_record.line,
+            );
         }
 
-        Some(Ok(Function {
-            address: fun_record.address,
-            size: fun_record.size,
-            name: Name::new(fun_record.name, NameMangling::Unmangled, Language::Unknown),
-            compilation_dir: &[],
-            lines: fun_lines,
-            inlinees: Vec::new(),
-            inline: false,
-        }))
+        Some(Ok(builder.finish()))
     }
 }
 
@@ -1338,7 +1467,8 @@ mod parsing {
     use nom::branch::alt;
     use nom::bytes::complete::take_while;
     use nom::character::complete::{char, hex_digit1, multispace1};
-    use nom::combinator::{cond, eof, rest};
+    use nom::combinator::{cond, eof, map, rest};
+    use nom::multi::many1;
     use nom::sequence::{pair, tuple};
     use nom::{IResult, Parser};
     use nom_supreme::error::ErrorTree;
@@ -1592,6 +1722,38 @@ mod parsing {
         nom_supreme::final_parser::final_parser(file_record)(input)
     }
 
+    /// Parse a [`BreakpadInlineOriginRecord`].
+    ///
+    /// An INLINE_ORIGIN record has the form `INLINE_ORIGIN <id> <name>`.
+    fn inline_origin_record(input: &str) -> ParseResult<BreakpadInlineOriginRecord> {
+        let (input, _) = tag("INLINE_ORIGIN")
+            .terminated(multispace1)
+            .context("inline origin record prefix")
+            .parse(input)?;
+
+        let (input, (id, name)) = pair(
+            num_dec!(u64)
+                .terminated(multispace1)
+                .context("inline origin id"),
+            rest.context("inline origin name"),
+        )
+        .cut()
+        .context("inline origin record body")
+        .parse(input)?;
+
+        Ok((input, BreakpadInlineOriginRecord { id, name }))
+    }
+
+    /// Parse a [`BreakpadInlineOriginRecord`].
+    ///
+    /// An INLINE_ORIGIN record has the form `INLINE_ORIGIN <id> <name>`.
+    /// This will fail if there is any input left over after the record.
+    pub fn inline_origin_record_final(
+        input: &str,
+    ) -> Result<BreakpadInlineOriginRecord, ErrorTree<ErrorLine>> {
+        nom_supreme::final_parser::final_parser(inline_origin_record)(input)
+    }
+
     /// Parse a [`BreakpadPublicRecord`].
     ///
     /// A PUBLIC record has the form `PUBLIC (m )? <address> <parameter_size> ( <name>)?`.
@@ -1705,6 +1867,64 @@ mod parsing {
     /// This will fail if there is any input left over after the record.
     pub fn line_record_final(input: &str) -> Result<BreakpadLineRecord, ErrorTree<ErrorLine>> {
         nom_supreme::final_parser::final_parser(line_record)(input)
+    }
+
+    /// Parse a [`BreakpadInlineRecord`].
+    ///
+    /// An INLINE record has the form `INLINE <inline_nest_level> <call_site_line> <call_site_file_id> <origin_id> [<address> <size>]+`.
+    fn inline_record(input: &str) -> ParseResult<BreakpadInlineRecord> {
+        let (input, _) = tag("INLINE")
+            .terminated(multispace1)
+            .context("inline record prefix")
+            .parse(input)?;
+
+        let (input, (inline_depth, call_site_line, call_site_file_id, origin_id)) = tuple((
+            num_dec!(u64)
+                .terminated(multispace1)
+                .context("inline_nest_level"),
+            num_dec!(u64)
+                .terminated(multispace1)
+                .context("call_site_line"),
+            num_dec!(u64)
+                .terminated(multispace1)
+                .context("call_site_file_id"),
+            num_dec!(u64).terminated(multispace1).context("origin_id"),
+        ))
+        .cut()
+        .context("func record body")
+        .parse(input)?;
+
+        let (input, address_ranges) = many1(map(
+            pair(
+                num_hex!(u64).terminated(multispace1).context("address"),
+                num_hex!(u64)
+                    .terminated(multispace1.or(eof))
+                    .context("size"),
+            ),
+            |(address, size)| BreakpadInlineAddressRange { address, size },
+        ))
+        .cut()
+        .context("inline record body")
+        .parse(input)?;
+
+        Ok((
+            input,
+            BreakpadInlineRecord {
+                inline_depth,
+                call_site_line,
+                call_site_file_id,
+                origin_id,
+                address_ranges,
+            },
+        ))
+    }
+
+    /// Parse a [`BreakpadInlineRecord`].
+    ///
+    /// An INLINE record has the form `INLINE <inline_nest_level> <call_site_line> <call_site_file_id> <origin_id> [<address> <size>]+`.
+    /// This will fail if there is any input left over after the record.
+    pub fn inline_record_final(input: &str) -> Result<BreakpadInlineRecord, ErrorTree<ErrorLine>> {
+        nom_supreme::final_parser::final_parser(inline_record)(input)
     }
 
     /// Parse a [`BreakpadStackCfiDeltaRecord`].
@@ -1942,6 +2162,37 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_inline_origin_record() -> Result<(), BreakpadError> {
+        let string = b"INLINE_ORIGIN 3529 LZ4F_initStream";
+        let record = BreakpadInlineOriginRecord::parse(string)?;
+
+        insta::assert_debug_snapshot!(record, @r###"
+        BreakpadInlineOriginRecord {
+            id: 3529,
+            name: "LZ4F_initStream",
+        }
+        "###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_inline_origin_record_space() -> Result<(), BreakpadError> {
+        let string =
+            b"INLINE_ORIGIN 3576 unsigned int mozilla::AddToHash<char, 0>(unsigned int, char)";
+        let record = BreakpadInlineOriginRecord::parse(string)?;
+
+        insta::assert_debug_snapshot!(record, @r###"
+        BreakpadInlineOriginRecord {
+            id: 3576,
+            name: "unsigned int mozilla::AddToHash<char, 0>(unsigned int, char)",
+        }
+        "###);
+
+        Ok(())
+    }
+
+    #[test]
     fn test_parse_func_record() -> Result<(), BreakpadError> {
         // Lines will be tested separately
         let string = b"FUNC 1730 1a 0 <name omitted>";
@@ -2098,6 +2349,63 @@ mod tests {
         "###);
 
         Ok(())
+    }
+
+    #[test]
+    fn test_parse_inline_record() -> Result<(), BreakpadError> {
+        let string = b"INLINE 0 3082 52 1410 49200 10";
+        let record = BreakpadInlineRecord::parse(string)?;
+
+        insta::assert_debug_snapshot!(record, @r###"
+        BreakpadInlineRecord {
+            inline_depth: 0,
+            call_site_line: 3082,
+            call_site_file_id: 52,
+            origin_id: 1410,
+            address_ranges: [
+                BreakpadInlineAddressRange {
+                    address: 299520,
+                    size: 16,
+                },
+            ],
+        }
+        "###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_inline_record_multiple() -> Result<(), BreakpadError> {
+        let string = b"INLINE 6 642 8 207 8b110 18 8b154 18";
+        let record = BreakpadInlineRecord::parse(string)?;
+
+        insta::assert_debug_snapshot!(record, @r###"
+        BreakpadInlineRecord {
+            inline_depth: 6,
+            call_site_line: 642,
+            call_site_file_id: 8,
+            origin_id: 207,
+            address_ranges: [
+                BreakpadInlineAddressRange {
+                    address: 569616,
+                    size: 24,
+                },
+                BreakpadInlineAddressRange {
+                    address: 569684,
+                    size: 24,
+                },
+            ],
+        }
+        "###);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_inline_record_err_missing_address_range() {
+        let string = b"INLINE 6 642 8 207";
+        let record = BreakpadInlineRecord::parse(string);
+        assert!(record.is_err());
     }
 
     #[test]
