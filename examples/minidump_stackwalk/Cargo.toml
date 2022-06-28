@@ -10,8 +10,8 @@ publish = false
 [dependencies]
 async-trait = "0.1.53"
 clap = "3.1.0"
-minidump = { path = "../../../rust-minidump/minidump" }
-minidump-processor = {  path = "../../../rust-minidump/minidump-processor", features = ["symbolic-syms"] }
+minidump = "0.11.0"
+minidump-processor = { version = "0.11.0", features = ["symbolic-syms"] }
 symbolic = { path = "../../symbolic", features = ["symcache", "demangle", "cfi"] }
 thiserror = "1.0.31"
 tokio = {version = "1.18.1", features = ["macros", "rt"] }
