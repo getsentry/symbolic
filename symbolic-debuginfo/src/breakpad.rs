@@ -987,7 +987,7 @@ impl<'data> BreakpadObject<'data> {
     pub fn debug_session(&self) -> Result<BreakpadDebugSession<'data>, BreakpadError> {
         Ok(BreakpadDebugSession {
             file_map: self.file_map(),
-            func_records: self.func_records(),
+            lines: Lines::new(self.data),
         })
     }
 
@@ -1179,16 +1179,13 @@ impl<'data> Iterator for BreakpadSymbolIterator<'data> {
 /// Debug session for Breakpad objects.
 pub struct BreakpadDebugSession<'data> {
     file_map: BreakpadFileMap<'data>,
-    func_records: BreakpadFuncRecords<'data>,
+    lines: Lines<'data>,
 }
 
 impl<'data> BreakpadDebugSession<'data> {
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> BreakpadFunctionIterator<'_> {
-        BreakpadFunctionIterator {
-            file_map: &self.file_map,
-            func_records: self.func_records.clone(),
-        }
+        BreakpadFunctionIterator::new(&self.file_map, self.lines.clone())
     }
 
     /// Returns an iterator over all source files in this debug file.
@@ -1244,33 +1241,18 @@ impl<'s> Iterator for BreakpadFileIterator<'s> {
 /// An iterator over functions in a Breakpad object.
 pub struct BreakpadFunctionIterator<'s> {
     file_map: &'s BreakpadFileMap<'s>,
-    func_records: BreakpadFuncRecords<'s>,
+    next_line: Option<&'s [u8]>,
+    lines: Lines<'s>,
 }
 
 impl<'s> BreakpadFunctionIterator<'s> {
-    fn convert(&self, record: BreakpadFuncRecord<'s>) -> Result<Function<'s>, BreakpadError> {
-        let mut lines = Vec::new();
-        for line in record.lines() {
-            let line = line?;
-            let filename = line.filename(self.file_map).unwrap_or_default();
-
-            lines.push(LineInfo {
-                address: line.address,
-                size: Some(line.size),
-                file: FileInfo::from_path(filename.as_bytes()),
-                line: line.line,
-            });
-        }
-
-        Ok(Function {
-            address: record.address,
-            size: record.size,
-            name: Name::new(record.name, NameMangling::Unmangled, Language::Unknown),
-            compilation_dir: &[],
+    fn new(file_map: &'s BreakpadFileMap<'s>, mut lines: Lines<'s>) -> Self {
+        let next_line = lines.next();
+        Self {
+            file_map,
+            next_line,
             lines,
-            inlinees: Vec::new(),
-            inline: false,
-        })
+        }
     }
 }
 
@@ -1278,11 +1260,75 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
     type Item = Result<Function<'s>, BreakpadError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.func_records.next() {
-            Some(Ok(record)) => Some(self.convert(record)),
-            Some(Err(error)) => Some(Err(error)),
-            None => None,
+        // Advance to the next FUNC line.
+        let line = loop {
+            let line = self.next_line.take()?;
+            if line.starts_with(b"FUNC ") {
+                break line;
+            }
+
+            // Fast path: FUNC records are always before stack records. Once we encounter the
+            // first stack record, we can therefore exit.
+            if line.starts_with(b"STACK ") {
+                return None;
+            }
+
+            self.next_line = self.lines.next();
+        };
+
+        let fun_record = match BreakpadFuncRecord::parse(line, Lines::new(&[])) {
+            Ok(record) => record,
+            Err(e) => return Some(Err(e)),
+        };
+
+        let mut fun_lines = Vec::new();
+
+        for line in self.lines.by_ref() {
+            // Stop parsing LINE records once other expected records are encountered.
+            if line.starts_with(b"FUNC ")
+                || line.starts_with(b"PUBLIC ")
+                || line.starts_with(b"STACK ")
+            {
+                self.next_line = Some(line);
+                break;
+            }
+
+            // There might be empty lines throughout the file (or at the end). This is the only
+            // iterator that cannot rely on a record identifier, so we have to explicitly skip empty
+            // lines.
+            if line.is_empty() {
+                continue;
+            }
+
+            let line_record = match BreakpadLineRecord::parse(line) {
+                Ok(line_record) => line_record,
+                Err(e) => return Some(Err(e)),
+            };
+
+            // Skip line records for empty ranges. These do not carry any information.
+            if line_record.size == 0 {
+                continue;
+            }
+
+            let filename = line_record.filename(self.file_map).unwrap_or_default();
+
+            fun_lines.push(LineInfo {
+                address: line_record.address,
+                size: Some(line_record.size),
+                file: FileInfo::from_path(filename.as_bytes()),
+                line: line_record.line,
+            });
         }
+
+        Some(Ok(Function {
+            address: fun_record.address,
+            size: fun_record.size,
+            name: Name::new(fun_record.name, NameMangling::Unmangled, Language::Unknown),
+            compilation_dir: &[],
+            lines: fun_lines,
+            inlinees: Vec::new(),
+            inline: false,
+        }))
     }
 }
 
