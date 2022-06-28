@@ -24,9 +24,9 @@ use thiserror::Error;
 use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
 
 use crate::base::*;
+use crate::function_builder::FunctionBuilder;
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
-use crate::shared::FunctionStack;
 
 /// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
 /// part of the dwarf interface
@@ -56,6 +56,7 @@ type Die<'d, 'u> = gimli::read::DebuggingInformationEntry<'u, 'u, Slice<'d>, usi
 type Attribute<'a> = gimli::read::Attribute<Slice<'a>>;
 type UnitOffset = gimli::read::UnitOffset<usize>;
 type DebugInfoOffset = gimli::DebugInfoOffset<usize>;
+type EntriesRaw<'d, 'u> = gimli::EntriesRaw<'u, 'u, Slice<'d>>;
 
 type UnitHeader<'a> = gimli::read::UnitHeader<Slice<'a>>;
 type IncompleteLineNumberProgram<'a> = gimli::read::IncompleteLineProgram<Slice<'a>>;
@@ -529,20 +530,28 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Parses the call site and range lists of this Debugging Information Entry.
-    fn parse_ranges(
+    ///
+    /// This method consumes the attributes of the DIE. This means that the `entries` iterator must
+    /// be placed just before the attributes of the DIE. On return, the `entries` iterator is placed
+    /// after the attributes, ready to read the next DIE's abbrev.
+    fn parse_ranges<'r>(
         &self,
-        entry: &Die<'d, '_>,
-        range_buf: &mut Vec<Range>,
-    ) -> Result<(Option<u64>, Option<u64>), DwarfError> {
-        let mut tuple = (None, None);
+        entries: &mut EntriesRaw<'d, '_>,
+        abbrev: &gimli::Abbreviation,
+        range_buf: &'r mut Vec<Range>,
+    ) -> Result<(&'r mut Vec<Range>, CallLocation), DwarfError> {
+        range_buf.clear();
+
+        let mut call_line = None;
+        let mut call_file = None;
         let mut low_pc = None;
         let mut high_pc = None;
         let mut high_pc_rel = None;
 
         let kind = self.inner.info.kind;
 
-        let mut attrs = entry.attrs();
-        while let Some(attr) = attrs.next()? {
+        for spec in abbrev.attributes() {
+            let attr = entries.read_attribute(*spec)?;
             match attr.name() {
                 constants::DW_AT_low_pc => match attr.value() {
                     AttributeValue::Addr(addr) => low_pc = Some(addr),
@@ -560,11 +569,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     _ => return Err(GimliError::UnsupportedAttributeForm.into()),
                 },
                 constants::DW_AT_call_line => match attr.value() {
-                    AttributeValue::Udata(line) => tuple.0 = Some(line),
+                    AttributeValue::Udata(line) => call_line = Some(line),
                     _ => return Err(GimliError::UnsupportedAttributeForm.into()),
                 },
                 constants::DW_AT_call_file => match attr.value() {
-                    AttributeValue::FileIndex(file) => tuple.1 = Some(file),
+                    AttributeValue::FileIndex(file) => call_file = Some(file),
                     _ => return Err(GimliError::UnsupportedAttributeForm.into()),
                 },
                 constants::DW_AT_ranges
@@ -598,121 +607,61 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             }
         }
 
-        // Found DW_AT_ranges, so early-exit here
-        if !range_buf.is_empty() {
-            return Ok(tuple);
+        let call_location = CallLocation {
+            call_file,
+            call_line,
+        };
+
+        if range_buf.is_empty() {
+            if let Some(range) = Self::convert_pc_range(low_pc, high_pc, high_pc_rel, kind)? {
+                range_buf.push(range);
+            }
         }
 
+        Ok((range_buf, call_location))
+    }
+
+    fn convert_pc_range(
+        low_pc: Option<u64>,
+        high_pc: Option<u64>,
+        high_pc_rel: Option<u64>,
+        kind: ObjectKind,
+    ) -> Result<Option<Range>, DwarfError> {
         // To go by the logic in dwarf2read, a `low_pc` of 0 can indicate an
         // eliminated duplicate when the GNU linker is used. In relocatable
         // objects, all functions are at `0` since they have not been placed
         // yet, so we want to retain them.
         let low_pc = match low_pc {
             Some(low_pc) if low_pc != 0 || kind == ObjectKind::Relocatable => low_pc,
-            _ => return Ok(tuple),
+            _ => return Ok(None),
         };
 
         let high_pc = match (high_pc, high_pc_rel) {
             (Some(high_pc), _) => high_pc,
             (_, Some(high_pc_rel)) => low_pc.wrapping_add(high_pc_rel),
-            _ => return Ok(tuple),
+            _ => return Ok(None),
         };
 
         if low_pc == high_pc {
             // Most likely low_pc == high_pc means the DIE should be ignored.
             // https://sourceware.org/ml/gdb-patches/2011-03/msg00739.html
-            return Ok(tuple);
+            return Ok(None);
         }
 
         if low_pc == u64::MAX || low_pc == u64::MAX - 1 {
             // Similarly, u64::MAX/u64::MAX-1 may be used to indicate deleted code.
             // See https://reviews.llvm.org/D59553
-            return Ok(tuple);
+            return Ok(None);
         }
 
         if low_pc > high_pc {
             return Err(DwarfErrorKind::InvertedFunctionRange.into());
         }
 
-        range_buf.push(Range {
+        Ok(Some(Range {
             begin: low_pc,
             end: high_pc,
-        });
-
-        Ok(tuple)
-    }
-
-    /// Resolves line records of a DIE's range list and puts them into the given buffer.
-    fn resolve_lines(&self, ranges: &[Range]) -> Vec<LineInfo<'d>> {
-        // Early exit in case this unit did not declare a line program.
-        let line_program = match self.line_program {
-            Some(ref program) => program,
-            None => return Vec::new(),
-        };
-
-        let mut lines = Vec::new();
-        for range in ranges {
-            // Most of the rows will result in a line record. Reserve the number of rows in the line
-            // record to avoid frequent reallocations when adding a large number of lines in the
-            // beginning.
-            let rows = line_program.get_rows(range);
-            lines.reserve(rows.len());
-
-            // Suppose we've a range [0x50; 0x100) and in sequences, we've:
-            //  - [0x25; 0x60) -> l.12, f.34
-            //  - [0x60; 0x80) -> l.13, f.34
-            //  - [0x80; 0x120) -> l.14, f.34
-            // So for this range, we'll get exactly the 3 above rows
-            // and we need:
-            // - to fix the address of the 1st row to 0x50
-            // - to do nothing on the 2nd since it's fully included in the range
-            // - to fix the size of the last row to 0x20 (0x100 - 0x80)
-            // At the end we exactly splited the initial range into 3 contiguous ranges
-            // and each of them maps a different line.
-            if let Some((first, rows)) = rows.split_first() {
-                let mut last_file = first.file_index;
-                let mut last_info = LineInfo {
-                    address: offset(range.begin, self.inner.info.address_offset),
-                    size: first.size.map(|s| s + first.address - range.begin),
-                    file: self.resolve_file(first.file_index).unwrap_or_default(),
-                    line: first.line.unwrap_or(0),
-                };
-
-                for row in rows {
-                    let line = row.line.unwrap_or(0);
-
-                    // We're in a range so we can collapse the lines without any side effects
-                    if (last_file, last_info.line) == (row.file_index, line) {
-                        // We collapse the lines but need to fix the last line size
-                        if let Some(size) = last_info.size.as_mut() {
-                            *size += row.size.unwrap_or(0);
-                        }
-
-                        continue;
-                    }
-
-                    // We've a new line/file so push the previous line_info
-                    lines.push(last_info);
-
-                    last_file = row.file_index;
-                    last_info = LineInfo {
-                        address: offset(row.address, self.inner.info.address_offset),
-                        size: row.size,
-                        file: self.resolve_file(row.file_index).unwrap_or_default(),
-                        line,
-                    };
-                }
-
-                // Fix the size of the last line
-                if let Some(size) = last_info.size.as_mut() {
-                    *size = offset(range.end, self.inner.info.address_offset) - last_info.address;
-                }
-
-                lines.push(last_info);
-            }
-        }
-
-        lines
+        }))
     }
 
     /// Resolves file information from a line program.
@@ -762,64 +711,55 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             .flatten()
     }
 
-    /// Collects all functions within this compilation unit.
-    fn functions(
+    /// Parses any DW_TAG_subprogram DIEs in the DIE subtree.
+    fn parse_functions(
         &self,
-        range_buf: &mut Vec<Range>,
-        seen_ranges: &mut BTreeSet<(u64, u64)>,
-    ) -> Result<Vec<Function<'d>>, DwarfError> {
-        let mut depth = 0;
-        let mut skipped_depth = None;
-        let mut functions = Vec::new();
-
-        let mut stack = FunctionStack::new();
-        let mut entries = self.inner.unit.entries();
-        while let Some((movement, entry)) = entries.next_dfs()? {
-            depth += movement;
-
-            // If we're navigating within a skipped function (see below), we can ignore this
-            // entry completely. Otherwise, we've moved out of any skipped function and can
-            // reset the stored depth.
-            match skipped_depth {
-                Some(skipped) if depth > skipped => continue,
-                _ => skipped_depth = None,
+        depth: isize,
+        entries: &mut EntriesRaw<'d, '_>,
+        output: &mut FunctionsOutput<'_, 'd>,
+    ) -> Result<(), DwarfError> {
+        while !entries.is_empty() {
+            let dw_die_offset = entries.next_offset();
+            let next_depth = entries.next_depth();
+            if next_depth <= depth {
+                return Ok(());
             }
-
-            // Flush all functions out that exceed the current iteration depth. Since we
-            // encountered an entry at this level, there will be no more inlinees to the
-            // previous function at the same level or any of it's children.
-            stack.flush(depth, &mut functions);
-
-            // Skip anything that is not a function.
-            let inline = match entry.tag() {
-                constants::DW_TAG_subprogram => false,
-                constants::DW_TAG_inlined_subroutine => true,
-                _ => continue,
-            };
-
-            range_buf.clear();
-            let (call_line, call_file) = self.parse_ranges(entry, range_buf)?;
-
-            // Ranges can be empty for two reasons: (1) the function is a no-op and does not
-            // contain any code, or (2) the function did contain eliminated dead code. In the
-            // latter case, a surrogate DIE remains with `DW_AT_low_pc(0)` and empty ranges.
-            // That DIE might still contain inlined functions with actual ranges, which must all
-            // be skipped.
-            if range_buf.is_empty() {
-                skipped_depth = Some(depth);
-                continue;
+            if let Some(abbrev) = entries.read_abbreviation()? {
+                if abbrev.tag() == constants::DW_TAG_subprogram {
+                    self.parse_function(dw_die_offset, next_depth, entries, abbrev, output)?;
+                } else {
+                    entries.skip_attributes(abbrev.attributes())?;
+                }
             }
+        }
+        Ok(())
+    }
 
-            // In WASM files emitted by emscripten, we have observed a variety of broken ranges.
-            // One of these cases also involves ranges which are not being sorted, resulting in
-            // arithmetic underflow calculating `function_size` (in debug builds). Sorting the ranges
-            // should avoid this problem.
-            range_buf.sort_by_key(|r| r.begin);
+    /// Parse a single function from a DWARF DIE subtree.
+    ///
+    /// The `entries` iterator must be placed after the abbrev / before the attributes of the
+    /// function DIE.
+    ///
+    /// This method can call itself recursively if another DW_TAG_subprogram entry is encountered
+    /// in the subtree.
+    ///
+    /// On return, the `entries` iterator is placed after the attributes of the last-read DIE.
+    fn parse_function(
+        &self,
+        dw_die_offset: gimli::UnitOffset<usize>,
+        depth: isize,
+        entries: &mut EntriesRaw<'d, '_>,
+        abbrev: &gimli::Abbreviation,
+        output: &mut FunctionsOutput<'_, 'd>,
+    ) -> Result<(), DwarfError> {
+        let (ranges, _) = self.parse_ranges(entries, abbrev, &mut output.range_buf)?;
 
-            let function_address = offset(range_buf[0].begin, self.inner.info.address_offset);
-
-            // For multi-range functions, calculate the function_size by summing all range sizes.
-            let function_size = range_buf.iter().map(|r| r.end - r.begin).sum();
+        let seen_ranges = &mut *output.seen_ranges;
+        ranges.retain(|range| {
+            // Filter out empty and reversed ranges.
+            if range.begin > range.end {
+                return false;
+            }
 
             // We have seen duplicate top-level function entries being yielded from the
             // [`DwarfFunctionIterator`], which combined with recursively walking its inlinees can
@@ -829,180 +769,226 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             // which merges templated code that is being generated multiple times in each
             // compilation unit. We make sure to detect this here, so we can avoid creating these
             // duplicates as early as possible.
-            if !inline && !seen_ranges.insert((function_address, function_size)) {
-                skipped_depth = Some(depth);
-                continue;
-            }
+            let address = offset(range.begin, self.inner.info.address_offset);
+            let size = range.end - range.begin;
 
-            // Resolve functions in the symbol table first. Only if there is no entry, fall back
-            // to debug information only if there is no match. Sometimes, debug info contains a
-            // lesser quality of symbol names.
-            //
-            // XXX: Maybe we should actually parse the ranges in the resolve function and always
-            // look at the symbol table based on the start of the DIE range.
-            let symbol_name = if self.prefer_dwarf_names || inline {
-                None
-            } else {
-                self.resolve_symbol_name(function_address)
-            };
+            seen_ranges.insert((address, size))
+        });
 
-            let name = symbol_name
-                .or_else(|| self.resolve_dwarf_name(entry))
-                .unwrap_or_else(|| Name::new("", NameMangling::Unmangled, self.language));
-
-            // Avoid constant allocations by collecting repeatedly into the same buffer and
-            // draining the results out of it. This keeps the original buffer allocated and
-            // allows for a single allocation per call to `resolve_lines`.
-            let lines = self.resolve_lines(range_buf);
-
-            if inline {
-                // An inlined function must always have a parent. An empty list of funcs
-                // indicates invalid debug information.
-                let parent = match stack.peek_mut() {
-                    Some(parent) => parent,
-                    None => return Err(DwarfErrorKind::UnexpectedInline.into()),
-                };
-
-                // Make sure there is correct line information for the call site of this inlined
-                // function. In general, a compiler should always output the call line and call file
-                // for inlined subprograms. If this info is missing, the lookup might return invalid
-                // line numbers.
-                //
-                // All the lines have been collected in the parent so just get the lines from the
-                // parent which belong to each range in the inlinee.
-                if let (Some(line), Some(file_id)) = (call_line, call_file) {
-                    let file = self.resolve_file(file_id).unwrap_or_default();
-                    let lines = &mut parent.lines;
-
-                    let mut index = 0;
-                    for range in range_buf.iter() {
-                        let range_begin = offset(range.begin, self.inner.info.address_offset);
-                        let range_end = offset(range.end, self.inner.info.address_offset);
-
-                        // Check if there is a line record covering the start of this range,
-                        // otherwise insert a new record pointing to the correct call location.
-                        if let Some(next) = lines.get(index) {
-                            if next.address > range_begin {
-                                let line_info = LineInfo {
-                                    address: range_begin,
-                                    size: Some(range_end.min(next.address) - range_begin),
-                                    file: file.clone(),
-                                    line,
-                                };
-
-                                lines.insert(index, line_info);
-                                index += 1;
-                            }
-                        }
-
-                        while index < lines.len() {
-                            let record = &mut lines[index];
-
-                            // Advance to the next range since we're done here.
-                            if record.address >= range_end {
-                                break;
-                            }
-
-                            index += 1;
-
-                            // Skip forward to the next line record that overlaps with our range.
-                            // Lines before belong to the parent function or another inlinee.
-                            let record_end = record.address + record.size.unwrap_or(0);
-                            if record_end <= range_begin {
-                                continue;
-                            }
-
-                            // Split the parent record if it exceeds the end of this range. We can
-                            // assume that record.size is set here since we passed the previous
-                            // condition.
-                            let split = if record_end > range_end {
-                                record.size = Some(range_end - record.address);
-
-                                Some(LineInfo {
-                                    address: range_end,
-                                    size: Some(record_end - range_end),
-                                    file: record.file.clone(),
-                                    line: record.line,
-                                })
-                            } else {
-                                None
-                            };
-
-                            if record.address < range_begin {
-                                // Fix the length of this line record to go up to the start of the
-                                // inline function. This effectively splits the previous record in
-                                // two.
-                                let max_size = range_begin - record.address;
-                                if record.size.map_or(true, |prev_size| prev_size > max_size) {
-                                    record.size = Some(max_size);
-                                }
-
-                                // For example: [0; 100) split around 20 will give [0; 20) and [20;
-                                // 100) so the size of the second is 100 - 20
-                                let size = record_end.min(range_end) - range_begin;
-
-                                // Insert a new record pointing to the correct call location. Note
-                                // that "base_dir" can be inherited safely here.
-                                let line_info = LineInfo {
-                                    address: range_begin,
-                                    size: Some(size),
-                                    file: file.clone(),
-                                    line,
-                                };
-
-                                lines.insert(index, line_info);
-                                index += 1;
-                            } else {
-                                record.file = file.clone();
-                                record.line = line;
-                            };
-
-                            // Insert the split record after mutating the previous one to avoid
-                            // borrowing issues. Do not skip it, since it may have to be split
-                            // further.
-                            if let Some(split) = split {
-                                lines.insert(index, split);
-                            }
-                        }
-
-                        // The range is not fully covered by the parent. Add a new record that
-                        // covers the remaining part.
-                        if let Some(prev) = index.checked_sub(1).and_then(|i| lines.get(i)) {
-                            let record_end = prev.address + prev.size.unwrap_or(0);
-                            if record_end < range_end {
-                                let line_info = LineInfo {
-                                    address: record_end,
-                                    size: Some(range_end - record_end),
-                                    file: file.clone(),
-                                    line,
-                                };
-
-                                lines.insert(index, line_info);
-                                index += 1;
-                            }
-                        }
-                    }
-                }
-            }
-
-            let function = Function {
-                address: function_address,
-                size: function_size,
-                name,
-                compilation_dir: self.compilation_dir(),
-                lines,
-                inlinees: Vec::new(),
-                inline,
-            };
-
-            stack.push(depth, function)
+        // Ranges can be empty for three reasons: (1) the function is a no-op and does not
+        // contain any code, (2) the function did contain eliminated dead code, or (3) some
+        // tooling created garbage reversed ranges which we filtered out.
+        // In the dead code case, a surrogate DIE remains with `DW_AT_low_pc(0)` and empty ranges.
+        // That DIE might still contain inlined functions with actual ranges - these must be skipped.
+        // However, non-inlined functions may be present in this subtree, so we must still descend
+        // into it.
+        if ranges.is_empty() {
+            return self.parse_functions(depth, entries, output);
         }
 
-        // We're done, flush the remaining stack.
-        stack.flush(0, &mut functions);
+        // Resolve functions in the symbol table first. Only if there is no entry, fall back
+        // to debug information only if there is no match. Sometimes, debug info contains a
+        // lesser quality of symbol names.
+        //
+        // XXX: Maybe we should actually parse the ranges in the resolve function and always
+        // look at the symbol table based on the start of the DIE range.
+        let symbol_name = if self.prefer_dwarf_names {
+            None
+        } else {
+            let first_range_begin = ranges.iter().map(|range| range.begin).min().unwrap();
+            let function_address = offset(first_range_begin, self.inner.info.address_offset);
+            self.resolve_symbol_name(function_address)
+        };
 
-        Ok(functions)
+        let name = symbol_name
+            .or_else(|| self.resolve_dwarf_name(&self.inner.unit.entry(dw_die_offset).unwrap()))
+            .unwrap_or_else(|| Name::new("", NameMangling::Unmangled, self.language));
+
+        // Create one function per range. In the common case there is only one range, so
+        // we usually only have one function builder here.
+        let mut builders: Vec<(Range, FunctionBuilder)> = ranges
+            .iter()
+            .map(|range| {
+                let address = offset(range.begin, self.inner.info.address_offset);
+                let size = range.end - range.begin;
+                (
+                    *range,
+                    FunctionBuilder::new(name.clone(), self.compilation_dir(), address, size),
+                )
+            })
+            .collect();
+
+        self.parse_function_children(depth, 0, entries, &mut builders, output)?;
+
+        if let Some(line_program) = &self.line_program {
+            for (range, builder) in &mut builders {
+                for row in line_program.get_rows(range) {
+                    let address = offset(row.address, self.inner.info.address_offset);
+                    let size = row.size;
+                    let file = self.resolve_file(row.file_index).unwrap_or_default();
+                    let line = row.line.unwrap_or(0);
+                    builder.add_leaf_line(address, size, file, line);
+                }
+            }
+        }
+
+        for (_range, builder) in builders {
+            output.functions.push(builder.finish());
+        }
+
+        Ok(())
     }
+
+    /// Traverses a subtree during function parsing.
+    fn parse_function_children(
+        &self,
+        depth: isize,
+        inline_depth: u32,
+        entries: &mut EntriesRaw<'d, '_>,
+        builders: &mut [(Range, FunctionBuilder<'d>)],
+        output: &mut FunctionsOutput<'_, 'd>,
+    ) -> Result<(), DwarfError> {
+        while !entries.is_empty() {
+            let dw_die_offset = entries.next_offset();
+            let next_depth = entries.next_depth();
+            if next_depth <= depth {
+                return Ok(());
+            }
+            let abbrev = match entries.read_abbreviation()? {
+                Some(abbrev) => abbrev,
+                None => continue,
+            };
+            match abbrev.tag() {
+                constants::DW_TAG_subprogram => {
+                    self.parse_function(dw_die_offset, next_depth, entries, abbrev, output)?;
+                }
+                constants::DW_TAG_inlined_subroutine => {
+                    self.parse_inlinee(
+                        dw_die_offset,
+                        next_depth,
+                        inline_depth + 1,
+                        entries,
+                        abbrev,
+                        builders,
+                        output,
+                    )?;
+                }
+                _ => {
+                    entries.skip_attributes(abbrev.attributes())?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Recursively parse the inlinees of a function from a DWARF DIE subtree.
+    ///
+    /// The `entries` iterator must be placed just before the attributes of the inline function DIE.
+    ///
+    /// This method calls itself recursively for other DW_TAG_inlined_subroutine entries in the
+    /// subtree. It can also call `parse_function` if a `DW_TAG_subprogram` entry is encountered.
+    ///
+    /// On return, the `entries` iterator is placed after the attributes of the last-read DIE.
+    #[allow(clippy::too_many_arguments)]
+    fn parse_inlinee(
+        &self,
+        dw_die_offset: gimli::UnitOffset<usize>,
+        depth: isize,
+        inline_depth: u32,
+        entries: &mut EntriesRaw<'d, '_>,
+        abbrev: &gimli::Abbreviation,
+        builders: &mut [(Range, FunctionBuilder<'d>)],
+        output: &mut FunctionsOutput<'_, 'd>,
+    ) -> Result<(), DwarfError> {
+        let (ranges, call_location) = self.parse_ranges(entries, abbrev, &mut output.range_buf)?;
+
+        ranges.retain(|range| range.end > range.begin);
+
+        // Ranges can be empty for three reasons: (1) the function is a no-op and does not
+        // contain any code, (2) the function did contain eliminated dead code, or (3) some
+        // tooling created garbage reversed ranges which we filtered out.
+        // In the dead code case, a surrogate DIE remains with `DW_AT_low_pc(0)` and empty ranges.
+        // That DIE might still contain inlined functions with actual ranges - these must be skipped.
+        // However, non-inlined functions may be present in this subtree, so we must still descend
+        // into it.
+        if ranges.is_empty() {
+            return self.parse_functions(depth, entries, output);
+        }
+
+        let name = self
+            .resolve_dwarf_name(&self.inner.unit.entry(dw_die_offset).unwrap())
+            .unwrap_or_else(|| Name::new("", NameMangling::Unmangled, self.language));
+
+        let call_file = call_location
+            .call_file
+            .and_then(|i| self.resolve_file(i))
+            .unwrap_or_default();
+        let call_line = call_location.call_line.unwrap_or(0);
+
+        // Create a separate inlinee for each range.
+        for range in ranges.iter() {
+            // Find the builder for the outer function that covers this range. Usually there's only
+            // one outer range, so only one builder.
+            let builder = match builders.iter_mut().find(|(outer_range, _builder)| {
+                range.begin >= outer_range.begin && range.begin < outer_range.end
+            }) {
+                Some((_outer_range, builder)) => builder,
+                None => continue,
+            };
+
+            let address = offset(range.begin, self.inner.info.address_offset);
+            let size = range.end - range.begin;
+            builder.add_inlinee(
+                inline_depth,
+                name.clone(),
+                address,
+                size,
+                call_file.clone(),
+                call_line,
+            );
+        }
+
+        self.parse_function_children(depth, inline_depth, entries, builders, output)
+    }
+
+    /// Collects all functions within this compilation unit.
+    fn functions(
+        &self,
+        seen_ranges: &mut BTreeSet<(u64, u64)>,
+    ) -> Result<Vec<Function<'d>>, DwarfError> {
+        let mut entries = self.inner.unit.entries_raw(None)?;
+        let mut output = FunctionsOutput::with_seen_ranges(seen_ranges);
+        self.parse_functions(-1, &mut entries, &mut output)?;
+        Ok(output.functions)
+    }
+}
+
+/// The state we pass around during function parsing.
+struct FunctionsOutput<'a, 'd> {
+    /// The list of fully-parsed outer functions. Items are appended whenever we are done
+    /// parsing an entire function.
+    pub functions: Vec<Function<'d>>,
+    /// A scratch buffer which avoids frequent allocations.
+    pub range_buf: Vec<Range>,
+    /// The set of `(address, size)` ranges of the functions we've already parsed.
+    pub seen_ranges: &'a mut BTreeSet<(u64, u64)>,
+}
+
+impl<'a, 'd> FunctionsOutput<'a, 'd> {
+    pub fn with_seen_ranges(seen_ranges: &'a mut BTreeSet<(u64, u64)>) -> Self {
+        Self {
+            functions: Vec::new(),
+            range_buf: Vec::new(),
+            seen_ranges,
+        }
+    }
+}
+
+/// For returning (partial) call location information from `parse_ranges`.
+#[derive(Debug, Default, Clone, Copy)]
+struct CallLocation {
+    pub call_file: Option<u64>,
+    pub call_line: Option<u64>,
 }
 
 /// Converts a DWARF language number into our `Language` type.
@@ -1328,7 +1314,6 @@ impl<'data> DwarfDebugSession<'data> {
         DwarfFunctionIterator {
             units: self.cell.get().units(self.bcsymbolmap.as_deref()),
             functions: Vec::new().into_iter(),
-            range_buf: Vec::new(),
             seen_ranges: BTreeSet::new(),
             finished: false,
         }
@@ -1438,7 +1423,6 @@ impl<'s> Iterator for DwarfFileIterator<'s> {
 pub struct DwarfFunctionIterator<'s> {
     units: DwarfUnitIterator<'s>,
     functions: std::vec::IntoIter<Function<'s>>,
-    range_buf: Vec<Range>,
     seen_ranges: BTreeSet<(u64, u64)>,
     finished: bool,
 }
@@ -1462,7 +1446,7 @@ impl<'s> Iterator for DwarfFunctionIterator<'s> {
                 None => break,
             };
 
-            self.functions = match unit.functions(&mut self.range_buf, &mut self.seen_ranges) {
+            self.functions = match unit.functions(&mut self.seen_ranges) {
                 Ok(functions) => functions.into_iter(),
                 Err(error) => return Some(Err(error)),
             };

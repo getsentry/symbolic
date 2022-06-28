@@ -1375,6 +1375,7 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
 
         let mut builder = FunctionBuilder::new(
             Name::new(fun_record.name, NameMangling::Unmangled, Language::Unknown),
+            b"",
             fun_record.address,
             fun_record.size,
         );
@@ -1451,7 +1452,7 @@ impl<'s> Iterator for BreakpadFunctionIterator<'s> {
 
             builder.add_leaf_line(
                 line_record.address,
-                line_record.size,
+                Some(line_record.size),
                 FileInfo::from_path(filename.as_bytes()),
                 line_record.line,
             );
