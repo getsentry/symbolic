@@ -273,7 +273,7 @@ impl<U> UnwindInfo<U> {
         let arch = object.arch();
         let load_address = object.load_address();
 
-        // CFI information can have relative offsets to the virtual address of thir respective debug
+        // CFI information can have relative offsets to the virtual address of the respective debug
         // section (either `.eh_frame` or `.debug_frame`). We need to supply this offset to the
         // entries iterator before starting to interpret instructions. The other base addresses are
         // not needed for CFI.
@@ -746,12 +746,19 @@ impl<W: Write> AsciiCfiWriter<W> {
                 // Print only registers that have changed rules to their previous occurrence to
                 // reduce the number of rules per row. Then, cache the new occurrence for the next
                 // row.
+                let mut did_write_ra = false;
                 for &(register, ref rule) in row.registers() {
                     if !rule_cache.get(&register).map_or(false, |c| c == &rule) {
                         rule_cache.insert(register, rule);
+                        if register == ra {
+                            did_write_ra = true;
+                        }
                         written |=
                             Self::write_register_rule(&mut line, info.arch, register, rule, ra)?;
                     }
+                }
+                if row.start_address() == start && !did_write_ra {
+                    write!(line, " .ra: $ra")?;
                 }
 
                 if written {
