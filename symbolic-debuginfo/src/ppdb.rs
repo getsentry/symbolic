@@ -1,3 +1,5 @@
+use std::ptr;
+
 use thiserror::Error;
 use zerocopy::LayoutVerified;
 
@@ -56,6 +58,18 @@ mod raw {
         ///
         /// This should always be a multiple of 4.
         pub size: u32,
+    }
+
+    #[repr(C, packed(4))]
+    #[derive(Debug, FromBytes, Clone, Copy)]
+    pub struct TableStreamHeader {
+        pub _reserved: u32,
+        pub major_version: u8,
+        pub minor_version: u8,
+        pub heap_sizes: u8,
+        pub _reserved2: u8,
+        pub valid_tables: u64,
+        pub sorted_tables: u64,
     }
 }
 
@@ -208,6 +222,7 @@ impl<'data> PortablePdb<'data> {
     fn get_stream(&self, name: &'data str, header: &StreamHeader) -> Result<Stream<'data>, Error> {
         let offset = header.offset as usize;
         let size = header.size as usize;
+        dbg!(name, size);
         let data = match self.buf.get(offset..offset + size) {
             Some(data) => data,
             None => return Err(ErrorKind::InvalidLength.into()),
@@ -249,6 +264,39 @@ pub struct Stream<'data> {
     pub data: &'data [u8],
 }
 
+#[derive(Debug)]
+pub struct TableStream<'data> {
+    header: &'data raw::TableStreamHeader,
+    rows: &'data [u32],
+    tables: &'data [u8],
+}
+
+impl<'data> TableStream<'data> {
+    pub fn parse(buf: &'data [u8]) -> Result<Self, Error> {
+        println!("{}", std::mem::size_of::<raw::TableStreamHeader>());
+        println!("{}", std::mem::align_of::<raw::TableStreamHeader>());
+        let (lv, rest) = LayoutVerified::<_, raw::TableStreamHeader>::new_from_prefix(buf)
+            .ok_or(ErrorKind::InvalidHeader)?;
+        let header = lv.into_ref();
+
+        // TODO: verify major/minor version
+        // TODO: verify reserved
+
+        let num_tables = header.valid_tables.count_ones() as usize;
+        if rest.len() < num_tables * 4 {
+            return Err(ErrorKind::InvalidLength.into());
+        }
+        let rows_start = rest.as_ptr();
+        let rows = unsafe { &*ptr::slice_from_raw_parts(rows_start as *const u32, num_tables) };
+        let tables = &buf[num_tables * 4..];
+        Ok(Self {
+            header,
+            rows,
+            tables,
+        })
+    }
+}
+
 #[test]
 fn test_ppdb() {
     let buf = std::fs::read("../EmbeddedSource.pdbx").unwrap();
@@ -258,7 +306,13 @@ fn test_ppdb() {
     // dbg!(pdb);
 
     for stream in pdb.streams() {
-        dbg!(stream.unwrap().name);
+        let stream = stream.unwrap();
+        if stream.name == "#~" {
+            dbg!(stream.data.len());
+            let table_stream = TableStream::parse(stream.data).unwrap();
+            dbg!(table_stream.header);
+            dbg!(table_stream.rows);
+        }
     }
 
     assert_eq!(pdb.get_string(0).unwrap(), "");
