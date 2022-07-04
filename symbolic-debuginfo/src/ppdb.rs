@@ -299,7 +299,7 @@ impl<'data> TableStream<'data> {
 
 #[test]
 fn test_ppdb() {
-    let buf = std::fs::read("../EmbeddedSource.pdbx").unwrap();
+    let buf = std::fs::read("_fixtures/EmbeddedSource.pdbx").unwrap();
 
     let pdb = PortablePdb::parse(&buf).unwrap();
 
