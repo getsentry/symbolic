@@ -242,7 +242,7 @@ struct DwarfLineProgram<'d> {
     sequences: Vec<DwarfSequence>,
 }
 
-impl<'d, 'a> DwarfLineProgram<'d> {
+impl<'d> DwarfLineProgram<'d> {
     fn prepare(program: IncompleteLineNumberProgram<'d>) -> Self {
         let mut sequences = Vec::new();
         let mut sequence_rows = Vec::<DwarfRow>::new();
