@@ -73,6 +73,12 @@ pub enum ErrorKind {
     InvalidStreamHeader,
     #[error("invalid stream name")]
     InvalidStreamName,
+    #[error("file does not contain a #Strings stream")]
+    NoStringsStream,
+    #[error("invalid string offset")]
+    InvalidStringOffset,
+    #[error("invalid string data")]
+    InvalidStringData,
 }
 
 #[derive(Debug, Error)]
@@ -159,7 +165,7 @@ impl<'data> PortablePdb<'data> {
 
     fn stream_headers(
         &self,
-    ) -> impl Iterator<Item = Result<(&'data str, &'data raw::StreamHeader), Error>> + '_ {
+    ) -> impl Iterator<Item = Result<(&'data str, &'data raw::StreamHeader), Error>> + 'data {
         let mut streams_buf = self.streams_buf;
         let mut count = self.header2.streams;
         std::iter::from_fn(move || {
@@ -199,7 +205,7 @@ impl<'data> PortablePdb<'data> {
         })
     }
 
-    fn get_stream(&self, name: &'data str, header: &StreamHeader) -> Result<Stream, Error> {
+    fn get_stream(&self, name: &'data str, header: &StreamHeader) -> Result<Stream<'data>, Error> {
         let offset = header.offset as usize;
         let size = header.size as usize;
         let data = match self.buf.get(offset..offset + size) {
@@ -213,6 +219,27 @@ impl<'data> PortablePdb<'data> {
     pub fn streams(&self) -> impl Iterator<Item = Result<Stream, Error>> + '_ {
         self.stream_headers()
             .map(move |hdr| hdr.and_then(|(name, header)| self.get_stream(name, header)))
+    }
+
+    fn get_string(&self, offset: usize) -> Result<&'data str, Error> {
+        let string_stream = self
+            .stream_headers()
+            .find_map(move |hdr| {
+                let (name, header) = hdr.ok()?;
+                if name == "#Strings" {
+                    Some(self.get_stream(name, header))
+                } else {
+                    None
+                }
+            })
+            .ok_or(ErrorKind::NoStringsStream)??;
+
+        let string_buf = string_stream
+            .data
+            .get(offset..)
+            .ok_or(ErrorKind::InvalidStringOffset)?;
+        let string = string_buf.split(|c| *c == 0).next().unwrap();
+        std::str::from_utf8(string).map_err(|e| Error::new(ErrorKind::InvalidStringData, e))
     }
 }
 
@@ -233,6 +260,8 @@ fn test_ppdb() {
     for stream in pdb.streams() {
         dbg!(stream.unwrap().name);
     }
+
+    assert_eq!(pdb.get_string(0).unwrap(), "");
 
     assert!(false);
 }
