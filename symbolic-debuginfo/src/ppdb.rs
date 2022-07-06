@@ -416,15 +416,20 @@ impl<'data> GuidStream<'data> {
     }
 }
 
+fn extract_leading_byte(mut data: &[u8]) -> Result<(u32, &[u8]), Error> {
+    data.split_first()
+        .map(|(b, d)| (*b as u32, d))
+        .ok_or_else(|| ErrorKind::InvalidBlobOffset.into())
+}
+
 fn decode_unsigned(mut data: &[u8]) -> Result<(u32, &[u8]), Error> {
-    let first_byte = *data.first().ok_or(ErrorKind::InvalidBlobOffset)? as u32;
-    data = &data[1..];
+    let (first_byte, data) = extract_leading_byte(data)?;
+
     if first_byte & (1 << 7) == 0 {
         return Ok((first_byte, data));
     }
 
-    let second_byte = *data.first().ok_or(ErrorKind::InvalidBlobOffset)? as u32;
-    data = &data[1..];
+    let (second_byte, data) = extract_leading_byte(data)?;
 
     if first_byte & (1 << 6) == 0 {
         let masked = first_byte & 0b0011_1111;
@@ -433,10 +438,8 @@ fn decode_unsigned(mut data: &[u8]) -> Result<(u32, &[u8]), Error> {
     }
 
     if first_byte & (1 << 5) == 0 {
-        let third_byte = *data.first().ok_or(ErrorKind::InvalidBlobOffset)? as u32;
-        data = &data[1..];
-        let fourth_byte = *data.first().ok_or(ErrorKind::InvalidBlobOffset)? as u32;
-        data = &data[1..];
+        let (third_byte, data) = extract_leading_byte(data)?;
+        let (fourth_byte, data) = extract_leading_byte(data)?;
 
         let masked = first_byte & 0b0001_1111;
         let result = (masked << 24) + (second_byte << 16) + (third_byte << 8) + fourth_byte;
@@ -467,6 +470,7 @@ fn test_ppdb() {
     dbg!(blob_idx);
     let file_name = pdb.get_document_name(blob_idx, 2).unwrap();
     println!("{file_name}");
+    assert_eq!(file_name, r"C:\a\b\c\D\2.cs")
 
     // dbg!(table_stream.get_row(TableType::LocalScope, 1));
 }
