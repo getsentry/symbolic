@@ -546,12 +546,25 @@ impl<W: Write> AsciiCfiWriter<W> {
                     // scanning either way.
 
                     let start_addr = entry.instruction_address;
-                    if let CpuFamily::Amd64 = object.arch().cpu_family() {
-                        writeln!(
-                            self.inner,
-                            "STACK CFI INIT {:x} {:x} .cfa: $rsp 8 + .ra: .cfa -8 + ^",
-                            start_addr, entry.len
-                        )?;
+                    match object.arch().cpu_family() {
+                        CpuFamily::Amd64 => {
+                            writeln!(
+                                self.inner,
+                                "STACK CFI INIT {:x} {:x} .cfa: $rsp 8 + .ra: .cfa -8 + ^",
+                                start_addr, entry.len
+                            )?;
+                        }
+                        CpuFamily::Arm64 => {
+                            // Assume this is a stackless leaf, return address is in lr (x30).
+                            writeln!(
+                                self.inner,
+                                "STACK CFI INIT {:x} {:x} .cfa: sp .ra: x30",
+                                start_addr, entry.len
+                            )?;
+                        }
+                        _ => {
+                            // Do nothing
+                        }
                     }
                 }
                 CompactUnwindOp::UseDwarfFde { offset_in_eh_frame } => {
