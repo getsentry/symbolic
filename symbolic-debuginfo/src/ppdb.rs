@@ -1,13 +1,16 @@
-use std::{
-    convert::TryInto,
-    fmt,
-    ops::{Index, IndexMut},
-    ptr,
-};
+mod tables;
 
-use symbolic_common::Uuid;
+use std::convert::TryInto;
+use std::{fmt, ptr};
+
 use thiserror::Error;
 use zerocopy::LayoutVerified;
+
+use symbolic_common::Uuid;
+
+use tables::TableStream;
+
+use crate::ppdb::tables::TableType;
 
 mod raw {
     use zerocopy::FromBytes;
@@ -111,6 +114,16 @@ pub enum ErrorKind<'data> {
     NoGuidStream,
     #[error("invalid index")]
     InvalidIndex,
+    #[error(
+        "insufficient table data: {0} bytes required, but table stream only contains {1} bytes"
+    )]
+    InsufficientTableData(usize, usize),
+    #[error("invalid blob offset")]
+    InvalidBlobOffset,
+    #[error("invalid blob data")]
+    InvalidBlobData,
+    #[error("file does not contain a #Blob stream")]
+    NoBlobStream,
 }
 
 #[derive(Debug, Error)]
@@ -254,12 +267,7 @@ impl<'data> PortablePdb<'data> {
                 "#Strings" => result.string_stream = Some(StringStream { buf: stream_buf }),
                 "#US" => result.us_stream = Some(UsStream { buf: stream_buf }),
                 "#Blob" => result.blob_stream = Some(BlobStream { buf: stream_buf }),
-                "#GUID" => {
-                    result.guid_stream = {
-                        dbg!(offset, size);
-                        Some(GuidStream::parse(stream_buf)?)
-                    }
-                }
+                "#GUID" => result.guid_stream = Some(GuidStream::parse(stream_buf)?),
                 _ => return Err(ErrorKind::UnknownStream(name).into()),
             }
         }
@@ -279,6 +287,46 @@ impl<'data> PortablePdb<'data> {
             .ok_or(ErrorKind::NoGuidStream)?
             .get_guid(idx)
             .ok_or_else(|| ErrorKind::InvalidIndex.into())
+    }
+
+    fn get_blob(&self, offset: u32) -> Result<&'data [u8], Error> {
+        self.blob_stream
+            .as_ref()
+            .ok_or(ErrorKind::NoBlobStream)?
+            .get_blob(offset)
+    }
+
+    fn get_document_name(&self, offset: u32, idx_size: usize) -> Result<String, Error> {
+        let data = self.get_blob(offset)?;
+        let sep = if data[0] == 0 {
+            ""
+        } else {
+            std::str::from_utf8(&data[..1]).unwrap()
+        };
+
+        dbg!(sep);
+        dbg!(data.len());
+        let mut segments = Vec::new();
+
+        let mut data = &data[1..];
+        dbg!(data);
+        while !data.is_empty() {
+            let (idx, rest) = decode_unsigned(data)?;
+            dbg!(idx);
+
+            let seg = if idx == 0 {
+                ""
+            } else {
+                let seg = self.get_blob(idx)?;
+                std::str::from_utf8(seg).unwrap()
+            };
+
+            data = rest;
+
+            segments.push(seg);
+        }
+
+        Ok(segments.join(sep))
     }
 }
 
@@ -309,114 +357,6 @@ impl<'data> PdbStream<'data> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-enum IndexSize {
-    U16,
-    U32,
-}
-
-impl IndexSize {
-    fn num_bytes(self) -> usize {
-        match self {
-            Self::U16 => 2,
-            Self::U32 => 4,
-        }
-    }
-
-    fn read(self, buf: &[u8]) -> Option<(u32, &[u8])> {
-        if buf.len() < self.num_bytes() {
-            return None;
-        }
-
-        let (first, rest) = buf.split_at(self.num_bytes());
-        let num = match self {
-            IndexSize::U16 => u16::from_ne_bytes(first.try_into().unwrap()) as u32,
-            IndexSize::U32 => u32::from_ne_bytes(first.try_into().unwrap()),
-        };
-
-        Some((num, rest))
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-struct IndexSizes {
-    string: IndexSize,
-    guid: IndexSize,
-    blob: IndexSize,
-}
-
-#[derive(Debug)]
-struct TableStream<'data> {
-    header: &'data raw::TableStreamHeader,
-    tables: [Table; 64],
-    table_contents: &'data [u8],
-}
-
-impl<'data> TableStream<'data> {
-    pub fn parse(buf: &'data [u8]) -> Result<Self, Error> {
-        dbg!(buf);
-        let (lv, mut rest) = LayoutVerified::<_, raw::TableStreamHeader>::new_from_prefix(buf)
-            .ok_or(ErrorKind::InvalidHeader)?;
-        let header = lv.into_ref();
-
-        // TODO: verify major/minor version
-        // TODO: verify reserved
-
-        let mut tables = [Table::default(); 64];
-        for i in 0..64 {
-            if (header.valid_tables >> i & 1) == 0 {
-                continue;
-            }
-
-            let (lv, rest_) =
-                LayoutVerified::<_, u32>::new_from_prefix(rest).ok_or(ErrorKind::InvalidLength)?;
-            let len = lv.read();
-            rest = rest_;
-
-            tables[i].len = len as usize;
-        }
-
-        let table_contents = rest;
-        Ok(Self {
-            header,
-            table_contents,
-            tables,
-        })
-    }
-
-    fn string_index_size(&self) -> IndexSize {
-        if self.header.heap_sizes & 0x1 == 0 {
-            IndexSize::U16
-        } else {
-            IndexSize::U32
-        }
-    }
-
-    fn guid_index_size(&self) -> IndexSize {
-        if self.header.heap_sizes & 0x2 == 0 {
-            IndexSize::U16
-        } else {
-            IndexSize::U32
-        }
-    }
-
-    fn blob_index_size(&self) -> IndexSize {
-        if self.header.heap_sizes & 0x4 == 0 {
-            IndexSize::U16
-        } else {
-            IndexSize::U32
-        }
-    }
-
-    fn index_sizes(&self) -> IndexSizes {
-        IndexSizes {
-            string: self.string_index_size(),
-            guid: self.guid_index_size(),
-            blob: self.blob_index_size(),
-        }
-    }
-}
-
 #[derive(Debug)]
 struct StringStream<'data> {
     buf: &'data [u8],
@@ -443,6 +383,17 @@ struct BlobStream<'data> {
     buf: &'data [u8],
 }
 
+impl<'data> BlobStream<'data> {
+    fn get_blob(&self, offset: u32) -> Result<&'data [u8], Error> {
+        let offset = offset as usize;
+        let (len, rest) =
+            decode_unsigned(self.buf.get(offset..).ok_or(ErrorKind::InvalidBlobOffset)?)?;
+
+        rest.get(..len as usize)
+            .ok_or_else(|| ErrorKind::InvalidBlobData.into())
+    }
+}
+
 #[derive(Debug)]
 struct GuidStream<'data> {
     buf: &'data [uuid::Bytes],
@@ -465,270 +416,57 @@ impl<'data> GuidStream<'data> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-struct ModuleRow {
-    name_idx: u32,
-    mvid_idx: u32,
-}
-
-impl ModuleRow {
-    fn parse(buf: &[u8], index_sizes: IndexSizes) -> Result<Self, Error> {
-        dbg!(&buf[..Self::size(index_sizes)]);
-        if buf.len() < Self::size(index_sizes) {
-            return Err(ErrorKind::InvalidLength.into());
-        }
-
-        let (name_idx, rest) = index_sizes.string.read(&buf[2..]).unwrap();
-        let (mvid_idx, _) = index_sizes.guid.read(rest).unwrap();
-
-        Ok(Self { name_idx, mvid_idx })
+fn decode_unsigned(mut data: &[u8]) -> Result<(u32, &[u8]), Error> {
+    let first_byte = *data.first().ok_or(ErrorKind::InvalidBlobOffset)? as u32;
+    data = &data[1..];
+    if first_byte & (1 << 7) == 0 {
+        return Ok((first_byte, data));
     }
 
-    fn size(index_sizes: IndexSizes) -> usize {
-        let generation = 2;
-        let name = index_sizes.string.num_bytes();
-        let mvid = index_sizes.guid.num_bytes();
-        let enc_id = index_sizes.guid.num_bytes();
-        let enc_base_id = index_sizes.guid.num_bytes();
+    let second_byte = *data.first().ok_or(ErrorKind::InvalidBlobOffset)? as u32;
+    data = &data[1..];
 
-        generation + name + mvid + enc_id + enc_base_id
-    }
-}
-
-#[repr(usize)]
-#[derive(Debug, Clone, Copy)]
-enum TableType {
-    Assembly = 0x20,
-    AssemblyOs = 0x22,
-    AssemblyProcessor = 0x21,
-    AssemblyRef = 0x23,
-    AssemblyRefOs = 0x25,
-    AssemblyRefProcessor = 0x24,
-    ClassLayout = 0x0F,
-    Constant = 0x0B,
-    CustomAttribute = 0x0C,
-    DeclSecurity = 0x0E,
-    EventMap = 0x12,
-    Event = 0x14,
-    ExportedType = 0x27,
-    Field = 0x04,
-    FieldLayout = 0x10,
-    FieldMarshal = 0x0D,
-    FieldRVA = 0x1D,
-    File = 0x26,
-    GenericParam = 0x2A,
-    GenericParamConstraint = 0x2C,
-    ImplMap = 0x1C,
-    InterfaceImpl = 0x09,
-    ManifestResource = 0x28,
-    MemberRef = 0x0A,
-    MethodDef = 0x06,
-    MethodImpl = 0x19,
-    MethodSemantics = 0x18,
-    MethodSpec = 0x2B,
-    Module = 0x00,
-    ModuleRef = 0x1A,
-    NestedClass = 0x29,
-    Param = 0x08,
-    Property = 0x17,
-    PropertyMap = 0x15,
-    StandAloneSig = 0x11,
-    TypeDef = 0x02,
-    TypeRef = 0x01,
-    TypeSpec = 0x1B,
-    // portable pdb extension starts here
-    CustomDebugInformation = 0x37,
-    Document = 0x30,
-    ImportScope = 0x35,
-    LocalConstant = 0x34,
-    LocalScope = 0x32,
-    LocalVariable = 0x33,
-    MethodDebugInformation = 0x31,
-    StateMachineMethod = 0x36,
-}
-
-#[derive(Debug, Default, Clone, Copy)]
-struct Table {
-    offset: usize,
-    len: usize,
-    width: usize,
-    columns: [Column; 6],
-}
-
-impl Table {
-    fn set_columns(
-        &mut self,
-        width0: usize,
-        width1: usize,
-        width2: usize,
-        width3: usize,
-        width4: usize,
-        width5: usize,
-    ) {
-        self.columns[0].offset = 0;
-        self.columns[0].width = width0;
-
-        if width1 != 0 {
-            self.columns[1].offset = self.columns[0].end();
-            self.columns[1].width = width1;
-        }
-
-        if width2 != 0 {
-            self.columns[2].offset = self.columns[1].end();
-            self.columns[2].width = width2;
-        }
-
-        if width3 != 0 {
-            self.columns[3].offset = self.columns[2].end();
-            self.columns[3].width = width3;
-        }
-
-        if width4 != 0 {
-            self.columns[4].offset = self.columns[3].end();
-            self.columns[4].width = width4;
-        }
-
-        if width5 != 0 {
-            self.columns[5].offset = self.columns[4].end();
-            self.columns[5].width = width5;
-        }
-    }
-}
-
-#[derive(Debug, Default, Clone, Copy)]
-struct Column {
-    offset: usize,
-    width: usize,
-}
-
-impl Column {
-    fn end(self) -> usize {
-        self.offset + self.width
-    }
-}
-
-#[derive(Debug)]
-struct Tables([Table; 64]);
-
-impl Tables {
-    fn set_columns(&mut self, index_sizes: IndexSizes) {
-        use TableType::*;
-
-        let assembly_ref_index_size = self.index_size(AssemblyRef);
-        let type_def_index_size = self.index_size(TypeDef);
-
-        let has_constant = self.composite_index_size(&[Field, Param, Property]);
-
-        let (string_index_size, blob_index_size, guid_index_size) = (
-            index_sizes.string.num_bytes(),
-            index_sizes.blob.num_bytes(),
-            index_sizes.guid.num_bytes(),
-        );
-
-        self[Assembly].set_columns(
-            4,
-            8,
-            4,
-            blob_index_size,
-            string_index_size,
-            string_index_size,
-        );
-        self[AssemblyOs].set_columns(4, 4, 4, 0, 0, 0);
-        self[AssemblyProcessor].set_columns(4, 0, 0, 0, 0, 0);
-        self[AssemblyRef].set_columns(
-            8,
-            4,
-            blob_index_size,
-            string_index_size,
-            string_index_size,
-            blob_index_size,
-        );
-        self[AssemblyRefOs].set_columns(4, 4, 4, assembly_ref_index_size, 0, 0);
-        self[AssemblyRefProcessor].set_columns(4, assembly_ref_index_size, 0, 0, 0, 0);
-        self[ClassLayout].set_columns(2, 4, type_def_index_size, 0, 0, 0);
-        self[Constant].set_columns(2, has_constant, blob_index_size, 0, 0, 0);
+    if first_byte & (1 << 6) == 0 {
+        let masked = first_byte & 0b0011_1111;
+        let result = (masked << 8) + second_byte;
+        return Ok((result, data));
     }
 
-    fn index_size(&self, table: TableType) -> usize {
-        if self[table].len >= u16::MAX as usize {
-            4
-        } else {
-            2
-        }
+    if first_byte & (1 << 5) == 0 {
+        let third_byte = *data.first().ok_or(ErrorKind::InvalidBlobOffset)? as u32;
+        data = &data[1..];
+        let fourth_byte = *data.first().ok_or(ErrorKind::InvalidBlobOffset)? as u32;
+        data = &data[1..];
+
+        let masked = first_byte & 0b0001_1111;
+        let result = (masked << 24) + (second_byte << 16) + (third_byte << 8) + fourth_byte;
+        return Ok((result, data));
     }
 
-    /// Computes the size (2 or 4 bytes) for an index into any of the tables in `tables`.
-    ///
-    /// This depends on the number of tables (because some part of the index needs to be used
-    /// as a tag) and their maximum size.
-    fn composite_index_size(&self, tables: &[TableType]) -> usize {
-        /// Checks if `row_count` is less than 2^(16 - bits).
-        fn is_small(row_count: usize, bits: u8) -> bool {
-            (row_count as u64) < (1u64 << (16 - bits))
-        }
-
-        /// Calculates ceil(log₂(num_tables)) by repeated bit shifting.
-        fn tag_bits(num_tables: usize) -> u8 {
-            let mut num_tables = num_tables - 1;
-            let mut bits: u8 = 1;
-            loop {
-                num_tables >>= 1;
-                if num_tables == 0 {
-                    break;
-                }
-                bits += 1;
-            }
-            bits
-        }
-
-        let bits_needed = tag_bits(tables.len());
-        if tables
-            .iter()
-            .map(|table| self[*table].len)
-            .all(|row_count| is_small(row_count, bits_needed))
-        {
-            2
-        } else {
-            4
-        }
-    }
+    Err(ErrorKind::InvalidBlobData.into())
 }
-
-impl Default for Tables {
-    fn default() -> Self {
-        Self([Table::default(); 64])
-    }
-}
-
-impl Index<TableType> for Tables {
-    type Output = Table;
-
-    fn index(&self, index: TableType) -> &Self::Output {
-        &self.0[index as usize]
-    }
-}
-
-impl IndexMut<TableType> for Tables {
-    fn index_mut(&mut self, index: TableType) -> &mut Self::Output {
-        &mut self.0[index as usize]
-    }
-}
-
 #[test]
 fn test_ppdb() {
     let buf = std::fs::read("_fixtures/Documents.pdbx").unwrap();
 
     let pdb = PortablePdb::parse(&buf).unwrap();
-    println!("{pdb:#?}");
 
     let table_stream = pdb.table_stream.as_ref().unwrap();
-    dbg!(table_stream.header);
+
     for (i, table) in table_stream
         .tables
         .iter()
         .enumerate()
-        .filter(|(_, table)| table.len > 0)
+        .filter(|(_, table)| table.rows > 0)
     {
         println!("{i:#0x}: {table:?}");
     }
+
+    let data = table_stream.get_row(TableType::Document, 3).unwrap();
+    let blob_idx = u16::from_ne_bytes(data[..2].try_into().unwrap()) as u32;
+    dbg!(blob_idx);
+    let file_name = pdb.get_document_name(blob_idx, 2).unwrap();
+    println!("{file_name}");
+
+    // dbg!(table_stream.get_row(TableType::LocalScope, 1));
 }
