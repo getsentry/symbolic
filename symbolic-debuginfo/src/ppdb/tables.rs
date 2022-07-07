@@ -1,4 +1,5 @@
 use std::{
+    convert::TryInto,
     fmt,
     ops::{Index, IndexMut},
 };
@@ -161,8 +162,29 @@ impl<'data> Table<'data> {
     }
 
     /// Returns the the bytes of the `idx`th row, if any.
+    ///
+    /// Note that table row indices are 1-based!
     fn get_row(&self, idx: usize) -> Option<&'data [u8]> {
-        self.contents.get(idx * self.width..(idx + 1) * self.width)
+        idx.checked_sub(1)
+            .and_then(|idx| self.contents.get(idx * self.width..(idx + 1) * self.width))
+    }
+
+    fn get_u32(&self, row: usize, col: usize) -> Option<u32> {
+        let row = self.get_row(row)?;
+        let Column { offset, width } = self.columns.get(col.checked_sub(1)?)?;
+        match width {
+            1 => Some(*row.get(*offset)? as u32),
+            2 => {
+                let bytes = row.get(*offset..*offset + 2)?;
+                Some(u16::from_ne_bytes(bytes.try_into().unwrap()) as u32)
+            }
+            4 => {
+                let bytes = row.get(*offset..*offset + 4)?;
+                Some(u32::from_ne_bytes(bytes.try_into().unwrap()))
+            }
+
+            _ => None,
+        }
     }
 }
 
@@ -238,12 +260,12 @@ struct IndexSizes {
 #[derive(Debug)]
 pub struct TableStream<'data> {
     header: &'data super::raw::TableStreamHeader,
+    referenced_table_sizes: [u32; 64],
     pub tables: [Table<'data>; 64],
 }
 
 impl<'data> TableStream<'data> {
-    pub fn parse(buf: &'data [u8]) -> Result<Self, Error> {
-        dbg!(buf.len());
+    pub fn parse(buf: &'data [u8], referenced_table_sizes: [u32; 64]) -> Result<Self, Error> {
         let (lv, mut rest) =
             LayoutVerified::<_, super::raw::TableStreamHeader>::new_from_prefix(buf)
                 .ok_or(ErrorKind::InvalidHeader)?;
@@ -267,7 +289,11 @@ impl<'data> TableStream<'data> {
         }
 
         let table_contents = rest;
-        let mut result = Self { header, tables };
+        let mut result = Self {
+            header,
+            referenced_table_sizes,
+            tables,
+        };
 
         result.set_columns();
 
@@ -289,8 +315,14 @@ impl<'data> TableStream<'data> {
     }
 
     /// Returns the bytes of the `idx`th row of the `table` table, if any.
+    ///
+    /// Note that table row indices are 1-based!
     pub fn get_row(&self, table: TableType, idx: usize) -> Option<&'data [u8]> {
         self[table].get_row(idx)
+    }
+
+    pub fn get_u32(&self, table: TableType, row: usize, col: usize) -> Option<u32> {
+        self[table].get_u32(row, col)
     }
 
     /// Sets the column widths of all tables in this stream.
@@ -591,10 +623,17 @@ impl<'data> TableStream<'data> {
         }
     }
 
+    fn table_size(&self, table: TableType) -> usize {
+        std::cmp::max(
+            self[table].rows,
+            self.referenced_table_sizes[table as usize] as usize,
+        )
+    }
+
     /// Returns the size in bytes of an index into this stream's `table` table, based on the table's
     /// number of rows.
     fn table_index_size(&self, table: TableType) -> usize {
-        if self[table].rows >= u16::MAX as usize {
+        if self.table_size(table) >= u16::MAX as usize {
             4
         } else {
             2
@@ -630,7 +669,7 @@ impl<'data> TableStream<'data> {
         let bits_needed = tag_bits(tables.len());
         if tables
             .iter()
-            .map(|table| self[*table].rows)
+            .map(|table| self.table_size(*table))
             .all(|row_count| is_small(row_count, bits_needed))
         {
             2
