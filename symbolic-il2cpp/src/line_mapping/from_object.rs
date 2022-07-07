@@ -84,26 +84,26 @@ impl ObjectLineMapping {
 
 /// An Il2cpp `source_info` record.
 #[derive(Debug, PartialEq, Eq)]
-struct SourceInfo<'data> {
+pub(crate) struct SourceInfo<'data> {
     /// The C++ source line the `source_info` was parsed from.
-    cpp_line: u32,
+    pub(crate) cpp_line: u32,
     /// The corresponding C# source file.
     cs_file: &'data str,
     /// The corresponding C# source line.
-    cs_line: u32,
+    pub(crate) cs_line: u32,
 }
 
 /// An iterator over Il2cpp `source_info` markers.
 ///
 /// The Iterator yields `SourceInfo`s.
-struct SourceInfos<'data> {
+pub(crate) struct SourceInfos<'data> {
     lines: Enumerate<Lines<'data>>,
     current: Option<(&'data str, u32)>,
 }
 
 impl<'data> SourceInfos<'data> {
     /// Parses the `source` leniently, yielding an empty Iterator for non-utf8 data.
-    fn new(source: &'data [u8]) -> Self {
+    pub(crate) fn new(source: &'data [u8]) -> Self {
         let lines = std::str::from_utf8(source)
             .ok()
             .unwrap_or_default()
