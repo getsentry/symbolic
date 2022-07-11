@@ -2,7 +2,7 @@ mod lookup;
 mod tables;
 
 use std::convert::TryInto;
-use std::{fmt, ptr};
+use std::fmt;
 
 use thiserror::Error;
 use zerocopy::LayoutVerified;
@@ -139,6 +139,10 @@ pub enum ErrorKind {
     ColIndexOutOfBounds(TableType, usize),
     #[error("column {1} in table {0:?} has incompatible with {2}")]
     ColumnWidth(TableType, usize, usize),
+    #[error("il offset {0} not covered by sequence points")]
+    IlOffsetNotCovered(u32),
+    #[error("no sequence point information for method {0}")]
+    NoSequencePoints(usize),
 }
 
 #[derive(Debug, Error)]
@@ -324,9 +328,51 @@ impl<'data> PortablePdb<'data> {
         &self,
         offset: u32,
         document: Option<u32>,
-    ) -> Result<SequencePoints, Error> {
-        let sequence_points_blob = self.get_blob(offset)?;
-        SequencePoints::parse(sequence_points_blob, document)
+    ) -> Result<Vec<SequencePoint>, Error> {
+        let data = self.get_blob(offset)?;
+        let (local_signature, mut data) = decode_unsigned(data)?;
+        let mut current_document = match document {
+            Some(document) => document,
+            None => {
+                let (initial_document, rest) = decode_unsigned(data)?;
+                data = rest;
+                initial_document
+            }
+        };
+
+        let mut sequence_points = Vec::new();
+
+        let (first_sequence_point, mut data) =
+            SequencePoint::parse(data, None, None, current_document)?;
+
+        sequence_points.push(first_sequence_point);
+
+        let mut last_nonhidden =
+            (!first_sequence_point.is_hidden()).then_some(first_sequence_point);
+
+        while !data.is_empty() {
+            if data[0] == 0 {
+                let (doc, rest) = decode_unsigned(&data[1..])?;
+                current_document = doc;
+                data = rest;
+                continue;
+            }
+
+            let (sequence_point, rest) = SequencePoint::parse(
+                data,
+                sequence_points.last().cloned(),
+                last_nonhidden,
+                current_document,
+            )?;
+            data = rest;
+
+            sequence_points.push(sequence_point);
+            if !sequence_point.is_hidden() {
+                last_nonhidden = Some(sequence_point);
+            }
+        }
+
+        Ok(sequence_points)
     }
 }
 
@@ -629,65 +675,6 @@ impl fmt::Debug for SequencePoint {
     }
 }
 
-#[derive(Debug, Clone)]
-struct SequencePoints {
-    local_signature: u32,
-    initial_document: Option<u32>,
-    sequence_points: Vec<SequencePoint>,
-}
-
-impl SequencePoints {
-    fn parse(data: &[u8], method_def_document: Option<u32>) -> Result<Self, Error> {
-        let (local_signature, mut data) = decode_unsigned(data)?;
-        let initial_document = if method_def_document.is_none() {
-            let (initial_document, rest) = decode_unsigned(data)?;
-            data = rest;
-            Some(initial_document)
-        } else {
-            None
-        };
-
-        let mut current_document = method_def_document.or(initial_document).unwrap();
-        let mut sequence_points = Vec::new();
-
-        let (first_sequence_point, mut data) =
-            SequencePoint::parse(data, None, None, current_document)?;
-
-        sequence_points.push(first_sequence_point);
-
-        let mut last_nonhidden =
-            (!first_sequence_point.is_hidden()).then_some(first_sequence_point);
-
-        while !data.is_empty() {
-            if data[0] == 0 {
-                let (doc, rest) = decode_unsigned(&data[1..])?;
-                current_document = doc;
-                data = rest;
-                continue;
-            }
-
-            let (sequence_point, rest) = SequencePoint::parse(
-                data,
-                sequence_points.last().cloned(),
-                last_nonhidden,
-                current_document,
-            )?;
-            data = rest;
-
-            sequence_points.push(sequence_point);
-            if !sequence_point.is_hidden() {
-                last_nonhidden = Some(sequence_point);
-            }
-        }
-
-        Ok(Self {
-            sequence_points,
-            local_signature,
-            initial_document,
-        })
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::decode_signed;
@@ -745,9 +732,7 @@ fn test_ppdb() {
         println!("{i:#0x}: {table:?}");
     }
 
-    for doc in pdb.documents() {
-        println!("{:?}", doc.unwrap());
-    }
+    dbg!(pdb.lookup(10, 17).unwrap());
 
     // let num_methods = table_stream[TableType::MethodDebugInformation].rows;
     // for method in 1..=num_methods {

@@ -1,3 +1,5 @@
+use std::collections::{btree_map::Entry, BTreeMap};
+
 use symbolic_common::{Language, Uuid};
 
 use super::{decode_unsigned, tables::TableType, Error, ErrorKind, PortablePdb};
@@ -22,6 +24,13 @@ const C_SHARP_GUID: Uuid = Uuid::from_bytes([
 pub struct Document {
     name: String,
     lang: Language,
+}
+
+#[derive(Debug, Clone)]
+pub struct LineInfo {
+    line: u32,
+    file_name: String,
+    file_lang: Language,
 }
 
 impl<'data> PortablePdb<'data> {
@@ -95,6 +104,35 @@ impl<'data> PortablePdb<'data> {
             ppdb: self.clone(),
             count: 1,
         }
+    }
+
+    pub fn lookup(&self, method: usize, il_offset: u32) -> Result<LineInfo, Error> {
+        let doc_idx = self.get_table_cell_u32(TableType::MethodDebugInformation, method, 1)?;
+        let sp_offset = self.get_table_cell_u32(TableType::MethodDebugInformation, method, 2)?;
+
+        let doc_idx = (doc_idx > 0).then_some(doc_idx);
+        let sequence_points = if sp_offset > 0 {
+            self.get_sequence_points(sp_offset, doc_idx)?
+        } else {
+            return Err(ErrorKind::NoSequencePoints(method).into());
+        };
+
+        dbg!(&sequence_points);
+        let sp = match sequence_points.binary_search_by_key(&il_offset, |sp| sp.il_offset) {
+            Ok(idx) => sequence_points[idx],
+            Err(0) => return Err(ErrorKind::IlOffsetNotCovered(il_offset).into()),
+            Err(idx) => sequence_points[idx - 1],
+        };
+
+        let doc_idx = sp.document_id as usize;
+
+        let doc = self.get_document(doc_idx)?;
+
+        Ok(LineInfo {
+            line: sp.start_line,
+            file_name: doc.name.clone(),
+            file_lang: doc.lang,
+        })
     }
 }
 
