@@ -1,6 +1,6 @@
+mod lookup;
 mod tables;
 
-use std::collections::BTreeMap;
 use std::convert::TryInto;
 use std::{fmt, ptr};
 
@@ -9,9 +9,7 @@ use zerocopy::LayoutVerified;
 
 use symbolic_common::Uuid;
 
-use tables::TableStream;
-
-use crate::ppdb::tables::TableType;
+use tables::{TableStream, TableType};
 
 mod raw {
     use zerocopy::FromBytes;
@@ -133,6 +131,14 @@ pub enum ErrorKind {
     InvalidDocumentName,
     #[error("invalid sequence point")]
     InvalidSequencePoint,
+    #[error("file does not contain a #~ stream")]
+    NoMetadataStream,
+    #[error("row index {1} is out of bounds for table {0:?}")]
+    RowIndexOutOfBounds(TableType, usize),
+    #[error("column index {1} is out of bounds for table {0:?}")]
+    ColIndexOutOfBounds(TableType, usize),
+    #[error("column {1} in table {0:?} has incompatible with {2}")]
+    ColumnWidth(TableType, usize, usize),
 }
 
 #[derive(Debug, Error)]
@@ -166,6 +172,7 @@ impl From<ErrorKind> for Error {
     }
 }
 
+#[derive(Clone)]
 pub struct PortablePdb<'data> {
     /// First part of the metadata header.
     header: &'data raw::MetadataHeader,
@@ -270,7 +277,6 @@ impl<'data> PortablePdb<'data> {
                 .get(offset..offset + size)
                 .ok_or(ErrorKind::InvalidLength)?;
 
-            dbg!(name);
             match name {
                 "#Pdb" => result.pdb_stream = Some(PdbStream::parse(stream_buf)?),
                 "#~" => {
@@ -314,41 +320,6 @@ impl<'data> PortablePdb<'data> {
             .get_blob(offset)
     }
 
-    fn get_document_name(&self, offset: u32) -> Result<String, Error> {
-        let go = || {
-            let data = self.get_blob(offset)?;
-            let sep = data.get(..1).ok_or(ErrorKind::InvalidBlobOffset)?;
-            let mut data = &data[1..];
-            let sep = if sep[0] == 0 {
-                ""
-            } else {
-                std::str::from_utf8(sep).map_err(|e| Error::new(ErrorKind::InvalidStringData, e))?
-            };
-
-            let mut segments = Vec::new();
-
-            while !data.is_empty() {
-                let (idx, rest) = decode_unsigned(data)?;
-
-                let seg = if idx == 0 {
-                    ""
-                } else {
-                    let seg = self.get_blob(idx)?;
-                    std::str::from_utf8(seg)
-                        .map_err(|e| Error::new(ErrorKind::InvalidStringData, e))?
-                };
-
-                data = rest;
-
-                segments.push(seg);
-            }
-
-            Ok(segments.join(sep))
-        };
-
-        go().map_err(|e: Error| Error::new(ErrorKind::InvalidDocumentName, e))
-    }
-
     fn get_sequence_points(
         &self,
         offset: u32,
@@ -359,7 +330,7 @@ impl<'data> PortablePdb<'data> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct PdbStream<'data> {
     header: &'data raw::PdbStreamHeader,
     referenced_table_sizes: [u32; 64],
@@ -391,7 +362,7 @@ impl<'data> PdbStream<'data> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct StringStream<'data> {
     buf: &'data [u8],
 }
@@ -407,12 +378,12 @@ impl<'data> StringStream<'data> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct UsStream<'data> {
     buf: &'data [u8],
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct BlobStream<'data> {
     buf: &'data [u8],
 }
@@ -428,7 +399,7 @@ impl<'data> BlobStream<'data> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct GuidStream<'data> {
     buf: &'data [uuid::Bytes],
 }
@@ -585,7 +556,6 @@ impl SequencePoint {
         prev_non_hidden: Option<SequencePoint>,
         document_id: u32,
     ) -> Result<(Self, &[u8]), Error> {
-        dbg!(prev, prev_non_hidden);
         let (il_offset, data) = match prev {
             Some(prev) => {
                 let (delta_il_offset, data) = decode_unsigned(data)?;
@@ -760,7 +730,7 @@ mod tests {
 
 #[test]
 fn test_ppdb() {
-    let buf = std::fs::read("_fixtures/Async.pdbx").unwrap();
+    let buf = std::fs::read("/Users/sebastian/code/unity/Runtime/Sentry.Unity.pdb").unwrap();
 
     let pdb = PortablePdb::parse(&buf).unwrap();
 
@@ -775,29 +745,38 @@ fn test_ppdb() {
         println!("{i:#0x}: {table:?}");
     }
 
-    let doc = table_stream
-        .get_u32(TableType::MethodDebugInformation, 8, 1)
-        .filter(|n| *n > 0);
-    let blob_idx = table_stream
-        .get_u32(TableType::MethodDebugInformation, 8, 2)
-        .unwrap();
-
-    dbg!(doc, blob_idx);
-    let sequence_points = pdb
-        .get_sequence_points(blob_idx, doc)
-        .unwrap()
-        .sequence_points;
-
-    dbg!(&sequence_points);
-
-    for sp in sequence_points.iter() {
-        let id = sp.document_id as usize;
-        let doc_idx = table_stream.get_u32(TableType::Document, id, 1);
-        match doc_idx {
-            Some(idx) => println!("{}", pdb.get_document_name(idx).unwrap()),
-            None => println!("no document"),
-        }
+    for doc in pdb.documents() {
+        println!("{:?}", doc.unwrap());
     }
+
+    // let num_methods = table_stream[TableType::MethodDebugInformation].rows;
+    // for method in 1..=num_methods {
+    //     let doc = table_stream
+    //         .get_u32(TableType::MethodDebugInformation, method, 1)
+    //         .filter(|n| *n > 0);
+    //     let blob_idx = table_stream
+    //         .get_u32(TableType::MethodDebugInformation, method, 2)
+    //         .filter(|n| *n > 0);
+
+    //     if let Some(blob_idx) = blob_idx {
+    //         dbg!(method);
+    //         let sequence_points = pdb
+    //             .get_sequence_points(blob_idx, doc)
+    //             .unwrap()
+    //             .sequence_points;
+
+    //         dbg!(&sequence_points);
+
+    //         for sp in sequence_points.iter() {
+    //             let id = sp.document_id as usize;
+    //             let doc_idx = table_stream.get_u32(TableType::Document, id, 1);
+    //             match doc_idx {
+    //                 Some(idx) => println!("{}", pdb.get_document_name(idx).unwrap()),
+    //                 None => println!("no document"),
+    //             }
+    //         }
+    //     }
+    // }
 
     // dbg!(table_stream.get_row(TableType::LocalScope, 1));
 }

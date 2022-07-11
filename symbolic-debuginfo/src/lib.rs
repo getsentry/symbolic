@@ -60,7 +60,6 @@ pub mod macho;
 pub mod pdb;
 #[cfg(feature = "ms")]
 pub mod pe;
-pub mod ppdb;
 #[cfg(feature = "sourcebundle")]
 pub mod sourcebundle;
 #[cfg(feature = "wasm")]

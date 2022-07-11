@@ -168,24 +168,6 @@ impl<'data> Table<'data> {
         idx.checked_sub(1)
             .and_then(|idx| self.contents.get(idx * self.width..(idx + 1) * self.width))
     }
-
-    fn get_u32(&self, row: usize, col: usize) -> Option<u32> {
-        let row = self.get_row(row)?;
-        let Column { offset, width } = self.columns.get(col.checked_sub(1)?)?;
-        match width {
-            1 => Some(*row.get(*offset)? as u32),
-            2 => {
-                let bytes = row.get(*offset..*offset + 2)?;
-                Some(u16::from_ne_bytes(bytes.try_into().unwrap()) as u32)
-            }
-            4 => {
-                let bytes = row.get(*offset..*offset + 4)?;
-                Some(u32::from_ne_bytes(bytes.try_into().unwrap()))
-            }
-
-            _ => None,
-        }
-    }
 }
 
 /// A column in a [Table].
@@ -257,7 +239,7 @@ struct IndexSizes {
     has_custom_debug_information: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TableStream<'data> {
     header: &'data super::raw::TableStreamHeader,
     referenced_table_sizes: [u32; 64],
@@ -302,7 +284,6 @@ impl<'data> TableStream<'data> {
             .iter()
             .map(|table| table.width * table.rows)
             .sum();
-        dbg!(total_length, table_contents.len());
         if total_length > table_contents.len() {
             return Err(
                 ErrorKind::InsufficientTableData(total_length, table_contents.len()).into(),
@@ -321,8 +302,27 @@ impl<'data> TableStream<'data> {
         self[table].get_row(idx)
     }
 
-    pub fn get_u32(&self, table: TableType, row: usize, col: usize) -> Option<u32> {
-        self[table].get_u32(row, col)
+    pub fn get_u32(&self, table: TableType, row: usize, col: usize) -> Result<u32, Error> {
+        let row = self
+            .get_row(table, row)
+            .ok_or(ErrorKind::RowIndexOutOfBounds(table, row))?;
+        if !(1..=6).contains(&col) {
+            return Err(ErrorKind::ColIndexOutOfBounds(table, col).into());
+        }
+        let Column { offset, width } = self[table].columns[col - 1];
+        match width {
+            1 => Ok(row[offset] as u32),
+            2 => {
+                let bytes = &row[offset..offset + 2];
+                Ok(u16::from_ne_bytes(bytes.try_into().unwrap()) as u32)
+            }
+            4 => {
+                let bytes = &row[offset..offset + 4];
+                Ok(u32::from_ne_bytes(bytes.try_into().unwrap()))
+            }
+
+            _ => Err(ErrorKind::ColumnWidth(table, col, width).into()),
+        }
     }
 
     /// Sets the column widths of all tables in this stream.
