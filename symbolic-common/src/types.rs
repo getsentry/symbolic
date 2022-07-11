@@ -458,6 +458,9 @@ pub enum Language {
     Rust = 7,
     Swift = 8,
     CSharp = 9,
+    VisualCSharp = 10,
+    VisualBasic = 11,
+    VisualFSharp = 12,
 }
 
 impl Language {
@@ -485,6 +488,9 @@ impl Language {
             7 => Self::Rust,
             8 => Self::Swift,
             9 => Self::CSharp,
+            10 => Self::VisualCSharp,
+            11 => Self::VisualBasic,
+            12 => Self::VisualFSharp,
             _ => Self::Unknown,
         }
     }
@@ -518,6 +524,9 @@ impl Language {
             Language::Rust => "rust",
             Language::Swift => "swift",
             Language::CSharp => "csharp",
+            Language::VisualCSharp => "visualcsharp",
+            Language::VisualBasic => "visualbasic",
+            Language::VisualFSharp => "visualfsharp",
         }
     }
 }
@@ -541,6 +550,9 @@ impl fmt::Display for Language {
             Language::Rust => "Rust",
             Language::Swift => "Swift",
             Language::CSharp => "C#",
+            Language::VisualCSharp => "Visual C#",
+            Language::VisualBasic => "Visual Basic",
+            Language::VisualFSharp => "Visual F#",
         };
 
         write!(f, "{}", formatted)
@@ -561,6 +573,10 @@ impl str::FromStr for Language {
             "objcpp" => Language::ObjCpp,
             "rust" => Language::Rust,
             "swift" => Language::Swift,
+            "csharp" => Language::CSharp,
+            "visualcsharp" => Language::VisualCSharp,
+            "visualbasic" => Language::VisualBasic,
+            "visualfsharp" => Language::VisualFSharp,
             _ => return Err(UnknownLanguageError),
         })
     }
