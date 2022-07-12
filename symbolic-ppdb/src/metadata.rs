@@ -1,8 +1,6 @@
-use std::{
-    convert::TryInto,
-    fmt,
-    ops::{Index, IndexMut},
-};
+use std::convert::TryInto;
+use std::fmt;
+use std::ops::{Index, IndexMut};
 
 use zerocopy::LayoutVerified;
 
@@ -239,17 +237,22 @@ struct IndexSizes {
     has_custom_debug_information: usize,
 }
 
+/// A stream representing the "metadata heap", which comprises a number of metadata tables.
+///
+/// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.6-metadata-stream.md for a definition
+/// of the stream's format. Note that this stream contains all tables described in the ECMA-335 specification and
+/// the Portable PDB specification.
 #[derive(Debug, Clone)]
-pub struct TableStream<'data> {
-    header: &'data super::raw::TableStreamHeader,
+pub struct MetadataStream<'data> {
+    header: &'data super::raw::MetadataStreamHeader,
     referenced_table_sizes: [u32; 64],
-    pub tables: [Table<'data>; 64],
+    tables: [Table<'data>; 64],
 }
 
-impl<'data> TableStream<'data> {
+impl<'data> MetadataStream<'data> {
     pub fn parse(buf: &'data [u8], referenced_table_sizes: [u32; 64]) -> Result<Self, Error> {
         let (lv, mut rest) =
-            LayoutVerified::<_, super::raw::TableStreamHeader>::new_from_prefix(buf)
+            LayoutVerified::<_, super::raw::MetadataStreamHeader>::new_from_prefix(buf)
                 .ok_or(ErrorKind::InvalidHeader)?;
         let header = lv.into_ref();
 
@@ -298,11 +301,22 @@ impl<'data> TableStream<'data> {
     /// Returns the bytes of the `idx`th row of the `table` table, if any.
     ///
     /// Note that table row indices are 1-based!
-    pub fn get_row(&self, table: TableType, idx: usize) -> Option<&'data [u8]> {
+    fn get_row(&self, table: TableType, idx: usize) -> Option<&'data [u8]> {
         self[table].get_row(idx)
     }
 
-    pub fn get_u32(&self, table: TableType, row: usize, col: usize) -> Result<u32, Error> {
+    /// Reads the `(row, col)` cell in the given table as a `u32`.
+    ///
+    /// This returns an error if the indices are out of bounds for the table
+    /// or the cell is too wide for a `u32`.
+    ///
+    /// Note that row and column indices are 1-based!
+    pub(crate) fn get_table_cell_u32(
+        &self,
+        table: TableType,
+        row: usize,
+        col: usize,
+    ) -> Result<u32, Error> {
         let row = self
             .get_row(table, row)
             .ok_or(ErrorKind::RowIndexOutOfBounds(table, row))?;
@@ -769,7 +783,7 @@ impl<'data> TableStream<'data> {
     }
 }
 
-impl<'data> Index<TableType> for TableStream<'data> {
+impl<'data> Index<TableType> for MetadataStream<'data> {
     type Output = Table<'data>;
 
     fn index(&self, index: TableType) -> &Self::Output {
@@ -777,7 +791,7 @@ impl<'data> Index<TableType> for TableStream<'data> {
     }
 }
 
-impl<'data> IndexMut<TableType> for TableStream<'data> {
+impl<'data> IndexMut<TableType> for MetadataStream<'data> {
     fn index_mut(&mut self, index: TableType) -> &mut Self::Output {
         &mut self.tables[index as usize]
     }

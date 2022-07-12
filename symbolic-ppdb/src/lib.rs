@@ -1,8 +1,9 @@
+mod blob;
 mod cache;
-mod lookup;
-mod tables;
+mod metadata;
+mod raw;
+mod sequence_points;
 
-use std::convert::TryInto;
 use std::fmt;
 
 use thiserror::Error;
@@ -10,83 +11,12 @@ use zerocopy::LayoutVerified;
 
 use symbolic_common::Uuid;
 
-use tables::{TableStream, TableType};
+use blob::BlobStream;
+use metadata::{MetadataStream, TableType};
 
-mod raw {
-    use zerocopy::FromBytes;
-
-    /// Signature for physical metadata as specified by ECMA-335.
-    pub const METADATA_SIGNATURE: u32 = 0x424A_5342;
-
-    /// First part of the metadata header, as specified in the ECMA-335 spec, II.24.2.1.
-    ///
-    /// This includes everything before the version string.
-    #[repr(C)]
-    #[derive(Debug, FromBytes)]
-    pub struct MetadataHeader {
-        /// The metadata signature.
-        ///
-        /// The value of this should be [`METADATA_SIGNATURE`].
-        pub signature: u32,
-        /// Major version, 1 (ignore on read).
-        pub major_version: u16,
-        /// Minor version, 1 (ignore on read).
-        pub minor_version: u16,
-        /// Reserved, always 0.
-        pub _reserved: u32,
-        /// Number of bytes allocated to hold version string.
-        ///
-        /// This is the actual length of the version string, including the
-        /// null terminator, rounded up to a multiple of 4.
-        pub version_length: u32,
-    }
-
-    /// Second part of the metadata header, as specified in the ECMA-335 spec, II.24.2.1.
-    ///
-    /// This includes everything after the version string.
-    #[repr(C)]
-    #[derive(Debug, FromBytes)]
-    pub struct MetadataHeaderPart2 {
-        /// Reserved, always 0.
-        pub flags: u16,
-        /// Number of streams.
-        pub streams: u16,
-    }
-
-    /// A stream header, as specified in the ECMA-335 spec, II.24.2.2.
-    ///
-    /// Does not contain the stream's name due to its variable length.
-    #[repr(C)]
-    #[derive(Debug, FromBytes)]
-    pub struct StreamHeader {
-        /// Memory offset to start of this stream form start of the metadata root.
-        pub offset: u32,
-        /// Size of this stream in bytes.
-        ///
-        /// This should always be a multiple of 4.
-        pub size: u32,
-    }
-
-    #[repr(C, packed(4))]
-    #[derive(Debug, FromBytes, Clone, Copy)]
-    pub struct PdbStreamHeader {
-        pub id: [u8; 20],
-        pub entry_point: u32,
-        pub referenced_tables: u64,
-    }
-
-    #[repr(C, packed(4))]
-    #[derive(Debug, FromBytes, Clone, Copy)]
-    pub struct TableStreamHeader {
-        pub _reserved: u32,
-        pub major_version: u8,
-        pub minor_version: u8,
-        pub heap_sizes: u8,
-        pub _reserved2: u8,
-        pub valid_tables: u64,
-        pub sorted_tables: u64,
-    }
-}
+pub use cache::lookup::LineInfo;
+pub use cache::writer::PortablePdbCacheConverter;
+pub use cache::PortablePdbCache;
 
 #[derive(Debug, Clone, Copy, Error)]
 pub enum ErrorKind {
@@ -140,10 +70,6 @@ pub enum ErrorKind {
     ColIndexOutOfBounds(TableType, usize),
     #[error("column {1} in table {0:?} has incompatible with {2}")]
     ColumnWidth(TableType, usize, usize),
-    #[error("il offset {0} not covered by sequence points")]
-    IlOffsetNotCovered(u32),
-    #[error("no sequence point information for method {0}")]
-    NoSequencePoints(usize),
 }
 
 #[derive(Debug, Error)]
@@ -180,16 +106,22 @@ impl From<ErrorKind> for Error {
 #[derive(Clone)]
 pub struct PortablePdb<'data> {
     /// First part of the metadata header.
-    header: &'data raw::MetadataHeader,
+    header: &'data raw::Header,
     /// The version string.
     version_string: &'data str,
     /// Second part of the metadata header.
-    header2: &'data raw::MetadataHeaderPart2,
+    header2: &'data raw::HeaderPart2,
+    /// The file's #PDB stream, if it exists.
     pdb_stream: Option<PdbStream<'data>>,
-    table_stream: Option<TableStream<'data>>,
+    /// The file's #~ stream, if it exists.
+    table_stream: Option<MetadataStream<'data>>,
+    /// The file's #Strings stream, if it exists.
     string_stream: Option<StringStream<'data>>,
+    /// The file's #US stream, if it exists.
     us_stream: Option<UsStream<'data>>,
+    /// The file's #Blob stream, if it exists.
     blob_stream: Option<BlobStream<'data>>,
+    /// The file's #GUID stream, if it exists.
     guid_stream: Option<GuidStream<'data>>,
 }
 
@@ -210,8 +142,9 @@ impl fmt::Debug for PortablePdb<'_> {
 }
 
 impl<'data> PortablePdb<'data> {
+    /// Parses the provided buffer into a Portable PDB file.
     pub fn parse(buf: &'data [u8]) -> Result<Self, Error> {
-        let (lv, rest) = LayoutVerified::<_, raw::MetadataHeader>::new_from_prefix(buf)
+        let (lv, rest) = LayoutVerified::<_, raw::Header>::new_from_prefix(buf)
             .ok_or(ErrorKind::InvalidHeader)?;
         let header = lv.into_ref();
 
@@ -233,7 +166,7 @@ impl<'data> PortablePdb<'data> {
         // We already know that buf is long enough.
         let streams_buf = &rest[version_length..];
         let (lv, mut streams_buf) =
-            LayoutVerified::<_, raw::MetadataHeaderPart2>::new_from_prefix(streams_buf)
+            LayoutVerified::<_, raw::HeaderPart2>::new_from_prefix(streams_buf)
                 .ok_or(ErrorKind::InvalidHeader)?;
         let header2 = lv.into_ref();
 
@@ -285,7 +218,7 @@ impl<'data> PortablePdb<'data> {
             match name {
                 "#Pdb" => result.pdb_stream = Some(PdbStream::parse(stream_buf)?),
                 "#~" => {
-                    result.table_stream = Some(TableStream::parse(
+                    result.table_stream = Some(MetadataStream::parse(
                         stream_buf,
                         result
                             .pdb_stream
@@ -294,8 +227,8 @@ impl<'data> PortablePdb<'data> {
                     )?)
                 }
                 "#Strings" => result.string_stream = Some(StringStream { buf: stream_buf }),
-                "#US" => result.us_stream = Some(UsStream { buf: stream_buf }),
-                "#Blob" => result.blob_stream = Some(BlobStream { buf: stream_buf }),
+                "#US" => result.us_stream = Some(UsStream { _buf: stream_buf }),
+                "#Blob" => result.blob_stream = Some(BlobStream::new(stream_buf)),
                 "#GUID" => result.guid_stream = Some(GuidStream::parse(stream_buf)?),
                 _ => return Err(ErrorKind::UnknownStream.into()),
             }
@@ -303,6 +236,8 @@ impl<'data> PortablePdb<'data> {
         Ok(result)
     }
 
+    /// Reads the string starting at the given offset from this file's string heap.
+    #[allow(unused)]
     fn get_string(&self, offset: u32) -> Result<&'data str, Error> {
         self.string_stream
             .as_ref()
@@ -310,6 +245,9 @@ impl<'data> PortablePdb<'data> {
             .get_string(offset)
     }
 
+    /// Reads the GUID with the given index from this file's GUID heap.
+    ///
+    /// Note that the index is 1-based!
     fn get_guid(&self, idx: u32) -> Result<Uuid, Error> {
         self.guid_stream
             .as_ref()
@@ -318,6 +256,7 @@ impl<'data> PortablePdb<'data> {
             .ok_or_else(|| ErrorKind::InvalidIndex.into())
     }
 
+    /// Reads the blob starting at the given offset from this file's blob heap.
     fn get_blob(&self, offset: u32) -> Result<&'data [u8], Error> {
         self.blob_stream
             .as_ref()
@@ -325,11 +264,34 @@ impl<'data> PortablePdb<'data> {
             .get_blob(offset)
     }
 
+    /// Reads this file's PDB ID from its #PDB stream.
     pub(crate) fn pdb_id(&self) -> Option<[u8; 20]> {
-        self.pdb_stream.as_ref().map(|stream| stream.header.id)
+        self.pdb_stream.as_ref().map(|stream| stream.id())
+    }
+
+    /// Reads the `(row, col)` cell in the given table as a `u32`.
+    ///
+    /// This returns an error if the indices are out of bounds for the table
+    /// or the cell is too wide for a `u32`.
+    ///
+    /// Note that row and column indices are 1-based!
+    pub(crate) fn get_table_cell_u32(
+        &self,
+        table: TableType,
+        row: usize,
+        col: usize,
+    ) -> Result<u32, Error> {
+        let md_stream = self
+            .table_stream
+            .as_ref()
+            .ok_or(ErrorKind::NoMetadataStream)?;
+        md_stream.get_table_cell_u32(table, row, col)
     }
 }
 
+/// The file's #PDB stream.
+///
+/// See https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#pdb-stream.
 #[derive(Debug, Clone)]
 struct PdbStream<'data> {
     header: &'data raw::PdbStreamHeader,
@@ -360,8 +322,15 @@ impl<'data> PdbStream<'data> {
             referenced_table_sizes,
         })
     }
+
+    fn id(&self) -> [u8; 20] {
+        self.header.id
+    }
 }
 
+/// A stream representing the "string heap", which contains UTF-8 string data.
+///
+/// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.3-strings-heap.md.
 #[derive(Debug, Clone, Copy)]
 struct StringStream<'data> {
     buf: &'data [u8],
@@ -378,27 +347,17 @@ impl<'data> StringStream<'data> {
     }
 }
 
+/// A stream representing the "user string heap".
+///
+/// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.4-us-and-blob-heaps.md.
 #[derive(Debug, Clone, Copy)]
 struct UsStream<'data> {
-    buf: &'data [u8],
+    _buf: &'data [u8],
 }
 
-#[derive(Debug, Clone, Copy)]
-struct BlobStream<'data> {
-    buf: &'data [u8],
-}
-
-impl<'data> BlobStream<'data> {
-    fn get_blob(&self, offset: u32) -> Result<&'data [u8], Error> {
-        let offset = offset as usize;
-        let (len, rest) =
-            decode_unsigned(self.buf.get(offset..).ok_or(ErrorKind::InvalidBlobOffset)?)?;
-
-        rest.get(..len as usize)
-            .ok_or_else(|| ErrorKind::InvalidBlobData.into())
-    }
-}
-
+/// A stream representing the "GUID heap", which contains GUIDs.
+///
+/// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.5-guid-heap.md.
 #[derive(Debug, Clone, Copy)]
 struct GuidStream<'data> {
     buf: &'data [uuid::Bytes],
@@ -421,256 +380,11 @@ impl<'data> GuidStream<'data> {
     }
 }
 
-/// Decodes a compressed unsigned number at the start of a byte slice, returning the number
-/// and the rest of the slice in the success case.
-fn decode_unsigned(data: &[u8]) -> Result<(u32, &[u8]), Error> {
-    let first_byte = *data.first().ok_or(ErrorKind::InvalidCompressedUnsigned)?;
-
-    if first_byte & 0b1000_0000 == 0 {
-        return Ok((first_byte as u32, &data[1..]));
-    }
-
-    if first_byte & 0b0100_0000 == 0 {
-        let bytes = data.get(..2).ok_or(ErrorKind::InvalidCompressedUnsigned)?;
-        let num = u16::from_be_bytes(bytes.try_into().unwrap());
-        let masked = num & 0b0011_1111_1111_1111;
-        return Ok((masked as u32, &data[2..]));
-    }
-
-    if first_byte & 0b0010_0000 == 0 {
-        let bytes = data.get(..4).ok_or(ErrorKind::InvalidCompressedUnsigned)?;
-        let num = u32::from_be_bytes(bytes.try_into().unwrap());
-        let masked = num & 0b0001_1111_1111_1111_1111_1111_1111_1111;
-        return Ok((masked, &data[4..]));
-    }
-
-    Err(ErrorKind::InvalidCompressedUnsigned.into())
-}
-
-/// Decodes a compressed signed number at the start of a byte slice, returning the number
-/// and the rest of the slice in the success case.
-fn decode_signed(data: &[u8]) -> Result<(i32, &[u8]), Error> {
-    let first_byte = *data.first().ok_or(ErrorKind::InvalidCompressedSigned)?;
-
-    if first_byte & 0b1000_0000 == 0 {
-        // transform `0b0abc_defg` to `0bggab_cdef`.
-        let lsb = first_byte & 0b0000_0001; // lsb = 0b0000_000g
-        let mut rotated = first_byte >> 1; // rotated = 0b00ab_cdef
-        rotated |= lsb << 6; // rotated = 0b0gab_cdef
-        rotated |= lsb << 7; // rotated = 0bggab_cdef;
-        return Ok((rotated as i8 as i32, &data[1..]));
-    }
-
-    if first_byte & 0b0100_0000 == 0 {
-        let bytes = data.get(..2).ok_or(ErrorKind::InvalidCompressedSigned)?;
-        let mut num = u16::from_be_bytes(bytes.try_into().unwrap());
-        num &= 0b0011_1111_1111_1111; // clear the tag bits
-        let lsb = num & 0b0000_0001;
-        let mut rotated = num >> 1;
-        rotated |= lsb << 13;
-        rotated |= lsb << 14;
-        rotated |= lsb << 15;
-        return Ok((rotated as i16 as i32, &data[2..]));
-    }
-
-    if first_byte & 0b0010_0000 == 0 {
-        let bytes = data.get(..4).ok_or(ErrorKind::InvalidCompressedSigned)?;
-        let mut num = u32::from_be_bytes(bytes.try_into().unwrap());
-        num &= 0b0001_1111_1111_1111_1111_1111_1111_1111; // clear the tag bits
-        let lsb = num & 0b0000_0001;
-        let mut rotated = num >> 1;
-        rotated |= lsb << 28;
-        rotated |= lsb << 29;
-        rotated |= lsb << 30;
-        rotated |= lsb << 31;
-        return Ok((rotated as i32, &data[4..]));
-    }
-
-    Err(ErrorKind::InvalidCompressedSigned.into())
-}
-
-#[derive(Clone, Copy)]
-struct SequencePoint {
-    il_offset: u32,
-    start_line: u32,
-    start_column: u32,
-    end_line: u32,
-    end_column: u32,
-    document_id: u32,
-}
-
-impl SequencePoint {
-    /// Returns true if this is a "hidden" sequence point.
-    fn is_hidden(&self) -> bool {
-        self.start_line == 0xfeefee
-            && self.end_line == 0xfeefee
-            && self.start_column == 0
-            && self.end_column == 0
-    }
-
-    fn new(
-        il_offset: u32,
-        start_line: u32,
-        start_column: u32,
-        end_line: u32,
-        end_column: u32,
-        document_id: u32,
-    ) -> Result<Self, Error> {
-        if il_offset >= 0x20000000
-            || start_line >= 0x20000000
-            || end_line >= 0x20000000
-            || start_column >= 0x10000
-            || end_column >= 0x10000
-            || start_line == 0xfeefee
-            || end_line == 0xfeefee
-            || end_line < start_line
-            || (end_line == start_line && end_column <= start_column)
-        {
-            Err(ErrorKind::InvalidSequencePoint.into())
-        } else {
-            Ok(Self {
-                il_offset,
-                start_line,
-                start_column,
-                end_line,
-                end_column,
-                document_id,
-            })
-        }
-    }
-
-    fn new_hidden(il_offset: u32, document_id: u32) -> Self {
-        Self {
-            il_offset,
-            start_line: 0xfeefee,
-            start_column: 0,
-            end_line: 0xfeefee,
-            end_column: 0,
-            document_id,
-        }
-    }
-
-    fn parse(
-        data: &[u8],
-        prev: Option<SequencePoint>,
-        prev_non_hidden: Option<SequencePoint>,
-        document_id: u32,
-    ) -> Result<(Self, &[u8]), Error> {
-        let (il_offset, data) = match prev {
-            Some(prev) => {
-                let (delta_il_offset, data) = decode_unsigned(data)?;
-                (prev.il_offset + delta_il_offset, data)
-            }
-            None => decode_unsigned(data)?,
-        };
-
-        let (delta_lines, data) = decode_unsigned(data)?;
-        let (delta_cols, data): (i32, &[u8]) = if delta_lines == 0 {
-            let (n, data) = decode_unsigned(data)?;
-            (n.try_into().unwrap(), data)
-        } else {
-            decode_signed(data)?
-        };
-
-        if delta_lines == 0 && delta_cols == 0 {
-            return Ok((Self::new_hidden(il_offset, document_id), data));
-        }
-
-        let (start_line, data) = match prev_non_hidden {
-            Some(prev) => {
-                let (delta_start_line, data) = decode_unsigned(data)?;
-                (prev.start_line + delta_start_line, data)
-            }
-            None => decode_unsigned(data)?,
-        };
-
-        let (start_column, data) = match prev_non_hidden {
-            Some(prev) => {
-                let (delta_start_col, data) = decode_unsigned(data)?;
-                (prev.start_column + delta_start_col, data)
-            }
-            None => decode_unsigned(data)?,
-        };
-
-        let end_line = start_line + delta_lines;
-        let end_column = (start_column as i32 + delta_cols) as u32;
-
-        Ok((
-            Self::new(
-                il_offset,
-                start_line,
-                start_column,
-                end_line,
-                end_column,
-                document_id,
-            )?,
-            data,
-        ))
-    }
-}
-
-impl fmt::Debug for SequencePoint {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_hidden() {
-            f.debug_struct("HiddenSequencePoint")
-                .field("il_offset", &self.il_offset)
-                .field("document_id", &self.document_id)
-                .finish()
-        } else {
-            f.debug_struct("SequencePoint")
-                .field("il_offset", &self.il_offset)
-                .field("start_line", &self.start_line)
-                .field("start_column", &self.start_column)
-                .field("end_line", &self.end_line)
-                .field("end_column", &self.end_column)
-                .field("document_id", &self.document_id)
-                .finish()
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::cache::writer::PortablePdbCacheConverter;
     use crate::cache::PortablePdbCache;
     use crate::PortablePdb;
-
-    use super::decode_signed;
-    use super::decode_unsigned;
-
-    #[test]
-    fn test_decode_unsigned() {
-        let cases = [
-            (&[0x03][..], 0x03),
-            (&[0x7F], 0x7F),
-            (&[0x80, 0x80], 0x80),
-            (&[0xAE, 0x57], 0x2E57),
-            (&[0xBF, 0xFF], 0x3FFF),
-            (&[0xC0, 0x00, 0x40, 0x00], 0x4000),
-            (&[0xDF, 0xFF, 0xFF, 0xFF], 0x1FFF_FFFF),
-        ];
-
-        for (arg, res) in cases.iter() {
-            assert_eq!(decode_unsigned(arg).unwrap().0, *res);
-        }
-    }
-    #[test]
-    fn test_decode_signed() {
-        let cases = [
-            (&[0x01][..], -64),
-            (&[0x7E], 63),
-            (&[0x7B], -3),
-            (&[0x80, 0x80], 64),
-            (&[0x80, 0x01], -8192),
-            (&[0xC0, 0x00, 0x40, 0x00], 8192),
-            (&[0xDF, 0xFF, 0xFF, 0xFE], 268435455),
-            (&[0xC0, 0x00, 0x00, 0x01], -268435456),
-        ];
-
-        for (arg, res) in cases.iter() {
-            assert_eq!(decode_signed(arg).unwrap().0, *res);
-        }
-    }
 
     #[test]
     fn test_ppdb() {
@@ -685,8 +399,6 @@ mod tests {
 
         let cache = PortablePdbCache::parse(&buf).unwrap();
 
-        for r in cache.ranges {
-            assert!(cache.lookup(r.idx as usize, r.il_offset as usize).is_some());
-        }
+        dbg!(cache);
     }
 }

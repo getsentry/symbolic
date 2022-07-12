@@ -2,14 +2,21 @@ use symbolic_common::Language;
 
 use super::PortablePdbCache;
 
+/// Line information for a given IL offset.
 #[derive(Debug, Clone)]
 pub struct LineInfo<'data> {
-    line: u32,
-    file_name: &'data str,
-    file_lang: Language,
+    /// The line in the source file.
+    pub line: u32,
+    /// The source file's name.
+    pub file_name: &'data str,
+    /// The source language.
+    pub file_lang: Language,
 }
 
 impl<'data> PortablePdbCache<'data> {
+    /// Looks up line information for the given IL offset for the method with the given index.
+    ///
+    /// Note that the method index is 1-based!
     pub fn lookup(&self, method: usize, il_offset: usize) -> Option<LineInfo<'data>> {
         let sl = match self
             .ranges

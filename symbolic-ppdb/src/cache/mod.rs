@@ -1,4 +1,47 @@
-mod lookup;
+//! Provides PortablePdbCache support.
+//!
+//! This includes a reader and writer for the binary format.
+//!
+//! # Structure of a PortablePdbCache
+//!
+//! A PortablePdbCache(version 1) contains the following primary kinds of data, written in the following
+//! order:
+//!
+//! 1. Source Locations
+//! 2. Address Ranges
+//! 3. String Data
+//!
+//! The format uses `u32`s to represent line numbers, IL offsets,  and string offsets.
+//! Line numbers use `0` to represent an unknown or invalid value. String
+//! offsets instead use `u32::MAX`.
+//!
+//! Strings are saved in one contiguous section with each individual string prefixed by
+//! its length in LEB-128 encoding. Source locations refer to strings by an offset into this string section,
+//! hence "string offset".
+//!
+//! ## Address Ranges
+//!
+//! Ranges are saved as a contiguous list of pairs of `u32`s, the first representing the index of the function
+//! the range belongs to and the second representing the range's starting IL offset. Ranges are ordered
+//! by function index and then by starting offset.
+//!
+//! ## Source Locations
+//!
+//! A source location in a PortablePDBCache represents a line in a source file.
+//! It contains a line number, a reference to a file name (see above), and a `u32` representing the source file's language.
+//!
+//! ## Mapping From Ranges To Source Locations
+//!
+//! The mapping from ranges to source locations is one-to-one: the `i`th range in the cache corresponds to the `i`th source location.
+//!
+//! # Lookups
+//!
+//! To look up an IL offset `offset` for the `i`th function in a PortablePdbCache:
+//!
+//! 1. Find the range belonging to the `i`th function that covers `offset` via binary search.
+//! 2. Find the source location belonging to this range.
+
+pub(crate) mod lookup;
 pub(crate) mod raw;
 pub(crate) mod writer;
 
@@ -64,15 +107,19 @@ impl From<crate::Error> for CacheError {
     }
 }
 
-#[derive(Debug)]
+/// The serialized PortablePdbCache binary format.
+///
+/// This can be parsed from a binary buffer via [`PortablePdbCache::parse`] and lookups on it can be performed
+/// via the [`PortablePdbCache::lookup`] method.
 pub struct PortablePdbCache<'data> {
     header: &'data raw::Header,
-    pub(crate) source_locations: &'data [raw::SourceLocation],
-    pub(crate) ranges: &'data [raw::Range],
+    source_locations: &'data [raw::SourceLocation],
+    ranges: &'data [raw::Range],
     string_bytes: &'data [u8],
 }
 
 impl<'data> PortablePdbCache<'data> {
+    /// Parses the given buffer into a `PortablePdbCache`.
     pub fn parse(buf: &'data [u8]) -> Result<Self, CacheError> {
         let (lv, rest) = LayoutVerified::<_, raw::Header>::new_from_prefix(buf)
             .ok_or(CacheErrorKind::InvalidHeader)?;
@@ -124,6 +171,17 @@ impl<'data> PortablePdbCache<'data> {
             ranges,
             string_bytes: rest,
         })
+    }
+}
+
+impl<'data> std::fmt::Debug for PortablePdbCache<'data> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PortablePdbCache")
+            .field("version", &self.header.version)
+            .field("pdb_id", &self.header.pdb_id)
+            .field("ranges", &self.header.num_ranges)
+            .field("string_bytes", &self.header.string_bytes)
+            .finish()
     }
 }
 

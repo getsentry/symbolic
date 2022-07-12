@@ -1,16 +1,10 @@
-use std::collections::{btree_map::Entry, BTreeMap};
+use std::fmt;
 
 use symbolic_common::{Language, Uuid};
 
-use crate::SequencePoint;
-
-use super::{decode_unsigned, tables::TableType, Error, ErrorKind, PortablePdb};
-
-#[derive(Debug, Clone)]
-pub(crate) struct Document {
-    pub(crate) name: String,
-    pub(crate) lang: Language,
-}
+use crate::blob::{decode_signed, decode_unsigned};
+use crate::metadata::TableType;
+use crate::{Error, ErrorKind, PortablePdb};
 
 impl<'data> PortablePdb<'data> {
     fn get_document_name(&self, offset: u32) -> Result<String, Error> {
@@ -78,14 +72,6 @@ impl<'data> PortablePdb<'data> {
             C_SHARP_GUID => Ok(Language::CSharp),
             _ => Ok(Language::Unknown),
         }
-    }
-
-    fn get_table_cell_u32(&self, table: TableType, row: usize, col: usize) -> Result<u32, Error> {
-        let md_stream = self
-            .table_stream
-            .as_ref()
-            .ok_or(ErrorKind::NoMetadataStream)?;
-        md_stream.get_u32(table, row, col)
     }
 
     pub(crate) fn get_document(&self, idx: usize) -> Result<Document, Error> {
@@ -156,6 +142,152 @@ impl<'data> PortablePdb<'data> {
             count: 1,
         }
     }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct SequencePoint {
+    pub(crate) il_offset: u32,
+    pub(crate) start_line: u32,
+    pub(crate) start_column: u32,
+    pub(crate) end_line: u32,
+    pub(crate) end_column: u32,
+    pub(crate) document_id: u32,
+}
+
+impl SequencePoint {
+    /// Returns true if this is a "hidden" sequence point.
+    pub(crate) fn is_hidden(&self) -> bool {
+        self.start_line == 0xfeefee
+            && self.end_line == 0xfeefee
+            && self.start_column == 0
+            && self.end_column == 0
+    }
+
+    fn new(
+        il_offset: u32,
+        start_line: u32,
+        start_column: u32,
+        end_line: u32,
+        end_column: u32,
+        document_id: u32,
+    ) -> Result<Self, Error> {
+        if il_offset >= 0x20000000
+            || start_line >= 0x20000000
+            || end_line >= 0x20000000
+            || start_column >= 0x10000
+            || end_column >= 0x10000
+            || start_line == 0xfeefee
+            || end_line == 0xfeefee
+            || end_line < start_line
+            || (end_line == start_line && end_column <= start_column)
+        {
+            Err(ErrorKind::InvalidSequencePoint.into())
+        } else {
+            Ok(Self {
+                il_offset,
+                start_line,
+                start_column,
+                end_line,
+                end_column,
+                document_id,
+            })
+        }
+    }
+
+    fn new_hidden(il_offset: u32, document_id: u32) -> Self {
+        Self {
+            il_offset,
+            start_line: 0xfeefee,
+            start_column: 0,
+            end_line: 0xfeefee,
+            end_column: 0,
+            document_id,
+        }
+    }
+
+    fn parse(
+        data: &[u8],
+        prev: Option<SequencePoint>,
+        prev_non_hidden: Option<SequencePoint>,
+        document_id: u32,
+    ) -> Result<(Self, &[u8]), Error> {
+        let (il_offset, data) = match prev {
+            Some(prev) => {
+                let (delta_il_offset, data) = decode_unsigned(data)?;
+                (prev.il_offset + delta_il_offset, data)
+            }
+            None => decode_unsigned(data)?,
+        };
+
+        let (delta_lines, data) = decode_unsigned(data)?;
+        let (delta_cols, data): (i32, &[u8]) = if delta_lines == 0 {
+            let (n, data) = decode_unsigned(data)?;
+            (n.try_into().unwrap(), data)
+        } else {
+            decode_signed(data)?
+        };
+
+        if delta_lines == 0 && delta_cols == 0 {
+            return Ok((Self::new_hidden(il_offset, document_id), data));
+        }
+
+        let (start_line, data) = match prev_non_hidden {
+            Some(prev) => {
+                let (delta_start_line, data) = decode_unsigned(data)?;
+                (prev.start_line + delta_start_line, data)
+            }
+            None => decode_unsigned(data)?,
+        };
+
+        let (start_column, data) = match prev_non_hidden {
+            Some(prev) => {
+                let (delta_start_col, data) = decode_unsigned(data)?;
+                (prev.start_column + delta_start_col, data)
+            }
+            None => decode_unsigned(data)?,
+        };
+
+        let end_line = start_line + delta_lines;
+        let end_column = (start_column as i32 + delta_cols) as u32;
+
+        Ok((
+            Self::new(
+                il_offset,
+                start_line,
+                start_column,
+                end_line,
+                end_column,
+                document_id,
+            )?,
+            data,
+        ))
+    }
+}
+
+impl fmt::Debug for SequencePoint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_hidden() {
+            f.debug_struct("HiddenSequencePoint")
+                .field("il_offset", &self.il_offset)
+                .field("document_id", &self.document_id)
+                .finish()
+        } else {
+            f.debug_struct("SequencePoint")
+                .field("il_offset", &self.il_offset)
+                .field("start_line", &self.start_line)
+                .field("start_column", &self.start_column)
+                .field("end_line", &self.end_line)
+                .field("end_column", &self.end_column)
+                .field("document_id", &self.document_id)
+                .finish()
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Document {
+    pub(crate) name: String,
+    pub(crate) lang: Language,
 }
 
 pub(crate) struct SequencePoints<'data> {

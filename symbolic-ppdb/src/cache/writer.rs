@@ -1,54 +1,34 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    io::Write,
-};
+use std::collections::HashMap;
+use std::io::Write;
 
 use indexmap::IndexMap;
 
 use super::{raw, CacheError};
 use crate::PortablePdb;
 
+/// The PortablePdbCache Converter.
+///
+/// This can extract data from a [`PortablePdb`] struct and
+/// serialize it to disk via its [`serialize`](PortablePdbConverter::serialize) method.
 #[derive(Debug, Default)]
 pub struct PortablePdbCacheConverter {
+    /// A byte sequence uniquely representing the debugging metadata blob content.
     pdb_id: [u8; 20],
+    /// The concatenation of all strings that have been added to this `Converter`.
     string_bytes: Vec<u8>,
+    /// A map from [`String`]s that have been added to this `Converter` to their offsets in the `string_bytes` field.
     strings: HashMap<String, u32>,
+    /// A map from [`raw::Range`]s to the [`raw::SourceLocation`]s they correspond to.
+    ///
+    /// Only the starting address of a range is saved, the end address is given implicitly
+    /// by the start address of the next range.
     pub(crate) ranges: IndexMap<raw::Range, raw::SourceLocation>,
 }
 
 impl PortablePdbCacheConverter {
+    /// Creates a new Converter.
     pub fn new() -> Self {
         Self::default()
-    }
-
-    fn set_pdb_id(&mut self, id: [u8; 20]) {
-        self.pdb_id = id;
-    }
-
-    /// Insert a string into this converter.
-    ///
-    /// If the string was already present, it is not added again. A newly added string
-    /// is prefixed by its length in LEB128 encoding. The returned `u32`
-    /// is the offset into the `string_bytes` field where the string is saved.
-    fn insert_string(&mut self, s: &str) -> u32 {
-        let Self {
-            ref mut strings,
-            ref mut string_bytes,
-            ..
-        } = self;
-        if s.is_empty() {
-            return u32::MAX;
-        }
-        if let Some(&offset) = strings.get(s) {
-            return offset;
-        }
-        let string_offset = string_bytes.len() as u32;
-        let string_len = s.len() as u64;
-        leb128::write::unsigned(string_bytes, string_len).unwrap();
-        string_bytes.extend(s.bytes());
-
-        strings.insert(s.to_owned(), string_offset);
-        string_offset
     }
 
     pub fn process_portable_pdb(&mut self, portable_pdb: &PortablePdb) -> Result<(), CacheError> {
@@ -80,12 +60,9 @@ impl PortablePdbCacheConverter {
         Ok(())
     }
 
-    // Methods for serializing to a [`Write`] below:
-    // Feel free to move these to a separate file.
-
     /// Serialize the converted data.
     ///
-    /// This writes the SymCache binary format into the given [`Write`].
+    /// This writes the PortablePdbCache binary format into the given [`Write`].
     pub fn serialize<W: Write>(self, writer: &mut W) -> std::io::Result<()> {
         let mut writer = WriteWrapper::new(writer);
 
@@ -119,6 +96,36 @@ impl PortablePdbCacheConverter {
         writer.write(&self.string_bytes)?;
 
         Ok(())
+    }
+
+    fn set_pdb_id(&mut self, id: [u8; 20]) {
+        self.pdb_id = id;
+    }
+
+    /// Insert a string into this converter.
+    ///
+    /// If the string was already present, it is not added again. A newly added string
+    /// is prefixed by its length in LEB128 encoding. The returned `u32`
+    /// is the offset into the `string_bytes` field where the string is saved.
+    fn insert_string(&mut self, s: &str) -> u32 {
+        let Self {
+            ref mut strings,
+            ref mut string_bytes,
+            ..
+        } = self;
+        if s.is_empty() {
+            return u32::MAX;
+        }
+        if let Some(&offset) = strings.get(s) {
+            return offset;
+        }
+        let string_offset = string_bytes.len() as u32;
+        let string_len = s.len() as u64;
+        leb128::write::unsigned(string_bytes, string_len).unwrap();
+        string_bytes.extend(s.bytes());
+
+        strings.insert(s.to_owned(), string_offset);
+        string_offset
     }
 }
 
