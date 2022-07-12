@@ -2,35 +2,14 @@ use std::collections::{btree_map::Entry, BTreeMap};
 
 use symbolic_common::{Language, Uuid};
 
+use crate::SequencePoint;
+
 use super::{decode_unsigned, tables::TableType, Error, ErrorKind, PortablePdb};
 
-const VISUAL_C_SHARP_UUID: Uuid = Uuid::from_bytes([
-    0x3f, 0x51, 0x62, 0xf8, 0x07, 0xc6, 0x11, 0xd3, 0x90, 0x53, 0x00, 0xc0, 0x4f, 0xa3, 0x02, 0xa1,
-]);
-
-const VISUAL_BASIC_UUID: Uuid = Uuid::from_bytes([
-    0x3a, 0x12, 0xd0, 0xb8, 0xc2, 0x6c, 0x11, 0xd0, 0xb4, 0x42, 0x00, 0xa0, 0x24, 0x4a, 0x1d, 0xd2,
-]);
-
-const VISUAL_F_SHARP_UUID: Uuid = Uuid::from_bytes([
-    0xab, 0x4f, 0x38, 0xc9, 0xb6, 0xe6, 0x43, 0xba, 0xbe, 0x3b, 0x58, 0x08, 0x0b, 0x2c, 0xcc, 0xe3,
-]);
-
-const C_SHARP_GUID: Uuid = Uuid::from_bytes([
-    0xf8, 0x62, 0x51, 0x3f, 0xc6, 0x07, 0xd3, 0x11, 0x90, 0x53, 0x00, 0xc0, 0x4f, 0xa3, 0x02, 0xa1,
-]);
-
 #[derive(Debug, Clone)]
-pub struct Document {
-    name: String,
-    lang: Language,
-}
-
-#[derive(Debug, Clone)]
-pub struct LineInfo {
-    line: u32,
-    file_name: String,
-    file_lang: Language,
+pub(crate) struct Document {
+    pub(crate) name: String,
+    pub(crate) lang: Language,
 }
 
 impl<'data> PortablePdb<'data> {
@@ -70,6 +49,26 @@ impl<'data> PortablePdb<'data> {
     }
 
     fn get_document_lang(&self, offset: u32) -> Result<Language, Error> {
+        const VISUAL_C_SHARP_UUID: Uuid = Uuid::from_bytes([
+            0x3f, 0x51, 0x62, 0xf8, 0x07, 0xc6, 0x11, 0xd3, 0x90, 0x53, 0x00, 0xc0, 0x4f, 0xa3,
+            0x02, 0xa1,
+        ]);
+
+        const VISUAL_BASIC_UUID: Uuid = Uuid::from_bytes([
+            0x3a, 0x12, 0xd0, 0xb8, 0xc2, 0x6c, 0x11, 0xd0, 0xb4, 0x42, 0x00, 0xa0, 0x24, 0x4a,
+            0x1d, 0xd2,
+        ]);
+
+        const VISUAL_F_SHARP_UUID: Uuid = Uuid::from_bytes([
+            0xab, 0x4f, 0x38, 0xc9, 0xb6, 0xe6, 0x43, 0xba, 0xbe, 0x3b, 0x58, 0x08, 0x0b, 0x2c,
+            0xcc, 0xe3,
+        ]);
+
+        const C_SHARP_GUID: Uuid = Uuid::from_bytes([
+            0xf8, 0x62, 0x51, 0x3f, 0xc6, 0x07, 0xd3, 0x11, 0x90, 0x53, 0x00, 0xc0, 0x4f, 0xa3,
+            0x02, 0xa1,
+        ]);
+
         let lang_guid = self.get_guid(offset)?;
 
         match lang_guid {
@@ -89,7 +88,7 @@ impl<'data> PortablePdb<'data> {
         md_stream.get_u32(table, row, col)
     }
 
-    fn get_document(&self, idx: usize) -> Result<Document, Error> {
+    pub(crate) fn get_document(&self, idx: usize) -> Result<Document, Error> {
         let name_offset = self.get_table_cell_u32(TableType::Document, idx, 1)?;
         let lang_offset = self.get_table_cell_u32(TableType::Document, idx, 4)?;
 
@@ -99,59 +98,82 @@ impl<'data> PortablePdb<'data> {
         Ok(Document { name, lang })
     }
 
-    pub fn documents(&self) -> Documents<'data> {
-        Documents {
+    fn get_sequence_points(&self, idx: usize) -> Result<Vec<SequencePoint>, Error> {
+        let document = self.get_table_cell_u32(TableType::MethodDebugInformation, idx, 1)?;
+        let offset = self.get_table_cell_u32(TableType::MethodDebugInformation, idx, 2)?;
+        if offset == 0 {
+            return Ok(Vec::new());
+        }
+        let data = self.get_blob(offset)?;
+        let (_local_signature, mut data) = decode_unsigned(data)?;
+        let mut current_document = match document {
+            0 => {
+                let (initial_document, rest) = decode_unsigned(data)?;
+                data = rest;
+                initial_document
+            }
+            _ => document,
+        };
+
+        let mut sequence_points = Vec::new();
+
+        let (first_sequence_point, mut data) =
+            SequencePoint::parse(data, None, None, current_document)?;
+
+        sequence_points.push(first_sequence_point);
+
+        let mut last_nonhidden =
+            (!first_sequence_point.is_hidden()).then_some(first_sequence_point);
+
+        while !data.is_empty() {
+            if data[0] == 0 {
+                let (doc, rest) = decode_unsigned(&data[1..])?;
+                current_document = doc;
+                data = rest;
+                continue;
+            }
+
+            let (sequence_point, rest) = SequencePoint::parse(
+                data,
+                sequence_points.last().cloned(),
+                last_nonhidden,
+                current_document,
+            )?;
+            data = rest;
+
+            sequence_points.push(sequence_point);
+            if !sequence_point.is_hidden() {
+                last_nonhidden = Some(sequence_point);
+            }
+        }
+
+        Ok(sequence_points)
+    }
+
+    pub(crate) fn get_all_sequence_points(&self) -> SequencePoints<'data> {
+        SequencePoints {
             ppdb: self.clone(),
             count: 1,
         }
     }
-
-    pub fn lookup(&self, method: usize, il_offset: u32) -> Result<LineInfo, Error> {
-        let doc_idx = self.get_table_cell_u32(TableType::MethodDebugInformation, method, 1)?;
-        let sp_offset = self.get_table_cell_u32(TableType::MethodDebugInformation, method, 2)?;
-
-        let doc_idx = (doc_idx > 0).then_some(doc_idx);
-        let sequence_points = if sp_offset > 0 {
-            self.get_sequence_points(sp_offset, doc_idx)?
-        } else {
-            return Err(ErrorKind::NoSequencePoints(method).into());
-        };
-
-        dbg!(&sequence_points);
-        let sp = match sequence_points.binary_search_by_key(&il_offset, |sp| sp.il_offset) {
-            Ok(idx) => sequence_points[idx],
-            Err(0) => return Err(ErrorKind::IlOffsetNotCovered(il_offset).into()),
-            Err(idx) => sequence_points[idx - 1],
-        };
-
-        let doc_idx = sp.document_id as usize;
-
-        let doc = self.get_document(doc_idx)?;
-
-        Ok(LineInfo {
-            line: sp.start_line,
-            file_name: doc.name.clone(),
-            file_lang: doc.lang,
-        })
-    }
 }
 
-pub struct Documents<'data> {
+pub(crate) struct SequencePoints<'data> {
     ppdb: PortablePdb<'data>,
     count: usize,
 }
 
-impl<'data> Iterator for Documents<'data> {
-    type Item = Result<Document, Error>;
+impl<'data> Iterator for SequencePoints<'data> {
+    type Item = Result<Vec<SequencePoint>, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let md_stream = self.ppdb.table_stream.as_ref()?;
-        let num_docs = md_stream[TableType::Document].rows;
+        let num_methods = md_stream[TableType::MethodDebugInformation].rows;
 
-        if self.count > num_docs {
+        if self.count > num_methods {
             None
         } else {
-            let res = self.ppdb.get_document(self.count);
+            let res = self.ppdb.get_sequence_points(self.count);
             self.count += 1;
             Some(res)
         }

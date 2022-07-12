@@ -1,3 +1,4 @@
+mod cache;
 mod lookup;
 mod tables;
 
@@ -324,55 +325,8 @@ impl<'data> PortablePdb<'data> {
             .get_blob(offset)
     }
 
-    fn get_sequence_points(
-        &self,
-        offset: u32,
-        document: Option<u32>,
-    ) -> Result<Vec<SequencePoint>, Error> {
-        let data = self.get_blob(offset)?;
-        let (local_signature, mut data) = decode_unsigned(data)?;
-        let mut current_document = match document {
-            Some(document) => document,
-            None => {
-                let (initial_document, rest) = decode_unsigned(data)?;
-                data = rest;
-                initial_document
-            }
-        };
-
-        let mut sequence_points = Vec::new();
-
-        let (first_sequence_point, mut data) =
-            SequencePoint::parse(data, None, None, current_document)?;
-
-        sequence_points.push(first_sequence_point);
-
-        let mut last_nonhidden =
-            (!first_sequence_point.is_hidden()).then_some(first_sequence_point);
-
-        while !data.is_empty() {
-            if data[0] == 0 {
-                let (doc, rest) = decode_unsigned(&data[1..])?;
-                current_document = doc;
-                data = rest;
-                continue;
-            }
-
-            let (sequence_point, rest) = SequencePoint::parse(
-                data,
-                sequence_points.last().cloned(),
-                last_nonhidden,
-                current_document,
-            )?;
-            data = rest;
-
-            sequence_points.push(sequence_point);
-            if !sequence_point.is_hidden() {
-                last_nonhidden = Some(sequence_point);
-            }
-        }
-
-        Ok(sequence_points)
+    pub(crate) fn pdb_id(&self) -> Option<[u8; 20]> {
+        self.pdb_stream.as_ref().map(|stream| stream.header.id)
     }
 }
 
@@ -677,6 +631,10 @@ impl fmt::Debug for SequencePoint {
 
 #[cfg(test)]
 mod tests {
+    use crate::cache::writer::PortablePdbCacheConverter;
+    use crate::cache::PortablePdbCache;
+    use crate::PortablePdb;
+
     use super::decode_signed;
     use super::decode_unsigned;
 
@@ -713,55 +671,22 @@ mod tests {
             assert_eq!(decode_signed(arg).unwrap().0, *res);
         }
     }
-}
 
-#[test]
-fn test_ppdb() {
-    let buf = std::fs::read("/Users/sebastian/code/unity/Runtime/Sentry.Unity.pdb").unwrap();
+    #[test]
+    fn test_ppdb() {
+        let buf = std::fs::read("/Users/sebastian/code/unity/Runtime/Sentry.Unity.pdb").unwrap();
 
-    let pdb = PortablePdb::parse(&buf).unwrap();
+        let pdb = PortablePdb::parse(&buf).unwrap();
 
-    let table_stream = pdb.table_stream.as_ref().unwrap();
+        let mut converter = PortablePdbCacheConverter::new();
+        converter.process_portable_pdb(&pdb).unwrap();
+        let mut buf = Vec::new();
+        converter.serialize(&mut buf).unwrap();
 
-    for (i, table) in table_stream
-        .tables
-        .iter()
-        .enumerate()
-        .filter(|(_, table)| table.rows > 0)
-    {
-        println!("{i:#0x}: {table:?}");
+        let cache = PortablePdbCache::parse(&buf).unwrap();
+
+        for r in cache.ranges {
+            assert!(cache.lookup(r.idx as usize, r.il_offset as usize).is_some());
+        }
     }
-
-    dbg!(pdb.lookup(10, 17).unwrap());
-
-    // let num_methods = table_stream[TableType::MethodDebugInformation].rows;
-    // for method in 1..=num_methods {
-    //     let doc = table_stream
-    //         .get_u32(TableType::MethodDebugInformation, method, 1)
-    //         .filter(|n| *n > 0);
-    //     let blob_idx = table_stream
-    //         .get_u32(TableType::MethodDebugInformation, method, 2)
-    //         .filter(|n| *n > 0);
-
-    //     if let Some(blob_idx) = blob_idx {
-    //         dbg!(method);
-    //         let sequence_points = pdb
-    //             .get_sequence_points(blob_idx, doc)
-    //             .unwrap()
-    //             .sequence_points;
-
-    //         dbg!(&sequence_points);
-
-    //         for sp in sequence_points.iter() {
-    //             let id = sp.document_id as usize;
-    //             let doc_idx = table_stream.get_u32(TableType::Document, id, 1);
-    //             match doc_idx {
-    //                 Some(idx) => println!("{}", pdb.get_document_name(idx).unwrap()),
-    //                 None => println!("no document"),
-    //             }
-    //         }
-    //     }
-    // }
-
-    // dbg!(table_stream.get_row(TableType::LocalScope, 1));
 }
