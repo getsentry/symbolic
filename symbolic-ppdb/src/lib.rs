@@ -388,7 +388,7 @@ mod tests {
 
     #[test]
     fn test_ppdb() {
-        let buf = std::fs::read("/Users/sebastian/code/unity/Runtime/Sentry.Unity.pdb").unwrap();
+        let buf = std::fs::read("_fixtures/Documents.pdbx").unwrap();
 
         let pdb = PortablePdb::parse(&buf).unwrap();
 
