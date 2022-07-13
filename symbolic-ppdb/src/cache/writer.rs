@@ -9,7 +9,7 @@ use crate::PortablePdb;
 /// The PortablePdbCache Converter.
 ///
 /// This can extract data from a [`PortablePdb`] struct and
-/// serialize it to disk via its [`serialize`](PortablePdbConverter::serialize) method.
+/// serialize it to disk via its [`serialize`](PortablePdbCacheConverter::serialize) method.
 #[derive(Debug, Default)]
 pub struct PortablePdbCacheConverter {
     /// A byte sequence uniquely representing the debugging metadata blob content.
