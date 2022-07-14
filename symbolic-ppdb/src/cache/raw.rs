@@ -20,6 +20,8 @@ pub(crate) struct Header {
     pub(crate) version: u32,
     /// A byte sequence uniquely representing the debugging metadata blob content.
     pub(crate) pdb_id: [u8; 20],
+    /// The number of files contained in the cache file.
+    pub(crate) num_files: u32,
     /// The number of ranges/source locations contained in the cache file.
     pub(crate) num_ranges: u32,
     /// Total number of bytes used for string data.
@@ -29,13 +31,12 @@ pub(crate) struct Header {
     pub(crate) _reserved: [u8; 16],
 }
 
-/// A location in a source file, comprising a line, a file name, and the file's source language.
+/// A location in a source file, comprising a line and the index of a file.
 #[derive(Debug, Clone, Copy, FromBytes)]
 #[repr(C)]
 pub(crate) struct SourceLocation {
     pub(crate) line: u32,
-    pub(crate) file_name_idx: u32,
-    pub(crate) lang: u32,
+    pub(crate) file_idx: u32,
 }
 
 /// A range of IL offsets in a function.
@@ -47,4 +48,14 @@ pub(crate) struct SourceLocation {
 pub(crate) struct Range {
     pub(crate) idx: u32,
     pub(crate) il_offset: u32,
+}
+
+/// Serialized file in the cache.
+#[derive(Debug, Clone, Copy, FromBytes, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(C)]
+pub(crate) struct File {
+    /// The file path (reference to a [`String`]).
+    pub(crate) name_offset: u32,
+    /// The file's source language.
+    pub(crate) lang: u32,
 }

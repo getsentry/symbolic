@@ -7,17 +7,22 @@
 //! A PortablePdbCache(version 1) contains the following primary kinds of data, written in the following
 //! order:
 //!
-//! 1. Source Locations
-//! 2. Address Ranges
-//! 3. String Data
+//! 1. Files
+//! 2. Source Locations
+//! 3. Address Ranges
+//! 4. String Data
 //!
-//! The format uses `u32`s to represent line numbers, IL offsets,  and string offsets.
-//! Line numbers use `0` to represent an unknown or invalid value. String
+//! The format uses `u32`s to represent line numbers, referencecs, IL offsets, languages, and string offsets.
+//! Line numbers use `0` to represent an unknown or invalid value. References and string
 //! offsets instead use `u32::MAX`.
 //!
 //! Strings are saved in one contiguous section with each individual string prefixed by
 //! its length in LEB-128 encoding. Source locations refer to strings by an offset into this string section,
 //! hence "string offset".
+//!
+//! ## Files
+//!
+//! A file contains a string offset for its name and a language.
 //!
 //! ## Address Ranges
 //!
@@ -28,7 +33,7 @@
 //! ## Source Locations
 //!
 //! A source location in a PortablePDBCache represents a line in a source file.
-//! It contains a line number, a reference to a file name (see above), and a `u32` representing the source file's language.
+//! It contains a line number and a reference to a file.
 //!
 //! ## Mapping From Ranges To Source Locations
 //!
@@ -40,6 +45,7 @@
 //!
 //! 1. Find the range belonging to the `i`th function that covers `offset` via binary search.
 //! 2. Find the source location belonging to this range.
+//! 3. Find the file referenced by the source location.
 
 pub(crate) mod lookup;
 pub(crate) mod raw;
@@ -65,6 +71,8 @@ pub enum CacheErrorKind {
     InvalidRanges,
     #[error("could not read source locations")]
     InvalidSourceLocations,
+    #[error("could not read files")]
+    InvalidFiles,
     #[error("expected {expected} string bytes, found {found}")]
     UnexpectedStringBytes { expected: usize, found: usize },
     #[error("error processing portable pdb file")]
@@ -114,6 +122,7 @@ impl From<crate::Error> for CacheError {
 /// via the [`PortablePdbCache::lookup`] method.
 pub struct PortablePdbCache<'data> {
     header: &'data raw::Header,
+    files: &'data [raw::File],
     source_locations: &'data [raw::SourceLocation],
     ranges: &'data [raw::Range],
     string_bytes: &'data [u8],
@@ -138,6 +147,15 @@ impl<'data> PortablePdbCache<'data> {
             return Err(CacheErrorKind::WrongVersion(header.version).into());
         }
 
+        let rest = align_buf(rest);
+
+        let (lv, rest) = LayoutVerified::<_, [raw::File]>::new_slice_from_prefix(
+            rest,
+            header.num_files as usize,
+        )
+        .ok_or(CacheErrorKind::InvalidFiles)?;
+
+        let files = lv.into_slice();
         let rest = align_buf(rest);
 
         let (lv, rest) = LayoutVerified::<_, [raw::SourceLocation]>::new_slice_from_prefix(
@@ -168,6 +186,7 @@ impl<'data> PortablePdbCache<'data> {
 
         Ok(Self {
             header,
+            files,
             source_locations,
             ranges,
             string_bytes: rest,
@@ -176,7 +195,7 @@ impl<'data> PortablePdbCache<'data> {
 
     fn debug_id(&self) -> DebugId {
         let (guid, age) = self.header.pdb_id.split_at(16);
-        let age = u32::from_be_bytes(age.try_into().unwrap());
+        let age = u32::from_ne_bytes(age.try_into().unwrap());
         DebugId::from_guid_age(guid, age).unwrap()
     }
 }
@@ -186,6 +205,7 @@ impl<'data> std::fmt::Debug for PortablePdbCache<'data> {
         f.debug_struct("PortablePdbCache")
             .field("version", &self.header.version)
             .field("debug_id", &self.debug_id())
+            .field("files", &self.header.num_files)
             .field("ranges", &self.header.num_ranges)
             .field("string_bytes", &self.header.string_bytes)
             .finish()

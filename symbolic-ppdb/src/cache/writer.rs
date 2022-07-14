@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::io::Write;
 
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
+use symbolic_common::Language;
 
 use super::{raw, CacheError};
 use crate::PortablePdb;
@@ -14,6 +15,8 @@ use crate::PortablePdb;
 pub struct PortablePdbCacheConverter {
     /// A byte sequence uniquely representing the debugging metadata blob content.
     pdb_id: [u8; 20],
+    /// The set of all [`raw::File`]s that have been added to this `Converter`.
+    files: IndexSet<raw::File>,
     /// The concatenation of all strings that have been added to this `Converter`.
     string_bytes: Vec<u8>,
     /// A map from [`String`]s that have been added to this `Converter` to their offsets in the `string_bytes` field.
@@ -46,11 +49,10 @@ impl PortablePdbCacheConverter {
                 };
 
                 let doc = portable_pdb.get_document(sp.document_id as usize)?;
-                let file_name_idx = self.insert_string(&doc.name);
+                let file_idx = self.insert_file(&doc.name, doc.lang);
                 let source_location = raw::SourceLocation {
                     line: if sp.is_hidden() { 0 } else { sp.start_line },
-                    file_name_idx,
-                    lang: doc.lang as u32,
+                    file_idx,
                 };
 
                 self.ranges.insert(range, source_location);
@@ -67,6 +69,7 @@ impl PortablePdbCacheConverter {
         let mut writer = WriteWrapper::new(writer);
 
         let num_ranges = self.ranges.len() as u32;
+        let num_files = self.files.len() as u32;
         let string_bytes = self.string_bytes.len() as u32;
 
         let header = raw::Header {
@@ -75,12 +78,18 @@ impl PortablePdbCacheConverter {
 
             pdb_id: self.pdb_id,
 
+            num_files,
             num_ranges,
             string_bytes,
             _reserved: [0; 16],
         };
 
         writer.write(&[header])?;
+        writer.align()?;
+
+        for file in self.files.into_iter() {
+            writer.write(&[file])?;
+        }
         writer.align()?;
 
         for sl in self.ranges.values().copied() {
@@ -100,6 +109,16 @@ impl PortablePdbCacheConverter {
 
     fn set_pdb_id(&mut self, id: [u8; 20]) {
         self.pdb_id = id;
+    }
+
+    fn insert_file(&mut self, name: &str, lang: Language) -> u32 {
+        let name_offset = self.insert_string(name);
+        let file = raw::File {
+            name_offset,
+            lang: lang as u32,
+        };
+
+        self.files.insert_full(file).0 as u32
     }
 
     /// Insert a string into this converter.

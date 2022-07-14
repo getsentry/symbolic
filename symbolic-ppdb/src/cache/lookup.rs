@@ -35,13 +35,20 @@ impl<'data> PortablePdbCache<'data> {
             }
         };
 
-        let file_name = self.get_string(sl.file_name_idx)?;
+        let (file_name, file_lang) = self.get_file(sl.file_idx)?;
 
         Some(LineInfo {
             line: sl.line,
             file_name,
-            file_lang: Language::from_u32(sl.lang),
+            file_lang,
         })
+    }
+
+    fn get_file(&self, idx: u32) -> Option<(&'data str, Language)> {
+        let raw = self.files.get(idx as usize)?;
+        let name = self.get_string(raw.name_offset)?;
+
+        Some((name, Language::from_u32(raw.lang)))
     }
 
     /// Resolves a string reference to the pointed-to `&str` data.
