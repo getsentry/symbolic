@@ -21,7 +21,7 @@ all-features = true
 [dependencies]
 indexmap = "1.9.1"
 leb128 = "0.2.5"
-symbolic-common = { version = "9.0.0", path = "../symbolic-common" }
+symbolic-common = { path = "../symbolic-common" }
 thiserror = "1.0.31"
 uuid = "1.0.0"
 zerocopy = "0.6.1"

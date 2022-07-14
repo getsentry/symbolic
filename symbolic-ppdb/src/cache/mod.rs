@@ -45,6 +45,7 @@ pub(crate) mod lookup;
 pub(crate) mod raw;
 pub(crate) mod writer;
 
+use symbolic_common::DebugId;
 use thiserror::Error;
 use zerocopy::LayoutVerified;
 
@@ -172,13 +173,19 @@ impl<'data> PortablePdbCache<'data> {
             string_bytes: rest,
         })
     }
+
+    fn debug_id(&self) -> DebugId {
+        let (guid, age) = self.header.pdb_id.split_at(16);
+        let age = u32::from_be_bytes(age.try_into().unwrap());
+        DebugId::from_guid_age(guid, age).unwrap()
+    }
 }
 
 impl<'data> std::fmt::Debug for PortablePdbCache<'data> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PortablePdbCache")
             .field("version", &self.header.version)
-            .field("pdb_id", &self.header.pdb_id)
+            .field("debug_id", &self.debug_id())
             .field("ranges", &self.header.num_ranges)
             .field("string_bytes", &self.header.string_bytes)
             .finish()
