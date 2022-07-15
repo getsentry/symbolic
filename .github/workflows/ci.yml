@@ -45,7 +45,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-features --workspace --tests --examples -- -D clippy::all
+          args: --all-features --workspace --all-targets -- -D clippy::all
 
       - run: make lint-python
 
@@ -99,7 +99,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --workspace --all-features
+          args: --workspace --all-features --all-targets
 
   test-python:
     strategy:
