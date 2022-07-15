@@ -11,7 +11,8 @@ use elsa::FrozenMap;
 use parking_lot::RwLock;
 use pdb_addr2line::pdb::{
     AddressMap, FallibleIterator, InlineSiteSymbol, LineProgram, MachineType, Module, ModuleInfo,
-    PdbInternalSectionOffset, ProcedureSymbol, SymbolData,
+    PdbInternalSectionOffset, ProcedureSymbol, RawString, SeparatedCodeSymbol, SymbolData,
+    TypeIndex,
 };
 use pdb_addr2line::ModuleProvider;
 use smallvec::SmallVec;
@@ -673,16 +674,19 @@ impl<'s> Unit<'s> {
         Ok(lines)
     }
 
-    fn handle_procedure(
+    fn handle_function(
         &self,
-        proc: ProcedureSymbol<'s>,
+        offset: PdbInternalSectionOffset,
+        len: u32,
+        name: RawString<'s>,
+        type_index: TypeIndex,
         program: &LineProgram<'s>,
     ) -> Result<Option<Function<'s>>, PdbError> {
         let address_map = &self.debug_info.address_map;
 
         // Translate the function's address to the PE's address space. If this fails, we're
         // likely dealing with an invalid function and can skip it.
-        let address = match proc.offset.to_rva(address_map) {
+        let address = match offset.to_rva(address_map) {
             Some(addr) => u64::from(addr.0),
             None => return Ok(None),
         };
@@ -692,27 +696,46 @@ impl<'s> Unit<'s> {
         // are contained in the type info. We do not emit a return type.
         let formatter = &self.debug_info.type_formatter;
         let name = Name::new(
-            formatter.format_function(
-                &proc.name.to_string(),
-                self.module_index,
-                proc.type_index,
-            )?,
+            formatter.format_function(&name.to_string(), self.module_index, type_index)?,
             NameMangling::Unmangled,
             Language::Unknown,
         );
 
-        let line_iter = program.lines_for_symbol(proc.offset);
+        let line_iter = program.lines_for_symbol(offset);
         let lines = self.collect_lines(line_iter, program)?;
 
         Ok(Some(Function {
             address,
-            size: proc.len.into(),
+            size: len.into(),
             name,
             compilation_dir: &[],
             lines,
             inlinees: Vec::new(),
             inline: false,
         }))
+    }
+
+    fn handle_procedure(
+        &self,
+        proc: &ProcedureSymbol<'s>,
+        program: &LineProgram<'s>,
+    ) -> Result<Option<Function<'s>>, PdbError> {
+        self.handle_function(proc.offset, proc.len, proc.name, proc.type_index, program)
+    }
+
+    fn handle_separated_code(
+        &self,
+        proc: &ProcedureSymbol<'s>,
+        sepcode: &SeparatedCodeSymbol,
+        program: &LineProgram<'s>,
+    ) -> Result<Option<Function<'s>>, PdbError> {
+        self.handle_function(
+            sepcode.offset,
+            sepcode.len,
+            proc.name,
+            proc.type_index,
+            program,
+        )
     }
 
     fn handle_inlinee(
@@ -780,6 +803,7 @@ impl<'s> Unit<'s> {
         let mut functions = Vec::new();
         let mut stack = FunctionStack::new();
         let mut proc_offsets = SmallVec::<[_; 3]>::new();
+        let mut last_proc = None;
 
         while let Some(symbol) = symbols.next()? {
             if inc_next {
@@ -813,8 +837,16 @@ impl<'s> Unit<'s> {
             let function = match symbol.parse() {
                 Ok(SymbolData::Procedure(proc)) => {
                     proc_offsets.push((depth, proc.offset));
-                    self.handle_procedure(proc, &program)?
+                    let function = self.handle_procedure(&proc, &program)?;
+                    last_proc = Some(proc);
+                    function
                 }
+                Ok(SymbolData::SeparatedCode(sepcode)) => match last_proc.as_ref() {
+                    Some(last_proc) if last_proc.offset == sepcode.parent_offset => {
+                        self.handle_separated_code(last_proc, &sepcode, &program)?
+                    }
+                    _ => continue,
+                },
                 Ok(SymbolData::InlineSite(site)) => {
                     let parent_offset = proc_offsets
                         .last()
