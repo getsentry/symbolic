@@ -338,6 +338,14 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
             })
             .collect()
     }
+
+    async fn get_file_path(
+        &self,
+        _module: &(dyn Module + Sync),
+        _kind: minidump_processor::FileKind,
+    ) -> Result<PathBuf, minidump_processor::FileError> {
+        Err(minidump_processor::FileError::NotFound)
+    }
 }
 
 fn symbolize<'a>(
