@@ -270,7 +270,7 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
         let source_location = symcache
             .get()
             .lookup(instruction - module.base_address())
-            .next()
+            .last()
             .ok_or(FillSymbolError {})?;
 
         frame.set_function(
