@@ -32,26 +32,3 @@ pub use cache::lookup::LineInfo;
 pub use cache::writer::PortablePdbCacheConverter;
 pub use cache::PortablePdbCache;
 pub use format::PortablePdb;
-
-#[cfg(test)]
-mod tests {
-    use crate::cache::writer::PortablePdbCacheConverter;
-    use crate::cache::PortablePdbCache;
-    use crate::format::PortablePdb;
-
-    #[test]
-    fn test_ppdb() {
-        let buf = std::fs::read("tests/fixtures/Documents.pdbx").unwrap();
-
-        let pdb = PortablePdb::parse(&buf).unwrap();
-
-        let mut converter = PortablePdbCacheConverter::new();
-        converter.process_portable_pdb(&pdb).unwrap();
-        let mut buf = Vec::new();
-        converter.serialize(&mut buf).unwrap();
-
-        let cache = PortablePdbCache::parse(&buf).unwrap();
-
-        dbg!(cache);
-    }
-}
