@@ -100,11 +100,11 @@ impl<'data> StringStream<'data> {
 /// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.4-us-and-blob-heaps.md.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct UsStream<'data> {
-    buf: &'data [u8],
+    _buf: &'data [u8],
 }
 impl<'data> UsStream<'data> {
     pub(crate) fn new(buf: &'data [u8]) -> Self {
-        Self { buf }
+        Self { _buf: buf }
     }
 }
 /// A stream representing the "GUID heap", which contains GUIDs.
