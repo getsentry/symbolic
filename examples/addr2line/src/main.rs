@@ -35,7 +35,7 @@ fn resolve(function: &Function<'_>, addr: u64, matches: &ArgMatches) -> Result<b
         return Ok(false);
     }
 
-    if *matches.get_one("inlines").unwrap() {
+    if *matches.get_one("inlinees").unwrap() {
         for il in &function.inlinees {
             resolve(il, addr, matches)?;
         }

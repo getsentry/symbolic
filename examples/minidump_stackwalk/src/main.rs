@@ -270,7 +270,7 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
         let source_location = symcache
             .get()
             .lookup(instruction - module.base_address())
-            .next()
+            .last()
             .ok_or(FillSymbolError {})?;
 
         frame.set_function(
@@ -295,6 +295,7 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
         module: &(dyn Module + Sync),
         walker: &mut (dyn FrameWalker + Send),
     ) -> Option<()> {
+        tracing::info!("walk_frame called");
         if !self.use_cfi {
             return None;
         }
@@ -336,6 +337,14 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
                 (debug_id.to_string(), stats)
             })
             .collect()
+    }
+
+    async fn get_file_path(
+        &self,
+        _module: &(dyn Module + Sync),
+        _kind: minidump_processor::FileKind,
+    ) -> Result<PathBuf, minidump_processor::FileError> {
+        Err(minidump_processor::FileError::NotFound)
     }
 }
 
@@ -575,7 +584,7 @@ async fn execute(matches: &ArgMatches) -> Result<(), Error> {
 
     let options = PrintOptions {
         crashed_only: *matches.get_one("only_crash").unwrap(),
-        show_modules: *matches.get_one("no_modules").unwrap(),
+        show_modules: *matches.get_one("show_modules").unwrap(),
     };
 
     let (cfi_files, symcaches) = symbol_provider.into_inner();

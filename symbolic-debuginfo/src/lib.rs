@@ -54,6 +54,8 @@ pub mod breakpad;
 pub mod dwarf;
 #[cfg(feature = "elf")]
 pub mod elf;
+#[cfg(any(feature = "dwarf", feature = "breakpad"))]
+pub mod function_builder;
 #[cfg(feature = "macho")]
 pub mod macho;
 #[cfg(feature = "ms")]

@@ -141,6 +141,21 @@ fn test_breakpad_functions() -> Result<(), Error> {
 }
 
 #[test]
+fn test_breakpad_functions_mac_with_inlines() -> Result<(), Error> {
+    let view = ByteView::open(fixture("macos/crash.inlines.sym"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session()?;
+    let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
+    insta::assert_debug_snapshot!(
+        "breakpad_functions_mac_with_inlines",
+        FunctionsDebug(&functions[..10], 0)
+    );
+
+    Ok(())
+}
+
+#[test]
 fn test_elf_executable() -> Result<(), Error> {
     let view = ByteView::open(fixture("linux/crash"))?;
     let object = Object::parse(&view)?;
@@ -532,7 +547,7 @@ fn test_pdb_anonymous_namespace() -> Result<(), Error> {
         .expect("start function at 0x2a3d");
 
     // was: "?A0xc3a0617d::start"
-    assert_eq!(start_function.name, "`anonymous namespace'::start");
+    assert_eq!(start_function.name, "`anonymous namespace'::start()");
 
     Ok(())
 }

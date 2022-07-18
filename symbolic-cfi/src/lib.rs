@@ -273,7 +273,7 @@ impl<U> UnwindInfo<U> {
         let arch = object.arch();
         let load_address = object.load_address();
 
-        // CFI information can have relative offsets to the virtual address of thir respective debug
+        // CFI can have relative offsets to the virtual address of the respective debug
         // section (either `.eh_frame` or `.debug_frame`). We need to supply this offset to the
         // entries iterator before starting to interpret instructions. The other base addresses are
         // not needed for CFI.
@@ -546,12 +546,25 @@ impl<W: Write> AsciiCfiWriter<W> {
                     // scanning either way.
 
                     let start_addr = entry.instruction_address;
-                    if let CpuFamily::Amd64 = object.arch().cpu_family() {
-                        writeln!(
-                            self.inner,
-                            "STACK CFI INIT {:x} {:x} .cfa: $rsp 8 + .ra: .cfa -8 + ^",
-                            start_addr, entry.len
-                        )?;
+                    match object.arch().cpu_family() {
+                        CpuFamily::Amd64 => {
+                            writeln!(
+                                self.inner,
+                                "STACK CFI INIT {:x} {:x} .cfa: $rsp 8 + .ra: .cfa -8 + ^",
+                                start_addr, entry.len
+                            )?;
+                        }
+                        CpuFamily::Arm64 => {
+                            // Assume this is a stackless leaf, return address is in lr (x30).
+                            writeln!(
+                                self.inner,
+                                "STACK CFI INIT {:x} {:x} .cfa: sp .ra: x30",
+                                start_addr, entry.len
+                            )?;
+                        }
+                        _ => {
+                            // Do nothing
+                        }
                     }
                 }
                 CompactUnwindOp::UseDwarfFde { offset_in_eh_frame } => {
@@ -746,12 +759,25 @@ impl<W: Write> AsciiCfiWriter<W> {
                 // Print only registers that have changed rules to their previous occurrence to
                 // reduce the number of rules per row. Then, cache the new occurrence for the next
                 // row.
+                let mut ra_written = false;
                 for &(register, ref rule) in row.registers() {
                     if !rule_cache.get(&register).map_or(false, |c| c == &rule) {
                         rule_cache.insert(register, rule);
+                        if register == ra {
+                            ra_written = true;
+                        }
                         written |=
                             Self::write_register_rule(&mut line, info.arch, register, rule, ra)?;
                     }
+                }
+                // On MIPS: if no explicit rule was encountered for the return address,
+                // emit a rule stating that the return address should be recovered from the
+                // $ra register.
+                if row.start_address() == start
+                    && !ra_written
+                    && matches!(info.arch, Arch::Mips | Arch::Mips64)
+                {
+                    write!(line, " .ra: $ra")?;
                 }
 
                 if written {
