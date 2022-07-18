@@ -245,7 +245,6 @@ struct IndexSizes {
 #[derive(Debug, Clone)]
 pub struct MetadataStream<'data> {
     header: &'data super::raw::MetadataStreamHeader,
-    referenced_table_sizes: [u32; 64],
     tables: [Table<'data>; 64],
 }
 
@@ -274,13 +273,9 @@ impl<'data> MetadataStream<'data> {
         }
 
         let table_contents = rest;
-        let mut result = Self {
-            header,
-            referenced_table_sizes,
-            tables,
-        };
+        let mut result = Self { header, tables };
 
-        result.set_columns();
+        result.set_columns(&referenced_table_sizes);
 
         let total_length: usize = result
             .tables
@@ -340,10 +335,10 @@ impl<'data> MetadataStream<'data> {
     }
 
     /// Sets the column widths of all tables in this stream.
-    fn set_columns(&mut self) {
+    fn set_columns(&mut self, referenced_table_sizes: &[u32; 64]) {
         use TableType::*;
 
-        let index_sizes = self.index_sizes();
+        let index_sizes = self.index_sizes(referenced_table_sizes);
 
         self[Assembly].set_columns(
             4,
@@ -637,17 +632,17 @@ impl<'data> MetadataStream<'data> {
         }
     }
 
-    fn table_size(&self, table: TableType) -> usize {
+    fn table_size(&self, table: TableType, referenced_table_sizes: &[u32; 64]) -> usize {
         std::cmp::max(
             self[table].rows,
-            self.referenced_table_sizes[table as usize] as usize,
+            referenced_table_sizes[table as usize] as usize,
         )
     }
 
     /// Returns the size in bytes of an index into this stream's `table` table, based on the table's
     /// number of rows.
-    fn table_index_size(&self, table: TableType) -> usize {
-        if self.table_size(table) >= u16::MAX as usize {
+    fn table_index_size(&self, table: TableType, referenced_table_sizes: &[u32; 64]) -> usize {
+        if self.table_size(table, referenced_table_sizes) >= u16::MAX as usize {
             4
         } else {
             2
@@ -658,7 +653,11 @@ impl<'data> MetadataStream<'data> {
     ///
     /// This depends on the number of tables (because some part of the index needs to be used
     /// as a tag) and the  maximum number of rows among them.
-    fn composite_index_size(&self, tables: &[TableType]) -> usize {
+    fn composite_index_size(
+        &self,
+        tables: &[TableType],
+        referenced_table_sizes: &[u32; 64],
+    ) -> usize {
         /// Checks if `row_count` is less than 2^(16 - bits).
         fn is_small(row_count: usize, bits: u8) -> bool {
             (row_count as u64) < (1u64 << (16 - bits))
@@ -683,7 +682,7 @@ impl<'data> MetadataStream<'data> {
         let bits_needed = tag_bits(tables.len());
         if tables
             .iter()
-            .map(|table| self.table_size(*table))
+            .map(|table| self.table_size(*table, referenced_table_sizes))
             .all(|row_count| is_small(row_count, bits_needed))
         {
             2
@@ -693,92 +692,112 @@ impl<'data> MetadataStream<'data> {
     }
 
     /// Returns a record of  `IndexSizes` for this stream.
-    fn index_sizes(&self) -> IndexSizes {
+    fn index_sizes(&self, referenced_table_sizes: &[u32; 64]) -> IndexSizes {
         use TableType::*;
         IndexSizes {
             string_heap: self.string_index_size(),
             guid_heap: self.guid_index_size(),
             blob_heap: self.blob_index_size(),
-            assembly_ref_table: self.table_index_size(AssemblyRef),
-            event_table: self.table_index_size(Event),
-            field_table: self.table_index_size(Field),
-            generic_param_table: self.table_index_size(GenericParam),
-            method_def_table: self.table_index_size(MethodDef),
-            module_ref_table: self.table_index_size(ModuleRef),
-            param_table: self.table_index_size(Param),
-            property_table: self.table_index_size(Property),
-            type_def_table: self.table_index_size(TypeDef),
-            document_table: self.table_index_size(Document),
-            import_scope_table: self.table_index_size(ImportScope),
-            local_constant_table: self.table_index_size(LocalConstant),
-            local_variable_table: self.table_index_size(LocalVariable),
-            type_def_or_ref: self.composite_index_size(&[TypeDef, TypeRef, TypeSpec]),
-            has_constant: self.composite_index_size(&[Field, Param, Property]),
-            has_custom_attribute: self.composite_index_size(&[
-                MethodDef,
-                Field,
-                TypeRef,
-                TypeDef,
-                Param,
-                InterfaceImpl,
-                MemberRef,
-                Module,
-                // the spec lists "Permission" here, but there's no such table?!
-                Property,
-                Event,
-                StandAloneSig,
-                ModuleRef,
-                TypeSpec,
-                Assembly,
-                AssemblyRef,
-                File,
-                ExportedType,
-                ManifestResource,
-                GenericParam,
-                GenericParamConstraint,
-                MethodSpec,
-            ]),
-            has_field_marshal: self.composite_index_size(&[Field, Param]),
-            has_decl_security: self.composite_index_size(&[TypeDef, MethodDef, Assembly]),
-            member_ref_parent: self
-                .composite_index_size(&[TypeDef, TypeRef, ModuleRef, MethodDef, TypeSpec]),
-            has_semantics: self.composite_index_size(&[Event, Property]),
-            method_def_or_ref: self.composite_index_size(&[MethodDef, MemberRef]),
-            member_forwarded: self.composite_index_size(&[Field, MethodDef]),
-            implementation: self.composite_index_size(&[File, AssemblyRef, ExportedType]),
-            custom_attribute_type: self
-                .composite_index_size(&[DummyEmpty, DummyEmpty, MethodDef, MemberRef, DummyEmpty]),
-            resolution_scope: self.composite_index_size(&[Module, ModuleRef, AssemblyRef, TypeRef]),
-            type_or_method_def: self.composite_index_size(&[TypeDef, MethodDef]),
-            has_custom_debug_information: self.composite_index_size(&[
-                MethodDef,
-                Field,
-                TypeRef,
-                TypeDef,
-                Param,
-                InterfaceImpl,
-                MemberRef,
-                Module,
-                DeclSecurity,
-                Property,
-                Event,
-                StandAloneSig,
-                ModuleRef,
-                TypeSpec,
-                Assembly,
-                AssemblyRef,
-                File,
-                ExportedType,
-                ManifestResource,
-                GenericParam,
-                GenericParamConstraint,
-                MethodSpec,
-                Document,
-                LocalScope,
-                LocalVariable,
-                LocalConstant,
-                ImportScope,
-            ]),
+            assembly_ref_table: self.table_index_size(AssemblyRef, referenced_table_sizes),
+            event_table: self.table_index_size(Event, referenced_table_sizes),
+            field_table: self.table_index_size(Field, referenced_table_sizes),
+            generic_param_table: self.table_index_size(GenericParam, referenced_table_sizes),
+            method_def_table: self.table_index_size(MethodDef, referenced_table_sizes),
+            module_ref_table: self.table_index_size(ModuleRef, referenced_table_sizes),
+            param_table: self.table_index_size(Param, referenced_table_sizes),
+            property_table: self.table_index_size(Property, referenced_table_sizes),
+            type_def_table: self.table_index_size(TypeDef, referenced_table_sizes),
+            document_table: self.table_index_size(Document, referenced_table_sizes),
+            import_scope_table: self.table_index_size(ImportScope, referenced_table_sizes),
+            local_constant_table: self.table_index_size(LocalConstant, referenced_table_sizes),
+            local_variable_table: self.table_index_size(LocalVariable, referenced_table_sizes),
+            type_def_or_ref: self
+                .composite_index_size(&[TypeDef, TypeRef, TypeSpec], referenced_table_sizes),
+            has_constant: self
+                .composite_index_size(&[Field, Param, Property], referenced_table_sizes),
+            has_custom_attribute: self.composite_index_size(
+                &[
+                    MethodDef,
+                    Field,
+                    TypeRef,
+                    TypeDef,
+                    Param,
+                    InterfaceImpl,
+                    MemberRef,
+                    Module,
+                    // the spec lists "Permission" here, but there's no such table?!
+                    Property,
+                    Event,
+                    StandAloneSig,
+                    ModuleRef,
+                    TypeSpec,
+                    Assembly,
+                    AssemblyRef,
+                    File,
+                    ExportedType,
+                    ManifestResource,
+                    GenericParam,
+                    GenericParamConstraint,
+                    MethodSpec,
+                ],
+                referenced_table_sizes,
+            ),
+            has_field_marshal: self.composite_index_size(&[Field, Param], referenced_table_sizes),
+            has_decl_security: self
+                .composite_index_size(&[TypeDef, MethodDef, Assembly], referenced_table_sizes),
+            member_ref_parent: self.composite_index_size(
+                &[TypeDef, TypeRef, ModuleRef, MethodDef, TypeSpec],
+                referenced_table_sizes,
+            ),
+            has_semantics: self.composite_index_size(&[Event, Property], referenced_table_sizes),
+            method_def_or_ref: self
+                .composite_index_size(&[MethodDef, MemberRef], referenced_table_sizes),
+            member_forwarded: self
+                .composite_index_size(&[Field, MethodDef], referenced_table_sizes),
+            implementation: self
+                .composite_index_size(&[File, AssemblyRef, ExportedType], referenced_table_sizes),
+            custom_attribute_type: self.composite_index_size(
+                &[DummyEmpty, DummyEmpty, MethodDef, MemberRef, DummyEmpty],
+                referenced_table_sizes,
+            ),
+            resolution_scope: self.composite_index_size(
+                &[Module, ModuleRef, AssemblyRef, TypeRef],
+                referenced_table_sizes,
+            ),
+            type_or_method_def: self
+                .composite_index_size(&[TypeDef, MethodDef], referenced_table_sizes),
+            has_custom_debug_information: self.composite_index_size(
+                &[
+                    MethodDef,
+                    Field,
+                    TypeRef,
+                    TypeDef,
+                    Param,
+                    InterfaceImpl,
+                    MemberRef,
+                    Module,
+                    DeclSecurity,
+                    Property,
+                    Event,
+                    StandAloneSig,
+                    ModuleRef,
+                    TypeSpec,
+                    Assembly,
+                    AssemblyRef,
+                    File,
+                    ExportedType,
+                    ManifestResource,
+                    GenericParam,
+                    GenericParamConstraint,
+                    MethodSpec,
+                    Document,
+                    LocalScope,
+                    LocalVariable,
+                    LocalConstant,
+                    ImportScope,
+                ],
+                referenced_table_sizes,
+            ),
         }
     }
 }
