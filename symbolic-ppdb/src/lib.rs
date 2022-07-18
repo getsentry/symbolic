@@ -376,7 +376,7 @@ impl<'data> GuidStream<'data> {
     fn get_guid(&self, idx: u32) -> Option<Uuid> {
         self.buf
             .get(idx.checked_sub(1)? as usize)
-            .map(|bytes| Uuid::from_bytes(*bytes))
+            .map(|bytes| Uuid::from_bytes_le(*bytes))
     }
 }
 

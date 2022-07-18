@@ -43,33 +43,27 @@ impl<'data> PortablePdb<'data> {
     }
 
     fn get_document_lang(&self, offset: u32) -> Result<Language, Error> {
-        const VISUAL_C_SHARP_UUID: Uuid = Uuid::from_bytes([
+        const VISUAL_C_SHARP_UUID: Uuid = Uuid::from_bytes_le([
             0x3f, 0x51, 0x62, 0xf8, 0x07, 0xc6, 0x11, 0xd3, 0x90, 0x53, 0x00, 0xc0, 0x4f, 0xa3,
             0x02, 0xa1,
         ]);
 
-        const VISUAL_BASIC_UUID: Uuid = Uuid::from_bytes([
+        const VISUAL_BASIC_UUID: Uuid = Uuid::from_bytes_le([
             0x3a, 0x12, 0xd0, 0xb8, 0xc2, 0x6c, 0x11, 0xd0, 0xb4, 0x42, 0x00, 0xa0, 0x24, 0x4a,
             0x1d, 0xd2,
         ]);
 
-        const VISUAL_F_SHARP_UUID: Uuid = Uuid::from_bytes([
+        const VISUAL_F_SHARP_UUID: Uuid = Uuid::from_bytes_le([
             0xab, 0x4f, 0x38, 0xc9, 0xb6, 0xe6, 0x43, 0xba, 0xbe, 0x3b, 0x58, 0x08, 0x0b, 0x2c,
             0xcc, 0xe3,
-        ]);
-
-        const C_SHARP_GUID: Uuid = Uuid::from_bytes([
-            0xf8, 0x62, 0x51, 0x3f, 0xc6, 0x07, 0xd3, 0x11, 0x90, 0x53, 0x00, 0xc0, 0x4f, 0xa3,
-            0x02, 0xa1,
         ]);
 
         let lang_guid = self.get_guid(offset)?;
 
         match lang_guid {
-            VISUAL_C_SHARP_UUID => Ok(Language::VisualCSharp),
+            VISUAL_C_SHARP_UUID => Ok(Language::CSharp),
             VISUAL_BASIC_UUID => Ok(Language::VisualBasic),
-            VISUAL_F_SHARP_UUID => Ok(Language::VisualFSharp),
-            C_SHARP_GUID => Ok(Language::CSharp),
+            VISUAL_F_SHARP_UUID => Ok(Language::FSharp),
             _ => Ok(Language::Unknown),
         }
     }
