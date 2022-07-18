@@ -99,7 +99,7 @@ impl CacheError {
         Self { kind, source }
     }
 
-    /// Returns the corresponding [`ErrorKind`] for this error.
+    /// Returns the corresponding [`CacheErrorKind`] for this error.
     pub fn kind(&self) -> CacheErrorKind {
         self.kind
     }

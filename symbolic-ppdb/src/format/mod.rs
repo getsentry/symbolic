@@ -87,7 +87,7 @@ impl FormatError {
         Self { kind, source }
     }
 
-    /// Returns the corresponding [`ErrorKind`] for this error.
+    /// Returns the corresponding [`FormatErrorKind`] for this error.
     pub fn kind(&self) -> FormatErrorKind {
         self.kind
     }
