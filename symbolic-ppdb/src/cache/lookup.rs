@@ -1,6 +1,6 @@
 use symbolic_common::Language;
 
-use super::PortablePdbCache;
+use super::{raw, PortablePdbCache};
 
 /// Line information for a given IL offset.
 #[derive(Debug, Clone)]
@@ -17,17 +17,17 @@ impl<'data> PortablePdbCache<'data> {
     /// Looks up line information for the given IL offset for the method with the given index.
     ///
     /// Note that the method index is 1-based!
-    pub fn lookup(&self, method: usize, il_offset: usize) -> Option<LineInfo<'data>> {
-        let sl = match self
-            .ranges
-            .binary_search_by_key(&(method, il_offset), |range| {
-                (range.idx as usize, range.il_offset as usize)
-            }) {
+    pub fn lookup(&self, method: u32, il_offset: u32) -> Option<LineInfo<'data>> {
+        let range = raw::Range {
+            idx: method,
+            il_offset,
+        };
+        let sl = match self.ranges.binary_search(&range) {
             Ok(idx) => self.source_locations.get(idx)?,
             Err(idx) => {
                 let idx = idx.checked_sub(1)?;
                 let range = self.ranges.get(idx)?;
-                if (range.idx as usize) < method {
+                if range.idx < method {
                     return None;
                 }
 
