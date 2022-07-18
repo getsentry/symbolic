@@ -30,5 +30,5 @@ mod format;
 
 pub use cache::lookup::LineInfo;
 pub use cache::writer::PortablePdbCacheConverter;
-pub use cache::PortablePdbCache;
-pub use format::PortablePdb;
+pub use cache::{CacheError, CacheErrorKind, PortablePdbCache};
+pub use format::{FormatError, FormatErrorKind, PortablePdb};
