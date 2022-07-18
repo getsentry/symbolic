@@ -1,4 +1,4 @@
-use super::{Error, ErrorKind};
+use super::{FormatError, FormatErrorKind};
 
 /// A stream representing the "blob heap", which contains "blobs" of arbitrary binary data.
 ///
@@ -14,46 +14,57 @@ impl<'data> BlobStream<'data> {
     }
 
     /// Gets the blob starting at the specified offset out of the blob heap.
-    pub(crate) fn get_blob(&self, offset: u32) -> Result<&'data [u8], Error> {
+    pub(crate) fn get_blob(&self, offset: u32) -> Result<&'data [u8], FormatError> {
         let offset = offset as usize;
-        let (len, rest) =
-            decode_unsigned(self.buf.get(offset..).ok_or(ErrorKind::InvalidBlobOffset)?)?;
+        let (len, rest) = decode_unsigned(
+            self.buf
+                .get(offset..)
+                .ok_or(FormatErrorKind::InvalidBlobOffset)?,
+        )?;
 
         rest.get(..len as usize)
-            .ok_or_else(|| ErrorKind::InvalidBlobData.into())
+            .ok_or_else(|| FormatErrorKind::InvalidBlobData.into())
     }
 }
 
 /// Decodes a compressed unsigned number at the start of a byte slice, returning the number
 /// and the rest of the slice in the success case.
-pub(crate) fn decode_unsigned(data: &[u8]) -> Result<(u32, &[u8]), Error> {
-    let first_byte = *data.first().ok_or(ErrorKind::InvalidCompressedUnsigned)?;
+pub(crate) fn decode_unsigned(data: &[u8]) -> Result<(u32, &[u8]), FormatError> {
+    let first_byte = *data
+        .first()
+        .ok_or(FormatErrorKind::InvalidCompressedUnsigned)?;
 
     if first_byte & 0b1000_0000 == 0 {
         return Ok((first_byte as u32, &data[1..]));
     }
 
     if first_byte & 0b0100_0000 == 0 {
-        let bytes = data.get(..2).ok_or(ErrorKind::InvalidCompressedUnsigned)?;
+        let bytes = data
+            .get(..2)
+            .ok_or(FormatErrorKind::InvalidCompressedUnsigned)?;
         let num = u16::from_be_bytes(bytes.try_into().unwrap());
         let masked = num & 0b0011_1111_1111_1111;
         return Ok((masked as u32, &data[2..]));
     }
 
     if first_byte & 0b0010_0000 == 0 {
-        let bytes = data.get(..4).ok_or(ErrorKind::InvalidCompressedUnsigned)?;
+        let bytes = data
+            .get(..4)
+            .ok_or(FormatErrorKind::InvalidCompressedUnsigned)?;
         let num = u32::from_be_bytes(bytes.try_into().unwrap());
         let masked = num & 0b0001_1111_1111_1111_1111_1111_1111_1111;
         return Ok((masked, &data[4..]));
     }
 
-    Err(ErrorKind::InvalidCompressedUnsigned.into())
+    Err(FormatErrorKind::InvalidCompressedUnsigned.into())
 }
 
 /// Decodes a compressed signed number at the start of a byte slice, returning the number
 /// and the rest of the slice in the success case.
-pub(crate) fn decode_signed(data: &[u8]) -> Result<(i32, &[u8]), Error> {
-    let first_byte = *data.first().ok_or(ErrorKind::InvalidCompressedSigned)?;
+pub(crate) fn decode_signed(data: &[u8]) -> Result<(i32, &[u8]), FormatError> {
+    let first_byte = *data
+        .first()
+        .ok_or(FormatErrorKind::InvalidCompressedSigned)?;
 
     if first_byte & 0b1000_0000 == 0 {
         // transform `0b0abc_defg` to `0bggab_cdef`.
@@ -65,7 +76,9 @@ pub(crate) fn decode_signed(data: &[u8]) -> Result<(i32, &[u8]), Error> {
     }
 
     if first_byte & 0b0100_0000 == 0 {
-        let bytes = data.get(..2).ok_or(ErrorKind::InvalidCompressedSigned)?;
+        let bytes = data
+            .get(..2)
+            .ok_or(FormatErrorKind::InvalidCompressedSigned)?;
         let mut num = u16::from_be_bytes(bytes.try_into().unwrap());
         num &= 0b0011_1111_1111_1111; // clear the tag bits
         let lsb = num & 0b0000_0001;
@@ -77,7 +90,9 @@ pub(crate) fn decode_signed(data: &[u8]) -> Result<(i32, &[u8]), Error> {
     }
 
     if first_byte & 0b0010_0000 == 0 {
-        let bytes = data.get(..4).ok_or(ErrorKind::InvalidCompressedSigned)?;
+        let bytes = data
+            .get(..4)
+            .ok_or(FormatErrorKind::InvalidCompressedSigned)?;
         let mut num = u32::from_be_bytes(bytes.try_into().unwrap());
         num &= 0b0001_1111_1111_1111_1111_1111_1111_1111; // clear the tag bits
         let lsb = num & 0b0000_0001;
@@ -89,7 +104,7 @@ pub(crate) fn decode_signed(data: &[u8]) -> Result<(i32, &[u8]), Error> {
         return Ok((rotated as i32, &data[4..]));
     }
 
-    Err(ErrorKind::InvalidCompressedSigned.into())
+    Err(FormatErrorKind::InvalidCompressedSigned.into())
 }
 
 #[cfg(test)]

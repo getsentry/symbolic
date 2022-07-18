@@ -58,6 +58,7 @@ use zerocopy::LayoutVerified;
 const PPDBCACHE_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Copy, Error)]
+#[non_exhaustive]
 pub enum CacheErrorKind {
     #[error("could not read header")]
     InvalidHeader,
@@ -110,8 +111,8 @@ impl From<CacheErrorKind> for CacheError {
     }
 }
 
-impl From<crate::format::Error> for CacheError {
-    fn from(e: crate::format::Error) -> Self {
+impl From<crate::format::FormatError> for CacheError {
+    fn from(e: crate::format::FormatError) -> Self {
         Self::new(CacheErrorKind::PortablePdb, e)
     }
 }

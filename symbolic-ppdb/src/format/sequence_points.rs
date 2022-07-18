@@ -4,18 +4,19 @@ use symbolic_common::{Language, Uuid};
 
 use crate::format::blob::{decode_signed, decode_unsigned};
 use crate::format::metadata::TableType;
-use crate::format::{Error, ErrorKind, PortablePdb};
+use crate::format::{FormatError, FormatErrorKind, PortablePdb};
 
 impl<'data> PortablePdb<'data> {
-    fn get_document_name(&self, offset: u32) -> Result<String, Error> {
+    fn get_document_name(&self, offset: u32) -> Result<String, FormatError> {
         let go = || {
             let data = self.get_blob(offset)?;
-            let sep = data.get(..1).ok_or(ErrorKind::InvalidBlobOffset)?;
+            let sep = data.get(..1).ok_or(FormatErrorKind::InvalidBlobOffset)?;
             let mut data = &data[1..];
             let sep = if sep[0] == 0 {
                 ""
             } else {
-                std::str::from_utf8(sep).map_err(|e| Error::new(ErrorKind::InvalidStringData, e))?
+                std::str::from_utf8(sep)
+                    .map_err(|e| FormatError::new(FormatErrorKind::InvalidStringData, e))?
             };
 
             let mut segments = Vec::new();
@@ -28,7 +29,7 @@ impl<'data> PortablePdb<'data> {
                 } else {
                     let seg = self.get_blob(idx)?;
                     std::str::from_utf8(seg)
-                        .map_err(|e| Error::new(ErrorKind::InvalidStringData, e))?
+                        .map_err(|e| FormatError::new(FormatErrorKind::InvalidStringData, e))?
                 };
 
                 data = rest;
@@ -39,10 +40,10 @@ impl<'data> PortablePdb<'data> {
             Ok(segments.join(sep))
         };
 
-        go().map_err(|e: Error| Error::new(ErrorKind::InvalidDocumentName, e))
+        go().map_err(|e: FormatError| FormatError::new(FormatErrorKind::InvalidDocumentName, e))
     }
 
-    fn get_document_lang(&self, offset: u32) -> Result<Language, Error> {
+    fn get_document_lang(&self, offset: u32) -> Result<Language, FormatError> {
         const VISUAL_C_SHARP_UUID: Uuid = Uuid::from_bytes_le([
             0x3f, 0x51, 0x62, 0xf8, 0x07, 0xc6, 0x11, 0xd3, 0x90, 0x53, 0x00, 0xc0, 0x4f, 0xa3,
             0x02, 0xa1,
@@ -68,7 +69,7 @@ impl<'data> PortablePdb<'data> {
         }
     }
 
-    pub(crate) fn get_document(&self, idx: usize) -> Result<Document, Error> {
+    pub(crate) fn get_document(&self, idx: usize) -> Result<Document, FormatError> {
         let name_offset = self.get_table_cell_u32(TableType::Document, idx, 1)?;
         let lang_offset = self.get_table_cell_u32(TableType::Document, idx, 4)?;
 
@@ -78,7 +79,7 @@ impl<'data> PortablePdb<'data> {
         Ok(Document { name, lang })
     }
 
-    fn get_sequence_points(&self, idx: usize) -> Result<Vec<SequencePoint>, Error> {
+    fn get_sequence_points(&self, idx: usize) -> Result<Vec<SequencePoint>, FormatError> {
         let document = self.get_table_cell_u32(TableType::MethodDebugInformation, idx, 1)?;
         let offset = self.get_table_cell_u32(TableType::MethodDebugInformation, idx, 2)?;
         if offset == 0 {
@@ -164,7 +165,7 @@ impl SequencePoint {
         end_line: u32,
         end_column: u32,
         document_id: u32,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, FormatError> {
         if il_offset >= 0x20000000
             || start_line >= 0x20000000
             || end_line >= 0x20000000
@@ -175,7 +176,7 @@ impl SequencePoint {
             || end_line < start_line
             || (end_line == start_line && end_column <= start_column)
         {
-            Err(ErrorKind::InvalidSequencePoint.into())
+            Err(FormatErrorKind::InvalidSequencePoint.into())
         } else {
             Ok(Self {
                 il_offset,
@@ -204,7 +205,7 @@ impl SequencePoint {
         prev: Option<SequencePoint>,
         prev_non_hidden: Option<SequencePoint>,
         document_id: u32,
-    ) -> Result<(Self, &[u8]), Error> {
+    ) -> Result<(Self, &[u8]), FormatError> {
         let (il_offset, data) = match prev {
             Some(prev) => {
                 let (delta_il_offset, data) = decode_unsigned(data)?;
@@ -290,7 +291,7 @@ pub(crate) struct SequencePoints<'data> {
 }
 
 impl<'data> Iterator for SequencePoints<'data> {
-    type Item = Result<Vec<SequencePoint>, Error>;
+    type Item = Result<Vec<SequencePoint>, FormatError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let md_stream = self.ppdb.table_stream.as_ref()?;

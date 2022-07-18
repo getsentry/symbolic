@@ -4,7 +4,7 @@ use std::ops::{Index, IndexMut};
 
 use zerocopy::LayoutVerified;
 
-use super::{Error, ErrorKind};
+use super::{FormatError, FormatErrorKind};
 
 /// An enumeration of all table types in ECMA-335 and Portable PDB.
 #[repr(usize)]
@@ -250,10 +250,10 @@ pub struct MetadataStream<'data> {
 }
 
 impl<'data> MetadataStream<'data> {
-    pub fn parse(buf: &'data [u8], referenced_table_sizes: [u32; 64]) -> Result<Self, Error> {
+    pub fn parse(buf: &'data [u8], referenced_table_sizes: [u32; 64]) -> Result<Self, FormatError> {
         let (lv, mut rest) =
             LayoutVerified::<_, super::raw::MetadataStreamHeader>::new_from_prefix(buf)
-                .ok_or(ErrorKind::InvalidHeader)?;
+                .ok_or(FormatErrorKind::InvalidHeader)?;
         let header = lv.into_ref();
 
         // TODO: verify major/minor version
@@ -265,8 +265,8 @@ impl<'data> MetadataStream<'data> {
                 continue;
             }
 
-            let (lv, rest_) =
-                LayoutVerified::<_, u32>::new_from_prefix(rest).ok_or(ErrorKind::InvalidLength)?;
+            let (lv, rest_) = LayoutVerified::<_, u32>::new_from_prefix(rest)
+                .ok_or(FormatErrorKind::InvalidLength)?;
             let len = lv.read();
             rest = rest_;
 
@@ -289,7 +289,7 @@ impl<'data> MetadataStream<'data> {
             .sum();
         if total_length > table_contents.len() {
             return Err(
-                ErrorKind::InsufficientTableData(total_length, table_contents.len()).into(),
+                FormatErrorKind::InsufficientTableData(total_length, table_contents.len()).into(),
             );
         }
 
@@ -316,12 +316,12 @@ impl<'data> MetadataStream<'data> {
         table: TableType,
         row: usize,
         col: usize,
-    ) -> Result<u32, Error> {
+    ) -> Result<u32, FormatError> {
         let row = self
             .get_row(table, row)
-            .ok_or(ErrorKind::RowIndexOutOfBounds(table, row))?;
+            .ok_or(FormatErrorKind::RowIndexOutOfBounds(table, row))?;
         if !(1..=6).contains(&col) {
-            return Err(ErrorKind::ColIndexOutOfBounds(table, col).into());
+            return Err(FormatErrorKind::ColIndexOutOfBounds(table, col).into());
         }
         let Column { offset, width } = self[table].columns[col - 1];
         match width {
@@ -335,7 +335,7 @@ impl<'data> MetadataStream<'data> {
                 Ok(u32::from_ne_bytes(bytes.try_into().unwrap()))
             }
 
-            _ => Err(ErrorKind::ColumnWidth(table, col, width).into()),
+            _ => Err(FormatErrorKind::ColumnWidth(table, col, width).into()),
         }
     }
 

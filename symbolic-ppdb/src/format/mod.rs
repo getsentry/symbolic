@@ -12,8 +12,10 @@ use symbolic_common::Uuid;
 
 use blob::BlobStream;
 use metadata::{MetadataStream, TableType};
+
 #[derive(Debug, Clone, Copy, Error)]
-pub enum ErrorKind {
+#[non_exhaustive]
+pub enum FormatErrorKind {
     #[error("invalid header")]
     InvalidHeader,
     #[error("invalid signature")]
@@ -68,16 +70,16 @@ pub enum ErrorKind {
 
 #[derive(Debug, Error)]
 #[error("{kind}")]
-pub struct Error {
-    pub(crate) kind: ErrorKind,
+pub struct FormatError {
+    pub(crate) kind: FormatErrorKind,
     #[source]
     pub(crate) source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
-impl Error {
+impl FormatError {
     /// Creates a new SymCache error from a known kind of error as well as an
     /// arbitrary error payload.
-    pub(crate) fn new<E>(kind: ErrorKind, source: E) -> Self
+    pub(crate) fn new<E>(kind: FormatErrorKind, source: E) -> Self
     where
         E: Into<Box<dyn std::error::Error + Send + Sync>>,
     {
@@ -86,13 +88,13 @@ impl Error {
     }
 
     /// Returns the corresponding [`ErrorKind`] for this error.
-    pub fn kind(&self) -> ErrorKind {
+    pub fn kind(&self) -> FormatErrorKind {
         self.kind
     }
 }
 
-impl From<ErrorKind> for Error {
-    fn from(kind: ErrorKind) -> Self {
+impl From<FormatErrorKind> for FormatError {
+    fn from(kind: FormatErrorKind) -> Self {
         Self { kind, source: None }
     }
 }
@@ -137,31 +139,33 @@ impl fmt::Debug for PortablePdb<'_> {
 
 impl<'data> PortablePdb<'data> {
     /// Parses the provided buffer into a Portable PDB file.
-    pub fn parse(buf: &'data [u8]) -> Result<Self, Error> {
+    pub fn parse(buf: &'data [u8]) -> Result<Self, FormatError> {
         let (lv, rest) = LayoutVerified::<_, raw::Header>::new_from_prefix(buf)
-            .ok_or(ErrorKind::InvalidHeader)?;
+            .ok_or(FormatErrorKind::InvalidHeader)?;
         let header = lv.into_ref();
 
         if header.signature != raw::METADATA_SIGNATURE {
-            return Err(ErrorKind::InvalidSignature.into());
+            return Err(FormatErrorKind::InvalidSignature.into());
         }
 
         // TODO: verify major/minor version
         // TODO: verify reserved
         let version_length = header.version_length as usize;
-        let version_buf = rest.get(..version_length).ok_or(ErrorKind::InvalidLength)?;
+        let version_buf = rest
+            .get(..version_length)
+            .ok_or(FormatErrorKind::InvalidLength)?;
         let version_buf = version_buf
             .split(|c| *c == 0)
             .next()
-            .ok_or(ErrorKind::InvalidVersionString)?;
+            .ok_or(FormatErrorKind::InvalidVersionString)?;
         let version = std::str::from_utf8(version_buf)
-            .map_err(|e| Error::new(ErrorKind::InvalidVersionString, e))?;
+            .map_err(|e| FormatError::new(FormatErrorKind::InvalidVersionString, e))?;
 
         // We already know that buf is long enough.
         let streams_buf = &rest[version_length..];
         let (lv, mut streams_buf) =
             LayoutVerified::<_, raw::HeaderPart2>::new_from_prefix(streams_buf)
-                .ok_or(ErrorKind::InvalidHeader)?;
+                .ok_or(FormatErrorKind::InvalidHeader)?;
         let header2 = lv.into_ref();
 
         // TODO: validate flags
@@ -183,16 +187,16 @@ impl<'data> PortablePdb<'data> {
         for _ in 0..stream_count {
             let (lv, after_header_buf) =
                 LayoutVerified::<_, raw::StreamHeader>::new_from_prefix(streams_buf)
-                    .ok_or(ErrorKind::InvalidStreamHeader)?;
+                    .ok_or(FormatErrorKind::InvalidStreamHeader)?;
             let header = lv.into_ref();
 
             let name_buf = after_header_buf.get(..32).unwrap_or(after_header_buf);
             let name_buf = name_buf
                 .split(|c| *c == 0)
                 .next()
-                .ok_or(ErrorKind::InvalidStreamName)?;
+                .ok_or(FormatErrorKind::InvalidStreamName)?;
             let name = std::str::from_utf8(name_buf)
-                .map_err(|e| Error::new(ErrorKind::InvalidStreamName, e))?;
+                .map_err(|e| FormatError::new(FormatErrorKind::InvalidStreamName, e))?;
 
             let mut rounded_name_len = name.len() + 1;
             rounded_name_len = match rounded_name_len % 4 {
@@ -201,13 +205,13 @@ impl<'data> PortablePdb<'data> {
             };
             streams_buf = after_header_buf
                 .get(rounded_name_len..)
-                .ok_or(ErrorKind::InvalidLength)?;
+                .ok_or(FormatErrorKind::InvalidLength)?;
 
             let offset = header.offset as usize;
             let size = header.size as usize;
             let stream_buf = buf
                 .get(offset..offset + size)
-                .ok_or(ErrorKind::InvalidLength)?;
+                .ok_or(FormatErrorKind::InvalidLength)?;
 
             match name {
                 "#Pdb" => result.pdb_stream = Some(PdbStream::parse(stream_buf)?),
@@ -224,7 +228,7 @@ impl<'data> PortablePdb<'data> {
                 "#US" => result.us_stream = Some(UsStream { _buf: stream_buf }),
                 "#Blob" => result.blob_stream = Some(BlobStream::new(stream_buf)),
                 "#GUID" => result.guid_stream = Some(GuidStream::parse(stream_buf)?),
-                _ => return Err(ErrorKind::UnknownStream.into()),
+                _ => return Err(FormatErrorKind::UnknownStream.into()),
             }
         }
         Ok(result)
@@ -232,29 +236,29 @@ impl<'data> PortablePdb<'data> {
 
     /// Reads the string starting at the given offset from this file's string heap.
     #[allow(unused)]
-    fn get_string(&self, offset: u32) -> Result<&'data str, Error> {
+    fn get_string(&self, offset: u32) -> Result<&'data str, FormatError> {
         self.string_stream
             .as_ref()
-            .ok_or(ErrorKind::NoStringsStream)?
+            .ok_or(FormatErrorKind::NoStringsStream)?
             .get_string(offset)
     }
 
     /// Reads the GUID with the given index from this file's GUID heap.
     ///
     /// Note that the index is 1-based!
-    fn get_guid(&self, idx: u32) -> Result<Uuid, Error> {
+    fn get_guid(&self, idx: u32) -> Result<Uuid, FormatError> {
         self.guid_stream
             .as_ref()
-            .ok_or(ErrorKind::NoGuidStream)?
+            .ok_or(FormatErrorKind::NoGuidStream)?
             .get_guid(idx)
-            .ok_or_else(|| ErrorKind::InvalidIndex.into())
+            .ok_or_else(|| FormatErrorKind::InvalidIndex.into())
     }
 
     /// Reads the blob starting at the given offset from this file's blob heap.
-    fn get_blob(&self, offset: u32) -> Result<&'data [u8], Error> {
+    fn get_blob(&self, offset: u32) -> Result<&'data [u8], FormatError> {
         self.blob_stream
             .as_ref()
-            .ok_or(ErrorKind::NoBlobStream)?
+            .ok_or(FormatErrorKind::NoBlobStream)?
             .get_blob(offset)
     }
 
@@ -274,11 +278,11 @@ impl<'data> PortablePdb<'data> {
         table: TableType,
         row: usize,
         col: usize,
-    ) -> Result<u32, Error> {
+    ) -> Result<u32, FormatError> {
         let md_stream = self
             .table_stream
             .as_ref()
-            .ok_or(ErrorKind::NoMetadataStream)?;
+            .ok_or(FormatErrorKind::NoMetadataStream)?;
         md_stream.get_table_cell_u32(table, row, col)
     }
 }
@@ -293,9 +297,9 @@ struct PdbStream<'data> {
 }
 
 impl<'data> PdbStream<'data> {
-    fn parse(buf: &'data [u8]) -> Result<Self, Error> {
+    fn parse(buf: &'data [u8]) -> Result<Self, FormatError> {
         let (lv, mut rest) = LayoutVerified::<_, raw::PdbStreamHeader>::new_from_prefix(buf)
-            .ok_or(ErrorKind::InvalidHeader)?;
+            .ok_or(FormatErrorKind::InvalidHeader)?;
         let header = lv.into_ref();
 
         let mut referenced_table_sizes = [0; 64];
@@ -304,8 +308,8 @@ impl<'data> PdbStream<'data> {
                 continue;
             }
 
-            let (lv, rest_) =
-                LayoutVerified::<_, u32>::new_from_prefix(rest).ok_or(ErrorKind::InvalidLength)?;
+            let (lv, rest_) = LayoutVerified::<_, u32>::new_from_prefix(rest)
+                .ok_or(FormatErrorKind::InvalidLength)?;
             let len = lv.read();
             rest = rest_;
 
@@ -331,13 +335,14 @@ struct StringStream<'data> {
 }
 
 impl<'data> StringStream<'data> {
-    fn get_string(&self, offset: u32) -> Result<&'data str, Error> {
+    fn get_string(&self, offset: u32) -> Result<&'data str, FormatError> {
         let string_buf = self
             .buf
             .get(offset as usize..)
-            .ok_or(ErrorKind::InvalidStringOffset)?;
+            .ok_or(FormatErrorKind::InvalidStringOffset)?;
         let string = string_buf.split(|c| *c == 0).next().unwrap();
-        std::str::from_utf8(string).map_err(|e| Error::new(ErrorKind::InvalidStringData, e))
+        std::str::from_utf8(string)
+            .map_err(|e| FormatError::new(FormatErrorKind::InvalidStringData, e))
     }
 }
 
@@ -358,9 +363,9 @@ struct GuidStream<'data> {
 }
 
 impl<'data> GuidStream<'data> {
-    fn parse(buf: &'data [u8]) -> Result<Self, Error> {
-        let bytes =
-            LayoutVerified::<_, [uuid::Bytes]>::new_slice(buf).ok_or(ErrorKind::InvalidLength)?;
+    fn parse(buf: &'data [u8]) -> Result<Self, FormatError> {
+        let bytes = LayoutVerified::<_, [uuid::Bytes]>::new_slice(buf)
+            .ok_or(FormatErrorKind::InvalidLength)?;
 
         Ok(Self {
             buf: bytes.into_slice(),
