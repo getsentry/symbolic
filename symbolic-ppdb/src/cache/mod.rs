@@ -110,8 +110,8 @@ impl From<CacheErrorKind> for CacheError {
     }
 }
 
-impl From<crate::Error> for CacheError {
-    fn from(e: crate::Error) -> Self {
+impl From<crate::format::Error> for CacheError {
+    fn from(e: crate::format::Error) -> Self {
         Self::new(CacheErrorKind::PortablePdb, e)
     }
 }
