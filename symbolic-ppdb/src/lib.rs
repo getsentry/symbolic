@@ -41,7 +41,7 @@ mod tests {
 
     #[test]
     fn test_ppdb() {
-        let buf = std::fs::read("_fixtures/Documents.pdbx").unwrap();
+        let buf = std::fs::read("tests/fixtures/Documents.pdbx").unwrap();
 
         let pdb = PortablePdb::parse(&buf).unwrap();
 
