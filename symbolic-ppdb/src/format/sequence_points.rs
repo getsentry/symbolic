@@ -131,9 +131,9 @@ impl<'data> PortablePdb<'data> {
         Ok(sequence_points)
     }
 
-    pub(crate) fn get_all_sequence_points(&self) -> SequencePoints<'data> {
+    pub(crate) fn get_all_sequence_points(&self) -> SequencePoints<'data, '_> {
         SequencePoints {
-            ppdb: self.clone(),
+            ppdb: self,
             count: 1,
         }
     }
@@ -285,12 +285,12 @@ pub(crate) struct Document {
     pub(crate) lang: Language,
 }
 
-pub(crate) struct SequencePoints<'data> {
-    ppdb: PortablePdb<'data>,
+pub(crate) struct SequencePoints<'data, 'ppdb> {
+    ppdb: &'ppdb PortablePdb<'data>,
     count: usize,
 }
 
-impl<'data> Iterator for SequencePoints<'data> {
+impl<'data, 'ppdb> Iterator for SequencePoints<'data, 'ppdb> {
     type Item = Result<Vec<SequencePoint>, FormatError>;
 
     fn next(&mut self) -> Option<Self::Item> {
