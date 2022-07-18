@@ -2,9 +2,9 @@ use std::fmt;
 
 use symbolic_common::{Language, Uuid};
 
-use crate::format::blob::{decode_signed, decode_unsigned};
-use crate::format::metadata::TableType;
-use crate::format::{FormatError, FormatErrorKind, PortablePdb};
+use super::metadata::TableType;
+use super::utils::{decode_signed, decode_unsigned};
+use super::{FormatError, FormatErrorKind, PortablePdb};
 
 impl<'data> PortablePdb<'data> {
     fn get_document_name(&self, offset: u32) -> Result<String, FormatError> {
@@ -294,7 +294,7 @@ impl<'data> Iterator for SequencePoints<'data> {
     type Item = Result<Vec<SequencePoint>, FormatError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let md_stream = self.ppdb.table_stream.as_ref()?;
+        let md_stream = self.ppdb.metadata_stream.as_ref()?;
         let num_methods = md_stream[TableType::MethodDebugInformation].rows;
 
         if self.count > num_methods {

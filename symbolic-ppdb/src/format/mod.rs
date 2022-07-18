@@ -2,6 +2,8 @@ mod blob;
 mod metadata;
 mod raw;
 mod sequence_points;
+mod streams;
+mod utils;
 
 use std::fmt;
 
@@ -10,8 +12,8 @@ use zerocopy::LayoutVerified;
 
 use symbolic_common::Uuid;
 
-use blob::BlobStream;
 use metadata::{MetadataStream, TableType};
+use streams::{BlobStream, GuidStream, PdbStream, StringStream, UsStream};
 
 #[derive(Debug, Clone, Copy, Error)]
 #[non_exhaustive]
@@ -110,7 +112,7 @@ pub struct PortablePdb<'data> {
     /// The file's #PDB stream, if it exists.
     pdb_stream: Option<PdbStream<'data>>,
     /// The file's #~ stream, if it exists.
-    table_stream: Option<MetadataStream<'data>>,
+    metadata_stream: Option<MetadataStream<'data>>,
     /// The file's #Strings stream, if it exists.
     string_stream: Option<StringStream<'data>>,
     /// The file's #US stream, if it exists.
@@ -128,7 +130,7 @@ impl fmt::Debug for PortablePdb<'_> {
             .field("version_string", &self.version_string)
             .field("header2", &self.header2)
             .field("has_pdb_stream", &self.pdb_stream.is_some())
-            .field("has_table_stream", &self.table_stream.is_some())
+            .field("has_table_stream", &self.metadata_stream.is_some())
             .field("has_string_stream", &self.string_stream.is_some())
             .field("has_us_stream", &self.us_stream.is_some())
             .field("has_blob_stream", &self.blob_stream.is_some())
@@ -177,7 +179,7 @@ impl<'data> PortablePdb<'data> {
             version_string: version,
             header2,
             pdb_stream: None,
-            table_stream: None,
+            metadata_stream: None,
             string_stream: None,
             us_stream: None,
             blob_stream: None,
@@ -216,7 +218,7 @@ impl<'data> PortablePdb<'data> {
             match name {
                 "#Pdb" => result.pdb_stream = Some(PdbStream::parse(stream_buf)?),
                 "#~" => {
-                    result.table_stream = Some(MetadataStream::parse(
+                    result.metadata_stream = Some(MetadataStream::parse(
                         stream_buf,
                         result
                             .pdb_stream
@@ -224,8 +226,8 @@ impl<'data> PortablePdb<'data> {
                             .map_or([0; 64], |s| s.referenced_table_sizes),
                     )?)
                 }
-                "#Strings" => result.string_stream = Some(StringStream { buf: stream_buf }),
-                "#US" => result.us_stream = Some(UsStream { _buf: stream_buf }),
+                "#Strings" => result.string_stream = Some(StringStream::new(stream_buf)),
+                "#US" => result.us_stream = Some(UsStream::new(stream_buf)),
                 "#Blob" => result.blob_stream = Some(BlobStream::new(stream_buf)),
                 "#GUID" => result.guid_stream = Some(GuidStream::parse(stream_buf)?),
                 _ => return Err(FormatErrorKind::UnknownStream.into()),
@@ -280,101 +282,9 @@ impl<'data> PortablePdb<'data> {
         col: usize,
     ) -> Result<u32, FormatError> {
         let md_stream = self
-            .table_stream
+            .metadata_stream
             .as_ref()
             .ok_or(FormatErrorKind::NoMetadataStream)?;
         md_stream.get_table_cell_u32(table, row, col)
-    }
-}
-
-/// The file's #PDB stream.
-///
-/// See https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#pdb-stream.
-#[derive(Debug, Clone)]
-struct PdbStream<'data> {
-    header: &'data raw::PdbStreamHeader,
-    referenced_table_sizes: [u32; 64],
-}
-
-impl<'data> PdbStream<'data> {
-    fn parse(buf: &'data [u8]) -> Result<Self, FormatError> {
-        let (lv, mut rest) = LayoutVerified::<_, raw::PdbStreamHeader>::new_from_prefix(buf)
-            .ok_or(FormatErrorKind::InvalidHeader)?;
-        let header = lv.into_ref();
-
-        let mut referenced_table_sizes = [0; 64];
-        for (i, table) in referenced_table_sizes.iter_mut().enumerate() {
-            if (header.referenced_tables >> i & 1) == 0 {
-                continue;
-            }
-
-            let (lv, rest_) = LayoutVerified::<_, u32>::new_from_prefix(rest)
-                .ok_or(FormatErrorKind::InvalidLength)?;
-            let len = lv.read();
-            rest = rest_;
-
-            *table = len as u32;
-        }
-        Ok(Self {
-            header,
-            referenced_table_sizes,
-        })
-    }
-
-    fn id(&self) -> [u8; 20] {
-        self.header.id
-    }
-}
-
-/// A stream representing the "string heap", which contains UTF-8 string data.
-///
-/// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.3-strings-heap.md.
-#[derive(Debug, Clone, Copy)]
-struct StringStream<'data> {
-    buf: &'data [u8],
-}
-
-impl<'data> StringStream<'data> {
-    fn get_string(&self, offset: u32) -> Result<&'data str, FormatError> {
-        let string_buf = self
-            .buf
-            .get(offset as usize..)
-            .ok_or(FormatErrorKind::InvalidStringOffset)?;
-        let string = string_buf.split(|c| *c == 0).next().unwrap();
-        std::str::from_utf8(string)
-            .map_err(|e| FormatError::new(FormatErrorKind::InvalidStringData, e))
-    }
-}
-
-/// A stream representing the "user string heap".
-///
-/// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.4-us-and-blob-heaps.md.
-#[derive(Debug, Clone, Copy)]
-struct UsStream<'data> {
-    _buf: &'data [u8],
-}
-
-/// A stream representing the "GUID heap", which contains GUIDs.
-///
-/// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.5-guid-heap.md.
-#[derive(Debug, Clone, Copy)]
-struct GuidStream<'data> {
-    buf: &'data [uuid::Bytes],
-}
-
-impl<'data> GuidStream<'data> {
-    fn parse(buf: &'data [u8]) -> Result<Self, FormatError> {
-        let bytes = LayoutVerified::<_, [uuid::Bytes]>::new_slice(buf)
-            .ok_or(FormatErrorKind::InvalidLength)?;
-
-        Ok(Self {
-            buf: bytes.into_slice(),
-        })
-    }
-
-    fn get_guid(&self, idx: u32) -> Option<Uuid> {
-        self.buf
-            .get(idx.checked_sub(1)? as usize)
-            .map(|bytes| Uuid::from_bytes_le(*bytes))
     }
 }
