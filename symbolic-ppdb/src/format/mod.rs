@@ -1,4 +1,3 @@
-mod blob;
 mod metadata;
 mod raw;
 mod sequence_points;
