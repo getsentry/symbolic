@@ -3,7 +3,8 @@ name = "symbolic-ppdb"
 version = "9.0.0"
 license = "MIT"
 authors = [
-    "Sebastian Zivota <sebastian.zivota@mailbox.org>"
+    "Sebastian Zivota <sebastian.zivota@sentry.io>",
+    "Arpad Borsos <arpad.borsos@sentry.io>"
 ]
 documentation = "https://docs.rs/symbolic-ppdb"
 homepage = "https://github.com/getsentry/symbolic"
