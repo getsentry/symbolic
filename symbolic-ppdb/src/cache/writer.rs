@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
 
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
 use symbolic_common::Language;
+use zerocopy::AsBytes;
 
 use super::{raw, CacheError};
 use crate::PortablePdb;
@@ -25,7 +26,7 @@ pub struct PortablePdbCacheConverter {
     ///
     /// Only the starting address of a range is saved, the end address is given implicitly
     /// by the start address of the next range.
-    pub(crate) ranges: IndexMap<raw::Range, raw::SourceLocation>,
+    ranges: BTreeMap<raw::Range, raw::SourceLocation>,
 }
 
 impl PortablePdbCacheConverter {
@@ -84,21 +85,21 @@ impl PortablePdbCacheConverter {
             _reserved: [0; 16],
         };
 
-        writer.write(&[header])?;
+        writer.write(header.as_bytes())?;
         writer.align()?;
 
         for file in self.files.into_iter() {
-            writer.write(&[file])?;
+            writer.write(file.as_bytes())?;
         }
         writer.align()?;
 
-        for sl in self.ranges.values().copied() {
-            writer.write(&[sl])?;
+        for sl in self.ranges.values() {
+            writer.write(sl.as_bytes())?;
         }
         writer.align()?;
 
-        for r in self.ranges.keys().copied() {
-            writer.write(&[r])?;
+        for r in self.ranges.keys() {
+            writer.write(r.as_bytes())?;
         }
         writer.align()?;
 
@@ -161,12 +162,9 @@ impl<W: Write> WriteWrapper<W> {
         }
     }
 
-    fn write<T>(&mut self, data: &[T]) -> std::io::Result<usize> {
-        let pointer = data.as_ptr() as *const u8;
-        let len = std::mem::size_of_val(data);
-        // SAFETY: both pointer and len are derived directly from data/T and are valid.
-        let buf = unsafe { std::slice::from_raw_parts(pointer, len) };
-        self.writer.write_all(buf)?;
+    fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
+        let len = data.len();
+        self.writer.write_all(data)?;
         self.position += len;
         Ok(len)
     }

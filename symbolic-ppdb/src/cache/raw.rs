@@ -1,4 +1,4 @@
-use zerocopy::FromBytes;
+use zerocopy::{AsBytes, FromBytes};
 
 /// The magic file preamble as individual bytes.
 const PPDBCACHE_MAGIC_BYTES: [u8; 4] = *b"PDBC";
@@ -11,7 +11,7 @@ pub(crate) const PPDBCACHE_MAGIC: u32 = u32::from_le_bytes(PPDBCACHE_MAGIC_BYTES
 pub(crate) const PPDBCACHE_MAGIC_FLIPPED: u32 = PPDBCACHE_MAGIC.swap_bytes();
 
 /// The header of a PortablePdbCache file.
-#[derive(Debug, Clone, FromBytes)]
+#[derive(Debug, Clone, FromBytes, AsBytes)]
 #[repr(C)]
 pub(crate) struct Header {
     /// The file magic representing the file format and endianness.
@@ -32,7 +32,7 @@ pub(crate) struct Header {
 }
 
 /// A location in a source file, comprising a line and the index of a file.
-#[derive(Debug, Clone, Copy, FromBytes)]
+#[derive(Debug, Clone, Copy, FromBytes, AsBytes)]
 #[repr(C)]
 pub(crate) struct SourceLocation {
     pub(crate) line: u32,
@@ -43,7 +43,7 @@ pub(crate) struct SourceLocation {
 ///
 /// Only the starting IL offset is saved; the ending offset is given implicitly by
 /// the starting offset of the next range (if any).
-#[derive(Debug, Clone, Copy, FromBytes, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, FromBytes, AsBytes, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(C)]
 pub(crate) struct Range {
     pub(crate) idx: u32,
@@ -51,7 +51,7 @@ pub(crate) struct Range {
 }
 
 /// Serialized file in the cache.
-#[derive(Debug, Clone, Copy, FromBytes, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, FromBytes, AsBytes, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(C)]
 pub(crate) struct File {
     /// The file path (reference to a [`String`]).
