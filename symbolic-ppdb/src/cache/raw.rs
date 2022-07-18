@@ -46,7 +46,7 @@ pub(crate) struct SourceLocation {
 #[derive(Debug, Clone, Copy, FromBytes, AsBytes, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(C)]
 pub(crate) struct Range {
-    pub(crate) idx: u32,
+    pub(crate) func_idx: u32,
     pub(crate) il_offset: u32,
 }
 
