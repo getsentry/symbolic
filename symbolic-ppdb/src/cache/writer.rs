@@ -35,17 +35,18 @@ impl PortablePdbCacheConverter {
         Self::default()
     }
 
+    /// Processes a Portable PDB file, inserting its sequence point information into this converter.
     pub fn process_portable_pdb(&mut self, portable_pdb: &PortablePdb) -> Result<(), CacheError> {
         if let Some(id) = portable_pdb.pdb_id() {
             self.set_pdb_id(id);
         }
 
-        for (method, sequence_points) in portable_pdb.get_all_sequence_points().enumerate() {
-            let method = method + 1;
+        for (function, sequence_points) in portable_pdb.get_all_sequence_points().enumerate() {
+            let method = function + 1;
             let sequence_points = sequence_points?;
             for sp in sequence_points.iter() {
                 let range = raw::Range {
-                    idx: method as u32,
+                    func_idx: method as u32,
                     il_offset: sp.il_offset,
                 };
 

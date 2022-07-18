@@ -57,29 +57,45 @@ use zerocopy::LayoutVerified;
 
 const PPDBCACHE_VERSION: u32 = 1;
 
+/// The kind of a [`CacheError`].
 #[derive(Debug, Clone, Copy, Error)]
 #[non_exhaustive]
 pub enum CacheErrorKind {
+    /// The cache header could not be read.
     #[error("could not read header")]
     InvalidHeader,
+    /// The cache file's endianness does not match the system's endianness.
     #[error("wrong endianness")]
     WrongEndianness,
+    /// The cache file header does not contain the correct magic bytes.
     #[error("invalid magic: {0}")]
     InvalidMagic(u32),
+    /// The cache file header contains an invalid version.
     #[error("wrong version: {0}")]
     WrongVersion(u32),
+    /// Range data could not be parsed from the cache file.
     #[error("could not read ranges")]
     InvalidRanges,
+    /// Source location data could not be parsed from the cache file.
     #[error("could not read source locations")]
     InvalidSourceLocations,
+    /// File data could not be parsed from the cache file.
     #[error("could not read files")]
     InvalidFiles,
+    /// The header claimed an incorrect number of string bytes.
     #[error("expected {expected} string bytes, found {found}")]
-    UnexpectedStringBytes { expected: usize, found: usize },
+    UnexpectedStringBytes {
+        /// Expected number of string bytes.
+        expected: usize,
+        /// Number of string bytes actually found in the cache file.
+        found: usize,
+    },
+    /// An error resulting from Portable PDB file processing.
     #[error("error processing portable pdb file")]
     PortablePdb,
 }
 
+/// An error encountered during [`PortablePdbCache`] creation or parsing.
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct CacheError {

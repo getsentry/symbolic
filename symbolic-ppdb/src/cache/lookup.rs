@@ -17,9 +17,9 @@ impl<'data> PortablePdbCache<'data> {
     /// Looks up line information for the given IL offset for the method with the given index.
     ///
     /// Note that the method index is 1-based!
-    pub fn lookup(&self, method: u32, il_offset: u32) -> Option<LineInfo<'data>> {
+    pub fn lookup(&self, function: u32, il_offset: u32) -> Option<LineInfo<'data>> {
         let range = raw::Range {
-            idx: method,
+            func_idx: function,
             il_offset,
         };
         let sl = match self.ranges.binary_search(&range) {
@@ -27,7 +27,7 @@ impl<'data> PortablePdbCache<'data> {
             Err(idx) => {
                 let idx = idx.checked_sub(1)?;
                 let range = self.ranges.get(idx)?;
-                if range.idx < method {
+                if range.func_idx < function {
                     return None;
                 }
 

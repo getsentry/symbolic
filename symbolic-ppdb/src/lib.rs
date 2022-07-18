@@ -7,6 +7,23 @@
 //!
 //! # Functionality
 //!
+//!
+//! ## Example
+//! ```
+//! use symbolic_ppdb::{LineInfo, PortablePdb, PortablePdbCacheConverter, PortablePdbCache};
+//! let buf = std::fs::read("tests/fixtures/Async.pdbx").unwrap();
+//!
+//! let pdb = PortablePdb::parse(&buf).unwrap();
+//!
+//! let mut converter = PortablePdbCacheConverter::new();
+//! converter.process_portable_pdb(&pdb).unwrap();
+//! let mut buf = Vec::new();
+//! converter.serialize(&mut buf).unwrap();
+//!
+//! let cache = PortablePdbCache::parse(&buf).unwrap();
+//! //TODO: lookup example
+//! ````
+//!
 //! # Structure of a Portable PDB file
 //! An ECMA-335 file is divided into sections called _streams_. The possible streams are
 //! * `#~` ("metadata"), comprising a list of metadata tables.
@@ -25,6 +42,9 @@
 //! in the Portable PDB spec.
 //! The `MethodDebugInformation` table is of particular interest to `symbolic`, as it contains
 //! line information for functions.
+
+#![warn(missing_docs)]
+
 mod cache;
 mod format;
 

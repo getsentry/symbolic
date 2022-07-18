@@ -14,61 +14,87 @@ use symbolic_common::Uuid;
 use metadata::{MetadataStream, TableType};
 use streams::{BlobStream, GuidStream, PdbStream, StringStream, UsStream};
 
+/// The kind of a [`FormatError`].
 #[derive(Debug, Clone, Copy, Error)]
 #[non_exhaustive]
 pub enum FormatErrorKind {
+    /// The header of the Portable PDB file could not be read.
     #[error("invalid header")]
     InvalidHeader,
     #[error("invalid signature")]
+    /// The header of the Portable PDB does not contain the correct signature.
     InvalidSignature,
+    /// The file ends prematurely.
     #[error("invalid length")]
     InvalidLength,
+    /// The file does not contain a valid version string.
     #[error("invalid version string")]
     InvalidVersionString,
+    /// A stream header could not be read.
     #[error("invalid stream header")]
     InvalidStreamHeader,
+    /// A stream's name could not be read.
     #[error("invalid stream name")]
     InvalidStreamName,
+    /// String data was requested, but the file does not contain a `#Strings` stream.
     #[error("file does not contain a #Strings stream")]
     NoStringsStream,
+    /// The given offset is out of bounds for the string heap.
     #[error("invalid string offset")]
     InvalidStringOffset,
+    /// Tried to read invalid string data.
     #[error("invalid string data")]
     InvalidStringData,
+    /// An unrecognized stream name was encountered.
     #[error("unknown stream")]
     UnknownStream,
+    /// GUID data was requested, but the file does not contain a `#GUID` stream.
     #[error("file does not contain a #Guid stream")]
     NoGuidStream,
-    #[error("invalid index")]
-    InvalidIndex,
+    /// The given index is out of bounds for the GUID heap.
+    #[error("invalid guid index")]
+    InvalidGuidIndex,
+    /// The table stream is too small to hold all claimed tables.
     #[error(
         "insufficient table data: {0} bytes required, but table stream only contains {1} bytes"
     )]
     InsufficientTableData(usize, usize),
+    /// The given offset is out of bounds for the `#Blob` heap.
     #[error("invalid blob offset")]
     InvalidBlobOffset,
+    /// The given offset points to invalid blob data.
     #[error("invalid blob data")]
     InvalidBlobData,
+    /// Blob data was requested, but the file does not contain a `#Blob` stream.
     #[error("file does not contain a #Blob stream")]
     NoBlobStream,
+    /// Tried to read an invalid compressed unsigned number.
     #[error("invalid compressed unsigned number")]
     InvalidCompressedUnsigned,
+    /// Tried to read an invalid compressed signed number.
     #[error("invalid compressed signed number")]
     InvalidCompressedSigned,
+    /// Could not read a document name.
     #[error("invalid document name")]
     InvalidDocumentName,
+    /// Failed to parse a sequence point.
     #[error("invalid sequence point")]
     InvalidSequencePoint,
+    /// Table data was requested, but the file does not contain a `#~` stream.
     #[error("file does not contain a #~ stream")]
     NoMetadataStream,
+    /// The given row index is out of bounds for the table.
     #[error("row index {1} is out of bounds for table {0:?}")]
     RowIndexOutOfBounds(TableType, usize),
+    /// The given column index is out of bounds for the table.
     #[error("column index {1} is out of bounds for table {0:?}")]
     ColIndexOutOfBounds(TableType, usize),
-    #[error("column {1} in table {0:?} has incompatible with {2}")]
+    /// The given column in the table has an incompatible width.
+    #[error("column {1} in table {0:?} has incompatible width {2}")]
     ColumnWidth(TableType, usize, usize),
 }
 
+/// An error encountered while parsing a [`PortablePdb`] file.
 #[derive(Debug, Error)]
 #[error("{kind}")]
 pub struct FormatError {
@@ -100,6 +126,11 @@ impl From<FormatErrorKind> for FormatError {
     }
 }
 
+/// A parsed Portable PDB file.
+///
+/// This can be converted to a [`PortablePdbCache`](crate::PortablePdbCache) using the
+/// [`PortablePdbCacheConverter::process_portable_pdb`](crate::PortablePdbCacheConverter::process_portable_pdb)
+/// method.
 #[derive(Clone)]
 pub struct PortablePdb<'data> {
     /// First part of the metadata header.
@@ -252,7 +283,7 @@ impl<'data> PortablePdb<'data> {
             .as_ref()
             .ok_or(FormatErrorKind::NoGuidStream)?
             .get_guid(idx)
-            .ok_or_else(|| FormatErrorKind::InvalidIndex.into())
+            .ok_or_else(|| FormatErrorKind::InvalidGuidIndex.into())
     }
 
     /// Reads the blob starting at the given offset from this file's blob heap.
