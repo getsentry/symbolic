@@ -7,7 +7,13 @@
 //!
 //! # Functionality
 //!
-//!
+//! * Parse Portable PDB files with [`PortablePdb::parse`].
+//! * Convert Portable PDB files to [`PortablePdbCaches`](PortablePdbCache) with
+//!   [`PortablePdbCacheConverter::process_portable_pdb`].
+//! * Serialize `PortablePdbCaches` with [`PortablePdbCacheConverter::serialize`]
+//!   and parse them with [`PortablePdbCache::parse`].
+//! * Look up line information for a function on a `PortablePdbCache` with
+//!   [`PortablePdbCache::lookup`].
 //! ## Example
 //! ```
 //! use symbolic_ppdb::{LineInfo, PortablePdb, PortablePdbCacheConverter, PortablePdbCache};
@@ -37,10 +43,11 @@
 //!
 //! ## The `#~` stream
 //! The `#~` ("metadata") stream comprises information about classes, methods, modules, &c.,
-//! organized into a number of tables adhering to various schemas. The original ECMA-335 tables
+//! organized into tables adhering to various schemas. The original ECMA-335 tables
 //! are described in Section II.22 of the ECMA-335 spec, the tables added by Portable PDB are described
 //! in the Portable PDB spec.
-//! The `MethodDebugInformation` table is of particular interest to `symbolic`, as it contains
+//! The [`MethodDebugInformation`](https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#methoddebuginformation-table-0x31)
+//! table is of particular interest to `symbolic`, as it contains
 //! line information for functions.
 
 #![warn(missing_docs)]
