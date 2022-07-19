@@ -88,7 +88,7 @@ impl<'data> PortablePdb<'data> {
         let mut sequence_points = Vec::new();
 
         let (first_sequence_point, mut data) =
-            SequencePoint::parse(data, None, None, current_document)?;
+            SequencePoint::parse(data, 0, None, current_document)?;
 
         sequence_points.push(first_sequence_point);
 
@@ -104,12 +104,9 @@ impl<'data> PortablePdb<'data> {
                 continue;
             }
 
-            let (sequence_point, rest) = SequencePoint::parse(
-                data,
-                sequence_points.last().cloned(),
-                last_nonhidden,
-                current_document,
-            )?;
+            let prev_il_offset = sequence_points.last().unwrap().il_offset;
+            let (sequence_point, rest) =
+                SequencePoint::parse(data, prev_il_offset, last_nonhidden, current_document)?;
             data = rest;
 
             sequence_points.push(sequence_point);
@@ -192,16 +189,13 @@ impl SequencePoint {
 
     fn parse(
         data: &[u8],
-        prev: Option<SequencePoint>,
+        prev_il_offset: u32,
         prev_non_hidden: Option<SequencePoint>,
         document_id: u32,
     ) -> Result<(Self, &[u8]), FormatError> {
-        let (il_offset, data) = match prev {
-            Some(prev) => {
-                let (delta_il_offset, data) = decode_unsigned(data)?;
-                (prev.il_offset + delta_il_offset, data)
-            }
-            None => decode_unsigned(data)?,
+        let (il_offset, data) = {
+            let (delta_il_offset, data) = decode_unsigned(data)?;
+            (prev_il_offset + delta_il_offset, data)
         };
 
         let (delta_lines, data) = decode_unsigned(data)?;
