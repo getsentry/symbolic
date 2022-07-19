@@ -140,7 +140,7 @@ impl<'data> super::WasmObject<'data> {
                         // All of the dwarf debug sections (.debug_frame, .debug_info etc) start with a `.`, and
                         // are the only ones we need for walking the debug info
                         debug if debug.starts_with('.') => {
-                            dwarf_sections.push((reader.name(), reader.data()));
+                            dwarf_sections.push((debug, reader.data()));
                         }
                         // The name section contains the symbol names for items, notably functions
                         "name" => {
