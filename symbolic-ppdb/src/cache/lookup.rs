@@ -2,7 +2,7 @@ use symbolic_common::Language;
 
 use super::{raw, PortablePdbCache};
 
-/// Line information for a given IL offset.
+/// Line information for a given IL offset in a function.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct LineInfo<'data> {
     /// The line in the source file.
@@ -14,12 +14,21 @@ pub struct LineInfo<'data> {
 }
 
 impl<'data> PortablePdbCache<'data> {
-    /// Looks up line information for the given IL offset for the method with the given index.
+    /// Looks up line information for a function in the cache.
     ///
-    /// Note that the method index is 1-based!
-    pub fn lookup(&self, function: u32, il_offset: u32) -> Option<LineInfo<'data>> {
+    /// `func_idx` is the (1-based) index of the function in the ECMA-335 `MethodDef` table
+    /// (see the ECMA-335 spec, Section II.22.26). In C#, it is encoded in the
+    /// [`MetadataToken`](https://docs.microsoft.com/en-us/dotnet/api/system.reflection.memberinfo.metadatatoken?view=net-6.0#system-reflection-memberinfo-metadatatoken)
+    /// property on the [`MethodBase`](https://docs.microsoft.com/en-us/dotnet/api/system.reflection.methodbase?view=net-6.0) class.
+    /// See [Metadata Tokens](https://docs.microsoft.com/en-us/previous-versions/dotnet/netframework-4.0/ms404456(v=vs.100)) for an
+    /// explanation of the encoding.
+    ///
+    /// `il_offset` is the offset from the start of the method's Intermediate Language code.
+    /// It can be obtained via the [`StackFrame.GetILOffset`](https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.stackframe.getiloffset?view=net-6.0#system-diagnostics-stackframe-getiloffset)
+    /// method.
+    pub fn lookup(&self, func_idx: u32, il_offset: u32) -> Option<LineInfo<'data>> {
         let range = raw::Range {
-            func_idx: function,
+            func_idx,
             il_offset,
         };
         let sl = match self.ranges.binary_search(&range) {
@@ -27,7 +36,7 @@ impl<'data> PortablePdbCache<'data> {
             Err(idx) => {
                 let idx = idx.checked_sub(1)?;
                 let range = self.ranges.get(idx)?;
-                if range.func_idx < function {
+                if range.func_idx < func_idx {
                     return None;
                 }
 

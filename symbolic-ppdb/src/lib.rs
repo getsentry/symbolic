@@ -17,7 +17,7 @@
 //! ## Example
 //! ```
 //! use symbolic_ppdb::{LineInfo, PortablePdb, PortablePdbCacheConverter, PortablePdbCache};
-//! let buf = std::fs::read("tests/fixtures/Async.pdbx").unwrap();
+//! let buf = std::fs::read("tests/fixtures/integration.pdb").unwrap();
 //!
 //! let pdb = PortablePdb::parse(&buf).unwrap();
 //!
@@ -27,8 +27,9 @@
 //! converter.serialize(&mut buf).unwrap();
 //!
 //! let cache = PortablePdbCache::parse(&buf).unwrap();
-//! //TODO: lookup example
-//! ````
+//! let line_info = cache.lookup(6, 10).unwrap();
+//! assert_eq!(line_info.line, 55);
+//! ```
 //!
 //! # Structure of a Portable PDB file
 //! An ECMA-335 file is divided into sections called _streams_. The possible streams are
