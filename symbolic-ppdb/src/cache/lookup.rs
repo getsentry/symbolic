@@ -3,7 +3,7 @@ use symbolic_common::Language;
 use super::{raw, PortablePdbCache};
 
 /// Line information for a given IL offset.
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct LineInfo<'data> {
     /// The line in the source file.
     pub line: u32,

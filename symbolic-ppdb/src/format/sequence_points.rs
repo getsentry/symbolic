@@ -43,28 +43,17 @@ impl<'data> PortablePdb<'data> {
         go().map_err(|e: FormatError| FormatError::new(FormatErrorKind::InvalidDocumentName, e))
     }
 
-    fn get_document_lang(&self, offset: u32) -> Result<Language, FormatError> {
-        const VISUAL_C_SHARP_UUID: Uuid = Uuid::from_bytes_le([
-            0x3f, 0x51, 0x62, 0xf8, 0x07, 0xc6, 0x11, 0xd3, 0x90, 0x53, 0x00, 0xc0, 0x4f, 0xa3,
-            0x02, 0xa1,
-        ]);
+    fn get_document_lang(&self, idx: u32) -> Result<Language, FormatError> {
+        const C_SHARP_UUID: Uuid = uuid::uuid!("3f5162f8-07c6-11d3-9053-00c04fa302a1");
+        const VISUAL_BASIC_UUID: Uuid = uuid::uuid!("3a12d0b8-c26c-11d0-b442-00a0244a1dd2");
+        const F_SHARP_UUID: Uuid = uuid::uuid!("ab4f38c9-b6e6-43ba-be3b-58080b2ccce3");
 
-        const VISUAL_BASIC_UUID: Uuid = Uuid::from_bytes_le([
-            0x3a, 0x12, 0xd0, 0xb8, 0xc2, 0x6c, 0x11, 0xd0, 0xb4, 0x42, 0x00, 0xa0, 0x24, 0x4a,
-            0x1d, 0xd2,
-        ]);
-
-        const VISUAL_F_SHARP_UUID: Uuid = Uuid::from_bytes_le([
-            0xab, 0x4f, 0x38, 0xc9, 0xb6, 0xe6, 0x43, 0xba, 0xbe, 0x3b, 0x58, 0x08, 0x0b, 0x2c,
-            0xcc, 0xe3,
-        ]);
-
-        let lang_guid = self.get_guid(offset)?;
+        let lang_guid = self.get_guid(idx)?;
 
         match lang_guid {
-            VISUAL_C_SHARP_UUID => Ok(Language::CSharp),
+            C_SHARP_UUID => Ok(Language::CSharp),
             VISUAL_BASIC_UUID => Ok(Language::VisualBasic),
-            VISUAL_F_SHARP_UUID => Ok(Language::FSharp),
+            F_SHARP_UUID => Ok(Language::FSharp),
             _ => Ok(Language::Unknown),
         }
     }
@@ -107,6 +96,7 @@ impl<'data> PortablePdb<'data> {
             (!first_sequence_point.is_hidden()).then_some(first_sequence_point);
 
         while !data.is_empty() {
+            // This is a new document record
             if data[0] == 0 {
                 let (doc, rest) = decode_unsigned(&data[1..])?;
                 current_document = doc;
@@ -228,16 +218,16 @@ impl SequencePoint {
 
         let (start_line, data) = match prev_non_hidden {
             Some(prev) => {
-                let (delta_start_line, data) = decode_unsigned(data)?;
-                (prev.start_line + delta_start_line, data)
+                let (delta_start_line, data) = decode_signed(data)?;
+                ((prev.start_line as i32 + delta_start_line) as u32, data)
             }
             None => decode_unsigned(data)?,
         };
 
         let (start_column, data) = match prev_non_hidden {
             Some(prev) => {
-                let (delta_start_col, data) = decode_unsigned(data)?;
-                (prev.start_column + delta_start_col, data)
+                let (delta_start_col, data) = decode_signed(data)?;
+                ((prev.start_column as i32 + delta_start_col) as u32, data)
             }
             None => decode_unsigned(data)?,
         };

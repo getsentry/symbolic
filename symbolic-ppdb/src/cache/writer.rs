@@ -42,11 +42,12 @@ impl PortablePdbCacheConverter {
         }
 
         for (function, sequence_points) in portable_pdb.get_all_sequence_points().enumerate() {
-            let method = function + 1;
+            let func_idx = (function + 1) as u32;
             let sequence_points = sequence_points?;
+
             for sp in sequence_points.iter() {
                 let range = raw::Range {
-                    func_idx: method as u32,
+                    func_idx,
                     il_offset: sp.il_offset,
                 };
 
