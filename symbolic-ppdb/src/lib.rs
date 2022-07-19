@@ -32,7 +32,13 @@
 //!
 //! # Structure of a Portable PDB file
 //! An ECMA-335 file is divided into sections called _streams_. The possible streams are
-//! * `#~` ("metadata"), comprising a list of metadata tables.
+//! * `#~` ("metadata"), comprising information about classes, methods, modules, &c.,
+//!   organized into tables adhering to various schemas. The original ECMA-335 tables
+//!   are described in Section II.22 of the ECMA-335 spec, the tables added by Portable PDB are described
+//!   in the Portable PDB spec.
+//!   The [`MethodDebugInformation`](https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#methoddebuginformation-table-0x31)
+//!   table is of particular interest to `symbolic`, as it contains
+//!   line information for functions.
 //! * `#Strings`, comprising null-terminated UTF-8 strings.
 //! * `#GUID`, a list of GUIDs.
 //! * `#US` ("user strings"), comprising UTF-16 encoded strings.
@@ -40,15 +46,6 @@
 //!
 //! The Portable PDB format extends ECMA-335 by the addition of another steam, `#PDB`, as well
 //! as several tables to the `#~` stream.
-//!
-//! ## The `#~` stream
-//! The `#~` ("metadata") stream comprises information about classes, methods, modules, &c.,
-//! organized into tables adhering to various schemas. The original ECMA-335 tables
-//! are described in Section II.22 of the ECMA-335 spec, the tables added by Portable PDB are described
-//! in the Portable PDB spec.
-//! The [`MethodDebugInformation`](https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#methoddebuginformation-table-0x31)
-//! table is of particular interest to `symbolic`, as it contains
-//! line information for functions.
 
 #![warn(missing_docs)]
 
