@@ -1,0 +1,28 @@
+[package]
+name = "symbolic-ppdb"
+version = "9.0.0"
+license = "MIT"
+authors = [
+    "Sebastian Zivota <sebastian.zivota@sentry.io>",
+    "Arpad Borsos <arpad.borsos@sentry.io>"
+]
+documentation = "https://docs.rs/symbolic-ppdb"
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+description = """
+A library for parsing and performing lookups on Portable PDB files.
+"""
+edition = "2021"
+
+exclude = ["tests/**/*"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+indexmap = "1.9.1"
+leb128 = "0.2.5"
+symbolic-common = { version = "9.0.0", path = "../symbolic-common" }
+thiserror = "1.0.31"
+uuid = "1.0.0"
+zerocopy = "0.6.1"
