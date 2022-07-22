@@ -1,0 +1,41 @@
+# sync stack trace
+objectLiteralAnon@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:28:46
+objectLiteralMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:27:49
+globalAssign@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:24:46
+@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:22:40
+#privateMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:18:43
+classMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:16:39
+Klass@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:14:36
+staticMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:12:37
+arrowFn@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:9:43
+anonFn@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:7:36
+namedFnExpr@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:5:48
+namedFn@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:3:29
+global code@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:60:12
+
+# async stack trace
+@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:50:57
+asyncFunctionResume@[native code]
+asyncObjectLiteralAnon@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:50:61
+@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:49:76
+asyncFunctionResume@[native code]
+asyncObjectLiteralMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:49:80
+@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:45:98
+asyncFunctionResume@[native code]
+@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:45:102
+@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:42:61
+asyncFunctionResume@[native code]
+@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:41:61
+asyncFunctionResume@[native code]
+@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:39:33
+asyncFunctionResume@[native code]
+@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:34:69
+asyncFunctionResume@[native code]
+asyncArrowFn@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:34:73
+@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:33:50
+asyncFunctionResume@[native code]
+asyncNamedFn@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:33:54
+@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:69:27
+asyncFunctionResume@[native code]
+asyncMain@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:66:26
+global code@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:76:10

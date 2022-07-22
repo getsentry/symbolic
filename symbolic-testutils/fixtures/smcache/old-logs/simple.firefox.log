@@ -1,0 +1,27 @@
+# sync stack trace
+objectLiteralAnon@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:28:37
+objectLiteralMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:27:32
+globalAssign@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:24:27
+Klass.prototype.prototypeMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:22:28
+#privateMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:18:28
+classMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:16:39
+Klass@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:14:25
+staticMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:12:28
+arrowFn@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:9:31
+anonFn@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:7:29
+namedFnExpr@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:5:42
+namedFn@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:3:21
+@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:60:5
+
+
+# async stack trace
+asyncObjectLiteralAnon@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:50:48
+asyncObjectLiteralMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:49:54
+AsyncKlass.prototype.asyncProtoMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:45:74
+#privateAsyncMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:42:45
+asyncClassMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:41:61
+asyncStaticMethod@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:39:17
+asyncArrowFn@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:34:52
+asyncNamedFn@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:33:38
+asyncMain@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:69:15
+@file:///Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:75:1

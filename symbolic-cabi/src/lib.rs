@@ -11,6 +11,7 @@ mod core;
 mod debuginfo;
 mod demangle;
 mod proguard;
+mod smcache;
 mod sourcemap;
 mod symcache;
 
@@ -20,5 +21,6 @@ pub use crate::core::*;
 pub use crate::debuginfo::*;
 pub use crate::demangle::*;
 pub use crate::proguard::*;
+pub use crate::smcache::*;
 pub use crate::sourcemap::*;
 pub use crate::symcache::*;
