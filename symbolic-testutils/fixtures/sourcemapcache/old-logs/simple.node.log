@@ -1,0 +1,40 @@
+# sync stack trace
+Error
+    at Object.objectLiteralAnon (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:28:37)
+    at Object.objectLiteralMethod (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:27:32)
+    at globalAssign (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:24:27)
+    at Klass.prototypeMethod (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:22:28)
+    at Klass.#privateMethod (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:18:28)
+    at Klass.classMethod (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:16:39)
+    at new Klass (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:14:25)
+    at Function.staticMethod (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:12:28)
+    at arrowFn (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:9:31)
+    at anonFn (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:7:29)
+    at namedFnExpr (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:5:42)
+    at namedFn (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:3:21)
+    at Object.<anonymous> (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:60:5)
+    at Module._compile (node:internal/modules/cjs/loader:1105:14)
+    at Object.Module._extensions..js (node:internal/modules/cjs/loader:1159:10)
+    at Module.load (node:internal/modules/cjs/loader:981:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:822:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:77:12)
+    at node:internal/main/run_main_module:17:47
+
+# async stack trace
+Error
+    at Object.asyncObjectLiteralAnon (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:50:48)
+    at Object.asyncObjectLiteralMethod (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:49:54)
+    at AsyncKlass.asyncProtoMethod (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:45:74)
+    at AsyncKlass.#privateAsyncMethod (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:42:45)
+    at AsyncKlass.asyncClassMethod (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:41:61)
+    at Function.asyncStaticMethod (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:39:17)
+    at asyncArrowFn (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:34:52)
+    at asyncNamedFn (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:33:38)
+    at asyncMain (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:69:15)
+    at Object.<anonymous> (/Users/swatinem/Coding/js-source-scopes/tests/fixtures/simple.js:75:1)
+    at Module._compile (node:internal/modules/cjs/loader:1105:14)
+    at Object.Module._extensions..js (node:internal/modules/cjs/loader:1159:10)
+    at Module.load (node:internal/modules/cjs/loader:981:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:822:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:77:12)
+    at node:internal/main/run_main_module:17:47

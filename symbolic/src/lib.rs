@@ -71,6 +71,9 @@ pub use symbolic_demangle as demangle;
 #[cfg(feature = "il2cpp")]
 pub use symbolic_il2cpp as il2cpp;
 #[doc(inline)]
+#[cfg(feature = "sourcemapcache")]
+pub use symbolic_sourcemapcache as sourcemapcache;
+#[doc(inline)]
 #[cfg(feature = "symcache")]
 pub use symbolic_symcache as symcache;
 #[doc(inline)]

@@ -1,0 +1,24 @@
+[package]
+name = "symbolic-sourcemapcache"
+version = "9.1.1"
+license = "MIT"
+authors = ["Sentry <hello@sentry.io>"]
+documentation = "https://docs.rs/symbolic-sourcemapcache"
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+description = """
+A library for parsing JavaScript Source Maps.
+"""
+edition = "2021"
+
+[dependencies]
+thiserror = "1.0.31"
+rslint_parser = "0.3.1"
+sourcemap = "6.0.2"
+zerocopy = "0.6.1"
+leb128 = "0.2.5"
+indexmap = "1.9.1"
+tracing = "0.1.36"
+
+[dev-dependencies]
+symbolic-testutils = { path = "../symbolic-testutils" }
