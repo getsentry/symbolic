@@ -32,7 +32,7 @@ impl<'a> FunctionStack<'a> {
         let mut inlinee: Option<Function> = None;
         while let Some((fn_depth, mut function)) = self.0.pop() {
             if let Some(inlinee) = inlinee.take() {
-                fill_lines(&mut function.lines, &inlinee.lines);
+                normalize_lines(&mut function.lines, &inlinee.lines);
                 function.inlinees.push(inlinee);
             }
             // we reached the intended depth, so re-push the function and stop
@@ -53,15 +53,17 @@ impl<'a> FunctionStack<'a> {
     }
 }
 
-/// Split the line records in `parent_lines` so it has records corresponding to
-/// each record `child_lines`, and splits `parent_lines` ranges apart appropriately.
-fn fill_lines(parent_lines: &mut Vec<LineInfo>, child_lines: &[LineInfo]) {
+/// Split the line records in `parent_lines` apart so it contains records corresponding to
+/// each record in `child_lines`.
+fn normalize_lines(parent_lines: &mut Vec<LineInfo>, child_lines: &[LineInfo]) {
     let mut work_lines = std::mem::take(parent_lines);
     work_lines.reverse();
 
-    for child in child_lines {
-        // TODO: figure out what to do when these are None
-        let child_size = child.size.unwrap();
+    'children: for child in child_lines {
+        let child_size = match child.size {
+            Some(size) => size,
+            None => break 'children,
+        };
         let child_end = child.address.saturating_add(child_size);
 
         let (mut parent, parent_end) = loop {
@@ -70,7 +72,10 @@ fn fill_lines(parent_lines: &mut Vec<LineInfo>, child_lines: &[LineInfo]) {
                 None => return,
             };
 
-            let parent_size = parent_line.size.unwrap();
+            let parent_size = match parent_line.size {
+                Some(size) => size,
+                None => break 'children,
+            };
             let parent_end = parent_line.address.saturating_add(parent_size);
             if parent_end <= child.address {
                 parent_lines.push(parent_line);
@@ -80,28 +85,37 @@ fn fill_lines(parent_lines: &mut Vec<LineInfo>, child_lines: &[LineInfo]) {
         };
 
         if child.address > parent.address {
-            let mut split_before = parent.clone();
-            split_before.size = Some(child.address - parent.address);
-            parent.address = child.address;
-            // TODO: handle None
-            parent.size = Some(parent.size.unwrap() - split_before.size.unwrap());
-            parent_lines.push(split_before);
+            let child_start_offset = child.address - parent.address;
+            let (before_child, at_child) = split_line(parent, child_start_offset);
+            parent = at_child;
+            parent_lines.push(before_child);
         }
 
         if child_end < parent_end {
-            let mut child_split = parent.clone();
-            child_split.size = Some(child_size);
-            parent_lines.push(child_split);
-
-            parent.address = child_end;
-            // TODO: handle None
-            parent.size = Some(parent.size.unwrap() - child_size);
-            work_lines.push(parent);
+            let (at_child, after_child) = split_line(parent, child_size);
+            parent_lines.push(at_child);
+            work_lines.push(after_child);
         } else {
             parent_lines.push(parent);
         }
     }
+
     parent_lines.extend(work_lines.into_iter().rev());
+}
+
+/// Splits a `LineInfo` in two at size offset `mid`.
+///
+/// # Panics
+/// Panics if the `LineInfo` does not have a defined size or if its size is less than `mid`.
+fn split_line(mut first: LineInfo, mid: u64) -> (LineInfo, LineInfo) {
+    let size = first.size.expect("line record does not have a size");
+    assert!(mid <= size);
+    let mut second = first.clone();
+    first.size = Some(mid);
+    second.address = first.address.saturating_add(mid);
+    second.size = Some(size - mid);
+
+    (first, second)
 }
 
 #[cfg(test)]
