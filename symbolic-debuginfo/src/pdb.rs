@@ -23,7 +23,8 @@ use symbolic_common::{
 };
 
 use crate::base::*;
-use crate::shared::{FunctionStack, Parse};
+use crate::function_stack::FunctionStack;
+use crate::Parse;
 
 type Pdb<'data> = pdb::PDB<'data, Cursor<&'data [u8]>>;
 
@@ -670,6 +671,7 @@ impl<'s> Unit<'s> {
                 line: line_info.line_start.into(),
             });
         }
+        lines.sort_by_key(|line| line.address);
 
         Ok(lines)
     }
@@ -751,15 +753,14 @@ impl<'s> Unit<'s> {
         // If there are no line records, skip this inline function completely. Apparently, it was
         // eliminated by the compiler, and cannot be hit by the program anymore. For `symbolic`,
         // such functions do not have any use.
-        let start = match lines.iter().map(|line| line.address).min() {
+        let start = match lines.first().map(|line| line.address) {
             Some(address) => address,
             None => return Ok(None),
         };
 
         let end = match lines
-            .iter()
+            .last()
             .map(|line| line.address + line.size.unwrap_or(1))
-            .max()
         {
             Some(address) => address,
             None => return Ok(None),
