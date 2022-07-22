@@ -236,3 +236,85 @@ impl<'s> FunctionBuilderStack<'s> {
         self.stack.pop().unwrap().1
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_simple() {
+        // 0x10 - 0x40: foo in foo.c on line 1
+        let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30);
+        builder.add_leaf_line(
+            0x10,
+            Some(0x30),
+            FileInfo {
+                name: b"foo.c",
+                dir: &[],
+            },
+            1,
+        );
+        let func = builder.finish();
+
+        assert_eq!(func.name.as_str(), "foo");
+        assert_eq!(func.lines.len(), 1);
+        assert_eq!(func.lines[0].address, 0x10);
+        assert_eq!(func.lines[0].file.name_str(), "foo.c");
+        assert_eq!(func.lines[0].line, 1);
+    }
+
+    #[test]
+    fn test_inlinee() {
+        // 0x10 - 0x20: foo in foo.c on line 1
+        // 0x20 - 0x40: bar in bar.c on line 1
+        // - inlined into: foo in foo.c on line 2
+        let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30);
+        builder.add_leaf_line(
+            0x10,
+            Some(0x10),
+            FileInfo {
+                name: b"foo.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_inlinee(
+            1,
+            Name::from("bar"),
+            0x20,
+            0x20,
+            FileInfo {
+                name: b"foo.c",
+                dir: &[],
+            },
+            2,
+        );
+        builder.add_leaf_line(
+            0x20,
+            Some(0x20),
+            FileInfo {
+                name: b"bar.c",
+                dir: &[],
+            },
+            1,
+        );
+        let func = builder.finish();
+
+        // the outer function has two line records, one for itself, the other for the inlined call
+        assert_eq!(func.name.as_str(), "foo");
+        assert_eq!(func.lines.len(), 2);
+        assert_eq!(func.lines[0].address, 0x10);
+        assert_eq!(func.lines[0].file.name_str(), "foo.c");
+        assert_eq!(func.lines[0].line, 1);
+        assert_eq!(func.lines[1].address, 0x20);
+        assert_eq!(func.lines[1].file.name_str(), "foo.c");
+        assert_eq!(func.lines[1].line, 2);
+
+        assert_eq!(func.inlinees.len(), 1);
+        assert_eq!(func.inlinees[0].name.as_str(), "bar");
+        assert_eq!(func.inlinees[0].lines.len(), 1);
+        assert_eq!(func.inlinees[0].lines[0].address, 0x20);
+        assert_eq!(func.inlinees[0].lines[0].file.name_str(), "bar.c");
+        assert_eq!(func.inlinees[0].lines[0].line, 1);
+    }
+}
