@@ -213,7 +213,10 @@ impl SequencePoint {
         let (start_line, data) = match prev_non_hidden {
             Some(prev) => {
                 let (delta_start_line, data) = decode_signed(data)?;
-                ((prev.start_line as i32 + delta_start_line) as u32, data)
+                (
+                    (prev.start_line as i32).saturating_add(delta_start_line) as u32,
+                    data,
+                )
             }
             None => decode_unsigned(data)?,
         };
@@ -221,13 +224,16 @@ impl SequencePoint {
         let (start_column, data) = match prev_non_hidden {
             Some(prev) => {
                 let (delta_start_col, data) = decode_signed(data)?;
-                ((prev.start_column as i32 + delta_start_col) as u32, data)
+                (
+                    (prev.start_column as i32).saturating_add(delta_start_col) as u32,
+                    data,
+                )
             }
             None => decode_unsigned(data)?,
         };
 
-        let end_line = start_line + delta_lines;
-        let end_column = (start_column as i32 + delta_cols) as u32;
+        let end_line = start_line.saturating_add(delta_lines);
+        let end_column = (start_column as i32).saturating_add(delta_cols) as u32;
 
         Ok((
             Self::new(
