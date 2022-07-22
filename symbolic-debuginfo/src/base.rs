@@ -526,7 +526,7 @@ impl<'data> Deref for FileEntry<'data> {
 }
 
 /// File and line number mapping for an instruction address.
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct LineInfo<'data> {
     /// The instruction address relative to the image base (load address).
     pub address: u64,
@@ -536,6 +536,21 @@ pub struct LineInfo<'data> {
     pub file: FileInfo<'data>,
     /// Absolute line number starting at 1. Zero means no line number.
     pub line: u64,
+}
+
+#[cfg(test)]
+impl LineInfo<'static> {
+    pub(crate) fn new(address: u64, size: u64, file: &[u8], line: u64) -> LineInfo {
+        LineInfo {
+            address,
+            size: Some(size),
+            file: FileInfo {
+                name: file,
+                dir: &[],
+            },
+            line,
+        }
+    }
 }
 
 impl fmt::Debug for LineInfo<'_> {
