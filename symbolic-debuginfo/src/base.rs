@@ -6,6 +6,16 @@ use std::str::FromStr;
 
 use symbolic_common::{clean_path, join_path, Arch, CodeId, DebugId, Name};
 
+pub(crate) trait Parse<'data>: Sized {
+    type Error;
+
+    fn parse(data: &'data [u8]) -> Result<Self, Self::Error>;
+
+    fn test(data: &'data [u8]) -> bool {
+        Self::parse(data).is_ok()
+    }
+}
+
 /// An error returned for unknown or invalid `ObjectKinds`.
 #[derive(Debug)]
 pub struct UnknownObjectKindError;

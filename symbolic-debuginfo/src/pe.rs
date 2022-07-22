@@ -11,7 +11,7 @@ use thiserror::Error;
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
-use crate::shared::Parse;
+use crate::Parse;
 
 pub use goblin::pe::exception::*;
 pub use goblin::pe::section_table::SectionTable;

@@ -23,7 +23,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::shared::Parse;
+use crate::Parse;
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;

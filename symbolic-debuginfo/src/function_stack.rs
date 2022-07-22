@@ -1,27 +1,8 @@
-#[cfg(feature = "macho")]
-mod mono_archive;
-
-#[cfg(feature = "macho")]
-pub use mono_archive::{MonoArchive, MonoArchiveObjects};
-
-pub trait Parse<'data>: Sized {
-    type Error;
-
-    fn parse(data: &'data [u8]) -> Result<Self, Self::Error>;
-
-    fn test(data: &'data [u8]) -> bool {
-        Self::parse(data).is_ok()
-    }
-}
-
-#[cfg(any(feature = "dwarf", feature = "ms"))]
 use crate::base::Function;
 
 /// A stack for assembling function trees from lists of nested functions.
-#[cfg(feature = "ms")]
 pub struct FunctionStack<'a>(Vec<(isize, Function<'a>)>);
 
-#[cfg(feature = "ms")]
 impl<'a> FunctionStack<'a> {
     /// Creates a new function stack.
     pub fn new() -> Self {
