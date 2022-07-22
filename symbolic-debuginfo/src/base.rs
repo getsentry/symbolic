@@ -656,6 +656,10 @@ pub trait DebugSession<'session> {
     /// Functions are iterated in the order they are declared in their compilation units. The
     /// functions yielded by this iterator include all inlinees and line records resolved.
     ///
+    /// Functions returned by this iterator satisfy the following invariant: If an inlinee of
+    /// function `f` has a line record with address `a` and size `s`, then `f` has a line record
+    /// with address `a` and size `s` as well.
+    ///
     /// Note that the iterator holds a mutable borrow on the debug session, which allows it to use
     /// caches and optimize resources while resolving function and line information.
     fn functions(&'session self) -> Self::FunctionIterator;
