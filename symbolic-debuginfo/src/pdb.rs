@@ -673,6 +673,9 @@ impl<'s> Unit<'s> {
         }
         lines.sort_by_key(|line| line.address);
 
+        // TODO: merge line infos that only differ in their `column` information, which we don’t
+        // care about. We only want to output line infos that differ in their file/line.
+
         Ok(lines)
     }
 

@@ -1,7 +1,7 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
+assertion_line: 524
 expression: "FunctionsDebug(&functions[..10], 0)"
-
 ---
 
 > 0x1120: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::~basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >() (0x54)
@@ -91,6 +91,28 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x12c1: xstring:2627 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x12ca: xstring:2623 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
+  > 0x11a0: std::_String_val<std::_Simple_types<wchar_t> >::_Myptr() (0x9)
+    0x11a0: xstring:1780 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    0x11a2: xstring:1781 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    0x11a7: xstring:1783 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
+    > 0x11a2: std::_String_val<std::_Simple_types<wchar_t> >::_Large_string_engaged() const (0x3)
+      0x11a2: xstring:1802 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
+    > 0x11a7: std::_Unfancy(wchar_t*) (0x2)
+      0x11a7: xstddef:265 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
+  > 0x11a9: std::_WChar_traits<wchar_t>::move(wchar_t* const, wchar_t const* const, const unsigned int) (0x16)
+    0x11a9: iosfwd:329 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    0x11b3: iosfwd:329 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
+    > 0x11a9: wmemmove(wchar_t*, wchar_t const*, unsigned int) (0x16)
+      0x11a9: wchar.h:245 (c:\program files (x86)\windows kits\10\include\10.0.16299.0\ucrt)
+      0x11b3: wchar.h:245 (c:\program files (x86)\windows kits\10\include\10.0.16299.0\ucrt)
+
+  > 0x11bf: std::_WChar_traits<wchar_t>::assign(wchar_t&, wchar_t const&) (0x6)
+    0x11bf: iosfwd:341 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
   > 0x11d1: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Reallocate_for(const unsigned int, std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::assign::__l2::<lambda_03628ca18370b1f44a99b655e704819b>, wchar_t const*) (0xfe)
     0x11d1: xstring:3804 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
     0x11dd: xstring:3811 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -178,28 +200,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
           0x12a8: xmemory0:138 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x12b0: xmemory0:143 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-  > 0x11bf: std::_WChar_traits<wchar_t>::assign(wchar_t&, wchar_t const&) (0x6)
-    0x11bf: iosfwd:341 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-  > 0x11a9: std::_WChar_traits<wchar_t>::move(wchar_t* const, wchar_t const* const, const unsigned int) (0x16)
-    0x11a9: iosfwd:329 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-    0x11b3: iosfwd:329 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-    > 0x11a9: wmemmove(wchar_t*, wchar_t const*, unsigned int) (0x16)
-      0x11a9: wchar.h:245 (c:\program files (x86)\windows kits\10\include\10.0.16299.0\ucrt)
-      0x11b3: wchar.h:245 (c:\program files (x86)\windows kits\10\include\10.0.16299.0\ucrt)
-
-  > 0x11a0: std::_String_val<std::_Simple_types<wchar_t> >::_Myptr() (0x9)
-    0x11a0: xstring:1780 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-    0x11a2: xstring:1781 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-    0x11a7: xstring:1783 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-    > 0x11a2: std::_String_val<std::_Simple_types<wchar_t> >::_Large_string_engaged() const (0x3)
-      0x11a2: xstring:1802 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-    > 0x11a7: std::_Unfancy(wchar_t*) (0x2)
-      0x11a7: xstddef:265 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
 > 0x12e0: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::operator=(std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >&&) (0x7f)
   0x12e0: xstring:2267 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x12e8: xstring:2268 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -208,21 +208,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1352: xstring:2277 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x1354: xstring:2278 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x1358: xstring:2270 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-  > 0x1334: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Assign_rv_contents(std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >&&, std::integral_constant<bool,1>) (0x1d)
-    0x1334: xstring:2291 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-    > 0x1334: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Assign_rv_contents_with_alloc_always_equal(std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >&&, std::integral_constant<bool,1>) (0x1d)
-      0x1334: xstring:2331 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-      0x1344: xstring:2332 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-      > 0x1344: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Tidy_init() (0xd)
-        0x1344: xstring:3891 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-        0x1347: xstring:3892 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-        0x134e: xstring:3895 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-        > 0x134e: std::_WChar_traits<wchar_t>::assign(wchar_t&, wchar_t const&) (0x3)
-          0x134e: iosfwd:341 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
   > 0x12ec: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Tidy_deallocate() (0x72)
     0x12ec: xstring:3902 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -256,6 +241,21 @@ expression: "FunctionsDebug(&functions[..10], 0)"
           0x130d: xmemory0:138 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x1315: xmemory0:143 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
           0x1358: xmemory0:140 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
+  > 0x1334: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Assign_rv_contents(std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >&&, std::integral_constant<bool,1>) (0x1d)
+    0x1334: xstring:2291 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
+    > 0x1334: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Assign_rv_contents_with_alloc_always_equal(std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >&&, std::integral_constant<bool,1>) (0x1d)
+      0x1334: xstring:2331 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+      0x1344: xstring:2332 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
+      > 0x1344: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Tidy_init() (0xd)
+        0x1344: xstring:3891 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+        0x1347: xstring:3892 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+        0x134e: xstring:3895 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
+        > 0x134e: std::_WChar_traits<wchar_t>::assign(wchar_t&, wchar_t const&) (0x3)
+          0x134e: iosfwd:341 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
 > 0x27d0: std::_List_buy<google_breakpad::AppMemory,std::allocator<google_breakpad::AppMemory> >::_Buynode<google_breakpad::AppMemory const &>(std::_List_node<google_breakpad::AppMemory,void *>*, std::_List_node<google_breakpad::AppMemory,void *>*, google_breakpad::AppMemory const&) (0x1b)
   0x27d0: list:761 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -298,6 +298,20 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   > 0x2581: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::size() const (0x7)
     0x2581: vector:1775 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
+  > 0x2594: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::_Calculate_growth(const unsigned int) const (0x24)
+    0x2594: vector:1955 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    0x2596: vector:1957 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    0x259b: vector:1955 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    0x259e: vector:1957 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    0x25a8: vector:1957 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    0x25ac: vector:1959 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    0x25b0: vector:1962 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    0x25b3: vector:1964 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
+    > 0x2594: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::capacity() const (0xa)
+      0x2594: vector:1786 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+      0x259b: vector:1786 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
   > 0x25b8: std::allocator<google_breakpad::ExceptionHandler *>::allocate(const unsigned int) (0x5c)
     0x25b8: xmemory0:1035 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
     0x25c4: xmemory0:1035 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -328,19 +342,8 @@ expression: "FunctionsDebug(&functions[..10], 0)"
       0x25c4: xmemory0:25 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
       0x25cb: xmemory0:28 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-  > 0x2594: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::_Calculate_growth(const unsigned int) const (0x24)
-    0x2594: vector:1955 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-    0x2596: vector:1957 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-    0x259b: vector:1955 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-    0x259e: vector:1957 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-    0x25a8: vector:1957 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-    0x25ac: vector:1959 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-    0x25b0: vector:1962 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-    0x25b3: vector:1964 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-    > 0x2594: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::capacity() const (0xa)
-      0x2594: vector:1786 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-      0x259b: vector:1786 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+  > 0x2614: std::_Default_allocator_traits<std::allocator<google_breakpad::ExceptionHandler *> >::construct(std::allocator<google_breakpad::ExceptionHandler *>&, google_breakpad::ExceptionHandler** const, google_breakpad::ExceptionHandler*&&) (0x9)
+    0x2614: xmemory0:917 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
   > 0x261d: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::_Umove_if_noexcept(google_breakpad::ExceptionHandler**, google_breakpad::ExceptionHandler**, google_breakpad::ExceptionHandler**) (0x15)
     0x261d: vector:1944 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -363,9 +366,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
             0x261f: xutility:2389 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
             0x2624: xutility:2390 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
             0x262f: xutility:2390 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-  > 0x2614: std::_Default_allocator_traits<std::allocator<google_breakpad::ExceptionHandler *> >::construct(std::allocator<google_breakpad::ExceptionHandler *>&, google_breakpad::ExceptionHandler** const, google_breakpad::ExceptionHandler*&&) (0x9)
-    0x2614: xmemory0:917 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
   > 0x262d: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::_Change_array(google_breakpad::ExceptionHandler** const, const unsigned int, const unsigned int) (0x48)
     0x262d: vector:1999 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -402,6 +402,11 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1bf5: exception_handler.cc:451 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
   0x1bfa: exception_handler.cc:440 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
 
+  > 0x1b9f: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::size() const (0x1b)
+    0x1b9f: vector:1775 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    0x1bb0: vector:1775 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+    0x1bb7: vector:1775 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
   > 0x1bb5: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::at(const unsigned int) (0x4a)
     0x1bb5: vector:1831 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
     0x1bbc: vector:1831 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -411,30 +416,10 @@ expression: "FunctionsDebug(&functions[..10], 0)"
       0x1bb5: vector:1775 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
       0x1bbc: vector:1775 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
-  > 0x1b9f: std::vector<google_breakpad::ExceptionHandler *,std::allocator<google_breakpad::ExceptionHandler *> >::size() const (0x1b)
-    0x1b9f: vector:1775 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-    0x1bb0: vector:1775 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-    0x1bb7: vector:1775 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
 > 0x26a0: std::list<google_breakpad::AppMemory,std::allocator<google_breakpad::AppMemory> >::~list<google_breakpad::AppMemory,std::allocator<google_breakpad::AppMemory> >() (0x43)
   0x26a0: list:1034 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x26a3: list:1035 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x26d6: list:1036 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-  > 0x26d6: std::_List_alloc<std::_List_base_types<google_breakpad::AppMemory,std::allocator<google_breakpad::AppMemory> > >::{dtor}() (0xc)
-    0x26d6: list:530 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-    > 0x26d6: std::_List_alloc<std::_List_base_types<google_breakpad::AppMemory,std::allocator<google_breakpad::AppMemory> > >::_Freeheadnode(std::_List_node<google_breakpad::AppMemory,void *>*) (0xc)
-      0x26d6: list:655 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-      > 0x26d6: std::_List_node<google_breakpad::AppMemory,void *>::_Freenode0(std::allocator<std::_List_node<google_breakpad::AppMemory,void *> >&, std::_List_node<google_breakpad::AppMemory,void *>*) (0xc)
-        0x26d6: list:424 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-        > 0x26d6: std::_Default_allocator_traits<std::allocator<std::_List_node<google_breakpad::AppMemory,void *> > >::deallocate(std::allocator<std::_List_node<google_breakpad::AppMemory,void *> >&, std::_List_node<google_breakpad::AppMemory,void *>* const, const unsigned int) (0xc)
-          0x26d6: xmemory0:911 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
-
-          > 0x26d6: std::_Deallocate(void*, unsigned int) (0xc)
-            0x26d6: xmemory0:217 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
   > 0x26a3: std::list<google_breakpad::AppMemory,std::allocator<google_breakpad::AppMemory> >::_Tidy() (0x32)
     0x26a3: list:1836 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -467,6 +452,21 @@ expression: "FunctionsDebug(&functions[..10], 0)"
             > 0x26c2: std::_Deallocate(void*, unsigned int) (0xd)
               0x26c2: xmemory0:217 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
               0x26cc: xmemory0:217 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
+  > 0x26d6: std::_List_alloc<std::_List_base_types<google_breakpad::AppMemory,std::allocator<google_breakpad::AppMemory> > >::{dtor}() (0xc)
+    0x26d6: list:530 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
+    > 0x26d6: std::_List_alloc<std::_List_base_types<google_breakpad::AppMemory,std::allocator<google_breakpad::AppMemory> > >::_Freeheadnode(std::_List_node<google_breakpad::AppMemory,void *>*) (0xc)
+      0x26d6: list:655 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
+      > 0x26d6: std::_List_node<google_breakpad::AppMemory,void *>::_Freenode0(std::allocator<std::_List_node<google_breakpad::AppMemory,void *> >&, std::_List_node<google_breakpad::AppMemory,void *>*) (0xc)
+        0x26d6: list:424 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
+        > 0x26d6: std::_Default_allocator_traits<std::allocator<std::_List_node<google_breakpad::AppMemory,void *> > >::deallocate(std::allocator<std::_List_node<google_breakpad::AppMemory,void *> >&, std::_List_node<google_breakpad::AppMemory,void *>* const, const unsigned int) (0xc)
+          0x26d6: xmemory0:911 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
+
+          > 0x26d6: std::_Deallocate(void*, unsigned int) (0xc)
+            0x26d6: xmemory0:217 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
 > 0x2690: google_breakpad::scoped_ptr<google_breakpad::CrashGenerationClient>::~scoped_ptr<google_breakpad::CrashGenerationClient>() (0xd)
   0x2690: scoped_ptr.h:96 (c:\projects\breakpad-tools\deps\breakpad\src\common)
