@@ -662,19 +662,39 @@ impl<'s> Unit<'s> {
                 None => continue,
             };
 
+            // skip 0-sized line infos
+            let size = line_info.length.map(u64::from);
+            if size == Some(0) {
+                continue;
+            }
+
             let file_info = program.get_file_info(line_info.file_index)?;
 
             lines.push(LineInfo {
                 address: rva,
-                size: line_info.length.map(u64::from),
+                size,
                 file: self.debug_info.file_info(file_info)?,
                 line: line_info.line_start.into(),
             });
         }
         lines.sort_by_key(|line| line.address);
 
-        // TODO: merge line infos that only differ in their `column` information, which we don’t
+        // Merge line infos that only differ in their `column` information, which we don't
         // care about. We only want to output line infos that differ in their file/line.
+        lines.dedup_by(|second, first| {
+            // the records need to be consecutive to be able to merge
+            let first_end = first.size.and_then(|size| first.address.checked_add(size));
+            let is_consecutive = first_end == Some(second.address);
+            // the line record points to the same file/line, so we want to merge/dedupe it
+            if is_consecutive && first.file == second.file && first.line == second.line {
+                first.size = first
+                    .size
+                    .map(|first_size| first_size.saturating_add(second.size.unwrap_or(0)));
+
+                return true;
+            }
+            false
+        });
 
         Ok(lines)
     }

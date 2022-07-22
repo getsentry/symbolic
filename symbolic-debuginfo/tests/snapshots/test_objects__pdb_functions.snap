@@ -74,7 +74,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0x1104: crash_generation_client.cc:373 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
 
 > 0x12d0: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::_Xlen() (0xc)
-  0x12d0: xstring:3918 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x12d0: xstring:3919 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
 > 0x1180: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::assign(wchar_t const* const, const unsigned int) (0x150)
@@ -258,7 +257,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
           0x134e: iosfwd:341 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
 > 0x27d0: std::_List_buy<google_breakpad::AppMemory,std::allocator<google_breakpad::AppMemory> >::_Buynode<google_breakpad::AppMemory const &>(std::_List_node<google_breakpad::AppMemory,void *>*, std::_List_node<google_breakpad::AppMemory,void *>*, google_breakpad::AppMemory const&) (0x1b)
-  0x27d0: list:761 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x27d0: list:762 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x27dd: list:766 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x27e8: list:775 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -469,7 +467,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
             0x26d6: xmemory0:217 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
 
 > 0x2690: google_breakpad::scoped_ptr<google_breakpad::CrashGenerationClient>::~scoped_ptr<google_breakpad::CrashGenerationClient>() (0xd)
-  0x2690: scoped_ptr.h:96 (c:\projects\breakpad-tools\deps\breakpad\src\common)
   0x2690: scoped_ptr.h:98 (c:\projects\breakpad-tools\deps\breakpad\src\common)
   0x269c: scoped_ptr.h:99 (c:\projects\breakpad-tools\deps\breakpad\src\common)
 
