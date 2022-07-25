@@ -1,5 +1,6 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
+assertion_line: 247
 expression: "FunctionsDebug(&functions[..10], 0)"
 ---
 
@@ -166,6 +167,7 @@ expression: "FunctionsDebug(&functions[..10], 0)"
       0x1cdc: basic_string.h:383 (/usr/include/c++/5/bits)
 
       > 0x1cdc: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE12_Alloc_hiderC4EPcRKS3_ (0x4)
+        0x1cdc: basic_string.h:109 (/usr/include/c++/5/bits)
 
     > 0x1ce0: _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC4ERKS4_ (0x7)
       0x1ce0: basic_string.h:400 (/usr/include/c++/5/bits)
@@ -259,6 +261,7 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x20c6: exception_handler.cc:318 (../deps/breakpad/src/client/linux/handler)
   0x20cd: exception_handler.cc:319 (../deps/breakpad/src/client/linux/handler)
   0x20e0: exception_handler.cc:315 (../deps/breakpad/src/client/linux/handler)
+  0x20ec: exception_handler.cc:199 (../deps/breakpad/src/client/linux/handler)
 
   > 0x20e0: InstallDefaultHandler (0xc)
     0x20e0: exception_handler.cc:199 (../deps/breakpad/src/client/linux/handler)
@@ -314,6 +317,7 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0x2122: stl_vector.h:548 (/usr/include/c++/5/bits)
 
     > 0x2122: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEC4ERKS4_ (0x4)
+      0x2122: stl_iterator.h:741 (/usr/include/c++/5/bits)
 
   > 0x2126: _ZSt4findIN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS4_SaIS4_EEEES4_ET_SA_SA_RKT0_ (0xaa)
     0x2126: stl_algo.h:3791 (/usr/include/c++/5/bits)
@@ -555,8 +559,10 @@ expression: "FunctionsDebug(&functions[..10], 0)"
           0x2350: stl_iterator.h:763 (/usr/include/c++/5/bits)
 
         > 0x2360: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv (0x10)
+          0x2360: stl_iterator.h:763 (/usr/include/c++/5/bits)
 
         > 0x2370: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv (0x9)
+          0x2370: stl_iterator.h:763 (/usr/include/c++/5/bits)
 
         > 0x2382: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv (0x4)
           0x2382: stl_iterator.h:763 (/usr/include/c++/5/bits)
@@ -610,8 +616,10 @@ expression: "FunctionsDebug(&functions[..10], 0)"
           0x23ed: stl_iterator.h:763 (/usr/include/c++/5/bits)
 
         > 0x23f6: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv (0x9)
+          0x23f6: stl_iterator.h:763 (/usr/include/c++/5/bits)
 
         > 0x23ff: _ZN9__gnu_cxx17__normal_iteratorIPPN15google_breakpad16ExceptionHandlerESt6vectorIS3_SaIS3_EEEppEv (0x9)
+          0x23ff: stl_iterator.h:763 (/usr/include/c++/5/bits)
 
   > 0x2408: RestoreAlternateStackLocked (0x24)
     0x2408: exception_handler.cc:176 (../deps/breakpad/src/client/linux/handler)
@@ -716,6 +724,7 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x2996: exception_handler.cc:508 (../deps/breakpad/src/client/linux/handler)
   0x299d: exception_handler.cc:568 (../deps/breakpad/src/client/linux/handler)
   0x29a5: exception_handler.cc:505 (../deps/breakpad/src/client/linux/handler)
+  0x29e6: memory_allocator.h:143 (../deps/breakpad/src/common)
 
   > 0x2534: _ZNK15google_breakpad16ExceptionHandler14IsOutOfProcessEv (0x4)
     0x2534: exception_handler.h:205 (../deps/breakpad/src/client/linux/handler)
@@ -794,6 +803,7 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0x2738: linux_syscall_support.h:3357 (../deps/third_party/lss)
 
   > 0x275c: sys_close (0x10)
+    0x275c: linux_syscall_support.h:3357 (../deps/third_party/lss)
 
   > 0x276e: sys_close (0x1a)
     0x276e: linux_syscall_support.h:3357 (../deps/third_party/lss)
