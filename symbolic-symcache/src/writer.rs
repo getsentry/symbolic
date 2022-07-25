@@ -8,7 +8,7 @@ use std::io::Write;
 
 use indexmap::IndexSet;
 use symbolic_common::{Arch, DebugId};
-use symbolic_debuginfo::{DebugSession, Function, ObjectLike, Symbol};
+use symbolic_debuginfo::{DebugSession, Function, LineInfo, ObjectLike, Symbol};
 
 #[cfg(feature = "il2cpp")]
 use symbolic_common::Language;
@@ -117,6 +117,7 @@ impl<'a> SymCacheConverter<'a> {
 
     /// This processes the given [`ObjectLike`] object, collecting all its functions and line
     /// information into the converter.
+    #[tracing::instrument(skip_all, fields(object.debug_id = %object.debug_id().breakpad()))]
     pub fn process_object<'d, 'o, O>(&mut self, object: &'o O) -> Result<(), Error>
     where
         O: ObjectLike<'d, 'o>,
@@ -132,7 +133,7 @@ impl<'a> SymCacheConverter<'a> {
         for function in session.functions() {
             let function = function.map_err(|e| Error::new(ErrorKind::BadDebugFile, e))?;
 
-            self.process_symbolic_function(&function);
+            self.process_symbolic_function(&function, &[]);
         }
 
         for symbol in object.symbols() {
@@ -143,7 +144,19 @@ impl<'a> SymCacheConverter<'a> {
     }
 
     /// Processes an individual [`Function`], adding its line information to the converter.
-    pub fn process_symbolic_function(&mut self, function: &Function<'_>) {
+    #[tracing::instrument(
+        skip_all,
+        fields(
+            function.address = function.address,
+            function.inline = function.inline,
+            function.name = function.name.as_str(),
+        )
+    )]
+    pub fn process_symbolic_function(
+        &mut self,
+        function: &Function<'_>,
+        parent_line_records: &[LineInfo],
+    ) {
         // skip over empty functions or functions whose address is too large to fit in a u32
         if function.size == 0 || function.address > u32::MAX as u64 {
             return;
@@ -180,6 +193,9 @@ impl<'a> SymCacheConverter<'a> {
             });
             fun_idx as u32
         };
+
+        let mut parent_line_records = parent_line_records.iter().peekable();
+        let mut parent_line = parent_line_records.next();
 
         for line in &function.lines {
             let mut location = transform::SourceLocation {
@@ -218,29 +234,88 @@ impl<'a> SymCacheConverter<'a> {
                 inlined_into_idx: u32::MAX,
             };
 
-            match self.ranges.entry(line.address as u32) {
-                btree_map::Entry::Vacant(entry) => {
-                    if function.inline {
-                        // BUG:
-                        // the abstraction should have defined this line record inside the caller
-                        // function already!
+            if function.inline {
+                while let Some(next_parent) = parent_line_records.peek() {
+                    if next_parent.address <= line.address {
+                        parent_line = parent_line_records.next();
+                    } else {
+                        break;
                     }
-                    entry.insert(source_location);
                 }
-                btree_map::Entry::Occupied(mut entry) => {
-                    if function.inline {
-                        let caller_source_location = entry.get().clone();
+
+                // if `parent_line` is nonempty, it is the last parent line record that starts at or before `line`
+                let parent_line = match parent_line {
+                    Some(parent_line)
+                        if parent_line
+                            .size
+                            .map_or(true, |size| parent_line.address + size > line.address) =>
+                    {
+                        parent_line
+                    }
+                    _ => {
+                        tracing::warn!(
+                            line.address,
+                            line.size,
+                            ?parent_line,
+                            "parent function does not have a covering line record"
+                        );
+                        continue;
+                    }
+                };
+
+                match self.ranges.get(&(parent_line.address as u32)) {
+                    None => {
+                        tracing::warn!(
+                            line.address,
+                            line.size,
+                            parent_line.address,
+                            parent_line.size,
+                            "parent line record should have been inserted in a previous call"
+                        );
+                        self.ranges.insert(line.address as u32, source_location);
+                    }
+
+                    Some(caller_source_location) => {
+                        let caller_source_location = caller_source_location.clone();
 
                         let mut callee_source_location = source_location;
-                        let (inlined_into_idx, _) =
-                            self.source_locations.insert_full(caller_source_location);
+                        let (inlined_into_idx, _) = self
+                            .source_locations
+                            .insert_full(caller_source_location.clone());
 
                         callee_source_location.inlined_into_idx = inlined_into_idx as u32;
-                        entry.insert(callee_source_location);
-                    } else {
+                        self.ranges
+                            .insert(line.address as u32, callee_source_location);
+
+                        // if `line` ends before `parent_line`, we need to insert another range for the leftover piece.
+                        if let Some(size) = line.size {
+                            let line_end = line.address + size;
+                            if let Some(parent_size) = parent_line.size {
+                                let parent_end = parent_line.address + parent_size;
+
+                                if line_end == parent_end {
+                                    continue;
+                                }
+                            }
+
+                            self.ranges.insert(line_end as u32, caller_source_location);
+                        }
+                    }
+                }
+            } else {
+                match self.ranges.entry(line.address as u32) {
+                    btree_map::Entry::Vacant(entry) => {
+                        entry.insert(source_location);
+                    }
+                    btree_map::Entry::Occupied(mut entry) => {
                         // BUG:
                         // the abstraction yields multiple top-level functions for the same
                         // instruction addr
+                        tracing::warn!(
+                            line.address,
+                            line.size,
+                            "function is not inlined, but the range is already occupied"
+                        );
                         entry.insert(source_location);
                     }
                 }
@@ -256,7 +331,7 @@ impl<'a> SymCacheConverter<'a> {
         });
 
         for inlinee in &function.inlinees {
-            self.process_symbolic_function(inlinee);
+            self.process_symbolic_function(inlinee, &function.lines);
         }
 
         let function_end = function.end_address() as u32;
@@ -532,5 +607,157 @@ impl<W: Write> WriteWrapper<W> {
         let buf = &[0u8; 7];
         let len = raw::align_to_eight(self.position);
         self.write(&buf[0..len])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use symbolic_common::Name;
+    use symbolic_debuginfo::{function_builder::FunctionBuilder, FileInfo};
+
+    use crate::{SymCache, SymCacheConverter};
+
+    #[test]
+    fn test_longer_line_record() {
+        // Consider the following code:
+        //
+        // ```
+        // fn parent() {
+        //     child1();
+        //     child2();
+        // }
+        // fn child1() { child2() }
+        // fn child2() {}
+        // ```
+        //
+        // we assume here that we transitively inline `child2` all the way into `parent`.
+        // but we only have a single line record for that whole chunk of code,
+        // even though the inlining hierarchy specifies two different call sites
+        //
+        // addr:    0x10 0x20 0x30 0x40 0x50
+        //          v    v    v    v    v
+        // # DWARF hierarchy
+        // parent:  |-------------------|
+        // child1:       |----|           (called from parent.c line 1)
+        // child2:       |----|           (called from child1.c line 1)
+        //                    |----|      (called from parent.c line 1)
+        // # line records
+        //          |----|         |----| (parent.c line 1)
+        //               |---------|      (child2.c line 1)
+
+        let mut builder = FunctionBuilder::new(Name::from("parent"), &[], 0x10, 0x40);
+        builder.add_inlinee(
+            1,
+            Name::from("child1"),
+            0x20,
+            0x10,
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_inlinee(
+            2,
+            Name::from("child2"),
+            0x20,
+            0x10,
+            FileInfo {
+                name: b"child1.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_inlinee(
+            1,
+            Name::from("child2"),
+            0x30,
+            0x10,
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_leaf_line(
+            0x10,
+            Some(0x10),
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_leaf_line(
+            0x20,
+            Some(0x10),
+            FileInfo {
+                name: b"child2.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_leaf_line(
+            0x30,
+            Some(0x10),
+            FileInfo {
+                name: b"child2.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_leaf_line(
+            0x40,
+            Some(0x10),
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            1,
+        );
+        let func = builder.finish();
+
+        dbg!(&func);
+
+        let mut writer = SymCacheConverter::new();
+        writer.process_symbolic_function(&func, &[]);
+        let mut buf = Vec::new();
+        writer.serialize(&mut buf).unwrap();
+
+        let cache = SymCache::parse(&buf).unwrap();
+
+        for sl in cache.lookup(0x30) {
+            dbg!(sl.line(), sl.file(), sl.function());
+        }
+
+        // assert_eq!(func.name.as_str(), "parent");
+        // assert_eq!(
+        //     &func.lines,
+        //     &[
+        //         LineInfo::new(0x10, 0x10, b"parent.c", 1),
+        //         LineInfo::new(0x20, 0x10, b"parent.c", 1),
+        //         LineInfo::new(0x30, 0x10, b"parent.c", 1),
+        //         LineInfo::new(0x40, 0x10, b"parent.c", 1),
+        //     ]
+        // );
+
+        // assert_eq!(func.inlinees.len(), 2);
+        // assert_eq!(func.inlinees[0].name.as_str(), "child1");
+        // assert_eq!(
+        //     &func.inlinees[0].lines,
+        //     &[LineInfo::new(0x20, 0x10, b"child1.c", 1),]
+        // );
+        // assert_eq!(func.inlinees[0].inlinees.len(), 1);
+        // assert_eq!(func.inlinees[0].inlinees[0].name.as_str(), "child2");
+        // assert_eq!(
+        //     &func.inlinees[0].inlinees[0].lines,
+        //     &[LineInfo::new(0x20, 0x10, b"child2.c", 1),]
+        // );
+
+        // assert_eq!(func.inlinees[1].name.as_str(), "child2");
+        // assert_eq!(
+        //     &func.inlinees[1].lines,
+        //     &[LineInfo::new(0x30, 0x10, b"child2.c", 1),]
+        // );
     }
 }
