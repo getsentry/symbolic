@@ -106,6 +106,7 @@ fn normalize_lines(parent_lines: &mut Vec<LineInfo>, child_lines: &[LineInfo]) {
 /// Splits a `LineInfo` in two at size offset `mid`.
 ///
 /// # Panics
+///
 /// Panics if the `LineInfo` does not have a defined size or if its size is less than `mid`.
 fn split_line(mut first: LineInfo, mid: u64) -> (LineInfo, LineInfo) {
     let size = first.size.expect("line record does not have a size");
@@ -160,9 +161,9 @@ mod tests {
 
         let mut functions = vec![];
         stack.flush(0, &mut functions);
-
         assert_eq!(functions.len(), 1);
         let func = &functions[0];
+
         assert_eq!(func.name.as_str(), "foo");
         assert_eq!(
             &func.lines,
@@ -181,7 +182,7 @@ mod tests {
     }
 
     #[test]
-    fn test_fill_lines_split() {
+    fn test_normalize_lines_split() {
         // 0x10 - 0x20: foo in foo.c on line 1
         // 0x20 - 0x30: bar in bar.c on line 1
         // - inlined into: foo in foo.c on line 1
@@ -214,9 +215,9 @@ mod tests {
 
         let mut functions = vec![];
         stack.flush(0, &mut functions);
-
         assert_eq!(functions.len(), 1);
         let func = &functions[0];
+
         assert_eq!(func.name.as_str(), "foo");
         assert_eq!(
             &func.lines,
@@ -232,6 +233,94 @@ mod tests {
         assert_eq!(
             &func.inlinees[0].lines,
             &[LineInfo::new(0x20, 0x10, b"bar.c", 1)]
+        );
+    }
+
+    #[test]
+    fn test_inlinee_complex() {
+        // addr:    0x10 0x20 0x30 0x40 0x50 0x60
+        //          v    v    v    v    v    v
+        // parent:  |------------------------| (parent.c line 1)
+        // child1:       |--------------|      (child1.c line 1)
+        // child2:            |----|           (child2.c line 1)
+        //                         |----|      (child2.c line 2)
+        let mut stack = FunctionStack::new();
+        stack.push(
+            0,
+            Function {
+                address: 0x10,
+                size: 0x50,
+                name: Name::from("parent"),
+                compilation_dir: &[],
+                lines: vec![LineInfo::new(0x10, 0x50, b"parent.c", 1)],
+                inlinees: vec![],
+                inline: false,
+            },
+        );
+        stack.push(
+            1,
+            Function {
+                address: 0x20,
+                size: 0x30,
+                name: Name::from("child1"),
+                compilation_dir: &[],
+                lines: vec![LineInfo::new(0x20, 0x30, b"child1.c", 1)],
+                inlinees: vec![],
+                inline: true,
+            },
+        );
+        stack.push(
+            1,
+            Function {
+                address: 0x30,
+                size: 0x20,
+                name: Name::from("child2"),
+                compilation_dir: &[],
+                lines: vec![
+                    LineInfo::new(0x30, 0x10, b"child2.c", 1),
+                    LineInfo::new(0x40, 0x10, b"child2.c", 2),
+                ],
+                inlinees: vec![],
+                inline: true,
+            },
+        );
+
+        let mut functions = vec![];
+        stack.flush(0, &mut functions);
+        assert_eq!(functions.len(), 1);
+        let func = &functions[0];
+
+        assert_eq!(func.name.as_str(), "parent");
+        assert_eq!(
+            &func.lines,
+            &[
+                LineInfo::new(0x10, 0x10, b"parent.c", 1),
+                LineInfo::new(0x20, 0x10, b"parent.c", 1),
+                LineInfo::new(0x30, 0x10, b"parent.c", 1),
+                LineInfo::new(0x40, 0x10, b"parent.c", 1),
+                LineInfo::new(0x50, 0x10, b"parent.c", 1),
+            ]
+        );
+
+        assert_eq!(func.inlinees.len(), 1);
+        assert_eq!(func.inlinees[0].name.as_str(), "child1");
+        assert_eq!(
+            &func.inlinees[0].lines,
+            &[
+                LineInfo::new(0x20, 0x10, b"child1.c", 1),
+                LineInfo::new(0x30, 0x10, b"child1.c", 1),
+                LineInfo::new(0x40, 0x10, b"child1.c", 1),
+            ]
+        );
+
+        assert_eq!(func.inlinees[0].inlinees.len(), 1);
+        assert_eq!(func.inlinees[0].inlinees[0].name.as_str(), "child2");
+        assert_eq!(
+            &func.inlinees[0].inlinees[0].lines,
+            &[
+                LineInfo::new(0x30, 0x10, b"child2.c", 1),
+                LineInfo::new(0x40, 0x10, b"child2.c", 2)
+            ]
         );
     }
 }

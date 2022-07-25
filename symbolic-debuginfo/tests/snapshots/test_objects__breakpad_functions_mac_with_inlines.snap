@@ -1,5 +1,6 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
+assertion_line: 150
 expression: "FunctionsDebug(&functions[..10], 0)"
 ---
 
@@ -12,6 +13,9 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
 > 0xd40: google_breakpad::MinidumpFileWriter::MinidumpFileWriter() (0x1a)
   0xd40: minidump_file_writer.cc:96 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xd46: minidump_file_writer.cc:96 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xd4a: minidump_file_writer.cc:96 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xd51: minidump_file_writer.cc:96 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xd59: minidump_file_writer.cc:97 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
 
   > 0xd40: google_breakpad::MinidumpFileWriter::MinidumpFileWriter() (0x19)
@@ -24,6 +28,9 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0xd60: minidump_file_writer.cc:99 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xd64: minidump_file_writer.cc:100 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xd6a: minidump_file_writer.cc:101 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xd71: minidump_file_writer.cc:101 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xd7d: minidump_file_writer.cc:101 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xd84: minidump_file_writer.cc:101 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xd8a: minidump_file_writer.cc:102 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xd8c: minidump_file_writer.cc:101 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
 
@@ -44,12 +51,19 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 > 0xde0: google_breakpad::MinidumpFileWriter::~MinidumpFileWriter() (0x34)
   0xde0: minidump_file_writer.cc:99 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xde4: minidump_file_writer.cc:99 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xdea: minidump_file_writer.cc:99 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xdf1: minidump_file_writer.cc:99 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xdfd: minidump_file_writer.cc:99 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xe04: minidump_file_writer.cc:99 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xe0a: minidump_file_writer.cc:102 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xe0c: minidump_file_writer.cc:99 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
 
   > 0xde4: google_breakpad::MinidumpFileWriter::~MinidumpFileWriter() (0x26)
     0xde4: minidump_file_writer.cc:100 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
     0xdea: minidump_file_writer.cc:101 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+    0xdf1: minidump_file_writer.cc:101 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+    0xdfd: minidump_file_writer.cc:101 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+    0xe04: minidump_file_writer.cc:101 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
 
     > 0xdea: google_breakpad::MinidumpFileWriter::Close() (0x20)
       0xdea: minidump_file_writer.cc:127 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
@@ -81,14 +95,22 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0xeda: minidump_file_writer.cc:162 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xeea: minidump_file_writer.cc:172 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xefa: minidump_file_writer.cc:174 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xf0e: minidump_file_writer.cc:174 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xf12: minidump_file_writer.cc:174 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xf1f: minidump_file_writer.cc:173 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xf23: minidump_file_writer.cc:174 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xf2a: minidump_file_writer.cc:174 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xf2f: minidump_file_writer.cc:174 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xf34: minidump_file_writer.cc:174 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xf41: minidump_file_writer.cc:174 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xf50: minidump_file_writer.cc:174 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xf6b: minidump_file_writer.cc:166 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xf72: minidump_file_writer.cc:167 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xf76: minidump_file_writer.cc:175 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xf7b: minidump_file_writer.cc:160 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xf97: minidump_file_writer.cc:179 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0xfa9: minidump_file_writer.cc:174 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0xfc8: minidump_file_writer.cc:174 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
 
   > 0xefa: google_breakpad::TypedMDRVA<MDString>::CopyIndexAfterObject(unsigned int, void const*, unsigned long) (0x25)
     0xefa: minidump_file_writer-inl.h:83 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
@@ -103,6 +125,8 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0xf2a: minidump_file_writer-inl.h:85 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
     0xf2f: minidump_file_writer-inl.h:86 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
     0xf34: minidump_file_writer-inl.h:84 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+    0xf41: minidump_file_writer-inl.h:84 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+    0xf50: minidump_file_writer-inl.h:84 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
 
     > 0xf34: google_breakpad::MinidumpFileWriter::Copy(unsigned int, void const*, long) (0x33)
       0xf34: minidump_file_writer.cc:316 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
@@ -123,14 +147,22 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1030: minidump_file_writer.cc:191 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0x1039: minidump_file_writer.cc:199 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0x1049: minidump_file_writer.cc:201 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0x1058: minidump_file_writer.cc:201 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0x105b: minidump_file_writer.cc:201 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0x1067: minidump_file_writer.cc:200 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0x106b: minidump_file_writer.cc:201 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0x1072: minidump_file_writer.cc:201 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0x1076: minidump_file_writer.cc:201 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0x107b: minidump_file_writer.cc:201 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0x108c: minidump_file_writer.cc:201 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0x109b: minidump_file_writer.cc:201 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0x10b7: minidump_file_writer.cc:195 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0x10ba: minidump_file_writer.cc:196 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0x10c0: minidump_file_writer.cc:202 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0x10c5: minidump_file_writer.cc:189 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0x10e7: minidump_file_writer.cc:205 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
   0x10f9: minidump_file_writer.cc:201 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+  0x1118: minidump_file_writer.cc:201 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
 
   > 0x1049: google_breakpad::TypedMDRVA<MDString>::CopyIndexAfterObject(unsigned int, void const*, unsigned long) (0x1e)
     0x1049: minidump_file_writer-inl.h:83 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
@@ -145,6 +177,8 @@ expression: "FunctionsDebug(&functions[..10], 0)"
     0x1072: minidump_file_writer-inl.h:85 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
     0x1076: minidump_file_writer-inl.h:86 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
     0x107b: minidump_file_writer-inl.h:84 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+    0x108c: minidump_file_writer-inl.h:84 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
+    0x109b: minidump_file_writer-inl.h:84 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)
 
     > 0x107b: google_breakpad::MinidumpFileWriter::Copy(unsigned int, void const*, long) (0x38)
       0x107b: minidump_file_writer.cc:316 (/Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client)

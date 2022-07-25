@@ -126,21 +126,18 @@ impl<'s> FunctionBuilder<'s> {
                 let inlinee = next_inlinee.take().unwrap();
                 stack.flush_address(inlinee.address);
                 stack.flush_depth(inlinee.depth);
-                stack.last_mut().lines.push(LineInfo {
-                    address: inlinee.address,
-                    size: Some(inlinee.size),
-                    file: inlinee.call_file,
-                    line: inlinee.call_line,
-                });
-                stack.push(Function {
-                    address: inlinee.address,
-                    size: inlinee.size,
-                    name: inlinee.name,
-                    compilation_dir,
-                    lines: Vec::new(),
-                    inlinees: Vec::new(),
-                    inline: true,
-                });
+                stack.push(
+                    Function {
+                        address: inlinee.address,
+                        size: inlinee.size,
+                        name: inlinee.name,
+                        compilation_dir,
+                        lines: Vec::new(),
+                        inlinees: Vec::new(),
+                        inline: true,
+                    },
+                    (inlinee.call_file, inlinee.call_line),
+                );
                 next_inlinee = inlinee_iter.next();
                 continue;
             }
@@ -148,8 +145,7 @@ impl<'s> FunctionBuilder<'s> {
             // Process the line.
             if let Some(line) = next_line.take() {
                 stack.flush_address(line.address);
-                stack.last_mut().lines.push(line);
-                next_line = line_iter.next();
+                next_line = stack.push_line(line).or_else(|| line_iter.next());
                 continue;
             }
 
@@ -182,14 +178,21 @@ struct FunctionBuilderStack<'s> {
     /// The current inline stack, elements are (end_address, function).
     ///
     /// Always contains at least one element: `stack[0].1` is the outer function.
-    stack: Vec<(u64, Function<'s>)>,
+    stack: Vec<(u64, Function<'s>, (FileInfo<'s>, u64))>,
 }
 
 impl<'s> FunctionBuilderStack<'s> {
     /// Creates a new stack, initialized with the outer function.
     pub fn new(outer_function: Function<'s>) -> Self {
         let end_address = outer_function.address.saturating_add(outer_function.size);
-        let stack = vec![(end_address, outer_function)];
+        let call_info = (
+            FileInfo {
+                name: &[],
+                dir: &[],
+            },
+            0,
+        );
+        let stack = vec![(end_address, outer_function, call_info)];
         Self { stack }
     }
 
@@ -205,7 +208,7 @@ impl<'s> FunctionBuilderStack<'s> {
 
         // Pop the function and add it to its parent function's list of inlinees.
         let fun = self.stack.pop().unwrap().1;
-        self.stack.last_mut().unwrap().1.inlinees.push(fun);
+        self.last_mut().inlinees.push(fun);
     }
 
     /// Finish and pop all functions that end at or before this address.
@@ -223,9 +226,45 @@ impl<'s> FunctionBuilderStack<'s> {
     }
 
     /// Push an inlinee to the stack.
-    pub fn push(&mut self, inlinee: Function<'s>) {
+    pub fn push(&mut self, inlinee: Function<'s>, call_info: (FileInfo<'s>, u64)) {
         let end_address = inlinee.address.saturating_add(inlinee.size);
-        self.stack.push((end_address, inlinee));
+        self.stack.push((end_address, inlinee, call_info));
+    }
+
+    /// Push a line record to the top-most inlinee.
+    ///
+    /// This also pushes that same line record with the appropriate call info
+    /// down the whole stack of inlinees.
+    ///
+    /// If the inlinee is shorter than the line record, the line record is split
+    /// and the second half is returned.
+    pub fn push_line(&mut self, mut line: LineInfo<'s>) -> Option<LineInfo<'s>> {
+        // TODO: splitting the line records here, which should be correct and
+        // split line records into atomic little pieces according to the inline
+        // hierarchy leads to extremely slow code, where even the `elf_functions`
+        // snapshot test does not complete in a reasonable amount of time.
+        // let _split_line = line.size.and_then(|size| {
+        //     let line_end = line.address.saturating_add(size);
+        //     let last_inlinee_addr = self.last_mut().end_address();
+        //     if last_inlinee_addr < line_end {
+        //         let mut split_line = line.clone();
+        //         split_line.address = last_inlinee_addr;
+        //         split_line.size = Some(line_end - last_inlinee_addr);
+        //         line.size = Some(last_inlinee_addr - line.address);
+
+        //         Some(split_line)
+        //     } else {
+        //         None
+        //     }
+        // });
+
+        for (_, func, call_info) in self.stack.iter_mut().rev() {
+            func.lines.push(line.clone());
+            line.file = call_info.0.clone();
+            line.line = call_info.1;
+        }
+
+        None
     }
 
     /// Finish the entire stack and return the outer function.
@@ -312,6 +351,244 @@ mod tests {
         assert_eq!(
             &func.inlinees[0].lines,
             &[LineInfo::new(0x20, 0x20, b"bar.c", 1)]
+        );
+    }
+
+    #[test]
+    fn test_inlinee_complex() {
+        // addr:    0x10 0x20 0x30 0x40 0x50 0x60
+        //          v    v    v    v    v    v
+        // parent:  |------------------------| (parent.c line 1)
+        // child1:       |--------------|      (child1.c line 1)
+        // child2:            |----|           (child2.c line 1)
+        //                         |----|      (child2.c line 2)
+
+        let mut builder = FunctionBuilder::new(Name::from("parent"), &[], 0x10, 0x50);
+        builder.add_inlinee(
+            1,
+            Name::from("child1"),
+            0x20,
+            0x30,
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_inlinee(
+            2,
+            Name::from("child2"),
+            0x30,
+            0x20,
+            FileInfo {
+                name: b"child1.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_leaf_line(
+            0x10,
+            Some(0x10),
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_leaf_line(
+            0x20,
+            Some(0x10),
+            FileInfo {
+                name: b"child1.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_leaf_line(
+            0x30,
+            Some(0x10),
+            FileInfo {
+                name: b"child2.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_leaf_line(
+            0x40,
+            Some(0x10),
+            FileInfo {
+                name: b"child2.c",
+                dir: &[],
+            },
+            2,
+        );
+        builder.add_leaf_line(
+            0x50,
+            Some(0x10),
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            1,
+        );
+        let func = builder.finish();
+
+        assert_eq!(func.name.as_str(), "parent");
+        assert_eq!(
+            &func.lines,
+            &[
+                LineInfo::new(0x10, 0x10, b"parent.c", 1),
+                LineInfo::new(0x20, 0x10, b"parent.c", 1),
+                LineInfo::new(0x30, 0x10, b"parent.c", 1),
+                LineInfo::new(0x40, 0x10, b"parent.c", 1),
+                LineInfo::new(0x50, 0x10, b"parent.c", 1),
+            ]
+        );
+
+        assert_eq!(func.inlinees.len(), 1);
+        assert_eq!(func.inlinees[0].name.as_str(), "child1");
+        assert_eq!(
+            &func.inlinees[0].lines,
+            &[
+                LineInfo::new(0x20, 0x10, b"child1.c", 1),
+                LineInfo::new(0x30, 0x10, b"child1.c", 1),
+                LineInfo::new(0x40, 0x10, b"child1.c", 1),
+            ]
+        );
+
+        assert_eq!(func.inlinees[0].inlinees.len(), 1);
+        assert_eq!(func.inlinees[0].inlinees[0].name.as_str(), "child2");
+        assert_eq!(
+            &func.inlinees[0].inlinees[0].lines,
+            &[
+                LineInfo::new(0x30, 0x10, b"child2.c", 1),
+                LineInfo::new(0x40, 0x10, b"child2.c", 2)
+            ]
+        );
+    }
+
+    #[ignore = "solving this case correctly would be unbearably slow"]
+    #[test]
+    fn test_longer_line_record() {
+        // Consider the following code:
+        //
+        // ```
+        // fn parent() {
+        //     child1();
+        //     child2();
+        // }
+        // fn child1() { child2() }
+        // fn child2() {}
+        // ```
+        //
+        // we assume here that we transitively inline `child2` all the way into `parent`.
+        // but we only have a single line record for that whole chunk of code,
+        // even though the inlining hierarchy specifies two different call sites
+        //
+        // addr:    0x10 0x20 0x30 0x40 0x50
+        //          v    v    v    v    v
+        // # DWARF hierarchy
+        // parent:  |-------------------|
+        // child1:       |----|           (called from parent.c line 1)
+        // child2:       |----|           (called from child1.c line 1)
+        //                    |----|      (called from parent.c line 1)
+        // # line records
+        //          |----|         |----| (parent.c line 1)
+        //               |---------|      (child2.c line 1)
+
+        let mut builder = FunctionBuilder::new(Name::from("parent"), &[], 0x10, 0x40);
+        builder.add_inlinee(
+            1,
+            Name::from("child1"),
+            0x20,
+            0x10,
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_inlinee(
+            2,
+            Name::from("child2"),
+            0x20,
+            0x10,
+            FileInfo {
+                name: b"child1.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_inlinee(
+            1,
+            Name::from("child2"),
+            0x30,
+            0x10,
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_leaf_line(
+            0x10,
+            Some(0x10),
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_leaf_line(
+            0x20,
+            Some(0x20),
+            FileInfo {
+                name: b"child2.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_leaf_line(
+            0x40,
+            Some(0x10),
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            1,
+        );
+        let func = builder.finish();
+
+        dbg!(&func);
+
+        assert_eq!(func.name.as_str(), "parent");
+        assert_eq!(
+            &func.lines,
+            &[
+                LineInfo::new(0x10, 0x10, b"parent.c", 1),
+                LineInfo::new(0x20, 0x10, b"parent.c", 1),
+                LineInfo::new(0x30, 0x10, b"parent.c", 1),
+                LineInfo::new(0x40, 0x10, b"parent.c", 1),
+            ]
+        );
+
+        assert_eq!(func.inlinees.len(), 2);
+        assert_eq!(func.inlinees[0].name.as_str(), "child1");
+        assert_eq!(
+            &func.inlinees[0].lines,
+            &[LineInfo::new(0x20, 0x10, b"child1.c", 1),]
+        );
+        assert_eq!(func.inlinees[0].inlinees.len(), 1);
+        assert_eq!(func.inlinees[0].inlinees[0].name.as_str(), "child2");
+        assert_eq!(
+            &func.inlinees[0].inlinees[0].lines,
+            &[LineInfo::new(0x20, 0x10, b"child2.c", 1),]
+        );
+
+        assert_eq!(func.inlinees[1].name.as_str(), "child2");
+        assert_eq!(
+            &func.inlinees[1].lines,
+            &[LineInfo::new(0x30, 0x10, b"child2.c", 1),]
         );
     }
 }
