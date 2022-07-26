@@ -36,8 +36,8 @@ fn test_write_header_linux() -> Result<(), Error> {
         arch: Amd64,
         files: 55,
         functions: 697,
-        source_locations: 9227,
-        ranges: 6825,
+        source_locations: 9267,
+        ranges: 6846,
         string_bytes: 52180,
     }
     "###);
@@ -80,8 +80,8 @@ fn test_write_header_macos() -> Result<(), Error> {
         arch: Amd64,
         files: 36,
         functions: 639,
-        source_locations: 7766,
-        ranges: 5687,
+        source_locations: 7781,
+        ranges: 5783,
         string_bytes: 42829,
     }
     "###);

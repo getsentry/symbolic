@@ -16,11 +16,6 @@ impl<'a> FunctionStack<'a> {
         self.0.push((depth, function));
     }
 
-    /// Peeks at the current top function (deepest inlining level).
-    pub fn peek_mut(&mut self) -> Option<&mut Function<'a>> {
-        self.0.last_mut().map(|&mut (_, ref mut function)| function)
-    }
-
     /// Flushes all functions up to the given depth into the destination.
     ///
     /// This folds remaining functions into their parents. If a non-inlined function is encountered
@@ -31,38 +26,28 @@ impl<'a> FunctionStack<'a> {
     /// depth lower than the given depth. This allows to push new functions at this depth onto the
     /// stack.
     pub fn flush(&mut self, depth: isize, destination: &mut Vec<Function<'a>>) {
-        let len = self.0.len();
-
-        // Fast path if the last item is already a parent of the current depth.
-        if self.0.last().map_or(false, |&(d, _)| d < depth) {
-            return;
-        }
-
-        // Search for the first function that lies at or beyond the specified depth.
-        let cutoff = self.0.iter().position(|&(d, _)| d >= depth).unwrap_or(len);
-
         // Pull functions from the stack. Inline functions are folded into their parents
-        // transitively, while regular functions are returned. This also works when functions and
-        // inlines are interleaved.
-        let mut inlinee = None;
-        for _ in cutoff..len {
-            let (_, mut function) = self.0.pop().unwrap();
+        // transitively, while regular functions are pushed to `destination`.
+        // This also works when functions and inlinees are interleaved.
+        let mut inlinee: Option<Function> = None;
+        while let Some((fn_depth, mut function)) = self.0.pop() {
             if let Some(inlinee) = inlinee.take() {
                 function.inlinees.push(inlinee);
             }
+            // we reached the intended depth, so re-push the function and stop
+            if fn_depth < depth {
+                self.0.push((fn_depth, function));
+                return;
+            }
 
             if function.inline {
+                // mark the inlinee as needing to be folded into its parent
                 inlinee = Some(function);
             } else {
+                // otherwise, this is a function which we need to flush.
+                function.inlinees.sort_by_key(|func| func.address);
                 destination.push(function);
             }
-        }
-
-        // The top function in the flushed part of the stack was an inline function. Since it is
-        // also being flushed out, we now append it to its parent. The topmost function in the stack
-        // is verified to be a non-inline function before inserting.
-        if let Some(inlinee) = inlinee {
-            self.peek_mut().unwrap().inlinees.push(inlinee);
         }
     }
 }

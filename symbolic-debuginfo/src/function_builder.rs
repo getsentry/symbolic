@@ -146,10 +146,36 @@ impl<'s> FunctionBuilder<'s> {
             }
 
             // Process the line.
-            if let Some(line) = next_line.take() {
+            if let Some(mut line) = next_line.take() {
                 stack.flush_address(line.address);
+
+                // If the line record exceeds the size of the innermost inlinee on the stack,
+                // split the line record apart and continue with the second half, which can then
+                // fall into another inlinee. We do this only for *inlinees*, and not for the
+                // outer function which is on the bottom of that stack.
+                // The `linux/crash.debug` fixture contains a case where a line record goes beyond
+                // the outermost function. In that case we just continue as normal without splitting.
+                let split_line = if stack.stack.len() > 1 {
+                    line.size.and_then(|size| {
+                        let line_end = line.address.saturating_add(size);
+                        let last_inlinee_addr = stack.last_mut().end_address();
+                        if last_inlinee_addr < line_end {
+                            let mut split_line = line.clone();
+                            split_line.address = last_inlinee_addr;
+                            split_line.size = Some(line_end - last_inlinee_addr);
+                            line.size = Some(last_inlinee_addr - line.address);
+
+                            Some(split_line)
+                        } else {
+                            None
+                        }
+                    })
+                } else {
+                    None
+                };
+
                 stack.last_mut().lines.push(line);
-                next_line = line_iter.next();
+                next_line = split_line.or_else(|| line_iter.next());
                 continue;
             }
 
@@ -257,10 +283,7 @@ mod tests {
         let func = builder.finish();
 
         assert_eq!(func.name.as_str(), "foo");
-        assert_eq!(func.lines.len(), 1);
-        assert_eq!(func.lines[0].address, 0x10);
-        assert_eq!(func.lines[0].file.name_str(), "foo.c");
-        assert_eq!(func.lines[0].line, 1);
+        assert_eq!(&func.lines, &[LineInfo::new(0x10, 0x30, b"foo.c", 1)]);
     }
 
     #[test]
@@ -269,15 +292,6 @@ mod tests {
         // 0x20 - 0x40: bar in bar.c on line 1
         // - inlined into: foo in foo.c on line 2
         let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30);
-        builder.add_leaf_line(
-            0x10,
-            Some(0x10),
-            FileInfo {
-                name: b"foo.c",
-                dir: &[],
-            },
-            1,
-        );
         builder.add_inlinee(
             1,
             Name::from("bar"),
@@ -288,6 +302,15 @@ mod tests {
                 dir: &[],
             },
             2,
+        );
+        builder.add_leaf_line(
+            0x10,
+            Some(0x10),
+            FileInfo {
+                name: b"foo.c",
+                dir: &[],
+            },
+            1,
         );
         builder.add_leaf_line(
             0x20,
@@ -302,19 +325,141 @@ mod tests {
 
         // the outer function has two line records, one for itself, the other for the inlined call
         assert_eq!(func.name.as_str(), "foo");
-        assert_eq!(func.lines.len(), 2);
-        assert_eq!(func.lines[0].address, 0x10);
-        assert_eq!(func.lines[0].file.name_str(), "foo.c");
-        assert_eq!(func.lines[0].line, 1);
-        assert_eq!(func.lines[1].address, 0x20);
-        assert_eq!(func.lines[1].file.name_str(), "foo.c");
-        assert_eq!(func.lines[1].line, 2);
+        assert_eq!(
+            &func.lines,
+            &[
+                LineInfo::new(0x10, 0x10, b"foo.c", 1),
+                LineInfo::new(0x20, 0x20, b"foo.c", 2)
+            ]
+        );
 
         assert_eq!(func.inlinees.len(), 1);
         assert_eq!(func.inlinees[0].name.as_str(), "bar");
-        assert_eq!(func.inlinees[0].lines.len(), 1);
-        assert_eq!(func.inlinees[0].lines[0].address, 0x20);
-        assert_eq!(func.inlinees[0].lines[0].file.name_str(), "bar.c");
-        assert_eq!(func.inlinees[0].lines[0].line, 1);
+        assert_eq!(
+            &func.inlinees[0].lines,
+            &[LineInfo::new(0x20, 0x20, b"bar.c", 1)]
+        );
+    }
+
+    #[test]
+    fn test_longer_line_record() {
+        // Consider the following code:
+        //
+        // ```
+        //   | fn parent() {
+        // 1 |   child1();
+        // 2 |   child2();
+        //   | }
+        // 1 | fn child1() { child2() }
+        // 1 | fn child2() {}
+        // ```
+        //
+        // we assume here that we transitively inline `child2` all the way into `parent`.
+        // but we only have a single line record for that whole chunk of code,
+        // even though the inlining hierarchy specifies two different call sites
+        //
+        // addr:    0x10 0x20 0x30 0x40 0x50
+        //          v    v    v    v    v
+        // # DWARF hierarchy
+        // parent:  |-------------------|
+        // child1:       |----|           (called from parent.c line 1)
+        // child2:       |----|           (called from child1.c line 1)
+        //                    |----|      (called from parent.c line 2)
+        // # line records
+        //          |----|         |----| (parent.c line 1)
+        //               |---------|      (child2.c line 1)
+
+        let mut builder = FunctionBuilder::new(Name::from("parent"), &[], 0x10, 0x40);
+        builder.add_inlinee(
+            1,
+            Name::from("child1"),
+            0x20,
+            0x10,
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_inlinee(
+            2,
+            Name::from("child2"),
+            0x20,
+            0x10,
+            FileInfo {
+                name: b"child1.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_inlinee(
+            1,
+            Name::from("child2"),
+            0x30,
+            0x10,
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            2,
+        );
+        builder.add_leaf_line(
+            0x10,
+            Some(0x10),
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_leaf_line(
+            0x20,
+            Some(0x20),
+            FileInfo {
+                name: b"child2.c",
+                dir: &[],
+            },
+            1,
+        );
+        builder.add_leaf_line(
+            0x40,
+            Some(0x10),
+            FileInfo {
+                name: b"parent.c",
+                dir: &[],
+            },
+            1,
+        );
+        let func = builder.finish();
+
+        assert_eq!(func.name.as_str(), "parent");
+        assert_eq!(
+            &func.lines,
+            &[
+                LineInfo::new(0x10, 0x10, b"parent.c", 1),
+                LineInfo::new(0x20, 0x10, b"parent.c", 1),
+                LineInfo::new(0x30, 0x10, b"parent.c", 2),
+                LineInfo::new(0x40, 0x10, b"parent.c", 1),
+            ]
+        );
+
+        assert_eq!(func.inlinees.len(), 2);
+        assert_eq!(func.inlinees[0].name.as_str(), "child1");
+        assert_eq!(
+            &func.inlinees[0].lines,
+            &[LineInfo::new(0x20, 0x10, b"child1.c", 1),]
+        );
+        assert_eq!(func.inlinees[0].inlinees.len(), 1);
+        assert_eq!(func.inlinees[0].inlinees[0].name.as_str(), "child2");
+        assert_eq!(
+            &func.inlinees[0].inlinees[0].lines,
+            &[LineInfo::new(0x20, 0x10, b"child2.c", 1),]
+        );
+
+        assert_eq!(func.inlinees[1].name.as_str(), "child2");
+        assert_eq!(
+            &func.inlinees[1].lines,
+            &[LineInfo::new(0x30, 0x10, b"child2.c", 1),]
+        );
     }
 }
