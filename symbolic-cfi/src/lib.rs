@@ -516,7 +516,6 @@ impl<W: Write> AsciiCfiWriter<W> {
         // Preload the symbols as this is expensive to do in the loop.
         let symbols = object.symbol_map();
         let cpu_family = object.arch().cpu_family();
-        let ptr_size = cpu_family.pointer_size();
 
         // Initialize an unwind context once and reuse it for the entire section.
         let mut ctx = UnwindContext::new();
@@ -546,7 +545,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                     // scanning either way.
 
                     let start_addr = entry.instruction_address;
-                    match object.arch().cpu_family() {
+                    match cpu_family {
                         CpuFamily::Amd64 => {
                             writeln!(
                                 self.inner,
@@ -578,7 +577,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                             let start_addr = entry.instruction_address.into();
                             let sym_name = symbols.lookup(start_addr).and_then(|sym| sym.name());
 
-                            if sym_name == Some("_sigtramp") && ptr_size == Some(8) {
+                            if sym_name == Some("_sigtramp") && cpu_family == CpuFamily::Amd64 {
                                 // This specific function has some hand crafted dwarf expressions
                                 // that we currently can't process. They encode how to restore the
                                 // registers from a machine context accessible via `$rbx`

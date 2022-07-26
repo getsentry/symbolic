@@ -8,7 +8,7 @@ use std::io::Write;
 
 use indexmap::IndexSet;
 use symbolic_common::{Arch, DebugId};
-use symbolic_debuginfo::{DebugSession, Function, ObjectLike, Symbol};
+use symbolic_debuginfo::{DebugSession, Function, LineInfo, ObjectLike, Symbol};
 
 #[cfg(feature = "il2cpp")]
 use symbolic_common::Language;
@@ -117,6 +117,7 @@ impl<'a> SymCacheConverter<'a> {
 
     /// This processes the given [`ObjectLike`] object, collecting all its functions and line
     /// information into the converter.
+    #[tracing::instrument(skip_all, fields(object.debug_id = %object.debug_id().breakpad()))]
     pub fn process_object<'d, 'o, O>(&mut self, object: &'o O) -> Result<(), Error>
     where
         O: ObjectLike<'d, 'o>,
@@ -132,7 +133,7 @@ impl<'a> SymCacheConverter<'a> {
         for function in session.functions() {
             let function = function.map_err(|e| Error::new(ErrorKind::BadDebugFile, e))?;
 
-            self.process_symbolic_function(&function);
+            self.process_symbolic_function(&function, &[]);
         }
 
         for symbol in object.symbols() {
@@ -143,7 +144,11 @@ impl<'a> SymCacheConverter<'a> {
     }
 
     /// Processes an individual [`Function`], adding its line information to the converter.
-    pub fn process_symbolic_function(&mut self, function: &Function<'_>) {
+    pub fn process_symbolic_function(
+        &mut self,
+        function: &Function<'_>,
+        parent_line_records: &[LineInfo],
+    ) {
         // skip over empty functions or functions whose address is too large to fit in a u32
         if function.size == 0 || function.address > u32::MAX as u64 {
             return;
@@ -180,6 +185,9 @@ impl<'a> SymCacheConverter<'a> {
             });
             fun_idx as u32
         };
+
+        let mut parent_line_records = parent_line_records.iter().peekable();
+        let mut parent_line = parent_line_records.next();
 
         for line in &function.lines {
             let mut location = transform::SourceLocation {
@@ -218,29 +226,88 @@ impl<'a> SymCacheConverter<'a> {
                 inlined_into_idx: u32::MAX,
             };
 
-            match self.ranges.entry(line.address as u32) {
-                btree_map::Entry::Vacant(entry) => {
-                    if function.inline {
-                        // BUG:
-                        // the abstraction should have defined this line record inside the caller
-                        // function already!
+            if function.inline {
+                while let Some(next_parent) = parent_line_records.peek() {
+                    if next_parent.address <= line.address {
+                        parent_line = parent_line_records.next();
+                    } else {
+                        break;
                     }
-                    entry.insert(source_location);
                 }
-                btree_map::Entry::Occupied(mut entry) => {
-                    if function.inline {
-                        let caller_source_location = entry.get().clone();
+
+                // if `parent_line` is nonempty, it is the last parent line record that starts at or before `line`
+                let parent_line = match parent_line {
+                    Some(parent_line)
+                        if parent_line
+                            .size
+                            .map_or(true, |size| parent_line.address + size > line.address) =>
+                    {
+                        parent_line
+                    }
+                    _ => {
+                        tracing::warn!(
+                            line.address,
+                            line.size,
+                            ?parent_line,
+                            "parent function does not have a covering line record"
+                        );
+                        continue;
+                    }
+                };
+
+                match self.ranges.get(&(parent_line.address as u32)) {
+                    None => {
+                        tracing::warn!(
+                            line.address,
+                            line.size,
+                            parent_line.address,
+                            parent_line.size,
+                            "parent line record should have been inserted in a previous call"
+                        );
+                        self.ranges.insert(line.address as u32, source_location);
+                    }
+
+                    Some(caller_source_location) => {
+                        let caller_source_location = caller_source_location.clone();
 
                         let mut callee_source_location = source_location;
-                        let (inlined_into_idx, _) =
-                            self.source_locations.insert_full(caller_source_location);
+                        let (inlined_into_idx, _) = self
+                            .source_locations
+                            .insert_full(caller_source_location.clone());
 
                         callee_source_location.inlined_into_idx = inlined_into_idx as u32;
-                        entry.insert(callee_source_location);
-                    } else {
+                        self.ranges
+                            .insert(line.address as u32, callee_source_location);
+
+                        // if `line` ends before `parent_line`, we need to insert another range for the leftover piece.
+                        if let Some(size) = line.size {
+                            let line_end = line.address + size;
+                            if let Some(parent_size) = parent_line.size {
+                                let parent_end = parent_line.address + parent_size;
+
+                                if line_end == parent_end {
+                                    continue;
+                                }
+                            }
+
+                            self.ranges.insert(line_end as u32, caller_source_location);
+                        }
+                    }
+                }
+            } else {
+                match self.ranges.entry(line.address as u32) {
+                    btree_map::Entry::Vacant(entry) => {
+                        entry.insert(source_location);
+                    }
+                    btree_map::Entry::Occupied(mut entry) => {
                         // BUG:
                         // the abstraction yields multiple top-level functions for the same
                         // instruction addr
+                        tracing::warn!(
+                            line.address,
+                            line.size,
+                            "function is not inlined, but the range is already occupied"
+                        );
                         entry.insert(source_location);
                     }
                 }
@@ -256,7 +323,7 @@ impl<'a> SymCacheConverter<'a> {
         });
 
         for inlinee in &function.inlinees {
-            self.process_symbolic_function(inlinee);
+            self.process_symbolic_function(inlinee, &function.lines);
         }
 
         let function_end = function.end_address() as u32;

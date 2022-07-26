@@ -130,26 +130,24 @@ impl<'data> super::WasmObject<'data> {
                     validator.module_section(&range)?;
                 }
                 // There are several custom sections that we need
-                Payload::CustomSection {
-                    name,
-                    data,
-                    data_offset,
-                    ..
-                } => {
-                    match name {
+                Payload::CustomSection(reader) => {
+                    match reader.name() {
                         // this section is not defined yet
                         // see https://github.com/WebAssembly/tool-conventions/issues/133
                         "build_id" => {
-                            build_id = Some(data);
+                            build_id = Some(reader.data());
                         }
                         // All of the dwarf debug sections (.debug_frame, .debug_info etc) start with a `.`, and
                         // are the only ones we need for walking the debug info
                         debug if debug.starts_with('.') => {
-                            dwarf_sections.push((name, data));
+                            dwarf_sections.push((debug, reader.data()));
                         }
                         // The name section contains the symbol names for items, notably functions
                         "name" => {
-                            let nsr = wasmparser::NameSectionReader::new(data, data_offset)?;
+                            let nsr = wasmparser::NameSectionReader::new(
+                                reader.data(),
+                                reader.data_offset(),
+                            )?;
 
                             for name in nsr {
                                 if let wasmparser::Name::Function(fnames) = name? {

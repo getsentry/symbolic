@@ -13,7 +13,6 @@ use crate::elf::*;
 use crate::macho::*;
 use crate::pdb::*;
 use crate::pe::*;
-use crate::shared::{MonoArchive, MonoArchiveObjects};
 use crate::sourcebundle::*;
 use crate::wasm::*;
 

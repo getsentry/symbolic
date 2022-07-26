@@ -1,7 +1,7 @@
 use super::Parse;
 use std::{fmt, iter::FusedIterator, marker::PhantomData};
 
-pub struct MonoArchive<'d, P> {
+pub(crate) struct MonoArchive<'d, P> {
     data: &'d [u8],
     _ph: PhantomData<&'d P>,
 }
@@ -59,7 +59,7 @@ where
 }
 
 #[derive(Debug)]
-pub struct MonoArchiveObjects<'d, P>(Option<Result<P, P::Error>>)
+pub(crate) struct MonoArchiveObjects<'d, P>(Option<Result<P, P::Error>>)
 where
     P: Parse<'d>;
 

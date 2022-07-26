@@ -6,6 +6,16 @@ use std::str::FromStr;
 
 use symbolic_common::{clean_path, join_path, Arch, CodeId, DebugId, Name};
 
+pub(crate) trait Parse<'data>: Sized {
+    type Error;
+
+    fn parse(data: &'data [u8]) -> Result<Self, Self::Error>;
+
+    fn test(data: &'data [u8]) -> bool {
+        Self::parse(data).is_ok()
+    }
+}
+
 /// An error returned for unknown or invalid `ObjectKinds`.
 #[derive(Debug)]
 pub struct UnknownObjectKindError;
@@ -516,7 +526,7 @@ impl<'data> Deref for FileEntry<'data> {
 }
 
 /// File and line number mapping for an instruction address.
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct LineInfo<'data> {
     /// The instruction address relative to the image base (load address).
     pub address: u64,
@@ -526,6 +536,21 @@ pub struct LineInfo<'data> {
     pub file: FileInfo<'data>,
     /// Absolute line number starting at 1. Zero means no line number.
     pub line: u64,
+}
+
+#[cfg(test)]
+impl LineInfo<'static> {
+    pub(crate) fn new(address: u64, size: u64, file: &[u8], line: u64) -> LineInfo {
+        LineInfo {
+            address,
+            size: Some(size),
+            file: FileInfo {
+                name: file,
+                dir: &[],
+            },
+            line,
+        }
+    }
 }
 
 impl fmt::Debug for LineInfo<'_> {
