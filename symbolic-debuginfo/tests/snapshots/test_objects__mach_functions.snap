@@ -1,5 +1,6 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
+assertion_line: 396
 expression: "FunctionsDebug(&functions[..10], 0)"
 ---
 
@@ -100,6 +101,7 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0xefa: minidump_file_writer.cc:174 (../deps/breakpad/src/client)
   0xf1f: minidump_file_writer.cc:173 (../deps/breakpad/src/client)
   0xf23: minidump_file_writer.cc:174 (../deps/breakpad/src/client)
+  0xf67: minidump_file_writer.cc:328 (../deps/breakpad/src/client)
   0xf6b: minidump_file_writer.cc:166 (../deps/breakpad/src/client)
   0xf72: minidump_file_writer.cc:167 (../deps/breakpad/src/client)
   0xf76: minidump_file_writer.cc:175 (../deps/breakpad/src/client)
@@ -146,6 +148,7 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1049: minidump_file_writer.cc:201 (../deps/breakpad/src/client)
   0x1067: minidump_file_writer.cc:200 (../deps/breakpad/src/client)
   0x106b: minidump_file_writer.cc:201 (../deps/breakpad/src/client)
+  0x10b3: minidump_file_writer.cc:328 (../deps/breakpad/src/client)
   0x10b7: minidump_file_writer.cc:195 (../deps/breakpad/src/client)
   0x10ba: minidump_file_writer.cc:196 (../deps/breakpad/src/client)
   0x10c0: minidump_file_writer.cc:202 (../deps/breakpad/src/client)
