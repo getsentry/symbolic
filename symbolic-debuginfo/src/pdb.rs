@@ -699,6 +699,29 @@ impl<'s> Unit<'s> {
         Ok(lines)
     }
 
+    /// Sanitize the collected lines.
+    ///
+    /// This essentially filters out all the lines that lay outside of the function range.
+    ///
+    /// For example we have observed in a real-world pdb that has:
+    /// - A function 0x33ea50 (size 0xc)
+    /// - With one line record: 0x33e850 (size 0x26)
+    /// The line record is completely outside the range of the function.
+    fn sanitize_lines(func: &mut Function) {
+        let fn_start = func.address;
+        let fn_end = func.end_address();
+        func.lines.retain(|line| {
+            if line.address >= fn_end {
+                return false;
+            }
+            let line_end = match line.size {
+                Some(size) => line.address.saturating_add(size),
+                None => return true,
+            };
+            line_end > fn_start
+        });
+    }
+
     fn handle_function(
         &self,
         offset: PdbInternalSectionOffset,
@@ -906,7 +929,12 @@ impl<'s> Unit<'s> {
             };
 
             match function {
-                Some(function) => stack.push(depth, function),
+                Some(mut function) => {
+                    Self::sanitize_lines(&mut function);
+                    // TODO: figure out what to do with functions that have no more lines
+                    // after sanitization
+                    stack.push(depth, function)
+                }
                 None => skipped_depth = Some(depth),
             }
         }
