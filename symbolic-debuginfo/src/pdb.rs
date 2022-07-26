@@ -697,8 +697,12 @@ impl<'s> Unit<'s> {
         // scope and name of the function itself, including type parameters, and the parameter lists
         // are contained in the type info. We do not emit a return type.
         let formatter = &self.debug_info.type_formatter;
+        let name = name.to_string();
         let name = Name::new(
-            formatter.format_function(&name.to_string(), self.module_index, type_index)?,
+            formatter
+                .format_function(&name, self.module_index, type_index)
+                .map(Cow::Owned)
+                .unwrap_or(name),
             NameMangling::Unmangled,
             Language::Unknown,
         );
