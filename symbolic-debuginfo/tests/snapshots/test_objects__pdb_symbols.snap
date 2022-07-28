@@ -1,7 +1,5 @@
 ---
-created: "2019-02-27T12:56:32.839275Z"
-creator: insta@0.6.3
-source: debuginfo/tests/test_objects.rs
+source: symbolic-debuginfo/tests/test_objects.rs
 expression: SymbolsDebug(&symbols)
 ---
             1000 ?RequestDump@CrashGenerationClient@google_breakpad@@QAE_NPAU_EXCEPTION_POINTERS@@PAUMDRawAssertionInfo@@@Z
@@ -9,10 +7,10 @@ expression: SymbolsDebug(&symbols)
             1180 ?assign@?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@QAEAAV12@QB_WI@Z
             12d0 ?_Xlen@?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@SAXXZ
             12e0 ??4?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@QAEAAV01@$$QAV01@@Z
-            1360 __local_stdio_printf_options
-            1370 swprintf_s
-            13b0 _snwprintf_s
-            13f0 fprintf
+            1360 ___local_stdio_printf_options
+            1370 _swprintf_s
+            13b0 __snwprintf_s
+            13f0 _fprintf
             1420 ?Initialize@ExceptionHandler@google_breakpad@@AAEXABV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@P6A_NPAXPAU_EXCEPTION_POINTERS@@PAUMDRawAssertionInfo@@@ZP6A_NPB_W5123_N@Z1HW4_MINIDUMP_TYPE@@51PAVCrashGenerationClient@2@PBUCustomClientInfo@2@@Z
             1770 ??1ExceptionHandler@google_breakpad@@QAE@XZ
             1a80 ?ExceptionHandlerThreadMain@ExceptionHandler@google_breakpad@@CGKPAX@Z
@@ -35,14 +33,14 @@ expression: SymbolsDebug(&symbols)
             27a0 ?_Buynode0@?$_List_alloc@U?$_List_base_types@UAppMemory@google_breakpad@@V?$allocator@UAppMemory@google_breakpad@@@std@@@std@@@std@@QAEPAU?$_List_node@UAppMemory@google_breakpad@@PAX@2@PAU32@0@Z
             27d0 ??$_Buynode@ABUAppMemory@google_breakpad@@@?$_List_buy@UAppMemory@google_breakpad@@V?$allocator@UAppMemory@google_breakpad@@@std@@@std@@QAEPAU?$_List_node@UAppMemory@google_breakpad@@PAX@1@PAU21@0ABUAppMemory@google_breakpad@@@Z
             27f0 ?GUIDToWString@GUIDString@google_breakpad@@SA?AV?$basic_string@_WU?$char_traits@_W@std@@V?$allocator@_W@2@@std@@PAU_GUID@@@Z
-            28a0 printf
-            2910 main
+            28a0 _printf
+            2910 _main
             2a6e @__security_check_cookie@4
             2a7f ??2@YAPAXI@Z
             2aaf ??3@YAXPAXI@Z
-            2abd __raise_securityfailure
-            2ae5 __report_gsfailure
-            2e15 mainCRTStartup
+            2abd ___raise_securityfailure
+            2ae5 ___report_gsfailure
+            2e15 _mainCRTStartup
             2e1f ??3@YAXPAX@Z
             2e24 ??0bad_alloc@std@@QAE@ABV01@@Z
             2e3f ??0bad_alloc@std@@QAE@XZ
@@ -54,74 +52,74 @@ expression: SymbolsDebug(&symbols)
             2ef4 ?__scrt_throw_std_bad_alloc@@YAXXZ
             2f11 ?__scrt_throw_std_bad_array_new_length@@YAXXZ
             2f2e ?what@exception@std@@UBEPBDXZ
-            2f7f __scrt_acquire_startup_lock
-            2fb4 __scrt_initialize_crt
-            2fed __scrt_initialize_onexit_tables
-            3097 __scrt_is_nonwritable_in_current_image
-            3121 __scrt_release_startup_lock
-            313e __scrt_uninitialize_crt
-            3166 _onexit
-            31a1 atexit
-            3205 __security_init_cookie
-            3250 _matherr
-            3253 _get_startup_argv_mode
-            3257 _get_startup_file_mode
+            2f7f ___scrt_acquire_startup_lock
+            2fb4 ___scrt_initialize_crt
+            2fed ___scrt_initialize_onexit_tables
+            3097 ___scrt_is_nonwritable_in_current_image
+            3121 ___scrt_release_startup_lock
+            313e ___scrt_uninitialize_crt
+            3166 __onexit
+            31a1 _atexit
+            3205 ___security_init_cookie
+            3250 __matherr
+            3253 __get_startup_argv_mode
+            3257 __get_startup_file_mode
             325d ?__scrt_initialize_type_info@@YAXXZ
-            3269 __vcrt_uninitialize
-            326c _initialize_default_precision
+            3269 ___vcrt_uninitialize
+            326c __initialize_default_precision
             328d @_guard_check_icall_nop@4
-            328e __local_stdio_scanf_options
-            3294 __scrt_initialize_default_local_stdio_options
-            32b1 __scrt_is_user_matherr_present
-            32bd __scrt_get_dyn_tls_init_callback
-            32c3 __scrt_get_dyn_tls_dtor_callback
-            32c9 __scrt_fastfail
-            33e5 __scrt_is_managed_app
-            3429 __scrt_set_unhandled_exception_filter
-            3435 __scrt_unhandled_exception_filter@4
-            3476 _crt_debugger_hook
-            347e _RTC_Initialize
-            34a9 _RTC_Terminate
+            328e ___local_stdio_scanf_options
+            3294 ___scrt_initialize_default_local_stdio_options
+            32b1 ___scrt_is_user_matherr_present
+            32bd ___scrt_get_dyn_tls_init_callback
+            32c3 ___scrt_get_dyn_tls_dtor_callback
+            32c9 ___scrt_fastfail
+            33e5 ___scrt_is_managed_app
+            3429 ___scrt_set_unhandled_exception_filter
+            3435 ___scrt_unhandled_exception_filter@4
+            3476 __crt_debugger_hook
+            347e __RTC_Initialize
+            34a9 __RTC_Terminate
             34d4 @_guard_check_icall@4
-            34e0 _SEH_prolog4
-            3526 _SEH_epilog4
-            353b _except_handler4
+            34e0 __SEH_prolog4
+            3526 __SEH_epilog4
+            353b __except_handler4
             355e ??_Gtype_info@@UAEPAXI@Z
-            3581 __isa_available_init
-            371a __scrt_is_ucrt_dll_in_use
-            3726 __CxxFrameHandler3
-            372c __std_exception_copy
-            3732 __std_exception_destroy
-            3738 _CxxThrowException@8
-            373e memset
-            3744 _except_handler4_common
-            374a exit
-            3750 _callnewh
-            3756 malloc
-            375c _seh_filter_exe
-            3762 _set_app_type
-            3768 __setusermatherr
-            376e _configure_narrow_argv
-            3774 _initialize_narrow_environment
-            377a _get_initial_narrow_environment
-            3780 _initterm
-            3786 _initterm_e
-            378c _exit
-            3792 _set_fmode
-            3798 __p___argc
-            379e __p___argv
-            37a4 _cexit
-            37aa _c_exit
-            37b0 _register_thread_local_exe_atexit_callback
-            37b6 _configthreadlocale
-            37bc _set_new_mode
-            37c2 __p__commode
-            37c8 free
-            37ce _initialize_onexit_table
-            37d4 _register_onexit_function
-            37da _crt_atexit
-            37e0 _controlfp_s
-            37e6 terminate
-            37ec IsProcessorFeaturePresent@4
-            37f2 memcpy
+            3581 ___isa_available_init
+            371a ___scrt_is_ucrt_dll_in_use
+            3726 ___CxxFrameHandler3
+            372c ___std_exception_copy
+            3732 ___std_exception_destroy
+            3738 __CxxThrowException@8
+            373e _memset
+            3744 __except_handler4_common
+            374a _exit
+            3750 __callnewh
+            3756 _malloc
+            375c __seh_filter_exe
+            3762 __set_app_type
+            3768 ___setusermatherr
+            376e __configure_narrow_argv
+            3774 __initialize_narrow_environment
+            377a __get_initial_narrow_environment
+            3780 __initterm
+            3786 __initterm_e
+            378c __exit
+            3792 __set_fmode
+            3798 ___p___argc
+            379e ___p___argv
+            37a4 __cexit
+            37aa __c_exit
+            37b0 __register_thread_local_exe_atexit_callback
+            37b6 __configthreadlocale
+            37bc __set_new_mode
+            37c2 ___p__commode
+            37c8 _free
+            37ce __initialize_onexit_table
+            37d4 __register_onexit_function
+            37da __crt_atexit
+            37e0 __controlfp_s
+            37e6 _terminate
+            37ec _IsProcessorFeaturePresent@4
+            37f2 _memcpy
 
