@@ -450,15 +450,11 @@ impl<'data, 'object> Iterator for PdbSymbolIterator<'data, 'object> {
                     None => continue,
                 };
 
-                let cow = public.name.to_string();
                 // pdb::SymbolIter offers data bound to its own lifetime since it holds the
                 // buffer containing public symbols. The contract requires that we return
                 // `Symbol<'data>`, so we cannot return zero-copy symbols here.
-                let base = match cow.strip_prefix('_') {
-                    Some(name) => name,
-                    None => &cow,
-                };
-                let name = Cow::from(String::from(base));
+                let cow = public.name.to_string();
+                let name = Cow::from(String::from(cow));
 
                 return Some(Symbol {
                     name: Some(name),
