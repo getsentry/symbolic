@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-ppdb"
-version = "9.0.0"
+version = "9.1.0"
 license = "MIT"
 authors = [
     "Sebastian Zivota <sebastian.zivota@sentry.io>",
@@ -22,7 +22,7 @@ all-features = true
 [dependencies]
 indexmap = "1.9.1"
 leb128 = "0.2.5"
-symbolic-common = { version = "9.0.0", path = "../symbolic-common" }
+symbolic-common = { version = "9.1.0", path = "../symbolic-common" }
 thiserror = "1.0.31"
 uuid = "1.0.0"
 zerocopy = "0.6.1"
