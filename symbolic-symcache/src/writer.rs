@@ -40,9 +40,9 @@ pub struct SymCacheConverter<'a> {
     files: IndexSet<raw::File>,
     /// The set of all [`raw::Function`]s that have been added to this `Converter`.
     functions: IndexSet<raw::Function>,
-    /// The set of all [`raw::SourceLocation`]s that have been added to this `Converter` and that
-    /// aren't directly associated with a code range.
-    source_locations: IndexSet<raw::SourceLocation>,
+    /// The set of [`raw::SourceLocation`]s used in this `Converter` that are only used as
+    /// "call locations", i.e. which are only referred to from `inlined_into_idx`.
+    call_locations: IndexSet<raw::SourceLocation>,
     /// A map from code ranges to the [`raw::SourceLocation`]s they correspond to.
     ///
     /// Only the starting address of a range is saved, the end address is given implicitly
@@ -272,7 +272,7 @@ impl<'a> SymCacheConverter<'a> {
 
                         let mut callee_source_location = source_location;
                         let (inlined_into_idx, _) = self
-                            .source_locations
+                            .call_locations
                             .insert_full(caller_source_location.clone());
 
                         callee_source_location.inlined_into_idx = inlined_into_idx as u32;
@@ -521,7 +521,7 @@ impl<'a> SymCacheConverter<'a> {
 
         let num_files = self.files.len() as u32;
         let num_functions = self.functions.len() as u32;
-        let num_source_locations = (self.source_locations.len() + self.ranges.len()) as u32;
+        let num_source_locations = (self.call_locations.len() + self.ranges.len()) as u32;
         let num_ranges = self.ranges.len() as u32;
         let string_bytes = self.string_bytes.len() as u32;
 
@@ -553,7 +553,7 @@ impl<'a> SymCacheConverter<'a> {
         }
         writer.align()?;
 
-        for s in self.source_locations {
+        for s in self.call_locations {
             writer.write(&[s])?;
         }
         for s in self.ranges.values() {
