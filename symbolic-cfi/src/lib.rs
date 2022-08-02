@@ -1018,7 +1018,13 @@ impl<W: Write> AsciiCfiWriter<W> {
             }
 
             // The minimal stack size is 8 for RIP
-            let mut stack_size: u32 = 8;
+            // Also, we are using signed math here everywhere, as some unwind operations, such as
+            // `SaveNonVolatile` can actually point out of the current stack frame, which appears
+            // to be perfectly fine.
+            // When this happens, the resulting ASCII CFI can also contain weird things like
+            // `.cfa -8 - ^` (that means, take the value 8 *above* the stack frame) which is
+            // perfectly fine as well.
+            let mut stack_size: i32 = 8;
             // Special handling for machine frames
             let mut machine_frame_offset = 0;
 
@@ -1061,7 +1067,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                                         &mut saved_regs,
                                         " {}: .cfa {} - ^",
                                         reg.name(),
-                                        stack_size.saturating_sub(offset)
+                                        stack_size - offset as i32
                                     )?;
                                 }
                                 // If the Frame Register field is nonzero, this offset is from where
@@ -1074,7 +1080,8 @@ impl<W: Write> AsciiCfiWriter<W> {
                                         " {}: {} {} + ^",
                                         reg.name(),
                                         unwind_info.frame_register.name(),
-                                        offset.saturating_sub(unwind_info.frame_register_offset)
+                                        offset.wrapping_sub(unwind_info.frame_register_offset)
+                                            as i32
                                     )?;
                                 }
                             };
@@ -1085,14 +1092,13 @@ impl<W: Write> AsciiCfiWriter<W> {
                             write!(&mut saved_regs, " {}: .cfa {} - ^", reg.name(), stack_size)?;
                         }
                         UnwindOperation::Alloc(size) => {
-                            stack_size += size;
+                            stack_size += size as i32;
                         }
                         UnwindOperation::SetFPRegister => {
                             // Establish the frame pointer register by setting the register to some
                             // offset of the current RSP. The offset is equal to the Frame Register
                             // offset field in the UNWIND_INFO.
-                            let offset =
-                                stack_size.saturating_sub(unwind_info.frame_register_offset);
+                            let offset = stack_size - unwind_info.frame_register_offset as i32;
                             // Set the `.cfa = $fp + offset`
                             write!(
                                 &mut cfa_reg,
@@ -1103,6 +1109,14 @@ impl<W: Write> AsciiCfiWriter<W> {
                         }
 
                         UnwindOperation::PushMachineFrame(is_error) => {
+                            // NOTE:
+                            // The MachineFrame also contains:
+                            // * SS (stack segment, we ignore this)
+                            // * RSP (stack pointer, which we use/restore)
+                            // * EFLAGS (we ignore this)
+                            // * CS (code segment, we ignore this)
+                            // * RIP (return address, which we use/restore)
+                            // * (optional) Error code (we ignore this)
                             let rsp_offset = stack_size + 16;
                             let rip_offset = stack_size + 40;
                             write!(
