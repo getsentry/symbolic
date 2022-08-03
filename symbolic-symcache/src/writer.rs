@@ -1,7 +1,5 @@
 //! Defines the [SymCache Converter](`SymCacheConverter`).
 
-#[cfg(feature = "il2cpp")]
-use std::borrow::Cow;
 use std::collections::btree_map;
 use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
@@ -9,11 +7,6 @@ use std::io::Write;
 use indexmap::IndexSet;
 use symbolic_common::{Arch, DebugId};
 use symbolic_debuginfo::{DebugSession, Function, ObjectLike, Symbol};
-
-#[cfg(feature = "il2cpp")]
-use symbolic_common::Language;
-#[cfg(feature = "il2cpp")]
-use symbolic_il2cpp::usym::{UsymSourceRecord, UsymSymbols};
 
 use super::{raw, transform};
 use crate::{Error, ErrorKind};
@@ -448,118 +441,6 @@ impl<'a> SymCacheConverter<'a> {
         if symbol.address as u32 >= *last_addr {
             self.last_addr = None;
         }
-    }
-
-    #[cfg(feature = "il2cpp")]
-    /// Processes a set of [`UsymSymbols`], passing all mapped symbols into the converter.
-    pub fn process_usym(&mut self, usym: &UsymSymbols) -> Result<(), Error> {
-        // Assume records they are sorted by address; There's a test that guarantees this
-
-        let debug_id = usym
-            .id()
-            .map_err(|e| Error::new(ErrorKind::HeaderTooSmall, e))?;
-        self.set_debug_id(debug_id);
-
-        let arch = usym.arch().unwrap_or_default();
-        self.set_arch(arch);
-
-        let mapped_records = usym.records().filter_map(|r| match r {
-            UsymSourceRecord::Unmapped(_) => None,
-            UsymSourceRecord::Mapped(r) => Some(r),
-        });
-
-        let mut curr_id: Option<(Cow<'_, str>, Cow<'_, str>)> = None;
-        let mut function_idx = 0;
-        for record in mapped_records {
-            // like process_symbolic_function, skip functions whose address is too large to fit in a
-            // u32
-            if record.address > u32::MAX as u64 {
-                continue;
-            }
-            let address = record.address as u32;
-
-            // Records that belong to the same function will have the same identifier.
-            // Symbols have GUID-like sections to them that might ensure they're unique across
-            // files, but we'll just include the file name and paths to be very safe.
-            let identifier = Some((record.native_file, record.native_symbol));
-            if identifier != curr_id {
-                function_idx = {
-                    let mut function = transform::Function {
-                        name: record.managed_symbol.clone(),
-                        comp_dir: None,
-                    };
-                    for transformer in &mut self.transformers.0 {
-                        function = transformer.transform_function(function);
-                    }
-
-                    let string_bytes = &mut self.string_bytes;
-                    let strings = &mut self.strings;
-                    let name_offset = Self::insert_string(string_bytes, strings, &function.name);
-
-                    let (fun_idx, _) = self.functions.insert_full(raw::Function {
-                        name_offset,
-                        _comp_dir_offset: u32::MAX,
-                        entry_pc: address,
-                        lang: Language::CSharp as u32,
-                    });
-                    fun_idx
-                };
-            }
-
-            let managed_dir = Some(record.managed_file_info.dir_str()).filter(|d| !d.is_empty());
-            let mut location = transform::SourceLocation {
-                file: transform::File {
-                    name: record.managed_file_info.name_str(),
-                    directory: managed_dir,
-                    comp_dir: None,
-                },
-                line: record.managed_line,
-            };
-            for transformer in &mut self.transformers.0 {
-                location = transformer.transform_source_location(location);
-            }
-
-            let string_bytes = &mut self.string_bytes;
-            let strings = &mut self.strings;
-            let name_offset = Self::insert_string(string_bytes, strings, &location.file.name);
-            let directory_offset = location
-                .file
-                .directory
-                .map_or(u32::MAX, |d| Self::insert_string(string_bytes, strings, &d));
-
-            let (file_idx, _) = self.files.insert_full(raw::File {
-                name_offset,
-                directory_offset,
-                comp_dir_offset: u32::MAX,
-            });
-
-            let source_location = raw::SourceLocation {
-                file_idx: file_idx as u32,
-                line: location.line,
-                function_idx: function_idx as u32,
-                inlined_into_idx: u32::MAX,
-            };
-
-            match self.ranges.entry(address) {
-                btree_map::Entry::Vacant(entry) => {
-                    entry.insert(source_location);
-                }
-                btree_map::Entry::Occupied(mut entry) => {
-                    // TODO: This exists in native-only mappings, but we don't know yet if it's
-                    // possible to generate these types of records in managed code.
-                    // println!(
-                    //     "Found what's probably an inlined source {}::{}:L{}",
-                    //     record.managed_file_info.path_str(),
-                    //     record.managed_symbol,
-                    //     record.managed_line,
-                    // );
-                    entry.insert(source_location);
-                }
-            }
-            curr_id = identifier;
-        }
-
-        Ok(())
     }
 
     // Methods for serializing to a [`Write`] below:
