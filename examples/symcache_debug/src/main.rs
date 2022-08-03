@@ -139,7 +139,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
                 let path = sym
                     .file()
                     .map(|file| file.full_path())
-                    .unwrap_or_else(|| "<unknown file >".into());
+                    .unwrap_or_else(|| "<unknown file>".into());
                 let line = sym.line();
 
                 if !path.is_empty() || line != 0 || lang != Language::Unknown {
