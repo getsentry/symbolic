@@ -7,6 +7,7 @@
 - Allow underflows in Windows x64 CFI to allow restoring registers from outside of the current stack frame. ([#645](https://github.com/getsentry/symbolic/pull/645))
 - Rework the SymCache Writer for correctness. ([#648](https://github.com/getsentry/symbolic/pull/648))
 - Undecorate Windows symbols when writing SymCache. ([#649](https://github.com/getsentry/symbolic/pull/649))
+- Correctly use the `.debug_addr` section needed for DWARF5. ([#652]()https://github.com/getsentry/symbolic/pull/652)
 
 **Internal**:
 
