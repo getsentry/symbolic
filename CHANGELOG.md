@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Allow underflows in Windows x64 CFI to allow restoring registers from outside of the current stack frame. ([#645](https://github.com/getsentry/symbolic/pull/645))
+- Rework the SymCache Writer for correctness. ([#648](https://github.com/getsentry/symbolic/pull/648))
+- Undecorate Windows symbols when writing SymCache. ([#649](https://github.com/getsentry/symbolic/pull/649))
+- Correctly use the `.debug_addr` section needed for DWARF5. ([#652](https://github.com/getsentry/symbolic/pull/652))
+
+**Internal**:
+
+- Remove outdated and unused il2cpp/usym-related code. ([#650](https://github.com/getsentry/symbolic/pull/650))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@mstange](https://github.com/mstange)
+
 ## 9.1.0
 
 **Features**:
