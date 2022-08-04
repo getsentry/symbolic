@@ -329,6 +329,24 @@ fn test_lookup_gap_inlinee() -> Result<(), Error> {
     Ok(())
 }
 
+#[test]
+fn test_undecorate_windows_symbols() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("windows/crash.pdb"))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut buffer = Vec::new();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&object)?;
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
+    let symcache = SymCache::parse(&buffer)?;
+
+    let symbols = symcache.lookup(0x3756).collect::<Vec<_>>();
+    assert_eq!(symbols.len(), 1);
+    assert_eq!(symbols[0].function().name(), "malloc");
+
+    Ok(())
+}
+
 /// Tests that the cache is lenient toward adding additional flags at the end.
 #[test]
 fn test_trailing_marker() -> Result<(), Error> {

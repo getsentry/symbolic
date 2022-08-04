@@ -6,7 +6,7 @@ use std::io::Write;
 
 use indexmap::IndexSet;
 use symbolic_common::{Arch, DebugId};
-use symbolic_debuginfo::{DebugSession, Function, ObjectLike, Symbol};
+use symbolic_debuginfo::{DebugSession, FileFormat, Function, ObjectLike, Symbol};
 
 use super::{raw, transform};
 use crate::{Error, ErrorKind};
@@ -21,6 +21,10 @@ pub struct SymCacheConverter<'a> {
     debug_id: DebugId,
     /// CPU architecture of the object file.
     arch: Arch,
+
+    /// A flag that indicates that we are currently processing a Windows object, which
+    /// will inform us if we should undecorate function names.
+    is_windows_object: bool,
 
     /// A list of transformers that are used to transform each function / source location.
     transformers: transform::Transformers<'a>,
@@ -123,6 +127,8 @@ impl<'a> SymCacheConverter<'a> {
         self.set_arch(object.arch());
         self.set_debug_id(object.debug_id());
 
+        self.is_windows_object = matches!(object.file_format(), FileFormat::Pe | FileFormat::Pdb);
+
         for function in session.functions() {
             let function = function.map_err(|e| Error::new(ErrorKind::BadDebugFile, e))?;
 
@@ -132,6 +138,8 @@ impl<'a> SymCacheConverter<'a> {
         for symbol in object.symbols() {
             self.process_symbolic_symbol(&symbol);
         }
+
+        self.is_windows_object = false;
 
         Ok(())
     }
@@ -172,9 +180,15 @@ impl<'a> SymCacheConverter<'a> {
                 function = transformer.transform_function(function);
             }
 
+            let function_name = if self.is_windows_object {
+                undecorate_win_symbol(&function.name)
+            } else {
+                &function.name
+            };
+
             let string_bytes = &mut self.string_bytes;
             let strings = &mut self.strings;
-            let name_offset = Self::insert_string(string_bytes, strings, &function.name);
+            let name_offset = Self::insert_string(string_bytes, strings, function_name);
 
             let lang = language as u32;
             let (fun_idx, _) = self.functions.insert_full(raw::Function {
@@ -407,7 +421,13 @@ impl<'a> SymCacheConverter<'a> {
                 function = transformer.transform_function(function);
             }
 
-            Self::insert_string(&mut self.string_bytes, &mut self.strings, &function.name)
+            let function_name = if self.is_windows_object {
+                undecorate_win_symbol(&function.name)
+            } else {
+                &function.name
+            };
+
+            Self::insert_string(&mut self.string_bytes, &mut self.strings, function_name)
         };
 
         match self.ranges.entry(symbol.address as u32) {
@@ -518,6 +538,50 @@ impl<'a> SymCacheConverter<'a> {
 
         Ok(())
     }
+}
+
+/// Undecorates a Windows C-decorated symbol name.
+///
+/// The decoration rules are explained here:
+/// https://docs.microsoft.com/en-us/cpp/build/reference/decorated-names?view=vs-2019
+///
+/// - __cdecl Leading underscore (_)
+/// - __stdcall Leading underscore (_) and a trailing at sign (@) followed by the number of bytes in the parameter list in decimal
+/// - __fastcall Leading and trailing at signs (@) followed by a decimal number representing the number of bytes in the parameter list
+/// - __vectorcall Two trailing at signs (@@) followed by a decimal number of bytes in the parameter list
+/// > In a 64-bit environment, C or extern "C" functions are only decorated when using the __vectorcall calling convention."
+///
+/// This code is adapted from `dump_syms`:
+/// See https://github.com/mozilla/dump_syms/blob/325cf2c61b2cacc55a7f1af74081b57237c7f9de/src/symbol.rs#L169-L216
+fn undecorate_win_symbol(name: &str) -> &str {
+    if name.starts_with('?') || name.contains(&[':', '(', '<']) {
+        return name;
+    }
+
+    // Parse __vectorcall.
+    if let Some((name, param_size)) = name.rsplit_once("@@") {
+        if param_size.parse::<u32>().is_ok() {
+            return name;
+        }
+    }
+
+    // Parse the other three.
+    if !name.is_empty() {
+        if let ("@" | "_", rest) = name.split_at(1) {
+            if let Some((name, param_size)) = rest.rsplit_once('@') {
+                if param_size.parse::<u32>().is_ok() {
+                    // __stdcall or __fastcall
+                    return name;
+                }
+            }
+            if let Some(name) = name.strip_prefix('_') {
+                // __cdecl
+                return name;
+            }
+        }
+    }
+
+    name
 }
 
 struct WriteWrapper<W> {
