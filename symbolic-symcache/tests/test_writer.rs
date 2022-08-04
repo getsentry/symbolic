@@ -5,9 +5,6 @@ use symbolic_debuginfo::Object;
 use symbolic_symcache::{FunctionsDebug, SymCache, SymCacheConverter};
 use symbolic_testutils::fixture;
 
-#[cfg(feature = "il2cpp")]
-use symbolic_il2cpp::usym::UsymSymbols;
-
 type Error = Box<dyn std::error::Error>;
 
 #[test]
@@ -345,85 +342,6 @@ fn test_trailing_marker() -> Result<(), Error> {
     buffer.extend(b"WITH_SYMBOLMAP");
 
     SymCache::parse(&buffer)?;
-
-    Ok(())
-}
-
-#[cfg(feature = "il2cpp")]
-#[test]
-fn test_mapless_usym() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture("il2cpp/artificial.usym"))?;
-    let usym = UsymSymbols::parse(&buffer)?;
-
-    let mut buffer = Vec::new();
-    let mut converter = SymCacheConverter::new();
-    converter.process_usym(&usym)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
-
-    let cache = SymCache::parse(&buffer)?;
-
-    insta::assert_debug_snapshot!(cache, @r###"
-    SymCache {
-        version: 7,
-        debug_id: DebugId {
-            uuid: "153d10d1-0db0-33d6-aacd-a4e1948da97b",
-            appendix: 0,
-        },
-        arch: Arm64,
-        files: 0,
-        functions: 0,
-        source_locations: 0,
-        ranges: 0,
-        string_bytes: 0,
-    }
-    "###);
-
-    Ok(())
-}
-
-#[cfg(feature = "il2cpp")]
-#[test]
-fn test_usym() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture("il2cpp/managed.usym"))?;
-    let usym = UsymSymbols::parse(&buffer)?;
-
-    let mut buffer = Vec::new();
-    let mut converter = SymCacheConverter::new();
-    converter.process_usym(&usym)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
-    let cache = SymCache::parse(&buffer)?;
-
-    insta::assert_debug_snapshot!(cache, @r###"
-    SymCache {
-        version: 7,
-        debug_id: DebugId {
-            uuid: "153d10d1-0db0-33d6-aacd-a4e1948da97b",
-            appendix: 0,
-        },
-        arch: Arm64,
-        files: 1,
-        functions: 3,
-        source_locations: 3,
-        ranges: 3,
-        string_bytes: 128,
-    }
-    "###);
-
-    Ok(())
-}
-
-#[cfg(feature = "il2cpp")]
-#[test]
-fn test_write_functions_usym() -> Result<(), Error> {
-    let buffer = ByteView::open(fixture("il2cpp/managed.usym"))?;
-    let usym = UsymSymbols::parse(&buffer)?;
-
-    let mut buffer = Vec::new();
-    let mut converter = SymCacheConverter::new();
-    converter.process_usym(&usym)?;
-    converter.serialize(&mut Cursor::new(&mut buffer))?;
-    let cache = SymCache::parse(&buffer)?;
-    insta::assert_debug_snapshot!("functions_usym", FunctionsDebug(&cache));
 
     Ok(())
 }
