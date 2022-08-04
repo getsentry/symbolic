@@ -254,7 +254,9 @@ impl<'d> DwarfLineProgram<'d> {
 
             // we have seen rustc emit for WASM targets a bad sequence that spans from 0 to
             // the end of the program.  https://github.com/rust-lang/rust/issues/79410
-            // Since DWARF does not permit code to sit at address 0 we can safely skip here.
+            // We want to skip these bad sequences. Unfortunately, code in .o files can legitimately
+            // be located at address 0, so we incorrectly skip line sequences in that case, too.
+            // See https://github.com/getsentry/symbolic/issues/471 .
             if address == 0 {
                 continue;
             }
@@ -1066,6 +1068,8 @@ where
 /// All DWARF sections that are needed by `DwarfDebugSession`.
 struct DwarfSections<'data> {
     debug_abbrev: DwarfSectionData<'data, gimli::read::DebugAbbrev<Slice<'data>>>,
+    debug_addr: DwarfSectionData<'data, gimli::read::DebugAddr<Slice<'data>>>,
+    debug_aranges: DwarfSectionData<'data, gimli::read::DebugAranges<Slice<'data>>>,
     debug_info: DwarfSectionData<'data, gimli::read::DebugInfo<Slice<'data>>>,
     debug_line: DwarfSectionData<'data, gimli::read::DebugLine<Slice<'data>>>,
     debug_line_str: DwarfSectionData<'data, gimli::read::DebugLineStr<Slice<'data>>>,
@@ -1083,6 +1087,8 @@ impl<'data> DwarfSections<'data> {
     {
         DwarfSections {
             debug_abbrev: DwarfSectionData::load(dwarf),
+            debug_addr: DwarfSectionData::load(dwarf),
+            debug_aranges: DwarfSectionData::load(dwarf),
             debug_info: DwarfSectionData::load(dwarf),
             debug_line: DwarfSectionData::load(dwarf),
             debug_line_str: DwarfSectionData::load(dwarf),
@@ -1121,8 +1127,8 @@ impl<'d> DwarfInfo<'d> {
     ) -> Result<Self, DwarfError> {
         let inner = gimli::read::Dwarf {
             debug_abbrev: sections.debug_abbrev.to_gimli(),
-            debug_addr: Default::default(),
-            debug_aranges: Default::default(),
+            debug_addr: sections.debug_addr.to_gimli(),
+            debug_aranges: sections.debug_aranges.to_gimli(),
             debug_info: sections.debug_info.to_gimli(),
             debug_line: sections.debug_line.to_gimli(),
             debug_line_str: sections.debug_line_str.to_gimli(),

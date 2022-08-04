@@ -1,5 +1,46 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Allow underflows in Windows x64 CFI to allow restoring registers from outside of the current stack frame. ([#645](https://github.com/getsentry/symbolic/pull/645))
+- Rework the SymCache Writer for correctness. ([#648](https://github.com/getsentry/symbolic/pull/648))
+- Undecorate Windows symbols when writing SymCache. ([#649](https://github.com/getsentry/symbolic/pull/649))
+- Correctly use the `.debug_addr` section needed for DWARF5. ([#652](https://github.com/getsentry/symbolic/pull/652))
+
+**Internal**:
+
+- Remove outdated and unused il2cpp/usym-related code. ([#650](https://github.com/getsentry/symbolic/pull/650))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@mstange](https://github.com/mstange)
+
+## 9.1.0
+
+**Features**:
+
+- Added a new subcrate for working with Portable PDB files: `symbolic-ppdb` ([#621](https://github.com/getsentry/symbolic/pull/621))
+- Added support for breakpad sym files containing `INLINE_ORIGIN` and `INLINE` records. ([#605](https://github.com/getsentry/symbolic/pull/605))
+- Most function names from PDBs will now include function arguments. ([#426](https://github.com/getsentry/symbolic/pull/426))
+
+**Fixes**:
+
+- Improved DWARF handling to create more consistent inlinee and line information. ([#607](https://github.com/getsentry/symbolic/pull/607), [#633](https://github.com/getsentry/symbolic/pull/633))
+- Improved PDB handling to include more symbols and create more consistent inlinee and line information. ([#622](https://github.com/getsentry/symbolic/pull/622), [#627](https://github.com/getsentry/symbolic/pull/627), [#636](https://github.com/getsentry/symbolic/pull/636), [#641](https://github.com/getsentry/symbolic/pull/641))
+- Fixed a typo in DWARF 5 `addrx` parsing which caused incorrect address ranges. ([#608](https://github.com/getsentry/symbolic/pull/608))
+- symcache generation now handles more cases of line / inlinee information correctly. ([#637](https://github.com/getsentry/symbolic/pull/637))
+- Improved arm64 CFI for macOS system libraries by translating UnwindOp::None into trivial CFI. ([#619](https://github.com/getsentry/symbolic/pull/619))
+- Improved arm64 CFI for macOS \_sigtramp by restricting a workaround to x86_64. ([#625](https://github.com/getsentry/symbolic/pull/625))
+- Improved MIPS CFI by always generating .ra CFI. ([#612](https://github.com/getsentry/symbolic/pull/612))
+- Fixed il2cpp lookup to discard information for unrelated lines. ([#617](https://github.com/getsentry/symbolic/pull/617))
+- Leading underscores are no longer stripped from PDB symbols. ([#642](https://github.com/getsentry/symbolic/pull/642))
+- MSVC demangled functions now look more visually pleasing. ([#640](https://github.com/getsentry/symbolic/pull/640))
+- Updated wasmparser dependency to 0.85.0. ([#624](https://github.com/getsentry/symbolic/pull/624))
+
 ## 9.0.0
 
 **Breaking changes**:

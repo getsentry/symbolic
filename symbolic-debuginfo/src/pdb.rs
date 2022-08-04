@@ -10,9 +10,9 @@ use std::sync::Arc;
 use elsa::FrozenMap;
 use parking_lot::RwLock;
 use pdb_addr2line::pdb::{
-    AddressMap, FallibleIterator, InlineSiteSymbol, LineProgram, MachineType, Module, ModuleInfo,
-    PdbInternalSectionOffset, ProcedureSymbol, RawString, SeparatedCodeSymbol, SymbolData,
-    TypeIndex,
+    AddressMap, FallibleIterator, ImageSectionHeader, InlineSiteSymbol, LineProgram, MachineType,
+    Module, ModuleInfo, PdbInternalSectionOffset, ProcedureSymbol, RawString, SeparatedCodeSymbol,
+    SymbolData, TypeIndex,
 };
 use pdb_addr2line::ModuleProvider;
 use smallvec::SmallVec;
@@ -120,6 +120,7 @@ pub struct PdbObject<'data> {
     debug_info: Arc<pdb::DebugInformation<'data>>,
     pdb_info: pdb::PDBInformation<'data>,
     public_syms: pdb::SymbolTable<'data>,
+    executable_sections: ExecutableSections,
     data: &'data [u8],
 }
 
@@ -144,6 +145,7 @@ impl<'data> PdbObject<'data> {
         let dbi = pdb.debug_information()?;
         let pdbi = pdb.pdb_information()?;
         let pubi = pdb.global_symbols()?;
+        let sections = pdb.sections()?;
 
         Ok(PdbObject {
             pdb: Arc::new(RwLock::new(pdb)),
@@ -151,6 +153,7 @@ impl<'data> PdbObject<'data> {
             pdb_info: pdbi,
             public_syms: pubi,
             data,
+            executable_sections: ExecutableSections::from_sections(&sections),
         })
     }
 
@@ -224,6 +227,7 @@ impl<'data> PdbObject<'data> {
         PdbSymbolIterator {
             symbols: self.public_syms.iter(),
             address_map: self.pdb.write().address_map().ok(),
+            executable_sections: &self.executable_sections,
         }
     }
 
@@ -383,12 +387,50 @@ pub(crate) fn arch_from_machine(machine: MachineType) -> Arch {
     }
 }
 
+/// Contains information about which sections are executable.
+struct ExecutableSections {
+    /// For every section header in the PDB, a boolean which indicates whether the "executable"
+    /// or "execute" flag is set in the section header's characteristics.
+    is_executable_per_section: Vec<bool>,
+}
+
+impl ExecutableSections {
+    pub fn from_sections(sections: &Option<Vec<ImageSectionHeader>>) -> Self {
+        Self {
+            is_executable_per_section: match sections {
+                Some(sections) => sections
+                    .iter()
+                    .map(|section| section.characteristics)
+                    .map(|char| char.executable() || char.execute())
+                    .collect(),
+                None => Default::default(),
+            },
+        }
+    }
+
+    /// Returns whether the given offset is contained in an executable section.
+    pub fn contains(&self, offset: &PdbInternalSectionOffset) -> bool {
+        // offset.section is a one-based index.
+        if offset.section == 0 {
+            // No section.
+            return false;
+        }
+
+        let section_index = (offset.section - 1) as usize;
+        self.is_executable_per_section
+            .get(section_index)
+            .cloned()
+            .unwrap_or(false)
+    }
+}
+
 /// An iterator over symbols in the PDB file.
 ///
 /// Returned by [`PdbObject::symbols`](struct.PdbObject.html#method.symbols).
 pub struct PdbSymbolIterator<'data, 'object> {
     symbols: pdb::SymbolIter<'object>,
     address_map: Option<AddressMap<'data>>,
+    executable_sections: &'object ExecutableSections,
 }
 
 impl<'data, 'object> Iterator for PdbSymbolIterator<'data, 'object> {
@@ -399,7 +441,7 @@ impl<'data, 'object> Iterator for PdbSymbolIterator<'data, 'object> {
 
         while let Ok(Some(symbol)) = self.symbols.next() {
             if let Ok(SymbolData::Public(public)) = symbol.parse() {
-                if !public.function {
+                if !self.executable_sections.contains(&public.offset) {
                     continue;
                 }
 
@@ -408,15 +450,11 @@ impl<'data, 'object> Iterator for PdbSymbolIterator<'data, 'object> {
                     None => continue,
                 };
 
-                let cow = public.name.to_string();
                 // pdb::SymbolIter offers data bound to its own lifetime since it holds the
                 // buffer containing public symbols. The contract requires that we return
                 // `Symbol<'data>`, so we cannot return zero-copy symbols here.
-                let base = match cow.strip_prefix('_') {
-                    Some(name) => name,
-                    None => &cow,
-                };
-                let name = Cow::from(String::from(base));
+                let cow = public.name.to_string();
+                let name = Cow::from(String::from(cow));
 
                 return Some(Symbol {
                     name: Some(name),

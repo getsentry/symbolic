@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-demangle"
-version = "9.0.0"
+version = "9.1.0"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -34,7 +34,7 @@ swift = ["cc"]
 cpp_demangle = { git = "https://github.com/Swatinem/cpp_demangle", branch = "sentry-patches", version = "0.3.2", optional = true }
 msvc-demangler = { version = "0.9.0", optional = true }
 rustc-demangle = { version = "0.1.16", optional = true }
-symbolic-common = { version = "9.0.0", path = "../symbolic-common" }
+symbolic-common = { version = "9.1.0", path = "../symbolic-common" }
 
 [build-dependencies]
 cc = { version = "1.0.50", optional = true }

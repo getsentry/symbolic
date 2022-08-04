@@ -165,7 +165,11 @@ fn try_demangle_msvc(ident: &str, opts: DemangleOptions) -> Option<String> {
     use msvc_demangler::DemangleFlags as MsvcFlags;
 
     // the flags are bitflags
-    let mut flags = MsvcFlags::COMPLETE;
+    let mut flags = MsvcFlags::COMPLETE
+        | MsvcFlags::SPACE_AFTER_COMMA
+        | MsvcFlags::HUG_TYPE
+        | MsvcFlags::NO_MS_KEYWORDS
+        | MsvcFlags::NO_CLASS_TYPE;
     if !opts.return_type {
         flags |= MsvcFlags::NO_FUNCTION_RETURNS;
     }

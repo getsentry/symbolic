@@ -17,14 +17,14 @@ use thiserror::Error;
 use walkdir::WalkDir;
 
 use symbolic::cfi::CfiCache;
-use symbolic::common::{Arch, ByteView, DebugId, InstructionInfo, SelfCell};
+use symbolic::common::{Arch, ByteView, CodeId, DebugId, InstructionInfo, SelfCell};
 use symbolic::debuginfo::{Archive, FileFormat};
 use symbolic::demangle::{Demangle, DemangleOptions};
 use symbolic::symcache::{SourceLocation, SymCache, SymCacheConverter};
 
-type CfiFiles = BTreeMap<DebugId, Result<SymbolFile, SymbolError>>;
-type SymCaches<'a> = BTreeMap<DebugId, Result<SelfCell<ByteView<'a>, SymCache<'a>>, SymbolError>>;
-type ObjectDatabase = BTreeMap<DebugId, Vec<ObjectMetadata>>;
+type LookupId = (Option<CodeId>, DebugId);
+type CfiFiles = BTreeMap<LookupId, Result<SymbolFile, SymbolError>>;
+type SymCaches<'a> = BTreeMap<LookupId, Result<SelfCell<ByteView<'a>, SymCache<'a>>, SymbolError>>;
 type Error = Box<dyn std::error::Error>;
 
 #[derive(Debug, Clone, Copy, Error)]
@@ -33,6 +33,12 @@ enum SymbolError {
     NotFound,
     #[error("corrupt debug file")]
     Corrupt,
+}
+
+#[derive(Debug, Default)]
+struct ObjectDatabase {
+    by_debug_id: HashMap<DebugId, Vec<ObjectMetadata>>,
+    by_code_id: HashMap<CodeId, Vec<ObjectMetadata>>,
 }
 
 /// Metadata about an object in the filesystem.
@@ -81,7 +87,7 @@ impl<'a> LocalSymbolProvider<'a> {
     /// * whether the object has symbol info
     #[tracing::instrument(skip_all, fields(path = ?path.as_ref()))]
     fn create_object_database(path: impl AsRef<Path>) -> ObjectDatabase {
-        let mut object_db = ObjectDatabase::new();
+        let mut object_db = ObjectDatabase::default();
         for entry in WalkDir::new(path).into_iter().filter_map(Result::ok) {
             // Folders will be recursed into automatically
             if !entry.metadata().map_or(false, |md| md.is_file()) {
@@ -108,26 +114,50 @@ impl<'a> LocalSymbolProvider<'a> {
                     Err(_e) => continue,
                 };
 
-                let id = object.debug_id();
-
-                let object_list = object_db.entry(id).or_insert_with(Vec::new);
                 tracing::trace!(
                     object.path = ?entry.path(),
+                    object.code_id = ?object.code_id(),
+                    object.debug_id = ?object.debug_id(),
                     object.has_unwind_info = object.has_unwind_info(),
                     object.has_symbol_info = object.has_debug_info(),
                     "object found"
                 );
-                object_list.push(ObjectMetadata {
+
+                let object_meta = ObjectMetadata {
                     path: entry.path().into(),
                     index_in_archive: idx,
                     has_unwind_info: object.has_unwind_info(),
                     has_symbol_info: object.has_debug_info(),
-                })
+                };
+
+                let debug_id = object.debug_id();
+                if !debug_id.is_nil() {
+                    let by_debug_id = object_db
+                        .by_debug_id
+                        .entry(debug_id)
+                        .or_insert_with(Vec::new);
+                    by_debug_id.push(object_meta.clone());
+                }
+
+                if let Some(code_id) = object.code_id() {
+                    let by_code_id = object_db.by_code_id.entry(code_id).or_insert_with(Vec::new);
+                    by_code_id.push(object_meta);
+                }
             }
         }
 
         object_db
     }
+
+    /// Fetches the [`ObjectMetadata`] for the given id, using the [`DebugId`] or the [`CodeId`]
+    /// as fallback.
+    fn object_info(&self, id: LookupId) -> Option<&Vec<ObjectMetadata>> {
+        self.object_files
+            .by_debug_id
+            .get(&id.1)
+            .or_else(|| self.object_files.by_code_id.get(&id.0?))
+    }
+
     /// Consumes this `LocalSymbolProvider` and returns its collections of cfi and debug files.
     fn into_inner(self) -> (CfiFiles, SymCaches<'a>) {
         (
@@ -140,9 +170,9 @@ impl<'a> LocalSymbolProvider<'a> {
     ///
     /// The id is looked up in the symbol provider's `object_files` database.
     /// Objects which have unwind information are then tried in order.
-    #[tracing::instrument(skip_all, fields(id = %id))]
-    fn load_cfi(&self, id: DebugId) -> Result<SymbolFile, SymbolError> {
-        let object_list = self.object_files.get(&id).ok_or(SymbolError::NotFound)?;
+    #[tracing::instrument(skip_all, fields(id = ?id))]
+    fn load_cfi(&self, id: LookupId) -> Result<SymbolFile, SymbolError> {
+        let object_list = self.object_info(id).ok_or(SymbolError::NotFound)?;
         let mut found = None;
         for object_meta in object_list.iter().filter(|object| object.has_unwind_info) {
             tracing::trace!(path = ?object_meta.path, "trying object file");
@@ -183,12 +213,12 @@ impl<'a> LocalSymbolProvider<'a> {
     ///
     /// The id is looked up in the symbol provider's `object_files` database.
     /// Objects which have symbol information are then tried in order.
-    #[tracing::instrument(skip_all, fields(id = %id))]
+    #[tracing::instrument(skip_all, fields(id = ?id))]
     fn load_symbol_info(
         &self,
-        id: DebugId,
+        id: LookupId,
     ) -> Result<SelfCell<ByteView<'a>, SymCache<'a>>, SymbolError> {
-        let object_list = self.object_files.get(&id).ok_or(SymbolError::NotFound)?;
+        let object_list = self.object_info(id).ok_or(SymbolError::NotFound)?;
         let mut found = None;
         for object_meta in object_list.iter().filter(|object| object.has_symbol_info) {
             tracing::trace!(path = ?object_meta.path, "trying object file");
@@ -246,12 +276,15 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
             return Err(FillSymbolError {});
         }
 
-        let id = module.debug_identifier().ok_or(FillSymbolError {})?;
-        tracing::Span::current().record("module.id", &tracing::field::display(id));
+        let id = (
+            module.code_identifier(),
+            module.debug_identifier().unwrap_or_default(),
+        );
+        tracing::Span::current().record("module.id", &tracing::field::debug(&id));
 
         let mut symcaches = self.symcaches.lock().unwrap();
 
-        let symcache = symcaches.entry(id).or_insert_with(|| {
+        let symcache = symcaches.entry(id.clone()).or_insert_with(|| {
             tracing::info!("loading symcache for the first time");
             self.load_symbol_info(id)
         });
@@ -300,12 +333,15 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
             return None;
         }
 
-        let id = module.debug_identifier()?;
-        tracing::Span::current().record("module.id", &tracing::field::display(id));
+        let id = (
+            module.code_identifier(),
+            module.debug_identifier().unwrap_or_default(),
+        );
+        tracing::Span::current().record("module.id", &tracing::field::debug(&id));
 
         let mut cfi = self.cfi_files.lock().unwrap();
 
-        let symbol_file = cfi.entry(id).or_insert_with(|| {
+        let symbol_file = cfi.entry(id.clone()).or_insert_with(|| {
             tracing::info!("loading cficache for the first time");
             self.load_cfi(id)
         });
@@ -327,14 +363,14 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
             .lock()
             .unwrap()
             .iter()
-            .map(|(debug_id, sym)| {
+            .map(|(id, sym)| {
                 let stats = SymbolStats {
                     symbol_url: None,
                     loaded_symbols: matches!(sym, Ok(_)),
                     corrupt_symbols: matches!(sym, Err(SymbolError::Corrupt)),
                 };
 
-                (debug_id.to_string(), stats)
+                (format!("{:?}", id), stats)
             })
             .collect()
     }
@@ -359,7 +395,12 @@ fn symbolize<'a>(
         None => return None,
     };
 
-    let symcache = match module.debug_identifier().and_then(|id| symcaches.get(&id)) {
+    let id = (
+        module.code_identifier(),
+        module.debug_identifier().unwrap_or_default(),
+    );
+
+    let symcache = match symcaches.get(&id) {
         Some(Ok(symcache)) => symcache,
         _ => return None,
     };
@@ -551,12 +592,14 @@ impl fmt::Display for Report<'_> {
                     None => write!(f, "<missing debug identifier>")?,
                 };
 
-                match id.and_then(|id| self.symcaches.get(&id)) {
+                let id = (module.code_identifier(), id.unwrap_or_default());
+
+                match self.symcaches.get(&id) {
                     Some(Ok(_)) => {}
                     _ => write!(f, "; no symbols")?,
                 }
 
-                match id.and_then(|id| self.cfi_files.get(&id)) {
+                match self.cfi_files.get(&id) {
                     Some(Ok(_)) => {}
                     _ => write!(f, "; no CFI")?,
                 }

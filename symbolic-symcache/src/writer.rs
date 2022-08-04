@@ -1,19 +1,12 @@
 //! Defines the [SymCache Converter](`SymCacheConverter`).
 
-#[cfg(feature = "il2cpp")]
-use std::borrow::Cow;
 use std::collections::btree_map;
 use std::collections::{BTreeMap, HashMap};
 use std::io::Write;
 
 use indexmap::IndexSet;
 use symbolic_common::{Arch, DebugId};
-use symbolic_debuginfo::{DebugSession, Function, LineInfo, ObjectLike, Symbol};
-
-#[cfg(feature = "il2cpp")]
-use symbolic_common::Language;
-#[cfg(feature = "il2cpp")]
-use symbolic_il2cpp::usym::{UsymSourceRecord, UsymSymbols};
+use symbolic_debuginfo::{DebugSession, FileFormat, Function, ObjectLike, Symbol};
 
 use super::{raw, transform};
 use crate::{Error, ErrorKind};
@@ -29,6 +22,10 @@ pub struct SymCacheConverter<'a> {
     /// CPU architecture of the object file.
     arch: Arch,
 
+    /// A flag that indicates that we are currently processing a Windows object, which
+    /// will inform us if we should undecorate function names.
+    is_windows_object: bool,
+
     /// A list of transformers that are used to transform each function / source location.
     transformers: transform::Transformers<'a>,
 
@@ -40,9 +37,9 @@ pub struct SymCacheConverter<'a> {
     files: IndexSet<raw::File>,
     /// The set of all [`raw::Function`]s that have been added to this `Converter`.
     functions: IndexSet<raw::Function>,
-    /// The set of all [`raw::SourceLocation`]s that have been added to this `Converter` and that
-    /// aren't directly associated with a code range.
-    source_locations: IndexSet<raw::SourceLocation>,
+    /// The set of [`raw::SourceLocation`]s used in this `Converter` that are only used as
+    /// "call locations", i.e. which are only referred to from `inlined_into_idx`.
+    call_locations: IndexSet<raw::SourceLocation>,
     /// A map from code ranges to the [`raw::SourceLocation`]s they correspond to.
     ///
     /// Only the starting address of a range is saved, the end address is given implicitly
@@ -130,24 +127,35 @@ impl<'a> SymCacheConverter<'a> {
         self.set_arch(object.arch());
         self.set_debug_id(object.debug_id());
 
+        self.is_windows_object = matches!(object.file_format(), FileFormat::Pe | FileFormat::Pdb);
+
         for function in session.functions() {
             let function = function.map_err(|e| Error::new(ErrorKind::BadDebugFile, e))?;
 
-            self.process_symbolic_function(&function, &[]);
+            self.process_symbolic_function(&function);
         }
 
         for symbol in object.symbols() {
             self.process_symbolic_symbol(&symbol);
         }
 
+        self.is_windows_object = false;
+
         Ok(())
     }
 
     /// Processes an individual [`Function`], adding its line information to the converter.
-    pub fn process_symbolic_function(
+    pub fn process_symbolic_function(&mut self, function: &Function<'_>) {
+        self.process_symbolic_function_recursive(function, &[(0x0, u32::MAX)]);
+    }
+
+    /// Processes an individual [`Function`], adding its line information to the converter.
+    ///
+    /// `call_locations` is a non-empty sorted list of `(address, call_location index)` pairs.
+    fn process_symbolic_function_recursive(
         &mut self,
         function: &Function<'_>,
-        parent_line_records: &[LineInfo],
+        call_locations: &[(u32, u32)],
     ) {
         // skip over empty functions or functions whose address is too large to fit in a u32
         if function.size == 0 || function.address > u32::MAX as u64 {
@@ -172,9 +180,15 @@ impl<'a> SymCacheConverter<'a> {
                 function = transformer.transform_function(function);
             }
 
+            let function_name = if self.is_windows_object {
+                undecorate_win_symbol(&function.name)
+            } else {
+                &function.name
+            };
+
             let string_bytes = &mut self.string_bytes;
             let strings = &mut self.strings;
-            let name_offset = Self::insert_string(string_bytes, strings, &function.name);
+            let name_offset = Self::insert_string(string_bytes, strings, function_name);
 
             let lang = language as u32;
             let (fun_idx, _) = self.functions.insert_full(raw::Function {
@@ -186,10 +200,62 @@ impl<'a> SymCacheConverter<'a> {
             fun_idx as u32
         };
 
-        let mut parent_line_records = parent_line_records.iter().peekable();
-        let mut parent_line = parent_line_records.next();
+        // We can divide the instructions in a function into two buckets:
+        //  (1) Instructions which are part of an inlined function call, and
+        //  (2) instructions which are *not* part of an inlined function call.
+        //
+        // Our incoming line records cover both (1) and (2) types of instructions.
+        //
+        // Let's call the address ranges of these instructions (1) inlinee ranges and (2) self ranges.
+        //
+        // We use the following strategy: For each function, only insert that function's "self ranges"
+        // into `self.ranges`. Then recurse into the function's inlinees. Those will insert their
+        // own "self ranges". Once the entire tree has been traversed, `self.ranges` will contain
+        // entries from all levels.
+        //
+        // In order to compute this function's "self ranges", we first gather and sort its
+        // "inlinee ranges". Later, when we iterate over this function's lines, we will compute the
+        // "self ranges" from the gaps between the "inlinee ranges".
 
-        for line in &function.lines {
+        let mut inlinee_ranges = Vec::new();
+        for inlinee in &function.inlinees {
+            for line in &inlinee.lines {
+                let start = line.address as u32;
+                let end = (line.address + line.size.unwrap_or(1)) as u32;
+                inlinee_ranges.push(start..end);
+            }
+        }
+        inlinee_ranges.sort_unstable_by_key(|range| range.start);
+
+        // Walk three iterators. All of these are already sorted by address.
+        let mut line_iter = function.lines.iter();
+        let mut call_location_iter = call_locations.iter();
+        let mut inline_iter = inlinee_ranges.into_iter();
+
+        // call_locations is non-empty, so the first element always exists.
+        let mut current_call_location = call_location_iter.next().unwrap();
+
+        let mut next_call_location = call_location_iter.next();
+        let mut next_line = line_iter.next();
+        let mut next_inline = inline_iter.next();
+
+        // This will be the list we pass to our inlinees as the call_locations argument.
+        // This list is ordered by address by construction.
+        let mut callee_call_locations = Vec::new();
+
+        // Iterate over the line records.
+        while let Some(line) = next_line.take() {
+            let line_range_start = line.address as u32;
+            let line_range_end = (line.address + line.size.unwrap_or(1)) as u32;
+
+            // Find the call location for this line.
+            while next_call_location.is_some() && next_call_location.unwrap().0 <= line_range_start
+            {
+                current_call_location = next_call_location.unwrap();
+                next_call_location = call_location_iter.next();
+            }
+            let inlined_into_idx = current_call_location.1;
+
             let mut location = transform::SourceLocation {
                 file: transform::File {
                     name: line.file.name_str(),
@@ -223,107 +289,115 @@ impl<'a> SymCacheConverter<'a> {
                 file_idx: file_idx as u32,
                 line: location.line,
                 function_idx,
-                inlined_into_idx: u32::MAX,
+                inlined_into_idx,
             };
 
-            if function.inline {
-                while let Some(next_parent) = parent_line_records.peek() {
-                    if next_parent.address <= line.address {
-                        parent_line = parent_line_records.next();
-                    } else {
-                        break;
-                    }
+            // The current line can be a "self line", or a "call line", or even a mixture.
+            //
+            // Examples:
+            //
+            //  a) Just self line:
+            //      Line:            |==============|
+            //      Inlinee ranges:  (none)
+            //
+            //      Effect: insert_range
+            //
+            //  b) Just call line:
+            //      Line:            |==============|
+            //      Inlinee ranges:  |--------------|
+            //
+            //      Effect: make_call_location
+            //
+            //  c) Just call line, for multiple inlined calls:
+            //      Line:            |==========================|
+            //      Inlinee ranges:  |----------||--------------|
+            //
+            //      Effect: make_call_location, make_call_location
+            //
+            //  d) Call line and trailing self line:
+            //      Line:            |==================|
+            //      Inlinee ranges:  |-----------|
+            //
+            //      Effect: make_call_location, insert_range
+            //
+            //  e) Leading self line and also call line:
+            //      Line:            |==================|
+            //      Inlinee ranges:         |-----------|
+            //
+            //      Effect: insert_range, make_call_location
+            //
+            //  f) Interleaving
+            //      Line:            |======================================|
+            //      Inlinee ranges:         |-----------|    |-------|
+            //
+            //      Effect: insert_range, make_call_location, insert_range, make_call_location, insert_range
+            //
+            //  g) Bad debug info
+            //      Line:            |=======|
+            //      Inlinee ranges:  |-------------|
+            //
+            //      Effect: make_call_location
+
+            let mut current_address = line_range_start;
+            while current_address < line_range_end {
+                // Emit our source location at current_address if current_address is not covered by an inlinee.
+                if next_inline.is_none() || next_inline.as_ref().unwrap().start > current_address {
+                    // "insert_range"
+                    self.ranges.insert(current_address, source_location.clone());
                 }
 
-                // if `parent_line` is nonempty, it is the last parent line record that starts at or before `line`
-                let parent_line = match parent_line {
-                    Some(parent_line)
-                        if parent_line
-                            .size
-                            .map_or(true, |size| parent_line.address + size > line.address) =>
-                    {
-                        parent_line
-                    }
-                    _ => {
-                        tracing::warn!(
-                            line.address,
-                            line.size,
-                            ?parent_line,
-                            "parent function does not have a covering line record"
-                        );
-                        continue;
-                    }
-                };
+                // If there is an inlinee range covered by this line record, turn this line into that
+                // call's "call line". Make a `call_location_idx` for it and store it in `callee_call_locations`.
+                if next_inline.is_some() && next_inline.as_ref().unwrap().start < line_range_end {
+                    let inline_range = next_inline.take().unwrap();
 
-                match self.ranges.get(&(parent_line.address as u32)) {
-                    None => {
-                        tracing::warn!(
-                            line.address,
-                            line.size,
-                            parent_line.address,
-                            parent_line.size,
-                            "parent line record should have been inserted in a previous call"
-                        );
-                        self.ranges.insert(line.address as u32, source_location);
-                    }
+                    // "make_call_location"
+                    let (call_location_idx, _) =
+                        self.call_locations.insert_full(source_location.clone());
+                    callee_call_locations.push((inline_range.start, call_location_idx as u32));
 
-                    Some(caller_source_location) => {
-                        let caller_source_location = caller_source_location.clone();
-
-                        let mut callee_source_location = source_location;
-                        let (inlined_into_idx, _) = self
-                            .source_locations
-                            .insert_full(caller_source_location.clone());
-
-                        callee_source_location.inlined_into_idx = inlined_into_idx as u32;
-                        self.ranges
-                            .insert(line.address as u32, callee_source_location);
-
-                        // if `line` ends before `parent_line`, we need to insert another range for the leftover piece.
-                        if let Some(size) = line.size {
-                            let line_end = line.address + size;
-                            if let Some(parent_size) = parent_line.size {
-                                let parent_end = parent_line.address + parent_size;
-
-                                if line_end == parent_end {
-                                    continue;
-                                }
-                            }
-
-                            self.ranges.insert(line_end as u32, caller_source_location);
-                        }
-                    }
+                    // Advance current_address to the end of this inlinee range.
+                    current_address = inline_range.end;
+                    next_inline = inline_iter.next();
+                } else {
+                    // No further inlinee ranges are overlapping with this line record. Advance to the
+                    // end of the line record.
+                    current_address = line_range_end;
                 }
-            } else {
-                match self.ranges.entry(line.address as u32) {
-                    btree_map::Entry::Vacant(entry) => {
-                        entry.insert(source_location);
-                    }
-                    btree_map::Entry::Occupied(mut entry) => {
-                        // BUG:
-                        // the abstraction yields multiple top-level functions for the same
-                        // instruction addr
-                        tracing::warn!(
-                            line.address,
-                            line.size,
-                            "function is not inlined, but the range is already occupied"
-                        );
-                        entry.insert(source_location);
-                    }
-                }
+            }
+
+            // Advance the line iterator.
+            next_line = line_iter.next();
+
+            // Skip any lines that start before current_address.
+            // Such lines can exist if the debug information is faulty, or if the compiler created
+            // multiple identical small "call line" records instead of one combined record
+            // covering the entire inlinee range. We can't have different "call lines" for a single
+            // inlinee range anyway, so it's fine to skip these.
+            while next_line.is_some()
+                && (next_line.as_ref().unwrap().address as u32) < current_address
+            {
+                next_line = line_iter.next();
             }
         }
 
-        // add the bare minimum of information for the function if there isn't any.
-        self.ranges.entry(entry_pc).or_insert(raw::SourceLocation {
-            file_idx: u32::MAX,
-            line: 0,
-            function_idx,
-            inlined_into_idx: u32::MAX,
-        });
+        if !function.inline {
+            // add the bare minimum of information for the function if there isn't any.
+            self.ranges.entry(entry_pc).or_insert(raw::SourceLocation {
+                file_idx: u32::MAX,
+                line: 0,
+                function_idx,
+                inlined_into_idx: u32::MAX,
+            });
+        }
 
-        for inlinee in &function.inlinees {
-            self.process_symbolic_function(inlinee, &function.lines);
+        // We've processed all address ranges which are *not* covered by inlinees.
+        // Now it's time to recurse.
+        // Process our inlinees.
+        if !callee_call_locations.is_empty() {
+            for inlinee in &function.inlinees {
+                self.process_symbolic_function_recursive(inlinee, &callee_call_locations);
+            }
         }
 
         let function_end = function.end_address() as u32;
@@ -347,7 +421,13 @@ impl<'a> SymCacheConverter<'a> {
                 function = transformer.transform_function(function);
             }
 
-            Self::insert_string(&mut self.string_bytes, &mut self.strings, &function.name)
+            let function_name = if self.is_windows_object {
+                undecorate_win_symbol(&function.name)
+            } else {
+                &function.name
+            };
+
+            Self::insert_string(&mut self.string_bytes, &mut self.strings, function_name)
         };
 
         match self.ranges.entry(symbol.address as u32) {
@@ -383,118 +463,6 @@ impl<'a> SymCacheConverter<'a> {
         }
     }
 
-    #[cfg(feature = "il2cpp")]
-    /// Processes a set of [`UsymSymbols`], passing all mapped symbols into the converter.
-    pub fn process_usym(&mut self, usym: &UsymSymbols) -> Result<(), Error> {
-        // Assume records they are sorted by address; There's a test that guarantees this
-
-        let debug_id = usym
-            .id()
-            .map_err(|e| Error::new(ErrorKind::HeaderTooSmall, e))?;
-        self.set_debug_id(debug_id);
-
-        let arch = usym.arch().unwrap_or_default();
-        self.set_arch(arch);
-
-        let mapped_records = usym.records().filter_map(|r| match r {
-            UsymSourceRecord::Unmapped(_) => None,
-            UsymSourceRecord::Mapped(r) => Some(r),
-        });
-
-        let mut curr_id: Option<(Cow<'_, str>, Cow<'_, str>)> = None;
-        let mut function_idx = 0;
-        for record in mapped_records {
-            // like process_symbolic_function, skip functions whose address is too large to fit in a
-            // u32
-            if record.address > u32::MAX as u64 {
-                continue;
-            }
-            let address = record.address as u32;
-
-            // Records that belong to the same function will have the same identifier.
-            // Symbols have GUID-like sections to them that might ensure they're unique across
-            // files, but we'll just include the file name and paths to be very safe.
-            let identifier = Some((record.native_file, record.native_symbol));
-            if identifier != curr_id {
-                function_idx = {
-                    let mut function = transform::Function {
-                        name: record.managed_symbol.clone(),
-                        comp_dir: None,
-                    };
-                    for transformer in &mut self.transformers.0 {
-                        function = transformer.transform_function(function);
-                    }
-
-                    let string_bytes = &mut self.string_bytes;
-                    let strings = &mut self.strings;
-                    let name_offset = Self::insert_string(string_bytes, strings, &function.name);
-
-                    let (fun_idx, _) = self.functions.insert_full(raw::Function {
-                        name_offset,
-                        _comp_dir_offset: u32::MAX,
-                        entry_pc: address,
-                        lang: Language::CSharp as u32,
-                    });
-                    fun_idx
-                };
-            }
-
-            let managed_dir = Some(record.managed_file_info.dir_str()).filter(|d| !d.is_empty());
-            let mut location = transform::SourceLocation {
-                file: transform::File {
-                    name: record.managed_file_info.name_str(),
-                    directory: managed_dir,
-                    comp_dir: None,
-                },
-                line: record.managed_line,
-            };
-            for transformer in &mut self.transformers.0 {
-                location = transformer.transform_source_location(location);
-            }
-
-            let string_bytes = &mut self.string_bytes;
-            let strings = &mut self.strings;
-            let name_offset = Self::insert_string(string_bytes, strings, &location.file.name);
-            let directory_offset = location
-                .file
-                .directory
-                .map_or(u32::MAX, |d| Self::insert_string(string_bytes, strings, &d));
-
-            let (file_idx, _) = self.files.insert_full(raw::File {
-                name_offset,
-                directory_offset,
-                comp_dir_offset: u32::MAX,
-            });
-
-            let source_location = raw::SourceLocation {
-                file_idx: file_idx as u32,
-                line: location.line,
-                function_idx: function_idx as u32,
-                inlined_into_idx: u32::MAX,
-            };
-
-            match self.ranges.entry(address) {
-                btree_map::Entry::Vacant(entry) => {
-                    entry.insert(source_location);
-                }
-                btree_map::Entry::Occupied(mut entry) => {
-                    // TODO: This exists in native-only mappings, but we don't know yet if it's
-                    // possible to generate these types of records in managed code.
-                    // println!(
-                    //     "Found what's probably an inlined source {}::{}:L{}",
-                    //     record.managed_file_info.path_str(),
-                    //     record.managed_symbol,
-                    //     record.managed_line,
-                    // );
-                    entry.insert(source_location);
-                }
-            }
-            curr_id = identifier;
-        }
-
-        Ok(())
-    }
-
     // Methods for serializing to a [`Write`] below:
     // Feel free to move these to a separate file.
 
@@ -521,7 +489,7 @@ impl<'a> SymCacheConverter<'a> {
 
         let num_files = self.files.len() as u32;
         let num_functions = self.functions.len() as u32;
-        let num_source_locations = (self.source_locations.len() + self.ranges.len()) as u32;
+        let num_source_locations = (self.call_locations.len() + self.ranges.len()) as u32;
         let num_ranges = self.ranges.len() as u32;
         let string_bytes = self.string_bytes.len() as u32;
 
@@ -553,7 +521,7 @@ impl<'a> SymCacheConverter<'a> {
         }
         writer.align()?;
 
-        for s in self.source_locations {
+        for s in self.call_locations {
             writer.write(&[s])?;
         }
         for s in self.ranges.values() {
@@ -570,6 +538,50 @@ impl<'a> SymCacheConverter<'a> {
 
         Ok(())
     }
+}
+
+/// Undecorates a Windows C-decorated symbol name.
+///
+/// The decoration rules are explained here:
+/// https://docs.microsoft.com/en-us/cpp/build/reference/decorated-names?view=vs-2019
+///
+/// - __cdecl Leading underscore (_)
+/// - __stdcall Leading underscore (_) and a trailing at sign (@) followed by the number of bytes in the parameter list in decimal
+/// - __fastcall Leading and trailing at signs (@) followed by a decimal number representing the number of bytes in the parameter list
+/// - __vectorcall Two trailing at signs (@@) followed by a decimal number of bytes in the parameter list
+/// > In a 64-bit environment, C or extern "C" functions are only decorated when using the __vectorcall calling convention."
+///
+/// This code is adapted from `dump_syms`:
+/// See https://github.com/mozilla/dump_syms/blob/325cf2c61b2cacc55a7f1af74081b57237c7f9de/src/symbol.rs#L169-L216
+fn undecorate_win_symbol(name: &str) -> &str {
+    if name.starts_with('?') || name.contains(&[':', '(', '<']) {
+        return name;
+    }
+
+    // Parse __vectorcall.
+    if let Some((name, param_size)) = name.rsplit_once("@@") {
+        if param_size.parse::<u32>().is_ok() {
+            return name;
+        }
+    }
+
+    // Parse the other three.
+    if !name.is_empty() {
+        if let ("@" | "_", rest) = name.split_at(1) {
+            if let Some((name, param_size)) = rest.rsplit_once('@') {
+                if param_size.parse::<u32>().is_ok() {
+                    // __stdcall or __fastcall
+                    return name;
+                }
+            }
+            if let Some(name) = name.strip_prefix('_') {
+                // __cdecl
+                return name;
+            }
+        }
+    }
+
+    name
 }
 
 struct WriteWrapper<W> {
