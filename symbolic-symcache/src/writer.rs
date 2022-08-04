@@ -679,7 +679,7 @@ fn undecorate_win_symbol(name: &str) -> &str {
 
     // Parse __vectorcall.
     if let Some((name, param_size)) = name.rsplit_once("@@") {
-        if let Ok(_param_size) = param_size.parse::<u32>() {
+        if param_size.parse::<u32>().is_ok() {
             return name;
         }
     }
@@ -688,7 +688,7 @@ fn undecorate_win_symbol(name: &str) -> &str {
     if !name.is_empty() {
         if let ("@" | "_", rest) = name.split_at(1) {
             if let Some((name, param_size)) = rest.rsplit_once('@') {
-                if let Ok(_param_size) = param_size.parse::<u32>() {
+                if param_size.parse::<u32>().is_ok() {
                     // __stdcall or __fastcall
                     return name;
                 }
@@ -699,6 +699,7 @@ fn undecorate_win_symbol(name: &str) -> &str {
             }
         }
     }
+    
     name
 }
 
