@@ -699,7 +699,7 @@ fn undecorate_win_symbol(name: &str) -> &str {
             }
         }
     }
-    
+
     name
 }
 
