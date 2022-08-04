@@ -254,7 +254,9 @@ impl<'d> DwarfLineProgram<'d> {
 
             // we have seen rustc emit for WASM targets a bad sequence that spans from 0 to
             // the end of the program.  https://github.com/rust-lang/rust/issues/79410
-            // Since DWARF does not permit code to sit at address 0 we can safely skip here.
+            // We want to skip these bad sequences. Unfortunately, code in .o files can legitimately
+            // be located at address 0, so we incorrectly skip line sequences in that case, too.
+            // See https://github.com/getsentry/symbolic/issues/471 .
             if address == 0 {
                 continue;
             }
