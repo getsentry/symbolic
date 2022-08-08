@@ -20,6 +20,6 @@ symbolic-debuginfo = { version = "9.0.0", path = "../symbolic-debuginfo" }
 thiserror = "1.0.20"
 
 [dev-dependencies]
-insta = "1.3.0"
+insta = { version = "1.18.0", features = ["yaml"] }
 symbolic-testutils = { path = "../symbolic-testutils" }
 similar-asserts = "1.0.0"
