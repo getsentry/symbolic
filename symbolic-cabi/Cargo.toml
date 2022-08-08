@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-cabi"
-version = "9.1.0"
+version = "9.1.1"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -23,4 +23,4 @@ crate-type = ["cdylib"]
 proguard = { version = "5.0.0", features = ["uuid"] }
 serde_json = "1.0.40"
 sourcemap = "6.0.2"
-symbolic = { version = "9.1.0", path = "../symbolic", features = ["cfi", "debuginfo", "demangle", "symcache"] }
+symbolic = { version = "9.1.1", path = "../symbolic", features = ["cfi", "debuginfo", "demangle", "symcache"] }
