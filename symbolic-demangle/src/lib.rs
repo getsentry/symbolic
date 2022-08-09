@@ -246,10 +246,8 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
 
         let stripped = strip_hash_suffix(ident);
 
-        let symbol = match CppSymbol::new_with_options(
-            stripped,
-            &ParseOptions::default().recursion_limit(192), // default is 96
-        ) {
+        let parse_options = ParseOptions::default().recursion_limit(160); // default is 96
+        let symbol = match CppSymbol::new_with_options(stripped, &parse_options) {
             Ok(symbol) => symbol,
             Err(_) => return None,
         };
