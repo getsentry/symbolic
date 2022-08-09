@@ -73,8 +73,9 @@ impl<'data> PeObject<'data> {
     pub fn test(data: &[u8]) -> bool {
         use scroll::{Pread, LE};
         matches!(
-            (&data[0..2]).pread_with::<u16>(0, LE),
-            Ok(pe::header::DOS_MAGIC)
+            data.get(0..2)
+                .and_then(|data| data.pread_with::<u16>(0, LE).ok()),
+            Some(pe::header::DOS_MAGIC)
         )
     }
 

@@ -274,7 +274,7 @@ ffi_fn! {
     /// Free a token match.
     unsafe fn symbolic_token_match_free(token_match: *mut SymbolicTokenMatch) {
         if !token_match.is_null() {
-            Box::from_raw(token_match);
+            drop(Box::from_raw(token_match));
         }
     }
 }
