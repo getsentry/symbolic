@@ -45,6 +45,7 @@ impl SmCacheWriter {
             DecodedMap::Index(_smi) => unreachable!(),
         };
 
+        // parse scopes out of the minified source
         let scopes = extract_scope_names(source);
 
         // resolve scopes to original names
@@ -74,6 +75,19 @@ impl SmCacheWriter {
                 .collect()
         });
         let lookup_scope = |sp: &SourcePosition| {
+            if let DecodedMap::Hermes(smh) = &sm {
+                // NOTE: the `get_original_function_name` right now takes just
+                // a bytecode offset. Ideally we would have another function
+                // that lets us look up the scope based on a specific `Token`
+                // that we look up first.
+                if scope_index.is_empty() {
+                    return match smh.get_original_function_name(sp.column) {
+                        Some(name) => ScopeLookupResult::NamedScope(name),
+                        None => ScopeLookupResult::Unknown,
+                    };
+                }
+            }
+
             let idx = match scope_index.binary_search_by_key(&sp, |idx| &idx.0) {
                 Ok(idx) => idx,
                 Err(0) => 0,
@@ -258,7 +272,7 @@ impl From<SmCacheErrorInner> for SmCacheWriterError {
 }
 
 #[derive(Debug)]
-enum SmCacheErrorInner {
+pub(crate) enum SmCacheErrorInner {
     SourceMap(sourcemap::Error),
     ScopeIndex(ScopeIndexError),
     SourceContext(SourceContextError),
