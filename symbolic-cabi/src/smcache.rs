@@ -61,11 +61,13 @@ pub struct SymbolicSmTokenMatch {
     pub line: u32,
     /// The column number in the original source file.
     pub col: u32,
+    /// The path to the original source.
+    pub src: SymbolicStr,
     /// The name of the function containing the token.
     pub function_name: SymbolicStr,
 
     pub pre_context: SymbolicStrVec,
-    pub context: SymbolicStr,
+    pub context_line: SymbolicStr,
     pub post_context: SymbolicStrVec,
 }
 
@@ -115,8 +117,8 @@ fn make_token_match(token: SourceLocation, context_lines: u32) -> *mut SymbolicS
         ScopeLookupResult::Unknown => "<unknown>",
     };
 
-    let context = token.line_contents().unwrap_or_default();
-    let context = SymbolicStr::new(context);
+    let context_line = token.line_contents().unwrap_or_default();
+    let context_line = SymbolicStr::new(context_line);
 
     let (pre_context, post_context) = if let Some(file) = token.file() {
         let current_line = token.line();
@@ -150,16 +152,19 @@ fn make_token_match(token: SourceLocation, context_lines: u32) -> *mut SymbolicS
 
     Box::into_raw(Box::new(SymbolicSmTokenMatch {
         line: token.line() + 1,
-        // TODO: Discuss how we should handle column numbers
+        // TODO: Discuss how we should handle column numbers.
         // Currently in Sentry they are used and displayed to the user,
         // however it's not clear whether they provide any value.
+        // They are also used inside `trim_line` function, to extract a 140-char "window"
+        // into the minified `context_line`.
         // NOTE: Possibly used in VSCode integrations, that opens file in your local editor
         // when configured or something of that sort.
         col: 0,
+        src: SymbolicStr::new(token.file_name().unwrap_or_default()),
         function_name: SymbolicStr::new(function_name),
 
         pre_context,
-        context,
+        context_line,
         post_context,
     }))
 }
@@ -178,7 +183,7 @@ ffi_fn! {
             .get()
             .cache
             .lookup(SourcePosition::new(line - 1, col - 1))
-            .map(|sp|make_token_match(sp, context_lines))
+            .map(|sp| make_token_match(sp, context_lines))
             .unwrap_or_else(ptr::null_mut);
         Ok(token_match)
     }

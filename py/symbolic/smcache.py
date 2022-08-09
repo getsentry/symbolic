@@ -13,9 +13,10 @@ class SmCacheToken(object):
         rv = object.__new__(cls)
         rv.line = tm.line
         rv.col = tm.col
+        rv.src = decode_str(tm.src, free=False) or None
         rv.function_name = decode_str(tm.function_name, free=False) or None
 
-        rv.context = decode_str(tm.src, free=False) or None
+        rv.context_line = decode_str(tm.context_line, free=False) or None
 
         rv.pre_context = []
         for idx in range(tm.pre_context.len):
@@ -56,9 +57,9 @@ class SmCache(RustObject):
             )
         )
 
-    def lookup(self, line, col):
+    def lookup(self, line, col, context_lines):
         """Looks up a token from the sourcemap."""
-        rv = self._methodcall(lib.symbolic_smcache_lookup_token, line, col)
+        rv = self._methodcall(lib.symbolic_smcache_lookup_token, line, col, context_lines)
 
         if rv != ffi.NULL:
             try:

@@ -177,6 +177,11 @@ typedef struct SymbolicProguardRemapResult {
   uintptr_t len;
 } SymbolicProguardRemapResult;
 
+typedef struct SymbolicStrVec {
+  struct SymbolicStr *strs;
+  uintptr_t len;
+} SymbolicStrVec;
+
 /**
  * Represents a single token after lookup.
  */
@@ -197,6 +202,9 @@ typedef struct SymbolicSmTokenMatch {
    * The name of the function containing the token.
    */
   struct SymbolicStr function_name;
+  struct SymbolicStrVec pre_context;
+  struct SymbolicStr context_line;
+  struct SymbolicStrVec post_context;
 } SymbolicSmTokenMatch;
 
 /**
@@ -558,14 +566,13 @@ struct SymbolicSmCache *symbolic_smcache_from_bytes(const char *source_content,
  */
 void symbolic_smcache_free(struct SymbolicSmCache *view);
 
-struct SymbolicStr symbolic_smcache_files(const struct SymbolicSmCache *smcache);
-
 /**
  * Looks up a token.
  */
 struct SymbolicSmTokenMatch *symbolic_smcache_lookup_token(const struct SymbolicSmCache *source_map,
                                                            uint32_t line,
-                                                           uint32_t col);
+                                                           uint32_t col,
+                                                           uint32_t context_lines);
 
 /**
  * Free a token match.
