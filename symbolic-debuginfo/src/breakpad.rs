@@ -2100,7 +2100,7 @@ mod tests {
     #[test]
     fn test_parse_module_record() -> Result<(), BreakpadError> {
         let string = b"MODULE Linux x86_64 492E2DD23CC306CA9C494EEF1533A3810 crash";
-        let record = BreakpadModuleRecord::parse(&*string)?;
+        let record = BreakpadModuleRecord::parse(string)?;
 
         insta::assert_debug_snapshot!(record, @r###"
        ⋮BreakpadModuleRecord {

@@ -13,7 +13,7 @@ use crate::error::Unreal4Error;
 /// RuntimeProperties context element.
 ///
 /// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L274)
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde_::Serialize))]
 #[cfg_attr(feature = "serde", serde(crate = "serde_"))]
 pub struct Unreal4ContextRuntimeProperties {
@@ -265,7 +265,7 @@ impl Unreal4ContextRuntimeProperties {
 ///
 /// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L451-L455)
 /// [Windows](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/Windows/WindowsPlatformCrashContext.cpp#L39-L44)
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde_::Serialize))]
 #[cfg_attr(feature = "serde", serde(crate = "serde_"))]
 pub struct Unreal4ContextPlatformProperties {
@@ -306,7 +306,7 @@ impl Unreal4ContextPlatformProperties {
 /// The context data found in the context xml file.
 ///
 /// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp)
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde_::Serialize))]
 #[cfg_attr(feature = "serde", serde(crate = "serde_"))]
 pub struct Unreal4Context {
