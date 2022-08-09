@@ -13,7 +13,7 @@ pub use name_resolver::NameResolver;
 pub use scope_index::{ScopeIndex, ScopeIndexError, ScopeLookupResult};
 pub use scope_name::{NameComponent, ScopeName};
 pub use smcache::{
-    Error as SmCacheError, SmCache, SmCacheWriter, SmCacheWriterError, SourceLocation,
+    Error as SmCacheError, File, SmCache, SmCacheWriter, SmCacheWriterError, SourceLocation,
 };
 pub use source::{SourceContext, SourceContextError, SourcePosition};
 

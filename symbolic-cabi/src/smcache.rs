@@ -35,6 +35,25 @@ impl ForeignObject for SymbolicSmCache {
     type RustObject = OwnedSmCache<'static>;
 }
 
+#[repr(C)]
+pub struct SymbolicStrVec {
+    pub strs: *mut SymbolicStr,
+    pub len: usize,
+}
+
+impl SymbolicStrVec {
+    pub fn from_vec(vec: Vec<&str>) -> Self {
+        let mut strs: Vec<_> = vec.into_iter().map(SymbolicStr::new).collect();
+        strs.shrink_to_fit();
+        let rv = SymbolicStrVec {
+            strs: strs.as_mut_ptr(),
+            len: strs.len(),
+        };
+        std::mem::forget(strs);
+        rv
+    }
+}
+
 /// Represents a single token after lookup.
 #[repr(C)]
 pub struct SymbolicSmTokenMatch {
@@ -42,10 +61,12 @@ pub struct SymbolicSmTokenMatch {
     pub line: u32,
     /// The column number in the original source file.
     pub col: u32,
-    /// The path to the original source.
-    pub src: SymbolicStr,
     /// The name of the function containing the token.
     pub function_name: SymbolicStr,
+
+    pub pre_context: SymbolicStrVec,
+    pub context: SymbolicStr,
+    pub post_context: SymbolicStrVec,
 }
 
 ffi_fn! {
@@ -87,29 +108,44 @@ ffi_fn! {
     }
 }
 
-ffi_fn! {
-    unsafe fn symbolic_smcache_files(
-        smcache: *const SymbolicSmCache
-    ) -> Result<SymbolicStr> {
-        let cache = &SymbolicSmCache::as_rust(smcache).inner.get().cache;
-        let rv: Vec<String> = cache.files().map(|file| file.name().to_owned()).collect();
-        Ok(SymbolicStr::new(&rv.join(" ")))
-    }
-}
-
-fn make_token_match(token: SourceLocation) -> *mut SymbolicSmTokenMatch {
+fn make_token_match(token: SourceLocation, context_lines: u32) -> *mut SymbolicSmTokenMatch {
     let function_name = match token.scope() {
         ScopeLookupResult::NamedScope(name) => name,
-        _ => {
-            // TODO: Implement call-site function name extraction or other heuristics
-            // to get function names for frames that token do not provide it.
-            "<unknown>"
-            // if let Some(prev_frame_name) = self.previous_frame_name.as_ref() {
-            //     prev_frame_name
-            // } else {
-            //     "<unknown>"
-            // }
-        }
+        ScopeLookupResult::AnonymousScope => "<anonymous>",
+        ScopeLookupResult::Unknown => "<unknown>",
+    };
+
+    let context = token.line_contents().unwrap_or_default();
+    let context = SymbolicStr::new(context);
+
+    let (pre_context, post_context) = if let Some(file) = token.file() {
+        let current_line = token.line();
+
+        let pre_line = current_line.saturating_sub(context_lines);
+        let pre_context: Vec<_> = (pre_line..current_line)
+            .filter_map(|line| file.line(line as usize))
+            .collect();
+        let pre_context = SymbolicStrVec::from_vec(pre_context);
+
+        let post_line = current_line.saturating_add(context_lines);
+        let post_context: Vec<_> = (current_line + 1..=post_line)
+            .filter_map(|line| file.line(line as usize))
+            .collect();
+
+        let post_context = SymbolicStrVec::from_vec(post_context);
+
+        (pre_context, post_context)
+    } else {
+        (
+            SymbolicStrVec {
+                strs: ptr::null_mut(),
+                len: 0,
+            },
+            SymbolicStrVec {
+                strs: ptr::null_mut(),
+                len: 0,
+            },
+        )
     };
 
     Box::into_raw(Box::new(SymbolicSmTokenMatch {
@@ -120,8 +156,11 @@ fn make_token_match(token: SourceLocation) -> *mut SymbolicSmTokenMatch {
         // NOTE: Possibly used in VSCode integrations, that opens file in your local editor
         // when configured or something of that sort.
         col: 0,
-        src: SymbolicStr::new(token.file_name().unwrap_or_default()),
         function_name: SymbolicStr::new(function_name),
+
+        pre_context,
+        context,
+        post_context,
     }))
 }
 
@@ -131,6 +170,7 @@ ffi_fn! {
         source_map: *const SymbolicSmCache,
         line: u32,
         col: u32,
+        context_lines: u32,
     ) -> Result<*mut SymbolicSmTokenMatch> {
         // Sentry JS events are 1-indexed, where SourcePosition is using 0-indexed locations
         let token_match = SymbolicSmCache::as_rust(source_map)
@@ -138,7 +178,7 @@ ffi_fn! {
             .get()
             .cache
             .lookup(SourcePosition::new(line - 1, col - 1))
-            .map(make_token_match)
+            .map(|sp|make_token_match(sp, context_lines))
             .unwrap_or_else(ptr::null_mut);
         Ok(token_match)
     }
@@ -148,7 +188,10 @@ ffi_fn! {
     /// Free a token match.
     unsafe fn symbolic_smcache_token_match_free(token_match: *mut SymbolicSmTokenMatch) {
         if !token_match.is_null() {
-            Box::from_raw(token_match);
+            let boxed_match = Box::from_raw(token_match);
+
+            Vec::from_raw_parts(boxed_match.pre_context.strs, boxed_match.pre_context.len, boxed_match.pre_context.len);
+            Vec::from_raw_parts(boxed_match.post_context.strs, boxed_match.post_context.len, boxed_match.post_context.len);
         }
     }
 }
