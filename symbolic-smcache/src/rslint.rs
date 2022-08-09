@@ -10,7 +10,7 @@ pub fn parse_with_rslint(src: &str) -> Vec<(Range<u32>, Option<ScopeName>)> {
         rslint_parser::parse_text(src, 0);
 
     let syntax = parse.syntax();
-    // dbg!(&syntax);
+    //dbg!(&syntax);
 
     let mut ranges = vec![];
 
@@ -43,7 +43,7 @@ fn node_range_and_name(
 ) -> (Range<u32>, Option<ScopeName>) {
     let mut name = if let Some(name_token) = name.and_then(|n| n.ident_token()) {
         let mut name = ScopeName::new();
-        name.components.push_back(NameComponent::token(name_token));
+        name.components.push_back(NameComponent::ident(name_token));
         Some(name)
     } else {
         find_name_from_ctx(node)
@@ -90,13 +90,13 @@ fn find_name_from_ctx(node: &SyntaxNode) -> Option<ScopeName> {
         {
             scope_name
                 .components
-                .push_front(NameComponent::token(name_token));
+                .push_front(NameComponent::ident(name_token));
 
             scope_name.components.push_front(NameComponent::interp("#"));
         } else if let Some(name_token) = prop_name_token(method.name()) {
             scope_name
                 .components
-                .push_front(NameComponent::token(name_token));
+                .push_front(NameComponent::ident(name_token));
         }
     }
 
@@ -116,14 +116,14 @@ fn find_name_from_ctx(node: &SyntaxNode) -> Option<ScopeName> {
                 push_sep(&mut scope_name);
                 scope_name
                     .components
-                    .push_front(NameComponent::token(name_token));
+                    .push_front(NameComponent::ident(name_token));
             }
         } else if let Some(class_decl) = parent.try_to::<ast::ClassDecl>() {
             if let Some(name_token) = class_decl.name().and_then(|n| n.ident_token()) {
                 push_sep(&mut scope_name);
                 scope_name
                     .components
-                    .push_front(NameComponent::token(name_token));
+                    .push_front(NameComponent::ident(name_token));
                 return Some(scope_name);
             }
         } else if let Some(assign_expr) = parent.try_to::<ast::AssignExpr>() {
@@ -143,9 +143,17 @@ fn find_name_from_ctx(node: &SyntaxNode) -> Option<ScopeName> {
                     push_sep(&mut scope_name);
                     scope_name
                         .components
-                        .push_front(NameComponent::token(name_token));
+                        .push_front(NameComponent::ident(name_token));
                     return Some(scope_name);
                 }
+            }
+        } else if let Some(call) = parent.try_to::<ast::CallExpr>() {
+            if let Some(paren_token) = call.arguments().and_then(|args| args.l_paren_token()) {
+                // TODO: revisit this logic
+                scope_name
+                    .components
+                    .push_front(NameComponent::punct(paren_token));
+                return Some(scope_name);
             }
         }
         // TODO: getter, setter?
@@ -164,7 +172,7 @@ fn find_name_of_expr(mut expr: ast::Expr) -> Option<ScopeName> {
                 if let Some(name_token) = name.ident_token() {
                     scope_name
                         .components
-                        .push_front(NameComponent::token(name_token));
+                        .push_front(NameComponent::ident(name_token));
                 }
                 return Some(scope_name);
             }
@@ -173,7 +181,7 @@ fn find_name_of_expr(mut expr: ast::Expr) -> Option<ScopeName> {
                 if let Some(name_token) = dot_expr.prop().and_then(|n| n.ident_token()) {
                     scope_name
                         .components
-                        .push_front(NameComponent::token(name_token));
+                        .push_front(NameComponent::ident(name_token));
                     scope_name.components.push_front(NameComponent::interp("."));
                 }
 

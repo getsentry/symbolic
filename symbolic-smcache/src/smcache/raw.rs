@@ -28,9 +28,6 @@ pub struct Header {
     /// The number of original source files.
     pub num_files: u32,
 
-    /// The number of original names.
-    pub num_names: u32,
-
     /// The total number of line offsets.
     pub num_line_offsets: u32,
 

@@ -14,7 +14,7 @@ fn resolves_scope_names() {
     // dbg!(&scopes);
     let scopes: Vec<_> = scopes
         .into_iter()
-        .map(|s| (s.0, s.1.map(|n| n.to_string())))
+        .map(|s| (s.0, s.1.map(|n| n.to_string()).filter(|s| !s.is_empty())))
         .collect();
     let index = ScopeIndex::new(scopes).unwrap();
 
@@ -158,6 +158,34 @@ fn resolves_token_from_names() {
         println!("  minified: {minified:?}");
         println!("  original: {original:?}");
     }
+}
+
+#[test]
+fn resolves_inlined_function() {
+    let minified = std::fs::read_to_string(fixture("smcache/inlining/module.js")).unwrap();
+    let map = std::fs::read_to_string(fixture("smcache/inlining/module.js.map")).unwrap();
+
+    let writer = SmCacheWriter::new(&minified, &map).unwrap();
+
+    let mut buf = vec![];
+    writer.serialize(&mut buf).unwrap();
+
+    let cache = SmCache::parse(&buf).unwrap();
+
+    let sl = cache.lookup(SourcePosition::new(0, 62)).unwrap();
+    assert_eq!(sl.file_name(), Some("../src/app.js"));
+    assert_eq!(sl.line(), 2);
+    assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("buttonCallback"));
+
+    let sl = cache.lookup(SourcePosition::new(0, 46)).unwrap();
+    assert_eq!(sl.file_name(), Some("../src/bar.js"));
+    assert_eq!(sl.line(), 3);
+    assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("bar"));
+
+    let sl = cache.lookup(SourcePosition::new(0, 33)).unwrap();
+    assert_eq!(sl.file_name(), Some("../src/foo.js"));
+    assert_eq!(sl.line(), 1);
+    assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("foo"));
 }
 
 #[test]

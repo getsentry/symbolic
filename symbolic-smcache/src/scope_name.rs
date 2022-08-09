@@ -45,7 +45,8 @@ impl NameComponent {
     pub fn text(&self) -> &str {
         match &self.inner {
             NameComponentInner::Interpolation(s) => s,
-            NameComponentInner::SourceToken(t) => t.text().as_str(),
+            NameComponentInner::SourceIdentifierToken(t) => t.text().as_str(),
+            NameComponentInner::SourcePunctuationToken(_) => "",
         }
     }
 
@@ -55,7 +56,10 @@ impl NameComponent {
     /// to a specific token inside the source text.
     pub fn range(&self) -> Option<Range<u32>> {
         match &self.inner {
-            NameComponentInner::SourceToken(t) => Some(convert_text_range(t.text_range())),
+            NameComponentInner::SourceIdentifierToken(t)
+            | NameComponentInner::SourcePunctuationToken(t) => {
+                Some(convert_text_range(t.text_range()))
+            }
             _ => None,
         }
     }
@@ -65,9 +69,14 @@ impl NameComponent {
             inner: NameComponentInner::Interpolation(s),
         }
     }
-    pub(crate) fn token(token: SyntaxToken) -> Self {
+    pub(crate) fn ident(token: SyntaxToken) -> Self {
         Self {
-            inner: NameComponentInner::SourceToken(token),
+            inner: NameComponentInner::SourceIdentifierToken(token),
+        }
+    }
+    pub(crate) fn punct(token: SyntaxToken) -> Self {
+        Self {
+            inner: NameComponentInner::SourcePunctuationToken(token),
         }
     }
 }
@@ -75,5 +84,6 @@ impl NameComponent {
 #[derive(Debug)]
 pub(crate) enum NameComponentInner {
     Interpolation(&'static str),
-    SourceToken(SyntaxToken),
+    SourceIdentifierToken(SyntaxToken),
+    SourcePunctuationToken(SyntaxToken),
 }

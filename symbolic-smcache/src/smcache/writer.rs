@@ -62,7 +62,9 @@ impl SmCacheWriter {
         let scopes: Vec<_> = scopes
             .into_iter()
             .map(|(range, name)| {
-                let name = name.map(|n| resolver.resolve_name(&n));
+                let name = name
+                    .map(|n| resolver.resolve_name(&n))
+                    .filter(|s| !s.is_empty());
                 (range, name)
             })
             .collect();
