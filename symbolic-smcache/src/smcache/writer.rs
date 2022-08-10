@@ -24,20 +24,6 @@ impl SmCacheWriter {
     /// Constructs a new Cache from a minified source file and its corresponding SourceMap.
     #[tracing::instrument(level = "trace", name = "SmCacheWriter::new", skip_all)]
     pub fn new(source: &str, sourcemap: &str) -> Result<Self, SmCacheWriterError> {
-        // TODO: we could sprinkle a few `tracing` spans around this function to
-        // figure out which step is expensive and worth optimizing:
-        //
-        // - sourcemap parsing/flattening
-        // - extracting scopes
-        // - resolving scopes to original names
-        // - converting the indexed scopes into line/col
-        // - actually mapping all the tokens and collecting them into the cache
-        //
-        // what _might_ be expensive is resolving original scope names and
-        // converting the `scope_index`, as the offset/position conversion is
-        // potentially an `O(n)` operation due to UTF-16 :-(
-        // so micro-optimizing that further _might_ be worth it.
-
         let sm = tracing::trace_span!("decode sourcemap").in_scope(
             || -> Result<DecodedMap, SmCacheWriterError> {
                 let sm = sourcemap::decode_slice(sourcemap.as_bytes())

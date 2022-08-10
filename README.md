@@ -142,6 +142,9 @@ their integrity:
 
 - `object_debug`: Prints basic information about the contents of an object file.
 
+- `smcache_debug`: Converts a minified JavaScript file and its corresponding Sourcemap into
+  a smcache and resolves given line/col location.
+
 - `symcache_debug`: Converts an object file into a symcache and prints its contents. Optionally,
   this can be used to symbolicate a relative address.
 
