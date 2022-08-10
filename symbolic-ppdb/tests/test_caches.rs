@@ -104,3 +104,14 @@ fn test_matching_ids() {
 
     assert_eq!(pe_debug_id, pdb_debug_id);
 }
+
+#[test]
+fn test_pe_metadata() {
+    let pe_buf = std::fs::read("tests/fixtures/integration.dll").unwrap();
+    let pe = symbolic_debuginfo::pe::PeObject::parse(&pe_buf).unwrap();
+
+    let clr_metadata_buf = pe.clr_metadata().unwrap();
+    let metadata = PortablePdb::parse(clr_metadata_buf);
+
+    assert!(metadata.is_ok());
+}
