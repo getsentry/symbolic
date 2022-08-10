@@ -22,7 +22,7 @@ pub struct SmCacheWriter {
 
 impl SmCacheWriter {
     /// Constructs a new Cache from a minified source file and its corresponding SourceMap.
-    #[tracing::instrument(level = "trace", skip_all)]
+    #[tracing::instrument(level = "trace", name = "SmCacheWriter::new", skip_all)]
     pub fn new(source: &str, sourcemap: &str) -> Result<Self, SmCacheWriterError> {
         // TODO: we could sprinkle a few `tracing` spans around this function to
         // figure out which step is expensive and worth optimizing:
@@ -38,26 +38,28 @@ impl SmCacheWriter {
         // potentially an `O(n)` operation due to UTF-16 :-(
         // so micro-optimizing that further _might_ be worth it.
 
-        let sm = tracing::trace_span!("decode sourcemap").in_scope(|| {
-            sourcemap::decode_slice(sourcemap.as_bytes()).map_err(SmCacheErrorInner::SourceMap)
-        })?;
+        let sm = tracing::trace_span!("decode sourcemap").in_scope(
+            || -> Result<DecodedMap, SmCacheWriterError> {
+                let sm = sourcemap::decode_slice(sourcemap.as_bytes())
+                    .map_err(SmCacheErrorInner::SourceMap)?;
+                // flatten the `SourceMapIndex`, as we want to iterate tokens
+                Ok(match sm {
+                    DecodedMap::Regular(sm) => DecodedMap::Regular(sm),
+                    DecodedMap::Index(smi) => {
+                        DecodedMap::Regular(smi.flatten().map_err(SmCacheErrorInner::SourceMap)?)
+                    }
+                    DecodedMap::Hermes(smh) => DecodedMap::Hermes(smh),
+                })
+            },
+        )?;
 
-        // flatten the `SourceMapIndex`, as we want to iterate tokens
-        let sm = match sm {
-            DecodedMap::Regular(sm) => DecodedMap::Regular(sm),
-            DecodedMap::Index(smi) => {
-                DecodedMap::Regular(smi.flatten().map_err(SmCacheErrorInner::SourceMap)?)
-            }
-            DecodedMap::Hermes(smh) => DecodedMap::Hermes(smh),
-        };
         let tokens = match &sm {
             DecodedMap::Regular(sm) => sm.tokens(),
             DecodedMap::Hermes(smh) => smh.tokens(),
             DecodedMap::Index(_smi) => unreachable!(),
         };
 
-        let scopes =
-            tracing::trace_span!("extract scope names").in_scope(|| extract_scope_names(source));
+        let scopes = extract_scope_names(source);
 
         // resolve scopes to original names
         let ctx = SourceContext::new(source).map_err(SmCacheErrorInner::SourceContext)?;
@@ -220,7 +222,7 @@ impl SmCacheWriter {
     /// Serialize the converted data.
     ///
     /// This writes the SmCache binary format into the given [`Write`].
-    #[tracing::instrument(level = "trace", skip_all)]
+    #[tracing::instrument(level = "trace", name = "SmCacheWriter::serialize", skip_all)]
     pub fn serialize<W: Write>(self, writer: &mut W) -> std::io::Result<()> {
         let mut writer = WriteWrapper::new(writer);
 

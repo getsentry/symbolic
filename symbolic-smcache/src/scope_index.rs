@@ -36,7 +36,7 @@ pub struct ScopeIndex {
 
 impl ScopeIndex {
     /// Creates a new Scope index from the given list of Scopes.
-    #[tracing::instrument(level = "trace", skip_all)]
+    #[tracing::instrument(level = "trace", name = "ScopeIndex::new", skip_all)]
     pub fn new(mut scopes: Vec<(Range<u32>, Option<String>)>) -> Result<Self, ScopeIndexError> {
         let mut names = IndexSet::new();
         let mut ranges = vec![];

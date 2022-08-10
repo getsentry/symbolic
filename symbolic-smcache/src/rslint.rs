@@ -5,36 +5,40 @@ use rslint_parser::{ast, SyntaxKind, SyntaxNode, SyntaxNodeExt, SyntaxToken, Tex
 use crate::scope_name::{NameComponent, ScopeName};
 
 pub fn parse_with_rslint(src: &str) -> Vec<(Range<u32>, Option<ScopeName>)> {
-    let parse =
+    let syntax = tracing::trace_span!("parsing source").in_scope(|| {
+        let parse =
         //rslint_parser::parse_with_syntax(src, 0, rslint_parser::FileKind::TypeScript.into());
         rslint_parser::parse_text(src, 0);
 
-    let syntax = parse.syntax();
+        parse.syntax()
+    });
     //dbg!(&syntax);
 
-    let mut ranges = vec![];
+    tracing::trace_span!("extracting scopes").in_scope(|| {
+        let mut ranges = vec![];
 
-    for node in syntax.descendants() {
-        if let Some(fn_decl) = node.try_to::<ast::FnDecl>() {
-            ranges.push(node_range_and_name(&node, fn_decl.name()))
-        } else if let Some(fn_expr) = node.try_to::<ast::FnExpr>() {
-            ranges.push(node_range_and_name(&node, fn_expr.name()))
-        } else if let Some(class_decl) = node.try_to::<ast::ClassDecl>() {
-            // NOTE: instead of going for the `constructor`, we will cover the
-            // whole class body, as class property definitions are executed as
-            // part of the constructor.
+        for node in syntax.descendants() {
+            if let Some(fn_decl) = node.try_to::<ast::FnDecl>() {
+                ranges.push(node_range_and_name(&node, fn_decl.name()))
+            } else if let Some(fn_expr) = node.try_to::<ast::FnExpr>() {
+                ranges.push(node_range_and_name(&node, fn_expr.name()))
+            } else if let Some(class_decl) = node.try_to::<ast::ClassDecl>() {
+                // NOTE: instead of going for the `constructor`, we will cover the
+                // whole class body, as class property definitions are executed as
+                // part of the constructor.
 
-            ranges.push(node_range_and_name(&node, class_decl.name()));
-        } else if let Some(class_expr) = node.try_to::<ast::ClassExpr>() {
-            // Same here, see NOTE above.
+                ranges.push(node_range_and_name(&node, class_decl.name()));
+            } else if let Some(class_expr) = node.try_to::<ast::ClassExpr>() {
+                // Same here, see NOTE above.
 
-            ranges.push(node_range_and_name(&node, class_expr.name()));
-        } else if node.is::<ast::ArrowExpr>() || node.is::<ast::Method>() {
-            ranges.push(node_range_and_name(&node, None));
+                ranges.push(node_range_and_name(&node, class_expr.name()));
+            } else if node.is::<ast::ArrowExpr>() || node.is::<ast::Method>() {
+                ranges.push(node_range_and_name(&node, None));
+            }
         }
-    }
 
-    ranges
+        ranges
+    })
 }
 
 fn node_range_and_name(

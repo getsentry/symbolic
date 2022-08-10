@@ -33,7 +33,7 @@ impl<T: AsRef<str>> SourceContext<T> {
     }
 
     /// Construct a new Source Context from the given `src` buffer.
-    #[tracing::instrument(level = "trace", skip_all)]
+    #[tracing::instrument(level = "trace", name = "SourceContext::new", skip_all)]
     pub fn new(src: T) -> Result<Self, SourceContextError> {
         let buf = src.as_ref();
         // we can do the bounds check once in the beginning, that guarantees that

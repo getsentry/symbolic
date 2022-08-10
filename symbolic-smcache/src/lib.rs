@@ -52,6 +52,7 @@ pub use source::{SourceContext, SourceContextError, SourcePosition};
 /// ];
 /// assert_eq!(scopes, expected);
 /// ```
+#[tracing::instrument(level = "trace", skip_all)]
 pub fn extract_scope_names(src: &str) -> Vec<(Range<u32>, Option<ScopeName>)> {
     rslint::parse_with_rslint(src)
 }

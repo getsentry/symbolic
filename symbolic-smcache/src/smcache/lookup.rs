@@ -72,7 +72,7 @@ impl<'data> std::fmt::Debug for SmCache<'data> {
 }
 
 impl<'data> SmCache<'data> {
-    #[tracing::instrument(level = "trace", skip_all)]
+    #[tracing::instrument(level = "trace", name = "SmCache::parse", skip_all)]
     pub fn parse(buf: &'data [u8]) -> Result<Self> {
         let (header, buf): (LayoutVerified<_, raw::Header>, _) =
             LayoutVerified::new_from_prefix(buf).ok_or(Error::Header)?;
@@ -149,7 +149,7 @@ impl<'data> SmCache<'data> {
 
     /// Looks up a [`SourcePosition`] in the minified source and resolves it
     /// to the original [`SourceLocation`].
-    #[tracing::instrument(level = "trace", skip_all)]
+    #[tracing::instrument(level = "trace", name = "SmCache::lookup", skip_all)]
     pub fn lookup(&self, sp: SourcePosition) -> Option<SourceLocation> {
         let idx = match self.min_source_positions.binary_search(&sp.into()) {
             Ok(idx) => idx,
