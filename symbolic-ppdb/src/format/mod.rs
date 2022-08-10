@@ -295,7 +295,7 @@ impl<'data> PortablePdb<'data> {
     }
 
     /// Reads this file's PDB ID from its #PDB stream.
-    pub(crate) fn pdb_id(&self) -> Option<[u8; 20]> {
+    pub fn pdb_id(&self) -> Option<[u8; 20]> {
         self.pdb_stream.as_ref().map(|stream| stream.id())
     }
 

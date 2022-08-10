@@ -90,3 +90,20 @@ fn test_integration() {
         })
     );
 }
+
+#[test]
+fn test_matching_ids() {
+    let pdb_buf = std::fs::read("tests/fixtures/integration.pdb").unwrap();
+    let pdb = PortablePdb::parse(&pdb_buf).unwrap();
+    let pdb_id = pdb.pdb_id().unwrap();
+
+    let (guid, age) = pdb_id.split_at(16);
+    let age = u32::from_ne_bytes(age.try_into().unwrap());
+    let pdb_debug_id = symbolic_common::DebugId::from_guid_age(guid, age).unwrap();
+
+    let pe_buf = std::fs::read("tests/fixtures/integration.dll").unwrap();
+    let pe = symbolic_debuginfo::pe::PeObject::parse(&pe_buf).unwrap();
+    let pe_debug_id = pe.debug_id();
+
+    assert_eq!(pe_debug_id, pdb_debug_id);
+}
