@@ -46,9 +46,9 @@ fn test_integration() {
     let cache = PortablePdbCache::parse(&buf).unwrap();
 
     assert_eq!(
-        cache.lookup(6, 10),
+        cache.lookup(7, 10),
         Some(LineInfo {
-            line: 55,
+            line: 81,
             file_name: "/Users/swatinem/Coding/sentry-dotnet/samples/foo/Program.cs",
             file_lang: Language::CSharp
         })
@@ -57,7 +57,7 @@ fn test_integration() {
     assert_eq!(
         cache.lookup(5, 6),
         Some(LineInfo {
-            line: 48,
+            line: 37,
             file_name: "/Users/swatinem/Coding/sentry-dotnet/samples/foo/Program.cs",
             file_lang: Language::CSharp
         })
@@ -66,7 +66,7 @@ fn test_integration() {
     assert_eq!(
         cache.lookup(3, 0),
         Some(LineInfo {
-            line: 41,
+            line: 30,
             file_name: "/Users/swatinem/Coding/sentry-dotnet/samples/foo/Program.cs",
             file_lang: Language::CSharp
         })
@@ -75,7 +75,7 @@ fn test_integration() {
     assert_eq!(
         cache.lookup(2, 0),
         Some(LineInfo {
-            line: 36,
+            line: 25,
             file_name: "/Users/swatinem/Coding/sentry-dotnet/samples/foo/Program.cs",
             file_lang: Language::CSharp
         })
@@ -84,7 +84,7 @@ fn test_integration() {
     assert_eq!(
         cache.lookup(1, 45),
         Some(LineInfo {
-            line: 18,
+            line: 20,
             file_name: "/Users/swatinem/Coding/sentry-dotnet/samples/foo/Program.cs",
             file_lang: Language::CSharp
         })
