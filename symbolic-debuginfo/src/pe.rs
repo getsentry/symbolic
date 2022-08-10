@@ -8,7 +8,7 @@ use gimli::RunTimeEndian;
 use goblin::pe;
 use thiserror::Error;
 
-use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
+use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
 use crate::dwarf::*;
@@ -118,18 +118,31 @@ impl<'data> PeObject<'data> {
         self.pe
             .debug_data
             .as_ref()
-            .and_then(|debug_data| debug_data.codeview_pdb70_debug_info.as_ref())
-            .and_then(|debug_info| {
-                // PE always stores the signature with little endian UUID fields.
-                // Convert to network byte order (big endian) to match the
-                // Breakpad processor's expectations.
-                let mut data = debug_info.signature;
-                data[0..4].reverse(); // uuid field 1
-                data[4..6].reverse(); // uuid field 2
-                data[6..8].reverse(); // uuid field 3
+            .and_then(|debug_data| {
+                debug_data
+                    .codeview_pdb70_debug_info
+                    .as_ref()
+                    .map(|cv_record| (debug_data.image_debug_directory, cv_record))
+            })
+            .and_then(|(debug_directory, cv_record)| {
+                let guid = &cv_record.signature;
 
-                let uuid = Uuid::from_slice(&data).ok()?;
-                Some(DebugId::from_parts(uuid, debug_info.age))
+                // Deterministic PE files have a different debug_id format:
+                //
+                // > Version Major=any, Minor=0x504d of the data format has the same structure as above.
+                // > The Age shall be 1. The format of the .pdb file that this PE/COFF file was built with is Portable PDB.
+                // > The Major version specified in the entry indicates the version of the Portable PDB format.
+                // > Together 16B of the Guid concatenated with 4B of the TimeDateStamp field of the entry form a PDB ID that should be used to match the PE/COFF image with the associated PDB (instead of Guid and Age).
+                // > Matching PDB ID is stored in the #Pdb stream of the .pdb file.
+                //
+                // See https://github.com/dotnet/runtime/blob/main/docs/design/specs/PE-COFF.md#codeview-debug-directory-entry-type-2
+                let age = if debug_directory.minor_version == 0x504d {
+                    debug_directory.time_date_stamp
+                } else {
+                    cv_record.age
+                };
+
+                DebugId::from_guid_age(guid, age).ok()
             })
             .unwrap_or_default()
     }
@@ -392,7 +405,7 @@ impl<'data> Dwarf<'data> for PeObject<'data> {
 
     fn raw_section(&self, name: &str) -> Option<DwarfSection<'data>> {
         // Name is given without leading "."
-        let sect = self.section(&format!(".{}", name))?;
+        let sect = self.section(&format!(".{name}"))?;
         let start = sect.pointer_to_raw_data as usize;
         let end = start + (sect.virtual_size as usize);
         let dwarf_data: &'data [u8] = self.data.get(start..end)?;

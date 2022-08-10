@@ -29,8 +29,8 @@
 //! converter.serialize(&mut buf).unwrap();
 //!
 //! let cache = PortablePdbCache::parse(&buf).unwrap();
-//! let line_info = cache.lookup(6, 10).unwrap();
-//! assert_eq!(line_info.line, 55);
+//! let line_info = cache.lookup(7, 10).unwrap();
+//! assert_eq!(line_info.line, 81);
 //! ```
 //!
 //! # Structure of a Portable PDB file

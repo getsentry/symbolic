@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Correctly read the `debug_id` of Deterministic PE files ([#658](https://github.com/getsentry/symbolic/pull/658))
+
 ## 11.0.0
 
 **Fixes**:
