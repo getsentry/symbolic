@@ -289,3 +289,47 @@ fn missing_source_contents() {
         assert!(contents.is_some());
     }
 }
+
+#[test]
+fn performance_playground() {
+    let format = tracing_subscriber::fmt::format().compact().without_time();
+
+    tracing_subscriber::fmt()
+        .with_span_events(
+            tracing_subscriber::fmt::format::FmtSpan::NEW
+                | tracing_subscriber::fmt::format::FmtSpan::CLOSE,
+        )
+        .event_format(format)
+        .with_max_level(tracing::Level::TRACE)
+        .init();
+
+    // This is equivalent of `fetch_release_file` function
+    let minified = std::fs::read_to_string(fixture("smcache/sentry.js")).unwrap();
+    let sourcemap = std::fs::read_to_string(fixture("smcache/sentry.js.map")).unwrap();
+
+    // vec![
+    // Frame {
+    //     abs_path: String::from("sentry.js"),
+    //     function: "HTMLButtonElement.i".to_string(),
+    //     lineno: 1,
+    //     colno: 51239,
+    //     ..Default::default()
+    // },
+
+    let writer = SmCacheWriter::new(&minified, &sourcemap).unwrap();
+    let mut buffer = Vec::new();
+    writer.serialize(&mut buffer).unwrap();
+    let cache = SmCache::parse(&buffer).unwrap();
+    let sp = SourcePosition::new(0, 51238);
+    let token = cache.lookup(sp).unwrap();
+
+    assert_eq!(token.line(), 84);
+    assert_eq!(
+        token.scope(),
+        ScopeLookupResult::NamedScope("sentryWrapped")
+    );
+    assert_eq!(
+        token.file().unwrap().name(),
+        "../node_modules/@sentry/browser/esm/helpers.js"
+    );
+}

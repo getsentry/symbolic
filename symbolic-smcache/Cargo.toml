@@ -18,6 +18,8 @@ sourcemap = "6.0.2"
 zerocopy = "0.6.1"
 leb128 = "0.2.5"
 indexmap = "1.9.1"
+tracing = "0.1.36"
+tracing-subscriber = "0.3.15"
 
 [dev-dependencies]
 symbolic-testutils = { path = "../symbolic-testutils" }

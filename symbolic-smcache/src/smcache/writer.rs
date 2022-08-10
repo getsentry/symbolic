@@ -22,6 +22,7 @@ pub struct SmCacheWriter {
 
 impl SmCacheWriter {
     /// Constructs a new Cache from a minified source file and its corresponding SourceMap.
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn new(source: &str, sourcemap: &str) -> Result<Self, SmCacheWriterError> {
         // TODO: we could sprinkle a few `tracing` spans around this function to
         // figure out which step is expensive and worth optimizing:
@@ -37,8 +38,9 @@ impl SmCacheWriter {
         // potentially an `O(n)` operation due to UTF-16 :-(
         // so micro-optimizing that further _might_ be worth it.
 
-        let sm =
-            sourcemap::decode_slice(sourcemap.as_bytes()).map_err(SmCacheErrorInner::SourceMap)?;
+        let sm = tracing::trace_span!("decode sourcemap").in_scope(|| {
+            sourcemap::decode_slice(sourcemap.as_bytes()).map_err(SmCacheErrorInner::SourceMap)
+        })?;
 
         // flatten the `SourceMapIndex`, as we want to iterate tokens
         let sm = match sm {
@@ -54,30 +56,35 @@ impl SmCacheWriter {
             DecodedMap::Index(_smi) => unreachable!(),
         };
 
-        let scopes = extract_scope_names(source);
+        let scopes =
+            tracing::trace_span!("extract scope names").in_scope(|| extract_scope_names(source));
 
         // resolve scopes to original names
         let ctx = SourceContext::new(source).map_err(SmCacheErrorInner::SourceContext)?;
         let resolver = NameResolver::new(&ctx, &sm);
-        let scopes: Vec<_> = scopes
-            .into_iter()
-            .map(|(range, name)| {
-                let name = name
-                    .map(|n| resolver.resolve_name(&n))
-                    .filter(|s| !s.is_empty());
-                (range, name)
-            })
-            .collect();
+        let scopes: Vec<_> = tracing::trace_span!("resolve original names").in_scope(|| {
+            scopes
+                .into_iter()
+                .map(|(range, name)| {
+                    let name = name
+                        .map(|n| resolver.resolve_name(&n))
+                        .filter(|s| !s.is_empty());
+                    (range, name)
+                })
+                .collect()
+        });
 
         // convert our offset index to a source position index
         let scope_index = ScopeIndex::new(scopes).map_err(SmCacheErrorInner::ScopeIndex)?;
-        let scope_index: Vec<_> = scope_index
-            .iter()
-            .filter_map(|(offset, result)| {
-                let pos = ctx.offset_to_position(offset);
-                pos.map(|pos| (pos, result))
-            })
-            .collect();
+        let scope_index: Vec<_> = tracing::trace_span!("scope index").in_scope(|| {
+            scope_index
+                .iter()
+                .filter_map(|(offset, result)| {
+                    let pos = ctx.offset_to_position(offset);
+                    pos.map(|pos| (pos, result))
+                })
+                .collect()
+        });
         let lookup_scope = |sp: &SourcePosition| {
             let idx = match scope_index.binary_search_by_key(&sp, |idx| &idx.0) {
                 Ok(idx) => idx,
@@ -103,73 +110,77 @@ impl SmCacheWriter {
 
         let mut line_offsets = vec![];
         let mut files = vec![];
-        for (name, source) in orig_files {
-            let name_offset = Self::insert_string(&mut string_bytes, &mut strings, name);
-            let source_offset = Self::insert_string(&mut string_bytes, &mut strings, source);
-            let line_offsets_start = line_offsets.len() as u32;
-            let buf_ptr = source.as_ptr();
-            line_offsets.extend(source.lines().map(|line| {
-                raw::LineOffset(unsafe { line.as_ptr().offset_from(buf_ptr) as usize } as u32)
-            }));
-            line_offsets.push(raw::LineOffset(source.len() as u32));
-            let line_offsets_end = line_offsets.len() as u32;
+        tracing::trace_span!("extract original files").in_scope(|| {
+            for (name, source) in orig_files {
+                let name_offset = Self::insert_string(&mut string_bytes, &mut strings, name);
+                let source_offset = Self::insert_string(&mut string_bytes, &mut strings, source);
+                let line_offsets_start = line_offsets.len() as u32;
+                let buf_ptr = source.as_ptr();
+                line_offsets.extend(source.lines().map(|line| {
+                    raw::LineOffset(unsafe { line.as_ptr().offset_from(buf_ptr) as usize } as u32)
+                }));
+                line_offsets.push(raw::LineOffset(source.len() as u32));
+                let line_offsets_end = line_offsets.len() as u32;
 
-            files.push((
-                name,
-                raw::File {
-                    name_offset,
-                    source_offset,
-                    line_offsets_start,
-                    line_offsets_end,
-                },
-            ));
-        }
+                files.push((
+                    name,
+                    raw::File {
+                        name_offset,
+                        source_offset,
+                        line_offsets_start,
+                        line_offsets_end,
+                    },
+                ));
+            }
+        });
         files.sort_by_key(|(name, _file)| *name);
 
         // iterate over the tokens and create our index
         let mut last = None;
-        for token in tokens {
-            let (min_line, min_col) = token.get_dst();
-            let sp = SourcePosition::new(min_line, min_col);
-            let file = token.get_source();
-            let line = token.get_src_line();
-            let scope = lookup_scope(&sp);
+        tracing::trace_span!("create index").in_scope(|| {
+            for token in tokens {
+                let (min_line, min_col) = token.get_dst();
+                let sp = SourcePosition::new(min_line, min_col);
+                let file = token.get_source();
+                let line = token.get_src_line();
+                let scope = lookup_scope(&sp);
 
-            let file_idx = match file {
-                Some(file) => files
-                    .binary_search_by_key(&file, |(file_name, _)| file_name)
-                    .map(|idx| idx as u32)
-                    .unwrap_or(NO_FILE_SENTINEL),
-                None => NO_FILE_SENTINEL,
-            };
+                let file_idx = match file {
+                    Some(file) => files
+                        .binary_search_by_key(&file, |(file_name, _)| file_name)
+                        .map(|idx| idx as u32)
+                        .unwrap_or(NO_FILE_SENTINEL),
+                    None => NO_FILE_SENTINEL,
+                };
 
-            let scope_idx = match scope {
-                ScopeLookupResult::NamedScope(name) => std::cmp::min(
-                    Self::insert_string(&mut string_bytes, &mut strings, name),
-                    GLOBAL_SCOPE_SENTINEL,
-                ),
-                ScopeLookupResult::AnonymousScope => ANONYMOUS_SCOPE_SENTINEL,
-                ScopeLookupResult::Unknown => GLOBAL_SCOPE_SENTINEL,
-            };
+                let scope_idx = match scope {
+                    ScopeLookupResult::NamedScope(name) => std::cmp::min(
+                        Self::insert_string(&mut string_bytes, &mut strings, name),
+                        GLOBAL_SCOPE_SENTINEL,
+                    ),
+                    ScopeLookupResult::AnonymousScope => ANONYMOUS_SCOPE_SENTINEL,
+                    ScopeLookupResult::Unknown => GLOBAL_SCOPE_SENTINEL,
+                };
 
-            let sl = raw::OriginalSourceLocation {
-                file_idx,
-                line,
-                scope_idx,
-            };
+                let sl = raw::OriginalSourceLocation {
+                    file_idx,
+                    line,
+                    scope_idx,
+                };
 
-            if last == Some(sl) {
-                continue;
+                if last == Some(sl) {
+                    continue;
+                }
+                mappings.push((
+                    raw::MinifiedSourcePosition {
+                        line: sp.line,
+                        column: sp.column,
+                    },
+                    sl,
+                ));
+                last = Some(sl);
             }
-            mappings.push((
-                raw::MinifiedSourcePosition {
-                    line: sp.line,
-                    column: sp.column,
-                },
-                sl,
-            ));
-            last = Some(sl);
-        }
+        });
 
         let files = files.into_iter().map(|(_name, file)| file).collect();
 
@@ -209,6 +220,7 @@ impl SmCacheWriter {
     /// Serialize the converted data.
     ///
     /// This writes the SmCache binary format into the given [`Write`].
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn serialize<W: Write>(self, writer: &mut W) -> std::io::Result<()> {
         let mut writer = WriteWrapper::new(writer);
 
