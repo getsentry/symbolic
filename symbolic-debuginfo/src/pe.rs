@@ -250,6 +250,49 @@ impl<'data> PeObject<'data> {
             self.pe.exception_data.as_ref()
         }
     }
+
+    /// Returns the raw buffer of embedded .NET (CLR) metadata if any exists.
+    ///
+    /// This CLR Metadata should have the correct format to be parsable by the `symbolic-ppdb` crate.
+    pub fn clr_metadata(&self) -> Option<&[u8]> {
+        let opt_header = self.pe.header.optional_header?;
+        let clr_header_dir = opt_header
+            .data_directories
+            .get_clr_runtime_header()
+            .as_ref()?;
+
+        // We could parse the whole `IMAGE_COR20_HEADER`, but we rather just parse the
+        // `DataDirectory` of the metadata out of it, which is at offset 8.
+        // See https://github.com/microsoft/windows-rs/blob/c55af265f2e3c75e973946230fe6e60a20961ed9/crates/libs/metadata/src/bindings.rs#L155-L169
+        // sizeof(IMAGE_COR20_HEADER) == 72
+        if clr_header_dir.size != 72 {
+            return None;
+        }
+
+        let file_alignment = opt_header.windows_fields.file_alignment;
+        let cor_header_offset = pe::utils::find_offset(
+            clr_header_dir.virtual_address as usize,
+            &self.pe.sections,
+            file_alignment,
+            &pe::options::ParseOptions::default(),
+        )?;
+
+        let mut md_directory_start_offset = cor_header_offset + 8;
+
+        let metadata_directory =
+            pe::data_directories::DataDirectory::parse(self.data, &mut md_directory_start_offset)
+                .ok()?;
+
+        let start_offset = pe::utils::find_offset(
+            metadata_directory.virtual_address as usize,
+            &self.pe.sections,
+            file_alignment,
+            &pe::options::ParseOptions::default(),
+        )?;
+        let end_offset = start_offset.checked_add(metadata_directory.size as usize)?;
+
+        self.data.get(start_offset..end_offset)
+    }
 }
 
 impl fmt::Debug for PeObject<'_> {
