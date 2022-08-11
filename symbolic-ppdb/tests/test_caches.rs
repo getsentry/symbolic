@@ -118,3 +118,19 @@ fn test_pe_metadata() {
 
     assert!(metadata.is_ok());
 }
+
+#[test]
+fn test_pe_mvid() {
+    let pe_buf = std::fs::read("tests/fixtures/integration.dll").unwrap();
+    let pe = symbolic_debuginfo::pe::PeObject::parse(&pe_buf).unwrap();
+
+    let clr_metadata_buf = pe.clr_metadata().unwrap();
+    let metadata = PortablePdb::parse(clr_metadata_buf).unwrap();
+
+    let mvid = metadata.mvid();
+
+    assert_eq!(
+        mvid,
+        Some(uuid::uuid!("a4e610cc-ee58-4815-a87f-483e1c6c4ff3"))
+    )
+}
