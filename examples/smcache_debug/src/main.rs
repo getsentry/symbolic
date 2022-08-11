@@ -15,8 +15,13 @@ fn execute(matches: &ArgMatches) -> Result<()> {
     // Tracing subscriber controlled by `RUST_LOG`
     fmt()
         .with_env_filter(EnvFilter::from_default_env())
-        .with_span_events(fmt::format::FmtSpan::NEW | fmt::format::FmtSpan::CLOSE)
-        .event_format(tracing_subscriber::fmt::format().compact().without_time())
+        .with_span_events(fmt::format::FmtSpan::CLOSE)
+        .event_format(
+            tracing_subscriber::fmt::format()
+                .compact()
+                .with_target(false)
+                .without_time(),
+        )
         .init();
 
     // Actual behavior

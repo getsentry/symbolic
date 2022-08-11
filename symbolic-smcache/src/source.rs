@@ -1,4 +1,4 @@
-/// A Source Context allowing fast access to lines and line/column <-> byte offset remapping.
+/// A Source Context allowing fast line/column <-> byte offset remapping.
 ///
 /// The primary use-case is to allow efficient conversion between
 /// [`SourcePosition`]s (line/column) to byte offsets. The [`SourcePosition`]s
@@ -23,7 +23,24 @@
 /// ```
 pub struct SourceContext<T> {
     src: T,
-    line_offsets: Vec<u32>,
+    index: Vec<Mapping>,
+}
+
+/// When creating the [`SourceContext`], create a mapping every [`CHUNKS`] char.
+///
+/// For example for a 80kiB byte file, we would have 640 of these mappings,
+/// weighing about 7k in memory.
+const CHUNKS: usize = 128;
+
+/// A mapping in the [`SourceContext`] index.
+#[derive(Clone, Copy)]
+struct Mapping {
+    /// The current byte offset.
+    offset: u32,
+    /// Current 0-indexed line.
+    line: u32,
+    /// Current 0-indexed UTF-16 column.
+    column: u32,
 }
 
 impl<T: AsRef<str>> SourceContext<T> {
@@ -38,48 +55,66 @@ impl<T: AsRef<str>> SourceContext<T> {
         let buf = src.as_ref();
         // we can do the bounds check once in the beginning, that guarantees that
         // all the other offsets are within `u32` bounds.
-        let len = buf.len().try_into().map_err(|_| SourceContextError(()))?;
+        let _len: u32 = buf.len().try_into().map_err(|_| SourceContextError(()))?;
 
-        let buf_ptr = buf.as_ptr();
-        let mut line_offsets: Vec<u32> = buf
-            .lines()
-            .map(|line| unsafe { line.as_ptr().offset_from(buf_ptr) as usize } as u32)
-            .collect();
-        line_offsets.push(len);
-        Ok(Self { src, line_offsets })
-    }
+        let mut index = vec![];
 
-    /// Get the `nth` line of the source, 0-based.
-    pub fn get_line(&self, nth: u32) -> Option<&str> {
-        let from = self.line_offsets.get(nth as usize).copied()? as usize;
-        let to = self.line_offsets.get(nth as usize + 1).copied()? as usize;
-        self.src.as_ref().get(from..to)
+        let mut offset = 0;
+        let mut line = 0;
+        let mut column = 0;
+        for (i, c) in buf.chars().enumerate() {
+            if i % CHUNKS == 0 {
+                index.push(Mapping {
+                    offset: offset as u32,
+                    line,
+                    column: column as u32,
+                });
+            }
+            offset += c.len_utf8();
+            if c == '\n' {
+                line += 1;
+                column = 0;
+            } else {
+                column += c.len_utf16();
+            }
+        }
+
+        Ok(Self { src, index })
     }
 
     /// Converts a byte offset into the source to the corresponding line/column.
     ///
     /// The column is given in UTF-16 code points.
     pub fn offset_to_position(&self, offset: u32) -> Option<SourcePosition> {
-        let line_no = match self.line_offsets.binary_search(&offset) {
-            Ok(line) => line,
-            Err(0) => 0, // this is pretty much unreachable since the first offset is 0
-            Err(line) => line - 1,
+        let mapping = match self
+            .index
+            .binary_search_by_key(&offset, |mapping| mapping.offset)
+        {
+            Ok(idx) => self.index[idx],
+            Err(0) => Mapping {
+                offset: 0,
+                line: 0,
+                column: 0,
+            },
+            Err(idx) => self.index[idx - 1],
         };
 
-        let mut byte_offset = self.line_offsets.get(line_no).copied()? as usize;
-        let to = self.line_offsets.get(line_no + 1).copied()? as usize;
+        let mut byte_offset = mapping.offset as usize;
+        let mut line = mapping.line;
+        let mut column = mapping.column as usize;
 
-        let line = self.src.as_ref().get(byte_offset..to)?;
-
-        let line_no = line_no.try_into().ok()?;
-        let mut utf16_offset = 0;
-        for c in line.chars() {
+        for c in self.src.as_ref().get(byte_offset..)?.chars() {
             if byte_offset >= offset as usize {
-                return Some(SourcePosition::new(line_no, utf16_offset.try_into().ok()?));
+                return Some(SourcePosition::new(line, column as u32));
             }
 
-            utf16_offset += c.len_utf16();
             byte_offset += c.len_utf8();
+            if c == '\n' {
+                line += 1;
+                column = 0;
+            } else {
+                column += c.len_utf16();
+            }
         }
 
         None
@@ -88,21 +123,39 @@ impl<T: AsRef<str>> SourceContext<T> {
     /// Converts the given line/column to the corresponding byte offset inside the source.
     pub fn position_to_offset(&self, position: SourcePosition) -> Option<u32> {
         let SourcePosition { line, column } = position;
+        let mapping = match self
+            .index
+            .binary_search_by_key(&(line, column), |mapping| (mapping.line, mapping.column))
+        {
+            Ok(idx) => self.index[idx],
+            Err(0) => Mapping {
+                offset: 0,
+                line: 0,
+                column: 0,
+            },
+            Err(idx) => self.index[idx - 1],
+        };
 
-        let from = self.line_offsets.get(line as usize).copied()? as usize;
-        let to = self.line_offsets.get(line as usize + 1).copied()? as usize;
+        let mut byte_offset = mapping.offset as usize;
+        let mut mapping_line = mapping.line;
+        let mut mapping_column = mapping.column as usize;
 
-        let line = self.src.as_ref().get(from..to)?;
-
-        let mut byte_offset = from;
-        let mut utf16_offset = 0;
-        let column = column as usize;
-        for c in line.chars() {
-            if utf16_offset >= column {
-                return byte_offset.try_into().ok();
+        for c in self.src.as_ref().get(byte_offset..)?.chars() {
+            if mapping_line == line && mapping_column >= column as usize {
+                return Some(byte_offset as u32);
             }
-            utf16_offset += c.len_utf16();
+
             byte_offset += c.len_utf8();
+            if c == '\n' {
+                mapping_line += 1;
+                mapping_column = 0;
+                // the column we were looking for is out of bounds
+                if mapping_line > line {
+                    return None;
+                }
+            } else {
+                mapping_column += c.len_utf16();
+            }
         }
 
         None
@@ -146,23 +199,17 @@ mod tests {
     #[test]
     fn source_context() {
         let ctx = SourceContext::new("").unwrap();
-        assert_eq!(ctx.get_line(0), None);
         assert_eq!(ctx.offset_to_position(0), None);
         assert_eq!(ctx.position_to_offset(SourcePosition::new(0, 0)), None);
 
-        let src = "\n \r\na";
+        let src = "\n \r\naö¿¡\nőá…–🤮🚀¿ 한글 테스트\nz̴̢̈͜ä̴̺̟́ͅl̸̛̦͎̺͂̃̚͝g̷̦̲͊͋̄̌͝o̸͇̞̪͙̞͌̇̀̓̏͜\r\noh hai";
         let ctx = SourceContext::new(src).unwrap();
 
-        // lines
-        assert_eq!(ctx.get_line(0), Some("\n"));
-        assert_eq!(ctx.get_line(1), Some(" \r\n"));
-        assert_eq!(ctx.get_line(2), Some("a"));
-
         // out of bounds
-        assert_eq!(ctx.offset_to_position(5), None);
+        assert_eq!(ctx.offset_to_position(150), None);
         assert_eq!(ctx.position_to_offset(SourcePosition::new(0, 1)), None);
         assert_eq!(ctx.position_to_offset(SourcePosition::new(1, 3)), None);
-        assert_eq!(ctx.position_to_offset(SourcePosition::new(2, 1)), None);
+        assert_eq!(ctx.position_to_offset(SourcePosition::new(6, 1)), None);
 
         // correct positions
         assert_eq!(ctx.offset_to_position(1), Some(SourcePosition::new(1, 0)));
@@ -170,13 +217,13 @@ mod tests {
 
         let offset = ctx.position_to_offset(SourcePosition::new(2, 0)).unwrap();
         assert_eq!(offset, 4);
-        assert_eq!(&src[offset as usize..], "a");
+        assert_eq!(&src[offset as usize..(offset as usize + 1)], "a");
 
         // full roundtrips
-        for offset in 0..=src.len() as u32 {
-            if let Some(sp) = ctx.offset_to_position(offset) {
+        for (offset, _c) in src.char_indices() {
+            if let Some(sp) = ctx.offset_to_position(offset as u32) {
                 let roundtrip = ctx.position_to_offset(sp).unwrap();
-                assert_eq!(roundtrip, offset);
+                assert_eq!(roundtrip, offset as u32);
             }
         }
     }

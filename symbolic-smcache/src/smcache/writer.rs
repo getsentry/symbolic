@@ -65,7 +65,7 @@ impl SmCacheWriter {
 
         // convert our offset index to a source position index
         let scope_index = ScopeIndex::new(scopes).map_err(SmCacheErrorInner::ScopeIndex)?;
-        let scope_index: Vec<_> = tracing::trace_span!("scope index").in_scope(|| {
+        let scope_index: Vec<_> = tracing::trace_span!("convert scope index").in_scope(|| {
             scope_index
                 .iter()
                 .filter_map(|(offset, result)| {
