@@ -299,6 +299,12 @@ impl<'data> PortablePdb<'data> {
         self.pdb_stream.as_ref().map(|stream| stream.id())
     }
 
+    /// Reads the Module Version Id (`mvid`) of the first (and by definition only) Module if it exists.
+    pub fn mvid(&self) -> Option<Uuid> {
+        let guid_idx = self.get_table_cell_u32(TableType::Module, 1, 3).ok()?;
+        self.get_guid(guid_idx).ok()
+    }
+
     /// Reads the `(row, col)` cell in the given table as a `u32`.
     ///
     /// This returns an error if the indices are out of bounds for the table
