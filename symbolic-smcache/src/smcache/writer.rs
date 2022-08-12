@@ -11,8 +11,8 @@ use crate::{extract_scope_names, NameResolver, SourcePosition};
 use super::raw;
 use raw::{ANONYMOUS_SCOPE_SENTINEL, GLOBAL_SCOPE_SENTINEL, NO_FILE_SENTINEL};
 
-/// A structure that allows quick resolution of minified [`raw::MinifiedSourcePosition`]s
-/// to the original [`raw::OriginalSourceLocation`] it maps to.
+/// A structure that allows quick resolution of minified source position
+/// to the original source position it maps to.
 pub struct SmCacheWriter {
     string_bytes: Vec<u8>,
     files: Vec<raw::File>,
