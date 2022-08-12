@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-smcache"
-version = "9.0.0"
+version = "9.1.1"
 license = "MIT"
 authors = ["Sentry <hello@sentry.io>"]
 documentation = "https://docs.rs/symbolic-smcache"

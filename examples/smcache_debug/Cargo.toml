@@ -1,6 +1,6 @@
 [package]
 name = "smcache_debug"
-version = "9.0.0"
+version = "9.1.1"
 authors = ["Sentry <hello@sentry.io>"]
 edition = "2018"
 publish = false

@@ -59,7 +59,9 @@ class SmCache(RustObject):
 
     def lookup(self, line, col, context_lines):
         """Looks up a token from the sourcemap."""
-        rv = self._methodcall(lib.symbolic_smcache_lookup_token, line, col, context_lines)
+        rv = self._methodcall(
+            lib.symbolic_smcache_lookup_token, line, col, context_lines
+        )
 
         if rv != ffi.NULL:
             try:
