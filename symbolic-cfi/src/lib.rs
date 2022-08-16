@@ -12,7 +12,7 @@
 //! frame.
 //!
 //! Without CFI, the stackwalker needs to scan the stack memory for values that look like valid base
-//! addresses. This fequently yields false-positives.
+//! addresses. This frequently yields false-positives.
 //!
 //! [processor]: ../processor/index.html
 //! [`CfiCache`]: struct.CfiCache.html
@@ -578,20 +578,54 @@ impl<W: Write> AsciiCfiWriter<W> {
                             let sym_name = symbols.lookup(start_addr).and_then(|sym| sym.name());
 
                             if sym_name == Some("_sigtramp") && cpu_family == CpuFamily::Amd64 {
-                                // This specific function has some hand crafted dwarf expressions
-                                // that we currently can't process. They encode how to restore the
-                                // registers from a machine context accessible via `$rbx`
+                                // This specific function has some hand crafted dwarf expressions.
+                                // They encode how to restore the registers from a machine context accessible via `$rbx`
                                 // See: https://github.com/apple/darwin-libplatform/blob/215b09856ab5765b7462a91be7076183076600df/src/setjmp/x86_64/_sigtramp.s#L198-L258
 
+                                // We currently don't support DWARF expressions
+                                // (`{Register,Cfa}Rule::{Val,}Expression`) at all.
+                                // The register and CFA expressions are simple enough to implement
+                                // in our DWARF to ASCII CFI translator. They look like:
+                                //
+                                // > DW_CFA_expression: RBP DW_OP_breg3 RBX+48, DW_OP_deref, DW_OP_plus_uconst 0x40
+                                // > DW_CFA_def_cfa_expression: DW_OP_breg3 RBX+48, DW_OP_deref, DW_OP_plus_uconst 0x48, DW_OP_deref
+                                //
+                                // However the `.ra`/RIP expression is a lot more complex:
+                                //
+                                // > DW_CFA_val_expression: RIP DW_OP_breg3 RBX+48, DW_OP_deref, DW_OP_dup, DW_OP_plus_uconst 0x90,
+                                // >     DW_OP_deref, DW_OP_swap, DW_OP_plus_uconst 0x0, DW_OP_deref_size 0x4, DW_OP_dup, DW_OP_lit3,
+                                // >     DW_OP_ne, DW_OP_swap, DW_OP_lit4, DW_OP_ne, DW_OP_and, DW_OP_plus
+                                // (the expression just subtracts 1 depending on the exception flag)
+                                //
+                                // The ASCII CFI syntax is not rich enough to express the above
+                                // DWARF expression. DWARF expressions are "in theory" even turing-complete.
+                                //
+                                // As a workaround for this limitation, we generate some hard-coded
+                                // ASCII CFI that is equivalent to the DWARF expressions.
+                                // For simplicity, we only restore
+                                // callee saves / call preserved / non-volatile registers:
+                                // rbx, rsp, rbp, r12, r13, r14, and r15
+
                                 let mc_offset = 48;
+                                let rbx_offset = 24;
                                 let rbp_offset = 64;
                                 let rsp_offset = 72;
+                                let r12_offset = 112;
+                                let r13_offset = 120;
+                                let r14_offset = 128;
+                                let r15_offset = 136;
                                 let rip_offset = 144;
 
                                 write!(
                                     self.inner,
                                     "STACK CFI INIT {:x} {:x} ",
                                     start_addr, entry.len
+                                )?;
+
+                                write!(
+                                    self.inner,
+                                    "$rbx: $rbx {} + ^ {} + ^ ",
+                                    mc_offset, rbx_offset
                                 )?;
                                 write!(
                                     self.inner,
@@ -600,9 +634,32 @@ impl<W: Write> AsciiCfiWriter<W> {
                                 )?;
                                 write!(
                                     self.inner,
+                                    "$r12: $rbx {} + ^ {} + ^ ",
+                                    mc_offset, r12_offset
+                                )?;
+                                write!(
+                                    self.inner,
+                                    "$r13: $rbx {} + ^ {} + ^ ",
+                                    mc_offset, r13_offset
+                                )?;
+                                write!(
+                                    self.inner,
+                                    "$r14: $rbx {} + ^ {} + ^ ",
+                                    mc_offset, r14_offset
+                                )?;
+                                write!(
+                                    self.inner,
+                                    "$r15: $rbx {} + ^ {} + ^ ",
+                                    mc_offset, r15_offset
+                                )?;
+
+                                // rsp aka .cfa
+                                write!(
+                                    self.inner,
                                     ".cfa: $rbx {} + ^ {} + ^ ",
                                     mc_offset, rsp_offset,
                                 )?;
+                                // rip aka .ra
                                 writeln!(
                                     self.inner,
                                     ".ra: $rbx {} + ^ {} + ^",
