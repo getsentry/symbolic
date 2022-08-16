@@ -45,6 +45,17 @@ impl SourceMapCacheWriter {
             DecodedMap::Index(_smi) => unreachable!(),
         };
 
+        // Hermes/Metro SourceMaps have scope information embedded in them which we can use.
+        // In that case, we can skip parsing the minified source, which in most cases is empty / non-existent
+        // as Hermes ships bytecode that we are not able to parse anyway.
+        // Skipping this whole code would be nice, but that gets us into borrow-checker hell, so
+        // just clearing the minified source skips the whole code there anyways.
+        let source = if matches!(&sm, DecodedMap::Hermes(_)) {
+            ""
+        } else {
+            source
+        };
+
         // parse scopes out of the minified source
         let scopes = extract_scope_names(source);
 
@@ -76,16 +87,11 @@ impl SourceMapCacheWriter {
         });
         let lookup_scope = |sp: &SourcePosition| {
             if let DecodedMap::Hermes(smh) = &sm {
-                // NOTE: the `get_original_function_name` right now takes just
-                // a bytecode offset. Ideally we would have another function
-                // that lets us look up the scope based on a specific `Token`
-                // that we look up first.
-                if scope_index.is_empty() {
-                    return match smh.get_original_function_name(sp.column) {
-                        Some(name) => ScopeLookupResult::NamedScope(name),
-                        None => ScopeLookupResult::Unknown,
-                    };
-                }
+                let token = smh.lookup_token(sp.line, sp.column);
+                return match token.and_then(|token| smh.get_scope_for_token(token)) {
+                    Some(name) => ScopeLookupResult::NamedScope(name),
+                    None => ScopeLookupResult::Unknown,
+                };
             }
 
             let idx = match scope_index.binary_search_by_key(&sp, |idx| &idx.0) {
