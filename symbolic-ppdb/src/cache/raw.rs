@@ -18,8 +18,10 @@ pub(crate) struct Header {
     pub(crate) magic: u32,
     /// The PortablePdbCache format version.
     pub(crate) version: u32,
-    /// A byte sequence uniquely representing the debugging metadata blob content.
-    pub(crate) pdb_id: [u8; 20],
+    /// The guid part of the PDB id, represented as a byte sequence.
+    pub(crate) pdb_guid: [u8; 16],
+    /// The age part of the PDB id.
+    pub(crate) pdb_age: u32,
     /// The number of files contained in the cache file.
     pub(crate) num_files: u32,
     /// The number of ranges/source locations contained in the cache file.
