@@ -9,7 +9,7 @@ use std::fmt;
 use thiserror::Error;
 use zerocopy::LayoutVerified;
 
-use symbolic_common::Uuid;
+use symbolic_common::{DebugId, Uuid};
 
 use metadata::{MetadataStream, TableType};
 use streams::{BlobStream, GuidStream, PdbStream, StringStream, UsStream};
@@ -295,8 +295,11 @@ impl<'data> PortablePdb<'data> {
     }
 
     /// Reads this file's PDB ID from its #PDB stream.
-    pub fn pdb_id(&self) -> Option<[u8; 20]> {
-        self.pdb_stream.as_ref().map(|stream| stream.id())
+    pub fn pdb_id(&self) -> Option<DebugId> {
+        let raw_id = self.pdb_stream.as_ref().map(|stream| stream.id())?;
+        let (guid, age) = raw_id.split_at(16);
+        let age = u32::from_ne_bytes(age.try_into().unwrap());
+        Some(DebugId::from_guid_age(guid, age).unwrap())
     }
 
     /// Reads the `(row, col)` cell in the given table as a `u32`.
