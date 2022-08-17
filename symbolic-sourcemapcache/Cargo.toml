@@ -14,7 +14,7 @@ edition = "2021"
 [dependencies]
 thiserror = "1.0.31"
 rslint_parser = "0.3.1"
-sourcemap = { git = "https://github.com/getsentry/rust-sourcemap.git", branch = "master" }
+sourcemap = "6.1.0"
 zerocopy = "0.6.1"
 leb128 = "0.2.5"
 indexmap = "1.9.1"
