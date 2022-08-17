@@ -345,16 +345,11 @@ fn metro_scope_lookup() {
 
     let cache = SourceMapCache::parse(&buf).unwrap();
 
-    // TODO: The scope names come from parsing the minified source right now,
-    // and not directly from the hermes/metro sourcemap extension.
-    // Once the sourcemap crate allows directly looking up the scope of tokens,
-    // we will get the same scope names as above.
-
     // e.foo (react-native-metro.js:7:101)
     let sl = cache.lookup(SourcePosition::new(6, 100)).unwrap();
     assert_eq!(sl.file_name(), Some("module.js"));
     assert_eq!(sl.line(), 1);
-    assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("foo.foo"));
+    assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("foo"));
     assert_eq!(
         sl.line_contents().unwrap(),
         "    throw new Error(\"lets throw!\");\n"
@@ -364,6 +359,7 @@ fn metro_scope_lookup() {
     let sl = cache.lookup(SourcePosition::new(5, 43)).unwrap();
     assert_eq!(sl.file_name(), Some("input.js"));
     assert_eq!(sl.line(), 2);
-    assert_eq!(sl.scope(), ScopeLookupResult::AnonymousScope);
+    // NOTE: metro has a special `<global>` scope
+    assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("<global>"));
     assert_eq!(sl.line_contents().unwrap(), "foo();\n");
 }
