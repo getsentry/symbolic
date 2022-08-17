@@ -299,7 +299,7 @@ impl<'data> PortablePdb<'data> {
         let raw_id = self.pdb_stream.as_ref().map(|stream| stream.id())?;
         let (guid, age) = raw_id.split_at(16);
         let age = u32::from_ne_bytes(age.try_into().unwrap());
-        Some(DebugId::from_guid_age(guid, age).unwrap())
+        DebugId::from_guid_age(guid, age).ok()
     }
 
     /// Reads the `(row, col)` cell in the given table as a `u32`.
