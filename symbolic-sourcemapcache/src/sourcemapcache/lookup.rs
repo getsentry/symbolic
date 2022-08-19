@@ -4,13 +4,15 @@ use crate::{ScopeLookupResult, SourcePosition};
 
 use super::raw;
 
-/// A resolved Source Location  with file, line and scope information.
+/// A resolved Source Location with file, line, column and scope information.
 #[derive(Debug, PartialEq)]
 pub struct SourceLocation<'data> {
     /// The source file this location belongs to.
     file: Option<File<'data>>,
     /// The source line.
     line: u32,
+    /// The source column.
+    column: u32,
     /// The scope containing this source location.
     scope: ScopeLookupResult<'data>,
 }
@@ -24,6 +26,11 @@ impl<'data> SourceLocation<'data> {
     /// The number of the source line.
     pub fn line(&self) -> u32 {
         self.line
+    }
+
+    /// The number of the source column.
+    pub fn column(&self) -> u32 {
+        self.column
     }
 
     /// The contents of the source line.
@@ -160,6 +167,7 @@ impl<'data> SourceMapCache<'data> {
         let sl = self.orig_source_locations.get(idx)?;
 
         let line = sl.line;
+        let column = sl.column;
 
         let file = self
             .files
@@ -174,7 +182,12 @@ impl<'data> SourceMapCache<'data> {
                 .map_or(ScopeLookupResult::Unknown, ScopeLookupResult::NamedScope),
         };
 
-        Some(SourceLocation { file, line, scope })
+        Some(SourceLocation {
+            file,
+            line,
+            column,
+            scope,
+        })
     }
 
     /// Returns an iterator over all files in the cache.

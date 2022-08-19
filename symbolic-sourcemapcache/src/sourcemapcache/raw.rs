@@ -63,7 +63,7 @@ pub const GLOBAL_SCOPE_SENTINEL: u32 = u32::MAX;
 /// Sentinel value used to denote anonymous function scope.
 pub const ANONYMOUS_SCOPE_SENTINEL: u32 = u32::MAX - 1;
 
-/// The original source location, file line and scope.
+/// The original source location, line, column and scope.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, FromBytes, AsBytes)]
 #[repr(C)]
 pub struct OriginalSourceLocation {
@@ -71,6 +71,8 @@ pub struct OriginalSourceLocation {
     pub file_idx: u32,
     /// The original line number.
     pub line: u32,
+    /// The original column number.
+    pub column: u32,
     /// The optional scope name (offset into string table).
     pub scope_idx: u32,
 }
@@ -119,7 +121,7 @@ mod tests {
         assert_eq!(mem::size_of::<MinifiedSourcePosition>(), 8);
         assert_eq!(mem::align_of::<MinifiedSourcePosition>(), 4);
 
-        assert_eq!(mem::size_of::<OriginalSourceLocation>(), 12);
+        assert_eq!(mem::size_of::<OriginalSourceLocation>(), 16);
         assert_eq!(mem::align_of::<OriginalSourceLocation>(), 4);
     }
 }
