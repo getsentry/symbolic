@@ -151,6 +151,7 @@ impl SourceMapCacheWriter {
                 let sp = SourcePosition::new(min_line, min_col);
                 let file = token.get_source();
                 let line = token.get_src_line();
+                let column = token.get_src_col();
                 let scope = lookup_scope(&sp);
 
                 let file_idx = match file {
@@ -173,6 +174,7 @@ impl SourceMapCacheWriter {
                 let sl = raw::OriginalSourceLocation {
                     file_idx,
                     line,
+                    column,
                     scope_idx,
                 };
 

@@ -175,16 +175,19 @@ fn resolves_inlined_function() {
     let sl = cache.lookup(SourcePosition::new(0, 62)).unwrap();
     assert_eq!(sl.file_name(), Some("../src/app.js"));
     assert_eq!(sl.line(), 2);
+    assert_eq!(sl.column(), 29);
     assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("buttonCallback"));
 
     let sl = cache.lookup(SourcePosition::new(0, 46)).unwrap();
     assert_eq!(sl.file_name(), Some("../src/bar.js"));
     assert_eq!(sl.line(), 3);
+    assert_eq!(sl.column(), 2);
     assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("bar"));
 
     let sl = cache.lookup(SourcePosition::new(0, 33)).unwrap();
     assert_eq!(sl.file_name(), Some("../src/foo.js"));
     assert_eq!(sl.line(), 1);
+    assert_eq!(sl.column(), 8);
     assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("foo"));
 }
 
@@ -204,6 +207,7 @@ fn writes_simple_cache() {
 
     assert_eq!(sl.file_name(), Some("tests/fixtures/simple/original.js"));
     assert_eq!(sl.line(), 1);
+    assert_eq!(sl.column(), 9);
     assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("abcd"));
     assert_eq!(sl.line_contents().unwrap(), "function abcd() {}\n");
 }
@@ -230,26 +234,31 @@ fn resolves_location_from_cache() {
     let sl = lookup(1, 50).unwrap();
     assert_eq!(sl.file_name(), Some("../src/constants.js"));
     assert_eq!(sl.line(), 2);
+    assert_eq!(sl.column(), 34);
     assert_eq!(sl.scope(), Unknown);
 
     let sl = lookup(1, 133).unwrap();
     assert_eq!(sl.file_name(), Some("../src/util.js"));
     assert_eq!(sl.line(), 11);
+    assert_eq!(sl.column(), 22);
     assert_eq!(sl.scope(), NamedScope("assign"));
 
     let sl = lookup(1, 482).unwrap();
     assert_eq!(sl.file_name(), Some("../src/create-element.js"));
     assert_eq!(sl.line(), 39);
+    assert_eq!(sl.column(), 8);
     assert_eq!(sl.scope(), NamedScope("createElement"));
 
     let sl = lookup(1, 9780).unwrap();
     assert_eq!(sl.file_name(), Some("../src/component.js"));
     assert_eq!(sl.line(), 181);
+    assert_eq!(sl.column(), 4);
     assert_eq!(sl.scope(), Unknown);
 
     let sl = lookup(1, 9795).unwrap();
     assert_eq!(sl.file_name(), Some("../src/create-context.js"));
     assert_eq!(sl.line(), 2);
+    assert_eq!(sl.column(), 11);
     assert_eq!(sl.scope(), Unknown);
 }
 
@@ -312,6 +321,7 @@ fn hermes_scope_lookup() {
     let sl = cache.lookup(SourcePosition::new(0, 11939)).unwrap();
     assert_eq!(sl.file_name(), Some("module.js"));
     assert_eq!(sl.line(), 1);
+    assert_eq!(sl.column(), 10);
     assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("foo"));
     assert_eq!(
         sl.line_contents().unwrap(),
@@ -322,6 +332,7 @@ fn hermes_scope_lookup() {
     let sl = cache.lookup(SourcePosition::new(0, 11857)).unwrap();
     assert_eq!(sl.file_name(), Some("input.js"));
     assert_eq!(sl.line(), 2);
+    assert_eq!(sl.column(), 0);
     assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("<global>"));
     assert_eq!(sl.line_contents().unwrap(), "foo();\n");
 }
@@ -349,6 +360,7 @@ fn metro_scope_lookup() {
     let sl = cache.lookup(SourcePosition::new(6, 100)).unwrap();
     assert_eq!(sl.file_name(), Some("module.js"));
     assert_eq!(sl.line(), 1);
+    assert_eq!(sl.column(), 10);
     assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("foo"));
     assert_eq!(
         sl.line_contents().unwrap(),
@@ -359,6 +371,7 @@ fn metro_scope_lookup() {
     let sl = cache.lookup(SourcePosition::new(5, 43)).unwrap();
     assert_eq!(sl.file_name(), Some("input.js"));
     assert_eq!(sl.line(), 2);
+    assert_eq!(sl.column(), 0);
     // NOTE: metro has a special `<global>` scope
     assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("<global>"));
     assert_eq!(sl.line_contents().unwrap(), "foo();\n");
