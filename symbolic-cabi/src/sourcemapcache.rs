@@ -154,14 +154,7 @@ fn make_token_match(token: SourceLocation, context_lines: u32) -> *mut SymbolicS
 
     Box::into_raw(Box::new(SymbolicSmTokenMatch {
         line: token.line() + 1,
-        // TODO: Discuss how we should handle column numbers.
-        // Currently in Sentry they are used and displayed to the user,
-        // however it's not clear whether they provide any value.
-        // They are also used inside `trim_line` function, to extract a 140-char "window"
-        // into the minified `context_line`.
-        // NOTE: Possibly used in VSCode integrations, that opens file in your local editor
-        // when configured or something of that sort.
-        col: 0,
+        col: token.column() + 1,
         src: SymbolicStr::new(token.file_name().unwrap_or_default()),
         function_name: SymbolicStr::new(function_name),
 
