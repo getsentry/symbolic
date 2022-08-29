@@ -21,6 +21,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 proguard = { version = "5.0.0", features = ["uuid"] }
-serde_json = "1.0.40"
 sourcemap = "6.0.2"
 symbolic = { version = "9.1.1", path = "../symbolic", features = ["cfi", "debuginfo", "demangle", "symcache"] }
