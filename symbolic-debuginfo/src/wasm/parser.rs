@@ -48,7 +48,7 @@ impl<'data> super::WasmObject<'data> {
                     let fs = func_sigs.as_mut_bitslice();
 
                     for (i, ty) in tsr.into_iter().enumerate() {
-                        if matches!(ty?, wasmparser::TypeDef::Func(_)) {
+                        if matches!(ty?, wasmparser::Type::Func(_)) {
                             fs.set(i, true);
                         }
                     }
@@ -206,7 +206,7 @@ fn get_function_info(
         for _ in 0..body.read_var_u32()? {
             let pos = body.original_position();
             let count = body.read_var_u32()?;
-            let ty = body.read_type()?;
+            let ty = body.read_val_type()?;
             validator.define_locals(pos, count, ty)?;
         }
     }
