@@ -7,6 +7,7 @@ use std::io::Write;
 use indexmap::IndexSet;
 use symbolic_common::{Arch, DebugId};
 use symbolic_debuginfo::{DebugSession, FileFormat, Function, ObjectLike, Symbol};
+use watto::{Pod, Writer};
 
 use super::{raw, transform};
 use crate::{Error, ErrorKind};
@@ -470,7 +471,7 @@ impl<'a> SymCacheConverter<'a> {
     ///
     /// This writes the SymCache binary format into the given [`Write`].
     pub fn serialize<W: Write>(mut self, writer: &mut W) -> std::io::Result<()> {
-        let mut writer = WriteWrapper::new(writer);
+        let mut writer = Writer::new(writer);
 
         // Insert a trailing sentinel source location in case we have a definite end addr
         if let Some(last_addr) = self.last_addr {
@@ -508,33 +509,33 @@ impl<'a> SymCacheConverter<'a> {
             _reserved: [0; 16],
         };
 
-        writer.write(&[header])?;
-        writer.align()?;
+        writer.write_all(header.as_bytes())?;
+        writer.align_to(8)?;
 
         for f in self.files {
-            writer.write(&[f])?;
+            writer.write_all(f.as_bytes())?;
         }
-        writer.align()?;
+        writer.align_to(8)?;
 
         for f in self.functions {
-            writer.write(&[f])?;
+            writer.write_all(f.as_bytes())?;
         }
-        writer.align()?;
+        writer.align_to(8)?;
 
         for s in self.call_locations {
-            writer.write(&[s])?;
+            writer.write_all(s.as_bytes())?;
         }
         for s in self.ranges.values() {
-            writer.write(std::slice::from_ref(s))?;
+            writer.write_all(s.as_bytes())?;
         }
-        writer.align()?;
+        writer.align_to(8)?;
 
         for r in self.ranges.keys() {
-            writer.write(&[raw::Range(*r)])?;
+            writer.write_all(r.as_bytes())?;
         }
-        writer.align()?;
+        writer.align_to(8)?;
 
-        writer.write(&self.string_bytes)?;
+        writer.write_all(&self.string_bytes)?;
 
         Ok(())
     }
@@ -582,34 +583,4 @@ fn undecorate_win_symbol(name: &str) -> &str {
     }
 
     name
-}
-
-struct WriteWrapper<W> {
-    writer: W,
-    position: usize,
-}
-
-impl<W: Write> WriteWrapper<W> {
-    fn new(writer: W) -> Self {
-        Self {
-            writer,
-            position: 0,
-        }
-    }
-
-    fn write<T>(&mut self, data: &[T]) -> std::io::Result<usize> {
-        let pointer = data.as_ptr() as *const u8;
-        let len = std::mem::size_of_val(data);
-        // SAFETY: both pointer and len are derived directly from data/T and are valid.
-        let buf = unsafe { std::slice::from_raw_parts(pointer, len) };
-        self.writer.write_all(buf)?;
-        self.position += len;
-        Ok(len)
-    }
-
-    fn align(&mut self) -> std::io::Result<usize> {
-        let buf = &[0u8; 7];
-        let len = raw::align_to_eight(self.position);
-        self.write(&buf[0..len])
-    }
 }

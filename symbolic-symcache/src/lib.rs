@@ -108,16 +108,14 @@ pub mod transform;
 mod writer;
 
 use std::convert::TryInto;
-use std::mem;
-use std::ptr;
 
 use symbolic_common::Arch;
 use symbolic_common::AsSelf;
 use symbolic_common::DebugId;
+use watto::{align_to, Pod};
 
 pub use error::{Error, ErrorKind};
 pub use lookup::*;
-use raw::align_to_eight;
 pub use writer::SymCacheConverter;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -168,18 +166,7 @@ impl<'data> SymCache<'data> {
     /// Parse the SymCache binary format into a convenient type that allows safe access and
     /// fast lookups.
     pub fn parse(buf: &'data [u8]) -> Result<Self> {
-        if align_to_eight(buf.as_ptr() as usize) != 0 {
-            return Err(ErrorKind::BufferNotAligned.into());
-        }
-
-        let mut header_size = mem::size_of::<raw::Header>();
-        header_size += align_to_eight(header_size);
-
-        if buf.len() < header_size {
-            return Err(ErrorKind::HeaderTooSmall.into());
-        }
-        // SAFETY: we checked that the buffer is well aligned and large enough to fit a `raw::Header`.
-        let header = unsafe { &*(buf.as_ptr() as *const raw::Header) };
+        let (header, rest) = raw::Header::ref_from_prefix(buf).ok_or(ErrorKind::HeaderTooSmall)?;
         if header.magic == raw::SYMCACHE_MAGIC_FLIPPED {
             return Err(ErrorKind::WrongEndianness.into());
         }
@@ -190,64 +177,28 @@ impl<'data> SymCache<'data> {
             return Err(ErrorKind::WrongVersion.into());
         }
 
-        let mut files_size = mem::size_of::<raw::File>() * header.num_files as usize;
-        files_size += align_to_eight(files_size);
+        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::BufferNotAligned)?;
+        let (files, rest) = raw::File::slice_from_prefix(rest, header.num_files as usize)
+            .ok_or(ErrorKind::HeaderTooSmall)?;
 
-        let mut functions_size = mem::size_of::<raw::Function>() * header.num_functions as usize;
-        functions_size += align_to_eight(functions_size);
+        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::BufferNotAligned)?;
+        let (functions, rest) =
+            raw::Function::slice_from_prefix(rest, header.num_functions as usize)
+                .ok_or(ErrorKind::HeaderTooSmall)?;
 
-        let mut source_locations_size =
-            mem::size_of::<raw::SourceLocation>() * header.num_source_locations as usize;
-        source_locations_size += align_to_eight(source_locations_size);
+        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::BufferNotAligned)?;
+        let (source_locations, rest) =
+            raw::SourceLocation::slice_from_prefix(rest, header.num_source_locations as usize)
+                .ok_or(ErrorKind::HeaderTooSmall)?;
 
-        let mut ranges_size = mem::size_of::<raw::Range>() * header.num_ranges as usize;
-        ranges_size += align_to_eight(ranges_size);
+        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::BufferNotAligned)?;
+        let (ranges, rest) = raw::Range::slice_from_prefix(rest, header.num_ranges as usize)
+            .ok_or(ErrorKind::HeaderTooSmall)?;
 
-        let expected_buf_size = header_size
-            + files_size
-            + functions_size
-            + source_locations_size
-            + ranges_size
-            + header.string_bytes as usize;
-
-        if buf.len() < expected_buf_size || source_locations_size < ranges_size {
+        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::BufferNotAligned)?;
+        if rest.len() < header.string_bytes as usize {
             return Err(ErrorKind::BadFormatLength.into());
         }
-
-        // SAFETY: we just made sure that all the pointers we are constructing via pointer
-        // arithmetic are within `buf`
-        let files_start = unsafe { buf.as_ptr().add(header_size) };
-        let functions_start = unsafe { files_start.add(files_size) };
-        let source_locations_start = unsafe { functions_start.add(functions_size) };
-        let ranges_start = unsafe { source_locations_start.add(source_locations_size) };
-        let string_bytes_start = unsafe { ranges_start.add(ranges_size) };
-
-        // SAFETY: the above buffer size check also made sure we are not going out of bounds
-        // here
-        let files = unsafe {
-            &*ptr::slice_from_raw_parts(files_start as *const raw::File, header.num_files as usize)
-        };
-        let functions = unsafe {
-            &*ptr::slice_from_raw_parts(
-                functions_start as *const raw::Function,
-                header.num_functions as usize,
-            )
-        };
-        let source_locations = unsafe {
-            &*ptr::slice_from_raw_parts(
-                source_locations_start as *const raw::SourceLocation,
-                header.num_source_locations as usize,
-            )
-        };
-        let ranges = unsafe {
-            &*ptr::slice_from_raw_parts(
-                ranges_start as *const raw::Range,
-                header.num_ranges as usize,
-            )
-        };
-        let string_bytes = unsafe {
-            &*ptr::slice_from_raw_parts(string_bytes_start, header.string_bytes as usize)
-        };
 
         Ok(SymCache {
             header,
@@ -255,7 +206,7 @@ impl<'data> SymCache<'data> {
             functions,
             source_locations,
             ranges,
-            string_bytes,
+            string_bytes: rest,
         })
     }
 

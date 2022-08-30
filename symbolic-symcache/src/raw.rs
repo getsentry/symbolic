@@ -1,5 +1,8 @@
 //! The raw SymCache binary file format internals.
 //!
+
+use watto::Pod;
+
 use symbolic_common::{Arch, DebugId};
 
 /// The magic file preamble as individual bytes.
@@ -110,16 +113,11 @@ pub(crate) struct SourceLocation {
 #[repr(C)]
 pub(crate) struct Range(pub(crate) u32);
 
-/// Returns the amount left to add to the remainder to get 8 if
-/// `to_align` isn't a multiple of 8.
-pub(crate) fn align_to_eight(to_align: usize) -> usize {
-    let remainder = to_align % 8;
-    if remainder == 0 {
-        remainder
-    } else {
-        8 - remainder
-    }
-}
+unsafe impl Pod for Header {}
+unsafe impl Pod for Function {}
+unsafe impl Pod for File {}
+unsafe impl Pod for SourceLocation {}
+unsafe impl Pod for Range {}
 
 #[cfg(test)]
 mod tests {
