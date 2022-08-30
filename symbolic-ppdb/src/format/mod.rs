@@ -7,7 +7,7 @@ mod utils;
 use std::fmt;
 
 use thiserror::Error;
-use zerocopy::LayoutVerified;
+use watto::Pod;
 
 use symbolic_common::Uuid;
 
@@ -172,9 +172,8 @@ impl fmt::Debug for PortablePdb<'_> {
 impl<'data> PortablePdb<'data> {
     /// Parses the provided buffer into a Portable PDB file.
     pub fn parse(buf: &'data [u8]) -> Result<Self, FormatError> {
-        let (lv, rest) = LayoutVerified::<_, raw::Header>::new_from_prefix(buf)
-            .ok_or(FormatErrorKind::InvalidHeader)?;
-        let header = lv.into_ref();
+        let (header, rest) =
+            raw::Header::ref_from_prefix(buf).ok_or(FormatErrorKind::InvalidHeader)?;
 
         if header.signature != raw::METADATA_SIGNATURE {
             return Err(FormatErrorKind::InvalidSignature.into());
@@ -195,10 +194,8 @@ impl<'data> PortablePdb<'data> {
 
         // We already know that buf is long enough.
         let streams_buf = &rest[version_length..];
-        let (lv, mut streams_buf) =
-            LayoutVerified::<_, raw::HeaderPart2>::new_from_prefix(streams_buf)
-                .ok_or(FormatErrorKind::InvalidHeader)?;
-        let header2 = lv.into_ref();
+        let (header2, mut streams_buf) =
+            raw::HeaderPart2::ref_from_prefix(streams_buf).ok_or(FormatErrorKind::InvalidHeader)?;
 
         // TODO: validate flags
 
@@ -217,10 +214,8 @@ impl<'data> PortablePdb<'data> {
         };
 
         for _ in 0..stream_count {
-            let (lv, after_header_buf) =
-                LayoutVerified::<_, raw::StreamHeader>::new_from_prefix(streams_buf)
-                    .ok_or(FormatErrorKind::InvalidStreamHeader)?;
-            let header = lv.into_ref();
+            let (header, after_header_buf) = raw::StreamHeader::ref_from_prefix(streams_buf)
+                .ok_or(FormatErrorKind::InvalidStreamHeader)?;
 
             let name_buf = after_header_buf.get(..32).unwrap_or(after_header_buf);
             let name_buf = name_buf

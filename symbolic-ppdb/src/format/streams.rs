@@ -1,5 +1,5 @@
 use symbolic_common::Uuid;
-use zerocopy::LayoutVerified;
+use watto::Pod;
 
 use super::raw::PdbStreamHeader;
 use super::utils::decode_unsigned;
@@ -43,9 +43,8 @@ pub(crate) struct PdbStream<'data> {
 
 impl<'data> PdbStream<'data> {
     pub(crate) fn parse(buf: &'data [u8]) -> Result<Self, FormatError> {
-        let (lv, mut rest) = LayoutVerified::<_, PdbStreamHeader>::new_from_prefix(buf)
-            .ok_or(FormatErrorKind::InvalidHeader)?;
-        let header = lv.into_ref();
+        let (header, mut rest) =
+            PdbStreamHeader::ref_from_prefix(buf).ok_or(FormatErrorKind::InvalidHeader)?;
 
         let mut referenced_table_sizes = [0; 64];
         for (i, table) in referenced_table_sizes.iter_mut().enumerate() {
@@ -53,12 +52,10 @@ impl<'data> PdbStream<'data> {
                 continue;
             }
 
-            let (lv, rest_) = LayoutVerified::<_, u32>::new_from_prefix(rest)
-                .ok_or(FormatErrorKind::InvalidLength)?;
-            let len = lv.read();
+            let (len, rest_) = u32::ref_from_prefix(rest).ok_or(FormatErrorKind::InvalidLength)?;
             rest = rest_;
 
-            *table = len as u32;
+            *table = *len as u32;
         }
         Ok(Self {
             header,
@@ -117,12 +114,9 @@ pub(crate) struct GuidStream<'data> {
 
 impl<'data> GuidStream<'data> {
     pub(crate) fn parse(buf: &'data [u8]) -> Result<Self, FormatError> {
-        let bytes = LayoutVerified::<_, [uuid::Bytes]>::new_slice(buf)
-            .ok_or(FormatErrorKind::InvalidLength)?;
+        let bytes = uuid::Bytes::slice_from_bytes(buf).ok_or(FormatErrorKind::InvalidLength)?;
 
-        Ok(Self {
-            buf: bytes.into_slice(),
-        })
+        Ok(Self { buf: bytes })
     }
 
     pub(crate) fn get_guid(&self, idx: u32) -> Option<Uuid> {

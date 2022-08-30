@@ -1,4 +1,4 @@
-use zerocopy::FromBytes;
+use watto::Pod;
 
 /// Signature for physical metadata as specified by ECMA-335.
 pub const METADATA_SIGNATURE: u32 = 0x424A_5342;
@@ -7,7 +7,7 @@ pub const METADATA_SIGNATURE: u32 = 0x424A_5342;
 ///
 /// This includes everything before the version string.
 #[repr(C)]
-#[derive(Debug, FromBytes)]
+#[derive(Debug)]
 pub struct Header {
     /// The metadata signature.
     ///
@@ -30,7 +30,7 @@ pub struct Header {
 ///
 /// This includes everything after the version string.
 #[repr(C)]
-#[derive(Debug, FromBytes)]
+#[derive(Debug)]
 pub struct HeaderPart2 {
     /// Reserved, always 0.
     pub flags: u16,
@@ -42,7 +42,7 @@ pub struct HeaderPart2 {
 ///
 /// Does not contain the stream's name due to its variable length.
 #[repr(C)]
-#[derive(Debug, FromBytes)]
+#[derive(Debug)]
 pub struct StreamHeader {
     /// Memory offset to start of this stream form start of the metadata root.
     pub offset: u32,
@@ -53,7 +53,7 @@ pub struct StreamHeader {
 }
 
 #[repr(C, packed(4))]
-#[derive(Debug, FromBytes, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct PdbStreamHeader {
     pub id: [u8; 20],
     pub entry_point: u32,
@@ -61,7 +61,7 @@ pub struct PdbStreamHeader {
 }
 
 #[repr(C, packed(4))]
-#[derive(Debug, FromBytes, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct MetadataStreamHeader {
     pub _reserved: u32,
     pub major_version: u8,
@@ -71,3 +71,9 @@ pub struct MetadataStreamHeader {
     pub valid_tables: u64,
     pub sorted_tables: u64,
 }
+
+unsafe impl Pod for Header {}
+unsafe impl Pod for HeaderPart2 {}
+unsafe impl Pod for StreamHeader {}
+unsafe impl Pod for PdbStreamHeader {}
+unsafe impl Pod for MetadataStreamHeader {}
