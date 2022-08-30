@@ -9,7 +9,7 @@ use std::fmt;
 use thiserror::Error;
 use watto::Pod;
 
-use symbolic_common::Uuid;
+use symbolic_common::{DebugId, Uuid};
 
 use metadata::{MetadataStream, TableType};
 use streams::{BlobStream, GuidStream, PdbStream, StringStream, UsStream};
@@ -290,7 +290,7 @@ impl<'data> PortablePdb<'data> {
     }
 
     /// Reads this file's PDB ID from its #PDB stream.
-    pub(crate) fn pdb_id(&self) -> Option<[u8; 20]> {
+    pub(crate) fn pdb_id(&self) -> Option<DebugId> {
         self.pdb_stream.as_ref().map(|stream| stream.id())
     }
 

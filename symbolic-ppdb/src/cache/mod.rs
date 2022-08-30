@@ -202,9 +202,7 @@ impl<'data> PortablePdbCache<'data> {
 
     /// Returns the [`DebugId`] of this portable PDB cache.
     pub fn debug_id(&self) -> DebugId {
-        let (guid, age) = self.header.pdb_id.split_at(16);
-        let age = u32::from_ne_bytes(age.try_into().unwrap());
-        DebugId::from_guid_age(guid, age).unwrap()
+        self.header.pdb_id
     }
 }
 

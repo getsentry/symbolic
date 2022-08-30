@@ -1,3 +1,4 @@
+use symbolic_common::DebugId;
 use watto::Pod;
 
 /// The magic file preamble as individual bytes.
@@ -19,7 +20,7 @@ pub(crate) struct Header {
     /// The PortablePdbCache format version.
     pub(crate) version: u32,
     /// A byte sequence uniquely representing the debugging metadata blob content.
-    pub(crate) pdb_id: [u8; 20],
+    pub(crate) pdb_id: DebugId,
     /// The number of files contained in the cache file.
     pub(crate) num_files: u32,
     /// The number of ranges/source locations contained in the cache file.

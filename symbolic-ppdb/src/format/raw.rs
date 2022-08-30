@@ -1,3 +1,4 @@
+use symbolic_common::DebugId;
 use watto::Pod;
 
 /// Signature for physical metadata as specified by ECMA-335.
@@ -55,7 +56,7 @@ pub struct StreamHeader {
 #[repr(C, packed(4))]
 #[derive(Debug, Clone, Copy)]
 pub struct PdbStreamHeader {
-    pub id: [u8; 20],
+    pub id: DebugId,
     pub entry_point: u32,
     pub referenced_tables: u64,
 }

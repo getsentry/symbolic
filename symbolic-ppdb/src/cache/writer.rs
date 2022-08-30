@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::io::Write;
 
 use indexmap::IndexSet;
-use symbolic_common::Language;
+use symbolic_common::{DebugId, Language};
 use watto::{Pod, StringTable};
 
 use super::{raw, CacheError};
@@ -15,7 +15,7 @@ use crate::PortablePdb;
 #[derive(Debug, Default)]
 pub struct PortablePdbCacheConverter {
     /// A byte sequence uniquely representing the debugging metadata blob content.
-    pdb_id: [u8; 20],
+    pdb_id: DebugId,
     /// The set of all [`raw::File`]s that have been added to this `Converter`.
     files: IndexSet<raw::File>,
     /// A map from [`raw::Range`]s to the [`raw::SourceLocation`]s they correspond to.
@@ -106,7 +106,7 @@ impl PortablePdbCacheConverter {
         Ok(())
     }
 
-    fn set_pdb_id(&mut self, id: [u8; 20]) {
+    fn set_pdb_id(&mut self, id: DebugId) {
         self.pdb_id = id;
     }
 

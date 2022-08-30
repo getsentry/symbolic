@@ -1,4 +1,4 @@
-use symbolic_common::Uuid;
+use symbolic_common::{DebugId, Uuid};
 use watto::Pod;
 
 use super::raw::PdbStreamHeader;
@@ -63,7 +63,7 @@ impl<'data> PdbStream<'data> {
         })
     }
 
-    pub(crate) fn id(&self) -> [u8; 20] {
+    pub(crate) fn id(&self) -> DebugId {
         self.header.id
     }
 }
