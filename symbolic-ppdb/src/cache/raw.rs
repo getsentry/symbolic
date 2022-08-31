@@ -65,3 +65,25 @@ unsafe impl Pod for Header {}
 unsafe impl Pod for SourceLocation {}
 unsafe impl Pod for Range {}
 unsafe impl Pod for File {}
+
+#[cfg(test)]
+mod tests {
+    use std::mem;
+
+    use super::*;
+
+    #[test]
+    fn test_sizeof() {
+        assert_eq!(mem::size_of::<Header>(), 68);
+        assert_eq!(mem::align_of::<Header>(), 4);
+
+        assert_eq!(mem::size_of::<File>(), 8);
+        assert_eq!(mem::align_of::<File>(), 4);
+
+        assert_eq!(mem::size_of::<SourceLocation>(), 8);
+        assert_eq!(mem::align_of::<SourceLocation>(), 4);
+
+        assert_eq!(mem::size_of::<Range>(), 8);
+        assert_eq!(mem::align_of::<Range>(), 4);
+    }
+}

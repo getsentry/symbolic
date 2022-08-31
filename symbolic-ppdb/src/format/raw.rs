@@ -77,3 +77,28 @@ unsafe impl Pod for HeaderPart2 {}
 unsafe impl Pod for StreamHeader {}
 unsafe impl Pod for PdbStreamHeader {}
 unsafe impl Pod for MetadataStreamHeader {}
+
+#[cfg(test)]
+mod tests {
+    use std::mem;
+
+    use super::*;
+
+    #[test]
+    fn test_sizeof() {
+        assert_eq!(mem::size_of::<Header>(), 16);
+        assert_eq!(mem::align_of::<Header>(), 4);
+
+        assert_eq!(mem::size_of::<HeaderPart2>(), 4);
+        assert_eq!(mem::align_of::<HeaderPart2>(), 2);
+
+        assert_eq!(mem::size_of::<StreamHeader>(), 8);
+        assert_eq!(mem::align_of::<StreamHeader>(), 4);
+
+        assert_eq!(mem::size_of::<PdbStreamHeader>(), 32);
+        assert_eq!(mem::align_of::<PdbStreamHeader>(), 4);
+
+        assert_eq!(mem::size_of::<MetadataStreamHeader>(), 24);
+        assert_eq!(mem::align_of::<MetadataStreamHeader>(), 4);
+    }
+}
