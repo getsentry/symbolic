@@ -215,7 +215,7 @@ impl<'data> SymCache<'data> {
     /// Resolves a string reference to the pointed-to `&str` data.
     fn get_string(&self, offset: u32) -> Option<&'data str> {
         if self.header.version == SYMCACHE_VERSION {
-            StringTable::lookup(self.string_bytes, offset as usize)
+            StringTable::read(self.string_bytes, offset as usize).ok()
         } else {
             if offset == u32::MAX {
                 return None;

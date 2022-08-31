@@ -29,7 +29,7 @@ symbolic-il2cpp = { version = "9.1.1", path = "../symbolic-il2cpp", optional = t
 thiserror = "1.0.20"
 indexmap = "1.7.0"
 tracing = "0.1.35"
-watto = { path = "../../watto", features = ["writer", "strings"] }
+watto = { git = "https://github.com/getsentry/watto", features = ["writer", "strings"] }
 
 [dev-dependencies]
 insta = { version = "1.18.0", features = ["yaml"] }
