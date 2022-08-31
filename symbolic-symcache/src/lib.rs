@@ -112,6 +112,7 @@ use std::convert::TryInto;
 use symbolic_common::Arch;
 use symbolic_common::AsSelf;
 use symbolic_common::DebugId;
+use watto::StringTable;
 use watto::{align_to, Pod};
 
 pub use error::{Error, ErrorKind};
@@ -131,7 +132,8 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// 5: PR #221: Invalid inlinee nesting leading to wrong stack traces
 /// 6: PR #319: Correct line offsets and spacer line records
 /// 7: PR #459: A new binary format fundamentally based on addr ranges
-pub const SYMCACHE_VERSION: u32 = 7;
+/// 8: PR #670: Use watto for parsing and writing
+pub const SYMCACHE_VERSION: u32 = 8;
 
 /// The serialized SymCache binary format.
 ///
@@ -173,7 +175,7 @@ impl<'data> SymCache<'data> {
         if header.magic != raw::SYMCACHE_MAGIC {
             return Err(ErrorKind::WrongFormat.into());
         }
-        if header.version != SYMCACHE_VERSION {
+        if header.version != SYMCACHE_VERSION && header.version != 7 {
             return Err(ErrorKind::WrongVersion.into());
         }
 
@@ -212,23 +214,27 @@ impl<'data> SymCache<'data> {
 
     /// Resolves a string reference to the pointed-to `&str` data.
     fn get_string(&self, offset: u32) -> Option<&'data str> {
-        if offset == u32::MAX {
-            return None;
+        if self.header.version == SYMCACHE_VERSION {
+            StringTable::lookup(self.string_bytes, offset as usize)
+        } else {
+            if offset == u32::MAX {
+                return None;
+            }
+            let len_offset = offset as usize;
+            let len_size = std::mem::size_of::<u32>();
+            let len = u32::from_ne_bytes(
+                self.string_bytes
+                    .get(len_offset..len_offset + len_size)?
+                    .try_into()
+                    .unwrap(),
+            ) as usize;
+
+            let start_offset = len_offset + len_size;
+            let end_offset = start_offset + len;
+            let bytes = self.string_bytes.get(start_offset..end_offset)?;
+
+            std::str::from_utf8(bytes).ok()
         }
-        let len_offset = offset as usize;
-        let len_size = std::mem::size_of::<u32>();
-        let len = u32::from_ne_bytes(
-            self.string_bytes
-                .get(len_offset..len_offset + len_size)?
-                .try_into()
-                .unwrap(),
-        ) as usize;
-
-        let start_offset = len_offset + len_size;
-        let end_offset = start_offset + len;
-        let bytes = self.string_bytes.get(start_offset..end_offset)?;
-
-        std::str::from_utf8(bytes).ok()
     }
 
     /// The version of the SymCache file format.
