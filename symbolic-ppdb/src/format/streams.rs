@@ -64,7 +64,10 @@ impl<'data> PdbStream<'data> {
     }
 
     pub(crate) fn id(&self) -> DebugId {
-        self.header.id
+        let raw_id = self.header.id;
+        let (guid, age) = raw_id.split_at(16);
+        let age = u32::from_ne_bytes(age.try_into().unwrap());
+        DebugId::from_guid_age(guid, age).unwrap()
     }
 }
 
