@@ -201,7 +201,7 @@ impl SourceMapCacheWriter {
     #[tracing::instrument(level = "trace", name = "SourceMapCacheWriter::serialize", skip_all)]
     pub fn serialize<W: Write>(self, writer: &mut W) -> std::io::Result<()> {
         let mut writer = Writer::new(writer);
-        let string_bytes = self.string_table.as_bytes();
+        let string_bytes = self.string_table.into_bytes();
 
         let header = raw::Header {
             magic: raw::SOURCEMAPCACHE_MAGIC,
@@ -232,7 +232,7 @@ impl SourceMapCacheWriter {
         writer.write_all(self.line_offsets.as_bytes())?;
         writer.align_to(8)?;
 
-        writer.write_all(string_bytes)?;
+        writer.write_all(&string_bytes)?;
 
         Ok(())
     }
