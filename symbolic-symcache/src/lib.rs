@@ -168,7 +168,7 @@ impl<'data> SymCache<'data> {
     /// Parse the SymCache binary format into a convenient type that allows safe access and
     /// fast lookups.
     pub fn parse(buf: &'data [u8]) -> Result<Self> {
-        let (header, rest) = raw::Header::ref_from_prefix(buf).ok_or(ErrorKind::HeaderTooSmall)?;
+        let (header, rest) = raw::Header::ref_from_prefix(buf).ok_or(ErrorKind::InvalidHeader)?;
         if header.magic == raw::SYMCACHE_MAGIC_FLIPPED {
             return Err(ErrorKind::WrongEndianness.into());
         }
@@ -179,27 +179,34 @@ impl<'data> SymCache<'data> {
             return Err(ErrorKind::WrongVersion.into());
         }
 
-        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::BufferNotAligned)?;
+        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidFiles)?;
         let (files, rest) = raw::File::slice_from_prefix(rest, header.num_files as usize)
-            .ok_or(ErrorKind::HeaderTooSmall)?;
+            .ok_or(ErrorKind::InvalidFiles)?;
 
-        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::BufferNotAligned)?;
+        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidFunctions)?;
         let (functions, rest) =
             raw::Function::slice_from_prefix(rest, header.num_functions as usize)
-                .ok_or(ErrorKind::HeaderTooSmall)?;
+                .ok_or(ErrorKind::InvalidFunctions)?;
 
-        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::BufferNotAligned)?;
+        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidSourceLocations)?;
         let (source_locations, rest) =
             raw::SourceLocation::slice_from_prefix(rest, header.num_source_locations as usize)
-                .ok_or(ErrorKind::HeaderTooSmall)?;
+                .ok_or(ErrorKind::InvalidSourceLocations)?;
 
-        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::BufferNotAligned)?;
+        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidRanges)?;
         let (ranges, rest) = raw::Range::slice_from_prefix(rest, header.num_ranges as usize)
-            .ok_or(ErrorKind::HeaderTooSmall)?;
+            .ok_or(ErrorKind::InvalidRanges)?;
 
-        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::BufferNotAligned)?;
+        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::UnexpectedStringBytes {
+            expected: header.string_bytes as usize,
+            found: 0,
+        })?;
         if rest.len() < header.string_bytes as usize {
-            return Err(ErrorKind::BadFormatLength.into());
+            return Err(ErrorKind::UnexpectedStringBytes {
+                expected: header.string_bytes as usize,
+                found: rest.len(),
+            }
+            .into());
         }
 
         Ok(SymCache {
