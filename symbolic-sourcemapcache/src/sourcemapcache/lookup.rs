@@ -286,7 +286,8 @@ mod tests {
     #[test]
     fn lines_empty_file() {
         let source = "";
-        let line_offsets = SourceMapCacheWriter::line_offsets(source).collect::<Vec<_>>();
+        let mut line_offsets = Vec::new();
+        SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
 
         let file = File {
             name: "empty",
@@ -301,7 +302,8 @@ mod tests {
     #[test]
     fn lines_almost_empty_file() {
         let source = "\n";
-        let line_offsets = SourceMapCacheWriter::line_offsets(source).collect::<Vec<_>>();
+        let mut line_offsets = Vec::new();
+        SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
 
         let file = File {
             name: "almost_empty",
@@ -317,8 +319,8 @@ mod tests {
     #[test]
     fn lines_several_lines() {
         let source = "a\n\nb\nc";
-
-        let line_offsets = SourceMapCacheWriter::line_offsets(source).collect::<Vec<_>>();
+        let mut line_offsets = Vec::new();
+        SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
 
         let file = File {
             name: "several_lines",
@@ -335,8 +337,8 @@ mod tests {
     #[test]
     fn lines_several_lines_trailing_newline() {
         let source = "a\n\nb\nc\n";
-
-        let line_offsets = SourceMapCacheWriter::line_offsets(source).collect::<Vec<_>>();
+        let mut line_offsets = Vec::new();
+        SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
 
         let file = File {
             name: "several_lines_trailing_newline",
