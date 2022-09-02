@@ -458,7 +458,7 @@ impl<'a> SymCacheConverter<'a> {
         let num_functions = self.functions.len() as u32;
         let num_source_locations = (self.call_locations.len() + self.ranges.len()) as u32;
         let num_ranges = self.ranges.len() as u32;
-        let string_bytes = self.string_table.as_bytes();
+        let string_bytes = self.string_table.into_bytes();
 
         let header = raw::Header {
             magic: raw::SYMCACHE_MAGIC,
@@ -501,7 +501,7 @@ impl<'a> SymCacheConverter<'a> {
         }
         writer.align_to(8)?;
 
-        writer.write_all(string_bytes)?;
+        writer.write_all(&string_bytes)?;
 
         Ok(())
     }
