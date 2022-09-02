@@ -121,11 +121,7 @@ impl SourceMapCacheWriter {
                 let name_offset = string_table.insert(name) as u32;
                 let source_offset = string_table.insert(source) as u32;
                 let line_offsets_start = line_offsets.len() as u32;
-                let buf_ptr = source.as_ptr();
-                line_offsets.extend(source.lines().map(|line| {
-                    raw::LineOffset(unsafe { line.as_ptr().offset_from(buf_ptr) as usize } as u32)
-                }));
-                line_offsets.push(raw::LineOffset(source.len() as u32));
+                Self::append_line_offsets(source, &mut line_offsets);
                 let line_offsets_end = line_offsets.len() as u32;
 
                 files.push((
@@ -240,6 +236,29 @@ impl SourceMapCacheWriter {
 
         Ok(())
     }
+
+    /// Compute line offsets for a source file and append them to the given  vector.
+    ///
+    /// There is always one line offset at the start of the file (even if the file is empty)
+    /// and then another one after every newline (even if the file ends on a newline).
+    pub(crate) fn append_line_offsets(source: &str, out: &mut Vec<raw::LineOffset>) {
+        // The empty file has only one line offset for the start.
+        if source.is_empty() {
+            out.push(raw::LineOffset(0));
+            return;
+        }
+
+        let buf_ptr = source.as_ptr();
+        out.extend(source.lines().map(move |line| {
+            raw::LineOffset(unsafe { line.as_ptr().offset_from(buf_ptr) as usize } as u32)
+        }));
+
+        // If the file ends with a line break, add another line offset for the empty last line
+        // (the lines iterator skips it).
+        if source.ends_with('\n') {
+            out.push(raw::LineOffset(source.len() as u32));
+        }
+    }
 }
 
 /// An Error that can happen when building a [`super::SourceMapCache`].
@@ -268,5 +287,60 @@ impl std::fmt::Display for SourceMapCacheWriterError {
             SourceMapCacheErrorInner::ScopeIndex(e) => e.fmt(f),
             SourceMapCacheErrorInner::SourceContext(e) => e.fmt(f),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::sourcemapcache::raw::LineOffset;
+
+    #[test]
+    fn line_offsets_empty_file() {
+        let source = "";
+        let mut line_offsets = Vec::new();
+        SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
+
+        assert_eq!(line_offsets, [LineOffset(0)]);
+    }
+
+    #[test]
+    fn line_offsets_almost_empty_file() {
+        let source = "\n";
+        let mut line_offsets = Vec::new();
+        SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
+
+        assert_eq!(line_offsets, [LineOffset(0), LineOffset(1)]);
+    }
+
+    #[test]
+    fn line_offsets_several_lines() {
+        let source = "a\n\nb\nc";
+        let mut line_offsets = Vec::new();
+        SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
+
+        assert_eq!(
+            line_offsets,
+            [LineOffset(0), LineOffset(2), LineOffset(3), LineOffset(5),]
+        );
+    }
+
+    #[test]
+    fn line_offsets_several_lines_trailing_newline() {
+        let source = "a\n\nb\nc\n";
+        let mut line_offsets = Vec::new();
+        SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
+
+        assert_eq!(
+            line_offsets,
+            [
+                LineOffset(0),
+                LineOffset(2),
+                LineOffset(3),
+                LineOffset(5),
+                LineOffset(7),
+            ]
+        );
     }
 }
