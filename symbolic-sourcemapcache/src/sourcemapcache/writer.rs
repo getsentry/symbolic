@@ -123,11 +123,7 @@ impl SourceMapCacheWriter {
                 let name_offset = Self::insert_string(&mut string_bytes, &mut strings, name);
                 let source_offset = Self::insert_string(&mut string_bytes, &mut strings, source);
                 let line_offsets_start = line_offsets.len() as u32;
-                let buf_ptr = source.as_ptr();
-                line_offsets.extend(source.lines().map(|line| {
-                    raw::LineOffset(unsafe { line.as_ptr().offset_from(buf_ptr) as usize } as u32)
-                }));
-                line_offsets.push(raw::LineOffset(source.len() as u32));
+                line_offsets.extend(Self::line_offsets(source));
                 let line_offsets_end = line_offsets.len() as u32;
 
                 files.push((
@@ -267,6 +263,28 @@ impl SourceMapCacheWriter {
 
         Ok(())
     }
+
+    /// Compute line offsets for a source file.
+    ///
+    /// There is always one line offset at the start of the file (even if the file is empty)
+    /// and then another one after every newline (even if the file ends on a newline).
+    pub(crate) fn line_offsets(source: &str) -> impl Iterator<Item = raw::LineOffset> + '_ {
+        let buf_ptr = source.as_ptr();
+        source
+            .is_empty()
+            .then(|| raw::LineOffset(0))
+            .into_iter()
+            .chain(source.lines().map(move |line| {
+                raw::LineOffset(unsafe { line.as_ptr().offset_from(buf_ptr) as usize } as u32)
+            }))
+            .chain(
+                // If the file ends with a line break, add another line offset for the empty last line
+                // (the lines iterator skips it).
+                source
+                    .ends_with('\n')
+                    .then(|| raw::LineOffset(source.len() as u32)),
+            )
+    }
 }
 
 /// An Error that can happen when building a [`super::SourceMapCache`].
@@ -322,5 +340,59 @@ impl<W: Write> WriteWrapper<W> {
         let buf = &[0u8; 7];
         let len = raw::align_to_eight(self.position);
         self.write(&buf[0..len])
+    }
+}
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::sourcemapcache::raw::LineOffset;
+
+    #[test]
+    fn line_offsets_empty_file() {
+        let source = "";
+
+        let line_offsets = SourceMapCacheWriter::line_offsets(source).collect::<Vec<_>>();
+
+        assert_eq!(line_offsets, [LineOffset(0)]);
+    }
+
+    #[test]
+    fn line_offsets_almost_empty_file() {
+        let source = "\n";
+
+        let line_offsets = SourceMapCacheWriter::line_offsets(source).collect::<Vec<_>>();
+
+        assert_eq!(line_offsets, [LineOffset(0), LineOffset(1)]);
+    }
+
+    #[test]
+    fn line_offsets_several_lines() {
+        let source = "a\n\nb\nc";
+
+        let line_offsets = SourceMapCacheWriter::line_offsets(source).collect::<Vec<_>>();
+
+        assert_eq!(
+            line_offsets,
+            [LineOffset(0), LineOffset(2), LineOffset(3), LineOffset(5),]
+        );
+    }
+
+    #[test]
+    fn line_offsets_several_lines_trailing_newline() {
+        let source = "a\n\nb\nc\n";
+
+        let line_offsets = SourceMapCacheWriter::line_offsets(source).collect::<Vec<_>>();
+
+        assert_eq!(
+            line_offsets,
+            [
+                LineOffset(0),
+                LineOffset(2),
+                LineOffset(3),
+                LineOffset(5),
+                LineOffset(7),
+            ]
+        );
     }
 }
