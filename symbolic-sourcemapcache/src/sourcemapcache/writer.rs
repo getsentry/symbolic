@@ -1,8 +1,7 @@
-use std::collections::HashMap;
 use std::io::Write;
 
 use sourcemap::DecodedMap;
-use zerocopy::AsBytes;
+use watto::{Pod, StringTable, Writer};
 
 use crate::scope_index::{ScopeIndex, ScopeIndexError, ScopeLookupResult};
 use crate::source::{SourceContext, SourceContextError};
@@ -14,7 +13,7 @@ use raw::{ANONYMOUS_SCOPE_SENTINEL, GLOBAL_SCOPE_SENTINEL, NO_FILE_SENTINEL};
 /// A structure that allows quick resolution of minified source position
 /// to the original source position it maps to.
 pub struct SourceMapCacheWriter {
-    string_bytes: Vec<u8>,
+    string_table: StringTable,
     files: Vec<raw::File>,
     line_offsets: Vec<raw::LineOffset>,
     mappings: Vec<(raw::MinifiedSourcePosition, raw::OriginalSourceLocation)>,
@@ -112,16 +111,15 @@ impl SourceMapCacheWriter {
         }
         .map(|(name, source)| (name, source.unwrap_or_default()));
 
-        let mut string_bytes = Vec::new();
-        let mut strings = HashMap::new();
+        let mut string_table = StringTable::new();
         let mut mappings = Vec::new();
 
         let mut line_offsets = vec![];
         let mut files = vec![];
         tracing::trace_span!("extract original files").in_scope(|| {
             for (name, source) in orig_files {
-                let name_offset = Self::insert_string(&mut string_bytes, &mut strings, name);
-                let source_offset = Self::insert_string(&mut string_bytes, &mut strings, source);
+                let name_offset = string_table.insert(name) as u32;
+                let source_offset = string_table.insert(source) as u32;
                 let line_offsets_start = line_offsets.len() as u32;
                 let buf_ptr = source.as_ptr();
                 line_offsets.extend(source.lines().map(|line| {
@@ -163,10 +161,9 @@ impl SourceMapCacheWriter {
                 };
 
                 let scope_idx = match scope {
-                    ScopeLookupResult::NamedScope(name) => std::cmp::min(
-                        Self::insert_string(&mut string_bytes, &mut strings, name),
-                        GLOBAL_SCOPE_SENTINEL,
-                    ),
+                    ScopeLookupResult::NamedScope(name) => {
+                        std::cmp::min(string_table.insert(name) as u32, GLOBAL_SCOPE_SENTINEL)
+                    }
                     ScopeLookupResult::AnonymousScope => ANONYMOUS_SCOPE_SENTINEL,
                     ScopeLookupResult::Unknown => GLOBAL_SCOPE_SENTINEL,
                 };
@@ -195,36 +192,11 @@ impl SourceMapCacheWriter {
         let files = files.into_iter().map(|(_name, file)| file).collect();
 
         Ok(Self {
-            string_bytes,
+            string_table,
             files,
             line_offsets,
             mappings,
         })
-    }
-
-    /// Insert a string into this converter.
-    ///
-    /// If the string was already present, it is not added again. A newly added string
-    /// is prefixed by its length in LEB128 encoding. The returned `u32`
-    /// is the offset into the `string_bytes` field where the string is saved.
-    fn insert_string(
-        string_bytes: &mut Vec<u8>,
-        strings: &mut HashMap<String, u32>,
-        s: &str,
-    ) -> u32 {
-        if s.is_empty() {
-            return u32::MAX;
-        }
-        if let Some(&offset) = strings.get(s) {
-            return offset;
-        }
-        let string_offset = string_bytes.len() as u32;
-        let string_len = s.len() as u64;
-        leb128::write::unsigned(string_bytes, string_len).unwrap();
-        string_bytes.extend(s.bytes());
-
-        strings.insert(s.to_owned(), string_offset);
-        string_offset
     }
 
     /// Serialize the converted data.
@@ -232,7 +204,8 @@ impl SourceMapCacheWriter {
     /// This writes the SourceMapCache binary format into the given [`Write`].
     #[tracing::instrument(level = "trace", name = "SourceMapCacheWriter::serialize", skip_all)]
     pub fn serialize<W: Write>(self, writer: &mut W) -> std::io::Result<()> {
-        let mut writer = WriteWrapper::new(writer);
+        let mut writer = Writer::new(writer);
+        let string_bytes = self.string_table.as_bytes();
 
         let header = raw::Header {
             magic: raw::SOURCEMAPCACHE_MAGIC,
@@ -240,30 +213,30 @@ impl SourceMapCacheWriter {
             num_mappings: self.mappings.len() as u32,
             num_files: self.files.len() as u32,
             num_line_offsets: self.line_offsets.len() as u32,
-            string_bytes: self.string_bytes.len() as u32,
+            string_bytes: string_bytes.len() as u32,
             _reserved: [0; 8],
         };
 
-        writer.write(header.as_bytes())?;
-        writer.align()?;
+        writer.write_all(header.as_bytes())?;
+        writer.align_to(8)?;
 
         for (min_sp, _) in &self.mappings {
-            writer.write(min_sp.as_bytes())?;
+            writer.write_all(min_sp.as_bytes())?;
         }
-        writer.align()?;
+        writer.align_to(8)?;
 
         for (_, orig_sl) in self.mappings {
-            writer.write(orig_sl.as_bytes())?;
+            writer.write_all(orig_sl.as_bytes())?;
         }
-        writer.align()?;
+        writer.align_to(8)?;
 
-        writer.write(self.files.as_bytes())?;
-        writer.align()?;
+        writer.write_all(self.files.as_bytes())?;
+        writer.align_to(8)?;
 
-        writer.write(self.line_offsets.as_bytes())?;
-        writer.align()?;
+        writer.write_all(self.line_offsets.as_bytes())?;
+        writer.align_to(8)?;
 
-        writer.write(&self.string_bytes)?;
+        writer.write_all(string_bytes)?;
 
         Ok(())
     }
@@ -295,32 +268,5 @@ impl std::fmt::Display for SourceMapCacheWriterError {
             SourceMapCacheErrorInner::ScopeIndex(e) => e.fmt(f),
             SourceMapCacheErrorInner::SourceContext(e) => e.fmt(f),
         }
-    }
-}
-
-struct WriteWrapper<W> {
-    writer: W,
-    position: usize,
-}
-
-impl<W: Write> WriteWrapper<W> {
-    fn new(writer: W) -> Self {
-        Self {
-            writer,
-            position: 0,
-        }
-    }
-
-    fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
-        let len = data.len();
-        self.writer.write_all(data)?;
-        self.position += len;
-        Ok(len)
-    }
-
-    fn align(&mut self) -> std::io::Result<usize> {
-        let buf = &[0u8; 7];
-        let len = raw::align_to_eight(self.position);
-        self.write(&buf[0..len])
     }
 }

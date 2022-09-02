@@ -1,4 +1,4 @@
-use zerocopy::LayoutVerified;
+use watto::{align_to, Pod};
 
 use crate::{ScopeLookupResult, SourcePosition};
 
@@ -81,10 +81,7 @@ impl<'data> std::fmt::Debug for SourceMapCache<'data> {
 impl<'data> SourceMapCache<'data> {
     #[tracing::instrument(level = "trace", name = "SourceMapCache::parse", skip_all)]
     pub fn parse(buf: &'data [u8]) -> Result<Self> {
-        let (header, buf): (LayoutVerified<_, raw::Header>, _) =
-            LayoutVerified::new_from_prefix(buf).ok_or(Error::Header)?;
-        let header = header.into_ref();
-        let buf = align_buf(buf);
+        let (header, buf) = raw::Header::ref_from_prefix(buf).ok_or(Error::Header)?;
 
         if header.magic == raw::SOURCEMAPCACHE_MAGIC_FLIPPED {
             return Err(Error::WrongEndianness);
@@ -96,28 +93,25 @@ impl<'data> SourceMapCache<'data> {
             return Err(Error::WrongVersion);
         }
 
+        let (_, buf) = align_to(buf, 8).ok_or(Error::SourcePositions)?;
         let num_mappings = header.num_mappings as usize;
-        let (min_source_positions, buf) = LayoutVerified::new_slice_from_prefix(buf, num_mappings)
-            .ok_or(Error::SourcePositions)?;
-        let min_source_positions = min_source_positions.into_slice();
-        let buf = align_buf(buf);
-
-        let (orig_source_locations, buf) = LayoutVerified::new_slice_from_prefix(buf, num_mappings)
-            .ok_or(Error::SourceLocations)?;
-        let orig_source_locations = orig_source_locations.into_slice();
-        let buf = align_buf(buf);
-
-        let (files, buf) = LayoutVerified::new_slice_from_prefix(buf, header.num_files as usize)
-            .ok_or(Error::SourceLocations)?;
-        let files = files.into_slice();
-        let buf = align_buf(buf);
-
-        let (line_offsets, buf) =
-            LayoutVerified::new_slice_from_prefix(buf, header.num_line_offsets as usize)
+        let (min_source_positions, buf) =
+            raw::MinifiedSourcePosition::slice_from_prefix(buf, num_mappings)
+                .ok_or(Error::SourcePositions)?;
+        let (orig_source_locations, buf) =
+            raw::OriginalSourceLocation::slice_from_prefix(buf, num_mappings)
                 .ok_or(Error::SourceLocations)?;
-        let line_offsets = line_offsets.into_slice();
-        let buf = align_buf(buf);
 
+        let (_, buf) = align_to(buf, 8).ok_or(Error::Files)?;
+        let (files, buf) =
+            raw::File::slice_from_prefix(buf, header.num_files as usize).ok_or(Error::Files)?;
+
+        let (_, buf) = align_to(buf, 8).ok_or(Error::LineOffsets)?;
+        let (line_offsets, buf) =
+            raw::LineOffset::slice_from_prefix(buf, header.num_line_offsets as usize)
+                .ok_or(Error::LineOffsets)?;
+
+        let (_, buf) = align_to(buf, 8).ok_or(Error::StringBytes)?;
         let string_bytes = header.string_bytes as usize;
         let string_bytes = buf.get(..string_bytes).ok_or(Error::StringBytes)?;
 
@@ -216,6 +210,10 @@ pub enum Error {
     SourceLocations,
     #[error("invalid string bytes")]
     StringBytes,
+    #[error("invalid files")]
+    Files,
+    #[error("invalid line offsets")]
+    LineOffsets,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -267,9 +265,4 @@ impl<'data> Iterator for Files<'data> {
             .next()
             .and_then(|raw_file| self.cache.resolve_file(raw_file))
     }
-}
-
-fn align_buf(buf: &[u8]) -> &[u8] {
-    let offset = buf.as_ptr().align_offset(8);
-    buf.get(offset..).unwrap_or(&[])
 }

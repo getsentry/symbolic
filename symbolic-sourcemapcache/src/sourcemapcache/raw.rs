@@ -1,4 +1,4 @@
-use zerocopy::{AsBytes, FromBytes};
+use watto::Pod;
 
 /// The magic file preamble as individual bytes.
 const SOURCEMAPCACHE_MAGIC_BYTES: [u8; 4] = *b"SMCA";
@@ -14,7 +14,7 @@ pub const SOURCEMAPCACHE_MAGIC_FLIPPED: u32 = SOURCEMAPCACHE_MAGIC.swap_bytes();
 pub const SOURCEMAPCACHE_VERSION: u32 = 1;
 
 /// The SourceMapCache binary Header.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, FromBytes, AsBytes)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 pub struct Header {
     /// The file magic representing the file format and endianness.
@@ -40,7 +40,7 @@ pub struct Header {
 }
 
 /// A minified source position of line/column.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, FromBytes, AsBytes)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(C)]
 pub struct MinifiedSourcePosition {
     pub line: u32,
@@ -64,7 +64,7 @@ pub const GLOBAL_SCOPE_SENTINEL: u32 = u32::MAX;
 pub const ANONYMOUS_SCOPE_SENTINEL: u32 = u32::MAX - 1;
 
 /// The original source location, line, column and scope.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, FromBytes, AsBytes)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub struct OriginalSourceLocation {
     /// The optional original source file (index in the file table).
@@ -78,7 +78,7 @@ pub struct OriginalSourceLocation {
 }
 
 /// A minified source position of line/column.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, FromBytes, AsBytes)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(C)]
 pub struct File {
     /// The source filename (offset into string table).
@@ -92,20 +92,15 @@ pub struct File {
 }
 
 /// An offset into each files content representing line boundaries.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, FromBytes, AsBytes)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(C)]
 pub struct LineOffset(pub u32);
 
-/// Returns the amount left to add to the remainder to get 8 if
-/// `to_align` isn't a multiple of 8.
-pub fn align_to_eight(to_align: usize) -> usize {
-    let remainder = to_align % 8;
-    if remainder == 0 {
-        remainder
-    } else {
-        8 - remainder
-    }
-}
+unsafe impl Pod for Header {}
+unsafe impl Pod for OriginalSourceLocation {}
+unsafe impl Pod for MinifiedSourcePosition {}
+unsafe impl Pod for File {}
+unsafe impl Pod for LineOffset {}
 
 #[cfg(test)]
 mod tests {
