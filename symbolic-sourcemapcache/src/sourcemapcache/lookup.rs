@@ -238,9 +238,13 @@ impl<'data> File<'data> {
 
     /// Returns the requested source line if possible.
     pub fn line(&self, line_no: usize) -> Option<&'data str> {
+        let source = self.source?;
         let from = self.line_offsets.get(line_no).copied()?.0 as usize;
-        let to = self.line_offsets.get(line_no.checked_add(1)?).copied()?.0 as usize;
-        self.source.and_then(|source| source.get(from..to))
+        let next_line_no = line_no.checked_add(1);
+        let to = next_line_no
+            .and_then(|next_line_no| self.line_offsets.get(next_line_no))
+            .map_or(source.len(), |lo| lo.0 as usize);
+        source.get(from..to)
     }
 }
 
@@ -272,4 +276,80 @@ impl<'data> Iterator for Files<'data> {
 fn align_buf(buf: &[u8]) -> &[u8] {
     let offset = buf.as_ptr().align_offset(8);
     buf.get(offset..).unwrap_or(&[])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::SourceMapCacheWriter;
+
+    #[test]
+    fn lines_empty_file() {
+        let source = "";
+        let mut line_offsets = Vec::new();
+        SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
+
+        let file = File {
+            name: "empty",
+            source: Some(source),
+            line_offsets: &line_offsets,
+        };
+
+        assert_eq!(file.line(0), Some(""));
+        assert_eq!(file.line(1), None);
+    }
+
+    #[test]
+    fn lines_almost_empty_file() {
+        let source = "\n";
+        let mut line_offsets = Vec::new();
+        SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
+
+        let file = File {
+            name: "almost_empty",
+            source: Some(source),
+            line_offsets: &line_offsets,
+        };
+
+        assert_eq!(file.line(0), Some("\n"));
+        assert_eq!(file.line(1), Some(""));
+        assert_eq!(file.line(2), None);
+    }
+
+    #[test]
+    fn lines_several_lines() {
+        let source = "a\n\nb\nc";
+        let mut line_offsets = Vec::new();
+        SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
+
+        let file = File {
+            name: "several_lines",
+            source: Some(source),
+            line_offsets: &line_offsets,
+        };
+
+        assert_eq!(file.line(0), Some("a\n"));
+        assert_eq!(file.line(1), Some("\n"));
+        assert_eq!(file.line(2), Some("b\n"));
+        assert_eq!(file.line(3), Some("c"));
+    }
+
+    #[test]
+    fn lines_several_lines_trailing_newline() {
+        let source = "a\n\nb\nc\n";
+        let mut line_offsets = Vec::new();
+        SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
+
+        let file = File {
+            name: "several_lines_trailing_newline",
+            source: Some(source),
+            line_offsets: &line_offsets,
+        };
+
+        assert_eq!(file.line(0), Some("a\n"));
+        assert_eq!(file.line(1), Some("\n"));
+        assert_eq!(file.line(2), Some("b\n"));
+        assert_eq!(file.line(3), Some("c\n"));
+        assert_eq!(file.line(4), Some(""));
+    }
 }
