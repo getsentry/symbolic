@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use itertools::{EitherOrBoth, Itertools};
+use itertools::Itertools;
 use sourcemap::DecodedMap;
 use watto::{Pod, StringTable, Writer};
 
@@ -139,7 +139,6 @@ impl SourceMapCacheWriter {
                 ));
             }
         });
-        files.sort_by_key(|(name, _file)| *name);
 
         // iterate over the tokens and create our index
         let mut last = None;
@@ -147,18 +146,14 @@ impl SourceMapCacheWriter {
             for token in tokens {
                 let (min_line, min_col) = token.get_dst();
                 let sp = SourcePosition::new(min_line, min_col);
-                let file = token.get_source();
                 let line = token.get_src_line();
                 let column = token.get_src_col();
                 let scope = lookup_scope(&sp);
+                let mut file_idx = token.get_src_id();
 
-                let file_idx = match file {
-                    Some(file) => files
-                        .binary_search_by_key(&file, |(file_name, _)| file_name)
-                        .map(|idx| idx as u32)
-                        .unwrap_or(NO_FILE_SENTINEL),
-                    None => NO_FILE_SENTINEL,
-                };
+                if file_idx >= files.len() as u32 {
+                    file_idx = NO_FILE_SENTINEL;
+                }
 
                 let scope_idx = match scope {
                     ScopeLookupResult::NamedScope(name) => {
