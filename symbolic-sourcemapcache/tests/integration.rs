@@ -263,6 +263,32 @@ fn resolves_location_from_cache() {
 }
 
 #[test]
+fn missing_source_names() {
+    let minified = std::fs::read_to_string(fixture("sourcemapcache/nofiles.js")).unwrap();
+    let map = std::fs::read_to_string(fixture("sourcemapcache/nofiles.js.map")).unwrap();
+
+    let writer = SourceMapCacheWriter::new(&minified, &map).unwrap();
+
+    let mut buf = vec![];
+    writer.serialize(&mut buf).unwrap();
+
+    let cache = SourceMapCache::parse(&buf).unwrap();
+
+    let files = cache.files().collect::<Vec<_>>();
+
+    assert_eq!(files.len(), 2);
+
+    let sp = SourcePosition::new(0, 38);
+
+    let sl = cache.lookup(sp).unwrap();
+    assert_eq!(sl.file().unwrap(), files[0]);
+    assert_eq!(sl.line(), 2);
+    assert_eq!(sl.column(), 8);
+    assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("add"));
+    assert_eq!(sl.line_contents().unwrap(), "\treturn a + b; // fôo\n")
+}
+
+#[test]
 fn missing_source_contents() {
     let minified = std::fs::read_to_string(fixture("sourcemapcache/preact.module.js")).unwrap();
     let map = std::fs::read_to_string(fixture(
@@ -279,7 +305,7 @@ fn missing_source_contents() {
 
     let mut files: HashMap<_, _> = cache
         .files()
-        .map(|file| (file.name(), file.source()))
+        .map(|file| (file.name().unwrap(), file.source()))
         .collect();
 
     assert_eq!(files.len(), 12);

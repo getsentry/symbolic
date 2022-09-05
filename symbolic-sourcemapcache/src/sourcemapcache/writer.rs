@@ -1,5 +1,6 @@
 use std::io::Write;
 
+use itertools::{EitherOrBoth, Itertools};
 use sourcemap::DecodedMap;
 use watto::{Pod, StringTable, Writer};
 
@@ -7,8 +8,7 @@ use crate::scope_index::{ScopeIndex, ScopeIndexError, ScopeLookupResult};
 use crate::source::{SourceContext, SourceContextError};
 use crate::{extract_scope_names, NameResolver, SourcePosition};
 
-use super::raw;
-use raw::{ANONYMOUS_SCOPE_SENTINEL, GLOBAL_SCOPE_SENTINEL, NO_FILE_SENTINEL};
+use super::raw::{self, ANONYMOUS_SCOPE_SENTINEL, GLOBAL_SCOPE_SENTINEL, NO_FILE_SENTINEL};
 
 /// A structure that allows quick resolution of minified source position
 /// to the original source position it maps to.
@@ -105,11 +105,14 @@ impl SourceMapCacheWriter {
         };
 
         let orig_files = match &sm {
-            DecodedMap::Regular(sm) => sm.sources().zip(sm.source_contents()),
-            DecodedMap::Hermes(smh) => smh.sources().zip(smh.source_contents()),
+            DecodedMap::Regular(sm) => sm
+                .sources()
+                .zip_longest(sm.source_contents().map(Option::unwrap_or_default)),
+            DecodedMap::Hermes(smh) => smh
+                .sources()
+                .zip_longest(smh.source_contents().map(Option::unwrap_or_default)),
             DecodedMap::Index(_smi) => unreachable!(),
-        }
-        .map(|(name, source)| (name, source.unwrap_or_default()));
+        };
 
         let mut string_table = StringTable::new();
         let mut mappings = Vec::new();
@@ -117,7 +120,8 @@ impl SourceMapCacheWriter {
         let mut line_offsets = vec![];
         let mut files = vec![];
         tracing::trace_span!("extract original files").in_scope(|| {
-            for (name, source) in orig_files {
+            for orig_file in orig_files {
+                let (name, source) = orig_file.or_default();
                 let name_offset = string_table.insert(name) as u32;
                 let source_offset = string_table.insert(source) as u32;
                 let line_offsets_start = line_offsets.len() as u32;
