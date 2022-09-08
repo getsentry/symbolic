@@ -1,5 +1,6 @@
 use std::io::Write;
 
+use itertools::Itertools;
 use sourcemap::DecodedMap;
 use watto::{Pod, StringTable, Writer};
 
@@ -7,8 +8,7 @@ use crate::scope_index::{ScopeIndex, ScopeIndexError, ScopeLookupResult};
 use crate::source::{SourceContext, SourceContextError};
 use crate::{extract_scope_names, NameResolver, SourcePosition};
 
-use super::raw;
-use raw::{ANONYMOUS_SCOPE_SENTINEL, GLOBAL_SCOPE_SENTINEL, NO_FILE_SENTINEL};
+use super::raw::{self, ANONYMOUS_SCOPE_SENTINEL, GLOBAL_SCOPE_SENTINEL, NO_FILE_SENTINEL};
 
 /// A structure that allows quick resolution of minified source position
 /// to the original source position it maps to.
@@ -105,11 +105,14 @@ impl SourceMapCacheWriter {
         };
 
         let orig_files = match &sm {
-            DecodedMap::Regular(sm) => sm.sources().zip(sm.source_contents()),
-            DecodedMap::Hermes(smh) => smh.sources().zip(smh.source_contents()),
+            DecodedMap::Regular(sm) => sm
+                .sources()
+                .zip_longest(sm.source_contents().map(Option::unwrap_or_default)),
+            DecodedMap::Hermes(smh) => smh
+                .sources()
+                .zip_longest(smh.source_contents().map(Option::unwrap_or_default)),
             DecodedMap::Index(_smi) => unreachable!(),
-        }
-        .map(|(name, source)| (name, source.unwrap_or_default()));
+        };
 
         let mut string_table = StringTable::new();
         let mut mappings = Vec::new();
@@ -117,7 +120,8 @@ impl SourceMapCacheWriter {
         let mut line_offsets = vec![];
         let mut files = vec![];
         tracing::trace_span!("extract original files").in_scope(|| {
-            for (name, source) in orig_files {
+            for orig_file in orig_files {
+                let (name, source) = orig_file.or_default();
                 let name_offset = string_table.insert(name) as u32;
                 let source_offset = string_table.insert(source) as u32;
                 let line_offsets_start = line_offsets.len() as u32;
@@ -135,7 +139,6 @@ impl SourceMapCacheWriter {
                 ));
             }
         });
-        files.sort_by_key(|(name, _file)| *name);
 
         // iterate over the tokens and create our index
         let mut last = None;
@@ -143,18 +146,14 @@ impl SourceMapCacheWriter {
             for token in tokens {
                 let (min_line, min_col) = token.get_dst();
                 let sp = SourcePosition::new(min_line, min_col);
-                let file = token.get_source();
                 let line = token.get_src_line();
                 let column = token.get_src_col();
                 let scope = lookup_scope(&sp);
+                let mut file_idx = token.get_src_id();
 
-                let file_idx = match file {
-                    Some(file) => files
-                        .binary_search_by_key(&file, |(file_name, _)| file_name)
-                        .map(|idx| idx as u32)
-                        .unwrap_or(NO_FILE_SENTINEL),
-                    None => NO_FILE_SENTINEL,
-                };
+                if file_idx >= files.len() as u32 {
+                    file_idx = NO_FILE_SENTINEL;
+                }
 
                 let scope_idx = match scope {
                     ScopeLookupResult::NamedScope(name) => {

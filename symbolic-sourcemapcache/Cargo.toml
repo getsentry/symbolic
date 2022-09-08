@@ -19,6 +19,7 @@ leb128 = "0.2.5"
 indexmap = "1.9.1"
 tracing = "0.1.36"
 watto = { git = "https://github.com/getsentry/watto", features = ["writer", "strings"]}
+itertools = "0.10.3"
 
 [dev-dependencies]
 symbolic-testutils = { path = "../symbolic-testutils" }

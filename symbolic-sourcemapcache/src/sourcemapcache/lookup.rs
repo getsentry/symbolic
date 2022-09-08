@@ -45,7 +45,7 @@ impl<'data> SourceLocation<'data> {
 
     /// The name of the source file this location belongs to.
     pub fn file_name(&self) -> Option<&'data str> {
-        self.file.map(|file| file.name)
+        self.file.and_then(|file| file.name)
     }
 
     /// The source of the file this location belongs to.
@@ -136,7 +136,7 @@ impl<'data> SourceMapCache<'data> {
     }
 
     fn resolve_file(&self, raw_file: &raw::File) -> Option<File<'data>> {
-        let name = self.get_string(raw_file.name_offset)?;
+        let name = self.get_string(raw_file.name_offset);
         let source = self.get_string(raw_file.source_offset);
         let line_offsets = self
             .line_offsets
@@ -218,14 +218,14 @@ pub enum Error {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct File<'data> {
-    name: &'data str,
+    name: Option<&'data str>,
     source: Option<&'data str>,
     line_offsets: &'data [raw::LineOffset],
 }
 
 impl<'data> File<'data> {
     /// Returns the name of this file.
-    pub fn name(&self) -> &'data str {
+    pub fn name(&self) -> Option<&'data str> {
         self.name
     }
 
@@ -283,7 +283,7 @@ mod tests {
         SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
 
         let file = File {
-            name: "empty",
+            name: None,
             source: Some(source),
             line_offsets: &line_offsets,
         };
@@ -299,7 +299,7 @@ mod tests {
         SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
 
         let file = File {
-            name: "almost_empty",
+            name: None,
             source: Some(source),
             line_offsets: &line_offsets,
         };
@@ -316,7 +316,7 @@ mod tests {
         SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
 
         let file = File {
-            name: "several_lines",
+            name: None,
             source: Some(source),
             line_offsets: &line_offsets,
         };
@@ -334,7 +334,7 @@ mod tests {
         SourceMapCacheWriter::append_line_offsets(source, &mut line_offsets);
 
         let file = File {
-            name: "several_lines_trailing_newline",
+            name: None,
             source: Some(source),
             line_offsets: &line_offsets,
         };

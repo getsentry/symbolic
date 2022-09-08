@@ -41,6 +41,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 
     println!("Source: {}", token.file_name().unwrap_or("<anonymous>"));
     println!("Line: {}", token.line());
+    println!("Column: {}", token.column());
     println!(
         "Function: {}",
         match token.scope() {
