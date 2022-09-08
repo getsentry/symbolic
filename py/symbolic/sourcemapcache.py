@@ -45,8 +45,6 @@ class SourceMapCache(RustObject):
     @classmethod
     def from_bytes(cls, source_content, sourcemap_content):
         """Constructs a sourcemapcache from bytes."""
-        source_content = bytes(source_content.encode("utf-8"))
-        sourcemap_content = bytes(sourcemap_content.encode("utf-8"))
         return cls._from_objptr(
             rustcall(
                 lib.symbolic_sourcemapcache_from_bytes,
