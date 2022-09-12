@@ -132,7 +132,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// 5: PR #221: Invalid inlinee nesting leading to wrong stack traces
 /// 6: PR #319: Correct line offsets and spacer line records
 /// 7: PR #459: A new binary format fundamentally based on addr ranges
-/// 8: PR #670: Use watto for parsing and writing
+/// 8: PR #670: Use LEB128-prefixed string table
 pub const SYMCACHE_VERSION: u32 = 8;
 
 /// The serialized SymCache binary format.
@@ -221,7 +221,7 @@ impl<'data> SymCache<'data> {
 
     /// Resolves a string reference to the pointed-to `&str` data.
     fn get_string(&self, offset: u32) -> Option<&'data str> {
-        if self.header.version == SYMCACHE_VERSION {
+        if self.header.version >= 8 {
             // version >= 8: string length prefixes are LEB128
             StringTable::read(self.string_bytes, offset as usize).ok()
         } else {
