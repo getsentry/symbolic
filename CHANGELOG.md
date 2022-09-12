@@ -2,15 +2,17 @@
 
 ## Unreleased
 
+**Features**:
+
+- The new version 8 of the symcache format saves strings slightly more compactly. Reading of version 7 is still supported. ([#670](https://github.com/getsentry/symbolic/pull/670))
+
 **Fixes**:
 
 - Correctly resolve the `DW_AT_producer` attribute of DWARF files. ([#676](https://github.com/getsentry/symbolic/pull/676))
 
 **Internal**:
 
-- Use the `watto` library for de/serialization of symcache and ppdbcache.
-- The current version of the symcache format is bumped to 8. Reading of version 7 is still supported.
-
+- Use the `watto` library for de/serialization of symcache and ppdbcache. ([#670](https://github.com/getsentry/symbolic/pull/670))
 
 ## 9.1.1
 
