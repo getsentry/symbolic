@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Correctly resolve the `DW_AT_producer` attribute of DWARF files ([#676](https://github.com/getsentry/symbolic/pull/676))
+
 ## 9.1.1
 
 **Fixes**:

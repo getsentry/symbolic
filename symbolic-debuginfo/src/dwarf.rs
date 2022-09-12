@@ -505,10 +505,12 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             .as_ref()
             .map(|program| DwarfLineProgram::prepare(program.clone()));
 
-        let producer = match entry.attr_value(constants::DW_AT_producer)? {
-            Some(AttributeValue::String(string)) => Some(string),
-            _ => None,
-        };
+        // The value of DW_AT_producer may be an in-place string or a
+        // reference into the debug_str section. We use `string_value`
+        // to resolve it correctly in either case.
+        let producer = entry
+            .attr_value(constants::DW_AT_producer)?
+            .and_then(|av| av.string_value(&info.inner.debug_str));
 
         // Trust the symbol table more to contain accurate mangled names. However, since Dart's name
         // mangling is lossy, we need to load the demangled name instead.
