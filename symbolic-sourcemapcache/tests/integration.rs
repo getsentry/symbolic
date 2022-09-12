@@ -402,3 +402,36 @@ fn metro_scope_lookup() {
     assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("<global>"));
     assert_eq!(sl.line_contents().unwrap(), "foo();\n");
 }
+
+#[test]
+fn webpack_scope_lookup() {
+    let minified = std::fs::read_to_string(fixture("sourcemapcache/webpack/bundle.js")).unwrap();
+    let map = std::fs::read_to_string(fixture("sourcemapcache/webpack/bundle.js.map")).unwrap();
+
+    let writer = SourceMapCacheWriter::new(&minified, &map).unwrap();
+
+    let mut buf = vec![];
+    writer.serialize(&mut buf).unwrap();
+
+    let cache = SourceMapCache::parse(&buf).unwrap();
+
+    // NOTE: we infer `module.exports` for both frames here, although both functions are named in
+    // the original source. The webpack minifier step throws that away for obvious reasons but does
+    // not retain a `name` for it.
+
+    // at r.exports (bundle.js:1:85)
+    let sl = cache.lookup(SourcePosition::new(0, 84)).unwrap();
+    assert_eq!(sl.file_name(), Some("webpack:///./foo.js"));
+    assert_eq!(sl.line(), 1);
+    assert_eq!(sl.column(), 8);
+    assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("module.exports"));
+    assert_eq!(sl.line_contents().unwrap(), "  throw new Error(\"wat\");\n");
+
+    // at r.exports (bundle.js:1:44)
+    let sl = cache.lookup(SourcePosition::new(0, 43)).unwrap();
+    assert_eq!(sl.file_name(), Some("webpack:///./bar.js"));
+    assert_eq!(sl.line(), 1);
+    assert_eq!(sl.column(), 2);
+    assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("module.exports"));
+    assert_eq!(sl.line_contents().unwrap(), "  f();\n");
+}
