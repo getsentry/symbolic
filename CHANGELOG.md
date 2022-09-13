@@ -4,7 +4,8 @@
 
 **Fixes**:
 
-- Correctly resolve the `DW_AT_producer` attribute of DWARF files ([#676](https://github.com/getsentry/symbolic/pull/676))
+- Be stricter about demangling only `_Z` prefixed C++ names. ([#681](https://github.com/getsentry/symbolic/pull/681))
+- Correctly resolve the `DW_AT_producer` attribute of DWARF files. ([#676](https://github.com/getsentry/symbolic/pull/676))
 
 ## 9.1.1
 
