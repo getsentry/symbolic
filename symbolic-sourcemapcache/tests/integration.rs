@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
-use symbolic_sourcemapcache::{
-    extract_scope_names, NameResolver, ScopeIndex, ScopeLookupResult, SourceContext, SourcePosition,
+use symbolic_sourcemapcache::_internal_not_stable_::{
+    extract_scope_names, NameResolver, ScopeIndex, SourceContext,
 };
-use symbolic_sourcemapcache::{SourceMapCache, SourceMapCacheWriter};
+use symbolic_sourcemapcache::{
+    ScopeLookupResult, SourceMapCache, SourceMapCacheWriter, SourcePosition,
+};
 use symbolic_testutils::fixture;
 
 #[test]

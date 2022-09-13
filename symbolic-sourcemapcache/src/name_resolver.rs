@@ -1,6 +1,7 @@
 use sourcemap::DecodedMap;
 
-use crate::{NameComponent, ScopeName, SourceContext};
+use crate::scope_name::{NameComponent, ScopeName};
+use crate::source::SourceContext;
 
 /// The NameResolver is responsible for resolving [`ScopeName`]s using
 /// information contained in a [`DecodedMap`].
