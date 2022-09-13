@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Be stricter about demangling only `_Z` prefixed C++ names. ([#681](https://github.com/getsentry/symbolic/pull/681))
+
 ## 9.1.2
 
 **Fixes**:
