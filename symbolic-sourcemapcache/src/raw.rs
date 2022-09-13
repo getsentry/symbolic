@@ -1,3 +1,4 @@
+use js_source_scopes::SourcePosition;
 use watto::Pod;
 
 /// The magic file preamble as individual bytes.
@@ -47,8 +48,8 @@ pub struct MinifiedSourcePosition {
     pub column: u32,
 }
 
-impl From<crate::source::SourcePosition> for MinifiedSourcePosition {
-    fn from(sp: crate::source::SourcePosition) -> Self {
+impl From<SourcePosition> for MinifiedSourcePosition {
+    fn from(sp: SourcePosition) -> Self {
         Self {
             line: sp.line,
             column: sp.column,

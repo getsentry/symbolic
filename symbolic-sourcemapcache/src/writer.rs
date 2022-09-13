@@ -1,13 +1,12 @@
 use std::io::Write;
 
 use itertools::Itertools;
+use js_source_scopes::{
+    extract_scope_names, NameResolver, ScopeIndex, ScopeIndexError, ScopeLookupResult,
+    SourceContext, SourceContextError, SourcePosition,
+};
 use sourcemap::DecodedMap;
 use watto::{Pod, StringTable, Writer};
-
-use crate::_internal_not_stable_::extract_scope_names;
-use crate::name_resolver::NameResolver;
-use crate::scope_index::{ScopeIndex, ScopeIndexError, ScopeLookupResult};
-use crate::source::{SourceContext, SourceContextError, SourcePosition};
 
 use super::raw::{self, ANONYMOUS_SCOPE_SENTINEL, GLOBAL_SCOPE_SENTINEL, NO_FILE_SENTINEL};
 
@@ -294,7 +293,7 @@ impl std::fmt::Display for SourceMapCacheWriterError {
 mod tests {
 
     use super::*;
-    use crate::sourcemapcache::raw::LineOffset;
+    use crate::raw::LineOffset;
 
     #[test]
     fn line_offsets_empty_file() {

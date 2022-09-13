@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 
-use symbolic_sourcemapcache::_internal_not_stable_::{
-    extract_scope_names, NameResolver, ScopeIndex, SourceContext,
+use js_source_scopes::{
+    extract_scope_names, ScopeIndex, ScopeLookupResult, SourceContext, SourcePosition,
 };
-use symbolic_sourcemapcache::{
-    ScopeLookupResult, SourceMapCache, SourceMapCacheWriter, SourcePosition,
-};
+use symbolic_sourcemapcache::{SourceMapCache, SourceMapCacheWriter};
 use symbolic_testutils::fixture;
 
 #[test]
@@ -133,33 +131,6 @@ fn resolves_scope_names() {
     // namedFn@http://127.0.0.1:8080/sync.mjs:4:3
     // at namedFn (http://127.0.0.1:8080/sync.mjs:4:3)
     assert_eq!(lookup(4, 3), NamedScope("namedFn"));
-}
-
-#[test]
-fn resolves_token_from_names() {
-    let minified = std::fs::read_to_string(fixture("sourcemapcache/preact.module.js")).unwrap();
-    let ctx = SourceContext::new(&minified).unwrap();
-
-    let map = std::fs::read_to_string(fixture("sourcemapcache/preact.module.js.map")).unwrap();
-    let sm = sourcemap::decode_slice(map.as_bytes()).unwrap();
-
-    let scopes = extract_scope_names(&minified);
-    // dbg!(&scopes);
-
-    let resolver = NameResolver::new(&ctx, &sm);
-
-    let resolved_scopes = scopes.into_iter().map(|(range, name)| {
-        let minified_name = name.as_ref().map(|n| n.to_string());
-        let original_name = name.map(|n| resolver.resolve_name(&n));
-
-        (range, minified_name, original_name)
-    });
-
-    for (range, minified, original) in resolved_scopes {
-        println!("{range:?}");
-        println!("  minified: {minified:?}");
-        println!("  original: {original:?}");
-    }
 }
 
 #[test]
