@@ -240,6 +240,13 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
         return try_demangle_msvc(ident, opts);
     }
 
+    // C++ *symbols* will always start with a `_Z` prefix, but `cpp_demangle` is a bit more lenient
+    // and will also demangle bare types, turning `a` into `signed char` for example. So lets be
+    // a bit stricter and make sure we always have a `_Z` prefix.
+    if !is_maybe_cpp(ident) {
+        return None;
+    }
+
     #[cfg(feature = "cpp")]
     {
         use cpp_demangle::{DemangleOptions as CppOptions, ParseOptions, Symbol as CppSymbol};
