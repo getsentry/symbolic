@@ -7,5 +7,6 @@ mod lookup;
 mod raw;
 mod writer;
 
+pub use js_source_scopes::{ScopeLookupResult, SourcePosition};
 pub use lookup::{Error as SourceMapCacheError, *};
 pub use writer::*;
