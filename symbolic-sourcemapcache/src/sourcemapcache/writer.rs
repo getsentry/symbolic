@@ -4,9 +4,10 @@ use itertools::Itertools;
 use sourcemap::DecodedMap;
 use watto::{Pod, StringTable, Writer};
 
+use crate::_internal_not_stable_::extract_scope_names;
+use crate::name_resolver::NameResolver;
 use crate::scope_index::{ScopeIndex, ScopeIndexError, ScopeLookupResult};
-use crate::source::{SourceContext, SourceContextError};
-use crate::{extract_scope_names, NameResolver, SourcePosition};
+use crate::source::{SourceContext, SourceContextError, SourcePosition};
 
 use super::raw::{self, ANONYMOUS_SCOPE_SENTINEL, GLOBAL_SCOPE_SENTINEL, NO_FILE_SENTINEL};
 
@@ -260,7 +261,7 @@ impl SourceMapCacheWriter {
     }
 }
 
-/// An Error that can happen when building a [`super::SourceMapCache`].
+/// An Error that can happen when building a [`SourceMapCache`](super::SourceMapCache).
 #[derive(Debug)]
 pub struct SourceMapCacheWriterError(SourceMapCacheErrorInner);
 

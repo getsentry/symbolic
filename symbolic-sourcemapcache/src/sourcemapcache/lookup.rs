@@ -1,4 +1,4 @@
-use watto::{align_to, Pod};
+use watto::{align_to, Pod, StringTable};
 
 use crate::{ScopeLookupResult, SourcePosition};
 
@@ -56,6 +56,9 @@ impl<'data> SourceLocation<'data> {
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
+/// A cached SourceMap lookup index.
+///
+/// This allows quick lookup inside SourceMaps via the [`lookup`](Self::lookup) method.
 #[derive(Clone)]
 pub struct SourceMapCache<'data> {
     header: &'data raw::Header,
@@ -79,6 +82,7 @@ impl<'data> std::fmt::Debug for SourceMapCache<'data> {
 }
 
 impl<'data> SourceMapCache<'data> {
+    /// Parses a raw buffer containing a serialized [`SourceMapCache`].
     #[tracing::instrument(level = "trace", name = "SourceMapCache::parse", skip_all)]
     pub fn parse(buf: &'data [u8]) -> Result<Self> {
         let (header, buf) = raw::Header::ref_from_prefix(buf).ok_or(Error::Header)?;
@@ -127,12 +131,7 @@ impl<'data> SourceMapCache<'data> {
 
     /// Resolves a string reference to the pointed-to `&str` data.
     fn get_string(&self, offset: u32) -> Option<&'data str> {
-        let reader = &mut self.string_bytes.get(offset as usize..)?;
-        let len = leb128::read::unsigned(reader).ok()? as usize;
-
-        let bytes = reader.get(..len)?;
-
-        std::str::from_utf8(bytes).ok()
+        StringTable::read(self.string_bytes, offset as usize).ok()
     }
 
     fn resolve_file(&self, raw_file: &raw::File) -> Option<File<'data>> {
@@ -185,11 +184,12 @@ impl<'data> SourceMapCache<'data> {
     }
 
     /// Returns an iterator over all files in the cache.
-    pub fn files(&self) -> Files<'data> {
+    pub fn files(&'data self) -> Files<'data> {
         Files::new(self)
     }
 }
 
+/// An Error that can happen when parsing a [`SourceMapCache`].
 #[derive(thiserror::Error, Debug)]
 #[non_exhaustive]
 pub enum Error {
@@ -202,20 +202,27 @@ pub enum Error {
     /// The format version in the header is wrong/unknown.
     #[error("unknown SymCache version")]
     WrongVersion,
+    /// The buffer has an invalid header.
     #[error("invalid header")]
     Header,
+    /// The buffer has invalid source positions.
     #[error("invalid source positions")]
     SourcePositions,
+    /// The buffer has invalid source locations.
     #[error("invalid source locations")]
     SourceLocations,
+    /// The buffer has an invalid string table.
     #[error("invalid string bytes")]
     StringBytes,
+    /// The buffer has invalid files.
     #[error("invalid files")]
     Files,
+    /// The buffer has invalid line offsets.
     #[error("invalid line offsets")]
     LineOffsets,
 }
 
+/// An original source file embedded in a [`SourceMapCache`].
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct File<'data> {
     name: Option<&'data str>,
@@ -248,16 +255,14 @@ impl<'data> File<'data> {
 
 /// Iterator returned by [`SourceMapCache::files`].
 pub struct Files<'data> {
-    cache: SourceMapCache<'data>,
+    cache: &'data SourceMapCache<'data>,
     raw_files: std::slice::Iter<'data, raw::File>,
 }
 
 impl<'data> Files<'data> {
-    fn new(cache: &SourceMapCache<'data>) -> Self {
-        Self {
-            cache: cache.clone(),
-            raw_files: cache.files.iter(),
-        }
+    fn new(cache: &'data SourceMapCache<'data>) -> Self {
+        let raw_files = cache.files.iter();
+        Self { cache, raw_files }
     }
 }
 
