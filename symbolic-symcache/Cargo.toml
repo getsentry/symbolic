@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-symcache"
-version = "9.1.1"
+version = "9.1.2"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -10,7 +10,7 @@ documentation = "https://docs.rs/symbolic-symcache"
 homepage = "https://github.com/getsentry/symbolic"
 repository = "https://github.com/getsentry/symbolic"
 description = """
-An optimizied cache file for fast and memory efficient lookup of symbols and
+An optimized cache file for fast and memory efficient lookup of symbols and
 stack frames in debugging information.
 """
 edition = "2018"
@@ -23,11 +23,9 @@ exclude = [
 all-features = true
 
 [dependencies]
-dmsort = "1.0.1"
-fnv = "1.0.6"
-symbolic-common = { version = "9.1.1", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "9.1.1", path = "../symbolic-debuginfo" }
-symbolic-il2cpp = { version = "9.1.1", path = "../symbolic-il2cpp", optional = true }
+symbolic-common = { version = "9.1.2", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "9.1.2", path = "../symbolic-debuginfo" }
+symbolic-il2cpp = { version = "9.1.2", path = "../symbolic-il2cpp", optional = true }
 thiserror = "1.0.20"
 indexmap = "1.7.0"
 tracing = "0.1.35"
