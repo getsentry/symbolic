@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-symcache"
-version = "9.1.1"
+version = "9.1.2"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -23,9 +23,9 @@ exclude = [
 all-features = true
 
 [dependencies]
-symbolic-common = { version = "9.1.1", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "9.1.1", path = "../symbolic-debuginfo" }
-symbolic-il2cpp = { version = "9.1.1", path = "../symbolic-il2cpp", optional = true }
+symbolic-common = { version = "9.1.2", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "9.1.2", path = "../symbolic-debuginfo" }
+symbolic-il2cpp = { version = "9.1.2", path = "../symbolic-il2cpp", optional = true }
 thiserror = "1.0.20"
 indexmap = "1.7.0"
 tracing = "0.1.35"

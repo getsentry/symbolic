@@ -1,6 +1,6 @@
 [package]
 name = "unreal_engine_crash"
-version = "9.1.1"
+version = "9.1.2"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2018"
 publish = false
