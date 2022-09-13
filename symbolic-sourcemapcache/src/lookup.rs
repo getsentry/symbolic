@@ -1,6 +1,6 @@
 use watto::{align_to, Pod, StringTable};
 
-use js_source_scopes::{ScopeLookupResult, SourcePosition};
+use crate::{ScopeLookupResult, SourcePosition};
 
 use super::raw;
 

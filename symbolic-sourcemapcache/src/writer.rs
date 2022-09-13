@@ -2,13 +2,14 @@ use std::io::Write;
 
 use itertools::Itertools;
 use js_source_scopes::{
-    extract_scope_names, NameResolver, ScopeIndex, ScopeIndexError, ScopeLookupResult,
-    SourceContext, SourceContextError, SourcePosition,
+    extract_scope_names, NameResolver, ScopeIndex, ScopeIndexError, SourceContext,
+    SourceContextError,
 };
 use sourcemap::DecodedMap;
 use watto::{Pod, StringTable, Writer};
 
 use super::raw::{self, ANONYMOUS_SCOPE_SENTINEL, GLOBAL_SCOPE_SENTINEL, NO_FILE_SENTINEL};
+use super::{ScopeLookupResult, SourcePosition};
 
 /// A structure that allows quick resolution of minified source position
 /// to the original source position it maps to.

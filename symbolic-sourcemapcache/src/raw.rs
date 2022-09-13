@@ -1,4 +1,4 @@
-use js_source_scopes::SourcePosition;
+use crate::SourcePosition;
 use watto::Pod;
 
 /// The magic file preamble as individual bytes.
