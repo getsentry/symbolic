@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added a new subcrate for working with JS sourcemaps: `symbolic-sourcemap`.
+
 ## 9.1.2
 
 **Fixes**:
