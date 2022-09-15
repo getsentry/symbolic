@@ -14,7 +14,7 @@ description = """
 A library to symbolicate and process stack traces from native applications,
 minidumps, Unreal Engine 4, minified JavaScripts or ProGuard optimized Android apps.
 """
-edition = "2018"
+edition = "2021"
 
 [package.metadata.docs.rs]
 all-features = true

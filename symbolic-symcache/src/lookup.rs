@@ -8,7 +8,6 @@ impl<'data> SymCache<'data> {
     /// Looks up an instruction address in the SymCache, yielding an iterator of [`SourceLocation`]s
     /// representing a hierarchy of inlined function calls.
     pub fn lookup(&self, addr: u64) -> SourceLocations<'data, '_> {
-        use std::convert::TryFrom;
         let addr = match u32::try_from(addr) {
             Ok(addr) => addr,
             Err(_) => {

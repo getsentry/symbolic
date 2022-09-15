@@ -15,7 +15,7 @@ Common types and utilities for symbolic, a library to symbolicate and process
 stack traces from native applications, minidumps, minified JavaScripts or
 ProGuard optimized Android apps.
 """
-edition = "2018"
+edition = "2021"
 
 [package.metadata.docs.rs]
 all-features = true
