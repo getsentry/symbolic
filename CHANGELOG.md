@@ -4,6 +4,7 @@
 
 **Fixes**:
 
+- Be stricter about demangling only `_Z` prefixed C++ names. ([#681](https://github.com/getsentry/symbolic/pull/681))
 - Work around a pathological case in DWARF processing that could lead to slowness and high memory usage ([#683](https://github.com/getsentry/symbolic/pull/683))
 
 ## 9.1.2
