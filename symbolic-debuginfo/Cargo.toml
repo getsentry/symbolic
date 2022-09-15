@@ -13,7 +13,7 @@ description = """
 A library to inspect and load DWARF debugging information from binaries, such
 as Mach-O or ELF.
 """
-edition = "2018"
+edition = "2021"
 
 exclude = ["tests/**/*"]
 
@@ -73,7 +73,7 @@ wasm = ["bitvec", "dwarf", "wasmparser"]
 [dependencies]
 bitvec = { version = "1.0.0", optional = true, features = ["alloc"] }
 dmsort = "1.0.1"
-elementtree = { version = "0.7.0", optional = true }
+elementtree = { version = "1.2.2", optional = true }
 elsa = { version = "1.4.0", optional = true }
 fallible-iterator = "0.2.0"
 flate2 = { version = "1.0.13", optional = true, default-features = false, features = [
@@ -98,13 +98,13 @@ serde_json = { version = "1.0.40", optional = true }
 smallvec = { version = "1.2.0", optional = true }
 symbolic-common = { version = "9.1.2", path = "../symbolic-common" }
 thiserror = "1.0.20"
-wasmparser = { version = "0.89.1", optional = true }
+wasmparser = { version = "0.90.0", optional = true }
 zip = { version = "0.6.2", optional = true, default-features = false, features = [
     "deflate",
 ] }
 
 [dev-dependencies]
-criterion = { version = "0.3.4", features = ["html_reports"] }
+criterion = { version = "0.4.0", features = ["html_reports"] }
 insta = { version = "1.18.0", features = ["yaml"] }
 tempfile = "3.1.0"
 similar-asserts = "1.0.0"
