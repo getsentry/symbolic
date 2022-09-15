@@ -5,13 +5,14 @@
 **Fixes**:
 
 - Be stricter about demangling only `_Z` prefixed C++ names. ([#681](https://github.com/getsentry/symbolic/pull/681))
+- Work around a pathological case in DWARF processing that could lead to slowness and high memory usage ([#683](https://github.com/getsentry/symbolic/pull/683))
 
 ## 9.1.2
 
 **Fixes**:
 
 - Correctly resolve the `DW_AT_producer` attribute of DWARF files ([#676](https://github.com/getsentry/symbolic/pull/676))
-- Improve _sigtramp workaround and explanation ([#662](https://github.com/getsentry/symbolic/pull/662))
+- Improve \_sigtramp workaround and explanation ([#662](https://github.com/getsentry/symbolic/pull/662))
 - Slightly lower demangling recursion limit ([#655](https://github.com/getsentry/symbolic/pull/655))
 
 ## 9.1.1
