@@ -1159,7 +1159,7 @@ impl<'d> DwarfInfo<'d> {
     ) -> Result<Self, DwarfError> {
         let debug_abbrev = sections.debug_abbrev.to_gimli();
         let offset_0 = DebugAbbrevOffset(0);
-        let abbrevs_at_0 = debug_abbrev.abbreviations(offset_0)?;
+        let abbrevs_at_0 = debug_abbrev.abbreviations(offset_0).unwrap_or_default();
 
         let inner = gimli::read::Dwarf {
             debug_abbrev,
