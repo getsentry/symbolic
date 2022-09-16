@@ -1,11 +1,17 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Be more lenient when eagerly parsing DWARF `Abbreviations`. ([#685](https://github.com/getsentry/symbolic/pull/685))
+
 ## 9.1.3
 
 **Fixes**:
 
 - Be stricter about demangling only `_Z` prefixed C++ names. ([#681](https://github.com/getsentry/symbolic/pull/681))
-- Work around a pathological case in DWARF processing that could lead to slowness and high memory usage ([#683](https://github.com/getsentry/symbolic/pull/683))
+- Work around a pathological case in DWARF processing that could lead to slowness and high memory usage. ([#683](https://github.com/getsentry/symbolic/pull/683))
 
 ## 9.1.2
 
