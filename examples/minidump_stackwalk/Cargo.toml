@@ -1,6 +1,6 @@
 [package]
 name = "minidump_stackwalk"
-version = "9.1.3"
+version = "9.1.4"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2021"
 publish = false
