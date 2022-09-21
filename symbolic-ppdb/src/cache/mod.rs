@@ -53,7 +53,7 @@ pub(crate) mod writer;
 
 use symbolic_common::DebugId;
 use thiserror::Error;
-use zerocopy::LayoutVerified;
+use watto::{align_to, Pod};
 
 const PPDBCACHE_VERSION: u32 = 1;
 
@@ -148,10 +148,8 @@ pub struct PortablePdbCache<'data> {
 impl<'data> PortablePdbCache<'data> {
     /// Parses the given buffer into a `PortablePdbCache`.
     pub fn parse(buf: &'data [u8]) -> Result<Self, CacheError> {
-        let (lv, rest) = LayoutVerified::<_, raw::Header>::new_from_prefix(buf)
-            .ok_or(CacheErrorKind::InvalidHeader)?;
-
-        let header = lv.into_ref();
+        let (header, rest) =
+            raw::Header::ref_from_prefix(buf).ok_or(CacheErrorKind::InvalidHeader)?;
 
         if header.magic == raw::PPDBCACHE_MAGIC_FLIPPED {
             return Err(CacheErrorKind::WrongEndianness.into());
@@ -164,34 +162,26 @@ impl<'data> PortablePdbCache<'data> {
             return Err(CacheErrorKind::WrongVersion(header.version).into());
         }
 
-        let rest = align_buf(rest);
+        let (_, rest) = align_to(rest, 8).ok_or(CacheErrorKind::InvalidFiles)?;
 
-        let (lv, rest) = LayoutVerified::<_, [raw::File]>::new_slice_from_prefix(
-            rest,
-            header.num_files as usize,
-        )
-        .ok_or(CacheErrorKind::InvalidFiles)?;
+        let (files, rest) = raw::File::slice_from_prefix(rest, header.num_files as usize)
+            .ok_or(CacheErrorKind::InvalidFiles)?;
 
-        let files = lv.into_slice();
-        let rest = align_buf(rest);
+        let (_, rest) = align_to(rest, 8).ok_or(CacheErrorKind::InvalidSourceLocations)?;
 
-        let (lv, rest) = LayoutVerified::<_, [raw::SourceLocation]>::new_slice_from_prefix(
-            rest,
-            header.num_ranges as usize,
-        )
-        .ok_or(CacheErrorKind::InvalidSourceLocations)?;
+        let (source_locations, rest) =
+            raw::SourceLocation::slice_from_prefix(rest, header.num_ranges as usize)
+                .ok_or(CacheErrorKind::InvalidSourceLocations)?;
 
-        let source_locations = lv.into_slice();
-        let rest = align_buf(rest);
+        let (_, rest) = align_to(rest, 8).ok_or(CacheErrorKind::InvalidRanges)?;
 
-        let (lv, rest) = LayoutVerified::<_, [raw::Range]>::new_slice_from_prefix(
-            rest,
-            header.num_ranges as usize,
-        )
-        .ok_or(CacheErrorKind::InvalidRanges)?;
+        let (ranges, rest) = raw::Range::slice_from_prefix(rest, header.num_ranges as usize)
+            .ok_or(CacheErrorKind::InvalidRanges)?;
 
-        let ranges = lv.into_slice();
-        let rest = align_buf(rest);
+        let (_, rest) = align_to(rest, 8).ok_or(CacheErrorKind::UnexpectedStringBytes {
+            expected: header.string_bytes as usize,
+            found: 0,
+        })?;
 
         if rest.len() < header.string_bytes as usize {
             return Err(CacheErrorKind::UnexpectedStringBytes {
@@ -212,9 +202,7 @@ impl<'data> PortablePdbCache<'data> {
 
     /// Returns the [`DebugId`] of this portable PDB cache.
     pub fn debug_id(&self) -> DebugId {
-        let (guid, age) = self.header.pdb_id.split_at(16);
-        let age = u32::from_ne_bytes(age.try_into().unwrap());
-        DebugId::from_guid_age(guid, age).unwrap()
+        self.header.pdb_id
     }
 }
 
@@ -228,9 +216,4 @@ impl<'data> std::fmt::Debug for PortablePdbCache<'data> {
             .field("string_bytes", &self.header.string_bytes)
             .finish()
     }
-}
-
-fn align_buf(buf: &[u8]) -> &[u8] {
-    let offset = buf.as_ptr().align_offset(8);
-    buf.get(offset..).unwrap_or(&[])
 }

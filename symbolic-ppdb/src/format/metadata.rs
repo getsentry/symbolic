@@ -2,7 +2,7 @@ use std::convert::TryInto;
 use std::fmt;
 use std::ops::{Index, IndexMut};
 
-use zerocopy::LayoutVerified;
+use watto::Pod;
 
 use super::{FormatError, FormatErrorKind};
 
@@ -250,10 +250,8 @@ pub struct MetadataStream<'data> {
 
 impl<'data> MetadataStream<'data> {
     pub fn parse(buf: &'data [u8], referenced_table_sizes: [u32; 64]) -> Result<Self, FormatError> {
-        let (lv, mut rest) =
-            LayoutVerified::<_, super::raw::MetadataStreamHeader>::new_from_prefix(buf)
-                .ok_or(FormatErrorKind::InvalidHeader)?;
-        let header = lv.into_ref();
+        let (header, mut rest) = super::raw::MetadataStreamHeader::ref_from_prefix(buf)
+            .ok_or(FormatErrorKind::InvalidHeader)?;
 
         // TODO: verify major/minor version
         // TODO: verify reserved
@@ -264,12 +262,10 @@ impl<'data> MetadataStream<'data> {
                 continue;
             }
 
-            let (lv, rest_) = LayoutVerified::<_, u32>::new_from_prefix(rest)
-                .ok_or(FormatErrorKind::InvalidLength)?;
-            let len = lv.read();
+            let (len, rest_) = u32::ref_from_prefix(rest).ok_or(FormatErrorKind::InvalidLength)?;
             rest = rest_;
 
-            table.rows = len as usize;
+            table.rows = *len as usize;
         }
 
         let table_contents = rest;

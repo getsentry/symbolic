@@ -1,4 +1,5 @@
-use zerocopy::{AsBytes, FromBytes};
+use symbolic_common::DebugId;
+use watto::Pod;
 
 /// The magic file preamble as individual bytes.
 const PPDBCACHE_MAGIC_BYTES: [u8; 4] = *b"PDBC";
@@ -11,7 +12,7 @@ pub(crate) const PPDBCACHE_MAGIC: u32 = u32::from_le_bytes(PPDBCACHE_MAGIC_BYTES
 pub(crate) const PPDBCACHE_MAGIC_FLIPPED: u32 = PPDBCACHE_MAGIC.swap_bytes();
 
 /// The header of a PortablePdbCache file.
-#[derive(Debug, Clone, FromBytes, AsBytes)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct Header {
     /// The file magic representing the file format and endianness.
@@ -19,7 +20,7 @@ pub(crate) struct Header {
     /// The PortablePdbCache format version.
     pub(crate) version: u32,
     /// A byte sequence uniquely representing the debugging metadata blob content.
-    pub(crate) pdb_id: [u8; 20],
+    pub(crate) pdb_id: DebugId,
     /// The number of files contained in the cache file.
     pub(crate) num_files: u32,
     /// The number of ranges/source locations contained in the cache file.
@@ -32,7 +33,7 @@ pub(crate) struct Header {
 }
 
 /// A location in a source file, comprising a line and the index of a file.
-#[derive(Debug, Clone, Copy, FromBytes, AsBytes)]
+#[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub(crate) struct SourceLocation {
     pub(crate) line: u32,
@@ -43,7 +44,7 @@ pub(crate) struct SourceLocation {
 ///
 /// Only the starting IL offset is saved; the ending offset is given implicitly by
 /// the starting offset of the next range (if any).
-#[derive(Debug, Clone, Copy, FromBytes, AsBytes, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(C)]
 pub(crate) struct Range {
     pub(crate) func_idx: u32,
@@ -51,11 +52,38 @@ pub(crate) struct Range {
 }
 
 /// Serialized file in the cache.
-#[derive(Debug, Clone, Copy, FromBytes, AsBytes, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(C)]
 pub(crate) struct File {
     /// The file path (reference to a [`String`]).
     pub(crate) name_offset: u32,
     /// The file's source language.
     pub(crate) lang: u32,
+}
+
+unsafe impl Pod for Header {}
+unsafe impl Pod for SourceLocation {}
+unsafe impl Pod for Range {}
+unsafe impl Pod for File {}
+
+#[cfg(test)]
+mod tests {
+    use std::mem;
+
+    use super::*;
+
+    #[test]
+    fn test_sizeof() {
+        assert_eq!(mem::size_of::<Header>(), 68);
+        assert_eq!(mem::align_of::<Header>(), 4);
+
+        assert_eq!(mem::size_of::<File>(), 8);
+        assert_eq!(mem::align_of::<File>(), 4);
+
+        assert_eq!(mem::size_of::<SourceLocation>(), 8);
+        assert_eq!(mem::align_of::<SourceLocation>(), 4);
+
+        assert_eq!(mem::size_of::<Range>(), 8);
+        assert_eq!(mem::align_of::<Range>(), 4);
+    }
 }

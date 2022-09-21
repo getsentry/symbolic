@@ -1,12 +1,13 @@
 //! Defines the [SymCache Converter](`SymCacheConverter`).
 
 use std::collections::btree_map;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::io::Write;
 
 use indexmap::IndexSet;
 use symbolic_common::{Arch, DebugId};
 use symbolic_debuginfo::{DebugSession, FileFormat, Function, ObjectLike, Symbol};
+use watto::{Pod, StringTable, Writer};
 
 use super::{raw, transform};
 use crate::{Error, ErrorKind};
@@ -29,10 +30,7 @@ pub struct SymCacheConverter<'a> {
     /// A list of transformers that are used to transform each function / source location.
     transformers: transform::Transformers<'a>,
 
-    /// The concatenation of all strings that have been added to this `Converter`.
-    string_bytes: Vec<u8>,
-    /// A map from [`String`]s that have been added to this `Converter` to their offsets in the `string_bytes` field.
-    strings: HashMap<String, u32>,
+    string_table: StringTable,
     /// The set of all [`raw::File`]s that have been added to this `Converter`.
     files: IndexSet<raw::File>,
     /// The set of all [`raw::Function`]s that have been added to this `Converter`.
@@ -78,35 +76,6 @@ impl<'a> SymCacheConverter<'a> {
     /// Sets the debug identifier of this SymCache.
     pub fn set_debug_id(&mut self, debug_id: DebugId) {
         self.debug_id = debug_id;
-    }
-
-    /// Insert a string into this converter.
-    ///
-    /// If the string was already present, it is not added again. A newly added string
-    /// is prefixed by its length as a `u32`. The returned `u32`
-    /// is the offset into the `string_bytes` field where the string is saved.
-    fn insert_string(
-        string_bytes: &mut Vec<u8>,
-        strings: &mut HashMap<String, u32>,
-        s: &str,
-    ) -> u32 {
-        if s.is_empty() {
-            return u32::MAX;
-        }
-        if let Some(&offset) = strings.get(s) {
-            return offset;
-        }
-        let string_offset = string_bytes.len() as u32;
-        let string_len = s.len() as u32;
-        string_bytes.extend(string_len.to_ne_bytes());
-        string_bytes.extend(s.bytes());
-        // we should have written exactly `string_len + 4` bytes
-        debug_assert_eq!(
-            string_bytes.len(),
-            string_offset as usize + string_len as usize + std::mem::size_of::<u32>(),
-        );
-        strings.insert(s.to_owned(), string_offset);
-        string_offset
     }
 
     // Methods processing symbolic-debuginfo [`ObjectLike`] below:
@@ -157,6 +126,7 @@ impl<'a> SymCacheConverter<'a> {
         function: &Function<'_>,
         call_locations: &[(u32, u32)],
     ) {
+        let string_table = &mut self.string_table;
         // skip over empty functions or functions whose address is too large to fit in a u32
         if function.size == 0 || function.address > u32::MAX as u64 {
             return;
@@ -186,9 +156,7 @@ impl<'a> SymCacheConverter<'a> {
                 &function.name
             };
 
-            let string_bytes = &mut self.string_bytes;
-            let strings = &mut self.strings;
-            let name_offset = Self::insert_string(string_bytes, strings, function_name);
+            let name_offset = string_table.insert(function_name) as u32;
 
             let lang = language as u32;
             let (fun_idx, _) = self.functions.insert_full(raw::Function {
@@ -268,16 +236,15 @@ impl<'a> SymCacheConverter<'a> {
                 location = transformer.transform_source_location(location);
             }
 
-            let string_bytes = &mut self.string_bytes;
-            let strings = &mut self.strings;
-            let name_offset = Self::insert_string(string_bytes, strings, &location.file.name);
+            let name_offset = string_table.insert(&location.file.name) as u32;
             let directory_offset = location
                 .file
                 .directory
-                .map_or(u32::MAX, |d| Self::insert_string(string_bytes, strings, &d));
-            let comp_dir_offset = location.file.comp_dir.map_or(u32::MAX, |cd| {
-                Self::insert_string(string_bytes, strings, &cd)
-            });
+                .map_or(u32::MAX, |d| string_table.insert(&d) as u32);
+            let comp_dir_offset = location
+                .file
+                .comp_dir
+                .map_or(u32::MAX, |cd| string_table.insert(&cd) as u32);
 
             let (file_idx, _) = self.files.insert_full(raw::File {
                 name_offset,
@@ -427,7 +394,7 @@ impl<'a> SymCacheConverter<'a> {
                 &function.name
             };
 
-            Self::insert_string(&mut self.string_bytes, &mut self.strings, function_name)
+            self.string_table.insert(function_name) as u32
         };
 
         match self.ranges.entry(symbol.address as u32) {
@@ -470,7 +437,7 @@ impl<'a> SymCacheConverter<'a> {
     ///
     /// This writes the SymCache binary format into the given [`Write`].
     pub fn serialize<W: Write>(mut self, writer: &mut W) -> std::io::Result<()> {
-        let mut writer = WriteWrapper::new(writer);
+        let mut writer = Writer::new(writer);
 
         // Insert a trailing sentinel source location in case we have a definite end addr
         if let Some(last_addr) = self.last_addr {
@@ -491,7 +458,7 @@ impl<'a> SymCacheConverter<'a> {
         let num_functions = self.functions.len() as u32;
         let num_source_locations = (self.call_locations.len() + self.ranges.len()) as u32;
         let num_ranges = self.ranges.len() as u32;
-        let string_bytes = self.string_bytes.len() as u32;
+        let string_bytes = self.string_table.into_bytes();
 
         let header = raw::Header {
             magic: raw::SYMCACHE_MAGIC,
@@ -504,37 +471,37 @@ impl<'a> SymCacheConverter<'a> {
             num_functions,
             num_source_locations,
             num_ranges,
-            string_bytes,
+            string_bytes: string_bytes.len() as u32,
             _reserved: [0; 16],
         };
 
-        writer.write(&[header])?;
-        writer.align()?;
+        writer.write_all(header.as_bytes())?;
+        writer.align_to(8)?;
 
         for f in self.files {
-            writer.write(&[f])?;
+            writer.write_all(f.as_bytes())?;
         }
-        writer.align()?;
+        writer.align_to(8)?;
 
         for f in self.functions {
-            writer.write(&[f])?;
+            writer.write_all(f.as_bytes())?;
         }
-        writer.align()?;
+        writer.align_to(8)?;
 
         for s in self.call_locations {
-            writer.write(&[s])?;
+            writer.write_all(s.as_bytes())?;
         }
         for s in self.ranges.values() {
-            writer.write(std::slice::from_ref(s))?;
+            writer.write_all(s.as_bytes())?;
         }
-        writer.align()?;
+        writer.align_to(8)?;
 
         for r in self.ranges.keys() {
-            writer.write(&[raw::Range(*r)])?;
+            writer.write_all(r.as_bytes())?;
         }
-        writer.align()?;
+        writer.align_to(8)?;
 
-        writer.write(&self.string_bytes)?;
+        writer.write_all(&string_bytes)?;
 
         Ok(())
     }
@@ -582,34 +549,4 @@ fn undecorate_win_symbol(name: &str) -> &str {
     }
 
     name
-}
-
-struct WriteWrapper<W> {
-    writer: W,
-    position: usize,
-}
-
-impl<W: Write> WriteWrapper<W> {
-    fn new(writer: W) -> Self {
-        Self {
-            writer,
-            position: 0,
-        }
-    }
-
-    fn write<T>(&mut self, data: &[T]) -> std::io::Result<usize> {
-        let pointer = data.as_ptr() as *const u8;
-        let len = std::mem::size_of_val(data);
-        // SAFETY: both pointer and len are derived directly from data/T and are valid.
-        let buf = unsafe { std::slice::from_raw_parts(pointer, len) };
-        self.writer.write_all(buf)?;
-        self.position += len;
-        Ok(len)
-    }
-
-    fn align(&mut self) -> std::io::Result<usize> {
-        let buf = &[0u8; 7];
-        let len = raw::align_to_eight(self.position);
-        self.write(&buf[0..len])
-    }
 }

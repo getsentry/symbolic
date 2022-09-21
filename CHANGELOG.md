@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- The new version 8 of the symcache format saves strings slightly more compactly. Reading of version 7 is still supported. ([#670](https://github.com/getsentry/symbolic/pull/670))
+
+**Internal**:
+
+- Use the `watto` library for de/serialization of symcache and ppdbcache. ([#670](https://github.com/getsentry/symbolic/pull/670))
+
 ## 9.1.4
 
 **Fixes**:
