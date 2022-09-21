@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Features**:
+
+- The new version 8 of the symcache format saves strings slightly more compactly. Reading of version 7 is still supported. ([#670](https://github.com/getsentry/symbolic/pull/670))
+
 **Internal**:
 
 - Use the `watto` library for de/serialization of symcache and ppdbcache. ([#670](https://github.com/getsentry/symbolic/pull/670))
@@ -20,10 +24,6 @@
 - Work around a pathological case in DWARF processing that could lead to slowness and high memory usage. ([#683](https://github.com/getsentry/symbolic/pull/683))
 
 ## 9.1.2
-
-**Features**:
-
-- The new version 8 of the symcache format saves strings slightly more compactly. Reading of version 7 is still supported. ([#670](https://github.com/getsentry/symbolic/pull/670))
 
 **Fixes**:
 
