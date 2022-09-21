@@ -1,6 +1,6 @@
 [package]
 name = "symbolic"
-version = "9.1.1"
+version = "9.1.4"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -14,7 +14,7 @@ description = """
 A library to symbolicate and process stack traces from native applications,
 minidumps, Unreal Engine 4, minified JavaScripts or ProGuard optimized Android apps.
 """
-edition = "2018"
+edition = "2021"
 
 [package.metadata.docs.rs]
 all-features = true
@@ -32,13 +32,13 @@ unreal = ["symbolic-unreal"]
 unreal-serde = ["unreal", "common-serde", "symbolic-unreal/serde"]
 
 [dependencies]
-symbolic-cfi = { version = "9.1.1", path = "../symbolic-cfi", optional = true }
-symbolic-common = { version = "9.1.1", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "9.1.1", path = "../symbolic-debuginfo", optional = true }
-symbolic-demangle = { version = "9.1.1", path = "../symbolic-demangle", optional = true }
-symbolic-il2cpp = { version = "9.1.1", path = "../symbolic-il2cpp", optional = true }
-symbolic-symcache = { version = "9.1.1", path = "../symbolic-symcache", optional = true }
-symbolic-unreal = { version = "9.1.1", path = "../symbolic-unreal", optional = true }
+symbolic-cfi = { version = "9.1.4", path = "../symbolic-cfi", optional = true }
+symbolic-common = { version = "9.1.4", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "9.1.4", path = "../symbolic-debuginfo", optional = true }
+symbolic-demangle = { version = "9.1.4", path = "../symbolic-demangle", optional = true }
+symbolic-il2cpp = { version = "9.1.4", path = "../symbolic-il2cpp", optional = true }
+symbolic-symcache = { version = "9.1.4", path = "../symbolic-symcache", optional = true }
+symbolic-unreal = { version = "9.1.4", path = "../symbolic-unreal", optional = true }
 
 [badges]
 travis-ci = { repository = "getsentry/symbolic", branch = "master" }

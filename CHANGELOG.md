@@ -2,17 +2,34 @@
 
 ## Unreleased
 
+**Internal**:
+
+- Use the `watto` library for de/serialization of symcache and ppdbcache. ([#670](https://github.com/getsentry/symbolic/pull/670))
+
+## 9.1.4
+
+**Fixes**:
+
+- Be more lenient when eagerly parsing DWARF `Abbreviations`. ([#685](https://github.com/getsentry/symbolic/pull/685))
+
+## 9.1.3
+
+**Fixes**:
+
+- Be stricter about demangling only `_Z` prefixed C++ names. ([#681](https://github.com/getsentry/symbolic/pull/681))
+- Work around a pathological case in DWARF processing that could lead to slowness and high memory usage. ([#683](https://github.com/getsentry/symbolic/pull/683))
+
+## 9.1.2
+
 **Features**:
 
 - The new version 8 of the symcache format saves strings slightly more compactly. Reading of version 7 is still supported. ([#670](https://github.com/getsentry/symbolic/pull/670))
 
 **Fixes**:
 
-- Correctly resolve the `DW_AT_producer` attribute of DWARF files. ([#676](https://github.com/getsentry/symbolic/pull/676))
-
-**Internal**:
-
-- Use the `watto` library for de/serialization of symcache and ppdbcache. ([#670](https://github.com/getsentry/symbolic/pull/670))
+- Correctly resolve the `DW_AT_producer` attribute of DWARF files ([#676](https://github.com/getsentry/symbolic/pull/676))
+- Improve \_sigtramp workaround and explanation ([#662](https://github.com/getsentry/symbolic/pull/662))
+- Slightly lower demangling recursion limit ([#655](https://github.com/getsentry/symbolic/pull/655))
 
 ## 9.1.1
 
