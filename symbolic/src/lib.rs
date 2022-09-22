@@ -70,6 +70,9 @@ pub use symbolic_demangle as demangle;
 #[doc(inline, hidden)]
 #[cfg(feature = "il2cpp")]
 pub use symbolic_il2cpp as il2cpp;
+#[doc(inline, hidden)]
+#[cfg(feature = "ppdb")]
+pub use symbolic_ppdb as ppdb;
 #[doc(inline)]
 #[cfg(feature = "symcache")]
 pub use symbolic_symcache as symcache;
