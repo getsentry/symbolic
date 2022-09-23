@@ -12,6 +12,7 @@ mod debuginfo;
 mod demangle;
 mod proguard;
 mod sourcemap;
+mod sourcemapcache;
 mod symcache;
 
 pub use crate::cfi::*;
@@ -21,4 +22,5 @@ pub use crate::debuginfo::*;
 pub use crate::demangle::*;
 pub use crate::proguard::*;
 pub use crate::sourcemap::*;
+pub use crate::sourcemapcache::*;
 pub use crate::symcache::*;

@@ -1,0 +1,23 @@
+[package]
+name = "symbolic-sourcemapcache"
+version = "9.1.4"
+license = "MIT"
+authors = ["Sentry <hello@sentry.io>"]
+documentation = "https://docs.rs/symbolic-sourcemapcache"
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+description = """
+A fast lookup cache for JavaScript Source Maps.
+"""
+edition = "2021"
+
+[dependencies]
+js-source-scopes = "0.1.0"
+thiserror = "1.0.31"
+sourcemap = "6.1.0"
+tracing = "0.1.36"
+watto = { version = "0.1.0", features = ["writer", "strings"] }
+itertools = "0.10.3"
+
+[dev-dependencies]
+symbolic-testutils = { path = "../symbolic-testutils" }

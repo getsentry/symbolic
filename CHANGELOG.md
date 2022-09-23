@@ -4,6 +4,8 @@
 
 **Features**:
 
+- Added a new sub-crate for working with JavaScript SourceMaps: `symbolic-sourcemapcache`. ([#688](https://github.com/getsentry/symbolic/pull/688))
+- This new sourcemap handling is also exposed via the symbolic Python bindings.
 - The new version 8 of the symcache format saves strings slightly more compactly. Reading of version 7 is still supported. ([#670](https://github.com/getsentry/symbolic/pull/670))
 - `symbolic-ppdb` incorporated into `symbolic` (behind the `ppdb` feature flag) ([#687](https://github.com/getsentry/symbolic/pull/687))
 

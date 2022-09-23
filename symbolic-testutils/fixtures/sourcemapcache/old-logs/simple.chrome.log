@@ -1,0 +1,28 @@
+# sync stack trace
+Error
+    at Object.objectLiteralAnon (simple.js:28:37)
+    at Object.objectLiteralMethod (simple.js:27:32)
+    at globalAssign (simple.js:24:27)
+    at Klass.prototypeMethod (simple.js:22:28)
+    at Klass.#privateMethod (simple.js:18:28)
+    at Klass.classMethod (simple.js:16:39)
+    at new Klass (simple.js:14:25)
+    at Function.staticMethod (simple.js:12:28)
+    at arrowFn (simple.js:9:31)
+    at anonFn (simple.js:7:29)
+    at namedFnExpr (simple.js:5:42)
+    at namedFn (simple.js:3:21)
+    at simple.js:60:5
+
+# async stack trace
+Error
+    at Object.asyncObjectLiteralAnon (simple.js:50:48)
+    at Object.asyncObjectLiteralMethod (simple.js:49:54)
+    at AsyncKlass.asyncProtoMethod (simple.js:45:74)
+    at AsyncKlass.#privateAsyncMethod (simple.js:42:45)
+    at AsyncKlass.asyncClassMethod (simple.js:41:61)
+    at Function.asyncStaticMethod (simple.js:39:17)
+    at asyncArrowFn (simple.js:34:52)
+    at asyncNamedFn (simple.js:33:38)
+    at asyncMain (simple.js:69:15)
+    at simple.js:75:1
