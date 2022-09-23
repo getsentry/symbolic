@@ -7,17 +7,14 @@ documentation = "https://docs.rs/symbolic-sourcemapcache"
 homepage = "https://github.com/getsentry/symbolic"
 repository = "https://github.com/getsentry/symbolic"
 description = """
-A library for parsing JavaScript Source Maps.
+A fast lookup cache for JavaScript Source Maps.
 """
 edition = "2021"
 
 [dependencies]
 js-source-scopes = "0.1.0"
 thiserror = "1.0.31"
-rslint_parser = "0.3.1"
 sourcemap = "6.1.0"
-leb128 = "0.2.5"
-indexmap = "1.9.1"
 tracing = "0.1.36"
 watto = { version = "0.1.0", features = ["writer", "strings"] }
 itertools = "0.10.3"
