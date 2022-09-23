@@ -12,6 +12,7 @@ A library for parsing JavaScript Source Maps.
 edition = "2021"
 
 [dependencies]
+js-source-scopes = "0.1.0"
 thiserror = "1.0.31"
 rslint_parser = "0.3.1"
 sourcemap = "6.1.0"
