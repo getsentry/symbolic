@@ -102,6 +102,8 @@ impl<'data> SourceMapCache<'data> {
         let (min_source_positions, buf) =
             raw::MinifiedSourcePosition::slice_from_prefix(buf, num_mappings)
                 .ok_or(Error::SourcePositions)?;
+
+        let (_, buf) = align_to(buf, 8).ok_or(Error::SourcePositions)?;
         let (orig_source_locations, buf) =
             raw::OriginalSourceLocation::slice_from_prefix(buf, num_mappings)
                 .ok_or(Error::SourceLocations)?;
