@@ -1,8 +1,8 @@
 [package]
 name = "minidump_stackwalk"
-version = "9.1.2"
+version = "9.1.4"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
-edition = "2018"
+edition = "2021"
 publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -10,8 +10,8 @@ publish = false
 [dependencies]
 async-trait = "0.1.53"
 clap = "3.1.0"
-minidump = "0.13.0"
-minidump-processor = "0.13.0"
+minidump = "0.14.0"
+minidump-processor = "0.14.0"
 symbolic = { path = "../../symbolic", features = ["symcache", "demangle", "cfi"] }
 thiserror = "1.0.31"
 tokio = {version = "1.18.1", features = ["macros", "rt"] }

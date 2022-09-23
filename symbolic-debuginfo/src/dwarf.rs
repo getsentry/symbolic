@@ -17,7 +17,7 @@ use std::sync::Arc;
 
 use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Error as GimliError, Range};
-use gimli::{constants, DwarfFileType, UnitSectionOffset};
+use gimli::{constants, Abbreviations, DebugAbbrevOffset, DwarfFileType, UnitSectionOffset};
 use lazycell::LazyCell;
 use thiserror::Error;
 
@@ -395,7 +395,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
             _ => return Ok(None),
         };
 
-        let mut entries = unit.unit.entries_at_offset(offset)?;
+        let mut entries = unit.unit.header.entries_at_offset(unit.abbrevs(), offset)?;
         entries.next_entry()?;
 
         if let Some(entry) = entries.current() {
@@ -408,6 +408,14 @@ impl<'d, 'a> UnitRef<'d, 'a> {
     /// Returns the offset of this unit within its section.
     fn offset(&self) -> UnitSectionOffset {
         self.unit.header.offset()
+    }
+
+    /// Returns the [`Abbreviations`] for this unit.
+    fn abbrevs(&self) -> &Abbreviations {
+        if self.unit.header.debug_abbrev_offset().0 != 0 {
+            return &self.unit.abbreviations;
+        }
+        &self.info.abbrevs_at_0
     }
 
     /// Resolves the function name of a debug entry.
@@ -478,7 +486,8 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         info: &'a DwarfInfo<'d>,
         bcsymbolmap: Option<&'d BcSymbolMap<'d>>,
     ) -> Result<Option<Self>, DwarfError> {
-        let mut entries = unit.entries();
+        let inner = UnitRef { info, unit };
+        let mut entries = unit.header.entries(inner.abbrevs());
         let entry = match entries.next_dfs()? {
             Some((_, entry)) => entry,
             None => return Err(gimli::read::Error::MissingUnitDie.into()),
@@ -517,7 +526,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         let prefer_dwarf_names = producer.as_deref() == Some(b"Dart VM");
 
         Ok(Some(DwarfUnit {
-            inner: UnitRef { info, unit },
+            inner,
             bcsymbolmap,
             language,
             line_program,
@@ -805,7 +814,16 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         };
 
         let name = symbol_name
-            .or_else(|| self.resolve_dwarf_name(&self.inner.unit.entry(dw_die_offset).unwrap()))
+            .or_else(|| {
+                self.resolve_dwarf_name(
+                    &self
+                        .inner
+                        .unit
+                        .header
+                        .entry(self.inner.abbrevs(), dw_die_offset)
+                        .unwrap(),
+                )
+            })
             .unwrap_or_else(|| Name::new("", NameMangling::Unmangled, self.language));
 
         // Create one function per range. In the common case there is only one range, so
@@ -920,7 +938,14 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         }
 
         let name = self
-            .resolve_dwarf_name(&self.inner.unit.entry(dw_die_offset).unwrap())
+            .resolve_dwarf_name(
+                &self
+                    .inner
+                    .unit
+                    .header
+                    .entry(self.inner.abbrevs(), dw_die_offset)
+                    .unwrap(),
+            )
             .unwrap_or_else(|| Name::new("", NameMangling::Unmangled, self.language));
 
         let call_file = call_location
@@ -960,7 +985,11 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         &self,
         seen_ranges: &mut BTreeSet<(u64, u64)>,
     ) -> Result<Vec<Function<'d>>, DwarfError> {
-        let mut entries = self.inner.unit.entries_raw(None)?;
+        let mut entries = self
+            .inner
+            .unit
+            .header
+            .entries_raw(self.inner.abbrevs(), None)?;
         let mut output = FunctionsOutput::with_seen_ranges(seen_ranges);
         self.parse_functions(-1, &mut entries, &mut output)?;
         Ok(output.functions)
@@ -1103,6 +1132,7 @@ impl<'data> DwarfSections<'data> {
 }
 
 struct DwarfInfo<'data> {
+    abbrevs_at_0: Abbreviations,
     inner: DwarfInner<'data>,
     headers: Vec<UnitHeader<'data>>,
     units: Vec<LazyCell<Option<Unit<'data>>>>,
@@ -1127,8 +1157,12 @@ impl<'d> DwarfInfo<'d> {
         address_offset: i64,
         kind: ObjectKind,
     ) -> Result<Self, DwarfError> {
+        let debug_abbrev = sections.debug_abbrev.to_gimli();
+        let offset_0 = DebugAbbrevOffset(0);
+        let abbrevs_at_0 = debug_abbrev.abbreviations(offset_0).unwrap_or_default();
+
         let inner = gimli::read::Dwarf {
-            debug_abbrev: sections.debug_abbrev.to_gimli(),
+            debug_abbrev,
             debug_addr: sections.debug_addr.to_gimli(),
             debug_aranges: sections.debug_aranges.to_gimli(),
             debug_info: sections.debug_info.to_gimli(),
@@ -1151,6 +1185,7 @@ impl<'d> DwarfInfo<'d> {
         let units = headers.iter().map(|_| LazyCell::new()).collect();
 
         Ok(DwarfInfo {
+            abbrevs_at_0,
             inner,
             headers,
             units,
@@ -1174,7 +1209,7 @@ impl<'d> DwarfInfo<'d> {
             // which causes gimli to error out. We prefer to skip them silently as this simply marks
             // an empty unit for us.
             let header = self.headers[index];
-            match self.inner.unit(header) {
+            match self.parse_unit(header) {
                 Ok(unit) => Ok(Some(unit)),
                 Err(gimli::read::Error::MissingUnitDie) => Ok(None),
                 Err(error) => Err(DwarfError::from(error)),
@@ -1216,6 +1251,138 @@ impl<'d> DwarfInfo<'d> {
             bcsymbolmap,
             index: 0,
         }
+    }
+
+    /// This is a copy of [`Unit::new`], but it avoids re-parsing/allocating
+    /// [`Abbreviations`] that are duplicated between units.
+    ///
+    /// As the resulting [`Unit`] does not have its own copy of [`Abbreviations`] any more,
+    /// special care must be taken when using any method on [`Unit`] or [`DwarfInner`]
+    /// that uses those [`Abbreviations`].
+    /// Instead, use the [`UnitRef::abbrevs`] method to get a reference to either the owned,
+    /// or the shared [`Abbreviations`].
+    fn parse_unit(&self, header: UnitHeader<'d>) -> Result<Unit<'d>, GimliError> {
+        use gimli::*;
+
+        let dwarf = &self.inner;
+
+        let mut abbreviations = Abbreviations::default();
+
+        let abbrev = if header.debug_abbrev_offset().0 == 0 {
+            &self.abbrevs_at_0
+        } else {
+            abbreviations = header.abbreviations(&dwarf.debug_abbrev)?;
+            &abbreviations
+        };
+
+        let mut unit = Unit {
+            abbreviations: Abbreviations::default(),
+            name: None,
+            comp_dir: None,
+            low_pc: 0,
+            str_offsets_base: DebugStrOffsetsBase::default_for_encoding_and_file(
+                header.encoding(),
+                dwarf.file_type,
+            ),
+            // NB: Because the .debug_addr section never lives in a .dwo, we can assume its base is always 0 or provided.
+            addr_base: DebugAddrBase(0),
+            loclists_base: DebugLocListsBase::default_for_encoding_and_file(
+                header.encoding(),
+                dwarf.file_type,
+            ),
+            rnglists_base: DebugRngListsBase::default_for_encoding_and_file(
+                header.encoding(),
+                dwarf.file_type,
+            ),
+            line_program: None,
+            dwo_id: match header.type_() {
+                UnitType::Skeleton(dwo_id) | UnitType::SplitCompilation(dwo_id) => Some(dwo_id),
+                _ => None,
+            },
+            header,
+        };
+        let mut name = None;
+        let mut comp_dir = None;
+        let mut line_program_offset = None;
+        let mut low_pc_attr = None;
+
+        {
+            let mut cursor = unit.header.entries(abbrev);
+            cursor.next_dfs()?;
+            let root = cursor.current().ok_or(Error::MissingUnitDie)?;
+            let mut attrs = root.attrs();
+            while let Some(attr) = attrs.next()? {
+                match attr.name() {
+                    constants::DW_AT_name => {
+                        name = Some(attr.value());
+                    }
+                    constants::DW_AT_comp_dir => {
+                        comp_dir = Some(attr.value());
+                    }
+                    constants::DW_AT_low_pc => {
+                        low_pc_attr = Some(attr.value());
+                    }
+                    constants::DW_AT_stmt_list => {
+                        if let AttributeValue::DebugLineRef(offset) = attr.value() {
+                            line_program_offset = Some(offset);
+                        }
+                    }
+                    constants::DW_AT_str_offsets_base => {
+                        if let AttributeValue::DebugStrOffsetsBase(base) = attr.value() {
+                            unit.str_offsets_base = base;
+                        }
+                    }
+                    constants::DW_AT_addr_base | constants::DW_AT_GNU_addr_base => {
+                        if let AttributeValue::DebugAddrBase(base) = attr.value() {
+                            unit.addr_base = base;
+                        }
+                    }
+                    constants::DW_AT_loclists_base => {
+                        if let AttributeValue::DebugLocListsBase(base) = attr.value() {
+                            unit.loclists_base = base;
+                        }
+                    }
+                    constants::DW_AT_rnglists_base | constants::DW_AT_GNU_ranges_base => {
+                        if let AttributeValue::DebugRngListsBase(base) = attr.value() {
+                            unit.rnglists_base = base;
+                        }
+                    }
+                    constants::DW_AT_GNU_dwo_id => {
+                        if unit.dwo_id.is_none() {
+                            if let AttributeValue::DwoId(dwo_id) = attr.value() {
+                                unit.dwo_id = Some(dwo_id);
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        unit.abbreviations = abbreviations;
+
+        unit.name = match name {
+            Some(val) => dwarf.attr_string(&unit, val).ok(),
+            None => None,
+        };
+        unit.comp_dir = match comp_dir {
+            Some(val) => dwarf.attr_string(&unit, val).ok(),
+            None => None,
+        };
+        unit.line_program = match line_program_offset {
+            Some(offset) => Some(dwarf.debug_line.program(
+                offset,
+                unit.header.address_size(),
+                unit.comp_dir,
+                unit.name,
+            )?),
+            None => None,
+        };
+        if let Some(low_pc_attr) = low_pc_attr {
+            if let Some(addr) = dwarf.attr_address(&unit, low_pc_attr)? {
+                unit.low_pc = addr;
+            }
+        }
+        Ok(unit)
     }
 }
 

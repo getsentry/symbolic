@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-sourcemapcache"
-version = "9.1.2"
+version = "9.1.4"
 license = "MIT"
 authors = ["Sentry <hello@sentry.io>"]
 documentation = "https://docs.rs/symbolic-sourcemapcache"

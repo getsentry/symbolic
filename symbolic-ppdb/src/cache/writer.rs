@@ -1,9 +1,9 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::io::Write;
 
 use indexmap::IndexSet;
-use symbolic_common::Language;
-use zerocopy::AsBytes;
+use symbolic_common::{DebugId, Language};
+use watto::{Pod, StringTable};
 
 use super::{raw, CacheError};
 use crate::PortablePdb;
@@ -15,18 +15,15 @@ use crate::PortablePdb;
 #[derive(Debug, Default)]
 pub struct PortablePdbCacheConverter {
     /// A byte sequence uniquely representing the debugging metadata blob content.
-    pdb_id: [u8; 20],
+    pdb_id: DebugId,
     /// The set of all [`raw::File`]s that have been added to this `Converter`.
     files: IndexSet<raw::File>,
-    /// The concatenation of all strings that have been added to this `Converter`.
-    string_bytes: Vec<u8>,
-    /// A map from [`String`]s that have been added to this `Converter` to their offsets in the `string_bytes` field.
-    strings: HashMap<String, u32>,
     /// A map from [`raw::Range`]s to the [`raw::SourceLocation`]s they correspond to.
     ///
     /// Only the starting address of a range is saved, the end address is given implicitly
     /// by the start address of the next range.
     ranges: BTreeMap<raw::Range, raw::SourceLocation>,
+    string_table: StringTable,
 }
 
 impl PortablePdbCacheConverter {
@@ -69,11 +66,11 @@ impl PortablePdbCacheConverter {
     ///
     /// This writes the PortablePdbCache binary format into the given [`Write`].
     pub fn serialize<W: Write>(self, writer: &mut W) -> std::io::Result<()> {
-        let mut writer = WriteWrapper::new(writer);
+        let mut writer = watto::Writer::new(writer);
 
         let num_ranges = self.ranges.len() as u32;
         let num_files = self.files.len() as u32;
-        let string_bytes = self.string_bytes.len() as u32;
+        let string_bytes = self.string_table.into_bytes();
 
         let header = raw::Header {
             magic: raw::PPDBCACHE_MAGIC,
@@ -83,105 +80,44 @@ impl PortablePdbCacheConverter {
 
             num_files,
             num_ranges,
-            string_bytes,
+            string_bytes: string_bytes.len() as u32,
             _reserved: [0; 16],
         };
 
-        writer.write(header.as_bytes())?;
-        writer.align()?;
+        writer.write_all(header.as_bytes())?;
+        writer.align_to(8)?;
 
         for file in self.files.into_iter() {
-            writer.write(file.as_bytes())?;
+            writer.write_all(file.as_bytes())?;
         }
-        writer.align()?;
+        writer.align_to(8)?;
 
         for sl in self.ranges.values() {
-            writer.write(sl.as_bytes())?;
+            writer.write_all(sl.as_bytes())?;
         }
-        writer.align()?;
+        writer.align_to(8)?;
 
         for r in self.ranges.keys() {
-            writer.write(r.as_bytes())?;
+            writer.write_all(r.as_bytes())?;
         }
-        writer.align()?;
+        writer.align_to(8)?;
 
-        writer.write(&self.string_bytes)?;
+        writer.write_all(&string_bytes)?;
 
         Ok(())
     }
 
-    fn set_pdb_id(&mut self, id: [u8; 20]) {
+    fn set_pdb_id(&mut self, id: DebugId) {
         self.pdb_id = id;
     }
 
     fn insert_file(&mut self, name: &str, lang: Language) -> u32 {
-        let name_offset = self.insert_string(name);
+        let name_offset = self.string_table.insert(name) as u32;
         let file = raw::File {
             name_offset,
             lang: lang as u32,
         };
 
         self.files.insert_full(file).0 as u32
-    }
-
-    /// Insert a string into this converter.
-    ///
-    /// If the string was already present, it is not added again. A newly added string
-    /// is prefixed by its length in LEB128 encoding. The returned `u32`
-    /// is the offset into the `string_bytes` field where the string is saved.
-    fn insert_string(&mut self, s: &str) -> u32 {
-        let Self {
-            ref mut strings,
-            ref mut string_bytes,
-            ..
-        } = self;
-        if s.is_empty() {
-            return u32::MAX;
-        }
-        if let Some(&offset) = strings.get(s) {
-            return offset;
-        }
-        let string_offset = string_bytes.len() as u32;
-        let string_len = s.len() as u64;
-        leb128::write::unsigned(string_bytes, string_len).unwrap();
-        string_bytes.extend(s.bytes());
-
-        strings.insert(s.to_owned(), string_offset);
-        string_offset
-    }
-}
-
-struct WriteWrapper<W> {
-    writer: W,
-    position: usize,
-}
-
-impl<W: Write> WriteWrapper<W> {
-    fn new(writer: W) -> Self {
-        Self {
-            writer,
-            position: 0,
-        }
-    }
-
-    fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
-        let len = data.len();
-        self.writer.write_all(data)?;
-        self.position += len;
-        Ok(len)
-    }
-
-    fn align(&mut self) -> std::io::Result<usize> {
-        let buf = &[0u8; 7];
-        let len = {
-            let to_align = self.position;
-            let remainder = to_align % 8;
-            if remainder == 0 {
-                remainder
-            } else {
-                8 - remainder
-            }
-        };
-        self.write(&buf[0..len])
     }
 }

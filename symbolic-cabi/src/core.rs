@@ -255,7 +255,9 @@ impl SymbolicErrorCode {
             if let Some(error) = error.downcast_ref::<Error>() {
                 return match error.kind() {
                     ErrorKind::WrongFormat => SymbolicErrorCode::SymCacheErrorBadFileMagic,
-                    ErrorKind::HeaderTooSmall => SymbolicErrorCode::SymCacheErrorBadFileHeader,
+                    ErrorKind::HeaderTooSmall | ErrorKind::InvalidHeader => {
+                        SymbolicErrorCode::SymCacheErrorBadFileHeader
+                    }
                     ErrorKind::WrongVersion => SymbolicErrorCode::SymCacheErrorUnsupportedVersion,
                     ErrorKind::BadDebugFile => SymbolicErrorCode::SymCacheErrorBadDebugFile,
                     _ => SymbolicErrorCode::SymCacheErrorUnknown,

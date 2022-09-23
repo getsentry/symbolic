@@ -62,11 +62,6 @@ impl<'data> PortablePdbCache<'data> {
 
     /// Resolves a string reference to the pointed-to `&str` data.
     fn get_string(&self, offset: u32) -> Option<&'data str> {
-        let reader = &mut self.string_bytes.get(offset as usize..)?;
-        let len = leb128::read::unsigned(reader).ok()? as usize;
-
-        let bytes = reader.get(..len)?;
-
-        std::str::from_utf8(bytes).ok()
+        watto::StringTable::read(self.string_bytes, offset as usize).ok()
     }
 }

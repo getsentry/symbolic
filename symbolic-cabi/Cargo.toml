@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-cabi"
-version = "9.1.2"
+version = "9.1.4"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -13,7 +13,7 @@ C interface wrapper for symbolic, a library to symbolicate and process stack
 traces from native applications, minidumps, minified JavaScripts or ProGuard
 optimized Android apps.
 """
-edition = "2018"
+edition = "2021"
 publish = false
 
 [lib]
@@ -22,10 +22,4 @@ crate-type = ["cdylib"]
 [dependencies]
 proguard = { version = "5.0.0", features = ["uuid"] }
 sourcemap = "6.0.2"
-symbolic = { version = "9.1.2", path = "../symbolic", features = [
-    "cfi",
-    "debuginfo",
-    "demangle",
-    "sourcemapcache",
-    "symcache",
-] }
+symbolic = { version = "9.1.4", path = "../symbolic", features = ["cfi", "debuginfo", "demangle", "sourcemapcache", "symcache"] }

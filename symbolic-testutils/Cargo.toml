@@ -1,8 +1,8 @@
 [package]
 name = "symbolic-testutils"
-version = "9.1.2"
+version = "9.1.4"
 license = "MIT"
-edition = "2018"
+edition = "2021"
 publish = false
 
 [package.metadata.docs.rs]

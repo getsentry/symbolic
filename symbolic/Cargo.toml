@@ -1,6 +1,6 @@
 [package]
 name = "symbolic"
-version = "9.1.2"
+version = "9.1.4"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -14,7 +14,7 @@ description = """
 A library to symbolicate and process stack traces from native applications,
 minidumps, Unreal Engine 4, minified JavaScripts or ProGuard optimized Android apps.
 """
-edition = "2018"
+edition = "2021"
 
 [package.metadata.docs.rs]
 all-features = true
@@ -27,20 +27,19 @@ debuginfo = ["symbolic-debuginfo"]
 debuginfo-serde = ["debuginfo", "common-serde"]
 demangle = ["symbolic-demangle"]
 il2cpp = ["symbolic-il2cpp", "symbolic-symcache/il2cpp"]
+ppdb = ["symbolic-ppdb"]
 sourcemapcache = ["symbolic-sourcemapcache"]
 symcache = ["symbolic-symcache", "debuginfo"]
 unreal = ["symbolic-unreal"]
 unreal-serde = ["unreal", "common-serde", "symbolic-unreal/serde"]
 
 [dependencies]
-symbolic-cfi = { version = "9.1.2", path = "../symbolic-cfi", optional = true }
-symbolic-common = { version = "9.1.2", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "9.1.2", path = "../symbolic-debuginfo", optional = true }
-symbolic-demangle = { version = "9.1.2", path = "../symbolic-demangle", optional = true }
-symbolic-il2cpp = { version = "9.1.2", path = "../symbolic-il2cpp", optional = true }
-symbolic-sourcemapcache = { version = "9.1.2", path = "../symbolic-sourcemapcache", optional = true }
-symbolic-symcache = { version = "9.1.2", path = "../symbolic-symcache", optional = true }
-symbolic-unreal = { version = "9.1.2", path = "../symbolic-unreal", optional = true }
-
-[badges]
-travis-ci = { repository = "getsentry/symbolic", branch = "master" }
+symbolic-cfi = { version = "9.1.4", path = "../symbolic-cfi", optional = true }
+symbolic-common = { version = "9.1.4", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "9.1.4", path = "../symbolic-debuginfo", optional = true }
+symbolic-demangle = { version = "9.1.4", path = "../symbolic-demangle", optional = true }
+symbolic-il2cpp = { version = "9.1.4", path = "../symbolic-il2cpp", optional = true }
+symbolic-ppdb = { version = "9.1.4", path = "../symbolic-ppdb", optional = true }
+symbolic-sourcemapcache = { version = "9.1.4", path = "../symbolic-sourcemapcache", optional = true }
+symbolic-symcache = { version = "9.1.4", path = "../symbolic-symcache", optional = true }
+symbolic-unreal = { version = "9.1.4", path = "../symbolic-unreal", optional = true }

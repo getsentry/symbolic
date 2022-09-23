@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-symcache"
-version = "9.1.2"
+version = "9.1.4"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -13,7 +13,7 @@ description = """
 An optimized cache file for fast and memory efficient lookup of symbols and
 stack frames in debugging information.
 """
-edition = "2018"
+edition = "2021"
 
 exclude = [
     "tests/**/*",
@@ -23,16 +23,17 @@ exclude = [
 all-features = true
 
 [dependencies]
-symbolic-common = { version = "9.1.2", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "9.1.2", path = "../symbolic-debuginfo" }
-symbolic-il2cpp = { version = "9.1.2", path = "../symbolic-il2cpp", optional = true }
+symbolic-common = { version = "9.1.4", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "9.1.4", path = "../symbolic-debuginfo" }
+symbolic-il2cpp = { version = "9.1.4", path = "../symbolic-il2cpp", optional = true }
 thiserror = "1.0.20"
 indexmap = "1.7.0"
 tracing = "0.1.35"
+watto = { version = "0.1.0", features = ["writer", "strings"] }
 
 [dev-dependencies]
 insta = { version = "1.18.0", features = ["yaml"] }
-criterion = "0.3.4"
+criterion = "0.4.0"
 symbolic-testutils = { path = "../symbolic-testutils" }
 similar-asserts = "1.0.0"
 

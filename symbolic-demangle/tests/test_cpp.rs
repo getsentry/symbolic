@@ -8,7 +8,7 @@
 mod utils;
 
 use symbolic_common::Language;
-use symbolic_demangle::DemangleOptions;
+use symbolic_demangle::{Demangle, DemangleOptions};
 
 #[test]
 fn test_demangle_cpp() {
@@ -45,6 +45,18 @@ fn test_demangle_cpp_hash_suffix() {
     "__ZZN3xxx12xxxxxxxxxxxx9xxxxxxxxxILNS0_16xxxxxxxxxxxxxxxxE0EZNKS_6xxxxxx16xxxxxxxxxxxxxxxxEPjbbE4$_76EEvRKT0_PS3_PNS_7xxxxxxxENS0_13xxxxxxxxxxxxxEbbEN18xxxxxxxxxxxxxxxxxx10xxxxxxxxxxEv$57c34bde3fedbd1a4bf6fbbe5453ff24" =>
     "void xxx::xxxxxxxxxxxx::xxxxxxxxx<(xxx::xxxxxxxxxxxx::xxxxxxxxxxxxxxxx)0, xxx::xxxxxx::xxxxxxxxxxxxxxxx(unsigned int*, bool, bool) const::$_76>(xxx::xxxxxx::xxxxxxxxxxxxxxxx(unsigned int*, bool, bool) const::$_76 const&, xxx::xxxxxx*, xxx::xxxxxxx*, xxx::xxxxxxxxxxxx::xxxxxxxxxxxxx, bool, bool)::xxxxxxxxxxxxxxxxxx::xxxxxxxxxx()"
     });
+}
+
+#[test]
+fn test_demangle_cpp_bare_type() {
+    let names = ["a", "b", "c", "d", "e", "f", "g"];
+    for name in names {
+        let name =
+            symbolic_common::Name::new(name, symbolic_common::NameMangling::Mangled, Language::Cpp);
+        let demangled = name.try_demangle(DemangleOptions::complete());
+
+        assert_eq!(name.as_str(), &demangled);
+    }
 }
 
 #[test]
