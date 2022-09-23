@@ -170,6 +170,15 @@ impl fmt::Debug for PortablePdb<'_> {
 }
 
 impl<'data> PortablePdb<'data> {
+    /// Checks whether the provided buffer could potentially be a Portable PDB file,
+    /// without fully parsing it.
+    pub fn peek(buf: &[u8]) -> bool {
+        if let Some((header, _)) = raw::Header::ref_from_prefix(buf) {
+            return header.signature == raw::METADATA_SIGNATURE;
+        }
+        false
+    }
+
     /// Parses the provided buffer into a Portable PDB file.
     pub fn parse(buf: &'data [u8]) -> Result<Self, FormatError> {
         let (header, rest) =
@@ -290,7 +299,7 @@ impl<'data> PortablePdb<'data> {
     }
 
     /// Reads this file's PDB ID from its #PDB stream.
-    pub(crate) fn pdb_id(&self) -> Option<DebugId> {
+    pub fn pdb_id(&self) -> Option<DebugId> {
         self.pdb_stream.as_ref().map(|stream| stream.id())
     }
 
