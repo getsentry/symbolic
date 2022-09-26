@@ -168,6 +168,8 @@ pub enum FileFormat {
     SourceBundle,
     /// WASM container.
     Wasm,
+    /// Portable PDB
+    PortablePdb,
 }
 
 impl FileFormat {
@@ -182,6 +184,7 @@ impl FileFormat {
             FileFormat::Pe => "pe",
             FileFormat::SourceBundle => "sourcebundle",
             FileFormat::Wasm => "wasm",
+            FileFormat::PortablePdb => "portablepdb",
         }
     }
 }
@@ -204,6 +207,7 @@ impl FromStr for FileFormat {
             "pe" => FileFormat::Pe,
             "sourcebundle" => FileFormat::SourceBundle,
             "wasm" => FileFormat::Wasm,
+            "portablepdb" => FileFormat::PortablePdb,
             _ => return Err(UnknownFileFormatError),
         })
     }

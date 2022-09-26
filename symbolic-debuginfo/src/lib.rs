@@ -75,6 +75,7 @@ pub use crate::base::*;
     feature = "elf",
     feature = "macho",
     feature = "ms",
+    feature = "ppdb",
     feature = "sourcebundle",
     feature = "wasm"
 ))]

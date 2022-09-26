@@ -5,6 +5,7 @@ use std::error::Error;
 use std::fmt;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
+use symbolic_ppdb::PortablePdb;
 
 use crate::base::*;
 use crate::breakpad::*;
@@ -139,6 +140,8 @@ pub fn peek(data: &[u8], archive: bool) -> FileFormat {
         FileFormat::Breakpad
     } else if WasmObject::test(data) {
         FileFormat::Wasm
+    } else if PortablePdb::peek(data) {
+        FileFormat::PortablePdb
     } else {
         let magic = goblin::mach::parse_magic_and_ctx(data, 0).map(|(magic, _)| magic);
 
@@ -591,6 +594,18 @@ impl<'data, 'object> Iterator for SymbolIterator<'data, 'object> {
     }
 }
 
+impl<'data> crate::base::Parse<'data> for PortablePdb<'data> {
+    type Error = symbolic_ppdb::FormatError;
+
+    fn parse(data: &'data [u8]) -> Result<Self, Self::Error> {
+        Self::parse(data)
+    }
+
+    fn test(data: &'data [u8]) -> bool {
+        Self::peek(data)
+    }
+}
+
 #[derive(Debug)]
 enum ArchiveInner<'d> {
     Breakpad(MonoArchive<'d, BreakpadObject<'d>>),
@@ -600,6 +615,7 @@ enum ArchiveInner<'d> {
     Pe(MonoArchive<'d, PeObject<'d>>),
     SourceBundle(MonoArchive<'d, SourceBundle<'d>>),
     Wasm(MonoArchive<'d, WasmObject<'d>>),
+    PortablePdb(MonoArchive<'d, PortablePdb<'d>>),
 }
 
 /// A generic archive that can contain one or more object files.
@@ -636,6 +652,7 @@ impl<'d> Archive<'d> {
             FileFormat::Pe => Archive(ArchiveInner::Pe(MonoArchive::new(data))),
             FileFormat::SourceBundle => Archive(ArchiveInner::SourceBundle(MonoArchive::new(data))),
             FileFormat::Wasm => Archive(ArchiveInner::Wasm(MonoArchive::new(data))),
+            FileFormat::PortablePdb => Archive(ArchiveInner::PortablePdb(MonoArchive::new(data))),
             FileFormat::Unknown => {
                 return Err(ObjectError::new(ObjectErrorRepr::UnsupportedObject))
             }
@@ -654,6 +671,7 @@ impl<'d> Archive<'d> {
             ArchiveInner::Pe(_) => FileFormat::Pe,
             ArchiveInner::Wasm(_) => FileFormat::Wasm,
             ArchiveInner::SourceBundle(_) => FileFormat::SourceBundle,
+            ArchiveInner::PortablePdb(_) => FileFormat::PortablePdb,
         }
     }
 
@@ -702,6 +720,7 @@ impl<'d> Archive<'d> {
                 .object_by_index(index)
                 .map(|opt| opt.map(Object::Wasm))
                 .map_err(ObjectError::transparent),
+            ArchiveInner::PortablePdb(_) => Ok(None),
         }
     }
 
