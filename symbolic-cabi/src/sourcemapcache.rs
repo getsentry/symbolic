@@ -1,3 +1,4 @@
+use std::ffi::CStr;
 use std::ops::Deref;
 use std::os::raw::c_char;
 use std::ptr;
@@ -6,7 +7,6 @@ use std::slice;
 use crate::utils::ForeignObject;
 use crate::SymbolicStr;
 
-use symbolic::common::AsSelf;
 use symbolic::common::ByteView;
 use symbolic::common::SelfCell;
 use symbolic::sourcemapcache::SourceLocation;
@@ -14,27 +14,11 @@ use symbolic::sourcemapcache::{
     ScopeLookupResult, SourceMapCache, SourceMapCacheWriter, SourcePosition,
 };
 
-struct Inner<'a> {
-    cache: SourceMapCache<'a>,
-}
-
-impl<'slf, 'a: 'slf> AsSelf<'slf> for Inner<'a> {
-    type Ref = Inner<'slf>;
-
-    fn as_self(&'slf self) -> &Self::Ref {
-        self
-    }
-}
-
-pub struct OwnedSourceMapCache<'a> {
-    inner: SelfCell<ByteView<'a>, Inner<'a>>,
-}
-
 /// Represents an sourcemapcache.
 pub struct SymbolicSourceMapCache;
 
 impl ForeignObject for SymbolicSourceMapCache {
-    type RustObject = OwnedSourceMapCache<'static>;
+    type RustObject = SelfCell<ByteView<'static>, SourceMapCache<'static>>;
 }
 
 #[repr(C)]
@@ -74,6 +58,15 @@ pub struct SymbolicSmTokenMatch {
 }
 
 ffi_fn! {
+    /// Creates a sourcemapcache from a given path.
+    unsafe fn symbolic_sourcemapcache_open(path: *const c_char) -> Result<*mut SymbolicSourceMapCache> {
+        let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
+        let cell = SelfCell::try_new(byteview, |p| SourceMapCache::parse(&*p))?;
+        Ok(SymbolicSourceMapCache::from_rust(cell))
+    }
+}
+
+ffi_fn! {
     /// Creates an sourcemapcache from a given minified source and sourcemap contents.
     ///
     /// This shares the underlying memory and does not copy it if that is
@@ -95,13 +88,8 @@ ffi_fn! {
         writer.serialize(&mut buffer)?;
 
         let byteview = ByteView::from_vec(buffer);
-        let inner = SelfCell::try_new::<symbolic::sourcemapcache::SourceMapCacheError, _>(byteview, |data| {
-            let cache = SourceMapCache::parse(&*data)?;
-            Ok(Inner { cache })
-        })?;
-
-        let cache = OwnedSourceMapCache { inner };
-        Ok(SymbolicSourceMapCache::from_rust(cache))
+        let cell = SelfCell::try_new(byteview, |p| SourceMapCache::parse(&*p))?;
+        Ok(SymbolicSourceMapCache::from_rust(cell))
     }
 }
 
@@ -174,9 +162,7 @@ ffi_fn! {
     ) -> Result<*mut SymbolicSmTokenMatch> {
         // Sentry JS events are 1-indexed, where SourcePosition is using 0-indexed locations
         let token_match = SymbolicSourceMapCache::as_rust(source_map)
-            .inner
             .get()
-            .cache
             .lookup(SourcePosition::new(line - 1, col - 1))
             .map(|sp| make_token_match(sp, context_lines))
             .unwrap_or_else(ptr::null_mut);

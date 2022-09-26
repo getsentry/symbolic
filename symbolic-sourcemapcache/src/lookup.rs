@@ -1,3 +1,4 @@
+use symbolic_common::AsSelf;
 use watto::{align_to, Pod, StringTable};
 
 use crate::{ScopeLookupResult, SourcePosition};
@@ -275,6 +276,14 @@ impl<'data> Iterator for Files<'data> {
         self.raw_files
             .next()
             .and_then(|raw_file| self.cache.resolve_file(raw_file))
+    }
+}
+
+impl<'slf, 'd: 'slf> AsSelf<'slf> for SourceMapCache<'d> {
+    type Ref = SourceMapCache<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
     }
 }
 
