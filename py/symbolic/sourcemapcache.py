@@ -43,6 +43,11 @@ class SourceMapCache(RustObject):
     __dealloc_func__ = lib.symbolic_sourcemapcache_free
 
     @classmethod
+    def open(cls, path):
+        """Loads a sourcemapcache from a file via mmap."""
+        return cls._from_objptr(rustcall(lib.symbolic_sourcemapcache_open, encode_path(path)))
+
+    @classmethod
     def from_bytes(cls, source_content, sourcemap_content):
         """Constructs a sourcemapcache from bytes."""
         return cls._from_objptr(
