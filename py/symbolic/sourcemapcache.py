@@ -1,5 +1,5 @@
 from symbolic._lowlevel import lib, ffi
-from symbolic.utils import RustObject, rustcall, decode_str
+from symbolic.utils import RustObject, rustcall, decode_str, encode_path
 
 
 __all__ = ["SourceMapCache", "SourceMapCacheToken"]
