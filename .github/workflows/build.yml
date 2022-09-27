@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - "release/**"
-      - "manylinux2014"
 
 jobs:
   python-wheel-mac:
