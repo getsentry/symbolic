@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-testutils"
-version = "9.1.4"
+version = "9.2.0"
 license = "MIT"
 edition = "2021"
 publish = false
