@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Added an Object type for Portable PDB files. ([#696](https://github.com/getsentry/symbolic/pull/696))
+
 ## 9.2.0
 
 **Features**:
