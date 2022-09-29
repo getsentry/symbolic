@@ -21,7 +21,7 @@ exclude = ["tests/**/*"]
 all-features = true
 
 [features]
-default = ["breakpad", "elf", "macho", "ms", "sourcebundle", "wasm"]
+default = ["breakpad", "elf", "macho", "ms", "ppdb", "sourcebundle", "wasm"]
 # Breakpad text format parsing and processing
 breakpad = ["nom", "nom-supreme", "regex"]
 # DWARF processing.
