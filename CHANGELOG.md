@@ -6,6 +6,10 @@
 
 - Added an Object type for Portable PDB files. ([#696](https://github.com/getsentry/symbolic/pull/696))
 
+**Fixes**:
+
+- Fixed a bug in Unreal Engine log parsing by updating the `anylog` dependency. ([#695](https://github.com/getsentry/symbolic/pull/695))
+
 ## 9.2.0
 
 **Features**:
