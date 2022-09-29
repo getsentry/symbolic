@@ -614,7 +614,7 @@ pub enum SymbolIterator<'data, 'object> {
     Pe(PeSymbolIterator<'data, 'object>),
     SourceBundle(SourceBundleSymbolIterator<'data>),
     Wasm(WasmSymbolIterator<'data, 'object>),
-    PortablePdb(PortablePdbSymbolIterator),
+    PortablePdb(PortablePdbSymbolIterator<'data>),
 }
 
 impl<'data, 'object> Iterator for SymbolIterator<'data, 'object> {
