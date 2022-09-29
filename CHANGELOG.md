@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 9.2.1
 
 **Fixes**:
 - Fixed a bug in Unreal Engine log parsing by updating the `anylog` dependency. ([#695](https://github.com/getsentry/symbolic/pull/695))

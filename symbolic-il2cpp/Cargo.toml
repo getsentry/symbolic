@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-il2cpp"
-version = "9.2.0"
+version = "9.2.1"
 license = "MIT"
 authors = ["Sentry <hello@sentry.io>"]
 documentation = "https://docs.rs/symbolic-il2cpp"
@@ -14,5 +14,5 @@ edition = "2021"
 [dependencies]
 indexmap = "1.8.0"
 serde_json = "1.0.79"
-symbolic-common = { version = "9.2.0", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "9.2.0", path = "../symbolic-debuginfo" }
+symbolic-common = { version = "9.2.1", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "9.2.1", path = "../symbolic-debuginfo" }
