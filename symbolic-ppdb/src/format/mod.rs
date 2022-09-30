@@ -321,4 +321,11 @@ impl<'data> PortablePdb<'data> {
             .ok_or(FormatErrorKind::NoMetadataStream)?;
         md_stream.get_table_cell_u32(table, row, col)
     }
+
+    /// Returns true if this portable pdb file contains method debug information.
+    pub fn has_debug_info(&self) -> bool {
+        self.metadata_stream.as_ref().map_or(false, |md_stream| {
+            md_stream[TableType::MethodDebugInformation].rows > 0
+        })
+    }
 }

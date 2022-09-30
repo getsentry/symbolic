@@ -375,6 +375,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             Object::Pe(o) => self.process_pe(o),
             Object::Wasm(o) => self.process_dwarf(o, false),
             Object::SourceBundle(_) => Ok(()),
+            Object::PortablePdb(_) => Ok(()),
         }
     }
 

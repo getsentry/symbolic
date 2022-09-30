@@ -5,6 +5,7 @@ use std::error::Error;
 use std::fmt;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
+use symbolic_ppdb::PortablePdb;
 
 use crate::base::*;
 use crate::breakpad::*;
@@ -13,6 +14,7 @@ use crate::elf::*;
 use crate::macho::*;
 use crate::pdb::*;
 use crate::pe::*;
+use crate::ppdb::*;
 use crate::sourcebundle::*;
 use crate::wasm::*;
 
@@ -26,6 +28,7 @@ macro_rules! match_inner {
             $ty::Pe($pat) => $expr,
             $ty::SourceBundle($pat) => $expr,
             $ty::Wasm($pat) => $expr,
+            $ty::PortablePdb($pat) => $expr,
         }
     };
 }
@@ -40,6 +43,7 @@ macro_rules! map_inner {
             $from::Pe($pat) => $to::Pe($expr),
             $from::SourceBundle($pat) => $to::SourceBundle($expr),
             $from::Wasm($pat) => $to::Wasm($expr),
+            $from::PortablePdb($pat) => $to::PortablePdb($expr),
         }
     };
 }
@@ -56,6 +60,9 @@ macro_rules! map_result {
                 .map($to::SourceBundle)
                 .map_err(ObjectError::transparent),
             $from::Wasm($pat) => $expr.map($to::Wasm).map_err(ObjectError::transparent),
+            $from::PortablePdb($pat) => $expr
+                .map($to::PortablePdb)
+                .map_err(ObjectError::transparent),
         }
     };
 }
@@ -139,6 +146,8 @@ pub fn peek(data: &[u8], archive: bool) -> FileFormat {
         FileFormat::Breakpad
     } else if WasmObject::test(data) {
         FileFormat::Wasm
+    } else if PortablePdbObject::test(data) {
+        FileFormat::PortablePdb
     } else {
         let magic = goblin::mach::parse_magic_and_ctx(data, 0).map(|(magic, _)| magic);
 
@@ -183,6 +192,8 @@ pub enum Object<'data> {
     SourceBundle(SourceBundle<'data>),
     /// A WASM file.
     Wasm(WasmObject<'data>),
+    /// A Portable PDB, a debug companion format for CLR languages.
+    PortablePdb(PortablePdbObject<'data>),
 }
 
 impl<'data> Object<'data> {
@@ -212,6 +223,7 @@ impl<'data> Object<'data> {
             FileFormat::Pe => parse_object!(Pe, PeObject, data),
             FileFormat::SourceBundle => parse_object!(SourceBundle, SourceBundle, data),
             FileFormat::Wasm => parse_object!(Wasm, WasmObject, data),
+            FileFormat::PortablePdb => parse_object!(PortablePdb, PortablePdbObject, data),
             FileFormat::Unknown => {
                 return Err(ObjectError::new(ObjectErrorRepr::UnsupportedObject))
             }
@@ -230,6 +242,7 @@ impl<'data> Object<'data> {
             Object::Pe(_) => FileFormat::Pe,
             Object::SourceBundle(_) => FileFormat::SourceBundle,
             Object::Wasm(_) => FileFormat::Wasm,
+            Object::PortablePdb(_) => FileFormat::PortablePdb,
         }
     }
 
@@ -327,6 +340,10 @@ impl<'data> Object<'data> {
             Object::Wasm(ref o) => o
                 .debug_session()
                 .map(ObjectDebugSession::Dwarf)
+                .map_err(ObjectError::transparent),
+            Object::PortablePdb(ref o) => o
+                .debug_session()
+                .map(ObjectDebugSession::PortablePdb)
                 .map_err(ObjectError::transparent),
         }
     }
@@ -431,6 +448,7 @@ pub enum ObjectDebugSession<'d> {
     Pdb(PdbDebugSession<'d>),
     Pe(PeDebugSession<'d>),
     SourceBundle(SourceBundleDebugSession<'d>),
+    PortablePdb(PortablePdbDebugSession),
 }
 
 impl<'d> ObjectDebugSession<'d> {
@@ -450,6 +468,9 @@ impl<'d> ObjectDebugSession<'d> {
             ObjectDebugSession::SourceBundle(ref s) => {
                 ObjectFunctionIterator::SourceBundle(s.functions())
             }
+            ObjectDebugSession::PortablePdb(ref s) => {
+                ObjectFunctionIterator::PortablePdb(s.functions())
+            }
         }
     }
 
@@ -461,6 +482,7 @@ impl<'d> ObjectDebugSession<'d> {
             ObjectDebugSession::Pdb(ref s) => ObjectFileIterator::Pdb(s.files()),
             ObjectDebugSession::Pe(ref s) => ObjectFileIterator::Pe(s.files()),
             ObjectDebugSession::SourceBundle(ref s) => ObjectFileIterator::SourceBundle(s.files()),
+            ObjectDebugSession::PortablePdb(ref s) => ObjectFileIterator::PortablePdb(s.files()),
         }
     }
 
@@ -482,6 +504,9 @@ impl<'d> ObjectDebugSession<'d> {
                 s.source_by_path(path).map_err(ObjectError::transparent)
             }
             ObjectDebugSession::SourceBundle(ref s) => {
+                s.source_by_path(path).map_err(ObjectError::transparent)
+            }
+            ObjectDebugSession::PortablePdb(ref s) => {
                 s.source_by_path(path).map_err(ObjectError::transparent)
             }
         }
@@ -514,6 +539,7 @@ pub enum ObjectFunctionIterator<'s> {
     Pdb(PdbFunctionIterator<'s>),
     Pe(PeFunctionIterator<'s>),
     SourceBundle(SourceBundleFunctionIterator<'s>),
+    PortablePdb(PortablePdbFunctionIterator<'s>),
 }
 
 impl<'s> Iterator for ObjectFunctionIterator<'s> {
@@ -536,6 +562,9 @@ impl<'s> Iterator for ObjectFunctionIterator<'s> {
             ObjectFunctionIterator::SourceBundle(ref mut i) => {
                 Some(i.next()?.map_err(ObjectError::transparent))
             }
+            ObjectFunctionIterator::PortablePdb(ref mut i) => {
+                Some(i.next()?.map_err(ObjectError::transparent))
+            }
         }
     }
 }
@@ -549,6 +578,7 @@ pub enum ObjectFileIterator<'s> {
     Pdb(PdbFileIterator<'s>),
     Pe(PeFileIterator<'s>),
     SourceBundle(SourceBundleFileIterator<'s>),
+    PortablePdb(PortablePdbFileIterator<'s>),
 }
 
 impl<'s> Iterator for ObjectFileIterator<'s> {
@@ -567,6 +597,9 @@ impl<'s> Iterator for ObjectFileIterator<'s> {
             ObjectFileIterator::SourceBundle(ref mut i) => {
                 Some(i.next()?.map_err(ObjectError::transparent))
             }
+            ObjectFileIterator::PortablePdb(ref mut i) => {
+                Some(i.next()?.map_err(ObjectError::transparent))
+            }
         }
     }
 }
@@ -581,6 +614,7 @@ pub enum SymbolIterator<'data, 'object> {
     Pe(PeSymbolIterator<'data, 'object>),
     SourceBundle(SourceBundleSymbolIterator<'data>),
     Wasm(WasmSymbolIterator<'data, 'object>),
+    PortablePdb(PortablePdbSymbolIterator<'data>),
 }
 
 impl<'data, 'object> Iterator for SymbolIterator<'data, 'object> {
@@ -588,6 +622,18 @@ impl<'data, 'object> Iterator for SymbolIterator<'data, 'object> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match_inner!(self, SymbolIterator(ref mut iter) => iter.next())
+    }
+}
+
+impl<'data> crate::base::Parse<'data> for PortablePdb<'data> {
+    type Error = symbolic_ppdb::FormatError;
+
+    fn parse(data: &'data [u8]) -> Result<Self, Self::Error> {
+        Self::parse(data)
+    }
+
+    fn test(data: &'data [u8]) -> bool {
+        Self::peek(data)
     }
 }
 
@@ -600,6 +646,7 @@ enum ArchiveInner<'d> {
     Pe(MonoArchive<'d, PeObject<'d>>),
     SourceBundle(MonoArchive<'d, SourceBundle<'d>>),
     Wasm(MonoArchive<'d, WasmObject<'d>>),
+    PortablePdb(MonoArchive<'d, PortablePdbObject<'d>>),
 }
 
 /// A generic archive that can contain one or more object files.
@@ -636,6 +683,7 @@ impl<'d> Archive<'d> {
             FileFormat::Pe => Archive(ArchiveInner::Pe(MonoArchive::new(data))),
             FileFormat::SourceBundle => Archive(ArchiveInner::SourceBundle(MonoArchive::new(data))),
             FileFormat::Wasm => Archive(ArchiveInner::Wasm(MonoArchive::new(data))),
+            FileFormat::PortablePdb => Archive(ArchiveInner::PortablePdb(MonoArchive::new(data))),
             FileFormat::Unknown => {
                 return Err(ObjectError::new(ObjectErrorRepr::UnsupportedObject))
             }
@@ -654,6 +702,7 @@ impl<'d> Archive<'d> {
             ArchiveInner::Pe(_) => FileFormat::Pe,
             ArchiveInner::Wasm(_) => FileFormat::Wasm,
             ArchiveInner::SourceBundle(_) => FileFormat::SourceBundle,
+            ArchiveInner::PortablePdb(_) => FileFormat::PortablePdb,
         }
     }
 
@@ -702,6 +751,7 @@ impl<'d> Archive<'d> {
                 .object_by_index(index)
                 .map(|opt| opt.map(Object::Wasm))
                 .map_err(ObjectError::transparent),
+            ArchiveInner::PortablePdb(_) => Ok(None),
         }
     }
 
@@ -730,6 +780,7 @@ enum ObjectIteratorInner<'d, 'a> {
     Pe(MonoArchiveObjects<'d, PeObject<'d>>),
     SourceBundle(MonoArchiveObjects<'d, SourceBundle<'d>>),
     Wasm(MonoArchiveObjects<'d, WasmObject<'d>>),
+    PortablePdb(MonoArchiveObjects<'d, PortablePdbObject<'d>>),
 }
 
 /// An iterator over [`Object`](enum.Object.html)s in an [`Archive`](struct.Archive.html).

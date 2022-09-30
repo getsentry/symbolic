@@ -63,6 +63,8 @@ pub mod macho;
 pub mod pdb;
 #[cfg(feature = "ms")]
 pub mod pe;
+#[cfg(feature = "ppdb")]
+pub mod ppdb;
 #[cfg(feature = "sourcebundle")]
 pub mod sourcebundle;
 #[cfg(feature = "wasm")]
@@ -75,6 +77,7 @@ pub use crate::base::*;
     feature = "elf",
     feature = "macho",
     feature = "ms",
+    feature = "ppdb",
     feature = "sourcebundle",
     feature = "wasm"
 ))]
