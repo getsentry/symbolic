@@ -751,7 +751,10 @@ impl<'d> Archive<'d> {
                 .object_by_index(index)
                 .map(|opt| opt.map(Object::Wasm))
                 .map_err(ObjectError::transparent),
-            ArchiveInner::PortablePdb(_) => Ok(None),
+            ArchiveInner::PortablePdb(ref a) => a
+                .object_by_index(index)
+                .map(|opt| opt.map(Object::PortablePdb))
+                .map_err(ObjectError::transparent),
         }
     }
 
