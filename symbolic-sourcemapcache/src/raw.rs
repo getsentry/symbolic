@@ -12,7 +12,12 @@ pub const SOURCEMAPCACHE_MAGIC: u32 = u32::from_le_bytes(SOURCEMAPCACHE_MAGIC_BY
 pub const SOURCEMAPCACHE_MAGIC_FLIPPED: u32 = SOURCEMAPCACHE_MAGIC.swap_bytes();
 
 /// The current Format version
-pub const SOURCEMAPCACHE_VERSION: u32 = 1;
+///
+/// # Version History
+///
+/// - 2: Added `name` reference
+/// - 1: Initial version
+pub const SOURCEMAPCACHE_VERSION: u32 = 2;
 
 /// The SourceMapCache binary Header.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,6 +64,8 @@ impl From<SourcePosition> for MinifiedSourcePosition {
 
 /// Sentinel value used to denote unknown file.
 pub const NO_FILE_SENTINEL: u32 = u32::MAX;
+/// Sentinel value used to denote no `name`.
+pub const NO_NAME_SENTINEL: u32 = u32::MAX;
 /// Sentinel value used to denote unknown/global scope.
 pub const GLOBAL_SCOPE_SENTINEL: u32 = u32::MAX;
 /// Sentinel value used to denote anonymous function scope.
@@ -74,6 +81,8 @@ pub struct OriginalSourceLocation {
     pub line: u32,
     /// The original column number.
     pub column: u32,
+    /// The optional `name` of this token (offset into string table).
+    pub name_idx: u32,
     /// The optional scope name (offset into string table).
     pub scope_idx: u32,
 }
@@ -117,7 +126,7 @@ mod tests {
         assert_eq!(mem::size_of::<MinifiedSourcePosition>(), 8);
         assert_eq!(mem::align_of::<MinifiedSourcePosition>(), 4);
 
-        assert_eq!(mem::size_of::<OriginalSourceLocation>(), 16);
+        assert_eq!(mem::size_of::<OriginalSourceLocation>(), 20);
         assert_eq!(mem::align_of::<OriginalSourceLocation>(), 4);
     }
 }

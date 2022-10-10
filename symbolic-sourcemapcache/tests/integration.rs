@@ -29,11 +29,15 @@ fn resolves_inlined_function() {
     assert_eq!(sl.column(), 2);
     assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("bar"));
 
+    // NOTE: The last source position itself does not have a named scope, it truely is an
+    // anonymous function. However, the *call* itself has a `name` which we use in its place.
+    assert_eq!(sl.name(), Some("foo"));
+
     let sl = cache.lookup(SourcePosition::new(0, 33)).unwrap();
     assert_eq!(sl.file_name(), Some("../src/foo.js"));
     assert_eq!(sl.line(), 1);
     assert_eq!(sl.column(), 8);
-    assert_eq!(sl.scope(), ScopeLookupResult::NamedScope("foo"));
+    assert_eq!(sl.scope(), ScopeLookupResult::AnonymousScope);
 }
 
 #[test]

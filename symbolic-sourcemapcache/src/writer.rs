@@ -8,7 +8,7 @@ use js_source_scopes::{
 use sourcemap::DecodedMap;
 use watto::{Pod, StringTable, Writer};
 
-use super::raw::{self, ANONYMOUS_SCOPE_SENTINEL, GLOBAL_SCOPE_SENTINEL, NO_FILE_SENTINEL};
+use super::raw;
 use super::{ScopeLookupResult, SourcePosition};
 
 /// A structure that allows quick resolution of minified source position
@@ -153,21 +153,28 @@ impl SourceMapCacheWriter {
                 let mut file_idx = token.get_src_id();
 
                 if file_idx >= files.len() as u32 {
-                    file_idx = NO_FILE_SENTINEL;
+                    file_idx = raw::NO_FILE_SENTINEL;
                 }
 
                 let scope_idx = match scope {
                     ScopeLookupResult::NamedScope(name) => {
-                        std::cmp::min(string_table.insert(name) as u32, GLOBAL_SCOPE_SENTINEL)
+                        std::cmp::min(string_table.insert(name) as u32, raw::GLOBAL_SCOPE_SENTINEL)
                     }
-                    ScopeLookupResult::AnonymousScope => ANONYMOUS_SCOPE_SENTINEL,
-                    ScopeLookupResult::Unknown => GLOBAL_SCOPE_SENTINEL,
+                    ScopeLookupResult::AnonymousScope => raw::ANONYMOUS_SCOPE_SENTINEL,
+                    ScopeLookupResult::Unknown => raw::GLOBAL_SCOPE_SENTINEL,
+                };
+
+                let name = token.get_name();
+                let name_idx = match name {
+                    Some(name) => string_table.insert(name) as u32,
+                    None => raw::NO_NAME_SENTINEL,
                 };
 
                 let sl = raw::OriginalSourceLocation {
                     file_idx,
                     line,
                     column,
+                    name_idx,
                     scope_idx,
                 };
 
