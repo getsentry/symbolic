@@ -57,7 +57,16 @@ impl SourceMapCacheWriter {
         };
 
         // parse scopes out of the minified source
-        let scopes = extract_scope_names(source);
+        let scopes = match extract_scope_names(source) {
+            Ok(scopes) => scopes,
+            Err(err) => {
+                let err: &dyn std::error::Error = &err;
+                tracing::error!(error = err, "failed parsing minified source");
+                // even if the minified source failed parsing, we can still use the information
+                // from the sourcemap itself.
+                vec![]
+            }
+        };
 
         // resolve scopes to original names
         let ctx = SourceContext::new(source).map_err(SourceMapCacheErrorInner::SourceContext)?;
