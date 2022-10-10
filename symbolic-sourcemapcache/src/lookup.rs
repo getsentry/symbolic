@@ -35,7 +35,9 @@ impl<'data> SourceLocation<'data> {
         self.column
     }
 
-    /// The `name` of this source location.
+    /// The `name` of this source location as it is defined in the SourceMap.
+    ///
+    /// This can be useful when inferring the name of a scope from the callers call expression.
     pub fn name(&self) -> Option<&'data str> {
         self.name
     }
