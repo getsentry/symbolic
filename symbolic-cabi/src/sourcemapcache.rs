@@ -115,8 +115,8 @@ ffi_fn! {
 fn make_token_match(token: SourceLocation, context_lines: u32) -> *mut SymbolicSmTokenMatch {
     let function_name = match token.scope() {
         ScopeLookupResult::NamedScope(name) => name,
-        ScopeLookupResult::AnonymousScope => "<anonymous>",
-        ScopeLookupResult::Unknown => "<unknown>",
+        ScopeLookupResult::AnonymousScope => token.name().unwrap_or("<anonymous>"),
+        ScopeLookupResult::Unknown => token.name().unwrap_or("<unknown>"),
     };
 
     let context_line = token.line_contents().unwrap_or_default();
