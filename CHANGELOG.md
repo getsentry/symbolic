@@ -5,6 +5,7 @@
 **Features**:
 
 - Added an Object type for Portable PDB files. ([#696](https://github.com/getsentry/symbolic/pull/696))
+- Version 2 of the sourcemapcache format additionally saves the names of source locations. ([#698](https://github.com/getsentry/symbolic/pull/698))
 
 ## 9.2.1
 
