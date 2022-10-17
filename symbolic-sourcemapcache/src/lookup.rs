@@ -13,6 +13,8 @@ pub struct SourceLocation<'data> {
     line: u32,
     /// The source column.
     column: u32,
+    /// The `name` of the source location.
+    name: Option<&'data str>,
     /// The scope containing this source location.
     scope: ScopeLookupResult<'data>,
 }
@@ -31,6 +33,13 @@ impl<'data> SourceLocation<'data> {
     /// The number of the source column.
     pub fn column(&self) -> u32 {
         self.column
+    }
+
+    /// The `name` of this source location as it is defined in the SourceMap.
+    ///
+    /// This can be useful when inferring the name of a scope from the callers call expression.
+    pub fn name(&self) -> Option<&'data str> {
+        self.name
     }
 
     /// The contents of the source line.
@@ -169,6 +178,11 @@ impl<'data> SourceMapCache<'data> {
             .get(sl.file_idx as usize)
             .and_then(|raw_file| self.resolve_file(raw_file));
 
+        let name = match sl.name_idx {
+            raw::NO_NAME_SENTINEL => None,
+            idx => self.get_string(idx),
+        };
+
         let scope = match sl.scope_idx {
             raw::GLOBAL_SCOPE_SENTINEL => ScopeLookupResult::Unknown,
             raw::ANONYMOUS_SCOPE_SENTINEL => ScopeLookupResult::AnonymousScope,
@@ -181,6 +195,7 @@ impl<'data> SourceMapCache<'data> {
             file,
             line,
             column,
+            name,
             scope,
         })
     }
