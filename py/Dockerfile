@@ -13,12 +13,14 @@ RUN yum -y update \
     curl -L -s https://www.centos.org/keys/RPM-GPG-KEY-CentOS-7-aarch64 > /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7-aarch64 \
     && cat /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7-aarch64 >> /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7 ; \
     fi \
-    && dnf --forcearch "${TARGET}" --release 7 install -y gcc glibc glibc-devel --installroot "/usr/${TARGET}-linux-gnu/sys-root/" || true \
+    && dnf --forcearch "${TARGET}" --release 7 install -y gcc gcc-c++ glibc glibc-devel --installroot "/usr/${TARGET}-linux-gnu/sys-root/" || true \
     && ln -s "/usr/${TARGET}-linux-gnu/sys-root/usr/lib64/libgcc_s.so.1" "/usr/${TARGET}-linux-gnu/sys-root/usr/lib64/libgcc_s.so"; \
     elif [ ${TARGET} == "i686" ]; then \
     yum install -t -y glibc-devel.i686 libgcc.i686 \
     && RG=$(find /opt -type f -executable -name gcc) \
     && if ! [ -z $RG ]; then ln -s $RG /usr/bin/i686-linux-gnu-gcc; else ln -s /usr/bin/gcc /usr/bin/i686-linux-gnu-gcc; fi; \
+    && RG=$(find /opt -type f -executable -name g++) \
+    && if ! [ -z $RG ]; then ln -s $RG /usr/bin/i686-linux-gnu-g++; else ln -s /usr/bin/g++ /usr/bin/i686-linux-gnu-g++; fi; \
     fi \
     && yum clean all \
     && rm -rf /var/cache/yum
