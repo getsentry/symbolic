@@ -70,7 +70,12 @@ def build_native(spec):
         scratchpad = None
 
     # Step 1: build the rust library
-    print("running `%s` (%s target)" % (" ".join(cmd), target))
+
+    # if the lib already built we replace the command
+    if os.environ.get("SKIP_SYMBOLIC_LIB_BUILD") is not None:
+        cmd = ["echo", "'Using pre-built library.'"]
+    else:
+        print("running `%s` (%s target)" % (" ".join(cmd), target))
     build = spec.add_external_build(cmd=cmd, path=rust_path)
 
     def find_dylib():
