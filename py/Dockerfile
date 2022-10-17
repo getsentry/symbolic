@@ -4,7 +4,7 @@ FROM amd64/centos:7
 ARG TARGET
 
 # Install tools for cross compiling if the requested target is different from currenly running image and
-# also threat the i686 a little bit special, since we must configure addition things and install different set of libraries
+# also treat the i686 a little bit special, since we must configure addition things and install different set of libraries
 RUN yum -y update \
     && yum install -y git gcc make curl libffi-devel dnf epel-release ca-certificates \
     && if [ ${TARGET} != "i686" ] && [ "$(uname -m)" != ${TARGET} ]; then \
@@ -19,7 +19,7 @@ RUN yum -y update \
     yum install -t -y glibc-devel.i686 libgcc.i686 \
     && RG=$(find /opt -type f -executable -name gcc) \
     && if ! [ -z $RG ]; then ln -s $RG /usr/bin/i686-linux-gnu-gcc; else ln -s /usr/bin/gcc /usr/bin/i686-linux-gnu-gcc; fi; \
-    && RG=$(find /opt -type f -executable -name g++) \
+    RG=$(find /opt -type f -executable -name g++) \
     && if ! [ -z $RG ]; then ln -s $RG /usr/bin/i686-linux-gnu-g++; else ln -s /usr/bin/g++ /usr/bin/i686-linux-gnu-g++; fi; \
     fi \
     && yum clean all \
