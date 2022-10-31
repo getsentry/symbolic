@@ -177,36 +177,6 @@ typedef struct SymbolicProguardRemapResult {
   uintptr_t len;
 } SymbolicProguardRemapResult;
 
-typedef struct SymbolicStrVec {
-  struct SymbolicStr *strs;
-  uintptr_t len;
-} SymbolicStrVec;
-
-/**
- * Represents a single token after lookup.
- */
-typedef struct SymbolicSmTokenMatch {
-  /**
-   * The line number in the original source file.
-   */
-  uint32_t line;
-  /**
-   * The column number in the original source file.
-   */
-  uint32_t col;
-  /**
-   * The path to the original source.
-   */
-  struct SymbolicStr src;
-  /**
-   * The name of the function containing the token.
-   */
-  struct SymbolicStr function_name;
-  struct SymbolicStrVec pre_context;
-  struct SymbolicStr context_line;
-  struct SymbolicStrVec post_context;
-} SymbolicSmTokenMatch;
-
 /**
  * Represents a single token after lookup.
  */
@@ -244,6 +214,40 @@ typedef struct SymbolicTokenMatch {
    */
   struct SymbolicStr function_name;
 } SymbolicTokenMatch;
+
+typedef struct SymbolicStrVec {
+  struct SymbolicStr *strs;
+  uintptr_t len;
+} SymbolicStrVec;
+
+/**
+ * Represents a single token after lookup.
+ */
+typedef struct SymbolicSmTokenMatch {
+  /**
+   * The line number in the original source file.
+   */
+  uint32_t line;
+  /**
+   * The column number in the original source file.
+   */
+  uint32_t col;
+  /**
+   * The path to the original source.
+   */
+  struct SymbolicStr src;
+  /**
+   * The name of the source location as it is defined in the SourceMap.
+   */
+  struct SymbolicStr name;
+  /**
+   * The name of the function containing the token.
+   */
+  struct SymbolicStr function_name;
+  struct SymbolicStrVec pre_context;
+  struct SymbolicStr context_line;
+  struct SymbolicStrVec post_context;
+} SymbolicSmTokenMatch;
 
 /**
  * Represents a single symbol after lookup.
@@ -551,35 +555,6 @@ bool symbolic_proguardmapper_has_line_info(const struct SymbolicProguardMapper *
 void symbolic_proguardmapper_result_free(struct SymbolicProguardRemapResult *result);
 
 /**
- * Creates an sourcemapcache from a given minified source and sourcemap contents.
- *
- * This shares the underlying memory and does not copy it if that is
- * possible.  Will ignore utf-8 decoding errors.
- */
-struct SymbolicSourceMapCache *symbolic_sourcemapcache_from_bytes(const char *source_content,
-                                                    uintptr_t source_len,
-                                                    const char *sourcemap_content,
-                                                    uintptr_t sourcemap_len);
-
-/**
- * Frees an SourceMapCache.
- */
-void symbolic_sourcemapcache_free(struct SymbolicSourceMapCache *view);
-
-/**
- * Looks up a token.
- */
-struct SymbolicSmTokenMatch *symbolic_sourcemapcache_lookup_token(const struct SymbolicSourceMapCache *source_map,
-                                                           uint32_t line,
-                                                           uint32_t col,
-                                                           uint32_t context_lines);
-
-/**
- * Free a token match.
- */
-void symbolic_sourcemapcache_token_match_free(struct SymbolicSmTokenMatch *token_match);
-
-/**
  * Creates a source view from a given path.
  *
  * This shares the underlying memory and does not copy it if that is
@@ -673,6 +648,35 @@ uint32_t symbolic_sourcemapview_get_tokens(const struct SymbolicSourceMapView *s
  * Free a token match.
  */
 void symbolic_token_match_free(struct SymbolicTokenMatch *token_match);
+
+/**
+ * Creates an sourcemapcache from a given minified source and sourcemap contents.
+ *
+ * This shares the underlying memory and does not copy it if that is
+ * possible.  Will ignore utf-8 decoding errors.
+ */
+struct SymbolicSourceMapCache *symbolic_sourcemapcache_from_bytes(const char *source_content,
+                                                                  uintptr_t source_len,
+                                                                  const char *sourcemap_content,
+                                                                  uintptr_t sourcemap_len);
+
+/**
+ * Frees an SourceMapCache.
+ */
+void symbolic_sourcemapcache_free(struct SymbolicSourceMapCache *view);
+
+/**
+ * Looks up a token.
+ */
+struct SymbolicSmTokenMatch *symbolic_sourcemapcache_lookup_token(const struct SymbolicSourceMapCache *source_map,
+                                                                  uint32_t line,
+                                                                  uint32_t col,
+                                                                  uint32_t context_lines);
+
+/**
+ * Free a token match.
+ */
+void symbolic_sourcemapcache_token_match_free(struct SymbolicSmTokenMatch *token_match);
 
 /**
  * Creates a symcache from a given path.
