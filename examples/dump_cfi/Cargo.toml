@@ -1,6 +1,6 @@
 [package]
 name = "dump_cfi"
-version = "10.0.0"
+version = "10.1.0"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2021"
 publish = false

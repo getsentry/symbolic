@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-cabi"
-version = "10.0.0"
+version = "10.1.0"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -22,4 +22,4 @@ crate-type = ["cdylib"]
 [dependencies]
 proguard = { version = "5.0.0", features = ["uuid"] }
 sourcemap = "6.0.2"
-symbolic = { version = "10.0.0", path = "../symbolic", features = ["cfi", "debuginfo", "demangle", "sourcemapcache", "symcache"] }
+symbolic = { version = "10.1.0", path = "../symbolic", features = ["cfi", "debuginfo", "demangle", "sourcemapcache", "symcache"] }

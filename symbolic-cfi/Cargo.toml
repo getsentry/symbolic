@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-cfi"
-version = "10.0.0"
+version = "10.1.0"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -15,8 +15,8 @@ A library to process call frame information
 edition = "2021"
 
 [dependencies]
-symbolic-common = { version = "10.0.0", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "10.0.0", path = "../symbolic-debuginfo" }
+symbolic-common = { version = "10.1.0", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "10.1.0", path = "../symbolic-debuginfo" }
 thiserror = "1.0.20"
 
 [dev-dependencies]
