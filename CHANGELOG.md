@@ -1,5 +1,11 @@
 # Changelog
 
+## 10.1.1
+
+**Fixed**:
+
+- Rebuild C headers for `SourceMapCache` to expose token `name` ([#704](https://github.com/getsentry/symbolic/pull/704))
+
 ## 10.1.0
 
 **Features**:
