@@ -14,6 +14,7 @@ class SourceMapCacheToken(object):
         rv.line = tm.line
         rv.col = tm.col
         rv.src = decode_str(tm.src, free=False) or None
+        rv.name = decode_str(tm.name, free=False) or None
         rv.function_name = decode_str(tm.function_name, free=False) or None
 
         rv.context_line = decode_str(tm.context_line, free=False) or None

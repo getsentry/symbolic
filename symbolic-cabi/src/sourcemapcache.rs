@@ -65,6 +65,8 @@ pub struct SymbolicSmTokenMatch {
     pub col: u32,
     /// The path to the original source.
     pub src: SymbolicStr,
+    /// The name of the source location as it is defined in the SourceMap.
+    pub name: SymbolicStr,
     /// The name of the function containing the token.
     pub function_name: SymbolicStr,
 
@@ -156,6 +158,7 @@ fn make_token_match(token: SourceLocation, context_lines: u32) -> *mut SymbolicS
         line: token.line() + 1,
         col: token.column() + 1,
         src: SymbolicStr::new(token.file_name().unwrap_or_default()),
+        name: SymbolicStr::new(token.name().unwrap_or_default()),
         function_name: SymbolicStr::new(function_name),
 
         pre_context,
