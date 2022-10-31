@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Add `name` to `SourceMapCacheToken` Python bindings ([#703](https://github.com/getsentry/symbolic/pull/703))
+
 ## 10.0.0
 
 **Features**:
