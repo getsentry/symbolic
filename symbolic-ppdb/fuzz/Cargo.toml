@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-ppdb-fuzz"
-version = "10.0.0"
+version = "10.1.0"
 authors = ["Automatically generated"]
 publish = false
 edition = "2021"
