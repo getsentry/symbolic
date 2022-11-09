@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-debuginfo"
-version = "10.1.1"
+version = "10.1.2"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -58,9 +58,7 @@ ms = [
     "scroll",
     "smallvec",
 ]
-ppdb = [
-    "symbolic-ppdb"
-]
+ppdb = ["symbolic-ppdb"]
 # Source bundle creation
 sourcebundle = [
     "lazy_static",
@@ -86,7 +84,7 @@ gimli = { version = "0.26.1", optional = true, default-features = false, feature
     "read",
     "std",
 ] }
-goblin = { version = "0.5.1", optional = true, default-features = false }
+goblin = { version = "0.6", optional = true, default-features = false }
 lazy_static = { version = "1.4.0", optional = true }
 lazycell = { version = "1.2.1", optional = true }
 nom = { version = "7.0.0", optional = true }
