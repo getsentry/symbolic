@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-common"
-version = "10.1.1"
+version = "10.1.2"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
