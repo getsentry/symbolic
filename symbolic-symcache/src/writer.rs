@@ -521,7 +521,7 @@ impl<'a> SymCacheConverter<'a> {
 /// This code is adapted from `dump_syms`:
 /// See https://github.com/mozilla/dump_syms/blob/325cf2c61b2cacc55a7f1af74081b57237c7f9de/src/symbol.rs#L169-L216
 fn undecorate_win_symbol(name: &str) -> &str {
-    if name.starts_with('?') || name.contains(&[':', '(', '<']) {
+    if name.starts_with('?') || name.contains([':', '(', '<']) {
         return name;
     }
 

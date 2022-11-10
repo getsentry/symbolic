@@ -266,7 +266,7 @@ mod tests {
     fn test_open_empty_file() -> Result<(), std::io::Error> {
         let tmp = NamedTempFile::new()?;
 
-        let view = ByteView::open(&tmp.path())?;
+        let view = ByteView::open(tmp.path())?;
         assert_eq!(&*view, b"");
 
         Ok(())
@@ -278,7 +278,7 @@ mod tests {
 
         tmp.write_all(b"1234")?;
 
-        let view = ByteView::open(&tmp.path())?;
+        let view = ByteView::open(tmp.path())?;
         assert_eq!(&*view, b"1234");
 
         Ok(())
