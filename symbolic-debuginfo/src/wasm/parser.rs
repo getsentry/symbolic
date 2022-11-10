@@ -2,7 +2,10 @@
 
 use super::WasmError;
 use crate::base::{ObjectKind, Symbol};
-use wasmparser::{Payload, TypeRef, Validator, WasmFeatures};
+use wasmparser::{
+    FuncValidatorAllocations, Payload, SectionReader, SectionWithLimitedItems, TypeRef, Validator,
+    WasmFeatures,
+};
 
 impl<'data> super::WasmObject<'data> {
     /// Tries to parse a WASM from the given slice.
@@ -32,6 +35,7 @@ impl<'data> super::WasmObject<'data> {
         let mut validator = Validator::new_with_features(features);
         let mut funcs = Vec::<Symbol>::new();
         let mut num_imported_funcs = 0u32;
+        let mut func_allocs = FuncValidatorAllocations::default();
 
         // Parse the wasm file to pull out the function and their starting address, size, and name
         // Note that the order of the payloads here are the order that they will appear in (valid)
@@ -108,9 +112,13 @@ impl<'data> super::WasmObject<'data> {
                 }
                 // We get one of these for each local function body
                 Payload::CodeSectionEntry(body) => {
-                    let validator = validator.code_section_entry(&body)?;
+                    let mut validator = validator
+                        .code_section_entry(&body)?
+                        .into_validator(func_allocs);
 
-                    let (address, size) = get_function_info(body, validator)?;
+                    let (address, size) = get_function_info(body, &mut validator)?;
+
+                    func_allocs = validator.into_allocations();
 
                     // Though we have an accurate? size of the function body, the old method of symbol
                     // iterating with walrus extends the size of each body to be contiguous with the
@@ -150,10 +158,9 @@ impl<'data> super::WasmObject<'data> {
                             )?;
 
                             for name in nsr {
-                                if let wasmparser::Name::Function(fnames) = name? {
-                                    let mut map = fnames.get_map()?;
-                                    for _ in 0..map.get_count() {
-                                        let fname = map.read()?;
+                                if let wasmparser::Name::Function(mut fnames) = name? {
+                                    for _ in 0..fnames.get_count() {
+                                        let fname = fnames.read()?;
 
                                         // The names for imported functions are also in this table, but
                                         // we don't care about them
@@ -195,7 +202,7 @@ impl<'data> super::WasmObject<'data> {
 
 fn get_function_info(
     body: wasmparser::FunctionBody,
-    mut validator: wasmparser::FuncValidator<wasmparser::ValidatorResources>,
+    validator: &mut wasmparser::FuncValidator<wasmparser::ValidatorResources>,
 ) -> Result<(u64, u64), WasmError> {
     let mut body = body.get_binary_reader();
 
