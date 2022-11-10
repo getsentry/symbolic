@@ -56,7 +56,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 
         let bcsymbolmap_buffer = matches
             .get_one::<PathBuf>("bcsymbolmap_file")
-            .map(|path| ByteView::open(&path))
+            .map(ByteView::open)
             .transpose()?;
         let bcsymbolmap_transformer = bcsymbolmap_buffer
             .as_ref()
@@ -65,7 +65,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 
         let linemapping_buffer = matches
             .get_one::<PathBuf>("linemapping_file")
-            .map(|path| ByteView::open(&path))
+            .map(ByteView::open)
             .transpose()?;
         let linemapping_transformer = linemapping_buffer
             .as_ref()

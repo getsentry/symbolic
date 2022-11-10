@@ -1028,7 +1028,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             frame.saved_regs_size,
             frame.locals_size,
             frame.max_stack_size.unwrap_or(0),
-            if has_program { 1 } else { 0 },
+            i32::from(has_program)
         )?;
 
         match frame.program {
@@ -1043,11 +1043,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                 writeln!(self.inner, "{}", program_string.trim())?;
             }
             None => {
-                writeln!(
-                    self.inner,
-                    "{}",
-                    if frame.uses_base_pointer { 1 } else { 0 }
-                )?;
+                writeln!(self.inner, "{}", i32::from(frame.uses_base_pointer))?;
             }
         }
 
