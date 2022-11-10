@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Internal**
+
+- Updated `goblin`, `cpp_demangle` and `wasmparser` dependencies. ([#709](https://github.com/getsentry/symbolic/pull/709))
+
 ## 10.1.1
 
 **Fixed**:
