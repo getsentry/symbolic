@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Internal**
+
+- Python/CABI bindings will use a tempfile instead of holding `SourceMapCache` in memory. ([#711](https://github.com/getsentry/symbolic/pull/711))
+
 ## 10.1.2
 
 **Internal**
