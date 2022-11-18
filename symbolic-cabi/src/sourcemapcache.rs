@@ -1,3 +1,4 @@
+use std::io::BufWriter;
 use std::ops::Deref;
 use std::os::raw::c_char;
 use std::ptr;
@@ -93,10 +94,13 @@ ffi_fn! {
             String::from_utf8_lossy(source_slice).deref(),
             String::from_utf8_lossy(sourcemap_slice).deref()
         )?;
-        let mut buffer = Vec::new();
-        writer.serialize(&mut buffer)?;
 
-        let byteview = ByteView::from_vec(buffer);
+        let file = tempfile::tempfile()?;
+        let mut buf_writer = BufWriter::new(file);
+        writer.serialize(&mut buf_writer)?;
+        let file = buf_writer.into_inner()?;
+
+        let byteview = ByteView::map_file(file)?;
         let inner = SelfCell::try_new::<symbolic::sourcemapcache::SourceMapCacheError, _>(byteview, |data| {
             let cache = SourceMapCache::parse(&*data)?;
             Ok(Inner { cache })
