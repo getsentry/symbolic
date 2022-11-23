@@ -1,5 +1,11 @@
 # Changelog
 
+## 10.1.5
+
+### Various fixes & improvements
+
+- deps: Update js-source-scopes to 0.3.0 (#715) by @kamilogorek
+
 ## 10.1.4
 
 ### Various fixes & improvements
