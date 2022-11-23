@@ -106,6 +106,7 @@ impl<'s> FunctionBuilder<'s> {
             inlinees: Vec::new(),
             inline: false,
         };
+        let outer_function_end = address + size;
         let mut stack = FunctionBuilderStack::new(outer_function);
 
         let mut inlinee_iter = inlinees.into_iter();
@@ -126,6 +127,11 @@ impl<'s> FunctionBuilder<'s> {
                 let inlinee = next_inlinee.take().unwrap();
                 stack.flush_address(inlinee.address);
                 stack.flush_depth(inlinee.depth);
+
+                if inlinee.address >= outer_function_end {
+                    break;
+                }
+
                 stack.last_mut().lines.push(LineInfo {
                     address: inlinee.address,
                     size: Some(inlinee.size),
@@ -149,33 +155,40 @@ impl<'s> FunctionBuilder<'s> {
             if let Some(mut line) = next_line.take() {
                 stack.flush_address(line.address);
 
-                // If the line record exceeds the size of the innermost inlinee on the stack,
-                // split the line record apart and continue with the second half, which can then
-                // fall into another inlinee. We do this only for *inlinees*, and not for the
-                // outer function which is on the bottom of that stack.
-                // The `linux/crash.debug` fixture contains a case where a line record goes beyond
-                // the outermost function. In that case we just continue as normal without splitting.
-                let split_line = if stack.stack.len() > 1 {
-                    line.size.and_then(|size| {
-                        let line_end = line.address.saturating_add(size);
-                        let last_inlinee_addr = stack.last_mut().end_address();
-                        if last_inlinee_addr < line_end {
-                            let mut split_line = line.clone();
-                            split_line.address = last_inlinee_addr;
-                            split_line.size = Some(line_end - last_inlinee_addr);
-                            line.size = Some(last_inlinee_addr - line.address);
+                if line.address >= outer_function_end {
+                    break;
+                }
 
-                            Some(split_line)
-                        } else {
-                            None
-                        }
-                    })
-                } else {
-                    None
-                };
+                // Ensure that Function lines are non-overlapping, by splitting lines so that they
+                // don't cross inlinee boundaries. If lines were overlapping across inlinee
+                // boundaries, then they would overlap with the lines that we create for the calls
+                // to those inlinees.
+                // We have to split up a line in two cases: If it overlaps with the end of the
+                // current inlinee, or if it overlaps with the start of the next inlinee.
+                if let Some(size) = line.size {
+                    let line_end = line.address.saturating_add(size);
+                    let current_innermost_fun_end = stack.last_mut().end_address();
+                    let split_address = if let Some(next_inlinee) = next_inlinee.as_ref() {
+                        next_inlinee.address.min(current_innermost_fun_end)
+                    } else {
+                        current_innermost_fun_end
+                    };
+                    if split_address < line_end {
+                        // We have overlap! Split the line up.
+                        let mut split_line = line.clone();
+                        split_line.address = split_address;
+                        split_line.size = Some(line_end - split_address);
+                        line.size = Some(split_address - line.address);
+                        stack.last_mut().lines.push(line);
 
+                        next_line = Some(split_line);
+                        continue;
+                    }
+                }
+
+                // Handle the case where no overlap was detected.
                 stack.last_mut().lines.push(line);
-                next_line = split_line.or_else(|| line_iter.next());
+                next_line = line_iter.next();
                 continue;
             }
 
@@ -188,6 +201,7 @@ impl<'s> FunctionBuilder<'s> {
 }
 
 /// Represents a contiguous address range which is covered by an inlined function call.
+#[derive(PartialEq, Eq, Clone, Debug)]
 struct FunctionBuilderInlinee<'s> {
     /// The inline nesting level of this inline call. Calls from the outer function have depth 0.
     pub depth: u32,
