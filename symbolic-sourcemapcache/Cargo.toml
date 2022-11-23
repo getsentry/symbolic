@@ -12,7 +12,7 @@ A fast lookup cache for JavaScript Source Maps.
 edition = "2021"
 
 [dependencies]
-js-source-scopes = "0.2.2"
+js-source-scopes = "0.3.0"
 thiserror = "1.0.31"
 sourcemap = "6.1.0"
 tracing = "0.1.36"
