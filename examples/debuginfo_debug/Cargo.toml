@@ -1,0 +1,13 @@
+[package]
+name = "debuginfo_debug"
+version = "10.1.2"
+authors = ["Markus Stange <mstange.moz@gmail.com>"]
+edition = "2021"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.32"
+clap = "3.1.0"
+symbolic = { path = "../../symbolic", features = ["demangle"] }
