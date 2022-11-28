@@ -75,6 +75,25 @@ impl fmt::Debug for FunctionsDebug<'_> {
     }
 }
 
+fn check_functions(functions: &[Function]) {
+    for f in functions {
+        let mut line_iter = f.lines.iter();
+        if let Some(first_line) = line_iter.next() {
+            let mut prev_line_start = first_line.address;
+            let mut prev_line_end = first_line.size.map(|size| first_line.address + size);
+            for line in line_iter {
+                assert!(line.address >= prev_line_start, "Unordered line");
+                if let Some(prev_line_end) = prev_line_end {
+                    assert!(line.address >= prev_line_end, "Overlapping line");
+                }
+                prev_line_start = line.address;
+                prev_line_end = line.size.map(|size| line.address + size);
+            }
+        }
+        check_functions(&f.inlinees);
+    }
+}
+
 #[test]
 fn test_breakpad() -> Result<(), Error> {
     // Using the windows version here since it contains all record kinds
@@ -135,6 +154,7 @@ fn test_breakpad_functions() -> Result<(), Error> {
 
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
+    check_functions(&functions);
     insta::assert_debug_snapshot!("breakpad_functions", FunctionsDebug(&functions[..10], 0));
 
     Ok(())
@@ -147,6 +167,7 @@ fn test_breakpad_functions_mac_with_inlines() -> Result<(), Error> {
 
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
+    check_functions(&functions);
     insta::assert_debug_snapshot!(
         "breakpad_functions_mac_with_inlines",
         FunctionsDebug(&functions[..10], 0)
@@ -393,6 +414,7 @@ fn test_mach_functions() -> Result<(), Error> {
 
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
+    check_functions(&functions);
     insta::assert_debug_snapshot!("mach_functions", FunctionsDebug(&functions[..10], 0));
 
     Ok(())
@@ -521,6 +543,7 @@ fn test_pdb_functions() -> Result<(), Error> {
 
     let session = object.debug_session()?;
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
+    check_functions(&functions);
     insta::assert_debug_snapshot!("pdb_functions", FunctionsDebug(&functions[..10], 0));
 
     Ok(())

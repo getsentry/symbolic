@@ -1,6 +1,5 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
-assertion_line: 247
 expression: "FunctionsDebug(&functions[..10], 0)"
 ---
 
@@ -261,7 +260,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x20c6: exception_handler.cc:318 (../deps/breakpad/src/client/linux/handler)
   0x20cd: exception_handler.cc:319 (../deps/breakpad/src/client/linux/handler)
   0x20e0: exception_handler.cc:315 (../deps/breakpad/src/client/linux/handler)
-  0x20ec: exception_handler.cc:199 (../deps/breakpad/src/client/linux/handler)
 
   > 0x20e0: InstallDefaultHandler (0xc)
     0x20e0: exception_handler.cc:199 (../deps/breakpad/src/client/linux/handler)
@@ -724,7 +722,6 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x2996: exception_handler.cc:508 (../deps/breakpad/src/client/linux/handler)
   0x299d: exception_handler.cc:568 (../deps/breakpad/src/client/linux/handler)
   0x29a5: exception_handler.cc:505 (../deps/breakpad/src/client/linux/handler)
-  0x29e6: memory_allocator.h:143 (../deps/breakpad/src/common)
 
   > 0x2534: _ZNK15google_breakpad16ExceptionHandler14IsOutOfProcessEv (0x4)
     0x2534: exception_handler.h:205 (../deps/breakpad/src/client/linux/handler)
