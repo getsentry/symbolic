@@ -206,7 +206,7 @@ impl<'data> ElfObject<'data> {
         obj.syms = elf::Symtab::default();
         obj.strtab = Strtab::default();
         for shdr in &obj.section_headers {
-            if shdr.sh_type as u32 == elf::section_header::SHT_SYMTAB {
+            if shdr.sh_type == elf::section_header::SHT_SYMTAB {
                 let size = shdr.sh_entsize;
                 let count = if size == 0 { 0 } else { shdr.sh_size / size };
                 obj.syms = return_partial_on_err!(|| elf::Symtab::parse(
@@ -263,7 +263,7 @@ impl<'data> ElfObject<'data> {
                 false,
                 ctx
             ));
-            let is_rela = dyn_info.pltrel as u64 == elf::dynamic::DT_RELA;
+            let is_rela = dyn_info.pltrel == elf::dynamic::DT_RELA;
             obj.pltrelocs = return_partial_on_err!(|| elf::RelocSection::parse(
                 data,
                 dyn_info.jmprel,

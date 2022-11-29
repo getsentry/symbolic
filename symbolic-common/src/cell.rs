@@ -14,6 +14,9 @@
 //! [`SelfCell`]: struct.SelfCell.html
 //! [`AsSelf`]: trait.AsSelf.html
 
+// FIXME(swatinem): clippy 1.67 complains about `# Safety` docs for safe fns
+// #![allow(clippy::unnecessary_safety_doc)]
+
 use std::ops::Deref;
 
 pub use stable_deref_trait::StableDeref;

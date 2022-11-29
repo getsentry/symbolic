@@ -427,7 +427,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         Ok(())
     }
 
-    fn process_macho<'d>(&mut self, object: &MachObject<'d>) -> Result<(), CfiError> {
+    fn process_macho(&mut self, object: &MachObject<'_>) -> Result<(), CfiError> {
         let compact_unwind_info = object.compact_unwind_info()?;
 
         // If we have compact_unwind_info, then any important entries in
