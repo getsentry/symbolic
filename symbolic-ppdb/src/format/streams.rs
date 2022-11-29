@@ -7,7 +7,7 @@ use super::{FormatError, FormatErrorKind};
 
 /// A stream representing the "blob heap", which contains "blobs" of arbitrary binary data.
 ///
-/// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.4-us-and-blob-heaps.md.
+/// See <https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.4-us-and-blob-heaps.md>.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct BlobStream<'data> {
     buf: &'data [u8],
@@ -34,7 +34,7 @@ impl<'data> BlobStream<'data> {
 
 /// The file's #PDB stream.
 ///
-/// See https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#pdb-stream.
+/// See <https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#pdb-stream>.
 #[derive(Debug, Clone)]
 pub(crate) struct PdbStream<'data> {
     header: &'data PdbStreamHeader,
@@ -73,7 +73,7 @@ impl<'data> PdbStream<'data> {
 
 /// A stream representing the "string heap", which contains UTF-8 string data.
 ///
-/// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.3-strings-heap.md.
+/// See <https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.3-strings-heap.md>.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct StringStream<'data> {
     buf: &'data [u8],
@@ -97,7 +97,7 @@ impl<'data> StringStream<'data> {
 
 /// A stream representing the "user string heap".
 ///
-/// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.4-us-and-blob-heaps.md.
+/// See <https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.4-us-and-blob-heaps.md>.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct UsStream<'data> {
     _buf: &'data [u8],
@@ -109,7 +109,7 @@ impl<'data> UsStream<'data> {
 }
 /// A stream representing the "GUID heap", which contains GUIDs.
 ///
-/// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.5-guid-heap.md.
+/// See <https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.5-guid-heap.md>.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct GuidStream<'data> {
     buf: &'data [uuid::Bytes],
