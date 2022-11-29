@@ -189,7 +189,7 @@ impl Column {
 /// There are three types of indices recorded here:
 /// * Heap indices (`string_heap`, `guid_heap`, `blob_heap`) are indices into other sections
 ///   of the Portable PDB file. Their sizes are determined by the `heap_sizes` bitvector in the #~ stream
-///   header, see https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.6-metadata-stream.md.
+///   header, see <https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.6-metadata-stream.md>.
 /// * Table indices (`<something>_table`) are indices into individual tables in this stream. Their sizes
 ///   are determined by the number of rows in the target table.
 /// * Composite indices are indices that may point into one of several tables in this stream. Their sizes are
@@ -239,7 +239,7 @@ struct IndexSizes {
 
 /// A stream representing the "metadata heap", which comprises a number of metadata tables.
 ///
-/// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.6-metadata-stream.md for a definition
+/// See <https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.6-metadata-stream.md> for a definition
 /// of the stream's format. Note that this stream contains all tables described in the ECMA-335 specification and
 /// the Portable PDB specification.
 #[derive(Debug, Clone)]
@@ -597,7 +597,7 @@ impl<'data> MetadataStream<'data> {
 
     /// Returns the size in bytes of an index into this Portable PDB file's `#String` heap.
     ///
-    /// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.6-metadata-stream.md for an explanation.
+    /// See <https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.6-metadata-stream.md> for an explanation.
     fn string_index_size(&self) -> usize {
         if self.header.heap_sizes & 0x1 == 0 {
             2
@@ -608,7 +608,7 @@ impl<'data> MetadataStream<'data> {
 
     /// Returns the size in bytes of an index into this Portable PDB file's `#Guid` heap.
     ///
-    /// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.6-metadata-stream.md for an explanation.
+    /// See <https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.6-metadata-stream.md> for an explanation.
     fn guid_index_size(&self) -> usize {
         if self.header.heap_sizes & 0x2 == 0 {
             2
@@ -619,7 +619,7 @@ impl<'data> MetadataStream<'data> {
 
     /// Returns the size in bytes of an index into this Portable PDB file's `#Blob` heap.
     ///
-    /// See https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.6-metadata-stream.md for an explanation.
+    /// See <https://github.com/stakx/ecma-335/blob/master/docs/ii.24.2.6-metadata-stream.md> for an explanation.
     fn blob_index_size(&self) -> usize {
         if self.header.heap_sizes & 0x4 == 0 {
             2

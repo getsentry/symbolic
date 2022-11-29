@@ -510,7 +510,7 @@ impl<'a> SymCacheConverter<'a> {
 /// Undecorates a Windows C-decorated symbol name.
 ///
 /// The decoration rules are explained here:
-/// https://docs.microsoft.com/en-us/cpp/build/reference/decorated-names?view=vs-2019
+/// <https://docs.microsoft.com/en-us/cpp/build/reference/decorated-names?view=vs-2019>
 ///
 /// - __cdecl Leading underscore (_)
 /// - __stdcall Leading underscore (_) and a trailing at sign (@) followed by the number of bytes in the parameter list in decimal
@@ -519,7 +519,7 @@ impl<'a> SymCacheConverter<'a> {
 /// > In a 64-bit environment, C or extern "C" functions are only decorated when using the __vectorcall calling convention."
 ///
 /// This code is adapted from `dump_syms`:
-/// See https://github.com/mozilla/dump_syms/blob/325cf2c61b2cacc55a7f1af74081b57237c7f9de/src/symbol.rs#L169-L216
+/// See <https://github.com/mozilla/dump_syms/blob/325cf2c61b2cacc55a7f1af74081b57237c7f9de/src/symbol.rs#L169-L216>
 fn undecorate_win_symbol(name: &str) -> &str {
     if name.starts_with('?') || name.contains([':', '(', '<']) {
         return name;
