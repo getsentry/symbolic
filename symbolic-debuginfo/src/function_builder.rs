@@ -1,6 +1,8 @@
 //! Contains [`FunctionBuilder`], which can be used to create a [`Function`](crate::base::Function)
 //! with inlinees and line records in the right structure.
 
+use std::{cmp::Reverse, collections::BinaryHeap};
+
 use crate::base::{FileInfo, Function, LineInfo};
 use symbolic_common::Name;
 
@@ -17,8 +19,13 @@ pub struct FunctionBuilder<'s> {
     address: u64,
     /// The size of the outer function.
     size: u64,
-    /// The inlinees, in any order. They will be sorted in `finish()`.
-    inlinees: Vec<FunctionBuilderInlinee<'s>>,
+    /// All inlinees at any depth inside this function.
+    ///
+    /// These are stored in a `BinaryHeap<Reverse<_>>` so that `.pop()` returns them ordered by
+    /// address, from low to high. (A [`BinaryHeap`] by itself is a max-heap, so we use [`Reverse`]
+    /// to make this a min-heap). We use a heap instead of a sorted `Vec` because we may need to
+    /// insert new elements during iteration, for inlinee splitting in `ensure_proper_nesting`.
+    inlinees: BinaryHeap<Reverse<FunctionBuilderInlinee<'s>>>,
     /// The lines, in any order. They will be sorted in `finish()`. These record specify locations
     /// at the innermost level of the inline stack at the line record's address.
     lines: Vec<LineInfo<'s>>,
@@ -32,12 +39,14 @@ impl<'s> FunctionBuilder<'s> {
             compilation_dir,
             address,
             size,
-            inlinees: Vec::new(),
+            inlinees: BinaryHeap::new(),
             lines: Vec::new(),
         }
     }
 
     /// Add an inlinee record. This method can be called in any order.
+    ///
+    /// Inlinees which are called directly from the outer function have depth 0.
     pub fn add_inlinee(
         &mut self,
         depth: u32,
@@ -47,14 +56,14 @@ impl<'s> FunctionBuilder<'s> {
         call_file: FileInfo<'s>,
         call_line: u64,
     ) {
-        self.inlinees.push(FunctionBuilderInlinee {
+        self.inlinees.push(Reverse(FunctionBuilderInlinee {
             depth,
             address,
             size,
             name,
             call_file,
             call_line,
-        });
+        }));
     }
 
     /// Add a line record, specifying the line at this address inside the innermost inlinee that
@@ -88,12 +97,12 @@ impl<'s> FunctionBuilder<'s> {
             compilation_dir,
             address,
             size,
-            mut inlinees,
+            inlinees,
             mut lines,
         } = self;
 
-        // Sort into DFS order; i.e. first by address and then by depth.
-        inlinees.sort_by_key(|inlinee| (inlinee.address, inlinee.depth));
+        let inlinees = ensure_proper_nesting(inlinees);
+
         // Sort the lines by address.
         lines.sort_by_key(|line| line.address);
 
@@ -217,6 +226,20 @@ struct FunctionBuilderInlinee<'s> {
     pub call_line: u64,
 }
 
+/// Implement ordering in DFS order, i.e. first by address and then by depth.
+impl<'s> PartialOrd for FunctionBuilderInlinee<'s> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        (self.address, self.depth).partial_cmp(&(other.address, other.depth))
+    }
+}
+
+/// Implement ordering in DFS order, i.e. first by address and then by depth.
+impl<'s> Ord for FunctionBuilderInlinee<'s> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.address, self.depth).cmp(&(other.address, other.depth))
+    }
+}
+
 /// Keeps track of the current inline stack, when iterating inlinees in DFS order.
 struct FunctionBuilderStack<'s> {
     /// The current inline stack, elements are (end_address, function).
@@ -277,6 +300,136 @@ impl<'s> FunctionBuilderStack<'s> {
     }
 }
 
+/// Converts the `BinaryHeap` of inlinees into a sorted `Vec` of inlinees, while ensuring proper
+/// inlinee nesting.
+///
+/// # Background
+///
+/// Inlinees are organized in a tree, where each node has a start address and an end address.
+/// For this tree to be well-formed, sibling nodes need to have non-overlapping address ranges, and
+/// child nodes must not extend beyond their parent nodes.
+///
+/// Overlapping siblings are always considered malformed data; if the input data has overlapping
+/// siblings there is a bug in the system which produced the input data.
+///
+/// However, child nodes may legitimately extend beyond their parents in the input data.
+/// This happens when `FunctionBuilder` is used for Breakpad .sym files.
+///
+/// This function splits and redistributes such nodes over other parents. In the output data from
+/// this function, child nodes will not extend beyond their parents.
+///
+/// Example:
+///
+/// ```plain
+/// 0x0..0x8: a() @ a.cpp:10 -> b() @ b.cpp:20 -> c() @ c.cpp:30
+/// 0x8..0xd: a() @ a.cpp:15 -> b() @ b.cpp:20 -> c() @ c.cpp:30
+///
+/// may be equivalently expressed as:
+///
+/// Representation A: Properly nested
+///  - b() called from a.cpp:10 at 0x0..0x8
+///    - c() called from b.cpp:20 at 0x0..0x8
+///  - b() called from a.cpp:15 at 0x8..0xd
+///    - c() called from b.cpp:20 at 0x8..0xd
+///
+/// or as:
+///
+/// Representation B: Improperly nested, but unambiguous and compact
+///  - b() called from a.cpp:10 at 0x0..0x8
+///    - c() called from b.cpp:20 at 0x0..0xd   <-- extends beyond parent
+///  - b() called from a.cpp:10 at 0x0..0x8
+///
+/// In Representation B, the two c() inlinees were merged into one, even though they have different
+/// parents. This is valid input.
+///
+/// This function will convert Representation B into Representation A.
+/// ```
+///
+/// To create a well-formed tree, this function does the following:
+///
+///  - If a node overlaps with its previous sibling, the node's start address is adjusted to avoid
+///    overlap.
+///  - If a node extends beyond its parent, it is split into two nodes.
+///  - Free-floating nodes are removed, i.e. a node at depth N+1 at an address at which there is no
+///    node at depth N.
+fn ensure_proper_nesting(
+    mut inlinees: BinaryHeap<Reverse<FunctionBuilderInlinee>>,
+) -> Vec<FunctionBuilderInlinee> {
+    let mut result = Vec::with_capacity(inlinees.len());
+
+    // This stack contains, at index i, the end address of the most recent inlinee at depth i.
+    // The length of this stack is the current depth. During the iteration we traverse the inlinee
+    // tree in DFS order, so the "current depth" changes as we enter and exit inlinees.
+    let mut end_address_stack = Vec::new();
+
+    // Iterate the inlinees, ordered by (address, depth), in order of increasing address.
+    // We take each inlinee out of `inlinees`, check it, and then append it to `result`.
+    while let Some(Reverse(mut inlinee)) = inlinees.pop() {
+        let depth = inlinee.depth as usize;
+        let start_address = inlinee.address;
+        let mut end_address = match start_address.checked_add(inlinee.size) {
+            Some(end_address) => end_address,
+            None => continue,
+        };
+
+        if end_address_stack.len() < depth {
+            // This node has no parent. Skip it.
+            continue;
+        }
+
+        if let Some(&previous_sibling_end_address) = end_address_stack.get(depth) {
+            if end_address <= previous_sibling_end_address {
+                // This node is completely engulfed by its previous sibling.
+                // Skip this node.
+                continue;
+            }
+            if start_address < previous_sibling_end_address {
+                let new_start_address = previous_sibling_end_address;
+                // Resolve overlap by adjusting this node's start address and size, keeping its
+                // end address unchanged.
+                inlinee.address = new_start_address;
+                inlinee.size = end_address - new_start_address;
+                // Put it back into the heap so that it is processed in the correct order.
+                inlinees.push(Reverse(inlinee));
+                continue;
+            }
+        }
+
+        end_address_stack.truncate(depth);
+        debug_assert_eq!(end_address_stack.len(), depth, "due to len() check + trunc");
+
+        if let Some(&caller_end_address) = end_address_stack.last() {
+            // We know: start_address >= caller_start_address, ensured by the sort order.
+            // But is start_address < caller_end_address?
+            if start_address >= caller_end_address {
+                // This node is completely outside its parent. This must mean that it does not have
+                // a parent, otherwise we would have encountered its parent.
+                // Skip this node.
+                continue;
+            }
+            if end_address > caller_end_address {
+                // This node extends beyond its caller. Split it into two.
+                let split_address = caller_end_address;
+                let mut split_inlinee = inlinee.clone();
+                split_inlinee.address = split_address;
+                split_inlinee.size = end_address - split_address;
+                inlinees.push(Reverse(split_inlinee));
+
+                // Shorten the current inlinee.
+                inlinee.size = split_address - start_address;
+                end_address = split_address;
+            }
+        } else {
+            // This is an inlinee at depth 0, i.e. this inlinee is directly called by the outer
+            // function. Those inlinees can be as long as they want; we don't try to
+            // force them to stay within the outer function's address range here.
+        }
+        result.push(inlinee);
+        end_address_stack.push(end_address); // this goes into end_address_stack[depth]
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -307,7 +460,7 @@ mod tests {
         // - inlined into: foo in foo.c on line 2
         let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30);
         builder.add_inlinee(
-            1,
+            0,
             Name::from("bar"),
             0x20,
             0x20,
@@ -385,7 +538,7 @@ mod tests {
 
         let mut builder = FunctionBuilder::new(Name::from("parent"), &[], 0x10, 0x40);
         builder.add_inlinee(
-            1,
+            0,
             Name::from("child1"),
             0x20,
             0x10,
@@ -396,7 +549,7 @@ mod tests {
             1,
         );
         builder.add_inlinee(
-            2,
+            1,
             Name::from("child2"),
             0x20,
             0x10,
@@ -407,7 +560,7 @@ mod tests {
             1,
         );
         builder.add_inlinee(
-            1,
+            0,
             Name::from("child2"),
             0x30,
             0x10,

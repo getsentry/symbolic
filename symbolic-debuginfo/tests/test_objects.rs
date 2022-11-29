@@ -1,7 +1,7 @@
 use std::{ffi::CString, fmt};
 
 use symbolic_common::ByteView;
-use symbolic_debuginfo::{elf::ElfObject, FileEntry, Function, Object, SymbolMap};
+use symbolic_debuginfo::{elf::ElfObject, FileEntry, Function, LineInfo, Object, SymbolMap};
 use symbolic_testutils::fixture;
 
 use similar_asserts::assert_eq;
@@ -75,13 +75,16 @@ impl fmt::Debug for FunctionsDebug<'_> {
     }
 }
 
-fn check_functions(functions: &[Function]) {
+fn check_functions<'a, 'data>(functions: &'a [Function<'data>]) -> Vec<&'a LineInfo<'data>> {
+    let mut all_lines = Vec::new();
     for f in functions {
         let mut line_iter = f.lines.iter();
         if let Some(first_line) = line_iter.next() {
+            all_lines.push(first_line);
             let mut prev_line_start = first_line.address;
             let mut prev_line_end = first_line.size.map(|size| first_line.address + size);
             for line in line_iter {
+                all_lines.push(line);
                 assert!(line.address >= prev_line_start, "Unordered line");
                 if let Some(prev_line_end) = prev_line_end {
                     assert!(line.address >= prev_line_end, "Overlapping line");
@@ -90,8 +93,30 @@ fn check_functions(functions: &[Function]) {
                 prev_line_end = line.size.map(|size| line.address + size);
             }
         }
-        check_functions(&f.inlinees);
+
+        let mut inlinee_lines = check_functions(&f.inlinees);
+        inlinee_lines.sort_by_key(|line| line.address);
+        let mut inlinee_line_iter = inlinee_lines.iter();
+        if let Some(first_line) = inlinee_line_iter.next() {
+            let mut prev_line_start = first_line.address;
+            let mut prev_line_end = first_line.size.map(|size| first_line.address + size);
+            for line in inlinee_line_iter {
+                assert!(
+                    line.address >= prev_line_start,
+                    "Unordered line among sibling inlinees"
+                );
+                if let Some(prev_line_end) = prev_line_end {
+                    assert!(
+                        line.address >= prev_line_end,
+                        "Overlapping line among sibling inlinees"
+                    );
+                }
+                prev_line_start = line.address;
+                prev_line_end = line.size.map(|size| line.address + size);
+            }
+        }
     }
+    all_lines
 }
 
 #[test]

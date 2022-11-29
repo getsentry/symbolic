@@ -888,7 +888,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     self.parse_inlinee(
                         dw_die_offset,
                         next_depth,
-                        inline_depth + 1,
+                        inline_depth,
                         entries,
                         abbrev,
                         builders,
@@ -977,7 +977,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             );
         }
 
-        self.parse_function_children(depth, inline_depth, entries, builders, output)
+        self.parse_function_children(depth, inline_depth + 1, entries, builders, output)
     }
 
     /// Collects all functions within this compilation unit.
