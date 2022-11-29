@@ -15,16 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     name: "Release a new version"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           token: ${{ secrets.GH_RELEASE_PAT }}
           fetch-depth: 0
 
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+      - run: rustup toolchain install stable --profile minimal --no-self-update
 
       - name: Prepare release
         uses: getsentry/action-prepare-release@v1
