@@ -1,16 +1,32 @@
 # Changelog
 
+## 10.2.0
+
+**Features**:
+
+- Add inlinee overlap checks in `symbolic-debuginfo`. ([#718](https://github.com/getsentry/symbolic/pull/718))
+
+**Fixed**:
+
+- Ensure proper inlinee nesting in `symbolic-debuginfo`. ([#720](https://github.com/getsentry/symbolic/pull/720))
+- Split lines in more cases in `symbolic-debuginfo`. ([#717](https://github.com/getsentry/symbolic/pull/717))
+
+**Internal**
+
+- Add a `debuginfo_debug` example. ([#716](https://github.com/getsentry/symbolic/pull/716))
+- Update `js-source-scopes` to `0.3.1`. ([#721](https://github.com/getsentry/symbolic/pull/721))
+
 ## 10.1.5
 
-### Various fixes & improvements
+**Internal**
 
-- deps: Update js-source-scopes to 0.3.0 (#715) by @kamilogorek
+- Update `js-source-scopes` to `0.3.0`. ([#715](https://github.com/getsentry/symbolic/pull/715))
 
 ## 10.1.4
 
-### Various fixes & improvements
+**Internal**
 
-- deps: Update js-source-scopes to 0.2.2 (#714) by @kamilogorek
+- Update `js-source-scopes` to `0.2.2`. ([#714](https://github.com/getsentry/symbolic/pull/714))
 
 ## 10.1.3
 
