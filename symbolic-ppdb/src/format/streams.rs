@@ -55,7 +55,7 @@ impl<'data> PdbStream<'data> {
             let (len, rest_) = u32::ref_from_prefix(rest).ok_or(FormatErrorKind::InvalidLength)?;
             rest = rest_;
 
-            *table = *len as u32;
+            *table = *len;
         }
         Ok(Self {
             header,

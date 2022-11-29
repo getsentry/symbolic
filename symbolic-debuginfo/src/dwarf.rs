@@ -68,7 +68,7 @@ type LineProgramFileEntry<'a> = gimli::read::FileEntry<Slice<'a>>;
 /// This function does not panic but would wrap around if too large or small
 /// numbers are passed.
 fn offset(addr: u64, offset: i64) -> u64 {
-    (addr as i64).wrapping_sub(offset as i64) as u64
+    (addr as i64).wrapping_sub(offset) as u64
 }
 
 /// The error type for [`DwarfError`].
