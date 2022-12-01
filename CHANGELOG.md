@@ -4,7 +4,7 @@
 
 **Features**:
 
-- `PortablePdbCache` now implements `AsSelf`. ([#726](https://github.com/getsentry/symbolic/pull/726))
+- `PortablePdbCache` now implements `Clone`, `PartialEq`, `Eq`, and `AsSelf`. ([#726](https://github.com/getsentry/symbolic/pull/726), [#727](https://github.com/getsentry/symbolic/pull/727))
 
 ## 10.2.0
 
