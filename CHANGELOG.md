@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- `PortablePdbCache` now implements `AsSelf`. ([#726](https://github.com/getsentry/symbolic/pull/726))
+
 ## 10.2.0
 
 **Features**:
