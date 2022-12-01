@@ -137,6 +137,7 @@ impl From<crate::format::FormatError> for CacheError {
 ///
 /// This can be parsed from a binary buffer via [`PortablePdbCache::parse`] and lookups on it can be performed
 /// via the [`PortablePdbCache::lookup`] method.
+#[derive(Clone, PartialEq, Eq)]
 pub struct PortablePdbCache<'data> {
     header: &'data raw::Header,
     files: &'data [raw::File],
