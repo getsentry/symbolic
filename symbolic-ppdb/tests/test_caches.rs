@@ -3,6 +3,7 @@ use symbolic_ppdb::LineInfo;
 use symbolic_ppdb::PortablePdb;
 use symbolic_ppdb::PortablePdbCache;
 use symbolic_ppdb::PortablePdbCacheConverter;
+use symbolic_testutils::fixture;
 
 #[test]
 fn test_documents() {
@@ -34,7 +35,7 @@ fn test_async() {
 
 #[test]
 fn test_integration() {
-    let buf = std::fs::read("tests/fixtures/integration.pdb").unwrap();
+    let buf = std::fs::read(fixture("windows/portable.pdb")).unwrap();
 
     let pdb = PortablePdb::parse(&buf).unwrap();
 
