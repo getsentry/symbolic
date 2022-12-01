@@ -51,7 +51,7 @@ pub(crate) mod lookup;
 pub(crate) mod raw;
 pub(crate) mod writer;
 
-use symbolic_common::DebugId;
+use symbolic_common::{AsSelf, DebugId};
 use thiserror::Error;
 use watto::{align_to, Pod};
 
@@ -215,5 +215,13 @@ impl<'data> std::fmt::Debug for PortablePdbCache<'data> {
             .field("ranges", &self.header.num_ranges)
             .field("string_bytes", &self.header.string_bytes)
             .finish()
+    }
+}
+
+impl<'slf, 'd: 'slf> AsSelf<'slf> for PortablePdbCache<'d> {
+    type Ref = PortablePdbCache<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
     }
 }
