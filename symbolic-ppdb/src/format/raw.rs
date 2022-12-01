@@ -1,3 +1,5 @@
+use std::fmt;
+
 use watto::Pod;
 
 /// Signature for physical metadata as specified by ECMA-335.
@@ -7,7 +9,6 @@ pub const METADATA_SIGNATURE: u32 = 0x424A_5342;
 ///
 /// This includes everything before the version string.
 #[repr(C)]
-#[derive(Debug)]
 pub struct Header {
     /// The metadata signature.
     ///
@@ -24,6 +25,17 @@ pub struct Header {
     /// This is the actual length of the version string, including the
     /// null terminator, rounded up to a multiple of 4.
     pub version_length: u32,
+}
+
+impl fmt::Debug for Header {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Header")
+            .field("signature", &self.signature)
+            .field("major_version", &self.major_version)
+            .field("minor_version", &self.minor_version)
+            .field("version_length", &self.version_length)
+            .finish()
+    }
 }
 
 /// Second part of the metadata header, as specified in the ECMA-335 spec, II.24.2.1.

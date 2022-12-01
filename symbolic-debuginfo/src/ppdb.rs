@@ -1,6 +1,6 @@
 //! Support for Portable PDB Objects.
-use std::convert::Infallible;
 use std::iter;
+use std::{convert::Infallible, fmt};
 
 use symbolic_common::{Arch, CodeId, DebugId};
 use symbolic_ppdb::{FormatError, PortablePdb};
@@ -18,7 +18,6 @@ pub type PortablePdbFunctionIterator<'session> =
 pub type PortablePdbFileIterator<'session> = iter::Empty<Result<FileEntry<'session>, Infallible>>;
 
 /// An object wrapping a Portable PDB file.
-#[derive(Debug)]
 pub struct PortablePdbObject<'data> {
     data: &'data [u8],
     ppdb: PortablePdb<'data>,
@@ -126,6 +125,14 @@ impl<'data> Parse<'data> for PortablePdbObject<'data> {
     fn parse(data: &'data [u8]) -> Result<Self, Self::Error> {
         let ppdb = PortablePdb::parse(data)?;
         Ok(Self { data, ppdb })
+    }
+}
+
+impl fmt::Debug for PortablePdbObject<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PortablePdbObject")
+            .field("portable_pdb", &self.portable_pdb())
+            .finish()
     }
 }
 
