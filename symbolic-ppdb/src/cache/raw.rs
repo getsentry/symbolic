@@ -12,7 +12,7 @@ pub(crate) const PPDBCACHE_MAGIC: u32 = u32::from_le_bytes(PPDBCACHE_MAGIC_BYTES
 pub(crate) const PPDBCACHE_MAGIC_FLIPPED: u32 = PPDBCACHE_MAGIC.swap_bytes();
 
 /// The header of a PortablePdbCache file.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[repr(C)]
 pub(crate) struct Header {
     /// The file magic representing the file format and endianness.
@@ -33,7 +33,7 @@ pub(crate) struct Header {
 }
 
 /// A location in a source file, comprising a line and the index of a file.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 pub(crate) struct SourceLocation {
     pub(crate) line: u32,
