@@ -1,21 +1,17 @@
 //! Support for Portable PDB Objects.
+use std::fmt;
 use std::iter;
-use std::{convert::Infallible, fmt};
 
 use symbolic_common::{Arch, CodeId, DebugId};
 use symbolic_ppdb::{FormatError, PortablePdb};
 
-use crate::{
-    DebugSession, FileEntry, FileFormat, Function, ObjectKind, ObjectLike, Parse, Symbol, SymbolMap,
-};
+use crate::base::*;
 
 /// An iterator over symbols in a [`PortablePdbObject`].
 pub type PortablePdbSymbolIterator<'data> = iter::Empty<Symbol<'data>>;
 /// An iterator over functions in a [`PortablePdbObject`].
 pub type PortablePdbFunctionIterator<'session> =
-    iter::Empty<Result<Function<'session>, Infallible>>;
-/// An iterator over files in a [`PortablePdbObject`].
-pub type PortablePdbFileIterator<'session> = iter::Empty<Result<FileEntry<'session>, Infallible>>;
+    iter::Empty<Result<Function<'session>, FormatError>>;
 
 /// An object wrapping a Portable PDB file.
 pub struct PortablePdbObject<'data> {
@@ -35,9 +31,9 @@ impl<'data> PortablePdbObject<'data> {
     }
 }
 
-impl<'data, 'object> ObjectLike<'data, 'object> for PortablePdbObject<'data> {
-    type Error = Infallible;
-    type Session = PortablePdbDebugSession;
+impl<'data: 'object, 'object> ObjectLike<'data, 'object> for PortablePdbObject<'data> {
+    type Error = FormatError;
+    type Session = PortablePdbDebugSession<'data>;
     type SymbolIterator = PortablePdbSymbolIterator<'data>;
 
     /// The debug information identifier of a Portable PDB file.
@@ -90,8 +86,8 @@ impl<'data, 'object> ObjectLike<'data, 'object> for PortablePdbObject<'data> {
     }
 
     /// Constructs a debugging session.
-    fn debug_session(&self) -> Result<PortablePdbDebugSession, Infallible> {
-        Ok(PortablePdbDebugSession)
+    fn debug_session(&self) -> Result<PortablePdbDebugSession<'data>, FormatError> {
+        Ok(PortablePdbDebugSession { ppdb: &self.ppdb })
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -139,10 +135,12 @@ impl fmt::Debug for PortablePdbObject<'_> {
 /// A debug session for a Portable PDB object.
 ///
 /// Currently this session is trivial and returns no files or functions.
-pub struct PortablePdbDebugSession;
+pub struct PortablePdbDebugSession<'data> {
+    ppdb: &'data PortablePdb<'data>,
+}
 
-impl<'session> DebugSession<'session> for PortablePdbDebugSession {
-    type Error = Infallible;
+impl<'session> DebugSession<'session> for PortablePdbDebugSession<'session> {
+    type Error = FormatError;
 
     type FunctionIterator = PortablePdbFunctionIterator<'session>;
 
@@ -153,7 +151,11 @@ impl<'session> DebugSession<'session> for PortablePdbDebugSession {
     }
 
     fn files(&'session self) -> Self::FileIterator {
-        iter::empty()
+        PortablePdbFileIterator {
+            ppdb: self.ppdb,
+            row: 0,
+            size: 1,
+        }
     }
 
     fn source_by_path(
@@ -161,5 +163,29 @@ impl<'session> DebugSession<'session> for PortablePdbDebugSession {
         _path: &str,
     ) -> Result<Option<std::borrow::Cow<'_, str>>, Self::Error> {
         Ok(None)
+    }
+}
+
+/// An iterator over source files in a DWARF file.
+pub struct PortablePdbFileIterator<'s> {
+    ppdb: &'s PortablePdb<'s>,
+    row: usize,
+    size: usize,
+}
+
+impl<'s> Iterator for PortablePdbFileIterator<'s> {
+    type Item = Result<FileEntry<'s>, FormatError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.row >= self.size {
+            return None;
+        }
+
+        self.row += 1;
+        let document = self.ppdb.get_document(self.row - 1).ok()?;
+        Some(Ok(FileEntry {
+            compilation_dir: &[],
+            info: FileInfo::from_path(document.name.as_bytes()),
+        }))
     }
 }

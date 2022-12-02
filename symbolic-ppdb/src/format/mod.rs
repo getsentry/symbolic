@@ -9,7 +9,7 @@ use std::fmt;
 use thiserror::Error;
 use watto::Pod;
 
-use symbolic_common::{DebugId, Uuid};
+use symbolic_common::{DebugId, Language, Uuid};
 
 use metadata::{MetadataStream, TableType};
 use streams::{BlobStream, GuidStream, PdbStream, StringStream, UsStream};
@@ -328,4 +328,34 @@ impl<'data> PortablePdb<'data> {
             md_stream[TableType::MethodDebugInformation].rows > 0
         })
     }
+
+    /// Get source file referenced by this PDB.
+    ///
+    /// Given index must be between 0 and get_documents_count()-1.
+    pub fn get_document(&self, idx: usize) -> Result<Document, FormatError> {
+        let name_offset = self.get_table_cell_u32(TableType::Document, idx, 1)?;
+        let lang_offset = self.get_table_cell_u32(TableType::Document, idx, 4)?;
+
+        let name = self.get_document_name(name_offset)?;
+        let lang = self.get_document_lang(lang_offset)?;
+
+        Ok(Document { name, lang })
+    }
+
+    /// Get the number of source files referenced by this PDB.
+    pub fn get_documents_count(&self) -> Result<usize, FormatError> {
+        let md_stream = self
+            .metadata_stream
+            .as_ref()
+            .ok_or(FormatErrorKind::NoStringsStream)?;
+        Ok(md_stream[TableType::Document].rows)
+    }
+}
+
+/// Represents a source file that is referenced by this PDB.
+#[derive(Debug, Clone)]
+pub struct Document {
+    /// Document names are usually normalized full paths.
+    pub name: String,
+    pub(crate) lang: Language,
 }

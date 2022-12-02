@@ -7,7 +7,7 @@ use super::utils::{decode_signed, decode_unsigned};
 use super::{FormatError, FormatErrorKind, PortablePdb};
 
 impl<'data> PortablePdb<'data> {
-    fn get_document_name(&self, offset: u32) -> Result<String, FormatError> {
+    pub(crate) fn get_document_name(&self, offset: u32) -> Result<String, FormatError> {
         let go = || {
             let data = self.get_blob(offset)?;
             let sep = data.get(..1).ok_or(FormatErrorKind::InvalidBlobOffset)?;
@@ -43,7 +43,7 @@ impl<'data> PortablePdb<'data> {
         go().map_err(|e: FormatError| FormatError::new(FormatErrorKind::InvalidDocumentName, e))
     }
 
-    fn get_document_lang(&self, idx: u32) -> Result<Language, FormatError> {
+    pub(crate) fn get_document_lang(&self, idx: u32) -> Result<Language, FormatError> {
         const C_SHARP_UUID: Uuid = uuid::uuid!("3f5162f8-07c6-11d3-9053-00c04fa302a1");
         const VISUAL_BASIC_UUID: Uuid = uuid::uuid!("3a12d0b8-c26c-11d0-b442-00a0244a1dd2");
         const F_SHARP_UUID: Uuid = uuid::uuid!("ab4f38c9-b6e6-43ba-be3b-58080b2ccce3");
@@ -56,16 +56,6 @@ impl<'data> PortablePdb<'data> {
             F_SHARP_UUID => Ok(Language::FSharp),
             _ => Ok(Language::Unknown),
         }
-    }
-
-    pub(crate) fn get_document(&self, idx: usize) -> Result<Document, FormatError> {
-        let name_offset = self.get_table_cell_u32(TableType::Document, idx, 1)?;
-        let lang_offset = self.get_table_cell_u32(TableType::Document, idx, 4)?;
-
-        let name = self.get_document_name(name_offset)?;
-        let lang = self.get_document_lang(lang_offset)?;
-
-        Ok(Document { name, lang })
     }
 
     fn get_sequence_points(&self, idx: usize) -> Result<Vec<SequencePoint>, FormatError> {
@@ -267,12 +257,6 @@ impl fmt::Debug for SequencePoint {
                 .finish()
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct Document {
-    pub(crate) name: String,
-    pub(crate) lang: Language,
 }
 
 pub(crate) struct SequencePoints<'data, 'ppdb> {

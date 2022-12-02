@@ -448,7 +448,7 @@ pub enum ObjectDebugSession<'d> {
     Pdb(PdbDebugSession<'d>),
     Pe(PeDebugSession<'d>),
     SourceBundle(SourceBundleDebugSession<'d>),
-    PortablePdb(PortablePdbDebugSession),
+    PortablePdb(PortablePdbDebugSession<'d>),
 }
 
 impl<'d> ObjectDebugSession<'d> {
