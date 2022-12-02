@@ -601,6 +601,75 @@ fn test_pdb_anonymous_namespace() -> Result<(), Error> {
 }
 
 #[test]
+fn test_ppdb() -> Result<(), Error> {
+    let view = ByteView::open(fixture("windows/portable.pdb"))?;
+    let object = Object::parse(&view)?;
+
+    insta::assert_debug_snapshot!(object, @r###"
+    ⋮PortablePdb(
+    ⋮    PortablePdbObject {
+    ⋮        portable_pdb: PortablePdb {
+    ⋮            header: Header {
+    ⋮                signature: 1112167234,
+    ⋮                major_version: 1,
+    ⋮                minor_version: 1,
+    ⋮                version_length: 12,
+    ⋮            },
+    ⋮            version_string: "PDB v1.0",
+    ⋮            header2: HeaderPart2 {
+    ⋮                flags: 0,
+    ⋮                streams: 6,
+    ⋮            },
+    ⋮            has_pdb_stream: true,
+    ⋮            has_table_stream: true,
+    ⋮            has_string_stream: true,
+    ⋮            has_us_stream: true,
+    ⋮            has_blob_stream: true,
+    ⋮            has_guid_stream: true,
+    ⋮        },
+    ⋮    },
+    ⋮)
+    "###);
+
+    Ok(())
+}
+
+#[test]
+fn test_ppdb_symbols() -> Result<(), Error> {
+    let view = ByteView::open(fixture("windows/portable.pdb"))?;
+    let object = Object::parse(&view)?;
+
+    let symbols = object.symbol_map();
+    assert_eq!(symbols.len(), 0); // not implemented
+
+    Ok(())
+}
+
+#[test]
+fn test_ppdb_files() -> Result<(), Error> {
+    let view = ByteView::open(fixture("windows/portable.pdb"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session()?;
+    let files = session.files().collect::<Result<Vec<_>, _>>()?;
+    assert_eq!(files.len(), 0); // not implemented
+
+    Ok(())
+}
+
+#[test]
+fn test_ppdb_functions() -> Result<(), Error> {
+    let view = ByteView::open(fixture("windows/portable.pdb"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session()?;
+    let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
+    assert_eq!(functions.len(), 0); // not implemented
+
+    Ok(())
+}
+
+#[test]
 fn test_wasm_symbols() -> Result<(), Error> {
     let view = ByteView::open(fixture("wasm/simple.wasm"))?;
     let object = Object::parse(&view)?;
