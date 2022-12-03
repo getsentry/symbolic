@@ -1,4 +1,5 @@
 //! Support for Portable PDB Objects.
+use std::borrow::Cow;
 use std::fmt;
 use std::iter;
 
@@ -87,7 +88,9 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for PortablePdbObject<'
 
     /// Constructs a debugging session.
     fn debug_session(&self) -> Result<PortablePdbDebugSession<'data>, FormatError> {
-        Ok(PortablePdbDebugSession { ppdb: &self.ppdb })
+        Ok(PortablePdbDebugSession {
+            ppdb: self.ppdb.clone(),
+        })
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -132,37 +135,51 @@ impl fmt::Debug for PortablePdbObject<'_> {
     }
 }
 
-/// A debug session for a Portable PDB object.
-///
-/// Currently this session is trivial and returns no files or functions.
+/// Debug session for PortablePdb objects.
 pub struct PortablePdbDebugSession<'data> {
-    ppdb: &'data PortablePdb<'data>,
+    ppdb: PortablePdb<'data>,
 }
 
-impl<'session> DebugSession<'session> for PortablePdbDebugSession<'session> {
-    type Error = FormatError;
-
-    type FunctionIterator = PortablePdbFunctionIterator<'session>;
-
-    type FileIterator = PortablePdbFileIterator<'session>;
-
-    fn functions(&'session self) -> Self::FunctionIterator {
+impl<'data> PortablePdbDebugSession<'data> {
+    /// Returns an iterator over all functions in this debug file.
+    pub fn functions(&self) -> PortablePdbFunctionIterator<'_> {
         iter::empty()
     }
 
-    fn files(&'session self) -> Self::FileIterator {
+    /// Returns an iterator over all source files in this debug file.
+    pub fn files(&self) -> PortablePdbFileIterator<'_> {
+        let size = 1; // TODO self.ppdb.get_documents_count()
         PortablePdbFileIterator {
-            ppdb: self.ppdb,
+            ppdb: &self.ppdb,
             row: 0,
-            size: 1,
+            size: size,
+            names: Vec::with_capacity(size),
         }
     }
 
-    fn source_by_path(
-        &self,
-        _path: &str,
-    ) -> Result<Option<std::borrow::Cow<'_, str>>, Self::Error> {
+    /// Looks up a file's source contents by its full canonicalized path.
+    ///
+    /// The given path must be canonicalized.
+    pub fn source_by_path(&self, _path: &str) -> Result<Option<Cow<'_, str>>, FormatError> {
         Ok(None)
+    }
+}
+
+impl<'data, 'session> DebugSession<'session> for PortablePdbDebugSession<'data> {
+    type Error = FormatError;
+    type FunctionIterator = PortablePdbFunctionIterator<'session>;
+    type FileIterator = PortablePdbFileIterator<'session>;
+
+    fn functions(&'session self) -> Self::FunctionIterator {
+        self.functions()
+    }
+
+    fn files(&'session self) -> Self::FileIterator {
+        self.files()
+    }
+
+    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
+        self.source_by_path(path)
     }
 }
 
@@ -171,6 +188,8 @@ pub struct PortablePdbFileIterator<'s> {
     ppdb: &'s PortablePdb<'s>,
     row: usize,
     size: usize,
+    // We need to keep `Document.name` list because FileInfo() references into the string.
+    names: Vec<String>,
 }
 
 impl<'s> Iterator for PortablePdbFileIterator<'s> {
@@ -181,11 +200,17 @@ impl<'s> Iterator for PortablePdbFileIterator<'s> {
             return None;
         }
 
+        let index = self.row;
         self.row += 1;
-        let document = self.ppdb.get_document(self.row - 1).ok()?;
+
+        let document = self.ppdb.get_document(index).ok()?;
+        self.names[index] = document.name;
+
+        let name = &self.names[index];
+
         Some(Ok(FileEntry {
             compilation_dir: &[],
-            info: FileInfo::from_path(document.name.as_bytes()),
+            info: FileInfo::from_path(name.as_bytes()),
         }))
     }
 }
