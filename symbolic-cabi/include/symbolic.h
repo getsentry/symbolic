@@ -497,25 +497,6 @@ struct SymbolicStr symbolic_normalize_code_id(const struct SymbolicStr *code_id)
 struct SymbolicStr symbolic_normalize_debug_id(const struct SymbolicStr *debug_id);
 
 /**
- * Demangles a given identifier.
- *
- * This demangles with the default behavior in symbolic. If no language
- * is specified, it will be auto-detected.
- */
-struct SymbolicStr symbolic_demangle(const struct SymbolicStr *ident,
-                                     const struct SymbolicStr *lang);
-
-/**
- * Demangles a given identifier.
- *
- * This is similar to `symbolic_demangle` but does not demangle the
- * arguments and instead strips them. If no language is specified, it
- * will be auto-detected.
- */
-struct SymbolicStr symbolic_demangle_no_args(const struct SymbolicStr *ident,
-                                             const struct SymbolicStr *lang);
-
-/**
  * Creates a proguard mapping view from a path.
  */
 struct SymbolicProguardMapper *symbolic_proguardmapper_open(const char *path);

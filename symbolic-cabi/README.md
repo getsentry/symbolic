@@ -24,18 +24,18 @@ standard C headers. Then, include it in sources and use like this:
 ```c
 #include "symbolic.h"
 
-int main() {
-    SymbolicStr mangled = symbolic_str_from_cstr("_ZNSt11char_traitsIcE6assignERcRKc");
-    SymbolicStr demangled = symbolic_demangle(&mangled, /* language */ 0);
-    if (demangled.len) {
-        printf("demangled: %.*s\n", (int)demangled.len, demangled.data);
-    } else {
-        print("demangling failed.");
-    }
-
-    symbolic_str_free(&demangled);
-    return 0;
-}
+//int main() {
+//    SymbolicStr mangled = symbolic_str_from_cstr("_ZNSt11char_traitsIcE6assignERcRKc");
+//    SymbolicStr demangled = symbolic_demangle(&mangled, /* language */ 0);
+//    if (demangled.len) {
+//        printf("demangled: %.*s\n", (int)demangled.len, demangled.data);
+//    } else {
+//        print("demangling failed.");
+//    }
+//
+//    symbolic_str_free(&demangled);
+//    return 0;
+//}
 ```
 
 In your application, point to the symbolic include directory and specify the symbolic library:
