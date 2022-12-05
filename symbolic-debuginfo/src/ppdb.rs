@@ -135,7 +135,7 @@ impl fmt::Debug for PortablePdbObject<'_> {
     }
 }
 
-/// Debug session for PortablePdb objects.
+/// A debug session for a Portable PDB object.
 pub struct PortablePdbDebugSession<'data> {
     ppdb: PortablePdb<'data>,
 }
@@ -177,7 +177,7 @@ impl<'data, 'session> DebugSession<'session> for PortablePdbDebugSession<'data> 
     }
 }
 
-/// An iterator over source files in a DWARF file.
+/// An iterator over source files in a Portable PDB file.
 pub struct PortablePdbFileIterator<'s> {
     ppdb: &'s PortablePdb<'s>,
     row: usize,
@@ -187,7 +187,7 @@ pub struct PortablePdbFileIterator<'s> {
 impl<'s> PortablePdbFileIterator<'s> {
     fn new(ppdb: &'s PortablePdb<'s>) -> Self {
         PortablePdbFileIterator {
-            ppdb: ppdb,
+            ppdb,
             // ppdb.get_document(index) - index is 1-based
             row: 1,
             // Zero indicates the value is unknown and must be read during the first next() call.

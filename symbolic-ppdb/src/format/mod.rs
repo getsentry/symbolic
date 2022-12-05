@@ -347,7 +347,7 @@ impl<'data> PortablePdb<'data> {
         let md_stream = self
             .metadata_stream
             .as_ref()
-            .ok_or(FormatErrorKind::NoStringsStream)?;
+            .ok_or(FormatErrorKind::NoMetadataStream)?;
         Ok(md_stream[TableType::Document].rows)
     }
 }
