@@ -39,7 +39,7 @@ class SourceLocation(object):
 
     def __str__(self):
         return "%s:%s (%s)" % (
-            self.function_name,
+            self.symbol,
             self.line,
             self.full_path,
         )
