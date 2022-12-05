@@ -1033,10 +1033,7 @@ impl<'s> Iterator for PdbFileIterator<'s> {
                 let result = file_result
                     .map_err(|err| err.into())
                     .and_then(|i| self.debug_info.file_info(i))
-                    .map(|info| FileEntry {
-                        compilation_dir: &[],
-                        info,
-                    });
+                    .map(|info| FileEntry::new(Cow::default(), info));
 
                 return Some(result);
             }

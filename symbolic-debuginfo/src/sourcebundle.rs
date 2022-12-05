@@ -692,10 +692,10 @@ impl<'s> Iterator for SourceBundleFileIterator<'s> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let source_file = self.files.next()?;
-        Some(Ok(FileEntry {
-            compilation_dir: &[],
-            info: FileInfo::from_path(source_file.path.as_bytes()),
-        }))
+        Some(Ok(FileEntry::new(
+            Cow::default(),
+            FileInfo::from_path(source_file.path.as_bytes()),
+        )))
     }
 }
 

@@ -446,31 +446,62 @@ impl<'d> FromIterator<Symbol<'d>> for SymbolMap<'d> {
 #[derive(Clone, Default, Eq, PartialEq)]
 pub struct FileInfo<'data> {
     /// The file's basename.
-    pub name: &'data [u8],
+    name: Cow<'data, [u8]>,
     /// Path to the file.
-    pub dir: &'data [u8],
+    dir: Cow<'data, [u8]>,
 }
 
 impl<'data> FileInfo<'data> {
+    /// Creates a `FileInfo` with a given directory and the file name.
+    #[cfg(feature = "dwarf")]
+    pub fn new(dir: Cow<'data, [u8]>, name: Cow<'data, [u8]>) -> Self {
+        FileInfo { name, dir }
+    }
+
     /// Creates a `FileInfo` from a joined path by trying to split it.
     #[cfg(any(feature = "breakpad", feature = "ms", feature = "sourcebundle"))]
-    pub(crate) fn from_path(path: &'data [u8]) -> Self {
+    pub fn from_path(path: &'data [u8]) -> Self {
         let (dir, name) = symbolic_common::split_path_bytes(path);
 
         FileInfo {
-            name,
-            dir: dir.unwrap_or_default(),
+            name: Cow::Borrowed(name),
+            dir: match dir {
+                Some(dir) => Cow::Borrowed(dir),
+                None => Cow::default(),
+            },
+        }
+    }
+
+    /// Creates a `FileInfo` from a joined path by trying to split it.
+    #[cfg(feature = "ppdb")]
+    pub(crate) fn from_path_clone(path: &[u8]) -> Self {
+        let (dir, name) = symbolic_common::split_path_bytes(path);
+
+        FileInfo {
+            name: Cow::Owned(name.to_vec()),
+            dir: match dir {
+                Some(dir) => Cow::Owned(dir.to_vec()),
+                None => Cow::default(),
+            },
+        }
+    }
+
+    /// Creates a `FileInfo` with the file name.
+    pub fn from_filename(name: &'data [u8]) -> Self {
+        FileInfo {
+            name: Cow::Borrowed(name),
+            dir: Cow::default(),
         }
     }
 
     /// The file name as UTF-8 string.
     pub fn name_str(&self) -> Cow<'data, str> {
-        String::from_utf8_lossy(self.name)
+        from_utf8_cow_lossy(&self.name)
     }
 
     /// Path to the file relative to the compilation directory.
     pub fn dir_str(&self) -> Cow<'data, str> {
-        String::from_utf8_lossy(self.dir)
+        from_utf8_cow_lossy(&self.dir)
     }
 
     /// The full path to the file, relative to the compilation directory.
@@ -480,11 +511,22 @@ impl<'data> FileInfo<'data> {
     }
 }
 
+fn from_utf8_cow_lossy<'data>(input: &Cow<'data, [u8]>) -> Cow<'data, str> {
+    // See https://github.com/rust-lang/rust/issues/32669
+    match input {
+        Cow::Borrowed(bytes) => String::from_utf8_lossy(bytes),
+        Cow::Owned(bytes) => match String::from_utf8_lossy(bytes) {
+            Cow::Borrowed(_) => unsafe { String::from_utf8_unchecked(bytes.to_vec()) }.into(),
+            Cow::Owned(s) => s.into(),
+        },
+    }
+}
+
 impl fmt::Debug for FileInfo<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FileInfo")
-            .field("name", &String::from_utf8_lossy(self.name))
-            .field("dir", &String::from_utf8_lossy(self.dir))
+            .field("name", &self.name_str())
+            .field("dir", &self.dir_str())
             .finish()
     }
 }
@@ -492,15 +534,23 @@ impl fmt::Debug for FileInfo<'_> {
 /// File information comprising a compilation directory, relative path and name.
 pub struct FileEntry<'data> {
     /// Path to the compilation directory. File paths are relative to this.
-    pub compilation_dir: &'data [u8],
+    compilation_dir: Cow<'data, [u8]>,
     /// File name and path.
     pub info: FileInfo<'data>,
 }
 
 impl<'data> FileEntry<'data> {
     /// Path to the compilation directory.
+    pub fn new(compilation_dir: Cow<'data, [u8]>, info: FileInfo<'data>) -> Self {
+        FileEntry {
+            compilation_dir,
+            info,
+        }
+    }
+
+    /// Path to the compilation directory.
     pub fn compilation_dir_str(&self) -> Cow<'data, str> {
-        String::from_utf8_lossy(self.compilation_dir)
+        from_utf8_cow_lossy(&self.compilation_dir)
     }
 
     /// Absolute path to the file, including the compilation directory.
@@ -548,10 +598,7 @@ impl LineInfo<'static> {
         LineInfo {
             address,
             size: Some(size),
-            file: FileInfo {
-                name: file,
-                dir: &[],
-            },
+            file: FileInfo::from_filename(file),
             line,
         }
     }
@@ -778,17 +825,17 @@ mod tests {
     use similar_asserts::assert_eq;
 
     fn file_info<'a>(dir: &'a str, name: &'a str) -> FileInfo<'a> {
-        FileInfo {
-            dir: dir.as_bytes(),
-            name: name.as_bytes(),
-        }
+        FileInfo::new(
+            Cow::Borrowed(dir.as_bytes()),
+            Cow::Borrowed(name.as_bytes()),
+        )
     }
 
     fn file_entry<'a>(compilation_dir: &'a str, dir: &'a str, name: &'a str) -> FileEntry<'a> {
-        FileEntry {
-            compilation_dir: compilation_dir.as_bytes(),
-            info: file_info(dir, name),
-        }
+        FileEntry::new(
+            Cow::Borrowed(compilation_dir.as_bytes()),
+            file_info(dir, name),
+        )
     }
 
     #[test]

@@ -153,7 +153,6 @@ impl<'data> PortablePdbDebugSession<'data> {
             ppdb: &self.ppdb,
             row: 0,
             size: size,
-            names: Vec::with_capacity(size),
         }
     }
 
@@ -188,8 +187,6 @@ pub struct PortablePdbFileIterator<'s> {
     ppdb: &'s PortablePdb<'s>,
     row: usize,
     size: usize,
-    // We need to keep `Document.name` list because FileInfo() references into the string.
-    names: Vec<String>,
 }
 
 impl<'s> Iterator for PortablePdbFileIterator<'s> {
@@ -204,13 +201,9 @@ impl<'s> Iterator for PortablePdbFileIterator<'s> {
         self.row += 1;
 
         let document = self.ppdb.get_document(index).ok()?;
-        self.names[index] = document.name;
-
-        let name = &self.names[index];
-
-        Some(Ok(FileEntry {
-            compilation_dir: &[],
-            info: FileInfo::from_path(name.as_bytes()),
-        }))
+        Some(Ok(FileEntry::new(
+            Cow::default(),
+            FileInfo::from_path_clone(document.name.as_bytes()),
+        )))
     }
 }

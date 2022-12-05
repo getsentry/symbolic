@@ -675,18 +675,18 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         line_program: &LineNumberProgramHeader<'d>,
         file: &LineProgramFileEntry<'d>,
     ) -> FileInfo<'d> {
-        FileInfo {
-            dir: resolve_byte_name(
+        FileInfo::new(
+            Cow::Borrowed(resolve_byte_name(
                 self.bcsymbolmap,
                 file.directory(line_program)
                     .and_then(|attr| self.inner.slice_value(attr))
                     .unwrap_or_default(),
-            ),
-            name: resolve_byte_name(
+            )),
+            Cow::Borrowed(resolve_byte_name(
                 self.bcsymbolmap,
                 self.inner.slice_value(file.path_name()).unwrap_or_default(),
-            ),
-        }
+            )),
+        )
     }
 
     /// Resolves a file entry by its index.
@@ -1371,10 +1371,10 @@ impl<'s> Iterator for DwarfUnitFileIterator<'s> {
 
         self.index += 1;
 
-        Some(FileEntry {
-            compilation_dir: unit.compilation_dir(),
-            info: unit.file_info(line_program, file),
-        })
+        Some(FileEntry::new(
+            Cow::Borrowed(unit.compilation_dir()),
+            unit.file_info(line_program, file),
+        ))
     }
 }
 
