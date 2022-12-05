@@ -1,6 +1,6 @@
 [package]
 name = "debuginfo_debug"
-version = "10.2.0"
+version = "10.2.1"
 authors = ["Markus Stange <mstange.moz@gmail.com>"]
 edition = "2021"
 publish = false
