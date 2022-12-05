@@ -148,12 +148,7 @@ impl<'data> PortablePdbDebugSession<'data> {
 
     /// Returns an iterator over all source files in this debug file.
     pub fn files(&self) -> PortablePdbFileIterator<'_> {
-        let size = 1; // TODO self.ppdb.get_documents_count()
-        PortablePdbFileIterator {
-            ppdb: &self.ppdb,
-            row: 0,
-            size: size,
-        }
+        PortablePdbFileIterator::new(&self.ppdb)
     }
 
     /// Looks up a file's source contents by its full canonicalized path.
@@ -189,18 +184,48 @@ pub struct PortablePdbFileIterator<'s> {
     size: usize,
 }
 
+impl<'s> PortablePdbFileIterator<'s> {
+    fn new(ppdb: &'s PortablePdb<'s>) -> Self {
+        PortablePdbFileIterator {
+            ppdb: ppdb,
+            // ppdb.get_document(index) - index is 1-based
+            row: 1,
+            // Zero indicates the value is unknown and must be read during the first next() call.
+            // We do it this way so that we can return a FormatError in case one occurs when determining the size.
+            size: 0,
+        }
+    }
+}
+
 impl<'s> Iterator for PortablePdbFileIterator<'s> {
     type Item = Result<FileEntry<'s>, FormatError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.row >= self.size {
+        if self.size == 0 {
+            match self.ppdb.get_documents_count() {
+                Ok(size) => {
+                    debug_assert!(size != usize::MAX);
+                    self.size = size;
+                }
+                Err(e) => {
+                    return Some(Err(e));
+                }
+            }
+        }
+
+        if self.row > self.size {
             return None;
         }
 
         let index = self.row;
         self.row += 1;
 
-        let document = self.ppdb.get_document(index).ok()?;
+        let document = match self.ppdb.get_document(index) {
+            Ok(doc) => doc,
+            Err(e) => {
+                return Some(Err(e));
+            }
+        };
         Some(Ok(FileEntry::new(
             Cow::default(),
             FileInfo::from_path_clone(document.name.as_bytes()),

@@ -331,7 +331,7 @@ impl<'data> PortablePdb<'data> {
 
     /// Get source file referenced by this PDB.
     ///
-    /// Given index must be between 0 and get_documents_count()-1.
+    /// Given index must be between 1 and get_documents_count().
     pub fn get_document(&self, idx: usize) -> Result<Document, FormatError> {
         let name_offset = self.get_table_cell_u32(TableType::Document, idx, 1)?;
         let lang_offset = self.get_table_cell_u32(TableType::Document, idx, 4)?;

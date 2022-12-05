@@ -652,7 +652,8 @@ fn test_ppdb_files() -> Result<(), Error> {
 
     let session = object.debug_session()?;
     let files = session.files().collect::<Result<Vec<_>, _>>()?;
-    assert_eq!(files.len(), 0); // not implemented
+    assert_eq!(files.len(), 4);
+    insta::assert_debug_snapshot!("ppdb_files", FilesDebug(&files));
 
     Ok(())
 }
