@@ -2,9 +2,21 @@
 
 ## Unreleased
 
+**Features**:
+
+- `PortablePdbDebugSession` now returns files referenced in the Portable PDB file. ([#729](https://github.com/getsentry/symbolic/pull/729))
+
 **Breaking changes**:
 
 - Demangling functionality is removed from C and Python bindings. ([#730](https://github.com/getsentry/symbolic/pull/730))
+- The fields of `FileInfo` and the `compilation_dir` field on `FileEntry` are now private. ([#729](https://github.com/getsentry/symbolic/pull/729))
+- `PortablePdbDebugSession` now has a lifetime parameter. ([#729](https://github.com/getsentry/symbolic/pull/729))
+
+**Thank you**:
+
+Features, fixes and improvements in this release have been contributed by:
+
+- [@vaind](https://github.com/vaind)
 
 ## 10.2.1
 
