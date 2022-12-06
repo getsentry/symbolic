@@ -2,7 +2,6 @@ import io
 import shutil
 from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib, ffi
-from symbolic.demangle import demangle_name
 from symbolic.utils import (
     RustObject,
     rustcall,
@@ -38,14 +37,9 @@ class SourceLocation(object):
         self.symbol = symbol
         self.full_path = full_path or None
 
-    @property
-    def function_name(self):
-        """The demangled function name."""
-        return demangle_name(self.symbol, lang=self.lang)
-
     def __str__(self):
         return "%s:%s (%s)" % (
-            self.function_name,
+            self.symbol,
             self.line,
             self.full_path,
         )

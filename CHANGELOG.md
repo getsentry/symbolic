@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Breaking changes**:
+
+- Demangling functionality is removed from C and Python bindings. ([#730](https://github.com/getsentry/symbolic/pull/730))
+
 ## 10.2.1
 
 **Features**:

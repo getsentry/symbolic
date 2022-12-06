@@ -60,7 +60,6 @@ class ReportSymbolizer(object):
             for sym in rv:
                 frame = dict(frame)
                 frame["symbol_name"] = sym.symbol
-                frame["function"] = sym.function_name
                 frame["full_path"] = sym.full_path
                 frame["line"] = sym.line
                 result.append(frame)
