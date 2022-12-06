@@ -228,7 +228,7 @@ impl<'s> Iterator for PortablePdbFileIterator<'s> {
         };
         Some(Ok(FileEntry::new(
             Cow::default(),
-            FileInfo::from_path_clone(document.name.as_bytes()),
+            FileInfo::from_path_owned(document.name.as_bytes()),
         )))
     }
 }

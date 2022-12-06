@@ -473,8 +473,9 @@ impl<'data> FileInfo<'data> {
     }
 
     /// Creates a `FileInfo` from a joined path by trying to split it.
+    /// Unlike from_path(), copies the given data instead of referencing it.
     #[cfg(feature = "ppdb")]
-    pub(crate) fn from_path_clone(path: &[u8]) -> Self {
+    pub(crate) fn from_path_owned(path: &[u8]) -> Self {
         let (dir, name) = symbolic_common::split_path_bytes(path);
 
         FileInfo {
