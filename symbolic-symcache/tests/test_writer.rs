@@ -261,10 +261,7 @@ fn test_lookup_gap_inlinee() -> Result<(), Error> {
         lines: vec![LineInfo {
             address: 0x1000,
             size: Some(0x30),
-            file: FileInfo {
-                name: b"main.rs",
-                dir: b"",
-            },
+            file: FileInfo::from_filename(b"main.rs"),
             line: 5,
         }],
         inlinees: vec![
@@ -276,10 +273,7 @@ fn test_lookup_gap_inlinee() -> Result<(), Error> {
                 lines: vec![LineInfo {
                     address: 0x1010,
                     size: Some(0x10),
-                    file: FileInfo {
-                        name: b"main.rs",
-                        dir: b"",
-                    },
+                    file: FileInfo::from_filename(b"main.rs"),
                     line: 20,
                 }],
                 inlinees: vec![],
@@ -294,19 +288,13 @@ fn test_lookup_gap_inlinee() -> Result<(), Error> {
                     LineInfo {
                         address: 0x1000,
                         size: Some(0x10),
-                        file: FileInfo {
-                            name: b"main.rs",
-                            dir: b"",
-                        },
+                        file: FileInfo::from_filename(b"main.rs"),
                         line: 40,
                     },
                     LineInfo {
                         address: 0x1020,
                         size: Some(0x10),
-                        file: FileInfo {
-                            name: b"main.rs",
-                            dir: b"",
-                        },
+                        file: FileInfo::from_filename(b"main.rs"),
                         line: 42,
                     },
                 ],

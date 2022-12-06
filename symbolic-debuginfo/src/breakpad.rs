@@ -1312,10 +1312,10 @@ impl<'s> Iterator for BreakpadFileIterator<'s> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let path = self.files.next()?;
-        Some(Ok(FileEntry {
-            compilation_dir: &[],
-            info: FileInfo::from_path(path.as_bytes()),
-        }))
+        Some(Ok(FileEntry::new(
+            Cow::default(),
+            FileInfo::from_path(path.as_bytes()),
+        )))
     }
 }
 

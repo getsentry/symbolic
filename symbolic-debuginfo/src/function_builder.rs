@@ -438,15 +438,7 @@ mod tests {
     fn test_simple() {
         // 0x10 - 0x40: foo in foo.c on line 1
         let mut builder = FunctionBuilder::new(Name::from("foo"), &[], 0x10, 0x30);
-        builder.add_leaf_line(
-            0x10,
-            Some(0x30),
-            FileInfo {
-                name: b"foo.c",
-                dir: &[],
-            },
-            1,
-        );
+        builder.add_leaf_line(0x10, Some(0x30), FileInfo::from_filename(b"foo.c"), 1);
         let func = builder.finish();
 
         assert_eq!(func.name.as_str(), "foo");
@@ -464,30 +456,11 @@ mod tests {
             Name::from("bar"),
             0x20,
             0x20,
-            FileInfo {
-                name: b"foo.c",
-                dir: &[],
-            },
+            FileInfo::from_filename(b"foo.c"),
             2,
         );
-        builder.add_leaf_line(
-            0x10,
-            Some(0x10),
-            FileInfo {
-                name: b"foo.c",
-                dir: &[],
-            },
-            1,
-        );
-        builder.add_leaf_line(
-            0x20,
-            Some(0x20),
-            FileInfo {
-                name: b"bar.c",
-                dir: &[],
-            },
-            1,
-        );
+        builder.add_leaf_line(0x10, Some(0x10), FileInfo::from_filename(b"foo.c"), 1);
+        builder.add_leaf_line(0x20, Some(0x20), FileInfo::from_filename(b"bar.c"), 1);
         let func = builder.finish();
 
         // the outer function has two line records, one for itself, the other for the inlined call
@@ -542,10 +515,7 @@ mod tests {
             Name::from("child1"),
             0x20,
             0x10,
-            FileInfo {
-                name: b"parent.c",
-                dir: &[],
-            },
+            FileInfo::from_filename(b"parent.c"),
             1,
         );
         builder.add_inlinee(
@@ -553,10 +523,7 @@ mod tests {
             Name::from("child2"),
             0x20,
             0x10,
-            FileInfo {
-                name: b"child1.c",
-                dir: &[],
-            },
+            FileInfo::from_filename(b"child1.c"),
             1,
         );
         builder.add_inlinee(
@@ -564,39 +531,12 @@ mod tests {
             Name::from("child2"),
             0x30,
             0x10,
-            FileInfo {
-                name: b"parent.c",
-                dir: &[],
-            },
+            FileInfo::from_filename(b"parent.c"),
             2,
         );
-        builder.add_leaf_line(
-            0x10,
-            Some(0x10),
-            FileInfo {
-                name: b"parent.c",
-                dir: &[],
-            },
-            1,
-        );
-        builder.add_leaf_line(
-            0x20,
-            Some(0x20),
-            FileInfo {
-                name: b"child2.c",
-                dir: &[],
-            },
-            1,
-        );
-        builder.add_leaf_line(
-            0x40,
-            Some(0x10),
-            FileInfo {
-                name: b"parent.c",
-                dir: &[],
-            },
-            1,
-        );
+        builder.add_leaf_line(0x10, Some(0x10), FileInfo::from_filename(b"parent.c"), 1);
+        builder.add_leaf_line(0x20, Some(0x20), FileInfo::from_filename(b"child2.c"), 1);
+        builder.add_leaf_line(0x40, Some(0x10), FileInfo::from_filename(b"parent.c"), 1);
         let func = builder.finish();
 
         assert_eq!(func.name.as_str(), "parent");

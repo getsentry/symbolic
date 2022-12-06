@@ -1,0 +1,10 @@
+---
+source: symbolic-debuginfo/tests/test_objects.rs
+assertion_line: 656
+expression: FilesDebug(&files)
+---
+/Users/swatinem/Coding/sentry-dotnet/samples/foo/Program.cs
+/Users/swatinem/Coding/sentry-dotnet/samples/foo/obj/Debug/net6.0/foo.GlobalUsings.g.cs
+/Users/swatinem/Coding/sentry-dotnet/samples/foo/obj/Debug/net6.0/.NETCoreApp,Version=v6.0.AssemblyAttributes.cs
+/Users/swatinem/Coding/sentry-dotnet/samples/foo/obj/Debug/net6.0/foo.AssemblyInfo.cs
+
