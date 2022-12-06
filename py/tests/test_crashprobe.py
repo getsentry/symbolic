@@ -63,7 +63,6 @@ def _filter_system_frames(bt):
 
 
 def _test_doCrash_call(bt, index=1):
-    assert bt[index]["function"] == "-[CRLDetailViewController doCrash]"
     assert basename(bt[index]["full_path"]) == "CRLDetailViewController.m"
     assert bt[index]["line"] == 53
 
@@ -86,7 +85,6 @@ def test_pthread_list_lock_report(res_path, make_report_sym, version, build, arc
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashAsyncSafeThread crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashAsyncSafeThread.m"
     assert bt[0]["line"] == 41
     _test_doCrash_call(bt)
@@ -119,7 +117,6 @@ def test_throw_objective_c_exception(res_path, version, build, arch, make_report
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashObjCException crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashObjCException.m"
     assert bt[0]["line"] == 41
     _test_doCrash_call(bt)
@@ -145,7 +142,6 @@ def test_access_a_non_object_as_an_object(
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashNSLog crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashNSLog.m"
     assert bt[0]["line"] == 41
     _test_doCrash_call(bt)
@@ -172,7 +168,6 @@ def test_crash_inside_objc_msg_send(res_path, make_report_sym, version, build, a
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashObjCMsgSend crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashObjCMsgSend.m"
     assert bt[0]["line"] == 47
     _test_doCrash_call(bt)
@@ -200,10 +195,8 @@ def test_message_a_released_object(res_path, make_report_sym, version, build, ar
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "__31-[CRLCrashReleasedObject crash]_block_invoke"
     assert basename(bt[0]["full_path"]) == "CRLCrashReleasedObject.m"
     assert bt[0]["line"] == (arch == "arm64" and 51 or 53)
-    assert bt[1]["function"] == "-[CRLCrashReleasedObject crash]"
     assert basename(bt[1]["full_path"]) == "CRLCrashReleasedObject.m"
     assert bt[1]["line"] == 49
     _test_doCrash_call(bt, 2)
@@ -227,7 +220,6 @@ def test_write_to_a_read_only_page(res_path, make_report_sym, version, build, ar
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashROPage crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashROPage.m"
     assert bt[0]["line"] == 42
     _test_doCrash_call(bt)
@@ -254,7 +246,6 @@ def test_execute_a_privileged_instruction(
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashPrivInst crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashPrivInst.m"
     if arch == "arm64":
         assert bt[0]["line"] == 52
@@ -288,7 +279,6 @@ def test_execute_an_undefined_instruction(
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashUndefInst crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashUndefInst.m"
     if arch == "arm64":
         assert bt[0]["line"] == 50
@@ -319,7 +309,6 @@ def test_dereference_a_null_pointer(res_path, make_report_sym, version, build, a
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashNULL crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashNULL.m"
     assert bt[0]["line"] == 37
     _test_doCrash_call(bt)
@@ -344,7 +333,6 @@ def test_dereference_a_bad_pointer(res_path, make_report_sym, version, build, ar
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashGarbage crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashGarbage.m"
     assert bt[0]["line"] == arch == "arm64" and 52 or 48
     # TODO check here we have one more frame on arm64 from kscrash
@@ -367,8 +355,6 @@ def test_jump_into_an_nx_page(res_path, make_report_sym, version, build, arch):
     assert bt is not None
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
-
-    assert bt[0]["function"] == "-[CRLCrashNXPage crash]"
 
     # This is what crashprobe actually expects but that information is not
     # actually in the debug files.
@@ -399,7 +385,6 @@ def test_stack_overflow(res_path, make_report_sym, version, build, arch):
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashStackGuard crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashStackGuard.m"
 
     if arch == "x86_64":
@@ -423,7 +408,6 @@ def test_call_builtin_trap(res_path, make_report_sym, version, build, arch):
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashTrap crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashTrap.m"
 
     # Crashprobe (as well as the sourcecode) expects 37 here.  This is
@@ -448,7 +432,6 @@ def test_call_abort(res_path, make_report_sym, version, build, arch):
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashAbort crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashAbort.m"
     assert bt[0]["line"] == 37
     _test_doCrash_call(bt)
@@ -472,7 +455,6 @@ def test_corrupt_malloc_s_internal_tracking_information(
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashCorruptMalloc crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashCorruptMalloc.m"
     assert bt[0]["line"] == 46
     _test_doCrash_call(bt)
@@ -496,7 +478,6 @@ def test_corrupt_the_objective_c_runtime_s_structures(
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashCorruptObjC crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashCorruptObjC.m"
     assert bt[0]["line"] == 70
     _test_doCrash_call(bt)
@@ -519,11 +500,9 @@ def test_dwarf_unwinding(res_path, make_report_sym, version, build, arch):
 
     assert len(bt) > 3
 
-    assert bt[2]["function"] == "-[CRLFramelessDWARF crash]"
     assert basename(bt[2]["full_path"]) == "CRLFramelessDWARF.m"
     assert bt[2]["line"] == 49
 
-    assert bt[4]["function"] == "CRLFramelessDWARF_test_crash"
     assert basename(["full_path"]) == "CRLFramelessDWARF.m"
     assert bt[4]["line"] == 35
 
@@ -550,7 +529,6 @@ def test_overwrite_link_register_then_crash(
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    assert bt[0]["function"] == "-[CRLCrashOverwriteLinkRegister crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashOverwriteLinkRegister.m"
     assert bt[0]["line"] == 53
     _test_doCrash_call(bt, -1)
@@ -577,7 +555,6 @@ def test_smash_the_bottom_of_the_stack(res_path, make_report_sym, version, build
     pprint.pprint(bt)
 
     assert len(bt) > 0
-    assert bt[0]["function"] == "-[CRLCrashSmashStackBottom crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashSmashStackBottom.m"
 
     # This is slightly wrong on x86 currently
@@ -610,7 +587,6 @@ def test_smash_the_top_of_the_stack(res_path, make_report_sym, version, build, a
     pprint.pprint(bt)
 
     assert len(bt) > 0
-    assert bt[0]["function"] == "-[CRLCrashSmashStackTop crash]"
     assert basename(bt[0]["full_path"]) == "CRLCrashSmashStackTop.m"
     assert bt[0]["line"] == 54
 
@@ -629,16 +605,8 @@ def test_swift(res_path, make_report_sym, version, build, arch):
     bt = _filter_system_frames(bt)
     pprint.pprint(bt)
 
-    # XCode compiled with a wrong name for ARM
-    # We are testing explicitly here to also catch demangler regressions
-    if arch == "x86_64":
-        assert bt[0]["function"] == "CRLCrashSwift.crash()"
-    else:
-        assert bt[0]["function"] == "crash"
-
     assert bt[0]["line"] == 36
     assert basename(bt[0]["full_path"]) == "CRLCrashSwift.swift"
-    assert bt[1]["function"] == "@objc CRLCrashSwift.crash()"
     assert basename(bt[1]["full_path"]) == "CRLCrashSwift.swift"
 
     _test_doCrash_call(bt, 2)
