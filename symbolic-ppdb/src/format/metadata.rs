@@ -60,9 +60,63 @@ pub enum TableType {
     DummyEmpty = 0x3F,
 }
 
+impl From<usize> for TableType {
+    fn from(value: usize) -> Self {
+        match value {
+            x if x == Self::Assembly as usize => Self::Assembly,
+            x if x == Self::AssemblyProcessor as usize => Self::AssemblyProcessor,
+            x if x == Self::AssemblyRef as usize => Self::AssemblyRef,
+            x if x == Self::AssemblyRefOs as usize => Self::AssemblyRefOs,
+            x if x == Self::AssemblyRefProcessor as usize => Self::AssemblyRefProcessor,
+            x if x == Self::ClassLayout as usize => Self::ClassLayout,
+            x if x == Self::Constant as usize => Self::Constant,
+            x if x == Self::CustomAttribute as usize => Self::CustomAttribute,
+            x if x == Self::DeclSecurity as usize => Self::DeclSecurity,
+            x if x == Self::EventMap as usize => Self::EventMap,
+            x if x == Self::Event as usize => Self::Event,
+            x if x == Self::ExportedType as usize => Self::ExportedType,
+            x if x == Self::Field as usize => Self::Field,
+            x if x == Self::FieldLayout as usize => Self::FieldLayout,
+            x if x == Self::FieldMarshal as usize => Self::FieldMarshal,
+            x if x == Self::FieldRVA as usize => Self::FieldRVA,
+            x if x == Self::File as usize => Self::File,
+            x if x == Self::GenericParam as usize => Self::GenericParam,
+            x if x == Self::GenericParamConstraint as usize => Self::GenericParamConstraint,
+            x if x == Self::ImplMap as usize => Self::ImplMap,
+            x if x == Self::InterfaceImpl as usize => Self::InterfaceImpl,
+            x if x == Self::ManifestResource as usize => Self::ManifestResource,
+            x if x == Self::MemberRef as usize => Self::MemberRef,
+            x if x == Self::MethodDef as usize => Self::MethodDef,
+            x if x == Self::MethodImpl as usize => Self::MethodImpl,
+            x if x == Self::MethodSemantics as usize => Self::MethodSemantics,
+            x if x == Self::MethodSpec as usize => Self::MethodSpec,
+            x if x == Self::Module as usize => Self::Module,
+            x if x == Self::ModuleRef as usize => Self::ModuleRef,
+            x if x == Self::NestedClass as usize => Self::NestedClass,
+            x if x == Self::Param as usize => Self::Param,
+            x if x == Self::Property as usize => Self::Property,
+            x if x == Self::PropertyMap as usize => Self::PropertyMap,
+            x if x == Self::StandAloneSig as usize => Self::StandAloneSig,
+            x if x == Self::TypeDef as usize => Self::TypeDef,
+            x if x == Self::TypeRef as usize => Self::TypeRef,
+            x if x == Self::TypeSpec as usize => Self::TypeSpec,
+            x if x == Self::CustomDebugInformation as usize => Self::CustomDebugInformation,
+            x if x == Self::Document as usize => Self::Document,
+            x if x == Self::ImportScope as usize => Self::ImportScope,
+            x if x == Self::LocalConstant as usize => Self::LocalConstant,
+            x if x == Self::LocalScope as usize => Self::LocalScope,
+            x if x == Self::LocalVariable as usize => Self::LocalVariable,
+            x if x == Self::MethodDebugInformation as usize => Self::MethodDebugInformation,
+            x if x == Self::StateMachineMethod as usize => Self::StateMachineMethod,
+            _ => Self::DummyEmpty,
+        }
+    }
+}
+
 /// A table in a Portable PDB file.
-#[derive(Default, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Table<'data> {
+    type_: TableType,
     /// The number of rows in the table.
     pub rows: usize,
     /// The width in bytes of one table row.
@@ -162,9 +216,46 @@ impl<'data> Table<'data> {
     /// Returns the the bytes of the `idx`th row, if any.
     ///
     /// Note that table row indices are 1-based!
-    fn get_row(&self, idx: usize) -> Option<&'data [u8]> {
+    pub(crate) fn get_row(&self, idx: usize) -> Result<Row, FormatError> {
         idx.checked_sub(1)
             .and_then(|idx| self.contents.get(idx * self.width..(idx + 1) * self.width))
+            .and_then(|data| Some(Row { data, table: self }))
+            .ok_or(FormatErrorKind::RowIndexOutOfBounds(self.type_, idx).into())
+    }
+}
+
+/// A row in a [Table].
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Row<'data> {
+    data: &'data [u8],
+    table: &'data Table<'data>,
+}
+
+impl<'data> Row<'data> {
+    /// Reads the `col` cell in the given table as a `u32`.
+    ///
+    /// This returns an error if the indices are out of bounds for the table
+    /// or the cell is too wide for a `u32`.
+    ///
+    /// Note that row and column indices are 1-based!
+    pub(crate) fn get_col_u32(&self, col: usize) -> Result<u32, FormatError> {
+        if !(1..=6).contains(&col) {
+            return Err(FormatErrorKind::ColIndexOutOfBounds(self.table.type_, col).into());
+        }
+        let Column { offset, width } = self.table.columns[col - 1];
+        match width {
+            1 => Ok(self.data[offset] as u32),
+            2 => {
+                let bytes = &self.data[offset..offset + 2];
+                Ok(u16::from_ne_bytes(bytes.try_into().unwrap()) as u32)
+            }
+            4 => {
+                let bytes = &self.data[offset..offset + 4];
+                Ok(u32::from_ne_bytes(bytes.try_into().unwrap()))
+            }
+
+            _ => Err(FormatErrorKind::ColumnWidth(self.table.type_, col, width).into()),
+        }
     }
 }
 
@@ -255,8 +346,13 @@ impl<'data> MetadataStream<'data> {
 
         // TODO: verify major/minor version
         // TODO: verify reserved
-
-        let mut tables = [Table::default(); 64];
+        let mut tables = [Table {
+            type_: TableType::DummyEmpty,
+            rows: usize::default(),
+            width: usize::default(),
+            columns: [Column::default(); 6],
+            contents: <&[u8]>::default(),
+        }; 64];
         for (i, table) in tables.iter_mut().enumerate() {
             if (header.valid_tables >> i & 1) == 0 {
                 continue;
@@ -264,7 +360,7 @@ impl<'data> MetadataStream<'data> {
 
             let (len, rest_) = u32::ref_from_prefix(rest).ok_or(FormatErrorKind::InvalidLength)?;
             rest = rest_;
-
+            table.type_ = TableType::from(i);
             table.rows = *len as usize;
         }
 
@@ -287,47 +383,6 @@ impl<'data> MetadataStream<'data> {
         result.set_contents(table_contents);
 
         Ok(result)
-    }
-
-    /// Returns the bytes of the `idx`th row of the `table` table, if any.
-    ///
-    /// Note that table row indices are 1-based!
-    fn get_row(&self, table: TableType, idx: usize) -> Option<&'data [u8]> {
-        self[table].get_row(idx)
-    }
-
-    /// Reads the `(row, col)` cell in the given table as a `u32`.
-    ///
-    /// This returns an error if the indices are out of bounds for the table
-    /// or the cell is too wide for a `u32`.
-    ///
-    /// Note that row and column indices are 1-based!
-    pub(crate) fn get_table_cell_u32(
-        &self,
-        table: TableType,
-        row: usize,
-        col: usize,
-    ) -> Result<u32, FormatError> {
-        let row = self
-            .get_row(table, row)
-            .ok_or(FormatErrorKind::RowIndexOutOfBounds(table, row))?;
-        if !(1..=6).contains(&col) {
-            return Err(FormatErrorKind::ColIndexOutOfBounds(table, col).into());
-        }
-        let Column { offset, width } = self[table].columns[col - 1];
-        match width {
-            1 => Ok(row[offset] as u32),
-            2 => {
-                let bytes = &row[offset..offset + 2];
-                Ok(u16::from_ne_bytes(bytes.try_into().unwrap()) as u32)
-            }
-            4 => {
-                let bytes = &row[offset..offset + 4];
-                Ok(u32::from_ne_bytes(bytes.try_into().unwrap()))
-            }
-
-            _ => Err(FormatErrorKind::ColumnWidth(table, col, width).into()),
-        }
     }
 
     /// Sets the column widths of all tables in this stream.

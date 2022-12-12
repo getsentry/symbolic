@@ -11,7 +11,7 @@ use watto::Pod;
 
 use symbolic_common::{DebugId, Language, Uuid};
 
-use metadata::{MetadataStream, TableType};
+use metadata::{MetadataStream, Table, TableType};
 use streams::{BlobStream, GuidStream, PdbStream, StringStream, UsStream};
 
 /// The kind of a [`FormatError`].
@@ -309,17 +309,12 @@ impl<'data> PortablePdb<'data> {
     /// or the cell is too wide for a `u32`.
     ///
     /// Note that row and column indices are 1-based!
-    pub(crate) fn get_table_cell_u32(
-        &self,
-        table: TableType,
-        row: usize,
-        col: usize,
-    ) -> Result<u32, FormatError> {
+    pub(crate) fn get_table(&self, table: TableType) -> Result<Table, FormatError> {
         let md_stream = self
             .metadata_stream
             .as_ref()
             .ok_or(FormatErrorKind::NoMetadataStream)?;
-        md_stream.get_table_cell_u32(table, row, col)
+        Ok(md_stream[table])
     }
 
     /// Returns true if this portable pdb file contains method debug information.
@@ -333,8 +328,10 @@ impl<'data> PortablePdb<'data> {
     ///
     /// Given index must be between 1 and get_documents_count().
     pub fn get_document(&self, idx: usize) -> Result<Document, FormatError> {
-        let name_offset = self.get_table_cell_u32(TableType::Document, idx, 1)?;
-        let lang_offset = self.get_table_cell_u32(TableType::Document, idx, 4)?;
+        let table = self.get_table(TableType::Document)?;
+        let row = table.get_row(idx)?;
+        let name_offset = row.get_col_u32(1)?;
+        let lang_offset = row.get_col_u32(4)?;
 
         let name = self.get_document_name(name_offset)?;
         let lang = self.get_document_lang(lang_offset)?;
@@ -344,11 +341,8 @@ impl<'data> PortablePdb<'data> {
 
     /// Get the number of source files referenced by this PDB.
     pub fn get_documents_count(&self) -> Result<usize, FormatError> {
-        let md_stream = self
-            .metadata_stream
-            .as_ref()
-            .ok_or(FormatErrorKind::NoMetadataStream)?;
-        Ok(md_stream[TableType::Document].rows)
+        let table = self.get_table(TableType::Document)?;
+        Ok(table.rows)
     }
 }
 
