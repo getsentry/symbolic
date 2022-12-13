@@ -2,9 +2,10 @@ use std::convert::TryInto;
 use std::fmt;
 use std::ops::{Index, IndexMut};
 
+use symbolic_common::Uuid;
 use watto::Pod;
 
-use super::{FormatError, FormatErrorKind};
+use super::{FormatError, FormatErrorKind, PortablePdb};
 
 /// An enumeration of all table types in ECMA-335 and Portable PDB.
 #[repr(usize)]
@@ -864,5 +865,145 @@ impl<'data> Index<TableType> for MetadataStream<'data> {
 impl<'data> IndexMut<TableType> for MetadataStream<'data> {
     fn index_mut(&mut self, index: TableType) -> &mut Self::Output {
         &mut self.tables[index as usize]
+    }
+}
+
+/// An iterator over CustomDebugInformation of a specific Kind.
+/// See https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#customdebuginformation-table-0x37
+#[derive(Debug, Clone)]
+pub(crate) struct CustomDebugInformationIterator<'s> {
+    ppdb: &'s PortablePdb<'s>,
+    table: &'s Table<'s>,
+    /// Which kind of CustomDebugInformation we want to filter.
+    kind: Uuid,
+    /// Current row in the whole table (not just the filtered kind).
+    /// Note that the row is 1-based, to align with the rest of the crate APIs.
+    row: usize,
+}
+
+impl<'s> CustomDebugInformationIterator<'s> {
+    pub(crate) fn new(ppdb: &'s PortablePdb<'s>, filter_kind: Uuid) -> Result<Self, FormatError> {
+        let md_stream = ppdb
+            .metadata_stream
+            .as_ref()
+            .ok_or(FormatErrorKind::NoMetadataStream)?;
+
+        Ok(CustomDebugInformationIterator {
+            ppdb,
+            table: &md_stream[TableType::CustomDebugInformation],
+            kind: filter_kind,
+            row: 1,
+        })
+    }
+}
+
+macro_rules! ok_or_return {
+    ( $a:expr ) => {
+        match $a {
+            Ok(value) => value,
+            Err(err) => return Some(Err(err)),
+        }
+    };
+}
+
+impl<'s> Iterator for CustomDebugInformationIterator<'s> {
+    type Item = Result<CustomDebugInformation, FormatError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Find the first row in the table matching the desired Kind.
+        while self.row <= self.table.rows {
+            let row = ok_or_return!(self.table.get_row(self.row));
+            self.row += 1;
+
+            let kind = ok_or_return!(row
+                .get_col_u32(2)
+                .and_then(|offset| self.ppdb.get_guid(offset)));
+
+            if kind == self.kind {
+                // Column 1 contains a Parent coded with HasCustomDebugInformation on the lower 5 bits
+                let parent = ok_or_return!(row.get_col_u32(1));
+                let value = parent >> 5;
+                let tag = ok_or_return!(CustomDebugInformationTag::from(parent & 0b11111));
+
+                let blob = ok_or_return!(row.get_col_u32(3));
+                return Some(Ok(CustomDebugInformation { tag, value, blob }));
+            }
+        }
+
+        return None;
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CustomDebugInformation {
+    pub(crate) tag: CustomDebugInformationTag,
+    pub(crate) value: u32,
+    pub(crate) blob: u32,
+}
+
+/// https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#customdebuginformation-table-0x37
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum CustomDebugInformationTag {
+    MethodDef = 0,
+    Field = 1,
+    TypeRef = 2,
+    TypeDef = 3,
+    Param = 4,
+    InterfaceImpl = 5,
+    MemberRef = 6,
+    Module = 7,
+    DeclSecurity = 8,
+    Property = 9,
+    Event = 10,
+    StandAloneSig = 11,
+    ModuleRef = 12,
+    TypeSpec = 13,
+    Assembly = 14,
+    AssemblyRef = 15,
+    File = 16,
+    ExportedType = 17,
+    ManifestResource = 18,
+    GenericParam = 19,
+    GenericParamConstraint = 20,
+    MethodSpec = 21,
+    Document = 22,
+    LocalScope = 23,
+    LocalVariable = 24,
+    LocalConstant = 25,
+    ImportScope = 26,
+}
+
+impl CustomDebugInformationTag {
+    fn from(value: u32) -> Result<Self, FormatError> {
+        Ok(match value {
+            x if x == Self::MethodDef as u32 => Self::MethodDef,
+            x if x == Self::Field as u32 => Self::Field,
+            x if x == Self::TypeRef as u32 => Self::TypeRef,
+            x if x == Self::TypeDef as u32 => Self::TypeDef,
+            x if x == Self::Param as u32 => Self::Param,
+            x if x == Self::InterfaceImpl as u32 => Self::InterfaceImpl,
+            x if x == Self::MemberRef as u32 => Self::MemberRef,
+            x if x == Self::Module as u32 => Self::Module,
+            x if x == Self::DeclSecurity as u32 => Self::DeclSecurity,
+            x if x == Self::Property as u32 => Self::Property,
+            x if x == Self::Event as u32 => Self::Event,
+            x if x == Self::StandAloneSig as u32 => Self::StandAloneSig,
+            x if x == Self::ModuleRef as u32 => Self::ModuleRef,
+            x if x == Self::TypeSpec as u32 => Self::TypeSpec,
+            x if x == Self::Assembly as u32 => Self::Assembly,
+            x if x == Self::AssemblyRef as u32 => Self::AssemblyRef,
+            x if x == Self::File as u32 => Self::File,
+            x if x == Self::ExportedType as u32 => Self::ExportedType,
+            x if x == Self::ManifestResource as u32 => Self::ManifestResource,
+            x if x == Self::GenericParam as u32 => Self::GenericParam,
+            x if x == Self::GenericParamConstraint as u32 => Self::GenericParamConstraint,
+            x if x == Self::MethodSpec as u32 => Self::MethodSpec,
+            x if x == Self::Document as u32 => Self::Document,
+            x if x == Self::LocalScope as u32 => Self::LocalScope,
+            x if x == Self::LocalVariable as u32 => Self::LocalVariable,
+            x if x == Self::LocalConstant as u32 => Self::LocalConstant,
+            x if x == Self::ImportScope as u32 => Self::ImportScope,
+            _ => return Err(FormatErrorKind::InvalidCustomDebugInformationTag(value).into()),
+        })
     }
 }

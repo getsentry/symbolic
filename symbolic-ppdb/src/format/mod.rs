@@ -14,6 +14,8 @@ use symbolic_common::{DebugId, Language, Uuid};
 use metadata::{MetadataStream, Table, TableType};
 use streams::{BlobStream, GuidStream, PdbStream, StringStream, UsStream};
 
+use self::metadata::{CustomDebugInformation, CustomDebugInformationIterator};
+
 /// The kind of a [`FormatError`].
 #[derive(Debug, Clone, Copy, Error)]
 #[non_exhaustive]
@@ -92,6 +94,9 @@ pub enum FormatErrorKind {
     /// The given column in the table has an incompatible width.
     #[error("column {1} in table {0:?} has incompatible width {2}")]
     ColumnWidth(TableType, usize, usize),
+    /// Tried to read an custom debug information table item tag.
+    #[error("invalid custom debug information table item tag {0}")]
+    InvalidCustomDebugInformationTag(u32),
 }
 
 /// An error encountered while parsing a [`PortablePdb`] file.
@@ -344,6 +349,11 @@ impl<'data> PortablePdb<'data> {
         let table = self.get_table(TableType::Document)?;
         Ok(table.rows)
     }
+
+    /// An iterator over source files contents' embedded in this PDB.
+    pub fn get_embedded_sources(&self) -> Result<EmbeddedSourceIterator, FormatError> {
+        EmbeddedSourceIterator::new(self)
+    }
 }
 
 /// Represents a source file that is referenced by this PDB.
@@ -352,4 +362,47 @@ pub struct Document {
     /// Document names are usually normalized full paths.
     pub name: String,
     pub(crate) lang: Language,
+}
+
+/// An iterator over Embedded Sources.
+#[derive(Debug, Clone)]
+pub struct EmbeddedSourceIterator<'s> {
+    ppdb: &'s PortablePdb<'s>,
+    inner_it: CustomDebugInformationIterator<'s>,
+}
+
+impl<'s> EmbeddedSourceIterator<'s> {
+    fn new(ppdb: &'s PortablePdb<'s>) -> Result<Self, FormatError> {
+        // https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#embedded-source-c-and-vb-compilers
+        let embedded_sources_kind = Uuid::parse_str("0E8A571B-6926-466E-B4AD-8AB04611F5FE")
+            .or_else(|e| Err(FormatError::new(FormatErrorKind::InvalidStringData, e)))?;
+        let inner_it = CustomDebugInformationIterator::new(ppdb, embedded_sources_kind)?;
+        Ok(EmbeddedSourceIterator { ppdb, inner_it })
+    }
+}
+
+impl<'s> Iterator for EmbeddedSourceIterator<'s> {
+    type Item = Result<EmbeddedSource<'s>, FormatError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.inner_it.next() {
+            None => None,
+            Some(inner) => Some(inner.and_then(|info| match info.tag {
+                // Verify we got the expected tag `Document` here.
+                metadata::CustomDebugInformationTag::Document => Ok(EmbeddedSource {
+                    ppdb: self.ppdb,
+                    info,
+                }),
+                _ => Err(FormatErrorKind::InvalidCustomDebugInformationTag(info.tag as u32).into()),
+            })),
+        }
+    }
+}
+
+/// Lazy Embedded Source file reader.
+// TODO add functions exposing file path & contents
+#[derive(Debug, Clone, Copy)]
+pub struct EmbeddedSource<'s> {
+    ppdb: &'s PortablePdb<'s>,
+    info: CustomDebugInformation,
 }
