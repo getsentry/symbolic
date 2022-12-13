@@ -406,3 +406,11 @@ pub struct EmbeddedSource<'s> {
     ppdb: &'s PortablePdb<'s>,
     info: CustomDebugInformation,
 }
+
+impl<'s> EmbeddedSource<'s> {
+    /// Returns the document associated with this embedded source.
+    /// This can be used to access the file name.
+    pub fn get_document(&self) -> Result<Document, FormatError> {
+        self.ppdb.get_document(self.info.value as usize)
+    }
+}
