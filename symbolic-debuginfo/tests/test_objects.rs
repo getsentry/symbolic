@@ -671,6 +671,21 @@ fn test_ppdb_functions() -> Result<(), Error> {
 }
 
 #[test]
+fn test_ppdb_has_sources() -> Result<(), Error> {
+    {
+        let view = ByteView::open(fixture("windows/portable.pdb"))?;
+        let object = Object::parse(&view)?;
+        assert_eq!(object.has_sources(), false);
+    }
+    {
+        let view = ByteView::open(fixture("windows/Sentry.Samples.Console.Basic.pdb"))?;
+        let object = Object::parse(&view)?;
+        assert_eq!(object.has_sources(), true);
+    }
+    Ok(())
+}   
+
+#[test]
 fn test_wasm_symbols() -> Result<(), Error> {
     let view = ByteView::open(fixture("wasm/simple.wasm"))?;
     let object = Object::parse(&view)?;
