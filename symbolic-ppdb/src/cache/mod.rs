@@ -105,7 +105,7 @@ pub struct CacheError {
 }
 
 impl CacheError {
-    /// Creates a new SymCache error from a known kind of error as well as an
+    /// Creates a new CacheError from a known kind of error as well as an
     /// arbitrary error payload.
     pub(crate) fn new<E>(kind: CacheErrorKind, source: E) -> Self
     where

@@ -4,8 +4,9 @@ mod sequence_points;
 mod streams;
 mod utils;
 
-use std::fmt;
+use std::{borrow::Cow, fmt, io::Read};
 
+use flate2::read::DeflateDecoder;
 use thiserror::Error;
 use watto::Pod;
 
@@ -97,6 +98,9 @@ pub enum FormatErrorKind {
     /// Tried to read an custom debug information table item tag.
     #[error("invalid custom debug information table item tag {0}")]
     InvalidCustomDebugInformationTag(u32),
+    /// Tried to read contents of a blob in an unknown format.
+    #[error("invalid blob format {0}")]
+    InvalidBlobFormat(u32),
 }
 
 /// An error encountered while parsing a [`PortablePdb`] file.
@@ -109,7 +113,7 @@ pub struct FormatError {
 }
 
 impl FormatError {
-    /// Creates a new SymCache error from a known kind of error as well as an
+    /// Creates a new FormatError error from a known kind of error as well as an
     /// arbitrary error payload.
     pub(crate) fn new<E>(kind: FormatErrorKind, source: E) -> Self
     where
@@ -400,7 +404,6 @@ impl<'s> Iterator for EmbeddedSourceIterator<'s> {
 }
 
 /// Lazy Embedded Source file reader.
-// TODO add functions exposing file path & contents
 #[derive(Debug, Clone, Copy)]
 pub struct EmbeddedSource<'s> {
     ppdb: &'s PortablePdb<'s>,
@@ -412,5 +415,35 @@ impl<'s> EmbeddedSource<'s> {
     /// This can be used to access the file name.
     pub fn get_document(&self) -> Result<Document, FormatError> {
         self.ppdb.get_document(self.info.value as usize)
+    }
+
+    /// Reads the source file contents from the Portable PDB.
+    pub fn get_contents(&self) -> Result<Cow<'s, [u8]>, FormatError> {
+        // The blob has the following structure: `Blob ::= format content`
+        // - format - int32 - Indicates how the content is serialized.
+        //     0 = raw bytes, uncompressed.
+        //     Positive value = compressed by deflate algorithm and value indicates uncompressed size.
+        //     Negative values reserved for future formats.
+        // - content - format-specific - The text of the document in the specified format. The length is implied by the length of the blob minus four bytes for the format.
+        let blob = self.ppdb.get_blob(self.info.blob)?;
+        let format = u32::from_ne_bytes(blob[0..4].try_into().unwrap());
+
+        match format {
+            0 => Ok(Cow::Borrowed(&blob[4..])),
+            x if x > 0 => self.inflate_contents(format as usize, &blob[4..]),
+            _ => Err(FormatErrorKind::InvalidBlobFormat(format).into()),
+        }
+    }
+
+    fn inflate_contents(&self, size: usize, data: &'s [u8]) -> Result<Cow<'s, [u8]>, FormatError> {
+        let mut decoder = DeflateDecoder::new(data);
+        let mut output = Vec::with_capacity(size);
+        let read_size = decoder
+            .read_to_end(&mut output)
+            .or_else(|e| Err(FormatError::new(FormatErrorKind::InvalidBlobData, e)))?;
+        if read_size != size {
+            return Err(FormatErrorKind::InvalidLength.into());
+        }
+        Ok(Cow::Owned(output))
     }
 }
