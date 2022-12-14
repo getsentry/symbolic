@@ -379,7 +379,7 @@ impl<'object, 'data> EmbeddedSourceIterator<'object, 'data> {
     fn new(ppdb: &'object PortablePdb<'data>) -> Result<Self, FormatError> {
         // https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#embedded-source-c-and-vb-compilers
         let embedded_sources_kind = Uuid::parse_str("0E8A571B-6926-466E-B4AD-8AB04611F5FE")
-            .or_else(|e| Err(FormatError::new(FormatErrorKind::InvalidStringData, e)))?;
+            .map_err(|e| FormatError::new(FormatErrorKind::InvalidStringData, e))?;
         let inner_it = CustomDebugInformationIterator::new(ppdb, embedded_sources_kind)?;
         Ok(EmbeddedSourceIterator { ppdb, inner_it })
     }
@@ -389,9 +389,8 @@ impl<'object, 'data> Iterator for EmbeddedSourceIterator<'object, 'data> {
     type Item = Result<EmbeddedSource<'data>, FormatError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.inner_it.next() {
-            None => None,
-            Some(inner) => Some(inner.and_then(|info| match info.tag {
+        self.inner_it.next().map(|inner| {
+            inner.and_then(|info| match info.tag {
                 // Verify we got the expected tag `Document` here.
                 metadata::CustomDebugInformationTag::Document => {
                     let document = self.ppdb.get_document(info.value as usize)?;
@@ -399,8 +398,8 @@ impl<'object, 'data> Iterator for EmbeddedSourceIterator<'object, 'data> {
                     Ok(EmbeddedSource { document, blob })
                 }
                 _ => Err(FormatErrorKind::InvalidCustomDebugInformationTag(info.tag as u32).into()),
-            })),
-        }
+            })
+        })
     }
 }
 
@@ -443,7 +442,7 @@ impl<'data, 'object> EmbeddedSource<'data> {
         let mut output = Vec::with_capacity(size);
         let read_size = decoder
             .read_to_end(&mut output)
-            .or_else(|e| Err(FormatError::new(FormatErrorKind::InvalidBlobData, e)))?;
+            .map_err(|e| FormatError::new(FormatErrorKind::InvalidBlobData, e))?;
         if read_size != size {
             return Err(FormatErrorKind::InvalidLength.into());
         }

@@ -220,8 +220,8 @@ impl<'data> Table<'data> {
     pub(crate) fn get_row(&self, idx: usize) -> Result<Row, FormatError> {
         idx.checked_sub(1)
             .and_then(|idx| self.contents.get(idx * self.width..(idx + 1) * self.width))
-            .and_then(|data| Some(Row { data, table: self }))
-            .ok_or(FormatErrorKind::RowIndexOutOfBounds(self.type_, idx).into())
+            .map(|data| Row { data, table: self })
+            .ok_or_else(|| FormatErrorKind::RowIndexOutOfBounds(self.type_, idx).into())
     }
 }
 
@@ -869,7 +869,7 @@ impl<'data> IndexMut<TableType> for MetadataStream<'data> {
 }
 
 /// An iterator over CustomDebugInformation of a specific Kind.
-/// See https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#customdebuginformation-table-0x37
+/// See [CustomDebugInformation](https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#customdebuginformation-table-0x37).
 #[derive(Debug, Clone)]
 pub(crate) struct CustomDebugInformationIterator<'data> {
     table: Table<'data>,
@@ -933,8 +933,7 @@ impl<'data> Iterator for CustomDebugInformationIterator<'data> {
                 return Some(Ok(CustomDebugInformation { tag, value, blob }));
             }
         }
-
-        return None;
+        None
     }
 }
 
@@ -945,7 +944,7 @@ pub(crate) struct CustomDebugInformation {
     pub(crate) blob: u32,
 }
 
-/// https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#customdebuginformation-table-0x37
+/// See [CustomDebugInformation](https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#customdebuginformation-table-0x37).
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum CustomDebugInformationTag {
     MethodDef = 0,
