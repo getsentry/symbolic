@@ -127,4 +127,16 @@ impl<'data> GuidStream<'data> {
             .get(idx.checked_sub(1)? as usize)
             .map(|bytes| Uuid::from_bytes_le(*bytes))
     }
+
+    pub(crate) fn get_offset(&self, value: Uuid) -> Option<u32> {
+        let searched_bytes = value.to_bytes_le();
+        let mut index = 1;
+        for bytes in self.buf.iter() {
+            if bytes.eq(&searched_bytes) {
+                return Some(index);
+            }
+            index += 1
+        }
+        None
+    }
 }

@@ -145,12 +145,12 @@ pub struct PortablePdbDebugSession<'data> {
 }
 
 impl<'data> PortablePdbDebugSession<'data> {
-    fn new(ppdb: &PortablePdb<'data>) -> Result<Self, FormatError> {
-        let mut sources: HashMap<String, EmbeddedSource> = HashMap::new();
+    fn new(ppdb: &'_ PortablePdb<'data>) -> Result<Self, FormatError> {
+        let mut sources: HashMap<String, EmbeddedSource<'data>> = HashMap::new();
         let sources_it = ppdb.get_embedded_sources()?;
         for source_ in sources_it {
             let source = source_?;
-            sources.insert(source.get_document()?.name, source);
+            sources.insert(source.get_path().into(), source);
         }
         Ok(PortablePdbDebugSession {
             ppdb: ppdb.clone(),

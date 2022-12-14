@@ -21,10 +21,7 @@ fn test_embedded_sources() {
 
     let check_path = |i: usize, expected: &str| {
         let repo_root = "C:\\dev\\sentry-dotnet\\samples\\Sentry.Samples.Console.Basic\\";
-        assert_eq!(
-            items[i].get_document().unwrap().name,
-            format!("{}{}", repo_root, expected)
-        );
+        assert_eq!(items[i].get_path(), format!("{}{}", repo_root, expected));
     };
 
     check_path(0, "Program.cs");

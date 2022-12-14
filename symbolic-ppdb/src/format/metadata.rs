@@ -871,27 +871,32 @@ impl<'data> IndexMut<TableType> for MetadataStream<'data> {
 /// An iterator over CustomDebugInformation of a specific Kind.
 /// See https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#customdebuginformation-table-0x37
 #[derive(Debug, Clone)]
-pub(crate) struct CustomDebugInformationIterator<'s> {
-    ppdb: &'s PortablePdb<'s>,
-    table: &'s Table<'s>,
+pub(crate) struct CustomDebugInformationIterator<'data> {
+    table: Table<'data>,
     /// Which kind of CustomDebugInformation we want to filter.
-    kind: Uuid,
+    /// We only store the offset in the GUID table to avoid lookups every time.
+    kind: Option<u32>,
     /// Current row in the whole table (not just the filtered kind).
     /// Note that the row is 1-based, to align with the rest of the crate APIs.
     row: usize,
 }
 
-impl<'s> CustomDebugInformationIterator<'s> {
-    pub(crate) fn new(ppdb: &'s PortablePdb<'s>, filter_kind: Uuid) -> Result<Self, FormatError> {
+impl<'data> CustomDebugInformationIterator<'data> {
+    pub(crate) fn new(ppdb: &PortablePdb<'data>, filter_kind: Uuid) -> Result<Self, FormatError> {
         let md_stream = ppdb
             .metadata_stream
             .as_ref()
             .ok_or(FormatErrorKind::NoMetadataStream)?;
 
+        let kind = ppdb
+            .guid_stream
+            .as_ref()
+            .ok_or(FormatErrorKind::NoGuidStream)?
+            .get_offset(filter_kind);
+
         Ok(CustomDebugInformationIterator {
-            ppdb,
-            table: &md_stream[TableType::CustomDebugInformation],
-            kind: filter_kind,
+            table: md_stream[TableType::CustomDebugInformation],
+            kind,
             row: 1,
         })
     }
@@ -906,20 +911,19 @@ macro_rules! ok_or_return {
     };
 }
 
-impl<'s> Iterator for CustomDebugInformationIterator<'s> {
+impl<'data> Iterator for CustomDebugInformationIterator<'data> {
     type Item = Result<CustomDebugInformation, FormatError>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        let expected_kind_offset = self.kind?;
         // Find the first row in the table matching the desired Kind.
         while self.row <= self.table.rows {
             let row = ok_or_return!(self.table.get_row(self.row));
             self.row += 1;
 
-            let kind = ok_or_return!(row
-                .get_col_u32(2)
-                .and_then(|offset| self.ppdb.get_guid(offset)));
+            let kind_offset = ok_or_return!(row.get_col_u32(2));
 
-            if kind == self.kind {
+            if kind_offset == expected_kind_offset {
                 // Column 1 contains a Parent coded with HasCustomDebugInformation on the lower 5 bits
                 let parent = ok_or_return!(row.get_col_u32(1));
                 let value = parent >> 5;
