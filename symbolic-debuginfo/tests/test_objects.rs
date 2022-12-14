@@ -683,7 +683,35 @@ fn test_ppdb_has_sources() -> Result<(), Error> {
         assert_eq!(object.has_sources(), true);
     }
     Ok(())
-}   
+}
+
+#[test]
+fn test_ppdb_source_by_path() -> Result<(), Error> {
+    {
+        let view = ByteView::open(fixture("windows/portable.pdb"))?;
+        let object = Object::parse(&view)?;
+
+        let session = object.debug_session()?;
+        let source = session.source_by_path("foo/bar.cs").unwrap();
+        assert!(source.is_none());
+    }
+
+    {
+        let view = ByteView::open(fixture("windows/Sentry.Samples.Console.Basic.pdb"))?;
+        let object = Object::parse(&view)?;
+
+        let session = object.debug_session()?;
+        let source = session
+            .source_by_path(
+                "C:\\dev\\sentry-dotnet\\samples\\Sentry.Samples.Console.Basic\\Program.cs",
+            )
+            .unwrap();
+        let source_text = source.unwrap();
+        assert_eq!(source_text.len(), 204);
+    }
+
+    Ok(())
+}
 
 #[test]
 fn test_wasm_symbols() -> Result<(), Error> {

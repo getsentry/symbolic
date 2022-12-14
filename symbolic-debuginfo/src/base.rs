@@ -513,7 +513,7 @@ impl<'data> FileInfo<'data> {
 }
 
 #[allow(clippy::ptr_arg)] // false positive https://github.com/rust-lang/rust-clippy/issues/9218
-fn from_utf8_cow_lossy<'data>(input: &Cow<'data, [u8]>) -> Cow<'data, str> {
+pub(crate) fn from_utf8_cow_lossy<'data>(input: &Cow<'data, [u8]>) -> Cow<'data, str> {
     // See https://github.com/rust-lang/rust/issues/32669
     match input {
         Cow::Borrowed(bytes) => String::from_utf8_lossy(bytes),

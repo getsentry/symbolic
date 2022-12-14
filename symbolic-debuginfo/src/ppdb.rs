@@ -171,8 +171,13 @@ impl<'data> PortablePdbDebugSession<'data> {
     /// Looks up a file's source contents by its full canonicalized path.
     ///
     /// The given path must be canonicalized.
-    pub fn source_by_path(&self, _path: &str) -> Result<Option<Cow<'_, str>>, FormatError> {
-        Ok(None)
+    pub fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, FormatError> {
+        match self.sources.get(path) {
+            None => Ok(None),
+            Some(source) => source
+                .get_contents()
+                .map(|bytes| Some(from_utf8_cow_lossy(&bytes))),
+        }
     }
 }
 
