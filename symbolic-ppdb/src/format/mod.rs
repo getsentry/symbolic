@@ -377,7 +377,7 @@ impl<'object, 'data> EmbeddedSourceIterator<'object, 'data> {
     fn new(ppdb: &'object PortablePdb<'data>) -> Result<Self, FormatError> {
         // https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#embedded-source-c-and-vb-compilers
         const EMBEDDED_SOURCES_KIND: Uuid = uuid::uuid!("0E8A571B-6926-466E-B4AD-8AB04611F5FE");
-        let inner_it = CustomDebugInformationIterator::new(ppdb, embedded_sources_kind)?;
+        let inner_it = CustomDebugInformationIterator::new(ppdb, EMBEDDED_SOURCES_KIND)?;
         Ok(EmbeddedSourceIterator { ppdb, inner_it })
     }
 }
@@ -421,11 +421,14 @@ impl<'data, 'object> EmbeddedSource<'data> {
         //     Positive value = compressed by deflate algorithm and value indicates uncompressed size.
         //     Negative values reserved for future formats.
         // - content - format-specific - The text of the document in the specified format. The length is implied by the length of the blob minus four bytes for the format.
-        let format = u32::from_ne_bytes(self.blob[0..4].try_into().unwrap());
-
+        if self.blob.len() < 4 {
+            return Err(FormatErrorKind::InvalidBlobData.into());
+        }
+        let (format_blob, data_blob) = self.blob.split_at(4);
+        let format = u32::from_ne_bytes(format_blob.try_into().unwrap());
         match format {
-            0 => Ok(Cow::Borrowed(&self.blob[4..])),
-            x if x > 0 => self.inflate_contents(format as usize, &self.blob[4..]),
+            0 => Ok(Cow::Borrowed(data_blob)),
+            x if x > 0 => self.inflate_contents(format as usize, data_blob),
             _ => Err(FormatErrorKind::InvalidBlobFormat(format).into()),
         }
     }
