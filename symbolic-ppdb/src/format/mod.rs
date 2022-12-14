@@ -12,10 +12,8 @@ use watto::Pod;
 
 use symbolic_common::{DebugId, Language, Uuid};
 
-use metadata::{MetadataStream, Table, TableType};
+use metadata::{CustomDebugInformationIterator, MetadataStream, Table, TableType};
 use streams::{BlobStream, GuidStream, PdbStream, StringStream, UsStream};
-
-use self::metadata::CustomDebugInformationIterator;
 
 /// The kind of a [`FormatError`].
 #[derive(Debug, Clone, Copy, Error)]
@@ -378,8 +376,7 @@ pub struct EmbeddedSourceIterator<'object, 'data> {
 impl<'object, 'data> EmbeddedSourceIterator<'object, 'data> {
     fn new(ppdb: &'object PortablePdb<'data>) -> Result<Self, FormatError> {
         // https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#embedded-source-c-and-vb-compilers
-        let embedded_sources_kind = Uuid::parse_str("0E8A571B-6926-466E-B4AD-8AB04611F5FE")
-            .map_err(|e| FormatError::new(FormatErrorKind::InvalidStringData, e))?;
+        const EMBEDDED_SOURCES_KIND: Uuid = uuid::uuid!("0E8A571B-6926-466E-B4AD-8AB04611F5FE");
         let inner_it = CustomDebugInformationIterator::new(ppdb, embedded_sources_kind)?;
         Ok(EmbeddedSourceIterator { ppdb, inner_it })
     }
