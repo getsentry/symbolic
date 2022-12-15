@@ -409,8 +409,8 @@ pub struct EmbeddedSource<'data> {
 
 impl<'data, 'object> EmbeddedSource<'data> {
     /// Returns the build-time path associated with this source file.
-    pub fn get_path(&'object self) -> Cow<'object, str> {
-        Cow::Borrowed(self.document.name.as_str())
+    pub fn get_path(&'object self) -> &'object str {
+        self.document.name.as_str()
     }
 
     /// Reads the source file contents from the Portable PDB.
