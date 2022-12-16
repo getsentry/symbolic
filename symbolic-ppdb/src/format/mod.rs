@@ -4,14 +4,15 @@ mod sequence_points;
 mod streams;
 mod utils;
 
-use std::fmt;
+use std::{borrow::Cow, fmt, io::Read};
 
+use flate2::read::DeflateDecoder;
 use thiserror::Error;
 use watto::Pod;
 
 use symbolic_common::{DebugId, Language, Uuid};
 
-use metadata::{MetadataStream, TableType};
+use metadata::{CustomDebugInformationIterator, MetadataStream, Table, TableType};
 use streams::{BlobStream, GuidStream, PdbStream, StringStream, UsStream};
 
 /// The kind of a [`FormatError`].
@@ -92,6 +93,12 @@ pub enum FormatErrorKind {
     /// The given column in the table has an incompatible width.
     #[error("column {1} in table {0:?} has incompatible width {2}")]
     ColumnWidth(TableType, usize, usize),
+    /// Tried to read an custom debug information table item tag.
+    #[error("invalid custom debug information table item tag {0}")]
+    InvalidCustomDebugInformationTag(u32),
+    /// Tried to read contents of a blob in an unknown format.
+    #[error("invalid blob format {0}")]
+    InvalidBlobFormat(u32),
 }
 
 /// An error encountered while parsing a [`PortablePdb`] file.
@@ -104,7 +111,7 @@ pub struct FormatError {
 }
 
 impl FormatError {
-    /// Creates a new SymCache error from a known kind of error as well as an
+    /// Creates a new FormatError error from a known kind of error as well as an
     /// arbitrary error payload.
     pub(crate) fn new<E>(kind: FormatErrorKind, source: E) -> Self
     where
@@ -309,17 +316,12 @@ impl<'data> PortablePdb<'data> {
     /// or the cell is too wide for a `u32`.
     ///
     /// Note that row and column indices are 1-based!
-    pub(crate) fn get_table_cell_u32(
-        &self,
-        table: TableType,
-        row: usize,
-        col: usize,
-    ) -> Result<u32, FormatError> {
+    pub(crate) fn get_table(&self, table: TableType) -> Result<Table, FormatError> {
         let md_stream = self
             .metadata_stream
             .as_ref()
             .ok_or(FormatErrorKind::NoMetadataStream)?;
-        md_stream.get_table_cell_u32(table, row, col)
+        Ok(md_stream[table])
     }
 
     /// Returns true if this portable pdb file contains method debug information.
@@ -333,8 +335,10 @@ impl<'data> PortablePdb<'data> {
     ///
     /// Given index must be between 1 and get_documents_count().
     pub fn get_document(&self, idx: usize) -> Result<Document, FormatError> {
-        let name_offset = self.get_table_cell_u32(TableType::Document, idx, 1)?;
-        let lang_offset = self.get_table_cell_u32(TableType::Document, idx, 4)?;
+        let table = self.get_table(TableType::Document)?;
+        let row = table.get_row(idx)?;
+        let name_offset = row.get_col_u32(1)?;
+        let lang_offset = row.get_col_u32(4)?;
 
         let name = self.get_document_name(name_offset)?;
         let lang = self.get_document_lang(lang_offset)?;
@@ -344,11 +348,13 @@ impl<'data> PortablePdb<'data> {
 
     /// Get the number of source files referenced by this PDB.
     pub fn get_documents_count(&self) -> Result<usize, FormatError> {
-        let md_stream = self
-            .metadata_stream
-            .as_ref()
-            .ok_or(FormatErrorKind::NoMetadataStream)?;
-        Ok(md_stream[TableType::Document].rows)
+        let table = self.get_table(TableType::Document)?;
+        Ok(table.rows)
+    }
+
+    /// An iterator over source files contents' embedded in this PDB.
+    pub fn get_embedded_sources(&self) -> Result<EmbeddedSourceIterator<'_, 'data>, FormatError> {
+        EmbeddedSourceIterator::new(self)
     }
 }
 
@@ -358,4 +364,88 @@ pub struct Document {
     /// Document names are usually normalized full paths.
     pub name: String,
     pub(crate) lang: Language,
+}
+
+/// An iterator over Embedded Sources.
+#[derive(Debug, Clone)]
+pub struct EmbeddedSourceIterator<'object, 'data> {
+    ppdb: &'object PortablePdb<'data>,
+    inner_it: CustomDebugInformationIterator<'data>,
+}
+
+impl<'object, 'data> EmbeddedSourceIterator<'object, 'data> {
+    fn new(ppdb: &'object PortablePdb<'data>) -> Result<Self, FormatError> {
+        // https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#embedded-source-c-and-vb-compilers
+        const EMBEDDED_SOURCES_KIND: Uuid = uuid::uuid!("0E8A571B-6926-466E-B4AD-8AB04611F5FE");
+        let inner_it = CustomDebugInformationIterator::new(ppdb, EMBEDDED_SOURCES_KIND)?;
+        Ok(EmbeddedSourceIterator { ppdb, inner_it })
+    }
+}
+
+impl<'object, 'data> Iterator for EmbeddedSourceIterator<'object, 'data> {
+    type Item = Result<EmbeddedSource<'data>, FormatError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner_it.next().map(|inner| {
+            inner.and_then(|info| match info.tag {
+                // Verify we got the expected tag `Document` here.
+                metadata::CustomDebugInformationTag::Document => {
+                    let document = self.ppdb.get_document(info.value as usize)?;
+                    let blob = self.ppdb.get_blob(info.blob)?;
+                    Ok(EmbeddedSource { document, blob })
+                }
+                _ => Err(FormatErrorKind::InvalidCustomDebugInformationTag(info.tag as u32).into()),
+            })
+        })
+    }
+}
+
+/// Lazy Embedded Source file reader.
+#[derive(Debug, Clone)]
+pub struct EmbeddedSource<'data> {
+    document: Document,
+    blob: &'data [u8],
+}
+
+impl<'data, 'object> EmbeddedSource<'data> {
+    /// Returns the build-time path associated with this source file.
+    pub fn get_path(&'object self) -> &'object str {
+        self.document.name.as_str()
+    }
+
+    /// Reads the source file contents from the Portable PDB.
+    pub fn get_contents(&self) -> Result<Cow<'data, [u8]>, FormatError> {
+        // The blob has the following structure: `Blob ::= format content`
+        // - format - int32 - Indicates how the content is serialized.
+        //     0 = raw bytes, uncompressed.
+        //     Positive value = compressed by deflate algorithm and value indicates uncompressed size.
+        //     Negative values reserved for future formats.
+        // - content - format-specific - The text of the document in the specified format. The length is implied by the length of the blob minus four bytes for the format.
+        if self.blob.len() < 4 {
+            return Err(FormatErrorKind::InvalidBlobData.into());
+        }
+        let (format_blob, data_blob) = self.blob.split_at(4);
+        let format = u32::from_ne_bytes(format_blob.try_into().unwrap());
+        match format {
+            0 => Ok(Cow::Borrowed(data_blob)),
+            x if x > 0 => self.inflate_contents(format as usize, data_blob),
+            _ => Err(FormatErrorKind::InvalidBlobFormat(format).into()),
+        }
+    }
+
+    fn inflate_contents(
+        &self,
+        size: usize,
+        data: &'data [u8],
+    ) -> Result<Cow<'data, [u8]>, FormatError> {
+        let mut decoder = DeflateDecoder::new(data);
+        let mut output = Vec::with_capacity(size);
+        let read_size = decoder
+            .read_to_end(&mut output)
+            .map_err(|e| FormatError::new(FormatErrorKind::InvalidBlobData, e))?;
+        if read_size != size {
+            return Err(FormatErrorKind::InvalidLength.into());
+        }
+        Ok(Cow::Owned(output))
+    }
 }

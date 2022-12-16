@@ -59,8 +59,10 @@ impl<'data> PortablePdb<'data> {
     }
 
     fn get_sequence_points(&self, idx: usize) -> Result<Vec<SequencePoint>, FormatError> {
-        let document = self.get_table_cell_u32(TableType::MethodDebugInformation, idx, 1)?;
-        let offset = self.get_table_cell_u32(TableType::MethodDebugInformation, idx, 2)?;
+        let table = self.get_table(TableType::MethodDebugInformation)?;
+        let row = table.get_row(idx)?;
+        let document = row.get_col_u32(1)?;
+        let offset = row.get_col_u32(2)?;
         if offset == 0 {
             return Ok(Vec::new());
         }

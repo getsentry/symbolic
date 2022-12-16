@@ -27,7 +27,7 @@ fn write_object_sources(path: &Path, output_path: &Path) -> Result<(), Box<dyn s
     for object in archive.objects() {
         match object {
             Ok(object) => {
-                let out = output_path.join(&format!("{}.zip", &object.debug_id()));
+                let out = output_path.join(format!("{}.zip", &object.debug_id()));
                 println!("  -> {}", out.display());
                 let writer = SourceBundleWriter::create(&out)?;
                 writer.write_object(&object, &path.file_name().unwrap().to_string_lossy())?;

@@ -1,9 +1,11 @@
 //! Support for Portable PDB Objects.
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fmt;
 use std::iter;
 
 use symbolic_common::{Arch, CodeId, DebugId};
+use symbolic_ppdb::EmbeddedSource;
 use symbolic_ppdb::{FormatError, PortablePdb};
 
 use crate::base::*;
@@ -88,9 +90,7 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for PortablePdbObject<'
 
     /// Constructs a debugging session.
     fn debug_session(&self) -> Result<PortablePdbDebugSession<'data>, FormatError> {
-        Ok(PortablePdbDebugSession {
-            ppdb: self.ppdb.clone(),
-        })
+        PortablePdbDebugSession::new(&self.ppdb)
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -100,7 +100,10 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for PortablePdbObject<'
 
     /// Determines whether this object contains embedded source.
     fn has_sources(&self) -> bool {
-        false
+        match self.ppdb.get_embedded_sources() {
+            Ok(mut iter) => iter.any(|v| v.is_ok()),
+            Err(_) => false,
+        }
     }
 
     /// Determines whether this object is malformed and was only partially parsed.
@@ -138,9 +141,24 @@ impl fmt::Debug for PortablePdbObject<'_> {
 /// A debug session for a Portable PDB object.
 pub struct PortablePdbDebugSession<'data> {
     ppdb: PortablePdb<'data>,
+    sources: HashMap<String, EmbeddedSource<'data>>,
 }
 
 impl<'data> PortablePdbDebugSession<'data> {
+    fn new(ppdb: &'_ PortablePdb<'data>) -> Result<Self, FormatError> {
+        let mut sources: HashMap<String, EmbeddedSource<'data>> = HashMap::new();
+        for source in ppdb.get_embedded_sources()? {
+            match source {
+                Ok(source) => sources.insert(source.get_path().into(), source),
+                Err(e) => return Err(e),
+            };
+        }
+        Ok(PortablePdbDebugSession {
+            ppdb: ppdb.clone(),
+            sources,
+        })
+    }
+
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> PortablePdbFunctionIterator<'_> {
         iter::empty()
@@ -154,8 +172,13 @@ impl<'data> PortablePdbDebugSession<'data> {
     /// Looks up a file's source contents by its full canonicalized path.
     ///
     /// The given path must be canonicalized.
-    pub fn source_by_path(&self, _path: &str) -> Result<Option<Cow<'_, str>>, FormatError> {
-        Ok(None)
+    pub fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, FormatError> {
+        match self.sources.get(path) {
+            None => Ok(None),
+            Some(source) => source
+                .get_contents()
+                .map(|bytes| Some(from_utf8_cow_lossy(&bytes))),
+        }
     }
 }
 

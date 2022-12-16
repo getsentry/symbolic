@@ -25,6 +25,7 @@ symbolic-common = { version = "10.2.1", path = "../symbolic-common" }
 watto = { version = "0.1.0", features = ["writer", "strings"] }
 thiserror = "1.0.31"
 uuid = "1.0.0"
+flate2 = { version ="1.0.13", default-features = false, features = [ "rust_backend" ] }
 
 [dev-dependencies]
 symbolic-testutils = { path = "../symbolic-testutils" }
