@@ -54,6 +54,6 @@ fn main() {
 
     match execute(&matches) {
         Ok(()) => (),
-        Err(e) => println!("Error: {}", e),
+        Err(e) => println!("Error: {e}"),
     };
 }

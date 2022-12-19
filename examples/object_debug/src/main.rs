@@ -6,10 +6,10 @@ use symbolic::common::{ByteView, DSymPathExt};
 use symbolic::debuginfo::Archive;
 
 fn print_error(mut error: &dyn std::error::Error) {
-    println!("Error: {}", error);
+    println!("Error: {error}");
 
     while let Some(source) = error.source() {
-        println!("   caused by {}", source);
+        println!("   caused by {source}");
         error = source;
     }
 }
@@ -30,7 +30,7 @@ fn inspect_object<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::Err
             Ok(object) => {
                 println!(" - {}: {}", object.arch(), object.debug_id());
                 if let Some(code_id) = object.code_id() {
-                    println!("   code id:      {}", code_id);
+                    println!("   code id:      {code_id}");
                 } else {
                     println!("   code id:      -");
                 }

@@ -16,13 +16,13 @@ fn print_name<'a, N: Borrow<Name<'a>>>(name: Option<N>, matches: &ArgMatches) {
         Some(name) if *matches.get_one("demangle").unwrap() => {
             print!("{}", name.try_demangle(DemangleOptions::name_only()));
         }
-        Some(name) => print!("{}", name),
+        Some(name) => print!("{name}"),
     }
 }
 
 fn print_range(start: u64, len: Option<u64>, matches: &ArgMatches) {
     if *matches.get_one("ranges").unwrap() {
-        print!(" ({:#x} - ", start);
+        print!(" ({start:#x} - ");
         match len {
             Some(len) => print!("{:#x})", start + len),
             None => print!("??)"),
@@ -181,6 +181,6 @@ In the second, addr2line reads hexadecimal addresses from standard input, and pr
 
     match execute(&matches) {
         Ok(()) => (),
-        Err(e) => eprintln!("{:?}", e),
+        Err(e) => eprintln!("{e:?}"),
     };
 }

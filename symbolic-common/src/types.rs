@@ -551,7 +551,7 @@ impl fmt::Display for Language {
             Language::FSharp => "F#",
         };
 
-        write!(f, "{}", formatted)
+        f.write_str(formatted)
     }
 }
 

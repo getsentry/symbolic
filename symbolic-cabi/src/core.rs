@@ -303,7 +303,7 @@ pub unsafe extern "C" fn symbolic_err_get_last_message() -> SymbolicStr {
             let mut err = err.as_ref();
             let mut msg = err.to_string();
             while let Some(cause) = err.source() {
-                write!(&mut msg, "\n  caused by: {}", cause).ok();
+                write!(&mut msg, "\n  caused by: {cause}").ok();
                 err = cause;
             }
             SymbolicStr::from_string(msg)

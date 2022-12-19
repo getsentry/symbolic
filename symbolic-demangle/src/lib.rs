@@ -285,7 +285,7 @@ fn try_demangle_cpp(ident: &str, opts: DemangleOptions) -> Option<String> {
 #[cfg(feature = "rust")]
 fn try_demangle_rust(ident: &str, _opts: DemangleOptions) -> Option<String> {
     match rustc_demangle::try_demangle(ident) {
-        Ok(demangled) => Some(format!("{:#}", demangled)),
+        Ok(demangled) => Some(format!("{demangled:#}")),
         Err(_) => None,
     }
 }

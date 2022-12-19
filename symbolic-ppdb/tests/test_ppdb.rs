@@ -21,7 +21,7 @@ fn test_embedded_sources() {
 
     let check_path = |i: usize, expected: &str| {
         let repo_root = "C:\\dev\\sentry-dotnet\\samples\\Sentry.Samples.Console.Basic\\";
-        assert_eq!(items[i].get_path(), format!("{}{}", repo_root, expected));
+        assert_eq!(items[i].get_path(), format!("{repo_root}{expected}"));
     };
 
     check_path(0, "Program.cs");
@@ -52,7 +52,7 @@ fn test_embedded_sources_contents() {
         let content = items[i].get_contents().unwrap();
         assert_eq!(content.len(), length);
 
-        let expected = std::fs::read(format!("tests/fixtures/contents/{}", name)).unwrap();
+        let expected = std::fs::read(format!("tests/fixtures/contents/{name}")).unwrap();
         assert_eq!(content, expected);
     };
 

@@ -87,8 +87,7 @@ impl<'data> ElfObject<'data> {
         // We could handle min_chain==0 if we really had to, but it shouldn't happen.
         if buckets_num == 0 || min_chain == 0 || bloom_size == 0 {
             return Err(goblin::error::Error::Malformed(format!(
-                "Invalid DT_GNU_HASH: buckets_num={} min_chain={} bloom_size={}",
-                buckets_num, min_chain, bloom_size
+                "Invalid DT_GNU_HASH: buckets_num={buckets_num} min_chain={min_chain} bloom_size={bloom_size}"
             )));
         }
         // Find the last bucket.

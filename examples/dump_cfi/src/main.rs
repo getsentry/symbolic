@@ -49,6 +49,6 @@ fn main() {
 
     match execute(&matches) {
         Ok(()) => (),
-        Err(e) => eprintln!("{:?}", e),
+        Err(e) => eprintln!("{e:?}"),
     };
 }

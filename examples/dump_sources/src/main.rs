@@ -7,10 +7,10 @@ use symbolic::debuginfo::sourcebundle::SourceBundleWriter;
 use symbolic::debuginfo::Archive;
 
 fn print_error(mut error: &dyn std::error::Error) {
-    println!("Error: {}", error);
+    println!("Error: {error}");
 
     while let Some(source) = error.source() {
-        println!("   caused by {}", source);
+        println!("   caused by {source}");
         error = source;
     }
 }

@@ -370,7 +370,7 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
                     corrupt_symbols: matches!(sym, Err(SymbolError::Corrupt)),
                 };
 
-                (format!("{:?}", id), stats)
+                (format!("{id:?}"), stats)
             })
             .collect()
     }
@@ -449,19 +449,19 @@ impl fmt::Display for Report<'_> {
 
         writeln!(f, "CPU: {}", sys.cpu)?;
         if let Some(ref cpu_info) = sys.cpu_info {
-            writeln!(f, "     {}", cpu_info)?;
+            writeln!(f, "     {cpu_info}")?;
         }
         writeln!(f, "     {} CPUs", sys.cpu_count)?;
         writeln!(f,)?;
 
         if let Some(ref assertion) = self.process_state.assertion {
-            writeln!(f, "Assertion:     {}", assertion)?;
+            writeln!(f, "Assertion:     {assertion}")?;
         }
         if let Some(crash_reason) = self.process_state.crash_reason {
-            writeln!(f, "Crash reason:  {}", crash_reason)?;
+            writeln!(f, "Crash reason:  {crash_reason}")?;
         }
         if let Some(crash_address) = self.process_state.crash_address {
-            writeln!(f, "Crash address: 0x{:x}", crash_address)?;
+            writeln!(f, "Crash address: 0x{crash_address:x}")?;
         }
         if let Ok(duration) = self.process_state.time.duration_since(UNIX_EPOCH) {
             writeln!(f, "Crash time:    {}", duration.as_secs())?;
@@ -497,9 +497,9 @@ impl fmt::Display for Report<'_> {
             }
 
             if crashed {
-                writeln!(f, "\nThread {} (crashed)", ti)?;
+                writeln!(f, "\nThread {ti} (crashed)")?;
             } else {
-                writeln!(f, "\nThread {}", ti)?;
+                writeln!(f, "\nThread {ti}")?;
             }
 
             let mut index = 0;
@@ -548,7 +548,7 @@ impl fmt::Display for Report<'_> {
                 let mut newline = true;
                 for (name, value) in frame.context.valid_registers() {
                     newline = !newline;
-                    write!(f, "     {:>4} = {:#02$x}", name, value, address_width)?;
+                    write!(f, "     {name:>4} = {value:#0address_width$x}")?;
                     if newline {
                         writeln!(f,)?;
                     }
@@ -568,7 +568,7 @@ impl fmt::Display for Report<'_> {
                     FrameTrust::Context => "given as instruction pointer in context",
                 };
 
-                writeln!(f, "     Found by: {}", trust)?;
+                writeln!(f, "     Found by: {trust}")?;
                 index += 1;
             }
         }
@@ -695,6 +695,6 @@ async fn main() {
 
     match execute(&matches).await {
         Ok(()) => (),
-        Err(e) => println!("Error: {}", e),
+        Err(e) => println!("Error: {e}"),
     };
 }

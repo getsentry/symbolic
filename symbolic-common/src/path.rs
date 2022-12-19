@@ -387,7 +387,7 @@ pub fn shorten_path(path: &str, length: usize) -> Cow<'_, str> {
         if basename.len() > max_len {
             return Cow::Owned(format!("...{}", &basename[basename.len() - max_len + 1..]));
         } else {
-            return Cow::Owned(format!("...{}{}", final_sep, basename));
+            return Cow::Owned(format!("...{final_sep}{basename}"));
         }
     }
 

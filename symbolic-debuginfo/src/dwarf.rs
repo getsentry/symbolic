@@ -95,9 +95,9 @@ impl fmt::Display for DwarfErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidUnitRef(offset) => {
-                write!(f, "compilation unit for offset {} does not exist", offset)
+                write!(f, "compilation unit for offset {offset} does not exist")
             }
-            Self::InvalidFileRef(id) => write!(f, "referenced file {} does not exist", id),
+            Self::InvalidFileRef(id) => write!(f, "referenced file {id} does not exist"),
             Self::UnexpectedInline => write!(f, "unexpected inline function without parent"),
             Self::InvertedFunctionRange => write!(f, "function with inverted address range"),
             Self::CorruptedData => write!(f, "corrupted dwarf debug data"),
