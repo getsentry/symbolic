@@ -60,11 +60,11 @@ jobs:
 
       - if: matrix.build-arch == 'aarch64'
         name: Build in Docker (cross-compile host:amd64, target:aarch64)
-        run: make wheel-manylinux-aarch64 IMAGE=messense/${{ MANYLINUX_VERSION }}-cross:aarch64-amd64
+        run: make wheel-manylinux-aarch64 IMAGE=messense/"$MANYLINUX_VERSION"-cross:aarch64-amd64
       
       - if: matrix.build-arch != 'aarch64'
         name: Build in Docker
-        run: make wheel-manylinux IMAGE=quay.io/pypa/${{ MANYLINUX_VERSION }}_${{ matrix.build-arch }}
+        run: make wheel-manylinux IMAGE=quay.io/pypa/"$MANYLINUX_VERSION"_${{ matrix.build-arch }}
 
       - uses: actions/upload-artifact@v3.1.1
         with:
