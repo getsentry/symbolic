@@ -47,6 +47,6 @@ cross-python setup.py bdist_wheel
 # audit wheel (use cross-pip so we get an aarch64 auditwheel)
 cross-pip install auditwheel
 for wheel in dist/*-linux_*.whl; do
-  auditwheel repair --plat manylinux2014_aarch64 "$wheel" -w dist/
+  auditwheel repair --plat manylinux_2_28_aarch64 "$wheel" -w dist/
   rm "$wheel"
 done

@@ -6,7 +6,7 @@ on:
       - "release/**"
       
 env:
-  MANYLINUX_VERSION: manylinux2014
+  MANYLINUX_VERSION: manylinux_2_28
 
 jobs:
   python-wheel-mac:
