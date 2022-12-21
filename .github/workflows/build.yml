@@ -54,13 +54,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-
+      
       - if: matrix.build-arch == 'manylinux2014_aarch64'
-        uses: docker/setup-qemu-action@v1
-        with:
-          platforms: arm64
-
-      - name: Build in Docker
+        name: Build in Docker (cross-compile host:amd64, target:aarch64)
+        run: make wheel-manylinux-aarch64 IMAGE=messense/manylinux2014-cross:aarch64-amd64
+      
+      - if: matrix.build-arch != 'manylinux2014_aarch64'
+        name: Build in Docker
         run: make wheel-manylinux IMAGE=quay.io/pypa/${{ matrix.build-arch }}
 
       - uses: actions/upload-artifact@v3.1.1
