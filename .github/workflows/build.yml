@@ -64,8 +64,8 @@ jobs:
         run: make wheel-manylinux IMAGE=quay.io/pypa/manylinux_2_28_x86_64
 
       - if: matrix.build-arch == 'i686'
-        name: Build in Docker (manylinux_2_24_i686)
-        run: make wheel-manylinux IMAGE=quay.io/pypa/manylinux_2_24_i686
+        name: Build in Docker (manylinux2014_i686)
+        run: make wheel-manylinux IMAGE=quay.io/pypa/manylinux2014_i686
 
       - uses: actions/upload-artifact@v3.1.1
         with:
