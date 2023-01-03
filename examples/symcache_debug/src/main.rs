@@ -133,7 +133,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
                 );
                 let lang = sym.function().language();
                 if lang != Language::Unknown {
-                    print!(" ({})", lang);
+                    print!(" ({lang})");
                 }
 
                 let path = sym
@@ -145,10 +145,10 @@ fn execute(matches: &ArgMatches) -> Result<()> {
                 if !path.is_empty() || line != 0 || lang != Language::Unknown {
                     print!("\n ");
                     if !path.is_empty() {
-                        print!(" at {}", path);
+                        print!(" at {path}");
                     }
                     if line != 0 {
-                        print!(" line {}", line);
+                        print!(" line {line}");
                     }
                 }
 

@@ -623,49 +623,17 @@ impl<W: Write> AsciiCfiWriter<W> {
                                     start_addr, entry.len
                                 )?;
 
-                                write!(
-                                    self.inner,
-                                    "$rbx: $rbx {} + ^ {} + ^ ",
-                                    mc_offset, rbx_offset
-                                )?;
-                                write!(
-                                    self.inner,
-                                    "$rbp: $rbx {} + ^ {} + ^ ",
-                                    mc_offset, rbp_offset
-                                )?;
-                                write!(
-                                    self.inner,
-                                    "$r12: $rbx {} + ^ {} + ^ ",
-                                    mc_offset, r12_offset
-                                )?;
-                                write!(
-                                    self.inner,
-                                    "$r13: $rbx {} + ^ {} + ^ ",
-                                    mc_offset, r13_offset
-                                )?;
-                                write!(
-                                    self.inner,
-                                    "$r14: $rbx {} + ^ {} + ^ ",
-                                    mc_offset, r14_offset
-                                )?;
-                                write!(
-                                    self.inner,
-                                    "$r15: $rbx {} + ^ {} + ^ ",
-                                    mc_offset, r15_offset
-                                )?;
+                                write!(self.inner, "$rbx: $rbx {mc_offset} + ^ {rbx_offset} + ^ ")?;
+                                write!(self.inner, "$rbp: $rbx {mc_offset} + ^ {rbp_offset} + ^ ")?;
+                                write!(self.inner, "$r12: $rbx {mc_offset} + ^ {r12_offset} + ^ ")?;
+                                write!(self.inner, "$r13: $rbx {mc_offset} + ^ {r13_offset} + ^ ")?;
+                                write!(self.inner, "$r14: $rbx {mc_offset} + ^ {r14_offset} + ^ ")?;
+                                write!(self.inner, "$r15: $rbx {mc_offset} + ^ {r15_offset} + ^ ")?;
 
                                 // rsp aka .cfa
-                                write!(
-                                    self.inner,
-                                    ".cfa: $rbx {} + ^ {} + ^ ",
-                                    mc_offset, rsp_offset,
-                                )?;
+                                write!(self.inner, ".cfa: $rbx {mc_offset} + ^ {rsp_offset} + ^ ",)?;
                                 // rip aka .ra
-                                writeln!(
-                                    self.inner,
-                                    ".ra: $rbx {} + ^ {} + ^",
-                                    mc_offset, rip_offset
-                                )?;
+                                writeln!(self.inner, ".ra: $rbx {mc_offset} + ^ {rip_offset} + ^")?;
                             } else {
                                 self.process_fde(info, &mut ctx, &fde)?;
                             }
@@ -677,7 +645,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                     let mut line = Vec::new();
                     let start_addr = entry.instruction_address;
                     let length = entry.len;
-                    write!(line, "STACK CFI INIT {:x} {:x} ", start_addr, length)?;
+                    write!(line, "STACK CFI INIT {start_addr:x} {length:x} ")?;
 
                     for instruction in ops {
                         // These two operations differ only in whether there should
@@ -699,7 +667,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                         write_reg_name(&mut line, dest_reg, &iter, cpu_family)?;
                         write!(line, ": ")?;
                         write_reg_name(&mut line, src_reg, &iter, cpu_family)?;
-                        write!(line, " {} + ", offset)?;
+                        write!(line, " {offset} + ")?;
                         if should_deref {
                             write!(line, "^ ")?;
                         }
@@ -800,10 +768,10 @@ impl<W: Write> AsciiCfiWriter<W> {
                 // normal STACK CFI record.
                 if row.start_address() == start {
                     let start_addr = start - info.load_address;
-                    write!(line, "STACK CFI INIT {:x} {:x}", start_addr, length)?;
+                    write!(line, "STACK CFI INIT {start_addr:x} {length:x}")?;
                 } else {
                     let start_addr = row.start_address() - info.load_address;
-                    write!(line, "STACK CFI {:x}", start_addr)?;
+                    write!(line, "STACK CFI {start_addr:x}")?;
                 }
 
                 // Write the mandatory CFA rule for this row, followed by optional register rules.
@@ -863,7 +831,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             CfaRule::Expression(_) => return Ok(false),
         };
 
-        write!(target, " .cfa: {}", formatted)?;
+        write!(target, " .cfa: {formatted}")?;
         Ok(true)
     }
 
@@ -880,8 +848,8 @@ impl<W: Write> AsciiCfiWriter<W> {
                 Some(reg) => reg.into(),
                 None => return Ok(false),
             },
-            RegisterRule::Offset(offset) => format!(".cfa {} + ^", offset),
-            RegisterRule::ValOffset(offset) => format!(".cfa {} +", offset),
+            RegisterRule::Offset(offset) => format!(".cfa {offset} + ^"),
+            RegisterRule::ValOffset(offset) => format!(".cfa {offset} +"),
             RegisterRule::Register(register) => {
                 match cfi_register_name(arch.cpu_family(), register.0) {
                     Some(reg) => reg.into(),
@@ -904,7 +872,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             }
         };
 
-        write!(target, " {}: {}", register_name, formatted)?;
+        write!(target, " {register_name}: {formatted}")?;
         Ok(true)
     }
 
@@ -1175,8 +1143,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                             let rip_offset = stack_size + 40;
                             write!(
                                 &mut saved_regs,
-                                " $rsp: .cfa {} - ^ .ra: .cfa {} - ^",
-                                rsp_offset, rip_offset,
+                                " $rsp: .cfa {rsp_offset} - ^ .ra: .cfa {rip_offset} - ^",
                             )?;
                             stack_size += 40;
                             machine_frame_offset = stack_size;
@@ -1192,7 +1159,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             }
 
             if cfa_reg.is_empty() {
-                write!(&mut cfa_reg, ".cfa: $rsp {} +", stack_size)?;
+                write!(&mut cfa_reg, ".cfa: $rsp {stack_size} +")?;
             }
             if machine_frame_offset == 0 {
                 write!(&mut saved_regs, " .ra: .cfa 8 - ^")?;

@@ -285,7 +285,7 @@ impl fmt::Debug for FilesDebug<'_> {
 
         vec.sort();
         for file in vec {
-            writeln!(f, "{}", file)?;
+            writeln!(f, "{file}")?;
         }
 
         Ok(())

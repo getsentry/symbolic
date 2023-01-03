@@ -612,7 +612,7 @@ impl fmt::Debug for LineInfo<'_> {
         s.field("address", &format_args!("{:#x}", self.address));
 
         match self.size {
-            Some(size) => s.field("size", &format_args!("{:#x}", size)),
+            Some(size) => s.field("size", &format_args!("{size:#x}")),
             None => s.field("size", &self.size),
         };
 

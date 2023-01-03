@@ -1020,8 +1020,7 @@ impl<'a> CompactUnwindInfoIter<'a> {
         let version: u32 = section.gread_with(offset, endian)?;
         if version != UNWIND_SECTION_VERSION {
             return Err(MachError::from(Error::Malformed(format!(
-                "Unknown Compact Unwinding Info version {}",
-                version
+                "Unknown Compact Unwinding Info version {version}"
             ))));
         }
 
@@ -1171,8 +1170,7 @@ impl<'a> CompactUnwindInfoIter<'a> {
             ))
         } else {
             Err(MachError::from(Error::Malformed(format!(
-                "Unknown second-level page kind: {}",
-                kind
+                "Unknown second-level page kind: {kind}"
             ))))
         }
     }
@@ -1319,7 +1317,7 @@ impl<'a> CompactUnwindInfoIter<'a> {
         );
         for i in 0..self.root.global_opcodes_len {
             let opcode = self.global_opcode(i)?;
-            println!("    encoding[{}]: 0x{:08x}", i, opcode);
+            println!("    encoding[{i}]: 0x{opcode:08x}");
         }
 
         println!(
@@ -1328,7 +1326,7 @@ impl<'a> CompactUnwindInfoIter<'a> {
         );
         for i in 0..self.root.personalities_len {
             let personality = self.personality(i)?;
-            println!("    personality[{}]: 0x{:08x}", i, personality);
+            println!("    personality[{i}]: 0x{personality:08x}");
         }
 
         println!("  Top level indices: (count = {})", self.root.pages_len);

@@ -102,7 +102,7 @@ impl<'data> PeObject<'data> {
 
         let timestamp = header.coff_header.time_date_stamp;
         let size_of_image = optional_header.windows_fields.size_of_image;
-        let string = format!("{:08x}{:x}", timestamp, size_of_image);
+        let string = format!("{timestamp:08x}{size_of_image:x}");
         Some(CodeId::new(string))
     }
 

@@ -995,7 +995,7 @@ where
 
     /// Returns the full path for a file within the source bundle.
     fn file_path(&self, path: &str) -> String {
-        format!("{}/{}", FILES_PATH, path)
+        format!("{FILES_PATH}/{path}")
     }
 
     /// Returns a unique path for a file.
@@ -1012,7 +1012,7 @@ where
                 _ => {
                     use std::fmt::Write;
                     trim_end_matches(&mut path, char::is_numeric);
-                    write!(path, ".{}", duplicates).unwrap();
+                    write!(path, ".{duplicates}").unwrap();
                 }
             }
         }
