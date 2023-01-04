@@ -58,12 +58,12 @@ jobs:
       - uses: actions/checkout@v3
 
       - if: matrix.build-arch == 'aarch64'
-        name: Build in Docker (${{ matrix.build-arch }})
-        run: make wheel-manylinux-aarch64 IMAGE=messense/"$MANYLINUX_VERSION"-cross:${{ matrix.build-arch }}-amd64
+        name: Build in Docker (aarch64)
+        run: make wheel-manylinux-aarch64 IMAGE=messense/"$MANYLINUX_VERSION"-cross:aarch64-amd64
       
       - if: matrix.build-arch == 'x86_64'
-        name: Build in Docker (${{ matrix.build-arch }})
-        run: make wheel-manylinux IMAGE=quay.io/pypa/"$MANYLINUX_VERSION"_${{ matrix.build-arch }}
+        name: Build in Docker (x86_64)
+        run: make wheel-manylinux IMAGE=quay.io/pypa/"$MANYLINUX_VERSION"_x86_64
 
       - uses: actions/upload-artifact@v3.1.1
         with:
