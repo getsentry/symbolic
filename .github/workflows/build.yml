@@ -5,6 +5,9 @@ on:
     branches:
       - "release/**"
 
+env:
+  MANYLINUX_VERSION: manylinux_2_28
+
 jobs:
   python-wheel-mac:
     strategy:
@@ -45,7 +48,6 @@ jobs:
       fail-fast: false
       matrix:
         build-arch:
-          - i686
           - x86_64
           - aarch64
 
@@ -56,16 +58,12 @@ jobs:
       - uses: actions/checkout@v3
 
       - if: matrix.build-arch == 'aarch64'
-        name: Build in Docker (cross-compile manylinux_2_28, host:x86_64, target:aarch64)
-        run: make wheel-manylinux-aarch64 IMAGE=messense/manylinux_2_28-cross:aarch64-amd64
+        name: Build in Docker (${{ matrix.build-arch }})
+        run: make wheel-manylinux-aarch64 IMAGE=messense/"$MANYLINUX_VERSION"-cross:${{ matrix.build-arch }}-amd64
       
       - if: matrix.build-arch == 'x86_64'
-        name: Build in Docker (manylinux_2_28_x86_64)
-        run: make wheel-manylinux IMAGE=quay.io/pypa/manylinux_2_28_x86_64
-
-      - if: matrix.build-arch == 'i686'
-        name: Build in Docker (manylinux2014_i686)
-        run: make wheel-manylinux IMAGE=quay.io/pypa/manylinux2014_i686
+        name: Build in Docker (${{ matrix.build-arch }})
+        run: make wheel-manylinux IMAGE=quay.io/pypa/"$MANYLINUX_VERSION"_${{ matrix.build-arch }}
 
       - uses: actions/upload-artifact@v3.1.1
         with:
