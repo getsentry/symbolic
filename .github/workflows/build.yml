@@ -5,6 +5,9 @@ on:
     branches:
       - "release/**"
 
+env:
+  MANYLINUX_VERSION: manylinux_2_28
+
 jobs:
   python-wheel-mac:
     strategy:
@@ -45,9 +48,8 @@ jobs:
       fail-fast: false
       matrix:
         build-arch:
-          - manylinux2014_i686
-          - manylinux2014_x86_64
-          - manylinux2014_aarch64
+          - x86_64
+          - aarch64
 
     name: Python Linux ${{ matrix.build-arch }}
     runs-on: ubuntu-latest
@@ -55,13 +57,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - if: matrix.build-arch == 'manylinux2014_aarch64'
-        uses: docker/setup-qemu-action@v1
-        with:
-          platforms: arm64
-
-      - name: Build in Docker
-        run: make wheel-manylinux IMAGE=quay.io/pypa/${{ matrix.build-arch }}
+      - if: matrix.build-arch == 'aarch64'
+        name: Build in Docker (aarch64)
+        run: make wheel-manylinux-aarch64 IMAGE=messense/"$MANYLINUX_VERSION"-cross:aarch64-amd64
+      
+      - if: matrix.build-arch == 'x86_64'
+        name: Build in Docker (x86_64)
+        run: make wheel-manylinux IMAGE=quay.io/pypa/"$MANYLINUX_VERSION"_x86_64
 
       - uses: actions/upload-artifact@v3.1.1
         with:
@@ -77,7 +79,7 @@ jobs:
 
       - uses: actions/setup-python@v4
         with:
-          python-version: 2.7
+          python-version: 3.7
 
       - run: make sdist
 

@@ -29,6 +29,11 @@ wheel-manylinux:
 	docker run --rm -v $(CURDIR):/work -w /work/py $(IMAGE) sh manylinux.sh
 .PHONY: wheel-manylinux
 
+wheel-manylinux-aarch64:
+	docker run --rm -v $(CURDIR):/work -w /work/py $(IMAGE) sh manylinux_aarch64.sh
+.PHONY: wheel-manylinux-aarch64
+
+
 # Tests
 
 test: test-rust test-python
