@@ -14,6 +14,8 @@ targets:
   - name: crates
   - name: pypi
   - name: github
+  - name: sentry-pypi
+    internalPypiRepo: getsentry/pypi
 requireNames:
   - /^symbolic-.*-py2.py3-none-macosx_10_15_x86_64.whl$/
   - /^symbolic-.*-py2.py3-none-macosx_11_0_arm64.whl$/
