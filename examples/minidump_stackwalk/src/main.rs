@@ -280,7 +280,7 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
             module.code_identifier(),
             module.debug_identifier().unwrap_or_default(),
         );
-        tracing::Span::current().record("module.id", &tracing::field::debug(&id));
+        tracing::Span::current().record("module.id", tracing::field::debug(&id));
 
         let mut symcaches = self.symcaches.lock().unwrap();
 
@@ -337,7 +337,7 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
             module.code_identifier(),
             module.debug_identifier().unwrap_or_default(),
         );
-        tracing::Span::current().record("module.id", &tracing::field::debug(&id));
+        tracing::Span::current().record("module.id", tracing::field::debug(&id));
 
         let mut cfi = self.cfi_files.lock().unwrap();
 

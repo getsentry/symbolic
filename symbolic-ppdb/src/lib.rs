@@ -14,11 +14,13 @@
 //!   and parse them with [`PortablePdbCache::parse`].
 //! * Look up line information for a function on a `PortablePdbCache` with
 //!   [`PortablePdbCache::lookup`].
+//!
 //! ## Example
 //! ```
+//! use symbolic_testutils::fixture;
 //! use symbolic_ppdb::{LineInfo, PortablePdb, PortablePdbCacheConverter, PortablePdbCache};
-//! let buf = std::fs::read("tests/fixtures/integration.pdb").unwrap();
 //!
+//! let buf = std::fs::read(fixture("windows/portable.pdb")).unwrap();
 //! let pdb = PortablePdb::parse(&buf).unwrap();
 //!
 //! let mut converter = PortablePdbCacheConverter::new();
@@ -32,7 +34,9 @@
 //! ```
 //!
 //! # Structure of a Portable PDB file
-//! An ECMA-335 file is divided into sections called _streams_. The possible streams are
+//!
+//! An ECMA-335 file is divided into sections called _streams_. The possible streams are:
+//!
 //! * `#~` ("metadata"), comprising information about classes, methods, modules, &c.,
 //!   organized into tables adhering to various schemas. The original ECMA-335 tables
 //!   are described in Section II.22 of the ECMA-335 spec, the tables added by Portable PDB are described
