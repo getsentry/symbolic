@@ -19,7 +19,6 @@ targets:
 requireNames:
   - /^symbolic-.*-py2.py3-none-macosx_10_15_x86_64.whl$/
   - /^symbolic-.*-py2.py3-none-macosx_11_0_arm64.whl$/
-  - /^symbolic-.*-py2\.py3-none-.*manylinux2014_i686.*\.whl$/
-  - /^symbolic-.*-py2\.py3-none-.*manylinux2014_x86_64\.whl$/
-  - /^symbolic-.*-py2\.py3-none-.*manylinux2014_aarch64\.whl$/
+  - /^symbolic-.*-py2.py3-none-manylinux_2_28_aarch64.whl$/
+  - /^symbolic-.*-py2.py3-none-manylinux_2_28_x86_64.whl$/
   - /^symbolic-.*.zip$/
