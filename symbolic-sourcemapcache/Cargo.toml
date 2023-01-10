@@ -15,6 +15,7 @@ edition = "2021"
 js-source-scopes = "0.3.1"
 thiserror = "1.0.31"
 sourcemap = "6.1.0"
+symbolic-common = { version = "10.2.1", path = "../symbolic-common" }
 tracing = "0.1.36"
 watto = { version = "0.1.0", features = ["writer", "strings"] }
 itertools = "0.10.3"

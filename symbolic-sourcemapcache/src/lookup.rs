@@ -1,3 +1,4 @@
+use symbolic_common::AsSelf;
 use watto::{align_to, Pod, StringTable};
 
 use crate::{ScopeLookupResult, SourcePosition};
@@ -76,6 +77,14 @@ pub struct SourceMapCache<'data> {
     files: &'data [raw::File],
     line_offsets: &'data [raw::LineOffset],
     string_bytes: &'data [u8],
+}
+
+impl<'slf, 'a: 'slf> AsSelf<'slf> for SourceMapCache<'a> {
+    type Ref = SourceMapCache<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        self
+    }
 }
 
 impl<'data> std::fmt::Debug for SourceMapCache<'data> {

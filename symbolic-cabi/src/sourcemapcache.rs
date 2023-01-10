@@ -7,7 +7,6 @@ use std::slice;
 use crate::utils::ForeignObject;
 use crate::SymbolicStr;
 
-use symbolic::common::AsSelf;
 use symbolic::common::ByteView;
 use symbolic::common::SelfCell;
 use symbolic::sourcemapcache::SourceLocation;
@@ -15,27 +14,11 @@ use symbolic::sourcemapcache::{
     ScopeLookupResult, SourceMapCache, SourceMapCacheWriter, SourcePosition,
 };
 
-struct Inner<'a> {
-    cache: SourceMapCache<'a>,
-}
-
-impl<'slf, 'a: 'slf> AsSelf<'slf> for Inner<'a> {
-    type Ref = Inner<'slf>;
-
-    fn as_self(&'slf self) -> &Self::Ref {
-        self
-    }
-}
-
-pub struct OwnedSourceMapCache<'a> {
-    inner: SelfCell<ByteView<'a>, Inner<'a>>,
-}
-
 /// Represents an sourcemapcache.
 pub struct SymbolicSourceMapCache;
 
 impl ForeignObject for SymbolicSourceMapCache {
-    type RustObject = OwnedSourceMapCache<'static>;
+    type RustObject = SelfCell<ByteView<'static>, SourceMapCache<'static>>;
 }
 
 #[repr(C)]
@@ -101,12 +84,11 @@ ffi_fn! {
         let file = buf_writer.into_inner()?;
 
         let byteview = ByteView::map_file(file)?;
-        let inner = SelfCell::try_new::<symbolic::sourcemapcache::SourceMapCacheError, _>(byteview, |data| {
+        let cache = SelfCell::try_new::<symbolic::sourcemapcache::SourceMapCacheError, _>(byteview, |data| {
             let cache = SourceMapCache::parse(&*data)?;
-            Ok(Inner { cache })
+            Ok(cache)
         })?;
 
-        let cache = OwnedSourceMapCache { inner };
         Ok(SymbolicSourceMapCache::from_rust(cache))
     }
 }
@@ -181,9 +163,7 @@ ffi_fn! {
     ) -> Result<*mut SymbolicSmTokenMatch> {
         // Sentry JS events are 1-indexed, where SourcePosition is using 0-indexed locations
         let token_match = SymbolicSourceMapCache::as_rust(source_map)
-            .inner
             .get()
-            .cache
             .lookup(SourcePosition::new(line - 1, col - 1))
             .map(|sp| make_token_match(sp, context_lines))
             .unwrap_or_else(ptr::null_mut);
