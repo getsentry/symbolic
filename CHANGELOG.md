@@ -6,6 +6,7 @@
 
 - `PortablePdbDebugSession` now returns files referenced in the Portable PDB file. ([#729](https://github.com/getsentry/symbolic/pull/729))
 - `PortablePdbDebugSession` now returns source files embedded in the Portable PDB file. ([#734](https://github.com/getsentry/symbolic/pull/734))
+- Implement `symbolic_common::AsSelf` `for SourceMapCache` ([#742](https://github.com/getsentry/symbolic/pull/742))
 
 **Breaking changes**:
 
