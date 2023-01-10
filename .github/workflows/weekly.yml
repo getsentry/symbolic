@@ -27,7 +27,8 @@ jobs:
 
       - run: cargo clippy --all-features --workspace --tests --examples -- -D clippy::all
 
-      - run: cargo test --workspace --all-features
+      - run: cargo test --workspace --all-features --all-targets
+      - run: cargo test --workspace --all-features --doc
 
   weekly-audit:
     name: Audit
