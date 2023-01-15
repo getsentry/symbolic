@@ -1,11 +1,13 @@
 //! Support for DWARF debugging information, common to ELF and MachO.
+//! In rare cases, PE's may contain it as well.
 //!
-//! The central element of this module is the [`Dwarf`] trait, which is implemented by [`ElfObject`]
-//! and [`MachObject`]. The dwarf debug session object can be obtained via getters on those types.
+//! The central element of this module is the [`Dwarf`] trait, which is implemented by [`ElfObject`],
+//! [`MachObject`] and [`PeObject`]. The dwarf debug session object can be obtained via getters on those types.
 //!
 //! [`Dwarf`]: trait.Dwarf.html
 //! [`ElfObject`]: ../elf/struct.ElfObject.html
 //! [`MachObject`]: ../macho/struct.MachObject.html
+//! [`PeObject`]: ../pe/struct.PeObject.html
 
 use std::borrow::Cow;
 use std::collections::BTreeSet;

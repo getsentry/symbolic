@@ -18,7 +18,7 @@ Symbolic provides the following functionality:
 - Symbolication based on custom cache files (symcache)
 - Symbol cache file generators from:
   - Mach, ELF and PE symbol tables
-  - Mach and ELF embedded DWARF data
+  - Mach, ELF and PE embedded DWARF data
   - PDB CodeView debug information
   - Breakpad symbol files
 - Demangling support
