@@ -56,6 +56,7 @@ impl<'s> FunctionBuilder<'s> {
         call_file: FileInfo<'s>,
         call_line: u64,
     ) {
+        // An inlinee that starts before the function is obviously bogus.
         if address < self.address {
             return;
         }
@@ -79,6 +80,7 @@ impl<'s> FunctionBuilder<'s> {
         file: FileInfo<'s>,
         line: u64,
     ) {
+        // A line record that starts before the function is obviously bogus.
         if address < self.address {
             return;
         }
