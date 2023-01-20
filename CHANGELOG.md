@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Fixes**:
+
+- Discard invalid line records and inlinees when parsing functions. ([#747](https://github.com/getsentry/symbolic/pull/747))
+
 **Features**:
 
 - `PortablePdbDebugSession` now returns files referenced in the Portable PDB file. ([#729](https://github.com/getsentry/symbolic/pull/729))
