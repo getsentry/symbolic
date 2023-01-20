@@ -56,6 +56,10 @@ impl<'s> FunctionBuilder<'s> {
         call_file: FileInfo<'s>,
         call_line: u64,
     ) {
+        if address < self.address {
+            return;
+        }
+
         self.inlinees.push(Reverse(FunctionBuilderInlinee {
             depth,
             address,
@@ -75,6 +79,10 @@ impl<'s> FunctionBuilder<'s> {
         file: FileInfo<'s>,
         line: u64,
     ) {
+        if address < self.address {
+            return;
+        }
+
         self.lines.push(LineInfo {
             address,
             size,
