@@ -11,18 +11,21 @@
 - `PortablePdbDebugSession` now returns files referenced in the Portable PDB file. ([#729](https://github.com/getsentry/symbolic/pull/729))
 - `PortablePdbDebugSession` now returns source files embedded in the Portable PDB file. ([#734](https://github.com/getsentry/symbolic/pull/734))
 - Implement `symbolic_common::AsSelf` `for SourceMapCache` ([#742](https://github.com/getsentry/symbolic/pull/742))
+- Debug information can now be retrieved from PE's with DWARF debug info. ([#744](https://github.com/getsentry/symbolic/pull/744))
 
 **Breaking changes**:
 
 - Demangling functionality is removed from C and Python bindings. ([#730](https://github.com/getsentry/symbolic/pull/730))
 - The fields of `FileInfo` and the `compilation_dir` field on `FileEntry` are now private. ([#729](https://github.com/getsentry/symbolic/pull/729))
 - `PortablePdbDebugSession` now has a lifetime parameter. ([#729](https://github.com/getsentry/symbolic/pull/729))
+- `PeDebugSession` placeholder has been removed. ([#744](https://github.com/getsentry/symbolic/pull/744))
 
 **Thank you**:
 
 Features, fixes and improvements in this release have been contributed by:
 
 - [@vaind](https://github.com/vaind)
+- [@casept](https://github.com/casept)
 
 ## 10.2.1
 

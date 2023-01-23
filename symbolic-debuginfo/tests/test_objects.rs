@@ -509,8 +509,42 @@ fn test_pe_64() -> Result<(), Error> {
     Ok(())
 }
 
-// NB: No test for PE symbols because our executable does not export any symbols
-// NB: No test for PE functions because we can only read debug info from PDBs
+// Tests for PE's containing DWARF debug info
+#[test]
+fn test_pe_dwarf_symbols() -> Result<(), Error> {
+    let view = ByteView::open(fixture("windows/hello-dwarf.exe"))?;
+    let object = Object::parse(&view)?;
+
+    let symbols = object.symbol_map();
+    insta::assert_debug_snapshot!("pe_dwarf_symbols", SymbolsDebug(&symbols));
+
+    Ok(())
+}
+
+#[test]
+fn test_pe_dwarf_files() -> Result<(), Error> {
+    let view = ByteView::open(fixture("windows/hello-dwarf.exe"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session()?;
+    let files = session.files().collect::<Result<Vec<_>, _>>()?;
+    assert_eq!(files.len(), 195);
+    insta::assert_debug_snapshot!("pe_dwarf_files", FilesDebug(&files[..10]));
+
+    Ok(())
+}
+
+#[test]
+fn test_pe_dwarf_functions() -> Result<(), Error> {
+    let view = ByteView::open(fixture("windows/hello-dwarf.exe"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session()?;
+    let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
+    insta::assert_debug_snapshot!("pe_dwarf_functions", FunctionsDebug(&functions[..10], 0));
+
+    Ok(())
+}
 
 #[test]
 fn test_pdb() -> Result<(), Error> {

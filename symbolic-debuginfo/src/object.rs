@@ -331,7 +331,7 @@ impl<'data> Object<'data> {
                 .map_err(ObjectError::transparent),
             Object::Pe(ref o) => o
                 .debug_session()
-                .map(ObjectDebugSession::Pe)
+                .map(ObjectDebugSession::Dwarf)
                 .map_err(ObjectError::transparent),
             Object::SourceBundle(ref o) => o
                 .debug_session()
@@ -446,7 +446,6 @@ pub enum ObjectDebugSession<'d> {
     Breakpad(BreakpadDebugSession<'d>),
     Dwarf(DwarfDebugSession<'d>),
     Pdb(PdbDebugSession<'d>),
-    Pe(PeDebugSession<'d>),
     SourceBundle(SourceBundleDebugSession<'d>),
     PortablePdb(PortablePdbDebugSession<'d>),
 }
@@ -464,7 +463,6 @@ impl<'d> ObjectDebugSession<'d> {
             ObjectDebugSession::Breakpad(ref s) => ObjectFunctionIterator::Breakpad(s.functions()),
             ObjectDebugSession::Dwarf(ref s) => ObjectFunctionIterator::Dwarf(s.functions()),
             ObjectDebugSession::Pdb(ref s) => ObjectFunctionIterator::Pdb(s.functions()),
-            ObjectDebugSession::Pe(ref s) => ObjectFunctionIterator::Pe(s.functions()),
             ObjectDebugSession::SourceBundle(ref s) => {
                 ObjectFunctionIterator::SourceBundle(s.functions())
             }
@@ -480,7 +478,6 @@ impl<'d> ObjectDebugSession<'d> {
             ObjectDebugSession::Breakpad(ref s) => ObjectFileIterator::Breakpad(s.files()),
             ObjectDebugSession::Dwarf(ref s) => ObjectFileIterator::Dwarf(s.files()),
             ObjectDebugSession::Pdb(ref s) => ObjectFileIterator::Pdb(s.files()),
-            ObjectDebugSession::Pe(ref s) => ObjectFileIterator::Pe(s.files()),
             ObjectDebugSession::SourceBundle(ref s) => ObjectFileIterator::SourceBundle(s.files()),
             ObjectDebugSession::PortablePdb(ref s) => ObjectFileIterator::PortablePdb(s.files()),
         }
@@ -498,9 +495,6 @@ impl<'d> ObjectDebugSession<'d> {
                 s.source_by_path(path).map_err(ObjectError::transparent)
             }
             ObjectDebugSession::Pdb(ref s) => {
-                s.source_by_path(path).map_err(ObjectError::transparent)
-            }
-            ObjectDebugSession::Pe(ref s) => {
                 s.source_by_path(path).map_err(ObjectError::transparent)
             }
             ObjectDebugSession::SourceBundle(ref s) => {
@@ -537,7 +531,6 @@ pub enum ObjectFunctionIterator<'s> {
     Breakpad(BreakpadFunctionIterator<'s>),
     Dwarf(DwarfFunctionIterator<'s>),
     Pdb(PdbFunctionIterator<'s>),
-    Pe(PeFunctionIterator<'s>),
     SourceBundle(SourceBundleFunctionIterator<'s>),
     PortablePdb(PortablePdbFunctionIterator<'s>),
 }
@@ -554,9 +547,6 @@ impl<'s> Iterator for ObjectFunctionIterator<'s> {
                 Some(i.next()?.map_err(ObjectError::transparent))
             }
             ObjectFunctionIterator::Pdb(ref mut i) => {
-                Some(i.next()?.map_err(ObjectError::transparent))
-            }
-            ObjectFunctionIterator::Pe(ref mut i) => {
                 Some(i.next()?.map_err(ObjectError::transparent))
             }
             ObjectFunctionIterator::SourceBundle(ref mut i) => {
@@ -576,7 +566,6 @@ pub enum ObjectFileIterator<'s> {
     Breakpad(BreakpadFileIterator<'s>),
     Dwarf(DwarfFileIterator<'s>),
     Pdb(PdbFileIterator<'s>),
-    Pe(PeFileIterator<'s>),
     SourceBundle(SourceBundleFileIterator<'s>),
     PortablePdb(PortablePdbFileIterator<'s>),
 }
@@ -593,7 +582,6 @@ impl<'s> Iterator for ObjectFileIterator<'s> {
                 Some(i.next()?.map_err(ObjectError::transparent))
             }
             ObjectFileIterator::Pdb(ref mut i) => Some(i.next()?.map_err(ObjectError::transparent)),
-            ObjectFileIterator::Pe(ref mut i) => Some(i.next()?.map_err(ObjectError::transparent)),
             ObjectFileIterator::SourceBundle(ref mut i) => {
                 Some(i.next()?.map_err(ObjectError::transparent))
             }
