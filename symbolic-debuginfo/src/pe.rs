@@ -231,11 +231,7 @@ impl<'data> PeObject<'data> {
 
     /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
-        // Sections don't exist in "vanilla" PE, only one w/ DWARF
-        // FIXME: Is this change needed / what uses this functionality?
         !self.is_stub && self.exception_data().map_or(false, |e| !e.is_empty())
-            || self.has_section("eh_frame")
-            || self.has_section("debug_frame")
     }
 
     /// Returns the raw data of the PE file.
