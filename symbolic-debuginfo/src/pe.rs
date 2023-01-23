@@ -239,11 +239,6 @@ impl<'data> PeObject<'data> {
         self.data
     }
 
-    /// A list of the sections in this PE binary, used to resolve virtual addresses.
-    pub fn sections(&self) -> &[SectionTable] {
-        &self.pe.sections
-    }
-
     /// Returns the `SectionTable` for the section with this name, if present.
     pub fn section(&self, name: &str) -> Option<SectionTable> {
         for s in &self.pe.sections {
