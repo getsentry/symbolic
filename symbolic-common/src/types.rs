@@ -17,9 +17,10 @@ use serde_::{Deserialize, Serialize};
 /// [`Arch`]: enum.Arch.html
 #[repr(u32)]
 #[non_exhaustive]
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Default)]
 pub enum CpuFamily {
     /// Any other CPU family that is not explicitly supported.
+    #[default]
     Unknown = 0,
     /// 32-bit little-endian CPUs using the Intel 8086 instruction set, also known as `x86`.
     Intel32 = 1,
@@ -133,12 +134,6 @@ impl CpuFamily {
     }
 }
 
-impl Default for CpuFamily {
-    fn default() -> Self {
-        CpuFamily::Unknown
-    }
-}
-
 /// An error returned for an invalid [`Arch`](enum.Arch.html).
 #[derive(Debug)]
 pub struct UnknownArchError;
@@ -169,8 +164,9 @@ impl std::error::Error for UnknownArchError {}
 #[repr(u32)]
 #[non_exhaustive]
 #[allow(missing_docs)]
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Default)]
 pub enum Arch {
+    #[default]
     Unknown = 0,
     X86 = 101,
     X86Unknown = 199,
@@ -362,12 +358,6 @@ impl Arch {
     }
 }
 
-impl Default for Arch {
-    fn default() -> Arch {
-        Arch::Unknown
-    }
-}
-
 impl fmt::Display for Arch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name())
@@ -446,8 +436,9 @@ impl std::error::Error for UnknownLanguageError {}
 #[repr(u32)]
 #[non_exhaustive]
 #[allow(missing_docs)]
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Default)]
 pub enum Language {
+    #[default]
     Unknown = 0,
     C = 1,
     Cpp = 2,
@@ -528,12 +519,6 @@ impl Language {
     }
 }
 
-impl Default for Language {
-    fn default() -> Language {
-        Language::Unknown
-    }
-}
-
 impl fmt::Display for Language {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let formatted = match *self {
@@ -586,20 +571,15 @@ impl str::FromStr for Language {
     derive(Serialize, Deserialize),
     serde(crate = "serde_")
 )]
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Default)]
 pub enum NameMangling {
     /// The [`Name`] is definitely mangled.
     Mangled,
     /// The [`Name`] is not mangled.
     Unmangled,
     /// The mangling of the [`Name`] is not known.
+    #[default]
     Unknown,
-}
-
-impl Default for NameMangling {
-    fn default() -> Self {
-        NameMangling::Unknown
-    }
 }
 
 /// The name of a potentially mangled symbol.
