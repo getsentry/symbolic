@@ -388,9 +388,9 @@ impl<'data> Dwarf<'data> for PeObject<'data> {
     fn raw_section(&self, name: &str) -> Option<DwarfSection<'data>> {
         // Name is given without leading "."
         let sect = self.section(&format!(".{}", name))?;
-        // TODO: Proper error handling if conversion fails
-        let dwarf_data: &'data [u8] = &self.data[sect.pointer_to_raw_data.try_into().unwrap()..]
-            [..sect.virtual_size.try_into().unwrap()];
+        let start = sect.pointer_to_raw_data as usize;
+        let end = start + (sect.virtual_size as usize);
+        let dwarf_data: &'data [u8] = self.data.get(start..end)?;
         let dwarf_sect = DwarfSection {
             // TODO: What about 64-bit PE+? Still 32 bit?
             address: u64::from(sect.virtual_address),
