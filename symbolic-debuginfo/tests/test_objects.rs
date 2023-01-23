@@ -512,7 +512,7 @@ fn test_pe_64() -> Result<(), Error> {
 // Tests for PE's containing DWARF debug info
 #[test]
 fn test_pe_dwarf_symbols() -> Result<(), Error> {
-    let view = ByteView::open(fixture("windows/sqlite-shell-dwarf.exe"))?;
+    let view = ByteView::open(fixture("windows/hello-dwarf.exe"))?;
     let object = Object::parse(&view)?;
 
     let symbols = object.symbol_map();
@@ -523,12 +523,12 @@ fn test_pe_dwarf_symbols() -> Result<(), Error> {
 
 #[test]
 fn test_pe_dwarf_files() -> Result<(), Error> {
-    let view = ByteView::open(fixture("windows/sqlite-shell-dwarf.exe"))?;
+    let view = ByteView::open(fixture("windows/hello-dwarf.exe"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
     let files = session.files().collect::<Result<Vec<_>, _>>()?;
-    assert_eq!(files.len(), 334);
+    assert_eq!(files.len(), 195);
     insta::assert_debug_snapshot!("pe_dwarf_files", FilesDebug(&files[..10]));
 
     Ok(())
@@ -536,7 +536,7 @@ fn test_pe_dwarf_files() -> Result<(), Error> {
 
 #[test]
 fn test_pe_dwarf_functions() -> Result<(), Error> {
-    let view = ByteView::open(fixture("windows/sqlite-shell-dwarf.exe"))?;
+    let view = ByteView::open(fixture("windows/hello-dwarf.exe"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;
