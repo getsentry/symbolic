@@ -252,7 +252,7 @@ impl<'data> PeObject<'data> {
                 return Some(s.clone());
             }
         }
-        return None;
+        None
     }
 
     /// Returns exception data containing unwind information.
@@ -387,7 +387,7 @@ impl<'data> Dwarf<'data> for PeObject<'data> {
     fn endianity(&self) -> RunTimeEndian {
         // According to https://reverseengineering.stackexchange.com/questions/17922/determining-endianness-of-pe-files-windows-on-arm,
         // the only known platform running PE's with big-endian code is the Xbox360. Probably not worth handling.
-        return RunTimeEndian::Little;
+        RunTimeEndian::Little
     }
 
     fn raw_section(&self, name: &str) -> Option<DwarfSection<'data>> {
@@ -403,6 +403,6 @@ impl<'data> Dwarf<'data> for PeObject<'data> {
             offset: u64::from(sect.pointer_to_raw_data),
             align: 4096, // TODO: Does goblin expose this? For now, assume 4K page size
         };
-        return Some(dwarf_sect);
+        Some(dwarf_sect)
     }
 }
