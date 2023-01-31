@@ -47,9 +47,9 @@ fn test_integration() {
     let cache = PortablePdbCache::parse(&buf).unwrap();
 
     assert_eq!(
-        cache.lookup(6, 10),
+        cache.lookup(7, 10),
         Some(LineInfo {
-            line: 55,
+            line: 81,
             file_name: "/Users/swatinem/Coding/sentry-dotnet/samples/foo/Program.cs",
             file_lang: Language::CSharp
         })
@@ -58,7 +58,7 @@ fn test_integration() {
     assert_eq!(
         cache.lookup(5, 6),
         Some(LineInfo {
-            line: 48,
+            line: 37,
             file_name: "/Users/swatinem/Coding/sentry-dotnet/samples/foo/Program.cs",
             file_lang: Language::CSharp
         })
@@ -67,7 +67,7 @@ fn test_integration() {
     assert_eq!(
         cache.lookup(3, 0),
         Some(LineInfo {
-            line: 41,
+            line: 30,
             file_name: "/Users/swatinem/Coding/sentry-dotnet/samples/foo/Program.cs",
             file_lang: Language::CSharp
         })
@@ -76,7 +76,7 @@ fn test_integration() {
     assert_eq!(
         cache.lookup(2, 0),
         Some(LineInfo {
-            line: 36,
+            line: 25,
             file_name: "/Users/swatinem/Coding/sentry-dotnet/samples/foo/Program.cs",
             file_lang: Language::CSharp
         })
@@ -85,9 +85,22 @@ fn test_integration() {
     assert_eq!(
         cache.lookup(1, 45),
         Some(LineInfo {
-            line: 18,
+            line: 20,
             file_name: "/Users/swatinem/Coding/sentry-dotnet/samples/foo/Program.cs",
             file_lang: Language::CSharp
         })
     );
+}
+
+#[test]
+fn test_matching_ids() {
+    let pdb_buf = std::fs::read(fixture("windows/portable.pdb")).unwrap();
+    let pdb = PortablePdb::parse(&pdb_buf).unwrap();
+    let pdb_debug_id = pdb.pdb_id().unwrap();
+
+    let pe_buf = std::fs::read("tests/fixtures/integration.dll").unwrap();
+    let pe = symbolic_debuginfo::pe::PeObject::parse(&pe_buf).unwrap();
+    let pe_debug_id = pe.debug_id();
+
+    assert_eq!(pe_debug_id, pdb_debug_id);
 }

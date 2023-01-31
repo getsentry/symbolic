@@ -28,4 +28,5 @@ uuid = "1.0.0"
 flate2 = { version ="1.0.13", default-features = false, features = [ "rust_backend" ] }
 
 [dev-dependencies]
+symbolic-debuginfo = { path = "../symbolic-debuginfo" }
 symbolic-testutils = { path = "../symbolic-testutils" }
