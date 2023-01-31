@@ -61,3 +61,15 @@ fn test_embedded_sources_contents() {
     check_contents(2, 198, ".NETCoreApp,Version=v6.0.AssemblyAttributes.cs");
     check_contents(3, 1019, "Sentry.Samples.Console.Basic.AssemblyInfo.cs");
 }
+
+/// This is here to prevent regression. The following test PDB was built in sentry-dotnet MAUI
+/// sample for net6.0-android and failed with: `InvalidCustomDebugInformationTag(0)`
+#[test]
+fn test_embedded_sources_with_metadata_broken() {
+    let buf = std::fs::read(fixture("android/Sentry.Samples.Maui.pdb")).unwrap();
+
+    let ppdb = PortablePdb::parse(&buf).unwrap();
+    let iter = ppdb.get_embedded_sources().unwrap();
+    let items = iter.collect::<Result<Vec<_>, _>>().unwrap();
+    assert_eq!(items.len(), 0);
+}

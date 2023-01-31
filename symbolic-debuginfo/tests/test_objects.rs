@@ -716,6 +716,12 @@ fn test_ppdb_has_sources() -> Result<(), Error> {
         let object = Object::parse(&view)?;
         assert_eq!(object.has_sources(), true);
     }
+    {
+        // This is a special case with a broken file, see symbolic-ppdb tests.
+        let view = ByteView::open(fixture("android/Sentry.Samples.Maui.pdb"))?;
+        let object = Object::parse(&view)?;
+        assert_eq!(object.has_sources(), false);
+    }
     Ok(())
 }
 
