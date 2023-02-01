@@ -91,27 +91,3 @@ fn test_integration() {
         })
     );
 }
-
-#[test]
-fn test_matching_ids() {
-    let pdb_buf = std::fs::read(fixture("windows/portable.pdb")).unwrap();
-    let pdb = PortablePdb::parse(&pdb_buf).unwrap();
-    let pdb_debug_id = pdb.pdb_id().unwrap();
-
-    let pe_buf = std::fs::read("tests/fixtures/integration.dll").unwrap();
-    let pe = symbolic_debuginfo::pe::PeObject::parse(&pe_buf).unwrap();
-    let pe_debug_id = pe.debug_id();
-
-    assert_eq!(pe_debug_id, pdb_debug_id);
-}
-
-#[test]
-fn test_pe_metadata() {
-    let pe_buf = std::fs::read("tests/fixtures/integration.dll").unwrap();
-    let pe = symbolic_debuginfo::pe::PeObject::parse(&pe_buf).unwrap();
-
-    let clr_metadata_buf = pe.clr_metadata().unwrap();
-    let metadata = PortablePdb::parse(clr_metadata_buf);
-
-    assert!(metadata.is_ok());
-}

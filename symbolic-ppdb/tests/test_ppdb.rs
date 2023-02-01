@@ -73,3 +73,31 @@ fn test_embedded_sources_with_metadata_broken() {
     let items = iter.collect::<Result<Vec<_>, _>>().unwrap();
     assert_eq!(items.len(), 0);
 }
+
+#[test]
+fn test_matching_ids() {
+    let pdb_buf = std::fs::read(fixture("windows/portable.pdb")).unwrap();
+    let pdb = PortablePdb::parse(&pdb_buf).unwrap();
+    let pdb_debug_id = pdb.pdb_id().unwrap();
+
+    let pe_buf = std::fs::read(fixture("windows/integration.dll")).unwrap();
+    let pe = symbolic_debuginfo::pe::PeObject::parse(&pe_buf).unwrap();
+    let pe_debug_id = pe.debug_id();
+
+    assert_eq!(pe_debug_id, pdb_debug_id);
+}
+
+#[test]
+fn test_pe_metadata() {
+    let pe_buf = std::fs::read(fixture("windows/integration.dll")).unwrap();
+    let pe = symbolic_debuginfo::pe::PeObject::parse(&pe_buf).unwrap();
+
+    let clr_metadata_buf = pe.clr_metadata().unwrap();
+    let ppdb = PortablePdb::parse(clr_metadata_buf).unwrap();
+
+    // pdb stream not available
+    assert!(ppdb.pdb_id().is_none());
+
+    // TODO metadata stream not available - we need it though...
+    assert!(!ppdb.has_debug_info());
+}
