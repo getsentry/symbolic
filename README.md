@@ -20,6 +20,7 @@ Symbolic provides the following functionality:
   - Mach, ELF and PE symbol tables
   - Mach, ELF and PE embedded DWARF data
   - PDB CodeView debug information
+  - .NET Portable PDB
   - Breakpad symbol files
 - Demangling support
   - C++ (GCC, clang and MSVC)
