@@ -6,6 +6,7 @@ use std::fmt;
 
 use gimli::RunTimeEndian;
 use goblin::pe;
+use scroll::{Pread, LE};
 use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
@@ -73,7 +74,6 @@ pub struct PeObject<'data> {
 impl<'data> PeObject<'data> {
     /// Tests whether the buffer could contain an PE object.
     pub fn test(data: &[u8]) -> bool {
-        use scroll::{Pread, LE};
         matches!(
             data.get(0..2)
                 .and_then(|data| data.pread_with::<u16>(0, LE).ok()),
@@ -277,47 +277,54 @@ impl<'data> PeObject<'data> {
         }
     }
 
-    /// Returns the raw buffer of embedded .NET (CLR) metadata if any exists.
-    ///
-    /// This CLR Metadata should have the correct format to be parsable by the `symbolic-ppdb` crate.
-    pub fn clr_metadata(&self) -> Option<&[u8]> {
-        let opt_header = self.pe.header.optional_header?;
-        let clr_header_dir = opt_header
-            .data_directories
-            .get_clr_runtime_header()
-            .as_ref()?;
-
-        // We could parse the whole `IMAGE_COR20_HEADER`, but we rather just parse the
-        // `DataDirectory` of the metadata out of it, which is at offset 8.
-        // See https://github.com/microsoft/windows-rs/blob/c55af265f2e3c75e973946230fe6e60a20961ed9/crates/libs/metadata/src/bindings.rs#L155-L169
-        // sizeof(IMAGE_COR20_HEADER) == 72
-        if clr_header_dir.size != 72 {
-            return None;
-        }
-
+    /// Returns the raw buffer of Embedded Portable PDB Debug directory entry, if any.
+    pub fn embedded_ppdb(&self) -> Result<Option<&[u8]>, PeError> {
+        // Note: This is currently not supported by goblin, see https://github.com/m4b/goblin/issues/314
+        let opt_header = match self.pe.header.optional_header {
+            Some(v) => v,
+            None => return Ok(None),
+        };
+        let debug_directory = match opt_header.data_directories.get_debug_table().as_ref() {
+            Some(v) => v,
+            None => return Ok(None),
+        };
         let file_alignment = opt_header.windows_fields.file_alignment;
-        let cor_header_offset = pe::utils::find_offset(
-            clr_header_dir.virtual_address as usize,
+        let parse_options = &pe::options::ParseOptions::default();
+        let offset = match pe::utils::find_offset(
+            debug_directory.virtual_address as usize,
             &self.pe.sections,
             file_alignment,
-            &pe::options::ParseOptions::default(),
-        )?;
+            parse_options,
+        ) {
+            Some(v) => v,
+            None => return Ok(None),
+        };
 
-        let mut md_directory_start_offset = cor_header_offset + 8;
+        use pe::debug::ImageDebugDirectory;
+        let entries = debug_directory.size as usize / std::mem::size_of::<ImageDebugDirectory>();
+        for i in 0..entries {
+            let entry = offset + i * std::mem::size_of::<ImageDebugDirectory>();
+            let idd: ImageDebugDirectory = self.data.pread_with(entry, LE).map_err(PeError::new)?;
 
-        let metadata_directory =
-            pe::data_directories::DataDirectory::parse(self.data, &mut md_directory_start_offset)
-                .ok()?;
+            // We're only looking for Embedded Portable PDB Debug Directory Entry (type 17).
+            if idd.data_type == 17 {
+                // ImageDebugDirectory.pointer_to_raw_data stores a raw offset -- not a virtual offset -- which we can use directly
+                let mut offset: usize = match parse_options.resolve_rva {
+                    true => idd.pointer_to_raw_data as usize,
+                    false => idd.address_of_raw_data as usize,
+                };
 
-        let start_offset = pe::utils::find_offset(
-            metadata_directory.virtual_address as usize,
-            &self.pe.sections,
-            file_alignment,
-            &pe::options::ParseOptions::default(),
-        )?;
-        let end_offset = start_offset.checked_add(metadata_directory.size as usize)?;
-
-        self.data.get(start_offset..end_offset)
+                // See data specification:
+                // https://github.com/dotnet/runtime/blob/97ddb55e3adde20ceac579d935cef83cfe996169/docs/design/specs/PE-COFF.md#embedded-portable-pdb-debug-directory-entry-type-17
+                offset = offset + 4; // skip signature
+                let uncompressed_size: u32 = self
+                    .data
+                    .gread_with(&mut offset, LE)
+                    .map_err(PeError::new)?;
+                let compressed_size = idd.size_of_data - 8; // 8 = the number bytes we have just read.
+            }
+        }
+        Ok(None)
     }
 }
 
