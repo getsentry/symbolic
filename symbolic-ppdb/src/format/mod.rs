@@ -12,7 +12,9 @@ use watto::Pod;
 
 use symbolic_common::{DebugId, Language, Uuid};
 
-use metadata::{CustomDebugInformationIterator, MetadataStream, Table, TableType};
+use metadata::{
+    CustomDebugInformation, CustomDebugInformationIterator, MetadataStream, Table, TableType,
+};
 use streams::{BlobStream, GuidStream, PdbStream, StringStream, UsStream};
 
 /// The kind of a [`FormatError`].
@@ -380,23 +382,34 @@ impl<'object, 'data> EmbeddedSourceIterator<'object, 'data> {
         let inner_it = CustomDebugInformationIterator::new(ppdb, EMBEDDED_SOURCES_KIND)?;
         Ok(EmbeddedSourceIterator { ppdb, inner_it })
     }
+
+    fn get_source(
+        &mut self,
+        info: CustomDebugInformation,
+    ) -> Result<EmbeddedSource<'data>, FormatError> {
+        let document = self.ppdb.get_document(info.value as usize)?;
+        let blob = self.ppdb.get_blob(info.blob)?;
+        Ok(EmbeddedSource { document, blob })
+    }
 }
 
 impl<'object, 'data> Iterator for EmbeddedSourceIterator<'object, 'data> {
     type Item = Result<EmbeddedSource<'data>, FormatError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner_it.next().map(|inner| {
-            inner.and_then(|info| match info.tag {
-                // Verify we got the expected tag `Document` here.
-                metadata::CustomDebugInformationTag::Document => {
-                    let document = self.ppdb.get_document(info.value as usize)?;
-                    let blob = self.ppdb.get_blob(info.blob)?;
-                    Ok(EmbeddedSource { document, blob })
+        // Skip rows that are not "Document". From the specs, it should always be the case but we've
+        // had a MethodDef (with an invalid 0 row index...) in the field so there's a test for it.
+        while let Some(row) = self.inner_it.next() {
+            match row {
+                Err(e) => return Some(Err(e)),
+                Ok(info) => {
+                    if let metadata::CustomDebugInformationTag::Document = info.tag {
+                        return Some(self.get_source(info));
+                    }
                 }
-                _ => Err(FormatErrorKind::InvalidCustomDebugInformationTag(info.tag as u32).into()),
-            })
-        })
+            }
+        }
+        None
     }
 }
 
