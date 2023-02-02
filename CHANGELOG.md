@@ -6,6 +6,7 @@
 
 - Correctly read the `debug_id` of Deterministic PE files ([#658](https://github.com/getsentry/symbolic/pull/658))
 - Gracefully handle invalid PPDBs ([#751](https://github.com/getsentry/symbolic/pull/751))
+- Support embedded PortablePDB in DLLs ([#752](https://github.com/getsentry/symbolic/pull/752))
 
 ## 11.0.0
 

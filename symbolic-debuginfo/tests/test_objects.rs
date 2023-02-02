@@ -565,8 +565,7 @@ fn test_pe_embedded_ppdb() -> Result<(), Error> {
         let embedded_ppdb = pe.embedded_ppdb().unwrap().unwrap();
         assert_eq!(embedded_ppdb.get_size(), 10540);
 
-        let mut buf = vec![0; embedded_ppdb.get_size()];
-        embedded_ppdb.decompress(&mut buf)?;
+        let buf = embedded_ppdb.decompress()?;
         assert_eq!(&buf[15..25], "\0PDB v1.0\0".as_bytes());
     }
     Ok(())

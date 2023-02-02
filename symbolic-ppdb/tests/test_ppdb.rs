@@ -109,12 +109,10 @@ fn test_pe_embedded_ppdb_without_sources() {
     let pe = PeObject::parse(&pe_buf).unwrap();
 
     let embedded_ppdb = pe.embedded_ppdb().unwrap().unwrap();
-
-    let mut ppdb_buf = vec![0; embedded_ppdb.get_size()];
-    embedded_ppdb.decompress(&mut ppdb_buf).unwrap();
+    let ppdb_buf = embedded_ppdb.decompress().unwrap();
     let ppdb = PortablePdb::parse(&ppdb_buf).unwrap();
 
-    assert!(ppdb.pdb_id().is_some());
+    assert_eq!(ppdb.pdb_id().unwrap(), pe.debug_id());
     assert!(ppdb.has_debug_info());
 
     let mut iter = ppdb.get_embedded_sources().unwrap();
@@ -130,12 +128,10 @@ fn test_pe_embedded_ppdb_with_sources() {
     let pe = PeObject::parse(&pe_buf).unwrap();
 
     let embedded_ppdb = pe.embedded_ppdb().unwrap().unwrap();
-
-    let mut ppdb_buf = vec![0; embedded_ppdb.get_size()];
-    embedded_ppdb.decompress(&mut ppdb_buf).unwrap();
+    let ppdb_buf = embedded_ppdb.decompress().unwrap();
     let ppdb = PortablePdb::parse(&ppdb_buf).unwrap();
 
-    assert!(ppdb.pdb_id().is_some());
+    assert_eq!(ppdb.pdb_id().unwrap(), pe.debug_id());
     assert!(ppdb.has_debug_info());
 
     let iter = ppdb.get_embedded_sources().unwrap();

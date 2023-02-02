@@ -282,25 +282,16 @@ impl<'data> PeObject<'data> {
     /// Returns the raw buffer of Embedded Portable PDB Debug directory entry, if any.
     pub fn embedded_ppdb(&self) -> Result<Option<PeEmbeddedPortablePDB<'data>>, PeError> {
         // Note: This is currently not supported by goblin, see https://github.com/m4b/goblin/issues/314
-        let opt_header = match self.pe.header.optional_header {
-            Some(v) => v,
-            None => return Ok(None),
-        };
-        let debug_directory = match opt_header.data_directories.get_debug_table().as_ref() {
-            Some(v) => v,
-            None => return Ok(None),
-        };
+        let Some(opt_header) = self.pe.header.optional_header else { return Ok(None) };
+        let Some(debug_directory) = opt_header.data_directories.get_debug_table().as_ref() else { return Ok(None) };
         let file_alignment = opt_header.windows_fields.file_alignment;
         let parse_options = &pe::options::ParseOptions::default();
-        let offset = match pe::utils::find_offset(
+        let Some(offset) = pe::utils::find_offset(
             debug_directory.virtual_address as usize,
             &self.pe.sections,
             file_alignment,
             parse_options,
-        ) {
-            Some(v) => v,
-            None => return Ok(None),
-        };
+        ) else { return Ok(None) };
 
         use pe::debug::ImageDebugDirectory;
         let entries = debug_directory.size as usize / std::mem::size_of::<ImageDebugDirectory>();
@@ -318,14 +309,33 @@ impl<'data> PeObject<'data> {
 
                 // See data specification:
                 // https://github.com/dotnet/runtime/blob/97ddb55e3adde20ceac579d935cef83cfe996169/docs/design/specs/PE-COFF.md#embedded-portable-pdb-debug-directory-entry-type-17
-                offset += 4; // skip `signature`
+                // let signature = &self.data[offset..(offset + 4)];
+                let mut signature: [u8; 4] = [0; 4];
+                self.data
+                    .gread_inout(&mut offset, &mut signature)
+                    .map_err(PeError::new)?;
+                if signature != "MPDB".as_bytes() {
+                    return Err(PeError::new(symbolic_ppdb::FormatError::from(
+                        symbolic_ppdb::FormatErrorKind::InvalidSignature,
+                    )));
+                }
                 let uncompressed_size: u32 = self
                     .data
                     .gread_with(&mut offset, LE)
                     .map_err(PeError::new)?;
-                let compressed_size = idd.size_of_data - 8; // 8 = the number bytes we have just read.
+
+                // 8 == the number bytes we have just read.
+                let compressed_size = idd.size_of_data as usize - 8;
+
                 return Ok(Some(PeEmbeddedPortablePDB {
-                    compressed_data: &self.data[offset..(offset + compressed_size as usize)],
+                    compressed_data: self
+                        .data
+                        .get(offset..(offset + compressed_size))
+                        .ok_or_else(|| {
+                            PeError::new(symbolic_ppdb::FormatError::from(
+                                symbolic_ppdb::FormatErrorKind::InvalidBlobOffset,
+                            ))
+                        })?,
                     uncompressed_size: uncompressed_size as usize,
                 }));
             }
@@ -489,15 +499,16 @@ impl<'data, 'object> PeEmbeddedPortablePDB<'data> {
         self.uncompressed_size
     }
 
-    /// Reads the source file contents from the Portable PDB.
-    pub fn decompress(&self, output: &mut Vec<u8>) -> Result<(), PeError> {
+    /// Reads the Portable PDB contents into the provided vector.
+    pub fn decompress(&self) -> Result<Vec<u8>, PeError> {
         let mut decoder = DeflateDecoder::new(self.compressed_data);
-        let read_size = decoder.read(output).map_err(PeError::new)?;
+        let mut output: Vec<u8> = vec![0; self.uncompressed_size];
+        let read_size = decoder.read(&mut output).map_err(PeError::new)?;
         if read_size != self.uncompressed_size {
             return Err(PeError::new(symbolic_ppdb::FormatError::from(
                 symbolic_ppdb::FormatErrorKind::InvalidLength,
             )));
         }
-        Ok(())
+        Ok(output)
     }
 }
