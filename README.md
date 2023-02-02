@@ -22,6 +22,7 @@ Symbolic provides the following functionality:
   - PDB CodeView debug information
   - .NET Portable PDB
   - Breakpad symbol files
+  - Unity IL2CPP
 - Demangling support
   - C++ (GCC, clang and MSVC)
   - Objective C / Objective C++
