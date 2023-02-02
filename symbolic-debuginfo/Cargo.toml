@@ -49,6 +49,7 @@ macho = [
 # PDB/PE processing
 ms = [
     "elsa",
+    "flate2",
     "goblin/pe32",
     "goblin/pe64",
     "goblin/std",

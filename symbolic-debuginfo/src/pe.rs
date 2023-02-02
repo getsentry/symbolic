@@ -3,7 +3,9 @@
 use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
+use std::io::Read;
 
+use flate2::read::DeflateDecoder;
 use gimli::RunTimeEndian;
 use goblin::pe;
 use scroll::{Pread, LE};
@@ -278,7 +280,7 @@ impl<'data> PeObject<'data> {
     }
 
     /// Returns the raw buffer of Embedded Portable PDB Debug directory entry, if any.
-    pub fn embedded_ppdb(&self) -> Result<Option<&[u8]>, PeError> {
+    pub fn embedded_ppdb(&self) -> Result<Option<PeEmbeddedPortablePDB<'data>>, PeError> {
         // Note: This is currently not supported by goblin, see https://github.com/m4b/goblin/issues/314
         let opt_header = match self.pe.header.optional_header {
             Some(v) => v,
@@ -316,12 +318,16 @@ impl<'data> PeObject<'data> {
 
                 // See data specification:
                 // https://github.com/dotnet/runtime/blob/97ddb55e3adde20ceac579d935cef83cfe996169/docs/design/specs/PE-COFF.md#embedded-portable-pdb-debug-directory-entry-type-17
-                offset = offset + 4; // skip signature
+                offset += 4; // skip `signature`
                 let uncompressed_size: u32 = self
                     .data
                     .gread_with(&mut offset, LE)
                     .map_err(PeError::new)?;
                 let compressed_size = idd.size_of_data - 8; // 8 = the number bytes we have just read.
+                return Ok(Some(PeEmbeddedPortablePDB {
+                    compressed_data: &self.data[offset..(offset + compressed_size as usize)],
+                    uncompressed_size: uncompressed_size as usize,
+                }));
             }
         }
         Ok(None)
@@ -467,5 +473,31 @@ impl<'data> Dwarf<'data> for PeObject<'data> {
             align: 4096, // TODO: Does goblin expose this? For now, assume 4K page size
         };
         Some(dwarf_sect)
+    }
+}
+
+/// Embedded Portable PDB data wrapper that can be decompressed when needed.
+#[derive(Debug, Clone)]
+pub struct PeEmbeddedPortablePDB<'data> {
+    compressed_data: &'data [u8],
+    uncompressed_size: usize,
+}
+
+impl<'data, 'object> PeEmbeddedPortablePDB<'data> {
+    /// Returns the uncompressed size of the Portable PDB buffer.
+    pub fn get_size(&'object self) -> usize {
+        self.uncompressed_size
+    }
+
+    /// Reads the source file contents from the Portable PDB.
+    pub fn decompress(&self, output: &mut Vec<u8>) -> Result<(), PeError> {
+        let mut decoder = DeflateDecoder::new(self.compressed_data);
+        let read_size = decoder.read(output).map_err(PeError::new)?;
+        if read_size != self.uncompressed_size {
+            return Err(PeError::new(symbolic_ppdb::FormatError::from(
+                symbolic_ppdb::FormatErrorKind::InvalidLength,
+            )));
+        }
+        Ok(())
     }
 }

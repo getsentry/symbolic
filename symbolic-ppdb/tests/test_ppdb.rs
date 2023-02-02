@@ -1,5 +1,5 @@
 use symbolic_debuginfo::pe::PeObject;
-use symbolic_ppdb::PortablePdb;
+use symbolic_ppdb::{EmbeddedSource, PortablePdb};
 use symbolic_testutils::fixture;
 
 #[test]
@@ -40,6 +40,14 @@ fn test_embedded_sources() {
     );
 }
 
+fn check_contents(item: &EmbeddedSource, length: usize, name: &str) {
+    let content = item.get_contents().unwrap();
+    assert_eq!(content.len(), length);
+
+    let expected = std::fs::read(format!("tests/fixtures/contents/{name}")).unwrap();
+    assert_eq!(content, expected);
+}
+
 #[test]
 fn test_embedded_sources_contents() {
     let buf = std::fs::read(fixture("windows/Sentry.Samples.Console.Basic.pdb")).unwrap();
@@ -49,18 +57,22 @@ fn test_embedded_sources_contents() {
     let items = iter.collect::<Result<Vec<_>, _>>().unwrap();
     assert_eq!(items.len(), 4);
 
-    let check_contents = |i: usize, length: usize, name: &str| {
-        let content = items[i].get_contents().unwrap();
-        assert_eq!(content.len(), length);
-
-        let expected = std::fs::read(format!("tests/fixtures/contents/{name}")).unwrap();
-        assert_eq!(content, expected);
-    };
-
-    check_contents(0, 204, "Program.cs");
-    check_contents(1, 295, "Sentry.Samples.Console.Basic.GlobalUsings.g.cs");
-    check_contents(2, 198, ".NETCoreApp,Version=v6.0.AssemblyAttributes.cs");
-    check_contents(3, 1019, "Sentry.Samples.Console.Basic.AssemblyInfo.cs");
+    check_contents(&items[0], 204, "Program.cs");
+    check_contents(
+        &items[1],
+        295,
+        "Sentry.Samples.Console.Basic.GlobalUsings.g.cs",
+    );
+    check_contents(
+        &items[2],
+        198,
+        ".NETCoreApp,Version=v6.0.AssemblyAttributes.cs",
+    );
+    check_contents(
+        &items[3],
+        1019,
+        "Sentry.Samples.Console.Basic.AssemblyInfo.cs",
+    );
 }
 
 /// This is here to prevent regression. The following test PDB was built in sentry-dotnet MAUI
@@ -89,22 +101,62 @@ fn test_matching_ids() {
 }
 
 #[test]
-fn test_pe_embedded_ppdb() {
+fn test_pe_embedded_ppdb_without_sources() {
     let pe_buf = std::fs::read(fixture(
         "windows/Sentry.Samples.Console.Basic-embedded-ppdb.dll",
     ))
     .unwrap();
     let pe = PeObject::parse(&pe_buf).unwrap();
 
-    let pe_buf2 = std::fs::read(fixture("windows/Sentry.Samples.Console.Basic.dll")).unwrap();
-    let pe2 = PeObject::parse(&pe_buf2).unwrap();
+    let embedded_ppdb = pe.embedded_ppdb().unwrap().unwrap();
 
-    let ppdb_buf = pe.embedded_ppdb().unwrap().unwrap();
-    let ppdb = PortablePdb::parse(ppdb_buf).unwrap();
+    let mut ppdb_buf = vec![0; embedded_ppdb.get_size()];
+    embedded_ppdb.decompress(&mut ppdb_buf).unwrap();
+    let ppdb = PortablePdb::parse(&ppdb_buf).unwrap();
 
-    // pdb stream not available
-    assert!(ppdb.pdb_id().is_none());
+    assert!(ppdb.pdb_id().is_some());
+    assert!(ppdb.has_debug_info());
 
-    // TODO metadata stream not available - we need it though...
-    assert!(!ppdb.has_debug_info());
+    let mut iter = ppdb.get_embedded_sources().unwrap();
+    assert!(iter.next().is_none());
+}
+
+#[test]
+fn test_pe_embedded_ppdb_with_sources() {
+    let pe_buf = std::fs::read(fixture(
+        "windows/Sentry.Samples.Console.Basic-embedded-ppdb-with-sources.dll",
+    ))
+    .unwrap();
+    let pe = PeObject::parse(&pe_buf).unwrap();
+
+    let embedded_ppdb = pe.embedded_ppdb().unwrap().unwrap();
+
+    let mut ppdb_buf = vec![0; embedded_ppdb.get_size()];
+    embedded_ppdb.decompress(&mut ppdb_buf).unwrap();
+    let ppdb = PortablePdb::parse(&ppdb_buf).unwrap();
+
+    assert!(ppdb.pdb_id().is_some());
+    assert!(ppdb.has_debug_info());
+
+    let iter = ppdb.get_embedded_sources().unwrap();
+    let items = iter.collect::<Result<Vec<_>, _>>().unwrap();
+    assert_eq!(items.len(), 5);
+
+    check_contents(&items[0], 204, "Program.cs");
+    check_contents(
+        &items[1],
+        295,
+        "Sentry.Samples.Console.Basic.GlobalUsings.g.cs",
+    );
+    check_contents(
+        &items[2],
+        198,
+        ".NETCoreApp,Version=v6.0.AssemblyAttributes.cs",
+    );
+    check_contents(&items[3], 610, "Sentry.Attributes.cs");
+    check_contents(
+        &items[4],
+        1019,
+        "Sentry.Samples.Console.Basic.AssemblyInfo.cs",
+    );
 }
