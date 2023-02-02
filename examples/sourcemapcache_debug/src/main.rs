@@ -50,6 +50,43 @@ fn execute(matches: &ArgMatches) -> Result<()> {
             ScopeLookupResult::Unknown => "<unknown>",
         }
     );
+    println!(
+        "Context line: {}",
+        token.line_contents().unwrap_or("<unknown>")
+    );
+
+    if let Some(file) = token.file() {
+        let context_lines = 5;
+        let current_line = token.line();
+
+        let pre_line = current_line.saturating_sub(context_lines);
+        let mut pre_context = (pre_line..current_line)
+            .filter_map(|line| file.line(line as usize))
+            .collect::<Vec<_>>()
+            .join("\n");
+        if pre_context.is_empty() {
+            pre_context = "<unknown>".to_string();
+        }
+        println!("Pre context: {pre_context}");
+
+        let post_line = current_line.saturating_add(context_lines);
+        let mut post_context = (current_line + 1..=post_line)
+            .filter_map(|line| file.line(line as usize))
+            .collect::<Vec<_>>()
+            .join("\n");
+        if post_context.is_empty() {
+            post_context = "<unknown>".to_string();
+        }
+
+        println!("Post context: {post_context}");
+
+        if matches.get_flag("print_source") {
+            println!("Source:");
+            for (i, line) in &mut file.source().unwrap().split("\n").enumerate() {
+                println!("{:>5}: {line}", format!("#{i}"));
+            }
+        }
+    }
 
     Ok(())
 }
@@ -92,6 +129,13 @@ fn main() {
                 .value_parser(value_parser!(u32))
                 .required(true)
                 .help("Column number to resolve (1-based)."),
+        )
+        .arg(
+            Arg::new("print_source")
+                .long("print-source")
+                .short('p')
+                .action(clap::ArgAction::SetTrue)
+                .help("Print whole source for resolved file."),
         )
         .get_matches();
 
