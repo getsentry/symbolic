@@ -82,7 +82,7 @@ fn execute(matches: &ArgMatches) -> Result<()> {
 
         if matches.get_flag("print_source") {
             println!("Source:");
-            for (i, line) in &mut file.source().unwrap().split("\n").enumerate() {
+            for (i, line) in &mut file.source().unwrap().split('\n').enumerate() {
                 println!("{:>5}: {line}", format!("#{i}"));
             }
         }
