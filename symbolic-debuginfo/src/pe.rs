@@ -3,9 +3,12 @@
 use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
+use std::io::Read;
 
+use flate2::read::DeflateDecoder;
 use gimli::RunTimeEndian;
 use goblin::pe;
+use scroll::{Pread, LE};
 use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
@@ -73,7 +76,6 @@ pub struct PeObject<'data> {
 impl<'data> PeObject<'data> {
     /// Tests whether the buffer could contain an PE object.
     pub fn test(data: &[u8]) -> bool {
-        use scroll::{Pread, LE};
         matches!(
             data.get(0..2)
                 .and_then(|data| data.pread_with::<u16>(0, LE).ok()),
@@ -276,6 +278,75 @@ impl<'data> PeObject<'data> {
             self.pe.exception_data.as_ref()
         }
     }
+
+    /// Returns the raw buffer of Embedded Portable PDB Debug directory entry, if any.
+    pub fn embedded_ppdb(&self) -> Result<Option<PeEmbeddedPortablePDB<'data>>, PeError> {
+        // Note: This is currently not supported by goblin, see https://github.com/m4b/goblin/issues/314
+        let Some(opt_header) = self.pe.header.optional_header else { return Ok(None) };
+        let Some(debug_directory) = opt_header.data_directories.get_debug_table().as_ref() else { return Ok(None) };
+        let file_alignment = opt_header.windows_fields.file_alignment;
+        let parse_options = &pe::options::ParseOptions::default();
+        let Some(offset) = pe::utils::find_offset(
+            debug_directory.virtual_address as usize,
+            &self.pe.sections,
+            file_alignment,
+            parse_options,
+        ) else { return Ok(None) };
+
+        use pe::debug::ImageDebugDirectory;
+        let entries = debug_directory.size as usize / std::mem::size_of::<ImageDebugDirectory>();
+        for i in 0..entries {
+            let entry = offset + i * std::mem::size_of::<ImageDebugDirectory>();
+            let idd: ImageDebugDirectory = self.data.pread_with(entry, LE).map_err(PeError::new)?;
+
+            // We're only looking for Embedded Portable PDB Debug Directory Entry (type 17).
+            if idd.data_type == 17 {
+                // See data specification:
+                // https://github.com/dotnet/runtime/blob/97ddb55e3adde20ceac579d935cef83cfe996169/docs/design/specs/PE-COFF.md#embedded-portable-pdb-debug-directory-entry-type-17
+                if idd.size_of_data < 8 {
+                    return Err(PeError::new(symbolic_ppdb::FormatError::from(
+                        symbolic_ppdb::FormatErrorKind::InvalidLength,
+                    )));
+                }
+
+                // ImageDebugDirectory.pointer_to_raw_data stores a raw offset -- not a virtual offset -- which we can use directly
+                let mut offset: usize = match parse_options.resolve_rva {
+                    true => idd.pointer_to_raw_data as usize,
+                    false => idd.address_of_raw_data as usize,
+                };
+
+                let mut signature: [u8; 4] = [0; 4];
+                self.data
+                    .gread_inout(&mut offset, &mut signature)
+                    .map_err(PeError::new)?;
+                if signature != "MPDB".as_bytes() {
+                    return Err(PeError::new(symbolic_ppdb::FormatError::from(
+                        symbolic_ppdb::FormatErrorKind::InvalidSignature,
+                    )));
+                }
+                let uncompressed_size: u32 = self
+                    .data
+                    .gread_with(&mut offset, LE)
+                    .map_err(PeError::new)?;
+
+                // 8 == the number bytes we have just read.
+                let compressed_size = idd.size_of_data as usize - 8;
+
+                return Ok(Some(PeEmbeddedPortablePDB {
+                    compressed_data: self
+                        .data
+                        .get(offset..(offset + compressed_size))
+                        .ok_or_else(|| {
+                            PeError::new(symbolic_ppdb::FormatError::from(
+                                symbolic_ppdb::FormatErrorKind::InvalidBlobOffset,
+                            ))
+                        })?,
+                    uncompressed_size: uncompressed_size as usize,
+                }));
+            }
+        }
+        Ok(None)
+    }
 }
 
 impl fmt::Debug for PeObject<'_> {
@@ -417,5 +488,32 @@ impl<'data> Dwarf<'data> for PeObject<'data> {
             align: 4096, // TODO: Does goblin expose this? For now, assume 4K page size
         };
         Some(dwarf_sect)
+    }
+}
+
+/// Embedded Portable PDB data wrapper that can be decompressed when needed.
+#[derive(Debug, Clone)]
+pub struct PeEmbeddedPortablePDB<'data> {
+    compressed_data: &'data [u8],
+    uncompressed_size: usize,
+}
+
+impl<'data, 'object> PeEmbeddedPortablePDB<'data> {
+    /// Returns the uncompressed size of the Portable PDB buffer.
+    pub fn get_size(&'object self) -> usize {
+        self.uncompressed_size
+    }
+
+    /// Reads the Portable PDB contents into the provided vector.
+    pub fn decompress(&self) -> Result<Vec<u8>, PeError> {
+        let mut decoder = DeflateDecoder::new(self.compressed_data);
+        let mut output: Vec<u8> = vec![0; self.uncompressed_size];
+        let read_size = decoder.read(&mut output).map_err(PeError::new)?;
+        if read_size != self.uncompressed_size {
+            return Err(PeError::new(symbolic_ppdb::FormatError::from(
+                symbolic_ppdb::FormatErrorKind::InvalidLength,
+            )));
+        }
+        Ok(output)
     }
 }

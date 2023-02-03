@@ -1,7 +1,9 @@
 use std::{ffi::CString, fmt};
 
 use symbolic_common::ByteView;
-use symbolic_debuginfo::{elf::ElfObject, FileEntry, Function, LineInfo, Object, SymbolMap};
+use symbolic_debuginfo::{
+    elf::ElfObject, pe::PeObject, FileEntry, Function, LineInfo, Object, SymbolMap,
+};
 use symbolic_testutils::fixture;
 
 use similar_asserts::assert_eq;
@@ -543,6 +545,29 @@ fn test_pe_dwarf_functions() -> Result<(), Error> {
     let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
     insta::assert_debug_snapshot!("pe_dwarf_functions", FunctionsDebug(&functions[..10], 0));
 
+    Ok(())
+}
+
+#[test]
+fn test_pe_embedded_ppdb() -> Result<(), Error> {
+    {
+        let view = ByteView::open(fixture("windows/Sentry.Samples.Console.Basic.dll"))?;
+        let pe = PeObject::parse(&view).unwrap();
+        let embedded_ppdb = pe.embedded_ppdb()?;
+        assert!(embedded_ppdb.is_none());
+    }
+    {
+        let view = ByteView::open(fixture(
+            "windows/Sentry.Samples.Console.Basic-embedded-ppdb.dll",
+        ))?;
+        let pe = PeObject::parse(&view).unwrap();
+
+        let embedded_ppdb = pe.embedded_ppdb().unwrap().unwrap();
+        assert_eq!(embedded_ppdb.get_size(), 10540);
+
+        let buf = embedded_ppdb.decompress()?;
+        assert_eq!(&buf[15..25], "\0PDB v1.0\0".as_bytes());
+    }
     Ok(())
 }
 
