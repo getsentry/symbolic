@@ -301,15 +301,20 @@ impl<'data> PeObject<'data> {
 
             // We're only looking for Embedded Portable PDB Debug Directory Entry (type 17).
             if idd.data_type == 17 {
+                // See data specification:
+                // https://github.com/dotnet/runtime/blob/97ddb55e3adde20ceac579d935cef83cfe996169/docs/design/specs/PE-COFF.md#embedded-portable-pdb-debug-directory-entry-type-17
+                if idd.size_of_data < 8 {
+                    return Err(PeError::new(symbolic_ppdb::FormatError::from(
+                        symbolic_ppdb::FormatErrorKind::InvalidLength,
+                    )));
+                }
+
                 // ImageDebugDirectory.pointer_to_raw_data stores a raw offset -- not a virtual offset -- which we can use directly
                 let mut offset: usize = match parse_options.resolve_rva {
                     true => idd.pointer_to_raw_data as usize,
                     false => idd.address_of_raw_data as usize,
                 };
 
-                // See data specification:
-                // https://github.com/dotnet/runtime/blob/97ddb55e3adde20ceac579d935cef83cfe996169/docs/design/specs/PE-COFF.md#embedded-portable-pdb-debug-directory-entry-type-17
-                // let signature = &self.data[offset..(offset + 4)];
                 let mut signature: [u8; 4] = [0; 4];
                 self.data
                     .gread_inout(&mut offset, &mut signature)
