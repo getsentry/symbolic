@@ -108,8 +108,7 @@ fn test_pe_embedded_ppdb_without_sources() {
     .unwrap();
     let pe = PeObject::parse(&pe_buf).unwrap();
 
-    let embedded_ppdb = pe.embedded_ppdb().unwrap().unwrap();
-    let ppdb_buf = embedded_ppdb.decompress().unwrap();
+    let ppdb_buf = pe.embedded_ppdb().unwrap();
     let ppdb = PortablePdb::parse(&ppdb_buf).unwrap();
 
     assert_eq!(ppdb.pdb_id().unwrap(), pe.debug_id());
@@ -127,8 +126,7 @@ fn test_pe_embedded_ppdb_with_sources() {
     .unwrap();
     let pe = PeObject::parse(&pe_buf).unwrap();
 
-    let embedded_ppdb = pe.embedded_ppdb().unwrap().unwrap();
-    let ppdb_buf = embedded_ppdb.decompress().unwrap();
+    let ppdb_buf = pe.embedded_ppdb().unwrap();
     let ppdb = PortablePdb::parse(&ppdb_buf).unwrap();
 
     assert_eq!(ppdb.pdb_id().unwrap(), pe.debug_id());

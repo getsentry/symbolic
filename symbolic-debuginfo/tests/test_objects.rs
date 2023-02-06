@@ -553,7 +553,7 @@ fn test_pe_embedded_ppdb() -> Result<(), Error> {
     {
         let view = ByteView::open(fixture("windows/Sentry.Samples.Console.Basic.dll"))?;
         let pe = PeObject::parse(&view).unwrap();
-        let embedded_ppdb = pe.embedded_ppdb()?;
+        let embedded_ppdb = pe.embedded_ppdb();
         assert!(embedded_ppdb.is_none());
     }
     {
@@ -562,10 +562,7 @@ fn test_pe_embedded_ppdb() -> Result<(), Error> {
         ))?;
         let pe = PeObject::parse(&view).unwrap();
 
-        let embedded_ppdb = pe.embedded_ppdb().unwrap().unwrap();
-        assert_eq!(embedded_ppdb.get_size(), 10540);
-
-        let buf = embedded_ppdb.decompress()?;
+        let buf = pe.embedded_ppdb().unwrap();
         assert_eq!(&buf[15..25], "\0PDB v1.0\0".as_bytes());
     }
     Ok(())

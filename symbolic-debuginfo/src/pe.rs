@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
 use std::io::Read;
+use std::rc::Rc;
 
 use flate2::read::DeflateDecoder;
 use gimli::RunTimeEndian;
@@ -71,7 +72,7 @@ pub struct PeObject<'data> {
     pe: pe::PE<'data>,
     data: &'data [u8],
     is_stub: bool,
-    embedded_ppdb: Option<Vec<u8>>,
+    embedded_ppdb: Option<Rc<[u8]>>,
 }
 
 impl<'data> PeObject<'data> {
@@ -95,7 +96,7 @@ impl<'data> PeObject<'data> {
             Ok(None) => None,
             Ok(Some(compressed)) => match compressed.decompress() {
                 Err(e) => return Err(e),
-                Ok(ppdb_data) => Some(ppdb_data),
+                Ok(ppdb_data) => Some(Rc::from(ppdb_data)),
             },
         };
 
@@ -296,9 +297,9 @@ impl<'data> PeObject<'data> {
         }
     }
 
-    /// Returns the raw buffer of Embedded Portable PDB Debug directory entry, if any.
-    pub fn embedded_ppdb(&self) -> Result<Option<PeEmbeddedPortablePDB<'data>>, PeError> {
-        PeObject::get_embedded_ppdb(&self.pe, self.data)
+    /// Returns the Embedded Portable PDB Debug data, if any.
+    pub fn embedded_ppdb(&self) -> Option<Rc<[u8]>> {
+        self.embedded_ppdb.clone()
     }
 
     fn get_embedded_ppdb(
@@ -513,17 +514,12 @@ impl<'data> Dwarf<'data> for PeObject<'data> {
 
 /// Embedded Portable PDB data wrapper that can be decompressed when needed.
 #[derive(Debug, Clone)]
-pub struct PeEmbeddedPortablePDB<'data> {
+struct PeEmbeddedPortablePDB<'data> {
     compressed_data: &'data [u8],
     uncompressed_size: usize,
 }
 
-impl<'data, 'object> PeEmbeddedPortablePDB<'data> {
-    /// Returns the uncompressed size of the Portable PDB buffer.
-    pub fn get_size(&'object self) -> usize {
-        self.uncompressed_size
-    }
-
+impl<'data> PeEmbeddedPortablePDB<'data> {
     /// Reads the Portable PDB contents into the provided vector.
     pub fn decompress(&self) -> Result<Vec<u8>, PeError> {
         let mut decoder = DeflateDecoder::new(self.compressed_data);
