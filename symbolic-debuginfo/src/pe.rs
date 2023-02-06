@@ -243,8 +243,8 @@ impl<'data> PeObject<'data> {
 
     /// Determines whether this object contains embedded source.
     ///
-    /// Note: this is for informational purposes only, [`debug_session`] won't serve these sources
-    /// at the moment.
+    /// Note: this is for informational purposes only, [`debug_session`](struct.PeObject.html#method.debug_session)
+    /// won't serve these sources at the moment.
     pub fn has_sources(&self) -> bool {
         self.embedded_ppdb.as_ref().map_or(false, |e| {
             PortablePdbObject::parse(e).map_or(false, |o| o.has_sources())
