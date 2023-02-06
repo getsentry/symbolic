@@ -311,8 +311,10 @@ impl<'data> PeObject<'data> {
     }
 
     /// Returns the Embedded Portable PDB Debug data, if any.
-    pub fn embedded_ppdb(&self) -> Option<Rc<[u8]>> {
-        self.embedded_ppdb.clone()
+    pub fn embedded_ppdb(&self) -> Option<Result<PortablePdbObject, symbolic_ppdb::FormatError>> {
+        self.embedded_ppdb
+            .as_ref()
+            .map(|e| PortablePdbObject::parse(e))
     }
 
     fn get_embedded_ppdb(

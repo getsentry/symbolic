@@ -1,4 +1,4 @@
-use symbolic_debuginfo::pe::PeObject;
+use symbolic_debuginfo::{pe::PeObject, ObjectLike};
 use symbolic_ppdb::{EmbeddedSource, PortablePdb};
 use symbolic_testutils::fixture;
 
@@ -108,13 +108,12 @@ fn test_pe_embedded_ppdb_without_sources() {
     .unwrap();
     let pe = PeObject::parse(&pe_buf).unwrap();
 
-    let ppdb_buf = pe.embedded_ppdb().unwrap();
-    let ppdb = PortablePdb::parse(&ppdb_buf).unwrap();
+    let ppdb = pe.embedded_ppdb().unwrap().unwrap();
 
-    assert_eq!(ppdb.pdb_id().unwrap(), pe.debug_id());
+    assert_eq!(ppdb.debug_id(), pe.debug_id());
     assert!(ppdb.has_debug_info());
 
-    let mut iter = ppdb.get_embedded_sources().unwrap();
+    let mut iter = ppdb.portable_pdb().get_embedded_sources().unwrap();
     assert!(iter.next().is_none());
 }
 
@@ -126,13 +125,12 @@ fn test_pe_embedded_ppdb_with_sources() {
     .unwrap();
     let pe = PeObject::parse(&pe_buf).unwrap();
 
-    let ppdb_buf = pe.embedded_ppdb().unwrap();
-    let ppdb = PortablePdb::parse(&ppdb_buf).unwrap();
+    let ppdb = pe.embedded_ppdb().unwrap().unwrap();
 
-    assert_eq!(ppdb.pdb_id().unwrap(), pe.debug_id());
+    assert_eq!(ppdb.debug_id(), pe.debug_id());
     assert!(ppdb.has_debug_info());
 
-    let iter = ppdb.get_embedded_sources().unwrap();
+    let iter = ppdb.portable_pdb().get_embedded_sources().unwrap();
     let items = iter.collect::<Result<Vec<_>, _>>().unwrap();
     assert_eq!(items.len(), 5);
 

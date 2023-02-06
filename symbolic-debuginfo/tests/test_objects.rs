@@ -562,8 +562,8 @@ fn test_pe_embedded_ppdb() -> Result<(), Error> {
         ))?;
         let pe = PeObject::parse(&view).unwrap();
 
-        let buf = pe.embedded_ppdb().unwrap();
-        assert_eq!(&buf[15..25], "\0PDB v1.0\0".as_bytes());
+        let ppdb = pe.embedded_ppdb().unwrap().unwrap();
+        assert_eq!(&ppdb.data()[15..25], "\0PDB v1.0\0".as_bytes());
 
         assert!(pe.has_debug_info());
         assert!(!pe.has_sources());
