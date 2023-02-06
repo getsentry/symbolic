@@ -564,6 +564,17 @@ fn test_pe_embedded_ppdb() -> Result<(), Error> {
 
         let buf = pe.embedded_ppdb().unwrap();
         assert_eq!(&buf[15..25], "\0PDB v1.0\0".as_bytes());
+
+        assert!(pe.has_debug_info());
+        assert!(!pe.has_sources());
+    }
+    {
+        let view = ByteView::open(fixture(
+            "windows/Sentry.Samples.Console.Basic-embedded-ppdb-with-sources.dll",
+        ))?;
+        let pe = PeObject::parse(&view).unwrap();
+        assert!(pe.has_debug_info());
+        assert!(pe.has_sources());
     }
     Ok(())
 }
