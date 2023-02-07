@@ -3,9 +3,7 @@
 use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
-use std::fs::File;
-use std::io::BufWriter;
-use std::io::Read;
+use std::io::Write;
 
 use gimli::RunTimeEndian;
 use goblin::pe;
@@ -505,31 +503,14 @@ impl<'data, 'object> PeEmbeddedPortablePDB<'data> {
         self.uncompressed_size
     }
 
-    /// Reads the Portable PDB contents into the provided vector.
-    pub fn decompress_to_vec(&self) -> Result<Vec<u8>, PeError> {
-        let mut decoder = flate2::read::DeflateDecoder::new(self.compressed_data);
-        let mut output: Vec<u8> = vec![0; self.uncompressed_size];
-        let read_size = decoder.read(&mut output).map_err(PeError::new)?;
-        if read_size != self.uncompressed_size {
-            return Err(PeError::new(symbolic_ppdb::FormatError::from(
-                symbolic_ppdb::FormatErrorKind::InvalidLength,
-            )));
-        }
-        Ok(output)
-    }
-
-    /// Reads the Portable PDB contents into the provided file.
-    pub fn decompress_to_file(&self, output: File) -> Result<File, PeError> {
+    /// Reads the Portable PDB contents into the writer.
+    pub fn decompress_to<W: Write>(&self, output: W) -> Result<(), PeError> {
         use std::io::prelude::*;
-        let buf_writer = BufWriter::new(output);
-        let mut decoder = flate2::write::DeflateDecoder::new(buf_writer);
+        let mut decoder = flate2::write::DeflateDecoder::new(output);
         decoder
             .write_all(self.compressed_data)
+            .and_then(|_| decoder.finish())
             .map_err(PeError::new)?;
-        decoder
-            .finish()
-            .map_err(PeError::new)?
-            .into_inner()
-            .map_err(PeError::new)
+        Ok(())
     }
 }

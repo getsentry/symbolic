@@ -1,4 +1,4 @@
-use std::{env, ffi::CString, fmt};
+use std::{env, ffi::CString, fmt, io::BufWriter};
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{
@@ -565,11 +565,12 @@ fn test_pe_embedded_ppdb() -> Result<(), Error> {
         let embedded_ppdb = pe.embedded_ppdb().unwrap().unwrap();
         assert_eq!(embedded_ppdb.get_size(), 10540);
 
-        let buf = embedded_ppdb.decompress_to_vec()?;
+        let mut buf = Vec::new();
+        embedded_ppdb.decompress_to(&mut buf)?;
         assert_eq!(&buf[15..25], "\0PDB v1.0\0".as_bytes());
 
         let tmp_file = tempfile::tempfile()?;
-        let tmp_file = embedded_ppdb.decompress_to_file(tmp_file)?;
+        embedded_ppdb.decompress_to(BufWriter::new(&tmp_file))?;
         let file_buf = ByteView::map_file(tmp_file)?;
         assert_eq!(buf, file_buf.as_slice());
     }
