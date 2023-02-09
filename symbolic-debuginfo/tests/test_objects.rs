@@ -2,7 +2,7 @@ use std::{env, ffi::CString, fmt, io::BufWriter};
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{
-    elf::ElfObject, pe::PeObject, FileEntry, Function, LineInfo, Object, SymbolMap,
+    elf::ElfObject, pe::PeObject, FileEntry, Function, LineInfo, Object, SourceCode, SymbolMap,
 };
 use symbolic_testutils::fixture;
 
@@ -776,8 +776,10 @@ fn test_ppdb_source_by_path() -> Result<(), Error> {
                 "C:\\dev\\sentry-dotnet\\samples\\Sentry.Samples.Console.Basic\\Program.cs",
             )
             .unwrap();
-        let source_text = source.unwrap();
-        assert_eq!(source_text.len(), 204);
+        match source.unwrap() {
+            SourceCode::Content(text) => assert_eq!(text.len(), 204),
+            SourceCode::Url(_) => panic!(),
+        }
     }
 
     Ok(())

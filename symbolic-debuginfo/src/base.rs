@@ -670,6 +670,16 @@ impl fmt::Debug for Function<'_> {
 /// A dynamically dispatched iterator over items with the given lifetime.
 pub type DynIterator<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 
+/// Represents a source file referenced by a debug information object file.
+#[derive(Debug, Clone)]
+pub enum SourceCode<'a> {
+    /// Verbatim source code/file contents.
+    Content(Cow<'a, str>),
+
+    /// Url (usually HTTP/S) where the content can be fetched from.
+    Url(Cow<'a, str>),
+}
+
 /// A stateful session for interfacing with debug information.
 ///
 /// Debug sessions can be obtained via [`ObjectLike::debug_session`]. Since computing a session may
@@ -716,10 +726,10 @@ pub trait DebugSession<'session> {
     /// Returns an iterator over all source files referenced by this debug file.
     fn files(&'session self) -> Self::FileIterator;
 
-    /// Looks up a file's source contents by its full canonicalized path.
-    ///
-    /// The given path must be canonicalized.
-    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error>;
+    /// Looks up a file's source by its full canonicalized path.
+    /// Returns either source contents, if it was embedded, or a source link.
+    /// TODO also change to `&mut self` when breaking the API - see https://github.com/getsentry/symbolic/issues/736
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error>;
 }
 
 /// An object containing debug information.

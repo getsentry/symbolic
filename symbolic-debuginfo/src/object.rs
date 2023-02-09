@@ -1,6 +1,5 @@
 //! Generic wrappers over various object file formats.
 
-use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
 
@@ -483,10 +482,10 @@ impl<'d> ObjectDebugSession<'d> {
         }
     }
 
-    /// Looks up a file's source contents by its full canonicalized path.
-    ///
-    /// The given path must be canonicalized.
-    pub fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, ObjectError> {
+    /// Looks up a file's source by its full canonicalized path.
+    /// Returns either source contents, if it was embedded, or a source link.
+    /// TODO also change to `&mut self` when breaking the API - see https://github.com/getsentry/symbolic/issues/736
+    pub fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, ObjectError> {
         match *self {
             ObjectDebugSession::Breakpad(ref s) => {
                 s.source_by_path(path).map_err(ObjectError::transparent)
@@ -520,7 +519,7 @@ impl<'session> DebugSession<'session> for ObjectDebugSession<'_> {
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error> {
         self.source_by_path(path)
     }
 }

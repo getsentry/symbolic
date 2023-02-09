@@ -1331,10 +1331,8 @@ impl<'data> DwarfDebugSession<'data> {
         }
     }
 
-    /// Looks up a file's source contents by its full canonicalized path.
-    ///
-    /// The given path must be canonicalized.
-    pub fn source_by_path(&self, _path: &str) -> Result<Option<Cow<'_, str>>, DwarfError> {
+    /// See [DebugSession::source_by_path] for more information.
+    pub fn source_by_path(&self, _path: &str) -> Result<Option<SourceCode<'_>>, DwarfError> {
         Ok(None)
     }
 }
@@ -1352,7 +1350,7 @@ impl<'data, 'session> DebugSession<'session> for DwarfDebugSession<'data> {
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error> {
         self.source_by_path(path)
     }
 }
