@@ -1,6 +1,7 @@
 mod metadata;
 mod raw;
 mod sequence_points;
+mod sourcelinks;
 mod streams;
 mod utils;
 
@@ -15,6 +16,7 @@ use symbolic_common::{DebugId, Language, Uuid};
 use metadata::{
     CustomDebugInformation, CustomDebugInformationIterator, MetadataStream, Table, TableType,
 };
+use sourcelinks::SourceLinkMappings;
 use streams::{BlobStream, GuidStream, PdbStream, StringStream, UsStream};
 
 /// The kind of a [`FormatError`].
@@ -101,6 +103,9 @@ pub enum FormatErrorKind {
     /// Tried to read contents of a blob in an unknown format.
     #[error("invalid blob format {0}")]
     InvalidBlobFormat(u32),
+    /// Failed to parse Source Link JSON
+    #[error("invalid source link JSON")]
+    InvalidSourceLinkJson,
 }
 
 /// An error encountered while parsing a [`PortablePdb`] file.
@@ -160,6 +165,8 @@ pub struct PortablePdb<'data> {
     blob_stream: Option<BlobStream<'data>>,
     /// The file's #GUID stream, if it exists.
     guid_stream: Option<GuidStream<'data>>,
+    /// Source link mappings
+    source_link_mappings: SourceLinkMappings,
 }
 
 impl fmt::Debug for PortablePdb<'_> {
@@ -229,6 +236,7 @@ impl<'data> PortablePdb<'data> {
             us_stream: None,
             blob_stream: None,
             guid_stream: None,
+            source_link_mappings: SourceLinkMappings::empty(),
         };
 
         let mut metadata_stream = None;
@@ -280,6 +288,19 @@ impl<'data> PortablePdb<'data> {
                     .map_or([0; 64], |s| s.referenced_table_sizes),
             )?)
         }
+
+        // Read source link mappings.
+        // https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#source-link-c-and-vb-compilers
+        const SOURCE_LINK_KIND: Uuid = uuid::uuid!("CC110556-A091-4D38-9FEC-25AB9A351A6A");
+        for cdi in CustomDebugInformationIterator::new(&result, SOURCE_LINK_KIND)? {
+            let cdi = cdi?;
+            // Note: only handle module #1 (do we actually handle multiple modules in any way??)
+            if let (metadata::CustomDebugInformationTag::Module, 1) = (cdi.tag, cdi.value) {
+                let json = String::from_utf8_lossy(result.get_blob(cdi.blob)?);
+                result.source_link_mappings.add_mappings(&json)?;
+            }
+        }
+        result.source_link_mappings.sort();
 
         Ok(result)
     }
@@ -362,6 +383,16 @@ impl<'data> PortablePdb<'data> {
     /// An iterator over source files contents' embedded in this PDB.
     pub fn get_embedded_sources(&self) -> Result<EmbeddedSourceIterator<'_, 'data>, FormatError> {
         EmbeddedSourceIterator::new(self)
+    }
+
+    /// Tries to resolve given document as a source link (URL).
+    /// Make sure to try [Self::get_embedded_sources] first when looking for a source file, because
+    /// function may return a link that actually doesn't exist (e.g. file is in .gitignore).
+    /// In that case, it's usually the case that the file is embedded in the PPDB instead.
+    pub fn get_source_link(&self, document: &Document) -> Option<Cow<'_, str>> {
+        self.source_link_mappings
+            .resolve(&document.name)
+            .map(Cow::Owned)
     }
 }
 

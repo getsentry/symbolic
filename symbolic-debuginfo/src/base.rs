@@ -676,7 +676,7 @@ pub enum SourceCode<'a> {
     /// Verbatim source code/file contents.
     Content(Cow<'a, str>),
 
-    /// Url (usually HTTP/S) where the content can be fetched from.
+    /// Url (usually https) where the content can be fetched from.
     Url(Cow<'a, str>),
 }
 

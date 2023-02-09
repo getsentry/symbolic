@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use symbolic_debuginfo::pe::PeObject;
 use symbolic_ppdb::{EmbeddedSource, PortablePdb};
 use symbolic_testutils::fixture;
@@ -154,5 +156,37 @@ fn test_pe_embedded_ppdb_with_sources() {
         &items[4],
         1019,
         "Sentry.Samples.Console.Basic.AssemblyInfo.cs",
+    );
+}
+
+#[test]
+fn test_source_links() {
+    // Source: https://nuget.info/api/MsdlProxy?symbolKey=microsoft.extensions.logging.eventlog.pdb/37e9e8a61a8e404eb93c6902e277ff55FFFFFFFF/microsoft.extensions.logging.eventlog.pdb
+    let buf = std::fs::read(fixture(
+        "windows/Microsoft.Extensions.Logging.EventLog-sourcelink.pdb",
+    ))
+    .unwrap();
+
+    let ppdb = PortablePdb::parse(&buf).unwrap();
+
+    // Firstly, let's assert for the sources that are embedded in the PPDB itself because they're not on GitHub.
+    let embedded_sources = ppdb
+        .get_embedded_sources()
+        .unwrap()
+        .map(|src| {
+            Path::new(src.unwrap().get_path())
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        embedded_sources,
+        vec![
+            ".NETFramework,Version=v4.6.2.AssemblyAttributes.cs",
+            "Microsoft.Extensions.Logging.EventLog.AssemblyInfo.cs",
+            "LibraryImports.g.cs"
+        ]
     );
 }
