@@ -813,6 +813,8 @@ fn test_ppdb_source_links() -> Result<(), Error> {
             }
         }
     }
+
+    assert!(session.source_by_path("c:/non/existent/path.cs")?.is_none());
     Ok(())
 }
 

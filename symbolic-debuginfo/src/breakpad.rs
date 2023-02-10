@@ -1295,7 +1295,7 @@ impl<'data, 'session> DebugSession<'session> for BreakpadDebugSession<'data> {
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, BreakpadError> {
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error> {
         self.source_by_path(path)
     }
 }
