@@ -728,7 +728,6 @@ pub trait DebugSession<'session> {
 
     /// Looks up a file's source by its full canonicalized path.
     /// Returns either source contents, if it was embedded, or a source link.
-    /// TODO also change to `&mut self` when breaking the API - see https://github.com/getsentry/symbolic/issues/736
     fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error>;
 }
 
