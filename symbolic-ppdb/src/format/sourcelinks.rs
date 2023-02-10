@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use crate::{FormatError, FormatErrorKind};
 
-/// See https://github.com/dotnet/designs/blob/main/accepted/2020/diagnostics/source-link.md#source-link-json-schema
+/// See [Source Link PPDB docs](https://github.com/dotnet/designs/blob/main/accepted/2020/diagnostics/source-link.md#source-link-json-schema).
 #[derive(Clone)]
 pub(crate) struct SourceLinkMappings {
     rules: Vec<Rule>,
