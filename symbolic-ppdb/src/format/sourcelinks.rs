@@ -51,14 +51,15 @@ impl SourceLinkMappings {
                 3. If the file path contains a *, it must be the final character.
                 4. If the URL contains a *, it may be anywhere in the URL.
             */
-            let key = doc.0;
+            let key = doc.0.to_lowercase();
             let url = doc.1.as_str().ok_or_else(Self::err)?.into();
             let pattern = if key.ends_with('*') {
                 Pattern::Prefix(key[..(key.len() - 1)].into())
             } else {
-                Pattern::Exact(key.into())
+                Pattern::Exact(key)
             };
-            self.rules.push(Rule { pattern, url })
+            self.rules.push(Rule { pattern, url });
+            self.sorted = false;
         }
         Ok(())
     }
@@ -90,14 +91,111 @@ impl SourceLinkMappings {
             return None;
         }
 
+        // Note: this is currently quite simple, just pick the first match. If we needed to improve
+        // performance in the future because we encounter PDBs with too many items, we can do a
+        // prefix binary search, for example.
+        let path_lower = path.to_lowercase();
         for rule in &self.rules {
-            if match &rule.pattern {
-                Pattern::Exact(value) => value == path,
-                Pattern::Prefix(value) => path.starts_with(value),
-            } {
-                return Some(rule.url.clone());
+            match &rule.pattern {
+                Pattern::Exact(value) => {
+                    if value == &path_lower {
+                        return Some(rule.url.clone());
+                    }
+                }
+                Pattern::Prefix(value) => {
+                    if path_lower.starts_with(value) {
+                        let replacement = path
+                            .get(value.len()..)
+                            .map(|v| v.replace('\\', "/"))
+                            .unwrap_or_default();
+                        return Some(rule.url.replace('*', &replacement));
+                    }
+                }
             }
         }
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_invalid_json() {
+        let mut mappings = SourceLinkMappings::empty();
+        assert!(mappings.add_mappings("").is_err());
+        assert!(mappings.add_mappings("foo").is_err());
+        assert!(mappings.add_mappings("{\"docs\": {\"k\": \"v\"}}").is_err());
+        assert!(mappings
+            .add_mappings("{\"documents\": [\"k\", \"v\"]}")
+            .is_err());
+        assert_eq!(mappings.rules.len(), 0);
+    }
+
+    #[test]
+    fn test_mapping() {
+        let mut mappings = SourceLinkMappings::empty();
+        mappings
+            .add_mappings(
+                r#"
+                {
+                    "documents": {
+                        "C:\\src\\*":                   "http://MyDefaultDomain.com/src/*",
+                        "C:\\src\\fOO\\*":              "http://MyFooDomain.com/src/*",
+                        "C:\\src\\foo\\specific.txt":   "http://MySpecificFoodDomain.com/src/specific.txt",
+                        "C:\\src\\bar\\*":              "http://MyBarDomain.com/src/*"
+                    }
+                }
+                "#
+            ).unwrap();
+
+        assert_eq!(mappings.rules.len(), 4);
+        assert!(!mappings.sorted);
+        mappings.sort();
+        assert!(mappings.sorted);
+
+        mappings
+            .add_mappings(
+                r#"
+                {
+                    "documents": {
+                        "C:\\src\\file.txt": "https://example.com/file.txt"
+                    }
+                }
+                "#,
+            )
+            .unwrap();
+
+        assert_eq!(mappings.rules.len(), 5);
+        assert!(!mappings.sorted);
+        mappings.sort();
+        assert!(mappings.sorted);
+
+        // In this example:
+        //   All files under directory bar will map to a relative URL beginning with http://MyBarDomain.com/src/.
+        //   All files under directory foo will map to a relative URL beginning with http://MyFooDomain.com/src/ EXCEPT foo/specific.txt which will map to http://MySpecificFoodDomain.com/src/specific.txt.
+        //   All other files anywhere under the src directory will map to a relative url beginning with http://MyDefaultDomain.com/src/.
+        assert!(mappings.resolve("c:\\other\\path").is_none());
+        assert_eq!(
+            mappings.resolve("c:\\src\\bAr\\foo\\FiLe.txt").unwrap(),
+            "http://MyBarDomain.com/src/foo/FiLe.txt"
+        );
+        assert_eq!(
+            mappings.resolve("c:\\src\\foo\\FiLe.txt").unwrap(),
+            "http://MyFooDomain.com/src/FiLe.txt"
+        );
+        assert_eq!(
+            mappings.resolve("c:\\src\\foo\\SpEcIfIc.txt").unwrap(),
+            "http://MySpecificFoodDomain.com/src/specific.txt"
+        );
+        assert_eq!(
+            mappings.resolve("c:\\src\\other\\path").unwrap(),
+            "http://MyDefaultDomain.com/src/other/path"
+        );
+        assert_eq!(
+            mappings.resolve("c:\\src\\other\\path").unwrap(),
+            "http://MyDefaultDomain.com/src/other/path"
+        );
     }
 }

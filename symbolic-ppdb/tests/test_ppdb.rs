@@ -189,4 +189,12 @@ fn test_source_links() {
             "LibraryImports.g.cs"
         ]
     );
+
+    for i in 0..ppdb.get_documents_count().unwrap() {
+        let doc = ppdb.get_document(i + 1).unwrap();
+        let url = ppdb.get_source_link(&doc).unwrap();
+
+        // testing this is simple because there's just one prefix rule in this PPDB.
+        assert_eq!(url, format!("https://raw.githubusercontent.com/dotnet/runtime/d099f075e45d2aa6007a22b71b45a08758559f80/{}", &doc.name[3..]));
+    }
 }

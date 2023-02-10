@@ -786,6 +786,37 @@ fn test_ppdb_source_by_path() -> Result<(), Error> {
 }
 
 #[test]
+fn test_ppdb_source_links() -> Result<(), Error> {
+    let view = ByteView::open(fixture(
+        "windows/Microsoft.Extensions.Logging.EventLog-sourcelink.pdb",
+    ))?;
+    let object = Object::parse(&view)?;
+    let session = object.debug_session()?;
+
+    let known_embedded_sources = vec![
+        ".NETFramework,Version=v4.6.2.AssemblyAttributes.cs",
+        "Microsoft.Extensions.Logging.EventLog.AssemblyInfo.cs",
+        "LibraryImports.g.cs",
+    ];
+
+    for file in session.files() {
+        let file = file.unwrap();
+
+        match session.source_by_path(&file.path_str()).unwrap().unwrap() {
+            SourceCode::Content(text) => {
+                assert!(known_embedded_sources.contains(&file.name_str().as_ref()));
+                assert!(!text.is_empty());
+            }
+            SourceCode::Url(url) => {
+                // testing this is simple because there's just one prefix rule in this PPDB.
+                assert_eq!(url, format!("https://raw.githubusercontent.com/dotnet/runtime/d099f075e45d2aa6007a22b71b45a08758559f80/{}", &file.path_str()[3..]));
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn test_wasm_symbols() -> Result<(), Error> {
     let view = ByteView::open(fixture("wasm/simple.wasm"))?;
     let object = Object::parse(&view)?;
