@@ -1151,7 +1151,7 @@ mod tests {
             .flat_map(|f| {
                 let path = f.abs_path_str();
                 session.source_by_path(&path).ok().flatten().map(|source| {
-                     let SourceCode::Content(text) = source else {
+                    let SourceCode::Content(text) = source else {
                          unreachable!();
                      };
                     (path, text.into_owned())
