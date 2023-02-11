@@ -53,8 +53,8 @@ impl SourceLinkMappings {
             */
             let key = doc.0.to_lowercase();
             let url = doc.1.as_str().ok_or_else(Self::err)?.into();
-            let pattern = if key.ends_with('*') {
-                Pattern::Prefix(key[..(key.len() - 1)].into())
+            let pattern = if let Some(prefix) = key.strip_suffix('*') {
+                Pattern::Prefix(prefix.into())
             } else {
                 Pattern::Exact(key)
             };

@@ -169,8 +169,8 @@ impl<'data> PortablePdbDebugSession<'data> {
             }
         };
 
-        for i in 0..count {
-            if let Ok(doc) = self.ppdb.get_document(i + 1) {
+        for i in 1..count + 1 {
+            if let Ok(doc) = self.ppdb.get_document(i) {
                 if !result.contains_key(&doc.name) {
                     result.insert(doc.name.clone(), PPDBSource::Link(doc));
                 }
