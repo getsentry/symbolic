@@ -292,15 +292,17 @@ impl<'data> PortablePdb<'data> {
         // Read source link mappings.
         // https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#source-link-c-and-vb-compilers
         const SOURCE_LINK_KIND: Uuid = uuid::uuid!("CC110556-A091-4D38-9FEC-25AB9A351A6A");
+        let mut source_link_mappings = Vec::new();
         for cdi in CustomDebugInformationIterator::new(&result, SOURCE_LINK_KIND)? {
             let cdi = cdi?;
             // Note: only handle module #1 (do we actually handle multiple modules in any way??)
             if let (metadata::CustomDebugInformationTag::Module, 1) = (cdi.tag, cdi.value) {
                 let json = String::from_utf8_lossy(result.get_blob(cdi.blob)?);
-                result.source_link_mappings.add_mappings(&json)?;
+                source_link_mappings.push(json);
             }
         }
-        result.source_link_mappings.sort();
+        result.source_link_mappings =
+            SourceLinkMappings::new(source_link_mappings.iter().map(|v| v.as_ref()))?;
 
         Ok(result)
     }

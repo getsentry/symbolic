@@ -6,7 +6,6 @@ use crate::{FormatError, FormatErrorKind};
 #[derive(Clone)]
 pub(crate) struct SourceLinkMappings {
     rules: Vec<Rule>,
-    sorted: bool,
 }
 
 #[derive(Clone)]
@@ -23,13 +22,22 @@ enum Pattern {
 
 impl SourceLinkMappings {
     pub fn empty() -> Self {
-        SourceLinkMappings {
-            rules: Vec::new(),
-            sorted: false,
-        }
+        SourceLinkMappings { rules: Vec::new() }
     }
 
-    pub fn add_mappings(&mut self, json: &str) -> Result<(), FormatError> {
+    pub fn new<'a, I>(jsons: I) -> Result<Self, FormatError>
+    where
+        I: Iterator<Item = &'a str>,
+    {
+        let mut result = Self { rules: Vec::new() };
+        for json in jsons {
+            result.add_mappings(json)?;
+        }
+        result.sort();
+        Ok(result)
+    }
+
+    fn add_mappings(&mut self, json: &str) -> Result<(), FormatError> {
         use serde_json::*;
         let json: Value = serde_json::from_str(json)
             .map_err(|e| FormatError::new(FormatErrorKind::InvalidSourceLinkJson, e))?;
@@ -59,7 +67,6 @@ impl SourceLinkMappings {
                 Pattern::Exact(key)
             };
             self.rules.push(Rule { pattern, url });
-            self.sorted = false;
         }
         Ok(())
     }
@@ -72,7 +79,7 @@ impl SourceLinkMappings {
     }
 
     /// Sort internal rules. This must be called before [Self::resolve].
-    pub fn sort(&mut self) {
+    fn sort(&mut self) {
         // Put Exact matches first, then sort by the Prefix length, longest to shortest.
         self.rules.sort_unstable_by(|a, b| match &a.pattern {
             Pattern::Exact(_) => Ordering::Less,
@@ -81,16 +88,10 @@ impl SourceLinkMappings {
                 Pattern::Prefix(b) => b.len().cmp(&a.len()),
             },
         });
-        self.sorted = true;
     }
 
     /// Resolve the path to a URL.
     pub fn resolve(&self, path: &str) -> Option<String> {
-        // Must be sorted first so we can return on the first match, which is guaranteed to be the most specific.
-        if !self.sorted {
-            return None;
-        }
-
         // Note: this is currently quite simple, just pick the first match. If we needed to improve
         // performance in the future because we encounter PDBs with too many items, we can do a
         // prefix binary search, for example.
@@ -135,10 +136,8 @@ mod tests {
 
     #[test]
     fn test_mapping() {
-        let mut mappings = SourceLinkMappings::empty();
-        mappings
-            .add_mappings(
-                r#"
+        let mappings = SourceLinkMappings::new(
+            [r#"
                 {
                     "documents": {
                         "C:\\src\\*":                   "http://MyDefaultDomain.com/src/*",
@@ -147,30 +146,16 @@ mod tests {
                         "C:\\src\\bar\\*":              "http://MyBarDomain.com/src/*"
                     }
                 }
-                "#
-            ).unwrap();
-
-        assert_eq!(mappings.rules.len(), 4);
-        assert!(!mappings.sorted);
-        mappings.sort();
-        assert!(mappings.sorted);
-
-        mappings
-            .add_mappings(
-                r#"
+                "#, r#"
                 {
                     "documents": {
                         "C:\\src\\file.txt": "https://example.com/file.txt"
                     }
                 }
-                "#,
-            )
-            .unwrap();
+                "#].iter().copied()
+        ).unwrap();
 
         assert_eq!(mappings.rules.len(), 5);
-        assert!(!mappings.sorted);
-        mappings.sort();
-        assert!(mappings.sorted);
 
         // In this example:
         //   All files under directory bar will map to a relative URL beginning with http://MyBarDomain.com/src/.
