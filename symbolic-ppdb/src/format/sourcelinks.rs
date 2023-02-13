@@ -106,7 +106,8 @@ impl SourceLinkMappings {
                 Pattern::Prefix(value) => {
                     if path_lower.starts_with(value) {
                         let replacement = path
-                            .get(value.len()..).unwrap_or_default()
+                            .get(value.len()..)
+                            .unwrap_or_default()
                             .replace('\\', "/");
                         return Some(rule.url.replace('*', &replacement));
                     }
