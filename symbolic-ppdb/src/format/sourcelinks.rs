@@ -118,13 +118,13 @@ mod tests {
     #[test]
     fn test_invalid_json() {
         let mut mappings = SourceLinkMappings::default();
-        assert!(mappings.add_mappings("".as_bytes()).is_err());
-        assert!(mappings.add_mappings("foo".as_bytes()).is_err());
+        assert!(mappings.add_mappings(b"").is_err());
+        assert!(mappings.add_mappings(b"foo").is_err());
         assert!(mappings
-            .add_mappings("{\"docs\": {\"k\": \"v\"}}".as_bytes())
+            .add_mappings(b"{\"docs\": {\"k\": \"v\"}}")
             .is_err());
         assert!(mappings
-            .add_mappings("{\"documents\": [\"k\", \"v\"]}".as_bytes())
+            .add_mappings(b"{\"documents\": [\"k\", \"v\"]}")
             .is_err());
         assert_eq!(mappings.rules.len(), 0);
     }
@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn test_mapping() {
         let mappings = SourceLinkMappings::new(
-            [r#"
+            vec![br#"
                 {
                     "documents": {
                         "C:\\src\\*":                   "http://MyDefaultDomain.com/src/*",
@@ -141,19 +141,19 @@ mod tests {
                         "C:\\src\\bar\\*":              "http://MyBarDomain.com/src/*"
                     }
                 }
-                "#, r#"
+                "#, br#"
                 {
                     "documents": {
                         "C:\\src\\file.txt": "https://example.com/file.txt"
                     }
                 }
-                "#, r#"
+                "#, br#"
                 {
                     "documents": {
                         "/home/user/src/*": "https://linux.com/*"
                     }
                 }
-                "#].map(|v| v.as_bytes()).to_vec()
+                "#]
         ).unwrap();
 
         assert_eq!(mappings.rules.len(), 6);
