@@ -236,7 +236,7 @@ impl<'data> PortablePdb<'data> {
             us_stream: None,
             blob_stream: None,
             guid_stream: None,
-            source_link_mappings: SourceLinkMappings::empty(),
+            source_link_mappings: SourceLinkMappings::default(),
         };
 
         let mut metadata_stream = None;
@@ -297,12 +297,10 @@ impl<'data> PortablePdb<'data> {
             let cdi = cdi?;
             // Note: only handle module #1 (do we actually handle multiple modules in any way??)
             if let (metadata::CustomDebugInformationTag::Module, 1) = (cdi.tag, cdi.value) {
-                let json = String::from_utf8_lossy(result.get_blob(cdi.blob)?);
-                source_link_mappings.push(json);
+                source_link_mappings.push(result.get_blob(cdi.blob)?);
             }
         }
-        result.source_link_mappings =
-            SourceLinkMappings::new(source_link_mappings.iter().map(|v| v.as_ref()))?;
+        result.source_link_mappings = SourceLinkMappings::new(source_link_mappings)?;
 
         Ok(result)
     }

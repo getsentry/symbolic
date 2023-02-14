@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use crate::{FormatError, FormatErrorKind};
 
 /// See [Source Link PPDB docs](https://github.com/dotnet/designs/blob/main/accepted/2020/diagnostics/source-link.md#source-link-json-schema).
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub(crate) struct SourceLinkMappings {
     rules: Vec<Rule>,
 }
@@ -21,14 +21,7 @@ enum Pattern {
 }
 
 impl SourceLinkMappings {
-    pub fn empty() -> Self {
-        SourceLinkMappings { rules: Vec::new() }
-    }
-
-    pub fn new<'a, I>(jsons: I) -> Result<Self, FormatError>
-    where
-        I: Iterator<Item = &'a str>,
-    {
+    pub fn new(jsons: Vec<&[u8]>) -> Result<Self, FormatError> {
         let mut result = Self { rules: Vec::new() };
         for json in jsons {
             result.add_mappings(json)?;
@@ -37,9 +30,9 @@ impl SourceLinkMappings {
         Ok(result)
     }
 
-    fn add_mappings(&mut self, json: &str) -> Result<(), FormatError> {
+    fn add_mappings(&mut self, json: &[u8]) -> Result<(), FormatError> {
         use serde_json::*;
-        let json: Value = serde_json::from_str(json)
+        let json: Value = serde_json::from_slice(json)
             .map_err(|e| FormatError::new(FormatErrorKind::InvalidSourceLinkJson, e))?;
 
         let docs = json
@@ -48,7 +41,7 @@ impl SourceLinkMappings {
             .ok_or_else(Self::err)?;
 
         self.rules.reserve(docs.len());
-        for doc in docs.iter() {
+        for (key, url) in docs.iter() {
             /*
             Each document is defined by a file path and a URL. Original source file paths are compared
             case-insensitively to documents and the resulting URL is used to download source. The document
@@ -59,8 +52,8 @@ impl SourceLinkMappings {
                 3. If the file path contains a *, it must be the final character.
                 4. If the URL contains a *, it may be anywhere in the URL.
             */
-            let key = doc.0.to_lowercase();
-            let url = doc.1.as_str().ok_or_else(Self::err)?.into();
+            let key = key.to_lowercase();
+            let url = url.as_str().ok_or_else(Self::err)?.into();
             let pattern = if let Some(prefix) = key.strip_suffix('*') {
                 Pattern::Prefix(prefix.into())
             } else {
@@ -124,12 +117,14 @@ mod tests {
 
     #[test]
     fn test_invalid_json() {
-        let mut mappings = SourceLinkMappings::empty();
-        assert!(mappings.add_mappings("").is_err());
-        assert!(mappings.add_mappings("foo").is_err());
-        assert!(mappings.add_mappings("{\"docs\": {\"k\": \"v\"}}").is_err());
+        let mut mappings = SourceLinkMappings::default();
+        assert!(mappings.add_mappings("".as_bytes()).is_err());
+        assert!(mappings.add_mappings("foo".as_bytes()).is_err());
         assert!(mappings
-            .add_mappings("{\"documents\": [\"k\", \"v\"]}")
+            .add_mappings("{\"docs\": {\"k\": \"v\"}}".as_bytes())
+            .is_err());
+        assert!(mappings
+            .add_mappings("{\"documents\": [\"k\", \"v\"]}".as_bytes())
             .is_err());
         assert_eq!(mappings.rules.len(), 0);
     }
@@ -152,16 +147,23 @@ mod tests {
                         "C:\\src\\file.txt": "https://example.com/file.txt"
                     }
                 }
-                "#].iter().copied()
+                "#, r#"
+                {
+                    "documents": {
+                        "/home/user/src/*": "https://linux.com/*"
+                    }
+                }
+                "#].map(|v| v.as_bytes()).to_vec()
         ).unwrap();
 
-        assert_eq!(mappings.rules.len(), 5);
+        assert_eq!(mappings.rules.len(), 6);
 
         // In this example:
         //   All files under directory bar will map to a relative URL beginning with http://MyBarDomain.com/src/.
         //   All files under directory foo will map to a relative URL beginning with http://MyFooDomain.com/src/ EXCEPT foo/specific.txt which will map to http://MySpecificFoodDomain.com/src/specific.txt.
         //   All other files anywhere under the src directory will map to a relative url beginning with http://MyDefaultDomain.com/src/.
         assert!(mappings.resolve("c:\\other\\path").is_none());
+        assert!(mappings.resolve("/home/path").is_none());
         assert_eq!(
             mappings.resolve("c:\\src\\bAr\\foo\\FiLe.txt").unwrap(),
             "http://MyBarDomain.com/src/foo/FiLe.txt"
@@ -181,6 +183,10 @@ mod tests {
         assert_eq!(
             mappings.resolve("c:\\src\\other\\path").unwrap(),
             "http://MyDefaultDomain.com/src/other/path"
+        );
+        assert_eq!(
+            mappings.resolve("/home/user/src/Path/TO/file.txt").unwrap(),
+            "https://linux.com/Path/TO/file.txt"
         );
     }
 }
