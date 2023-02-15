@@ -14,7 +14,8 @@ use watto::Pod;
 use symbolic_common::{DebugId, Language, Uuid};
 
 use metadata::{
-    CustomDebugInformation, CustomDebugInformationIterator, MetadataStream, Table, TableType,
+    CustomDebugInformation, CustomDebugInformationIterator, CustomDebugInformationTag,
+    MetadataStream, Table, TableType,
 };
 use sourcelinks::SourceLinkMappings;
 use streams::{BlobStream, GuidStream, PdbStream, StringStream, UsStream};
@@ -296,7 +297,7 @@ impl<'data> PortablePdb<'data> {
         for cdi in CustomDebugInformationIterator::new(&result, SOURCE_LINK_KIND)? {
             let cdi = cdi?;
             // Note: only handle module #1 (do we actually handle multiple modules in any way??)
-            if let (metadata::CustomDebugInformationTag::Module, 1) = (cdi.tag, cdi.value) {
+            if let (CustomDebugInformationTag::Module, 1) = (cdi.tag, cdi.value) {
                 source_link_mappings.push(result.get_blob(cdi.blob)?);
             }
         }
@@ -439,7 +440,7 @@ impl<'object, 'data> Iterator for EmbeddedSourceIterator<'object, 'data> {
             match row {
                 Err(e) => return Some(Err(e)),
                 Ok(info) => {
-                    if let metadata::CustomDebugInformationTag::Document = info.tag {
+                    if let CustomDebugInformationTag::Document = info.tag {
                         return Some(self.get_source(info));
                     }
                 }
