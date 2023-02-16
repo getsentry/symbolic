@@ -4,7 +4,7 @@ mod sequence_points;
 mod streams;
 mod utils;
 
-use std::{borrow::Cow, collections::HashMap, fmt, io::Read};
+use std::{borrow::Cow, fmt, io::Read};
 
 use flate2::read::DeflateDecoder;
 use thiserror::Error;
@@ -231,9 +231,7 @@ impl<'data> PortablePdb<'data> {
             guid_stream: None,
         };
 
-        // Collect the streams into a map, because they can't necessarily
-        // be parsed in the order they're encountered.
-        let mut streams = HashMap::new();
+        let mut metadata_stream = None;
         for _ in 0..stream_count {
             let (header, after_header_buf) = raw::StreamHeader::ref_from_prefix(streams_buf)
                 .ok_or(FormatErrorKind::InvalidStreamHeader)?;
@@ -261,33 +259,26 @@ impl<'data> PortablePdb<'data> {
                 .get(offset..offset + size)
                 .ok_or(FormatErrorKind::InvalidLength)?;
 
-            streams.insert(name, stream_buf);
-        }
-
-        // Parse the #Pdb stream *first*. This is necessary for correctly
-        // parsing the #~ stream.
-        if let Some(stream_buf) = streams.remove("#Pdb") {
-            result.pdb_stream = Some(PdbStream::parse(stream_buf)?);
-        }
-
-        for (name, stream_buf) in streams.into_iter() {
             match name {
-                "#Pdb" => unreachable!("This stream has alraedy been processed"),
-                "#~" => {
-                    result.metadata_stream = Some(MetadataStream::parse(
-                        stream_buf,
-                        result
-                            .pdb_stream
-                            .as_ref()
-                            .map_or([0; 64], |s| s.referenced_table_sizes),
-                    )?)
-                }
+                "#Pdb" => result.pdb_stream = Some(PdbStream::parse(stream_buf)?),
+                // Save the #~ stream for last; it definitely must be parsed after the #Pdb stream.
+                "#~" => metadata_stream = Some(stream_buf),
                 "#Strings" => result.string_stream = Some(StringStream::new(stream_buf)),
                 "#US" => result.us_stream = Some(UsStream::new(stream_buf)),
                 "#Blob" => result.blob_stream = Some(BlobStream::new(stream_buf)),
                 "#GUID" => result.guid_stream = Some(GuidStream::parse(stream_buf)?),
                 _ => return Err(FormatErrorKind::UnknownStream.into()),
             }
+        }
+
+        if let Some(stream_buf) = metadata_stream {
+            result.metadata_stream = Some(MetadataStream::parse(
+                stream_buf,
+                result
+                    .pdb_stream
+                    .as_ref()
+                    .map_or([0; 64], |s| s.referenced_table_sizes),
+            )?)
         }
 
         Ok(result)
