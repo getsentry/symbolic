@@ -4,7 +4,7 @@ mod sequence_points;
 mod streams;
 mod utils;
 
-use std::{borrow::Cow, fmt, io::Read};
+use std::{borrow::Cow, collections::HashMap, fmt, io::Read};
 
 use flate2::read::DeflateDecoder;
 use thiserror::Error;
@@ -231,6 +231,9 @@ impl<'data> PortablePdb<'data> {
             guid_stream: None,
         };
 
+        // Collect the streams into a map, because they can't necessarily
+        // be parsed in the order they're encountered.
+        let mut streams = HashMap::new();
         for _ in 0..stream_count {
             let (header, after_header_buf) = raw::StreamHeader::ref_from_prefix(streams_buf)
                 .ok_or(FormatErrorKind::InvalidStreamHeader)?;
@@ -258,8 +261,18 @@ impl<'data> PortablePdb<'data> {
                 .get(offset..offset + size)
                 .ok_or(FormatErrorKind::InvalidLength)?;
 
+            streams.insert(name, stream_buf);
+        }
+
+        // Parse the #Pdb stream *first*. This is necessary for correctly
+        // parsing the #~ stream.
+        if let Some(stream_buf) = streams.remove("#Pdb") {
+            result.pdb_stream = Some(PdbStream::parse(stream_buf)?);
+        }
+
+        for (name, stream_buf) in streams.into_iter() {
             match name {
-                "#Pdb" => result.pdb_stream = Some(PdbStream::parse(stream_buf)?),
+                "#Pdb" => unreachable!("This stream has alraedy been processed"),
                 "#~" => {
                     result.metadata_stream = Some(MetadataStream::parse(
                         stream_buf,
@@ -276,6 +289,7 @@ impl<'data> PortablePdb<'data> {
                 _ => return Err(FormatErrorKind::UnknownStream.into()),
             }
         }
+
         Ok(result)
     }
 
