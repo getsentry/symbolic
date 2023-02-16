@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Make sure to parse `PortablePdb` streams in the correct order. ([#760](https://github.com/getsentry/symbolic/pull/760))
+
 ## 11.1.0
 
 **Features**:

@@ -231,6 +231,7 @@ impl<'data> PortablePdb<'data> {
             guid_stream: None,
         };
 
+        let mut metadata_stream = None;
         for _ in 0..stream_count {
             let (header, after_header_buf) = raw::StreamHeader::ref_from_prefix(streams_buf)
                 .ok_or(FormatErrorKind::InvalidStreamHeader)?;
@@ -260,15 +261,8 @@ impl<'data> PortablePdb<'data> {
 
             match name {
                 "#Pdb" => result.pdb_stream = Some(PdbStream::parse(stream_buf)?),
-                "#~" => {
-                    result.metadata_stream = Some(MetadataStream::parse(
-                        stream_buf,
-                        result
-                            .pdb_stream
-                            .as_ref()
-                            .map_or([0; 64], |s| s.referenced_table_sizes),
-                    )?)
-                }
+                // Save the #~ stream for last; it definitely must be parsed after the #Pdb stream.
+                "#~" => metadata_stream = Some(stream_buf),
                 "#Strings" => result.string_stream = Some(StringStream::new(stream_buf)),
                 "#US" => result.us_stream = Some(UsStream::new(stream_buf)),
                 "#Blob" => result.blob_stream = Some(BlobStream::new(stream_buf)),
@@ -276,6 +270,17 @@ impl<'data> PortablePdb<'data> {
                 _ => return Err(FormatErrorKind::UnknownStream.into()),
             }
         }
+
+        if let Some(stream_buf) = metadata_stream {
+            result.metadata_stream = Some(MetadataStream::parse(
+                stream_buf,
+                result
+                    .pdb_stream
+                    .as_ref()
+                    .map_or([0; 64], |s| s.referenced_table_sizes),
+            )?)
+        }
+
         Ok(result)
     }
 
