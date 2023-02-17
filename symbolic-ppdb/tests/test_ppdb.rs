@@ -161,11 +161,7 @@ fn test_pe_embedded_ppdb_with_sources() {
 
 #[test]
 fn test_source_links() {
-    // Source: https://nuget.info/api/MsdlProxy?symbolKey=microsoft.extensions.logging.eventlog.pdb/37e9e8a61a8e404eb93c6902e277ff55FFFFFFFF/microsoft.extensions.logging.eventlog.pdb
-    let buf = std::fs::read(fixture(
-        "windows/Microsoft.Extensions.Logging.EventLog-sourcelink.pdb",
-    ))
-    .unwrap();
+    let buf = std::fs::read(fixture("ppdb-sourcelink-sample/ppdb-sourcelink-sample.pdb")).unwrap();
 
     let ppdb = PortablePdb::parse(&buf).unwrap();
 
@@ -189,6 +185,8 @@ fn test_source_links() {
             "LibraryImports.g.cs"
         ]
     );
+
+    let src_prefix = "";
 
     for i in 1..ppdb.get_documents_count().unwrap() + 1 {
         let doc = ppdb.get_document(i).unwrap();
