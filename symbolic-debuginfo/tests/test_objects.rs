@@ -778,7 +778,7 @@ fn test_ppdb_source_by_path() -> Result<(), Error> {
             .unwrap();
         match source.unwrap() {
             SourceCode::Content(text) => assert_eq!(text.len(), 204),
-            SourceCode::Url(_) => panic!(),
+            _ => panic!(),
         }
     }
 
@@ -816,6 +816,7 @@ fn test_ppdb_source_links() -> Result<(), Error> {
                     .replace('\\', "/");
                 assert_eq!(url, expected);
             }
+            _ => panic!(),
         }
     }
 
