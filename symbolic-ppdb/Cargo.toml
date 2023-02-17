@@ -26,6 +26,7 @@ watto = { version = "0.1.0", features = ["writer", "strings"] }
 thiserror = "1.0.31"
 uuid = "1.0.0"
 flate2 = { version ="1.0.13", default-features = false, features = [ "rust_backend" ] }
+serde_json = { version = "1.0.40" }
 
 [dev-dependencies]
 symbolic-debuginfo = { path = "../symbolic-debuginfo" }

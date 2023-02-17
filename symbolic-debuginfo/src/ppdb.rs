@@ -4,9 +4,10 @@ use std::collections::HashMap;
 use std::fmt;
 use std::iter;
 
+use lazycell::LazyCell;
 use symbolic_common::{Arch, CodeId, DebugId};
 use symbolic_ppdb::EmbeddedSource;
-use symbolic_ppdb::{FormatError, PortablePdb};
+use symbolic_ppdb::{Document, FormatError, PortablePdb};
 
 use crate::base::*;
 
@@ -141,22 +142,42 @@ impl fmt::Debug for PortablePdbObject<'_> {
 /// A debug session for a Portable PDB object.
 pub struct PortablePdbDebugSession<'data> {
     ppdb: PortablePdb<'data>,
-    sources: HashMap<String, EmbeddedSource<'data>>,
+    sources: LazyCell<HashMap<String, PPDBSource<'data>>>,
+}
+
+#[derive(Debug, Clone)]
+enum PPDBSource<'data> {
+    Embedded(EmbeddedSource<'data>),
+    Link(Document),
 }
 
 impl<'data> PortablePdbDebugSession<'data> {
     fn new(ppdb: &'_ PortablePdb<'data>) -> Result<Self, FormatError> {
-        let mut sources: HashMap<String, EmbeddedSource<'data>> = HashMap::new();
-        for source in ppdb.get_embedded_sources()? {
-            match source {
-                Ok(source) => sources.insert(source.get_path().into(), source),
-                Err(e) => return Err(e),
-            };
-        }
         Ok(PortablePdbDebugSession {
             ppdb: ppdb.clone(),
-            sources,
+            sources: LazyCell::new(),
         })
+    }
+
+    fn init_sources(&self) -> HashMap<String, PPDBSource<'data>> {
+        let count = self.ppdb.get_documents_count().unwrap_or(0);
+        let mut result = HashMap::with_capacity(count);
+
+        if let Ok(iter) = self.ppdb.get_embedded_sources() {
+            for source in iter.flatten() {
+                result.insert(source.get_path().to_string(), PPDBSource::Embedded(source));
+            }
+        };
+
+        for i in 1..count + 1 {
+            if let Ok(doc) = self.ppdb.get_document(i) {
+                if !result.contains_key(&doc.name) {
+                    result.insert(doc.name.clone(), PPDBSource::Link(doc));
+                }
+            }
+        }
+
+        result
     }
 
     /// Returns an iterator over all functions in this debug file.
@@ -169,15 +190,17 @@ impl<'data> PortablePdbDebugSession<'data> {
         PortablePdbFileIterator::new(&self.ppdb)
     }
 
-    /// Looks up a file's source contents by its full canonicalized path.
-    ///
-    /// The given path must be canonicalized.
-    pub fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, FormatError> {
-        match self.sources.get(path) {
+    /// See [DebugSession::source_by_path] for more information.
+    pub fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, FormatError> {
+        let sources = self.sources.borrow_with(|| self.init_sources());
+        match sources.get(path) {
             None => Ok(None),
-            Some(source) => source
+            Some(PPDBSource::Embedded(source)) => source
                 .get_contents()
-                .map(|bytes| Some(from_utf8_cow_lossy(&bytes))),
+                .map(|bytes| Some(SourceCode::Content(from_utf8_cow_lossy(&bytes)))),
+            Some(PPDBSource::Link(document)) => {
+                Ok(self.ppdb.get_source_link(document).map(SourceCode::Url))
+            }
         }
     }
 }
@@ -195,7 +218,7 @@ impl<'data, 'session> DebugSession<'session> for PortablePdbDebugSession<'data> 
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error> {
         self.source_by_path(path)
     }
 }

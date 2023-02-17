@@ -2,7 +2,7 @@ use std::{env, ffi::CString, fmt, io::BufWriter};
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{
-    elf::ElfObject, pe::PeObject, FileEntry, Function, LineInfo, Object, SymbolMap,
+    elf::ElfObject, pe::PeObject, FileEntry, Function, LineInfo, Object, SourceCode, SymbolMap,
 };
 use symbolic_testutils::fixture;
 
@@ -776,10 +776,51 @@ fn test_ppdb_source_by_path() -> Result<(), Error> {
                 "C:\\dev\\sentry-dotnet\\samples\\Sentry.Samples.Console.Basic\\Program.cs",
             )
             .unwrap();
-        let source_text = source.unwrap();
-        assert_eq!(source_text.len(), 204);
+        match source.unwrap() {
+            SourceCode::Content(text) => assert_eq!(text.len(), 204),
+            _ => panic!(),
+        }
     }
 
+    Ok(())
+}
+
+#[test]
+fn test_ppdb_source_links() -> Result<(), Error> {
+    let view = ByteView::open(fixture("ppdb-sourcelink-sample/ppdb-sourcelink-sample.pdb"))?;
+    let object = Object::parse(&view)?;
+    let session = object.debug_session()?;
+
+    let known_embedded_sources = vec![
+        ".NETStandard,Version=v2.0.AssemblyAttributes.cs",
+        "ppdb-sourcelink-sample.AssemblyInfo.cs",
+    ];
+
+    // Testing this is simple because there's just one prefix rule in this PPDB.
+    let src_prefix = "C:\\dev\\symbolic\\";
+    let url_prefix = "https://raw.githubusercontent.com/getsentry/symbolic/9f7ceefc29da4c45bc802751916dbb3ea72bf08f/";
+
+    for file in session.files() {
+        let file = file.unwrap();
+
+        match session.source_by_path(&file.path_str()).unwrap().unwrap() {
+            SourceCode::Content(text) => {
+                assert!(known_embedded_sources.contains(&file.name_str().as_ref()));
+                assert!(!text.is_empty());
+            }
+            SourceCode::Url(url) => {
+                // testing this is simple because there's just one prefix rule in this PPDB.
+                let expected = file
+                    .path_str()
+                    .replace(src_prefix, url_prefix)
+                    .replace('\\', "/");
+                assert_eq!(url, expected);
+            }
+            _ => panic!(),
+        }
+    }
+
+    assert!(session.source_by_path("c:/non/existent/path.cs")?.is_none());
     Ok(())
 }
 

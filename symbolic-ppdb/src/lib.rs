@@ -60,4 +60,4 @@ mod format;
 pub use cache::lookup::LineInfo;
 pub use cache::writer::PortablePdbCacheConverter;
 pub use cache::{CacheError, CacheErrorKind, PortablePdbCache};
-pub use format::{EmbeddedSource, FormatError, FormatErrorKind, PortablePdb};
+pub use format::{Document, EmbeddedSource, FormatError, FormatErrorKind, PortablePdb};

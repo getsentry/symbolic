@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Breaking changes**:
+
+- Change `DebugSession::source_by_path()` to return `SourceCode` enum with either file content or a URL to fetch it from. ([#758](https://github.com/getsentry/symbolic/pull/758))
+
 **Fixes**:
 
 - Make sure to parse `PortablePdb` streams in the correct order. ([#760](https://github.com/getsentry/symbolic/pull/760))

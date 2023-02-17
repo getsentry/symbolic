@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use symbolic_debuginfo::pe::PeObject;
 use symbolic_ppdb::{EmbeddedSource, PortablePdb};
 use symbolic_testutils::fixture;
@@ -155,4 +157,43 @@ fn test_pe_embedded_ppdb_with_sources() {
         1019,
         "Sentry.Samples.Console.Basic.AssemblyInfo.cs",
     );
+}
+
+#[test]
+fn test_source_links() {
+    let buf = std::fs::read(fixture("ppdb-sourcelink-sample/ppdb-sourcelink-sample.pdb")).unwrap();
+
+    let ppdb = PortablePdb::parse(&buf).unwrap();
+
+    // Firstly, let's assert for the sources that are embedded in the PPDB itself because they're not on GitHub.
+    let embedded_sources = ppdb
+        .get_embedded_sources()
+        .unwrap()
+        .map(|src| {
+            Path::new(&src.unwrap().get_path().replace('\\', "/"))
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        embedded_sources,
+        vec![
+            ".NETStandard,Version=v2.0.AssemblyAttributes.cs",
+            "ppdb-sourcelink-sample.AssemblyInfo.cs"
+        ]
+    );
+
+    // Testing this is simple because there's just one prefix rule in this PPDB.
+    let src_prefix = "C:\\dev\\symbolic\\";
+    let url_prefix = "https://raw.githubusercontent.com/getsentry/symbolic/9f7ceefc29da4c45bc802751916dbb3ea72bf08f/";
+
+    for i in 1..ppdb.get_documents_count().unwrap() + 1 {
+        let doc = ppdb.get_document(i).unwrap();
+        let url = ppdb.get_source_link(&doc).unwrap();
+
+        let expected = doc.name.replace(src_prefix, url_prefix).replace('\\', "/");
+        assert_eq!(url, expected);
+    }
 }

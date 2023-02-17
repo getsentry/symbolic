@@ -650,17 +650,15 @@ impl<'data> SourceBundleDebugSession<'data> {
         Ok(Some(source_content))
     }
 
-    /// Looks up a file's source contents by its full canonicalized path.
-    ///
-    /// The given path must be canonicalized.
-    pub fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, SourceBundleError> {
+    /// See [DebugSession::source_by_path] for more information.
+    pub fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, SourceBundleError> {
         let zip_path = match self.zip_path_by_source_path(path) {
             Some(zip_path) => zip_path,
             None => return Ok(None),
         };
 
-        self.source_by_zip_path(zip_path)
-            .map(|opt| opt.map(Cow::Owned))
+        let content = self.source_by_zip_path(zip_path)?;
+        Ok(content.map(|opt| SourceCode::Content(Cow::Owned(opt))))
     }
 }
 
@@ -677,7 +675,7 @@ impl<'data, 'session> DebugSession<'session> for SourceBundleDebugSession<'data>
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<Cow<'_, str>>, Self::Error> {
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error> {
         self.source_by_path(path)
     }
 }
@@ -1152,11 +1150,12 @@ mod tests {
             .flatten()
             .flat_map(|f| {
                 let path = f.abs_path_str();
-                session
-                    .source_by_path(&path)
-                    .ok()
-                    .flatten()
-                    .map(|c| (path, c.into_owned()))
+                session.source_by_path(&path).ok().flatten().map(|source| {
+                    let SourceCode::Content(text) = source else {
+                         unreachable!();
+                     };
+                    (path, text.into_owned())
+                })
             })
             .collect();
 
