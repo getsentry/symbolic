@@ -170,7 +170,7 @@ fn test_source_links() {
         .get_embedded_sources()
         .unwrap()
         .map(|src| {
-            Path::new(src.unwrap().get_path())
+            Path::new(&src.unwrap().get_path().replace('\\', "/"))
                 .file_name()
                 .unwrap()
                 .to_string_lossy()
