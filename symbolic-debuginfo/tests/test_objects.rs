@@ -787,17 +787,18 @@ fn test_ppdb_source_by_path() -> Result<(), Error> {
 
 #[test]
 fn test_ppdb_source_links() -> Result<(), Error> {
-    let view = ByteView::open(fixture(
-        "windows/Microsoft.Extensions.Logging.EventLog-sourcelink.pdb",
-    ))?;
+    let view = ByteView::open(fixture("ppdb-sourcelink-sample/ppdb-sourcelink-sample.pdb"))?;
     let object = Object::parse(&view)?;
     let session = object.debug_session()?;
 
     let known_embedded_sources = vec![
-        ".NETFramework,Version=v4.6.2.AssemblyAttributes.cs",
-        "Microsoft.Extensions.Logging.EventLog.AssemblyInfo.cs",
-        "LibraryImports.g.cs",
+        ".NETStandard,Version=v2.0.AssemblyAttributes.cs",
+        "ppdb-sourcelink-sample.AssemblyInfo.cs",
     ];
+
+    // Testing this is simple because there's just one prefix rule in this PPDB.
+    let src_prefix = "C:\\dev\\symbolic\\";
+    let url_prefix = "https://raw.githubusercontent.com/getsentry/symbolic/9f7ceefc29da4c45bc802751916dbb3ea72bf08f/";
 
     for file in session.files() {
         let file = file.unwrap();
@@ -809,7 +810,11 @@ fn test_ppdb_source_links() -> Result<(), Error> {
             }
             SourceCode::Url(url) => {
                 // testing this is simple because there's just one prefix rule in this PPDB.
-                assert_eq!(url, format!("https://raw.githubusercontent.com/dotnet/runtime/d099f075e45d2aa6007a22b71b45a08758559f80/{}", &file.path_str()[3..]));
+                let expected = file
+                    .path_str()
+                    .replace(src_prefix, url_prefix)
+                    .replace('\\', "/");
+                assert_eq!(url, expected);
             }
         }
     }

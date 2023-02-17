@@ -180,19 +180,20 @@ fn test_source_links() {
     assert_eq!(
         embedded_sources,
         vec![
-            ".NETFramework,Version=v4.6.2.AssemblyAttributes.cs",
-            "Microsoft.Extensions.Logging.EventLog.AssemblyInfo.cs",
-            "LibraryImports.g.cs"
+            ".NETStandard,Version=v2.0.AssemblyAttributes.cs",
+            "ppdb-sourcelink-sample.AssemblyInfo.cs"
         ]
     );
 
-    let src_prefix = "";
+    // Testing this is simple because there's just one prefix rule in this PPDB.
+    let src_prefix = "C:\\dev\\symbolic\\";
+    let url_prefix = "https://raw.githubusercontent.com/getsentry/symbolic/9f7ceefc29da4c45bc802751916dbb3ea72bf08f/";
 
     for i in 1..ppdb.get_documents_count().unwrap() + 1 {
         let doc = ppdb.get_document(i).unwrap();
         let url = ppdb.get_source_link(&doc).unwrap();
 
-        // testing this is simple because there's just one prefix rule in this PPDB.
-        assert_eq!(url, format!("https://raw.githubusercontent.com/dotnet/runtime/d099f075e45d2aa6007a22b71b45a08758559f80/{}", &doc.name[3..]));
+        let expected = doc.name.replace(src_prefix, url_prefix).replace('\\', "/");
+        assert_eq!(url, expected);
     }
 }
