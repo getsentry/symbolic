@@ -805,7 +805,7 @@ fn test_ppdb_source_links() -> Result<(), Error> {
         if let Some(text) = source.contents() {
             assert!(known_embedded_sources.contains(&file.name_str().as_ref()));
             assert!(!text.is_empty());
-        } else if let Some(url) = source.remote_url() {
+        } else if let Some(url) = source.url() {
             // testing this is simple because there's just one prefix rule in this PPDB.
             let expected = file
                 .path_str()
