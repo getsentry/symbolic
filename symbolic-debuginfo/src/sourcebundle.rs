@@ -195,7 +195,11 @@ where
     D: de::Deserializer<'de>,
 {
     let rv: BTreeMap<String, String> = de::Deserialize::deserialize(deserializer)?;
-    if rv.is_empty() || rv.keys().all(|x| x.chars().all(|c| c.is_ascii_lowercase())) {
+    if rv.is_empty()
+        || rv
+            .keys()
+            .all(|x| !x.chars().any(|c| c.is_ascii_uppercase()))
+    {
         Ok(rv)
     } else {
         Ok(rv
@@ -254,7 +258,7 @@ impl SourceFileInfo {
 
     /// Retrieves the specified header, if it exists.
     pub fn header(&self, header: &str) -> Option<&str> {
-        if header.chars().all(|x| x.is_ascii_lowercase()) {
+        if header.chars().any(|x| x.is_ascii_uppercase()) {
             self.headers.get(header).map(String::as_str)
         } else {
             self.headers.iter().find_map(|(k, v)| {
@@ -281,7 +285,7 @@ impl SourceFileInfo {
     /// - `sourcemap` (and `x-sourcemap`): see [`source_mapping_url`](Self::source_mapping_url)
     pub fn add_header(&mut self, header: String, value: String) {
         let mut header = header;
-        if !header.chars().all(|x| x.is_ascii_lowercase()) {
+        if !header.chars().any(|x| x.is_ascii_uppercase()) {
             header = header.to_ascii_lowercase();
         }
         self.headers.insert(header, value);
@@ -381,6 +385,7 @@ struct SourceBundleManifest {
     pub files: BTreeMap<String, SourceFileInfo>,
 
     /// Arbitrary attributes to include in the bundle.
+    #[serde(flatten)]
     pub attributes: BTreeMap<String, String>,
 }
 
