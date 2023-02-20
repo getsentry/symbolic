@@ -681,6 +681,12 @@ pub enum SourceCode<'a> {
     Url(Cow<'a, str>),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceDescriptor<'source> {
+    pub source_code: SourceCode<'source>,
+    pub debug_id: Option<DebugId>,
+}
+
 /// A stateful session for interfacing with debug information.
 ///
 /// Debug sessions can be obtained via [`ObjectLike::debug_session`]. Since computing a session may
@@ -729,7 +735,7 @@ pub trait DebugSession<'session> {
 
     /// Looks up a file's source by its full canonicalized path.
     /// Returns either source contents, if it was embedded, or a source link.
-    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error>;
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceDescriptor<'_>>, Self::Error>;
 }
 
 /// An object containing debug information.

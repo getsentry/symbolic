@@ -776,7 +776,7 @@ fn test_ppdb_source_by_path() -> Result<(), Error> {
                 "C:\\dev\\sentry-dotnet\\samples\\Sentry.Samples.Console.Basic\\Program.cs",
             )
             .unwrap();
-        match source.unwrap() {
+        match source.unwrap().source_code {
             SourceCode::Content(text) => assert_eq!(text.len(), 204),
             _ => panic!(),
         }
@@ -803,7 +803,12 @@ fn test_ppdb_source_links() -> Result<(), Error> {
     for file in session.files() {
         let file = file.unwrap();
 
-        match session.source_by_path(&file.path_str()).unwrap().unwrap() {
+        match session
+            .source_by_path(&file.path_str())
+            .unwrap()
+            .unwrap()
+            .source_code
+        {
             SourceCode::Content(text) => {
                 assert!(known_embedded_sources.contains(&file.name_str().as_ref()));
                 assert!(!text.is_empty());

@@ -191,9 +191,9 @@ impl<'data> PortablePdbDebugSession<'data> {
     }
 
     /// See [DebugSession::source_by_path] for more information.
-    pub fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, FormatError> {
+    pub fn source_by_path(&self, path: &str) -> Result<Option<SourceDescriptor<'_>>, FormatError> {
         let sources = self.sources.borrow_with(|| self.init_sources());
-        match sources.get(path) {
+        let source = match sources.get(path) {
             None => Ok(None),
             Some(PPDBSource::Embedded(source)) => source
                 .get_contents()
@@ -201,7 +201,13 @@ impl<'data> PortablePdbDebugSession<'data> {
             Some(PPDBSource::Link(document)) => {
                 Ok(self.ppdb.get_source_link(document).map(SourceCode::Url))
             }
-        }
+        }?;
+
+        Ok(source.map(|source_code| SourceDescriptor {
+            source_code,
+            // TODO: Should we use the pdb id for this?
+            debug_id: None,
+        }))
     }
 }
 
@@ -218,7 +224,7 @@ impl<'data, 'session> DebugSession<'session> for PortablePdbDebugSession<'data> 
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error> {
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceDescriptor<'_>>, Self::Error> {
         self.source_by_path(path)
     }
 }

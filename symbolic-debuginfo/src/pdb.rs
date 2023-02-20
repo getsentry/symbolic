@@ -638,7 +638,7 @@ impl<'d> PdbDebugSession<'d> {
     }
 
     /// See [DebugSession::source_by_path] for more information.
-    pub fn source_by_path(&self, _path: &str) -> Result<Option<SourceCode<'_>>, PdbError> {
+    pub fn source_by_path(&self, _path: &str) -> Result<Option<SourceDescriptor<'_>>, PdbError> {
         Ok(None)
     }
 }
@@ -656,7 +656,7 @@ impl<'session> DebugSession<'session> for PdbDebugSession<'_> {
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error> {
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceDescriptor<'_>>, Self::Error> {
         self.source_by_path(path)
     }
 }
