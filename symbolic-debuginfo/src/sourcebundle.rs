@@ -189,6 +189,79 @@ pub struct SourceFileInfo {
     headers: BTreeMap<String, String>,
 }
 
+/// A descriptor that provides information about a source file.
+///
+/// This descriptor is returned from [`source_by_path`](DebugSession::source_by_path)
+/// and friends.
+///
+/// This descriptor holds information that can be used to retrieve information
+/// about the source file.  A descriptor has to have at least one of the following
+/// to be valid:
+///
+/// - [`contents`](Self::contents)
+/// - [`remote_url`](Self::remote_url)
+/// - [`debug_id`](Self::debug_id)
+///
+/// Debug sessions are not permitted to return invalid source file descriptors.
+pub struct SourceFileDescriptor<'a> {
+    contents: Option<Cow<'a, str>>,
+    remote_url: Option<Cow<'a, str>>,
+    file_info: Option<&'a SourceFileInfo>,
+}
+
+impl<'a> SourceFileDescriptor<'a> {
+    /// Creates an embedded source file descriptor.
+    pub(crate) fn new_embedded(
+        content: Cow<'a, str>,
+        file_info: Option<&'a SourceFileInfo>,
+    ) -> SourceFileDescriptor<'a> {
+        SourceFileDescriptor {
+            contents: Some(content),
+            remote_url: None,
+            file_info,
+        }
+    }
+
+    /// Creates an remote source file descriptor.
+    pub(crate) fn new_remote(remote_url: Cow<'a, str>) -> SourceFileDescriptor<'a> {
+        SourceFileDescriptor {
+            contents: None,
+            remote_url: Some(remote_url),
+            file_info: None,
+        }
+    }
+
+    /// The type of the file the descriptor points to.
+    pub fn ty(&self) -> SourceFileType {
+        self.file_info
+            .and_then(|x| x.ty())
+            .unwrap_or(SourceFileType::Source)
+    }
+
+    /// The contents of the source file as string, if it's available.
+    pub fn contents(&self) -> Option<&str> {
+        self.contents.as_deref()
+    }
+
+    /// The remote URL that contains the source.
+    ///
+    /// There are cases where the descriptor itself is a reference in which case
+    /// an external service needs to be consulted to retrieve the information.
+    pub fn remote_url(&self) -> Option<&str> {
+        self.remote_url.as_deref()
+    }
+
+    /// The debug ID of the file if available.
+    pub fn debug_id(&self) -> Option<DebugId> {
+        self.file_info.and_then(|x| x.debug_id())
+    }
+
+    /// The source mapping URL reference of the file.
+    pub fn source_mapping_url(&self) -> Option<&str> {
+        self.file_info.and_then(|x| x.source_mapping_url())
+    }
+}
+
 /// Helper to ensure that header keys are normalized to lowercase
 fn deserialize_headers<'de, D>(deserializer: D) -> Result<BTreeMap<String, String>, D::Error>
 where
@@ -752,15 +825,24 @@ impl<'data> SourceBundleDebugSession<'data> {
         Ok(Some(source_content))
     }
 
+    /// File info by zip path.
+    fn file_info_by_zip_path(&self, zip_path: &str) -> Option<&SourceFileInfo> {
+        self.manifest.files.get(zip_path)
+    }
+
     /// See [DebugSession::source_by_path] for more information.
-    pub fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, SourceBundleError> {
+    pub fn source_by_path(
+        &self,
+        path: &str,
+    ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
         let zip_path = match self.zip_path_by_source_path(path) {
             Some(zip_path) => zip_path,
             None => return Ok(None),
         };
 
         let content = self.source_by_zip_path(zip_path)?;
-        Ok(content.map(|opt| SourceCode::Content(Cow::Owned(opt))))
+        let info = self.file_info_by_zip_path(zip_path);
+        Ok(content.map(|opt| SourceFileDescriptor::new_embedded(Cow::Owned(opt), info)))
     }
 
     /// Looks up some source by debug ID and file type.
@@ -780,13 +862,14 @@ impl<'data> SourceBundleDebugSession<'data> {
         &self,
         debug_id: DebugId,
         ty: SourceFileType,
-    ) -> Result<Option<SourceCode<'_>>, SourceBundleError> {
+    ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
         let zip_path = match self.zip_path_by_debug_id(debug_id, ty) {
             Some(zip_path) => zip_path,
             None => return Ok(None),
         };
         let content = self.source_by_zip_path(zip_path)?;
-        Ok(content.map(|opt| SourceCode::Content(Cow::Owned(opt))))
+        let info = self.file_info_by_zip_path(zip_path);
+        Ok(content.map(|opt| SourceFileDescriptor::new_embedded(Cow::Owned(opt), info)))
     }
 }
 
@@ -803,7 +886,7 @@ impl<'data, 'session> DebugSession<'session> for SourceBundleDebugSession<'data>
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error> {
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error> {
         self.source_by_path(path)
     }
 }
@@ -1269,7 +1352,8 @@ mod tests {
             )
             .unwrap()
             .expect("should exist");
-        assert_eq!(f, SourceCode::Content(Cow::Borrowed("filecontents")));
+        assert_eq!(f.contents(), Some("filecontents"));
+        assert_eq!(f.ty(), SourceFileType::MinifiedSource);
 
         assert!(sess
             .source_by_debug_id(
@@ -1326,12 +1410,11 @@ mod tests {
             .flatten()
             .flat_map(|f| {
                 let path = f.abs_path_str();
-                session.source_by_path(&path).ok().flatten().map(|source| {
-                    let SourceCode::Content(text) = source else {
-                         unreachable!();
-                     };
-                    (path, text.into_owned())
-                })
+                session
+                    .source_by_path(&path)
+                    .ok()
+                    .flatten()
+                    .map(|source| (path, source.contents().unwrap().to_string()))
             })
             .collect();
 

@@ -6,6 +6,8 @@ use std::str::FromStr;
 
 use symbolic_common::{clean_path, join_path, Arch, CodeId, DebugId, Name};
 
+use crate::sourcebundle::SourceFileDescriptor;
+
 pub(crate) trait Parse<'data>: Sized {
     type Error;
 
@@ -670,17 +672,6 @@ impl fmt::Debug for Function<'_> {
 /// A dynamically dispatched iterator over items with the given lifetime.
 pub type DynIterator<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 
-/// Represents a source file referenced by a debug information object file.
-#[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SourceCode<'a> {
-    /// Verbatim source code/file contents.
-    Content(Cow<'a, str>),
-
-    /// Url (usually https) where the content can be fetched from.
-    Url(Cow<'a, str>),
-}
-
 /// A stateful session for interfacing with debug information.
 ///
 /// Debug sessions can be obtained via [`ObjectLike::debug_session`]. Since computing a session may
@@ -728,8 +719,10 @@ pub trait DebugSession<'session> {
     fn files(&'session self) -> Self::FileIterator;
 
     /// Looks up a file's source by its full canonicalized path.
-    /// Returns either source contents, if it was embedded, or a source link.
-    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error>;
+    ///
+    /// Returns a descriptor that has all the information available of the source.  It can
+    /// either contain the source contents directly, if it was embedded, or a source link.
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error>;
 }
 
 /// An object containing debug information.

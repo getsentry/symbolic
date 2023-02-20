@@ -24,6 +24,7 @@ use symbolic_common::{
 
 use crate::base::*;
 use crate::function_stack::FunctionStack;
+use crate::sourcebundle::SourceFileDescriptor;
 use crate::Parse;
 
 type Pdb<'data> = pdb::PDB<'data, Cursor<&'data [u8]>>;
@@ -638,7 +639,10 @@ impl<'d> PdbDebugSession<'d> {
     }
 
     /// See [DebugSession::source_by_path] for more information.
-    pub fn source_by_path(&self, _path: &str) -> Result<Option<SourceCode<'_>>, PdbError> {
+    pub fn source_by_path(
+        &self,
+        _path: &str,
+    ) -> Result<Option<SourceFileDescriptor<'_>>, PdbError> {
         Ok(None)
     }
 }
@@ -656,7 +660,7 @@ impl<'session> DebugSession<'session> for PdbDebugSession<'_> {
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error> {
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error> {
         self.source_by_path(path)
     }
 }

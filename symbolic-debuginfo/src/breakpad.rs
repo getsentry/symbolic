@@ -13,6 +13,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameManglin
 
 use crate::base::*;
 use crate::function_builder::FunctionBuilder;
+use crate::sourcebundle::SourceFileDescriptor;
 use crate::Parse;
 
 #[derive(Clone, Debug)]
@@ -1277,7 +1278,10 @@ impl<'data> BreakpadDebugSession<'data> {
     }
 
     /// See [DebugSession::source_by_path] for more information.
-    pub fn source_by_path(&self, _path: &str) -> Result<Option<SourceCode<'_>>, BreakpadError> {
+    pub fn source_by_path(
+        &self,
+        _path: &str,
+    ) -> Result<Option<SourceFileDescriptor<'_>>, BreakpadError> {
         Ok(None)
     }
 }
@@ -1295,7 +1299,7 @@ impl<'data, 'session> DebugSession<'session> for BreakpadDebugSession<'data> {
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error> {
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error> {
         self.source_by_path(path)
     }
 }
