@@ -270,7 +270,7 @@ impl SourceFileInfo {
     /// Adds a custom attribute following header conventions.
     ///
     /// Header keys are converted to lowercase before writing as this is
-    /// the canonical format for headers however the file format does
+    /// the canonical format for headers. However, the file format does
     /// support headers to be case insensitive and they will be lower cased
     /// upon reading.
     ///
