@@ -285,7 +285,7 @@ impl SourceFileInfo {
     /// - `sourcemap` (and `x-sourcemap`): see [`source_mapping_url`](Self::source_mapping_url)
     pub fn add_header(&mut self, header: String, value: String) {
         let mut header = header;
-        if !header.chars().any(|x| x.is_ascii_uppercase()) {
+        if header.chars().any(|x| x.is_ascii_uppercase()) {
             header = header.to_ascii_lowercase();
         }
         self.headers.insert(header, value);
