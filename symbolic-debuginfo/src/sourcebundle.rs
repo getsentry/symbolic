@@ -54,7 +54,7 @@ use std::sync::Arc;
 use lazycell::LazyCell;
 use parking_lot::Mutex;
 use regex::Regex;
-use serde::{de, Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use zip::{write::FileOptions, ZipWriter};
 
@@ -192,9 +192,9 @@ pub struct SourceFileInfo {
 /// Helper to ensure that header keys are normalized to lowercase
 fn deserialize_headers<'de, D>(deserializer: D) -> Result<BTreeMap<String, String>, D::Error>
 where
-    D: de::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
-    let rv: BTreeMap<String, String> = de::Deserialize::deserialize(deserializer)?;
+    let rv: BTreeMap<String, String> = Deserialize::deserialize(deserializer)?;
     if rv.is_empty()
         || rv
             .keys()
