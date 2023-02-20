@@ -282,7 +282,7 @@ impl SourceFileInfo {
     pub fn add_header(&mut self, header: String, value: String) {
         let mut header = header;
         if !header.chars().all(|x| x.is_ascii_lowercase()) {
-            header = header.to_ascii_uppercase();
+            header = header.to_ascii_lowercase();
         }
         self.headers.insert(header, value);
     }
