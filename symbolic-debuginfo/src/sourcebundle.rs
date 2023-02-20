@@ -258,7 +258,7 @@ impl SourceFileInfo {
 
     /// Retrieves the specified header, if it exists.
     pub fn header(&self, header: &str) -> Option<&str> {
-        if header.chars().any(|x| x.is_ascii_uppercase()) {
+        if !header.chars().any(|x| x.is_ascii_uppercase()) {
             self.headers.get(header).map(String::as_str)
         } else {
             self.headers.iter().find_map(|(k, v)| {
