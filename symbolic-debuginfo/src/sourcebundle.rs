@@ -33,6 +33,14 @@
 //! [`code_id`]: struct.SourceBundle.html#method.code_id
 //! [`SourceBundle::debug_session`]: struct.SourceBundle.html#method.debug_session
 //! [`SourceBundleWriter`]: struct.SourceBundleWriter.html
+//!
+//! ## Artifact Bundles
+//!
+//! Source bundles share the format with a related concept, called an "artifact bundle".  Artifact
+//! bundles are essentially source bundles but they typically contain sources referred to by
+//! JavaScript source maps and source maps themselves.  For instance in an artifact
+//! bundle a file entry has a `url` and might carry `headers` or individual debug IDs
+//! per source file.
 
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -46,7 +54,7 @@ use std::sync::Arc;
 use lazycell::LazyCell;
 use parking_lot::Mutex;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Serialize};
 use thiserror::Error;
 use zip::{write::FileOptions, ZipWriter};
 
@@ -145,7 +153,7 @@ where
 }
 
 /// The type of a [`SourceFileInfo`](struct.SourceFileInfo.html).
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum SourceFileType {
     /// Regular source file.
@@ -173,8 +181,28 @@ pub struct SourceFileInfo {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     url: String,
 
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        deserialize_with = "deserialize_headers"
+    )]
     headers: BTreeMap<String, String>,
+}
+
+/// Helper to ensure that header keys are normalized to lowercase
+fn deserialize_headers<'de, D>(deserializer: D) -> Result<BTreeMap<String, String>, D::Error>
+where
+    D: de::Deserializer<'de>,
+{
+    let rv: BTreeMap<String, String> = de::Deserialize::deserialize(deserializer)?;
+    if rv.is_empty() || rv.keys().all(|x| x.chars().all(|c| c.is_ascii_lowercase())) {
+        Ok(rv)
+    } else {
+        Ok(rv
+            .into_iter()
+            .map(|(k, v)| (k.to_ascii_lowercase(), v))
+            .collect())
+    }
 }
 
 impl SourceFileInfo {
@@ -226,12 +254,56 @@ impl SourceFileInfo {
 
     /// Retrieves the specified header, if it exists.
     pub fn header(&self, header: &str) -> Option<&str> {
-        self.headers.get(header).map(String::as_str)
+        if header.chars().all(|x| x.is_ascii_lowercase()) {
+            self.headers.get(header).map(String::as_str)
+        } else {
+            self.headers.iter().find_map(|(k, v)| {
+                if k.eq_ignore_ascii_case(header) {
+                    Some(v.as_str())
+                } else {
+                    None
+                }
+            })
+        }
     }
 
     /// Adds a custom attribute following header conventions.
+    ///
+    /// Header keys are converted to lowercase before writing as this is
+    /// the canonical format for headers however the file format does
+    /// support headers to be case insensitive and they will be lower cased
+    /// upon reading.
+    ///
+    /// Headers on files are primarily be used to add auxiliary information
+    /// to files.  The following headers are known and processed:
+    ///
+    /// - `debug-id`: see [`debug_id`](Self::debug_id)
+    /// - `sourcemap` (and `x-sourcemap`): see [`source_mapping_url`](Self::source_mapping_url)
     pub fn add_header(&mut self, header: String, value: String) {
+        let mut header = header;
+        if !header.chars().all(|x| x.is_ascii_lowercase()) {
+            header = header.to_ascii_uppercase();
+        }
         self.headers.insert(header, value);
+    }
+
+    /// The debug ID of this minified source or sourcemap if it has any.
+    ///
+    /// Files have a debug ID if they have a header with the key `debug-id`.
+    /// At present debug IDs in source bundles are only ever given to minified
+    /// source files.
+    pub fn debug_id(&self) -> Option<DebugId> {
+        self.header("debug-id").and_then(|x| x.parse().ok())
+    }
+
+    /// The source mapping URL of the given minified source.
+    ///
+    /// Files have a source mapping URL if they have a header with the
+    /// key `sourcemap` (or the `x-sourcemap` legacy header) as part the
+    /// source map specification.
+    pub fn source_mapping_url(&self) -> Option<&str> {
+        self.header("sourcemap")
+            .or_else(|| self.header("x-sourcemap"))
     }
 
     /// Returns `true` if this instance does not carry any information.
@@ -309,7 +381,6 @@ struct SourceBundleManifest {
     pub files: BTreeMap<String, SourceFileInfo>,
 
     /// Arbitrary attributes to include in the bundle.
-    #[serde(flatten)]
     pub attributes: BTreeMap<String, String>,
 }
 
@@ -481,6 +552,7 @@ impl<'data> SourceBundle<'data> {
             manifest: self.manifest.clone(),
             archive: self.archive.clone(),
             files_by_path: LazyCell::new(),
+            files_by_debug_id: LazyCell::new(),
         })
     }
 
@@ -600,6 +672,7 @@ pub struct SourceBundleDebugSession<'data> {
     manifest: Arc<SourceBundleManifest>,
     archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>>>,
     files_by_path: LazyCell<HashMap<String, String>>,
+    files_by_debug_id: LazyCell<HashMap<(DebugId, SourceFileType), String>>,
 }
 
 impl<'data> SourceBundleDebugSession<'data> {
@@ -615,25 +688,49 @@ impl<'data> SourceBundleDebugSession<'data> {
         std::iter::empty()
     }
 
-    /// Create a reverse mapping of source paths to ZIP paths.
-    fn get_files_by_path(&self) -> HashMap<String, String> {
-        let files = &self.manifest.files;
-        let mut files_by_path = HashMap::with_capacity(files.len());
+    /// Get a reverse mapping of source paths to ZIP paths.
+    fn files_by_path(&self) -> &HashMap<String, String> {
+        self.files_by_path.borrow_with(|| {
+            let files = &self.manifest.files;
+            let mut files_by_path = HashMap::with_capacity(files.len());
 
-        for (zip_path, file_info) in files {
-            if !file_info.path.is_empty() {
-                files_by_path.insert(file_info.path.clone(), zip_path.clone());
+            for (zip_path, file_info) in files {
+                if !file_info.path.is_empty() {
+                    files_by_path.insert(file_info.path.clone(), zip_path.clone());
+                }
             }
-        }
 
-        files_by_path
+            files_by_path
+        })
+    }
+
+    /// Get a reverse mapping of debug ID to ZIP paths.
+    fn files_by_debug_id(&self) -> &HashMap<(DebugId, SourceFileType), String> {
+        self.files_by_debug_id.borrow_with(|| {
+            let files = &self.manifest.files;
+            let mut files_by_debug_id = HashMap::new();
+
+            for (zip_path, file_info) in files {
+                if let (Some(debug_id), Some(ty)) = (file_info.debug_id(), file_info.ty()) {
+                    files_by_debug_id.insert((debug_id, ty), zip_path.clone());
+                }
+            }
+
+            files_by_debug_id
+        })
     }
 
     /// Get the path of a file in this bundle by its logical path.
     fn zip_path_by_source_path(&self, path: &str) -> Option<&str> {
-        self.files_by_path
-            .borrow_with(|| self.get_files_by_path())
+        self.files_by_path()
             .get(path)
+            .map(|zip_path| zip_path.as_str())
+    }
+
+    /// Get the path of a file in this bundle by its Debug ID and source file type.
+    fn zip_path_by_debug_id(&self, debug_id: DebugId, ty: SourceFileType) -> Option<&str> {
+        self.files_by_debug_id()
+            .get(&(debug_id, ty))
             .map(|zip_path| zip_path.as_str())
     }
 
@@ -657,6 +754,32 @@ impl<'data> SourceBundleDebugSession<'data> {
             None => return Ok(None),
         };
 
+        let content = self.source_by_zip_path(zip_path)?;
+        Ok(content.map(|opt| SourceCode::Content(Cow::Owned(opt))))
+    }
+
+    /// Looks up some source by debug ID and file type.
+    ///
+    /// Lookups by [`DebugId`] require knowledge of the file that is supposed to be
+    /// looked up as multiple files (one per type) can share the same debug ID.
+    /// Special care needs to be taken about [`SourceFileType::IndexedRamBundle`]
+    /// and [`SourceFileType::SourceMap`] which are different file types despite
+    /// the name of it.
+    ///
+    /// # Note on Abstractions
+    ///
+    /// This method is currently not exposed via a standardized debug session
+    /// as it's primarily used for the JavaScript processing system which uses
+    /// different abstractions.
+    pub fn source_by_debug_id(
+        &self,
+        debug_id: DebugId,
+        ty: SourceFileType,
+    ) -> Result<Option<SourceCode<'_>>, SourceBundleError> {
+        let zip_path = match self.zip_path_by_debug_id(debug_id, ty) {
+            Some(zip_path) => zip_path,
+            None => return Ok(None),
+        };
         let content = self.source_by_zip_path(zip_path)?;
         Ok(content.map(|opt| SourceCode::Content(Cow::Owned(opt))))
     }
@@ -1111,6 +1234,46 @@ mod tests {
         assert!(bundle.has_file("bar.txt.1"));
 
         bundle.finish()?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_debug_id() -> Result<(), SourceBundleError> {
+        let mut writer = Cursor::new(Vec::new());
+        let mut bundle = SourceBundleWriter::start(&mut writer)?;
+
+        let mut info = SourceFileInfo::default();
+        info.set_ty(SourceFileType::MinifiedSource);
+        info.add_header(
+            "debug-id".into(),
+            "5e618b9f-54a9-4389-b196-519819dd7c47".into(),
+        );
+        info.add_header("sourcemap".into(), "bar.js.min".into());
+        bundle.add_file("bar.js", &b"filecontents"[..], info)?;
+        assert!(bundle.has_file("bar.js"));
+
+        bundle.finish()?;
+        let bundle_bytes = writer.into_inner();
+        let bundle = SourceBundle::parse(&bundle_bytes)?;
+
+        let sess = bundle.debug_session().unwrap();
+        let f = sess
+            .source_by_debug_id(
+                "5e618b9f-54a9-4389-b196-519819dd7c47".parse().unwrap(),
+                SourceFileType::MinifiedSource,
+            )
+            .unwrap()
+            .expect("should exist");
+        assert_eq!(f, SourceCode::Content(Cow::Borrowed("filecontents")));
+
+        assert!(sess
+            .source_by_debug_id(
+                "5e618b9f-54a9-4389-b196-519819dd7c47".parse().unwrap(),
+                SourceFileType::Source
+            )
+            .unwrap()
+            .is_none());
+
         Ok(())
     }
 

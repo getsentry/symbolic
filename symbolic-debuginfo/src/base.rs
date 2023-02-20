@@ -672,7 +672,7 @@ pub type DynIterator<'a, T> = Box<dyn Iterator<Item = T> + 'a>;
 
 /// Represents a source file referenced by a debug information object file.
 #[non_exhaustive]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SourceCode<'a> {
     /// Verbatim source code/file contents.
     Content(Cow<'a, str>),
