@@ -400,27 +400,33 @@ impl<'a> SourceFileDescriptor<'a> {
     /// The debug ID of the file if available.
     ///
     /// For source maps or minified source files symbolic supports embedded debug IDs.  If they
-    /// are in use, the debug ID is returned from here.
+    /// are in use, the debug ID is returned from here.  The debug ID is discovered from the
+    /// file's `debug-id` header or the embedded `debugId` reference in the file body.
     pub fn debug_id(&self) -> Option<DebugId> {
-        self.file_info.and_then(|x| x.debug_id())
+        self.file_info.and_then(|x| x.debug_id()).or_else(|| {
+            if matches!(self.ty(), SourceFileType::MinifiedSource) {
+                self.contents().and_then(discover_debug_id)
+            } else {
+                None
+            }
+        })
     }
 
     /// The source mapping URL reference of the file.
     ///
     /// This is used to refer to a source map from a minified file.  Only minified source files
-    /// will have a relationship to a source map.
+    /// will have a relationship to a source map.  The source mapping is discovered either from
+    /// a `sourcemap` header in the source manifest, or the `sourceMappingURL` reference in the body.
     pub fn source_mapping_url(&self) -> Option<&str> {
-        if let Some(file_info) = self.file_info {
-            if let Some(url) = file_info.source_mapping_url() {
-                return Some(url);
-            }
-        }
-        if let Some(ref contents) = self.contents {
-            if let Some(url) = discover_sourcemaps_location(contents) {
-                return Some(url);
-            }
-        }
-        None
+        self.file_info
+            .and_then(|x| x.source_mapping_url())
+            .or_else(|| {
+                if matches!(self.ty(), SourceFileType::MinifiedSource) {
+                    self.contents().and_then(discover_sourcemaps_location)
+                } else {
+                    None
+                }
+            })
     }
 }
 
@@ -429,6 +435,16 @@ fn discover_sourcemaps_location(contents: &str) -> Option<&str> {
     for line in contents.lines().rev() {
         if line.starts_with("//# sourceMappingURL=") || line.starts_with("//@ sourceMappingURL=") {
             return Some(line[21..].trim());
+        }
+    }
+    None
+}
+
+/// Parses a debugId comment in a file to discover a sourcemap debug ID.
+fn discover_debug_id(contents: &str) -> Option<DebugId> {
+    for line in contents.lines().rev() {
+        if let Some(rest) = line.strip_prefix("//# debugId=") {
+            return rest.trim().parse().ok();
         }
     }
     None
@@ -1416,7 +1432,7 @@ mod tests {
         info.set_ty(SourceFileType::MinifiedSource);
         bundle.add_file(
             "bar.js",
-            &b"filecontents\n//@ sourceMappingURL=bar.js.map"[..],
+            &b"filecontents\n//# sourceMappingURL=bar.js.map"[..],
             info,
         )?;
 
@@ -1432,6 +1448,38 @@ mod tests {
         assert_eq!(f.ty(), SourceFileType::MinifiedSource);
         assert_eq!(f.url(), Some("https://example.com/bar.min.js"));
         assert_eq!(f.source_mapping_url(), Some("bar.js.map"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_embedded_debug_id() -> Result<(), SourceBundleError> {
+        let mut writer = Cursor::new(Vec::new());
+        let mut bundle = SourceBundleWriter::start(&mut writer)?;
+
+        let mut info = SourceFileInfo::default();
+        info.set_url("https://example.com/bar.min.js".into());
+        info.set_ty(SourceFileType::MinifiedSource);
+        bundle.add_file(
+            "bar.js",
+            &b"filecontents\n//# debugId=5b65abfb23384f0bb3b964c8f734d43f"[..],
+            info,
+        )?;
+
+        bundle.finish()?;
+        let bundle_bytes = writer.into_inner();
+        let bundle = SourceBundle::parse(&bundle_bytes)?;
+
+        let sess = bundle.debug_session().unwrap();
+        let f = sess
+            .source_by_url("https://example.com/bar.min.js")
+            .unwrap()
+            .expect("should exist");
+        assert_eq!(f.ty(), SourceFileType::MinifiedSource);
+        assert_eq!(
+            f.debug_id(),
+            Some("5b65abfb-2338-4f0b-b3b9-64c8f734d43f".parse().unwrap())
+        );
 
         Ok(())
     }
