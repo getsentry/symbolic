@@ -781,7 +781,7 @@ where
     }
 
     /// This controls if source files should be scanned for Il2cpp-specific source annotations,
-    /// and the referenced C# files should be bundled ups as well.
+    /// and the referenced C# files should be bundled up as well.
     pub fn collect_il2cpp_sources(&mut self, collect_il2cpp: bool) {
         self.collect_il2cpp = collect_il2cpp;
     }
@@ -893,7 +893,7 @@ where
         O: ObjectLike<'data, 'object, Error = E>,
         E: std::error::Error + Send + Sync + 'static,
     {
-        self.write_object_with_filter(object, object_name, |_| true)
+        self.write_object_with_filter(object, object_name, |_, _| true)
     }
 
     /// Writes a single object into the bundle.
@@ -913,7 +913,7 @@ where
     where
         O: ObjectLike<'data, 'object, Error = E>,
         E: std::error::Error + Send + Sync + 'static,
-        F: FnMut(&FileEntry) -> bool,
+        F: FnMut(&FileEntry, &Option<SourceCode<'_>>) -> bool,
     {
         let mut files_handled = BTreeSet::new();
         let mut referenced_files = BTreeSet::new();
@@ -938,11 +938,19 @@ where
                 continue;
             }
 
-            let source = if (filename.starts_with('<') && filename.ends_with('>')) || !filter(&file)
-            {
+            let source = if filename.starts_with('<') && filename.ends_with('>') {
                 None
             } else {
-                std::fs::read(&filename).ok()
+                let source_from_object = session
+                    .source_by_path(&filename)
+                    .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadDebugFile, e))?;
+                if filter(&file, &source_from_object) {
+                    // Note: we could also use source code directly from the object, but that's not
+                    // what happened here previously - only collected locally present files.
+                    std::fs::read(&filename).ok()
+                } else {
+                    None
+                }
             };
 
             if let Some(source) = source {
