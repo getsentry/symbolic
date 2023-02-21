@@ -57,6 +57,8 @@ pub mod elf;
 pub mod function_builder;
 #[cfg(feature = "ms")]
 pub(crate) mod function_stack;
+#[cfg(feature = "js")]
+pub mod js;
 #[cfg(feature = "macho")]
 pub mod macho;
 #[cfg(feature = "ms")]

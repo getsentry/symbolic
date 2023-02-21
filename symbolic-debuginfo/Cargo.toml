@@ -21,7 +21,7 @@ exclude = ["tests/**/*"]
 all-features = true
 
 [features]
-default = ["breakpad", "elf", "macho", "ms", "ppdb", "sourcebundle", "wasm"]
+default = ["breakpad", "elf", "macho", "ms", "ppdb", "sourcebundle", "js", "wasm"]
 # Breakpad text format parsing and processing
 breakpad = ["nom", "nom-supreme", "regex"]
 # DWARF processing.
@@ -70,8 +70,11 @@ sourcebundle = [
     "regex",
     "serde_json",
     "zip",
-    "debugid/serde"
+    "js",
+    "debugid/serde",
 ]
+# JavaScript stuff
+js = []
 # WASM processing
 wasm = ["bitvec", "dwarf", "wasmparser"]
 
