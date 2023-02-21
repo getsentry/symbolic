@@ -57,6 +57,8 @@ pub mod elf;
 pub mod function_builder;
 #[cfg(feature = "ms")]
 pub(crate) mod function_stack;
+#[cfg(feature = "js")]
+pub mod js;
 #[cfg(feature = "macho")]
 pub mod macho;
 #[cfg(feature = "ms")]
@@ -67,8 +69,6 @@ pub mod pe;
 pub mod ppdb;
 #[cfg(feature = "sourcebundle")]
 pub mod sourcebundle;
-#[cfg(feature = "js")]
-pub mod js;
 #[cfg(feature = "wasm")]
 pub mod wasm;
 
