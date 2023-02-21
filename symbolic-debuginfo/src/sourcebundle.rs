@@ -33,6 +33,14 @@
 //! [`code_id`]: struct.SourceBundle.html#method.code_id
 //! [`SourceBundle::debug_session`]: struct.SourceBundle.html#method.debug_session
 //! [`SourceBundleWriter`]: struct.SourceBundleWriter.html
+//!
+//! ## Artifact Bundles
+//!
+//! Source bundles share the format with a related concept, called an "artifact bundle".  Artifact
+//! bundles are essentially source bundles but they typically contain sources referred to by
+//! JavaScript source maps and source maps themselves.  For instance in an artifact
+//! bundle a file entry has a `url` and might carry `headers` or individual debug IDs
+//! per source file.
 
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -46,7 +54,7 @@ use std::sync::Arc;
 use lazycell::LazyCell;
 use parking_lot::Mutex;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use zip::{write::FileOptions, ZipWriter};
 
@@ -145,7 +153,7 @@ where
 }
 
 /// The type of a [`SourceFileInfo`](struct.SourceFileInfo.html).
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum SourceFileType {
     /// Regular source file.
@@ -173,8 +181,32 @@ pub struct SourceFileInfo {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     url: String,
 
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        deserialize_with = "deserialize_headers"
+    )]
     headers: BTreeMap<String, String>,
+}
+
+/// Helper to ensure that header keys are normalized to lowercase
+fn deserialize_headers<'de, D>(deserializer: D) -> Result<BTreeMap<String, String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let rv: BTreeMap<String, String> = Deserialize::deserialize(deserializer)?;
+    if rv.is_empty()
+        || rv
+            .keys()
+            .all(|x| !x.chars().any(|c| c.is_ascii_uppercase()))
+    {
+        Ok(rv)
+    } else {
+        Ok(rv
+            .into_iter()
+            .map(|(k, v)| (k.to_ascii_lowercase(), v))
+            .collect())
+    }
 }
 
 impl SourceFileInfo {
@@ -226,18 +258,180 @@ impl SourceFileInfo {
 
     /// Retrieves the specified header, if it exists.
     pub fn header(&self, header: &str) -> Option<&str> {
-        self.headers.get(header).map(String::as_str)
+        if !header.chars().any(|x| x.is_ascii_uppercase()) {
+            self.headers.get(header).map(String::as_str)
+        } else {
+            self.headers.iter().find_map(|(k, v)| {
+                if k.eq_ignore_ascii_case(header) {
+                    Some(v.as_str())
+                } else {
+                    None
+                }
+            })
+        }
     }
 
     /// Adds a custom attribute following header conventions.
+    ///
+    /// Header keys are converted to lowercase before writing as this is
+    /// the canonical format for headers. However, the file format does
+    /// support headers to be case insensitive and they will be lower cased
+    /// upon reading.
+    ///
+    /// Headers on files are primarily be used to add auxiliary information
+    /// to files.  The following headers are known and processed:
+    ///
+    /// - `debug-id`: see [`debug_id`](Self::debug_id)
+    /// - `sourcemap` (and `x-sourcemap`): see [`source_mapping_url`](Self::source_mapping_url)
     pub fn add_header(&mut self, header: String, value: String) {
+        let mut header = header;
+        if header.chars().any(|x| x.is_ascii_uppercase()) {
+            header = header.to_ascii_lowercase();
+        }
         self.headers.insert(header, value);
+    }
+
+    /// The debug ID of this minified source or sourcemap if it has any.
+    ///
+    /// Files have a debug ID if they have a header with the key `debug-id`.
+    /// At present debug IDs in source bundles are only ever given to minified
+    /// source files.
+    pub fn debug_id(&self) -> Option<DebugId> {
+        self.header("debug-id").and_then(|x| x.parse().ok())
+    }
+
+    /// The source mapping URL of the given minified source.
+    ///
+    /// Files have a source mapping URL if they have a header with the
+    /// key `sourcemap` (or the `x-sourcemap` legacy header) as part the
+    /// source map specification.
+    pub fn source_mapping_url(&self) -> Option<&str> {
+        self.header("sourcemap")
+            .or_else(|| self.header("x-sourcemap"))
     }
 
     /// Returns `true` if this instance does not carry any information.
     pub fn is_empty(&self) -> bool {
         self.path.is_empty() && self.ty.is_none() && self.headers.is_empty()
     }
+}
+
+/// A descriptor that provides information about a source file.
+///
+/// This descriptor is returned from [`source_by_path`](DebugSession::source_by_path)
+/// and friends.
+///
+/// This descriptor holds information that can be used to retrieve information
+/// about the source file.  A descriptor has to have at least one of the following
+/// to be valid:
+///
+/// - [`contents`](Self::contents)
+/// - [`url`](Self::url)
+/// - [`debug_id`](Self::debug_id)
+///
+/// Debug sessions are not permitted to return invalid source file descriptors.
+pub struct SourceFileDescriptor<'a> {
+    contents: Option<Cow<'a, str>>,
+    remote_url: Option<Cow<'a, str>>,
+    file_info: Option<&'a SourceFileInfo>,
+}
+
+impl<'a> SourceFileDescriptor<'a> {
+    /// Creates an embedded source file descriptor.
+    pub(crate) fn new_embedded(
+        content: Cow<'a, str>,
+        file_info: Option<&'a SourceFileInfo>,
+    ) -> SourceFileDescriptor<'a> {
+        SourceFileDescriptor {
+            contents: Some(content),
+            remote_url: None,
+            file_info,
+        }
+    }
+
+    /// Creates an remote source file descriptor.
+    pub(crate) fn new_remote(remote_url: Cow<'a, str>) -> SourceFileDescriptor<'a> {
+        SourceFileDescriptor {
+            contents: None,
+            remote_url: Some(remote_url),
+            file_info: None,
+        }
+    }
+
+    /// The type of the file the descriptor points to.
+    pub fn ty(&self) -> SourceFileType {
+        self.file_info
+            .and_then(|x| x.ty())
+            .unwrap_or(SourceFileType::Source)
+    }
+
+    /// The contents of the source file as string, if it's available.
+    ///
+    /// Portable PDBs for instance will often have source information, but rely on
+    /// remote file fetching via Sourcelink to get to the contents.  In that case
+    /// a file descriptor is created, but the contents are missing and instead the
+    /// [`url`](Self::url) can be used.
+    pub fn contents(&self) -> Option<&str> {
+        self.contents.as_deref()
+    }
+
+    /// If available returns the URL of this source.
+    ///
+    /// For certain files this is the canoncial URL of where the file is placed.  This
+    /// for instance is the case for minified JavaScript files or source maps which might
+    /// have a canonical URL.  In case of portable PDBs this is also where you would fetch
+    /// the source code from if source links are used.
+    pub fn url(&self) -> Option<&str> {
+        if let Some(ref url) = self.remote_url {
+            Some(url)
+        } else {
+            self.file_info.and_then(|x| x.url())
+        }
+    }
+
+    /// If available returns the file path of this source.
+    ///
+    /// For source bundles that are a companion file to a debug file, this is the canonical
+    /// path of the source file.
+    pub fn path(&self) -> Option<&str> {
+        self.file_info.and_then(|x| x.path())
+    }
+
+    /// The debug ID of the file if available.
+    ///
+    /// For source maps or minified source files symbolic supports embedded debug IDs.  If they
+    /// are in use, the debug ID is returned from here.
+    pub fn debug_id(&self) -> Option<DebugId> {
+        self.file_info.and_then(|x| x.debug_id())
+    }
+
+    /// The source mapping URL reference of the file.
+    ///
+    /// This is used to refer to a source map from a minified file.  Only minified source files
+    /// will have a relationship to a source map.
+    pub fn source_mapping_url(&self) -> Option<&str> {
+        if let Some(file_info) = self.file_info {
+            if let Some(url) = file_info.source_mapping_url() {
+                return Some(url);
+            }
+        }
+        if let Some(ref contents) = self.contents {
+            if let Some(url) = discover_sourcemaps_location(contents) {
+                return Some(url);
+            }
+        }
+        None
+    }
+}
+
+/// Parses a sourceMappingURL comment in a file to discover a sourcemap reference.
+fn discover_sourcemaps_location(contents: &str) -> Option<&str> {
+    for line in contents.lines().rev() {
+        if line.starts_with("//# sourceMappingURL=") || line.starts_with("//@ sourceMappingURL=") {
+            return Some(line[21..].trim());
+        }
+    }
+    None
 }
 
 /// Version number of a [`SourceBundle`](struct.SourceBundle.html).
@@ -480,7 +674,7 @@ impl<'data> SourceBundle<'data> {
         Ok(SourceBundleDebugSession {
             manifest: self.manifest.clone(),
             archive: self.archive.clone(),
-            files_by_path: LazyCell::new(),
+            indexed_files: LazyCell::new(),
         })
     }
 
@@ -595,11 +789,18 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for SourceBundle<'data>
 /// An iterator yielding symbols from a source bundle.
 pub type SourceBundleSymbolIterator<'data> = std::iter::Empty<Symbol<'data>>;
 
+#[derive(Debug, Hash, PartialEq, Eq)]
+enum FileKey<'a> {
+    Path(Cow<'a, str>),
+    Url(Cow<'a, str>),
+    DebugId(DebugId, SourceFileType),
+}
+
 /// Debug session for SourceBundle objects.
 pub struct SourceBundleDebugSession<'data> {
     manifest: Arc<SourceBundleManifest>,
     archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>>>,
-    files_by_path: LazyCell<HashMap<String, String>>,
+    indexed_files: LazyCell<HashMap<FileKey<'data>, Arc<String>>>,
 }
 
 impl<'data> SourceBundleDebugSession<'data> {
@@ -615,26 +816,30 @@ impl<'data> SourceBundleDebugSession<'data> {
         std::iter::empty()
     }
 
-    /// Create a reverse mapping of source paths to ZIP paths.
-    fn get_files_by_path(&self) -> HashMap<String, String> {
-        let files = &self.manifest.files;
-        let mut files_by_path = HashMap::with_capacity(files.len());
+    /// Get the indexed file mapping.
+    fn indexed_files(&self) -> &HashMap<FileKey, Arc<String>> {
+        self.indexed_files.borrow_with(|| {
+            let files = &self.manifest.files;
+            let mut rv = HashMap::with_capacity(files.len());
 
-        for (zip_path, file_info) in files {
-            if !file_info.path.is_empty() {
-                files_by_path.insert(file_info.path.clone(), zip_path.clone());
+            for (zip_path, file_info) in files {
+                let zip_path = Arc::new(zip_path.clone());
+                if !file_info.path.is_empty() {
+                    rv.insert(
+                        FileKey::Path(file_info.path.clone().into()),
+                        zip_path.clone(),
+                    );
+                }
+                if !file_info.url.is_empty() {
+                    rv.insert(FileKey::Url(file_info.url.clone().into()), zip_path.clone());
+                }
+                if let (Some(debug_id), Some(ty)) = (file_info.debug_id(), file_info.ty()) {
+                    rv.insert(FileKey::DebugId(debug_id, ty), zip_path.clone());
+                }
             }
-        }
 
-        files_by_path
-    }
-
-    /// Get the path of a file in this bundle by its logical path.
-    fn zip_path_by_source_path(&self, path: &str) -> Option<&str> {
-        self.files_by_path
-            .borrow_with(|| self.get_files_by_path())
-            .get(path)
-            .map(|zip_path| zip_path.as_str())
+            rv
+        })
     }
 
     /// Get source by the path of a file in the bundle.
@@ -650,15 +855,56 @@ impl<'data> SourceBundleDebugSession<'data> {
         Ok(Some(source_content))
     }
 
-    /// See [DebugSession::source_by_path] for more information.
-    pub fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, SourceBundleError> {
-        let zip_path = match self.zip_path_by_source_path(path) {
-            Some(zip_path) => zip_path,
+    /// Looks up a source file descriptor.
+    fn get_source_file_descriptor(
+        &self,
+        key: FileKey,
+    ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
+        let zip_path = match self.indexed_files().get(&key) {
+            Some(zip_path) => zip_path.as_str(),
             None => return Ok(None),
         };
 
         let content = self.source_by_zip_path(zip_path)?;
-        Ok(content.map(|opt| SourceCode::Content(Cow::Owned(opt))))
+        let info = self.manifest.files.get(zip_path);
+        Ok(content.map(|opt| SourceFileDescriptor::new_embedded(Cow::Owned(opt), info)))
+    }
+
+    /// See [DebugSession::source_by_path] for more information.
+    pub fn source_by_path(
+        &self,
+        path: &str,
+    ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
+        self.get_source_file_descriptor(FileKey::Path(path.into()))
+    }
+
+    /// Like [`source_by_path`](Self::source_by_path) but looks up by URL.
+    pub fn source_by_url(
+        &self,
+        url: &str,
+    ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
+        self.get_source_file_descriptor(FileKey::Url(url.into()))
+    }
+
+    /// Looks up some source by debug ID and file type.
+    ///
+    /// Lookups by [`DebugId`] require knowledge of the file that is supposed to be
+    /// looked up as multiple files (one per type) can share the same debug ID.
+    /// Special care needs to be taken about [`SourceFileType::IndexedRamBundle`]
+    /// and [`SourceFileType::SourceMap`] which are different file types despite
+    /// the name of it.
+    ///
+    /// # Note on Abstractions
+    ///
+    /// This method is currently not exposed via a standardized debug session
+    /// as it's primarily used for the JavaScript processing system which uses
+    /// different abstractions.
+    pub fn source_by_debug_id(
+        &self,
+        debug_id: DebugId,
+        ty: SourceFileType,
+    ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
+        self.get_source_file_descriptor(FileKey::DebugId(debug_id, ty))
     }
 }
 
@@ -675,7 +921,7 @@ impl<'data, 'session> DebugSession<'session> for SourceBundleDebugSession<'data>
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error> {
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error> {
         self.source_by_path(path)
     }
 }
@@ -913,7 +1159,7 @@ where
     where
         O: ObjectLike<'data, 'object, Error = E>,
         E: std::error::Error + Send + Sync + 'static,
-        F: FnMut(&FileEntry, &Option<SourceCode<'_>>) -> bool,
+        F: FnMut(&FileEntry, &Option<SourceFileDescriptor<'_>>) -> bool,
     {
         let mut files_handled = BTreeSet::new();
         let mut referenced_files = BTreeSet::new();
@@ -1115,6 +1361,82 @@ mod tests {
     }
 
     #[test]
+    fn test_source_descriptor() -> Result<(), SourceBundleError> {
+        let mut writer = Cursor::new(Vec::new());
+        let mut bundle = SourceBundleWriter::start(&mut writer)?;
+
+        let mut info = SourceFileInfo::default();
+        info.set_url("https://example.com/bar.js.min".into());
+        info.set_path("/files/bar.js.min".into());
+        info.set_ty(SourceFileType::MinifiedSource);
+        info.add_header(
+            "debug-id".into(),
+            "5e618b9f-54a9-4389-b196-519819dd7c47".into(),
+        );
+        info.add_header("sourcemap".into(), "bar.js.map".into());
+        bundle.add_file("bar.js", &b"filecontents"[..], info)?;
+        assert!(bundle.has_file("bar.js"));
+
+        bundle.finish()?;
+        let bundle_bytes = writer.into_inner();
+        let bundle = SourceBundle::parse(&bundle_bytes)?;
+
+        let sess = bundle.debug_session().unwrap();
+        let f = sess
+            .source_by_debug_id(
+                "5e618b9f-54a9-4389-b196-519819dd7c47".parse().unwrap(),
+                SourceFileType::MinifiedSource,
+            )
+            .unwrap()
+            .expect("should exist");
+        assert_eq!(f.contents(), Some("filecontents"));
+        assert_eq!(f.ty(), SourceFileType::MinifiedSource);
+        assert_eq!(f.url(), Some("https://example.com/bar.js.min"));
+        assert_eq!(f.path(), Some("/files/bar.js.min"));
+        assert_eq!(f.source_mapping_url(), Some("bar.js.map"));
+
+        assert!(sess
+            .source_by_debug_id(
+                "5e618b9f-54a9-4389-b196-519819dd7c47".parse().unwrap(),
+                SourceFileType::Source
+            )
+            .unwrap()
+            .is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_source_mapping_url() -> Result<(), SourceBundleError> {
+        let mut writer = Cursor::new(Vec::new());
+        let mut bundle = SourceBundleWriter::start(&mut writer)?;
+
+        let mut info = SourceFileInfo::default();
+        info.set_url("https://example.com/bar.min.js".into());
+        info.set_ty(SourceFileType::MinifiedSource);
+        bundle.add_file(
+            "bar.js",
+            &b"filecontents\n//@ sourceMappingURL=bar.js.map"[..],
+            info,
+        )?;
+
+        bundle.finish()?;
+        let bundle_bytes = writer.into_inner();
+        let bundle = SourceBundle::parse(&bundle_bytes)?;
+
+        let sess = bundle.debug_session().unwrap();
+        let f = sess
+            .source_by_url("https://example.com/bar.min.js")
+            .unwrap()
+            .expect("should exist");
+        assert_eq!(f.ty(), SourceFileType::MinifiedSource);
+        assert_eq!(f.url(), Some("https://example.com/bar.min.js"));
+        assert_eq!(f.source_mapping_url(), Some("bar.js.map"));
+
+        Ok(())
+    }
+
+    #[test]
     fn test_il2cpp_reference() -> Result<(), Box<dyn std::error::Error>> {
         let mut cpp_file = NamedTempFile::new()?;
         let mut cs_file = NamedTempFile::new()?;
@@ -1158,12 +1480,11 @@ mod tests {
             .flatten()
             .flat_map(|f| {
                 let path = f.abs_path_str();
-                session.source_by_path(&path).ok().flatten().map(|source| {
-                    let SourceCode::Content(text) = source else {
-                         unreachable!();
-                     };
-                    (path, text.into_owned())
-                })
+                session
+                    .source_by_path(&path)
+                    .ok()
+                    .flatten()
+                    .map(|source| (path, source.contents().unwrap().to_string()))
             })
             .collect();
 

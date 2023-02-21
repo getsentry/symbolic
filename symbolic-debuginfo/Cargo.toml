@@ -70,6 +70,7 @@ sourcebundle = [
     "regex",
     "serde_json",
     "zip",
+    "debugid/serde"
 ]
 # WASM processing
 wasm = ["bitvec", "dwarf", "wasmparser"]
@@ -77,6 +78,7 @@ wasm = ["bitvec", "dwarf", "wasmparser"]
 [dependencies]
 bitvec = { version = "1.0.0", optional = true, features = ["alloc"] }
 dmsort = "1.0.1"
+debugid = { version = "0.8.0" }
 elementtree = { version = "1.2.2", optional = true }
 elsa = { version = "1.4.0", optional = true }
 fallible-iterator = "0.2.0"

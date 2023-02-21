@@ -484,7 +484,10 @@ impl<'d> ObjectDebugSession<'d> {
 
     /// Looks up a file's source by its full canonicalized path.
     /// Returns either source contents, if it was embedded, or a source link.
-    pub fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, ObjectError> {
+    pub fn source_by_path(
+        &self,
+        path: &str,
+    ) -> Result<Option<SourceFileDescriptor<'_>>, ObjectError> {
         match *self {
             ObjectDebugSession::Breakpad(ref s) => {
                 s.source_by_path(path).map_err(ObjectError::transparent)
@@ -518,7 +521,7 @@ impl<'session> DebugSession<'session> for ObjectDebugSession<'_> {
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error> {
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error> {
         self.source_by_path(path)
     }
 }

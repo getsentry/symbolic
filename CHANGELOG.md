@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Features**:
+
+- Added debug IDs to source bundle JavaScript files and source maps. ([#762](https://github.com/getsentry/symbolic/pull/762))
+
 **Breaking changes**:
 
 - Change `DebugSession::source_by_path()` to return `SourceCode` enum with either file content or a URL to fetch it from. ([#758](https://github.com/getsentry/symbolic/pull/758))

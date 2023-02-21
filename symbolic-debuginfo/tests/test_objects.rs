@@ -2,7 +2,7 @@ use std::{env, ffi::CString, fmt, io::BufWriter};
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{
-    elf::ElfObject, pe::PeObject, FileEntry, Function, LineInfo, Object, SourceCode, SymbolMap,
+    elf::ElfObject, pe::PeObject, FileEntry, Function, LineInfo, Object, SymbolMap,
 };
 use symbolic_testutils::fixture;
 
@@ -776,10 +776,8 @@ fn test_ppdb_source_by_path() -> Result<(), Error> {
                 "C:\\dev\\sentry-dotnet\\samples\\Sentry.Samples.Console.Basic\\Program.cs",
             )
             .unwrap();
-        match source.unwrap() {
-            SourceCode::Content(text) => assert_eq!(text.len(), 204),
-            _ => panic!(),
-        }
+        let source = source.unwrap();
+        assert_eq!(source.contents().unwrap().len(), 204);
     }
 
     Ok(())
@@ -803,20 +801,19 @@ fn test_ppdb_source_links() -> Result<(), Error> {
     for file in session.files() {
         let file = file.unwrap();
 
-        match session.source_by_path(&file.path_str()).unwrap().unwrap() {
-            SourceCode::Content(text) => {
-                assert!(known_embedded_sources.contains(&file.name_str().as_ref()));
-                assert!(!text.is_empty());
-            }
-            SourceCode::Url(url) => {
-                // testing this is simple because there's just one prefix rule in this PPDB.
-                let expected = file
-                    .path_str()
-                    .replace(src_prefix, url_prefix)
-                    .replace('\\', "/");
-                assert_eq!(url, expected);
-            }
-            _ => panic!(),
+        let source = session.source_by_path(&file.path_str()).unwrap().unwrap();
+        if let Some(text) = source.contents() {
+            assert!(known_embedded_sources.contains(&file.name_str().as_ref()));
+            assert!(!text.is_empty());
+        } else if let Some(url) = source.url() {
+            // testing this is simple because there's just one prefix rule in this PPDB.
+            let expected = file
+                .path_str()
+                .replace(src_prefix, url_prefix)
+                .replace('\\', "/");
+            assert_eq!(url, expected);
+        } else {
+            unreachable!();
         }
     }
 

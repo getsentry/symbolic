@@ -29,6 +29,7 @@ use crate::base::*;
 use crate::function_builder::FunctionBuilder;
 #[cfg(feature = "macho")]
 use crate::macho::BcSymbolMap;
+use crate::sourcebundle::SourceFileDescriptor;
 
 /// This is a fake BcSymbolMap used when macho support is turned off since they are unfortunately
 /// part of the dwarf interface
@@ -1332,7 +1333,10 @@ impl<'data> DwarfDebugSession<'data> {
     }
 
     /// See [DebugSession::source_by_path] for more information.
-    pub fn source_by_path(&self, _path: &str) -> Result<Option<SourceCode<'_>>, DwarfError> {
+    pub fn source_by_path(
+        &self,
+        _path: &str,
+    ) -> Result<Option<SourceFileDescriptor<'_>>, DwarfError> {
         Ok(None)
     }
 }
@@ -1350,7 +1354,7 @@ impl<'data, 'session> DebugSession<'session> for DwarfDebugSession<'data> {
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error> {
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error> {
         self.source_by_path(path)
     }
 }

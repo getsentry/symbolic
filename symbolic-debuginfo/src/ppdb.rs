@@ -10,6 +10,7 @@ use symbolic_ppdb::EmbeddedSource;
 use symbolic_ppdb::{Document, FormatError, PortablePdb};
 
 use crate::base::*;
+use crate::sourcebundle::SourceFileDescriptor;
 
 /// An iterator over symbols in a [`PortablePdbObject`].
 pub type PortablePdbSymbolIterator<'data> = iter::Empty<Symbol<'data>>;
@@ -191,16 +192,23 @@ impl<'data> PortablePdbDebugSession<'data> {
     }
 
     /// See [DebugSession::source_by_path] for more information.
-    pub fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, FormatError> {
+    pub fn source_by_path(
+        &self,
+        path: &str,
+    ) -> Result<Option<SourceFileDescriptor<'_>>, FormatError> {
         let sources = self.sources.borrow_with(|| self.init_sources());
         match sources.get(path) {
             None => Ok(None),
-            Some(PPDBSource::Embedded(source)) => source
-                .get_contents()
-                .map(|bytes| Some(SourceCode::Content(from_utf8_cow_lossy(&bytes)))),
-            Some(PPDBSource::Link(document)) => {
-                Ok(self.ppdb.get_source_link(document).map(SourceCode::Url))
-            }
+            Some(PPDBSource::Embedded(source)) => source.get_contents().map(|bytes| {
+                Some(SourceFileDescriptor::new_embedded(
+                    from_utf8_cow_lossy(&bytes),
+                    None,
+                ))
+            }),
+            Some(PPDBSource::Link(document)) => Ok(self
+                .ppdb
+                .get_source_link(document)
+                .map(SourceFileDescriptor::new_remote)),
         }
     }
 }
@@ -218,7 +226,7 @@ impl<'data, 'session> DebugSession<'session> for PortablePdbDebugSession<'data> 
         self.files()
     }
 
-    fn source_by_path(&self, path: &str) -> Result<Option<SourceCode<'_>>, Self::Error> {
+    fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error> {
         self.source_by_path(path)
     }
 }
