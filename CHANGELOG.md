@@ -5,6 +5,7 @@
 **Features**:
 
 - Added debug IDs to source bundle JavaScript files and source maps. ([#762](https://github.com/getsentry/symbolic/pull/762))
+- Add support for embedded debug IDs in minified files ([#765](https://github.com/getsentry/symbolic/pull/765))
 
 **Breaking changes**:
 
