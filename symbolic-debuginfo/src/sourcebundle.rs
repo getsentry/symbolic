@@ -944,12 +944,12 @@ where
                 let source_from_object = session
                     .source_by_path(&filename)
                     .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadDebugFile, e))?;
-                if !filter(&file, &source_from_object) {
-                    None
-                } else {
+                if filter(&file, &source_from_object) {
                     // Note: we could also use source code directly from the object, but that's not
                     // what happened here previously - only collected locally present files.
                     std::fs::read(&filename).ok()
+                } else {
+                    None
                 }
             };
 
