@@ -864,12 +864,11 @@ impl<'data> SourceBundleDebugSession<'data> {
         self.manifest.files.get(zip_path)
     }
 
-    /// See [DebugSession::source_by_path] for more information.
-    pub fn source_by_path(
+    fn lookup_source(
         &self,
-        path: &str,
+        key: FileKey,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
-        let zip_path = match self.indexed_files().get(&FileKey::Path(path.into())) {
+        let zip_path = match self.indexed_files().get(&key) {
             Some(zip_path) => zip_path,
             None => return Ok(None),
         };
@@ -879,19 +878,20 @@ impl<'data> SourceBundleDebugSession<'data> {
         Ok(content.map(|opt| SourceFileDescriptor::new_embedded(Cow::Owned(opt), info)))
     }
 
+    /// See [DebugSession::source_by_path] for more information.
+    pub fn source_by_path(
+        &self,
+        path: &str,
+    ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
+        self.lookup_source(FileKey::Path(path.into()))
+    }
+
     /// Like [`source_by_path`](Self::source_by_path) but looks up by URL.
     pub fn source_by_url(
         &self,
         url: &str,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
-        let zip_path = match self.indexed_files().get(&FileKey::Url(url.into())) {
-            Some(zip_path) => zip_path,
-            None => return Ok(None),
-        };
-
-        let content = self.source_by_zip_path(zip_path)?;
-        let info = self.file_info_by_zip_path(zip_path);
-        Ok(content.map(|opt| SourceFileDescriptor::new_embedded(Cow::Owned(opt), info)))
+        self.lookup_source(FileKey::Url(url.into()))
     }
 
     /// Looks up some source by debug ID and file type.
@@ -912,13 +912,7 @@ impl<'data> SourceBundleDebugSession<'data> {
         debug_id: DebugId,
         ty: SourceFileType,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
-        let zip_path = match self.indexed_files().get(&FileKey::DebugId(debug_id, ty)) {
-            Some(zip_path) => zip_path,
-            None => return Ok(None),
-        };
-        let content = self.source_by_zip_path(zip_path)?;
-        let info = self.file_info_by_zip_path(zip_path);
-        Ok(content.map(|opt| SourceFileDescriptor::new_embedded(Cow::Owned(opt), info)))
+        self.lookup_source(FileKey::DebugId(debug_id, ty))
     }
 }
 
