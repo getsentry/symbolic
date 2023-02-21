@@ -61,6 +61,9 @@ use zip::{write::FileOptions, ZipWriter};
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
+use crate::js::{
+    discover_debug_id, discover_sourcemap_embedded_debug_id, discover_sourcemaps_location,
+};
 use crate::{DebugSession, ObjectKind, ObjectLike};
 
 /// Magic bytes of a source bundle. They are prepended to the ZIP file.
@@ -406,6 +409,9 @@ impl<'a> SourceFileDescriptor<'a> {
         self.file_info.and_then(|x| x.debug_id()).or_else(|| {
             if matches!(self.ty(), SourceFileType::MinifiedSource) {
                 self.contents().and_then(discover_debug_id)
+            } else if matches!(self.ty(), SourceFileType::SourceMap) {
+                self.contents()
+                    .and_then(discover_sourcemap_embedded_debug_id)
             } else {
                 None
             }
@@ -428,26 +434,6 @@ impl<'a> SourceFileDescriptor<'a> {
                 }
             })
     }
-}
-
-/// Parses a sourceMappingURL comment in a file to discover a sourcemap reference.
-fn discover_sourcemaps_location(contents: &str) -> Option<&str> {
-    for line in contents.lines().rev() {
-        if line.starts_with("//# sourceMappingURL=") || line.starts_with("//@ sourceMappingURL=") {
-            return Some(line[21..].trim());
-        }
-    }
-    None
-}
-
-/// Parses a debugId comment in a file to discover a sourcemap debug ID.
-fn discover_debug_id(contents: &str) -> Option<DebugId> {
-    for line in contents.lines().rev() {
-        if let Some(rest) = line.strip_prefix("//# debugId=") {
-            return rest.trim().parse().ok();
-        }
-    }
-    None
 }
 
 /// Version number of a [`SourceBundle`](struct.SourceBundle.html).
@@ -1453,7 +1439,7 @@ mod tests {
     }
 
     #[test]
-    fn test_embedded_debug_id() -> Result<(), SourceBundleError> {
+    fn test_source_embedded_debug_id() -> Result<(), SourceBundleError> {
         let mut writer = Cursor::new(Vec::new());
         let mut bundle = SourceBundleWriter::start(&mut writer)?;
 
@@ -1476,6 +1462,38 @@ mod tests {
             .unwrap()
             .expect("should exist");
         assert_eq!(f.ty(), SourceFileType::MinifiedSource);
+        assert_eq!(
+            f.debug_id(),
+            Some("5b65abfb-2338-4f0b-b3b9-64c8f734d43f".parse().unwrap())
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_sourcemap_embedded_debug_id() -> Result<(), SourceBundleError> {
+        let mut writer = Cursor::new(Vec::new());
+        let mut bundle = SourceBundleWriter::start(&mut writer)?;
+
+        let mut info = SourceFileInfo::default();
+        info.set_url("https://example.com/bar.js.map".into());
+        info.set_ty(SourceFileType::SourceMap);
+        bundle.add_file(
+            "bar.js.map",
+            &br#"{"debug_id": "5b65abfb-2338-4f0b-b3b9-64c8f734d43f"}"#[..],
+            info,
+        )?;
+
+        bundle.finish()?;
+        let bundle_bytes = writer.into_inner();
+        let bundle = SourceBundle::parse(&bundle_bytes)?;
+
+        let sess = bundle.debug_session().unwrap();
+        let f = sess
+            .source_by_url("https://example.com/bar.js.map")
+            .unwrap()
+            .expect("should exist");
+        assert_eq!(f.ty(), SourceFileType::SourceMap);
         assert_eq!(
             f.debug_id(),
             Some("5b65abfb-2338-4f0b-b3b9-64c8f734d43f".parse().unwrap())

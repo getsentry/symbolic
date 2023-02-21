@@ -67,6 +67,8 @@ pub mod pe;
 pub mod ppdb;
 #[cfg(feature = "sourcebundle")]
 pub mod sourcebundle;
+#[cfg(feature = "js")]
+pub mod js;
 #[cfg(feature = "wasm")]
 pub mod wasm;
 
