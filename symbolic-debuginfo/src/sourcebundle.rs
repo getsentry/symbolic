@@ -428,11 +428,7 @@ impl<'a> SourceFileDescriptor<'a> {
 fn discover_sourcemaps_location(contents: &str) -> Option<&str> {
     for line in contents.lines().rev() {
         if line.starts_with("//# sourceMappingURL=") || line.starts_with("//@ sourceMappingURL=") {
-            let possible_sourcemap = line[21..].trim();
-            if possible_sourcemap.starts_with("data:application/json") {
-                return None;
-            }
-            return Some(possible_sourcemap);
+            return Some(line[21..].trim());
         }
     }
     None
