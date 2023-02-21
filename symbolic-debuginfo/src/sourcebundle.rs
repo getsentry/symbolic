@@ -678,9 +678,7 @@ impl<'data> SourceBundle<'data> {
         Ok(SourceBundleDebugSession {
             manifest: self.manifest.clone(),
             archive: self.archive.clone(),
-            files_by_path: LazyCell::new(),
-            files_by_url: LazyCell::new(),
-            files_by_debug_id: LazyCell::new(),
+            indexed_files: LazyCell::new(),
         })
     }
 
@@ -795,13 +793,18 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for SourceBundle<'data>
 /// An iterator yielding symbols from a source bundle.
 pub type SourceBundleSymbolIterator<'data> = std::iter::Empty<Symbol<'data>>;
 
+#[derive(Debug, Hash, PartialEq, Eq)]
+enum FileKey<'a> {
+    Path(Cow<'a, str>),
+    Url(Cow<'a, str>),
+    DebugId(DebugId, SourceFileType),
+}
+
 /// Debug session for SourceBundle objects.
 pub struct SourceBundleDebugSession<'data> {
     manifest: Arc<SourceBundleManifest>,
     archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>>>,
-    files_by_path: LazyCell<HashMap<String, String>>,
-    files_by_url: LazyCell<HashMap<String, String>>,
-    files_by_debug_id: LazyCell<HashMap<(DebugId, SourceFileType), String>>,
+    indexed_files: LazyCell<HashMap<FileKey<'data>, Arc<String>>>,
 }
 
 impl<'data> SourceBundleDebugSession<'data> {
@@ -817,73 +820,30 @@ impl<'data> SourceBundleDebugSession<'data> {
         std::iter::empty()
     }
 
-    /// Get a reverse mapping of source paths to ZIP paths.
-    fn files_by_path(&self) -> &HashMap<String, String> {
-        self.files_by_path.borrow_with(|| {
+    /// Get the indexed file mapping.
+    fn indexed_files(&self) -> &HashMap<FileKey, Arc<String>> {
+        self.indexed_files.borrow_with(|| {
             let files = &self.manifest.files;
-            let mut files_by_path = HashMap::with_capacity(files.len());
+            let mut rv = HashMap::with_capacity(files.len());
 
             for (zip_path, file_info) in files {
+                let zip_path = Arc::new(zip_path.clone());
                 if !file_info.path.is_empty() {
-                    files_by_path.insert(file_info.path.clone(), zip_path.clone());
+                    rv.insert(
+                        FileKey::Path(file_info.path.clone().into()),
+                        zip_path.clone(),
+                    );
                 }
-            }
-
-            files_by_path
-        })
-    }
-
-    /// Get a reverse mapping of URLs to ZIP paths.
-    fn files_by_url(&self) -> &HashMap<String, String> {
-        self.files_by_url.borrow_with(|| {
-            let files = &self.manifest.files;
-            let mut files_by_url = HashMap::with_capacity(files.len());
-
-            for (zip_path, file_info) in files {
                 if !file_info.url.is_empty() {
-                    files_by_url.insert(file_info.url.clone(), zip_path.clone());
+                    rv.insert(FileKey::Url(file_info.url.clone().into()), zip_path.clone());
                 }
-            }
-
-            files_by_url
-        })
-    }
-
-    /// Get a reverse mapping of debug ID to ZIP paths.
-    fn files_by_debug_id(&self) -> &HashMap<(DebugId, SourceFileType), String> {
-        self.files_by_debug_id.borrow_with(|| {
-            let files = &self.manifest.files;
-            let mut files_by_debug_id = HashMap::new();
-
-            for (zip_path, file_info) in files {
                 if let (Some(debug_id), Some(ty)) = (file_info.debug_id(), file_info.ty()) {
-                    files_by_debug_id.insert((debug_id, ty), zip_path.clone());
+                    rv.insert(FileKey::DebugId(debug_id, ty), zip_path.clone());
                 }
             }
 
-            files_by_debug_id
+            rv
         })
-    }
-
-    /// Get the path of a file in this bundle by its logical path.
-    fn zip_path_by_source_path(&self, path: &str) -> Option<&str> {
-        self.files_by_path()
-            .get(path)
-            .map(|zip_path| zip_path.as_str())
-    }
-
-    /// Get the path of a file in this bundle by its url
-    fn zip_path_by_url(&self, url: &str) -> Option<&str> {
-        self.files_by_url()
-            .get(url)
-            .map(|zip_path| zip_path.as_str())
-    }
-
-    /// Get the path of a file in this bundle by its Debug ID and source file type.
-    fn zip_path_by_debug_id(&self, debug_id: DebugId, ty: SourceFileType) -> Option<&str> {
-        self.files_by_debug_id()
-            .get(&(debug_id, ty))
-            .map(|zip_path| zip_path.as_str())
     }
 
     /// Get source by the path of a file in the bundle.
@@ -909,7 +869,7 @@ impl<'data> SourceBundleDebugSession<'data> {
         &self,
         path: &str,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
-        let zip_path = match self.zip_path_by_source_path(path) {
+        let zip_path = match self.indexed_files().get(&FileKey::Path(path.into())) {
             Some(zip_path) => zip_path,
             None => return Ok(None),
         };
@@ -924,7 +884,7 @@ impl<'data> SourceBundleDebugSession<'data> {
         &self,
         url: &str,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
-        let zip_path = match self.zip_path_by_url(url) {
+        let zip_path = match self.indexed_files().get(&FileKey::Url(url.into())) {
             Some(zip_path) => zip_path,
             None => return Ok(None),
         };
@@ -952,7 +912,7 @@ impl<'data> SourceBundleDebugSession<'data> {
         debug_id: DebugId,
         ty: SourceFileType,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
-        let zip_path = match self.zip_path_by_debug_id(debug_id, ty) {
+        let zip_path = match self.indexed_files().get(&FileKey::DebugId(debug_id, ty)) {
             Some(zip_path) => zip_path,
             None => return Ok(None),
         };
