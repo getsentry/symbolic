@@ -1159,7 +1159,7 @@ where
     where
         O: ObjectLike<'data, 'object, Error = E>,
         E: std::error::Error + Send + Sync + 'static,
-        F: FnMut(&FileEntry, &Option<SourceCode<'_>>) -> bool,
+        F: FnMut(&FileEntry, &Option<SourceFileDescriptor<'_>>) -> bool,
     {
         let mut files_handled = BTreeSet::new();
         let mut referenced_files = BTreeSet::new();
