@@ -855,22 +855,18 @@ impl<'data> SourceBundleDebugSession<'data> {
         Ok(Some(source_content))
     }
 
-    /// File info by zip path.
-    fn file_info_by_zip_path(&self, zip_path: &str) -> Option<&SourceFileInfo> {
-        self.manifest.files.get(zip_path)
-    }
-
-    fn lookup_source(
+    /// Looks up a source file descriptor.
+    fn get_source_file_descriptor(
         &self,
         key: FileKey,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
         let zip_path = match self.indexed_files().get(&key) {
-            Some(zip_path) => zip_path,
+            Some(zip_path) => zip_path.as_str(),
             None => return Ok(None),
         };
 
         let content = self.source_by_zip_path(zip_path)?;
-        let info = self.file_info_by_zip_path(zip_path);
+        let info = self.manifest.files.get(zip_path);
         Ok(content.map(|opt| SourceFileDescriptor::new_embedded(Cow::Owned(opt), info)))
     }
 
@@ -879,7 +875,7 @@ impl<'data> SourceBundleDebugSession<'data> {
         &self,
         path: &str,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
-        self.lookup_source(FileKey::Path(path.into()))
+        self.get_source_file_descriptor(FileKey::Path(path.into()))
     }
 
     /// Like [`source_by_path`](Self::source_by_path) but looks up by URL.
@@ -887,7 +883,7 @@ impl<'data> SourceBundleDebugSession<'data> {
         &self,
         url: &str,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
-        self.lookup_source(FileKey::Url(url.into()))
+        self.get_source_file_descriptor(FileKey::Url(url.into()))
     }
 
     /// Looks up some source by debug ID and file type.
@@ -908,7 +904,7 @@ impl<'data> SourceBundleDebugSession<'data> {
         debug_id: DebugId,
         ty: SourceFileType,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
-        self.lookup_source(FileKey::DebugId(debug_id, ty))
+        self.get_source_file_descriptor(FileKey::DebugId(debug_id, ty))
     }
 }
 
