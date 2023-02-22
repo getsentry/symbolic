@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 12.0.0
 
 **Features**:
 
