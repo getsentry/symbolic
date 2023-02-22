@@ -9,8 +9,8 @@
 
 **Breaking changes**:
 
-- Change `DebugSession::source_by_path()` to return `SourceCode` enum with either file content or a URL to fetch it from. ([#758](https://github.com/getsentry/symbolic/pull/758))
-- Change `SourceBundleWriter::write_object_with_filter()` filter callback to take `SourceCode`, allowing to include/exclude embedded sources. ([#764](https://github.com/getsentry/symbolic/pull/764))
+- Change `DebugSession::source_by_path()` to return a `SourceFileDescriptor` containing either file content or a URL to fetch it from. ([#758](https://github.com/getsentry/symbolic/pull/758),[#762](https://github.com/getsentry/symbolic/pull/762))
+- Change `SourceBundleWriter::write_object_with_filter()` filter callback to take `SourceFileDescriptor`, allowing to include/exclude embedded sources. ([#764](https://github.com/getsentry/symbolic/pull/764),[#762](https://github.com/getsentry/symbolic/pull/762))
 
 **Fixes**:
 
