@@ -51,7 +51,7 @@ use std::io::{BufReader, BufWriter, Read, Seek, Write};
 use std::path::Path;
 use std::sync::Arc;
 
-use lazycell::LazyCell;
+use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -676,7 +676,7 @@ impl<'data> SourceBundle<'data> {
         Ok(SourceBundleDebugSession {
             manifest: self.manifest.clone(),
             archive: self.archive.clone(),
-            indexed_files: LazyCell::new(),
+            indexed_files: OnceCell::new(),
         })
     }
 
@@ -802,7 +802,7 @@ enum FileKey<'a> {
 pub struct SourceBundleDebugSession<'data> {
     manifest: Arc<SourceBundleManifest>,
     archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>>>,
-    indexed_files: LazyCell<HashMap<FileKey<'data>, Arc<String>>>,
+    indexed_files: OnceCell<HashMap<FileKey<'data>, Arc<String>>>,
 }
 
 impl<'data> SourceBundleDebugSession<'data> {
@@ -820,7 +820,7 @@ impl<'data> SourceBundleDebugSession<'data> {
 
     /// Get the indexed file mapping.
     fn indexed_files(&self) -> &HashMap<FileKey, Arc<String>> {
-        self.indexed_files.borrow_with(|| {
+        self.indexed_files.get_or_init(|| {
             let files = &self.manifest.files;
             let mut rv = HashMap::with_capacity(files.len());
 
@@ -925,6 +925,14 @@ impl<'data, 'session> DebugSession<'session> for SourceBundleDebugSession<'data>
 
     fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor<'_>>, Self::Error> {
         self.source_by_path(path)
+    }
+}
+
+impl<'slf, 'data: 'slf> AsSelf<'slf> for SourceBundleDebugSession<'data> {
+    type Ref = SourceBundleDebugSession<'slf>;
+
+    fn as_self(&'slf self) -> &Self::Ref {
+        unsafe { std::mem::transmute(self) }
     }
 }
 
@@ -1360,6 +1368,12 @@ mod tests {
 
         bundle.finish()?;
         Ok(())
+    }
+
+    #[test]
+    fn debugsession_is_sendsync() {
+        fn is_sendsync<T: Send + Sync>() {}
+        is_sendsync::<SourceBundleDebugSession>();
     }
 
     #[test]

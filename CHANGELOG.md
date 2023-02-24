@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Replace internal usage of `LazyCell` by `OnceCell` and make `SourceBundleDebugSession`: `Send`, `Sync` and `AsSelf`. ([#767](https://github.com/getsentry/symbolic/pull/767))
+
 ## 12.0.0
 
 **Features**:
