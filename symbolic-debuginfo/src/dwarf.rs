@@ -20,7 +20,7 @@ use std::sync::Arc;
 use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Error as GimliError, Range};
 use gimli::{constants, DwarfFileType, UnitSectionOffset};
-use lazycell::LazyCell;
+use once_cell::sync::OnceCell;
 use thiserror::Error;
 
 use symbolic_common::{AsSelf, Language, Name, NameMangling, SelfCell};
@@ -1109,7 +1109,7 @@ impl<'data> DwarfSections<'data> {
 struct DwarfInfo<'data> {
     inner: DwarfInner<'data>,
     headers: Vec<UnitHeader<'data>>,
-    units: Vec<LazyCell<Option<Unit<'data>>>>,
+    units: Vec<OnceCell<Option<Unit<'data>>>>,
     symbol_map: SymbolMap<'data>,
     address_offset: i64,
     kind: ObjectKind,
@@ -1153,7 +1153,7 @@ impl<'d> DwarfInfo<'d> {
 
         // Prepare random access to unit headers.
         let headers = inner.units().collect::<Vec<_>>()?;
-        let units = headers.iter().map(|_| LazyCell::new()).collect();
+        let units = headers.iter().map(|_| OnceCell::new()).collect();
 
         Ok(DwarfInfo {
             inner,
@@ -1173,7 +1173,7 @@ impl<'d> DwarfInfo<'d> {
             None => return Ok(None),
         };
 
-        let unit_opt = cell.try_borrow_with(|| {
+        let unit_opt = cell.get_or_try_init(|| {
             // Parse the compilation unit from the header. This requires a top-level DIE that
             // describes the unit itself. For some older DWARF files, this DIE might be missing
             // which causes gimli to error out. We prefer to skip them silently as this simply marks

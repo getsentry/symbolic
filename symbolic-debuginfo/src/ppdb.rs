@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::iter;
 
-use lazycell::LazyCell;
+use once_cell::sync::OnceCell;
 use symbolic_common::{Arch, CodeId, DebugId};
 use symbolic_ppdb::EmbeddedSource;
 use symbolic_ppdb::{Document, FormatError, PortablePdb};
@@ -143,7 +143,7 @@ impl fmt::Debug for PortablePdbObject<'_> {
 /// A debug session for a Portable PDB object.
 pub struct PortablePdbDebugSession<'data> {
     ppdb: PortablePdb<'data>,
-    sources: LazyCell<HashMap<String, PPDBSource<'data>>>,
+    sources: OnceCell<HashMap<String, PPDBSource<'data>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -156,7 +156,7 @@ impl<'data> PortablePdbDebugSession<'data> {
     fn new(ppdb: &'_ PortablePdb<'data>) -> Result<Self, FormatError> {
         Ok(PortablePdbDebugSession {
             ppdb: ppdb.clone(),
-            sources: LazyCell::new(),
+            sources: OnceCell::new(),
         })
     }
 
@@ -196,7 +196,7 @@ impl<'data> PortablePdbDebugSession<'data> {
         &self,
         path: &str,
     ) -> Result<Option<SourceFileDescriptor<'_>>, FormatError> {
-        let sources = self.sources.borrow_with(|| self.init_sources());
+        let sources = self.sources.get_or_init(|| self.init_sources());
         match sources.get(path) {
             None => Ok(None),
             Some(PPDBSource::Embedded(source)) => source.get_contents().map(|bytes| {
