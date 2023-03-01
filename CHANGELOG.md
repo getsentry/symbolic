@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**:
+
+- Skip hidden sequence points when creating PortablePDB cache. ([#769](https://github.com/getsentry/symbolic/pull/769))
+
 ## 12.1.0
 
 **Features**:

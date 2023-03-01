@@ -43,6 +43,11 @@ impl PortablePdbCacheConverter {
             let sequence_points = sequence_points?;
 
             for sp in sequence_points.iter() {
+                let line = if sp.is_hidden() {
+                    continue;
+                } else {
+                    sp.start_line
+                };
                 let range = raw::Range {
                     func_idx,
                     il_offset: sp.il_offset,
@@ -50,10 +55,7 @@ impl PortablePdbCacheConverter {
 
                 let doc = portable_pdb.get_document(sp.document_id as usize)?;
                 let file_idx = self.insert_file(&doc.name, doc.lang);
-                let source_location = raw::SourceLocation {
-                    line: if sp.is_hidden() { 0 } else { sp.start_line },
-                    file_idx,
-                };
+                let source_location = raw::SourceLocation { line, file_idx };
 
                 self.ranges.insert(range, source_location);
             }
