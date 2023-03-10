@@ -14,8 +14,7 @@ use crate::error::Unreal4Error;
 ///
 /// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L274)
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde_::Serialize))]
-#[cfg_attr(feature = "serde", serde(crate = "serde_"))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Unreal4ContextRuntimeProperties {
     /// CrashGUID
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
@@ -266,8 +265,7 @@ impl Unreal4ContextRuntimeProperties {
 /// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp#L451-L455)
 /// [Windows](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/Windows/WindowsPlatformCrashContext.cpp#L39-L44)
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde_::Serialize))]
-#[cfg_attr(feature = "serde", serde(crate = "serde_"))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Unreal4ContextPlatformProperties {
     /// Whether the crash happened on a Windows device.
     pub is_windows: Option<bool>,
@@ -307,8 +305,7 @@ impl Unreal4ContextPlatformProperties {
 ///
 /// [Source](https://github.com/EpicGames/UnrealEngine/blob/b70f31f6645d764bcb55829228918a6e3b571e0b/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformCrashContext.cpp)
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde_::Serialize))]
-#[cfg_attr(feature = "serde", serde(crate = "serde_"))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Unreal4Context {
     /// RuntimeProperties context element.
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]

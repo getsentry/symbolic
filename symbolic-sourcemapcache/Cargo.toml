@@ -13,12 +13,12 @@ edition = "2021"
 
 [dependencies]
 js-source-scopes = "0.3.1"
-thiserror = "1.0.31"
-sourcemap = "6.1.0"
+thiserror = "1.0.39"
+sourcemap = "6.2.3"
 symbolic-common = { version = "12.1.1", path = "../symbolic-common" }
-tracing = "0.1.36"
+tracing = "0.1.37"
 watto = { version = "0.1.0", features = ["writer", "strings"] }
-itertools = "0.10.3"
+itertools = "0.10.5"
 
 [dev-dependencies]
 symbolic-testutils = { path = "../symbolic-testutils" }

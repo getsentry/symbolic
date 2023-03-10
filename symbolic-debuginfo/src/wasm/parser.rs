@@ -3,8 +3,7 @@
 use super::WasmError;
 use crate::base::{ObjectKind, Symbol};
 use wasmparser::{
-    FuncValidatorAllocations, Payload, SectionReader, SectionWithLimitedItems, TypeRef, Validator,
-    WasmFeatures,
+    FuncValidatorAllocations, NameSectionReader, Payload, TypeRef, Validator, WasmFeatures,
 };
 
 impl<'data> super::WasmObject<'data> {
@@ -48,7 +47,7 @@ impl<'data> super::WasmObject<'data> {
                 // later referenced by the function section.
                 Payload::TypeSection(tsr) => {
                     validator.type_section(&tsr)?;
-                    func_sigs.resize(tsr.get_count() as usize, false);
+                    func_sigs.resize(tsr.count() as usize, false);
                     let fs = func_sigs.as_mut_bitslice();
 
                     for (i, ty) in tsr.into_iter().enumerate() {
@@ -83,11 +82,11 @@ impl<'data> super::WasmObject<'data> {
                 Payload::FunctionSection(fsr) => {
                     validator.function_section(&fsr)?;
 
-                    if fsr.get_count() > 0 {
+                    if fsr.count() > 0 {
                         kind = ObjectKind::Library;
                     }
 
-                    funcs.reserve(fsr.get_count() as usize);
+                    funcs.reserve(fsr.count() as usize);
 
                     // We actually don't care about the type signature of the function, other than that
                     // they exist
@@ -152,15 +151,12 @@ impl<'data> super::WasmObject<'data> {
                         }
                         // The name section contains the symbol names for items, notably functions
                         "name" => {
-                            let nsr = wasmparser::NameSectionReader::new(
-                                reader.data(),
-                                reader.data_offset(),
-                            )?;
+                            let nsr = NameSectionReader::new(reader.data(), 0);
 
                             for name in nsr {
-                                if let wasmparser::Name::Function(mut fnames) = name? {
-                                    for _ in 0..fnames.get_count() {
-                                        let fname = fnames.read()?;
+                                if let wasmparser::Name::Function(fnames) = name? {
+                                    for fname in fnames {
+                                        let fname = fname?;
 
                                         // The names for imported functions are also in this table, but
                                         // we don't care about them
@@ -212,8 +208,8 @@ fn get_function_info(
     {
         for _ in 0..body.read_var_u32()? {
             let pos = body.original_position();
-            let count = body.read_var_u32()?;
-            let ty = body.read_val_type()?;
+            let count = body.read()?;
+            let ty = body.read()?;
             validator.define_locals(pos, count, ty)?;
         }
     }

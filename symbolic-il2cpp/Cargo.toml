@@ -12,7 +12,7 @@ A library for parsing il2cpp line mappings.
 edition = "2021"
 
 [dependencies]
-indexmap = "1.8.0"
-serde_json = "1.0.79"
+indexmap = "1.9.2"
+serde_json = "1.0.94"
 symbolic-common = { version = "12.1.1", path = "../symbolic-common" }
 symbolic-debuginfo = { version = "12.1.1", path = "../symbolic-debuginfo" }

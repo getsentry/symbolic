@@ -5,7 +5,7 @@ use std::fmt;
 use std::str;
 
 #[cfg(feature = "serde")]
-use serde_::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 /// Represents a family of CPUs.
 ///
@@ -566,11 +566,7 @@ impl str::FromStr for Language {
 ///
 /// By default, the mangling of a [`Name`] is not known, but an explicit mangling state can be set
 /// for Names that are guaranteed to be unmangled.
-#[cfg_attr(
-    feature = "serde",
-    derive(Serialize, Deserialize),
-    serde(crate = "serde_")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Default)]
 pub enum NameMangling {
     /// The [`Name`] is definitely mangled.
@@ -618,11 +614,7 @@ pub enum NameMangling {
 ///
 /// [`language`]: struct.Name.html#method.language
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-#[cfg_attr(
-    feature = "serde",
-    derive(Serialize, Deserialize),
-    serde(crate = "serde_")
-)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Name<'a> {
     string: Cow<'a, str>,
     lang: Language,
@@ -820,23 +812,23 @@ mod derive_serde {
     /// appropriately.
     macro_rules! impl_str_serde {
         ($type:ty) => {
-            impl ::serde_::ser::Serialize for $type {
+            impl ::serde::ser::Serialize for $type {
                 fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                 where
-                    S: ::serde_::ser::Serializer,
+                    S: ::serde::ser::Serializer,
                 {
                     serializer.serialize_str(self.name())
                 }
             }
 
-            impl<'de> ::serde_::de::Deserialize<'de> for $type {
+            impl<'de> ::serde::de::Deserialize<'de> for $type {
                 fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
                 where
-                    D: ::serde_::de::Deserializer<'de>,
+                    D: ::serde::de::Deserializer<'de>,
                 {
                     <::std::borrow::Cow<str>>::deserialize(deserializer)?
                         .parse()
-                        .map_err(::serde_::de::Error::custom)
+                        .map_err(::serde::de::Error::custom)
                 }
             }
         };
