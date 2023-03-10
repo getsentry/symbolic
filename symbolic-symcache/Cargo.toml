@@ -26,16 +26,16 @@ all-features = true
 symbolic-common = { version = "12.1.1", path = "../symbolic-common" }
 symbolic-debuginfo = { version = "12.1.1", path = "../symbolic-debuginfo" }
 symbolic-il2cpp = { version = "12.1.1", path = "../symbolic-il2cpp", optional = true }
-thiserror = "1.0.20"
-indexmap = "1.7.0"
-tracing = "0.1.35"
+thiserror = "1.0.39"
+indexmap = "1.9.2"
+tracing = "0.1.37"
 watto = { version = "0.1.0", features = ["writer", "strings"] }
 
 [dev-dependencies]
-insta = { version = "1.18.0", features = ["yaml"] }
+insta = { version = "1.28.0", features = ["yaml"] }
 criterion = "0.4.0"
 symbolic-testutils = { path = "../symbolic-testutils" }
-similar-asserts = "1.0.0"
+similar-asserts = "1.4.2"
 
 [features]
 bench = []

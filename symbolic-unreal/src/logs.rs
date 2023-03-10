@@ -21,11 +21,11 @@ lazy_static! {
 }
 
 #[cfg(feature = "serde")]
-fn serialize_timestamp<S: serde_::Serializer>(
+fn serialize_timestamp<S: serde::Serializer>(
     timestamp: &Option<time::OffsetDateTime>,
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
-    use serde_::ser::Error;
+    use serde::ser::Error;
     match timestamp {
         Some(timestamp) => serializer.serialize_str(&match timestamp.format(&Rfc3339) {
             Ok(s) => s,
@@ -36,8 +36,7 @@ fn serialize_timestamp<S: serde_::Serializer>(
 }
 
 /// A log entry from an Unreal Engine 4 crash.
-#[cfg_attr(feature = "serde", derive(serde_::Serialize))]
-#[cfg_attr(feature = "serde", serde(crate = "serde_"))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Unreal4LogEntry {
     /// The timestamp of the message, when available.
     #[cfg_attr(
