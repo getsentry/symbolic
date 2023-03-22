@@ -752,6 +752,12 @@ fn test_ppdb_has_sources() -> Result<(), Error> {
         let object = Object::parse(&view)?;
         assert_eq!(object.has_sources(), true);
     }
+    {
+        // This one has only source links, no embedded sources.
+        let view = ByteView::open(fixture("windows/source-links-only.pdb"))?;
+        let object = Object::parse(&view)?;
+        assert_eq!(object.has_sources(), true);
+    }
     Ok(())
 }
 
