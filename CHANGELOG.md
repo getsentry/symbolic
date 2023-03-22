@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- PPDB files report `has_sources() = true` even when they only contain source links ([#774](https://github.com/getsentry/symbolic/pull/774))
+
 ## 12.1.1
 
 **Features**:
