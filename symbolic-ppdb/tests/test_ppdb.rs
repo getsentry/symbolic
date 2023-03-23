@@ -197,3 +197,21 @@ fn test_source_links() {
         assert_eq!(url, expected);
     }
 }
+
+#[test]
+fn test_has_source_links() {
+    let buf = std::fs::read(fixture("ppdb-sourcelink-sample/ppdb-sourcelink-sample.pdb")).unwrap();
+    let ppdb = PortablePdb::parse(&buf).unwrap();
+    assert!(ppdb.has_source_links().unwrap());
+
+    let buf = std::fs::read(fixture("windows/portable.pdb")).unwrap();
+    let ppdb = PortablePdb::parse(&buf).unwrap();
+    assert!(!ppdb.has_source_links().unwrap());
+
+    let buf = std::fs::read(fixture("windows/source-links-only.pdb")).unwrap();
+    let ppdb = PortablePdb::parse(&buf).unwrap();
+    assert!(ppdb.has_source_links().unwrap());
+    let iter = ppdb.get_embedded_sources().unwrap();
+    let items = iter.collect::<Result<Vec<_>, _>>().unwrap();
+    assert!(items.is_empty());
+}

@@ -386,6 +386,11 @@ impl<'data> PortablePdb<'data> {
         EmbeddedSourceIterator::new(self)
     }
 
+    /// Whether this PPDB contains source-link mappings.
+    pub fn has_source_links(&self) -> Result<bool, FormatError> {
+        Ok(!self.source_link_mappings.is_empty() && self.get_documents_count()? > 0)
+    }
+
     /// Tries to resolve given document as a source link (URL).
     /// Make sure to try [Self::get_embedded_sources] first when looking for a source file, because
     /// function may return a link that actually doesn't exist (e.g. file is in .gitignore).

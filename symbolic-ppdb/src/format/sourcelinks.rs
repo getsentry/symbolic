@@ -30,6 +30,10 @@ impl SourceLinkMappings {
         Ok(result)
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.rules.is_empty()
+    }
+
     fn add_mappings(&mut self, json: &[u8]) -> Result<(), FormatError> {
         use serde_json::*;
         let json: Value = serde_json::from_slice(json)

@@ -100,12 +100,13 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for PortablePdbObject<'
         false
     }
 
-    /// Determines whether this object contains embedded source.
+    /// Determines whether this object contains embedded or linked sources.
     fn has_sources(&self) -> bool {
-        match self.ppdb.get_embedded_sources() {
-            Ok(mut iter) => iter.any(|v| v.is_ok()),
-            Err(_) => false,
-        }
+        self.ppdb.has_source_links().unwrap_or(false)
+            || match self.ppdb.get_embedded_sources() {
+                Ok(mut iter) => iter.any(|v| v.is_ok()),
+                Err(_) => false,
+            }
     }
 
     /// Determines whether this object is malformed and was only partially parsed.
