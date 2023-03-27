@@ -36,20 +36,7 @@ impl ObjectLineMapping {
             }
 
             if let Ok(cpp_source) = ByteView::open(&cpp_file_path) {
-                let mut cpp_mapping = BTreeMap::new();
-
-                for SourceInfo {
-                    cpp_line,
-                    cs_file,
-                    cs_line,
-                } in SourceInfos::new(&cpp_source)
-                {
-                    let cs_mapping = cpp_mapping
-                        .entry(cs_file.to_string())
-                        .or_insert_with(BTreeMap::new);
-                    cs_mapping.insert(cpp_line, cs_line);
-                }
-
+                let cpp_mapping = Self::parse_source_file(&cpp_source);
                 if !cpp_mapping.is_empty() {
                     mapping.insert(cpp_file_path, cpp_mapping);
                 }
@@ -57,6 +44,27 @@ impl ObjectLineMapping {
         }
 
         Ok(Self { mapping, debug_id })
+    }
+
+    /// Create a line mapping from the source file.
+    ///
+    /// The mapping is constructed by parsing Il2cpp `source_info` records in the given source file.
+    pub(crate) fn parse_source_file(cpp_source: &[u8]) -> BTreeMap<String, BTreeMap<u32, u32>> {
+        let mut cpp_mapping = BTreeMap::new();
+
+        for SourceInfo {
+            cpp_line,
+            cs_file,
+            cs_line,
+        } in SourceInfos::new(cpp_source)
+        {
+            let cs_mapping = cpp_mapping
+                .entry(cs_file.to_string())
+                .or_insert_with(BTreeMap::new);
+            cs_mapping.insert(cpp_line, cs_line);
+        }
+
+        cpp_mapping
     }
 
     /// Serializes the line mapping to the given writer as JSON.
