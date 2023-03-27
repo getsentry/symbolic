@@ -20,7 +20,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-proguard = { version = "5.0.0", features = ["uuid"] }
+proguard = { version = "5.0.1", features = ["uuid"] }
 sourcemap = "6.2.3"
 symbolic = { version = "12.1.1", path = "../symbolic", features = ["cfi", "debuginfo", "sourcemapcache", "symcache"] }
 tempfile = "3.4.0"
