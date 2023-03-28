@@ -1013,6 +1013,16 @@ where
     collect_il2cpp: bool,
 }
 
+fn default_file_options() -> FileOptions {
+    // TODO: should we maybe acknowledge that its the year 2023 and switch to zstd eventually?
+    // Though it obviously needs to be supported across the whole platform,
+    // which does not seem to be the case for Python?
+
+    // Depending on `zip` crate feature flags, it might default to the current time.
+    // Using an explicit `DateTime::default` gives us a deterministic `1980-01-01T00:00:00`.
+    FileOptions::default().last_modified_time(zip::DateTime::default())
+}
+
 impl<W> SourceBundleWriter<W>
 where
     W: Seek + Write,
@@ -1125,7 +1135,7 @@ where
         let unique_path = self.unique_path(full_path);
 
         self.writer
-            .start_file(unique_path.clone(), FileOptions::default())
+            .start_file(unique_path.clone(), default_file_options())
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
         std::io::copy(&mut file, &mut self.writer)
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
@@ -1285,7 +1295,7 @@ where
     /// Flushes the manifest file to the bundle.
     fn write_manifest(&mut self) -> Result<(), SourceBundleError> {
         self.writer
-            .start_file(MANIFEST_PATH, FileOptions::default())
+            .start_file(MANIFEST_PATH, default_file_options())
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
 
         serde_json::to_writer(&mut self.writer, &self.manifest)

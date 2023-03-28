@@ -5,6 +5,7 @@
 **Fixes**:
 
 - PPDB files report `has_sources() = true` even when they only contain source links ([#774](https://github.com/getsentry/symbolic/pull/774))
+- Make SourceBundle writer deterministic ([#778](https://github.com/getsentry/symbolic/pull/778))
 
 ## 12.1.1
 
