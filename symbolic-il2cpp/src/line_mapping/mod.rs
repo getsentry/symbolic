@@ -259,30 +259,22 @@ IL_004f:                                                                        
     }                                                                           | /Scripts/AdditionalButtons.cs:44
 }                                                                               | /Scripts/AdditionalButtons.cs:44
         "#.trim();
-        let cpp_lines = cpp_source.split('\n').collect::<Vec<_>>();
-        let clean_cpp_lines = cpp_lines
-            .iter()
-            .map(|line| line.split_once('|').unwrap().0.trim_end())
-            .collect::<Vec<_>>();
-        let parsed_mapping = source_to_mapping(clean_cpp_lines.join("\n").as_bytes());
+        let mut cpp_lines = Vec::new();
+        let mut cs_lines = Vec::new();
+        for (cpp_code, cs_info) in cpp_source.lines().map(|l| l.split_once('|').unwrap()) {
+            cpp_lines.push(cpp_code.trim_end());
+            cs_lines.push(
+                cs_info
+                    .split_once(':')
+                    .map(|(file, line)| (file.trim(), line.parse::<u32>().unwrap())),
+            );
+        }
+        let parsed_mapping = source_to_mapping(cpp_lines.join("\n").as_bytes());
 
-        let cs_lines = cpp_lines.iter().map(|line| {
-            line.split('|')
-                .last()
-                .map(|v| v.splitn(2, ':').collect::<Vec<_>>())
-                .and_then(|info| {
-                    if info.len() == 2 {
-                        Some((info[0].trim(), info[1].parse::<u32>().unwrap()))
-                    } else {
-                        None
-                    }
-                })
-        });
-
-        for (i, expected) in cs_lines.enumerate() {
+        for (i, expected) in cs_lines.iter().enumerate() {
             let line_nr = i as u32 + 1;
-            println!("Checking line {: >3}: {}", line_nr, clean_cpp_lines[i]);
-            assert_eq!(parsed_mapping.lookup("main.cpp", line_nr), expected);
+            println!("Checking line {: >3}: {}", line_nr, cpp_lines[i]);
+            assert_eq!(parsed_mapping.lookup("main.cpp", line_nr), *expected);
         }
     }
 }
