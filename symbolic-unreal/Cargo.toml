@@ -26,10 +26,9 @@ all-features = true
 serde = ["dep:serde", "chrono/serde"]
 
 [dependencies]
-anylog = "0.6.3"
+anylog = "0.6.4"
 bytes = "1.4.0"
-# this is still used for compatibility with `anylog`
-chrono = "0.4.23"
+chrono = { version = "0.4.23", default-features = false, features = ["std"] }
 elementtree = "1.2.3"
 flate2 = { version = "1.0.25", features = ["rust_backend"], default-features = false }
 lazy_static = "1.4.0"
