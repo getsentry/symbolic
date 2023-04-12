@@ -347,7 +347,12 @@ impl<'d> DwarfLineProgram<'d> {
             let from = match seq.rows.binary_search_by_key(&range.begin, |x| x.address) {
                 Ok(idx) => idx,
                 Err(0) => continue,
-                Err(next_idx) => next_idx - 1,
+                Err(next_idx) => {
+                    if next_idx == seq.rows.len() {
+                        continue;
+                    }
+                    next_idx - 1
+                }
             };
 
             let len = seq.rows[from..]
