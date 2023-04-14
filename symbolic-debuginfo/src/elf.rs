@@ -434,12 +434,17 @@ impl<'data> ElfObject<'data> {
 
     /// The kind of this object, as specified in the ELF header.
     pub fn kind(&self) -> ObjectKind {
+        const ET_SCE_DYNEXEC: u16 = 0xfe10;
+        const ET_SCE_DYNAMIC: u16 = 0xfe18;
+
         let kind = match self.elf.header.e_type {
             goblin::elf::header::ET_NONE => ObjectKind::None,
             goblin::elf::header::ET_REL => ObjectKind::Relocatable,
             goblin::elf::header::ET_EXEC => ObjectKind::Executable,
             goblin::elf::header::ET_DYN => ObjectKind::Library,
             goblin::elf::header::ET_CORE => ObjectKind::Dump,
+            ET_SCE_DYNEXEC => ObjectKind::Executable,
+            ET_SCE_DYNAMIC => ObjectKind::Library,
             _ => ObjectKind::Other,
         };
 
@@ -666,6 +671,15 @@ impl<'data> ElfObject<'data> {
                 if note.n_type == elf::note::NT_GNU_BUILD_ID {
                     return Some(note.desc);
                 }
+            }
+        }
+
+        const PT_SCE_DYNLIBDATA: u32 = 0x61000000;
+
+        for ph in &self.elf.program_headers {
+            if ph.p_type == PT_SCE_DYNLIBDATA && ph.p_filesz >= 20 {
+                let offset = ph.p_offset as usize;
+                return self.data.get(offset..offset.saturating_add(20));
             }
         }
 
