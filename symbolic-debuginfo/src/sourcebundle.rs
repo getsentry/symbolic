@@ -407,7 +407,10 @@ impl<'a> SourceFileDescriptor<'a> {
     /// file's `debug-id` header or the embedded `debugId` reference in the file body.
     pub fn debug_id(&self) -> Option<DebugId> {
         self.file_info.and_then(|x| x.debug_id()).or_else(|| {
-            if matches!(self.ty(), SourceFileType::MinifiedSource) {
+            if matches!(
+                self.ty(),
+                SourceFileType::Source | SourceFileType::MinifiedSource
+            ) {
                 self.contents().and_then(discover_debug_id)
             } else if matches!(self.ty(), SourceFileType::SourceMap) {
                 self.contents()
@@ -427,7 +430,10 @@ impl<'a> SourceFileDescriptor<'a> {
         self.file_info
             .and_then(|x| x.source_mapping_url())
             .or_else(|| {
-                if matches!(self.ty(), SourceFileType::MinifiedSource) {
+                if matches!(
+                    self.ty(),
+                    SourceFileType::Source | SourceFileType::MinifiedSource
+                ) {
                     self.contents().and_then(discover_sourcemaps_location)
                 } else {
                     None
