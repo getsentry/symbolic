@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Correctly resolve `sourceMappingURL` references for `"source"` files.
+- Allow parsing the `DebugId` of a PS4 executable.
+
 ## 12.1.2
 
 **Fixes**:
