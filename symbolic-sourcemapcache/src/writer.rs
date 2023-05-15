@@ -71,14 +71,36 @@ impl SourceMapCacheWriter {
         // resolve scopes to original names
         let ctx = SourceContext::new(source).map_err(SourceMapCacheErrorInner::SourceContext)?;
         let resolver = NameResolver::new(&ctx, &sm);
+
         let scopes: Vec<_> = tracing::trace_span!("resolve original names").in_scope(|| {
             scopes
                 .into_iter()
                 .map(|(range, name)| {
-                    let name = name
+                    let orig_name = name.as_ref().map(|name| name.to_string());
+                    let mut resolved_name = name
                         .map(|n| resolver.resolve_name(&n))
                         .filter(|s| !s.is_empty());
-                    (range, name)
+
+                    // A hack specifically for Flutter. If the resolved scope name is the same as the original name,
+                    // that indicates that we probably couldn't resolve the scope. In that case, we find the name
+                    // at the very end of the scope, if it exists, and use it instead of the "conventionally"
+                    // resolved scope.
+                    if orig_name == resolved_name {
+                        let name_at_end_of_scope =
+                            ctx.offset_to_position(range.end - 1).and_then(|sp| {
+                                let token = sm.lookup_token(sp.line, sp.column);
+                                token
+                                    .filter(|t| t.get_dst() == (sp.line, sp.column))
+                                    .and_then(|t| t.get_name())
+                                    .map(ToOwned::to_owned)
+                            });
+
+                        if name_at_end_of_scope.is_some() {
+                            resolved_name = name_at_end_of_scope;
+                        }
+                    }
+
+                    (range, resolved_name)
                 })
                 .collect()
         });
@@ -174,6 +196,9 @@ impl SourceMapCacheWriter {
                 };
 
                 let name = token.get_name();
+                if token.get_name_id() == 8638 {
+                    println!("({min_line}, {min_col})");
+                }
                 let name_idx = match name {
                     Some(name) => string_table.insert(name) as u32,
                     None => raw::NO_NAME_SENTINEL,
