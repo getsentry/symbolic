@@ -20,7 +20,7 @@ jobs:
             py-platform: macosx-11_0_arm64
 
     name: Python macOS ${{ matrix.py-platform }}
-    runs-on: macos-11
+    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v3
