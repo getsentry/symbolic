@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::ops::Range;
 
 use itertools::Itertools;
 use js_source_scopes::{
@@ -77,7 +78,7 @@ impl SourceMapCacheWriter {
                 .into_iter()
                 .map(|(range, name)| {
                     let orig_name = name.as_ref().map(|name| name.to_string());
-                    let mut resolved_name = name
+                    let resolved_name = name
                         .map(|n| resolver.resolve_name(&n))
                         .filter(|s| !s.is_empty());
 
@@ -85,22 +86,13 @@ impl SourceMapCacheWriter {
                     // that indicates that we probably couldn't resolve the scope. In that case, we find the name
                     // at the very end of the scope, if it exists, and use it instead of the "conventionally"
                     // resolved scope.
-                    if orig_name == resolved_name {
-                        let name_at_end_of_scope =
-                            ctx.offset_to_position(range.end - 1).and_then(|sp| {
-                                let token = sm.lookup_token(sp.line, sp.column);
-                                token
-                                    .filter(|t| t.get_dst() == (sp.line, sp.column))
-                                    .and_then(|t| t.get_name())
-                                    .map(ToOwned::to_owned)
-                            });
+                    let name_at_end_of_scope = if orig_name == resolved_name {
+                        Self::try_resolve_closing_name(&ctx, &sm, range.clone())
+                    } else {
+                        None
+                    };
 
-                        if name_at_end_of_scope.is_some() {
-                            resolved_name = name_at_end_of_scope;
-                        }
-                    }
-
-                    (range, resolved_name)
+                    (range, name_at_end_of_scope.or(resolved_name))
                 })
                 .collect()
         });
@@ -231,6 +223,23 @@ impl SourceMapCacheWriter {
             line_offsets,
             mappings,
         })
+    }
+
+    /// Returns the name attached to the token at the given range's end, if any.
+    fn try_resolve_closing_name(
+        ctx: &SourceContext<&str>,
+        sourcemap: &DecodedMap,
+        range: Range<u32>,
+    ) -> Option<String> {
+        let sp = ctx.offset_to_position(range.end - 1)?;
+        let token = sourcemap.lookup_token(sp.line, sp.column)?;
+
+        if token.get_dst() != (sp.line, sp.column) {
+            return None;
+        }
+
+        let token_name = token.get_name()?;
+        Some(token_name.to_owned())
     }
 
     /// Serialize the converted data.
