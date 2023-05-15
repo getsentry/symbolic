@@ -196,9 +196,6 @@ impl SourceMapCacheWriter {
                 };
 
                 let name = token.get_name();
-                if token.get_name_id() == 8638 {
-                    println!("({min_line}, {min_col})");
-                }
                 let name_idx = match name {
                     Some(name) => string_table.insert(name) as u32,
                     None => raw::NO_NAME_SENTINEL,
