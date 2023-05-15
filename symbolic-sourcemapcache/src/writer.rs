@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::ops::Range;
 
 use itertools::Itertools;
 use js_source_scopes::{
@@ -71,14 +72,27 @@ impl SourceMapCacheWriter {
         // resolve scopes to original names
         let ctx = SourceContext::new(source).map_err(SourceMapCacheErrorInner::SourceContext)?;
         let resolver = NameResolver::new(&ctx, &sm);
+
         let scopes: Vec<_> = tracing::trace_span!("resolve original names").in_scope(|| {
             scopes
                 .into_iter()
                 .map(|(range, name)| {
-                    let name = name
+                    let orig_name = name.as_ref().map(|name| name.to_string());
+                    let resolved_name = name
                         .map(|n| resolver.resolve_name(&n))
                         .filter(|s| !s.is_empty());
-                    (range, name)
+
+                    // A hack specifically for Flutter. If the resolved scope name is the same as the original name,
+                    // that indicates that we probably couldn't resolve the scope. In that case, we find the name
+                    // at the very end of the scope, if it exists, and use it instead of the "conventionally"
+                    // resolved scope.
+                    let name_at_end_of_scope = if orig_name == resolved_name {
+                        Self::try_resolve_closing_name(&ctx, &sm, range.clone())
+                    } else {
+                        None
+                    };
+
+                    (range, name_at_end_of_scope.or(resolved_name))
                 })
                 .collect()
         });
@@ -209,6 +223,32 @@ impl SourceMapCacheWriter {
             line_offsets,
             mappings,
         })
+    }
+
+    /// Returns the name attached to the token at the given range's end, if any.
+    fn try_resolve_closing_name(
+        ctx: &SourceContext<&str>,
+        sourcemap: &DecodedMap,
+        range: Range<u32>,
+    ) -> Option<String> {
+        let sp = ctx.offset_to_position(range.end - 1)?;
+        let token = sourcemap.lookup_token(sp.line, sp.column)?;
+
+        // Validate that the token really is exactly at the scope's end
+        if token.get_dst() != (sp.line, sp.column) {
+            return None;
+        }
+
+        let sp_past_end = ctx.offset_to_position(range.end);
+        let token_past_end = sp_past_end.and_then(|sp| sourcemap.lookup_token(sp.line, sp.column));
+
+        // Validate that the token one past the scope's end (if it exists) is different
+        if token_past_end == Some(token) {
+            return None;
+        }
+
+        let token_name = token.get_name()?;
+        Some(token_name.to_owned())
     }
 
     /// Serialize the converted data.
