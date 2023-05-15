@@ -234,7 +234,16 @@ impl SourceMapCacheWriter {
         let sp = ctx.offset_to_position(range.end - 1)?;
         let token = sourcemap.lookup_token(sp.line, sp.column)?;
 
+        // Validate that the token really is exactly at the scope's end
         if token.get_dst() != (sp.line, sp.column) {
+            return None;
+        }
+
+        let sp_past_end = ctx.offset_to_position(range.end);
+        let token_past_end = sp_past_end.and_then(|sp| sourcemap.lookup_token(sp.line, sp.column));
+
+        // Validate that the token one past the scope's end (if it exists) is different
+        if token_past_end == Some(token) {
             return None;
         }
 
