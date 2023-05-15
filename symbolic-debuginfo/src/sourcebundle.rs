@@ -51,7 +51,6 @@ use std::io::{BufReader, BufWriter, Read, Seek, Write};
 use std::path::Path;
 use std::sync::Arc;
 
-use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -378,6 +377,14 @@ impl<'a> SourceFileDescriptor<'a> {
         self.contents.as_deref()
     }
 
+    /// The contents of the source file as string, if it's available.
+    ///
+    /// This unwraps the [`SourceFileDescriptor`] directly and might avoid a copy of `contents`
+    /// later on.
+    pub fn into_contents(self) -> Option<Cow<'a, str>> {
+        self.contents
+    }
+
     /// If available returns the URL of this source.
     ///
     /// For certain files this is the canoncial URL of where the file is placed.  This
@@ -515,6 +522,47 @@ struct SourceBundleManifest {
     pub attributes: BTreeMap<String, String>,
 }
 
+struct SourceBundleIndex<'data> {
+    manifest: SourceBundleManifest,
+    indexed_files: HashMap<FileKey<'data>, Arc<String>>,
+}
+
+impl<'data> SourceBundleIndex<'data> {
+    pub fn parse(
+        archive: &mut zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>,
+    ) -> Result<Self, SourceBundleError> {
+        let manifest_file = archive
+            .by_name("manifest.json")
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
+        let manifest: SourceBundleManifest = serde_json::from_reader(manifest_file)
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadManifest, e))?;
+
+        let files = &manifest.files;
+        let mut indexed_files = HashMap::with_capacity(files.len());
+
+        for (zip_path, file_info) in files {
+            let zip_path = Arc::new(zip_path.clone());
+            if !file_info.path.is_empty() {
+                indexed_files.insert(
+                    FileKey::Path(file_info.path.clone().into()),
+                    zip_path.clone(),
+                );
+            }
+            if !file_info.url.is_empty() {
+                indexed_files.insert(FileKey::Url(file_info.url.clone().into()), zip_path.clone());
+            }
+            if let (Some(debug_id), Some(ty)) = (file_info.debug_id(), file_info.ty()) {
+                indexed_files.insert(FileKey::DebugId(debug_id, ty), zip_path.clone());
+            }
+        }
+
+        Ok(Self {
+            manifest,
+            indexed_files,
+        })
+    }
+}
+
 /// A bundle of source code files.
 ///
 /// To create a source bundle, see [`SourceBundleWriter`]. For more information, see the [module
@@ -523,9 +571,9 @@ struct SourceBundleManifest {
 /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
 /// [module level documentation]: index.html
 pub struct SourceBundle<'data> {
-    manifest: Arc<SourceBundleManifest>,
-    archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>>>,
     data: &'data [u8],
+    archive: zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>,
+    index: Arc<SourceBundleIndex<'data>>,
 }
 
 impl fmt::Debug for SourceBundle<'_> {
@@ -555,15 +603,13 @@ impl<'data> SourceBundle<'data> {
     pub fn parse(data: &'data [u8]) -> Result<SourceBundle<'data>, SourceBundleError> {
         let mut archive = zip::read::ZipArchive::new(std::io::Cursor::new(data))
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
-        let manifest_file = archive
-            .by_name("manifest.json")
-            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
-        let manifest = serde_json::from_reader(manifest_file)
-            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadManifest, e))?;
+
+        let index = Arc::new(SourceBundleIndex::parse(&mut archive)?);
+
         Ok(SourceBundle {
-            manifest: Arc::new(manifest),
-            archive: Arc::new(Mutex::new(archive)),
+            archive,
             data,
+            index,
         })
     }
 
@@ -585,7 +631,8 @@ impl<'data> SourceBundle<'data> {
     /// [`ObjectLike`]: ../trait.ObjectLike.html
     /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
     pub fn code_id(&self) -> Option<CodeId> {
-        self.manifest
+        self.index
+            .manifest
             .attributes
             .get("code_id")
             .and_then(|x| x.parse().ok())
@@ -599,7 +646,8 @@ impl<'data> SourceBundle<'data> {
     /// [`ObjectLike`]: ../trait.ObjectLike.html
     /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
     pub fn debug_id(&self) -> DebugId {
-        self.manifest
+        self.index
+            .manifest
             .attributes
             .get("debug_id")
             .and_then(|x| x.parse().ok())
@@ -614,7 +662,8 @@ impl<'data> SourceBundle<'data> {
     /// [`ObjectLike`]: ../trait.ObjectLike.html
     /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
     pub fn name(&self) -> Option<&str> {
-        self.manifest
+        self.index
+            .manifest
             .attributes
             .get("object_name")
             .map(|x| x.as_str())
@@ -628,7 +677,8 @@ impl<'data> SourceBundle<'data> {
     /// [`ObjectLike`]: ../trait.ObjectLike.html
     /// [`SourceBundleWriter`]: struct.SourceBundleWriter.html
     pub fn arch(&self) -> Arch {
-        self.manifest
+        self.index
+            .manifest
             .attributes
             .get("arch")
             .and_then(|s| s.parse().ok())
@@ -679,10 +729,14 @@ impl<'data> SourceBundle<'data> {
     /// efficient access to various records in the debug information. Since this can be quite a
     /// costly process, try to reuse the debugging session as long as possible.
     pub fn debug_session(&self) -> Result<SourceBundleDebugSession<'data>, SourceBundleError> {
+        // NOTE: The `SourceBundleDebugSession` still needs interior mutability, so it still needs
+        // to carry its own Mutex. However that is still preferable to sharing the Mutex of the
+        // `SourceBundle`, which might be shared by multiple threads.
+        // The only thing here that really needs to be `mut` is the `Cursor` / `Seek` position.
+        let archive = Mutex::new(self.archive.clone());
         Ok(SourceBundleDebugSession {
-            manifest: self.manifest.clone(),
-            archive: self.archive.clone(),
-            indexed_files: OnceCell::new(),
+            index: Arc::clone(&self.index),
+            archive,
         })
     }
 
@@ -708,7 +762,7 @@ impl<'data> SourceBundle<'data> {
 
     /// Returns true if this source bundle contains no source code.
     pub fn is_empty(&self) -> bool {
-        self.manifest.files.is_empty()
+        self.index.manifest.files.is_empty()
     }
 }
 
@@ -806,48 +860,21 @@ enum FileKey<'a> {
 
 /// Debug session for SourceBundle objects.
 pub struct SourceBundleDebugSession<'data> {
-    manifest: Arc<SourceBundleManifest>,
-    archive: Arc<Mutex<zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>>>,
-    indexed_files: OnceCell<HashMap<FileKey<'data>, Arc<String>>>,
+    archive: Mutex<zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>>,
+    index: Arc<SourceBundleIndex<'data>>,
 }
 
 impl<'data> SourceBundleDebugSession<'data> {
     /// Returns an iterator over all source files in this debug file.
     pub fn files(&self) -> SourceBundleFileIterator<'_> {
         SourceBundleFileIterator {
-            files: self.manifest.files.values(),
+            files: self.index.manifest.files.values(),
         }
     }
 
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> SourceBundleFunctionIterator<'_> {
         std::iter::empty()
-    }
-
-    /// Get the indexed file mapping.
-    fn indexed_files(&self) -> &HashMap<FileKey, Arc<String>> {
-        self.indexed_files.get_or_init(|| {
-            let files = &self.manifest.files;
-            let mut rv = HashMap::with_capacity(files.len());
-
-            for (zip_path, file_info) in files {
-                let zip_path = Arc::new(zip_path.clone());
-                if !file_info.path.is_empty() {
-                    rv.insert(
-                        FileKey::Path(file_info.path.clone().into()),
-                        zip_path.clone(),
-                    );
-                }
-                if !file_info.url.is_empty() {
-                    rv.insert(FileKey::Url(file_info.url.clone().into()), zip_path.clone());
-                }
-                if let (Some(debug_id), Some(ty)) = (file_info.debug_id(), file_info.ty()) {
-                    rv.insert(FileKey::DebugId(debug_id, ty), zip_path.clone());
-                }
-            }
-
-            rv
-        })
     }
 
     /// Get source by the path of a file in the bundle.
@@ -868,13 +895,13 @@ impl<'data> SourceBundleDebugSession<'data> {
         &self,
         key: FileKey,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
-        let zip_path = match self.indexed_files().get(&key) {
+        let zip_path = match self.index.indexed_files.get(&key) {
             Some(zip_path) => zip_path.as_str(),
             None => return Ok(None),
         };
 
         let content = self.source_by_zip_path(zip_path)?;
-        let info = self.manifest.files.get(zip_path);
+        let info = self.index.manifest.files.get(zip_path);
         Ok(content.map(|opt| SourceFileDescriptor::new_embedded(Cow::Owned(opt), info)))
     }
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- Optimze SourceBundle/DebugSession ([#787](https://github.com/getsentry/symbolic/pull/787))
+
 ## 12.1.3
 
 **Fixes**:
