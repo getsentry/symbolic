@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**:
+
+- sourcemapcache: Improved scope name resolution. ([#786](https://github.com/getsentry/symbolic/pull/786))
+
 ## 12.1.3
 
 **Fixes**:
