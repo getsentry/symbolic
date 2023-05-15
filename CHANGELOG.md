@@ -5,6 +5,7 @@
 **Fixes**:
 
 - sourcemapcache: Improved scope name resolution. ([#786](https://github.com/getsentry/symbolic/pull/786))
+- Optimize SourceBundle/DebugSession ([#787](https://github.com/getsentry/symbolic/pull/787))
 
 ## 12.1.3
 
