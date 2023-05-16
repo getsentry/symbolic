@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-sourcemapcache"
-version = "12.1.4"
+version = "12.1.5"
 license = "MIT"
 authors = ["Sentry <hello@sentry.io>"]
 documentation = "https://docs.rs/symbolic-sourcemapcache"
@@ -15,7 +15,7 @@ edition = "2021"
 js-source-scopes = "0.3.1"
 thiserror = "1.0.39"
 sourcemap = "6.2.3"
-symbolic-common = { version = "12.1.4", path = "../symbolic-common" }
+symbolic-common = { version = "12.1.5", path = "../symbolic-common" }
 tracing = "0.1.37"
 watto = { version = "0.1.0", features = ["writer", "strings"] }
 itertools = "0.10.5"
