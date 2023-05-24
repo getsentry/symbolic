@@ -6,6 +6,47 @@ use wasmparser::{
     FuncValidatorAllocations, NameSectionReader, Payload, TypeRef, Validator, WasmFeatures,
 };
 
+#[derive(Default)]
+struct BitVec {
+    data: Vec<u64>,
+    len: usize,
+}
+
+impl BitVec {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn resize(&mut self, count: usize, value: bool) {
+        self.data.resize(
+            (count + u64::BITS as usize - 1) / u64::BITS as usize,
+            if value { u64::MAX } else { u64::MIN },
+        );
+        self.len = count;
+    }
+
+    pub fn set(&mut self, index: usize, value: bool) {
+        assert!(index < self.len);
+        let vec_index = index / u64::BITS as usize;
+        let item_bit = index % u64::BITS as usize;
+        if value {
+            self.data[vec_index] |= 1 << item_bit;
+        } else {
+            self.data[vec_index] &= !(1 << item_bit);
+        }
+    }
+
+    pub fn get(&self, index: usize) -> Option<bool> {
+        if index >= self.len {
+            None
+        } else {
+            let vec_index = index / u64::BITS as usize;
+            let item_bit = index % u64::BITS as usize;
+            Some(self.data[vec_index] & 1 << item_bit != 0)
+        }
+    }
+}
+
 impl<'data> super::WasmObject<'data> {
     /// Tries to parse a WASM from the given slice.
     pub fn parse(data: &'data [u8]) -> Result<Self, WasmError> {
@@ -18,7 +59,7 @@ impl<'data> super::WasmObject<'data> {
         // could contain types used for module linking, but we don't actually care about the types,
         // just that the function references a valid signature, so we just keep a bitset of the function
         // signatures to verify that
-        let mut func_sigs = bitvec::vec::BitVec::<usize, bitvec::order::Lsb0>::new();
+        let mut func_sigs = BitVec::new();
         // NOTE: make sure to update these when bumping the `wasmparser` depedency.
         let features = WasmFeatures {
             relaxed_simd: true,
@@ -48,11 +89,10 @@ impl<'data> super::WasmObject<'data> {
                 Payload::TypeSection(tsr) => {
                     validator.type_section(&tsr)?;
                     func_sigs.resize(tsr.count() as usize, false);
-                    let fs = func_sigs.as_mut_bitslice();
 
                     for (i, ty) in tsr.into_iter().enumerate() {
                         if matches!(ty?, wasmparser::Type::Func(_)) {
-                            fs.set(i, true);
+                            func_sigs.set(i, true);
                         }
                     }
                 }
@@ -65,12 +105,7 @@ impl<'data> super::WasmObject<'data> {
                     for import in isr {
                         let import = import?;
                         if let TypeRef::Func(id) = import.ty {
-                            if !func_sigs
-                                .as_bitslice()
-                                .get(id as usize)
-                                .as_deref()
-                                .unwrap_or(&false)
-                            {
+                            if !func_sigs.get(id as usize).unwrap_or(false) {
                                 return Err(WasmError::UnknownFunctionType);
                             }
 
@@ -91,12 +126,7 @@ impl<'data> super::WasmObject<'data> {
                     // We actually don't care about the type signature of the function, other than that
                     // they exist
                     for id in fsr {
-                        if !func_sigs
-                            .as_bitslice()
-                            .get(id? as usize)
-                            .as_deref()
-                            .unwrap_or(&false)
-                        {
+                        if !func_sigs.get(id? as usize).unwrap_or(false) {
                             return Err(WasmError::UnknownFunctionType);
                         }
                     }
