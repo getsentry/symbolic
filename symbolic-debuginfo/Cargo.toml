@@ -76,10 +76,9 @@ sourcebundle = [
 # JavaScript stuff
 js = []
 # WASM processing
-wasm = ["bitvec", "dwarf", "wasmparser"]
+wasm = ["dwarf", "wasmparser"]
 
 [dependencies]
-bitvec = { version = "1.0.1", optional = true, features = ["alloc"] }
 dmsort = "1.0.2"
 debugid = { version = "0.8.0" }
 elementtree = { version = "1.2.3", optional = true }
