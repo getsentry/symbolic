@@ -457,11 +457,9 @@ impl fmt::Display for Report<'_> {
         if let Some(ref assertion) = self.process_state.assertion {
             writeln!(f, "Assertion:     {assertion}")?;
         }
-        if let Some(crash_reason) = self.process_state.crash_reason {
-            writeln!(f, "Crash reason:  {crash_reason}")?;
-        }
-        if let Some(crash_address) = self.process_state.crash_address {
-            writeln!(f, "Crash address: 0x{crash_address:x}")?;
+        if let Some(ref exception_info) = self.process_state.exception_info {
+            writeln!(f, "Crash reason:  {}", exception_info.reason)?;
+            writeln!(f, "Crash address: {}", exception_info.address)?;
         }
         if let Ok(duration) = self.process_state.time.duration_since(UNIX_EPOCH) {
             writeln!(f, "Crash time:    {}", duration.as_secs())?;
