@@ -12,7 +12,7 @@ from symbolic.utils import (
 __all__ = ["ProguardMapper", "JavaStackFrame"]
 
 
-class JavaStackFrame(object):
+class JavaStackFrame:
     def __init__(self, class_name, method, line, file=None):
         self.class_name = class_name
         self.method = method

@@ -1,7 +1,6 @@
 import os
 
 from symbolic._lowlevel import lib, ffi
-from symbolic._compat import string_types, int_types
 from symbolic.utils import rustcall, encode_str, decode_str
 from symbolic import exceptions
 
@@ -19,7 +18,7 @@ ffi.init_once(lib.symbolic_init, "init")
 
 def arch_is_known(arch):
     """Checks if an architecture is known."""
-    if not isinstance(arch, string_types):
+    if not isinstance(arch, str):
         return False
     return rustcall(lib.symbolic_arch_is_known, encode_str(arch))
 
@@ -28,7 +27,7 @@ def normalize_arch(arch):
     """Normalizes an architecture name."""
     if arch is None:
         return None
-    if not isinstance(arch, string_types):
+    if not isinstance(arch, str):
         raise ValueError("Invalid architecture: expected string")
 
     normalized = rustcall(lib.symbolic_normalize_arch, encode_str(arch))
@@ -48,10 +47,10 @@ def parse_addr(x):
     """Parses an address."""
     if x is None:
         return 0
-    if isinstance(x, int_types):
+    if isinstance(x, int):
         return x
-    if isinstance(x, string_types):
+    if isinstance(x, str):
         if x[:2] == "0x":
             return int(x[2:], 16)
         return int(x)
-    raise ValueError("Unsupported address format %r" % (x,))
+    raise ValueError(f"Unsupported address format {x!r}")

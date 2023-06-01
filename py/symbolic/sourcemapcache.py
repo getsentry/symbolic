@@ -5,7 +5,7 @@ from symbolic.utils import RustObject, rustcall, decode_str
 __all__ = ["SourceMapCache", "SourceMapCacheToken"]
 
 
-class SourceMapCacheToken(object):
+class SourceMapCacheToken:
     """Represents a token matched or looked up from the cache."""
 
     @classmethod

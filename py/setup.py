@@ -59,7 +59,7 @@ def build_native(spec):
         def delete_scratchpad():
             try:
                 shutil.rmtree(scratchpad)
-            except (IOError, OSError):
+            except OSError:
                 pass
 
         zf = zipfile.ZipFile("rustsrc.zip")
@@ -70,13 +70,13 @@ def build_native(spec):
         scratchpad = None
 
     # Step 1: build the rust library
-    print("running `%s` (%s target)" % (" ".join(cmd), target))
+    print("running `{}` ({} target)".format(" ".join(cmd), target))
     build = spec.add_external_build(cmd=cmd, path=rust_path)
 
     def find_dylib():
         cargo_target = os.environ.get("CARGO_BUILD_TARGET")
         if cargo_target:
-            in_path = "target/%s/%s" % (cargo_target, target)
+            in_path = f"target/{cargo_target}/{target}"
         else:
             in_path = "target/%s" % target
         return build.find_dylib("symbolic_cabi", in_path=in_path)
@@ -108,7 +108,7 @@ setup(
     platforms="any",
     install_requires=["milksnake>=0.1.2"],
     setup_requires=["milksnake>=0.1.2"],
-    python_requires=">=3.6",
+    python_requires=">=3.8",
     milksnake_tasks=[build_native],
     cmdclass={"sdist": CustomSDist},
 )

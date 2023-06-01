@@ -1,6 +1,5 @@
 import io
 import shutil
-from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import (
     RustObject,
@@ -27,8 +26,7 @@ __all__ = [
 SYMCACHE_LATEST_VERSION = rustcall(lib.symbolic_symcache_latest_version)
 
 
-@implements_to_string
-class SourceLocation(object):
+class SourceLocation:
     def __init__(self, sym_addr, instr_addr, line, lang, symbol, full_path=None):
         self.sym_addr = sym_addr
         self.instr_addr = instr_addr
@@ -38,7 +36,7 @@ class SourceLocation(object):
         self.full_path = full_path or None
 
     def __str__(self):
-        return "%s:%s (%s)" % (
+        return "{}:{} ({})".format(
             self.symbol,
             self.line,
             self.full_path,

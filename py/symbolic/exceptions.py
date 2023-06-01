@@ -1,4 +1,3 @@
-from symbolic._compat import implements_to_string
 from symbolic._lowlevel import lib
 
 
@@ -6,7 +5,6 @@ __all__ = ["SymbolicError"]
 exceptions_by_code = {}
 
 
-@implements_to_string
 class SymbolicError(Exception):
     code = None
 
@@ -18,7 +16,7 @@ class SymbolicError(Exception):
     def __str__(self):
         rv = self.message
         if self.rust_info is not None:
-            return "%s\n\n%s" % (rv, self.rust_info)
+            return f"{rv}\n\n{self.rust_info}"
         return rv
 
 
