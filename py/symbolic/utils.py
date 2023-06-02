@@ -4,7 +4,6 @@ import ntpath
 import weakref
 import posixpath
 from symbolic._lowlevel import ffi, lib
-from symbolic._compat import text_type, NUL
 from symbolic.exceptions import exceptions_by_code, SymbolicError
 
 
@@ -38,7 +37,7 @@ def strip_common_path_prefix(base, prefix):
     return path.normpath(base)
 
 
-class RustObject(object):
+class RustObject:
     __dealloc_func__ = None
     _objptr = None
     _shared = False
@@ -106,7 +105,7 @@ def decode_str(s, free=False):
 def encode_str(s):
     """Encodes a SymbolicStr"""
     rv = ffi.new("SymbolicStr *")
-    if isinstance(s, text_type):
+    if isinstance(s, str):
         s = s.encode("utf-8")
     rv.data = ffi.from_buffer(s)
     rv.len = len(s)
@@ -118,9 +117,9 @@ def encode_str(s):
 
 def encode_path(s):
     """Encodes a path value."""
-    if isinstance(s, text_type):
+    if isinstance(s, str):
         s = s.encode("utf-8")
-    if NUL in s:
+    if 0 in s:
         raise TypeError("Null bytes are not allowed in paths")
     return s
 

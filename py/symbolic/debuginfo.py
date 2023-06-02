@@ -1,7 +1,6 @@
 import bisect
 from weakref import WeakValueDictionary
 
-from symbolic._compat import itervalues, range_type, text_type
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, decode_str, encode_str
 from symbolic.common import parse_addr, arch_is_known
@@ -27,7 +26,7 @@ class Archive(RustObject):
     @classmethod
     def open(self, path):
         """Opens an archive from a given path."""
-        if isinstance(path, text_type):
+        if isinstance(path, str):
             path = path.encode("utf-8")
         return Archive._from_objptr(rustcall(lib.symbolic_archive_open, path))
 
@@ -45,7 +44,7 @@ class Archive(RustObject):
 
     def iter_objects(self):
         """Iterates over all objects."""
-        for idx in range_type(self.object_count):
+        for idx in range(self.object_count):
             try:
                 yield self._get_object(idx)
             except LookupError:
@@ -140,13 +139,13 @@ class Object(RustObject):
         )
 
     def __repr__(self):
-        return "<Object %s %r>" % (
+        return "<Object {} {!r}>".format(
             self.debug_id,
             self.arch,
         )
 
 
-class ObjectRef(object):
+class ObjectRef:
     """Holds a reference to an object in a format."""
 
     def __init__(self, data):
@@ -170,13 +169,13 @@ class ObjectRef(object):
         self.name = self.code_file
 
     def __repr__(self):
-        return "<ObjectRef %s %r>" % (
+        return "<ObjectRef {} {!r}>".format(
             self.debug_id,
             self.arch,
         )
 
 
-class ObjectLookup(object):
+class ObjectLookup:
     """Helper to look up objects based on the info a client provides."""
 
     def __init__(self, objects):
@@ -192,7 +191,7 @@ class ObjectLookup(object):
 
     def iter_objects(self):
         """Iterates over all objects."""
-        return itervalues(self.objects)
+        return self.objects.values()
 
     def get_debug_ids(self):
         """Returns a list of ids."""
@@ -225,7 +224,7 @@ class BcSymbolMap(RustObject):
     @classmethod
     def open(cls, path):
         """Parses a BCSymbolMap file."""
-        if isinstance(path, text_type):
+        if isinstance(path, str):
             path = path.encode("utf-8")
         return cls._from_objptr(rustcall(lib.symbolic_bcsymbolmap_open, path))
 
@@ -239,7 +238,7 @@ class UuidMapping(RustObject):
     def from_plist(cls, debug_id, path):
         """Parses a PList."""
         debug_id = encode_str(debug_id)
-        if isinstance(path, text_type):
+        if isinstance(path, str):
             path = path.encode("utf-8")
         return cls._from_objptr(
             rustcall(lib.symbolic_uuidmapping_from_plist, debug_id, path)

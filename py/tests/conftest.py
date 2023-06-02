@@ -26,7 +26,7 @@ def get_symcache(path, object_lookup):
                 return obj.make_symcache()
 
 
-class ReportSymbolizer(object):
+class ReportSymbolizer:
     def __init__(self, dsym_paths, binary_images):
         self.objects = ObjectLookup(binary_images)
         self.symcaches = {}
@@ -77,7 +77,7 @@ class ReportSymbolizer(object):
         return rv
 
 
-class DiffReport(object):
+class DiffReport:
     def __init__(self, config):
         from _pytest.config import create_terminal_writer
 
@@ -99,7 +99,7 @@ class DiffReport(object):
         try:
             with open(self.filename) as f:
                 return json.load(f)
-        except IOError:
+        except OSError:
             pass
         return {}
 

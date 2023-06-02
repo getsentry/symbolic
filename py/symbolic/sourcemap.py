@@ -1,12 +1,11 @@
 from symbolic._lowlevel import lib, ffi
-from symbolic._compat import range_type
 from symbolic.utils import RustObject, rustcall, decode_str, encode_str, attached_refs
 
 
 __all__ = ["SourceView", "SourceMapView", "SourceMapTokenMatch"]
 
 
-class SourceMapTokenMatch(object):
+class SourceMapTokenMatch:
     """Represents a token matched or looked up from the index."""
 
     def __init__(
@@ -88,7 +87,7 @@ class SourceView(RustObject):
             return decode_str(line, free=True)
 
         rv = []
-        for idx in range_type(*idx.indices(len(self))):
+        for idx in range(*idx.indices(len(self))):
             try:
                 rv.append(self[idx])
             except IndexError:
@@ -96,7 +95,7 @@ class SourceView(RustObject):
         return rv
 
     def __iter__(self):
-        for x in range_type(len(self)):
+        for x in range(len(self)):
             yield self[x]
 
 
@@ -153,7 +152,7 @@ class SourceMapView(RustObject):
 
     def iter_sources(self):
         """Iterates over the sources in the file."""
-        for src_id in range_type(self.source_count):
+        for src_id in range(self.source_count):
             yield src_id, self.get_source_name(src_id)
 
     def __len__(self):
@@ -169,5 +168,5 @@ class SourceMapView(RustObject):
             rustcall(lib.symbolic_token_match_free, rv)
 
     def __iter__(self):
-        for x in range_type(len(self)):
+        for x in range(len(self)):
             yield self[x]

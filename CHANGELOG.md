@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Updating**
+
+- Require python 3.8+ for python bindings ([#793](https://github.com/getsentry/symbolic/pull/793))
+
 ## 12.1.5
 
 **Fixes**:

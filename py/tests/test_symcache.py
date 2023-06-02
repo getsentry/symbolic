@@ -1,4 +1,3 @@
-# coding: utf-8
 import os
 from symbolic import Archive, SymCache, SourceView
 

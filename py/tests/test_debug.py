@@ -16,7 +16,7 @@ def test_create_archive_from_bytes(res_path):
 
     archive = Archive.from_bytes(buf)
     obj = archive.get_object(arch="x86_64")
-    assert obj.features == set(["symtab", "unwind"])
+    assert obj.features == {"symtab", "unwind"}
 
 
 def test_object_features_mac(res_path):
@@ -24,7 +24,7 @@ def test_object_features_mac(res_path):
 
     archive = Archive.open(binary_path)
     obj = archive.get_object(arch="x86_64")
-    assert obj.features == set(["symtab", "unwind"])
+    assert obj.features == {"symtab", "unwind"}
 
     binary_path = os.path.join(
         res_path,
@@ -37,14 +37,14 @@ def test_object_features_mac(res_path):
     )
     archive = Archive.open(binary_path)
     obj = archive.get_object(arch="x86_64")
-    assert obj.features == set(["symtab", "debug"])
+    assert obj.features == {"symtab", "debug"}
 
 
 def test_object_features_linux(res_path):
     binary_path = os.path.join(res_path, "minidump", "crash_linux")
     archive = Archive.open(binary_path)
     obj = archive.get_object(arch="x86_64")
-    assert obj.features == set(["symtab", "debug", "unwind"])
+    assert obj.features == {"symtab", "debug", "unwind"}
 
 
 def test_id_from_breakpad():
