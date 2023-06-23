@@ -1,6 +1,6 @@
 import os
 
-from symbolic import (
+from symbolic.debuginfo import (
     ObjectLookup,
     Archive,
     id_from_breakpad,

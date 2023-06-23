@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- Add some mypy typing to symbolic ([#797](https://github.com/getsentry/symbolic/pull/797))
+
 ## 12.1.6
 
 **Updating**

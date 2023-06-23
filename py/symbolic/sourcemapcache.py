@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, decode_str
 
@@ -8,8 +10,17 @@ __all__ = ["SourceMapCache", "SourceMapCacheToken"]
 class SourceMapCacheToken:
     """Represents a token matched or looked up from the cache."""
 
+    line: int
+    col: int
+    src: str | None
+    name: str | None
+    function_name: str | None
+    context_line: str | None
+    pre_context: list[str]
+    post_context: list[str]
+
     @classmethod
-    def _from_objptr(cls, tm):
+    def _from_objptr(cls, tm: ffi.CData) -> SourceMapCacheToken:
         rv = object.__new__(cls)
         rv.line = tm.line
         rv.col = tm.col
@@ -31,7 +42,7 @@ class SourceMapCacheToken:
 
         return rv
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<SourceMapCacheToken %s:%d>" % (
             self.src,
             self.line,
@@ -44,7 +55,9 @@ class SourceMapCache(RustObject):
     __dealloc_func__ = lib.symbolic_sourcemapcache_free
 
     @classmethod
-    def from_bytes(cls, source_content, sourcemap_content):
+    def from_bytes(
+        cls, source_content: bytes, sourcemap_content: bytes
+    ) -> SourceMapCache:
         """Constructs a sourcemapcache from bytes."""
         return cls._from_objptr(
             rustcall(
@@ -56,7 +69,9 @@ class SourceMapCache(RustObject):
             )
         )
 
-    def lookup(self, line, col, context_lines):
+    def lookup(
+        self, line: int, col: int, context_lines: int
+    ) -> SourceMapCacheToken | None:
         """Looks up a token from the sourcemap."""
         rv = self._methodcall(
             lib.symbolic_sourcemapcache_lookup_token, line, col, context_lines
@@ -67,3 +82,5 @@ class SourceMapCache(RustObject):
                 return SourceMapCacheToken._from_objptr(rv)
             finally:
                 rustcall(lib.symbolic_sourcemapcache_token_match_free, rv)
+
+        return None

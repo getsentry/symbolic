@@ -1,4 +1,5 @@
 import posixpath
+from typing import Iterable
 
 
 def verify_index(index, sources):
@@ -32,7 +33,7 @@ def verify_token_search(index):
             continue
         try:
             next_token = index[idx + 1]
-            rng = range(token.dst_col, next_token.dst_col)
+            rng: Iterable[int] = range(token.dst_col, next_token.dst_col)
         except LookupError:
             rng = (token.dst_col,)
         for col in rng:

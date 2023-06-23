@@ -1,6 +1,6 @@
 import os
 
-from symbolic import Archive
+from symbolic.debuginfo import Archive
 
 
 def test_macos_cficache(res_path):
