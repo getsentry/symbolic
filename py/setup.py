@@ -7,7 +7,7 @@ import zipfile
 import tempfile
 import subprocess
 from setuptools import setup, find_packages
-from distutils.command.sdist import sdist
+from setuptools.command.sdist import sdist
 
 
 _version_re = re.compile(r'(?m)^version\s*=\s*"(.*?)"\s*$')
@@ -21,7 +21,9 @@ with open("README") as f:
 
 if os.path.isfile("../symbolic-cabi/Cargo.toml"):
     with open("../symbolic-cabi/Cargo.toml") as f:
-        version = _version_re.search(f.read()).group(1)
+        match = _version_re.search(f.read())
+        assert match is not None
+        version = match[1]
 else:
     with open("version.txt") as f:
         version = f.readline().strip()
@@ -104,6 +106,7 @@ setup(
     description="A python library for dealing with symbol files and more.",
     long_description=readme,
     include_package_data=True,
+    package_data={"symbolic": ["py.typed", "_lowlevel.pyi"]},
     zip_safe=False,
     platforms="any",
     install_requires=["milksnake>=0.1.2"],

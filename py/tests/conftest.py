@@ -3,14 +3,10 @@ import sys
 import json
 import pytest
 
-from symbolic import (
-    ObjectLookup,
-    Archive,
-    SourceMapView,
-    SourceView,
-    find_best_instruction,
-    parse_addr,
-)
+from symbolic.common import parse_addr
+from symbolic.debuginfo import Archive, ObjectLookup
+from symbolic.sourcemap import SourceMapView, SourceView
+from symbolic.symcache import find_best_instruction
 
 diff_report = None
 
@@ -171,6 +167,7 @@ def pytest_configure(config):
 
 
 def pytest_unconfigure(config):
+    assert diff_report is not None
     old_run = diff_report.get_last_run()
     if diff_report.ran_any:
         diff_report.write_to_file()
@@ -196,6 +193,7 @@ def pytest_runtest_makereport(item, call):
     if rep.when == "call":
         if rep.outcome == "failed":
             change_some_failed_to_skipped(item, rep)
+        assert diff_report is not None
         diff_report.record_result(item.nodeid, rep.outcome)
 
 
@@ -227,7 +225,7 @@ def get_sourceview(res_path):
 @pytest.fixture(scope="function")
 def get_empty_sourceview():
     def getter():
-        return SourceView.from_bytes([])
+        return SourceView.from_bytes(b"")
 
     return getter
 

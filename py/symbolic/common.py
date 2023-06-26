@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import os
+from typing import overload
 
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import rustcall, encode_str, decode_str
@@ -16,14 +19,24 @@ os.environ["RUST_BACKTRACE"] = "1"
 ffi.init_once(lib.symbolic_init, "init")
 
 
-def arch_is_known(arch):
+def arch_is_known(arch: str) -> bool:
     """Checks if an architecture is known."""
     if not isinstance(arch, str):
         return False
     return rustcall(lib.symbolic_arch_is_known, encode_str(arch))
 
 
-def normalize_arch(arch):
+@overload
+def normalize_arch(arch: None) -> None:
+    ...
+
+
+@overload
+def normalize_arch(arch: str) -> str:
+    ...
+
+
+def normalize_arch(arch: str | None) -> str | None:
     """Normalizes an architecture name."""
     if arch is None:
         return None
@@ -34,16 +47,16 @@ def normalize_arch(arch):
     return decode_str(normalized, free=True)
 
 
-def arch_get_ip_reg_name(arch):
+def arch_get_ip_reg_name(arch: str) -> str | None:
     """Returns the ip register if known for this arch."""
     try:
         rv = rustcall(lib.symbolic_arch_ip_reg_name, encode_str(arch))
         return str(decode_str(rv, free=True))
     except ignore_arch_exc:
-        pass
+        return None
 
 
-def parse_addr(x):
+def parse_addr(x: int | str | None) -> int:
     """Parses an address."""
     if x is None:
         return 0

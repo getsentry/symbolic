@@ -1,4 +1,6 @@
-symbolic/_lowlevel*
+symbolic/_lowlevel.py
+symbolic/_lowlevel__ffi.py
+symbolic/_lowlevel__lib.so
 *.egg-info
 .eggs
 .cache

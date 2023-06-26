@@ -35,14 +35,14 @@ class SourceLocation:
         self.symbol = symbol
         self.full_path = full_path or None
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}:{} ({})".format(
             self.symbol,
             self.line,
             self.full_path,
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "SourceLocation(%s)" % (
             ", ".join("%s=%r" % x for x in sorted(self.__dict__.items()))
         )

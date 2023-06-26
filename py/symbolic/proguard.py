@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import uuid as uuid_mod
+
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import (
     RustObject,
@@ -13,7 +17,9 @@ __all__ = ["ProguardMapper", "JavaStackFrame"]
 
 
 class JavaStackFrame:
-    def __init__(self, class_name, method, line, file=None):
+    def __init__(
+        self, class_name: str, method: str, line: int, file: str | None = None
+    ) -> None:
         self.class_name = class_name
         self.method = method
         self.file = file or None
@@ -26,30 +32,30 @@ class ProguardMapper(RustObject):
     __dealloc_func__ = lib.symbolic_proguardmapper_free
 
     @classmethod
-    def open(cls, path):
+    def open(cls, path: str) -> ProguardMapper:
         """Constructs a mapping file from a path."""
         return cls._from_objptr(
             rustcall(lib.symbolic_proguardmapper_open, encode_path(path))
         )
 
     @property
-    def uuid(self):
+    def uuid(self) -> uuid_mod.UUID:
         """Returns the UUID of the file."""
         return decode_uuid(self._methodcall(lib.symbolic_proguardmapper_get_uuid))
 
     @property
-    def has_line_info(self):
+    def has_line_info(self) -> bool:
         """True if the file contains line information."""
         return bool(self._methodcall(lib.symbolic_proguardmapper_has_line_info))
 
-    def remap_class(self, klass):
+    def remap_class(self, klass: str) -> str | None:
         """Remaps the given class name."""
         klass = self._methodcall(
             lib.symbolic_proguardmapper_remap_class, encode_str(klass)
         )
         return decode_str(klass, free=True) or None
 
-    def remap_frame(self, klass, method, line):
+    def remap_frame(self, klass: str, method: str, line: int) -> list[JavaStackFrame]:
         """Remaps the stackframe, given its class, method and line."""
         result = self._methodcall(
             lib.symbolic_proguardmapper_remap_frame,

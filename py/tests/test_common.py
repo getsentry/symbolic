@@ -1,6 +1,7 @@
 import pytest
 
-from symbolic import arch_is_known, normalize_arch, parse_addr, UnknownArchError
+from symbolic.common import arch_is_known, normalize_arch, parse_addr
+from symbolic.exceptions import UnknownArchError
 
 
 def test_arch_is_known():
@@ -14,8 +15,8 @@ def test_arch_is_known():
 
     # Unknown and invalid
     assert not arch_is_known("foo")
-    assert not arch_is_known(None)
-    assert not arch_is_known(42)
+    assert not arch_is_known(None)  # type: ignore[arg-type]
+    assert not arch_is_known(42)  # type: ignore[arg-type]
 
 
 def test_normalize_arch():
@@ -32,7 +33,7 @@ def test_normalize_arch():
     with pytest.raises(UnknownArchError):
         normalize_arch("foo")
     with pytest.raises(ValueError):
-        normalize_arch(42)
+        normalize_arch(42)  # type: ignore[call-overload]
 
 
 def test_parse_addr():

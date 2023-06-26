@@ -1,4 +1,4 @@
-from symbolic import arch_get_ip_reg_name
+from symbolic.common import arch_get_ip_reg_name
 
 
 def test_ip_reg():

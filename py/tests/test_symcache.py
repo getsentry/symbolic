@@ -1,5 +1,7 @@
 import os
-from symbolic import Archive, SymCache, SourceView
+from symbolic.symcache import SymCache
+from symbolic.debuginfo import Archive
+from symbolic.sourcemap import SourceView
 
 
 def test_basic(res_path):

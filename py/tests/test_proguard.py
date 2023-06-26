@@ -1,6 +1,6 @@
 import os
 import uuid
-from symbolic import ProguardMapper
+from symbolic.proguard import ProguardMapper
 
 
 def test_mapper(res_path):

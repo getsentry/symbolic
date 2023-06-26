@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Generator, overload
+
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, decode_str, encode_str, attached_refs
 
@@ -10,14 +14,14 @@ class SourceMapTokenMatch:
 
     def __init__(
         self,
-        src_line,
-        src_col,
-        dst_line,
-        dst_col,
-        src_id=None,
-        name=None,
-        src=None,
-        function_name=None,
+        src_line: int,
+        src_col: int,
+        dst_line: int,
+        dst_col: int,
+        src_id: int | None = None,
+        name: str | None = None,
+        src: str | None = None,
+        function_name: str | None = None,
     ):
         self.src_line = src_line
         self.src_col = src_col
@@ -30,26 +34,26 @@ class SourceMapTokenMatch:
 
     @classmethod
     def _from_objptr(cls, tm):
-        rv = object.__new__(cls)
-        rv.src_line = tm.src_line
-        rv.src_col = tm.src_col
-        rv.dst_line = tm.dst_line
-        rv.dst_col = tm.dst_col
-        rv.src_id = tm.src_id
-        rv.name = decode_str(tm.name, free=False) or None
-        rv.src = decode_str(tm.src, free=False) or None
-        rv.function_name = decode_str(tm.function_name, free=False) or None
-        return rv
+        return cls(
+            src_line=tm.src_line,
+            src_col=tm.src_col,
+            dst_line=tm.dst_line,
+            dst_col=tm.dst_col,
+            src_id=tm.src_id,
+            name=decode_str(tm.name, free=False) or None,
+            src=decode_str(tm.src, free=False) or None,
+            function_name=decode_str(tm.function_name, free=False) or None,
+        )
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if self.__class__ is not other.__class__:
             return False
         return self.__dict__ == other.__dict__
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<SourceMapTokenMatch %s:%d>" % (
             self.src,
             self.src_line,
@@ -62,7 +66,7 @@ class SourceView(RustObject):
     __dealloc_func__ = lib.symbolic_sourceview_free
 
     @classmethod
-    def from_bytes(cls, data):
+    def from_bytes(cls, data: bytes) -> SourceView:
         """Constructs a source view from bytes."""
         data = bytes(data)
         rv = cls._from_objptr(
@@ -72,14 +76,22 @@ class SourceView(RustObject):
         attached_refs[rv] = data
         return rv
 
-    def get_source(self):
+    def get_source(self) -> str:
         source = self._methodcall(lib.symbolic_sourceview_as_str)
         return decode_str(source, free=True)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._methodcall(lib.symbolic_sourceview_get_line_count)
 
-    def __getitem__(self, idx):
+    @overload
+    def __getitem__(self, idx: int) -> str:
+        ...
+
+    @overload
+    def __getitem__(self, idx: slice) -> list[str]:
+        ...
+
+    def __getitem__(self, idx: int | slice) -> str | list[str]:
         if not isinstance(idx, slice):
             if idx >= len(self):
                 raise IndexError("No such line")
@@ -94,7 +106,7 @@ class SourceView(RustObject):
                 pass
         return rv
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[str, None, None]:
         for x in range(len(self)):
             yield self[x]
 
@@ -105,14 +117,20 @@ class SourceMapView(RustObject):
     __dealloc_func__ = lib.symbolic_sourcemapview_free
 
     @classmethod
-    def from_json_bytes(cls, data):
+    def from_json_bytes(cls, data: bytes) -> SourceMapView:
         """Constructs a sourcemap from bytes of JSON data."""
         data = bytes(data)
         return cls._from_objptr(
             rustcall(lib.symbolic_sourcemapview_from_json_slice, data, len(data))
         )
 
-    def lookup(self, line, col, minified_function_name=None, minified_source=None):
+    def lookup(
+        self,
+        line: int,
+        col: int,
+        minified_function_name: str | None = None,
+        minified_source: SourceView | None = None,
+    ) -> SourceMapTokenMatch | None:
         """Looks up a token from the sourcemap and optionally also
         resolves a function name from a stacktrace to the original one.
         """
@@ -134,31 +152,35 @@ class SourceMapView(RustObject):
             finally:
                 rustcall(lib.symbolic_token_match_free, rv)
 
-    def get_sourceview(self, idx):
+        return None
+
+    def get_sourceview(self, idx: int) -> SourceView | None:
         """Given a source index returns the source view that created it."""
         rv = self._methodcall(lib.symbolic_sourcemapview_get_sourceview, idx)
         if rv != ffi.NULL:
             return SourceView._from_objptr(rv, shared=True)
 
+        return None
+
     @property
-    def source_count(self):
+    def source_count(self) -> int:
         """Returns the number of sources."""
         return self._methodcall(lib.symbolic_sourcemapview_get_source_count)
 
-    def get_source_name(self, idx):
+    def get_source_name(self, idx: int) -> str | None:
         """Returns the name of the source at the given index."""
         name = self._methodcall(lib.symbolic_sourcemapview_get_source_name, idx)
         return decode_str(name, free=True) or None
 
-    def iter_sources(self):
+    def iter_sources(self) -> Generator[tuple[int, str | None], None, None]:
         """Iterates over the sources in the file."""
         for src_id in range(self.source_count):
             yield src_id, self.get_source_name(src_id)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._methodcall(lib.symbolic_sourcemapview_get_tokens)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> SourceMapTokenMatch:
         rv = self._methodcall(lib.symbolic_sourcemapview_get_token, idx)
         if rv == ffi.NULL:
             raise IndexError("Token out of range")
@@ -167,6 +189,6 @@ class SourceMapView(RustObject):
         finally:
             rustcall(lib.symbolic_token_match_free, rv)
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[SourceMapTokenMatch, None, None]:
         for x in range(len(self)):
             yield self[x]

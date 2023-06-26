@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import bisect
 from weakref import WeakValueDictionary
+from typing import overload, Generator
 
 from symbolic._lowlevel import lib, ffi
 from symbolic.utils import RustObject, rustcall, decode_str, encode_str
@@ -23,26 +26,28 @@ __all__ = [
 class Archive(RustObject):
     __dealloc_func__ = lib.symbolic_archive_free
 
+    _objcache: WeakValueDictionary[int, Object]
+
     @classmethod
-    def open(self, path):
+    def open(self, path: str | bytes) -> Archive:
         """Opens an archive from a given path."""
         if isinstance(path, str):
             path = path.encode("utf-8")
         return Archive._from_objptr(rustcall(lib.symbolic_archive_open, path))
 
     @classmethod
-    def from_bytes(self, data):
+    def from_bytes(self, data: bytes) -> Archive:
         """Loads an archive from a binary buffer."""
         return Archive._from_objptr(
             rustcall(lib.symbolic_archive_from_bytes, data, len(data))
         )
 
     @property
-    def object_count(self):
+    def object_count(self) -> int:
         """The number of objects in this archive."""
         return self._methodcall(lib.symbolic_archive_object_count)
 
-    def iter_objects(self):
+    def iter_objects(self) -> Generator[Object, None, None]:
         """Iterates over all objects."""
         for idx in range(self.object_count):
             try:
@@ -50,7 +55,9 @@ class Archive(RustObject):
             except LookupError:
                 pass
 
-    def get_object(self, debug_id=None, arch=None):
+    def get_object(
+        self, debug_id: str | None = None, arch: str | None = None
+    ) -> Object:
         """Get an object by either arch or id."""
         if debug_id is not None:
             debug_id = debug_id.lower()
@@ -59,7 +66,7 @@ class Archive(RustObject):
                 return obj
         raise LookupError("Object not found")
 
-    def _get_object(self, idx):
+    def _get_object(self, idx: int) -> Object:
         """Returns the object at a certain index."""
         cache = getattr(self, "_objcache", None)
         if cache is None:
@@ -78,14 +85,14 @@ class Object(RustObject):
     __dealloc_func__ = lib.symbolic_object_free
 
     @property
-    def arch(self):
+    def arch(self) -> str:
         """The architecture of the object."""
         # make it an ascii bytestring on 2.x
         arch = self._methodcall(lib.symbolic_object_get_arch)
         return str(decode_str(arch, free=True))
 
     @property
-    def code_id(self):
+    def code_id(self) -> str | None:
         """The code identifier of the object. Returns None if there is no code id."""
         code_id = self._methodcall(lib.symbolic_object_get_code_id)
         code_id = decode_str(code_id, free=True)
@@ -94,25 +101,25 @@ class Object(RustObject):
         return None
 
     @property
-    def debug_id(self):
+    def debug_id(self) -> str:
         """The debug identifier of the object."""
         debug_id = self._methodcall(lib.symbolic_object_get_debug_id)
         return decode_str(debug_id, free=True)
 
     @property
-    def kind(self):
+    def kind(self) -> str:
         """The kind of the object (e.g. executable, debug file, library, ...)."""
         kind = self._methodcall(lib.symbolic_object_get_kind)
         return str(decode_str(kind, free=True))
 
     @property
-    def file_format(self):
+    def file_format(self) -> str:
         """The file format of the object file (e.g. MachO, ELF, ...)."""
         format = self._methodcall(lib.symbolic_object_get_file_format)
         return str(decode_str(format, free=True))
 
     @property
-    def features(self):
+    def features(self) -> frozenset[str]:
         """The list of features offered by this debug file."""
         struct = self._methodcall(lib.symbolic_object_get_features)
         features = set()
@@ -126,19 +133,19 @@ class Object(RustObject):
             features.add("sources")
         return frozenset(features)
 
-    def make_symcache(self):
+    def make_symcache(self) -> SymCache:
         """Creates a symcache from the object."""
         return SymCache._from_objptr(
             self._methodcall(lib.symbolic_symcache_from_object)
         )
 
-    def make_cficache(self):
+    def make_cficache(self) -> CfiCache:
         """Creates a cficache from the object."""
         return CfiCache._from_objptr(
             self._methodcall(lib.symbolic_cficache_from_object)
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<Object {} {!r}>".format(
             self.debug_id,
             self.arch,
@@ -168,7 +175,7 @@ class ObjectRef:
         # Legacy alias for backwards compatibility
         self.name = self.code_file
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<ObjectRef {} {!r}>".format(
             self.debug_id,
             self.arch,
@@ -222,7 +229,7 @@ class BcSymbolMap(RustObject):
     __dealloc_func__ = lib.symbolic_bcsymbolmap_free
 
     @classmethod
-    def open(cls, path):
+    def open(cls, path: str | bytes) -> BcSymbolMap:
         """Parses a BCSymbolMap file."""
         if isinstance(path, str):
             path = path.encode("utf-8")
@@ -235,13 +242,12 @@ class UuidMapping(RustObject):
     __dealloc_func__ = lib.symbolic_uuidmapping_free
 
     @classmethod
-    def from_plist(cls, debug_id, path):
+    def from_plist(cls, debug_id: str, path: str | bytes) -> UuidMapping:
         """Parses a PList."""
-        debug_id = encode_str(debug_id)
         if isinstance(path, str):
             path = path.encode("utf-8")
         return cls._from_objptr(
-            rustcall(lib.symbolic_uuidmapping_from_plist, debug_id, path)
+            rustcall(lib.symbolic_uuidmapping_from_plist, encode_str(debug_id), path)
         )
 
 
@@ -265,7 +271,17 @@ def normalize_code_id(code_id):
     return decode_str(id, free=True)
 
 
-def normalize_debug_id(debug_id):
+@overload
+def normalize_debug_id(debug_id: None) -> None:
+    ...
+
+
+@overload
+def normalize_debug_id(debug_id: str) -> str:
+    ...
+
+
+def normalize_debug_id(debug_id: str | None) -> str | None:
     """Normalizes a debug identifier to default representation"""
     if debug_id is None:
         return None

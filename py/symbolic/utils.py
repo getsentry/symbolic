@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import io
 import uuid
 import ntpath
 import weakref
 import posixpath
+from typing import Protocol
 from symbolic._lowlevel import ffi, lib
 from symbolic.exceptions import exceptions_by_code, SymbolicError
 
@@ -10,24 +13,32 @@ from symbolic.exceptions import exceptions_by_code, SymbolicError
 __all__ = ["common_path_join", "strip_common_path_prefix"]
 
 
+attached_refs: weakref.WeakKeyDictionary[object, bytes]
 attached_refs = weakref.WeakKeyDictionary()
 
 
-def _is_win_path(x):
+def _is_win_path(x: str) -> bool:
     return "\\" in x or (ntpath.isabs(x) and not posixpath.isabs(x))
 
 
-def common_path_join(a, b):
+def common_path_join(a: str, b: str) -> str:
     """Joins two paths together while guessing the platform (win vs unix)."""
     if _is_win_path(a):
         return ntpath.normpath(ntpath.join(a, b))
     return posixpath.join(a, b)
 
 
-def strip_common_path_prefix(base, prefix):
+class _PathMod(Protocol):
+    sep: str
+
+    def normpath(self, s: str) -> str:
+        ...
+
+
+def strip_common_path_prefix(base: str, prefix: str) -> str:
     """Strips `prefix` from `a`."""
     if _is_win_path(base):
-        path = ntpath
+        path: _PathMod = ntpath
     else:
         path = posixpath
     pieces_a = path.normpath(base).split(path.sep)
@@ -42,7 +53,7 @@ class RustObject:
     _objptr = None
     _shared = False
 
-    def __init__(self):
+    def __init__(self) -> None:
         raise TypeError("Cannot instanciate %r objects" % self.__class__.__name__)
 
     @classmethod
@@ -66,7 +77,7 @@ class RustObject:
         self._objptr = None
         return ptr
 
-    def __del__(self):
+    def __del__(self) -> None:
         if self._objptr is None or self._shared:
             return
         f = self.__class__.__dealloc_func__
@@ -91,7 +102,7 @@ def rustcall(func, *args):
     raise exc
 
 
-def decode_str(s, free=False):
+def decode_str(s: ffi.CData, free: bool = False) -> str:
     """Decodes a SymbolicStr"""
     try:
         if s.len == 0:
@@ -102,7 +113,7 @@ def decode_str(s, free=False):
             lib.symbolic_str_free(ffi.addressof(s))
 
 
-def encode_str(s):
+def encode_str(s: str | bytes) -> ffi.CData:
     """Encodes a SymbolicStr"""
     rv = ffi.new("SymbolicStr *")
     if isinstance(s, str):
@@ -115,7 +126,7 @@ def encode_str(s):
     return rv
 
 
-def encode_path(s):
+def encode_path(s: str | bytes) -> bytes:
     """Encodes a path value."""
     if isinstance(s, str):
         s = s.encode("utf-8")
@@ -124,19 +135,19 @@ def encode_path(s):
     return s
 
 
-def decode_uuid(value):
+def decode_uuid(value: ffi.CData) -> uuid.UUID:
     """Decodes the given uuid value."""
     return uuid.UUID(bytes=bytes(bytearray(ffi.unpack(value.data, 16))))
 
 
-def encode_uuid(value):
+def encode_uuid(value: uuid.UUID | str) -> ffi.CData:
     """Encodes the given uuid value for FFI."""
     encoded = ffi.new("SymbolicUuid *")
     encoded.data[0:16] = bytearray(make_uuid(value).bytes)
     return encoded
 
 
-def make_uuid(value):
+def make_uuid(value: uuid.UUID | str) -> uuid.UUID:
     """Converts a value into a python uuid object."""
     if isinstance(value, uuid.UUID):
         return value
@@ -173,7 +184,7 @@ class SliceReader(io.RawIOBase):
 
 
 class PassThroughBufferedReader(io.BufferedReader):
-    __dict__ = ()
+    __slots__ = ()
 
     def __getattr__(self, attr):
         return getattr(self.raw, attr)
