@@ -15,7 +15,7 @@
 //!
 //! # Background
 //!
-//! The functionality of `symbolic::debuginfo` is conceptionally similar to the [`object`] crate.
+//! The functionality of `symbolic::debuginfo` is conceptionally similar to the [`object crate`].
 //! However, there are key differences that warranted a separate implementation:
 //!
 //!  - `object` has a stronger focus on executable formats, while `symbolic` focusses on debugging
@@ -31,7 +31,7 @@
 //! [`Archive`]: enum.Archive.html
 //! [`ObjectLike`]: trait.ObjectLike.html
 //! [`DebugSession`]: trait.DebugSession.html
-//! [`object`]: https://docs.rs/object
+//! [`object crate`]: https://docs.rs/object
 
 #![warn(missing_docs)]
 
