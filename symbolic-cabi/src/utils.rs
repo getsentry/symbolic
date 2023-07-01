@@ -109,7 +109,7 @@ where
 }
 
 macro_rules! ffi_fn {
-    // a function that catches patnics and returns a result (err goes to tls)
+    // a function that catches panics and returns a result (err goes to tls)
     (
         $(#[$attr:meta])*
         unsafe fn $name:ident($($aname:ident: $aty:ty),* $(,)*) -> Result<$rv:ty> $body:block
@@ -121,7 +121,7 @@ macro_rules! ffi_fn {
         }
     };
 
-    // a function that catches patnics and returns nothing (err goes to tls)
+    // a function that catches panics and returns nothing (err goes to tls)
     (
         $(#[$attr:meta])*
         unsafe fn $name:ident($($aname:ident: $aty:ty),* $(,)*) $body:block
