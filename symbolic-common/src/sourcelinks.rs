@@ -4,6 +4,16 @@ use std::collections::BTreeMap;
 use serde::de::Visitor;
 use serde::{Deserialize, Serialize};
 
+/// A pattern for matching source paths.
+///
+/// A pattern either matches a string exactly (`Exact`)
+/// or it matches any string starting with a certain prefix (`Prefix`).
+///
+/// Patterns are ordered as follows:
+/// 1. Exact patterns come before prefixes
+/// 2. Exact patterns are ordered lexicographically
+/// 3. Prefix patterns are ordered inversely by length, i.e.,
+///    longer before shorter, and lexicographically among equally long strings.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Pattern {
     Exact(String),
@@ -75,7 +85,18 @@ impl PartialOrd for Pattern {
 
 /// A structure mapping source file paths to remote locations.
 ///
-/// Patterns have the form
+/// # Example
+/// ```
+/// use crate ::SourceLinkMappings;
+/// let mappings: SourceLinkMappings = serde_json::from_str(r#"
+///     "C:\\src\\*":                   "http://MyDefaultDomain.com/src/*",
+///     "C:\\src\\fOO\\*":              "http://MyFooDomain.com/src/*",
+///     "C:\\src\\foo\\specific.txt":   "http://MySpecificFoodDomain.com/src/specific.txt",
+///     "C:\\src\\bar\\*":              "http://MyBarDomain.com/src/*",
+/// "#).unwrap();
+/// let resolved = mappings.resolve("c:\\src\\bAr\\foo\\FiLe.txt").unwrap();
+/// assert_eq!(resolved, "http://MyBarDomain.com/src/foo/FiLe.txt");
+/// ````
 #[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct SourceLinkMappings {
     #[serde(flatten)]
