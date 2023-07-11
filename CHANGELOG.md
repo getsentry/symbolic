@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- Add sourcelink functionality to `symbolic-common` ([#803](https://github.com/getsentry/symbolic/pull/803))
+
 ## 12.2.0
 
 **Features**
