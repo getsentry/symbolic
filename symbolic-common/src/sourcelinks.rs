@@ -87,7 +87,7 @@ impl PartialOrd for Pattern {
 ///
 /// # Example
 /// ```
-/// use crate ::SourceLinkMappings;
+/// use symbolic_common::SourceLinkMappings;
 /// let mappings: SourceLinkMappings = serde_json::from_str(r#"
 ///     "C:\\src\\*":                   "http://MyDefaultDomain.com/src/*",
 ///     "C:\\src\\fOO\\*":              "http://MyFooDomain.com/src/*",
