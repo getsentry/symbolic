@@ -88,12 +88,12 @@ impl PartialOrd for Pattern {
 /// # Example
 /// ```
 /// use symbolic_common::SourceLinkMappings;
-/// let mappings: SourceLinkMappings = serde_json::from_str(r#"
+/// let mappings: SourceLinkMappings = serde_json::from_str(r#"{
 ///     "C:\\src\\*":                   "http://MyDefaultDomain.com/src/*",
 ///     "C:\\src\\fOO\\*":              "http://MyFooDomain.com/src/*",
 ///     "C:\\src\\foo\\specific.txt":   "http://MySpecificFoodDomain.com/src/specific.txt",
-///     "C:\\src\\bar\\*":              "http://MyBarDomain.com/src/*",
-/// "#).unwrap();
+///     "C:\\src\\bar\\*":              "http://MyBarDomain.com/src/*"
+/// }"#).unwrap();
 /// let resolved = mappings.resolve("c:\\src\\bAr\\foo\\FiLe.txt").unwrap();
 /// assert_eq!(resolved, "http://MyBarDomain.com/src/foo/FiLe.txt");
 /// ````
