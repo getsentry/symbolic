@@ -1,27 +1,35 @@
 use std::cmp::Ordering;
+use std::collections::BTreeMap;
 
-use crate::{FormatError, FormatErrorKind};
+use serde::Deserialize;
 
 /// See [Source Link PPDB docs](https://github.com/dotnet/designs/blob/main/accepted/2020/diagnostics/source-link.md#source-link-json-schema).
-#[derive(Default, Clone)]
-pub(crate) struct SourceLinkMappings {
+#[derive(Debug, Default, Clone)]
+pub struct SourceLinkMappings {
     rules: Vec<Rule>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct Rule {
     pattern: Pattern,
     url: String,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 enum Pattern {
     Exact(String),
     Prefix(String),
 }
 
+#[derive(Debug, Clone, Deserialize)]
+struct ParsedMappings {
+    documents: BTreeMap<String, String>,
+}
+
 impl SourceLinkMappings {
-    pub fn new(jsons: Vec<&[u8]>) -> Result<Self, FormatError> {
+    /// Creates a `SourceLinkMappings` struct by parsing a list of json
+    /// values.
+    pub fn new(jsons: Vec<&[u8]>) -> Result<Self, serde_json::Error> {
         let mut result = Self { rules: Vec::new() };
         for json in jsons {
             result.add_mappings(json)?;
@@ -34,18 +42,11 @@ impl SourceLinkMappings {
         self.rules.is_empty()
     }
 
-    fn add_mappings(&mut self, json: &[u8]) -> Result<(), FormatError> {
-        use serde_json::*;
-        let json: Value = serde_json::from_slice(json)
-            .map_err(|e| FormatError::new(FormatErrorKind::InvalidSourceLinkJson, e))?;
+    fn add_mappings(&mut self, json: &[u8]) -> Result<(), serde_json::Error> {
+        let parsed: ParsedMappings = serde_json::from_slice(json)?;
 
-        let docs = json
-            .get("documents")
-            .and_then(|v| v.as_object())
-            .ok_or_else(Self::err)?;
-
-        self.rules.reserve(docs.len());
-        for (key, url) in docs.iter() {
+        self.rules.reserve(parsed.documents.len());
+        for (key, url) in parsed.documents.iter() {
             /*
             Each document is defined by a file path and a URL. Original source file paths are compared
             case-insensitively to documents and the resulting URL is used to download source. The document
@@ -57,22 +58,17 @@ impl SourceLinkMappings {
                 4. If the URL contains a *, it may be anywhere in the URL.
             */
             let key = key.to_lowercase();
-            let url = url.as_str().ok_or_else(Self::err)?.into();
             let pattern = if let Some(prefix) = key.strip_suffix('*') {
                 Pattern::Prefix(prefix.into())
             } else {
                 Pattern::Exact(key)
             };
-            self.rules.push(Rule { pattern, url });
+            self.rules.push(Rule {
+                pattern,
+                url: url.to_string(),
+            });
         }
         Ok(())
-    }
-
-    fn err() -> FormatError {
-        FormatError {
-            kind: FormatErrorKind::InvalidSourceLinkJson,
-            source: None,
-        }
     }
 
     /// Sort internal rules. This must be called before [Self::resolve].
@@ -124,11 +120,9 @@ mod tests {
         let mut mappings = SourceLinkMappings::default();
         assert!(mappings.add_mappings(b"").is_err());
         assert!(mappings.add_mappings(b"foo").is_err());
+        assert!(mappings.add_mappings(br#"{"docs": {"k": "v"}}"#).is_err());
         assert!(mappings
-            .add_mappings(b"{\"docs\": {\"k\": \"v\"}}")
-            .is_err());
-        assert!(mappings
-            .add_mappings(b"{\"documents\": [\"k\", \"v\"]}")
+            .add_mappings(br#"{"documents": ["k", "v"]}"#)
             .is_err());
         assert_eq!(mappings.rules.len(), 0);
     }

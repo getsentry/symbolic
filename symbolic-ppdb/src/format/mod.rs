@@ -1,7 +1,6 @@
 mod metadata;
 mod raw;
 mod sequence_points;
-mod sourcelinks;
 mod streams;
 mod utils;
 
@@ -11,13 +10,12 @@ use flate2::read::DeflateDecoder;
 use thiserror::Error;
 use watto::Pod;
 
-use symbolic_common::{DebugId, Language, Uuid};
+use symbolic_common::{DebugId, Language, SourceLinkMappings, Uuid};
 
 use metadata::{
     CustomDebugInformation, CustomDebugInformationIterator, CustomDebugInformationTag,
     MetadataStream, Table, TableType,
 };
-use sourcelinks::SourceLinkMappings;
 use streams::{BlobStream, GuidStream, PdbStream, StringStream, UsStream};
 
 /// The kind of a [`FormatError`].
@@ -301,7 +299,8 @@ impl<'data> PortablePdb<'data> {
                 source_link_mappings.push(result.get_blob(cdi.blob)?);
             }
         }
-        result.source_link_mappings = SourceLinkMappings::new(source_link_mappings)?;
+        result.source_link_mappings = SourceLinkMappings::new(source_link_mappings)
+            .map_err(|e| FormatError::new(FormatErrorKind::InvalidSourceLinkJson, e))?;
 
         Ok(result)
     }
