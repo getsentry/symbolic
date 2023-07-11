@@ -1,86 +1,110 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
-use serde::Deserialize;
+use serde::de::Visitor;
+use serde::{Deserialize, Serialize};
 
-/// See [Source Link PPDB docs](https://github.com/dotnet/designs/blob/main/accepted/2020/diagnostics/source-link.md#source-link-json-schema).
-#[derive(Debug, Default, Clone)]
-pub struct SourceLinkMappings {
-    rules: Vec<Rule>,
-}
-
-#[derive(Debug, Clone)]
-struct Rule {
-    pattern: Pattern,
-    url: String,
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Pattern {
     Exact(String),
     Prefix(String),
 }
 
-#[derive(Debug, Clone, Deserialize)]
-struct ParsedMappings {
-    documents: BTreeMap<String, String>,
+impl<'de> Deserialize<'de> for Pattern {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct PatternVisitor;
+
+        impl<'de> Visitor<'de> for PatternVisitor {
+            type Value = Pattern;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(formatter, "a pattern string")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                if let Some(prefix) = v.strip_suffix('*') {
+                    Ok(Pattern::Prefix(prefix.to_lowercase()))
+                } else {
+                    Ok(Pattern::Exact(v.to_lowercase()))
+                }
+            }
+        }
+
+        deserializer.deserialize_str(PatternVisitor)
+    }
+}
+
+impl Serialize for Pattern {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Pattern::Exact(s) => serializer.serialize_str(s),
+            Pattern::Prefix(p) => serializer.serialize_str(&format!("{p}*")),
+        }
+    }
+}
+
+impl Ord for Pattern {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Pattern::Exact(s), Pattern::Exact(t)) => s.cmp(t),
+            (Pattern::Exact(_), Pattern::Prefix(_)) => Ordering::Less,
+            (Pattern::Prefix(_), Pattern::Exact(_)) => Ordering::Greater,
+            (Pattern::Prefix(s), Pattern::Prefix(t)) => match s.len().cmp(&t.len()) {
+                Ordering::Greater => Ordering::Less,
+                Ordering::Equal => s.cmp(t),
+                Ordering::Less => Ordering::Greater,
+            },
+        }
+    }
+}
+
+impl PartialOrd for Pattern {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// A structure mapping source file paths to remote locations.
+///
+/// Patterns have the form
+#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct SourceLinkMappings {
+    #[serde(flatten)]
+    mappings: BTreeMap<Pattern, String>,
 }
 
 impl SourceLinkMappings {
-    /// Creates a `SourceLinkMappings` struct by parsing a list of json
-    /// values.
-    pub fn new(jsons: Vec<&[u8]>) -> Result<Self, serde_json::Error> {
-        let mut result = Self { rules: Vec::new() };
-        for json in jsons {
-            result.add_mappings(json)?;
-        }
-        result.sort();
-        Ok(result)
-    }
-
+    /// Returns true if this structure contains no mappings.
     pub fn is_empty(&self) -> bool {
-        self.rules.is_empty()
+        self.mappings.is_empty()
     }
 
-    fn add_mappings(&mut self, json: &[u8]) -> Result<(), serde_json::Error> {
-        let parsed: ParsedMappings = serde_json::from_slice(json)?;
-
-        self.rules.reserve(parsed.documents.len());
-        for (key, url) in parsed.documents.iter() {
-            /*
-            Each document is defined by a file path and a URL. Original source file paths are compared
-            case-insensitively to documents and the resulting URL is used to download source. The document
-            may contain an asterisk to represent a wildcard in order to match anything in the asterisk's
-            location. The rules for the asterisk are as follows:
-                1. The only acceptable wildcard is one and only one '*', which if present will be replaced by a relative path.
-                2. If the file path does not contain a *, the URL cannot contain a * and if the file path contains a * the URL must contain a *.
-                3. If the file path contains a *, it must be the final character.
-                4. If the URL contains a *, it may be anywhere in the URL.
-            */
-            let key = key.to_lowercase();
-            let pattern = if let Some(prefix) = key.strip_suffix('*') {
-                Pattern::Prefix(prefix.into())
-            } else {
-                Pattern::Exact(key)
-            };
-            self.rules.push(Rule {
-                pattern,
-                url: url.to_string(),
-            });
+    /// Parse a `SourceLinkMapping` struct from a list of `documents` json values.
+    ///
+    /// See [Source Link PPDB docs](https://github.com/dotnet/designs/blob/main/accepted/2020/diagnostics/source-link.md#source-link-json-schema).
+    pub fn parse_from_documents(jsons: &[&[u8]]) -> Result<Self, serde_json::Error> {
+        #[derive(Deserialize)]
+        struct Documents {
+            documents: BTreeMap<Pattern, String>,
         }
-        Ok(())
-    }
 
-    /// Sort internal rules. This must be called before [Self::resolve].
-    fn sort(&mut self) {
-        // Put Exact matches first, then sort by the Prefix length, longest to shortest.
-        self.rules.sort_unstable_by(|a, b| match &a.pattern {
-            Pattern::Exact(_) => Ordering::Less,
-            Pattern::Prefix(a) => match &b.pattern {
-                Pattern::Exact(_) => Ordering::Greater,
-                Pattern::Prefix(b) => b.len().cmp(&a.len()),
-            },
-        });
+        let mut mappings = BTreeMap::new();
+
+        for &json in jsons {
+            let docs: Documents = serde_json::from_slice(json)?;
+            mappings.extend(docs.documents.into_iter());
+        }
+
+        Ok(Self { mappings })
     }
 
     /// Resolve the path to a URL.
@@ -89,11 +113,11 @@ impl SourceLinkMappings {
         // performance in the future because we encounter PDBs with too many items, we can do a
         // prefix binary search, for example.
         let path_lower = path.to_lowercase();
-        for rule in &self.rules {
-            match &rule.pattern {
+        for (pattern, target) in &self.mappings {
+            match &pattern {
                 Pattern::Exact(value) => {
                     if value == &path_lower {
-                        return Some(rule.url.clone());
+                        return Some(target.clone());
                     }
                 }
                 Pattern::Prefix(value) => {
@@ -102,7 +126,8 @@ impl SourceLinkMappings {
                             .get(value.len()..)
                             .unwrap_or_default()
                             .replace('\\', "/");
-                        return Some(rule.url.replace('*', &replacement));
+                        dbg!(&replacement);
+                        return Some(target.replace('*', &replacement));
                     }
                 }
             }
@@ -116,21 +141,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_invalid_json() {
-        let mut mappings = SourceLinkMappings::default();
-        assert!(mappings.add_mappings(b"").is_err());
-        assert!(mappings.add_mappings(b"foo").is_err());
-        assert!(mappings.add_mappings(br#"{"docs": {"k": "v"}}"#).is_err());
-        assert!(mappings
-            .add_mappings(br#"{"documents": ["k", "v"]}"#)
-            .is_err());
-        assert_eq!(mappings.rules.len(), 0);
-    }
-
-    #[test]
-    fn test_mapping() {
-        let mappings = SourceLinkMappings::new(
-            vec![br#"
+    fn test_from_documents() {
+        let mappings = SourceLinkMappings::parse_from_documents(
+            &[br#"
                 {
                     "documents": {
                         "C:\\src\\*":                   "http://MyDefaultDomain.com/src/*",
@@ -154,7 +167,7 @@ mod tests {
                 "#]
         ).unwrap();
 
-        assert_eq!(mappings.rules.len(), 6);
+        assert_eq!(mappings.mappings.len(), 6);
 
         // In this example:
         //   All files under directory bar will map to a relative URL beginning with http://MyBarDomain.com/src/.
@@ -186,5 +199,67 @@ mod tests {
             mappings.resolve("/home/user/src/Path/TO/file.txt").unwrap(),
             "https://linux.com/Path/TO/file.txt"
         );
+    }
+
+    #[test]
+    fn test_mapping() {
+        let mappings: SourceLinkMappings = serde_json::from_str(
+            r#"{
+                    "C:\\src\\*":                   "http://MyDefaultDomain.com/src/*",
+                    "C:\\src\\fOO\\*":              "http://MyFooDomain.com/src/*",
+                    "C:\\src\\foo\\specific.txt":   "http://MySpecificFoodDomain.com/src/specific.txt",
+                    "C:\\src\\bar\\*":              "http://MyBarDomain.com/src/*",
+                    "C:\\src\\file.txt": "https://example.com/file.txt",
+                    "/home/user/src/*": "https://linux.com/*"
+                }"#
+        ).unwrap();
+
+        assert_eq!(mappings.mappings.len(), 6);
+
+        // In this example:
+        //   All files under directory bar will map to a relative URL beginning with http://MyBarDomain.com/src/.
+        //   All files under directory foo will map to a relative URL beginning with http://MyFooDomain.com/src/ EXCEPT foo/specific.txt which will map to http://MySpecificFoodDomain.com/src/specific.txt.
+        //   All other files anywhere under the src directory will map to a relative url beginning with http://MyDefaultDomain.com/src/.
+        assert!(mappings.resolve("c:\\other\\path").is_none());
+        assert!(mappings.resolve("/home/path").is_none());
+        assert_eq!(
+            mappings.resolve("c:\\src\\bAr\\foo\\FiLe.txt").unwrap(),
+            "http://MyBarDomain.com/src/foo/FiLe.txt"
+        );
+        assert_eq!(
+            mappings.resolve("c:\\src\\foo\\FiLe.txt").unwrap(),
+            "http://MyFooDomain.com/src/FiLe.txt"
+        );
+        assert_eq!(
+            mappings.resolve("c:\\src\\foo\\SpEcIfIc.txt").unwrap(),
+            "http://MySpecificFoodDomain.com/src/specific.txt"
+        );
+        assert_eq!(
+            mappings.resolve("c:\\src\\other\\path").unwrap(),
+            "http://MyDefaultDomain.com/src/other/path"
+        );
+        assert_eq!(
+            mappings.resolve("c:\\src\\other\\path").unwrap(),
+            "http://MyDefaultDomain.com/src/other/path"
+        );
+        assert_eq!(
+            mappings.resolve("/home/user/src/Path/TO/file.txt").unwrap(),
+            "https://linux.com/Path/TO/file.txt"
+        );
+    }
+
+    #[test]
+    fn test_pattern() {
+        let exact = Pattern::Exact("c:\\foo.bar".to_string());
+        let serialized = serde_json::to_string(&exact).unwrap();
+        assert_eq!(serialized, r#""c:\\foo.bar""#);
+        let parsed: Pattern = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(parsed, exact);
+
+        let prefix = Pattern::Prefix("c:\\foo.bar".to_string());
+        let serialized = serde_json::to_string(&prefix).unwrap();
+        assert_eq!(serialized, r#""c:\\foo.bar*""#);
+        let parsed: Pattern = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(parsed, prefix);
     }
 }

@@ -299,8 +299,9 @@ impl<'data> PortablePdb<'data> {
                 source_link_mappings.push(result.get_blob(cdi.blob)?);
             }
         }
-        result.source_link_mappings = SourceLinkMappings::new(source_link_mappings)
-            .map_err(|e| FormatError::new(FormatErrorKind::InvalidSourceLinkJson, e))?;
+        result.source_link_mappings =
+            SourceLinkMappings::parse_from_documents(&source_link_mappings)
+                .map_err(|e| FormatError::new(FormatErrorKind::InvalidSourceLinkJson, e))?;
 
         Ok(result)
     }
