@@ -4,9 +4,10 @@ mod sequence_points;
 mod streams;
 mod utils;
 
-use std::{borrow::Cow, fmt, io::Read};
+use std::{borrow::Cow, collections::BTreeMap, fmt, io::Read};
 
 use flate2::read::DeflateDecoder;
+use serde::Deserialize;
 use thiserror::Error;
 use watto::Pod;
 
@@ -291,17 +292,23 @@ impl<'data> PortablePdb<'data> {
         // Read source link mappings.
         // https://github.com/dotnet/runtime/blob/main/docs/design/specs/PortablePdb-Metadata.md#source-link-c-and-vb-compilers
         const SOURCE_LINK_KIND: Uuid = uuid::uuid!("CC110556-A091-4D38-9FEC-25AB9A351A6A");
-        let mut source_link_mappings = Vec::new();
+
+        #[derive(Debug, Clone, Deserialize)]
+        struct SourceLinkDocuments {
+            documents: BTreeMap<String, String>,
+        }
+
         for cdi in CustomDebugInformationIterator::new(&result, SOURCE_LINK_KIND)? {
             let cdi = cdi?;
             // Note: only handle module #1 (do we actually handle multiple modules in any way??)
             if let (CustomDebugInformationTag::Module, 1) = (cdi.tag, cdi.value) {
-                source_link_mappings.push(result.get_blob(cdi.blob)?);
+                let docs: SourceLinkDocuments = serde_json::from_slice(result.get_blob(cdi.blob)?)
+                    .map_err(|e| FormatError::new(FormatErrorKind::InvalidSourceLinkJson, e))?;
+                result
+                    .source_link_mappings
+                    .extend(docs.documents.iter().map(|(k, v)| (&k[..], &v[..])));
             }
         }
-        result.source_link_mappings =
-            SourceLinkMappings::parse_from_documents(&source_link_mappings)
-                .map_err(|e| FormatError::new(FormatErrorKind::InvalidSourceLinkJson, e))?;
 
         Ok(result)
     }

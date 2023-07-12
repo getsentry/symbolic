@@ -20,6 +20,16 @@ enum Pattern {
     Prefix(String),
 }
 
+impl Pattern {
+    fn parse(input: &str) -> Self {
+        if let Some(prefix) = input.strip_suffix('*') {
+            Pattern::Prefix(prefix.to_lowercase())
+        } else {
+            Pattern::Exact(input.to_lowercase())
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for Pattern {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -103,29 +113,24 @@ pub struct SourceLinkMappings {
     mappings: BTreeMap<Pattern, String>,
 }
 
+impl<'a> Extend<(&'a str, &'a str)> for SourceLinkMappings {
+    fn extend<T: IntoIterator<Item = (&'a str, &'a str)>>(&mut self, iter: T) {
+        self.mappings.extend(
+            iter.into_iter()
+                .map(|(k, v)| (Pattern::parse(k), v.to_string())),
+        )
+    }
+}
+
 impl SourceLinkMappings {
+    pub fn new<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(iter: I) -> Self {
+        let mut res = Self::default();
+        res.extend(iter);
+        res
+    }
     /// Returns true if this structure contains no mappings.
     pub fn is_empty(&self) -> bool {
         self.mappings.is_empty()
-    }
-
-    /// Parse a `SourceLinkMapping` struct from a list of `documents` json values.
-    ///
-    /// See [Source Link PPDB docs](https://github.com/dotnet/designs/blob/main/accepted/2020/diagnostics/source-link.md#source-link-json-schema).
-    pub fn parse_from_documents(jsons: &[&[u8]]) -> Result<Self, serde_json::Error> {
-        #[derive(Deserialize)]
-        struct Documents {
-            documents: BTreeMap<Pattern, String>,
-        }
-
-        let mut mappings = BTreeMap::new();
-
-        for &json in jsons {
-            let docs: Documents = serde_json::from_slice(json)?;
-            mappings.extend(docs.documents.into_iter());
-        }
-
-        Ok(Self { mappings })
     }
 
     /// Resolve the path to a URL.
@@ -160,67 +165,6 @@ impl SourceLinkMappings {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_from_documents() {
-        let mappings = SourceLinkMappings::parse_from_documents(
-            &[br#"
-                {
-                    "documents": {
-                        "C:\\src\\*":                   "http://MyDefaultDomain.com/src/*",
-                        "C:\\src\\fOO\\*":              "http://MyFooDomain.com/src/*",
-                        "C:\\src\\foo\\specific.txt":   "http://MySpecificFoodDomain.com/src/specific.txt",
-                        "C:\\src\\bar\\*":              "http://MyBarDomain.com/src/*"
-                    }
-                }
-                "#, br#"
-                {
-                    "documents": {
-                        "C:\\src\\file.txt": "https://example.com/file.txt"
-                    }
-                }
-                "#, br#"
-                {
-                    "documents": {
-                        "/home/user/src/*": "https://linux.com/*"
-                    }
-                }
-                "#]
-        ).unwrap();
-
-        assert_eq!(mappings.mappings.len(), 6);
-
-        // In this example:
-        //   All files under directory bar will map to a relative URL beginning with http://MyBarDomain.com/src/.
-        //   All files under directory foo will map to a relative URL beginning with http://MyFooDomain.com/src/ EXCEPT foo/specific.txt which will map to http://MySpecificFoodDomain.com/src/specific.txt.
-        //   All other files anywhere under the src directory will map to a relative url beginning with http://MyDefaultDomain.com/src/.
-        assert!(mappings.resolve("c:\\other\\path").is_none());
-        assert!(mappings.resolve("/home/path").is_none());
-        assert_eq!(
-            mappings.resolve("c:\\src\\bAr\\foo\\FiLe.txt").unwrap(),
-            "http://MyBarDomain.com/src/foo/FiLe.txt"
-        );
-        assert_eq!(
-            mappings.resolve("c:\\src\\foo\\FiLe.txt").unwrap(),
-            "http://MyFooDomain.com/src/FiLe.txt"
-        );
-        assert_eq!(
-            mappings.resolve("c:\\src\\foo\\SpEcIfIc.txt").unwrap(),
-            "http://MySpecificFoodDomain.com/src/specific.txt"
-        );
-        assert_eq!(
-            mappings.resolve("c:\\src\\other\\path").unwrap(),
-            "http://MyDefaultDomain.com/src/other/path"
-        );
-        assert_eq!(
-            mappings.resolve("c:\\src\\other\\path").unwrap(),
-            "http://MyDefaultDomain.com/src/other/path"
-        );
-        assert_eq!(
-            mappings.resolve("/home/user/src/Path/TO/file.txt").unwrap(),
-            "https://linux.com/Path/TO/file.txt"
-        );
-    }
 
     #[test]
     fn test_mapping() {
