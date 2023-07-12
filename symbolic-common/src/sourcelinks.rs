@@ -1,9 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
-use serde::de::Visitor;
-use serde::{Deserialize, Serialize};
-
 /// A pattern for matching source paths.
 ///
 /// A pattern either matches a string exactly (`Exact`)
@@ -26,48 +23,6 @@ impl Pattern {
             Pattern::Prefix(prefix.to_lowercase())
         } else {
             Pattern::Exact(input.to_lowercase())
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for Pattern {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        struct PatternVisitor;
-
-        impl<'de> Visitor<'de> for PatternVisitor {
-            type Value = Pattern;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                write!(formatter, "a pattern string")
-            }
-
-            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                if let Some(prefix) = v.strip_suffix('*') {
-                    Ok(Pattern::Prefix(prefix.to_lowercase()))
-                } else {
-                    Ok(Pattern::Exact(v.to_lowercase()))
-                }
-            }
-        }
-
-        deserializer.deserialize_str(PatternVisitor)
-    }
-}
-
-impl Serialize for Pattern {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        match self {
-            Pattern::Exact(s) => serializer.serialize_str(s),
-            Pattern::Prefix(p) => serializer.serialize_str(&format!("{p}*")),
         }
     }
 }
@@ -98,18 +53,18 @@ impl PartialOrd for Pattern {
 /// # Example
 /// ```
 /// use symbolic_common::SourceLinkMappings;
-/// let mappings: SourceLinkMappings = serde_json::from_str(r#"{
-///     "C:\\src\\*":                   "http://MyDefaultDomain.com/src/*",
-///     "C:\\src\\fOO\\*":              "http://MyFooDomain.com/src/*",
-///     "C:\\src\\foo\\specific.txt":   "http://MySpecificFoodDomain.com/src/specific.txt",
-///     "C:\\src\\bar\\*":              "http://MyBarDomain.com/src/*"
-/// }"#).unwrap();
+/// let mappings = vec![
+///     ("C:\\src\\*", "http://MyDefaultDomain.com/src/*"),
+///     ("C:\\src\\fOO\\*", "http://MyFooDomain.com/src/*"),
+///     ("C:\\src\\foo\\specific.txt", "http://MySpecificFoodDomain.com/src/specific.txt"),
+///     ("C:\\src\\bar\\*", "http://MyBarDomain.com/src/*"),
+/// ];
+/// let mappings = SourceLinkMappings::new(mappings.into_iter());
 /// let resolved = mappings.resolve("c:\\src\\bAr\\foo\\FiLe.txt").unwrap();
 /// assert_eq!(resolved, "http://MyBarDomain.com/src/foo/FiLe.txt");
 /// ````
-#[derive(Debug, Default, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct SourceLinkMappings {
-    #[serde(flatten)]
     mappings: BTreeMap<Pattern, String>,
 }
 
@@ -123,6 +78,7 @@ impl<'a> Extend<(&'a str, &'a str)> for SourceLinkMappings {
 }
 
 impl SourceLinkMappings {
+    /// Creates a `SourceLinkMappings` struct from an iterator of pattern/target pairs.
     pub fn new<'a, I: IntoIterator<Item = (&'a str, &'a str)>>(iter: I) -> Self {
         let mut res = Self::default();
         res.extend(iter);
@@ -168,16 +124,19 @@ mod tests {
 
     #[test]
     fn test_mapping() {
-        let mappings: SourceLinkMappings = serde_json::from_str(
-            r#"{
-                    "C:\\src\\*":                   "http://MyDefaultDomain.com/src/*",
-                    "C:\\src\\fOO\\*":              "http://MyFooDomain.com/src/*",
-                    "C:\\src\\foo\\specific.txt":   "http://MySpecificFoodDomain.com/src/specific.txt",
-                    "C:\\src\\bar\\*":              "http://MyBarDomain.com/src/*",
-                    "C:\\src\\file.txt": "https://example.com/file.txt",
-                    "/home/user/src/*": "https://linux.com/*"
-                }"#
-        ).unwrap();
+        let mappings = vec![
+            ("C:\\src\\*", "http://MyDefaultDomain.com/src/*"),
+            ("C:\\src\\fOO\\*", "http://MyFooDomain.com/src/*"),
+            (
+                "C:\\src\\foo\\specific.txt",
+                "http://MySpecificFoodDomain.com/src/specific.txt",
+            ),
+            ("C:\\src\\bar\\*", "http://MyBarDomain.com/src/*"),
+            ("C:\\src\\file.txt", "https://example.com/file.txt"),
+            ("/home/user/src/*", "https://linux.com/*"),
+        ];
+
+        let mappings = SourceLinkMappings::new(mappings.into_iter());
 
         assert_eq!(mappings.mappings.len(), 6);
 
@@ -211,20 +170,5 @@ mod tests {
             mappings.resolve("/home/user/src/Path/TO/file.txt").unwrap(),
             "https://linux.com/Path/TO/file.txt"
         );
-    }
-
-    #[test]
-    fn test_pattern() {
-        let exact = Pattern::Exact("c:\\foo.bar".to_string());
-        let serialized = serde_json::to_string(&exact).unwrap();
-        assert_eq!(serialized, r#""c:\\foo.bar""#);
-        let parsed: Pattern = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(parsed, exact);
-
-        let prefix = Pattern::Prefix("c:\\foo.bar".to_string());
-        let serialized = serde_json::to_string(&prefix).unwrap();
-        assert_eq!(serialized, r#""c:\\foo.bar*""#);
-        let parsed: Pattern = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(parsed, prefix);
     }
 }
