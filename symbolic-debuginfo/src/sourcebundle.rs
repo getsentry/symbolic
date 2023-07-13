@@ -57,7 +57,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use zip::{write::FileOptions, ZipWriter};
 
-use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
+use symbolic_common::{Arch, AsSelf, CodeId, DebugId, SourceLinkMappings};
 
 use crate::base::*;
 use crate::js::{
@@ -517,6 +517,9 @@ struct SourceBundleManifest {
     #[serde(default)]
     pub files: BTreeMap<String, SourceFileInfo>,
 
+    #[serde(default)]
+    pub source_links: BTreeMap<String, String>,
+
     /// Arbitrary attributes to include in the bundle.
     #[serde(flatten)]
     pub attributes: BTreeMap<String, String>,
@@ -734,9 +737,17 @@ impl<'data> SourceBundle<'data> {
         // `SourceBundle`, which might be shared by multiple threads.
         // The only thing here that really needs to be `mut` is the `Cursor` / `Seek` position.
         let archive = Mutex::new(self.archive.clone());
+        let source_links = SourceLinkMappings::new(
+            self.index
+                .manifest
+                .source_links
+                .iter()
+                .map(|(k, v)| (&k[..], &v[..])),
+        );
         Ok(SourceBundleDebugSession {
             index: Arc::clone(&self.index),
             archive,
+            source_links,
         })
     }
 
@@ -862,6 +873,7 @@ enum FileKey<'a> {
 pub struct SourceBundleDebugSession<'data> {
     archive: Mutex<zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>>,
     index: Arc<SourceBundleIndex<'data>>,
+    source_links: SourceLinkMappings,
 }
 
 impl<'data> SourceBundleDebugSession<'data> {
@@ -891,18 +903,30 @@ impl<'data> SourceBundleDebugSession<'data> {
     }
 
     /// Looks up a source file descriptor.
+    ///
+    /// The file is looked up in both the embedded files and
+    /// in the included source link mappings, in that order.
     fn get_source_file_descriptor(
         &self,
         key: FileKey,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
-        let zip_path = match self.index.indexed_files.get(&key) {
-            Some(zip_path) => zip_path.as_str(),
-            None => return Ok(None),
-        };
-
-        let content = self.source_by_zip_path(zip_path)?;
-        let info = self.index.manifest.files.get(zip_path);
-        Ok(content.map(|opt| SourceFileDescriptor::new_embedded(Cow::Owned(opt), info)))
+        match self.index.indexed_files.get(&key) {
+            Some(zip_path) => {
+                let zip_path = zip_path.as_str();
+                let content = self.source_by_zip_path(zip_path)?;
+                let info = self.index.manifest.files.get(zip_path);
+                Ok(content.map(|opt| SourceFileDescriptor::new_embedded(Cow::Owned(opt), info)))
+            }
+            None => {
+                let FileKey::Path(path) = key else {
+                    return Ok(None);
+                };
+                Ok(self
+                    .source_links
+                    .resolve(&path)
+                    .map(|s| SourceFileDescriptor::new_remote(s.into())))
+            }
+        }
     }
 
     /// See [DebugSession::source_by_path] for more information.
@@ -1631,5 +1655,55 @@ mod tests {
         assert_eq!(sanitize_bundle_path("C:/foo/bar"), "C/foo/bar");
         assert_eq!(sanitize_bundle_path("\\foo\\bar"), "foo/bar");
         assert_eq!(sanitize_bundle_path("\\\\UNC\\foo\\bar"), "UNC/foo/bar");
+    }
+
+    #[test]
+    fn test_source_links() -> Result<(), SourceBundleError> {
+        let mut writer = Cursor::new(Vec::new());
+        let mut bundle = SourceBundleWriter::start(&mut writer)?;
+
+        let mut info = SourceFileInfo::default();
+        info.set_url("https://example.com/bar/index.min.js".into());
+        info.set_path("/files/bar/index.min.js".into());
+        info.set_ty(SourceFileType::MinifiedSource);
+        bundle.add_file("bar/index.js", &b"filecontents"[..], info)?;
+        assert!(bundle.has_file("bar/index.js"));
+
+        bundle
+            .manifest
+            .source_links
+            .insert("/files/bar/*".to_string(), "https://nope.com/*".into());
+        bundle
+            .manifest
+            .source_links
+            .insert("/files/foo/*".to_string(), "https://example.com/*".into());
+
+        bundle.finish()?;
+        let bundle_bytes = writer.into_inner();
+        let bundle = SourceBundle::parse(&bundle_bytes)?;
+
+        let sess = bundle.debug_session().unwrap();
+
+        // This should be resolved by source link
+        let foo = sess
+            .source_by_path("/files/foo/index.min.js")
+            .unwrap()
+            .expect("should exist");
+        assert_eq!(foo.contents(), None);
+        assert_eq!(foo.ty(), SourceFileType::Source);
+        assert_eq!(foo.url(), Some("https://example.com/index.min.js"));
+        assert_eq!(foo.path(), None);
+
+        // This should be resolved by embedded file, even though the link also exists
+        let bar = sess
+            .source_by_path("/files/bar/index.min.js")
+            .unwrap()
+            .expect("should exist");
+        assert_eq!(bar.contents(), Some("filecontents"));
+        assert_eq!(bar.ty(), SourceFileType::MinifiedSource);
+        assert_eq!(bar.url(), Some("https://example.com/bar/index.min.js"));
+        assert_eq!(bar.path(), Some("/files/bar/index.min.js"));
+
+        Ok(())
     }
 }
