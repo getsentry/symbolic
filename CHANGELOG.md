@@ -7,6 +7,10 @@
 - Add sourcelink functionality to `symbolic-common` ([#803](https://github.com/getsentry/symbolic/pull/803))
 - Add sourcelink support to sourcebundles ([#804](https://github.com/getsentry/symbolic/pull/804))
 
+**Fixes**
+
+- Documentation fixes contributed by [fzyzcjy](https://github.com/fzyzcjy)
+
 ## 12.2.0
 
 **Features**
