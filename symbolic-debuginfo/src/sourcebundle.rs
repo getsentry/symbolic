@@ -910,23 +910,20 @@ impl<'data> SourceBundleDebugSession<'data> {
         &self,
         key: FileKey,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
-        match self.index.indexed_files.get(&key) {
-            Some(zip_path) => {
-                let zip_path = zip_path.as_str();
-                let content = self.source_by_zip_path(zip_path)?;
-                let info = self.index.manifest.files.get(zip_path);
-                Ok(content.map(|opt| SourceFileDescriptor::new_embedded(Cow::Owned(opt), info)))
-            }
-            None => {
-                let FileKey::Path(path) = key else {
-                    return Ok(None);
-                };
-                Ok(self
-                    .source_links
-                    .resolve(&path)
-                    .map(|s| SourceFileDescriptor::new_remote(s.into())))
-            }
+        if let Some(zip_path) = self.index.indexed_files.get(&key) {
+            let zip_path = zip_path.as_str();
+            let content = self.source_by_zip_path(zip_path)?;
+            let info = self.index.manifest.files.get(zip_path);
+            return Ok(content.map(|opt| SourceFileDescriptor::new_embedded(Cow::Owned(opt), info)));
         }
+
+        let FileKey::Path(path) = key else {
+            return Ok(None);
+        };
+        Ok(self
+            .source_links
+            .resolve(&path)
+            .map(|s| SourceFileDescriptor::new_remote(s.into())))
     }
 
     /// See [DebugSession::source_by_path] for more information.
