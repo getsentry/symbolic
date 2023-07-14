@@ -195,7 +195,7 @@ ffi_fn! {
                 // and the upstream python code does a `- 1` here:
                 // https://github.com/getsentry/sentry/blob/fdabccac7576c80674c2fed556d4c5407657dc4c/src/sentry/lang/javascript/processor.py#L584-L586
                 smh.lookup_token(line, col + 1).map(|token| {
-                    let mut rv = make_token_match(token);
+                    let rv = make_token_match(token);
                     if let Some(name) = smh.get_original_function_name(col + 1).map(str::to_owned) {
                         (*rv).function_name = SymbolicStr::from_string(name);
                     }
@@ -203,7 +203,7 @@ ffi_fn! {
                 })
             }
             _ => source_map.inner.lookup_token(line, col).map(|token| {
-                let mut rv = make_token_match(token);
+                let  rv = make_token_match(token);
                 if let Some(name) = source_view
                     .get_original_function_name(token, (*minified_name).as_str())
                     .map(str::to_owned) {

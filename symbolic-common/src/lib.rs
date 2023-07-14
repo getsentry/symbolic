@@ -26,12 +26,14 @@ mod byteview;
 mod cell;
 mod heuristics;
 mod path;
+mod sourcelinks;
 mod types;
 
 pub use crate::byteview::*;
 pub use crate::cell::*;
 pub use crate::heuristics::*;
 pub use crate::path::*;
+pub use crate::sourcelinks::*;
 pub use crate::types::*;
 
 pub use debugid::*;
