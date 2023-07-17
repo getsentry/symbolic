@@ -1,14 +1,14 @@
 //! Support for Program Database, the debug companion format on Windows.
 
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::collections::btree_map::BTreeMap;
 use std::error::Error;
 use std::fmt;
 use std::io::Cursor;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use elsa::FrozenMap;
+use parking_lot::RwLock;
 use pdb_addr2line::pdb::{
     AddressMap, FallibleIterator, ImageSectionHeader, InlineSiteSymbol, LineProgram, MachineType,
     Module, ModuleInfo, PdbInternalSectionOffset, ProcedureSymbol, RawString, SeparatedCodeSymbol,
@@ -117,8 +117,8 @@ impl From<pdb_addr2line::Error> for PdbError {
 ///
 /// This object is a sole debug companion to [`PeObject`](../pdb/struct.PdbObject.html).
 pub struct PdbObject<'data> {
-    pdb: Rc<RefCell<Pdb<'data>>>,
-    debug_info: Rc<pdb::DebugInformation<'data>>,
+    pdb: Arc<RwLock<Pdb<'data>>>,
+    debug_info: Arc<pdb::DebugInformation<'data>>,
     pdb_info: pdb::PDBInformation<'data>,
     public_syms: pdb::SymbolTable<'data>,
     executable_sections: ExecutableSections,
@@ -149,8 +149,8 @@ impl<'data> PdbObject<'data> {
         let sections = pdb.sections()?;
 
         Ok(PdbObject {
-            pdb: Rc::new(RefCell::new(pdb)),
-            debug_info: Rc::new(dbi),
+            pdb: Arc::new(RwLock::new(pdb)),
+            debug_info: Arc::new(dbi),
             pdb_info: pdbi,
             public_syms: pubi,
             data,
@@ -227,7 +227,7 @@ impl<'data> PdbObject<'data> {
     pub fn symbols(&self) -> PdbSymbolIterator<'data, '_> {
         PdbSymbolIterator {
             symbols: self.public_syms.iter(),
-            address_map: self.pdb.borrow_mut().address_map().ok(),
+            address_map: self.pdb.write().address_map().ok(),
             executable_sections: &self.executable_sections,
         }
     }
@@ -276,7 +276,7 @@ impl<'data> PdbObject<'data> {
     }
 
     #[doc(hidden)]
-    pub fn inner(&self) -> &RefCell<Pdb<'data>> {
+    pub fn inner(&self) -> &RwLock<Pdb<'data>> {
         &self.pdb
     }
 }
@@ -470,12 +470,12 @@ impl<'data, 'object> Iterator for PdbSymbolIterator<'data, 'object> {
 }
 
 struct PdbStreams<'d> {
-    debug_info: Rc<pdb::DebugInformation<'d>>,
+    debug_info: Arc<pdb::DebugInformation<'d>>,
     type_info: pdb::TypeInformation<'d>,
     id_info: pdb::IdInformation<'d>,
     string_table: Option<pdb::StringTable<'d>>,
 
-    pdb: Rc<RefCell<Pdb<'d>>>,
+    pdb: Arc<RwLock<Pdb<'d>>>,
 
     /// ModuleInfo objects are stored on this object (outside PdbDebugInfo) so that the
     /// PdbDebugInfo can store a TypeFormatter, which has a lifetime dependency on its
@@ -487,7 +487,7 @@ struct PdbStreams<'d> {
 
 impl<'d> PdbStreams<'d> {
     fn from_pdb(pdb: &PdbObject<'d>) -> Result<Self, PdbError> {
-        let mut p = pdb.pdb.borrow_mut();
+        let mut p = pdb.pdb.write();
 
         // PDB::string_table errors if the named stream for the string table is not present.
         // However, this occurs in certain PDBs and does not automatically indicate an error.
@@ -518,7 +518,7 @@ impl<'d> pdb_addr2line::ModuleProvider<'d> for PdbStreams<'d> {
             return Ok(Some(module_info));
         }
 
-        let mut pdb = self.pdb.borrow_mut();
+        let mut pdb = self.pdb.write();
         Ok(pdb.module_info(module)?.map(|module_info| {
             self.module_infos
                 .insert(module_index, Box::new(module_info))
@@ -543,7 +543,7 @@ impl<'d> PdbDebugInfo<'d> {
 
         // Avoid deadlocks by only covering the two access to the address map. For
         // instance, `pdb.symbol_map()` requires a mutable borrow of the PDB as well.
-        let mut p = pdb.pdb.borrow_mut();
+        let mut p = pdb.pdb.write();
         let address_map = p.address_map()?;
 
         drop(p);
