@@ -795,8 +795,10 @@ fn test_ppdb_source_links() -> Result<(), Error> {
     let object = Object::parse(&view)?;
     let session = object.debug_session()?;
 
-    let known_embedded_sources = [".NETStandard,Version=v2.0.AssemblyAttributes.cs",
-        "ppdb-sourcelink-sample.AssemblyInfo.cs"];
+    let known_embedded_sources = [
+        ".NETStandard,Version=v2.0.AssemblyAttributes.cs",
+        "ppdb-sourcelink-sample.AssemblyInfo.cs",
+    ];
 
     // Testing this is simple because there's just one prefix rule in this PPDB.
     let src_prefix = "C:\\dev\\symbolic\\";
