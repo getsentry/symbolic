@@ -23,7 +23,7 @@ fn test_write_header_linux() -> Result<(), Error> {
     }
 
     let symcache = SymCache::parse(&buffer)?;
-    insta::assert_debug_snapshot!(symcache, @r###"
+    insta::assert_debug_snapshot!(symcache, @r#"
     SymCache {
         version: 8,
         debug_id: DebugId {
@@ -37,7 +37,7 @@ fn test_write_header_linux() -> Result<(), Error> {
         ranges: 6828,
         string_bytes: 49877,
     }
-    "###);
+    "#);
 
     Ok(())
 }
@@ -67,7 +67,7 @@ fn test_write_header_macos() -> Result<(), Error> {
     converter.process_object(&object)?;
     converter.serialize(&mut Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
-    insta::assert_debug_snapshot!(symcache, @r###"
+    insta::assert_debug_snapshot!(symcache, @r#"
     SymCache {
         version: 8,
         debug_id: DebugId {
@@ -81,7 +81,7 @@ fn test_write_header_macos() -> Result<(), Error> {
         ranges: 5782,
         string_bytes: 40958,
     }
-    "###);
+    "#);
 
     Ok(())
 }

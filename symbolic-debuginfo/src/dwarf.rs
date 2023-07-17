@@ -283,7 +283,7 @@ impl<'d> DwarfLineProgram<'d> {
                         } else {
                             address
                         },
-                        rows: sequence_rows.drain(..).collect(),
+                        rows: std::mem::take(&mut sequence_rows),
                     });
                 }
                 prev_address = 0;

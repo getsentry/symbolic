@@ -157,7 +157,7 @@ impl<'data> ElfObject<'data> {
 
         macro_rules! return_partial_on_err {
             ($parse_func:expr) => {
-                if let Ok(expected) = $parse_func() {
+                if let Ok(expected) = $parse_func {
                     expected
                 } else {
                     // does this snapshot?
@@ -200,7 +200,7 @@ impl<'data> ElfObject<'data> {
         };
 
         let strtab_idx = header.e_shstrndx as usize;
-        obj.shdr_strtab = return_partial_on_err!(|| get_strtab(&obj.section_headers, strtab_idx));
+        obj.shdr_strtab = return_partial_on_err!(get_strtab(&obj.section_headers, strtab_idx));
 
         obj.syms = elf::Symtab::default();
         obj.strtab = Strtab::default();
@@ -208,17 +208,15 @@ impl<'data> ElfObject<'data> {
             if shdr.sh_type == elf::section_header::SHT_SYMTAB {
                 let size = shdr.sh_entsize;
                 let count = if size == 0 { 0 } else { shdr.sh_size / size };
-                obj.syms = return_partial_on_err!(|| elf::Symtab::parse(
+                obj.syms = return_partial_on_err!(elf::Symtab::parse(
                     data,
                     shdr.sh_offset as usize,
                     count as usize,
                     ctx
                 ));
 
-                obj.strtab = return_partial_on_err!(|| get_strtab(
-                    &obj.section_headers,
-                    shdr.sh_link as usize
-                ));
+                obj.strtab =
+                    return_partial_on_err!(get_strtab(&obj.section_headers, shdr.sh_link as usize));
             }
         }
 
@@ -229,16 +227,11 @@ impl<'data> ElfObject<'data> {
         obj.dynrels = elf::RelocSection::default();
         obj.pltrelocs = elf::RelocSection::default();
         obj.dynstrtab = Strtab::default();
-        let dynamic =
-            return_partial_on_err!(|| elf::Dynamic::parse(data, &obj.program_headers, ctx));
+        let dynamic = return_partial_on_err!(elf::Dynamic::parse(data, &obj.program_headers, ctx));
         if let Some(ref dynamic) = dynamic {
             let dyn_info = &dynamic.info;
-            obj.dynstrtab = return_partial_on_err!(|| Strtab::parse(
-                data,
-                dyn_info.strtab,
-                dyn_info.strsz,
-                0x0
-            ));
+            obj.dynstrtab =
+                return_partial_on_err!(Strtab::parse(data, dyn_info.strtab, dyn_info.strsz, 0x0));
 
             if dyn_info.soname != 0 {
                 // FIXME: warn! here
@@ -248,14 +241,14 @@ impl<'data> ElfObject<'data> {
                 obj.libraries = dynamic.get_libraries(&obj.dynstrtab);
             }
             // parse the dynamic relocations
-            obj.dynrelas = return_partial_on_err!(|| elf::RelocSection::parse(
+            obj.dynrelas = return_partial_on_err!(elf::RelocSection::parse(
                 data,
                 dyn_info.rela,
                 dyn_info.relasz,
                 true,
                 ctx
             ));
-            obj.dynrels = return_partial_on_err!(|| elf::RelocSection::parse(
+            obj.dynrels = return_partial_on_err!(elf::RelocSection::parse(
                 data,
                 dyn_info.rel,
                 dyn_info.relsz,
@@ -263,7 +256,7 @@ impl<'data> ElfObject<'data> {
                 ctx
             ));
             let is_rela = dyn_info.pltrel == elf::dynamic::DT_RELA;
-            obj.pltrelocs = return_partial_on_err!(|| elf::RelocSection::parse(
+            obj.pltrelocs = return_partial_on_err!(elf::RelocSection::parse(
                 data,
                 dyn_info.jmprel,
                 dyn_info.pltrelsz,
@@ -272,9 +265,9 @@ impl<'data> ElfObject<'data> {
             ));
 
             let mut num_syms = if let Some(gnu_hash) = dyn_info.gnu_hash {
-                return_partial_on_err!(|| ElfObject::gnu_hash_len(data, gnu_hash as usize, ctx))
+                return_partial_on_err!(ElfObject::gnu_hash_len(data, gnu_hash as usize, ctx))
             } else if let Some(hash) = dyn_info.hash {
-                return_partial_on_err!(|| ElfObject::hash_len(
+                return_partial_on_err!(ElfObject::hash_len(
                     data,
                     hash as usize,
                     header.e_machine,
@@ -294,15 +287,15 @@ impl<'data> ElfObject<'data> {
             }
 
             obj.dynsyms =
-                return_partial_on_err!(|| elf::Symtab::parse(data, dyn_info.symtab, num_syms, ctx));
+                return_partial_on_err!(elf::Symtab::parse(data, dyn_info.symtab, num_syms, ctx));
         }
 
         obj.shdr_relocs = vec![];
         for (idx, section) in obj.section_headers.iter().enumerate() {
             let is_rela = section.sh_type == elf::section_header::SHT_RELA;
             if is_rela || section.sh_type == elf::section_header::SHT_REL {
-                return_partial_on_err!(|| section.check_size(data.len()));
-                let sh_relocs = return_partial_on_err!(|| elf::RelocSection::parse(
+                return_partial_on_err!(section.check_size(data.len()));
+                let sh_relocs = return_partial_on_err!(elf::RelocSection::parse(
                     data,
                     section.sh_offset as usize,
                     section.sh_size as usize,
@@ -313,17 +306,17 @@ impl<'data> ElfObject<'data> {
             }
         }
 
-        obj.versym = return_partial_on_err!(|| elf::symver::VersymSection::parse(
+        obj.versym = return_partial_on_err!(elf::symver::VersymSection::parse(
             data,
             &obj.section_headers,
             ctx
         ));
-        obj.verdef = return_partial_on_err!(|| elf::symver::VerdefSection::parse(
+        obj.verdef = return_partial_on_err!(elf::symver::VerdefSection::parse(
             data,
             &obj.section_headers,
             ctx
         ));
-        obj.verneed = return_partial_on_err!(|| elf::symver::VerneedSection::parse(
+        obj.verneed = return_partial_on_err!(elf::symver::VerneedSection::parse(
             data,
             &obj.section_headers,
             ctx

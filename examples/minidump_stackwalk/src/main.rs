@@ -366,7 +366,7 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
             .map(|(id, sym)| {
                 let stats = SymbolStats {
                     symbol_url: None,
-                    loaded_symbols: matches!(sym, Ok(_)),
+                    loaded_symbols: sym.is_ok(),
                     corrupt_symbols: matches!(sym, Err(SymbolError::Corrupt)),
                 };
 

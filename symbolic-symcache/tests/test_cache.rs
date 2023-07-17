@@ -8,7 +8,7 @@ type Error = Box<dyn std::error::Error>;
 fn test_load_header_linux() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("symcache/current/linux.symc"))?;
     let symcache = SymCache::parse(&buffer)?;
-    insta::assert_debug_snapshot!(symcache, @r###"
+    insta::assert_debug_snapshot!(symcache, @r#"
     SymCache {
         version: 7,
         debug_id: DebugId {
@@ -22,7 +22,7 @@ fn test_load_header_linux() -> Result<(), Error> {
         ranges: 6762,
         string_bytes: 52180,
     }
-    "###);
+    "#);
     Ok(())
 }
 
@@ -38,7 +38,7 @@ fn test_load_functions_linux() -> Result<(), Error> {
 fn test_load_header_macos() -> Result<(), Error> {
     let buffer = ByteView::open(fixture("symcache/current/macos.symc"))?;
     let symcache = SymCache::parse(&buffer)?;
-    insta::assert_debug_snapshot!(symcache, @r###"
+    insta::assert_debug_snapshot!(symcache, @r#"
     SymCache {
         version: 7,
         debug_id: DebugId {
@@ -52,7 +52,7 @@ fn test_load_header_macos() -> Result<(), Error> {
         ranges: 4591,
         string_bytes: 42829,
     }
-    "###);
+    "#);
     Ok(())
 }
 

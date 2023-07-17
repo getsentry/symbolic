@@ -135,7 +135,7 @@ mod tests {
             ("/home/user/src/*", "https://linux.com/*"),
         ];
 
-        let mappings = SourceLinkMappings::new(mappings.into_iter());
+        let mappings = SourceLinkMappings::new(mappings);
 
         assert_eq!(mappings.mappings.len(), 6);
 
