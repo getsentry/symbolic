@@ -78,7 +78,7 @@ static MANIFEST_PATH: &str = "manifest.json";
 static FILES_PATH: &str = "files";
 
 lazy_static::lazy_static! {
-    static ref SANE_PATH_RE: Regex = Regex::new(r#":?[/\\]+"#).unwrap();
+    static ref SANE_PATH_RE: Regex = Regex::new(r":?[/\\]+").unwrap();
 }
 
 /// The error type for [`SourceBundleError`].

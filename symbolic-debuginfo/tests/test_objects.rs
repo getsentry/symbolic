@@ -127,7 +127,7 @@ fn test_breakpad() -> Result<(), Error> {
     let view = ByteView::open(fixture("windows/crash.sym"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r#"
    ⋮Breakpad(
    ⋮    BreakpadObject {
    ⋮        code_id: Some(
@@ -145,7 +145,7 @@ fn test_breakpad() -> Result<(), Error> {
    ⋮        is_malformed: false,
    ⋮    },
    ⋮)
-    "###);
+    "#);
 
     Ok(())
 }
@@ -208,7 +208,7 @@ fn test_elf_executable() -> Result<(), Error> {
     let view = ByteView::open(fixture("linux/crash"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r#"
    ⋮Elf(
    ⋮    ElfObject {
    ⋮        code_id: Some(
@@ -227,7 +227,7 @@ fn test_elf_executable() -> Result<(), Error> {
    ⋮        is_malformed: false,
    ⋮    },
    ⋮)
-    "###);
+    "#);
 
     Ok(())
 }
@@ -237,7 +237,7 @@ fn test_elf_debug() -> Result<(), Error> {
     let view = ByteView::open(fixture("linux/crash.debug"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r#"
    ⋮Elf(
    ⋮    ElfObject {
    ⋮        code_id: Some(
@@ -256,7 +256,7 @@ fn test_elf_debug() -> Result<(), Error> {
    ⋮        is_malformed: false,
    ⋮    },
    ⋮)
-    "###);
+    "#);
 
     Ok(())
 }
@@ -357,7 +357,7 @@ fn test_mach_executable() -> Result<(), Error> {
     let view = ByteView::open(fixture("macos/crash"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r#"
    ⋮MachO(
    ⋮    MachObject {
    ⋮        code_id: Some(
@@ -376,7 +376,7 @@ fn test_mach_executable() -> Result<(), Error> {
    ⋮        is_malformed: false,
    ⋮    },
    ⋮)
-    "###);
+    "#);
 
     Ok(())
 }
@@ -386,7 +386,7 @@ fn test_mach_dsym() -> Result<(), Error> {
     let view = ByteView::open(fixture("macos/crash.dSYM/Contents/Resources/DWARF/crash"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r#"
    ⋮MachO(
    ⋮    MachObject {
    ⋮        code_id: Some(
@@ -405,7 +405,7 @@ fn test_mach_dsym() -> Result<(), Error> {
    ⋮        is_malformed: false,
    ⋮    },
    ⋮)
-    "###);
+    "#);
 
     Ok(())
 }
@@ -452,7 +452,7 @@ fn test_pe_32() -> Result<(), Error> {
     let view = ByteView::open(fixture("windows/crash.exe"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r#"
    ⋮Pe(
    ⋮    PeObject {
    ⋮        code_id: Some(
@@ -474,7 +474,7 @@ fn test_pe_32() -> Result<(), Error> {
    ⋮        is_malformed: false,
    ⋮    },
    ⋮)
-    "###);
+    "#);
 
     Ok(())
 }
@@ -484,7 +484,7 @@ fn test_pe_64() -> Result<(), Error> {
     let view = ByteView::open(fixture("windows/CrashWithException.exe"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r#"
    ⋮Pe(
    ⋮    PeObject {
    ⋮        code_id: Some(
@@ -506,7 +506,7 @@ fn test_pe_64() -> Result<(), Error> {
    ⋮        is_malformed: false,
    ⋮    },
    ⋮)
-    "###);
+    "#);
 
     Ok(())
 }
@@ -582,7 +582,7 @@ fn test_pdb() -> Result<(), Error> {
     let view = ByteView::open(fixture("windows/crash.pdb"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r#"
    ⋮Pdb(
    ⋮    PdbObject {
    ⋮        debug_id: DebugId {
@@ -597,7 +597,7 @@ fn test_pdb() -> Result<(), Error> {
    ⋮        is_malformed: false,
    ⋮    },
    ⋮)
-    "###);
+    "#);
 
     Ok(())
 }
@@ -670,7 +670,7 @@ fn test_ppdb() -> Result<(), Error> {
     let view = ByteView::open(fixture("windows/portable.pdb"))?;
     let object = Object::parse(&view)?;
 
-    insta::assert_debug_snapshot!(object, @r###"
+    insta::assert_debug_snapshot!(object, @r#"
     ⋮PortablePdb(
     ⋮    PortablePdbObject {
     ⋮        portable_pdb: PortablePdb {
@@ -694,7 +694,7 @@ fn test_ppdb() -> Result<(), Error> {
     ⋮        },
     ⋮    },
     ⋮)
-    "###);
+    "#);
 
     Ok(())
 }
@@ -795,7 +795,7 @@ fn test_ppdb_source_links() -> Result<(), Error> {
     let object = Object::parse(&view)?;
     let session = object.debug_session()?;
 
-    let known_embedded_sources = vec![
+    let known_embedded_sources = [
         ".NETStandard,Version=v2.0.AssemblyAttributes.cs",
         "ppdb-sourcelink-sample.AssemblyInfo.cs",
     ];
