@@ -8,10 +8,21 @@ use debugid::DebugId;
 use serde::Deserialize;
 
 /// Parses a sourceMappingURL comment in a file to discover a sourcemap reference.
+///
+/// Any query string or fragments the URL might contain will be stripped away.
 pub fn discover_sourcemaps_location(contents: &str) -> Option<&str> {
     for line in contents.lines().rev() {
         if line.starts_with("//# sourceMappingURL=") || line.starts_with("//@ sourceMappingURL=") {
-            return Some(line[21..].trim());
+            let url = line[21..].trim();
+
+            // The URL might contain a query string or fragment. Strip those away before recording the URL.
+            let without_query = url.split_once('?').map(|x| x.0).unwrap_or(url);
+            let without_fragment = without_query
+                .split_once('#')
+                .map(|x| x.0)
+                .unwrap_or(without_query);
+
+            return Some(without_fragment);
         }
     }
     None
