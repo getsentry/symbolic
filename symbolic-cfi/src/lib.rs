@@ -843,7 +843,6 @@ impl<W: Write> AsciiCfiWriter<W> {
         ra: Register,
     ) -> Result<bool, CfiError> {
         let formatted = match rule {
-            RegisterRule::Undefined => return Ok(false),
             RegisterRule::SameValue => match cfi_register_name(arch.cpu_family(), register.0) {
                 Some(reg) => reg.into(),
                 None => return Ok(false),
@@ -856,9 +855,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                     None => return Ok(false),
                 }
             }
-            RegisterRule::Expression(_) => return Ok(false),
-            RegisterRule::ValExpression(_) => return Ok(false),
-            RegisterRule::Architectural => return Ok(false),
+            _ => return Ok(false),
         };
 
         // Breakpad requires an explicit name for the return address register. In all other cases,

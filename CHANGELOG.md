@@ -6,6 +6,10 @@
 
 - `discover_sourcemaps_location` returns source mapping URLs without query parameters or fragments ([#809](https://github.com/getsentry/symbolic/pull/809))
 
+**Internal**
+- Updated `gimli`, `goblin`, `indexmap`, and `minidump` dependencies ([#811](https://github.com/getsentry/symbolic/pull/811))
+- `Cargo.lock` is now included in the repository ([#811](https://github.com/getsentry/symbolic/pull/811))
+
 ## 12.3.0
 
 **Features**
