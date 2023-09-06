@@ -141,6 +141,7 @@ impl<'data> PdbObject<'data> {
     }
 
     /// Tries to parse a PDB object from the given slice.
+    #[allow(clippy::arc_with_non_send_sync)]
     pub fn parse(data: &'data [u8]) -> Result<Self, PdbError> {
         let mut pdb = Pdb::open(Cursor::new(data))?;
         let dbi = pdb.debug_information()?;
