@@ -18,7 +18,7 @@ version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a30b2e23b9e17a9f90641c7ab1549cd9b44f296d3ccbf309d2863cfe398a0cb"
 dependencies = [
- "gimli 0.28.0",
+ "gimli",
 ]
 
 [[package]]
@@ -27,7 +27,7 @@ version = "12.3.0"
 dependencies = [
  "anyhow",
  "clap",
- "symbolic 12.3.0",
+ "symbolic",
 ]
 
 [[package]]
@@ -174,9 +174,9 @@ checksum = "b4682ae6287fcf752ecaabbfcc7b6f9b72aa33933dc23a554d853aea8eea8635"
 
 [[package]]
 name = "breakpad-symbols"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "943d736bd0ae4111962fb34c851e09ed021aee189a85309fda3f2b9d60960c38"
+checksum = "ba1d08190a0784c68f8eb9f53e4ce78e85ae4f1aaf900a6b8a203ac8573ba488"
 dependencies = [
  "async-trait",
  "circular",
@@ -226,12 +226,6 @@ name = "bytes"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "89b2fd2a0dcf38d7971e2194b6b6eebab45ae01067456a7fd93d5547a61b70be"
-
-[[package]]
-name = "cachemap2"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7bba2f68a9fefca870fed897de7c655f9d5c1eaf1cd9517db96c9a3861f648b"
 
 [[package]]
 name = "cast"
@@ -486,7 +480,7 @@ version = "12.3.0"
 dependencies = [
  "anyhow",
  "clap",
- "symbolic 12.3.0",
+ "symbolic",
 ]
 
 [[package]]
@@ -507,7 +501,7 @@ version = "12.3.0"
 dependencies = [
  "anyhow",
  "clap",
- "symbolic 12.3.0",
+ "symbolic",
 ]
 
 [[package]]
@@ -515,7 +509,7 @@ name = "dump_sources"
 version = "12.3.0"
 dependencies = [
  "clap",
- "symbolic 12.3.0",
+ "symbolic",
 ]
 
 [[package]]
@@ -684,16 +678,6 @@ dependencies = [
  "cfg-if",
  "libc",
  "wasi",
-]
-
-[[package]]
-name = "gimli"
-version = "0.27.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6c80984affa11d98d1b88b66ac8853f143217b399d3c74116778ff8fdb4ed2e"
-dependencies = [
- "fallible-iterator 0.2.0",
- "stable_deref_trait",
 ]
 
 [[package]]
@@ -1049,9 +1033,9 @@ dependencies = [
 
 [[package]]
 name = "minidump"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85d44764410e0cab30122c878d97cd60e9e3f9fc990a7b002fd0544cc4a77bb3"
+checksum = "ae58b2a19e3bac45c7fbf0dcd674534664a00c84ca103d6561b1bf678bd4c4ef"
 dependencies = [
  "debugid",
  "encoding_rs",
@@ -1068,9 +1052,9 @@ dependencies = [
 
 [[package]]
 name = "minidump-common"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28798821a9b1d4ccb1753462247000b4e8c72628076aa7b547f44afa04131cf3"
+checksum = "9114b15d86ee5e5c3e3b4d05821d17237adbf98c11dd07fc8f5a9b037a010ee5"
 dependencies = [
  "bitflags 1.3.2",
  "debugid",
@@ -1083,25 +1067,38 @@ dependencies = [
 
 [[package]]
 name = "minidump-processor"
-version = "0.16.0"
+version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "118524503568de1edfbaa8b942e046d4949ecc49acf6fd9e227df42a49915c43"
+checksum = "9ebfa889f81c8bd7e93b8754592ada37384dd2335f4fde46333ecc8d50769dcc"
 dependencies = [
  "async-trait",
  "breakpad-symbols",
- "cachemap2",
  "debugid",
  "futures-util",
  "memmap2",
  "minidump",
  "minidump-common",
+ "minidump-unwind",
  "scroll",
  "serde",
  "serde_json",
- "symbolic 12.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
  "tracing",
  "yaxpeax-x86",
+]
+
+[[package]]
+name = "minidump-unwind"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7133c7cae61b2e7166cf386d6d17a8b4b33888871273b5cdfbed667b03539bd"
+dependencies = [
+ "async-trait",
+ "breakpad-symbols",
+ "minidump",
+ "minidump-common",
+ "scroll",
+ "tracing",
 ]
 
 [[package]]
@@ -1112,7 +1109,8 @@ dependencies = [
  "clap",
  "minidump",
  "minidump-processor",
- "symbolic 12.3.0",
+ "minidump-unwind",
+ "symbolic",
  "thiserror",
  "tokio",
  "tracing",
@@ -1269,7 +1267,7 @@ name = "object_debug"
 version = "12.3.0"
 dependencies = [
  "clap",
- "symbolic 12.3.0",
+ "symbolic",
 ]
 
 [[package]]
@@ -1881,7 +1879,7 @@ version = "12.3.0"
 dependencies = [
  "anyhow",
  "clap",
- "symbolic 12.3.0",
+ "symbolic",
  "tracing",
  "tracing-subscriber",
 ]
@@ -2098,26 +2096,15 @@ dependencies = [
 name = "symbolic"
 version = "12.3.0"
 dependencies = [
- "symbolic-cfi 12.3.0",
- "symbolic-common 12.3.0",
- "symbolic-debuginfo 12.3.0",
+ "symbolic-cfi",
+ "symbolic-common",
+ "symbolic-debuginfo",
  "symbolic-demangle",
  "symbolic-il2cpp",
- "symbolic-ppdb 12.3.0",
+ "symbolic-ppdb",
  "symbolic-sourcemapcache",
  "symbolic-symcache",
  "symbolic-unreal",
-]
-
-[[package]]
-name = "symbolic"
-version = "12.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96f35e609846ed5924d00311809fdc22bfeebf0dfadfd33ec08bae7a8076aa7b"
-dependencies = [
- "symbolic-cfi 12.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "symbolic-common 12.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "symbolic-debuginfo 12.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2126,7 +2113,7 @@ version = "12.3.0"
 dependencies = [
  "proguard",
  "sourcemap",
- "symbolic 12.3.0",
+ "symbolic",
  "tempfile",
 ]
 
@@ -2136,20 +2123,9 @@ version = "12.3.0"
 dependencies = [
  "insta",
  "similar-asserts",
- "symbolic-common 12.3.0",
- "symbolic-debuginfo 12.3.0",
+ "symbolic-common",
+ "symbolic-debuginfo",
  "symbolic-testutils",
- "thiserror",
-]
-
-[[package]]
-name = "symbolic-cfi"
-version = "12.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd11c720b3e9c407638d0b4f019b01892116229a1319adf0b60fa021eac4f4ed"
-dependencies = [
- "symbolic-common 12.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "symbolic-debuginfo 12.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
 ]
 
@@ -2164,18 +2140,6 @@ dependencies = [
  "stable_deref_trait",
  "symbolic-testutils",
  "tempfile",
- "uuid",
-]
-
-[[package]]
-name = "symbolic-common"
-version = "12.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "167a4ffd7c35c143fd1030aa3c2caf76ba42220bd5a6b5f4781896434723b8c3"
-dependencies = [
- "debugid",
- "memmap2",
- "stable_deref_trait",
  "uuid",
 ]
 
@@ -2190,7 +2154,7 @@ dependencies = [
  "elsa",
  "fallible-iterator 0.3.0",
  "flate2",
- "gimli 0.28.0",
+ "gimli",
  "goblin",
  "insta",
  "lazy_static",
@@ -2205,42 +2169,10 @@ dependencies = [
  "serde_json",
  "similar-asserts",
  "smallvec",
- "symbolic-common 12.3.0",
- "symbolic-ppdb 12.3.0",
+ "symbolic-common",
+ "symbolic-ppdb",
  "symbolic-testutils",
  "tempfile",
- "thiserror",
- "wasmparser",
- "zip",
-]
-
-[[package]]
-name = "symbolic-debuginfo"
-version = "12.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "214a188b70f3e82f56d068096fa9953cc6082b58a949b56629f5eaa30ceb574b"
-dependencies = [
- "debugid",
- "dmsort",
- "elementtree",
- "elsa",
- "fallible-iterator 0.2.0",
- "flate2",
- "gimli 0.27.3",
- "goblin",
- "lazy_static",
- "nom",
- "nom-supreme",
- "once_cell",
- "parking_lot 0.12.1",
- "pdb-addr2line",
- "regex",
- "scroll",
- "serde",
- "serde_json",
- "smallvec",
- "symbolic-common 12.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "symbolic-ppdb 12.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
  "wasmparser",
  "zip",
@@ -2255,7 +2187,7 @@ dependencies = [
  "msvc-demangler",
  "rustc-demangle",
  "similar-asserts",
- "symbolic-common 12.3.0",
+ "symbolic-common",
 ]
 
 [[package]]
@@ -2264,8 +2196,8 @@ version = "12.3.0"
 dependencies = [
  "indexmap",
  "serde_json",
- "symbolic-common 12.3.0",
- "symbolic-debuginfo 12.3.0",
+ "symbolic-common",
+ "symbolic-debuginfo",
 ]
 
 [[package]]
@@ -2276,25 +2208,9 @@ dependencies = [
  "indexmap",
  "serde",
  "serde_json",
- "symbolic-common 12.3.0",
- "symbolic-debuginfo 12.3.0",
+ "symbolic-common",
+ "symbolic-debuginfo",
  "symbolic-testutils",
- "thiserror",
- "uuid",
- "watto",
-]
-
-[[package]]
-name = "symbolic-ppdb"
-version = "12.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e1ce8734ea2f33b3b8f4a67d1fc58df295a0191f115eab60f9ac5cf7169129d"
-dependencies = [
- "flate2",
- "indexmap",
- "serde",
- "serde_json",
- "symbolic-common 12.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
  "uuid",
  "watto",
@@ -2307,7 +2223,7 @@ dependencies = [
  "itertools",
  "js-source-scopes",
  "sourcemap",
- "symbolic-common 12.3.0",
+ "symbolic-common",
  "symbolic-testutils",
  "thiserror",
  "tracing",
@@ -2322,8 +2238,8 @@ dependencies = [
  "indexmap",
  "insta",
  "similar-asserts",
- "symbolic-common 12.3.0",
- "symbolic-debuginfo 12.3.0",
+ "symbolic-common",
+ "symbolic-debuginfo",
  "symbolic-il2cpp",
  "symbolic-testutils",
  "thiserror",
@@ -2361,7 +2277,7 @@ version = "12.3.0"
 dependencies = [
  "anyhow",
  "clap",
- "symbolic 12.3.0",
+ "symbolic",
 ]
 
 [[package]]
@@ -2642,7 +2558,7 @@ name = "unreal_engine_crash"
 version = "12.3.0"
 dependencies = [
  "clap",
- "symbolic 12.3.0",
+ "symbolic",
 ]
 
 [[package]]

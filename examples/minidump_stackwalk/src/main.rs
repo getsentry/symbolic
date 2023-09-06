@@ -9,9 +9,9 @@ use async_trait::async_trait;
 use clap::{value_parser, Arg, ArgAction, ArgMatches, Command};
 use minidump::system_info::PointerWidth;
 use minidump::{Minidump, Module};
-use minidump_processor::{
-    FillSymbolError, FrameSymbolizer, FrameTrust, FrameWalker, ProcessState, StackFrame,
-    SymbolFile, SymbolStats,
+use minidump_processor::ProcessState;
+use minidump_unwind::{
+    FillSymbolError, FrameSymbolizer, FrameTrust, FrameWalker, StackFrame, SymbolFile, SymbolStats,
 };
 use thiserror::Error;
 use walkdir::WalkDir;
@@ -262,7 +262,7 @@ impl<'a> LocalSymbolProvider<'a> {
 }
 
 #[async_trait]
-impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
+impl<'a> minidump_unwind::SymbolProvider for LocalSymbolProvider<'a> {
     #[tracing::instrument(
         skip(self, module, frame),
         fields(module.id, frame.instruction = frame.get_instruction())
@@ -378,9 +378,9 @@ impl<'a> minidump_processor::SymbolProvider for LocalSymbolProvider<'a> {
     async fn get_file_path(
         &self,
         _module: &(dyn Module + Sync),
-        _kind: minidump_processor::FileKind,
-    ) -> Result<PathBuf, minidump_processor::FileError> {
-        Err(minidump_processor::FileError::NotFound)
+        _kind: minidump_unwind::FileKind,
+    ) -> Result<PathBuf, minidump_unwind::FileError> {
+        Err(minidump_unwind::FileError::NotFound)
     }
 }
 
