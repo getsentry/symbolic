@@ -4,7 +4,6 @@
 # Rust
 target/
 **/*.rs.bk
-Cargo.lock
 
 # Python
 *.pyc
