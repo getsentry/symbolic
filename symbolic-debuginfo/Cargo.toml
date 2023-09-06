@@ -83,9 +83,9 @@ dmsort = "1.0.2"
 debugid = { version = "0.8.0" }
 elementtree = { version = "1.2.3", optional = true }
 elsa = { version = "1.8.0", optional = true }
-fallible-iterator = "0.2.0"
+fallible-iterator = "0.3.0"
 flate2 = { version = "1.0.25", optional = true, default-features = false, features = ["rust_backend"] }
-gimli = { version = "0.27.2", optional = true, default-features = false, features = ["read", "std"] }
+gimli = { version = "0.28.0", optional = true, default-features = false, features = ["read", "std", "fallible-iterator"] }
 goblin = { version = "0.6.1", optional = true, default-features = false }
 lazy_static = { version = "1.4.0", optional = true }
 once_cell = { version = "1.17.1", optional = true }
