@@ -281,8 +281,12 @@ impl<'data> PeObject<'data> {
     /// Returns the raw buffer of Embedded Portable PDB Debug directory entry, if any.
     pub fn embedded_ppdb(&self) -> Result<Option<PeEmbeddedPortablePDB<'data>>, PeError> {
         // Note: This is currently not supported by goblin, see https://github.com/m4b/goblin/issues/314
-        let Some(opt_header) = self.pe.header.optional_header else { return Ok(None) };
-        let Some(debug_directory) = opt_header.data_directories.get_debug_table().as_ref() else { return Ok(None) };
+        let Some(opt_header) = self.pe.header.optional_header else {
+            return Ok(None);
+        };
+        let Some(debug_directory) = opt_header.data_directories.get_debug_table().as_ref() else {
+            return Ok(None);
+        };
         let file_alignment = opt_header.windows_fields.file_alignment;
         let parse_options = &pe::options::ParseOptions::default();
         let Some(offset) = pe::utils::find_offset(
@@ -290,7 +294,9 @@ impl<'data> PeObject<'data> {
             &self.pe.sections,
             file_alignment,
             parse_options,
-        ) else { return Ok(None) };
+        ) else {
+            return Ok(None);
+        };
 
         use pe::debug::ImageDebugDirectory;
         let entries = debug_directory.size as usize / std::mem::size_of::<ImageDebugDirectory>();
