@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- `discover_sourcemaps_location` returns source mapping URLs without query parameters or fragments ([#809](https://github.com/getsentry/symbolic/pull/809))
+
 ## 12.3.0
 
 **Features**
