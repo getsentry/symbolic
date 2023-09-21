@@ -517,7 +517,7 @@ struct SourceBundleManifest {
     #[serde(default)]
     pub files: BTreeMap<String, SourceFileInfo>,
 
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub source_links: BTreeMap<String, String>,
 
     /// Arbitrary attributes to include in the bundle.
