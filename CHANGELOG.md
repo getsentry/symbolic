@@ -4,7 +4,7 @@
 
 **Fixes**
 
-- sourcebundles: Don't write empty `source_links` maps ([#809](https://github.com/getsentry/symbolic/pull/813))
+- sourcebundles: Don't write empty `source_links` maps ([#813](https://github.com/getsentry/symbolic/pull/813))
 
 ## 12.4.0
 
