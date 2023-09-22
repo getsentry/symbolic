@@ -1240,6 +1240,19 @@ impl CfiCache<'static> {
     pub fn from_object(object: &Object<'_>) -> Result<Self, CfiError> {
         let mut buffer = vec![];
         write_preamble(&mut buffer, CFICACHE_LATEST_VERSION)?;
+
+        if let Object::Pe(pe) = object {
+            let debug_file = pe.debug_file_name();
+            if let Some(debug_file) = debug_file {
+                write!(
+                    buffer,
+                    "MODULE windows {} {} {debug_file}",
+                    object.arch().name(),
+                    object.debug_id().breakpad(),
+                )?;
+            }
+        }
+
         AsciiCfiWriter::new(&mut buffer).process(object)?;
 
         let byteview = ByteView::from_vec(buffer);
