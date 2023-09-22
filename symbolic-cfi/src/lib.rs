@@ -1244,7 +1244,7 @@ impl CfiCache<'static> {
         if let Object::Pe(pe) = object {
             let debug_file = pe.debug_file_name();
             if let Some(debug_file) = debug_file {
-                write!(
+                writeln!(
                     buffer,
                     "MODULE windows {} {} {debug_file}",
                     object.arch().name(),
