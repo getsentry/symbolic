@@ -33,7 +33,7 @@ watto = { version = "0.1.0", features = ["writer", "strings"] }
 
 [dev-dependencies]
 insta = { version = "1.28.0", features = ["yaml"] }
-criterion = "0.4.0"
+criterion = "0.5.1"
 symbolic-testutils = { path = "../symbolic-testutils" }
 similar-asserts = "1.4.2"
 

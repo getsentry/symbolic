@@ -12,9 +12,9 @@ A fast lookup cache for JavaScript Source Maps.
 edition = "2021"
 
 [dependencies]
-itertools = "0.10.5"
-js-source-scopes = "0.3.2"
-sourcemap = "6.2.3"
+itertools = "0.11.0"
+js-source-scopes = "0.4.0"
+sourcemap = "7.0.0"
 symbolic-common = { version = "12.4.1", path = "../symbolic-common" }
 thiserror = "1.0.39"
 tracing = "0.1.37"
