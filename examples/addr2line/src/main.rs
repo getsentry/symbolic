@@ -172,8 +172,7 @@ In the second, addr2line reads hexadecimal addresses from standard input, and pr
         .arg(
             Arg::new("addrs")
                 .required(true)
-                .takes_value(true)
-                .multiple_values(true)
+                .action(clap::ArgAction::Append)
                 .value_parser(ValueParser::new(parse_addr))
                 .help("Addresses to be translated."),
         )

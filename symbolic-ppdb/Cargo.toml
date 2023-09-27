@@ -20,7 +20,7 @@ exclude = ["tests/**/*"]
 all-features = true
 
 [dependencies]
-indexmap = "1.9.2"
+indexmap = "2.0.0"
 symbolic-common = { version = "12.4.1", path = "../symbolic-common" }
 watto = { version = "0.1.0", features = ["writer", "strings"] }
 thiserror = "1.0.39"

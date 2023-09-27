@@ -21,6 +21,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 proguard = { version = "5.0.2", features = ["uuid"] }
-sourcemap = "6.2.3"
+sourcemap = "7.0.0"
 symbolic = { version = "12.4.1", path = "../symbolic", features = ["cfi", "debuginfo", "sourcemapcache", "symcache"] }
 tempfile = "3.4.0"
