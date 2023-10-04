@@ -659,15 +659,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "frame-dedupe"
-version = "0.1.0"
-dependencies = [
- "indexmap 1.9.3",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "from_variant"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

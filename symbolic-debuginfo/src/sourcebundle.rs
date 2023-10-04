@@ -1434,6 +1434,22 @@ mod tests {
     }
 
     #[test]
+    fn test_non_utf8() -> Result<(), SourceBundleError> {
+        let writer = Cursor::new(Vec::new());
+        let mut bundle = SourceBundleWriter::start(writer)?;
+
+        assert!(bundle
+            .add_file(
+                "bar.txt",
+                &[0, 159, 146, 150][..],
+                SourceFileInfo::default()
+            )
+            .is_err());
+
+        Ok(())
+    }
+
+    #[test]
     fn test_duplicate_files() -> Result<(), SourceBundleError> {
         let writer = Cursor::new(Vec::new());
         let mut bundle = SourceBundleWriter::start(writer)?;
