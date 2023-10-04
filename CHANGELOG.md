@@ -6,6 +6,10 @@
 
 - Emit a MODULE record for PE files ([#814](https://github.com/getsentry/symbolic/pull/814))
 
+**Fixes**
+
+- sourcebundles: Only valid UTF-8 files can be written into sourcebundles ([#816](https://github.com/getsentry/symbolic/pull/816))
+
 ## 12.4.1
 
 **Fixes**
