@@ -1,4 +1,4 @@
-//! Contains [`FunctionBuilder`], which can be used to create a [`Function`](crate::base::Function)
+//! Contains [`FunctionBuilder`], which can be used to create a [`Function`]
 //! with inlinees and line records in the right structure.
 
 use std::{cmp::Reverse, collections::BinaryHeap};
