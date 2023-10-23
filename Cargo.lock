@@ -1450,9 +1450,9 @@ dependencies = [
 
 [[package]]
 name = "proguard"
-version = "5.0.2"
+version = "5.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98cbb571529b37a9001d7ecc050983191399270c42b6c1293d43da748f281c23"
+checksum = "1766d401c716ab2d5ddc832468b420e4c51e37c4491ea94fd856ef652664a8d3"
 dependencies = [
  "lazy_static",
  "uuid",

@@ -27,3 +27,9 @@ def test_mapper(res_path):
     assert remapped[1].line == 44
     assert remapped[2].method == "onClickHandler"
     assert remapped[2].line == 40
+
+    remapped = mapper.remap_method("android.support.constraint.a.b", "f")
+    assert remapped == (
+        "android.support.constraint.solver.ArrayRow",
+        "void pickRowVariable()",
+    )

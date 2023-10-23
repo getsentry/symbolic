@@ -18,7 +18,7 @@
 //!   - Objective C / Objective C++
 //!   - Rust
 //!   - Swift
-//! - JavaScript sourcemap expansion (vie `symbolic-cabi` only, use `sourcemap` crate instead)
+//! - JavaScript sourcemap expansion (via `symbolic-cabi` only, use `sourcemap` crate instead)
 //! - Proguard function mappings (via `symbolic-cabi` only, use `proguard` crate instead)
 //! - Breakpad processing
 //!   - Generate Breakpad symbol files from Mach, ELF and PDBs

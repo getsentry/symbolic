@@ -12,7 +12,7 @@ repository = "https://github.com/getsentry/symbolic"
 readme = "README.md"
 description = """
 A library to symbolicate and process stack traces from native applications,
-minidumps, Unreal Engine 4, minified JavaScripts or ProGuard optimized Android apps.
+minidumps, Unreal Engine 4 or minified JavaScript.
 """
 edition = "2021"
 

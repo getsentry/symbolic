@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Tuple
 
 import uuid as uuid_mod
 
@@ -54,6 +55,24 @@ class ProguardMapper(RustObject):
             lib.symbolic_proguardmapper_remap_class, encode_str(klass)
         )
         return decode_str(klass, free=True) or None
+
+    def remap_method(self, klass: str, method: str) -> Tuple[str, str] | None:
+        """Remaps the given class name."""
+        result = self._methodcall(
+            lib.symbolic_proguardmapper_remap_method,
+            encode_str(klass),
+            encode_str(method),
+        )
+
+        try:
+            output = (
+                decode_str(result.frames[0].class_name, free=False),
+                decode_str(result.frames[0].method, free=False),
+            )
+        finally:
+            rustcall(lib.symbolic_proguardmapper_result_free, ffi.addressof(result))
+
+        return output if len(output[0]) > 0 and len(output[1]) > 0 else None
 
     def remap_frame(self, klass: str, method: str, line: int) -> list[JavaStackFrame]:
         """Remaps the stackframe, given its class, method and line."""

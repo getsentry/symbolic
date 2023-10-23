@@ -118,6 +118,39 @@ ffi_fn! {
 }
 
 ffi_fn! {
+    /// Remaps a class name.
+    unsafe fn symbolic_proguardmapper_remap_method(
+        mapper: *const SymbolicProguardMapper,
+        class: *const SymbolicStr,
+        method: *const SymbolicStr,
+    ) -> Result<SymbolicProguardRemapResult> {
+        let mapper = &SymbolicProguardMapper::as_rust(mapper).inner.get().mapper;
+
+        let class = (*class).as_str();
+        let method = (*method).as_str();
+
+        let (remapped_class, remapped_method) =
+        mapper.remap_method(class, method).unwrap_or_default();
+
+        let mut frames = vec![SymbolicJavaStackFrame {
+            class_name: remapped_class.to_owned().into(),
+            method: remapped_method.to_owned().into(),
+            file: "".to_owned().into(),
+            line: 0,
+        }];
+
+        frames.shrink_to_fit();
+        let rv = SymbolicProguardRemapResult {
+            frames: frames.as_mut_ptr(),
+            len: frames.len(),
+        };
+        std::mem::forget(frames);
+
+        Ok(rv)
+    }
+}
+
+ffi_fn! {
     /// Returns the UUID of a proguard mapping file.
     unsafe fn symbolic_proguardmapper_get_uuid(
         mapper: *mut SymbolicProguardMapper,

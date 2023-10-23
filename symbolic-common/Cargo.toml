@@ -12,8 +12,7 @@ repository = "https://github.com/getsentry/symbolic"
 readme = "README.md"
 description = """
 Common types and utilities for symbolic, a library to symbolicate and process
-stack traces from native applications, minidumps, minified JavaScripts or
-ProGuard optimized Android apps.
+stack traces from native applications, minidumps or minified JavaScript.
 """
 edition = "2021"
 
