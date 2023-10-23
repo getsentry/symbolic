@@ -6,6 +6,10 @@
 
 - Emit a MODULE record for PE files ([#814](https://github.com/getsentry/symbolic/pull/814))
 
+**Features**
+
+- Update proguard and add `remap_method` fn ([#818](https://github.com/getsentry/symbolic/pull/818))
+
 ## 12.4.1
 
 **Fixes**
