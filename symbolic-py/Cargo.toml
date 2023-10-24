@@ -1,0 +1,13 @@
+[package]
+name = "symbolic-py"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "symbolic_py"
+crate-type = ["cdylib"]
+
+[dependencies]
+proguard = { version = "5.1.0", features = ["uuid"] }
+pyo3 = { version = "0.20.0", features = ["extension-module", "serde", "abi3-py38"] }
+symbolic = { version = "12.4.1", path = "../symbolic", features = ["cfi", "debuginfo", "sourcemapcache", "symcache"] }
