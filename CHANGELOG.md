@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 12.5.0
 
 **Internal**
 
