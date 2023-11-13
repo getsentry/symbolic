@@ -15,6 +15,7 @@ pub struct SymbolicJavaStackFrame {
     pub method: SymbolicStr,
     pub file: SymbolicStr,
     pub line: usize,
+    pub parameters: SymbolicStr,
 }
 
 /// The result of remapping a Stack Frame.
@@ -80,9 +81,14 @@ ffi_fn! {
         class: *const SymbolicStr,
         method: *const SymbolicStr,
         line: usize,
+        parameters: *const SymbolicStr,
     ) -> Result<SymbolicProguardRemapResult> {
         let mapper = &SymbolicProguardMapper::as_rust(mapper).inner.get().mapper;
-        let frame = StackFrame::new((*class).as_str(), (*method).as_str(), line);
+        let frame = if (*parameters).len > 0 {
+            StackFrame::with_parameters((*class).as_str(), (*method).as_str(), (*parameters).as_str())
+        } else {
+            StackFrame::new((*class).as_str(), (*method).as_str(), line)
+        };
 
         let mut frames: Vec<_> = mapper.remap_frame(&frame).map(|frame| {
             SymbolicJavaStackFrame {
@@ -90,6 +96,7 @@ ffi_fn! {
                 method: frame.method().to_owned().into(),
                 file: frame.file().unwrap_or("").to_owned().into(),
                 line: frame.line(),
+                parameters: frame.parameters().unwrap_or("").to_owned().into(),
             }
         }).collect();
 
@@ -137,6 +144,7 @@ ffi_fn! {
             method: remapped_method.to_owned().into(),
             file: "".to_owned().into(),
             line: 0,
+            parameters: "".to_owned().into(),
         }];
 
         frames.shrink_to_fit();

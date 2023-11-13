@@ -23,7 +23,7 @@ dependencies = [
 
 [[package]]
 name = "addr2line"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -519,7 +519,7 @@ dependencies = [
 
 [[package]]
 name = "debuginfo_debug"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -543,7 +543,7 @@ checksum = "f0bc8fbe9441c17c9f46f75dfe27fa1ddb6c68a461ccaed0481419219d4f10d3"
 
 [[package]]
 name = "dump_cfi"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -552,7 +552,7 @@ dependencies = [
 
 [[package]]
 name = "dump_sources"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "clap",
  "symbolic",
@@ -1080,7 +1080,7 @@ dependencies = [
 
 [[package]]
 name = "minidump_stackwalk"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "async-trait",
  "clap",
@@ -1242,7 +1242,7 @@ dependencies = [
 
 [[package]]
 name = "object_debug"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "clap",
  "symbolic",
@@ -1450,9 +1450,9 @@ dependencies = [
 
 [[package]]
 name = "proguard"
-version = "5.1.0"
+version = "5.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1766d401c716ab2d5ddc832468b420e4c51e37c4491ea94fd856ef652664a8d3"
+checksum = "c0a4fc2794b6ee3ae207c36fb970a591e590dc6e1d36444f1de135529b285d88"
 dependencies = [
  "lazy_static",
  "uuid",
@@ -1857,7 +1857,7 @@ dependencies = [
 
 [[package]]
 name = "sourcemapcache_debug"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2076,7 +2076,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "symbolic-cfi",
  "symbolic-common",
@@ -2091,7 +2091,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-cabi"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "proguard",
  "sourcemap",
@@ -2101,7 +2101,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-cfi"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "insta",
  "similar-asserts",
@@ -2113,7 +2113,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-common"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "debugid",
  "memmap2 0.8.0",
@@ -2127,7 +2127,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-debuginfo"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "criterion",
  "debugid",
@@ -2162,7 +2162,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-demangle"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "cc",
  "cpp_demangle",
@@ -2174,7 +2174,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-il2cpp"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "indexmap",
  "serde_json",
@@ -2184,7 +2184,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-ppdb"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "flate2",
  "indexmap",
@@ -2200,7 +2200,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-sourcemapcache"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "itertools 0.11.0",
  "js-source-scopes",
@@ -2214,7 +2214,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-symcache"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "criterion",
  "indexmap",
@@ -2231,11 +2231,11 @@ dependencies = [
 
 [[package]]
 name = "symbolic-testutils"
-version = "12.4.1"
+version = "12.5.0"
 
 [[package]]
 name = "symbolic-unreal"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "anylog",
  "bytes",
@@ -2255,7 +2255,7 @@ dependencies = [
 
 [[package]]
 name = "symcache_debug"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2511,7 +2511,7 @@ checksum = "e51733f11c9c4f72aa0c160008246859e340b00807569a0da0e7a1079b27ba85"
 
 [[package]]
 name = "unreal_engine_crash"
-version = "12.4.1"
+version = "12.5.0"
 dependencies = [
  "clap",
  "symbolic",
