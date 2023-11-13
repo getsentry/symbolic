@@ -19,7 +19,12 @@ __all__ = ["ProguardMapper", "JavaStackFrame"]
 
 class JavaStackFrame:
     def __init__(
-        self, class_name: str, method: str, line: int, file: str | None = None, parameters: str | None = None
+        self,
+        class_name: str,
+        method: str,
+        line: int,
+        file: str | None = None,
+        parameters: str | None = None,
     ) -> None:
         self.class_name = class_name
         self.method = method
@@ -75,7 +80,9 @@ class ProguardMapper(RustObject):
 
         return output if len(output[0]) > 0 and len(output[1]) > 0 else None
 
-    def remap_frame(self, klass: str, method: str, line: int, parameters: str = "") -> list[JavaStackFrame]:
+    def remap_frame(
+        self, klass: str, method: str, line: int, parameters: str = ""
+    ) -> list[JavaStackFrame]:
         """Remaps the stackframe, given its class, method and line."""
         result = self._methodcall(
             lib.symbolic_proguardmapper_remap_frame,
