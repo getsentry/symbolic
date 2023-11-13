@@ -1,5 +1,13 @@
 # Changelog
 
+**Internal**
+
+**Features**
+
+- Add support for `parameters` param in the `remap_frame` to allow deobfuscation when line is not available ([#820](https://github.com/getsentry/symbolic/pull/820))
+
+**Fixes**
+
 ## 12.5.0
 
 **Internal**
