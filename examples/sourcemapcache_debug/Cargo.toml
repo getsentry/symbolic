@@ -1,6 +1,6 @@
 [package]
 name = "sourcemapcache_debug"
-version = "12.5.0"
+version = "12.6.0"
 authors = ["Sentry <hello@sentry.io>"]
 edition = "2021"
 publish = false

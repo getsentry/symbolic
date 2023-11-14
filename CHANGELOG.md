@@ -8,6 +8,12 @@
 
 **Fixes**
 
+## 12.6.0
+
+### Various fixes & improvements
+
+- ref: refactor rust bindings to support optional parameters for StackFrame (#820) by @viglia
+
 ## 12.5.0
 
 **Internal**
