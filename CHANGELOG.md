@@ -10,6 +10,12 @@
 
 - Fix empty parameters list issue ([#821](https://github.com/getsentry/symbolic/pull/821))
 
+## 12.7.0
+
+### Various fixes & improvements
+
+- fix empty parameters list issue (#821) by @viglia
+
 ## 12.6.0
 
 ### Various fixes & improvements
