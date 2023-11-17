@@ -81,7 +81,7 @@ class ProguardMapper(RustObject):
         return output if len(output[0]) > 0 and len(output[1]) > 0 else None
 
     def remap_frame(
-        self, klass: str, method: str, line: int, parameters: str = ""
+        self, klass: str, method: str, line: int, parameters: str = "", use_parameters: bool = False
     ) -> list[JavaStackFrame]:
         """Remaps the stackframe, given its class, method and line."""
         result = self._methodcall(
@@ -90,6 +90,7 @@ class ProguardMapper(RustObject):
             encode_str(method),
             line,
             encode_str(parameters),
+            use_parameters,
         )
 
         frames = []

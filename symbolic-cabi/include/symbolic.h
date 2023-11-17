@@ -514,7 +514,8 @@ struct SymbolicProguardRemapResult symbolic_proguardmapper_remap_frame(const str
                                                                        const struct SymbolicStr *class_,
                                                                        const struct SymbolicStr *method,
                                                                        uintptr_t line,
-                                                                       const struct SymbolicStr *parameters);
+                                                                       const struct SymbolicStr *parameters,
+                                                                       bool use_parameters);
 
 /**
  * Remaps a class name.
