@@ -8,6 +8,8 @@
 
 **Fixes**
 
+- Fix empty parameters list issue ([#821](https://github.com/getsentry/symbolic/pull/821))
+
 ## 12.6.0
 
 ### Various fixes & improvements
