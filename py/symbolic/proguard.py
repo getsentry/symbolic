@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple
+from typing import Optional, Tuple
 
 import uuid as uuid_mod
 
@@ -85,8 +85,7 @@ class ProguardMapper(RustObject):
         klass: str,
         method: str,
         line: int,
-        parameters: str = "",
-        use_parameters: bool = False,
+        parameters: Optional[str] = None,
     ) -> list[JavaStackFrame]:
         """Remaps the stackframe, given its class, method and line."""
         result = self._methodcall(
@@ -94,8 +93,8 @@ class ProguardMapper(RustObject):
             encode_str(klass),
             encode_str(method),
             line,
-            encode_str(parameters),
-            use_parameters,
+            encode_str("" if parameters is None else parameters),
+            parameters is not None,
         )
 
         frames = []
