@@ -82,9 +82,10 @@ ffi_fn! {
         method: *const SymbolicStr,
         line: usize,
         parameters: *const SymbolicStr,
+        use_parameters: bool,
     ) -> Result<SymbolicProguardRemapResult> {
         let mapper = &SymbolicProguardMapper::as_rust(mapper).inner.get().mapper;
-        let frame = if (*parameters).len > 0 {
+        let frame = if use_parameters {
             StackFrame::with_parameters((*class).as_str(), (*method).as_str(), (*parameters).as_str())
         } else {
             StackFrame::new((*class).as_str(), (*method).as_str(), line)

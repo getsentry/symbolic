@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple
+from typing import Optional, Tuple
 
 import uuid as uuid_mod
 
@@ -81,7 +81,11 @@ class ProguardMapper(RustObject):
         return output if len(output[0]) > 0 and len(output[1]) > 0 else None
 
     def remap_frame(
-        self, klass: str, method: str, line: int, parameters: str = ""
+        self,
+        klass: str,
+        method: str,
+        line: int,
+        parameters: Optional[str] = None,
     ) -> list[JavaStackFrame]:
         """Remaps the stackframe, given its class, method and line."""
         result = self._methodcall(
@@ -89,7 +93,8 @@ class ProguardMapper(RustObject):
             encode_str(klass),
             encode_str(method),
             line,
-            encode_str(parameters),
+            encode_str("" if parameters is None else parameters),
+            parameters is not None,
         )
 
         frames = []
