@@ -3,8 +3,8 @@
 use super::WasmError;
 use crate::base::{ObjectKind, Symbol};
 use wasmparser::{
-    FuncValidatorAllocations, NameSectionReader, Payload, RecGroup, StructuralType, SubType,
-    TypeRef, Validator, WasmFeatures,
+    CompositeType, FuncValidatorAllocations, NameSectionReader, Payload, SubType, TypeRef,
+    Validator, WasmFeatures,
 };
 
 #[derive(Default)]
@@ -93,11 +93,11 @@ impl<'data> super::WasmObject<'data> {
 
                     for (i, ty) in tsr.into_iter().enumerate() {
                         if matches!(
-                            ty?,
-                            RecGroup::Single(SubType {
-                                structural_type: StructuralType::Func(_),
+                            ty?.types(),
+                            &[SubType {
+                                composite_type: CompositeType::Func(_),
                                 ..
-                            })
+                            }]
                         ) {
                             func_sigs.set(i, true);
                         }
