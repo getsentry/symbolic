@@ -19,7 +19,7 @@ use std::sync::Arc;
 
 use fallible_iterator::FallibleIterator;
 use gimli::read::{AttributeValue, Error as GimliError, Range};
-use gimli::{constants, DwarfFileType, UnitSectionOffset};
+use gimli::{constants, AbbreviationsCacheStrategy, DwarfFileType, UnitSectionOffset};
 use once_cell::sync::OnceCell;
 use thiserror::Error;
 
@@ -1131,7 +1131,7 @@ impl<'d> DwarfInfo<'d> {
         address_offset: i64,
         kind: ObjectKind,
     ) -> Result<Self, DwarfError> {
-        let inner = gimli::read::Dwarf {
+        let mut inner = gimli::read::Dwarf {
             abbreviations_cache: Default::default(),
             debug_abbrev: sections.debug_abbrev.to_gimli(),
             debug_addr: sections.debug_addr.to_gimli(),
@@ -1150,6 +1150,7 @@ impl<'d> DwarfInfo<'d> {
             file_type: DwarfFileType::Main,
             sup: Default::default(),
         };
+        inner.populate_abbreviations_cache(AbbreviationsCacheStrategy::Duplicates);
 
         // Prepare random access to unit headers.
         let headers = inner.units().collect::<Vec<_>>()?;
