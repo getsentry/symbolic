@@ -1,26 +1,22 @@
 # Changelog
 
+## Unreleased
+
 **Internal**
 
-**Features**
+- Update crate dependencies, in particular `gimli` to fix performance/OOM problems related to duplicated abbreviations ([#822](https://github.com/getsentry/symbolic/pull/822))
 
-- Add support for `parameters` param in the `remap_frame` to allow deobfuscation when line is not available ([#820](https://github.com/getsentry/symbolic/pull/820))
+## 12.7.0
 
 **Fixes**
 
 - Fix empty parameters list issue ([#821](https://github.com/getsentry/symbolic/pull/821))
 
-## 12.7.0
-
-### Various fixes & improvements
-
-- fix empty parameters list issue (#821) by @viglia
-
 ## 12.6.0
 
-### Various fixes & improvements
+**Features**
 
-- ref: refactor rust bindings to support optional parameters for StackFrame (#820) by @viglia
+- Add support for `parameters` param in the `remap_frame` to allow deobfuscation when line is not available ([#820](https://github.com/getsentry/symbolic/pull/820))
 
 ## 12.5.0
 
