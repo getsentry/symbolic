@@ -52,13 +52,18 @@ impl ForeignObject for SymbolicProguardMapper {
 ffi_fn! {
     /// Creates a proguard mapping view from a path.
     unsafe fn symbolic_proguardmapper_open(
-        path: *const c_char
+        path: *const c_char,
+        initialize_param_mapping: bool
     ) -> Result<*mut SymbolicProguardMapper> {
         let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
 
         let inner = SelfCell::new(byteview, |data| {
             let mapping = ProguardMapping::new(&*data);
-            let mapper = ProguardMapper::new(mapping.clone());
+            let mapper = if !initialize_param_mapping {
+                ProguardMapper::new(mapping.clone())
+            } else {
+                ProguardMapper::new_with_param_mapping(mapping.clone(), initialize_param_mapping)
+            };
             Inner { mapping, mapper }
         });
 
