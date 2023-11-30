@@ -1,5 +1,13 @@
 # Changelog
 
+**Internal**
+
+**Fixes**
+
+**Features**
+
+- Make mapping by params initialization optional ([#823](https://github.com/getsentry/symbolic/pull/823))
+
 ## 12.7.1
 
 **Internal**
