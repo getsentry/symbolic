@@ -500,7 +500,8 @@ struct SymbolicStr symbolic_normalize_debug_id(const struct SymbolicStr *debug_i
 /**
  * Creates a proguard mapping view from a path.
  */
-struct SymbolicProguardMapper *symbolic_proguardmapper_open(const char *path);
+struct SymbolicProguardMapper *symbolic_proguardmapper_open(const char *path,
+                                                            bool initialize_param_mapping);
 
 /**
  * Frees a proguard mapping view.

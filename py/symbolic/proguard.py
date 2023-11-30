@@ -39,10 +39,14 @@ class ProguardMapper(RustObject):
     __dealloc_func__ = lib.symbolic_proguardmapper_free
 
     @classmethod
-    def open(cls, path: str) -> ProguardMapper:
+    def open(cls, path: str, initialize_param_mapping: bool = False) -> ProguardMapper:
         """Constructs a mapping file from a path."""
         return cls._from_objptr(
-            rustcall(lib.symbolic_proguardmapper_open, encode_path(path))
+            rustcall(
+                lib.symbolic_proguardmapper_open,
+                encode_path(path),
+                initialize_param_mapping,
+            )
         )
 
     @property
