@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+**Internal**
+
+**Fixes**
+
+- Fix an issue when extracting the name of the debug file from a PE object ([#825](https://github.com/getsentry/symbolic/pull/825))
+
+**Features**
+
 ## 12.8.0
 
 **Internal**
