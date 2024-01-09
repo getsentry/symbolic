@@ -288,7 +288,7 @@ impl<'data> PeObject<'data> {
         let Some(opt_header) = self.pe.header.optional_header else {
             return Ok(None);
         };
-        let Some(debug_directory) = opt_header.data_directories.get_debug_table().as_ref() else {
+        let Some(debug_directory) = opt_header.data_directories.get_debug_table() else {
             return Ok(None);
         };
         let file_alignment = opt_header.windows_fields.file_alignment;
