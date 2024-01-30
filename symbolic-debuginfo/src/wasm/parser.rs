@@ -3,8 +3,8 @@
 use super::WasmError;
 use crate::base::{ObjectKind, Symbol};
 use wasmparser::{
-    CompositeType, FuncValidatorAllocations, NameSectionReader, Payload, SubType, TypeRef,
-    Validator, WasmFeatures,
+    CompositeType, FuncValidatorAllocations, NameSectionReader, Payload, TypeRef, Validator,
+    WasmFeatures,
 };
 
 #[derive(Default)]
@@ -92,13 +92,12 @@ impl<'data> super::WasmObject<'data> {
                     func_sigs.resize(tsr.count() as usize, false);
 
                     for (i, ty) in tsr.into_iter().enumerate() {
-                        if matches!(
-                            ty?.types(),
-                            &[SubType {
-                                composite_type: CompositeType::Func(_),
-                                ..
-                            }]
-                        ) {
+                        let mut types = ty?.into_types();
+                        let ty_is_func = matches!(
+                            types.next().map(|s| s.composite_type),
+                            Some(CompositeType::Func(_))
+                        );
+                        if types.next().is_none() && ty_is_func {
                             func_sigs.set(i, true);
                         }
                     }
