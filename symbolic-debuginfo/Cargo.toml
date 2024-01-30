@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-debuginfo"
-version = "12.4.1"
+version = "12.8.0"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -85,7 +85,7 @@ elementtree = { version = "1.2.3", optional = true }
 elsa = { version = "1.8.0", optional = true }
 fallible-iterator = "0.3.0"
 flate2 = { version = "1.0.25", optional = true, default-features = false, features = ["rust_backend"] }
-gimli = { version = "0.28.0", optional = true, default-features = false, features = ["read", "std", "fallible-iterator"] }
+gimli = { version = "0.28.1", optional = true, default-features = false, features = ["read", "std", "fallible-iterator"] }
 goblin = { version = "0.7.1", optional = true, default-features = false }
 lazy_static = { version = "1.4.0", optional = true }
 once_cell = { version = "1.17.1", optional = true }
@@ -99,10 +99,10 @@ scroll = { version = "0.11.0", optional = true }
 serde = { version = "1.0.154", features = ["derive"] }
 serde_json = { version = "1.0.94", optional = true }
 smallvec = { version = "1.10.0", optional = true }
-symbolic-common = { version = "12.4.1", path = "../symbolic-common" }
-symbolic-ppdb = { version = "12.4.1", path = "../symbolic-ppdb", optional = true }
+symbolic-common = { version = "12.8.0", path = "../symbolic-common" }
+symbolic-ppdb = { version = "12.8.0", path = "../symbolic-ppdb", optional = true }
 thiserror = "1.0.39"
-wasmparser = { version = "0.113.2", optional = true }
+wasmparser = { version = "0.118.0", optional = true }
 zip = { version = "0.6.4", optional = true, default-features = false, features = ["deflate"] }
 
 [dev-dependencies]

@@ -2,13 +2,47 @@
 
 ## Unreleased
 
+**Fixes**
+
+- sourcebundles: Only valid UTF-8 files can be written into sourcebundles ([#816](https://github.com/getsentry/symbolic/pull/816))
+
+## 12.8.0
+
+**Internal**
+
+**Fixes**
+
+**Features**
+
+- Make mapping by params initialization optional ([#823](https://github.com/getsentry/symbolic/pull/823))
+
+## 12.7.1
+
+**Internal**
+
+- Update crate dependencies, in particular `gimli` to fix performance/OOM problems related to duplicated abbreviations ([#822](https://github.com/getsentry/symbolic/pull/822))
+
+## 12.7.0
+
+**Fixes**
+
+- Fix empty parameters list issue ([#821](https://github.com/getsentry/symbolic/pull/821))
+
+## 12.6.0
+
+**Features**
+
+- Add support for `parameters` param in the `remap_frame` to allow deobfuscation when line is not available ([#820](https://github.com/getsentry/symbolic/pull/820))
+
+## 12.5.0
+
 **Internal**
 
 - Emit a MODULE record for PE files ([#814](https://github.com/getsentry/symbolic/pull/814))
 
-**Fixes**
+**Features**
 
-- sourcebundles: Only valid UTF-8 files can be written into sourcebundles ([#816](https://github.com/getsentry/symbolic/pull/816))
+- Update proguard and add `remap_method` fn ([#818](https://github.com/getsentry/symbolic/pull/818))
 
 ## 12.4.1
 

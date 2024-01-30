@@ -15,6 +15,7 @@ pub struct SymbolicJavaStackFrame {
     pub method: SymbolicStr,
     pub file: SymbolicStr,
     pub line: usize,
+    pub parameters: SymbolicStr,
 }
 
 /// The result of remapping a Stack Frame.
@@ -51,13 +52,18 @@ impl ForeignObject for SymbolicProguardMapper {
 ffi_fn! {
     /// Creates a proguard mapping view from a path.
     unsafe fn symbolic_proguardmapper_open(
-        path: *const c_char
+        path: *const c_char,
+        initialize_param_mapping: bool
     ) -> Result<*mut SymbolicProguardMapper> {
         let byteview = ByteView::open(CStr::from_ptr(path).to_str()?)?;
 
         let inner = SelfCell::new(byteview, |data| {
             let mapping = ProguardMapping::new(&*data);
-            let mapper = ProguardMapper::new(mapping.clone());
+            let mapper = if !initialize_param_mapping {
+                ProguardMapper::new(mapping.clone())
+            } else {
+                ProguardMapper::new_with_param_mapping(mapping.clone(), initialize_param_mapping)
+            };
             Inner { mapping, mapper }
         });
 
@@ -80,9 +86,15 @@ ffi_fn! {
         class: *const SymbolicStr,
         method: *const SymbolicStr,
         line: usize,
+        parameters: *const SymbolicStr,
+        use_parameters: bool,
     ) -> Result<SymbolicProguardRemapResult> {
         let mapper = &SymbolicProguardMapper::as_rust(mapper).inner.get().mapper;
-        let frame = StackFrame::new((*class).as_str(), (*method).as_str(), line);
+        let frame = if use_parameters {
+            StackFrame::with_parameters((*class).as_str(), (*method).as_str(), (*parameters).as_str())
+        } else {
+            StackFrame::new((*class).as_str(), (*method).as_str(), line)
+        };
 
         let mut frames: Vec<_> = mapper.remap_frame(&frame).map(|frame| {
             SymbolicJavaStackFrame {
@@ -90,6 +102,7 @@ ffi_fn! {
                 method: frame.method().to_owned().into(),
                 file: frame.file().unwrap_or("").to_owned().into(),
                 line: frame.line(),
+                parameters: frame.parameters().unwrap_or("").to_owned().into(),
             }
         }).collect();
 
@@ -114,6 +127,40 @@ ffi_fn! {
 
         let class = (*class).as_str();
         Ok(mapper.remap_class(class).unwrap_or("").to_owned().into())
+    }
+}
+
+ffi_fn! {
+    /// Remaps a class name.
+    unsafe fn symbolic_proguardmapper_remap_method(
+        mapper: *const SymbolicProguardMapper,
+        class: *const SymbolicStr,
+        method: *const SymbolicStr,
+    ) -> Result<SymbolicProguardRemapResult> {
+        let mapper = &SymbolicProguardMapper::as_rust(mapper).inner.get().mapper;
+
+        let class = (*class).as_str();
+        let method = (*method).as_str();
+
+        let (remapped_class, remapped_method) =
+        mapper.remap_method(class, method).unwrap_or_default();
+
+        let mut frames = vec![SymbolicJavaStackFrame {
+            class_name: remapped_class.to_owned().into(),
+            method: remapped_method.to_owned().into(),
+            file: "".to_owned().into(),
+            line: 0,
+            parameters: "".to_owned().into(),
+        }];
+
+        frames.shrink_to_fit();
+        let rv = SymbolicProguardRemapResult {
+            frames: frames.as_mut_ptr(),
+            len: frames.len(),
+        };
+        std::mem::forget(frames);
+
+        Ok(rv)
     }
 }
 

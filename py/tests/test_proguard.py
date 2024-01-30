@@ -13,6 +13,11 @@ def test_mapper(res_path):
         == "android.support.constraint.ConstraintLayout$LayoutParams"
     )
 
+    assert mapper.remap_method("android.support.constraint.a.b", "f") == (
+        "android.support.constraint.solver.ArrayRow",
+        "pickRowVariable",
+    )
+
     remapped = mapper.remap_frame("android.support.constraint.a.b", "a", 116)
     assert len(remapped) == 1
     assert remapped[0].class_name == "android.support.constraint.solver.ArrayRow"

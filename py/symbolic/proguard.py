@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Optional, Tuple
 
 import uuid as uuid_mod
 
@@ -18,12 +19,18 @@ __all__ = ["ProguardMapper", "JavaStackFrame"]
 
 class JavaStackFrame:
     def __init__(
-        self, class_name: str, method: str, line: int, file: str | None = None
+        self,
+        class_name: str,
+        method: str,
+        line: int,
+        file: str | None = None,
+        parameters: str | None = None,
     ) -> None:
         self.class_name = class_name
         self.method = method
         self.file = file or None
         self.line = line
+        self.parameters = parameters
 
 
 class ProguardMapper(RustObject):
@@ -32,10 +39,14 @@ class ProguardMapper(RustObject):
     __dealloc_func__ = lib.symbolic_proguardmapper_free
 
     @classmethod
-    def open(cls, path: str) -> ProguardMapper:
+    def open(cls, path: str, initialize_param_mapping: bool = False) -> ProguardMapper:
         """Constructs a mapping file from a path."""
         return cls._from_objptr(
-            rustcall(lib.symbolic_proguardmapper_open, encode_path(path))
+            rustcall(
+                lib.symbolic_proguardmapper_open,
+                encode_path(path),
+                initialize_param_mapping,
+            )
         )
 
     @property
@@ -55,13 +66,39 @@ class ProguardMapper(RustObject):
         )
         return decode_str(klass, free=True) or None
 
-    def remap_frame(self, klass: str, method: str, line: int) -> list[JavaStackFrame]:
+    def remap_method(self, klass: str, method: str) -> Tuple[str, str] | None:
+        """Remaps the given class name."""
+        result = self._methodcall(
+            lib.symbolic_proguardmapper_remap_method,
+            encode_str(klass),
+            encode_str(method),
+        )
+
+        try:
+            output = (
+                decode_str(result.frames[0].class_name, free=False),
+                decode_str(result.frames[0].method, free=False),
+            )
+        finally:
+            rustcall(lib.symbolic_proguardmapper_result_free, ffi.addressof(result))
+
+        return output if len(output[0]) > 0 and len(output[1]) > 0 else None
+
+    def remap_frame(
+        self,
+        klass: str,
+        method: str,
+        line: int,
+        parameters: Optional[str] = None,
+    ) -> list[JavaStackFrame]:
         """Remaps the stackframe, given its class, method and line."""
         result = self._methodcall(
             lib.symbolic_proguardmapper_remap_frame,
             encode_str(klass),
             encode_str(method),
             line,
+            encode_str("" if parameters is None else parameters),
+            parameters is not None,
         )
 
         frames = []

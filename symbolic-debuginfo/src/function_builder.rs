@@ -1,4 +1,4 @@
-//! Contains [`FunctionBuilder`], which can be used to create a [`Function`](crate::base::Function)
+//! Contains [`FunctionBuilder`], which can be used to create a [`Function`]
 //! with inlinees and line records in the right structure.
 
 use std::{cmp::Reverse, collections::BinaryHeap};
@@ -239,7 +239,7 @@ struct FunctionBuilderInlinee<'s> {
 /// Implement ordering in DFS order, i.e. first by address and then by depth.
 impl<'s> PartialOrd for FunctionBuilderInlinee<'s> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        (self.address, self.depth).partial_cmp(&(other.address, other.depth))
+        Some(self.cmp(other))
     }
 }
 
