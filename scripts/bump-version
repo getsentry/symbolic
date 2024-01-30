@@ -17,3 +17,4 @@ echo "Bumping version: ${NEW_VERSION}"
 TOML_FILES="$(git ls-files '*Cargo.toml')"
 perl -pi -e "s/^version = .*\$/version = \"$NEW_VERSION\"/" $TOML_FILES
 perl -pi -e "s/^(symbolic.*version = )\"[^\"]*\"/\\1\"$NEW_VERSION\"/" $TOML_FILES
+cargo metadata --format-version 1 > /dev/null # update `Cargo.lock`

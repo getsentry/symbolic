@@ -154,8 +154,12 @@ impl<'data> PeObject<'data> {
             .debug_data
             .as_ref()
             .and_then(|debug_data| debug_data.codeview_pdb70_debug_info.as_ref())
-            .map(|debug_info| {
-                String::from_utf8_lossy(&debug_info.filename[..debug_info.filename.len() - 1])
+            .and_then(|debug_info| {
+                debug_info
+                    .filename
+                    .iter()
+                    .position(|&c| c == 0)
+                    .map(|nul_byte| String::from_utf8_lossy(&debug_info.filename[..nul_byte]))
             })
     }
 
@@ -284,7 +288,7 @@ impl<'data> PeObject<'data> {
         let Some(opt_header) = self.pe.header.optional_header else {
             return Ok(None);
         };
-        let Some(debug_directory) = opt_header.data_directories.get_debug_table().as_ref() else {
+        let Some(debug_directory) = opt_header.data_directories.get_debug_table() else {
             return Ok(None);
         };
         let file_alignment = opt_header.windows_fields.file_alignment;

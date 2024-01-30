@@ -2,9 +2,14 @@
 
 ## Unreleased
 
+**Internal**
+
 **Fixes**
 
 - sourcebundles: Only valid UTF-8 files can be written into sourcebundles ([#816](https://github.com/getsentry/symbolic/pull/816))
+- Fix an issue when extracting the name of the debug file from a PE object ([#825](https://github.com/getsentry/symbolic/pull/825))
+
+**Features**
 
 ## 12.8.0
 

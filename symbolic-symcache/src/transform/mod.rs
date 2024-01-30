@@ -1,7 +1,6 @@
 //! Utilities that transform the Data to be written to a SymCache.
 
 mod bcsymbolmap;
-pub use bcsymbolmap::*;
 
 #[cfg(feature = "il2cpp")]
 pub mod il2cpp;
