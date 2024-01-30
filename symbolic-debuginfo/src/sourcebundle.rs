@@ -96,6 +96,9 @@ pub enum SourceBundleErrorKind {
 
     /// Generic error when writing a source bundle, most likely IO.
     WriteFailed,
+
+    /// The file is not valid UTF-8 or could not be read for another reason.
+    ReadFailed,
 }
 
 impl fmt::Display for SourceBundleErrorKind {
@@ -105,6 +108,7 @@ impl fmt::Display for SourceBundleErrorKind {
             Self::BadManifest => write!(f, "failed to read/write source bundle manifest"),
             Self::BadDebugFile => write!(f, "malformed debug info file"),
             Self::WriteFailed => write!(f, "failed to write source bundle"),
+            Self::ReadFailed => write!(f, "file could not be read as UTF-8"),
         }
     }
 }
@@ -1154,6 +1158,8 @@ where
 
     /// Adds a file and its info to the bundle.
     ///
+    /// Only files containing valid UTF-8 are accepted.
+    ///
     /// Multiple files can be added at the same path. For the first duplicate, a counter will be
     /// appended to the file name. Any subsequent duplicate increases that counter. For example:
     ///
@@ -1185,13 +1191,20 @@ where
         S: AsRef<str>,
         R: Read,
     {
+        let mut buf = String::new();
+
+        if let Err(e) = file.read_to_string(&mut buf) {
+            return Err(SourceBundleError::new(SourceBundleErrorKind::ReadFailed, e));
+        }
+
         let full_path = self.file_path(path.as_ref());
         let unique_path = self.unique_path(full_path);
 
         self.writer
             .start_file(unique_path.clone(), default_file_options())
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
-        std::io::copy(&mut file, &mut self.writer)
+        self.writer
+            .write_all(buf.as_bytes())
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
 
         self.manifest.files.insert(unique_path, info);
@@ -1417,6 +1430,22 @@ mod tests {
         assert!(bundle.has_file("bar.txt"));
 
         bundle.finish()?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_non_utf8() -> Result<(), SourceBundleError> {
+        let writer = Cursor::new(Vec::new());
+        let mut bundle = SourceBundleWriter::start(writer)?;
+
+        assert!(bundle
+            .add_file(
+                "bar.txt",
+                &[0, 159, 146, 150][..],
+                SourceFileInfo::default()
+            )
+            .is_err());
+
         Ok(())
     }
 
