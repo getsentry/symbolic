@@ -894,7 +894,7 @@ impl<'data> SourceBundleDebugSession<'data> {
     }
 
     /// Get source by the path of a file in the bundle.
-    fn source_by_zip_path(&self, zip_path: &str) -> Result<Option<String>, SourceBundleError> {
+    fn source_by_zip_path(&self, zip_path: &str) -> Result<String, SourceBundleError> {
         let mut archive = self.archive.lock();
         let mut file = archive
             .by_name(zip_path)
@@ -903,7 +903,7 @@ impl<'data> SourceBundleDebugSession<'data> {
 
         file.read_to_string(&mut source_content)
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
-        Ok(Some(source_content))
+        Ok(source_content)
     }
 
     /// Looks up a source file descriptor.
@@ -916,14 +916,16 @@ impl<'data> SourceBundleDebugSession<'data> {
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
         if let Some(zip_path) = self.index.indexed_files.get(&key) {
             let zip_path = zip_path.as_str();
-            let content = self.source_by_zip_path(zip_path)?;
+            let content = Cow::Owned(self.source_by_zip_path(zip_path)?);
             let info = self.index.manifest.files.get(zip_path);
-            return Ok(content.map(|opt| SourceFileDescriptor::new_embedded(Cow::Owned(opt), info)));
+            let descriptor = SourceFileDescriptor::new_embedded(content, info);
+            return Ok(Some(descriptor));
         }
 
         let FileKey::Path(path) = key else {
             return Ok(None);
         };
+
         Ok(self
             .source_links
             .resolve(&path)
