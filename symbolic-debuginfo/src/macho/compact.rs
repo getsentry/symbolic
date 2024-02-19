@@ -946,6 +946,7 @@ struct RegularEntry {
     opcode: u32,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 #[repr(C)]
 struct LsdaEntry {

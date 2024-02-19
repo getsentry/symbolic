@@ -10,9 +10,9 @@ publish = false
 [dependencies]
 async-trait = "0.1.53"
 clap = "4.4.5"
-minidump = "0.19.1"
-minidump-processor = "0.19.1"
-minidump-unwind = "0.19.1"
+minidump = "0.20.0"
+minidump-processor = "0.20.0"
+minidump-unwind = "0.20.0"
 symbolic = { path = "../../symbolic", features = ["symcache", "demangle", "cfi"] }
 thiserror = "1.0.31"
 tokio = {version = "1.18.1", features = ["macros", "rt"] }

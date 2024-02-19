@@ -30,12 +30,6 @@ pub trait ForeignObject: Sized {
 
     #[inline]
     #[allow(clippy::wrong_self_convention)]
-    unsafe fn as_rust_mut<'a>(pointer: *mut Self) -> &'a mut Self::RustObject {
-        &mut *(pointer as *mut Self::RustObject)
-    }
-
-    #[inline]
-    #[allow(clippy::wrong_self_convention)]
     unsafe fn into_rust(pointer: *mut Self) -> Box<Self::RustObject> {
         Box::from_raw(pointer as *mut Self::RustObject)
     }
