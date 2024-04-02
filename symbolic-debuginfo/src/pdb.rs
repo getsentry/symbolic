@@ -25,7 +25,6 @@ use symbolic_common::{
 use crate::base::*;
 use crate::function_stack::FunctionStack;
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::Parse;
 
 type Pdb<'data> = pdb::PDB<'data, Cursor<&'data [u8]>>;
 

@@ -14,7 +14,6 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
 use crate::dwarf::*;
-use crate::Parse;
 
 pub use goblin::pe::exception::*;
 pub use goblin::pe::section_table::SectionTable;

@@ -494,8 +494,6 @@ pub fn demangle(ident: &str) -> Cow<'_, str> {
 mod test {
     use super::*;
 
-    use symbolic_common::Name;
-
     #[test]
     fn simple_md5() {
         let md5_mangled = "??@8ba8d245c9eca390356129098dbe9f73@";

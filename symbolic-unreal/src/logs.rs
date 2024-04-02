@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 use anylog::LogEntry;
 use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
