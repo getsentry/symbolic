@@ -1,7 +1,6 @@
 //! Support for the Executable and Linkable Format, used on Linux.
 
 use std::borrow::Cow;
-use std::convert::TryInto;
 use std::error::Error;
 use std::ffi::CStr;
 use std::fmt;
@@ -23,7 +22,6 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::Parse;
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;

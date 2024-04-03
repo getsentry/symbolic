@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::fmt;
-use std::iter::FromIterator;
 use std::ops::{Bound, Deref, RangeBounds};
 use std::str::FromStr;
 

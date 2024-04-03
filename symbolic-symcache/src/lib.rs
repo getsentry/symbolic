@@ -107,8 +107,6 @@ mod raw;
 pub mod transform;
 mod writer;
 
-use std::convert::TryInto;
-
 use symbolic_common::Arch;
 use symbolic_common::AsSelf;
 use symbolic_common::DebugId;

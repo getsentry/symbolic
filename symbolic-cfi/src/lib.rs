@@ -18,7 +18,6 @@
 //! [`CfiCache`]: struct.CfiCache.html
 
 use std::collections::HashMap;
-use std::convert::TryInto;
 use std::error::Error;
 use std::fmt;
 use std::io::{self, Write};
