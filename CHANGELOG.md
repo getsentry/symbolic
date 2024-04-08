@@ -4,6 +4,8 @@
 
 **Internal**
 
+- Update tokio to latest version ([#833](https://github.com/getsentry/symbolic/pull/833))
+
 **Fixes**
 
 - sourcebundles: Only valid UTF-8 files can be written into sourcebundles ([#816](https://github.com/getsentry/symbolic/pull/816))
