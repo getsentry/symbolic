@@ -457,7 +457,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
                 // in this scenario.
                 match prior_offset {
                     Some(prior) => {
-                        if prior == ref_entry.offset() {
+                        if self.offset() == ref_unit.offset() && prior == ref_entry.offset() {
                             return Ok(None);
                         }
                     }
