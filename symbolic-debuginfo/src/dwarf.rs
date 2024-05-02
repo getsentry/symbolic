@@ -455,13 +455,10 @@ impl<'d, 'a> UnitRef<'d, 'a> {
             return self.resolve_reference(attr, |ref_unit, ref_entry| {
                 // Self-references may have a layer of indircetion. Avoid infinite recursion
                 // in this scenario.
-                match prior_offset {
-                    Some(prior) => {
-                        if self.offset() == ref_unit.offset() && prior == ref_entry.offset() {
-                            return Ok(None);
-                        }
+                if let Some(prior) = prior_offset {
+                    if self.offset() == ref_unit.offset() && prior == ref_entry.offset() {
+                        return Ok(None);
                     }
-                    None => {}
                 }
 
                 if self.offset() != ref_unit.offset() || entry.offset() != ref_entry.offset() {
