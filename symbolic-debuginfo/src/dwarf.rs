@@ -419,6 +419,7 @@ impl<'d, 'a> UnitRef<'d, 'a> {
         entry: &Die<'d, '_>,
         language: Language,
         bcsymbolmap: Option<&'d BcSymbolMap<'d>>,
+        prior_offset: Option<UnitOffset>,
     ) -> Result<Option<Name<'d>>, DwarfError> {
         let mut attrs = entry.attrs();
         let mut fallback_name = None;
@@ -452,8 +453,21 @@ impl<'d, 'a> UnitRef<'d, 'a> {
 
         if let Some(attr) = reference_target {
             return self.resolve_reference(attr, |ref_unit, ref_entry| {
+                // Self-references may have a layer of indircetion. Avoid infinite recursion
+                // in this scenario.
+                if let Some(prior) = prior_offset {
+                    if self.offset() == ref_unit.offset() && prior == ref_entry.offset() {
+                        return Ok(None);
+                    }
+                }
+
                 if self.offset() != ref_unit.offset() || entry.offset() != ref_entry.offset() {
-                    ref_unit.resolve_function_name(ref_entry, language, bcsymbolmap)
+                    ref_unit.resolve_function_name(
+                        ref_entry,
+                        language,
+                        bcsymbolmap,
+                        Some(entry.offset()),
+                    )
                 } else {
                     Ok(None)
                 }
@@ -714,7 +728,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     /// Resolves the name of a function from DWARF debug information.
     fn resolve_dwarf_name(&self, entry: &Die<'d, '_>) -> Option<Name<'d>> {
         self.inner
-            .resolve_function_name(entry, self.language, self.bcsymbolmap)
+            .resolve_function_name(entry, self.language, self.bcsymbolmap, None)
             .ok()
             .flatten()
     }
