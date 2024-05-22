@@ -1894,7 +1894,6 @@ dependencies = [
  "anyhow",
  "clap",
  "symbolic",
- "tracing",
  "tracing-subscriber",
 ]
 
@@ -2247,7 +2246,6 @@ dependencies = [
  "criterion",
  "indexmap",
  "insta",
- "similar-asserts",
  "symbolic-common",
  "symbolic-debuginfo",
  "symbolic-il2cpp",
