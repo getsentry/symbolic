@@ -12,13 +12,13 @@ A fast lookup cache for JavaScript Source Maps.
 edition = "2021"
 
 [dependencies]
-itertools = "0.12.0"
-js-source-scopes = "0.4.0"
-sourcemap = "7.0.0"
-symbolic-common = { version = "12.8.0", path = "../symbolic-common" }
-thiserror = "1.0.39"
-tracing = "0.1.37"
-watto = { version = "0.1.0", features = ["writer", "strings"] }
+itertools = { workspace = true }
+js-source-scopes = { workspace = true }
+sourcemap = { workspace = true }
+symbolic-common = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+watto = { workspace = true }
 
 [dev-dependencies]
-symbolic-testutils = { path = "../symbolic-testutils" }
+symbolic-testutils = { workspace = true }
