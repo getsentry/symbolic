@@ -35,7 +35,6 @@ watto = { workspace = true }
 insta = { workspace = true }
 criterion = { workspace = true }
 symbolic-testutils = { workspace = true }
-similar-asserts = { workspace = true }
 
 [features]
 bench = []

@@ -9,5 +9,4 @@ publish = false
 anyhow = { workspace = true }
 clap = { workspace = true }
 symbolic = { workspace = true, features = ["sourcemapcache"] }
-tracing = { workspace = true }
 tracing-subscriber = {  workspace = true, features = ["env-filter"] }
