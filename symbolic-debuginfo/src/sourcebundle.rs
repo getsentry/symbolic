@@ -55,7 +55,7 @@ use parking_lot::Mutex;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
-use zip::{write::FileOptions, ZipWriter};
+use zip::{write::SimpleFileOptions, ZipWriter};
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, SourceLinkMappings};
 
@@ -1072,14 +1072,14 @@ where
     collect_il2cpp: bool,
 }
 
-fn default_file_options() -> FileOptions {
+fn default_file_options() -> SimpleFileOptions {
     // TODO: should we maybe acknowledge that its the year 2023 and switch to zstd eventually?
     // Though it obviously needs to be supported across the whole platform,
     // which does not seem to be the case for Python?
 
     // Depending on `zip` crate feature flags, it might default to the current time.
     // Using an explicit `DateTime::default` gives us a deterministic `1980-01-01T00:00:00`.
-    FileOptions::default().last_modified_time(zip::DateTime::default())
+    SimpleFileOptions::default().last_modified_time(zip::DateTime::default())
 }
 
 impl<W> SourceBundleWriter<W>
