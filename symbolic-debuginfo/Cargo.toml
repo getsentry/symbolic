@@ -21,7 +21,16 @@ exclude = ["tests/**/*"]
 all-features = true
 
 [features]
-default = ["breakpad", "elf", "macho", "ms", "ppdb", "sourcebundle", "js", "wasm"]
+default = [
+    "breakpad",
+    "elf",
+    "macho",
+    "ms",
+    "ppdb",
+    "sourcebundle",
+    "js",
+    "wasm",
+]
 # Breakpad text format parsing and processing
 breakpad = ["nom", "nom-supreme", "regex"]
 # DWARF processing.
@@ -59,9 +68,7 @@ ms = [
     "scroll",
     "smallvec",
 ]
-ppdb = [
-    "symbolic-ppdb"
-]
+ppdb = ["symbolic-ppdb"]
 # Source bundle creation
 sourcebundle = [
     "lazy_static",

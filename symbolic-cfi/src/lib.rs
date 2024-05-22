@@ -710,7 +710,7 @@ impl<W: Write> AsciiCfiWriter<W> {
     fn process_fde<R, U>(
         &mut self,
         info: &UnwindInfo<U>,
-        ctx: &mut UnwindContext<R>,
+        ctx: &mut UnwindContext<R::Offset>,
         fde: &FrameDescriptionEntry<R>,
     ) -> Result<(), CfiError>
     where
@@ -815,7 +815,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         Ok(())
     }
 
-    fn write_cfa_rule<R: Reader, T: Write>(
+    fn write_cfa_rule<R: ReaderOffset, T: Write>(
         mut target: T,
         arch: Arch,
         rule: &CfaRule<R>,
@@ -834,7 +834,7 @@ impl<W: Write> AsciiCfiWriter<W> {
         Ok(true)
     }
 
-    fn write_register_rule<R: Reader, T: Write>(
+    fn write_register_rule<R: ReaderOffset, T: Write>(
         mut target: T,
         arch: Arch,
         register: Register,
