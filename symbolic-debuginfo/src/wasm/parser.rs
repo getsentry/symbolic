@@ -3,8 +3,8 @@
 use super::WasmError;
 use crate::base::{ObjectKind, Symbol};
 use wasmparser::{
-    CompositeType, FuncValidatorAllocations, NameSectionReader, Payload, TypeRef, Validator,
-    WasmFeatures,
+    BinaryReader, CompositeType, FuncValidatorAllocations, NameSectionReader, Payload, TypeRef,
+    Validator, WasmFeatures,
 };
 
 #[derive(Default)]
@@ -61,18 +61,7 @@ impl<'data> super::WasmObject<'data> {
         // just that the function references a valid signature, so we just keep a bitset of the function
         // signatures to verify that
         let mut func_sigs = BitVec::new();
-        // NOTE: make sure to update these when bumping the `wasmparser` depedency.
-        let features = WasmFeatures {
-            relaxed_simd: true,
-            threads: true,
-            tail_call: true,
-            multi_memory: true,
-            exceptions: true,
-            memory64: true,
-            extended_const: true,
-            component_model: true,
-            ..Default::default()
-        };
+        let features = WasmFeatures::all();
         let mut validator = Validator::new_with_features(features);
         let mut funcs = Vec::<Symbol>::new();
         let mut num_imported_funcs = 0u32;
@@ -169,8 +158,10 @@ impl<'data> super::WasmObject<'data> {
                     });
                 }
 
-                Payload::ModuleSection { range, .. } => {
-                    validator.module_section(&range)?;
+                Payload::ModuleSection {
+                    unchecked_range, ..
+                } => {
+                    validator.module_section(&unchecked_range)?;
                 }
                 // There are several custom sections that we need
                 Payload::CustomSection(reader) => {
@@ -187,7 +178,9 @@ impl<'data> super::WasmObject<'data> {
                         }
                         // The name section contains the symbol names for items, notably functions
                         "name" => {
-                            let nsr = NameSectionReader::new(reader.data(), 0);
+                            let reader =
+                                BinaryReader::new(reader.data(), reader.data_offset(), features);
+                            let nsr = NameSectionReader::new(reader);
 
                             for name in nsr {
                                 if let wasmparser::Name::Function(fnames) = name? {
