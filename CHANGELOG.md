@@ -6,6 +6,7 @@
 
 - Update tokio to latest version ([#833](https://github.com/getsentry/symbolic/pull/833))
 - Fix infinite recursion caused by indirect self-references when resolving function names ([#836](https://github.com/getsentry/symbolic/pull/836))
+- Switch to workspace dependencies ([#841](https://github.com/getsentry/symbolic/pull/841))
 
 **Fixes**
 
