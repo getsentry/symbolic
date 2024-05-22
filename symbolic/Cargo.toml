@@ -34,12 +34,12 @@ unreal = ["symbolic-unreal"]
 unreal-serde = ["unreal", "common-serde", "symbolic-unreal/serde"]
 
 [dependencies]
-symbolic-cfi = { version = "12.8.0", path = "../symbolic-cfi", optional = true }
-symbolic-common = { version = "12.8.0", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "12.8.0", path = "../symbolic-debuginfo", optional = true }
-symbolic-demangle = { version = "12.8.0", path = "../symbolic-demangle", optional = true }
-symbolic-il2cpp = { version = "12.8.0", path = "../symbolic-il2cpp", optional = true }
-symbolic-ppdb = { version = "12.8.0", path = "../symbolic-ppdb", optional = true }
-symbolic-sourcemapcache = { version = "12.8.0", path = "../symbolic-sourcemapcache", optional = true }
-symbolic-symcache = { version = "12.8.0", path = "../symbolic-symcache", optional = true }
-symbolic-unreal = { version = "12.8.0", path = "../symbolic-unreal", optional = true }
+symbolic-cfi = { workspace = true, optional = true }
+symbolic-common = { workspace = true }
+symbolic-debuginfo = { workspace = true, optional = true }
+symbolic-demangle = { workspace = true, optional = true }
+symbolic-il2cpp = { workspace = true, optional = true }
+symbolic-ppdb = { workspace = true, optional = true }
+symbolic-sourcemapcache = { workspace = true, optional = true }
+symbolic-symcache = { workspace = true, optional = true }
+symbolic-unreal = { workspace = true, optional = true }

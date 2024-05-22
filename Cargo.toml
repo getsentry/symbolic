@@ -5,9 +5,79 @@ members = [
     "examples/*",
 ]
 
+[workspace.dependencies]
+anyhow = "1.0.32"
+anylog = "0.6.4"
+async-trait = "0.1.53"
+bytes = "1.4.0"
+cc = "1.0.79"
+chrono = { version = "0.4.23", default-features = false, features = ["std"] }
+clap = "4.4.5"
+cpp_demangle = "0.4.1"
+criterion = { version = "0.5.1", features = ["html_reports"] }
+debugid = "0.8.0"
+dmsort = "1.0.2"
+elementtree = "1.2.3"
+elsa =  "1.8.0"
+fallible-iterator = "0.3.0"
+flate2 = { version = "1.0.25" , default-features = false, features = ["rust_backend"] }
+gimli = { version = "0.28.1" , default-features = false, features = ["read", "std", "fallible-iterator"] }
+goblin = { version = "0.8.0" , default-features = false }
+indexmap = "2.0.0"
+insta = { version = "1.28.0", features = ["yaml"] }
+itertools = "0.12.0"
+js-source-scopes = "0.4.0"
+lazy_static = "1.4.0"
+libfuzzer-sys = "0.4"
+memmap2 = "0.9.0"
+minidump = "0.21.0"
+minidump-processor = "0.21.0"
+minidump-unwind = "0.21.0"
+msvc-demangler = "0.10.0"
+nom =  "7.1.3"
+nom-supreme =  "0.8.0"
+once_cell =  "1.17.1"
+parking_lot =  "0.12.1"
+pdb-addr2line =  "0.10.4"
+proguard = { version = "5.4.0", features = ["uuid"] }
+regex =  "1.7.1"
+rustc-demangle = "0.1.21"
+# keep this in sync with whatever version `goblin` uses
+scroll =  "0.12.0"
+serde = { version = "1.0.171", features = ["derive"] }
+serde_json = "1.0.102"
+similar-asserts = "1.4.2"
+smallvec = "1.10.0"
+sourcemap = "7.0.0"
+stable_deref_trait = "1.2.0"
+symbolic = { version = "12.8.0", path = "symbolic" }
+symbolic-cfi = { version = "12.8.0", path = "symbolic-cfi" }
+symbolic-common = { version = "12.8.0", path = "symbolic-common" }
+symbolic-demangle = { version = "12.8.0", path = "symbolic-demangle" }
+symbolic-debuginfo = { version = "12.8.0", path = "symbolic-debuginfo" }
+symbolic-il2cpp = { version = "12.8.0", path = "symbolic-il2cpp" }
+symbolic-ppdb = { version = "12.8.0", path = "symbolic-ppdb"  }
+symbolic-sourcemapcache = { version = "12.8.0", path = "symbolic-sourcemapcache" }
+symbolic-symcache = { version = "12.8.0", path = "symbolic-symcache" }
+symbolic-testutils = { path = "symbolic-testutils" }
+symbolic-unreal = { version = "12.8.0", path = "symbolic-unreal" }
+tempfile = "3.4.0"
+thiserror = "1.0.39"
+time = { version = "0.3.20", features = ["formatting"] }
+tokio = "1.36.0"
+tracing = "0.1.34"
+tracing-subscriber = "0.3.11"
+uuid = "1.3.0"
+walkdir = "2.3.1"
+wasmparser =  "0.202.0"
+watto = { version = "0.1.0", features = ["writer", "strings"] }
+zip = { version = "1.3.1" , default-features = false, features = ["deflate"] }
+
+
 [profile.release]
 debug = true
 lto = true
 
 [profile.bench]
 debug = true
+
