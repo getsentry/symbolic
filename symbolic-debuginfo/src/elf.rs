@@ -29,6 +29,9 @@ const PAGE_SIZE: usize = 4096;
 const SHN_UNDEF: usize = elf::section_header::SHN_UNDEF as usize;
 const SHF_COMPRESSED: u64 = elf::section_header::SHF_COMPRESSED as u64;
 
+/// The ELF compression header type for `zstd`, as that is not (yet) exported by `goblin`.
+pub const ELFCOMPRESS_ZSTD: u32 = 2;
+
 /// This file follows the first MIPS 32 bit ABI
 #[allow(unused)]
 const EF_MIPS_ABI_O32: u32 = 0x0000_1000;
@@ -549,7 +552,12 @@ impl<'data> ElfObject<'data> {
 
     /// Decompresses the given compressed section data, if supported.
     fn decompress_section(&self, section_data: &[u8]) -> Option<Vec<u8>> {
-        let (size, compressed) = if section_data.starts_with(b"ZLIB") {
+        enum CompressionType {
+            Zlib,
+            Zstd,
+        }
+
+        let (ty, size, compressed) = if section_data.starts_with(b"ZLIB") {
             // The GNU compression header is a 4 byte magic "ZLIB", followed by an 8-byte big-endian
             // size prefix of the decompressed data. This adds up to 12 bytes of GNU header.
             if section_data.len() < 12 {
@@ -559,25 +567,39 @@ impl<'data> ElfObject<'data> {
             let mut size_bytes = [0; 8];
             size_bytes.copy_from_slice(&section_data[4..12]);
 
-            (u64::from_be_bytes(size_bytes), &section_data[12..])
+            (
+                CompressionType::Zlib,
+                u64::from_be_bytes(size_bytes),
+                &section_data[12..],
+            )
         } else {
             let container = self.elf.header.container().ok()?;
             let endianness = self.elf.header.endianness().ok()?;
             let context = Ctx::new(container, endianness);
 
             let compression = CompressionHeader::parse(section_data, 0, context).ok()?;
-            if compression.ch_type != ELFCOMPRESS_ZLIB {
-                return None;
-            }
+            let ty = match compression.ch_type {
+                ELFCOMPRESS_ZLIB => CompressionType::Zlib,
+                ELFCOMPRESS_ZSTD => CompressionType::Zstd,
+                _ => {
+                    return None;
+                }
+            };
 
             let compressed = &section_data[CompressionHeader::size(context)..];
-            (compression.ch_size, compressed)
+            (ty, compression.ch_size, compressed)
         };
 
-        let mut decompressed = Vec::with_capacity(size as usize);
-        Decompress::new(true)
-            .decompress_vec(compressed, &mut decompressed, FlushDecompress::Finish)
-            .ok()?;
+        let decompressed = match ty {
+            CompressionType::Zlib => {
+                let mut decompressed = Vec::with_capacity(size as usize);
+                Decompress::new(true)
+                    .decompress_vec(compressed, &mut decompressed, FlushDecompress::Finish)
+                    .ok()?;
+                decompressed
+            }
+            CompressionType::Zstd => zstd::bulk::decompress(compressed, size as usize).ok()?,
+        };
 
         Some(decompressed)
     }
