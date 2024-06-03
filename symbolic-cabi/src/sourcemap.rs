@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::ops::Deref;
 use std::os::raw::c_char;
 use std::ptr;
@@ -11,7 +10,7 @@ use crate::utils::ForeignObject;
 pub struct SymbolicSourceView;
 
 impl ForeignObject for SymbolicSourceView {
-    type RustObject = sourcemap::SourceView<'static>;
+    type RustObject = sourcemap::SourceView;
 }
 
 enum SourceMapType {
@@ -72,10 +71,7 @@ ffi_fn! {
         len: usize,
     ) -> Result<*mut SymbolicSourceView> {
         let slice = slice::from_raw_parts(bytes as *const _, len);
-        let view = match String::from_utf8_lossy(slice) {
-            Cow::Owned(s) => sourcemap::SourceView::from_string(s),
-            Cow::Borrowed(s) => sourcemap::SourceView::new(s),
-        };
+        let view = sourcemap::SourceView::new(String::from_utf8_lossy(slice).into());
         Ok(SymbolicSourceView::from_rust(view))
     }
 }
