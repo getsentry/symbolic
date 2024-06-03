@@ -282,12 +282,42 @@ fn test_elf_files() -> Result<(), Error> {
     assert_eq!(files.len(), 1012);
     insta::assert_debug_snapshot!("elf_files", FilesDebug(&files[..10]));
 
+    let view = ByteView::open(fixture("linux/crash.debug-zlib"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session()?;
+    let files = session.files().collect::<Result<Vec<_>, _>>()?;
+    assert_eq!(files.len(), 1012);
+    insta::assert_debug_snapshot!("elf_files", FilesDebug(&files[..10]));
+
+    let view = ByteView::open(fixture("linux/crash.debug-zstd"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session()?;
+    let files = session.files().collect::<Result<Vec<_>, _>>()?;
+    assert_eq!(files.len(), 1012);
+    insta::assert_debug_snapshot!("elf_files", FilesDebug(&files[..10]));
+
     Ok(())
 }
 
 #[test]
 fn test_elf_functions() -> Result<(), Error> {
     let view = ByteView::open(fixture("linux/crash.debug"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session()?;
+    let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
+    insta::assert_debug_snapshot!("elf_functions", FunctionsDebug(&functions[..10], 0));
+
+    let view = ByteView::open(fixture("linux/crash.debug-zlib"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session()?;
+    let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
+    insta::assert_debug_snapshot!("elf_functions", FunctionsDebug(&functions[..10], 0));
+
+    let view = ByteView::open(fixture("linux/crash.debug-zstd"))?;
     let object = Object::parse(&view)?;
 
     let session = object.debug_session()?;

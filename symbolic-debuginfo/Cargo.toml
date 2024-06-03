@@ -44,6 +44,7 @@ elf = [
     "goblin/elf64",
     "goblin/std",
     "scroll",
+    "zstd",
 ]
 # Mach-o processing
 macho = [
@@ -110,6 +111,7 @@ symbolic-ppdb = { workspace = true, optional = true }
 thiserror = { workspace = true }
 wasmparser = { workspace = true, optional = true }
 zip = { workspace = true, optional = true }
+zstd = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
