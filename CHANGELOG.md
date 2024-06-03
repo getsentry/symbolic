@@ -2,24 +2,22 @@
 
 ## Unreleased
 
-**Internal**
+**Features**
 
-- Update tokio to latest version ([#833](https://github.com/getsentry/symbolic/pull/833))
-- Fix infinite recursion caused by indirect self-references when resolving function names ([#836](https://github.com/getsentry/symbolic/pull/836))
-- Switch to workspace dependencies ([#841](https://github.com/getsentry/symbolic/pull/841))
+- Add support for reading `zstd` compressed ELF debug section ([#843](https://github.com/getsentry/symbolic/pull/843))
 
 **Fixes**
 
 - sourcebundles: Only valid UTF-8 files can be written into sourcebundles ([#816](https://github.com/getsentry/symbolic/pull/816))
 - Fix an issue when extracting the name of the debug file from a PE object ([#825](https://github.com/getsentry/symbolic/pull/825))
 
-**Features**
-
-## 12.8.0
-
 **Internal**
 
-**Fixes**
+- Update tokio to latest version ([#833](https://github.com/getsentry/symbolic/pull/833))
+- Fix infinite recursion caused by indirect self-references when resolving function names ([#836](https://github.com/getsentry/symbolic/pull/836))
+- Switch to workspace dependencies ([#841](https://github.com/getsentry/symbolic/pull/841))
+
+## 12.8.0
 
 **Features**
 
