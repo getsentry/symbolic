@@ -52,17 +52,17 @@ similar-asserts = "1.4.2"
 smallvec = "1.10.0"
 sourcemap = "8.0.1"
 stable_deref_trait = "1.2.0"
-symbolic = { version = "12.8.0", path = "symbolic" }
-symbolic-cfi = { version = "12.8.0", path = "symbolic-cfi" }
-symbolic-common = { version = "12.8.0", path = "symbolic-common" }
-symbolic-debuginfo = { version = "12.8.0", path = "symbolic-debuginfo" }
-symbolic-demangle = { version = "12.8.0", path = "symbolic-demangle" }
-symbolic-il2cpp = { version = "12.8.0", path = "symbolic-il2cpp" }
-symbolic-ppdb = { version = "12.8.0", path = "symbolic-ppdb" }
-symbolic-sourcemapcache = { version = "12.8.0", path = "symbolic-sourcemapcache" }
-symbolic-symcache = { version = "12.8.0", path = "symbolic-symcache" }
+symbolic = { version = "12.9.0", path = "symbolic" }
+symbolic-cfi = { version = "12.9.0", path = "symbolic-cfi" }
+symbolic-common = { version = "12.9.0", path = "symbolic-common" }
+symbolic-debuginfo = { version = "12.9.0", path = "symbolic-debuginfo" }
+symbolic-demangle = { version = "12.9.0", path = "symbolic-demangle" }
+symbolic-il2cpp = { version = "12.9.0", path = "symbolic-il2cpp" }
+symbolic-ppdb = { version = "12.9.0", path = "symbolic-ppdb" }
+symbolic-sourcemapcache = { version = "12.9.0", path = "symbolic-sourcemapcache" }
+symbolic-symcache = { version = "12.9.0", path = "symbolic-symcache" }
 symbolic-testutils = { path = "symbolic-testutils" }
-symbolic-unreal = { version = "12.8.0", path = "symbolic-unreal" }
+symbolic-unreal = { version = "12.9.0", path = "symbolic-unreal" }
 tempfile = "3.4.0"
 thiserror = "1.0.39"
 time = { version = "0.3.20", features = ["formatting"] }
