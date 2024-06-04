@@ -8,5 +8,7 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
-symbolic = { workspace = true, features = ["sourcemapcache"] }
-tracing-subscriber = {  workspace = true, features = ["env-filter"] }
+symbolic = { version = "12.8.0", path = "../../symbolic", features = [
+    "sourcemapcache",
+] }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }

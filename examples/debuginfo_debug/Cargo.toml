@@ -10,4 +10,6 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
-symbolic = { workspace = true, features = ["demangle"] }
+symbolic = { version = "12.8.0", path = "../../symbolic", features = [
+    "demangle",
+] }

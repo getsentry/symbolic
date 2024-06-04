@@ -13,7 +13,11 @@ clap = { workspace = true }
 minidump = { workspace = true }
 minidump-processor = { workspace = true }
 minidump-unwind = { workspace = true }
-symbolic = { workspace = true, features = ["symcache", "demangle", "cfi"] }
+symbolic = { version = "12.8.0", path = "../../symbolic", features = [
+    "symcache",
+    "demangle",
+    "cfi",
+] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt"] }
 tracing = { workspace = true }

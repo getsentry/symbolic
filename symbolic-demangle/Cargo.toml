@@ -16,9 +16,7 @@ A library to demangle symbols from various languages and compilers.
 build = "build.rs"
 edition = "2021"
 
-exclude = [
-    "tests/**/*",
-]
+exclude = ["tests/**/*"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -34,7 +32,7 @@ swift = ["cc"]
 cpp_demangle = { workspace = true, optional = true }
 msvc-demangler = { workspace = true, optional = true }
 rustc-demangle = { workspace = true, optional = true }
-symbolic-common = { workspace = true }
+symbolic-common = { version = "12.8.0", path = "../symbolic-common" }
 
 [build-dependencies]
 cc = { workspace = true, optional = true }

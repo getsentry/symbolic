@@ -9,4 +9,4 @@ publish = false
 
 [dependencies]
 clap = { workspace = true }
-symbolic = { workspace = true }
+symbolic = { version = "12.8.0", path = "../../symbolic" }

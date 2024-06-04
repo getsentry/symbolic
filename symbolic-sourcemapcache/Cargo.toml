@@ -15,10 +15,10 @@ edition = "2021"
 itertools = { workspace = true }
 js-source-scopes = { workspace = true }
 sourcemap = { workspace = true }
-symbolic-common = { workspace = true }
+symbolic-common = { version = "12.8.0", path = "../symbolic-common" }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 watto = { workspace = true }
 
 [dev-dependencies]
-symbolic-testutils = { workspace = true }
+symbolic-testutils = { path = "../symbolic-testutils" }
