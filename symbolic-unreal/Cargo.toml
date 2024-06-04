@@ -15,9 +15,7 @@ Parsing and processing utilities for Unreal Engine 4 crash files.
 """
 edition = "2021"
 
-exclude = [
-    "tests/**/*",
-]
+exclude = ["tests/**/*"]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -40,5 +38,5 @@ time = { workspace = true }
 
 [dev-dependencies]
 insta = { workspace = true }
-symbolic-testutils = { workspace = true }
 similar-asserts = { workspace = true }
+symbolic-testutils = { path = "../symbolic-testutils" }

@@ -30,6 +30,6 @@ serde = { workspace = true, optional = true }
 uuid = { workspace = true }
 
 [dev-dependencies]
-symbolic-testutils = { workspace = true }
+symbolic-testutils = { path = "../symbolic-testutils" }
 tempfile = { workspace = true }
 similar-asserts = { workspace = true }

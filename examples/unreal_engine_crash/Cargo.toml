@@ -9,4 +9,6 @@ publish = false
 
 [dependencies]
 clap = { workspace = true }
-symbolic = { workspace = true, features = ["unreal"] }
+symbolic = { version = "12.8.0", path = "../../symbolic", features = [
+    "unreal",
+] }

@@ -14,5 +14,5 @@ edition = "2021"
 [dependencies]
 indexmap = { workspace = true }
 serde_json = { workspace = true }
-symbolic-common = { workspace = true }
-symbolic-debuginfo = { workspace = true }
+symbolic-common = { version = "12.8.0", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "12.8.0", path = "../symbolic-debuginfo" }

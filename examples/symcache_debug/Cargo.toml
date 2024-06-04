@@ -10,4 +10,8 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
-symbolic = { workspace = true, features = ["symcache", "demangle", "il2cpp"] }
+symbolic = { version = "12.8.0", path = "../../symbolic", features = [
+    "symcache",
+    "demangle",
+    "il2cpp",
+] }

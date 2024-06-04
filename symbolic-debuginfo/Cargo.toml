@@ -106,8 +106,8 @@ scroll = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
 smallvec = { workspace = true, optional = true }
-symbolic-common = { workspace = true }
-symbolic-ppdb = { workspace = true, optional = true }
+symbolic-common = { version = "12.8.0", path = "../symbolic-common" }
+symbolic-ppdb = { version = "12.8.0", path = "../symbolic-ppdb", optional = true }
 thiserror = { workspace = true }
 wasmparser = { workspace = true, optional = true }
 zip = { workspace = true, optional = true }
@@ -118,7 +118,7 @@ criterion = { workspace = true }
 insta = { workspace = true }
 tempfile = { workspace = true }
 similar-asserts = { workspace = true }
-symbolic-testutils = { workspace = true }
+symbolic-testutils = { path = "../symbolic-testutils" }
 
 [[bench]]
 name = "breakpad_parser"

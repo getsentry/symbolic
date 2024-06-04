@@ -4,7 +4,7 @@ version = "12.8.0"
 license = "MIT"
 authors = [
     "Sebastian Zivota <sebastian.zivota@sentry.io>",
-    "Arpad Borsos <arpad.borsos@sentry.io>"
+    "Arpad Borsos <arpad.borsos@sentry.io>",
 ]
 documentation = "https://docs.rs/symbolic-ppdb"
 homepage = "https://github.com/getsentry/symbolic"
@@ -20,15 +20,15 @@ exclude = ["tests/**/*"]
 all-features = true
 
 [dependencies]
+flate2 = { workspace = true }
 indexmap = { workspace = true }
-symbolic-common = { workspace = true }
-watto = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+symbolic-common = { version = "12.8.0", path = "../symbolic-common" }
 thiserror = { workspace = true }
 uuid = { workspace = true }
-flate2 = { workspace = true }
-serde_json = { workspace = true }
-serde = { workspace = true }
+watto = { workspace = true }
 
 [dev-dependencies]
-symbolic-debuginfo = { workspace = true }
-symbolic-testutils = { workspace = true }
+symbolic-debuginfo = { path = "../symbolic-debuginfo" }
+symbolic-testutils = { path = "../symbolic-testutils" }

@@ -15,26 +15,24 @@ stack frames in debugging information.
 """
 edition = "2021"
 
-exclude = [
-    "tests/**/*",
-]
+exclude = ["tests/**/*"]
 
 [package.metadata.docs.rs]
 all-features = true
 
 [dependencies]
-symbolic-common = { workspace = true }
-symbolic-debuginfo = { workspace = true }
-symbolic-il2cpp = { workspace = true, optional = true }
-thiserror = { workspace = true }
 indexmap = { workspace = true }
+symbolic-common = { version = "12.8.0", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "12.8.0", path = "../symbolic-debuginfo" }
+symbolic-il2cpp = { version = "12.8.0", path = "../symbolic-il2cpp", optional = true }
+thiserror = { workspace = true }
 tracing = { workspace = true }
 watto = { workspace = true }
 
 [dev-dependencies]
-insta = { workspace = true }
 criterion = { workspace = true }
-symbolic-testutils = { workspace = true }
+insta = { workspace = true }
+symbolic-testutils = { path = "../symbolic-testutils" }
 
 [features]
 bench = []
