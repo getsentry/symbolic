@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Downgrade and pin `zip` to fix SourceBundles with >64k files ([#846](https://github.com/getsentry/symbolic/pull/846))
+
 ## 12.9.1
 
 **Features**
