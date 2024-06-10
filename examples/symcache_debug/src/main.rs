@@ -2,7 +2,6 @@ use std::fs::File;
 use std::io::{Cursor, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::u64;
 
 use anyhow::{anyhow, Context, Result};
 use clap::builder::ValueParser;

@@ -351,7 +351,7 @@ impl<'data> SymbolMap<'data> {
         let end = match range.end_bound() {
             Bound::Included(end) => *end,
             Bound::Excluded(end) => *end - 1,
-            Bound::Unbounded => u64::max_value(),
+            Bound::Unbounded => u64::MAX,
         };
 
         if end <= start || symbol.contains(end) {
