@@ -272,7 +272,7 @@
 //! (subtract the global count to get the local index).
 //!
 //! > Unclear detail: If the global palette is smaller than 127, can the local
-//!   palette be larger than 128?
+//! > palette be larger than 128?
 //!
 //! To compress these entries into a single 32-bit value, the address is truncated
 //! to 24 bits and packed with the index. The addresses stored in these entries

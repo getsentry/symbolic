@@ -894,7 +894,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             // occur with a `code_start` close to the end of a function's code range, it seems
             // likely that these belong to the function epilog and code_size has a different meaning
             // in this case. Until this value is understood, skip these entries.
-            if frame.code_size > i32::max_value() as u32 {
+            if frame.code_size > i32::MAX as u32 {
                 continue;
             }
 

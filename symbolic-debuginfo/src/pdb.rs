@@ -746,6 +746,7 @@ impl<'s> Unit<'s> {
     /// For example we have observed in a real-world pdb that has:
     /// - A function 0x33ea50 (size 0xc)
     /// - With one line record: 0x33e850 (size 0x26)
+    ///
     /// The line record is completely outside the range of the function.
     fn sanitize_lines(func: &mut Function) {
         let fn_start = func.address;

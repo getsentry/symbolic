@@ -939,6 +939,7 @@ impl<'data> DebugLink<'data> {
     /// - A filename, with any leading directory components removed, followed by a zero byte,
     /// - zero to three bytes of padding, as needed to reach the next four-byte boundary within the section, and
     /// - a four-byte CRC checksum, stored in the same endianness used for the executable file itself.
+    ///
     /// (from <https://sourceware.org/gdb/current/onlinedocs/gdb/Separate-Debug-Files.html#index-_002egnu_005fdebuglink-sections>)
     ///
     /// # Errors
