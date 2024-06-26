@@ -703,6 +703,14 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 self.bcsymbolmap,
                 self.inner.slice_value(file.path_name()).unwrap_or_default(),
             )),
+            file.source().and_then(|source| {
+                let unit_ref = self.inner.unit.unit_ref(&self.inner.info);
+                match unit_ref.attr_string(source) {
+                    Ok(source) if source.is_empty() => None,
+                    Err(_) => None,
+                    Ok(source) => Some(Cow::Borrowed(source.slice())),
+                }
+            }),
         )
     }
 
@@ -1348,10 +1356,35 @@ impl<'data> DwarfDebugSession<'data> {
     }
 
     /// See [DebugSession::source_by_path] for more information.
+    ///
+    /// Note that this does not load additional sources from disk and only works with sources
+    /// embedded directly in the debug information (DW_LNCT_LLVM_source)
     pub fn source_by_path(
         &self,
-        _path: &str,
+        path: &str,
     ) -> Result<Option<SourceFileDescriptor<'_>>, DwarfError> {
+        // First: see if there's an exact match for the provided path
+        for file in self.files() {
+            let file = file?;
+            if path != file.info.path_str() {
+                continue;
+            }
+            if let Some(contents) = file.source_str() {
+                return Ok(Some(SourceFileDescriptor::new_embedded(contents, None)));
+            }
+        }
+
+        // If not, we'll try matching with the relative paths
+        for file in self.files() {
+            let file = file?;
+            if path != file.info.name_str() {
+                continue;
+            }
+            if let Some(contents) = file.source_str() {
+                return Ok(Some(SourceFileDescriptor::new_embedded(contents, None)));
+            }
+        }
+
         Ok(None)
     }
 }

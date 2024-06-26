@@ -20,7 +20,8 @@ fallible-iterator = "0.3.0"
 flate2 = { version = "1.0.25", default-features = false, features = [
     "rust_backend",
 ] }
-gimli = { version = "0.30.0", default-features = false, features = [
+# FIXME: replace with crates.io release once available (PR #728)
+gimli = { git = "https://github.com/gimli-rs/gimli.git", rev = "aca0c4275e073da77a0c6e506ba9f4fb3c3aa6ca", default-features = false, features = [
     "read",
     "std",
     "fallible-iterator",
