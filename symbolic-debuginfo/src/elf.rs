@@ -537,7 +537,13 @@ impl<'data> ElfObject<'data> {
 
     /// Determines whether this object contains embedded source.
     pub fn has_sources(&self) -> bool {
-        false
+        // TODO: can we determine if we have sources without opening a debug session?
+        let Ok(session) = self.debug_session() else {
+            return false;
+        };
+        session
+            .files()
+            .any(|f| f.is_ok_and(|f| f.source_str().is_some()))
     }
 
     /// Determines whether this object is malformed and was only partially parsed
