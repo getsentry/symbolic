@@ -3,7 +3,7 @@
 use super::WasmError;
 use crate::base::{ObjectKind, Symbol};
 use wasmparser::{
-    BinaryReader, CompositeType, FuncValidatorAllocations, NameSectionReader, Payload, TypeRef,
+    BinaryReader, CompositeInnerType, FuncValidatorAllocations, NameSectionReader, Payload, TypeRef,
     Validator, WasmFeatures,
 };
 
@@ -83,8 +83,8 @@ impl<'data> super::WasmObject<'data> {
                     for (i, ty) in tsr.into_iter().enumerate() {
                         let mut types = ty?.into_types();
                         let ty_is_func = matches!(
-                            types.next().map(|s| s.composite_type),
-                            Some(CompositeType::Func(_))
+                            types.next().map(|s| s.composite_type.inner),
+                            Some(CompositeInnerType::Func(_))
                         );
                         if types.next().is_none() && ty_is_func {
                             func_sigs.set(i, true);
