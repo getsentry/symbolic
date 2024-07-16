@@ -1,4 +1,4 @@
-use std::{env, ffi::CString, fmt, io::BufWriter};
+use std::{collections::HashMap, env, ffi::CString, fmt, io::BufWriter};
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{
@@ -871,6 +871,8 @@ fn test_wasm_symbols() -> Result<(), Error> {
         Some("bda18fd85d4a4eb893022d6bfad846b1".into())
     );
 
+    assert!(!object.has_sources());
+
     let symbols = object.symbol_map();
     insta::assert_debug_snapshot!("wasm_symbols", SymbolsDebug(&symbols));
 
@@ -890,6 +892,38 @@ fn test_wasm_line_program() -> Result<(), Error> {
         .expect("main function at 0x8b");
 
     assert_eq!(main_function.name, "internal_func");
+
+    Ok(())
+}
+
+#[test]
+fn test_wasm_has_sources() -> Result<(), Error> {
+    let view = ByteView::open(fixture("wasm/embed-source.wasm"))?;
+    let object = Object::parse(&view)?;
+
+    assert!(object.has_sources());
+
+    let session = object.debug_session()?;
+
+    let files_with_source = session
+        .files()
+        .filter_map(|x| {
+            let file_entry = x.ok()?;
+            let source = file_entry.source_str()?;
+            Some((file_entry.abs_path_str(), source))
+        })
+        .collect::<HashMap<_, _>>();
+
+    insta::assert_debug_snapshot!(files_with_source, @r###"
+    {
+        "/tmp/foo.c": "int main(void) { return 42; }\n",
+    }
+    "###);
+
+    assert!(session.source_by_path("foo/bar.c").unwrap().is_none());
+    assert!(session.source_by_path("foo.c").unwrap().is_none());
+    // source_by_path matches the absolute file path
+    assert!(session.source_by_path("/tmp/foo.c").unwrap().is_some());
 
     Ok(())
 }

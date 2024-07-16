@@ -10,7 +10,7 @@
 //! [`PeObject`]: ../pe/struct.PeObject.html
 
 use std::borrow::Cow;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::error::Error;
 use std::fmt;
 use std::marker::PhantomData;
@@ -692,7 +692,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         line_program: &LineNumberProgramHeader<'d>,
         file: &LineProgramFileEntry<'d>,
     ) -> FileInfo<'d> {
-        FileInfo::new(
+        FileInfo::with_source(
             Cow::Borrowed(resolve_byte_name(
                 self.bcsymbolmap,
                 file.directory(line_program)
@@ -703,6 +703,14 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 self.bcsymbolmap,
                 self.inner.slice_value(file.path_name()).unwrap_or_default(),
             )),
+            file.source().and_then(|source| {
+                let unit_ref = self.inner.unit.unit_ref(self.inner.info);
+                match unit_ref.attr_string(source) {
+                    Ok(source) if source.is_empty() => None,
+                    Err(_) => None,
+                    Ok(source) => Some(Cow::Borrowed(source.slice())),
+                }
+            }),
         )
     }
 
@@ -1295,6 +1303,9 @@ impl std::iter::FusedIterator for DwarfUnitIterator<'_> {}
 pub struct DwarfDebugSession<'data> {
     cell: SelfCell<Box<DwarfSections<'data>>, DwarfInfo<'data>>,
     bcsymbolmap: Option<Arc<BcSymbolMap<'data>>>,
+    // We store the "lookup path" for each entry here to avoid lifetime issues w.r.t
+    // HashMap<_, SourceFileDescriptor<'data>>, as we can't construct this in a method call.
+    sources_path_to_file_idx: OnceCell<HashMap<String, usize>>,
 }
 
 impl<'data> DwarfDebugSession<'data> {
@@ -1316,6 +1327,7 @@ impl<'data> DwarfDebugSession<'data> {
         Ok(DwarfDebugSession {
             cell,
             bcsymbolmap: None,
+            sources_path_to_file_idx: OnceCell::default(),
         })
     }
 
@@ -1348,11 +1360,33 @@ impl<'data> DwarfDebugSession<'data> {
     }
 
     /// See [DebugSession::source_by_path] for more information.
+    /// This lookup returns entries that match a given [FileEntry::abs_path_str].
+    ///
+    /// Note that this does not load additional sources from disk and only works with sources
+    /// embedded directly in the debug information (DW_LNCT_LLVM_source).
     pub fn source_by_path(
         &self,
-        _path: &str,
+        path: &str,
     ) -> Result<Option<SourceFileDescriptor<'_>>, DwarfError> {
-        Ok(None)
+        // Construct / fetch a lookup table to avoid scanning and comparing each file's path in this
+        // operation:
+        let sources = self.sources_path_to_file_idx.get_or_init(|| {
+            let mut res = HashMap::new();
+            for (i, file) in self.files().enumerate() {
+                if let Ok(file) = file {
+                    if file.source_str().is_some() {
+                        res.insert(file.abs_path_str(), i);
+                    }
+                }
+            }
+            res
+        });
+
+        Ok(sources.get(path).map(|&idx| {
+            // These unwraps hold by construction above
+            let file = self.files().nth(idx).unwrap().unwrap();
+            SourceFileDescriptor::new_embedded(file.source_str().unwrap(), None)
+        }))
     }
 }
 
