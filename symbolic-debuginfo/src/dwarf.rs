@@ -1374,7 +1374,7 @@ impl<'data> DwarfDebugSession<'data> {
             let mut res = HashMap::new();
             for (i, file) in self.files().enumerate() {
                 if let Ok(file) = file {
-                    if let Some(_contents) = file.source_str() {
+                    if file.source_str().is_some() {
                         res.insert(file.abs_path_str(), i);
                     }
                 }
