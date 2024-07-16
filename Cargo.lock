@@ -770,8 +770,9 @@ checksum = "40ecd4077b5ae9fd2e9e169b102c6c330d0605168eb0e8bf79952b256dbefffd"
 
 [[package]]
 name = "gimli"
-version = "0.30.0"
-source = "git+https://github.com/gimli-rs/gimli.git?rev=aca0c4275e073da77a0c6e506ba9f4fb3c3aa6ca#aca0c4275e073da77a0c6e506ba9f4fb3c3aa6ca"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32085ea23f3234fc7846555e85283ba4de91e21016dc0455a16286d87a292d64"
 dependencies = [
  "fallible-iterator 0.3.0",
  "stable_deref_trait",
@@ -2210,7 +2211,7 @@ dependencies = [
  "elsa",
  "fallible-iterator 0.3.0",
  "flate2",
- "gimli 0.30.0",
+ "gimli 0.31.0",
  "goblin",
  "insta",
  "lazy_static",
