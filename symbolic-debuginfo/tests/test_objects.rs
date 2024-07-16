@@ -910,18 +910,19 @@ fn test_wasm_has_sources() -> Result<(), Error> {
         .filter_map(|x| {
             let file_entry = x.ok()?;
             let source = file_entry.source_str()?;
-            Some((file_entry.name_str(), source))
+            Some((file_entry.abs_path_str(), source))
         })
         .collect::<HashMap<_, _>>();
 
     insta::assert_debug_snapshot!(files_with_source, @r###"
     {
-        "foo.c": "int main(void) { return 42; }\n",
+        "/tmp/foo.c": "int main(void) { return 42; }\n",
     }
     "###);
 
     assert!(session.source_by_path("foo/bar.c").unwrap().is_none());
-    assert!(session.source_by_path("foo.c").unwrap().is_some());
+    assert!(session.source_by_path("foo.c").unwrap().is_none());
+    // source_by_path matches the absolute file path
     assert!(session.source_by_path("/tmp/foo.c").unwrap().is_some());
 
     Ok(())

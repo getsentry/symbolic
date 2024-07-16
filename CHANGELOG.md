@@ -6,7 +6,6 @@
 
 - Support for DWARFv5 embedded source code extension ([#849](https://github.com/getsentry/symbolic/pull/849))
 
-
 ## 12.9.2
 
 - Downgrade and pin `zip` to fix SourceBundles with >64k files ([#846](https://github.com/getsentry/symbolic/pull/846))

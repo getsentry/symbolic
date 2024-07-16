@@ -10,7 +10,7 @@
 //! [`PeObject`]: ../pe/struct.PeObject.html
 
 use std::borrow::Cow;
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::error::Error;
 use std::fmt;
 use std::marker::PhantomData;
@@ -1303,6 +1303,9 @@ impl std::iter::FusedIterator for DwarfUnitIterator<'_> {}
 pub struct DwarfDebugSession<'data> {
     cell: SelfCell<Box<DwarfSections<'data>>, DwarfInfo<'data>>,
     bcsymbolmap: Option<Arc<BcSymbolMap<'data>>>,
+    // We store the "lookup path" for each entry here to avoid lifetime issues w.r.t
+    // HashMap<_, SourceFileDescriptor<'data>>, as we can't construct this in a method call.
+    sources_path_to_file_idx: OnceCell<HashMap<String, usize>>,
 }
 
 impl<'data> DwarfDebugSession<'data> {
@@ -1324,6 +1327,7 @@ impl<'data> DwarfDebugSession<'data> {
         Ok(DwarfDebugSession {
             cell,
             bcsymbolmap: None,
+            sources_path_to_file_idx: OnceCell::default(),
         })
     }
 
@@ -1356,36 +1360,33 @@ impl<'data> DwarfDebugSession<'data> {
     }
 
     /// See [DebugSession::source_by_path] for more information.
+    /// This lookup returns entries that match a given [FileEntry::abs_path_str].
     ///
     /// Note that this does not load additional sources from disk and only works with sources
-    /// embedded directly in the debug information (DW_LNCT_LLVM_source)
+    /// embedded directly in the debug information (DW_LNCT_LLVM_source).
     pub fn source_by_path(
         &self,
         path: &str,
     ) -> Result<Option<SourceFileDescriptor<'_>>, DwarfError> {
-        // First: see if there's an exact match for the provided path
-        for file in self.files() {
-            let file = file?;
-            if path != file.info.path_str() {
-                continue;
+        // Construct / fetch a lookup table to avoid scanning and comparing each file's path in this
+        // operation:
+        let sources = self.sources_path_to_file_idx.get_or_init(|| {
+            let mut res = HashMap::new();
+            for (i, file) in self.files().enumerate() {
+                if let Ok(file) = file {
+                    if let Some(_contents) = file.source_str() {
+                        res.insert(file.abs_path_str(), i);
+                    }
+                }
             }
-            if let Some(contents) = file.source_str() {
-                return Ok(Some(SourceFileDescriptor::new_embedded(contents, None)));
-            }
-        }
+            res
+        });
 
-        // If not, we'll try matching with the relative paths
-        for file in self.files() {
-            let file = file?;
-            if path != file.info.name_str() {
-                continue;
-            }
-            if let Some(contents) = file.source_str() {
-                return Ok(Some(SourceFileDescriptor::new_embedded(contents, None)));
-            }
-        }
-
-        Ok(None)
+        Ok(sources.get(path).map(|&idx| {
+            // These unwraps hold by construction above
+            let file = self.files().nth(idx).unwrap().unwrap();
+            SourceFileDescriptor::new_embedded(file.source_str().unwrap(), None)
+        }))
     }
 }
 
