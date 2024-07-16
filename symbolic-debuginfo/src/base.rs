@@ -457,7 +457,13 @@ pub struct FileInfo<'data> {
 impl<'data> FileInfo<'data> {
     /// Creates a `FileInfo` with a given directory and the file name.
     #[cfg(feature = "dwarf")]
-    pub fn new(
+    pub fn new(dir: Cow<'data, [u8]>, name: Cow<'data, [u8]>) -> Self {
+        Self::with_source(dir, name, None)
+    }
+
+    /// Creates a `FileInfo` with a given directory, the file name, and optional source code.
+    #[cfg(feature = "dwarf")]
+    pub fn with_source(
         dir: Cow<'data, [u8]>,
         name: Cow<'data, [u8]>,
         source: Option<Cow<'data, [u8]>>,
@@ -846,7 +852,6 @@ mod tests {
         FileInfo::new(
             Cow::Borrowed(dir.as_bytes()),
             Cow::Borrowed(name.as_bytes()),
-            None,
         )
     }
 

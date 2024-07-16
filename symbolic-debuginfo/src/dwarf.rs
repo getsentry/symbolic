@@ -692,7 +692,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         line_program: &LineNumberProgramHeader<'d>,
         file: &LineProgramFileEntry<'d>,
     ) -> FileInfo<'d> {
-        FileInfo::new(
+        FileInfo::with_source(
             Cow::Borrowed(resolve_byte_name(
                 self.bcsymbolmap,
                 file.directory(line_program)
