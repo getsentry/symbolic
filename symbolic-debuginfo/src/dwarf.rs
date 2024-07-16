@@ -704,7 +704,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                 self.inner.slice_value(file.path_name()).unwrap_or_default(),
             )),
             file.source().and_then(|source| {
-                let unit_ref = self.inner.unit.unit_ref(&self.inner.info);
+                let unit_ref = self.inner.unit.unit_ref(self.inner.info);
                 match unit_ref.attr_string(source) {
                     Ok(source) if source.is_empty() => None,
                     Err(_) => None,
