@@ -15,7 +15,7 @@ fn main() {
                 "vendor/swift/lib/Demangling/Punycode.cpp",
                 "vendor/swift/lib/Demangling/Remangler.cpp",
             ])
-            .flag_if_supported("-std=c++14")
+            .flag_if_supported("-std=c++17")
             .flag("-DLLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING=1")
             .warnings(false)
             .include("vendor/swift/include")
