@@ -53,7 +53,8 @@ class NodeFactory {
   /// The head of the single-linked slab list.
   Slab *CurrentSlab = nullptr;
 
-  /// The size of the previously allocated slab.
+  /// The size of the previously allocated slab. This may NOT be the size of
+  /// CurrentSlab, in the case where a checkpoint has been popped.
   ///
   /// The slab size can only grow, even clear() does not reset the slab size.
   /// This initial size is good enough to fit most de-manglings.
@@ -80,6 +81,10 @@ class NodeFactory {
 #endif
 
 public:
+#ifndef NDEBUG
+  /// Enabled only by the unit tests to test the failure paths.
+  bool disableAssertionsForUnitTest = false;
+#endif
 
   NodeFactory() {
 #ifdef NODE_FACTORY_DEBUGGING
@@ -201,10 +206,41 @@ public:
     if (Growth < Capacity * 2)
       Growth = Capacity * 2;
     T *NewObjects = Allocate<T>(Capacity + Growth);
-    memcpy(NewObjects, Objects, OldAllocSize);
+    if (OldAllocSize)
+      memcpy(NewObjects, Objects, OldAllocSize);
     Objects = NewObjects;
     Capacity += Growth;
   }
+
+  /// Copy a std::string to memory managed by the NodeFactory, returning a
+  /// StringRef pointing to the copied string data.
+  StringRef copyString(const std::string &str) {
+    size_t stringSize = str.size() + 1; // + 1 for terminating NUL.
+
+    char *copiedString = Allocate<char>(stringSize);
+    memcpy(copiedString, str.data(), stringSize);
+    return {copiedString, str.size()};
+  }
+
+  /// A checkpoint which captures the allocator's state at any given time. A
+  /// checkpoint can be popped to free all allocations made since it was made.
+  struct Checkpoint {
+    Slab *Slab;
+    char *CurPtr;
+    char *End;
+  };
+
+  /// Create a new checkpoint with the current state of the allocator.
+  Checkpoint pushCheckpoint() const;
+
+  /// Clear all allocations made since the given checkpoint. It is
+  /// undefined behavior to pop checkpoints in an order other than the
+  /// order in which they were pushed, or to pop a checkpoint when
+  /// clear() was called after creating it. The implementation attempts
+  /// to raise a fatal error in that case, but does not guarantee it. It
+  /// is allowed to pop outer checkpoints without popping inner ones, or
+  /// to call clear() without popping existing checkpoints.
+  void popCheckpoint(Checkpoint checkpoint);
 
   /// Creates a node of kind \p K.
   NodePointer createNode(Node::Kind K);
@@ -343,6 +379,10 @@ enum class SymbolicReferenceKind : uint8_t {
   /// A symbolic reference to an accessor function, which can be executed in
   /// the process to get a pointer to the referenced entity.
   AccessorFunctionReference,
+  /// A symbolic reference to a unique extended existential type shape.
+  UniqueExtendedExistentialTypeShape,
+  /// A symbolic reference to a non-unique extended existential type shape.
+  NonUniqueExtendedExistentialTypeShape,
 };
 
 using SymbolicReferenceResolver_t = NodePointer (SymbolicReferenceKind,
@@ -457,8 +497,9 @@ protected:
   friend DemangleInitRAII;
   
   void addSubstitution(NodePointer Nd) {
-    if (Nd)
+    if (Nd) {
       Substitutions.push_back(Nd, *this);
+    }
   }
 
   NodePointer addChild(NodePointer Parent, NodePointer Child);
@@ -510,12 +551,15 @@ protected:
   NodePointer popFunctionParamLabels(NodePointer FuncType);
   NodePointer popTuple();
   NodePointer popTypeList();
+  NodePointer popPack();
+  NodePointer popSILPack();
   NodePointer popProtocol();
   NodePointer demangleBoundGenericType();
   NodePointer demangleBoundGenericArgs(NodePointer nominalType,
                                     const Vector<NodePointer> &TypeLists,
                                     size_t TypeListIdx);
   NodePointer popAnyProtocolConformanceList();
+  NodePointer popRetroactiveConformances();
   NodePointer demangleRetroactiveConformance();
   NodePointer demangleInitializer();
   NodePointer demangleImplParamConvention(Node::Kind ConvKind);
@@ -529,6 +573,8 @@ protected:
   NodePointer demangleArchetype();
   NodePointer demangleAssociatedTypeSimple(NodePointer GenericParamIdx);
   NodePointer demangleAssociatedTypeCompound(NodePointer GenericParamIdx);
+  NodePointer demangleExtendedExistentialShape(char kind);
+  NodePointer demangleSymbolicExtendedExistentialType();
 
   NodePointer popAssocTypeName();
   NodePointer popAssocTypePath();
@@ -566,6 +612,7 @@ protected:
   NodePointer demangleGenericRequirement();
   NodePointer demangleGenericType();
   NodePointer demangleValueWitness();
+  NodePointer demangleMacroExpansion();
 
   NodePointer demangleTypeMangling();
   NodePointer demangleSymbolicReference(unsigned char rawKind);
@@ -578,6 +625,8 @@ protected:
   NodePointer demangleDifferentiabilityWitness();
   NodePointer demangleIndexSubset();
   NodePointer demangleDifferentiableFunctionType();
+
+  NodePointer demangleConstrainedExistentialRequirementList();
 
   bool demangleBoundGenerics(Vector<NodePointer> &TypeListList,
                              NodePointer &RetroactiveConformances);
@@ -622,7 +671,7 @@ public:
 
 /// A demangler which uses stack space for its initial memory.
 ///
-/// The \p Size paramter specifies the size of the stack space.
+/// The \p Size parameter specifies the size of the stack space.
 template <size_t Size> class StackAllocatedDemangler : public Demangler {
   char StackSpace[Size];
 

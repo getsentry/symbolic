@@ -11,6 +11,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "swift/Demangling/ManglingUtils.h"
+#include "llvm/ADT/None.h"
+#include "llvm/ADT/Optional.h"
 
 using namespace swift;
 using namespace Mangle;
@@ -66,15 +68,16 @@ std::string Mangle::translateOperator(StringRef Op) {
   return Encoded;
 }
 
-llvm::Optional<StringRef> Mangle::getStandardTypeSubst(StringRef TypeName) {
+llvm::Optional<StringRef> Mangle::getStandardTypeSubst(
+    StringRef TypeName, bool allowConcurrencyManglings) {
 #define STANDARD_TYPE(KIND, MANGLING, TYPENAME)      \
   if (TypeName == #TYPENAME) {                       \
     return StringRef(#MANGLING);                     \
   }
 
-#define STANDARD_TYPE_2(KIND, MANGLING, TYPENAME)    \
-  if (TypeName == #TYPENAME) {                       \
-    return StringRef("c" #MANGLING);                 \
+#define STANDARD_TYPE_CONCURRENCY(KIND, MANGLING, TYPENAME)    \
+  if (allowConcurrencyManglings && TypeName == #TYPENAME) {    \
+    return StringRef("c" #MANGLING);                           \
   }
 
 #include "swift/Demangling/StandardTypesMangling.def"
