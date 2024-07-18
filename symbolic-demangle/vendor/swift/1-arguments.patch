@@ -1,45 +1,135 @@
-commit 43fca7dd2617ac93f338b5257a2e57c43dcb8154
-Author: Sebastian Zivota <loewenheim@mailbox.org>
-Date:   Thu Dec 2 16:15:35 2021 +0100
+commit eaae91fd522031a2aaafed367414f942f1c83d22
+Author: fantexi023 <1249434307@qq.com>
+Date:   Thu Jul 18 17:04:45 2024 +0800
 
-    Apply patch
+    pass cargo build
 
-diff --git a/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h b/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
-index db32dbd..f48e1c2 100644
---- a/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
-+++ b/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
-@@ -59,6 +59,7 @@ struct DemangleOptions {
-   bool ShortenArchetype = false;
-   bool ShowPrivateDiscriminators = true;
-   bool ShowFunctionArgumentTypes = true;
-+  bool ShowFunctionReturnType = true;
-   bool DisplayDebuggerGeneratedModule = true;
-   bool DisplayStdlibModule = true;
-   bool DisplayObjCModule = true;
-@@ -90,6 +91,7 @@ struct DemangleOptions {
-     Opt.ShortenArchetype = true;
-     Opt.ShowPrivateDiscriminators = false;
-     Opt.ShowFunctionArgumentTypes = false;
-+    Opt.ShowFunctionReturnType = false;
-     return Opt;
-   };
+diff --git a/symbolic-demangle/build.rs b/symbolic-demangle/build.rs
+index 4ce782eb..15246da7 100644
+--- a/symbolic-demangle/build.rs
++++ b/symbolic-demangle/build.rs
+@@ -15,7 +15,7 @@ fn main() {
+                 "vendor/swift/lib/Demangling/Punycode.cpp",
+                 "vendor/swift/lib/Demangling/Remangler.cpp",
+             ])
+-            .flag_if_supported("-std=c++14")
++            .flag_if_supported("-std=c++17")
+             .flag("-DLLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING=1")
+             .warnings(false)
+             .include("vendor/swift/include")
+diff --git a/symbolic-demangle/src/swiftdemangle.cpp b/symbolic-demangle/src/swiftdemangle.cpp
+index 843a2a59..85c1fecc 100644
+--- a/symbolic-demangle/src/swiftdemangle.cpp
++++ b/symbolic-demangle/src/swiftdemangle.cpp
+@@ -12,10 +12,11 @@ extern "C" int symbolic_demangle_swift(const char *symbol,
+ 
+     if (features < SYMBOLIC_SWIFT_FEATURE_ALL) {
+         opts = swift::Demangle::DemangleOptions::SimplifiedUIDemangleOptions();
+-        bool return_type = features & SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE;
++        // bool return_type = features & SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE;
+         bool argument_types = features & SYMBOLIC_SWIFT_FEATURE_PARAMETERS;
+ 
+-        opts.ShowFunctionReturnType = return_type;
++        // No ShowFunctionReturnType property in DemangleOptions any more
++        // opts.ShowFunctionReturnType = return_type;
+         opts.ShowFunctionArgumentTypes = argument_types;
+     }
+ 
+diff --git a/symbolic-demangle/vendor/swift/include/llvm/Support/type_traits.h b/symbolic-demangle/vendor/swift/include/llvm/Support/type_traits.h
+index 3fd158de..a6046de8 100644
+--- a/symbolic-demangle/vendor/swift/include/llvm/Support/type_traits.h
++++ b/symbolic-demangle/vendor/swift/include/llvm/Support/type_traits.h
+@@ -32,11 +32,11 @@ template <typename T> class is_integral_or_enum {
+ 
+ public:
+   static const bool value =
+-      !std::is_class_v<UnderlyingT> && // Filter conversion operators.
+-      !std::is_pointer_v<UnderlyingT> &&
+-      !std::is_floating_point_v<UnderlyingT> &&
+-      (std::is_enum_v<UnderlyingT> ||
+-       std::is_convertible_v<UnderlyingT, unsigned long long>);
++      !std::is_class<UnderlyingT>::value && // Filter conversion operators.
++      !std::is_pointer<UnderlyingT>::value &&
++      !std::is_floating_point<UnderlyingT>::value &&
++      (std::is_enum<UnderlyingT>::value ||
++       std::is_convertible<UnderlyingT, unsigned long long>::value);
  };
-diff --git a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-index 2a9c0dc..34fa785 100644
---- a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-+++ b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-@@ -863,10 +863,11 @@ private:
-     if (isSendable)
-       Printer << "@Sendable ";
  
--    printFunctionParameters(LabelList, node->getChild(startIndex),
--                            Options.ShowFunctionArgumentTypes);
-+    if (Options.ShowFunctionArgumentTypes) {
-+      printFunctionParameters(LabelList, node->getChild(startIndex), true);
-+    }
+ /// If T is a pointer, just return it. If it is not, return T&.
+@@ -45,7 +45,7 @@ struct add_lvalue_reference_if_not_pointer { using type = T &; };
  
--    if (!Options.ShowFunctionArgumentTypes)
-+    if (!Options.ShowFunctionReturnType)
-       return;
+ template <typename T>
+ struct add_lvalue_reference_if_not_pointer<
+-    T, std::enable_if_t<std::is_pointer_v<T>>> {
++    T, std::enable_if_t<std::is_pointer<T>::value>> {
+   using type = T;
+ };
  
-     if (isAsync)
+@@ -55,7 +55,7 @@ template<typename T, typename Enable = void>
+ struct add_const_past_pointer { using type = const T; };
+ 
+ template <typename T>
+-struct add_const_past_pointer<T, std::enable_if_t<std::is_pointer_v<T>>> {
++struct add_const_past_pointer<T, std::enable_if_t<std::is_pointer<T>::value>> {
+   using type = const std::remove_pointer_t<T> *;
+ };
+ 
+@@ -64,11 +64,27 @@ struct const_pointer_or_const_ref {
+   using type = const T &;
+ };
+ template <typename T>
+-struct const_pointer_or_const_ref<T, std::enable_if_t<std::is_pointer_v<T>>> {
++struct const_pointer_or_const_ref<T,
++                                  std::enable_if_t<std::is_pointer<T>::value>> {
+   using type = typename add_const_past_pointer<T>::type;
+ };
+ 
+ namespace detail {
++/// Internal utility to detect trivial copy construction.
++template<typename T> union copy_construction_triviality_helper {
++    T t;
++    copy_construction_triviality_helper() = default;
++    copy_construction_triviality_helper(const copy_construction_triviality_helper&) = default;
++    ~copy_construction_triviality_helper() = default;
++};
++/// Internal utility to detect trivial move construction.
++template<typename T> union move_construction_triviality_helper {
++    T t;
++    move_construction_triviality_helper() = default;
++    move_construction_triviality_helper(move_construction_triviality_helper&&) = default;
++    ~move_construction_triviality_helper() = default;
++};
++
+ template<class T>
+ union trivial_helper {
+     T t;
+@@ -76,6 +92,29 @@ union trivial_helper {
+ 
+ } // end namespace detail
+ 
++/// An implementation of `std::is_trivially_copy_constructible` since we have
++/// users with STLs that don't yet include it.
++template <typename T>
++struct is_trivially_copy_constructible
++    : std::is_copy_constructible<
++          ::llvm::detail::copy_construction_triviality_helper<T>> {};
++template <typename T>
++struct is_trivially_copy_constructible<T &> : std::true_type {};
++template <typename T>
++struct is_trivially_copy_constructible<T &&> : std::false_type {};
++
++/// An implementation of `std::is_trivially_move_constructible` since we have
++/// users with STLs that don't yet include it.
++template <typename T>
++struct is_trivially_move_constructible
++    : std::is_move_constructible<
++          ::llvm::detail::move_construction_triviality_helper<T>> {};
++template <typename T>
++struct is_trivially_move_constructible<T &> : std::true_type {};
++template <typename T>
++struct is_trivially_move_constructible<T &&> : std::true_type {};
++
++
+ template <typename T>
+ struct is_copy_assignable {
+   template<class F>

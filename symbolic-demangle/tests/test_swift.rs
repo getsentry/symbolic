@@ -291,5 +291,8 @@ fn test_demangle_swift_no_args() {
 
         // Swift 5.5.1
         "$s10Speediness17NetworkQualityCLIO3run10sequentialAC6ResultVSb_tYaKFZTf4nd_nTQ0_" => "(1) await resume partial function for specialized static NetworkQualityCLI.run",
+
+        // Swift 5.10
+        "_$s16HDFileDownloader14HDFDURLSessionC11postRequest11request_url6params12headerFields9callBlockySS_SDySSypGSDyS2SGy10Foundation4DataVSg_s5Error_pSgtctFyAN_So13NSURLResponseCSgAPtYbcfU_TATm" => "partial apply for closure #1 @Sendable (Foundation.Data?, __C.NSURLResponse?, Swift.Error?) -> () in HDFileDownloader.HDFDURLSession.postRequest(request_url: Swift.String, params: [Swift.String : Any], headerFields: [Swift.String : Swift.String], callBlock: (Foundation.Data?, Swift.Error?) -> ()) -> ()",
     });
 }
