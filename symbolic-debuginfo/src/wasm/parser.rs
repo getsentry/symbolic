@@ -3,8 +3,8 @@
 use super::WasmError;
 use crate::base::{ObjectKind, Symbol};
 use wasmparser::{
-    BinaryReader, CompositeInnerType, FuncValidatorAllocations, NameSectionReader, Payload, TypeRef,
-    Validator, WasmFeatures,
+    BinaryReader, CompositeInnerType, FuncValidatorAllocations, NameSectionReader, Payload,
+    TypeRef, Validator, WasmFeatures,
 };
 
 #[derive(Default)]
