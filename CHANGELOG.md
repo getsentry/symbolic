@@ -5,6 +5,7 @@
 **Features**
 
 - Support for DWARFv5 embedded source code extension ([#849](https://github.com/getsentry/symbolic/pull/849))
+- Updated wasmparser dependency to 0.214.0 ([#849](https://github.com/getsentry/symbolic/pull/853))
 
 ## 12.9.2
 
