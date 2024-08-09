@@ -1314,7 +1314,12 @@ where
                 info.set_ty(SourceFileType::Source);
                 info.set_path(filename.clone());
 
-                self.add_file(bundle_path, source, info)?;
+                if let Err(e) = self.add_file(bundle_path, source, info) {
+                    // Skip sources that are not UTF-8
+                    if e.kind != SourceBundleErrorKind::ReadFailed {
+                        return Err(e);
+                    };
+                }
             }
         }
 
