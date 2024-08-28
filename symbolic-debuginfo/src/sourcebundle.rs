@@ -84,7 +84,7 @@ lazy_static::lazy_static! {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SourceBundleErrorKind {
-    /// The source bundle container is damanged.
+    /// The source bundle container is damaged.
     BadZip,
 
     /// An error when reading/writing the manifest.
