@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 12.10.1
 
 - Skip invalid sources ([#861](https://github.com/getsentry/symbolic/pull/861))
 

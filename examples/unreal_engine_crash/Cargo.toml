@@ -1,6 +1,6 @@
 [package]
 name = "unreal_engine_crash"
-version = "12.10.0"
+version = "12.10.1"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2021"
 publish = false
@@ -9,6 +9,6 @@ publish = false
 
 [dependencies]
 clap = { workspace = true }
-symbolic = { version = "12.10.0", path = "../../symbolic", features = [
+symbolic = { version = "12.10.1", path = "../../symbolic", features = [
     "unreal",
 ] }
