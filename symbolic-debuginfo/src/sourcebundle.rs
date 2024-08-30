@@ -1365,7 +1365,7 @@ where
                     collect_il2cpp_sources(&source, &mut referenced_files);
                 }
 
-                self.add_file(bundle_path, source.as_slice(), info)?;
+                self.add_file_skip_read_failed(bundle_path, source.as_slice(), info)?;
             }
 
             files_handled.insert(filename);
