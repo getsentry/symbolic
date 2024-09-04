@@ -36,7 +36,7 @@ jobs:
           # consumed by cargo and setup.py to obtain the target dir
           CARGO_BUILD_TARGET: ${{ matrix.target }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v3.1.1
         with:
           name: ${{ github.sha }}
           path: py/dist/*
@@ -63,7 +63,7 @@ jobs:
         name: Build in Docker (x86_64)
         run: make wheel-manylinux IMAGE=quay.io/pypa/"$MANYLINUX_VERSION"_x86_64
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v3.1.1
         with:
           name: ${{ github.sha }}
           path: py/dist/*
@@ -81,7 +81,7 @@ jobs:
 
       - run: make sdist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v3.1.1
         with:
           name: ${{ github.sha }}
           path: py/dist/*
