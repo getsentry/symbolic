@@ -46,6 +46,7 @@ use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::error::Error;
 use std::fmt;
+use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, BufWriter, Read, Seek, Write};
 use std::path::Path;
@@ -1035,6 +1036,35 @@ fn sanitize_bundle_path(path: &str) -> String {
     sanitized
 }
 
+/// Contains information about a file skipped in the SourceBundleWriter
+#[derive(Debug)]
+pub struct SkippedFileInfo<'a> {
+    path: &'a str,
+    reason: &'a str,
+}
+
+impl<'a> SkippedFileInfo<'a> {
+    fn new(path: &'a str, reason: &'a str) -> Self {
+        Self { path, reason }
+    }
+
+    /// Returns the path of the skipped file.
+    pub fn path(&self) -> &str {
+        self.path
+    }
+
+    /// Get the human-readable reason why the file was skipped
+    pub fn reason(&self) -> &str {
+        self.reason
+    }
+}
+
+impl Display for SkippedFileInfo<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "Skipped file {} due to: {}", self.path, self.reason)
+    }
+}
+
 /// Writer to create [`SourceBundles`].
 ///
 /// Writers can either [create a new file] or be created from an [existing file]. Then, use
@@ -1070,6 +1100,7 @@ where
     manifest: SourceBundleManifest,
     writer: ZipWriter<W>,
     collect_il2cpp: bool,
+    skipped_file_callback: Box<dyn FnMut(SkippedFileInfo)>,
 }
 
 fn default_file_options() -> SimpleFileOptions {
@@ -1097,6 +1128,7 @@ where
             manifest: SourceBundleManifest::new(),
             writer: ZipWriter::new(writer),
             collect_il2cpp: false,
+            skipped_file_callback: Box::new(|_| ()),
         })
     }
 
@@ -1212,6 +1244,42 @@ where
         Ok(())
     }
 
+    /// Calls add_file, and handles any ReadFailed errors by calling the skipped_file_callback.
+    fn add_file_skip_read_failed<S, R>(
+        &mut self,
+        path: S,
+        file: R,
+        info: SourceFileInfo,
+    ) -> Result<(), SourceBundleError>
+    where
+        S: AsRef<str>,
+        R: Read,
+    {
+        let result = self.add_file(&path, file, info);
+
+        if let Err(e) = &result {
+            if e.kind == SourceBundleErrorKind::ReadFailed {
+                let reason = e.to_string();
+                let skipped_info = SkippedFileInfo::new(path.as_ref(), &reason);
+                (self.skipped_file_callback)(skipped_info);
+
+                return Ok(());
+            }
+        }
+
+        result
+    }
+
+    /// Set a callback, which is called for every file that is skipped from being included in the
+    /// source bundle. The callback receives information about the file being skipped.
+    pub fn with_skipped_file_callback(
+        mut self,
+        callback: impl FnMut(SkippedFileInfo) + 'static,
+    ) -> Self {
+        self.skipped_file_callback = Box::new(callback);
+        self
+    }
+
     /// Writes a single object into the bundle.
     ///
     /// Returns `Ok(true)` if any source files were added to the bundle, or `Ok(false)` if no
@@ -1297,7 +1365,7 @@ where
                     collect_il2cpp_sources(&source, &mut referenced_files);
                 }
 
-                self.add_file(bundle_path, source.as_slice(), info)?;
+                self.add_file_skip_read_failed(bundle_path, source.as_slice(), info)?;
             }
 
             files_handled.insert(filename);
@@ -1314,12 +1382,7 @@ where
                 info.set_ty(SourceFileType::Source);
                 info.set_path(filename.clone());
 
-                if let Err(e) = self.add_file(bundle_path, source, info) {
-                    // Skip sources that are not UTF-8
-                    if e.kind != SourceBundleErrorKind::ReadFailed {
-                        return Err(e);
-                    };
-                }
+                self.add_file_skip_read_failed(bundle_path, source, info)?
             }
         }
 
