@@ -1048,7 +1048,7 @@ impl<'a> SkippedFileInfo<'a> {
         Self { path, reason }
     }
 
-    /// Get the path of the skipped file
+    /// Returns the path of the skipped file.
     pub fn path(&self) -> &str {
         self.path
     }
