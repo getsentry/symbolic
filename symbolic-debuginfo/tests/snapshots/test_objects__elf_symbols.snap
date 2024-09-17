@@ -37,7 +37,7 @@ expression: SymbolsDebug(&symbols)
             33a0 _ZN15google_breakpad16ExceptionHandler19UnregisterAppMemoryEPv
             3400 _ZN15google_breakpad16ExceptionHandler21WriteMinidumpForChildEiiRKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPFbRKNS_18MinidumpDescriptorEPvbESC_
             3660 _ZN15google_breakpad30SetFirstChanceExceptionHandlerEPFbiPvS0_E
-            3670 _ZN15google_breakpad16ExceptionHandlerC1ERKNS_18MinidumpDescriptorEPFbPvEPFbS3_S4_bES4_bi
+            3670 _ZN15google_breakpad16ExceptionHandlerC2ERKNS_18MinidumpDescriptorEPFbPvEPFbS3_S4_bES4_bi
             3a10 _ZN15google_breakpad16ExceptionHandler13WriteMinidumpERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPFbRKNS_18MinidumpDescriptorEPvbESC_
             3cb0 _ZNSt6vectorIPN15google_breakpad16ExceptionHandlerESaIS2_EE19_M_emplace_back_auxIJS2_EEEvDpOT_
             3da0 _ZN15google_breakpad18MinidumpDescriptorC1ERKS0_
@@ -48,8 +48,8 @@ expression: SymbolsDebug(&symbols)
             6e10 _ZNSt6vectorIhN15google_breakpad16PageStdAllocatorIhEEE15_M_range_insertIPKhEEvN9__gnu_cxx17__normal_iteratorIPhS3_EET_SB_St20forward_iterator_tag
             71f0 _ZN15google_breakpad11LinuxDumper8LateInitEv
             7200 _ZN15google_breakpad11LinuxDumper17EnumerateMappingsEv
-            7ac0 _ZN15google_breakpad11LinuxDumperC1EiPKc
-            8300 _ZN15google_breakpad11LinuxDumperD2Ev
+            7ac0 _ZN15google_breakpad11LinuxDumperC2EiPKc
+            8300 _ZN15google_breakpad11LinuxDumperD1Ev
             8370 _ZN15google_breakpad11LinuxDumperD0Ev
             8390 _ZNK15google_breakpad11LinuxDumper20GetCrashSignalStringEv
             8590 _ZNK15google_breakpad11LinuxDumper22GetMappingAbsolutePathERKNS_11MappingInfoEPc
@@ -69,9 +69,9 @@ expression: SymbolsDebug(&symbols)
             94a0 _ZNK15google_breakpad17LinuxPtraceDumper12IsPostMortemEv
             94b0 _ZN15google_breakpad17LinuxPtraceDumper15CopyFromProcessEPviPKvm
             9640 _ZN15google_breakpad17LinuxPtraceDumper13ThreadsResumeEv
-            9700 _ZNK15google_breakpad17LinuxPtraceDumper13BuildProcPathEPciPKc.localalias.19
+            9700 _ZNK15google_breakpad17LinuxPtraceDumper13BuildProcPathEPciPKc
             97c0 _ZN15google_breakpad17LinuxPtraceDumper16EnumerateThreadsEv
-            9e50 _ZN15google_breakpad17LinuxPtraceDumperC2Ei
+            9e50 _ZN15google_breakpad17LinuxPtraceDumperC1Ei
             9e80 _ZN15google_breakpad17LinuxPtraceDumper15ReadRegisterSetEPNS_10ThreadInfoEi
             9f70 _ZN15google_breakpad17LinuxPtraceDumper13ReadRegistersEPNS_10ThreadInfoEi
             a050 _ZN15google_breakpad17LinuxPtraceDumper20GetThreadInfoByIndexEmPNS_10ThreadInfoE
@@ -118,7 +118,7 @@ expression: SymbolsDebug(&symbols)
            11220 _ZN15google_breakpad8ElfClassEPKv
            11230 _ZN15google_breakpad14FindElfSectionEPKvPKcjPS1_Pm
            116a0 _ZN15google_breakpad15FindElfSegmentsEPKvjPNS_15wasteful_vectorINS_10ElfSegmentEEE
-           11990 _ZNSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE19_M_emplace_back_auxIJRKS1_EEEvDpOT_
+           11990 _ZNSt6vectorIN15google_breakpad10ElfSegmentENS0_16PageStdAllocatorIS1_EEE19_M_emplace_back_auxIIRKS1_EEEvDpOT_
            11be0 _ZN15google_breakpad6FileIDC1EPKc
            11cc0 _ZN15google_breakpad6FileID29ConvertIdentifierToUUIDStringB5cxx11ERKNS_15wasteful_vectorIhEE
            11e70 _ZN15google_breakpad6FileID25ConvertIdentifierToStringB5cxx11ERKNS_15wasteful_vectorIhEE
@@ -142,7 +142,7 @@ expression: SymbolsDebug(&symbols)
            130e0 my_strlcpy
            13120 my_strlcat
            13160 my_isspace
-           13210 _ZN15google_breakpad16MemoryMappedFileC2Ev
+           13210 _ZN15google_breakpad16MemoryMappedFileC1Ev
            13220 _ZN15google_breakpad16MemoryMappedFile5UnmapEv
            13270 _ZN15google_breakpad16MemoryMappedFileD2Ev
            13280 _ZN15google_breakpad16MemoryMappedFile3MapEPKcm
