@@ -413,7 +413,7 @@ impl<'d> From<Vec<Symbol<'d>>> for SymbolMap<'d> {
             //
             // Inlined functions will generally not appear in this list, unless they _also_ have an
             // explicit function body, in which case they will have a unique address, again.
-            symbols.sort_unstable_by_key(Self::key);
+            symbols.sort_by_key(Self::key);
 
             // Compute sizes of consecutive symbols if the size has not been provided by the symbol
             // iterator. In the same go, drop all but the first symbols at any given address. We do

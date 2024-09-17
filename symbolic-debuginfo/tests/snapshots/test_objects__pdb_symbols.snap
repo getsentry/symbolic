@@ -61,13 +61,13 @@ expression: SymbolsDebug(&symbols)
             3166 __onexit
             31a1 _atexit
             3205 ___security_init_cookie
-            3250 __matherr
+            3250 __get_startup_commit_mode
             3253 __get_startup_argv_mode
             3257 __get_startup_file_mode
             325d ?__scrt_initialize_type_info@@YAXXZ
             3269 __should_initialize_environment
             326c __initialize_default_precision
-            328d __initialize_denormal_control
+            328d @_guard_check_icall_nop@4
             328e ___local_stdio_scanf_options
             3294 ___scrt_initialize_default_local_stdio_options
             32b1 ___scrt_is_user_matherr_present
