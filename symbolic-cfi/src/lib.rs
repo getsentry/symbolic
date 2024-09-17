@@ -717,6 +717,15 @@ impl<W: Write> AsciiCfiWriter<W> {
         R: Reader + Eq,
         U: UnwindSection<R>,
     {
+        // We have seen FDEs with an initial address of `u64::MAX` in user-provided
+        // DWARF files. Such FDEs will invariably fail to process because of either
+        // an address overflow error in `gimli` or an underflow in the `length`
+        // calculation below. Therefore, we skip them immediately so we don't abort
+        // the processing of the entire file.
+        if fde.initial_address() == u64::MAX {
+            return Ok(());
+        }
+
         // Retrieves the register that specifies the return address. We need to assign a special
         // format to this register for Breakpad.
         let ra = fde.cie().return_address_register();

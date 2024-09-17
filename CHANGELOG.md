@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+**Fixes**
+- symbolic-cfi: Skip invalid FDEs when converting DWARF to Breakpad CFI ([#868](https://github.com/getsentry/symbolic/pull/868))
+
 **Internal**:
 
 - Removed `dmsort` dependency and replaced uses with stable std sorts. ([#869](https://github.com/getsentry/symbolic/pull/869))
