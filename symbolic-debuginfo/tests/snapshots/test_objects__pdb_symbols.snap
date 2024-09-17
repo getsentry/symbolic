@@ -48,7 +48,7 @@ expression: SymbolsDebug(&symbols)
             2e72 ??0bad_array_new_length@std@@QAE@XZ
             2e8a ??0exception@std@@QAE@ABV01@@Z
             2eb6 ??1bad_alloc@std@@UAE@XZ
-            2ec7 ??_Eexception@std@@UAEPAXI@Z
+            2ec7 ??_Gexception@std@@UAEPAXI@Z
             2ef4 ?__scrt_throw_std_bad_alloc@@YAXXZ
             2f11 ?__scrt_throw_std_bad_array_new_length@@YAXXZ
             2f2e ?what@exception@std@@UBEPBDXZ
@@ -65,9 +65,9 @@ expression: SymbolsDebug(&symbols)
             3253 __get_startup_argv_mode
             3257 __get_startup_file_mode
             325d ?__scrt_initialize_type_info@@YAXXZ
-            3269 ___vcrt_uninitialize
+            3269 __should_initialize_environment
             326c __initialize_default_precision
-            328d @_guard_check_icall_nop@4
+            328d __initialize_denormal_control
             328e ___local_stdio_scanf_options
             3294 ___scrt_initialize_default_local_stdio_options
             32b1 ___scrt_is_user_matherr_present
@@ -122,4 +122,3 @@ expression: SymbolsDebug(&symbols)
             37e6 _terminate
             37ec _IsProcessorFeaturePresent@4
             37f2 _memcpy
-
