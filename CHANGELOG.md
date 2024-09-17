@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Internal**:
+
+- Removed `dmsort` dependency and replaced uses with stable std sorts. ([#869](https://github.com/getsentry/symbolic/pull/869))
+
 ## 12.11.0
 
 - Add callback to `symbolic::debuginfo::sourcebundle::SourceBundleWriter` which handles files skipped while writing to the source bundle. ([#864](https://github.com/getsentry/symbolic/pull/864))

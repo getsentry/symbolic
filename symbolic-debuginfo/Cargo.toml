@@ -87,7 +87,6 @@ js = []
 wasm = ["dwarf", "wasmparser"]
 
 [dependencies]
-dmsort = { workspace = true }
 debugid = { workspace = true }
 elementtree = { workspace = true, optional = true }
 elsa = { workspace = true, optional = true }
