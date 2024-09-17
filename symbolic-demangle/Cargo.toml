@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-demangle"
-version = "12.11.0"
+version = "12.11.1"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -32,7 +32,7 @@ swift = ["cc"]
 cpp_demangle = { workspace = true, optional = true }
 msvc-demangler = { workspace = true, optional = true }
 rustc-demangle = { workspace = true, optional = true }
-symbolic-common = { version = "12.11.0", path = "../symbolic-common" }
+symbolic-common = { version = "12.11.1", path = "../symbolic-common" }
 
 [build-dependencies]
 cc = { workspace = true, optional = true }

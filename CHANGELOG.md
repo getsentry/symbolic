@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 12.11.1
 
 **Fixes**
 - symbolic-cfi: Skip invalid FDEs when converting DWARF to Breakpad CFI ([#868](https://github.com/getsentry/symbolic/pull/868))

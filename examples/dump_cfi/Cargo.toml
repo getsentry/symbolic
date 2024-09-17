@@ -1,6 +1,6 @@
 [package]
 name = "dump_cfi"
-version = "12.11.0"
+version = "12.11.1"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2021"
 publish = false
@@ -10,4 +10,4 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
-symbolic = { version = "12.11.0", path = "../../symbolic", features = ["cfi"] }
+symbolic = { version = "12.11.1", path = "../../symbolic", features = ["cfi"] }
