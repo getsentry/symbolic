@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+- symbolic-cfi: Skip invalid FDEs when converting DWARF to Breakpad CFI ([#868](https://github.com/getsentry/symbolic/pull/868))
+
 ## 12.11.0
 
 - Add callback to `symbolic::debuginfo::sourcebundle::SourceBundleWriter` which handles files skipped while writing to the source bundle. ([#864](https://github.com/getsentry/symbolic/pull/864))
