@@ -330,7 +330,7 @@ impl<'d> DwarfLineProgram<'d> {
         }
 
         // Sequences are not guaranteed to be in order.
-        dmsort::sort_by_key(&mut sequences, |x| x.start);
+        sequences.sort_unstable_by_key(|x| x.start);
 
         DwarfLineProgram {
             header: state_machine.header().clone(),

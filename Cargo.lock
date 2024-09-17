@@ -593,12 +593,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dmsort"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0bc8fbe9441c17c9f46f75dfe27fa1ddb6c68a461ccaed0481419219d4f10d3"
-
-[[package]]
 name = "dump_cfi"
 version = "12.11.0"
 dependencies = [
@@ -2207,7 +2201,6 @@ version = "12.11.0"
 dependencies = [
  "criterion",
  "debugid",
- "dmsort",
  "elementtree",
  "elsa",
  "fallible-iterator 0.3.0",
