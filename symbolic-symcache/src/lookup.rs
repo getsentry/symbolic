@@ -228,8 +228,9 @@ impl<'data> Iterator for Functions<'data> {
             }
         }
 
-        function.inspect(|_f| {
+        function.map(|f| {
             self.function_idx += 1;
+            f
         })
     }
 }
@@ -265,8 +266,9 @@ impl<'data> Iterator for Files<'data> {
     type Item = File<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.cache.get_file(self.file_idx).inspect(|_f| {
+        self.cache.get_file(self.file_idx).map(|f| {
             self.file_idx += 1;
+            f
         })
     }
 }
