@@ -537,14 +537,7 @@ impl<'data> ElfObject<'data> {
 
     /// Determines whether this object contains embedded source.
     pub fn has_sources(&self) -> bool {
-        // Note: It'd be great to be able to determine this without iterating over all file entries.
-        //       Unfortunately, though, this seems to be the only correct implementation.
-        match self.debug_session() {
-            Ok(session) => session
-                .files()
-                .any(|f| f.is_ok_and(|f| f.source_str().is_some())),
-            Err(_) => false,
-        }
+        false
     }
 
     /// Determines whether this object is malformed and was only partially parsed

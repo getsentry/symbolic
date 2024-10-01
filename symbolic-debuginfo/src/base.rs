@@ -450,25 +450,13 @@ pub struct FileInfo<'data> {
     name: Cow<'data, [u8]>,
     /// Path to the file.
     dir: Cow<'data, [u8]>,
-    /// Source code
-    source: Option<Cow<'data, [u8]>>,
 }
 
 impl<'data> FileInfo<'data> {
     /// Creates a `FileInfo` with a given directory and the file name.
     #[cfg(feature = "dwarf")]
     pub fn new(dir: Cow<'data, [u8]>, name: Cow<'data, [u8]>) -> Self {
-        Self::with_source(dir, name, None)
-    }
-
-    /// Creates a `FileInfo` with a given directory, the file name, and optional source code.
-    #[cfg(feature = "dwarf")]
-    pub fn with_source(
-        dir: Cow<'data, [u8]>,
-        name: Cow<'data, [u8]>,
-        source: Option<Cow<'data, [u8]>>,
-    ) -> Self {
-        FileInfo { name, dir, source }
+        FileInfo { name, dir }
     }
 
     /// Creates a `FileInfo` from a joined path by trying to split it.
@@ -482,7 +470,6 @@ impl<'data> FileInfo<'data> {
                 Some(dir) => Cow::Borrowed(dir),
                 None => Cow::default(),
             },
-            source: None,
         }
     }
 
@@ -498,7 +485,6 @@ impl<'data> FileInfo<'data> {
                 Some(dir) => Cow::Owned(dir.to_vec()),
                 None => Cow::default(),
             },
-            source: None,
         }
     }
 
@@ -507,7 +493,6 @@ impl<'data> FileInfo<'data> {
         FileInfo {
             name: Cow::Borrowed(name),
             dir: Cow::default(),
-            source: None,
         }
     }
 
@@ -519,11 +504,6 @@ impl<'data> FileInfo<'data> {
     /// Path to the file relative to the compilation directory.
     pub fn dir_str(&self) -> Cow<'data, str> {
         from_utf8_cow_lossy(&self.dir)
-    }
-
-    /// The embedded source code as an UTF-8 string.
-    pub fn source_str(&self) -> Option<Cow<'data, str>> {
-        self.source.as_ref().map(from_utf8_cow_lossy)
     }
 
     /// The full path to the file, relative to the compilation directory.
