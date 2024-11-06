@@ -29,9 +29,12 @@ pub fn discover_sourcemaps_location(contents: &str) -> Option<&str> {
 }
 
 /// Quickly reads the embedded `debug_id` key from a source map.
+///
+/// Both `debug_id` and `debugId` are supported as field names.
 pub fn discover_sourcemap_embedded_debug_id(contents: &str) -> Option<DebugId> {
     #[derive(Deserialize)]
     struct DebugIdInSourceMap {
+        #[serde(alias = "debugId")]
         debug_id: Option<DebugId>,
     }
 
@@ -48,4 +51,43 @@ pub fn discover_debug_id(contents: &str) -> Option<DebugId> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use debugid::DebugId;
+
+    use crate::js::discover_sourcemap_embedded_debug_id;
+
+    #[test]
+    fn test_debugid_snake_case() {
+        let input = r#"{
+         "version":3,
+         "sources":["coolstuff.js"],
+         "names":["x","alert"],
+         "mappings":"AAAA,GAAIA,GAAI,EACR,IAAIA,GAAK,EAAG,CACVC,MAAM",
+         "debug_id":"00000000-0000-0000-0000-000000000000"
+     }"#;
+
+        assert_eq!(
+            discover_sourcemap_embedded_debug_id(input),
+            Some(DebugId::default())
+        );
+    }
+
+    #[test]
+    fn test_debugid_camel_case() {
+        let input = r#"{
+         "version":3,
+         "sources":["coolstuff.js"],
+         "names":["x","alert"],
+         "mappings":"AAAA,GAAIA,GAAI,EACR,IAAIA,GAAK,EAAG,CACVC,MAAM",
+         "debugId":"00000000-0000-0000-0000-000000000000"
+     }"#;
+
+        assert_eq!(
+            discover_sourcemap_embedded_debug_id(input),
+            Some(DebugId::default())
+        );
+    }
 }
