@@ -8,8 +8,6 @@
 
 ## 12.12.0
 
-### Various fixes & improvements
-
 **Fixes**
 - Unship "Support for DWARFv5 embedded source code extension ([#849](https://github.com/getsentry/symbolic/pull/849))".
   Unfortunately the check for whether an elf file contains embedded sources is prohibitively expensive in terms of memory.
