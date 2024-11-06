@@ -1,5 +1,11 @@
 # Changelog
 
+# Unreleased
+
+**Features**:
+- feat(js): Sourcemap debug IDs can now be read from the `"debugId"` field in addition to
+  `"debug_id"` ([#870](https://github.com/getsentry/symbolic/pull/870)).
+
 ## 12.12.0
 
 ### Various fixes & improvements
