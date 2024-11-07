@@ -1,8 +1,12 @@
 # Changelog
 
-## 12.12.0
+## Unreleased
 
-### Various fixes & improvements
+**Features**:
+- feat(js): Sourcemap debug IDs can now be read from the `"debugId"` field in addition to
+  `"debug_id"` ([#870](https://github.com/getsentry/symbolic/pull/870)).
+
+## 12.12.0
 
 **Fixes**
 - Unship "Support for DWARFv5 embedded source code extension ([#849](https://github.com/getsentry/symbolic/pull/849))".
