@@ -1,6 +1,6 @@
 # Changelog
 
-# Unreleased
+## Unreleased
 
 **Features**:
 - feat(js): Sourcemap debug IDs can now be read from the `"debugId"` field in addition to
