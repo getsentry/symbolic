@@ -16,6 +16,7 @@
 
 #include "swift/Demangling/Demangler.h"
 #include "swift/Demangling/ManglingMacros.h"
+#include "swift/Demangling/ManglingUtils.h"
 #include "swift/Demangling/NamespaceMacros.h"
 
 namespace swift {
@@ -38,15 +39,21 @@ void Context::clear() {
 }
 
 NodePointer Context::demangleSymbolAsNode(llvm::StringRef MangledName) {
+#if SWIFT_SUPPORT_OLD_MANGLING
   if (isMangledName(MangledName)) {
     return D->demangleSymbol(MangledName);
   }
   return demangleOldSymbolAsNode(MangledName, *D);
+#else
+  return D->demangleSymbol(MangledName);
+#endif
 }
 
 NodePointer Context::demangleTypeAsNode(llvm::StringRef MangledName) {
   return D->demangleType(MangledName);
 }
+
+#if SWIFT_STDLIB_HAS_TYPE_PRINTING
 
 std::string Context::demangleSymbolAsString(llvm::StringRef MangledName,
                                             const DemangleOptions &Options) {
@@ -70,13 +77,15 @@ std::string Context::demangleTypeAsString(llvm::StringRef MangledName,
   return demangling;
 }
 
+#endif
+
 // Removes a '.<n>' suffix from \p Name. <n> is either a number or a combination of
 // '.<other-text>.<n>'.
 // Such symbols are produced in IRGen or in LLVM optimizations.
 static llvm::StringRef stripSuffix(llvm::StringRef Name) {
   // A suffix always ends with a digit. Do this quick check to avoid scanning through the whole
   // symbol name if the symbol has no suffix (= the common case).
-  if (isdigit(Name.back())) {
+  if (swift::Mangle::isDigit(Name.back())) {
     size_t dotPos = Name.find('.');
     if (dotPos != StringRef::npos) {
       Name = Name.substr(0, dotPos);
@@ -85,9 +94,24 @@ static llvm::StringRef stripSuffix(llvm::StringRef Name) {
   return Name;
 }
 
+// Removes a 'TQ<index>' or 'TY<index>' from \p Name.
+static llvm::StringRef stripAsyncContinuation(llvm::StringRef Name) {
+  if (!Name.endswith("_"))
+    return Name;
+
+  StringRef Stripped = Name.drop_back();
+  while (!Stripped.empty() && swift::Mangle::isDigit(Stripped.back()))
+    Stripped = Stripped.drop_back();
+
+  if (Stripped.endswith("TQ") || Stripped.endswith("TY"))
+    return Stripped.drop_back(2);
+
+  return Name;
+}
+
 bool Context::isThunkSymbol(llvm::StringRef MangledName) {
   if (isMangledName(MangledName)) {
-    MangledName = stripSuffix(MangledName);
+    MangledName = stripAsyncContinuation(stripSuffix(MangledName));
     // First do a quick check
     if (MangledName.endswith("TA") ||  // partial application forwarder
         MangledName.endswith("Ta") ||  // ObjC partial application forwarder
@@ -142,6 +166,9 @@ std::string Context::getThunkTarget(llvm::StringRef MangledName) {
     // If the symbol has a suffix we cannot derive the target.
     if (stripSuffix(MangledName) != MangledName)
       return std::string();
+
+    // Ignore any async continuation suffix
+    MangledName = stripAsyncContinuation(MangledName);
 
     // The targets of those thunks not derivable from the mangling.
     if (MangledName.endswith("TR") ||
@@ -216,7 +243,11 @@ std::string Context::getModuleName(llvm::StringRef mangledName) {
     }
     default:
       if (isSpecialized(node)) {
-        node = getUnspecialized(node, *D);
+        auto unspec = getUnspecialized(node, *D);
+        if (!unspec.isSuccess())
+          node = nullptr;
+        else
+          node = unspec.result();
         break;
       }
       if (isContext(node->getKind())) {
@@ -234,6 +265,8 @@ std::string Context::getModuleName(llvm::StringRef mangledName) {
 // Public utility functions     //
 //////////////////////////////////
 
+#if SWIFT_STDLIB_HAS_TYPE_PRINTING
+
 std::string demangleSymbolAsString(const char *MangledName,
                                    size_t MangledNameLength,
                                    const DemangleOptions &Options) {
@@ -249,6 +282,8 @@ std::string demangleTypeAsString(const char *MangledName,
   return Ctx.demangleTypeAsString(StringRef(MangledName, MangledNameLength),
                                   Options);
 }
+
+#endif
 
 SWIFT_END_INLINE_NAMESPACE
 } // namespace Demangle
