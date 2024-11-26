@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 12.12.3
 
 **Fixes**
 - js: Prefer `"debug_id"` for sourcemap debug IDs. ([#878](https://github.com/getsentry/symbolic/pull/878)).
