@@ -30,17 +30,22 @@ pub fn discover_sourcemaps_location(contents: &str) -> Option<&str> {
 
 /// Quickly reads the embedded `debug_id` key from a source map.
 ///
-/// Both `debug_id` and `debugId` are supported as field names.
+/// Both `debugId` and `debug_id` are supported as field names. If both
+/// are set, the former takes precedence.
 pub fn discover_sourcemap_embedded_debug_id(contents: &str) -> Option<DebugId> {
+    // Deserialize from `"debugId"` or `"debug_id"`,
+    // preferring the former.
     #[derive(Deserialize)]
     struct DebugIdInSourceMap {
-        #[serde(alias = "debugId")]
-        debug_id: Option<DebugId>,
+        #[serde(rename = "debugId")]
+        debug_id_new: Option<DebugId>,
+        #[serde(rename = "debug_id")]
+        debug_id_old: Option<DebugId>,
     }
 
     serde_json::from_str(contents)
         .ok()
-        .and_then(|x: DebugIdInSourceMap| x.debug_id)
+        .and_then(|x: DebugIdInSourceMap| x.debug_id_new.or(x.debug_id_old))
 }
 
 /// Parses a `debugId` comment in a file to discover a sourcemap's debug ID.
@@ -83,6 +88,23 @@ mod tests {
          "names":["x","alert"],
          "mappings":"AAAA,GAAIA,GAAI,EACR,IAAIA,GAAK,EAAG,CACVC,MAAM",
          "debugId":"00000000-0000-0000-0000-000000000000"
+     }"#;
+
+        assert_eq!(
+            discover_sourcemap_embedded_debug_id(input),
+            Some(DebugId::default())
+        );
+    }
+
+    #[test]
+    fn test_debugid_both() {
+        let input = r#"{
+         "version":3,
+         "sources":["coolstuff.js"],
+         "names":["x","alert"],
+         "mappings":"AAAA,GAAIA,GAAI,EACR,IAAIA,GAAK,EAAG,CACVC,MAAM",
+         "debugId":"00000000-0000-0000-0000-000000000000",
+         "debug_id":"11111111-1111-1111-1111-111111111111"
      }"#;
 
         assert_eq!(

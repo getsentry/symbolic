@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+- js: Fixed an error when reading debug IDs from sourcemaps with
+  both `"debugId"` and `"debug_id"` keys ([#877](https://github.com/getsentry/symbolic/pull/877)).
+
 ## 12.12.1
 
 **Features**:
