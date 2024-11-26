@@ -31,10 +31,10 @@ pub fn discover_sourcemaps_location(contents: &str) -> Option<&str> {
 /// Quickly reads the embedded `debug_id` key from a source map.
 ///
 /// Both `debugId` and `debug_id` are supported as field names. If both
-/// are set, the former takes precedence.
+/// are set, the latter takes precedence.
 pub fn discover_sourcemap_embedded_debug_id(contents: &str) -> Option<DebugId> {
     // Deserialize from `"debugId"` or `"debug_id"`,
-    // preferring the former.
+    // preferring the latter.
     #[derive(Deserialize)]
     struct DebugIdInSourceMap {
         #[serde(rename = "debugId")]
@@ -45,7 +45,7 @@ pub fn discover_sourcemap_embedded_debug_id(contents: &str) -> Option<DebugId> {
 
     serde_json::from_str(contents)
         .ok()
-        .and_then(|x: DebugIdInSourceMap| x.debug_id_new.or(x.debug_id_old))
+        .and_then(|x: DebugIdInSourceMap| x.debug_id_old.or(x.debug_id_new))
 }
 
 /// Parses a `debugId` comment in a file to discover a sourcemap's debug ID.
