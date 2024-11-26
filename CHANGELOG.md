@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 12.12.2
 
 **Fixes**
 - js: Fixed an error when reading debug IDs from sourcemaps with
