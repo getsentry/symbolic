@@ -434,7 +434,7 @@ pub struct PdbSymbolIterator<'data, 'object> {
     executable_sections: &'object ExecutableSections,
 }
 
-impl<'data, 'object> Iterator for PdbSymbolIterator<'data, 'object> {
+impl<'data> Iterator for PdbSymbolIterator<'data, '_> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {

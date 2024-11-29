@@ -863,7 +863,7 @@ pub struct ElfSymbolIterator<'data, 'object> {
     load_addr: u64,
 }
 
-impl<'data, 'object> Iterator for ElfSymbolIterator<'data, 'object> {
+impl<'data> Iterator for ElfSymbolIterator<'data, '_> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {

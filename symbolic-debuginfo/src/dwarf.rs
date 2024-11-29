@@ -366,7 +366,7 @@ struct UnitRef<'d, 'a> {
     unit: &'a Unit<'d>,
 }
 
-impl<'d, 'a> UnitRef<'d, 'a> {
+impl<'d> UnitRef<'d, '_> {
     /// Resolve the binary value of an attribute.
     #[inline(always)]
     fn slice_value(&self, value: AttributeValue<Slice<'d>>) -> Option<&'d [u8]> {
@@ -996,7 +996,7 @@ struct FunctionsOutput<'a, 'd> {
     pub seen_ranges: &'a mut BTreeSet<(u64, u64)>,
 }
 
-impl<'a, 'd> FunctionsOutput<'a, 'd> {
+impl<'a> FunctionsOutput<'a, '_> {
     pub fn with_seen_ranges(seen_ranges: &'a mut BTreeSet<(u64, u64)>) -> Self {
         Self {
             functions: Vec::new(),
@@ -1356,7 +1356,7 @@ impl<'data> DwarfDebugSession<'data> {
     }
 }
 
-impl<'data, 'session> DebugSession<'session> for DwarfDebugSession<'data> {
+impl<'session> DebugSession<'session> for DwarfDebugSession<'_> {
     type Error = DwarfError;
     type FunctionIterator = DwarfFunctionIterator<'session>;
     type FileIterator = DwarfFileIterator<'session>;

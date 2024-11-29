@@ -559,7 +559,7 @@ pub struct FatMachObjectIterator<'d, 'a> {
     data: &'d [u8],
 }
 
-impl<'d, 'a> Iterator for FatMachObjectIterator<'d, 'a> {
+impl<'d> Iterator for FatMachObjectIterator<'d, '_> {
     type Item = Result<MachObject<'d>, MachError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -661,7 +661,7 @@ enum MachObjectIteratorInner<'d, 'a> {
 /// An iterator over objects in a [`MachArchive`](struct.MachArchive.html).
 pub struct MachObjectIterator<'d, 'a>(MachObjectIteratorInner<'d, 'a>);
 
-impl<'d, 'a> Iterator for MachObjectIterator<'d, 'a> {
+impl<'d> Iterator for MachObjectIterator<'d, '_> {
     type Item = Result<MachObject<'d>, MachError>;
 
     fn next(&mut self) -> Option<Self::Item> {

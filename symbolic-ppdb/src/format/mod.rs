@@ -442,7 +442,7 @@ impl<'object, 'data> EmbeddedSourceIterator<'object, 'data> {
     }
 }
 
-impl<'object, 'data> Iterator for EmbeddedSourceIterator<'object, 'data> {
+impl<'data> Iterator for EmbeddedSourceIterator<'_, 'data> {
     type Item = Result<EmbeddedSource<'data>, FormatError>;
 
     fn next(&mut self) -> Option<Self::Item> {

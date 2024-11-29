@@ -58,7 +58,7 @@ pub trait Transformer {
 #[derive(Default)]
 pub(crate) struct Transformers<'a>(pub Vec<Box<dyn Transformer + 'a>>);
 
-impl<'a> std::fmt::Debug for Transformers<'a> {
+impl std::fmt::Debug for Transformers<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let len = self.0.len();
         f.debug_tuple("Transformers").field(&len).finish()

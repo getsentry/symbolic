@@ -235,7 +235,7 @@ pub struct Symbol<'data> {
     pub size: u64,
 }
 
-impl<'data> Symbol<'data> {
+impl Symbol<'_> {
     /// Returns the name of this symbol as string.
     pub fn name(&self) -> Option<&str> {
         self.name.as_ref().map(Cow::as_ref)
@@ -251,7 +251,7 @@ impl<'data> Symbol<'data> {
     }
 }
 
-impl<'d> fmt::Debug for Symbol<'d> {
+impl fmt::Debug for Symbol<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Symbol")
             .field("name", &self.name().unwrap_or("<unknown>"))

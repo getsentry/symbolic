@@ -237,14 +237,14 @@ struct FunctionBuilderInlinee<'s> {
 }
 
 /// Implement ordering in DFS order, i.e. first by address and then by depth.
-impl<'s> PartialOrd for FunctionBuilderInlinee<'s> {
+impl PartialOrd for FunctionBuilderInlinee<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
 /// Implement ordering in DFS order, i.e. first by address and then by depth.
-impl<'s> Ord for FunctionBuilderInlinee<'s> {
+impl Ord for FunctionBuilderInlinee<'_> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         (self.address, self.depth).cmp(&(other.address, other.depth))
     }

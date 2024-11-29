@@ -87,7 +87,7 @@ impl From<String> for SymbolicStr {
     }
 }
 
-impl<'a> From<&'a str> for SymbolicStr {
+impl From<&str> for SymbolicStr {
     fn from(string: &str) -> SymbolicStr {
         SymbolicStr::new(string)
     }

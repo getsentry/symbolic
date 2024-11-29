@@ -194,7 +194,7 @@ pub struct BcSymbolMapIterator<'a, 'd> {
     iter: std::slice::Iter<'a, &'d str>,
 }
 
-impl<'a, 'd> Iterator for BcSymbolMapIterator<'a, 'd> {
+impl<'d> Iterator for BcSymbolMapIterator<'_, 'd> {
     type Item = &'d str;
 
     fn next(&mut self) -> Option<Self::Item> {

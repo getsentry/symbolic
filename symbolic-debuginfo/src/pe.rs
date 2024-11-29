@@ -463,7 +463,7 @@ pub struct PeSymbolIterator<'data, 'object> {
     exports: std::slice::Iter<'object, pe::export::Export<'data>>,
 }
 
-impl<'data, 'object> Iterator for PeSymbolIterator<'data, 'object> {
+impl<'data> Iterator for PeSymbolIterator<'data, '_> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -506,9 +506,9 @@ pub struct PeEmbeddedPortablePDB<'data> {
     uncompressed_size: usize,
 }
 
-impl<'data, 'object> PeEmbeddedPortablePDB<'data> {
+impl PeEmbeddedPortablePDB<'_> {
     /// Returns the uncompressed size of the Portable PDB buffer.
-    pub fn get_size(&'object self) -> usize {
+    pub fn get_size(&self) -> usize {
         self.uncompressed_size
     }
 

@@ -605,7 +605,7 @@ pub struct BreakpadLineRecords<'d> {
     finished: bool,
 }
 
-impl<'d> Iterator for BreakpadLineRecords<'d> {
+impl Iterator for BreakpadLineRecords<'_> {
     type Item = Result<BreakpadLineRecord, BreakpadError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -752,13 +752,13 @@ impl<'d> BreakpadStackCfiRecord<'d> {
     }
 }
 
-impl<'d> PartialEq for BreakpadStackCfiRecord<'d> {
+impl PartialEq for BreakpadStackCfiRecord<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.start == other.start && self.size == other.size && self.init_rules == other.init_rules
     }
 }
 
-impl<'d> Eq for BreakpadStackCfiRecord<'d> {}
+impl Eq for BreakpadStackCfiRecord<'_> {}
 
 /// An iterator over stack cfi delta records associated with a particular
 /// [`BreakpadStackCfiRecord`].
@@ -1263,7 +1263,7 @@ pub struct BreakpadDebugSession<'data> {
     lines: Lines<'data>,
 }
 
-impl<'data> BreakpadDebugSession<'data> {
+impl BreakpadDebugSession<'_> {
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> BreakpadFunctionIterator<'_> {
         BreakpadFunctionIterator::new(&self.file_map, self.lines.clone())
@@ -1285,7 +1285,7 @@ impl<'data> BreakpadDebugSession<'data> {
     }
 }
 
-impl<'data, 'session> DebugSession<'session> for BreakpadDebugSession<'data> {
+impl<'session> DebugSession<'session> for BreakpadDebugSession<'_> {
     type Error = BreakpadError;
     type FunctionIterator = BreakpadFunctionIterator<'session>;
     type FileIterator = BreakpadFileIterator<'session>;

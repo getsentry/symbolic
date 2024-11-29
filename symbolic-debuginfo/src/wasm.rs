@@ -278,7 +278,7 @@ pub struct WasmSymbolIterator<'data, 'object> {
     _marker: std::marker::PhantomData<&'object u8>,
 }
 
-impl<'data, 'object> Iterator for WasmSymbolIterator<'data, 'object> {
+impl<'data> Iterator for WasmSymbolIterator<'data, '_> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {

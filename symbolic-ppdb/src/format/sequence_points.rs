@@ -266,7 +266,7 @@ pub(crate) struct SequencePoints<'data, 'ppdb> {
     count: usize,
 }
 
-impl<'data, 'ppdb> Iterator for SequencePoints<'data, 'ppdb> {
+impl Iterator for SequencePoints<'_, '_> {
     type Item = Result<Vec<SequencePoint>, FormatError>;
 
     fn next(&mut self) -> Option<Self::Item> {

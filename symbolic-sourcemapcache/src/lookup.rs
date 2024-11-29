@@ -87,7 +87,7 @@ impl<'slf, 'a: 'slf> AsSelf<'slf> for SourceMapCache<'a> {
     }
 }
 
-impl<'data> std::fmt::Debug for SourceMapCache<'data> {
+impl std::fmt::Debug for SourceMapCache<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SourceMapCache")
             .field("version", &self.header.version)
