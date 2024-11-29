@@ -375,7 +375,7 @@ impl fmt::Debug for MachObject<'_> {
 impl<'slf, 'd: 'slf> AsSelf<'slf> for MachObject<'d> {
     type Ref = MachObject<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
 }
@@ -559,7 +559,7 @@ pub struct FatMachObjectIterator<'d, 'a> {
     data: &'d [u8],
 }
 
-impl<'d, 'a> Iterator for FatMachObjectIterator<'d, 'a> {
+impl<'d> Iterator for FatMachObjectIterator<'d, '_> {
     type Item = Result<MachObject<'d>, MachError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -647,7 +647,7 @@ impl fmt::Debug for FatMachO<'_> {
 impl<'slf, 'd: 'slf> AsSelf<'slf> for FatMachO<'d> {
     type Ref = FatMachO<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
 }
@@ -661,7 +661,7 @@ enum MachObjectIteratorInner<'d, 'a> {
 /// An iterator over objects in a [`MachArchive`](struct.MachArchive.html).
 pub struct MachObjectIterator<'d, 'a>(MachObjectIteratorInner<'d, 'a>);
 
-impl<'d, 'a> Iterator for MachObjectIterator<'d, 'a> {
+impl<'d> Iterator for MachObjectIterator<'d, '_> {
     type Item = Result<MachObject<'d>, MachError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -796,7 +796,7 @@ impl<'d> MachArchive<'d> {
 impl<'slf, 'd: 'slf> AsSelf<'slf> for MachArchive<'d> {
     type Ref = MachArchive<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
 }

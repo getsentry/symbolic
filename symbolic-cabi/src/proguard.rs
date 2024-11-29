@@ -33,7 +33,7 @@ struct Inner<'a> {
 impl<'slf, 'a: 'slf> AsSelf<'slf> for Inner<'a> {
     type Ref = Inner<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
 }

@@ -371,7 +371,7 @@ impl<'data> Object<'data> {
 impl<'slf, 'data: 'slf> AsSelf<'slf> for Object<'data> {
     type Ref = Object<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         unsafe { std::mem::transmute(self) }
     }
 }
@@ -449,7 +449,7 @@ pub enum ObjectDebugSession<'d> {
     PortablePdb(PortablePdbDebugSession<'d>),
 }
 
-impl<'d> ObjectDebugSession<'d> {
+impl ObjectDebugSession<'_> {
     /// Returns an iterator over all functions in this debug file.
     ///
     /// Functions are iterated in the order they are declared in their compilation units. The
@@ -606,7 +606,7 @@ pub enum SymbolIterator<'data, 'object> {
     PortablePdb(PortablePdbSymbolIterator<'data>),
 }
 
-impl<'data, 'object> Iterator for SymbolIterator<'data, 'object> {
+impl<'data> Iterator for SymbolIterator<'data, '_> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -758,7 +758,7 @@ impl<'d> Archive<'d> {
 impl<'slf, 'd: 'slf> AsSelf<'slf> for Archive<'d> {
     type Ref = Archive<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         unsafe { std::mem::transmute(self) }
     }
 }
@@ -778,7 +778,7 @@ enum ObjectIteratorInner<'d, 'a> {
 /// An iterator over [`Object`](enum.Object.html)s in an [`Archive`](struct.Archive.html).
 pub struct ObjectIterator<'d, 'a>(ObjectIteratorInner<'d, 'a>);
 
-impl<'d, 'a> Iterator for ObjectIterator<'d, 'a> {
+impl<'d> Iterator for ObjectIterator<'d, '_> {
     type Item = Result<Object<'d>, ObjectError>;
 
     fn next(&mut self) -> Option<Self::Item> {

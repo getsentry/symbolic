@@ -746,7 +746,7 @@ impl fmt::Debug for ElfObject<'_> {
 impl<'slf, 'data: 'slf> AsSelf<'slf> for ElfObject<'data> {
     type Ref = ElfObject<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
 }
@@ -863,7 +863,7 @@ pub struct ElfSymbolIterator<'data, 'object> {
     load_addr: u64,
 }
 
-impl<'data, 'object> Iterator for ElfSymbolIterator<'data, 'object> {
+impl<'data> Iterator for ElfSymbolIterator<'data, '_> {
     type Item = Symbol<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {

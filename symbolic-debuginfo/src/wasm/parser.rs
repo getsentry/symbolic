@@ -20,7 +20,7 @@ impl BitVec {
 
     pub fn resize(&mut self, count: usize, value: bool) {
         self.data.resize(
-            (count + u64::BITS as usize - 1) / u64::BITS as usize,
+            count.div_ceil(u64::BITS as usize),
             if value { u64::MAX } else { u64::MIN },
         );
         self.len = count;

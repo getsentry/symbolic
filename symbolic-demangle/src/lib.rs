@@ -416,7 +416,7 @@ pub trait Demangle {
     fn try_demangle(&self, opts: DemangleOptions) -> Cow<'_, str>;
 }
 
-impl<'a> Demangle for Name<'a> {
+impl Demangle for Name<'_> {
     fn detect_language(&self) -> Language {
         if self.language() != Language::Unknown {
             return self.language();

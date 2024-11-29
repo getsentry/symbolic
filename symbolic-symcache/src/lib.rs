@@ -147,7 +147,7 @@ pub struct SymCache<'data> {
     string_bytes: &'data [u8],
 }
 
-impl<'data> std::fmt::Debug for SymCache<'data> {
+impl std::fmt::Debug for SymCache<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SymCache")
             .field("version", &self.header.version)
@@ -268,7 +268,7 @@ impl<'data> SymCache<'data> {
 impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
     type Ref = SymCache<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
 }

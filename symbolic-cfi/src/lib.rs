@@ -1198,7 +1198,7 @@ struct CfiCacheV1<'a> {
     byteview: ByteView<'a>,
 }
 
-impl<'a> CfiCacheV1<'a> {
+impl CfiCacheV1<'_> {
     pub fn raw(&self) -> &[u8] {
         &self.byteview
     }

@@ -207,7 +207,7 @@ impl<'data> PortablePdbCache<'data> {
     }
 }
 
-impl<'data> std::fmt::Debug for PortablePdbCache<'data> {
+impl std::fmt::Debug for PortablePdbCache<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PortablePdbCache")
             .field("version", &self.header.version)
@@ -222,7 +222,7 @@ impl<'data> std::fmt::Debug for PortablePdbCache<'data> {
 impl<'slf, 'd: 'slf> AsSelf<'slf> for PortablePdbCache<'d> {
     type Ref = PortablePdbCache<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
 }

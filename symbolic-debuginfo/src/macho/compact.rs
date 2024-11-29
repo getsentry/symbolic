@@ -2103,10 +2103,9 @@ mod test {
     const COMPRESSED_PAGE_KIND: u32 = 3;
 
     fn align(offset: u32, align: u32) -> u32 {
-        // Adding `align - 1` to a value push unaligned values to the next multiple,
-        // and integer division + multiplication can then remove the remainder.
-        ((offset + align - 1) / align) * align
+        offset.div_ceil(align) * align
     }
+
     fn pack_x86_rbp_registers(regs: [u8; 5]) -> u32 {
         let mut result: u32 = 0;
         let base_offset = 0;

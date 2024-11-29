@@ -214,7 +214,7 @@ impl<'data> PortablePdbDebugSession<'data> {
     }
 }
 
-impl<'data, 'session> DebugSession<'session> for PortablePdbDebugSession<'data> {
+impl<'session> DebugSession<'session> for PortablePdbDebugSession<'_> {
     type Error = FormatError;
     type FunctionIterator = PortablePdbFunctionIterator<'session>;
     type FileIterator = PortablePdbFileIterator<'session>;

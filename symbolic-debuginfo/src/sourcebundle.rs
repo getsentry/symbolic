@@ -784,7 +784,7 @@ impl<'data> SourceBundle<'data> {
 impl<'slf, 'data: 'slf> AsSelf<'slf> for SourceBundle<'data> {
     type Ref = SourceBundle<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         unsafe { std::mem::transmute(self) }
     }
 }
@@ -880,7 +880,7 @@ pub struct SourceBundleDebugSession<'data> {
     source_links: SourceLinkMappings,
 }
 
-impl<'data> SourceBundleDebugSession<'data> {
+impl SourceBundleDebugSession<'_> {
     /// Returns an iterator over all source files in this debug file.
     pub fn files(&self) -> SourceBundleFileIterator<'_> {
         SourceBundleFileIterator {
@@ -970,7 +970,7 @@ impl<'data> SourceBundleDebugSession<'data> {
     }
 }
 
-impl<'data, 'session> DebugSession<'session> for SourceBundleDebugSession<'data> {
+impl<'session> DebugSession<'session> for SourceBundleDebugSession<'_> {
     type Error = SourceBundleError;
     type FunctionIterator = SourceBundleFunctionIterator<'session>;
     type FileIterator = SourceBundleFileIterator<'session>;
@@ -991,7 +991,7 @@ impl<'data, 'session> DebugSession<'session> for SourceBundleDebugSession<'data>
 impl<'slf, 'data: 'slf> AsSelf<'slf> for SourceBundleDebugSession<'data> {
     type Ref = SourceBundleDebugSession<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         unsafe { std::mem::transmute(self) }
     }
 }

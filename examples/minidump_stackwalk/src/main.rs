@@ -262,7 +262,7 @@ impl<'a> LocalSymbolProvider<'a> {
 }
 
 #[async_trait]
-impl<'a> minidump_unwind::SymbolProvider for LocalSymbolProvider<'a> {
+impl minidump_unwind::SymbolProvider for LocalSymbolProvider<'_> {
     #[tracing::instrument(
         skip(self, module, frame),
         fields(module.id, frame.instruction = frame.get_instruction())

@@ -80,7 +80,7 @@ pub trait AsSelf<'slf> {
     type Ref: ?Sized;
 
     /// Returns a reference to `self` with downcasted lifetime.
-    fn as_self(&'slf self) -> &Self::Ref;
+    fn as_self(&'slf self) -> &'slf Self::Ref;
 }
 
 impl AsSelf<'_> for u8 {
@@ -106,7 +106,7 @@ where
 {
     type Ref = [T::Ref];
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         unsafe { &*(self as *const [T] as *const [T::Ref]) }
     }
 }
@@ -117,7 +117,7 @@ where
 {
     type Ref = T::Ref;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         (*self).as_self()
     }
 }
@@ -128,7 +128,7 @@ where
 {
     type Ref = T::Ref;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         (**self).as_self()
     }
 }
@@ -140,7 +140,7 @@ where
 {
     type Ref = [T::Ref];
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         (**self).as_self()
     }
 }
@@ -151,7 +151,7 @@ where
 {
     type Ref = T::Ref;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         (**self).as_self()
     }
 }
@@ -162,7 +162,7 @@ where
 {
     type Ref = T::Ref;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         (**self).as_self()
     }
 }
@@ -368,7 +368,7 @@ mod tests {
     impl<'slf> AsSelf<'slf> for Foo<'_> {
         type Ref = Foo<'slf>;
 
-        fn as_self(&'slf self) -> &Self::Ref {
+        fn as_self(&'slf self) -> &'slf Self::Ref {
             self
         }
     }
