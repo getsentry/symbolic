@@ -298,7 +298,7 @@ impl fmt::Debug for PdbObject<'_> {
 impl<'slf, 'data: 'slf> AsSelf<'slf> for PdbObject<'data> {
     type Ref = PdbObject<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         unsafe { std::mem::transmute(self) }
     }
 }
@@ -565,7 +565,7 @@ impl<'d> PdbDebugInfo<'d> {
     }
 
     /// Returns an iterator over all compilation units (modules).
-    fn units(&'d self) -> PdbUnitIterator<'_> {
+    fn units(&'d self) -> PdbUnitIterator<'d> {
         PdbUnitIterator {
             debug_info: self,
             index: 0,
@@ -576,7 +576,7 @@ impl<'d> PdbDebugInfo<'d> {
         self.type_formatter.modules()
     }
 
-    fn get_module(&'d self, index: usize) -> Result<Option<&ModuleInfo<'_>>, PdbError> {
+    fn get_module(&'d self, index: usize) -> Result<Option<&'d ModuleInfo<'d>>, PdbError> {
         // Silently ignore module references out-of-bound
         let module = match self.modules().get(index) {
             Some(module) => module,
@@ -599,7 +599,7 @@ impl<'d> PdbDebugInfo<'d> {
 impl<'slf, 'd: 'slf> AsSelf<'slf> for PdbDebugInfo<'d> {
     type Ref = PdbDebugInfo<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         unsafe { std::mem::transmute(self) }
     }
 }

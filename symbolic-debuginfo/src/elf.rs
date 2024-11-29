@@ -746,7 +746,7 @@ impl fmt::Debug for ElfObject<'_> {
 impl<'slf, 'data: 'slf> AsSelf<'slf> for ElfObject<'data> {
     type Ref = ElfObject<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
 }

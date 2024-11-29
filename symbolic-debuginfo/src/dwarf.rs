@@ -1230,7 +1230,7 @@ impl<'d> DwarfInfo<'d> {
     }
 
     /// Returns an iterator over all compilation units.
-    fn units(&'d self, bcsymbolmap: Option<&'d BcSymbolMap<'d>>) -> DwarfUnitIterator<'_> {
+    fn units(&'d self, bcsymbolmap: Option<&'d BcSymbolMap<'d>>) -> DwarfUnitIterator<'d> {
         DwarfUnitIterator {
             info: self,
             bcsymbolmap,
@@ -1242,7 +1242,7 @@ impl<'d> DwarfInfo<'d> {
 impl<'slf, 'd: 'slf> AsSelf<'slf> for DwarfInfo<'d> {
     type Ref = DwarfInfo<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         unsafe { std::mem::transmute(self) }
     }
 }

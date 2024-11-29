@@ -377,7 +377,7 @@ impl fmt::Debug for PeObject<'_> {
 impl<'slf, 'data: 'slf> AsSelf<'slf> for PeObject<'data> {
     type Ref = PeObject<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
 }

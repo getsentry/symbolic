@@ -784,7 +784,7 @@ impl<'data> SourceBundle<'data> {
 impl<'slf, 'data: 'slf> AsSelf<'slf> for SourceBundle<'data> {
     type Ref = SourceBundle<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         unsafe { std::mem::transmute(self) }
     }
 }
@@ -991,7 +991,7 @@ impl<'session> DebugSession<'session> for SourceBundleDebugSession<'_> {
 impl<'slf, 'data: 'slf> AsSelf<'slf> for SourceBundleDebugSession<'data> {
     type Ref = SourceBundleDebugSession<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         unsafe { std::mem::transmute(self) }
     }
 }

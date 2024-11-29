@@ -82,7 +82,7 @@ pub struct SourceMapCache<'data> {
 impl<'slf, 'a: 'slf> AsSelf<'slf> for SourceMapCache<'a> {
     type Ref = SourceMapCache<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
 }

@@ -1159,7 +1159,7 @@ impl fmt::Debug for BreakpadObject<'_> {
 impl<'slf, 'data: 'slf> AsSelf<'slf> for BreakpadObject<'data> {
     type Ref = BreakpadObject<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
 }

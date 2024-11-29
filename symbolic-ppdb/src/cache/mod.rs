@@ -222,7 +222,7 @@ impl std::fmt::Debug for PortablePdbCache<'_> {
 impl<'slf, 'd: 'slf> AsSelf<'slf> for PortablePdbCache<'d> {
     type Ref = PortablePdbCache<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
 }

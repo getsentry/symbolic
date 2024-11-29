@@ -371,7 +371,7 @@ impl<'data> Object<'data> {
 impl<'slf, 'data: 'slf> AsSelf<'slf> for Object<'data> {
     type Ref = Object<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         unsafe { std::mem::transmute(self) }
     }
 }
@@ -758,7 +758,7 @@ impl<'d> Archive<'d> {
 impl<'slf, 'd: 'slf> AsSelf<'slf> for Archive<'d> {
     type Ref = Archive<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         unsafe { std::mem::transmute(self) }
     }
 }

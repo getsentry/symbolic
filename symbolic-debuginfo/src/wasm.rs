@@ -169,7 +169,7 @@ impl fmt::Debug for WasmObject<'_> {
 impl<'slf, 'd: 'slf> AsSelf<'slf> for WasmObject<'d> {
     type Ref = WasmObject<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
 }

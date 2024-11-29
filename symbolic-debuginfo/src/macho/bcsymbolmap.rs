@@ -78,7 +78,7 @@ impl From<BcSymbolMapErrorKind> for BcSymbolMapError {
 impl<'slf> AsSelf<'slf> for BcSymbolMap<'_> {
     type Ref = BcSymbolMap<'slf>;
 
-    fn as_self(&'slf self) -> &Self::Ref {
+    fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
 }
