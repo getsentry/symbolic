@@ -12,10 +12,11 @@ extern "C" int symbolic_demangle_swift(const char *symbol,
 
     if (features < SYMBOLIC_SWIFT_FEATURE_ALL) {
         opts = swift::Demangle::DemangleOptions::SimplifiedUIDemangleOptions();
-        bool return_type = features & SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE;
+        // bool return_type = features & SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE;
         bool argument_types = features & SYMBOLIC_SWIFT_FEATURE_PARAMETERS;
 
-        opts.ShowFunctionReturnType = return_type;
+        // No ShowFunctionReturnType property in DemangleOptions any more
+        // opts.ShowFunctionReturnType = return_type;
         opts.ShowFunctionArgumentTypes = argument_types;
     }
 
