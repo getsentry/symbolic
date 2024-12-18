@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+- symcache: Fixed a bug related to to inlinee resolution during symcache conversion. ([#883](https://github.com/getsentry/symbolic/pull/883))
+
 ## 12.12.3
 
 **Fixes**

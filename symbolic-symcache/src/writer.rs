@@ -188,8 +188,7 @@ impl<'a> SymCacheConverter<'a> {
         let mut inlinee_ranges = Vec::new();
         for inlinee in &function.inlinees {
             for line in &inlinee.lines {
-                let start = line.address as u32;
-                let end = (line.address + line.size.unwrap_or(1)) as u32;
+                let (start, end) = line_boundaries(line.address, line.size);
                 inlinee_ranges.push(start..end);
             }
         }
@@ -213,8 +212,7 @@ impl<'a> SymCacheConverter<'a> {
 
         // Iterate over the line records.
         while let Some(line) = next_line.take() {
-            let line_range_start = line.address as u32;
-            let line_range_end = (line.address + line.size.unwrap_or(1)) as u32;
+            let (line_range_start, line_range_end) = line_boundaries(line.address, line.size);
 
             // Find the call location for this line.
             while next_call_location.is_some() && next_call_location.unwrap().0 <= line_range_start
@@ -308,16 +306,18 @@ impl<'a> SymCacheConverter<'a> {
             let mut current_address = line_range_start;
             while current_address < line_range_end {
                 // Emit our source location at current_address if current_address is not covered by an inlinee.
-                if next_inline.is_none() || next_inline.as_ref().unwrap().start > current_address {
+                if next_inline
+                    .as_ref()
+                    .is_none_or(|next| next.start > current_address)
+                {
                     // "insert_range"
                     self.ranges.insert(current_address, source_location.clone());
                 }
 
                 // If there is an inlinee range covered by this line record, turn this line into that
                 // call's "call line". Make a `call_location_idx` for it and store it in `callee_call_locations`.
-                if next_inline.is_some() && next_inline.as_ref().unwrap().start < line_range_end {
-                    let inline_range = next_inline.take().unwrap();
-
+                if let Some(inline_range) = next_inline.take_if(|next| next.start < line_range_end)
+                {
                     // "make_call_location"
                     let (call_location_idx, _) =
                         self.call_locations.insert_full(source_location.clone());
@@ -341,8 +341,9 @@ impl<'a> SymCacheConverter<'a> {
             // multiple identical small "call line" records instead of one combined record
             // covering the entire inlinee range. We can't have different "call lines" for a single
             // inlinee range anyway, so it's fine to skip these.
-            while next_line.is_some()
-                && (next_line.as_ref().unwrap().address as u32) < current_address
+            while next_line
+                .as_ref()
+                .is_some_and(|next| (next.address as u32) < current_address)
             {
                 next_line = line_iter.next();
             }
@@ -549,4 +550,41 @@ fn undecorate_win_symbol(name: &str) -> &str {
     }
 
     name
+}
+
+/// Returns the start and end address for a line record, clamped to `u32`.
+fn line_boundaries(address: u64, size: Option<u64>) -> (u32, u32) {
+    let start = address.try_into().unwrap_or(u32::MAX);
+    let end = start.saturating_add(size.unwrap_or(1).try_into().unwrap_or(u32::MAX));
+    (start, end)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Tests that computing a range with a large size naively
+    /// results in an empty range, but using `line_boundaries`
+    /// doesn't.
+    #[test]
+    fn test_large_range() {
+        // Line record values from an actual example
+        let address = 0x11d255;
+        let size = 0xffee9d55;
+
+        let naive_range = {
+            let start = address as u32;
+            let end = (address + size) as u32;
+            start..end
+        };
+
+        assert!(naive_range.is_empty());
+
+        let range = {
+            let (start, end) = line_boundaries(address, Some(size));
+            start..end
+        };
+
+        assert!(!range.is_empty());
+    }
 }
