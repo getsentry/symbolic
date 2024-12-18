@@ -188,9 +188,7 @@ impl<'a> SymCacheConverter<'a> {
         let mut inlinee_ranges = Vec::new();
         for inlinee in &function.inlinees {
             for line in &inlinee.lines {
-                let start = line.address.try_into().unwrap_or(u32::MAX);
-                let end =
-                    start.saturating_add(line.size.unwrap_or(1).try_into().unwrap_or(u32::MAX));
+                let (start, end) = line_boundaries(line.address, line.size);
                 inlinee_ranges.push(start..end);
             }
         }
@@ -214,9 +212,7 @@ impl<'a> SymCacheConverter<'a> {
 
         // Iterate over the line records.
         while let Some(line) = next_line.take() {
-            let line_range_start = line.address.try_into().unwrap_or(u32::MAX);
-            let line_range_end = line_range_start
-                .saturating_add(line.size.unwrap_or(1).try_into().unwrap_or(u32::MAX));
+            let (line_range_start, line_range_end) = line_boundaries(line.address, line.size);
 
             // Find the call location for this line.
             while next_call_location.is_some() && next_call_location.unwrap().0 <= line_range_start
@@ -554,4 +550,41 @@ fn undecorate_win_symbol(name: &str) -> &str {
     }
 
     name
+}
+
+/// Returns the start and end address for a line record, clamped to `u32`.
+fn line_boundaries(address: u64, size: Option<u64>) -> (u32, u32) {
+    let start = address.try_into().unwrap_or(u32::MAX);
+    let end = start.saturating_add(size.unwrap_or(1).try_into().unwrap_or(u32::MAX));
+    (start, end)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Tests that computing a range with a large size naively
+    /// results in an empty range, but using `line_boundaries`
+    /// doesn't.
+    #[test]
+    fn test_large_range() {
+        // Line record values from an actual example
+        let address = 0x11d255;
+        let size = 0xffee9d55;
+
+        let naive_range = {
+            let start = address as u32;
+            let end = (address + size) as u32;
+            start..end
+        };
+
+        assert!(naive_range.is_empty());
+
+        let range = {
+            let (start, end) = line_boundaries(address, Some(size));
+            start..end
+        };
+
+        assert!(!range.is_empty());
+    }
 }
