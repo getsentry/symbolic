@@ -188,8 +188,9 @@ impl<'a> SymCacheConverter<'a> {
         let mut inlinee_ranges = Vec::new();
         for inlinee in &function.inlinees {
             for line in &inlinee.lines {
-                let start = line.address as u32;
-                let end = start.saturating_add(line.size.unwrap_or(1) as u32);
+                let start = line.address.try_into().unwrap_or(u32::MAX);
+                let end =
+                    start.saturating_add(line.size.unwrap_or(1).try_into().unwrap_or(u32::MAX));
                 inlinee_ranges.push(start..end);
             }
         }
@@ -213,8 +214,9 @@ impl<'a> SymCacheConverter<'a> {
 
         // Iterate over the line records.
         while let Some(line) = next_line.take() {
-            let line_range_start = line.address as u32;
-            let line_range_end = line_range_start.saturating_add(line.size.unwrap_or(1) as u32);
+            let line_range_start = line.address.try_into().unwrap_or(u32::MAX);
+            let line_range_end = line_range_start
+                .saturating_add(line.size.unwrap_or(1).try_into().unwrap_or(u32::MAX));
 
             // Find the call location for this line.
             while next_call_location.is_some() && next_call_location.unwrap().0 <= line_range_start
