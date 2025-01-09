@@ -10,6 +10,7 @@ SWIFT_PATH = "swift"
 DEMANGLING_PATH = "lib/Demangling"
 WORKSPACE_INCLUDES = [
     'llvm-project/llvm/include',
+    'llbuild/include',
     'build/Ninja-DebugAssert/llvm-macosx-x86_64/include',
     'build/Ninja-DebugAssert/swift-macosx-x86_64/include',
     'swift/include',

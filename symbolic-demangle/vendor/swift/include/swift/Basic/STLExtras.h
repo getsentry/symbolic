@@ -14,11 +14,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef SWIFT_BASIC_INTERLEAVE_H
-#define SWIFT_BASIC_INTERLEAVE_H
+#ifndef SWIFT_BASIC_STLEXTRAS_H
+#define SWIFT_BASIC_STLEXTRAS_H
 
-#include "swift/Basic/LLVM.h"
-#include "llvm/ADT/Optional.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/Casting.h"
 #include <algorithm>
@@ -26,6 +24,7 @@
 #include <functional>
 #include <iterator>
 #include <numeric>
+#include <optional>
 #include <type_traits>
 #include <unordered_set>
 
@@ -405,7 +404,7 @@ class OptionalTransformIterator {
       typename std::iterator_traits<Iterator>::reference;
 
   using ResultReference =
-      typename std::result_of<OptionalTransform(UnderlyingReference)>::type;
+      typename std::invoke_result<OptionalTransform, UnderlyingReference>::type;
 
 public:
   /// Used to indicate when the current iterator has already been
@@ -527,20 +526,20 @@ template<typename Subclass>
 struct DowncastAsOptional {
   template <typename Superclass>
   auto operator()(Superclass &value) const
-      -> llvm::Optional<decltype(llvm::cast<Subclass>(value))> {
+      -> std::optional<decltype(llvm::cast<Subclass>(value))> {
     if (auto result = llvm::dyn_cast<Subclass>(value))
       return result;
 
-    return None;
+    return std::nullopt;
   }
 
   template <typename Superclass>
   auto operator()(const Superclass &value) const
-      -> llvm::Optional<decltype(llvm::cast<Subclass>(value))> {
+      -> std::optional<decltype(llvm::cast<Subclass>(value))> {
     if (auto result = llvm::dyn_cast<Subclass>(value))
       return result;
 
-    return None;
+    return std::nullopt;
   }
 };
 
@@ -769,6 +768,31 @@ erase_if(std::unordered_set<Key, Hash, KeyEqual, Alloc> &c, Pred pred) {
   return startingSize - c.size();
 }
 
+/// Call \c vector.emplace_back with each of the other arguments
+/// to this function, in order.  Constructing an intermediate
+/// \c std::initializer_list can be inefficient; more problematically,
+/// types such as \c std::vector copy out of the \c initializer_list
+/// instead of move.
+template <class VectorType, class ValueType, class... ValueTypes>
+void emplace_back_all(VectorType &vector, ValueType &&value,
+                      ValueTypes &&...values) {
+  vector.emplace_back(std::forward<ValueType>(value));
+  emplace_back_all(vector, std::forward<ValueTypes>(values)...);
+}
+template <class VectorType>
+void emplace_back_all(VectorType &vector) {}
+
+/// Apply a function to the value if present; otherwise return None.
+template <typename OptionalElement, typename Function>
+auto transform(const std::optional<OptionalElement> &value,
+               const Function &operation)
+    -> std::optional<decltype(operation(*value))> {
+
+  if (value) {
+    return operation(*value);
+  }
+  return std::nullopt;
+}
 } // end namespace swift
 
-#endif // SWIFT_BASIC_INTERLEAVE_H
+#endif // SWIFT_BASIC_STLEXTRAS_H
