@@ -291,5 +291,9 @@ fn test_demangle_swift_no_args() {
 
         // Swift 5.5.1
         "$s10Speediness17NetworkQualityCLIO3run10sequentialAC6ResultVSb_tYaKFZTf4nd_nTQ0_" => "(1) await resume partial function for specialized static NetworkQualityCLI.run",
+
+        // Swift 6.0.3
+        "ss27withTaskCancellationHandler9operation8onCancel9isolationxxyYaKXE_yyYbXEScA_pSgYitYaKlFTwb" => "Swift.withTaskCancellationHandler<A>(operation: () async throws -> A, onCancel: @Sendable () -> (), isolation: isolated Swift.Actor?) async throws -> A
+"
     });
 }

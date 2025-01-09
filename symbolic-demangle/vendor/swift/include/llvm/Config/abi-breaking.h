@@ -1,9 +1,9 @@
 /*===------- llvm/Config/abi-breaking.h - llvm configuration -------*- C -*-===*/
 /*                                                                            */
-/* Part of the LLVM Project, under the Apache License v2.0 with LLVM          */
-/* Exceptions.                                                                */
-/* See https://llvm.org/LICENSE.txt for license information.                  */
-/* SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception                    */
+/*                     The LLVM Compiler Infrastructure                       */
+/*                                                                            */
+/* This file is distributed under the University of Illinois Open Source      */
+/* License. See LICENSE.TXT for details.                                      */
 /*                                                                            */
 /*===----------------------------------------------------------------------===*/
 
@@ -13,14 +13,14 @@
 #define LLVM_ABI_BREAKING_CHECKS_H
 
 /* Define to enable checks that alter the LLVM C++ ABI */
-#define LLVM_ENABLE_ABI_BREAKING_CHECKS 1
+#define LLVM_ENABLE_ABI_BREAKING_CHECKS 0
 
 /* Define to enable reverse iteration of unordered llvm containers */
 #define LLVM_ENABLE_REVERSE_ITERATION 0
 
 /* Allow selectively disabling link-time mismatch checking so that header-only
    ADT content from LLVM can be used without linking libSupport. */
-#if !defined(LLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING) || !LLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING
+#if !LLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING
 
 // ABI_BREAKING_CHECKS protection: provides link-time failure when clients build
 // mismatch with LLVM
@@ -34,27 +34,15 @@
 #elif defined(_WIN32) || defined(__CYGWIN__) // Win32 w/o #pragma detect_mismatch
 // FIXME: Implement checks without weak.
 #elif defined(__cplusplus)
-#if !(defined(_AIX) && defined(__GNUC__) && !defined(__clang__))
-#define LLVM_HIDDEN_VISIBILITY __attribute__ ((visibility("hidden")))
-#else
-// GCC on AIX does not support visibility attributes. Symbols are not
-// exported by default on AIX.
-#define LLVM_HIDDEN_VISIBILITY
-#endif
 namespace llvm {
 #if LLVM_ENABLE_ABI_BREAKING_CHECKS
 extern int EnableABIBreakingChecks;
-LLVM_HIDDEN_VISIBILITY
-__attribute__((weak)) int *VerifyEnableABIBreakingChecks =
-    &EnableABIBreakingChecks;
+__attribute__((weak, visibility ("hidden"))) int *VerifyEnableABIBreakingChecks = &EnableABIBreakingChecks;
 #else
 extern int DisableABIBreakingChecks;
-LLVM_HIDDEN_VISIBILITY
-__attribute__((weak)) int *VerifyDisableABIBreakingChecks =
-    &DisableABIBreakingChecks;
+__attribute__((weak, visibility ("hidden"))) int *VerifyDisableABIBreakingChecks = &DisableABIBreakingChecks;
 #endif
 }
-#undef LLVM_HIDDEN_VISIBILITY
 #endif // _MSC_VER
 
 #endif // LLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING
