@@ -1,9 +1,8 @@
 # Changelog
 
-## Unreleased
+## 12.13.1
 
 - Fixed a compilation issue with older GCC compilers. ([#886](https://github.com/getsentry/symbolic/pull/886))
-
 
 ## 12.13.0
 
