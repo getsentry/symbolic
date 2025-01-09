@@ -19,9 +19,9 @@ fn main() {
             ])
             .flag_if_supported("-std=c++17")
             .flag_if_supported("-mmacosx-version-min=11.0.0")
+            .flag_if_supported("-Wno-changes-meaning")
             .flag("-DLLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING=1")
             .flag("-DSWIFT_STDLIB_HAS_TYPE_PRINTING=1")
-            .flag("-Wchanges-meaning")
             .warnings(false)
             .include("vendor/swift/include")
             .compile("swiftdemangle");
