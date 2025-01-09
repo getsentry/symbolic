@@ -1,8 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Fixed a compilation issue with older GCC compilers. ([#886](https://github.com/getsentry/symbolic/pull/886))
+
+
 ## 12.13.0
 
-- Update libswift demangle to v6.0.3 ([#885](https://github.com/getsentry/symbolic/pull/885))
+- Update libswift demangle to v6.0.3. ([#885](https://github.com/getsentry/symbolic/pull/885))
 
 ## 12.12.4
 
