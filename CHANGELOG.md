@@ -2,6 +2,10 @@
 
 ## 12.13.2
 
+**Improvements**
+
+- Check UTF-8 validity memory efficiently ([#890](https://github.com/getsentry/symbolic/pull/890))
+
 **Fixes**
 
 - Fixed GHA-based Windows builds ([#891](https://github.com/getsentry/symbolic/pull/891)).

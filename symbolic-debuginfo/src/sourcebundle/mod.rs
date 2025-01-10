@@ -42,15 +42,17 @@
 //! bundle a file entry has a `url` and might carry `headers` or individual debug IDs
 //! per source file.
 
+mod utf8_reader;
+
 use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::error::Error;
-use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufWriter, Read, Seek, Write};
+use std::io::{BufReader, BufWriter, ErrorKind, Read, Seek, Write};
 use std::path::Path;
 use std::sync::Arc;
+use std::{fmt, io};
 
 use parking_lot::Mutex;
 use regex::Regex;
@@ -60,6 +62,7 @@ use zip::{write::SimpleFileOptions, ZipWriter};
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, SourceLinkMappings};
 
+use self::utf8_reader::Utf8Reader;
 use crate::base::*;
 use crate::js::{
     discover_debug_id, discover_sourcemap_embedded_debug_id, discover_sourcemaps_location,
@@ -1217,18 +1220,14 @@ where
     pub fn add_file<S, R>(
         &mut self,
         path: S,
-        mut file: R,
+        file: R,
         info: SourceFileInfo,
     ) -> Result<(), SourceBundleError>
     where
         S: AsRef<str>,
         R: Read,
     {
-        let mut buf = String::new();
-
-        if let Err(e) = file.read_to_string(&mut buf) {
-            return Err(SourceBundleError::new(SourceBundleErrorKind::ReadFailed, e));
-        }
+        let mut file_reader = Utf8Reader::new(file);
 
         let full_path = self.file_path(path.as_ref());
         let unique_path = self.unique_path(full_path);
@@ -1236,12 +1235,23 @@ where
         self.writer
             .start_file(unique_path.clone(), default_file_options())
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
-        self.writer
-            .write_all(buf.as_bytes())
-            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
 
-        self.manifest.files.insert(unique_path, info);
-        Ok(())
+        if let Err(e) = io::copy(&mut file_reader, &mut self.writer) {
+            self.writer
+                .abort_file()
+                .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
+
+            // ErrorKind::InvalidData is returned by Utf8Reader when the file is not valid UTF-8.
+            let error_kind = match e.kind() {
+                ErrorKind::InvalidData => SourceBundleErrorKind::ReadFailed,
+                _ => SourceBundleErrorKind::WriteFailed,
+            };
+
+            Err(SourceBundleError::new(error_kind, e))
+        } else {
+            self.manifest.files.insert(unique_path, info);
+            Ok(())
+        }
     }
 
     /// Calls add_file, and handles any ReadFailed errors by calling the skipped_file_callback.
