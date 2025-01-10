@@ -906,7 +906,7 @@ impl<'s> Unit<'s> {
             if symbol.ends_scope() {
                 depth -= 1;
 
-                if proc_offsets.last().map_or(false, |&(d, _)| d >= depth) {
+                if proc_offsets.last().is_some_and(|&(d, _)| d >= depth) {
                     proc_offsets.pop();
                 }
             }

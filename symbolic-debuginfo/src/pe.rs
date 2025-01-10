@@ -248,7 +248,7 @@ impl<'data> PeObject<'data> {
 
     /// Determines whether this object contains stack unwinding information.
     pub fn has_unwind_info(&self) -> bool {
-        !self.is_stub && self.exception_data().map_or(false, |e| !e.is_empty())
+        !self.is_stub && self.exception_data().is_some_and(|e| !e.is_empty())
     }
 
     /// Returns the raw data of the PE file.

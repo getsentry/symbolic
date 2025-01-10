@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix new clippy lints ([#889](https://github.com/getsentry/symbolic/pull/889))
+
 ## 12.13.1
 
 - Fixed a compilation issue with older GCC compilers. ([#886](https://github.com/getsentry/symbolic/pull/886))
@@ -11,28 +15,33 @@
 ## 12.12.4
 
 **Fixes**
+
 - symcache: Fixed a bug related to to inlinee resolution during symcache conversion. ([#883](https://github.com/getsentry/symbolic/pull/883))
 
 ## 12.12.3
 
 **Fixes**
+
 - js: Prefer `"debug_id"` for sourcemap debug IDs. ([#878](https://github.com/getsentry/symbolic/pull/878)).
 
 ## 12.12.2
 
 **Fixes**
+
 - js: Fixed an error when reading debug IDs from sourcemaps with
   both `"debugId"` and `"debug_id"` keys ([#877](https://github.com/getsentry/symbolic/pull/877)).
 
 ## 12.12.1
 
 **Features**:
+
 - feat(js): Sourcemap debug IDs can now be read from the `"debugId"` field in addition to
   `"debug_id"` ([#870](https://github.com/getsentry/symbolic/pull/870)).
 
 ## 12.12.0
 
 **Fixes**
+
 - Unship "Support for DWARFv5 embedded source code extension ([#849](https://github.com/getsentry/symbolic/pull/849))".
   Unfortunately the check for whether an elf file contains embedded sources is prohibitively expensive in terms of memory.
   ([#870](https://github.com/getsentry/symbolic/pull/870))
@@ -40,6 +49,7 @@
 ## 12.11.1
 
 **Fixes**
+
 - symbolic-cfi: Skip invalid FDEs when converting DWARF to Breakpad CFI ([#868](https://github.com/getsentry/symbolic/pull/868))
 
 **Internal**:

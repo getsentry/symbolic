@@ -76,7 +76,7 @@ impl<'data> ElfObject<'data> {
     /// Tests whether the buffer could contain an ELF object.
     pub fn test(data: &[u8]) -> bool {
         data.get(0..elf::header::SELFMAG)
-            .map_or(false, |data| data == elf::header::ELFMAG)
+            .is_some_and(|data| data == elf::header::ELFMAG)
     }
 
     // Pulled from https://github.com/m4b/goblin/blob/master/src/elf/mod.rs#L393-L424 as it
@@ -891,7 +891,7 @@ impl<'data> Iterator for ElfSymbolIterator<'data, '_> {
                 };
 
                 // We are only interested in symbols pointing into sections with executable flag.
-                if !section.map_or(false, |header| header.is_executable()) {
+                if !section.is_some_and(|header| header.is_executable()) {
                     continue;
                 }
 

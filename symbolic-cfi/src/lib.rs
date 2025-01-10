@@ -794,7 +794,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                 // row.
                 let mut ra_written = false;
                 for &(register, ref rule) in row.registers() {
-                    if !rule_cache.get(&register).map_or(false, |c| c == &rule) {
+                    if rule_cache.get(&register) != Some(&rule) {
                         rule_cache.insert(register, rule);
                         if register == ra {
                             ra_written = true;

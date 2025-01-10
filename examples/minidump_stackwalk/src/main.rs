@@ -90,7 +90,7 @@ impl<'a> LocalSymbolProvider<'a> {
         let mut object_db = ObjectDatabase::default();
         for entry in WalkDir::new(path).into_iter().filter_map(Result::ok) {
             // Folders will be recursed into automatically
-            if !entry.metadata().map_or(false, |md| md.is_file()) {
+            if !entry.metadata().is_ok_and(|md| md.is_file()) {
                 continue;
             }
 
@@ -486,10 +486,7 @@ impl fmt::Display for Report<'_> {
         };
 
         for (ti, thread) in self.process_state.threads.iter().enumerate() {
-            let crashed = self
-                .process_state
-                .requesting_thread
-                .map_or(false, |i| ti == i);
+            let crashed = self.process_state.requesting_thread == Some(ti);
 
             if self.options.crashed_only && !crashed {
                 continue;

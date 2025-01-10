@@ -362,9 +362,9 @@ impl<'data> PortablePdb<'data> {
 
     /// Returns true if this portable pdb file contains method debug information.
     pub fn has_debug_info(&self) -> bool {
-        self.metadata_stream.as_ref().map_or(false, |md_stream| {
-            md_stream[TableType::MethodDebugInformation].rows > 0
-        })
+        self.metadata_stream
+            .as_ref()
+            .is_some_and(|md_stream| md_stream[TableType::MethodDebugInformation].rows > 0)
     }
 
     /// Get source file referenced by this PDB.
