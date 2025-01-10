@@ -66,8 +66,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - run: cargo test --workspace --all-features --all-targets
-      - run: cargo test --workspace --all-features --doc
+      - run: cargo test --workspace --all-features --all-targets --locked
+      - run: cargo test --workspace --all-features --doc --locked
 
   test-python:
     strategy:
