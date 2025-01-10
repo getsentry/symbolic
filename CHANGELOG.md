@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fix new clippy lints ([#889](https://github.com/getsentry/symbolic/pull/889))
+- Run `cargo update` ([#888](https://github.com/getsentry/symbolic/pull/888))
 
 ## 12.13.1
 
