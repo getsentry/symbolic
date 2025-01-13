@@ -18,6 +18,7 @@ fn main() {
                 "vendor/swift/lib/Demangling/Remangler.cpp",
             ])
             .flag_if_supported("-std=c++17")
+            .flag_if_supported("/std:c++17")
             .flag_if_supported("-fpermissive")
             .flag_if_supported("-Wno-changes-meaning")
             .flag("-DLLVM_DISABLE_ABI_BREAKING_CHECKS_ENFORCING=1")
