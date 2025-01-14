@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-unreal"
-version = "12.13.1"
+version = "12.13.2"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
