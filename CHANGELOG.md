@@ -2,16 +2,21 @@
 
 ## Unreleased
 
-- Fix new clippy lints ([#889](https://github.com/getsentry/symbolic/pull/889))
-- Run `cargo update` ([#888](https://github.com/getsentry/symbolic/pull/888))
+**Fixes**
+
+- Fixed GHA-based Windows builds ([#891](https://github.com/getsentry/symbolic/pull/891)).
 
 ## 12.13.1
+
+**Fixes**
 
 - Fixed a compilation issue with older GCC compilers. ([#886](https://github.com/getsentry/symbolic/pull/886))
 
 ## 12.13.0
 
-- Update libswift demangle to v6.0.3. ([#885](https://github.com/getsentry/symbolic/pull/885))
+**Features**
+
+- Updated libswift demangle to v6.0.3. ([#885](https://github.com/getsentry/symbolic/pull/885))
 
 ## 12.12.4
 
@@ -34,7 +39,7 @@
 
 ## 12.12.1
 
-**Features**:
+**Features**
 
 - feat(js): Sourcemap debug IDs can now be read from the `"debugId"` field in addition to
   `"debug_id"` ([#870](https://github.com/getsentry/symbolic/pull/870)).
