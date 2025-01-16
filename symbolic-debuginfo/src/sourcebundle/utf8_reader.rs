@@ -209,6 +209,9 @@ where
 mod tests {
     use super::*;
 
+    use proptest::prelude::*;
+
+    use core::str;
     use std::io::Cursor;
 
     #[test]
@@ -279,5 +282,25 @@ mod tests {
         reader
             .read_to_end(&mut vec![])
             .expect_err("read should have errored");
+    }
+
+    proptest! {
+        #[test]
+        fn read_arbitrary_string(s in any::<String>()) {
+            let mut buf = vec![];
+            let mut reader = Utf8Reader::new(Cursor::new(&s));
+
+            reader.read_to_end(&mut buf).unwrap();
+            assert_eq!(str::from_utf8(&buf).unwrap(), s);
+        }
+
+        #[test]
+        fn dont_read_arbitrary_nonstring(s in any::<Vec<u8>>()) {
+            prop_assume!(str::from_utf8(&s).is_err());
+            let mut buf = vec![];
+            let mut reader = Utf8Reader::new(Cursor::new(&s));
+
+            reader.read_to_end(&mut buf).unwrap_err();
+        }
     }
 }
