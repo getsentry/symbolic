@@ -1236,21 +1236,24 @@ where
             .start_file(unique_path.clone(), default_file_options())
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
 
-        if let Err(e) = io::copy(&mut file_reader, &mut self.writer) {
-            self.writer
-                .abort_file()
-                .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
+        match io::copy(&mut file_reader, &mut self.writer) {
+            Err(e) => {
+                self.writer
+                    .abort_file()
+                    .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
 
-            // ErrorKind::InvalidData is returned by Utf8Reader when the file is not valid UTF-8.
-            let error_kind = match e.kind() {
-                ErrorKind::InvalidData => SourceBundleErrorKind::ReadFailed,
-                _ => SourceBundleErrorKind::WriteFailed,
-            };
+                // ErrorKind::InvalidData is returned by Utf8Reader when the file is not valid UTF-8.
+                let error_kind = match e.kind() {
+                    ErrorKind::InvalidData => SourceBundleErrorKind::ReadFailed,
+                    _ => SourceBundleErrorKind::WriteFailed,
+                };
 
-            Err(SourceBundleError::new(error_kind, e))
-        } else {
-            self.manifest.files.insert(unique_path, info);
-            Ok(())
+                Err(SourceBundleError::new(error_kind, e))
+            }
+            Ok(_) => {
+                self.manifest.files.insert(unique_path, info);
+                Ok(())
+            }
         }
     }
 
