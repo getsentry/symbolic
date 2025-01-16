@@ -62,9 +62,10 @@ impl<R> Utf8Reader<R>
 where
     R: Read,
 {
-    /// Reads bytes from the inner reader into the given buffer, if needed, filling self.buffer
-    /// with the remaining bytes of the UTF-8 sequence at the end of the buffer, which did not fit
-    /// in the read.
+    /// Reads bytes from the inner reader into the given buffer.
+    ///
+    /// If a UTF-8 sequence only partially fits into the buffer, the remaining
+    /// bytes are written to `self.buffer`.
     fn read_from_inner(&mut self, buf: &mut [u8]) -> Result<usize> {
         let read_from_inner = self.inner.read(buf)?;
         let read_portion = &buf[..read_from_inner];
