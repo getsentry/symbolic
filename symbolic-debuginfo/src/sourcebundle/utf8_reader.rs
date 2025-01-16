@@ -1,10 +1,12 @@
 //! UTF-8 reader used by the sourcebundle module to read files.
 
-use std::io::{BufRead, Error, ErrorKind, Read, Result};
+use std::cmp;
+use std::io::{Error, ErrorKind, Read, Result};
+use std::str;
+
 use thiserror::Error;
 
 const MAX_UTF8_SEQUENCE_SIZE: usize = 4;
-const MAX_BUFFER_SIZE: usize = 8 * 1024;
 
 #[derive(Debug, Error)]
 #[error("Invalid UTF-8 sequence")]
@@ -13,12 +15,17 @@ pub(crate) struct UTF8ReaderError;
 pub struct Utf8Reader<R> {
     inner: R,
 
-    /// buffer_array[..buffer_end] always contains a valid UTF-8 sequence. It is possible that
-    /// buffer_array[buffer_start..buffer_end] does not contain a valid UTF-8 sequence, if
-    /// buffer_start is in the middle of a multi-byte UTF-8 character, which would happen if that
-    /// character has only partially been read.
-    buffer_array: Box<[u8; MAX_BUFFER_SIZE]>,
+    /// A buffer of `MAX_UTF8_SEQUENCE_SIZE` bytes, which we use when the end of a read is not a
+    /// valid UTF-8 sequence. We read into this buffer until we have a valid UTF-8 sequence, or
+    /// the reader is exhausted, or the buffer is full. Assuming we get a valid UTF-8 sequence,
+    /// we then on next read read from this buffer.
+    buffer: [u8; MAX_UTF8_SEQUENCE_SIZE],
+
+    /// The index of the first byte in the buffer that has not been read.
     buffer_start: usize,
+
+    /// The index of the last byte in the buffer that is part of the UTF-8 sequence. We only read
+    /// up to this index, bytes after this index are discarded.
     buffer_end: usize,
 }
 
@@ -26,97 +33,92 @@ impl<R> Utf8Reader<R> {
     pub fn new(inner: R) -> Self {
         Self {
             inner,
-            buffer_array: Box::new([0; MAX_BUFFER_SIZE]),
+            buffer: [0; MAX_UTF8_SEQUENCE_SIZE],
             buffer_start: 0,
             buffer_end: 0,
         }
     }
 
-    fn buffer(&self) -> &[u8] {
-        &self.buffer_array[self.buffer_start..self.buffer_end]
+    /// The slice of the buffer that should be read next.
+    fn buffer_to_read(&self) -> &[u8] {
+        &self.buffer[self.buffer_start..self.buffer_end]
+    }
+
+    /// Advances the buffer start index by the given amount.
+    fn advance(&mut self, amt: usize) {
+        self.buffer_start += amt;
+    }
+
+    /// Reads bytes from the buffer into the given buffer.
+    fn read_from_buffer(&mut self, buf: &mut [u8]) -> Result<usize> {
+        let bytes_copied = slice_copy(buf, self.buffer_to_read());
+        self.advance(bytes_copied);
+
+        Ok(bytes_copied)
     }
 }
 
-impl<R> Utf8Reader<R> where R: Read {}
+impl<R> Utf8Reader<R>
+where
+    R: Read,
+{
+    /// Reads bytes from the inner reader into the given buffer, if needed, filling self.buffer
+    /// with the remaining bytes of the UTF-8 sequence at the end of the buffer, which did not fit
+    /// in the read.
+    fn read_from_inner(&mut self, buf: &mut [u8]) -> Result<usize> {
+        let read_from_inner = self.inner.read(buf)?;
+        let read_portion = &buf[..read_from_inner];
+
+        let invalid_portion = ending_incomplete_utf8_sequence(read_portion)?;
+
+        slice_copy(&mut self.buffer, invalid_portion);
+        self.read_into_buffer_until_utf8(invalid_portion.len())?;
+
+        Ok(read_from_inner)
+    }
+
+    /// Reads bytes from the inner reader into self.buffer until the buffer contains a valid UTF-8
+    /// sequence.
+    ///
+    /// Before calling this method, self.buffer[..start_index] should contain the bytes that are
+    /// part of the incomplete UTF-8 sequence that we are trying to complete (or, it should be
+    /// empty, in which case, this function is a no-op)
+    ///
+    /// Then, we read one byte at a time from the inner reader into self.buffer, until we have a
+    /// valid UTF-8 sequence.
+    ///
+    /// Lastly, we set self.buffer_start to start_index (so we don't reread the bytes that started
+    /// the incomplete UTF-8 sequence) and self.buffer_end to the index of the last byte in the
+    /// buffer that is part of the UTF-8 sequence.
+    ///
+    /// The next read from the Utf8Reader will read from
+    /// self.buffer[self.buffer_start..self.buffer_end].
+    fn read_into_buffer_until_utf8(&mut self, start_index: usize) -> Result<()> {
+        let bytes_until_utf8 = read_until_utf8(&mut self.inner, &mut self.buffer, start_index)?;
+
+        self.buffer_start = start_index;
+        self.buffer_end = bytes_until_utf8;
+
+        Ok(())
+    }
+}
 
 impl<R> Read for Utf8Reader<R>
 where
     R: Read,
 {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        if self.buffer().is_empty() && buf.len() > MAX_BUFFER_SIZE {
-            // If buf is bigger than our internal buffer, and there is nothing left in
-            // our internal buffer, just read directly into buf.
-            return read_utf8(&mut self.inner, buf);
-        }
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        let read_from_buffer = self.read_from_buffer(buf)?;
 
-        self.fill_buf()?;
+        // self.read_from_inner overwrites self.buffer, so we can only call it if we have read
+        // everything from the buffer.
+        let read_from_inner = match self.buffer_to_read() {
+            [] => self.read_from_inner(&mut buf[read_from_buffer..])?,
+            _ => 0,
+        };
 
-        let bytes_to_copy = std::cmp::min(buf.len(), self.buffer().len());
-        buf[..bytes_to_copy].copy_from_slice(&self.buffer()[..bytes_to_copy]);
-        self.consume(bytes_to_copy);
-
-        Ok(bytes_to_copy)
+        Ok(read_from_buffer + read_from_inner)
     }
-}
-
-impl<R> BufRead for Utf8Reader<R>
-where
-    R: Read,
-{
-    fn fill_buf(&mut self) -> std::io::Result<&[u8]> {
-        if !self.buffer().is_empty() {
-            return Ok(self.buffer());
-        }
-
-        let bytes_read = read_utf8(&mut self.inner, &mut self.buffer_array[..])?;
-        self.buffer_start = 0;
-        self.buffer_end = bytes_read;
-
-        Ok(self.buffer())
-    }
-
-    fn consume(&mut self, amt: usize) {
-        self.buffer_start += amt;
-    }
-}
-
-/// Reads a UTF-8 sequence from the inner reader into the buffer, returning the number
-/// of bytes read. Errors if this is not possible.
-///
-/// The function guarantees that it will return an Ok variant with a positive
-/// number of bytes read if it is possible to read a valid UTF-8 sequence from the inner
-/// reader. The function also guarantees that all of the bytes read from the inner reader will
-/// be stored in in the buffer, at indices up to the value returned by the function (in other
-/// words, no bytes are lost).
-///
-/// Panics if the buffer is not at least `MAX_UTF8_SEQUENCE_SIZE` bytes long.
-fn read_utf8(reader: &mut impl Read, buf: &mut [u8]) -> Result<usize> {
-    if buf.len() < MAX_UTF8_SEQUENCE_SIZE {
-        panic!("Buffer needs to be at least {MAX_UTF8_SEQUENCE_SIZE} bytes long");
-    }
-
-    // We need to leave at least three bytes in the buffer in case the first read
-    // ends in the middle of a UTF-8 character. In the worst case, we end at the first
-    // byte of a 4-byte UTF-8 character, and we need to read 3 more bytes to get a
-    // valid sequence.
-    let bytes_to_read = buf.len() - MAX_UTF8_SEQUENCE_SIZE + 1;
-    let read_buf = &mut buf[..bytes_to_read];
-
-    let bytes_read = reader.read(read_buf)?;
-    let read_portion = &buf[..bytes_read];
-
-    let valid_up_to = utf8_up_to(read_portion);
-    let invalid_portion_len = read_portion.len() - valid_up_to;
-
-    if invalid_portion_len >= MAX_UTF8_SEQUENCE_SIZE {
-        return Err(Error::new(ErrorKind::InvalidData, UTF8ReaderError));
-    }
-
-    // read_until_utf8 will not read anything if the buffer is empty,
-    // since an empty buffer is a valid UTF-8 sequence.
-    let bytes_until_utf8 = read_until_utf8(reader, &mut buf[valid_up_to..], invalid_portion_len)?;
-    Ok(valid_up_to + bytes_until_utf8)
 }
 
 /// Reads a single byte at a time from the inner reader into the buffer, starting from
@@ -139,16 +141,12 @@ fn read_until_utf8(
     buffer: &mut [u8],
     mut current_index: usize,
 ) -> Result<usize> {
-    while std::str::from_utf8(&buffer[..current_index]).is_err() {
-        if current_index >= MAX_UTF8_SEQUENCE_SIZE {
-            // We already have 4 bytes in the buffer (maximum UTF-8 sequence size)
-            // so we cannot form a valid UTF-8 sequence by reading more bytes.
-            return Err(Error::new(ErrorKind::InvalidData, UTF8ReaderError));
-        }
-
-        if reader.read(&mut buffer[current_index..current_index + 1])? == 0 {
-            // Stream has been exhausted without finding
-            // a valid UTF-8 sequence.
+    while str::from_utf8(&buffer[..current_index]).is_err() {
+        if current_index >= MAX_UTF8_SEQUENCE_SIZE
+            || reader.read(&mut buffer[current_index..current_index + 1])? == 0
+        {
+            // We already have 4 bytes in the buffer (maximum UTF-8 sequence size), or the stream
+            // has been exhausted without finding a valid UTF-8 sequence.
             return Err(Error::new(ErrorKind::InvalidData, UTF8ReaderError));
         }
 
@@ -162,10 +160,48 @@ fn read_until_utf8(
 /// in the given bytes. If the sequence is valid, returns the
 /// length of the bytes.
 fn utf8_up_to(bytes: &[u8]) -> usize {
-    match std::str::from_utf8(bytes) {
+    match str::from_utf8(bytes) {
         Ok(_) => bytes.len(),
         Err(e) => e.valid_up_to(),
     }
+}
+
+/// Given a byte slice, determines if the slice ends in what might be an incomplete UTF-8 sequence,
+/// returning the incomplete sequence if so.
+///
+/// The following return values are possible:
+///   - Ok([]) if the byte slice is valid UTF-8, in its entirety.
+///   - Ok(incomplete_sequence) if the byte slice is valid up to the `incomplete_sequence` slice
+///     returned by this function. `incomplete_sequence` is always a slice of at most 3 bytes
+///     occurring at the end of the input slice. In this case, it might be possible to make the
+///     input slice a valid UTF-8 sequence by appending bytes to the input slice.
+///   - Err(e) if the first UTF-8 violation in the input slice occurs more than 3 bytes from the
+///     end of the input slice. In this case, it is definitely not possible to make the sequence
+///     valid by appending bytes to the input slice.
+fn ending_incomplete_utf8_sequence(bytes: &[u8]) -> Result<&[u8]> {
+    let valid_up_to = utf8_up_to(bytes);
+    let invalid_portion = &bytes[valid_up_to..];
+
+    if invalid_portion.len() >= MAX_UTF8_SEQUENCE_SIZE {
+        Err(Error::new(ErrorKind::InvalidData, UTF8ReaderError))
+    } else {
+        Ok(invalid_portion)
+    }
+}
+
+/// Copies as many elements as possible (i.e. the smaller of the two slice lengths) from the
+/// beginning of the source slice to the beginning of the destination slice, overwriting anything
+/// already in the destination slice.
+///
+/// Returns the number of elements copied.
+fn slice_copy<T>(dst: &mut [T], src: &[T]) -> usize
+where
+    T: Copy,
+{
+    let elements_to_copy = cmp::min(dst.len(), src.len());
+    dst[..elements_to_copy].copy_from_slice(&src[..elements_to_copy]);
+
+    elements_to_copy
 }
 
 #[cfg(test)]
@@ -208,41 +244,6 @@ mod tests {
     }
 
     #[test]
-    fn multibyte_character_at_end_of_buffer() {
-        // Having a multibyte character at the end of the buffer will cause us to hit
-        // read_until_utf8.
-        let mut read_buffer = vec![b'a'; MAX_BUFFER_SIZE - MAX_UTF8_SEQUENCE_SIZE];
-        read_buffer.extend("🙂".as_bytes());
-
-        let mut reader = Utf8Reader::new(Cursor::new(&read_buffer));
-
-        let mut buf = [0; MAX_BUFFER_SIZE];
-        let bytes_read = reader.read(&mut buf).expect("read errored");
-
-        // We expect the buffer to be filled with the read bytes. We first read all but the last
-        // three bytes. But, we will need to fill these three bytes to get a valid UTF-8 sequence,
-        // since "🙂" is a 4-byte UTF-8 sequence.
-        assert_eq!(bytes_read, buf.len(), "buffer not filled");
-        assert_eq!(&buf[..], read_buffer);
-    }
-
-    #[test]
-    fn multibyte_character_at_end_of_big_read() {
-        // Big reads bypass buffering, so basically, we retest multibyte_character_at_end_of_buffer
-        // for this case.
-        let mut read_buffer = vec![b'a'; MAX_BUFFER_SIZE + 10];
-        read_buffer.extend("🙂".as_bytes());
-
-        let mut reader = Utf8Reader::new(Cursor::new(&read_buffer));
-
-        let mut buf = [0; MAX_BUFFER_SIZE + MAX_UTF8_SEQUENCE_SIZE + 10];
-        let bytes_read = reader.read(&mut buf).expect("read errored");
-
-        assert_eq!(bytes_read, buf.len(), "buffer not filled");
-        assert_eq!(&buf[..], read_buffer);
-    }
-
-    #[test]
     fn small_reads_splitting_sequence() {
         let mut reader = Utf8Reader::new(Cursor::new("🙂".as_bytes()));
 
@@ -277,19 +278,5 @@ mod tests {
         reader
             .read_to_end(&mut vec![])
             .expect_err("read should have errored");
-    }
-
-    #[test]
-    fn invalid_utf8_sequence_at_end_of_reader_and_buffer() {
-        let mut read_buffer = vec![b'a'; MAX_BUFFER_SIZE - MAX_UTF8_SEQUENCE_SIZE];
-
-        // Cutting off the last byte will invalidate the UTF-8 sequence.
-        let invalid_sequence = &"🙂".as_bytes()[..'🙂'.len_utf8() - 1];
-        read_buffer.extend(invalid_sequence);
-
-        let mut reader = Utf8Reader::new(Cursor::new(&read_buffer));
-
-        let mut buf = [0; MAX_BUFFER_SIZE];
-        reader.read(&mut buf).expect_err("read should have errored");
     }
 }
