@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Improvements**
+
+- Check UTF-8 validity memory efficiently ([#890](https://github.com/getsentry/symbolic/pull/890))
+
 ## 12.13.2
 
 **Fixes**

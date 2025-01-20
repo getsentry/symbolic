@@ -115,6 +115,7 @@ zstd = { workspace = true, optional = true }
 [dev-dependencies]
 criterion = { workspace = true }
 insta = { workspace = true }
+proptest = {workspace = true }
 tempfile = { workspace = true }
 similar-asserts = { workspace = true }
 symbolic-testutils = { path = "../symbolic-testutils" }
