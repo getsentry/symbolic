@@ -466,7 +466,7 @@ impl<'data> Dwarf<'data> for MachObject<'data> {
             for section in segment.into_iter() {
                 let (header, data) = section.ok()?;
                 if let Ok(sec) = header.name() {
-                    if sec.starts_with("__") && &sec[2..] == section_name {
+                    if sec.starts_with("__") && map_section_name(&sec[2..]) == section_name {
                         // In some cases, dsymutil leaves sections headers but removes their
                         // data from the file. While the addr and size parameters are still
                         // set, `header.offset` is 0 in that case. We skip them just like the
@@ -490,6 +490,13 @@ impl<'data> Dwarf<'data> for MachObject<'data> {
     }
 }
 
+/// See <https://llvm.org/doxygen/MachOObjectFile_8cpp_source.html#l05341>.
+fn map_section_name(name: &str) -> &str {
+    match name {
+        "debug_str_offs" => "debug_str_offsets",
+        _ => name,
+    }
+}
 /// An iterator over symbols in the MachO file.
 ///
 /// Returned by [`MachObject::symbols`](struct.MachObject.html#method.symbols).
