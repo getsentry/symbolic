@@ -1487,3 +1487,23 @@ impl<'s> Iterator for DwarfFunctionIterator<'s> {
 }
 
 impl std::iter::FusedIterator for DwarfFunctionIterator<'_> {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::macho::MachObject;
+
+    #[cfg(feature = "macho")]
+    #[test]
+    fn test_loads_debug_str_offsets() {
+        // File generated using dsymutil
+
+        let data = std::fs::read("tests/fixtures/helloworld").unwrap();
+
+        let obj = MachObject::parse(&data).unwrap();
+
+        let sections = DwarfSections::from_dwarf(&obj);
+        assert_eq!(sections.debug_str_offsets.data.len(), 48);
+    }
+}
