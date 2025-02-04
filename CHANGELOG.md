@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- Parse `debug_str_offs` section in Mach-O files ([#895](https://github.com/getsentry/symbolic/pull/895))
+
 ## 12.13.3
 
 **Improvements**
