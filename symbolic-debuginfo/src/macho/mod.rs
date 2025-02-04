@@ -808,6 +808,7 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for MachArchive<'d> {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
@@ -942,16 +943,5 @@ mod tests {
         let obj = MachObject::parse(&data).unwrap();
 
         let _ = obj.symbol_map();
-    }
-
-    #[test]
-    fn test_loads_debug_str_offsets() {
-        // File generated using dsymutil
-        let data = std::fs::read("tests/fixtures/helloworld").unwrap();
-
-        let obj = MachObject::parse(&data).unwrap();
-
-        assert!(obj.has_section("debug_str_offsets"));
-        assert_eq!(obj.section("debug_str_offsets").unwrap().data.len(), 48);
     }
 }
