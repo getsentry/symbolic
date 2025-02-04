@@ -36,10 +36,13 @@ jobs:
           # consumed by cargo and setup.py to obtain the target dir
           CARGO_BUILD_TARGET: ${{ matrix.target }}
 
-      - uses: actions/upload-artifact@v3.1.1
+      - uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.sha }}
+          name: artifact-macos-${{ matrix.target }}
           path: py/dist/*
+          if-no-files-found: "error"
+          # since this artifact will be merged, compression is not necessary
+          compression-level: "0"
 
   python-wheel-linux:
     strategy:
@@ -63,10 +66,13 @@ jobs:
         name: Build in Docker (x86_64)
         run: make wheel-manylinux IMAGE=quay.io/pypa/"$MANYLINUX_VERSION"_x86_64
 
-      - uses: actions/upload-artifact@v3.1.1
+      - uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.sha }}
+          name: artifact-linux-${{ matrix.target }}
           path: py/dist/*
+          if-no-files-found: "error"
+          # since this artifact will be merged, compression is not necessary
+          compression-level: "0"
 
   sdist:
     name: Python sdist
@@ -81,7 +87,22 @@ jobs:
 
       - run: make sdist
 
-      - uses: actions/upload-artifact@v3.1.1
+            - uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.sha }}
+          name: artifact-sdist-${{ matrix.target }}
           path: py/dist/*
+          if-no-files-found: "error"
+          # since this artifact will be merged, compression is not necessary
+          compression-level: "0"
+
+  merge:
+    name: Create Release Artifact
+    runs-on: ubuntu-latest
+    needs: [linux, macos, sdist]
+    steps:
+      - uses: actions/upload-artifact/merge@v4
+        with:
+          # Craft expects release assets from github to be a single artifact named after the sha.
+          name: ${{ github.sha }}
+          pattern: artifact-*
+          delete-merged: true
