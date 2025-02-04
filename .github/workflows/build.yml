@@ -68,7 +68,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: artifact-linux-${{ matrix.target }}
+          name: artifact-linux-${{ matrix.build-arch }}
           path: py/dist/*
           if-no-files-found: "error"
           # since this artifact will be merged, compression is not necessary
@@ -87,9 +87,9 @@ jobs:
 
       - run: make sdist
 
-            - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: artifact-sdist-${{ matrix.target }}
+          name: artifact-sdist
           path: py/dist/*
           if-no-files-found: "error"
           # since this artifact will be merged, compression is not necessary
@@ -98,7 +98,7 @@ jobs:
   merge:
     name: Create Release Artifact
     runs-on: ubuntu-latest
-    needs: [linux, macos, sdist]
+    needs: [python-wheel-linux, python-wheel-mac, sdist]
     steps:
       - uses: actions/upload-artifact/merge@v4
         with:
