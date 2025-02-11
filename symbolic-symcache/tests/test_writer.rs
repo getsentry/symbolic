@@ -351,3 +351,25 @@ fn test_trailing_marker() -> Result<(), Error> {
 
     Ok(())
 }
+
+/// Tests that addresses between functions are unmapped. See
+/// <https://github.com/getsentry/symbolic/pull/897>.
+#[test]
+fn test_lookup_between_functions() {
+    let buffer = ByteView::open(fixture(
+        "macos/3CD3E3CC-281E-3AF3-84EB-CDE6D56F0559.dSYM/Contents/Resources/DWARF/CrashLibiOS",
+    ))
+    .unwrap();
+    let object = Object::parse(&buffer).unwrap();
+
+    let mut buffer = Vec::new();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&object).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
+    let symcache = SymCache::parse(&buffer).unwrap();
+    // This address is exactly at the end of the function "-[CRLCrashNXPage desc]",
+    // which starts at 0x8b0c and has size 0x2c. The next function,
+    // "-[CRLCrashStackGuard category]", starts at 0x8b3c.
+    let symbols = symcache.lookup(0x8b38).collect::<Vec<_>>();
+    assert!(symbols.is_empty());
+}
