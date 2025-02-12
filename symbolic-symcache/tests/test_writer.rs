@@ -356,9 +356,10 @@ fn test_trailing_marker() -> Result<(), Error> {
 /// <https://github.com/getsentry/symbolic/pull/897>.
 #[test]
 fn test_lookup_between_functions() {
-    let buffer = ByteView::open(fixture(
-        "macos/3CD3E3CC-281E-3AF3-84EB-CDE6D56F0559.dSYM/Contents/Resources/DWARF/CrashLibiOS",
-    ))
+    // This file is a Python fixture
+    let buffer = ByteView::open(
+        "../py/tests/res/ext/1.4.1/release/dSYMs/3CD3E3CC-281E-3AF3-84EB-CDE6D56F0559.dSYM/Contents/Resources/DWARF/CrashLibiOS",
+    )
     .unwrap();
     let object = Object::parse(&buffer).unwrap();
 
