@@ -10,6 +10,7 @@ use symbolic_debuginfo::{DebugSession, FileFormat, Function, ObjectLike, Symbol}
 use watto::{Pod, StringTable, Writer};
 
 use super::{raw, transform};
+use crate::raw::NO_SOURCE_LOCATION;
 use crate::{Error, ErrorKind};
 
 /// The SymCache Converter.
@@ -373,6 +374,19 @@ impl<'a> SymCacheConverter<'a> {
         if function_end > *last_addr {
             *last_addr = function_end;
         }
+
+        // Insert an explicit "empty" mapping for the end of the function.
+        // This is to ensure that addresses that fall "between" functions don't get
+        // erroneously mapped to the previous function.
+        //
+        // We only do this if there is no previous mapping for the end address—we don't
+        // want to overwrite valid mappings.
+        //
+        // If the next function starts right at this function's end, that's no trouble,
+        // it will just overwrite this mapping with one of its ranges.
+        if let btree_map::Entry::Vacant(vacant_entry) = self.ranges.entry(function_end) {
+            vacant_entry.insert(NO_SOURCE_LOCATION);
+        }
     }
 
     /// Processes an individual [`Symbol`].
@@ -428,6 +442,22 @@ impl<'a> SymCacheConverter<'a> {
         let last_addr = self.last_addr.get_or_insert(0);
         if symbol.address as u32 >= *last_addr {
             self.last_addr = None;
+        }
+
+        // Insert an explicit "empty" mapping for the end of the symbol.
+        // This is to ensure that addresses that fall "between" symbols don't get
+        // erroneously mapped to the previous symbol.
+        //
+        // We only do this if there is no previous mapping for the end address—we don't
+        // want to overwrite valid mappings.
+        //
+        // If the next symbol starts right at this symbols's end, that's no trouble,
+        // it will just overwrite this mapping.
+        if symbol.size > 0 {
+            let end_address = (symbol.address + symbol.size) as u32;
+            if let btree_map::Entry::Vacant(vacant_entry) = self.ranges.entry(end_address) {
+                vacant_entry.insert(NO_SOURCE_LOCATION);
+            }
         }
     }
 

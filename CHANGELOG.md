@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- symcache: Explicitly map "holes" between functions ([#897](https://github.com/getsentry/symbolic/pull/897))
+
 ## 12.13.4
 
 **Fixes**
