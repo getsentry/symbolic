@@ -290,7 +290,7 @@ unsafe impl StableDeref for ByteView<'_> {}
 ///
 /// [`madvise(2)`]: https://man7.org/linux/man-pages/man2/madvise.2.html
 /// [`fadvise(2)`]: https://man7.org/linux/man-pages/man2/posix_fadvise.2.html
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum AccessPattern {
     /// No special treatment.
     ///
