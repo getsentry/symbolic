@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- Expose API to apply access pattern hints to a `ByteView`.([#899](https://github.com/getsentry/symbolic/pull/899)).
+
 ## 12.13.2
 
 **Fixes**
