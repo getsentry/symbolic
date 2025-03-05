@@ -2504,7 +2504,7 @@ mod test {
             let opcode = Opcode(
                 X86_MODE_RBP_FRAME
                     | pack_x86_rbp_registers(registers)
-                    | (stack_size as u32) << stack_size_offset,
+                    | ((stack_size as u32) << stack_size_offset),
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
@@ -2536,7 +2536,7 @@ mod test {
             let opcode = Opcode(
                 X86_MODE_RBP_FRAME
                     | pack_x86_rbp_registers(registers)
-                    | (stack_size as u32) << stack_size_offset,
+                    | ((stack_size as u32) << stack_size_offset),
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
@@ -2573,7 +2573,7 @@ mod test {
             let opcode = Opcode(
                 X86_MODE_RBP_FRAME
                     | pack_x86_rbp_registers(registers)
-                    | (stack_size as u32) << stack_size_offset,
+                    | ((stack_size as u32) << stack_size_offset),
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
@@ -2630,7 +2630,7 @@ mod test {
             let opcode = Opcode(
                 X86_MODE_RBP_FRAME
                     | pack_x86_rbp_registers(registers)
-                    | (stack_size as u32) << stack_size_offset,
+                    | ((stack_size as u32) << stack_size_offset),
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
@@ -2894,7 +2894,7 @@ mod test {
             let opcode = Opcode(
                 X86_MODE_RBP_FRAME
                     | pack_x86_rbp_registers(registers)
-                    | (stack_size as u32) << stack_size_offset,
+                    | ((stack_size as u32) << stack_size_offset),
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
@@ -2926,7 +2926,7 @@ mod test {
             let opcode = Opcode(
                 X86_MODE_RBP_FRAME
                     | pack_x86_rbp_registers(registers)
-                    | (stack_size as u32) << stack_size_offset,
+                    | ((stack_size as u32) << stack_size_offset),
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
@@ -2963,7 +2963,7 @@ mod test {
             let opcode = Opcode(
                 X86_MODE_RBP_FRAME
                     | pack_x86_rbp_registers(registers)
-                    | (stack_size as u32) << stack_size_offset,
+                    | ((stack_size as u32) << stack_size_offset),
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
@@ -3020,7 +3020,7 @@ mod test {
             let opcode = Opcode(
                 X86_MODE_RBP_FRAME
                     | pack_x86_rbp_registers(registers)
-                    | (stack_size as u32) << stack_size_offset,
+                    | ((stack_size as u32) << stack_size_offset),
             );
             let expected = vec![
                 CompactCfiOp::RegisterIs {
