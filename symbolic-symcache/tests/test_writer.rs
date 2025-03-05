@@ -23,7 +23,7 @@ fn test_write_header_linux() -> Result<(), Error> {
     }
 
     let symcache = SymCache::parse(&buffer)?;
-    insta::assert_debug_snapshot!(symcache, @r#"
+    insta::assert_debug_snapshot!(symcache, @r###"
     SymCache {
         version: 8,
         debug_id: DebugId {
@@ -33,11 +33,11 @@ fn test_write_header_linux() -> Result<(), Error> {
         arch: Amd64,
         files: 55,
         functions: 697,
-        source_locations: 8284,
-        ranges: 6828,
+        source_locations: 8431,
+        ranges: 6975,
         string_bytes: 49877,
     }
-    "#);
+    "###);
 
     Ok(())
 }
@@ -67,7 +67,7 @@ fn test_write_header_macos() -> Result<(), Error> {
     converter.process_object(&object)?;
     converter.serialize(&mut Cursor::new(&mut buffer))?;
     let symcache = SymCache::parse(&buffer)?;
-    insta::assert_debug_snapshot!(symcache, @r#"
+    insta::assert_debug_snapshot!(symcache, @r###"
     SymCache {
         version: 8,
         debug_id: DebugId {
@@ -77,11 +77,11 @@ fn test_write_header_macos() -> Result<(), Error> {
         arch: Amd64,
         files: 36,
         functions: 639,
-        source_locations: 7199,
-        ranges: 5782,
+        source_locations: 7382,
+        ranges: 5965,
         string_bytes: 40958,
     }
-    "#);
+    "###);
 
     Ok(())
 }
@@ -350,4 +350,27 @@ fn test_trailing_marker() -> Result<(), Error> {
     SymCache::parse(&buffer)?;
 
     Ok(())
+}
+
+/// Tests that addresses between functions are unmapped. See
+/// <https://github.com/getsentry/symbolic/pull/897>.
+#[test]
+fn test_lookup_between_functions() {
+    // This file is a Python fixture
+    let buffer = ByteView::open(
+        "../py/tests/res/ext/1.4.1/release/dSYMs/3CD3E3CC-281E-3AF3-84EB-CDE6D56F0559.dSYM/Contents/Resources/DWARF/CrashLibiOS",
+    )
+    .unwrap();
+    let object = Object::parse(&buffer).unwrap();
+
+    let mut buffer = Vec::new();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&object).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
+    let symcache = SymCache::parse(&buffer).unwrap();
+    // This address is exactly at the end of the function "-[CRLCrashNXPage desc]",
+    // which starts at 0x8b0c and has size 0x2c. The next function,
+    // "-[CRLCrashStackGuard category]", starts at 0x8b3c.
+    let symbols = symcache.lookup(0x8b38).collect::<Vec<_>>();
+    assert!(symbols.is_empty());
 }

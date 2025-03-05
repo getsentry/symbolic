@@ -6,6 +6,22 @@
 
 - Expose API to apply access pattern hints to a `ByteView`.([#899](https://github.com/getsentry/symbolic/pull/899)).
 
+**Fixes**
+
+- symcache: Explicitly map "holes" between functions ([#897](https://github.com/getsentry/symbolic/pull/897))
+
+## 12.13.4
+
+**Fixes**
+
+- Parse `debug_str_offs` section in Mach-O files ([#895](https://github.com/getsentry/symbolic/pull/895))
+
+## 12.13.3
+
+**Improvements**
+
+- Check UTF-8 validity memory efficiently ([#890](https://github.com/getsentry/symbolic/pull/890))
+
 ## 12.13.2
 
 **Fixes**
