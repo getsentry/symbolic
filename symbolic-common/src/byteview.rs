@@ -303,7 +303,7 @@ pub enum AccessPattern {
     /// Expect access to be random.
     ///
     /// Read ahead might be less useful than normally.
-    Rnadom,
+    Random,
     /// Expect access to be in sequential order, read ahead might be very useful.
     /// After reading data there is a high chance it will not be accessed again
     /// and can be aggressively freed.
@@ -314,7 +314,7 @@ impl AccessPattern {
     fn to_madvise(self) -> memmap2::Advice {
         match self {
             AccessPattern::Normal => memmap2::Advice::Normal,
-            AccessPattern::Rnadom => memmap2::Advice::Random,
+            AccessPattern::Random => memmap2::Advice::Random,
             AccessPattern::Sequential => memmap2::Advice::Sequential,
         }
     }
