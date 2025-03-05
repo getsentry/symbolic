@@ -259,10 +259,11 @@ impl<'a> ByteView<'a> {
     /// }
     /// ```
     pub fn hint(&self, hint: AccessPattern) -> Result<(), io::Error> {
+        let _hint = hint; // silence unused lint
         match self.backing.deref() {
             ByteViewBacking::Buf(_) => Ok(()),
             #[cfg(unix)]
-            ByteViewBacking::Mmap(mmap) => mmap.advise(hint.to_madvise()),
+            ByteViewBacking::Mmap(mmap) => mmap.advise(_hint.to_madvise()),
             #[cfg(not(unix))]
             ByteViewBacking::Mmap(_) => Ok(()),
         }
