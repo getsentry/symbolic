@@ -354,7 +354,7 @@ impl<'data> MetadataStream<'data> {
             contents: <&[u8]>::default(),
         }; 64];
         for (i, table) in tables.iter_mut().enumerate() {
-            if (header.valid_tables >> i & 1) == 0 {
+            if ((header.valid_tables >> i) & 1) == 0 {
                 continue;
             }
 
