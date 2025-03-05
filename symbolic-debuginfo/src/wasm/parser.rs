@@ -43,7 +43,7 @@ impl BitVec {
         } else {
             let vec_index = index / u64::BITS as usize;
             let item_bit = index % u64::BITS as usize;
-            Some(self.data[vec_index] & 1 << item_bit != 0)
+            Some(self.data[vec_index] & (1 << item_bit) != 0)
         }
     }
 }

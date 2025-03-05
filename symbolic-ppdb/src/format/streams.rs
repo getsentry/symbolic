@@ -48,7 +48,7 @@ impl<'data> PdbStream<'data> {
 
         let mut referenced_table_sizes = [0; 64];
         for (i, table) in referenced_table_sizes.iter_mut().enumerate() {
-            if (header.referenced_tables >> i & 1) == 0 {
+            if ((header.referenced_tables >> i) & 1) == 0 {
                 continue;
             }
 
