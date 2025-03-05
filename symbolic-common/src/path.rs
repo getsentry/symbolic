@@ -54,7 +54,7 @@ fn is_windows_driveletter<P: AsRef<[u8]>>(path: P) -> bool {
 
     if let (Some(drive_letter), Some(b':')) = (path.first(), path.get(1)) {
         if drive_letter.is_ascii_alphabetic() {
-            return path.get(2).map_or(true, is_windows_separator);
+            return path.get(2).is_none_or(is_windows_separator);
         }
     }
 
