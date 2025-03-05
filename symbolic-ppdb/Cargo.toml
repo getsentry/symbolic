@@ -12,7 +12,8 @@ repository = "https://github.com/getsentry/symbolic"
 description = """
 A library for parsing and performing lookups on Portable PDB files.
 """
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 exclude = ["tests/**/*"]
 

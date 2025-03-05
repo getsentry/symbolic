@@ -228,9 +228,11 @@ impl<'data> Iterator for Functions<'data> {
             }
         }
 
-        function.inspect(|_f| {
+        if function.is_some() {
             self.function_idx += 1;
-        })
+        }
+
+        function
     }
 }
 
@@ -265,9 +267,11 @@ impl<'data> Iterator for Files<'data> {
     type Item = File<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.cache.get_file(self.file_idx).inspect(|_f| {
+        let file = self.cache.get_file(self.file_idx);
+        if file.is_some() {
             self.file_idx += 1;
-        })
+        }
+        file
     }
 }
 

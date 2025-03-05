@@ -13,7 +13,8 @@ repository = "https://github.com/getsentry/symbolic"
 description = """
 Parsing and processing utilities for Unreal Engine 4 crash files.
 """
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 exclude = ["tests/**/*"]
 

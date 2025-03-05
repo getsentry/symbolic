@@ -12,7 +12,8 @@ repository = "https://github.com/getsentry/symbolic"
 description = """
 A library to process call frame information
 """
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [dependencies]
 symbolic-common = { version = "12.14.0", path = "../symbolic-common" }

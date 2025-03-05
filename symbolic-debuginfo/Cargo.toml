@@ -13,7 +13,8 @@ description = """
 A library to inspect and load DWARF debugging information from binaries, such
 as Mach-O or ELF.
 """
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 exclude = ["tests/**/*"]
 
