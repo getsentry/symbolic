@@ -233,6 +233,41 @@ impl<'a> ByteView<'a> {
     pub fn as_slice(&self) -> &[u8] {
         self.backing.deref()
     }
+
+    /// Applies a [`AccessPattern`] hint to the backing storage.
+    ///
+    /// A hint can be applied when the predominantly access pattern
+    /// for this byte view is known.
+    ///
+    /// Applying the wrong hint may have significant effects on performance.
+    ///
+    /// Hints are applied on best effort basis, not all platforms
+    /// support the same hints, not all backing storages support
+    /// hints.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::io::Write;
+    /// use symbolic_common::{ByteView, AccessPattern};
+    ///
+    /// fn main() -> Result<(), std::io::Error> {
+    ///     let mut file = tempfile::tempfile()?;
+    ///     let view = ByteView::map_file_ref(&file)?;
+    ///     let _ = view.hint(AccessPattern::Random);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn hint(&self, hint: AccessPattern) -> Result<(), io::Error> {
+        let _hint = hint; // silence unused lint
+        match self.backing.deref() {
+            ByteViewBacking::Buf(_) => Ok(()),
+            #[cfg(unix)]
+            ByteViewBacking::Mmap(mmap) => mmap.advise(_hint.to_madvise()),
+            #[cfg(not(unix))]
+            ByteViewBacking::Mmap(_) => Ok(()),
+        }
+    }
 }
 
 impl AsRef<[u8]> for ByteView<'_> {
@@ -252,6 +287,43 @@ impl Deref for ByteView<'_> {
 }
 
 unsafe impl StableDeref for ByteView<'_> {}
+
+/// Values supported by [`ByteView::hint`].
+///
+/// This is largely an abstraction over [`madvise(2)`] and [`fadvise(2)`].
+///
+/// [`madvise(2)`]: https://man7.org/linux/man-pages/man2/madvise.2.html
+/// [`fadvise(2)`]: https://man7.org/linux/man-pages/man2/posix_fadvise.2.html
+#[derive(Debug, Default, Clone, Copy)]
+pub enum AccessPattern {
+    /// No special treatment.
+    ///
+    /// The operating system is in full control of the buffer,
+    /// a generally good default.
+    ///
+    /// This is the default.
+    #[default]
+    Normal,
+    /// Expect access to be random.
+    ///
+    /// Read ahead might be less useful than normally.
+    Random,
+    /// Expect access to be in sequential order, read ahead might be very useful.
+    /// After reading data there is a high chance it will not be accessed again
+    /// and can be aggressively freed.
+    Sequential,
+}
+
+impl AccessPattern {
+    #[cfg(unix)]
+    fn to_madvise(self) -> memmap2::Advice {
+        match self {
+            AccessPattern::Normal => memmap2::Advice::Normal,
+            AccessPattern::Random => memmap2::Advice::Random,
+            AccessPattern::Sequential => memmap2::Advice::Sequential,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

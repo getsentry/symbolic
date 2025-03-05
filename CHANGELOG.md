@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Features**
+
+- Expose API to apply access pattern hints to a `ByteView`.([#899](https://github.com/getsentry/symbolic/pull/899)).
+
 **Fixes**
 
 - symcache: Explicitly map "holes" between functions ([#897](https://github.com/getsentry/symbolic/pull/897))
