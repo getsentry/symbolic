@@ -320,8 +320,6 @@ impl AccessPattern {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
