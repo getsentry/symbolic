@@ -261,7 +261,10 @@ impl<'a> ByteView<'a> {
     pub fn hint(&self, hint: AccessPattern) -> Result<(), io::Error> {
         match self.backing.deref() {
             ByteViewBacking::Buf(_) => Ok(()),
+            #[cfg(unix)]
             ByteViewBacking::Mmap(mmap) => mmap.advise(hint.to_madvise()),
+            #[cfg(not(unix))]
+            ByteViewBacking::Mmap(_) => Ok(()),
         }
     }
 }
@@ -311,6 +314,7 @@ pub enum AccessPattern {
 }
 
 impl AccessPattern {
+    #[cfg(unix)]
     fn to_madvise(self) -> memmap2::Advice {
         match self {
             AccessPattern::Normal => memmap2::Advice::Normal,
