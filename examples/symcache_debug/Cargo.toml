@@ -1,6 +1,6 @@
 [package]
 name = "symcache_debug"
-version = "12.14.0"
+version = "12.14.1"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2021"
 publish = false
@@ -10,7 +10,7 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
-symbolic = { version = "12.14.0", path = "../../symbolic", features = [
+symbolic = { version = "12.14.1", path = "../../symbolic", features = [
     "symcache",
     "demangle",
     "il2cpp",
