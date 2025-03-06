@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- Restore support for older Rust versions and clarify MSRV policy. ([#902](https://github.com/getsentry/symbolic/pull/902))
+
 ## 12.14.0
 
 **Features**

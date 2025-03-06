@@ -309,7 +309,7 @@ impl<'a> SymCacheConverter<'a> {
                 // Emit our source location at current_address if current_address is not covered by an inlinee.
                 if next_inline
                     .as_ref()
-                    .is_none_or(|next| next.start > current_address)
+                    .map_or(true, |next| next.start > current_address)
                 {
                     // "insert_range"
                     self.ranges.insert(current_address, source_location.clone());
@@ -317,7 +317,8 @@ impl<'a> SymCacheConverter<'a> {
 
                 // If there is an inlinee range covered by this line record, turn this line into that
                 // call's "call line". Make a `call_location_idx` for it and store it in `callee_call_locations`.
-                if let Some(inline_range) = next_inline.take_if(|next| next.start < line_range_end)
+                if let Some(inline_range) =
+                    take_if(&mut next_inline, |next| next.start < line_range_end)
                 {
                     // "make_call_location"
                     let (call_location_idx, _) =
@@ -587,6 +588,14 @@ fn line_boundaries(address: u64, size: Option<u64>) -> (u32, u32) {
     let start = address.try_into().unwrap_or(u32::MAX);
     let end = start.saturating_add(size.unwrap_or(1).try_into().unwrap_or(u32::MAX));
     (start, end)
+}
+
+fn take_if<T>(opt: &mut Option<T>, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
+    if opt.as_mut().is_some_and(predicate) {
+        opt.take()
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]

@@ -14,7 +14,8 @@ description = """
 A library to symbolicate and process stack traces from native applications,
 minidumps, Unreal Engine 4 or minified JavaScript.
 """
-edition = "2021"
+edition.workspace = true
+rust-version.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true

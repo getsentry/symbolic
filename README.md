@@ -158,6 +158,13 @@ To run these examples, use the `run` script. For example:
 ./run minidump_stackwalk mini.dmp /path/to/files
 ```
 
+## Supported Rust Versions
+
+Symbolic tries to not break MSRV compatibility but makes no guarantees about the Rust version.
+Although you can expect Rust version compatibility of **at least 6 months**.
+
+The current MSRV is 1.73.
+
 ## License
 
 Symbolic is licensed under the MIT license. It uses some Apache2 licensed code
