@@ -41,42 +41,7 @@ struct ObjectDatabase {
     by_code_id: HashMap<CodeId, Vec<ObjectMetadata>>,
 }
 
-/// Metadata about an object in the filesystem.
-#[derive(Debug, Clone)]
-struct ObjectMetadata {
-    /// The object's path.
-    path: PathBuf,
-    /// The object's index in its archive.
-    index_in_archive: usize,
-    /// Whether the object has unwind info.
-    has_unwind_info: bool,
-    /// Whether the object has symbol info.
-    has_symbol_info: bool,
-}
-
-/// A SymbolProvider that recursively searches a given path for symbol files.
-struct LocalSymbolProvider<'a> {
-    object_files: ObjectDatabase,
-    cfi_files: Mutex<CfiFiles>,
-    symcaches: Mutex<SymCaches<'a>>,
-    use_cfi: bool,
-    symbolicate: bool,
-}
-
-impl<'a> LocalSymbolProvider<'a> {
-    /// Constructs a `LocalSymbolProvider` that will look for symbol files under the given path.
-    fn new<P: AsRef<Path>>(path: Option<P>, use_cfi: bool, symbolicate: bool) -> Self {
-        Self {
-            object_files: path.map_or(Default::default(), |path| {
-                Self::create_object_database(path)
-            }),
-            cfi_files: Mutex::new(BTreeMap::default()),
-            symcaches: Mutex::new(SymCaches::default()),
-            use_cfi,
-            symbolicate,
-        }
-    }
-
+impl ObjectDatabase {
     /// Accumulates a database of objects found under the given path.
     ///
     /// The objects are saved in a map from `DebugId`s to vectors of
@@ -86,7 +51,7 @@ impl<'a> LocalSymbolProvider<'a> {
     /// * whether the object has unwind info
     /// * whether the object has symbol info
     #[tracing::instrument(skip_all, fields(path = ?path.as_ref()))]
-    fn create_object_database(path: impl AsRef<Path>) -> ObjectDatabase {
+    fn from_path(path: impl AsRef<Path>) -> ObjectDatabase {
         let mut object_db = ObjectDatabase::default();
         for entry in WalkDir::new(path).into_iter().filter_map(Result::ok) {
             // Folders will be recursed into automatically
@@ -147,6 +112,58 @@ impl<'a> LocalSymbolProvider<'a> {
         }
 
         object_db
+    }
+
+    /// Merges another [`ObjectDatabase`] into the current one.
+    fn merge(mut self, other: Self) -> Self {
+        let Self {
+            by_debug_id,
+            by_code_id,
+        } = other;
+
+        self.by_debug_id.extend(by_debug_id);
+        self.by_code_id.extend(by_code_id);
+
+        self
+    }
+}
+
+/// Metadata about an object in the filesystem.
+#[derive(Debug, Clone)]
+struct ObjectMetadata {
+    /// The object's path.
+    path: PathBuf,
+    /// The object's index in its archive.
+    index_in_archive: usize,
+    /// Whether the object has unwind info.
+    has_unwind_info: bool,
+    /// Whether the object has symbol info.
+    has_symbol_info: bool,
+}
+
+/// A SymbolProvider that recursively searches a given path for symbol files.
+struct LocalSymbolProvider<'a> {
+    object_files: ObjectDatabase,
+    cfi_files: Mutex<CfiFiles>,
+    symcaches: Mutex<SymCaches<'a>>,
+    use_cfi: bool,
+    symbolicate: bool,
+}
+
+impl<'a> LocalSymbolProvider<'a> {
+    /// Constructs a `LocalSymbolProvider` that will look for symbol files under the given path.
+    fn new<P: AsRef<Path>>(path: &[P], use_cfi: bool, symbolicate: bool) -> Self {
+        Self {
+            object_files: path
+                .iter()
+                .map(ObjectDatabase::from_path)
+                .reduce(ObjectDatabase::merge)
+                .unwrap_or_default(),
+            cfi_files: Mutex::new(BTreeMap::default()),
+            symcaches: Mutex::new(SymCaches::default()),
+            use_cfi,
+            symbolicate,
+        }
     }
 
     /// Fetches the [`ObjectMetadata`] for the given id, using the [`DebugId`] or the [`CodeId`]
@@ -610,10 +627,13 @@ impl fmt::Display for Report<'_> {
 
 async fn execute(matches: &ArgMatches) -> Result<(), Error> {
     let minidump_path = matches.get_one::<PathBuf>("minidump_file_path").unwrap();
-    let symbols_path = matches.get_one::<PathBuf>("debug_symbols_path");
+    let symbols_path = matches
+        .get_many::<PathBuf>("debug_symbols_path")
+        .map(|s| s.collect::<Vec<_>>())
+        .unwrap_or_default();
 
     let symbol_provider = LocalSymbolProvider::new(
-        symbols_path,
+        &symbols_path,
         *matches.get_one("cfi").unwrap(),
         *matches.get_one("symbolize").unwrap(),
     );
@@ -655,6 +675,7 @@ async fn main() {
         )
         .arg(
             Arg::new("debug_symbols_path")
+                .action(ArgAction::Append)
                 .value_name("symbols")
                 .value_parser(value_parser!(PathBuf))
                 .help("Path to a folder containing debug symbols"),

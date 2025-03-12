@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Allow specifying multiple symbol sources in minidump-stackwalk utility. ([#903](https://github.com/getsentry/symbolic/pull/903))
+
 ## 12.14.1
 
 **Fixes**
