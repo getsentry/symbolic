@@ -326,7 +326,7 @@ impl minidump_unwind::SymbolProvider for LocalSymbolProvider<'_> {
             // find the instruction. In which case this is most likely not a real
             // frame.
             //
-            // The minidump stackwalker skips alls frames without a name and continues
+            // The minidump stackwalker skips all frames without a name and continues
             // the search, but it assumes there is a correct frame if the lookup
             // fails. To not hallucinate frames, we return `Ok(())` here (a frame without a name).
             return Ok(());
