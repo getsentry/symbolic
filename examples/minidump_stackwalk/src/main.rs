@@ -317,11 +317,20 @@ impl minidump_unwind::SymbolProvider for LocalSymbolProvider<'_> {
         tracing::info!("symcache successfully loaded");
 
         let instruction = frame.get_instruction();
-        let source_location = symcache
+        let Some(source_location) = symcache
             .get()
             .lookup(instruction - module.base_address())
             .last()
-            .ok_or(FillSymbolError {})?;
+        else {
+            // The instruction definitely belongs to this module, but we cannot
+            // find the instruction. In which case this is most likely not a real
+            // frame.
+            //
+            // The minidump stackwalker skips alls frames without a name and continues
+            // the search, but it assumes there is a correct frame if the lookup
+            // fails. To not hallucinate frames, we return `Ok(())` here (a frame without a name).
+            return Ok(());
+        };
 
         frame.set_function(
             source_location.function().name(),
