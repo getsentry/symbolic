@@ -189,6 +189,8 @@ impl<'a> LocalSymbolProvider<'a> {
     /// Objects which have unwind information are then tried in order.
     #[tracing::instrument(skip_all, fields(id = ?id))]
     fn load_cfi(&self, id: LookupId) -> Result<SymbolFile, SymbolError> {
+        tracing::info!("loading cficache");
+
         let object_list = self.object_info(id).ok_or(SymbolError::NotFound)?;
         let mut found = None;
         for object_meta in object_list.iter().filter(|object| object.has_unwind_info) {
@@ -235,6 +237,8 @@ impl<'a> LocalSymbolProvider<'a> {
         &self,
         id: LookupId,
     ) -> Result<SelfCell<ByteView<'a>, SymCache<'a>>, SymbolError> {
+        tracing::info!("loading symcache");
+
         let object_list = self.object_info(id).ok_or(SymbolError::NotFound)?;
         let mut found = None;
         for object_meta in object_list.iter().filter(|object| object.has_symbol_info) {
@@ -289,22 +293,44 @@ impl minidump_unwind::SymbolProvider for LocalSymbolProvider<'_> {
         module: &(dyn Module + Sync),
         frame: &mut (dyn FrameSymbolizer + Send),
     ) -> Result<(), FillSymbolError> {
-        if !self.symbolicate {
-            return Err(FillSymbolError {});
-        }
-
         let id = (
             module.code_identifier(),
             module.debug_identifier().unwrap_or_default(),
         );
         tracing::Span::current().record("module.id", tracing::field::debug(&id));
 
+        let instruction = frame.get_instruction();
+
+        let mut cfi = self.cfi_files.lock().unwrap();
+        if let Ok(symbol_file) = cfi
+            .entry(id.clone())
+            .or_insert_with(|| self.load_cfi(id.clone()))
+        {
+            // Validity check that the instruction provided points to a valid stack frame.
+            //
+            // This is similar to the lookup check below for symcache symbol info.
+            // If we can already filter out instructions which are definitely not valid,
+            // we can help the stack walker not hallucinate frames which do not exist.
+            //
+            // Returning here without providing any symbol info, will cause the stack walker
+            // to skip the frame. An error will hallucinate a frame.
+            let cfi_stack_info = symbol_file
+                .cfi_stack_info
+                .get(instruction - module.base_address());
+            if cfi_stack_info.is_none() {
+                return Ok(());
+            }
+        };
+
+        if !self.symbolicate {
+            return Err(FillSymbolError {});
+        }
+
         let mut symcaches = self.symcaches.lock().unwrap();
 
-        let symcache = symcaches.entry(id.clone()).or_insert_with(|| {
-            tracing::info!("loading symcache for the first time");
-            self.load_symbol_info(id)
-        });
+        let symcache = symcaches
+            .entry(id.clone())
+            .or_insert_with(|| self.load_symbol_info(id));
 
         let symcache = match symcache {
             Ok(symcache) => symcache,
@@ -316,7 +342,6 @@ impl minidump_unwind::SymbolProvider for LocalSymbolProvider<'_> {
 
         tracing::info!("symcache successfully loaded");
 
-        let instruction = frame.get_instruction();
         let Some(source_location) = symcache
             .get()
             .lookup(instruction - module.base_address())
@@ -326,9 +351,11 @@ impl minidump_unwind::SymbolProvider for LocalSymbolProvider<'_> {
             // find the instruction. In which case this is most likely not a real
             // frame.
             //
-            // The minidump stackwalker skips all frames without a name and continues
+            // The Minidump stack-walker skips all frames without a name and continues
             // the search, but it assumes there is a correct frame if the lookup
             // fails. To not hallucinate frames, we return `Ok(())` here (a frame without a name).
+            //
+            // See also above, the cfi validity check.
             return Ok(());
         };
 
@@ -367,10 +394,7 @@ impl minidump_unwind::SymbolProvider for LocalSymbolProvider<'_> {
 
         let mut cfi = self.cfi_files.lock().unwrap();
 
-        let symbol_file = cfi.entry(id.clone()).or_insert_with(|| {
-            tracing::info!("loading cficache for the first time");
-            self.load_cfi(id)
-        });
+        let symbol_file = cfi.entry(id.clone()).or_insert_with(|| self.load_cfi(id));
 
         match symbol_file {
             Ok(file) => {
