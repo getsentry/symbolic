@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Allow specifying multiple symbol sources in minidump-stackwalk utility. ([#903](https://github.com/getsentry/symbolic/pull/903))
+- Do not hallucinate frames when stack walking in minidump-stackwalk utility. ([#904](https://github.com/getsentry/symbolic/pull/904))
 
 ## 12.14.1
 
