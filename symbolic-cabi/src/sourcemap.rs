@@ -254,7 +254,7 @@ ffi_fn! {
         source_map: *const SymbolicSourceMapView,
         index: u32
     ) -> Result<*mut SymbolicTokenMatch> {
-        let token = SymbolicSourceMapView::as_rust(source_map).inner.get_token(index);
+        let token = SymbolicSourceMapView::as_rust(source_map).inner.get_token(index as usize);
         Ok(token.map(make_token_match).unwrap_or_else(ptr::null_mut))
     }
 }
