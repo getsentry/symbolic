@@ -32,7 +32,7 @@ goblin = { version = "0.8.0", default-features = false }
 indexmap = "2.0.0"
 insta = { version = "1.28.0", features = ["yaml"] }
 itertools = "0.13.0"
-js-source-scopes = "0.5.0"
+js-source-scopes = "0.6.0"
 lazy_static = "1.4.0"
 memmap2 = "0.9.0"
 minidump = "0.22.0"
@@ -54,7 +54,7 @@ serde = { version = "1.0.171", features = ["derive"] }
 serde_json = "1.0.102"
 similar-asserts = "1.4.2"
 smallvec = "1.10.0"
-sourcemap = "8.0.1"
+sourcemap = "9.1.2"
 stable_deref_trait = "1.2.0"
 tempfile = "3.4.0"
 thiserror = "1.0.39"
