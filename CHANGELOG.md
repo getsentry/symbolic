@@ -5,6 +5,7 @@
 - Allow specifying multiple symbol sources in minidump-stackwalk utility. ([#903](https://github.com/getsentry/symbolic/pull/903))
 - Do not hallucinate frames when stack walking in minidump-stackwalk utility. ([#904](https://github.com/getsentry/symbolic/pull/904))
 - Add a subcommand to extract individual files from a unreal crash report to the `unreal_engine_crash` utility. ([#907](https://github.com/getsentry/symbolic/pull/907))
+- Add path normalization for indexed files. ([#908](https://github.com/getsentry/symbolic/pull/908))
 
 ## 12.14.1
 
