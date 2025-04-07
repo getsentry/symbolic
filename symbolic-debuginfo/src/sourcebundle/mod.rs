@@ -82,6 +82,7 @@ static FILES_PATH: &str = "files";
 
 lazy_static::lazy_static! {
     static ref SANE_PATH_RE: Regex = Regex::new(r":?[/\\]+").unwrap();
+    static ref NORMALIZE_PATH_RE: Regex = Regex::new(r"[/\\]+").unwrap();
 }
 
 /// The error type for [`SourceBundleError`].
@@ -554,7 +555,7 @@ impl<'data> SourceBundleIndex<'data> {
             let zip_path = Arc::new(zip_path.clone());
             if !file_info.path.is_empty() {
                 indexed_files.insert(
-                    FileKey::Path(file_info.path.clone().into()),
+                    FileKey::Path(normalize_path(&file_info.path).into()),
                     zip_path.clone(),
                 );
             }
@@ -940,7 +941,7 @@ impl SourceBundleDebugSession<'_> {
         &self,
         path: &str,
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
-        self.get_source_file_descriptor(FileKey::Path(path.into()))
+        self.get_source_file_descriptor(FileKey::Path(normalize_path(path).into()))
     }
 
     /// Like [`source_by_path`](Self::source_by_path) but looks up by URL.
@@ -1037,6 +1038,11 @@ fn sanitize_bundle_path(path: &str) -> String {
         sanitized.remove(0);
     }
     sanitized
+}
+
+/// Normalizes all paths to follow the Linux standard of using forward slashes.
+fn normalize_path(path: &str) -> String {
+    NORMALIZE_PATH_RE.replace_all(path, "/").into_owned()
 }
 
 /// Contains information about a file skipped in the SourceBundleWriter
@@ -1549,6 +1555,31 @@ mod tests {
     fn debugsession_is_sendsync() {
         fn is_sendsync<T: Send + Sync>() {}
         is_sendsync::<SourceBundleDebugSession>();
+    }
+
+    #[test]
+    fn test_normalize_paths() -> Result<(), SourceBundleError> {
+        let mut writer = Cursor::new(Vec::new());
+        let mut bundle = SourceBundleWriter::start(&mut writer)?;
+
+        for filename in &["C:\\users\\martin\\mydebugfile.cs", "/usr/martin/mydebugfile.h"] {
+            let mut info = SourceFileInfo::new();
+            info.set_ty(SourceFileType::Source);
+            info.set_path(filename.to_string());
+            bundle.add_file_skip_read_failed(sanitize_bundle_path(filename), &b"somerandomdata"[..], info)?;
+        }
+
+        bundle.finish()?;
+        let bundle_bytes = writer.into_inner();
+        let bundle = SourceBundle::parse(&bundle_bytes)?;
+
+        let session = bundle.debug_session().unwrap();
+
+        assert!(session.source_by_path("C:\\users\\martin\\mydebugfile.cs".into())?.is_some());
+        assert!(session.source_by_path("C:/users/martin/mydebugfile.cs".into())?.is_some());
+        assert!(session.source_by_path("C:\\users\\martin/mydebugfile.cs".into())?.is_some());
+
+        Ok(())
     }
 
     #[test]
