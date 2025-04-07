@@ -82,7 +82,6 @@ static FILES_PATH: &str = "files";
 
 lazy_static::lazy_static! {
     static ref SANE_PATH_RE: Regex = Regex::new(r":?[/\\]+").unwrap();
-    static ref NORMALIZE_PATH_RE: Regex = Regex::new(r"\\+").unwrap();
 }
 
 /// The error type for [`SourceBundleError`].
@@ -1042,7 +1041,7 @@ fn sanitize_bundle_path(path: &str) -> String {
 
 /// Normalizes all paths to follow the Linux standard of using forward slashes.
 fn normalize_path(path: &str) -> String {
-    NORMALIZE_PATH_RE.replace_all(path, "/").into_owned()
+    path.replace('\\', "/")
 }
 
 /// Contains information about a file skipped in the SourceBundleWriter
