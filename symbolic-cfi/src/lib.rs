@@ -1277,7 +1277,7 @@ fn write_preamble<W: Write>(mut writer: W, version: u32) -> Result<(), io::Error
 impl<'a> CfiCache<'a> {
     /// Load a symcache from a `ByteView`.
     pub fn from_bytes(byteview: ByteView<'a>) -> Result<Self, CfiError> {
-        if byteview.len() == 0 || byteview.starts_with(b"STACK") {
+        if byteview.is_empty() || byteview.starts_with(b"STACK") {
             let inner = CfiCacheInner::Unversioned(CfiCacheV1 { byteview });
             return Ok(CfiCache { inner });
         }

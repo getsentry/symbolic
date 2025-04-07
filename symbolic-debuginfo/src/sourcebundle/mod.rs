@@ -1583,13 +1583,13 @@ mod tests {
         let session = bundle.debug_session().unwrap();
 
         assert!(session
-            .source_by_path("C:\\users\\martin\\mydebugfile.cs".into())?
+            .source_by_path("C:\\users\\martin\\mydebugfile.cs")?
             .is_some());
         assert!(session
-            .source_by_path("C:/users/martin/mydebugfile.cs".into())?
+            .source_by_path("C:/users/martin/mydebugfile.cs")?
             .is_some());
         assert!(session
-            .source_by_path("C:\\users\\martin/mydebugfile.cs".into())?
+            .source_by_path("C:\\users\\martin/mydebugfile.cs")?
             .is_some());
 
         Ok(())
