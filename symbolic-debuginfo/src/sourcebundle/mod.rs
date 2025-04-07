@@ -1562,11 +1562,18 @@ mod tests {
         let mut writer = Cursor::new(Vec::new());
         let mut bundle = SourceBundleWriter::start(&mut writer)?;
 
-        for filename in &["C:\\users\\martin\\mydebugfile.cs", "/usr/martin/mydebugfile.h"] {
+        for filename in &[
+            "C:\\users\\martin\\mydebugfile.cs",
+            "/usr/martin/mydebugfile.h",
+        ] {
             let mut info = SourceFileInfo::new();
             info.set_ty(SourceFileType::Source);
             info.set_path(filename.to_string());
-            bundle.add_file_skip_read_failed(sanitize_bundle_path(filename), &b"somerandomdata"[..], info)?;
+            bundle.add_file_skip_read_failed(
+                sanitize_bundle_path(filename),
+                &b"somerandomdata"[..],
+                info,
+            )?;
         }
 
         bundle.finish()?;
@@ -1575,9 +1582,15 @@ mod tests {
 
         let session = bundle.debug_session().unwrap();
 
-        assert!(session.source_by_path("C:\\users\\martin\\mydebugfile.cs".into())?.is_some());
-        assert!(session.source_by_path("C:/users/martin/mydebugfile.cs".into())?.is_some());
-        assert!(session.source_by_path("C:\\users\\martin/mydebugfile.cs".into())?.is_some());
+        assert!(session
+            .source_by_path("C:\\users\\martin\\mydebugfile.cs".into())?
+            .is_some());
+        assert!(session
+            .source_by_path("C:/users/martin/mydebugfile.cs".into())?
+            .is_some());
+        assert!(session
+            .source_by_path("C:\\users\\martin/mydebugfile.cs".into())?
+            .is_some());
 
         Ok(())
     }
