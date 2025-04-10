@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-ppdb"
-version = "12.14.1"
+version = "12.15.3"
 license = "MIT"
 authors = [
     "Sebastian Zivota <sebastian.zivota@sentry.io>",
@@ -25,7 +25,7 @@ flate2 = { workspace = true }
 indexmap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-symbolic-common = { version = "12.14.1", path = "../symbolic-common" }
+symbolic-common = { version = "12.15.3", path = "../symbolic-common" }
 thiserror = { workspace = true }
 uuid = { workspace = true }
 watto = { workspace = true }
