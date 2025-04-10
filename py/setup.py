@@ -107,6 +107,7 @@ setup(
     long_description=readme,
     include_package_data=True,
     package_data={"symbolic": ["py.typed", "_lowlevel.pyi"]},
+    long_description_content_type="text/markdown",
     zip_safe=False,
     platforms="any",
     install_requires=["milksnake>=0.1.2"],
