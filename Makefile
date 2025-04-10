@@ -18,7 +18,7 @@ build:
 .PHONY: build
 
 sdist: .venv/bin/python
-	cd py && ../.venv/bin/python setup.py sdist --format=zip
+	cd py && ../.venv/bin/python setup.py sdist
 .PHONY: sdist
 
 wheel: .venv/bin/python
