@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- Updated libswift demangle to v6.1.0. ([#913](https://github.com/getsentry/symbolic/pull/913))
+
 ## 12.15.3
 
 **Features**

@@ -1,11 +1,11 @@
-commit 80e772078494a73f2fbb5e385de2092e6057d913
-Author: David Herberth <david.herberth@sentry.io>
-Date:   Thu Jan 9 10:54:28 2025 +0100
+commit 688c78af45dc197ce0ef8a0ea520d77592905394
+Author: Sebastian Zivota <loewenheim@mailbox.org>
+Date:   Wed Apr 16 18:43:43 2025 +0200
 
-    apply patch
+    Apply patch
 
 diff --git a/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h b/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
-index f66dd7fd..940c3652 100644
+index 3e029a9b..da18a09a 100644
 --- a/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
 +++ b/symbolic-demangle/vendor/swift/include/swift/Demangling/Demangle.h
 @@ -58,6 +58,7 @@ struct DemangleOptions {
@@ -25,10 +25,10 @@ index f66dd7fd..940c3652 100644
      return Opt;
    };
 diff --git a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-index 6c309bbf..5b251e8d 100644
+index d9098192..5e8ae258 100644
 --- a/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
 +++ b/symbolic-demangle/vendor/swift/lib/Demangling/NodePrinter.cpp
-@@ -955,10 +955,11 @@ private:
+@@ -966,10 +966,11 @@ private:
      if (isSendable)
        Printer << "@Sendable ";
  

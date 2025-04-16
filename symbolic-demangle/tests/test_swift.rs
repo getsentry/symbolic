@@ -295,5 +295,8 @@ fn test_demangle_swift_no_args() {
         // Swift 6.0.3
         "$ss27withTaskCancellationHandler9operation8onCancel9isolationxxyYaKXE_yyYbXEScA_pSgYitYaKlFTwb" => "withTaskCancellationHandler<A>",
         "$s11Supercharge2AXO7ElementPAAE8elements33_35EDDAA799FBB5B74D2F426690B0D99DLL3for2asSayqd__GSo28NSAccessibilityAttributeNamea_qd__mtSo7AXErrorVYKAcDRd__lFAC3AppC_AC6WindowCTgm5" => "specialized AX.Element.elements<A>",
+
+        // Swift 6.1.0
+         "$sTB" => "$sTB",
     });
 }
