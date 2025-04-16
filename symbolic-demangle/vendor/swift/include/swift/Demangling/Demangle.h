@@ -58,6 +58,7 @@ struct DemangleOptions {
   bool ShortenArchetype = false;
   bool ShowPrivateDiscriminators = true;
   bool ShowFunctionArgumentTypes = true;
+  bool ShowFunctionReturnType = true;
   bool DisplayDebuggerGeneratedModule = true;
   bool DisplayStdlibModule = true;
   bool DisplayObjCModule = true;
@@ -90,6 +91,7 @@ struct DemangleOptions {
     Opt.ShortenArchetype = true;
     Opt.ShowPrivateDiscriminators = false;
     Opt.ShowFunctionArgumentTypes = false;
+    Opt.ShowFunctionReturnType = false;
     Opt.ShowAsyncResumePartial = false;
     return Opt;
   };
