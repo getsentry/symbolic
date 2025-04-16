@@ -58,7 +58,6 @@ struct DemangleOptions {
   bool ShortenArchetype = false;
   bool ShowPrivateDiscriminators = true;
   bool ShowFunctionArgumentTypes = true;
-  bool ShowFunctionReturnType = true;
   bool DisplayDebuggerGeneratedModule = true;
   bool DisplayStdlibModule = true;
   bool DisplayObjCModule = true;
@@ -91,7 +90,6 @@ struct DemangleOptions {
     Opt.ShortenArchetype = true;
     Opt.ShowPrivateDiscriminators = false;
     Opt.ShowFunctionArgumentTypes = false;
-    Opt.ShowFunctionReturnType = false;
     Opt.ShowAsyncResumePartial = false;
     return Opt;
   };
@@ -138,7 +136,11 @@ enum class MangledDifferentiabilityKind : char {
   Linear = 'l',
 };
 
-enum class MangledLifetimeDependenceKind : char { Inherit = 'i', Scope = 's' };
+enum class MangledSILThunkKind : char {
+  Invalid = 0,
+  Identity = 'I',
+  HopToMainActorIfNeeded = 'H',
+};
 
 /// The pass that caused the specialization to occur. We use this to make sure
 /// that two passes that generate similar changes do not yield the same
@@ -245,6 +247,25 @@ public:
     default:
       return true;
     }
+  }
+
+  static bool deepEquals(const Node *lhs, const Node *rhs) {
+    if (lhs == rhs)
+      return true;
+    if ((!lhs && rhs) || (lhs && !rhs))
+      return false;
+    if (!lhs->isSimilarTo(rhs))
+      return false;
+    for (auto li = lhs->begin(), ri = rhs->begin(), le = lhs->end(); li != le;
+         ++li, ++ri) {
+      if (!deepEquals(*li, *ri))
+        return false;
+    }
+    return true;
+  }
+
+  bool isDeepEqualTo(const Node *other) const {
+    return deepEquals(this, other);
   }
 
   bool hasText() const { return NodePayloadKind == PayloadKind::Text; }
@@ -601,6 +622,7 @@ struct [[nodiscard]] ManglingError {
     UnknownEncoding,
     InvalidImplCalleeConvention,
     InvalidImplDifferentiability,
+    InvalidImplCoroutineKind,
     InvalidImplFunctionAttribute,
     InvalidImplParameterConvention,
     InvalidImplParameterSending,
