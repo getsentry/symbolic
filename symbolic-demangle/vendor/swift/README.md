@@ -3,7 +3,7 @@
 This folder contains a vendored subset of the [Swift Programming Language]. The Swift library is
 reduced to the demangler only to reduce the size of this package.
 
-The current version is **Swift 5.5.1**.
+The current version is **Swift 6.1.0**.
 
 ## Sentry Modifications
 
@@ -28,7 +28,7 @@ patch is maintained in `1-arguments.patch`.
    4. Check out the release branch of the latest release:
       ```
       $ cd swift
-      $ git checkout swift-5.5.1-RELEASE
+      $ git checkout swift-x.x.x-RELEASE
       ```
    5. Build the complete swift project (be very patient, this may take long):
       ```
@@ -40,14 +40,16 @@ patch is maintained in `1-arguments.patch`.
       $ ./update.py swift-source
       ```
    2. Check for modifications.
-   3. Commit _"feat(demangle): Import libswift demangle x.x.x"_ before proceeding.
+   3. **BUG**: If the file `./include/swift/ABI/InvertibleProtocols.def` is not automatically
+      copied, copy it manually from `swift-source/swift/include/swift/ABI/InvertibleProtocols.def`.
+   4. Commit _"feat(demangle): Import libswift demangle x.x.x"_ before proceeding.
 3. **Apply the patch:**
    1. Apply `1-arguments.patch`.
    2. Build the Rust library and ensure tests work.
    3. Commit the changes.
 4. **Add tests for new mangling schemes:**
    1. Identify new mangling schemes. Skip if there are no known changes.
-   2. Add test cases to `tests/swift.rs`
+   2. Add test cases to `tests/test_swift.rs`
 5. **Update Repository metadata**:
    1. Bump the Swift version number in this README.
    2. Check for changes in the license and update the files.
