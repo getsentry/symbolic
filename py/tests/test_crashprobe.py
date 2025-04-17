@@ -364,7 +364,7 @@ def test_jump_into_an_nx_page(res_path, make_report_sym, version, build, arch):
 
     # So let's assert for the second best
     else:
-        assert "full_path" not in bt[0]
+        assert basename(bt[0]["full_path"]) is None
         assert bt[0]["line"] in (None, 0)
 
     _test_doCrash_call(bt)
