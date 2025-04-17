@@ -371,6 +371,14 @@ fn test_lookup_between_functions() {
     // This address is exactly at the end of the function "-[CRLCrashNXPage desc]",
     // which starts at 0x8b0c and has size 0x2c. The next function,
     // "-[CRLCrashStackGuard category]", starts at 0x8b3c.
+    //
+    // However, there is an entry in the symbol table for "-[CRLCrashNXPage crash]" starting
+    // at this address.
     let symbols = symcache.lookup(0x8b38).collect::<Vec<_>>();
-    assert!(symbols.is_empty());
+    assert_eq!(symbols.len(), 1);
+
+    let function = symbols[0].function();
+
+    assert_eq!(function.name(), "-[CRLCrashNXPage crash]");
+    assert_eq!(function.entry_pc(), 0x8b38);
 }
