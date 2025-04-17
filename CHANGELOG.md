@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- symcache: Fixed a bug introduced in 12.14.0 that resulted in symbols not being inserted. ([#915](https://github.com/getsentry/symbolic/pull/915))
+
 ## 12.15.3
 
 **Features**
