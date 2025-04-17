@@ -430,6 +430,24 @@ impl<'a> SymCacheConverter<'a> {
                     inlined_into_idx: u32::MAX,
                 });
             }
+            btree_map::Entry::Occupied(mut entry) if entry.get() == &NO_SOURCE_LOCATION => {
+                // This happens when an "empty" mapping was inserted in a previous iteration (see below).
+                // In this case we want to overwrite the mapping, so we do the same thing as in the `Vacant` case.
+                let function = raw::Function {
+                    name_offset: name_idx,
+                    _comp_dir_offset: u32::MAX,
+                    entry_pc: symbol.address as u32,
+                    lang: u32::MAX,
+                };
+                let function_idx = self.functions.insert_full(function).0 as u32;
+
+                entry.insert(raw::SourceLocation {
+                    file_idx: u32::MAX,
+                    line: 0,
+                    function_idx,
+                    inlined_into_idx: u32::MAX,
+                });
+            }
             btree_map::Entry::Occupied(entry) => {
                 // ASSUMPTION:
                 // the `functions` iterator has already filled in this addr via debug session.
