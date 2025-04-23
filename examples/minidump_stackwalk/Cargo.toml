@@ -1,6 +1,6 @@
 [package]
 name = "minidump_stackwalk"
-version = "12.15.3"
+version = "12.15.4"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2021"
 publish = false
@@ -13,7 +13,7 @@ clap = { workspace = true }
 minidump = { workspace = true }
 minidump-processor = { workspace = true }
 minidump-unwind = { workspace = true }
-symbolic = { version = "12.15.3", path = "../../symbolic", features = [
+symbolic = { version = "12.15.4", path = "../../symbolic", features = [
     "symcache",
     "demangle",
     "cfi",
