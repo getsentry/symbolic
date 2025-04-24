@@ -102,7 +102,7 @@ make lint
 ```
 
 Most likely, new functionality also needs to be added to the Python package. This first requires to
-expose new functions in the C ABI. For this, refer to the [Symbolic C-ABI readme](sentry-cabi/README.md).
+expose new functions in the C ABI. For this, refer to the [Symbolic C-ABI readme](symbolic-cabi/README.md).
 
 We highly recommend to develop and test the python package in a **virtual environment**. Once the
 ABI has been updated and tested, ensure the virtualenv is active and install the package, which
