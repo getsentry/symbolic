@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- demangle: Fixed a crash/abort when providing bad input to the swift demangler. ([#917](https://github.com/getsentry/symbolic/pull/917))
+
 ## 12.15.4
 
 **Fixes**

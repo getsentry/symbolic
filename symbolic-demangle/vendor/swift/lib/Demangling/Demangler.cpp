@@ -3423,7 +3423,6 @@ NodePointer Demangler::demangleSpecAttributes(Node::Kind SpecKind) {
 
   int PassID = (int)nextChar() - '0';
   if (PassID < 0 || PassID >= MAX_SPECIALIZATION_PASS) {
-    assert(false && "unexpected pass id");
     return nullptr;
   }
 
