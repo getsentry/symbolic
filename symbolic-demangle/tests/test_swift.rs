@@ -147,6 +147,9 @@ fn test_demangle_swift_short() {
 
         // Swift 5.2
         "$s7ranking22propertyVersusFunctionyyAA1P_p_xtAaCRzlFyAaC_pcAaC_pcfu_" => "implicit closure #1 (P) in propertyVersusFunction<A>(P, A)",
+
+        // Causes an abort with the Swift 6.0.3 demangler.
+        "$sTB" => "$sTB",
     });
 }
 
