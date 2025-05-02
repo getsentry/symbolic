@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-il2cpp"
-version = "12.15.4"
+version = "12.15.5"
 license = "MIT"
 authors = ["Sentry <hello@sentry.io>"]
 documentation = "https://docs.rs/symbolic-il2cpp"
@@ -15,5 +15,5 @@ rust-version.workspace = true
 [dependencies]
 indexmap = { workspace = true }
 serde_json = { workspace = true }
-symbolic-common = { version = "12.15.4", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "12.15.4", path = "../symbolic-debuginfo" }
+symbolic-common = { version = "12.15.5", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "12.15.5", path = "../symbolic-debuginfo" }
