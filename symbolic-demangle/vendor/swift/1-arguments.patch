@@ -43,3 +43,14 @@ index 6c309bbf..5b251e8d 100644
        return;
  
      if (isAsync)
+diff --git a/symbolic-demangle/vendor/swift/lib/Demangling/Demangler.cpp b/symbolic-demangle/vendor/swift/lib/Demangling/Demangler.cpp
+index 6c309bbf..5b251e8d 100644
+--- a/symbolic-demangle/vendor/swift/lib/Demangling/Demangler.cpp
++++ b/symbolic-demangle/vendor/swift/lib/Demangling/Demangler.cpp
+@@ -3423,7 +3423,6 @@ NodePointer Demangler::demangleSpecAttributes(Node::Kind SpecKind) {
+
+   int PassID = (int)nextChar() - '0';
+   if (PassID < 0 || PassID >= MAX_SPECIALIZATION_PASS) {
+-    assert(false && "unexpected pass id");
+     return nullptr;
+   }
