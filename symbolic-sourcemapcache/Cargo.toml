@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-sourcemapcache"
-version = "12.15.4"
+version = "12.15.5"
 license = "MIT"
 authors = ["Sentry <hello@sentry.io>"]
 documentation = "https://docs.rs/symbolic-sourcemapcache"
@@ -15,7 +15,7 @@ edition = "2021"
 itertools = { workspace = true }
 js-source-scopes = { workspace = true }
 sourcemap = { workspace = true }
-symbolic-common = { version = "12.15.4", path = "../symbolic-common" }
+symbolic-common = { version = "12.15.5", path = "../symbolic-common" }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 watto = { workspace = true }

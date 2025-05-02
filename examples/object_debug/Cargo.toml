@@ -1,6 +1,6 @@
 [package]
 name = "object_debug"
-version = "12.15.4"
+version = "12.15.5"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2021"
 publish = false
@@ -9,4 +9,4 @@ publish = false
 
 [dependencies]
 clap = { workspace = true }
-symbolic = { version = "12.15.4", path = "../../symbolic" }
+symbolic = { version = "12.15.5", path = "../../symbolic" }

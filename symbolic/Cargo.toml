@@ -1,6 +1,6 @@
 [package]
 name = "symbolic"
-version = "12.15.4"
+version = "12.15.5"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -35,12 +35,12 @@ unreal = ["symbolic-unreal"]
 unreal-serde = ["unreal", "common-serde", "symbolic-unreal/serde"]
 
 [dependencies]
-symbolic-cfi = { version = "12.15.4", path = "../symbolic-cfi", optional = true }
-symbolic-common = { version = "12.15.4", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "12.15.4", path = "../symbolic-debuginfo", optional = true }
-symbolic-demangle = { version = "12.15.4", path = "../symbolic-demangle", optional = true }
-symbolic-il2cpp = { version = "12.15.4", path = "../symbolic-il2cpp", optional = true }
-symbolic-ppdb = { version = "12.15.4", path = "../symbolic-ppdb", optional = true }
-symbolic-sourcemapcache = { version = "12.15.4", path = "../symbolic-sourcemapcache", optional = true }
-symbolic-symcache = { version = "12.15.4", path = "../symbolic-symcache", optional = true }
-symbolic-unreal = { version = "12.15.4", path = "../symbolic-unreal", optional = true }
+symbolic-cfi = { version = "12.15.5", path = "../symbolic-cfi", optional = true }
+symbolic-common = { version = "12.15.5", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "12.15.5", path = "../symbolic-debuginfo", optional = true }
+symbolic-demangle = { version = "12.15.5", path = "../symbolic-demangle", optional = true }
+symbolic-il2cpp = { version = "12.15.5", path = "../symbolic-il2cpp", optional = true }
+symbolic-ppdb = { version = "12.15.5", path = "../symbolic-ppdb", optional = true }
+symbolic-sourcemapcache = { version = "12.15.5", path = "../symbolic-sourcemapcache", optional = true }
+symbolic-symcache = { version = "12.15.5", path = "../symbolic-symcache", optional = true }
+symbolic-unreal = { version = "12.15.5", path = "../symbolic-unreal", optional = true }
