@@ -262,12 +262,47 @@ fn test_elf_debug() -> Result<(), Error> {
 }
 
 #[test]
+fn test_elf_dynsyms() -> Result<(), Error> {
+    let view = ByteView::open(fixture("linux/dynsyms_only"))?;
+    let object = Object::parse(&view)?;
+
+    insta::assert_debug_snapshot!(object, @r#"
+    Elf(
+        ElfObject {
+            code_id: Some(
+                CodeId(b931c4fbd186e551bb617b3807d594b9064f5cac),
+            ),
+            debug_id: DebugId {
+                uuid: "fbc431b9-86d1-51e5-bb61-7b3807d594b9",
+                appendix: 0,
+            },
+            arch: Amd64,
+            kind: Debug,
+            load_address: 0x0,
+            has_symbols: true,
+            has_debug_info: false,
+            has_unwind_info: false,
+            is_malformed: false,
+        },
+    )
+    "#);
+
+    Ok(())
+}
+
+#[test]
 fn test_elf_symbols() -> Result<(), Error> {
     let view = ByteView::open(fixture("linux/crash.debug"))?;
     let object = Object::parse(&view)?;
 
     let symbols = object.symbol_map();
     insta::assert_debug_snapshot!("elf_symbols", SymbolsDebug(&symbols));
+
+    let view = ByteView::open(fixture("linux/dynsyms_only"))?;
+    let object = Object::parse(&view)?;
+
+    let symbols = object.symbol_map();
+    insta::assert_debug_snapshot!("elf_dynsyms", SymbolsDebug(&symbols));
 
     Ok(())
 }

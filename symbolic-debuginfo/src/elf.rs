@@ -291,6 +291,25 @@ impl<'data> ElfObject<'data> {
                 return_partial_on_err!(elf::Symtab::parse(data, dyn_info.symtab, num_syms, ctx));
         }
 
+        // If the dynamic symbol table is empty, try to parse it from the section headers.
+        if obj.dynsyms.is_empty() {
+            for shdr in &obj.section_headers {
+                if shdr.sh_type == elf::section_header::SHT_DYNSYM {
+                    let size = shdr.sh_entsize;
+                    let count = if size == 0 { 0 } else { shdr.sh_size / size };
+                    obj.dynsyms = return_partial_on_err!(elf::Symtab::parse(
+                        data,
+                        shdr.sh_offset as usize,
+                        count as usize,
+                        ctx
+                    ));
+
+                    obj.dynstrtab = return_partial_on_err!(get_strtab(&obj.section_headers, shdr.sh_link as usize));
+                    break;
+                }
+            }
+        }
+
         obj.shdr_relocs = vec![];
         for (idx, section) in obj.section_headers.iter().enumerate() {
             let is_rela = section.sh_type == elf::section_header::SHT_RELA;
