@@ -228,6 +228,15 @@ ffi_fn! {
 }
 
 ffi_fn! {
+    /// Return the number of sources.
+    unsafe fn symbolic_sourcemapview_get_source_count(
+        source_map: *const SymbolicSourceMapView
+    ) -> Result<u32> {
+        Ok(SymbolicSourceMapView::as_rust(source_map).inner.get_source_count())
+    }
+}
+
+ffi_fn! {
     /// Return the source name for an index.
     unsafe fn symbolic_sourcemapview_get_source_name(
         source_map: *const SymbolicSourceMapView,
@@ -240,11 +249,14 @@ ffi_fn! {
 }
 
 ffi_fn! {
-    /// Return the number of sources.
-    unsafe fn symbolic_sourcemapview_get_source_count(
-        source_map: *const SymbolicSourceMapView
-    ) -> Result<u32> {
-        Ok(SymbolicSourceMapView::as_rust(source_map).inner.get_source_count())
+    /// Return the source contents for an index.
+    unsafe fn symbolic_sourcemapview_get_source_contents(
+        source_map: *const SymbolicSourceMapView,
+        index: u32
+    ) -> Result<SymbolicStr> {
+        let view = SymbolicSourceMapView::as_rust(source_map);
+        let contents_opt = view.inner.get_source_contents(index);
+        Ok(contents_opt.unwrap_or("").into())
     }
 }
 
