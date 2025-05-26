@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- python bindings: Expose SourceMapView.get_source_contents function. ([#921](https://github.com/getsentry/symbolic/pull/921))
+
 ## 12.15.5
 
 **Fixes**
