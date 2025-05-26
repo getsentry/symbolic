@@ -172,6 +172,11 @@ class SourceMapView(RustObject):
         name = self._methodcall(lib.symbolic_sourcemapview_get_source_name, idx)
         return decode_str(name, free=True) or None
 
+    def get_source_contents(self, idx: int) -> str | None:
+        """Returns the contents of the source at the given index."""
+        name = self._methodcall(lib.symbolic_sourcemapview_get_source_contents, idx)
+        return decode_str(name, free=True) or None
+
     def iter_sources(self) -> Generator[tuple[int, str | None], None, None]:
         """Iterates over the sources in the file."""
         for src_id in range(self.source_count):
