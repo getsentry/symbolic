@@ -173,11 +173,16 @@ impl<'data> SourceMapCache<'data> {
     pub fn lookup(&self, sp: SourcePosition) -> Option<SourceLocation> {
         let idx = match self.min_source_positions.binary_search(&sp.into()) {
             Ok(idx) => idx,
-            Err(0) => 0,
+            Err(0) => return None,
             Err(idx) => idx - 1,
         };
 
         let sl = self.orig_source_locations.get(idx)?;
+
+        // If file, line, and column are all absent (== `u32::MAX`), this location is simply unmapped.
+        if sl.file_idx == raw::NO_FILE_SENTINEL && sl.line == u32::MAX && sl.column == u32::MAX {
+            return None;
+        }
 
         let line = sl.line;
         let column = sl.column;
