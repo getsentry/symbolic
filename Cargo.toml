@@ -54,7 +54,7 @@ serde = { version = "1.0.171", features = ["derive"] }
 serde_json = "1.0.102"
 similar-asserts = "1.4.2"
 smallvec = "1.10.0"
-sourcemap = "9.1.2"
+sourcemap = "9.2.2"
 stable_deref_trait = "1.2.0"
 tempfile = "3.4.0"
 thiserror = "1.0.39"
