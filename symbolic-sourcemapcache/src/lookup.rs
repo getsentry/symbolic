@@ -381,4 +381,43 @@ mod tests {
         assert_eq!(file.line(3), Some("c\n"));
         assert_eq!(file.line(4), Some(""));
     }
+
+    #[test]
+    fn unmapped_token() {
+        let minified = r#""foo"; /*added by bundler*/ "bar";"#;
+        let sourcemap = r#"{"version":3,"file":"test.min.js","sources":["test.js"],"sourcesContent":["\"foo\":\n\"baz\";"],"names":[],"mappings":"AAAA,M,sBACA"}"#;
+
+        let mut buf = vec![];
+        SourceMapCacheWriter::new(minified, sourcemap)
+            .unwrap()
+            .serialize(&mut buf)
+            .unwrap();
+
+        let cache = SourceMapCache::parse(&buf).unwrap();
+
+        // "foo";
+        let foo = cache.lookup(SourcePosition { line: 0, column: 4 }).unwrap();
+        assert_eq!(foo.file_name().unwrap(), "test.js");
+        assert_eq!(foo.line, 0);
+        assert_eq!(foo.column, 0);
+
+        // comment
+        // this should be unmapped
+        assert!(dbg!(cache.lookup(SourcePosition {
+            line: 0,
+            column: 17
+        }))
+        .is_none());
+
+        // "bar";
+        let bar = cache
+            .lookup(SourcePosition {
+                line: 0,
+                column: 30,
+            })
+            .unwrap();
+        assert_eq!(bar.file_name().unwrap(), "test.js");
+        assert_eq!(bar.line, 1);
+        assert_eq!(bar.column, 0);
+    }
 }
