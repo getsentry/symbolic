@@ -6,6 +6,10 @@
 
 - python bindings: Expose SourceMapView.get_source_contents function. ([#921](https://github.com/getsentry/symbolic/pull/921))
 
+**Fixes**
+
+- sourcemapcache: Don't return unmapped source locations. ([#922](https://github.com/getsentry/symbolic/pull/922))
+
 ## 12.15.5
 
 **Fixes**
