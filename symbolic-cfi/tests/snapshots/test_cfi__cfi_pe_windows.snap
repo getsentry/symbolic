@@ -1,6 +1,5 @@
 ---
 source: symbolic-cfi/tests/test_cfi.rs
-assertion_line: 105
 expression: cfi
 ---
 STACK CFI INIT 1010 55 .cfa: $rsp 80 + $rbx: .cfa 16 - ^ $rsi: .cfa 24 - ^ $rdi: .cfa 32 - ^ .ra: .cfa 8 - ^
@@ -44,4 +43,3 @@ STACK CFI INIT 1de8 1b9 .cfa: $rsp 48 + $rsi: .cfa 16 - ^ $rdi: .cfa 24 - ^ $r14
 STACK CFI INIT 2090 2 .cfa: $rsp 8 + .ra: .cfa 8 - ^
 STACK CFI INIT 20ac 1e .cfa: $rsp 48 + $rbp: .cfa 16 - ^ .ra: .cfa 8 - ^
 STACK CFI INIT 20ca 18 .cfa: $rsp 16 + $rbp: .cfa 16 - ^ .ra: .cfa 8 - ^
-

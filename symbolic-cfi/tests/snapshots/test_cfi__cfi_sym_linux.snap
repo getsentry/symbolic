@@ -1,7 +1,5 @@
 ---
-created: "2019-02-20T15:42:11.809248Z"
-creator: insta@0.6.3
-source: minidump/tests/test_cfi.rs
+source: symbolic-cfi/tests/test_cfi.rs
 expression: cfi
 ---
 STACK CFI INIT 1dc0 2a .cfa: $rsp 8 + .ra: .cfa -8 + ^
@@ -1502,4 +1500,3 @@ STACK CFI 14c90 .cfa: $rsp 24 +
 STACK CFI 14c92 .cfa: $rsp 16 +
 STACK CFI 14c94 .cfa: $rsp 8 +
 STACK CFI INIT 14ca0 2 .cfa: $rsp 8 + .ra: .cfa -8 + ^
-

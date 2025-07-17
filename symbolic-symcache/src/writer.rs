@@ -309,7 +309,7 @@ impl<'a> SymCacheConverter<'a> {
                 // Emit our source location at current_address if current_address is not covered by an inlinee.
                 if next_inline
                     .as_ref()
-                    .map_or(true, |next| next.start > current_address)
+                    .is_none_or(|next| next.start > current_address)
                 {
                     // "insert_range"
                     self.ranges.insert(current_address, source_location.clone());

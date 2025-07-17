@@ -1,8 +1,6 @@
 ---
-created: "2019-02-20T11:25:23.767168Z"
-creator: insta@0.6.3
-source: debuginfo/tests/test_objects.rs
-expression: SymbolDebug(&symbols)
+source: symbolic-debuginfo/tests/test_objects.rs
+expression: SymbolsDebug(&symbols)
 ---
             3726 __CxxFrameHandler3
             372c __std_exception_copy
@@ -39,4 +37,3 @@ expression: SymbolDebug(&symbols)
             37e6 terminate
             37ec IsProcessorFeaturePresent
             37f2 memcpy
-

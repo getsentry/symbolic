@@ -1,7 +1,6 @@
 ---
 source: symbolic-symcache/tests/test_cache.rs
 expression: FunctionsDebug(&symcache)
-
 ---
                0 _mh_execute_header
              d20 _ZN15google_breakpad18MinidumpFileWriterC2Ev
@@ -198,4 +197,3 @@ expression: FunctionsDebug(&symcache)
             db50 _ZN15google_breakpad14MachPortSender11SendMessageERNS_15MachSendMessageEj
             dba0 main
             dc70 _ZN12_GLOBAL__N_18callbackEPKcS1_Pvb
-

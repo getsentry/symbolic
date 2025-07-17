@@ -1,7 +1,5 @@
 ---
-created: "2019-02-20T15:42:11.796554Z"
-creator: insta@0.6.3
-source: minidump/tests/test_cfi.rs
+source: symbolic-cfi/tests/test_cfi.rs
 expression: cfi
 ---
 STACK CFI INIT d20 1a .cfa: $rsp 8 + .ra: .cfa -8 + ^
@@ -217,4 +215,3 @@ STACK CFI INIT db30 a .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI INIT db40 a .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI INIT db50 41 .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI db51 .cfa: $rsp 16 +
-

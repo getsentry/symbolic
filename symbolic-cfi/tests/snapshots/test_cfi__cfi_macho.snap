@@ -1,7 +1,6 @@
 ---
-source: symbolic-minidump/tests/test_cfi.rs
+source: symbolic-cfi/tests/test_cfi.rs
 expression: cfi
-
 ---
 STACK CFI INIT d20 1a .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI INIT d40 1a .cfa: $rsp 8 + .ra: .cfa -8 + ^
@@ -302,4 +301,3 @@ STACK CFI INIT db50 41 .cfa: $rsp 8 + .ra: .cfa -8 + ^
 STACK CFI db51 .cfa: $rsp 16 +
 STACK CFI INIT dba0 d0 .cfa: $rsp 320 + .ra: .cfa -8 + ^ $rbx: .cfa -16 + ^
 STACK CFI INIT dc70 34 .cfa: $rsp 16 + .ra: .cfa -8 + ^ $rbx: .cfa -16 + ^
-

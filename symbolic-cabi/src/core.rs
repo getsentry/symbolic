@@ -351,11 +351,7 @@ pub unsafe extern "C" fn symbolic_str_free(string: *mut SymbolicStr) {
 /// Returns true if the uuid is nil.
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: *const SymbolicUuid) -> bool {
-    if let Ok(uuid) = Uuid::from_slice(&(*uuid).data[..]) {
-        uuid == Uuid::nil()
-    } else {
-        false
-    }
+    Uuid::from_bytes((*uuid).data) == Uuid::nil()
 }
 
 /// Formats the UUID into a string.
@@ -364,6 +360,6 @@ pub unsafe extern "C" fn symbolic_uuid_is_nil(uuid: *const SymbolicUuid) -> bool
 /// `symbolic_cstr_free`.
 #[no_mangle]
 pub unsafe extern "C" fn symbolic_uuid_to_str(uuid: *const SymbolicUuid) -> SymbolicStr {
-    let uuid = Uuid::from_slice(&(*uuid).data[..]).unwrap_or_default();
+    let uuid = Uuid::from_bytes((*uuid).data);
     SymbolicStr::from_string(uuid.hyphenated().to_string())
 }

@@ -1,7 +1,5 @@
 ---
-created: "2019-06-28T08:34:30.763613Z"
-creator: insta@0.8.1
-source: debuginfo/tests/test_objects.rs
+source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FilesDebug(&files[..10])"
 ---
 /Users/travis/build/getsentry/breakpad-tools/deps/breakpad/src/client/minidump_file_writer.h
@@ -14,4 +12,3 @@ expression: "FilesDebug(&files[..10])"
 /usr/include/_types/_uint16_t.h
 /usr/include/sys/_types.h
 /usr/include/sys/_types/_off_t.h
-

@@ -1,7 +1,6 @@
 ---
 source: symbolic-symcache/tests/test_cache.rs
 expression: result
-
 ---
 [
     (

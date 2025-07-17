@@ -2104,12 +2104,12 @@ mod tests {
         let record = BreakpadModuleRecord::parse(string)?;
 
         insta::assert_debug_snapshot!(record, @r#"
-       ⋮BreakpadModuleRecord {
-       ⋮    os: "Linux",
-       ⋮    arch: "x86_64",
-       ⋮    id: "492E2DD23CC306CA9C494EEF1533A3810",
-       ⋮    name: "crash",
-       ⋮}
+        BreakpadModuleRecord {
+            os: "Linux",
+            arch: "x86_64",
+            id: "492E2DD23CC306CA9C494EEF1533A3810",
+            name: "crash",
+        }
         "#);
 
         Ok(())
@@ -2122,12 +2122,12 @@ mod tests {
         let record = BreakpadModuleRecord::parse(string)?;
 
         insta::assert_debug_snapshot!(record, @r#"
-       ⋮BreakpadModuleRecord {
-       ⋮    os: "Linux",
-       ⋮    arch: "x86_64",
-       ⋮    id: "6216C672A8D33EC9CF4A1BAB8B29D00E",
-       ⋮    name: "libdispatch.so",
-       ⋮}
+        BreakpadModuleRecord {
+            os: "Linux",
+            arch: "x86_64",
+            id: "6216C672A8D33EC9CF4A1BAB8B29D00E",
+            name: "libdispatch.so",
+        }
         "#);
 
         Ok(())
@@ -2139,10 +2139,10 @@ mod tests {
         let record = BreakpadFileRecord::parse(string)?;
 
         insta::assert_debug_snapshot!(record, @r#"
-       ⋮BreakpadFileRecord {
-       ⋮    id: 37,
-       ⋮    name: "/usr/include/libkern/i386/_OSByteOrder.h",
-       ⋮}
+        BreakpadFileRecord {
+            id: 37,
+            name: "/usr/include/libkern/i386/_OSByteOrder.h",
+        }
         "#);
 
         Ok(())
@@ -2154,10 +2154,10 @@ mod tests {
         let record = BreakpadFileRecord::parse(string)?;
 
         insta::assert_debug_snapshot!(record, @r#"
-       ⋮BreakpadFileRecord {
-       ⋮    id: 38,
-       ⋮    name: "/usr/local/src/filename with spaces.c",
-       ⋮}
+        BreakpadFileRecord {
+            id: 38,
+            name: "/usr/local/src/filename with spaces.c",
+        }
         "#);
 
         Ok(())
@@ -2201,13 +2201,13 @@ mod tests {
         let record = BreakpadFuncRecord::parse(string, Lines::default())?;
 
         insta::assert_debug_snapshot!(record, @r#"
-       ⋮BreakpadFuncRecord {
-       ⋮    multiple: false,
-       ⋮    address: 5936,
-       ⋮    size: 26,
-       ⋮    parameter_size: 0,
-       ⋮    name: "<name omitted>",
-       ⋮}
+        BreakpadFuncRecord {
+            multiple: false,
+            address: 5936,
+            size: 26,
+            parameter_size: 0,
+            name: "<name omitted>",
+        }
         "#);
 
         Ok(())
@@ -2219,13 +2219,13 @@ mod tests {
         let record = BreakpadFuncRecord::parse(string, Lines::default())?;
 
         insta::assert_debug_snapshot!(record, @r#"
-       ⋮BreakpadFuncRecord {
-       ⋮    multiple: true,
-       ⋮    address: 5936,
-       ⋮    size: 26,
-       ⋮    parameter_size: 0,
-       ⋮    name: "<name omitted>",
-       ⋮}
+        BreakpadFuncRecord {
+            multiple: true,
+            address: 5936,
+            size: 26,
+            parameter_size: 0,
+            name: "<name omitted>",
+        }
         "#);
 
         Ok(())
@@ -2237,13 +2237,13 @@ mod tests {
         let record = BreakpadFuncRecord::parse(string, Lines::default())?;
 
         insta::assert_debug_snapshot!(record, @r#"
-       ⋮BreakpadFuncRecord {
-       ⋮    multiple: false,
-       ⋮    address: 0,
-       ⋮    size: 15,
-       ⋮    parameter_size: 0,
-       ⋮    name: "<unknown>",
-       ⋮}
+        BreakpadFuncRecord {
+            multiple: false,
+            address: 0,
+            size: 15,
+            parameter_size: 0,
+            name: "<unknown>",
+        }
         "#);
 
         Ok(())
@@ -2254,14 +2254,14 @@ mod tests {
         let string = b"1730 6 93 20";
         let record = BreakpadLineRecord::parse(string)?;
 
-        insta::assert_debug_snapshot!(record, @r###"
-       ⋮BreakpadLineRecord {
-       ⋮    address: 5936,
-       ⋮    size: 6,
-       ⋮    line: 93,
-       ⋮    file_id: 20,
-       ⋮}
-        "###);
+        insta::assert_debug_snapshot!(record, @r"
+        BreakpadLineRecord {
+            address: 5936,
+            size: 6,
+            line: 93,
+            file_id: 20,
+        }
+        ");
 
         Ok(())
     }
@@ -2271,14 +2271,14 @@ mod tests {
         let string = b"e0fd10 5 -376 2225";
         let record = BreakpadLineRecord::parse(string)?;
 
-        insta::assert_debug_snapshot!(record, @r###"
+        insta::assert_debug_snapshot!(record, @r"
         BreakpadLineRecord {
             address: 14744848,
             size: 5,
             line: 0,
             file_id: 2225,
         }
-        "###);
+        ");
 
         Ok(())
     }
@@ -2290,14 +2290,14 @@ mod tests {
         let record = BreakpadLineRecord::parse(string)?;
 
         insta::assert_debug_snapshot!(
-            record, @r###"
+            record, @r"
         BreakpadLineRecord {
             address: 4096,
             size: 28,
             line: 2972,
             file_id: 2,
         }
-        "###);
+        ");
 
         Ok(())
     }
@@ -2308,12 +2308,12 @@ mod tests {
         let record = BreakpadPublicRecord::parse(string)?;
 
         insta::assert_debug_snapshot!(record, @r#"
-       ⋮BreakpadPublicRecord {
-       ⋮    multiple: false,
-       ⋮    address: 20864,
-       ⋮    parameter_size: 0,
-       ⋮    name: "__clang_call_terminate",
-       ⋮}
+        BreakpadPublicRecord {
+            multiple: false,
+            address: 20864,
+            parameter_size: 0,
+            name: "__clang_call_terminate",
+        }
         "#);
 
         Ok(())
@@ -2325,12 +2325,12 @@ mod tests {
         let record = BreakpadPublicRecord::parse(string)?;
 
         insta::assert_debug_snapshot!(record, @r#"
-       ⋮BreakpadPublicRecord {
-       ⋮    multiple: true,
-       ⋮    address: 20864,
-       ⋮    parameter_size: 0,
-       ⋮    name: "__clang_call_terminate",
-       ⋮}
+        BreakpadPublicRecord {
+            multiple: true,
+            address: 20864,
+            parameter_size: 0,
+            name: "__clang_call_terminate",
+        }
         "#);
 
         Ok(())
@@ -2342,12 +2342,12 @@ mod tests {
         let record = BreakpadPublicRecord::parse(string)?;
 
         insta::assert_debug_snapshot!(record, @r#"
-       ⋮BreakpadPublicRecord {
-       ⋮    multiple: false,
-       ⋮    address: 20864,
-       ⋮    parameter_size: 0,
-       ⋮    name: "<unknown>",
-       ⋮}
+        BreakpadPublicRecord {
+            multiple: false,
+            address: 20864,
+            parameter_size: 0,
+            name: "<unknown>",
+        }
         "#);
 
         Ok(())
@@ -2358,7 +2358,7 @@ mod tests {
         let string = b"INLINE 0 3082 52 1410 49200 10";
         let record = BreakpadInlineRecord::parse(string)?;
 
-        insta::assert_debug_snapshot!(record, @r###"
+        insta::assert_debug_snapshot!(record, @r"
         BreakpadInlineRecord {
             inline_depth: 0,
             call_site_line: 3082,
@@ -2371,7 +2371,7 @@ mod tests {
                 },
             ],
         }
-        "###);
+        ");
 
         Ok(())
     }
@@ -2381,7 +2381,7 @@ mod tests {
         let string = b"INLINE 6 642 8 207 8b110 18 8b154 18";
         let record = BreakpadInlineRecord::parse(string)?;
 
-        insta::assert_debug_snapshot!(record, @r###"
+        insta::assert_debug_snapshot!(record, @r"
         BreakpadInlineRecord {
             inline_depth: 6,
             call_site_line: 642,
@@ -2398,7 +2398,7 @@ mod tests {
                 },
             ],
         }
-        "###);
+        ");
 
         Ok(())
     }
@@ -2469,7 +2469,7 @@ mod tests {
         let string = b"STACK WIN 3 8a10b ec b 0 c c 4 0 0 1";
         let record = BreakpadStackWinRecord::parse(string)?;
 
-        insta::assert_debug_snapshot!(record, @r###"
+        insta::assert_debug_snapshot!(record, @r"
         BreakpadStackWinRecord {
             ty: Standard,
             code_start: 565515,
@@ -2483,7 +2483,7 @@ mod tests {
             uses_base_pointer: true,
             program_string: None,
         }
-        "###);
+        ");
 
         Ok(())
     }
