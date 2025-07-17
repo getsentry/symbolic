@@ -1,7 +1,5 @@
 ---
-created: "2019-06-28T08:09:53.890090Z"
-creator: insta@0.8.1
-source: debuginfo/tests/test_objects.rs
+source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FilesDebug(&files[..10])"
 ---
 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\system_error
@@ -14,4 +12,3 @@ c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.1
 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\xstring
 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\cstdlib
 c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\xmemory0
-

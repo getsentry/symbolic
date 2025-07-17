@@ -1,7 +1,5 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
 expression: SymbolsDebug(&symbols)
-
 ---
               8b internal_func
-

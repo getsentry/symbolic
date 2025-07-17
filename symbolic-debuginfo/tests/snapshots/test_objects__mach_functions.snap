@@ -1,9 +1,7 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
-assertion_line: 396
 expression: "FunctionsDebug(&functions[..10], 0)"
 ---
-
 > 0xd20: _ZN15google_breakpad18MinidumpFileWriterC2Ev (0x1a)
   0xd20: minidump_file_writer.cc:93 (../deps/breakpad/src/client)
   0xd26: minidump_file_writer.cc:94 (../deps/breakpad/src/client)
@@ -188,4 +186,3 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 
 > 0x1140: _ZN15google_breakpad18MinidumpFileWriter11WriteStringEPKwjP20MDLocationDescriptor (0x5)
   0x1140: minidump_file_writer.cc:245 (../deps/breakpad/src/client)
-

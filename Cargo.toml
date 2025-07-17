@@ -4,7 +4,7 @@ members = ["symbolic*", "examples/*"]
 
 [workspace.package]
 edition = "2021"
-rust-version = "1.73"
+rust-version = "1.82"
 
 [workspace.dependencies]
 anyhow = "1.0.32"
@@ -21,12 +21,12 @@ elementtree = "1.2.3"
 elsa = "1.8.0"
 fallible-iterator = "0.3.0"
 flate2 = { version = "1.0.25", default-features = false, features = [
-    "rust_backend",
+  "rust_backend",
 ] }
 gimli = { version = "0.31.0", default-features = false, features = [
-    "read",
-    "std",
-    "fallible-iterator",
+  "read",
+  "std",
+  "fallible-iterator",
 ] }
 goblin = { version = "0.8.0", default-features = false }
 indexmap = "2.0.0"

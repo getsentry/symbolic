@@ -1,9 +1,7 @@
 ---
 source: symbolic-debuginfo/tests/test_objects.rs
-assertion_line: 524
 expression: "FunctionsDebug(&functions[..10], 0)"
 ---
-
 > 0x1120: std::basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >::~basic_string<wchar_t,std::char_traits<wchar_t>,std::allocator<wchar_t> >() (0x54)
   0x1120: xstring:2424 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
   0x1123: xstring:2425 (c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include)
@@ -469,4 +467,3 @@ expression: "FunctionsDebug(&functions[..10], 0)"
 > 0x2690: google_breakpad::scoped_ptr<google_breakpad::CrashGenerationClient>::~scoped_ptr<google_breakpad::CrashGenerationClient>() (0xd)
   0x2690: scoped_ptr.h:98 (c:\projects\breakpad-tools\deps\breakpad\src\common)
   0x269c: scoped_ptr.h:99 (c:\projects\breakpad-tools\deps\breakpad\src\common)
-

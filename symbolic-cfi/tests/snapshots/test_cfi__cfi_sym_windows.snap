@@ -1,7 +1,5 @@
 ---
-created: "2019-02-20T15:42:11.796623Z"
-creator: insta@0.6.3
-source: minidump/tests/test_cfi.rs
+source: symbolic-cfi/tests/test_cfi.rs
 expression: cfi
 ---
 STACK WIN 4 1000 114 11 0 8 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
@@ -158,4 +156,3 @@ STACK WIN 4 35b8 ed 0 0 0 c 24 0 1 $T0 $ebp = $eip $T0 4 + ^ = $ebp $T0 ^ = $esp
 STACK WIN 4 371a c 0 0 0 0 0 0 1 $T0 .raSearch = $eip $T0 ^ = $esp $T0 4 + =
 STACK WIN 0 2dc4 14 0 0 0 0 0 0 0 0
 STACK WIN 0 30fc 13 0 0 0 0 0 0 0 0
-

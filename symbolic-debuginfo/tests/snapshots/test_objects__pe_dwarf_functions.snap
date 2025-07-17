@@ -2,7 +2,6 @@
 source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug(&functions[..10], 0)"
 ---
-
 > 0x14f0: atexit (0x14)
   0x14f0: crtexe.c:418 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x14f4: crtexe.c:419 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
@@ -220,4 +219,3 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x165a: gccmain.c:60 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x1660: gccmain.c:57 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
   0x166a: gccmain.c:58 (/mxe/tmp-gcc-x86_64-w64-mingw32.static/gcc-11.3.0.build_/mingw-w64-v10.0.0/mingw-w64-crt/crt)
-

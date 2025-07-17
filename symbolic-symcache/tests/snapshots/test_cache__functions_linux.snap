@@ -1,7 +1,6 @@
 ---
 source: symbolic-symcache/tests/test_cache.rs
 expression: FunctionsDebug(&symcache)
-
 ---
             1558 _init
             1900 _ZN15google_breakpad13PageAllocator7FreeAllEv.isra.6
@@ -170,4 +169,3 @@ expression: FunctionsDebug(&symcache)
            14c30 __libc_csu_init
            14ca0 __libc_csu_fini
            14ca4 _fini
-

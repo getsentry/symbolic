@@ -1,10 +1,7 @@
 ---
-created: "2019-02-20T15:25:10.239080Z"
-creator: insta@0.6.3
-source: debuginfo/tests/test_objects.rs
+source: symbolic-debuginfo/tests/test_objects.rs
 expression: "FunctionsDebug(&functions[..10], 0)"
 ---
-
 > 0x1000: google_breakpad::CrashGenerationClient::RequestDump(_EXCEPTION_POINTERS *,MDRawAssertionInfo *) (0x114)
   0x1000: crash_generation_client.cc:323 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
   0x1011: crash_generation_client.cc:324 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation)
@@ -132,4 +129,3 @@ expression: "FunctionsDebug(&functions[..10], 0)"
   0x1727: exception_handler.cc:289 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
   0x1741: exception_handler.cc:291 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
   0x174c: exception_handler.cc:293 (c:\projects\breakpad-tools\deps\breakpad\src\client\windows\handler)
-

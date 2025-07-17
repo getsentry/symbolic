@@ -1,8 +1,6 @@
 ---
-created: "2019-02-20T12:28:37.426989Z"
-creator: insta@0.6.3
-source: debuginfo/tests/test_objects.rs
-expression: SymbolDebug(&symbols)
+source: symbolic-debuginfo/tests/test_objects.rs
+expression: SymbolsDebug(&symbols)
 ---
                0 _mh_execute_header
              d20 _ZN15google_breakpad18MinidumpFileWriterC2Ev
@@ -199,4 +197,3 @@ expression: SymbolDebug(&symbols)
             db50 _ZN15google_breakpad14MachPortSender11SendMessageERNS_15MachSendMessageEj
             dba0 main
             dc70 _ZN12_GLOBAL__N_18callbackEPKcS1_Pvb
-
