@@ -1,6 +1,6 @@
 [package]
 name = "sourcemapcache_debug"
-version = "12.15.5"
+version = "12.16.0"
 authors = ["Sentry <hello@sentry.io>"]
 edition = "2021"
 publish = false
@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true }
-symbolic = { version = "12.15.5", path = "../../symbolic", features = [
+symbolic = { version = "12.16.0", path = "../../symbolic", features = [
     "sourcemapcache",
 ] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
