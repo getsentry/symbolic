@@ -6,6 +6,7 @@
 
 - python bindings: Expose SourceMapView.get_source_contents function. ([#921](https://github.com/getsentry/symbolic/pull/921))
 - Change the MSRV version to 1.82. ([#927](https://github.com/getsentry/symbolic/pull/927))
+- build: switch to Python3.11 for releases builds. ([#929](https://github.com/getsentry/symbolic/pull/929))
 
 **Fixes**
 
