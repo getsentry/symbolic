@@ -353,7 +353,7 @@ impl<'a> SymCacheConverter<'a> {
 
         if !function.inline {
             // add the bare minimum of information for the function if there isn't any.
-            self.ranges.entry(entry_pc).or_insert(raw::SourceLocation {
+            insert_source_location(&mut self.ranges, entry_pc, || raw::SourceLocation {
                 file_idx: u32::MAX,
                 line: 0,
                 function_idx,
@@ -413,50 +413,24 @@ impl<'a> SymCacheConverter<'a> {
             self.string_table.insert(function_name) as u32
         };
 
-        match self.ranges.entry(symbol.address as u32) {
-            btree_map::Entry::Vacant(entry) => {
-                let function = raw::Function {
-                    name_offset: name_idx,
-                    _comp_dir_offset: u32::MAX,
-                    entry_pc: symbol.address as u32,
-                    lang: u32::MAX,
-                };
-                let function_idx = self.functions.insert_full(function).0 as u32;
+        // Insert a source location for the symbol, overwriting `NO_SOURCE_LOCATION` sentinel
+        // values but not actual source locations coming from e.g. functions.
+        insert_source_location(&mut self.ranges, symbol.address as u32, || {
+            let function = raw::Function {
+                name_offset: name_idx,
+                _comp_dir_offset: u32::MAX,
+                entry_pc: symbol.address as u32,
+                lang: u32::MAX,
+            };
+            let function_idx = self.functions.insert_full(function).0 as u32;
 
-                entry.insert(raw::SourceLocation {
-                    file_idx: u32::MAX,
-                    line: 0,
-                    function_idx,
-                    inlined_into_idx: u32::MAX,
-                });
+            raw::SourceLocation {
+                file_idx: u32::MAX,
+                line: 0,
+                function_idx,
+                inlined_into_idx: u32::MAX,
             }
-            btree_map::Entry::Occupied(mut entry) if entry.get() == &NO_SOURCE_LOCATION => {
-                // This happens when an "empty" mapping was inserted in a previous iteration (see below).
-                // In this case we want to overwrite the mapping, so we do the same thing as in the `Vacant` case.
-                let function = raw::Function {
-                    name_offset: name_idx,
-                    _comp_dir_offset: u32::MAX,
-                    entry_pc: symbol.address as u32,
-                    lang: u32::MAX,
-                };
-                let function_idx = self.functions.insert_full(function).0 as u32;
-
-                entry.insert(raw::SourceLocation {
-                    file_idx: u32::MAX,
-                    line: 0,
-                    function_idx,
-                    inlined_into_idx: u32::MAX,
-                });
-            }
-            btree_map::Entry::Occupied(entry) => {
-                // ASSUMPTION:
-                // the `functions` iterator has already filled in this addr via debug session.
-                // we could trace the caller hierarchy up to the root, and assert that it is
-                // indeed the same function, and maybe update its `entry_pc`, but we don’t do
-                // that for now.
-                let _function_idx = entry.get().function_idx as usize;
-            }
-        }
+        });
 
         let last_addr = self.last_addr.get_or_insert(0);
         if symbol.address as u32 >= *last_addr {
@@ -554,6 +528,29 @@ impl<'a> SymCacheConverter<'a> {
         writer.write_all(&string_bytes)?;
 
         Ok(())
+    }
+}
+
+/// Inserts a source location into a map, but only if there either isn't already
+/// a value for the provided key or the value is the `NO_SOURCE_LOCATION` sentinel.
+///
+/// This is useful because a `NO_SOURCE_LOCATION` value may be inserted at an address to explicitly
+/// mark the end of a function or symbol. If later there is a function, symbol, or range
+/// starting at that same address, we want to evict that sentinel, but we wouldn't want to
+/// evict source locations carrying actual information.
+fn insert_source_location<K, F>(
+    source_locations: &mut BTreeMap<K, raw::SourceLocation>,
+    key: K,
+    val: F,
+) where
+    K: Ord,
+    F: FnOnce() -> raw::SourceLocation,
+{
+    if source_locations
+        .get(&key)
+        .is_none_or(|sl| *sl == NO_SOURCE_LOCATION)
+    {
+        source_locations.insert(key, val());
     }
 }
 
