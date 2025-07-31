@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- symcache: Fixed a bug in symcache generation for functions without line records. ([#930](https://github.com/getsentry/symbolic/pull/930))
+
 ## 12.16.0
 
 **Features**

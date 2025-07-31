@@ -126,3 +126,21 @@ PUBLIC d80 0 public_record"#;
     let lookup_result: Vec<_> = symcache.lookup(0xfffffa0).collect();
     assert_eq!(lookup_result[0].function().name(), "public_record");
 }
+
+/// Tests the fix for https://github.com/getsentry/symbolic/pull/930.
+#[test]
+fn test_func_no_lines() {
+    let buffer = br#"MODULE mac x86_64 67E9247C814E392BA027DBDE6748FCBF0 crash
+FUNC b2c 10 0 first()
+FUNC b3c 10 0 second()"#;
+    let breakpad = BreakpadObject::parse(buffer).unwrap();
+
+    let mut buffer = Vec::new();
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&breakpad).unwrap();
+    converter.serialize(&mut Cursor::new(&mut buffer)).unwrap();
+    let symcache = SymCache::parse(&buffer).unwrap();
+
+    let lookup_result: Vec<_> = symcache.lookup(0xb40).collect();
+    assert_eq!(lookup_result[0].function().name(), "second()");
+}
