@@ -1,6 +1,6 @@
 [package]
 name = "dump_sources"
-version = "12.16.0"
+version = "12.16.1"
 authors = ["Jan Michael Auer <mail@jauer.org>"]
 edition = "2021"
 publish = false
@@ -9,4 +9,4 @@ publish = false
 
 [dependencies]
 clap = { workspace = true }
-symbolic = { version = "12.16.0", path = "../../symbolic" }
+symbolic = { version = "12.16.1", path = "../../symbolic" }
