@@ -26,7 +26,7 @@ pub struct PortablePdbObject<'data> {
 
 impl<'data> PortablePdbObject<'data> {
     /// Returns the Portable PDB contained in this object.
-    pub fn portable_pdb(&self) -> &PortablePdb {
+    pub fn portable_pdb(&self) -> &PortablePdb<'_> {
         &self.ppdb
     }
 

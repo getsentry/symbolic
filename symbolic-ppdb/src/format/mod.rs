@@ -352,7 +352,7 @@ impl<'data> PortablePdb<'data> {
     /// or the cell is too wide for a `u32`.
     ///
     /// Note that row and column indices are 1-based!
-    pub(crate) fn get_table(&self, table: TableType) -> Result<Table, FormatError> {
+    pub(crate) fn get_table(&self, table: TableType) -> Result<Table<'_>, FormatError> {
         let md_stream = self
             .metadata_stream
             .as_ref()

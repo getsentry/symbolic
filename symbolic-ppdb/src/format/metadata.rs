@@ -216,7 +216,7 @@ impl<'data> Table<'data> {
     /// Returns the the bytes of the `idx`th row, if any.
     ///
     /// Note that table row indices are 1-based!
-    pub(crate) fn get_row(&self, idx: usize) -> Result<Row, FormatError> {
+    pub(crate) fn get_row(&self, idx: usize) -> Result<Row<'_>, FormatError> {
         idx.checked_sub(1)
             .and_then(|idx| self.contents.get(idx * self.width..(idx + 1) * self.width))
             .map(|data| Row { data, table: self })

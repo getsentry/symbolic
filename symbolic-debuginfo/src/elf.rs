@@ -356,7 +356,7 @@ impl<'data> ElfObject<'data> {
     ///
     /// - None if there is no gnu_debuglink section
     /// - DebugLinkError if this section exists, but is malformed
-    pub fn debug_link(&self) -> Result<Option<DebugLink>, DebugLinkError> {
+    pub fn debug_link(&self) -> Result<Option<DebugLink<'_>>, DebugLinkError<'_>> {
         self.section("gnu_debuglink")
             .map(|section| DebugLink::from_data(section.data, self.endianity()))
             .transpose()

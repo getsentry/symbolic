@@ -597,7 +597,7 @@ pub struct LineInfo<'data> {
 
 #[cfg(test)]
 impl LineInfo<'static> {
-    pub(crate) fn new(address: u64, size: u64, file: &[u8], line: u64) -> LineInfo {
+    pub(crate) fn new(address: u64, size: u64, file: &[u8], line: u64) -> LineInfo<'_> {
         LineInfo {
             address,
             size: Some(size),
