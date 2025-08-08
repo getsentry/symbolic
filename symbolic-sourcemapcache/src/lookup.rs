@@ -170,7 +170,7 @@ impl<'data> SourceMapCache<'data> {
     /// Looks up a [`SourcePosition`] in the minified source and resolves it
     /// to the original [`SourceLocation`].
     #[tracing::instrument(level = "trace", name = "SourceMapCache::lookup", skip_all)]
-    pub fn lookup(&self, sp: SourcePosition) -> Option<SourceLocation> {
+    pub fn lookup(&self, sp: SourcePosition) -> Option<SourceLocation<'_>> {
         let idx = match self.min_source_positions.binary_search(&sp.into()) {
             Ok(idx) => idx,
             Err(0) => return None,
