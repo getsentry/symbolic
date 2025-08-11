@@ -177,6 +177,13 @@ impl<'data> SourceMapCache<'data> {
             Err(idx) => idx - 1,
         };
 
+        // If the token has a lower minified line number,
+        // it actually belongs to the previous line. That means it should
+        // not match.
+        if self.min_source_positions.get(idx)?.line < sp.line {
+            return None;
+        }
+
         let sl = self.orig_source_locations.get(idx)?;
 
         // If file, line, and column are all absent (== `u32::MAX`), this location is simply unmapped.

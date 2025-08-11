@@ -38,6 +38,9 @@ fn resolves_inlined_function() {
     assert_eq!(sl.line(), 1);
     assert_eq!(sl.column(), 8);
     assert_eq!(sl.scope(), ScopeLookupResult::AnonymousScope);
+
+    // There are no mappings for line 1 in the sourcemap.
+    assert!(cache.lookup(SourcePosition::new(1, 17)).is_none());
 }
 
 #[test]

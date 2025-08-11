@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- sourcemapcache: Tokens are now considered to only extend to the end of the line
+  (as intended). This means that some lookups that would previously (incorrectly)
+  have returned unminified source positions now return nothing. ([#932](https://github.com/getsentry/symbolic/pull/932))
+
 ## 12.16.1
 
 **Fixes**
