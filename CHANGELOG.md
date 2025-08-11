@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 12.6.2
 
 **Fixes**
 
