@@ -5,14 +5,15 @@
         // C++ language support
         "ms-vscode.cpptools",
         // TOML language support
-        "bungcip.better-toml",
+        "tamasfe.even-better-toml",
         // Rust language server
         "rust-lang.rust-analyzer",
         // Crates.io dependency versions
-        "serayuzgur.crates",
+        "fill-labs.dependi",
         // Debugger support for Rust and native
         "vadimcn.vscode-lldb",
         // PEST syntax support
         "xoronic.pestfile"
+
     ]
 }
