@@ -302,7 +302,14 @@ fn test_elf_symbols() -> Result<(), Error> {
     let object = Object::parse(&view)?;
 
     let symbols = object.symbol_map();
-    insta::assert_debug_snapshot!("elf_dynsyms", SymbolsDebug(&symbols));
+    insta::assert_debug_snapshot!(SymbolsDebug(&symbols), @r"
+    690 __vdso_gettimeofday
+    9e0 __vdso_time
+    a10 clock_gettime
+    e30 clock_getres
+    e90 __vdso_getcpu
+    ec0 __vdso_sgx_enter_enclave
+    ");
 
     Ok(())
 }
