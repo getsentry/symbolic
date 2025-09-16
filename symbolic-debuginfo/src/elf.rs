@@ -291,7 +291,10 @@ impl<'data> ElfObject<'data> {
                 return_partial_on_err!(elf::Symtab::parse(data, dyn_info.symtab, num_syms, ctx));
         }
 
-        // If the dynamic symbol table is empty, try to parse it from the section headers.
+        // If the dynamic symbol table is empty, try finding a SHT_DYNSYM section in the section headers.
+        // See https://refspecs.linuxfoundation.org/LSB_2.1.0/LSB-Core-generic/LSB-Core-generic/elftypes.html:
+        //
+        // > This section holds a minimal set of symbols adequate for dynamic linking. See also SHT_SYMTAB. Currently, an object file may have either a section of SHT_SYMTAB type or a section of SHT_DYNSYM type, but not both.
         if obj.dynsyms.is_empty() {
             if let Some(shdr) = obj
                 .section_headers
