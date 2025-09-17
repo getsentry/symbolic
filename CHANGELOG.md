@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat(elf): Added support for dynamic symbols when DYNAMIC segment is missing ([#935](https://github.com/getsentry/symbolic/pull/935))
+
 ## 12.16.2
 
 **Fixes**
