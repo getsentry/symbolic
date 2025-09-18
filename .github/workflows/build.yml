@@ -62,7 +62,7 @@ jobs:
 
       - if: matrix.build-arch == 'aarch64'
         name: Build in Docker (aarch64)
-        run: make wheel-manylinux-aarch64 IMAGE=messense/"$MANYLINUX_VERSION"-cross:aarch64-amd64:"$MANYLINUX_PIN"
+        run: make wheel-manylinux-aarch64 IMAGE=messense/"$MANYLINUX_VERSION"-cross:aarch64-amd64
 
       - if: matrix.build-arch == 'x86_64'
         name: Build in Docker (x86_64)
