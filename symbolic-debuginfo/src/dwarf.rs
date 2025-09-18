@@ -1097,6 +1097,8 @@ struct DwarfSections<'data> {
     debug_str_offsets: DwarfSectionData<'data, gimli::read::DebugStrOffsets<Slice<'data>>>,
     debug_ranges: DwarfSectionData<'data, gimli::read::DebugRanges<Slice<'data>>>,
     debug_rnglists: DwarfSectionData<'data, gimli::read::DebugRngLists<Slice<'data>>>,
+    debug_macinfo: DwarfSectionData<'data, gimli::read::DebugMacinfo<Slice<'data>>>,
+    debug_macro: DwarfSectionData<'data, gimli::read::DebugMacro<Slice<'data>>>,
 }
 
 impl<'data> DwarfSections<'data> {
@@ -1116,6 +1118,8 @@ impl<'data> DwarfSections<'data> {
             debug_str_offsets: DwarfSectionData::load(dwarf),
             debug_ranges: DwarfSectionData::load(dwarf),
             debug_rnglists: DwarfSectionData::load(dwarf),
+            debug_macinfo: DwarfSectionData::load(dwarf),
+            debug_macro: DwarfSectionData::load(dwarf),
         }
     }
 }
@@ -1156,6 +1160,8 @@ impl<'d> DwarfInfo<'d> {
             debug_str: sections.debug_str.to_gimli(),
             debug_str_offsets: sections.debug_str_offsets.to_gimli(),
             debug_types: Default::default(),
+            debug_macinfo: sections.debug_macinfo.to_gimli(),
+            debug_macro: sections.debug_macro.to_gimli(),
             locations: Default::default(),
             ranges: RangeLists::new(
                 sections.debug_ranges.to_gimli(),

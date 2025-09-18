@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- feat(elf): Added support for dynamic symbols when DYNAMIC segment is missing ([#935](https://github.com/getsentry/symbolic/pull/935))
+- feat(elf): Added support for dynamic symbols when DYNAMIC segment is missing. ([#935](https://github.com/getsentry/symbolic/pull/935))
+- fix(dwarf): -2 is now an allowed tombstone address in some DWARF sections.
+  For details, see https://github.com/gimli-rs/gimli/pull/791. ([#937](https://github.com/getsentry/symbolic/pull/937)).
 
 ## 12.16.2
 
