@@ -66,8 +66,8 @@ jobs:
 
       - if: matrix.build-arch == 'x86_64'
         name: Build in Docker (x86_64)
-
         run: make wheel-manylinux IMAGE=quay.io/pypa/"$MANYLINUX_VERSION"_x86_64:"$MANYLINUX_PIN"
+
       - uses: actions/upload-artifact@v4
         with:
           name: artifact-linux-${{ matrix.build-arch }}
