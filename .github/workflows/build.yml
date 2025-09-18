@@ -7,6 +7,8 @@ on:
 
 env:
   MANYLINUX_VERSION: manylinux_2_28
+  # Pinned to 2025.08.15-1 since manylinux 2025.08.22 onward removes setuptools
+  MANYLINUX_PIN: 2025.08.15-1
 
 jobs:
   python-wheel-mac:
@@ -64,7 +66,7 @@ jobs:
 
       - if: matrix.build-arch == 'x86_64'
         name: Build in Docker (x86_64)
-        run: make wheel-manylinux IMAGE=quay.io/pypa/"$MANYLINUX_VERSION"_x86_64
+        run: make wheel-manylinux IMAGE=quay.io/pypa/"$MANYLINUX_VERSION"_x86_64:"$MANYLINUX_PIN"
 
       - uses: actions/upload-artifact@v4
         with:
