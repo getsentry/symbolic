@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 12.16.3
 
 - feat(elf): Added support for dynamic symbols when DYNAMIC segment is missing. ([#935](https://github.com/getsentry/symbolic/pull/935))
 - fix(dwarf): -2 is now an allowed tombstone address in some DWARF sections.

@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-debuginfo"
-version = "12.16.2"
+version = "12.16.3"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -106,8 +106,8 @@ scroll = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
 smallvec = { workspace = true, optional = true }
-symbolic-common = { version = "12.16.2", path = "../symbolic-common" }
-symbolic-ppdb = { version = "12.16.2", path = "../symbolic-ppdb", optional = true }
+symbolic-common = { version = "12.16.3", path = "../symbolic-common" }
+symbolic-ppdb = { version = "12.16.3", path = "../symbolic-ppdb", optional = true }
 thiserror = { workspace = true }
 wasmparser = { workspace = true, optional = true }
 zip = { workspace = true, optional = true }
