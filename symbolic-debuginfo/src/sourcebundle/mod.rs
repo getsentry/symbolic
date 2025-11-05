@@ -1079,7 +1079,7 @@ impl Display for SkippedFileInfo<'_> {
 /// [`add_file`] to add files and finally call [`finish`] to flush the archive to
 /// the underlying writer.
 ///
-/// Note that dropping the writer
+/// Note that dropping the writer without calling [`finish`] will result in an incomplete bundle.
 ///
 /// ```no_run
 /// # use std::fs::File;
