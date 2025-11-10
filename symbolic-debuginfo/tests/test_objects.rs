@@ -737,6 +737,56 @@ fn test_pdb_anonymous_namespace() -> Result<(), Error> {
     Ok(())
 }
 
+// End-to-end test: PDB with SRCSRV → Extract and verify SRCSRV data
+#[test]
+#[cfg(feature = "ms")]
+fn test_pdb_with_srcsrv_perforce_e2e() -> Result<(), Error> {
+    use symbolic_debuginfo::pdb::PdbObject;
+
+    // Load PDB that has SRCSRV data embedded (created on Windows with pdbstr.exe)
+    // This test will pass once crash_with_srcsrv.pdb is created on Windows
+    let view = ByteView::open(fixture("windows/crash_with_srcsrv.pdb"))?;
+    let pdb = PdbObject::parse(&view)?;
+
+    // Extract raw SRCSRV data from PDB
+    let srcsrv_data = pdb.source_server_data()?;
+    assert!(
+        srcsrv_data.is_some(),
+        "Expected SRCSRV data in crash_with_srcsrv.pdb. \
+         Create it on Windows following CREATE_SRCSRV_PDB.md instructions"
+    );
+
+    let srcsrv_bytes = srcsrv_data.unwrap();
+    let srcsrv_str = std::str::from_utf8(&srcsrv_bytes)
+        .expect("SRCSRV data should be valid UTF-8");
+
+    // Verify SRCSRV data has expected markers for Perforce
+    assert!(
+        srcsrv_str.contains("SRCSRV:"),
+        "SRCSRV data should contain SRCSRV markers"
+    );
+    assert!(
+        srcsrv_str.contains("Perforce") || srcsrv_str.contains("P4"),
+        "SRCSRV data should indicate Perforce version control"
+    );
+    assert!(
+        srcsrv_str.contains("source files"),
+        "SRCSRV data should have source files section"
+    );
+
+    // Verify we can also get the info via source_server_info()
+    let server_info = pdb.source_server_info()?;
+    assert!(
+        server_info.is_some(),
+        "source_server_info() should return SRCSRV data"
+    );
+
+    // The full transformation test (PDB → PerforcePathMapper → SymCache)
+    // is in symbolic-symcache/tests/test_transformers.rs
+
+    Ok(())
+}
+
 #[test]
 fn test_ppdb() -> Result<(), Error> {
     let view = ByteView::open(fixture("windows/portable.pdb"))?;
