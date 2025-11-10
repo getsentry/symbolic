@@ -11,11 +11,7 @@ use symbolic_testutils::fixture;
 type Error = Box<dyn std::error::Error>;
 
 // Test helpers for constructing File and SourceLocation
-fn test_file<'s>(
-    name: &'s str,
-    directory: Option<&'s str>,
-    comp_dir: Option<&'s str>,
-) -> File<'s> {
+fn test_file<'s>(name: &'s str, directory: Option<&'s str>, comp_dir: Option<&'s str>) -> File<'s> {
     File {
         name: Cow::Borrowed(name),
         directory: directory.map(Cow::Borrowed),
@@ -208,8 +204,11 @@ fn test_perforce_e2e_with_pdb_and_symcache() -> Result<(), Error> {
             if let Some(file) = sl.file() {
                 let path = file.full_path();
                 // Check if path starts with // or \\ (Perforce depot path)
-                if path.starts_with("//depot/") || path.starts_with("//")
-                    || path.starts_with("\\\\depot\\") || path.starts_with("\\\\") {
+                if path.starts_with("//depot/")
+                    || path.starts_with("//")
+                    || path.starts_with("\\\\depot\\")
+                    || path.starts_with("\\\\")
+                {
                     found_depot_path = true;
                     break;
                 }

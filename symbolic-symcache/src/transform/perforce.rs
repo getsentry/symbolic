@@ -95,7 +95,7 @@ impl PerforcePathMapper {
                 let parts: Vec<&str> = line.split('*').collect();
                 if parts.len() >= 4 {
                     let local_path = parts[0];
-                    let depot_path = parts[2];  // Skip parts[1] (server identifier)
+                    let depot_path = parts[2]; // Skip parts[1] (server identifier)
                     let revision = parts[3];
 
                     // Normalize the local path for case-insensitive matching
