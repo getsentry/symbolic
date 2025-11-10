@@ -757,8 +757,7 @@ fn test_pdb_with_srcsrv_perforce_e2e() -> Result<(), Error> {
     );
 
     let srcsrv_bytes = srcsrv_data.unwrap();
-    let srcsrv_str = std::str::from_utf8(&srcsrv_bytes)
-        .expect("SRCSRV data should be valid UTF-8");
+    let srcsrv_str = std::str::from_utf8(&srcsrv_bytes).expect("SRCSRV data should be valid UTF-8");
 
     // Verify SRCSRV data has expected markers for Perforce
     assert!(
