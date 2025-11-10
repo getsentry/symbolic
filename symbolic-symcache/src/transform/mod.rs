@@ -10,7 +10,6 @@ pub mod perforce;
 use std::borrow::Cow;
 
 /// A Function record to be written to the SymCache.
-#[non_exhaustive]
 pub struct Function<'s> {
     /// The functions name.
     pub name: Cow<'s, str>,
@@ -19,7 +18,6 @@ pub struct Function<'s> {
 }
 
 /// A File to be written to the SymCache.
-#[non_exhaustive]
 pub struct File<'s> {
     /// The file name.
     pub name: Cow<'s, str>,
@@ -29,41 +27,12 @@ pub struct File<'s> {
     pub comp_dir: Option<Cow<'s, str>>,
 }
 
-impl<'s> File<'s> {
-    /// Create a new File for testing purposes.
-    ///
-    /// This constructor is available in test builds and integration tests.
-    #[doc(hidden)]
-    pub fn new_for_test(
-        name: Cow<'s, str>,
-        directory: Option<Cow<'s, str>>,
-        comp_dir: Option<Cow<'s, str>>,
-    ) -> Self {
-        File {
-            name,
-            directory,
-            comp_dir,
-        }
-    }
-}
-
 /// A Source Location (File + Line) to be written to the SymCache.
-#[non_exhaustive]
 pub struct SourceLocation<'s> {
     /// The [`File`] part of this [`SourceLocation`].
     pub file: File<'s>,
     /// The line number.
     pub line: u32,
-}
-
-impl<'s> SourceLocation<'s> {
-    /// Create a new SourceLocation for testing purposes.
-    ///
-    /// This constructor is available in test builds and integration tests.
-    #[doc(hidden)]
-    pub fn new_for_test(file: File<'s>, line: u32) -> Self {
-        SourceLocation { file, line }
-    }
 }
 
 /// A transformer that is applied to each [`Function`] and [`SourceLocation`] record in the SymCache.
