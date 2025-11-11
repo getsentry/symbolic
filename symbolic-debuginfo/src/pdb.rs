@@ -729,10 +729,14 @@ impl<'d> PdbDebugInfo<'d> {
     }
 
     /// Returns an iterator over all compilation units (modules).
-    fn units(&'d self) -> PdbUnitIterator<'d> {
+    fn units(
+        &'d self,
+        source_server_mappings: Option<&'d SourceServerMappings>,
+    ) -> PdbUnitIterator<'d> {
         PdbUnitIterator {
             debug_info: self,
             index: 0,
+            source_server_mappings,
         }
     }
 
@@ -781,7 +785,7 @@ impl<'d> PdbDebugSession<'d> {
         // Extract source server mappings if available
         let source_server_mappings = pdb
             .source_server_data()?
-            .and_then(|data| SourceServerMappings::parse(data));
+            .and_then(SourceServerMappings::parse);
 
         let cell = SelfCell::try_new(Box::new(streams), |streams| {
             PdbDebugInfo::build(pdb, unsafe { &*streams })
@@ -797,7 +801,7 @@ impl<'d> PdbDebugSession<'d> {
     pub fn files(&self) -> PdbFileIterator<'_> {
         PdbFileIterator {
             debug_info: self.cell.get(),
-            units: self.cell.get().units(),
+            units: self.cell.get().units(self.source_server_mappings.as_ref()),
             files: pdb::FileIterator::default(),
             finished: false,
             source_server_mappings: self.source_server_mappings.as_ref(),
@@ -807,7 +811,7 @@ impl<'d> PdbDebugSession<'d> {
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> PdbFunctionIterator<'_> {
         PdbFunctionIterator {
-            units: self.cell.get().units(),
+            units: self.cell.get().units(self.source_server_mappings.as_ref()),
             functions: Vec::new().into_iter(),
             finished: false,
         }
@@ -844,6 +848,7 @@ struct Unit<'s> {
     debug_info: &'s PdbDebugInfo<'s>,
     module_index: usize,
     module: &'s pdb::ModuleInfo<'s>,
+    source_server_mappings: Option<&'s SourceServerMappings>,
 }
 
 impl<'s> Unit<'s> {
@@ -851,11 +856,13 @@ impl<'s> Unit<'s> {
         debug_info: &'s PdbDebugInfo<'s>,
         module_index: usize,
         module: &'s pdb::ModuleInfo<'s>,
+        source_server_mappings: Option<&'s SourceServerMappings>,
     ) -> Result<Self, PdbError> {
         Ok(Self {
             debug_info,
             module_index,
             module,
+            source_server_mappings,
         })
     }
 
@@ -863,6 +870,7 @@ impl<'s> Unit<'s> {
         &self,
         mut line_iter: I,
         program: &LineProgram<'s>,
+        source_server_mappings: Option<&SourceServerMappings>,
     ) -> Result<Vec<LineInfo<'s>>, PdbError>
     where
         I: FallibleIterator<Item = pdb::LineInfo>,
@@ -884,11 +892,22 @@ impl<'s> Unit<'s> {
             }
 
             let file_info = program.get_file_info(line_info.file_index)?;
+            let mut file = self.debug_info.file_info(file_info)?;
+
+            // Apply SRCSRV remapping if available
+            if let Some(mappings) = source_server_mappings {
+                let original_path = file.path_str();
+                let remapped_path = mappings.remap_path(&original_path);
+                if let Cow::Owned(remapped) = remapped_path {
+                    let path_bytes = remapped.as_bytes();
+                    file = FileInfo::from_path_owned(path_bytes);
+                }
+            }
 
             lines.push(LineInfo {
                 address: rva,
                 size,
-                file: self.debug_info.file_info(file_info)?,
+                file,
                 line: line_info.line_start.into(),
             });
         }
@@ -970,7 +989,7 @@ impl<'s> Unit<'s> {
         );
 
         let line_iter = program.lines_for_symbol(offset);
-        let lines = self.collect_lines(line_iter, program)?;
+        let lines = self.collect_lines(line_iter, program, self.source_server_mappings)?;
 
         Ok(Some(Function {
             address,
@@ -1014,7 +1033,7 @@ impl<'s> Unit<'s> {
         program: &LineProgram<'s>,
     ) -> Result<Option<Function<'s>>, PdbError> {
         let line_iter = inlinee.lines(parent_offset, &inline_site);
-        let lines = self.collect_lines(line_iter, program)?;
+        let lines = self.collect_lines(line_iter, program, self.source_server_mappings)?;
 
         // If there are no line records, skip this inline function completely. Apparently, it was
         // eliminated by the compiler, and cannot be hit by the program anymore. For `symbolic`,
@@ -1165,6 +1184,7 @@ impl<'s> Unit<'s> {
 struct PdbUnitIterator<'s> {
     debug_info: &'s PdbDebugInfo<'s>,
     index: usize,
+    source_server_mappings: Option<&'s SourceServerMappings>,
 }
 
 impl<'s> Iterator for PdbUnitIterator<'s> {
@@ -1183,7 +1203,12 @@ impl<'s> Iterator for PdbUnitIterator<'s> {
                 Err(error) => return Some(Err(error)),
             };
 
-            return Some(Unit::load(debug_info, module_index, module));
+            return Some(Unit::load(
+                debug_info,
+                module_index,
+                module,
+                self.source_server_mappings,
+            ));
         }
 
         None
