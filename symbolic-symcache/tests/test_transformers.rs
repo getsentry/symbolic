@@ -78,13 +78,13 @@ SRCSRV: end ------------------------------------------------
     // Transform it
     let transformed = mapper.transform_source_location(source_loc);
 
-    // Verify transformation
-    assert_eq!(transformed.file.name, "//depot/game/src/main.cpp");
-    assert_eq!(transformed.file.directory, None);
+    // Verify transformation - now splits depot path and adds revision to filename
+    assert_eq!(transformed.file.name, "main.cpp@42");
     assert_eq!(
-        transformed.file.comp_dir,
-        Some(Cow::Borrowed("revision:42"))
+        transformed.file.directory,
+        Some(Cow::Borrowed("//depot/game/src"))
     );
+    assert_eq!(transformed.file.comp_dir, None);
     assert_eq!(transformed.line, 10);
 }
 
@@ -196,18 +196,25 @@ fn test_perforce_e2e_with_pdb_and_symcache() -> Result<(), Error> {
     let cache = SymCache::parse(&buffer)?;
 
     // Verify that paths have been transformed
-    // Find a source location and check it has Perforce depot path format
-    // Note: On Windows, paths may use backslashes (\\depot\) instead of forward slashes (//depot/)
+    // Find a source location and check it has Perforce depot path format with revision
+    // Expected format: //depot/path/to/file.cpp@42
     let mut found_depot_path = false;
+    let mut sample_paths = Vec::new();
     for addr in 0..0x10000u64 {
         if let Some(sl) = cache.lookup(addr).next() {
             if let Some(file) = sl.file() {
                 let path = file.full_path();
-                // Check if path starts with // or \\ (Perforce depot path)
-                if path.starts_with("//depot/")
+                if sample_paths.len() < 5 {
+                    sample_paths.push(path.clone());
+                }
+                // Check if path contains Perforce revision syntax (@changelist)
+                // Depot paths use //, but on Windows clean_path() may convert to \\
+                // Both are valid representations of the same UNC-style depot path
+                if (path.starts_with("//depot/")
                     || path.starts_with("//")
                     || path.starts_with("\\\\depot\\")
-                    || path.starts_with("\\\\")
+                    || path.starts_with("\\\\"))
+                    && path.contains('@')
                 {
                     found_depot_path = true;
                     break;
@@ -218,7 +225,8 @@ fn test_perforce_e2e_with_pdb_and_symcache() -> Result<(), Error> {
 
     assert!(
         found_depot_path,
-        "Expected to find at least one file path transformed to Perforce depot format (//depot/... or \\\\depot\\...)"
+        "Expected to find at least one file path transformed to Perforce depot format with revision (//depot/.../file@42). Sample paths found: {:?}",
+        sample_paths
     );
 
     Ok(())
