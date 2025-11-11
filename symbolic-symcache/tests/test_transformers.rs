@@ -78,11 +78,11 @@ SRCSRV: end ------------------------------------------------
     // Transform it
     let transformed = mapper.transform_source_location(source_loc);
 
-    // Verify transformation - now splits depot path and adds revision to filename
+    // Verify transformation - splits depot path, strips //, adds revision to filename
     assert_eq!(transformed.file.name, "main.cpp@42");
     assert_eq!(
         transformed.file.directory,
-        Some(Cow::Borrowed("//depot/game/src"))
+        Some(Cow::Borrowed("depot/game/src"))
     );
     assert_eq!(transformed.file.comp_dir, None);
     assert_eq!(transformed.line, 10);
@@ -208,14 +208,8 @@ fn test_perforce_e2e_with_pdb_and_symcache() -> Result<(), Error> {
                     sample_paths.push(path.clone());
                 }
                 // Check if path contains Perforce revision syntax (@changelist)
-                // Depot paths use //, but on Windows clean_path() may convert to \\
-                // Both are valid representations of the same UNC-style depot path
-                if (path.starts_with("//depot/")
-                    || path.starts_with("//")
-                    || path.starts_with("\\\\depot\\")
-                    || path.starts_with("\\\\"))
-                    && path.contains('@')
-                {
+                // Paths are now relative (depot/...) so they can be remapped via code mapping
+                if path.starts_with("depot/") && path.contains('@') {
                     found_depot_path = true;
                     break;
                 }
@@ -225,7 +219,7 @@ fn test_perforce_e2e_with_pdb_and_symcache() -> Result<(), Error> {
 
     assert!(
         found_depot_path,
-        "Expected to find at least one file path transformed to Perforce depot format with revision (//depot/.../file@42). Sample paths found: {:?}",
+        "Expected to find at least one file path transformed to Perforce depot format with revision (depot/.../file@42). Sample paths found: {:?}",
         sample_paths
     );
 
