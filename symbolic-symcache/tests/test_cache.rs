@@ -1,5 +1,8 @@
+use std::io::Cursor;
+
 use symbolic_common::ByteView;
-use symbolic_symcache::{FunctionsDebug, SymCache};
+use symbolic_debuginfo::Object;
+use symbolic_symcache::{FunctionsDebug, SymCache, SymCacheConverter};
 use symbolic_testutils::fixture;
 
 type Error = Box<dyn std::error::Error>;
@@ -79,6 +82,47 @@ fn test_lookup() -> Result<(), Error> {
         })
         .collect();
     insta::assert_debug_snapshot!("lookup", result);
+
+    Ok(())
+}
+
+#[test]
+fn test_pdb_srcsrv_remapping() -> Result<(), Error> {
+    // Test that PDB with SRCSRV data has remapped paths in the symcache
+    let buffer = ByteView::open(fixture("windows/crash_with_srcsrv.pdb"))?;
+    let object = Object::parse(&buffer)?;
+
+    let mut converter = SymCacheConverter::new();
+    converter.process_object(&object)?;
+    let mut buffer = Vec::new();
+    converter.serialize(&mut Cursor::new(&mut buffer))?;
+
+    let cache = SymCache::parse(&buffer)?;
+
+    // Expected specific path based on the SRCSRV data in the test PDB
+    let expected_path =
+        "depot/breakpad/src/client/windows/crash_generation/crash_generation_client.cc@12345";
+
+    // Collect all file paths from symcache lookups
+    let mut files: Vec<String> = Vec::new();
+    for addr in 0..0x100000 {
+        if let Some(sl) = cache.lookup(addr).next() {
+            if let Some(file) = sl.file() {
+                let path = file.full_path();
+                if !files.contains(&path) {
+                    files.push(path);
+                }
+            }
+        }
+    }
+
+    // Verify the exact expected path exists
+    assert!(
+        files.iter().any(|f| f == expected_path),
+        "Expected to find remapped path in symcache: {}. Found paths: {:?}",
+        expected_path,
+        &files[..files.len().min(10)]
+    );
 
     Ok(())
 }
