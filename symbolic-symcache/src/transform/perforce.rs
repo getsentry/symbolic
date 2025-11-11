@@ -173,22 +173,27 @@ impl Transformer for PerforcePathMapper {
     ) -> SourceLocation<'f> {
         if let Some((depot_path, revision)) = self.remap_path(&sl.file) {
             // Split depot path into directory and filename
-            // e.g., "//depot/app/services/processor.cpp" -> ("//depot/app/services", "processor.cpp")
+            // e.g., "//depot/app/services/processor.cpp" -> ("depot/app/services", "processor.cpp")
             if let Some(last_slash_idx) = depot_path.rfind('/') {
                 let (directory, filename) = depot_path.split_at(last_slash_idx);
                 let filename = filename.trim_start_matches('/');
+
+                // Strip leading // from directory so path can be remapped via code mapping
+                // This allows paths to match code mappings like: depot/ -> //depot/
+                let directory = directory.trim_start_matches("//");
 
                 // Set filename with Perforce revision syntax: filename@changelist
                 // This allows Perforce to fetch the exact revision natively
                 sl.file.name = Cow::Owned(format!("{}@{}", filename, revision));
 
-                // Set directory to the full depot path (without filename)
+                // Set directory without leading // for code mapping compatibility
                 sl.file.directory = Some(Cow::Owned(directory.to_string()));
 
                 // Clear comp_dir as we don't need it
                 sl.file.comp_dir = None;
             } else {
                 // Fallback: if no slash found, use depot_path as-is with revision
+                let depot_path = depot_path.trim_start_matches("//");
                 sl.file.name = Cow::Owned(format!("{}@{}", depot_path, revision));
                 sl.file.comp_dir = None;
                 sl.file.directory = None;
