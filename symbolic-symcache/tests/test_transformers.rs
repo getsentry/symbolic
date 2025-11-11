@@ -1,12 +1,9 @@
-use std::borrow::Cow;
 use std::io::Cursor;
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::macho::BcSymbolMap;
 use symbolic_debuginfo::Object;
-use symbolic_symcache::transform::{File, SourceLocation};
 use symbolic_symcache::{SymCache, SymCacheConverter};
-use symbolic_testutils::fixture;
 
 type Error = Box<dyn std::error::Error>;
 
