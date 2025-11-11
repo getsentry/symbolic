@@ -8,6 +8,7 @@ pub mod il2cpp;
 use std::borrow::Cow;
 
 /// A Function record to be written to the SymCache.
+#[non_exhaustive]
 pub struct Function<'s> {
     /// The functions name.
     pub name: Cow<'s, str>,
@@ -16,6 +17,7 @@ pub struct Function<'s> {
 }
 
 /// A File to be written to the SymCache.
+#[non_exhaustive]
 pub struct File<'s> {
     /// The file name.
     pub name: Cow<'s, str>,
@@ -26,6 +28,7 @@ pub struct File<'s> {
 }
 
 /// A Source Location (File + Line) to be written to the SymCache.
+#[non_exhaustive]
 pub struct SourceLocation<'s> {
     /// The [`File`] part of this [`SourceLocation`].
     pub file: File<'s>,
