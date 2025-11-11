@@ -12,28 +12,6 @@ use symbolic_testutils::fixture;
 type Error = Box<dyn std::error::Error>;
 
 #[test]
-fn test_pdb_has_srcsrv_data() -> Result<(), Error> {
-    let view = ByteView::open(fixture("windows/crash_with_srcsrv.pdb"))?;
-    let pdb = PdbObject::parse(&view)?;
-
-    // Verify SRCSRV data exists
-    let srcsrv_bytes = pdb
-        .source_server_data()?
-        .expect("crash_with_srcsrv.pdb should have SRCSRV data");
-
-    assert!(!srcsrv_bytes.is_empty(), "SRCSRV data should not be empty");
-
-    // Verify it's Perforce data
-    let srcsrv_str = std::str::from_utf8(&srcsrv_bytes)?;
-    assert!(
-        srcsrv_str.contains("VERCTRL=") && srcsrv_str.to_lowercase().contains("perforce"),
-        "SRCSRV data should be for Perforce version control"
-    );
-
-    Ok(())
-}
-
-#[test]
 fn test_pdb_files_are_remapped() -> Result<(), Error> {
     let view = ByteView::open(fixture("windows/crash_with_srcsrv.pdb"))?;
     let object = Object::parse(&view)?;
@@ -66,44 +44,43 @@ fn test_pdb_files_are_remapped() -> Result<(), Error> {
         &files[..files.len().min(10)]
     );
 
-    // Verify all depot paths have correct format
-    let depot_paths: Vec<_> = files
-        .iter()
-        .filter(|path| path.starts_with("depot/") && path.contains('@'))
-        .collect();
+    Ok(())
+}
 
-    assert!(
-        !depot_paths.is_empty(),
-        "Expected to find at least one depot path with @changelist"
-    );
+#[test]
+fn test_pdb_functions_are_remapped() -> Result<(), Error> {
+    let view = ByteView::open(fixture("windows/crash_with_srcsrv.pdb"))?;
+    let object = Object::parse(&view)?;
 
-    for path in &depot_paths {
-        // Verify path format
-        assert!(
-            path.contains('@'),
-            "Perforce path should contain @changelist: {}",
-            path
-        );
-        assert!(
-            !path.starts_with("//"),
-            "Perforce path should have // stripped for code mapping: {}",
-            path
-        );
+    // Get the debug session which will parse SRCSRV and remap paths
+    let session = object.debug_session()?;
 
-        // Verify changelist is a number
-        let parts: Vec<_> = path.split('@').collect();
-        assert_eq!(
-            parts.len(),
-            2,
-            "Path should have exactly one @ symbol: {}",
-            path
-        );
-        assert!(
-            parts[1].parse::<u32>().is_ok(),
-            "Changelist should be a number: {}",
-            parts[1]
-        );
+    // Collect all file paths from functions' line info
+    let mut files: Vec<String> = Vec::new();
+    for func_result in session.functions() {
+        let func = func_result?;
+        for line in &func.lines {
+            let path = line.file.path_str();
+            if !files.contains(&path) {
+                files.push(path);
+            }
+        }
     }
+
+    // Verify we found some files
+    assert!(!files.is_empty(), "Functions should contain file entries");
+
+    // Expected specific path based on the SRCSRV data in the test PDB
+    let expected_path =
+        "depot/breakpad/src/client/windows/crash_generation/crash_generation_client.cc@12345";
+
+    // Verify the exact expected path exists
+    assert!(
+        files.iter().any(|f| f == expected_path),
+        "Expected to find remapped path in functions: {}. Found paths: {:?}",
+        expected_path,
+        &files[..files.len().min(10)]
+    );
 
     Ok(())
 }
@@ -141,48 +118,4 @@ fn test_pdb_without_srcsrv() -> Result<(), Error> {
     );
 
     Ok(())
-}
-
-#[test]
-fn test_perforce_path_format() -> Result<(), Error> {
-    let view = ByteView::open(fixture("windows/crash_with_srcsrv.pdb"))?;
-    let object = Object::parse(&view)?;
-    let session = object.debug_session()?;
-
-    // Find a remapped Perforce path and verify its format
-    for file_result in session.files() {
-        let file_entry = file_result?;
-        let path = file_entry.abs_path_str();
-
-        if path.starts_with("depot/") && path.contains('@') {
-            // Extract the changelist number
-            let parts: Vec<_> = path.split('@').collect();
-            assert_eq!(
-                parts.len(),
-                2,
-                "Path should have exactly one @ symbol: {}",
-                path
-            );
-
-            let changelist = parts[1];
-            assert!(
-                changelist.parse::<u32>().is_ok(),
-                "Changelist should be a number: {}",
-                changelist
-            );
-
-            // Verify directory structure
-            let file_with_changelist = parts[0];
-            assert!(
-                file_with_changelist.contains('/'),
-                "Depot path should have directory structure: {}",
-                path
-            );
-
-            // Found and verified at least one path - test passes
-            return Ok(());
-        }
-    }
-
-    panic!("No Perforce depot paths found in PDB with SRCSRV data");
 }
