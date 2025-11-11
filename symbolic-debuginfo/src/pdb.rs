@@ -113,6 +113,117 @@ impl From<pdb_addr2line::Error> for PdbError {
     }
 }
 
+/// Remap function type for VCS-specific path transformations
+type RemapFn = fn(&srcsrv::EvalVarMap) -> Option<String>;
+
+/// Remap function for Perforce SRCSRV entries
+///
+/// Extracts depot path (var3) and changelist (var4), then returns
+/// the path in format: depot/path@changelist
+fn remap_perforce(var_map: &srcsrv::EvalVarMap) -> Option<String> {
+    let depot_path = var_map.get("var3")?;
+    let changelist = var_map.get("var4");
+
+    // Strip leading // from depot path for code mapping compatibility
+    let depot = depot_path.trim_start_matches("//");
+
+    match changelist {
+        Some(cl) if !cl.is_empty() => {
+            // Append changelist as @changelist for Perforce
+            Some(format!("{}@{}", depot, cl))
+        }
+        _ => {
+            // Depot path without changelist
+            Some(depot.to_string())
+        }
+    }
+}
+
+/// Version control systems that we support for SRCSRV path remapping
+/// Maps VCS name (case-insensitive) to its remap function
+fn get_vcs_remap_functions() -> std::collections::HashMap<&'static str, RemapFn> {
+    let mut map = std::collections::HashMap::new();
+    map.insert("perforce", remap_perforce as RemapFn);
+    map
+}
+
+/// Source server mappings extracted from PDB files using the srcsrv crate.
+///
+/// This handles the full SRCSRV format including variable evaluation and
+/// supports extracting changelist information for supported VCS systems.
+#[derive(Clone)]
+struct SourceServerMappings {
+    /// Parsed SRCSRV stream data (leaked for 'static lifetime)
+    stream: Option<&'static srcsrv::SrcSrvStream<'static>>,
+    /// VCS-specific remap functions
+    vcs_remap_fns: std::collections::HashMap<&'static str, RemapFn>,
+}
+
+impl SourceServerMappings {
+    /// Parse source server data from the raw SRCSRV stream bytes
+    fn parse(data: Vec<u8>) -> Option<Self> {
+        // Leak the data to get a 'static lifetime since we need to store it
+        // This is safe because the SourceServerMappings will live for the
+        // duration of the PdbDebugSession
+        let static_data: &'static [u8] = Box::leak(data.into_boxed_slice());
+
+        match srcsrv::SrcSrvStream::parse(static_data) {
+            Ok(stream) => {
+                // Leak the stream to get 'static lifetime
+                let static_stream = Box::leak(Box::new(stream));
+                Some(Self {
+                    stream: Some(static_stream),
+                    vcs_remap_fns: get_vcs_remap_functions(),
+                })
+            }
+            Err(_) => None,
+        }
+    }
+
+    /// Remap a local build path to a VCS path if supported.
+    ///
+    /// Uses VCS-specific remap functions for supported systems (e.g., Perforce).
+    /// Returns the remapped path, or the original path if no mapping is found
+    /// or the VCS is not supported.
+    fn remap_path<'a>(&self, path: &'a str) -> Cow<'a, str> {
+        let stream = match &self.stream {
+            Some(s) => s,
+            None => return Cow::Borrowed(path),
+        };
+
+        // Check the version control system
+        let vcs = match stream.version_control_description() {
+            Some(v) => v,
+            None => return Cow::Borrowed(path),
+        };
+
+        // Find the remap function for this VCS (case-insensitive)
+        let remap_fn = self
+            .vcs_remap_fns
+            .iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case(vcs))
+            .map(|(_, func)| func);
+
+        let remap_fn = match remap_fn {
+            Some(f) => f,
+            None => return Cow::Borrowed(path),
+        };
+
+        // Try to get the source information for this path
+        // Use an empty extraction path since we just want the mapping
+        let var_map = match stream.source_and_raw_var_values_for_path(path, "") {
+            Ok(Some((_method, var_map))) => var_map,
+            _ => return Cow::Borrowed(path),
+        };
+
+        // Apply VCS-specific remapping
+        match remap_fn(&var_map) {
+            Some(remapped) => Cow::Owned(remapped),
+            None => Cow::Borrowed(path),
+        }
+    }
+}
+
 /// Program Database, the debug companion format on Windows.
 ///
 /// This object is a sole debug companion to [`PeObject`](../pdb/struct.PdbObject.html).
@@ -226,21 +337,6 @@ impl<'data> PdbObject<'data> {
             }
             Err(e) => Err(e.into()),
         }
-    }
-
-    /// Extracts Source Server information from the PDB if available.
-    ///
-    /// Source Server information is embedded in PDB files by build systems to map
-    /// local build paths to source control locations (Perforce, Git, etc.).
-    /// This is commonly used in game development where builds happen on different machines.
-    ///
-    /// Returns `None` if no Source Server stream is present.
-    ///
-    /// Note: This is a convenience method that calls `source_server_data()`.
-    /// For parsing the data, use the `srcsrv` crate or custom parsers.
-    #[cfg(feature = "ms")]
-    pub fn source_server_info(&self) -> Result<Option<Vec<u8>>, PdbError> {
-        self.source_server_data()
     }
 
     /// The kind of this object, which is always `Debug`.
@@ -675,16 +771,26 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for PdbDebugInfo<'d> {
 /// Debug session for PDB objects.
 pub struct PdbDebugSession<'d> {
     cell: SelfCell<Box<PdbStreams<'d>>, PdbDebugInfo<'d>>,
+    source_server_mappings: Option<SourceServerMappings>,
 }
 
 impl<'d> PdbDebugSession<'d> {
     fn build(pdb: &PdbObject<'d>) -> Result<Self, PdbError> {
         let streams = PdbStreams::from_pdb(pdb)?;
+
+        // Extract source server mappings if available
+        let source_server_mappings = pdb
+            .source_server_data()?
+            .and_then(|data| SourceServerMappings::parse(data));
+
         let cell = SelfCell::try_new(Box::new(streams), |streams| {
             PdbDebugInfo::build(pdb, unsafe { &*streams })
         })?;
 
-        Ok(PdbDebugSession { cell })
+        Ok(PdbDebugSession {
+            cell,
+            source_server_mappings,
+        })
     }
 
     /// Returns an iterator over all source files in this debug file.
@@ -694,6 +800,7 @@ impl<'d> PdbDebugSession<'d> {
             units: self.cell.get().units(),
             files: pdb::FileIterator::default(),
             finished: false,
+            source_server_mappings: self.source_server_mappings.as_ref(),
         }
     }
 
@@ -1089,6 +1196,7 @@ pub struct PdbFileIterator<'s> {
     units: PdbUnitIterator<'s>,
     files: pdb::FileIterator<'s>,
     finished: bool,
+    source_server_mappings: Option<&'s SourceServerMappings>,
 }
 
 impl<'s> Iterator for PdbFileIterator<'s> {
@@ -1104,7 +1212,23 @@ impl<'s> Iterator for PdbFileIterator<'s> {
                 let result = file_result
                     .map_err(|err| err.into())
                     .and_then(|i| self.debug_info.file_info(i))
-                    .map(|info| FileEntry::new(Cow::default(), info));
+                    .map(|info| {
+                        // Apply source server remapping if available
+                        if let Some(mappings) = &self.source_server_mappings {
+                            let original_path = info.path_str();
+                            let remapped_path = mappings.remap_path(&original_path);
+
+                            // If path was remapped, create new FileInfo from the remapped path
+                            if let Cow::Owned(remapped) = remapped_path {
+                                let path_bytes = remapped.as_bytes();
+                                let remapped_info = FileInfo::from_path_owned(path_bytes);
+                                return FileEntry::new(Cow::default(), remapped_info);
+                            }
+                        }
+
+                        // No remapping or remapping returned original path
+                        FileEntry::new(Cow::default(), info)
+                    });
 
                 return Some(result);
             }

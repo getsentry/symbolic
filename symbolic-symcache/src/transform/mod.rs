@@ -5,8 +5,6 @@ mod bcsymbolmap;
 #[cfg(feature = "il2cpp")]
 pub mod il2cpp;
 
-pub mod perforce;
-
 use std::borrow::Cow;
 
 /// A Function record to be written to the SymCache.
