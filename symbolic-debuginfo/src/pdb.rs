@@ -186,9 +186,8 @@ impl SourceServerMappings {
     /// Returns the remapped path, or the original path if no mapping is found
     /// or the VCS is not supported.
     fn remap_path<'a>(&self, path: &'a str) -> Cow<'a, str> {
-        let stream = match &self.stream {
-            Some(s) => s,
-            None => return Cow::Borrowed(path),
+        let Some(stream) = &self.stream else {
+            return Cow::Borrowed(path);
         };
 
         // Check the version control system
