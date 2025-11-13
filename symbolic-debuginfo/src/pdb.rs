@@ -191,9 +191,8 @@ impl SourceServerMappings {
         };
 
         // Check the version control system
-        let vcs = match stream.version_control_description() {
-            Some(v) => v,
-            None => return Cow::Borrowed(path),
+        let Some(vcs) = stream.version_control_description() else {
+            return Cow::Borrowed(path);
         };
 
         // Get the remap function for this VCS (case-insensitive)
