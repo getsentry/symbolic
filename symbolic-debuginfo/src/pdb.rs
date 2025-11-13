@@ -139,12 +139,15 @@ fn remap_perforce(var_map: &srcsrv::EvalVarMap) -> Option<String> {
     }
 }
 
-/// Version control systems that we support for SRCSRV path remapping
-/// Maps VCS name (case-insensitive) to its remap function
-fn get_vcs_remap_functions() -> std::collections::HashMap<&'static str, RemapFn> {
-    let mut map = std::collections::HashMap::new();
-    map.insert("perforce", remap_perforce as RemapFn);
-    map
+/// Get the VCS-specific remap function for the given VCS name (case-insensitive).
+///
+/// This is a static lookup that maps VCS names to their corresponding remap functions.
+fn get_vcs_remap_function(vcs: &str) -> Option<RemapFn> {
+    if vcs.eq_ignore_ascii_case("perforce") {
+        Some(remap_perforce)
+    } else {
+        None
+    }
 }
 
 /// Source server mappings extracted from PDB files using the srcsrv crate.
@@ -155,8 +158,6 @@ fn get_vcs_remap_functions() -> std::collections::HashMap<&'static str, RemapFn>
 struct SourceServerMappings {
     /// Parsed SRCSRV stream data (leaked for 'static lifetime)
     stream: Option<&'static srcsrv::SrcSrvStream<'static>>,
-    /// VCS-specific remap functions
-    vcs_remap_fns: std::collections::HashMap<&'static str, RemapFn>,
 }
 
 impl SourceServerMappings {
@@ -173,7 +174,6 @@ impl SourceServerMappings {
                 let static_stream = Box::leak(Box::new(stream));
                 Some(Self {
                     stream: Some(static_stream),
-                    vcs_remap_fns: get_vcs_remap_functions(),
                 })
             }
             Err(_) => None,
@@ -197,14 +197,8 @@ impl SourceServerMappings {
             None => return Cow::Borrowed(path),
         };
 
-        // Find the remap function for this VCS (case-insensitive)
-        let remap_fn = self
-            .vcs_remap_fns
-            .iter()
-            .find(|(key, _)| key.eq_ignore_ascii_case(vcs))
-            .map(|(_, func)| func);
-
-        let remap_fn = match remap_fn {
+        // Get the remap function for this VCS (case-insensitive)
+        let remap_fn = match get_vcs_remap_function(vcs) {
             Some(f) => f,
             None => return Cow::Borrowed(path),
         };
