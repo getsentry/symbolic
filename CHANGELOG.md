@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- Extract srcsrv data from PDB for file mapping ([#943](https://github.com/getsentry/symbolic/pull/943))
+
 ## 12.16.3
 
 - feat(elf): Added support for dynamic symbols when DYNAMIC segment is missing. ([#935](https://github.com/getsentry/symbolic/pull/935))
