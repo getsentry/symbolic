@@ -16,6 +16,7 @@ use pdb_addr2line::pdb::{
 };
 use pdb_addr2line::ModuleProvider;
 use smallvec::SmallVec;
+use srcsrv;
 use thiserror::Error;
 
 use symbolic_common::{
@@ -268,7 +269,9 @@ impl<'data> PdbObject<'data> {
         // Parse the stream to extract VCS name
         let stream_data = stream.as_slice();
         if let Ok(parsed_stream) = srcsrv::SrcSrvStream::parse(stream_data) {
-            parsed_stream.version_control_description().map(|s| s.to_string())
+            parsed_stream
+                .version_control_description()
+                .map(|s| s.to_string())
         } else {
             None
         }
