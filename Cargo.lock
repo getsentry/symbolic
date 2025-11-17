@@ -2211,6 +2211,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "srcsrv"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85cd3e3828fb4dd5ba0e7091777edb6c3db3cd2d6fc10547b29b40f6949a29be"
+dependencies = [
+ "memchr",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2483,6 +2493,7 @@ dependencies = [
  "serde_json",
  "similar-asserts",
  "smallvec",
+ "srcsrv",
  "symbolic-common",
  "symbolic-ppdb",
  "symbolic-testutils",

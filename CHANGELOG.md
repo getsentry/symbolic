@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- feat(pdb): Extract the srcsrv integration name for metrics ([#944](https://github.com/getsentry/symbolic/pull/944))
+
 ## 12.16.3
 
 - feat(elf): Added support for dynamic symbols when DYNAMIC segment is missing. ([#935](https://github.com/getsentry/symbolic/pull/935))
