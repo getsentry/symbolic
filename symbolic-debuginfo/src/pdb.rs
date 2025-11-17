@@ -251,6 +251,29 @@ impl<'data> PdbObject<'data> {
         false
     }
 
+    /// Returns the SRCSRV VCS integration name if available.
+    ///
+    /// This extracts the version control system identifier from the SRCSRV stream,
+    /// if present. Common values include "perforce", "tfs", "git", etc.
+    /// Returns `None` if no SRCSRV stream exists or if it cannot be parsed.
+    pub fn srcsrv_vcs_name(&self) -> Option<String> {
+        let mut pdb = self.pdb.write();
+
+        // Try to open the "srcsrv" named stream
+        let stream = match pdb.named_stream(b"srcsrv") {
+            Ok(stream) => stream,
+            Err(_) => return None,
+        };
+
+        // Parse the stream to extract VCS name
+        let stream_data = stream.as_slice();
+        if let Ok(parsed_stream) = srcsrv::SrcSrvStream::parse(stream_data) {
+            parsed_stream.version_control_description().map(|s| s.to_string())
+        } else {
+            None
+        }
+    }
+
     /// Determines whether this object is malformed and was only partially parsed
     pub fn is_malformed(&self) -> bool {
         false
