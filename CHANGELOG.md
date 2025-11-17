@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 12.17.0
 
 - feat(pdb): Extract the srcsrv integration name for metrics ([#944](https://github.com/getsentry/symbolic/pull/944))
 
