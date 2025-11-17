@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Extend symbolic to extract the srcsrv integration name for metrics ([#944](https://github.com/getsentry/symbolic/pull/944))
+- feat(pdb): Extract the srcsrv integration name for metrics ([#944](https://github.com/getsentry/symbolic/pull/944))
 
 ## 12.16.3
 
