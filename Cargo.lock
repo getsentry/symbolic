@@ -264,9 +264,9 @@ dependencies = [
 
 [[package]]
 name = "breakpad-symbols"
-version = "0.22.2"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61f012b493245d982c24a716dd716d06188af966f685ce3cafe02e197ab7fb59"
+checksum = "9b544545512b213899840bb26f72cd13f9fb4c3de3dd5f8dc7219688f54aebe9"
 dependencies = [
  "async-trait",
  "cachemap2",
@@ -276,7 +276,7 @@ dependencies = [
  "minidump-common",
  "nom",
  "range-map",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tracing",
 ]
 
@@ -1258,9 +1258,9 @@ dependencies = [
 
 [[package]]
 name = "minidump"
-version = "0.22.2"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebc7268c0afe5aa2fd6fde310e6cda158f0b3581f317c5a5c7d170861f9b90a6"
+checksum = "a902ca21d9772a66d3d1b050b3436dcadb192694be01409e0219902dcf4bc1e8"
 dependencies = [
  "debugid",
  "encoding_rs",
@@ -1268,9 +1268,10 @@ dependencies = [
  "minidump-common",
  "num-traits",
  "procfs-core",
+ "prost",
  "range-map",
  "scroll 0.12.0",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "time",
  "tracing",
  "uuid",
@@ -1278,9 +1279,9 @@ dependencies = [
 
 [[package]]
 name = "minidump-common"
-version = "0.22.2"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0cde999358cca8fb9397c4298bb27c4a603c13ee6b3a646da514b20be582a21e"
+checksum = "2e16d10087ae9e375bad7a40e8ef5504bc08e808ccc6019067ff9de42a84570f"
 dependencies = [
  "bitflags 2.7.0",
  "debugid",
@@ -1293,9 +1294,9 @@ dependencies = [
 
 [[package]]
 name = "minidump-processor"
-version = "0.22.1"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41ab4c99352eb8bcc861eb06ceae910fc1d0a8395acc9ffd961fc230c9c12ca0"
+checksum = "ee81ed67b9b37e3e1e47b3677bebe739499b12dcec7cdc74440990fde64e232b"
 dependencies = [
  "async-trait",
  "breakpad-symbols",
@@ -1307,16 +1308,16 @@ dependencies = [
  "scroll 0.12.0",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "tracing",
  "yaxpeax-x86",
 ]
 
 [[package]]
 name = "minidump-unwind"
-version = "0.22.2"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b2bc4d6066050b350c5dddf066a25bfd6c9f20b8919dc66501d831524ab4dd4"
+checksum = "4aa8b7212f59c525f93c62457c54f9f9ac550316ee0e41f129b4b19165d5acd1"
 dependencies = [
  "async-trait",
  "breakpad-symbols",
@@ -1744,6 +1745,29 @@ dependencies = [
  "rusty-fork",
  "tempfile",
  "unarray",
+]
+
+[[package]]
+name = "prost"
+version = "0.13.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2796faa41db3ec313a31f7624d9286acf277b52de526150b7e69f3debf891ee5"
+dependencies = [
+ "bytes",
+ "prost-derive",
+]
+
+[[package]]
+name = "prost-derive"
+version = "0.13.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
+dependencies = [
+ "anyhow",
+ "itertools 0.14.0",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -3229,9 +3253,9 @@ dependencies = [
 
 [[package]]
 name = "yaxpeax-arch"
-version = "0.2.8"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f005c964432a1f9ee04598e094a3eb5f7568f6b33e89a2762d7bef6fbe8b255"
+checksum = "36274fcc5403da2a7636ffda4d02eca12a1b2b8267b9d2e04447bd2ccfc72082"
 dependencies = [
  "crossterm",
  "num-traits",
@@ -3241,9 +3265,9 @@ dependencies = [
 
 [[package]]
 name = "yaxpeax-x86"
-version = "1.2.2"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9107477944697db42c41326f82d4c65b769b32512cdad1e086f36f0e0f25ff45"
+checksum = "9a9a30b7dd533c7b1a73eaf7c4ea162a7a632a2bb29b9fff47d8f2cc8513a883"
 dependencies = [
  "cfg-if",
  "num-traits",
