@@ -727,6 +727,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
+name = "foldhash"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
+
+[[package]]
 name = "form_urlencoded"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -852,6 +858,11 @@ name = "hashbrown"
 version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
+dependencies = [
+ "allocator-api2",
+ "equivalent",
+ "foldhash",
+]
 
 [[package]]
 name = "heck"
@@ -1728,7 +1739,7 @@ dependencies = [
  "lazy_static",
  "thiserror 1.0.69",
  "uuid",
- "watto",
+ "watto 0.1.0",
 ]
 
 [[package]]
@@ -2524,7 +2535,7 @@ dependencies = [
  "symbolic-testutils",
  "thiserror 1.0.69",
  "uuid",
- "watto",
+ "watto 0.2.0",
 ]
 
 [[package]]
@@ -2538,7 +2549,7 @@ dependencies = [
  "symbolic-testutils",
  "thiserror 1.0.69",
  "tracing",
- "watto",
+ "watto 0.2.0",
 ]
 
 [[package]]
@@ -2554,7 +2565,7 @@ dependencies = [
  "symbolic-testutils",
  "thiserror 1.0.69",
  "tracing",
- "watto",
+ "watto 0.2.0",
 ]
 
 [[package]]
@@ -3022,6 +3033,17 @@ checksum = "6746b5315e417144282a047ebb82260d45c92d09bf653fa9ec975e3809be942b"
 dependencies = [
  "leb128",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "watto"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bfbc1480663d640f8c9f7a1ac70922eea60ac16fea79df883177df3bc7bb8b49"
+dependencies = [
+ "hashbrown 0.15.2",
+ "leb128",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
