@@ -51,7 +51,7 @@ use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, BufWriter, ErrorKind, Read, Seek, Write};
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::{fmt, io};
 
 use parking_lot::Mutex;
@@ -80,9 +80,7 @@ static MANIFEST_PATH: &str = "manifest.json";
 /// Path at which files will be written into the bundle.
 static FILES_PATH: &str = "files";
 
-lazy_static::lazy_static! {
-    static ref SANE_PATH_RE: Regex = Regex::new(r":?[/\\]+").unwrap();
-}
+static SANE_PATH_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r":?[/\\]+").unwrap());
 
 /// The error type for [`SourceBundleError`].
 #[non_exhaustive]

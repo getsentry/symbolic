@@ -1,10 +1,10 @@
 //! Support for Portable PDB Objects.
 use std::borrow::Cow;
+use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::iter;
 
-use once_cell::sync::OnceCell;
 use symbolic_common::{Arch, CodeId, DebugId};
 use symbolic_ppdb::EmbeddedSource;
 use symbolic_ppdb::{Document, FormatError, PortablePdb};

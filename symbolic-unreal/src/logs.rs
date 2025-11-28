@@ -1,6 +1,7 @@
+use std::sync::LazyLock;
+
 use anylog::LogEntry;
 use chrono::{DateTime, Utc};
-use lazy_static::lazy_static;
 use regex::Regex;
 #[cfg(any(test, feature = "serde"))]
 use time::format_description::well_known::Rfc3339;
@@ -11,12 +12,12 @@ use crate::Unreal4ErrorKind;
 #[cfg(test)]
 use similar_asserts::assert_eq;
 
-lazy_static! {
-    /// https://github.com/EpicGames/UnrealEngine/blob/f509bb2d6c62806882d9a10476f3654cf1ee0634/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L79-L93
-    /// Note: Date is always in US format (dd/MM/yyyy) and time is local
-    /// Example: Log file open, 12/13/18 15:54:53
-    static ref LOG_FIRST_LINE: Regex = Regex::new(r"Log file open, (?P<month>\d\d)/(?P<day>\d\d)/(?P<year>\d\d) (?P<hour>\d\d):(?P<minute>\d\d):(?P<second>\d\d)$").unwrap();
-}
+/// https://github.com/EpicGames/UnrealEngine/blob/f509bb2d6c62806882d9a10476f3654cf1ee0634/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L79-L93
+/// Note: Date is always in US format (dd/MM/yyyy) and time is local
+/// Example: Log file open, 12/13/18 15:54:53
+static LOG_FIRST_LINE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"Log file open, (?P<month>\d\d)/(?P<day>\d\d)/(?P<year>\d\d) (?P<hour>\d\d):(?P<minute>\d\d):(?P<second>\d\d)$").unwrap()
+});
 
 #[cfg(feature = "serde")]
 fn serialize_timestamp<S: serde::Serializer>(
