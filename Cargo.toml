@@ -15,7 +15,7 @@ cc = "1.0.79"
 chrono = { version = "0.4.23", default-features = false, features = ["std"] }
 clap = "4.4.5"
 cpp_demangle = "0.5.1"
-criterion = { version = "0.5.1", features = ["html_reports"] }
+criterion = { version = "0.8.1", features = ["html_reports"] }
 debugid = "0.8.0"
 elementtree = "1.2.3"
 elsa = "1.8.0"
