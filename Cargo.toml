@@ -31,7 +31,7 @@ gimli = { version = "0.32.3", default-features = false, features = [
 goblin = { version = "0.8.0", default-features = false }
 indexmap = "2.0.0"
 insta = { version = "1.28.0", features = ["yaml"] }
-itertools = "0.13.0"
+itertools = "0.14.0"
 js-source-scopes = "0.7.0"
 memmap2 = "0.9.0"
 minidump = "0.22.0"
