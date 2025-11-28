@@ -1345,7 +1345,7 @@ dependencies = [
  "minidump-processor",
  "minidump-unwind",
  "symbolic",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -2430,7 +2430,7 @@ dependencies = [
  "symbolic-common",
  "symbolic-debuginfo",
  "symbolic-testutils",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -2477,7 +2477,7 @@ dependencies = [
  "symbolic-ppdb",
  "symbolic-testutils",
  "tempfile",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "wasmparser",
  "zip",
  "zstd",
@@ -2516,7 +2516,7 @@ dependencies = [
  "symbolic-common",
  "symbolic-debuginfo",
  "symbolic-testutils",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "uuid",
  "watto",
 ]
@@ -2530,7 +2530,7 @@ dependencies = [
  "sourcemap",
  "symbolic-common",
  "symbolic-testutils",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "tracing",
  "watto",
 ]
@@ -2546,7 +2546,7 @@ dependencies = [
  "symbolic-debuginfo",
  "symbolic-il2cpp",
  "symbolic-testutils",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "tracing",
  "watto",
 ]
@@ -2570,7 +2570,7 @@ dependencies = [
  "serde",
  "similar-asserts",
  "symbolic-testutils",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "time",
 ]
 
