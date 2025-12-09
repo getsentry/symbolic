@@ -114,29 +114,26 @@ impl From<pdb_addr2line::Error> for PdbError {
 }
 
 /// Remap function type for VCS-specific path transformations
-type RemapFn = fn(&srcsrv::EvalVarMap) -> Option<String>;
+/// Returns a tuple of (path, optional revision)
+type RemapFn = fn(&srcsrv::EvalVarMap) -> Option<(String, Option<String>)>;
 
 /// Remap function for Perforce SRCSRV entries
 ///
 /// Extracts depot path (var3) and changelist (var4), then returns
-/// the path in format: depot/path@changelist
-fn remap_perforce(var_map: &srcsrv::EvalVarMap) -> Option<String> {
+/// a tuple of (path, optional revision).
+fn remap_perforce(var_map: &srcsrv::EvalVarMap) -> Option<(String, Option<String>)> {
     let depot_path = var_map.get("var3")?;
     let changelist = var_map.get("var4");
 
     // Strip leading // from depot path for code mapping compatibility
     let depot = depot_path.trim_start_matches("//");
 
-    match changelist {
-        Some(cl) if !cl.is_empty() => {
-            // Append changelist as @changelist for Perforce
-            Some(format!("{}@{}", depot, cl))
-        }
-        _ => {
-            // Depot path without changelist
-            Some(depot.to_string())
-        }
-    }
+    let revision = match changelist {
+        Some(cl) if !cl.is_empty() => Some(cl.to_string()),
+        _ => None,
+    };
+
+    Some((depot.to_string(), revision))
 }
 
 /// Get the VCS-specific remap function for the given VCS name (case-insensitive).
@@ -183,35 +180,35 @@ impl SourceServerMappings {
     /// Remap a local build path to a VCS path if supported.
     ///
     /// Uses VCS-specific remap functions for supported systems (e.g., Perforce).
-    /// Returns the remapped path, or the original path if no mapping is found
-    /// or the VCS is not supported.
-    fn remap_path<'a>(&self, path: &'a str) -> Cow<'a, str> {
+    /// Returns a tuple of (path, optional_revision). If no mapping is found,
+    /// returns the original path with no revision.
+    fn remap_path<'a>(&self, path: &'a str) -> (Cow<'a, str>, Option<String>) {
         let Some(stream) = &self.stream else {
-            return Cow::Borrowed(path);
+            return (Cow::Borrowed(path), None);
         };
 
         // Check the version control system
         let Some(vcs) = stream.version_control_description() else {
-            return Cow::Borrowed(path);
+            return (Cow::Borrowed(path), None);
         };
 
         // Get the remap function for this VCS (case-insensitive)
         let remap_fn = match get_vcs_remap_function(vcs) {
             Some(f) => f,
-            None => return Cow::Borrowed(path),
+            None => return (Cow::Borrowed(path), None),
         };
 
         // Try to get the source information for this path
         // Use an empty extraction path since we just want the mapping
         let var_map = match stream.source_and_raw_var_values_for_path(path, "") {
             Ok(Some((_method, var_map))) => var_map,
-            _ => return Cow::Borrowed(path),
+            _ => return (Cow::Borrowed(path), None),
         };
 
         // Apply VCS-specific remapping
         match remap_fn(&var_map) {
-            Some(remapped) => Cow::Owned(remapped),
-            None => Cow::Borrowed(path),
+            Some((remapped_path, revision)) => (Cow::Owned(remapped_path), revision),
+            None => (Cow::Borrowed(path), None),
         }
     }
 }
@@ -889,10 +886,15 @@ impl<'s> Unit<'s> {
             // Apply SRCSRV remapping if available
             if let Some(mappings) = source_server_mappings {
                 let original_path = file.path_str();
-                let remapped_path = mappings.remap_path(&original_path);
+                let (remapped_path, revision) = mappings.remap_path(&original_path);
+
+                // If path was remapped or we have a revision, update FileInfo
                 if let Cow::Owned(remapped) = remapped_path {
                     let path_bytes = remapped.as_bytes();
-                    file = FileInfo::from_path_owned(path_bytes);
+                    file = FileInfo::from_path_and_revision_owned(path_bytes, revision);
+                } else if let Some(rev) = revision {
+                    // Path wasn't remapped but we have a revision
+                    file.set_revision(Some(rev));
                 }
             }
 
@@ -1229,17 +1231,21 @@ impl<'s> Iterator for PdbFileIterator<'s> {
                 let result = file_result
                     .map_err(|err| err.into())
                     .and_then(|i| self.debug_info.file_info(i))
-                    .map(|info| {
+                    .map(|mut info| {
                         // Apply source server remapping if available
                         if let Some(mappings) = &self.source_server_mappings {
                             let original_path = info.path_str();
-                            let remapped_path = mappings.remap_path(&original_path);
+                            let (remapped_path, revision) = mappings.remap_path(&original_path);
 
-                            // If path was remapped, create new FileInfo from the remapped path
+                            // If path was remapped or we have a revision, update FileInfo
                             if let Cow::Owned(remapped) = remapped_path {
                                 let path_bytes = remapped.as_bytes();
-                                let remapped_info = FileInfo::from_path_owned(path_bytes);
+                                let remapped_info =
+                                    FileInfo::from_path_and_revision_owned(path_bytes, revision);
                                 return FileEntry::new(Cow::default(), remapped_info);
+                            } else if let Some(rev) = revision {
+                                // Path wasn't remapped but we have a revision
+                                info.set_revision(Some(rev));
                             }
                         }
 

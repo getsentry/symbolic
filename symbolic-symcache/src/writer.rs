@@ -228,6 +228,7 @@ impl<'a> SymCacheConverter<'a> {
                     name: line.file.name_str(),
                     directory: Some(line.file.dir_str()),
                     comp_dir: comp_dir.map(Into::into),
+                    revision: line.file.revision().map(|s| s.into()),
                 },
                 line: line.line as u32,
             };
@@ -244,11 +245,16 @@ impl<'a> SymCacheConverter<'a> {
                 .file
                 .comp_dir
                 .map_or(u32::MAX, |cd| string_table.insert(&cd) as u32);
+            let revision_offset = location
+                .file
+                .revision
+                .map_or(u32::MAX, |r| string_table.insert(&r) as u32);
 
             let (file_idx, _) = self.files.insert_full(raw::File {
                 name_offset,
                 directory_offset,
                 comp_dir_offset,
+                revision_offset,
             });
 
             let source_location = raw::SourceLocation {

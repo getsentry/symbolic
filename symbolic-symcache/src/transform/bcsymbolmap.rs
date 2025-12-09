@@ -27,6 +27,7 @@ impl Transformer for BcSymbolMap<'_> {
                 name: resolve_cow(self, sl.file.name),
                 directory: sl.file.directory.map(|dir| resolve_cow(self, dir)),
                 comp_dir: sl.file.comp_dir.map(|dir| resolve_cow(self, dir)),
+                revision: sl.file.revision,
             },
             line: sl.line,
         }

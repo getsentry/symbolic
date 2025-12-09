@@ -72,7 +72,9 @@ pub(crate) struct Function {
     pub(crate) lang: u32,
 }
 
-/// Serialized File in the SymCache.
+/// Serialized File in the SymCache (version 9+ format, 16 bytes).
+///
+/// This is the current format with support for VCS revision tracking.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[repr(C)]
 pub(crate) struct File {
@@ -82,6 +84,36 @@ pub(crate) struct File {
     pub(crate) directory_offset: u32,
     /// The file path (reference to a [`String`]).
     pub(crate) name_offset: u32,
+    /// The optional VCS revision (reference to a [`String`]).
+    ///
+    /// This field was added in version 9.
+    pub(crate) revision_offset: u32,
+}
+
+// -------------- Compatibility structs for older SymCache versions 7 and 8 ------------ //
+/// Serialized File in the SymCache (version 7-8 format, 12 bytes).
+///
+/// This is the legacy format used in versions 7 and 8, without the revision field.
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[repr(C)]
+pub(crate) struct FileV8 {
+    /// The optional compilation directory prefix (reference to a [`String`]).
+    pub(crate) comp_dir_offset: u32,
+    /// The optional directory prefix (reference to a [`String`]).
+    pub(crate) directory_offset: u32,
+    /// The file path (reference to a [`String`]).
+    pub(crate) name_offset: u32,
+}
+
+impl From<FileV8> for File {
+    fn from(v8: FileV8) -> Self {
+        File {
+            comp_dir_offset: v8.comp_dir_offset,
+            directory_offset: v8.directory_offset,
+            name_offset: v8.name_offset,
+            revision_offset: u32::MAX, // No revision in v7/v8
+        }
+    }
 }
 
 /// A location in a source file, comprising a file, a line, a function, and
@@ -115,6 +147,7 @@ pub(crate) struct Range(pub(crate) u32);
 
 unsafe impl Pod for Header {}
 unsafe impl Pod for Function {}
+unsafe impl Pod for FileV8 {}
 unsafe impl Pod for File {}
 unsafe impl Pod for SourceLocation {}
 unsafe impl Pod for Range {}
@@ -133,7 +166,12 @@ mod tests {
         assert_eq!(mem::size_of::<Function>(), 16);
         assert_eq!(mem::align_of::<Function>(), 4);
 
-        assert_eq!(mem::size_of::<File>(), 12);
+        // FileV8 (version 7-8 format): 12 bytes without revision
+        assert_eq!(mem::size_of::<FileV8>(), 12);
+        assert_eq!(mem::align_of::<FileV8>(), 4);
+
+        // File (version 9+ format): 16 bytes with revision
+        assert_eq!(mem::size_of::<File>(), 16);
         assert_eq!(mem::align_of::<File>(), 4);
 
         assert_eq!(mem::size_of::<SourceLocation>(), 16);

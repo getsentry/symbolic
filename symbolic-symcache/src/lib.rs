@@ -131,7 +131,8 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// 6: PR #319: Correct line offsets and spacer line records
 /// 7: PR #459: A new binary format fundamentally based on addr ranges
 /// 8: PR #670: Use LEB128-prefixed string table
-pub const SYMCACHE_VERSION: u32 = 8;
+/// 9: PR #943: Add revision_offset field to File structure for VCS revision tracking
+pub const SYMCACHE_VERSION: u32 = 9;
 
 /// The serialized SymCache binary format.
 ///
@@ -173,13 +174,30 @@ impl<'data> SymCache<'data> {
         if header.magic != raw::SYMCACHE_MAGIC {
             return Err(ErrorKind::WrongFormat.into());
         }
-        if header.version != SYMCACHE_VERSION && header.version != 7 {
+        if header.version < 7 || header.version > SYMCACHE_VERSION {
             return Err(ErrorKind::WrongVersion.into());
         }
 
         let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidFiles)?;
-        let (files, rest) = raw::File::slice_from_prefix(rest, header.num_files as usize)
-            .ok_or(ErrorKind::InvalidFiles)?;
+
+        // Parse files based on version. v7-v8 use 12-byte File structs (without revision),
+        // v9+ uses 16-byte File structs (with revision).
+        let (files, rest) = if header.version <= 8 {
+            // v7-v8 format: read 12-byte FileV8 structs and convert to v9 File format
+            let (files_v8, rest) = raw::FileV8::slice_from_prefix(rest, header.num_files as usize)
+                .ok_or(ErrorKind::InvalidFiles)?;
+
+            // Convert v7/v8 files to v9 format (adds revision_offset = u32::MAX)
+            let files_v9: Vec<raw::File> = files_v8.iter().map(|&f| f.into()).collect();
+
+            // Leak the vec to get a 'data lifetime slice
+            let files_leaked = Box::leak(files_v9.into_boxed_slice());
+            (files_leaked as &'data [raw::File], rest)
+        } else {
+            // v9+ format: read 16-byte File structs directly
+            raw::File::slice_from_prefix(rest, header.num_files as usize)
+                .ok_or(ErrorKind::InvalidFiles)?
+        };
 
         let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidFunctions)?;
         let (functions, rest) =

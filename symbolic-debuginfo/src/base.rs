@@ -450,13 +450,19 @@ pub struct FileInfo<'data> {
     name: Cow<'data, [u8]>,
     /// Path to the file.
     dir: Cow<'data, [u8]>,
+    /// The optional VCS revision (e.g., Perforce changelist, git commit hash).
+    revision: Option<Cow<'data, str>>,
 }
 
 impl<'data> FileInfo<'data> {
     /// Creates a `FileInfo` with a given directory and the file name.
     #[cfg(feature = "dwarf")]
     pub fn new(dir: Cow<'data, [u8]>, name: Cow<'data, [u8]>) -> Self {
-        FileInfo { name, dir }
+        FileInfo {
+            name,
+            dir,
+            revision: None,
+        }
     }
 
     /// Creates a `FileInfo` from a joined path by trying to split it.
@@ -470,6 +476,7 @@ impl<'data> FileInfo<'data> {
                 Some(dir) => Cow::Borrowed(dir),
                 None => Cow::default(),
             },
+            revision: None,
         }
     }
 
@@ -484,6 +491,22 @@ impl<'data> FileInfo<'data> {
                 Some(dir) => Cow::Owned(dir.to_vec()),
                 None => Cow::default(),
             },
+            revision: None,
+        }
+    }
+
+    /// Creates a `FileInfo` from a joined path and revision by trying to split the path.
+    /// Unlike from_path(), copies the given data instead of referencing it.
+    pub(crate) fn from_path_and_revision_owned(path: &[u8], revision: Option<String>) -> Self {
+        let (dir, name) = symbolic_common::split_path_bytes(path);
+
+        FileInfo {
+            name: Cow::Owned(name.to_vec()),
+            dir: match dir {
+                Some(dir) => Cow::Owned(dir.to_vec()),
+                None => Cow::default(),
+            },
+            revision: revision.map(Cow::Owned),
         }
     }
 
@@ -492,6 +515,7 @@ impl<'data> FileInfo<'data> {
         FileInfo {
             name: Cow::Borrowed(name),
             dir: Cow::default(),
+            revision: None,
         }
     }
 
@@ -509,6 +533,16 @@ impl<'data> FileInfo<'data> {
     pub fn path_str(&self) -> String {
         let joined = join_path(&self.dir_str(), &self.name_str());
         clean_path(&joined).into_owned()
+    }
+
+    /// The optional VCS revision (e.g., Perforce changelist, git commit hash).
+    pub fn revision(&self) -> Option<&str> {
+        self.revision.as_deref()
+    }
+
+    /// Sets the VCS revision for this file.
+    pub(crate) fn set_revision(&mut self, revision: Option<String>) {
+        self.revision = revision.map(Cow::Owned);
     }
 }
 

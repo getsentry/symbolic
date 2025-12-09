@@ -43,6 +43,7 @@ impl<'data> SymCache<'data> {
             comp_dir: self.get_string(raw_file.comp_dir_offset),
             directory: self.get_string(raw_file.directory_offset),
             name: self.get_string(raw_file.name_offset).unwrap_or_default(),
+            revision: self.get_string(raw_file.revision_offset),
         })
     }
 
@@ -89,6 +90,8 @@ pub struct File<'data> {
     directory: Option<&'data str>,
     /// The file path.
     name: &'data str,
+    /// The optional VCS revision.
+    revision: Option<&'data str>,
 }
 
 impl File<'_> {
@@ -102,6 +105,11 @@ impl File<'_> {
         let full_path = symbolic_common::clean_path(&full_path).into_owned();
 
         full_path
+    }
+
+    /// Returns the optional VCS revision for this file (e.g., Perforce changelist, git commit hash).
+    pub fn revision(&self) -> Option<&str> {
+        self.revision
     }
 }
 

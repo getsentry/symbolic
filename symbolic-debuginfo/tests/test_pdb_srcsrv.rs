@@ -53,29 +53,33 @@ fn test_pdb_files_are_remapped() -> Result<(), Error> {
     // Get the debug session which will parse SRCSRV and remap paths
     let session = object.debug_session()?;
 
-    // Collect all file paths from the PDB
-    let mut files: Vec<String> = Vec::new();
+    // Collect all file entries from the PDB
+    let mut found_expected = false;
     for file_result in session.files() {
         let file_entry = file_result?;
         let path = file_entry.abs_path_str();
-        files.push(path);
+
+        // Expected specific path based on the SRCSRV data in the test PDB:
+        // c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation\crash_generation_client.cc
+        //   -> depot/breakpad/src/client/windows/crash_generation/crash_generation_client.cc (path)
+        //   -> 12345 (revision)
+        if path == "depot/breakpad/src/client/windows/crash_generation/crash_generation_client.cc" {
+            // Verify the revision is set correctly
+            let revision = file_entry.revision();
+            assert_eq!(
+                revision,
+                Some("12345"),
+                "Expected revision '12345' for remapped file, found: {:?}",
+                revision
+            );
+            found_expected = true;
+            break;
+        }
     }
 
-    // Verify we found some files
-    assert!(!files.is_empty(), "PDB should contain file entries");
-
-    // Expected specific path based on the SRCSRV data in the test PDB:
-    // c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation\crash_generation_client.cc
-    //   -> depot/breakpad/src/client/windows/crash_generation/crash_generation_client.cc@12345
-    let expected_path =
-        "depot/breakpad/src/client/windows/crash_generation/crash_generation_client.cc@12345";
-
-    // Verify the exact expected path exists
     assert!(
-        files.iter().any(|f| f == expected_path),
-        "Expected to find remapped path: {}. Found paths: {:?}",
-        expected_path,
-        &files[..files.len().min(10)]
+        found_expected,
+        "Expected to find remapped path with revision: depot/breakpad/.../crash_generation_client.cc"
     );
 
     Ok(())
@@ -89,31 +93,38 @@ fn test_pdb_functions_are_remapped() -> Result<(), Error> {
     // Get the debug session which will parse SRCSRV and remap paths
     let session = object.debug_session()?;
 
-    // Collect all file paths from functions' line info
-    let mut files: Vec<String> = Vec::new();
+    // Find functions with the expected remapped file
+    let mut found_expected = false;
     for func_result in session.functions() {
         let func = func_result?;
         for line in &func.lines {
             let path = line.file.path_str();
-            if !files.contains(&path) {
-                files.push(path);
+
+            // Expected specific path based on the SRCSRV data in the test PDB
+            // Path should NOT contain @12345, revision should be separate
+            if path
+                == "depot/breakpad/src/client/windows/crash_generation/crash_generation_client.cc"
+            {
+                // Verify the revision is set correctly
+                let revision = line.file.revision();
+                assert_eq!(
+                    revision,
+                    Some("12345"),
+                    "Expected revision '12345' for remapped file in function, found: {:?}",
+                    revision
+                );
+                found_expected = true;
+                break;
             }
+        }
+        if found_expected {
+            break;
         }
     }
 
-    // Verify we found some files
-    assert!(!files.is_empty(), "Functions should contain file entries");
-
-    // Expected specific path based on the SRCSRV data in the test PDB
-    let expected_path =
-        "depot/breakpad/src/client/windows/crash_generation/crash_generation_client.cc@12345";
-
-    // Verify the exact expected path exists
     assert!(
-        files.iter().any(|f| f == expected_path),
-        "Expected to find remapped path in functions: {}. Found paths: {:?}",
-        expected_path,
-        &files[..files.len().min(10)]
+        found_expected,
+        "Expected to find remapped path with revision in functions"
     );
 
     Ok(())
