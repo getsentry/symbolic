@@ -25,15 +25,20 @@ pub(crate) const NO_SOURCE_LOCATION: SourceLocation = SourceLocation {
     inlined_into_idx: u32::MAX,
 };
 
-/// The header of a symcache file.
+/// Minimal preamble containing just magic bytes and version number.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[repr(C)]
-pub(crate) struct Header {
+pub(crate) struct VersionInfo {
     /// The file magic representing the file format and endianness.
     pub(crate) magic: u32,
     /// The SymCache Format Version.
     pub(crate) version: u32,
+}
 
+/// The header of a symcache file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[repr(C)]
+pub(crate) struct Header {
     /// Debug identifier of the object file.
     pub(crate) debug_id: DebugId,
     /// CPU architecture of the object file.
@@ -113,6 +118,7 @@ pub(crate) struct SourceLocation {
 #[repr(C)]
 pub(crate) struct Range(pub(crate) u32);
 
+unsafe impl Pod for VersionInfo {}
 unsafe impl Pod for Header {}
 unsafe impl Pod for Function {}
 unsafe impl Pod for File {}
@@ -127,7 +133,10 @@ mod tests {
 
     #[test]
     fn test_sizeof() {
-        assert_eq!(mem::size_of::<Header>(), 80);
+        assert_eq!(mem::size_of::<VersionInfo>(), 8);
+        assert_eq!(mem::align_of::<VersionInfo>(), 4);
+
+        assert_eq!(mem::size_of::<Header>(), 72);
         assert_eq!(mem::align_of::<Header>(), 4);
 
         assert_eq!(mem::size_of::<Function>(), 16);

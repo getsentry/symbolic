@@ -139,6 +139,7 @@ pub const SYMCACHE_VERSION: u32 = 8;
 /// via the [`SymCache::lookup`] method.
 #[derive(Clone, PartialEq, Eq)]
 pub struct SymCache<'data> {
+    version: &'data raw::VersionInfo,
     header: &'data raw::Header,
     files: &'data [raw::File],
     functions: &'data [raw::Function],
@@ -150,7 +151,7 @@ pub struct SymCache<'data> {
 impl std::fmt::Debug for SymCache<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SymCache")
-            .field("version", &self.header.version)
+            .field("version", &self.version.version)
             .field("debug_id", &self.header.debug_id)
             .field("arch", &self.header.arch)
             .field("files", &self.header.num_files)
@@ -166,16 +167,19 @@ impl<'data> SymCache<'data> {
     /// Parse the SymCache binary format into a convenient type that allows safe access and
     /// fast lookups.
     pub fn parse(buf: &'data [u8]) -> Result<Self> {
-        let (header, rest) = raw::Header::ref_from_prefix(buf).ok_or(ErrorKind::InvalidHeader)?;
-        if header.magic == raw::SYMCACHE_MAGIC_FLIPPED {
+        let (version, rest) =
+            raw::VersionInfo::ref_from_prefix(buf).ok_or(ErrorKind::InvalidHeader)?;
+        if version.magic == raw::SYMCACHE_MAGIC_FLIPPED {
             return Err(ErrorKind::WrongEndianness.into());
         }
-        if header.magic != raw::SYMCACHE_MAGIC {
+        if version.magic != raw::SYMCACHE_MAGIC {
             return Err(ErrorKind::WrongFormat.into());
         }
-        if header.version != SYMCACHE_VERSION && header.version != 7 {
+        if version.version != SYMCACHE_VERSION && version.version != 7 {
             return Err(ErrorKind::WrongVersion.into());
         }
+
+        let (header, rest) = raw::Header::ref_from_prefix(rest).ok_or(ErrorKind::InvalidHeader)?;
 
         let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidFiles)?;
         let (files, rest) = raw::File::slice_from_prefix(rest, header.num_files as usize)
@@ -208,6 +212,7 @@ impl<'data> SymCache<'data> {
         }
 
         Ok(SymCache {
+            version,
             header,
             files,
             functions,
@@ -219,7 +224,7 @@ impl<'data> SymCache<'data> {
 
     /// Resolves a string reference to the pointed-to `&str` data.
     fn get_string(&self, offset: u32) -> Option<&'data str> {
-        if self.header.version >= 8 {
+        if self.version.version >= 8 {
             // version >= 8: string length prefixes are LEB128
             StringTable::read(self.string_bytes, offset as usize).ok()
         } else {
@@ -246,12 +251,12 @@ impl<'data> SymCache<'data> {
 
     /// The version of the SymCache file format.
     pub fn version(&self) -> u32 {
-        self.header.version
+        self.version.version
     }
 
     /// Returns true if this symcache's version is the current version of the format.
     pub fn is_latest(&self) -> bool {
-        self.header.version == SYMCACHE_VERSION
+        self.version.version == SYMCACHE_VERSION
     }
 
     /// The architecture of the symbol file.

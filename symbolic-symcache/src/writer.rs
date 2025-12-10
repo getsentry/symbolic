@@ -484,10 +484,14 @@ impl<'a> SymCacheConverter<'a> {
         let num_ranges = self.ranges.len() as u32;
         let string_bytes = self.string_table.into_bytes();
 
-        let header = raw::Header {
+        let version = raw::VersionInfo {
             magic: raw::SYMCACHE_MAGIC,
             version: crate::SYMCACHE_VERSION,
+        };
 
+        writer.write_all(version.as_bytes())?;
+
+        let header = raw::Header {
             debug_id: self.debug_id,
             arch: self.arch,
 
