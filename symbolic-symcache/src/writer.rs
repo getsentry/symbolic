@@ -32,14 +32,14 @@ pub struct SymCacheConverter<'a> {
     transformers: transform::Transformers<'a>,
 
     string_table: StringTable,
-    /// The set of all [`raw::File`]s that have been added to this `Converter`.
+    /// The set of all [`raw::v7::File`]s that have been added to this `Converter`.
     files: IndexSet<raw::v7::File>,
-    /// The set of all [`raw::Function`]s that have been added to this `Converter`.
+    /// The set of all [`raw::v7::Function`]s that have been added to this `Converter`.
     functions: IndexSet<raw::v7::Function>,
-    /// The set of [`raw::SourceLocation`]s used in this `Converter` that are only used as
+    /// The set of [`raw::v7::SourceLocation`]s used in this `Converter` that are only used as
     /// "call locations", i.e. which are only referred to from `inlined_into_idx`.
     call_locations: IndexSet<raw::v7::SourceLocation>,
-    /// A map from code ranges to the [`raw::SourceLocation`]s they correspond to.
+    /// A map from code ranges to the [`raw::v7::SourceLocation`]s they correspond to.
     ///
     /// Only the starting address of a range is saved, the end address is given implicitly
     /// by the start address of the next range.

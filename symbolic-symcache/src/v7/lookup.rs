@@ -5,7 +5,7 @@ use crate::v7::SymCacheV7;
 use crate::{File, Function};
 
 impl<'data> SymCacheV7<'data> {
-    /// Looks up an instruction address in the SymCacheV7, yielding an iterator of [`SourceLocation`]s
+    /// Looks up an instruction address in the SymCacheV7, yielding an iterator of [`SourceLocationV7`]s
     /// representing a hierarchy of inlined function calls.
     pub(crate) fn lookup(&self, addr: u64) -> SourceLocationsV7<'data, '_> {
         let addr = match u32::try_from(addr) {
@@ -109,12 +109,9 @@ impl<'data> SourceLocationV7<'data, '_> {
             .get_function(self.source_location.function_idx)
             .unwrap_or_default()
     }
-
-    // TODO: maybe forward some of the `File` and `Function` accessors, such as:
-    // `function_name` or `full_path` for convenience.
 }
 
-/// An Iterator that yields [`SourceLocation`]s, representing an inlining hierarchy.
+/// An Iterator that yields [`SourceLocationV7`]s, representing an inlining hierarchy.
 #[derive(Debug, Clone)]
 pub(crate) struct SourceLocationsV7<'data, 'cache> {
     pub(crate) cache: &'cache SymCacheV7<'data>,
