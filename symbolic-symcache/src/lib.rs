@@ -5,7 +5,7 @@
 //!
 //! # Structure of a SymCache
 //!
-//! A SymCache (version 7) contains the following primary kinds of data, written in the following
+//! A SymCache (version 9) contains the following primary kinds of data, written in the following
 //! order:
 //!
 //! 1. Files
@@ -25,6 +25,7 @@
 //! ## Files
 //!
 //! A file contains string offsets for its file name, parent directory, and compilation directory.
+//! In version 9+, files also contain an optional VCS revision string offset.
 //!
 //! ## Functions
 //!
@@ -105,17 +106,23 @@ mod error;
 mod lookup;
 mod raw;
 pub mod transform;
+mod v7;
+mod v8;
+mod v9;
 mod writer;
 
 use symbolic_common::Arch;
 use symbolic_common::AsSelf;
 use symbolic_common::DebugId;
-use watto::StringTable;
-use watto::{align_to, Pod};
+use watto::Pod;
 
 pub use error::{Error, ErrorKind};
 pub use lookup::*;
 pub use writer::SymCacheConverter;
+
+use crate::v7::SymCacheV7;
+use crate::v8::SymCacheV8;
+use crate::v9::SymCacheV9;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -140,26 +147,17 @@ pub const SYMCACHE_VERSION: u32 = 9;
 /// via the [`SymCache::lookup`] method.
 #[derive(Clone, PartialEq, Eq)]
 pub struct SymCache<'data> {
-    header: &'data raw::Header,
-    files: &'data [raw::File],
-    functions: &'data [raw::Function],
-    source_locations: &'data [raw::SourceLocation],
-    ranges: &'data [raw::Range],
-    string_bytes: &'data [u8],
+    version: &'data raw::VersionInfo,
+    inner: SymCacheInner<'data>,
 }
 
 impl std::fmt::Debug for SymCache<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SymCache")
-            .field("version", &self.header.version)
-            .field("debug_id", &self.header.debug_id)
-            .field("arch", &self.header.arch)
-            .field("files", &self.header.num_files)
-            .field("functions", &self.header.num_functions)
-            .field("source_locations", &self.header.num_source_locations)
-            .field("ranges", &self.header.num_ranges)
-            .field("string_bytes", &self.header.string_bytes)
-            .finish()
+        match self.inner {
+            SymCacheInner::V7(ref sym_cache_v7) => sym_cache_v7.fmt(f),
+            SymCacheInner::V8(ref sym_cache_v8) => sym_cache_v8.fmt(f),
+            SymCacheInner::V9(ref sym_cache_v9) => sym_cache_v9.fmt(f),
+        }
     }
 }
 
@@ -167,119 +165,51 @@ impl<'data> SymCache<'data> {
     /// Parse the SymCache binary format into a convenient type that allows safe access and
     /// fast lookups.
     pub fn parse(buf: &'data [u8]) -> Result<Self> {
-        let (header, rest) = raw::Header::ref_from_prefix(buf).ok_or(ErrorKind::InvalidHeader)?;
-        if header.magic == raw::SYMCACHE_MAGIC_FLIPPED {
+        let (version, rest) =
+            raw::VersionInfo::ref_from_prefix(buf).ok_or(ErrorKind::InvalidHeader)?;
+        if version.magic == raw::SYMCACHE_MAGIC_FLIPPED {
             return Err(ErrorKind::WrongEndianness.into());
         }
-        if header.magic != raw::SYMCACHE_MAGIC {
+        if version.magic != raw::SYMCACHE_MAGIC {
             return Err(ErrorKind::WrongFormat.into());
         }
-        if header.version < 7 || header.version > SYMCACHE_VERSION {
-            return Err(ErrorKind::WrongVersion.into());
-        }
 
-        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidFiles)?;
-
-        // Parse files based on version. v7-v8 use 12-byte File structs (without revision),
-        // v9+ uses 16-byte File structs (with revision).
-        let (files, rest) = if header.version <= 8 {
-            // v7-v8 format: read 12-byte FileV8 structs and convert to v9 File format
-            let (files_v8, rest) = raw::FileV8::slice_from_prefix(rest, header.num_files as usize)
-                .ok_or(ErrorKind::InvalidFiles)?;
-
-            // Convert v7/v8 files to v9 format (adds revision_offset = u32::MAX)
-            let files_v9: Vec<raw::File> = files_v8.iter().map(|&f| f.into()).collect();
-
-            // Leak the vec to get a 'data lifetime slice
-            let files_leaked = Box::leak(files_v9.into_boxed_slice());
-            (files_leaked as &'data [raw::File], rest)
-        } else {
-            // v9+ format: read 16-byte File structs directly
-            raw::File::slice_from_prefix(rest, header.num_files as usize)
-                .ok_or(ErrorKind::InvalidFiles)?
+        let inner = match version.version {
+            7 => SymCacheInner::V7(SymCacheV7::parse(rest)?),
+            8 => SymCacheInner::V8(SymCacheV8::parse(rest)?),
+            9 => SymCacheInner::V9(SymCacheV9::parse(rest)?),
+            _ => return Err(ErrorKind::WrongVersion.into()),
         };
 
-        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidFunctions)?;
-        let (functions, rest) =
-            raw::Function::slice_from_prefix(rest, header.num_functions as usize)
-                .ok_or(ErrorKind::InvalidFunctions)?;
-
-        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidSourceLocations)?;
-        let (source_locations, rest) =
-            raw::SourceLocation::slice_from_prefix(rest, header.num_source_locations as usize)
-                .ok_or(ErrorKind::InvalidSourceLocations)?;
-
-        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::InvalidRanges)?;
-        let (ranges, rest) = raw::Range::slice_from_prefix(rest, header.num_ranges as usize)
-            .ok_or(ErrorKind::InvalidRanges)?;
-
-        let (_, rest) = align_to(rest, 8).ok_or(ErrorKind::UnexpectedStringBytes {
-            expected: header.string_bytes as usize,
-            found: 0,
-        })?;
-        if rest.len() < header.string_bytes as usize {
-            return Err(ErrorKind::UnexpectedStringBytes {
-                expected: header.string_bytes as usize,
-                found: rest.len(),
-            }
-            .into());
-        }
-
-        Ok(SymCache {
-            header,
-            files,
-            functions,
-            source_locations,
-            ranges,
-            string_bytes: rest,
-        })
-    }
-
-    /// Resolves a string reference to the pointed-to `&str` data.
-    fn get_string(&self, offset: u32) -> Option<&'data str> {
-        if self.header.version >= 8 {
-            // version >= 8: string length prefixes are LEB128
-            StringTable::read(self.string_bytes, offset as usize).ok()
-        } else {
-            // version < 8: string length prefixes are u32
-            if offset == u32::MAX {
-                return None;
-            }
-            let len_offset = offset as usize;
-            let len_size = std::mem::size_of::<u32>();
-            let len = u32::from_ne_bytes(
-                self.string_bytes
-                    .get(len_offset..len_offset + len_size)?
-                    .try_into()
-                    .unwrap(),
-            ) as usize;
-
-            let start_offset = len_offset + len_size;
-            let end_offset = start_offset + len;
-            let bytes = self.string_bytes.get(start_offset..end_offset)?;
-
-            std::str::from_utf8(bytes).ok()
-        }
+        Ok(Self { version, inner })
     }
 
     /// The version of the SymCache file format.
     pub fn version(&self) -> u32 {
-        self.header.version
+        self.version.version
     }
 
     /// Returns true if this symcache's version is the current version of the format.
     pub fn is_latest(&self) -> bool {
-        self.header.version == SYMCACHE_VERSION
+        self.version.version == SYMCACHE_VERSION
     }
 
     /// The architecture of the symbol file.
     pub fn arch(&self) -> Arch {
-        self.header.arch
+        match &self.inner {
+            SymCacheInner::V7(cache) => cache.header.arch,
+            SymCacheInner::V8(cache) => cache.header.arch,
+            SymCacheInner::V9(cache) => cache.header.arch,
+        }
     }
 
     /// The debug identifier of the cache file.
     pub fn debug_id(&self) -> DebugId {
-        self.header.debug_id
+        match &self.inner {
+            SymCacheInner::V7(cache) => cache.header.debug_id,
+            SymCacheInner::V8(cache) => cache.header.debug_id,
+            SymCacheInner::V9(cache) => cache.header.debug_id,
+        }
     }
 }
 
@@ -289,4 +219,11 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
     fn as_self(&'slf self) -> &'slf Self::Ref {
         self
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum SymCacheInner<'data> {
+    V7(SymCacheV7<'data>),
+    V8(SymCacheV8<'data>),
+    V9(SymCacheV9<'data>),
 }
