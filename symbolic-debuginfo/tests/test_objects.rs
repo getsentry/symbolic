@@ -1,4 +1,4 @@
-use std::{env, ffi::CString, fmt, io::BufWriter};
+use std::{ffi::CString, fmt, io::BufWriter};
 
 use symbolic_common::ByteView;
 use symbolic_debuginfo::{
