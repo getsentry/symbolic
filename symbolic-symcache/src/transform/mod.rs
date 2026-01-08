@@ -25,6 +25,8 @@ pub struct File<'s> {
     pub directory: Option<Cow<'s, str>>,
     /// The optional compilation directory prefix.
     pub comp_dir: Option<Cow<'s, str>>,
+    /// The optional VCS revision (e.g., Perforce changelist, git commit hash).
+    pub revision: Option<Cow<'s, str>>,
 }
 
 /// A Source Location (File + Line) to be written to the SymCache.

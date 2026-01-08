@@ -16,7 +16,6 @@ use pdb_addr2line::pdb::{
 };
 use pdb_addr2line::ModuleProvider;
 use smallvec::SmallVec;
-use srcsrv;
 use thiserror::Error;
 
 use symbolic_common::{
@@ -113,6 +112,74 @@ impl From<pdb_addr2line::Error> for PdbError {
     }
 }
 
+/// Remap function type for VCS-specific path transformations
+/// Returns a tuple of (path, optional revision)
+type RemapFn = fn(&srcsrv::EvalVarMap) -> Option<(&str, Option<&str>)>;
+
+/// Remap function for Perforce SRCSRV entries
+///
+/// Extracts depot path (var3) and changelist (var4), then returns
+/// a tuple of (path, optional revision).
+fn remap_perforce(var_map: &srcsrv::EvalVarMap) -> Option<(&str, Option<&str>)> {
+    let depot_path = var_map.get("var3")?;
+    let changelist = var_map.get("var4").map(String::as_str);
+
+    // Strip leading // from depot path for code mapping compatibility
+    let depot = depot_path.trim_start_matches("//");
+
+    let revision = match changelist {
+        Some(cl) if !cl.is_empty() => Some(cl),
+        _ => None,
+    };
+
+    Some((depot, revision))
+}
+
+/// Get the VCS-specific remap function for the given VCS name (case-insensitive).
+///
+/// This is a static lookup that maps VCS names to their corresponding remap functions.
+fn get_vcs_remap_function(vcs: &str) -> Option<RemapFn> {
+    if vcs.eq_ignore_ascii_case("perforce") {
+        Some(remap_perforce)
+    } else {
+        None
+    }
+}
+
+/// Remap a local build path to a VCS path if supported.
+///
+/// Uses VCS-specific remap functions for supported systems (e.g., Perforce).
+/// Returns a tuple of (path, optional_revision). If no mapping is found,
+/// returns the original path with no revision.
+fn remap_path<'a>(stream: &srcsrv::SrcSrvStream, path: &'a str) -> (Cow<'a, str>, Option<String>) {
+    // Check the version control system
+    let Some(vcs) = stream.version_control_description() else {
+        return (Cow::Borrowed(path), None);
+    };
+
+    // Get the remap function for this VCS (case-insensitive)
+    let remap_fn = match get_vcs_remap_function(vcs) {
+        Some(f) => f,
+        None => return (Cow::Borrowed(path), None),
+    };
+
+    // Try to get the source information for this path
+    // Use an empty extraction path since we just want the mapping
+    let var_map = match stream.source_and_raw_var_values_for_path(path, "") {
+        Ok(Some((_method, var_map))) => var_map,
+        _ => return (Cow::Borrowed(path), None),
+    };
+
+    // Apply VCS-specific remapping
+    match remap_fn(&var_map) {
+        Some((remapped_path, revision)) => (
+            Cow::Owned(remapped_path.to_owned()),
+            revision.map(String::from),
+        ),
+        None => (Cow::Borrowed(path), None),
+    }
+}
+
 /// Program Database, the debug companion format on Windows.
 ///
 /// This object is a sole debug companion to [`PeObject`](../pdb/struct.PdbObject.html).
@@ -199,6 +266,33 @@ impl<'data> PdbObject<'data> {
             .ok()
             .map(arch_from_machine)
             .unwrap_or_default()
+    }
+
+    /// Extracts raw Source Server data bytes from the PDB if available.
+    ///
+    /// Source Server information is embedded in PDB files by build systems to map
+    /// local build paths to source control locations (Perforce, Git, etc.).
+    /// This is commonly used in game development where builds happen on different machines.
+    ///
+    /// Returns the raw SRCSRV stream data as an owned byte vector, or `None` if no Source Server
+    /// stream is present.
+    #[cfg(feature = "ms")]
+    pub fn source_server_data(&self) -> Result<Option<Vec<u8>>, PdbError> {
+        let mut pdb = self.pdb.write();
+
+        // Try to open the "srcsrv" named stream
+        match pdb.named_stream(b"srcsrv") {
+            Ok(stream) => {
+                // Copy the stream data to an owned vector
+                let srcsrv_data = stream.as_slice().to_vec();
+                Ok(Some(srcsrv_data))
+            }
+            Err(pdb::Error::StreamNameNotFound) => {
+                // No source server info is normal for many PDBs
+                Ok(None)
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// The kind of this object, which is always `Debug`.
@@ -500,6 +594,7 @@ struct PdbStreams<'d> {
     type_info: pdb::TypeInformation<'d>,
     id_info: pdb::IdInformation<'d>,
     string_table: Option<pdb::StringTable<'d>>,
+    srcsrv: Option<Vec<u8>>,
 
     pdb: Arc<RwLock<Pdb<'d>>>,
 
@@ -523,11 +618,22 @@ impl<'d> PdbStreams<'d> {
             Err(e) => return Err(e.into()),
         };
 
+        // Try to open the "srcsrv" named stream
+        let srcsrv = match p.named_stream(b"srcsrv") {
+            Ok(stream) => Some(stream.as_slice().to_vec()),
+            Err(pdb::Error::StreamNameNotFound) => {
+                // No source server info is normal for many PDBs
+                None
+            }
+            Err(e) => return Err(e.into()),
+        };
+
         Ok(Self {
             string_table,
             debug_info: pdb.debug_info.clone(),
             type_info: p.type_information()?,
             id_info: p.id_information()?,
+            srcsrv,
             pdb: pdb.pdb.clone(),
             module_infos: FrozenMap::new(),
         })
@@ -561,6 +667,7 @@ struct PdbDebugInfo<'d> {
     string_table: Option<&'d pdb::StringTable<'d>>,
     /// Type formatter for function name strings.
     type_formatter: pdb_addr2line::TypeFormatter<'d, 'd>,
+    srcsrv: Option<srcsrv::SrcSrvStream<'d>>,
 }
 
 impl<'d> PdbDebugInfo<'d> {
@@ -573,6 +680,15 @@ impl<'d> PdbDebugInfo<'d> {
         let address_map = p.address_map()?;
 
         drop(p);
+
+        let srcsrv = streams
+            .srcsrv
+            .as_ref()
+            .map(|srcsrv| {
+                srcsrv::SrcSrvStream::parse(srcsrv)
+                    .map_err(|e| PdbError::new(PdbErrorKind::BadObject, e))
+            })
+            .transpose()?;
 
         Ok(PdbDebugInfo {
             address_map,
@@ -587,14 +703,19 @@ impl<'d> PdbDebugInfo<'d> {
                 streams.string_table.as_ref(),
                 Default::default(),
             )?,
+            srcsrv,
         })
     }
 
     /// Returns an iterator over all compilation units (modules).
-    fn units(&'d self) -> PdbUnitIterator<'d> {
+    fn units(
+        &'d self,
+        source_server_mappings: Option<&'d srcsrv::SrcSrvStream<'d>>,
+    ) -> PdbUnitIterator<'d> {
         PdbUnitIterator {
             debug_info: self,
             index: 0,
+            source_server_mappings,
         }
     }
 
@@ -638,6 +759,7 @@ pub struct PdbDebugSession<'d> {
 impl<'d> PdbDebugSession<'d> {
     fn build(pdb: &PdbObject<'d>) -> Result<Self, PdbError> {
         let streams = PdbStreams::from_pdb(pdb)?;
+
         let cell = SelfCell::try_new(Box::new(streams), |streams| {
             PdbDebugInfo::build(pdb, unsafe { &*streams })
         })?;
@@ -649,7 +771,7 @@ impl<'d> PdbDebugSession<'d> {
     pub fn files(&self) -> PdbFileIterator<'_> {
         PdbFileIterator {
             debug_info: self.cell.get(),
-            units: self.cell.get().units(),
+            units: self.cell.get().units(self.cell.get().srcsrv.as_ref()),
             files: pdb::FileIterator::default(),
             finished: false,
         }
@@ -658,7 +780,7 @@ impl<'d> PdbDebugSession<'d> {
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> PdbFunctionIterator<'_> {
         PdbFunctionIterator {
-            units: self.cell.get().units(),
+            units: self.cell.get().units(self.cell.get().srcsrv.as_ref()),
             functions: Vec::new().into_iter(),
             finished: false,
         }
@@ -695,6 +817,7 @@ struct Unit<'s> {
     debug_info: &'s PdbDebugInfo<'s>,
     module_index: usize,
     module: &'s pdb::ModuleInfo<'s>,
+    source_server_mappings: Option<&'s srcsrv::SrcSrvStream<'s>>,
 }
 
 impl<'s> Unit<'s> {
@@ -702,11 +825,13 @@ impl<'s> Unit<'s> {
         debug_info: &'s PdbDebugInfo<'s>,
         module_index: usize,
         module: &'s pdb::ModuleInfo<'s>,
+        source_server_mappings: Option<&'s srcsrv::SrcSrvStream<'s>>,
     ) -> Result<Self, PdbError> {
         Ok(Self {
             debug_info,
             module_index,
             module,
+            source_server_mappings,
         })
     }
 
@@ -735,11 +860,27 @@ impl<'s> Unit<'s> {
             }
 
             let file_info = program.get_file_info(line_info.file_index)?;
+            let mut file = self.debug_info.file_info(file_info)?;
+
+            // Apply SRCSRV remapping if available
+            if let Some(mappings) = self.source_server_mappings {
+                let original_path = file.path_str();
+                let (remapped_path, revision) = remap_path(mappings, &original_path);
+
+                // If path was remapped or we have a revision, update FileInfo
+                if let Cow::Owned(remapped) = remapped_path {
+                    let path_bytes = remapped.as_bytes();
+                    file = FileInfo::from_path_and_revision_owned(path_bytes, revision);
+                } else if let Some(rev) = revision {
+                    // Path wasn't remapped but we have a revision
+                    file.set_revision(Some(rev));
+                }
+            }
 
             lines.push(LineInfo {
                 address: rva,
                 size,
-                file: self.debug_info.file_info(file_info)?,
+                file,
                 line: line_info.line_start.into(),
             });
         }
@@ -1016,6 +1157,7 @@ impl<'s> Unit<'s> {
 struct PdbUnitIterator<'s> {
     debug_info: &'s PdbDebugInfo<'s>,
     index: usize,
+    source_server_mappings: Option<&'s srcsrv::SrcSrvStream<'s>>,
 }
 
 impl<'s> Iterator for PdbUnitIterator<'s> {
@@ -1034,7 +1176,12 @@ impl<'s> Iterator for PdbUnitIterator<'s> {
                 Err(error) => return Some(Err(error)),
             };
 
-            return Some(Unit::load(debug_info, module_index, module));
+            return Some(Unit::load(
+                debug_info,
+                module_index,
+                module,
+                self.source_server_mappings,
+            ));
         }
 
         None
@@ -1062,7 +1209,27 @@ impl<'s> Iterator for PdbFileIterator<'s> {
                 let result = file_result
                     .map_err(|err| err.into())
                     .and_then(|i| self.debug_info.file_info(i))
-                    .map(|info| FileEntry::new(Cow::default(), info));
+                    .map(|mut info| {
+                        // Apply source server remapping if available
+                        if let Some(mappings) = &self.debug_info.srcsrv {
+                            let original_path = info.path_str();
+                            let (remapped_path, revision) = remap_path(mappings, &original_path);
+
+                            // If path was remapped or we have a revision, update FileInfo
+                            if let Cow::Owned(remapped) = remapped_path {
+                                let path_bytes = remapped.as_bytes();
+                                let remapped_info =
+                                    FileInfo::from_path_and_revision_owned(path_bytes, revision);
+                                return FileEntry::new(Cow::default(), remapped_info);
+                            } else if let Some(rev) = revision {
+                                // Path wasn't remapped but we have a revision
+                                info.set_revision(Some(rev));
+                            }
+                        }
+
+                        // No remapping or remapping returned original path
+                        FileEntry::new(Cow::default(), info)
+                    });
 
                 return Some(result);
             }

@@ -9,8 +9,9 @@ use symbolic_common::{Arch, DebugId};
 use symbolic_debuginfo::{DebugSession, FileFormat, Function, ObjectLike, Symbol};
 use watto::{Pod, StringTable, Writer};
 
-use super::{raw, transform};
-use crate::raw::NO_SOURCE_LOCATION;
+use super::transform;
+use crate::raw::v9 as raw;
+use crate::raw::v9::NO_SOURCE_LOCATION;
 use crate::{Error, ErrorKind};
 
 /// The SymCache Converter.
@@ -228,6 +229,7 @@ impl<'a> SymCacheConverter<'a> {
                     name: line.file.name_str(),
                     directory: Some(line.file.dir_str()),
                     comp_dir: comp_dir.map(Into::into),
+                    revision: line.file.revision().map(|s| s.into()),
                 },
                 line: line.line as u32,
             };
@@ -244,11 +246,16 @@ impl<'a> SymCacheConverter<'a> {
                 .file
                 .comp_dir
                 .map_or(u32::MAX, |cd| string_table.insert(&cd) as u32);
+            let revision_offset = location
+                .file
+                .revision
+                .map_or(u32::MAX, |r| string_table.insert(&r) as u32);
 
             let (file_idx, _) = self.files.insert_full(raw::File {
                 name_offset,
                 directory_offset,
                 comp_dir_offset,
+                revision_offset,
             });
 
             let source_location = raw::SourceLocation {
@@ -484,10 +491,15 @@ impl<'a> SymCacheConverter<'a> {
         let num_ranges = self.ranges.len() as u32;
         let string_bytes = self.string_table.into_bytes();
 
-        let header = raw::Header {
-            magic: raw::SYMCACHE_MAGIC,
+        // Write VersionInfo preamble
+        let version_info = crate::raw::VersionInfo {
+            magic: crate::raw::SYMCACHE_MAGIC,
             version: crate::SYMCACHE_VERSION,
+        };
+        writer.write_all(version_info.as_bytes())?;
 
+        // Write v9 Header
+        let header = raw::Header {
             debug_id: self.debug_id,
             arch: self.arch,
 
