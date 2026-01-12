@@ -1,0 +1,24 @@
+---
+source: symbolic-cfi/tests/test_cfi.rs
+assertion_line: 119
+expression: cfi
+---
+STACK CFI INIT 574 30 .cfa: sp 0 + .ra: x30
+STACK CFI INIT 5a4 3c .cfa: sp 0 + .ra: x30
+STACK CFI INIT 5e0 30 .cfa: sp 0 + .ra: x30
+STACK CFI 5e4 .cfa: sp 32 + x29: .cfa -32 + ^ .ra: .cfa -24 + ^
+STACK CFI 5ec x19: .cfa -16 + ^
+STACK CFI 60c .cfa: sp 0 +
+STACK CFI INIT 610 4 .cfa: sp 0 + .ra: x30
+STACK CFI INIT 620 4 .cfa: sp 0 + .ra: x30
+STACK CFI INIT 624 8 .cfa: sp 0 + .ra: x30
+STACK CFI INIT 630 c .cfa: sp 0 + .ra: x30
+STACK CFI INIT 640 24 .cfa: sp 0 + .ra: x30
+STACK CFI INIT 510 8 .cfa: sp 0 + .ra: x30
+STACK CFI INIT 670 7c .cfa: sp 0 + .ra: x30
+STACK CFI 674 .cfa: sp 64 + x29: .cfa -64 + ^ .ra: .cfa -56 + ^
+STACK CFI 67c x19: .cfa -48 + ^ x20: .cfa -40 + ^
+STACK CFI 688 x21: .cfa -32 + ^ x22: .cfa -24 + ^
+STACK CFI 690 x23: .cfa -16 + ^ x24: .cfa -8 + ^
+STACK CFI 6e8 .cfa: sp 0 +
+STACK CFI INIT 6f0 4 .cfa: sp 0 + .ra: x30
