@@ -10,6 +10,10 @@ env:
   # Pinned to 2025.08.15-1 since manylinux 2025.08.22 onward removes setuptools
   MANYLINUX_PIN: 2025.08.15-1
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   python-wheel-mac:
     strategy:
