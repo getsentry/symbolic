@@ -64,7 +64,6 @@ ms = [
     "goblin/pe32",
     "goblin/pe64",
     "goblin/std",
-    "once_cell",
     "parking_lot",
     "pdb-addr2line",
     "scroll",
@@ -74,8 +73,6 @@ ms = [
 ppdb = ["symbolic-ppdb"]
 # Source bundle creation
 sourcebundle = [
-    "lazy_static",
-    "once_cell",
     "parking_lot",
     "regex",
     "serde_json",
@@ -96,7 +93,6 @@ fallible-iterator = { workspace = true }
 flate2 = { workspace = true, optional = true }
 gimli = { workspace = true, optional = true }
 goblin = { workspace = true, optional = true }
-lazy_static = { workspace = true, optional = true }
 once_cell = { workspace = true, optional = true }
 nom = { workspace = true, optional = true }
 nom-supreme = { workspace = true, optional = true }
