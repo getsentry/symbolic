@@ -12,7 +12,8 @@ use crate::Unreal4ErrorKind;
 #[cfg(test)]
 use similar_asserts::assert_eq;
 
-/// https://github.com/EpicGames/UnrealEngine/blob/f509bb2d6c62806882d9a10476f3654cf1ee0634/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L79-L93
+/// <https://github.com/EpicGames/UnrealEngine/blob/f509bb2d6c62806882d9a10476f3654cf1ee0634/Engine/Source/Runtime/Core/Private/GenericPlatform/GenericPlatformTime.cpp#L79-L93>
+///
 /// Note: Date is always in US format (dd/MM/yyyy) and time is local
 /// Example: Log file open, 12/13/18 15:54:53
 static LOG_FIRST_LINE: LazyLock<Regex> = LazyLock::new(|| {
