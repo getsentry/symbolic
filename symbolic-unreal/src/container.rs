@@ -150,11 +150,18 @@ impl Unreal4Crash {
 
             (header, files)
         } else {
+            // Guard against very short invalid streams making it through the decoder.
+            // See https://github.com/rust-lang/flate2-rs/issues/499.
+            let file_count_offset = bytes
+                .len()
+                .checked_sub(4)
+                .ok_or(Unreal4Error::from(Unreal4ErrorKind::BadCompression))?;
+
             // The header is repeated at the beginning and the end of the file. The first one is
             // merely a placeholder, the second contains actual information. However, it's not
             // possible to parse it right away, so we only read the file count and parse the rest
             // progressively.
-            let file_count = bytes.pread_with::<i32>(bytes.len() - 4, scroll::LE)? as usize;
+            let file_count = bytes.pread_with::<i32>(file_count_offset, scroll::LE)? as usize;
 
             // Ignore the initial header and use the one at the end of the file instead.
             bytes.gread_with::<Unreal4Header>(&mut offset, scroll::LE)?;
@@ -426,7 +433,10 @@ mod tests {
 
     #[test]
     fn test_parse_invalid_input() {
-        let crash = &[0u8; 1];
+        // In newer versions of `flate2`, very short invalid streams don't necessarily
+        // trigger a decoding error.
+        // See https://github.com/rust-lang/flate2-rs/issues/499.
+        let crash = &[0u8; 16];
 
         let result = Unreal4Crash::parse(crash);
         let error = result.expect_err("empty crash");
@@ -434,6 +444,17 @@ mod tests {
 
         let source = error.source().expect("error source");
         assert_eq!(source.to_string(), "corrupt deflate stream");
+    }
+
+    #[test]
+    fn test_parse_short_invalid_input() {
+        let crash = &[0u8; 1];
+
+        let result = Unreal4Crash::parse(crash);
+        let error = result.expect_err("empty crash");
+        assert_eq!(error.kind(), Unreal4ErrorKind::BadCompression);
+
+        assert!(error.source().is_none());
     }
 
     // The size of the unreal_crash fixture when decompressed.
