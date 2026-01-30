@@ -163,7 +163,7 @@ To run these examples, use the `run` script. For example:
 Symbolic tries to not break MSRV compatibility but makes no guarantees about the Rust version.
 Although you can expect Rust version compatibility of **at least 6 months**.
 
-The current MSRV is 1.82.
+The current MSRV is 1.83.
 
 ## License
 

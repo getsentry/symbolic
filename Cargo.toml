@@ -4,7 +4,7 @@ members = ["symbolic*", "examples/*"]
 
 [workspace.package]
 edition = "2021"
-rust-version = "1.82"
+rust-version = "1.83"
 
 [workspace.dependencies]
 anyhow = "1.0.32"
