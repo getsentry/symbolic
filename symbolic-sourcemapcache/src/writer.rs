@@ -129,12 +129,8 @@ impl SourceMapCacheWriter {
         };
 
         let orig_files = match &sm {
-            DecodedMap::Regular(sm) => sm
-                .sources()
-                .zip_longest(sm.source_contents().map(Option::unwrap_or_default)),
-            DecodedMap::Hermes(smh) => smh
-                .sources()
-                .zip_longest(smh.source_contents().map(Option::unwrap_or_default)),
+            DecodedMap::Regular(sm) => sm.sources().zip_longest(sm.source_contents()),
+            DecodedMap::Hermes(smh) => smh.sources().zip_longest(smh.source_contents()),
             DecodedMap::Index(_smi) => unreachable!(),
         };
 
@@ -146,10 +142,14 @@ impl SourceMapCacheWriter {
         tracing::trace_span!("extract original files").in_scope(|| {
             for orig_file in orig_files {
                 let (name, source) = orig_file.or_default();
+
                 let name_offset = string_table.insert(name) as u32;
-                let source_offset = string_table.insert(source) as u32;
+
+                let source_offset =
+                    source.map_or(u32::MAX, |source| string_table.insert(source) as u32);
+
                 let line_offsets_start = line_offsets.len() as u32;
-                Self::append_line_offsets(source, &mut line_offsets);
+                Self::append_line_offsets(source.unwrap_or_default(), &mut line_offsets);
                 let line_offsets_end = line_offsets.len() as u32;
 
                 files.push((
