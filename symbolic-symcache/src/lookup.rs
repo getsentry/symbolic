@@ -2,57 +2,20 @@ use std::fmt;
 
 use symbolic_common::{Language, Name, NameMangling};
 
-use super::{raw, SymCache};
+use crate::v7::lookup::{FilesV7, FunctionsV7, SourceLocationV7, SourceLocationsV7};
+use crate::v8::lookup::{FilesV8, FunctionsV8, SourceLocationV8, SourceLocationsV8};
+use crate::SymCacheInner;
+
+use super::SymCache;
 
 impl<'data> SymCache<'data> {
     /// Looks up an instruction address in the SymCache, yielding an iterator of [`SourceLocation`]s
     /// representing a hierarchy of inlined function calls.
     pub fn lookup(&self, addr: u64) -> SourceLocations<'data, '_> {
-        let addr = match u32::try_from(addr) {
-            Ok(addr) => addr,
-            Err(_) => {
-                return SourceLocations {
-                    cache: self,
-                    source_location_idx: u32::MAX,
-                }
-            }
-        };
-
-        let source_location_start = (self.source_locations.len() - self.ranges.len()) as u32;
-        let mut source_location_idx = match self.ranges.binary_search_by_key(&addr, |r| r.0) {
-            Ok(idx) => source_location_start + idx as u32,
-            Err(0) => u32::MAX,
-            Err(idx) => source_location_start + idx as u32 - 1,
-        };
-
-        if let Some(source_location) = self.source_locations.get(source_location_idx as usize) {
-            if *source_location == raw::NO_SOURCE_LOCATION {
-                source_location_idx = u32::MAX;
-            }
+        match self.inner {
+            SymCacheInner::V7(ref cache) => cache.lookup(addr).into(),
+            SymCacheInner::V8(ref cache) => cache.lookup(addr).into(),
         }
-
-        SourceLocations {
-            cache: self,
-            source_location_idx,
-        }
-    }
-
-    pub(crate) fn get_file(&self, file_idx: u32) -> Option<File<'data>> {
-        let raw_file = self.files.get(file_idx as usize)?;
-        Some(File {
-            comp_dir: self.get_string(raw_file.comp_dir_offset),
-            directory: self.get_string(raw_file.directory_offset),
-            name: self.get_string(raw_file.name_offset).unwrap_or_default(),
-        })
-    }
-
-    pub(crate) fn get_function(&self, function_idx: u32) -> Option<Function<'data>> {
-        let raw_function = self.functions.get(function_idx as usize)?;
-        Some(Function {
-            name: self.get_string(raw_function.name_offset).unwrap_or("?"),
-            entry_pc: raw_function.entry_pc,
-            language: Language::from_u32(raw_function.lang),
-        })
     }
 
     /// An iterator over the functions in this SymCache.
@@ -62,9 +25,9 @@ impl<'data> SymCache<'data> {
     /// Note that functions are *not* returned ordered by name or entry pc,
     /// but in insertion order, which is essentially random.
     pub fn functions(&self) -> Functions<'data> {
-        Functions {
-            cache: self.clone(),
-            function_idx: 0,
+        match self.inner {
+            SymCacheInner::V7(ref cache) => cache.functions().into(),
+            SymCacheInner::V8(ref cache) => cache.functions().into(),
         }
     }
 
@@ -73,9 +36,9 @@ impl<'data> SymCache<'data> {
     /// Note that files are *not* returned ordered by name or full path,
     /// but in insertion order, which is essentially random.
     pub fn files(&self) -> Files<'data> {
-        Files {
-            cache: self.clone(),
-            file_idx: 0,
+        match self.inner {
+            SymCacheInner::V7(ref cache) => cache.files().into(),
+            SymCacheInner::V8(ref cache) => cache.files().into(),
         }
     }
 }
@@ -84,11 +47,11 @@ impl<'data> SymCache<'data> {
 #[derive(Debug, Clone)]
 pub struct File<'data> {
     /// The optional compilation directory prefix.
-    comp_dir: Option<&'data str>,
+    pub(crate) comp_dir: Option<&'data str>,
     /// The optional directory prefix.
-    directory: Option<&'data str>,
+    pub(crate) directory: Option<&'data str>,
     /// The file path.
-    name: &'data str,
+    pub(crate) name: &'data str,
 }
 
 impl File<'_> {
@@ -108,9 +71,9 @@ impl File<'_> {
 /// A Function definition as included in the SymCache.
 #[derive(Clone, Debug)]
 pub struct Function<'data> {
-    name: &'data str,
-    entry_pc: u32,
-    language: Language,
+    pub(crate) name: &'data str,
+    pub(crate) entry_pc: u32,
+    pub(crate) language: Language,
 }
 
 impl<'data> Function<'data> {
@@ -145,94 +108,129 @@ impl Default for Function<'_> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum SourceLocationInner<'data, 'cache> {
+    V7(SourceLocationV7<'data, 'cache>),
+    V8(SourceLocationV8<'data, 'cache>),
+}
+
 /// A source location as included in the SymCache.
 ///
 /// A `SourceLocation` represents source information about a particular instruction.
 /// It always has a `[Function]` associated with it and may also have a `[File]` and a line number.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SourceLocation<'data, 'cache> {
-    pub(crate) cache: &'cache SymCache<'data>,
-    pub(crate) source_location: &'data raw::SourceLocation,
-}
+pub struct SourceLocation<'data, 'cache>(SourceLocationInner<'data, 'cache>);
 
 impl<'data> SourceLocation<'data, '_> {
     /// The source line corresponding to the instruction.
     ///
     /// 0 denotes an unknown line number.
     pub fn line(&self) -> u32 {
-        self.source_location.line
+        match self.0 {
+            SourceLocationInner::V7(ref loc) => loc.line(),
+            SourceLocationInner::V8(ref loc) => loc.line(),
+        }
     }
 
     /// The source file corresponding to the instruction.
     pub fn file(&self) -> Option<File<'data>> {
-        self.cache.get_file(self.source_location.file_idx)
+        match self.0 {
+            SourceLocationInner::V7(ref loc) => loc.file(),
+            SourceLocationInner::V8(ref loc) => loc.file(),
+        }
     }
 
     /// The function corresponding to the instruction.
     pub fn function(&self) -> Function<'data> {
-        self.cache
-            .get_function(self.source_location.function_idx)
-            .unwrap_or_default()
+        match self.0 {
+            SourceLocationInner::V7(ref loc) => loc.function(),
+            SourceLocationInner::V8(ref loc) => loc.function(),
+        }
     }
 
     // TODO: maybe forward some of the `File` and `Function` accessors, such as:
     // `function_name` or `full_path` for convenience.
 }
 
+impl<'data, 'cache> From<SourceLocationV7<'data, 'cache>> for SourceLocation<'data, 'cache> {
+    fn from(value: SourceLocationV7<'data, 'cache>) -> Self {
+        Self(SourceLocationInner::V7(value))
+    }
+}
+
+impl<'data, 'cache> From<SourceLocationV8<'data, 'cache>> for SourceLocation<'data, 'cache> {
+    fn from(value: SourceLocationV8<'data, 'cache>) -> Self {
+        Self(SourceLocationInner::V8(value))
+    }
+}
+
+#[derive(Debug, Clone)]
+enum SourceLocationsInner<'data, 'cache> {
+    V7(SourceLocationsV7<'data, 'cache>),
+    V8(SourceLocationsV8<'data, 'cache>),
+}
+
 /// An Iterator that yields [`SourceLocation`]s, representing an inlining hierarchy.
 #[derive(Debug, Clone)]
-pub struct SourceLocations<'data, 'cache> {
-    pub(crate) cache: &'cache SymCache<'data>,
-    pub(crate) source_location_idx: u32,
-}
+pub struct SourceLocations<'data, 'cache>(SourceLocationsInner<'data, 'cache>);
 
 impl<'data, 'cache> Iterator for SourceLocations<'data, 'cache> {
     type Item = SourceLocation<'data, 'cache>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.source_location_idx == u32::MAX {
-            return None;
+        match self.0 {
+            SourceLocationsInner::V7(ref mut locations) => {
+                locations.next().map(SourceLocation::from)
+            }
+            SourceLocationsInner::V8(ref mut locations) => {
+                locations.next().map(SourceLocation::from)
+            }
         }
-        self.cache
-            .source_locations
-            .get(self.source_location_idx as usize)
-            .map(|source_location| {
-                self.source_location_idx = source_location.inlined_into_idx;
-                SourceLocation {
-                    cache: self.cache,
-                    source_location,
-                }
-            })
     }
+}
+
+impl<'data, 'cache> From<SourceLocationsV7<'data, 'cache>> for SourceLocations<'data, 'cache> {
+    fn from(value: SourceLocationsV7<'data, 'cache>) -> Self {
+        Self(SourceLocationsInner::V7(value))
+    }
+}
+
+impl<'data, 'cache> From<SourceLocationsV8<'data, 'cache>> for SourceLocations<'data, 'cache> {
+    fn from(value: SourceLocationsV8<'data, 'cache>) -> Self {
+        Self(SourceLocationsInner::V8(value))
+    }
+}
+
+#[derive(Debug, Clone)]
+enum FunctionsInner<'data> {
+    V7(FunctionsV7<'data>),
+    V8(FunctionsV8<'data>),
 }
 
 /// Iterator returned by [`SymCache::functions`]; see documentation there.
 #[derive(Debug, Clone)]
-pub struct Functions<'data> {
-    cache: SymCache<'data>,
-    function_idx: u32,
-}
+pub struct Functions<'data>(FunctionsInner<'data>);
 
 impl<'data> Iterator for Functions<'data> {
     type Item = Function<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut function = self.cache.get_function(self.function_idx);
-
-        while let Some(ref f) = function {
-            if f.entry_pc == u32::MAX {
-                self.function_idx += 1;
-                function = self.cache.get_function(self.function_idx);
-            } else {
-                break;
-            }
+        match self.0 {
+            FunctionsInner::V7(ref mut functions) => functions.next(),
+            FunctionsInner::V8(ref mut functions) => functions.next(),
         }
+    }
+}
 
-        if function.is_some() {
-            self.function_idx += 1;
-        }
+impl<'data> From<FunctionsV7<'data>> for Functions<'data> {
+    fn from(value: FunctionsV7<'data>) -> Self {
+        Self(FunctionsInner::V7(value))
+    }
+}
 
-        function
+impl<'data> From<FunctionsV8<'data>> for Functions<'data> {
+    fn from(value: FunctionsV8<'data>) -> Self {
+        Self(FunctionsInner::V8(value))
     }
 }
 
@@ -256,22 +254,36 @@ impl fmt::Debug for FunctionsDebug<'_> {
     }
 }
 
+#[derive(Debug, Clone)]
+enum FilesInner<'data> {
+    V7(FilesV7<'data>),
+    V8(FilesV8<'data>),
+}
+
 /// Iterator returned by [`SymCache::files`]; see documentation there.
 #[derive(Debug, Clone)]
-pub struct Files<'data> {
-    cache: SymCache<'data>,
-    file_idx: u32,
-}
+pub struct Files<'data>(FilesInner<'data>);
 
 impl<'data> Iterator for Files<'data> {
     type Item = File<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let file = self.cache.get_file(self.file_idx);
-        if file.is_some() {
-            self.file_idx += 1;
+        match self.0 {
+            FilesInner::V7(ref mut files) => files.next(),
+            FilesInner::V8(ref mut files) => files.next(),
         }
-        file
+    }
+}
+
+impl<'data> From<FilesV7<'data>> for Files<'data> {
+    fn from(value: FilesV7<'data>) -> Self {
+        Self(FilesInner::V7(value))
+    }
+}
+
+impl<'data> From<FilesV8<'data>> for Files<'data> {
+    fn from(value: FilesV8<'data>) -> Self {
+        Self(FilesInner::V8(value))
     }
 }
 
