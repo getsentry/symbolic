@@ -14,8 +14,8 @@ bytes = "1.4.0"
 cc = "1.0.79"
 chrono = { version = "0.4.23", default-features = false, features = ["std"] }
 clap = "4.4.5"
-cpp_demangle = "0.4.1"
-criterion = { version = "0.5.1", features = ["html_reports"] }
+cpp_demangle = "0.5.1"
+criterion = { version = "0.8.1", features = ["html_reports"] }
 debugid = "0.8.0"
 elementtree = "1.2.3"
 elsa = "1.8.0"
@@ -31,19 +31,19 @@ gimli = { version = "0.32.3", default-features = false, features = [
 goblin = { version = "0.8.0", default-features = false }
 indexmap = "2.0.0"
 insta = { version = "1.28.0", features = ["yaml"] }
-itertools = "0.13.0"
+itertools = "0.14.0"
 js-source-scopes = "0.7.0"
 memmap2 = "0.9.0"
-minidump = "0.22.0"
-minidump-processor = "0.22.0"
-minidump-unwind = "0.22.0"
-msvc-demangler = "0.10.0"
+minidump = "0.26.1"
+minidump-processor = "0.26.1"
+minidump-unwind = "0.26.1"
+msvc-demangler = "0.11.0"
 nom = "7.1.3"
 nom-supreme = "0.8.0"
 once_cell = "1.17.1"
 parking_lot = "0.12.1"
 pdb-addr2line = "0.10.4"
-proguard = { version = "5.4.0", features = ["uuid"] }
+proguard = { version = "5.8.1", features = ["uuid"] }
 proptest = "1.6.0"
 regex = "1.7.1"
 rustc-demangle = "0.1.21"
@@ -56,7 +56,7 @@ smallvec = "1.10.0"
 sourcemap = "9.2.2"
 stable_deref_trait = "1.2.0"
 tempfile = "3.4.0"
-thiserror = "1.0.39"
+thiserror = "2.0.17"
 time = { version = "0.3.20", features = ["formatting"] }
 tokio = "1.36.0"
 tracing = "0.1.34"
