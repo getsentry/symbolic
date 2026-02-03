@@ -3,7 +3,7 @@
 
 use watto::Pod;
 
-use symbolic_common::{Arch, DebugId};
+use symbolic_common::DebugId;
 
 /// The magic file preamble as individual bytes.
 const SYMCACHE_MAGIC_BYTES: [u8; 4] = *b"SYMC";
@@ -37,7 +37,10 @@ pub(crate) struct Header {
     /// Debug identifier of the object file.
     pub(crate) debug_id: DebugId,
     /// CPU architecture of the object file.
-    pub(crate) arch: Arch,
+    ///
+    /// This cannot be [`symbolic_common::Arch`] because
+    /// not every bit pattern is valid for that type.
+    pub(crate) arch: u32,
 
     /// Number of included [`File`]s.
     pub(crate) num_files: u32,

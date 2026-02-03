@@ -256,7 +256,7 @@ impl<'data> SymCache<'data> {
 
     /// The architecture of the symbol file.
     pub fn arch(&self) -> Arch {
-        self.header.arch
+        Arch::from_u32(self.header.arch)
     }
 
     /// The debug identifier of the cache file.
