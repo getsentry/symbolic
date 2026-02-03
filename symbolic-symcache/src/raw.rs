@@ -3,7 +3,7 @@
 
 use watto::Pod;
 
-use symbolic_common::{Arch, DebugId};
+use symbolic_common::DebugId;
 
 /// The magic file preamble as individual bytes.
 const SYMCACHE_MAGIC_BYTES: [u8; 4] = *b"SYMC";
@@ -37,7 +37,10 @@ pub(crate) struct Header {
     /// Debug identifier of the object file.
     pub(crate) debug_id: DebugId,
     /// CPU architecture of the object file.
-    pub(crate) arch: Arch,
+    ///
+    /// This cannot be [`symbolic_common::Arch`] because
+    /// not every bit pattern is valid for that type.
+    pub(crate) arch: u32,
 
     /// Number of included [`File`]s.
     pub(crate) num_files: u32,
@@ -141,5 +144,18 @@ mod tests {
 
         assert_eq!(mem::size_of::<Range>(), 4);
         assert_eq!(mem::align_of::<Range>(), 4);
+    }
+
+    #[test]
+    fn test_header_arch_from_bytes() {
+        // Create an array of `u32`s and later transmute it to a slice of `u8`.
+        // This is to get a `u8` slice which is 4-byte aligned.
+        let mut nums = [0u32; 20];
+        // There are 40B, or 10 `u32`, before `arch` in the header.
+        nums[10] = 17;
+        let ptr = &raw const nums as *const u8;
+        let bytes: &[u8] = unsafe { std::slice::from_raw_parts(ptr, 80) };
+
+        let _arch = Header::ref_from_bytes(bytes).unwrap().arch;
     }
 }

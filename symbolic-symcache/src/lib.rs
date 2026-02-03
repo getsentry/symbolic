@@ -152,7 +152,7 @@ impl std::fmt::Debug for SymCache<'_> {
         f.debug_struct("SymCache")
             .field("version", &self.header.version)
             .field("debug_id", &self.header.debug_id)
-            .field("arch", &self.header.arch)
+            .field("arch", &Arch::from_u32(self.header.arch))
             .field("files", &self.header.num_files)
             .field("functions", &self.header.num_functions)
             .field("source_locations", &self.header.num_source_locations)
@@ -256,7 +256,7 @@ impl<'data> SymCache<'data> {
 
     /// The architecture of the symbol file.
     pub fn arch(&self) -> Arch {
-        self.header.arch
+        Arch::from_u32(self.header.arch)
     }
 
     /// The debug identifier of the cache file.

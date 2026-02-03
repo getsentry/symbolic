@@ -489,7 +489,7 @@ impl<'a> SymCacheConverter<'a> {
             version: crate::SYMCACHE_VERSION,
 
             debug_id: self.debug_id,
-            arch: self.arch,
+            arch: self.arch as u32,
 
             num_files,
             num_functions,
