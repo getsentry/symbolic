@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- symcache: Fixed an unsound implementation of `Pod` ([#958](https://github.com/getsentry/symbolic/pull/958))
+
 ## 12.17.1
 
 **Fixes**
