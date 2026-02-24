@@ -413,6 +413,50 @@ impl<'d> UnitRef<'d, '_> {
         self.unit.header.offset()
     }
 
+    /// Returns the source language declared in the root DIE of this compilation unit.
+    fn language(&self) -> Result<Option<Language>, DwarfError> {
+        let mut entries = self.unit.entries();
+        match entries.next_dfs()? {
+            Some((_, root_entry)) => match root_entry.attr_value(constants::DW_AT_language)? {
+                Some(AttributeValue::Language(lang)) => Ok(Some(language_from_dwarf(lang))),
+                _ => Ok(None),
+            },
+            None => Ok(None),
+        }
+    }
+
+    /// Maximum recursion depth for following `DW_AT_abstract_origin` chains, matching the limit
+    /// used by elfutils `dwarf_attr_integrate`.
+    const MAX_ABSTRACT_ORIGIN_DEPTH: u8 = 16;
+
+    /// Resolves the source language for a DIE by following `DW_AT_abstract_origin` chains,
+    /// including across compilation unit boundaries. `depth` limits recursion to guard against
+    /// cycles or malformed DWARF.
+    fn resolve_entry_language(
+        &self,
+        entry: &Die<'d, '_>,
+        depth: u8,
+    ) -> Result<Option<Language>, DwarfError> {
+        if depth == 0 {
+            return Ok(None);
+        }
+        if let Ok(Some(attr)) = entry.attr(constants::DW_AT_abstract_origin) {
+            return self.resolve_reference(attr, |ref_unit, ref_entry| {
+                // Recurse first to follow deeper chains.
+                if let Some(lang) = ref_unit.resolve_entry_language(ref_entry, depth - 1)? {
+                    return Ok(Some(lang));
+                }
+                // No deeper reference: use the CU language if this is a cross-unit ref.
+                if self.offset() != ref_unit.offset() {
+                    ref_unit.language()
+                } else {
+                    Ok(None)
+                }
+            });
+        }
+        Ok(None)
+    }
+
     /// Resolves the function name of a debug entry.
     fn resolve_function_name(
         &self,
@@ -453,7 +497,7 @@ impl<'d> UnitRef<'d, '_> {
 
         if let Some(attr) = reference_target {
             return self.resolve_reference(attr, |ref_unit, ref_entry| {
-                // Self-references may have a layer of indircetion. Avoid infinite recursion
+                // Self-references may have a layer of indirection. Avoid infinite recursion
                 // in this scenario.
                 if let Some(prior) = prior_offset {
                     if self.offset() == ref_unit.offset() && prior == ref_entry.offset() {
@@ -719,18 +763,29 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     }
 
     /// Resolves the name of a function from the symbol table.
-    fn resolve_symbol_name(&self, address: u64) -> Option<Name<'d>> {
+    fn resolve_symbol_name(&self, address: u64, language: Language) -> Option<Name<'d>> {
         let symbol = self.inner.info.symbol_map.lookup_exact(address)?;
         let name = resolve_cow_name(self.bcsymbolmap, symbol.name.clone()?);
-        Some(Name::new(name, NameMangling::Mangled, self.language))
+        Some(Name::new(name, NameMangling::Mangled, language))
     }
 
-    /// Resolves the name of a function from DWARF debug information.
-    fn resolve_dwarf_name(&self, entry: &Die<'d, '_>) -> Option<Name<'d>> {
+    /// Resolves the source language for a function by following `DW_AT_abstract_origin` to the
+    /// origin compilation unit when crossing unit boundaries.
+    ///
+    /// With LTO, the linker may create artificial compilation units whose `DW_AT_language`
+    /// does not reflect the original source language (e.g., a C++ CU containing functions
+    /// originally written in C). When such a CU's subprogram carries a cross-unit
+    /// `DW_AT_abstract_origin`, the referenced CU's language is more authoritative.
+    fn resolve_function_language(
+        &self,
+        entry: &Die<'d, '_>,
+        fallback_language: Language,
+    ) -> Language {
         self.inner
-            .resolve_function_name(entry, self.language, self.bcsymbolmap, None)
+            .resolve_entry_language(entry, UnitRef::MAX_ABSTRACT_ORIGIN_DEPTH)
             .ok()
             .flatten()
+            .unwrap_or(fallback_language)
     }
 
     /// Parses any DW_TAG_subprogram DIEs in the DIE subtree.
@@ -814,17 +869,29 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         //
         // XXX: Maybe we should actually parse the ranges in the resolve function and always
         // look at the symbol table based on the start of the DIE range.
+
+        let entry = self.inner.unit.entry(dw_die_offset)?;
+        // With LTO the current CU may be an artificial unit with an incorrect language. Follow
+        // DW_AT_abstract_origin cross-unit to find the true source language. The resolved
+        // language is also propagated to all inlinees of this function.
+        let language = self.resolve_function_language(&entry, self.language);
+
         let symbol_name = if self.prefer_dwarf_names {
             None
         } else {
             let first_range_begin = ranges.iter().map(|range| range.begin).min().unwrap();
             let function_address = offset(first_range_begin, self.inner.info.address_offset);
-            self.resolve_symbol_name(function_address)
+            self.resolve_symbol_name(function_address, language)
         };
 
         let name = symbol_name
-            .or_else(|| self.resolve_dwarf_name(&self.inner.unit.entry(dw_die_offset).unwrap()))
-            .unwrap_or_else(|| Name::new("", NameMangling::Unmangled, self.language));
+            .or_else(|| {
+                self.inner
+                    .resolve_function_name(&entry, language, self.bcsymbolmap, None)
+                    .ok()
+                    .flatten()
+            })
+            .unwrap_or_else(|| Name::new("", NameMangling::Unmangled, language));
 
         // Create one function per range. In the common case there is only one range, so
         // we usually only have one function builder here.
@@ -840,7 +907,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             })
             .collect();
 
-        self.parse_function_children(depth, 0, entries, &mut builders, output)?;
+        self.parse_function_children(depth, 0, entries, &mut builders, output, language)?;
 
         if let Some(line_program) = &self.line_program {
             for (range, builder) in &mut builders {
@@ -869,6 +936,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         entries: &mut EntriesRaw<'d, '_>,
         builders: &mut [(Range, FunctionBuilder<'d>)],
         output: &mut FunctionsOutput<'_, 'd>,
+        language: Language,
     ) -> Result<(), DwarfError> {
         while !entries.is_empty() {
             let dw_die_offset = entries.next_offset();
@@ -882,6 +950,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             };
             match abbrev.tag() {
                 constants::DW_TAG_subprogram => {
+                    // Nested subprograms resolve their own language independently.
                     self.parse_function(dw_die_offset, next_depth, entries, abbrev, output)?;
                 }
                 constants::DW_TAG_inlined_subroutine => {
@@ -893,6 +962,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                         abbrev,
                         builders,
                         output,
+                        language,
                     )?;
                 }
                 _ => {
@@ -921,6 +991,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         abbrev: &gimli::Abbreviation,
         builders: &mut [(Range, FunctionBuilder<'d>)],
         output: &mut FunctionsOutput<'_, 'd>,
+        language: Language,
     ) -> Result<(), DwarfError> {
         let (ranges, call_location) = self.parse_ranges(entries, abbrev, &mut output.range_buf)?;
 
@@ -937,9 +1008,18 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             return self.parse_functions(depth, entries, output);
         }
 
+        let entry = self.inner.unit.entry(dw_die_offset)?;
+        let language = self.resolve_function_language(&entry, language);
+
+        // Use the language resolved for the enclosing top-level subprogram rather than
+        // self.language: the inlinee's DW_AT_abstract_origin may resolve to a partial unit
+        // which carries the wrong language (e.g. a C++ LTO partial unit for C code).
         let name = self
-            .resolve_dwarf_name(&self.inner.unit.entry(dw_die_offset).unwrap())
-            .unwrap_or_else(|| Name::new("", NameMangling::Unmangled, self.language));
+            .inner
+            .resolve_function_name(&entry, language, self.bcsymbolmap, None)
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| Name::new("", NameMangling::Unmangled, language));
 
         let call_file = call_location
             .call_file
@@ -970,7 +1050,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             );
         }
 
-        self.parse_function_children(depth, inline_depth + 1, entries, builders, output)
+        self.parse_function_children(depth, inline_depth + 1, entries, builders, output, language)
     }
 
     /// Collects all functions within this compilation unit.

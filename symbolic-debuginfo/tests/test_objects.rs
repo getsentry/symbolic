@@ -1,6 +1,6 @@
 use std::{ffi::CString, fmt, io::BufWriter};
 
-use symbolic_common::ByteView;
+use symbolic_common::{ByteView, Language};
 use symbolic_debuginfo::{
     elf::ElfObject, pe::PeObject, FileEntry, Function, LineInfo, Object, SymbolMap,
 };
@@ -953,6 +953,56 @@ fn test_wasm_line_program() -> Result<(), Error> {
         .expect("main function at 0x8b");
 
     assert_eq!(main_function.name, "internal_func");
+
+    Ok(())
+}
+
+fn find_functions_by_name<'a>(functions: &'a [Function<'a>], name: &str) -> Vec<&'a Function<'a>> {
+    let mut result = Vec::new();
+    for f in functions {
+        if f.name.as_str() == name {
+            result.push(f);
+        }
+        result.extend(find_functions_by_name(&f.inlinees, name));
+    }
+    result
+}
+
+#[test]
+fn test_lto_language_detection() -> Result<(), Error> {
+    // libjemalloc is compiled as C but LTO creates artificial CUs with DW_LANG_C_plus_plus.
+    // The fix follows DW_AT_abstract_origin cross-unit to find the true source language.
+    let view = ByteView::open(fixture("linux/libjemalloc.so.debug"))?;
+    let object = Object::parse(&view)?;
+    let session = object.debug_session()?;
+
+    let functions: Vec<_> = session.functions().filter_map(|f| f.ok()).collect();
+
+    for name in &["je_tcache_arena_associate", "malloc_mutex_trylock_final"] {
+        let matches = find_functions_by_name(&functions, name);
+        assert!(!matches.is_empty(), "{name} should be found");
+        for func in matches {
+            assert_eq!(func.name.language(), Language::C, "{name} should be C");
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_cross_language_lto_inlinee_language() -> Result<(), Error> {
+    // cross_lang_lto is a Rust binary that inlines a C function (my_add) via LTO.
+    // The inlinee should be detected as C, not Rust.
+    let view = ByteView::open(fixture("linux/cross_language_lto.debug"))?;
+    let object = Object::parse(&view)?;
+    let session = object.debug_session()?;
+
+    let functions: Vec<_> = session.functions().filter_map(|f| f.ok()).collect();
+    let matches = find_functions_by_name(&functions, "my_add");
+    assert!(!matches.is_empty(), "my_add should be found as an inlinee");
+    for func in matches {
+        assert_eq!(func.name.language(), Language::C);
+    }
 
     Ok(())
 }
