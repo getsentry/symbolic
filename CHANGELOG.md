@@ -4,7 +4,7 @@
 
 **Fixes**
 
-- use goblin permissive PE parse-mode ([#960](https://github.com/getsentry/symbolic/pull/960))
+- Use goblin permissive PE parse-mode ([#960](https://github.com/getsentry/symbolic/pull/960))
 
 ## 12.17.2
 
