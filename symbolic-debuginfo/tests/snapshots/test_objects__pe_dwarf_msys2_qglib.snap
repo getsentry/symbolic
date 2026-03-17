@@ -1,0 +1,25 @@
+---
+source: symbolic-debuginfo/tests/test_objects.rs
+expression: object
+---
+Pe(
+    PeObject {
+        code_id: Some(
+            CodeId(695cfde9cf000),
+        ),
+        debug_id: DebugId {
+            uuid: "fe9537f1-e434-a859-4c4c-44205044422e",
+            appendix: 1,
+        },
+        debug_file_name: Some(
+            "",
+        ),
+        arch: Amd64,
+        kind: Library,
+        load_address: 0x180000000,
+        has_symbols: false,
+        has_debug_info: true,
+        has_unwind_info: true,
+        is_malformed: false,
+    },
+)
