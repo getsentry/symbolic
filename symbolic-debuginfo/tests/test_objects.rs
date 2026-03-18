@@ -1001,7 +1001,7 @@ fn test_cross_language_lto_inlinee_language() -> Result<(), Error> {
     let matches = find_functions_by_name(&functions, "my_add");
     assert!(!matches.is_empty(), "my_add should be found as an inlinee");
     for func in matches {
-        assert_eq!(func.name.language(), Language::C);
+        assert_eq!(func.name.language(), Language::C, "my_add should be C");
     }
 
     Ok(())
