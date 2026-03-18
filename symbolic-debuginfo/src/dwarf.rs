@@ -416,13 +416,15 @@ impl<'d> UnitRef<'d, '_> {
     /// Returns the source language declared in the root DIE of this compilation unit.
     fn language(&self) -> Result<Option<Language>, DwarfError> {
         let mut entries = self.unit.entries();
-        match entries.next_dfs()? {
-            Some((_, root_entry)) => match root_entry.attr_value(constants::DW_AT_language)? {
-                Some(AttributeValue::Language(lang)) => Ok(Some(language_from_dwarf(lang))),
-                _ => Ok(None),
-            },
-            None => Ok(None),
-        }
+        let Some((_, root_entry)) = entries.next_dfs()? else {
+            return Ok(None);
+        };
+        let Some(AttributeValue::Language(lang)) =
+            root_entry.attr_value(constants::DW_AT_language)?
+        else {
+            return Ok(None);
+        };
+        Ok(Some(language_from_dwarf(lang)))
     }
 
     /// Maximum recursion depth for following `DW_AT_abstract_origin` chains, matching the limit
