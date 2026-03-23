@@ -813,8 +813,7 @@ dependencies = [
 [[package]]
 name = "goblin"
 version = "0.10.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "983a6aafb3b12d4c41ea78d39e189af4298ce747353945ff5105b54a056e5cd9"
+source = "git+https://github.com/supervacuus/goblin.git?branch=feat%2Fadd_parse_imports_pe_option#e4c10cced27d316394454d6bd2832818a16ee412"
 dependencies = [
  "log",
  "plain",
