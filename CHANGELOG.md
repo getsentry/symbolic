@@ -5,6 +5,7 @@
 **Fixes**
 
 - Use goblin permissive PE parse-mode ([#960](https://github.com/getsentry/symbolic/pull/960))
+- DWARF: Correctly detect languages in LTO-compiled binaries ([#961](https://github.com/getsentry/symbolic/pull/961))
 
 ## 12.17.2
 
