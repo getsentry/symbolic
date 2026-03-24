@@ -667,8 +667,8 @@ async fn execute(matches: &ArgMatches) -> Result<(), Error> {
 
     let symbol_provider = LocalSymbolProvider::new(
         &symbols_path,
-        *matches.get_one("cfi").unwrap(),
-        *matches.get_one("symbolize").unwrap(),
+        *matches.get_one("no_cfi").unwrap(),
+        *matches.get_one("no_symbolize").unwrap(),
     );
 
     let minidump = Minidump::read_path(minidump_path)?;
@@ -714,18 +714,16 @@ async fn main() {
                 .help("Path to a folder containing debug symbols"),
         )
         .arg(
-            Arg::new("cfi")
-                .short('c')
-                .long("cfi")
-                .action(ArgAction::SetTrue)
-                .help("Use CFI while stackwalking"),
+            Arg::new("no_cfi")
+                .long("no-cfi")
+                .action(ArgAction::SetFalse)
+                .help("Do not use CFI while stackwalking"),
         )
         .arg(
-            Arg::new("symbolize")
-                .short('s')
-                .long("symbolize")
-                .action(ArgAction::SetTrue)
-                .help("Symbolize frames (file, function and line number)"),
+            Arg::new("no_symbolize")
+                .long("no-symbolize")
+                .action(ArgAction::SetFalse)
+                .help("Do not symbolize frames (file, function and line number)"),
         )
         .arg(
             Arg::new("only_crash")
