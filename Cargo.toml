@@ -75,3 +75,6 @@ lto = true
 
 [profile.bench]
 debug = true
+
+[patch.crates-io]
+goblin = { git = "https://github.com/supervacuus/goblin.git", branch = "feat/add_parse_imports_pe_option" }
