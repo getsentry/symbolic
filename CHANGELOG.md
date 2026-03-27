@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- disable `PE` import table parser ([#964](https://github.com/getsentry/symbolic/pull/964))
+
 ## 12.17.3
 
 **Fixes**
