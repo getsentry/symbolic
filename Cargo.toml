@@ -28,7 +28,7 @@ gimli = { version = "0.32.3", default-features = false, features = [
   "std",
   "fallible-iterator",
 ] }
-goblin = { version = "0.10.5", default-features = false }
+goblin = { version = "0.8.0", default-features = false }
 indexmap = "2.0.0"
 insta = { version = "1.28.0", features = ["yaml"] }
 itertools = "0.14.0"
@@ -48,7 +48,7 @@ proptest = "1.6.0"
 regex = "1.7.1"
 rustc-demangle = "0.1.21"
 # keep this in sync with whatever version `goblin` uses
-scroll = "0.13.0"
+scroll = "0.12.0"
 serde = { version = "1.0.171", features = ["derive"] }
 serde_json = "1.0.102"
 similar-asserts = "1.4.2"
