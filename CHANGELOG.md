@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 12.17.4
 
 **Fixes**
 - Revert "Use goblin permissive PE parse-mode". This change breaks API compatibility and should
