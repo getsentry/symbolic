@@ -83,9 +83,7 @@ impl<'data> PeObject<'data> {
 
     /// Tries to parse a PE object from the given slice.
     pub fn parse(data: &'data [u8]) -> Result<Self, PeError> {
-        let opts = pe::options::ParseOptions::default()
-            .with_parse_mode(goblin::pe::options::ParseMode::Permissive);
-        let pe = pe::PE::parse_with_opts(data, &opts).map_err(PeError::new)?;
+        let pe = pe::PE::parse(data).map_err(PeError::new)?;
         let is_stub = is_pe_stub(&pe);
         Ok(PeObject { pe, data, is_stub })
     }
@@ -124,11 +122,7 @@ impl<'data> PeObject<'data> {
                 debug_data
                     .codeview_pdb70_debug_info
                     .as_ref()
-                    .map(|cv_record| {
-                        let debug_directory =
-                            debug_data.find_type(goblin::pe::debug::IMAGE_DEBUG_TYPE_CODEVIEW);
-                        (debug_directory, cv_record)
-                    })
+                    .map(|cv_record| (debug_data.image_debug_directory, cv_record))
             })
             .and_then(|(debug_directory, cv_record)| {
                 let guid = &cv_record.signature;
@@ -142,8 +136,8 @@ impl<'data> PeObject<'data> {
                 // > Matching PDB ID is stored in the #Pdb stream of the .pdb file.
                 //
                 // See https://github.com/dotnet/runtime/blob/main/docs/design/specs/PE-COFF.md#codeview-debug-directory-entry-type-2
-                let age = if let Some(d) = debug_directory.filter(|d| d.minor_version == 0x504d) {
-                    d.time_date_stamp
+                let age = if debug_directory.minor_version == 0x504d {
+                    debug_directory.time_date_stamp
                 } else {
                     cv_record.age
                 };
@@ -197,7 +191,7 @@ impl<'data> PeObject<'data> {
     /// load address, so that the caller only has to deal with addresses relative to the actual
     /// start of the image.
     pub fn load_address(&self) -> u64 {
-        self.pe.image_base
+        self.pe.image_base as u64
     }
 
     /// Determines whether this object exposes a public symbol table.

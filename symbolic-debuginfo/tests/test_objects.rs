@@ -621,27 +621,6 @@ fn test_pe_dwarf_functions() -> Result<(), Error> {
 }
 
 #[test]
-fn test_pe_dwarf_msys2_qglib() -> Result<(), Error> {
-    // Regression test for stripped MSYS2 PE debug companions that carry DWARF info.
-    let compressed = std::fs::read(fixture("windows/msys2-qglib.debug.zst"))?;
-    let buffer = zstd::stream::decode_all(&compressed[..])?;
-
-    let view = ByteView::from_vec(buffer);
-    let object = Object::parse(&view)?;
-
-    insta::assert_debug_snapshot!("pe_dwarf_msys2_qglib", object);
-
-    let session = object.debug_session()?;
-    let functions = session.functions().collect::<Result<Vec<_>, _>>()?;
-    insta::assert_debug_snapshot!(
-        "pe_dwarf_msys2_qglib_functions",
-        FunctionsDebug(&functions[..10], 0)
-    );
-
-    Ok(())
-}
-
-#[test]
 fn test_pe_embedded_ppdb() -> Result<(), Error> {
     {
         let view = ByteView::open(fixture("windows/Sentry.Samples.Console.Basic.dll"))?;

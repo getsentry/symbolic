@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Fixes**
+- Revert "Use goblin permissive PE parse-mode". This change breaks API compatibility and should
+  not have been released in a patch version. ([#966](https://github.com/getsentry/symbolic/pull/966))
+
 **Improvements**
 
 - Enable symbolize and CFI by default in `examples/minidump_stackwalk`, and replace their
