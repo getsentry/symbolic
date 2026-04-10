@@ -1,17 +1,17 @@
 use symbolic_common::Language;
 
 use crate::raw::v7 as raw;
-use crate::v7::SymCacheV7;
+use crate::v7::{SymCacheV7Flavor, SymCacheV7Inner, V7, V8};
 use crate::{File, Function};
 
-impl<'data> SymCacheV7<'data> {
+impl<'data, Flavor: SymCacheV7Flavor> SymCacheV7Inner<'data, Flavor> {
     /// Looks up an instruction address in the SymCacheV7, yielding an iterator of [`SourceLocationV7`]s
     /// representing a hierarchy of inlined function calls.
-    pub(crate) fn lookup(&self, addr: u64) -> SourceLocationsV7<'data, '_> {
+    pub(crate) fn lookup(&self, addr: u64) -> SourceLocationsV7Inner<'data, '_, Flavor> {
         let addr = match u32::try_from(addr) {
             Ok(addr) => addr,
             Err(_) => {
-                return SourceLocationsV7 {
+                return SourceLocationsV7Inner {
                     cache: self,
                     source_location_idx: u32::MAX,
                 }
@@ -31,7 +31,7 @@ impl<'data> SymCacheV7<'data> {
             }
         }
 
-        SourceLocationsV7 {
+        SourceLocationsV7Inner {
             cache: self,
             source_location_idx,
         }
@@ -54,15 +54,17 @@ impl<'data> SymCacheV7<'data> {
             language: Language::from_u32(raw_function.lang),
         })
     }
+}
 
+impl<'data, Flavor: SymCacheV7Flavor + Clone> SymCacheV7Inner<'data, Flavor> {
     /// An iterator over the functions in this SymCacheV7.
     ///
     /// Only functions with a valid entry pc, i.e., one not equal to `u32::MAX`,
     /// will be returned.
     /// Note that functions are *not* returned ordered by name or entry pc,
     /// but in insertion order, which is essentially random.
-    pub(crate) fn functions(&self) -> FunctionsV7<'data> {
-        FunctionsV7 {
+    pub(crate) fn functions(&self) -> FunctionsV7Inner<'data, Flavor> {
+        FunctionsV7Inner {
             cache: self.clone(),
             function_idx: 0,
         }
@@ -72,8 +74,8 @@ impl<'data> SymCacheV7<'data> {
     ///
     /// Note that files are *not* returned ordered by name or full path,
     /// but in insertion order, which is essentially random.
-    pub(crate) fn files(&self) -> FilesV7<'data> {
-        FilesV7 {
+    pub(crate) fn files(&self) -> FilesV7Inner<'data, Flavor> {
+        FilesV7Inner {
             cache: self.clone(),
             file_idx: 0,
         }
@@ -85,12 +87,12 @@ impl<'data> SymCacheV7<'data> {
 /// A `SourceLocation` represents source information about a particular instruction.
 /// It always has a `[Function]` associated with it and may also have a `[File]` and a line number.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct SourceLocationV7<'data, 'cache> {
-    pub(crate) cache: &'cache SymCacheV7<'data>,
+pub(crate) struct SourceLocationV7Inner<'data, 'cache, Flavor: SymCacheV7Flavor> {
+    pub(crate) cache: &'cache SymCacheV7Inner<'data, Flavor>,
     pub(crate) source_location: &'data raw::SourceLocation,
 }
 
-impl<'data> SourceLocationV7<'data, '_> {
+impl<'data, Flavor: SymCacheV7Flavor> SourceLocationV7Inner<'data, '_, Flavor> {
     /// The source line corresponding to the instruction.
     ///
     /// 0 denotes an unknown line number.
@@ -113,13 +115,15 @@ impl<'data> SourceLocationV7<'data, '_> {
 
 /// An Iterator that yields [`SourceLocationV7`]s, representing an inlining hierarchy.
 #[derive(Debug, Clone)]
-pub(crate) struct SourceLocationsV7<'data, 'cache> {
-    pub(crate) cache: &'cache SymCacheV7<'data>,
+pub(crate) struct SourceLocationsV7Inner<'data, 'cache, Flavor: SymCacheV7Flavor> {
+    pub(crate) cache: &'cache SymCacheV7Inner<'data, Flavor>,
     pub(crate) source_location_idx: u32,
 }
 
-impl<'data, 'cache> Iterator for SourceLocationsV7<'data, 'cache> {
-    type Item = SourceLocationV7<'data, 'cache>;
+impl<'data, 'cache, Flavor: SymCacheV7Flavor> Iterator
+    for SourceLocationsV7Inner<'data, 'cache, Flavor>
+{
+    type Item = SourceLocationV7Inner<'data, 'cache, Flavor>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.source_location_idx == u32::MAX {
@@ -130,7 +134,7 @@ impl<'data, 'cache> Iterator for SourceLocationsV7<'data, 'cache> {
             .get(self.source_location_idx as usize)
             .map(|source_location| {
                 self.source_location_idx = source_location.inlined_into_idx;
-                SourceLocationV7 {
+                SourceLocationV7Inner {
                     cache: self.cache,
                     source_location,
                 }
@@ -140,12 +144,12 @@ impl<'data, 'cache> Iterator for SourceLocationsV7<'data, 'cache> {
 
 /// Iterator returned by [`SymCacheV7::functions`]; see documentation there.
 #[derive(Debug, Clone)]
-pub(crate) struct FunctionsV7<'data> {
-    cache: SymCacheV7<'data>,
+pub(crate) struct FunctionsV7Inner<'data, Flavor: SymCacheV7Flavor> {
+    cache: SymCacheV7Inner<'data, Flavor>,
     function_idx: u32,
 }
 
-impl<'data> Iterator for FunctionsV7<'data> {
+impl<'data, Flavor: SymCacheV7Flavor> Iterator for FunctionsV7Inner<'data, Flavor> {
     type Item = Function<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -170,12 +174,12 @@ impl<'data> Iterator for FunctionsV7<'data> {
 
 /// Iterator returned by [`SymCacheV7::files`]; see documentation there.
 #[derive(Debug, Clone)]
-pub(crate) struct FilesV7<'data> {
-    cache: SymCacheV7<'data>,
+pub(crate) struct FilesV7Inner<'data, Flavor: SymCacheV7Flavor> {
+    cache: SymCacheV7Inner<'data, Flavor>,
     file_idx: u32,
 }
 
-impl<'data> Iterator for FilesV7<'data> {
+impl<'data, Flavor: SymCacheV7Flavor> Iterator for FilesV7Inner<'data, Flavor> {
     type Item = File<'data>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -186,3 +190,15 @@ impl<'data> Iterator for FilesV7<'data> {
         file
     }
 }
+
+pub(crate) type FilesV7<'data> = FilesV7Inner<'data, V7>;
+pub(crate) type FilesV8<'data> = FilesV7Inner<'data, V8>;
+
+pub(crate) type FunctionsV7<'data> = FunctionsV7Inner<'data, V7>;
+pub(crate) type FunctionsV8<'data> = FunctionsV7Inner<'data, V8>;
+
+pub(crate) type SourceLocationV7<'data, 'cache> = SourceLocationV7Inner<'data, 'cache, V7>;
+pub(crate) type SourceLocationV8<'data, 'cache> = SourceLocationV7Inner<'data, 'cache, V8>;
+
+pub(crate) type SourceLocationsV7<'data, 'cache> = SourceLocationsV7Inner<'data, 'cache, V7>;
+pub(crate) type SourceLocationsV8<'data, 'cache> = SourceLocationsV7Inner<'data, 'cache, V8>;

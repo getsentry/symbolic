@@ -2,8 +2,10 @@ use std::fmt;
 
 use symbolic_common::{Language, Name, NameMangling};
 
-use crate::v7::lookup::{FilesV7, FunctionsV7, SourceLocationV7, SourceLocationsV7};
-use crate::v8::lookup::{FilesV8, FunctionsV8, SourceLocationV8, SourceLocationsV8};
+use crate::v7::lookup::{
+    FilesV7, FilesV8, FunctionsV7, FunctionsV8, SourceLocationV7, SourceLocationV8,
+    SourceLocationsV7, SourceLocationsV8,
+};
 use crate::SymCacheInner;
 
 use super::SymCache;

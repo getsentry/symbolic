@@ -106,7 +106,6 @@ mod lookup;
 mod raw;
 pub mod transform;
 mod v7;
-mod v8;
 mod writer;
 
 use symbolic_common::Arch;
@@ -118,8 +117,7 @@ pub use error::{Error, ErrorKind};
 pub use lookup::*;
 pub use writer::SymCacheConverter;
 
-use crate::v7::SymCacheV7;
-use crate::v8::SymCacheV8;
+use crate::v7::{SymCacheV7, SymCacheV7Inner, SymCacheV8};
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -170,8 +168,8 @@ impl<'data> SymCache<'data> {
         }
 
         let inner = match version.version {
-            7 => SymCacheInner::V7(SymCacheV7::parse(rest)?),
-            8 => SymCacheInner::V8(SymCacheV8::parse(rest)?),
+            7 => SymCacheInner::V7(SymCacheV7Inner::parse(rest)?),
+            8 => SymCacheInner::V8(SymCacheV7Inner::parse(rest)?),
             _ => return Err(ErrorKind::WrongVersion.into()),
         };
 
