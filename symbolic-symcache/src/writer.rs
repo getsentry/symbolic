@@ -493,7 +493,7 @@ impl<'a> SymCacheConverter<'a> {
 
         let header = raw::v7::Header {
             debug_id: self.debug_id,
-            arch: self.arch,
+            arch: self.arch as u32,
 
             num_files,
             num_functions,

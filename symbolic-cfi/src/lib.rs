@@ -109,6 +109,19 @@ static ARM64: &[&str] = &[
     "v20", "v21", "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31",
 ];
 
+/// Names for 32-bit and 64-bit PowerPC CPU registers by register number.
+static PPC: &[&str] = &[
+    "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "r13", "r14",
+    "r15", "r16", "r17", "r18", "r19", "r20", "r21", "r22", "r23", "r24", "r25", "r26", "r27",
+    "r28", "r29", "r30", "r31", "f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10",
+    "f11", "f12", "f13", "f14", "f15", "f16", "f17", "f18", "f19", "f20", "f21", "f22", "f23",
+    "f24", "f25", "f26", "f27", "f28", "f29", "f30", "f31", "", "lr", "ctr", "", "cr0", "cr1",
+    "cr2", "cr3", "cr4", "cr5", "cr6", "cr7", "xer", "vr0", "vr1", "vr2", "vr3", "vr4", "vr5",
+    "vr6", "vr7", "vr8", "vr9", "vr10", "vr11", "vr12", "vr13", "vr14", "vr15", "vr16", "vr17",
+    "vr18", "vr19", "vr20", "vr21", "vr22", "vr23", "vr24", "vr25", "vr26", "vr27", "vr28", "vr29",
+    "vr30", "vr31", "", "vscr", "", "", "", "tfhar", "tfiar", "texasr",
+];
+
 /// Names for MIPS CPU registers by register number.
 static MIPS: &[&str] = &[
     "$zero", "$at", "$v0", "$v1", "$a0", "$a1", "$a2", "$a3", "$t0", "$t1", "$t2", "$t3", "$t4",
@@ -311,6 +324,7 @@ fn cfi_register_name(arch: CpuFamily, register: u16) -> Option<&'static str> {
         CpuFamily::Amd64 => X86_64.get(index),
         CpuFamily::Arm64 | CpuFamily::Arm64_32 => ARM64.get(index),
         CpuFamily::Arm32 => ARM.get(index),
+        CpuFamily::Ppc32 | CpuFamily::Ppc64 => PPC.get(index),
         CpuFamily::Mips32 | CpuFamily::Mips64 => MIPS.get(index),
         _ => None,
     };
@@ -803,14 +817,24 @@ impl<W: Write> AsciiCfiWriter<W> {
                             Self::write_register_rule(&mut line, info.arch, register, rule, ra)?;
                     }
                 }
-                // On MIPS: if no explicit rule was encountered for the return address,
-                // emit a rule stating that the return address should be recovered from the
-                // $ra register.
-                if row.start_address() == start
-                    && !ra_written
-                    && matches!(info.arch, Arch::Mips | Arch::Mips64)
-                {
-                    write!(line, " .ra: $ra")?;
+                // If no explicit rule was encountered for the return address on the INIT row,
+                // emit a default rule for architectures where the return address is in a register.
+                if row.start_address() == start && !ra_written {
+                    let cpu_family = info.arch.cpu_family();
+                    if matches!(
+                        cpu_family,
+                        CpuFamily::Arm32
+                            | CpuFamily::Arm64
+                            | CpuFamily::Arm64_32
+                            | CpuFamily::Mips32
+                            | CpuFamily::Mips64
+                            | CpuFamily::Ppc32
+                            | CpuFamily::Ppc64
+                    ) {
+                        if let Some(reg) = cfi_register_name(cpu_family, ra.0) {
+                            write!(line, " .ra: {reg}")?;
+                        }
+                    }
                 }
 
                 if written {
@@ -1332,5 +1356,11 @@ mod tests {
     #[test]
     fn test_cfi_register_name_none() {
         assert_eq!(cfi_register_name(CpuFamily::Arm64, 33), None);
+    }
+
+    #[test]
+    fn test_cfi_register_name_ppc_lr() {
+        assert_eq!(cfi_register_name(CpuFamily::Ppc32, 65), Some("lr"));
+        assert_eq!(cfi_register_name(CpuFamily::Ppc64, 65), Some("lr"));
     }
 }

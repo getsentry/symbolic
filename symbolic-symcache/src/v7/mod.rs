@@ -3,6 +3,7 @@ pub(crate) mod lookup;
 use crate::raw::v7 as raw;
 use crate::{ErrorKind, Result};
 
+use symbolic_common::Arch;
 use watto::{align_to, Pod};
 
 /// The serialized SymCache V7 binary format.
@@ -21,7 +22,7 @@ impl std::fmt::Debug for SymCacheV7<'_> {
         f.debug_struct("SymCache")
             .field("version", &7)
             .field("debug_id", &self.header.debug_id)
-            .field("arch", &self.header.arch)
+            .field("arch", &Arch::from_u32(self.header.arch))
             .field("files", &self.header.num_files)
             .field("functions", &self.header.num_functions)
             .field("source_locations", &self.header.num_source_locations)

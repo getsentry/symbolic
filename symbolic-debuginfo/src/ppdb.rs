@@ -3,8 +3,8 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 use std::iter;
+use std::sync::OnceLock;
 
-use once_cell::sync::OnceCell;
 use symbolic_common::{Arch, CodeId, DebugId};
 use symbolic_ppdb::EmbeddedSource;
 use symbolic_ppdb::{Document, FormatError, PortablePdb};
@@ -144,7 +144,7 @@ impl fmt::Debug for PortablePdbObject<'_> {
 /// A debug session for a Portable PDB object.
 pub struct PortablePdbDebugSession<'data> {
     ppdb: PortablePdb<'data>,
-    sources: OnceCell<HashMap<String, PPDBSource<'data>>>,
+    sources: OnceLock<HashMap<String, PPDBSource<'data>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -157,7 +157,7 @@ impl<'data> PortablePdbDebugSession<'data> {
     fn new(ppdb: &'_ PortablePdb<'data>) -> Result<Self, FormatError> {
         Ok(PortablePdbDebugSession {
             ppdb: ppdb.clone(),
-            sources: OnceCell::new(),
+            sources: OnceLock::new(),
         })
     }
 

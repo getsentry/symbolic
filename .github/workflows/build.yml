@@ -25,11 +25,11 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
 
       - run: rustup toolchain install stable --profile minimal --target ${{ matrix.target }} --no-self-update
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # v4
         with:
           python-version: 3.8
 
@@ -38,7 +38,7 @@ jobs:
           # consumed by cargo and setup.py to obtain the target dir
           CARGO_BUILD_TARGET: ${{ matrix.target }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: artifact-macos-${{ matrix.target }}
           path: py/dist/*
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
 
       - if: matrix.build-arch == 'aarch64'
         name: Build in Docker (aarch64)
@@ -68,7 +68,7 @@ jobs:
         name: Build in Docker (x86_64)
         run: make wheel-manylinux IMAGE=quay.io/pypa/"$MANYLINUX_VERSION"_x86_64:"$MANYLINUX_PIN"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: artifact-linux-${{ matrix.build-arch }}
           path: py/dist/*
@@ -81,15 +81,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c # v4
         with:
           python-version: 3.8
 
       - run: make sdist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: artifact-sdist
           path: py/dist/*
@@ -102,7 +102,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [python-wheel-linux, python-wheel-mac, sdist]
     steps:
-      - uses: actions/upload-artifact/merge@v4
+      - uses: actions/upload-artifact/merge@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           # Craft expects release assets from github to be a single artifact named after the sha.
           name: ${{ github.sha }}

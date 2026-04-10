@@ -190,11 +190,9 @@ impl<'data> SymCache<'data> {
 
     /// The architecture of the symbol file.
     pub fn arch(&self) -> Arch {
-        {
-            match &self.inner {
-                SymCacheInner::V7(cache) => cache.header.arch,
-                SymCacheInner::V8(cache) => cache.header.arch,
-            }
+        match &self.inner {
+            SymCacheInner::V7(cache) => Arch::from_u32(cache.header.arch),
+            SymCacheInner::V8(cache) => Arch::from_u32(cache.header.arch),
         }
     }
 
