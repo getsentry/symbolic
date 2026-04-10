@@ -142,7 +142,7 @@ impl<'data, 'cache, Flavor: SymCacheV7Flavor> Iterator
     }
 }
 
-/// Iterator returned by [`SymCacheV7::functions`]; see documentation there.
+/// Iterator returned by [`SymCacheV7Inner::functions`]; see documentation there.
 #[derive(Debug, Clone)]
 pub(crate) struct FunctionsV7Inner<'data, Flavor: SymCacheV7Flavor> {
     cache: SymCacheV7Inner<'data, Flavor>,
@@ -172,7 +172,7 @@ impl<'data, Flavor: SymCacheV7Flavor> Iterator for FunctionsV7Inner<'data, Flavo
     }
 }
 
-/// Iterator returned by [`SymCacheV7::files`]; see documentation there.
+/// Iterator returned by [`SymCacheV7Inner::files`]; see documentation there.
 #[derive(Debug, Clone)]
 pub(crate) struct FilesV7Inner<'data, Flavor: SymCacheV7Flavor> {
     cache: SymCacheV7Inner<'data, Flavor>,

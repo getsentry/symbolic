@@ -12,7 +12,7 @@ use watto::{align_to, Pod, StringTable};
 ///
 /// The `Flavor` type parameter controls how strings
 /// are parsed from the contained string bytes (via the
-/// [`GetString`] trait):
+/// [`SymCacheV7Flavor`] trait):
 /// - `V7`: String length prefixes are always 4B.
 /// - `V8`: String length prefixes are variable-length.
 #[derive(Clone, PartialEq, Eq)]
