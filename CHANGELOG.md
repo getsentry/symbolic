@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 12.18.0
 
 **Improvements**
 - symcache: Change internal representation to enable old versions to remain parseable. ([#947](https://github.com/getsentry/symbolic/pull/947))
