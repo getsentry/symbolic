@@ -355,11 +355,6 @@ impl Unreal4File {
         &self.bytes
     }
 
-    /// Returns the raw contents of this file.
-    pub fn into_bytes(self) -> Bytes {
-        self.bytes
-    }
-
     /// Returns the file type.
     pub fn ty(&self) -> Unreal4FileType {
         if self.name() == "CrashReportClient.ini" {
