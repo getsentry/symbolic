@@ -1,19 +1,8 @@
-//! The raw SymCache binary file format internals.
+//! The raw SymCache V7 binary file format internals.
 //!
-
 use watto::Pod;
 
 use symbolic_common::DebugId;
-
-/// The magic file preamble as individual bytes.
-const SYMCACHE_MAGIC_BYTES: [u8; 4] = *b"SYMC";
-
-/// The magic file preamble to identify SymCache files.
-///
-/// Serialized as ASCII "SYMC" on little-endian (x64) systems.
-pub(crate) const SYMCACHE_MAGIC: u32 = u32::from_le_bytes(SYMCACHE_MAGIC_BYTES);
-/// The byte-flipped magic, which indicates an endianness mismatch.
-pub(crate) const SYMCACHE_MAGIC_FLIPPED: u32 = SYMCACHE_MAGIC.swap_bytes();
 
 /// This [`SourceLocation`] is a sentinel value that says that no source location is present here.
 /// This is used to push an "end" range that does not resolve to a valid source location.
@@ -29,11 +18,6 @@ pub(crate) const NO_SOURCE_LOCATION: SourceLocation = SourceLocation {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[repr(C)]
 pub(crate) struct Header {
-    /// The file magic representing the file format and endianness.
-    pub(crate) magic: u32,
-    /// The SymCache Format Version.
-    pub(crate) version: u32,
-
     /// Debug identifier of the object file.
     pub(crate) debug_id: DebugId,
     /// CPU architecture of the object file.
@@ -41,7 +25,6 @@ pub(crate) struct Header {
     /// This cannot be [`symbolic_common::Arch`] because
     /// not every bit pattern is valid for that type.
     pub(crate) arch: u32,
-
     /// Number of included [`File`]s.
     pub(crate) num_files: u32,
     /// Number of included [`Function`]s.
@@ -130,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_sizeof() {
-        assert_eq!(mem::size_of::<Header>(), 80);
+        assert_eq!(mem::size_of::<Header>(), 72);
         assert_eq!(mem::align_of::<Header>(), 4);
 
         assert_eq!(mem::size_of::<Function>(), 16);
@@ -150,11 +133,11 @@ mod tests {
     fn test_header_arch_from_bytes() {
         // Create an array of `u32`s and later transmute it to a slice of `u8`.
         // This is to get a `u8` slice which is 4-byte aligned.
-        let mut nums = [0u32; 20];
-        // There are 40B, or 10 `u32`, before `arch` in the header.
-        nums[10] = 17;
+        let mut nums = [0u32; size_of::<Header>() / 4];
+        // There are 32B, or 8 `u32`, before `arch` in the header.
+        nums[8] = 17;
         let ptr = &raw const nums as *const u8;
-        let bytes: &[u8] = unsafe { std::slice::from_raw_parts(ptr, 80) };
+        let bytes: &[u8] = unsafe { std::slice::from_raw_parts(ptr, size_of::<Header>()) };
 
         let _arch = Header::ref_from_bytes(bytes).unwrap().arch;
     }
