@@ -6,6 +6,42 @@
 
 - Extract srcsrv data from PDB for file mapping ([#943](https://github.com/getsentry/symbolic/pull/943))
 
+## 12.18.0
+
+**Improvements**
+- symcache: Change internal representation to enable old versions to remain parseable. ([#947](https://github.com/getsentry/symbolic/pull/947))
+- feat: Add `Unreal4File::into_bytes`. ([#967](https://github.com/getsentry/symbolic/pull/967))
+
+## 12.17.4
+
+**Fixes**
+- Revert "Use goblin permissive PE parse-mode". This change breaks API compatibility and should
+  not have been released in a patch version. ([#966](https://github.com/getsentry/symbolic/pull/966))
+
+**Improvements**
+
+- Enable symbolize and CFI by default in `examples/minidump_stackwalk`, and replace their
+corresponding flags `--symbolize` and `--cfi` with `--no-symbolize` and `--no-cfi` respectively. ([#963](https://github.com/getsentry/symbolic/pull/963))
+
+## 12.17.3
+
+**Fixes**
+
+- Use goblin permissive PE parse-mode ([#960](https://github.com/getsentry/symbolic/pull/960))
+- DWARF: Correctly detect languages in LTO-compiled binaries ([#961](https://github.com/getsentry/symbolic/pull/961))
+
+## 12.17.2
+
+**Fixes**
+
+- symcache: Fixed an unsound implementation of `Pod` ([#958](https://github.com/getsentry/symbolic/pull/958))
+
+## 12.17.1
+
+**Fixes**
+
+- minidump: Define default .ra rules for PPC and ARM ([#949](https://github.com/getsentry/symbolic/pull/949))
+
 ## 12.17.0
 
 - feat(pdb): Extract the srcsrv integration name for metrics ([#944](https://github.com/getsentry/symbolic/pull/944))

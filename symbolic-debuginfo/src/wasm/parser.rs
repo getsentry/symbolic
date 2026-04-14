@@ -130,9 +130,9 @@ impl<'data> super::WasmObject<'data> {
                 // The code section contains the actual function bodies, this payload is emitted at
                 // the beginning of the section. This one is important as the code section offset is
                 // used to calculate relative addresses in a `DwarfDebugSession`
-                Payload::CodeSectionStart { range, count, .. } => {
+                Payload::CodeSectionStart { range, .. } => {
                     code_offset = range.start as u64;
-                    validator.code_section_start(count, &range)?;
+                    validator.code_section_start(&range)?;
                 }
                 // We get one of these for each local function body
                 Payload::CodeSectionEntry(body) => {
@@ -178,8 +178,11 @@ impl<'data> super::WasmObject<'data> {
                         }
                         // The name section contains the symbol names for items, notably functions
                         "name" => {
-                            let reader =
-                                BinaryReader::new(reader.data(), reader.data_offset(), features);
+                            let reader = BinaryReader::new_features(
+                                reader.data(),
+                                reader.data_offset(),
+                                features,
+                            );
                             let nsr = NameSectionReader::new(reader);
 
                             for name in nsr {
@@ -229,30 +232,30 @@ fn get_function_info(
     body: wasmparser::FunctionBody,
     validator: &mut wasmparser::FuncValidator<wasmparser::ValidatorResources>,
 ) -> Result<(u64, u64), WasmError> {
-    let mut body = body.get_binary_reader();
-
-    let function_address = body.original_position() as u64;
+    let mut locals_reader = body.get_binary_reader();
+    let function_address = locals_reader.original_position() as u64;
 
     // locals, we _can_ just skip this, but might as well validate while we're here
     {
-        for _ in 0..body.read_var_u32()? {
-            let pos = body.original_position();
-            let count = body.read()?;
-            let ty = body.read()?;
+        for _ in 0..locals_reader.read_var_u32()? {
+            let pos = locals_reader.original_position();
+            let count = locals_reader.read()?;
+            let ty = locals_reader.read()?;
             validator.define_locals(pos, count, ty)?;
         }
     }
 
-    while !body.eof() {
-        let pos = body.original_position();
-        let inst = body.read_operator()?;
+    let mut operators_reader = body.get_operators_reader()?;
+    while !operators_reader.eof() {
+        let pos = operators_reader.original_position();
+        let inst = operators_reader.read()?;
         validator.op(pos, &inst)?;
     }
 
-    validator.finish(body.original_position())?;
+    operators_reader.finish()?;
 
     Ok((
         function_address,
-        body.original_position() as u64 - function_address,
+        operators_reader.original_position() as u64 - function_address,
     ))
 }

@@ -60,9 +60,9 @@ ffi_fn! {
         let inner = SelfCell::new(byteview, |data| {
             let mapping = ProguardMapping::new(&*data);
             let mapper = if !initialize_param_mapping {
-                ProguardMapper::new(mapping.clone())
+                ProguardMapper::new(mapping)
             } else {
-                ProguardMapper::new_with_param_mapping(mapping.clone(), initialize_param_mapping)
+                ProguardMapper::new_with_param_mapping(mapping, initialize_param_mapping)
             };
             Inner { mapping, mapper }
         });

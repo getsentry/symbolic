@@ -107,7 +107,6 @@ mod lookup;
 mod raw;
 pub mod transform;
 mod v7;
-mod v8;
 mod v9;
 mod writer;
 
@@ -120,8 +119,7 @@ pub use error::{Error, ErrorKind};
 pub use lookup::*;
 pub use writer::SymCacheConverter;
 
-use crate::v7::SymCacheV7;
-use crate::v8::SymCacheV8;
+use crate::v7::{SymCacheV7, SymCacheV8};
 use crate::v9::SymCacheV9;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -197,9 +195,9 @@ impl<'data> SymCache<'data> {
     /// The architecture of the symbol file.
     pub fn arch(&self) -> Arch {
         match &self.inner {
-            SymCacheInner::V7(cache) => cache.header.arch,
-            SymCacheInner::V8(cache) => cache.header.arch,
-            SymCacheInner::V9(cache) => cache.header.arch,
+            SymCacheInner::V7(cache) => Arch::from_u32(cache.header.arch),
+            SymCacheInner::V8(cache) => Arch::from_u32(cache.header.arch),
+            SymCacheInner::V9(cache) => Arch::from_u32(cache.header.arch),
         }
     }
 

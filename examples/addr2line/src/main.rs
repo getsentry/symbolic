@@ -93,8 +93,8 @@ fn execute(matches: &ArgMatches) -> Result<()> {
                 print_name(
                     symbol
                         .name
-                        .as_ref()
-                        .map(|n| Name::new(n.as_ref(), NameMangling::Mangled, Language::Unknown)),
+                        .as_deref()
+                        .map(|n| Name::new(n, NameMangling::Mangled, Language::Unknown)),
                     matches,
                 );
                 print_range(symbol.address, Some(symbol.size), matches);

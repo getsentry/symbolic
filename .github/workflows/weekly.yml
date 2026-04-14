@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
 
       - name: Install rust stable toolchain
         run: |
@@ -35,9 +35,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
 
       # FIXME: find a maintained alternative to audit-check
-      - uses: actions-rs/audit-check@v1
+      - uses: actions-rs/audit-check@24a24e9d5c8179709dd1ad4d7ba661572de756e6 # v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

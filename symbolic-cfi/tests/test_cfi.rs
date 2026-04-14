@@ -106,3 +106,16 @@ fn cfi_from_pe_windows() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[test]
+fn cfi_from_elf_arm64() -> Result<(), Error> {
+    let buffer = ByteView::open(fixture("linux/arm64/cfi_test"))?;
+    let object = Object::parse(&buffer)?;
+
+    let buf: Vec<u8> = AsciiCfiWriter::transform(&object)?;
+    let cfi = str::from_utf8(&buf)?;
+    // Verify that .ra: x30 appears in INIT rows
+    insta::assert_snapshot!("cfi_elf_arm64", cfi);
+
+    Ok(())
+}

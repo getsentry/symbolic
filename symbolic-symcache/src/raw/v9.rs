@@ -3,7 +3,7 @@
 //! V9 adds VCS revision tracking support to the File structure.
 use watto::Pod;
 
-use symbolic_common::{Arch, DebugId};
+use symbolic_common::DebugId;
 
 /// This [`SourceLocation`] is a sentinel value that says that no source location is present here.
 /// This is used to push an "end" range that does not resolve to a valid source location.
@@ -22,8 +22,10 @@ pub(crate) struct Header {
     /// Debug identifier of the object file.
     pub(crate) debug_id: DebugId,
     /// CPU architecture of the object file.
-    pub(crate) arch: Arch,
-
+    ///
+    /// This cannot be [`symbolic_common::Arch`] because
+    /// not every bit pattern is valid for that type.
+    pub(crate) arch: u32,
     /// Number of included [`File`]s.
     pub(crate) num_files: u32,
     /// Number of included [`Function`]s.
@@ -131,5 +133,18 @@ mod tests {
 
         assert_eq!(mem::size_of::<Range>(), 4);
         assert_eq!(mem::align_of::<Range>(), 4);
+    }
+
+    #[test]
+    fn test_header_arch_from_bytes() {
+        // Create an array of `u32`s and later transmute it to a slice of `u8`.
+        // This is to get a `u8` slice which is 4-byte aligned.
+        let mut nums = [0u32; size_of::<Header>() / 4];
+        // There are 32B, or 8 `u32`, before `arch` in the header.
+        nums[8] = 17;
+        let ptr = &raw const nums as *const u8;
+        let bytes: &[u8] = unsafe { std::slice::from_raw_parts(ptr, size_of::<Header>()) };
+
+        let _arch = Header::ref_from_bytes(bytes).unwrap().arch;
     }
 }
