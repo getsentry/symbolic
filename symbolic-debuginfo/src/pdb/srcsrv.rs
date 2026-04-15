@@ -85,7 +85,7 @@ impl<'s> SourceServerMappings<'s> {
     }
 
     /// Freshly compute remapping information for a path from the underlying
-    /// [`SrcSrvStream`].
+    /// [`SrcSrvStream`](srcsrv::SrcSrvStream).
     ///
     /// The computation method depends on the `vcs`.
     fn compute_info(
