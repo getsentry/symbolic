@@ -17,30 +17,8 @@ fn test_pdb_srcsrv_vcs_name() -> Result<(), Error> {
     let pdb = PdbObject::parse(&view)?;
 
     // This PDB file contains Perforce SRCSRV information
-    let vcs_name = pdb.srcsrv_vcs_name();
+    let vcs_name = pdb.debug_session()?.srcsrv_vcs_name();
     assert_eq!(vcs_name, Some("Perforce".to_string()));
-
-    Ok(())
-}
-
-#[test]
-fn test_pdb_has_srcsrv_data() -> Result<(), Error> {
-    let view = ByteView::open(fixture("windows/crash_with_srcsrv.pdb"))?;
-    let pdb = PdbObject::parse(&view)?;
-
-    // Verify SRCSRV data exists
-    let srcsrv_bytes = pdb
-        .source_server_data()?
-        .expect("crash_with_srcsrv.pdb should have SRCSRV data");
-
-    assert!(!srcsrv_bytes.is_empty(), "SRCSRV data should not be empty");
-
-    // Verify it's Perforce data
-    let srcsrv_str = std::str::from_utf8(&srcsrv_bytes)?;
-    assert!(
-        srcsrv_str.contains("VERCTRL=") && srcsrv_str.to_lowercase().contains("perforce"),
-        "SRCSRV data should be for Perforce version control"
-    );
 
     Ok(())
 }
@@ -137,13 +115,13 @@ fn test_pdb_without_srcsrv() -> Result<(), Error> {
     let pdb = PdbObject::parse(&view)?;
 
     // This PDB file does not contain SRCSRV information
-    let vcs_name = pdb.srcsrv_vcs_name();
+    let vcs_name = pdb.debug_session()?.srcsrv_vcs_name();
     assert_eq!(vcs_name, None);
 
     // Should return None for PDBs without SRCSRV
-    let srcsrv_data = pdb.source_server_data()?;
+    let srcsrv_data = pdb.has_source_server_data()?;
     assert!(
-        srcsrv_data.is_none(),
+        !srcsrv_data,
         "Regular PDB without SRCSRV should return None"
     );
 

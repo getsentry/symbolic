@@ -24,7 +24,10 @@ use symbolic_common::{
 
 use crate::base::*;
 use crate::function_stack::FunctionStack;
+use crate::pdb::srcsrv::{SourceServerInfo, SourceServerMappings};
 use crate::sourcebundle::SourceFileDescriptor;
+
+mod srcsrv;
 
 type Pdb<'data> = pdb::PDB<'data, Cursor<&'data [u8]>>;
 
@@ -46,6 +49,9 @@ pub enum PdbErrorKind {
 
     /// Formatting of a type name failed.
     FormattingFailed,
+
+    /// The srcsrv stream doesn't contain a VCS name.
+    MissingSourceServerVcs,
 }
 
 impl fmt::Display for PdbErrorKind {
@@ -54,6 +60,7 @@ impl fmt::Display for PdbErrorKind {
             Self::BadObject => write!(f, "invalid pdb file"),
             Self::UnexpectedInline => write!(f, "unexpected inline function without parent"),
             Self::FormattingFailed => write!(f, "failed to format type name"),
+            Self::MissingSourceServerVcs => write!(f, "missing VCS name in srcsrv stream"),
         }
     }
 }
@@ -109,74 +116,6 @@ impl From<pdb_addr2line::Error> for PdbError {
             pdb_addr2line::Error::FormatError(e) => Self::new(PdbErrorKind::FormattingFailed, e),
             e => Self::new(PdbErrorKind::FormattingFailed, e),
         }
-    }
-}
-
-/// Remap function type for VCS-specific path transformations
-/// Returns a tuple of (path, optional revision)
-type RemapFn = fn(&srcsrv::EvalVarMap) -> Option<(&str, Option<&str>)>;
-
-/// Remap function for Perforce SRCSRV entries
-///
-/// Extracts depot path (var3) and changelist (var4), then returns
-/// a tuple of (path, optional revision).
-fn remap_perforce(var_map: &srcsrv::EvalVarMap) -> Option<(&str, Option<&str>)> {
-    let depot_path = var_map.get("var3")?;
-    let changelist = var_map.get("var4").map(String::as_str);
-
-    // Strip leading // from depot path for code mapping compatibility
-    let depot = depot_path.trim_start_matches("//");
-
-    let revision = match changelist {
-        Some(cl) if !cl.is_empty() => Some(cl),
-        _ => None,
-    };
-
-    Some((depot, revision))
-}
-
-/// Get the VCS-specific remap function for the given VCS name (case-insensitive).
-///
-/// This is a static lookup that maps VCS names to their corresponding remap functions.
-fn get_vcs_remap_function(vcs: &str) -> Option<RemapFn> {
-    if vcs.eq_ignore_ascii_case("perforce") {
-        Some(remap_perforce)
-    } else {
-        None
-    }
-}
-
-/// Remap a local build path to a VCS path if supported.
-///
-/// Uses VCS-specific remap functions for supported systems (e.g., Perforce).
-/// Returns a tuple of (path, optional_revision). If no mapping is found,
-/// returns the original path with no revision.
-fn remap_path<'a>(stream: &srcsrv::SrcSrvStream, path: &'a str) -> (Cow<'a, str>, Option<String>) {
-    // Check the version control system
-    let Some(vcs) = stream.version_control_description() else {
-        return (Cow::Borrowed(path), None);
-    };
-
-    // Get the remap function for this VCS (case-insensitive)
-    let remap_fn = match get_vcs_remap_function(vcs) {
-        Some(f) => f,
-        None => return (Cow::Borrowed(path), None),
-    };
-
-    // Try to get the source information for this path
-    // Use an empty extraction path since we just want the mapping
-    let var_map = match stream.source_and_raw_var_values_for_path(path, "") {
-        Ok(Some((_method, var_map))) => var_map,
-        _ => return (Cow::Borrowed(path), None),
-    };
-
-    // Apply VCS-specific remapping
-    match remap_fn(&var_map) {
-        Some((remapped_path, revision)) => (
-            Cow::Owned(remapped_path.to_owned()),
-            revision.map(String::from),
-        ),
-        None => (Cow::Borrowed(path), None),
     }
 }
 
@@ -295,6 +234,19 @@ impl<'data> PdbObject<'data> {
         }
     }
 
+    /// Returns true if this object contains source server information.
+    pub fn has_source_server_data(&self) -> Result<bool, PdbError> {
+        let mut pdb = self.pdb.write();
+        match pdb.named_stream(b"srcsrv") {
+            Ok(_) => Ok(true),
+            Err(pdb::Error::StreamNameNotFound) => {
+                // No source server info is normal for many PDBs
+                Ok(false)
+            }
+            Err(e) => Err(e.into()),
+        }
+    }
+
     /// The kind of this object, which is always `Debug`.
     pub fn kind(&self) -> ObjectKind {
         ObjectKind::Debug
@@ -344,31 +296,6 @@ impl<'data> PdbObject<'data> {
     /// Determines whether this object contains embedded source.
     pub fn has_sources(&self) -> bool {
         false
-    }
-
-    /// Returns the SRCSRV VCS integration name if available.
-    ///
-    /// This extracts the version control system identifier from the SRCSRV stream,
-    /// if present. Common values include "perforce", "tfs", "git", etc.
-    /// Returns `None` if no SRCSRV stream exists or if it cannot be parsed.
-    pub fn srcsrv_vcs_name(&self) -> Option<String> {
-        let mut pdb = self.pdb.write();
-
-        // Try to open the "srcsrv" named stream
-        let stream = match pdb.named_stream(b"srcsrv") {
-            Ok(stream) => stream,
-            Err(_) => return None,
-        };
-
-        // Parse the stream to extract VCS name
-        let stream_data = stream.as_slice();
-        if let Ok(parsed_stream) = srcsrv::SrcSrvStream::parse(stream_data) {
-            parsed_stream
-                .version_control_description()
-                .map(|s| s.to_string())
-        } else {
-            None
-        }
     }
 
     /// Determines whether this object is malformed and was only partially parsed
@@ -667,7 +594,7 @@ struct PdbDebugInfo<'d> {
     string_table: Option<&'d pdb::StringTable<'d>>,
     /// Type formatter for function name strings.
     type_formatter: pdb_addr2line::TypeFormatter<'d, 'd>,
-    srcsrv: Option<srcsrv::SrcSrvStream<'d>>,
+    srcsrv: Option<SourceServerMappings<'d>>,
 }
 
 impl<'d> PdbDebugInfo<'d> {
@@ -683,11 +610,8 @@ impl<'d> PdbDebugInfo<'d> {
 
         let srcsrv = streams
             .srcsrv
-            .as_ref()
-            .map(|srcsrv| {
-                srcsrv::SrcSrvStream::parse(srcsrv)
-                    .map_err(|e| PdbError::new(PdbErrorKind::BadObject, e))
-            })
+            .as_deref()
+            .map(SourceServerMappings::parse)
             .transpose()?;
 
         Ok(PdbDebugInfo {
@@ -708,14 +632,10 @@ impl<'d> PdbDebugInfo<'d> {
     }
 
     /// Returns an iterator over all compilation units (modules).
-    fn units(
-        &'d self,
-        source_server_mappings: Option<&'d srcsrv::SrcSrvStream<'d>>,
-    ) -> PdbUnitIterator<'d> {
+    fn units(&'d self) -> PdbUnitIterator<'d> {
         PdbUnitIterator {
             debug_info: self,
             index: 0,
-            source_server_mappings,
         }
     }
 
@@ -771,7 +691,7 @@ impl<'d> PdbDebugSession<'d> {
     pub fn files(&self) -> PdbFileIterator<'_> {
         PdbFileIterator {
             debug_info: self.cell.get(),
-            units: self.cell.get().units(self.cell.get().srcsrv.as_ref()),
+            units: self.cell.get().units(),
             files: pdb::FileIterator::default(),
             finished: false,
         }
@@ -780,7 +700,7 @@ impl<'d> PdbDebugSession<'d> {
     /// Returns an iterator over all functions in this debug file.
     pub fn functions(&self) -> PdbFunctionIterator<'_> {
         PdbFunctionIterator {
-            units: self.cell.get().units(self.cell.get().srcsrv.as_ref()),
+            units: self.cell.get().units(),
             functions: Vec::new().into_iter(),
             finished: false,
         }
@@ -792,6 +712,19 @@ impl<'d> PdbDebugSession<'d> {
         _path: &str,
     ) -> Result<Option<SourceFileDescriptor<'_>>, PdbError> {
         Ok(None)
+    }
+
+    /// Returns the SRCSRV VCS integration name if available.
+    ///
+    /// This extracts the version control system identifier from the SRCSRV stream,
+    /// if present. Common values include "perforce", "tfs", "git", etc.
+    /// Returns `None` if no SRCSRV stream exists or if it cannot be parsed.
+    pub fn srcsrv_vcs_name(&self) -> Option<String> {
+        self.cell
+            .get()
+            .srcsrv
+            .as_ref()
+            .map(|srcsrv| srcsrv.vcs_name().to_owned())
     }
 }
 
@@ -817,7 +750,6 @@ struct Unit<'s> {
     debug_info: &'s PdbDebugInfo<'s>,
     module_index: usize,
     module: &'s pdb::ModuleInfo<'s>,
-    source_server_mappings: Option<&'s srcsrv::SrcSrvStream<'s>>,
 }
 
 impl<'s> Unit<'s> {
@@ -825,13 +757,11 @@ impl<'s> Unit<'s> {
         debug_info: &'s PdbDebugInfo<'s>,
         module_index: usize,
         module: &'s pdb::ModuleInfo<'s>,
-        source_server_mappings: Option<&'s srcsrv::SrcSrvStream<'s>>,
     ) -> Result<Self, PdbError> {
         Ok(Self {
             debug_info,
             module_index,
             module,
-            source_server_mappings,
         })
     }
 
@@ -863,17 +793,12 @@ impl<'s> Unit<'s> {
             let mut file = self.debug_info.file_info(file_info)?;
 
             // Apply SRCSRV remapping if available
-            if let Some(mappings) = self.source_server_mappings {
+            if let Some(mappings) = self.debug_info.srcsrv.as_ref() {
                 let original_path = file.path_str();
-                let (remapped_path, revision) = remap_path(mappings, &original_path);
-
-                // If path was remapped or we have a revision, update FileInfo
-                if let Cow::Owned(remapped) = remapped_path {
-                    let path_bytes = remapped.as_bytes();
+                let info = mappings.get_info(&original_path);
+                if let Some(SourceServerInfo { path, revision }) = info {
+                    let path_bytes = path.as_bytes();
                     file = FileInfo::from_path_and_revision_owned(path_bytes, revision);
-                } else if let Some(rev) = revision {
-                    // Path wasn't remapped but we have a revision
-                    file.set_revision(Some(rev));
                 }
             }
 
@@ -1157,7 +1082,6 @@ impl<'s> Unit<'s> {
 struct PdbUnitIterator<'s> {
     debug_info: &'s PdbDebugInfo<'s>,
     index: usize,
-    source_server_mappings: Option<&'s srcsrv::SrcSrvStream<'s>>,
 }
 
 impl<'s> Iterator for PdbUnitIterator<'s> {
@@ -1176,12 +1100,7 @@ impl<'s> Iterator for PdbUnitIterator<'s> {
                 Err(error) => return Some(Err(error)),
             };
 
-            return Some(Unit::load(
-                debug_info,
-                module_index,
-                module,
-                self.source_server_mappings,
-            ));
+            return Some(Unit::load(debug_info, module_index, module));
         }
 
         None
@@ -1209,21 +1128,16 @@ impl<'s> Iterator for PdbFileIterator<'s> {
                 let result = file_result
                     .map_err(|err| err.into())
                     .and_then(|i| self.debug_info.file_info(i))
-                    .map(|mut info| {
+                    .map(|info| {
                         // Apply source server remapping if available
                         if let Some(mappings) = &self.debug_info.srcsrv {
                             let original_path = info.path_str();
-                            let (remapped_path, revision) = remap_path(mappings, &original_path);
-
-                            // If path was remapped or we have a revision, update FileInfo
-                            if let Cow::Owned(remapped) = remapped_path {
-                                let path_bytes = remapped.as_bytes();
+                            let info = mappings.get_info(&original_path);
+                            if let Some(SourceServerInfo { path, revision }) = info {
+                                let path_bytes = path.as_bytes();
                                 let remapped_info =
                                     FileInfo::from_path_and_revision_owned(path_bytes, revision);
                                 return FileEntry::new(Cow::default(), remapped_info);
-                            } else if let Some(rev) = revision {
-                                // Path wasn't remapped but we have a revision
-                                info.set_revision(Some(rev));
                             }
                         }
 

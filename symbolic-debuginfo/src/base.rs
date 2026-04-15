@@ -496,14 +496,15 @@ impl<'data> FileInfo<'data> {
     }
 
     /// Creates a `FileInfo` from a joined path and revision by trying to split the path.
-    /// Unlike from_path(), copies the given data instead of referencing it.
+    ///
+    /// This copies the given data instead of referencing it.
     pub(crate) fn from_path_and_revision_owned(path: &[u8], revision: Option<String>) -> Self {
         let (dir, name) = symbolic_common::split_path_bytes(path);
 
         FileInfo {
-            name: Cow::Owned(name.to_vec()),
+            name: Cow::Owned(name.to_owned()),
             dir: match dir {
-                Some(dir) => Cow::Owned(dir.to_vec()),
+                Some(dir) => Cow::Owned(dir.to_owned()),
                 None => Cow::default(),
             },
             revision: revision.map(Cow::Owned),
@@ -538,11 +539,6 @@ impl<'data> FileInfo<'data> {
     /// The optional VCS revision (e.g., Perforce changelist, git commit hash).
     pub fn revision(&self) -> Option<&str> {
         self.revision.as_deref()
-    }
-
-    /// Sets the VCS revision for this file.
-    pub(crate) fn set_revision(&mut self, revision: Option<String>) {
-        self.revision = revision.map(Cow::Owned);
     }
 }
 
