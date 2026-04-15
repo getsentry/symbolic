@@ -207,33 +207,6 @@ impl<'data> PdbObject<'data> {
             .unwrap_or_default()
     }
 
-    /// Extracts raw Source Server data bytes from the PDB if available.
-    ///
-    /// Source Server information is embedded in PDB files by build systems to map
-    /// local build paths to source control locations (Perforce, Git, etc.).
-    /// This is commonly used in game development where builds happen on different machines.
-    ///
-    /// Returns the raw SRCSRV stream data as an owned byte vector, or `None` if no Source Server
-    /// stream is present.
-    #[cfg(feature = "ms")]
-    pub fn source_server_data(&self) -> Result<Option<Vec<u8>>, PdbError> {
-        let mut pdb = self.pdb.write();
-
-        // Try to open the "srcsrv" named stream
-        match pdb.named_stream(b"srcsrv") {
-            Ok(stream) => {
-                // Copy the stream data to an owned vector
-                let srcsrv_data = stream.as_slice().to_vec();
-                Ok(Some(srcsrv_data))
-            }
-            Err(pdb::Error::StreamNameNotFound) => {
-                // No source server info is normal for many PDBs
-                Ok(None)
-            }
-            Err(e) => Err(e.into()),
-        }
-    }
-
     /// Returns true if this object contains source server information.
     pub fn has_source_server_data(&self) -> Result<bool, PdbError> {
         let mut pdb = self.pdb.write();
