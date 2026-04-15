@@ -65,6 +65,9 @@ pub(crate) struct SourceServerMappings<'s> {
 
 impl<'s> SourceServerMappings<'s> {
     /// Attempt to parse a slice of bytes into [`SourceServerMappings`].
+    ///
+    /// This can fail if the `srcsrv_stream` is malformed or lacks a
+    /// `"verctrl"` field.
     pub(crate) fn parse(srcsrv_stream: &'s [u8]) -> Result<Self, PdbError> {
         let stream = srcsrv::SrcSrvStream::parse(srcsrv_stream)
             .map_err(|e| PdbError::new(PdbErrorKind::BadObject, e))?;
@@ -72,7 +75,7 @@ impl<'s> SourceServerMappings<'s> {
             .version_control_description()
             .ok_or(PdbErrorKind::MissingSourceServerVcs)?
             .parse()
-            .expect("parsing vcs never fails");
+            .unwrap_or_else(|e| match e {});
 
         Ok(Self {
             vcs,
