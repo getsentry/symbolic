@@ -9,9 +9,8 @@ use symbolic_common::{Arch, DebugId};
 use symbolic_debuginfo::{DebugSession, FileFormat, Function, ObjectLike, Symbol};
 use watto::{Pod, StringTable, Writer};
 
-use super::transform;
-use crate::raw;
 use crate::raw::v9::NO_SOURCE_LOCATION;
+use crate::{raw, transform};
 use crate::{Error, ErrorKind};
 
 /// The SymCache Converter.
@@ -504,7 +503,7 @@ impl<'a> SymCacheConverter<'a> {
         let string_bytes = self.string_table.into_bytes();
 
         // Write VersionInfo preamble
-        let version_info = crate::raw::VersionInfo {
+        let version_info = raw::VersionInfo {
             magic: crate::raw::SYMCACHE_MAGIC,
             version: crate::SYMCACHE_VERSION,
         };

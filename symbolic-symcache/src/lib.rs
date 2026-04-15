@@ -25,7 +25,8 @@
 //! ## Files
 //!
 //! A file contains string offsets for its file name, parent directory, and compilation directory.
-//! In version 9+, files also contain an optional VCS revision string offset.
+//! In version 9+, files also contain optional string offsets for the name and directory on the
+//! source server as well as the file revision..
 //!
 //! ## Functions
 //!
@@ -136,7 +137,7 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// 6: PR #319: Correct line offsets and spacer line records
 /// 7: PR #459: A new binary format fundamentally based on addr ranges
 /// 8: PR #670: Use LEB128-prefixed string table
-/// 9: PR #943: Add revision_offset field to File structure for VCS revision tracking
+/// 9: PR #943: Add fields to File structure for source server and revision tracking
 pub const SYMCACHE_VERSION: u32 = 9;
 
 /// The serialized SymCache binary format.

@@ -1,6 +1,6 @@
 //! The raw SymCache V9 binary file format internals.
 //!
-//! V9 adds VCS revision tracking support to the File structure.
+//! V9 adds source server information support to the File structure.
 use watto::Pod;
 
 use symbolic_common::DebugId;
