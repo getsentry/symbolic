@@ -92,7 +92,7 @@ impl File<'_> {
     ///
     /// This only exists if the symcache was created from a debug file containing
     /// source server information.
-    pub fn full_srcrv_path(&self) -> Option<String> {
+    pub fn full_srcsrv_path(&self) -> Option<String> {
         let path =
             symbolic_common::join_path(self.srcsrv_dir.unwrap_or_default(), self.srcsrv_name?);
         Some(symbolic_common::clean_path(&path).into_owned())

@@ -109,7 +109,7 @@ fn test_pdb_srcsrv_remapping() -> Result<(), Error> {
     for addr in 0..0x100000 {
         if let Some(sl) = cache.lookup(addr).next() {
             if let Some(file) = sl.file() {
-                let path = file.full_srcrv_path();
+                let path = file.full_srcsrv_path();
                 if path.as_deref() == Some(expected_path) {
                     // Verify the revision is set correctly
                     let revision = file.revision();
