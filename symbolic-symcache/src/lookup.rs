@@ -58,7 +58,20 @@ pub struct File<'data> {
     pub(crate) directory: Option<&'data str>,
     /// The file path.
     pub(crate) name: &'data str,
-    /// The optional VCS revision (version 9+).
+    /// The base name on the source server (version 9+).
+    ///
+    /// This only exists if the symcache was created from a debug file containing
+    /// source server information.
+    pub(crate) srcsrv_name: Option<&'data str>,
+    /// The path to the file on the source server (version 9+).
+    ///
+    /// This only exists if the symcache was created from a debug file containing
+    /// source server information.
+    pub(crate) srcsrv_dir: Option<&'data str>,
+    /// The optional VCS revision (e.g., Perforce changelist, git commit hash) (version 9+).
+    ///
+    /// This only exists if the symcache was created from a debug file containing
+    /// source server information.
     pub(crate) revision: Option<&'data str>,
 }
 
@@ -75,10 +88,20 @@ impl File<'_> {
         full_path
     }
 
-    /// Returns the VCS revision of this file, if available.
+    /// Returns this file's full path on the source server (version 9+).
     ///
-    /// This field is only present in SymCache version 9 and later.
-    /// For earlier versions, this will always return `None`.
+    /// This only exists if the symcache was created from a debug file containing
+    /// source server information.
+    pub fn full_srcrv_path(&self) -> Option<String> {
+        let path =
+            symbolic_common::join_path(self.srcsrv_dir.unwrap_or_default(), self.srcsrv_name?);
+        Some(symbolic_common::clean_path(&path).into_owned())
+    }
+
+    /// Returns the VCS revision of this file, if available (version 9+).
+    ///
+    /// This only exists if the symcache was created from a debug file containing
+    /// source server information.
     pub fn revision(&self) -> Option<&str> {
         self.revision
     }

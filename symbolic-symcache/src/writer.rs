@@ -229,6 +229,8 @@ impl<'a> SymCacheConverter<'a> {
                     name: line.file.name_str(),
                     directory: Some(line.file.dir_str()),
                     comp_dir: comp_dir.map(Into::into),
+                    srcsrv_name: line.file.srcsrv_name_str(),
+                    srcsrv_dir: line.file.srcsrv_dir_str(),
                     revision: line.file.revision().map(|s| s.into()),
                 },
                 line: line.line as u32,
@@ -246,6 +248,14 @@ impl<'a> SymCacheConverter<'a> {
                 .file
                 .comp_dir
                 .map_or(u32::MAX, |cd| string_table.insert(&cd) as u32);
+            let srcsrv_name_offset = location
+                .file
+                .srcsrv_name
+                .map_or(u32::MAX, |r| string_table.insert(&r) as u32);
+            let srcsrv_dir_offset = location
+                .file
+                .srcsrv_dir
+                .map_or(u32::MAX, |r| string_table.insert(&r) as u32);
             let revision_offset = location
                 .file
                 .revision
@@ -255,6 +265,8 @@ impl<'a> SymCacheConverter<'a> {
                 name_offset,
                 directory_offset,
                 comp_dir_offset,
+                srcsrv_name_offset,
+                srcsrv_dir_offset,
                 revision_offset,
             });
 

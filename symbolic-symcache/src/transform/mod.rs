@@ -25,7 +25,11 @@ pub struct File<'s> {
     pub directory: Option<Cow<'s, str>>,
     /// The optional compilation directory prefix.
     pub comp_dir: Option<Cow<'s, str>>,
-    /// The optional VCS revision (e.g., Perforce changelist, git commit hash).
+    /// The opitonal base name on the source server (version 9+).
+    pub srcsrv_name: Option<Cow<'s, str>>,
+    /// The optional path to the file on the source server (version 9+).
+    pub srcsrv_dir: Option<Cow<'s, str>>,
+    /// The optional VCS revision (e.g., Perforce changelist, git commit hash) (v9+).
     pub revision: Option<Cow<'s, str>>,
 }
 

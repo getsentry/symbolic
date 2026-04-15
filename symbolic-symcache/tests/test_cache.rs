@@ -109,17 +109,11 @@ fn test_pdb_srcsrv_remapping() -> Result<(), Error> {
     for addr in 0..0x100000 {
         if let Some(sl) = cache.lookup(addr).next() {
             if let Some(file) = sl.file() {
-                let path = file.full_path();
-                if path == expected_path {
+                let path = file.full_srcrv_path();
+                if path.as_deref() == Some(expected_path) {
                     // Verify the revision is set correctly
                     let revision = file.revision();
-                    assert_eq!(
-                        revision,
-                        Some(expected_revision),
-                        "Expected revision '{}' for remapped file in symcache, found: {:?}",
-                        expected_revision,
-                        revision
-                    );
+                    assert_eq!(revision, Some(expected_revision),);
                     found_expected = true;
                     break;
                 }

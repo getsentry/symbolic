@@ -450,7 +450,20 @@ pub struct FileInfo<'data> {
     name: Cow<'data, [u8]>,
     /// Path to the file.
     dir: Cow<'data, [u8]>,
+    /// The base name on the source server.
+    ///
+    /// This only exists if we have a debug file containing
+    /// source server information.
+    srcsrv_name: Option<Cow<'data, [u8]>>,
+    /// The path to the file on the source server.
+    ///
+    /// This only exists if we have a debug file containing
+    /// source server information.
+    srcsrv_dir: Option<Cow<'data, [u8]>>,
     /// The optional VCS revision (e.g., Perforce changelist, git commit hash).
+    ///
+    /// This only exists if we have a debug file containing
+    /// source server information.
     revision: Option<Cow<'data, str>>,
 }
 
@@ -461,6 +474,8 @@ impl<'data> FileInfo<'data> {
         FileInfo {
             name,
             dir,
+            srcsrv_name: None,
+            srcsrv_dir: None,
             revision: None,
         }
     }
@@ -476,6 +491,8 @@ impl<'data> FileInfo<'data> {
                 Some(dir) => Cow::Borrowed(dir),
                 None => Cow::default(),
             },
+            srcsrv_name: None,
+            srcsrv_dir: None,
             revision: None,
         }
     }
@@ -491,23 +508,9 @@ impl<'data> FileInfo<'data> {
                 Some(dir) => Cow::Owned(dir.to_vec()),
                 None => Cow::default(),
             },
+            srcsrv_name: None,
+            srcsrv_dir: None,
             revision: None,
-        }
-    }
-
-    /// Creates a `FileInfo` from a joined path and revision by trying to split the path.
-    ///
-    /// This copies the given data instead of referencing it.
-    pub(crate) fn from_path_and_revision_owned(path: &[u8], revision: Option<String>) -> Self {
-        let (dir, name) = symbolic_common::split_path_bytes(path);
-
-        FileInfo {
-            name: Cow::Owned(name.to_owned()),
-            dir: match dir {
-                Some(dir) => Cow::Owned(dir.to_owned()),
-                None => Cow::default(),
-            },
-            revision: revision.map(Cow::Owned),
         }
     }
 
@@ -516,6 +519,8 @@ impl<'data> FileInfo<'data> {
         FileInfo {
             name: Cow::Borrowed(name),
             dir: Cow::default(),
+            srcsrv_name: None,
+            srcsrv_dir: None,
             revision: None,
         }
     }
@@ -536,9 +541,51 @@ impl<'data> FileInfo<'data> {
         clean_path(&joined).into_owned()
     }
 
+    /// The file name on the source server as UTF-8 string.
+    ///
+    /// This only exists if we have a debug file containing
+    /// source server information.
+    pub fn srcsrv_name_str(&self) -> Option<Cow<'data, str>> {
+        self.srcsrv_name.as_ref().map(from_utf8_cow_lossy)
+    }
+
+    /// Path to the file on the source server.
+    ///
+    /// This only exists if we have a debug file containing
+    /// source server information.
+    pub fn srcsrv_dir_str(&self) -> Option<Cow<'data, str>> {
+        self.srcsrv_dir.as_ref().map(from_utf8_cow_lossy)
+    }
+
+    /// The full path to the file on the source server.
+    ///
+    /// This only exists if we have a debug file containing
+    /// source server information.
+    pub fn srcsrv_path_str(&self) -> Option<String> {
+        let joined = join_path(
+            &self.srcsrv_dir_str().unwrap_or_default(),
+            &self.srcsrv_name_str()?,
+        );
+        Some(clean_path(&joined).into_owned())
+    }
+
     /// The optional VCS revision (e.g., Perforce changelist, git commit hash).
+    ///
+    /// This only exists if we have a debug file containing
+    /// source server information.
     pub fn revision(&self) -> Option<&str> {
         self.revision.as_deref()
+    }
+
+    pub(crate) fn set_srcsrv_path(&mut self, path: &[u8]) {
+        let (dir, name) = symbolic_common::split_path_bytes(path);
+
+        self.srcsrv_name = Some(Cow::Owned(name.to_owned()));
+        self.srcsrv_dir = dir.map(|d| Cow::Owned(d.to_owned()));
+    }
+
+    pub(crate) fn set_revision(&mut self, revision: Option<String>) {
+        self.revision = revision.map(Cow::Owned);
     }
 }
 
@@ -590,6 +637,14 @@ impl<'data> FileEntry<'data> {
         let joined_path = join_path(&self.dir_str(), &self.name_str());
         let joined = join_path(&self.compilation_dir_str(), &joined_path);
         clean_path(&joined).into_owned()
+    }
+
+    /// The full path to the file on the source server.
+    ///
+    /// This only exists if we have a debug file containing
+    /// source server information.
+    pub fn srcsrv_path_str(&self) -> Option<String> {
+        self.info.srcsrv_path_str()
     }
 }
 

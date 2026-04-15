@@ -43,6 +43,8 @@ impl<'data> SymCacheV9<'data> {
             comp_dir: self.get_string(raw_file.comp_dir_offset),
             directory: self.get_string(raw_file.directory_offset),
             name: self.get_string(raw_file.name_offset).unwrap_or_default(),
+            srcsrv_name: self.get_string(raw_file.srcsrv_name_offset),
+            srcsrv_dir: self.get_string(raw_file.srcsrv_dir_offset),
             revision: self.get_string(raw_file.revision_offset),
         })
     }

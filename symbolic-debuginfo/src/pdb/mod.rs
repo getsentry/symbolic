@@ -797,8 +797,8 @@ impl<'s> Unit<'s> {
                 let original_path = file.path_str();
                 let info = mappings.get_info(&original_path);
                 if let Some(SourceServerInfo { path, revision }) = info {
-                    let path_bytes = path.as_bytes();
-                    file = FileInfo::from_path_and_revision_owned(path_bytes, revision);
+                    file.set_srcsrv_path(path.as_bytes());
+                    file.set_revision(revision);
                 }
             }
 
@@ -1128,21 +1128,18 @@ impl<'s> Iterator for PdbFileIterator<'s> {
                 let result = file_result
                     .map_err(|err| err.into())
                     .and_then(|i| self.debug_info.file_info(i))
-                    .map(|info| {
+                    .map(|mut file| {
                         // Apply source server remapping if available
                         if let Some(mappings) = &self.debug_info.srcsrv {
-                            let original_path = info.path_str();
+                            let original_path = file.path_str();
                             let info = mappings.get_info(&original_path);
                             if let Some(SourceServerInfo { path, revision }) = info {
-                                let path_bytes = path.as_bytes();
-                                let remapped_info =
-                                    FileInfo::from_path_and_revision_owned(path_bytes, revision);
-                                return FileEntry::new(Cow::default(), remapped_info);
+                                file.set_srcsrv_path(path.as_bytes());
+                                file.set_revision(revision);
                             }
                         }
 
-                        // No remapping or remapping returned original path
-                        FileEntry::new(Cow::default(), info)
+                        FileEntry::new(Cow::default(), file)
                     });
 
                 return Some(result);

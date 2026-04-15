@@ -35,7 +35,9 @@ fn test_pdb_files_are_remapped() -> Result<(), Error> {
     let mut found_expected = false;
     for file_result in session.files() {
         let file_entry = file_result?;
-        let path = file_entry.abs_path_str();
+        let Some(path) = file_entry.srcsrv_path_str() else {
+            continue;
+        };
 
         // Expected specific path based on the SRCSRV data in the test PDB:
         // c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation\crash_generation_client.cc
@@ -44,12 +46,7 @@ fn test_pdb_files_are_remapped() -> Result<(), Error> {
         if path == "depot/breakpad/src/client/windows/crash_generation/crash_generation_client.cc" {
             // Verify the revision is set correctly
             let revision = file_entry.revision();
-            assert_eq!(
-                revision,
-                Some("12345"),
-                "Expected revision '12345' for remapped file, found: {:?}",
-                revision
-            );
+            assert_eq!(revision, Some("12345"));
             found_expected = true;
             break;
         }
@@ -76,7 +73,9 @@ fn test_pdb_functions_are_remapped() -> Result<(), Error> {
     for func_result in session.functions() {
         let func = func_result?;
         for line in &func.lines {
-            let path = line.file.path_str();
+            let Some(path) = line.file.srcsrv_path_str() else {
+                continue;
+            };
 
             // Expected specific path based on the SRCSRV data in the test PDB
             // Path should NOT contain @12345, revision should be separate
@@ -85,12 +84,7 @@ fn test_pdb_functions_are_remapped() -> Result<(), Error> {
             {
                 // Verify the revision is set correctly
                 let revision = line.file.revision();
-                assert_eq!(
-                    revision,
-                    Some("12345"),
-                    "Expected revision '12345' for remapped file in function, found: {:?}",
-                    revision
-                );
+                assert_eq!(revision, Some("12345"),);
                 found_expected = true;
                 break;
             }

@@ -69,6 +69,14 @@ pub(crate) struct File {
     pub(crate) directory_offset: u32,
     /// The file path (reference to a [`String`]).
     pub(crate) name_offset: u32,
+    /// The optional base name on the source server (reference to a [`String`]).
+    ///
+    /// This field was added in version 9.
+    pub(crate) srcsrv_name_offset: u32,
+    /// The optional path to the file on the source server (reference to a [`String`]).
+    ///
+    /// This field was added in version 9.
+    pub(crate) srcsrv_dir_offset: u32,
     /// The optional VCS revision (reference to a [`String`]).
     ///
     /// This field was added in version 9.
@@ -124,8 +132,8 @@ mod tests {
         assert_eq!(mem::size_of::<Function>(), 16);
         assert_eq!(mem::align_of::<Function>(), 4);
 
-        // File (version 9 format): 16 bytes with revision
-        assert_eq!(mem::size_of::<File>(), 16);
+        // File (version 9 format): 24 bytes with srcsrv name + srcsrv dir + revision
+        assert_eq!(mem::size_of::<File>(), 24);
         assert_eq!(mem::align_of::<File>(), 4);
 
         assert_eq!(mem::size_of::<SourceLocation>(), 16);
