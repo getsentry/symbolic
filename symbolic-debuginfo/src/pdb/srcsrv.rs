@@ -16,11 +16,15 @@ pub(crate) struct SourceServerInfo {
     pub(crate) revision: Option<String>,
 }
 
-/// VCS schemas symbolic can handle for which symbolic can
+/// VCS schemas for which symbolic can
 /// process source server information.
 #[derive(Debug, Clone)]
 enum SourceServerVcs {
     /// Perforce.
+    ///
+    /// For perforce, we require the following layout:
+    /// * `var3` contains the depot path
+    /// * `var4` contains the changelist
     Perforce,
     /// Any other VCS.
     Unknown(String),
