@@ -580,7 +580,10 @@ impl<'d> PdbDebugInfo<'d> {
         let srcsrv = streams
             .srcsrv
             .as_deref()
-            // TODO: It would be nice to surface this error to users.
+            // We don't want to exit on error here so we can still use the PDB
+            // file even if we fail to parse the source server part.
+            // TODO: It would be nice to surface this error to users, if and
+            // when we add logging to this crate.
             .and_then(|stream| SourceServerMappings::parse(stream).ok());
 
         Ok(PdbDebugInfo {
