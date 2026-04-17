@@ -761,7 +761,7 @@ impl<'s> Unit<'s> {
             let file_info = program.get_file_info(line_info.file_index)?;
             let mut file = self.debug_info.file_info(file_info)?;
 
-            // Apply SRCSRV remapping if available
+            // Fill in source server information if available
             if let Some(mappings) = self.debug_info.srcsrv.as_ref() {
                 let original_path = file.path_str();
                 let info = mappings.get_info(&original_path);
@@ -1098,7 +1098,7 @@ impl<'s> Iterator for PdbFileIterator<'s> {
                     .map_err(|err| err.into())
                     .and_then(|i| self.debug_info.file_info(i))
                     .map(|mut file| {
-                        // Apply source server remapping if available
+                        // Fill in source server information if available
                         if let Some(mappings) = &self.debug_info.srcsrv {
                             let original_path = file.path_str();
                             let info = mappings.get_info(&original_path);
