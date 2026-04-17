@@ -18,11 +18,11 @@ pub enum SourceServerError {
 
 /// Source server information for a particular path.
 #[derive(Debug, Clone)]
-pub(crate) struct SourceServerInfo {
+pub struct SourceServerInfo {
     /// The file's path on the source server.
-    pub(crate) path: String,
+    pub path: String,
     /// The file's revision.
-    pub(crate) revision: Option<String>,
+    pub revision: Option<String>,
 }
 
 /// VCS schemas for which symbolic can
@@ -41,7 +41,7 @@ enum SourceServerVcs {
 
 impl SourceServerVcs {
     /// The VCS's name.
-    pub(crate) fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         match self {
             SourceServerVcs::Perforce => "Perforce",
             SourceServerVcs::Unknown(s) => s,
@@ -63,7 +63,7 @@ impl FromStr for SourceServerVcs {
 
 /// A parsed source server stream that can be used to look up remapping
 /// information for a path.
-pub(crate) struct SourceServerMappings<'s> {
+pub struct SourceServerMappings<'s> {
     /// The VCS schema in the stream.
     vcs: SourceServerVcs,
     /// A cache for already computed [`SourceServerInfos`](SourceServerInfo).
@@ -77,7 +77,7 @@ impl<'s> SourceServerMappings<'s> {
     ///
     /// This can fail if the `srcsrv_stream` is malformed or lacks a
     /// `"verctrl"` field.
-    pub(crate) fn parse(srcsrv_stream: &'s [u8]) -> Result<Self, PdbError> {
+    pub fn parse(srcsrv_stream: &'s [u8]) -> Result<Self, PdbError> {
         let stream = srcsrv::SrcSrvStream::parse(srcsrv_stream)
             .map_err(|e| PdbError::new(PdbErrorKind::BadObject, e))?;
         let vcs = stream
@@ -133,7 +133,7 @@ impl<'s> SourceServerMappings<'s> {
     /// Returns remapping information for the given path.
     ///
     /// This caches the information internally.
-    pub(crate) fn get_info(&self, path: &str) -> Option<SourceServerInfo> {
+    pub fn get_info(&self, path: &str) -> Option<SourceServerInfo> {
         self.cache
             .borrow_mut()
             .entry(path.to_owned())
@@ -142,7 +142,7 @@ impl<'s> SourceServerMappings<'s> {
     }
 
     /// Returns the name of the VCS in this stream.
-    pub(crate) fn vcs_name(&self) -> &str {
+    pub fn vcs_name(&self) -> &str {
         self.vcs.name()
     }
 }
