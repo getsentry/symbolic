@@ -112,7 +112,7 @@ fn test_pdb_srcsrv_remapping() -> Result<(), Error> {
                 let path = file.full_srcsrv_path();
                 if path.as_deref() == Some(expected_path) {
                     // Verify the revision is set correctly
-                    let revision = file.revision();
+                    let revision = file.srcsrv_revision();
                     assert_eq!(revision, Some(expected_revision),);
                     found_expected = true;
                     break;
@@ -144,7 +144,7 @@ fn test_backward_compatibility_v7_v8_v9() -> Result<(), Error> {
     let mut v7_file_count = 0;
     for file in v7_cache.files() {
         assert_eq!(
-            file.revision(),
+            file.srcsrv_revision(),
             None,
             "v7 files should have no revision (converted to None)"
         );
@@ -161,7 +161,7 @@ fn test_backward_compatibility_v7_v8_v9() -> Result<(), Error> {
         if let Some(sl) = v7_cache.lookup(addr).next() {
             if let Some(file) = sl.file() {
                 // Verify revision is None for v7 files
-                assert_eq!(file.revision(), None);
+                assert_eq!(file.srcsrv_revision(), None);
                 v7_lookups_work = true;
                 break;
             }
@@ -190,7 +190,7 @@ fn test_backward_compatibility_v7_v8_v9() -> Result<(), Error> {
     let mut all_none = true;
     let mut file_count = 0;
     for file in v9_no_revision_cache.files() {
-        if file.revision().is_some() {
+        if file.srcsrv_revision().is_some() {
             all_none = false;
             break;
         }
@@ -221,7 +221,7 @@ fn test_backward_compatibility_v7_v8_v9() -> Result<(), Error> {
     let mut found_without_revision = false;
 
     for file in v9_cache.files() {
-        if file.revision().is_some() {
+        if file.srcsrv_revision().is_some() {
             found_with_revision = true;
         } else {
             found_without_revision = true;

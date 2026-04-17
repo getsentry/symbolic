@@ -80,7 +80,7 @@ pub(crate) struct File {
     /// The optional VCS revision (reference to a [`String`]).
     ///
     /// This field was added in version 9.
-    pub(crate) revision_offset: u32,
+    pub(crate) srcsrv_revision_offset: u32,
 }
 
 /// A location in a source file, comprising a file, a line, a function, and

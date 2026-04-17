@@ -464,7 +464,7 @@ pub struct FileInfo<'data> {
     ///
     /// This only exists if we have a debug file containing
     /// source server information.
-    revision: Option<Cow<'data, str>>,
+    srcsrv_revision: Option<Cow<'data, str>>,
 }
 
 impl<'data> FileInfo<'data> {
@@ -476,7 +476,7 @@ impl<'data> FileInfo<'data> {
             dir,
             srcsrv_name: None,
             srcsrv_dir: None,
-            revision: None,
+            srcsrv_revision: None,
         }
     }
 
@@ -493,7 +493,7 @@ impl<'data> FileInfo<'data> {
             },
             srcsrv_name: None,
             srcsrv_dir: None,
-            revision: None,
+            srcsrv_revision: None,
         }
     }
 
@@ -510,7 +510,7 @@ impl<'data> FileInfo<'data> {
             },
             srcsrv_name: None,
             srcsrv_dir: None,
-            revision: None,
+            srcsrv_revision: None,
         }
     }
 
@@ -521,7 +521,7 @@ impl<'data> FileInfo<'data> {
             dir: Cow::default(),
             srcsrv_name: None,
             srcsrv_dir: None,
-            revision: None,
+            srcsrv_revision: None,
         }
     }
 
@@ -573,8 +573,8 @@ impl<'data> FileInfo<'data> {
     ///
     /// This only exists if we have a debug file containing
     /// source server information.
-    pub fn revision(&self) -> Option<&str> {
-        self.revision.as_deref()
+    pub fn srcsrv_revision(&self) -> Option<&str> {
+        self.srcsrv_revision.as_deref()
     }
 
     pub(crate) fn set_srcsrv_path(&mut self, path: &[u8]) {
@@ -584,8 +584,8 @@ impl<'data> FileInfo<'data> {
         self.srcsrv_dir = dir.map(|d| Cow::Owned(d.to_owned()));
     }
 
-    pub(crate) fn set_revision(&mut self, revision: Option<String>) {
-        self.revision = revision.map(Cow::Owned);
+    pub(crate) fn set_srcsrv_revision(&mut self, revision: Option<String>) {
+        self.srcsrv_revision = revision.map(Cow::Owned);
     }
 }
 

@@ -767,7 +767,7 @@ impl<'s> Unit<'s> {
                 let info = mappings.get_info(&original_path);
                 if let Some(SourceServerInfo { path, revision }) = info {
                     file.set_srcsrv_path(path.as_bytes());
-                    file.set_revision(revision);
+                    file.set_srcsrv_revision(revision);
                 }
             }
 
@@ -1104,7 +1104,7 @@ impl<'s> Iterator for PdbFileIterator<'s> {
                             let info = mappings.get_info(&original_path);
                             if let Some(SourceServerInfo { path, revision }) = info {
                                 file.set_srcsrv_path(path.as_bytes());
-                                file.set_revision(revision);
+                                file.set_srcsrv_revision(revision);
                             }
                         }
 

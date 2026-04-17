@@ -72,7 +72,7 @@ pub struct File<'data> {
     ///
     /// This only exists if the symcache was created from a debug file containing
     /// source server information.
-    pub(crate) revision: Option<&'data str>,
+    pub(crate) srcsrv_revision: Option<&'data str>,
 }
 
 impl File<'_> {
@@ -102,8 +102,8 @@ impl File<'_> {
     ///
     /// This only exists if the symcache was created from a debug file containing
     /// source server information.
-    pub fn revision(&self) -> Option<&str> {
-        self.revision
+    pub fn srcsrv_revision(&self) -> Option<&str> {
+        self.srcsrv_revision
     }
 }
 

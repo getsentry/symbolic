@@ -45,7 +45,7 @@ fn test_pdb_files_are_remapped() -> Result<(), Error> {
         //   -> 12345 (revision)
         if path == "depot/breakpad/src/client/windows/crash_generation/crash_generation_client.cc" {
             // Verify the revision is set correctly
-            let revision = file_entry.revision();
+            let revision = file_entry.srcsrv_revision();
             assert_eq!(revision, Some("12345"));
             found_expected = true;
             break;
@@ -83,7 +83,7 @@ fn test_pdb_functions_are_remapped() -> Result<(), Error> {
                 == "depot/breakpad/src/client/windows/crash_generation/crash_generation_client.cc"
             {
                 // Verify the revision is set correctly
-                let revision = line.file.revision();
+                let revision = line.file.srcsrv_revision();
                 assert_eq!(revision, Some("12345"),);
                 found_expected = true;
                 break;

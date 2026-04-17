@@ -45,7 +45,7 @@ impl<'data, Flavor: SymCacheV7Flavor> SymCacheV7Inner<'data, Flavor> {
             name: self.get_string(raw_file.name_offset).unwrap_or_default(),
             srcsrv_name: None,
             srcsrv_dir: None,
-            revision: None,
+            srcsrv_revision: None,
         })
     }
 
