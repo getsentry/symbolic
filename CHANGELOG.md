@@ -3,7 +3,7 @@
 ## Unreleased
 
 **Improvements**
-- sourcemapcache: Bump `js-source-scopes` to 0.7.2. This improves name resolution via https://github.com/getsentry/js-source-scopes/pull/35.
+- sourcemapcache: Bump `js-source-scopes` to 0.7.2. This improves name resolution via https://github.com/getsentry/js-source-scopes/pull/35. ([#970](https://github.com/getsentry/symbolic/pull/970))
 
 ## 12.18.0
 
