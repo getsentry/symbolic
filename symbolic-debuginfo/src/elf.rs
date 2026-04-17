@@ -207,8 +207,7 @@ impl<'data> ElfObject<'data> {
         obj.strtab = Strtab::default();
         for shdr in &obj.section_headers {
             if shdr.sh_type == elf::section_header::SHT_SYMTAB {
-                let size = shdr.sh_entsize;
-                let count = if size == 0 { 0 } else { shdr.sh_size / size };
+                let count = shdr.sh_size.checked_div(shdr.sh_entsize).unwrap_or(0);
                 obj.syms = return_partial_on_err!(elf::Symtab::parse(
                     data,
                     shdr.sh_offset as usize,
@@ -301,8 +300,7 @@ impl<'data> ElfObject<'data> {
                 .iter()
                 .find(|h| h.sh_type == elf::section_header::SHT_DYNSYM)
             {
-                let size = shdr.sh_entsize;
-                let count = if size == 0 { 0 } else { shdr.sh_size / size };
+                let count = shdr.sh_size.checked_div(shdr.sh_entsize).unwrap_or(0);
                 obj.dynsyms = return_partial_on_err!(elf::Symtab::parse(
                     data,
                     shdr.sh_offset as usize,

@@ -130,12 +130,10 @@ impl<'data> GuidStream<'data> {
 
     pub(crate) fn get_offset(&self, value: Uuid) -> Option<u32> {
         let searched_bytes = value.to_bytes_le();
-        let mut index = 1;
-        for bytes in self.buf.iter() {
+        for (index, bytes) in (1..).zip(self.buf.iter()) {
             if bytes.eq(&searched_bytes) {
                 return Some(index);
             }
-            index += 1
         }
         None
     }
