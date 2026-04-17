@@ -146,3 +146,33 @@ impl<'s> SourceServerMappings<'s> {
         self.vcs.name()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_perforce_mapping() {
+        let stream = br#"SRCSRV: ini ------------------------------------------------
+VERSION=1
+VERCTRL=Perforce
+SRCSRV: variables ------------------------------------------
+SRCSRVTRG=%targ%\%var2%\%fnbksl%(%var3%)
+SRCSRVCMD=
+SRCSRV: source files ---------------------------------------
+c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation\crash_generation_client.cc*P4_SERVER*depot/breakpad/src/client/windows/crash_generation/crash_generation_client.cc*12345
+c:\projects\breakpad-tools\deps\breakpad\src\common\scoped_ptr.h*P4_SERVER*depot/breakpad/src/common/scoped_ptr.h*12346
+c:\projects\breakpad-tools\deps\breakpad\src\common\windows\string_utils-inl.h*P4_SERVER*depot/breakpad/src/common/windows/string_utils-inl.h*12347
+c:\program files (x86)\microsoft visual studio\2017\community\vc\tools\msvc\14.13.26128\include\system_error*P4_SERVER*depot/msvc/2017/include/system_error*67890
+SRCSRV: end ------------------------------------------------"#;
+
+        let mappings = SourceServerMappings::parse(stream).unwrap();
+        let info = mappings.get_info(r"c:\projects\breakpad-tools\deps\breakpad\src\client\windows\crash_generation\crash_generation_client.cc").unwrap();
+
+        assert_eq!(
+            info.path,
+            "depot/breakpad/src/client/windows/crash_generation/crash_generation_client.cc"
+        );
+        assert_eq!(info.revision.as_deref(), Some("12345"));
+    }
+}
