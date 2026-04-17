@@ -61,8 +61,8 @@ impl FromStr for SourceServerVcs {
     }
 }
 
-/// A parsed source server stream that can be used to look up remapping
-/// information for a path.
+/// A parsed source server stream that can be used to look up
+/// a file's revision and path on the source server.
 pub struct SourceServerMappings<'s> {
     /// The VCS schema in the stream.
     vcs: SourceServerVcs,
@@ -96,7 +96,7 @@ impl<'s> SourceServerMappings<'s> {
         })
     }
 
-    /// Freshly compute remapping information for a path from the underlying
+    /// Freshly compute source server information for a path from the underlying
     /// [`SrcSrvStream`](srcsrv::SrcSrvStream).
     ///
     /// The computation method depends on the `vcs`.
@@ -111,8 +111,7 @@ impl<'s> SourceServerMappings<'s> {
         };
 
         match vcs {
-            // Extracts depot path (var3) and changelist (var4), then returns
-            // a tuple of (path, optional revision).
+            // Extracts depot path (var3) and changelist (var4).
             SourceServerVcs::Perforce => {
                 let depot_path = var_map.get("var3")?;
                 let changelist = var_map.get("var4");
@@ -130,7 +129,7 @@ impl<'s> SourceServerMappings<'s> {
         }
     }
 
-    /// Returns remapping information for the given path.
+    /// Returns source server information for the given path.
     ///
     /// This caches the information internally.
     pub fn get_info(&self, path: &str) -> Option<SourceServerInfo> {
