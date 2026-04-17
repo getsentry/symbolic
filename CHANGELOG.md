@@ -6,6 +6,11 @@
 
 - Extract srcsrv data from PDB for file mapping ([#943](https://github.com/getsentry/symbolic/pull/943))
 
+## 12.18.1
+
+**Improvements**
+- sourcemapcache: Bump `js-source-scopes` to 0.7.2. This improves name resolution via https://github.com/getsentry/js-source-scopes/pull/35. ([#970](https://github.com/getsentry/symbolic/pull/970))
+
 ## 12.18.0
 
 **Improvements**

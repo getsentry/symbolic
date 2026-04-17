@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "addr2line"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -581,7 +581,7 @@ dependencies = [
 
 [[package]]
 name = "debuginfo_debug"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -610,7 +610,7 @@ dependencies = [
 
 [[package]]
 name = "dump_cfi"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -619,7 +619,7 @@ dependencies = [
 
 [[package]]
 name = "dump_sources"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "clap",
  "symbolic",
@@ -1145,9 +1145,9 @@ checksum = "72167d68f5fce3b8655487b8038691a3c9984ee769590f93f2a631f4ad64e4f5"
 
 [[package]]
 name = "js-source-scopes"
-version = "0.7.0"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "632e077b0fb37f6476d2fa0e15ee97afcfc2359a1a68b1990d4fa9f82324e3f0"
+checksum = "aad7db26c7e0013043d3f79f3a676305885c73c52a3b97e98d804ef5d6465514"
 dependencies = [
  "indexmap",
  "sourcemap",
@@ -1329,7 +1329,7 @@ dependencies = [
 
 [[package]]
 name = "minidump_stackwalk"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "async-trait",
  "clap",
@@ -1478,7 +1478,7 @@ dependencies = [
 
 [[package]]
 name = "object_debug"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "clap",
  "symbolic",
@@ -2206,9 +2206,9 @@ dependencies = [
 
 [[package]]
 name = "sourcemap"
-version = "9.2.2"
+version = "9.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e22afbcb92ce02d23815b9795523c005cb9d3c214f8b7a66318541c240ea7935"
+checksum = "314d62a489431668f719ada776ca1d49b924db951b7450f8974c9ae51ab05ad7"
 dependencies = [
  "base64-simd",
  "bitvec",
@@ -2224,7 +2224,7 @@ dependencies = [
 
 [[package]]
 name = "sourcemapcache_debug"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2424,7 +2424,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "symbolic-cfi",
  "symbolic-common",
@@ -2439,7 +2439,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-cabi"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "proguard",
  "sourcemap",
@@ -2449,7 +2449,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-cfi"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "insta",
  "similar-asserts",
@@ -2461,7 +2461,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-common"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "debugid",
  "memmap2",
@@ -2475,7 +2475,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-debuginfo"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "criterion",
  "debugid",
@@ -2511,7 +2511,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-demangle"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "cc",
  "cpp_demangle",
@@ -2523,7 +2523,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-il2cpp"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "indexmap",
  "serde_json",
@@ -2533,7 +2533,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-ppdb"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "flate2",
  "indexmap",
@@ -2549,7 +2549,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-sourcemapcache"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "itertools 0.14.0",
  "js-source-scopes",
@@ -2563,7 +2563,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-symcache"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "criterion",
  "indexmap",
@@ -2579,11 +2579,11 @@ dependencies = [
 
 [[package]]
 name = "symbolic-testutils"
-version = "12.18.0"
+version = "12.18.1"
 
 [[package]]
 name = "symbolic-unreal"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "anylog",
  "bytes",
@@ -2602,7 +2602,7 @@ dependencies = [
 
 [[package]]
 name = "symcache_debug"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2884,7 +2884,7 @@ checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
 
 [[package]]
 name = "unreal_engine_crash"
-version = "12.18.0"
+version = "12.18.1"
 dependencies = [
  "clap",
  "symbolic",
