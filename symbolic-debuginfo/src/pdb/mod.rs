@@ -580,13 +580,14 @@ impl<'d> PdbDebugInfo<'d> {
         let srcsrv = streams
             .srcsrv
             .as_deref()
-            .map(SourceServerMappings::parse)
-            .transpose()?;
+            // TODO: It would be nice to surface this error to users.
+            .and_then(|stream| SourceServerMappings::parse(stream).ok());
 
         Ok(PdbDebugInfo {
             address_map,
             streams,
             string_table: streams.string_table.as_ref(),
+            srcsrv,
             type_formatter: pdb_addr2line::TypeFormatter::new_from_parts(
                 streams,
                 modules,
@@ -596,7 +597,6 @@ impl<'d> PdbDebugInfo<'d> {
                 streams.string_table.as_ref(),
                 Default::default(),
             )?,
-            srcsrv,
         })
     }
 
