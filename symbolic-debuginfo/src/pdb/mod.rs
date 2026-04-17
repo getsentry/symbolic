@@ -49,9 +49,6 @@ pub enum PdbErrorKind {
 
     /// Formatting of a type name failed.
     FormattingFailed,
-
-    /// The srcsrv stream doesn't contain a VCS name.
-    MissingSourceServerVcs,
 }
 
 impl fmt::Display for PdbErrorKind {
@@ -60,7 +57,6 @@ impl fmt::Display for PdbErrorKind {
             Self::BadObject => write!(f, "invalid pdb file"),
             Self::UnexpectedInline => write!(f, "unexpected inline function without parent"),
             Self::FormattingFailed => write!(f, "failed to format type name"),
-            Self::MissingSourceServerVcs => write!(f, "missing VCS name in srcsrv stream"),
         }
     }
 }

@@ -7,6 +7,15 @@ use std::str::FromStr;
 
 use crate::pdb::{PdbError, PdbErrorKind};
 
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum SourceServerError {
+    /// The srcsrv stream doesn't contain a VCS name.
+    #[error("missing VCS name in srcsrv stream")]
+    MissingSourceServerVcs,
+}
+
 /// Source server information for a particular path.
 #[derive(Debug, Clone)]
 pub(crate) struct SourceServerInfo {
@@ -73,7 +82,10 @@ impl<'s> SourceServerMappings<'s> {
             .map_err(|e| PdbError::new(PdbErrorKind::BadObject, e))?;
         let vcs = stream
             .version_control_description()
-            .ok_or(PdbErrorKind::MissingSourceServerVcs)?
+            .ok_or(PdbError::new(
+                PdbErrorKind::BadObject,
+                SourceServerError::MissingSourceServerVcs,
+            ))?
             .parse()
             .unwrap_or_else(|e| match e {});
 
