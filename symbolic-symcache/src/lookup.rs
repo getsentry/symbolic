@@ -6,6 +6,7 @@ use crate::v7::lookup::{
     FilesV7, FilesV8, FunctionsV7, FunctionsV8, SourceLocationV7, SourceLocationV8,
     SourceLocationsV7, SourceLocationsV8,
 };
+use crate::v9::lookup::{FilesV9, FunctionsV9, SourceLocationV9, SourceLocationsV9};
 use crate::SymCacheInner;
 
 use super::SymCache;
@@ -17,6 +18,7 @@ impl<'data> SymCache<'data> {
         match self.inner {
             SymCacheInner::V7(ref cache) => cache.lookup(addr).into(),
             SymCacheInner::V8(ref cache) => cache.lookup(addr).into(),
+            SymCacheInner::V9(ref cache) => cache.lookup(addr).into(),
         }
     }
 
@@ -30,6 +32,7 @@ impl<'data> SymCache<'data> {
         match self.inner {
             SymCacheInner::V7(ref cache) => cache.functions().into(),
             SymCacheInner::V8(ref cache) => cache.functions().into(),
+            SymCacheInner::V9(ref cache) => cache.functions().into(),
         }
     }
 
@@ -41,6 +44,7 @@ impl<'data> SymCache<'data> {
         match self.inner {
             SymCacheInner::V7(ref cache) => cache.files().into(),
             SymCacheInner::V8(ref cache) => cache.files().into(),
+            SymCacheInner::V9(ref cache) => cache.files().into(),
         }
     }
 }
@@ -54,6 +58,21 @@ pub struct File<'data> {
     pub(crate) directory: Option<&'data str>,
     /// The file path.
     pub(crate) name: &'data str,
+    /// The base name on the source server (version 9+).
+    ///
+    /// This only exists if the symcache was created from a debug file containing
+    /// source server information.
+    pub(crate) srcsrv_name: Option<&'data str>,
+    /// The path to the file on the source server (version 9+).
+    ///
+    /// This only exists if the symcache was created from a debug file containing
+    /// source server information.
+    pub(crate) srcsrv_dir: Option<&'data str>,
+    /// The optional VCS revision (e.g., Perforce changelist, git commit hash) (version 9+).
+    ///
+    /// This only exists if the symcache was created from a debug file containing
+    /// source server information.
+    pub(crate) srcsrv_revision: Option<&'data str>,
 }
 
 impl File<'_> {
@@ -67,6 +86,24 @@ impl File<'_> {
         let full_path = symbolic_common::clean_path(&full_path).into_owned();
 
         full_path
+    }
+
+    /// Returns this file's full path on the source server (version 9+).
+    ///
+    /// This only exists if the symcache was created from a debug file containing
+    /// source server information.
+    pub fn full_srcsrv_path(&self) -> Option<String> {
+        let path =
+            symbolic_common::join_path(self.srcsrv_dir.unwrap_or_default(), self.srcsrv_name?);
+        Some(symbolic_common::clean_path(&path).into_owned())
+    }
+
+    /// Returns the VCS revision of this file, if available (version 9+).
+    ///
+    /// This only exists if the symcache was created from a debug file containing
+    /// source server information.
+    pub fn srcsrv_revision(&self) -> Option<&str> {
+        self.srcsrv_revision
     }
 }
 
@@ -114,6 +151,7 @@ impl Default for Function<'_> {
 enum SourceLocationInner<'data, 'cache> {
     V7(SourceLocationV7<'data, 'cache>),
     V8(SourceLocationV8<'data, 'cache>),
+    V9(SourceLocationV9<'data, 'cache>),
 }
 
 /// A source location as included in the SymCache.
@@ -131,6 +169,7 @@ impl<'data> SourceLocation<'data, '_> {
         match self.0 {
             SourceLocationInner::V7(ref loc) => loc.line(),
             SourceLocationInner::V8(ref loc) => loc.line(),
+            SourceLocationInner::V9(ref loc) => loc.line(),
         }
     }
 
@@ -139,6 +178,7 @@ impl<'data> SourceLocation<'data, '_> {
         match self.0 {
             SourceLocationInner::V7(ref loc) => loc.file(),
             SourceLocationInner::V8(ref loc) => loc.file(),
+            SourceLocationInner::V9(ref loc) => loc.file(),
         }
     }
 
@@ -147,6 +187,7 @@ impl<'data> SourceLocation<'data, '_> {
         match self.0 {
             SourceLocationInner::V7(ref loc) => loc.function(),
             SourceLocationInner::V8(ref loc) => loc.function(),
+            SourceLocationInner::V9(ref loc) => loc.function(),
         }
     }
 
@@ -166,10 +207,17 @@ impl<'data, 'cache> From<SourceLocationV8<'data, 'cache>> for SourceLocation<'da
     }
 }
 
+impl<'data, 'cache> From<SourceLocationV9<'data, 'cache>> for SourceLocation<'data, 'cache> {
+    fn from(value: SourceLocationV9<'data, 'cache>) -> Self {
+        Self(SourceLocationInner::V9(value))
+    }
+}
+
 #[derive(Debug, Clone)]
 enum SourceLocationsInner<'data, 'cache> {
     V7(SourceLocationsV7<'data, 'cache>),
     V8(SourceLocationsV8<'data, 'cache>),
+    V9(SourceLocationsV9<'data, 'cache>),
 }
 
 /// An Iterator that yields [`SourceLocation`]s, representing an inlining hierarchy.
@@ -185,6 +233,9 @@ impl<'data, 'cache> Iterator for SourceLocations<'data, 'cache> {
                 locations.next().map(SourceLocation::from)
             }
             SourceLocationsInner::V8(ref mut locations) => {
+                locations.next().map(SourceLocation::from)
+            }
+            SourceLocationsInner::V9(ref mut locations) => {
                 locations.next().map(SourceLocation::from)
             }
         }
@@ -203,10 +254,17 @@ impl<'data, 'cache> From<SourceLocationsV8<'data, 'cache>> for SourceLocations<'
     }
 }
 
+impl<'data, 'cache> From<SourceLocationsV9<'data, 'cache>> for SourceLocations<'data, 'cache> {
+    fn from(value: SourceLocationsV9<'data, 'cache>) -> Self {
+        Self(SourceLocationsInner::V9(value))
+    }
+}
+
 #[derive(Debug, Clone)]
 enum FunctionsInner<'data> {
     V7(FunctionsV7<'data>),
     V8(FunctionsV8<'data>),
+    V9(FunctionsV9<'data>),
 }
 
 /// Iterator returned by [`SymCache::functions`]; see documentation there.
@@ -220,6 +278,7 @@ impl<'data> Iterator for Functions<'data> {
         match self.0 {
             FunctionsInner::V7(ref mut functions) => functions.next(),
             FunctionsInner::V8(ref mut functions) => functions.next(),
+            FunctionsInner::V9(ref mut functions) => functions.next(),
         }
     }
 }
@@ -233,6 +292,12 @@ impl<'data> From<FunctionsV7<'data>> for Functions<'data> {
 impl<'data> From<FunctionsV8<'data>> for Functions<'data> {
     fn from(value: FunctionsV8<'data>) -> Self {
         Self(FunctionsInner::V8(value))
+    }
+}
+
+impl<'data> From<FunctionsV9<'data>> for Functions<'data> {
+    fn from(value: FunctionsV9<'data>) -> Self {
+        Self(FunctionsInner::V9(value))
     }
 }
 
@@ -260,6 +325,7 @@ impl fmt::Debug for FunctionsDebug<'_> {
 enum FilesInner<'data> {
     V7(FilesV7<'data>),
     V8(FilesV8<'data>),
+    V9(FilesV9<'data>),
 }
 
 /// Iterator returned by [`SymCache::files`]; see documentation there.
@@ -273,6 +339,7 @@ impl<'data> Iterator for Files<'data> {
         match self.0 {
             FilesInner::V7(ref mut files) => files.next(),
             FilesInner::V8(ref mut files) => files.next(),
+            FilesInner::V9(ref mut files) => files.next(),
         }
     }
 }
@@ -286,6 +353,12 @@ impl<'data> From<FilesV7<'data>> for Files<'data> {
 impl<'data> From<FilesV8<'data>> for Files<'data> {
     fn from(value: FilesV8<'data>) -> Self {
         Self(FilesInner::V8(value))
+    }
+}
+
+impl<'data> From<FilesV9<'data>> for Files<'data> {
+    fn from(value: FilesV9<'data>) -> Self {
+        Self(FilesInner::V9(value))
     }
 }
 

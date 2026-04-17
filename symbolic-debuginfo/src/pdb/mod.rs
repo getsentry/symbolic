@@ -16,7 +16,6 @@ use pdb_addr2line::pdb::{
 };
 use pdb_addr2line::ModuleProvider;
 use smallvec::SmallVec;
-use srcsrv;
 use thiserror::Error;
 
 use symbolic_common::{
@@ -25,7 +24,10 @@ use symbolic_common::{
 
 use crate::base::*;
 use crate::function_stack::FunctionStack;
+use crate::pdb::srcsrv::{SourceServerInfo, SourceServerMappings};
 use crate::sourcebundle::SourceFileDescriptor;
+
+mod srcsrv;
 
 type Pdb<'data> = pdb::PDB<'data, Cursor<&'data [u8]>>;
 
@@ -201,6 +203,19 @@ impl<'data> PdbObject<'data> {
             .unwrap_or_default()
     }
 
+    /// Returns true if this object contains source server information.
+    pub fn has_source_server_data(&self) -> Result<bool, PdbError> {
+        let mut pdb = self.pdb.write();
+        match pdb.named_stream(b"srcsrv") {
+            Ok(_) => Ok(true),
+            Err(pdb::Error::StreamNameNotFound) => {
+                // No source server info is normal for many PDBs
+                Ok(false)
+            }
+            Err(e) => Err(e.into()),
+        }
+    }
+
     /// The kind of this object, which is always `Debug`.
     pub fn kind(&self) -> ObjectKind {
         ObjectKind::Debug
@@ -250,31 +265,6 @@ impl<'data> PdbObject<'data> {
     /// Determines whether this object contains embedded source.
     pub fn has_sources(&self) -> bool {
         false
-    }
-
-    /// Returns the SRCSRV VCS integration name if available.
-    ///
-    /// This extracts the version control system identifier from the SRCSRV stream,
-    /// if present. Common values include "perforce", "tfs", "git", etc.
-    /// Returns `None` if no SRCSRV stream exists or if it cannot be parsed.
-    pub fn srcsrv_vcs_name(&self) -> Option<String> {
-        let mut pdb = self.pdb.write();
-
-        // Try to open the "srcsrv" named stream
-        let stream = match pdb.named_stream(b"srcsrv") {
-            Ok(stream) => stream,
-            Err(_) => return None,
-        };
-
-        // Parse the stream to extract VCS name
-        let stream_data = stream.as_slice();
-        if let Ok(parsed_stream) = srcsrv::SrcSrvStream::parse(stream_data) {
-            parsed_stream
-                .version_control_description()
-                .map(|s| s.to_string())
-        } else {
-            None
-        }
     }
 
     /// Determines whether this object is malformed and was only partially parsed
@@ -500,6 +490,7 @@ struct PdbStreams<'d> {
     type_info: pdb::TypeInformation<'d>,
     id_info: pdb::IdInformation<'d>,
     string_table: Option<pdb::StringTable<'d>>,
+    srcsrv: Option<Vec<u8>>,
 
     pdb: Arc<RwLock<Pdb<'d>>>,
 
@@ -523,11 +514,22 @@ impl<'d> PdbStreams<'d> {
             Err(e) => return Err(e.into()),
         };
 
+        // Try to open the "srcsrv" named stream
+        let srcsrv = match p.named_stream(b"srcsrv") {
+            Ok(stream) => Some(stream.as_slice().to_vec()),
+            Err(pdb::Error::StreamNameNotFound) => {
+                // No source server info is normal for many PDBs
+                None
+            }
+            Err(e) => return Err(e.into()),
+        };
+
         Ok(Self {
             string_table,
             debug_info: pdb.debug_info.clone(),
             type_info: p.type_information()?,
             id_info: p.id_information()?,
+            srcsrv,
             pdb: pdb.pdb.clone(),
             module_infos: FrozenMap::new(),
         })
@@ -561,6 +563,7 @@ struct PdbDebugInfo<'d> {
     string_table: Option<&'d pdb::StringTable<'d>>,
     /// Type formatter for function name strings.
     type_formatter: pdb_addr2line::TypeFormatter<'d, 'd>,
+    srcsrv: Option<SourceServerMappings<'d>>,
 }
 
 impl<'d> PdbDebugInfo<'d> {
@@ -574,10 +577,20 @@ impl<'d> PdbDebugInfo<'d> {
 
         drop(p);
 
+        let srcsrv = streams
+            .srcsrv
+            .as_deref()
+            // We don't want to exit on error here so we can still use the PDB
+            // file even if we fail to parse the source server part.
+            // TODO: It would be nice to surface this error to users, if and
+            // when we add logging to this crate.
+            .and_then(|stream| SourceServerMappings::parse(stream).ok());
+
         Ok(PdbDebugInfo {
             address_map,
             streams,
             string_table: streams.string_table.as_ref(),
+            srcsrv,
             type_formatter: pdb_addr2line::TypeFormatter::new_from_parts(
                 streams,
                 modules,
@@ -638,6 +651,7 @@ pub struct PdbDebugSession<'d> {
 impl<'d> PdbDebugSession<'d> {
     fn build(pdb: &PdbObject<'d>) -> Result<Self, PdbError> {
         let streams = PdbStreams::from_pdb(pdb)?;
+
         let cell = SelfCell::try_new(Box::new(streams), |streams| {
             PdbDebugInfo::build(pdb, unsafe { &*streams })
         })?;
@@ -670,6 +684,19 @@ impl<'d> PdbDebugSession<'d> {
         _path: &str,
     ) -> Result<Option<SourceFileDescriptor<'_>>, PdbError> {
         Ok(None)
+    }
+
+    /// Returns the SRCSRV VCS integration name if available.
+    ///
+    /// This extracts the version control system identifier from the SRCSRV stream,
+    /// if present. Common values include "perforce", "tfs", "git", etc.
+    /// Returns `None` if no SRCSRV stream exists or if it cannot be parsed.
+    pub fn srcsrv_vcs_name(&self) -> Option<String> {
+        self.cell
+            .get()
+            .srcsrv
+            .as_ref()
+            .map(|srcsrv| srcsrv.vcs_name().to_owned())
     }
 }
 
@@ -735,11 +762,22 @@ impl<'s> Unit<'s> {
             }
 
             let file_info = program.get_file_info(line_info.file_index)?;
+            let mut file = self.debug_info.file_info(file_info)?;
+
+            // Fill in source server information if available
+            if let Some(mappings) = self.debug_info.srcsrv.as_ref() {
+                let original_path = file.path_str();
+                let info = mappings.get_info(&original_path);
+                if let Some(SourceServerInfo { path, revision }) = info {
+                    file.set_srcsrv_path(path.as_bytes());
+                    file.set_srcsrv_revision(revision);
+                }
+            }
 
             lines.push(LineInfo {
                 address: rva,
                 size,
-                file: self.debug_info.file_info(file_info)?,
+                file,
                 line: line_info.line_start.into(),
             });
         }
@@ -1062,7 +1100,19 @@ impl<'s> Iterator for PdbFileIterator<'s> {
                 let result = file_result
                     .map_err(|err| err.into())
                     .and_then(|i| self.debug_info.file_info(i))
-                    .map(|info| FileEntry::new(Cow::default(), info));
+                    .map(|mut file| {
+                        // Fill in source server information if available
+                        if let Some(mappings) = &self.debug_info.srcsrv {
+                            let original_path = file.path_str();
+                            let info = mappings.get_info(&original_path);
+                            if let Some(SourceServerInfo { path, revision }) = info {
+                                file.set_srcsrv_path(path.as_bytes());
+                                file.set_srcsrv_revision(revision);
+                            }
+                        }
+
+                        FileEntry::new(Cow::default(), file)
+                    });
 
                 return Some(result);
             }

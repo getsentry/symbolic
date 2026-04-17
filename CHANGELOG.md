@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- Extract srcsrv data from PDB for file mapping ([#943](https://github.com/getsentry/symbolic/pull/943))
+
 ## 12.18.1
 
 **Improvements**
