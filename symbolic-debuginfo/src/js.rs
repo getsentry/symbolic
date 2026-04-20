@@ -50,7 +50,9 @@ pub fn discover_sourcemap_embedded_debug_id(contents: &str) -> Option<DebugId> {
 
 /// Parses a `debugId` comment in a file to discover a sourcemap's debug ID.
 pub fn discover_debug_id(contents: &str) -> Option<DebugId> {
-    MagicCommentFinder::debug_id().find(contents).and_then(|s| s.parse().ok())
+    MagicCommentFinder::debug_id()
+        .find(contents)
+        .and_then(|s| s.parse().ok())
 }
 
 /// A helper utility which allows searching for magic comments in JavaScript sources.
