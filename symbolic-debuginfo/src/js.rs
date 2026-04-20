@@ -119,7 +119,7 @@ impl<'a> MagicCommentFinder<'a> {
 
         // This should never fail, the input was a valid string, we only trimmed characters in the
         // ascii range.
-        str::from_utf8(value).ok()
+        std::str::from_utf8(value).ok()
     }
 }
 
