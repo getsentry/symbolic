@@ -81,7 +81,7 @@ sourcebundle = [
     "debugid/serde",
 ]
 # JavaScript stuff
-js = []
+js = ["dep:memchr"]
 # WASM processing
 wasm = ["dwarf", "wasmparser"]
 
@@ -93,6 +93,7 @@ fallible-iterator = { workspace = true }
 flate2 = { workspace = true, optional = true }
 gimli = { workspace = true, optional = true }
 goblin = { workspace = true, optional = true }
+memchr = { workspace = true, optional = true }
 once_cell = { workspace = true, optional = true }
 nom = { workspace = true, optional = true }
 nom-supreme = { workspace = true, optional = true }
