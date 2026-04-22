@@ -109,11 +109,7 @@ impl<'a> MagicCommentFinder<'a> {
         // Trim whitespaces after the `=`.
         let value = value.trim_ascii_start();
         // Split until the next whitespace:
-        let value = value
-            .split(u8::is_ascii_whitespace)
-            .next()
-            // If there is no whitespace, assume until end.
-            .unwrap_or(value);
+        let value = value.split(u8::is_ascii_whitespace).next()?;
 
         // This should never fail, the input was a valid string, we only trimmed characters in the
         // ascii range.
