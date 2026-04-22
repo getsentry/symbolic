@@ -106,14 +106,15 @@ impl<'a> MagicCommentFinder<'a> {
             }
         };
 
-        // Trim whitespaces after the `=`.
-        let value = value.trim_ascii_start();
-        // Split until the next whitespace:
-        let value = value.split(u8::is_ascii_whitespace).next()?;
-
-        // This should never fail, the input was a valid string, we only trimmed characters in the
-        // ascii range.
-        std::str::from_utf8(value).ok()
+        value
+            // Trim whitespaces after the `=`.
+            .trim_ascii_start()
+            // Split until next whitespace, this will always yield at least one item.
+            .split(u8::is_ascii_whitespace)
+            .next()
+            // Utf-8 conversion should never fail, the input was a valid string,
+            // we only trimmed characters in the ascii range.
+            .and_then(|s| std::str::from_utf8(s).ok())
     }
 }
 
