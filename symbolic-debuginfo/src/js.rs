@@ -12,20 +12,18 @@ use serde::Deserialize;
 ///
 /// Any query string or fragments the URL might contain will be stripped away.
 pub fn discover_sourcemaps_location(contents: &str) -> Option<&str> {
-    let finder = MagicCommentFinder::source_mapping_url().allow_deprecated_at_variant();
+    let url = MagicCommentFinder::source_mapping_url()
+        .allow_deprecated_at_variant()
+        .find(contents)?;
 
-    if let Some(url) = finder.find(contents) {
-        // The URL might contain a query string or fragment. Strip those away before recording the URL.
-        let without_query = url.split_once('?').map(|x| x.0).unwrap_or(url);
-        let without_fragment = without_query
-            .split_once('#')
-            .map(|x| x.0)
-            .unwrap_or(without_query);
+    // The URL might contain a query string or fragment. Strip those away before recording the URL.
+    let without_query = url.split_once('?').map(|x| x.0).unwrap_or(url);
+    let without_fragment = without_query
+        .split_once('#')
+        .map(|x| x.0)
+        .unwrap_or(without_query);
 
-        return Some(without_fragment);
-    }
-
-    None
+    Some(without_fragment)
 }
 
 /// Quickly reads the embedded `debug_id` key from a source map.
@@ -57,7 +55,7 @@ pub fn discover_debug_id(contents: &str) -> Option<DebugId> {
 
 /// A helper utility which allows searching for magic comments in JavaScript sources.
 ///
-/// The finder will optionally consider the `//#` variant as well as the deprecated `//@` variant.
+/// The finder will optionally consider the deprecated `//@` variant in addition to the official `//#` variant.
 ///
 /// Generally considered a magic comment is a comment following the pattern: `//[#@]\s<name>=\s*<value>\s*.*`
 struct MagicCommentFinder<'a> {
