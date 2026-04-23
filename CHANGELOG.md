@@ -1,5 +1,11 @@
 # Changelog
 
+## 12.18.3
+
+### Internal Changes 🔧
+
+- (js) Allow magic comments to appear anywhere by @Dav1dde in [#974](https://github.com/getsentry/symbolic/pull/974)
+
 ## 12.18.2
 
 - Downgrade `cpp_demangle` version to 0.4.1. Symbolicator is currently dependent on this. ([#972](https://github.com/getsentry/symbolic/pull/972))
