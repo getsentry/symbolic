@@ -623,6 +623,166 @@ impl fmt::Debug for LineInfo<'_> {
     }
 }
 
+/// The encoding of a primitive (base) type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PrimitiveEncoding {
+    /// Signed integer (e.g., `int`, `long`).
+    SignedInt,
+    /// Unsigned integer (e.g., `unsigned int`, `size_t`).
+    UnsignedInt,
+    /// IEEE 754 floating-point (e.g., `float`, `double`).
+    Float,
+    /// Boolean type.
+    Boolean,
+    /// Character type (e.g., `char`, `wchar_t`).
+    Char,
+    /// Unsigned character type.
+    UnsignedChar,
+    /// An encoding not covered by the other variants.
+    Other,
+}
+
+/// A field within a struct or class.
+#[derive(Debug, Clone)]
+pub struct StructField {
+    /// The name of the field.
+    pub name: String,
+    /// Display name of the field's type.
+    pub type_name: String,
+    /// Structured type information for the field.
+    pub type_info: VariableType,
+    /// Byte offset of this field from the start of the struct.
+    pub offset: u64,
+    /// Size of this field in bytes.
+    pub byte_size: u64,
+}
+
+/// Describes the type of a local variable or parameter.
+///
+/// Type information is resolved from DWARF `DW_AT_type` chains or PDB type records.
+/// Recursive types are limited to a depth of 5 and structs to 32 fields.
+#[derive(Debug, Clone)]
+pub enum VariableType {
+    /// A primitive (scalar) type like `int`, `float`, or `bool`.
+    Primitive {
+        /// How this primitive is encoded (signed, unsigned, float, etc.).
+        encoding: PrimitiveEncoding,
+        /// Size of this type in bytes.
+        byte_size: u16,
+    },
+    /// A pointer or reference type.
+    Pointer {
+        /// Display name of the type being pointed to.
+        pointee_type_name: String,
+        /// Size of the pointer itself in bytes (4 on 32-bit, 8 on 64-bit).
+        byte_size: u16,
+    },
+    /// A struct, class, or union type.
+    Struct {
+        /// The name of the struct/class/union.
+        name: String,
+        /// Total size of the struct in bytes.
+        byte_size: u32,
+        /// The fields of this struct (capped at 32).
+        fields: Vec<StructField>,
+    },
+    /// An array type.
+    Array {
+        /// Display name of the element type.
+        element_type_name: String,
+        /// Number of elements in the array.
+        count: u64,
+        /// Total size of the array in bytes.
+        byte_size: u32,
+    },
+    /// An enumeration type.
+    Enum {
+        /// The name of the enum.
+        name: String,
+        /// Size of the enum in bytes.
+        byte_size: u16,
+        /// Named variants with their integer values.
+        variants: Vec<(String, i64)>,
+    },
+    /// A type that could not be fully resolved.
+    Unknown {
+        /// Size of the type in bytes, if known (0 if unknown).
+        byte_size: u16,
+    },
+}
+
+impl VariableType {
+    /// Returns the size of this type in bytes, if known.
+    pub fn byte_size(&self) -> Option<u64> {
+        match self {
+            Self::Primitive { byte_size, .. } => Some(*byte_size as u64),
+            Self::Pointer { byte_size, .. } => Some(*byte_size as u64),
+            Self::Struct { byte_size, .. } => Some(*byte_size as u64),
+            Self::Array { byte_size, .. } => Some(*byte_size as u64),
+            Self::Enum { byte_size, .. } => Some(*byte_size as u64),
+            Self::Unknown { byte_size } => {
+                if *byte_size > 0 {
+                    Some(*byte_size as u64)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+}
+
+/// Describes where a variable's value can be found at runtime.
+///
+/// These locations correspond to DWARF location expressions (`DW_AT_location`)
+/// or PDB `DefRange*` records.
+#[derive(Debug, Clone)]
+pub enum VariableLocation {
+    /// The variable lives entirely in a CPU register (DWARF `DW_OP_reg*` / PDB `S_DEFRANGE_REGISTER`).
+    Register(u16),
+    /// The variable is at a fixed offset from the frame base pointer
+    /// (DWARF `DW_OP_fbreg` / PDB `S_DEFRANGE_FRAMEPOINTER_REL`).
+    FrameOffset(i64),
+    /// The variable is at an offset from a specific register
+    /// (DWARF `DW_OP_breg*` / PDB `S_DEFRANGE_REGISTER_REL`).
+    RegisterRelative {
+        /// The DWARF register number.
+        register: u16,
+        /// Byte offset from the register value.
+        offset: i64,
+    },
+    /// A raw DWARF expression that requires full evaluation with a register
+    /// and memory provider. Used for complex location expressions that don't
+    /// fit the simpler variants.
+    Expression(Vec<u8>),
+    /// The variable has been optimized out by the compiler and its value
+    /// is not available at this program counter.
+    OptimizedOut,
+    /// The variable is at different locations depending on the program counter.
+    /// Each entry is `(start_pc, end_pc, location)`.
+    LocationList(Vec<(u64, u64, Box<VariableLocation>)>),
+}
+
+/// A local variable or function parameter extracted from debug information.
+///
+/// Variables are associated with a [`Function`] and describe the name, type,
+/// storage location, and valid scope of a variable within that function.
+#[derive(Debug, Clone)]
+pub struct Variable<'data> {
+    /// The name of the variable.
+    pub name: Cow<'data, str>,
+    /// Display name of the variable's type (e.g., `"int"`, `"char*"`, `"MyStruct"`).
+    pub type_name: Cow<'data, str>,
+    /// Structured type information for interpreting the raw bytes.
+    pub type_info: VariableType,
+    /// Whether this is a function parameter (`true`) or a local variable (`false`).
+    pub is_parameter: bool,
+    /// Where the variable's value is stored at runtime.
+    pub location: VariableLocation,
+    /// The PC range where this variable is in scope.
+    /// `None` means the variable is valid for the entire function.
+    pub scope: Option<(u64, u64)>,
+}
+
 /// Debug information for a function.
 #[derive(Clone)]
 pub struct Function<'data> {
@@ -640,6 +800,8 @@ pub struct Function<'data> {
     pub inlinees: Vec<Function<'data>>,
     /// Specifies whether this function is inlined.
     pub inline: bool,
+    /// Local variables and parameters of this function.
+    pub variables: Vec<Variable<'data>>,
 }
 
 impl Function<'_> {
@@ -653,8 +815,8 @@ impl Function<'_> {
 
 impl fmt::Debug for Function<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Function")
-            .field("address", &format_args!("{:#x}", self.address))
+        let mut s = f.debug_struct("Function");
+        s.field("address", &format_args!("{:#x}", self.address))
             .field("size", &format_args!("{:#x}", self.size))
             .field("name", &self.name)
             .field(
@@ -663,8 +825,11 @@ impl fmt::Debug for Function<'_> {
             )
             .field("lines", &self.lines)
             .field("inlinees", &self.inlinees)
-            .field("inline", &self.inline)
-            .finish()
+            .field("inline", &self.inline);
+        if !self.variables.is_empty() {
+            s.field("variables", &self.variables);
+        }
+        s.finish()
     }
 }
 

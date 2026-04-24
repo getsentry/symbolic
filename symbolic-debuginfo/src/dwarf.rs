@@ -967,6 +967,19 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                         language,
                     )?;
                 }
+                constants::DW_TAG_variable | constants::DW_TAG_formal_parameter => {
+                    let is_parameter = abbrev.tag() == constants::DW_TAG_formal_parameter;
+                    // Variable parsing is best-effort: never abort function extraction
+                    // if a variable's type or location can't be resolved.
+                    match self.parse_variable(entries, &abbrev, is_parameter) {
+                        Ok(Some(var)) => {
+                            for (_range, builder) in builders.iter_mut() {
+                                builder.add_variable(var.clone());
+                            }
+                        }
+                        Ok(None) | Err(_) => {}
+                    }
+                }
                 _ => {
                     entries.skip_attributes(abbrev.attributes())?;
                 }
@@ -1055,6 +1068,641 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         self.parse_function_children(depth, inline_depth + 1, entries, builders, output, language)
     }
 
+    /// Parses a `DW_TAG_variable` or `DW_TAG_formal_parameter` DIE into a [`Variable`].
+    ///
+    /// Returns `None` if the variable has no name (e.g., artificial compiler-generated vars)
+    /// or if the location information cannot be parsed.
+    fn parse_variable(
+        &self,
+        entries: &mut EntriesRaw<'d, '_>,
+        abbrev: &gimli::Abbreviation,
+        is_parameter: bool,
+    ) -> Result<Option<Variable<'d>>, DwarfError> {
+        let mut name: Option<Cow<'d, str>> = None;
+        let mut location: Option<VariableLocation> = None;
+        let mut type_offset: Option<UnitOffset> = None;
+        let mut abstract_origin: Option<gimli::Attribute<Slice<'d>>> = None;
+        let mut is_artificial = false;
+
+        for spec in abbrev.attributes() {
+            let attr = entries.read_attribute(*spec)?;
+            match attr.name() {
+                constants::DW_AT_name => {
+                    name = self.inner.string_value(attr.value());
+                }
+                constants::DW_AT_location => {
+                    location = Some(self.parse_variable_location(attr.value())?);
+                }
+                constants::DW_AT_type => {
+                    if let AttributeValue::UnitRef(offset) = attr.value() {
+                        type_offset = Some(offset);
+                    }
+                }
+                constants::DW_AT_abstract_origin => {
+                    abstract_origin = Some(attr);
+                }
+                constants::DW_AT_artificial => {
+                    if let AttributeValue::Flag(true) = attr.value() {
+                        is_artificial = true;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // Skip artificial (compiler-generated) variables
+        if is_artificial {
+            return Ok(None);
+        }
+
+        // If this variable references an abstract origin (common for inlined functions),
+        // resolve name and type from the referenced DIE.
+        if let Some(origin_attr) = abstract_origin {
+            if name.is_none() || type_offset.is_none() {
+                let result = self.inner.resolve_reference(origin_attr, |unit_ref, entry| {
+                    let mut resolved_name = None;
+                    let mut resolved_type = None;
+                    let mut attrs = entry.attrs();
+                    while let Some(a) = attrs.next()? {
+                        match a.name() {
+                            constants::DW_AT_name => {
+                                resolved_name = unit_ref.string_value(a.value());
+                            }
+                            constants::DW_AT_type => {
+                                if let AttributeValue::UnitRef(off) = a.value() {
+                                    resolved_type = Some(off);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    Ok(Some((resolved_name, resolved_type)))
+                })?;
+
+                if let Some((resolved_name, resolved_type)) = result {
+                    if name.is_none() {
+                        name = resolved_name;
+                    }
+                    if type_offset.is_none() {
+                        type_offset = resolved_type;
+                    }
+                }
+            }
+        }
+
+        // A variable without a name is not useful
+        let name = match name {
+            Some(n) if !n.is_empty() => n,
+            _ => return Ok(None),
+        };
+
+        // Resolve the variable's type
+        let (type_name, type_info) = match type_offset {
+            Some(offset) => self.resolve_dwarf_type(offset, 0)?,
+            None => (Cow::Borrowed("?"), VariableType::Unknown { byte_size: 0 }),
+        };
+
+        // Default to OptimizedOut if no location was specified
+        let location = location.unwrap_or(VariableLocation::OptimizedOut);
+
+        Ok(Some(Variable {
+            name,
+            type_name,
+            type_info,
+            is_parameter,
+            location,
+            scope: None,
+        }))
+    }
+
+    /// Converts a DWARF location attribute value into a [`VariableLocation`].
+    fn parse_variable_location(
+        &self,
+        value: AttributeValue<Slice<'d>>,
+    ) -> Result<VariableLocation, DwarfError> {
+        match value {
+            AttributeValue::Exprloc(expr) => {
+                self.parse_location_expression(expr.0.slice())
+            }
+            AttributeValue::LocationListsRef(_list_ref) => {
+                // Location lists describe different locations at different PCs.
+                // For now, store as OptimizedOut — full location list support will
+                // be added when the evaluation engine in symbolicator needs it.
+                // The evaluation engine can re-parse from debug info using the
+                // function address + PC offset.
+                Ok(VariableLocation::OptimizedOut)
+            }
+            _ => Ok(VariableLocation::OptimizedOut),
+        }
+    }
+
+    /// Parses a DWARF expression into a simplified [`VariableLocation`].
+    ///
+    /// Recognizes common single-operation patterns (register, frame offset,
+    /// register-relative) and falls back to storing the raw expression bytes.
+    fn parse_location_expression(
+        &self,
+        expr_bytes: &[u8],
+    ) -> Result<VariableLocation, DwarfError> {
+        if expr_bytes.is_empty() {
+            return Ok(VariableLocation::OptimizedOut);
+        }
+
+        // Try to parse common single-op patterns
+        let encoding = self.inner.unit.encoding();
+        let ops = gimli::Operation::parse(
+            &mut gimli::EndianSlice::new(expr_bytes, gimli::RunTimeEndian::Little),
+            encoding,
+        );
+
+        if let Ok(op) = ops {
+            match op {
+                gimli::Operation::Register { register } => {
+                    return Ok(VariableLocation::Register(register.0));
+                }
+                gimli::Operation::FrameOffset { offset } => {
+                    return Ok(VariableLocation::FrameOffset(offset));
+                }
+                gimli::Operation::RegisterOffset { register, offset, .. } => {
+                    return Ok(VariableLocation::RegisterRelative {
+                        register: register.0,
+                        offset,
+                    });
+                }
+                _ => {}
+            }
+        }
+
+        // Fall back to storing the raw expression for later evaluation
+        Ok(VariableLocation::Expression(expr_bytes.to_vec()))
+    }
+
+    /// Resolves a DWARF type DIE chain into a display name and [`VariableType`].
+    ///
+    /// Follows `DW_AT_type` references up to `max_depth` levels to handle typedefs,
+    /// const/volatile qualifiers, and pointer chains.
+    fn resolve_dwarf_type(
+        &self,
+        type_offset: UnitOffset,
+        depth: usize,
+    ) -> Result<(Cow<'d, str>, VariableType), DwarfError> {
+        const MAX_DEPTH: usize = 5;
+        const MAX_STRUCT_FIELDS: usize = 32;
+
+        if depth > MAX_DEPTH {
+            return Ok((Cow::Borrowed("..."), VariableType::Unknown { byte_size: 0 }));
+        }
+
+        let entry = self.inner.unit.entry(type_offset)?;
+        let tag = entry.tag();
+
+        // Helper: get byte_size attribute
+        let byte_size = entry
+            .attr_value(constants::DW_AT_byte_size)?
+            .and_then(|v| match v {
+                AttributeValue::Udata(s) => Some(s),
+                AttributeValue::Data1(s) => Some(s as u64),
+                AttributeValue::Data2(s) => Some(s as u64),
+                AttributeValue::Data4(s) => Some(s as u64),
+                _ => None,
+            })
+            .unwrap_or(0);
+
+        // Helper: get name attribute
+        let type_name_attr = entry
+            .attr_value(constants::DW_AT_name)?
+            .and_then(|v| self.inner.string_value(v));
+
+        // Helper: get the DW_AT_type reference (for following type chains)
+        let sub_type_offset = entry
+            .attr_value(constants::DW_AT_type)?
+            .and_then(|v| match v {
+                AttributeValue::UnitRef(offset) => Some(offset),
+                _ => None,
+            });
+
+        match tag {
+            constants::DW_TAG_base_type => {
+                let encoding = entry
+                    .attr_value(constants::DW_AT_encoding)?
+                    .and_then(|v| match v {
+                        AttributeValue::Encoding(enc) => Some(enc),
+                        _ => None,
+                    });
+                let prim_encoding = match encoding {
+                    Some(constants::DW_ATE_signed) => PrimitiveEncoding::SignedInt,
+                    Some(constants::DW_ATE_unsigned) => PrimitiveEncoding::UnsignedInt,
+                    Some(constants::DW_ATE_unsigned_char) => PrimitiveEncoding::UnsignedChar,
+                    Some(constants::DW_ATE_float) => PrimitiveEncoding::Float,
+                    Some(constants::DW_ATE_boolean) => PrimitiveEncoding::Boolean,
+                    Some(constants::DW_ATE_signed_char) | Some(constants::DW_ATE_UTF) => {
+                        PrimitiveEncoding::Char
+                    }
+                    _ => PrimitiveEncoding::Other,
+                };
+                let name = type_name_attr.unwrap_or(Cow::Borrowed("?"));
+                Ok((
+                    name,
+                    VariableType::Primitive {
+                        encoding: prim_encoding,
+                        byte_size: byte_size as u16,
+                    },
+                ))
+            }
+
+            constants::DW_TAG_pointer_type | constants::DW_TAG_reference_type | constants::DW_TAG_rvalue_reference_type => {
+                let (pointee_name, _) = match sub_type_offset {
+                    Some(off) => self.resolve_dwarf_type(off, depth + 1)?,
+                    None => (Cow::Borrowed("void"), VariableType::Unknown { byte_size: 0 }),
+                };
+                let display_name = if tag == constants::DW_TAG_pointer_type {
+                    Cow::Owned(format!("{}*", pointee_name))
+                } else {
+                    Cow::Owned(format!("{}&", pointee_name))
+                };
+                // Pointer DIEs often omit DW_AT_byte_size — the size is the
+                // compilation unit's address size (4 for 32-bit, 8 for 64-bit).
+                let ptr_size = if byte_size > 0 {
+                    byte_size as u16
+                } else {
+                    self.inner.unit.encoding().address_size as u16
+                };
+                Ok((
+                    display_name,
+                    VariableType::Pointer {
+                        pointee_type_name: pointee_name.into_owned(),
+                        byte_size: ptr_size,
+                    },
+                ))
+            }
+
+            constants::DW_TAG_structure_type | constants::DW_TAG_class_type | constants::DW_TAG_union_type => {
+                let base_name = type_name_attr.unwrap_or(Cow::Borrowed("<anonymous>"));
+                let mut fields = Vec::new();
+                let mut template_params = Vec::new();
+
+                // Iterate children: members, base classes, template parameters
+                let mut children = self.inner.unit.entries_tree(Some(type_offset))?;
+                if let Ok(root) = children.root() {
+                    let mut child_iter = root.children();
+                    while let Ok(Some(child)) = child_iter.next() {
+                        let child_tag = child.entry().tag();
+                        match child_tag {
+                            constants::DW_TAG_member => {
+                                if fields.len() >= MAX_STRUCT_FIELDS {
+                                    continue;
+                                }
+
+                                let member_entry = child.entry();
+                                let field_name = member_entry
+                                    .attr_value(constants::DW_AT_name)?
+                                    .and_then(|v| self.inner.string_value(v))
+                                    .unwrap_or(Cow::Borrowed("?"))
+                                    .into_owned();
+
+                                let field_offset = member_entry
+                                    .attr_value(constants::DW_AT_data_member_location)?
+                                    .and_then(|v| match v {
+                                        AttributeValue::Udata(off) => Some(off),
+                                        AttributeValue::Sdata(off) => Some(off as u64),
+                                        _ => None,
+                                    })
+                                    .unwrap_or(0);
+
+                                let field_type_offset = member_entry
+                                    .attr_value(constants::DW_AT_type)?
+                                    .and_then(|v| match v {
+                                        AttributeValue::UnitRef(off) => Some(off),
+                                        _ => None,
+                                    });
+
+                                let (field_type_name, field_type_info) = match field_type_offset {
+                                    Some(off) => self.resolve_dwarf_type(off, depth + 1)?,
+                                    None => (
+                                        Cow::Borrowed("?"),
+                                        VariableType::Unknown { byte_size: 0 },
+                                    ),
+                                };
+
+                                let field_byte_size = field_type_info.byte_size().unwrap_or(0);
+
+                                fields.push(StructField {
+                                    name: field_name,
+                                    type_name: field_type_name.into_owned(),
+                                    type_info: field_type_info,
+                                    offset: field_offset,
+                                    byte_size: field_byte_size,
+                                });
+                            }
+
+                            // Base class (inheritance) — insert as a synthetic field
+                            constants::DW_TAG_inheritance => {
+                                if fields.len() >= MAX_STRUCT_FIELDS {
+                                    continue;
+                                }
+                                let base_entry = child.entry();
+                                let base_offset = base_entry
+                                    .attr_value(constants::DW_AT_data_member_location)?
+                                    .and_then(|v| match v {
+                                        AttributeValue::Udata(off) => Some(off),
+                                        AttributeValue::Sdata(off) => Some(off as u64),
+                                        _ => None,
+                                    })
+                                    .unwrap_or(0);
+
+                                let base_type_offset = base_entry
+                                    .attr_value(constants::DW_AT_type)?
+                                    .and_then(|v| match v {
+                                        AttributeValue::UnitRef(off) => Some(off),
+                                        _ => None,
+                                    });
+
+                                if let Some(off) = base_type_offset {
+                                    let (base_type_name, base_type_info) =
+                                        self.resolve_dwarf_type(off, depth + 1)?;
+                                    let base_byte_size = base_type_info.byte_size().unwrap_or(0);
+                                    // Insert base classes at the front so they appear first
+                                    fields.insert(0, StructField {
+                                        name: format!("__base_{}", base_type_name),
+                                        type_name: base_type_name.into_owned(),
+                                        type_info: base_type_info,
+                                        offset: base_offset,
+                                        byte_size: base_byte_size,
+                                    });
+                                }
+                            }
+
+                            // Template type parameter — for building display name
+                            constants::DW_TAG_template_type_parameter => {
+                                let param_type_off = child
+                                    .entry()
+                                    .attr_value(constants::DW_AT_type)?
+                                    .and_then(|v| match v {
+                                        AttributeValue::UnitRef(off) => Some(off),
+                                        _ => None,
+                                    });
+                                if let Some(off) = param_type_off {
+                                    if let Ok((pname, _)) = self.resolve_dwarf_type(off, depth + 1) {
+                                        template_params.push(pname.into_owned());
+                                    }
+                                }
+                            }
+
+                            // Template value parameter (non-type template args like N in array<T,N>)
+                            constants::DW_TAG_template_value_parameter => {
+                                let val = child
+                                    .entry()
+                                    .attr_value(constants::DW_AT_const_value)?
+                                    .and_then(|v| match v {
+                                        AttributeValue::Udata(n) => Some(n.to_string()),
+                                        AttributeValue::Sdata(n) => Some(n.to_string()),
+                                        _ => None,
+                                    });
+                                if let Some(v) = val {
+                                    template_params.push(v);
+                                }
+                            }
+
+                            _ => {}
+                        }
+                    }
+                }
+
+                // Build display name: if the compiler already embedded template args in the
+                // name (e.g. "std::vector<int, std::allocator<int> >"), use it as-is.
+                // Otherwise, append the template parameters we discovered.
+                let display_name = if !template_params.is_empty() && !base_name.contains('<') {
+                    Cow::Owned(format!("{}<{}>", base_name, template_params.join(", ")))
+                } else {
+                    base_name.clone()
+                };
+
+                Ok((
+                    display_name,
+                    VariableType::Struct {
+                        name: base_name.into_owned(),
+                        byte_size: byte_size as u32,
+                        fields,
+                    },
+                ))
+            }
+
+            constants::DW_TAG_array_type => {
+                let (element_name, element_type) = match sub_type_offset {
+                    Some(off) => self.resolve_dwarf_type(off, depth + 1)?,
+                    None => (Cow::Borrowed("?"), VariableType::Unknown { byte_size: 0 }),
+                };
+
+                // Look for DW_TAG_subrange_type child to get array count.
+                // The count or upper_bound may be encoded as various DWARF forms
+                // (Udata, Data1, Data2, Data4, Sdata, etc.).
+                let mut count = 0u64;
+                let mut children = self.inner.unit.entries_tree(Some(type_offset))?;
+                if let Ok(root) = children.root() {
+                    let mut child_iter = root.children();
+                    while let Ok(Some(child)) = child_iter.next() {
+                        if child.entry().tag() == constants::DW_TAG_subrange_type {
+                            let count_val = child
+                                .entry()
+                                .attr_value(constants::DW_AT_count)?
+                                .and_then(|v| dwarf_attr_to_u64(v));
+                            let upper_val = child
+                                .entry()
+                                .attr_value(constants::DW_AT_upper_bound)?
+                                .and_then(|v| dwarf_attr_to_u64(v));
+
+                            if let Some(c) = count_val {
+                                count = c;
+                            } else if let Some(upper) = upper_val {
+                                count = upper + 1;
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                // If the array DIE doesn't have DW_AT_byte_size, compute from
+                // element size × count.
+                let arr_byte_size = if byte_size > 0 {
+                    byte_size as u32
+                } else {
+                    let elem_sz = element_type.byte_size().unwrap_or(0) as u32;
+                    elem_sz.saturating_mul(count as u32)
+                };
+                let display_name = Cow::Owned(format!("{}[{}]", element_name, count));
+                Ok((
+                    display_name,
+                    VariableType::Array {
+                        element_type_name: element_name.into_owned(),
+                        count,
+                        byte_size: arr_byte_size,
+                    },
+                ))
+            }
+
+            constants::DW_TAG_enumeration_type => {
+                let name = type_name_attr.unwrap_or(Cow::Borrowed("<anonymous enum>"));
+                let mut variants = Vec::new();
+
+                let mut children = self.inner.unit.entries_tree(Some(type_offset))?;
+                if let Ok(root) = children.root() {
+                    let mut child_iter = root.children();
+                    while let Ok(Some(child)) = child_iter.next() {
+                        if child.entry().tag() == constants::DW_TAG_enumerator {
+                            let variant_name = child
+                                .entry()
+                                .attr_value(constants::DW_AT_name)?
+                                .and_then(|v| self.inner.string_value(v))
+                                .unwrap_or(Cow::Borrowed("?"))
+                                .into_owned();
+
+                            let variant_value = child
+                                .entry()
+                                .attr_value(constants::DW_AT_const_value)?
+                                .and_then(|v| match v {
+                                    AttributeValue::Sdata(val) => Some(val),
+                                    AttributeValue::Udata(val) => Some(val as i64),
+                                    _ => None,
+                                })
+                                .unwrap_or(0);
+
+                            variants.push((variant_name, variant_value));
+                        }
+                    }
+                }
+
+                Ok((
+                    name.clone(),
+                    VariableType::Enum {
+                        name: name.into_owned(),
+                        byte_size: byte_size as u16,
+                        variants,
+                    },
+                ))
+            }
+
+            // Function pointer / subroutine type
+            constants::DW_TAG_subroutine_type => {
+                let (ret_name, _) = match sub_type_offset {
+                    Some(off) => self.resolve_dwarf_type(off, depth + 1)?,
+                    None => (Cow::Borrowed("void"), VariableType::Unknown { byte_size: 0 }),
+                };
+
+                // Collect parameter types from DW_TAG_formal_parameter children
+                let mut param_names = Vec::new();
+                let mut is_variadic = false;
+                let mut children = self.inner.unit.entries_tree(Some(type_offset))?;
+                if let Ok(root) = children.root() {
+                    let mut child_iter = root.children();
+                    while let Ok(Some(child)) = child_iter.next() {
+                        match child.entry().tag() {
+                            constants::DW_TAG_formal_parameter => {
+                                let param_type_off = child
+                                    .entry()
+                                    .attr_value(constants::DW_AT_type)?
+                                    .and_then(|v| match v {
+                                        AttributeValue::UnitRef(off) => Some(off),
+                                        _ => None,
+                                    });
+                                let pname = match param_type_off {
+                                    Some(off) => self.resolve_dwarf_type(off, depth + 1)?.0.into_owned(),
+                                    None => "?".to_string(),
+                                };
+                                param_names.push(pname);
+                            }
+                            constants::DW_TAG_unspecified_parameters => {
+                                is_variadic = true;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
+                if is_variadic {
+                    param_names.push("...".to_string());
+                }
+                let params_str = param_names.join(", ");
+                let display_name: Cow<'d, str> = Cow::Owned(format!("{}(*)({})", ret_name, params_str));
+                let ptr_size = self.inner.unit.encoding().address_size as u16;
+                Ok((
+                    display_name,
+                    VariableType::Pointer {
+                        pointee_type_name: format!("{}({})", ret_name, params_str),
+                        byte_size: ptr_size,
+                    },
+                ))
+            }
+
+            // C++ pointer-to-member type
+            constants::DW_TAG_ptr_to_member_type => {
+                let member_type_offset = sub_type_offset;
+                let containing_type_offset = entry
+                    .attr_value(constants::DW_AT_containing_type)?
+                    .and_then(|v| match v {
+                        AttributeValue::UnitRef(off) => Some(off),
+                        _ => None,
+                    });
+
+                let (member_name, _) = match member_type_offset {
+                    Some(off) => self.resolve_dwarf_type(off, depth + 1)?,
+                    None => (Cow::Borrowed("?"), VariableType::Unknown { byte_size: 0 }),
+                };
+                let class_name = match containing_type_offset {
+                    Some(off) => self.resolve_dwarf_type(off, depth + 1)?.0.into_owned(),
+                    None => "?".to_string(),
+                };
+
+                let ptr_size = if byte_size > 0 {
+                    byte_size as u16
+                } else {
+                    // Member pointers are typically 2x pointer size (MSVC) or 1x (Itanium ABI)
+                    self.inner.unit.encoding().address_size as u16
+                };
+
+                let display_name = Cow::Owned(format!("{} {}::*", member_name, class_name));
+                Ok((
+                    display_name,
+                    VariableType::Pointer {
+                        pointee_type_name: format!("{} {}::*", member_name, class_name),
+                        byte_size: ptr_size,
+                    },
+                ))
+            }
+
+            // Transparent type modifiers — follow through to the underlying type
+            constants::DW_TAG_typedef
+            | constants::DW_TAG_const_type
+            | constants::DW_TAG_volatile_type
+            | constants::DW_TAG_restrict_type
+            | constants::DW_TAG_atomic_type => {
+                match sub_type_offset {
+                    Some(off) => {
+                        let (underlying_name, underlying_type) =
+                            self.resolve_dwarf_type(off, depth + 1)?;
+                        // For typedefs, prefer the typedef name
+                        let display_name = if tag == constants::DW_TAG_typedef {
+                            type_name_attr.unwrap_or(underlying_name)
+                        } else {
+                            underlying_name
+                        };
+                        Ok((display_name, underlying_type))
+                    }
+                    None => {
+                        // const void, volatile void, etc.
+                        let name = type_name_attr.unwrap_or(Cow::Borrowed("void"));
+                        Ok((name, VariableType::Unknown { byte_size: 0 }))
+                    }
+                }
+            }
+
+            _ => {
+                // Unknown type tag
+                let name = type_name_attr.unwrap_or(Cow::Borrowed("?"));
+                Ok((name, VariableType::Unknown { byte_size: byte_size as u16 }))
+            }
+        }
+    }
+
     /// Collects all functions within this compilation unit.
     fn functions(
         &self,
@@ -1096,6 +1744,19 @@ struct CallLocation {
 }
 
 /// Converts a DWARF language number into our `Language` type.
+/// Convert a DWARF attribute value to a u64, handling all common encodings.
+fn dwarf_attr_to_u64(v: AttributeValue<Slice<'_>>) -> Option<u64> {
+    match v {
+        AttributeValue::Udata(val) => Some(val),
+        AttributeValue::Sdata(val) => Some(val as u64),
+        AttributeValue::Data1(val) => Some(val as u64),
+        AttributeValue::Data2(val) => Some(val as u64),
+        AttributeValue::Data4(val) => Some(val as u64),
+        AttributeValue::Data8(val) => Some(val),
+        _ => None,
+    }
+}
+
 fn language_from_dwarf(language: gimli::DwLang) -> Language {
     match language {
         constants::DW_LANG_C => Language::C,

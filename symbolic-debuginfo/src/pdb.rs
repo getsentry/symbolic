@@ -11,8 +11,9 @@ use elsa::FrozenMap;
 use parking_lot::RwLock;
 use pdb_addr2line::pdb::{
     AddressMap, FallibleIterator, ImageSectionHeader, InlineSiteSymbol, LineProgram, MachineType,
-    Module, ModuleInfo, PdbInternalSectionOffset, ProcedureSymbol, RawString, SeparatedCodeSymbol,
-    SymbolData, TypeIndex,
+    Module, ModuleInfo, PdbInternalSectionOffset, ProcedureSymbol, RawString,
+    RegisterRelativeSymbol, RegisterVariableSymbol, SeparatedCodeSymbol, SymbolData, TypeData,
+    TypeFinder, TypeIndex,
 };
 use pdb_addr2line::ModuleProvider;
 use smallvec::SmallVec;
@@ -561,6 +562,8 @@ struct PdbDebugInfo<'d> {
     string_table: Option<&'d pdb::StringTable<'d>>,
     /// Type formatter for function name strings.
     type_formatter: pdb_addr2line::TypeFormatter<'d, 'd>,
+    /// Type finder for resolving complex type indices to their definitions.
+    type_finder: TypeFinder<'d>,
 }
 
 impl<'d> PdbDebugInfo<'d> {
@@ -573,6 +576,14 @@ impl<'d> PdbDebugInfo<'d> {
         let address_map = p.address_map()?;
 
         drop(p);
+
+        // Build the type finder by iterating through all type records.
+        // This populates an index that allows O(1) lookup of any type by TypeIndex.
+        let mut type_finder = streams.type_info.finder();
+        let mut type_iter = streams.type_info.iter();
+        while type_iter.next()?.is_some() {
+            type_finder.update(&type_iter);
+        }
 
         Ok(PdbDebugInfo {
             address_map,
@@ -587,6 +598,7 @@ impl<'d> PdbDebugInfo<'d> {
                 streams.string_table.as_ref(),
                 Default::default(),
             )?,
+            type_finder,
         })
     }
 
@@ -831,6 +843,7 @@ impl<'s> Unit<'s> {
             lines,
             inlinees: Vec::new(),
             inline: false,
+            variables: Vec::new(),
         }))
     }
 
@@ -898,7 +911,560 @@ impl<'s> Unit<'s> {
             lines,
             inlinees: Vec::new(),
             inline: true,
+            variables: Vec::new(),
         }))
+    }
+
+    /// Creates a [`Variable`] from an `S_REGREL32` symbol (register-relative, e.g. stack variable).
+    fn make_regrel_variable(&self, regrel: &RegisterRelativeSymbol<'s>) -> Option<Variable<'s>> {
+        let name = regrel.name.to_string();
+        let name_str = name.to_string();
+        if name_str.is_empty() {
+            return None;
+        }
+        let (type_name, type_info) = self.resolve_pdb_type(regrel.type_index);
+        Some(Variable {
+            name: Cow::Owned(name_str),
+            type_name,
+            type_info,
+            is_parameter: false,
+            location: VariableLocation::RegisterRelative {
+                register: regrel.register.0,
+                offset: regrel.offset as i64,
+            },
+            scope: None,
+        })
+    }
+
+    /// Creates a [`Variable`] from an `S_REGISTER` symbol (variable in a CPU register).
+    fn make_register_variable(
+        &self,
+        regvar: &RegisterVariableSymbol<'s>,
+    ) -> Option<Variable<'s>> {
+        let name = regvar.name.to_string();
+        let name_str = name.to_string();
+        if name_str.is_empty() {
+            return None;
+        }
+        let (type_name, type_info) = self.resolve_pdb_type(regvar.type_index);
+        Some(Variable {
+            name: Cow::Owned(name_str),
+            type_name,
+            type_info,
+            is_parameter: false,
+            location: VariableLocation::Register(regvar.register.0),
+            scope: None,
+        })
+    }
+
+    /// Creates a [`Variable`] from an `S_LOCAL` symbol (modern local variable record).
+    ///
+    /// `S_LOCAL` symbols are followed by `S_DEFRANGE_*` records that describe where the
+    /// variable lives. Since the `pdb` crate (v0.8) does not expose DefRange records as
+    /// parsed `SymbolData` variants, we mark the location as [`VariableLocation::OptimizedOut`]
+    /// when `flags.isoptimizedout` is set, and as `OptimizedOut` otherwise (to be improved
+    /// when DefRange parsing is available).
+    fn make_local_variable(&self, local: &pdb::LocalSymbol<'s>) -> Variable<'s> {
+        let name = local.name.to_string();
+        let (type_name, type_info) = self.resolve_pdb_type(local.type_index);
+        let location = if local.flags.isoptimizedout {
+            VariableLocation::OptimizedOut
+        } else {
+            // Without DefRange parsing, we cannot determine the exact location.
+            // Mark as OptimizedOut for now; Phase 2 can improve this.
+            VariableLocation::OptimizedOut
+        };
+        Variable {
+            name: Cow::Owned(name.to_string()),
+            type_name,
+            type_info,
+            is_parameter: local.flags.isparam,
+            location,
+            scope: None,
+        }
+    }
+
+    /// Resolves a PDB [`TypeIndex`] to a display name and [`VariableType`].
+    ///
+    /// Handles PDB primitive type indices (< 0x1000) directly by decoding the kind
+    /// and indirection bits. Complex types are resolved via the [`TypeFinder`] to
+    /// extract struct fields, array dimensions, enum variants, etc.
+    fn resolve_pdb_type(&self, type_index: TypeIndex) -> (Cow<'s, str>, VariableType) {
+        self.resolve_pdb_type_depth(type_index, 0)
+    }
+
+    /// Inner recursive type resolver with depth tracking to prevent infinite recursion.
+    fn resolve_pdb_type_depth(
+        &self,
+        type_index: TypeIndex,
+        depth: usize,
+    ) -> (Cow<'s, str>, VariableType) {
+        const MAX_DEPTH: usize = 5;
+        const MAX_STRUCT_FIELDS: usize = 32;
+
+        let raw = type_index.0;
+        if raw < 0x1000 {
+            return Self::resolve_pdb_primitive(raw);
+        }
+
+        if depth > MAX_DEPTH {
+            return (Cow::Borrowed("..."), VariableType::Unknown { byte_size: 0 });
+        }
+
+        // Try to find and parse the type record
+        let type_data = match self.debug_info.type_finder.find(type_index) {
+            Ok(item) => match item.parse() {
+                Ok(data) => data,
+                Err(_) => return self.resolve_pdb_type_fallback(type_index),
+            },
+            Err(_) => return self.resolve_pdb_type_fallback(type_index),
+        };
+
+        match type_data {
+            // Struct, class, or interface
+            TypeData::Class(class) => {
+                let name = class.name.to_string().to_string();
+
+                // Forward references have no fields; resolve via unique_name if possible
+                if class.properties.forward_reference() {
+                    return (
+                        Cow::Owned(name.clone()),
+                        VariableType::Struct {
+                            name,
+                            byte_size: class.size as u32,
+                            fields: Vec::new(),
+                        },
+                    );
+                }
+
+                let mut fields = Vec::new();
+                if let Some(field_list_idx) = class.fields {
+                    self.collect_pdb_fields(field_list_idx, &mut fields, depth, MAX_STRUCT_FIELDS);
+                }
+
+                (
+                    Cow::Owned(name.clone()),
+                    VariableType::Struct {
+                        name,
+                        byte_size: class.size as u32,
+                        fields,
+                    },
+                )
+            }
+
+            // Union type
+            TypeData::Union(union) => {
+                let name = union.name.to_string().to_string();
+
+                if union.properties.forward_reference() {
+                    return (
+                        Cow::Owned(name.clone()),
+                        VariableType::Struct {
+                            name,
+                            byte_size: union.size as u32,
+                            fields: Vec::new(),
+                        },
+                    );
+                }
+
+                let mut fields = Vec::new();
+                self.collect_pdb_fields(union.fields, &mut fields, depth, MAX_STRUCT_FIELDS);
+
+                (
+                    Cow::Owned(name.clone()),
+                    VariableType::Struct {
+                        name,
+                        byte_size: union.size as u32,
+                        fields,
+                    },
+                )
+            }
+
+            // Array type
+            TypeData::Array(array) => {
+                let (element_name, element_type) =
+                    self.resolve_pdb_type_depth(array.element_type, depth + 1);
+                let elem_size = element_type.byte_size().unwrap_or(1).max(1);
+                // Dimensions: first dimension is total byte size, compute element count
+                let total_size = array.dimensions.first().copied().unwrap_or(0) as u64;
+                let count = total_size / elem_size;
+                let display_name = format!("{}[{}]", element_name, count);
+
+                (
+                    Cow::Owned(display_name),
+                    VariableType::Array {
+                        element_type_name: element_name.into_owned(),
+                        count,
+                        byte_size: total_size as u32,
+                    },
+                )
+            }
+
+            // Enumeration type
+            TypeData::Enumeration(enumeration) => {
+                let name = enumeration.name.to_string().to_string();
+                let (_, underlying) =
+                    self.resolve_pdb_type_depth(enumeration.underlying_type, depth + 1);
+                let byte_size = underlying.byte_size().unwrap_or(4) as u16;
+
+                // Collect enum variants from the field list
+                let mut variants = Vec::new();
+                self.collect_pdb_enum_variants(enumeration.fields, &mut variants);
+
+                (
+                    Cow::Owned(name.clone()),
+                    VariableType::Enum {
+                        name,
+                        byte_size,
+                        variants,
+                    },
+                )
+            }
+
+            // Pointer type
+            TypeData::Pointer(pointer) => {
+                let (pointee_name, _) =
+                    self.resolve_pdb_type_depth(pointer.underlying_type, depth + 1);
+                let ptr_size = pointer.attributes.size() as u16;
+
+                let display_name = if pointer.containing_class.is_some() {
+                    // Pointer-to-member
+                    let class_name = pointer
+                        .containing_class
+                        .map(|ci| self.resolve_pdb_type_depth(ci, depth + 1).0.into_owned())
+                        .unwrap_or_else(|| "?".to_string());
+                    format!("{} {}::*", pointee_name, class_name)
+                } else if pointer.attributes.pointer_mode() == pdb::PointerMode::LValueReference {
+                    format!("{}&", pointee_name)
+                } else if pointer.attributes.pointer_mode() == pdb::PointerMode::RValueReference {
+                    format!("{}&&", pointee_name)
+                } else {
+                    format!("{}*", pointee_name)
+                };
+
+                (
+                    Cow::Owned(display_name),
+                    VariableType::Pointer {
+                        pointee_type_name: pointee_name.into_owned(),
+                        byte_size: ptr_size,
+                    },
+                )
+            }
+
+            // Modifier (const, volatile, unaligned)
+            TypeData::Modifier(modifier) => {
+                self.resolve_pdb_type_depth(modifier.underlying_type, depth + 1)
+            }
+
+            // Procedure (function pointer)
+            TypeData::Procedure(proc) => {
+                let ret_name = proc
+                    .return_type
+                    .map(|ti| self.resolve_pdb_type_depth(ti, depth + 1).0.into_owned())
+                    .unwrap_or_else(|| "void".to_string());
+
+                let params = self.collect_pdb_argument_names(proc.argument_list, depth);
+                let display_name = format!("{}(*)({})", ret_name, params.join(", "));
+                let ptr_size = self
+                    .debug_info
+                    .type_formatter
+                    .get_type_size(self.module_index, type_index) as u16;
+
+                (
+                    Cow::Owned(display_name),
+                    VariableType::Pointer {
+                        pointee_type_name: format!("{}({})", ret_name, params.join(", ")),
+                        byte_size: if ptr_size > 0 { ptr_size } else { 8 },
+                    },
+                )
+            }
+
+            // Member function
+            TypeData::MemberFunction(mfn) => {
+                let ret_name = self
+                    .resolve_pdb_type_depth(mfn.return_type, depth + 1)
+                    .0
+                    .into_owned();
+                let class_name = self
+                    .resolve_pdb_type_depth(mfn.class_type, depth + 1)
+                    .0
+                    .into_owned();
+                let params = self.collect_pdb_argument_names(mfn.argument_list, depth);
+                let display_name =
+                    format!("{} ({}::*)({})", ret_name, class_name, params.join(", "));
+
+                let ptr_size = self
+                    .debug_info
+                    .type_formatter
+                    .get_type_size(self.module_index, type_index) as u16;
+
+                (
+                    Cow::Owned(display_name),
+                    VariableType::Pointer {
+                        pointee_type_name: format!(
+                            "{} {}::*({})",
+                            ret_name,
+                            class_name,
+                            params.join(", ")
+                        ),
+                        byte_size: if ptr_size > 0 { ptr_size } else { 8 },
+                    },
+                )
+            }
+
+            // Bitfield — resolve the underlying type
+            TypeData::Bitfield(bitfield) => {
+                self.resolve_pdb_type_depth(bitfield.underlying_type, depth + 1)
+            }
+
+            // Anything else — fall back to formatter
+            _ => self.resolve_pdb_type_fallback(type_index),
+        }
+    }
+
+    /// Fallback for types we can't fully resolve: use the type formatter for size.
+    fn resolve_pdb_type_fallback(&self, type_index: TypeIndex) -> (Cow<'s, str>, VariableType) {
+        let byte_size = self
+            .debug_info
+            .type_formatter
+            .get_type_size(self.module_index, type_index);
+
+        // Try to get at least the name from TypeData
+        let name = self
+            .debug_info
+            .type_finder
+            .find(type_index)
+            .ok()
+            .and_then(|item| item.parse().ok())
+            .and_then(|data: TypeData<'_>| data.name().map(|n| n.to_string().to_string()));
+
+        (
+            name.map(Cow::Owned).unwrap_or(Cow::Borrowed("?")),
+            VariableType::Unknown {
+                byte_size: byte_size as u16,
+            },
+        )
+    }
+
+    /// Collects struct/class fields from a PDB FieldList type record.
+    fn collect_pdb_fields(
+        &self,
+        field_list_idx: TypeIndex,
+        fields: &mut Vec<StructField>,
+        depth: usize,
+        max_fields: usize,
+    ) {
+        let field_list = match self.debug_info.type_finder.find(field_list_idx) {
+            Ok(item) => match item.parse() {
+                Ok(TypeData::FieldList(fl)) => fl,
+                _ => return,
+            },
+            Err(_) => return,
+        };
+
+        for field_data in &field_list.fields {
+            if fields.len() >= max_fields {
+                break;
+            }
+            match field_data {
+                TypeData::Member(member) => {
+                    let field_name = member.name.to_string().to_string();
+                    let (field_type_name, field_type_info) =
+                        self.resolve_pdb_type_depth(member.field_type, depth + 1);
+                    let field_byte_size = field_type_info.byte_size().unwrap_or(0);
+                    fields.push(StructField {
+                        name: field_name,
+                        type_name: field_type_name.into_owned(),
+                        type_info: field_type_info,
+                        offset: member.offset as u64,
+                        byte_size: field_byte_size,
+                    });
+                }
+                TypeData::BaseClass(base) => {
+                    let (base_type_name, base_type_info) =
+                        self.resolve_pdb_type_depth(base.base_class, depth + 1);
+                    let base_byte_size = base_type_info.byte_size().unwrap_or(0);
+                    fields.push(StructField {
+                        name: format!("__base_{}", base_type_name),
+                        type_name: base_type_name.into_owned(),
+                        type_info: base_type_info,
+                        offset: base.offset as u64,
+                        byte_size: base_byte_size,
+                    });
+                }
+                TypeData::StaticMember(_) | TypeData::Method(_) | TypeData::OverloadedMethod(_) => {
+                    // Skip static members and methods — they're not instance fields
+                }
+                _ => {}
+            }
+        }
+
+        // Handle continuation records
+        if let Some(continuation) = field_list.continuation {
+            if fields.len() < max_fields {
+                self.collect_pdb_fields(continuation, fields, depth, max_fields);
+            }
+        }
+    }
+
+    /// Collects enum variant names and values from a PDB FieldList.
+    fn collect_pdb_enum_variants(
+        &self,
+        field_list_idx: TypeIndex,
+        variants: &mut Vec<(String, i64)>,
+    ) {
+        let field_list = match self.debug_info.type_finder.find(field_list_idx) {
+            Ok(item) => match item.parse() {
+                Ok(TypeData::FieldList(fl)) => fl,
+                _ => return,
+            },
+            Err(_) => return,
+        };
+
+        for field_data in &field_list.fields {
+            if let TypeData::Enumerate(enumerate) = field_data {
+                let name = enumerate.name.to_string().to_string();
+                let value = match enumerate.value {
+                    pdb::Variant::U8(v) => v as i64,
+                    pdb::Variant::U16(v) => v as i64,
+                    pdb::Variant::U32(v) => v as i64,
+                    pdb::Variant::U64(v) => v as i64,
+                    pdb::Variant::I8(v) => v as i64,
+                    pdb::Variant::I16(v) => v as i64,
+                    pdb::Variant::I32(v) => v as i64,
+                    pdb::Variant::I64(v) => v,
+                };
+                variants.push((name, value));
+            }
+        }
+
+        // Handle continuation records
+        if let Some(continuation) = field_list.continuation {
+            self.collect_pdb_enum_variants(continuation, variants);
+        }
+    }
+
+    /// Collects argument type names from a PDB ArgumentList record.
+    fn collect_pdb_argument_names(&self, arg_list_idx: TypeIndex, depth: usize) -> Vec<String> {
+        let arg_list = match self.debug_info.type_finder.find(arg_list_idx) {
+            Ok(item) => match item.parse() {
+                Ok(TypeData::ArgumentList(al)) => al,
+                _ => return Vec::new(),
+            },
+            Err(_) => return Vec::new(),
+        };
+
+        arg_list
+            .arguments
+            .iter()
+            .map(|&ti| self.resolve_pdb_type_depth(ti, depth + 1).0.into_owned())
+            .collect()
+    }
+
+    /// Decodes a PDB primitive type index (< 0x1000) into a name and [`VariableType`].
+    ///
+    /// PDB primitive type indices encode the base type in bits [0:7] and the
+    /// pointer indirection mode in bits [8:11].
+    fn resolve_pdb_primitive(raw: u32) -> (Cow<'s, str>, VariableType) {
+        let kind = raw & 0xFF;
+        let indirection = (raw >> 8) & 0xF;
+
+        // If there's indirection, this is a pointer to a primitive type.
+        if indirection != 0 {
+            let ptr_size: u16 = match indirection {
+                1 => 2,  // Near16
+                2 | 3 => 4, // Far16, Huge16
+                4 | 5 => 4, // Near32, Far32
+                6 => 8,  // Near64
+                _ => 8,
+            };
+            let (pointee_name, _) = Self::resolve_pdb_primitive(kind);
+            return (
+                Cow::Owned(format!("{}*", pointee_name)),
+                VariableType::Pointer {
+                    pointee_type_name: pointee_name.into_owned(),
+                    byte_size: ptr_size,
+                },
+            );
+        }
+
+        match kind {
+            // Void / NoType
+            0x00 | 0x03 => (
+                Cow::Borrowed("void"),
+                VariableType::Unknown { byte_size: 0 },
+            ),
+            // Signed integers
+            0x10 => (Cow::Borrowed("char"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::Char, byte_size: 1,
+            }),
+            0x68 => (Cow::Borrowed("int8_t"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::SignedInt, byte_size: 1,
+            }),
+            0x11 | 0x72 => (Cow::Borrowed("short"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::SignedInt, byte_size: 2,
+            }),
+            0x12 => (Cow::Borrowed("long"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::SignedInt, byte_size: 4,
+            }),
+            0x74 => (Cow::Borrowed("int"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::SignedInt, byte_size: 4,
+            }),
+            0x13 | 0x76 => (Cow::Borrowed("int64_t"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::SignedInt, byte_size: 8,
+            }),
+            // Unsigned integers
+            0x20 => (Cow::Borrowed("unsigned char"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::UnsignedChar, byte_size: 1,
+            }),
+            0x69 => (Cow::Borrowed("uint8_t"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::UnsignedInt, byte_size: 1,
+            }),
+            0x21 | 0x73 => (Cow::Borrowed("unsigned short"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::UnsignedInt, byte_size: 2,
+            }),
+            0x22 => (Cow::Borrowed("unsigned long"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::UnsignedInt, byte_size: 4,
+            }),
+            0x75 => (Cow::Borrowed("unsigned int"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::UnsignedInt, byte_size: 4,
+            }),
+            0x23 | 0x77 => (Cow::Borrowed("uint64_t"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::UnsignedInt, byte_size: 8,
+            }),
+            // Wide char
+            0x71 => (Cow::Borrowed("wchar_t"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::Char, byte_size: 2,
+            }),
+            0x7a => (Cow::Borrowed("char16_t"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::Char, byte_size: 2,
+            }),
+            0x7b => (Cow::Borrowed("char32_t"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::Char, byte_size: 4,
+            }),
+            // Floats
+            0x40 => (Cow::Borrowed("float"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::Float, byte_size: 4,
+            }),
+            0x41 => (Cow::Borrowed("double"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::Float, byte_size: 8,
+            }),
+            0x42 => (Cow::Borrowed("long double"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::Float, byte_size: 10,
+            }),
+            // Booleans
+            0x30 => (Cow::Borrowed("bool"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::Boolean, byte_size: 1,
+            }),
+            // HRESULT
+            0x08 => (Cow::Borrowed("HRESULT"), VariableType::Primitive {
+                encoding: PrimitiveEncoding::SignedInt, byte_size: 4,
+            }),
+            _ => (
+                Cow::Borrowed("?"),
+                VariableType::Unknown { byte_size: 0 },
+            ),
+        }
     }
 
     fn functions(&self) -> Result<Vec<Function<'s>>, PdbError> {
@@ -989,6 +1555,24 @@ impl<'s> Unit<'s> {
                     } else {
                         None
                     }
+                }
+                // Local variable symbols: extract and attach to the current function.
+                Ok(SymbolData::RegisterRelative(ref regrel)) => {
+                    if let Some(var) = self.make_regrel_variable(regrel) {
+                        stack.add_variable_to_top(var);
+                    }
+                    continue;
+                }
+                Ok(SymbolData::RegisterVariable(ref regvar)) => {
+                    if let Some(var) = self.make_register_variable(regvar) {
+                        stack.add_variable_to_top(var);
+                    }
+                    continue;
+                }
+                Ok(SymbolData::Local(ref local)) => {
+                    let var = self.make_local_variable(local);
+                    stack.add_variable_to_top(var);
+                    continue;
                 }
                 // We need to ignore errors here since the PDB crate does not yet implement all
                 // symbol types. Instead of erroring too often, it's better to swallow these.

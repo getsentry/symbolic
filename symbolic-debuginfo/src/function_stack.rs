@@ -1,4 +1,4 @@
-use crate::base::Function;
+use crate::base::{Function, Variable};
 
 /// A stack for assembling function trees from lists of nested functions.
 pub struct FunctionStack<'a>(Vec<(isize, Function<'a>)>);
@@ -14,6 +14,18 @@ impl<'a> FunctionStack<'a> {
     /// This assumes that `flush` has been called previously.
     pub fn push(&mut self, depth: isize, function: Function<'a>) {
         self.0.push((depth, function));
+    }
+
+    /// Adds a variable to the most recently pushed function on the stack.
+    ///
+    /// Returns `false` if the stack is empty (no function to attach to).
+    pub fn add_variable_to_top(&mut self, var: Variable<'a>) -> bool {
+        if let Some((_, func)) = self.0.last_mut() {
+            func.variables.push(var);
+            true
+        } else {
+            false
+        }
     }
 
     /// Flushes all functions up to the given depth into the destination.

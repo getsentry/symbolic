@@ -985,3 +985,113 @@ fn test_cross_language_lto_inlinee_language() -> Result<(), Error> {
 
     Ok(())
 }
+
+#[test]
+fn test_elf_variables() -> Result<(), Error> {
+    let view = ByteView::open(fixture("linux/crash.debug"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session()?;
+    let functions: Vec<_> = session.functions().filter_map(|f| f.ok()).collect();
+
+    // Find functions that have variables extracted.
+    let funcs_with_vars: Vec<_> = functions
+        .iter()
+        .filter(|f| !f.variables.is_empty())
+        .collect();
+
+    // The crash.debug fixture should have at least some functions with variables.
+    assert!(
+        !funcs_with_vars.is_empty(),
+        "expected at least one function with variables in crash.debug, \
+         got {} total functions but none had variables",
+        functions.len()
+    );
+
+    // Verify variable structure: each extracted variable should have a name.
+    for func in &funcs_with_vars {
+        for var in &func.variables {
+            assert!(!var.name.is_empty(), "variable name should not be empty");
+        }
+    }
+
+    // Spot-check: main() should have parameters argc and argv with resolved types.
+    let main_fn = functions
+        .iter()
+        .find(|f| f.name.as_str() == "main")
+        .expect("main function should exist");
+    assert!(
+        !main_fn.variables.is_empty(),
+        "main() should have variables"
+    );
+    let argc = main_fn
+        .variables
+        .iter()
+        .find(|v| v.name == "argc")
+        .expect("main() should have an 'argc' variable");
+    assert!(argc.is_parameter, "argc should be a parameter");
+    assert_eq!(argc.type_name, "int");
+
+    let argv = main_fn
+        .variables
+        .iter()
+        .find(|v| v.name == "argv")
+        .expect("main() should have an 'argv' variable");
+    assert!(argv.is_parameter, "argv should be a parameter");
+    assert_eq!(argv.type_name, "char**");
+
+    Ok(())
+}
+
+#[test]
+fn test_pdb_variables() -> Result<(), Error> {
+    let view = ByteView::open(fixture("windows/crash.pdb"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session()?;
+    let functions: Vec<_> = session.functions().filter_map(|f| f.ok()).collect();
+
+    // Find functions that have variables extracted.
+    let funcs_with_vars: Vec<_> = functions
+        .iter()
+        .filter(|f| !f.variables.is_empty())
+        .collect();
+
+    // The crash.pdb fixture should have at least some functions with variables.
+    assert!(
+        !funcs_with_vars.is_empty(),
+        "expected at least one function with variables in crash.pdb, \
+         got {} total functions but none had variables",
+        functions.len()
+    );
+
+    // Verify variable structure: each extracted variable should have a name.
+    for func in &funcs_with_vars {
+        for var in &func.variables {
+            assert!(!var.name.is_empty(), "variable name should not be empty");
+        }
+    }
+
+    // Spot-check: verify a function has variables with register-relative locations
+    // (from S_REGREL32 symbols).
+    let has_regrel = funcs_with_vars.iter().any(|f| {
+        f.variables.iter().any(|v| {
+            matches!(v.location, symbolic_debuginfo::VariableLocation::RegisterRelative { .. })
+        })
+    });
+    assert!(
+        has_regrel,
+        "at least one PDB variable should have a RegisterRelative location"
+    );
+
+    // Spot-check: verify parameters are identified from S_LOCAL flags.
+    let has_params = funcs_with_vars
+        .iter()
+        .any(|f| f.variables.iter().any(|v| v.is_parameter));
+    assert!(
+        has_params,
+        "at least one PDB variable should be identified as a parameter"
+    );
+
+    Ok(())
+}

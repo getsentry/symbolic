@@ -3,7 +3,7 @@
 
 use std::{cmp::Reverse, collections::BinaryHeap};
 
-use crate::base::{FileInfo, Function, LineInfo};
+use crate::base::{FileInfo, Function, LineInfo, Variable};
 use symbolic_common::Name;
 
 /// Allows creating a [`Function`] from unordered line and inlinee records.
@@ -29,6 +29,8 @@ pub struct FunctionBuilder<'s> {
     /// The lines, in any order. They will be sorted in `finish()`. These record specify locations
     /// at the innermost level of the inline stack at the line record's address.
     lines: Vec<LineInfo<'s>>,
+    /// Local variables and function parameters.
+    variables: Vec<Variable<'s>>,
 }
 
 impl<'s> FunctionBuilder<'s> {
@@ -41,7 +43,13 @@ impl<'s> FunctionBuilder<'s> {
             size,
             inlinees: BinaryHeap::new(),
             lines: Vec::new(),
+            variables: Vec::new(),
         }
+    }
+
+    /// Add a local variable or parameter to this function.
+    pub fn add_variable(&mut self, variable: Variable<'s>) {
+        self.variables.push(variable);
     }
 
     /// Add an inlinee record. This method can be called in any order.
@@ -109,6 +117,7 @@ impl<'s> FunctionBuilder<'s> {
             size,
             inlinees,
             mut lines,
+            variables,
         } = self;
 
         let inlinees = ensure_proper_nesting(inlinees);
@@ -124,6 +133,7 @@ impl<'s> FunctionBuilder<'s> {
             lines: Vec::new(),
             inlinees: Vec::new(),
             inline: false,
+            variables,
         };
         let outer_function_end = address + size;
         let mut stack = FunctionBuilderStack::new(outer_function);
@@ -165,6 +175,7 @@ impl<'s> FunctionBuilder<'s> {
                     lines: Vec::new(),
                     inlinees: Vec::new(),
                     inline: true,
+                    variables: Vec::new(),
                 });
                 next_inlinee = inlinee_iter.next();
                 continue;
