@@ -2,7 +2,12 @@
 
 ## Unreleased
 
-### Dependencies
+**Features**
+
+- Extract srcsrv data from PDB for file mapping by @mujajica and @loewenheim.
+  This includes a bump of the SymCache format to version 9. ([#943](https://github.com/getsentry/symbolic/pull/943))
+  
+**Dependencies**
 
 - Update several publicly exposed dependencies:
   - `gimli`: 0.32.3 -> 0.33.0
@@ -13,7 +18,7 @@
 
 ## 12.18.3
 
-### Internal Changes 🔧
+**Internal Changes** 🔧
 
 - (js) Allow magic comments to appear anywhere by @Dav1dde in [#974](https://github.com/getsentry/symbolic/pull/974)
 
