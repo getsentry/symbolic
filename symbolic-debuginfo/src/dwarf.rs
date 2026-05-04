@@ -55,11 +55,11 @@ type RangeLists<'a> = gimli::read::RangeLists<Slice<'a>>;
 type Unit<'a> = gimli::read::Unit<Slice<'a>>;
 type DwarfInner<'a> = gimli::read::Dwarf<Slice<'a>>;
 
-type Die<'d, 'u> = gimli::read::DebuggingInformationEntry<'u, 'u, Slice<'d>, usize>;
+type Die<'d, 'u> = gimli::read::DebuggingInformationEntry<Slice<'d>, usize>;
 type Attribute<'a> = gimli::read::Attribute<Slice<'a>>;
 type UnitOffset = gimli::read::UnitOffset<usize>;
 type DebugInfoOffset = gimli::DebugInfoOffset<usize>;
-type EntriesRaw<'d, 'u> = gimli::EntriesRaw<'u, 'u, Slice<'d>>;
+type EntriesRaw<'d, 'u> = gimli::EntriesRaw<'u, Slice<'d>>;
 
 type UnitHeader<'a> = gimli::read::UnitHeader<Slice<'a>>;
 type IncompleteLineNumberProgram<'a> = gimli::read::IncompleteLineProgram<Slice<'a>>;
@@ -416,11 +416,10 @@ impl<'d> UnitRef<'d, '_> {
     /// Returns the source language declared in the root DIE of this compilation unit.
     fn language(&self) -> Result<Option<Language>, DwarfError> {
         let mut entries = self.unit.entries();
-        let Some((_, root_entry)) = entries.next_dfs()? else {
+        let Some(root_entry) = entries.next_dfs()? else {
             return Ok(None);
         };
-        let Some(AttributeValue::Language(lang)) =
-            root_entry.attr_value(constants::DW_AT_language)?
+        let Some(AttributeValue::Language(lang)) = root_entry.attr_value(constants::DW_AT_language)
         else {
             return Ok(None);
         };
@@ -442,8 +441,8 @@ impl<'d> UnitRef<'d, '_> {
         if depth == 0 {
             return Ok(None);
         }
-        if let Ok(Some(attr)) = entry.attr(constants::DW_AT_abstract_origin) {
-            return self.resolve_reference(attr, |ref_unit, ref_entry| {
+        if let Some(attr) = entry.attr(constants::DW_AT_abstract_origin) {
+            return self.resolve_reference(*attr, |ref_unit, ref_entry| {
                 // Recurse first to follow deeper chains.
                 if let Some(lang) = ref_unit.resolve_entry_language(ref_entry, depth - 1)? {
                     return Ok(Some(lang));
@@ -467,11 +466,10 @@ impl<'d> UnitRef<'d, '_> {
         bcsymbolmap: Option<&'d BcSymbolMap<'d>>,
         prior_offset: Option<UnitOffset>,
     ) -> Result<Option<Name<'d>>, DwarfError> {
-        let mut attrs = entry.attrs();
         let mut fallback_name = None;
         let mut reference_target = None;
 
-        while let Some(attr) = attrs.next()? {
+        for attr in entry.attrs() {
             match attr.name() {
                 // Prioritize these. If we get them, take them.
                 constants::DW_AT_linkage_name | constants::DW_AT_MIPS_linkage_name => {
@@ -498,7 +496,7 @@ impl<'d> UnitRef<'d, '_> {
         }
 
         if let Some(attr) = reference_target {
-            return self.resolve_reference(attr, |ref_unit, ref_entry| {
+            return self.resolve_reference(*attr, |ref_unit, ref_entry| {
                 // Self-references may have a layer of indirection. Avoid infinite recursion
                 // in this scenario.
                 if let Some(prior) = prior_offset {
@@ -544,7 +542,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         let inner = UnitRef { info, unit };
         let mut entries = unit.entries();
         let entry = match entries.next_dfs()? {
-            Some((_, entry)) => entry,
+            Some(entry) => entry,
             None => return Err(gimli::read::Error::MissingUnitDie.into()),
         };
 
@@ -554,12 +552,12 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         // range information has not been written yet and all units look like this.
         if info.kind != ObjectKind::Relocatable
             && unit.low_pc == 0
-            && entry.attr(constants::DW_AT_ranges)?.is_none()
+            && entry.attr(constants::DW_AT_ranges).is_none()
         {
             return Ok(None);
         }
 
-        let language = match entry.attr_value(constants::DW_AT_language)? {
+        let language = match entry.attr_value(constants::DW_AT_language) {
             Some(AttributeValue::Language(lang)) => language_from_dwarf(lang),
             _ => Language::Unknown,
         };
@@ -573,7 +571,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
         // reference into the debug_str section. We use `string_value`
         // to resolve it correctly in either case.
         let producer = entry
-            .attr_value(constants::DW_AT_producer)?
+            .attr_value(constants::DW_AT_producer)
             .and_then(|av| av.string_value(&info.inner.debug_str));
 
         // Trust the symbol table more to contain accurate mangled names. However, since Dart's name
@@ -626,7 +624,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     AttributeValue::DebugAddrIndex(index) => {
                         low_pc = Some(self.inner.info.address(self.inner.unit, index)?)
                     }
-                    _ => return Err(GimliError::UnsupportedAttributeForm.into()),
+                    _ => return Err(GimliError::UnsupportedAttributeForm(attr.form()).into()),
                 },
                 constants::DW_AT_high_pc => match attr.value() {
                     AttributeValue::Addr(addr) => high_pc = Some(addr),
@@ -634,15 +632,15 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                         high_pc = Some(self.inner.info.address(self.inner.unit, index)?)
                     }
                     AttributeValue::Udata(size) => high_pc_rel = Some(size),
-                    _ => return Err(GimliError::UnsupportedAttributeForm.into()),
+                    _ => return Err(GimliError::UnsupportedAttributeForm(attr.form()).into()),
                 },
                 constants::DW_AT_call_line => match attr.value() {
                     AttributeValue::Udata(line) => call_line = Some(line),
-                    _ => return Err(GimliError::UnsupportedAttributeForm.into()),
+                    _ => return Err(GimliError::UnsupportedAttributeForm(attr.form()).into()),
                 },
                 constants::DW_AT_call_file => match attr.value() {
                     AttributeValue::FileIndex(file) => call_file = Some(file),
-                    _ => return Err(GimliError::UnsupportedAttributeForm.into()),
+                    _ => return Err(GimliError::UnsupportedAttributeForm(attr.form()).into()),
                 },
                 constants::DW_AT_ranges
                 | constants::DW_AT_rnglists_base
@@ -656,7 +654,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                                 // are triggered by an inverted range (going high to low).
                                 // See a few more examples of broken ranges here:
                                 // https://github.com/emscripten-core/emscripten/issues/15552
-                                Err(gimli::Error::InvalidAddressRange) => None,
+                                Err(gimli::Error::InvalidCfiSetLoc(_)) => None,
                                 Err(err) => {
                                     return Err(err.into());
                                 }
@@ -1175,6 +1173,7 @@ struct DwarfSections<'data> {
     debug_info: DwarfSectionData<'data, gimli::read::DebugInfo<Slice<'data>>>,
     debug_line: DwarfSectionData<'data, gimli::read::DebugLine<Slice<'data>>>,
     debug_line_str: DwarfSectionData<'data, gimli::read::DebugLineStr<Slice<'data>>>,
+    debug_names: DwarfSectionData<'data, gimli::read::DebugNames<Slice<'data>>>,
     debug_str: DwarfSectionData<'data, gimli::read::DebugStr<Slice<'data>>>,
     debug_str_offsets: DwarfSectionData<'data, gimli::read::DebugStrOffsets<Slice<'data>>>,
     debug_ranges: DwarfSectionData<'data, gimli::read::DebugRanges<Slice<'data>>>,
@@ -1196,6 +1195,7 @@ impl<'data> DwarfSections<'data> {
             debug_info: DwarfSectionData::load(dwarf),
             debug_line: DwarfSectionData::load(dwarf),
             debug_line_str: DwarfSectionData::load(dwarf),
+            debug_names: DwarfSectionData::load(dwarf),
             debug_str: DwarfSectionData::load(dwarf),
             debug_str_offsets: DwarfSectionData::load(dwarf),
             debug_ranges: DwarfSectionData::load(dwarf),
@@ -1239,6 +1239,7 @@ impl<'d> DwarfInfo<'d> {
             debug_info: sections.debug_info.to_gimli(),
             debug_line: sections.debug_line.to_gimli(),
             debug_line_str: sections.debug_line_str.to_gimli(),
+            debug_names: sections.debug_names.to_gimli(),
             debug_str: sections.debug_str.to_gimli(),
             debug_str_offsets: sections.debug_str_offsets.to_gimli(),
             debug_types: Default::default(),
@@ -1255,7 +1256,7 @@ impl<'d> DwarfInfo<'d> {
         inner.populate_abbreviations_cache(AbbreviationsCacheStrategy::Duplicates);
 
         // Prepare random access to unit headers.
-        let headers = inner.units().collect::<Vec<_>>()?;
+        let headers = FallibleIterator::collect::<Vec<_>>(inner.units())?;
         let units = headers.iter().map(|_| OnceCell::new()).collect();
 
         Ok(DwarfInfo {
@@ -1297,7 +1298,7 @@ impl<'d> DwarfInfo<'d> {
         &self,
         offset: DebugInfoOffset,
     ) -> Result<(UnitRef<'d, '_>, UnitOffset), DwarfError> {
-        let section_offset = UnitSectionOffset::DebugInfoOffset(offset);
+        let section_offset = UnitSectionOffset(offset.0);
         let search_result = self
             .headers
             .binary_search_by_key(&section_offset, UnitHeader::offset);
