@@ -55,7 +55,7 @@ type RangeLists<'a> = gimli::read::RangeLists<Slice<'a>>;
 type Unit<'a> = gimli::read::Unit<Slice<'a>>;
 type DwarfInner<'a> = gimli::read::Dwarf<Slice<'a>>;
 
-type Die<'d, 'u> = gimli::read::DebuggingInformationEntry<Slice<'d>, usize>;
+type Die<'d> = gimli::read::DebuggingInformationEntry<Slice<'d>, usize>;
 type Attribute<'a> = gimli::read::Attribute<Slice<'a>>;
 type UnitOffset = gimli::read::UnitOffset<usize>;
 type DebugInfoOffset = gimli::DebugInfoOffset<usize>;
@@ -389,7 +389,7 @@ impl<'d> UnitRef<'d, '_> {
     /// abbrev can only be temporarily accessed in the callback.
     fn resolve_reference<T, F>(&self, attr: Attribute<'d>, f: F) -> Result<Option<T>, DwarfError>
     where
-        F: FnOnce(Self, &Die<'d, '_>) -> Result<Option<T>, DwarfError>,
+        F: FnOnce(Self, &Die<'d>) -> Result<Option<T>, DwarfError>,
     {
         let (unit, offset) = match attr.value() {
             AttributeValue::UnitRef(offset) => (*self, offset),
@@ -435,7 +435,7 @@ impl<'d> UnitRef<'d, '_> {
     /// cycles or malformed DWARF.
     fn resolve_entry_language(
         &self,
-        entry: &Die<'d, '_>,
+        entry: &Die<'d>,
         depth: u8,
     ) -> Result<Option<Language>, DwarfError> {
         if depth == 0 {
@@ -461,7 +461,7 @@ impl<'d> UnitRef<'d, '_> {
     /// Resolves the function name of a debug entry.
     fn resolve_function_name(
         &self,
-        entry: &Die<'d, '_>,
+        entry: &Die<'d>,
         language: Language,
         bcsymbolmap: Option<&'d BcSymbolMap<'d>>,
         prior_offset: Option<UnitOffset>,
@@ -776,11 +776,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
     /// does not reflect the original source language (e.g., a C++ CU containing functions
     /// originally written in C). When such a CU's subprogram carries a cross-unit
     /// `DW_AT_abstract_origin`, the referenced CU's language is more authoritative.
-    fn resolve_function_language(
-        &self,
-        entry: &Die<'d, '_>,
-        fallback_language: Language,
-    ) -> Language {
+    fn resolve_function_language(&self, entry: &Die<'d>, fallback_language: Language) -> Language {
         self.inner
             .resolve_entry_language(entry, UnitRef::MAX_ABSTRACT_ORIGIN_DEPTH)
             .ok()
