@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Dependencies
+
+- Update several publicly exposed dependencies:
+  - `gimli`: 0.32.3 -> 0.33.0
+  - `goblin`: 0.8.0 -> 0.10.5
+  - `scroll`: 0.12.0 -> 0.13.0
+  - `uuid`: 1.3.0 -> 1.23.0
+  ([#976](https://github.com/getsentry/symbolic/pull/976))
+
 ## 12.18.3
 
 ### Internal Changes 🔧
