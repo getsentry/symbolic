@@ -5,7 +5,7 @@
 //!
 //! # Structure of a SymCache
 //!
-//! A SymCache (version 8) contains the following primary kinds of data, written in the following
+//! A SymCache (version 9) contains the following primary kinds of data, written in the following
 //! order:
 //!
 //! 1. Files
@@ -25,6 +25,8 @@
 //! ## Files
 //!
 //! A file contains string offsets for its file name, parent directory, and compilation directory.
+//! In version 9+, files also contain optional string offsets for the name and directory on the
+//! source server as well as the file revision..
 //!
 //! ## Functions
 //!
@@ -106,6 +108,7 @@ mod lookup;
 mod raw;
 pub mod transform;
 mod v7;
+mod v9;
 mod writer;
 
 use symbolic_common::Arch;
@@ -117,7 +120,8 @@ pub use error::{Error, ErrorKind};
 pub use lookup::*;
 pub use writer::SymCacheConverter;
 
-use crate::v7::{SymCacheV7, SymCacheV7Inner, SymCacheV8};
+use crate::v7::{SymCacheV7, SymCacheV8};
+use crate::v9::SymCacheV9;
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -133,7 +137,8 @@ type Result<T, E = Error> = std::result::Result<T, E>;
 /// 6: PR #319: Correct line offsets and spacer line records
 /// 7: PR #459: A new binary format fundamentally based on addr ranges
 /// 8: PR #670: Use LEB128-prefixed string table
-pub const SYMCACHE_VERSION: u32 = 8;
+/// 9: PR #943: Add fields to File structure for source server and revision tracking
+pub const SYMCACHE_VERSION: u32 = 9;
 
 /// The serialized SymCache binary format.
 ///
@@ -150,6 +155,7 @@ impl std::fmt::Debug for SymCache<'_> {
         match self.inner {
             SymCacheInner::V7(ref sym_cache_v7) => sym_cache_v7.fmt(f),
             SymCacheInner::V8(ref sym_cache_v8) => sym_cache_v8.fmt(f),
+            SymCacheInner::V9(ref sym_cache_v9) => sym_cache_v9.fmt(f),
         }
     }
 }
@@ -168,8 +174,9 @@ impl<'data> SymCache<'data> {
         }
 
         let inner = match version.version {
-            7 => SymCacheInner::V7(SymCacheV7Inner::parse(rest)?),
-            8 => SymCacheInner::V8(SymCacheV7Inner::parse(rest)?),
+            7 => SymCacheInner::V7(SymCacheV7::parse(rest)?),
+            8 => SymCacheInner::V8(SymCacheV8::parse(rest)?),
+            9 => SymCacheInner::V9(SymCacheV9::parse(rest)?),
             _ => return Err(ErrorKind::WrongVersion.into()),
         };
 
@@ -191,16 +198,16 @@ impl<'data> SymCache<'data> {
         match &self.inner {
             SymCacheInner::V7(cache) => Arch::from_u32(cache.header.arch),
             SymCacheInner::V8(cache) => Arch::from_u32(cache.header.arch),
+            SymCacheInner::V9(cache) => Arch::from_u32(cache.header.arch),
         }
     }
 
     /// The debug identifier of the cache file.
     pub fn debug_id(&self) -> DebugId {
-        {
-            match &self.inner {
-                SymCacheInner::V7(cache) => cache.header.debug_id,
-                SymCacheInner::V8(cache) => cache.header.debug_id,
-            }
+        match &self.inner {
+            SymCacheInner::V7(cache) => cache.header.debug_id,
+            SymCacheInner::V8(cache) => cache.header.debug_id,
+            SymCacheInner::V9(cache) => cache.header.debug_id,
         }
     }
 }
@@ -217,4 +224,5 @@ impl<'slf, 'd: 'slf> AsSelf<'slf> for SymCache<'d> {
 enum SymCacheInner<'data> {
     V7(SymCacheV7<'data>),
     V8(SymCacheV8<'data>),
+    V9(SymCacheV9<'data>),
 }

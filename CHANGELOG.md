@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- Extract srcsrv data from PDB for file mapping by @mujajica and @loewenheim.
+  This includes a bump of the SymCache format to version 9. ([#943](https://github.com/getsentry/symbolic/pull/943))
+
 ## 12.18.3
 
 ### Internal Changes 🔧
