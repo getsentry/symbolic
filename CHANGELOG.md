@@ -4,7 +4,18 @@
 
 **Features**
 
-- Extract srcsrv data from PDB for file mapping ([#943](https://github.com/getsentry/symbolic/pull/943))
+- Extract srcsrv data from PDB for file mapping by @mujajica and @loewenheim.
+  This includes a bump of the SymCache format to version 9. ([#943](https://github.com/getsentry/symbolic/pull/943))
+
+## 12.18.3
+
+### Internal Changes 🔧
+
+- (js) Allow magic comments to appear anywhere by @Dav1dde in [#974](https://github.com/getsentry/symbolic/pull/974)
+
+## 12.18.2
+
+- Downgrade `cpp_demangle` version to 0.4.1. Symbolicator is currently dependent on this. ([#972](https://github.com/getsentry/symbolic/pull/972))
 
 ## 12.18.1
 

@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-debuginfo"
-version = "12.18.1"
+version = "12.18.3"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -81,7 +81,7 @@ sourcebundle = [
     "debugid/serde",
 ]
 # JavaScript stuff
-js = []
+js = ["dep:memchr"]
 # WASM processing
 wasm = ["dwarf", "wasmparser"]
 
@@ -93,6 +93,7 @@ fallible-iterator = { workspace = true }
 flate2 = { workspace = true, optional = true }
 gimli = { workspace = true, optional = true }
 goblin = { workspace = true, optional = true }
+memchr = { workspace = true, optional = true }
 once_cell = { workspace = true, optional = true }
 nom = { workspace = true, optional = true }
 nom-supreme = { workspace = true, optional = true }
@@ -104,8 +105,8 @@ serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
 smallvec = { workspace = true, optional = true }
 srcsrv = { version = "0.2", optional = true }
-symbolic-common = { version = "12.18.1", path = "../symbolic-common" }
-symbolic-ppdb = { version = "12.18.1", path = "../symbolic-ppdb", optional = true }
+symbolic-common = { version = "12.18.3", path = "../symbolic-common" }
+symbolic-ppdb = { version = "12.18.3", path = "../symbolic-ppdb", optional = true }
 thiserror = { workspace = true }
 wasmparser = { workspace = true, optional = true }
 zip = { workspace = true, optional = true }
