@@ -802,9 +802,9 @@ checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
 
 [[package]]
 name = "gimli"
-version = "0.32.3"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
+checksum = "0bf7f043f89559805f8c7cacc432749b2fa0d0a0a9ee46ce47164ed5ba7f126c"
 dependencies = [
  "fallible-iterator 0.3.0",
  "stable_deref_trait",
@@ -812,13 +812,13 @@ dependencies = [
 
 [[package]]
 name = "goblin"
-version = "0.8.2"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b363a30c165f666402fe6a3024d3bec7ebc898f96a4a23bd1c99f8dbf3f4f47"
+checksum = "983a6aafb3b12d4c41ea78d39e189af4298ce747353945ff5105b54a056e5cd9"
 dependencies = [
  "log",
  "plain",
- "scroll 0.12.0",
+ "scroll 0.13.0",
 ]
 
 [[package]]
@@ -2009,7 +2009,16 @@ version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ab8598aa408498679922eff7fa985c25d58a90771bd6be794434c5277eab1a6"
 dependencies = [
- "scroll_derive",
+ "scroll_derive 0.12.0",
+]
+
+[[package]]
+name = "scroll"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1257cd4248b4132760d6524d6dda4e053bc648c9070b960929bf50cfb1e7add"
+dependencies = [
+ "scroll_derive 0.13.1",
 ]
 
 [[package]]
@@ -2017,6 +2026,17 @@ name = "scroll_derive"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f81c2fde025af7e69b1d1420531c8a8811ca898919db177141a85313b1cb932"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "scroll_derive"
+version = "0.13.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed76efe62313ab6610570951494bdaa81568026e0318eaa55f167de70eeea67d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2483,7 +2503,7 @@ dependencies = [
  "elsa",
  "fallible-iterator 0.3.0",
  "flate2",
- "gimli 0.32.3",
+ "gimli 0.33.0",
  "goblin",
  "insta",
  "memchr",
@@ -2494,7 +2514,7 @@ dependencies = [
  "pdb-addr2line",
  "proptest",
  "regex",
- "scroll 0.12.0",
+ "scroll 0.13.0",
  "serde",
  "serde_json",
  "similar-asserts",
@@ -2593,7 +2613,7 @@ dependencies = [
  "flate2",
  "insta",
  "regex",
- "scroll 0.12.0",
+ "scroll 0.13.0",
  "serde",
  "similar-asserts",
  "symbolic-testutils",
