@@ -3619,6 +3619,10 @@ NodePointer Demangler::addFuncSpecParamNumber(NodePointer Param,
 }
 
 NodePointer Demangler::demangleSpecAttributes(Node::Kind SpecKind) {
+  // Swift used 'm' for `MetatypeParamsRemoved`, with the 6.3 update it was removed.
+  // To keep old mangled strings compatible with `symbolic` we skip `m` here.
+  (void) nextIf('m');
+
   bool isSerialized = nextIf('q');
   bool asyncRemoved = nextIf('a');
   bool representationChanged = nextIf('r');
