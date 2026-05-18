@@ -3,7 +3,7 @@
 This folder contains a vendored subset of the [Swift Programming Language]. The Swift library is
 reduced to the demangler only to reduce the size of this package.
 
-The current version is **Swift 5.5.1**.
+The current version is **Swift 6.3.1**.
 
 ## Sentry Modifications
 
