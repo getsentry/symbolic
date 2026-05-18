@@ -300,5 +300,9 @@ fn test_demangle_swift_no_args() {
 
         // Swift 6.1.0
         "$sTB" => "$sTB",
+
+        // Swift 6.3.1
+        "$s12SharedDomain7ServiceC06streamC0_4bodyACXDScSyxG_yxYaYbKYCcts8SendableRzlFZyycAA06StreamC0CYbcfu_yycfu0_Tm" => "implicit closure #2 in implicit closure #1 in static Service.streamService<A>",
+        "$s18OrderedCollections0A10DictionaryV20uniqueKeysWithValuesACyxq_Gqd___tcSTRd__x_q_t7ElementRtd__lufC6TaggedAHVy8SportsUI0J23ParticipantRowViewModelVSSG_ALs15LazyMapSequenceVySayALGAM_ALtGTt0g5Tf4g_n" => "specialized OrderedDictionary.init<A>",
     });
 }
