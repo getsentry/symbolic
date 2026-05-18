@@ -21,14 +21,14 @@ patch is maintained in `1-arguments.patch`.
       ```
       $ git clone https://github.com/apple/swift.git
       ```
-   3. Check out dependencies:
-      ```
-      $ ./swift/utils/update-checkout --clone
-      ```
-   4. Check out the release branch of the latest release:
+   3. Check out the release branch of the latest release:
       ```
       $ cd swift
       $ git checkout swift-5.5.1-RELEASE
+      ```
+   4. Check out dependencies:
+      ```
+      $ ./utils/update-checkout --clone
       ```
    5. Build the complete swift project (be very patient, this may take long):
       ```
