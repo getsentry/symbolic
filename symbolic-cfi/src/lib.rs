@@ -1217,9 +1217,9 @@ impl<W: Write> AsciiCfiWriter<W> {
     }
 
     fn process_pe_arm64(&mut self, pe: &PeObject<'_>) -> Result<(), CfiError> {
-        // Helper struct to assist in encoding breakpad CFI entries for a PE ARM64 binary.
-        // See https://learn.microsoft.com/en-us/cpp/build/arm64-exception-handling for detailed
-        // information.
+        /// Helper struct to assist in encoding breakpad CFI entries for a PE ARM64 binary.
+        /// See https://learn.microsoft.com/en-us/cpp/build/arm64-exception-handling for detailed
+        /// information.
         struct BreakpadEncoder<'a> {
             function_address: u32,
             function_size: u32,
@@ -1232,7 +1232,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             writer: &'a mut dyn Write,
         }
 
-        // The kinds of registers the can be saved for unwinding.
+        /// The kinds of registers that can be saved for unwinding.
         #[derive(Copy, Clone)]
         enum RegisterType {
             X,
@@ -1264,12 +1264,12 @@ impl<W: Write> AsciiCfiWriter<W> {
                 }
             }
 
-            // Computes the memory location relative to CFI, offset above SP
+            /// Computes the memory location relative to CFI, offset above SP
             fn get_indexed(&self, offset: u32) -> i32 {
                 self.stack_size.wrapping_add(offset as i32)
             }
 
-            // Computes a pair of adjacent 8-byte memory locations relative to CFI, offset above SP
+            /// Computes a pair of adjacent 8-byte memory locations relative to CFI, offset above SP
             fn get_indexed_pair(&self, offset: u32) -> (i32, i32) {
                 (
                     self.stack_size.wrapping_add(offset as i32),
@@ -1277,12 +1277,12 @@ impl<W: Write> AsciiCfiWriter<W> {
                 )
             }
 
-            // Computes the memory location relative to CFI, offset below SP
+            /// Computes the memory location relative to CFI, offset below SP
             fn get_pre_indexed(&self, offset: u32) -> i32 {
                 self.stack_size.wrapping_sub(offset as i32)
             }
 
-            // Computes a pair of adjacent memory locations relative to CFI, offset below SP
+            /// Computes a pair of adjacent memory locations relative to CFI, offset below SP
             fn get_pre_indexed_pair(&self, offset: u32) -> (i32, i32) {
                 (
                     self.stack_size.wrapping_sub(offset as i32),
@@ -1311,9 +1311,9 @@ impl<W: Write> AsciiCfiWriter<W> {
                 writeln!(self.writer)
             }
 
-            // Save the next pair of registers to next subsequent locations in memory.  This must
-            // be called directly after any kind of 'pair' write (except for reg_lr), so that
-            // there is an established register kind, number and memory offset to define as 'last'.
+            /// Save the next pair of registers to next subsequent locations in memory.  This must
+            /// be called directly after any kind of 'pair' write (except for reg_lr), so that
+            /// there is an established register kind, number and memory offset to define as 'last'.
             fn save_next_pair(&mut self) -> std::io::Result<()> {
                 let typ = self.last_reg_kind;
                 let first_reg = self.last_reg_num.wrapping_add(1);
@@ -1328,12 +1328,11 @@ impl<W: Write> AsciiCfiWriter<W> {
 
                 write!(
                     self.writer,
-                    " .{typ}{first_reg}: .cfa {} + ^ .{typ}{second_reg}: .cfa {} + ^",
-                    o1, o2
+                    " .{typ}{first_reg}: .cfa {o1} + ^ .{typ}{second_reg}: .cfa {o2} + ^"
                 )
             }
 
-            // Save (x#, lr) registers.
+            /// Save (x#, lr) registers.
             fn save_indexed_reg_and_lr(
                 &mut self,
                 reg: u8,
@@ -1341,14 +1340,10 @@ impl<W: Write> AsciiCfiWriter<W> {
             ) -> std::io::Result<()> {
                 let (o1, o2) = self.get_indexed_pair(offset_bytes);
 
-                write!(
-                    self.writer,
-                    " .x{reg}: .cfa {} + ^ .lr: .cfa {} + ^",
-                    o1, o2
-                )
+                write!(self.writer, " .x{reg}: .cfa {o1} + ^ .lr: .cfa {o2} + ^")
             }
 
-            // Save any (r#, r# + 1) register pair.
+            /// Save any (r#, r# + 1) register pair.
             fn save_indexed_pair(
                 &mut self,
                 typ: RegisterType,
@@ -1359,17 +1354,16 @@ impl<W: Write> AsciiCfiWriter<W> {
                 let second_reg = first_reg + 1;
 
                 self.last_reg_kind = typ;
-                self.last_reg_num = first_reg + 1;
+                self.last_reg_num = second_reg;
                 self.last_offset = o2;
 
                 write!(
                     self.writer,
-                    " .{typ}{first_reg}: .cfa {} + ^ .{typ}{second_reg}: .cfa {} + ^",
-                    o1, o2
+                    " .{typ}{first_reg}: .cfa {o1} + ^ .{typ}{second_reg}: .cfa {o2} + ^"
                 )
             }
 
-            // Save any r# register.
+            /// Save any r# register.
             fn save_indexed(
                 &mut self,
                 typ: RegisterType,
@@ -1377,10 +1371,10 @@ impl<W: Write> AsciiCfiWriter<W> {
                 offset_bytes: u32,
             ) -> std::io::Result<()> {
                 let o1 = self.get_indexed(offset_bytes);
-                write!(self.writer, " .{typ}{reg_num}: .cfa {} + ^", o1)
+                write!(self.writer, " .{typ}{reg_num}: .cfa {o1} + ^")
             }
 
-            // Save an (r#, r# + 1) register pair, pre-indxed (points past SP.)
+            /// Save an (r#, r# + 1) register pair, pre-indxed (points past SP.)
             fn save_pre_indexed_pair(
                 &mut self,
                 typ: RegisterType,
@@ -1388,20 +1382,19 @@ impl<W: Write> AsciiCfiWriter<W> {
                 offset_bytes: u32,
             ) -> std::io::Result<()> {
                 let (o1, o2) = self.get_pre_indexed_pair(offset_bytes);
-                let second_reg = first_reg + 1;
+                let second_reg: u8 = first_reg + 1;
 
                 self.last_reg_kind = typ;
-                self.last_reg_num = first_reg + 1;
+                self.last_reg_num = second_reg;
                 self.last_offset = o2;
 
                 write!(
                     self.writer,
-                    " .{typ}{first_reg}: .cfa {} + ^ .{typ}{second_reg}: .cfa {} + ^",
-                    o1, o2
+                    " .{typ}{first_reg}: .cfa {o1} + ^ .{typ}{second_reg}: .cfa {o1} + ^"
                 )
             }
 
-            // Save a r# register, pre-indxed (points past SP.)
+            /// Save a r# register, pre-indxed (points past SP.)
             fn save_pre_indexed(
                 &mut self,
                 typ: RegisterType,
@@ -1409,10 +1402,10 @@ impl<W: Write> AsciiCfiWriter<W> {
                 offset_bytes: u32,
             ) -> std::io::Result<()> {
                 let o1 = self.get_pre_indexed(offset_bytes);
-                write!(self.writer, " .{typ}{reg_num}: .cfa {} + ^", o1)
+                write!(self.writer, " .{typ}{reg_num}: .cfa {o1} + ^")
             }
 
-            // Grow the stack by the specified size; update the cfa accordingly
+            /// Grow the stack by the specified size; update the cfa accordingly
             fn alloc_stack(&mut self, size: u32) -> std::io::Result<()> {
                 self.stack_size += size as i32;
                 self.cfa_touched = true;
@@ -1453,9 +1446,7 @@ impl<W: Write> AsciiCfiWriter<W> {
 
                     // Look for an end/endc; there can be additional instructions following these,
                     // such as nops, that we should just skip.
-                    if matches!(code.code, Arm64UnwindCode::End)
-                        || matches!(code.code, Arm64UnwindCode::EndC)
-                    {
+                    if matches!(code.code, Arm64UnwindCode::End | Arm64UnwindCode::EndC) {
                         break;
                     }
                     unwind_codes.push(code);
@@ -1470,15 +1461,9 @@ impl<W: Write> AsciiCfiWriter<W> {
                 for (instruction_num, code) in unwind_codes.iter().rev().enumerate() {
                     enc.begin_instruction(instruction_num)?;
                     match code.code {
-                        Arm64UnwindCode::AllocSmall { size_bytes } => {
-                            enc.alloc_stack(size_bytes)?;
-                        }
-
-                        Arm64UnwindCode::AllocMedium { size_bytes } => {
-                            enc.alloc_stack(size_bytes)?;
-                        }
-
-                        Arm64UnwindCode::AllocLarge { size_bytes } => {
+                        Arm64UnwindCode::AllocSmall { size_bytes }
+                        | Arm64UnwindCode::AllocMedium { size_bytes }
+                        | Arm64UnwindCode::AllocLarge { size_bytes } => {
                             enc.alloc_stack(size_bytes)?;
                         }
 
@@ -1575,18 +1560,13 @@ impl<W: Write> AsciiCfiWriter<W> {
                                 _ => RegisterType::Q,
                             };
 
-                            if pair {
-                                if preindexed {
-                                    enc.save_pre_indexed_pair(typ, reg, offset_bytes)?;
-                                } else {
-                                    enc.save_indexed_pair(typ, reg, offset_bytes)?;
+                            match (pair, preindexed) {
+                                (true, true) => {
+                                    enc.save_pre_indexed_pair(typ, reg, offset_bytes)?
                                 }
-                            } else {
-                                if preindexed {
-                                    enc.save_pre_indexed(typ, reg, offset_bytes)?;
-                                } else {
-                                    enc.save_indexed(typ, reg, offset_bytes)?;
-                                }
+                                (true, false) => enc.save_indexed_pair(typ, reg, offset_bytes)?,
+                                (false, true) => enc.save_pre_indexed(typ, reg, offset_bytes)?,
+                                (false, false) => enc.save_indexed(typ, reg, offset_bytes)?,
                             }
                         }
                         _ => {
