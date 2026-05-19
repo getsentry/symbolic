@@ -7,14 +7,11 @@ fn main() {
             .files(&[
                 "src/swiftdemangle.cpp",
                 "vendor/swift/lib/Demangling/Context.cpp",
-                "vendor/swift/lib/Demangling/CrashReporter.cpp",
                 "vendor/swift/lib/Demangling/Demangler.cpp",
                 "vendor/swift/lib/Demangling/Errors.cpp",
                 "vendor/swift/lib/Demangling/ManglingUtils.cpp",
                 "vendor/swift/lib/Demangling/NodeDumper.cpp",
                 "vendor/swift/lib/Demangling/NodePrinter.cpp",
-                // "vendor/swift/lib/Demangling/OldDemangler.cpp",
-                // "vendor/swift/lib/Demangling/OldRemangler.cpp",
                 "vendor/swift/lib/Demangling/Punycode.cpp",
                 "vendor/swift/lib/Demangling/Remangler.cpp",
             ])

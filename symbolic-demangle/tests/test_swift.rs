@@ -297,6 +297,12 @@ fn test_demangle_swift_no_args() {
 
         // Swift 6.0.3
         "$ss27withTaskCancellationHandler9operation8onCancel9isolationxxyYaKXE_yyYbXEScA_pSgYitYaKlFTwb" => "withTaskCancellationHandler<A>",
-        "$s11Supercharge2AXO7ElementPAAE8elements33_35EDDAA799FBB5B74D2F426690B0D99DLL3for2asSayqd__GSo28NSAccessibilityAttributeNamea_qd__mtSo7AXErrorVYKAcDRd__lFAC3AppC_AC6WindowCTgm5" => "specialized AX.Element.elements<A>",
+
+        // Swift 6.1.0
+        "$sTB" => "$sTB",
+
+        // Swift 6.3.1
+        "$s12SharedDomain7ServiceC06streamC0_4bodyACXDScSyxG_yxYaYbKYCcts8SendableRzlFZyycAA06StreamC0CYbcfu_yycfu0_Tm" => "implicit closure #2 in implicit closure #1 in static Service.streamService<A>",
+        "$s18OrderedCollections0A10DictionaryV20uniqueKeysWithValuesACyxq_Gqd___tcSTRd__x_q_t7ElementRtd__lufC6TaggedAHVy8SportsUI0J23ParticipantRowViewModelVSSG_ALs15LazyMapSequenceVySayALGAM_ALtGTt0g5Tf4g_n" => "specialized OrderedDictionary.init<A>",
     });
 }

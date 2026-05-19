@@ -8,6 +8,16 @@ import sys
 
 SWIFT_PATH = "swift"
 DEMANGLING_PATH = "lib/Demangling"
+# Demangling binaries/sources which aren't required.
+DEMANGLING_IGNORE = [
+    "CrashReporter.*",
+    "OldDemangler.*",
+    "OldRemangler.*",
+]
+# List of includes which `clang` can or does not infer from the sources.
+MANUAL_INCLUDES = [
+    "swift/include/swift/ABI/InvertibleProtocols.def",  # used in `NodePrinter.cpp`
+]
 WORKSPACE_INCLUDES = [
     'llvm-project/llvm/include',
     'llbuild/include',
@@ -110,11 +120,14 @@ def main():
 
     print("> Replacing sources in %s" % (DEMANGLING_PATH))
     demangler_source = os.path.join(swift_dir, DEMANGLING_PATH)
+    demangler_ignore = shutil.ignore_patterns(*DEMANGLING_IGNORE)
     demangler_target = os.path.join(vendor_dir, DEMANGLING_PATH)
-    shutil.copytree(demangler_source, demangler_target)
+    shutil.copytree(demangler_source, demangler_target, ignore=demangler_ignore)
 
     print("> Resolving required headers")
-    required_headers = set()
+    required_headers = {
+        os.path.join(workspace_dir, header) for header in MANUAL_INCLUDES
+    }
     for source_file in os.listdir(demangler_target):
         required_headers.update(get_headers(source_file, demangler_target, workspace_dir))
 
