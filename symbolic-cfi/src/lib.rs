@@ -1390,7 +1390,7 @@ impl<W: Write> AsciiCfiWriter<W> {
 
                 write!(
                     self.writer,
-                    " .{typ}{first_reg}: .cfa {o1} + ^ .{typ}{second_reg}: .cfa {o1} + ^"
+                    " .{typ}{first_reg}: .cfa {o1} + ^ .{typ}{second_reg}: .cfa {o2} + ^"
                 )
             }
 
