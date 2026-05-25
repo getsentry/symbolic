@@ -28,7 +28,7 @@ gimli = { version = "0.33.0", default-features = false, features = [
   "std",
   "fallible-iterator",
 ] }
-goblin = { version = "0.10.5", default-features = false }
+goblin = { version = "0.10.6", default-features = false }
 indexmap = "2.0.0"
 insta = { version = "1.28.0", features = ["yaml"] }
 itertools = "0.14.0"
@@ -76,6 +76,3 @@ lto = true
 
 [profile.bench]
 debug = true
-
-[patch.crates-io]
-goblin = { git = "https://github.com/supervacuus/goblin.git", branch = "feat/add_parse_imports_pe_option" }
