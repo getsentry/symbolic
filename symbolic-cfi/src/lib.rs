@@ -1229,6 +1229,7 @@ impl<W: Write> AsciiCfiWriter<W> {
             last_reg_num: u8,
             last_offset: i32,
             cfa_touched: bool,
+            ra_written: bool,
             writer: &'a mut dyn Write,
         }
 
@@ -1260,6 +1261,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                     last_reg_num: 0,
                     last_offset: 0,
                     cfa_touched: false,
+                    ra_written: false,
                     writer,
                 }
             }
@@ -1294,7 +1296,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                 if instruction_num == 0 {
                     let addr = self.function_address;
                     let size = self.function_size;
-                    write!(self.writer, "STACK CFI INIT {addr:x} {size:x} .ra: .x30")
+                    write!(self.writer, "STACK CFI INIT {addr:x} {size:x}")
                 } else {
                     let addr = self.function_address + (instruction_num * 4) as u32;
                     write!(self.writer, "STACK CFI      {addr:x}")
@@ -1307,6 +1309,10 @@ impl<W: Write> AsciiCfiWriter<W> {
                 if offset == 0 && !self.cfa_touched {
                     write!(self.writer, " .cfa: .sp")?;
                 }
+                if offset == 0 && !self.ra_written {
+                    write!(self.writer, " .ra: .x30")?;
+                }
+                self.ra_written = false;
                 self.cfa_touched = false;
                 writeln!(self.writer)
             }
@@ -1339,8 +1345,12 @@ impl<W: Write> AsciiCfiWriter<W> {
                 offset_bytes: u32,
             ) -> std::io::Result<()> {
                 let (o1, o2) = self.get_indexed_pair(offset_bytes);
+                self.ra_written = true;
 
-                write!(self.writer, " .x{reg}: .cfa {o1} + ^ .lr: .cfa {o2} + ^")
+                write!(
+                    self.writer,
+                    " .x{reg}: .cfa {o1} + ^ .lr: .cfa {o2} + ^ .ra: .cfa {o2} + ^"
+                )
             }
 
             /// Save any (r#, r# + 1) register pair.
@@ -1360,7 +1370,14 @@ impl<W: Write> AsciiCfiWriter<W> {
                 write!(
                     self.writer,
                     " .{typ}{first_reg}: .cfa {o1} + ^ .{typ}{second_reg}: .cfa {o2} + ^"
-                )
+                )?;
+
+                if second_reg == 30 && matches!(typ, RegisterType::X) {
+                    self.ra_written = true;
+                    write!(self.writer, " .ra: .cfa {o2} + ^")?;
+                }
+
+                Ok(())
             }
 
             /// Save any r# register.
@@ -1391,7 +1408,14 @@ impl<W: Write> AsciiCfiWriter<W> {
                 write!(
                     self.writer,
                     " .{typ}{first_reg}: .cfa {o1} + ^ .{typ}{second_reg}: .cfa {o2} + ^"
-                )
+                )?;
+
+                if second_reg == 30 && matches!(typ, RegisterType::X) {
+                    self.ra_written = true;
+                    write!(self.writer, " .ra: .cfa {o2} + ^")?;
+                }
+
+                Ok(())
             }
 
             /// Save a r# register, pre-indxed (points past SP.)
