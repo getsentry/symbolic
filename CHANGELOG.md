@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- Disable `PE` import table parser and be more permissive during parsing. ([#964](https://github.com/getsentry/symbolic/pull/964))
+
 ## 13.1.0
 
 **Features**
