@@ -1347,10 +1347,6 @@ impl<W: Write> AsciiCfiWriter<W> {
                 let (o1, o2) = self.get_indexed_pair(offset_bytes);
                 self.ra_written = true;
 
-                self.last_reg_kind = RegisterType::X;
-                self.last_reg_num = 30;
-                self.last_offset = o2;
-
                 write!(
                     self.writer,
                     " .x{reg}: .cfa {o1} + ^ .lr: .cfa {o2} + ^ .ra: .cfa {o2} + ^"
