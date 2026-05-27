@@ -1408,12 +1408,12 @@ impl<W: Write> AsciiCfiWriter<W> {
                 self.last_reg_kind = typ;
                 self.last_reg_num = second_reg;
                 self.last_offset = o2;
-                self.cfa_touched = true;
-                self.stack_size += offset_bytes as i32;
+
+                self.alloc_stack(offset_bytes)?;
 
                 write!(
                     self.writer,
-                    " .cfa: .sp {offset_bytes} + .{typ}{first_reg}: .cfa {o1} + ^ .{typ}{second_reg}: .cfa {o2} + ^"
+                    " .{typ}{first_reg}: .cfa {o1} + ^ .{typ}{second_reg}: .cfa {o2} + ^"
                 )?;
 
                 if second_reg == 30 && matches!(typ, RegisterType::X) {
@@ -1432,20 +1432,16 @@ impl<W: Write> AsciiCfiWriter<W> {
                 offset_bytes: u32,
             ) -> std::io::Result<()> {
                 let o1 = self.get_pre_indexed(offset_bytes);
-                self.cfa_touched = true;
-                self.stack_size += offset_bytes as i32;
+                self.alloc_stack(offset_bytes)?;
 
-                write!(
-                    self.writer,
-                    " .cfa: .sp {offset_bytes} + .{typ}{reg_num}: .cfa {o1} + ^"
-                )
+                write!(self.writer, " .{typ}{reg_num}: .cfa {o1} + ^")
             }
 
             /// Grow the stack by the specified size; update the cfa accordingly
             fn alloc_stack(&mut self, size: u32) -> std::io::Result<()> {
                 self.stack_size += size as i32;
                 self.cfa_touched = true;
-                write!(self.writer, " .cfa: .sp {} +", size)
+                write!(self.writer, " .cfa: .sp {} +", self.stack_size)
             }
         }
 
