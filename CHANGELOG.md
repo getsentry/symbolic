@@ -4,7 +4,7 @@
 
 **Features**
 
-- Add support for win arm64 unwind codes ([#978](https://github.com/getsentry/symbolic/pull/978))
+- Add support for win arm64 PE unwind codes ([#978](https://github.com/getsentry/symbolic/pull/978))
 
 
 **Fixes**
