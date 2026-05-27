@@ -1349,8 +1349,8 @@ impl<W: Write> AsciiCfiWriter<W> {
                 let typ = self.last_reg_kind;
                 let first_reg = self.last_reg_num.wrapping_add(1);
                 let second_reg = first_reg.wrapping_add(1);
-                let o1 = self.last_offset.wrapping_add(8);
-                let o2 = o1.wrapping_add(8);
+                let o1 = self.last_offset.wrapping_add(typ.get_size());
+                let o2 = o1.wrapping_add(typ.get_size());
 
                 // Remember the new offsets/number; it is valid to call save_next_pair after a valid
                 // save_next_pair call.
