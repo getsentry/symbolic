@@ -1321,6 +1321,18 @@ impl<W: Write> AsciiCfiWriter<W> {
                 writeln!(self.writer)
             }
 
+            fn maybe_save_ra(
+                &mut self,
+                typ: RegisterType,
+                o2: i32,
+                second_reg: u8,
+            ) -> Result<(), io::Error> {
+                Ok(if second_reg == 30 && matches!(typ, RegisterType::X) {
+                    self.ra_written = true;
+                    write!(self.writer, " .ra: .cfa {o2} + ^")?;
+                })
+            }
+
             /// Save the next pair of registers to next subsequent locations in memory.  This must
             /// be called directly after any kind of 'pair' write (except for reg_lr), so that
             /// there is an established register kind, number and memory offset to define as 'last'.
@@ -1339,7 +1351,8 @@ impl<W: Write> AsciiCfiWriter<W> {
                 write!(
                     self.writer,
                     " .{typ}{first_reg}: .cfa {o1} + ^ .{typ}{second_reg}: .cfa {o2} + ^"
-                )
+                )?;
+                self.maybe_save_ra(typ, o2, second_reg)
             }
 
             /// Save (x#, lr/x30) registers.
@@ -1376,12 +1389,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                     " .{typ}{first_reg}: .cfa {o1} + ^ .{typ}{second_reg}: .cfa {o2} + ^"
                 )?;
 
-                if second_reg == 30 && matches!(typ, RegisterType::X) {
-                    self.ra_written = true;
-                    write!(self.writer, " .ra: .cfa {o2} + ^")?;
-                }
-
-                Ok(())
+                self.maybe_save_ra(typ, o2, second_reg)
             }
 
             /// Save any r# register.
@@ -1416,12 +1424,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                     " .{typ}{first_reg}: .cfa {o1} + ^ .{typ}{second_reg}: .cfa {o2} + ^"
                 )?;
 
-                if second_reg == 30 && matches!(typ, RegisterType::X) {
-                    self.ra_written = true;
-                    write!(self.writer, " .ra: .cfa {o2} + ^")?;
-                }
-
-                Ok(())
+                self.maybe_save_ra(typ, o2, second_reg)
             }
 
             /// Save a r# register, pre-indxed (points past SP.)
