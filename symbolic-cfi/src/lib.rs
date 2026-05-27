@@ -1241,6 +1241,15 @@ impl<W: Write> AsciiCfiWriter<W> {
             Q,
         }
 
+        impl RegisterType {
+            fn get_size(&self) -> i32 {
+                match self {
+                    Self::Q => 16,
+                    _ => 8,
+                }
+            }
+        }
+
         impl Display for RegisterType {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self {
@@ -1272,12 +1281,12 @@ impl<W: Write> AsciiCfiWriter<W> {
             }
 
             /// Computes a pair of adjacent 8-byte memory locations relative to CFI, offset above SP
-            fn get_indexed_pair(&self, offset: u32) -> (i32, i32) {
+            fn get_indexed_pair(&self, offset: u32, typ: RegisterType) -> (i32, i32) {
                 (
                     (offset as i32).wrapping_sub(self.stack_size),
                     (offset as i32)
                         .wrapping_sub(self.stack_size)
-                        .wrapping_add(8),
+                        .wrapping_add(typ.get_size()),
                 )
             }
 
@@ -1287,12 +1296,12 @@ impl<W: Write> AsciiCfiWriter<W> {
             }
 
             /// Computes a pair of adjacent memory locations relative to CFI, offset below SP
-            fn get_pre_indexed_pair(&self, offset: u32) -> (i32, i32) {
+            fn get_pre_indexed_pair(&self, offset: u32, typ: RegisterType) -> (i32, i32) {
                 (
                     (-(offset as i32)).wrapping_sub(self.stack_size),
                     (-(offset as i32))
                         .wrapping_sub(self.stack_size)
-                        .wrapping_add(8),
+                        .wrapping_add(typ.get_size()),
                 )
             }
 
@@ -1361,7 +1370,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                 reg: u8,
                 offset_bytes: u32,
             ) -> std::io::Result<()> {
-                let (o1, o2) = self.get_indexed_pair(offset_bytes);
+                let (o1, o2) = self.get_indexed_pair(offset_bytes, RegisterType::X);
                 self.ra_written = true;
 
                 write!(
@@ -1377,7 +1386,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                 first_reg: u8,
                 offset_bytes: u32,
             ) -> std::io::Result<()> {
-                let (o1, o2) = self.get_indexed_pair(offset_bytes);
+                let (o1, o2) = self.get_indexed_pair(offset_bytes, typ);
                 let second_reg = first_reg + 1;
 
                 self.last_reg_kind = typ;
@@ -1410,7 +1419,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                 first_reg: u8,
                 offset_bytes: u32,
             ) -> std::io::Result<()> {
-                let (o1, o2) = self.get_pre_indexed_pair(offset_bytes);
+                let (o1, o2) = self.get_pre_indexed_pair(offset_bytes, typ);
                 let second_reg: u8 = first_reg + 1;
 
                 self.last_reg_kind = typ;
