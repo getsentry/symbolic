@@ -1342,7 +1342,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                 )
             }
 
-            /// Save (x#, lr) registers.
+            /// Save (x#, lr/x30) registers.
             fn save_indexed_reg_and_lr(
                 &mut self,
                 reg: u8,
@@ -1353,7 +1353,7 @@ impl<W: Write> AsciiCfiWriter<W> {
 
                 write!(
                     self.writer,
-                    " .x{reg}: .cfa {o1} + ^ .lr: .cfa {o2} + ^ .ra: .cfa {o2} + ^"
+                    " .x{reg}: .cfa {o1} + ^ .x30: .cfa {o2} + ^ .ra: .cfa {o2} + ^"
                 )
             }
 
