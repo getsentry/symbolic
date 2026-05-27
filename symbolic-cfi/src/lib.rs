@@ -1268,27 +1268,31 @@ impl<W: Write> AsciiCfiWriter<W> {
 
             /// Computes the memory location relative to CFI, offset above SP
             fn get_indexed(&self, offset: u32) -> i32 {
-                self.stack_size.wrapping_add(offset as i32)
+                (offset as i32).wrapping_sub(self.stack_size)
             }
 
             /// Computes a pair of adjacent 8-byte memory locations relative to CFI, offset above SP
             fn get_indexed_pair(&self, offset: u32) -> (i32, i32) {
                 (
-                    self.stack_size.wrapping_add(offset as i32),
-                    self.stack_size.wrapping_add(offset as i32).wrapping_add(8),
+                    (offset as i32).wrapping_sub(self.stack_size),
+                    (offset as i32)
+                        .wrapping_sub(self.stack_size)
+                        .wrapping_add(8),
                 )
             }
 
             /// Computes the memory location relative to CFI, offset below SP
             fn get_pre_indexed(&self, offset: u32) -> i32 {
-                self.stack_size.wrapping_sub(offset as i32)
+                (-(offset as i32)).wrapping_sub(self.stack_size)
             }
 
             /// Computes a pair of adjacent memory locations relative to CFI, offset below SP
             fn get_pre_indexed_pair(&self, offset: u32) -> (i32, i32) {
                 (
-                    self.stack_size.wrapping_sub(offset as i32),
-                    self.stack_size.wrapping_sub(offset as i32).wrapping_add(8),
+                    (-(offset as i32)).wrapping_sub(self.stack_size),
+                    (-(offset as i32))
+                        .wrapping_sub(self.stack_size)
+                        .wrapping_add(8),
                 )
             }
 
@@ -1298,7 +1302,7 @@ impl<W: Write> AsciiCfiWriter<W> {
                     let size = self.function_size;
                     write!(self.writer, "STACK CFI INIT {addr:x} {size:x}")
                 } else {
-                    let addr = self.function_address + (instruction_num * 4) as u32;
+                    let addr: u32 = self.function_address + (instruction_num * 4) as u32;
                     write!(self.writer, "STACK CFI      {addr:x}")
                 }
             }
@@ -1404,10 +1408,12 @@ impl<W: Write> AsciiCfiWriter<W> {
                 self.last_reg_kind = typ;
                 self.last_reg_num = second_reg;
                 self.last_offset = o2;
+                self.cfa_touched = true;
+                self.stack_size += offset_bytes as i32;
 
                 write!(
                     self.writer,
-                    " .{typ}{first_reg}: .cfa {o1} + ^ .{typ}{second_reg}: .cfa {o2} + ^"
+                    " .cfa: .sp {offset_bytes} + .{typ}{first_reg}: .cfa {o1} + ^ .{typ}{second_reg}: .cfa {o2} + ^"
                 )?;
 
                 if second_reg == 30 && matches!(typ, RegisterType::X) {
@@ -1426,14 +1432,20 @@ impl<W: Write> AsciiCfiWriter<W> {
                 offset_bytes: u32,
             ) -> std::io::Result<()> {
                 let o1 = self.get_pre_indexed(offset_bytes);
-                write!(self.writer, " .{typ}{reg_num}: .cfa {o1} + ^")
+                self.cfa_touched = true;
+                self.stack_size += offset_bytes as i32;
+
+                write!(
+                    self.writer,
+                    " .cfa: .sp {offset_bytes} + .{typ}{reg_num}: .cfa {o1} + ^"
+                )
             }
 
             /// Grow the stack by the specified size; update the cfa accordingly
             fn alloc_stack(&mut self, size: u32) -> std::io::Result<()> {
                 self.stack_size += size as i32;
                 self.cfa_touched = true;
-                write!(self.writer, " .cfa: .sp {} +", self.stack_size)
+                write!(self.writer, " .cfa: .sp {} +", size)
             }
         }
 
