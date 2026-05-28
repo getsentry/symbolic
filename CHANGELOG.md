@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+**Features**
+
+- Add support for win arm64 PE unwind codes ([#978](https://github.com/getsentry/symbolic/pull/978))
+
+
 **Fixes**
 
 - Disable `PE` import table parser and be more permissive during parsing. ([#964](https://github.com/getsentry/symbolic/pull/964))
