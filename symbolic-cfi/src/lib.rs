@@ -1336,10 +1336,12 @@ impl<W: Write> AsciiCfiWriter<W> {
                 o2: i32,
                 second_reg: u8,
             ) -> Result<(), io::Error> {
-                Ok(if second_reg == 30 && matches!(typ, RegisterType::X) {
+                if second_reg == 30 && matches!(typ, RegisterType::X) {
                     self.ra_written = true;
                     write!(self.writer, " .ra: .cfa {o2} + ^")?;
-                })
+                }
+
+                Ok(())
             }
 
             /// Save the next pair of registers to next subsequent locations in memory.  This must
