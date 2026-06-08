@@ -26,7 +26,7 @@ use crate::base::*;
 use crate::function_stack::FunctionStack;
 use crate::pdb::srcsrv::{SourceServerInfo, SourceServerMappings};
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::ObjectParseOptions;
+use crate::ParseObjectOptions;
 
 mod srcsrv;
 
@@ -144,7 +144,7 @@ impl<'data> PdbObject<'data> {
     }
 
     /// Tries to parse a PDB object from the given slice.
-    pub fn parse_with_opts(data: &'data [u8], _opts: ObjectParseOptions) -> Result<Self, PdbError> {
+    pub fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, PdbError> {
         Self::parse(data)
     }
 

@@ -11,7 +11,7 @@ use symbolic_ppdb::{Document, FormatError, PortablePdb};
 
 use crate::base::*;
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::ObjectParseOptions;
+use crate::ParseObjectOptions;
 
 /// An iterator over symbols in a [`PortablePdbObject`].
 pub type PortablePdbSymbolIterator<'data> = iter::Empty<Symbol<'data>>;
@@ -29,7 +29,7 @@ impl<'data> PortablePdbObject<'data> {
     /// Tries to parse a Portable PDB object from the given slice.
     pub fn parse_with_opts(
         data: &'data [u8],
-        _opts: ObjectParseOptions,
+        _opts: ParseObjectOptions,
     ) -> Result<Self, FormatError> {
         Self::parse(data)
     }

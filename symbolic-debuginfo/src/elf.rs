@@ -22,7 +22,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::ObjectParseOptions;
+use crate::ParseObjectOptions;
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;
@@ -140,7 +140,7 @@ impl<'data> ElfObject<'data> {
     ///
     /// Will return a partially parsed ELF object
     /// if at least the program and section headers can be parsed.
-    pub fn parse_with_opts(data: &'data [u8], opts: ObjectParseOptions) -> Result<Self, ElfError> {
+    pub fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, ElfError> {
         let header =
             elf::Elf::parse_header(data).map_err(|_| ElfError::new("ELF header unreadable"))?;
         // dummy Elf with only header
@@ -363,7 +363,7 @@ impl<'data> ElfObject<'data> {
     /// Will return a partially parsed ELF object
     /// if at least the program and section headers can be parsed.
     pub fn parse(data: &'data [u8]) -> Result<Self, ElfError> {
-        Self::parse_with_opts(data, ObjectParseOptions::default())
+        Self::parse_with_opts(data, ParseObjectOptions::default())
     }
     /// The container file format, which is always `FileFormat::Elf`.
     pub fn file_format(&self) -> FileFormat {
@@ -800,7 +800,7 @@ impl<'data> Parse<'data> for ElfObject<'data> {
         Self::test(data)
     }
 
-    fn parse_with_opts(data: &'data [u8], opts: ObjectParseOptions) -> Result<Self, ElfError> {
+    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, ElfError> {
         Self::parse_with_opts(data, opts)
     }
 }

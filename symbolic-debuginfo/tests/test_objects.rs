@@ -2,7 +2,7 @@ use std::{ffi::CString, fmt, io::BufWriter};
 
 use symbolic_common::{ByteView, Language};
 use symbolic_debuginfo::{
-    elf::ElfObject, pe::PeObject, FileEntry, Function, LineInfo, Object, ObjectParseOptions,
+    elf::ElfObject, pe::PeObject, FileEntry, Function, LineInfo, Object, ParseObjectOptions,
     SymbolMap,
 };
 use symbolic_testutils::fixture;
@@ -427,7 +427,7 @@ fn test_elf_debug_link_compressed() -> Result<(), Error> {
 
 #[test]
 fn test_elf_compressed_gnu() {
-    let mut opts = ObjectParseOptions::default();
+    let mut opts = ParseObjectOptions::default();
     opts.max_decompressed_section_size = Some(2 << 30);
     let view = ByteView::open(fixture("linux/elf_compressed_gnu")).unwrap();
     let object = ElfObject::parse_with_opts(&view, opts).unwrap();
@@ -436,7 +436,7 @@ fn test_elf_compressed_gnu() {
 
 #[test]
 fn test_elf_compressed_shf() {
-    let mut opts = ObjectParseOptions::default();
+    let mut opts = ParseObjectOptions::default();
     opts.max_decompressed_section_size = Some(2 << 30);
     let view = ByteView::open(fixture("linux/elf_compressed_shf")).unwrap();
     let object = ElfObject::parse_with_opts(&view, opts).unwrap();

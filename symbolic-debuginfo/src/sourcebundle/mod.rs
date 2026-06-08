@@ -67,7 +67,7 @@ use crate::base::*;
 use crate::js::{
     discover_debug_id, discover_sourcemap_embedded_debug_id, discover_sourcemaps_location,
 };
-use crate::ObjectParseOptions;
+use crate::ParseObjectOptions;
 
 /// Magic bytes of a source bundle. They are prepended to the ZIP file.
 static BUNDLE_MAGIC: [u8; 4] = *b"SYSB";
@@ -611,7 +611,7 @@ impl<'data> SourceBundle<'data> {
     /// Tries to parse a `SourceBundle` from the given slice.
     pub fn parse_with_opts(
         data: &'data [u8],
-        _opts: ObjectParseOptions,
+        _opts: ParseObjectOptions,
     ) -> Result<SourceBundle<'data>, SourceBundleError> {
         Self::parse(data)
     }

@@ -6,12 +6,12 @@ use std::str::FromStr;
 use symbolic_common::{clean_path, join_path, Arch, CodeId, DebugId, Name};
 
 use crate::sourcebundle::SourceFileDescriptor;
-use crate::ObjectParseOptions;
+use crate::ParseObjectOptions;
 
 pub(crate) trait Parse<'data>: Sized {
     type Error;
 
-    fn parse_with_opts(data: &'data [u8], _opts: ObjectParseOptions) -> Result<Self, Self::Error> {
+    fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
         Self::parse(data)
     }
 

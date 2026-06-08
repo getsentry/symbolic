@@ -13,7 +13,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
-use crate::ObjectParseOptions;
+use crate::ParseObjectOptions;
 pub(crate) use mono_archive::{MonoArchive, MonoArchiveObjects};
 
 mod bcsymbolmap;
@@ -71,7 +71,7 @@ impl<'d> MachObject<'d> {
     }
 
     /// Tries to parse a MachO from the given slice.
-    pub fn parse_with_opts(data: &'d [u8], _opts: ObjectParseOptions) -> Result<Self, MachError> {
+    pub fn parse_with_opts(data: &'d [u8], _opts: ParseObjectOptions) -> Result<Self, MachError> {
         Self::parse(data)
     }
 
@@ -568,7 +568,7 @@ pub struct FatMachObjectIterator<'d, 'a> {
     iter: mach::FatArchIterator<'a>,
     remaining: usize,
     data: &'d [u8],
-    opts: ObjectParseOptions,
+    opts: ParseObjectOptions,
 }
 
 impl<'d> Iterator for FatMachObjectIterator<'d, '_> {
@@ -606,7 +606,7 @@ impl ExactSizeIterator for FatMachObjectIterator<'_, '_> {}
 pub struct FatMachO<'d> {
     fat: mach::MultiArch<'d>,
     data: &'d [u8],
-    opts: ObjectParseOptions,
+    opts: ParseObjectOptions,
 }
 
 impl<'d> FatMachO<'d> {
@@ -621,7 +621,7 @@ impl<'d> FatMachO<'d> {
     }
 
     /// Tries to parse a fat MachO container from the given slice.
-    pub fn parse_with_opts(data: &'d [u8], opts: ObjectParseOptions) -> Result<Self, MachError> {
+    pub fn parse_with_opts(data: &'d [u8], opts: ParseObjectOptions) -> Result<Self, MachError> {
         mach::MultiArch::new(data)
             .map(|fat| FatMachO { fat, data, opts })
             .map_err(MachError::new)
@@ -770,7 +770,7 @@ impl<'d> MachArchive<'d> {
     }
 
     /// Tries to parse a Mach archive from the given slice.
-    pub fn parse_with_opts(data: &'d [u8], opts: ObjectParseOptions) -> Result<Self, MachError> {
+    pub fn parse_with_opts(data: &'d [u8], opts: ParseObjectOptions) -> Result<Self, MachError> {
         Ok(Self(match Self::is_fat(data) {
             Some(true) => MachArchiveInner::Archive(FatMachO::parse(data)?),
             // Fall back to mach parsing to receive a meaningful error message from goblin

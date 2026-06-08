@@ -2,7 +2,7 @@
 
 use super::WasmError;
 use crate::base::{ObjectKind, Symbol};
-use crate::ObjectParseOptions;
+use crate::ParseObjectOptions;
 use wasmparser::{
     BinaryReader, CompositeInnerType, FuncValidatorAllocations, NameSectionReader, Payload,
     TypeRef, Validator, WasmFeatures,
@@ -53,7 +53,7 @@ impl<'data> super::WasmObject<'data> {
     /// Tries to parse a WASM from the given slice.
     pub fn parse_with_opts(
         data: &'data [u8],
-        _opts: ObjectParseOptions,
+        _opts: ParseObjectOptions,
     ) -> Result<Self, WasmError> {
         Self::parse(data)
     }

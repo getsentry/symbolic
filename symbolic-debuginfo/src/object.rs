@@ -127,7 +127,7 @@ impl Error for ObjectError {
 /// Options for parsing object files.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, Default)]
-pub struct ObjectParseOptions {
+pub struct ParseObjectOptions {
     /// Maximum uncompressed size for compressed debug file sections.
     ///
     /// This is only relevant to ELF objects.
@@ -224,7 +224,7 @@ impl<'data> Object<'data> {
     /// Tries to parse a supported object from the given slice.
     pub fn parse_with_opts(
         data: &'data [u8],
-        opts: ObjectParseOptions,
+        opts: ParseObjectOptions,
     ) -> Result<Self, ObjectError> {
         macro_rules! parse_object {
             ($kind:ident, $file:ident, $data:expr) => {
@@ -681,7 +681,7 @@ impl<'d> Archive<'d> {
     }
 
     /// Tries to parse a generic archive from the given slice.
-    pub fn parse_with_opts(data: &'d [u8], opts: ObjectParseOptions) -> Result<Self, ObjectError> {
+    pub fn parse_with_opts(data: &'d [u8], opts: ParseObjectOptions) -> Result<Self, ObjectError> {
         let archive = match Self::peek(data) {
             FileFormat::Breakpad => Archive(ArchiveInner::Breakpad(MonoArchive::new(data, opts))),
             FileFormat::Elf => Archive(ArchiveInner::Elf(MonoArchive::new(data, opts))),
