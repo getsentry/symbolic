@@ -635,7 +635,7 @@ impl<'data> Iterator for SymbolIterator<'data, '_> {
 impl<'data> crate::base::Parse<'data> for PortablePdb<'data> {
     type Error = symbolic_ppdb::FormatError;
 
-    fn parse(data: &'data [u8]) -> Result<Self, Self::Error> {
+    fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
         Self::parse(data)
     }
 

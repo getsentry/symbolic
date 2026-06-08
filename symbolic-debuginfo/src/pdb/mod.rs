@@ -332,8 +332,8 @@ impl<'data> Parse<'data> for PdbObject<'data> {
         Self::test(data)
     }
 
-    fn parse(data: &'data [u8]) -> Result<Self, PdbError> {
-        Self::parse(data)
+    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+        Self::parse_with_opts(data, opts)
     }
 }
 

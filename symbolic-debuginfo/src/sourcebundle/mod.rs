@@ -802,8 +802,8 @@ impl<'slf, 'data: 'slf> AsSelf<'slf> for SourceBundle<'data> {
 impl<'data> Parse<'data> for SourceBundle<'data> {
     type Error = SourceBundleError;
 
-    fn parse(data: &'data [u8]) -> Result<Self, Self::Error> {
-        SourceBundle::parse(data)
+    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+        Self::parse_with_opts(data, opts)
     }
 
     fn test(data: &'data [u8]) -> bool {

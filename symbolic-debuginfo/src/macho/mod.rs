@@ -391,8 +391,8 @@ impl<'d> Parse<'d> for MachObject<'d> {
         Self::test(data)
     }
 
-    fn parse(data: &'d [u8]) -> Result<Self, MachError> {
-        Self::parse(data)
+    fn parse_with_opts(data: &'d [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+        Self::parse_with_opts(data, opts)
     }
 }
 

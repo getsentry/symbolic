@@ -402,8 +402,8 @@ impl<'data> Parse<'data> for PeObject<'data> {
         Self::test(data)
     }
 
-    fn parse(data: &'data [u8]) -> Result<Self, PeError> {
-        Self::parse(data)
+    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+        Self::parse_with_opts(data, opts)
     }
 }
 
