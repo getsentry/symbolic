@@ -686,7 +686,7 @@ impl<'d> Archive<'d> {
             FileFormat::Breakpad => Archive(ArchiveInner::Breakpad(MonoArchive::new(data, opts))),
             FileFormat::Elf => Archive(ArchiveInner::Elf(MonoArchive::new(data, opts))),
             FileFormat::MachO => {
-                let inner = MachArchive::parse(data)
+                let inner = MachArchive::parse_with_opts(data, opts)
                     .map(ArchiveInner::MachO)
                     .map_err(ObjectError::transparent)?;
                 Archive(inner)
