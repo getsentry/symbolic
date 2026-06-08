@@ -13,6 +13,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
+use crate::ObjectParseOptions;
 pub(crate) use mono_archive::{MonoArchive, MonoArchiveObjects};
 
 mod bcsymbolmap;
@@ -70,6 +71,11 @@ impl<'d> MachObject<'d> {
     }
 
     /// Tries to parse a MachO from the given slice.
+    pub fn parse_with_opts(data: &'d [u8], _opts: ObjectParseOptions) -> Result<Self, MachError> {
+        Self::parse(data)
+    }
+
+    /// Tries to parse a MachO from the given slice, with default options.
     pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
         mach::MachO::parse(data, 0)
             .map(|macho| MachObject {

@@ -124,6 +124,16 @@ impl Error for ObjectError {
     }
 }
 
+/// Options for parsing object files.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ObjectParseOptions {
+    /// Maximum uncompressed size for compressed debug file sections.
+    ///
+    /// This is only relevant to ELF objects.
+    pub max_decompressed_section_size: Option<u64>,
+}
+
 /// Tries to infer the object type from the start of the given buffer.
 ///
 /// If `archive` is set to `true`, multi architecture objects will be allowed. Otherwise, only
@@ -206,11 +216,19 @@ impl<'data> Object<'data> {
         peek(data, false)
     }
 
-    /// Tries to parse a supported object from the given slice.
+    /// Tries to parse a supported object from the given slice, with default options.
     pub fn parse(data: &'data [u8]) -> Result<Self, ObjectError> {
+        Self::parse_with_opts(data, Default::default())
+    }
+
+    /// Tries to parse a supported object from the given slice.
+    pub fn parse_with_opts(
+        data: &'data [u8],
+        opts: ObjectParseOptions,
+    ) -> Result<Self, ObjectError> {
         macro_rules! parse_object {
             ($kind:ident, $file:ident, $data:expr) => {
-                Object::$kind($file::parse(data).map_err(ObjectError::transparent)?)
+                Object::$kind($file::parse_with_opts(data, opts).map_err(ObjectError::transparent)?)
             };
         }
 

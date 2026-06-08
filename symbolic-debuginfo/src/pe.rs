@@ -14,6 +14,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
 use crate::dwarf::*;
+use crate::ObjectParseOptions;
 
 pub use goblin::pe::exception::*;
 pub use goblin::pe::section_table::SectionTable;
@@ -82,6 +83,11 @@ impl<'data> PeObject<'data> {
     }
 
     /// Tries to parse a PE object from the given slice.
+    pub fn parse_with_opts(data: &'data [u8], _opts: ObjectParseOptions) -> Result<Self, PeError> {
+        Self::parse(data)
+    }
+
+    /// Tries to parse a PE object from the given slice, with default options.
     pub fn parse(data: &'data [u8]) -> Result<Self, PeError> {
         let opts = pe::options::ParseOptions::default()
             .with_parse_mode(goblin::pe::options::ParseMode::Permissive)
