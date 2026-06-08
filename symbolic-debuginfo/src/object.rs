@@ -675,22 +675,31 @@ impl<'d> Archive<'d> {
         peek(data, true)
     }
 
-    /// Tries to parse a generic archive from the given slice.
+    /// Tries to parse a generic archive from the given slice, with default options.
     pub fn parse(data: &'d [u8]) -> Result<Self, ObjectError> {
+        Self::parse_with_opts(data, Default::default())
+    }
+
+    /// Tries to parse a generic archive from the given slice.
+    pub fn parse_with_opts(data: &'d [u8], opts: ObjectParseOptions) -> Result<Self, ObjectError> {
         let archive = match Self::peek(data) {
-            FileFormat::Breakpad => Archive(ArchiveInner::Breakpad(MonoArchive::new(data))),
-            FileFormat::Elf => Archive(ArchiveInner::Elf(MonoArchive::new(data))),
+            FileFormat::Breakpad => Archive(ArchiveInner::Breakpad(MonoArchive::new(data, opts))),
+            FileFormat::Elf => Archive(ArchiveInner::Elf(MonoArchive::new(data, opts))),
             FileFormat::MachO => {
                 let inner = MachArchive::parse(data)
                     .map(ArchiveInner::MachO)
                     .map_err(ObjectError::transparent)?;
                 Archive(inner)
             }
-            FileFormat::Pdb => Archive(ArchiveInner::Pdb(MonoArchive::new(data))),
-            FileFormat::Pe => Archive(ArchiveInner::Pe(MonoArchive::new(data))),
-            FileFormat::SourceBundle => Archive(ArchiveInner::SourceBundle(MonoArchive::new(data))),
-            FileFormat::Wasm => Archive(ArchiveInner::Wasm(MonoArchive::new(data))),
-            FileFormat::PortablePdb => Archive(ArchiveInner::PortablePdb(MonoArchive::new(data))),
+            FileFormat::Pdb => Archive(ArchiveInner::Pdb(MonoArchive::new(data, opts))),
+            FileFormat::Pe => Archive(ArchiveInner::Pe(MonoArchive::new(data, opts))),
+            FileFormat::SourceBundle => {
+                Archive(ArchiveInner::SourceBundle(MonoArchive::new(data, opts)))
+            }
+            FileFormat::Wasm => Archive(ArchiveInner::Wasm(MonoArchive::new(data, opts))),
+            FileFormat::PortablePdb => {
+                Archive(ArchiveInner::PortablePdb(MonoArchive::new(data, opts)))
+            }
             FileFormat::Unknown => {
                 return Err(ObjectError::new(ObjectErrorRepr::UnsupportedObject))
             }

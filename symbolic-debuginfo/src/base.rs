@@ -6,11 +6,18 @@ use std::str::FromStr;
 use symbolic_common::{clean_path, join_path, Arch, CodeId, DebugId, Name};
 
 use crate::sourcebundle::SourceFileDescriptor;
+use crate::ObjectParseOptions;
 
 pub(crate) trait Parse<'data>: Sized {
     type Error;
 
-    fn parse(data: &'data [u8]) -> Result<Self, Self::Error>;
+    fn parse_with_opts(data: &'data [u8], _opts: ObjectParseOptions) -> Result<Self, Self::Error> {
+        Self::parse(data)
+    }
+
+    fn parse(data: &'data [u8]) -> Result<Self, Self::Error> {
+        Self::parse_with_opts(data, Default::default())
+    }
 
     fn test(data: &'data [u8]) -> bool {
         Self::parse(data).is_ok()

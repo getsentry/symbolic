@@ -1,8 +1,11 @@
+use crate::ObjectParseOptions;
+
 use super::Parse;
 use std::{fmt, iter::FusedIterator, marker::PhantomData};
 
 pub(crate) struct MonoArchive<'d, P> {
     data: &'d [u8],
+    opts: ObjectParseOptions,
     _ph: PhantomData<&'d P>,
 }
 
@@ -10,15 +13,16 @@ impl<'d, P> MonoArchive<'d, P>
 where
     P: Parse<'d>,
 {
-    pub fn new(data: &'d [u8]) -> Self {
-        MonoArchive {
+    pub fn new(data: &'d [u8], opts: ObjectParseOptions) -> Self {
+        Self {
             data,
+            opts,
             _ph: PhantomData,
         }
     }
 
     pub fn object(&self) -> Result<P, P::Error> {
-        P::parse(self.data)
+        P::parse_with_opts(self.data, self.opts)
     }
 
     pub fn objects(&self) -> MonoArchiveObjects<'d, P> {

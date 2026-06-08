@@ -800,8 +800,8 @@ impl<'data> Parse<'data> for ElfObject<'data> {
         Self::test(data)
     }
 
-    fn parse(data: &'data [u8]) -> Result<Self, ElfError> {
-        Self::parse(data)
+    fn parse_with_opts(data: &'data [u8], opts: ObjectParseOptions) -> Result<Self, ElfError> {
+        Self::parse_with_opts(data, opts)
     }
 }
 
