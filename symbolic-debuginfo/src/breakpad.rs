@@ -954,6 +954,9 @@ impl<'data> BreakpadObject<'data> {
     }
 
     /// Tries to parse a Breakpad object from the given slice.
+    ///
+    /// Note: `_opts` is unused in this function; it exists for consistency
+    /// with other parsing functions.
     pub fn parse_with_opts(
         data: &'data [u8],
         _opts: ParseObjectOptions,

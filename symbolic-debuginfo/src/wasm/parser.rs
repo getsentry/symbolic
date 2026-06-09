@@ -51,6 +51,9 @@ impl BitVec {
 
 impl<'data> super::WasmObject<'data> {
     /// Tries to parse a WASM from the given slice.
+    ///
+    /// Note: `_opts` is unused in this function; it exists for consistency
+    /// with other parsing functions.
     pub fn parse_with_opts(
         data: &'data [u8],
         _opts: ParseObjectOptions,

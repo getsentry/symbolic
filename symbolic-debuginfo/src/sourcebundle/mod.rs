@@ -609,6 +609,9 @@ impl<'data> SourceBundle<'data> {
     }
 
     /// Tries to parse a `SourceBundle` from the given slice.
+    ///
+    /// Note: `_opts` is unused in this function; it exists for consistency
+    /// with other parsing functions.
     pub fn parse_with_opts(
         data: &'data [u8],
         _opts: ParseObjectOptions,

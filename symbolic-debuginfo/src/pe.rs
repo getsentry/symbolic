@@ -83,6 +83,9 @@ impl<'data> PeObject<'data> {
     }
 
     /// Tries to parse a PE object from the given slice.
+    ///
+    /// Note: `_opts` is unused in this function; it exists for consistency
+    /// with other parsing functions.
     pub fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, PeError> {
         let opts = pe::options::ParseOptions::default()
             .with_parse_mode(goblin::pe::options::ParseMode::Permissive)

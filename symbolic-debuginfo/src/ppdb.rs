@@ -27,6 +27,9 @@ pub struct PortablePdbObject<'data> {
 
 impl<'data> PortablePdbObject<'data> {
     /// Tries to parse a Portable PDB object from the given slice.
+    ///
+    /// Note: `_opts` is unused in this function; it exists for consistency
+    /// with other parsing functions.
     pub fn parse_with_opts(
         data: &'data [u8],
         _opts: ParseObjectOptions,

@@ -71,6 +71,9 @@ impl<'d> MachObject<'d> {
     }
 
     /// Tries to parse a MachO from the given slice.
+    ///
+    /// Note: `_opts` is unused in this function; it exists for consistency
+    /// with other parsing functions.
     pub fn parse_with_opts(data: &'d [u8], _opts: ParseObjectOptions) -> Result<Self, MachError> {
         mach::MachO::parse(data, 0)
             .map(|macho| MachObject {

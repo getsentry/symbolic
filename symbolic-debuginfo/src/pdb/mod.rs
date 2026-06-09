@@ -144,6 +144,9 @@ impl<'data> PdbObject<'data> {
     }
 
     /// Tries to parse a PDB object from the given slice.
+    ///
+    /// Note: `_opts` is unused in this function; it exists for consistency
+    /// with other parsing functions.
     #[allow(clippy::arc_with_non_send_sync)]
     pub fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, PdbError> {
         let mut pdb = Pdb::open(Cursor::new(data))?;
