@@ -71,7 +71,7 @@ pub struct ElfObject<'data> {
     elf: elf::Elf<'data>,
     data: &'data [u8],
     is_malformed: bool,
-    max_decompressed_section_size: Option<u64>,
+    max_decompressed_section_size: Option<usize>,
 }
 
 impl<'data> ElfObject<'data> {
@@ -604,7 +604,7 @@ impl<'data> ElfObject<'data> {
 
             (
                 CompressionType::Zlib,
-                u64::from_be_bytes(size_bytes),
+                u64::from_be_bytes(size_bytes) as usize,
                 &section_data[12..],
             )
         } else {
@@ -622,25 +622,22 @@ impl<'data> ElfObject<'data> {
             };
 
             let compressed = &section_data[CompressionHeader::size(context)..];
-            (ty, compression.ch_size, compressed)
+            (ty, compression.ch_size as usize, compressed)
         };
 
-        if self
-            .max_decompressed_section_size
-            .is_some_and(|max| size > max)
-        {
+        if size > self.max_decompressed_section_size.unwrap_or(usize::MAX) {
             return None;
         }
 
         let decompressed = match ty {
             CompressionType::Zlib => {
-                let mut decompressed = Vec::with_capacity(size as usize);
+                let mut decompressed = Vec::with_capacity(size);
                 Decompress::new(true)
                     .decompress_vec(compressed, &mut decompressed, FlushDecompress::Finish)
                     .ok()?;
                 decompressed
             }
-            CompressionType::Zstd => zstd::bulk::decompress(compressed, size as usize).ok()?,
+            CompressionType::Zstd => zstd::bulk::decompress(compressed, size).ok()?,
         };
 
         Some(decompressed)
