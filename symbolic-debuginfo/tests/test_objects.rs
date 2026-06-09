@@ -427,20 +427,28 @@ fn test_elf_debug_link_compressed() -> Result<(), Error> {
 
 #[test]
 fn test_elf_compressed_gnu() {
-    let mut opts = ParseObjectOptions::default();
-    opts.max_decompressed_section_size = Some(2 << 30);
     let view = ByteView::open(fixture("linux/elf_compressed_gnu")).unwrap();
+    let mut opts = ParseObjectOptions::default();
+
     let object = ElfObject::parse_with_opts(&view, opts).unwrap();
-    let _ = object.debug_session();
+    assert!(object.debug_session().is_err());
+
+    opts.max_decompressed_section_size = Some(5);
+    let object = ElfObject::parse_with_opts(&view, opts).unwrap();
+    object.debug_session().unwrap();
 }
 
 #[test]
 fn test_elf_compressed_shf() {
-    let mut opts = ParseObjectOptions::default();
-    opts.max_decompressed_section_size = Some(2 << 30);
     let view = ByteView::open(fixture("linux/elf_compressed_shf")).unwrap();
+    let mut opts = ParseObjectOptions::default();
+
     let object = ElfObject::parse_with_opts(&view, opts).unwrap();
-    let _ = object.debug_session();
+    assert!(object.debug_session().is_err());
+
+    opts.max_decompressed_section_size = Some(5);
+    let object = ElfObject::parse_with_opts(&view, opts).unwrap();
+    object.debug_session().unwrap();
 }
 
 #[test]
