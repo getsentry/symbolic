@@ -427,7 +427,7 @@ fn test_elf_debug_link_compressed() -> Result<(), Error> {
 
 #[test]
 fn test_elf_compressed_gnu() {
-    let view = ByteView::open(fixture("linux/elf_compressed_gnu")).unwrap();
+    let view = ByteView::open(fixture("regression/elf_compressed_gnu")).unwrap();
     let mut opts = ParseObjectOptions::default();
 
     let object = ElfObject::parse_with_opts(&view, opts).unwrap();
@@ -440,7 +440,7 @@ fn test_elf_compressed_gnu() {
 
 #[test]
 fn test_elf_compressed_shf() {
-    let view = ByteView::open(fixture("linux/elf_compressed_shf")).unwrap();
+    let view = ByteView::open(fixture("regression/elf_compressed_shf")).unwrap();
     let mut opts = ParseObjectOptions::default();
 
     let object = ElfObject::parse_with_opts(&view, opts).unwrap();
