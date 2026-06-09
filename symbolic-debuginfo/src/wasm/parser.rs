@@ -55,11 +55,6 @@ impl<'data> super::WasmObject<'data> {
         data: &'data [u8],
         _opts: ParseObjectOptions,
     ) -> Result<Self, WasmError> {
-        Self::parse(data)
-    }
-
-    /// Tries to parse a WASM from the given slice, with default options.
-    pub fn parse(data: &'data [u8]) -> Result<Self, WasmError> {
         let mut code_offset = 0;
         let mut build_id = None;
         let mut dwarf_sections = Vec::new();
@@ -234,6 +229,11 @@ impl<'data> super::WasmObject<'data> {
             code_offset,
             kind,
         })
+    }
+
+    /// Tries to parse a WASM from the given slice, with default options.
+    pub fn parse(data: &'data [u8]) -> Result<Self, WasmError> {
+        Self::parse_with_opts(data, Default::default())
     }
 }
 

@@ -84,17 +84,17 @@ impl<'data> PeObject<'data> {
 
     /// Tries to parse a PE object from the given slice.
     pub fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, PeError> {
-        Self::parse(data)
-    }
-
-    /// Tries to parse a PE object from the given slice, with default options.
-    pub fn parse(data: &'data [u8]) -> Result<Self, PeError> {
         let opts = pe::options::ParseOptions::default()
             .with_parse_mode(goblin::pe::options::ParseMode::Permissive)
             .with_parse_imports(false);
         let pe = pe::PE::parse_with_opts(data, &opts).map_err(PeError::new)?;
         let is_stub = is_pe_stub(&pe);
         Ok(PeObject { pe, data, is_stub })
+    }
+
+    /// Tries to parse a PE object from the given slice, with default options.
+    pub fn parse(data: &'data [u8]) -> Result<Self, PeError> {
+        Self::parse_with_opts(data, Default::default())
     }
 
     /// The container file format, which is always `FileFormat::Pe`.

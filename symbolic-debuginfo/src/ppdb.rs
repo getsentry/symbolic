@@ -31,13 +31,13 @@ impl<'data> PortablePdbObject<'data> {
         data: &'data [u8],
         _opts: ParseObjectOptions,
     ) -> Result<Self, FormatError> {
-        Self::parse(data)
+        let ppdb = PortablePdb::parse(data)?;
+        Ok(Self { data, ppdb })
     }
 
     /// Tries to parse a Portable PDB object from the given slice, with default options.
     pub fn parse(data: &'data [u8]) -> Result<Self, FormatError> {
-        let ppdb = PortablePdb::parse(data)?;
-        Ok(Self { data, ppdb })
+        Self::parse_with_opts(data, Default::default())
     }
 
     /// Returns the Portable PDB contained in this object.
