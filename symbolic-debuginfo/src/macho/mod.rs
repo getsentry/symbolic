@@ -654,7 +654,7 @@ impl<'d> FatMachO<'d> {
 
         let start = (arch.offset as usize).min(self.data.len());
         let end = (arch.offset as usize + arch.size as usize).min(self.data.len());
-        MachObject::parse(&self.data[start..end]).map(Some)
+        MachObject::parse_with_opts(&self.data[start..end], self.opts).map(Some)
     }
 }
 
@@ -772,7 +772,7 @@ impl<'d> MachArchive<'d> {
     /// Tries to parse a Mach archive from the given slice.
     pub fn parse_with_opts(data: &'d [u8], opts: ParseObjectOptions) -> Result<Self, MachError> {
         Ok(Self(match Self::is_fat(data) {
-            Some(true) => MachArchiveInner::Archive(FatMachO::parse(data)?),
+            Some(true) => MachArchiveInner::Archive(FatMachO::parse_with_opts(data, opts)?),
             // Fall back to mach parsing to receive a meaningful error message from goblin
             _ => MachArchiveInner::Single(MonoArchive::new(data, opts)),
         }))
