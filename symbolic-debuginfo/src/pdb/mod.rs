@@ -144,11 +144,8 @@ impl<'data> PdbObject<'data> {
     }
 
     /// Tries to parse a PDB object from the given slice.
-    ///
-    /// Note: `_opts` is unused in this function; it exists for consistency
-    /// with other parsing functions.
     #[allow(clippy::arc_with_non_send_sync)]
-    pub fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, PdbError> {
+    pub fn parse(data: &'data [u8]) -> Result<Self, PdbError> {
         let mut pdb = Pdb::open(Cursor::new(data))?;
         let dbi = pdb.debug_information()?;
         let pdbi = pdb.pdb_information()?;
@@ -163,11 +160,6 @@ impl<'data> PdbObject<'data> {
             data,
             executable_sections: ExecutableSections::from_sections(&sections),
         })
-    }
-
-    /// Tries to parse a PDB object from the given slice, with default options.
-    pub fn parse(data: &'data [u8]) -> Result<Self, PdbError> {
-        Self::parse_with_opts(data, Default::default())
     }
 
     /// The container file format, which is always `FileFormat::Pdb`.
@@ -335,8 +327,8 @@ impl<'data> Parse<'data> for PdbObject<'data> {
         Self::test(data)
     }
 
-    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
-        Self::parse_with_opts(data, opts)
+    fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+        Self::parse(data)
     }
 }
 

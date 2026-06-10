@@ -181,8 +181,8 @@ impl<'d> Parse<'d> for WasmObject<'d> {
         Self::test(data)
     }
 
-    fn parse_with_opts(data: &'d [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
-        Self::parse_with_opts(data, opts)
+    fn parse_with_opts(data: &'d [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+        Self::parse(data)
     }
 }
 

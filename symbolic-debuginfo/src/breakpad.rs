@@ -954,13 +954,7 @@ impl<'data> BreakpadObject<'data> {
     }
 
     /// Tries to parse a Breakpad object from the given slice.
-    ///
-    /// Note: `_opts` is unused in this function; it exists for consistency
-    /// with other parsing functions.
-    pub fn parse_with_opts(
-        data: &'data [u8],
-        _opts: ParseObjectOptions,
-    ) -> Result<Self, BreakpadError> {
+    pub fn parse(data: &'data [u8]) -> Result<Self, BreakpadError> {
         // Ensure that we do not read the entire file at once.
         let header = if data.len() > BREAKPAD_HEADER_CAP {
             match str::from_utf8(&data[..BREAKPAD_HEADER_CAP]) {
@@ -989,11 +983,6 @@ impl<'data> BreakpadObject<'data> {
             module,
             data,
         })
-    }
-
-    /// Tries to parse a Breakpad object from the given slice, with default options.
-    pub fn parse(data: &'data [u8]) -> Result<Self, BreakpadError> {
-        Self::parse_with_opts(data, Default::default())
     }
 
     /// The container file format, which is always `FileFormat::Breakpad`.
@@ -1183,8 +1172,12 @@ impl<'data> Parse<'data> for BreakpadObject<'data> {
         Self::test(data)
     }
 
-    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
-        Self::parse_with_opts(data, opts)
+    fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+        Self::parse(data)
+    }
+
+    fn parse(data: &'data [u8]) -> Result<Self, Self::Error> {
+        Self::parse(data)
     }
 }
 

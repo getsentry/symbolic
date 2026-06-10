@@ -2,7 +2,6 @@
 
 use super::WasmError;
 use crate::base::{ObjectKind, Symbol};
-use crate::ParseObjectOptions;
 use wasmparser::{
     BinaryReader, CompositeInnerType, FuncValidatorAllocations, NameSectionReader, Payload,
     TypeRef, Validator, WasmFeatures,
@@ -51,13 +50,7 @@ impl BitVec {
 
 impl<'data> super::WasmObject<'data> {
     /// Tries to parse a WASM from the given slice.
-    ///
-    /// Note: `_opts` is unused in this function; it exists for consistency
-    /// with other parsing functions.
-    pub fn parse_with_opts(
-        data: &'data [u8],
-        _opts: ParseObjectOptions,
-    ) -> Result<Self, WasmError> {
+    pub fn parse(data: &'data [u8]) -> Result<Self, WasmError> {
         let mut code_offset = 0;
         let mut build_id = None;
         let mut dwarf_sections = Vec::new();
@@ -232,11 +225,6 @@ impl<'data> super::WasmObject<'data> {
             code_offset,
             kind,
         })
-    }
-
-    /// Tries to parse a WASM from the given slice, with default options.
-    pub fn parse(data: &'data [u8]) -> Result<Self, WasmError> {
-        Self::parse_with_opts(data, Default::default())
     }
 }
 

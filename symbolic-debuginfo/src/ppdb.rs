@@ -26,21 +26,10 @@ pub struct PortablePdbObject<'data> {
 }
 
 impl<'data> PortablePdbObject<'data> {
-    /// Tries to parse a Portable PDB object from the given slice.
-    ///
-    /// Note: `_opts` is unused in this function; it exists for consistency
-    /// with other parsing functions.
-    pub fn parse_with_opts(
-        data: &'data [u8],
-        _opts: ParseObjectOptions,
-    ) -> Result<Self, FormatError> {
-        let ppdb = PortablePdb::parse(data)?;
-        Ok(Self { data, ppdb })
-    }
-
     /// Tries to parse a Portable PDB object from the given slice, with default options.
     pub fn parse(data: &'data [u8]) -> Result<Self, FormatError> {
-        Self::parse_with_opts(data, Default::default())
+        let ppdb = PortablePdb::parse(data)?;
+        Ok(Self { data, ppdb })
     }
 
     /// Returns the Portable PDB contained in this object.
@@ -145,8 +134,12 @@ impl<'data> Parse<'data> for PortablePdbObject<'data> {
         PortablePdb::peek(data)
     }
 
-    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
-        Self::parse_with_opts(data, opts)
+    fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+        Self::parse(data)
+    }
+
+    fn parse(data: &'data [u8]) -> Result<Self, Self::Error> {
+        Self::parse(data)
     }
 }
 

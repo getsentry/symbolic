@@ -71,10 +71,7 @@ impl<'d> MachObject<'d> {
     }
 
     /// Tries to parse a MachO from the given slice.
-    ///
-    /// Note: `_opts` is unused in this function; it exists for consistency
-    /// with other parsing functions.
-    pub fn parse_with_opts(data: &'d [u8], _opts: ParseObjectOptions) -> Result<Self, MachError> {
+    pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
         mach::MachO::parse(data, 0)
             .map(|macho| MachObject {
                 macho,
@@ -82,11 +79,6 @@ impl<'d> MachObject<'d> {
                 bcsymbolmap: None,
             })
             .map_err(MachError::new)
-    }
-
-    /// Tries to parse a MachO from the given slice, with default options.
-    pub fn parse(data: &'d [u8]) -> Result<Self, MachError> {
-        Self::parse_with_opts(data, Default::default())
     }
 
     /// Parses and loads the [`BcSymbolMap`] into the object.
@@ -394,8 +386,8 @@ impl<'d> Parse<'d> for MachObject<'d> {
         Self::test(data)
     }
 
-    fn parse_with_opts(data: &'d [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
-        Self::parse_with_opts(data, opts)
+    fn parse_with_opts(data: &'d [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+        Self::parse(data)
     }
 }
 

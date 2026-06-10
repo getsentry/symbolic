@@ -609,13 +609,7 @@ impl<'data> SourceBundle<'data> {
     }
 
     /// Tries to parse a `SourceBundle` from the given slice.
-    ///
-    /// Note: `_opts` is unused in this function; it exists for consistency
-    /// with other parsing functions.
-    pub fn parse_with_opts(
-        data: &'data [u8],
-        _opts: ParseObjectOptions,
-    ) -> Result<SourceBundle<'data>, SourceBundleError> {
+    pub fn parse(data: &'data [u8]) -> Result<SourceBundle<'data>, SourceBundleError> {
         let mut archive = zip::read::ZipArchive::new(std::io::Cursor::new(data))
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
 
@@ -626,11 +620,6 @@ impl<'data> SourceBundle<'data> {
             data,
             index,
         })
-    }
-
-    /// Tries to parse a `SourceBundle` from the given slice, with default options.
-    pub fn parse(data: &'data [u8]) -> Result<SourceBundle<'data>, SourceBundleError> {
-        Self::parse_with_opts(data, Default::default())
     }
 
     /// Returns the version of this source bundle format.
@@ -805,8 +794,8 @@ impl<'slf, 'data: 'slf> AsSelf<'slf> for SourceBundle<'data> {
 impl<'data> Parse<'data> for SourceBundle<'data> {
     type Error = SourceBundleError;
 
-    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
-        Self::parse_with_opts(data, opts)
+    fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+        Self::parse(data)
     }
 
     fn test(data: &'data [u8]) -> bool {
