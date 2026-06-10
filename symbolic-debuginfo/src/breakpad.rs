@@ -1175,10 +1175,6 @@ impl<'data> Parse<'data> for BreakpadObject<'data> {
     fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
         Self::parse(data)
     }
-
-    fn parse(data: &'data [u8]) -> Result<Self, Self::Error> {
-        Self::parse(data)
-    }
 }
 
 impl<'data: 'object, 'object> ObjectLike<'data, 'object> for BreakpadObject<'data> {

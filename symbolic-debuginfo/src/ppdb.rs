@@ -137,10 +137,6 @@ impl<'data> Parse<'data> for PortablePdbObject<'data> {
     fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
         Self::parse(data)
     }
-
-    fn parse(data: &'data [u8]) -> Result<Self, Self::Error> {
-        Self::parse(data)
-    }
 }
 
 impl fmt::Debug for PortablePdbObject<'_> {
