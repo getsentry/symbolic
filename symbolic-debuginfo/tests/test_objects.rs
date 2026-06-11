@@ -1,8 +1,10 @@
 use std::{ffi::CString, fmt, io::BufWriter};
 
 use symbolic_common::{ByteView, Language};
+use symbolic_debuginfo::dwarf::DwarfErrorKind;
+use symbolic_debuginfo::elf::ElfObject;
 use symbolic_debuginfo::{
-    elf::ElfObject, pe::PeObject, FileEntry, Function, LineInfo, Object, SymbolMap,
+    pe::PeObject, FileEntry, Function, LineInfo, Object, ParseObjectOptions, SymbolMap,
 };
 use symbolic_testutils::fixture;
 
@@ -422,6 +424,44 @@ fn test_elf_debug_link_padding() -> Result<(), Error> {
 // while without compression the "Borrowed" is exerted.
 fn test_elf_debug_link_compressed() -> Result<(), Error> {
     check_debug_info("elf_with_compressed_debuglink", "debug_info.txt")
+}
+
+#[test]
+fn test_elf_compressed_gnu() {
+    let view = ByteView::open(fixture("regression/elf_compressed_gnu")).unwrap();
+    let mut opts = ParseObjectOptions::default();
+
+    let object = ElfObject::parse_with_opts(&view, opts).unwrap();
+
+    // Opening the session fails because the debuginfo section isn't actually valid.
+    assert!(object
+        .debug_session()
+        .is_err_and(|err| err.kind() == DwarfErrorKind::CorruptedData));
+
+    opts.max_decompressed_section_size = Some(5);
+    let object = ElfObject::parse_with_opts(&view, opts).unwrap();
+
+    // Opening the session succeeds now because the broken section isn't read.
+    assert!(object.debug_session().is_ok());
+}
+
+#[test]
+fn test_elf_compressed_shf() {
+    let view = ByteView::open(fixture("regression/elf_compressed_shf")).unwrap();
+    let mut opts = ParseObjectOptions::default();
+
+    let object = ElfObject::parse_with_opts(&view, opts).unwrap();
+
+    // Opening the session fails because the debuginfo section isn't actually valid.
+    assert!(object
+        .debug_session()
+        .is_err_and(|err| err.kind() == DwarfErrorKind::CorruptedData));
+
+    opts.max_decompressed_section_size = Some(5);
+    let object = ElfObject::parse_with_opts(&view, opts).unwrap();
+
+    // Opening the session succeeds now because the broken section isn't read.
+    assert!(object.debug_session().is_ok());
 }
 
 #[test]

@@ -6,8 +6,8 @@ use thiserror::Error;
 
 use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
-use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
+use crate::{base::*, ParseObjectOptions};
 
 mod parser;
 
@@ -181,7 +181,7 @@ impl<'d> Parse<'d> for WasmObject<'d> {
         Self::test(data)
     }
 
-    fn parse(data: &'d [u8]) -> Result<Self, WasmError> {
+    fn parse_with_opts(data: &'d [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
         Self::parse(data)
     }
 }

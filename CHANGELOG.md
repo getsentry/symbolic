@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- Add parsing options for object files. ([#984](https://github.com/getsentry/symbolic/pull/984))
+
 ## 13.1.1
 
 **Features**

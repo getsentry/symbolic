@@ -14,6 +14,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Language, Name, NameManglin
 use crate::base::*;
 use crate::function_builder::FunctionBuilder;
 use crate::sourcebundle::SourceFileDescriptor;
+use crate::ParseObjectOptions;
 
 #[derive(Clone, Debug)]
 struct LineOffsets<'data> {
@@ -1171,7 +1172,7 @@ impl<'data> Parse<'data> for BreakpadObject<'data> {
         Self::test(data)
     }
 
-    fn parse(data: &'data [u8]) -> Result<Self, BreakpadError> {
+    fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
         Self::parse(data)
     }
 }

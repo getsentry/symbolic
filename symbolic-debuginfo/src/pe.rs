@@ -14,6 +14,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId};
 
 use crate::base::*;
 use crate::dwarf::*;
+use crate::ParseObjectOptions;
 
 pub use goblin::pe::exception::*;
 pub use goblin::pe::section_table::SectionTable;
@@ -396,7 +397,7 @@ impl<'data> Parse<'data> for PeObject<'data> {
         Self::test(data)
     }
 
-    fn parse(data: &'data [u8]) -> Result<Self, PeError> {
+    fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
         Self::parse(data)
     }
 }

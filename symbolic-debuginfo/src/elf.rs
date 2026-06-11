@@ -22,6 +22,7 @@ use symbolic_common::{Arch, AsSelf, CodeId, DebugId, Uuid};
 
 use crate::base::*;
 use crate::dwarf::{Dwarf, DwarfDebugSession, DwarfError, DwarfSection, Endian};
+use crate::ParseObjectOptions;
 
 const UUID_SIZE: usize = 16;
 const PAGE_SIZE: usize = 4096;
@@ -46,7 +47,7 @@ const EF_MIPS_ABI_EABI64: u32 = 0x0000_4000;
 /// Any flag value that might indicate 64-bit MIPS.
 const MIPS_64_FLAGS: u32 = EF_MIPS_ABI_O64 | EF_MIPS_ABI_EABI64;
 
-/// An error when dealing with [`ElfObject`](struct.ElfObject.html).
+/// An error when dealing with [`ElfObject`].
 #[derive(Debug, Error)]
 #[error("invalid ELF file")]
 pub struct ElfError {
@@ -70,6 +71,7 @@ pub struct ElfObject<'data> {
     elf: elf::Elf<'data>,
     data: &'data [u8],
     is_malformed: bool,
+    max_decompressed_section_size: Option<usize>,
 }
 
 impl<'data> ElfObject<'data> {
@@ -134,9 +136,11 @@ impl<'data> ElfObject<'data> {
         Ok(nchain)
     }
 
-    /// Tries to parse an ELF object from the given slice. Will return a partially parsed ELF object
+    /// Tries to parse an ELF object from the given slice.
+    ///
+    /// Will return a partially parsed ELF object
     /// if at least the program and section headers can be parsed.
-    pub fn parse(data: &'data [u8]) -> Result<Self, ElfError> {
+    pub fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, ElfError> {
         let header =
             elf::Elf::parse_header(data).map_err(|_| ElfError::new("ELF header unreadable"))?;
         // dummy Elf with only header
@@ -166,6 +170,7 @@ impl<'data> ElfObject<'data> {
                         elf: obj,
                         data,
                         is_malformed: true,
+                        max_decompressed_section_size: opts.max_decompressed_section_size,
                     });
                 }
             };
@@ -349,9 +354,17 @@ impl<'data> ElfObject<'data> {
             elf: obj,
             data,
             is_malformed: false,
+            max_decompressed_section_size: opts.max_decompressed_section_size,
         })
     }
 
+    /// Tries to parse an ELF object from the given slice, with default options.
+    ///
+    /// Will return a partially parsed ELF object
+    /// if at least the program and section headers can be parsed.
+    pub fn parse(data: &'data [u8]) -> Result<Self, ElfError> {
+        Self::parse_with_opts(data, ParseObjectOptions::default())
+    }
     /// The container file format, which is always `FileFormat::Elf`.
     pub fn file_format(&self) -> FileFormat {
         FileFormat::Elf
@@ -591,7 +604,7 @@ impl<'data> ElfObject<'data> {
 
             (
                 CompressionType::Zlib,
-                u64::from_be_bytes(size_bytes),
+                u64::from_be_bytes(size_bytes) as usize,
                 &section_data[12..],
             )
         } else {
@@ -609,18 +622,22 @@ impl<'data> ElfObject<'data> {
             };
 
             let compressed = &section_data[CompressionHeader::size(context)..];
-            (ty, compression.ch_size, compressed)
+            (ty, compression.ch_size as usize, compressed)
         };
+
+        if size > self.max_decompressed_section_size.unwrap_or(usize::MAX) {
+            return None;
+        }
 
         let decompressed = match ty {
             CompressionType::Zlib => {
-                let mut decompressed = Vec::with_capacity(size as usize);
+                let mut decompressed = Vec::with_capacity(size);
                 Decompress::new(true)
                     .decompress_vec(compressed, &mut decompressed, FlushDecompress::Finish)
                     .ok()?;
                 decompressed
             }
-            CompressionType::Zstd => zstd::bulk::decompress(compressed, size as usize).ok()?,
+            CompressionType::Zstd => zstd::bulk::decompress(compressed, size).ok()?,
         };
 
         Some(decompressed)
@@ -780,8 +797,8 @@ impl<'data> Parse<'data> for ElfObject<'data> {
         Self::test(data)
     }
 
-    fn parse(data: &'data [u8]) -> Result<Self, ElfError> {
-        Self::parse(data)
+    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, ElfError> {
+        Self::parse_with_opts(data, opts)
     }
 }
 
