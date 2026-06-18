@@ -476,26 +476,12 @@ impl<'data> Dwarf<'data> for MachObject<'data> {
                             return None;
                         }
                         
-                        // The section header's `offset` field is only 32 bits wide, so for
-                        // files larger than 4 GiB (e.g. produced with thin LTO) it is
-                        // truncated and the section data goblin slices out is wrong. Recompute
-                        // the real 64-bit file offset from the enclosing segment's `fileoff`
-                        // and `vmaddr`, which are both 64-bit, and re-slice the file data.
-                        let (data, offset) = match header
-                            .addr
-                            .checked_sub(segment.vmaddr)
-                            .and_then(|rel| rel.checked_add(segment.fileoff))
-                            .and_then(|file_offset| {
-                                let start = usize::try_from(file_offset).ok()?;
-                                let len = usize::try_from(header.size).ok()?;
-                                let end = start.checked_add(len)?;
-                                Some((self.data.get(start..end)?, file_offset))
-                            }) {
-                            Some((data, file_offset)) => (data, file_offset),
-                            // Fall back to the data goblin provided if the segment-relative
-                            // computation is out of bounds or overflows.
-                            None => (data, u64::from(header.offset)),
-                        };
+                        let (data, offset) = if self.macho.is_64 {
+                            match header
+                            […]
+                        } else {
+                            (data, u64::from(header.offset))
+                        }
 
                         return Some(DwarfSection {
                             data: Cow::Borrowed(data),
