@@ -1,6 +1,6 @@
 {
   "name": "@sentry/symbolic",
-  "version": "13.2.0",
+  "version": "13.3.0",
   "description": "WebAssembly bindings for symbolic — parse debug information files (Mach-O/dSYM, ELF, PE/PDB, Portable PDB, WebAssembly, Breakpad, source bundles).",
   "type": "module",
   "main": "symbolic.js",
