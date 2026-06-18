@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- Add WebAssembly bindings (`symbolic-wasm` crate) published to npm as `@sentry/symbolic`, for parsing debug information files from JavaScript. ([#986](https://github.com/getsentry/symbolic/pull/986))
+
+**Changes**
+
+- `symbolic-debuginfo`: the `zstd` dependency moved out of the `elf` feature into a new `elf-zstd` feature (kept in `default`, so default builds are unchanged). Consumers using `default-features = false` with `elf` should add `elf-zstd` to keep decompressing zstd-compressed ELF debug sections, or `elf-zstd-pure` for a pure-Rust (wasm-compatible) decoder. ([#986](https://github.com/getsentry/symbolic/pull/986))
+
 ## 13.2.0
 
 **Features**
