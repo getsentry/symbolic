@@ -25,10 +25,12 @@ serde = ["dep:serde", "debugid/serde"]
 
 [dependencies]
 debugid = { workspace = true }
-memmap2 = { workspace = true }
 stable_deref_trait = { workspace = true }
 serde = { workspace = true, optional = true }
 uuid = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+memmap2 = { workspace = true }
 
 [dev-dependencies]
 symbolic-testutils = { path = "../symbolic-testutils" }

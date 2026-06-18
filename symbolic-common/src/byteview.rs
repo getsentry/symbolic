@@ -11,6 +11,7 @@ use std::ops::Deref;
 use std::path::Path;
 use std::sync::Arc;
 
+#[cfg(not(target_arch = "wasm32"))]
 use memmap2::Mmap;
 
 use crate::cell::StableDeref;
@@ -21,6 +22,7 @@ use crate::cell::StableDeref;
 #[derive(Debug)]
 enum ByteViewBacking<'a> {
     Buf(Cow<'a, [u8]>),
+    #[cfg(not(target_arch = "wasm32"))]
     Mmap(Mmap),
 }
 
@@ -30,6 +32,7 @@ impl Deref for ByteViewBacking<'_> {
     fn deref(&self) -> &Self::Target {
         match *self {
             ByteViewBacking::Buf(ref buf) => buf,
+            #[cfg(not(target_arch = "wasm32"))]
             ByteViewBacking::Mmap(ref mmap) => mmap,
         }
     }
@@ -132,6 +135,7 @@ impl<'a> ByteView<'a> {
     ///     Ok(())
     /// }
     /// ```
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn map_file(file: File) -> Result<Self, io::Error> {
         Self::map_file_ref(&file)
     }
@@ -153,6 +157,7 @@ impl<'a> ByteView<'a> {
     ///     Ok(())
     /// }
     /// ```
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn map_file_ref(file: &File) -> Result<Self, io::Error> {
         let backing = match unsafe { Mmap::map(file) } {
             Ok(mmap) => ByteViewBacking::Mmap(mmap),
@@ -213,9 +218,20 @@ impl<'a> ByteView<'a> {
     ///     Ok(())
     /// }
     /// ```
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, io::Error> {
         let file = File::open(path)?;
         Self::map_file(file)
+    }
+
+    /// Constructs a `ByteView` from a file path by reading the entire file.
+    ///
+    /// On `wasm32` targets there is no `mmap`, so the file is read into an
+    /// owned buffer instead.
+    #[cfg(target_arch = "wasm32")]
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, io::Error> {
+        let file = File::open(path)?;
+        Self::read(file)
     }
 
     /// Returns a slice of the underlying data.
@@ -262,9 +278,9 @@ impl<'a> ByteView<'a> {
         let _hint = hint; // silence unused lint
         match self.backing.deref() {
             ByteViewBacking::Buf(_) => Ok(()),
-            #[cfg(unix)]
+            #[cfg(all(unix, not(target_arch = "wasm32")))]
             ByteViewBacking::Mmap(mmap) => mmap.advise(_hint.to_madvise()),
-            #[cfg(not(unix))]
+            #[cfg(all(not(unix), not(target_arch = "wasm32")))]
             ByteViewBacking::Mmap(_) => Ok(()),
         }
     }
@@ -315,7 +331,7 @@ pub enum AccessPattern {
 }
 
 impl AccessPattern {
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_arch = "wasm32")))]
     fn to_madvise(self) -> memmap2::Advice {
         match self {
             AccessPattern::Normal => memmap2::Advice::Normal,

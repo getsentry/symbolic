@@ -25,6 +25,7 @@ all-features = true
 default = [
     "breakpad",
     "elf",
+    "elf-zstd",
     "macho",
     "ms",
     "ppdb",
@@ -45,8 +46,15 @@ elf = [
     "goblin/elf64",
     "goblin/std",
     "scroll",
-    "zstd",
 ]
+# Optional zstd support for zstd-compressed ELF debug sections.
+# Split out from `elf` because the `zstd` crate is a C library that does not
+# build for wasm32. Included in `default` to preserve existing behavior.
+elf-zstd = ["elf", "dep:zstd"]
+# Pure-Rust zstd support (via `ruzstd`) for targets where the `zstd` C library
+# is unavailable, e.g. wasm32. Used by the `symbolic-wasm` crate. When both
+# `elf-zstd` and `elf-zstd-pure` are enabled, the C `zstd` implementation wins.
+elf-zstd-pure = ["elf", "dep:ruzstd"]
 # Mach-o processing
 macho = [
     "dwarf",
@@ -111,6 +119,7 @@ thiserror = { workspace = true }
 wasmparser = { workspace = true, optional = true }
 zip = { workspace = true, optional = true }
 zstd = { workspace = true, optional = true }
+ruzstd = { version = "0.7", optional = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
