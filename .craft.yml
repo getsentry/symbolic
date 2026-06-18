@@ -1,11 +1,12 @@
-minVersion: "0.34.1"
+minVersion: "2.26.10"
 github:
   owner: getsentry
   repo: symbolic
-changelogPolicy: auto
+changelog:
+  policy: auto
+versioning:
+  policy: auto
 
-statusProvider:
-  name: github
 artifactProvider:
   name: github
 
