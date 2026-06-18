@@ -1409,6 +1409,106 @@ where
         Ok(!is_empty)
     }
 
+    /// Writes a single object into the bundle, reading source file contents from
+    /// a caller-supplied `provider` instead of the local filesystem.
+    ///
+    /// This is intended for environments without filesystem access (for example
+    /// WebAssembly): enumerate the object's referenced source paths via its
+    /// debug session, read them however the host can, and return the bytes from
+    /// `provider`. Returning `None` skips a file.
+    ///
+    /// Returns `Ok(true)` if any source files were added to the bundle, or
+    /// `Ok(false)` if no sources could be resolved.
+    ///
+    /// Each referenced source path is passed to `provider` at most once
+    /// (already-handled files, including those discovered via il2cpp source
+    /// references, are skipped), so a destructive provider — e.g. one that moves
+    /// bytes out of a map — is safe.
+    ///
+    /// This is a filesystem-free analogue of [`write_object_with_filter`]; the
+    /// two are kept as separate implementations so this addition does not alter
+    /// the existing filesystem code path.
+    ///
+    /// This finishes the source bundle and flushes the underlying writer.
+    ///
+    /// [`write_object_with_filter`]: Self::write_object_with_filter
+    pub fn write_object_with_source_provider<'data, 'object, O, E, P>(
+        mut self,
+        object: &'object O,
+        object_name: &str,
+        mut provider: P,
+    ) -> Result<bool, SourceBundleError>
+    where
+        O: ObjectLike<'data, 'object, Error = E>,
+        E: std::error::Error + Send + Sync + 'static,
+        P: FnMut(&str) -> Option<Vec<u8>>,
+    {
+        let mut files_handled = BTreeSet::new();
+        let mut referenced_files = BTreeSet::new();
+
+        let session = object
+            .debug_session()
+            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadDebugFile, e))?;
+
+        self.set_attribute("arch", object.arch().to_string());
+        self.set_attribute("debug_id", object.debug_id().to_string());
+        self.set_attribute("object_name", object_name);
+        if let Some(code_id) = object.code_id() {
+            self.set_attribute("code_id", code_id.to_string());
+        }
+
+        for file_result in session.files() {
+            let file = file_result
+                .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadDebugFile, e))?;
+            let filename = file.abs_path_str();
+
+            if files_handled.contains(&filename) {
+                continue;
+            }
+
+            let source = if filename.starts_with('<') && filename.ends_with('>') {
+                None
+            } else {
+                provider(&filename)
+            };
+
+            if let Some(source) = source {
+                let bundle_path = sanitize_bundle_path(&filename);
+                let mut info = SourceFileInfo::new();
+                info.set_ty(SourceFileType::Source);
+                info.set_path(filename.clone());
+
+                if self.collect_il2cpp {
+                    collect_il2cpp_sources(&source, &mut referenced_files);
+                }
+
+                self.add_file_skip_read_failed(bundle_path, source.as_slice(), info)?;
+            }
+
+            files_handled.insert(filename);
+        }
+
+        for filename in referenced_files {
+            if files_handled.contains(&filename) {
+                continue;
+            }
+
+            if let Some(source) = provider(&filename) {
+                let bundle_path = sanitize_bundle_path(&filename);
+                let mut info = SourceFileInfo::new();
+                info.set_ty(SourceFileType::Source);
+                info.set_path(filename.clone());
+
+                self.add_file_skip_read_failed(bundle_path, source.as_slice(), info)?;
+            }
+        }
+
+        let is_empty = self.is_empty();
+        self.finish()?;
+
+        Ok(!is_empty)
+    }
+
     /// Writes the manifest to the bundle and flushes the underlying file handle.
     pub fn finish(mut self) -> Result<(), SourceBundleError> {
         self.write_manifest()?;

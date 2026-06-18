@@ -23,6 +23,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 wasm-bindgen = "0.2"
 serde = { version = "1", features = ["derive"] }
+serde_bytes = "0.11"
 serde-wasm-bindgen = "0.6"
 # All formats. zstd uses the pure-Rust `ruzstd` decoder (elf-zstd-pure) since
 # the zstd C library does not build for wasm32.
