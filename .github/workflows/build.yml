@@ -108,7 +108,7 @@ jobs:
 
       # Node/npm are preinstalled on ubuntu runners (used for `npm pack`).
       # Provides wasm-opt for size optimization (build-npm.sh skips it if absent).
-      - run: npm install -g binaryen
+      - run: npm install -g binaryen@130.0.0
 
       # build-npm.sh installs the wasm-bindgen-cli version that matches the
       # locked wasm-bindgen crate, then builds + packs the tarball.

@@ -51,7 +51,9 @@ rustc-demangle = "0.1.21"
 # keep this in sync with whatever version `goblin` uses
 scroll = "0.13.0"
 serde = { version = "1.0.171", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
 serde_json = "1.0.102"
+wasm-bindgen = "0.2"
 similar-asserts = "1.4.2"
 smallvec = "1.10.0"
 sourcemap = "9.2.2"
@@ -68,6 +70,7 @@ wasmparser = "0.243.0"
 watto = { version = "0.2.0", features = ["writer", "strings"] }
 zip = { version = "7.2.0", default-features = false, features = ["deflate"] }
 zstd = { version = "0.13.1" }
+ruzstd = { version = "0.8.3" }
 
 
 [profile.release]

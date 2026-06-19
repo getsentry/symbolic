@@ -637,29 +637,30 @@ impl<'data> ElfObject<'data> {
                     .ok()?;
                 decompressed
             }
-            // Prefer the C `zstd` library when available (fast).
-            #[cfg(feature = "elf-zstd")]
+            // The C `zstd` library on native targets.
+            #[cfg(not(target_arch = "wasm32"))]
             CompressionType::Zstd => zstd::bulk::decompress(compressed, size).ok()?,
-            // Otherwise fall back to the pure-Rust `ruzstd` decoder (e.g. wasm32).
-            #[cfg(all(feature = "elf-zstd-pure", not(feature = "elf-zstd")))]
+            // The pure-Rust `ruzstd` decoder on wasm32 (where `zstd` does not build).
+            #[cfg(target_arch = "wasm32")]
             CompressionType::Zstd => {
                 use std::io::Read as _;
-                let decoder = ruzstd::StreamingDecoder::new(compressed).ok()?;
+                let decoder = ruzstd::decoding::StreamingDecoder::new(compressed).ok()?;
+                // Read at most `size` + 1 bytes: the declared decompressed size is
+                // bounded above (`max_decompressed_section_size`, checked above), and
+                // reading one extra byte lets us reject a stream that decompresses to
+                // more than `size` instead of silently truncating it. The result must
+                // be exactly `size`, matching `zstd::bulk::decompress` which errors on
+                // a size mismatch.
                 let mut decompressed = Vec::with_capacity(size);
-                // Bound the output to the declared decompressed size, matching the
-                // zlib and C-`zstd` arms (and honoring `max_decompressed_section_size`,
-                // which is checked against `size` above). `read_to_end` would
-                // otherwise grow unboundedly for a crafted high-ratio stream.
                 decoder
-                    .take(size as u64)
+                    .take(size as u64 + 1)
                     .read_to_end(&mut decompressed)
                     .ok()?;
+                if decompressed.len() != size {
+                    return None;
+                }
                 decompressed
             }
-            // With no zstd support compiled in, skip zstd-compressed sections
-            // gracefully (zlib/uncompressed sections are unaffected).
-            #[cfg(not(any(feature = "elf-zstd", feature = "elf-zstd-pure")))]
-            CompressionType::Zstd => return None,
         };
 
         Some(decompressed)

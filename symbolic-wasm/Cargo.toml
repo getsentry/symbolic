@@ -21,17 +21,16 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wasm-bindgen = "0.2"
-serde = { version = "1", features = ["derive"] }
-serde-wasm-bindgen = "0.6"
-# All formats. zstd uses the pure-Rust `ruzstd` decoder (elf-zstd-pure) since
-# the zstd C library does not build for wasm32.
+wasm-bindgen = { workspace = true }
+serde = { workspace = true }
+serde-wasm-bindgen = { workspace = true }
+# All formats. zstd-compressed ELF debug sections are handled by symbolic-debuginfo
+# itself (pure-Rust `ruzstd` on wasm32, selected via cfg(target_arch)).
 # The unified Archive/Object API requires breakpad+elf+macho+ms+sourcebundle+wasm
 # (dwarf is pulled transitively); ppdb+js are enabled for completeness.
 symbolic-debuginfo = { version = "13.3.0", path = "../symbolic-debuginfo", default-features = false, features = [
     "breakpad",
     "elf",
-    "elf-zstd-pure",
     "macho",
     "ms",
     "ppdb",

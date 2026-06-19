@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Changes**
+
+- `symbolic-debuginfo`: select the C `zstd` library (native) vs the pure-Rust `ruzstd` decoder (wasm32) via `cfg(target_arch)` instead of the `elf-zstd`/`elf-zstd-pure` features. `features = ["elf"]` again includes zstd support on native (the feature split in #986 had silently removed it). `ruzstd` was bumped to 0.8.3 and now rejects size mismatches instead of truncating. ([#989](https://github.com/getsentry/symbolic/pull/989))
+
 ## 13.3.0
 
 **Features**
