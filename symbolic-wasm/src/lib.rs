@@ -12,10 +12,8 @@
 //! source bundles from caller-supplied source content (the host reads the
 //! files, since WebAssembly has no filesystem).
 
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::io::{self, Cursor, Seek, SeekFrom, Write};
-use std::rc::Rc;
+use std::io::Cursor;
 
 use serde::Serialize;
 use serde_bytes::ByteBuf;
@@ -138,37 +136,6 @@ pub fn list_source_files(data: &[u8]) -> Result<JsValue, JsError> {
     serde_wasm_bindgen::to_value(&entries).map_err(to_js)
 }
 
-/// An in-memory `Write + Seek` sink whose buffer survives after the writer that
-/// owns a clone of it is dropped (e.g. by `SourceBundleWriter::finish`).
-#[derive(Clone)]
-struct SharedCursor(Rc<RefCell<Cursor<Vec<u8>>>>);
-
-impl SharedCursor {
-    fn new() -> Self {
-        Self(Rc::new(RefCell::new(Cursor::new(Vec::new()))))
-    }
-
-    /// Returns a copy of the bytes written so far.
-    fn bytes(&self) -> Vec<u8> {
-        self.0.borrow().get_ref().clone()
-    }
-}
-
-impl Write for SharedCursor {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.0.borrow_mut().write(buf)
-    }
-    fn flush(&mut self) -> io::Result<()> {
-        self.0.borrow_mut().flush()
-    }
-}
-
-impl Seek for SharedCursor {
-    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        self.0.borrow_mut().seek(pos)
-    }
-}
-
 /// Build a source bundle (a `.src.zip`) for the object matching `debug_id`.
 ///
 /// `sources` is a JS array of `[absolutePath, Uint8Array]` pairs supplying the
@@ -185,8 +152,7 @@ pub fn create_source_bundle(
     sources: JsValue,
 ) -> Result<Option<Vec<u8>>, JsError> {
     let pairs: Vec<(String, ByteBuf)> = serde_wasm_bindgen::from_value(sources).map_err(to_js)?;
-    let mut contents: HashMap<String, Vec<u8>> =
-        pairs.into_iter().map(|(k, v)| (k, v.into_vec())).collect();
+    let contents: HashMap<String, ByteBuf> = pairs.into_iter().collect();
 
     let archive = Archive::parse(data).map_err(to_js)?;
     let mut target = None;
@@ -200,11 +166,15 @@ pub fn create_source_bundle(
     let object =
         target.ok_or_else(|| JsError::new(&format!("no object with debug id {debug_id}")))?;
 
-    let sink = SharedCursor::new();
-    let writer = SourceBundleWriter::start(sink.clone()).map_err(to_js)?;
+    let mut sink = Cursor::new(Vec::new());
+    let writer = SourceBundleWriter::start(&mut sink).map_err(to_js)?;
+    // The provider hands the writer a `&[u8]` reader borrowed from `contents`;
+    // no ownership transfer, so the same path could be requested repeatedly.
     let written = writer
-        .write_object_with_source_provider(&object, object_name, |path| contents.remove(path))
+        .write_object_with_source_provider(&object, object_name, |path| {
+            contents.get(path).map(|bytes| bytes.as_ref())
+        })
         .map_err(to_js)?;
 
-    Ok(written.then(|| sink.bytes()))
+    Ok(written.then(|| sink.into_inner()))
 }

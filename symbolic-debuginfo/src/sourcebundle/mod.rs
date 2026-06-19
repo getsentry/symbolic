@@ -49,7 +49,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufWriter, ErrorKind, Read, Seek, Write};
+use std::io::{BufWriter, ErrorKind, Read, Seek, Write};
 use std::path::Path;
 use std::sync::{Arc, LazyLock};
 use std::{fmt, io};
@@ -1324,15 +1324,72 @@ where
     ///
     /// Before a file is written a callback is invoked which can return `false` to skip a file.
     pub fn write_object_with_filter<'data, 'object, O, E, F>(
-        mut self,
+        self,
         object: &'object O,
         object_name: &str,
-        mut filter: F,
+        filter: F,
     ) -> Result<bool, SourceBundleError>
     where
         O: ObjectLike<'data, 'object, Error = E>,
         E: std::error::Error + Send + Sync + 'static,
         F: FnMut(&FileEntry, &Option<SourceFileDescriptor<'_>>) -> bool,
+    {
+        // Read source files from the local filesystem.
+        self.write_object_with_filter_and_provider(object, object_name, filter, |path| {
+            File::open(path).ok()
+        })
+    }
+
+    /// Writes a single object into the bundle, obtaining source file contents
+    /// from `provider` instead of the local filesystem.
+    ///
+    /// This is the filesystem-free counterpart of [`write_object_with_filter`],
+    /// for environments without filesystem access (e.g. WebAssembly): enumerate
+    /// the object's referenced source paths via its debug session, read them
+    /// however the host can, and return a reader from `provider` (returning
+    /// `None` skips a file). Each referenced path is requested at most once.
+    ///
+    /// Returns `Ok(true)` if any source files were added to the bundle, or
+    /// `Ok(false)` if no sources could be resolved.
+    ///
+    /// This finishes the source bundle and flushes the underlying writer.
+    ///
+    /// [`write_object_with_filter`]: Self::write_object_with_filter
+    pub fn write_object_with_source_provider<'data, 'object, O, E, R, P>(
+        self,
+        object: &'object O,
+        object_name: &str,
+        provider: P,
+    ) -> Result<bool, SourceBundleError>
+    where
+        O: ObjectLike<'data, 'object, Error = E>,
+        E: std::error::Error + Send + Sync + 'static,
+        R: Read,
+        P: FnMut(&str) -> Option<R>,
+    {
+        self.write_object_with_filter_and_provider(object, object_name, |_, _| true, provider)
+    }
+
+    /// Shared implementation behind [`write_object_with_filter`] and
+    /// [`write_object_with_source_provider`]: collects the object's referenced
+    /// source files, applies `filter`, and obtains each file's contents from
+    /// `provider`. Each referenced path is passed to `provider` at most once.
+    ///
+    /// [`write_object_with_filter`]: Self::write_object_with_filter
+    /// [`write_object_with_source_provider`]: Self::write_object_with_source_provider
+    fn write_object_with_filter_and_provider<'data, 'object, O, E, F, R, P>(
+        mut self,
+        object: &'object O,
+        object_name: &str,
+        mut filter: F,
+        mut provider: P,
+    ) -> Result<bool, SourceBundleError>
+    where
+        O: ObjectLike<'data, 'object, Error = E>,
+        E: std::error::Error + Send + Sync + 'static,
+        F: FnMut(&FileEntry, &Option<SourceFileDescriptor<'_>>) -> bool,
+        R: Read,
+        P: FnMut(&str) -> Option<R>,
     {
         let mut files_handled = BTreeSet::new();
         let mut referenced_files = BTreeSet::new();
@@ -1357,6 +1414,8 @@ where
                 continue;
             }
 
+            // Read the whole source up front so it can be scanned for il2cpp
+            // references before being added (matching the historical behavior).
             let source = if filename.starts_with('<') && filename.ends_with('>') {
                 None
             } else {
@@ -1364,112 +1423,13 @@ where
                     .source_by_path(&filename)
                     .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadDebugFile, e))?;
                 if filter(&file, &source_from_object) {
-                    // Note: we could also use source code directly from the object, but that's not
-                    // what happened here previously - only collected locally present files.
-                    std::fs::read(&filename).ok()
+                    provider(&filename).and_then(|mut reader| {
+                        let mut buf = Vec::new();
+                        reader.read_to_end(&mut buf).ok().map(|_| buf)
+                    })
                 } else {
                     None
                 }
-            };
-
-            if let Some(source) = source {
-                let bundle_path = sanitize_bundle_path(&filename);
-                let mut info = SourceFileInfo::new();
-                info.set_ty(SourceFileType::Source);
-                info.set_path(filename.clone());
-
-                if self.collect_il2cpp {
-                    collect_il2cpp_sources(&source, &mut referenced_files);
-                }
-
-                self.add_file_skip_read_failed(bundle_path, source.as_slice(), info)?;
-            }
-
-            files_handled.insert(filename);
-        }
-
-        for filename in referenced_files {
-            if files_handled.contains(&filename) {
-                continue;
-            }
-
-            if let Some(source) = File::open(&filename).ok().map(BufReader::new) {
-                let bundle_path = sanitize_bundle_path(&filename);
-                let mut info = SourceFileInfo::new();
-                info.set_ty(SourceFileType::Source);
-                info.set_path(filename.clone());
-
-                self.add_file_skip_read_failed(bundle_path, source, info)?
-            }
-        }
-
-        let is_empty = self.is_empty();
-        self.finish()?;
-
-        Ok(!is_empty)
-    }
-
-    /// Writes a single object into the bundle, reading source file contents from
-    /// a caller-supplied `provider` instead of the local filesystem.
-    ///
-    /// This is intended for environments without filesystem access (for example
-    /// WebAssembly): enumerate the object's referenced source paths via its
-    /// debug session, read them however the host can, and return the bytes from
-    /// `provider`. Returning `None` skips a file.
-    ///
-    /// Returns `Ok(true)` if any source files were added to the bundle, or
-    /// `Ok(false)` if no sources could be resolved.
-    ///
-    /// Each referenced source path is passed to `provider` at most once
-    /// (already-handled files, including those discovered via il2cpp source
-    /// references, are skipped), so a destructive provider — e.g. one that moves
-    /// bytes out of a map — is safe.
-    ///
-    /// This is a filesystem-free analogue of [`write_object_with_filter`]; the
-    /// two are kept as separate implementations so this addition does not alter
-    /// the existing filesystem code path.
-    ///
-    /// This finishes the source bundle and flushes the underlying writer.
-    ///
-    /// [`write_object_with_filter`]: Self::write_object_with_filter
-    pub fn write_object_with_source_provider<'data, 'object, O, E, P>(
-        mut self,
-        object: &'object O,
-        object_name: &str,
-        mut provider: P,
-    ) -> Result<bool, SourceBundleError>
-    where
-        O: ObjectLike<'data, 'object, Error = E>,
-        E: std::error::Error + Send + Sync + 'static,
-        P: FnMut(&str) -> Option<Vec<u8>>,
-    {
-        let mut files_handled = BTreeSet::new();
-        let mut referenced_files = BTreeSet::new();
-
-        let session = object
-            .debug_session()
-            .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadDebugFile, e))?;
-
-        self.set_attribute("arch", object.arch().to_string());
-        self.set_attribute("debug_id", object.debug_id().to_string());
-        self.set_attribute("object_name", object_name);
-        if let Some(code_id) = object.code_id() {
-            self.set_attribute("code_id", code_id.to_string());
-        }
-
-        for file_result in session.files() {
-            let file = file_result
-                .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadDebugFile, e))?;
-            let filename = file.abs_path_str();
-
-            if files_handled.contains(&filename) {
-                continue;
-            }
-
-            let source = if filename.starts_with('<') && filename.ends_with('>') {
-                None
-            } else {
-                provider(&filename)
             };
 
             if let Some(source) = source {
@@ -1499,7 +1459,7 @@ where
                 info.set_ty(SourceFileType::Source);
                 info.set_path(filename.clone());
 
-                self.add_file_skip_read_failed(bundle_path, source.as_slice(), info)?;
+                self.add_file_skip_read_failed(bundle_path, source, info)?;
             }
         }
 

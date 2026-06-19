@@ -10,7 +10,7 @@
 #   - Rust toolchain with the wasm32-unknown-unknown target
 #   - wasm-bindgen-cli matching the wasm-bindgen crate version
 #   - wasm-opt (binaryen) — optional, for size optimization
-#   - npm (for `npm pack`)
+#   - node + npm (for the smoke test and `npm pack`)
 #
 # Usage: make npm   (or: bash symbolic-wasm/build-npm.sh)
 
@@ -61,6 +61,9 @@ if command -v wasm-opt >/dev/null 2>&1; then
 else
   echo "wasm-opt not found — skipping size optimization" >&2
 fi
+
+echo "Running wasm smoke test..."
+node "$SCRIPT_DIR/smoke-test.mjs"
 
 echo "Packing npm tarball..."
 cd "$NPM_DIR"

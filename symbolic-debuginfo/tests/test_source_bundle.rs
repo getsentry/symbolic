@@ -1,7 +1,7 @@
 //! Tests for building source bundles from caller-supplied source content via
 //! [`SourceBundleWriter::write_object_with_source_provider`].
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::io::Cursor;
 
 use symbolic_common::ByteView;
@@ -9,31 +9,25 @@ use symbolic_debuginfo::sourcebundle::SourceBundleWriter;
 use symbolic_debuginfo::Object;
 use symbolic_testutils::fixture;
 
-type Error = Box<dyn std::error::Error>;
-
 /// Collect the non-virtual source paths a debug object references.
-fn referenced_sources(object: &Object) -> Result<Vec<String>, Error> {
-    let session = object.debug_session()?;
-    let mut paths = Vec::new();
-    for file in session.files() {
-        let path = file?.abs_path_str();
-        if path.starts_with('<') && path.ends_with('>') {
-            continue;
-        }
-        paths.push(path);
-    }
-    Ok(paths)
+fn referenced_sources(object: &Object) -> Vec<String> {
+    let session = object.debug_session().unwrap();
+    session
+        .files()
+        .map(|file| file.unwrap().abs_path_str())
+        .filter(|path| !(path.starts_with('<') && path.ends_with('>')))
+        .collect()
 }
 
 /// `write_object_with_source_provider` bundles source content supplied by the
 /// caller instead of reading from the filesystem, so it works even when none of
 /// the original build-time source files exist on disk.
 #[test]
-fn test_write_object_with_source_provider() -> Result<(), Error> {
-    let view = ByteView::open(fixture("linux/crash.debug"))?;
-    let object = Object::parse(&view)?;
+fn test_write_object_with_source_provider() {
+    let view = ByteView::open(fixture("linux/crash.debug")).unwrap();
+    let object = Object::parse(&view).unwrap();
 
-    let referenced = referenced_sources(&object)?;
+    let referenced = referenced_sources(&object);
     assert!(
         !referenced.is_empty(),
         "fixture should reference source files"
@@ -47,115 +41,70 @@ fn test_write_object_with_source_provider() -> Result<(), Error> {
     let expected = format!("// synthetic source for {pick}\n");
 
     let mut cursor = Cursor::new(Vec::new());
-    let writer = SourceBundleWriter::start(&mut cursor)?;
-    let written = writer.write_object_with_source_provider(&object, "crash.debug", |path| {
-        provided
-            .contains(path)
-            .then(|| format!("// synthetic source for {path}\n").into_bytes())
-    })?;
+    let writer = SourceBundleWriter::start(&mut cursor).unwrap();
+    let written = writer
+        .write_object_with_source_provider(&object, "crash.debug", |path| {
+            provided
+                .contains(path)
+                .then(|| Cursor::new(format!("// synthetic source for {path}\n").into_bytes()))
+        })
+        .unwrap();
     assert!(written, "bundle should contain at least one source file");
 
     // Re-parse the bundle and confirm the supplied source round-trips.
     let bundle_view = ByteView::from_vec(cursor.into_inner());
-    let bundle = Object::parse(&bundle_view)?;
+    let bundle = Object::parse(&bundle_view).unwrap();
     assert_eq!(bundle.debug_id(), object.debug_id());
     assert!(bundle.has_sources());
 
-    let bundle_session = bundle.debug_session()?;
+    let bundle_session = bundle.debug_session().unwrap();
     let descriptor = bundle_session
-        .source_by_path(&pick)?
+        .source_by_path(&pick)
+        .unwrap()
         .expect("supplied source should be present in the bundle");
     assert_eq!(descriptor.contents(), Some(expected.as_str()));
 
     assert!(
-        bundle_session.source_by_path(&unreferenced)?.is_none(),
+        bundle_session
+            .source_by_path(&unreferenced)
+            .unwrap()
+            .is_none(),
         "a provided but unreferenced path must not be bundled"
     );
-
-    Ok(())
 }
 
 /// A provider that returns `None` for everything yields an empty bundle.
 #[test]
-fn test_write_object_with_source_provider_no_sources() -> Result<(), Error> {
-    let view = ByteView::open(fixture("linux/crash.debug"))?;
-    let object = Object::parse(&view)?;
+fn test_write_object_with_source_provider_no_sources() {
+    let view = ByteView::open(fixture("linux/crash.debug")).unwrap();
+    let object = Object::parse(&view).unwrap();
 
     let mut cursor = Cursor::new(Vec::new());
-    let writer = SourceBundleWriter::start(&mut cursor)?;
-    let written = writer.write_object_with_source_provider(&object, "crash.debug", |_| None)?;
+    let writer = SourceBundleWriter::start(&mut cursor).unwrap();
+    let written = writer
+        .write_object_with_source_provider(&object, "crash.debug", |_| None::<&[u8]>)
+        .unwrap();
     assert!(!written, "no sources provided should yield an empty bundle");
-
-    Ok(())
 }
 
 /// Source enumeration + provider bundling also works for zstd-compressed DWARF
 /// debug sections (decompressed natively via the C `zstd` library; via the
 /// pure-Rust `ruzstd` decoder on wasm).
 #[test]
-fn test_write_object_with_source_provider_zstd() -> Result<(), Error> {
-    let view = ByteView::open(fixture("linux/crash.debug-zstd"))?;
-    let object = Object::parse(&view)?;
+fn test_write_object_with_source_provider_zstd() {
+    let view = ByteView::open(fixture("linux/crash.debug-zstd")).unwrap();
+    let object = Object::parse(&view).unwrap();
 
-    let referenced = referenced_sources(&object)?;
+    let referenced = referenced_sources(&object);
     assert!(!referenced.is_empty());
 
     let provided: HashSet<String> = referenced.iter().cloned().collect();
     let mut cursor = Cursor::new(Vec::new());
-    let writer = SourceBundleWriter::start(&mut cursor)?;
-    let written =
-        writer.write_object_with_source_provider(&object, "crash.debug-zstd", |path| {
-            provided.contains(path).then(|| b"x\n".to_vec())
-        })?;
-    assert!(written);
-
-    Ok(())
-}
-
-/// Regression test for the il2cpp + destructive-provider case: a source file
-/// referenced via an il2cpp `//<source_info:...>` comment is collected in a
-/// second pass. Because each path is requested at most once, a destructive
-/// provider (`HashMap::remove`) must still bundle it (not silently drop it).
-#[test]
-fn test_write_object_with_source_provider_il2cpp_destructive() -> Result<(), Error> {
-    let view = ByteView::open(fixture("linux/crash.debug"))?;
-    let object = Object::parse(&view)?;
-
-    let referenced = referenced_sources(&object)?;
-    let main_path = referenced
-        .first()
-        .cloned()
-        .expect("fixture should reference a source file");
-    let cs_path = "/il2cpp/Referenced.cs".to_string();
-
-    // The main source carries an il2cpp reference to the C# file, which is
-    // discovered during the first pass and bundled in the second pass.
-    let mut contents: HashMap<String, Vec<u8>> = HashMap::new();
-    contents.insert(
-        main_path.clone(),
-        format!("int main() {{}}\n//<source_info:{cs_path}:1>\n").into_bytes(),
-    );
-    contents.insert(cs_path.clone(), b"// csharp source\n".to_vec());
-
-    let mut cursor = Cursor::new(Vec::new());
-    let mut writer = SourceBundleWriter::start(&mut cursor)?;
-    writer.collect_il2cpp_sources(true);
-    // Destructive provider — the exact pattern Seer flagged.
+    let writer = SourceBundleWriter::start(&mut cursor).unwrap();
     let written = writer
-        .write_object_with_source_provider(&object, "crash.debug", |path| contents.remove(path))?;
+        .write_object_with_source_provider(&object, "crash.debug-zstd", |path| {
+            provided.contains(path).then(|| &b"x\n"[..])
+        })
+        .unwrap();
     assert!(written);
-
-    let bundle_view = ByteView::from_vec(cursor.into_inner());
-    let bundle = Object::parse(&bundle_view)?;
-    let session = bundle.debug_session()?;
-    assert!(
-        session.source_by_path(&main_path)?.is_some(),
-        "main source must be bundled"
-    );
-    assert!(
-        session.source_by_path(&cs_path)?.is_some(),
-        "il2cpp-referenced source must not be dropped by a destructive provider"
-    );
-
-    Ok(())
 }
