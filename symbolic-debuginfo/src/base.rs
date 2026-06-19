@@ -674,6 +674,8 @@ pub enum VariableType {
     Pointer {
         /// Display name of the type being pointed to.
         pointee_type_name: String,
+        /// Full type information for the pointee (used for dereferencing).
+        pointee_type: Box<VariableType>,
         /// Size of the pointer itself in bytes (4 on 32-bit, 8 on 64-bit).
         byte_size: u16,
     },

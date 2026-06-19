@@ -1311,7 +1311,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
             }
 
             constants::DW_TAG_pointer_type | constants::DW_TAG_reference_type | constants::DW_TAG_rvalue_reference_type => {
-                let (pointee_name, _) = match sub_type_offset {
+                let (pointee_name, pointee_type) = match sub_type_offset {
                     Some(off) => self.resolve_dwarf_type(off, depth + 1)?,
                     None => (Cow::Borrowed("void"), VariableType::Unknown { byte_size: 0 }),
                 };
@@ -1331,6 +1331,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     display_name,
                     VariableType::Pointer {
                         pointee_type_name: pointee_name.into_owned(),
+                        pointee_type: Box::new(pointee_type),
                         byte_size: ptr_size,
                     },
                 ))
@@ -1629,6 +1630,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     display_name,
                     VariableType::Pointer {
                         pointee_type_name: format!("{}({})", ret_name, params_str),
+                        pointee_type: Box::new(VariableType::Unknown { byte_size: 0 }),
                         byte_size: ptr_size,
                     },
                 ))
@@ -1665,6 +1667,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     display_name,
                     VariableType::Pointer {
                         pointee_type_name: format!("{} {}::*", member_name, class_name),
+                        pointee_type: Box::new(VariableType::Unknown { byte_size: 0 }),
                         byte_size: ptr_size,
                     },
                 ))

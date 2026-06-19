@@ -1124,7 +1124,7 @@ impl<'s> Unit<'s> {
 
             // Pointer type
             TypeData::Pointer(pointer) => {
-                let (pointee_name, _) =
+                let (pointee_name, pointee_type) =
                     self.resolve_pdb_type_depth(pointer.underlying_type, depth + 1);
                 let ptr_size = pointer.attributes.size() as u16;
 
@@ -1147,6 +1147,7 @@ impl<'s> Unit<'s> {
                     Cow::Owned(display_name),
                     VariableType::Pointer {
                         pointee_type_name: pointee_name.into_owned(),
+                        pointee_type: Box::new(pointee_type),
                         byte_size: ptr_size,
                     },
                 )
@@ -1175,6 +1176,7 @@ impl<'s> Unit<'s> {
                     Cow::Owned(display_name),
                     VariableType::Pointer {
                         pointee_type_name: format!("{}({})", ret_name, params.join(", ")),
+                        pointee_type: Box::new(VariableType::Unknown { byte_size: 0 }),
                         byte_size: if ptr_size > 0 { ptr_size } else { 8 },
                     },
                 )
@@ -1202,6 +1204,7 @@ impl<'s> Unit<'s> {
                 (
                     Cow::Owned(display_name),
                     VariableType::Pointer {
+                        pointee_type: Box::new(VariableType::Unknown { byte_size: 0 }),
                         pointee_type_name: format!(
                             "{} {}::*({})",
                             ret_name,
@@ -1379,11 +1382,12 @@ impl<'s> Unit<'s> {
                 6 => 8,  // Near64
                 _ => 8,
             };
-            let (pointee_name, _) = Self::resolve_pdb_primitive(kind);
+            let (pointee_name, pointee_type) = Self::resolve_pdb_primitive(kind);
             return (
                 Cow::Owned(format!("{}*", pointee_name)),
                 VariableType::Pointer {
                     pointee_type_name: pointee_name.into_owned(),
+                    pointee_type: Box::new(pointee_type),
                     byte_size: ptr_size,
                 },
             );
