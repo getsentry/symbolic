@@ -67,6 +67,17 @@ check(
   bundle && `len=${bundle.length}`
 );
 
+// createSourceBundle: a throwing callback propagates instead of skipping silently
+let propagated = false;
+try {
+  object.createSourceBundle("crash.debug", () => {
+    throw new Error("host read failed");
+  });
+} catch {
+  propagated = true;
+}
+check("createSourceBundle propagates a throwing getSource", propagated);
+
 // legacy parse_debug_file still works
 const info = wasm.parse_debug_file(data);
 check("parse_debug_file (legacy) still returns objects", info.objects?.[0]?.debug_id === object.debugId);

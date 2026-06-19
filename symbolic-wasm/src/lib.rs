@@ -136,16 +136,16 @@ impl Object {
     }
 
     /// Re-parse the archive and run `f` against this object's live debug info.
-    fn with_object<R>(
+    fn with_object<R, E: From<JsError>>(
         &self,
-        f: impl FnOnce(&DiObject) -> Result<R, JsError>,
-    ) -> Result<R, JsError> {
-        let archive = DiArchive::parse(&self.data).map_err(to_js)?;
+        f: impl FnOnce(&DiObject) -> Result<R, E>,
+    ) -> Result<R, E> {
+        let archive = DiArchive::parse(&self.data).map_err(|e| E::from(to_js(e)))?;
         let object = archive
             .objects()
             .nth(self.index)
-            .ok_or_else(|| JsError::new("object index out of range"))?
-            .map_err(to_js)?;
+            .ok_or_else(|| E::from(JsError::new("object index out of range")))?
+            .map_err(|e| E::from(to_js(e)))?;
         f(&object)
     }
 }
@@ -234,28 +234,53 @@ impl Object {
     /// the file's bytes as a `Uint8Array`, or `null`/`undefined` to skip it.
     /// Reads happen lazily, so the host only provides the files it has.
     ///
+    /// If `getSource` throws, or returns anything other than a `Uint8Array` /
+    /// `null` / `undefined`, that error is propagated (only an explicit
+    /// `null`/`undefined` skips a file) — so host read failures aren't silently
+    /// turned into a partial bundle.
+    ///
     /// Returns the bundle bytes, or `undefined` if no sources were bundled.
     #[wasm_bindgen(js_name = createSourceBundle)]
     pub fn create_source_bundle(
         &self,
         object_name: &str,
         get_source: &js_sys::Function,
-    ) -> Result<Option<Vec<u8>>, JsError> {
+    ) -> Result<Option<Vec<u8>>, JsValue> {
         self.with_object(|object| {
             let mut sink = Cursor::new(Vec::new());
             let writer = SourceBundleWriter::start(&mut sink).map_err(to_js)?;
+            // The provider can only signal "skip" (`None`), so a genuine callback
+            // failure is recorded here and surfaced once the writer has finished.
+            let mut callback_error: Option<JsValue> = None;
             let written = writer
                 .write_object_with_source_provider(object, object_name, |path| {
-                    let result = get_source
-                        .call1(&JsValue::NULL, &JsValue::from_str(path))
-                        .ok()?;
+                    let result = match get_source.call1(&JsValue::NULL, &JsValue::from_str(path)) {
+                        Ok(value) => value,
+                        Err(error) => {
+                            callback_error.get_or_insert(error);
+                            return None;
+                        }
+                    };
                     if result.is_null() || result.is_undefined() {
                         return None;
                     }
-                    let bytes = result.dyn_into::<js_sys::Uint8Array>().ok()?;
-                    Some(Cursor::new(bytes.to_vec()))
+                    match result.dyn_into::<js_sys::Uint8Array>() {
+                        Ok(bytes) => Some(Cursor::new(bytes.to_vec())),
+                        Err(_) => {
+                            callback_error.get_or_insert_with(|| {
+                                JsError::new(&format!(
+                                    "getSource(\"{path}\") must return a Uint8Array, null, or undefined"
+                                ))
+                                .into()
+                            });
+                            None
+                        }
+                    }
                 })
                 .map_err(to_js)?;
+            if let Some(error) = callback_error {
+                return Err(error);
+            }
             Ok(written.then(|| sink.into_inner()))
         })
     }
