@@ -9,7 +9,7 @@
 # Requirements:
 #   - Rust toolchain with the wasm32-unknown-unknown target
 #   - wasm-bindgen-cli matching the wasm-bindgen crate version
-#   - wasm-opt (binaryen) — optional, for size optimization
+#   - wasm-opt (binaryen) — for size optimization (required)
 #   - npm (for `npm pack`)
 #
 # Usage: make npm   (or: bash symbolic-wasm/build-npm.sh)
@@ -55,12 +55,12 @@ wasm-bindgen \
 
 BG_WASM="$NPM_DIR/symbolic_bg.wasm"
 
-if command -v wasm-opt >/dev/null 2>&1; then
-  echo "Optimizing with wasm-opt -Oz..."
-  wasm-opt -Oz -o "$BG_WASM" "$BG_WASM"
-else
-  echo "wasm-opt not found — skipping size optimization" >&2
+if ! command -v wasm-opt >/dev/null 2>&1; then
+  echo "error: wasm-opt (binaryen) not found — refusing to package an unoptimized wasm" >&2
+  exit 1
 fi
+echo "Optimizing with wasm-opt -Oz..."
+wasm-opt -Oz -o "$BG_WASM" "$BG_WASM"
 
 echo "Packing npm tarball..."
 cd "$NPM_DIR"
