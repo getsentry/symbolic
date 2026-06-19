@@ -690,6 +690,8 @@ pub enum VariableType {
     Array {
         /// Display name of the element type.
         element_type_name: String,
+        /// Structured type information for the element type.
+        element_type: Box<VariableType>,
         /// Number of elements in the array.
         count: u64,
         /// Total size of the array in bytes.

@@ -1534,6 +1534,7 @@ impl<'d, 'a> DwarfUnit<'d, 'a> {
                     display_name,
                     VariableType::Array {
                         element_type_name: element_name.into_owned(),
+                        element_type: Box::new(element_type),
                         count,
                         byte_size: arr_byte_size,
                     },

@@ -1094,6 +1094,7 @@ impl<'s> Unit<'s> {
                     Cow::Owned(display_name),
                     VariableType::Array {
                         element_type_name: element_name.into_owned(),
+                        element_type: Box::new(element_type),
                         count,
                         byte_size: total_size as u32,
                     },
