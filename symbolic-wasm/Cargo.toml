@@ -25,7 +25,7 @@ wasm-bindgen = { workspace = true }
 serde = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
 # All formats. zstd-compressed ELF debug sections are handled by symbolic-debuginfo
-# itself (pure-Rust `ruzstd` on wasm32, selected via cfg(target_arch)).
+# itself (the C `zstd` library, which compiles to wasm32 via zstd-sys's shim).
 # The unified Archive/Object API requires breakpad+elf+macho+ms+sourcebundle+wasm
 # (dwarf is pulled transitively); ppdb+js are enabled for completeness.
 symbolic-debuginfo = { version = "13.3.1", path = "../symbolic-debuginfo", default-features = false, features = [

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Changes**
+
+- `symbolic-debuginfo`: use the C `zstd` library on wasm32 too (via zstd-sys's wasm-shim), replacing the `ruzstd` decoder added in #989. One zstd implementation for all targets; `ruzstd` is no longer a dependency. Building for wasm now requires clang. ([#990](https://github.com/getsentry/symbolic/pull/990))
+
 ## 13.3.1
 
 **Changes**
