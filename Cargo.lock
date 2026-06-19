@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "addr2line"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -581,7 +581,7 @@ dependencies = [
 
 [[package]]
 name = "debuginfo_debug"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -610,7 +610,7 @@ dependencies = [
 
 [[package]]
 name = "dump_cfi"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -619,7 +619,7 @@ dependencies = [
 
 [[package]]
 name = "dump_sources"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "clap",
  "symbolic",
@@ -1329,7 +1329,7 @@ dependencies = [
 
 [[package]]
 name = "minidump_stackwalk"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "async-trait",
  "clap",
@@ -1478,7 +1478,7 @@ dependencies = [
 
 [[package]]
 name = "object_debug"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "clap",
  "symbolic",
@@ -1978,9 +1978,9 @@ dependencies = [
 
 [[package]]
 name = "ruzstd"
-version = "0.7.3"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fad02996bfc73da3e301efe90b1837be9ed8f4a462b6ed410aa35d00381de89f"
+checksum = "a7c1c839d570d835527c9a5e4db7cb2198683a988cb9d7293fc8674e6bd58fc8"
 dependencies = [
  "twox-hash",
 ]
@@ -2274,7 +2274,7 @@ dependencies = [
 
 [[package]]
 name = "sourcemapcache_debug"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2474,7 +2474,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "symbolic-cfi",
  "symbolic-common",
@@ -2489,7 +2489,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-cabi"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "proguard",
  "sourcemap",
@@ -2499,7 +2499,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-cfi"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "insta",
  "similar-asserts",
@@ -2511,7 +2511,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-common"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "debugid",
  "memmap2",
@@ -2525,7 +2525,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-debuginfo"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "criterion",
  "debugid",
@@ -2563,7 +2563,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-demangle"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "cc",
  "cpp_demangle",
@@ -2575,7 +2575,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-il2cpp"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "indexmap",
  "serde_json",
@@ -2585,7 +2585,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-ppdb"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "flate2",
  "indexmap",
@@ -2601,7 +2601,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-sourcemapcache"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "itertools 0.14.0",
  "js-source-scopes",
@@ -2615,7 +2615,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-symcache"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "criterion",
  "indexmap",
@@ -2631,11 +2631,11 @@ dependencies = [
 
 [[package]]
 name = "symbolic-testutils"
-version = "13.3.0"
+version = "13.3.1"
 
 [[package]]
 name = "symbolic-unreal"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "anylog",
  "bytes",
@@ -2654,7 +2654,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-wasm"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "serde",
  "serde-wasm-bindgen",
@@ -2665,7 +2665,7 @@ dependencies = [
 
 [[package]]
 name = "symcache_debug"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2911,13 +2911,9 @@ dependencies = [
 
 [[package]]
 name = "twox-hash"
-version = "1.6.3"
+version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
-dependencies = [
- "cfg-if",
- "static_assertions",
-]
+checksum = "9ea3136b675547379c4bd395ca6b938e5ad3c3d20fad76e7fe85f9e0d011419c"
 
 [[package]]
 name = "typed-path"
@@ -2957,7 +2953,7 @@ checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
 
 [[package]]
 name = "unreal_engine_crash"
-version = "13.3.0"
+version = "13.3.1"
 dependencies = [
  "clap",
  "symbolic",

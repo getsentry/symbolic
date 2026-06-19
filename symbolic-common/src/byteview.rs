@@ -278,7 +278,7 @@ impl<'a> ByteView<'a> {
         let _hint = hint; // silence unused lint
         match self.backing.deref() {
             ByteViewBacking::Buf(_) => Ok(()),
-            #[cfg(all(unix, not(target_arch = "wasm32")))]
+            #[cfg(unix)]
             ByteViewBacking::Mmap(mmap) => mmap.advise(_hint.to_madvise()),
             #[cfg(all(not(unix), not(target_arch = "wasm32")))]
             ByteViewBacking::Mmap(_) => Ok(()),
@@ -331,7 +331,7 @@ pub enum AccessPattern {
 }
 
 impl AccessPattern {
-    #[cfg(all(unix, not(target_arch = "wasm32")))]
+    #[cfg(unix)]
     fn to_madvise(self) -> memmap2::Advice {
         match self {
             AccessPattern::Normal => memmap2::Advice::Normal,

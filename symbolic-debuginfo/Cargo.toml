@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-debuginfo"
-version = "13.3.0"
+version = "13.3.1"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -25,7 +25,6 @@ all-features = true
 default = [
     "breakpad",
     "elf",
-    "elf-zstd",
     "macho",
     "ms",
     "ppdb",
@@ -47,14 +46,6 @@ elf = [
     "goblin/std",
     "scroll",
 ]
-# Optional zstd support for zstd-compressed ELF debug sections.
-# Split out from `elf` because the `zstd` crate is a C library that does not
-# build for wasm32. Included in `default` to preserve existing behavior.
-elf-zstd = ["elf", "dep:zstd"]
-# Pure-Rust zstd support (via `ruzstd`) for targets where the `zstd` C library
-# is unavailable, e.g. wasm32. Used by the `symbolic-wasm` crate. When both
-# `elf-zstd` and `elf-zstd-pure` are enabled, the C `zstd` implementation wins.
-elf-zstd-pure = ["elf", "dep:ruzstd"]
 # Mach-o processing
 macho = [
     "dwarf",
@@ -113,13 +104,21 @@ serde = { workspace = true }
 serde_json = { workspace = true, optional = true }
 smallvec = { workspace = true, optional = true }
 srcsrv = { version = "0.2", optional = true }
-symbolic-common = { version = "13.3.0", path = "../symbolic-common" }
-symbolic-ppdb = { version = "13.3.0", path = "../symbolic-ppdb", optional = true }
+symbolic-common = { version = "13.3.1", path = "../symbolic-common" }
+symbolic-ppdb = { version = "13.3.1", path = "../symbolic-ppdb", optional = true }
 thiserror = { workspace = true }
 wasmparser = { workspace = true, optional = true }
 zip = { workspace = true, optional = true }
-zstd = { workspace = true, optional = true }
-ruzstd = { version = "0.7", optional = true }
+
+# zstd-compressed ELF debug sections are decompressed with the C `zstd` library
+# on native targets, and the pure-Rust `ruzstd` decoder on wasm32 (where the
+# `zstd` C library does not build). Selected by `cfg(target_arch)` rather than a
+# feature so `features = ["elf"]` keeps zstd support everywhere it can.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+zstd = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+ruzstd = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
