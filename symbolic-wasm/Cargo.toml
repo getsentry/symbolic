@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-wasm"
-version = "13.3.0"
+version = "13.3.1"
 license = "MIT"
 authors = [
     "Sentry <hello@sentry.io>",
@@ -28,7 +28,7 @@ serde-wasm-bindgen = { workspace = true }
 # itself (pure-Rust `ruzstd` on wasm32, selected via cfg(target_arch)).
 # The unified Archive/Object API requires breakpad+elf+macho+ms+sourcebundle+wasm
 # (dwarf is pulled transitively); ppdb+js are enabled for completeness.
-symbolic-debuginfo = { version = "13.3.0", path = "../symbolic-debuginfo", default-features = false, features = [
+symbolic-debuginfo = { version = "13.3.1", path = "../symbolic-debuginfo", default-features = false, features = [
     "breakpad",
     "elf",
     "macho",
