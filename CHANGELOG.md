@@ -5,6 +5,7 @@
 **Features**
 
 - `symbolic-debuginfo`: add `SourceBundleWriter::write_object_with_source_provider`, which builds a source bundle from caller-supplied source content (any `impl std::io::Read`) instead of reading files from the local filesystem (for environments without filesystem access, e.g. WebAssembly). `write_object_with_filter` now delegates to it. ([#988](https://github.com/getsentry/symbolic/pull/988))
+- `@sentry/symbolic` (wasm): add a general-purpose `Archive`/`Object` class API (mirroring the Python bindings) with per-object metadata, `sourceFiles()`, and callback-based `createSourceBundle()`. ([#991](https://github.com/getsentry/symbolic/pull/991))
 - `@sentry/symbolic` (wasm): add `list_source_files` (enumerate a debug file's referenced source paths) and `create_source_bundle` (build a `.src.zip` from caller-supplied source content), plus a smoke test that runs the built wasm in CI. ([#988](https://github.com/getsentry/symbolic/pull/988))
 
 ## 13.3.1

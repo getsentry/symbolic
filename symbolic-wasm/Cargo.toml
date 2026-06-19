@@ -24,7 +24,7 @@ crate-type = ["cdylib", "rlib"]
 wasm-bindgen = { workspace = true }
 serde = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
-serde_bytes = { workspace = true }
+js-sys = { workspace = true }
 # All formats. zstd-compressed ELF debug sections are handled by symbolic-debuginfo
 # itself (pure-Rust `ruzstd` on wasm32, selected via cfg(target_arch)).
 # The unified Archive/Object API requires breakpad+elf+macho+ms+sourcebundle+wasm
