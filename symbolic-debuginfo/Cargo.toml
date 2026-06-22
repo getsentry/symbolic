@@ -110,9 +110,6 @@ thiserror = { workspace = true }
 wasmparser = { workspace = true, optional = true }
 zip = { workspace = true, optional = true }
 
-# zstd-compressed ELF debug sections. The C `zstd` library also compiles to
-# wasm32 (zstd-sys ships a wasm-shim that maps malloc/memcpy/... onto Rust),
-# so a single dependency covers every target — no pure-Rust fallback needed.
 zstd = { workspace = true }
 
 [dev-dependencies]
