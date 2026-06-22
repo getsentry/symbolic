@@ -4,6 +4,7 @@
 
 **Changes**
 
+- `symbolic-common`: bump the `memmap2` floor to 0.9.11 to exclude versions affected by [RUSTSEC-2026-0186](https://rustsec.org/advisories/RUSTSEC-2026-0186.html). ([#996](https://github.com/getsentry/symbolic/pull/996))
 - Rework WASM API to expose lower level `symbolic` types. ([#992](https://github.com/getsentry/symbolic/pull/992))
 - `symbolic-debuginfo`: use the C `zstd` library on wasm32 too (via zstd-sys's wasm-shim), replacing the `ruzstd` decoder added in #989. One zstd implementation for all targets; `ruzstd` is no longer a dependency. Building for wasm now requires clang. ([#990](https://github.com/getsentry/symbolic/pull/990))
 
