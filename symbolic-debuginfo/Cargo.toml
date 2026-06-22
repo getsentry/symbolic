@@ -110,15 +110,7 @@ thiserror = { workspace = true }
 wasmparser = { workspace = true, optional = true }
 zip = { workspace = true, optional = true }
 
-# zstd-compressed ELF debug sections are decompressed with the C `zstd` library
-# on native targets, and the pure-Rust `ruzstd` decoder on wasm32 (where the
-# `zstd` C library does not build). Selected by `cfg(target_arch)` rather than a
-# feature so `features = ["elf"]` keeps zstd support everywhere it can.
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 zstd = { workspace = true }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-ruzstd = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
