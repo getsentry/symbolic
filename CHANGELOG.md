@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+**Features**
+
+- `symbolic-debuginfo`: add `SourceBundleWriter::write_object_with_source_provider`, which builds a source bundle from caller-supplied source content (any `impl std::io::Read`) instead of reading files from the local filesystem — for environments without filesystem access, e.g. WebAssembly. `write_object_with_filter` now delegates to it. ([#988](https://github.com/getsentry/symbolic/pull/988))
+
 **Changes**
 
 - `symbolic-debuginfo`: use the C `zstd` library on wasm32 too (via zstd-sys's wasm-shim), replacing the `ruzstd` decoder added in #989. One zstd implementation for all targets; `ruzstd` is no longer a dependency. Building for wasm now requires clang. ([#990](https://github.com/getsentry/symbolic/pull/990))
