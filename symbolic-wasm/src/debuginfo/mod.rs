@@ -6,6 +6,8 @@ use wasm_bindgen::prelude::*;
 
 use crate::utils::{self, Error, Result};
 
+pub mod sourcebundle;
+
 /// A generic archive that can contain one or more object files.
 #[wasm_bindgen]
 pub struct Archive {
@@ -64,12 +66,12 @@ impl Archive {
 }
 
 /// A generic object file providing uniform access to various file formats.
-#[wasm_bindgen]
+#[wasm_bindgen(js_name = ObjectFile)]
 pub struct Object {
     inner: SelfCell<ByteView<'static>, di::Object<'static>>,
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_class = ObjectFile)]
 impl Object {
     /// The object's debug identifier (the canonical `debug_id`).
     #[wasm_bindgen(getter, js_name = debugId)]

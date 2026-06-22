@@ -177,6 +177,24 @@ pub enum SourceFileType {
     IndexedRamBundle,
 }
 
+impl SourceFileType {
+    /// Returns the name of the source file type.
+    pub fn name(self) -> &'static str {
+        match self {
+            SourceFileType::Source => "source",
+            SourceFileType::MinifiedSource => "minified_source",
+            SourceFileType::SourceMap => "source_map",
+            SourceFileType::IndexedRamBundle => "indexed_ram_bundle",
+        }
+    }
+}
+
+impl fmt::Display for SourceFileType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
 /// Meta data information of a file in a [`SourceBundle`](struct.SourceBundle.html).
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct SourceFileInfo {
