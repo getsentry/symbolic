@@ -21,13 +21,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wasm-bindgen = { workspace = true }
-serde = { workspace = true }
-serde-wasm-bindgen = { workspace = true }
-# All formats. zstd-compressed ELF debug sections are handled by symbolic-debuginfo
-# itself (the C `zstd` library, which compiles to wasm32 via zstd-sys's shim).
-# The unified Archive/Object API requires breakpad+elf+macho+ms+sourcebundle+wasm
-# (dwarf is pulled transitively); ppdb+js are enabled for completeness.
+symbolic-common = { version = "13.3.1", path = "../symbolic-common" }
 symbolic-debuginfo = { version = "13.3.1", path = "../symbolic-debuginfo", default-features = false, features = [
     "breakpad",
     "elf",
@@ -39,6 +33,15 @@ symbolic-debuginfo = { version = "13.3.1", path = "../symbolic-debuginfo", defau
     "wasm",
 ] }
 
+serde = { workspace = true }
+serde-wasm-bindgen = { workspace = true }
+thiserror = { workspace = true }
+wasm-bindgen = { workspace = true }
+
 # NOTE: profile settings for the wasm build are applied via `--config` in
 # build-npm.sh — a `[profile.release]` here would be ignored by Cargo because
 # this is not the workspace root package.
+
+[dev-dependencies]
+js-sys = { workspace = true }
+wasm-bindgen-test = { workspace = true }

@@ -7,6 +7,8 @@ WebAssembly, Breakpad, source bundles) and extract their metadata.
 Runs anywhere WebAssembly does (Node.js and browsers). The host reads the file
 and passes the bytes in — no filesystem access is required inside the module.
 
+**Note**: The NPM package is still experimental and does not yet follow semantic versioning.
+
 ## Usage
 
 The package ships `wasm-bindgen` "web"-target glue, so you instantiate the
