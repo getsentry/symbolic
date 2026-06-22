@@ -64,12 +64,16 @@ impl Archive {
 }
 
 /// A generic object file providing uniform access to various file formats.
-#[wasm_bindgen]
+///
+/// Exported to JS as `ObjectFile`: a class named `Object` would shadow the JS
+/// global `Object` inside the generated `--target web` glue (which uses
+/// `Object.create`/`Object.getPrototypeOf`), breaking `initSync` and `objects()`.
+#[wasm_bindgen(js_name = ObjectFile)]
 pub struct Object {
     inner: SelfCell<ByteView<'static>, di::Object<'static>>,
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_class = ObjectFile)]
 impl Object {
     /// The object's debug identifier (the canonical `debug_id`).
     #[wasm_bindgen(getter, js_name = debugId)]

@@ -3,6 +3,9 @@
   "version": "13.3.1",
   "description": "WebAssembly bindings for symbolic — parse debug information files (Mach-O/dSYM, ELF, PE/PDB, Portable PDB, WebAssembly, Breakpad, source bundles).",
   "type": "module",
+  "scripts": {
+    "test": "node smoke-test.mjs"
+  },
   "main": "symbolic.js",
   "module": "symbolic.js",
   "types": "symbolic.d.ts",
