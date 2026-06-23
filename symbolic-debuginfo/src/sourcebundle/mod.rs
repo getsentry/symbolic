@@ -1399,26 +1399,29 @@ where
                     .source_by_path(&filename)
                     .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadDebugFile, e))?;
                 if filter(&file, &source_from_object) {
-                    provider(&filename).and_then(|mut reader| {
-                        let mut buf = Vec::new();
-                        reader.read_to_end(&mut buf).ok().map(|_| buf)
-                    })
+                    provider(&filename)
                 } else {
                     None
                 }
             };
 
-            if let Some(source) = source {
+            if let Some(mut source) = source {
                 let bundle_path = sanitize_bundle_path(&filename);
                 let mut info = SourceFileInfo::new();
                 info.set_ty(SourceFileType::Source);
                 info.set_path(filename.clone());
 
                 if self.collect_il2cpp {
-                    collect_il2cpp_sources(&source, &mut referenced_files);
+                    // Need to aggressively read the source here to store it in `referenced_files`.
+                    let mut buf = Vec::new();
+                    if source.read_to_end(&mut buf).is_ok() {
+                        collect_il2cpp_sources(&buf, &mut referenced_files);
+                        self.add_file_skip_read_failed(bundle_path, buf.as_slice(), info)?;
+                    }
+                } else {
+                    // No need to aggressively consume the source here, we can use the `Read` instance.
+                    self.add_file_skip_read_failed(bundle_path, source, info)?;
                 }
-
-                self.add_file_skip_read_failed(bundle_path, source.as_slice(), info)?;
             }
 
             files_handled.insert(filename);
