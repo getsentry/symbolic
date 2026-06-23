@@ -4,7 +4,7 @@
 
 **Features**
 
-- `symbolic-debuginfo`: add `SourceBundleWriter::write_object_with_source_provider`, which builds a source bundle from caller-supplied source content (any `impl std::io::Read`) instead of reading files from the local filesystem — for environments without filesystem access, e.g. WebAssembly. `write_object_with_filter` now delegates to it. ([#988](https://github.com/getsentry/symbolic/pull/988))
+- `symbolic-debuginfo`: add `SourceBundleWriter::write_object_with_filter_and_provider`, which builds a source bundle from caller-supplied source content instead of relying on the local filesystem. ([#988](https://github.com/getsentry/symbolic/pull/988))
 
 **Changes**
 

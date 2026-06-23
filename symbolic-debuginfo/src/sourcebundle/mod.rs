@@ -49,7 +49,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::fs::{File, OpenOptions};
-use std::io::{BufWriter, ErrorKind, Read, Seek, Write};
+use std::io::{BufReader, BufWriter, ErrorKind, Read, Seek, Write};
 use std::path::Path;
 use std::sync::{Arc, LazyLock};
 use std::{fmt, io};
@@ -1336,54 +1336,30 @@ where
     {
         // Read source files from the local filesystem.
         self.write_object_with_filter_and_provider(object, object_name, filter, |path| {
-            File::open(path).ok()
+            File::open(path).map(BufReader::new).ok()
         })
+        .map(|w| w.0)
     }
 
     /// Writes a single object into the bundle, obtaining source file contents
-    /// from `provider` instead of the local filesystem.
+    /// from `provider`.
     ///
-    /// This is the filesystem-free counterpart of [`write_object_with_filter`],
+    /// This is the filesystem-free counterpart of [`Self::write_object_with_filter`],
     /// for environments without filesystem access (e.g. WebAssembly): enumerate
     /// the object's referenced source paths via its debug session, read them
     /// however the host can, and return a reader from `provider` (returning
     /// `None` skips a file). Each referenced path is requested at most once.
     ///
-    /// Returns `Ok(true)` if any source files were added to the bundle, or
-    /// `Ok(false)` if no sources could be resolved.
+    /// Returns the underlying writer and whether if any source files were added to the bundle.
     ///
     /// This finishes the source bundle and flushes the underlying writer.
-    ///
-    /// [`write_object_with_filter`]: Self::write_object_with_filter
-    pub fn write_object_with_source_provider<'data, 'object, O, E, R, P>(
-        self,
-        object: &'object O,
-        object_name: &str,
-        provider: P,
-    ) -> Result<bool, SourceBundleError>
-    where
-        O: ObjectLike<'data, 'object, Error = E>,
-        E: std::error::Error + Send + Sync + 'static,
-        R: Read,
-        P: FnMut(&str) -> Option<R>,
-    {
-        self.write_object_with_filter_and_provider(object, object_name, |_, _| true, provider)
-    }
-
-    /// Shared implementation behind [`write_object_with_filter`] and
-    /// [`write_object_with_source_provider`]: collects the object's referenced
-    /// source files, applies `filter`, and obtains each file's contents from
-    /// `provider`. Each referenced path is passed to `provider` at most once.
-    ///
-    /// [`write_object_with_filter`]: Self::write_object_with_filter
-    /// [`write_object_with_source_provider`]: Self::write_object_with_source_provider
-    fn write_object_with_filter_and_provider<'data, 'object, O, E, F, R, P>(
+    pub fn write_object_with_filter_and_provider<'data, 'object, O, E, F, R, P>(
         mut self,
         object: &'object O,
         object_name: &str,
         mut filter: F,
         mut provider: P,
-    ) -> Result<bool, SourceBundleError>
+    ) -> Result<(bool, W), SourceBundleError>
     where
         O: ObjectLike<'data, 'object, Error = E>,
         E: std::error::Error + Send + Sync + 'static,
@@ -1464,18 +1440,24 @@ where
         }
 
         let is_empty = self.is_empty();
-        self.finish()?;
+        let writer = self.do_finish()?;
 
-        Ok(!is_empty)
+        Ok((!is_empty, writer))
     }
 
     /// Writes the manifest to the bundle and flushes the underlying file handle.
-    pub fn finish(mut self) -> Result<(), SourceBundleError> {
+    pub fn finish(self) -> Result<(), SourceBundleError> {
+        self.do_finish().map(drop)
+    }
+
+    /// Writes the manifest to the bundle and flushes the underlying file handle.
+    fn do_finish(mut self) -> Result<W, SourceBundleError> {
         self.write_manifest()?;
-        self.writer
+        let writer = self
+            .writer
             .finish()
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
-        Ok(())
+        Ok(writer)
     }
 
     /// Returns the full path for a file within the source bundle.
@@ -1560,9 +1542,11 @@ impl SourceBundleWriter<BufWriter<File>> {
 
 #[cfg(test)]
 mod tests {
+    use crate::Object;
+
     use super::*;
 
-    use std::io::Cursor;
+    use std::{collections::HashSet, io::Cursor};
 
     use similar_asserts::assert_eq;
     use tempfile::NamedTempFile;
@@ -1921,5 +1905,98 @@ mod tests {
         assert_eq!(bar.path(), Some("/files/bar/index.min.js"));
 
         Ok(())
+    }
+
+    #[test]
+    fn test_write_object_with_source_provider() {
+        let view = std::fs::read(symbolic_testutils::fixture("linux/crash.debug")).unwrap();
+        let object = Object::parse(&view).unwrap();
+
+        let referenced = {
+            let session = object.debug_session().unwrap();
+            session
+                .files()
+                .map(|file| file.unwrap().abs_path_str())
+                .filter(|path| !(path.starts_with('<') && path.ends_with('>')))
+                .collect::<HashSet<_>>()
+        };
+
+        let (written, writer) = SourceBundleWriter::start(Cursor::new(Vec::new()))
+            .unwrap()
+            .write_object_with_filter_and_provider(
+                &object,
+                "crash.debug",
+                |_, _| true,
+                |path| {
+                    assert!(referenced.contains(path));
+                    Some(Cursor::new(
+                        format!("// synthetic source for {path}\n").into_bytes(),
+                    ))
+                },
+            )
+            .unwrap();
+        assert!(written);
+
+        let data = writer.into_inner();
+
+        let bundle = Object::parse(&data).unwrap();
+        assert_eq!(bundle.debug_id(), object.debug_id());
+        assert!(bundle.has_sources());
+
+        let session = bundle.debug_session().unwrap();
+
+        // All object referenced files must be in the bundle.
+        for path in &referenced {
+            let descriptor = session.source_by_path(path).unwrap().unwrap();
+            assert_eq!(
+                descriptor.contents(),
+                Some(format!("// synthetic source for {path}\n").as_str())
+            );
+        }
+
+        // Only referenced files are allowed to be in the bundle, no extras.
+        for path in session.files() {
+            let path = path.unwrap().abs_path_str();
+            assert!(
+                referenced.contains(&path),
+                "expected {path} to be in object referenced files"
+            );
+        }
+    }
+
+    #[test]
+    fn test_write_object_with_provider_no_sources() {
+        let view = std::fs::read(symbolic_testutils::fixture("linux/crash.debug")).unwrap();
+        let object = Object::parse(&view).unwrap();
+
+        let writer = SourceBundleWriter::start(Cursor::new(Vec::new())).unwrap();
+        let (written, _) = writer
+            .write_object_with_filter_and_provider(
+                &object,
+                "crash.debug",
+                |_, _| true,
+                |_| None::<&[u8]>,
+            )
+            .unwrap();
+
+        assert!(!written);
+    }
+
+    #[test]
+    fn test_write_object_with_all_filtered() {
+        let view = std::fs::read(symbolic_testutils::fixture("linux/crash.debug")).unwrap();
+        let object = Object::parse(&view).unwrap();
+
+        let writer = SourceBundleWriter::start(Cursor::new(Vec::new())).unwrap();
+        let (written, _) = writer
+            .write_object_with_filter_and_provider(
+                &object,
+                "crash.debug",
+                |_, _| false,
+                |_| Some([0, 1, 2].as_slice()),
+            )
+            .unwrap();
+
+        assert!(!written);
     }
 }
