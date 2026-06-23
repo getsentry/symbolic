@@ -58,3 +58,63 @@ fn test_archive_objects() {
     assert!(object.has_symbols());
     assert!(!object.has_sources());
 }
+
+#[cfg(target_arch = "wasm32")]
+mod wasm_only {
+    use super::*;
+
+    use std::rc::Rc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use symbolic_wasm::debuginfo::sourcebundle::SourceBundleWriter;
+    use wasm_bindgen::closure::Closure;
+    use wasm_bindgen::{JsCast, JsValue};
+
+    #[wasm_bindgen_test::wasm_bindgen_test]
+    fn test_source_bundle_writer_write_object() {
+        let object = {
+            let data = common::fixture(
+                "symbolic-testutils/fixtures/windows/Sentry.Samples.Console.Basic.pdb",
+            );
+            let archive = Archive::new(&data).unwrap();
+            let mut objects = archive.objects().unwrap();
+            objects.remove(0)
+        };
+
+        let filter_call_count = Rc::new(AtomicUsize::new(0));
+        let filter = {
+            let filter_call_count = Rc::clone(&filter_call_count);
+            Closure::<dyn Fn(JsValue, JsValue) -> bool>::new(move |_, _| -> bool {
+                filter_call_count.fetch_add(1, Ordering::Relaxed);
+                true
+            })
+            .into_js_value()
+        };
+
+        let provider = Closure::<dyn Fn(String) -> js_sys::Uint8Array>::new(move |path| {
+            let source = format!("// synthetic source for {path}\n");
+            js_sys::Uint8Array::new_from_slice(source.as_bytes())
+        })
+        .into_js_value();
+
+        let writer = SourceBundleWriter::new().unwrap();
+        let bundle = writer
+            .write_object(
+                &object,
+                "whatever",
+                &filter.unchecked_into(),
+                &provider.unchecked_into(),
+            )
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(filter_call_count.load(Ordering::Relaxed), 4);
+
+        let bundle_archive = Archive::new(&bundle).unwrap();
+        assert_eq!(bundle_archive.file_format(), "sourcebundle");
+
+        let bundle_objects = bundle_archive.objects().unwrap();
+        assert_eq!(bundle_objects.len(), 1);
+        assert!(bundle_objects[0].has_sources());
+    }
+}

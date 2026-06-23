@@ -6,6 +6,8 @@ use wasm_bindgen::prelude::*;
 
 use crate::utils::{self, Error, Result};
 
+pub mod sourcebundle;
+
 /// A generic archive that can contain one or more object files.
 #[wasm_bindgen]
 pub struct Archive {
@@ -64,10 +66,6 @@ impl Archive {
 }
 
 /// A generic object file providing uniform access to various file formats.
-///
-/// Exported to JS as `ObjectFile`: a class named `Object` would shadow the JS
-/// global `Object` inside the generated `--target web` glue (which uses
-/// `Object.create`/`Object.getPrototypeOf`), breaking `initSync` and `objects()`.
 #[wasm_bindgen(js_name = ObjectFile)]
 pub struct Object {
     inner: SelfCell<ByteView<'static>, di::Object<'static>>,

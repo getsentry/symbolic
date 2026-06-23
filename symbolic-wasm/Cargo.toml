@@ -8,9 +8,7 @@ authors = [
 homepage = "https://github.com/getsentry/symbolic"
 repository = "https://github.com/getsentry/symbolic"
 description = """
-WebAssembly bindings for symbolic-debuginfo, published to npm as
-@sentry/symbolic. Parses debug information files (Mach-O, ELF, PE/PDB,
-Portable PDB, WebAssembly, Breakpad, SourceBundle) in the browser or Node.
+WebAssembly bindings for symbolic, published to npm as @sentry/symbolic.
 """
 edition.workspace = true
 rust-version.workspace = true
@@ -35,6 +33,7 @@ symbolic-debuginfo = { version = "13.3.1", path = "../symbolic-debuginfo", defau
 
 serde = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
+js-sys = { workspace = true }
 thiserror = { workspace = true }
 wasm-bindgen = { workspace = true }
 
@@ -43,5 +42,4 @@ wasm-bindgen = { workspace = true }
 # this is not the workspace root package.
 
 [dev-dependencies]
-js-sys = { workspace = true }
 wasm-bindgen-test = { workspace = true }
