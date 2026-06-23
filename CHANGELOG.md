@@ -6,6 +6,10 @@
 
 - `symbolic-debuginfo`: add `SourceBundleWriter::write_object_with_filter_and_provider`, which builds a source bundle from caller-supplied source content instead of relying on the local filesystem. ([#988](https://github.com/getsentry/symbolic/pull/988))
 
+**Fixes**
+
+- Fix issue with overflowing section offsets in 64bit Mach-O files. ([#985](https://github.com/getsentry/symbolic/pull/985))
+
 **Changes**
 
 - Rework WASM API to expose lower level `symbolic` types. ([#992](https://github.com/getsentry/symbolic/pull/992))
