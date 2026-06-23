@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "addr2line"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -168,9 +168,9 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.85"
+version = "0.1.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f934833b4b7233644e5848f235df3f57ed8c80f1528a26c3dfa13d2147fa056"
+checksum = "9035ad2d096bed7955a320ee7e2230574d28fd3c3a0f186cbea1ff3c7eed5dbb"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -581,7 +581,7 @@ dependencies = [
 
 [[package]]
 name = "debuginfo_debug"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -610,7 +610,7 @@ dependencies = [
 
 [[package]]
 name = "dump_cfi"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -619,7 +619,7 @@ dependencies = [
 
 [[package]]
 name = "dump_sources"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "clap",
  "symbolic",
@@ -1160,11 +1160,12 @@ dependencies = [
 
 [[package]]
 name = "js-sys"
-version = "0.3.85"
+version = "0.3.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c942ebf8e95485ca0d52d97da7c5a2c387d0e7f0ba4c35e93bfcaee045955b3"
+checksum = "03d04c30968dffe80775bd4d7fb676131cd04a1fb46d2686dbffbaec2d9dfd31"
 dependencies = [
- "once_cell",
+ "cfg-if",
+ "futures-util",
  "wasm-bindgen",
 ]
 
@@ -1185,6 +1186,12 @@ name = "libc"
 version = "0.2.169"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5aba8db14291edd000dfcc4d620c7ebfb122c613afb886ca8803fa4e128a20a"
+
+[[package]]
+name = "libm"
+version = "0.2.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
 name = "linked-hash-map"
@@ -1254,6 +1261,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd3f7eed9d3848f8b98834af67102b720745c4ec028fcd0aa0239277e7de374f"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "minicov"
+version = "0.3.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4869b6a491569605d66d3952bcdf03df789e5b536e5f0cf7758a7f08a55ae24d"
+dependencies = [
+ "cc",
+ "walkdir",
 ]
 
 [[package]]
@@ -1329,7 +1346,7 @@ dependencies = [
 
 [[package]]
 name = "minidump_stackwalk"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "async-trait",
  "clap",
@@ -1422,6 +1439,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nu-ansi-term"
+version = "0.50.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
+dependencies = [
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1465,6 +1491,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
+ "libm",
 ]
 
 [[package]]
@@ -1478,7 +1505,7 @@ dependencies = [
 
 [[package]]
 name = "object_debug"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "clap",
  "symbolic",
@@ -1492,9 +1519,9 @@ checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
 
 [[package]]
 name = "oorandom"
-version = "11.1.4"
+version = "11.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b410bbe7e14ab526a0e86877eb47c6996a2bd7746f027ba551028c925390e4e9"
+checksum = "d6790f58c7ff633d8771f42965289203411a5e5c68388703c06e14f24770b41e"
 
 [[package]]
 name = "outref"
@@ -2066,6 +2093,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-wasm-bindgen"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8302e169f0eddcc139c70f139d19d6467353af16f9fce27e8c30158036a1e16b"
+dependencies = [
+ "js-sys",
+ "serde",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "serde_core"
 version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2244,7 +2282,7 @@ dependencies = [
 
 [[package]]
 name = "sourcemapcache_debug"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2444,7 +2482,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "symbolic-cfi",
  "symbolic-common",
@@ -2459,7 +2497,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-cabi"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "proguard",
  "sourcemap",
@@ -2469,7 +2507,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-cfi"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "insta",
  "similar-asserts",
@@ -2481,7 +2519,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-common"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "debugid",
  "memmap2",
@@ -2495,7 +2533,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-debuginfo"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "criterion",
  "debugid",
@@ -2532,7 +2570,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-demangle"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "cc",
  "cpp_demangle",
@@ -2544,7 +2582,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-il2cpp"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "indexmap",
  "serde_json",
@@ -2554,7 +2592,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-ppdb"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "flate2",
  "indexmap",
@@ -2570,7 +2608,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-sourcemapcache"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "itertools 0.14.0",
  "js-source-scopes",
@@ -2584,7 +2622,7 @@ dependencies = [
 
 [[package]]
 name = "symbolic-symcache"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "criterion",
  "indexmap",
@@ -2600,11 +2638,11 @@ dependencies = [
 
 [[package]]
 name = "symbolic-testutils"
-version = "13.2.0"
+version = "13.3.1"
 
 [[package]]
 name = "symbolic-unreal"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "anylog",
  "bytes",
@@ -2622,8 +2660,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "symbolic-wasm"
+version = "13.3.1"
+dependencies = [
+ "js-sys",
+ "serde",
+ "serde-wasm-bindgen",
+ "symbolic-common",
+ "symbolic-debuginfo",
+ "thiserror 2.0.18",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+]
+
+[[package]]
 name = "symcache_debug"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -2846,7 +2898,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8189decb5ac0fa7bc8b96b7cb9b2701d60d48805aca84a238004d665fcc4008"
 dependencies = [
  "matchers",
- "nu-ansi-term",
+ "nu-ansi-term 0.46.0",
  "once_cell",
  "regex",
  "sharded-slab",
@@ -2905,7 +2957,7 @@ checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
 
 [[package]]
 name = "unreal_engine_crash"
-version = "13.2.0"
+version = "13.3.1"
 dependencies = [
  "clap",
  "symbolic",
@@ -2996,9 +3048,9 @@ checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "wasm-bindgen"
-version = "0.2.108"
+version = "0.2.125"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64024a30ec1e37399cf85a7ffefebdb72205ca1c972291c51512360d90bd8566"
+checksum = "8ddb3f79143bced6de84270411622a2699cee572fc0875aeaf1e7867cf9fca1a"
 dependencies = [
  "cfg-if",
  "once_cell",
@@ -3008,10 +3060,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-bindgen-macro"
-version = "0.2.108"
+name = "wasm-bindgen-futures"
+version = "0.4.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "008b239d9c740232e71bd39e8ef6429d27097518b6b30bdf9086833bd5b6d608"
+checksum = "503b14d284f2c8dac03b819967e155ea753f573586193b2b2c95990cb5d69280"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "wasm-bindgen-macro"
+version = "0.2.125"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e21a184b13fb19e157296e2c46056aec9092264fab83e4ba59e68c61b323c3d"
 dependencies = [
  "quote",
  "wasm-bindgen-macro-support",
@@ -3019,9 +3081,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro-support"
-version = "0.2.108"
+version = "0.2.125"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5256bae2d58f54820e6490f9839c49780dff84c65aeab9e772f15d5f0e913a55"
+checksum = "fecefd9c35bd935a20fc3fc344b5f29138961e4f47fb03297d88f2587afb5ebd"
 dependencies = [
  "bumpalo",
  "proc-macro2",
@@ -3032,12 +3094,51 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-shared"
-version = "0.2.108"
+version = "0.2.125"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f01b580c9ac74c8d8f0c0e4afb04eeef2acf145458e52c03845ee9cd23e3d12"
+checksum = "23939e44bb9a5d7576fa2b563dc2e136628f1224e88a8deed09e04858b77871f"
 dependencies = [
  "unicode-ident",
 ]
+
+[[package]]
+name = "wasm-bindgen-test"
+version = "0.3.75"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d16931d57bcdd6a0dcc11254bdd1388827690c1b6807f0d2836f59a4f9eb30ac"
+dependencies = [
+ "async-trait",
+ "cast",
+ "js-sys",
+ "libm",
+ "minicov",
+ "nu-ansi-term 0.50.3",
+ "num-traits",
+ "oorandom",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test-macro",
+ "wasm-bindgen-test-shared",
+]
+
+[[package]]
+name = "wasm-bindgen-test-macro"
+version = "0.3.75"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fccaddcb2cd722baa7453b4c3d2cb2a3071597bb91f7a4373e8775bdb151778c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "wasm-bindgen-test-shared"
+version = "0.2.125"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3746ad029217960123cf2ebf939dda51eb931ba9f8f09c117e39c820b96aa794"
 
 [[package]]
 name = "wasmparser"
@@ -3065,9 +3166,9 @@ dependencies = [
 
 [[package]]
 name = "web-sys"
-version = "0.3.85"
+version = "0.3.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "312e32e551d92129218ea9a2452120f4aabc03529ef03e4d0d82fb2780608598"
+checksum = "a6430a72df5eb332242960fe84b3002a241163998241eb596d4f739b9757061d"
 dependencies = [
  "js-sys",
  "wasm-bindgen",

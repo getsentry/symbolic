@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+**Features**
+
+- `symbolic-debuginfo`: add `SourceBundleWriter::write_object_with_filter_and_provider`, which builds a source bundle from caller-supplied source content instead of relying on the local filesystem. ([#988](https://github.com/getsentry/symbolic/pull/988))
+
+**Changes**
+
+- Rework WASM API to expose lower level `symbolic` types. ([#992](https://github.com/getsentry/symbolic/pull/992))
+- `symbolic-debuginfo`: use the C `zstd` library on wasm32 too (via zstd-sys's wasm-shim), replacing the `ruzstd` decoder added in #989. One zstd implementation for all targets; `ruzstd` is no longer a dependency. Building for wasm now requires clang. ([#990](https://github.com/getsentry/symbolic/pull/990))
+
+## 13.3.1
+
+**Changes**
+
+- `symbolic-debuginfo`: select the C `zstd` library (native) vs the pure-Rust `ruzstd` decoder (wasm32) via `cfg(target_arch)` instead of the `elf-zstd`/`elf-zstd-pure` features. `features = ["elf"]` again includes zstd support on native (the feature split in #986 had silently removed it). `ruzstd` was bumped to 0.8.3 and now rejects size mismatches instead of truncating. ([#989](https://github.com/getsentry/symbolic/pull/989))
+
+## 13.3.0
+
+**Features**
+
+- Add WebAssembly bindings (`symbolic-wasm` crate) published to npm as `@sentry/symbolic`, for parsing debug information files from JavaScript. ([#986](https://github.com/getsentry/symbolic/pull/986))
+
+**Changes**
+
+- `symbolic-debuginfo`: the `zstd` dependency moved out of the `elf` feature into a new `elf-zstd` feature (kept in `default`, so default builds are unchanged). Consumers using `default-features = false` with `elf` should add `elf-zstd` to keep decompressing zstd-compressed ELF debug sections, or `elf-zstd-pure` for a pure-Rust (wasm-compatible) decoder. ([#986](https://github.com/getsentry/symbolic/pull/986))
+
 ## 13.2.0
 
 **Features**

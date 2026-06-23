@@ -1,0 +1,45 @@
+[package]
+name = "symbolic-wasm"
+version = "13.3.1"
+license = "MIT"
+authors = [
+    "Sentry <hello@sentry.io>",
+]
+homepage = "https://github.com/getsentry/symbolic"
+repository = "https://github.com/getsentry/symbolic"
+description = """
+WebAssembly bindings for symbolic, published to npm as @sentry/symbolic.
+"""
+edition.workspace = true
+rust-version.workspace = true
+# Published to npm (@sentry/symbolic), not crates.io.
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+symbolic-common = { version = "13.3.1", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "13.3.1", path = "../symbolic-debuginfo", default-features = false, features = [
+    "breakpad",
+    "elf",
+    "macho",
+    "ms",
+    "ppdb",
+    "sourcebundle",
+    "js",
+    "wasm",
+] }
+
+serde = { workspace = true }
+serde-wasm-bindgen = { workspace = true }
+js-sys = { workspace = true }
+thiserror = { workspace = true }
+wasm-bindgen = { workspace = true }
+
+# NOTE: profile settings for the wasm build are applied via `--config` in
+# build-npm.sh — a `[profile.release]` here would be ignored by Cargo because
+# this is not the workspace root package.
+
+[dev-dependencies]
+wasm-bindgen-test = { workspace = true }

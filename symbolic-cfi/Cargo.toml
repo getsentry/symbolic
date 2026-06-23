@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-cfi"
-version = "13.2.0"
+version = "13.3.1"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -16,8 +16,8 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-symbolic-common = { version = "13.2.0", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "13.2.0", path = "../symbolic-debuginfo" }
+symbolic-common = { version = "13.3.1", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "13.3.1", path = "../symbolic-debuginfo" }
 thiserror = { workspace = true }
 
 [dev-dependencies]

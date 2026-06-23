@@ -33,6 +33,10 @@ wheel-manylinux-aarch64:
 	docker run --rm -v $(CURDIR):/work -w /work/py $(IMAGE) sh manylinux_aarch64.sh
 .PHONY: wheel-manylinux-aarch64
 
+npm: ## Build the @sentry/symbolic WASM npm package
+	bash symbolic-wasm/build-npm.sh
+.PHONY: npm
+
 
 # Tests
 
