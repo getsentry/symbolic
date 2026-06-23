@@ -468,14 +468,6 @@ impl<'data> Dwarf<'data> for MachObject<'data> {
                 let (header, data) = section.ok()?;
                 if let Ok(sec) = header.name() {
                     if sec.starts_with("__") && map_section_name(&sec[2..]) == section_name {
-                        // In some cases, dsymutil leaves sections headers but removes their
-                        // data from the file. While the addr and size parameters are still
-                        // set, `header.offset` is 0 in that case. We skip them just like the
-                        // section was missing to avoid loading invalid data.
-                        if header.offset == 0 {
-                            return None;
-                        }
-
                         let (data, offset) = if self.macho.is_64 {
                             // The section header's `offset` field is only 32 bits wide, so for
                             // files larger than 4 GiB (e.g. produced with thin LTO) it is
@@ -498,6 +490,14 @@ impl<'data> Dwarf<'data> for MachObject<'data> {
                         } else {
                             (data, u64::from(header.offset))
                         };
+
+                        // In some cases, dsymutil leaves sections headers but removes their
+                        // data from the file. While the addr and size parameters are still
+                        // set, `header.offset` is 0 in that case. We skip them just like the
+                        // section was missing to avoid loading invalid data.
+                        if offset == 0 {
+                            return None;
+                        }
 
                         return Some(DwarfSection {
                             data: Cow::Borrowed(data),
