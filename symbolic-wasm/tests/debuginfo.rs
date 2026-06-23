@@ -59,6 +59,46 @@ fn test_archive_objects() {
     assert!(!object.has_sources());
 }
 
+#[test]
+#[wasm_bindgen_test::wasm_bindgen_test]
+fn test_debug_session_files() {
+    let data =
+        common::fixture("symbolic-testutils/fixtures/windows/Sentry.Samples.Console.Basic.pdb");
+
+    let archive = Archive::new(&data).unwrap();
+    let mut objects = archive.objects().unwrap();
+    let object = objects.remove(0);
+
+    let session = object.debug_session().unwrap();
+    let files = session.files().unwrap();
+
+    assert!(!files.is_empty());
+    assert!(files.iter().all(|file| !file.abs_path_str().is_empty()));
+}
+
+#[test]
+#[wasm_bindgen_test::wasm_bindgen_test]
+fn test_debug_session_source_by_path() {
+    let data =
+        common::fixture("symbolic-testutils/fixtures/windows/Sentry.Samples.Console.Basic.pdb");
+
+    let archive = Archive::new(&data).unwrap();
+    let mut objects = archive.objects().unwrap();
+    let object = objects.remove(0);
+
+    let session = object.debug_session().unwrap();
+    let first = session.files().unwrap().remove(0).abs_path_str();
+
+    // A referenced path resolves without error (contents may or may not be embedded).
+    session.source_by_path(&first).unwrap();
+
+    // A path the object does not reference resolves to nothing.
+    assert!(session
+        .source_by_path("/definitely/not/a/referenced/source")
+        .unwrap()
+        .is_none());
+}
+
 #[cfg(target_arch = "wasm32")]
 mod wasm_only {
     use super::*;

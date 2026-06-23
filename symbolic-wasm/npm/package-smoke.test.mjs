@@ -43,3 +43,19 @@ test("the shipped package parses a debug file via the Archive API", () => {
 test("Archive.peek detects the format without a full parse", () => {
   assert.equal(symbolic.Archive.peek(data), "elf");
 });
+
+test("the debug session enumerates referenced source files", () => {
+  const archive = new symbolic.Archive(data);
+  const [object] = archive.objects();
+
+  const session = object.debugSession();
+  const files = session.files();
+  assert.ok(Array.isArray(files), "files() should return an array");
+  assert.ok(files.length > 0, "expected at least one referenced source file");
+  for (const file of files) {
+    assert.ok(file.abs_path_str.length > 0, "expected a non-empty source path");
+  }
+
+  // A path the object does not reference resolves to undefined.
+  assert.equal(session.sourceByPath("/definitely/not/referenced"), undefined);
+});
