@@ -7,7 +7,8 @@
 //! ```ignore
 //! use msvc_demangler;
 //! let flags = msvc_demangler::DemangleFlags::llvm();
-//! let result = msvc_demangler::demangle("??_0klass@@QEAAHH@Z", flags).unwrap();
+//! let max_recursion_depth = Some(128);
+//! let result = msvc_demangler::demangle("??_0klass@@QEAAHH@Z", flags, max_recursion_depth).unwrap();
 //! println!("{}", result);
 //! ```
 //!
@@ -52,6 +53,7 @@ pub enum ErrorRepr {
     FromUtf8(FromUtf8Error),
     Utf8(Utf8Error),
     ParseError(Cow<'static, str>, String, usize),
+    RecursionLimitExceeded { limit: usize },
     Other(String),
 }
 
@@ -73,6 +75,17 @@ impl Error {
         Error {
             repr: ErrorRepr::ParseError(s, context.to_string(), offset),
         }
+    }
+
+    fn new_recursion_limit_exceeded(limit: usize) -> Error {
+        Error {
+            repr: ErrorRepr::RecursionLimitExceeded { limit },
+        }
+    }
+
+    /// Returns `true` if demangling failed because the recursion limit was exceeded.
+    pub fn is_recursion_limit_exceeded(&self) -> bool {
+        matches!(self.repr, ErrorRepr::RecursionLimitExceeded { limit: _ })
     }
 
     /// Returns the offset in the input where the error happened.
@@ -106,6 +119,7 @@ impl error::Error for Error {
             ErrorRepr::FromUtf8(ref e) => Some(e),
             ErrorRepr::Utf8(ref e) => Some(e),
             ErrorRepr::ParseError(..) => None,
+            ErrorRepr::RecursionLimitExceeded { .. } => None,
             ErrorRepr::Other(_) => None,
         }
     }
@@ -118,6 +132,9 @@ impl fmt::Display for Error {
             ErrorRepr::Utf8(ref e) => fmt::Display::fmt(e, f),
             ErrorRepr::ParseError(ref msg, ref context, offset) => {
                 write!(f, "{} (offset: {}, remaining: {:?})", msg, offset, context)
+            }
+            ErrorRepr::RecursionLimitExceeded { limit } => {
+                write!(f, "maximum recursion depth exceeded (limit: {})", limit)
             }
             ErrorRepr::Other(ref msg) => write!(f, "{}", msg),
         }
@@ -478,9 +495,33 @@ struct ParserState<'a> {
     memorized_names: Vec<Name<'a>>,
 
     memorized_types: Vec<Type<'a>>,
+
+    // Maximum parser recursion depth.
+    //
+    // `None` disables the limit (unbounded recursion).
+    // `Some(n)` aborts with `ErrorRepr::RecursionLimitExceeded` once nesting passes `n`.
+    max_recursion_depth: Option<usize>,
+
+    // Current recursion depth.
+    depth: usize,
 }
 
 impl<'a> ParserState<'a> {
+    fn bounded_recursion<T, F>(&mut self, f: F) -> Result<T>
+    where
+        F: FnOnce(&mut Self) -> Result<T>,
+    {
+        self.depth += 1;
+        if let Some(max) = self.max_recursion_depth {
+            if self.depth > max {
+                return Err(Error::new_recursion_limit_exceeded(max));
+            }
+        }
+        let result = f(self);
+        self.depth -= 1;
+        result
+    }
+
     fn fail(&self, s: &'static str) -> Error {
         Error::new_parse_error(Cow::Borrowed(s), self.input, self.offset)
     }
@@ -490,6 +531,10 @@ impl<'a> ParserState<'a> {
     }
 
     fn parse(&mut self) -> Result<ParseResult<'a>> {
+        self.bounded_recursion(|s| s.parse_inner())
+    }
+
+    fn parse_inner(&mut self) -> Result<ParseResult<'a>> {
         // MSVC-style mangled symbols must start with b'?'.
         if !self.consume(b"?") {
             return Err(self.fail("does not start with b'?'"));
@@ -857,6 +902,10 @@ impl<'a> ParserState<'a> {
     }
 
     fn read_template_name(&mut self) -> Result<Name<'a>> {
+        self.bounded_recursion(|s| s.read_template_name_inner())
+    }
+
+    fn read_template_name_inner(&mut self) -> Result<Name<'a>> {
         // Templates have their own context for backreferences.
         let saved_memorized_names = mem::take(&mut self.memorized_names);
         let saved_memorized_types = mem::take(&mut self.memorized_types);
@@ -1291,8 +1340,12 @@ impl<'a> ParserState<'a> {
         ))
     }
 
+    fn read_var_type(&mut self, sc: StorageClass) -> Result<Type<'a>> {
+        self.bounded_recursion(|s| s.read_var_type_inner(sc))
+    }
+
     // Reads a variable type.
-    fn read_var_type(&mut self, mut sc: StorageClass) -> Result<Type<'a>> {
+    fn read_var_type_inner(&mut self, mut sc: StorageClass) -> Result<Type<'a>> {
         if self.consume(b"W4") {
             let name = self.read_name(false)?;
             return Ok(Type::Enum(name, sc));
@@ -1438,6 +1491,10 @@ impl<'a> ParserState<'a> {
     }
 
     fn read_nested_array(&mut self, dimension: i32) -> Result<(Type<'a>, StorageClass)> {
+        self.bounded_recursion(|s| s.read_nested_array_inner(dimension))
+    }
+
+    fn read_nested_array_inner(&mut self, dimension: i32) -> Result<(Type<'a>, StorageClass)> {
         if dimension > 0 {
             let len = self.read_number()?;
             let (inner_array, storage_class) = self.read_nested_array(dimension - 1)?;
@@ -1523,17 +1580,23 @@ impl<'a> ParserState<'a> {
     }
 }
 
-pub fn demangle(input: &str, flags: DemangleFlags) -> Result<String> {
-    Ok(serialize(&parse(input)?, flags))
+pub fn demangle(
+    input: &str,
+    flags: DemangleFlags,
+    max_recursion_depth: Option<usize>,
+) -> Result<String> {
+    Ok(serialize(&parse(input, max_recursion_depth)?, flags))
 }
 
-pub fn parse(input: &str) -> Result<ParseResult<'_>> {
+pub fn parse(input: &str, max_recursion_depth: Option<usize>) -> Result<ParseResult<'_>> {
     let mut state = ParserState {
         remaining: input.as_bytes(),
         input,
         offset: 0,
         memorized_names: Vec::with_capacity(10),
         memorized_types: Vec::with_capacity(10),
+        max_recursion_depth,
+        depth: 0,
     };
     state.parse()
 }
@@ -2395,3 +2458,23 @@ impl Serializer<'_> {
 //                 ::= 2  # public static member
 //                 ::= 3  # global
 //                 ::= 4  # static local
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn deeply_nested_pointer_symbol(depth: usize) -> String {
+        let mut s = String::with_capacity(5 + depth * 3 + 1);
+        s.push_str("?x@@3");
+        for _ in 0..depth {
+            s.push_str("PEA");
+        }
+        s.push('X');
+        s
+    }
+    #[test]
+    fn deeply_nested_symbol_is_rejected_not_crashed() {
+        let input = deeply_nested_pointer_symbol(50_000);
+        let error = demangle(&input, DemangleFlags::llvm(), Some(128)).unwrap_err();
+        assert!(error.is_recursion_limit_exceeded());
+    }
+}

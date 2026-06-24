@@ -63,6 +63,13 @@ extern "C" {
     fn symbolic_demangle_is_swift_symbol(sym: *const c_char) -> c_int;
 }
 
+/// Maximum parser recursion depth when demangling MSVC symbols.
+///
+/// Since some symbols can cause stack overflows this is used to limit the max recursion depth so
+/// we fail gracefully.
+#[cfg(feature = "msvc")]
+const MSVC_MAX_RECURSION_DEPTH: usize = 128;
+
 /// Options for [`Demangle::demangle`].
 ///
 /// One can chose from complete, or name-only demangling, and toggle specific demangling features
@@ -183,7 +190,7 @@ fn try_demangle_msvc(ident: &str, opts: DemangleOptions) -> Option<String> {
         flags |= MsvcFlags::NAME_ONLY;
     }
 
-    msvc_demangler::demangle(ident, flags).ok()
+    msvc_demangler::demangle(ident, flags, Some(MSVC_MAX_RECURSION_DEPTH)).ok()
 }
 
 #[cfg(not(feature = "msvc"))]
