@@ -636,7 +636,10 @@ impl fmt::Debug for SourceBundle<'_> {
             .field("has_unwind_info", &self.has_unwind_info())
             .field("has_sources", &self.has_sources())
             .field("is_malformed", &self.is_malformed())
-            .field("max_decompressed_embedded_source_size", &self.max_decompressed_embedded_source_size)
+            .field(
+                "max_decompressed_embedded_source_size",
+                &self.max_decompressed_embedded_source_size,
+            )
             .finish()
     }
 }
@@ -984,8 +987,9 @@ impl SourceBundleDebugSession<'_> {
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
         if let Some(zip_path) = self.index.indexed_files.get(&key) {
             let zip_path = zip_path.as_str();
-            let content =
-                Cow::Owned(self.source_by_zip_path(zip_path, self.max_decompressed_embedded_source_size)?);
+            let content = Cow::Owned(
+                self.source_by_zip_path(zip_path, self.max_decompressed_embedded_source_size)?,
+            );
             let info = self.index.manifest.files.get(zip_path);
             let descriptor = SourceFileDescriptor::new_embedded(content, info);
             return Ok(Some(descriptor));
