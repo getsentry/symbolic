@@ -50,6 +50,23 @@ jobs:
 
       - run: cargo doc --workspace --all-features --document-private-items --no-deps
 
+  semver:
+    name: SemVer Checks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
+        with:
+          fetch-depth: 0
+
+      - name: Check semver
+        uses: obi1kenobi/cargo-semver-checks-action@5b298c9520f7096a4683c0bd981a7ac5a7e249ae # v2.8
+        with:
+          baseline-rev: ${{ github.event.pull_request.base.sha }}
+          feature-group: all-features
+          package: symbolic, symbolic-cfi, symbolic-common, symbolic-debuginfo, symbolic-demangle, symbolic-il2cpp, symbolic-ppdb, symbolic-sourcemapcache, symbolic-symcache, symbolic-unreal
+
   test-rust:
     strategy:
       fail-fast: false
