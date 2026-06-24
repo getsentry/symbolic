@@ -952,18 +952,25 @@ impl SourceBundleDebugSession<'_> {
         max_size: Option<usize>,
     ) -> Result<String, SourceBundleError> {
         let mut archive = self.archive.lock();
-        let mut file = archive
+        let file = archive
             .by_name(zip_path)
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
 
-        if max_size.is_some_and(|max| file.size() as usize > max) {
+        let size = file.size();
+        if max_size.is_some_and(|max| size as usize > max) {
             return Err(SourceBundleErrorKind::SourceFileSizeExceeded.into());
         }
 
         let mut source_content = String::new();
 
-        file.read_to_string(&mut source_content)
+        file.take(size + 1)
+            .read_to_string(&mut source_content)
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
+
+        if source_content.len() != size as usize {
+            return Err(SourceBundleErrorKind::BadZip.into());
+        }
+
         Ok(source_content)
     }
 
