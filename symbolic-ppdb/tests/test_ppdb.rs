@@ -43,7 +43,7 @@ fn test_embedded_sources() {
 }
 
 fn check_contents(item: &EmbeddedSource, length: usize, name: &str) {
-    let content = item.get_contents(None).unwrap();
+    let content = item.get_contents().unwrap();
     assert_eq!(content.len(), length);
 
     let expected = std::fs::read(format!("tests/fixtures/contents/{name}")).unwrap();
