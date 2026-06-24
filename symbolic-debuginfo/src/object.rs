@@ -394,6 +394,14 @@ impl<'slf, 'data: 'slf> AsSelf<'slf> for Object<'data> {
     }
 }
 
+impl<'slf, 'data: 'slf> AsSelf<'slf> for ObjectDebugSession<'data> {
+    type Ref = ObjectDebugSession<'slf>;
+
+    fn as_self(&'slf self) -> &'slf Self::Ref {
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
 impl<'data: 'object, 'object> ObjectLike<'data, 'object> for Object<'data> {
     type Error = ObjectError;
     type Session = ObjectDebugSession<'data>;
