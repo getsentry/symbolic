@@ -101,6 +101,13 @@ pub enum SourceBundleErrorKind {
 
     /// The file is not valid UTF-8 or could not be read for another reason.
     ReadFailed,
+
+    /// A source file exceeded the configured size limit.
+    ///
+    /// The size limit for a source bundle can be configured
+    /// by the [`max_embedded_source_size`](crate::ParseObjectOptions::max_embedded_source_size)
+    /// parameter in [`SourceBundle::parse_with_opts`].
+    SourceFileSizeExceeded,
 }
 
 impl fmt::Display for SourceBundleErrorKind {
@@ -111,6 +118,7 @@ impl fmt::Display for SourceBundleErrorKind {
             Self::BadDebugFile => write!(f, "malformed debug info file"),
             Self::WriteFailed => write!(f, "failed to write source bundle"),
             Self::ReadFailed => write!(f, "file could not be read as UTF-8"),
+            Self::SourceFileSizeExceeded => write!(f, "the source file exceeded the size limit"),
         }
     }
 }
@@ -473,6 +481,17 @@ impl<'a> SourceFileDescriptor<'a> {
     }
 }
 
+impl fmt::Debug for SourceFileDescriptor<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let contents = self.contents.as_ref().map(|contents| contents.len());
+        f.debug_struct("SourceFileDescriptor")
+            .field("contents", &contents)
+            .field("remote_url", &self.remote_url)
+            .field("file_info", &self.file_info)
+            .finish()
+    }
+}
+
 /// Version number of a [`SourceBundle`](struct.SourceBundle.html).
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct SourceBundleVersion(pub u32);
@@ -601,6 +620,7 @@ pub struct SourceBundle<'data> {
     data: &'data [u8],
     archive: zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>,
     index: Arc<SourceBundleIndex<'data>>,
+    max_embedded_source_size: Option<usize>,
 }
 
 impl fmt::Debug for SourceBundle<'_> {
@@ -616,6 +636,7 @@ impl fmt::Debug for SourceBundle<'_> {
             .field("has_unwind_info", &self.has_unwind_info())
             .field("has_sources", &self.has_sources())
             .field("is_malformed", &self.is_malformed())
+            .field("max_embedded_source_size", &self.max_embedded_source_size)
             .finish()
     }
 }
@@ -626,8 +647,16 @@ impl<'data> SourceBundle<'data> {
         bytes.starts_with(&BUNDLE_MAGIC)
     }
 
-    /// Tries to parse a `SourceBundle` from the given slice.
+    /// Tries to parse a `SourceBundle` from the given slice, with default options.
     pub fn parse(data: &'data [u8]) -> Result<SourceBundle<'data>, SourceBundleError> {
+        Self::parse_with_opts(data, Default::default())
+    }
+
+    /// Tries to parse a `SourceBundle` from the given slice.
+    pub fn parse_with_opts(
+        data: &'data [u8],
+        opts: ParseObjectOptions,
+    ) -> Result<SourceBundle<'data>, SourceBundleError> {
         let mut archive = zip::read::ZipArchive::new(std::io::Cursor::new(data))
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
 
@@ -637,6 +666,7 @@ impl<'data> SourceBundle<'data> {
             archive,
             data,
             index,
+            max_embedded_source_size: opts.max_embedded_source_size,
         })
     }
 
@@ -772,6 +802,7 @@ impl<'data> SourceBundle<'data> {
             index: Arc::clone(&self.index),
             archive,
             source_links,
+            max_embedded_source_size: self.max_embedded_source_size,
         })
     }
 
@@ -812,8 +843,8 @@ impl<'slf, 'data: 'slf> AsSelf<'slf> for SourceBundle<'data> {
 impl<'data> Parse<'data> for SourceBundle<'data> {
     type Error = SourceBundleError;
 
-    fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
-        Self::parse(data)
+    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+        Self::parse_with_opts(data, opts)
     }
 
     fn test(data: &'data [u8]) -> bool {
@@ -898,6 +929,7 @@ pub struct SourceBundleDebugSession<'data> {
     archive: Mutex<zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>>,
     index: Arc<SourceBundleIndex<'data>>,
     source_links: SourceLinkMappings,
+    max_embedded_source_size: Option<usize>,
 }
 
 impl SourceBundleDebugSession<'_> {
@@ -914,11 +946,20 @@ impl SourceBundleDebugSession<'_> {
     }
 
     /// Get source by the path of a file in the bundle.
-    fn source_by_zip_path(&self, zip_path: &str) -> Result<String, SourceBundleError> {
+    fn source_by_zip_path(
+        &self,
+        zip_path: &str,
+        max_size: Option<usize>,
+    ) -> Result<String, SourceBundleError> {
         let mut archive = self.archive.lock();
         let mut file = archive
             .by_name(zip_path)
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
+
+        if max_size.is_some_and(|max| file.size() as usize > max) {
+            return Err(SourceBundleErrorKind::SourceFileSizeExceeded.into());
+        }
+
         let mut source_content = String::new();
 
         file.read_to_string(&mut source_content)
@@ -936,7 +977,8 @@ impl SourceBundleDebugSession<'_> {
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
         if let Some(zip_path) = self.index.indexed_files.get(&key) {
             let zip_path = zip_path.as_str();
-            let content = Cow::Owned(self.source_by_zip_path(zip_path)?);
+            let content =
+                Cow::Owned(self.source_by_zip_path(zip_path, self.max_embedded_source_size)?);
             let info = self.index.manifest.files.get(zip_path);
             let descriptor = SourceFileDescriptor::new_embedded(content, info);
             return Ok(Some(descriptor));
@@ -2019,5 +2061,39 @@ mod tests {
             .unwrap();
 
         assert!(!written);
+    }
+
+    #[test]
+    fn test_size_limit() {
+        let mut buffer = Cursor::new(Vec::new());
+        let mut bundle = SourceBundleWriter::start(&mut buffer).unwrap();
+
+        bundle
+            .add_file(
+                "bar.txt",
+                &b"this is 26 characters long"[..],
+                SourceFileInfo {
+                    path: "bar.txt".to_owned(),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        bundle.finish().unwrap();
+
+        let buffer = buffer.into_inner();
+
+        let opts = ParseObjectOptions {
+            max_embedded_source_size: Some(20),
+            ..Default::default()
+        };
+
+        let bundle = SourceBundle::parse_with_opts(&buffer, opts).unwrap();
+        let session = bundle.debug_session().unwrap();
+        let err = session.source_by_path("bar.txt").unwrap_err();
+
+        assert!(matches!(
+            err.kind(),
+            SourceBundleErrorKind::SourceFileSizeExceeded
+        ));
     }
 }
