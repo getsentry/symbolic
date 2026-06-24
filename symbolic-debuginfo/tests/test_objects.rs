@@ -1,4 +1,6 @@
-use std::{ffi::CString, fmt, io::BufWriter};
+use std::ffi::CString;
+use std::fmt;
+use std::io::BufWriter;
 
 use symbolic_common::{ByteView, Language};
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
@@ -920,6 +922,20 @@ fn test_ppdb_source_by_path() -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+#[test]
+fn test_ppdb_source_by_path_size_limit() {
+    let mut opts = ParseObjectOptions::default();
+    opts.max_decompressed_embedded_source_size = Some(200);
+
+    let view = ByteView::open(fixture("windows/Sentry.Samples.Console.Basic.pdb")).unwrap();
+    let object = Object::parse_with_opts(&view, opts).unwrap();
+
+    let session = object.debug_session().unwrap();
+    session
+        .source_by_path("C:\\dev\\sentry-dotnet\\samples\\Sentry.Samples.Console.Basic\\Program.cs")
+        .unwrap_err();
 }
 
 #[test]
