@@ -225,7 +225,7 @@ impl<'data> PortablePdbDebugSession<'data> {
         match sources.get(path) {
             None => Ok(None),
             Some(PPDBSource::Embedded(source)) => source
-                .get_contents(self.max_embedded_source_size)
+                .get_contents_bounded(self.max_embedded_source_size)
                 .map(|bytes| {
                     Some(SourceFileDescriptor::new_embedded(
                         from_utf8_cow_lossy(&bytes),

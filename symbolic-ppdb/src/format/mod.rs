@@ -479,7 +479,18 @@ impl<'data, 'object> EmbeddedSource<'data> {
     }
 
     /// Reads the source file contents from the Portable PDB.
-    pub fn get_contents(&self, max_size: Option<usize>) -> Result<Cow<'data, [u8]>, FormatError> {
+    pub fn get_contents(&self) -> Result<Cow<'data, [u8]>, FormatError> {
+        self.get_contents_bounded(None)
+    }
+
+    /// Reads the source file contents from the Portable PDB.
+    ///
+    /// If the contents are compressed, the decompressed size
+    /// can be bounded with `max_decompressed_size`.
+    pub fn get_contents_bounded(
+        &self,
+        max_decompressed_size: Option<usize>,
+    ) -> Result<Cow<'data, [u8]>, FormatError> {
         // The blob has the following structure: `Blob ::= format content`
         // - format - int32 - Indicates how the content is serialized.
         //     0 = raw bytes, uncompressed.
@@ -504,7 +515,7 @@ impl<'data, 'object> EmbeddedSource<'data> {
             0 => Ok(Cow::Borrowed(data_blob)),
             1..=MAX_VALID_FORMAT => {
                 let size = format as usize;
-                if max_size.is_some_and(|max| size > max) {
+                if max_decompressed_size.is_some_and(|max| size > max) {
                     return Err(FormatErrorKind::EmbeddedSourceFileSizeExceeded(size).into());
                 }
                 self.inflate_contents(size, data_blob)
