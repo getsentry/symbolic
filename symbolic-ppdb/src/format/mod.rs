@@ -106,6 +106,9 @@ pub enum FormatErrorKind {
     /// Failed to parse Source Link JSON
     #[error("invalid source link JSON")]
     InvalidSourceLinkJson,
+    /// An embedded source file exceeded the configured size limit.
+    #[error("embedded source file size ({0}) exceeds maximum")]
+    EmbeddedSourceFileSizeExceeded(usize),
 }
 
 /// An error encountered while parsing a [`PortablePdb`] file.
@@ -476,7 +479,7 @@ impl<'data, 'object> EmbeddedSource<'data> {
     }
 
     /// Reads the source file contents from the Portable PDB.
-    pub fn get_contents(&self) -> Result<Cow<'data, [u8]>, FormatError> {
+    pub fn get_contents(&self, max_size: Option<usize>) -> Result<Cow<'data, [u8]>, FormatError> {
         // The blob has the following structure: `Blob ::= format content`
         // - format - int32 - Indicates how the content is serialized.
         //     0 = raw bytes, uncompressed.
@@ -488,9 +491,24 @@ impl<'data, 'object> EmbeddedSource<'data> {
         }
         let (format_blob, data_blob) = self.blob.split_at(4);
         let format = u32::from_ne_bytes(format_blob.try_into().unwrap());
+
+        // Per the above comment, the format is really an `i32`.
+        // None-negative values are currently valid, negative ones are reserved.
+        // We can't trivially change this to an `i32`, though, because of
+        // `FormatErrorKind::InvalidBlobFormat`, which expects a `u32`.
+        // Therefore, we manually bound the format here to the largest
+        // positive `i32`.
+        const MAX_VALID_FORMAT: u32 = i32::MAX as u32;
+
         match format {
             0 => Ok(Cow::Borrowed(data_blob)),
-            x if x > 0 => self.inflate_contents(format as usize, data_blob),
+            1..=MAX_VALID_FORMAT => {
+                let size = format as usize;
+                if max_size.is_some_and(|max| size > max) {
+                    return Err(FormatErrorKind::EmbeddedSourceFileSizeExceeded(size).into());
+                }
+                self.inflate_contents(size, data_blob)
+            }
             _ => Err(FormatErrorKind::InvalidBlobFormat(format).into()),
         }
     }
