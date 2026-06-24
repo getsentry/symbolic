@@ -128,10 +128,15 @@ impl Error for ObjectError {
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ParseObjectOptions {
-    /// Maximum uncompressed size for compressed debug file sections.
+    /// The maximum uncompressed size for compressed debug file sections.
     ///
     /// This is only relevant to ELF objects.
     pub max_decompressed_section_size: Option<usize>,
+
+    /// The maximum size for source files embedded in an object file.
+    ///
+    /// This is only relevant for source bundles and PPDB objects.
+    pub max_embedded_source_size: Option<usize>,
 }
 
 /// Tries to infer the object type from the start of the given buffer.
