@@ -518,9 +518,10 @@ impl<'data, 'object> EmbeddedSource<'data> {
         size: usize,
         data: &'data [u8],
     ) -> Result<Cow<'data, [u8]>, FormatError> {
-        let mut decoder = DeflateDecoder::new(data);
-        let mut output = Vec::with_capacity(size);
+        let decoder = DeflateDecoder::new(data);
+        let mut output = Vec::with_capacity(size + 1);
         let read_size = decoder
+            .take(size as u64 + 1)
             .read_to_end(&mut output)
             .map_err(|e| FormatError::new(FormatErrorKind::InvalidBlobData, e))?;
         if read_size != size {
