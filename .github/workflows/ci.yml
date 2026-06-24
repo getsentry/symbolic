@@ -65,7 +65,6 @@ jobs:
         with:
           baseline-rev: ${{ github.event.pull_request.base.sha }}
           feature-group: all-features
-          package: symbolic, symbolic-cfi, symbolic-common, symbolic-debuginfo, symbolic-demangle, symbolic-il2cpp, symbolic-ppdb, symbolic-sourcemapcache, symbolic-symcache, symbolic-unreal
 
   test-rust:
     strategy:
