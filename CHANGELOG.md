@@ -5,6 +5,8 @@
 **Features**
 
 - WASM: expose `ObjectFile.debugSession()` returning a `DebugSession` with `files()` (the source files referenced by the object) and `sourceByPath(path)` (resolving embedded contents or a source link). `symbolic-debuginfo` also implements `AsSelf` for `ObjectDebugSession` so it can be held in a `SelfCell`. ([#997](https://github.com/getsentry/symbolic/pull/997))
+- debuginfo: Add a new option `max_embedded_source_size` to `ParseObjectOptions`. This option limits the sizes of embedded source files
+  when they are returned from methods like `source_by_path`. ([#999](https://github.com/getsentry/symbolic/pull/999))
 
 ## 13.4.0
 
