@@ -23,7 +23,7 @@ pub type PortablePdbFunctionIterator<'session> =
 pub struct PortablePdbObject<'data> {
     data: &'data [u8],
     ppdb: PortablePdb<'data>,
-    max_embedded_source_size: Option<usize>,
+    max_decompressed_embedded_source_size: Option<usize>,
 }
 
 impl<'data> PortablePdbObject<'data> {
@@ -41,7 +41,7 @@ impl<'data> PortablePdbObject<'data> {
         Ok(Self {
             data,
             ppdb,
-            max_embedded_source_size: opts.max_embedded_source_size,
+            max_decompressed_embedded_source_size: opts.max_decompressed_embedded_source_size,
         })
     }
 
@@ -112,7 +112,7 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for PortablePdbObject<'
 
     /// Constructs a debugging session.
     fn debug_session(&self) -> Result<PortablePdbDebugSession<'data>, FormatError> {
-        PortablePdbDebugSession::new(&self.ppdb, self.max_embedded_source_size)
+        PortablePdbDebugSession::new(&self.ppdb, self.max_decompressed_embedded_source_size)
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -164,7 +164,7 @@ impl fmt::Debug for PortablePdbObject<'_> {
 pub struct PortablePdbDebugSession<'data> {
     ppdb: PortablePdb<'data>,
     sources: OnceLock<HashMap<String, PPDBSource<'data>>>,
-    max_embedded_source_size: Option<usize>,
+    max_decompressed_embedded_source_size: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -176,12 +176,12 @@ enum PPDBSource<'data> {
 impl<'data> PortablePdbDebugSession<'data> {
     fn new(
         ppdb: &'_ PortablePdb<'data>,
-        max_embedded_source_size: Option<usize>,
+        max_decompressed_embedded_source_size: Option<usize>,
     ) -> Result<Self, FormatError> {
         Ok(PortablePdbDebugSession {
             ppdb: ppdb.clone(),
             sources: OnceLock::new(),
-            max_embedded_source_size,
+            max_decompressed_embedded_source_size,
         })
     }
 
@@ -225,7 +225,7 @@ impl<'data> PortablePdbDebugSession<'data> {
         match sources.get(path) {
             None => Ok(None),
             Some(PPDBSource::Embedded(source)) => source
-                .get_contents_bounded(self.max_embedded_source_size)
+                .get_contents_bounded(self.max_decompressed_embedded_source_size)
                 .map(|bytes| {
                     Some(SourceFileDescriptor::new_embedded(
                         from_utf8_cow_lossy(&bytes),
@@ -326,7 +326,7 @@ mod tests {
     #[test]
     fn test_ppdb_source_by_path_size_limit() {
         let opts = ParseObjectOptions {
-            max_embedded_source_size: Some(200),
+            max_decompressed_embedded_source_size: Some(200),
             ..Default::default()
         };
 

@@ -105,7 +105,7 @@ pub enum SourceBundleErrorKind {
     /// A source file exceeded the configured size limit.
     ///
     /// The size limit for a source bundle can be configured
-    /// by the [`max_embedded_source_size`](crate::ParseObjectOptions::max_embedded_source_size)
+    /// by the [`max_decompressed_embedded_source_size`](crate::ParseObjectOptions::max_decompressed_embedded_source_size)
     /// parameter in [`SourceBundle::parse_with_opts`].
     SourceFileSizeExceeded,
 }
@@ -620,7 +620,7 @@ pub struct SourceBundle<'data> {
     data: &'data [u8],
     archive: zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>,
     index: Arc<SourceBundleIndex<'data>>,
-    max_embedded_source_size: Option<usize>,
+    max_decompressed_embedded_source_size: Option<usize>,
 }
 
 impl fmt::Debug for SourceBundle<'_> {
@@ -636,7 +636,7 @@ impl fmt::Debug for SourceBundle<'_> {
             .field("has_unwind_info", &self.has_unwind_info())
             .field("has_sources", &self.has_sources())
             .field("is_malformed", &self.is_malformed())
-            .field("max_embedded_source_size", &self.max_embedded_source_size)
+            .field("max_decompressed_embedded_source_size", &self.max_decompressed_embedded_source_size)
             .finish()
     }
 }
@@ -666,7 +666,7 @@ impl<'data> SourceBundle<'data> {
             archive,
             data,
             index,
-            max_embedded_source_size: opts.max_embedded_source_size,
+            max_decompressed_embedded_source_size: opts.max_decompressed_embedded_source_size,
         })
     }
 
@@ -802,7 +802,7 @@ impl<'data> SourceBundle<'data> {
             index: Arc::clone(&self.index),
             archive,
             source_links,
-            max_embedded_source_size: self.max_embedded_source_size,
+            max_decompressed_embedded_source_size: self.max_decompressed_embedded_source_size,
         })
     }
 
@@ -929,7 +929,7 @@ pub struct SourceBundleDebugSession<'data> {
     archive: Mutex<zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>>,
     index: Arc<SourceBundleIndex<'data>>,
     source_links: SourceLinkMappings,
-    max_embedded_source_size: Option<usize>,
+    max_decompressed_embedded_source_size: Option<usize>,
 }
 
 impl SourceBundleDebugSession<'_> {
@@ -985,7 +985,7 @@ impl SourceBundleDebugSession<'_> {
         if let Some(zip_path) = self.index.indexed_files.get(&key) {
             let zip_path = zip_path.as_str();
             let content =
-                Cow::Owned(self.source_by_zip_path(zip_path, self.max_embedded_source_size)?);
+                Cow::Owned(self.source_by_zip_path(zip_path, self.max_decompressed_embedded_source_size)?);
             let info = self.index.manifest.files.get(zip_path);
             let descriptor = SourceFileDescriptor::new_embedded(content, info);
             return Ok(Some(descriptor));
@@ -2090,7 +2090,7 @@ mod tests {
         let buffer = buffer.into_inner();
 
         let opts = ParseObjectOptions {
-            max_embedded_source_size: Some(20),
+            max_decompressed_embedded_source_size: Some(20),
             ..Default::default()
         };
 

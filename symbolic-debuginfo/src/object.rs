@@ -133,10 +133,10 @@ pub struct ParseObjectOptions {
     /// This is only relevant to ELF objects.
     pub max_decompressed_section_size: Option<usize>,
 
-    /// The maximum size for source files embedded in an object file.
+    /// The maximum uncompressed size for comprossed source files embedded in an object file.
     ///
     /// This is only relevant for source bundles and PPDB objects.
-    pub max_embedded_source_size: Option<usize>,
+    pub max_decompressed_embedded_source_size: Option<usize>,
 }
 
 /// Tries to infer the object type from the start of the given buffer.
