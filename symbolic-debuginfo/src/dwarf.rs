@@ -338,21 +338,51 @@ impl<'d> DwarfLineProgram<'d> {
         }
     }
 
+    /// Finds the first sequence which contains rows overlapping with the specified `range`.
+    ///
+    ///
+    /// ```text
+    ///       ┌─────────────────────────────────────────────────┐┌───────────────────────┐
+    ///       │┌─────────────────┐┌───┐┌──────────────────────┐ ││┌─────────────────────┐│
+    ///       ││Row 1            ││ 2 ││Row 3                 │ │││Row X                ││
+    ///       │└─────────────────┘└───┘└──────────────────────┘ ││└─────────────────────┘│
+    ///       └─────────────────────────────────────────────────┘└───────────────────────┘
+    ///
+    ///                             ├────────────────────────┘ Range A
+    ///                             └────────────────────────┬────────┘ Range B
+    /// └────────────────────────────────────────────────────┘ Range C
+    /// ```
+    ///
+    /// Range `A` and `B` yield rows 2 and 3, range `C` yields all rows of the sequence,
+    /// `1`, `2`, and `3`.
     pub fn get_rows(&self, range: &Range) -> &[DwarfRow] {
         for seq in &self.sequences {
-            if seq.end <= range.begin || seq.start > range.end {
+            if range.begin >= seq.end || seq.start >= range.end {
                 continue;
             }
 
             let from = match seq.rows.binary_search_by_key(&range.begin, |x| x.address) {
                 Ok(idx) => idx,
-                Err(0) => continue,
+                // If the range begins before the sequence, we clamp it to the beginning of the
+                // sequence as a range determined by the low and high pc may include a function
+                // prologue which is not mapped into the addr/line matrix.
+                //
+                // Since the sequences are ordered by address, this can only happen if the beginning
+                // of the range is not part of another range already.
+                Err(0) => 0,
                 Err(next_idx) => next_idx - 1,
             };
 
             let len = seq.rows[from..]
                 .binary_search_by_key(&range.end, |x| x.address)
+                // Similarly here, we clamp the end of the range to the end of the sequence.
+                //
+                // There is a potential argument to be made that a range can span multiple
+                // sequences, the spec isn't entirely clear about whether this is possible.
+                //
+                // For the moment we haven't observed any such case.
                 .unwrap_or_else(|e| e);
+
             return &seq.rows[from..from + len];
         }
         &[]

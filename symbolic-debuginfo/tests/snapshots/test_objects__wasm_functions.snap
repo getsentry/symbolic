@@ -74,7 +74,17 @@ expression: r
                 mangling: Mangled,
             },
             compilation_dir: "/tmp",
-            lines: [],
+            lines: [
+                LineInfo {
+                    address: 0x1d1,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 37,
+                },
+            ],
             inlinees: [],
             inline: false,
         },
@@ -89,7 +99,26 @@ expression: r
                 mangling: Mangled,
             },
             compilation_dir: "/tmp",
-            lines: [],
+            lines: [
+                LineInfo {
+                    address: 0x1d9,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 41,
+                },
+                LineInfo {
+                    address: 0x1df,
+                    size: 0x2,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 42,
+                },
+            ],
             inlinees: [],
             inline: false,
         },
@@ -104,7 +133,26 @@ expression: r
                 mangling: Mangled,
             },
             compilation_dir: "/tmp",
-            lines: [],
+            lines: [
+                LineInfo {
+                    address: 0x1e3,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 33,
+                },
+                LineInfo {
+                    address: 0x1e9,
+                    size: 0x2,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 34,
+                },
+            ],
             inlinees: [],
             inline: false,
         },
@@ -119,7 +167,26 @@ expression: r
                 mangling: Mangled,
             },
             compilation_dir: "/tmp",
-            lines: [],
+            lines: [
+                LineInfo {
+                    address: 0x1ed,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 29,
+                },
+                LineInfo {
+                    address: 0x1f3,
+                    size: 0x2,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 30,
+                },
+            ],
             inlinees: [],
             inline: false,
         },
@@ -134,7 +201,17 @@ expression: r
                 mangling: Mangled,
             },
             compilation_dir: "/tmp",
-            lines: [],
+            lines: [
+                LineInfo {
+                    address: 0x1f7,
+                    size: 0x8,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 22,
+                },
+            ],
             inlinees: [],
             inline: false,
         },
@@ -149,7 +226,17 @@ expression: r
                 mangling: Mangled,
             },
             compilation_dir: "/emsdk/emscripten",
-            lines: [],
+            lines: [
+                LineInfo {
+                    address: 0x201,
+                    size: 0x8,
+                    file: FileInfo {
+                        name: "abort.c",
+                        dir: "system/lib/libc/musl/src/exit",
+                    },
+                    line: 21,
+                },
+            ],
             inlinees: [],
             inline: false,
         },
@@ -569,7 +656,17 @@ expression: r
                 mangling: Mangled,
             },
             compilation_dir: "/emsdk/emscripten",
-            lines: [],
+            lines: [
+                LineInfo {
+                    address: 0x27d,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "library_pthread_stub.c",
+                        dir: "system/lib/pthread",
+                    },
+                    line: 54,
+                },
+            ],
             inlinees: [],
             inline: false,
         },
@@ -584,7 +681,17 @@ expression: r
                 mangling: Mangled,
             },
             compilation_dir: "/emsdk/emscripten",
-            lines: [],
+            lines: [
+                LineInfo {
+                    address: 0x280,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "library_pthread_stub.c",
+                        dir: "system/lib/pthread",
+                    },
+                    line: 56,
+                },
+            ],
             inlinees: [],
             inline: false,
         },
@@ -704,7 +811,26 @@ expression: r
                 mangling: Mangled,
             },
             compilation_dir: "/emsdk/emscripten",
-            lines: [],
+            lines: [
+                LineInfo {
+                    address: 0x283,
+                    size: 0xc,
+                    file: FileInfo {
+                        name: "ofl.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 11,
+                },
+                LineInfo {
+                    address: 0x28f,
+                    size: 0x7,
+                    file: FileInfo {
+                        name: "ofl.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 12,
+                },
+            ],
             inlinees: [],
             inline: false,
         },
@@ -719,7 +845,26 @@ expression: r
                 mangling: Mangled,
             },
             compilation_dir: "/emsdk/emscripten",
-            lines: [],
+            lines: [
+                LineInfo {
+                    address: 0x298,
+                    size: 0xc,
+                    file: FileInfo {
+                        name: "ofl.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 17,
+                },
+                LineInfo {
+                    address: 0x2a4,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "ofl.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 18,
+                },
+            ],
             inlinees: [],
             inline: false,
         },
@@ -734,7 +879,431 @@ expression: r
                 mangling: Mangled,
             },
             compilation_dir: "/emsdk/emscripten",
-            lines: [],
+            lines: [
+                LineInfo {
+                    address: 0x2aa,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 10,
+                },
+                LineInfo {
+                    address: 0x2b0,
+                    size: 0x4,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x2b4,
+                    size: 0xe,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 12,
+                },
+                LineInfo {
+                    address: 0x2c2,
+                    size: 0x9,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 12,
+                },
+                LineInfo {
+                    address: 0x2cb,
+                    size: 0x8,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 12,
+                },
+                LineInfo {
+                    address: 0x2d3,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x2d8,
+                    size: 0xa,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 13,
+                },
+                LineInfo {
+                    address: 0x2e2,
+                    size: 0x9,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 13,
+                },
+                LineInfo {
+                    address: 0x2eb,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 13,
+                },
+                LineInfo {
+                    address: 0x2f1,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 13,
+                },
+                LineInfo {
+                    address: 0x2f6,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x2f7,
+                    size: 0x8,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 15,
+                },
+                LineInfo {
+                    address: 0x2ff,
+                    size: 0x3,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 15,
+                },
+                LineInfo {
+                    address: 0x302,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 15,
+                },
+                LineInfo {
+                    address: 0x307,
+                    size: 0x9,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 17,
+                },
+                LineInfo {
+                    address: 0x310,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 17,
+                },
+                LineInfo {
+                    address: 0x315,
+                    size: 0x3,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 17,
+                },
+                LineInfo {
+                    address: 0x318,
+                    size: 0x8,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 17,
+                },
+                LineInfo {
+                    address: 0x320,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 17,
+                },
+                LineInfo {
+                    address: 0x325,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x326,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 15,
+                },
+                LineInfo {
+                    address: 0x32b,
+                    size: 0x4,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 15,
+                },
+                LineInfo {
+                    address: 0x32f,
+                    size: 0x2,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 15,
+                },
+                LineInfo {
+                    address: 0x331,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 20,
+                },
+                LineInfo {
+                    address: 0x337,
+                    size: 0x3,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 45,
+                },
+                LineInfo {
+                    address: 0x33a,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x33b,
+                    size: 0x7,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 28,
+                },
+                LineInfo {
+                    address: 0x342,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 28,
+                },
+                LineInfo {
+                    address: 0x347,
+                    size: 0x3,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 28,
+                },
+                LineInfo {
+                    address: 0x34a,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x350,
+                    size: 0x11,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 29,
+                },
+                LineInfo {
+                    address: 0x361,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 30,
+                },
+                LineInfo {
+                    address: 0x366,
+                    size: 0x2,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 30,
+                },
+                LineInfo {
+                    address: 0x368,
+                    size: 0x2,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x36a,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 45,
+                },
+                LineInfo {
+                    address: 0x36b,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x36c,
+                    size: 0x7,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 37,
+                },
+                LineInfo {
+                    address: 0x373,
+                    size: 0x7,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 37,
+                },
+                LineInfo {
+                    address: 0x37a,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 37,
+                },
+                LineInfo {
+                    address: 0x37f,
+                    size: 0x7,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 37,
+                },
+                LineInfo {
+                    address: 0x386,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 37,
+                },
+                LineInfo {
+                    address: 0x387,
+                    size: 0x13,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 37,
+                },
+                LineInfo {
+                    address: 0x39a,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x39f,
+                    size: 0x7,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 40,
+                },
+                LineInfo {
+                    address: 0x3a6,
+                    size: 0x7,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 40,
+                },
+                LineInfo {
+                    address: 0x3ad,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 41,
+                },
+                LineInfo {
+                    address: 0x3b2,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 45,
+                },
+            ],
             inlinees: [],
             inline: false,
         },
