@@ -368,7 +368,7 @@ impl<'d> DwarfLineProgram<'d> {
                 // prologue which is not mapped into the addr/line matrix.
                 //
                 // Since the sequences are ordered by address, this can only happen if the beginning
-                // of the range is not part of another range already.
+                // of the range is not part of another sequence already.
                 Err(0) => 0,
                 Err(next_idx) => next_idx - 1,
             };
