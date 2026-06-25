@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Fixes**
+
+- Fix function range to addr/line resolution, this fixes a case where WASM binaries compiled with Emscripten failed to have their source code mappings resolved. (#[1002](https://github.com/getsentry/symbolic/pull/1002))
+
 ## 13.6.0
 
 **Features**
