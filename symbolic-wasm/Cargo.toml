@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-wasm"
-version = "13.5.0"
+version = "13.6.0"
 license = "MIT"
 authors = [
     "Sentry <hello@sentry.io>",
@@ -19,8 +19,8 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-symbolic-common = { version = "13.5.0", path = "../symbolic-common" }
-symbolic-debuginfo = { version = "13.5.0", path = "../symbolic-debuginfo", default-features = false, features = [
+symbolic-common = { version = "13.6.0", path = "../symbolic-common" }
+symbolic-debuginfo = { version = "13.6.0", path = "../symbolic-debuginfo", default-features = false, features = [
     "breakpad",
     "elf",
     "macho",
