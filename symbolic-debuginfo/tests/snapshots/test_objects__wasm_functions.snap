@@ -1,0 +1,742 @@
+---
+source: symbolic-debuginfo/tests/test_objects.rs
+expression: r
+---
+[
+    Ok(
+        Function {
+            address: 0x1a6,
+            size: 0x29,
+            name: Name {
+                string: "add",
+                lang: Cpp,
+                mangling: Mangled,
+            },
+            compilation_dir: "/tmp",
+            lines: [
+                LineInfo {
+                    address: 0x1a6,
+                    size: 0x1c,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 13,
+                },
+                LineInfo {
+                    address: 0x1c2,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 14,
+                },
+                LineInfo {
+                    address: 0x1c7,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 14,
+                },
+                LineInfo {
+                    address: 0x1cc,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 14,
+                },
+                LineInfo {
+                    address: 0x1cd,
+                    size: 0x2,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 14,
+                },
+            ],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x1d0,
+            size: 0x7,
+            name: Name {
+                string: "marker",
+                lang: Cpp,
+                mangling: Mangled,
+            },
+            compilation_dir: "/tmp",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x1d8,
+            size: 0x9,
+            name: Name {
+                string: "crash_me",
+                lang: Cpp,
+                mangling: Mangled,
+            },
+            compilation_dir: "/tmp",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x1e2,
+            size: 0x9,
+            name: Name {
+                string: "level_1()",
+                lang: Cpp,
+                mangling: Mangled,
+            },
+            compilation_dir: "/tmp",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x1ec,
+            size: 0x9,
+            name: Name {
+                string: "level_2()",
+                lang: Cpp,
+                mangling: Mangled,
+            },
+            compilation_dir: "/tmp",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x1f6,
+            size: 0x9,
+            name: Name {
+                string: "level_3()",
+                lang: Cpp,
+                mangling: Mangled,
+            },
+            compilation_dir: "/tmp",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x200,
+            size: 0x9,
+            name: Name {
+                string: "abort",
+                lang: C,
+                mangling: Mangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0xa0,
+            name: Name {
+                string: "__syscall_uname",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x2d,
+            name: Name {
+                string: "__syscall_setpgid",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x4,
+            name: Name {
+                string: "__syscall_sync",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x12,
+            name: Name {
+                string: "__syscall_getsid",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x18,
+            name: Name {
+                string: "__syscall_getgroups32",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x27,
+            name: Name {
+                string: "__syscall_getrusage",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x19,
+            name: Name {
+                string: "__syscall_getresuid32",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x25,
+            name: Name {
+                string: "__syscall_getresgid32",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x10,
+            name: Name {
+                string: "__syscall_madvise",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x82,
+            name: Name {
+                string: "__syscall_prlimit64",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x8,
+            name: Name {
+                string: "getpid",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x4e,
+            name: Name {
+                string: "init_pthread_self",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0xb,
+            name: Name {
+                string: "_Exit",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x33,
+            name: Name {
+                string: "sigismember",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x24,
+            name: Name {
+                string: "sigorset",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x4f,
+            name: Name {
+                string: "sigdelset",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x13,
+            name: Name {
+                string: "__sig_is_blocked",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0xd7,
+            name: Name {
+                string: "pthread_sigmask",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x1c,
+            name: Name {
+                string: "siginvertset",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x54,
+            name: Name {
+                string: "raise_pending_signals",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x8d,
+            name: Name {
+                string: "__sigaction",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x9,
+            name: Name {
+                string: "action_abort",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x15,
+            name: Name {
+                string: "action_terminate",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0xc7,
+            name: Name {
+                string: "raise",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x20,
+            name: Name {
+                string: "_emscripten_yield",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x1a,
+            name: Name {
+                string: "emscripten_futex_wait",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x2,
+            name: Name {
+                string: "__wait",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x27c,
+            size: 0x2,
+            name: Name {
+                string: "__lock",
+                lang: C,
+                mangling: Mangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x27f,
+            size: 0x2,
+            name: Name {
+                string: "__unlock",
+                lang: C,
+                mangling: Mangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x5,
+            name: Name {
+                string: "__pthread_create",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x5b,
+            name: Name {
+                string: "__pthread_key_create",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x43,
+            name: Name {
+                string: "__pthread_key_delete",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x31,
+            name: Name {
+                string: "pthread_getspecific",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x35,
+            name: Name {
+                string: "pthread_setspecific",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x7,
+            name: Name {
+                string: "pthread_equal",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x2a,
+            name: Name {
+                string: "emscripten_thread_sleep",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x282,
+            size: 0x14,
+            name: Name {
+                string: "__ofl_lock",
+                lang: C,
+                mangling: Mangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x297,
+            size: 0xe,
+            name: Name {
+                string: "__ofl_unlock",
+                lang: C,
+                mangling: Mangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x2a7,
+            size: 0x10c,
+            name: Name {
+                string: "fflush",
+                lang: C,
+                mangling: Mangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+]

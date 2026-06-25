@@ -1013,6 +1013,19 @@ fn test_wasm_line_program() -> Result<(), Error> {
     Ok(())
 }
 
+#[test]
+fn test_wasm_functions() -> Result<(), Error> {
+    let view = ByteView::open(fixture("wasm/emscripten/index.wasm"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session().unwrap();
+    let r = session.functions().collect::<Vec<_>>();
+
+    insta::assert_debug_snapshot!(r);
+
+    Ok(())
+}
+
 fn find_functions_by_name<'a>(functions: &'a [Function<'a>], name: &str) -> Vec<&'a Function<'a>> {
     let mut result = Vec::new();
     for f in functions {
