@@ -165,7 +165,7 @@ impl Unreal4ContextRuntimeProperties {
 
         let mut rv = Unreal4ContextRuntimeProperties::default();
 
-        if !r.first_instance_of_tag("RuntimeProperties")? {
+        if !r.next_instance_of_tag("RuntimeProperties")? {
             return Ok(None);
         }
 
@@ -258,7 +258,7 @@ impl Unreal4ContextPlatformProperties {
 
         let mut rv = Unreal4ContextPlatformProperties::default();
 
-        if !r.first_instance_of_tag("PlatformProperties")? {
+        if !r.next_instance_of_tag("PlatformProperties")? {
             return Ok(None);
         }
 
@@ -321,7 +321,7 @@ fn load_data_bag(
     let r = quick_xml::Reader::from_reader(data);
     let mut r = XMLReader::new(r);
 
-    if r.first_instance_of_tag(tag)? {
+    if r.next_instance_of_tag(tag)? {
         while let Some(mut child) = r.next_child()? {
             let name = String::from_utf8_lossy(child.tag().name().as_ref()).to_string();
             if let Some(value) = child.value::<String>()? {
