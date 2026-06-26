@@ -18,6 +18,7 @@ cpp_demangle = "0.4.1"
 criterion = { version = "0.8.1", features = ["html_reports"] }
 debugid = "0.8.0"
 elementtree = "1.2.3"
+quick-xml = "0.40.1"
 elsa = "1.8.0"
 fallible-iterator = "0.3.0"
 flate2 = { version = "1.1.8", default-features = false, features = [
