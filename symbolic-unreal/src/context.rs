@@ -3,11 +3,10 @@
 
 use std::collections::BTreeMap;
 
-use quick_xml::{escape::resolve_xml_entity, events::BytesStart};
 #[cfg(test)]
 use similar_asserts::assert_eq;
 
-use crate::error::Unreal4Error;
+use crate::{error::Unreal4Error, xml::XMLReader};
 
 /// RuntimeProperties context element.
 ///
@@ -159,155 +158,6 @@ pub struct Unreal4ContextRuntimeProperties {
     pub custom: BTreeMap<String, String>,
 }
 
-enum NodeState {
-    None,
-    Opened { node_depth: i32 },
-    Empty,
-}
-
-// A helper to keep track of reader state as we move through the XML.
-struct XMLReader<'a> {
-    reader: quick_xml::Reader<&'a [u8]>,
-    node_state: NodeState,
-}
-
-impl<'a> XMLReader<'a> {
-    fn new(reader: quick_xml::Reader<&'a [u8]>) -> Self {
-        Self {
-            reader,
-            node_state: NodeState::None,
-        }
-    }
-
-    /// Moves the reader to the specified tag if it exists.  Returns true iff
-    /// the tag exists.
-    fn find_tag(&mut self, name: &str) -> Result<bool, quick_xml::Error> {
-        loop {
-            match self.reader.read_event()? {
-                quick_xml::events::Event::Eof => break,
-
-                quick_xml::events::Event::Start(bytes_start) => {
-                    if bytes_start.name().as_ref() == name.as_bytes() {
-                        self.node_state = NodeState::Opened { node_depth: 0 };
-                        return Ok(true);
-                    }
-                }
-                quick_xml::events::Event::Empty(bytes_start) => {
-                    if bytes_start.name().as_ref() == name.as_bytes() {
-                        self.node_state = NodeState::Empty;
-                        return Ok(true);
-                    }
-                }
-
-                _ => {}
-            };
-        }
-
-        self.node_state = NodeState::None;
-        Ok(false)
-    }
-
-    /// Returns the text value, parsed, from the node at which the reader is
-    /// located.  If there is no such node or value, or the parse fails, this will
-    /// return None.  A best-effort is made to deal with text spread between xml nodes.
-    /// XML entities are resolved (so '&qout;' is resolved to '"', and the like.)
-    fn value<T: std::str::FromStr>(&mut self) -> Result<Option<T>, quick_xml::Error> {
-        let NodeState::Opened { node_depth } = &mut self.node_state else {
-            return Ok(None);
-        };
-
-        let mut val = String::new();
-        let text_depth = *node_depth;
-        loop {
-            match self.reader.read_event()? {
-                quick_xml::events::Event::Text(bytes_text) => {
-                    if text_depth == *node_depth {
-                        val += &bytes_text.decode().unwrap();
-                    }
-                }
-
-                quick_xml::events::Event::GeneralRef(bytes_text) => {
-                    if text_depth == *node_depth {
-                        val += resolve_xml_entity(&bytes_text.decode().unwrap()).unwrap();
-                    }
-                }
-
-                quick_xml::events::Event::End(_) => {
-                    *node_depth -= 1;
-                }
-
-                // It could be the case that we have text interleaved with nodes, so
-                // try to be graceful when handling.
-                quick_xml::events::Event::Start(_) => {
-                    *node_depth += 1;
-                }
-
-                _ => {}
-            };
-
-            if *node_depth < text_depth {
-                break;
-            }
-        }
-
-        if val.len() > 0 {
-            Ok(val.parse().ok())
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Moves to the next child of this node, returning None if we exhaust the children,
-    /// otherwise returning the bytes of the start of the tag.
-    fn next_child(&mut self) -> Result<Option<BytesStart<'_>>, quick_xml::Error> {
-        let NodeState::Opened { node_depth } = &mut self.node_state else {
-            return Ok(None);
-        };
-
-        let maybe_bytes = loop {
-            let maybe_bytes = match self.reader.read_event()? {
-                quick_xml::events::Event::Start(bytes_start) => {
-                    *node_depth += 1;
-                    if *node_depth == 1 {
-                        Some(bytes_start)
-                    } else {
-                        None
-                    }
-                }
-                quick_xml::events::Event::End(_) => {
-                    *node_depth -= 1;
-                    None
-                }
-                quick_xml::events::Event::Empty(bytes_start) => {
-                    if *node_depth == 0 {
-                        Some(bytes_start)
-                    } else {
-                        None
-                    }
-                }
-
-                quick_xml::events::Event::Eof => {
-                    *node_depth = -1;
-                    break None;
-                }
-
-                _ => None,
-            };
-
-            if maybe_bytes.is_some() {
-                break maybe_bytes;
-            }
-
-            if *node_depth < 0 {
-                self.node_state = NodeState::None;
-                break None;
-            }
-        };
-
-        Ok(maybe_bytes)
-    }
-}
-
 impl Unreal4ContextRuntimeProperties {
     fn from_xml(root: &[u8]) -> Result<Option<Self>, quick_xml::Error> {
         let r = quick_xml::Reader::from_reader(root);
@@ -315,68 +165,70 @@ impl Unreal4ContextRuntimeProperties {
 
         let mut rv = Unreal4ContextRuntimeProperties::default();
 
-        if !r.find_tag("RuntimeProperties")? {
+        if !r.first_instance_of_tag("RuntimeProperties")? {
             return Ok(None);
         }
 
-        while let Some(tag) = r.next_child()? {
+        while let Some(mut child) = r.next_child()? {
             // We don't expect an XML with namespace here
-            if tag.name().prefix().is_some() {
+            if child.tag().name().prefix().is_some() {
                 continue;
             }
-            match tag.name().as_ref() {
-                b"CrashGUID" => rv.crash_guid = r.value()?,
-                b"ProcessId" => rv.process_id = r.value()?,
-                b"IsInternalBuild" => rv.is_internal_build = r.value()?,
-                b"IsSourceDistribution" => rv.is_source_distribution = r.value()?,
-                b"IsAssert" => rv.is_assert = r.value()?,
-                b"IsEnsure" => rv.is_ensure = r.value()?,
-                b"CrashType" => rv.crash_type = r.value()?,
-                b"SecondsSinceStart" => rv.seconds_since_start = r.value()?,
-                b"GameName" => rv.game_name = r.value()?,
-                b"ExecutableName" => rv.executable_name = r.value()?,
-                b"BuildConfiguration" => rv.build_configuration = r.value()?,
-                b"PlatformName" => rv.platform_name = r.value()?,
-                b"EngineMode" => rv.engine_mode = r.value()?,
-                b"EngineVersion" => rv.engine_version = r.value()?,
-                b"LanguageLCID" => rv.language_lcid = r.value()?,
-                b"AppDefaultLocale" => rv.app_default_locate = r.value()?,
-                b"BuildVersion" => rv.build_version = r.value()?,
-                b"IsUE4Release" => rv.is_ue4_release = r.value()?,
-                b"UserName" => rv.username = r.value()?,
-                b"BaseDir" => rv.base_dir = r.value()?,
-                b"RootDir" => rv.root_dir = r.value()?,
-                b"MachineId" => rv.machine_id = r.value()?,
-                b"LoginId" => rv.login_id = r.value()?,
-                b"EpicAccountId" => rv.epic_account_id = r.value()?,
-                b"CallStack" => rv.legacy_call_stack = r.value()?,
-                b"PCallStack" => rv.portable_call_stack = r.value()?,
-                b"UserDescription" => rv.user_description = r.value()?,
-                b"ErrorMessage" => rv.error_message = r.value()?,
-                b"CrashReporterMessage" => rv.crash_reporter_message = r.value()?,
-                b"Misc.NumberOfCores" => rv.misc_number_of_cores = r.value()?,
+            match child.tag().name().as_ref() {
+                b"CrashGUID" => rv.crash_guid = child.value()?,
+                b"ProcessId" => rv.process_id = child.value()?,
+                b"IsInternalBuild" => rv.is_internal_build = child.value()?,
+                b"IsSourceDistribution" => rv.is_source_distribution = child.value()?,
+                b"IsAssert" => rv.is_assert = child.value()?,
+                b"IsEnsure" => rv.is_ensure = child.value()?,
+                b"CrashType" => rv.crash_type = child.value()?,
+                b"SecondsSinceStart" => rv.seconds_since_start = child.value()?,
+                b"GameName" => rv.game_name = child.value()?,
+                b"ExecutableName" => rv.executable_name = child.value()?,
+                b"BuildConfiguration" => rv.build_configuration = child.value()?,
+                b"PlatformName" => rv.platform_name = child.value()?,
+                b"EngineMode" => rv.engine_mode = child.value()?,
+                b"EngineVersion" => rv.engine_version = child.value()?,
+                b"LanguageLCID" => rv.language_lcid = child.value()?,
+                b"AppDefaultLocale" => rv.app_default_locate = child.value()?,
+                b"BuildVersion" => rv.build_version = child.value()?,
+                b"IsUE4Release" => rv.is_ue4_release = child.value()?,
+                b"UserName" => rv.username = child.value()?,
+                b"BaseDir" => rv.base_dir = child.value()?,
+                b"RootDir" => rv.root_dir = child.value()?,
+                b"MachineId" => rv.machine_id = child.value()?,
+                b"LoginId" => rv.login_id = child.value()?,
+                b"EpicAccountId" => rv.epic_account_id = child.value()?,
+                b"CallStack" => rv.legacy_call_stack = child.value()?,
+                b"PCallStack" => rv.portable_call_stack = child.value()?,
+                b"UserDescription" => rv.user_description = child.value()?,
+                b"ErrorMessage" => rv.error_message = child.value()?,
+                b"CrashReporterMessage" => rv.crash_reporter_message = child.value()?,
+                b"Misc.NumberOfCores" => rv.misc_number_of_cores = child.value()?,
                 b"Misc.NumberOfCoresIncludingHyperthreads" => {
-                    rv.misc_number_of_cores_inc_hyperthread = r.value()?
+                    rv.misc_number_of_cores_inc_hyperthread = child.value()?
                 }
-                b"Misc.Is64bitOperatingSystem" => rv.misc_is_64bit = r.value()?,
-                b"Misc.CPUVendor" => rv.misc_cpu_vendor = r.value()?,
-                b"Misc.CPUBrand" => rv.misc_cpu_brand = r.value()?,
-                b"Misc.PrimaryGPUBrand" => rv.misc_primary_gpu_brand = r.value()?,
-                b"Misc.OSVersionMajor" => rv.misc_os_version_major = r.value()?,
-                b"Misc.OSVersionMinor" => rv.misc_os_version_minor = r.value()?,
-                b"GameStateName" => rv.game_state_name = r.value()?,
-                b"MemoryStats.TotalPhysical" => rv.memory_stats_total_physical = r.value()?,
-                b"MemoryStats.TotalVirtual" => rv.memory_stats_total_virtual = r.value()?,
-                b"MemoryStats.PageSize" => rv.memory_stats_page_size = r.value()?,
-                b"MemoryStats.TotalPhysicalGB" => rv.memory_stats_total_phsysical_gb = r.value()?,
-                b"TimeOfCrash" => rv.time_of_crash = r.value()?,
-                b"bAllowToBeContacted" => rv.allowed_to_be_contacted = r.value()?,
-                b"CrashReportClientVersion" => rv.crash_reporter_client_version = r.value()?,
-                b"Modules" => rv.modules = r.value()?,
+                b"Misc.Is64bitOperatingSystem" => rv.misc_is_64bit = child.value()?,
+                b"Misc.CPUVendor" => rv.misc_cpu_vendor = child.value()?,
+                b"Misc.CPUBrand" => rv.misc_cpu_brand = child.value()?,
+                b"Misc.PrimaryGPUBrand" => rv.misc_primary_gpu_brand = child.value()?,
+                b"Misc.OSVersionMajor" => rv.misc_os_version_major = child.value()?,
+                b"Misc.OSVersionMinor" => rv.misc_os_version_minor = child.value()?,
+                b"GameStateName" => rv.game_state_name = child.value()?,
+                b"MemoryStats.TotalPhysical" => rv.memory_stats_total_physical = child.value()?,
+                b"MemoryStats.TotalVirtual" => rv.memory_stats_total_virtual = child.value()?,
+                b"MemoryStats.PageSize" => rv.memory_stats_page_size = child.value()?,
+                b"MemoryStats.TotalPhysicalGB" => {
+                    rv.memory_stats_total_phsysical_gb = child.value()?
+                }
+                b"TimeOfCrash" => rv.time_of_crash = child.value()?,
+                b"bAllowToBeContacted" => rv.allowed_to_be_contacted = child.value()?,
+                b"CrashReportClientVersion" => rv.crash_reporter_client_version = child.value()?,
+                b"Modules" => rv.modules = child.value()?,
                 _ => {
                     rv.custom.insert(
-                        String::from_utf8_lossy(tag.name().as_ref()).to_string(),
-                        r.value()?.unwrap_or_default(),
+                        String::from_utf8_lossy(child.tag().name().as_ref()).to_string(),
+                        child.value()?.unwrap_or_default(),
                     );
                 }
             }
@@ -406,13 +258,13 @@ impl Unreal4ContextPlatformProperties {
 
         let mut rv = Unreal4ContextPlatformProperties::default();
 
-        if !r.find_tag("PlatformProperties")? {
+        if !r.first_instance_of_tag("PlatformProperties")? {
             return Ok(None);
         }
 
-        while let Some(tag) = r.next_child()? {
-            if tag.name().as_ref() == b"PlatformIsRunningWindows" {
-                if let Some(s) = r.value::<String>()? {
+        while let Some(mut child) = r.next_child()? {
+            if child.tag().name().as_ref() == b"PlatformIsRunningWindows" {
+                if let Some(s) = child.value::<String>()? {
                     match s.parse::<u32>() {
                         Ok(1) => rv.is_windows = Some(true),
                         Ok(0) => rv.is_windows = Some(false),
@@ -423,8 +275,8 @@ impl Unreal4ContextPlatformProperties {
                         rv.is_windows = Some(value);
                     }
                 }
-            } else if tag.name().as_ref() == b"PlatformCallbackResult" {
-                rv.callback_result = r.value::<i32>()?;
+            } else if child.tag().name().as_ref() == b"PlatformCallbackResult" {
+                rv.callback_result = child.value::<i32>()?;
             }
         }
 
@@ -469,10 +321,10 @@ fn load_data_bag(
     let r = quick_xml::Reader::from_reader(data);
     let mut r = XMLReader::new(r);
 
-    if r.find_tag(tag)? {
-        while let Some(tag) = r.next_child()? {
-            let name = String::from_utf8_lossy(tag.name().as_ref()).to_string();
-            if let Some(value) = r.value::<String>()? {
+    if r.first_instance_of_tag(tag)? {
+        while let Some(mut child) = r.next_child()? {
+            let name = String::from_utf8_lossy(child.tag().name().as_ref()).to_string();
+            if let Some(value) = child.value::<String>()? {
                 dest_data.insert(name, value);
             }
         }

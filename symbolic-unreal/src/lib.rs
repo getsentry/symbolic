@@ -5,6 +5,7 @@ mod container;
 mod context;
 mod error;
 mod logs;
+mod xml;
 
 pub use container::*;
 pub use context::*;
