@@ -2,6 +2,7 @@
 
 use symbolic_common::{ByteView, SelfCell};
 use symbolic_debuginfo as di;
+use symbolic_il2cpp::ObjectLineMapping;
 use wasm_bindgen::prelude::*;
 
 use crate::utils::{self, Error, Result};
@@ -142,6 +143,41 @@ impl Object {
             // borrows data from the same `ByteView`.
             inner: unsafe { utils::derived_from_cell!(ObjectDebugSession, self.inner, session) },
         })
+    }
+
+    /// Extracts an Il2cpp line mapping from this object, serialized as JSON.
+    ///
+    /// Unity's Il2cpp transpiles C# to C++, embedding `//<source_info:File.cs:line>`
+    /// markers in the generated C++. This enumerates the C++ source files referenced
+    /// by the object, requests each file's contents from `provider`, parses those
+    /// markers, and returns the C++→C# line mapping as a JSON document (the format
+    /// Sentry consumes for Il2cpp symbolication).
+    ///
+    /// `provider` is a `(path: string) => Uint8Array | null | undefined` callback:
+    /// it receives a referenced source path and returns the file's bytes, or a
+    /// nullish value to skip it. The callback exists because these bindings have no
+    /// filesystem access under WebAssembly — the host reads the files and hands back
+    /// their bytes.
+    ///
+    /// Returns `undefined` when the object references no Il2cpp `source_info`
+    /// annotations (i.e. the mapping would be empty).
+    #[wasm_bindgen(js_name = il2cppLineMapping)]
+    pub fn il2cpp_line_mapping(&self, provider: &js_sys::Function) -> Result<Option<Vec<u8>>> {
+        let mapping = ObjectLineMapping::from_object_with_provider(self.inner.get(), |path| {
+            let value = provider
+                .call1(&JsValue::UNDEFINED, &JsValue::from_str(path))
+                .unwrap_throw();
+
+            if value.is_null_or_undefined() {
+                return None;
+            }
+
+            Some(js_sys::Uint8Array::new(&value).to_vec())
+        })?;
+
+        let mut buf = Vec::new();
+        let written = mapping.to_writer(&mut buf)?;
+        Ok(written.then_some(buf))
     }
 }
 

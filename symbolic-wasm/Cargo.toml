@@ -30,6 +30,7 @@ symbolic-debuginfo = { version = "13.6.1", path = "../symbolic-debuginfo", defau
     "js",
     "wasm",
 ] }
+symbolic-il2cpp = { version = "13.6.1", path = "../symbolic-il2cpp" }
 
 serde = { workspace = true }
 serde-wasm-bindgen = { workspace = true }

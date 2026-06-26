@@ -2579,6 +2579,7 @@ dependencies = [
  "serde_json",
  "symbolic-common",
  "symbolic-debuginfo",
+ "symbolic-testutils",
 ]
 
 [[package]]
@@ -2659,6 +2660,7 @@ dependencies = [
  "serde-wasm-bindgen",
  "symbolic-common",
  "symbolic-debuginfo",
+ "symbolic-il2cpp",
  "thiserror 2.0.18",
  "wasm-bindgen",
  "wasm-bindgen-test",

@@ -28,6 +28,8 @@ pub enum Error {
     ObjectError(#[from] symbolic_debuginfo::ObjectError),
     #[error(transparent)]
     SourceBundleError(#[from] symbolic_debuginfo::sourcebundle::SourceBundleError),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }
 
 impl From<Error> for wasm_bindgen::JsValue {

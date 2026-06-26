@@ -59,3 +59,31 @@ test("the debug session enumerates referenced source files", () => {
   // A path the object does not reference resolves to undefined.
   assert.equal(session.sourceByPath("/definitely/not/referenced"), undefined);
 });
+
+test("il2cppLineMapping extracts source_info markers via a provider", () => {
+  const archive = new symbolic.Archive(data);
+  const [object] = archive.objects();
+
+  // Synthetic Il2cpp C++: a `source_info` marker followed by a code line maps
+  // generated C++ line 2 to Game.cs line 42. The provider ignores the path and
+  // returns this for every referenced source file.
+  const synthetic = new TextEncoder().encode(
+    "//<source_info:Game.cs:42>\nint generated = 0;\n"
+  );
+  let calls = 0;
+  const bytes = object.il2cppLineMapping((path) => {
+    assert.ok(typeof path === "string" && path.length > 0, "expected a source path");
+    calls += 1;
+    return synthetic;
+  });
+  assert.ok(calls > 0, "provider should be called for referenced source files");
+  assert.ok(bytes instanceof Uint8Array, "expected JSON mapping bytes");
+
+  const mapping = JSON.parse(new TextDecoder().decode(bytes));
+  assert.ok("__debug-id__" in mapping, "expected the __debug-id__ sentinel");
+  const [, fileMap] = Object.entries(mapping).find(([k]) => k !== "__debug-id__");
+  assert.deepEqual(fileMap, { "Game.cs": { 2: 42 } });
+
+  // Returning a nullish value for every file yields no mapping (undefined).
+  assert.equal(object.il2cppLineMapping(() => null), undefined);
+});

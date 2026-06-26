@@ -19,10 +19,33 @@ impl ObjectLineMapping {
     /// Create a line mapping from the given `object`.
     ///
     /// The mapping is constructed by iterating over all the source files referenced by `object` and
-    /// parsing Il2cpp `source_info` records from each.
+    /// parsing Il2cpp `source_info` records from each. The referenced C++ source files are read
+    /// from the local filesystem.
     pub fn from_object<'data, 'object, O, E>(object: &'object O) -> Result<Self, E>
     where
         O: ObjectLike<'data, 'object, Error = E>,
+    {
+        // Read the referenced source files from the local filesystem.
+        Self::from_object_with_provider(object, |path| ByteView::open(path).ok())
+    }
+
+    /// Create a line mapping from the given `object`, obtaining the referenced
+    /// C++ source file contents from `provider`.
+    ///
+    /// This is the filesystem-free counterpart of [`Self::from_object`], for
+    /// environments without filesystem access (e.g. WebAssembly): the object's
+    /// referenced source paths are enumerated via its debug session, and each is
+    /// passed to `provider`, which returns the file's bytes (or `None` to skip
+    /// it). Only files containing Il2cpp `source_info` records contribute to the
+    /// mapping.
+    pub fn from_object_with_provider<'data, 'object, O, E, B, P>(
+        object: &'object O,
+        mut provider: P,
+    ) -> Result<Self, E>
+    where
+        O: ObjectLike<'data, 'object, Error = E>,
+        B: AsRef<[u8]>,
+        P: FnMut(&str) -> Option<B>,
     {
         let session = object.debug_session()?;
         let debug_id = object.debug_id();
@@ -35,8 +58,8 @@ impl ObjectLineMapping {
                 continue;
             }
 
-            if let Ok(cpp_source) = ByteView::open(&cpp_file_path) {
-                let cpp_mapping = Self::parse_source_file(&cpp_source);
+            if let Some(cpp_source) = provider(&cpp_file_path) {
+                let cpp_mapping = Self::parse_source_file(cpp_source.as_ref());
                 if !cpp_mapping.is_empty() {
                     mapping.insert(cpp_file_path, cpp_mapping);
                 }
