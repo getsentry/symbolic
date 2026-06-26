@@ -5,6 +5,7 @@
 **Features**
 
 - WASM: expose `ObjectFile.debugSession()` returning a `DebugSession` with `files()` (the source files referenced by the object) and `sourceByPath(path)` (resolving embedded contents or a source link). `symbolic-debuginfo` also implements `AsSelf` for `ObjectDebugSession` so it can be held in a `SelfCell`. ([#997](https://github.com/getsentry/symbolic/pull/997))
+- WASM: expose `ObjectFile.embeddedPpdb()` returning the decompressed Portable PDB embedded in a managed Windows PE (a standalone, parseable debug information file), or `undefined` when the object is not a PE or has no embedded PPDB. ([#1004](https://github.com/getsentry/symbolic/pull/1004))
 
 ## 13.4.0
 
