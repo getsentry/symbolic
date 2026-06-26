@@ -75,8 +75,8 @@ impl From<Unreal4ErrorKind> for Unreal4Error {
     }
 }
 
-impl From<elementtree::Error> for Unreal4Error {
-    fn from(source: elementtree::Error) -> Self {
+impl From<quick_xml::Error> for Unreal4Error {
+    fn from(source: quick_xml::Error) -> Self {
         Self::new(Unreal4ErrorKind::InvalidXml, source)
     }
 }
