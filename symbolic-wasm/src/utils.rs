@@ -25,9 +25,11 @@ pub(crate) use derived_from_cell;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    ObjectError(#[from] symbolic_debuginfo::ObjectError),
+    Object(#[from] symbolic_debuginfo::ObjectError),
     #[error(transparent)]
-    SourceBundleError(#[from] symbolic_debuginfo::sourcebundle::SourceBundleError),
+    SourceBundle(#[from] symbolic_debuginfo::sourcebundle::SourceBundleError),
+    #[error(transparent)]
+    Pe(#[from] symbolic_debuginfo::pe::PeError),
 }
 
 impl From<Error> for wasm_bindgen::JsValue {

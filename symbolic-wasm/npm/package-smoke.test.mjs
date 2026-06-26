@@ -25,6 +25,7 @@ const wasmPath = require.resolve("@sentry/symbolic/symbolic_bg.wasm");
 symbolic.initSync({ module: readFileSync(wasmPath) });
 
 const data = new Uint8Array(readFileSync(process.env.SMOKE_FIXTURE));
+const ppdbData = new Uint8Array(readFileSync(process.env.SMOKE_FIXTURE_PPDB));
 
 test("the shipped package parses a debug file via the Archive API", () => {
   const archive = new symbolic.Archive(data);
@@ -42,6 +43,26 @@ test("the shipped package parses a debug file via the Archive API", () => {
 
 test("Archive.peek detects the format without a full parse", () => {
   assert.equal(symbolic.Archive.peek(data), "elf");
+});
+
+test("embeddedPpdb extracts a standalone Portable PDB from a managed PE", () => {
+  const [object] = new symbolic.Archive(ppdbData).objects();
+  assert.equal(object.fileFormat, "pe");
+
+  const ppdb = object.embeddedPpdb();
+  assert.ok(ppdb instanceof Uint8Array, "expected embeddedPpdb() to return bytes");
+  assert.equal(ppdb.length, 10540);
+
+  // The extracted bytes are themselves a parseable Portable PDB.
+  const ppdbArchive = new symbolic.Archive(ppdb);
+  assert.equal(ppdbArchive.fileFormat, "portablepdb");
+  assert.equal(ppdbArchive.objectCount, 1);
+});
+
+test("embeddedPpdb returns undefined when there is no embedded PPDB", () => {
+  // The ELF fixture is not a PE, so it can never carry an embedded PPDB.
+  const [object] = new symbolic.Archive(data).objects();
+  assert.equal(object.embeddedPpdb(), undefined);
 });
 
 test("the debug session enumerates referenced source files", () => {

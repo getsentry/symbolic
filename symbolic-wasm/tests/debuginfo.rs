@@ -61,6 +61,60 @@ fn test_archive_objects() {
 
 #[test]
 #[wasm_bindgen_test::wasm_bindgen_test]
+fn test_embedded_ppdb_none() {
+    // A managed PE that does NOT embed a Portable PDB.
+    let data =
+        common::fixture("symbolic-testutils/fixtures/windows/Sentry.Samples.Console.Basic.dll");
+
+    let archive = Archive::new(&data).unwrap();
+    let mut objects = archive.objects().unwrap();
+    let object = objects.remove(0);
+
+    assert_eq!(&object.file_format(), "pe");
+    assert!(object.embedded_ppdb().unwrap().is_none());
+}
+
+#[test]
+#[wasm_bindgen_test::wasm_bindgen_test]
+fn test_embedded_ppdb_some() {
+    // A managed PE that embeds a deflate-compressed Portable PDB.
+    let data = common::fixture(
+        "symbolic-testutils/fixtures/windows/Sentry.Samples.Console.Basic-embedded-ppdb.dll",
+    );
+
+    let archive = Archive::new(&data).unwrap();
+    let mut objects = archive.objects().unwrap();
+    let object = objects.remove(0);
+
+    let ppdb = object.embedded_ppdb().unwrap().unwrap();
+
+    // Decompressed size matches what symbolic-debuginfo reports for this fixture,
+    // and the bytes carry the Portable PDB metadata version string.
+    assert_eq!(ppdb.len(), 10540);
+    assert_eq!(&ppdb[15..25], b"\0PDB v1.0\0");
+
+    // The extracted bytes are a standalone Portable PDB that parses on its own.
+    let ppdb_archive = Archive::new(&ppdb).unwrap();
+    assert_eq!(ppdb_archive.file_format(), "portablepdb");
+    assert_eq!(ppdb_archive.object_count(), 1);
+}
+
+#[test]
+#[wasm_bindgen_test::wasm_bindgen_test]
+fn test_embedded_ppdb_non_pe() {
+    // Non-PE objects never carry an embedded Portable PDB.
+    let data = common::fixture("symbolic-testutils/fixtures/linux/crash.debug");
+
+    let archive = Archive::new(&data).unwrap();
+    let mut objects = archive.objects().unwrap();
+    let object = objects.remove(0);
+
+    assert_eq!(&object.file_format(), "elf");
+    assert!(object.embedded_ppdb().unwrap().is_none());
+}
+
+#[test]
+#[wasm_bindgen_test::wasm_bindgen_test]
 fn test_debug_session_files() {
     let data =
         common::fixture("symbolic-testutils/fixtures/windows/Sentry.Samples.Console.Basic.pdb");

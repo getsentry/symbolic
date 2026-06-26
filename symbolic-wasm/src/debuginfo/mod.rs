@@ -143,6 +143,34 @@ impl Object {
             inner: unsafe { utils::derived_from_cell!(ObjectDebugSession, self.inner, session) },
         })
     }
+
+    /// Extracts the embedded Portable PDB from this object, if present.
+    ///
+    /// Some Windows PE images (managed/.NET assemblies) embed their Portable
+    /// PDB debug companion directly in the executable (debug directory entry
+    /// type 17, deflate-compressed). This decompresses and returns those bytes,
+    /// which are themselves a standalone Portable PDB debug information file
+    /// that can be parsed (e.g. via [`Archive`]) and uploaded independently.
+    ///
+    /// Returns `undefined` when the object is not a PE, or is a PE without an
+    /// embedded Portable PDB.
+    #[wasm_bindgen(js_name = embeddedPpdb)]
+    pub fn embedded_ppdb(&self) -> Result<Option<Vec<u8>>> {
+        let di::Object::Pe(pe) = self.inner.get() else {
+            return Ok(None);
+        };
+        let Some(ppdb) = pe.embedded_ppdb()? else {
+            return Ok(None);
+        };
+        // Decompress into a growable buffer rather than pre-allocating from
+        // `ppdb.get_size()`: the uncompressed size is read verbatim from the
+        // (untrusted) PE debug-directory header, so a crafted file could claim a
+        // huge size and trigger an oversized speculative allocation. Letting the
+        // deflate decoder grow the buffer bounds memory to the actual output.
+        let mut buf = Vec::new();
+        ppdb.decompress_to(&mut buf)?;
+        Ok(Some(buf))
+    }
 }
 
 /// A debug session that provides access to an object's debugging information.
