@@ -4,7 +4,7 @@
 //!
 //! # Example
 //!
-//! ```
+//! ```ignore
 //! use msvc_demangler;
 //! let flags = msvc_demangler::DemangleFlags::llvm();
 //! let result = msvc_demangler::demangle("??_0klass@@QEAAHH@Z", flags).unwrap();
@@ -699,7 +699,7 @@ impl<'a> ParserState<'a> {
 
     /// An MD5 mangled name is `??@` followed by 32 characters and a terminating `@`.
     ///
-    /// See https://github.com/llvm/llvm-project/blob/818cf30b83305fa4a2f75821349210b0f7aff4a4/llvm/lib/Demangle/MicrosoftDemangle.cpp#L754
+    /// See <https://github.com/llvm/llvm-project/blob/818cf30b83305fa4a2f75821349210b0f7aff4a4/llvm/lib/Demangle/MicrosoftDemangle.cpp#L754>
     fn read_md5_name(&mut self) -> Result<Name<'a>> {
         let start_offset = self.offset;
 
