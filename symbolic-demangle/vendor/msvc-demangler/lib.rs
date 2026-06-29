@@ -253,6 +253,7 @@ pub enum Name<'a> {
     AsInterface(&'a [u8]),
     Template(Box<Name<'a>>, Params<'a>),
     Discriminator(i32),
+    #[allow(clippy::enum_variant_names)]
     ParsedName(Box<ParseResult<'a>>),
     AnonymousNamespace(Option<String>),
 }
@@ -452,6 +453,7 @@ pub enum Type<'a> {
     VarArgs,
     EmptyParameterPack,
     Nullptr,
+    #[allow(clippy::enum_variant_names)]
     RTTIType,
 }
 
@@ -1529,7 +1531,7 @@ pub fn demangle(input: &str, flags: DemangleFlags) -> Result<String> {
     Ok(serialize(&parse(input)?, flags))
 }
 
-pub fn parse(input: &str) -> Result<ParseResult> {
+pub fn parse(input: &str) -> Result<ParseResult<'_>> {
     let mut state = ParserState {
         remaining: input.as_bytes(),
         input,
