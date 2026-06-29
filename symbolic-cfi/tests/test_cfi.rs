@@ -1,4 +1,6 @@
 use std::str;
+use std::sync::mpsc;
+use std::time::Duration;
 
 use symbolic_cfi::{AsciiCfiWriter, CfiCache};
 use symbolic_common::ByteView;
@@ -131,4 +133,21 @@ fn cfi_from_pe_arm64() -> Result<(), Error> {
     insta::assert_snapshot!("cfi_pe_arm64", cfi);
 
     Ok(())
+}
+
+#[test]
+fn cfi_pe_chained_info_self_loop_terminates() {
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        let buffer = ByteView::open(fixture("windows/cfi_chained_loop.exe"))
+            .expect("failed to open fixture");
+        let object = Object::parse(&buffer).expect("failed to parse PE");
+        let cfi: Vec<u8> = AsciiCfiWriter::transform(&object).expect("failed to transform CFI");
+        let _ = tx.send(cfi);
+    });
+
+    match rx.recv_timeout(Duration::from_secs(10)) {
+        Ok(_) => {}
+        Err(_) => panic!("process_pe did not terminate: chained_info loop is unbounded"),
+    }
 }

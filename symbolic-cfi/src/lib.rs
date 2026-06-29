@@ -55,6 +55,9 @@ pub const CFICACHE_MAGIC: u32 = u32::from_be_bytes(*b"CFIC");
 /// The latest version of the file format.
 pub const CFICACHE_LATEST_VERSION: u32 = 2;
 
+/// Maximum length of a chained `UNWIND_INFO` list to follow for a single function.
+const MAX_UNWIND_CHAIN_LEN: usize = 128;
+
 // The preamble are 8 bytes, a 4-byte magic and 4 bytes for the version.
 // The 4-byte magic should be read as little endian to check for endian mismatch.
 
@@ -1095,7 +1098,11 @@ impl<W: Write> AsciiCfiWriter<W> {
             saved_regs.clear();
 
             let mut next_function = Some(function);
-            while let Some(next) = next_function {
+            for _ in 0..MAX_UNWIND_CHAIN_LEN {
+                let Some(next) = next_function else {
+                    break;
+                };
+
                 let unwind_info = exception_data
                     .get_unwind_info(next, sections)
                     .map_err(|e| CfiError::new(CfiErrorKind::BadDebugInfo, e))?;
@@ -1193,6 +1200,12 @@ impl<W: Write> AsciiCfiWriter<W> {
                 }
 
                 next_function = unwind_info.chained_info;
+            }
+
+            // If we reached the `MAX_UNWIND_CHAIN_LEN` limit treat the input as malformed data and
+            // skip emitting CFI.
+            if next_function.is_some() {
+                continue 'functions;
             }
 
             if cfa_reg.is_empty() {
