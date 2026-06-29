@@ -35,11 +35,7 @@ use core::result;
 use core::str;
 use core::str::Utf8Error;
 use std::borrow::Cow;
-use std::boxed::Box;
-use std::string::String;
-use std::string::{FromUtf8Error, ToString};
-use std::vec::Vec;
-use std::{format, vec};
+use std::string::FromUtf8Error;
 
 pub struct Error {
     repr: ErrorRepr,
