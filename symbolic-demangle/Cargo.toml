@@ -1,6 +1,6 @@
 [package]
 name = "symbolic-demangle"
-version = "13.3.1"
+version = "13.6.1"
 license = "MIT"
 authors = [
     "Armin Ronacher <armin.ronacher@active-4.com>",
@@ -32,7 +32,7 @@ swift = ["cc"]
 [dependencies]
 cpp_demangle = { workspace = true, optional = true }
 rustc-demangle = { workspace = true, optional = true }
-symbolic-common = { version = "13.3.1", path = "../symbolic-common" }
+symbolic-common = { version = "13.6.1", path = "../symbolic-common" }
 bitflags = { version = "2", optional = true, default-features = false }
 itoa = { version = "1.0", optional = true }
 

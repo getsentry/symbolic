@@ -637,30 +637,7 @@ impl<'data> ElfObject<'data> {
                     .ok()?;
                 decompressed
             }
-            // The C `zstd` library on native targets.
-            #[cfg(not(target_arch = "wasm32"))]
             CompressionType::Zstd => zstd::bulk::decompress(compressed, size).ok()?,
-            // The pure-Rust `ruzstd` decoder on wasm32 (where `zstd` does not build).
-            #[cfg(target_arch = "wasm32")]
-            CompressionType::Zstd => {
-                use std::io::Read as _;
-                let decoder = ruzstd::decoding::StreamingDecoder::new(compressed).ok()?;
-                // Read at most `size` + 1 bytes: the declared decompressed size is
-                // bounded above (`max_decompressed_section_size`, checked above), and
-                // reading one extra byte lets us reject a stream that decompresses to
-                // more than `size` instead of silently truncating it. The result must
-                // be exactly `size`, matching `zstd::bulk::decompress` which errors on
-                // a size mismatch.
-                let mut decompressed = Vec::with_capacity(size);
-                decoder
-                    .take(size as u64 + 1)
-                    .read_to_end(&mut decompressed)
-                    .ok()?;
-                if decompressed.len() != size {
-                    return None;
-                }
-                decompressed
-            }
         };
 
         Some(decompressed)

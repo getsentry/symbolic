@@ -10,7 +10,7 @@
 #   - Rust toolchain with the wasm32-unknown-unknown target
 #   - wasm-bindgen-cli matching the wasm-bindgen crate version
 #   - wasm-opt (binaryen) — for size optimization (required)
-#   - npm (for `npm pack`)
+#   - node + npm (for `npm pack` and the packaged-artifact smoke test)
 #
 # Usage: make npm   (or: bash symbolic-wasm/build-npm.sh)
 
@@ -62,9 +62,10 @@ fi
 echo "Optimizing with wasm-opt -Oz..."
 wasm-opt -Oz -o "$BG_WASM" "$BG_WASM"
 
-echo "Packing npm tarball..."
-cd "$NPM_DIR"
-npm pack
+echo "Packing npm tarball + smoke-testing the installed package..."
+# `npm test` (in $NPM_DIR) packs the tarball and runs the packaged-artifact
+# smoke test against the installed package (exports map, files[], initSync).
+npm test --prefix "$NPM_DIR"
 
 SIZE_KB=$(( $(wc -c < "$BG_WASM") / 1024 ))
 echo "Done. symbolic_bg.wasm: ${SIZE_KB} KB; tarball in $NPM_DIR"

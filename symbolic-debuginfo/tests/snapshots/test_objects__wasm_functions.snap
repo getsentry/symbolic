@@ -1,0 +1,1311 @@
+---
+source: symbolic-debuginfo/tests/test_objects.rs
+expression: r
+---
+[
+    Ok(
+        Function {
+            address: 0x1a6,
+            size: 0x29,
+            name: Name {
+                string: "add",
+                lang: Cpp,
+                mangling: Mangled,
+            },
+            compilation_dir: "/tmp",
+            lines: [
+                LineInfo {
+                    address: 0x1a6,
+                    size: 0x1c,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 13,
+                },
+                LineInfo {
+                    address: 0x1c2,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 14,
+                },
+                LineInfo {
+                    address: 0x1c7,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 14,
+                },
+                LineInfo {
+                    address: 0x1cc,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 14,
+                },
+                LineInfo {
+                    address: 0x1cd,
+                    size: 0x2,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 14,
+                },
+            ],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x1d0,
+            size: 0x7,
+            name: Name {
+                string: "marker",
+                lang: Cpp,
+                mangling: Mangled,
+            },
+            compilation_dir: "/tmp",
+            lines: [
+                LineInfo {
+                    address: 0x1d1,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 37,
+                },
+            ],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x1d8,
+            size: 0x9,
+            name: Name {
+                string: "crash_me",
+                lang: Cpp,
+                mangling: Mangled,
+            },
+            compilation_dir: "/tmp",
+            lines: [
+                LineInfo {
+                    address: 0x1d9,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 41,
+                },
+                LineInfo {
+                    address: 0x1df,
+                    size: 0x2,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 42,
+                },
+            ],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x1e2,
+            size: 0x9,
+            name: Name {
+                string: "level_1()",
+                lang: Cpp,
+                mangling: Mangled,
+            },
+            compilation_dir: "/tmp",
+            lines: [
+                LineInfo {
+                    address: 0x1e3,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 33,
+                },
+                LineInfo {
+                    address: 0x1e9,
+                    size: 0x2,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 34,
+                },
+            ],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x1ec,
+            size: 0x9,
+            name: Name {
+                string: "level_2()",
+                lang: Cpp,
+                mangling: Mangled,
+            },
+            compilation_dir: "/tmp",
+            lines: [
+                LineInfo {
+                    address: 0x1ed,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 29,
+                },
+                LineInfo {
+                    address: 0x1f3,
+                    size: 0x2,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 30,
+                },
+            ],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x1f6,
+            size: 0x9,
+            name: Name {
+                string: "level_3()",
+                lang: Cpp,
+                mangling: Mangled,
+            },
+            compilation_dir: "/tmp",
+            lines: [
+                LineInfo {
+                    address: 0x1f7,
+                    size: 0x8,
+                    file: FileInfo {
+                        name: "main.cpp",
+                        dir: "/tmp",
+                    },
+                    line: 22,
+                },
+            ],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x200,
+            size: 0x9,
+            name: Name {
+                string: "abort",
+                lang: C,
+                mangling: Mangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [
+                LineInfo {
+                    address: 0x201,
+                    size: 0x8,
+                    file: FileInfo {
+                        name: "abort.c",
+                        dir: "system/lib/libc/musl/src/exit",
+                    },
+                    line: 21,
+                },
+            ],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0xa0,
+            name: Name {
+                string: "__syscall_uname",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x2d,
+            name: Name {
+                string: "__syscall_setpgid",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x4,
+            name: Name {
+                string: "__syscall_sync",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x12,
+            name: Name {
+                string: "__syscall_getsid",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x18,
+            name: Name {
+                string: "__syscall_getgroups32",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x27,
+            name: Name {
+                string: "__syscall_getrusage",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x19,
+            name: Name {
+                string: "__syscall_getresuid32",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x25,
+            name: Name {
+                string: "__syscall_getresgid32",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x10,
+            name: Name {
+                string: "__syscall_madvise",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x82,
+            name: Name {
+                string: "__syscall_prlimit64",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x8,
+            name: Name {
+                string: "getpid",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x4e,
+            name: Name {
+                string: "init_pthread_self",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0xb,
+            name: Name {
+                string: "_Exit",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x33,
+            name: Name {
+                string: "sigismember",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x24,
+            name: Name {
+                string: "sigorset",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x4f,
+            name: Name {
+                string: "sigdelset",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x13,
+            name: Name {
+                string: "__sig_is_blocked",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0xd7,
+            name: Name {
+                string: "pthread_sigmask",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x1c,
+            name: Name {
+                string: "siginvertset",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x54,
+            name: Name {
+                string: "raise_pending_signals",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x8d,
+            name: Name {
+                string: "__sigaction",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x9,
+            name: Name {
+                string: "action_abort",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x15,
+            name: Name {
+                string: "action_terminate",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0xc7,
+            name: Name {
+                string: "raise",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x20,
+            name: Name {
+                string: "_emscripten_yield",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x1a,
+            name: Name {
+                string: "emscripten_futex_wait",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x2,
+            name: Name {
+                string: "__wait",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x27c,
+            size: 0x2,
+            name: Name {
+                string: "__lock",
+                lang: C,
+                mangling: Mangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [
+                LineInfo {
+                    address: 0x27d,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "library_pthread_stub.c",
+                        dir: "system/lib/pthread",
+                    },
+                    line: 54,
+                },
+            ],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x27f,
+            size: 0x2,
+            name: Name {
+                string: "__unlock",
+                lang: C,
+                mangling: Mangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [
+                LineInfo {
+                    address: 0x280,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "library_pthread_stub.c",
+                        dir: "system/lib/pthread",
+                    },
+                    line: 56,
+                },
+            ],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x5,
+            name: Name {
+                string: "__pthread_create",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x5b,
+            name: Name {
+                string: "__pthread_key_create",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x43,
+            name: Name {
+                string: "__pthread_key_delete",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x31,
+            name: Name {
+                string: "pthread_getspecific",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x35,
+            name: Name {
+                string: "pthread_setspecific",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x7,
+            name: Name {
+                string: "pthread_equal",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x10000019e,
+            size: 0x2a,
+            name: Name {
+                string: "emscripten_thread_sleep",
+                lang: C,
+                mangling: Unmangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x282,
+            size: 0x14,
+            name: Name {
+                string: "__ofl_lock",
+                lang: C,
+                mangling: Mangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [
+                LineInfo {
+                    address: 0x283,
+                    size: 0xc,
+                    file: FileInfo {
+                        name: "ofl.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 11,
+                },
+                LineInfo {
+                    address: 0x28f,
+                    size: 0x7,
+                    file: FileInfo {
+                        name: "ofl.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 12,
+                },
+            ],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x297,
+            size: 0xe,
+            name: Name {
+                string: "__ofl_unlock",
+                lang: C,
+                mangling: Mangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [
+                LineInfo {
+                    address: 0x298,
+                    size: 0xc,
+                    file: FileInfo {
+                        name: "ofl.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 17,
+                },
+                LineInfo {
+                    address: 0x2a4,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "ofl.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 18,
+                },
+            ],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+    Ok(
+        Function {
+            address: 0x2a7,
+            size: 0x10c,
+            name: Name {
+                string: "fflush",
+                lang: C,
+                mangling: Mangled,
+            },
+            compilation_dir: "/emsdk/emscripten",
+            lines: [
+                LineInfo {
+                    address: 0x2aa,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 10,
+                },
+                LineInfo {
+                    address: 0x2b0,
+                    size: 0x4,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x2b4,
+                    size: 0xe,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 12,
+                },
+                LineInfo {
+                    address: 0x2c2,
+                    size: 0x9,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 12,
+                },
+                LineInfo {
+                    address: 0x2cb,
+                    size: 0x8,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 12,
+                },
+                LineInfo {
+                    address: 0x2d3,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x2d8,
+                    size: 0xa,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 13,
+                },
+                LineInfo {
+                    address: 0x2e2,
+                    size: 0x9,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 13,
+                },
+                LineInfo {
+                    address: 0x2eb,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 13,
+                },
+                LineInfo {
+                    address: 0x2f1,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 13,
+                },
+                LineInfo {
+                    address: 0x2f6,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x2f7,
+                    size: 0x8,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 15,
+                },
+                LineInfo {
+                    address: 0x2ff,
+                    size: 0x3,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 15,
+                },
+                LineInfo {
+                    address: 0x302,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 15,
+                },
+                LineInfo {
+                    address: 0x307,
+                    size: 0x9,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 17,
+                },
+                LineInfo {
+                    address: 0x310,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 17,
+                },
+                LineInfo {
+                    address: 0x315,
+                    size: 0x3,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 17,
+                },
+                LineInfo {
+                    address: 0x318,
+                    size: 0x8,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 17,
+                },
+                LineInfo {
+                    address: 0x320,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 17,
+                },
+                LineInfo {
+                    address: 0x325,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x326,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 15,
+                },
+                LineInfo {
+                    address: 0x32b,
+                    size: 0x4,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 15,
+                },
+                LineInfo {
+                    address: 0x32f,
+                    size: 0x2,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 15,
+                },
+                LineInfo {
+                    address: 0x331,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 20,
+                },
+                LineInfo {
+                    address: 0x337,
+                    size: 0x3,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 45,
+                },
+                LineInfo {
+                    address: 0x33a,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x33b,
+                    size: 0x7,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 28,
+                },
+                LineInfo {
+                    address: 0x342,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 28,
+                },
+                LineInfo {
+                    address: 0x347,
+                    size: 0x3,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 28,
+                },
+                LineInfo {
+                    address: 0x34a,
+                    size: 0x6,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x350,
+                    size: 0x11,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 29,
+                },
+                LineInfo {
+                    address: 0x361,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 30,
+                },
+                LineInfo {
+                    address: 0x366,
+                    size: 0x2,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 30,
+                },
+                LineInfo {
+                    address: 0x368,
+                    size: 0x2,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x36a,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 45,
+                },
+                LineInfo {
+                    address: 0x36b,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x36c,
+                    size: 0x7,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 37,
+                },
+                LineInfo {
+                    address: 0x373,
+                    size: 0x7,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 37,
+                },
+                LineInfo {
+                    address: 0x37a,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 37,
+                },
+                LineInfo {
+                    address: 0x37f,
+                    size: 0x7,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 37,
+                },
+                LineInfo {
+                    address: 0x386,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 37,
+                },
+                LineInfo {
+                    address: 0x387,
+                    size: 0x13,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 37,
+                },
+                LineInfo {
+                    address: 0x39a,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 0,
+                },
+                LineInfo {
+                    address: 0x39f,
+                    size: 0x7,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 40,
+                },
+                LineInfo {
+                    address: 0x3a6,
+                    size: 0x7,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 40,
+                },
+                LineInfo {
+                    address: 0x3ad,
+                    size: 0x5,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 41,
+                },
+                LineInfo {
+                    address: 0x3b2,
+                    size: 0x1,
+                    file: FileInfo {
+                        name: "fflush.c",
+                        dir: "system/lib/libc/musl/src/stdio",
+                    },
+                    line: 45,
+                },
+            ],
+            inlinees: [],
+            inline: false,
+        },
+    ),
+]

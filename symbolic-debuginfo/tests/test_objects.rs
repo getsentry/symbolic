@@ -1,4 +1,6 @@
-use std::{ffi::CString, fmt, io::BufWriter};
+use std::ffi::CString;
+use std::fmt;
+use std::io::BufWriter;
 
 use symbolic_common::{ByteView, Language};
 use symbolic_debuginfo::dwarf::DwarfErrorKind;
@@ -923,6 +925,20 @@ fn test_ppdb_source_by_path() -> Result<(), Error> {
 }
 
 #[test]
+fn test_ppdb_source_by_path_size_limit() {
+    let mut opts = ParseObjectOptions::default();
+    opts.max_decompressed_embedded_source_size = Some(200);
+
+    let view = ByteView::open(fixture("windows/Sentry.Samples.Console.Basic.pdb")).unwrap();
+    let object = Object::parse_with_opts(&view, opts).unwrap();
+
+    let session = object.debug_session().unwrap();
+    session
+        .source_by_path("C:\\dev\\sentry-dotnet\\samples\\Sentry.Samples.Console.Basic\\Program.cs")
+        .unwrap_err();
+}
+
+#[test]
 fn test_ppdb_source_links() -> Result<(), Error> {
     let view = ByteView::open(fixture("ppdb-sourcelink-sample/ppdb-sourcelink-sample.pdb"))?;
     let object = Object::parse(&view)?;
@@ -993,6 +1009,19 @@ fn test_wasm_line_program() -> Result<(), Error> {
         .expect("main function at 0x8b");
 
     assert_eq!(main_function.name, "internal_func");
+
+    Ok(())
+}
+
+#[test]
+fn test_wasm_functions() -> Result<(), Error> {
+    let view = ByteView::open(fixture("wasm/emscripten/index.wasm"))?;
+    let object = Object::parse(&view)?;
+
+    let session = object.debug_session().unwrap();
+    let r = session.functions().collect::<Vec<_>>();
+
+    insta::assert_debug_snapshot!(r);
 
     Ok(())
 }

@@ -107,8 +107,10 @@ jobs:
       - run: rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown --no-self-update
 
       # Node/npm are preinstalled on ubuntu runners (used for `npm pack`).
-      # Provides wasm-opt for size optimization (build-npm.sh skips it if absent).
+      # binaryen provides wasm-opt (required by build-npm.sh); clang/lld/llvm
+      # compile the C zstd library to wasm (zstd-sys's wasm-shim).
       - run: npm install -g binaryen@130.0.0
+      - run: sudo apt-get update && sudo apt-get install -y clang lld llvm
 
       # build-npm.sh installs the wasm-bindgen-cli version that matches the
       # locked wasm-bindgen crate, then builds + packs the tarball.
