@@ -33,8 +33,6 @@
 
 #![warn(missing_docs)]
 
-extern crate alloc;
-
 use std::borrow::Cow;
 #[cfg(feature = "swift")]
 use std::ffi::{CStr, CString};

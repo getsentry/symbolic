@@ -26,12 +26,6 @@
 #![deny(missing_debug_implementations)]
 #![deny(unsafe_code)]
 
-use alloc::borrow::Cow;
-use alloc::boxed::Box;
-use alloc::string::String;
-use alloc::string::{FromUtf8Error, ToString};
-use alloc::vec::Vec;
-use alloc::{format, vec};
 use bitflags::bitflags;
 use core::cmp::min;
 use core::error;
@@ -40,6 +34,12 @@ use core::mem;
 use core::result;
 use core::str;
 use core::str::Utf8Error;
+use std::borrow::Cow;
+use std::boxed::Box;
+use std::string::String;
+use std::string::{FromUtf8Error, ToString};
+use std::vec::Vec;
+use std::{format, vec};
 
 pub struct Error {
     repr: ErrorRepr,
