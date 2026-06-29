@@ -4,6 +4,7 @@
 
 **Features**
 
+- Add recursion limit to vendored msvc-demangler. ([#1006](https://github.com/getsentry/symbolic/pull/1006))
 - Vendor [msvc-demangler](https://github.com/mstange/msvc-demangler-rust). ([#998](https://github.com/getsentry/symbolic/pull/998))
 
 ## 13.6.1
