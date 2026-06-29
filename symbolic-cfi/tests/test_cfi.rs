@@ -136,7 +136,7 @@ fn cfi_from_pe_arm64() -> Result<(), Error> {
 }
 
 #[test]
-fn cfi_pe_chained_info_self_loop_terminates() {
+fn cfi_process_pe_self_loop_terminates() {
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
         let buffer = ByteView::open(fixture("windows/cfi_chained_loop.exe"))
