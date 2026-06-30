@@ -41,6 +41,11 @@ use std::os::raw::{c_char, c_int};
 
 use symbolic_common::{Language, Name, NameMangling};
 
+#[cfg(feature = "msvc")]
+#[allow(dead_code)]
+#[path = "../vendor/msvc-demangler/lib.rs"]
+mod msvc_demangler;
+
 #[cfg(feature = "swift")]
 const SYMBOLIC_SWIFT_FEATURE_RETURN_TYPE: c_int = 0x1;
 #[cfg(feature = "swift")]

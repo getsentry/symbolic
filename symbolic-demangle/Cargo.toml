@@ -25,15 +25,16 @@ all-features = true
 [features]
 default = ["cpp", "msvc", "rust", "swift"]
 cpp = ["cpp_demangle"]
-msvc = ["msvc-demangler"]
+msvc = ["dep:bitflags", "dep:itoa"]
 rust = ["rustc-demangle"]
 swift = ["cc"]
 
 [dependencies]
 cpp_demangle = { workspace = true, optional = true }
-msvc-demangler = { workspace = true, optional = true }
 rustc-demangle = { workspace = true, optional = true }
 symbolic-common = { version = "13.6.1", path = "../symbolic-common" }
+bitflags = { version = "2", optional = true, default-features = false }
+itoa = { version = "1.0", optional = true }
 
 [build-dependencies]
 cc = { workspace = true, optional = true }
