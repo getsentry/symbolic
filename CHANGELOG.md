@@ -6,6 +6,10 @@
 
 - Vendor [msvc-demangler](https://github.com/mstange/msvc-demangler-rust). ([#998](https://github.com/getsentry/symbolic/pull/998))
 
+**Dependencies**
+
+- Bump the `memmap2` floor to 0.9.11 to exclude versions affected by [RUSTSEC-2026-0186](https://rustsec.org/advisories/RUSTSEC-2026-0186.html). ([#996](https://github.com/getsentry/symbolic/pull/996))
+
 ## 13.6.1
 
 **Fixes**
@@ -68,7 +72,6 @@
 
 - Add support for win arm64 PE unwind codes ([#978](https://github.com/getsentry/symbolic/pull/978))
 
-
 **Fixes**
 
 - Disable `PE` import table parser and be more permissive during parsing. ([#964](https://github.com/getsentry/symbolic/pull/964))
@@ -92,7 +95,7 @@
   - `gimli`: 0.32.3 -> 0.33.0
   - `goblin`: 0.8.0 -> 0.10.5
   - `scroll`: 0.12.0 -> 0.13.0
-  ([#976](https://github.com/getsentry/symbolic/pull/976))
+    ([#976](https://github.com/getsentry/symbolic/pull/976))
 
 ## 12.18.3
 
@@ -107,24 +110,27 @@
 ## 12.18.1
 
 **Improvements**
+
 - sourcemapcache: Bump `js-source-scopes` to 0.7.2. This improves name resolution via https://github.com/getsentry/js-source-scopes/pull/35. ([#970](https://github.com/getsentry/symbolic/pull/970))
 
 ## 12.18.0
 
 **Improvements**
+
 - symcache: Change internal representation to enable old versions to remain parseable. ([#947](https://github.com/getsentry/symbolic/pull/947))
 - feat: Add `Unreal4File::into_bytes`. ([#967](https://github.com/getsentry/symbolic/pull/967))
 
 ## 12.17.4
 
 **Fixes**
+
 - Revert "Use goblin permissive PE parse-mode". This change breaks API compatibility and should
   not have been released in a patch version. ([#966](https://github.com/getsentry/symbolic/pull/966))
 
 **Improvements**
 
 - Enable symbolize and CFI by default in `examples/minidump_stackwalk`, and replace their
-corresponding flags `--symbolize` and `--cfi` with `--no-symbolize` and `--no-cfi` respectively. ([#963](https://github.com/getsentry/symbolic/pull/963))
+  corresponding flags `--symbolize` and `--cfi` with `--no-symbolize` and `--no-cfi` respectively. ([#963](https://github.com/getsentry/symbolic/pull/963))
 
 ## 12.17.3
 
