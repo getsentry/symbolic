@@ -12,10 +12,6 @@
 
 - Bump the `memmap2` floor to 0.9.11 to exclude versions affected by [RUSTSEC-2026-0186](https://rustsec.org/advisories/RUSTSEC-2026-0186.html). ([#996](https://github.com/getsentry/symbolic/pull/996))
 
-**Dependencies**
-
-- Bump the `memmap2` floor to 0.9.11 to exclude versions affected by [RUSTSEC-2026-0186](https://rustsec.org/advisories/RUSTSEC-2026-0186.html). ([#996](https://github.com/getsentry/symbolic/pull/996))
-
 ## 13.6.1
 
 **Fixes**
