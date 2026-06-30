@@ -750,14 +750,14 @@ impl<'a> ParserState<'a> {
                     let c = self.get()?;
                     match c {
                         b'A'..=b'Z' => c - b'A' + 0xe1,
-                        b'a'..=b'z' => c - b'A' + 0xc1,
+                        b'a'..=b'z' => c - b'a' + 0xc1,
                         b'0'..=b'9' => {
                             let v = b",/\\:. \n\t'-";
                             v[(c - b'0') as usize]
                         }
                         b'$' => {
-                            let high = self.get()? - b'A';
-                            let low = self.get()? - b'A';
+                            let high = self.get()?.saturating_sub(b'A');
+                            let low = self.get()?.saturating_sub(b'A');
                             (high << 4) | low
                         }
                         _ => {
