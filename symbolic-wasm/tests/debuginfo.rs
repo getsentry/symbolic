@@ -71,7 +71,8 @@ fn test_embedded_ppdb_none() {
     let object = objects.remove(0);
 
     assert_eq!(&object.file_format(), "pe");
-    assert!(object.embedded_ppdb().unwrap().is_none());
+    let pe = object.as_pe().unwrap().expect("expected a PE file");
+    assert!(pe.embedded_ppdb().unwrap().is_none());
 }
 
 #[test]
@@ -86,7 +87,8 @@ fn test_embedded_ppdb_some() {
     let mut objects = archive.objects().unwrap();
     let object = objects.remove(0);
 
-    let ppdb = object.embedded_ppdb().unwrap().unwrap();
+    let pe = object.as_pe().unwrap().expect("expected a PE file");
+    let ppdb = pe.embedded_ppdb().unwrap().unwrap();
 
     // Decompressed size matches what symbolic-debuginfo reports for this fixture,
     // and the bytes carry the Portable PDB metadata version string.
@@ -101,8 +103,8 @@ fn test_embedded_ppdb_some() {
 
 #[test]
 #[wasm_bindgen_test::wasm_bindgen_test]
-fn test_embedded_ppdb_non_pe() {
-    // Non-PE objects never carry an embedded Portable PDB.
+fn test_as_pe_none_for_non_pe() {
+    // Non-PE objects cannot be narrowed to a PE, so `as_pe` yields `None`.
     let data = common::fixture("symbolic-testutils/fixtures/linux/crash.debug");
 
     let archive = Archive::new(&data).unwrap();
@@ -110,7 +112,7 @@ fn test_embedded_ppdb_non_pe() {
     let object = objects.remove(0);
 
     assert_eq!(&object.file_format(), "elf");
-    assert!(object.embedded_ppdb().unwrap().is_none());
+    assert!(object.as_pe().unwrap().is_none());
 }
 
 #[test]

@@ -45,11 +45,14 @@ test("Archive.peek detects the format without a full parse", () => {
   assert.equal(symbolic.Archive.peek(data), "elf");
 });
 
-test("embeddedPpdb extracts a standalone Portable PDB from a managed PE", () => {
+test("asPe().embeddedPpdb() extracts a standalone Portable PDB from a managed PE", () => {
   const [object] = new symbolic.Archive(ppdbData).objects();
   assert.equal(object.fileFormat, "pe");
 
-  const ppdb = object.embeddedPpdb();
+  const pe = object.asPe();
+  assert.ok(pe, "expected asPe() to return a PeFile for a PE object");
+
+  const ppdb = pe.embeddedPpdb();
   assert.ok(ppdb instanceof Uint8Array, "expected embeddedPpdb() to return bytes");
   assert.equal(ppdb.length, 10540);
 
@@ -59,10 +62,10 @@ test("embeddedPpdb extracts a standalone Portable PDB from a managed PE", () => 
   assert.equal(ppdbArchive.objectCount, 1);
 });
 
-test("embeddedPpdb returns undefined when there is no embedded PPDB", () => {
-  // The ELF fixture is not a PE, so it can never carry an embedded PPDB.
+test("asPe() returns undefined for a non-PE object", () => {
+  // The ELF fixture is not a PE, so it cannot be narrowed to a PeFile.
   const [object] = new symbolic.Archive(data).objects();
-  assert.equal(object.embeddedPpdb(), undefined);
+  assert.equal(object.asPe(), undefined);
 });
 
 test("the debug session enumerates referenced source files", () => {

@@ -19,7 +19,7 @@ const here = (rel) => fileURLToPath(new URL(rel, import.meta.url));
 const PKG_DIR = here(".");
 const FIXTURE = here("../../symbolic-testutils/fixtures/linux/crash.debug");
 // A managed PE that embeds a deflate-compressed Portable PDB — exercises the
-// embeddedPpdb() extraction + decompression path in the real wasm runtime.
+// asPe().embeddedPpdb() extraction + decompression path in the real wasm runtime.
 const FIXTURE_PPDB = here(
   "../../symbolic-testutils/fixtures/windows/Sentry.Samples.Console.Basic-embedded-ppdb.dll",
 );

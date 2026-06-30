@@ -144,7 +144,50 @@ impl Object {
         })
     }
 
-    /// Extracts the embedded Portable PDB from this object, if present.
+    /// Narrows this object to a Windows PE image, if it is one.
+    ///
+    /// Returns `undefined` for non-PE objects. The returned [`PeFile`] exposes
+    /// PE-specific operations (such as [`PeFile::embedded_ppdb`]) that have no
+    /// equivalent on other object formats, mirroring the `Object::Pe` variant of
+    /// the underlying `symbolic_debuginfo` types.
+    #[wasm_bindgen(js_name = asPe)]
+    pub fn as_pe(&self) -> Result<Option<PeFile>> {
+        let di::Object::Pe(pe) = self.inner.get() else {
+            return Ok(None);
+        };
+        // `PeObject` is neither `Clone` nor movable out of the borrowed enum, so
+        // re-parse it from the same backing bytes to obtain an owned handle that
+        // can live in its own cell sharing this object's `ByteView`. Parsing only
+        // reads the PE header and is cheap; the heavy lifting happens lazily in the
+        // PE-specific operations on `PeFile`.
+        let pe = di::pe::PeObject::parse(pe.data())?;
+        Ok(Some(PeFile {
+            // SAFETY: `pe` is derived from `self.inner` and only borrows data from
+            // the same `ByteView`.
+            inner: unsafe {
+                utils::derived_from_cell!(
+                    di::pe::PeObject<'_>,
+                    di::pe::PeObject<'static>,
+                    self.inner,
+                    pe
+                )
+            },
+        }))
+    }
+}
+
+/// A Windows PE image (an executable or a managed/.NET assembly).
+///
+/// Obtain one by narrowing an [`Object`] via [`Object::as_pe`]. This exposes the
+/// PE-specific surface of `symbolic_debuginfo`'s `PeObject`.
+#[wasm_bindgen(js_name = PeFile)]
+pub struct PeFile {
+    inner: SelfCell<ByteView<'static>, di::pe::PeObject<'static>>,
+}
+
+#[wasm_bindgen(js_class = PeFile)]
+impl PeFile {
+    /// Extracts the embedded Portable PDB from this PE, if present.
     ///
     /// Some Windows PE images (managed/.NET assemblies) embed their Portable
     /// PDB debug companion directly in the executable (debug directory entry
@@ -152,14 +195,10 @@ impl Object {
     /// which are themselves a standalone Portable PDB debug information file
     /// that can be parsed (e.g. via [`Archive`]) and uploaded independently.
     ///
-    /// Returns `undefined` when the object is not a PE, or is a PE without an
-    /// embedded Portable PDB.
+    /// Returns `undefined` when this PE has no embedded Portable PDB.
     #[wasm_bindgen(js_name = embeddedPpdb)]
     pub fn embedded_ppdb(&self) -> Result<Option<Vec<u8>>> {
-        let di::Object::Pe(pe) = self.inner.get() else {
-            return Ok(None);
-        };
-        let Some(ppdb) = pe.embedded_ppdb()? else {
+        let Some(ppdb) = self.inner.get().embedded_ppdb()? else {
             return Ok(None);
         };
         // Decompress into a growable buffer rather than pre-allocating from

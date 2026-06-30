@@ -8,14 +8,25 @@ use wasm_bindgen::JsError;
 ///
 /// This is unsafe and callers must ensure the derived value only borrows from the data
 /// of the owning [`symbolic_common::SelfCell`].
+///
+/// Two forms are supported:
+///
+/// - `derived_from_cell!(Ty, owner, derived)` for types re-exported at the
+///   `symbolic_debuginfo` crate root (e.g. `Object`, `ObjectDebugSession`).
+/// - `derived_from_cell!(Ty<'_>, Ty<'static>, owner, derived)` for types behind a
+///   module path (e.g. `pe::PeObject`), where the borrowed and `'static` forms must
+///   be spelled out because a `path` fragment cannot be followed by a lifetime.
 macro_rules! derived_from_cell {
-    ($ty:ident, $owner:expr, $derived:expr) => {{
-        let derived = std::mem::transmute::<
-            // Temporary workaround, once we expand the functionality of the crate,
-            // we'll have to fix the macro to accepts `path::type`.
+    ($ty:ident, $owner:expr, $derived:expr) => {
+        $crate::utils::derived_from_cell!(
             symbolic_debuginfo::$ty<'_>,
             symbolic_debuginfo::$ty<'static>,
-        >($derived);
+            $owner,
+            $derived
+        )
+    };
+    ($borrowed:ty, $static:ty, $owner:expr, $derived:expr) => {{
+        let derived = std::mem::transmute::<$borrowed, $static>($derived);
         ::symbolic_common::SelfCell::from_raw($owner.owner().clone(), derived)
     }};
 }
