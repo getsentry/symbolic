@@ -4,7 +4,7 @@ use symbolic_il2cpp::ObjectLineMapping;
 use wasm_bindgen::prelude::*;
 
 use crate::debuginfo::Object;
-use crate::utils::Result;
+use crate::utils::{provider_bytes, Result};
 
 /// Extracts a Unity Il2cpp line mapping from `object`, serialized as JSON.
 ///
@@ -35,12 +35,7 @@ pub fn il2cpp_line_mapping(
         let value = provider
             .call1(&JsValue::UNDEFINED, &JsValue::from_str(path))
             .unwrap_throw();
-
-        if value.is_null_or_undefined() {
-            return None;
-        }
-
-        Some(js_sys::Uint8Array::new(&value).to_vec())
+        provider_bytes(&value)
     })?;
 
     let mut buf = Vec::new();

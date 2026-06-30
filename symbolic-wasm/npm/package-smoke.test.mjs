@@ -86,4 +86,8 @@ test("il2cppLineMapping extracts source_info markers via a provider", () => {
 
   // Returning a nullish value for every file yields no mapping (undefined).
   assert.equal(symbolic.il2cppLineMapping(object, () => null), undefined);
+
+  // A non-Uint8Array return is rejected rather than silently coerced (e.g. a
+  // number would otherwise become a zero-filled buffer).
+  assert.throws(() => symbolic.il2cppLineMapping(object, () => 5));
 });
