@@ -23,13 +23,26 @@ pub type PortablePdbFunctionIterator<'session> =
 pub struct PortablePdbObject<'data> {
     data: &'data [u8],
     ppdb: PortablePdb<'data>,
+    max_decompressed_embedded_source_size: Option<usize>,
 }
 
 impl<'data> PortablePdbObject<'data> {
     /// Tries to parse a Portable PDB object from the given slice, with default options.
     pub fn parse(data: &'data [u8]) -> Result<Self, FormatError> {
+        Self::parse_with_opts(data, Default::default())
+    }
+
+    /// Tries to parse a Portable PDB object from the given slice.
+    pub fn parse_with_opts(
+        data: &'data [u8],
+        opts: ParseObjectOptions,
+    ) -> Result<Self, FormatError> {
         let ppdb = PortablePdb::parse(data)?;
-        Ok(Self { data, ppdb })
+        Ok(Self {
+            data,
+            ppdb,
+            max_decompressed_embedded_source_size: opts.max_decompressed_embedded_source_size,
+        })
     }
 
     /// Returns the Portable PDB contained in this object.
@@ -99,7 +112,7 @@ impl<'data: 'object, 'object> ObjectLike<'data, 'object> for PortablePdbObject<'
 
     /// Constructs a debugging session.
     fn debug_session(&self) -> Result<PortablePdbDebugSession<'data>, FormatError> {
-        PortablePdbDebugSession::new(&self.ppdb)
+        PortablePdbDebugSession::new(&self.ppdb, self.max_decompressed_embedded_source_size)
     }
 
     /// Determines whether this object contains stack unwinding information.
@@ -134,8 +147,8 @@ impl<'data> Parse<'data> for PortablePdbObject<'data> {
         PortablePdb::peek(data)
     }
 
-    fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
-        Self::parse(data)
+    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+        Self::parse_with_opts(data, opts)
     }
 }
 
@@ -151,6 +164,7 @@ impl fmt::Debug for PortablePdbObject<'_> {
 pub struct PortablePdbDebugSession<'data> {
     ppdb: PortablePdb<'data>,
     sources: OnceLock<HashMap<String, PPDBSource<'data>>>,
+    max_decompressed_embedded_source_size: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -160,10 +174,14 @@ enum PPDBSource<'data> {
 }
 
 impl<'data> PortablePdbDebugSession<'data> {
-    fn new(ppdb: &'_ PortablePdb<'data>) -> Result<Self, FormatError> {
+    fn new(
+        ppdb: &'_ PortablePdb<'data>,
+        max_decompressed_embedded_source_size: Option<usize>,
+    ) -> Result<Self, FormatError> {
         Ok(PortablePdbDebugSession {
             ppdb: ppdb.clone(),
             sources: OnceLock::new(),
+            max_decompressed_embedded_source_size,
         })
     }
 
@@ -206,12 +224,14 @@ impl<'data> PortablePdbDebugSession<'data> {
         let sources = self.sources.get_or_init(|| self.init_sources());
         match sources.get(path) {
             None => Ok(None),
-            Some(PPDBSource::Embedded(source)) => source.get_contents().map(|bytes| {
-                Some(SourceFileDescriptor::new_embedded(
-                    from_utf8_cow_lossy(&bytes),
-                    None,
-                ))
-            }),
+            Some(PPDBSource::Embedded(source)) => source
+                .get_contents_bounded(self.max_decompressed_embedded_source_size)
+                .map(|bytes| {
+                    Some(SourceFileDescriptor::new_embedded(
+                        from_utf8_cow_lossy(&bytes),
+                        None,
+                    ))
+                }),
             Some(PPDBSource::Link(document)) => Ok(self
                 .ppdb
                 .get_source_link(document)
@@ -291,5 +311,38 @@ impl<'s> Iterator for PortablePdbFileIterator<'s> {
             Cow::default(),
             FileInfo::from_path_owned(document.name.as_bytes()),
         )))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use symbolic_common::ByteView;
+    use symbolic_ppdb::FormatErrorKind as PpdbErrorKind;
+    use symbolic_testutils::fixture;
+
+    use crate::ppdb::PortablePdbObject;
+    use crate::{ObjectLike, ParseObjectOptions};
+
+    #[test]
+    fn test_ppdb_source_by_path_size_limit() {
+        let opts = ParseObjectOptions {
+            max_decompressed_embedded_source_size: Some(200),
+            ..Default::default()
+        };
+
+        let view = ByteView::open(fixture("windows/Sentry.Samples.Console.Basic.pdb")).unwrap();
+        let object = PortablePdbObject::parse_with_opts(&view, opts).unwrap();
+
+        let session = object.debug_session().unwrap();
+        let err = session
+            .source_by_path(
+                "C:\\dev\\sentry-dotnet\\samples\\Sentry.Samples.Console.Basic\\Program.cs",
+            )
+            .unwrap_err();
+
+        assert!(matches!(
+            err.kind(),
+            PpdbErrorKind::EmbeddedSourceFileSizeExceeded(204)
+        ));
     }
 }

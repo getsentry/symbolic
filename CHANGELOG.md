@@ -1,6 +1,33 @@
 # Changelog
 
-## Unreleased
+## 13.6.1
+
+**Fixes**
+
+- Fix function range to addr/line resolution, this fixes a case where WASM binaries compiled with Emscripten failed to have their source code mappings resolved. (#[1002](https://github.com/getsentry/symbolic/pull/1002))
+
+## 13.6.0
+
+**Features**
+
+- `symbolic-debuginfo`: Add a new option `max_decompressed_embedded_source_size` to `ParseObjectOptions`. This option limits the sizes of compressed embedded source files
+  when they are returned from methods like `source_by_path`. ([#999](https://github.com/getsentry/symbolic/pull/999))
+
+## 13.5.0
+
+**Features**
+
+- WASM: expose `ObjectFile.debugSession()` returning a `DebugSession` with `files()` (the source files referenced by the object) and `sourceByPath(path)` (resolving embedded contents or a source link). `symbolic-debuginfo` also implements `AsSelf` for `ObjectDebugSession` so it can be held in a `SelfCell`. ([#997](https://github.com/getsentry/symbolic/pull/997))
+
+## 13.4.0
+
+**Features**
+
+- `symbolic-debuginfo`: add `SourceBundleWriter::write_object_with_filter_and_provider`, which builds a source bundle from caller-supplied source content instead of relying on the local filesystem. ([#988](https://github.com/getsentry/symbolic/pull/988))
+
+**Fixes**
+
+- Fix issue with overflowing section offsets in 64bit Mach-O files. ([#985](https://github.com/getsentry/symbolic/pull/985))
 
 **Changes**
 

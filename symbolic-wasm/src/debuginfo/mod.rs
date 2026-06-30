@@ -6,6 +6,10 @@ use wasm_bindgen::prelude::*;
 
 use crate::utils::{self, Error, Result};
 
+pub mod sourcebundle;
+
+use sourcebundle::{FileEntry, SourceFileDescriptor};
+
 /// A generic archive that can contain one or more object files.
 #[wasm_bindgen]
 pub struct Archive {
@@ -64,12 +68,12 @@ impl Archive {
 }
 
 /// A generic object file providing uniform access to various file formats.
-#[wasm_bindgen]
+#[wasm_bindgen(js_name = ObjectFile)]
 pub struct Object {
     inner: SelfCell<ByteView<'static>, di::Object<'static>>,
 }
 
-#[wasm_bindgen]
+#[wasm_bindgen(js_class = ObjectFile)]
 impl Object {
     /// The object's debug identifier (the canonical `debug_id`).
     #[wasm_bindgen(getter, js_name = debugId)]
@@ -126,5 +130,55 @@ impl Object {
     #[wasm_bindgen(getter, js_name = hasSources)]
     pub fn has_sources(&self) -> bool {
         self.inner.get().has_sources()
+    }
+
+    /// Returns a debug session that provides access to debugging information
+    /// stored in this object, in particular the source files it references.
+    #[wasm_bindgen(js_name = debugSession)]
+    pub fn debug_session(&self) -> Result<DebugSession> {
+        let session = self.inner.get().debug_session()?;
+        Ok(DebugSession {
+            // SAFETY: `session` is directly derived from `self.inner` and only
+            // borrows data from the same `ByteView`.
+            inner: unsafe { utils::derived_from_cell!(ObjectDebugSession, self.inner, session) },
+        })
+    }
+}
+
+/// A debug session that provides access to an object's debugging information.
+///
+/// In particular, this enumerates the source files referenced by the object and
+/// resolves their contents (when embedded) or source links.
+#[wasm_bindgen]
+pub struct DebugSession {
+    inner: SelfCell<ByteView<'static>, di::ObjectDebugSession<'static>>,
+}
+
+#[wasm_bindgen]
+impl DebugSession {
+    /// Returns all source files referenced by the object.
+    ///
+    /// Note that this only lists referenced files; use [`Self::source_by_path`]
+    /// to retrieve a file's embedded contents or source link.
+    pub fn files(&self) -> Result<Vec<FileEntry>> {
+        self.inner
+            .get()
+            .files()
+            .map(|file| file.map(|file| FileEntry::from(&file)).map_err(Error::from))
+            .collect()
+    }
+
+    /// Looks up a source file by its full, canonicalized path.
+    ///
+    /// Returns the descriptor (embedded contents or a source link) if the path
+    /// is referenced by the object, otherwise `undefined`.
+    #[wasm_bindgen(js_name = sourceByPath)]
+    pub fn source_by_path(&self, path: &str) -> Result<Option<SourceFileDescriptor>> {
+        Ok(self
+            .inner
+            .get()
+            .source_by_path(path)?
+            .as_ref()
+            .map(SourceFileDescriptor::from))
     }
 }

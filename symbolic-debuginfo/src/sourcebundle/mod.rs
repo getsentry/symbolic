@@ -101,6 +101,13 @@ pub enum SourceBundleErrorKind {
 
     /// The file is not valid UTF-8 or could not be read for another reason.
     ReadFailed,
+
+    /// A source file exceeded the configured size limit.
+    ///
+    /// The size limit for a source bundle can be configured
+    /// by the [`max_decompressed_embedded_source_size`](crate::ParseObjectOptions::max_decompressed_embedded_source_size)
+    /// parameter in [`SourceBundle::parse_with_opts`].
+    SourceFileSizeExceeded,
 }
 
 impl fmt::Display for SourceBundleErrorKind {
@@ -111,6 +118,7 @@ impl fmt::Display for SourceBundleErrorKind {
             Self::BadDebugFile => write!(f, "malformed debug info file"),
             Self::WriteFailed => write!(f, "failed to write source bundle"),
             Self::ReadFailed => write!(f, "file could not be read as UTF-8"),
+            Self::SourceFileSizeExceeded => write!(f, "the source file exceeded the size limit"),
         }
     }
 }
@@ -175,6 +183,24 @@ pub enum SourceFileType {
 
     /// Indexed JavaScript RAM bundle.
     IndexedRamBundle,
+}
+
+impl SourceFileType {
+    /// Returns the name of the source file type.
+    pub fn name(self) -> &'static str {
+        match self {
+            SourceFileType::Source => "source",
+            SourceFileType::MinifiedSource => "minified_source",
+            SourceFileType::SourceMap => "source_map",
+            SourceFileType::IndexedRamBundle => "indexed_ram_bundle",
+        }
+    }
+}
+
+impl fmt::Display for SourceFileType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
+    }
 }
 
 /// Meta data information of a file in a [`SourceBundle`](struct.SourceBundle.html).
@@ -455,6 +481,17 @@ impl<'a> SourceFileDescriptor<'a> {
     }
 }
 
+impl fmt::Debug for SourceFileDescriptor<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let contents = self.contents.as_ref().map(|contents| contents.len());
+        f.debug_struct("SourceFileDescriptor")
+            .field("contents", &contents)
+            .field("remote_url", &self.remote_url)
+            .field("file_info", &self.file_info)
+            .finish()
+    }
+}
+
 /// Version number of a [`SourceBundle`](struct.SourceBundle.html).
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct SourceBundleVersion(pub u32);
@@ -583,6 +620,7 @@ pub struct SourceBundle<'data> {
     data: &'data [u8],
     archive: zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>,
     index: Arc<SourceBundleIndex<'data>>,
+    max_decompressed_embedded_source_size: Option<usize>,
 }
 
 impl fmt::Debug for SourceBundle<'_> {
@@ -598,6 +636,10 @@ impl fmt::Debug for SourceBundle<'_> {
             .field("has_unwind_info", &self.has_unwind_info())
             .field("has_sources", &self.has_sources())
             .field("is_malformed", &self.is_malformed())
+            .field(
+                "max_decompressed_embedded_source_size",
+                &self.max_decompressed_embedded_source_size,
+            )
             .finish()
     }
 }
@@ -608,8 +650,16 @@ impl<'data> SourceBundle<'data> {
         bytes.starts_with(&BUNDLE_MAGIC)
     }
 
-    /// Tries to parse a `SourceBundle` from the given slice.
+    /// Tries to parse a `SourceBundle` from the given slice, with default options.
     pub fn parse(data: &'data [u8]) -> Result<SourceBundle<'data>, SourceBundleError> {
+        Self::parse_with_opts(data, Default::default())
+    }
+
+    /// Tries to parse a `SourceBundle` from the given slice.
+    pub fn parse_with_opts(
+        data: &'data [u8],
+        opts: ParseObjectOptions,
+    ) -> Result<SourceBundle<'data>, SourceBundleError> {
         let mut archive = zip::read::ZipArchive::new(std::io::Cursor::new(data))
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
 
@@ -619,6 +669,7 @@ impl<'data> SourceBundle<'data> {
             archive,
             data,
             index,
+            max_decompressed_embedded_source_size: opts.max_decompressed_embedded_source_size,
         })
     }
 
@@ -754,6 +805,7 @@ impl<'data> SourceBundle<'data> {
             index: Arc::clone(&self.index),
             archive,
             source_links,
+            max_decompressed_embedded_source_size: self.max_decompressed_embedded_source_size,
         })
     }
 
@@ -794,8 +846,8 @@ impl<'slf, 'data: 'slf> AsSelf<'slf> for SourceBundle<'data> {
 impl<'data> Parse<'data> for SourceBundle<'data> {
     type Error = SourceBundleError;
 
-    fn parse_with_opts(data: &'data [u8], _opts: ParseObjectOptions) -> Result<Self, Self::Error> {
-        Self::parse(data)
+    fn parse_with_opts(data: &'data [u8], opts: ParseObjectOptions) -> Result<Self, Self::Error> {
+        Self::parse_with_opts(data, opts)
     }
 
     fn test(data: &'data [u8]) -> bool {
@@ -880,6 +932,7 @@ pub struct SourceBundleDebugSession<'data> {
     archive: Mutex<zip::read::ZipArchive<std::io::Cursor<&'data [u8]>>>,
     index: Arc<SourceBundleIndex<'data>>,
     source_links: SourceLinkMappings,
+    max_decompressed_embedded_source_size: Option<usize>,
 }
 
 impl SourceBundleDebugSession<'_> {
@@ -896,15 +949,31 @@ impl SourceBundleDebugSession<'_> {
     }
 
     /// Get source by the path of a file in the bundle.
-    fn source_by_zip_path(&self, zip_path: &str) -> Result<String, SourceBundleError> {
+    fn source_by_zip_path(
+        &self,
+        zip_path: &str,
+        max_size: Option<usize>,
+    ) -> Result<String, SourceBundleError> {
         let mut archive = self.archive.lock();
-        let mut file = archive
+        let file = archive
             .by_name(zip_path)
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
+
+        let size = file.size();
+        if max_size.is_some_and(|max| size as usize > max) {
+            return Err(SourceBundleErrorKind::SourceFileSizeExceeded.into());
+        }
+
         let mut source_content = String::new();
 
-        file.read_to_string(&mut source_content)
+        file.take(size + 1)
+            .read_to_string(&mut source_content)
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadZip, e))?;
+
+        if source_content.len() != size as usize {
+            return Err(SourceBundleErrorKind::BadZip.into());
+        }
+
         Ok(source_content)
     }
 
@@ -918,7 +987,9 @@ impl SourceBundleDebugSession<'_> {
     ) -> Result<Option<SourceFileDescriptor<'_>>, SourceBundleError> {
         if let Some(zip_path) = self.index.indexed_files.get(&key) {
             let zip_path = zip_path.as_str();
-            let content = Cow::Owned(self.source_by_zip_path(zip_path)?);
+            let content = Cow::Owned(
+                self.source_by_zip_path(zip_path, self.max_decompressed_embedded_source_size)?,
+            );
             let info = self.index.manifest.files.get(zip_path);
             let descriptor = SourceFileDescriptor::new_embedded(content, info);
             return Ok(Some(descriptor));
@@ -1324,15 +1395,48 @@ where
     ///
     /// Before a file is written a callback is invoked which can return `false` to skip a file.
     pub fn write_object_with_filter<'data, 'object, O, E, F>(
-        mut self,
+        self,
         object: &'object O,
         object_name: &str,
-        mut filter: F,
+        filter: F,
     ) -> Result<bool, SourceBundleError>
     where
         O: ObjectLike<'data, 'object, Error = E>,
         E: std::error::Error + Send + Sync + 'static,
         F: FnMut(&FileEntry, &Option<SourceFileDescriptor<'_>>) -> bool,
+    {
+        // Read source files from the local filesystem.
+        self.write_object_with_filter_and_provider(object, object_name, filter, |path| {
+            File::open(path).map(BufReader::new).ok()
+        })
+        .map(|w| w.0)
+    }
+
+    /// Writes a single object into the bundle, obtaining source file contents
+    /// from `provider`.
+    ///
+    /// This is the filesystem-free counterpart of [`Self::write_object_with_filter`],
+    /// for environments without filesystem access (e.g. WebAssembly): enumerate
+    /// the object's referenced source paths via its debug session, read them
+    /// however the host can, and return a reader from `provider` (returning
+    /// `None` skips a file). Each referenced path is requested at most once.
+    ///
+    /// Returns the underlying writer and whether if any source files were added to the bundle.
+    ///
+    /// This finishes the source bundle and flushes the underlying writer.
+    pub fn write_object_with_filter_and_provider<'data, 'object, O, E, F, R, P>(
+        mut self,
+        object: &'object O,
+        object_name: &str,
+        mut filter: F,
+        mut provider: P,
+    ) -> Result<(bool, W), SourceBundleError>
+    where
+        O: ObjectLike<'data, 'object, Error = E>,
+        E: std::error::Error + Send + Sync + 'static,
+        F: FnMut(&FileEntry, &Option<SourceFileDescriptor<'_>>) -> bool,
+        R: Read,
+        P: FnMut(&str) -> Option<R>,
     {
         let mut files_handled = BTreeSet::new();
         let mut referenced_files = BTreeSet::new();
@@ -1357,6 +1461,8 @@ where
                 continue;
             }
 
+            // Read the whole source up front so it can be scanned for il2cpp
+            // references before being added (matching the historical behavior).
             let source = if filename.starts_with('<') && filename.ends_with('>') {
                 None
             } else {
@@ -1364,25 +1470,29 @@ where
                     .source_by_path(&filename)
                     .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::BadDebugFile, e))?;
                 if filter(&file, &source_from_object) {
-                    // Note: we could also use source code directly from the object, but that's not
-                    // what happened here previously - only collected locally present files.
-                    std::fs::read(&filename).ok()
+                    provider(&filename)
                 } else {
                     None
                 }
             };
 
-            if let Some(source) = source {
+            if let Some(mut source) = source {
                 let bundle_path = sanitize_bundle_path(&filename);
                 let mut info = SourceFileInfo::new();
                 info.set_ty(SourceFileType::Source);
                 info.set_path(filename.clone());
 
                 if self.collect_il2cpp {
-                    collect_il2cpp_sources(&source, &mut referenced_files);
+                    // Need to aggressively read the source here to store it in `referenced_files`.
+                    let mut buf = Vec::new();
+                    if source.read_to_end(&mut buf).is_ok() {
+                        collect_il2cpp_sources(&buf, &mut referenced_files);
+                        self.add_file_skip_read_failed(bundle_path, buf.as_slice(), info)?;
+                    }
+                } else {
+                    // No need to aggressively consume the source here, we can use the `Read` instance.
+                    self.add_file_skip_read_failed(bundle_path, source, info)?;
                 }
-
-                self.add_file_skip_read_failed(bundle_path, source.as_slice(), info)?;
             }
 
             files_handled.insert(filename);
@@ -1393,29 +1503,35 @@ where
                 continue;
             }
 
-            if let Some(source) = File::open(&filename).ok().map(BufReader::new) {
+            if let Some(source) = provider(&filename) {
                 let bundle_path = sanitize_bundle_path(&filename);
                 let mut info = SourceFileInfo::new();
                 info.set_ty(SourceFileType::Source);
                 info.set_path(filename.clone());
 
-                self.add_file_skip_read_failed(bundle_path, source, info)?
+                self.add_file_skip_read_failed(bundle_path, source, info)?;
             }
         }
 
         let is_empty = self.is_empty();
-        self.finish()?;
+        let writer = self.do_finish()?;
 
-        Ok(!is_empty)
+        Ok((!is_empty, writer))
     }
 
     /// Writes the manifest to the bundle and flushes the underlying file handle.
-    pub fn finish(mut self) -> Result<(), SourceBundleError> {
+    pub fn finish(self) -> Result<(), SourceBundleError> {
+        self.do_finish().map(drop)
+    }
+
+    /// Writes the manifest to the bundle and flushes the underlying file handle.
+    fn do_finish(mut self) -> Result<W, SourceBundleError> {
         self.write_manifest()?;
-        self.writer
+        let writer = self
+            .writer
             .finish()
             .map_err(|e| SourceBundleError::new(SourceBundleErrorKind::WriteFailed, e))?;
-        Ok(())
+        Ok(writer)
     }
 
     /// Returns the full path for a file within the source bundle.
@@ -1500,9 +1616,11 @@ impl SourceBundleWriter<BufWriter<File>> {
 
 #[cfg(test)]
 mod tests {
+    use crate::Object;
+
     use super::*;
 
-    use std::io::Cursor;
+    use std::{collections::HashSet, io::Cursor};
 
     use similar_asserts::assert_eq;
     use tempfile::NamedTempFile;
@@ -1861,5 +1979,132 @@ mod tests {
         assert_eq!(bar.path(), Some("/files/bar/index.min.js"));
 
         Ok(())
+    }
+
+    #[test]
+    fn test_write_object_with_source_provider() {
+        let view = std::fs::read(symbolic_testutils::fixture("linux/crash.debug")).unwrap();
+        let object = Object::parse(&view).unwrap();
+
+        let referenced = {
+            let session = object.debug_session().unwrap();
+            session
+                .files()
+                .map(|file| file.unwrap().abs_path_str())
+                .filter(|path| !(path.starts_with('<') && path.ends_with('>')))
+                .collect::<HashSet<_>>()
+        };
+
+        let (written, writer) = SourceBundleWriter::start(Cursor::new(Vec::new()))
+            .unwrap()
+            .write_object_with_filter_and_provider(
+                &object,
+                "crash.debug",
+                |_, _| true,
+                |path| {
+                    assert!(referenced.contains(path));
+                    Some(Cursor::new(
+                        format!("// synthetic source for {path}\n").into_bytes(),
+                    ))
+                },
+            )
+            .unwrap();
+        assert!(written);
+
+        let data = writer.into_inner();
+
+        let bundle = Object::parse(&data).unwrap();
+        assert_eq!(bundle.debug_id(), object.debug_id());
+        assert!(bundle.has_sources());
+
+        let session = bundle.debug_session().unwrap();
+
+        // All object referenced files must be in the bundle.
+        for path in &referenced {
+            let descriptor = session.source_by_path(path).unwrap().unwrap();
+            assert_eq!(
+                descriptor.contents(),
+                Some(format!("// synthetic source for {path}\n").as_str())
+            );
+        }
+
+        // Only referenced files are allowed to be in the bundle, no extras.
+        for path in session.files() {
+            let path = path.unwrap().abs_path_str();
+            assert!(
+                referenced.contains(&path),
+                "expected {path} to be in object referenced files"
+            );
+        }
+    }
+
+    #[test]
+    fn test_write_object_with_provider_no_sources() {
+        let view = std::fs::read(symbolic_testutils::fixture("linux/crash.debug")).unwrap();
+        let object = Object::parse(&view).unwrap();
+
+        let writer = SourceBundleWriter::start(Cursor::new(Vec::new())).unwrap();
+        let (written, _) = writer
+            .write_object_with_filter_and_provider(
+                &object,
+                "crash.debug",
+                |_, _| true,
+                |_| None::<&[u8]>,
+            )
+            .unwrap();
+
+        assert!(!written);
+    }
+
+    #[test]
+    fn test_write_object_with_all_filtered() {
+        let view = std::fs::read(symbolic_testutils::fixture("linux/crash.debug")).unwrap();
+        let object = Object::parse(&view).unwrap();
+
+        let writer = SourceBundleWriter::start(Cursor::new(Vec::new())).unwrap();
+        let (written, _) = writer
+            .write_object_with_filter_and_provider(
+                &object,
+                "crash.debug",
+                |_, _| false,
+                |_| Some([0, 1, 2].as_slice()),
+            )
+            .unwrap();
+
+        assert!(!written);
+    }
+
+    #[test]
+    fn test_size_limit() {
+        let mut buffer = Cursor::new(Vec::new());
+        let mut bundle = SourceBundleWriter::start(&mut buffer).unwrap();
+
+        bundle
+            .add_file(
+                "bar.txt",
+                &b"this is 26 characters long"[..],
+                SourceFileInfo {
+                    path: "bar.txt".to_owned(),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        bundle.finish().unwrap();
+
+        let buffer = buffer.into_inner();
+
+        let opts = ParseObjectOptions {
+            max_decompressed_embedded_source_size: Some(20),
+            ..Default::default()
+        };
+
+        let bundle = SourceBundle::parse_with_opts(&buffer, opts).unwrap();
+        let session = bundle.debug_session().unwrap();
+        let err = session.source_by_path("bar.txt").unwrap_err();
+
+        assert!(matches!(
+            err.kind(),
+            SourceBundleErrorKind::SourceFileSizeExceeded
+        ));
     }
 }

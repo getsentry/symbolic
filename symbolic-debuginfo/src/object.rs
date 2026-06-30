@@ -128,10 +128,15 @@ impl Error for ObjectError {
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ParseObjectOptions {
-    /// Maximum uncompressed size for compressed debug file sections.
+    /// The maximum uncompressed size for compressed debug file sections.
     ///
     /// This is only relevant to ELF objects.
     pub max_decompressed_section_size: Option<usize>,
+
+    /// The maximum uncompressed size for comprossed source files embedded in an object file.
+    ///
+    /// This is only relevant for source bundles and PPDB objects.
+    pub max_decompressed_embedded_source_size: Option<usize>,
 }
 
 /// Tries to infer the object type from the start of the given buffer.
@@ -388,6 +393,14 @@ impl<'data> Object<'data> {
 
 impl<'slf, 'data: 'slf> AsSelf<'slf> for Object<'data> {
     type Ref = Object<'slf>;
+
+    fn as_self(&'slf self) -> &'slf Self::Ref {
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
+impl<'slf, 'data: 'slf> AsSelf<'slf> for ObjectDebugSession<'data> {
+    type Ref = ObjectDebugSession<'slf>;
 
     fn as_self(&'slf self) -> &'slf Self::Ref {
         unsafe { std::mem::transmute(self) }
