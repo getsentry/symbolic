@@ -6,7 +6,11 @@
 
 - Add recursion limit to vendored msvc-demangler. ([#1006](https://github.com/getsentry/symbolic/pull/1006))
 - Vendor [msvc-demangler](https://github.com/mstange/msvc-demangler-rust). ([#998](https://github.com/getsentry/symbolic/pull/998))
-- WASM: expose `ObjectFile.il2cppLineMapping(provider)`, which extracts a Unity Il2cpp C++→C# line mapping by parsing `source_info` markers from an object's referenced C++ source files and returns it as a JSON document (or `undefined` when no mappings are found). Source file contents are supplied by a `(path) => Uint8Array | null` provider callback, so it works without filesystem access. `symbolic-il2cpp` also gains `ObjectLineMapping::from_object_with_provider`, the filesystem-free counterpart of `from_object`. ([#1005](https://github.com/getsentry/symbolic/pull/1005))
+- WASM: expose `il2cppLineMapping(object, provider)`, which extracts a Unity Il2cpp C++→C# line mapping by parsing `source_info` markers from an object's referenced C++ source files and returns it as a JSON document (or `undefined` when no mappings are found). Source file contents are supplied by a `(path) => Uint8Array | null` provider callback, so it works without filesystem access. `symbolic-il2cpp` also gains `ObjectLineMapping::from_object_with_provider`, the filesystem-free counterpart of `from_object`. ([#1005](https://github.com/getsentry/symbolic/pull/1005))
+
+**Dependencies**
+
+- Bump the `memmap2` floor to 0.9.11 to exclude versions affected by [RUSTSEC-2026-0186](https://rustsec.org/advisories/RUSTSEC-2026-0186.html). ([#996](https://github.com/getsentry/symbolic/pull/996))
 
 **Dependencies**
 

@@ -71,7 +71,7 @@ test("il2cppLineMapping extracts source_info markers via a provider", () => {
     "//<source_info:Game.cs:42>\nint generated = 0;\n"
   );
   let calls = 0;
-  const bytes = object.il2cppLineMapping((path) => {
+  const bytes = symbolic.il2cppLineMapping(object, (path) => {
     assert.ok(typeof path === "string" && path.length > 0, "expected a source path");
     calls += 1;
     return synthetic;
@@ -85,5 +85,5 @@ test("il2cppLineMapping extracts source_info markers via a provider", () => {
   assert.deepEqual(fileMap, { "Game.cs": { 2: 42 } });
 
   // Returning a nullish value for every file yields no mapping (undefined).
-  assert.equal(object.il2cppLineMapping(() => null), undefined);
+  assert.equal(symbolic.il2cppLineMapping(object, () => null), undefined);
 });
